@@ -4335,9 +4335,9 @@ So that I can recover an instance without a terminal.
 - **When** the user terminates it
 - **Then** a dialog offers the optional error-to-job flag, names the process id, and requires the typed id before the destructive button enables.
 
-- **Given** the target is the user's **own** process
+- **Given** the target is the process serving this request, or any OcuPilot turn job
 - **When** any control action is attempted
-- **Then** it is refused with an explanation.
+- **Then** it is refused with an explanation. [AMENDED 2026-09-22, orchestrator-authorised, Rule 5 tier-1: was "the target is the user's **own** process". Story 5.12 narrowed this predicate to the certain harm and AD-10 declares the prohibited set once in the kernel, refused "whatever the caller", so the screen evaluates the same rule the agent does - a broader clause here would need a second predicate AD-10 forbids. The broad reading also refused this story's own user story, since an administrator stopping a runaway process is usually stopping their own.]
 
 - **Given** the target is an IRIS system process
 - **When** a terminate is attempted
