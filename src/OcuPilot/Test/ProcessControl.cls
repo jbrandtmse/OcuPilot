@@ -132,10 +132,14 @@ Method OnAfterOneTest() As %Status
 }
 
 /// <p>AC1 -- the mint reads the process with the tool's own <code>GET</code>, answers exactly one
-/// state row <code>State: Running -&gt; Suspended</code>, declares the suspend destructive, and
-/// discloses nothing as unchanged because nothing will be sent (AD-51).</p>
+/// state row <code>State: Running -&gt; Suspended</code>, carries the tool's own destructive
+/// declaration onto the stored row, and discloses nothing as unchanged because nothing will be
+/// sent (AD-51).</p>
 /// <p>Mutation (Rule 19): drop the <code>StateDiff</code> push in
-/// <class>OcuPilot.Screen.Tool.ProcessSuspend</class> -- the one-row assertion goes red.</p>
+/// <class>OcuPilot.Screen.Tool.ProcessSuspend</class> -- the one-row assertion goes red. Set that
+/// class's <parameter>DESTRUCTIVE</parameter> to <code>1</code> -- the stored-flag assertion goes
+/// red, which is what holds the flag to the tool's declaration rather than to the column's
+/// default.</p>
 Method TestTheMintAnswersOneStateRowFromTheProcessGet()
 {
     Do ##class(OcuPilot.Test.ProposalFixture).Arm(..#FRESHRUNNING)
@@ -154,7 +158,7 @@ Method TestTheMintAnswersOneStateRowFromTheProcessGet()
     Do $$$AssertEquals(tProposal.%Get("unchangedCount"), 0, "and no field is sent unchanged, because no body is sent at all")
 
     Set tKey = tProposal.%Get("proposalId")
-    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Destructive"), 1, "the stored row declares the suspend destructive")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Destructive"), 0, "the stored row carries the tool's own declaration: a suspend is not destructive")
     Set tStoredSC = ##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tKey, .tFound, .tStored)
     Do $$$AssertStatusOK(tStoredSC, "the stored row reads back")
     Set tRows = ##class(OcuPilot.Kernel.Proposal.Disclosure).Rows($Parameter(..#SUSPENDTOOL, "TOOLNAME"), $Get(tStored("payload")), $Get(tStored("diff")))
@@ -191,9 +195,13 @@ Method TestEachDirectionRefusesTheWrongStateAtTheMint()
     Do ##class(OcuPilot.Test.ProposalFixture).Arm("{""Pid"":999999999}")
     Set tSC = ..MintFor(..#SUSPENDTOOL, ..#ABSENTPID, .tProposal, .tHttp, .tFault)
     Do $$$AssertStatusNotOK(tSC, "a read carrying no State is refused by the suspend")
+    Do $$$AssertEquals(+$Get(tHttp), 400, "at 400, not as an internal failure later in the mint")
+    Do $$$AssertTrue($Select($IsObject(tFault): tFault.%Get("detail").%Get("problem"), 1: "") [ "did not report that process's state", "naming the state it could not read")
     Do ##class(OcuPilot.Test.ProposalFixture).Arm("{""Pid"":999999999}")
     Set tSC = ..MintFor(..#RESUMETOOL, ..#ABSENTPID, .tProposal, .tHttp, .tFault)
     Do $$$AssertStatusNotOK(tSC, "and by the resume")
+    Do $$$AssertEquals(+$Get(tHttp), 400, "at 400, not as an internal failure later in the mint")
+    Do $$$AssertTrue($Select($IsObject(tFault): tFault.%Get("detail").%Get("problem"), 1: "") [ "only a suspended process can be resumed", "naming that only a suspended process can be resumed")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).ProposalCount(), tBefore, "and no proposal row exists for any of them")
 }
 
@@ -397,6 +405,48 @@ Method TestAnIrisSystemProcessIsRefused()
     Do tAdmitted.%Set("JobType", tActual, "number")
     Do tAdmitted.%Set("UserName", ..#PRINCIPALUSER, "string")
     Do $$$AssertEquals(..Verdict(tAdmitted), "", "and a process of that kind is not refused")
+}
+
+/// <p>AC3 -- both AD-10 refusals through the <b>shipped</b> entry point, which is what the write
+/// transition calls: <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> parses the
+/// reference, re-reads the target through the port and dispatches to the process branch, so the
+/// order the two predicates are evaluated in is the set's own and not this class's.</p>
+/// <p>Both targets are live pids, because the set reads the target itself: the confirming job, and
+/// a process discovered by <method>SystemPid</method> rather than named. A run that finds no such
+/// process fails. Nothing is written, suspended or resumed -- the set only reads and answers.</p>
+/// <p>Mutation (Rule 19): delete either refusing branch from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.Process</method> -- the matching leg here goes red
+/// while the predicate-level legs above stay green.</p>
+Method TestTheShippedProhibitsRefusesTheOwnJobAndASystemProcess()
+{
+    Set tTool = $Parameter(..#SUSPENDTOOL, "TOOLNAME")
+    Set tStateDiff = "[{""field"":""State"",""before"":""Running"",""after"":""Suspended""}]"
+
+    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key("process", ##class(OcuPilot.Kernel.Scope).#SCOPEINSTANCE, $Job, .tOwnRef)
+    Do $$$AssertStatusOK(tSC, "the reference to the confirming job builds")
+    If $$$ISERR(tSC) Quit
+    Set tOwnFresh = ..FreshRead($Job)
+    Do $$$AssertTrue($IsObject(tOwnFresh), "and the confirming job reads fresh through the shipped port")
+    If '$IsObject(tOwnFresh) Quit
+    Set tSC = $ClassMethod(..#SET, "Prohibits", tTool, tOwnRef, tOwnFresh.%ToJSON(), tStateDiff, .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the set answers for it: " _ $System.Status.GetErrorText(tSC))
+    Do $$$AssertEquals(tProhibits, 1, "suspending the confirming caller's own process is refused")
+    Do $$$AssertEquals($Get(tCode), $Parameter(..#SET, "OWNPROCESS"), "as its own process")
+
+    Set tSystemPid = ..SystemPid()
+    Do $$$AssertNotEquals(tSystemPid, "", "this instance carries a process whose JobType the allow-list does not admit and whose owner is not the confirming user")
+    If tSystemPid = "" Quit
+    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key("process", ##class(OcuPilot.Kernel.Scope).#SCOPEINSTANCE, tSystemPid, .tSystemRef)
+    Do $$$AssertStatusOK(tSC, "the reference to pid " _ tSystemPid _ " builds")
+    If $$$ISERR(tSC) Quit
+    Set tSystemFresh = ..FreshRead(tSystemPid)
+    Do $$$AssertTrue($IsObject(tSystemFresh), "and it reads fresh through the shipped port")
+    If '$IsObject(tSystemFresh) Quit
+    Set tSC = $ClassMethod(..#SET, "Prohibits", tTool, tSystemRef, tSystemFresh.%ToJSON(), tStateDiff, .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the set answers for it: " _ $System.Status.GetErrorText(tSC))
+    Do $$$AssertEquals(tProhibits, 1, "suspending an IRIS system process is refused")
+    Do $$$AssertEquals($Get(tCode), $Parameter(..#SET, "SYSTEMPROCESS"), "as a process of a kind nobody has reviewed")
+    Do $$$AssertTrue('(..ProcessState(tSystemPid) [ "SUSP"), "and asking the question suspended nothing: pid " _ tSystemPid _ " reads '" _ ..ProcessState(tSystemPid) _ "'")
 }
 
 /// <p>AC1, AC6 -- the whole write against this instance through the shipped mint, port, prohibited
@@ -622,6 +672,50 @@ ClassMethod JobTypeOf(pPid As %String) As %Integer
         Set tType = -1
     }
     Quit tType
+}
+
+/// <p>A live pid on this instance that <method>OcuPilot.Kernel.Proposal.Prohibited.Process</method>
+/// refuses as a system process -- one whose <code>JobType</code> the shipped allow-list does not
+/// admit, which the confirming user does not own, and which the shipped port still reads -- or
+/// <code>""</code> when the instance carries none.</p>
+/// <p>The lowest pids first, which are the instance's own long-lived daemons, so the pid this
+/// answers is still there when the caller asks about it. The allow-list and the account identity
+/// rule are read from the set itself rather than restated here, which is why the rows are read in
+/// <code>%SYS</code> and judged after the namespace is back: neither the set nor the port answers
+/// there.</p>
+ClassMethod SystemPid() As %String
+{
+    Set tFound = ""
+    Set tRows = 0
+    Kill tRow
+    Set tAdmitted = $ClassMethod(..#SET, "ProcessJobTypes")
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Pid, JobType, UserName FROM %SYS.ProcessQuery ORDER BY Pid")
+        While tRS.%Next() {
+            Set tRows = tRows + 1
+            Set tRow(tRows) = $ListBuild(tRS.%Get("Pid"), tRS.%Get("JobType"), tRS.%Get("UserName"))
+        }
+        Set tRS = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tRows = 0
+    }
+    Set tCaller = $ClassMethod(..#SET, "NormalizedUser", $Username)
+    For tI = 1:1:tRows {
+        Set tPid = $List(tRow(tI), 1)
+        If tPid = $Job Continue
+        If $ListFind(tAdmitted, +$List(tRow(tI), 2)) Continue
+        If $ClassMethod(..#SET, "NormalizedUser", $List(tRow(tI), 3)) = tCaller Continue
+        Set tFresh = ..FreshRead(tPid)
+        If '$IsObject(tFresh) Continue
+        If $ListFind(tAdmitted, +tFresh.%Get("JobType")) Continue
+        Set tFound = tPid
+        Quit
+    }
+    Quit tFound
 }
 
 /// <p>Resume process <var>pPid</var> if the instance reports it suspended, doing nothing

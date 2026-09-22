@@ -2,7 +2,7 @@
 title: 'Story 5.12: OS management - suspend and resume a process'
 type: 'feature'
 created: '2026-09-21'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'c904efbb09cb2218e561e2130dc49c9ed1d5b93f'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -11,6 +11,49 @@ context:
 warnings: ['oversized']
 deferred:
   - 'WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal fails on a reused throwaway once %SYS_Task.History passes the tasks.history read 1000-row cap (1032 rows on ocupilot-ci). Environmental, not this story: a fresh throwaway starts that table empty. Bound the leg to the probe task own rows, or let it tolerate a truncated view.'
+  - summary: >-
+      Several acceptance criteria carry their Rule 19 mutation only in the test method's own doc
+      comment, not as a `mutation:` line in this spec's `## Verification` list.
+    evidence: |-
+      The list records eleven mutations. AC1's write half, AC2's two wrong-state refusals, AC4's
+      absent-request-type half, AC5, AC6, AC7, AC8 and AC9 name theirs in the class doc comment
+      instead (ProcessControl.cls:206-210, ToolWrite.cls:706-716, ProhibitedRoute.cls:2118-2121).
+      Settled by re-applying each and writing the line, which is eight container round trips.
+    location: >-
+      _bmad-output/implementation-artifacts/spec-5-12-os-management-suspend-and-resume-a-process.md
+    severity: low
+  - summary: >-
+      OcuPilot.Test.ProhibitedFixture.Digest still computes the confirm digest with the
+      three-argument Fingerprint.Of, so a seeded action-style proposal would carry a digest no
+      confirm can match.
+    evidence: |-
+      ProhibitedRoute.Minted was updated in this story to project and pass the declared subject;
+      Digest was not. Both current callers (ProhibitedRoute.cls:247, ProhibitedByEffect.cls:487)
+      pass merge-write tools, so nothing is wrong today. Story 5.13 is the first caller that would
+      seed an action write through it.
+    location: >-
+      src/OcuPilot/Test/ProhibitedFixture.cls:176
+    severity: low
+  - summary: >-
+      AC7's Process-details half has no browser leg -- only the Processes list is driven for the
+      AD-43 auto-refresh pause.
+    evidence: |-
+      process-control.browser-spec.mjs has two tests, both on /ocupilot/os-management/processes.
+      ProcessDetails declares refreshes: true and is changed in this story (JobType added to
+      read.fields), but gains no pause leg; the generic pause is pinned by
+      task-resume.browser-spec.mjs:483.
+    location: >-
+      ui/browser/process-control.browser-spec.mjs
+    severity: low
+  - summary: >-
+      AC2's orchestrator-decided broad ownership reading leaves almost nothing proposable on a
+      single-user instance -- a product consequence for the decision sheet, not a defect.
+    evidence: |-
+      Prohibited.OwnedByCaller refuses any process whose UserName is the confirming user. Measured
+      on ocupilot-ci: 40 empty-owner daemons, 4 CSPSYSTEM, 1 TASKMGR, 1 IRISOWNER -- so the suite
+      had to create a second principal to have any proposable target at all. Spec-bound: the broad
+      reading was decided at planning, so it reopens only through an amendment.
+    severity: medium
 ---
 
 <intent-contract>
@@ -432,7 +475,7 @@ its descriptor **and** appearing in that roster, never by either alone".
 
 ## Tasks & Acceptance
 
-- [ ] [Review] Matrix row 1's `destructive` clause: set `ProcessSuspend.DESTRUCTIVE` to `0` and
+- [x] [Review] Matrix row 1's `destructive` clause: set `ProcessSuspend.DESTRUCTIVE` to `0` and
   correct the four assertions that mirror it (`ToolWrite.AssertActionWrite`, `ProcessControl:157`,
   `process-control.browser-spec.mjs:316`, and task 2's own pin) so the minted proposal's flag reads
   `false` for `osmgmt.processes.suspend`. The matrix and `EXPERIENCE.md` govern; do **not** edit the
@@ -458,7 +501,8 @@ other task stands as written.
    `SENDSBODY = 0`, `WRITERESOURCE "%Admin_Operate"`, `WRITEPERMISSION "USE"`, `PrivilegePairs()` on
    the `TaskResume` pattern, `STATEFIELD = "State"`, and a `StateDiff()` reading `State` for `SUSP`:
    suspend refuses an already-suspended target, resume refuses one that is not suspended. Suspend is
-   `Destructive()` 1 (it stops a running process); resume is 0.
+   `Destructive()` 0, as resume is: proposing the opposite reverses either (Spec Change Log,
+   2026-09-22).
 3. `src/OcuPilot/Screen/Tool/Write.cls` and `src/OcuPilot/Kernel/Proposal/Mint.cls` /
    `Confirm.cls` -- **the amended AD-51 seam**: a per-tool declared fingerprint subject, defaulting
    to empty, which means today's behavior (the descriptor's exclusions over the whole payload).
@@ -588,6 +632,71 @@ other task stands as written.
 
 ## Review Triage Log
 
+### 2026-09-22 — Review pass
+
+- verdicts: 17 findings — high 0, medium 4, low 9, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The two AD-10 refusals in `Prohibited.Process()` were never reached through
+    the shipped `Prohibits()`, so deleting either refusing branch left the suite green — the tests
+    asked the predicates through `ProcessControl.Verdict()`, which re-implements the dispatch order.
+    Patched: `TestTheShippedProhibitsRefusesTheOwnJobAndASystemProcess` drives `Prohibits()` for the
+    confirming job and a discovered system pid; deleting either branch now reddens only its half.
+  - `[medium]` `[patch]` (grouped with the row above) The refusals were exercised at the predicate,
+    not at the envelope the matrix states them at. Same root cause, same patch.
+  - `[medium]` `[patch]` The registration-time fingerprint-subject guard in
+    `Screen.Tool.Registry.ListTools` had no test — the five probes sit inside `EXCLUDEDPACKAGE`, so
+    only the pure function was verified. Patched: `OcuPilot.Test.SubjectProbe.Registry` admits the
+    probe package and `ToolWrite.TestAnInadequateFingerprintSubjectStopsTheToolListBuilding` asserts
+    the list refuses to build, naming the class and its problem.
+  - `[low]` `[patch]` The "read carrying no `State`" arm asserted only `AssertStatusNotOK`, so it
+    could not tell the documented 400 from an internal failure later in the mint. Patched: both
+    directions now assert the status and the problem sentence.
+  - `[low]` `[reject]` `ProhibitedRoute` starts a process and a task without the two arming
+    variables this story added. Rejected: that class already refuses unarmed under
+    `OCUPILOT_ALLOW_PRINCIPALS` (`:28`, `:113`) and `OCUPILOT_ALLOW_AUDIT_TOGGLE`, so it cannot run
+    on an unarmed instance at all; the only available fix adds two more guards and moves
+    `ci.test.mjs`'s order-sensitive roster with them.
+  - `[low]` `[defer]` Several ACs carry their mutation only in the test's doc comment, not as a
+    `mutation:` line in `## Verification`. Deferred — eight container round trips, outside this
+    rework's item.
+  - `[low]` `[defer]` `ProhibitedFixture.Digest` still calls the three-argument `Fingerprint.Of`.
+    Deferred — no current caller passes an action-style tool, so nothing is wrong today; Story 5.13
+    is the first that would be.
+  - `[low]` `[reject]` `Mint.cls:175-179`'s projection-failure branch has no test. Rejected as
+    theoretical: `StateDiff` refuses a read missing `State` first and the registration guard refuses
+    a subject naming an undeclared field, so no caller reaches it.
+  - `[false]` `[reject]` The spine amendment authorising the declared subject is absent from the
+    diff. Refuted: the amendment IS the baseline commit `c904efb`, cited by `## Blocking Condition -
+    RESOLVED`, the `## Spec Change Log` and `## Design Notes`.
+  - `[false]` `[reject]` The changed-field matrix row is tested at the set's API rather than at a
+    proposal. Refuted: both tools admit no settable field, so no proposal can carry one;
+    `ToolWrite:530` pins the refusal at the tool-argument surface and `ProcessControl:317` at the
+    set's — together the outermost reachable surfaces.
+  - `[low]` `[reject]` The `changed` event's cardinality and `action` verb are not pinned for this
+    story. Rejected: AC6's observable — the row highlighted within two seconds of the confirm — is
+    pinned end to end by the browser spec and cannot pass unless the event fired; the event's
+    internals are Story 5.7 machinery pinned there.
+  - `[low]` `[defer]` AC7's Process-details half has no browser leg. Deferred — a second browser
+    test, more than a direct correction.
+  - `[low]` `[reject]` Most legs run against fixture canned reads rather than the instance.
+    Rejected as spec-bound: `## Design Notes` chooses arming the predicate's input deliberately, and
+    a real suspend/resume leg plus the browser spec cover the instance side.
+  - `[false]` `[reject]` Scope widened to the shared kernel surface and `ListTools` can now fail
+    registration. Refuted: a build-time structural guard is condition three of the
+    orchestrator-approved amendment; the actionable half was the missing test, patched above.
+  - `[low]` `[reject]` (grouped with the arming row) Three arming mechanisms where the intent names
+    one. Same root cause, same rejection.
+  - `[medium]` `[defer]` The broad ownership reading leaves almost nothing proposable on a
+    single-user instance. Deferred — spec-bound (AC2's broad reading was orchestrator-decided), so
+    it is a decision-sheet question rather than a code fix.
+  - `[false]` `[reject]` Two opposite readings of one `EXPERIENCE.md` clause remain in the tree.
+    Refuted as not a new finding: the lead filed it as DW-1467 before this pass began.
+
+- **Matrix ambiguity (`destructive` for `osmgmt.processes.suspend`) - closed 2026-09-22.** Resolved
+  the way the Spec Change Log entry of the same date directs: the flag is `false`, the matrix and
+  `EXPERIENCE.md` govern, and the code moved to them. `DW-1467` carries the sibling inconsistency in
+  `security.auditing.update`, which this story did not touch.
+
 ## Design Notes
 
 **Governing ADs (Rule 6).** AD-51 (action-style writes - and the AD this story's blocking condition
@@ -715,12 +824,27 @@ answers `%Admin_Operate` alone while `AllowToOpen` and `VariableByPidExecute` as
   - `mutation:` add `36` to `Prohibited.ProcessJobTypes` -> `ProcessControl` 1/9 failed (the Task
     Manager leg); `mutation:` answer `""` from it -> 4/9 failed, the allow-list floor among them,
     which is the direction a predicate refusing everything would otherwise pass.
+  - `mutation:` `ProcessSuspend.DESTRUCTIVE` back to `1` -> `ToolWrite` 1/18 failed (the
+    `AssertActionWrite` flag assertion), `ProcessControl` 1/9 failed (the stored row's flag, which
+    is what holds it to the tool's declaration rather than to the column's `0` default), and
+    `process-control.browser-spec.mjs` 1/2 failed on the card's destructive treatment.
   - `mutation:` drop `Process/SUSPEND` from `AdminPort.BODYLESSTYPES` -> `ToolWrite` 1/18 failed.
   - `mutation:` drop `process:integer` from `EntityRef.IDRULES` -> `ProcessControl` 1/9 failed (the
     two-spellings leg).
   - `mutation:` empty `ProcessSuspend.FINGERPRINTSUBJECT` -> `ProcessControl` 2/9 failed: the
     counter-moved confirm is refused `PROPOSAL.TARGETCHANGED`, which is the dead path the amended
     AD-51 exists to remove, and the stored payload carries the whole read again.
+  - `mutation:` delete the `OwnedByCaller` refusing branch from `Prohibited.Process` -> `ProcessControl`
+    1/10 failed, on the own-process half of the dispatch leg alone; delete the `IsActionableJobType`
+    branch -> 1/10 failed, on that leg's system-process half. The predicate-level legs, which ask the
+    two predicates directly, stay green under both.
+  - `mutation:` delete the write branch's `FingerprintSubjectProblem` call from
+    `Registry.ListTools` -> `ToolWrite` 1/19 failed, on the registration leg only; the leg that asks
+    the guard about the five probes directly stays green.
+  - `mutation:` raise instead of refusing in `ProcessSuspend.StateDiff`'s no-State arm -> the new
+    400 assertion in `ProcessControl`'s wrong-state leg failed while the pre-existing
+    `AssertStatusNotOK` beside it stayed green; shorten `ProcessResume`'s problem sentence -> that
+    leg's resume sentence assertion failed alone.
   - `mutation:` run `ProcessControl` with no `OCUPILOT_ALLOW_PROCESS_CONTROL` -> `OnBeforeAllTests`
     refuses naming the variable, 0 methods; the same for `TaskResume` and
     `OCUPILOT_ALLOW_TASK_CONTROL`.
@@ -742,54 +866,61 @@ answers `%Admin_Operate` alone while `AllowToOpen` and `VariableByPidExecute` as
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: matrix ambiguity
+Status: done
+Blocking condition: none
 
-**The one open item.** Matrix row 1 requires the minted proposal's `destructive` flag to be
-**false** for a suspend; Task 2, `ProcessSuspend.DESTRUCTIVE`, `ToolWrite.AssertActionWrite`,
-`ProcessControl:157` and `process-control.browser-spec.mjs:316` all make it **true**. `Mint.cls:207`
-feeds that flag straight from the tool, so the two are the same thing and one of them is wrong.
-Evidence runs both ways: `EXPERIENCE.md:425` names Suspend among the **non-destructive** warnings,
-which is the matrix's reading; Story 5.10's shipped `security.auditing.update` declares
-`Destructive() 1` while the same EXPERIENCE.md line names disabling auditing non-destructive too,
-which is the code's reading. Today the flag drives the card's left-edge bar and Confirm treatment
-only (the typed-name field is Story 14.7), so either answer ships. The call settles 5.13 and 7.6 as
-well, and answering it "false" implies 5.10's flag is a defect to route -- which is why it is
-recorded rather than taken here.
+**This pass closed the one open item and the review that followed it.** `osmgmt.processes.suspend`
+declares `destructive` false: `ProcessSuspend.DESTRUCTIVE` is `0` -- declared rather than inherited,
+because a reader expects the opposite -- and the four sites that mirrored it moved with it
+(`ToolWrite.AssertActionWrite`'s argument, `ProcessControl`'s stored-row assertion, the browser
+spec's card treatment, and the execution plan's own `Destructive() 1` line), each doc comment
+corrected at its origin. `AuditingUpdate.cls` was left alone (DW-1467). The review then patched
+three verification gaps: the two AD-10 refusals are now driven through the shipped
+`Prohibited.Prohibits()` rather than through the predicates alone, AD-51's registration-time
+fingerprint-subject guard is driven through `ListTools` over a fixture registry, and the no-State
+mint refusal asserts its status and sentence instead of only "not OK".
 
-**Recommended amendment:** take the matrix and `EXPERIENCE.md:425` -- `destructive` false for
-`osmgmt.processes.suspend`, terminate being the destructive verb EXPERIENCE.md's own
-`button-destructive` example names -- and route the 5.10 inconsistency separately. The change is
-`ProcessSuspend.DESTRUCTIVE`, the `AssertActionWrite` argument, `ProcessControl:157` and the
-browser spec's two assertions. The opposite answer needs no code change, only the matrix cell.
+**Files changed.** `src/OcuPilot/Screen/Tool/ProcessSuspend.cls` -- the flag and the two comments
+that called the write destructive. `src/OcuPilot/Test/ToolWrite.cls` -- the suspend's
+`AssertActionWrite` argument, and a leg driving the registration guard through `ListTools`.
+`src/OcuPilot/Test/ProcessControl.cls` -- the stored-row assertion, the tightened no-State arm, a
+leg driving both AD-10 refusals through `Prohibits()`, and the `SystemPid()` helper that discovers
+its target rather than naming one. `src/OcuPilot/Test/SubjectProbe/Registry.cls` (new) -- the
+fixture registry whose discovery admits the probe package. `ui/browser/process-control.browser-spec.mjs`
+-- the card-treatment assertion.
 
-**Everything else is implemented and verified.** The seam: `Write.cls` gains `FINGERPRINTSUBJECT`
-and `PRECONDITIONFIELD`, `Fingerprint.Of` takes the subject and projects the payload to it, `Mint`
-stores that projection (so a process's `Variables` never enters OcuPilot's own store, AD-35) and
-`Confirm` re-computes the same digest. Adequacy is `Screen.Registry.FingerprintSubjectProblem`,
-which runs through `DeclaredNames` -- the extraction that validates `fingerprintExcludes`, never a
-second validator (DW-1206) -- and is called from `Screen.Tool.Registry.ListTools`, so an inadequate
-subject cannot register at all; `OcuPilot.Test.SubjectProbe.*` drives its five refusals.
-`AdminPort.BODYLESSTYPES` keys on `(endpoint, type)` (DW-1464) and admits `SUSPEND`. `Prohibited`
-covers `process` with the own-process and system-process predicates, both reading the fresh read
-`Target()` takes inside the transition. `ProcessControl` and `TaskResume` are armed (DW-1458).
+**Review findings.** 17 findings: 0 high, 4 medium, 9 low, 4 false. Patched: 2 medium (the
+prohibited-set dispatch, the registration guard) and 1 low (the no-State assertions). Deferred: 4
+(the mutation lines recorded only in doc comments; `ProhibitedFixture.Digest`'s three-argument
+`Fingerprint.Of`; AC7's Process-details browser leg; AC2's broad ownership reading as a
+decision-sheet question). Rejected: 8, each with its reason in the triage log above -- the arming
+roster (the class already refuses unarmed under two other variables), `Mint`'s unreachable
+projection-failure branch, the change event's internals (its observable is pinned by the browser
+spec), the fixture-read legs and the widened kernel scope (both spec-bound), the changed-field
+surface and the absent spine hunk (both refuted), and DW-1467 (already filed).
 
-Verified in this stage against `ocupilot-ci` after a full package recompile: `check-objectscript`
-21 rules over 608 files; `lint-docs.sh` clean; `npm run build` with its seven prebuild checkers;
-`npm test` 1302 + 817; `ProcessControl` 9/9 and `TaskResume` 9/9 armed, each refusing with 0 methods
-unarmed; `ProhibitedRoute` 13/13; `ToolWrite` 18, `Prohibited` 11, `SurfaceCoverage` 4, `Descriptor`
-48, `ToolRoundTrip` 2, `ReadTool` 27, `ProcessDetails` 6, `EndpointCoverage` 2, `Proposal` 14,
-`ProposalConfirm` 20, `AuditMarker` 8, `WireSecurityRead` 18 -- all 0 failed; the three browser
-specs 12/12; `smoke.sh --container ocupilot-ci` executed=46 passed=46 failed=0 pending=0, with
-`agentwrite` and `auditmarker` among them. Both fingerprint directions were driven at the kernel:
-a subject field moving refuses `PROPOSAL.TARGETCHANGED` at 409 with nothing reaching the port, and
-a counter moving confirms and issues the suspend.
+**Follow-up review: false.** This pass patched no `high`.
 
-`WireSecurityRead` failed once at `truncated = 0` because `%SYS_Task.History` held 1,085 rows on a
-two-day-old throwaway, 903 of them from two IRIS recurring tasks; the row comparison itself matched
-exactly, and deleting those 903 ambient rows made the class green with no code change. Recorded in
-`deferred:`.
+**Verified against `ocupilot-ci`** with every changed class loaded and compiled in the container and
+read back from it (`Destructive()` answers 0 for both process tools, 1 for
+`security.auditing.update`; the fixture registry compiles): `check-objectscript` 21 rules over 609
+files clean; `lint-docs.sh` clean; source in the container byte-identical to the worktree;
+`npm run build` with its prebuild checkers; `npm test` 1302 + 817; `ProcessControl` 10/10 armed (run
+5159), `ToolWrite` 19/19 (run 5161), `Prohibited` 11/11, `SurfaceCoverage` 4/4, `ToolSetFull` 2/2,
+all reconciled against `%UnitTest_Result` rather than the runner envelope;
+`process-control.browser-spec.mjs` 2/2 against the deployed bundle, which no change in this pass
+touches. Rule 19 at the source: restoring `DESTRUCTIVE` to `1` reddened all three of its pins at the
+named assertion and nothing else; deleting either refusing branch from `Prohibited.Process` reddened
+only the matching half of the new dispatch leg while the predicate legs stayed green; deleting the
+guard call from `Registry.ListTools` reddened only the new registration leg. Every mutation was
+reverted and the tree confirmed byte-identical.
 
-Read back after the sweep: no probe process, no suspended process and no probe account on
-`ocupilot-ci`; the demo task `OcuPilotDemo nightly purge` reads `Suspended=1`; the live `ocupilot`
-holds no suspended process and was never written to.
+**Read back after the run:** no suspended process, no probe process and no probe principal on
+`ocupilot-ci`; `OcuPilotDemo nightly purge` reads `Suspended=1`; the live `ocupilot` holds no
+suspended process and was never written to.
+
+**Residual risk.** The four deferred items above, and the `WireSecurityRead` row-cap failure, which
+stays environmental. The rest of the story -- the AD-51 fingerprint-subject seam, the port's
+`(endpoint, type)` bodyless key, the `process` prohibited-set branch, the id rule, the descriptors
+and the arming variables -- landed and was verified at `58812ec`; this pass re-ran the classes the
+change touches and the tool-roster classes a new fixture registry could reach (Rule 29).

@@ -11,8 +11,10 @@
 /// running process moves nine of its fifty read keys within seconds, so a digest over the whole
 /// read would refuse every confirm against exactly the processes this tool exists to act on. The
 /// subject is the scoped target identity plus the field this tool's own precondition reads.</p>
-/// <p><b>It is destructive</b>: a suspended process holds whatever it was holding -- locks, an
-/// open transaction, a device -- and resuming it is not the same as never having stopped it.</p>
+/// <p><b>It is not destructive</b>: proposing the opposite puts the process back, which is what
+/// <class>OcuPilot.Screen.Tool.ProcessResume</class> is for. EXPERIENCE.md's
+/// <code>confirm-dialog</code> row names a suspend among the non-destructive warnings and reserves
+/// the destructive treatment for a terminate, which OcuPilot ships no tool for.</p>
 Class OcuPilot.Screen.Tool.ProcessSuspend Extends OcuPilot.Screen.Tool.Write
 {
 
@@ -39,9 +41,10 @@ Parameter WRITETYPE = "SUSPEND";
 /// (<parameter>OcuPilot.Port.AdminPort.BODYLESSTYPES</parameter>).</p>
 Parameter SENDSBODY As BOOLEAN = 0;
 
-/// <p>Suspending a running process stops work the user cannot simply put back by proposing the
-/// opposite: the process keeps every lock and open transaction it held while it is stopped.</p>
-Parameter DESTRUCTIVE As BOOLEAN = 1;
+/// <p>Declared rather than inherited because a reader expects the opposite: suspending a running
+/// process stops work, but the user undoes it by proposing the resume, so the card draws the
+/// ordinary Confirm treatment (EXPERIENCE.md's <code>confirm-dialog</code> row).</p>
+Parameter DESTRUCTIVE As BOOLEAN = 0;
 
 /// <p>The pair a suspend requires: <code>%Admin_Operate:USE</code>, the vendor's own
 /// <code>ResourcesOR()</code> resource and one of the three

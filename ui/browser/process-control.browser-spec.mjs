@@ -296,7 +296,9 @@ async function listWithLiveCard({ withRefresh = false } = {}) {
 test('AC1: the card carries one state row, and the confirmed suspend re-fetches and highlights inside the budget', async () => {
   // Mutation (Rule 19): drop the `StateDiff` push in `OcuPilot.Screen.Tool.ProcessSuspend` -> the
   // card has no row and the diff assertion goes red; make `Confirm.ToolSendsBody` answer 1 -> the
-  // port is given a body the vendor SUSPEND does not read and the write leg goes red.
+  // port is given a body the vendor SUSPEND does not read and the write leg goes red; set that
+  // tool's `DESTRUCTIVE` to 1 -> the card draws the destructive bar and the treatment assertion
+  // goes red.
   const { context, page, tag } = await listWithLiveCard();
   try {
     const drawn = await page.evaluate(() => ({
@@ -313,7 +315,11 @@ test('AC1: the card carries one state row, and the confirmed suspend re-fetches 
     assert.ok(drawn.diff[0].includes('Running'), `moving from Running: ${drawn.diff[0]}`);
     assert.ok(drawn.diff[0].includes('Suspended'), `to Suspended: ${drawn.diff[0]}`);
     assert.equal(drawn.unchanged, false, 'and no unchanged-fields caption, because no body is sent');
-    assert.equal(drawn.destructive, true, 'a suspend is destructive: the process holds what it held');
+    assert.equal(
+      drawn.destructive,
+      false,
+      'a suspend draws the ordinary Confirm treatment: proposing the resume puts the process back'
+    );
     assert.equal(await page.$(CHANGED_ROW), null, 'nothing is highlighted before the confirm');
 
     await page.click('.ocu-proposal-card-confirm');

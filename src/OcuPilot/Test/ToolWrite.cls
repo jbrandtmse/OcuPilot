@@ -533,15 +533,17 @@ Method TestTheTaskResumeToolIsAnActionWriteOverTheScreensOwnPairs()
 }
 
 /// <p>AD-51, AD-8: the process suspend tool is an action-style write -- <code>GET</code> fresh,
-/// <code>SUSPEND</code> written, no body, no settable field, destructive -- over its screen's own
-/// three pairs at <code>USE</code>, with the fingerprint subject the amended AD-51 requires.</p>
+/// <code>SUSPEND</code> written, no body, no settable field, not destructive -- over its screen's
+/// own three pairs at <code>USE</code>, with the fingerprint subject the amended AD-51 requires.</p>
 /// <p>Mutation (Rule 19): set
 /// <parameter>OcuPilot.Screen.Tool.ProcessSuspend.FINGERPRINTSUBJECT</parameter> to
 /// <code>"Pid"</code> -- the subject assertion goes red, and so does
-/// <method>TestAnInadequateFingerprintSubjectIsRefusedAtRegistration</method>'s floor.</p>
+/// <method>TestAnInadequateFingerprintSubjectIsRefusedAtRegistration</method>'s floor. Set
+/// <parameter>OcuPilot.Screen.Tool.ProcessSuspend.DESTRUCTIVE</parameter> to <code>1</code> -- the
+/// destructive assertion goes red.</p>
 Method TestTheProcessSuspendToolIsAnActionWriteOverTheScreensOwnPairs()
 {
-    Do ..AssertActionWrite(..#SUSPENDTOOL, ..#SUSPENDTOOLCLASS, "SUSPEND", 1)
+    Do ..AssertActionWrite(..#SUSPENDTOOL, ..#SUSPENDTOOLCLASS, "SUSPEND", 0)
 }
 
 /// <p>AD-51, AD-8: the process resume tool, the same shape in the other direction and not
@@ -644,6 +646,23 @@ Method TestAnInadequateFingerprintSubjectIsRefusedAtRegistration()
     Set tBodyTaking = $ClassMethod(tRegistry, "FingerprintSubjectProblem", "OcuPilot.Test.SubjectProbe.BodyTaking")
     Do $$$AssertNotEquals(tBodyTaking, "", "and so is a subject declared on a write that sends a body, which the inversion is not for")
     Do $$$AssertTrue(tBodyTaking [ "sends a body", "naming why: " _ tBodyTaking)
+}
+
+/// <p>AD-51: the guard runs at registration, so a tool with an inadequate subject does not become
+/// a tool at all. Reached here through <method>OcuPilot.Screen.Tool.Registry.ListTools</method>,
+/// over <class>OcuPilot.Test.SubjectProbe.Registry</class>, whose discovery admits the probe
+/// package the shipped registry excludes.</p>
+/// <p>Mutation (Rule 19): delete the write branch's <code>FingerprintSubjectProblem</code> call
+/// from <method>OcuPilot.Screen.Tool.Registry.ListTools</method> -- this leg goes red while the
+/// direct one above stays green.</p>
+Method TestAnInadequateFingerprintSubjectStopsTheToolListBuilding()
+{
+    Set tRefused = "OcuPilot.Test.SubjectProbe.BodyTaking"
+    Set tProblem = $ClassMethod("OcuPilot.Screen.Registry", "FingerprintSubjectProblem", tRefused)
+    Do $$$AssertNotEquals(tProblem, "", "the first probe that registry's discovery reaches is inadequate, so the run below is not a pass over nothing")
+    Set tSC = $ClassMethod("OcuPilot.Test.SubjectProbe.Registry", "ListTools", .tTools)
+    Do $$$AssertStatusNotOK(tSC, "a registry admitting the probe package cannot build its tool list")
+    Do $$$AssertTrue($System.Status.GetErrorText(tSC) [ (tRefused _ ": " _ tProblem), "naming the class and its problem: " _ $System.Status.GetErrorText(tSC))
 }
 
 /// <p>AD-51: every registered write tool's <method>OcuPilot.Screen.Tool.Write.WriteType</method>
