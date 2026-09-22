@@ -13,3 +13,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-22T22:07:32Z	Epic 7	ledger_routed_planned	story=7-1-enable-disable-and-delete-a-web-application entries=6 excess=2 by=x0
 2026-09-22T22:07:32Z	Epic 7	ledger_routed_planned	story=7-6-run-suspend-resume-and-delete-a-task entries=1 excess=0 by=x0
 2026-09-22T22:07:32Z	Epic 7	ledger_routed_planned	story=7-8-terminate-suspend-and-resume-a-process entries=3 excess=0 by=x0
+2026-09-22T22:12:17Z	Epic 7	epic_context_compiled	sha=b936b38 reason=initial model=claude-opus-5[1m]
+2026-09-22T22:12:17Z	Story 7.1	stage_spawned	stage=plan spawn_at=2026-09-22T22:12:17Z model=opus agent_name=7-1-enable-disable-and-delete-a-web-application-plan-1 cycle_iteration=1
