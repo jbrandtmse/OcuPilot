@@ -99,7 +99,7 @@ jobs:
   instance:
     name: instance
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       # First, before anything else can mask it: the Linux ownership reproduction for the durable
@@ -118,21 +118,22 @@ jobs:
       - name: build the client bundle the container installs
         working-directory: ui
         run: npm run build
-      - name: install the pinned headless browser
-        working-directory: ui
-        run: npx puppeteer browsers install chrome
-      # DW-439's measurement, on the record before the bind that may fail: 52776 sits inside the
-      # range a Linux runner allocates outbound source ports from (the kernel default is
-      # 32768-60999), so a transient occupant is the explanation the ledger entry could only
-      # infer. 1975 is below that floor and cannot be taken that way. This runs BEFORE the bind
-      # that may fail, so the range is on the record even for a run that dies at the bring-up.
       - name: the runner's ephemeral port range
         run: cat /proc/sys/net/ipv4/ip_local_port_range
+      # DW-439's actual fix, not its third retry. 52776 and 52780 sit inside the range a Linux
+      # runner allocates outbound source ports from, so a transient occupant can hold one when
+      # compose asks for it -- which exhausted `ci-throwaway.sh`'s three bounded retries on
+      # 2026-09-21 and reddened a job that had run no test. Reserving them tells the kernel never
+      # to hand them out ephemerally, which keeps the ports CONSTANT -- the reason the script's
+      # own comment rejected moving them, since they are written into CLAUDE.md, parallel.yaml
+      # and every runner's spawn prompt -- while removing the race rather than retrying through it.
+      - name: reserve the throwaway host ports
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780
       - name: bring up a throwaway container
         run: sh scripts/ci-throwaway.sh up
       - name: wait for readiness to report installed
         run: sh scripts/wait-readiness.sh --url http://localhost:52776/api/ocupilot/readiness/
-      # Before the long suites, so a vendor drift fails in seconds rather than forty minutes in:
+      # Before the long suite, so a vendor drift fails in seconds rather than fourteen minutes in:
       # the instance's own generated admin API spec against the derived path-and-method table
       # vendored at a named upstream commit (AD-27).
       - name: admin API drift against the vendored table
@@ -143,28 +144,79 @@ jobs:
         run: node tools/ci-runner.mjs --container ocupilot-ci
       - name: smoke
         run: sh scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS
-      - name: browser spec
-        working-directory: ui
-        env:
-          OCUPILOT_BROWSER_ORIGIN: http://localhost:52776
-        run: npm run test:browser
-      # Before the teardown, and only when something above it went wrong: the teardown removes the
-      # container, so whatever it was doing is unrecoverable a step later. In run 34773637146 the
-      # failing step printed `container ocupilot-ci is unhealthy` and nothing else; the cause
-      # reached the job only inside the teardown's own 80-line tail, under a step named for
-      # removing things.
-      #
-      # `failure() || cancelled()`, not `failure()`: a job that hits `timeout-minutes` is
-      # CANCELLED, not failed, and so is one this workflow's own `cancel-in-progress` supersedes.
-      # A container hung long enough to reach the 45-minute timeout is the case where the capture
-      # is worth the most, and `failure()` alone is false for exactly that case while the
-      # `always()` teardown still removes the evidence.
       - name: capture the throwaway on failure
         if: ${{ failure() || cancelled() }}
         run: sh scripts/ci-throwaway.sh logs
       - name: tear the throwaway down
         if: always()
         run: sh scripts/ci-throwaway.sh down
+
+  # Split out of `instance` on 2026-09-22, measured rather than guessed. In runs 35713724680,
+  # 35724351761 and 35779249963 the instance job took 31-34 minutes and was the whole of CI's wall
+  # clock: `gates` x3, `images` x2 and `package` all finished in 0-4 minutes beside it. Inside it,
+  # the ObjectScript suite took 13.8m and the browser suite 15.9m -- 30 of the 31 -- and both are
+  # SERIALIZED for reasons that are not going away: `.claude/rules/objectscript-testing.md` forbids
+  # two test classes at once after the 2026-09-11 race left a probe database mounted with no
+  # directory, and `browser.config.mjs` runs one spec file at a time because
+  # `unreadable.browser-spec.mjs` revokes and restores a grant the others depend on.
+  #
+  # Neither suite can be made faster without taking a risk those two rules exist to refuse. But
+  # they need nothing from each other: one drives Chrome against its container, the other runs
+  # %UnitTest inside its own. So they run as two jobs against two throwaways, which halves the
+  # wall clock and costs only runner-minutes -- free on a public repository.
+  #
+  # The second throwaway is a full parameterisation of the same script, not a copy: `up` already
+  # takes --dir/--project/--web/--super because the parallel slots needed exactly that, and
+  # `container_name` follows `--project`, which is what OCUPILOT_BROWSER_CONTAINER names.
+  browser:
+    name: browser
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22.22.3
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: install client dependencies
+        working-directory: ui
+        run: npm ci
+      - name: build the client bundle the container installs
+        working-directory: ui
+        run: npm run build
+      - name: install the pinned headless browser
+        working-directory: ui
+        run: npx puppeteer browsers install chrome
+      - name: the runner's ephemeral port range
+        run: cat /proc/sys/net/ipv4/ip_local_port_range
+      # DW-439's actual fix, not its third retry. 52776 and 52780 sit inside the range a Linux
+      # runner allocates outbound source ports from, so a transient occupant can hold one when
+      # compose asks for it -- which exhausted `ci-throwaway.sh`'s three bounded retries on
+      # 2026-09-21 and reddened a job that had run no test. Reserving them tells the kernel never
+      # to hand them out ephemerally, which keeps the ports CONSTANT -- the reason the script's
+      # own comment rejected moving them, since they are written into CLAUDE.md, parallel.yaml
+      # and every runner's spawn prompt -- while removing the race rather than retrying through it.
+      - name: reserve the throwaway host ports
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780
+      - name: bring up a throwaway container
+        run: sh scripts/ci-throwaway.sh up --dir /tmp/ocupilot-browser-ci --project ocupilot-browser-ci --web 52780 --super 1979
+      - name: wait for readiness to report installed
+        run: sh scripts/wait-readiness.sh --url http://localhost:52780/api/ocupilot/readiness/
+      # Both variables, never one: browser.config.mjs carries its own container default, so a run
+      # that sets only the origin execs into the OTHER throwaway's container (2026-09-16).
+      - name: browser spec
+        working-directory: ui
+        env:
+          OCUPILOT_BROWSER_ORIGIN: http://localhost:52780
+          OCUPILOT_BROWSER_CONTAINER: ocupilot-browser-ci
+        run: npm run test:browser
+      - name: capture the throwaway on failure
+        if: ${{ failure() || cancelled() }}
+        run: sh scripts/ci-throwaway.sh logs --dir /tmp/ocupilot-browser-ci
+      - name: tear the throwaway down
+        if: always()
+        run: sh scripts/ci-throwaway.sh down --dir /tmp/ocupilot-browser-ci --project ocupilot-browser-ci
 
   images:
     name: images

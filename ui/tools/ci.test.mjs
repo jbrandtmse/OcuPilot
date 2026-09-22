@@ -117,11 +117,22 @@ export const DECLARED_GATES = [
   'sh scripts/ci-throwaway.sh up',
   'sh scripts/wait-readiness.sh --url http://localhost:52776/api/ocupilot/readiness/',
   'node tools/admin-spec.mjs --origin http://localhost:52776',
+  'sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780',
   'node tools/ci-runner.mjs --container ocupilot-ci',
   'sh scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS',
   'npm run test:browser',
   'sh scripts/ci-throwaway.sh logs',
   'sh scripts/ci-throwaway.sh down',
+  // browser -- the same script fully parameterised onto a second throwaway, so the two suites
+  // that dominated the old instance job run side by side instead of end to end.
+  'npm ci',
+  'npm run build',
+  'cat /proc/sys/net/ipv4/ip_local_port_range',
+  'sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780',
+  'sh scripts/ci-throwaway.sh up --dir /tmp/ocupilot-browser-ci --project ocupilot-browser-ci --web 52780 --super 1979',
+  'sh scripts/wait-readiness.sh --url http://localhost:52780/api/ocupilot/readiness/',
+  'sh scripts/ci-throwaway.sh logs --dir /tmp/ocupilot-browser-ci',
+  'sh scripts/ci-throwaway.sh down --dir /tmp/ocupilot-browser-ci --project ocupilot-browser-ci',
   // images
   'sh scripts/ci-image-compile.sh --image ${{ matrix.image }}',
   // package -- `npm ci` and `npm run build` run a THIRD time here, in a job with its own
@@ -364,10 +375,19 @@ test('no step can fail without failing the job', () => {
   // happened before it -- and is a defect anywhere else, because a gate that runs regardless is
   // a gate whose own failure does not stop the ones after it.
   const always = [...workflow.matchAll(/^\s*if:\s*always\(\)\s*$/gm)];
-  assert.equal(always.length, 1, `expected exactly one always() step (the teardown), found ${always.length}`);
-  const teardownAt = workflow.indexOf('tear the throwaway down');
-  assert.ok(teardownAt > 0, 'the teardown step is named');
-  assert.ok(always[0].index > teardownAt, 'and always() belongs to it');
+  const teardowns = [...workflow.matchAll(/tear the throwaway down/g)];
+  assert.ok(teardowns.length > 0, 'the teardown step is named');
+  assert.equal(
+    always.length,
+    teardowns.length,
+    `expected one always() step per teardown (${teardowns.length}), found ${always.length}`
+  );
+  // Each always() belongs to the teardown it follows, and to no other step: pairwise, in order.
+  teardowns.forEach((teardown, i) => {
+    assert.ok(always[i].index > teardown.index, `always() #${i + 1} belongs to its own teardown`);
+    const next = teardowns[i + 1];
+    if (next) assert.ok(always[i].index < next.index, `always() #${i + 1} does not belong to the next job's teardown`);
+  });
 });
 
 test('a failing instance job captures the throwaway before the teardown removes it (DW-232)', () => {
@@ -379,10 +399,14 @@ test('a failing instance job captures the throwaway before the teardown removes 
   //
   // Mutation (Rule 19): delete the capture step, or move it below the teardown, or narrow its
   // condition to `failure()` -> this goes red.
-  const instance = jobSlice(workflow, 'instance');
+  // Both throwaway-owning jobs, not just the first: the browser job was split out of instance on
+  // 2026-09-22 and inherits the same hazard, so asserting only `instance` would let the newer job
+  // lose its capture silently -- which is the exact shape of the defect this test was written for.
+  for (const jobName of ['instance', 'browser']) {
+  const instance = jobSlice(workflow, jobName);
   const captureAt = instance.indexOf('capture the throwaway on failure');
   const teardownAt = instance.indexOf('tear the throwaway down');
-  assert.ok(captureAt > 0, 'the instance job captures the throwaway on the failure path');
+  assert.ok(captureAt > 0, `the ${jobName} job captures the throwaway on the failure path`);
   assert.ok(captureAt < teardownAt, 'before the teardown, which removes the container it would read');
 
   // Scoped to the instance job, and to a condition that covers cancellation. `timeout-minutes`
@@ -391,8 +415,9 @@ test('a failing instance job captures the throwaway before the teardown removes 
   // the `always()` teardown still removes the container. Counting conditions across the whole
   // file would also mean the images job could never grow a capture of its own.
   const failure = [...instance.matchAll(/^\s*if:\s*\$\{\{\s*failure\(\)\s*\|\|\s*cancelled\(\)\s*\}\}\s*$/gm)];
-  assert.equal(failure.length, 1, `expected exactly one failure()||cancelled() step in the instance job (the capture), found ${failure.length}`);
+  assert.equal(failure.length, 1, `expected exactly one failure()||cancelled() step in the ${jobName} job (the capture), found ${failure.length}`);
   assert.ok(failure[0].index > captureAt && failure[0].index < teardownAt, 'and the condition belongs to it');
+  }
 
   const logsGate = DECLARED_GATES.find((gate) => gate.endsWith('ci-throwaway.sh logs'));
   assert.ok(logsGate, 'the capture is a declared gate like every other step');
@@ -423,10 +448,10 @@ test('a superseded run is cancelled rather than queued behind the one that repla
   assert.match(workflow, /group: ci-/, 'grouped per workflow and ref');
 });
 
-test('the four jobs are declared, and the instance job waits on readiness before any suite', () => {
+test('the five jobs are declared, and the instance job waits on readiness before any suite', () => {
   // An equality, not a superset: a job nothing here names is how a step nothing here describes
   // arrives, which is the same reason the run-command list is held equal in both directions.
-  assert.deepEqual(jobNames(workflow), ['gates', 'instance', 'images', 'package']);
+  assert.deepEqual(jobNames(workflow), ['gates', 'instance', 'browser', 'images', 'package']);
 
   const waitAt = workflow.indexOf('scripts/wait-readiness.sh');
   const runnerAt = workflow.indexOf('tools/ci-runner.mjs');
@@ -549,7 +574,7 @@ test('every job that pins a literal Node pins one the engines range admits', () 
   // report it as an npm failure in a job no gate had ever looked at.
   const packageJson = JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8'));
   const declared = packageJson.engines.node;
-  const literalPinners = ['instance', 'package'];
+  const literalPinners = ['instance', 'browser', 'package'];
   for (const job of literalPinners) {
     const pinned = /node-version:\s*(\S+)/.exec(jobSlice(workflow, job));
     assert.ok(pinned, `the ${job} job pins a node version`);
@@ -1477,9 +1502,37 @@ test("the throwaway's port and name are one fact, not six declarations of one", 
     `the admin-spec gate reads the throwaway's own port ${port}`
   );
 
+  // Since 2026-09-22 there are TWO throwaways: the instance job keeps ci-throwaway.sh's default
+  // pair, and the browser job passes its own on the command line so the two suites can run side
+  // by side. That does not weaken this test's claim -- it doubles it. The browser job's port and
+  // container are still one fact each, declared once on the `up` line and read back everywhere
+  // else, and the `env:` pair is still the part `runCommands()` cannot see.
+  const browserUp = DECLARED_GATES.find((gate) => gate.startsWith('sh scripts/ci-throwaway.sh up --dir'));
+  assert.ok(browserUp, 'the browser job declares its own throwaway');
+  const browserPort = /--web (\d+)/.exec(browserUp);
+  const browserProject = /--project (\S+)/.exec(browserUp);
+  assert.ok(browserPort && browserProject, 'that throwaway names its own port and project');
+  assert.notEqual(browserPort[1], port, 'and it is a different port from the instance throwaway, or the two jobs collide');
+
+  const browserWait = DECLARED_GATES.find((gate) => gate.startsWith('sh scripts/wait-readiness.sh') && gate.includes(browserPort[1]));
+  assert.ok(browserWait, `the browser job waits on its own port ${browserPort[1]}`);
+
   const browserOrigin = /OCUPILOT_BROWSER_ORIGIN:\s*(\S+)/.exec(workflow);
   assert.ok(browserOrigin, "the browser step sets OCUPILOT_BROWSER_ORIGIN -- the one setting runCommands() cannot see");
-  assert.equal(browserOrigin[1], `http://localhost:${port}`, "the browser step drives the throwaway's own port");
+  assert.equal(browserOrigin[1], `http://localhost:${browserPort[1]}`, "the browser step drives its own throwaway's port");
+
+  // Both variables or neither: browser.config.mjs carries its own container default, so a step
+  // that overrides only the origin execs into the OTHER throwaway's container (2026-09-16).
+  const browserContainer = /OCUPILOT_BROWSER_CONTAINER:\s*(\S+)/.exec(workflow);
+  assert.ok(browserContainer, 'the browser step sets OCUPILOT_BROWSER_CONTAINER beside the origin');
+  assert.equal(browserContainer[1], browserProject[1], "and it names its own throwaway, whose container_name follows --project");
+
+  // The reservation covers both ports, or DW-439 simply moves to the new one.
+  const reserve = DECLARED_GATES.find((gate) => gate.startsWith('sudo sysctl -w net.ipv4.ip_local_reserved_ports='));
+  assert.ok(reserve, 'the throwaway host ports are reserved against the ephemeral range (DW-439)');
+  for (const reserved of [port, browserPort[1]]) {
+    assert.match(reserve, new RegExp(`(=|,)${reserved}(,|$)`), `the reservation covers ${reserved}`);
+  }
 
   const defaultOrigin = /DEFAULT_ORIGIN = '([^']+)'/.exec(browserConfig);
   assert.ok(defaultOrigin, 'browser.config.mjs declares a DEFAULT_ORIGIN');

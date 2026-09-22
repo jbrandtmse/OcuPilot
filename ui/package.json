@@ -1,6 +1,7 @@
 {
   "name": "ocupilot-ui",
   "version": "0.0.0",
+  "type": "module",
   "private": true,
   "description": "OcuPilot Angular shell (Story 1.1 workspace/version guard; Story 1.2 tokens/type/strings + client lint; Story 1.9 component suite; Story 1.17 CI gates and the headless-browser harness).",
   "scripts": {
