@@ -5887,6 +5887,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-22T09:28:08Z status=escalated owner=burndown by=cr note=prior trailer's note is truncated mid-word and over budget; disposition unchanged, decision-sheet question about the demo, not a defect
 - 2026-09-22T09:29:23Z note=recommended: keep the broad reading; the narrow $JOB reading remains available
 - 2026-09-22T10:37:48Z status=routed owner=5-13-logs-delete-application-errors-by-namespace by=merge_gate note=broad prohibition stands; demo fixture must create its target under another account - if impossible, that is a Clarification
+- 2026-09-22T12:37:18Z status=routed owner=5-13-logs-delete-application-errors-by-namespace by=merge_gate note=REVERSED to the NARROW reading: refuse only the confirm's own $JOB and any turn job. AD-10 names accounts, the serving path and system processes - never process ownership - so the broad reading borrowed authority AD-10 does not grant
+- 2026-09-22T12:37:18Z note=broad reading also prohibited the feature's most likely legitimate use: an admin suspending their own runaway job. Demo target is a second portal session's process; record it in the story
 
 ### DW-1473: AdminPort.MUTATINGTYPES still admits a request type by bare suffix, so admitting Process/SUSPEND also opens Task.CRUD/SUSPEND
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: med | fix-risk: high | footprint: in-story
@@ -5914,3 +5916,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: %syPidtab.inc:128 defines INTERACTIVEJOB as FOREJOB 1 or FORAPPJOB 3 only; APPMODE, IDIRECTSRV, CSPSRV, ODBCSRV and CALLINTYPE are all BACKGROUNDJOB at :132. The allow-list was approved on the words 'the interactive and client job types', which this review corrected at their origin. A JOBed turn job (AD-7) carries APPMODE, and OwnedByCaller refuses only the confirming user's own.
 - 2026-09-22T09:28:04Z status=escalated owner=burndown by=cr note=Spec task 4 enumerated the seven values, so narrowing the list is a product call for the decision sheet.
 - 2026-09-22T10:37:49Z status=routed owner=burndown by=merge_gate note=floor-blocking: APPMODE 2 makes one user's turn job proposable by another, against AD-7 and AD-8; exclude turn jobs
+- 2026-09-22T12:37:18Z status=routed owner=5-13-logs-delete-application-errors-by-namespace by=merge_gate note=folded into DW-1472's narrow predicate rather than kept as a second one (DW-1206's lesson): one rule refusing $JOB and any turn job closes the cross-user vector too
+
+### DW-1478: Editing a planning document other tests pin by line requires npm run test:tools, not lint-docs; the obvious checker is not the covering checker
+- source: spec-5-13-logs-delete-application-errors-by-namespace.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: inserting one authorised row into EXPERIENCE.md's Fixed-strings table shifted every later line anchor and reddened strings.test.mjs and citations.test.mjs on all three gates legs at 64abadd, while lint-docs ran clean immediately after the edit
+- 2026-09-22T12:37:18Z status=routed owner=range-end-cleanup by=lead note=SAME_SHAPE_AS_DW-1435_and_cross-linked_to_it:_a_verification_that_looks_complete_because_the_checker_it_ran_is_the_one_everybody_associates_with_that_file_type._lint-docs_owns_markdown_STRUCTURE_and_prose;_the_LINE_ANCHORS_other_suites_pin_into_that_same_file_are_owned_by_test:tools,_and_nothing_in_the_editing_path_says_so._Cheap_durable_fix:_a_line_in_CLAUDE.mds_running-and-verifying_section,_or_a_lint-docs_note_naming_the_companion_check

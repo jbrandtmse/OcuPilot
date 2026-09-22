@@ -2,7 +2,7 @@
 title: 'Story 5.13: Logs - delete application errors by namespace'
 type: 'feature'
 created: '2026-09-22'
-status: 'blocked'
+status: 'in-progress'
 baseline_revision: '64abadd0680c1c1e13eb12103ceb5798dc839ef6'
 baseline_commit: '64abadd0680c1c1e13eb12103ceb5798dc839ef6'
 review_loop_iteration: 0
@@ -431,6 +431,16 @@ them; every probe below was read-only and ran with `server: "ocupilot-slot-a"`.
 
 ## Tasks & Acceptance
 
+- [ ] [Review] Narrow the ownership prohibition to **one predicate**: refuse the confirm's own
+  `$JOB` and any OcuPilot turn job (AD-7), whoever owns it. Remove the broad owned-by-caller
+  refusal from Story 5.12's `Prohibited` branch. Pin both arms, and pin that a process the
+  confirming user owns which is neither is **permitted**. Closes DW-1472 and DW-1477 together.
+- [ ] [Review] `TaskResume` declares `FINGERPRINTSUBJECT = "Suspended"` and DW-1476's refusal is
+  enforced: an action-style write that declares no subject fails registration. AD-51's corrected
+  clause requires precondition fields the tool's own read answers - **not** identity.
+- [ ] [Review] Record the demo script's target in `## Design Notes`: a second portal session's
+  process, permitted by the narrow reading.
+
 - [ ] [Review] Execute the delete as `DeleteByError(ns, date, <ids>)` once per enumerated date,
   removing exactly the enumerated ids (amended `epics.md:3791`). Scope stays by-namespace.
 - [ ] [Review] Render the authorised residue string on the card:
@@ -573,6 +583,28 @@ them; every probe below was read-only and ran with `server: "ocupilot-slot-a"`.
   mintable.
 
 ## Spec Change Log
+
+- **2026-09-22, lead, orchestrator-approved - both remaining gaps decided.**
+  - **AD-51's adequacy clause is corrected in the spine.** The subject now carries **the
+    precondition fields the tool's own read type answers**; **identity is NOT required**, because
+    the proposal's `TargetRef` (AD-13) already answers "which object is this?" while the
+    fingerprint answers "has the state I reviewed moved?". `TaskResume` therefore declares
+    `Suspended` and DW-1476 becomes enforceable, which was its point. Do **not** re-add an
+    identity requirement.
+  - **AC2's ownership prohibition is NARROWED, reversing the 5.12 merge-gate ruling.** Refuse only
+    **the process serving the confirm request (`$JOB`)** and **any OcuPilot turn job** (AD-7),
+    whoever owns it. Everything else the user owns stays proposable. `$JOB` at confirm is the
+    certain irrecoverable harm - suspending it kills the write inside AD-34's transition; a user's
+    own portal session is recoverable by signing in again. AD-10 names accounts, the serving path
+    and IRIS system processes, and **nowhere names process ownership**, so the broad reading was a
+    new rule borrowing AD-10's authority. **One predicate, both harms** - the turn-job half closes
+    DW-1477's cross-user vector inside the same predicate rather than as a second one to keep in
+    step (DW-1206's lesson).
+  - **The demo needs no fixture change.** Its target is a **second portal session's process**,
+    which the narrow reading permits and the broad one refused. Recorded here so the demo script
+    is known rather than rediscovered.
+  - This changes Story 5.12's shipped `Prohibited.OwnedByCaller`; that edit lands here, in the
+    story DW-1472 is routed to.
 
 - **2026-09-22, lead, orchestrator-approved - all three gaps resolved plus the port seam.** The
   measurements below stand; only the decisions changed.
