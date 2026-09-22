@@ -281,6 +281,9 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
             Do ..LogFault("turn " _ pKey _ ": the privilege pairs the arguments of " _ pName _ " add could not be read", $$$ERROR($$$GeneralError, "unresolved argument pairs"), tUnavailable)
             Quit
         }
+        ; Both halves of the requirement were read, which is what lets the row below say "there is
+        ; no requirement" rather than "nobody read one" when the union is empty (DW-1305).
+        Set tPairsRead = 1
         Set tFailedPair = ..MissingPair(pUser, tArgumentPairs)
         If tFailedPair '= "" {
             Set pContent = ..DeniedContent(tFailedPair)
@@ -347,7 +350,7 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
     ; whatever the call got as far as (Story 4.9). tPairs and tArgumentPairs are undefined on a
     ; refusal that never reached them, which is what $Get guards; a row whose call was refused
     ; before its pairs were read records none, which is the truth about that call.
-    Do ..RecordLedger(pKey, pUser, pRoute, pName, pTarget, $Get(tInput), $Get(tPairs), $Get(tArgumentPairs), $Get(tSecretNames), tIsError, pContent, pLimitsClass, $Get(tSecretDeclared))
+    Do ..RecordLedger(pKey, pUser, pRoute, pName, pTarget, $Get(tInput), $Get(tPairs), $Get(tArgumentPairs), $Get(tSecretNames), tIsError, pContent, pLimitsClass, $Get(tSecretDeclared), $Get(tPairsRead))
     Quit tIsError
 }
 
@@ -360,7 +363,12 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
 /// <p><var>pClassified</var> is <method>AnswerOne</method>'s <code>$Get</code> of the registry's own
 /// <code>pDeclared</code> output, undefined -- and so 0 -- on the branches where the wire name
 /// resolved no tool. The ledger withholds such a row's arguments whole.</p>
-ClassMethod RecordLedger(pKey As %String, pUser As %String, pRoute As %String, pName As %String, pTarget As %String, pInput As %DynamicAbstractObject, pPairs As %List, pArgumentPairs As %List, pSecretNames As %List, pIsError As %Boolean, pContent As %String, pLimitsClass As %String, pClassified As %Boolean = 0) [ Private ]
+/// <p><var>pPairsRead</var> is 1 only when both halves of the requirement were resolved, which is
+/// what tells an honestly-empty requirement from one a refusal never reached (DW-1305): the row's
+/// recorded sense is <code>checked</code> ordinarily and <code>none</code> when the resolved union
+/// was empty. It is <code>$Get</code>-guarded by the caller and so 0 on every branch that refused
+/// before the pairs were read.</p>
+ClassMethod RecordLedger(pKey As %String, pUser As %String, pRoute As %String, pName As %String, pTarget As %String, pInput As %DynamicAbstractObject, pPairs As %List, pArgumentPairs As %List, pSecretNames As %List, pIsError As %Boolean, pContent As %String, pLimitsClass As %String, pClassified As %Boolean = 0, pPairsRead As %Boolean = 0) [ Private ]
 {
     Try {
         Set tCode = ""
@@ -371,7 +379,8 @@ ClassMethod RecordLedger(pKey As %String, pUser As %String, pRoute As %String, p
                 Set tCode = ""
             }
         }
-        Do $ClassMethod(..LedgerClass(), "RecordToolCall", pKey, pUser, pRoute, pName, pTarget, pInput, pPairs, pArgumentPairs, pSecretNames, $Select(pIsError: "error", 1: "ok"), tCode, pLimitsClass, pClassified)
+        Set tSense = $ClassMethod(..LedgerClass(), "SenseFor", $ClassMethod(..LedgerClass(), "SenseChecked"), pPairs _ pArgumentPairs, pPairsRead)
+        Do $ClassMethod(..LedgerClass(), "RecordToolCall", pKey, pUser, pRoute, pName, pTarget, pInput, pPairs, pArgumentPairs, pSecretNames, $Select(pIsError: "error", 1: "ok"), tCode, pLimitsClass, pClassified, tSense)
     } Catch ex {
         Do ..LogFault("turn " _ pKey _ ": a tool call could not be recorded in the agent ledger", ex.AsStatus(), ##class(OcuPilot.Api.Error).#LEDGERUNAVAILABLE)
     }
@@ -390,7 +399,9 @@ ClassMethod RecordLedger(pKey As %String, pUser As %String, pRoute As %String, p
 /// are the finished <code>tool_result</code> -- always <code>is_error</code> true, and always
 /// answered before any announce step or directive exists (AC2): a refusal from a check before
 /// <code>Directive</code> carries that check's own code, and a refusal from <code>Directive</code>
-/// itself carries <code>NAV.ROUTEUNKNOWN</code> or <code>NAV.ENTITYNOTALLOWED</code>.
+/// itself carries <code>NAV.ROUTEUNKNOWN</code>, <code>NAV.ENTITYNOTALLOWED</code> or
+/// <code>NAV.CRITERIONUNKNOWN</code>. <var>pCriterion</var> is the declared flag criterion the
+/// directive carries, or <code>""</code>.
 /// <var>pFailedPair</var> is set only by the two privilege-pair refusals.</p>
 /// <p><var>pKey</var> is the turn the call belongs to, which every log line here names.
 /// <var>pInput</var>, <var>pDeclaredPairs</var>, <var>pCallPairs</var> and <var>pSecretNames</var>
@@ -400,13 +411,20 @@ ClassMethod RecordLedger(pKey As %String, pUser As %String, pRoute As %String, p
 /// as reading. <var>pSecretDeclared</var> is 1 only when the resolved tool answered the
 /// secret-argument question; it is 0 for a wire name that resolved no tool, and the ledger withholds
 /// such a row's arguments whole rather than storing a blob the name pattern alone has seen.</p>
-ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimitsClass As %String, Output pPending As %Boolean, Output pToolName As %String, Output pRoute As %String, Output pEntityId As %String, Output pTarget As %String, Output pArguments As %String, Output pArgumentsTruncated As %Boolean, Output pIsError As %Boolean, Output pContent As %String, Output pReason As %String, Output pFailedPair As %String, pKey As %String = "", Output pInput As %DynamicAbstractObject, Output pDeclaredPairs As %List, Output pCallPairs As %List, Output pSecretNames As %List, Output pSecretDeclared As %Boolean) As %Status
+/// <p><var>pPairsResolved</var> is 1 only once this method has <b>read</b> the tool's privilege
+/// pairs, which is later in the chain than <var>pSecretDeclared</var> and after three refusals that
+/// return before any pair is read. It is what tells an honestly-empty requirement from one nobody
+/// read (DW-1305); <var>pSecretDeclared</var> cannot answer that question and must not be used
+/// for it.</p>
+ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimitsClass As %String, Output pPending As %Boolean, Output pToolName As %String, Output pRoute As %String, Output pEntityId As %String, Output pTarget As %String, Output pArguments As %String, Output pArgumentsTruncated As %Boolean, Output pIsError As %Boolean, Output pContent As %String, Output pReason As %String, Output pFailedPair As %String, pKey As %String = "", Output pInput As %DynamicAbstractObject, Output pDeclaredPairs As %List, Output pCallPairs As %List, Output pSecretNames As %List, Output pSecretDeclared As %Boolean, Output pPairsResolved As %Boolean, Output pCriterion As %String) As %Status
 {
     Set pInput = ""
+    Set pCriterion = ""
     Set pDeclaredPairs = ""
     Set pCallPairs = ""
     Set pSecretNames = ""
     Set pSecretDeclared = 0
+    Set pPairsResolved = 0
     Set tUnavailable = ##class(OcuPilot.Api.Error).#TOOLUNAVAILABLE
     Set pPending = 0
     Set pToolName = ""
@@ -506,6 +524,12 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
             Do ..LogFault("turn " _ pKey _ ": a client tool call's argument pairs of " _ pToolName _ " could not be read", $$$ERROR($$$GeneralError, "unresolved argument pairs"), tUnavailable)
             Quit
         }
+        ; Both halves of the requirement were read, which is what lets the row below say "there is
+        ; none" rather than "nobody read one" when the union is empty (DW-1305). It is set here and
+        ; not after RequiredPairs: OcuPilot.Screen.Tool.Navigate declares no static pair at all and
+        ; resolves its whole requirement per call, so a refusal between the two halves knows
+        ; nothing about what the call required. AnswerOne sets its own flag at the same point.
+        Set pPairsResolved = 1
         Set tFailedPair = ..MissingPair(pUser, tArgumentPairs)
         If tFailedPair '= "" {
             Set pContent = ..DeniedContent(tFailedPair)
@@ -514,7 +538,7 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
             Quit
         }
 
-        Set tSC = $ClassMethod(tTool.%Get("class"), "Directive", tTool.%Get("descriptor"), tInput, .tDirectiveRoute, .tDirectiveEntityId, .tFault)
+        Set tSC = $ClassMethod(tTool.%Get("class"), "Directive", tTool.%Get("descriptor"), tInput, .tDirectiveRoute, .tDirectiveEntityId, .tFault, .tDirectiveCriterion)
         If $$$ISERR(tSC) {
             If $IsObject(tFault) && (tFault.%Get("code") '= "") {
                 Set pContent = ..ErrorContent(tFault.%Get("code"))
@@ -531,6 +555,7 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
 
         Set pRoute = tDirectiveRoute
         Set pEntityId = tDirectiveEntityId
+        Set pCriterion = $Get(tDirectiveCriterion)
         Set pPending = 1
         Set pIsError = 0
         Set pContent = ""
@@ -660,21 +685,55 @@ ClassMethod MissingPair(pUser As %String, pPairs As %List) As %String [ Private 
 
 /// <p>The content of a pair refusal: <code>AUTH.NOPRIVILEGE</code> naming
 /// <var>pFailedPair</var> as <code>detail.failedPair</code> (AD-8).</p>
+/// <p>The tool half of the one privilege refusal (AD-39). The code and the detail are
+/// <class>OcuPilot.Kernel.Denial</class>'s, which is also what
+/// <class>OcuPilot.Api.ScreenRead</class>'s 403 renders, so the two cannot diverge.</p>
 ClassMethod DeniedContent(pFailedPair As %String) As %String [ Private ]
 {
-    Set tDetail = {}
-    Do tDetail.%Set("failedPair", pFailedPair, "string")
-    Quit ..ErrorContent(##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, tDetail)
+    Quit ##class(OcuPilot.Kernel.Denial).Content(pFailedPair)
 }
 
 /// <p>The content of an error <code>tool_result</code>: <code>{code}</code>, plus
 /// <code>detail</code> when <var>pDetail</var> is an object (AD-39).</p>
+/// <p><b>A <code>detail.violations[]</code> member reaches the model as <code>{field, code}</code>
+/// alone.</b> A validation envelope's violation carries <code>{field, code, reason}</code>, and the
+/// <code>reason</code> is the screen's half: a tool result renders the machine half, so the written
+/// sentence is projected out here rather than at each producer. Every other detail key travels
+/// unchanged, and <var>pDetail</var> itself is never modified -- the ledger and the progress step
+/// read the same object after this returns.</p>
 ClassMethod ErrorContent(pCode As %String, pDetail As %DynamicObject = "") As %String
 {
     Set tContent = {}
     Do tContent.%Set("code", pCode, "string")
-    If $IsObject(pDetail) Do tContent.%Set("detail", pDetail)
+    If $IsObject(pDetail) Do tContent.%Set("detail", ..ProjectedDetail(pDetail))
     Quit tContent.%ToJSON()
+}
+
+/// <p>A copy of <var>pDetail</var> whose <code>violations</code> array, when it has one, holds
+/// <code>{field, code}</code> objects alone (AD-39, DW-450). A violation that is not an object is
+/// dropped, since a tool result can carry no shape the model would have to interpret.</p>
+ClassMethod ProjectedDetail(pDetail As %DynamicObject) As %DynamicObject [ Private ]
+{
+    Set tOut = pDetail
+    Try {
+        If pDetail.%GetTypeOf("violations") '= "array" Quit
+        Set tOut = ##class(%DynamicAbstractObject).%FromJSON(pDetail.%ToJSON())
+        Set tProjected = []
+        Set tIterator = tOut.%Get("violations").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tViolation) {
+            If '$IsObject(tViolation) || 'tViolation.%IsA("%Library.DynamicObject") Continue
+            Set tRow = {}
+            Do tRow.%Set("field", tViolation.%Get("field"), "string")
+            Do tRow.%Set("code", tViolation.%Get("code"), "string")
+            Do tProjected.%Push(tRow)
+        }
+        Do tOut.%Set("violations", tProjected)
+    } Catch ex {
+        ; Fail closed: a projection that threw must not hand the model the detail it was there to
+        ; narrow, so the violations go out empty rather than whole.
+        Set tOut = {"violations": []}
+    }
+    Quit tOut
 }
 
 /// <p><var>pResult</var> within both caps, serialized into <var>pJson</var>. A <code>rows</code>

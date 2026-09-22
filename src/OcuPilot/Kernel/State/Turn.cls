@@ -384,6 +384,29 @@ ClassMethod GuardedAbandonForUser(pUser As %String, Output pCount As %Integer) A
     Quit tSC
 }
 
+/// <p>Whether job <var>pJobId</var> is running a turn: <var>pIsTurnJob</var> is 1 when a
+/// <code>running</code> row carries that <property>JobId</property>, which
+/// <method>GuardedBegin</method> stamps from the job's own <code>$JOB</code>.</p>
+/// <p><b>Only a running turn counts.</b> A pid is reusable once its process has ended, so a
+/// terminal row's <property>JobId</property> would answer for whatever process the instance next
+/// gave that pid to. The cost of the narrowing is named rather than hidden: a job that died
+/// without finishing its turn leaves the row <code>running</code> until a reserve or a poll
+/// reconciles it, so that pid answers 1 until then. The converse window is a <code>queued</code>
+/// row, whose <property>JobId</property> <method>GuardedBegin</method> has not stamped yet: that
+/// job answers 0 until its turn begins, and no record identifies it before then.</p>
+/// <p><b>Caller contract:</b> <class>OcuPilot.Kernel.Proposal.Prohibited</class> asks it inside
+/// the confirm transition to refuse a write against a turn job (AD-7, AD-10). It reads and never
+/// writes.</p>
+ClassMethod GuardedIsTurnJob(pJobId As %String, Output pIsTurnJob As %Boolean) As %Status
+{
+    Set pIsTurnJob = 0
+    If pJobId = "" Quit $$$OK
+    Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(JobId) = ? AND State = 'running' ORDER BY ID", pJobId, .tIds)
+    If $$$ISERR(tSC) Quit tSC
+    Set pIsTurnJob = ($Get(tIds(1)) '= "")
+    Quit $$$OK
+}
+
 /// <p>Turn <var>pKey</var>'s signals: the stop and abandon flags, and the lease's last renewal in
 /// <method>NowSeconds</method> units (<code>""</code> when never set).</p>
 ClassMethod GuardedSignals(pKey As %String, Output pStop As %Boolean, Output pAbandon As %Boolean, Output pRenewedAt As %String) As %Status
@@ -428,7 +451,8 @@ ClassMethod GuardedForOwner(pKey As %String, pUser As %String, Output pFound As 
 /// when the turn ended with a code, else <code>null</code>; the caller adds its <code>reason</code>.
 /// Ownership is <method>GuardedForOwner</method>'s answer, so there is one predicate that decides
 /// it.</p>
-/// <p><code>navigation</code> (Story 4.7, AD-11 rule 3) is <code>{seq, route, entityId}</code>
+/// <p><code>navigation</code> (Story 4.7, AD-11 rule 3) is
+/// <code>{seq, route, entityId, criterion}</code>
 /// carried only while <class>OcuPilot.Kernel.State.Nav</class> holds an unsettled directive for
 /// this turn <b>and</b> the announce step it names is present in this same <var>pView</var>'s own
 /// <code>steps</code> -- the pairing that makes it impossible for a reader to observe a directive
@@ -471,7 +495,7 @@ ClassMethod GuardedView(pKey As %String, pUser As %String, Output pFound As %Boo
     }
     Set tRow = ""
 
-    Set tNavSC = ##class(OcuPilot.Kernel.State.Nav).GuardedPending(pKey, .tNavSeq, .tNavRoute, .tNavEntity, .tNavSettled, .tNavOutcome, .tNavCode)
+    Set tNavSC = ##class(OcuPilot.Kernel.State.Nav).GuardedPending(pKey, .tNavSeq, .tNavRoute, .tNavEntity, .tNavSettled, .tNavOutcome, .tNavCode, .tNavCriterion)
     If $$$ISOK(tNavSC) && (+tNavSeq > 0) && 'tNavSettled {
         Set tHasAnnounce = 0
         Set tStepIterator = tSteps.%GetIterator()
@@ -490,6 +514,7 @@ ClassMethod GuardedView(pKey As %String, pUser As %String, Output pFound As %Boo
             } Else {
                 Do tNav.%Set("entityId", tNavEntity, "string")
             }
+            Do tNav.%Set("criterion", $Get(tNavCriterion), "string")
             Do tView.%Set("navigation", tNav)
         }
     }

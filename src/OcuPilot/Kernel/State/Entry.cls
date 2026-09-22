@@ -42,6 +42,16 @@ Property ErrorSeq As %Integer [ InitialExpression = 0 ];
 /// fixed <code>%String</code> length.</p>
 Property StepsJson As %Stream.GlobalCharacter;
 
+/// <p>The turn this entry records (<property>OcuPilot.Kernel.State.Turn.TurnKey</property>), or
+/// <code>""</code> for an entry appended before this property existed. It is what lets a restored
+/// conversation carry each turn's own proposals (AD-6), which are keyed by turn and by nothing
+/// else; <class>OcuPilot.Kernel.Agent.Job</class> already holds the key when it appends.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b> (Consistency Conventions: when
+/// SCHEMAVERSION moves): every pre-existing row reads <code>""</code>, which resolves to no
+/// proposals -- the same answer those turns' cards had before the property existed -- so no older
+/// row means anything different once a newer OcuPilot reads it.</p>
+Property TurnKey As %String(MAXLEN = 64);
+
 /// <p>Steps counted past the cap and not carried into <property>StepsJson</property>, copied from
 /// the turn's own <property>OcuPilot.Kernel.State.Turn.StepsDropped</property> at append time.</p>
 Property StepsDropped As %Integer [ InitialExpression = 0 ];
@@ -49,8 +59,9 @@ Property StepsDropped As %Integer [ InitialExpression = 0 ];
 Index ConvoSeqIdx On (ConvoKey, Seq) [ Unique ];
 
 /// <p>Append one entry to conversation <var>pConvoKey</var>. <var>pStepsJson</var> is the
-/// already-capped step array, serialized.</p>
-ClassMethod GuardedAppend(pConvoKey As %String, pMessage As %String, pState As %String, pReply As %String, pErrorCode As %String, pErrorSeq As %Integer, pStepsJson As %String, pStepsDropped As %Integer, pLimitsClass As %String) As %Status
+/// already-capped step array, serialized; <var>pTurnKey</var> is the turn it records, which a
+/// caller that has none may omit.</p>
+ClassMethod GuardedAppend(pConvoKey As %String, pMessage As %String, pState As %String, pReply As %String, pErrorCode As %String, pErrorSeq As %Integer, pStepsJson As %String, pStepsDropped As %Integer, pLimitsClass As %String, pTurnKey As %String = "") As %Status
 {
     Set tSC = $$$OK
     Try {
@@ -65,6 +76,7 @@ ClassMethod GuardedAppend(pConvoKey As %String, pMessage As %String, pState As %
         Set tRow.ErrorCode = pErrorCode
         Set tRow.ErrorSeq = +pErrorSeq
         Set tRow.StepsDropped = +pStepsDropped
+        Set tRow.TurnKey = ##class(OcuPilot.Kernel.State.Turn).Cap(pTurnKey, 64, .tCutTurnKey)
         If pStepsJson '= "" Do tRow.StepsJson.Write(pStepsJson)
         Set tSC = ..GuardedSaveIfCurrent(tRow, 0)
         Set tRow = ""
@@ -132,6 +144,31 @@ ClassMethod GuardedRows(pConvoKey As %String, Output pRows As %DynamicArray) As 
         Do tOut.%Set("stepsDropped", +tRow.StepsDropped, "number")
         Set tRow = ""
         Do pRows.%Push(tOut)
+    }
+    Quit $$$OK
+}
+
+/// <p>Conversation <var>pConvoKey</var>'s turn keys, <b>subscripted by each entry's own
+/// <property>Seq</property></b>: <var>pKeys(seq)</var> is that turn's key, and <code>""</code> for
+/// an entry appended before the property existed.</p>
+/// <p><b>Keyed by <property>Seq</property>, never by position.</b>
+/// <method>GuardedRows</method> drops an entry it cannot open, so its <var>n</var>th row is not
+/// necessarily the <var>n</var>th entry -- a caller pairing the two by ordinal would attach one
+/// turn's proposals to another turn's card after a single unopenable row. Every row the view
+/// carries names its own <code>seq</code>, so that is the join.</p>
+/// <p>No row opens -- both columns are columns, read by <b>one</b> statement: two separate reads
+/// paired by ordinal would carry the same positional join one level down, where a row deleted
+/// between them shifts every pair after it. It is answered beside the rows rather than on them
+/// because <class>OcuPilot.Api.Conversation</class> is what needs it, to attach each turn's
+/// proposals outside the escalated frame (AD-9), and the view's own shape is a published contract
+/// this does not widen.</p>
+ClassMethod GuardedTurnKeys(pConvoKey As %String, Output pKeys) As %Status
+{
+    Kill pKeys
+    Set tSC = ..GuardedPairsWhere("SELECT Seq, TurnKey FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ? ORDER BY Seq", pConvoKey, .tRows)
+    If $$$ISERR(tSC) Quit tSC
+    For tI = 1:1:+$Get(tRows) {
+        Set pKeys(+tRows(tI)) = $Get(tRows(tI, 2))
     }
     Quit $$$OK
 }

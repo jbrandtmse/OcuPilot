@@ -37,12 +37,18 @@ const {
   AGENT_RESTRAINT_PATH,
   AGENT_DEFINITION_ENTITY,
   AGENT_SWITCH_ENTITY,
+  AUDITING_CONFIG_ENTITY,
+  RESTRAINT_ENTITIES,
   AGENT_DEFINITION_SCOPE,
   FOOTER_KEYS,
   UNRESTRAINED,
   formatKillSwitch,
+  readOnlyApplies,
+  readOnlyFooterLine,
+  restraintSentence,
 } = await import(corePath('agent-status.ts'));
 const { STRINGS } = await import(corePath('strings.ts'));
+const { ENTITY_TYPES } = await import(corePath('screens.generated.ts'));
 const { ChangeBus } = await import(corePath('change-bus.ts'));
 
 const SETTLE = () => new Promise((resolve) => setImmediate(resolve));
@@ -298,7 +304,7 @@ test("AD-14: a definition's `changed` event re-reads, and nothing else on the bu
   assert.equal(api.calls.length, 2, 'one load, two reads');
 
   // Another entity type's change says nothing about the agent.
-  bus.publish({ kind: 'changed', type: 'web-application', scope: 'HSCUSTOM', id: '/csp/myapp' });
+  bus.publish({ kind: 'changed', type: 'web-application', scope: 'HSCUSTOM', id: '/csp/myapp', action: 'updated' });
   // A proposal against a definition says a proposal is live, not that the instance moved.
   bus.publish({
     kind: 'proposal-open',
@@ -315,11 +321,52 @@ test("AD-14: a definition's `changed` event re-reads, and nothing else on the bu
     type: AGENT_DEFINITION_ENTITY,
     scope: AGENT_DEFINITION_SCOPE,
     id: '1',
+    action: 'updated',
   });
   await SETTLE();
   await SETTLE();
   assert.equal(api.calls.length, 4, 'an Enable is');
   assert.equal(status.configured(), true, 'and the answer moved with it');
+});
+
+// Story 5.10: the auditing configuration feeds `writesMarked`, so a confirmed change to it costs a
+// re-read -- without which the writing user's own tab carries the stale answer, and the banner
+// either does not appear or does not clear, until its next signed-in pass.
+//
+// Mutation (Rule 19): drop `AUDITING_CONFIG_ENTITY` from `RESTRAINT_ENTITIES` -> the re-read
+// assertion goes red; the end-to-end half is `ui/browser/auditing-write.browser-spec.mjs`'s banner.
+test('a confirmed change to the auditing configuration is a re-read, and the roster says which types are', async () => {
+  assert.deepEqual(
+    [...RESTRAINT_ENTITIES].sort(),
+    [AGENT_DEFINITION_ENTITY, AGENT_SWITCH_ENTITY, AUDITING_CONFIG_ENTITY].sort(),
+    'the roster is exactly the three types this payload is computed from'
+  );
+  // The roster above compares the constants with themselves, so it cannot see a misspelling. The
+  // enum is the kernel's and mirrored (AD-14), so the constants are held against it instead: a
+  // typo here would leave the re-read filter matching an event type no instance ever publishes.
+  for (const type of RESTRAINT_ENTITIES) {
+    assert.ok(
+      ENTITY_TYPES.includes(type),
+      `${type} is a type the kernel's own closed enum declares, not a hand-written spelling`
+    );
+  }
+
+  const api = stubApi([ok(rows(true)), ok(rows(true))]);
+  const bus = new ChangeBus();
+  const status = new AgentStatus({ api, bus });
+  await status.load();
+  const before = api.calls.length;
+
+  bus.publish({
+    kind: 'changed',
+    type: AUDITING_CONFIG_ENTITY,
+    scope: AGENT_DEFINITION_SCOPE,
+    id: 'SYSTEM',
+    action: 'updated',
+  });
+  await SETTLE();
+  await SETTLE();
+  assert.ok(api.calls.length > before, `the change costs a re-read: ${JSON.stringify(api.calls)}`);
 });
 
 // --- Story 3.7: the restraint fact -------------------------------------------------------------
@@ -406,6 +453,36 @@ test('the kill switch and enforced read-only are each restraining; the definitio
   }
 });
 
+// --- Story 5.6: the marking fact the not-marked banner reads ------------------------------------
+
+test("writesMarked comes off the instance's own answer, and an absent key reads as marking", async () => {
+  // The panel renders only the `false` arm (AD-15), so `false` has to survive the parse -- and an
+  // answer that does not carry the key at all must NOT read as `false`, or the warning banner is
+  // drawn over a healthy instance, which is a positive claim in the one direction this story forbids.
+  //
+  // mutation: hard-code `writesMarked: true` in `restraintOf` -> the false case goes red. Second
+  // mutation: make the absent-key arm `flagAt(row, 'writesMarked')` again -> the third case goes red.
+  const cases = [
+    [{ ...UNRESTRAINED, writesMarked: false }, false, 'a false answer is carried through'],
+    [{ ...UNRESTRAINED, writesMarked: true }, true, 'and so is a true one'],
+    [omitWritesMarked(UNRESTRAINED), true, 'an answer with no key at all reads as the default'],
+  ];
+  for (const [body, expected, why] of cases) {
+    const status = new AgentStatus({ api: stubApi([ok(rows(true))], [ok(body)]) });
+    await status.load();
+    assert.equal(status.restraint().writesMarked, expected, why);
+    // Marking is not a restraint (AD-30): it blocks nothing whichever way it reads.
+    assert.equal(status.restrained(), false, `${why}: marking never restrains`);
+  }
+});
+
+/** `UNRESTRAINED` without its `writesMarked` key -- the shape an answer that omits it has. */
+function omitWritesMarked(verdict) {
+  const { writesMarked, ...rest } = verdict;
+  void writesMarked;
+  return rest;
+}
+
 test('a restraint read that fails settles nothing, so no banner is drawn from an answer nobody gave', async () => {
   const status = new AgentStatus({ api: stubApi([ok(rows(true))], [REFUSED]) });
   await status.load();
@@ -443,6 +520,7 @@ test('AD-14: a switch `changed` event re-reads, like a definition\'s', async () 
     type: AGENT_SWITCH_ENTITY,
     scope: AGENT_DEFINITION_SCOPE,
     id: 'instance',
+    action: 'updated',
   });
   await SETTLE();
   await SETTLE();
@@ -494,4 +572,40 @@ test('the published kill-switch banner resolves both slots, and takes its two au
     formatKillSwitch(STRINGS.agentKillSwitchBanner, '', 'no audience'),
     'The agent is switched off for everyone: no audience.'
   );
+});
+
+test('DW-1150: one selector answers the restraint sentence for every footer key, kill switch on and off', () => {
+  // The table is every footer key the verdict may answer with, against both kill-switch states --
+  // the whole input space of the precedence, so a consumer that re-derived it would have to
+  // reproduce all six answers rather than the one case a spot check happens to cover.
+  //
+  // Mutation (Rule 19): swap the precedence in `restraintSentence` so `footerKey` wins over the
+  // kill switch -> the three kill-switch-on rows go red.
+  const killed = formatKillSwitch(STRINGS.agentKillSwitchBanner, 'everyone', 'the freeze');
+  for (const footerKey of FOOTER_KEYS) {
+    const off = { ...UNRESTRAINED, footerKey };
+    assert.equal(
+      restraintSentence(off),
+      STRINGS[footerKey],
+      `kill switch off, ${footerKey}: the published read-only line`
+    );
+    const on = {
+      ...UNRESTRAINED,
+      footerKey,
+      killSwitch: true,
+      killSwitchAudience: 'everyone',
+      killSwitchReason: 'the freeze',
+    };
+    assert.equal(restraintSentence(on), killed, `kill switch on, ${footerKey}: the kill-switch sentence wins`);
+    // The footer's own arm is the read-only line whichever way the switch is set: the panel renders
+    // its banner *and* its footer, so the arm must not follow the ladder.
+    assert.equal(readOnlyFooterLine(on), STRINGS[footerKey], `${footerKey}: the footer arm ignores the kill switch`);
+  }
+  // Every sentence the selector can answer is a published one -- it composes nothing.
+  assert.equal(restraintSentence(UNRESTRAINED), STRINGS.statusReadOnlyOff);
+  // And the restrained predicate reads the off key rather than a fourth spelling of it.
+  assert.equal(readOnlyApplies(UNRESTRAINED), false, 'the off key is not a read-only state');
+  for (const footerKey of FOOTER_KEYS.slice(1)) {
+    assert.equal(readOnlyApplies({ ...UNRESTRAINED, footerKey }), true, `${footerKey} is a read-only state`);
+  }
 });

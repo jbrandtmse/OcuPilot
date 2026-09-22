@@ -34,8 +34,11 @@ const {
   turnProgressPath,
   turnStopPath,
   turnNavigationPath,
+  proposalConfirmPath,
+  proposalCancelPath,
   NAV_REFUSED_UNSAVED_CODE,
   stepLabel,
+  confirmedWriteStep,
   turnErrorBanner,
   isTerminalState,
 } = await import(corePath('turn.ts'));
@@ -45,8 +48,41 @@ function ok(body, status = 200) {
   return { kind: 'ok', status, body };
 }
 
-function err(status, code, reason = 'refused') {
-  return { kind: 'error', status, code, reason, detail: null };
+function err(status, code, reason = 'refused', detail = null) {
+  return { kind: 'error', status, code, reason, detail };
+}
+
+/** One wire proposal, as a poll or a restore carries it. */
+function wireProposal(overrides = {}) {
+  return {
+    proposalId: 'p1',
+    target: { type: 'web-application', scope: 'instance', id: '/csp/myapp' },
+    expiresAt: '2026-09-19T10:05:00Z',
+    tool: 'webapp.list.update',
+    changed: [{ field: 'Enabled', before: 'false', after: 'true' }],
+    unchangedCount: 2,
+    rationale: 'because',
+    expectedImpact: 'it serves',
+    reverse: 'set it back',
+    state: 'live',
+    closedReason: '',
+    confirmedAt: '',
+    auditWarning: false,
+    ...overrides,
+  };
+}
+
+/** A fixed moment inside the fixture proposals' own window. */
+const NOW_MS = Date.parse('2026-09-19T10:00:00Z');
+
+/** A bus that records what was published, over the same fixed moment. */
+function recordingBus() {
+  const events = [];
+  return {
+    events,
+    publish: (event) => events.push(event),
+    subscribe: () => () => {},
+  };
 }
 
 /** Per-path response queues, and every call recorded (path, method, body). */
@@ -918,7 +954,49 @@ test('navigation() is null with no announce step to pair it with, and exposed on
 
   scheduled.shift().run();
   await settle();
-  assert.deepEqual(turn.navigation(), { seq: 2, route: 'permissions/users', entityId: '' });
+  assert.deepEqual(turn.navigation(), { seq: 2, route: 'permissions/users', entityId: '', criterion: '' });
+
+  scheduled.shift().run();
+  await settle();
+});
+
+test("navigation() carries the directive's declared criterion, and none where the wire sends none (Story 5.8)", async () => {
+  // AD-21: the criterion is a NAME the target screen declares, applied on arrival through that
+  // screen's own store. It travels on the directive rather than as a query parameter, which is
+  // why it is read here and not by `withQuery`.
+  //
+  // Mutation (Rule 19): drop the `criterion` line from `parseNavigation` -> this goes red, and an
+  // arriving audit screen would render an unsearched criteria form.
+  const { schedule, scheduled } = fakeSchedule();
+  const body = () =>
+    ok({
+      turnId: 'turn-1',
+      state: 'running',
+      steps: [step({ seq: 2, kind: 'announce', name: 'shell.screen.open', status: 'running', target: 'logs/audit' })],
+      stepsDropped: 0,
+      reply: null,
+      error: null,
+      navigation: { seq: 2, route: 'logs/audit', entityId: null, criterion: 'marker' },
+    });
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [body(), ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null })],
+  });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+  void turn.send('show the audit entry');
+  await settle();
+  await settle();
+  await settle();
+
+  scheduled.shift().run();
+  await settle();
+  assert.deepEqual(turn.navigation(), {
+    seq: 2,
+    route: 'logs/audit',
+    entityId: '',
+    criterion: 'marker',
+  });
 
   scheduled.shift().run();
   await settle();
@@ -952,7 +1030,7 @@ test('settleNavigation posts opened with no code key, and the directive is acted
 
   scheduled.shift().run();
   await settle();
-  assert.deepEqual(turn.navigation(), { seq: 2, route: 'permissions/users', entityId: '_SYSTEM' });
+  assert.deepEqual(turn.navigation(), { seq: 2, route: 'permissions/users', entityId: '_SYSTEM', criterion: '' });
 
   const settled = await turn.settleNavigation('opened');
   assert.equal(settled, true);
@@ -1065,7 +1143,7 @@ test('a fresh send() drops the previous turn\'s acted-on guard, so the next turn
   await settle();
   // Mutation (Rule 19): stop resetting `actedNavigationSeq` in `send()` -> this reads `null`,
   // since seq 1 from the first turn is still recorded as acted on.
-  assert.deepEqual(turn.navigation(), { seq: 1, route: 'permissions/users', entityId: '' });
+  assert.deepEqual(turn.navigation(), { seq: 1, route: 'permissions/users', entityId: '', criterion: '' });
   scheduled.shift().run();
   await settle();
 });
@@ -1104,4 +1182,423 @@ test('isTerminalState is true for the four terminal states and false for queued/
   assert.equal(isTerminalState('failed'), true);
   assert.equal(isTerminalState('queued'), false);
   assert.equal(isTerminalState('running'), false);
+});
+
+// --- Confirm and cancel (Story 5.3) ------------------------------------------------------------
+
+test('confirmProposal posts the id in the route and only the declared secrets in the body', async () => {
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [ok({ proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:01:02Z' })],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+
+  const outcome = await turn.confirmProposal('p1', { Password: 'hunter2' });
+  assert.equal(outcome.ok, true);
+  assert.equal(outcome.state, 'confirmed');
+  assert.equal(outcome.confirmedAt, '2026-09-19T10:01:02Z');
+
+  const posted = api.calls.filter((call) => call.method === 'POST');
+  assert.equal(posted.length, 1);
+  assert.equal(posted[0].path, proposalConfirmPath('p1'), 'the id travels in the route');
+  assert.deepEqual(JSON.parse(posted[0].body), { Password: 'hunter2' }, 'and the body is the secrets alone');
+  // AD-6: nothing of the stored proposal is sent back.
+  for (const key of ['changed', 'payload', 'unchangedCount', 'fingerprint', 'target']) {
+    assert.equal(posted[0].body.includes(key), false, `the body carries no ${key}`);
+  }
+
+  const [entry] = turn.entries();
+  assert.equal(entry.proposals[0].state, 'confirmed', "the store records the instance's own answer");
+  assert.equal(entry.proposals[0].confirmedAt, '2026-09-19T10:01:02Z');
+});
+
+test('a refusal that closed the row records the state it closed in, from the envelope detail', async () => {
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      err(409, 'PROPOSAL.TARGETCHANGED', 'the target changed', { state: 'canceled', closedReason: 'target-changed' }),
+    ],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+
+  const outcome = await turn.confirmProposal('p1');
+  assert.equal(outcome.ok, false);
+  assert.equal(outcome.code, 'PROPOSAL.TARGETCHANGED');
+  assert.equal(outcome.state, 'canceled');
+  assert.equal(outcome.closedReason, 'target-changed');
+  assert.equal(turn.entries()[0].proposals[0].closedReason, 'target-changed');
+});
+
+test('a refusal that left the row live records nothing, so the card offers Confirm again', async () => {
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [err(403, 'AGENT.READONLY.ENFORCED', 'read-only is enforced')],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+
+  const before = turn.entries()[0].proposals[0];
+  const outcome = await turn.confirmProposal('p1');
+  assert.equal(outcome.ok, false);
+  assert.equal(outcome.state, '', 'the instance said nothing about the row, so nothing is recorded');
+  assert.deepEqual(turn.entries()[0].proposals[0], before);
+});
+
+// --- The audit marker and the refusal surface (Story 5.6) --------------------------------------
+
+test("confirmProposal carries the instance's own auditMarked answer, both ways", async () => {
+  // AD-15: a dropped marker is recorded on the answer and changes nothing else about it -- the
+  // status is 200 and the row is confirmed exactly as a marked write's is.
+  //
+  // mutation: read `auditMarked` from anywhere but the 200 body in `decideProposal` (hard-code
+  // `true`) -> the dropped leg goes red while the marked leg stays green.
+  for (const marked of [true, false]) {
+    const api = fakeApi({
+      [conversationReadPath('c1')]: [
+        ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+      ],
+      [proposalConfirmPath('p1')]: [
+        ok({
+          proposalId: 'p1',
+          state: 'confirmed',
+          closedReason: '',
+          confirmedAt: '2026-09-19T10:01:02Z',
+          auditMarked: marked,
+        }),
+      ],
+    });
+    const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+    const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+    await turn.restore();
+
+    const outcome = await turn.confirmProposal('p1');
+    assert.equal(outcome.ok, true, 'a dropped marker never fails the confirm');
+    assert.equal(outcome.state, 'confirmed');
+    assert.equal(outcome.auditMarked, marked);
+  }
+});
+
+test('an answer with no auditMarked key reads false, and a cancel never claims a marker', async () => {
+  // The instance sends the key only where a write was made, so a cancel's answer carries none.
+  // `false` is the safe reading: it claims nothing was marked, which is true of a cancel.
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalCancelPath('p1')]: [
+      ok({ proposalId: 'p1', state: 'canceled', closedReason: 'you', confirmedAt: '' }),
+    ],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+
+  const outcome = await turn.cancelProposal('p1');
+  assert.equal(outcome.ok, true);
+  assert.equal(outcome.auditMarked, false);
+});
+
+test('DW-1348: a refusal that left the row live is published per proposal, and cleared by the next answer', async () => {
+  // The row is unchanged -- that half is the test above -- and what is new is that the refusal is
+  // no longer lost: the envelope's own code and reason are readable per proposal, which is what
+  // the card renders beside the Confirm it goes back to offering.
+  //
+  // mutation: delete the `recordProposalRefusal` call from `decideProposal`'s error path ->
+  // `proposalRefusal` answers null and this goes red.
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      err(403, 'PROHIBITED.PRIVILEGEGRANT', 'Granting privilege is not something the agent may propose.'),
+      ok({ proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:01:02Z', auditMarked: true }),
+    ],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+
+  assert.equal(turn.proposalRefusal('p1'), null, 'nothing is published before a decision is made');
+  await turn.confirmProposal('p1');
+  const refusal = turn.proposalRefusal('p1');
+  assert.notEqual(refusal, null, 'the refusal is published for the card that met it');
+  assert.equal(refusal.status, 403);
+  assert.equal(refusal.code, 'PROHIBITED.PRIVILEGEGRANT');
+  assert.equal(refusal.reason, 'Granting privilege is not something the agent may propose.');
+  // And it is about that proposal alone.
+  assert.equal(turn.proposalRefusal('p2'), null);
+
+  // The condition cleared and the second press was accepted: the reason goes with it.
+  await turn.confirmProposal('p1');
+  assert.equal(turn.proposalRefusal('p1'), null, 'an accepted decision clears the refusal it replaced');
+});
+
+test('confirmedWriteStep composes a card from the proposal and the confirm answer, and nothing else', () => {
+  // The instance sends no step for a confirmed write, so this is what the transcript appends.
+  // mutation: return `status: 'error'` instead of `'ok'` -> the status assertion goes red, and a
+  // write that happened would render as a failure (AD-15).
+  const proposal = { tool: 'webapp.list.update', target: { type: 'web-application', scope: 'instance', id: '/csp/myapp' } };
+  const step = confirmedWriteStep(proposal, false, 7);
+  assert.equal(step.seq, 7);
+  assert.equal(step.kind, 'tool');
+  assert.equal(step.name, 'webapp.list.update');
+  assert.equal(step.target, '/csp/myapp');
+  assert.equal(step.status, 'ok', 'a dropped marker is never a failed write');
+  assert.equal(step.auditMarked, false);
+  assert.equal(stepLabel(step), 'webapp.list.update /csp/myapp');
+  assert.equal(confirmedWriteStep(proposal, true, 1).auditMarked, true);
+});
+
+test('a step the instance sent carries no marker outcome, so its card reads the plain word', () => {
+  // `auditMarked` is null for every parsed step: a marker belongs to a confirmed write, and a
+  // turn's own steps are not writes.
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({
+        turns: [
+          {
+            seq: 1,
+            message: 'do it',
+            state: 'completed',
+            steps: [{ seq: 1, kind: 'tool', name: 'webapp.list.read', status: 'ok' }],
+          },
+        ],
+      }),
+    ],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  return turn.restore().then(() => {
+    assert.equal(turn.entries()[0].steps[0].auditMarked, null);
+  });
+});
+
+test('cancelProposal posts the cancel route and records the row the instance closed', async () => {
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalCancelPath('p1')]: [ok({ proposalId: 'p1', state: 'canceled', closedReason: 'you', confirmedAt: '' })],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+
+  const outcome = await turn.cancelProposal('p1');
+  assert.equal(outcome.ok, true);
+  assert.equal(outcome.closedReason, 'you');
+  assert.equal(turn.entries()[0].proposals[0].state, 'canceled');
+  const posted = api.calls.filter((call) => call.method === 'POST');
+  assert.equal(posted[0].path, proposalCancelPath('p1'));
+});
+
+test('a confirm closes the AD-43 pause and then publishes the write, in that order', async () => {
+  const bus = recordingBus();
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [turnProgressPath('turn-1')]: [
+      ok({ state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null, proposals: [wireProposal()] }),
+    ],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [CONVERSATION_PATH]: [ok({ conversationId: 'c1' }, 201)],
+    [proposalConfirmPath('p1')]: [ok({ proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:01:02Z' })],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage(),
+    navigationType: freshTab(),
+    schedule,
+    now: () => NOW_MS,
+    bus,
+  });
+  await turn.send('do it');
+  await settle();
+  scheduled.shift()?.run();
+  await settle();
+  assert.deepEqual(bus.events.map((event) => event.kind), ['proposal-open']);
+
+  await turn.confirmProposal('p1');
+  assert.deepEqual(
+    bus.events.map((event) => event.kind),
+    ['proposal-open', 'proposal-closed', 'changed'],
+    'the pause lifts on the confirm rather than waiting for a poll that will not come, and the ' +
+      'write is published after it so the re-fetch it asks for is not issued into a paused screen'
+  );
+  const changed = bus.events[2];
+  assert.equal(changed.type, 'web-application', "the proposal's own canonical triple, not a re-derived one");
+  assert.equal(changed.scope, 'instance');
+  assert.equal(changed.id, '/csp/myapp');
+  assert.equal(changed.action, 'updated', 'an answer that names no action reads as the default every merge write performs');
+});
+
+test("the published action is the instance's own, and an unknown word reads as the default (AD-14)", async () => {
+  // Story 5.13's application-error delete is the first write whose action is not `updated`, and
+  // the tool declares it (`OcuPilot.Screen.Tool.Write.CHANGEACTION`) rather than this client
+  // inferring it from the shape of the diff. A screen routes on the action -- a deleted row leaves
+  // -- so a client-authored guess is the one field that must not be guessed.
+  //
+  // Mutation (Rule 19): hard-code `action: 'updated'` in `confirmProposal` again -> the deleted leg
+  // goes red, and the error log's drill would never re-read after the delete it just confirmed.
+  for (const [answered, published] of [
+    ['deleted', 'deleted'],
+    ['created', 'created'],
+    ['removed', 'updated'],
+    ['', 'updated'],
+  ]) {
+    const bus = recordingBus();
+    const confirmBody = { proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:01:02Z' };
+    if (answered !== '') confirmBody.action = answered;
+    const api = fakeApi({
+      [conversationReadPath('c1')]: [
+        ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+      ],
+      [turnProgressPath('turn-1')]: [
+        ok({ state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null, proposals: [wireProposal()] }),
+      ],
+      [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+      [CONVERSATION_PATH]: [ok({ conversationId: 'c1' }, 201)],
+      [proposalConfirmPath('p1')]: [ok(confirmBody)],
+    });
+    const { schedule, scheduled } = fakeSchedule();
+    const turn = new TurnStore({
+      api,
+      storage: memoryStorage(),
+      navigationType: freshTab(),
+      schedule,
+      now: () => NOW_MS,
+      bus,
+    });
+    await turn.send('do it');
+    await settle();
+    scheduled.shift()?.run();
+    await settle();
+    await turn.confirmProposal('p1');
+    const event = bus.events.find((candidate) => candidate.kind === 'changed');
+    assert.ok(event, `a confirm answering ${JSON.stringify(answered)} publishes a change`);
+    assert.equal(event.action, published, `answered ${JSON.stringify(answered)}`);
+  }
+});
+
+test('a confirm the instance refused publishes no change, and neither does a cancel', async () => {
+  // Mutation (Rule 19): publish whenever `result.kind === 'ok'` rather than on
+  // `state === 'confirmed'` -> the cancel leg goes red, and a canceled proposal would re-fetch
+  // every screen showing its entity as though the instance had changed.
+  const bus = recordingBus();
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [turnProgressPath('turn-1')]: [
+      ok({ state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null, proposals: [wireProposal()] }),
+    ],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [CONVERSATION_PATH]: [ok({ conversationId: 'c1' }, 201)],
+    [proposalConfirmPath('p1')]: [
+      err(403, 'PROHIBITED.GRANT'),
+    ],
+    [proposalCancelPath('p1')]: [ok({ proposalId: 'p1', state: 'canceled', closedReason: 'you', confirmedAt: '' })],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage(),
+    navigationType: freshTab(),
+    schedule,
+    now: () => NOW_MS,
+    bus,
+  });
+  await turn.send('do it');
+  await settle();
+  scheduled.shift()?.run();
+  await settle();
+
+  await turn.confirmProposal('p1');
+  assert.equal(
+    bus.events.filter((event) => event.kind === 'changed').length,
+    0,
+    'a refusal that left the row live changed nothing on the instance'
+  );
+
+  await turn.cancelProposal('p1');
+  assert.equal(
+    bus.events.filter((event) => event.kind === 'changed').length,
+    0,
+    'and a cancel closes the row without writing'
+  );
+  assert.ok(
+    bus.events.some((event) => event.kind === 'proposal-closed'),
+    'the pause still lifts, because the row is no longer live'
+  );
+});
+
+test('a live row past its own expiresAt opens no pause (DW-1209)', async () => {
+  const bus = recordingBus();
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [CONVERSATION_PATH]: [ok({ conversationId: 'c1' }, 201)],
+    [turnProgressPath('turn-1')]: [
+      ok({ state: 'running', steps: [], stepsDropped: 0, reply: null, error: null, proposals: [wireProposal()] }),
+    ],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage(),
+    navigationType: freshTab(),
+    schedule,
+    // Ten minutes after the fixture proposal's own window closed.
+    now: () => Date.parse('2026-09-19T10:15:00Z'),
+    bus,
+  });
+  await turn.send('do it');
+  await settle();
+  scheduled.shift()?.run();
+  await settle();
+  assert.deepEqual(bus.events, [], 'a row the instance would project expired holds no screen');
+});
+
+test('New conversation closes every proposal this store had open (DW-1243)', async () => {
+  const bus = recordingBus();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'c2' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [
+      ok({ state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null, proposals: [wireProposal()] }),
+    ],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage(),
+    navigationType: freshTab(),
+    schedule,
+    now: () => NOW_MS,
+    bus,
+  });
+  await turn.send('do it');
+  await settle();
+  scheduled.shift()?.run();
+  await settle();
+  assert.deepEqual(bus.events.map((event) => event.kind), ['proposal-open']);
+
+  assert.equal(await turn.newConversation(), true);
+  assert.deepEqual(bus.events.map((event) => event.kind), ['proposal-open', 'proposal-closed']);
+  assert.deepEqual(turn.entries(), []);
 });

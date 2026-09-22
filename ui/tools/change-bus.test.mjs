@@ -13,11 +13,13 @@ import { dirname, join } from 'node:path';
 //   `proposal-open` from a publisher that omitted it would pause a screen forever.
 // - accept a `proposal-closed` with no id -> the anonymous-close row goes red, and one close
 //   would end a pause two opens are holding.
+// - default a missing `action` to `'updated'` instead of refusing the event -> the closed-set row
+//   goes red, and a publisher that forgot to say what happened would look like an update.
 
 const corePath = (name) =>
   join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'app', 'core', name);
 
-const { ChangeBus, PROPOSAL_EXPIRY_MS } = await import(corePath('change-bus.ts'));
+const { CHANGE_ACTIONS, ChangeBus, PROPOSAL_EXPIRY_MS } = await import(corePath('change-bus.ts'));
 const { entityRefKey } = await import(corePath('entity-ref.ts'));
 
 const NOW_MS = 1_700_000_000_000;
@@ -32,7 +34,13 @@ function busWithLog(now = () => new Date(NOW_MS)) {
 test('a confirmed write travels as the AD-13 triple, keyed the way references are keyed', () => {
   const { bus, seen } = busWithLog();
   assert.equal(
-    bus.publish({ kind: 'changed', type: 'web-application', scope: 'HSCUSTOM', id: '/csp/myapp' }),
+    bus.publish({
+      kind: 'changed',
+      type: 'web-application',
+      scope: 'HSCUSTOM',
+      id: '/csp/myapp',
+      action: 'updated',
+    }),
     true
   );
 
@@ -41,6 +49,7 @@ test('a confirmed write travels as the AD-13 triple, keyed the way references ar
   assert.equal(seen[0].type, 'web-application');
   assert.equal(seen[0].scope, 'HSCUSTOM');
   assert.equal(seen[0].id, '/csp/myapp');
+  assert.equal(seen[0].action, 'updated', 'AD-14 names the action as well as the triple');
   // The key is `entity-ref.ts`'s, not a second join spelled here: a composite id passes through
   // whole and still splits on its own separator afterwards.
   assert.equal(seen[0].key, entityRefKey('web-application', 'HSCUSTOM', '/csp/myapp'));
@@ -48,22 +57,55 @@ test('a confirmed write travels as the AD-13 triple, keyed the way references ar
   assert.equal(seen[0].expiresAt, 0, 'and nothing about it expires');
 });
 
+test('AD-14: a changed event carries one action from the closed set, and a proposal kind carries none', () => {
+  const { bus, seen } = busWithLog();
+  assert.deepEqual([...CHANGE_ACTIONS], ['created', 'updated', 'deleted'], 'the set itself');
+  for (const action of CHANGE_ACTIONS) {
+    assert.equal(bus.publish({ kind: 'changed', type: 'task', scope: 'USER', id: 'x', action }), true);
+  }
+  assert.deepEqual(seen.map((event) => event.action), ['created', 'updated', 'deleted']);
+
+  assert.equal(
+    bus.publish({ kind: 'changed', type: 'task', scope: 'USER', id: 'x' }),
+    false,
+    'a change with no verb is not a change a screen can act on'
+  );
+  assert.equal(
+    bus.publish({ kind: 'changed', type: 'task', scope: 'USER', id: 'x', action: 'replaced' }),
+    false,
+    'and a verb outside the set is a second vocabulary'
+  );
+  assert.equal(
+    bus.publish({
+      kind: 'proposal-open',
+      type: 'task',
+      scope: 'USER',
+      id: 'x',
+      proposalId: 'p-1',
+      action: 'updated',
+    }),
+    false,
+    'a proposal opening is not something that has happened yet'
+  );
+  assert.equal(seen.length, 3, 'none of the three reached a subscriber');
+});
+
 test('an invented entity type, an empty scope and an empty id are not references', () => {
   const { bus, seen } = busWithLog();
   assert.equal(
-    bus.publish({ kind: 'changed', type: 'not-an-entity-type', scope: 'HSCUSTOM', id: 'x' }),
+    bus.publish({ kind: 'changed', type: 'not-an-entity-type', scope: 'HSCUSTOM', id: 'x', action: 'updated' }),
     false,
     'the closed kernel enum is what a type is checked against (AD-14)'
   );
-  assert.equal(bus.publish({ kind: 'changed', type: 'task', scope: '', id: 'x' }), false);
-  assert.equal(bus.publish({ kind: 'changed', type: 'task', scope: 'USER', id: '' }), false);
+  assert.equal(bus.publish({ kind: 'changed', type: 'task', scope: '', id: 'x', action: 'updated' }), false);
+  assert.equal(bus.publish({ kind: 'changed', type: 'task', scope: 'USER', id: '', action: 'updated' }), false);
   assert.deepEqual(seen, [], 'a subscriber never has to check again');
 });
 
 test('the two configuration scopes both travel: a namespace, and the literal instance', () => {
   const { bus, seen } = busWithLog();
-  assert.equal(bus.publish({ kind: 'changed', type: 'task', scope: 'USER', id: 'Nightly purge' }), true);
-  assert.equal(bus.publish({ kind: 'changed', type: 'user', scope: 'instance', id: '_SYSTEM' }), true);
+  assert.equal(bus.publish({ kind: 'changed', type: 'task', scope: 'USER', id: 'Nightly purge', action: 'updated' }), true);
+  assert.equal(bus.publish({ kind: 'changed', type: 'user', scope: 'instance', id: '_SYSTEM', action: 'updated' }), true);
   assert.deepEqual(seen.map((event) => event.scope), ['USER', 'instance']);
 });
 
@@ -150,8 +192,8 @@ test('every subscriber sees every event, and unsubscribing from inside a handler
   });
   bus.subscribe((event) => second.push(event.id));
 
-  bus.publish({ kind: 'changed', type: 'task', scope: 'USER', id: 'one' });
-  bus.publish({ kind: 'changed', type: 'task', scope: 'USER', id: 'two' });
+  bus.publish({ kind: 'changed', type: 'task', scope: 'USER', id: 'one', action: 'updated' });
+  bus.publish({ kind: 'changed', type: 'task', scope: 'USER', id: 'two', action: 'updated' });
 
   assert.deepEqual(first, ['one'], 'it stopped when it said it did');
   assert.deepEqual(second, ['one', 'two'], 'and the walk was not cut short by the removal');

@@ -1,6 +1,12 @@
-/// <p>The surface coverage floor (Story 13.2, AC3): every screen the registry declares built, and
-/// every tool the tool registry classifies <code>write</code>, has a named test method that pins
-/// it -- and every coverage row names a member that still exists.</p>
+/// <p>The surface coverage floor (Story 13.2, AC3): every screen the registry declares, built or
+/// not, and every tool the tool registry classifies <code>write</code>, has a named test method
+/// that pins it -- and every coverage row names a member that still exists.</p>
+/// <p><b>The roster covers unbuilt descriptors too</b> (DW-1453, Story 5.11). A descriptor that
+/// declares <code>"built": false</code> is still a declaration the registry validates, still the
+/// owner of its screen's privileges, entity type and write tool
+/// (<class>OcuPilot.Screen.Descriptor.AuditingConfig</class> owns
+/// <code>security.auditing.update</code>), and still something a later story turns on -- so
+/// leaving it off the roster meant the next one sat on no roster silently.</p>
 /// <p><b>Both sets are derived from the registries themselves</b>
 /// (<method>OcuPilot.Screen.Registry.Descriptors</method> and
 /// <method>OcuPilot.Screen.Tool.Registry.ListTools</method>), never from a list beside them. Those
@@ -42,11 +48,11 @@ Parameter WRITEKIND = "write";
 /// <file>ui/tools/ci-runner.mjs</file>'s on-disk-versus-instance check, which compares CLASS
 /// lists -- so deleting the named test METHOD from any of them left every gate green. These rows
 /// put those methods under the same <method>PinProblem</method> the coverage table uses.</p>
-/// <p><b>The write half has no members on this branch</b> -- no tool classifies
-/// <code>write</code> yet -- and that zero is asserted rather than assumed, so a derivation that
-/// silently returned nothing cannot read as a pass. The derived side binds automatically at the
-/// integrate-forward, because it is <method>ListTools</method>; the explicit zero does not, and
-/// is deleted in the same pass that lands the first write tool and its coverage row.</p>
+/// <p><b>The write half has members.</b> Story 5.5 landed the first tool the registry classifies
+/// <code>write</code>, <code>webapp.list.update</code>, and with it the explicit zero this block
+/// used to assert -- which was written to be deleted in exactly that pass. Stories 5.9, 5.10, 5.11 and
+/// 5.12 landed the rest. The derived side is <method>ListTools</method>, so a further write tool
+/// binds itself and reddens here until it declares its row.</p>
 XData Coverage
 {
 <coverage>
@@ -54,6 +60,7 @@ XData Coverage
 <screen name="AgentDefinitionList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="AgentSwitches" class="OcuPilot.Test.Wire" method="TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource"/>
 <screen name="AuditList" class="OcuPilot.Test.Descriptor" method="TestTheAuditListValidatesAndDeclaresItsServerCriteria"/>
+<screen name="AuditingConfig" class="OcuPilot.Test.Descriptor" method="TestTheAuditingConfigurationDescriptorIsDeclaredUnbuiltAndOwnsTheWriteTool"/>
 <screen name="DatabaseDetails" class="OcuPilot.Test.Descriptor" method="TestDatabaseDetailsDeclaresExactlyFifteenFieldsAndOperateAlone"/>
 <screen name="DatabaseFreeSpace" class="OcuPilot.Test.Descriptor" method="TestTheFreeSpaceViewMergesInfoFiguresAndDeclaresNoMaxSize"/>
 <screen name="DatabaseList" class="OcuPilot.Test.Descriptor" method="TestTheDatabasesGeneralViewDeclaresExactlyItsFiveFieldsAndFiveColumns"/>
@@ -90,13 +97,20 @@ XData Coverage
 <screen name="WalletSecretList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="WebAppList" class="OcuPilot.Test.Descriptor" method="TestTheWebApplicationsListValidatesAndNamesItsClassicPageInItsOwnCase"/>
 <screen name="X509CredentialList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
+<tool name="logs.applicationerrors.delete" class="OcuPilot.Test.ToolWrite" method="TestTheErrorDeleteToolIsAnActionWriteOverItsOwnPort"/>
+<tool name="osmgmt.processes.resume" class="OcuPilot.Test.ToolWrite" method="TestTheProcessResumeToolIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="osmgmt.processes.suspend" class="OcuPilot.Test.ToolWrite" method="TestTheProcessSuspendToolIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="permissions.users.update" class="OcuPilot.Test.ToolWrite" method="TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs"/>
+<tool name="security.auditing.update" class="OcuPilot.Test.ToolWrite" method="TestTheAuditingWriteToolAdvertisesEnabledAloneAndDeclaresItsWriteDestructive"/>
+<tool name="tasks.schedule.resume" class="OcuPilot.Test.ToolWrite" method="TestTheTaskResumeToolIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="webapp.list.update" class="OcuPilot.Test.ToolWrite" method="TestTheRegistryAdvertisesItAsAWriteToolFulfilledOnTheInstance"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>
 </coverage>
 }
 
-/// <p>Every built screen, by descriptor name without
+/// <p>Every screen the registry declares, built or not, by descriptor name without
 /// <parameter>DESCRIPTORPACKAGE</parameter>, in <var>pRows</var>. A failing status from the
 /// registry, or a descriptor that cannot answer <method>IsBuilt</method>, is an error.</p>
 ClassMethod DeriveScreens(Output pRows) As %Status
@@ -112,8 +126,10 @@ ClassMethod DeriveScreens(Output pRows) As %Status
         }
         For tI = 1:1:$ListLength(tList) {
             Set tClass = $List(tList, tI)
-            Set tBuilt = $ClassMethod(tClass, "IsBuilt")
-            If 'tBuilt Continue
+            ; DW-1453: every declared descriptor, built or not. IsBuilt is still called, so a
+            ; descriptor that cannot answer it is the error the header promises rather than a row
+            ; quietly missing from the roster.
+            Do $ClassMethod(tClass, "IsBuilt")
             Set pRows($Extract(tClass, $Length(..#DESCRIPTORPACKAGE) + 1, *)) = tClass
         }
     } Catch ex {
@@ -237,34 +253,31 @@ ClassMethod Drift(ByRef pDerived, ByRef pRows, pKind As %String, pDerivedNoun As
     Quit tDrift
 }
 
-/// <p>AC3 -- the built-screen set and the coverage table are equal in both directions, so a screen
-/// declared built with no row, and a row naming a screen that no longer exists or is no longer
-/// built, each fail naming the member.</p>
-/// <p>Mutation: flip one descriptor's <code>"built"</code> key to false and recompile the package
-/// -> red naming the orphan coverage row; delete one <code>&lt;screen/&gt;</code> row -> red
-/// naming the uncovered descriptor.</p>
-Method TestEveryBuiltScreenHasACoverageRowAndBack()
+/// <p>AC3 -- the declared-screen set and the coverage table are equal in both directions, so a
+/// descriptor with no row, and a row naming a descriptor that no longer exists, each fail naming
+/// the member.</p>
+/// <p>Mutation: delete one <code>&lt;screen/&gt;</code> row -> red naming the uncovered
+/// descriptor; restore <method>DeriveScreens</method>' <code>built</code> filter -> the
+/// <code>AuditingConfig</code> row reads as an orphan and this goes red (DW-1453).</p>
+Method TestEveryDeclaredScreenHasACoverageRowAndBack()
 {
     Set tSC = ..DeriveScreens(.tScreens)
-    Do $$$AssertStatusOK(tSC, "the built-screen set derives from the screen registry")
+    Do $$$AssertStatusOK(tSC, "the declared-screen set derives from the screen registry, built and unbuilt alike")
     Set tStoredSC = ..Stored(.tRows)
     Do $$$AssertStatusOK(tStoredSC, "the coverage table parses")
 
-    Set tDrift = ..Drift(.tScreens, .tRows, "screen", "a built screen", .tDerived, .tDeclared)
-    Do $$$AssertEquals(tDrift, "", "the built screens and the coverage table agree")
-    Do $$$AssertTrue(tDerived > 0, "the registry enumerated built screens at all; a run over none would pass having checked nothing")
-    Do $$$AssertEquals(tDeclared, tDerived, "and the two are the same size (" _ tDeclared _ " row(s), " _ tDerived _ " built screen(s))")
+    Set tDrift = ..Drift(.tScreens, .tRows, "screen", "a declared screen", .tDerived, .tDeclared)
+    Do $$$AssertEquals(tDrift, "", "the declared screens and the coverage table agree")
+    Do $$$AssertTrue(tDerived > 0, "the registry enumerated screens at all; a run over none would pass having checked nothing")
+    Do $$$AssertEquals(tDeclared, tDerived, "and the two are the same size (" _ tDeclared _ " row(s), " _ tDerived _ " declared screen(s))")
 }
 
 /// <p>AC3 -- the write-tool set and the coverage table are equal in both directions, through the
 /// same <method>Drift</method> the screen half uses, which
-/// <method>TestTheBothDirectionsComparisonNamesTheMemberInEachDirection</method> exercises: both
-/// sets are empty here, so the comparison itself runs zero times on this branch. The set has
-/// <b>no members on this branch</b> and that zero is asserted explicitly, beside a non-zero total
-/// from the same enumeration, so a derivation that returned nothing cannot read as a pass.</p>
-/// <p>Mutation: declare <code>KIND = "write"</code> on any tool class and recompile the package ->
-/// red naming the tool. That is how the derived side binds at the integrate-forward; the zero
-/// below is deleted in the same pass.</p>
+/// <method>TestTheBothDirectionsComparisonNamesTheMemberInEachDirection</method> exercises.</p>
+/// <p>The write half has members: Story 5.5 landed <code>webapp.list.update</code>, which tripped
+/// the tripwire the assertion below replaced. Both sizes are asserted non-zero, so neither a
+/// derivation nor a table that silently returned nothing can read as a pass.</p>
 Method TestEveryWriteToolHasACoverageRowAndBack()
 {
     Set tSC = ..DeriveWriteTools(.tTools, .tTotal)
@@ -277,12 +290,12 @@ Method TestEveryWriteToolHasACoverageRowAndBack()
     Set tDrift = ..Drift(.tTools, .tRows, "tool", "a write tool", .tDerived, .tDeclared)
     Do $$$AssertEquals(tDrift, "", "the write tools and the coverage table agree")
     Do $$$AssertEquals(tDeclared, tDerived, "and the two are the same size")
-    Do $$$AssertEquals(tDerived, 0, "no tool classifies write on this branch, which is asserted rather than assumed")
+    Do $$$AssertTrue(tDerived > 0, "the write half is not empty -- the first write tool landed in Story 5.5, so a derivation that silently returned nothing cannot read as a pass here either (" _ tDerived _ ")")
 }
 
 /// <p>AC3 -- the both-directions comparison itself, over synthetic sets. Both halves above call
-/// <method>Drift</method>, and on this branch the write half's two sets are empty, so its loops
-/// run zero times and nothing there could redden. This is where the comparison is driven.</p>
+/// <method>Drift</method> against the sets the instance derives; this is where the comparison's
+/// own two directions are driven, over sets a real branch cannot be put into.</p>
 /// <p>Mutation: invert either <code>$Data</code> test in <method>Drift</method>, or delete either
 /// loop -> red.</p>
 Method TestTheBothDirectionsComparisonNamesTheMemberInEachDirection()

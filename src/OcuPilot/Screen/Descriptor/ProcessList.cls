@@ -16,14 +16,20 @@
 /// segment, with no second part. <code>Pid</code> is the <code>name</code> column, so it renders in
 /// the code face and as the link to <class>OcuPilot.Screen.Descriptor.ProcessDetails</class>, opened
 /// through 6.7's <code>detailScreenFor</code> chain (Story 6.8).</p>
-/// <p><b>It declares no write type and none of the <code>CanBe*</code> fields.</b> The vendor class
-/// declares broadcast, resume, suspend and terminate request types;
-/// <parameter>OcuPilot.Port.AdminPort.TYPESUFFIXES</parameter> admits <code>GET,LIST,INFO,CERTINFO</code> and
-/// none of them, which is the containment. The four <code>CanBe*</code> booleans and
-/// <code>CanReceiveBroadcast</code> exist only to gate those controls, so a read that carried them
-/// would ship the inputs to a decision nothing here makes. Terminate, suspend, resume and broadcast
-/// are Stories 5.12, 7.8 and 16.6; Epic 2 ships read tools only, so this screen declares no primary
-/// action and no row action.</p>
+/// <p><b>It owns the two process write tools and still declares no control.</b>
+/// <class>OcuPilot.Screen.Tool.ProcessSuspend</class> and
+/// <class>OcuPilot.Screen.Tool.ProcessResume</class> name this descriptor and take its pair set;
+/// the row actions that would put them on the screen are Stories 7.8 and 16.6, so this descriptor
+/// declares no primary action and no row action. <b>Terminate is absent</b>: OcuPilot advertises no
+/// such tool and <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> pairs
+/// <code>Process</code> with neither <code>TERMINATE</code> nor <code>DELETE</code>, though the
+/// vendor class declares both.</p>
+/// <p><b>It declares none of the <code>CanBe*</code> fields.</b> The four booleans and
+/// <code>CanReceiveBroadcast</code> exist only to gate the vendor's own controls, so a read that
+/// carried them would ship the inputs to a decision nothing here makes -- and
+/// <code>CanBeSuspended</code> is not even the suspended-state discriminator, since its retrieval
+/// code ends <code>i State'["SUSP"</code>. The state the two tools read is <code>State</code>,
+/// which this screen already declares.</p>
 /// <p><b>The client and identity columns are absent too</b> -- <code>Device</code>,
 /// <code>ClientName</code>, <code>EXEname</code>, <code>IPAddress</code>, <code>OSUserName</code>,
 /// <code>ParentPid</code>, <code>Job</code>, <code>PrvGblBlkCnt</code>, <code>CPUTime</code> and

@@ -289,6 +289,8 @@ describe('the first-login gate and the requested screen it may move off', () => 
     const preferences = stubAccountPreferences();
     const screenStores = new ScreenStores({ account: preferences });
     const shellState = new ShellState({ account: preferences });
+    // One bus, shared with the toast host the frame mounts (Story 5.7).
+    const changeBus = new ChangeBus();
     TestBed.configureTestingModule({
       providers: [
         { provide: About, useValue: stubAbout() },
@@ -312,11 +314,12 @@ describe('the first-login gate and the requested screen it may move off', () => 
           useValue: new RefreshService({
             stores: screenStores,
             connectivity,
-            bus: new ChangeBus(),
+            bus: changeBus,
             namespace: () => 'HSCUSTOM',
             schedule: () => {},
           }),
         },
+        { provide: ChangeBus, useValue: changeBus },
         { provide: ScreenStores, useValue: screenStores },
         { provide: ShellState, useValue: shellState },
         { provide: PanelState, useValue: new PanelState({ account: preferences, shell: shellState }) },

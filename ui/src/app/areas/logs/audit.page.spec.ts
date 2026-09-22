@@ -16,7 +16,7 @@ import { ScreenStores } from '../../core/screen-store';
 import { SCREENS, type ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { AuditPage } from './audit.page';
-import { AuditSearch } from './audit.store';
+import { AuditSearch, MARKER_CRITERION } from './audit.store';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 
 /**
@@ -270,6 +270,67 @@ describe('the audit database viewer', () => {
     await search();
     expect(paths[1]).toContain('&eventSources=%25System');
     expect(paths[1]).not.toContain('eventSources=OcuPilot');
+  });
+
+  it('AC3 (Story 5.8): an agent arrival applies the declared marker, searches, and refuses a declaration that is not this screen\'s', async () => {
+    // `openWith` is the non-interactive path an agent navigation arrives through, and this is where
+    // it is driven for real -- `shell/agent-navigator.spec.ts` stubs the store, so it can say who
+    // was asked but not what the asking does.
+    //
+    // Mutation (Rule 19): drop the `searchedOnce = true` line from `openWith` -> the row assertion
+    // goes red, because the archetype renders nothing until this screen has searched.
+    const { fixture, host, paths } = await mount();
+    const store = TestBed.inject(AuditSearch);
+    store.openWith(AUDIT, MARKER_CRITERION);
+    await settle(fixture);
+    const box = host.querySelector('[data-ocu-marker="filter"]') as HTMLInputElement;
+    expect(box.checked).toBe(true);
+    expect(paths[0]).toContain('&eventSources=OcuPilot');
+    expect(rowNames(host)).toEqual(['RoleGranted']);
+
+    // The arrival runs the screen's DECLARED read, not the user's last one. This store is
+    // root-provided and outlives the screen, so a criterion the user typed on an earlier visit is
+    // still held -- and `criteria()` sends every declared criterion the form holds a value for, so
+    // an arrival that kept it would narrow the marker filter by a username nobody asked about and
+    // show no row for the write the agent just made.
+    //
+    // `usernames` deliberately, and not `eventSources`: the marker overrides its own parameter
+    // (see `criteria`), so a stale value there would be replaced whatever this does. The stale
+    // value that survives is one on a criterion the marker does not name, and narrowing by it is
+    // what loses the row.
+    //
+    // Mutation (Rule 19): drop the `this.values = {}` line from `openWith` -> the second assertion
+    // goes red, carrying `&usernames=someone-else` into the arrival's own read.
+    const stale = await mount();
+    const store2 = TestBed.inject(AuditSearch);
+    store2.setValue('usernames', 'someone-else');
+    store2.openWith(AUDIT, MARKER_CRITERION);
+    await settle(stale.fixture);
+    expect(stale.paths[0]).toContain('&eventSources=OcuPilot');
+    expect(stale.paths[0]).not.toContain('someone-else');
+    expect(rowNames(stale.host)).toEqual(['RoleGranted']);
+
+    // A criterion name this screen does not declare applies nothing: there is no filter to arrive
+    // with, and nothing may invent one.
+    const fresh = await mount();
+    const other = TestBed.inject(AuditSearch);
+    other.openWith(AUDIT, 'nosuchthing');
+    await settle(fresh.fixture);
+    expect((fresh.host.querySelector('[data-ocu-marker="filter"]') as HTMLInputElement).checked).toBe(false);
+    expect(fresh.paths).toEqual([]);
+
+    // And a declaration belonging to another screen applies nothing either, however well formed.
+    // Mutation (Rule 19): drop the `declaration.descriptor !== AUDIT_DESCRIPTOR` guard from
+    // `openWith` -> this goes red, and this store would filter and bind a screen nobody opened.
+    const foreign = await mount();
+    const store3 = TestBed.inject(AuditSearch);
+    store3.openWith(
+      { ...AUDIT, descriptor: 'OcuPilot.Screen.Descriptor.TaskList' } as ScreenDeclaration,
+      MARKER_CRITERION
+    );
+    await settle(foreign.fixture);
+    expect((foreign.host.querySelector('[data-ocu-marker="filter"]') as HTMLInputElement).checked).toBe(false);
+    expect(foreign.paths).toEqual([]);
   });
 
   it('a zero-row answer reads the screen\'s own empty sentence, with no skeleton and no fault', async () => {

@@ -504,7 +504,7 @@ components:
     padding: '{spacing.3}'
     elevation: 3
     typography: '{typography.body}'
-    position: 'bottom-right, {spacing.4} above the status bar'
+    position: 'bottom-right of the content area, {spacing.4} above the status bar, offset from the right edge by the panel\'s live width'
     max-stack: 3
   confirm-dialog:
     width: 440px
@@ -1208,7 +1208,7 @@ What confirms or interrupts: the toast, the confirmation dialog, and the two fie
 
 #### `toast`
 
-For a change on a screen that is not open: `{colors.inverse-surface}` with `{colors.inverse-on-surface}` `{typography.body}`, `{rounded.md}`, `{spacing.3}` padding, at the bottom-right of the viewport `{spacing.4}` above the status bar, stacking upward to three. Content: the change in one sentence, then an "Open in <screen>" link that swaps with the mode because the inverse surface flips — `{colors.secondary-dark}` in light (7.42:1), `{colors.secondary}` in dark (4.64:1 — marginal, guard with a test) — plus a 20px close icon. Timing, the focus-pause rule and what happens beyond three: EXPERIENCE.md › Component Patterns › toast. Toasts are never used for errors (those are banners) and never for confirmations of what the user just did on the open screen (the row highlight is the confirmation).
+For a change on a screen that is not open: `{colors.inverse-surface}` with `{colors.inverse-on-surface}` `{typography.body}`, `{rounded.md}`, `{spacing.3}` padding, at the bottom-right of the **content area** — `{spacing.4}` above the status bar, and offset from the right edge by the panel's live width so no toast ever overlays the panel — stacking upward to three. Content: the change in one sentence, then an "Open in <screen>" link that swaps with the mode because the inverse surface flips — `{colors.secondary-dark}` in light (7.42:1), `{colors.secondary}` in dark (4.64:1 — marginal, guard with a test) — plus a 20px close icon. Timing, the focus-pause rule and what happens beyond three: EXPERIENCE.md › Component Patterns › toast. Toasts are never used for errors (those are banners) and never for confirmations of what the user just did on the open screen (the row highlight is the confirmation). [AMENDED 2026-09-21, Epic 5 merge gate (DW-1412): bottom-right of the *viewport* put the toast over the docked panel and covered the panel's own Send button at 1440×900 — `elementFromPoint` on the button's center returned the toast, not the button. A toast that covers the primary control of the surface it reports on defeats itself. The offset tracks the panel's live width rather than a fixed token because the panel is resizable.]
 
 #### `confirm-dialog`
 

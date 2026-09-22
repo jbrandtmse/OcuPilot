@@ -29,7 +29,8 @@
 
 import type { ApiService } from './api';
 import type { ConnectivityService } from './connectivity';
-import { decodeEntityId } from './entity-id.ts';
+import { decodeEntityId, encodeEntityId } from './entity-id.ts';
+import { scopeFor } from './entity-ref.ts';
 import { AREAS, SCREENS, type AreaDeclaration, type ScreenDeclaration } from './screens.generated.ts';
 import { createSingleFlight } from './single-flight.ts';
 
@@ -314,6 +315,36 @@ export function parentCriteria(screen: ScreenDeclaration, url: string): Readonly
   return id === '' ? {} : { [fields[0].param]: id };
 }
 
+/**
+ * The id a screen's **own** route segment carries, decoded (AD-13), or `''` when the URL is the
+ * screen's bare route, when the screen takes no id route, or when what follows the route is not
+ * one segment.
+ *
+ * The companion to `parentCriteria`, which reads a **parent's** id into a sub-resource's one
+ * criterion: this reads the screen's own id, which is what a list selects a row by. One helper
+ * serves both callers that produce such a URL -- the agent's `shell.screen.open` with an
+ * `entityId`, and a change toast's "Open in <screen>" -- so the row is selected on arrival
+ * whichever of them moved the browser (DW-1419).
+ *
+ * **A parent-scoped screen answers `''`.** Its trailing segment is the *parent's* id, which is
+ * what `parentCriteria` reads it as, and no row of such a list is keyed by it -- a run of task
+ * history is keyed by its run id, not by the task the route names. Reading it here would select
+ * whichever row happened to share the parent's key.
+ *
+ * The segment is decoded twice for the reason `parentCriteria` decodes twice: the router hands
+ * over the URL as the address bar carries it, and `encodeEntityId` encodes twice because the web
+ * server consumes one decoding in transit.
+ */
+export function ownIdSegment(screen: ScreenDeclaration, url: string): string {
+  if (screen.route === '' || screen.parentScope !== '' || !hasIdRoute(screen)) return '';
+  const path = routeFromUrl(url);
+  const prefix = `${screen.route}/`;
+  if (!path.startsWith(prefix)) return '';
+  const segment = path.slice(prefix.length);
+  if (segment === '' || segment.includes('/')) return '';
+  return decodeEntityId(decodeEntityId(segment));
+}
+
 /** The screen declared at `route`, or `null`. Home's route is the empty string. */
 export function screenForRoute(route: string): ScreenDeclaration | null {
   return SCREENS.find((screen) => screen.route === route) ?? null;
@@ -326,6 +357,102 @@ export function screenForRoute(route: string): ScreenDeclaration | null {
  */
 export function screenForDescriptor(descriptor: string): ScreenDeclaration | null {
   return SCREENS.find((screen) => screen.descriptor === descriptor) ?? null;
+}
+
+/**
+ * The built screen whose own primary `entityType` is `type`, or `null` (AD-5, AD-14).
+ *
+ * The entity-type vocabulary is the kernel's closed enum and a screen selects from it, so this is
+ * the one way a caller holding a reference triple -- a proposal's target, a change event -- reaches
+ * the declaration that publishes that type's singular noun and its secret argument names. Unbuilt
+ * screens are skipped: they declare no surface, so nothing they publish is renderable yet.
+ *
+ * The first match wins where two screens declare the same primary type (a list and its detail),
+ * which is sound because what this is read for -- `entityLabelKey`, `secretArguments` -- is a
+ * property of the entity rather than of the surface.
+ */
+export function screenForEntityType(type: string): ScreenDeclaration | null {
+  if (type === '') return null;
+  return SCREENS.find((screen) => screen.built && screen.entityType === type) ?? null;
+}
+
+/**
+ * The screen whose declared `toolIdentifier` owns the tool named `tool`, or `null` (AD-5).
+ *
+ * A tool's canonical name is `<area>.<screen>.<verb>` and its screen's identifier is the first two
+ * segments, which is how `OcuPilot.Screen.Tool.Registry` resolves a tool to its descriptor and how
+ * `OcuPilot.Screen.Registry.ConfirmChannelProblem` finds a tool's field list. A tool name is
+ * claimed by exactly one source -- the registry refuses a second claimant -- so this answers one
+ * screen or none, which `screenForEntityType` cannot: two screens may declare one entity type.
+ *
+ * **Unbuilt screens are included, and that is the point.** A write tool's declarations -- its
+ * screen's singular noun and its secret argument names -- are properties of the operation, not of
+ * a rendered surface, and an operation may ship before its screen does
+ * (`OcuPilot.Screen.Descriptor.AuditingConfig`). Keying the card's lookup on the entity type
+ * instead would answer `null` for such a proposal and silently ask for no secret at all.
+ */
+export function screenForToolName(tool: string): ScreenDeclaration | null {
+  const parts = tool.split('.');
+  if (parts.length < 2) return null;
+  const identifier = parts.slice(0, 2).join('.');
+  return SCREENS.find((screen) => screen.toolIdentifier === identifier) ?? null;
+}
+
+/**
+ * The two halves of a reference a caller tests a screen against: the entity type and the resolved
+ * scope (AD-13). Structural, so a `ChangeEvent` and a toast entry both satisfy it without either
+ * module importing the other.
+ */
+export interface EntityReference {
+  readonly type: string;
+  readonly scope: string;
+}
+
+/**
+ * Whether `screen` shows the entity `event` names, in the namespace the shell is scoped to
+ * (AD-13, AD-14): the type is the screen's primary or one of its secondaries, and the scope is
+ * the one the screen's declared `scope` resolves to.
+ *
+ * **One predicate, two callers, and that is the point.** `RefreshService` asks it to decide
+ * whether to re-fetch and highlight; the toast store asks it to decide whether to raise a toast
+ * at all, which is the same question with the opposite answer. Two inline copies would be two
+ * answers, and a screen that re-fetched *and* raised a toast -- or did neither -- is exactly the
+ * divergence AD-14's last sentence is about.
+ */
+export function screenShowsEntity(
+  screen: ScreenDeclaration,
+  event: EntityReference,
+  namespace: string
+): boolean {
+  const types = [screen.entityType, ...screen.secondaryEntityTypes].filter((type) => type !== '');
+  if (!types.includes(event.type)) return false;
+  return event.scope === scopeFor(screen.scope, namespace);
+}
+
+/** The screen a change can be opened in, and the route that opens it with the entity named. */
+export interface ChangeTarget {
+  readonly screen: ScreenDeclaration;
+  readonly route: string;
+}
+
+/**
+ * The built screen that shows `type`, with the route that opens it on `id`, or `null` when no
+ * built screen shows that entity type (AD-5, AD-13).
+ *
+ * The route is the screen's own plus the entity as one percent-encoded segment, through the one
+ * shared encoder -- never a second grammar -- so the locator bar reads the entity the toast
+ * named. A screen whose descriptor declares no id route takes the bare route: there is no segment
+ * for the entity to occupy, and appending one would be a URL the route table does not hold.
+ *
+ * `null` is not a fault. It is the "a type no built screen shows" row of this story's matrix: the
+ * toast still says what changed, with no action to offer.
+ */
+export function screenForChange(event: { readonly type: string; readonly id: string }): ChangeTarget | null {
+  const screen = screenForEntityType(event.type);
+  if (screen === null) return null;
+  const route =
+    hasIdRoute(screen) && event.id !== '' ? `${screen.route}/${encodeEntityId(event.id)}` : screen.route;
+  return { screen, route };
 }
 
 /** Whether a screen is keyed by an id, and therefore carries an `/:id` route. */

@@ -161,6 +161,7 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
         Do $$$AssertEquals(tResolved, 1, tTool.name _ ": its pairs are read")
         Set tArgs = {}
         If tTool.class = "OcuPilot.Screen.Tool.ErrorRead" Set tArgs = {"namespace": ($Namespace), "date": "09/16/2026"}
+        If tTool.class = "OcuPilot.Screen.Tool.ErrorDelete" Set tArgs = {"namespace": ($Namespace)}
         Set tAdded = $ClassMethod(..#REGISTRY, "ArgumentPairs", tTool, tArgs, .tAddedResolved)
         Do $$$AssertEquals(tAddedResolved, 1, tTool.name _ ": the pairs its arguments add are read")
         Set tExpectedAdded = ""
@@ -177,6 +178,31 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
                 Set tOtherAdded = $ClassMethod(..#REGISTRY, "ArgumentPairs", tTool, {"namespace": (tOther), "date": "09/16/2026"}, .tOtherResolved)
                 Do $$$AssertTrue(tOtherResolved && $ListFind(tOtherAdded, $ListBuild(tOtherResource, "WRITE")) && '$ListFind(tOtherAdded, $ListBuild(tResource, "WRITE")), tTool.name _ ": a call naming " _ tOther _ " adds that namespace's database pairs, not this one's")
             }
+        } ElseIf tTool.class = "OcuPilot.Screen.Tool.ErrorDelete" {
+            ; Story 5.13: a write tool whose gate is resolved PER NAMESPACE (AD-48) -- `^ERRORS`
+            ; lives in each namespace's own globals database, so a single static descriptor
+            ; resource cannot express what this delete requires. Its screen's pairs are the floor
+            ; and its arguments add the selected namespace's globals-database resource at WRITE.
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Set tExpectedAdded = ##class(OcuPilot.Port.LogSourcePort).PairsFor(##class(OcuPilot.Port.LogSourcePort).#ERRORSKEY, $Namespace)
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase($Namespace, .tResource, .tReadOnly) && $ListFind(tAdded, $ListBuild(tResource, "WRITE")), tTool.name _ ": the selected namespace's globals database is required at WRITE")
+            Set tOther = ..OtherNamespace(tResource, .tOtherResource)
+            Do $$$AssertTrue(tOther '= "", tTool.name _ ": this instance has a namespace whose globals database another resource guards")
+            If tOther '= "" {
+                Set tOtherAdded = $ClassMethod(..#REGISTRY, "ArgumentPairs", tTool, {"namespace": (tOther)}, .tOtherResolved)
+                Do $$$AssertTrue(tOtherResolved && $ListFind(tOtherAdded, $ListBuild(tOtherResource, "WRITE")) && '$ListFind(tOtherAdded, $ListBuild(tResource, "WRITE")), tTool.name _ ": another namespace resolves that namespace's resource and not this one's")
+            }
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.Write") {
+            ; Story 5.1: a write tool is a class of its own, so its pairs are its descriptor's
+            ; together with the pair the write itself names (AD-8). DW-1208: that pair is the one
+            ; the vendor's own editor checks, which the screen already declares, so the set does
+            ; not grow -- and the barrier a write crosses beyond a read is the confirm transition
+            ; (AD-34, AD-40), never a privilege delta.
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Set tOwnPair = $ListBuild($Parameter(tTool.class, "WRITERESOURCE"), $Parameter(tTool.class, "WRITEPERMISSION"))
+            If '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Kernel.Shell.ReadTool") {
             Set tExpected = ""
         } ElseIf tTool.class = "OcuPilot.Screen.Tool.Navigate" {
@@ -191,7 +217,7 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             Do $$$AssertTrue(0, tTool.name _ ": a live tool of a source this test does not know, " _ tTool.class)
             Continue
         }
-        Do $$$AssertEquals(tPairs, tExpected, tTool.name _ ": requires exactly its screen's pairs")
+        Do $$$AssertEquals(tPairs, tExpected, tTool.name _ ": requires exactly its screen's pairs, plus its own write permission where it has one")
         Do $$$AssertEquals(tAdded, tExpectedAdded, tTool.name _ ": and exactly the pairs its arguments add")
     }
 }

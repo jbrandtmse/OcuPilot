@@ -42,4 +42,11 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
     }
 }
 
+/// <p>Declared: none (AD-3). This tool takes no arguments at all.</p>
+ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Boolean) As %List
+{
+    Set pDeclared = 1
+    Quit ""
+}
+
 }

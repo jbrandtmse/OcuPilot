@@ -111,14 +111,16 @@ Parameter ERRORSINSTANCEPAIRS = "%Admin_Operate:USE,%DB_IRISSYS:READ";
 /// namespace's globals database, appended to <parameter>ERRORSINSTANCEPAIRS</parameter> in this
 /// order (AD-8: the gate names the first pair a caller does not hold, so the order is part of the
 /// contract -- append, never prepend).</p>
-/// <p><b>WRITE for a read is deliberate</b>: <file>epics.md</file>, the epic context and AD-48 all
-/// record the requirement as <code>%Admin_Operate</code> plus read <i>and</i> write on that
-/// database, which is what the classic portal asks of a screen that also deletes. The consequence,
-/// stated so it is not discovered later: a principal who could read <code>^ERRORS</code> directly
-/// but holds no WRITE on that globals database is refused here, and a namespace whose globals
-/// database is mounted read-only can never satisfy the set. That is stricter than the data's own
-/// readability, so it does not contradict AD-29, whose rule is one-directional. Revisit when
-/// Epic 5 adds the delete the WRITE half belongs to.</p>
+/// <p><b>WRITE is the half the delete belongs to</b>, and one set serves both: <file>epics.md</file>,
+/// the epic context and AD-48 all record the requirement as <code>%Admin_Operate</code> plus read
+/// <i>and</i> write on that database, which is what the classic portal asks of a screen that also
+/// deletes. <method>Invoke</method>'s <parameter>TYPEDELETE</parameter> is that delete, and it is
+/// gated on this same set rather than on one of its own, so the privileges a user meets reading a
+/// namespace and deleting in it cannot drift apart. The consequence, stated so it is not discovered
+/// later: a principal who could read <code>^ERRORS</code> directly but holds no WRITE on that
+/// globals database is refused here, and a namespace whose globals database is mounted read-only
+/// can never satisfy the set. That is stricter than the data's own readability, so it does not
+/// contradict AD-29, whose rule is one-directional.</p>
 Parameter ERRORSDATABASEPERMISSIONS = "READ,WRITE";
 
 /// <p>The namespace <code>SYS.ApplicationError</code> lives in. The port enters it once per call,
@@ -130,6 +132,16 @@ Parameter ERRORSNAMESPACE = "%SYS";
 /// log (AD-48). No <code>^ERRORS</code> traversal of OcuPilot's own, and never
 /// <code>%CSP.ErrorLog</code>.</p>
 Parameter ERRORSQUERYCLASS = "SYS.ApplicationError";
+
+/// <p>The <parameter>ERRORSQUERYCLASS</parameter> method one date's named errors are removed
+/// through (AD-48). Dispatched by name for the reason every query is: the class exists only in
+/// <code>%SYS</code>, so a compile-time reference to it would not resolve in the install
+/// namespace.</p>
+/// <p><b>It is not <code>DeleteByNamespace</code>.</b> That method removes every error in the
+/// namespace for every date, which would destroy rows logged after the proposal; this one takes a
+/// comma-separated list of error numbers for one date, so the confirm removes exactly the ids the
+/// user reviewed.</p>
+Parameter DELETEBYERRORMETHOD = "DeleteByError";
 
 /// <p>The query answering the namespaces that hold application errors.</p>
 /// <p><b>It answers the set the caller can read.</b> Observed on a real least-privileged principal
@@ -184,6 +196,36 @@ Parameter LEVELDETAIL = "detail";
 /// <p>The fixed enum of drill levels, comma-separated. A route binds one of them, so no caller
 /// names a level either; a level outside this list is refused before anything else happens.</p>
 Parameter ERRORLEVELS = "namespaces,dates,list,detail";
+
+/// <p>The endpoint name <method>Invoke</method> serves, which is this port's one source key. A
+/// write tool declares it through <method>OcuPilot.Screen.Tool.Write.Endpoint</method> (AD-52).</p>
+Parameter ENDPOINTERRORS = "applicationerrors";
+
+/// <p><method>Invoke</method>'s read type: the enumeration of every <code>(date, errorNumber)</code>
+/// one namespace holds, which is the fresh read a delete proposal is minted from and the subject
+/// its fingerprint covers (AD-48, AD-51).</p>
+Parameter TYPEENUMERATE = "ENUMERATE";
+
+/// <p><method>Invoke</method>'s write type: remove the enumerated ids named in the call's own
+/// query, and nothing else.</p>
+Parameter TYPEDELETE = "DELETE";
+
+/// <p>The query parameter <method>Invoke</method> reads the target namespace from, which is the
+/// tool's own <method>OcuPilot.Screen.Tool.Write.IdParam</method>.</p>
+Parameter NAMESPACEPARAM = "namespace";
+
+/// <p>The query parameter both request types read an enumerated id set from, as the compact JSON
+/// of the array <parameter>TYPEENUMERATE</parameter> answered.</p>
+/// <p>A <parameter>TYPEDELETE</parameter> whose query carries no such set removes nothing and is
+/// refused: re-running the selection at confirm time would delete rows the user never saw
+/// (AD-48).</p>
+/// <p>A <parameter>TYPEENUMERATE</parameter> whose query carries one answers <b>that set narrowed
+/// to the ids the namespace still holds</b>, in the order it was given them, rather than
+/// enumerating afresh. That is what the confirm's fingerprint re-read asks: an id another party
+/// removed shortens the answer and the digest differs, while an error logged after the proposal is
+/// in no given set and leaves it untouched -- the residue AD-48 requires. A mint names no set and
+/// gets the whole enumeration.</p>
+Parameter ENTRIESPARAM = "entries";
 
 /// <p>The row cap an application-error read is bounded by when its caller names none (AD-36).
 /// <b>There is no ceiling</b>: a larger value is honoured, and anything that is not a whole number
@@ -461,20 +503,14 @@ ClassMethod Page(pSource As %String = "", pOffset As %String = "", pMaxBytes As 
 
         Set tPairs = ..PairsFor(pSource)
         If '$ListValid(tPairs) || ($ListLength(tPairs) = 0) {
-            ; An empty pair set is held by everyone (OcuPilot.Screen.Gate.EvaluatePairs), so a
-            ; source whose requirement is empty or unreadable is refused here rather than handed
-            ; to the gate, which would admit it. No pair is named: there is none to report.
-            Set tSC = ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "This account may not read that log source", .pHttpStatus, .pFault)
+            ; A source whose requirement is empty or unreadable is refused here rather than
+            ; handed to the gate. No pair is named: there is none to report.
+            Set tSC = ..DeniedRefusal("", .pHttpStatus, .pFault)
             Quit
         }
         Set tFailedPair = ""
         If '..Gate(tPairs, .tFailedPair) {
-            Set tDetail = ""
-            If tFailedPair '= "" {
-                Set tDetail = {}
-                Do tDetail.%Set("failedPair", tFailedPair)
-            }
-            Set tSC = ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "This account may not read that log source", .pHttpStatus, .pFault, tDetail)
+            Set tSC = ..DeniedRefusal(tFailedPair, .pHttpStatus, .pFault)
             Quit
         }
 
@@ -777,16 +813,409 @@ ClassMethod Errors(pLevel As %String = "", pNamespace As %String = "", pDate As 
     Quit tSC
 }
 
+/// <p>The write path's port-uniform entry point (AD-52): one endpoint, two request types, the same
+/// signature <method>OcuPilot.Port.AdminPort.Invoke</method> answers, so the mint's fresh read, the
+/// confirm's fingerprint re-read, the prohibited set's live read and the confirmed write all reach
+/// this port exactly as they reach that one.</p>
+/// <p><var>pEndpoint</var> is <parameter>ENDPOINTERRORS</parameter> and <var>pType</var> is
+/// <parameter>TYPEENUMERATE</parameter> or <parameter>TYPEDELETE</parameter>; anything else is
+/// <code>PORT.NOTIMPLEMENTED</code>. <var>pQuery</var> carries the target namespace under
+/// <parameter>NAMESPACEPARAM</parameter> and, for the delete, the enumerated id set under
+/// <parameter>ENTRIESPARAM</parameter>. <var>pBody</var> is unread: neither type takes one.</p>
+/// <p><var>pResult</var> is a <class>%DynamicObject</class> on success and <code>""</code> on every
+/// refusal, with <var>pHttpStatus</var> the numeric status and <var>pFault</var> the wire fault
+/// (AD-12, AD-39).</p>
+/// <p><b>The gate is the read's</b> -- <method>PairsFor</method> on the target namespace, resolved
+/// outside the <code>%SYS</code> window and evaluated before any query runs, so a delete meets the
+/// same <code>(resource, permission)</code> set a read of that namespace does and the WRITE half
+/// this port has always declared is the half that decides it (AD-8, AD-29, AD-48).</p>
+/// <p>Must not be called from an escalated frame (AD-9); the caller's namespace is unchanged on
+/// return.</p>
+ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Try {
+        If (pEndpoint '= ..#ENDPOINTERRORS) || ((pType '= ..#TYPEENUMERATE) && (pType '= ..#TYPEDELETE)) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, "This instance does not implement that operation", .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tNamespace = $Get(pQuery(..#NAMESPACEPARAM))
+        Set tEntries = $Get(pQuery(..#ENTRIESPARAM))
+        Set tSC = ..ErrorSet(pType, tNamespace, tEntries, .pResult, .pHttpStatus, .pFault)
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the application error log failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>One <method>Invoke</method> call, gated and answered: the enumeration for
+/// <parameter>TYPEENUMERATE</parameter>, the removal for <parameter>TYPEDELETE</parameter>.</p>
+/// <p>The gate order is <method>Errors</method>'s, for its reasons: the instance pairs first, then
+/// the per-namespace set resolved <b>outside</b> the <code>%SYS</code> window, then the window,
+/// whose first act is to resolve the namespace against the instance's own enumeration.</p>
+ClassMethod ErrorSet(pType As %String, pNamespace As %String, pEntries As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        Set tFailedPair = ""
+        If '..Gate(..InstancePairs(), .tFailedPair) {
+            Set tSC = ..DeniedRefusal(tFailedPair, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tPairs = ..PairsFor(..#ERRORSKEY, pNamespace)
+        Set tResolved = $ListValid(tPairs) && ($ListLength(tPairs) > 0)
+        Set tGateOk = 0
+        If tResolved Set tGateOk = ..Gate(tPairs, .tFailedPair)
+
+        Set tReadSC = ..ErrorSetRun(pType, pNamespace, pEntries, tResolved, tGateOk, .tOutcome, .tResult)
+        If $$$ISERR(tReadSC) {
+            Set tSC = ..Fail("the application error log could not be " _ $Select(pType = ..#TYPEDELETE: "purged", 1: "enumerated"), tReadSC, .pHttpStatus, .pFault)
+            Quit
+        }
+        If tOutcome = "namespace" {
+            Set tSC = ..Refuse(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#LOGNAMESPACE, "This instance records no application errors for a namespace by that name", .pHttpStatus, .pFault)
+            Quit
+        }
+        If tOutcome = "unresolvable" {
+            Set tSC = ..DeniedRefusal("", .pHttpStatus, .pFault)
+            Quit
+        }
+        If tOutcome = "denied" {
+            Set tSC = ..DeniedRefusal(tFailedPair, .pHttpStatus, .pFault)
+            Quit
+        }
+        If tOutcome = "entries" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#LOGENTRY, "This delete names no application errors to remove", .pHttpStatus, .pFault)
+            Quit
+        }
+        If '$IsObject(tResult) {
+            Set tSC = ..Fail("the application error log answered no payload", $$$ERROR($$$GeneralError, "no payload"), .pHttpStatus, .pFault)
+            Quit
+        }
+        Set pResult = tResult
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the application error log failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The one <code>%SYS</code> window an enumeration or a removal takes (AD-16), entered once and
+/// restored on both paths and as the <b>first</b> line of the <code>Catch</code>, never entered
+/// into the namespace being acted on -- that one travels as each query's and each delete's own
+/// first parameter.</p>
+/// <p><b>Nothing here dispatches an <code>OcuPilot.*</code> class.</b> <var>pOutcome</var> is a
+/// word the caller turns into a refusal after the restore.</p>
+/// <p><var>pResolved</var> and <var>pGateOk</var> are the pair set's own answers, taken before this
+/// window opened and read after the namespace membership test, which is what "the gate runs before
+/// any per-namespace query" means in execution order.</p>
+ClassMethod ErrorSetRun(pType As %String, pNamespace As %String, pEntries As %String, pResolved As %Boolean, pGateOk As %Boolean, Output pOutcome As %String, Output pResult As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pOutcome = ""
+    Set pResult = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#ERRORSNAMESPACE
+
+        Set tSC = ..NamespaceSpelling(pNamespace, .tSpelling)
+        If $$$ISERR(tSC) Quit
+        If tSpelling = "" {
+            Set pOutcome = "namespace"
+            Quit
+        }
+        If 'pResolved {
+            Set pOutcome = "unresolvable"
+            Quit
+        }
+        If 'pGateOk {
+            Set pOutcome = "denied"
+            Quit
+        }
+
+        If pType = ..#TYPEENUMERATE {
+            If pEntries '= "" {
+                Set tSC = ..SurvivingIdRows(tSpelling, pEntries, .tEntries)
+                Set tTruncated = 0
+            } Else {
+                Set tSC = ..ErrorIdRows(tSpelling, ..#DEFAULTMAXROWS, .tEntries, .tTruncated)
+            }
+            If $$$ISERR(tSC) Quit
+            Set pResult = {}
+            Do pResult.%Set("namespace", tSpelling)
+            Do pResult.%Set("entries", tEntries)
+            Do pResult.%Set("count", tEntries.%Size(), "number")
+            Do pResult.%Set("truncated", ''tTruncated, "boolean")
+            Quit
+        }
+
+        Set tSC = ..RemoveErrorIds(tSpelling, pEntries, .tRemoved, .tDates)
+        If $$$ISERR(tSC) Quit
+        If tRemoved = 0 {
+            Set pOutcome = "entries"
+            Quit
+        }
+        Set pResult = {}
+        Do pResult.%Set("namespace", tSpelling)
+        Do pResult.%Set("removed", tRemoved, "number")
+        Do pResult.%Set("dates", tDates, "number")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pOutcome = ""
+        Set pResult = ""
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>The instance's own spelling of <var>pNamespace</var> in <var>pSpelling</var>, or
+/// <code>""</code> for a name <code>NamespaceList</code> does not answer with.</p>
+/// <p><b>The match folds case and the answer does not.</b> An <code>application-error</code>
+/// reference canonicalizes its id to lower case (AD-13), because
+/// <code>SYS.ApplicationError</code> resolves a namespace case-insensitively -- measured
+/// 2026-09-22, six identical <code>DateList</code> rows for <code>HSCUSTOM</code>,
+/// <code>hscustom</code> and <code>HsCustom</code> -- so the mint is handed the agent's spelling and
+/// the confirm the canonical one. Answering the instance's own spelling to both is what makes the
+/// enumeration, and so the fingerprint taken over it, the same value at both ends.</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> is already
+/// <parameter>ERRORSNAMESPACE</parameter>.</p>
+ClassMethod NamespaceSpelling(pNamespace As %String, Output pSpelling As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pSpelling = ""
+    Set tRS = ""
+    Try {
+        If pNamespace = "" Quit
+        Set tWanted = $ZConvert(pNamespace, "U")
+        Set tSC = ..OpenQuery(..#NAMESPACELISTQUERY, .tRS)
+        If $$$ISERR(tSC) Quit
+        Set tSC = tRS.Execute(..#NAMESPACELISTALL)
+        If $$$ISERR(tSC) Quit
+        While tRS.Next() {
+            If $ZConvert(tRS.Get("Namespace"), "U") = tWanted {
+                Set pSpelling = tRS.Get("Namespace")
+                Quit
+            }
+        }
+    } Catch ex {
+        Set pSpelling = ""
+        Set tSC = ex.AsStatus()
+    }
+    If $IsObject(tRS) Do tRS.Close()
+    Quit tSC
+}
+
+/// <p>Every <code>(date, errorNumber)</code> <var>pNamespace</var> holds, in <var>pRows</var>, in
+/// the order <code>DateList</code> and <code>ErrorList</code> answer them, bounded by
+/// <var>pMaxRows</var> across the whole set with <var>pTruncated</var> true when it was cut.</p>
+/// <p><b>It is the identifying triple and nothing else</b> (AD-48). The row carries no error text,
+/// no routine, no code line and no captured payload: this set is what a proposal stores, digests
+/// and shows, and none of those surfaces is one the captured variable table may reach (AD-24,
+/// AD-35).</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> is already
+/// <parameter>ERRORSNAMESPACE</parameter> and <var>pNamespace</var> is the instance's own
+/// spelling.</p>
+ClassMethod ErrorIdRows(pNamespace As %String, pMaxRows As %Integer, Output pRows As %DynamicArray, Output pTruncated As %Boolean) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pRows = []
+    Set pTruncated = 0
+    Set tDates = ""
+    Set tRS = ""
+    Try {
+        Set tSC = ..OpenQuery(..#DATELISTQUERY, .tRS)
+        If $$$ISERR(tSC) Quit
+        Set tSC = tRS.Execute(pNamespace)
+        If $$$ISERR(tSC) Quit
+        While tRS.Next() {
+            Set tDate = tRS.Get("Date")
+            If tDate = "" Continue
+            Set tDates = tDates _ $ListBuild(tDate)
+        }
+        Do tRS.Close()
+        Set tRS = ""
+
+        For tI = 1:1:$ListLength(tDates) {
+            Set tDate = $List(tDates, tI)
+            Set tSC = ..OpenQuery(..#ERRORLISTQUERY, .tRS)
+            If $$$ISERR(tSC) Quit
+            Set tSC = tRS.Execute(pNamespace, tDate)
+            If $$$ISERR(tSC) Quit
+            While tRS.Next() {
+                If pRows.%Size() >= pMaxRows {
+                    Set pTruncated = 1
+                    Quit
+                }
+                Set tRow = {}
+                Do tRow.%Set("date", tDate)
+                Do tRow.%Set("errorNumber", +tRS.Get("Error #"), "number")
+                Do pRows.%Push(tRow)
+            }
+            Do tRS.Close()
+            Set tRS = ""
+            If pTruncated Quit
+        }
+    } Catch ex {
+        Set pRows = []
+        Set pTruncated = 0
+        Set tSC = ex.AsStatus()
+    }
+    If $IsObject(tRS) Do tRS.Close()
+    Quit tSC
+}
+
+/// <p>The entries <var>pEntriesJson</var> names that <var>pNamespace</var> still holds, in
+/// <var>pRows</var>, in the order they were given -- so an id that has gone shortens the answer
+/// and nothing else about the namespace can change it.</p>
+/// <p><b>Presence is asked per named date, never through the capped enumeration.</b> A namespace
+/// holding more than <parameter>DEFAULTMAXROWS</parameter> errors would answer a cut set, and an
+/// id beyond the cut would read as removed -- refusing a confirm over an error that is still
+/// there.</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> is already
+/// <parameter>ERRORSNAMESPACE</parameter> and <var>pNamespace</var> is the instance's own
+/// spelling.</p>
+ClassMethod SurvivingIdRows(pNamespace As %String, pEntriesJson As %String, Output pRows As %DynamicArray) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pRows = []
+    Set tRS = ""
+    Try {
+        Set tSC = ..RequestedIds(pEntriesJson, .tByDate, .tOrder, .tRequested)
+        If $$$ISERR(tSC) Quit
+        Kill tPresent
+        For tI = 1:1:$ListLength(tOrder) {
+            Set tDate = $List(tOrder, tI)
+            Set tSC = ..OpenQuery(..#ERRORLISTQUERY, .tRS)
+            If $$$ISERR(tSC) Quit
+            Set tSC = tRS.Execute(pNamespace, tDate)
+            If $$$ISERR(tSC) Quit
+            While tRS.Next() {
+                Set tPresent(tDate, +tRS.Get("Error #")) = ""
+            }
+            Do tRS.Close()
+            Set tRS = ""
+        }
+        If $$$ISERR(tSC) Quit
+        For tI = 1:1:$ListLength(tRequested) {
+            Set tEntry = $List(tRequested, tI)
+            Set tDate = $List(tEntry, 1)
+            Set tNumber = $List(tEntry, 2)
+            If '$Data(tPresent(tDate, tNumber)) Continue
+            Set tRow = {}
+            Do tRow.%Set("date", tDate)
+            Do tRow.%Set("errorNumber", tNumber, "number")
+            Do pRows.%Push(tRow)
+        }
+    } Catch ex {
+        Set pRows = []
+        Set tSC = ex.AsStatus()
+    }
+    If $IsObject(tRS) Do tRS.Close()
+    Quit tSC
+}
+
+/// <p><var>pEntriesJson</var> read as an id set: <var>pByDate</var> the comma-separated error
+/// numbers per date, <var>pOrder</var> the dates in the order they first appear, and
+/// <var>pRequested</var> the whole set as <code>$ListBuild(date, number)</code> pairs in the order
+/// given.</p>
+/// <p>An entry carrying no date or no whole error number above zero is an error, never a skipped
+/// row: a set this method cannot read whole is one no caller may act on part of.</p>
+ClassMethod RequestedIds(pEntriesJson As %String, Output pByDate, Output pOrder As %List, Output pRequested As %List) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pByDate
+    Set pOrder = ""
+    Set pRequested = ""
+    Try {
+        Set tParsed = ""
+        If pEntriesJson '= "" Set tParsed = ##class(%DynamicAbstractObject).%FromJSON(pEntriesJson)
+        If '$IsObject(tParsed) || 'tParsed.%IsA("%Library.DynamicArray") Quit
+        Set tIterator = tParsed.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tEntry) {
+            If '$IsObject(tEntry) Continue
+            Set tDate = tEntry.%Get("date")
+            Set tNumber = tEntry.%Get("errorNumber")
+            If (tDate = "") || '$Match(tNumber, "^[1-9][0-9]*$") {
+                Set tSC = $$$ERROR($$$GeneralError, "an enumerated application error carried no date or no error number")
+                Quit
+            }
+            If '$Data(pByDate(tDate)) {
+                Set pByDate(tDate) = ""
+                Set pOrder = pOrder _ $ListBuild(tDate)
+            }
+            If pByDate(tDate) '= "" Set pByDate(tDate) = pByDate(tDate) _ ","
+            Set pByDate(tDate) = pByDate(tDate) _ +tNumber
+            Set pRequested = pRequested _ $ListBuild($ListBuild(tDate, +tNumber))
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) {
+        Kill pByDate
+        Set pOrder = ""
+        Set pRequested = ""
+    }
+    Quit tSC
+}
+
+/// <p>Remove exactly the ids <var>pEntriesJson</var> names from <var>pNamespace</var>, through
+/// <code>SYS.ApplicationError</code>'s <code>DeleteByError</code> once per enumerated date, with
+/// how many ids were named in <var>pRemoved</var> and how many dates in <var>pDates</var>.</p>
+/// <p><b><code>DeleteByNamespace</code> is not what this calls, and that is the point</b> (AD-48).
+/// It removes every error in the namespace for every date, which would destroy rows logged after
+/// the proposal and never shown to the user -- the outcome the enumerated-id-set fingerprint exists
+/// to prevent. <code>DeleteByError</code> takes a comma-separated list of error numbers for one
+/// date (the vendor's own doc comment), so one call per date removes exactly the reviewed set and
+/// leaves the residue.</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> is already
+/// <parameter>ERRORSNAMESPACE</parameter> and <var>pNamespace</var> is the instance's own spelling.
+/// An entry list that names nothing leaves <var>pRemoved</var> 0 and deletes nothing, which the
+/// caller refuses.</p>
+/// <p><b><var>pRemoved</var> is how many ids were named, not how many rows the vendor removed</b>
+/// -- <code>DeleteByError</code> answers a status and no count, and an id another party removed
+/// between the fingerprint re-read and this call is named here and counted. Nothing may report it
+/// to a user as a measurement. On a failure part-way through a multi-date set it is reset to 0
+/// while the dates before the failure are already gone, so the error the caller raises means "this
+/// delete did not complete", never "nothing was removed".</p>
+ClassMethod RemoveErrorIds(pNamespace As %String, pEntriesJson As %String, Output pRemoved As %Integer, Output pDates As %Integer) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pRemoved = 0
+    Set pDates = 0
+    Try {
+        Set tSC = ..RequestedIds(pEntriesJson, .tByDate, .tOrder, .tRequested)
+        If $$$ISERR(tSC) Quit
+        Set pRemoved = $ListLength(tRequested)
+        For tI = 1:1:$ListLength(tOrder) {
+            Set tDate = $List(tOrder, tI)
+            Set tSC = $ClassMethod(..QueryClass(), ..#DELETEBYERRORMETHOD, pNamespace, tDate, tByDate(tDate))
+            If $$$ISERR(tSC) Quit
+            Set pDates = pDates + 1
+        }
+        If $$$ISERR(tSC) Set pRemoved = 0
+    } Catch ex {
+        Set pRemoved = 0
+        Set pDates = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>The 403 a refused pair set answers with, naming <var>pFailedPair</var> as the envelope's
 /// <code>detail.failedPair</code> when there is one to name (AD-8, AD-39).</p>
+/// <p>The code, the sentence and the detail are <class>OcuPilot.Kernel.Denial</class>'s, so this
+/// port's refusal and the one a screen read or a tool call produces for the same missing pair are
+/// the same refusal.</p>
 ClassMethod DeniedRefusal(pFailedPair As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
-    Set tDetail = ""
-    If pFailedPair '= "" {
-        Set tDetail = {}
-        Do tDetail.%Set("failedPair", pFailedPair)
-    }
-    Quit ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "This account may not read that log source", .pHttpStatus, .pFault, tDetail)
+    Quit ..Refuse(##class(OcuPilot.Kernel.Denial).#STATUS, ##class(OcuPilot.Kernel.Denial).Slug(), ##class(OcuPilot.Kernel.Denial).Code(), ##class(OcuPilot.Kernel.Denial).Reason(), .pHttpStatus, .pFault, ##class(OcuPilot.Kernel.Denial).Detail(pFailedPair))
 }
 
 /// <p>The one <code>%SYS</code> window an application-error read takes (AD-16): entered once,
@@ -1174,9 +1603,12 @@ ClassMethod DetailRows(pType As %Integer, pNamespace As %String, pDate As %Strin
 /// <p>Whether the calling process holds every pair in <var>pPairs</var>, asked of
 /// <method>GateClass</method>'s evaluator so the check and the spelling of a failure are the
 /// gate's and not a second copy (the <class>OcuPilot.Api.Namespaces</class> idiom).</p>
+/// <p><b>A requirement that names no pair is never held</b> (DW-1120): this asks
+/// <method>EvaluateRequired</method>, not <method>EvaluatePairs</method>, so a pair set that
+/// resolved to nothing fails closed at the port instead of opening it to everyone.</p>
 ClassMethod Gate(pPairs As %List, Output pFailedPair As %String) As %Boolean [ Private ]
 {
-    Quit $ClassMethod(..GateClass(), "EvaluatePairs", pPairs, .pFailedPair)
+    Quit $ClassMethod(..GateClass(), "EvaluateRequired", pPairs, .pFailedPair)
 }
 
 /// <p>The path source <var>pSource</var> reads, resolved from <method>ManagerDirectory</method>

@@ -49,6 +49,23 @@ Class OcuPilot.Kernel.State.Base Extends %Persistent [ Abstract ]
 /// of the string.</p>
 Parameter APPLICATION As %String = "OcuPilotState";
 
+/// <p>Name of the <b>second</b> privileged routine application, the one AD-9's identity read
+/// escalates through (DW-444). It grants the resources
+/// <method>Security.Users.Get</method> requires and nothing else, and reaches none of
+/// OcuPilot's own data -- so no guarded storage call gains any privilege from its existing. Its
+/// <code>Routines</code> entry admits this file, which is the same whole-class granularity
+/// <parameter>APPLICATION</parameter> has: the containment is the file, not the method.
+/// Kernel-visible for the reason <parameter>APPLICATION</parameter> is: the installer creates
+/// it and the uninstall confirmation lists it.</p>
+Parameter IDENTITYAPPLICATION As %String = "OcuPilotIdentity";
+
+/// <p>The resource set <parameter>IDENTITYAPPLICATION</parameter>'s role grants, comma-separated
+/// as <code>resource:permission</code>. Measured on a throwaway as a least-privileged principal,
+/// not inherited: <code>Security.Users.Get</code> answers <code>ERROR #822: Access Denied</code>
+/// without <code>%Admin_Secure</code>, and database READ <i>is</i> routine-execution permission,
+/// so the class cannot be executed in <code>%SYS</code> without <code>%DB_IRISSYS</code>.</p>
+Parameter IDENTITYRESOURCES As %String = "%Admin_Secure:U,%DB_IRISSYS:R";
+
 /// <p>Name of OcuPilot's protected-state database (AD-9).</p>
 Parameter DATABASENAME As %String = "OCUPILOT";
 
@@ -177,12 +194,14 @@ ClassMethod GuardedSaveIfCurrent(pObject As Base, pExpected As %Integer = 0) As 
 {
     Set tSC = $$$OK
     Set tInTx = 0
+    Set tPriorVersion = ""
     New $ROLES
     Try {
         Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
         If $$$ISERR(tSC) Quit
         Set tNext = +pExpected + 1
         If pObject.%Id() = "" {
+            Set tPriorVersion = pObject.RowVersion
             Set pObject.RowVersion = 1
             Set tSC = pObject.%Save()
             Quit
@@ -203,16 +222,24 @@ ClassMethod GuardedSaveIfCurrent(pObject As Base, pExpected As %Integer = 0) As 
             Set tSC = $$$ERROR($$$GeneralError, ..#STALESAVEREASON)
             Quit
         }
+        Set tPriorVersion = pObject.RowVersion
         Set pObject.RowVersion = tNext
         Set tSC = pObject.%Save()
         If $$$ISERR(tSC) Quit
         TCOMMIT
         Set tInTx = 0
+        Set tPriorVersion = ""
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     If tInTx {
         TROLLBACK 1
+    }
+    ; The rolled-back row still reads the version it was read at, so the in-memory copy must
+    ; too: a caller that fixes the cause and retries the same object would otherwise send a
+    ; version the row never carried and be refused for ever.
+    If $$$ISERR(tSC) && (tPriorVersion '= "") {
+        Set pObject.RowVersion = tPriorVersion
     }
     Quit tSC
 }
@@ -449,6 +476,44 @@ ClassMethod GuardedTurnSlotUnlock(pUser As %String) As %Status [ Private ]
     Quit tSC
 }
 
+/// <p>Take the proposal target lock
+/// <code>^OcuPilotProposalTarget(</code><var>pKey</var><code>)</code>, waiting at most
+/// <var>pTimeout</var> seconds. <var>pHeld</var> is 1 when this process now holds it.</p>
+/// <p>The lock outlives this frame and is released by <method>GuardedTargetUnlock</method> or by
+/// the process ending. Reach it through <code>..</code> dispatch from
+/// <class>OcuPilot.Kernel.State.Propose</class>, whose claim is the only caller.</p>
+ClassMethod GuardedTargetLock(pKey As %String, pTimeout As %Integer, Output pHeld As %Boolean) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pHeld = 0
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Lock +^OcuPilotProposalTarget(pKey):+pTimeout
+        Set pHeld = $Test
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Release one hold of the proposal target lock <var>pKey</var>. Releasing a lock this process
+/// does not hold changes nothing.</p>
+ClassMethod GuardedTargetUnlock(pKey As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Lock -^OcuPilotProposalTarget(pKey)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Set the scalar signal node <code>^OcuPilotTurnSignal(</code><var>pKey</var><code>,
 /// </code><var>pName</var><code>)</code> to <var>pValue</var>.</p>
 ClassMethod GuardedTurnSignalSet(pKey As %String, pName As %String, pValue As %String) As %Status [ Private ]
@@ -494,6 +559,104 @@ ClassMethod GuardedTurnSignalKill(pKey As %String) As %Status [ Private ]
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Whether the IRIS account <var>pUserName</var> is enabled, read through the identity
+/// escalation (AD-8 as amended 2026-09-19, AD-9, DW-444). <var>pKnown</var> is 1 only when the
+/// flag was actually read; a caller that treats <code>pKnown</code> 0 as "enabled" has invented a
+/// permission, and <class>OcuPilot.Kernel.Identity</class> is the one caller and does not.</p>
+/// <p><b>The narrowest escalation in the tree.</b> One argument, one field, one boolean answer,
+/// through <parameter>IDENTITYAPPLICATION</parameter> rather than
+/// <parameter>APPLICATION</parameter>, so a frame that can read this flag can read none of
+/// OcuPilot's own data and a guarded storage frame gains nothing. The role is obtained in this
+/// method's own frame and is gone when the frame unwinds, on the exception path as well.</p>
+/// <p>It calls no tool, no port and no provider, and starts no process, so AD-9's two ordering
+/// rules hold unchanged. The <code>%SYS</code> window is the explicit save-and-restore pair
+/// (AD-16), restored as the first line of the <code>Catch</code>.</p>
+/// <p><var>pUnavailable</var> is 1 when the escalation itself could not be entered -- the
+/// application or its role is absent, disabled or no longer grants
+/// <parameter>IDENTITYRESOURCES</parameter> -- and 0 whenever the escalation was in effect,
+/// whatever the read then found. <b>The two are different facts and a caller must not merge
+/// them:</b> <code>pKnown</code> 0 with <code>pUnavailable</code> 0 is a statement about the
+/// account, while <code>pUnavailable</code> 1 is a statement about OcuPilot's own install, and
+/// reporting the second as the first tells every user their account is disabled (AD-38's
+/// <code>unreadable</code> distinction, applied to this read).</p>
+ClassMethod GuardedUserEnabled(pUserName As %String, Output pKnown As %Boolean, Output pUnavailable As %Boolean) As %Boolean
+{
+    Set pKnown = 0
+    Set pUnavailable = 0
+    Set tEnabled = 0
+    If pUserName = "" Quit 0
+    Set tEscalated = 0
+    New $ROLES
+    Set tOriginalNs = $NAMESPACE
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#IDENTITYAPPLICATION)
+        If $$$ISERR(tSC) Quit
+        ; The positive check that the escalation took. AddRoles reports success for an
+        ; application whose role has since lost a resource, so the status alone does not say
+        ; the read can be done; this asks the process directly.
+        If '..IdentityGrantsInEffect() Quit
+        Set tEscalated = 1
+        ; Entered through the harvested pair while an OcuPilot class still resolves; LEFT by a
+        ; plain assignment, because inside %SYS a dispatch to OcuPilot.Kernel.Utils raises
+        ; <CLASS DOES NOT EXIST> and the restore would never run (AD-16, the installer's idiom).
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOriginalNs)
+        If $$$ISERR(tSC) Quit
+        Kill tProperties
+        Set tSC = ##class(Security.Users).Get(pUserName, .tProperties)
+        If $$$ISERR(tSC) Quit
+        If '$Data(tProperties("Enabled")) Quit
+        Set tEnabled = ''+$Get(tProperties("Enabled"))
+        Set pKnown = 1
+        ; Security.Users.Get fills the array with every property of the account, the password
+        ; hash and salt among them, to answer one boolean. Drop it here rather than let it live
+        ; to the frame's end (AD-35).
+        Kill tProperties
+    } Catch ex {
+        Set $NAMESPACE = tOriginalNs
+        Set pKnown = 0
+        Set tEnabled = 0
+        Kill tProperties
+        ; A raise past the grant check is a <PROTECT> on Security.Users in %SYS, which is the
+        ; same install fault by another route -- not a fact about the account.
+        Set tEscalated = 0
+    }
+    Set $NAMESPACE = tOriginalNs
+    Set pUnavailable = 'tEscalated
+    Quit tEnabled
+}
+
+/// <p>Whether this process actually holds every pair
+/// <parameter>IDENTITYRESOURCES</parameter> declares. Called inside
+/// <method>GuardedUserEnabled</method>'s escalated frame as the oracle for "the escalation is in
+/// effect": it asks the same question <method>Security.Users.Get</method> will ask, before the
+/// answer can be confused with one about the account.</p>
+/// <p>It escalates nothing of its own and is meaningless outside an escalated frame.</p>
+ClassMethod IdentityGrantsInEffect() As %Boolean [ Private ]
+{
+    Set tHeld = 1
+    Try {
+        For tI = 1:1:$Length(..#IDENTITYRESOURCES, ",") {
+            Set tPair = $Piece(..#IDENTITYRESOURCES, ",", tI)
+            Set tResource = $Piece(tPair, ":", 1)
+            Set tPermission = $Piece(tPair, ":", 2)
+            If tPermission = "U" Set tPermission = "USE"
+            If tPermission = "R" Set tPermission = "READ"
+            If tPermission = "W" Set tPermission = "WRITE"
+            If (tResource = "") || (tPermission = "") {
+                Set tHeld = 0
+                Quit
+            }
+            If '$System.Security.Check(tResource, tPermission) {
+                Set tHeld = 0
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tHeld = 0
+    }
+    Quit tHeld
 }
 
 /// <p>Test-only introspection: returns the process's <code>$ROLES</code> as observed
@@ -783,6 +946,38 @@ ClassMethod GuardedIdsWhere(pSql As %String, pParam As %String, Output pIds) As 
     Quit tSC
 }
 
+/// <p>Two-<b>column</b> sibling of <method>GuardedIdsWhere</method>, for a query returning
+/// exactly two columns and binding one parameter: each row lands as a pair,
+/// <var>pPairs(n)</var> the first column and <var>pPairs(n, 2)</var> the second.</p>
+/// <p>It exists so a caller needing two columns runs <b>one</b> statement. Two separately executed
+/// single-column reads paired by ordinal are aligned only while nothing deletes a row between
+/// them, which no caller can guarantee and no caller can detect; they also escalate twice for one
+/// answer. Same call-site-literal and <code>Private</code> rules as
+/// <method>GuardedIdsWhere</method>.</p>
+ClassMethod GuardedPairsWhere(pSql As %String, pParam As %String, Output pPairs) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pPairs
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql, pParam)
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedPairsWhere failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        While tRS.%Next() {
+            Set tIndex = $Increment(pPairs)
+            Set pPairs(tIndex) = tRS.%GetData(1)
+            Set pPairs(tIndex, 2) = tRS.%GetData(2)
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Two-parameter sibling of <method>GuardedIdsWhere</method>, for a query whose
 /// <code>WHERE</code> clause binds two values (<class>OcuPilot.Kernel.State.Turn</class>'s owner
 /// lookup by turn key and user name). Same call-site-literal and <code>Private</code> rules.</p>
@@ -891,6 +1086,49 @@ ClassMethod GuardedIdsBounded(pSelectPrefix As %String, pFragment As %String, pS
             Set pIds($Increment(pIds)) = tRS.%GetData(1)
         }
     } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Run the update <var>pSql</var> through the escalated frame with <var>pParams</var> bound in
+/// order, and answer in <var>pRowCount</var> how many rows it changed.</p>
+/// <p><b>The row count is the answer, not a diagnostic.</b> A conditional update whose
+/// <code>WHERE</code> clause carries the state it is claiming changes one row for the caller that
+/// wins and none for every other, so the count is what a single-winner claim reads. Callers that
+/// need several such statements to commit together open the transaction themselves; this method
+/// joins whatever transaction is already open and starts none of its own.</p>
+/// <p>Same call-site-literal and <code>Private</code> rules as
+/// <method>GuardedExecuteOneParam</method>: reach it through inherited (<code>..</code>) dispatch
+/// from a subclass in this package, with the statement spelled as a literal and every value
+/// bound.</p>
+ClassMethod GuardedExecuteRows(pSql As %String, ByRef pParams As %DynamicArray, Output pRowCount As %Integer) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pRowCount = 0
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Kill tArgs
+        Set tArgs = 0
+        If $IsObject($Get(pParams)) {
+            For tI = 0:1:pParams.%Size() - 1 {
+                Set tArgs($Increment(tArgs)) = pParams.%Get(tI)
+            }
+        }
+        If tArgs = 0 {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql)
+        } Else {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql, tArgs...)
+        }
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedExecuteRows failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        Set pRowCount = +tRS.%ROWCOUNT
+    } Catch ex {
+        Set pRowCount = 0
         Set tSC = ex.AsStatus()
     }
     Quit tSC

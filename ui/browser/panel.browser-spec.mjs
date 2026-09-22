@@ -24,14 +24,19 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { leaveFirstLoginGate, pathOf } from './shell-entry.mjs';
-import { rememberedShellMember, resetRememberedState } from './preferences-reset.mjs';
+import {
+  DEFINITIONS_PATH,
+  authHeader as sharedAuthHeader,
+  definitions as sharedDefinitions,
+  signedInAt as sharedSignedInAt,
+} from './panel-spec.mjs';
+import { rememberedShellMember } from './preferences-reset.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
 
 const USERS_URL = '/ocupilot/permissions/users?ns=HSCUSTOM';
 const FORM_URL = '/ocupilot/agent/definitions/edit?ns=HSCUSTOM';
-const DEFINITIONS_PATH = '/api/ocupilot/agent/definitions';
 const PREFIX = 'OcuPilotPanelProbe';
 
 let browser = null;
@@ -66,15 +71,11 @@ after(async () => {
 });
 
 function authHeader() {
-  return 'Basic ' + Buffer.from(`${config.username}:${config.password}`).toString('base64');
+  return sharedAuthHeader(config);
 }
 
 async function definitions() {
-  const answer = await fetch(`${config.origin}${DEFINITIONS_PATH}`, { headers: { Authorization: authHeader() } });
-  assert.ok(answer.ok, `the definitions list is readable (HTTP ${answer.status})`);
-  const body = await answer.json();
-  assert.ok(Array.isArray(body.definitions), `and projects a definitions array: ${JSON.stringify(body)}`);
-  return body.definitions;
+  return sharedDefinitions(config);
 }
 
 /** How many definitions this instance currently has enabled -- the state the panel renders on. */
@@ -119,24 +120,11 @@ async function enabledProbeDefinition() {
 }
 
 /** A fresh context signed in through the form, standing on `url` with the frame and the panel laid out. */
-async function signedInAt(url, viewport = config.viewport) {
-  // Story 15.5: the remembered screen and shell state lives on the instance now, keyed by the
-  // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
-  // own -- see `preferences-reset.mjs`.
-  await resetRememberedState();
-  const context = await browser.createBrowserContext();
-  const page = await context.newPage();
-  page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
-  await page.setViewport(viewport);
-  await page.goto(`${config.origin}${url}`, { waitUntil: 'networkidle2' });
-  await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
-  await page.type('#ocu-signin-user', config.username);
-  await page.type('#ocu-signin-password', config.password);
-  await page.click('.ocu-signin-card button[type="submit"]');
-  await page.waitForSelector('app-panel aside.ocu-panel', { timeout: config.navigationTimeoutMs });
-  await leaveFirstLoginGate(page, config.navigationTimeoutMs, url);
-  await page.waitForSelector('app-panel [role="separator"]', { timeout: config.navigationTimeoutMs });
-  return { context, page };
+async function signedInAt(url, viewport = config.viewport, mediaFeatures = null) {
+  // Story 15.5 (AD-50) resets the instance-held remembered state; that reset lives inside
+  // `panel-spec.mjs`'s `signedInAt` rather than here, so every caller of the shared helper gets
+  // it and no caller has to remember to.
+  return sharedSignedInAt(browser, config, url, viewport, mediaFeatures);
 }
 
 /**
@@ -183,7 +171,12 @@ async function composerReady(page) {
   }
 }
 
-/** The row's measured geometry: side bar, content region, its floor, the routed screen's `main`, the panel, and the page's own scroll. */
+/**
+ * The row's measured geometry: side bar, content region, its floor, the routed screen's `main`, the panel, and the page's own scroll.
+ *
+ * Local, not shared: the sibling spec's copy returns a different field set, and unifying them would
+ * change what a spec measures rather than remove a copy (DW-1151).
+ */
 function geometry(page) {
   return page.evaluate(() => {
     const box = (selector) => {
@@ -216,7 +209,9 @@ function geometry(page) {
 }
 
 /**
- * Wait for the panel's width transition to settle at `width`.
+ * Wait for the panel's width transition to settle at `width`. Local, not shared: the sibling
+ * spec's copy settles to a different tolerance, and unifying them would change a measurement
+ * (DW-1151).
  *
  * **Polled from the runner, not with `waitForFunction`.** Since Story 15.5 the remembered width
  * arrives from the instance after the first paint, so on a reloaded tab this waits on a change
@@ -581,6 +576,96 @@ test('The composer grows with its text to four lines and then scrolls, the foote
   } finally {
     if (context !== null) await context.close();
     await removeProbeDefinitions();
+  }
+});
+
+/**
+ * The composer row's two controls, and what the Send control's own rule resolved to.
+ *
+ * `intrinsic` is the width the control would take at its own content size, measured by setting
+ * `max-content` on the live element and putting the style attribute back -- so "the declared width
+ * is at least the label needs" is checked against this browser's own metrics rather than against a
+ * number copied into this file.
+ */
+function composerRow(page) {
+  return page.evaluate(() => {
+    const box = (query) => {
+      const node = document.querySelector(query);
+      if (node === null) return null;
+      const rect = node.getBoundingClientRect();
+      return { width: rect.width, scrollWidth: node.scrollWidth, clientWidth: node.clientWidth };
+    };
+    const send = document.querySelector('.ocu-panel-send');
+    const prior = send.getAttribute('style');
+    send.style.width = 'max-content';
+    send.style.flex = '0 0 auto';
+    const intrinsic = send.getBoundingClientRect().width;
+    if (prior === null) send.removeAttribute('style');
+    else send.setAttribute('style', prior);
+    return {
+      viewport: document.documentElement.clientWidth,
+      row: box('.ocu-panel-composer-row'),
+      composer: box('.ocu-panel-composer'),
+      send: box('.ocu-panel-send'),
+      sendClass: send.className,
+      sendLabel: send.textContent.trim(),
+      intrinsic,
+      declared: parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--ocu-panel-send-width')
+      ),
+    };
+  });
+}
+
+/**
+ * DW-1336. Send carried `.ocu-button-primary`'s `width: 100%`, which in the composer row is a flex
+ * base of the whole row, so the composer shrank to `min-width: 0` and the two swapped places:
+ * measured before the fix, Send 340.11px and the composer 26.89px of a 375px row at 1,280, and
+ * 260.13px against 26.88px of a 295px row at 900. The row did not overflow either way -- the
+ * composer absorbed all of it -- so this is a proportion assertion, not an overflow one, and the
+ * overflow leg is kept as the guard that the fix did not trade one failure for the other.
+ *
+ * Geometry, so it lives here: jsdom computes no layout and `panel.spec.ts` could only restate the
+ * class binding (Rule 19).
+ *
+ * Mutation (Rule 19): delete the base `.ocu-panel-send` rule from `_components.scss` -> this goes
+ * red at both viewports on the width and the proportion. The other two appearances are measured
+ * against the same token by `proposal-card.browser-spec.mjs` (a) and (b), which render them from a
+ * real turn.
+ */
+test('DW-1336: Send keeps its declared width and the composer is the wider control, at 1,280 and at 900', async () => {
+  for (const viewport of [1280, 900]) {
+    const { context, page } = await signedInAt(USERS_URL, { width: viewport, height: 900 });
+    try {
+      const shape = await composerRow(page);
+      assert.equal(shape.viewport, viewport, 'the viewport is the one this leg is about');
+      assert.equal(shape.sendLabel, STRINGS.actionSend, 'nothing is running, so the control reads Send');
+      assert.match(shape.sendClass, /ocu-button-primary/, 'and wears the filled appearance');
+
+      assert.ok(shape.declared > 0, 'the deployed bundle resolves --ocu-panel-send-width');
+      assert.ok(
+        Math.abs(shape.send.width - shape.declared) < 0.5,
+        `Send renders at its declared width: ${shape.send.width} against ${shape.declared} at ${viewport}`
+      );
+      assert.ok(
+        shape.declared >= shape.intrinsic,
+        `the declared width covers this appearance's label: intrinsic ${shape.intrinsic} at ${viewport}`
+      );
+      assert.ok(
+        shape.composer.width > shape.send.width,
+        `the composer is the wider control: composer ${shape.composer.width}, Send ${shape.send.width} at ${viewport}`
+      );
+      assert.ok(
+        shape.composer.width > shape.row.width / 2,
+        `and takes most of the row: composer ${shape.composer.width} of ${shape.row.width} at ${viewport}`
+      );
+      assert.ok(
+        shape.row.scrollWidth <= shape.row.clientWidth + 1,
+        `the row overflows nothing horizontally: ${JSON.stringify(shape.row)} at ${viewport}`
+      );
+    } finally {
+      await context.close();
+    }
   }
 });
 

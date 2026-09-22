@@ -97,10 +97,11 @@ ClassMethod GuardedOwner(pKey As %String, pUser As %String, Output pFound As %Bo
 }
 
 /// <p>Append the entry for one finished turn onto <var>pConvo</var>, an OREF <method>LoadOrCreate</method>
-/// answered. Defensively re-caps <var>pStepsJson</var> to <var>pLimitsClass</var>'s own
+/// answered. <var>pTurnKey</var> is that turn's own key, which is what lets a restored
+/// conversation carry the turn's proposals; a caller that has none may omit it. Defensively re-caps <var>pStepsJson</var> to <var>pLimitsClass</var>'s own
 /// <code>MAXSTEPS</code>, even though the caller's own projection
 /// (<method>OcuPilot.Kernel.State.Step.GuardedRows</method>) is already within it.</p>
-ClassMethod AppendEntry(pConvo As Convo, pMessage As %String, pState As %String, pReply As %String, pErrorCode As %String, pErrorSeq As %Integer, pStepsJson As %DynamicArray, pStepsDropped As %Integer, pLimitsClass As %String) As %Status
+ClassMethod AppendEntry(pConvo As Convo, pMessage As %String, pState As %String, pReply As %String, pErrorCode As %String, pErrorSeq As %Integer, pStepsJson As %DynamicArray, pStepsDropped As %Integer, pLimitsClass As %String, pTurnKey As %String = "") As %Status
 {
     Set tSC = $$$OK
     Try {
@@ -117,7 +118,7 @@ ClassMethod AppendEntry(pConvo As Convo, pMessage As %String, pState As %String,
             For tI = 0:1:tMax - 1 Do tKept.%Push(tSteps.%Get(tI))
             Set tSteps = tKept
         }
-        Set tSC = ##class(OcuPilot.Kernel.State.Entry).GuardedAppend(pConvo.ConvKey, pMessage, pState, pReply, pErrorCode, pErrorSeq, tSteps.%ToJSON(), pStepsDropped, pLimitsClass)
+        Set tSC = ##class(OcuPilot.Kernel.State.Entry).GuardedAppend(pConvo.ConvKey, pMessage, pState, pReply, pErrorCode, pErrorSeq, tSteps.%ToJSON(), pStepsDropped, pLimitsClass, pTurnKey)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }

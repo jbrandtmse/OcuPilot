@@ -16,7 +16,13 @@
  * the client checks a type against one vocabulary rather than inventing a second.
  */
 
-import { ENTITY_TYPES } from './screens.generated.ts';
+import {
+  ENTITY_ID_RULES,
+  ENTITY_REF_SEPARATOR_CODE,
+  ENTITY_SINGLETON_ID,
+  ENTITY_TYPES,
+  type EntityTypeKey,
+} from './screens.generated.ts';
 
 /**
  * The literal scope of a configuration object that has no namespace, mirroring
@@ -33,10 +39,76 @@ export const INSTANCE_SCOPE = 'instance';
 export const NAMESPACE_SCOPE = 'namespace';
 
 /**
- * The character joining the three parts of a reference key. Authored as an escape, never a
- * literal byte (Rule 14).
+ * The character joining the three parts of a reference key.
+ *
+ * **Built from the mirrored code point, not from a literal of its own** (AD-5, DW-1403). It was
+ * a hand-copied escape beside `OcuPilot.Kernel.EntityRef`'s `Parameter REFSEPARATOR = 2`, with
+ * nothing comparing the two, so moving either would have shipped two key builders that agree on
+ * every part of a key except the joins. `ui/tools/screen-mirror.mjs` reads the kernel's parameter
+ * and emits it, the way it emits the entity-type enum and the id-rule table, so there is one
+ * source and no literal byte in a source file either (Rule 14).
  */
-export const REF_SEPARATOR = '\u0002';
+export const REF_SEPARATOR = String.fromCharCode(ENTITY_REF_SEPARATOR_CODE);
+
+/**
+ * One rule name to the spelling it canonicalizes an id to.
+ *
+ * **This is a mirror, not a second source** (AD-5, AD-13 as amended by DW-1359). Which entity
+ * types have a rule is declared once, in `OcuPilot.Kernel.EntityRef.IDRULES`, and reaches this
+ * module as `ENTITY_ID_RULES` in the generated mirror; what a named rule does is implemented
+ * here because it has to run in this language. `ui/tools/screen-mirror.mjs` fails
+ * `npm run build` on a declared rule this table does not hold, so a kernel rule cannot reach the
+ * client as a silent identity function -- which is what DW-1364 was: the server folded a
+ * web-application id per entity type while this builder joined the parts verbatim, so a
+ * server-built key and a client-built key for one entity were two strings.
+ */
+const ID_RULES: Readonly<Record<string, (id: string) => string>> = {
+  'foldcase-striptrailingslash': (id) => {
+    let value = id.toLowerCase();
+    while (value !== '' && value.endsWith('/')) value = value.slice(0, -1);
+    return value;
+  },
+  foldcase: (id) => id.toLowerCase(),
+  // A configuration object with exactly one instance has no name to fold, so every spelling --
+  // an empty id included -- answers the one canonical id. The value is mirrored from the kernel's
+  // own `RULESINGLETONID` rather than written here, so the two key builders cannot disagree about
+  // what that id is (DW-1403's defect class).
+  singleton: () => ENTITY_SINGLETON_ID,
+  // A task is addressed by the vendor's own integer id, which the model supplies as a string, so
+  // `007`, `+7` and ` 7 ` are spellings of one target. The normalization is on the string --
+  // surrounding space or tab dropped, a leading `+` dropped, leading zeros dropped, a negative
+  // zero answered as `0` -- because `OcuPilot.Kernel.EntityRef.PlainInteger` answers it the same
+  // way, and two languages agreeing about numeric precision is not something a key builder may
+  // depend on. A value that is not an optionally-signed run of digits is answered verbatim.
+  integer: (id) => {
+    const match = /^[ \t]*([+-]?)0*([0-9]+)[ \t]*$/.exec(id);
+    if (match === null) return id;
+    const digits = match[2];
+    return (match[1] === '-' && digits !== '0' ? '-' : '') + digits;
+  },
+};
+
+/**
+ * The rule names this module implements, for the roster pin in `ui/tools/entity-ref.test.mjs`:
+ * equal to `screen-mirror.mjs`'s `IMPLEMENTED_ID_RULES`, in both directions.
+ */
+export const IMPLEMENTED_ID_RULE_NAMES: readonly string[] = Object.keys(ID_RULES);
+
+/**
+ * `id` in the one spelling a reference to an entity of type `type` carries -- the client half of
+ * `OcuPilot.Kernel.EntityRef.NormalizedId`. A type the mirrored table holds no rule for is
+ * answered verbatim.
+ *
+ * An unimplemented rule name cannot reach here (the generator refuses it), and answering
+ * verbatim is what this would do anyway, so there is no throw: a key that cannot be formed is
+ * `null` from `entityRefKey`, never an exception in a subscriber.
+ */
+export function normalizeEntityId(type: string, id: string): string {
+  const rule = ENTITY_ID_RULES[type as EntityTypeKey];
+  if (rule === undefined) return id;
+  const apply = ID_RULES[rule];
+  return apply === undefined ? id : apply(id);
+}
 
 /** One reference, parsed. */
 export interface EntityRef {
@@ -55,16 +127,27 @@ export function isKnownEntityType(type: string): boolean {
  * empty scope or id. `null` rather than a throw, for the reason `decodeEntityId` returns its
  * input on a malformed segment -- a screen renders nothing for a reference it cannot form, and
  * the build gates are what catch a type that does not exist.
+ *
+ * The id reaches the key in the spelling `normalizeEntityId` answers for that type, which is the
+ * spelling `OcuPilot.Kernel.EntityRef.Key` builds too, so a key built here and a key built on
+ * the instance for one entity are one string (DW-1364). Normalization runs **before** the
+ * emptiness gate, so a web-application id of `/`, which normalizes to nothing, is refused rather
+ * than keyed.
  */
 export function entityRefKey(type: string, scope: string, id: string): string | null {
   if (!isKnownEntityType(type)) return null;
-  if (scope === '' || id === '') return null;
-  return type + REF_SEPARATOR + scope + REF_SEPARATOR + id;
+  const canonical = normalizeEntityId(type, id);
+  if (scope === '' || canonical === '') return null;
+  return type + REF_SEPARATOR + scope + REF_SEPARATOR + canonical;
 }
 
 /**
  * The triple a key carries, or `null` when the key is not one. The id is everything after the
  * second separator, so a composite id carrying `COMPOSITE_SEPARATOR` comes back whole.
+ *
+ * **It does not normalize, and that mirrors the server**: `OcuPilot.Kernel.EntityRef.Parse` reads
+ * a key as it was written so a stored reference comes back as the thing that was stored, and
+ * `Canonical` is the separate answer for a caller that wants the spelling `Key` would have built.
  */
 export function parseEntityRefKey(key: string): EntityRef | null {
   const parts = key.split(REF_SEPARATOR);

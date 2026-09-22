@@ -9,6 +9,17 @@
 Class OcuPilot.Test.PortFixture Extends OcuPilot.Port.AdminPort
 {
 
+/// <p>The shipped roster plus the one probe pair this suite invokes:
+/// <class>OcuPilot.Test.AdminPortAsync</class> drives the port's mutating-and-queued refusal
+/// against <code>OcuPilotProbeAsyncWrite</code> with <code>PUT</code>, which is a pair no shipped
+/// endpoint carries.</p>
+/// <p><b>The probe pair is added here and never to the shipped parameter</b> (DW-1473): the
+/// admitted set is what a confirmed write is allowed to issue against the instance, and a test
+/// surface has no place in it. <class>OcuPilot.Test.ToolWrite</class> reads
+/// <class>OcuPilot.Port.AdminPort</class>'s own copy, so this override cannot satisfy that
+/// roster.</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,OcuPilotProbeAsyncWrite/PUT";
+
 /// <p>Point the derivation at <var>pClass</var> instead of the vendor's routing class.
 /// <code>""</code> restores the production value.</p>
 ClassMethod SetAdminApiClass(pClass As %String)

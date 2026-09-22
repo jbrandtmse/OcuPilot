@@ -63,7 +63,7 @@ ClassMethod GuardedSetForUser(pUserName As %String, pShare As %Boolean) As %Stat
             Set tRow.UserName = pUserName
         }
         Set tRow.Share = ''pShare
-        Set tSC = ..GuardedSave(tRow)
+        Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
         Set tRow = ""
     } Catch ex {
         Set tSC = ex.AsStatus()

@@ -7,6 +7,16 @@ import { ERROR_LOG_PATH_PREFIX } from '../../core/log-paths';
 /** The four drill levels, spelled as the routes that serve them bind them. */
 export type ErrorLogLevel = 'namespaces' | 'dates' | 'list' | 'detail';
 
+/** The entity type a confirmed application-error delete publishes on the change bus (AD-13, AD-14). */
+export const ERROR_LOG_ENTITY_TYPE = 'application-error';
+
+/**
+ * The refusal codes that say the level the user is standing on is no longer there (AD-39). Each is
+ * the port's own name for a level the log has stopped carrying, and a drill that meets one steps
+ * up rather than showing an empty frame under a scope line that is no longer true.
+ */
+const VANISHED_LEVEL_CODES: readonly string[] = ['LOG.NAMESPACE', 'LOG.DATE', 'LOG.ENTRY'];
+
 /** One namespace that holds application errors. */
 export interface ErrorLogNamespaceRow {
   readonly namespace: string;
@@ -341,6 +351,32 @@ export class ErrorLogDrill {
     return this.read('namespaces', {});
   }
 
+  /**
+   * Re-read in place after a confirmed delete against `namespace` (AD-14: a screen showing the
+   * type re-fetches and never patches its own rows).
+   *
+   * **It re-reads, it does not remove a row.** The rows that leave are the ones the instance stops
+   * answering with, so a delete that removed less than the card listed still shows the truth.
+   *
+   * **It steps up when the level the user is on has gone.** A namespace with no errors left
+   * carries no dates, no list and no detail, and the port answers each of those with its own
+   * refusal code; the drill walks back until it reaches a level the instance still serves. The
+   * loop is bounded by the three levels above `namespaces`, which is where every walk ends.
+   *
+   * A delete against another namespace changes nothing below the top level, so a drill inside one
+   * namespace ignores an event about another; the top level re-reads either way, because the
+   * purged namespace leaves its list.
+   */
+  async applyDeleted(namespace: string): Promise<void> {
+    if (this.levelValue !== 'namespaces' && !sameNamespace(this.namespaceValue, namespace)) return;
+    await this.reopen();
+    for (let step = 0; step < 3; step += 1) {
+      const code = this.faultValue === null ? null : this.faultValue.code;
+      if (code === null || !VANISHED_LEVEL_CODES.includes(code)) return;
+      await this.back();
+    }
+  }
+
   /** Back one level, which is where the drill's own affordance goes. */
   back(): Promise<void> {
     if (this.levelValue === 'detail') return this.openList(this.dateValue);
@@ -428,4 +464,17 @@ export class ErrorLogDrill {
   private notify(): void {
     for (const listener of [...this.listeners]) listener();
   }
+}
+
+/**
+ * Whether two namespace spellings name one namespace.
+ *
+ * `SYS.ApplicationError` resolves a namespace case-insensitively, which is why
+ * `application-error` carries the `foldcase` id rule (AD-13) -- so the id a change event carries is
+ * the canonical lower-case spelling while the drill holds the instance's own. Comparing them any
+ * other way would leave the screen the user is standing on unrefreshed by the very write they just
+ * confirmed.
+ */
+function sameNamespace(held: string, published: string): boolean {
+  return held.toLowerCase() === published.toLowerCase();
 }

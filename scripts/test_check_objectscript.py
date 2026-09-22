@@ -2029,6 +2029,30 @@ class TestDestructiveTestGuardRule(FixtureTreeCase):
         co.check_destructive_test_guard(problems)
         self.assertEqual(problems, [])
 
+    def test_turning_the_instances_auditing_off_is_in_the_population(self):
+        """`Security.System.Modify` is the API that turns instance-wide auditing off, which is the
+        widest effect a class in this suite can have: while it is off nothing on the instance is
+        audited, not only OcuPilot's own events."""
+        self.write_test_class(
+            "AuditToggler", '    Do ##class(Security.System).Modify("SYSTEM", .tProps)'
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertTrue(
+            any("AuditToggler.cls" in p and "Security.System" in p for p in problems),
+            f"expected the unguarded auditing toggle refused by name, got {problems}",
+        )
+
+    def test_the_same_auditing_class_with_the_guard_passes(self):
+        self.write_test_class(
+            "GuardedAuditToggler",
+            '    Do ##class(Security.System).Modify("SYSTEM", .tProps)',
+            self.GUARDED_BODY,
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertEqual(problems, [])
+
     def test_an_audit_event_registration_is_in_the_population(self):
         """An unregistered triple drops every row written under it, with no error and no log line,
         so a class that deletes or disables one silently stops auditing whatever instance it ran

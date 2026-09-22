@@ -267,8 +267,13 @@ ClassMethod HandleHoldDelete(pId As %String) As %Status
 }
 
 /// <p>Answer <code>GET /agent/restraint</code>: the calling user's own verdict, as
-/// <method>OcuPilot.Kernel.Restraint.Resolved</method> answers it. <b>No OcuPilot administrative
-/// privilege required</b> -- see the class header.</p>
+/// <method>OcuPilot.Kernel.Restraint.Resolved</method> answers it, plus
+/// <code>writesMarked</code> -- whether the instance was marking agent writes when that was last
+/// observed (AD-15). <b>No OcuPilot administrative privilege required</b> -- see the class
+/// header.</p>
+/// <p><code>writesMarked</code> is a recorded fact rather than a live read, and the panel renders
+/// only its <b>false</b> arm: nothing anywhere says marking is working, so the fact being stale
+/// for one window costs a reader nothing they were told.</p>
 /// <p>A verdict that could not be read is a 500 rather than a body: the client renders banners and a
 /// footer line from this, and a permissive-looking answer over an unreadable store is the one thing
 /// it must not be handed.</p>
@@ -290,6 +295,10 @@ ClassMethod HandleRestraint() As %Status
         Do tBody.%Set("killSwitchAudience", tVerdict("killSwitchAudience"), "string")
         Do tBody.%Set("killSwitchReason", tVerdict("killSwitchReason"), "string")
         Do tBody.%Set("enforcedReadOnly", $Select(+tVerdict("enforcedReadOnly"): 1, 1: 0), "boolean")
+        ; Not part of the verdict: marking is not a restraint (AD-30), so Kernel.Restraint does not
+        ; answer it and the agent is not blocked by it. It rides this route because the panel
+        ; already reads it on every load, and because the banner it feeds is shown to every user.
+        Do tBody.%Set("writesMarked", $Select(##class(OcuPilot.Kernel.Audit.Event).WritesMarked(): 1, 1: 0), "boolean")
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tBody)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)

@@ -27,6 +27,56 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
+/// <p>DW-435: the instance's one switch row is one row because the store <b>refuses</b> a second,
+/// not because every writer happens to check first. Two callers that both read "no row" would
+/// otherwise both create one, and <code>SELECT TOP 1 ... ORDER BY ID</code> would answer the older
+/// of the two for ever after.</p>
+/// <p>Mutation: delete <code>Index SwitchSingletonIdx</code> from
+/// <class>OcuPilot.Kernel.State.Switch</class> and recompile the package -- this goes red.
+/// Dropping <code>Set tRow.Singleton = 1</code> from <method>SetGuarded</method> is not a second
+/// mutation: the property's own <code>InitialExpression</code> writes 1, so the row is unchanged.</p>
+Method TestASecondSwitchRowIsRefused()
+{
+    Kill tValues
+    Set tValues("enforcedReadOnly") = 0
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tValues), "the instance's one row is written")
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 1, "and there is exactly one")
+
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "INSERT INTO OcuPilot_Kernel_State.SwitchState (Singleton, RowVersion) VALUES (1, 1)")
+    Do $$$AssertTrue(tRS.%SQLCODE < 0, "a second row is refused by the store itself: SQLCODE=" _ tRS.%SQLCODE)
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 1, "and the instance still holds exactly one")
+}
+
+/// <p><b>A row written before <property>OcuPilot.Kernel.State.Switch.WritesMarked</property>
+/// existed answers that property's default, not 0.</b> The property was added with no
+/// <code>SCHEMAVERSION</code> move (Consistency Conventions), which is only sound because
+/// <method>Resolve</method> reads the slot's <b>presence</b> rather than its truth: an untouched
+/// slot reads <code>""</code>, <code>''""</code> is 0, and every instance upgraded from an earlier
+/// OcuPilot that had ever written this row -- a kill switch set, enforced read-only set, one
+/// <code>PUT /agent/switches</code> -- would draw the not-marked banner for every user over an
+/// instance that is marking perfectly well.</p>
+/// <p>No writer can produce such a row: <method>SetGuarded</method> builds the object with
+/// <code>%New()</code> and the property's <code>InitialExpression</code> fills the slot. The
+/// stored slot is therefore cleared through SQL, which is exactly the shape an older row has.</p>
+/// <p>Mutation (Rule 19): drop the <code>'= ""</code> guard from <method>Resolve</method> -- make
+/// the assignment unconditional -- and this goes red on the resolved value.</p>
+Method TestARowPredatingTheMarkingSlotAnswersItsDefault()
+{
+    Kill tValues
+    Set tValues("enforcedReadOnly") = 1
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tValues), "an instance with a switch row, as every upgraded one has")
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 1, "exactly one row")
+
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "UPDATE OcuPilot_Kernel_State.SwitchState SET WritesMarked = NULL")
+    Do $$$AssertTrue(tRS.%SQLCODE = 0, "the stored slot is cleared, which is what an older row holds: SQLCODE=" _ tRS.%SQLCODE)
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).Resolve(.tRead), "the switches still resolve")
+    Do $$$AssertEquals($Get(tRead("writesMarked")), ##class(OcuPilot.Kernel.State.Switch).#DEFAULTWRITESMARKED, "and the empty slot answers the declared default")
+    Do $$$AssertEquals($Get(tRead("writesMarked")), 1, "which is 'marking', so no banner is drawn over an upgraded instance")
+    Do $$$AssertEquals($Get(tRead("enforcedReadOnly")), 1, "while the fields the older row did carry are unchanged")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Event).WritesMarked(), 1, "and the reader the restraint route uses answers the same")
+}
+
 /// <p><b>A clean instance answers the defaults and holds no row</b>, which is what "a fresh install
 /// leaves the kill switch off and writes no switch row" means.</p>
 Method TestACleanInstanceAnswersTheDefaultsWithNoRow()

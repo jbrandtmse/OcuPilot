@@ -529,6 +529,139 @@ describe('the data table', () => {
     expect(wired.store.selection()).toEqual(['/csp/app01']);
   });
 
+  it('Story 5.7: a marked row is announced once, politely, naming the row and what happened', async () => {
+    // Mutation (Rule 19): announce on every `sync()` rather than once per newly marked key ->
+    // the "announced once" assertion goes red, because a silent tick would rewrite the slot and a
+    // screen reader would hear the same change again.
+    const wired = await wire(tableDeclaration(), ok(rows(3)));
+    await wired.refresh.readNow();
+    const slot = () => wired.host().querySelector('.ocu-data-table-announcement') as HTMLElement;
+
+    await settle(wired.fixture);
+    expect(slot().getAttribute('role')).toBe('status');
+    expect(slot().textContent?.trim()).toBe('');
+
+    wired.store.markChanged('/csp/app01', 'updated');
+    await settle(wired.fixture);
+    expect(slot().textContent?.trim()).toBe('Updated: /csp/app01 updated');
+
+    // A tick that marks nothing leaves the slot exactly as it was, which is what "the refresh
+    // stamp and refresh ticks stay unannounced" means at this tier.
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    expect(slot().textContent?.trim()).toBe('Updated: /csp/app01 updated');
+
+    wired.store.markChanged('/csp/app02', 'deleted');
+    await settle(wired.fixture);
+    expect(slot().textContent?.trim()).toBe('Updated: /csp/app02 deleted');
+  });
+
+  it('Story 5.7: a second change to a row that is still marked is announced too', async () => {
+    // Mutation (Rule 19): key `announcedChanged` on the row alone again -> the last assertion goes
+    // red, and a screen-reader user would hear the first of two writes to one row and not the
+    // second.
+    const wired = await wire(tableDeclaration(), ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const slot = () =>
+      (wired.host().querySelector('.ocu-data-table-announcement') as HTMLElement).textContent?.trim();
+
+    wired.store.markChanged('/csp/app01', 'updated');
+    await settle(wired.fixture);
+    expect(slot()).toBe('Updated: /csp/app01 updated');
+
+    // An identical re-mark says nothing again: the store swallows it and never notifies.
+    wired.store.markChanged('/csp/app02', 'updated');
+    await settle(wired.fixture);
+    expect(slot()).toBe('Updated: /csp/app02 updated');
+    wired.store.markChanged('/csp/app01', 'updated');
+    await settle(wired.fixture);
+    expect(slot()).toBe('Updated: /csp/app02 updated');
+
+    // A second write to app01, which the user never moved onto, so its mark is still standing.
+    wired.store.markChanged('/csp/app01', 'deleted');
+    await settle(wired.fixture);
+    expect(slot()).toBe('Updated: /csp/app01 deleted');
+    expect(wired.store.changed().has('/csp/app01')).toBe(true);
+  });
+
+  it('Story 5.7: the change names the canonical id, and the row the instance spells otherwise is marked', async () => {
+    // Mutation (Rule 19): compare the bus key against the row keys directly again
+    // (`changed.has(key)`, `lastKeys.includes(key)`) -> every assertion here goes red. A confirmed
+    // write to a web application whose stored name is not already folded would leave the screen
+    // reporting nothing at all: no highlight, no selection, no announcement.
+    const spelled = [
+      { Name: '/csp/App01', NameSpace: 'USER', Count: 0, Enabled: true, Note: null },
+      { Name: '/csp/other', NameSpace: 'USER', Count: 1, Enabled: false, Note: 'note' },
+    ];
+    const wired = await wire(tableDeclaration(), ok(spelled));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    // The spelling `EntityRef.Key` folds to and `TurnStore.decideProposal` publishes.
+    wired.store.markChanged('/csp/app01', 'created');
+    wired.store.setPendingSelection('/csp/app01');
+    await settle(wired.fixture);
+
+    const marked = wired.host().querySelectorAll('.ocu-data-table-row-changed');
+    expect(marked.length).toBe(1);
+    expect(marked[0].textContent).toContain('/csp/App01');
+    expect(wired.store.selection()).toEqual(['/csp/App01']);
+    expect(wired.store.active()).toBe('/csp/App01');
+    expect(
+      (wired.host().querySelector('.ocu-data-table-announcement') as HTMLElement).textContent?.trim()
+    ).toBe('Updated: /csp/App01 created');
+  });
+
+  it('Story 5.7: a pending selection is taken up when the read brings the row, and keeps its mark', async () => {
+    // Mutation (Rule 19): route `applyPendingSelection` through `select()` -> the "keeps its
+    // mark" assertion goes red, because `select()` clears the highlight on the way.
+    const wired = await wire(tableDeclaration(), ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    wired.store.markChanged('/csp/app02', 'created');
+    wired.store.setPendingSelection('/csp/app02');
+    await settle(wired.fixture);
+
+    expect(wired.store.selection()).toEqual(['/csp/app02']);
+    expect(wired.store.active()).toBe('/csp/app02');
+    expect(wired.store.pendingSelection()).toBe('');
+    expect(wired.store.changed().has('/csp/app02')).toBe(true);
+
+    // A key no read has brought is left standing rather than selected: a create the instance has
+    // not finished is still a create.
+    wired.store.setPendingSelection('/csp/appZZ');
+    await settle(wired.fixture);
+    expect(wired.store.pendingSelection()).toBe('/csp/appZZ');
+    expect(wired.store.selection()).toEqual(['/csp/app02']);
+  });
+
+  it('Story 5.7: moving onto a row the instance spells otherwise clears the mark the change named', async () => {
+    // The mark lands under the canonical id and the row carries the instance's own spelling, so
+    // `clearChanged(rowKey)` clears nothing -- on exactly the rows `viewKeyFor` was written for.
+    //
+    // Mutation (Rule 19): clear with the row key again (`store.clearChanged(key)` in `select()`)
+    // -> both assertions below go red and the row reads "Changed" for the life of the store,
+    // while the canonical-key row above stays green.
+    const spelled = [
+      { Name: '/csp/App01', NameSpace: 'USER', Count: 0, Enabled: true, Note: null },
+      { Name: '/csp/other', NameSpace: 'USER', Count: 1, Enabled: false, Note: 'note' },
+    ];
+    const wired = await wire(tableDeclaration(), ok(spelled));
+    await wired.refresh.readNow();
+    wired.store.markChanged('/csp/app01', 'updated');
+    await settle(wired.fixture);
+    expect(wired.host().querySelector('.ocu-data-table-row-changed')).not.toBeNull();
+
+    const grid = wired.host().querySelector('[role="grid"]') as HTMLElement;
+    grid.focus();
+    grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    await settle(wired.fixture);
+    expect(wired.store.changed().size).toBe(0);
+    expect(wired.host().querySelector('.ocu-data-table-row-changed')).toBeNull();
+  });
+
   it('moving onto a changed row clears its mark', async () => {
     const wired = await wire(tableDeclaration(), ok(rows(3)));
     await wired.refresh.readNow();

@@ -39,6 +39,7 @@ const {
   editorScreenFor,
   isListedScreen,
   listedScreensForArea,
+  ownIdSegment,
   parentCriteria,
   parentListFor,
   routeEntityType,
@@ -54,6 +55,10 @@ const {
   formatDeniedScreen,
   formatRequires,
   firstAllowedScreen,
+  screenForChange,
+  screenForEntityType,
+  screenForToolName,
+  screenShowsEntity,
   withQuery,
 } = await import(corePath('navigation.ts'));
 const { AREAS, SCREENS } = await import(corePath('screens.generated.ts'));
@@ -396,6 +401,42 @@ test('tabMembersFor lists the OAuth 2.0 tabs in position order, and tabGroupFor 
     null,
     'a group no built first tab declares resolves none'
   );
+});
+
+// Story 5.11, DW-1419: a list opened on its own route id names the row to select. One helper
+// serves both callers that produce such a URL -- the agent's `shell.screen.open` with an
+// `entityId`, and a change toast's "Open in <screen>" -- so the selection cannot be right for one
+// and wrong for the other.
+//
+// Mutation (Rule 19): drop the second `decodeEntityId` -> the `%Demo_1` round trip goes red; drop
+// the `segment.includes('/')` guard -> the sub-resource row goes red, because a task details URL
+// would read as the schedule's own id; drop the `parentScope !== ''` guard -> the parent-scoped
+// rows go red, because a sub-resource list would select whichever row shares its parent's key.
+test('ownIdSegment reads a list screen\'s own route id, and nothing else', () => {
+  const tasks = screenForRoute('tasks/schedule');
+  assert.equal(ownIdSegment(tasks, '/tasks/schedule/7?ns=HSCUSTOM'), '7');
+  for (const id of ['%Demo_1', 'a.b', 'a-b_c', '/csp/myapp']) {
+    const url = `/tasks/schedule/${encodeEntityId(id)}?ns=HSCUSTOM`;
+    assert.equal(ownIdSegment(tasks, url), id, `the id ${id} round-trips`);
+  }
+  assert.equal(ownIdSegment(tasks, '/tasks/schedule?ns=HSCUSTOM'), '', 'the bare route names no row');
+  assert.equal(ownIdSegment(tasks, '/tasks/schedule/details/7'), '', 'and a sub-resource route is not this screen\'s id');
+  assert.equal(ownIdSegment(tasks, '/tasks/history?ns=HSCUSTOM'), '', 'nor is another route');
+  assert.equal(ownIdSegment(screenForRoute(''), '/7'), '', 'the root screen administers no entity, so it takes no id');
+  const noId = screenForRoute('agent/switches');
+  assert.equal(hasIdRoute(noId), false, 'a screen whose id kind is none has no id route');
+  assert.equal(ownIdSegment(noId, '/agent/switches/7'), '', 'and reads no id from a segment the route table does not hold');
+
+  // A parent-scoped list's trailing segment is its PARENT's id -- what `parentCriteria` reads it
+  // as -- and none of its rows is keyed by it: a run of task history is keyed by its run id, not
+  // by the task the route names. Both kinds are covered, a composite parent and a single one.
+  for (const route of ['tasks/schedule/history', 'security/wallet/secrets']) {
+    const child = screenForRoute(route);
+    assert.notEqual(child.parentScope, '', `${route} is parent-scoped`);
+    assert.equal(hasIdRoute(child), true, `${route} still takes an id route, so the guard is the thing answering`);
+    assert.equal(ownIdSegment(child, `/${route}/7?ns=HSCUSTOM`), '', `${route} reads its parent's id as no row of its own`);
+    assert.deepEqual(parentCriteria(child, `/${route}/7?ns=HSCUSTOM`), { [child.read.criteria.fields[0].param]: '7' }, 'while parentCriteria reads that same segment as the parent it is');
+  }
 });
 
 // Story 6.3: a parent-scoped list's one criterion comes from the URL's id, decoded once past the
@@ -826,4 +867,94 @@ test("firstAllowedScreen over the shipped mirror: Home's own area opens Home", (
   const home = builtScreensForArea('home');
   assert.equal(firstAllowedScreen(home, () => UNGATED)?.route, home[0]?.route);
   assert.equal(firstAllowedScreen(home, () => ({ allowed: false, failedPair: 'R:USE' })), null);
+});
+
+// AD-13, AD-14: the one predicate `RefreshService` and the toast store both call. Two inline
+// copies would be two answers, and a change that both highlighted a row and raised a toast -- or
+// did neither -- is the divergence AD-14's last sentence is about.
+//
+// Mutation (Rule 19): drop the scope test from `screenShowsEntity` -> the two scope rows below go
+// red, and a change in `USER` would re-fetch a list scoped to `HSCUSTOM`.
+test('screenShowsEntity answers the type half and the scope half, and both have to hold', () => {
+  const list = screenForRoute('web-applications/list');
+  assert.ok(list !== null && list.entityType === 'web-application');
+  assert.equal(list.scope, 'instance', 'a web application has no namespace, so its scope is the literal');
+
+  assert.equal(screenShowsEntity(list, { type: 'web-application', scope: 'instance' }, 'HSCUSTOM'), true);
+  assert.equal(
+    screenShowsEntity(list, { type: 'task', scope: 'instance' }, 'HSCUSTOM'),
+    false,
+    'a type the screen does not show'
+  );
+  assert.equal(
+    screenShowsEntity(list, { type: 'web-application', scope: 'HSCUSTOM' }, 'HSCUSTOM'),
+    false,
+    'the right type in the wrong scope is a different entity (AD-13)'
+  );
+
+  // A namespace-scoped screen resolves its scope from the namespace the shell is in, which is
+  // what makes the same event mine in one namespace and not in another.
+  const restApis = screenForRoute('web-applications/rest-apis');
+  assert.ok(restApis !== null && restApis.scope === 'namespace');
+  assert.equal(screenShowsEntity(restApis, { type: 'rest-service', scope: 'HSCUSTOM' }, 'HSCUSTOM'), true);
+  assert.equal(
+    screenShowsEntity(restApis, { type: 'rest-service', scope: 'HSCUSTOM' }, 'USER'),
+    false,
+    'the shell has moved, so the event is about another namespace'
+  );
+
+  // A secondary type counts: the OAuth 2.0 tab shows three, and a change to any of them is its.
+  const oauth = screenForRoute('security/oauth');
+  assert.ok(oauth !== null && oauth.secondaryEntityTypes.length > 0);
+  assert.equal(
+    screenShowsEntity(oauth, { type: oauth.secondaryEntityTypes[0], scope: 'instance' }, 'HSCUSTOM'),
+    true
+  );
+});
+
+// The toast's action. Mutation (Rule 19): build the route without `encodeEntityId` -> the
+// encoded-segment assertion goes red for the id carrying a slash, and the toast would open a URL
+// the route table does not hold.
+test('screenForChange resolves the screen a change opens and the route that names the entity', () => {
+  const target = screenForChange({ type: 'web-application', id: '/csp/myapp' });
+  assert.ok(target !== null);
+  assert.equal(target.screen.route, 'web-applications/list');
+  assert.equal(target.screen, screenForEntityType('web-application'), 'the same lookup, not a second one');
+  assert.equal(target.route, `web-applications/list/${encodeEntityId('/csp/myapp')}`);
+  assert.ok(!target.route.includes('/csp/myapp'), 'the id is one encoded segment, never raw path (AD-13)');
+
+  // A type no built screen shows is not a fault: the toast still says what changed, with nothing
+  // to open. `audit-event` is the one declared type the shipped roster shows on no screen.
+  assert.equal(screenForEntityType('audit-event'), null, 'no built screen shows an audit event');
+  assert.equal(screenForChange({ type: 'audit-event', id: 'x' }), null);
+  assert.equal(screenForChange({ type: 'not-an-entity-type', id: 'x' }), null);
+
+  // A screen whose descriptor declares no id route takes the bare route: there is no segment for
+  // the entity, and appending one would be a URL the route table does not hold.
+  const switches = SCREENS.find((screen) => screen.entityType === 'agent-switch' && screen.built);
+  assert.ok(switches !== undefined && !hasIdRoute(switches));
+  assert.equal(screenForChange({ type: 'agent-switch', id: 'instance' })?.route, switches.route);
+});
+
+// DW-1227: a proposal card's masked-field lookup is keyed on the proposal's own tool, not on its
+// entity type. A tool name is claimed by exactly one screen, while two screens may declare one
+// entity type -- and the auditing write's screen is not built at all, so the entity-type lookup
+// answers `null` for it and would silently ask for no secret.
+//
+// Mutation (Rule 19): filter `screenForToolName` to built screens -> the auditing row goes red.
+test('screenForToolName resolves a write tool to its own screen, built or not', () => {
+  const auditing = screenForToolName('security.auditing.update');
+  assert.ok(auditing !== null, 'the auditing write resolves');
+  assert.equal(auditing.toolIdentifier, 'security.auditing', "to the screen whose identifier its name opens with");
+  assert.equal(auditing.built, false, 'which is not built yet');
+  assert.equal(
+    screenForEntityType(auditing.entityType),
+    null,
+    'and which the entity-type lookup cannot reach, because that one answers built screens only'
+  );
+
+  const webApp = screenForToolName('webapp.list.update');
+  assert.ok(webApp !== null && webApp.toolIdentifier === 'webapp.list', 'a built screen resolves the same way');
+  assert.equal(screenForToolName('nosuch.screen.update'), null, 'a tool no screen owns resolves to nothing');
+  assert.equal(screenForToolName('single'), null, 'and so does a name with no screen segment');
 });

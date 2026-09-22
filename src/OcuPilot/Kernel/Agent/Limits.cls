@@ -23,6 +23,15 @@ Parameter LEASESECONDS As %Integer = 120;
 /// <p>Seconds a terminal turn and its progress are kept after it ends.</p>
 Parameter RETENTIONSECONDS As %Integer = 900;
 
+/// <p>Seconds a minted proposal stays confirmable (AD-6), counted from the moment it is minted.</p>
+/// <p>It is at or below <parameter>RETENTIONSECONDS</parameter> by rule: a proposal is confirmable
+/// only while its turn ended normally, which <method>OcuPilot.Kernel.Proposal.Write.Claim</method>
+/// reads off the turn row, so the turn record has to outlive the proposal's own window.
+/// <class>OcuPilot.Test.ProposalWrite</class> asserts that relation rather than leaving it to be
+/// noticed when a claim starts answering <code>PROPOSAL.TURNENDED</code> for a turn that merely
+/// aged out.</p>
+Parameter PROPOSALEXPIRYSECONDS As %Integer = 600;
+
 /// <p>Characters a posted message may carry.</p>
 Parameter MESSAGEMAXLENGTH As %Integer = 16000;
 

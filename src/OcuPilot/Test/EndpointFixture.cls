@@ -41,7 +41,9 @@ Property Name As %String;
 /// throws a <code>&lt;PROTECT&gt;</code> system exception; <code>device</code> writes to the
 /// current device and returns <code>{"fixture": "device"}</code>; <code>accepted</code> answers
 /// <code>202</code> with an <code>async-result</code> location naming
-/// <parameter>TASKGUID</parameter>, queuing nothing; <code>queryinvalid</code> makes
+/// <parameter>TASKGUID</parameter>, queuing nothing; <code>async</code> makes
+/// <code>ShouldRunAsync()</code> answer 1 so the port takes its async branch;
+/// <code>queryinvalid</code> makes
 /// <code>ValidateQueryParams()</code> throw; <code>requestinvalid</code> makes
 /// <code>ValidateRequest()</code> return an error status carrying <parameter>FAULTTEXT</parameter>;
 /// <code>list</code> returns the rows <method>SetRows</method> armed, stopping at the seeded
@@ -86,11 +88,13 @@ ClassMethod Clear()
 /// <code>apiVersion</code>, <code>trace</code> (the calls in order, comma-separated),
 /// <code>asyncAtRun</code> (<code>IsRunningAsync</code> when <code>Run()</code> started),
 /// <code>nameAtRun</code>, <code>sessionUserAtRun</code> (<code>%session.Username</code>),
+/// <code>captureAtWrite</code> (in <code>device</code> mode, 1 when the write landed in a capture
+/// -- the vendor's buffer is defined once a capture holds output, so this says the write happened
+/// <b>inside</b> a capture window rather than only that it happened),
 /// <code>maxRows</code> (the seeded <code>maxRows</code> query parameter, kept across a call that
 /// seeds none) or <code>getNames</code> (the names the <code>list</code> mode's
 /// <code>TYPEGET</code> calls asked for, comma-separated, in order) or <code>getCount</code> (how
-/// many <code>TYPEGET</code> calls it answered). <code>""</code> when never
-/// recorded.</p>
+/// many <code>TYPEGET</code> calls it answered). <code>""</code> when never recorded.</p>
 ClassMethod Recorded(pKey As %String) As %String
 {
     Quit $Get(^||OcuPilotEndpointFixture(pKey), "")
@@ -158,10 +162,13 @@ Method ValidateSemantics() As %Status
     Quit $$$OK
 }
 
+/// <p>Answers 1 under the <code>async</code> mode, so the port's own async branch runs against this
+/// class -- which is the only way to reach the mutating-and-async refusal (DW-1279): neither
+/// Release 1 async entry is mutating, and no vendor endpoint queues a <code>PUT</code>.</p>
 Method ShouldRunAsync() As %Boolean
 {
     Do ..Note("ShouldRunAsync")
-    Quit 0
+    Quit $Get(^||OcuPilotEndpointFixture("mode")) = "async"
 }
 
 Method Run(ByRef pSC As %Status, pBody As %DynamicAbstractObject) As %DynamicAbstractObject
@@ -185,6 +192,7 @@ Method Run(ByRef pSC As %Status, pBody As %DynamicAbstractObject) As %DynamicAbs
     If tMode = "device" {
         Set tOutput = {"fixture": "device output"}
         Do tOutput.%ToJSON()
+        Set ^||OcuPilotEndpointFixture("captureAtWrite") = ''$Data(^||%capture)
         Quit {"fixture": "device"}
     }
     If (tMode = "list") && (..Type = ..#TYPEGET) {

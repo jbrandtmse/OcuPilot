@@ -132,7 +132,11 @@ ClassMethod GuardedUpdate(pKey As %String, pSeq As %Integer, pStatus As %String,
 /// <var>pName</var> dispatch resolved, and the tool-step fields as
 /// <method>GuardedAppend</method> takes them. A step that was dropped past the cap has no row, and
 /// nothing is written.</p>
-ClassMethod GuardedFinishTool(pKey As %String, pSeq As %Integer, pName As %String, pStatus As %String, pCode As %String, pLimitsClass As %String, pTarget As %String = "", pArguments As %String = "", pResult As %String = "", pReason As %String = "", pFailedPair As %String = "", pArgumentsTruncated As %Boolean = 0) As %Status
+/// <p><var>pText</var> is the bounded result content the model was handed for this call, stored on
+/// <property>Text</property> and cut at the text cap like any other step text. It is untrusted
+/// content (AD-11, AD-33) and trailing, so a caller with nothing to record calls this unchanged and
+/// the step reads <code>""</code> as it did before.</p>
+ClassMethod GuardedFinishTool(pKey As %String, pSeq As %Integer, pName As %String, pStatus As %String, pCode As %String, pLimitsClass As %String, pTarget As %String = "", pArguments As %String = "", pResult As %String = "", pReason As %String = "", pFailedPair As %String = "", pArgumentsTruncated As %Boolean = 0, pText As %String = "") As %Status
 {
     Set tSC = ..GuardedOpenOneWhereTwoParam("SELECT ID FROM OcuPilot_Kernel_State.Step WHERE %EXACT(TurnKey) = ? AND Seq = ?", pKey, pSeq, .tRow)
     If $$$ISERR(tSC) || '$IsObject(tRow) Quit tSC
@@ -143,7 +147,7 @@ ClassMethod GuardedFinishTool(pKey As %String, pSeq As %Integer, pName As %Strin
     Set tRow.Result = pResult
     Set tRow.Reason = pReason
     Set tRow.FailedPair = pFailedPair
-    Do ..ApplyContent(tRow, pName, "", "", pLimitsClass)
+    Do ..ApplyContent(tRow, pName, "", pText, pLimitsClass)
     If pArgumentsTruncated || $Get(tTargetCut) Set tRow.Truncated = 1
     Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
     Set tRow = ""

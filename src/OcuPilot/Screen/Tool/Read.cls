@@ -60,11 +60,20 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
     Quit ##class(OcuPilot.Screen.Gate).RequiredPairs(pDescriptor, .pResolved)
 }
 
-/// <p>Declared: none (AD-3). A declared read's criteria are search values the screen itself sends on its own route, and a descriptor's <code>context.secretFields</code> are removed from the result rather than accepted as an argument.</p>
+/// <p>What <var>pDescriptor</var> declares secret (AD-3), which for a read tool is its
+/// <code>secretArguments</code> list -- empty for every screen shipped so far, because a declared
+/// read's criteria are search values the screen itself sends on its own route and a descriptor's
+/// <code>context.secretFields</code> are removed from the result rather than accepted as an
+/// argument.</p>
+/// <p><b>Read from the descriptor rather than answered as a constant</b> (DW-1121): a constant here
+/// answers for every screen this class serves, so a screen that did declare a secret criterion
+/// would have had that declaration overruled by an intermediate class. The registry's own refusal
+/// over a credential-pattern criterion is what makes the declaration load-bearing.</p>
 ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Boolean) As %List
 {
     Set pDeclared = 1
-    Quit ""
+    If pDescriptor = "" Quit ""
+    Quit $ClassMethod(pDescriptor, "SecretArguments")
 }
 
 /// <p>The result <method>View</method> answers: <code>{fields, rows, truncated}</code>.</p>

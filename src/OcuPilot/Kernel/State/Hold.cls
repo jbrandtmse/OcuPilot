@@ -86,7 +86,10 @@ ClassMethod GuardedCreate(pUserName As %String, pReason As %String, Output pId A
         Set tRow.UserName = pUserName
         Set tRow.Reason = pReason
         Set tRow.CreatedAt = ..Timestamp()
-        Set tSC = ..GuardedSave(tRow)
+        ; Through the conditional save like every other write to OcuPilot's own state: a row with
+        ; no id yet takes its create branch and version 1, so the first edit after it is
+        ; conditional (Consistency Conventions: concurrent writes).
+        Set tSC = ..GuardedSaveIfCurrent(tRow, 0)
         If $$$ISERR(tSC) Quit
         Set pId = tRow.%Id()
         Set tRow = ""

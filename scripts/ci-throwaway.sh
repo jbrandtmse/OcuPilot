@@ -194,16 +194,18 @@ services:
       # by package, so a runner pointed at an instance someone cares about would otherwise create
       # principals on it. scripts/check-objectscript.py's destructive-test-guard rule holds the
       # population.
-      # classes: AccountPasswordWire, AgentWireSecurity, ConfigGate, CredentialPrivilege
-      # classes: ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial, OAuthTabs
-      # classes: State, Token, ToolWire, TurnContext, TurnConversation, TurnLong
-      # classes: TurnProviderFault, TurnWire, TurnWireFixture, UnexpireScope, Version
-      # classes: Wire, WireOAuthRead, WireSecurityRead
+      # classes: AccountPasswordWire, AgentWireSecurity, AuditMarker, ConfigGate, CredentialPrivilege, DenialParity
+      # classes: Disabled, ErrorDelete, ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial
+      # classes: OAuthTabs
+      # classes: ProcessControl, ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token
+      # classes: ToolSetFull
+      # classes: ToolWire, TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire
+      # classes: TurnWireFixture, UnexpireScope, UserUpdate, Version, Wire, WireOAuthRead, WireSecurityRead
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
       # would leave it there.
-      # classes: ErrorLogSeed, ProviderSecret, ProviderStub, ProviderStubTransport
+      # classes: ErrorDelete, ErrorLogSeed, ProviderSecret, ProviderStub, ProviderStubTransport
       # classes: SecretLeak, SecretStoreProbe
       OCUPILOT_ALLOW_ERROR_SEED: "1"
       # Deletes OcuPilot's own audit event registrations to prove an unregistered triple drops
@@ -211,8 +213,9 @@ services:
       # RoleGranted triple every install registers. One degree worse again: while a registration
       # is gone every row OcuPilot would write under that triple is dropped with no error and no
       # log line, so a runner pointed at an instance someone cares about would silently stop
-      # auditing it.
-      # classes: AuditEvent, UninstallSurvival
+      # auditing it. AuditMarker deletes the AgentWrite triple for the same reason and creates a
+      # web application to write to, so it declares OCUPILOT_ALLOW_PRINCIPALS as well.
+      # classes: AuditEvent, AuditMarker, UninstallSurvival
       OCUPILOT_ALLOW_AUDIT_EVENTS: "1"
       # Runs OcuPilot's PRODUCTION install. A production install is not one side effect but a
       # whole set of them -- a database, a resource, a role, three web applications, the audit
@@ -223,7 +226,7 @@ services:
       # the one they have. Consequence, stated plainly: the classes below run here and on CI,
       # never on a development container someone cares about.
       # classes: AuditRecord, AuditVerbs, DemoOptIn, GatewayGapIpmPath, GrantReadBack
-      # classes: InstallNamespaceSource, Installer, Manifest, Provenance, Static
+      # classes: IdentityInstall, InstallNamespaceSource, Installer, Manifest, Provenance, Static
       # classes: UninstallGuard, UninstallResidue, UninstallSurvival, WebApp
       OCUPILOT_ALLOW_PRODUCTION_INSTALL: "1"
       # Runs the installer's EnsureSslConfiguration step under the probe profile and so creates
@@ -232,6 +235,37 @@ services:
       # otherwise add a security object to it.
       # classes: ProviderSsl
       OCUPILOT_ALLOW_SSL_CONFIG: "1"
+      # Turns the instance's own auditing OFF and back on through the shipped confirm path, which
+      # is the widest effect any class here has: while it is off nothing on this instance is
+      # audited at all, not only OcuPilot's own events. Its own variable rather than riding on
+      # OCUPILOT_ALLOW_AUDIT_EVENTS, which deletes a registration and leaves the channel open.
+      # Each class restores auditing in an in-method frame and asserts the restore in its
+      # teardown, so a run that aborts mid-sequence still leaves this instance audited.
+      # ProhibitedRoute confirms one real disable as a least-privileged principal (AD-29), so it
+      # declares this variable as well as OCUPILOT_ALLOW_PRINCIPALS.
+      # classes: AuditingUpdate, ProhibitedRoute
+      OCUPILOT_ALLOW_AUDIT_TOGGLE: "1"
+      # Suspends and resumes a REAL process on this instance through the shipped confirm path.
+      # A suspended process holds every lock and open transaction it had, so a runner pointed at
+      # an instance someone cares about could stop work nobody there asked to stop. The class
+      # JOBs its own probe process, never a daemon, the Task Manager, a Work Queue worker or
+      # WRTDMN, and halts it on every exit path.
+      # classes: ProcessControl
+      OCUPILOT_ALLOW_PROCESS_CONTROL: "1"
+      # Creates a task in this instance's Task Manager and resumes it. Same reasoning as the
+      # block above, one degree narrower: the effect is a task that runs where nobody scheduled
+      # one. OcuPilot.Test.TaskResume shipped in Story 5.11 without a guard (DW-1458); this is
+      # that guard's home.
+      # classes: TaskResume
+      OCUPILOT_ALLOW_TASK_CONTROL: "1"
+      # Deletes REAL application errors from a namespace's own ^ERRORS through the shipped confirm
+      # path. One degree worse than OCUPILOT_ALLOW_ERROR_SEED above, which can only add: a deleted
+      # application error is gone, and the variable table it captured with it, so a runner pointed
+      # at an instance someone cares about would destroy the record of a fault nobody had read yet.
+      # The class seeds every error it removes and clears its own namespace on exit; it declares
+      # OCUPILOT_ALLOW_ERROR_SEED as well, because it seeds through that class's own guarded helper.
+      # classes: ErrorDelete
+      OCUPILOT_ALLOW_ERROR_DELETE: "1"
       # Arms the turnprobe provider row OcuPilot.Kernel.Provider.Catalog resolves only under it,
       # and with it the classes that spawn turn jobs against that row's scripted adapter. A turn
       # job is a separate process no in-process stub reaches, so the row is armed by the

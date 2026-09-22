@@ -275,6 +275,7 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
         { provide: ScopeService, useValue: new StubScope() as unknown as ScopeService },
         { provide: ConnectivityService, useValue: connectivity },
         { provide: RefreshService, useValue: refresh },
+        { provide: ChangeBus, useValue: bus },
         { provide: ScreenStores, useValue: screenStores },
         { provide: ShellState, useValue: shellState },
         { provide: PanelState, useValue: new PanelState({ account: shellPreferences, shell: shellState }) },

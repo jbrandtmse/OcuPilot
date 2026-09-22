@@ -162,7 +162,9 @@ prose into one checker.
     `Kernel/Shell/` (the shell reads and their tools), under `Kernel/Governance/` or in
     `Kernel/Agent/Dispatch.cls`; a file under `Kernel/Shell/` or `Screen/Tool/` names no
     `OcuPilot.Api.*` class but the vocabulary class `OcuPilot.Api.Error`, because the handlers
-    depend on the shell reads and the tools and never the reverse; and `BeginCapture` or `%SYS.Capture` appears only in `Port/AdminPort.cls`.
+    depend on the shell reads and the tools and never the reverse; and `BeginCapture` or
+    `%SYS.Capture` appears only in `Port/AdminPort.cls` and `Port/MgmntPort.cls`, because a
+    port's own capture refuses to open inside one that already holds output.
 
 21. **Literal state SQL (AD-21, Story 4.2).** Under `Kernel/State/`, outside `Base.cls`, which
     defines the helpers, the SQL argument of every `Guarded*Where*` or `GuardedExecute*` call is a
@@ -1273,8 +1275,23 @@ def check_test_class_properties(problems: list[str]) -> None:
 #
 # **Six edits fix six classes; this rule fixes the population.** It reads the APIs the tree
 # actually calls, not a list of everything IRIS could do: creating or deleting a user or a role,
-# registering, modifying or deleting an audit event, moving the console log, and running the
-# production install.
+# registering, modifying or deleting an audit event, moving the console log, modifying the
+# instance-wide system security settings, and running the production install.
+#
+# `Security.System.Modify` joined the list with Story 5.10, whose test class turns the instance's
+# own auditing off: that is the widest effect any class here has, because while it is off nothing on
+# the instance is audited at all -- not only OcuPilot's own events.
+#
+# **A stated limit, not an oversight.** The same story made auditing reachable without naming that
+# API, through the shipped confirm path: `security.auditing.update` is an ordinary write tool, so a
+# class that mints and confirms one of its proposals turns auditing off having named no watched
+# call. This rule reads one file at a time and cannot see through a confirm, and the tool's class
+# name is no proxy for it -- several classes read that class's parameters without ever issuing a
+# write. So the confirm route is outside the population, and a class that takes it carries its own
+# `OnBeforeAllTests` refusal by its author's decision rather than by this gate
+# (`OcuPilot.Test.ProhibitedRoute` is the first). A class holding only the restore helper is not
+# exempt: `RestoreAuditing` reaches `Security.System.Modify` like any other caller, so the rule
+# reads it as in the population and asks for a guard it does not need.
 #
 # Deleting a role was outside the rule until DW-396, on the ground that it is the tail of an
 # install probe rather than a principal this suite brought into being. It is inside it now: the
@@ -1315,6 +1332,7 @@ DESTRUCTIVE_TEST_RE = re.compile(
     r"|##class\(\s*Security\.Roles\s*\)\s*\.\s*(?:Create|Delete)\b"
     r"|##class\(\s*Security\.Events\s*\)\s*\.\s*(?:Create|Delete|Modify)\b"
     r"|##class\(\s*Config\.Startup\s*\)\s*\.\s*MoveConsoleLog\b"
+    r"|##class\(\s*Security\.System\s*\)\s*\.\s*Modify\b"
     r"|##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"
     r"\s*\.\s*Install\(\s*(?:\"\"\s*)?[,)]"
     r"|##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"

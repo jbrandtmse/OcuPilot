@@ -8,7 +8,9 @@
 /// <p>Runs through <class>OcuPilot.Test.PortFixture</class> with no endpoint override, so the
 /// vendor sequence is the production one. Needs <code>%Admin_Secure:U</code>,
 /// <code>%DB_IRISSYS:R</code> and at least three
-/// web applications on the instance. Reads only; nothing is created.</p>
+/// web applications on the instance. Reads only; nothing is created -- the one test that names a
+/// mutating type pins a refusal the port decides before the endpoint is constructed, so no write is
+/// issued (DW-1427).</p>
 Class OcuPilot.Test.AdminPortSync Extends %UnitTest.TestCase
 {
 
@@ -17,6 +19,11 @@ Parameter ABSENTAPP = "/ocupilot-test/no-such-application";
 
 /// <p>A user name no instance carries.</p>
 Parameter ABSENTUSER = "OcuPilotTestNoSuchUser";
+
+/// <p>A web application every instance of this image carries, named by the one test that asks a
+/// mutating type: the refusal it pins happens before the endpoint is reached, and this path is what
+/// keeps the mutation that falsifies it a no-op rather than a write.</p>
+Parameter NOOPAPP = "/csp/user";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -151,6 +158,33 @@ Method TestAnUnimplementedReadTypeIsRefused()
     Do $$$AssertStatusOK(tSC, "the same endpoint's GET succeeds")
     Do $$$AssertEquals(tGetHttp, 200, "at 200")
     Do $$$AssertTrue($IsObject(tGetResult) && tGetResult.%IsDefined("Enabled"), "and answers with its payload")
+}
+
+/// <p>A mutating call whose body is JSON <b>text</b> rather than an object is refused by the port
+/// and never issued (DW-1427). ObjectScript does not enforce a method argument's declared type, and
+/// the vendor's own merge reads a string as carrying no properties -- so without the guard the
+/// <code>PUT</code> answers 2xx with the target unchanged and the caller cannot tell that from a
+/// write, which is the one failure a confirmed proposal must not be able to produce.</p>
+/// <p><b>Nothing is written, and nothing would be under the mutation either.</b> The refusal is
+/// decided before the endpoint is constructed, so this class's reads-only contract holds although
+/// the type is a <code>PUT</code>; and the path names an application every instance of this image
+/// carries so that the unguarded call is the measured no-op (200, target unchanged) rather than a
+/// write or an upsert of a path nobody asked for.</p>
+/// <p>Mutation: drop the <code>'$IsObject(pBody)</code> guard from
+/// <method>OcuPilot.Port.AdminPort.Invoke</method> -&gt; this goes red, answering OK at HTTP 200.</p>
+Method TestAMutatingCallWithANonObjectBodyIsRefused()
+{
+    Set tQuery("name") = ..#NOOPAPP
+    Set tSC = ##class(OcuPilot.Test.PortFixture).Invoke("WebApp.App", "PUT", .tQuery, "{""Enabled"":1}", .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "a PUT whose body is JSON text is a failure, not a 200 that wrote nothing")
+    Do $$$AssertEquals(tHttp, 500, "refused by the port rather than answered by the endpoint")
+    Do $$$AssertEquals(tResult, "", "with no result")
+    Do $$$AssertTrue($IsObject(tFault), "and a fault")
+    If $IsObject(tFault) {
+        Do $$$AssertEquals(tFault.error, "server_error", "on the server_error slug")
+        Do $$$AssertEquals(tFault.code, "INTERNAL", "with the internal code, since the caller is OcuPilot's own")
+        Do $$$AssertEquals(tFault.reason, "An internal error occurred", "and the generic reason, the cause going to the log (AD-12)")
+    }
 }
 
 }

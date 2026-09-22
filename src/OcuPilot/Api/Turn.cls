@@ -160,6 +160,15 @@ ClassMethod HandleStart() As %Status
         Set tValues("context") = tContextJson
         Set tValues("contextRowCap") = tRowCap
         Set tValues("conversationId") = tConversationId
+        ; EXPERIENCE.md's cancel step, as a fact of the instance: a typed message closes every live
+        ; proposal of this conversation before the turn that carries it is spawned, so a confirm
+        ; arriving afterwards meets a row that is no longer live. Recorded, never optimistic -- the
+        ; client's own transition mirrors this rather than standing in for it.
+        Set tCloseSC = ##class(OcuPilot.Kernel.State.Propose).GuardedCloseLiveForConvo(tConversationId, tUser, ##class(OcuPilot.Kernel.State.Propose).#REASONMESSAGE, .tClosedCount)
+        If $$$ISERR(tCloseSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tCloseSC))
+            Quit
+        }
         Set tStartSC = ##class(OcuPilot.Kernel.Agent.Job).Start(.tValues, .tStarted)
         If $$$ISERR(tStartSC) || 'tStarted Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", "the turn job could not be started", $Select($$$ISERR(tStartSC): tStartSC, 1: $$$ERROR($$$GeneralError, "the spawn was not accepted within its timeout")), ##class(OcuPilot.Api.Error).#TURNUNAVAILABLE)
         If 'tStarted {
@@ -179,6 +188,10 @@ ClassMethod HandleStart() As %Status
 /// its job is gone, renew its lease when it has not ended, and answer the progress projection with
 /// the terminal code's sentence in <code>error.reason</code>. Another user's turn and an unknown id
 /// both answer 404 <code>TURN.NOTFOUND</code>, with the same body, and renew nothing.</p>
+/// <p>The payload also carries <code>proposals</code>, the turn's own minted proposals as
+/// <code>{proposalId, target, expiresAt, tool, changed, unchangedCount, rationale, expectedImpact,
+/// reverse, state}</code> (AD-6). It is an array on every answer, empty for a turn that minted
+/// none, so a reader never has to tell "no proposals" from "the key is missing".</p>
 ClassMethod HandleProgress(pId As %String) As %Status
 {
     Set tSC = $$$OK
@@ -212,6 +225,18 @@ ClassMethod HandleProgress(pId As %String) As %Status
         If $IsObject(tView.error) {
             Do tView.error.%Set("reason", ##class(OcuPilot.Api.Error).ReasonForTurnError(tView.error.code), "string")
         }
+        ; The turn's own proposals (AD-6, AD-43), on the payload the panel already polls rather
+        ; than on a route of their own. Owner-gated exactly as the rest of this payload is: the
+        ; store matches the user as well as the turn, so a poll for a turn this caller does not own
+        ; has already answered 404 above and one that does own it cannot be handed another user's
+        ; row. A read that fails leaves the array empty and is logged: a proposal the panel cannot
+        ; see is a card that does not appear, never a poll that fails.
+        Set tProposalSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForTurn(pId, tUser, .tProposals)
+        If $$$ISERR(tProposalSC) {
+            Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", "a turn's proposals could not be read", tProposalSC, ##class(OcuPilot.Api.Error).#INTERNAL)
+            Set tProposals = []
+        }
+        Do tView.%Set("proposals", tProposals)
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tView)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)

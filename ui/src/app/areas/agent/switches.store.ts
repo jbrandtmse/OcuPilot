@@ -402,6 +402,7 @@ export class SwitchesStore {
       type: AGENT_SWITCH_ENTITY,
       scope: AGENT_DEFINITION_SCOPE,
       id: AGENT_DEFINITION_SCOPE,
+      action: 'updated',
     });
   }
 

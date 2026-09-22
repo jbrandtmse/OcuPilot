@@ -32,6 +32,11 @@ Parameter EVENTSECURITY = "SecurityChange";
 /// above, so an administrator's view of another user's agent activity is filterable on the row.</p>
 Parameter EVENTLEDGERREAD = "LedgerRead";
 
+/// <p>The event name a confirmed agent write is marked with (Story 5.6, AD-15, FR-21, FR-22). A
+/// marker rather than a change: the vendor writes its own <code>%System/%Security/*Change</code>
+/// row for the same operation, and this one says the agent made it.</p>
+Parameter EVENTAGENTWRITE = "AgentWrite";
+
 /// <p>The subsystem a failed emission is logged under.</p>
 Parameter LOGSUBSYSTEM = "audit-event";
 
@@ -53,14 +58,41 @@ Parameter DESCRIPTIONGRANT = "OcuPilot administrative role granted";
 /// <parameter>EVENTLEDGERREAD</parameter>.</p>
 Parameter DESCRIPTIONLEDGERREAD = "OcuPilot agent ledger read of another user's rows";
 
+/// <p>The <code>Description</code> registered for, and written with,
+/// <parameter>EVENTAGENTWRITE</parameter>. Within the 128 characters
+/// <parameter>DESCRIPTIONCONFIG</parameter>'s note gives as the bound that matters.</p>
+Parameter DESCRIPTIONAGENTWRITE = "OcuPilot agent confirmed write";
+
 /// <p>The log message a dropped configuration-change emission reports
 /// (<method>LogFailure</method>).</p>
 Parameter DROPPEDCONFIG = "the configuration change was made and no audit row was written";
+
+/// <p>The log message a dropped <parameter>EVENTAGENTWRITE</parameter> emission reports. The write
+/// has already been applied when the marker is emitted, so this is the only trace of the drop
+/// besides the ledger row's own <code>AuditMarked</code>.</p>
+Parameter DROPPEDAGENTWRITE = "the confirmed write was applied and no audit row was written";
+
+/// <p>The reason a dropped <parameter>EVENTAGENTWRITE</parameter> emission reports.
+/// <code>$System.Security.Audit</code> answers a boolean and names no cause, so this states the
+/// answer it gave and asserts nothing about why -- the instance flag, the registration and a
+/// per-call failure all look the same from here.</p>
+Parameter DROPPEDANSWER = "$System.Security.Audit answered 0 and wrote no row";
 
 /// <p>The log message a dropped <parameter>EVENTLEDGERREAD</parameter> emission reports. A read is
 /// not a change, and saying it was one sends an operator looking for a configuration edit that
 /// never happened.</p>
 Parameter DROPPEDLEDGERREAD = "the agent ledger read was answered and no audit row was written";
+
+/// <p>The log message a dropped <parameter>EVENTSECURITY</parameter> emission reports (DW-1171). A
+/// security-relevant change reported as a configuration one sends an operator looking in the wrong
+/// place for the row that is missing, and this is the only trace such a drop leaves.</p>
+Parameter DROPPEDSECURITY = "the security-relevant change was made and no audit row was written";
+
+/// <p>The verb a confirmed agent write's marker records.</p>
+Parameter VERBWRITE = "write";
+
+/// <p>The log message a failed <method>RecordMarking</method> reports.</p>
+Parameter REFRESHFAILED = "the observed audit-marking state could not be recorded";
 
 /// <p>The audit Source every OcuPilot row carries. Read from
 /// <class>OcuPilot.Kernel.State.Base</class>, which declares the triple's Source and Type once
@@ -81,7 +113,7 @@ ClassMethod Type() As %String
 /// here, and the installer registers it without an edit of its own.</p>
 ClassMethod Roster() As %List
 {
-    Quit $ListBuild(##class(OcuPilot.Kernel.State.Base).#AUDITNAME, ..#EVENTCONFIG, ..#EVENTSECURITY, ..#EVENTLEDGERREAD)
+    Quit $ListBuild(##class(OcuPilot.Kernel.State.Base).#AUDITNAME, ..#EVENTCONFIG, ..#EVENTSECURITY, ..#EVENTLEDGERREAD, ..#EVENTAGENTWRITE)
 }
 
 /// <p>The roster with <var>pSuffix</var> appended to every name -- the profile suffix
@@ -108,6 +140,7 @@ ClassMethod Description(pBaseName As %String) As %String
     If pBaseName = ..#EVENTSECURITY Quit ..#DESCRIPTIONSECURITY
     If pBaseName = ##class(OcuPilot.Kernel.State.Base).#AUDITNAME Quit ..#DESCRIPTIONGRANT
     If pBaseName = ..#EVENTLEDGERREAD Quit ..#DESCRIPTIONLEDGERREAD
+    If pBaseName = ..#EVENTAGENTWRITE Quit ..#DESCRIPTIONAGENTWRITE
     ; A name with no arm is a roster entry whose description nobody wrote. Said out loud rather
     ; than answered with the grant marker's description, which would register a later entry under
     ; a sentence about something else.
@@ -183,7 +216,126 @@ ClassMethod Record(pVerb As %String, pType As %String, pId As %String, pChanges 
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
-    If $$$ISERR(tSC) Do ..LogFailure(pVerb, pType, pId, tSC, $Select(pEventName = ..#EVENTLEDGERREAD: ..#DROPPEDLEDGERREAD, 1: ..#DROPPEDCONFIG))
+    If $$$ISERR(tSC) Do ..LogFailure(pVerb, pType, pId, tSC, $Select(pEventName = ..#EVENTLEDGERREAD: ..#DROPPEDLEDGERREAD, +pSecurityChange: ..#DROPPEDSECURITY, 1: ..#DROPPEDCONFIG))
+    Quit tSC
+}
+
+/// <p>Mark one confirmed agent write in the audit database (AD-15, FR-21, FR-22).</p>
+/// <p><var>pTargetRef</var> is the <b>canonical</b> reference key the proposal stored
+/// (<method>OcuPilot.Kernel.EntityRef.Key</method>, AD-13 as amended by DW-1359), never the
+/// spelling the agent typed. It is parsed rather than rebuilt, so the scope a namespace-scoped
+/// target carries reaches the row -- which is why this is not <method>Record</method>, whose
+/// scope is hardcoded to the instance.</p>
+/// <p>The payload carries <code>actor</code>, <code>target</code>, <code>verb</code>,
+/// <code>proposalId</code>, <code>tool</code>, <code>writtenAt</code> and <code>fields</code>:
+/// the join to the vendor's own change row for the same operation is the pair
+/// <i>(scoped target, user)</i> inside the window <var>pWrittenAt</var> opens, and the proposal id
+/// is what lets the ledger row and this row name each other. <var>pFields</var> is the list of
+/// field names the write actually sent, secret-declared names already excluded by the caller
+/// (AD-3) -- no value of any field reaches the row.</p>
+/// <p><b>Caller contract:</b> call after <b>and only after</b> the write has succeeded, and never
+/// let the returned status change the caller's own. The status is returned so the executor can
+/// record the outcome on the ledger row and answer <code>auditMarked</code>; a write that happened
+/// is never reported as a failure because its marker was dropped (AD-15).</p>
+/// <p><var>pEmitted</var> is 1 only when <code>$System.Security.Audit</code> was actually called,
+/// and it is a <b>different</b> question from the returned status: a reference that will not parse
+/// fails this method without asking the instance anything. Only an answer the instance gave is
+/// evidence about the instance, so <method>OcuPilot.Kernel.Proposal.Confirm.Transition</method>
+/// refreshes <method>RecordMarking</method> from <var>pEmitted</var> and never from the status
+/// alone (DW-1379). The write's own card still reads the status, because that is a per-write
+/// fact.</p>
+/// <p><b>No namespace switch</b>, for the reason <method>Record</method>'s header gives.</p>
+ClassMethod RecordAgentWrite(pProposalId As %String, pToolName As %String, pTargetRef As %String, pUser As %String, pWrittenAt As %String, pFields As %List = "", Output pEmitted As %Boolean) As %Status
+{
+    Set pEmitted = 0
+    Set tSC = $$$OK
+    Try {
+        Set tRefSC = ##class(OcuPilot.Kernel.EntityRef).Parse(pTargetRef, .tType, .tScope, .tId)
+        If $$$ISERR(tRefSC) {
+            Set tSC = tRefSC
+            Quit
+        }
+        Set tWireSC = ##class(OcuPilot.Kernel.EntityRef).Wire(tType, tScope, tId, .tTarget)
+        If $$$ISERR(tWireSC) {
+            Set tSC = tWireSC
+            Quit
+        }
+        Set tPayload = {}
+        Do tPayload.%Set("actor", pUser, "string")
+        Do tPayload.%Set("target", tTarget)
+        Do tPayload.%Set("verb", ..#VERBWRITE, "string")
+        Do tPayload.%Set("proposalId", pProposalId, "string")
+        Do tPayload.%Set("tool", pToolName, "string")
+        Do tPayload.%Set("writtenAt", pWrittenAt, "string")
+        Set tFields = []
+        For tI = 1:1:$ListLength(pFields) {
+            Do tFields.%Push($List(pFields, tI), "string")
+        }
+        Do tPayload.%Set("fields", tFields)
+        Set tText = ##class(OcuPilot.Kernel.Audit.Log).Redact(tPayload).%ToJSON()
+        Set pEmitted = 1
+        Set tSC = $System.Security.Audit(..Source(), ..Type(), ..#EVENTAGENTWRITE, tText, ..#DESCRIPTIONAGENTWRITE)
+        ; The call answers a boolean, not a %Status, so a dropped emission reaches LogFailure as 0
+        ; and $System.Status.GetErrorText(0) renders "ERROR #00: (no error description)" -- a
+        ; reason that says nothing on the one line AD-15 leaves behind. Say what is known and no
+        ; more: the call was made and wrote nothing. Why it wrote nothing is not readable here.
+        If 'tSC Set tSC = $$$ERROR($$$GeneralError, ..#DROPPEDANSWER)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Do ..LogFailure(..#VERBWRITE, $Get(tType, ""), $Get(tId, pTargetRef), tSC, ..#DROPPEDAGENTWRITE)
+    Quit tSC
+}
+
+/// <p>Whether the instance was marking agent writes when that was last observed
+/// (<property>OcuPilot.Kernel.State.Switch.WritesMarked</property>).</p>
+/// <p><b>A recorded fact, not a live read.</b> "Is auditing on" lives in
+/// <class>Security.System</class> and "is this event enabled" in <class>Security.Events</class>,
+/// both <code>%SYS</code>-only, and reading either from the ungated restraint route would need a
+/// third privileged routine application, which AD-8 and AD-9 do not carry. So the fact is written
+/// by the two parties that can see it -- install and the confirm executor -- and read here. A read
+/// that fails answers the default, because the banner this feeds must never be shown on an
+/// unreadable store: its absence is never a claim that marking works.</p>
+ClassMethod WritesMarked() As %Boolean
+{
+    Set tMarked = 1
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.State.Switch).Resolve(.tValues)
+        If $$$ISERR(tSC) Quit
+        Set tMarked = ''$Get(tValues("writesMarked"), 1)
+    } Catch ex {
+        Set tMarked = 1
+    }
+    Quit tMarked
+}
+
+/// <p>Record what <var>pMarked</var> observed about whether this instance marks agent writes.</p>
+/// <p><b>A value that is already the answer writes nothing.</b>
+/// <class>OcuPilot.Kernel.State.Switch</class> is a store whose defaults are parameters, so an
+/// instance nobody has configured holds no row at all -- and that property is what
+/// <method>OcuPilot.Install.Smoke.CheckAgentSwitches</method> reads to tell an install that wrote
+/// no switches from one that did. Writing the default on every install, and again on every
+/// confirmed write, would destroy it for a fact that had not changed. The row is created the first
+/// time the observation differs from what is recorded, and updated only when it changes again.</p>
+/// <p><b>Never propagates</b> (AD-15): a refresh that could not be written is logged and the
+/// caller carries on, because the write it records has already happened.</p>
+ClassMethod RecordMarking(pMarked As %Boolean) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        If ..WritesMarked() = ''pMarked Quit
+        Kill tValues
+        Set tValues("writesMarked") = ''pMarked
+        Set tSC = ##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tValues)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) {
+        Set tData = {}
+        Do tData.%Set("writesMarked", ''pMarked, "boolean")
+        Do tData.%Set("reason", $System.Status.GetErrorText(tSC), "string")
+        Do ##class(OcuPilot.Kernel.Audit.Log).Error(..#LOGSUBSYSTEM, ..#REFRESHFAILED, tData)
+    }
     Quit tSC
 }
 

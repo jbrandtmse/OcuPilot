@@ -74,13 +74,67 @@ Method TestAC2EntityNotAllowedOnNoneId()
     Do $$$AssertEquals(tRoute, "", "no route is validated")
 }
 
-/// <p>AC2: the same refusal on a <code>composite</code> id (<code>logs/audit</code>).</p>
-Method TestAC2EntityNotAllowedOnCompositeId()
+/// <p>AC2: the same refusal on a <code>composite</code> id of more than one part
+/// (<code>logs/audit</code>, three), which is where a second grammar would have to be invented --
+/// while a composite of exactly <b>one</b> part is accepted, because it occupies the same single
+/// route segment a <code>single</code> id does (DW-1419, Story 5.11).</p>
+/// <p><b>Both directions, deliberately.</b> A fix that admits a composite of one part and also
+/// admits a composite of three is not a fix.</p>
+/// <p><b>Swept over the registry, not over two examples.</b> The widening moved the answer for
+/// every composite-of-one screen in the tree, so the partition is asserted for every route the tool
+/// serves: an id kind and a part count decide it, and nothing else may. Four of those screens are
+/// parent-scoped, where the segment the accepted id occupies is read as the <b>parent's</b> id --
+/// pinned here as the answer that stands, so moving it is a deliberate change rather than a silent
+/// one.</p>
+/// <p>Mutation (Rule 19): restore <method>OcuPilot.Screen.Tool.Navigate.AcceptsEntityId</method>'s
+/// answer to <code>IdKind() = "single"</code> -- the acceptance below goes red; widen it to every
+/// composite -- the three-part refusal goes red; narrow it to a composite of one whose
+/// <code>parentScope</code> is empty -- the sweep goes red on the four parent-scoped screens, which
+/// the two examples alone leave free.</p>
+Method TestAC2EntityNotAllowedOnACompositeOfMoreThanOnePart()
 {
     Set tArgs = {"route": "logs/audit", "entityId": "x"}
     Set tSC = $ClassMethod(..#TOOL, "Directive", "", tArgs, .tRoute, .tEntityId, .tFault)
     Do $$$AssertStatusNotOK(tSC, "refused")
     Do $$$AssertEquals(tFault.code, "NAV.ENTITYNOTALLOWED", "naming the code")
+    Do $$$AssertEquals($ListLength($ClassMethod(##class(OcuPilot.Screen.Registry).DescriptorForRoute("logs/audit"), "IdParts")), 3, "that screen's composite really has more than one part")
+
+    Set tOneArgs = {"route": "tasks/schedule", "entityId": "7"}
+    Set tOneSC = $ClassMethod(..#TOOL, "Directive", "", tOneArgs, .tOneRoute, .tOneEntityId, .tOneFault)
+    Do $$$AssertStatusOK(tOneSC, "a composite of exactly one part accepts an entityId")
+    Do $$$AssertEquals(tOneRoute, "tasks/schedule", "the route is answered")
+    Do $$$AssertEquals(tOneEntityId, "7", "and the entity id")
+    Do $$$AssertEquals(tOneFault, "", "no fault")
+    Do $$$AssertEquals($ListLength($ClassMethod(##class(OcuPilot.Screen.Registry).DescriptorForRoute("tasks/schedule"), "IdParts")), 1, "that screen's composite really has one part")
+
+    ; The widening moved the answer for every composite-of-one screen in the tree, not only this
+    ; story's, so the partition is asserted over the registry rather than over the two examples
+    ; above: an id kind and a part count decide it, and nothing else may.
+    Set tSweptAccept = 0
+    Set tSweptRefuse = 0
+    Set tRoutes = $ClassMethod(..#TOOL, "BuiltRoutes")
+    Do $$$AssertTrue($ListLength(tRoutes) > 0, "the tool enumerates the routes it serves")
+    Set tPointer = 0
+    While $ListNext(tRoutes, tPointer, tRoute) {
+        If tRoute = "" Continue
+        Set tDescriptor = ##class(OcuPilot.Screen.Registry).DescriptorForRoute(tRoute)
+        If tDescriptor = "" Continue
+        Set tKind = $ClassMethod(tDescriptor, "IdKind")
+        Set tParts = $ListLength($ClassMethod(tDescriptor, "IdParts"))
+        Set tExpected = ((tKind = "single") || ((tKind = "composite") && (tParts = 1)))
+        Set tSweepArgs = {"route": (tRoute), "entityId": "1"}
+        Set tSweepSC = $ClassMethod(..#TOOL, "Directive", "", tSweepArgs, .tSweepRoute, .tSweepEntityId, .tSweepFault)
+        If tExpected {
+            Set tSweptAccept = tSweptAccept + 1
+            Do $$$AssertStatusOK(tSweepSC, tRoute _ " (" _ tKind _ ", " _ tParts _ " part(s)) accepts an entityId")
+        } Else {
+            Set tSweptRefuse = tSweptRefuse + 1
+            Do $$$AssertStatusNotOK(tSweepSC, tRoute _ " (" _ tKind _ ", " _ tParts _ " part(s)) refuses an entityId")
+            Do $$$AssertEquals($Select($IsObject($Get(tSweepFault)):tSweepFault.code, 1:""), "NAV.ENTITYNOTALLOWED", "and names the code")
+        }
+    }
+    Do $$$AssertTrue(tSweptAccept > 1, "more than one built screen accepts an entityId, so the sweep is not the two examples again (" _ tSweptAccept _ ")")
+    Do $$$AssertTrue(tSweptRefuse > 0, "and some built screen refuses one, so a sweep over acceptances alone cannot pass (" _ tSweptRefuse _ ")")
 }
 
 /// <p>A <code>single</code>-id screen (<code>permissions/users</code>) accepts an
@@ -99,6 +153,73 @@ Method TestSingleIdAcceptsEntityAndNoneAcceptsAbsent()
     Set tSC2 = $ClassMethod(..#TOOL, "Directive", "", tArgs2, .tRoute2, .tEntityId2, .tFault2)
     Do $$$AssertStatusOK(tSC2, "a screen opened with no row selected validates")
     Do $$$AssertEquals(tEntityId2, "", "no entity id")
+}
+
+/// <p>AC3 (Story 5.8), AD-21: a criterion the target descriptor declares as a <b>flag</b> is
+/// accepted and travels on the directive. <code>logs/audit</code> declares exactly one --
+/// <code>marker</code>, whose query parameter and value are both the descriptor's own -- and that
+/// is the criterion this story's audit hand-off carries.</p>
+Method TestADeclaredFlagCriterionIsAcceptedAndTravels()
+{
+    Do $$$AssertEquals($ListToString($ClassMethod("OcuPilot.Screen.Descriptor.AuditList", "FlagCriteria"), ","), "marker", "the audit screen declares one flag criterion")
+    Set tArgs = {"route": "logs/audit", "criterion": "marker"}
+    Set tSC = $ClassMethod(..#TOOL, "Directive", "", tArgs, .tRoute, .tEntityId, .tFault, .tCriterion)
+    Do $$$AssertStatusOK(tSC, "the directive validates")
+    Do $$$AssertEquals(tFault, "", "with no fault")
+    Do $$$AssertEquals(tRoute, "logs/audit", "the route is answered")
+    Do $$$AssertEquals(tCriterion, "marker", "and the criterion travels on the directive")
+
+    Set tArgs2 = {"route": "logs/audit"}
+    Set tSC2 = $ClassMethod(..#TOOL, "Directive", "", tArgs2, .tRoute2, .tEntityId2, .tFault2, .tCriterion2)
+    Do $$$AssertStatusOK(tSC2, "naming no criterion validates too")
+    Do $$$AssertEquals(tCriterion2, "", "and carries none")
+}
+
+/// <p>AC3 (Story 5.8), AD-21: three shapes are one refusal, <code>NAV.CRITERIONUNKNOWN</code>,
+/// answered before any announcement exists -- a name the target declares nothing under, a
+/// criterion <b>field</b> whose value a person types, and a name carrying a caller-supplied
+/// value. The last is the one that matters most: a navigation may <b>name</b> a filter and may
+/// never carry one, because no caller value reaches a read.</p>
+/// <p>Mutation (Rule 19): drop the <code>$ListFind(... "FlagCriteria" ...)</code> guard from
+/// <method>OcuPilot.Screen.Tool.Navigate.Directive</method> -- all three go red, and a caller's
+/// own <code>eventSources</code> value would reach the audit read.</p>
+Method TestAnUndeclaredOrValuedCriterionIsRefused()
+{
+    For tCriterion = "nosuchthing", "eventSources", "marker=OcuPilot" {
+        Set tArgs = {"route": "logs/audit"}
+        Do tArgs.%Set("criterion", tCriterion, "string")
+        Set tSC = $ClassMethod(..#TOOL, "Directive", "", tArgs, .tRoute, .tEntityId, .tFault, .tAnswered)
+        Do $$$AssertStatusNotOK(tSC, "'" _ tCriterion _ "' is refused")
+        Do $$$AssertTrue($IsObject(tFault), "'" _ tCriterion _ "' is refused with a fault")
+        If $IsObject(tFault) Do $$$AssertEquals(tFault.code, ##class(OcuPilot.Api.Error).#NAVCRITERIONUNKNOWN, "'" _ tCriterion _ "' names the code")
+        Do $$$AssertEquals(tRoute, "", "'" _ tCriterion _ "': no route is validated, so no announcement can exist")
+        Do $$$AssertEquals($Get(tAnswered), "", "'" _ tCriterion _ "': and no criterion is answered")
+    }
+    ; A screen that declares no flag criterion at all refuses every name, including the one another
+    ; screen declares -- the allow-list is the TARGET descriptor's, never the registry's union.
+    Set tArgs = {"route": "web-applications/list", "criterion": "marker"}
+    Set tSC = $ClassMethod(..#TOOL, "Directive", "", tArgs, .tRoute, .tEntityId, .tFault, .tAnswered)
+    Do $$$AssertStatusNotOK(tSC, "a screen that declares no flag refuses one another screen declares")
+    If $IsObject(tFault) Do $$$AssertEquals(tFault.code, ##class(OcuPilot.Api.Error).#NAVCRITERIONUNKNOWN, "naming the code")
+}
+
+/// <p>AD-21: the schema admits <code>criterion</code> as a bounded string and closes the object,
+/// so no other argument is representable at all.</p>
+Method TestTheSchemaAdmitsCriterionAndNothingElse()
+{
+    Set tSchema = $ClassMethod(..#TOOL, "InputSchema", "")
+    Set tProperties = tSchema.%Get("properties")
+    Do $$$AssertEquals(tSchema.%Get("additionalProperties"), 0, "the object is closed")
+    Do $$$AssertTrue($IsObject(tProperties.%Get("criterion")), "criterion is declared")
+    Do $$$AssertEquals(tProperties.%Get("criterion").%Get("type"), "string", "as a string")
+    Do $$$AssertTrue(+tProperties.%Get("criterion").%Get("maxLength") > 0, "with a bound")
+    Set tCount = 0
+    Set tIterator = tProperties.%GetIterator()
+    While tIterator.%GetNext(.tName, .tValue) {
+        Do $$$AssertTrue($ListFind($ListBuild("route", "entityId", "criterion"), tName) > 0, "the schema declares only route, entityId and criterion, not '" _ tName _ "'")
+        Set tCount = tCount + 1
+    }
+    Do $$$AssertEquals(tCount, 3, "and all three of them")
 }
 
 /// <p>Defensive re-check: a route <code>Directive</code> cannot resolve to a built descriptor is
@@ -202,7 +323,7 @@ Method TestAdvertisedInProduction()
 Method TestEveryNavCodeHasAWrittenSentence()
 {
     Set tCodes = ##class(OcuPilot.Api.Error).NavCodes()
-    Do $$$AssertEquals($ListLength(tCodes), 5, "the vocabulary holds five NAV codes; adding one is a deliberate edit in OcuPilot.Api.Error")
+    Do $$$AssertEquals($ListLength(tCodes), 6, "the vocabulary holds six NAV codes; adding one is a deliberate edit in OcuPilot.Api.Error")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Set tReason = ##class(OcuPilot.Api.Error).ReasonForNav(tCode)
@@ -262,6 +383,38 @@ Method TestSettledResultEmitsOnlyDeclaredKeysWithDeclaredTypes()
         If tEntity = "" Do $$$AssertEquals(tResult.%IsDefined("entityId"), 0, tLabel _ "entityId is omitted, not null")
         If tOutcome = "opened" Do $$$AssertEquals(tResult.%IsDefined("code"), 0, tLabel _ "code is omitted, not null")
     }
+}
+
+/// <p>Story 5.8, AD-21: <b>exactly one built descriptor declares a flag criterion, and it is the
+/// audit database viewer's <code>marker</code></b>. A roster equality, in this project's own
+/// idiom, because the two halves of the criterion channel are not symmetric:
+/// <method>OcuPilot.Screen.Descriptor.Base.FlagCriteria</method> <i>derives</i> a flag from any
+/// well-formed <code>{param, value}</code> criteria entry on <i>any</i> descriptor, so
+/// <method>OcuPilot.Screen.Tool.Navigate.Directive</method> would accept a second one and
+/// <class>OcuPilot.Kernel.State.Nav</class> would carry it -- while the client's
+/// <file>ui/src/app/shell/agent-navigator.ts</file> hands every arrival to one screen's store,
+/// which declines anything else. A flag declared on a second screen would therefore be advertised
+/// to the model, accepted, announced, and then silently applied to nothing.</p>
+/// <p><b>Read this before deleting it.</b> It is not a claim that one flag is the right number: it
+/// is a tripwire aimed at whichever story declares the second. The fix is to give the client a way
+/// to reach that screen's store -- not to widen this assertion -- and until that exists the
+/// refusal this pins is the honest answer.</p>
+/// <p>Mutation (Rule 19): declare a second <code>{param, value}</code> criterion on any other
+/// built descriptor's read -&gt; this goes red naming that descriptor.</p>
+Method TestTheAuditScreenIsTheOnlyDeclarerOfAFlagCriterion()
+{
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tDescriptors)
+    Do $$$AssertStatusOK(tSC, "the descriptor roster reads")
+    Do $$$AssertTrue($ListLength(tDescriptors) > 0, "and is not empty, so this sweep asserts something")
+    Set tDeclarers = ""
+    For tI = 1:1:$ListLength(tDescriptors) {
+        Set tDescriptor = $List(tDescriptors, tI)
+        If '$ClassMethod(tDescriptor, "IsBuilt") Continue
+        Set tFlags = $ClassMethod(tDescriptor, "FlagCriteria")
+        If tFlags = "" Continue
+        Set tDeclarers = tDeclarers _ $ListBuild(tDescriptor _ " -> " _ $ListToString(tFlags, ","))
+    }
+    Do $$$AssertEquals($ListToString(tDeclarers, " | "), "OcuPilot.Screen.Descriptor.AuditList -> marker", "exactly one built descriptor declares a flag criterion, and the client can reach its store")
 }
 
 }

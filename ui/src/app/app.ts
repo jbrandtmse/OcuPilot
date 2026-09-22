@@ -46,6 +46,7 @@ import { SIDE_BAR_OVERLAY_ID, SideBar } from './shell/side-bar';
 import { SignIn } from './shell/sign-in';
 import { StaleBundleNotice } from './shell/stale-bundle-notice';
 import { StatusBar } from './shell/status-bar';
+import { ToastHost } from './shell/toast-host';
 
 /** The content area's own element, which Escape returns focus to when nothing is open. */
 const CONTENT_ID = 'ocu-content';
@@ -143,6 +144,7 @@ export function isComposerChord(event: KeyboardEvent): boolean {
     CommandBar,
     StatusBar,
     Panel,
+    ToastHost,
   ],
   host: {
     '(document:keydown.escape)': 'onEscape()',
@@ -163,7 +165,11 @@ export function isComposerChord(event: KeyboardEvent): boolean {
       @if (signedIn) {
         @if (instanceReady) {
           <app-header />
-          <div class="ocu-shell" [class.ocu-shell-full-screen]="fullScreen">
+          <div
+            class="ocu-shell"
+            [class.ocu-shell-full-screen]="fullScreen"
+            [style.--ocu-panel-live-width]="panelLiveWidth"
+          >
             <app-rail />
             <app-side-bar [attr.inert]="coveredInert" />
             <div class="ocu-shell-content" [attr.inert]="coveredInert">
@@ -176,6 +182,7 @@ export function isComposerChord(event: KeyboardEvent): boolean {
               </div>
             </div>
             <app-panel [style.width.px]="panelWidth" />
+            <app-toast-host />
           </div>
           <app-status-bar />
         } @else {
@@ -325,6 +332,22 @@ export class App {
   protected get panelWidth(): number | null {
     this.panelGeneration();
     return this.panel.fullScreen() ? null : this.panel.layout().panelWidth;
+  }
+
+  /**
+   * The docked panel's live width, published on `.ocu-shell` as a custom property so a sibling can
+   * offset against it (DW-1412).
+   *
+   * DESIGN.md's toast recipe places the stack "offset from the right edge by the panel's live
+   * width", and that width existed only as a number in a framework-free store and as this row's own
+   * inline binding -- nothing a stylesheet or another component could read. It is published from
+   * the one getter that already re-reads it, so the two cannot disagree about how wide the panel
+   * is. `'0px'` in full screen, where the panel covers the content area and `app-toast-host` places
+   * no toast at all.
+   */
+  protected get panelLiveWidth(): string {
+    const width = this.panelWidth;
+    return (width === null ? 0 : width) + 'px';
   }
 
   /** The one viewport listener: the root element's width, which excludes a scrollbar the page never has. */

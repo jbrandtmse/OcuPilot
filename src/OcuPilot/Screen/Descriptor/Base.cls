@@ -453,6 +453,40 @@ ClassMethod ToolIdentifier() As %String
     Quit ..Field("toolIdentifier")
 }
 
+/// <p>The client string key holding the <b>singular</b> noun for this screen's primary entity type
+/// (AD-5, AD-14), or <code>""</code> for a screen that publishes none yet.</p>
+/// <p>A proposal card's title is the entity noun and the target's own name, and neither the wire's
+/// entity-type slug nor <method>LabelKey</method>'s plural screen label is that noun -- so it is
+/// declared here, once, beside the entity type it belongs to.
+/// <method>OcuPilot.Screen.Registry.EntityLabelProblem</method> is the grammar.</p>
+ClassMethod EntityLabelKey() As %String
+{
+    Quit ..Field("entityLabelKey")
+}
+
+/// <p>The top-level argument names this screen's write tools take as secret (AD-3, AD-6). Declared
+/// here rather than on a tool class because the confirm channel is the descriptor's: the only keys
+/// a client may supply at confirm are the fields declared secret for that tool, and a tool's input
+/// schema never admits one at all.</p>
+/// <p>An absent key is an empty list, which is the answer for every screen that has no secret
+/// field -- and is a declaration, not silence: <method>OcuPilot.Screen.Registry.Validate</method>
+/// refuses a descriptor whose declared criteria carry a credential-pattern name this list does not
+/// hold, so an unlisted secret is a refusal rather than a default.</p>
+ClassMethod SecretArguments() As %List
+{
+    Quit ..StringList("secretArguments")
+}
+
+/// <p>The payload paths a proposal's fingerprint leaves out (AD-6): the fields the endpoint itself
+/// moves as a side effect -- a next-scheduled time, a last-modified stamp -- which would otherwise
+/// make every confirm read a target that had changed under it.</p>
+/// <p>An absent key is an empty list, and the default is "everything else": a slice never chooses
+/// which fields the fingerprint covers, only which ones it does not.</p>
+ClassMethod FingerprintExcludes() As %List
+{
+    Quit ..StringList("fingerprintExcludes")
+}
+
 /// <p>One value nested one level under <var>pParent</var>, or <code>""</code>. An object or array
 /// value is a copy.</p>
 ClassMethod NestedField(pParent As %String, pName As %String) As %RawString [ Private ]
@@ -496,6 +530,37 @@ ClassMethod CopyOf(pValue As %RawString) As %RawString [ Private ]
 {
     If '$IsObject(pValue) Quit pValue
     Quit ##class(%DynamicAbstractObject).%FromJSON(pValue.%ToJSON())
+}
+
+/// <p>The names of the <b>flag</b> criteria this screen's declared read carries: a criterion whose
+/// value is the descriptor's own, not a caller's, and which is therefore nameable by an agent
+/// navigation (AD-21, Story 5.8). The audit database viewer's <code>marker</code> is the one such
+/// criterion in Release 1.</p>
+/// <p>A flag is well-formed only when it declares both the query parameter it sends and the value
+/// it sends under it; a half-declared one is not a flag and is not named here, so a caller can
+/// never reach a criterion whose value nobody declared. The <code>fields</code> half of
+/// <code>criteria</code> is deliberately absent: those take the value a person typed, and naming
+/// one would be a caller value reaching a read.</p>
+ClassMethod FlagCriteria() As %List
+{
+    Set tNames = ""
+    Try {
+        Set tRead = ..Read()
+        If '$IsObject(tRead) Quit
+        Set tCriteria = tRead.%Get("criteria")
+        If '$IsObject(tCriteria) || 'tCriteria.%IsA("%Library.DynamicObject") Quit
+        Set tIterator = tCriteria.%GetIterator()
+        While tIterator.%GetNext(.tName, .tValue) {
+            If tName = "fields" Continue
+            If '$IsObject(tValue) || 'tValue.%IsA("%Library.DynamicObject") Continue
+            If tValue.%Get("param") = "" Continue
+            If tValue.%GetTypeOf("value") = "unassigned" Continue
+            Set tNames = tNames _ $ListBuild(tName)
+        }
+    } Catch {
+        Set tNames = ""
+    }
+    Quit tNames
 }
 
 /// <p>A declared array of strings as a <class>%List</class>, with empties dropped.</p>

@@ -145,6 +145,13 @@ async function mount(
   // in this file that predates it.
   const agentStatus = stubAgentStatus(options.definitions ?? []);
   if (options.definitions !== undefined) await agentStatus.load();
+  // The real bus, with every event this form publishes captured: AD-14's action is what the
+  // subscribers act on, and nothing else in this file observes a publish (DW-1404).
+  const bus = new ChangeBus();
+  const changes: { kind: string; action: string; id: string; type: string }[] = [];
+  bus.subscribe((event) => {
+    changes.push({ kind: event.kind, action: event.action, id: event.id, type: event.type });
+  });
   TestBed.configureTestingModule({
     providers: [
       provideRouter([{ path: '**', children: [] }]),
@@ -152,7 +159,7 @@ async function mount(
       { provide: NavigationService, useValue: stubNavigation(options.verdict ?? UNGATED, options.mapLoaded ?? true) },
       { provide: AgentStatus, useValue: agentStatus },
       { provide: FormDirty, useValue: formDirty },
-      { provide: ChangeBus, useValue: new ChangeBus() },
+      { provide: ChangeBus, useValue: bus },
       { provide: OverlayStack, useValue: new OverlayStack() },
     ],
   });
@@ -161,7 +168,7 @@ async function mount(
   document.body.appendChild(fixture.nativeElement);
   planted.push(fixture.nativeElement);
   await settle(fixture);
-  return { fixture, calls, formDirty, agentStatus, host: fixture.nativeElement as HTMLElement };
+  return { fixture, calls, formDirty, agentStatus, changes, host: fixture.nativeElement as HTMLElement };
 }
 
 const ok = (body: unknown): JsonResult<unknown> => ({ kind: 'ok', status: 200, body });
@@ -386,6 +393,53 @@ describe('the Definition form', () => {
     expect(posted).toBeDefined();
     expect(JSON.parse(posted!.body)).not.toHaveProperty('enabled');
     expect(host.querySelector('.ocu-form-bar-status')?.textContent?.trim()).toContain(STRINGS.formSavedPendingTest);
+  });
+
+  it('DW-1404: a create publishes `created`, an edit publishes `updated`, and the gate path publishes `created`', async () => {
+    // AD-14's action is a closed vocabulary that carries meaning: `created` is the only action
+    // that asks the list to put the caret on the new row (`RefreshService.onBusEvent`), and it is
+    // the word an off-screen toast reads back. One `publishChange()` served both routes and said
+    // `updated` for all of them, so no shipped publisher could ever emit `created`.
+    //
+    // Mutation (Rule 19): hard-code `'updated'` in `publishChange` again -> the create and
+    // gate-path legs go red; the edit leg stays green, which is what makes the three legs
+    // together the pin rather than any one of them.
+    const createAnswer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'POST') return created(definition({ enabled: false }));
+      return ok({ definitions: [] });
+    };
+    const create = await mount(createAnswer);
+    const createSave = [...create.host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement;
+    createSave.click();
+    await settle(create.fixture);
+    expect(create.changes).toEqual([{ kind: 'changed', action: 'created', id: '7', type: 'agent-definition' }]);
+
+    const editAnswer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'PUT') return ok(definition({ enabled: true }));
+      return ok(definition());
+    };
+    const edit = await mount(editAnswer, '/agent/definitions/edit/7');
+    const editSave = [...edit.host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement;
+    editSave.click();
+    await settle(edit.fixture);
+    expect(edit.changes).toEqual([{ kind: 'changed', action: 'updated', id: '7', type: 'agent-definition' }]);
+
+    // The gate's own path creates through Test connection, with no Save between (AC3 above), so
+    // it is a second create publisher and not a variant of the first.
+    const gateAnswer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (path.endsWith('/test')) {
+        return ok({ connected: true, reply: 'Hello', replyTruncated: false, latencyMs: 9, connectionVerified: true, testedAsStored: true });
+      }
+      if (init.method === 'POST') return created(definition());
+      return ok({ definitions: [] });
+    };
+    const gate = await mount(gateAnswer);
+    (gate.host.querySelector('.ocu-form-test button') as HTMLButtonElement).click();
+    await settle(gate.fixture);
+    expect(gate.changes.map((change) => change.action)).toEqual(['created']);
   });
 
   it('AC3: an edit whose answer reads enabled renders the saved sentence, and one that does not renders pending-test', async () => {

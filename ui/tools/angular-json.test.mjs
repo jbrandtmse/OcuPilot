@@ -347,7 +347,15 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // --- DW-371: the bundle-size budget is a deliberate, pinned figure -----------------------------
 //
 // Story 4.6 raised `maximumWarning` off the stock 500kB default to make room for three vendored
-// libraries (`marked`, `dompurify`, `lowlight`+`highlight.js`). `build-output.test.mjs` measures
+// libraries (`marked`, `dompurify`, `lowlight`+`highlight.js`).
+//
+// Raised again 1050kB -> 1120kB at Epic 15's merge into Epic 5 (2026-09-21), which is the first
+// time this pin has actually bitten. Two epics' client work landed together -- Epic 5's proposal
+// card, change toast and field disclosure, and Epic 15's account-held preferences -- and the
+// emitted initial total measured 1,073,860 bytes against the 1,050,000 the figure stood at. The
+// new figure leaves roughly 46kB of headroom, deliberately tight: a loose, unmeasured figure is
+// the thing DW-371 was filed against, and a tight one means the next raise is another reviewed
+// diff rather than a silent drift. `build-output.test.mjs` measures
 // the actual emitted bytes against this figure; this file pins the figure itself, so a later
 // change to it is a reviewed diff here rather than a silent edit nothing else notices.
 //
@@ -362,7 +370,7 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '1050kB', 'a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumWarning, '1120kB', 'a change to this figure must be a reviewed diff, not a silent edit');
   assert.equal(budget.maximumError, '1600kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and
@@ -402,4 +410,27 @@ test('DW-215: every dependency and devDependency is pinned to an exact x.y.z, an
   const [major, minor] = pinned.split('.').map(Number);
   assert.equal(major, 11);
   assert.equal(minor, 11, `highlight.js ${pinned} must stay inside lowlight's declared ~11.11.0 range`);
+});
+
+test("DW-1168: the redeploy line agents follow names the directory angular.json's outputPath declares", () => {
+  // The rule file tells an agent how to put a fresh bundle in front of a browser spec. It named
+  // `dist/ocupilot/`, a directory no build writes, so the copy silently moved nothing and the spec
+  // read the bundle the container came up with. A one-time correction cannot stop that recurring,
+  // and this project pins its cross-file literals rather than trusting two files to stay equal
+  // (compose.test.mjs and ci.test.mjs do the same for the ports and the Node bands).
+  //
+  // Mutation (Rule 19): change either side -- the `outputPath` in angular.json, or the path in the
+  // rule file's `docker cp` line -- and this goes red naming both.
+  const outputPath = parsed.projects['ocupilot-ui'].architect.build.options.outputPath;
+  assert.equal(typeof outputPath, 'string', 'angular.json declares a string outputPath');
+
+  const rulePath = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '.claude', 'rules', 'objectscript-testing.md');
+  const rule = readFileSync(rulePath, 'utf8');
+  const copyLine = /docker cp (\S+)\/browser\/\.\s/.exec(rule);
+  assert.ok(copyLine, 'expected a `docker cp <dist>/browser/.` line in .claude/rules/objectscript-testing.md');
+  assert.equal(
+    copyLine[1],
+    outputPath,
+    `the rule file copies from ${copyLine[1]} while angular.json writes ${outputPath}`
+  );
 });

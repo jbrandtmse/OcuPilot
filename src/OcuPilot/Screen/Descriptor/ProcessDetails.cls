@@ -26,7 +26,15 @@
 /// <code>CSPSessionID</code>, <code>CurrentSrcLine</code> (source text with literals),
 /// <code>LastGlobalReference</code> (subscripts can hold patient identifiers), <code>UserInfo</code>,
 /// <code>Roles</code> and <code>LicenseUserId</code>. No <code>CanBe*</code> field either -- this
-/// screen ships no process control, which Stories 5.12, 7.8 and 16.6 own.</p>
+/// screen ships no process control, which Stories 7.8 and 16.6 own; the suspend and resume tools
+/// are <class>OcuPilot.Screen.Tool.ProcessSuspend</class> and
+/// <class>OcuPilot.Screen.Tool.ProcessResume</class> over the parent list's descriptor.</p>
+/// <p><b><code>JobType</code> is declared because a refusal rests on it.</b> It is the
+/// authoritative kind of a process -- <code>GET</code>-only, absent from the <code>CONTROLPANEL</code>
+/// row behind LIST -- and <method>OcuPilot.Kernel.Proposal.Prohibited.Process</method> refuses a
+/// suspend or a resume on it, so the operator is shown the field the refusal reads. It takes no
+/// table column: the page's three labeled groups are the classic page's, and this is the agent's
+/// context rather than a figure a reader compares.</p>
 /// <p><b>It is one of the seven screens the shared auto-refresh framework binds</b> (AD-43), at the
 /// rates <file>EXPERIENCE.md</file>'s auto-refresh bullet declares. It shows the classic page's
 /// three labeled value groups rather than the meter component, which Story 6.9 builds.</p>
@@ -56,7 +64,7 @@ XData Declaration
   "primaryAction": {"id": "", "selfProtection": ""},
   "rowActions": [],
   "context": {
-    "fields": ["Pid", "ParentPid", "UserName", "LoginRoles", "EscalatedRoles", "OSUserName", "NameSpace", "Priority", "StartTimeUTC", "CPUTime", "CommandsExecuted", "GlobalReferences", "PrivateGlobalReferences", "PrivateGlobalBlockCount", "MemoryAllocated", "MemoryPeak", "MemoryUsed", "CurrentDevice", "OpenDevices", "State", "InTransaction", "Routine", "CurrentLineAndRoutine", "Location", "ClientNodeName", "ClientExecutableName", "ClientIPAddress"],
+    "fields": ["Pid", "JobType", "ParentPid", "UserName", "LoginRoles", "EscalatedRoles", "OSUserName", "NameSpace", "Priority", "StartTimeUTC", "CPUTime", "CommandsExecuted", "GlobalReferences", "PrivateGlobalReferences", "PrivateGlobalBlockCount", "MemoryAllocated", "MemoryPeak", "MemoryUsed", "CurrentDevice", "OpenDevices", "State", "InTransaction", "Routine", "CurrentLineAndRoutine", "Location", "ClientNodeName", "ClientExecutableName", "ClientIPAddress"],
     "secretFields": []
   },
   "emptyStateKey": "processDetailsGone",
@@ -69,7 +77,7 @@ XData Declaration
       "endpoint": "Process",
       "type": "GET"
     },
-    "fields": ["Pid", "ParentPid", "UserName", "LoginRoles", "EscalatedRoles", "OSUserName", "NameSpace", "Priority", "StartTimeUTC", "CPUTime", "CommandsExecuted", "GlobalReferences", "PrivateGlobalReferences", "PrivateGlobalBlockCount", "MemoryAllocated", "MemoryPeak", "MemoryUsed", "CurrentDevice", "OpenDevices", "State", "InTransaction", "Routine", "CurrentLineAndRoutine", "Location", "ClientNodeName", "ClientExecutableName", "ClientIPAddress"],
+    "fields": ["Pid", "JobType", "ParentPid", "UserName", "LoginRoles", "EscalatedRoles", "OSUserName", "NameSpace", "Priority", "StartTimeUTC", "CPUTime", "CommandsExecuted", "GlobalReferences", "PrivateGlobalReferences", "PrivateGlobalBlockCount", "MemoryAllocated", "MemoryPeak", "MemoryUsed", "CurrentDevice", "OpenDevices", "State", "InTransaction", "Routine", "CurrentLineAndRoutine", "Location", "ClientNodeName", "ClientExecutableName", "ClientIPAddress"],
     "filter": ["Pid", "ParentPid", "UserName", "LoginRoles", "EscalatedRoles", "OSUserName", "NameSpace", "Priority", "StartTimeUTC", "CPUTime", "CommandsExecuted", "GlobalReferences", "PrivateGlobalReferences", "PrivateGlobalBlockCount", "MemoryAllocated", "MemoryPeak", "MemoryUsed", "CurrentDevice", "OpenDevices", "State", "InTransaction", "Routine", "CurrentLineAndRoutine", "Location", "ClientNodeName", "ClientExecutableName", "ClientIPAddress"],
     "sort": {
       "fields": ["Pid", "ParentPid", "UserName", "LoginRoles", "EscalatedRoles", "OSUserName", "NameSpace", "Priority", "StartTimeUTC", "CPUTime", "CommandsExecuted", "GlobalReferences", "PrivateGlobalReferences", "PrivateGlobalBlockCount", "MemoryAllocated", "MemoryPeak", "MemoryUsed", "CurrentDevice", "OpenDevices", "State", "InTransaction", "Routine", "CurrentLineAndRoutine", "Location", "ClientNodeName", "ClientExecutableName", "ClientIPAddress"],

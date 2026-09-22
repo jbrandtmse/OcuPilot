@@ -2,11 +2,12 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 
 import { Router } from '@angular/router';
 
+import { ChangeBus } from '../../core/change-bus';
 import { isBannerFault } from '../../core/fault';
 import { formatDeniedAction, NavigationService } from '../../core/navigation';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { STRINGS } from '../../core/strings';
-import { ErrorLogDrill, type ErrorLogLevel } from './error-log.store';
+import { ERROR_LOG_ENTITY_TYPE, ErrorLogDrill, type ErrorLogLevel } from './error-log.store';
 
 /** One rendered table: its column headers and its rows of already-resolved cell text. */
 interface GridView {
@@ -236,8 +237,27 @@ export class ErrorLogPage {
         : this.actions.register(screen.descriptor, REFRESH_ACTION_ID, () => {
             void this.drill.reopen();
           });
+    // AD-14. A confirmed delete against this log publishes one `changed` event, and a screen
+    // showing that entity type re-fetches in place rather than patching its own rows. This screen
+    // binds no `RefreshService` -- three levels are three column sets -- so it holds its own
+    // subscription rather than a refresh binding, which is the same reason `reopen()` exists.
+    //
+    // Optional, because the bus is provided at the application root and this page is mounted
+    // without it in its own component spec; a page with no bus behaves exactly as it did before
+    // the delete tool shipped.
+    const bus = inject(ChangeBus, { optional: true });
+    const stopBus =
+      bus === null
+        ? null
+        : bus.subscribe((event) => {
+            if (event.kind !== 'changed') return;
+            if (event.type !== ERROR_LOG_ENTITY_TYPE) return;
+            if (event.action !== 'deleted') return;
+            void this.drill.applyDeleted(event.id);
+          });
     inject(DestroyRef).onDestroy(() => {
       stop();
+      stopBus?.();
       stopRefreshAction?.();
     });
     if (!this.drill.loaded() && !this.drill.loading()) void this.drill.openNamespaces();

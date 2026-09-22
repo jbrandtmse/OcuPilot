@@ -73,6 +73,16 @@ ClassMethod GateClass() As %String
     Quit "OcuPilot.Test.ProviderGate"
 }
 
+/// <p>The per-user question <method>OcuPilot.Port.ProviderPort.Invoke</method> asks (DW-1309),
+/// answered from the same switch <method>GateClass</method> names, for the same reason: the suite
+/// runs as <code>%All</code> and neither the process check nor the per-user one can be made to
+/// refuse against the instance. Which account it is asked about is
+/// <class>OcuPilot.Test.ProviderOwnerProbe</class>'s subject, not this class's.</p>
+ClassMethod HoldsPairForUser(pUser As %String, pResource As %String, pPermission As %String) As %Boolean
+{
+    Quit $ClassMethod(..GateClass(), "HoldsPrivilege", pResource, pPermission)
+}
+
 /// <p>The switched credential class, or the shipped one when no test set it.</p>
 ClassMethod SecretClass() As %String
 {

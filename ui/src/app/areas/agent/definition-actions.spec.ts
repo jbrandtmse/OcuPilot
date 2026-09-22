@@ -105,6 +105,7 @@ describe('the Definitions list row actions', () => {
         // Composed from the triple, not read back out of the event under test: reading the actual
         // into the expected made this one field assert nothing.
         key: entityRefKey('agent-definition', 'instance', '7'),
+        action: 'updated',
         proposalId: '',
         expiresAt: 0,
       },

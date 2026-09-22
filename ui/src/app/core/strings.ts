@@ -58,122 +58,124 @@ export const STRINGS = {
   /** EXPERIENCE.md:257 */
   agentWriteBlockedByReadOnly: 'blocked by read-only mode',
   /** EXPERIENCE.md:258 */
-  auditingOffBanner: 'Agent writes are not being marked. Auditing is off on this instance.',
+  auditingOffBanner: 'Agent writes are not being marked in the audit database.',
   /** EXPERIENCE.md:258 */
   auditingConfigurationLink: 'Auditing configuration',
   /** EXPERIENCE.md:258 */
   auditingTurnOnAction: 'Turn auditing on',
   /** EXPERIENCE.md:259 */
   proposalTargetChanged: 'target changed, re-propose',
-  /** EXPERIENCE.md:260 */
-  contextChipLeavesInstance: 'leaves the instance',
-  /** EXPERIENCE.md:260 */
-  contextChipSentToHost: 'Screen context is sent to <host>',
+  /** EXPERIENCE.md Fixed strings, tail row */
+  auditMarkerReplySentence: 'This change was applied but not marked in the audit database.',
   /** EXPERIENCE.md:261 */
-  contextChipScreenSegment: 'Users, HSCUSTOM \u00b7 6 rows',
+  contextChipLeavesInstance: 'leaves the instance',
+  /** EXPERIENCE.md:261 */
+  contextChipSentToHost: 'Screen context is sent to <host>',
   /** EXPERIENCE.md:262 */
+  contextChipScreenSegment: 'Users, HSCUSTOM \u00b7 6 rows',
+  /** EXPERIENCE.md:263 */
   contextChipSharingOff: 'Screen context off \u2014 nothing from this screen is sent.',
-  /** EXPERIENCE.md:263 */
-  connectivityInstanceUnreachable: 'instance unreachable',
-  /** EXPERIENCE.md:263 */
-  connectivityRequestRefused: 'request refused',
   /** EXPERIENCE.md:264 */
+  connectivityInstanceUnreachable: 'instance unreachable',
+  /** EXPERIENCE.md:264 */
+  connectivityRequestRefused: 'request refused',
+  /** EXPERIENCE.md:265 */
   faultAbsentEntity: '<name> is no longer present on this instance. Return to the list to see what is there now.',
-  /** EXPERIENCE.md:265 */
+  /** EXPERIENCE.md:266 */
   statusConnectionSigningIn: 'Signing in\u2026',
-  /** EXPERIENCE.md:265 */
+  /** EXPERIENCE.md:266 */
   statusConnectionConnected: 'Connected',
-  /** EXPERIENCE.md:265 */
+  /** EXPERIENCE.md:266 */
   statusConnectionRetrying: 'Instance unreachable \u2014 retrying',
-  /** EXPERIENCE.md:265 */
+  /** EXPERIENCE.md:266 */
   statusConnectionSigningInAgain: 'Signing in again\u2026',
-  /** EXPERIENCE.md:266 */
-  statusSegmentServer: 'Server',
-  /** EXPERIENCE.md:266 */
-  statusSegmentInstance: 'Instance',
-  /** EXPERIENCE.md:266 */
-  statusSegmentLicensedTo: 'Licensed to',
   /** EXPERIENCE.md:267 */
+  statusSegmentServer: 'Server',
+  /** EXPERIENCE.md:267 */
+  statusSegmentInstance: 'Instance',
+  /** EXPERIENCE.md:267 */
+  statusSegmentLicensedTo: 'Licensed to',
+  /** EXPERIENCE.md:268 */
   agentExplainScreenAction: 'Explain this screen',
-  /** EXPERIENCE.md:268 */
+  /** EXPERIENCE.md:269 */
   actionTestConnection: 'Test connection',
-  /** EXPERIENCE.md:268 */
+  /** EXPERIENCE.md:269 */
   actionConfirm: 'Confirm',
-  /** EXPERIENCE.md:268 */
+  /** EXPERIENCE.md:269 */
   actionCancel: 'Cancel',
-  /** EXPERIENCE.md:268 */
+  /** EXPERIENCE.md:269 */
   actionSave: 'Save',
-  /** EXPERIENCE.md:268 */
+  /** EXPERIENCE.md:269 */
   actionResume: 'Resume',
-  /** EXPERIENCE.md:268 */
+  /** EXPERIENCE.md:269 */
   actionRun: 'Run',
-  /** EXPERIENCE.md:268 */
+  /** EXPERIENCE.md:269 */
   actionSuspend: 'Suspend',
-  /** EXPERIENCE.md:268 */
+  /** EXPERIENCE.md:269 */
   actionDelete: 'Delete',
-  /** EXPERIENCE.md:268 */
+  /** EXPERIENCE.md:269 */
   actionSend: 'Send',
-  /** EXPERIENCE.md:268 */
+  /** EXPERIENCE.md:269 */
   actionStop: 'Stop',
-  /** EXPERIENCE.md:268 */
+  /** EXPERIENCE.md:269 */
   actionNewConversation: 'New conversation',
-  /** EXPERIENCE.md:268 */
+  /** EXPERIENCE.md:269 */
   actionRepropose: 'Re-propose',
-  /** EXPERIENCE.md:268 */
+  /** EXPERIENCE.md:269 */
   actionSignOut: 'Sign out',
-  /** EXPERIENCE.md:268 */
+  /** EXPERIENCE.md:269 */
   actionSignIn: 'Sign in',
-  /** EXPERIENCE.md:268 */
+  /** EXPERIENCE.md:269 */
   actionRetry: 'Retry',
-  /** EXPERIENCE.md:268 */
+  /** EXPERIENCE.md:269 */
   actionOpenMessagesLog: 'Open messages.log',
-  /** EXPERIENCE.md:268 */
+  /** EXPERIENCE.md:269 */
   actionRefresh: 'Refresh',
-  /** EXPERIENCE.md:269 */
-  proposalRationaleHeading: 'Agent\'s rationale',
-  /** EXPERIENCE.md:269 */
-  proposalExpectedImpactHeading: 'Expected impact',
   /** EXPERIENCE.md:270 */
+  proposalRationaleHeading: 'Agent\'s rationale',
+  /** EXPERIENCE.md:270 */
+  proposalExpectedImpactHeading: 'Expected impact',
+  /** EXPERIENCE.md:271 */
   proposalReverseLabel: 'Reverse:',
-  /** EXPERIENCE.md:271 */
+  /** EXPERIENCE.md:272 */
   proposalCountdownLabel: 'Expires in m:ss',
-  /** EXPERIENCE.md:271 */
+  /** EXPERIENCE.md:272 */
   proposalCountdownTooltip: 'Proposals expire so a stale diff is never applied.',
-  /** EXPERIENCE.md:271 */
+  /** EXPERIENCE.md:272 */
   proposalCountdownAnnouncement: 'One minute left to confirm',
-  /** EXPERIENCE.md:272 */
-  proposalFooterConfirmHint: 'Confirm here; sending a message cancels this proposal',
-  /** EXPERIENCE.md:272 */
-  proposalFooterRunsAs: 'Runs as <user name>, with your privileges.',
   /** EXPERIENCE.md:273 */
+  proposalFooterConfirmHint: 'Confirm here; sending a message cancels this proposal',
+  /** EXPERIENCE.md:273 */
+  proposalFooterRunsAs: 'Runs as <user name>, with your privileges.',
+  /** EXPERIENCE.md:274 */
   proposalConfirmSentence: 'Press Confirm on the card to apply it.',
-  /** EXPERIENCE.md:274 */
-  proposalStatusConfirmedBy: 'Confirmed by <user name> \u00b7 hh:mm:ss',
-  /** EXPERIENCE.md:274 */
-  proposalStatusCanceledByYou: 'Canceled \u2014 by you',
-  /** EXPERIENCE.md:274 */
-  proposalStatusCanceledByMessage: 'Canceled \u2014 by your message',
-  /** EXPERIENCE.md:274 */
-  proposalStatusCanceledSibling: 'Canceled \u2014 a sibling proposal was confirmed',
-  /** EXPERIENCE.md:274 */
-  proposalStatusExpired: 'Expired',
-  /** EXPERIENCE.md:274 */
-  proposalStatusAgentSwitchedOff: 'The agent is switched off',
   /** EXPERIENCE.md:275 */
-  proposalUnchangedFieldsDisclosure: 'N unchanged fields',
+  proposalStatusConfirmedBy: 'Confirmed by <user name> \u00b7 hh:mm:ss',
+  /** EXPERIENCE.md:275 */
+  proposalStatusCanceledByYou: 'Canceled \u2014 by you',
+  /** EXPERIENCE.md:275 */
+  proposalStatusCanceledByMessage: 'Canceled \u2014 by your message',
+  /** EXPERIENCE.md:275 */
+  proposalStatusCanceledSibling: 'Canceled \u2014 a sibling proposal was confirmed',
+  /** EXPERIENCE.md:275 */
+  proposalStatusExpired: 'Expired',
+  /** EXPERIENCE.md:275 */
+  proposalStatusAgentSwitchedOff: 'The agent is switched off',
   /** EXPERIENCE.md:276 */
+  proposalUnchangedFieldsDisclosure: 'N unchanged fields',
+  /** EXPERIENCE.md:277 */
   proposalExampleCardTitle: 'Example \u2014 this is what a proposal looks like',
-  /** EXPERIENCE.md:277 */
-  agentIdleGreeting: 'I\'m ready. Ask about this screen, or try one of these.',
-  /** EXPERIENCE.md:277 */
-  agentIdleSelectionHint: 'Click a row to select it; click its name to open it.',
   /** EXPERIENCE.md:278 */
-  toolCallStoppedByYou: 'Stopped by you at <step>',
+  agentIdleGreeting: 'I\'m ready. Ask about this screen, or try one of these.',
+  /** EXPERIENCE.md:278 */
+  agentIdleSelectionHint: 'Click a row to select it; click its name to open it.',
   /** EXPERIENCE.md:279 */
-  agentTurnStoppedBanner: 'The turn stopped at <step>: <reason>.',
-  /** EXPERIENCE.md:352 */
-  agentTurnStoppedNoStepBanner: 'The turn stopped: <reason>.',
+  toolCallStoppedByYou: 'Stopped by you at <step>',
   /** EXPERIENCE.md:280 */
+  agentTurnStoppedBanner: 'The turn stopped at <step>: <reason>.',
+  /** EXPERIENCE.md:353 */
+  agentTurnStoppedNoStepBanner: 'The turn stopped: <reason>.',
+  /** EXPERIENCE.md:281 */
   agentTurnLockBanner: 'A turn is in progress. Wait for it to finish before sending another message.',
   // Story 4.5's four: from the tool-call-card Component Patterns row (:378) and the panel's
   // Busy and header rows (:424, :511), each authorized by its own targeted extractor in
@@ -182,818 +184,818 @@ export const STRINGS = {
   toolCallStatusFailed: 'failed \u2014 <reason>',
   agentComposerLockedReason: 'A turn is in progress',
   agentNewConversationLockedReason: 'Stop the turn first',
-  /** EXPERIENCE.md:351 */
+  /** EXPERIENCE.md:352 */
   toolCallReadResultLine: '<n> rows returned \u00b7 <m> sent',
-  /** EXPERIENCE.md:281 */
-  agentNavigationAnnouncement: 'I\'m opening <screen> for <entity> \u2014 use Back to return.',
-  /** EXPERIENCE.md:281 */
-  agentNavigationAnnouncementNoEntity: 'I\'m opening <screen> \u2014 use Back to return.',
-  /** EXPERIENCE.md:281 */
-  agentNavigationHeadingAnnouncement: '<title> \u2014 opened by the agent; Back returns',
   /** EXPERIENCE.md:282 */
-  agentAuditFollowUpQuestion: 'Shall I show you the audit entry?',
+  agentNavigationAnnouncement: 'I\'m opening <screen> for <entity> \u2014 use Back to return.',
+  /** EXPERIENCE.md:282 */
+  agentNavigationAnnouncementNoEntity: 'I\'m opening <screen> \u2014 use Back to return.',
+  /** EXPERIENCE.md:282 */
+  agentNavigationHeadingAnnouncement: '<title> \u2014 opened by the agent; Back returns',
   /** EXPERIENCE.md:283 */
-  agentGateReminderBanner: 'No agent definition is enabled. Configure one in Agent co-pilot \u203a Definitions.',
+  agentAuditFollowUpQuestion: 'Shall I show you the audit entry?',
   /** EXPERIENCE.md:284 */
-  agentGateLandingBanner: 'OcuPilot needs one agent definition before the panel can help. Anthropic is selected \u2014 paste a key and press Test connection. You can skip this and browse.',
+  agentGateReminderBanner: 'No agent definition is enabled. Configure one in Agent co-pilot \u203a Definitions.',
   /** EXPERIENCE.md:285 */
-  agentGateEmptyState: 'The agent isn\'t configured yet. An OcuPilot administrator can enable a definition in Agent co-pilot \u203a Definitions.',
+  agentGateLandingBanner: 'OcuPilot needs one agent definition before the panel can help. Anthropic is selected \u2014 paste a key and press Test connection. You can skip this and browse.',
   /** EXPERIENCE.md:286 */
-  agentReadOnlyEnforcedBanner: 'Read-only mode is enforced on this instance. The agent can read and explain, not change.',
+  agentGateEmptyState: 'The agent isn\'t configured yet. An OcuPilot administrator can enable a definition in Agent co-pilot \u203a Definitions.',
   /** EXPERIENCE.md:287 */
+  agentReadOnlyEnforcedBanner: 'Read-only mode is enforced on this instance. The agent can read and explain, not change.',
+  /** EXPERIENCE.md:288 */
   agentKillSwitchBanner: 'The agent is switched off for <everyone / you>: <reason>.',
-  /** EXPERIENCE.md:288 */
-  statusReadOnlyOff: 'Read-only: off',
-  /** EXPERIENCE.md:288 */
-  statusReadOnlyEnforced: 'Read-only: on \u2014 enforced on this instance',
-  /** EXPERIENCE.md:288 */
-  statusReadOnlyForYou: 'Read-only: on \u2014 for you',
-  /** EXPERIENCE.md:288 */
-  statusReadOnlyByDefinition: 'Read-only: on \u2014 by the definition',
   /** EXPERIENCE.md:289 */
+  statusReadOnlyOff: 'Read-only: off',
+  /** EXPERIENCE.md:289 */
+  statusReadOnlyEnforced: 'Read-only: on \u2014 enforced on this instance',
+  /** EXPERIENCE.md:289 */
+  statusReadOnlyForYou: 'Read-only: on \u2014 for you',
+  /** EXPERIENCE.md:289 */
+  statusReadOnlyByDefinition: 'Read-only: on \u2014 by the definition',
+  /** EXPERIENCE.md:290 */
   tableChangeToastLink: 'Open in <screen>',
-  /** EXPERIENCE.md:290 */
-  statusAutoRefreshOff: 'Auto-refresh: off',
-  /** EXPERIENCE.md:290 */
-  statusAutoRefreshOn: 'Auto-refresh: every <n> s',
-  /** EXPERIENCE.md:290 */
-  statusAutoRefreshPaused: 'Auto-refresh paused \u2014 a proposal is awaiting confirmation',
-  /** EXPERIENCE.md:290 */
-  statusLastUpdate: 'Last update hh:mm:ss',
   /** EXPERIENCE.md:291 */
-  commandBarFilterLabel: 'Filter rows',
+  statusAutoRefreshOff: 'Auto-refresh: off',
+  /** EXPERIENCE.md:291 */
+  statusAutoRefreshOn: 'Auto-refresh: every <n> s',
+  /** EXPERIENCE.md:291 */
+  statusAutoRefreshPaused: 'Auto-refresh paused \u2014 a proposal is awaiting confirmation',
+  /** EXPERIENCE.md:291 */
+  statusLastUpdate: 'Last update hh:mm:ss',
   /** EXPERIENCE.md:292 */
+  commandBarFilterLabel: 'Filter rows',
+  /** EXPERIENCE.md:293 */
   tableChangedTag: 'Changed',
-  /** EXPERIENCE.md:293 */
-  privilegeRequiresResource: 'Requires <resource>',
-  /** EXPERIENCE.md:293 */
-  privilegeSelectRowFirst: 'Select a row first',
   /** EXPERIENCE.md:294 */
-  privilegeDeniedScreen: 'You need <resource> to open <screen>.',
+  privilegeRequiresResource: 'Requires <resource>',
+  /** EXPERIENCE.md:294 */
+  privilegeSelectRowFirst: 'Select a row first',
   /** EXPERIENCE.md:295 */
-  privilegeDeniedAction: 'You need <resource> to <action>.',
+  privilegeDeniedScreen: 'You need <resource> to open <screen>.',
   /** EXPERIENCE.md:296 */
+  privilegeDeniedAction: 'You need <resource> to <action>.',
+  /** EXPERIENCE.md:297 */
   navPrivilegeMapUnread: 'Your privileges couldn\'t be read, so screens you can\'t open may be listed. Retry to check again.',
-  /** EXPERIENCE.md:297 */
-  formTypedNameConfirm: 'Type <name> to confirm',
-  /** EXPERIENCE.md:297 */
-  formTypedNameMismatch: 'Does not match',
   /** EXPERIENCE.md:298 */
+  formTypedNameConfirm: 'Type <name> to confirm',
+  /** EXPERIENCE.md:298 */
+  formTypedNameMismatch: 'Does not match',
+  /** EXPERIENCE.md:299 */
   formSecretStored: 'Stored. Enter a new value to replace it.',
-  /** EXPERIENCE.md:299 */
+  /** EXPERIENCE.md:300 */
   formTestConnectionResult: 'Connected. Reply: <the model\'s first words>',
-  /** EXPERIENCE.md:299 */
+  /** EXPERIENCE.md:300 */
   formTestConnectionFailure: 'The provider refused the request. Check the key and try again. Provider said: <text>',
-  /** EXPERIENCE.md:299 */
+  /** EXPERIENCE.md:300 */
   formSavedPendingTest: 'Saved \u2014 disabled until Test connection passes.',
-  /** EXPERIENCE.md:300 */
+  /** EXPERIENCE.md:301 */
   formSaved: 'Saved',
-  /** EXPERIENCE.md:300 */
+  /** EXPERIENCE.md:301 */
   formGoToHome: 'Go to Home',
-  /** EXPERIENCE.md:300 */
+  /** EXPERIENCE.md:301 */
   formLeaveWithoutSaving: 'Leave without saving?',
-  /** EXPERIENCE.md:301 */
-  authSignInFailed: 'Sign-in failed. Check the user name and password.',
-  /** EXPERIENCE.md:301 */
-  authPasswordExpired: 'The password for <user> has expired. Change it in the classic portal, or run the command in the README to clear the expiry.',
-  /** EXPERIENCE.md:301 */
-  authSessionEnded: 'Your session ended. Sign in to continue.',
-  /** EXPERIENCE.md:301 */
-  authSignedOut: 'You\'re signed out.',
-  /** EXPERIENCE.md:301 */
-  fieldUserName: 'User name',
-  /** EXPERIENCE.md:301 */
-  fieldPassword: 'Password',
   /** EXPERIENCE.md:302 */
+  authSignInFailed: 'Sign-in failed. Check the user name and password.',
+  /** EXPERIENCE.md:302 */
+  authPasswordExpired: 'The password for <user> has expired. Change it in the classic portal, or run the command in the README to clear the expiry.',
+  /** EXPERIENCE.md:302 */
+  authSessionEnded: 'Your session ended. Sign in to continue.',
+  /** EXPERIENCE.md:302 */
+  authSignedOut: 'You\'re signed out.',
+  /** EXPERIENCE.md:302 */
+  fieldUserName: 'User name',
+  /** EXPERIENCE.md:302 */
+  fieldPassword: 'Password',
+  /** EXPERIENCE.md:303 */
   authSignInUnreachable: 'Sign-in couldn\'t reach the instance. Check that IRIS is running, then sign in again.',
-  /** EXPERIENCE.md:303 */
-  taskManagerSuspendedBanner: 'The Task Manager is suspended \u2014 no scheduled task will run until it is resumed.',
-  /** EXPERIENCE.md:303 */
-  taskManagerStoppedBanner: 'The Task Manager is not running \u2014 no scheduled task will run until it is started.',
   /** EXPERIENCE.md:304 */
-  classicLinkCardTitle: 'More in the classic portal',
+  taskManagerSuspendedBanner: 'The Task Manager is suspended \u2014 no scheduled task will run until it is resumed.',
+  /** EXPERIENCE.md:304 */
+  taskManagerStoppedBanner: 'The Task Manager is not running \u2014 no scheduled task will run until it is started.',
   /** EXPERIENCE.md:305 */
+  classicLinkCardTitle: 'More in the classic portal',
+  /** EXPERIENCE.md:306 */
   classicLinkCardCaption: 'The classic portal may ask you to sign in again.',
-  /** EXPERIENCE.md:306 */
+  /** EXPERIENCE.md:307 */
   commandBoxPlaceholder: 'Search screens and commands',
-  /** EXPERIENCE.md:306 */
+  /** EXPERIENCE.md:307 */
   commandBoxNoMatch: 'No screen or action matches.',
-  /** EXPERIENCE.md:306 */
+  /** EXPERIENCE.md:307 */
   commandBoxResultCount: '<n> screens, <m> actions',
-  /** EXPERIENCE.md:307 */
-  commandBoxGroupScreens: 'Screens',
-  /** EXPERIENCE.md:307 */
-  commandBoxGroupActions: 'Actions',
   /** EXPERIENCE.md:308 */
+  commandBoxGroupScreens: 'Screens',
+  /** EXPERIENCE.md:308 */
+  commandBoxGroupActions: 'Actions',
+  /** EXPERIENCE.md:309 */
   agentComposerCaption: 'Enter to send \u00b7 Shift+Enter for a new line \u00b7 Ctrl+I to focus',
-  /** EXPERIENCE.md:309 */
-  navAreaHome: 'Home',
-  /** EXPERIENCE.md:309 */
-  navAreaLogs: 'Logs',
-  /** EXPERIENCE.md:309 */
-  navAreaOsManagement: 'OS management',
-  /** EXPERIENCE.md:309 */
-  navAreaTasks: 'Tasks',
-  /** EXPERIENCE.md:309 */
-  navAreaPermissions: 'Permissions',
-  /** EXPERIENCE.md:309 */
-  navAreaWebApplications: 'Web applications and REST API explorer',
-  /** EXPERIENCE.md:309 */
-  navAreaSecurity: 'Security and secrets',
-  /** EXPERIENCE.md:309 */
-  navAreaAgent: 'Agent co-pilot',
   /** EXPERIENCE.md:310 */
+  navAreaHome: 'Home',
+  /** EXPERIENCE.md:310 */
+  navAreaLogs: 'Logs',
+  /** EXPERIENCE.md:310 */
+  navAreaOsManagement: 'OS management',
+  /** EXPERIENCE.md:310 */
+  navAreaTasks: 'Tasks',
+  /** EXPERIENCE.md:310 */
+  navAreaPermissions: 'Permissions',
+  /** EXPERIENCE.md:310 */
+  navAreaWebApplications: 'Web applications and REST API explorer',
+  /** EXPERIENCE.md:310 */
+  navAreaSecurity: 'Security and secrets',
+  /** EXPERIENCE.md:310 */
+  navAreaAgent: 'Agent co-pilot',
+  /** EXPERIENCE.md:311 */
   navRailItemTooltip: '<Area> \u00b7 Ctrl+B toggles the side bar',
-  /** EXPERIENCE.md:311 */
-  agentComposerLabel: 'Message to the agent',
-  /** EXPERIENCE.md:311 */
-  agentShareContextLabel: 'Share screen context',
   /** EXPERIENCE.md:312 */
+  agentComposerLabel: 'Message to the agent',
+  /** EXPERIENCE.md:312 */
+  agentShareContextLabel: 'Share screen context',
+  /** EXPERIENCE.md:313 */
   tableRowCapNotice: 'Showing the first <n> rows. Narrow the filter or raise the max rows.',
-  /** EXPERIENCE.md:313 */
-  tableRowCount: '<n> rows',
-  /** EXPERIENCE.md:313 */
-  tableMaxRowsLabel: 'Max rows',
-  /** EXPERIENCE.md:313 */
-  tableEmptyValue: '(none)',
-  /** EXPERIENCE.md:313 */
-  tableStatusYes: 'Yes',
-  /** EXPERIENCE.md:313 */
-  tableStatusNo: 'No',
   /** EXPERIENCE.md:314 */
+  tableRowCount: '<n> rows',
+  /** EXPERIENCE.md:314 */
+  tableMaxRowsLabel: 'Max rows',
+  /** EXPERIENCE.md:314 */
+  tableEmptyValue: '(none)',
+  /** EXPERIENCE.md:314 */
+  tableStatusYes: 'Yes',
+  /** EXPERIENCE.md:314 */
+  tableStatusNo: 'No',
+  /** EXPERIENCE.md:315 */
   tableWriteCapableEmptyState: 'Or ask the agent: <a write it could propose here>.',
-  /** EXPERIENCE.md:315 */
+  /** EXPERIENCE.md:316 */
   webAppListLabel: 'Web applications',
-  /** EXPERIENCE.md:315 */
+  /** EXPERIENCE.md:316 */
   tableColumnName: 'Name',
-  /** EXPERIENCE.md:315 */
+  /** EXPERIENCE.md:316 */
   tableColumnType: 'Type',
-  /** EXPERIENCE.md:315 */
+  /** EXPERIENCE.md:316 */
   tableColumnEnabled: 'Enabled',
-  /** EXPERIENCE.md:315 */
+  /** EXPERIENCE.md:316 */
   webAppColumnDispatchClass: 'Dispatch class',
-  /** EXPERIENCE.md:315 */
+  /** EXPERIENCE.md:316 */
   webAppColumnResource: 'Resource',
-  /** EXPERIENCE.md:315 */
+  /** EXPERIENCE.md:316 */
   webAppListEmpty: 'No web applications in <NAMESPACE>.',
-  /** EXPERIENCE.md:315 */
+  /** EXPERIENCE.md:316 */
   tableReadOnlyEmptyNext: 'Open another screen from the command box.',
-  /** EXPERIENCE.md:316 */
+  /** EXPERIENCE.md:317 */
   userListLabel: 'Users',
-  /** EXPERIENCE.md:316 */
+  /** EXPERIENCE.md:317 */
   userColumnFullName: 'Full name',
-  /** EXPERIENCE.md:316 */
+  /** EXPERIENCE.md:317 */
   userColumnExpired: 'Account expired',
-  /** EXPERIENCE.md:316 */
+  /** EXPERIENCE.md:317 */
   userColumnRoles: 'Roles',
-  /** EXPERIENCE.md:316 */
+  /** EXPERIENCE.md:317 */
   userListEmpty: 'No users in <NAMESPACE>.',
-  /** EXPERIENCE.md:317 */
+  /** EXPERIENCE.md:318 */
   sslListLabel: 'SSL/TLS',
-  /** EXPERIENCE.md:317 */
+  /** EXPERIENCE.md:318 */
   tableColumnDescription: 'Description',
-  /** EXPERIENCE.md:317 */
+  /** EXPERIENCE.md:318 */
   sslListEmpty: 'No SSL/TLS configurations in <NAMESPACE>.',
-  /** EXPERIENCE.md:318 */
+  /** EXPERIENCE.md:319 */
   taskListLabel: 'Task schedule',
-  /** EXPERIENCE.md:318 */
+  /** EXPERIENCE.md:319 */
   taskColumnLastRun: 'Last run',
-  /** EXPERIENCE.md:318 */
+  /** EXPERIENCE.md:319 */
   taskColumnNextRun: 'Next run',
-  /** EXPERIENCE.md:318 */
+  /** EXPERIENCE.md:319 */
   taskListEmpty: 'No scheduled tasks on this instance.',
-  /** EXPERIENCE.md:319 */
+  /** EXPERIENCE.md:320 */
   processListLabel: 'Processes',
-  /** EXPERIENCE.md:319 */
+  /** EXPERIENCE.md:320 */
   processColumnPid: 'Process ID',
-  /** EXPERIENCE.md:319 */
+  /** EXPERIENCE.md:320 */
   processColumnUser: 'User',
-  /** EXPERIENCE.md:319 */
+  /** EXPERIENCE.md:320 */
   processColumnRoutine: 'Routine',
-  /** EXPERIENCE.md:319 */
+  /** EXPERIENCE.md:320 */
   processColumnState: 'State',
-  /** EXPERIENCE.md:319 */
+  /** EXPERIENCE.md:320 */
   processColumnCommands: 'Commands',
-  /** EXPERIENCE.md:319 */
+  /** EXPERIENCE.md:320 */
   processColumnGlobals: 'Globals',
-  /** EXPERIENCE.md:319 */
+  /** EXPERIENCE.md:320 */
   processListEmpty: 'No processes on this instance.',
-  /** EXPERIENCE.md:320 */
+  /** EXPERIENCE.md:321 */
   sortMenuLabel: 'Sort',
-  /** EXPERIENCE.md:320 */
+  /** EXPERIENCE.md:321 */
   sortDirectionAscending: 'Ascending',
-  /** EXPERIENCE.md:320 */
+  /** EXPERIENCE.md:321 */
   sortDirectionDescending: 'Descending',
-  /** EXPERIENCE.md:321 */
+  /** EXPERIENCE.md:322 */
   auditListLabel: 'Audit database',
-  /** EXPERIENCE.md:321 */
+  /** EXPERIENCE.md:322 */
   auditColumnTime: 'Time',
-  /** EXPERIENCE.md:321 */
+  /** EXPERIENCE.md:322 */
   auditColumnEventSource: 'Event source',
-  /** EXPERIENCE.md:321 */
+  /** EXPERIENCE.md:322 */
   auditColumnEventType: 'Event type',
-  /** EXPERIENCE.md:321 */
+  /** EXPERIENCE.md:322 */
   auditColumnEventName: 'Event name',
-  /** EXPERIENCE.md:321 */
+  /** EXPERIENCE.md:322 */
   auditListEmpty: 'No events match.',
-  /** EXPERIENCE.md:322 */
-  auditCriteriaBegin: 'Begin date and time',
-  /** EXPERIENCE.md:322 */
-  auditCriteriaEnd: 'End date and time',
-  /** EXPERIENCE.md:322 */
-  auditCriteriaAuthentication: 'Authentication',
-  /** EXPERIENCE.md:322 */
-  auditCriteriaSearch: 'Search',
-  /** EXPERIENCE.md:322 */
-  auditCriteriaAnyOption: 'Any',
-  /** EXPERIENCE.md:322 */
-  auditCriteriaNameHint: 'Comma-separated. * matches any name.',
-  /** EXPERIENCE.md:322 */
-  auditCriteriaTimeHint: 'Instance local time, as YYYY-MM-DD HH:MM:SS.',
   /** EXPERIENCE.md:323 */
+  auditCriteriaBegin: 'Begin date and time',
+  /** EXPERIENCE.md:323 */
+  auditCriteriaEnd: 'End date and time',
+  /** EXPERIENCE.md:323 */
+  auditCriteriaAuthentication: 'Authentication',
+  /** EXPERIENCE.md:323 */
+  auditCriteriaSearch: 'Search',
+  /** EXPERIENCE.md:323 */
+  auditCriteriaAnyOption: 'Any',
+  /** EXPERIENCE.md:323 */
+  auditCriteriaNameHint: 'Comma-separated. * matches any name.',
+  /** EXPERIENCE.md:323 */
+  auditCriteriaTimeHint: 'Instance local time, as YYYY-MM-DD HH:MM:SS.',
+  /** EXPERIENCE.md:324 */
   auditMarkerFilterLabel: 'Agent-marked events only',
-  /** EXPERIENCE.md:324 */
+  /** EXPERIENCE.md:325 */
   auditDialogTitle: 'Audit event',
-  /** EXPERIENCE.md:324 */
+  /** EXPERIENCE.md:325 */
   auditDialogEventData: 'Event data',
-  /** EXPERIENCE.md:324 */
+  /** EXPERIENCE.md:325 */
   auditDialogClose: 'Close',
-  /** EXPERIENCE.md:325 */
+  /** EXPERIENCE.md:326 */
   errorLogListLabel: 'Application errors',
-  /** EXPERIENCE.md:325 */
+  /** EXPERIENCE.md:326 */
   errorLogColumnDate: 'Date',
-  /** EXPERIENCE.md:325 */
+  /** EXPERIENCE.md:326 */
   errorLogColumnCount: 'Errors',
-  /** EXPERIENCE.md:325 */
+  /** EXPERIENCE.md:326 */
   errorLogColumnNumber: 'Error number',
-  /** EXPERIENCE.md:325 */
+  /** EXPERIENCE.md:326 */
   errorLogColumnText: 'Error',
-  /** EXPERIENCE.md:325 */
+  /** EXPERIENCE.md:326 */
   errorLogColumnLine: 'Code line',
-  /** EXPERIENCE.md:326 */
+  /** EXPERIENCE.md:327 */
   errorLogEmptyInstance: 'No application errors on this instance.',
-  /** EXPERIENCE.md:326 */
+  /** EXPERIENCE.md:327 */
   errorLogEmptyNamespace: 'No application errors in <NAMESPACE>.',
-  /** EXPERIENCE.md:326 */
+  /** EXPERIENCE.md:327 */
   errorLogEmptyDate: 'No application errors in <NAMESPACE> on <DATE>.',
-  /** EXPERIENCE.md:327 */
+  /** EXPERIENCE.md:328 */
   errorLogDetailExpressions: 'Expressions',
-  /** EXPERIENCE.md:327 */
+  /** EXPERIENCE.md:328 */
   errorLogDetailStack: 'Stack',
-  /** EXPERIENCE.md:327 */
+  /** EXPERIENCE.md:328 */
   errorLogDetailVariables: 'Variables',
-  /** EXPERIENCE.md:327 */
+  /** EXPERIENCE.md:328 */
   errorLogColumnExpression: 'Expression',
-  /** EXPERIENCE.md:327 */
+  /** EXPERIENCE.md:328 */
   errorLogColumnValue: 'Value',
-  /** EXPERIENCE.md:327 */
+  /** EXPERIENCE.md:328 */
   errorLogColumnLevel: 'Level',
-  /** EXPERIENCE.md:327 */
+  /** EXPERIENCE.md:328 */
   errorLogColumnFrame: 'Frame',
-  /** EXPERIENCE.md:328 */
+  /** EXPERIENCE.md:329 */
   errorLogBack: 'Back',
-  /** EXPERIENCE.md:328 */
+  /** EXPERIENCE.md:329 */
   errorLogLevelCapNotice: 'This list was cut at the row cap \u2014 older entries are not shown.',
-  /** EXPERIENCE.md:328 */
+  /** EXPERIENCE.md:329 */
   errorLogDetailCapNotice: 'This capture was cut at the row cap \u2014 some values are not shown.',
-  /** EXPERIENCE.md:329 */
+  /** EXPERIENCE.md:330 */
   errorLogRefusedNamespace: 'That namespace is no longer present in this log. Use Back to see which namespaces are.',
-  /** EXPERIENCE.md:329 */
+  /** EXPERIENCE.md:330 */
   errorLogRefusedDate: 'That date is no longer present in this log. Use Back to see which dates are.',
-  /** EXPERIENCE.md:329 */
+  /** EXPERIENCE.md:330 */
   errorLogRefusedEntry: 'That application error is no longer present in this log. Use Back to see which errors are.',
-  /** EXPERIENCE.md:329 */
+  /** EXPERIENCE.md:330 */
   errorLogRefusedAction: 'read this log',
-  /** EXPERIENCE.md:353 */
-  homeSuggestedView: 'Suggested view',
   /** EXPERIENCE.md:354 */
-  homeSuggestedOpen: 'Open',
+  homeSuggestedView: 'Suggested view',
   /** EXPERIENCE.md:355 */
+  homeSuggestedOpen: 'Open',
+  /** EXPERIENCE.md:356 */
   homeSuggestedApplicationErrors: 'Application errors in <NAMESPACE>: <n> on <DATE>',
-  /** EXPERIENCE.md:330 */
-  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
-  /** EXPERIENCE.md:330 */
-  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
-  /** EXPERIENCE.md:330 */
-  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
   /** EXPERIENCE.md:331 */
-  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
+  /** EXPERIENCE.md:331 */
+  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
+  /** EXPERIENCE.md:331 */
+  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
   /** EXPERIENCE.md:332 */
+  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  /** EXPERIENCE.md:333 */
   auditMarkerDescription: 'marked as coming through the OcuPilot agent co-pilot',
-  /** EXPERIENCE.md:333 */
+  /** EXPERIENCE.md:334 */
   agentDefinitionListLabel: 'Definitions',
-  /** EXPERIENCE.md:333 */
+  /** EXPERIENCE.md:334 */
   tableColumnProvider: 'Provider',
-  /** EXPERIENCE.md:333 */
+  /** EXPERIENCE.md:334 */
   tableColumnModel: 'Model',
-  /** EXPERIENCE.md:333 */
+  /** EXPERIENCE.md:334 */
   tableColumnDefault: 'Default',
-  /** EXPERIENCE.md:333 */
+  /** EXPERIENCE.md:334 */
   agentDefinitionListEmpty: 'No agent definitions yet.',
-  /** EXPERIENCE.md:333 */
+  /** EXPERIENCE.md:334 */
   agentDefinitionListEmptyAgent: 'create a definition for Claude and test the connection',
-  /** EXPERIENCE.md:333 */
+  /** EXPERIENCE.md:334 */
   agentDefinitionEnable: 'Enable',
-  /** EXPERIENCE.md:333 */
+  /** EXPERIENCE.md:334 */
   agentDefinitionDisable: 'Disable',
-  /** EXPERIENCE.md:333 */
+  /** EXPERIENCE.md:334 */
   agentDefinitionSetDefault: 'Set default',
-  /** EXPERIENCE.md:334 */
+  /** EXPERIENCE.md:335 */
   agentDefinitionFormLabel: 'Definition',
-  /** EXPERIENCE.md:334 */
+  /** EXPERIENCE.md:335 */
   agentDefinitionFieldEndpoint: 'Endpoint',
-  /** EXPERIENCE.md:334 */
+  /** EXPERIENCE.md:335 */
   agentDefinitionFieldApiKey: 'API key',
-  /** EXPERIENCE.md:334 */
+  /** EXPERIENCE.md:335 */
   agentDefinitionFieldLocalModel: 'Local model',
-  /** EXPERIENCE.md:334 */
+  /** EXPERIENCE.md:335 */
   agentDefinitionCredTypeNone: 'No API key',
-  /** EXPERIENCE.md:334 */
+  /** EXPERIENCE.md:335 */
   agentDefinitionHttpAcknowledge:
     'This endpoint is not encrypted, so the key travels across the network in clear.',
-  /** EXPERIENCE.md:334 */
+  /** EXPERIENCE.md:335 */
   agentDefinitionAdvanced: 'Advanced',
-  /** EXPERIENCE.md:334 */
+  /** EXPERIENCE.md:335 */
   agentDefinitionFieldMaxTokens: 'Maximum tokens',
-  /** EXPERIENCE.md:334 */
+  /** EXPERIENCE.md:335 */
   agentDefinitionFieldTemperature: 'Temperature',
-  /** EXPERIENCE.md:334 */
+  /** EXPERIENCE.md:335 */
   agentDefinitionFieldMaxIterations: 'Maximum iterations',
-  /** EXPERIENCE.md:334 */
+  /** EXPERIENCE.md:335 */
   agentDefinitionFieldSystemPrompt: 'System prompt override',
-  /** EXPERIENCE.md:334 */
+  /** EXPERIENCE.md:335 */
   agentDefinitionFieldRetention: 'Retention',
-  /** EXPERIENCE.md:334 */
+  /** EXPERIENCE.md:335 */
   actionCreate: 'Create',
-  /** EXPERIENCE.md:335 */
-  agentDefinitionShowKey: 'Show key',
-  /** EXPERIENCE.md:335 */
-  agentDefinitionHideKey: 'Hide key',
-  /** EXPERIENCE.md:335 */
-  agentDefinitionRetentionCaption: 'Transcripts are kept for <n> days.',
   /** EXPERIENCE.md:336 */
+  agentDefinitionShowKey: 'Show key',
+  /** EXPERIENCE.md:336 */
+  agentDefinitionHideKey: 'Hide key',
+  /** EXPERIENCE.md:336 */
+  agentDefinitionRetentionCaption: 'Transcripts are kept for <n> days.',
+  /** EXPERIENCE.md:337 */
   proposalCardTitle: 'Proposal \u00b7 <entity type> <name>',
-  /** EXPERIENCE.md:337 */
+  /** EXPERIENCE.md:338 */
   proposalDiffWas: 'was',
-  /** EXPERIENCE.md:337 */
+  /** EXPERIENCE.md:338 */
   proposalDiffNow: 'now',
-  /** EXPERIENCE.md:338 */
-  agentTrustReads: 'It reads with your privileges.',
-  /** EXPERIENCE.md:338 */
-  agentTrustProposes: 'It proposes and you confirm.',
-  /** EXPERIENCE.md:338 */
-  agentTrustAudited: 'Every write is marked in the audit database.',
   /** EXPERIENCE.md:339 */
-  agentDefinitionRefusedAction: 'change this definition',
+  agentTrustReads: 'It reads with your privileges.',
+  /** EXPERIENCE.md:339 */
+  agentTrustProposes: 'It proposes and you confirm.',
+  /** EXPERIENCE.md:339 */
+  agentTrustAudited: 'Every write is marked in the audit database.',
   /** EXPERIENCE.md:340 */
+  agentDefinitionRefusedAction: 'change this definition',
+  /** EXPERIENCE.md:341 */
   formRequiredFieldsLegend: 'Required fields are marked with an asterisk.',
-  /** EXPERIENCE.md:341 */
-  agentSwitchesLabel: 'Switches',
-  /** EXPERIENCE.md:341 */
-  agentSwitchesKillSwitch: 'Kill switch',
-  /** EXPERIENCE.md:341 */
-  agentSwitchesFieldReason: 'Reason',
-  /** EXPERIENCE.md:341 */
-  agentSwitchesEnforcedReadOnly: 'Enforced read-only',
-  /** EXPERIENCE.md:341 */
-  agentSwitchesHoldsHeading: 'Switched off users',
-  /** EXPERIENCE.md:341 */
-  agentSwitchesHoldAdd: 'Switch off a user',
-  /** EXPERIENCE.md:341 */
-  agentSwitchesHoldRemove: 'Switch the agent back on',
-  /** EXPERIENCE.md:341 */
-  agentSwitchesHoldsEmpty: 'No users are switched off.',
   /** EXPERIENCE.md:342 */
-  agentSwitchesShareContext: 'Screen context is shared by default',
-  /** EXPERIENCE.md:348 */
-  agentSwitchesContextRowCap: 'Context rows sent with a turn',
+  agentSwitchesLabel: 'Switches',
+  /** EXPERIENCE.md:342 */
+  agentSwitchesKillSwitch: 'Kill switch',
+  /** EXPERIENCE.md:342 */
+  agentSwitchesFieldReason: 'Reason',
+  /** EXPERIENCE.md:342 */
+  agentSwitchesEnforcedReadOnly: 'Enforced read-only',
+  /** EXPERIENCE.md:342 */
+  agentSwitchesHoldsHeading: 'Switched off users',
+  /** EXPERIENCE.md:342 */
+  agentSwitchesHoldAdd: 'Switch off a user',
+  /** EXPERIENCE.md:342 */
+  agentSwitchesHoldRemove: 'Switch the agent back on',
+  /** EXPERIENCE.md:342 */
+  agentSwitchesHoldsEmpty: 'No users are switched off.',
   /** EXPERIENCE.md:343 */
-  agentSwitchesRefusedAction: 'change the switches',
+  agentSwitchesShareContext: 'Screen context is shared by default',
+  /** EXPERIENCE.md:349 */
+  agentSwitchesContextRowCap: 'Context rows sent with a turn',
   /** EXPERIENCE.md:344 */
+  agentSwitchesRefusedAction: 'change the switches',
+  /** EXPERIENCE.md:345 */
   formStaleSave:
     'Someone else changed this while you were here. Reload to see the current values, then save again.',
   // "Definitions" (:345), the administrator reminder banner's link, is the same literal as the
   // Definitions list's own label and renders `agentDefinitionListLabel`: one key per value.
-  /** EXPERIENCE.md:346 */
-  agentPanelFullScreen: 'Full screen',
   /** EXPERIENCE.md:347 */
+  agentPanelFullScreen: 'Full screen',
+  /** EXPERIENCE.md:348 */
   agentPanelResizeHandle: 'Resize the agent co-pilot panel',
-  /** EXPERIENCE.md:349 */
-  agentPanelSecretWarning: 'This looks like a password or key. Send anyway?',
-  /** EXPERIENCE.md:349 */
-  agentPanelSecretWarningSend: 'Send anyway',
-  /** EXPERIENCE.md:349 */
-  agentPanelSecretWarningEdit: 'Edit',
   /** EXPERIENCE.md:350 */
+  agentPanelSecretWarning: 'This looks like a password or key. Send anyway?',
+  /** EXPERIENCE.md:350 */
+  agentPanelSecretWarningSend: 'Send anyway',
+  /** EXPERIENCE.md:350 */
+  agentPanelSecretWarningEdit: 'Edit',
+  /** EXPERIENCE.md:351 */
   agentContextChipSecretGlyph: 'Secret fields on this screen are never sent',
-  /** EXPERIENCE.md:356 */
+  /** EXPERIENCE.md:357 */
   restApiListLabel: 'REST API explorer',
-  /** EXPERIENCE.md:356 */
+  /** EXPERIENCE.md:357 */
   restApiColumnSpecBased: 'Spec-based',
-  /** EXPERIENCE.md:356 */
+  /** EXPERIENCE.md:357 */
   restApiListEmpty: 'No REST applications in <NAMESPACE>.',
-  /** EXPERIENCE.md:357 */
+  /** EXPERIENCE.md:358 */
   openApiViewerLabel: 'OpenAPI document',
-  /** EXPERIENCE.md:357 */
+  /** EXPERIENCE.md:358 */
   openApiColumnPath: 'Path',
-  /** EXPERIENCE.md:357 */
+  /** EXPERIENCE.md:358 */
   openApiColumnVerb: 'Verb',
-  /** EXPERIENCE.md:357 */
+  /** EXPERIENCE.md:358 */
   openApiColumnSummary: 'Summary',
-  /** EXPERIENCE.md:357 */
+  /** EXPERIENCE.md:358 */
   openApiParameters: 'Parameters',
-  /** EXPERIENCE.md:357 */
+  /** EXPERIENCE.md:358 */
   openApiResponses: 'Responses',
-  /** EXPERIENCE.md:357 */
+  /** EXPERIENCE.md:358 */
   openApiRequired: 'Required',
-  /** EXPERIENCE.md:357 */
+  /** EXPERIENCE.md:358 */
   openApiRaw: 'Raw',
-  /** EXPERIENCE.md:357 */
+  /** EXPERIENCE.md:358 */
   openApiViewerEmpty: 'This document declares no paths.',
-  /** EXPERIENCE.md:357 */
+  /** EXPERIENCE.md:358 */
   openApiRefusedAction: 'read this document',
-  /** EXPERIENCE.md:357 */
+  /** EXPERIENCE.md:358 */
   openApiCapNotice: 'This document was cut at the row cap \u2014 some operations are not shown.',
-  /** EXPERIENCE.md:358 */
+  /** EXPERIENCE.md:359 */
   roleColumnCreatedBy: 'Created by',
-  /** EXPERIENCE.md:358 */
+  /** EXPERIENCE.md:359 */
   roleColumnEscalationOnly: 'Escalation only',
-  /** EXPERIENCE.md:358 */
+  /** EXPERIENCE.md:359 */
   roleListEmpty: 'No roles on this instance.',
-  /** EXPERIENCE.md:359 */
+  /** EXPERIENCE.md:360 */
   resourceListLabel: 'Resources',
-  /** EXPERIENCE.md:359 */
+  /** EXPERIENCE.md:360 */
   resourceColumnPublicPermission: 'Public permission',
-  /** EXPERIENCE.md:359 */
+  /** EXPERIENCE.md:360 */
   resourceColumnDeletable: 'Deletable',
-  /** EXPERIENCE.md:359 */
+  /** EXPERIENCE.md:360 */
   resourceListEmpty: 'No resources on this instance.',
-  /** EXPERIENCE.md:360 */
+  /** EXPERIENCE.md:361 */
   serviceListLabel: 'Services',
-  /** EXPERIENCE.md:360 */
+  /** EXPERIENCE.md:361 */
   serviceColumnAuthentication: 'Authentication methods',
-  /** EXPERIENCE.md:360 */
+  /** EXPERIENCE.md:361 */
   serviceColumnAllowedAddresses: 'Allowed IP addresses',
-  /** EXPERIENCE.md:360 */
+  /** EXPERIENCE.md:361 */
   serviceAllowedUnrestricted: 'Unrestricted',
-  /** EXPERIENCE.md:360 */
+  /** EXPERIENCE.md:361 */
   serviceListEmpty: 'No services on this instance.',
-  /** EXPERIENCE.md:361 */
+  /** EXPERIENCE.md:362 */
   x509ListLabel: 'X.509',
-  /** EXPERIENCE.md:361 */
+  /** EXPERIENCE.md:362 */
   x509ColumnAlias: 'Alias',
-  /** EXPERIENCE.md:361 */
+  /** EXPERIENCE.md:362 */
   x509ColumnSubject: 'Subject',
-  /** EXPERIENCE.md:361 */
+  /** EXPERIENCE.md:362 */
   x509ColumnIssuer: 'Issuer',
-  /** EXPERIENCE.md:361 */
+  /** EXPERIENCE.md:362 */
   x509ColumnValidFrom: 'Valid from',
-  /** EXPERIENCE.md:361 */
+  /** EXPERIENCE.md:362 */
   x509ColumnValidUntil: 'Valid until',
-  /** EXPERIENCE.md:361 */
+  /** EXPERIENCE.md:362 */
   x509ListEmpty: 'No X.509 credentials on this instance.',
-  /** EXPERIENCE.md:362 */
+  /** EXPERIENCE.md:363 */
   ldapListLabel: 'LDAP / Kerberos',
-  /** EXPERIENCE.md:362 */
+  /** EXPERIENCE.md:363 */
   ldapListEmpty: 'No LDAP / Kerberos configurations on this instance.',
-  /** EXPERIENCE.md:363 */
+  /** EXPERIENCE.md:364 */
   walletListLabel: 'Wallet',
-  /** EXPERIENCE.md:363 */
+  /** EXPERIENCE.md:364 */
   walletColumnUseResource: 'Use resource',
-  /** EXPERIENCE.md:363 */
+  /** EXPERIENCE.md:364 */
   walletColumnEditResource: 'Edit resource',
-  /** EXPERIENCE.md:363 */
+  /** EXPERIENCE.md:364 */
   walletListEmpty: 'No wallet collections on this instance.',
-  /** EXPERIENCE.md:364 */
+  /** EXPERIENCE.md:365 */
   walletSecretListLabel: 'Secrets',
-  /** EXPERIENCE.md:364 */
+  /** EXPERIENCE.md:365 */
   walletSecretListEmpty: 'No secrets in this collection.',
-  /** EXPERIENCE.md:365 */
+  /** EXPERIENCE.md:366 */
   oauthLabel: 'OAuth 2.0',
-  /** EXPERIENCE.md:365 */
+  /** EXPERIENCE.md:366 */
   oauthTabServerDescriptions: 'Client server descriptions',
-  /** EXPERIENCE.md:365 */
+  /** EXPERIENCE.md:366 */
   oauthTabClients: 'Client configurations',
-  /** EXPERIENCE.md:365 */
+  /** EXPERIENCE.md:366 */
   oauthTabResourceServers: 'Resource servers',
-  /** EXPERIENCE.md:365 */
+  /** EXPERIENCE.md:366 */
   oauthTabServer: 'Authorization server',
-  /** EXPERIENCE.md:365 */
+  /** EXPERIENCE.md:366 */
   oauthTabServerClients: 'Server client descriptions',
-  /** EXPERIENCE.md:366 */
+  /** EXPERIENCE.md:367 */
   oauthColumnClientType: 'Client type',
-  /** EXPERIENCE.md:366 */
+  /** EXPERIENCE.md:367 */
   oauthColumnDefaultScope: 'Default scope',
-  /** EXPERIENCE.md:366 */
+  /** EXPERIENCE.md:367 */
   oauthColumnScopes: 'Scopes',
-  /** EXPERIENCE.md:366 */
+  /** EXPERIENCE.md:367 */
   oauthColumnGrantTypes: 'Grant types',
-  /** EXPERIENCE.md:366 */
+  /** EXPERIENCE.md:367 */
   oauthColumnSigningAlgorithm: 'Signing algorithm',
-  /** EXPERIENCE.md:366 */
+  /** EXPERIENCE.md:367 */
   oauthColumnEncryptionAlgorithm: 'Encryption algorithm',
-  /** EXPERIENCE.md:366 */
+  /** EXPERIENCE.md:367 */
   oauthColumnKeyAlgorithm: 'Key algorithm',
-  /** EXPERIENCE.md:366 */
+  /** EXPERIENCE.md:367 */
   oauthColumnServerCredentials: 'Server credentials',
-  /** EXPERIENCE.md:366 */
+  /** EXPERIENCE.md:367 */
   oauthColumnClientId: 'Client ID',
-  /** EXPERIENCE.md:366 */
+  /** EXPERIENCE.md:367 */
   oauthColumnRedirectUrls: 'Redirect URLs',
-  /** EXPERIENCE.md:366 */
+  /** EXPERIENCE.md:367 */
   classicRowLinkDescription: 'Opens <page> in the classic portal in a new tab.',
-  /** EXPERIENCE.md:367 */
+  /** EXPERIENCE.md:368 */
   oauthServerDescriptionsEmpty: 'No client server descriptions on this instance.',
-  /** EXPERIENCE.md:367 */
+  /** EXPERIENCE.md:368 */
   oauthClientsEmpty: 'No client configurations on this instance.',
-  /** EXPERIENCE.md:367 */
+  /** EXPERIENCE.md:368 */
   oauthResourceServersEmpty: 'No resource servers on this instance.',
-  /** EXPERIENCE.md:367 */
+  /** EXPERIENCE.md:368 */
   oauthServerEmpty: 'No authorization server is configured on this instance.',
-  /** EXPERIENCE.md:367 */
+  /** EXPERIENCE.md:368 */
   oauthServerClientsEmpty: 'No server client descriptions on this instance.',
-  /** EXPERIENCE.md:368 */
+  /** EXPERIENCE.md:369 */
   taskOnDemandLabel: 'On-demand tasks',
-  /** EXPERIENCE.md:368 */
+  /** EXPERIENCE.md:369 */
   taskOnDemandEmpty: 'No tasks on this instance can be run on demand.',
-  /** EXPERIENCE.md:369 */
+  /** EXPERIENCE.md:370 */
   taskUpcomingLabel: 'Upcoming tasks',
-  /** EXPERIENCE.md:369 */
+  /** EXPERIENCE.md:370 */
   taskUpcomingColumnAt: 'Scheduled for',
-  /** EXPERIENCE.md:369 */
+  /** EXPERIENCE.md:370 */
   taskColumnSuspended: 'Suspended',
-  /** EXPERIENCE.md:369 */
+  /** EXPERIENCE.md:370 */
   taskUpcomingHorizon: 'Scheduled to run within',
-  /** EXPERIENCE.md:369 */
+  /** EXPERIENCE.md:370 */
   taskUpcomingHours1: 'The next hour',
-  /** EXPERIENCE.md:369 */
+  /** EXPERIENCE.md:370 */
   taskUpcomingHours4: 'The next 4 hours',
-  /** EXPERIENCE.md:369 */
+  /** EXPERIENCE.md:370 */
   taskUpcomingHours12: 'The next 12 hours',
-  /** EXPERIENCE.md:369 */
+  /** EXPERIENCE.md:370 */
   taskUpcomingHours24: 'The next 24 hours',
-  /** EXPERIENCE.md:369 */
+  /** EXPERIENCE.md:370 */
   taskUpcomingHours72: 'The next 3 days',
-  /** EXPERIENCE.md:369 */
+  /** EXPERIENCE.md:370 */
   taskUpcomingHours168: 'The next 7 days',
-  /** EXPERIENCE.md:369 */
+  /** EXPERIENCE.md:370 */
   taskUpcomingUntil: 'Until a date',
-  /** EXPERIENCE.md:369 */
+  /** EXPERIENCE.md:370 */
   taskUpcomingEmpty: 'No tasks are scheduled to run within this horizon.',
-  /** EXPERIENCE.md:370 */
+  /** EXPERIENCE.md:371 */
   taskHistoryLabel: 'Task history',
-  /** EXPERIENCE.md:370 */
+  /** EXPERIENCE.md:371 */
   taskHistoryColumnStarted: 'Started',
-  /** EXPERIENCE.md:370 */
+  /** EXPERIENCE.md:371 */
   taskHistoryColumnCompleted: 'Completed',
-  /** EXPERIENCE.md:370 */
+  /** EXPERIENCE.md:371 */
   taskHistoryColumnStatus: 'Status',
-  /** EXPERIENCE.md:370 */
+  /** EXPERIENCE.md:371 */
   taskHistoryColumnResult: 'Result',
-  /** EXPERIENCE.md:370 */
+  /** EXPERIENCE.md:371 */
   taskHistoryColumnTaskId: 'Task ID',
-  /** EXPERIENCE.md:370 */
+  /** EXPERIENCE.md:371 */
   taskHistoryColumnErrDate: 'Error date',
-  /** EXPERIENCE.md:370 */
+  /** EXPERIENCE.md:371 */
   taskHistoryColumnLogged: 'Logged',
-  /** EXPERIENCE.md:370 */
+  /** EXPERIENCE.md:371 */
   taskHistorySearch: 'Contains',
-  /** EXPERIENCE.md:370 */
+  /** EXPERIENCE.md:371 */
   taskHistoryUserOnly: 'User-defined tasks only',
-  /** EXPERIENCE.md:370 */
+  /** EXPERIENCE.md:371 */
   taskHistoryEmpty: 'No task runs match.',
-  /** EXPERIENCE.md:371 */
+  /** EXPERIENCE.md:372 */
   taskRunsLabel: 'History',
-  /** EXPERIENCE.md:371 */
+  /** EXPERIENCE.md:372 */
   taskRunsEmpty: 'This task has no recorded runs.',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskDetailsLabel: 'Task details',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskDetailsGone: 'This task no longer exists.',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskDetailsTaskClass: 'Task class',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskDetailsPriority: 'Priority',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskDetailsRunAs: 'Run as',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskDetailsLastError: 'Last error',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskDetailsSchedule: 'Schedule',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskDetailsHowOften: 'How often',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskDetailsTimeOfDay: 'Time of day',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskDetailsNextSuspended: 'Not scheduled while suspended',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskDetailsEdit: 'Edit task',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskScheduleEveryDay: 'Every day',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskScheduleEveryNDays: 'Every {n} days',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskScheduleWeekly: 'Every week on {days}',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskScheduleWeeklyEveryN: 'Every {n} weeks on {days}',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskScheduleMonthlyDay: 'Every month on day {d}',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskScheduleMonthlyDayEveryN: 'Every {n} months on day {d}',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskScheduleMonthlySpecial: 'Every month on the {ordinal} {weekday}',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskScheduleMonthlySpecialEveryN: 'Every {n} months on the {ordinal} {weekday}',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskScheduleRunAfter: 'After another task completes',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskScheduleOnDemand: 'On demand only',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskScheduleOnceAt: 'Once at {time}',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskScheduleEveryMinute: 'Every minute between {start} and {end}',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskScheduleEveryNMinutes: 'Every {n} minutes between {start} and {end}',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskScheduleEveryHour: 'Every hour between {start} and {end}',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   taskScheduleEveryNHours: 'Every {n} hours between {start} and {end}',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   weekdaySunday: 'Sunday',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   weekdayMonday: 'Monday',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   weekdayTuesday: 'Tuesday',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   weekdayWednesday: 'Wednesday',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   weekdayThursday: 'Thursday',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   weekdayFriday: 'Friday',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   weekdaySaturday: 'Saturday',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   ordinalFirst: 'first',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   ordinalSecond: 'second',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   ordinalThird: 'third',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   ordinalFourth: 'fourth',
-  /** EXPERIENCE.md:372 */
+  /** EXPERIENCE.md:373 */
   ordinalFifth: 'fifth',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsLabel: 'Process details',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsGone: 'This process no longer exists.',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsGroupGeneral: 'General',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsGroupExecution: 'Execution',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsGroupClientApplication: 'Client application',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsParentPid: 'Parent process ID',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsLoginRoles: 'Login roles',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsEscalatedRoles: 'Escalated roles',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsOsUser: 'OS user',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsCpuTime: 'CPU time (ms)',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsGlobalReferences: 'Global references',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsPrivateGlobalReferences: 'Private global references',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsPrivateGlobalBlocks: 'Private global blocks',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsMemoryLimit: 'Memory limit (KB)',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsMemoryPeak: 'Memory peak (KB)',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsMemoryUsed: 'Memory used (KB)',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsCurrentDevice: 'Current device',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsOpenDevices: 'Open devices',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsInTransaction: 'In transaction',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsSourceLocation: 'Source location',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsLocation: 'Location',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsClientName: 'Client name',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsClientExecutable: 'Client executable',
-  /** EXPERIENCE.md:373 */
+  /** EXPERIENCE.md:374 */
   processDetailsClientIpAddress: 'Client IP address',
 
-  /** EXPERIENCE.md:374 */
+  /** EXPERIENCE.md:375 */
   systemUsageLabel: 'System usage',
-  /** EXPERIENCE.md:374 */
+  /** EXPERIENCE.md:375 */
   systemUsageGlobalUpdates: 'Global updates',
-  /** EXPERIENCE.md:374 */
+  /** EXPERIENCE.md:375 */
   systemUsageRoutineCalls: 'Routine calls',
-  /** EXPERIENCE.md:374 */
+  /** EXPERIENCE.md:375 */
   systemUsageLogicalBlockRequests: 'Logical block requests',
-  /** EXPERIENCE.md:374 */
+  /** EXPERIENCE.md:375 */
   systemUsageBlockReads: 'Block reads',
-  /** EXPERIENCE.md:374 */
+  /** EXPERIENCE.md:375 */
   systemUsageBlockWrites: 'Block writes',
-  /** EXPERIENCE.md:374 */
+  /** EXPERIENCE.md:375 */
   systemUsageJournalEntries: 'Journal entries',
-  /** EXPERIENCE.md:374 */
+  /** EXPERIENCE.md:375 */
   systemUsageJournalBlockWrites: 'Journal block writes',
-  /** EXPERIENCE.md:374 */
+  /** EXPERIENCE.md:375 */
   systemUsageLastUpdate: 'Last update',
-  /** EXPERIENCE.md:374 */
+  /** EXPERIENCE.md:375 */
   systemUsageSharedMemory: 'Shared memory',
-  /** EXPERIENCE.md:374 */
+  /** EXPERIENCE.md:375 */
   systemUsageGlobalRefsPerSecond: 'Global references per second',
-  /** EXPERIENCE.md:374 */
+  /** EXPERIENCE.md:375 */
   systemUsageCacheEfficiency: 'Cache efficiency',
-  /** EXPERIENCE.md:374 */
+  /** EXPERIENCE.md:375 */
   systemUsageDatabaseSpace: 'Database space',
-  /** EXPERIENCE.md:374 */
+  /** EXPERIENCE.md:375 */
   systemUsageJournalSpace: 'Journal space',
-  /** EXPERIENCE.md:374 */
+  /** EXPERIENCE.md:375 */
   systemUsageLockTable: 'Lock table',
-  /** EXPERIENCE.md:374 */
+  /** EXPERIENCE.md:375 */
   systemUsageWriteDaemon: 'Write daemon',
-  /** EXPERIENCE.md:374 */
+  /** EXPERIENCE.md:375 */
   systemUsageEmpty: 'System usage is unavailable.',
-  /** EXPERIENCE.md:375 */
+  /** EXPERIENCE.md:376 */
   lockListLabel: 'Locks',
-  /** EXPERIENCE.md:375 */
+  /** EXPERIENCE.md:376 */
   lockColumnMode: 'Mode',
-  /** EXPERIENCE.md:375 */
+  /** EXPERIENCE.md:376 */
   lockColumnReference: 'Reference',
-  /** EXPERIENCE.md:375 */
+  /** EXPERIENCE.md:376 */
   lockColumnDirectory: 'Directory',
-  /** EXPERIENCE.md:375 */
+  /** EXPERIENCE.md:376 */
   lockColumnSystem: 'System',
-  /** EXPERIENCE.md:375 */
+  /** EXPERIENCE.md:376 */
   lockSystemLocal: 'This instance',
-  /** EXPERIENCE.md:375 */
+  /** EXPERIENCE.md:376 */
   lockListEmpty: 'No locks on this instance.',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseListLabel: 'Databases',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseFreeSpaceLabel: 'Free space',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   viewMenuLabel: 'View',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseColumnSize: 'Size',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseColumnMaxSize: 'Maximum size',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseColumnAvailable: 'Available',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseColumnDiskFree: 'Disk free',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseColumnMounted: 'Mounted',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseListEmpty: 'No databases on this instance.',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseDetailsLabel: 'Database details',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseDetailsGone: 'This database no longer exists.',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseDetailsExpansionSize: 'Expansion size',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseDetailsNewVolumeThreshold: 'New volume threshold',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseDetailsNewVolumeDirectory: 'New volume directory',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseDetailsKeepNewGlobals: 'Keep new globals',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseDetailsNewGlobalCollation: 'New global collation',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseDetailsClusterMountMode: 'Cluster mount mode',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseDetailsReadOnly: 'Read only',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseDetailsJournalNewGlobals: 'Journal new globals',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseVolumeListLabel: 'Volume files',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseVolumeColumnVolume: 'Volume',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseVolumeColumnFile: 'File',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseVolumeColumnDirectoryTotal: 'Directory total',
-  /** EXPERIENCE.md:376 */
+  /** EXPERIENCE.md:377 */
   databaseVolumeListEmpty: 'No volume files for this database.',
-  /** EXPERIENCE.md:377 */
+  /** EXPERIENCE.md:378 */
   deviceListLabel: 'Devices',
-  /** EXPERIENCE.md:377 */
+  /** EXPERIENCE.md:378 */
   deviceColumnPhysical: 'Physical device',
-  /** EXPERIENCE.md:377 */
+  /** EXPERIENCE.md:378 */
   deviceColumnSubtype: 'Subtype',
-  /** EXPERIENCE.md:377 */
+  /** EXPERIENCE.md:378 */
   deviceListEmpty: 'No devices on this instance.',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
@@ -1002,6 +1004,7 @@ export const STRINGS = {
   // the product name (never typeset as the wordmark -- DESIGN.md -- but an ordinary
   // word wherever running text or a document <title> needs it).
   auditMarkerFailed: 'done \u00b7 audit not marked',
+  auditMarkerMarked: 'done \u00b7 audit marked',
   accessibilityReducedMotionSpinnerWord: 'running',
   productName: 'OcuPilot',
 
@@ -1059,95 +1062,95 @@ export const STRINGS = {
   // The severity words are the vendor's own five-level scale (`irissys/%sySystem.inc`: -2 and -1
   // debug, 0 informational, 1 warning, 2 severe, 3 fatal), one more than the four the archetype
   // row lists, and every rendered severity carries its word so colour is never alone.
-  /** EXPERIENCE.md:378 */
+  /** EXPERIENCE.md:379 */
   logViewerColumnSeverity: 'Severity',
-  /** EXPERIENCE.md:378 */
+  /** EXPERIENCE.md:379 */
   logViewerColumnMessage: 'Message',
-  /** EXPERIENCE.md:378 */
+  /** EXPERIENCE.md:379 */
   logViewerEmpty: 'No entries.',
-  /** EXPERIENCE.md:378 */
+  /** EXPERIENCE.md:379 */
   logViewerNoMatches: 'No matches.',
-  /** EXPERIENCE.md:378 */
+  /** EXPERIENCE.md:379 */
   logViewerLoadNewer: 'Load newer',
-  /** EXPERIENCE.md:378 */
+  /** EXPERIENCE.md:379 */
   logViewerJumpTop: 'Jump to top',
-  /** EXPERIENCE.md:378 */
+  /** EXPERIENCE.md:379 */
   logViewerJumpBottom: 'Jump to bottom',
-  /** EXPERIENCE.md:378 */
+  /** EXPERIENCE.md:379 */
   logSeverityDebug: 'Debug',
-  /** EXPERIENCE.md:378 */
+  /** EXPERIENCE.md:379 */
   logSeverityInfo: 'Info',
-  /** EXPERIENCE.md:378 */
+  /** EXPERIENCE.md:379 */
   logSeverityWarning: 'Warning',
-  /** EXPERIENCE.md:378 */
+  /** EXPERIENCE.md:379 */
   logSeveritySevere: 'Severe',
-  /** EXPERIENCE.md:378 */
+  /** EXPERIENCE.md:379 */
   logSeverityFatal: 'Fatal',
 
   // The alerts.log screen's own two, beyond the shared viewer's: its side-bar entry and title, and
   // the polite count the sticky search announces.
-  /** EXPERIENCE.md:379 */
+  /** EXPERIENCE.md:380 */
   alertLogListLabel: 'alerts.log',
-  /** EXPERIENCE.md:379 */
+  /** EXPERIENCE.md:380 */
   logViewerMatchCount: '<n> of <N>',
 
   // The messages.log screen's own two: its side-bar entry and title, and the control that clears
   // the severity-chip filter. Clear filter is published on this row rather than reused from
   // Component Patterns, which names it only as a `button-text` example (DW-1109).
-  /** EXPERIENCE.md:380 */
+  /** EXPERIENCE.md:381 */
   messagesLogListLabel: 'messages.log',
-  /** EXPERIENCE.md:378 */
+  /** EXPERIENCE.md:379 */
   logViewerClearFilter: 'Clear filter',
 
   // Story 15.1's six: the account menu's Change password item, which is also the dialog's title,
   // the two masked fields, the two names its reveal toggle takes -- they say password where
   // `agentDefinitionShowKey`/`HideKey` say key -- and the polite confirmation after the change.
-  /** EXPERIENCE.md:381 */
+  /** EXPERIENCE.md:382 */
   accountChangePassword: 'Change password',
-  /** EXPERIENCE.md:381 */
+  /** EXPERIENCE.md:382 */
   accountCurrentPasswordLabel: 'Current password',
-  /** EXPERIENCE.md:381 */
+  /** EXPERIENCE.md:382 */
   accountNewPasswordLabel: 'New password',
-  /** EXPERIENCE.md:381 */
+  /** EXPERIENCE.md:382 */
   accountShowPassword: 'Show password',
-  /** EXPERIENCE.md:381 */
+  /** EXPERIENCE.md:382 */
   accountHidePassword: 'Hide password',
-  /** EXPERIENCE.md:381 */
+  /** EXPERIENCE.md:382 */
   accountPasswordChanged: 'Password changed',
 
   // Story 15.2's fifteen: the two Home blocks' headings, empty states, per-row remove names and
   // Clear controls, the locator bar's favorite toggle in its two states, and the five polite
   // confirmations the two surfaces announce. The two `*RemoveNamed` values carry a <name>
   // placeholder the row resolves to the screen it removes.
-  /** EXPERIENCE.md:382 */
+  /** EXPERIENCE.md:383 */
   favoritesHeading: 'Favorites',
-  /** EXPERIENCE.md:382 */
+  /** EXPERIENCE.md:383 */
   favoritesEmpty: 'No favorites yet.',
-  /** EXPERIENCE.md:382 */
+  /** EXPERIENCE.md:383 */
   favoritesAdd: 'Add to favorites',
-  /** EXPERIENCE.md:382 */
+  /** EXPERIENCE.md:383 */
   favoritesRemove: 'Remove from favorites',
-  /** EXPERIENCE.md:382 */
+  /** EXPERIENCE.md:383 */
   favoritesRemoveNamed: 'Remove <name> from favorites',
-  /** EXPERIENCE.md:382 */
+  /** EXPERIENCE.md:383 */
   favoritesClear: 'Clear favorites',
-  /** EXPERIENCE.md:382 */
+  /** EXPERIENCE.md:383 */
   favoritesAdded: 'Added to favorites',
-  /** EXPERIENCE.md:382 */
+  /** EXPERIENCE.md:383 */
   favoritesRemoved: 'Removed from favorites',
-  /** EXPERIENCE.md:382 */
+  /** EXPERIENCE.md:383 */
   favoritesCleared: 'Favorites cleared',
-  /** EXPERIENCE.md:382 */
+  /** EXPERIENCE.md:383 */
   recentsHeading: 'Recent items',
-  /** EXPERIENCE.md:382 */
+  /** EXPERIENCE.md:383 */
   recentsEmpty: 'No recent items yet.',
-  /** EXPERIENCE.md:382 */
+  /** EXPERIENCE.md:383 */
   recentsRemoveNamed: 'Remove <name> from recent items',
-  /** EXPERIENCE.md:382 */
+  /** EXPERIENCE.md:383 */
   recentsClear: 'Clear recent items',
-  /** EXPERIENCE.md:382 */
+  /** EXPERIENCE.md:383 */
   recentsRemoved: 'Removed from recent items',
-  /** EXPERIENCE.md:382 */
+  /** EXPERIENCE.md:383 */
   recentsCleared: 'Recent items cleared',
 
   // Story 15.3's twenty-three: the account menu's About item, which is also the dialog's title,
@@ -1156,51 +1159,51 @@ export const STRINGS = {
   // already published belongs to one key -- Home's Shortcuts and Links blocks with the three
   // destinations the links panel names, the locator bar's Help control in its two names, and
   // DW-3's stale-bundle prompt with its one action.
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   aboutTitle: 'About',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   aboutVersion: 'Version',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   aboutComponents: 'Components',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   aboutConfiguration: 'Configuration',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   aboutDatabaseCache: 'Database cache (MB)',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   aboutRoutineCache: 'Routine cache (MB)',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   aboutJournalFile: 'Journal file',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   aboutSuperServerPort: 'Superserver port',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   aboutWebServerPort: 'Web server port',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   aboutLicenseServer: 'License server',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   aboutEncryptionKeyId: 'Encryption key identifier',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   aboutLocale: 'Locale',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   aboutBuild: 'Build',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   shortcutsHeading: 'Shortcuts',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   shortcutsEmpty: 'No shortcuts available.',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   linksHeading: 'Links',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   linksDocumentation: 'Documentation',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   linksSupport: 'Support',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   linksInterSystems: 'InterSystems',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   helpLabel: 'Help',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   helpForScreen: 'Help for this screen',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   staleBundleNotice: 'A newer version of OcuPilot is installed. Reload to use it.',
-  /** EXPERIENCE.md:383 */
+  /** EXPERIENCE.md:384 */
   actionReload: 'Reload',
 
   // Story 15.4's seven: Home's System Information block heading, five of its seven row labels,
@@ -1209,25 +1212,25 @@ export const STRINGS = {
   // "Write daemon" -- because a value already published belongs to one key. Neither the four
   // alert words nor the mirror and production states are strings here: they are the source's own
   // and are rendered as it reports them.
-  /** EXPERIENCE.md:384 */
+  /** EXPERIENCE.md:385 */
   systemInfoHeading: 'System information',
-  /** EXPERIENCE.md:384 */
+  /** EXPERIENCE.md:385 */
   systemInfoUptime: 'Uptime',
-  /** EXPERIENCE.md:384 */
+  /** EXPERIENCE.md:385 */
   systemInfoMirror: 'Mirror',
-  /** EXPERIENCE.md:384 */
+  /** EXPERIENCE.md:385 */
   systemInfoDatabase: 'Database',
-  /** EXPERIENCE.md:384 */
+  /** EXPERIENCE.md:385 */
   systemInfoJournal: 'Journal',
-  /** EXPERIENCE.md:384 */
+  /** EXPERIENCE.md:385 */
   systemInfoProduction: 'Production',
-  /** EXPERIENCE.md:384 */
+  /** EXPERIENCE.md:385 */
   systemInfoNotReported: 'Not reported',
 
   // Story 15.5's one: the empty state a Home block shows when every row the instance holds for it
   // names a screen this build does not serve (DW-1328). One value for both blocks, so neither
   // republishes it, and the block keeps its Clear control beside it.
-  /** EXPERIENCE.md:385 */
+  /** EXPERIENCE.md:386 */
   rememberedNoScreensHere: 'No screens this instance still serves.',
 
   // Two connectivity sentences EXPERIENCE.md publishes outside the Fixed strings table, each
@@ -1254,6 +1257,62 @@ export const STRINGS = {
   // The composer caption as macOS spells its chord: the table's caption row carries "(\u2318I on
   // macOS)" beside the Ctrl+I form, and the extractor derives this value from that row.
   agentComposerCaptionMac: 'Enter to send \u00b7 Shift+Enter for a new line \u00b7 \u2318I to focus',
+
+  // Two Fixed strings rows this story adds (Story 5.2), gated like every other table literal.
+  //
+  // The entity noun is the singular the card title needs: the wire carries the slug
+  // `web-application` and the mirror's `labelKey` is the plural screen label, so a screen
+  // descriptor declares this key and the card resolves it through `stringFor`.
+  /** EXPERIENCE.md:387 */
+  proposalEntityWebApplication: 'Web application',
+  /** EXPERIENCE.md:388 */
+  proposalAuditWarning: 'Agent writes will no longer be marked in the audit database.',
+
+  // Story 5.7's six. The first three are AD-14's closed action set as published sentences: the
+  // off-screen toast renders one, and the panel appends the same one to a confirmed write's reply
+  // so the record outlives a toast that expired or was never raised. `<entity>` resolves to the
+  // entity's own id; the noun is on the toast's own link, which names the screen.
+  /** EXPERIENCE.md:390 */
+  tableChangeCreated: '<entity> was created',
+  /** EXPERIENCE.md:390 */
+  tableChangeUpdated: '<entity> was updated',
+  /** EXPERIENCE.md:390 */
+  tableChangeDeleted: '<entity> was deleted',
+  /** EXPERIENCE.md:391 */
+  tableChangeToastRegion: 'Changes',
+  /** EXPERIENCE.md:391 */
+  tableChangeToastDismiss: 'Dismiss',
+  /** EXPERIENCE.md:392 */
+  tableChangeAnnouncement: 'Updated: <entity> <action>',
+
+  // Story 5.8's one. The direction word completes the pair "was"/"now" carries on a changed row:
+  // an unchanged row has one value and no arrow, so the word is what says the payload sends the
+  // field as the instance holds it. The audit-entry offer the panel appends needs no new key --
+  // `agentAuditFollowUpQuestion` above is that published sentence already.
+  /** EXPERIENCE.md:393 */
+  proposalDiffUnchanged: 'unchanged',
+
+  // Story 5.10's one (DW-1232). Confirm was `aria-disabled` while a declared secret the write
+  // sends was still empty, with nothing saying so: the reason is published here and wired through
+  // `aria-describedby`, so a screen reader is told why the button refuses rather than only that it
+  // does.
+  /** EXPERIENCE.md:394 */
+  proposalSecretsRequired: 'Fill in every masked field to confirm.',
+
+  // Story 5.13's three. The first two are the diff-row pattern's removal forms, stated in prose
+  // rather than in the Fixed strings table: `proposalDiffRemovedValue` is what the after cell
+  // draws, and `proposalDiffRemoved` is the visually hidden direction word that replaces "now", so
+  // the row reads "<field>: <value>, removed". The marker itself is `aria-hidden`, which is what
+  // keeps the two from being spoken twice.
+  proposalDiffRemovedValue: '(removed)',
+  proposalDiffRemoved: 'removed',
+
+  // The residue sentence AD-48 requires of a delete proposal's card: the card lists the errors the
+  // confirm removes, and this says that errors logged after the proposal are not among them. `<n>`
+  // resolves to how many rows the card lists.
+  /** EXPERIENCE.md:260 */
+  proposalResidue:
+    'Removes exactly the <n> errors listed here. Any logged since the proposal will remain.',
 
 } as const;
 

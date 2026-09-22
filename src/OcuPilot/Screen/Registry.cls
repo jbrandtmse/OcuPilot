@@ -220,6 +220,23 @@ ClassMethod Validate(Output pProblem As %String) As %Status
                 Set pProblem = tClass _ ": " _ tCriteriaProblem
                 Quit
             }
+            ; AD-3, AD-6: the confirm channel is closed to all but the fields the descriptor
+            ; declares secret, and the fingerprint's exclusions are the descriptor's too. Refused
+            ; where they are declared, after the read and its criteria are known sound, because
+            ; both lists are read against them.
+            Set tConfirmProblem = ..ConfirmChannelProblem(tObject)
+            If tConfirmProblem '= "" {
+                Set pProblem = tClass _ ": " _ tConfirmProblem
+                Quit
+            }
+            ; AD-5, AD-14: the entity-type vocabulary is the kernel's closed enum and the singular
+            ; noun over it is a descriptor declaration, so a noun declared for no entity type is
+            ; refused where it is declared rather than resolving to nothing in a card title.
+            Set tEntityLabelProblem = ..EntityLabelProblem(tObject)
+            If tEntityLabelProblem '= "" {
+                Set pProblem = tClass _ ": " _ tEntityLabelProblem
+                Quit
+            }
             ; A pair missing either half is dropped by Area.PairsFrom rather than carried, so a
             ; descriptor that misspells "permission" would otherwise declare a gate and ship
             ; ungated. The refusal is here because the drop is silent by design everywhere else.
@@ -307,15 +324,48 @@ ClassMethod Validate(Output pProblem As %String) As %Status
     Quit tSC
 }
 
+/// <p>What is wrong with <var>pDeclaration</var>'s <code>entityLabelKey</code>, or <code>""</code>
+/// when nothing is (AD-5, AD-14).</p>
+/// <p>The key is optional and names the client string key holding the <b>singular</b> noun for this
+/// screen's primary entity type -- what a proposal card's title reads where the wire carries only
+/// the type's slug and <code>labelKey</code> is the plural screen label. Declared empty, or absent,
+/// means this screen publishes no noun yet.</p>
+/// <p>A noun declared where no <code>entityType</code> is declared is refused: it names a label for
+/// nothing, and the card would resolve a title with an empty noun in it rather than fail.</p>
+/// <p><file>ui/tools/screen-mirror.mjs</file>'s <code>entityLabelProblem</code> returns the same
+/// sentences.</p>
+/// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is.</p>
+ClassMethod EntityLabelProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        If '$IsObject(pDeclaration) Quit
+        If pDeclaration.%GetTypeOf("entityLabelKey") = "unassigned" Quit
+        If pDeclaration.%GetTypeOf("entityLabelKey") '= "string" {
+            Set tProblem = "entityLabelKey is not a string key"
+            Quit
+        }
+        If pDeclaration.%Get("entityLabelKey") = "" Quit
+        If $Select(pDeclaration.%GetTypeOf("entityType") = "string": pDeclaration.%Get("entityType"), 1: "") = "" {
+            Set tProblem = "entityLabelKey names the singular noun for this screen's entity type, and none is declared"
+            Quit
+        }
+    } Catch ex {
+        Set tProblem = "the entity-label declaration could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
 /// <p>The keys a screen declaration may carry at its top level -- the whole vocabulary, in the
 /// order <class>OcuPilot.Screen.Descriptor.Base</class> reads them (AD-5).</p>
-/// <p>Six are optional and the rest are not, but this parameter says nothing about which:
+/// <p>Ten are optional and the rest are not, but this parameter says nothing about which:
 /// <method>DeclarationProblem</method> is an <b>unknown-key</b> check, never a presence check. A
 /// declaration missing an optional key -- <code>refreshes</code>, <code>refreshRates</code>,
-/// <code>read</code>, <code>table</code>, <code>banner</code>, <code>tab</code> -- is sound, and a
-/// declaration missing a required one is already refused by the rule that reads it, with a sentence
-/// naming what it was for.</p>
-Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,secondaryEntityTypes,scope,parentScope,id,context,primaryAction,rowActions,emptyStateKey,commandAliases,classicPage,classicLinkExemption,read,table,banner,tab,toolIdentifier,rowTarget";
+/// <code>read</code>, <code>table</code>, <code>banner</code>, <code>tab</code>,
+/// <code>rowTarget</code>, <code>secretArguments</code>, <code>fingerprintExcludes</code>,
+/// <code>entityLabelKey</code> -- is sound, and a declaration missing a required one is already
+/// refused by the rule that reads it, with a sentence naming what it was for.</p>
+Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,context,secretArguments,fingerprintExcludes,primaryAction,rowActions,emptyStateKey,commandAliases,classicPage,classicLinkExemption,read,table,banner,tab,toolIdentifier,rowTarget";
 
 /// <p>What is wrong with <var>pDeclaration</var>'s own top-level keys, or <code>""</code> when
 /// nothing is (DW-271). Every key must be one of <parameter>DECLARATIONKEYS</parameter>.</p>
@@ -1895,6 +1945,486 @@ ClassMethod NameArrayProblem(pParent As %DynamicObject, pKey As %String, pAllowe
         Set pNames = pNames _ $ListBuild(tName)
     }
     If tProblem '= "" Set pNames = ""
+    Quit tProblem
+}
+
+/// <p>What is wrong with <var>pDeclaration</var>'s <code>secretArguments</code> and
+/// <code>fingerprintExcludes</code>, or <code>""</code> (AD-3, AD-6).</p>
+/// <p>Both are optional arrays of non-empty, unique strings. Every
+/// <code>fingerprintExcludes</code> path names a field this screen already knows: a row of the
+/// <class>OcuPilot.Screen.Tool.ToolFields</class> entry whose tool name this screen's
+/// <code>toolIdentifier</code> owns, <b>or</b> a field the screen's own read declares -- its
+/// <code>read.fields</code>, its <code>rowGet</code> detail fields and its derived field names. So
+/// an exclusion cannot quietly cover nothing, which is the failure mode that would leave a
+/// side-effect field inside the fingerprint and every confirm refusing on a target nobody touched,
+/// and a screen whose side-effect field the write tool does not settle can still declare it while a
+/// typo is still refused.</p>
+/// <p><b>A credential-named field the list does not hold is refused</b> (DW-1121). A declared
+/// criterion, and a settable string field of this screen's write tool, whose name matches the
+/// credential pattern (Conventions, Secrets) and is absent from <code>secretArguments</code> is a
+/// secret the confirm channel would carry in clear. The pattern is
+/// <method>OcuPilot.Kernel.Audit.Log.IsCredentialName</method>'s, so the refusal and the log
+/// redactor read one list; the string-placeholder qualification is the generator's own
+/// (<file>ui/tools/field-lists.mjs</file>), so a boolean named <code>CSRFToken</code> is not a
+/// credential here either.</p>
+/// <p><b>A <code>secretArguments</code> entry the screen knows no name for is refused too</b>
+/// (DW-1206). <code>secretArguments</code> reached only the shape rules and was then read as a
+/// <i>whitelist</i> by <method>OcuPilot.Kernel.Proposal.Confirm.ChannelProblem</method> and by
+/// <method>OcuPilot.Screen.Tool.Write.FieldRows</method>, both matching by exact name -- so a
+/// misspelt entry left the real field advertised to the model and the channel closed to the
+/// spelling nobody sends. Both entries are now checked against one set,
+/// <method>DeclaredNames</method>'s, so the two sibling declarations cannot be validated against
+/// different sets, which is the cause rather than the symptom.</p>
+/// <p><b>Both directions moved, and both are pinned.</b> Folding the declared criteria into the
+/// set <b>loosens</b> <code>fingerprintExcludes</code> -- a criterion name was refused before and
+/// is a name the read declares. Scoping the tool half to the rows a write tool may actually set
+/// <b>tightens</b> it -- any row of the entry was accepted before, a <code>secret</code> or
+/// <code>opaque</code> one included. A row the write tool cannot set -- a nested or
+/// array-element path -- is no longer nameable as an exclusion at all, which is the tightening
+/// this key trades for the typo the union catches.</p>
+ClassMethod ConfirmChannelProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        If '$IsObject(pDeclaration) {
+            Set tProblem = "the declaration is not an object"
+            Quit
+        }
+        Set tProblem = ..StringListProblem(pDeclaration, "secretArguments", .tSecrets)
+        If tProblem '= "" Quit
+        Set tProblem = ..StringListProblem(pDeclaration, "fingerprintExcludes", .tExcludes)
+        If tProblem '= "" Quit
+
+        Set tIdentifier = ""
+        If pDeclaration.%GetTypeOf("toolIdentifier") = "string" Set tIdentifier = pDeclaration.%Get("toolIdentifier")
+        Set tProblem = ..ToolFieldRows(tIdentifier, .tRows)
+        If tProblem '= "" Quit
+        Do ..DeclaredNames(pDeclaration, .tRows, .tNames)
+
+        For tI = 1:1:$ListLength(tExcludes) {
+            Set tPath = $List(tExcludes, tI)
+            If '$ListFind(tNames("path"), tPath) && '$ListFind(tNames("read"), tPath) {
+                Set tProblem = "fingerprintExcludes names '" _ tPath _ "', which is neither a field of this screen's write tool nor one its read declares (AD-6)"
+                Quit
+            }
+        }
+        If tProblem '= "" Quit
+
+        For tI = 1:1:$ListLength(tSecrets) {
+            Set tName = $List(tSecrets, tI)
+            If '$ListFind(tNames("settable"), tName) && '$ListFind(tNames("read"), tName) {
+                Set tProblem = "secretArguments names '" _ tName _ "', which is neither a settable field of this screen's write tool nor one its read declares (AD-6)"
+                Quit
+            }
+        }
+        If tProblem '= "" Quit
+
+        Set tProblem = ..CredentialNameProblem(tNames("criteria"), tSecrets, "read.criteria")
+        If tProblem '= "" Quit
+        Set tProblem = ..CredentialNameProblem(tNames("credential"), tSecrets, "the write tool's settable fields")
+    } Catch ex {
+        Set tProblem = "the confirm channel could not be validated: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>The class an action-style write's declarations live on, which is what makes
+/// <method>FingerprintSubjectProblem</method> a question about a tool at all.</p>
+Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
+
+/// <p>What is wrong with write tool <var>pToolClass</var>'s declared fingerprint subject, or
+/// <code>""</code> (AD-51 as amended 2026-09-22). A <b>merge</b> write declares none and has
+/// nothing wrong with it: its fingerprint is the descriptor's exclusions over the payload it
+/// sends, which is AD-6's own rule. An action-style write sends none, so it must declare one.</p>
+/// <p><b>Caller contract:</b> <method>OcuPilot.Screen.Tool.Registry.ListTools</method> calls it for
+/// every write tool it lists, so a tool whose subject this refuses cannot be registered, reached by
+/// the model, or minted from.</p>
+/// <p>Three things are held. An action-style write <b>declares</b> one, and a body-sending write
+/// does not, because the inversion is that kind's and a merge write declaring one would send a
+/// body narrowed to it. The other two are the structural half of adequacy: the subject carries
+/// the field the tool's own precondition reads
+/// (<parameter>OcuPilot.Screen.Tool.Write.PRECONDITIONFIELD</parameter>), and every name in it is
+/// one the screen or the tool's own read already knows. An empty subject fingerprints nothing at
+/// all, and one without the precondition field would let a confirm succeed against a target
+/// somebody else had already moved.</p>
+/// <p><b>Identity is not required</b> (AD-51 as amended 2026-09-22): the fingerprint asks whether
+/// the reviewed state moved, while which object this is is already answered by the proposal's
+/// <code>TargetRef</code> (AD-13). Naming the id is permitted where the read answers one, since
+/// it cannot move for a fixed target.</p>
+/// <p><b>The name check runs through <method>DeclaredNames</method></b>, the same extraction
+/// <method>ConfirmChannelProblem</method> validates <code>fingerprintExcludes</code> against, given
+/// this tool's class so its <code>toolRead</code> projection carries the names the tool's own read
+/// answers. Validating two sibling declarations against two sets is DW-1206's defect, and one set
+/// is its fix.</p>
+/// <p>One further condition: a subject name the descriptor's <code>fingerprintExcludes</code> also
+/// names is refused, because <method>OcuPilot.Kernel.Proposal.Fingerprint.Of</method> projects
+/// before it excludes, so the digest would cover nothing.</p>
+/// <p>And one last: an action-style write that declares no subject at all is refused (DW-1476).
+/// Such a tool sends no payload, so leaving the subject undeclared would fall back to AD-6's
+/// exclusion model over a body it never sends -- a fingerprint over nothing.</p>
+ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
+{
+    Set tProblem = ""
+    Try {
+        If pToolClass = "" Quit
+        ; The declaration lives on OcuPilot.Screen.Tool.Write, so a tool that classifies itself
+        ; `write` without extending it has no subject to hold -- a fixture registry that widens
+        ; the excluded package lists such classes, and asking them would raise rather than refuse.
+        If '$ClassMethod(pToolClass, "%Extends", ..#WRITETOOLBASE) Quit
+        Set tSubject = $ClassMethod(pToolClass, "FingerprintSubject")
+        If (tSubject '= "") && $ClassMethod(pToolClass, "SendsBody") {
+            Set tProblem = "FINGERPRINTSUBJECT is declared on a write that sends a body, and the inversion is the action-style kind's alone -- a merge write's fingerprint is the descriptor's exclusions over the whole payload (AD-6, AD-51)"
+            Quit
+        }
+        If tSubject = "" {
+            If $Parameter(pToolClass, "FINGERPRINTSUBJECT") '= "" {
+                Set tProblem = "FINGERPRINTSUBJECT is declared and names no field, and a subject that covers nothing is no fingerprint at all (AD-51)"
+                Quit
+            }
+            If '$ClassMethod(pToolClass, "SendsBody") {
+                Set tProblem = "an action-style write declares the subject its fingerprint covers, and this one declares no FINGERPRINTSUBJECT -- it sends no payload, so there is nothing for AD-6's exclusion model to cover (AD-51)"
+            }
+            Quit
+        }
+        Set tPrecondition = $ClassMethod(pToolClass, "PreconditionField")
+        If tPrecondition = "" {
+            Set tProblem = "a declared fingerprint subject names the field its action's precondition reads, and PRECONDITIONFIELD is empty (AD-51)"
+            Quit
+        }
+        If '$ListFind(tSubject, tPrecondition) {
+            Set tProblem = "the declared fingerprint subject omits '" _ tPrecondition _ "', which is the field this tool's own precondition reads (AD-51)"
+            Quit
+        }
+        Set tDescriptor = $Parameter(pToolClass, "DESCRIPTORCLASS")
+        If tDescriptor = "" {
+            Set tProblem = "a declared fingerprint subject is checked against the screen's own declared names, and this tool names no descriptor class (AD-5)"
+            Quit
+        }
+        Set tSC = $ClassMethod(tDescriptor, "DeclarationJson", .tDeclaration)
+        If $$$ISERR(tSC) || '$IsObject(tDeclaration) {
+            Set tProblem = "the declaration of " _ tDescriptor _ " could not be read, so the declared fingerprint subject could not be checked against it"
+            Quit
+        }
+        Set tIdentifier = ""
+        If tDeclaration.%GetTypeOf("toolIdentifier") = "string" Set tIdentifier = tDeclaration.%Get("toolIdentifier")
+        Set tProblem = ..ToolFieldRows(tIdentifier, .tRows)
+        If tProblem '= "" Quit
+        Do ..DeclaredNames(tDeclaration, .tRows, .tNames, pToolClass)
+        ; DW-1474. Fingerprint.Of projects the subject and then applies the exclusions, so a name
+        ; both keys carry is hashed out of the very set it is the whole of -- collapsing the digest
+        ; to the empty object and making every confirm match. The two keys relate in no other
+        ; condition, which is why the overlap is refused here by name.
+        Set tExcludes = ""
+        Do ..StringListProblem(tDeclaration, "fingerprintExcludes", .tExcludes)
+        For tI = 1:1:$ListLength(tSubject) {
+            Set tName = $List(tSubject, tI)
+            If $ListFind(tExcludes, tName) {
+                Set tProblem = "the declared fingerprint subject names '" _ tName _ "', which this screen's fingerprintExcludes also names -- the projection runs before the exclusion, so the digest would cover nothing (AD-6, AD-51)"
+                Quit
+            }
+            If '$ListFind(tNames("path"), tName) && '$ListFind(tNames("read"), tName) && '$ListFind(tNames("toolRead"), tName) {
+                Set tProblem = "the declared fingerprint subject names '" _ tName _ "', which is neither a field of this screen's write tool, nor one its read declares, nor one this tool's own READANSWERS declares (AD-51)"
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tProblem = "the declared fingerprint subject could not be validated: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>The projections <method>DeclaredNames</method> fills, comma-separated. Declared as data
+/// because a generator reads it: <file>ui/tools/screen-mirror.mjs</file> parses this parameter and
+/// fails <code>npm run build</code> when its own builder answers a different set, so the mirror
+/// cannot consume a projection this class does not fill, or miss one it does -- the discipline
+/// <parameter>OcuPilot.Kernel.EntityRef.IDRULENAMES</parameter> already follows for its own closed
+/// vocabulary. What each projection means is <method>DeclaredNames</method>'s doc comment.</p>
+Parameter DECLAREDNAMEKINDS = "settable,path,criteria,read,credential,toolRead";
+
+/// <p>The one set of names <var>pDeclaration</var>'s two confirm-channel keys are validated
+/// against (DW-1206), built once from its write tool's classified rows <var>pRows</var> and from
+/// its own declared read. <var>pNames</var> carries five <class>%List</class> projections of that
+/// one traversal:</p>
+/// <ul>
+/// <li><code>settable</code> -- the write tool's settable field names in the
+/// <code>[]</code>-stripped spelling <method>OcuPilot.Screen.Tool.Write.FieldRows</method> matches
+/// a declared secret by, which is the spelling <code>secretArguments</code> is checked in;</li>
+/// <li><code>path</code> -- the same rows in the spelling they are written in,
+/// <code>[]</code> included, which is the spelling
+/// <method>OcuPilot.Kernel.Proposal.Fingerprint.Canonical</method> matches an exclusion by and so
+/// the spelling <code>fingerprintExcludes</code> is checked in;</li>
+/// <li><code>criteria</code> -- the declared criterion parameter names and the
+/// <code>FlagCriteria</code> names, de-duplicated;</li>
+/// <li><code>read</code> -- <code>read.fields</code>, the <code>rowGet</code> detail fields, the
+/// derived field names and <code>criteria</code>, de-duplicated;</li>
+/// <li><code>credential</code> -- the rows the credential-name rule qualifies, which is
+/// <code>path</code> narrowed to a string placeholder (<file>ui/tools/field-lists.mjs</file>'s own
+/// qualification, so a boolean named <code>CSRFToken</code> is not a credential).</li>
+/// <li><code>toolRead</code> -- the names <var>pToolClass</var>'s own
+/// <parameter>OcuPilot.Screen.Tool.Write.READANSWERS</parameter> declares its
+/// <code>READTYPE</code> read answers, or empty where the caller names no tool class (DW-1475). A
+/// screen's declared read and its write tool's own read are not the same set, and a screen that
+/// declares no <code>read</code> at all knows no name a subject could carry.</li>
+/// </ul>
+/// <p><b>The two keys are checked in two spellings and that is not two sets.</b> One traversal
+/// answers both, because their consumers honour different spellings:
+/// <method>OcuPilot.Screen.Tool.Write.FieldRows</method> drops a declared secret by its stripped
+/// name, while an exclusion of an array reaches the fingerprint as <code>&lt;path&gt;[]</code>. A
+/// single spelling would admit the entry one consumer ignores -- which is the defect this method
+/// exists to close, in a new place.</p>
+/// <p>Read leniently: a malformed read contributes no names rather than a second refusal, because
+/// <method>ReadProblem</method> has already refused it by the time this runs.</p>
+ClassMethod DeclaredNames(pDeclaration As %DynamicObject, ByRef pRows, Output pNames, pToolClass As %String = "") [ Private ]
+{
+    Kill pNames
+    Set pNames("settable") = ""
+    Set pNames("path") = ""
+    Set pNames("credential") = ""
+    Set pNames("criteria") = ..DeclaredCriterionParams(pDeclaration)
+    Set pNames("read") = ..DeclaredReadFields(pDeclaration)
+    Set pNames("toolRead") = ..ToolReadAnswers(pToolClass)
+    Try {
+        Set tPath = ""
+        For {
+            Set tPath = $Order(pRows(tPath))
+            If tPath = "" Quit
+            Set tRow = pRows(tPath)
+            If '$ListValid(tRow) Continue
+            If $List(tRow, 3) Set pNames("credential") = pNames("credential") _ $ListBuild(tPath)
+            If '$List(tRow, 1) Continue
+            If '$ListFind(pNames("path"), tPath) Set pNames("path") = pNames("path") _ $ListBuild(tPath)
+            Set tName = $List(tRow, 2)
+            If tName = "" Continue
+            If $ListFind(pNames("settable"), tName) Continue
+            Set pNames("settable") = pNames("settable") _ $ListBuild(tName)
+        }
+        For tI = 1:1:$ListLength(pNames("criteria")) {
+            Set tName = $List(pNames("criteria"), tI)
+            If $ListFind(pNames("read"), tName) Continue
+            Set pNames("read") = pNames("read") _ $ListBuild(tName)
+        }
+    } Catch {
+        ; Deliberately empty: the projections filled before the raise are kept. This runs after
+        ; ReadProblem has already refused a malformed declaration, so a partial set can only make
+        ; this validator more permissive, never wrongly refusing a sound name.
+    }
+}
+
+/// <p>The names <var>pToolClass</var> declares its own <code>READTYPE</code> read answers, as a
+/// <class>%List</class>, or <code>""</code> for no class and for one that cannot be asked.</p>
+/// <p>Read for <method>DeclaredNames</method> alone. A class that cannot be asked contributes no
+/// name, which refuses a subject rather than admitting one -- the fail-closed direction for a
+/// guard whose job is to refuse a name nothing answers.</p>
+ClassMethod ToolReadAnswers(pToolClass As %String) As %List [ Private ]
+{
+    Set tNames = ""
+    Try {
+        If pToolClass = "" Quit
+        Set tNames = $ClassMethod(pToolClass, "ReadAnswers")
+    } Catch {
+        Set tNames = ""
+    }
+    Quit tNames
+}
+
+/// <p>The field names <var>pDeclaration</var>'s read declares, as a <class>%List</class>: its
+/// <code>read.fields</code>, its <code>read.source.rowGet.fields</code> and the
+/// <code>field</code> of each <code>read.source.rowGet.derived</code> entry.</p>
+/// <p>Read for <method>DeclaredNames</method> alone, and read leniently: a malformed read
+/// contributes no names here rather than a second refusal, because
+/// <method>ReadProblem</method> has already refused it by the time this runs.</p>
+ClassMethod DeclaredReadFields(pDeclaration As %DynamicObject) As %List [ Private ]
+{
+    Set tFields = ""
+    Try {
+        If pDeclaration.%GetTypeOf("read") '= "object" Quit
+        Set tRead = pDeclaration.%Get("read")
+        Do ..AppendNames(tRead, "fields", .tFields)
+        If tRead.%GetTypeOf("source") '= "object" Quit
+        Set tSource = tRead.%Get("source")
+        If tSource.%GetTypeOf("rowGet") '= "object" Quit
+        Set tRowGet = tSource.%Get("rowGet")
+        Do ..AppendNames(tRowGet, "fields", .tFields)
+        If tRowGet.%GetTypeOf("derived") '= "array" Quit
+        Set tIterator = tRowGet.%Get("derived").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tEntry) {
+            If '$IsObject(tEntry) Continue
+            If tEntry.%GetTypeOf("field") '= "string" Continue
+            If tEntry.%Get("field") = "" Continue
+            If $ListFind(tFields, tEntry.%Get("field")) Continue
+            Set tFields = tFields _ $ListBuild(tEntry.%Get("field"))
+        }
+    } Catch {
+        ; Deliberately empty: the names collected before the raise are kept, for the reason
+        ; <method>DeclaredNames</method>'s own catch gives.
+    }
+    Quit tFields
+}
+
+/// <p>Append <var>pParent</var>'s string array <var>pKey</var> to <var>pNames</var>, skipping
+/// anything that is not a non-empty string and anything already there.</p>
+ClassMethod AppendNames(pParent As %DynamicObject, pKey As %String, ByRef pNames As %List) [ Private ]
+{
+    If pParent.%GetTypeOf(pKey) '= "array" Quit
+    Set tIterator = pParent.%Get(pKey).%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tValue, .tType) {
+        If (tType '= "string") || (tValue = "") Continue
+        If $ListFind(pNames, tValue) Continue
+        Set pNames = pNames _ $ListBuild(tValue)
+    }
+}
+
+/// <p>What is wrong with <var>pDeclaration</var>'s optional array-of-strings key <var>pKey</var>,
+/// or <code>""</code>, with its values in <var>pValues</var> as a <class>%List</class>. An absent
+/// or null key is an empty list.</p>
+ClassMethod StringListProblem(pDeclaration As %DynamicObject, pKey As %String, Output pValues As %List) As %String [ Private ]
+{
+    Set pValues = ""
+    Set tType = pDeclaration.%GetTypeOf(pKey)
+    If (tType = "unassigned") || (tType = "null") Quit ""
+    If tType '= "array" Quit pKey _ " is not an array of strings"
+    Set tProblem = ""
+    Set tIterator = pDeclaration.%Get(pKey).%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tValue, .tValueType) {
+        If (tValueType '= "string") || (tValue = "") {
+            Set tProblem = pKey _ " holds an entry that is not a non-empty string"
+            Quit
+        }
+        If $ListFind(pValues, tValue) {
+            Set tProblem = pKey _ " names '" _ tValue _ "' twice"
+            Quit
+        }
+        Set pValues = pValues _ $ListBuild(tValue)
+    }
+    If tProblem '= "" Set pValues = ""
+    Quit tProblem
+}
+
+/// <p>The criterion names <var>pDeclaration</var>'s read declares, as a <class>%List</class>;
+/// empty for a read that declares none.</p>
+/// <p>Both halves of <code>criteria</code>: the <code>param</code> of each
+/// <code>criteria.fields</code> entry, whose value a person types, and each <b>flag</b> criterion
+/// -- a member of <code>criteria</code> other than <code>fields</code> declaring both a
+/// <code>param</code> and a <code>value</code>, which is the descriptor's own value and is what
+/// <method>OcuPilot.Screen.Descriptor.Base.FlagCriteria</method> enumerates. A half-declared flag
+/// is not a criterion and is not named here.</p>
+/// <p>De-duplicated: a flag may send its value under the same vendor parameter a typed criterion
+/// uses (the audit viewer's <code>marker</code> and its <code>eventSources</code> field are one
+/// such pair), and a name twice in this list would make one refusal read as two.</p>
+ClassMethod DeclaredCriterionParams(pDeclaration As %DynamicObject) As %List [ Private ]
+{
+    Set tParams = ""
+    Try {
+        If pDeclaration.%GetTypeOf("read") '= "object" Quit
+        Set tRead = pDeclaration.%Get("read")
+        If tRead.%GetTypeOf("criteria") '= "object" Quit
+        Set tCriteria = tRead.%Get("criteria")
+        If tCriteria.%GetTypeOf("fields") = "array" {
+            Set tIterator = tCriteria.%Get("fields").%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tField) {
+                If '$IsObject(tField) Continue
+                If tField.%GetTypeOf("param") '= "string" Continue
+                If tField.%Get("param") = "" Continue
+                If $ListFind(tParams, tField.%Get("param")) Continue
+                Set tParams = tParams _ $ListBuild(tField.%Get("param"))
+            }
+        }
+        Set tFlags = tCriteria.%GetIterator()
+        While tFlags.%GetNext(.tName, .tFlag) {
+            If tName = "fields" Continue
+            If '$IsObject(tFlag) || 'tFlag.%IsA("%Library.DynamicObject") Continue
+            If tFlag.%GetTypeOf("param") '= "string" Continue
+            If tFlag.%Get("param") = "" Continue
+            If tFlag.%GetTypeOf("value") = "unassigned" Continue
+            If $ListFind(tParams, tFlag.%Get("param")) Continue
+            Set tParams = tParams _ $ListBuild(tFlag.%Get("param"))
+        }
+    } Catch {
+        ; Deliberately empty, and a change from the reset this replaced: the names collected before
+        ; the raise are kept, for the reason <method>DeclaredNames</method>'s own catch gives.
+    }
+    Quit tParams
+}
+
+/// <p>The first name in <var>pNames</var> that matches the credential pattern and is absent from
+/// <var>pSecrets</var>, as a refusal naming <var>pWhere</var>, or <code>""</code> (DW-1121).</p>
+ClassMethod CredentialNameProblem(pNames As %List, pSecrets As %List, pWhere As %String) As %String [ Private ]
+{
+    Set tProblem = ""
+    For tI = 1:1:$ListLength(pNames) {
+        Set tName = $List(pNames, tI)
+        If '##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(..LastSegment(tName)) Continue
+        If $ListFind(pSecrets, tName) Continue
+        Set tProblem = pWhere _ " names '" _ tName _ "', whose name matches the credential pattern and which secretArguments does not declare (AD-3)"
+        Quit
+    }
+    Quit tProblem
+}
+
+/// <p><var>pPath</var>'s last segment with any <code>[]</code> removed, the same reduction
+/// <file>ui/tools/field-lists.mjs</file>'s <code>lastSegment</code> makes.</p>
+ClassMethod LastSegment(pPath As %String) As %String [ Private ]
+{
+    Set tSegment = $Piece(pPath, ".", $Length(pPath, "."))
+    While $Extract(tSegment, *-1, *) = "[]" {
+        Set tSegment = $Extract(tSegment, 1, *-2)
+    }
+    Quit tSegment
+}
+
+/// <p>The classified field rows of the write tool <var>pIdentifier</var> owns, as
+/// <code>pRows(path) = $ListBuild(isSettable, strippedName, isSettableStringLiteral)</code>;
+/// empty when the identifier owns no <class>OcuPilot.Screen.Tool.ToolFields</class> entry. A
+/// refusal is returned when that generated block cannot be read, because an unreadable field list
+/// is not a negative result.</p>
+/// <p><b>Settable here means the field-list shape a write tool can send</b>: an
+/// <code>ordinary</code> literal at the top level, whose name is the path with any trailing
+/// <code>[]</code> removed and which carries no interior <code>[</code>. It is deliberately
+/// <i>not</i> <method>OcuPilot.Screen.Tool.Write.FieldRows</method>'s output, which narrows the
+/// same rows further by <method>PermittedFields</method> and <method>ExcludedFields</method> and
+/// <b>drops every name the descriptor declares secret</b> -- so validating
+/// <code>secretArguments</code> against that output would reject every entry for being declared,
+/// which is the circularity this shape avoids. The consequence is stated rather than hidden: a
+/// derived field the tool does not permit is still a nameable secret here, and closing that is
+/// this spec's <code>deferred:</code> item. The third element narrows the rows to a string
+/// placeholder, which is the credential-name rule's own qualification and nothing else's. One
+/// reader of the generated block, three questions asked of its rows.</p>
+ClassMethod ToolFieldRows(pIdentifier As %String, Output pRows) As %String [ Private ]
+{
+    Kill pRows
+    If pIdentifier = "" Quit ""
+    Set tProblem = ""
+    Try {
+        Set tXData = ##class(%Dictionary.XDataDefinition).IDKEYOpen("OcuPilot.Screen.Tool.ToolFields", "Tools", , .tOpenSC)
+        If '$IsObject(tXData) {
+            Set tProblem = "the generated tool field lists could not be read"
+            Quit
+        }
+        Do tXData.Data.Rewind()
+        Set tTools = ##class(%DynamicAbstractObject).%FromJSON(tXData.Data)
+        Set tXData = ""
+        If '$IsObject(tTools) {
+            Set tProblem = "the generated tool field lists are not a JSON object"
+            Quit
+        }
+        Set tIterator = tTools.%GetIterator()
+        While tIterator.%GetNext(.tName, .tEntry) {
+            If $Piece(tName, ".", 1, 2) '= pIdentifier Continue
+            If '$IsObject(tEntry) || (tEntry.%GetTypeOf("fields") '= "array") Continue
+            Set tFields = tEntry.%Get("fields").%GetIterator()
+            While tFields.%GetNext(.tIndex, .tField) {
+                If '$IsObject(tField) Continue
+                Set tPath = tField.%Get("path")
+                Set tLiteral = (tField.%Get("class") = "ordinary") && (tField.%Get("shape") = "literal")
+                Set tName = $Select($Extract(tPath, *-1, *) = "[]": $Extract(tPath, 1, *-2), 1: tPath)
+                If (tPath [ ".") || (tName [ "[") Set tName = ""
+                Set pRows(tPath) = $ListBuild((tLiteral && (tName '= "")), tName, (tLiteral && (tField.%Get("templateType") = "string")))
+            }
+        }
+    } Catch ex {
+        Kill pRows
+        Set tProblem = "the generated tool field lists could not be read: " _ ex.DisplayString()
+    }
     Quit tProblem
 }
 

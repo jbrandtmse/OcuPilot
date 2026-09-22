@@ -792,8 +792,15 @@ ClassMethod DetailRow(pDescriptor As %String, pEndpoint As %String, pRowGet As %
     Set pOut = ""
     Try {
         Set tKeyField = pRowGet.%Get("key")
-        If ('$IsObject(pRow)) || ('pRow.%IsA("%Library.DynamicObject")) || (pRow.%GetTypeOf(tKeyField) '= "string") || (pRow.%Get(tKeyField) = "") {
-            Set tSC = ..Internal(pDescriptor _ "'s list row carries no string " _ tKeyField _ " to read its detail by", .pHttpStatus, .pFault)
+        ; A key reaches the detail call as a query parameter, which is text whatever the row's own
+        ; JSON type is: Task.CRUD's LIST answers its numeric task id as a number while
+        ; Security.User's answers its name as a string, and both address one object. An object, an
+        ; array, a null and an absent key are still refused -- none of them is a value a query
+        ; parameter can carry.
+        Set tKeyType = ""
+        If $IsObject(pRow) && pRow.%IsA("%Library.DynamicObject") Set tKeyType = pRow.%GetTypeOf(tKeyField)
+        If ((tKeyType '= "string") && (tKeyType '= "number")) || (pRow.%Get(tKeyField) = "") {
+            Set tSC = ..Internal(pDescriptor _ "'s list row carries no string or number " _ tKeyField _ " to read its detail by", .pHttpStatus, .pFault)
             Quit
         }
         Set tQuery(pRowGet.%Get("param")) = pRow.%Get(tKeyField)

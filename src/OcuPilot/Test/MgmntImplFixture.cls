@@ -17,7 +17,9 @@ Parameter VENDORTEXT = "ERROR #8753: REST application not found: %Api.Probe.v1.d
 /// <p>Arm <var>pMethod</var> to set <code>%response.Status</code> to <var>pStatus</var> and answer
 /// <var>pJson</var> parsed (<code>""</code> answers no value). <var>pMode</var> <code>throw</code>
 /// raises instead of answering; <code>write</code> also writes <parameter>VENDORTEXT</parameter> to
-/// the device as the vendor's error body.</p>
+/// the device as the vendor's error body; <code>admincall</code> writes it and then calls
+/// <method>OcuPilot.Port.AdminPort.Invoke</method> from inside the caller's capture window,
+/// recording what that nested call answered for <method>InnerCall</method>.</p>
 ClassMethod Arm(pMethod As %String, pStatus As %String, pJson As %String = "", pMode As %String = "")
 {
     Set ^||OcuPilotMgmntImpl("arm", pMethod) = $ListBuild(pStatus, pJson, pMode)
@@ -51,6 +53,33 @@ ClassMethod CallText() As %String
         Set tText = tText _ $Select(tI = 1: "", 1: "|") _ ..CallAt(tI)
     }
     Quit tText
+}
+
+/// <p>What the <code>admincall</code> mode's nested
+/// <method>OcuPilot.Port.AdminPort.Invoke</method> answered, as
+/// <code>&lt;statusOK&gt;|&lt;http&gt;|&lt;code&gt;</code>, or <code>""</code> when no armed mode made
+/// one.</p>
+ClassMethod InnerCall() As %String
+{
+    Quit $Get(^||OcuPilotMgmntImpl("inner"), "")
+}
+
+/// <p>One admin-port call through <class>OcuPilot.Test.PortFixture</class>, made from wherever this
+/// fixture is running -- which is inside the calling port's capture window. The caller arms the
+/// endpoint fixture; this only makes the call, because where it is made from is the whole point.</p>
+ClassMethod NestedAdminCall() As %String [ Private ]
+{
+    ; Answers a sentence rather than raising: a raise here would unwind through the calling port's
+    ; open capture window, and the caller would read an empty InnerCall() with no cause named.
+    Set tOut = ""
+    Try {
+        Set tQuery("name") = "fixture-item"
+        Set tSC = ##class(OcuPilot.Test.PortFixture).Invoke("Fixture.Endpoint", "GET", .tQuery, , .tResult, .tHttp, .tFault)
+        Set tOut = $System.Status.IsOK(tSC) _ "|" _ +$Get(tHttp) _ "|" _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "")
+    } Catch ex {
+        Set tOut = "the nested call raised: " _ ex.DisplayString()
+    }
+    Quit tOut
 }
 
 ClassMethod GetWebRESTApps(pNamespace As %String) As %DynamicObject
@@ -89,9 +118,15 @@ ClassMethod Answer(pMethod As %String, pNamespace As %String, pName As %String) 
     Set %response.Status = $List(tArm, 1)
     Set tMode = $ListGet(tArm, 3)
     If tMode = "throw" Throw ##class(%Exception.General).%New("MgmntImplFixture", 5001, , ..#VENDORTEXT)
-    If tMode = "write" {
+    ; One write for both modes. For admincall it comes first on purpose: a capture counts as open
+    ; only once it holds output, so without it the nested call's own capture would be silently
+    ; nestable and this fixture would arm a condition that is not the one under test.
+    If (tMode = "write") || (tMode = "admincall") {
         Set tBody = {"msg": (..#VENDORTEXT)}
         Do tBody.%ToJSON()
+    }
+    If tMode = "admincall" {
+        Set ^||OcuPilotMgmntImpl("inner") = ..NestedAdminCall()
     }
     Set tJson = $ListGet(tArm, 2)
     If tJson = "" Quit ""

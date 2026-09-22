@@ -299,11 +299,65 @@ Method TestDeletingAnAbsentHoldIsANamedNotFound()
     Do $$$AssertEquals(tAnswer.error, "not_found", "on the not-found slug")
 }
 
+/// <p><b>Story 5.6, AD-15/AD-17.</b> Recording the marking observation that is <b>already</b> the
+/// answer writes no row at all.</p>
+/// <p>That is not a micro-optimisation. <class>OcuPilot.Kernel.State.Switch</class> is a store whose
+/// defaults are parameters, so an instance nobody has configured holds no row -- and the absence of
+/// that row is exactly what
+/// <method>OcuPilot.Install.Smoke.CheckAgentSwitches</method> reads to tell an install that wrote no
+/// switches from one that did. Install records this fact on every container start, and the executor
+/// records it on every confirmed write, so a method that wrote unconditionally would destroy that
+/// signal permanently on the first start.</p>
+/// <p>Mutation (Rule 19): delete the <code>If ..WritesMarked() = ''pMarked Quit</code> guard from
+/// <method>OcuPilot.Kernel.Audit.Event.RecordMarking</method> -- the "writes no row" assertion goes
+/// red while the changed-value control below stays green.</p>
+Method TestRecordingTheMarkingFactAlreadyHeldWritesNoRow()
+{
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 0, "the fixture left no switch row")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Event).WritesMarked(), 1, "so the fact reads its default")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Audit.Event).RecordMarking(1), "recording the value already held succeeds")
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 0, "and writes no row")
+
+    ; The control: a value that differs does write one, so the assertion above is about the guard
+    ; rather than about a method that never writes anything.
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Audit.Event).RecordMarking(0), "recording a changed value succeeds")
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 1, "and writes the row")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Event).WritesMarked(), 0, "carrying the new observation")
+}
+
+/// <p><b>Story 5.6, AD-15.</b> The marking fact travels <code>GET /agent/restraint</code> in
+/// <b>both</b> directions. <method>TestTheRestraintReadAnswersTheCallersOwnVerdict</method> asserts
+/// the healthy arm, which is the one a clean instance answers; this one writes the recorded fact 0
+/// and reads the route back, because the panel renders only the <b>false</b> arm and a fact that
+/// could never arrive false would leave the banner unreachable with every gate green.</p>
+/// <p>Mutation (Rule 19): hard-code <code>1</code> in
+/// <method>OcuPilot.Api.Switches.HandleRestraint</method>'s <code>writesMarked</code> line -- this
+/// goes red while <method>TestTheRestraintReadAnswersTheCallersOwnVerdict</method> stays green.</p>
+Method TestTheRestraintReadCarriesARecordedNotMarkingFact()
+{
+    Kill tValues
+    Set tValues("writesMarked") = 0
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tValues), "the observed marking fact is recorded 0")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Event).WritesMarked(), 0, "and reads back 0 through the emitter's own accessor")
+
+    Set tSC = ..Call("GET", "/agent/restraint", "", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the restraint read runs")
+    Do $$$AssertEquals(tStatus, 200, "and answers 200: " _ tBody)
+    Set tAnswer = ##class(%DynamicAbstractObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tAnswer.%GetTypeOf("writesMarked"), "boolean", "the fact arrives as a JSON boolean")
+    Do $$$AssertEquals(tAnswer.writesMarked, 0, "carrying the recorded 0, which is the only arm the panel renders")
+    ; Marking is not a restraint (AD-30): nothing else about the verdict moves.
+    Do $$$AssertEquals(tAnswer.blocked, 0, "and the verdict itself is unchanged")
+    Do $$$AssertEquals(tAnswer.killSwitch, 0, "with the kill switch still off")
+}
+
 /// <p><b><code>GET /agent/restraint</code> answers the calling user's own verdict</b>, in the shape
 /// the panel renders its banners and its footer line from.</p>
 /// <p>It is the one switch route that gates on nothing beyond the router, for the reason
 /// <method>OcuPilot.Api.Definitions.HandleList</method> is: the audience for the kill-switch banner
-/// is precisely the people who cannot change it.</p>
+/// is precisely the people who cannot change it -- and, since Story 5.6, for the audience of the
+/// not-marked banner, which is every user whose writes are the ones not being marked.</p>
 Method TestTheRestraintReadAnswersTheCallersOwnVerdict()
 {
     Set tSC = ..Call("GET", "/agent/restraint", "", .tStatus, .tBody, .tHeaders)
@@ -316,8 +370,12 @@ Method TestTheRestraintReadAnswersTheCallersOwnVerdict()
     While tIterator.%GetNext(.tKey, .tValue) {
         Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
     }
-    Do $$$AssertEquals(tKeys, "blocked,code,reason,footerKey,killSwitch,killSwitchAudience,killSwitchReason,enforcedReadOnly", "the eight keys the panel reads")
+    ; `writesMarked` is Story 5.6's and is not part of the verdict: marking is not a restraint
+    ; (AD-30), and only its false arm is ever rendered (AD-15).
+    Do $$$AssertEquals(tKeys, "blocked,code,reason,footerKey,killSwitch,killSwitchAudience,killSwitchReason,enforcedReadOnly,writesMarked", "the nine keys the panel reads")
     Do $$$AssertEquals(tAnswer.blocked, 0, "a clean instance restrains nothing")
+    Do $$$AssertEquals(tAnswer.%GetTypeOf("writesMarked"), "boolean", "and marking arrives as a JSON boolean")
+    Do $$$AssertEquals(tAnswer.writesMarked, 1, "which an installed instance answers true, so no banner is drawn over a healthy one")
     Do $$$AssertEquals(tAnswer.footerKey, "statusReadOnlyOff", "and the footer line reads the off key")
     Do $$$AssertEquals(tAnswer.%GetTypeOf("killSwitch"), "boolean", "a flag arrives as a JSON boolean")
     Do $$$AssertEquals(tAnswer.killSwitchAudience, "", "with no audience to name")

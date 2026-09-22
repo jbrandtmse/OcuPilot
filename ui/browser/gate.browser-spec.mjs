@@ -41,6 +41,11 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { waitForRows } from './list-spec.mjs';
 import { GATE_PATH } from './shell-entry.mjs';
+import {
+  DEFINITIONS_PATH,
+  authHeader as sharedAuthHeader,
+  definitions as sharedDefinitions,
+} from './panel-spec.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -72,7 +77,6 @@ const OTHER_URL = '/ocupilot/permissions/users?ns=HSCUSTOM';
  * about the destination, and two copies of a path is how one of them ends up pointing elsewhere.
  */
 const FORM_PATH = GATE_PATH;
-const DEFINITIONS_PATH = '/api/ocupilot/agent/definitions';
 
 /** Every definition this spec creates is named with this prefix and removed in `after`. */
 const PREFIX = 'OcuPilotGateProbe';
@@ -96,17 +100,11 @@ after(async () => {
 });
 
 function authHeader() {
-  return 'Basic ' + Buffer.from(`${config.username}:${config.password}`).toString('base64');
+  return sharedAuthHeader(config);
 }
 
 async function definitions() {
-  const answer = await fetch(`${config.origin}${DEFINITIONS_PATH}`, { headers: { Authorization: authHeader() } });
-  // Never an empty list on a bad answer: `before()` asserts "no definition is enabled" from this,
-  // and a read that failed would satisfy that assertion while saying nothing at all.
-  assert.ok(answer.ok, `the definitions list is readable (HTTP ${answer.status})`);
-  const body = await answer.json();
-  assert.ok(Array.isArray(body.definitions), `and projects a definitions array: ${JSON.stringify(body)}`);
-  return body.definitions;
+  return sharedDefinitions(config);
 }
 
 async function enabledCount() {

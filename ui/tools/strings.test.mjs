@@ -205,7 +205,11 @@ function extractToolCallCardStatuses(markdown) {
   );
   assert.equal(quoted[0], 'running', 'the first status must be "running"');
   assert.equal(quoted[4].startsWith('failed'), true, 'the fifth status must be the failed template');
-  return [quoted[1], quoted[4]];
+  // The third is the marked status the confirmed-write card reads (Story 5.6). Its sibling, the
+  // fourth, is `REQUIRED_ALONGSIDE_TABLE`'s first entry and stays there: that array is the
+  // three it was, and this one is re-derived from the document like every other prose literal.
+  assert.equal(quoted[2], `${quoted[1]} \u00b7 audit marked`, 'the third status is the marked one');
+  return [quoted[1], quoted[2], quoted[4]];
 }
 
 /**
@@ -228,6 +232,29 @@ function extractNewConversationLockedReason(markdown) {
   return [match[1]];
 }
 
+/**
+ * Story 5.13's two removal forms, from the `diff-row` Component Patterns row: `it shows the
+ * target's identifying fields as \`field \u00b7 value \u2192 (removed)\`, reads "<field>:
+ * <value>, removed"`.
+ *
+ * Two literals, because the row publishes two: the marker the after cell draws, and the direction
+ * word that replaces "was"/"now" so the row is spoken as the row says it reads. A targeted read
+ * rather than "every quoted span on that row", which would also drag in `"Reverse:"` -- already a
+ * Fixed strings literal, and the overlap test below would then fail rather than merely be
+ * generous.
+ */
+function extractRemovalForms(markdown) {
+  const match =
+    /identifying fields as `field [^`]*\((removed)\)`, reads "<field>: <value>, (removed)"/.exec(
+      markdown
+    );
+  assert.ok(
+    match,
+    "EXPERIENCE.md's diff-row row must publish the delete row's drawn and spoken removed forms"
+  );
+  return [`(${match[1]})`, match[2]];
+}
+
 const fixedStringsRows = extractFixedStringsTable(experienceMdRaw);
 const expectedLiterals = fixedStringsRows.flatMap((row) => row.literals);
 const expectedLandmarkNames = extractLandmarkNames(experienceMdRaw);
@@ -241,9 +268,11 @@ const [expectedServerFaultSentence, ...expectedServerFaultActions] =
   extractServerFaultBanner(experienceMdRaw);
 const expectedTranscriptName = extractTranscriptName(experienceMdRaw);
 const expectedMacComposerCaption = extractMacComposerCaption(fixedStringsRows);
-const [expectedToolCallDone, expectedToolCallFailed] = extractToolCallCardStatuses(experienceMdRaw);
+const [expectedToolCallDone, expectedToolCallMarked, expectedToolCallFailed] =
+  extractToolCallCardStatuses(experienceMdRaw);
 const expectedComposerLockedReason = extractComposerLockedReason(experienceMdRaw);
 const expectedNewConversationLockedReason = extractNewConversationLockedReason(experienceMdRaw);
+const expectedRemovalForms = extractRemovalForms(experienceMdRaw);
 
 /**
  * The third category: literals EXPERIENCE.md states in prose rather than in the Fixed strings
@@ -261,9 +290,11 @@ const EXTRACTED_FROM_PROSE = [
   ...expectedTranscriptName,
   ...expectedMacComposerCaption,
   expectedToolCallDone,
+  expectedToolCallMarked,
   expectedToolCallFailed,
   ...expectedComposerLockedReason,
   ...expectedNewConversationLockedReason,
+  ...expectedRemovalForms,
 ];
 
 test('the three navigation landmarks are named in EXPERIENCE.md and reach the string source', () => {
@@ -330,6 +361,41 @@ test("Story 4.5's tool-call status words and the two locked-control reasons are 
   assert.ok(stringsValues.toolCallStatusFailed.includes('<reason>'));
   assert.equal(stringsValues.agentComposerLockedReason, expectedComposerLockedReason[0]);
   assert.equal(stringsValues.agentNewConversationLockedReason, expectedNewConversationLockedReason[0]);
+});
+
+test("Story 5.13's two removal forms are EXPERIENCE.md's own, and the residue sentence is the table's", () => {
+  assert.equal(stringsValues.proposalDiffRemovedValue, expectedRemovalForms[0]);
+  assert.equal(stringsValues.proposalDiffRemoved, expectedRemovalForms[1]);
+  // The drawn marker is the spoken word in parentheses, which is what lets the card render one
+  // `aria-hidden` and the other visually hidden without publishing a third spelling.
+  assert.equal(expectedRemovalForms[0], `(${expectedRemovalForms[1]})`);
+  assert.ok(
+    expectedLiterals.includes(stringsValues.proposalResidue),
+    "the residue sentence is the Fixed strings table's own"
+  );
+  assert.ok(stringsValues.proposalResidue.includes('<n>'), 'and keeps its count placeholder');
+});
+
+test('AD-48: the residue sentence keeps both its facts, independent of the citation match (QA)', () => {
+  // The test above only requires `proposalResidue` to equal SOME row EXPERIENCE.md's Fixed
+  // strings table publishes. A rewrite that tightens the wording for card width and updates
+  // EXPERIENCE.md to match would still pass that check even if it dropped the second fact -- the
+  // spec's own warning ("a version saying only 'removes <n> errors' fails the AC's second half").
+  // This test reads the string's own content for AD-48's two facts, independent of the citation.
+  //
+  // Mutation (Rule 19): shorten `proposalResidue` in `strings.ts` to its first sentence alone
+  // ("Removes exactly the <n> errors listed here.") -- the second assertion below goes red even
+  // though the count placeholder survives and even if the Fixed strings table's own row were
+  // rewritten to match.
+  const sentence = stringsValues.proposalResidue;
+  assert.ok(
+    /exactly the <n> errors/i.test(sentence),
+    'fact 1 (what the confirm removes): exactly the enumerated count, never a live re-query'
+  );
+  assert.ok(
+    /will remain/i.test(sentence),
+    "fact 2 (the residue AD-48 requires): an error logged since the proposal is not among them and survives"
+  );
 });
 
 test("the connectivity banners' sentences and actions are EXPERIENCE.md's own, from the rows that publish them", () => {

@@ -37,6 +37,12 @@ Parameter SCREENRESOURCES = "%Admin_Secure:U,%DB_IRISSYS:R";
 /// <p>The route the turns in this class are started from, which every row they write records.</p>
 Parameter CONTEXTROUTE = "os-management/processes";
 
+/// <p>The resources <parameter>CONTEXTROUTE</parameter>'s screen requires, in the grant grammar
+/// <method>SetReaderResources</method> takes. A turn's <code>llm</code> rows record the pair set of
+/// the screen route the turn ran from (Story 5.4, DW-1120), so a cross-user reader sees them only
+/// while it holds these too.</p>
+Parameter CONTEXTRESOURCES = "%Admin_Operate:U,%Admin_Manage:U,%DB_IRISSYS:R";
+
 /// <p>The screen <code>shell.screen.open</code> is asked for, and whose pairs the refused call's row
 /// carries.</p>
 Parameter TARGETROUTE = "permissions/users";
@@ -286,7 +292,7 @@ Method TestARowCarriesTheResourceTheToolRequired()
 /// resource asking for another user is refused, naming the pair; and a caller always sees their
 /// own rows.</p>
 /// <p>Mutation (Rule 19): remove the per-row
-/// <method>OcuPilot.Screen.Gate.EvaluatePairs</method> branch from
+/// <method>OcuPilot.Screen.Gate.EvaluateRequired</method> branch from
 /// <method>OcuPilot.Kernel.Audit.Ledger.ViewForUser</method> -- the withheld row appears in the
 /// first read and this goes red.</p>
 Method TestARowIsWithheldFromAnAdministratorWhoLacksItsResource()
@@ -311,8 +317,11 @@ Method TestARowIsWithheldFromAnAdministratorWhoLacksItsResource()
     Do $$$AssertTrue(tView.rowsWithheld > 0, "and is counted as withheld")
     Do $$$AssertEquals(tText [ ..#TARGETROUTE, 0, "with nothing of that row on the wire")
 
-    ; Granting them makes it appear.
-    Do $$$AssertStatusOK(..SetReaderResources(..#ADMINRESOURCES _ "," _ ..#SCREENRESOURCES), "the administrator is granted the row's own resources")
+    ; Granting them makes it appear. The context route's resources are granted with them: since
+    ; Story 5.4 an llm row records the pair set of the screen the turn ran from (DW-1120), so a
+    ; reader short of those would still be withholding one row here, and "withholding nothing"
+    ; below would be a claim about the tool row alone.
+    Do $$$AssertStatusOK(..SetReaderResources(..#ADMINRESOURCES _ "," _ ..#SCREENRESOURCES _ "," _ ..#CONTEXTRESOURCES), "the administrator is granted the row's own resources")
     Set tGranted = ..Read(..Reader(), "?user=" _ ..Subject() _ "&turnKey=" _ tId, .tStatus, .tText, .tHeaders)
     Do $$$AssertEquals(tStatus, 200, "the same read answers: " _ tText)
     Do $$$AssertTrue($IsObject(..RowOfKind(tGranted, "tool")), "and the row now appears")
@@ -350,7 +359,9 @@ Method TestTheRouteReturnsTheTurnsRowsOverTheWire()
     Do $$$AssertEquals(..KeysOf(tView), "rows,rowsSent,truncated,rowsWithheld,rowsDropped,windowHours", "with the declared keys")
     Do $$$AssertTrue(tView.rowsSent > 0, "and that turn's rows")
     Do $$$AssertEquals(tView.rows.%Size(), tView.rowsSent, "counted as it sent them")
-    Do $$$AssertEquals(..KeysOf(tView.rows.%Get(0)), "ledgerId,user,loggedAt,turnKey,seq,kind,name,model,route,target,arguments,argumentsTruncated,status,code,requestTokens,responseTokens,requiredPairs,requiredPairsTruncated", "each row carrying the declared keys")
+    ; `pairsSense` says what claim `requiredPairs` makes and `auditMarked` is a confirmed write's
+    ; own marker outcome, both added by Story 5.6 (DW-1321, AD-15).
+    Do $$$AssertEquals(..KeysOf(tView.rows.%Get(0)), "ledgerId,user,loggedAt,turnKey,seq,kind,name,model,route,target,arguments,argumentsTruncated,status,code,requestTokens,responseTokens,requiredPairs,requiredPairsTruncated,pairsSense,auditMarked", "each row carrying the declared keys")
     Do $$$AssertEquals(tView.rows.%Get(0).turnKey, tId, "for the turn that was asked for")
 
     For tCase = "?windowHours=9999|400|LEDGER.WINDOW.INVALID", "?windowHours=x|400|LEDGER.WINDOW.INVALID", "?maxRows=0|400|LEDGER.MAXROWS.INVALID", "?maxRows=99999|400|LEDGER.MAXROWS.INVALID", "?user=bad!name|400|LEDGER.USER.INVALID" {
@@ -369,6 +380,38 @@ Method TestTheRouteReturnsTheTurnsRowsOverTheWire()
         Do $$$AssertTrue(tAnswer.reason '= "", $Piece(tCase, "|", 1) _ ": and a written sentence")
         Do $$$AssertEquals(tText [ "}{", 0, $Piece(tCase, "|", 1) _ ": in exactly one envelope")
     }
+}
+
+/// <p>AC1's error leg -- a provider call that failed writes its <code>llm</code> row all the same,
+/// with <code>status</code> <code>error</code> and the fault's own machine code.
+/// <method>TestATurnWritesOneProviderRowAndOneToolRow</method> asserts <code>ok</code> only, so the
+/// branch that records a failure was unasserted: a turn whose provider never answered would leave
+/// the ledger claiming it had.</p>
+/// <p>Scripted HTTP 500, which <class>OcuPilot.Kernel.Provider.Retry</class> treats as retryable, so
+/// the row records <code>PROVIDER.UNAVAILABLE</code> -- the code a retryable status on every attempt
+/// produces (<class>OcuPilot.Test.TurnProviderFault</class> pins that mapping; this pins the row).
+/// The wait is the sixty seconds that class uses, because the attempts spend real backoff.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Agent.Loop.RecordProviderRow</method>'s
+/// status leg answer <code>"ok"</code> unconditionally -- this goes red and
+/// <method>TestATurnWritesOneProviderRowAndOneToolRow</method> stays green.</p>
+Method TestAFailedProviderCallWritesAnErrorRowWithItsCode()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, "", 500), "a provider failure is scripted")
+    Set tId = ..Start("fail the provider call", .tStatus, .tText)
+    Do $$$AssertEquals(tStatus, 202, "the start is accepted: " _ tText)
+    If tStatus '= 202 Quit
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "AwaitEnd", tId, ..Subject(), ..PreparedPassword, 60, .tTurnView), "failed", "the turn ends failed")
+
+    Set tView = ..Read(..Subject(), "?turnKey=" _ tId, .tStatus, .tText, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the owner reads its own rows: " _ tText)
+    If tStatus '= 200 Quit
+    Set tLlm = ..RowOfKind(tView, "llm")
+    Do $$$AssertTrue($IsObject(tLlm), "an llm row was written for the failed call: " _ tText)
+    If '$IsObject(tLlm) Quit
+    Do $$$AssertEquals(tLlm.status, "error", "carrying the failed outcome")
+    Do $$$AssertEquals(tLlm.code, ##class(OcuPilot.Api.Error).#PROVIDERUNAVAILABLE, "and the fault's own machine code")
+    Do $$$AssertEquals(tLlm.name, "turnprobe", "against the provider key it called")
+    Do $$$AssertEquals(tLlm.user, ..Subject(), "recorded against the caller")
 }
 
 /// <p>Start a turn whose model asks the browser to open <parameter>TARGETROUTE</parameter>, a screen

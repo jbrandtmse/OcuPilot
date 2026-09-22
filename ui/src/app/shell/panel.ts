@@ -2,7 +2,13 @@ import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, sig
 import { Router } from '@angular/router';
 
 import { AgentContext } from '../core/agent-context';
-import { AgentStatus, DEFINITIONS_ROUTE, formatKillSwitch } from '../core/agent-status';
+import {
+  AgentStatus,
+  DEFINITIONS_ROUTE,
+  readOnlyApplies,
+  readOnlyFooterLine,
+  restraintSentence,
+} from '../core/agent-status';
 import { decodeEntityId } from '../core/entity-id';
 import { classifyFault } from '../core/fault';
 import {
@@ -12,22 +18,43 @@ import {
   formatRequires,
   screenForDescriptor,
   screenForRoute,
+  screenForToolName,
   screenForUrl,
   withQuery,
 } from '../core/navigation';
 import { PanelState } from '../core/panel-layout';
+import {
+  type ProposalCardView,
+  type ProposalPhase,
+  countdownPhase,
+  countdownRemaining,
+  isTerminalPhase,
+  phaseForState,
+  toCardView,
+} from '../core/proposal-view';
 import { ScopeService, onScopeChange } from '../core/scope';
 import { assembleScreenContext, looksLikeSecret, type ScreenContextPayload } from '../core/screen-context';
 import { ScreenStores } from '../core/screen-store';
+import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
+import { formatChangeSentence } from '../core/toasts';
 import { SuggestedView, type SuggestedLine } from '../core/suggested-view';
-import { TURN_PATH, TurnStore, type TurnStep, turnErrorBanner } from '../core/turn';
+import {
+  TURN_PATH,
+  TurnStore,
+  type ProposalOutcome,
+  type TurnProposal,
+  type TurnStep,
+  confirmedWriteStep,
+  refusedWriteStep,
+  turnErrorBanner,
+} from '../core/turn';
 import { isApplePlatform } from './command-box';
 import { ContextChip } from './context-chip';
 import { EXAMPLE_PROPOSAL } from './example-proposal';
 import { PanelResizeHandle } from './panel-resize-handle';
-import { ProposalCard } from './proposal-card';
+import { ProposalCard, type ProposalConfirmRequest } from './proposal-card';
 import { Reply } from './reply';
 import { ToolCallCard } from './tool-call-card';
 
@@ -39,6 +66,20 @@ const REASON_ID = 'ocu-panel-reason';
 
 /** The kill-switch banner's own id, which is the controls' reason while the agent is switched off. */
 const KILL_SWITCH_ID = 'ocu-panel-kill-switch';
+
+/** The not-marked banner's id, in the slot EXPERIENCE.md's banner order already reserves for it. */
+const NOT_MARKED_ID = 'ocu-panel-not-marked';
+
+/**
+ * The sequence the first confirmed-write card takes, above every sequence a turn can record
+ * (`OcuPilot.Kernel.Agent.Limits.MAXSTEPS` is 100, and the instance stops appending there).
+ *
+ * A confirmed write is not a step of the turn, so the instance sends none and the panel composes
+ * the card. It still needs a `seq`, because the transcript tracks by it -- and it must be one no
+ * step can also take, since a confirm made while the turn is still running would otherwise collide
+ * with a step that lands after it.
+ */
+const WRITE_STEP_SEQ_BASE = 1_000_000;
 
 /** The enforced-read-only banner's own id. */
 const READ_ONLY_ID = 'ocu-panel-read-only';
@@ -70,10 +111,49 @@ interface SuggestedRowView {
   readonly reason: string;
 }
 
+/**
+ * The `hh:mm:ss` the confirmed status line reads, from the instance's own ISO-8601 UTC stamp.
+ *
+ * The clock is the stamp's own time-of-day, cut out of the text rather than re-formatted through a
+ * locale: the instance stamped it, and a card that re-derived it could show a different second
+ * from the row the ledger holds. A stamp this cannot read leaves the line's placeholder alone.
+ */
+function clockOf(stamp: string): string {
+  const time = stamp.split('T')[1] ?? '';
+  const clock = time.slice(0, 8);
+  return /^\d{2}:\d{2}:\d{2}$/.test(clock) ? clock : '';
+}
+
+/**
+ * What one Confirm produced, as the transcript's own record of it (AD-15, DW-1426): whether the
+ * write happened, whether its marker landed, and the refusal's own words where it did not. Every
+ * value is the instance's answer; the panel composes no reason of its own.
+ */
+interface PanelWriteCard {
+  readonly ok: boolean;
+  readonly auditMarked: boolean;
+  readonly reason: string;
+  readonly failedPair: string;
+}
+
+/**
+ * One proposal card's rendered view: the mapped content, where it is in the lifecycle, and the id
+ * `@for` tracks it by -- so a card keeps its own masked-field input and disclosure state across a
+ * poll that re-reads the turn.
+ */
+interface PanelProposalView {
+  readonly proposalId: string;
+  readonly view: ProposalCardView;
+  readonly phase: ProposalPhase;
+  /** The moment the instance committed the write, for the confirmed status line; `''` until then. */
+  readonly confirmedAt: string;
+}
+
 /** One turn's rendered view, precomputed once per read so the template does no substitution. */
 interface PanelTurnView {
   readonly message: string;
   readonly steps: readonly TurnStep[];
+  readonly proposals: readonly PanelProposalView[];
   readonly reply: string | null;
   readonly errorBanner: string | null;
 }
@@ -170,7 +250,14 @@ interface PanelTurnView {
             <span class="ocu-banner-message">{{ STRINGS.agentReadOnlyEnforcedBanner }}</span>
           </p>
         }
-        <div class="ocu-panel-banner-slot" data-slot="not-marked"></div>
+        <div class="ocu-panel-banner-slot" data-slot="not-marked">
+          @if (writesNotMarked) {
+            <p class="ocu-banner ocu-banner-warning ocu-panel-banner" role="status" [id]="notMarkedId">
+              <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+              <span class="ocu-banner-message">{{ STRINGS.auditingOffBanner }}</span>
+            </p>
+          }
+        </div>
         @if (reminder) {
           <p class="ocu-banner ocu-banner-info ocu-panel-banner" [id]="reasonId">
             <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
@@ -287,6 +374,18 @@ interface PanelTurnView {
                   <app-tool-call-card [step]="step" />
                 }
               }
+              @for (proposal of turn.proposals; track proposal.proposalId) {
+                <app-proposal-card
+                  [view]="proposal.view"
+                  [phase]="proposal.phase"
+                  [nowMs]="nowMs"
+                  [userName]="userName"
+                  [confirmedAt]="proposal.confirmedAt"
+                  (confirm)="onCardConfirm($event)"
+                  (cancel)="onCardCancel($event)"
+                  (repropose)="onCardRepropose($event)"
+                />
+              }
               @if (turn.reply !== null) {
                 <div class="ocu-panel-message-agent">
                   <span class="ocu-panel-message-avatar" aria-hidden="true"></span>
@@ -338,7 +437,9 @@ interface PanelTurnView {
         ></textarea>
         <button
           type="button"
-          class="ocu-button-primary ocu-panel-send"
+          class="ocu-panel-send"
+          [class.ocu-button-primary]="!sendSecondary"
+          [class.ocu-button-secondary]="sendSecondary"
           [attr.aria-disabled]="sendAriaDisabled"
           [attr.aria-describedby]="describedBy"
           (click)="onSendOrStop()"
@@ -361,6 +462,7 @@ export class Panel {
   private readonly turn = inject(TurnStore);
   private readonly router = inject(Router);
   private readonly scope = inject(ScopeService);
+  private readonly session = inject(Session);
   private readonly screenStores = inject(ScreenStores);
   private readonly shell = inject(ShellState);
   private readonly suggested = inject(SuggestedView);
@@ -387,6 +489,8 @@ export class Panel {
   /** The lock banner's own id (Story 4.5). Nothing currently points to it with `aria-describedby`;
    * `role="status"` is what makes it self-announcing. */
   protected readonly lockBannerId = 'ocu-panel-lock';
+
+  protected readonly notMarkedId = NOT_MARKED_ID;
 
   /** The banner's glyph, `aria-hidden` so the strip reads as its sentence alone. */
   protected readonly bannerGlyph = '\u2139';
@@ -432,6 +536,34 @@ export class Panel {
   /** The namespace the block was last read for on this visit to Home, or `null` (`syncSuggested`). */
   private suggestedLoadedFor: string | null = null;
 
+  /**
+   * The moment every live card's countdown reads, from the panel's one ticker.
+   *
+   * One timer for the whole transcript rather than one per card, and armed only while a card is
+   * live (`syncTicker`): the cards are pure functions of this number (AD-19), which is also what
+   * lets `proposal-card.spec.ts` drive 1:00 and 0:00 by hand.
+   */
+  private readonly nowSignal = signal(Date.now());
+
+  private ticker: ReturnType<typeof setInterval> | null = null;
+
+  /**
+   * The terminal phase this panel has decided for a proposal, by id -- the client-side half of the
+   * lifecycle (EXPERIENCE.md's cancel step): Cancel, a typed message and New conversation. Story
+   * 5.3 makes the confirmed, canceled and target-changed lines the instance's own; until then the
+   * wire's `state` is `live` on every row and this map is what moves a card off it.
+   */
+  private readonly cardPhases = signal<ReadonlyMap<string, ProposalPhase>>(new Map());
+
+  /**
+   * What each Confirm produced, by proposal id: whether the write happened, whether its audit
+   * marker landed (AD-15), and the refusal's own words where it did not. Written by
+   * `onCardConfirm` from the instance's own answer -- the confirm is a foreground request and the
+   * turn's progress carries no step for it, so this is the only place the transcript can learn
+   * that a write was attempted at all.
+   */
+  private readonly writeCards = signal<ReadonlyMap<string, PanelWriteCard>>(new Map());
+
   constructor() {
     this.lastConversationId = this.turn.conversationId();
     const stops = [
@@ -471,6 +603,7 @@ export class Panel {
     inject(DestroyRef).onDestroy(() => {
       for (const stop of stops) stop();
       routed.unsubscribe();
+      if (this.ticker !== null) clearInterval(this.ticker);
     });
   }
 
@@ -507,17 +640,13 @@ export class Panel {
   }
 
   /**
-   * The published kill-switch banner with its two slots resolved from the verdict: the audience
-   * word out of the placeholder itself, and the operator's own reason verbatim.
+   * The published kill-switch banner with its two slots resolved from the verdict, from the one
+   * selector Home's agent-status line reads as well. Rendered only while `killSwitch` is true, so
+   * the selector's kill-switch arm is the one this gets.
    */
   protected get killSwitchMessage(): string {
     this.generation();
-    const restraint = this.agentStatus.restraint();
-    return formatKillSwitch(
-      STRINGS.agentKillSwitchBanner,
-      restraint.killSwitchAudience,
-      restraint.killSwitchReason
-    );
+    return restraintSentence(this.agentStatus.restraint());
   }
 
   /** Whether read-only is enforced on the instance, which is the one read-only source with a banner. */
@@ -526,18 +655,35 @@ export class Panel {
   }
 
   /**
+   * Whether the not-marked banner shows: the instance answered, and what it answered is that agent
+   * writes are not being marked (AD-15, FR-22).
+   *
+   * **Its sentence and nothing else.** EXPERIENCE.md publishes a link and an action beside it and
+   * both stay unrendered until Story 7.4 builds the screen they open; a link to nothing is worse
+   * than no link. It is shown to every user, because every user's writes are the ones not being
+   * marked.
+   *
+   * **Its absence says nothing.** The fact behind it is recorded by install and by the confirm
+   * executor rather than read live, so it can be one window stale -- which is acceptable only
+   * because nothing in this panel, a reply or a card ever states that marking IS working.
+   */
+  protected get writesNotMarked(): boolean {
+    return this.answered && !this.agentStatus.restraint().writesMarked;
+  }
+
+  /**
    * The footer line, from the key the server's verdict chose and never composed here -- so the
    * line cannot say two things at once when two read-only sources are in force.
    */
   protected get readOnlyLine(): string {
     this.generation();
-    return stringFor(this.agentStatus.restraint().footerKey);
+    return readOnlyFooterLine(this.agentStatus.restraint());
   }
 
   /** Whether a read-only state applies, which turns the footer line restrained. */
   protected get readOnlyOn(): boolean {
     this.generation();
-    return this.agentStatus.restraint().footerKey !== 'statusReadOnlyOff';
+    return readOnlyApplies(this.agentStatus.restraint());
   }
 
   /** The composer takes text only while a definition is enabled and the kill switch is off. */
@@ -637,22 +783,430 @@ export class Panel {
         STRINGS.agentTurnStoppedBanner,
         STRINGS.agentTurnStoppedNoStepBanner
       );
+      const proposals = entry.proposals.map((proposal) => this.proposalView(proposal));
+      const steps = entry.steps.filter(
+        (step) => step.kind === 'tool' || step.kind === 'announce' || step.status === 'stopped'
+      );
       return {
         message: entry.message,
-        // Tool steps, the agent's own navigation announcements (Story 4.7), and a stop caught
-        // before a model call, which is the only record of that stop.
-        steps: entry.steps.filter(
-          (step) => step.kind === 'tool' || step.kind === 'announce' || step.status === 'stopped'
-        ),
+        // Tool steps, the agent's own navigation announcements (Story 4.7), a stop caught
+        // before a model call -- which is the only record of that stop -- and, last, one card per
+        // confirmed write of this turn, composed from the confirm's own answer (AD-15).
+        steps: [...steps, ...this.writeSteps(entry.proposals)],
+        // One card per wire proposal, in wire order, each with its own Confirm and Cancel. There
+        // is no batch control anywhere in this panel: one decision at a time (SM-C2).
+        proposals,
         // A turn ending in an error renders the banner and no reply block (Story 4.6 I/O matrix).
         // The live turn view nulls a non-completed turn's reply server-side, but the restored view
         // emits whatever the row stored, and the job records the loop's reply alongside a `failed`
         // state -- so the pair does reach the client on a reload. The two template blocks are
         // independent, so the exclusion is decided here rather than in a template condition.
-        reply: errorBanner === null ? entry.reply : null,
+        //
+        // Each appender asks whether its own sentence is ALREADY PRESENT, not whether the reply
+        // ends with it: an appender nested outside another receives text that inner one has
+        // already extended, so an `endsWith` test there is false for a model reply that carried
+        // the sentence itself and the sentence is published twice. Containment makes the four
+        // idempotent whatever order they compose in, which is the property the nesting below
+        // otherwise has to be read to establish.
+        reply:
+          errorBanner === null
+            ? this.replyWithAuditOfferSentence(
+                this.replyWithMarkerSentence(
+                  this.replyWithChangeSentence(
+                    this.replyWithConfirmSentence(entry.reply, proposals),
+                    entry.proposals
+                  ),
+                  entry.proposals
+                ),
+                entry.proposals
+              )
+            : null,
         errorBanner,
       };
     });
+  }
+
+  /**
+   * One proposal's card view: the mapped content, and the phase this panel resolves for it.
+   *
+   * The singular entity noun and the declared secret argument names are the proposal's own tool's
+   * screen (AD-5), resolved through the generated mirror by the tool name and passed to the mapper
+   * as data -- which is what keeps the mapper testable before any shipped descriptor declares a
+   * secret argument.
+   *
+   * **Keyed on the tool, not on the entity type** (DW-1227). A tool name is claimed by exactly one
+   * screen, while two screens may declare one entity type and `screenForEntityType` answers the
+   * first built one -- so a write whose own screen is not built yet would be asked for the other
+   * screen's secrets, or for none at all.
+   */
+  private proposalView(proposal: TurnProposal): PanelProposalView {
+    const screen = screenForToolName(proposal.tool);
+    return {
+      proposalId: proposal.proposalId,
+      view: toCardView(
+        proposal,
+        screen === null ? '' : stringFor(screen.entityLabelKey),
+        screen === null ? [] : screen.secretArguments,
+        // DW-1348: the envelope's own written reason for a decision the instance refused on a row
+        // it left live. The card draws it beside the Confirm it still offers; the panel writes
+        // none of this copy.
+        this.turn.proposalRefusal(proposal.proposalId)?.reason ?? ''
+      ),
+      phase: this.phaseFor(proposal),
+      confirmedAt: clockOf(proposal.confirmedAt),
+    };
+  }
+
+  /**
+   * Where one card is: this panel's own decision where it has made one, else the wire's state --
+   * and `switched-off` over a live card while the agent is off, because a card that cannot be
+   * confirmed must not offer Confirm (EXPERIENCE.md's kill-switch step).
+   */
+  private phaseFor(proposal: TurnProposal): ProposalPhase {
+    const decided = this.cardPhases().get(proposal.proposalId);
+    if (decided !== undefined) return decided;
+    const phase = phaseForState(proposal.state, proposal.closedReason);
+    if (phase !== 'live') return phase;
+    // The clock is read through the same two `core/proposal-view.ts` functions the card itself
+    // reads (`ProposalCard.livePhase`), because the two must not be able to disagree: a card that
+    // draws itself `Expired` while this panel still counts it live would leave Send secondary with
+    // no Confirm anywhere in the view, keep the ticker armed, and let a later typed message
+    // relabel an expired card and take its Re-propose away.
+    const remaining = countdownRemaining(proposal.expiresAt, this.nowSignal());
+    if (remaining !== null && countdownPhase(remaining) === 'expired') return 'expired';
+    return this.killSwitch ? 'switched-off' : phase;
+  }
+
+  /**
+   * `reply` with the published confirm sentence at its end when this turn minted a card that is
+   * still live, else `reply` unchanged.
+   *
+   * It is appended rather than expected of the model: the sentence is the panel's own published
+   * copy, so a turn whose reply arrived without it still points the user at Confirm instead of
+   * inviting the "yes" that cancels the card.
+   */
+  private replyWithConfirmSentence(
+    reply: string | null,
+    proposals: readonly PanelProposalView[]
+  ): string | null {
+    if (reply === null) return null;
+    if (!proposals.some((proposal) => !isTerminalPhase(proposal.phase))) return reply;
+    if (reply.includes(STRINGS.proposalConfirmSentence)) return reply;
+    return reply + '\n\n' + STRINGS.proposalConfirmSentence;
+  }
+
+  /**
+   * `reply` with the published change sentence at its end, one per confirmed write of this turn.
+   *
+   * **It is what makes the AC's "nothing is lost when the toast expires" true by construction.**
+   * A toast is transient and may never have been raised at all -- the user may have been looking
+   * at the very screen that changed -- so the turn's own record carries the same published
+   * sentence the toast would have. The sentence is the panel's copy, not the model's: "the
+   * agent's reply names the change" is not assertable against model-authored prose.
+   *
+   * `updated` for the reason `TurnStore` publishes `updated`: every shipped write tool is a PUT
+   * against an object that already exists.
+   */
+  private replyWithChangeSentence(
+    reply: string | null,
+    proposals: readonly TurnProposal[]
+  ): string | null {
+    if (reply === null) return null;
+    const cards = this.writeCards();
+    let text = reply;
+    for (const proposal of proposals) {
+      // A refused confirm changed nothing, so it names no change (DW-1426).
+      if (cards.get(proposal.proposalId)?.ok !== true) continue;
+      const sentence = formatChangeSentence(STRINGS.tableChangeUpdated, proposal.target.id);
+      if (text.includes(sentence)) continue;
+      text = text + '\n\n' + sentence;
+    }
+    return text;
+  }
+
+  /**
+   * The confirmed-write cards this turn's proposals produced, one per proposal this panel has
+   * confirmed, appended after the turn's own steps.
+   *
+   * The sequence matters: the transcript tracks its cards by `seq`, and two cards sharing one is a
+   * duplicate-key error rather than a cosmetic fault. `WRITE_STEP_SEQ_BASE` is above every
+   * sequence a turn can record, so a confirm made while the turn is still running -- which the
+   * card allows, since Confirm is offered on a live proposal -- cannot collide with a step that
+   * arrives afterwards.
+   */
+  private writeSteps(proposals: readonly TurnProposal[]): readonly TurnStep[] {
+    const cards = this.writeCards();
+    return proposals.flatMap((proposal, index) => {
+      const card = cards.get(proposal.proposalId);
+      if (card === undefined) return [];
+      const seq = WRITE_STEP_SEQ_BASE + index;
+      return [
+        card.ok
+          ? confirmedWriteStep(proposal, card.auditMarked, seq)
+          : refusedWriteStep(proposal, card.reason, card.failedPair, seq),
+      ];
+    });
+  }
+
+  /**
+   * `reply` with the published marker sentence at its end when a confirmed write of this turn was
+   * applied and not marked, else `reply` unchanged (AD-15, FR-22).
+   *
+   * Appended for the reason `replyWithConfirmSentence`'s sentence is: it is published copy, so a
+   * reply that arrived without it still tells the user what the card's own status word says.
+   * **There is no sentence for the marked case** -- nothing in this panel ever states that marking
+   * is working.
+   */
+  private replyWithMarkerSentence(
+    reply: string | null,
+    proposals: readonly TurnProposal[]
+  ): string | null {
+    if (reply === null) return null;
+    const cards = this.writeCards();
+    const dropped = (proposal: TurnProposal): boolean => {
+      const card = cards.get(proposal.proposalId);
+      return card !== undefined && card.ok && !card.auditMarked;
+    };
+    if (!proposals.some(dropped)) return reply;
+    if (reply.includes(STRINGS.auditMarkerReplySentence)) return reply;
+    return reply + '\n\n' + STRINGS.auditMarkerReplySentence;
+  }
+
+  /**
+   * `reply` with the published audit-entry offer at its end when a confirmed write of this turn was
+   * applied, else `reply` unchanged (AD-15, AD-46, FR-22).
+   *
+   * Appended for the reason the other three sentences are: "the agent states what it verified and
+   * ends with the offer" is not assertable against model-authored prose, so the offer is the
+   * panel's own published copy and is there whatever the model wrote. Answering it is the user's
+   * next message, and the navigation that follows is the model choosing to call
+   * `shell.screen.open` -- what this makes deterministic is that the offer is on the reply.
+   *
+   * **Only for a write that happened.** A refused confirm has no audit entry to show, and a card
+   * whose marker was dropped has none either -- `replyWithMarkerSentence` is what that case reads,
+   * and offering to show a row that was never written would be the panel inventing a fact.
+   */
+  private replyWithAuditOfferSentence(
+    reply: string | null,
+    proposals: readonly TurnProposal[]
+  ): string | null {
+    if (reply === null) return null;
+    const cards = this.writeCards();
+    const applied = (proposal: TurnProposal): boolean => {
+      const card = cards.get(proposal.proposalId);
+      return card !== undefined && card.ok && card.auditMarked;
+    };
+    if (!proposals.some(applied)) return reply;
+    if (reply.includes(STRINGS.agentAuditFollowUpQuestion)) return reply;
+    return reply + '\n\n' + STRINGS.agentAuditFollowUpQuestion;
+  }
+
+  /** The moment the cards read, from the panel's one ticker. */
+  protected get nowMs(): number {
+    return this.nowSignal();
+  }
+
+  /** The account a confirmed write would run as, for the footer's caption and the confirmed line. */
+  protected get userName(): string {
+    this.generation();
+    return this.session.userName();
+  }
+
+  /**
+   * Whether any card in the transcript is still live, which is what drops Send to secondary so
+   * Confirm is the only filled button in the view (DESIGN.md `:1184` Live row), and what arms the
+   * countdown's ticker.
+   */
+  protected get sendSecondary(): boolean {
+    this.generation();
+    return this.liveCards.length > 0;
+  }
+
+  /** Every proposal in the transcript that is not terminal, by id. */
+  private get liveCards(): readonly string[] {
+    const live: string[] = [];
+    for (const entry of this.turn.entries()) {
+      for (const proposal of entry.proposals) {
+        if (!isTerminalPhase(this.phaseFor(proposal))) live.push(proposal.proposalId);
+      }
+    }
+    return live;
+  }
+
+  /**
+   * Record `phase` for every card that is still live. The one place a client-side transition is
+   * made, so "a typed message cancels every live card", "New conversation cancels every live card"
+   * and "Stop cancels nothing" are one mechanism with three callers rather than three.
+   */
+  private cancelLiveCards(phase: ProposalPhase): void {
+    const live = this.liveCards;
+    if (live.length === 0) return;
+    const next = new Map(this.cardPhases());
+    for (const id of live) next.set(id, phase);
+    this.cardPhases.set(next);
+    this.bump();
+  }
+
+  /**
+   * Confirm was pressed on one card: the in-flight phase while the request is out, then the
+   * instance's own answer.
+   *
+   * **The terminal phase is the wire's.** This records `confirming` so the button shows progress
+   * and keeps focus, posts the confirm, and then drops its own decision -- so whatever the store
+   * recorded from the answer, confirmed or a refusal that closed the row, is what the card draws.
+   * A refusal that left the row live drops back to `live` the same way, with Confirm offered
+   * again.
+   */
+  protected async onCardConfirm(request: ProposalConfirmRequest): Promise<void> {
+    const proposalId = request.proposalId;
+    if (proposalId === '') return;
+    this.setCardPhase(proposalId, 'confirming');
+    let outcome: ProposalOutcome | null = null;
+    try {
+      outcome = await this.turn.confirmProposal(proposalId, this.secretsFor(request));
+    } finally {
+      // The answer was discarded here until Story 5.6, which is why a confirmed write left no card
+      // and a refusal that kept the row live left no trace at all: dropping this panel's own
+      // decision returns the card to the wire's state, and for such a refusal the wire's state is
+      // the one it had before the press. The write card is recorded first, and the refusal the
+      // store published is what the card carries beside the Confirm it goes back to offering.
+      this.recordWriteCard(proposalId, outcome);
+      this.setCardPhase(proposalId, null);
+    }
+  }
+
+  /**
+   * Record, from the instance's own answer, what this press produced: a write and what became of
+   * its audit marker (AD-15), or the refusal that stopped it (DW-1426).
+   *
+   * **A refusal is a card too.** A write the instance refused is a write that was attempted, and
+   * the transcript is where an attempt is recorded -- the proposal card's refusal banner says why
+   * the row is still live, and this card is the record that the write was tried and failed. The
+   * card reads `failed - <reason>`, whose detail is the pair a privilege refusal named (AD-8) and
+   * the envelope's written reason otherwise. A request that never reached the instance -- `null`,
+   * which is `onCardConfirm`'s `finally` on a thrown transport -- records nothing, because nothing
+   * is known about whether a write happened.
+   */
+  private recordWriteCard(proposalId: string, outcome: ProposalOutcome | null): void {
+    if (outcome === null) return;
+    if (!outcome.ok && outcome.status === 0) return;
+    const next = new Map(this.writeCards());
+    next.set(proposalId, {
+      ok: outcome.ok,
+      auditMarked: outcome.auditMarked,
+      reason: outcome.reason,
+      failedPair: outcome.failedPair,
+    });
+    this.writeCards.set(next);
+    this.bump();
+  }
+
+  /**
+   * Cancel was pressed on one card: its own transition, and no other card's.
+   *
+   * The transition is recorded before the request goes out, so the card answers the press rather
+   * than the round trip -- and it is not taken back afterwards: a cancel the instance refused is a
+   * row that was already closed, and a card that went back to offering Confirm on a refusal would
+   * invite the very decision the user has just declined. The instance is told because a row left
+   * live there is one a later confirm could still claim.
+   */
+  protected async onCardCancel(proposalId: string): Promise<void> {
+    if (proposalId === '') return;
+    this.setCardPhase(proposalId, 'canceled-by-you');
+    await this.turn.cancelProposal(proposalId);
+  }
+
+  /**
+   * Re-propose was pressed: ask the agent again, as a new turn carrying the message that produced
+   * this proposal's own turn (DW-1224).
+   *
+   * That message is the transcript's, never re-typed by the user and never composed here -- the
+   * accommodation for the expiry limit is a fresh read and a fresh diff of the same request
+   * (WCAG 2.2.1), so the request has to be the same one.
+   */
+  protected async onCardRepropose(proposalId: string): Promise<void> {
+    if (proposalId === '') return;
+    const message = this.messageBehind(proposalId);
+    if (message === '') return;
+    const outcome = await this.turn.send(message, this.assembleContext());
+    if (outcome === 'sent') {
+      // A Re-propose is a message like any other, and the instance closes the conversation's live
+      // proposals as it accepts the turn. Drawing the same transition here keeps the other cards
+      // from offering Confirm on rows that are already canceled (DW-1231).
+      this.cancelLiveCards('canceled-by-message');
+    }
+  }
+
+  /** The message of the turn that minted `proposalId`, or `''` when this panel no longer holds it. */
+  private messageBehind(proposalId: string): string {
+    for (const entry of this.turn.entries()) {
+      if (entry.proposals.some((proposal) => proposal.proposalId === proposalId)) return entry.message;
+    }
+    return '';
+  }
+
+  /** Record `phase` for one card, or drop this panel's own decision when it is `null`. */
+  private setCardPhase(proposalId: string, phase: ProposalPhase | null): void {
+    const next = new Map(this.cardPhases());
+    if (phase === null) {
+      next.delete(proposalId);
+    } else {
+      next.set(proposalId, phase);
+    }
+    this.cardPhases.set(next);
+    this.bump();
+  }
+
+  /**
+   * The declared secret values the pressed card handed over, for the confirm body (AD-6, AD-35).
+   *
+   * **They come from the press and nowhere else.** The card is the only thing that ever holds a
+   * typed secret -- it is not in this panel's state, not in the turn store and not in the view
+   * model -- so this narrows what arrived to the names that card was actually asked for and hands
+   * it straight to the request. A key outside the tool's declared set is refused by the instance
+   * before the claim (`Confirm.ChannelProblem`), so the narrowing is belt and braces rather than
+   * the gate.
+   */
+  private secretsFor(request: ProposalConfirmRequest): Record<string, string> {
+    const body: Record<string, string> = {};
+    for (const name of this.maskedFieldsOf(request.proposalId)) {
+      const value = request.secrets[name];
+      if (typeof value === 'string') body[name] = value;
+    }
+    return body;
+  }
+
+  /** The masked field names the card for `proposalId` was asked to fill, or none. */
+  private maskedFieldsOf(proposalId: string): readonly string[] {
+    for (const entry of this.turn.entries()) {
+      for (const proposal of entry.proposals) {
+        if (proposal.proposalId !== proposalId) continue;
+        return this.proposalView(proposal).view.maskedFields ?? [];
+      }
+    }
+    return [];
+  }
+
+  /** Arm the one-second ticker while a card is live, and disarm it when none is. */
+  private syncTicker(): void {
+    const wanted = this.liveCards.length > 0;
+    if (wanted && this.ticker === null) {
+      // Seeded at the arming, not only on the first tick: `nowSignal` holds whatever the last tick
+      // before the previous disarm left, so a panel that has been idle would draw a brand-new
+      // card's countdown from that stale moment -- `Expires in 70:00` on a ten-minute proposal --
+      // until a second later.
+      this.nowSignal.set(Date.now());
+      this.ticker = setInterval(() => {
+        this.nowSignal.set(Date.now());
+        // Re-asked on the tick, because the tick is the only thing that can retire the last live
+        // card: a countdown running out raises no event, so without this the interval would run
+        // for the panel's whole life.
+        this.syncTicker();
+      }, 1000);
+    } else if (!wanted && this.ticker !== null) {
+      clearInterval(this.ticker);
+      this.ticker = null;
+    }
   }
 
   /**
@@ -938,7 +1492,13 @@ export class Panel {
     void this.sendCurrentDraft();
   }
 
-  /** Stop while a turn runs; otherwise Send -- the one control, the one branch (Story 4.5). */
+  /**
+   * Stop while a turn runs; otherwise Send -- the one control, the one branch (Story 4.5).
+   *
+   * **Stop cancels no card.** A stop is not a new turn, so a proposal already posted in that turn
+   * stays live and confirmable (EXPERIENCE.md's Stopped-by-you row): the cancel is `Send`'s and
+   * `New conversation`'s, and this branch deliberately does neither.
+   */
   protected onSendOrStop(): void {
     if (this.busy) {
       void this.turn.stop();
@@ -968,6 +1528,11 @@ export class Panel {
     this.secretWarningVisibleSignal.set(false);
     const outcome = await this.turn.send(text, this.assembleContext());
     if (outcome === 'sent') {
+      // EXPERIENCE.md's cancel step: sending a message cancels every live proposal, which is what
+      // the card's own guard caption warns about. The instance closed them as it accepted the
+      // turn; this draws the same transition without waiting for a poll. Recorded only on an
+      // accepted send, because a refused one cancelled nothing (DW-1231).
+      this.cancelLiveCards('canceled-by-message');
       this.panel.setDraft('');
       this.acknowledgedSecretText.set(null);
     }
@@ -1016,6 +1581,10 @@ export class Panel {
     const wasReset = this.lastConversationId !== null && current === null && this.turn.entries().length === 0 && !this.turn.busy();
     this.lastConversationId = current;
     if (wasReset) {
+      // Per-conversation, like the refusal map the store clears on the same transition: the cards
+      // are gone with the transcript, and a map that outlived it would append a phantom card to a
+      // later conversation that reused a proposal id.
+      this.writeCards.set(new Map());
       this.acknowledgedSecretText.set(null);
       this.secretWarningVisibleSignal.set(false);
     }
@@ -1027,6 +1596,9 @@ export class Panel {
     if (this.busy || this.composerUnavailable) return;
     this.acknowledgedSecretText.set(null);
     this.secretWarningVisibleSignal.set(false);
+    // "New conversation cancels every live proposal exactly as a new turn would" -- and, unlike a
+    // new turn, it also clears the transcript, so the cards go with it.
+    this.cancelLiveCards('canceled-by-you');
     void this.turn.newConversation();
   }
 
@@ -1036,5 +1608,6 @@ export class Panel {
 
   private bump(): void {
     this.generation.update((value) => value + 1);
+    this.syncTicker();
   }
 }

@@ -37,6 +37,8 @@
  */
 
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+
+import { isCredentialName } from './credential-pattern.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -46,8 +48,11 @@ export const AREA_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Area.cl
 export const ARCHETYPE_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Archetype.cls');
 export const DESCRIPTOR_DIR = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Descriptor');
 export const ENTITY_TYPE_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'EntityType.cls');
+export const ENTITY_REF_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'EntityRef.cls');
 export const SCOPE_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Scope.cls');
 export const MIRROR_PATH = join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'screens.generated.ts');
+export const TOOL_FIELDS_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'ToolFields.cls');
+export const SCREEN_REGISTRY_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Registry.cls');
 
 /** The abstract base lives in the descriptor package and declares no screen. */
 const BASE_FILE = 'Base.cls';
@@ -55,6 +60,11 @@ const BASE_FILE = 'Base.cls';
 const CLASS_RE = /^Class\s+([A-Za-z0-9_.%]+)/m;
 const XDATA_RE = /^XData\s+([A-Za-z0-9_%]+)/;
 const TYPES_PARAM_RE = /^Parameter\s+TYPES\s*=\s*"([^"]*)"\s*;/m;
+const IDRULES_PARAM_RE = /^Parameter\s+IDRULES\s*=\s*"([^"]*)"\s*;/m;
+const REFSEPARATOR_PARAM_RE = /^Parameter\s+REFSEPARATOR\s*=\s*(\d+)\s*;/m;
+const IDRULENAMES_PARAM_RE = /^Parameter\s+IDRULENAMES\s*=\s*"([^"]*)"\s*;/m;
+const SINGLETONID_PARAM_RE = /^Parameter\s+RULESINGLETONID\s*=\s*"([^"]*)"\s*;/m;
+const DECLAREDNAMEKINDS_PARAM_RE = /^Parameter\s+DECLAREDNAMEKINDS\s*=\s*"([^"]*)"\s*;/m;
 const SCOPE_PARAM_RE = /^Parameter\s+(SCOPEINSTANCE|SCOPENAMESPACE)\s*=\s*"([^"]*)"\s*;/gm;
 
 /**
@@ -131,6 +141,123 @@ export function extractClassName(text) {
 /** The closed entity-type vocabulary, from the kernel's own `TYPES` parameter. */
 export function parseEntityTypes(text) {
   const match = TYPES_PARAM_RE.exec(text);
+  if (match === null) return null;
+  return match[1]
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => value !== '');
+}
+
+/**
+ * The rule names this generator knows a client implementation exists for -- the roster
+ * `ui/src/app/core/entity-ref.ts` is pinned equal to by `ui/tools/entity-ref.test.mjs`, in both
+ * directions.
+ *
+ * It is the reason a kernel rule cannot reach the client as a silent identity function: a rule
+ * declared in `OcuPilot.Kernel.EntityRef.IDRULES` and absent here fails `npm run build` at
+ * `prebuild`, naming the rule, rather than being mirrored into a key builder that does nothing
+ * with it (AD-5, AD-13 as amended by DW-1359).
+ */
+export const IMPLEMENTED_ID_RULES = ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer'];
+
+/**
+ * The per-type canonical id rules, from the kernel's own `IDRULES` parameter: `[[type, rule],
+ * ...]` in declaration order, or `null` when the parameter is missing -- the same "reported, not
+ * read as empty" discipline `parseEntityTypes` follows, because an absent table and a table that
+ * declares nothing are different facts and only one of them is a source this generator can trust.
+ *
+ * A pair with no colon, or with an empty half, is kept as it was written so `buildMirror` can
+ * refuse it by name rather than silently dropping it.
+ *
+ * **Nothing here is trimmed, deliberately.** `OcuPilot.Kernel.EntityRef.IdRuleFor` splits the
+ * same string with `$Piece` and compares the halves verbatim, so a pair written the natural way
+ * -- `"web-application:r, task:r"` -- names the type `" task"` to the kernel and matches no type
+ * at all, while a trimming reader here would mirror `task` and make the client fold an id the
+ * instance leaves alone: DW-1364 in mirror image, with the build green. Reading it exactly as the
+ * kernel does sends the stray space to `buildMirror`, which refuses the unknown type by name.
+ * `$Piece(pair, ":", 2)` also stops at the second colon, which is why the rule half does too.
+ */
+export function parseIdRules(text) {
+  const match = IDRULES_PARAM_RE.exec(text);
+  if (match === null) return null;
+  return match[1]
+    .split(',')
+    .filter((pair) => pair.trim() !== '')
+    .map((pair) => {
+      const pieces = pair.split(':');
+      return pieces.length < 2 ? [pair, ''] : [pieces[0], pieces[1]];
+    });
+}
+
+/**
+ * The code point joining the three parts of a reference key, from the kernel's own
+ * `REFSEPARATOR` parameter; `null` when the parameter is missing or is not a whole number.
+ *
+ * **It is mirrored for the reason the id-rule table is** (AD-5): `entity-ref.ts` held the
+ * character as a hand-copied `'\u0002'` literal beside `Parameter REFSEPARATOR = 2`, with
+ * nothing comparing the two, so moving one of them shipped two key builders that agree on every
+ * part of a key except the joins -- DW-1364's defect class with no gate at all (DW-1403).
+ */
+export function parseRefSeparator(text) {
+  const match = REFSEPARATOR_PARAM_RE.exec(text);
+  if (match === null) return null;
+  const code = Number(match[1]);
+  return Number.isSafeInteger(code) && code > 0 ? code : null;
+}
+
+/**
+ * The kernel's own closed rule vocabulary, from its `IDRULENAMES` parameter; `null` when absent.
+ * Untrimmed for `parseIdRules`' reason: the two parameters are one declaration, and a name that
+ * reads differently on the two sides of it is a declaration error the build should name.
+ */
+export function parseIdRuleNames(text) {
+  const match = IDRULENAMES_PARAM_RE.exec(text);
+  if (match === null) return null;
+  return match[1].split(',').filter((value) => value.trim() !== '');
+}
+
+/**
+ * The one id a `singleton` type's reference carries -- `OcuPilot.Kernel.EntityRef`'s own
+ * `RULESINGLETONID` parameter; `null` when the parameter is missing or empty.
+ *
+ * **Mirrored for the reason `REFSEPARATOR` is** (AD-5, DW-1403): the `singleton` rule answers a
+ * constant, so a hand-copied literal in `entity-ref.ts` beside this parameter would be two key
+ * builders that agree on every part of a key except the id. `null` rather than a default, so an
+ * absent parameter is reported by `buildMirror` rather than shipping an empty canonical id.
+ */
+export function parseSingletonId(text) {
+  const match = SINGLETONID_PARAM_RE.exec(text);
+  if (match === null || match[1] === '') return null;
+  return match[1];
+}
+
+/**
+ * The projection names this module's `declaredNames` fills, for the roster check against
+ * `OcuPilot.Screen.Registry`'s own `DECLAREDNAMEKINDS`.
+ *
+ * It is the reason the mirror cannot validate a confirm-channel key against a set the instance
+ * does not build, or miss one it does: `checkedDeclaredNameKinds` throws naming the source class
+ * on either difference, the way `checkedIdRules` throws on an id rule this generator cannot apply
+ * (AD-5, AD-6).
+ */
+export const IMPLEMENTED_DECLARED_NAME_KINDS = [
+  'settable',
+  'path',
+  'criteria',
+  'read',
+  'credential',
+  'toolRead',
+];
+
+/**
+ * The projections `OcuPilot.Screen.Registry.DeclaredNames` declares it fills, from that class's
+ * own `DECLAREDNAMEKINDS` parameter; `null` when the parameter is missing.
+ *
+ * `null` rather than `[]`, the discipline `parseEntityTypes` follows: an absent declaration and a
+ * declaration of nothing are different facts, and only one of them is a source to trust.
+ */
+export function parseDeclaredNameKinds(text) {
+  const match = DECLAREDNAMEKINDS_PARAM_RE.exec(text);
   if (match === null) return null;
   return match[1]
     .split(',')
@@ -225,6 +352,24 @@ export function readSources({ descriptorDir = DESCRIPTOR_DIR, areaSource = AREA_
     throw new Error(`${ENTITY_TYPE_SOURCE} declares no 'Parameter TYPES'`);
   }
 
+  const entityRefText = readFileSync(ENTITY_REF_SOURCE, 'utf8');
+  const idRules = parseIdRules(entityRefText);
+  if (idRules === null) {
+    throw new Error(`${ENTITY_REF_SOURCE} declares no 'Parameter IDRULES'`);
+  }
+  const idRuleNames = parseIdRuleNames(entityRefText);
+  if (idRuleNames === null) {
+    throw new Error(`${ENTITY_REF_SOURCE} declares no 'Parameter IDRULENAMES'`);
+  }
+  const refSeparator = parseRefSeparator(entityRefText);
+  if (refSeparator === null) {
+    throw new Error(`${ENTITY_REF_SOURCE} declares no whole-number 'Parameter REFSEPARATOR'`);
+  }
+  const singletonId = parseSingletonId(entityRefText);
+  if (singletonId === null) {
+    throw new Error(`${ENTITY_REF_SOURCE} declares no non-empty 'Parameter RULESINGLETONID'`);
+  }
+
   const scopeWords = parseScopeWords(readFileSync(SCOPE_SOURCE, 'utf8'));
   if (scopeWords === null) {
     throw new Error(`${SCOPE_SOURCE} declares no 'Parameter SCOPEINSTANCE'/'SCOPENAMESPACE' pair`);
@@ -254,7 +399,252 @@ export function readSources({ descriptorDir = DESCRIPTOR_DIR, areaSource = AREA_
   }
   screens.sort((a, b) => (a.className < b.className ? -1 : a.className > b.className ? 1 : 0));
 
-  return { entityTypes, scopeWords, archetypes, areas, screens };
+  const declaredNameKinds = parseDeclaredNameKinds(readFileSync(SCREEN_REGISTRY_SOURCE, 'utf8'));
+  if (declaredNameKinds === null) {
+    throw new Error(`${SCREEN_REGISTRY_SOURCE} declares no 'Parameter DECLAREDNAMEKINDS'`);
+  }
+
+  const toolFieldsText = readFileSync(TOOL_FIELDS_SOURCE, 'utf8');
+  const toolFieldsBody = extractXData(toolFieldsText, 'Tools');
+  if (toolFieldsBody === null) throw new Error(`${TOOL_FIELDS_SOURCE} carries no 'XData Tools' block`);
+  const toolFields = parseXDataJson(toolFieldsBody, TOOL_FIELDS_SOURCE, 'Tools');
+
+  return { entityTypes, idRules, idRuleNames, refSeparator, singletonId, declaredNameKinds, scopeWords, archetypes, areas, screens, toolFields };
+}
+
+/**
+ * What is wrong with `declaration`'s `entityLabelKey`, or `null` (AD-5, AD-14) -- the same
+ * sentences `OcuPilot.Screen.Registry.EntityLabelProblem` returns.
+ *
+ * The key is optional and names the client string key holding the singular noun for this screen's
+ * primary entity type: what a proposal card's title reads where the wire carries only the type's
+ * slug and `labelKey` is the plural screen label. Declared empty, or absent, publishes no noun. A
+ * noun declared where no `entityType` is names a label for nothing, and is refused.
+ */
+export function entityLabelProblem(declaration) {
+  if (!isObject(declaration)) return null;
+  if (!('entityLabelKey' in declaration)) return null;
+  if (typeof declaration.entityLabelKey !== 'string') return 'entityLabelKey is not a string key';
+  if (declaration.entityLabelKey === '') return null;
+  if (typeof declaration.entityType !== 'string' || declaration.entityType === '') {
+    return "entityLabelKey names the singular noun for this screen's entity type, and none is declared";
+  }
+  return null;
+}
+
+/**
+ * What is wrong with `declaration`'s `secretArguments` and `fingerprintExcludes`, or `null`
+ * (AD-3, AD-6) -- the same sentences `OcuPilot.Screen.Registry.ConfirmChannelProblem` returns.
+ *
+ * Both are optional arrays of non-empty, unique strings. Every `fingerprintExcludes` path names a
+ * field of this screen's write tool, or a field its own read declares (`read.fields`, the
+ * `rowGet` detail fields and the derived field names), so an exclusion cannot quietly cover
+ * nothing while a side-effect field the write tool does not settle can still be declared. And a
+ * declared criterion, or a settable string field of that tool, whose name matches the credential
+ * pattern and is absent from `secretArguments` is refused (DW-1121): it is a secret the confirm
+ * channel would otherwise carry in clear.
+ *
+ * `toolFields` is the generated `ToolFields.cls` block; a caller that supplies none (every fixture
+ * in `screen-mirror.test.mjs`) is read as "this screen owns no write tool", which is what a
+ * descriptor with no entry means anyway.
+ */
+export function confirmChannelProblem(declaration, toolFields = {}) {
+  const secrets = stringListProblem(declaration, 'secretArguments');
+  if (typeof secrets === 'string') return secrets;
+  const excludes = stringListProblem(declaration, 'fingerprintExcludes');
+  if (typeof excludes === 'string') return excludes;
+
+  const names = declaredNames(declaration, toolFields);
+  for (const path of excludes) {
+    if (!names.path.includes(path) && !names.read.includes(path)) {
+      return `fingerprintExcludes names '${path}', which is neither a field of this screen's write tool nor one its read declares (AD-6)`;
+    }
+  }
+  for (const name of secrets) {
+    if (!names.settable.includes(name) && !names.read.includes(name)) {
+      return `secretArguments names '${name}', which is neither a settable field of this screen's write tool nor one its read declares (AD-6)`;
+    }
+  }
+  const criterionFault = credentialNameProblem(names.criteria, secrets, 'read.criteria');
+  if (criterionFault !== null) return criterionFault;
+  return credentialNameProblem(names.credential, secrets, "the write tool's settable fields");
+}
+
+/**
+ * The one set of names a declaration's two confirm-channel keys are validated against (DW-1206) --
+ * `OcuPilot.Screen.Registry.DeclaredNames`' five projections, built once from the write tool's
+ * classified rows and the declaration's own read.
+ *
+ * `settable` is the `[]`-stripped spelling `OcuPilot.Screen.Tool.Write.FieldRows` drops a declared
+ * secret by, so `secretArguments` is checked in it; `path` is the spelling written in the field
+ * list, `[]` included, which is the spelling `OcuPilot.Kernel.Proposal.Fingerprint.Canonical`
+ * matches an exclusion by, so `fingerprintExcludes` is checked in that. One traversal answers both,
+ * because their consumers honour different spellings and a single spelling would admit the entry
+ * one of them ignores -- the defect this builder exists to close.
+ *
+ * `criteria` is the typed criterion parameters plus the flag criteria; `read` is `read.fields`, the
+ * `rowGet` detail fields, the derived names and `criteria`; `credential` is `path` narrowed to a
+ * string placeholder, which is the credential-name rule's own qualification.
+ *
+ * The roster of projection names is the kernel's (`DECLAREDNAMEKINDS`), held equal to
+ * `IMPLEMENTED_DECLARED_NAME_KINDS` by `checkedDeclaredNameKinds` in `buildMirror`.
+ */
+export function declaredNames(declaration, toolFields = {}) {
+  const rows = toolFieldRows(declaration.toolIdentifier, toolFields);
+  const settable = [];
+  const path = [];
+  const credential = [];
+  for (const [rowPath, row] of Object.entries(rows)) {
+    if (row.credential) credential.push(rowPath);
+    if (!row.settable) continue;
+    if (!path.includes(rowPath)) path.push(rowPath);
+    if (row.name !== '' && !settable.includes(row.name)) settable.push(row.name);
+  }
+  const criteria = declaredCriterionParams(declaration);
+  const read = declaredReadFields(declaration);
+  for (const name of criteria) {
+    if (!read.includes(name)) read.push(name);
+  }
+  // `toolRead` is a write tool's own `READANSWERS`, and this generator reads descriptors rather
+  // than tool classes -- so the projection is empty here. It is filled by the kernel's own caller,
+  // `OcuPilot.Screen.Registry.FingerprintSubjectProblem`, which holds the tool class; this
+  // generator validates the descriptor's two confirm-channel keys, and neither of those may name a
+  // field only a tool's read answers. It appears here so the roster the two sides fill is one set
+  // rather than two (DW-1475).
+  const toolRead = [];
+  return { settable, path, criteria, read, credential, toolRead };
+}
+
+/**
+ * The projection roster, refused by name when this generator and the kernel do not fill the same
+ * set (AD-5, AD-6) -- the shape `checkedIdRules` uses, and for the same reason: a mirror validating
+ * a confirm-channel key against a set the instance does not build would refuse a sound declaration
+ * at `prebuild`, or admit one the instance refuses at install.
+ */
+function checkedDeclaredNameKinds(kinds) {
+  const declared = [...kinds].sort().join(',');
+  const implemented = [...IMPLEMENTED_DECLARED_NAME_KINDS].sort().join(',');
+  if (declared !== implemented) {
+    throw new Error(
+      `src/OcuPilot/Screen/Registry.cls: DECLAREDNAMEKINDS declares "${kinds.join(',')}" while ` +
+        `ui/tools/screen-mirror.mjs builds "${IMPLEMENTED_DECLARED_NAME_KINDS.join(',')}"; the two ` +
+        `confirm-channel validators would be checked against different sets, which is DW-1206's ` +
+        `own cause (AD-6, AD-5)`
+    );
+  }
+  return kinds;
+}
+
+/**
+ * The field names `declaration`'s read declares: `read.fields`, `read.source.rowGet.fields` and
+ * the `field` of each `read.source.rowGet.derived` entry.
+ *
+ * Read for `confirmChannelProblem` alone, and read leniently: a malformed read contributes no
+ * names rather than a second refusal, because `readProblem` has already refused it.
+ */
+function declaredReadFields(declaration) {
+  const names = [];
+  const push = (value) => {
+    if (!Array.isArray(value)) return;
+    for (const entry of value) {
+      if (typeof entry !== 'string' || entry === '') continue;
+      if (!names.includes(entry)) names.push(entry);
+    }
+  };
+  const read = declaration.read;
+  if (read === undefined || read === null || typeof read !== 'object') return names;
+  push(read.fields);
+  const source = read.source;
+  if (source === undefined || source === null || typeof source !== 'object') return names;
+  const rowGet = source.rowGet;
+  if (rowGet === undefined || rowGet === null || typeof rowGet !== 'object') return names;
+  push(rowGet.fields);
+  if (!Array.isArray(rowGet.derived)) return names;
+  for (const entry of rowGet.derived) {
+    if (entry === null || typeof entry !== 'object') continue;
+    if (typeof entry.field !== 'string' || entry.field === '') continue;
+    if (!names.includes(entry.field)) names.push(entry.field);
+  }
+  return names;
+}
+
+/** `declaration[key]` as an array of non-empty unique strings, or a refusal sentence. */
+function stringListProblem(declaration, key) {
+  const value = declaration[key];
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value)) return `${key} is not an array of strings`;
+  const seen = [];
+  for (const entry of value) {
+    if (typeof entry !== 'string' || entry === '') return `${key} holds an entry that is not a non-empty string`;
+    if (seen.includes(entry)) return `${key} names '${entry}' twice`;
+    seen.push(entry);
+  }
+  return seen;
+}
+
+/**
+ * The criterion names `declaration`'s read declares: the `param` of each `criteria.fields` entry,
+ * whose value a person types, and each **flag** criterion -- a member of `criteria` other than
+ * `fields` declaring both a `param` and a `value`, which is the descriptor's own value and is what
+ * `OcuPilot.Screen.Descriptor.Base.FlagCriteria` enumerates. De-duplicated, because a flag may send
+ * its value under the same vendor parameter a typed criterion uses.
+ */
+function declaredCriterionParams(declaration) {
+  const read = declaration.read;
+  if (!isObject(read) || !isObject(read.criteria)) return [];
+  const params = [];
+  const push = (value) => {
+    if (typeof value !== 'string' || value === '' || params.includes(value)) return;
+    params.push(value);
+  };
+  for (const field of Array.isArray(read.criteria.fields) ? read.criteria.fields : []) {
+    if (!isObject(field)) continue;
+    push(field.param);
+  }
+  for (const [name, flag] of Object.entries(read.criteria)) {
+    if (name === 'fields' || !isObject(flag)) continue;
+    if (flag.value === undefined) continue;
+    push(flag.param);
+  }
+  return params;
+}
+
+/**
+ * The classified rows of the write tool `identifier` owns, as `{path: isSettableStringLiteral}`.
+ * A tool name's first two segments are its screen's `toolIdentifier`.
+ */
+function toolFieldRows(identifier, toolFields) {
+  const rows = {};
+  if (typeof identifier !== 'string' || identifier === '' || !isObject(toolFields)) return rows;
+  for (const [name, entry] of Object.entries(toolFields)) {
+    if (name.split('.').slice(0, 2).join('.') !== identifier) continue;
+    if (!isObject(entry) || !Array.isArray(entry.fields)) continue;
+    for (const field of entry.fields) {
+      if (!isObject(field) || typeof field.path !== 'string') continue;
+      const literal = field.class === 'ordinary' && field.shape === 'literal';
+      let stripped = field.path.endsWith('[]') ? field.path.slice(0, -2) : field.path;
+      if (field.path.includes('.') || stripped.includes('[')) stripped = '';
+      rows[field.path] = {
+        settable: literal && stripped !== '',
+        name: stripped,
+        credential: literal && field.templateType === 'string',
+      };
+    }
+  }
+  return rows;
+}
+
+/** The first name matching the credential pattern that `secrets` does not declare, as a refusal. */
+function credentialNameProblem(names, secrets, where) {
+  for (const name of names) {
+    if (!isCredentialName(name)) continue;
+    if (secrets.includes(name)) continue;
+    return (
+      `${where} names '${name}', whose name matches the credential pattern and which ` +
+      'secretArguments does not declare (AD-3)'
+    );
+  }
+  return null;
 }
 
 /**
@@ -389,11 +779,14 @@ export const DECLARATION_KEYS = [
   'refreshRates',
   'privileges',
   'entityType',
+  'entityLabelKey',
   'secondaryEntityTypes',
   'scope',
   'parentScope',
   'id',
   'context',
+  'secretArguments',
+  'fingerprintExcludes',
   'primaryAction',
   'rowActions',
   'emptyStateKey',
@@ -1684,7 +2077,8 @@ export function tableProblem(declaration, fields, secrets) {
 }
 
 /**
- * Every client string key a declaration names: its `labelKey`, its `emptyStateKey`, its table's
+ * Every client string key a declaration names: its `labelKey`, its `emptyStateKey`, its
+ * `entityLabelKey`, its table's
  * column labels, column empty-cell keys and two empty-state keys, and its banner's `messageKey`.
  * Empty keys are not listed.
  *
@@ -1693,7 +2087,7 @@ export function tableProblem(declaration, fields, secrets) {
  * named -- rather than at render time, where a banner would simply never appear.
  */
 export function declaredStringKeys(declaration) {
-  const keys = [declaration.labelKey, declaration.emptyStateKey];
+  const keys = [declaration.labelKey, declaration.emptyStateKey, declaration.entityLabelKey];
   const { table, banner, tab } = declaration;
   if (table !== null && typeof table === 'object') {
     for (const column of Array.isArray(table.columns) ? table.columns : []) keys.push(column?.labelKey, column?.emptyKey);
@@ -1706,8 +2100,91 @@ export function declaredStringKeys(declaration) {
   return keys.filter((key) => typeof key === 'string' && key !== '');
 }
 
-export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screens }) {
+/**
+ * The declared `type -> rule` map, refused by name when a pair names something no reader can
+ * apply (AD-13 as amended by DW-1359, AD-5).
+ *
+ * Three refusals, all of which would otherwise ship as a silent identity function on the client
+ * while the kernel folded the same id -- which is exactly the divergence DW-1364 was:
+ *
+ * - a type outside `OcuPilot.Kernel.EntityType.TYPES`, so the pair names no entity at all;
+ * - a rule outside the kernel's own `IDRULENAMES`, so the kernel itself cannot apply it;
+ * - a rule outside `IMPLEMENTED_ID_RULES`, so `ui/src/app/core/entity-ref.ts` cannot;
+ * - two pairs for one type, which the kernel resolves to the first and this generator to the last.
+ *
+ * It is the same shape the unknown-entity-type refusal below uses, and for the same reason: a
+ * build failure is the only thing that stops a kernel rule reaching the client as a no-op.
+ */
+function checkedIdRules(idRules, idRuleNames, knownTypes) {
+  const declaredRules = new Set(idRuleNames);
+  const implemented = new Set(IMPLEMENTED_ID_RULES);
+  const emitted = {};
+  for (const [type, rule] of idRules) {
+    if (!knownTypes.has(type)) {
+      throw new Error(
+        `src/OcuPilot/Kernel/EntityRef.cls: IDRULES declares a rule for entity type "${type}", ` +
+          `which is not in src/OcuPilot/Kernel/EntityType.cls; add it there or use a declared ` +
+          `value (AD-13, AD-14)`
+      );
+    }
+    if (!declaredRules.has(rule)) {
+      throw new Error(
+        `src/OcuPilot/Kernel/EntityRef.cls: IDRULES names id rule "${rule}" for "${type}", which ` +
+          `IDRULENAMES does not declare; the kernel itself would canonicalize that type to ` +
+          `itself (AD-13)`
+      );
+    }
+    if (!implemented.has(rule)) {
+      throw new Error(
+        `src/OcuPilot/Kernel/EntityRef.cls: IDRULES names id rule "${rule}" for "${type}", which ` +
+          `ui/tools/screen-mirror.mjs cannot implement on the client (it knows ` +
+          `${IMPLEMENTED_ID_RULES.join(', ')}); implement it in ui/src/app/core/entity-ref.ts and ` +
+          `add it to IMPLEMENTED_ID_RULES, or the two key builders disagree (AD-13, AD-5)`
+      );
+    }
+    if (Object.prototype.hasOwnProperty.call(emitted, type)) {
+      throw new Error(
+        `src/OcuPilot/Kernel/EntityRef.cls: IDRULES declares two rules for entity type "${type}" ` +
+          `("${emitted[type]}" and "${rule}"); OcuPilot.Kernel.EntityRef.IdRuleFor stops at the ` +
+          `first pair and this generator would emit the last, so the two key builders disagree ` +
+          `(AD-13, AD-5)`
+      );
+    }
+    emitted[type] = rule;
+  }
+  return emitted;
+}
+
+export function buildMirror({
+  entityTypes,
+  idRules = [],
+  idRuleNames = [],
+  refSeparator,
+  singletonId,
+  declaredNameKinds = IMPLEMENTED_DECLARED_NAME_KINDS,
+  scopeWords,
+  archetypes,
+  areas,
+  screens,
+  toolFields = {},
+}) {
   const known = new Set(entityTypes);
+  const entityIdRules = checkedIdRules(idRules, idRuleNames, known);
+  if (!Number.isSafeInteger(refSeparator) || refSeparator <= 0) {
+    throw new Error(
+      `src/OcuPilot/Kernel/EntityRef.cls: REFSEPARATOR must be a whole number above zero, the ` +
+        `code point the key's three parts are joined with; ui/src/app/core/entity-ref.ts builds ` +
+        `the same key and would join them with something else (AD-13, AD-5)`
+    );
+  }
+  if (typeof singletonId !== 'string' || singletonId === '') {
+    throw new Error(
+      `src/OcuPilot/Kernel/EntityRef.cls: RULESINGLETONID must be a non-empty string, the one id ` +
+        `every 'singleton' type's reference carries; ui/src/app/core/entity-ref.ts canonicalizes ` +
+        `to the same value and would answer something else (AD-13, AD-5)`
+    );
+  }
+  checkedDeclaredNameKinds(declaredNameKinds);
   const knownScopes = new Set(scopeWords ?? []);
   const archetypeKeys = (archetypes ?? []).map((archetype) => archetype.key);
   const knownArchetypes = new Set(archetypeKeys);
@@ -1802,6 +2279,14 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
     if (criteriaFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${criteriaFault}`);
     }
+    const confirmFault = confirmChannelProblem(screen.declaration, toolFields);
+    if (confirmFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${confirmFault}`);
+    }
+    const entityLabelFault = entityLabelProblem(screen.declaration);
+    if (entityLabelFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${entityLabelFault}`);
+    }
     const bannerFault = bannerProblem(screen.declaration);
     if (bannerFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${bannerFault}`);
@@ -1858,6 +2343,14 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
     banner: screen.declaration.banner ?? null,
     tab: screen.declaration.tab ?? null,
     rowTarget: screen.declaration.rowTarget ?? null,
+    // Defaulted for the reason `read` is: both keys are optional (AD-3, AD-6), every descriptor
+    // written before them declares neither, and the mirror's two fields are not optional.
+    secretArguments: screen.declaration.secretArguments ?? [],
+    fingerprintExcludes: screen.declaration.fingerprintExcludes ?? [],
+    // Defaulted for the same reason, and for the same kind of key: optional on the ObjectScript
+    // side (AD-5, AD-14), absent from every descriptor written before this story, and not optional
+    // on the mirror's own interface.
+    entityLabelKey: screen.declaration.entityLabelKey ?? '',
   }));
 
   const builtArchetypeKeys = archetypeKeys.filter((key) =>
@@ -2167,11 +2660,17 @@ export interface ScreenDeclaration {
   readonly refreshRates: readonly number[];
   readonly privileges: readonly PrivilegePair[];
   readonly entityType: string;
+  /** The string key of the singular noun for \`entityType\`, or \`''\` (AD-5, AD-14). */
+  readonly entityLabelKey: string;
   readonly secondaryEntityTypes: readonly string[];
   readonly scope: string;
   readonly parentScope: string;
   readonly id: IdAccessor;
   readonly context: ContextDeclaration;
+  /** The top-level argument names this screen's write tools take as secret (AD-3, AD-6). */
+  readonly secretArguments: readonly string[];
+  /** The payload paths a proposal's fingerprint leaves out (AD-6); the default is everything else. */
+  readonly fingerprintExcludes: readonly string[];
   readonly primaryAction: ActionDeclaration;
   readonly rowActions: readonly ActionDeclaration[];
   readonly emptyStateKey: string;
@@ -2213,6 +2712,34 @@ export interface ScreenRowTarget {
 
 /** The closed entity-type vocabulary, mirrored from OcuPilot.Kernel.EntityType. */
 export const ENTITY_TYPES: readonly EntityTypeKey[] = ${JSON.stringify(entityTypes, null, 2)};
+
+/**
+ * The code point joining the three parts of a reference key, mirrored from
+ * OcuPilot.Kernel.EntityRef's REFSEPARATOR (AD-13). \`entity-ref.ts\` builds its separator from
+ * this rather than from a literal of its own, so the two key builders cannot join one entity's
+ * parts with different characters (DW-1403).
+ */
+export const ENTITY_REF_SEPARATOR_CODE = ${refSeparator};
+
+/**
+ * The per-entity-type canonical id rules, mirrored from OcuPilot.Kernel.EntityRef's IDRULES
+ * table (AD-13). Only the types that declare one appear; every other type canonicalizes to
+ * itself. \`entity-ref.ts\` holds the implementation of each rule name, pinned equal to
+ * \`screen-mirror.mjs\`'s own roster, so a rule the client cannot apply fails the build rather
+ * than mirroring as a no-op.
+ */
+export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> = ${JSON.stringify(
+    entityIdRules,
+    null,
+    2
+  )};
+
+/**
+ * The one id every \`singleton\`-ruled entity type's reference carries, mirrored from
+ * OcuPilot.Kernel.EntityRef's RULESINGLETONID (AD-13). \`entity-ref.ts\` builds that rule from this
+ * rather than from a literal of its own, for the reason the separator above is mirrored.
+ */
+export const ENTITY_SINGLETON_ID = ${JSON.stringify(singletonId)};
 
 /** The eight areas, in rail order. */
 export const AREAS: readonly AreaDeclaration[] = ${JSON.stringify(areas, null, 2)};

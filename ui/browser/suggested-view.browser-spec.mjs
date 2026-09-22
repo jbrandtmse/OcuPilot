@@ -34,9 +34,14 @@ import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
-import { leaveFirstLoginGate, pathOf } from './shell-entry.mjs';
+import { pathOf } from './shell-entry.mjs';
+import {
+  authHeader as sharedAuthHeader,
+  definitions as sharedDefinitions,
+  signedInAt as sharedSignedInAt,
+} from './panel-spec.mjs';
 import { armProbeDefinition, disarmProbeDefinition, removeDefinition } from './turnprobe-spec.mjs';
-import { rememberedShellMember, resetRememberedState } from './preferences-reset.mjs';
+import { rememberedShellMember } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -47,7 +52,6 @@ const probe = { container: config.container, marker: 'SUGGESTED' };
 
 const HOME_URL = '/ocupilot/?ns=HSCUSTOM';
 const USERS_URL = '/ocupilot/permissions/users?ns=HSCUSTOM';
-const DEFINITIONS_PATH = '/api/ocupilot/agent/definitions';
 const DATES_PATH = '/api/ocupilot/logs/errors/dates?namespace=HSCUSTOM';
 
 /** DESIGN.md `:904`'s `Panel on Home` column, and what the content column keeps beside it. */
@@ -95,15 +99,11 @@ after(async () => {
 });
 
 function authHeader() {
-  return 'Basic ' + Buffer.from(`${config.username}:${config.password}`).toString('base64');
+  return sharedAuthHeader(config);
 }
 
 async function definitions() {
-  const answer = await fetch(`${config.origin}${DEFINITIONS_PATH}`, { headers: { Authorization: authHeader() } });
-  assert.ok(answer.ok, `the definitions list is readable (HTTP ${answer.status})`);
-  const body = await answer.json();
-  assert.ok(Array.isArray(body.definitions), `and projects a definitions array: ${JSON.stringify(body)}`);
-  return body.definitions;
+  return sharedDefinitions(config);
 }
 
 /** The newest `{date, count}` this instance's own log names for HSCUSTOM, or `null` when clean. */
@@ -117,27 +117,13 @@ async function newestErrorDate() {
 
 /** A fresh context signed in through the form, standing on `url` with the panel laid out. */
 async function signedInAt(url, viewport = config.viewport, mediaFeatures = null) {
-  // Story 15.5: the remembered screen and shell state lives on the instance now, keyed by the
-  // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
-  // own -- see `preferences-reset.mjs`.
-  await resetRememberedState();
-  const context = await browser.createBrowserContext();
-  const page = await context.newPage();
-  page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
-  await page.setViewport(viewport);
-  if (mediaFeatures !== null) await page.emulateMediaFeatures(mediaFeatures);
-  await page.goto(`${config.origin}${url}`, { waitUntil: 'networkidle2' });
-  await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
-  await page.type('#ocu-signin-user', config.username);
-  await page.type('#ocu-signin-password', config.password);
-  await page.click('.ocu-signin-card button[type="submit"]');
-  await page.waitForSelector('app-panel aside.ocu-panel', { timeout: config.navigationTimeoutMs });
-  await leaveFirstLoginGate(page, config.navigationTimeoutMs, url);
-  await page.waitForSelector('app-panel [role="separator"]', { timeout: config.navigationTimeoutMs });
-  return { context, page };
+  return sharedSignedInAt(browser, config, url, viewport, mediaFeatures);
 }
 
-/** Wait for the panel's width transition to settle at `width`. */
+/**
+ * Wait for the panel's width transition to settle at `width`. Local, not shared: the sibling spec's
+ * copy settles to a different tolerance, and unifying them would change a measurement (DW-1151).
+ */
 async function panelSettlesAt(page, width) {
   await page.waitForFunction(
     (wanted) =>
@@ -147,7 +133,12 @@ async function panelSettlesAt(page, width) {
   );
 }
 
-/** The panel, the content region and the page's own horizontal scroll, measured. */
+/**
+ * The panel, the content region and the page's own horizontal scroll, measured.
+ *
+ * Local, not shared: the sibling spec's copy returns a different field set, and unifying them would
+ * change what a spec measures rather than remove a copy (DW-1151).
+ */
 function geometry(page) {
   return page.evaluate(() => {
     const content = document.querySelector('.ocu-shell-content');

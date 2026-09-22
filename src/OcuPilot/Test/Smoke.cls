@@ -113,8 +113,8 @@ Method TestTheCountsArePrintedOnEveryRun()
 }
 
 /// <p>The real check list, against the instance this suite is executing inside: it executes
-/// more than zero checks, it names the endpoint it addressed, and it carries the three pending
-/// items with the epics that make them real.</p>
+/// more than zero checks, it names the endpoint it addressed, and nothing in it is
+/// <code>pending</code> -- Story 5.8 landed the last two, so the outcome has no producer left.</p>
 /// <p><b>The verdict is deliberately not asserted here.</b> Whether this instance passes is a
 /// property of the instance -- this repository's own long-lived container was created before
 /// the start hook existed and carries no demo fixtures -- and asserting it would make this
@@ -133,7 +133,191 @@ Method TestTheRealListExecutesSomething()
     ; real live-list check, Logs included, so a note saying otherwise would be a false claim about
     ; the report's own coverage rather than an honest gap.
     Do $$$AssertEquals(..Line(tReport, "arealists"), "", "no area-list pending note survives, because every built area's list is a real check")
-    Do $$$AssertTrue(tReport [ "Epic 3", "while the two the agent brings are still pending")
+    ; Story 5.8 landed the last two: `agentwrite` and `auditmarker` are executed checks on a
+    ; container carrying the demo fixture and skipped where it is absent, so nothing in the real
+    ; list is `pending` any more.
+    Do $$$AssertTrue(tCounts [ "pending=0", "no check in the real list is pending: " _ tCounts)
+    ; Asked per line rather than as a substring of the whole report: the outcome column is
+    ; right-padded to a fixed width by Render, so a scan for the padded word would go vacuously
+    ; true the moment that width changed rather than red.
+    Do $$$AssertTrue(..Line(tReport, "agentwrite") '[ "pending", "and the agentwrite line reports no pending outcome: " _ ..Line(tReport, "agentwrite"))
+    Do $$$AssertTrue(..Line(tReport, "auditmarker") '[ "pending", "nor the auditmarker line: " _ ..Line(tReport, "auditmarker"))
+}
+
+/// <p>Story 5.8, DW-1382, and the fifth AC: the whole <code>agentwrite</code> and
+/// <code>auditmarker</code> sequence, driven through the shipped check against an application the
+/// instance spells in <b>mixed case</b> -- a proposal minted and confirmed, the target read back
+/// enabled with the resource, one audit row carrying the proposal id, and the fixture put back
+/// disabled with no resource.</p>
+/// <p><code>/csp/myapp</code> folds to itself, so the container's own run proves the sequence and
+/// not the resolution. This drives it against one that can tell the two apart.</p>
+/// <p>Mutation (Rule 19): have <method>OcuPilot.Install.Smoke.ApplicationName</method> answer
+/// <var>pPath</var> instead of the instance's own <code>Name</code> -- the case-preserved
+/// assertion goes red while the sequence stays green, which is exactly the shape Story 5.7's two
+/// defects had.</p>
+Method TestTheAgentWriteCheckRunsOnACasePreservedTarget()
+{
+    If '..ArmMixedCase(0) Quit
+    Try {
+        ; Asked with the FOLDED path, which is the spelling EntityRef.Key stores and the one a
+        ; check keyed off the proposal's TargetRef would carry. The answer has to be the
+        ; instance's own, case preserved -- asking with the literal would compare the argument
+        ; against itself and hold whatever this method did with it.
+        Set tFolded = $ZConvert(##class(OcuPilot.Test.ProposalFixture).#WRITETARGETMIXEDCASE, "L")
+        Do $$$AssertNotEquals(tFolded, ##class(OcuPilot.Test.ProposalFixture).#WRITETARGETMIXEDCASE, "the probe path and its fold differ, so the assertion below can fail")
+        Do $$$AssertEquals(##class(OcuPilot.Test.SmokeWriteProbe).ApplicationName(tFolded), ##class(OcuPilot.Test.ProposalFixture).#WRITETARGETMIXEDCASE, "the check resolves the application by the spelling the instance stores, whatever spelling it is handed")
+
+        Kill tChecks
+        Do ##class(OcuPilot.Test.SmokeWriteProbe).RunWriteChecks(.tChecks, "1")
+        Do $$$AssertEquals(..Outcome(.tChecks, "agentwrite"), "pass", "the confirmed write executed and passed: " _ ..Reason(.tChecks, "agentwrite"))
+        Do $$$AssertEquals(..Outcome(.tChecks, "auditmarker"), "pass", "and one audit row carries its proposal id: " _ ..Reason(.tChecks, "auditmarker"))
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).MixedCaseWriteTargetField("Enabled"), 0, "and the fixture is left disabled")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).MixedCaseWriteTargetField("Resource"), "", "with no resource")
+    } Catch ex {
+        Do $$$AssertEquals(ex.DisplayString(), "", "the probe run raised")
+    }
+    Do ##class(OcuPilot.Test.ProposalFixture).RemoveMixedCaseWriteTarget()
+}
+
+/// <p>Story 5.8, the third AC: a repeat run executes both checks again and leaves the fixture
+/// disabled with no resource, as the first did. The restore is what makes it idempotent -- without
+/// it the second run finds a target already enabled, which is the state the check refuses to
+/// assert against.</p>
+Method TestARepeatRunExecutesAgainAndLeavesTheFixtureDisabled()
+{
+    If '..ArmMixedCase(0) Quit
+    Try {
+        Kill tFirst
+        Do ##class(OcuPilot.Test.SmokeWriteProbe).RunWriteChecks(.tFirst, "1")
+        Do $$$AssertEquals(..Outcome(.tFirst, "agentwrite"), "pass", "the first run passes: " _ ..Reason(.tFirst, "agentwrite"))
+        Kill tSecond
+        Do ##class(OcuPilot.Test.SmokeWriteProbe).RunWriteChecks(.tSecond, "1")
+        Do $$$AssertEquals(..Outcome(.tSecond, "agentwrite"), "pass", "and so does the second: " _ ..Reason(.tSecond, "agentwrite"))
+        Do $$$AssertEquals(..Outcome(.tSecond, "auditmarker"), "pass", "with its own marker row: " _ ..Reason(.tSecond, "auditmarker"))
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).MixedCaseWriteTargetField("Enabled"), 0, "and the fixture is disabled afterwards")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).MixedCaseWriteTargetField("Resource"), "", "with no resource")
+    } Catch ex {
+        Do $$$AssertEquals(ex.DisplayString(), "", "the probe run raised")
+    }
+    Do ##class(OcuPilot.Test.ProposalFixture).RemoveMixedCaseWriteTarget()
+}
+
+/// <p>Story 5.8, the fourth AC: no demo opt-in and an unowned fixture are each <code>skipped</code>
+/// with the reason naming the cause -- never <code>pending</code>, never <code>fail</code>, and
+/// never a write. DW-1402's rule: the reason travels even where the count cannot.</p>
+/// <p>Both arms here return before the target is resolved, so "never a write" is free of them.
+/// The arm where it is not is the turn slot's, pinned by
+/// <method>TestASkippedWriteCheckLeavesTheInstanceAlone</method>.</p>
+/// <p>Mutation (Rule 19): note <code>fail</code> instead of <code>skipped</code> on either arm of
+/// <method>OcuPilot.Install.Smoke.CheckAgentWrite</method>'s skip -- this goes red and the
+/// verdict of every container without the fixture flips.</p>
+Method TestTheWriteChecksSkipWhereTheEnvironmentCannotCarryThem()
+{
+    Kill tNoDemo
+    Do ##class(OcuPilot.Test.SmokeWriteProbe).RunWriteChecks(.tNoDemo, "0")
+    For tName = "agentwrite", "auditmarker" {
+        Do $$$AssertEquals(..Outcome(.tNoDemo, tName), "skipped", tName _ " is skipped with no demo opt-in")
+        Do $$$AssertTrue(..Reason(.tNoDemo, tName) [ "demo opt-in", tName _ "'s reason names the cause: " _ ..Reason(.tNoDemo, tName))
+    }
+
+    Kill tUnowned
+    Do ##class(OcuPilot.Test.SmokeUnownedProbe).RunWriteChecks(.tUnowned, "1")
+    For tName = "agentwrite", "auditmarker" {
+        Do $$$AssertEquals(..Outcome(.tUnowned, tName), "skipped", tName _ " is skipped on a fixture this install did not create")
+        Do $$$AssertTrue(..Reason(.tUnowned, tName) [ "did not create", tName _ "'s reason names the cause: " _ ..Reason(.tUnowned, tName))
+    }
+}
+
+/// <p>Story 5.8: a target that is not in the state its install creates is a <code>fail</code>
+/// naming which half, not a pass. A write over an application already enabled with the resource
+/// changes nothing, and every assertion after it would hold of a write that did nothing -- which
+/// is the vacuous pass the whole check list exists to make impossible.</p>
+Method TestAWriteThatWouldChangeNothingFailsNamingIt()
+{
+    ; Armed ENABLED, which is the state the check refuses to assert against: the write would then
+    ; change the resource alone, and every assertion after it would hold of a write that left the
+    ; application reachable exactly as it found it.
+    If '..ArmMixedCase(1) Quit
+    Try {
+        Kill tChecks
+        Do ##class(OcuPilot.Test.SmokeWriteProbe).RunWriteChecks(.tChecks, "1")
+        Do $$$AssertEquals(..Outcome(.tChecks, "agentwrite"), "fail", "a write that would change nothing fails")
+        Do $$$AssertTrue(..Reason(.tChecks, "agentwrite") [ "disabled, no-resource state", "naming which half: " _ ..Reason(.tChecks, "agentwrite"))
+        Do $$$AssertEquals(..Outcome(.tChecks, "auditmarker"), "fail", "and so does the marker, which would account for nothing")
+        ; And the fixture is put back, which is what the failure's own reason promises ("it is put
+        ; back and the next run asserts against it"). This is the path that needs the restore most:
+        ; a container whose fixture has drifted is exactly the run that fails here, and a restore
+        ; that happened only on the success path would leave it failing on every run after this one.
+        ;
+        ; Mutation (Rule 19): move CheckAgentWrite's RestoreWriteTarget call inside the Try, after
+        ; its last Note -- these two go red while every other smoke assertion stays green, because
+        ; an early Quit then skips the restore. Guarding the call on `tProblem = ""` instead does
+        ; NOT falsify it and is not the mutation: tProblem is never set on the paths that Quit
+        ; early, so $Get answers "" and the guard passes.
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).MixedCaseWriteTargetField("Enabled"), 0, "and the fixture is left disabled even though the check failed")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).MixedCaseWriteTargetField("Resource"), "", "with no resource")
+    } Catch ex {
+        Do $$$AssertEquals(ex.DisplayString(), "", "the probe run raised")
+    }
+    Do ##class(OcuPilot.Test.ProposalFixture).RemoveMixedCaseWriteTarget()
+}
+
+/// <p>Story 5.8: the two seams <class>OcuPilot.Test.SmokeWriteProbe</class> overrides answer, in
+/// the <b>shipped</b> class, what AD-25's own fixture is. Every other test of these checks runs
+/// through the probe's overrides, and the one test that runs the real list passes demo
+/// <code>"0"</code> and so skips before reaching either -- so without this the shipped bodies could
+/// name a fixture that does not exist and only <code>scripts/smoke.sh</code> in CI would notice.</p>
+/// <p>Mutation (Rule 19): have <method>OcuPilot.Install.Smoke.WriteTarget</method> answer any other
+/// path -- this goes red naming both.</p>
+Method TestTheShippedCheckNamesTheDemoFixture()
+{
+    Do $$$AssertEquals(##class(OcuPilot.Install.Smoke).WriteTarget(), ##class(OcuPilot.Install.Fixture).#APPPATH, "the shipped check writes to AD-25's own demo fixture")
+    Do $$$AssertEquals(##class(OcuPilot.Install.Smoke).WriteTargetOwned(), ##class(OcuPilot.Install.Fixture).WebAppOwnedByProfile(""), "and asks the install's own inventory whether it created it")
+}
+
+/// <p>Create the mixed-case probe application <var>pEnabled</var> with no resource, and answer
+/// whether it is there. Answers 0 on an instance the fixture refuses to write to -- one without
+/// its arming variable -- so the tests above assert nothing rather than failing there.</p>
+Method ArmMixedCase(pEnabled As %Boolean) As %Boolean [ Private ]
+{
+    Do ##class(OcuPilot.Test.ProposalFixture).RemoveMixedCaseWriteTarget()
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).EnsureMixedCaseWriteTarget(, .tCreated, pEnabled)
+    If $$$ISERR(tSC) || 'tCreated {
+        ; Said out loud rather than returned silently: a test method that asserts nothing reads as
+        ; a pass, and the three below assert nothing on an instance the fixture refuses. The class
+        ; itself still runs everywhere -- its other checks need no principal.
+        Do ..LogMessage("the mixed-case probe application was not created (" _ $Select($$$ISERR(tSC): $System.Status.GetErrorText(tSC), 1: "the fixture answered no creation") _ "), so this test asserted nothing; scripts/ci-throwaway.sh sets the variable it needs")
+        Quit 0
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).MixedCaseWriteTargetField("Enabled"), ''pEnabled, "the probe application is armed in the state this test needs")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).MixedCaseWriteTargetField("Resource"), "", "and with no resource")
+    Quit 1
+}
+
+/// <p>The value of <var>pField</var> noted for check <var>pName</var> in the check set
+/// <var>pChecks</var>, or <code>""</code> when that set holds no such check.</p>
+ClassMethod Noted(ByRef pChecks, pName As %String, pField As %String) As %String [ Private ]
+{
+    Set tValue = ""
+    For tI = 1:1:+$Get(pChecks) {
+        If $Get(pChecks(tI, "name")) '= pName Continue
+        Set tValue = $Get(pChecks(tI, pField))
+        Quit
+    }
+    Quit tValue
+}
+
+/// <p>The outcome noted for <var>pName</var>, or <code>""</code>.</p>
+ClassMethod Outcome(ByRef pChecks, pName As %String) As %String [ Private ]
+{
+    Quit ..Noted(.pChecks, pName, "outcome")
+}
+
+/// <p>The reason noted for <var>pName</var>, or <code>""</code> -- what an assertion message
+/// quotes when the outcome is not the one expected.</p>
+ClassMethod Reason(ByRef pChecks, pName As %String) As %String [ Private ]
+{
+    Quit ..Noted(.pChecks, pName, "reason")
 }
 
 /// <p>DW-228 -- with credentials, the run signs out the pair it minted and confirms the minted
@@ -711,6 +895,46 @@ Method TestNoCredentialsSkipsRatherThanPasses()
         Do $$$AssertTrue(tReport [ ("  skipped  " _ tName _ " -- "), tName _ " is skipped: " _ ..Line(tReport, tName))
     }
     Do $$$AssertTrue(tReport [ "no credentials were supplied", "and the report says why")
+}
+
+/// <p>Story 5.8: <b>a skipped check does not touch the instance.</b> The sibling method's doc
+/// promises "never a write" of every skip arm; this is the arm where that is not free. The demo
+/// and ownership arms return before the target has even been resolved, but the turn-slot arm is
+/// reached after the fresh read and after the restore body has been built, so the check has an
+/// object in hand that would put the fixture back -- and putting it back would be normalising a
+/// state this run did not cause, on a run that reports it did nothing.</p>
+/// <p>Driven with the probe armed <b>enabled</b>, because that is the only state in which a
+/// restore is observable at all: against an application already disabled with no resource, the
+/// restore's own PUT and no PUT leave exactly the same row.</p>
+/// <p>Mutation (Rule 19): drop the <code>Set tRestoreBody = ""</code> line from
+/// <method>OcuPilot.Install.Smoke.CheckAgentWrite</method>'s turn-slot arm -- the still-enabled
+/// assertion goes red, and the two outcome assertions stay green, which is the point: the outcome
+/// was always right and the side effect was not.</p>
+Method TestASkippedWriteCheckLeavesTheInstanceAlone()
+{
+    If '..ArmMixedCase(1) Quit
+    Set tTurnKey = ""
+    Try {
+        Set tReserveSC = ##class(OcuPilot.Kernel.State.Turn).GuardedReserve($Username, "", ##class(OcuPilot.Api.Error).#TURNABANDONEDJOBLOST, ##class(OcuPilot.Install.Smoke).#LIMITS, .tTurnKey, .tBusy, .tSweepSC)
+        If $$$ISERR(tReserveSC) || tBusy || (tTurnKey = "") {
+            ; Said out loud rather than returned silently, as ArmMixedCase does: the one turn slot
+            ; is instance-wide, so a run beside a live turn cannot take it and this method would
+            ; otherwise read as a pass having asserted nothing.
+            Do ..LogMessage("the one turn slot of " _ $Username _ " was already taken, so this test asserted nothing")
+            Quit
+        }
+        Kill tChecks
+        Do ##class(OcuPilot.Test.SmokeWriteProbe).RunWriteChecks(.tChecks, "1")
+        For tName = "agentwrite", "auditmarker" {
+            Do $$$AssertEquals(..Outcome(.tChecks, tName), "skipped", tName _ " is skipped when the one turn slot is already taken")
+            Do $$$AssertTrue(..Reason(.tChecks, tName) [ "turn", tName _ "'s reason names the cause: " _ ..Reason(.tChecks, tName))
+        }
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).MixedCaseWriteTargetField("Enabled"), 1, "and the fixture is left exactly as the skip found it, because a check that did not run wrote nothing")
+    } Catch ex {
+        Do $$$AssertEquals(ex.DisplayString(), "", "the probe run raised")
+    }
+    If tTurnKey '= "" Do ##class(OcuPilot.Kernel.State.Turn).GuardedDelete(tTurnKey)
+    Do ##class(OcuPilot.Test.ProposalFixture).RemoveMixedCaseWriteTarget()
 }
 
 }

@@ -105,6 +105,15 @@ const mark = (name, expression) => `Write "OCU"_"-${name}-START:"_(${expression}
  */
 function seedErrors(count) {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this leg seeds an application error through OcuPilot.Test.ErrorLogSeed and never runs against the live instance');
+  // And never inside an owner-managed slot instance either, which `notEqual(LIVE_CONTAINER)` does
+  // not exclude: an application error cannot be un-logged, and Story 5.13's delete is the only
+  // thing that could remove one. Throwaways are the only containers whose names end `-ci`
+  // (`scripts/ci-throwaway.sh`).
+  assert.match(
+    config.container,
+    /-ci$/,
+    `this leg seeds an application error on the instance, so it runs only in a throwaway; ${config.container} is not one`
+  );
   const lines = [];
   for (let i = 0; i < count; i += 1) {
     lines.push(`Set tSC${i} = ##class(OcuPilot.Test.ErrorLogSeed).SeedInto("${SEED_NAMESPACE}", .tDay, .tNumber)`);

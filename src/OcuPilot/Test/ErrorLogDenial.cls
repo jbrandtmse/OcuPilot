@@ -304,25 +304,37 @@ ClassMethod MergedResources(pSpecs As %String) As %String
     Quit tMerged
 }
 
-/// <p>Create (or re-grant) one throwaway role and the account that holds it.
-/// <b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>.</p>
-Method EnsurePrincipal(pRole As %String, pUser As %String, pResources As %String, pPassword As %String) As %Status
+/// <p>Create (or re-grant) one throwaway role and the account that holds it.</p>
+/// <p>It enters <code>%SYS</code> itself and restores the caller's namespace, rather than taking
+/// the window as a caller contract: an <code>OcuPilot</code> class cannot be dispatched from
+/// <code>%SYS</code>, so a caller in another class cannot open the window first (AD-16). Calling it
+/// from inside a <code>%SYS</code> window is unchanged -- the switch is then a no-op.</p>
+ClassMethod EnsurePrincipal(pRole As %String, pUser As %String, pResources As %String, pPassword As %String) As %Status
 {
     Set tSC = $$$OK
-    If ##class(Security.Roles).Exists(pRole, .tR, .tRS) {
-        Set tModProps("Resources") = pResources
-        Set tModProps("GrantedRoles") = ""
-        Set tModProps("ForceSave") = 2
-        Set tSC = ##class(Security.Roles).Modify(pRole, .tModProps)
-    } Else {
-        Set tSC = ##class(Security.Roles).Create(pRole, "OcuPilot test: application error log principal role (throwaway)", pResources, "")
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Roles).Exists(pRole, .tR, .tRS) {
+            Set tModProps("Resources") = pResources
+            Set tModProps("GrantedRoles") = ""
+            Set tModProps("ForceSave") = 2
+            Set tSC = ##class(Security.Roles).Modify(pRole, .tModProps)
+        } Else {
+            Set tSC = ##class(Security.Roles).Create(pRole, "OcuPilot test: application error log principal role (throwaway)", pResources, "")
+        }
+        If $$$ISERR(tSC) Quit
+        If ##class(Security.Users).Exists(pUser, .tU, .tUS) {
+            Set tSC = ##class(Security.Users).Delete(pUser)
+            If $$$ISERR(tSC) Quit
+        }
+        Set tSC = ##class(Security.Users).Create(pUser, pRole, pPassword, "OcuPilot application error log test principal (throwaway)", "", "", "", 0, 1, "Created by an OcuPilot test class; deleted in its OnAfterAllTests")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
     }
-    If $$$ISERR(tSC) Quit tSC
-    If ##class(Security.Users).Exists(pUser, .tU, .tUS) {
-        Set tSC = ##class(Security.Users).Delete(pUser)
-        If $$$ISERR(tSC) Quit tSC
-    }
-    Quit ##class(Security.Users).Create(pUser, pRole, pPassword, "OcuPilot application error log test principal (throwaway)", "", "", "", 0, 1, "Created by OcuPilot.Test.ErrorLogDenial; deleted in OnAfterAllTests")
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
 }
 
 /// <p>Request the errors level for <var>pNamespace</var> and <var>pDate</var> as

@@ -803,7 +803,7 @@ A user can terminate, suspend and resume a process. Catalog: OS-02, OS-03, OS-04
 **Consequences (testable):**
 
 - Terminate offers the optional error-to-job flag and asks for confirmation naming the process id.
-- Acting on the user's own process is refused with an explanation.
+- Acting on a process OcuPilot is itself running in - this request, or an agent turn - is refused with an explanation.
 
 #### FR-56: System usage and dashboard meters
 

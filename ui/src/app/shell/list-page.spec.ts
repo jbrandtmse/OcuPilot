@@ -157,18 +157,139 @@ describe('the list page', () => {
     expect(document.activeElement).toBe(grid);
   });
 
+  // Story 5.11, DW-1419: a list opened on its own route id selects that row on arrival. It is the
+  // store's existing pending-selection path, so the agent's navigation and a change toast's
+  // "Open in <screen>" reach it the same way, and the assertion is on `aria-selected` rather than
+  // on the URL -- which is what DW-1419 names as the gap the two navigation specs left.
+  //
+  // Mutation (Rule 19): drop the `selectFromRoute` call in `ListPage`'s constructor -> the first
+  // row below goes red while every URL assertion stays green; drop the one in its router
+  // subscription -> the navigation half goes red, which is the path a change toast takes while
+  // the list is already open.
+  it('DW-1419: a list opened on its own route id selects that row, and an id naming none selects nothing', async () => {
+    const declaration = tableDeclaration();
+    const page = await mount(declaration, named('A', 'B', 'C'), true, '/web-applications/probe/B?ns=HSCUSTOM');
+
+    const selected = Array.from(page.host().querySelectorAll('.ocu-data-table-body [role="row"]')).filter(
+      (row) => row.getAttribute('aria-selected') === 'true'
+    );
+    expect(selected.length).toBe(1);
+    expect(selected[0].querySelector('.ocu-data-table-link')?.textContent?.trim()).toBe('B');
+    const store = page.stores.for(declaration.descriptor, declaration.refreshRates);
+    expect(store.selection()).toEqual(['B']);
+
+    // The second caller: a navigation that keeps this screen and names another row, which is what
+    // a change toast's "Open in <screen>" does while the list is already open. Angular reuses the
+    // component across that hop, so the constructor does not run again and only the router
+    // subscription can move the selection.
+    await TestBed.inject(Router).navigateByUrl('/web-applications/probe/C?ns=HSCUSTOM');
+    await settle(page.fixture);
+    const moved = Array.from(page.host().querySelectorAll('.ocu-data-table-body [role="row"]')).filter(
+      (row) => row.getAttribute('aria-selected') === 'true'
+    );
+    expect(moved.length).toBe(1);
+    expect(moved[0].querySelector('.ocu-data-table-link')?.textContent?.trim()).toBe('C');
+    expect(store.selection()).toEqual(['C']);
+
+    const absent = await mount(declaration, named('A', 'B', 'C'), true, '/web-applications/probe/Z?ns=HSCUSTOM');
+    expect(rowNames(absent.host())).toEqual(['A', 'B', 'C']);
+    expect(
+      Array.from(absent.host().querySelectorAll('.ocu-data-table-body [role="row"]')).filter(
+        (row) => row.getAttribute('aria-selected') === 'true'
+      ).length
+    ).toBe(0);
+    expect(absent.host().querySelector('[role="alert"]')).toBeNull();
+  });
+
+  // Story 5.11 code review: the subscription above runs on every navigation that resolves to this
+  // screen, not only on one that changes the id -- a namespace switch keeps the path and rewrites
+  // only `?ns=`. Re-asserting the route's id there would replace a row the user had selected by
+  // hand, on every list screen, which before this story had no such subscription at all.
+  //
+  // Mutation (Rule 19): drop the `id === previous` early return in `ListPage.selectFromRoute` ->
+  // the first expectation below goes red, reading `['C']` for `['A']`; drop the
+  // `clearPendingSelection` arm -> the second goes red, keeping C selected on the bare route.
+  it('leaves a hand-made selection alone when a navigation keeps the route id, and clears it when the id goes away', async () => {
+    const declaration = tableDeclaration();
+    const page = await mount(declaration, named('A', 'B', 'C'), true, '/web-applications/probe/C?ns=HSCUSTOM');
+    const store = page.stores.for(declaration.descriptor, declaration.refreshRates);
+    expect(store.selection()).toEqual(['C']);
+
+    store.setSelection(['A']);
+    await settle(page.fixture);
+    await TestBed.inject(Router).navigateByUrl('/web-applications/probe/C?ns=USER');
+    await settle(page.fixture);
+    expect(store.pendingSelection()).toBe('');
+    expect(store.selection()).toEqual(['A']);
+
+    await TestBed.inject(Router).navigateByUrl('/web-applications/probe?ns=USER');
+    await settle(page.fixture);
+    expect(store.pendingSelection()).toBe('');
+  });
+
   it('AC8: a changed event for the list entity type and scope issues one read and the row renders changed', async () => {
     const declaration = tableDeclaration();
     const page = await mount(declaration, named('A', 'B'));
     const before = page.paths.length;
 
-    page.bus.publish({ kind: 'changed', type: 'web-application', scope: 'HSCUSTOM', id: 'B' });
+    page.bus.publish({ kind: 'changed', type: 'web-application', scope: 'HSCUSTOM', id: 'B', action: 'updated' });
     await settle(page.fixture);
 
     expect(page.paths.length).toBe(before + 1);
     const changed = page.host().querySelector('.ocu-data-table-row-changed') as HTMLElement;
     expect(changed.querySelector('.ocu-data-table-link')?.textContent?.trim()).toBe('B');
     expect(changed.querySelector('.ocu-data-table-changed-tag')).not.toBeNull();
+
+    // Story 5.7: the change is announced once, politely, naming the row and what happened. The
+    // refresh stamp and every silent tick stay unannounced, which is what keeps auto-refresh
+    // silent (EXPERIENCE.md's accessibility floor).
+    const announcement = page.host().querySelector('.ocu-data-table-announcement') as HTMLElement;
+    expect(announcement.getAttribute('role')).toBe('status');
+    expect(announcement.textContent?.trim()).toBe('Updated: B updated');
+  });
+
+  it('Story 5.7: a created row arrives highlighted and selected, and an updated one leaves the caret alone', async () => {
+    // Mutation (Rule 19): drop `applyPendingSelection` from `DataTable.sync` -> the selection
+    // assertion goes red while the highlight stays green, which is what separates "the row is
+    // marked" from "the caret is on the row the user has not seen".
+    const declaration = tableDeclaration();
+    const page = await mount(declaration, named('A', 'B'));
+    const store = page.stores.for(declaration.descriptor, []);
+    store.setSelection(['A']);
+    store.setActive('A');
+
+    page.setRows(named('A', 'B', 'C'));
+    page.bus.publish({ kind: 'changed', type: 'web-application', scope: 'HSCUSTOM', id: 'C', action: 'created' });
+    await settle(page.fixture);
+
+    expect(rowNames(page.host())).toEqual(['A', 'B', 'C']);
+    expect(store.selection()).toEqual(['C']);
+    expect(store.active()).toBe('C');
+    const changed = page.host().querySelector('.ocu-data-table-row-changed') as HTMLElement;
+    expect(changed.querySelector('.ocu-data-table-link')?.textContent?.trim()).toBe('C');
+
+    // An update of another row marks it and moves nothing.
+    page.bus.publish({ kind: 'changed', type: 'web-application', scope: 'HSCUSTOM', id: 'A', action: 'updated' });
+    await settle(page.fixture);
+    expect(store.selection()).toEqual(['C']);
+  });
+
+  it('Story 5.7: a deleted row leaves, and the selection it held clears', async () => {
+    // The clear is `table-model.reconcile`'s, which this exercises through the real store and the
+    // real table rather than by calling it -- a selected key absent from the new row set is what
+    // a delete looks like from the view's side.
+    const declaration = tableDeclaration();
+    const page = await mount(declaration, named('A', 'B'));
+    const store = page.stores.for(declaration.descriptor, []);
+    store.setSelection(['B']);
+    store.setActive('B');
+
+    page.setRows(named('A'));
+    page.bus.publish({ kind: 'changed', type: 'web-application', scope: 'HSCUSTOM', id: 'B', action: 'deleted' });
+    await settle(page.fixture);
+
+    expect(rowNames(page.host())).toEqual(['A']);
+    expect(store.selection()).toEqual([]);
   });
 
   it('before the namespace list arrives the page reads nothing, and the scope resolving reads once', async () => {

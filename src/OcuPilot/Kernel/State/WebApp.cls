@@ -135,7 +135,7 @@ ClassMethod GuardedRecord(pProfile As %String, pPath As %String, pOrigin As %Str
     Set tRow.Origin = pOrigin
     Set tRow.RecordedAt = $Translate($ZDateTime($ZTimeStamp, 3, 1), " ", "T") _ "Z"
     Set tRow.GatewayReported = 0
-    Quit ..GuardedSave(tRow)
+    Quit ..GuardedSaveIfCurrent(tRow, 0)
 }
 
 /// <p>Mark the application at <var>pPath</var> as having had its CSP Gateway registration gap
@@ -147,7 +147,7 @@ ClassMethod GuardedMarkGatewayReported(pPath As %String) As %Status
     If $$$ISERR(tSC) Quit tSC
     If '$IsObject(tRow) Quit $$$OK
     Set tRow.GatewayReported = 1
-    Quit ..GuardedSave(tRow)
+    Quit ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
 }
 
 /// <p>Remove the record for <var>pPath</var>, through the escalated frame --

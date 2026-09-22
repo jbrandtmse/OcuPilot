@@ -39,7 +39,7 @@
 /// <method>OcuPilot.Kernel.State.Agent.GuardedClearVerification</method>, which escalates in its own
 /// frame (AD-9). That is a write to OcuPilot's own protected state, not a mutation of the instance
 /// the agent acts on (AD-7). See <method>FlagUnresolvedCredential</method>.</p>
-Class OcuPilot.Port.ProviderPort Extends %RegisteredObject
+Class OcuPilot.Port.ProviderPort Extends %RegisteredObject [ DependsOn = OcuPilot.Screen.Gate ]
 {
 
 /// <p>The class the pair set is evaluated through.</p>
@@ -53,8 +53,18 @@ Parameter CATALOGCLASS = "OcuPilot.Kernel.Provider.Catalog";
 
 /// <p>The pair set <method>InvokeDraft</method> requires, comma-separated as
 /// <code>resource:permission</code>: OcuPilot's own administrative resource, which is what the
-/// write gate on the endpoint field requires too.</p>
+/// write gate on the endpoint field requires too. Every pair is required.</p>
 Parameter DRAFTPAIRS = "OcuPilotAdmin:USE";
+
+/// <p>The pair set <method>Invoke</method> requires, comma-separated as
+/// <code>resource:permission</code>: the instance-level administrative floor, of which <b>any
+/// one</b> pair admits the call (AD-29). A caller who could not reach any OcuPilot API route
+/// cannot make the instance call a provider on their behalf either.</p>
+/// <p><b>Derived, not held</b>: the list's one home is
+/// <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter>, spelled into pair form by
+/// <method>OcuPilot.Screen.Gate.AdminPairSpec</method> at compile time, so this port cannot come
+/// to admit a caller <class>OcuPilot.Api.Router</class> would refuse.</p>
+Parameter INVOKEPAIRS As %String = {##class(OcuPilot.Screen.Gate).AdminPairSpec()};
 
 /// <p>The subsystem this port's log lines are written under.</p>
 Parameter LOGSUBSYSTEM = "providerport";
@@ -72,13 +82,28 @@ Parameter SSLABSENTCODE = 979;
 /// <method>OcuPilot.Kernel.Provider.Base.Invoke</method> documents. Epic 4's turn is the caller.</p>
 /// <p>Refuses <code>PROVIDER.UNCONFIGURED</code> for an id no definition holds: a caller that
 /// named a definition that has been deleted gets a named refusal rather than a 500.</p>
+/// <p><var>pUser</var> is the <b>turn owner</b> -- the account the turn was started by, which the
+/// caller passes in (DW-1309, AD-31). The gate below is evaluated against that user's <b>live</b>
+/// grants, not against the calling process: a turn job froze <code>$ROLES</code> at the spawn and
+/// keeps that copy for its whole life, so a grant revoked while the turn ran would still admit the
+/// call if the process were asked. <code>""</code> falls back to the calling process's own
+/// identity, which is what a caller with no turn behind it is.</p>
 /// <p><b>Caller contract:</b> must not be called from an escalated frame (AD-9); the caller's
 /// namespace is unchanged on return.</p>
-ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools, pSystemPrompt As %String = "", Output pResponse As OcuPilot.Kernel.Provider.Response, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools, pSystemPrompt As %String = "", Output pResponse As OcuPilot.Kernel.Provider.Response, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pUser As %String = "") As %Status
 {
     Do ..Blank(.pResponse, .pHttpStatus, .pFault)
     Try {
         If '..Authenticated(.pHttpStatus, .pFault) Quit
+        ; The named gate this port's primary entry evaluates before its outbound call (AD-29).
+        ; An OR-set: any one administrative pair admits, an empty or unreadable set admits
+        ; nobody, and nothing leaves the instance before it has answered. Asked of the turn
+        ; owner's live grants rather than of the job's frozen roles (AD-31, DW-1309).
+        Set tFailedPair = ""
+        If '..GateAnyOfForUser($Select(pUser '= "": pUser, 1: ..ResolvedUsername()), ..InvokePairs(), .tFailedPair) {
+            Do ..RefusePair(tFailedPair, .pHttpStatus, .pFault)
+            Quit
+        }
         Set tSC = ..ValuesFor(pDefinitionId, .tValues, .tFound)
         If $$$ISERR(tSC) {
             Do ..Refuse(##class(OcuPilot.Api.Error).#PROVIDERUNCONFIGURED, .pHttpStatus, .pFault)
@@ -161,6 +186,10 @@ ClassMethod FlagUnresolvedCredential(pId As %String, ByRef pValues, ByRef pFault
 /// <p>Make one provider call against <var>pValues</var> -- a definition as a caller supplied it,
 /// subscripted by wire field name -- rather than against a stored row. <b>Always returns
 /// <code>$$$OK</code></b>.</p>
+/// <p><b>Its gate stays the calling process's</b> (DW-1309). Test connection is a foreground
+/// request whose caller <b>is</b> the user, so there is no frozen role set to go stale and no turn
+/// owner to name; <method>Invoke</method>'s question is about a background job, and asking it here
+/// would be asking the same account twice.</p>
 /// <p><b>Additionally requires <parameter>DRAFTPAIRS</parameter></b>, because these values have
 /// not passed the write gate AD-42 puts on the endpoint field. The address rules are applied here
 /// regardless, so the privilege buys the ability to try an unsaved definition, never the ability
@@ -184,14 +213,7 @@ ClassMethod InvokeDraft(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPro
         If '..Authenticated(.pHttpStatus, .pFault) Quit
         Set tFailedPair = ""
         If '..Gate(..DraftPairs(), .tFailedPair) {
-            Set tDetail = ""
-            If tFailedPair '= "" {
-                Set tDetail = {}
-                Do tDetail.%Set("failedPair", tFailedPair)
-            }
-            Set pHttpStatus = 403
-            Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "This account may not test an unsaved agent definition")
-            If $IsObject(tDetail) Do pFault.%Set("detail", tDetail)
+            Do ..RefusePair(tFailedPair, .pHttpStatus, .pFault)
             Quit
         }
         Do ##class(OcuPilot.Kernel.AgentRules).Normalize(.pValues)
@@ -440,23 +462,92 @@ ClassMethod Authenticated(ByRef pHttpStatus As %Integer, ByRef pFault As %Dynami
 
 /// <p>Whether the calling process holds every pair in <var>pPairs</var>, asked of
 /// <method>GateClass</method>'s evaluator so the check and the spelling of a failure are the
-/// gate's and not a second copy.</p>
+/// gate's and not a second copy. A requirement that names no pair is never held (DW-1120).</p>
 ClassMethod Gate(pPairs As %List, Output pFailedPair As %String) As %Boolean [ Private ]
 {
-    Quit $ClassMethod(..GateClass(), "EvaluatePairs", pPairs, .pFailedPair)
+    Quit $ClassMethod(..GateClass(), "EvaluateRequired", pPairs, .pFailedPair)
+}
+
+/// <p>Whether the calling process holds <b>any one</b> pair in <var>pPairs</var>, asked of the
+/// same evaluator for the same reason. An empty set admits nobody.</p>
+ClassMethod GateAnyOf(pPairs As %List, Output pFailedPair As %String) As %Boolean [ Private ]
+{
+    Quit $ClassMethod(..GateClass(), "EvaluateAnyOf", pPairs, .pFailedPair)
+}
+
+/// <p>Whether <var>pUser</var>'s <b>live</b> grants hold any one pair in <var>pPairs</var>
+/// (AD-31, DW-1309). The OR-set semantics are <method>OcuPilot.Screen.Gate.EvaluateAnyOf</method>'s
+/// -- an empty or unreadable set admits nobody, and <var>pFailedPair</var> names the <b>first</b>
+/// pair, which is the one the caller would have to be granted -- but the question asked of each
+/// pair is about a named account rather than about this process.</p>
+ClassMethod GateAnyOfForUser(pUser As %String, pPairs As %List, Output pFailedPair As %String) As %Boolean [ Private ]
+{
+    Set pFailedPair = ""
+    If '$ListValid(pPairs) || ($ListLength(pPairs) = 0) Quit 0
+    Set tAllowed = 0
+    Try {
+        For tI = 1:1:$ListLength(pPairs) {
+            Set tPair = $List(pPairs, tI)
+            If '$ListValid(tPair) || ($ListLength(tPair) '= 2) Continue
+            If ..HoldsPairForUser(pUser, $List(tPair, 1), $List(tPair, 2)) {
+                Set tAllowed = 1
+                Quit
+            }
+        }
+        If 'tAllowed {
+            Set tFirst = $List(pPairs, 1)
+            If $ListValid(tFirst) && ($ListLength(tFirst) = 2) Set pFailedPair = $List(tFirst, 1) _ ":" _ $List(tFirst, 2)
+        }
+    } Catch ex {
+        Set tAllowed = 0
+        Set pFailedPair = ""
+    }
+    Quit tAllowed
+}
+
+/// <p>Whether <var>pUser</var>'s current grants hold <var>pPermission</var> on
+/// <var>pResource</var> -- <code>$SYSTEM.Security.CheckUserPermission</code>, the idiom AD-31 names
+/// and <method>OcuPilot.Kernel.Agent.Dispatch.HoldsPair</method> already uses. A user the instance
+/// no longer holds holds nothing.</p>
+/// <p><b>Deliberately not asked through <method>GateClass</method></b>: that evaluator answers
+/// about the calling process, and the whole point of this question is that the process is not the
+/// authority. <b>Overridable</b> so a test can drive a revoked grant without changing a single
+/// grant on the instance -- <code>%UnitTest</code> runs as an account holding <code>%All</code>.
+/// Production never overrides it.</p>
+ClassMethod HoldsPairForUser(pUser As %String, pResource As %String, pPermission As %String) As %Boolean
+{
+    Set tHolds = 0
+    Try {
+        Set tHolds = ($SYSTEM.Security.CheckUserPermission(pUser, pResource, pPermission) = 1)
+    } Catch {
+        Set tHolds = 0
+    }
+    Quit tHolds
+}
+
+/// <p>Set the 403 a refused pair set answers with, naming <var>pFailedPair</var> when there is
+/// one to name. Code, sentence and detail are <class>OcuPilot.Kernel.Denial</class>'s, so this
+/// port's refusal is the one refusal a screen read and a tool call also produce (AD-39).</p>
+ClassMethod RefusePair(pFailedPair As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) [ Private ]
+{
+    Set pHttpStatus = ##class(OcuPilot.Kernel.Denial).#STATUS
+    Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Kernel.Denial).Slug(), ##class(OcuPilot.Kernel.Denial).Code(), ##class(OcuPilot.Kernel.Denial).Reason())
+    Set tDetail = ##class(OcuPilot.Kernel.Denial).Detail(pFailedPair)
+    If $IsObject(tDetail) Do pFault.%Set("detail", tDetail)
 }
 
 /// <p><parameter>DRAFTPAIRS</parameter> as the <code>(resource, permission)</code> list the gate
 /// takes.</p>
 ClassMethod DraftPairs() As %List
 {
-    Set tPairs = ""
-    For tI = 1:1:$Length(..#DRAFTPAIRS, ",") {
-        Set tPair = $Piece(..#DRAFTPAIRS, ",", tI)
-        If tPair = "" Continue
-        Set tPairs = tPairs _ $ListBuild($ListBuild($Piece(tPair, ":", 1), $Piece(tPair, ":", 2)))
-    }
-    Quit tPairs
+    Quit $ClassMethod(..GateClass(), "ParsePairSpec", ..#DRAFTPAIRS)
+}
+
+/// <p><parameter>INVOKEPAIRS</parameter> as the <code>(resource, permission)</code> list the gate
+/// takes.</p>
+ClassMethod InvokePairs() As %List
+{
+    Quit $ClassMethod(..GateClass(), "ParsePairSpec", ..#INVOKEPAIRS)
 }
 
 /// <p>The class <method>Gate</method> and <method>Authenticated</method> ask. Overridable so a

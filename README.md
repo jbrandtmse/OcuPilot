@@ -351,6 +351,25 @@ OcuPilot's state lives in the separate protected database, which neither role re
 AD-21). The authenticated API carries no matching role at all, so a request there runs with
 exactly the privileges its own account holds (AD-8).
 
+**An API account needs that same read, as a prerequisite.** Because database READ is
+routine-execution permission, an account calling `/api/ocupilot` must hold read on the install
+namespace's database, on top of whatever a screen's own privilege set requires. Two grants are
+really at issue and on this container they are one: the framework's access check tests the
+resource guarding the namespace's **default global** database
+(`$Piece($zu(90,21,<namespace>),"^",4)`, `%DB_HSCUSTOM` here), while loading OcuPilot's own classes
+needs read on the resource guarding its **routine** database — what
+`OcuPilot.Install.Installer.CodeDatabaseResource` derives from `SYS.Database`, also `%DB_HSCUSTOM`
+here because `HSCUSTOM`'s two databases are the same one. On a namespace configured with separate
+globals and routines databases they are two grants, and an account needs both. Without the first
+the framework's own access check refuses the request before any OcuPilot code runs, and the caller
+is answered **`403` with an empty body**:
+`%CSP.REST.Page()` sets that status inline rather than through OcuPilot's response writer, so
+there is no envelope to read and nothing names the missing grant. Measured on a throwaway
+container, 2026-09-21, for an account granted `%Admin_Secure:USE` and `%DB_IRISSYS:READ` and no
+read on that database; `POST /api/ocupilot/login` still answers `200`, because the JWT token
+endpoints are the framework's own and reach no OcuPilot class. Grant the read and the refusal
+becomes whichever of OcuPilot's own gates actually applies, with the envelope that names it.
+
 **The list of applications is one declaration.** Each is a single entry in the `XData Manifest`
 block of [src/OcuPilot/Install/Roster.cls](src/OcuPilot/Install/Roster.cls), carrying its path,
 its description, the name of its one matching role, the properties `module.xml` states and the
@@ -368,10 +387,11 @@ found, creating and repairing nothing. `Uninstall` is the other half: it removes
 record says install created, and reports anything else it finds at those paths rather than
 deleting it.
 
-**Two things an API caller needs.** Read on that same code database, or IRIS cannot load
-`OcuPilot.Api.Router` for the request and the framework answers a bare `403` that OcuPilot never
-sees. And `USE` on at least one `%Admin_*` resource, or the router answers one `403` envelope with
-the code `AUTH.NOADMIN` (FR-65).
+**Two things an API caller needs.** Read on that same database, or the framework's own
+`%CSP.REST.AccessCheck` refuses the request before any OcuPilot code runs and answers a bare `403`
+that OcuPilot never sees — see the roles section above for which resource and what was measured.
+And `USE` on at least one `%Admin_*` resource, or the router answers one `403` envelope with the
+code `AUTH.NOADMIN` (FR-65).
 
 **The bundle.** Build it with `npm --prefix ui run build`; the output lands in
 `ui/dist/ocupilot-ui/browser/`, which the container sees through the read-only `./ui` mount. The
