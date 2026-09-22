@@ -417,11 +417,14 @@ Method TestDisablingTheLastAllHolderIsRefused()
 /// <parameter>OcuPilot.Kernel.Proposal.Prohibited.SERVICEACCOUNTS</parameter>, or delete the
 /// <code>IsServiceAccount</code> arm from
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.User</method> -- the refusal legs redden and the
-/// permitted one stays green.</p>
+/// permitted one stays green. Removing <code>CSPSystem</code> alone reddens only the membership
+/// assertion, which is why that assertion exists: the legs below iterate whatever the set holds,
+/// so they cannot tell a complete set from one missing the account this rule was written for.</p>
 Method TestDisablingAServiceAccountIsRefused()
 {
     Set tAccounts = $ClassMethod(..#SHIPPEDSET, "ServiceAccounts")
     Do $$$AssertTrue($ListLength(tAccounts) > 0, "the set names at least one service account; a run over none would pass having checked nothing")
+    Do $$$AssertTrue($ListFind(tAccounts, "CSPSystem") > 0, "CSPSystem is a member by name -- DW-1438 exists for this account specifically, and a set that iterates whatever it holds proves nothing about which accounts it holds")
     If $ListLength(tAccounts) = 0 Quit
     Set tCode = $Parameter(..#SHIPPEDSET, "SERVICEACCOUNT")
     ; The container's own session runs as one of these accounts (irisowner on the throwaway), and
