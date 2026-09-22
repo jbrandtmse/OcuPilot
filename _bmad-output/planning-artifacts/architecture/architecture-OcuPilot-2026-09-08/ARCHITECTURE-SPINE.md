@@ -590,6 +590,24 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **The declaration is the tool's, because the port is a property of the target rather than of the screen.** A screen may read through one port and write through another, and two tools on one screen may differ. The default keeps every existing tool unchanged and unedited.
 
+### AD-53 — A screen's own action and the agent's write are one operation, reached by two callers
+
+- **Binds:** Story 7.1 and every later row action, command-bar action and editor Save across Epics 7, 8, 9 and 12; AD-5, AD-6, AD-8, AD-10, AD-14, AD-15, AD-30, AD-34, AD-39, AD-40, AD-49, AD-52; FR-19, FR-20, FR-32
+- **Prevents:** a screen button that reaches the instance down a second path with weaker gates than the agent's -- which is the unconfirmed, unaudited write AD-48 and AD-52 each prevent for their own case, arriving instead through the UI
+- **Rule:** Epic 7's every story is "two callers of one operation", and until Story 7.1 the operation had only one caller. The executed write lived inside `Kernel/Proposal/Confirm`'s transition, and the only instance-write route was `POST /proposal/:id/confirm`, so a screen's own action had nowhere to go but a path of its own. The operation is therefore **lifted out of the confirm path into a callable both callers reach**, and the screen caller gets a user-originated route beside the shipped `GET /screens/:screen/read`.
+
+  **What both callers share, because it belongs to the operation and not to the caller:** the target resolution through the tool's declared port (AD-52), the fresh read, the prohibited-set predicates evaluated against the resolved target inside the single atomic transition (AD-10, AD-34), the caller's own privileges through that port's gate (AD-8, AD-29), the change event (AD-14), and the vendor's own audit record. AD-10 is the load-bearing one: its set is refused **"whatever the caller"**, so a screen action cannot reach a prohibited effect by not being a tool.
+
+  **What differs, and why each difference is principled rather than convenient:**
+
+  - **The agent's caller mints a proposal and needs a confirmation; the screen's caller does not.** AD-6's proposal exists because a *model* asked for the write and a human must review a server-computed diff before it happens. A person pressing a row action has already expressed the intent directly, which is the same reasoning AD-49 applies to a self-service account action and AD-40 applies to confirm itself. The screen's destructive actions get their review from the confirm dialog and its typed-name field (EXPERIENCE.md), not from a proposal.
+  - **The agent marker is the agent's.** AD-15 marks *agent* writes so they are distinguishable from human ones; a screen action **is** the human write it would otherwise be distinguished from, so it emits no OcuPilot marker and relies on the vendor's own event, exactly as AD-49 reasons for the self-service case. AD-46 already shows those rows on the audit screen.
+  - **Enforced read-only and the kill switch do not gate a screen action.** This is published, not a new call: FR-20 states "**All screens continue to work with the agent disabled**", and every FR-19 consequence is scoped to write tools, proposal cards, turns and provider calls. AD-30's Rule is worded the same way. The switches are the *agent's*, and a screen whose actions they silenced would make an operator's kill switch an outage.
+
+  **A refusal is written once, on the server, and published once.** AD-39 already puts refusal copy on the server beside the envelope reasons. A self-protection refusal has two surfaces -- the row action drawn disabled *before* a click (AD-5's declared self-protection rule, mirrored to the client) and the envelope returned *after* one -- and they must not drift into two sentences for one rule. So the sentence is published once in EXPERIENCE.md's Fixed strings, the kernel's reason for that code is that sentence, the descriptor's self-protection rule names it, and a test pins the two copies equal -- the same idiom Conventions › Secrets already uses for the redaction pattern. A kernel refusal reason that names "the agent" is a defect once a screen caller shares the predicate.
+
+  **A prohibited-set predicate is stated over the effect, never over the payload's shape.** Story 7.1 found the concrete failure: `Prohibited.WebApplication` gated the serving-path arm on `pServes && +$Get(pChanged)`, so a bodyless delete -- which carries no changed fields -- passed straight through the arm meant to protect the application that serves OcuPilot. That is AD-10's own diagnosis ("defined by effect, not by verb") reappearing as "defined by the payload, not by the effect", and it is the same family as DW-1486. A predicate that reads the diff must answer for the write kinds that have no diff.
+
 
 ## Consistency Conventions
 
