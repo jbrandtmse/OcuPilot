@@ -12,3 +12,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-22T22:07:42Z	Epic 8	sprint_planning_complete	gate=PASS model=claude-opus-5-1m stories=8 new_entries=0 in_sync=true
 2026-09-22T22:07:42Z	Epic 8	retro_review_skipped	reason=rule27_gating_epic_no_x0 note=epics_9_11_12_depend_on_epic_8_merge;orchestrator_instruction_no_8.0;epic7_retro_not_yet_run(concurrent);ledger_entries_for_this_epic_routed_to_8-1_and_8-5_with_epics.md_bullets
 2026-09-22T22:11:47Z	Epic 8	epic_context_compiled	sha=pending reason=initial model=claude-opus-5-1m lines=165
+2026-09-22T22:12:20Z	Story 8.1	stage_spawned	stage=plan spawn_at=2026-09-22T22:12:20Z model=claude-opus-4-6 agent_name=8-1-create-a-web-application-plan-1 cycle_iteration=1
