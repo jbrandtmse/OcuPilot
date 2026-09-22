@@ -248,8 +248,8 @@ Method TestAnUnknownEndpointOrSuffixIsRefusedBeforeConstruction()
     Do ..AssertFault(tSC, tHttp, tFault, 501, "not_implemented", "PORT.NOTIMPLEMENTED", "malformed name")
 
     Do ##class(OcuPilot.Test.PortFixture).SetEndpointClass("OcuPilot.Test.EndpointFixture")
-    ; DELETE, not PUT: PUT is a request type the port now accepts, through
-    ; OcuPilot.Port.AdminPort.MUTATINGTYPES, and a confirmed write is what issues one. DELETE is in
+    ; DELETE, not PUT: OcuPilot.Port.AdminPort.MUTATINGTYPES pairs PUT with three endpoints, and a
+    ; confirmed write is what issues one. Fixture.Endpoint pairs with nothing and DELETE is in
     ; neither list, which is what "outside the accepted set" still means.
     Set tSC = ##class(OcuPilot.Test.PortFixture).Invoke("Fixture.Endpoint", "DELETE", , , .tResult, .tHttp, .tFault)
     Do ..AssertFault(tSC, tHttp, tFault, 501, "not_implemented", "PORT.NOTIMPLEMENTED", "suffix outside the accepted set")

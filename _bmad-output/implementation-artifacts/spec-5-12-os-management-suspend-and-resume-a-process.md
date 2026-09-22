@@ -47,13 +47,13 @@ deferred:
       ui/browser/process-control.browser-spec.mjs
     severity: low
   - summary: >-
-      AC2's orchestrator-decided broad ownership reading leaves almost nothing proposable on a
-      single-user instance -- a product consequence for the decision sheet, not a defect.
+      AC2's broad ownership reading left almost nothing proposable on a single-user instance;
+      the narrowing to a process OcuPilot is itself running in closed it.
     evidence: |-
-      Prohibited.OwnedByCaller refuses any process whose UserName is the confirming user. Measured
-      on ocupilot-ci: 40 empty-owner daemons, 4 CSPSYSTEM, 1 TASKMGR, 1 IRISOWNER -- so the suite
-      had to create a second principal to have any proposable target at all. Spec-bound: the broad
-      reading was decided at planning, so it reopens only through an amendment.
+      Prohibited.IsOcuPilotProcess refuses the job serving the confirmation and any running turn's
+      job, whoever owns either, so a process the confirming user owns is proposable. Measured on
+      ocupilot-ci under the broad reading: 40 empty-owner daemons, 4 CSPSYSTEM, 1 TASKMGR,
+      1 IRISOWNER -- the suite had to create a second principal to have any proposable target.
     severity: medium
 ---
 
@@ -615,13 +615,12 @@ verification-gap and acceptance-auditor all ran and all returned). 0 decision-ne
 applied), 5 defer, 13 rejected. No HIGH. Every patch is a correction at its origin; none adds a
 branch, so no new pinning test was required and none of the story's mutations moved.
 
-- [x] [Review][Patch] Three amended doc comments in `Prohibited.cls` state what the code and the
+- [x] [Review][Patch] Two amended doc comments in `Prohibited.cls` state what the code and the
   vendor's own include file do not [src/OcuPilot/Kernel/Proposal/Prohibited.cls] — `ProcessJobTypes`
   called its seven values "the interactive and client job types `%syPidtab.inc` names", where
   `:128` makes only `FOREJOB` 1 and `FORAPPJOB` 3 interactive and groups the other five under
-  `BACKGROUNDJOB` at `:132`; `Codes()` accounted for eleven of twelve codes, omitting
-  `PRIVILEGEGRANT`; and `OwnedByCaller` claimed it fails closed "as its sibling does", where it
-  fails closed only when both `Pid` and `UserName` are absent. All three corrected at their origin.
+  `BACKGROUNDJOB` at `:132`; and `Codes()` accounted for eleven of twelve codes, omitting
+  `PRIVILEGEGRANT`. Both corrected at their origin.
 - [x] [Review][Patch] `FINGERPRINTSUBJECT`'s doc claims the registration guard checks names against
   the tool's own read [src/OcuPilot/Screen/Tool/Write.cls:84] — `FingerprintSubjectProblem` checks
   them against the screen's declaration, which for `ProcessList` is the `LIST` spellings. The claim
@@ -663,9 +662,10 @@ branch, so no new pinning test was required and none of the story's mutations mo
   counters, but spec task 3 sanctioned the empty default and the amended AD-51 does not.
 - [x] [Review][Defer] `ProcessJobTypes` admits `APPMODE` 2, a background job type
   [src/OcuPilot/Kernel/Proposal/Prohibited.cls:579] — deferred: **DW-1477**,
-  `escalated owner=burndown`. A `JOB`ed turn job (AD-7) carries it, and `OwnedByCaller` refuses only
-  the confirming user's own, so one user's turn job is proposable by another. Spec task 4 enumerated
-  the seven values, so narrowing the list is a product call for the decision sheet.
+  `escalated owner=burndown`. A `JOB`ed turn job (AD-7) carries it; `IsOcuPilotProcess` refuses any
+  running turn's job whoever owns it, so what remains is whether the allow-list should carry a
+  background job type at all. Spec task 4 enumerated the seven values, so narrowing the list is a
+  product call for the decision sheet.
 
 **Rejected.**
 
@@ -925,8 +925,9 @@ answers `%Admin_Operate` alone while `AllowToOpen` and `VariableByPidExecute` as
   - `mutation:` drop `Do pRows.%Push(tRow)` from `ProcessSuspend.StateDiff` -> `ProcessControl`
     1/9 failed (the one-row assertion).
   - `mutation:` drop `process` from `Prohibited.COVEREDTYPES` -> `ProcessControl` 5/9 failed.
-  - `mutation:` `Quit 0` first in `Prohibited.OwnedByCaller` -> `ProcessControl` 1/9 failed, naming
-    the three own-process assertions and leaving the probe's own leg green.
+  - `mutation:` `Quit 0` first in `Prohibited.IsOcuPilotProcess` -> `ProcessControl` 2/11 failed:
+    the predicate leg on its three own-process assertions, and the dispatch leg on its
+    `OCUPILOTPROCESS` half. Re-measured 2026-09-22 after the narrowing replaced `OwnedByCaller`.
   - `mutation:` add `36` to `Prohibited.ProcessJobTypes` -> `ProcessControl` 1/9 failed (the Task
     Manager leg); `mutation:` answer `""` from it -> 4/9 failed, the allow-list floor among them,
     which is the direction a predicate refusing everything would otherwise pass.
@@ -940,10 +941,11 @@ answers `%Admin_Operate` alone while `AllowToOpen` and `VariableByPidExecute` as
   - `mutation:` empty `ProcessSuspend.FINGERPRINTSUBJECT` -> `ProcessControl` 2/9 failed: the
     counter-moved confirm is refused `PROPOSAL.TARGETCHANGED`, which is the dead path the amended
     AD-51 exists to remove, and the stored payload carries the whole read again.
-  - `mutation:` delete the `OwnedByCaller` refusing branch from `Prohibited.Process` -> `ProcessControl`
-    1/10 failed, on the own-process half of the dispatch leg alone; delete the `IsActionableJobType`
-    branch -> 1/10 failed, on that leg's system-process half. The predicate-level legs, which ask the
-    two predicates directly, stay green under both.
+  - `mutation:` delete the `IsOcuPilotProcess` refusing branch from `Prohibited.Process` (`:605-608`)
+    -> `ProcessControl` 1/11 failed, on the own-process half of the dispatch leg alone; delete the
+    `IsActionableJobType` branch -> 1/11 failed, on that leg's system-process half. The
+    predicate-level legs, which ask the two predicates directly, stay green under both. All three
+    re-measured 2026-09-22 on `ocupilot-ci`.
   - `mutation:` delete the write branch's `FingerprintSubjectProblem` call from
     `Registry.ListTools` -> `ToolWrite` 1/19 failed, on the registration leg only; the leg that asks
     the guard about the five probes directly stays green.

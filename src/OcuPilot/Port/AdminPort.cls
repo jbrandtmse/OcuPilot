@@ -117,11 +117,27 @@ Parameter ASYNCLOCATION = "async-result?id=";
 /// only that endpoint's <code>TYPEINFO</code> answers <code>ShouldRunAsync()</code> true.</p>
 Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 
-/// <p>The <b>mutating</b> request-type suffixes <method>Invoke</method> accepts, resolved through
-/// the endpoint's own <code>TYPE&lt;suffix&gt;</code> parameter exactly as
-/// <parameter>TYPESUFFIXES</parameter> is. Listed apart from the reads because the two are not
-/// interchangeable to a reviewer: everything in the other list changes nothing on the instance,
-/// and everything here does.</p>
+/// <p>The <b>mutating</b> <code>&lt;endpoint&gt;/&lt;type&gt;</code> pairs <method>Invoke</method>
+/// accepts, each type resolved through that endpoint's own <code>TYPE&lt;suffix&gt;</code>
+/// parameter exactly as <parameter>TYPESUFFIXES</parameter> is. Listed apart from the reads
+/// because the two are not interchangeable to a reviewer: everything in the other list changes
+/// nothing on the instance, and everything here does.</p>
+/// <p><b>Keyed by the pair, not by the suffix</b> (DW-1473), the grammar
+/// <parameter>BODYLESSTYPES</parameter> and <parameter>BARETYPES</parameter> already use. A bare
+/// suffix admits a type on <i>every</i> endpoint that happens to declare a parameter of that name:
+/// <code>SUSPEND</code> was admitted for <code>Task.CRUD</code>, whose
+/// <code>TYPESUSPEND</code> exists, although no shipped tool issues it and AD-10 has no predicate
+/// for it. The pair is the widening removed.</p>
+/// <p><b>The six are the ones the registry actually reaches</b>, established three ways: the
+/// registry's own discovery rule, a whole-tree sweep of
+/// <code>Extends OcuPilot.Screen.Tool.Write</code> including transitive subclasses, and
+/// <class>OcuPilot.Test.SurfaceCoverage</class>'s both-directions assertion.
+/// <class>OcuPilot.Screen.Tool.ErrorDelete</class>'s <code>DELETE</code> is legitimately absent:
+/// it declares <code>LogSourcePort</code> and reaches its target through that port (AD-52).</p>
+/// <p><b>A dropped pair is the high-risk direction.</b> The gate runs after the claim has
+/// committed and the token is spent, so a pair missing here 501s a merge write the user already
+/// confirmed. Every pair is asserted against the registry by
+/// <class>OcuPilot.Test.ToolWrite</class>.</p>
 /// <p><b>Reached only by a confirmed proposal.</b> A mutating call is issued by
 /// <class>OcuPilot.Kernel.Proposal.Confirm</class> after its claim has committed (AD-34, AD-40);
 /// no tool, no screen read and no turn reaches one, and the port itself decides nothing about
@@ -135,7 +151,7 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// <code>%request.Method</code>, which <method>HttpMethodFor</method> has already set to the
 /// mutating suffix itself -- for <code>RESUME</code> that value is the vendor's request-type
 /// suffix rather than an HTTP verb, since the vendor exposes the operation only as a request
-/// type.</p>
+/// type -- and asks it of the endpoint name threaded in beside it, never of the suffix alone.</p>
 /// <p><code>RESUME</code> is <code>Task.CRUD</code>'s bodyless resume and <code>Process</code>'s
 /// own (AD-51, Stories 5.11 and 5.12), and <code>SUSPEND</code> is <code>Process</code>'s
 /// suspend. Each vendor <code>NeedsRequestBody()</code> excludes them, each
@@ -145,9 +161,9 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// <p><code>TERMINATE</code> and <code>DELETE</code> are deliberately absent. The vendor exposes
 /// terminating a process through both -- <code>Process</code>'s <code>RunDelete</code> is a
 /// one-line delegate to <code>RunTerminate</code> -- and AD-10 names terminating an IRIS system
-/// process in the Release 1 prohibited set, so neither suffix resolves here and
-/// <method>EndpointType</method> answers <code>""</code> for it.</p>
-Parameter MUTATINGTYPES = "PUT,RESUME,SUSPEND";
+/// process in the Release 1 prohibited set, so neither pairs with <code>Process</code> here and
+/// <method>EndpointType</method> answers <code>""</code> for either.</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -434,13 +450,13 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         ; omitted body nor a BODYLESSTYPES write is affected. The exemption is read for the
         ; (endpoint, type) pair, so one endpoint's bodyless type does not exempt another
         ; endpoint's type of the same name (DW-1464).
-        If $ListFind($ListFromString(..#MUTATINGTYPES), pType) && '..IsBodyless(pEndpoint, pType) && '$IsObject(pBody) {
+        If ..IsMutating(pEndpoint, pType) && '..IsBodyless(pEndpoint, pType) && '$IsObject(pBody) {
             Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, .pHttpStatus, .pFault)
             Do ..LogFault(pEndpoint _ " " _ pType _ " was given a body that is not an object, which the vendor reads as carrying no properties", $$$ERROR($$$GeneralError, "a mutating call's body must be a %DynamicAbstractObject, never its JSON text"), pFault.code)
             Quit
         }
 
-        Set tSeqSC = ..RunSequence(pEndpoint, tClass, tType, .pQuery, pBody, .tAnswer, .tHttp, .tLocation, ..HttpMethodFor(pType))
+        Set tSeqSC = ..RunSequence(pEndpoint, tClass, tType, .pQuery, pBody, .tAnswer, .tHttp, .tLocation, ..HttpMethodFor(pEndpoint, pType))
         If $$$ISOK(tSeqSC) && (tHttp = 202) && (tLocation [ ..#ASYNCLOCATION) {
             Set tAnswer = ""
             Set tGuid = $Piece($Piece(tLocation, ..#ASYNCLOCATION, 2), "&", 1)
@@ -782,17 +798,26 @@ ClassMethod IsBodyless(pEndpoint As %String, pSuffix As %String) As %Boolean
     Quit ''$ListFind($ListFromString(..#BODYLESSTYPES), pEndpoint _ "/" _ pSuffix)
 }
 
-/// <p>The HTTP method the request stub carries for the suffix <var>pSuffix</var>: the suffix itself
-/// for a <parameter>MUTATINGTYPES</parameter> entry, <code>GET</code> for everything else.</p>
+/// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
+/// <parameter>MUTATINGTYPES</parameter> admits (DW-1473). Every read of that parameter is this
+/// method, so admitting a type on one endpoint can never be read as admitting it on another.</p>
+ClassMethod IsMutating(pEndpoint As %String, pSuffix As %String) As %Boolean
+{
+    Quit ''$ListFind($ListFromString(..#MUTATINGTYPES), pEndpoint _ "/" _ pSuffix)
+}
+
+/// <p>The HTTP method the request stub carries for <var>pEndpoint</var>'s request type
+/// <var>pSuffix</var>: the suffix itself for a <parameter>MUTATINGTYPES</parameter> pair,
+/// <code>GET</code> for everything else.</p>
 /// <p>The vendor's endpoints read their own <code>Type</code> property rather than
 /// <code>%request.Method</code>, so nothing dispatches on this; it is set truthfully so the stub
 /// does not describe a read while a write runs against it. For <code>RESUME</code> the value the
 /// stub carries is that request-type suffix and not an HTTP verb, because the vendor exposes the
 /// operation as a request type alone; <method>Sequence</method>'s async refusal reads it as a
 /// <parameter>MUTATINGTYPES</parameter> member either way.</p>
-ClassMethod HttpMethodFor(pSuffix As %String) As %String [ Private ]
+ClassMethod HttpMethodFor(pEndpoint As %String, pSuffix As %String) As %String [ Private ]
 {
-    If $ListFind($ListFromString(..#MUTATINGTYPES), pSuffix) Quit pSuffix
+    If ..IsMutating(pEndpoint, pSuffix) Quit pSuffix
     Quit "GET"
 }
 
@@ -810,7 +835,7 @@ ClassMethod EndpointType(pEndpoint As %String, pClass As %String, pSuffix As %St
         If (tBare = "") || '..ImplementsRead(pClass, pSuffix) Quit ""
         Quit tBare
     }
-    If '$ListFind($ListFromString(..#TYPESUFFIXES), pSuffix) && '$ListFind($ListFromString(..#MUTATINGTYPES), pSuffix) Quit ""
+    If '$ListFind($ListFromString(..#TYPESUFFIXES), pSuffix) && '..IsMutating(pEndpoint, pSuffix) Quit ""
     Set tType = $Parameter(pClass, "TYPE" _ pSuffix)
     If tType = "" Quit ""
     If '..ImplementsRead(pClass, pSuffix) Quit ""
@@ -878,7 +903,7 @@ ClassMethod RunSequence(pEndpoint As %String, pClass As %String, pType As %Integ
         Set tEndpoint.IsRunningAsync = 0
 
         Set $NAMESPACE = "%SYS"
-        Set tSC = ..Sequence(tEndpoint, tBody, .pAnswer)
+        Set tSC = ..Sequence(pEndpoint, tEndpoint, tBody, .pAnswer)
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -896,7 +921,10 @@ ClassMethod RunSequence(pEndpoint As %String, pClass As %String, pType As %Integ
 
 /// <p><code>Main()</code>'s steps after construction, in its order, against stubs already in
 /// place. Runs in <code>%SYS</code>.</p>
-ClassMethod Sequence(pEndpoint As %RegisteredObject, pBody As %DynamicAbstractObject, Output pAnswer) As %Status [ Private ]
+/// <p><var>pName</var> is the endpoint's name and <var>pEndpoint</var> its constructed object. The
+/// name is here for the async refusal alone, which asks <method>IsMutating</method> the same
+/// <code>(endpoint, type)</code> question the admission gate asked (DW-1473).</p>
+ClassMethod Sequence(pName As %String, pEndpoint As %RegisteredObject, pBody As %DynamicAbstractObject, Output pAnswer) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pAnswer = ""
@@ -939,8 +967,11 @@ ClassMethod Sequence(pEndpoint As %RegisteredObject, pBody As %DynamicAbstractOb
             ; neither owns nor purges. Neither Release 1 async entry is mutating, so this refuses a
             ; combination no shipped path reaches -- before the row is written rather than after,
             ; because a secret written there cannot be taken back.
+            ; The endpoint name is threaded in rather than re-derived, so this asks the same
+            ; (endpoint, type) question the admission gate asked. %request.Method carries the
+            ; request-type suffix for a mutating call (HttpMethodFor) and GET otherwise.
             Set tMethod = %request.Method
-            If $ListFind($ListFromString(..#MUTATINGTYPES), tMethod) {
+            If ..IsMutating(pName, tMethod) {
                 Set tSC = $$$ERROR($$$GeneralError, "the admin API would queue this " _ tMethod _ " request, and a mutating request's body is never written to the vendor's task row (AD-35)")
                 Quit
             }

@@ -9,14 +9,16 @@
 /// rather than the <code>%All</code> account every other run uses -- for the write tools whose pair
 /// sets an <code>%All</code> run cannot establish: Story 5.9's user write, Story 5.10's auditing
 /// write, Story 5.11's task resume and Story 5.12's two process writes.</p>
-/// <p><b>What it needs from the environment:</b> the OcuPilot web application reachable on this
-/// instance's own web-server port, the applications the install roster declares, an account
-/// holding <code>%All</code>, and <b>both</b> <parameter>ARMINGVARIABLE</parameter> and
-/// <parameter>AUDITVARIABLE</parameter> reading <code>1</code>.
-/// <method>OnBeforeAllTests</method> refuses anywhere either does not, because this class creates
-/// and deletes a web application and an IRIS account, starts and terminates a process of its own,
-/// and turns this instance's auditing off for one leg; only
-/// <file>scripts/ci-throwaway.sh</file> sets them.</p>
+/// <p><b>What it needs from the environment, and at which scope.</b> Class-wide: the OcuPilot web
+/// application reachable on this instance's own web-server port, the applications the install
+/// roster declares, an account holding <code>%All</code>, and
+/// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code> -- every method here creates and
+/// deletes a web application and an IRIS account, so <method>OnBeforeAllTests</method> refuses the
+/// class where it does not. Per method: <parameter>AUDITVARIABLE</parameter> reading <code>1</code>,
+/// required by <parameter>AUDITINGMETHOD</parameter> alone, which turns this instance's auditing
+/// off. <method>OnBeforeOneTest</method> skips that one method where it does not read 1, so a
+/// container that predates the variable still runs the other thirteen rather than none
+/// (DW-1452). Only <file>scripts/ci-throwaway.sh</file> sets either.</p>
 /// <p><b>It writes nothing it did not create.</b> The probe application is
 /// <method>OcuPilot.Test.ProposalFixture.EnsureWriteTarget</method>'s, which refuses to adopt one
 /// it did not make, and every test here asserts that the confirm left it byte for byte as it
@@ -30,11 +32,21 @@ Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
 
 /// <p>The second variable this class needs, for the same reason
 /// <class>OcuPilot.Test.AuditingUpdate</class> declares it:
-/// <method>TestALeastPrivilegedPrincipalConfirmsTheAuditingWriteOverTheWire</method> confirms a
-/// real disable, so while that leg runs nothing on this instance is audited at all.
-/// <method>OnBeforeAllTests</method> refuses on both, so the whole class runs on a throwaway
-/// container only.</p>
+/// <parameter>AUDITINGMETHOD</parameter> confirms a real disable, so while that one leg runs
+/// nothing on this instance is audited at all.</p>
+/// <p><b>Declared here is what <file>scripts/ci-throwaway.sh</file>'s roster is held against</b>
+/// (<file>ui/tools/ci.test.mjs</file>), so the parameter stays whether or not
+/// <method>OnBeforeAllTests</method> reads it. It is <method>OnBeforeOneTest</method> that reads
+/// it now, for one method rather than for the class.</p>
 Parameter AUDITVARIABLE = "OCUPILOT_ALLOW_AUDIT_TOGGLE";
+
+/// <p>The one test method <parameter>AUDITVARIABLE</parameter> gates: the only method in this
+/// class that toggles this instance's auditing. Named in a parameter rather than as a literal
+/// inside <method>OnBeforeOneTest</method> so
+/// <method>TestTheAuditingMethodParameterNamesAMethodThisClassDeclares</method> can hold it
+/// against the class dictionary -- a rename that left a literal behind would silently un-skip the
+/// gate and run an audit toggle unarmed.</p>
+Parameter AUDITINGMETHOD = "TestALeastPrivilegedPrincipalConfirmsTheAuditingWriteOverTheWire";
 
 /// <p>The REST application's path from the origin root.</p>
 Parameter APIBASE = "/api/ocupilot";
@@ -129,12 +141,29 @@ Method OnBeforeAllTests() As %Status
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.ProhibitedRoute creates and deletes a web application on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
-    If $System.Util.GetEnviron(..#AUDITVARIABLE) '= 1 {
-        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.ProhibitedRoute turns this instance's auditing off for one leg and runs on a throwaway container only. " _ ..#AUDITVARIABLE _ " does not read 1 here, so nothing was changed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
-    }
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).EnsureWriteTarget($Namespace, .tCreated)
     If $$$ISERR(tSC) Quit tSC
     Quit ..Guard(..#GUARDRESOURCE)
+}
+
+/// <p>Skip <parameter>AUDITINGMETHOD</parameter>, and only it, where
+/// <parameter>AUDITVARIABLE</parameter> does not read <code>1</code>.</p>
+/// <p><b>The skip has to be here and cannot be in <method>OnBeforeAllTests</method></b>:
+/// <class>%UnitTest.TestCase</class> reads <code>SkipTest</code> after
+/// <code>OnBeforeOneTest</code> alone, and its own doc says a <code>$$$AssertSkipped</code> in
+/// <code>OnBeforeAllTests</code> "may result in tests appearing to pass rather than being
+/// skipped". A class-wide refusal on this variable was the alternative, and it removed AD-29's
+/// least-privileged coverage for thirteen methods that never turn auditing off whenever the
+/// container predated the variable (DW-1452).</p>
+/// <p>A skipped method records <code>Status=2</code> and the manager runs neither the method nor
+/// <method>OnAfterOneTest</method> for it, so nothing this class creates is left behind by a
+/// skip.</p>
+Method OnBeforeOneTest(pMethod As %String = "") As %Status
+{
+    If pMethod '= ..#AUDITINGMETHOD Quit $$$OK
+    If $System.Util.GetEnviron(..#AUDITVARIABLE) = 1 Quit $$$OK
+    Do $$$AssertSkipped(pMethod _ " turns this instance's auditing off and runs on a throwaway container only. " _ ..#AUDITVARIABLE _ " does not read 1 here, so nothing was changed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    Quit $$$OK
 }
 
 Method OnAfterAllTests() As %Status
@@ -775,6 +804,24 @@ Method AuditingFresh(Output pFresh As %DynamicObject) As %Boolean
     Quit 1
 }
 
+/// <p>DW-1452: <parameter>AUDITINGMETHOD</parameter> names a test method this class actually
+/// declares.</p>
+/// <p><b>Without this, a rename un-skips the gate silently.</b>
+/// <method>OnBeforeOneTest</method> compares the running method's name against that parameter, and
+/// a comparison against a name nothing answers to is simply never true -- so the auditing toggle
+/// would run on an unarmed container with no refusal and no skip, which is the state DW-1452 was
+/// filed about in the first place.</p>
+/// <p>Mutation (Rule 19): point <parameter>AUDITINGMETHOD</parameter> at a name this class does not
+/// declare -- this goes red on the dictionary leg.</p>
+Method TestTheAuditingMethodParameterNamesAMethodThisClassDeclares()
+{
+    Set tName = ..#AUDITINGMETHOD
+    Do $$$AssertNotEquals(tName, "", "the class names the method AUDITVARIABLE gates")
+    Do $$$AssertTrue(##class(%Dictionary.CompiledMethod).IDKEYExists($ClassName(), tName), $ClassName() _ " declares a method named " _ tName)
+    Do $$$AssertEquals($Extract(tName, 1, 4), "Test", "and it is a method the framework runs, not a helper")
+    Do $$$AssertNotEquals(..#AUDITVARIABLE, "", "and the variable it gates on is still declared, which ci.test.mjs holds against ci-throwaway.sh")
+}
+
 /// <p>Seed one auditing proposal owned by <parameter>PRINCIPALUSER</parameter> setting
 /// <code>Enabled</code> to <var>pEnabled</var> over <var>pFresh</var>, and answer its id.</p>
 Method SeedAuditing(pFresh As %DynamicObject, pEnabled As %Boolean) As %String
@@ -794,7 +841,8 @@ Method SeedAuditing(pFresh As %DynamicObject, pEnabled As %Boolean) As %String
 /// the one measurement that says the declared set is sufficient for that <code>PUT</code> and not
 /// merely for its <code>GET</code>.</p>
 /// <p><b>It turns this instance's auditing off for real</b>, which is why
-/// <parameter>AUDITVARIABLE</parameter> arms the class. Auditing is restored in a frame of its own
+/// <parameter>AUDITVARIABLE</parameter> arms this method and <method>OnBeforeOneTest</method>
+/// skips it where that variable does not read 1. Auditing is restored in a frame of its own
 /// after <code>Try</code>/<code>Catch</code> -- a raise skips a method's tail -- and again in
 /// <method>OnAfterOneTest</method>, which asserts the restore worked.</p>
 /// <p>Mutation (Rule 19): set
@@ -804,6 +852,13 @@ Method SeedAuditing(pFresh As %DynamicObject, pEnabled As %Boolean) As %String
 /// red, which is what separates "this account may do it" from "some account may".</p>
 Method TestALeastPrivilegedPrincipalConfirmsTheAuditingWriteOverTheWire()
 {
+    ; The skip is the only thing standing between this body and a real auditing disable, and a
+    ; parameter naming a real method does not establish that the skip still runs. Reaching this
+    ; line unarmed means OnBeforeOneTest is no longer wired, so say so here rather than turn the
+    ; instance's auditing off and pass.
+    Do $$$AssertEquals($System.Util.GetEnviron(..#AUDITVARIABLE), 1, ..#AUDITVARIABLE _ " reads 1 wherever this body runs -- OnBeforeOneTest skips this method where it does not")
+    If $System.Util.GetEnviron(..#AUDITVARIABLE) '= 1 Quit
+
     Set tCodeResource = ..CodeDatabaseResource()
     Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
     If tCodeResource = "" Quit

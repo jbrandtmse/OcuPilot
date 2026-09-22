@@ -21,8 +21,9 @@
 /// <class>OcuPilot.Screen.Tool.ProcessResume</class> name this descriptor and take its pair set;
 /// the row actions that would put them on the screen are Stories 7.8 and 16.6, so this descriptor
 /// declares no primary action and no row action. <b>Terminate is absent</b>: OcuPilot advertises no
-/// such tool and <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> admits neither
-/// <code>TERMINATE</code> nor <code>DELETE</code>, though the vendor class declares both.</p>
+/// such tool and <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> pairs
+/// <code>Process</code> with neither <code>TERMINATE</code> nor <code>DELETE</code>, though the
+/// vendor class declares both.</p>
 /// <p><b>It declares none of the <code>CanBe*</code> fields.</b> The four booleans and
 /// <code>CanReceiveBroadcast</code> exist only to gate the vendor's own controls, so a read that
 /// carried them would ship the inputs to a decision nothing here makes -- and

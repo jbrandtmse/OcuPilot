@@ -51,10 +51,27 @@ export const SHELL_SIDE_BAR_OPEN = 'sideBarOpen';
 export const SHELL_PANEL_WIDTH = 'panelWidth';
 
 /** The two membership lists, as the wire names them. */
-export type PreferenceKind = typeof FAVORITE_KIND | typeof RECENT_KIND;
+export const PREFERENCE_MEMBERSHIP_KINDS = [FAVORITE_KIND, RECENT_KIND] as const;
 
 /** The three value kinds, as the wire names them. */
-export type PreferenceValueKind = typeof VIEW_KIND | typeof REFRESH_KIND | typeof SHELL_KIND;
+export const PREFERENCE_VALUE_KINDS = [VIEW_KIND, REFRESH_KIND, SHELL_KIND] as const;
+
+/**
+ * Every `kind` this store holds, membership and value alike -- the roster
+ * `OcuPilot.Kernel.State.Pref`'s five `KIND*` parameters declare.
+ *
+ * It exists so a caller that has to act on *all* of them -- `ui/browser/preferences-reset.mjs`,
+ * which forgets the signing-in account's remembered state before a spec's context opens -- derives
+ * the set rather than hand-listing it. A hand-listed copy is how the reset came to clear three of
+ * the five, leaving recents to accumulate across a suite run.
+ */
+export const PREFERENCE_KINDS = [...PREFERENCE_MEMBERSHIP_KINDS, ...PREFERENCE_VALUE_KINDS] as const;
+
+/** The membership kinds, as a type. Derived from the roster, so the two cannot drift. */
+export type PreferenceKind = (typeof PREFERENCE_MEMBERSHIP_KINDS)[number];
+
+/** The value kinds, as a type. Derived from the roster, so the two cannot drift. */
+export type PreferenceValueKind = (typeof PREFERENCE_VALUE_KINDS)[number];
 
 /** The placeholder the two `*RemoveNamed` strings leave for the screen a row removes. */
 export const NAME_PLACEHOLDER = '<name>';

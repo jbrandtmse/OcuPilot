@@ -2,13 +2,35 @@
 title: 'Story 5.14: Epic 5 burn-down'
 type: 'bugfix'
 created: '2026-09-22'
-status: 'ready-for-dev'
+baseline_revision: 'fc425bed4a35223eba8a2dbf4c337243ab66ce9a'
+status: 'done'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A failed run of ui/browser/tasks.browser-spec.mjs leaves its OcuPilotDemoProbe* task-history
+      rows behind, and enough of them push the demo row off the rendered page and fail the next run.
+    evidence: |-
+      Measured on the reused ocupilot-ci: %SYS_Task.History held 42 OcuPilotDemoProbe* rows against
+      3 for "OcuPilot nightly purge", with 0 probe tasks alive -- the purge runs only on the path a
+      passing run takes, so the failure is self-reinforcing. Deleting the 42 orphans took the spec
+      from 12/14 to 14/14 with the tree and bundle unchanged. A fresh throwaway, which is what CI
+      builds, never sees it.
+    location: >-
+      ui/browser/tasks.browser-spec.mjs
+    severity: low
+  - summary: >-
+      spec-5-12's other eight Rule 19 recipes still carry 1/9 and 1/10 denominators from the class
+      sizes at the time each was measured; OcuPilot.Test.ProcessControl now holds 11 methods.
+    evidence: |-
+      Story 5.14 re-measured only the two recipes its own task list names. ProcessControl's 11 was
+      read back from %UnitTest_Result on run 6059, not recalled.
+    location: >-
+      _bmad-output/implementation-artifacts/spec-5-12-os-management-suspend-and-resume-a-process.md
+    severity: low
 ---
 
 <intent-contract>
@@ -429,6 +451,29 @@ Group 2 — ObjectScript:
 
 ## Review Triage Log
 
+### 2026-09-22 — Review pass
+
+- verdicts: 17 findings — high 0, medium 3, low 6, false 8, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` verification-gap: `--ocu-panel-send-width` is pinned as a number for all three Send appearances but as *sufficient for the label* for only one — confirmed: only `panel.browser-spec.mjs`'s idle leg measured `max-content`, so a token that stopped covering the outlined label kept every equality assertion green. Patched: `proposal-card.browser-spec.mjs`'s `sendWidthToken` became `sendWidths`, returning declared **and** intrinsic, and legs (a) and (b) now assert `declared >= intrinsic`. `mutation:` set `--ocu-panel-send-width` to 64px, rebuild + redeploy + reinstall -> leg (a) red (`intrinsic 66.21875 against 64`) with leg (b) green, and every pre-existing equality assertion still passing, which is the gap; reverted to 72px, rebuilt, 14 of 14 green.
+  - `[medium]` `[patch]` verification-gap: DW-1452's skip mechanism is unpinned — only the name it reads is. Confirmed: `TestTheAuditingMethodParameterNamesAMethodThisClassDeclares` asserts the parameter and the dictionary, never that `OnBeforeOneTest` still runs, and the audit-toggling body carries no guard of its own. Patched: that method now opens by asserting `AUDITVARIABLE` reads 1 and quitting if it does not. `mutation:` delete `OnBeforeOneTest` from `ProhibitedRoute` and recompile -> the class runs 14 and `TestALeastPrivilegedPrincipalConfirmsTheAuditingWriteOverTheWire` **fails** (run 6062), where before the patch it ran unarmed and passed; reverted, 14 of 14 green (run 6063).
+  - `[medium]` `[patch]` verification-gap: `PortFixture.MUTATINGTYPES` is a hand copy of the shipped roster with nothing holding the two in step — confirmed: the shrink direction reddens `ToolWrite`, the growth direction is unpinned, so a later story admitting a pair would leave fixture-driven port tests on the non-mutating branch. Patched: `ToolWrite` now asserts every shipped pair is also in the fixture's roster (the fixture may add, never omit). `mutation:` drop `Process/RESUME` from `PortFixture.MUTATINGTYPES` -> `ToolWrite` red, 1 of 20 (run 6064); reverted, 20 of 20 green (run 6065).
+  - `[low]` `[patch]` verification-gap (other): the "roster is exactly the two sub-rosters" assertion in `preferences-reset.test.mjs` compares `PREFERENCE_KINDS` with its own definition (`account-preferences.ts:74` spreads exactly those two) and cannot fail — structurally unfalsifiable (Rule 19). Patched: the tautology deleted, leaving the load-bearing comparison against `Pref.cls`'s five `KIND*` parameters; the now-unused `PREFERENCE_VALUE_KINDS` import dropped with it. Test count unchanged at 1,317.
+  - `[false]` `[reject]` verification-gap (other): `ui/tools/preferences-reset.test.mjs` is untracked, so a commit staging by path could miss it — the file is part of the reviewed diff and this workflow's finalize commits every reviewed-diff file and then verifies the tree is clean, so the outcome does not occur.
+  - `[low]` `[reject]` verification-gap (other): `HELPER_SOURCED_FLOOR = 12` sits at today's exact value, so one spec leaving `panel-spec.mjs` reddens it — true, but it fails loudly with a self-describing message, which is the safe direction; lowering the floor would trade away the only thing that tells "the graph resolved nothing" from "there was nothing to resolve".
+  - `[false]` `[reject]` verification-gap (other): `AdminPortAsync`'s Rule 19 note is stale because the probe pair now lives on `PortFixture` — the note names the `MUTATINGTYPES` **check** in `AdminPort.Sequence`, not where the pair lives, and removing that check still reddens the two log assertions, so the recipe it describes is accurate.
+  - `[false]` `[reject]` intent-alignment (a): the contract's "Send's rendered width equals its intrinsic label width" is not what the diff implements — the same row cites `DESIGN.md:1122`, which the spec designates as the declared figure and which reads "three appearances at one size; its width is fixed by the widest label"; the three intrinsic widths differ (64.22/66.22/62.95), so only the declared-width reading satisfies that row and the next row together. A fix here would edit this build's spec.
+  - `[false]` `[reject]` intent-alignment (a, second half): nothing bounds the token from above — the proportion legs bound it (composer wider than Send, composer over half the row) and the sufficiency legs added under the first finding bound it from below; a token drifting upward inside those bounds is theoretical.
+  - `[false]` `[reject]` intent-alignment (b): the three-appearance invariant is verified transitively through the token rather than cross-state — all three legs read the token from the same deployed stylesheet in their own page, so equality to one shared resolved value is a cross-state comparison.
+  - `[low]` `[reject]` intent-alignment (c): DW-1447's idempotency lives on the instance but its unit test stubs `fetch` — the instance property is verified by execution (228/228 twice back to back, recorded under `## Verification`) and the unit test pins the mechanism; encoding "run the whole suite twice" as an assertion would add a harness, which is more than a direct correction.
+  - `[low]` `[reject]` intent-alignment (d): DW-1438's row states a universal over three accounts while the test is environment-relative — the suite runs as `irisowner`, which is itself on the list, and `CURRENTUSER` is evaluated first by design; all three still answer 1 with 403 and zero writes, the test measures which code each earns rather than assuming, and asserts at least one reached the new arm.
+  - `[low]` `[reject]` intent-alignment (e): the role-delta refusal is pinned at the branch and the census separately, never in one path — both halves are pinned, and joining them would need an instance with a single counting holder, which is what the fixture's arming exists to stand in for.
+  - `[false]` `[reject]` intent-alignment (f): DW-1473 aligned at the surface its row names, after the correction recorded under `## Matrix Test Audit` — no divergence remains.
+  - `[low]` `[reject]` intent-alignment (g): DW-1452's stated counts moved (12/1 and 13 to 13/1 and 14) — the closure's own roster leg is the fourteenth method; the behavior the row specifies holds exactly, and the only fix would edit this build's spec. Reconciled under `## Matrix Test Audit`.
+  - `[false]` `[reject]` intent-alignment (h): DW-1448 reaches past the chartered defect by removing `main()`'s early `continue` — that blind spot is named in the spec's Code Map and Tasks as part of this closure.
+  - `[false]` `[reject]` intent-alignment (i, j): the `DESTRUCTIVE` comment appends rather than replaces, and the diff adds new public surface against "nothing new is designed" — the neighbouring sentence was not wrong, so there was nothing to replace, and every new seam (`PREFERENCE_KINDS`, `SERVICEACCOUNTS`, `IsMutating`, `AUDITINGMETHOD`, the checker's exports) is named in the spec's Tasks and its `Consumes:` list.
+
+
 ## Design Notes
 
 **Governing ADs (Rule 6).**
@@ -532,8 +577,9 @@ outside this story; the three are refactoring seams, not new services.
 **Forward references.** DW-1473's tightening is what stops the bare-suffix widening compounding as
 Story 7.6 and Epic 9 add action types. DW-1467's declined flag is what Story 14.7's typed-name field
 keys on, and Story 7.4 builds the screen dialog the two cited rows actually govern. DW-1336's fix
-removes a pre-existing horizontal overflow of `.ocu-panel-composer-row`, which is the baseline Story
-15.6 takes for DW-1388's no-horizontal-scroll invariant — see `## Ledger Dispositions`.
+was expected to remove a pre-existing horizontal overflow of `.ocu-panel-composer-row`; measured, no
+such overflow existed at either viewport, so Story 15.6's DW-1388 baseline is unchanged by this
+story — see `## Verification` and `## Ledger Dispositions`.
 
 ## Ledger Dispositions
 
@@ -552,7 +598,7 @@ entry this story does not own.
 | DW-1467 | **declined, measured** | `status=wontfix-theoretical owner=burndown by=burndown note=the two cited rows govern the SCREEN confirm-dialog; epics.md:3677 (Story 5.10 AC) requires the card destructive and the tree matches it. reopen_if=epics.md:3677 is amended` |
 | DW-1473 | fix | `status=resolved-by:5-14-epic-5-burn-down by=adjudication note=MUTATINGTYPES keyed by (endpoint,type) over six pairs established three ways; probe pair on PortFixture, never shipped` |
 | DW-1479 | fix | `status=resolved-by:5-14-epic-5-burn-down by=adjudication note=nine locations plus spec-5-12's recipes corrected at origin; the entry's epics.md:5636 anchor was stale, the fourth hit is :5686` |
-| DW-1388 (not owned here) | note only | `occurrence=5-14-epic-5-burn-down` then `note=5.14 removed a pre-existing horizontal overflow of .ocu-panel-composer-row; take 15.6's baseline against the corrected tree` |
+| DW-1388 (not owned here) | note only | `occurrence=5-14-epic-5-burn-down` then `note=measured: .ocu-panel-composer-row never overflowed -- scrollWidth equalled clientWidth at 1280 and 900 before the fix, the composer absorbing it at min-width:0. 5.14 changed the row's proportions, not its overflow, so 15.6's baseline is unaffected` |
 
 **Outcome.** All nine are disposed: eight fixed with a demonstrated mutation, DW-1467 declined and
 terminal on the measurement in `## Design Notes`. None is left `routed`. No ledger file is edited
@@ -621,6 +667,111 @@ task on the live `ocupilot`.
   class does not declare; remove `Security.User/PUT` from `MUTATINGTYPES`; restore
   `MUTATINGTYPES` to bare suffixes and re-run `ToolWrite`'s pair-shape leg.
 
+**DW-1336, measured before fixed.** Signed in through the shipped form on
+`/ocupilot/permissions/users?ns=HSCUSTOM` against `ocupilot-ci`, panel at its default dock, empty
+draft, Send idle (`ocu-button-primary`):
+
+| Viewport | Panel | `.ocu-panel-composer-row` | `.ocu-panel-composer` | `.ocu-panel-send` | row `scrollWidth`/`clientWidth` |
+|---|---|---|---|---|---|
+| 1,280px | 400px | 375px | **26.89px** | **340.11px** | 375 / 375 |
+| 900px | 320px | 295px | **26.88px** | **260.13px** | 295 / 295 |
+
+Send's computed `width` read `340.109px` with `flex: 0 1 auto` -- `.ocu-button-primary:231`'s
+`width: 100%` resolved as its flex base, so the row's whole width was Send's base size and the
+composer shrank to `min-width: 0`. The composer's 26.89px is under its own 24px padding plus 2px
+border: roughly 0.9px of text.
+
+Against DESIGN.md `:1122` ("three appearances at one size; its width is fixed by the widest label
+so the composer never reflows"), the same element's own content width measured 64.22px as
+`button-primary`, 66.22px as `button-secondary` and 62.95px as `button-secondary` reading *Stop* --
+so the declared width is the widest of those, and `--ocu-panel-send-width` is 72px, that figure on
+the 4px scale.
+
+**The spec's `(inference)` is half true, and the false half matters to DW-1388.** A too-wide Send
+does narrow the composer, so one rule closes both of DW-1336's symptoms. It does **not** overflow
+`.ocu-panel-composer-row`: measured, `scrollWidth` equalled `clientWidth` at both viewports before
+the fix, because `min-width: 0` let the composer absorb all of it. There was no pre-existing
+horizontal overflow for this story to remove, so 15.6 takes DW-1388's baseline against a tree whose
+overflow behavior 5.14 did not change -- see `## Ledger Dispositions`.
+
+- `mutation:` delete the base `.ocu-panel-send` rule from `_components.scss`, rebuild and redeploy
+  -> `panel.browser-spec.mjs` "DW-1336: Send keeps its declared width..." red at 1,280
+  (`340.109375 against 72`), `proposal-card.browser-spec.mjs` (a) red (`66.21875`, the live-card
+  secondary) and (b) red (`62.953125`, *Stop* while the turn runs); (c) stayed green. The three
+  disagreeing numbers under one mutation are the leg's discrimination: only the filled appearance
+  carries `width: 100%`, so the composer reflowed whenever the label changed.
+- `mutation:` restore `VALUE_KINDS = ['view','refresh','shell']` in `preferences-reset.mjs` ->
+  `preferences-reset.test.mjs` red on "the reset clears every kind the roster holds" and on "the
+  membership kinds are in the cleared set"; the roster leg stayed green, which is what says the two
+  sides are measured independently.
+- `mutation:` drop `SHELL_KIND` from `PREFERENCE_VALUE_KINDS` -> `preferences-reset.test.mjs` red on
+  "the roster is the five kinds Pref.cls declares" alone.
+- `mutation:` delete `await resetRememberedState();` from `panel-spec.mjs`'s `signedInAt` ->
+  `node tools/browser-reset.mjs` exits 1 with **13** refusals -- the 12 helper-sourced specs and
+  `panel-spec.mjs` itself -- and `browser-reset.test.mjs` red on "the real browser directory passes
+  its own check" and "the shipped tree resolves its helper-sourced specs". Under the spelling-keyed
+  checker the same mutation refused none.
+- `mutation:` restore `inspect()`'s `if (!source.includes(CONTEXT_CALL)) continue;` ->
+  `browser-reset.test.mjs` red on "the CLI refuses a spec written only with browser.newPage(", "the
+  CLI refuses a helper-sourced spec whose helper does not reset" and "the shipped tree resolves its
+  helper-sourced specs". Both arms were unreachable from the gate `prebuild` runs.
+
+**ObjectScript, on `ocupilot-ci`.** Every mutation below was applied in the worktree, synced to
+`/tmp/ocupilot-ci/src`, compiled with `$System.OBJ.LoadDir("/opt/ocupilot/src/OcuPilot","cku",,1)`
+over the **whole** package, run, then reverted and recompiled the same way; `git diff` against the
+pre-mutation copy was empty after each.
+
+- `mutation:` empty `Prohibited.SERVICEACCOUNTS` -> `UserUpdate` red on
+  `TestDisablingAServiceAccountIsRefused` and `TestTheCensusDoesNotCountAServiceAccountAsAHolder`,
+  each on its own emptiness floor.
+- `mutation:` delete the `IsServiceAccount` arm from `Prohibited.User` -> `UserUpdate` red on
+  `TestDisablingAServiceAccountIsRefused` alone, and on "the row stays live" as well as the code --
+  without the arm the confirm **wrote**. The census leg stayed green, which is what says the
+  parameter's two readers are pinned separately.
+- `mutation:` answer permitted from `Prohibited.CountsAsHolder` for a service account (drop its
+  `IsServiceAccount` arm) -> `UserUpdate` red on the census leg alone, naming all three accounts.
+- `mutation:` revert `Prohibited.User`'s guard to the disable verb alone, so a `Roles` delta never
+  reaches the census -> `UserUpdate` red on `TestARoleDeltaRemovingAllFromTheLastHolderIsRefused`,
+  with the two permitted legs in that method still green.
+- `mutation:` remove `Security.User/PUT` from `AdminPort.MUTATINGTYPES` -> `ToolWrite` red on the
+  roster leg naming `permissions.users.update`, and `UserUpdate` red on the confirmed write with
+  `PORT.NOTIMPLEMENTED`. That is the high-risk arm measured: the 501 lands after the claim.
+- `mutation:` restore `AdminPort.MUTATINGTYPES` to the bare `PUT,RESUME,SUSPEND` -> `ToolWrite` red
+  on the pair-shape leg for all three suffixes, on `IsMutating`, and on the `Task.CRUD/SUSPEND`
+  discrimination.
+- `mutation:` point `ProhibitedRoute.AUDITINGMETHOD` at a name the class does not declare ->
+  `ProhibitedRoute` red on `TestTheAuditingMethodParameterNamesAMethodThisClassDeclares` alone, and
+  the auditing method then **ran unarmed and passed** -- which is the harm the leg guards, observed
+  rather than argued.
+- `mutation:` add `Task.CRUD/SUSPEND` to `AdminPort.MUTATINGTYPES`, whole package recompiled
+  (container read back the mutated parameter before the run) -> `ToolWrite` red, 1 of 20, on
+  `TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster`; reverted, recompiled, 20 of 20
+  green and `git diff --stat` unchanged at 69 lines for `AdminPort.cls`. This is the matrix's
+  `Task.CRUD/SUSPEND` row pinned **through `AdminPort.Invoke`** -- 501 with `tFault.code` reading
+  `PORT.NOTIMPLEMENTED` -- and not only through `IsMutating`, which is the predicate the refusal
+  uses rather than the refusal a caller meets.
+
+**DW-1452, counted on the reused throwaway** (`ocupilot-ci` carries `OCUPILOT_ALLOW_PRINCIPALS=1`
+and no `OCUPILOT_ALLOW_AUDIT_TOGGLE`, which is the unarmed case verbatim). Read from
+`%UnitTest_Result`, not the runner envelope:
+
+| Run | Environment | `Status=1` | `Status=2` | `Status=0` |
+|---|---|---|---|---|
+| 5849 | `OCUPILOT_ALLOW_PRINCIPALS=1` only | 13 | 1 (`TestALeastPrivilegedPrincipalConfirmsTheAuditingWriteOverTheWire`) | 0 |
+| 5850 | both variables | 14 | 0 | 0 |
+
+Before this story the whole class refused, so 0 executed. The counts are one higher than the
+`<intent-contract>`'s 12/1 and 13, because the same spec's task list adds
+`TestTheAuditingMethodParameterNamesAMethodThisClassDeclares`: the class now holds 14 test methods.
+
+**DW-1479, and `spec-5-12`'s recipes.** `grep -n "own process"` over `epics.md`, `prd.md`,
+`SPEC.md` and `EXPERIENCE.md` returns nothing after the edits; `EXPERIENCE.md` is 801 lines before
+and after, so `strings.test.mjs`'s 546 anchors over 254-394 are untouched. `spec-5-12`'s two
+recipes were **re-measured** rather than re-worded: `Quit 0` first in `Prohibited.IsOcuPilotProcess`
+-> `ProcessControl` 2/11 failed; deleting the `IsOcuPilotProcess` branch from `Prohibited.Process`
+-> 1/11; deleting the `IsActionableJobType` branch -> 1/11. `ProcessControl` holds 11 test methods,
+not the 10 the task line states.
+
 **Full runs, once, before `dev_complete` (once, before dev_complete):**
 
 - `cd ui && npm run build && npm test` — expected: the seven prebuild checkers pass (including the
@@ -637,7 +788,162 @@ task on the live `ocupilot`.
   pass. Read the skip lines, not the number (DW-1402).
 - `bash scripts/lint-docs.sh` — expected clean.
 
+**Full runs, as executed (2026-09-22, `ocupilot-ci`).**
+
+- `uv run scripts/check-objectscript.py` — 612 files, 21 rules, 0 problems;
+  `uv run scripts/test_check_objectscript.py` — 128 tests, OK.
+- `cd ui && npm run test:tools` — 1,317 tests, 0 failed, including `strings.test.mjs`,
+  `citations.test.mjs`, `ci.test.mjs`, the re-keyed `browser-reset.test.mjs` (23) and the new
+  `preferences-reset.test.mjs` (3).
+- `cd ui && npm run build && npm test` — the seven prebuild checkers pass (`browser-reset` reports
+  57 files, 51 reaching a context, 12 through an imported helper, clean) and both client tiers are
+  green: 1,317 tool tests and 822 component tests over 54 files.
+- `bash scripts/lint-docs.sh` — 0 markdownlint issues over 114 files, `check-prose` 0 problems.
+- **The browser suite, twice back to back on the same throwaway**, without clearing
+  `OcuPilot_Kernel_State.Pref` between runs: **228 tests, 228 pass, 0 fail, both runs.** Nothing
+  accumulated between them, which is DW-1447's acceptance. The deployed bundle is the one the
+  installer stamped: the served directory is cleared before `docker cp`, because
+  `Installer.BundleIdentity` takes the lexicographically greatest `main-*.js` and a copy-over-the-top
+  leaves an older one to be stamped.
+- **The two `tasks.browser-spec.mjs` failures an earlier pass saw were instance residue, measured
+  and cleared, not a defect in this diff.** `%SYS_Task.History` on the reused `ocupilot-ci` held
+  **42** `OcuPilotDemoProbe*` rows against 3 for `OcuPilotDemo nightly purge`, and **0** probe tasks
+  — so the rows were orphans of earlier runs, and the demo row fell outside the table's rendered
+  page. The residue is self-reinforcing: the tasks suite purges its own probe history only on the
+  path a passing run takes, so one failure leaves more rows and the next run fails again. Deleting
+  the 42 orphans took the spec from 12/14 to **14/14 against the same tree and the same bundle**,
+  which is what attributes the failure to the container rather than to the story; the suite then
+  ran clean twice and left `0` probe rows behind. The standing non-idempotency is under *Deferred
+  findings*.
+- **The ObjectScript sweep**, one class per call through `ci-runner.mjs`: **175 classes, 1,596
+  tests, 0 failed, 0 probe leftovers, 0 overlaps, 0 foreign runs.** The four classes that refuse
+  unarmed on this container ran separately through `docker exec` with the four
+  `OCUPILOT_ALLOW_*` variables: `AuditingUpdate`, `TaskResume`, `ProcessControl`, `ErrorDelete` —
+  all `All PASSED`. Together that is all **178** classes the project's own discovery query offers
+  (`scripts/ci-unit-test.sh`), which requires a `Test*` method; `OcuPilot.Test.Http` declares none
+  and is a shared HTTP base, so the sweep's one reported problem is an artifact of a wider
+  hand-built class list and not a class that ran empty.
+- `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS` —
+  `executed=46 passed=46 failed=0 pending=0 skipped=1`, `PASSED`. `agentwrite` and `auditmarker`
+  both pass. The one skip is `agentswitches`, which names its own reason: the switches have been
+  written on this reused instance, so whether the install wrote none cannot be told here.
+
+**Matrix Test Audit — the two rows whose covering evidence needed its own measurement.**
+
+- `Task.CRUD/SUSPEND` **through the port**: the row's expected behavior is `Invoke` answering 501
+  `PORT.NOTIMPLEMENTED` before the endpoint is constructed, and the covering assertion asked
+  `IsMutating` instead — the predicate the refusal consults, not the refusal. `ToolWrite` now drives
+  `AdminPort.Invoke("Task.CRUD", "SUSPEND", …)` against a task id no task carries and asserts 501
+  and the fault code, beside the `Process/TERMINATE` and `Process/DELETE` legs that already did.
+  20 of 20 green, run 6047.
+- `ProhibitedRoute` **on an unarmed throwaway**: read from `%UnitTest_Result`, not the runner
+  envelope. Unarmed (run 6048): 14 methods, **13 `Status=1`, 1 `Status=2`**, 0 failed, the skip being
+  `TestALeastPrivilegedPrincipalConfirmsTheAuditingWriteOverTheWire`. Armed (run 6049): **14
+  `Status=1`**, 0 skipped. The row reads 12 executed and 13 armed; both are one lower because the
+  same task list adds `TestTheAuditingMethodParameterNamesAMethodThisClassDeclares`. The row's
+  behavior — that one method is skipped, every other executes and passes, and zero execute is never
+  a pass — holds exactly. Before this story the class refused whole and executed none.
+
+**Re-verified after the added leg**, one class per call on `ocupilot-ci`, each landing in
+`%UnitTest_Result` before the next: `ToolWrite` 20, `ProhibitedRoute` 14 (13+1 skip), `UserUpdate`
+18, `SurfaceCoverage` 4, `AdminPortAsync` 3, `AdminPortFault` 24, `Prohibited` 11,
+`ProhibitedByEffect` 6, `AdminPortSync` 7, `ProposalConfirm` 20 — 0 failed. Armed through
+`docker exec`: `ProhibitedRoute` 14, `AuditingUpdate` 6, `ProcessControl` 11 — all `All PASSED`,
+which is also where `ProcessControl`'s 11-method count is read rather than recalled.
+
+**Restored, and read back.** `OcuPilotDemo nightly purge` is still suspended on `ocupilot-ci`
+(`%SYS.Task:TaskList`, 19 tasks, the only `OcuPilot` one, `Suspend Leave`). No process is suspended
+on either container (`%SYS.ProcessQuery:CONTROLPANEL`: `ocupilot-ci` 56 processes, 0 suspended;
+`ocupilot` 32 processes, 0 suspended). No probe principal and no probe task survive on the
+throwaway. The live `ocupilot` still holds its 6 dates and 211 errors in `HSCUSTOM`
+(`SYS.ApplicationError:DateList`: 09-10 22, 09-11 123, 09-12 10, 09-13 26, 09-14 25, 09-15 5). The
+throwaway was reused and was not torn down.
+
+**Deferred findings, for the lead's ledger (Rule 15 — not written here).**
+
+- `ui/browser/tasks.browser-spec.mjs` purges its `OcuPilotDemoProbe*` history only on the path a
+  passing run takes, so a run that fails for any reason leaves its probe rows in
+  `%SYS_Task.History`, and enough of them push `OcuPilotDemo nightly purge` outside the rendered
+  page and fail "Story 6.6 AC1" and "AC3" — which leaves more rows again. Measured on `ocupilot-ci`:
+  42 orphan rows against 3 demo rows with 0 probe tasks alive; deleting the orphans took the spec
+  from 12/14 to 14/14 unchanged otherwise. A fresh throwaway (what CI uses) never sees it, so this
+  is reused-container hygiene, not a product defect. Fix at either end: purge in a teardown that
+  runs on the failure path too, or bound the spec's search to the exact task name.
+- `spec-5-12`'s other eight Rule 19 recipes still carry `1/9` and `1/10` denominators from the
+  class sizes when each was measured; `ProcessControl` now holds 11. Only the two this story names
+  were re-measured.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**What this pass changed.** Eight independent closures, each citing its `DW-n`, each with a pinning
+test and a demonstrated Rule 19 mutation. DW-1479 corrected nine document locations plus
+`spec-5-12`'s three Rule 19 recipes, whose counts were re-measured rather than re-worded. DW-1447
+exported `PREFERENCE_KINDS` and derived the browser reset from it. DW-1448 re-keyed
+`browser-reset.mjs` on context creation resolved through the local import graph and removed
+`main()`'s blind `continue`. DW-1336 added a base `.ocu-panel-send` rule and the
+`--ocu-panel-send-width` token, leaving `.ocu-button-primary` untouched. DW-1437 and DW-1438 added
+one `SERVICEACCOUNTS` parameter read twice and one `DePrivilegesLastAllHolder` predicate serving
+both the disable and the role-removal path. DW-1473 re-keyed `AdminPort.MUTATINGTYPES` by
+`(endpoint, type)` and converted all four reads, with the probe pair on `PortFixture` alone.
+DW-1452 moved the auditing refusal to `OnBeforeOneTest` with `$$$AssertSkipped`. DW-1467 is one
+addition to `AuditingUpdate`'s `DESTRUCTIVE` doc comment and nothing else.
+
+**Files changed** (27 modified, 1 new). Kernel and port: `Prohibited.cls` (the service-account
+list, its two readers, the one de-privileging predicate, code 13), `AdminPort.cls` (pair-keyed
+`MUTATINGTYPES`, `IsMutating`, four converted reads), `AuditingUpdate.cls` and `ProcessList.cls`
+(doc comments). Tests: `UserUpdate`, `Prohibited`, `ProhibitedRoute`, `ToolWrite`, `PortFixture`,
+`ProposalFixture`, `AdminPortFault`, `Test/AuditingUpdate`. Client: `_components.scss`,
+`_metrics.scss`, `account-preferences.ts`, `preferences-reset.mjs`, `browser-reset.mjs`,
+`browser-reset.test.mjs`, `panel.browser-spec.mjs`, `proposal-card.browser-spec.mjs`,
+`suggested-view.browser-spec.mjs`, and the new `ui/tools/preferences-reset.test.mjs`. Documents:
+`epics.md`, `prd.md`, `SPEC.md`, `EXPERIENCE.md`, `spec-5-12`, this spec.
+
+**Review findings.** 17 findings over two layers — 3 medium, 6 low, 8 false. **Four patched**: the
+Send token's label-sufficiency now asserted for the outlined and *Stop* appearances, not only the
+idle one; `ProhibitedRoute`'s audit-toggling body now asserts its own arming variable, so losing
+the skip reddens instead of disabling auditing quietly; `ToolWrite` now holds `PortFixture`'s
+roster against the shipped one in the growth direction; and one structurally unfalsifiable
+assertion deleted from `preferences-reset.test.mjs`. Each patch carries its own demonstrated
+mutation in `## Review Triage Log`. **Two deferred** (frontmatter `deferred:`): the tasks spec's
+self-reinforcing probe-history residue, and `spec-5-12`'s eight un-re-measured recipe denominators.
+**Eleven rejected** — seven as `false` and four as `low` not worth their fix; each row in the
+triage log carries its refutation or its reason.
+
+**Three contract figures moved, each measured, each recorded rather than quietly adopted.**
+`.ocu-panel-composer-row` never overflowed, so the DW-1388 note is a correction rather than the
+expected confirmation and Story 15.6's baseline is unaffected. `ProhibitedRoute` runs 13+1 unarmed
+and 14 armed, not 12+1 and 13, because this story's own task list adds the roster leg.
+`ProcessControl` holds 11 test methods, not 10.
+
+**Verification.** `check-objectscript` 612 files / 21 rules / 0 problems; `lint-docs` clean over 114
+files. `npm run test:tools` 1,317 pass / 0 fail; `npm run test:components` 822 pass over 54 files;
+`npm run build` with all seven prebuild checkers clean. **The full browser suite ran green three
+times — 228/228 each — twice back to back on the same reused throwaway with nothing cleared between
+them, which is DW-1447's acceptance, and once more after the review patches.** ObjectScript: the
+full sweep (175 classes, 1,596 tests, 0 failed) plus the four unarmed-refusing classes through
+`docker exec`; after the review patches the affected classes were re-run singly and green —
+`ToolWrite` 20 (run 6065), `ProhibitedRoute` 14 unarmed as 13+1 skip (run 6063) and 14 armed (run
+6049), with per-status counts read from `%UnitTest_Result` rather than the runner envelope. Smoke
+on `ocupilot-ci`: `executed=46 passed=46 failed=0 pending=0 skipped=1`, `agentwrite` and
+`auditmarker` both pass, the one skip naming its own reason.
+
+**Restored, and read back.** `OcuPilotDemo nightly purge` still `Suspended=1` on `ocupilot-ci`;
+auditing back on there; 0 probe history rows, 0 probe principals, 0 suspended processes on the
+throwaway; 0 suspended processes on the live `ocupilot`, which still holds its 6 dates and 211
+errors (67823-67828: 22+123+10+26+25+5). The throwaway was reused and was not torn down; no
+`ocupilot` or `ocupilot-slot-*` container was stopped, removed, recreated or `down`ed.
+
+**Follow-up review recommended: true.** Three medium entries were patched, which meets the
+threshold. The specific unverified risk: the two ObjectScript patches — `ToolWrite`'s fixture-roster
+assertion and `ProhibitedRoute`'s arming guard — were each demonstrated by mutation and re-run as
+single classes, but the whole-package sweep ran before them and was not repeated afterwards. Both
+are leaf test classes that nothing inherits from, so the exposure is narrow rather than unknown.
+
+**Residual risks.** The re-keyed `browser-reset.mjs` still recognises a context by spelling at the
+leaf, is scoped to `ui/browser/`, and reads a *call* to the reset rather than an unconditional one;
+all three are named at the checker and the helper-sourced floor turns an empty graph into a red
+test. `--ocu-panel-send-width` carries about 6px over the widest measured label, now asserted for
+all three appearances.

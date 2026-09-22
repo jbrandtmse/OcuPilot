@@ -3554,6 +3554,17 @@ app-data-table {
   @include ocu-focus-ring;
 }
 
+// The Send control is sized by its own label, never by the row (DESIGN.md `:1122`). Without this
+// it takes `.ocu-button-primary`'s `width: 100%`, which is a flex base of the whole row: measured
+// at the docked width, Send rendered 340.11px of a 375px row and the composer 26.89px, under its
+// own padding. `border-box` is what makes the outlined appearance the same width as the filled
+// one instead of 2px wider, which is what "one size" in DESIGN.md's three appearances means.
+.ocu-panel-send {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  width: var(--ocu-panel-send-width);
+}
+
 .ocu-panel-send[aria-disabled='true'] {
   background: var(--ocu-restrained-container);
   color: var(--ocu-restrained);

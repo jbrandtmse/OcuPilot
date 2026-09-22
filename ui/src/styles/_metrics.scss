@@ -36,6 +36,11 @@
   --ocu-panel-header-height: 44px;
   --ocu-panel-default: 400px;
   --ocu-panel-min: 320px;
+  // The Send control's fixed width (DESIGN.md `:1122`: "its width is fixed by the widest label so
+  // the composer never reflows"). The widest of its three appearances measured 66.22px -- `Send`
+  // as `button-secondary`, whose 1px outline makes it 2px wider than the filled variant -- rounded
+  // up to the 4px scale so a font-metric shift cannot clip a label.
+  --ocu-panel-send-width: 72px;
   // min(50vw, viewport - rail - content-min-width) -- DESIGN.md `spacing.panel-home`.
   --ocu-panel-home: min(
     50vw,

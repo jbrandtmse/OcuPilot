@@ -201,9 +201,11 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         If tName = "" Quit
         Set ^||OcuPilotProposalFixture("query", tName) = pQuery(tName)
     }
-    If $ListFind($ListFromString($Parameter("OcuPilot.Port.AdminPort", "MUTATINGTYPES")), pType) {
-        ; A mutating call, classified by the port's own list rather than by "not GET" -- LIST, INFO
-        ; and the other read suffixes are reads here as they are there. Recorded in full, because
+    If ##class(OcuPilot.Port.AdminPort).IsMutating(pEndpoint, pType) {
+        ; A mutating call, classified by the port's own (endpoint, type) roster rather than by
+        ; "not GET" -- LIST, INFO and the other read suffixes are reads here as they are there.
+        ; Keyed by the pair for the port's own reason (DW-1473): keying bare here would classify a
+        ; call the port itself 501s. Recorded in full, because
         ; what the port receives is what the story is about (AD-6 -- the stored payload, with only
         ; declared secret values merged in).
         Do $Increment(^||OcuPilotProposalFixture("writes"))

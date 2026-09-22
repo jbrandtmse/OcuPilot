@@ -150,7 +150,7 @@ inherited from upstream documents and are **not** restated there, so they are ex
 #### PRD 5.9 - OS management
 
 - FR-54: Processes list and details - list with filter, page size, max rows, persisted sort and auto-refresh; details show dashboard meters, client executable and address, open devices and the current SQL statement where available. Catalog: OS-01, OS-08.
-- FR-55: Process control - terminate with the optional error-to-job flag, suspend and resume, confirming by process id; acting on the user's own process is refused with an explanation. Catalog: OS-02, OS-03, OS-04.
+- FR-55: Process control - terminate with the optional error-to-job flag, suspend and resume, confirming by process id; acting on a process OcuPilot is itself running in - this request, or an agent turn - is refused with an explanation. Catalog: OS-02, OS-03, OS-04.
 - FR-56: System usage and dashboard meters - global references, routine calls, block reads and writes, journal entries and shared memory, plus the CPU, memory and performance meters on a refresh interval, with meter names and thresholds taken from `%CSP.UI.Portal.EnsembleMonitor`. Catalog: OS-05, OS-09.
 - FR-57: Locks view and removal - locks by namespace with filter and owner details linking to process details; remove one lock, all locks of a process or all locks from a remote client, warning when the owning process is in a transaction. Catalog: OS-06, OS-07.
 - FR-58: Databases list and details - local databases in general and free-space views showing size, maximum, free space, status, directory and mounted state, with free-space figures arriving asynchronously and rendering as they land; details show properties, volume files and background tasks under auto-refresh. Catalog: OS-10, OS-11.
@@ -804,7 +804,7 @@ A user does the small things that make up most daily administration - enable, di
 
 **FRs covered:** FR-32 (screen actions), FR-37 (remaining), FR-44 (deletes), FR-47 (auditing on and off, system and user event configuration), FR-48 (on-demand run), FR-51 (remaining, plus Task Manager control), FR-55 (remaining), FR-57 (removal), FR-63 (remaining delete scopes)
 
-**Implementation notes:** Every action here is two callers of one operation - the row and the write tool - so a story is not done when the button works. The self-protection rules are UI affordances, **not** prohibitions: refusing to disable the current user, act on the user's own process or delete OcuPilot's own applications is enforced on the instance by AD-10 and merely explained in the row menu. Three warnings carry consequences the user must see before proceeding: suspending the Task Manager, disabling auditing, and disabling the web service OcuPilot itself runs on. AD-48's three delete scopes complete here - by namespace, **by date** and by error - with `DeleteByDate` either implemented or explicitly refused, never left for a builder to discover, and the fingerprint always the enumerated id set rather than a count.
+**Implementation notes:** Every action here is two callers of one operation - the row and the write tool - so a story is not done when the button works. The self-protection rules are UI affordances, **not** prohibitions: refusing to disable the current user or delete OcuPilot's own applications is enforced on the instance by AD-10 and merely explained in the row menu. Three warnings carry consequences the user must see before proceeding: suspending the Task Manager, disabling auditing, and disabling the web service OcuPilot itself runs on. AD-48's three delete scopes complete here - by namespace, **by date** and by error - with `DeleteByDate` either implemented or explicitly refused, never left for a builder to discover, and the fingerprint always the enumerated id set rather than a count.
 
 ### Epic 8: Create and import
 
@@ -3503,7 +3503,7 @@ So that no policy change or configuration mistake can make them reachable.
 
 - DW-1207 (**floor-blocking**, owner decision 2026-09-19): `AutheEnabled`, `Resource` and `DispatchClass` are settable ordinary arguments of the first write tool, so a confirmed write can make a web application unauthenticated, drop its authorization resource, or repoint its dispatch at arbitrary compiled code. AD-10's set exists so some actions are never offered **even with confirmation**; this must ship in Release 1, and Story 5.3 left `Write.ProhibitedClass()` as the single seam inside the atomic transition for it (ledger; routed by merge_gate 2026-09-19)
 
-- **Given** a screen enforces a self-protection rule in its UI - refusing to disable the current user, act on the user's own process, or delete OcuPilot's own applications
+- **Given** a screen enforces a self-protection rule in its UI - refusing to disable the current user or delete OcuPilot's own applications
 - **When** that rule is assessed
 - **Then** it is an affordance, **not a prohibition**: the instance refuses it on the write path regardless of what the UI does.
 
@@ -5683,7 +5683,7 @@ So that I can clear a stuck or unwanted session from here.
 
 - **Given** the user's **own** session
 - **When** an end is attempted
-- **Then** it is refused with an explanation, in the UI and on the instance - the same self-protection shape as the user's own process.
+- **Then** it is refused with an explanation, in the UI and on the instance - the same self-protection shape as a process OcuPilot is itself running in.
 
 ### Story 16.3: Effective privileges and the permission-check tool
 

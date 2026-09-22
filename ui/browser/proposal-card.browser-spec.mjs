@@ -183,6 +183,37 @@ async function withLiveCard(hangSeconds) {
   return { context, page, tag };
 }
 
+/**
+ * `--ocu-panel-send-width` as the deployed bundle resolves it, and what *this* appearance of the
+ * Send control would take at its own content size -- measured by putting `max-content` on the live
+ * element and restoring the style attribute, the technique `panel.browser-spec.mjs` uses for the
+ * filled appearance.
+ *
+ * Both numbers, because the token's contract (DESIGN.md `:1122`) has two halves: every appearance
+ * renders at the declared width, and the declared width is wide enough for the widest label. A
+ * fixed `width` satisfies the first half whatever the label does, so only the second half can
+ * catch a label this token has stopped covering.
+ */
+async function sendWidths(page) {
+  const shape = await page.evaluate(() => {
+    const send = document.querySelector('.ocu-panel-send');
+    const prior = send.getAttribute('style');
+    send.style.width = 'max-content';
+    send.style.flex = '0 0 auto';
+    const intrinsic = send.getBoundingClientRect().width;
+    if (prior === null) send.removeAttribute('style');
+    else send.setAttribute('style', prior);
+    return {
+      declared: parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--ocu-panel-send-width')
+      ),
+      intrinsic,
+    };
+  });
+  assert.ok(shape.declared > 0, 'the deployed bundle resolves --ocu-panel-send-width');
+  return shape;
+}
+
 /** One element's computed geometry and the colours the token layer resolved for it. */
 async function measure(page, selector) {
   return page.evaluate((query) => {
@@ -255,6 +286,19 @@ test('(a) a card a real turn minted lays out inside the panel, and Confirm is th
     assert.equal(
       await page.evaluate(() => document.querySelector('.ocu-panel-send').className),
       'ocu-panel-send ocu-button-secondary'
+    );
+    // DW-1336: the outlined appearance is the same width as the filled one DESIGN.md `:1122`
+    // fixes, which is what "three appearances at one size" means -- and the 1px outline would
+    // otherwise make it 2px wider. The filled appearance is measured in
+    // `panel.browser-spec.mjs`, against this same token.
+    const liveSend = await sendWidths(page);
+    assert.ok(
+      Math.abs(send.width - liveSend.declared) < 0.5,
+      `Send holds its declared width while a card is live: ${send.width}`
+    );
+    assert.ok(
+      liveSend.declared >= liveSend.intrinsic,
+      `and the declared width still covers this appearance's label: intrinsic ${liveSend.intrinsic} against ${liveSend.declared}`
     );
     assert.notEqual(
       confirm.backgroundColor,
@@ -354,6 +398,22 @@ test("(b) the countdown's caption takes the warning colour at 1:00, and holds it
   try {
     const before = await measure(page, '.ocu-proposal-card-countdown');
     assert.ok(before !== null, 'the countdown is on screen');
+
+    // DW-1336: the third appearance -- Stop, while the turn this test hangs is still running --
+    // holds the same declared width as the other two, so the composer does not reflow when the
+    // label changes under it (DESIGN.md `:1122`).
+    const stopped = await page.evaluate(() => document.querySelector('.ocu-panel-send').textContent.trim());
+    assert.equal(stopped, STRINGS.actionStop, 'the turn is still running, so the control reads Stop');
+    const stopSend = await measure(page, '.ocu-panel-send');
+    const stopShape = await sendWidths(page);
+    assert.ok(
+      Math.abs(stopSend.width - stopShape.declared) < 0.5,
+      `Send holds its declared width while a turn runs: ${stopSend.width}`
+    );
+    assert.ok(
+      stopShape.declared >= stopShape.intrinsic,
+      `and the declared width still covers the Stop label: intrinsic ${stopShape.intrinsic} against ${stopShape.declared}`
+    );
     assert.equal(setExpiry(45), 1, 'the one live proposal moves to 45 seconds from now');
 
     // The next poll carries the moved expiry; the panel's own ticker then reads it every second.

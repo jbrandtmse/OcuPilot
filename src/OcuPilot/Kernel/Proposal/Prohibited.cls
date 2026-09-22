@@ -69,11 +69,22 @@ Parameter PRIVILEGEGRANT = "PROHIBITED.PRIVILEGEGRANT";
 /// <p>The write would disable the account the caller is signed in as.</p>
 Parameter CURRENTUSER = "PROHIBITED.CURRENTUSER";
 
-/// <p>The write would disable the only account on this instance that holds <code>%All</code>.</p>
+/// <p>The write would leave the instance with no account a person can sign in as holding
+/// <code>%All</code> -- by disabling the only such account, or by taking <code>%All</code> off it
+/// through a role change. Both are the same effect and reach the same predicate
+/// (<method>DePrivilegesLastAllHolder</method>), because AD-10's set is defined by effect and not
+/// by verb.</p>
 Parameter LASTALLHOLDER = "PROHIBITED.LASTALLHOLDER";
 
 /// <p>The write would disable <code>_SYSTEM</code>, the instance's own predefined account.</p>
 Parameter SYSTEMACCOUNT = "PROHIBITED.SYSTEMACCOUNT";
+
+/// <p>The write would disable one of the accounts the instance's own services run as
+/// (<parameter>SERVICEACCOUNTS</parameter>). It is the account-side analogue of
+/// <parameter>SERVINGPATH</parameter>: disabling the account the CSP service runs as ends every
+/// CSP request on the instance, OcuPilot's own among them, so AD-38 makes it the same harm as
+/// disabling the application that serves OcuPilot.</p>
+Parameter SERVICEACCOUNT = "PROHIBITED.SERVICEACCOUNT";
 
 /// <p>The write would suspend or resume a process OcuPilot is itself running in: the job serving
 /// this confirmation, or any job running an agent turn (AD-7). Both harms are irrecoverable from
@@ -126,6 +137,23 @@ Parameter TYPEAPPLICATIONERROR = "application-error";
 /// <method>NormalizedUser</method>, so every spelling the instance resolves to it is refused.</p>
 Parameter SYSTEMACCOUNTNAME = "_SYSTEM";
 
+/// <p>The accounts the instance's own services run as, comma-separated. Nobody signs in as one,
+/// and each is here because something the instance does stops if it is disabled:
+/// <code>CSPSystem</code> is what the CSP service runs every web request as,
+/// <code>_Ensemble</code> is what interoperability's own jobs run as, and
+/// <code>irisowner</code> owns the installed instance and is what the container's start path runs
+/// as.</p>
+/// <p><b>One list, read twice, because the two harms are one question.</b>
+/// <method>IsServiceAccount</method> answers a disable with
+/// <parameter>SERVICEACCOUNT</parameter>, and <method>CountsAsHolder</method> answers 0 for a
+/// member so the <code>%All</code> census counts only accounts a person can sign in as -- measured
+/// on this build, <code>_Ensemble</code> and <code>irisowner</code> both hold <code>%All</code>,
+/// so counting them hid every real last-holder case behind two rows nobody can log in with. A
+/// second list kept in step with this one is the DW-1206 defect; there is one.</p>
+/// <p>Compared through <method>NormalizedUser</method>, so a re-cased spelling earns one verdict
+/// (AD-13).</p>
+Parameter SERVICEACCOUNTS = "CSPSystem,_Ensemble,irisowner";
+
 /// <p>The role that holds every privilege, and the prefix of every role that holds an
 /// administrative one. Adding either to an account is a privilege grant (AD-10).</p>
 Parameter ALLROLE = "%All";
@@ -162,12 +190,12 @@ Parameter READTYPE = "GET";
 
 /// <p>Every <code>PROHIBITED.*</code> code this class declares, as a <class>%List</class>: the
 /// four web-application predicates in the order <method>WebApplication</method> evaluates them,
-/// then the three <method>User</method> adds, then <parameter>PRIVILEGEGRANT</parameter>, which
+/// then the four <method>User</method> adds, then <parameter>PRIVILEGEGRANT</parameter>, which
 /// both those types reach, then the two <method>Process</method> adds, then the one every covered
-/// type shares, with the wholesale refusal last -- twelve in all.</p>
+/// type shares, with the wholesale refusal last -- thirteen in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -181,8 +209,9 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#PRIVILEGEGRANT Quit "Granting an administrative privilege is not something the agent can propose, whether it is granted by a web application or held by an account."
     If pCode = ..#SERVINGPATH Quit "Changing a web application that serves OcuPilot itself is not something the agent can propose."
     If pCode = ..#SYSTEMACCOUNT Quit "Disabling the instance's own _SYSTEM account is not something the agent can propose."
+    If pCode = ..#SERVICEACCOUNT Quit "Disabling an account the instance's own services run as is not something the agent can propose."
     If pCode = ..#CURRENTUSER Quit "Disabling the account you are signed in as is not something the agent can propose."
-    If pCode = ..#LASTALLHOLDER Quit "Disabling the only account on this instance that holds %All is not something the agent can propose."
+    If pCode = ..#LASTALLHOLDER Quit "Leaving this instance with no account that holds %All is not something the agent can propose, whether by disabling the last one or by taking the role off it."
     If pCode = ..#OCUPILOTPROCESS Quit "Suspending or resuming a process OcuPilot is itself running in -- this confirmation, or an agent turn -- is not something the agent can propose."
     If pCode = ..#SYSTEMPROCESS Quit "Suspending or resuming an IRIS system process is not something the agent can propose."
     If pCode = ..#UNCOVEREDFIELD Quit "Only a few of this kind of object's settings are ones the agent may propose changing, and that is not one of them."
@@ -467,17 +496,21 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
 /// as the caller (AD-40), confirmable only by the user who minted the proposal (AD-6), so the
 /// process's user is the row's owner and is the person the refusal protects from signing themselves
 /// out.</p>
-/// <p><b>The three disable refusals are scoped to a disable, by effect.</b> AD-10 forbids deleting
-/// or disabling those three accounts, so enabling one, or renaming its full name, is not this
+/// <p><b>The name-matched disable refusals are scoped to a disable, by effect.</b> AD-10 forbids
+/// deleting or disabling those accounts, so enabling one, or renaming its full name, is not this
 /// predicate's business -- and <method>PermittedChangeFields</method> is what refuses every field
 /// beyond the reviewed two in the first place.</p>
+/// <p><b>Losing the last <code>%All</code> holder is not scoped to a disable</b>, because the
+/// effect AD-10 names is reachable two ways: disabling that account, and taking the role off it.
+/// <method>DePrivilegesLastAllHolder</method> is the one predicate both reach, which is why this
+/// method asks it once rather than once per verb.</p>
 ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
 {
     Set pProhibits = 0
     Set pCode = ""
     Set tSC = $$$OK
     Try {
-        If $Data(pChanged(..#FIELDENABLED)) && ..IsOff(..Rendered(pPayload, ..#FIELDENABLED)) {
+        If ..Disables(pPayload, .pChanged) {
             Set tCanonical = ..NormalizedUser(pId)
             If tCanonical = ..NormalizedUser(..#SYSTEMACCOUNTNAME) {
                 Do ..Refuse(..#SYSTEMACCOUNT, .pProhibits, .pCode)
@@ -487,12 +520,16 @@ ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %Dynamic
                 Do ..Refuse(..#CURRENTUSER, .pProhibits, .pCode)
                 Quit
             }
-            Set tSC = ..LastAllHolder(pId, .tLast)
-            If $$$ISERR(tSC) Quit
-            If tLast {
-                Do ..Refuse(..#LASTALLHOLDER, .pProhibits, .pCode)
+            If ..IsServiceAccount(pId) {
+                Do ..Refuse(..#SERVICEACCOUNT, .pProhibits, .pCode)
                 Quit
             }
+        }
+        Set tSC = ..DePrivilegesLastAllHolder(pId, pPayload, pTarget, .pChanged, .tLast)
+        If $$$ISERR(tSC) Quit
+        If tLast {
+            Do ..Refuse(..#LASTALLHOLDER, .pProhibits, .pCode)
+            Quit
         }
         If $Data(pChanged(..#FIELDESCALATIONROLES)) {
             Do ..Refuse(..#PRIVILEGEGRANT, .pProhibits, .pCode)
@@ -905,6 +942,91 @@ ClassMethod IsPrivilegedRole(pRole As %String) As %Boolean [ Private ]
     Quit $Extract(tName, 1, $Length(..#ADMINROLEPREFIX)) = $ZConvert(..#ADMINROLEPREFIX, "U")
 }
 
+/// <p>Whether this proposal turns the target's <code>Enabled</code> off, in the sense the disable
+/// refusals are scoped to: the diff names that field and the payload's value reads as off
+/// (<method>IsOff</method>).</p>
+ClassMethod Disables(pPayload As %DynamicObject, ByRef pChanged) As %Boolean [ Private ]
+{
+    If '$Data(pChanged(..#FIELDENABLED)) Quit 0
+    Quit ..IsOff(..Rendered(pPayload, ..#FIELDENABLED))
+}
+
+/// <p>Whether this proposal would leave the instance with no account a person can sign in as
+/// holding <code>%All</code>, in <var>pLast</var> (AD-10).</p>
+/// <p><b>One predicate, two paths to the same effect.</b> Disabling the last counting holder and
+/// taking <code>%All</code> off it through a role change end in the same place -- an instance
+/// nobody can administer -- so AD-10's by-effect set answers them with one rule rather than two
+/// kept in step. Either path asks <method>LastAllHolder</method>, whose census
+/// (<method>CountsAsHolder</method>) is what decides which rows are a fallback at all.</p>
+/// <p>The role path's own half is <method>RolesGrantAll</method> over the <b>payload's</b> role
+/// list, which AD-4 makes the complete set the write will send: a payload that still grants
+/// <code>%All</code> removes nothing, and the census is not consulted. Where it does not, the
+/// census decides, and <method>LastAllHolder</method> answers 0 for a target that does not hold
+/// <code>%All</code> today -- so an ordinary account's role change costs one live read and is
+/// permitted.</p>
+ClassMethod DePrivilegesLastAllHolder(pId As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, Output pLast As %Boolean) As %Status [ Private ]
+{
+    Set pLast = 0
+    Set tSC = $$$OK
+    Try {
+        Set tReaches = ..Disables(pPayload, .pChanged)
+        If 'tReaches && $Data(pChanged(..#FIELDROLES)) {
+            Kill tWanted
+            Do ..RoleNames(pPayload, .tWanted)
+            Set tSC = ..RolesGrantAll(.tWanted, .tGrants)
+            If $$$ISERR(tSC) Quit
+            Set tReaches = 'tGrants
+        }
+        If 'tReaches Quit
+        Set tSC = ..LastAllHolder(pId, .pLast)
+    } Catch ex {
+        Set pLast = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether the role names in <var>pNames</var> grant <parameter>ALLROLE</parameter> between
+/// them, in <var>pGrants</var>: a name that is <code>%All</code> itself, or any role the instance
+/// says that name recurses to.</p>
+/// <p>It asks the instance rather than matching the written name, for the reason
+/// <method>HoldsAll</method> does -- a custom role can grant <code>%All</code> under a name saying
+/// nothing -- and it is the narrower question than <method>RoleEscalates</method>'s, which also
+/// answers yes for an administrative resource. Only <code>%All</code> is the privilege this
+/// predicate's caller is counting.</p>
+/// <p><b>A name the instance cannot resolve grants nothing here</b>, which leaves the caller
+/// reading the payload as no longer granting <code>%All</code> -- so an unresolvable role makes
+/// the write look more like the one that strips the last holder, and the caller refuses rather
+/// than writes.</p>
+ClassMethod RolesGrantAll(ByRef pNames, Output pGrants As %Boolean) As %Status [ Private ]
+{
+    Set pGrants = 0
+    Set tSC = $$$OK
+    Try {
+        Set tKey = ""
+        For {
+            Set tKey = $Order(pNames(tKey))
+            If tKey = "" Quit
+            Set tName = pNames(tKey)
+            If $ZConvert($ZStrip(tName, "<>W"), "U") = $ZConvert(..#ALLROLE, "U") {
+                Set pGrants = 1
+                Quit
+            }
+            Set tRecursed = ""
+            Set tRecurseSC = $SYSTEM.Security.GetRecursedRoleSet(tName, .tRecursed)
+            If $$$ISERR(tRecurseSC) Continue
+            For tI = 1:1:$Length(tRecursed, ",") {
+                If $ZConvert($ZStrip($Piece(tRecursed, ",", tI), "<>W"), "U") = $ZConvert(..#ALLROLE, "U") Set pGrants = 1
+            }
+            If pGrants Quit
+        }
+    } Catch ex {
+        Set pGrants = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Whether <var>pId</var> is the only account on this instance that holds <code>%All</code>, in
 /// <var>pLast</var> (AD-10).</p>
 /// <p><b>It is a query over the whole population, and it asks the instance.</b> Every account the
@@ -983,12 +1105,46 @@ ClassMethod LastAllHolder(pId As %String, Output pLast As %Boolean) As %Status
 /// Counting either would let the last account an operator can actually use be disabled. The list of
 /// placeholders has one home and this is not it (AD-21); a value this method cannot read as enabled
 /// leaves the target looking more like the last holder, which refuses rather than writes.</p>
+/// <p><b>A third reason: the row is an account one of the instance's own services runs as</b>
+/// (<parameter>SERVICEACCOUNTS</parameter>). Nobody signs in as one, so it can never be the holder
+/// an operator falls back on -- and on a stock instance two of them hold <code>%All</code>, which
+/// made this census answer "there is another holder" for an instance whose only usable holder was
+/// the account being disabled.</p>
 ClassMethod CountsAsHolder(pName As %String, pEnabled As %String) As %Boolean
 {
     If $ZStrip(pName, "<>W") = "" Quit 0
     If '##class(OcuPilot.Screen.Gate).IsAuthenticatedPrincipal(pName) Quit 0
+    If ..IsServiceAccount(pName) Quit 0
     If $ZConvert(pEnabled, "U") = "YES" Quit 1
     Quit (pEnabled = 1)
+}
+
+/// <p>Whether <var>pName</var> is one of the accounts <parameter>SERVICEACCOUNTS</parameter> names,
+/// compared through <method>NormalizedUser</method> so a re-cased spelling earns the same verdict
+/// (AD-13).</p>
+ClassMethod IsServiceAccount(pName As %String) As %Boolean
+{
+    Set tIs = 0
+    Set tCanonical = ..NormalizedUser(pName)
+    If tCanonical = "" Quit 0
+    For tI = 1:1:$Length(..#SERVICEACCOUNTS, ",") {
+        Set tOne = $ZStrip($Piece(..#SERVICEACCOUNTS, ",", tI), "<>W")
+        If tOne = "" Continue
+        If ..NormalizedUser(tOne) = tCanonical Set tIs = 1
+    }
+    Quit tIs
+}
+
+/// <p><parameter>SERVICEACCOUNTS</parameter> as a <class>%List</class>, in the order it declares
+/// them.</p>
+ClassMethod ServiceAccounts() As %List
+{
+    Set tList = ""
+    For tI = 1:1:$Length(..#SERVICEACCOUNTS, ",") {
+        Set tOne = $ZStrip($Piece(..#SERVICEACCOUNTS, ",", tI), "<>W")
+        If tOne '= "" Set tList = tList _ $ListBuild(tOne)
+    }
+    Quit tList
 }
 
 /// <p>Whether account <var>pUser</var> would hold <code>%All</code> if it signed in, in

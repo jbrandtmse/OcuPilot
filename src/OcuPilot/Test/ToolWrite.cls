@@ -759,8 +759,9 @@ Method TestAnInadequateFingerprintSubjectStopsTheToolListBuilding()
     Do $$$AssertTrue($System.Status.GetErrorText(tSC) [ (tRefused _ ": " _ tProblem), "naming the class and its problem: " _ $System.Status.GetErrorText(tSC))
 }
 
-/// <p>AD-51: every registered write tool's <method>OcuPilot.Screen.Tool.Write.WriteType</method>
-/// is a <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> member, and it is a
+/// <p>AD-51: every registered write tool's
+/// <code>(endpoint, <method>OcuPilot.Screen.Tool.Write.WriteType</method>)</code> pair is a
+/// <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> member, and it is a
 /// <parameter>OcuPilot.Port.AdminPort.BODYLESSTYPES</parameter> member exactly when the tool
 /// answers <method>OcuPilot.Screen.Tool.Write.SendsBody</method> 0.</p>
 /// <p><b>Why the equality is pinned rather than derived.</b> "This write sends no body" is
@@ -774,19 +775,49 @@ Method TestAnInadequateFingerprintSubjectStopsTheToolListBuilding()
 /// <p>Mutation (Rule 19): empty <parameter>OcuPilot.Port.AdminPort.BODYLESSTYPES</parameter>, drop
 /// its <code>Process/SUSPEND</code> entry, or set
 /// <parameter>OcuPilot.Screen.Tool.TaskResume.SENDSBODY</parameter> to 1 -- the equality goes red
-/// naming the tool and its request type. Add <code>TERMINATE</code> to
-/// <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> -- the absence leg goes red.</p>
+/// naming the tool and its request type. Add <code>Process/TERMINATE</code> to
+/// <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> -- the absence leg goes red.
+/// Remove <code>Security.User/PUT</code> from it -- the roster leg goes red naming that tool, and
+/// <class>OcuPilot.Test.UserUpdate</class> reddens on its confirmed writes. Add
+/// <code>Task.CRUD/SUSPEND</code> to it -- the refusal leg goes red, because the port then admits
+/// the call instead of answering 501.</p>
+/// <p><b>It compares pairs, not suffixes</b> (DW-1473). A bare-suffix roster reads "PUT is
+/// admitted" as "PUT is admitted on every endpoint", which is the widening that admitted
+/// <code>Task.CRUD/SUSPEND</code> -- a pair no tool issues and AD-10 evaluates no predicate
+/// for.</p>
 Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
 {
     Set tMutating = $ListFromString($Parameter("OcuPilot.Port.AdminPort", "MUTATINGTYPES"))
     Set tBodyless = $ListFromString($Parameter("OcuPilot.Port.AdminPort", "BODYLESSTYPES"))
+    Do $$$AssertTrue($ListLength(tMutating) > 0, "the port names at least one mutating pair; a run over none would pass having checked nothing")
+    Set tMutatingSuffixes = ""
+    For tI = 1:1:$ListLength(tMutating) {
+        Set tPair = $List(tMutating, tI)
+        Do $$$AssertEquals($Length(tPair, "/"), 2, "'" _ tPair _ "' is an <endpoint>/<type> pair, not a bare suffix (DW-1473)")
+        Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating($Piece(tPair, "/", 1), $Piece(tPair, "/", 2)), "'" _ tPair _ "' resolves through the port's own IsMutating")
+        If '$ListFind(tMutatingSuffixes, $Piece(tPair, "/", 2)) Set tMutatingSuffixes = tMutatingSuffixes _ $ListBuild($Piece(tPair, "/", 2))
+    }
+    ; DW-1473's own condition: admitting a suffix on one endpoint must not admit it on another.
+    ; Task.CRUD declares TYPESUSPEND, Process is the endpoint whose SUSPEND a tool issues.
+    Do $$$AssertTrue($ListFind(tMutatingSuffixes, "SUSPEND") > 0, "SUSPEND is admitted somewhere, which is what makes the pair key load-bearing")
+    Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsMutating("Task.CRUD", "SUSPEND"), "and Task.CRUD/SUSPEND is not admitted, though Task.CRUD declares TYPESUSPEND and the suffix is admitted for Process")
+    Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("Process", "SUSPEND"), "while Process/SUSPEND is")
+
+    ; The fixture every port test drives through overrides this parameter to add its probe pair.
+    ; It may add; it may never omit, because a shipped pair missing from the override sends a
+    ; fixture-driven test down the non-mutating branch, where it passes having measured the branch
+    ; the shipped port does not take.
+    Set tFixture = $ListFromString($Parameter("OcuPilot.Test.PortFixture", "MUTATINGTYPES"))
+    For tI = 1:1:$ListLength(tMutating) {
+        Do $$$AssertTrue($ListFind(tFixture, $List(tMutating, tI)) > 0, "'" _ $List(tMutating, tI) _ "' is in OcuPilot.Test.PortFixture's roster too, so a fixture-driven test takes the branch the shipped port takes")
+    }
+
     Do $$$AssertTrue($ListLength(tBodyless) > 0, "the port names at least one bodyless request type; a run over none would pass having checked nothing")
     Set tEndpoints = ""
     For tI = 1:1:$ListLength(tBodyless) {
         Set tEntry = $List(tBodyless, tI)
         Do $$$AssertEquals($Length(tEntry, "/"), 2, "'" _ tEntry _ "' is an <endpoint>/<type> pair, not a bare suffix (DW-1464)")
-        Set tType = $Piece(tEntry, "/", 2)
-        Do $$$AssertTrue($ListFind(tMutating, tType) > 0, "'" _ tEntry _ "' is exempted from the object-body refusal, so its type is a mutating one the refusal would otherwise reach")
+        Do $$$AssertTrue($ListFind(tMutating, tEntry) > 0, "'" _ tEntry _ "' is exempted from the object-body refusal, so the same pair is a mutating one the refusal would otherwise reach")
         If '$ListFind(tEndpoints, $Piece(tEntry, "/", 1)) Set tEndpoints = tEndpoints _ $ListBuild($Piece(tEntry, "/", 1))
     }
     ; DW-1464's own condition: the exemption keys on the pair because one suffix serves two
@@ -818,9 +849,10 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
         Set tName = tEntry.%Get("name")
         Set tClass = tEntry.%Get("class")
         Set tType = $ClassMethod(tClass, "WriteType")
+        Set tEndpoint = $ClassMethod(tClass, "Endpoint")
         Set tSends = ''$ClassMethod(tClass, "SendsBody")
-        Do $$$AssertTrue($ListFind(tMutating, tType) > 0, tName _ " writes with '" _ tType _ "', which the port declares a mutating type")
-        Set tExempt = ''##class(OcuPilot.Port.AdminPort).IsBodyless($ClassMethod(tClass, "Endpoint"), tType)
+        Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating(tEndpoint, tType), tName _ " writes '" _ tEndpoint _ "/" _ tType _ "', which the port declares a mutating pair")
+        Set tExempt = ''##class(OcuPilot.Port.AdminPort).IsBodyless(tEndpoint, tType)
         Do $$$AssertEquals(tExempt, 'tSends, tName _ " sends " _ $Select(tSends: "a body", 1: "none") _ ", so '" _ tType _ "' is " _ $Select(tSends: "absent from", 1: "in") _ " the port's bodyless roster")
         If 'tSends Set tActions = tActions + 1
     }
@@ -832,7 +864,7 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
     ; RunDelete delegating to it -- so "never advertised" is a statement about OcuPilot. Neither
     ; suffix is a mutating type, so the port answers 501 for it without reaching the endpoint.
     For tAbsent = "TERMINATE", "DELETE" {
-        Do $$$AssertEquals($ListFind(tMutating, tAbsent), 0, "'" _ tAbsent _ "' is not a request type this port admits")
+        Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsMutating("Process", tAbsent), "'Process/" _ tAbsent _ "' is not a pair this port admits")
         Kill tQuery
         ; A pid no process carries. The 501 lands before the id is read, so an absent one proves the
         ; same refusal -- and the mutation this method's doc names (admitting TERMINATE) then reaches
@@ -841,6 +873,20 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
         Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Process", tAbsent, .tQuery, "", .tAnswer, .tHttp, .tFault)
         Do $$$AssertStatusNotOK(tSC, "and the port refuses a Process " _ tAbsent _ " outright")
         Do $$$AssertEquals(+$Get(tHttp), 501, "at 501, before the vendor endpoint is entered")
+    }
+
+    ; The pair key at the surface a caller meets it. Task.CRUD declares TYPESUSPEND, so a bare
+    ; suffix roster admitted this call once SUSPEND was admitted for Process; asking IsMutating
+    ; alone would pin the predicate rather than the refusal. A task id no task carries, so a
+    ; mutation that re-admits the pair reaches the vendor against nothing.
+    Kill tQuery
+    Set tQuery("id") = 999999999
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Task.CRUD", "SUSPEND", .tQuery, "", .tAnswer, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "the port refuses a Task.CRUD SUSPEND outright")
+    Do $$$AssertEquals(+$Get(tHttp), 501, "at 501, before the vendor endpoint is entered")
+    Do $$$AssertTrue($IsObject(tFault), "with a fault object")
+    If $IsObject(tFault) {
+        Do $$$AssertEquals(tFault.code, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, "naming PORT.NOTIMPLEMENTED")
     }
 }
 

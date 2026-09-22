@@ -54,6 +54,10 @@ Parameter WRITEPERMISSION = "USE";
 
 /// <p>Declared destructive: turning auditing off removes the instance's own record of every change
 /// made while it is off, and no later write puts those rows back.</p>
+/// <p>This flag governs the <b>agent's proposal card</b>. The auditing screen's own confirm
+/// dialog is a different surface, and EXPERIENCE.md's <code>confirm-dialog</code> row gives it a
+/// <code>button-primary</code> warning rather than a destructive bar (Story 7.4); the two
+/// statements are about two surfaces and both hold.</p>
 Parameter DESTRUCTIVE As BOOLEAN = 1;
 
 ClassMethod Endpoint() As %String

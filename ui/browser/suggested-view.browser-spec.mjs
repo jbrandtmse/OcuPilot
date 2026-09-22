@@ -41,7 +41,7 @@ import {
   signedInAt as sharedSignedInAt,
 } from './panel-spec.mjs';
 import { armProbeDefinition, disarmProbeDefinition, removeDefinition } from './turnprobe-spec.mjs';
-import { rememberedShellMember, resetRememberedState } from './preferences-reset.mjs';
+import { rememberedShellMember } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));

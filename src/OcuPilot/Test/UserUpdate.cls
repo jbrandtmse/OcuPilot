@@ -1,8 +1,9 @@
 /// <p>Pins the Users write tool's confirm path (Story 5.9, AD-4, AD-6, AD-8, AD-10, AD-13): the
 /// confirmed write sends the complete sixteen-property set, every property the fresh read carried
 /// survives the round trip except the ones the diff names, the fingerprint refuses a target that
-/// moved, a pair the caller has lost refuses naming it, and each of AD-10's four user refusals is
-/// reachable on its own.</p>
+/// moved, a pair the caller has lost refuses naming it, and each of the six refusals
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.User</method> can answer is reachable on its
+/// own.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, an account holding
 /// <code>%All</code>, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code> --
 /// <method>OnBeforeAllTests</method> refuses anywhere it does not, because this class creates and
@@ -393,6 +394,138 @@ Method TestDisablingTheLastAllHolderIsRefused()
 
     Do $ClassMethod(..#FIXTURE, "ArmLastAllHolder", 1)
     Do ..Refused(tName, tFresh, tPayload, "Enabled", $Parameter(..#SHIPPEDSET, "LASTALLHOLDER"))
+}
+
+/// <p>DW-1438, AD-10: disabling one of the accounts the instance's own services run as
+/// (<parameter>OcuPilot.Kernel.Proposal.Prohibited.SERVICEACCOUNTS</parameter>) is refused
+/// <code>PROHIBITED.SERVICEACCOUNT</code>, in any spelling -- and the ordinary disable this
+/// predicate must not catch is driven through the same entry point in the same method, so a
+/// predicate that refused everything could not pass.</p>
+/// <p><b>Both arms go through the shipped <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method></b>
+/// -- the refusals through <method>Refused</method>, which drives the whole shipped confirm, and
+/// the permitted one through <method>OcuPilot.Test.ProhibitedFixture.Ask</method>, which asks the
+/// shipped predicate with an armed target. Neither re-implements the branch order.</p>
+/// <p><b>Whoever runs it is a service account on this container.</b> The throwaway's session runs
+/// as <code>irisowner</code>, which is on the list, and <code>CURRENTUSER</code> is evaluated
+/// first -- so that one member earns <code>PROHIBITED.CURRENTUSER</code> and the others earn this
+/// predicate's own code. Both are refusals; the leg asserts which, per account, and counts the
+/// ones that reached the new arm.</p>
+/// <p><b>The accounts are real and this test writes to none of them</b>: the refusal legs run
+/// against <class>OcuPilot.Test.ProposalFixture</class>'s armed target, so nothing reaches the
+/// instance, and the read-back below goes through the shipped port's <code>GET</code>.</p>
+/// <p>Mutation: empty
+/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.SERVICEACCOUNTS</parameter>, or delete the
+/// <code>IsServiceAccount</code> arm from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.User</method> -- the refusal legs redden and the
+/// permitted one stays green.</p>
+Method TestDisablingAServiceAccountIsRefused()
+{
+    Set tAccounts = $ClassMethod(..#SHIPPEDSET, "ServiceAccounts")
+    Do $$$AssertTrue($ListLength(tAccounts) > 0, "the set names at least one service account; a run over none would pass having checked nothing")
+    If $ListLength(tAccounts) = 0 Quit
+    Set tCode = $Parameter(..#SHIPPEDSET, "SERVICEACCOUNT")
+    ; The container's own session runs as one of these accounts (irisowner on the throwaway), and
+    ; CURRENTUSER is evaluated first, so the code a given member earns depends on who is running.
+    ; Measured per account rather than assumed, and the count below is what keeps the run from
+    ; passing on CURRENTUSER alone.
+    Set tEarned = 0
+    For tI = 1:1:$ListLength(tAccounts) {
+        Set tName = $List(tAccounts, tI)
+        Set tSelf = (##class(OcuPilot.Kernel.EntityRef).NormalizedId("user", tName) = ##class(OcuPilot.Kernel.EntityRef).NormalizedId("user", $Username))
+        Set tExpected = $Select(tSelf: $Parameter(..#SHIPPEDSET, "CURRENTUSER"), 1: tCode)
+        Do ..Refused(tName, $ClassMethod(..#SET, "UserObject", tName, 1), $ClassMethod(..#SET, "UserObject", tName, 0), "Enabled", tExpected)
+        If 'tSelf Set tEarned = tEarned + 1
+    }
+    Do $$$AssertTrue(tEarned > 0, "at least one service account earned " _ tCode _ " rather than CURRENTUSER, so the new arm was executed")
+
+    ; Any spelling, for the reason the _SYSTEM leg gives: the id rule folds case, so a reference
+    ; built from a re-cased name is the same key and earns the same verdict (AD-13).
+    Set tFirst = $List(tAccounts, 1)
+    Set tSpelled = $ZConvert(tFirst, "U")
+    Do $$$AssertNotEquals(tSpelled, tFirst, "the second spelling really differs from the first: " _ tSpelled)
+    Do ..Refused(tSpelled, $ClassMethod(..#SET, "UserObject", tFirst, 1), $ClassMethod(..#SET, "UserObject", tFirst, 0), "Enabled", tCode)
+
+    ; The instance's own record, read back through the shipped port: nothing above reached it.
+    Set tSC = ..Fresh(tFirst, .tLive)
+    Do $$$AssertStatusOK(tSC, tFirst _ " reads back through the port: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISOK(tSC) && $IsObject(tLive) Do $$$AssertEquals(''tLive.%Get("Enabled"), 1, tFirst _ " is still enabled on the instance")
+
+    ; The permitted arm, through the same entry point: an ordinary enabled account that is none of
+    ; the four things the disable family refuses.
+    Set tTarget = ..Target()
+    Do $$$AssertTrue('$ClassMethod(..#SHIPPEDSET, "IsServiceAccount", tTarget), tTarget _ " is not a service account, which is what makes the permitted arm a contrast")
+    Do $ClassMethod(..#FIXTURE, "ArmProhibited", ..#SET)
+    Set tSC = $ClassMethod(..#SET, "Ask", $ClassMethod(..#SET, "UserObject", tTarget, 1), $ClassMethod(..#SET, "UserObject", tTarget, 0), $ClassMethod(..#SET, "Diff", "Enabled"), tTarget, "user", .tProhibits, .tOut, ..#TOOL)
+    Do $$$AssertStatusOK(tSC, "the shipped set answers the ordinary disable: " _ $System.Status.GetErrorText(tSC))
+    Do $$$AssertEquals(tProhibits, 0, "and permits it, code was '" _ tOut _ "'")
+}
+
+/// <p>DW-1437, AD-10: the <code>%All</code> census counts only accounts a person can sign in as, so
+/// a service account holding <code>%All</code> is not another holder to fall back on.</p>
+/// <p><b>The exclusion is load-bearing on this build, and that is measured rather than assumed</b>:
+/// the leg below counts how many of the named accounts actually hold <code>%All</code> on this
+/// instance and refuses to pass on zero, because excluding rows that hold nothing would change no
+/// verdict and the test would be asserting a no-op.</p>
+/// <p>Mutation: answer 1 from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.CountsAsHolder</method> for a service account (drop
+/// its <code>IsServiceAccount</code> arm) -- this goes red.</p>
+Method TestTheCensusDoesNotCountAServiceAccountAsAHolder()
+{
+    Set tAccounts = $ClassMethod(..#SHIPPEDSET, "ServiceAccounts")
+    Do $$$AssertTrue($ListLength(tAccounts) > 0, "the set names at least one service account")
+    If $ListLength(tAccounts) = 0 Quit
+    Set tHolding = ""
+    For tI = 1:1:$ListLength(tAccounts) {
+        Set tName = $List(tAccounts, tI)
+        Do $$$AssertEquals($ClassMethod(..#SHIPPEDSET, "CountsAsHolder", tName, "Yes"), 0, tName _ " does not count as an %All holder however enabled the population row reads")
+        Set tSC = $ClassMethod(..#SHIPPEDSET, "HoldsAll", tName, .tHolds)
+        Do $$$AssertStatusOK(tSC, "the instance answers " _ tName _ "'s recursed role set: " _ $System.Status.GetErrorText(tSC))
+        If $$$ISOK(tSC) && tHolds Set tHolding = tHolding _ $ListBuild(tName)
+    }
+    Do $$$AssertTrue($ListLength(tHolding) > 0, "at least one service account holds %All on this instance, so the exclusion changes a verdict rather than nothing: " _ $ListToString(tHolding))
+
+    ; The exclusion is by membership, not a blanket narrowing: the two accounts an operator does
+    ; sign in as still count.
+    Do $$$AssertEquals($ClassMethod(..#SHIPPEDSET, "CountsAsHolder", $Parameter(..#SHIPPEDSET, "SYSTEMACCOUNTNAME"), "Yes"), 1, "the predefined account still counts")
+    Do $$$AssertEquals($ClassMethod(..#SHIPPEDSET, "CountsAsHolder", "SuperUser", "Yes"), 1, "and so does SuperUser")
+    Do $$$AssertEquals($ClassMethod(..#SHIPPEDSET, "CountsAsHolder", $Parameter(..#FIXTURE, "USERALLHOLDER"), "No"), 0, "while a row whose enabled column does not read positively does not count either")
+}
+
+/// <p>DW-1437, AD-10: taking <code>%All</code> off the last account that counts as a holder is the
+/// same effect as disabling it, so it reaches the same predicate and earns
+/// <code>PROHIBITED.LASTALLHOLDER</code>.</p>
+/// <p><b>The armed-census legs are what make this about the role path.</b> With the census answering
+/// "yes" unconditionally, a payload that still grants <code>%All</code> is permitted and one that
+/// does not is refused -- so what is measured is
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.DePrivilegesLastAllHolder</method>'s own decision to
+/// consult the census, not the census's answer. The probe account holds <code>%All</code> through a
+/// custom role, so the payload side is read through the instance's recursion rather than by
+/// matching the literal name.</p>
+/// <p>Mutation: restore <method>OcuPilot.Kernel.Proposal.Prohibited.User</method>'s guard to
+/// <code>$Data(pChanged("Enabled"))</code> alone, so only a disable reaches the census -- the
+/// refusal leg goes red and the two permitted legs stay green.</p>
+Method TestARoleDeltaRemovingAllFromTheLastHolderIsRefused()
+{
+    Set tName = $Parameter(..#FIXTURE, "USERALLHOLDER")
+    Set tAllRole = $Parameter(..#FIXTURE, "USERALLROLE")
+    Set tOrdinary = $Parameter(..#FIXTURE, "USERORDINARYROLE")
+    Set tFresh = $ClassMethod(..#SET, "UserObject", tName, 1, tAllRole)
+    Set tStrips = $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary)
+    Set tKeeps = $ClassMethod(..#SET, "UserObject", tName, 1, tAllRole _ "," _ tOrdinary)
+
+    ; Disarmed: this instance has other counting holders, so the same strip is permitted and the
+    ; refusal below is the census's answer rather than the shape of the delta.
+    Do $ClassMethod(..#FIXTURE, "ArmProhibited", ..#SET)
+    Set tSC = $ClassMethod(..#SET, "Ask", tFresh, tStrips, $ClassMethod(..#SET, "Diff", "Roles"), tName, "user", .tProhibits, .tOut, ..#TOOL)
+    Do $$$AssertStatusOK(tSC, "the shipped census answers the strip: " _ $System.Status.GetErrorText(tSC))
+    Do $$$AssertEquals(tProhibits, 0, "and this instance's other holders mean the target is not the last one, code was '" _ tOut _ "'")
+
+    Do $ClassMethod(..#FIXTURE, "ArmLastAllHolder", 1)
+    Set tSC = $ClassMethod(..#SET, "Ask", tFresh, tKeeps, $ClassMethod(..#SET, "Diff", "Roles"), tName, "user", .tProhibits, .tOut, ..#TOOL)
+    Do $$$AssertStatusOK(tSC, "the set answers a role change that keeps %All: " _ $System.Status.GetErrorText(tSC))
+    Do $$$AssertEquals(tProhibits, 0, "which never reaches the census, code was '" _ tOut _ "'")
+
+    Do ..Refused(tName, tFresh, tStrips, "Roles", $Parameter(..#SHIPPEDSET, "LASTALLHOLDER"))
 }
 
 /// <p>AC5, AD-10: a <code>Roles</code> delta that adds <code>%All</code>, any <code>%Admin_</code>

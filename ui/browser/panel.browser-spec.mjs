@@ -579,6 +579,96 @@ test('The composer grows with its text to four lines and then scrolls, the foote
   }
 });
 
+/**
+ * The composer row's two controls, and what the Send control's own rule resolved to.
+ *
+ * `intrinsic` is the width the control would take at its own content size, measured by setting
+ * `max-content` on the live element and putting the style attribute back -- so "the declared width
+ * is at least the label needs" is checked against this browser's own metrics rather than against a
+ * number copied into this file.
+ */
+function composerRow(page) {
+  return page.evaluate(() => {
+    const box = (query) => {
+      const node = document.querySelector(query);
+      if (node === null) return null;
+      const rect = node.getBoundingClientRect();
+      return { width: rect.width, scrollWidth: node.scrollWidth, clientWidth: node.clientWidth };
+    };
+    const send = document.querySelector('.ocu-panel-send');
+    const prior = send.getAttribute('style');
+    send.style.width = 'max-content';
+    send.style.flex = '0 0 auto';
+    const intrinsic = send.getBoundingClientRect().width;
+    if (prior === null) send.removeAttribute('style');
+    else send.setAttribute('style', prior);
+    return {
+      viewport: document.documentElement.clientWidth,
+      row: box('.ocu-panel-composer-row'),
+      composer: box('.ocu-panel-composer'),
+      send: box('.ocu-panel-send'),
+      sendClass: send.className,
+      sendLabel: send.textContent.trim(),
+      intrinsic,
+      declared: parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--ocu-panel-send-width')
+      ),
+    };
+  });
+}
+
+/**
+ * DW-1336. Send carried `.ocu-button-primary`'s `width: 100%`, which in the composer row is a flex
+ * base of the whole row, so the composer shrank to `min-width: 0` and the two swapped places:
+ * measured before the fix, Send 340.11px and the composer 26.89px of a 375px row at 1,280, and
+ * 260.13px against 26.88px of a 295px row at 900. The row did not overflow either way -- the
+ * composer absorbed all of it -- so this is a proportion assertion, not an overflow one, and the
+ * overflow leg is kept as the guard that the fix did not trade one failure for the other.
+ *
+ * Geometry, so it lives here: jsdom computes no layout and `panel.spec.ts` could only restate the
+ * class binding (Rule 19).
+ *
+ * Mutation (Rule 19): delete the base `.ocu-panel-send` rule from `_components.scss` -> this goes
+ * red at both viewports on the width and the proportion. The other two appearances are measured
+ * against the same token by `proposal-card.browser-spec.mjs` (a) and (b), which render them from a
+ * real turn.
+ */
+test('DW-1336: Send keeps its declared width and the composer is the wider control, at 1,280 and at 900', async () => {
+  for (const viewport of [1280, 900]) {
+    const { context, page } = await signedInAt(USERS_URL, { width: viewport, height: 900 });
+    try {
+      const shape = await composerRow(page);
+      assert.equal(shape.viewport, viewport, 'the viewport is the one this leg is about');
+      assert.equal(shape.sendLabel, STRINGS.actionSend, 'nothing is running, so the control reads Send');
+      assert.match(shape.sendClass, /ocu-button-primary/, 'and wears the filled appearance');
+
+      assert.ok(shape.declared > 0, 'the deployed bundle resolves --ocu-panel-send-width');
+      assert.ok(
+        Math.abs(shape.send.width - shape.declared) < 0.5,
+        `Send renders at its declared width: ${shape.send.width} against ${shape.declared} at ${viewport}`
+      );
+      assert.ok(
+        shape.declared >= shape.intrinsic,
+        `the declared width covers this appearance's label: intrinsic ${shape.intrinsic} at ${viewport}`
+      );
+      assert.ok(
+        shape.composer.width > shape.send.width,
+        `the composer is the wider control: composer ${shape.composer.width}, Send ${shape.send.width} at ${viewport}`
+      );
+      assert.ok(
+        shape.composer.width > shape.row.width / 2,
+        `and takes most of the row: composer ${shape.composer.width} of ${shape.row.width} at ${viewport}`
+      );
+      assert.ok(
+        shape.row.scrollWidth <= shape.row.clientWidth + 1,
+        `the row overflows nothing horizontally: ${JSON.stringify(shape.row)} at ${viewport}`
+      );
+    } finally {
+      await context.close();
+    }
+  }
+});
+
 test('AC6: Ctrl/Cmd+I focuses the composer from content, side bar and rail, and not while the command box is open', async () => {
   // Mutation (Rule 19): drop `composer.focus()` from `App.onComposerChord` -> this goes red.
   const { context, page } = await signedInAt(USERS_URL);
