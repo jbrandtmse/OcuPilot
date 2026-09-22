@@ -32,11 +32,13 @@ const {
   COUNTDOWN_WARNING_MS,
   CONFIRMED_TIME_PLACEHOLDER,
   MASKED_VALUE,
+  RESIDUE_COUNT_PLACEHOLDER,
   USER_NAME_PLACEHOLDER,
   countdownPhase,
   countdownRemaining,
   formatCountdown,
   formatCountdownCaption,
+  formatRemovalResidue,
   formatUserName,
   isTerminalPhase,
   offersRepropose,
@@ -107,15 +109,53 @@ test('toCardView takes the noun from the screen and everything else from the pro
   assert.equal(view.auditWarning, false);
   assert.equal(view.expiresAt, Date.parse('2026-09-19T10:00:00Z'));
   assert.deepEqual(view.changed, [
-    { field: 'Enabled', before: 'false', after: 'true' },
-    { field: 'Password', before: 'old', after: 'new' },
+    { field: 'Enabled', before: 'false', after: 'true', removed: false },
+    { field: 'Password', before: 'old', after: 'new', removed: false },
   ]);
+});
+
+test('a removal row travels off the wire, and a row with an after-state is not one (DW-1228)', () => {
+  // AD-48's delete proposal: the target's identifying field, its value, and no after-state. The
+  // flag is the instance's, like every other value here -- the card reads it to choose the drawn
+  // and spoken forms EXPERIENCE.md's diff-row rule publishes.
+  //
+  // Mutation (Rule 19): drop `removed` from `parseProposalDiff` -> every row parses as not
+  // removed and this goes red.
+  const view = toCardView(
+    parsedProposal({
+      changed: [
+        { field: '09/11/2026', before: '123', after: '', removed: true },
+        { field: 'Enabled', before: 'false', after: 'true' },
+      ],
+    }),
+    'Application error'
+  );
+  assert.deepEqual(view.changed, [
+    { field: '09/11/2026', before: '123', after: '', removed: true },
+    { field: 'Enabled', before: 'false', after: 'true', removed: false },
+  ]);
+});
+
+test('the residue sentence resolves its own count and keeps both of its facts (AD-48)', () => {
+  const resolved = formatRemovalResidue(STRINGS.proposalResidue, 211);
+  assert.ok(resolved.includes('211'), 'the count the card lists');
+  assert.ok(!resolved.includes(RESIDUE_COUNT_PLACEHOLDER), 'and the placeholder is gone');
+  assert.equal(
+    formatRemovalResidue(STRINGS.proposalResidue, 0),
+    STRINGS.proposalResidue.split(RESIDUE_COUNT_PLACEHOLDER).join('0'),
+    'the substitution is the published literal with its slot filled, never a rewrite'
+  );
 });
 
 test("a field the screen declares secret reads the mask on both sides, and nothing else does", () => {
   const view = toCardView(parsedProposal(), STRINGS.proposalEntityWebApplication, ['Password']);
-  assert.deepEqual(view.changed[0], { field: 'Enabled', before: 'false', after: 'true' });
-  assert.deepEqual(view.changed[1], { field: 'Password', before: MASKED_VALUE, after: MASKED_VALUE });
+  assert.deepEqual(view.changed[0], { field: 'Enabled', before: 'false', after: 'true', removed: false });
+  assert.deepEqual(view.changed[1], {
+    field: 'Password',
+    before: MASKED_VALUE,
+    after: MASKED_VALUE,
+    removed: false,
+  });
   assert.equal(MASKED_VALUE.length, 8, 'eight bullets, as the document publishes it');
   assert.deepEqual([...view.maskedFields], ['Password'], 'and the declared names reach the card');
 });
@@ -303,11 +343,16 @@ test("toCardView passes the instance's unchanged rows through, authoring no valu
     { field: 'Description', value: 'a demo fixture' },
     { field: 'MatchRoles', value: MASKED_VALUE },
   ];
-  const view = toCardView(wireProposal({ unchanged }), 'Web application', ['Password']);
+  const view = toCardView(parsedProposal({ unchanged }), 'Web application', ['Password']);
   assert.deepEqual(view.unchanged, unchanged);
   // The secret masking on the diff is the client's; the masking under the disclosure is the
   // instance's, and this module does not apply a second one.
-  assert.deepEqual(view.changed[1], { field: 'Password', before: MASKED_VALUE, after: MASKED_VALUE });
+  assert.deepEqual(view.changed[1], {
+    field: 'Password',
+    before: MASKED_VALUE,
+    after: MASKED_VALUE,
+    removed: false,
+  });
 });
 
 test('a wire row with no unchanged array parses to no rows rather than to undefined', () => {

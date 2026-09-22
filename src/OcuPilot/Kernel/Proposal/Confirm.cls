@@ -50,11 +50,33 @@ Parameter READTYPE = "GET";
 /// <method>OcuPilot.Screen.Tool.Write.WriteType</method> and sends no body (AD-51).</p>
 Parameter WRITETYPE = "PUT";
 
-/// <p>The port the fresh re-read and the write go through. Overridable so a fixture can answer a
-/// known object and record what was sent; production never overrides it.</p>
+/// <p>The class a write tool's port declaration lives on, whose own value is the default every
+/// shipped tool carries (AD-52).</p>
+Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
+
+/// <p>The port the fresh re-read and the write go through when the proposal's tool declares the
+/// base's own default (AD-52). Overridable so a fixture can answer a known object and record what
+/// was sent; production never overrides it.</p>
 ClassMethod PortClass() As %String
 {
     Quit "OcuPilot.Port.AdminPort"
+}
+
+/// <p>The port <var>pToolClass</var> declares its target lives behind (AD-52), or
+/// <method>PortClass</method> where it declares the base's own default, names no class, or cannot
+/// be asked.</p>
+/// <p>The fingerprint re-read and the write itself both resolve through this one answer, so a
+/// confirm can never compare a digest taken from one port against a write issued at another.</p>
+ClassMethod PortClassOf(pToolClass As %String) As %String
+{
+    Set tPort = ""
+    Try {
+        If pToolClass '= "" Set tPort = $ClassMethod(pToolClass, "PortClass")
+    } Catch {
+        Set tPort = ""
+    }
+    If (tPort = "") || (tPort = $Parameter(..#WRITETOOLBASE, "PORTCLASS")) Quit ..PortClass()
+    Quit tPort
 }
 
 /// <p>The proposal store. Overridable for the same reason; production never overrides it.</p>
@@ -255,6 +277,19 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
             Set tSC = ..Internal("the privilege pairs of " _ $Get(pRow("toolName")) _ " could not be read", .pHttpStatus, .pCode)
             Quit
         }
+        ; AD-8, AD-48. A tool whose requirement depends on its own argument -- the namespace this
+        ; delete names -- declares that half through ArgumentPairs, and the confirm resolves it
+        ; from the STORED arguments so it re-checks the set the dispatcher checked at the call.
+        ; Empty for every tool whose requirement is its screen's alone, so their check is
+        ; unchanged. Without it such a caller passes this gate short of a pair the port's own gate
+        ; requires, reaches the prohibited set's live read, and is answered the generic internal
+        ; failure AD-8 exists to prevent.
+        Set tArgumentPairs = ##class(OcuPilot.Screen.Tool.Registry).ArgumentPairs(tTool, ..ParsedObject($Get(pRow("arguments"))), .tArgumentsResolved)
+        If 'tArgumentsResolved {
+            Set tSC = ..Internal("the argument privilege pairs of " _ $Get(pRow("toolName")) _ " could not be read", .pHttpStatus, .pCode)
+            Quit
+        }
+        Set tPairs = tPairs _ tArgumentPairs
         Set tFailedPair = ..MissingPair(pUser, tPairs)
         If tFailedPair '= "" {
             Set tSC = ..Refuse(403, ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, .pHttpStatus, .pCode)
@@ -375,6 +410,11 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         If tSendsBody Set tBody = ..WithSecrets($Get(pRow("payload")), pSuppliedSecrets, tSecretNames)
         Kill tQuery
         Set tQuery(tIdParam) = tIdValue
+        ; AD-52. A port that addresses a set rather than an object needs more than the identifying
+        ; parameter, and what it needs is the tool's own declaration read off the STORED payload --
+        ; the one the fingerprint just compared. Empty for every tool that ships against an admin
+        ; endpoint, so their query is byte-identical.
+        Do ..ToolPortQuery(tToolClass, $Get(pRow("payload")), .tQuery)
 
         ; AD-41: the row is opened BEFORE the port call and finalized after it. A row that only
         ; ever appeared on success could not record a write that raised mid-flight; the `pending`
@@ -388,7 +428,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         ; target and this user at or after it.
         Set tWrittenAt = ##class(OcuPilot.Kernel.State.Turn).Timestamp()
 
-        Set tWriteSC = $ClassMethod(..PortClass(), "Invoke", tEndpoint, ..ToolWriteType(tToolClass), .tQuery, tBody, .tWritten, .tWriteHttp, .tWriteFault)
+        Set tWriteSC = $ClassMethod(..PortClassOf(tToolClass), "Invoke", tEndpoint, ..ToolWriteType(tToolClass), .tQuery, tBody, .tWritten, .tWriteHttp, .tWriteFault)
         If $$$ISERR(tWriteSC) {
             ; The claim has committed and the token is spent: the proposal stays confirmed and the
             ; port's own normalized envelope is what the caller is answered with. There is no
@@ -427,7 +467,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         ; per-write failure belongs.
         If $Get(tEmitted, 0) Do $ClassMethod(..EventClass(), "RecordMarking", tMarked)
 
-        Set tSC = ..Answer(pProposalId, .pResult, .pHttpStatus, .pCode, $Select(tMarked: 1, 1: 0))
+        Set tSC = ..Answer(pProposalId, .pResult, .pHttpStatus, .pCode, $Select(tMarked: 1, 1: 0), ..ToolChangeAction(tToolClass))
     } Catch ex {
         Set pResult = ""
         Set tSC = ..Internal("the confirm transition failed: " _ ex.DisplayString(), .pHttpStatus, .pCode)
@@ -583,7 +623,11 @@ ClassMethod FingerprintMatches(pTool As %DynamicObject, ByRef pRow, Output pMatc
         }
         Kill tQuery
         Set tQuery(pIdParam) = pIdValue
-        Set tReadSC = $ClassMethod(..PortClass(), "Invoke", pEndpoint, ..ToolReadType(tClass), .tQuery, "", .tFresh, .tReadHttp, .tReadFault)
+        ; AD-52. The re-read asks the port the tool's own question about the reviewed target, which
+        ; for a set-addressing port is "which of these ids still exist". Empty for every shipped
+        ; tool, so their re-read is byte-identical to the mint's.
+        Do ..ToolPortQuery(tClass, $Get(pRow("payload")), .tQuery)
+        Set tReadSC = $ClassMethod(..PortClassOf(tClass), "Invoke", pEndpoint, ..ToolReadType(tClass), .tQuery, "", .tFresh, .tReadHttp, .tReadFault)
         If $$$ISERR(tReadSC) {
             ; A target that is gone, or a read that refused, is "the target moved" -- never a
             ; write issued against a record nobody could read back.
@@ -598,7 +642,11 @@ ClassMethod FingerprintMatches(pTool As %DynamicObject, ByRef pRow, Output pMatc
         If tDescriptor '= "" Set tExcludes = $ClassMethod(tDescriptor, "FingerprintExcludes")
         ; AD-51 as amended: an action-style write's digest covers the subject its tool declares,
         ; which is the same selection the mint made.
-        Set tSubject = ##class(OcuPilot.Kernel.Proposal.Mint).FingerprintSubjectOf(tClass)
+        Set tSubject = ##class(OcuPilot.Kernel.Proposal.Mint).FingerprintSubjectOf(tClass, .tSubjectProblem)
+        If tSubjectProblem '= "" {
+            Set tSC = $$$ERROR($$$GeneralError, tSubjectProblem)
+            Quit
+        }
         Set tSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(tPayload, tExcludes, .tDigest, tSubject)
         If $$$ISERR(tSC) Quit
         If tDigest '= $Get(pRow("fingerprint")) Quit
@@ -672,6 +720,40 @@ ClassMethod ToolWriteType(pToolClass As %String) As %String [ Private ]
     Quit tType
 }
 
+/// <p>Add <var>pToolClass</var>'s own port query parameters, read off the stored payload
+/// <var>pPayloadJson</var>, to <var>pQuery</var> (AD-52,
+/// <method>OcuPilot.Screen.Tool.Write.PortQuery</method>). Called before the fingerprint re-read
+/// and again before the write, so both reach the port with the same question about the same
+/// reviewed set.</p>
+/// <p>A class that cannot be asked adds nothing, which is the answer every shipped tool's own
+/// declaration gives: the vendor identifies a target by the one identifying parameter already
+/// set.</p>
+ClassMethod ToolPortQuery(pToolClass As %String, pPayloadJson As %String, ByRef pQuery) [ Private ]
+{
+    Try {
+        If pToolClass = "" Quit
+        Do $ClassMethod(pToolClass, "PortQuery", ..ParsedObject(pPayloadJson), .pQuery)
+    } Catch {
+        ; Deliberately empty: a tool that cannot answer adds no parameter, and the port refuses the
+        ; call it then receives rather than issuing a delete with no subject.
+    }
+}
+
+/// <p>The AD-14 action <var>pToolClass</var>'s confirmed write performs
+/// (<method>OcuPilot.Screen.Tool.Write.ChangeAction</method>), or <code>""</code> for a class that
+/// cannot be asked -- which leaves the answer carrying no action and the client publishing its own
+/// default, the behaviour every write had before this seam existed.</p>
+ClassMethod ToolChangeAction(pToolClass As %String) As %String [ Private ]
+{
+    Set tAction = ""
+    Try {
+        If pToolClass '= "" Set tAction = $ClassMethod(pToolClass, "ChangeAction")
+    } Catch {
+        Set tAction = ""
+    }
+    Quit tAction
+}
+
 /// <p>Whether <var>pToolClass</var>'s confirmed write carries a body (AD-51). A class that cannot
 /// be asked sends one, which is every write that shipped before this seam existed.</p>
 ClassMethod ToolSendsBody(pToolClass As %String) As %Boolean [ Private ]
@@ -718,7 +800,7 @@ ClassMethod HoldsPair(pUser As %String, pResource As %String, pPermission As %St
 /// <code>{proposalId, state, closedReason, confirmedAt}</code>, plus <code>auditMarked</code> where
 /// a write was made, read back from the row so the answer and the wire cannot disagree. A row that is no longer there is answered as an internal
 /// failure, never as a 200 carrying empty fields.</p>
-ClassMethod Answer(pProposalId As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String, pAuditMarked As %String = "") As %Status [ Private ]
+ClassMethod Answer(pProposalId As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String, pAuditMarked As %String = "", pAction As %String = "") As %Status [ Private ]
 {
     Set pResult = ""
     Set tSC = $ClassMethod(..StoreClass(), "GuardedByKey", pProposalId, .tFound, .tValues)
@@ -734,6 +816,10 @@ ClassMethod Answer(pProposalId As %String, Output pResult As %DynamicObject, Out
     ; Present only where a write was made, so a cancel does not answer "this was not marked" about
     ; a write that never happened. The card's collapsed status line reads it (AD-15).
     If pAuditMarked '= "" Do pResult.%Set("auditMarked", ''pAuditMarked, "boolean")
+    ; AD-14's action for the write that just happened, present only where one happened. The client
+    ; publishes what the instance says rather than inferring it from the shape of the diff: the
+    ; vocabulary is the kernel's closed set, and a screen routes on it.
+    If pAction '= "" Do pResult.%Set("action", pAction, "string")
     Set pHttpStatus = 200
     Quit $$$OK
 }

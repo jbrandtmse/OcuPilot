@@ -188,7 +188,7 @@ test('a proposal is read whole, with its expiry as epoch milliseconds', () => {
   assert.equal(read.tool, 'webapp.list.update');
   assert.equal(read.unchangedCount, 38);
   assert.equal(read.expiresAt, Date.parse(EXPIRES_AT));
-  assert.deepEqual(read.changed, [{ field: 'Enabled', before: 'false', after: 'true' }]);
+  assert.deepEqual(read.changed, [{ field: 'Enabled', before: 'false', after: 'true', removed: false }]);
   assert.equal(read.rationale, 'because');
   assert.equal(read.expectedImpact, 'it serves');
   assert.equal(read.reverse, 'set it back');

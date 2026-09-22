@@ -2,15 +2,18 @@
 title: 'Story 5.13: Logs - delete application errors by namespace'
 type: 'feature'
 created: '2026-09-22'
-status: 'in-progress'
-baseline_revision: 'dd925555b00cf78f36e329f58b2ad39b973f2719'
-baseline_commit: 'dd925555b00cf78f36e329f58b2ad39b973f2719'
+status: 'blocked'
+baseline_revision: '64abadd0680c1c1e13eb12103ceb5798dc839ef6'
+baseline_commit: '64abadd0680c1c1e13eb12103ceb5798dc839ef6'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - 'DW-1423, measured and not fixed. No reachable path emits the change announcement with action deleted: its one shipped call site is announceChanged() in shell/data-table.ts, and application-error is declared by exactly one descriptor (LogErrorList), a drill-down that renders its own grid and is not a DataTable. Story 5.13 therefore does not execute the branch either, so the premise the entry was routed on does not hold. The fixed Updated prefix is left unreworded, because that half is a UX call on the entry. Re-own it to a story whose screen is a DataTable and that can redden it.'
+  - 'DW-1472, raised as an intent gap and not worked around. The demo fixture creates no process at all: src/OcuPilot/Install/Fixture.cls creates the /csp/myapp web application and the suspended OcuPilotDemo nightly purge task, which is Story 5.12 demo target, and nothing else. It therefore has no target process to create under a second account, and giving it one means a long-lived process owned by an account the fixture would have to create and then assume - IRIS JOB inherits the spawning process username, and only a Login or a task RunAsUser changes it - which is a durable side effect on an operator instance that AD-25 forbids the fixture to leave. Per the entry own merge-gate note this is a Clarification.'
+  - 'DW-1476, half closed. Mint.FingerprintSubjectOf no longer swallows an unaskable tool class into an empty subject; it refuses. The registration refusal of an action-style write that declares no subject at all is NOT added, and TaskResume still declares none. See the intent gap in Auto Run Result for the measurement and the recommended amendment.'
 ---
 
 <intent-contract>
@@ -775,10 +778,73 @@ EXPERIENCE.md's roster of seven.
 Status: blocked
 Blocking condition: intent gap
 
-Planning is complete and measured; the three gaps are set out in `## Blocking Condition` with a
-recommended amendment each. Gap 1 is a contradiction between two of this story's own acceptance
-criteria -- `epics.md:3791` names `DeleteByNamespace` while `epics.md:3785-3787` and AD-48 require
-that confirm delete exactly the enumerated ids and leave residue -- and the two differ observably on
-whether an error logged after the proposal survives the confirm. Gaps 2 and 3 are published copy
-`EXPERIENCE.md` does not carry, which `ui/tools/strings.test.mjs:497` refuses by construction, and
-gap 3 additionally questions the premise on which DW-1423 was routed to this story.
+**Two intent gaps (Rule 5), raised rather than worked around. Everything else is built and verified.**
+
+**1. DW-1472 -- the demo fixture has no process to create under a second account.** Measured:
+`src/OcuPilot/Install/Fixture.cls` creates a web application, an SSL configuration, an X.509
+credential, a wallet collection, the suspended `OcuPilotDemo nightly purge` task and one application
+error. It contains no `JOB` and creates **no process at all**, so Story 5.12's broad ownership
+prohibition leaves that story with no demo target on an instance running as `_SYSTEM`. Giving the
+fixture one means a long-lived process owned by an account it would have to create and then assume
+-- `JOB` inherits the spawning process's username, and only a `Login` or a task `RunAsUser` changes
+it -- which is a durable side effect on an operator instance AD-25 forbids the fixture to leave.
+**The orchestrator's own HALT condition is met**; the narrow/broad ownership choice reopens with
+this evidence.
+
+**2. AD-51's identity clause cannot bind `TaskResume`.** The spec asks for a registration refusal of
+an action-style write declaring no fingerprint subject, with `TaskResume` declaring its own.
+`Task.CRUD`'s `INFO` -- the only request type that answers `Suspended` truthfully -- answers `Type`,
+`Status`, `Error`, `LastSchedule`, `LastStarted`, `LastFinished`, `NextScheduled`, `Suspended` and
+**no `Id`** (Story 5.11's live-pinned `OcuPilot.Test.TaskResume:47` records the same set), so
+`Fingerprint.Projection` refuses `Id` at every mint and no request type answers that tool's identity
+and its precondition field together. Applied, the refusal made a shipped tool unregistrable and
+reddened `OcuPilot.Test.TaskResume` (five methods) and `OcuPilot.Test.ProhibitedRoute` (one). Both
+halves are reverted and `TaskResume.cls` is byte-identical to Story 5.11's. **Recommended
+amendment:** amend AD-51 so the identity clause binds a subject the tool's own read type can answer,
+and say what carries identity where it cannot -- the proposal's `TargetRef`, which AD-13 scopes.
+
+**Four defects found and fixed, each with a test that reddens without the fix.** A least-privileged
+confirm was answered **HTTP 500 `INTERNAL` naming no pair**: the AD-8 gate checked only the screen's
+instance pairs, so the caller fell through to the prohibited set's live read and the port's 403
+surfaced as a generic internal failure -- the one outcome AD-8 exists to prevent. `Transition` now
+unions the tool's `ArgumentPairs`, resolved from the stored arguments, and answers 403
+`AUTH.NOPRIVILEGE` with `detail.failedPair` (only `ErrorDelete` overrides `ArgumentPairs`, so the
+other six writes are unchanged). `Fingerprint.Projection` raised `<ILLEGAL VALUE>` on an object or
+array member, so no action write could declare a collection as its subject. The confirm's
+fingerprint re-read enumerated afresh, so every error logged between mint and confirm refused the
+confirm -- AD-48's residue clause backwards; AD-52's per-tool `PortQuery` now has the re-read ask
+which of the **stored** ids survive. And the client hard-coded `action: 'updated'`, so the `deleted`
+event this story's screen listens for was never published; the tool declares `CHANGEACTION` and the
+confirm's answer carries it.
+
+**DW-1423, measured and routed out.** No reachable path emits the change announcement with action
+`deleted`: its one shipped call site is `announceChanged()` in `shell/data-table.ts`, and
+`application-error` is declared by exactly one descriptor -- `LogErrorList`, a drill-down that
+renders its own grid and is not a `DataTable`. This story does not execute the branch either, so the
+premise it was routed on does not hold, and the fixed `Updated:` prefix is left unreworded because
+that half is a UX call. Re-own it to a story whose screen is a `DataTable` and that can redden it.
+
+**Verified.** `check-objectscript` 612 files / 21 rules / 0; `npm run test:tools` 1306/0;
+`npm run test:components` 822/0; `npm run build` (seven prebuild checkers) clean; `lint-docs` clean.
+On `ocupilot-ci`, source synced and the package recompiled before every run: `ErrorDelete` (7),
+`ToolWrite`, `Prohibited`, `ProhibitedByEffect`, `ProhibitedRoute`, `ConfirmRoute`, `SurfaceCoverage`,
+`EndpointCoverage`, `Descriptor`, `EntityRef`, `TaskResume`, `ProcessControl`, `Proposal`,
+`ProposalConfirm`, `ProposalSpelling`, `AuditMarker`, `MarkerConfirm`, `AuditingUpdate`, `ErrorLog`,
+`ErrorLogWire`, `ErrorLogDenial`, `WireSecurityRead` -- each green, totals reconciled against
+`%UnitTest_Result`. Bundle rebuilt, redeployed and the installer re-run, then
+`error-log-delete`, `error-log` and `change-highlight` browser specs -- green. Nine Rule 19
+mutations applied, observed red, reverted and re-run green (listed under `## Verification`).
+
+**Not run, because this run terminates blocked:** the full `npm run test:browser` suite and the full
+ObjectScript sweep. Both are owed before `dev_complete` on the re-dispatch.
+
+**One matrix row diverges from the code and needs the lead's eye.** "Namespace with no errors"
+expects `StateDiff` to answer `pProblem`. Measured: `NamespaceList` answers only namespaces that
+hold errors, so such a namespace is refused 404 `LOG.NAMESPACE` at the port and the mint refuses
+before `StateDiff` runs. The row's behavior column holds -- refused at the mint, no proposal row,
+no card -- while its error column names a mechanism the instance does not use.
+
+**Left as it was found.** `OcuPilotDemo nightly purge` reads `Suspended=1`; the throwaway's `USER`
+namespace holds no application errors and `HSCUSTOM`'s own are untouched; no probe principal
+survives; no process left suspended; no container stopped, recreated or torn down; nothing deleted
+on `ocupilot` or any slot instance. Slot A carries the same 612 compiled classes.

@@ -25,11 +25,18 @@
 import { STRINGS } from './strings.ts';
 import type { TurnProposal, TurnProposalUnchangedRow } from './turn.ts';
 
-/** One changed field, as the card draws it: the label, the before value and the after value. */
+/**
+ * One changed field, as the card draws it: the label, the before value and the after value.
+ *
+ * `removed` marks a **removal row** -- a delete proposal has no after-state, so the row shows the
+ * target's identifying field and its value and the card draws the removed marker in place of the
+ * after value (AD-48). It is the instance's own flag, like every other value here.
+ */
 export interface ProposalDiffRow {
   readonly field: string;
   readonly before: string;
   readonly after: string;
+  readonly removed?: boolean;
 }
 
 /**
@@ -180,6 +187,19 @@ export function formatUserName(template: string, userName: string): string {
   return template.split(USER_NAME_PLACEHOLDER).join(userName);
 }
 
+/** The placeholder the published residue sentence leaves for the number of rows the card lists. */
+export const RESIDUE_COUNT_PLACEHOLDER = '<n>';
+
+/**
+ * The published residue sentence with `count` in place of its `<n>`.
+ *
+ * The count is how many removal rows the card is drawing, so the sentence and the list it is about
+ * cannot disagree; nothing here writes a value the instance did not send (AD-6).
+ */
+export function formatRemovalResidue(template: string, count: number): string {
+  return template.split(RESIDUE_COUNT_PLACEHOLDER).join(String(count));
+}
+
 /**
  * The published countdown caption with the clock in place of its own `m:ss`, which is the
  * substitution point the caption ships with -- the same `split`/`join` idiom
@@ -257,7 +277,7 @@ export const MASKED_VALUE = '\u2022'.repeat(8);
 
 /** One diff row with both of its values masked, for a field the descriptor declared secret. */
 function maskedRow(row: ProposalDiffRow): ProposalDiffRow {
-  return { field: row.field, before: MASKED_VALUE, after: MASKED_VALUE };
+  return { field: row.field, before: MASKED_VALUE, after: MASKED_VALUE, removed: row.removed };
 }
 
 /**

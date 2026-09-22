@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { provideRouter } from '@angular/router';
 
 import { ApiService, type JsonResult } from '../../core/api';
+import { ChangeBus } from '../../core/change-bus';
 import { NavigationService } from '../../core/navigation';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { SCREENS } from '../../core/screens.generated';
@@ -114,6 +115,7 @@ describe('ErrorLogPage', () => {
     fixture: ComponentFixture<ErrorLogPage>;
     drill: ErrorLogDrill;
     actions: ScreenActions;
+    bus: ChangeBus;
   } {
     TestBed.configureTestingModule({
       providers: [
@@ -124,11 +126,17 @@ describe('ErrorLogPage', () => {
           useValue: { screenForUrl: () => ERROR_LOG_SCREEN } as unknown as NavigationService,
         },
         { provide: ScreenActions, useValue: new ScreenActions() },
+        { provide: ChangeBus, useValue: new ChangeBus() },
       ],
     });
     const fixture = TestBed.createComponent(ErrorLogPage);
     fixture.detectChanges();
-    return { fixture, drill: TestBed.inject(ErrorLogDrill), actions: TestBed.inject(ScreenActions) };
+    return {
+      fixture,
+      drill: TestBed.inject(ErrorLogDrill),
+      actions: TestBed.inject(ScreenActions),
+      bus: TestBed.inject(ChangeBus),
+    };
   }
 
   function emptyTitle(fixture: ComponentFixture<ErrorLogPage>): string {
@@ -604,5 +612,86 @@ describe('ErrorLogPage', () => {
     expect(drill.level()).toBe('list');
     expect(scopeText(fixture)).toBe('HSCUSTOM \u00b7 09/14/2026');
     expect(rowCells(fixture)).toEqual(rowsBefore);
+  });
+
+  it('AD-14: a confirmed delete re-reads the level in place, and another namespace\u2019s does not', async () => {
+    // The screen binds no `RefreshService`, so this is its own subscription rather than a refresh
+    // binding -- and it re-READS rather than removing a row, which is what AD-14 means by "screens
+    // re-fetch, never patch".
+    //
+    // Mutation (Rule 19): drop the `event.action !== 'deleted'` guard, or the namespace comparison
+    // in `applyDeleted` -> the other-namespace leg goes red, and every delete anywhere would
+    // re-read a drill standing somewhere else.
+    const api = new StubApi();
+    api.answer('list', { namespace: 'HSCUSTOM', date: '09/14/2026', rows: [], truncated: false });
+    const { fixture, drill, bus } = mount(api);
+    await drill.openDates('HSCUSTOM');
+    await drill.openList('09/14/2026');
+    fixture.detectChanges();
+    const before = api.paths.length;
+
+    // Another namespace's delete: the drill is inside HSCUSTOM and nothing about it moved.
+    expect(
+      bus.publish({
+        kind: 'changed',
+        type: 'application-error',
+        scope: 'instance',
+        id: 'USER',
+        action: 'deleted',
+      })
+    ).toBe(true);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(api.paths.length).toBe(before);
+
+    // This namespace's, published under the canonical lower-case id the instance records (AD-13).
+    expect(
+      bus.publish({
+        kind: 'changed',
+        type: 'application-error',
+        scope: 'instance',
+        id: 'hscustom',
+        action: 'deleted',
+      })
+    ).toBe(true);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(api.paths.length).toBe(before + 1);
+    expect(api.paths[api.paths.length - 1]).toBe(
+      '/api/ocupilot/logs/errors/list?namespace=HSCUSTOM&date=09%2F14%2F2026'
+    );
+    expect(drill.level()).toBe('list');
+  });
+
+  it('AD-14: the drill steps up when the level it is standing on has gone', async () => {
+    // A by-namespace delete leaves the namespace with no dates, so the level the user is on stops
+    // existing and the port answers its own refusal code for it. The drill walks back until it
+    // reaches one the instance still serves rather than showing an empty frame under a scope line
+    // that is no longer true.
+    //
+    // Mutation (Rule 19): drop the step-up loop from `applyDeleted` -> the level stays `list` and
+    // this goes red.
+    const api = new StubApi();
+    api.answer('list', { namespace: 'HSCUSTOM', date: '09/14/2026', rows: [], truncated: false });
+    const { fixture, drill, bus } = mount(api);
+    await drill.openDates('HSCUSTOM');
+    await drill.openList('09/14/2026');
+    fixture.detectChanges();
+
+    api.refuse('list', 404, 'LOG.DATE');
+    api.refuse('dates', 404, 'LOG.NAMESPACE');
+    api.answer('namespaces', { rows: [], truncated: false });
+    bus.publish({
+      kind: 'changed',
+      type: 'application-error',
+      scope: 'instance',
+      id: 'hscustom',
+      action: 'deleted',
+    });
+    for (let tick = 0; tick < 12; tick += 1) await Promise.resolve();
+    fixture.detectChanges();
+    expect(drill.level()).toBe('namespaces');
+    expect(scopeText(fixture)).toBe('');
   });
 });

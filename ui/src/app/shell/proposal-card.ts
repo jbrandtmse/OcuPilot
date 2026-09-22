@@ -17,6 +17,7 @@ import {
   formatCountdownCaption,
   formatUserName,
   isTerminalPhase,
+  formatRemovalResidue,
   offersRepropose,
   statusLineFor,
 } from '../core/proposal-view';
@@ -106,19 +107,38 @@ export interface ProposalConfirmRequest {
     </div>
 
     <div class="ocu-proposal-card-diff">
-      @for (row of changedRows; track row.field) {
-        <p class="ocu-diff-row">
-          <span class="ocu-diff-field">{{ row.field }}</span>
-          <span class="ocu-diff-before">
-            <span class="ocu-diff-direction">{{ STRINGS.proposalDiffWas }}</span>
-            <span class="ocu-diff-value">{{ shown(row.before) }}</span>
-          </span>
-          <span class="ocu-diff-arrow" aria-hidden="true">{{ arrowGlyph }}</span>
-          <span class="ocu-diff-after">
-            <span class="ocu-diff-direction">{{ STRINGS.proposalDiffNow }}</span>
-            <span class="ocu-diff-value">{{ shown(row.after) }}</span>
-          </span>
-        </p>
+      @for (row of changedRows; track $index) {
+        @if (row.removed === true) {
+          <p class="ocu-diff-row ocu-diff-row-removed">
+            <span class="ocu-diff-field">{{ row.field }}</span>
+            <span class="ocu-diff-before">
+              <span class="ocu-diff-value">{{ shown(row.before) }}</span>
+            </span>
+            <span class="ocu-diff-arrow" aria-hidden="true">{{ arrowGlyph }}</span>
+            <span class="ocu-diff-after">
+              <span class="ocu-diff-value" aria-hidden="true">{{
+                STRINGS.proposalDiffRemovedValue
+              }}</span>
+              <span class="ocu-diff-direction">{{ STRINGS.proposalDiffRemoved }}</span>
+            </span>
+          </p>
+        } @else {
+          <p class="ocu-diff-row">
+            <span class="ocu-diff-field">{{ row.field }}</span>
+            <span class="ocu-diff-before">
+              <span class="ocu-diff-direction">{{ STRINGS.proposalDiffWas }}</span>
+              <span class="ocu-diff-value">{{ shown(row.before) }}</span>
+            </span>
+            <span class="ocu-diff-arrow" aria-hidden="true">{{ arrowGlyph }}</span>
+            <span class="ocu-diff-after">
+              <span class="ocu-diff-direction">{{ STRINGS.proposalDiffNow }}</span>
+              <span class="ocu-diff-value">{{ shown(row.after) }}</span>
+            </span>
+          </p>
+        }
+      }
+      @if (residueVisible) {
+        <p class="ocu-proposal-card-residue">{{ residueCaption }}</p>
       }
       @if (discloses) {
       @if (disclosable) {
@@ -480,6 +500,27 @@ export class ProposalCard {
   /** A delete has no reversal, and the line is absent rather than empty when there is none. */
   protected get hasReverse(): boolean {
     return this.reverse !== '';
+  }
+
+  /** How many of this card's rows are removals, which is the `<n>` the residue sentence resolves. */
+  private get removedCount(): number {
+    return this.changedRows.filter((row) => row.removed === true).length;
+  }
+
+  /**
+   * Whether the card carries the residue sentence: exactly when it lists removal rows.
+   *
+   * AD-48 requires a delete proposal's card to say that errors logged after the proposal are not
+   * removed, and the sentence is only true of a card whose rows are the enumerated set. A write
+   * with an after-state has no residue to describe.
+   */
+  protected get residueVisible(): boolean {
+    return this.removedCount > 0;
+  }
+
+  /** The published residue sentence with its count resolved from the rows the card lists. */
+  protected get residueCaption(): string {
+    return formatRemovalResidue(STRINGS.proposalResidue, this.removedCount);
   }
 
   protected get maskedFields(): readonly string[] {

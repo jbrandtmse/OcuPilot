@@ -75,7 +75,15 @@ ClassMethod Projection(pPayload As %DynamicObject, pSubject As %List, Output pPr
                 Set tSC = $$$ERROR($$$GeneralError, "the fingerprint subject names '" _ tName _ "', which this read does not answer")
                 Quit
             }
-            Do tProjection.%Set(tName, pPayload.%Get(tName), tType)
+            ; A member that is an object or an array is set without a type hint: %Set refuses one
+            ; for those two types (<ILLEGAL VALUE>), and the value already carries its own. An
+            ; action write whose subject is a collection -- the application-error delete's
+            ; enumerated id set -- is the reachable case.
+            If (tType = "object") || (tType = "array") {
+                Do tProjection.%Set(tName, pPayload.%Get(tName))
+            } Else {
+                Do tProjection.%Set(tName, pPayload.%Get(tName), tType)
+            }
         }
         If $$$ISERR(tSC) Quit
         Set pProjection = tProjection

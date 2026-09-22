@@ -56,7 +56,7 @@ Parameter TYPEWEBAPPLICATION = "web-application";
 /// <parameter>OcuPilot.Kernel.EntityType.TYPES</parameter>, or a rule the generator cannot
 /// implement, fails <code>npm run build</code> rather than reaching the client as a silent
 /// no-op. A later write-tool story adds one pair here, never a branch in two languages.</p>
-Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integer";
+Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integer,application-error:foldcase";
 
 /// <p>The closed rule vocabulary <parameter>IDRULES</parameter> selects from. A rule named there
 /// and absent here is a declaration error, pinned by
@@ -66,9 +66,14 @@ Parameter IDRULENAMES = "foldcase-striptrailingslash,foldcase,singleton,integer"
 /// <p>The web-application rule: fold to lower case, then strip every trailing slash.</p>
 Parameter RULEFOLDCASESTRIPTRAILINGSLASH = "foldcase-striptrailingslash";
 
-/// <p>The user rule: fold to lower case, and nothing else. An account name is an IRIS identifier
-/// with no path grammar, so there is no slash to strip and a trailing one is part of no name the
-/// instance resolves.</p>
+/// <p>The user rule, and the application error log's. Fold to lower case, and nothing else. An
+/// account name is an IRIS identifier with no path grammar, so there is no slash to strip and a
+/// trailing one is part of no name the instance resolves.</p>
+/// <p>An <code>application-error</code> id is the namespace the drill reached, and
+/// <code>SYS.ApplicationError</code> resolves that name case-insensitively -- measured on the
+/// instance 2026-09-22, where <code>DateList</code> answered the same six rows for
+/// <code>HSCUSTOM</code>, <code>hscustom</code> and <code>HsCustom</code> -- so two spellings are
+/// one entity and AD-34's per-target lock has to cover both (AD-13).</p>
 Parameter RULEFOLDCASE = "foldcase";
 
 /// <p>The auditing-configuration rule: answer <parameter>RULESINGLETONID</parameter> whatever the

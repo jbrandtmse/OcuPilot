@@ -195,7 +195,8 @@ services:
       # principals on it. scripts/check-objectscript.py's destructive-test-guard rule holds the
       # population.
       # classes: AccountPasswordWire, AgentWireSecurity, AuditMarker, ConfigGate, CredentialPrivilege, DenialParity
-      # classes: Disabled, ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial, OAuthTabs
+      # classes: Disabled, ErrorDelete, ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial
+      # classes: OAuthTabs
       # classes: ProcessControl, ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token
       # classes: ToolSetFull
       # classes: ToolWire, TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire
@@ -204,7 +205,7 @@ services:
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
       # would leave it there.
-      # classes: ErrorLogSeed, ProviderSecret, ProviderStub, ProviderStubTransport
+      # classes: ErrorDelete, ErrorLogSeed, ProviderSecret, ProviderStub, ProviderStubTransport
       # classes: SecretLeak, SecretStoreProbe
       OCUPILOT_ALLOW_ERROR_SEED: "1"
       # Deletes OcuPilot's own audit event registrations to prove an unregistered triple drops
@@ -257,6 +258,14 @@ services:
       # that guard's home.
       # classes: TaskResume
       OCUPILOT_ALLOW_TASK_CONTROL: "1"
+      # Deletes REAL application errors from a namespace's own ^ERRORS through the shipped confirm
+      # path. One degree worse than OCUPILOT_ALLOW_ERROR_SEED above, which can only add: a deleted
+      # application error is gone, and the variable table it captured with it, so a runner pointed
+      # at an instance someone cares about would destroy the record of a fault nobody had read yet.
+      # The class seeds every error it removes and clears its own namespace on exit; it declares
+      # OCUPILOT_ALLOW_ERROR_SEED as well, because it seeds through that class's own guarded helper.
+      # classes: ErrorDelete
+      OCUPILOT_ALLOW_ERROR_DELETE: "1"
       # Arms the turnprobe provider row OcuPilot.Kernel.Provider.Catalog resolves only under it,
       # and with it the classes that spawn turn jobs against that row's scripted adapter. A turn
       # job is a separate process no in-process stub reaches, so the row is armed by the

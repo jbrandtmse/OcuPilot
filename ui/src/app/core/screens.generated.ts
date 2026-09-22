@@ -439,7 +439,8 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "user": "foldcase",
   "auditing-configuration": "singleton",
   "task": "integer",
-  "process": "integer"
+  "process": "integer",
+  "application-error": "foldcase"
 };
 
 /**

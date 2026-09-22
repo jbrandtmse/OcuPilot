@@ -240,7 +240,14 @@ export function parseSingletonId(text) {
  * on either difference, the way `checkedIdRules` throws on an id rule this generator cannot apply
  * (AD-5, AD-6).
  */
-export const IMPLEMENTED_DECLARED_NAME_KINDS = ['settable', 'path', 'criteria', 'read', 'credential'];
+export const IMPLEMENTED_DECLARED_NAME_KINDS = [
+  'settable',
+  'path',
+  'criteria',
+  'read',
+  'credential',
+  'toolRead',
+];
 
 /**
  * The projections `OcuPilot.Screen.Registry.DeclaredNames` declares it fills, from that class's
@@ -498,7 +505,14 @@ export function declaredNames(declaration, toolFields = {}) {
   for (const name of criteria) {
     if (!read.includes(name)) read.push(name);
   }
-  return { settable, path, criteria, read, credential };
+  // `toolRead` is a write tool's own `READANSWERS`, and this generator reads descriptors rather
+  // than tool classes -- so the projection is empty here. It is filled by the kernel's own caller,
+  // `OcuPilot.Screen.Registry.FingerprintSubjectProblem`, which holds the tool class; this
+  // generator validates the descriptor's two confirm-channel keys, and neither of those may name a
+  // field only a tool's read answers. It appears here so the roster the two sides fill is one set
+  // rather than two (DW-1475).
+  const toolRead = [];
+  return { settable, path, criteria, read, credential, toolRead };
 }
 
 /**

@@ -1442,7 +1442,55 @@ test('a confirm closes the AD-43 pause and then publishes the write, in that ord
   assert.equal(changed.type, 'web-application', "the proposal's own canonical triple, not a re-derived one");
   assert.equal(changed.scope, 'instance');
   assert.equal(changed.id, '/csp/myapp');
-  assert.equal(changed.action, 'updated', 'every shipped write tool is a PUT against an object that exists');
+  assert.equal(changed.action, 'updated', 'an answer that names no action reads as the default every merge write performs');
+});
+
+test("the published action is the instance's own, and an unknown word reads as the default (AD-14)", async () => {
+  // Story 5.13's application-error delete is the first write whose action is not `updated`, and
+  // the tool declares it (`OcuPilot.Screen.Tool.Write.CHANGEACTION`) rather than this client
+  // inferring it from the shape of the diff. A screen routes on the action -- a deleted row leaves
+  // -- so a client-authored guess is the one field that must not be guessed.
+  //
+  // Mutation (Rule 19): hard-code `action: 'updated'` in `confirmProposal` again -> the deleted leg
+  // goes red, and the error log's drill would never re-read after the delete it just confirmed.
+  for (const [answered, published] of [
+    ['deleted', 'deleted'],
+    ['created', 'created'],
+    ['removed', 'updated'],
+    ['', 'updated'],
+  ]) {
+    const bus = recordingBus();
+    const confirmBody = { proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:01:02Z' };
+    if (answered !== '') confirmBody.action = answered;
+    const api = fakeApi({
+      [conversationReadPath('c1')]: [
+        ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+      ],
+      [turnProgressPath('turn-1')]: [
+        ok({ state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null, proposals: [wireProposal()] }),
+      ],
+      [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+      [CONVERSATION_PATH]: [ok({ conversationId: 'c1' }, 201)],
+      [proposalConfirmPath('p1')]: [ok(confirmBody)],
+    });
+    const { schedule, scheduled } = fakeSchedule();
+    const turn = new TurnStore({
+      api,
+      storage: memoryStorage(),
+      navigationType: freshTab(),
+      schedule,
+      now: () => NOW_MS,
+      bus,
+    });
+    await turn.send('do it');
+    await settle();
+    scheduled.shift()?.run();
+    await settle();
+    await turn.confirmProposal('p1');
+    const event = bus.events.find((candidate) => candidate.kind === 'changed');
+    assert.ok(event, `a confirm answering ${JSON.stringify(answered)} publishes a change`);
+    assert.equal(event.action, published, `answered ${JSON.stringify(answered)}`);
+  }
 });
 
 test('a confirm the instance refused publishes no change, and neither does a cancel', async () => {

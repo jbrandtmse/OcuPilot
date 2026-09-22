@@ -160,7 +160,8 @@ Method TestAChangedRoleGrantIsRefused()
 /// list in the story that lands them -- <code>user</code> in Story 5.9
 /// (<class>OcuPilot.Test.UserUpdate</class>), <code>task</code> in Story 5.11
 /// (<class>OcuPilot.Test.TaskResume</class>), <code>process</code> in Story 5.12
-/// (<class>OcuPilot.Test.ProcessControl</class>).</p>
+/// (<class>OcuPilot.Test.ProcessControl</class>), <code>application-error</code> in Story 5.13
+/// (<class>OcuPilot.Test.ErrorDelete</class>).</p>
 /// <p>Mutation: answer <code>pProhibits = 0</code> in the uncovered arm of
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -- this goes red.</p>
 Method TestAnUncoveredEntityTypeIsRefusedWholesale()
@@ -177,7 +178,7 @@ Method TestAnUncoveredEntityTypeIsRefusedWholesale()
     Do $$$AssertStatusOK(tSC, "an unparseable reference is answered, not raised")
     Do $$$AssertEquals(tProhibits, 1, "and refused")
     Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "UNCOVERED"), "as uncovered")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process", "Release 1 covers exactly five entity types")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error", "Release 1 covers exactly six entity types")
 
     ; The refusal reaches a caller as a 403 with the set's own code, not as an error.
     Set tKey = ..Seed(..Payload(), "Description", "probe-id", "role")

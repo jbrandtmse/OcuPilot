@@ -2048,9 +2048,21 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// confirm succeed against a target somebody else had already moved, and an empty one would
 /// fingerprint nothing at all.</p>
 /// <p><b>The name check runs through <method>DeclaredNames</method></b>, the same extraction
-/// <method>ConfirmChannelProblem</method> validates <code>fingerprintExcludes</code> against.
-/// Validating two sibling declarations against two sets is DW-1206's defect, and one set is its
-/// fix.</p>
+/// <method>ConfirmChannelProblem</method> validates <code>fingerprintExcludes</code> against, given
+/// this tool's class so its <code>toolRead</code> projection carries the names the tool's own read
+/// answers. Validating two sibling declarations against two sets is DW-1206's defect, and one set
+/// is its fix.</p>
+/// <p>One further condition: a subject name the descriptor's <code>fingerprintExcludes</code> also
+/// names is refused, because <method>OcuPilot.Kernel.Proposal.Fingerprint.Of</method> projects
+/// before it excludes, so the digest would cover nothing.</p>
+/// <p><b>An action-style write that declares no subject at all is not refused here</b> (DW-1476,
+/// which stays open). Measured 2026-09-22: <code>Task.CRUD</code>'s <code>INFO</code> answers
+/// <code>Type, Status, Error, LastSchedule, LastStarted, LastFinished, NextScheduled,
+/// Suspended</code> and no <code>Id</code>, so
+/// <class>OcuPilot.Screen.Tool.TaskResume</class> cannot declare a subject carrying its own
+/// identity and no <code>Task.CRUD</code> request type answers that identity and
+/// <code>Suspended</code> together. Refusing here would make a shipped tool unregistrable, so the
+/// condition is raised rather than added.</p>
 ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
 {
     Set tProblem = ""
@@ -2099,11 +2111,21 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
         If tDeclaration.%GetTypeOf("toolIdentifier") = "string" Set tIdentifier = tDeclaration.%Get("toolIdentifier")
         Set tProblem = ..ToolFieldRows(tIdentifier, .tRows)
         If tProblem '= "" Quit
-        Do ..DeclaredNames(tDeclaration, .tRows, .tNames)
+        Do ..DeclaredNames(tDeclaration, .tRows, .tNames, pToolClass)
+        ; DW-1474. Fingerprint.Of projects the subject and then applies the exclusions, so a name
+        ; both keys carry is hashed out of the very set it is the whole of -- collapsing the digest
+        ; to the empty object and making every confirm match. The two keys relate in no other
+        ; condition, which is why the overlap is refused here by name.
+        Set tExcludes = ""
+        Do ..StringListProblem(tDeclaration, "fingerprintExcludes", .tExcludes)
         For tI = 1:1:$ListLength(tSubject) {
             Set tName = $List(tSubject, tI)
-            If '$ListFind(tNames("path"), tName) && '$ListFind(tNames("read"), tName) {
-                Set tProblem = "the declared fingerprint subject names '" _ tName _ "', which is neither a field of this screen's write tool nor one its read declares (AD-51)"
+            If $ListFind(tExcludes, tName) {
+                Set tProblem = "the declared fingerprint subject names '" _ tName _ "', which this screen's fingerprintExcludes also names -- the projection runs before the exclusion, so the digest would cover nothing (AD-6, AD-51)"
+                Quit
+            }
+            If '$ListFind(tNames("path"), tName) && '$ListFind(tNames("read"), tName) && '$ListFind(tNames("toolRead"), tName) {
+                Set tProblem = "the declared fingerprint subject names '" _ tName _ "', which is neither a field of this screen's write tool, nor one its read declares, nor one this tool's own READANSWERS declares (AD-51)"
                 Quit
             }
         }
@@ -2119,7 +2141,7 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
 /// cannot consume a projection this class does not fill, or miss one it does -- the discipline
 /// <parameter>OcuPilot.Kernel.EntityRef.IDRULENAMES</parameter> already follows for its own closed
 /// vocabulary. What each projection means is <method>DeclaredNames</method>'s doc comment.</p>
-Parameter DECLAREDNAMEKINDS = "settable,path,criteria,read,credential";
+Parameter DECLAREDNAMEKINDS = "settable,path,criteria,read,credential,toolRead";
 
 /// <p>The one set of names <var>pDeclaration</var>'s two confirm-channel keys are validated
 /// against (DW-1206), built once from its write tool's classified rows <var>pRows</var> and from
@@ -2140,6 +2162,11 @@ Parameter DECLAREDNAMEKINDS = "settable,path,criteria,read,credential";
 /// <li><code>credential</code> -- the rows the credential-name rule qualifies, which is
 /// <code>path</code> narrowed to a string placeholder (<file>ui/tools/field-lists.mjs</file>'s own
 /// qualification, so a boolean named <code>CSRFToken</code> is not a credential).</li>
+/// <li><code>toolRead</code> -- the names <var>pToolClass</var>'s own
+/// <parameter>OcuPilot.Screen.Tool.Write.READANSWERS</parameter> declares its
+/// <code>READTYPE</code> read answers, or empty where the caller names no tool class (DW-1475). A
+/// screen's declared read and its write tool's own read are not the same set, and a screen that
+/// declares no <code>read</code> at all knows no name a subject could carry.</li>
 /// </ul>
 /// <p><b>The two keys are checked in two spellings and that is not two sets.</b> One traversal
 /// answers both, because their consumers honour different spellings:
@@ -2149,7 +2176,7 @@ Parameter DECLAREDNAMEKINDS = "settable,path,criteria,read,credential";
 /// exists to close, in a new place.</p>
 /// <p>Read leniently: a malformed read contributes no names rather than a second refusal, because
 /// <method>ReadProblem</method> has already refused it by the time this runs.</p>
-ClassMethod DeclaredNames(pDeclaration As %DynamicObject, ByRef pRows, Output pNames) [ Private ]
+ClassMethod DeclaredNames(pDeclaration As %DynamicObject, ByRef pRows, Output pNames, pToolClass As %String = "") [ Private ]
 {
     Kill pNames
     Set pNames("settable") = ""
@@ -2157,6 +2184,7 @@ ClassMethod DeclaredNames(pDeclaration As %DynamicObject, ByRef pRows, Output pN
     Set pNames("credential") = ""
     Set pNames("criteria") = ..DeclaredCriterionParams(pDeclaration)
     Set pNames("read") = ..DeclaredReadFields(pDeclaration)
+    Set pNames("toolRead") = ..ToolReadAnswers(pToolClass)
     Try {
         Set tPath = ""
         For {
@@ -2182,6 +2210,23 @@ ClassMethod DeclaredNames(pDeclaration As %DynamicObject, ByRef pRows, Output pN
         ; ReadProblem has already refused a malformed declaration, so a partial set can only make
         ; this validator more permissive, never wrongly refusing a sound name.
     }
+}
+
+/// <p>The names <var>pToolClass</var> declares its own <code>READTYPE</code> read answers, as a
+/// <class>%List</class>, or <code>""</code> for no class and for one that cannot be asked.</p>
+/// <p>Read for <method>DeclaredNames</method> alone. A class that cannot be asked contributes no
+/// name, which refuses a subject rather than admitting one -- the fail-closed direction for a
+/// guard whose job is to refuse a name nothing answers.</p>
+ClassMethod ToolReadAnswers(pToolClass As %String) As %List [ Private ]
+{
+    Set tNames = ""
+    Try {
+        If pToolClass = "" Quit
+        Set tNames = $ClassMethod(pToolClass, "ReadAnswers")
+    } Catch {
+        Set tNames = ""
+    }
+    Quit tNames
 }
 
 /// <p>The field names <var>pDeclaration</var>'s read declares, as a <class>%List</class>: its

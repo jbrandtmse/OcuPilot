@@ -36,7 +36,7 @@
  */
 
 import type { ApiService, JsonResult } from './api';
-import type { ChangeBus } from './change-bus';
+import { CHANGE_ACTIONS, type ChangeAction, type ChangeBus } from './change-bus.ts';
 import type { ScreenContextPayload } from './screen-context';
 import type { NavigationKind, TokenStorage } from './token-store';
 
@@ -172,6 +172,12 @@ export interface TurnProposalDiffRow {
   readonly field: string;
   readonly before: string;
   readonly after: string;
+  /**
+   * Whether this row is a **removal**: the target's identifying field, its value, and no
+   * after-state (AD-48). The instance sets it on a delete proposal's rows; every other write's
+   * rows carry `false`, which is what a row with a real after-state means.
+   */
+  readonly removed: boolean;
 }
 
 /**
@@ -332,6 +338,19 @@ function boolAt(source: Record<string, unknown>, key: string): boolean {
   return source[key] === true;
 }
 
+/**
+ * AD-14's action for the write a confirm just made, as the instance reported it, or `updated` for
+ * an answer that names none or names a word outside the closed set.
+ *
+ * Refused-rather-than-passed for an unknown word, the discipline `ChangeBus.publish` already
+ * applies to the same field: a value outside the enum would make the bus drop the event silently
+ * and leave every screen showing that entity unrefreshed by the write the user just confirmed.
+ */
+function confirmedAction(body: Record<string, unknown>): ChangeAction {
+  const action = textAt(body, 'action');
+  return CHANGE_ACTIONS.includes(action as ChangeAction) ? (action as ChangeAction) : 'updated';
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : null;
 }
@@ -418,7 +437,12 @@ function parseProposalDiff(value: unknown): TurnProposalDiffRow[] {
   for (const raw of value) {
     const row = asRecord(raw);
     if (row === null) continue;
-    rows.push({ field: textAt(row, 'field'), before: textAt(row, 'before'), after: textAt(row, 'after') });
+    rows.push({
+      field: textAt(row, 'field'),
+      before: textAt(row, 'before'),
+      after: textAt(row, 'after'),
+      removed: boolAt(row, 'removed'),
+    });
   }
   return rows;
 }
@@ -1039,17 +1063,20 @@ export class TurnStore {
       this.recordProposalState(id, outcome);
       this.recordProposalRefusal(id, null);
       if (decision === 'confirm' && outcome.state === PROPOSAL_CONFIRMED_STATE && target !== null) {
-        // `updated` because every shipped write tool is a PUT against an object that already
-        // exists: `Confirm.WRITETYPE` is `"PUT"` and the fingerprint re-read requires the target
-        // to be readable now. The created and deleted branches are declared on the bus because
-        // AD-14 names them and a later story is their first producer, not because this path can
-        // reach them.
+        // The action is the **instance's**, declared by the tool that just wrote
+        // (`OcuPilot.Screen.Tool.Write.CHANGEACTION`) and carried on the confirm's own answer. A
+        // client inferring it from the shape of a diff would be authoring the one field a screen
+        // routes on, and AD-14's vocabulary is the kernel's closed set.
+        //
+        // `updated` remains the default for an answer that names none, which is every write that
+        // shipped before that declaration existed: a PUT against an object that already exists,
+        // which the fingerprint re-read requires to be readable now.
         this.bus?.publish({
           kind: 'changed',
           type: target.type,
           scope: target.scope,
           id: target.id,
-          action: 'updated',
+          action: confirmedAction(result.body),
         });
       }
       return outcome;

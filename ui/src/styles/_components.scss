@@ -4278,6 +4278,23 @@ app-data-table {
   color: var(--ocu-on-surface-variant);
 }
 
+// A removal row's after cell carries the published marker rather than a value, so it reads as the
+// absence it is (EXPERIENCE.md's diff-row rule, "A delete proposal has no after-state").
+.ocu-diff-row-removed .ocu-diff-after .ocu-diff-value {
+  color: var(--ocu-on-surface-variant);
+  font-style: italic;
+}
+
+// The residue sentence under a delete proposal's rows: a caption in the card's own quiet colour,
+// sitting with the rows it is about rather than in the warning slot, because it states what the
+// write does rather than warning against it.
+.ocu-proposal-card-residue {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
 // The masked-secret fields the user fills before Confirm (DESIGN.md `:1184` item 5).
 .ocu-proposal-card-secrets {
   display: flex;

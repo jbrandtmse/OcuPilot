@@ -232,6 +232,29 @@ function extractNewConversationLockedReason(markdown) {
   return [match[1]];
 }
 
+/**
+ * Story 5.13's two removal forms, from the `diff-row` Component Patterns row: `it shows the
+ * target's identifying fields as \`field \u00b7 value \u2192 (removed)\`, reads "<field>:
+ * <value>, removed"`.
+ *
+ * Two literals, because the row publishes two: the marker the after cell draws, and the direction
+ * word that replaces "was"/"now" so the row is spoken as the row says it reads. A targeted read
+ * rather than "every quoted span on that row", which would also drag in `"Reverse:"` -- already a
+ * Fixed strings literal, and the overlap test below would then fail rather than merely be
+ * generous.
+ */
+function extractRemovalForms(markdown) {
+  const match =
+    /identifying fields as `field [^`]*\((removed)\)`, reads "<field>: <value>, (removed)"/.exec(
+      markdown
+    );
+  assert.ok(
+    match,
+    "EXPERIENCE.md's diff-row row must publish the delete row's drawn and spoken removed forms"
+  );
+  return [`(${match[1]})`, match[2]];
+}
+
 const fixedStringsRows = extractFixedStringsTable(experienceMdRaw);
 const expectedLiterals = fixedStringsRows.flatMap((row) => row.literals);
 const expectedLandmarkNames = extractLandmarkNames(experienceMdRaw);
@@ -249,6 +272,7 @@ const [expectedToolCallDone, expectedToolCallMarked, expectedToolCallFailed] =
   extractToolCallCardStatuses(experienceMdRaw);
 const expectedComposerLockedReason = extractComposerLockedReason(experienceMdRaw);
 const expectedNewConversationLockedReason = extractNewConversationLockedReason(experienceMdRaw);
+const expectedRemovalForms = extractRemovalForms(experienceMdRaw);
 
 /**
  * The third category: literals EXPERIENCE.md states in prose rather than in the Fixed strings
@@ -270,6 +294,7 @@ const EXTRACTED_FROM_PROSE = [
   expectedToolCallFailed,
   ...expectedComposerLockedReason,
   ...expectedNewConversationLockedReason,
+  ...expectedRemovalForms,
 ];
 
 test('the three navigation landmarks are named in EXPERIENCE.md and reach the string source', () => {
@@ -336,6 +361,19 @@ test("Story 4.5's tool-call status words and the two locked-control reasons are 
   assert.ok(stringsValues.toolCallStatusFailed.includes('<reason>'));
   assert.equal(stringsValues.agentComposerLockedReason, expectedComposerLockedReason[0]);
   assert.equal(stringsValues.agentNewConversationLockedReason, expectedNewConversationLockedReason[0]);
+});
+
+test("Story 5.13's two removal forms are EXPERIENCE.md's own, and the residue sentence is the table's", () => {
+  assert.equal(stringsValues.proposalDiffRemovedValue, expectedRemovalForms[0]);
+  assert.equal(stringsValues.proposalDiffRemoved, expectedRemovalForms[1]);
+  // The drawn marker is the spoken word in parentheses, which is what lets the card render one
+  // `aria-hidden` and the other visually hidden without publishing a third spelling.
+  assert.equal(expectedRemovalForms[0], `(${expectedRemovalForms[1]})`);
+  assert.ok(
+    expectedLiterals.includes(stringsValues.proposalResidue),
+    "the residue sentence is the Fixed strings table's own"
+  );
+  assert.ok(stringsValues.proposalResidue.includes('<n>'), 'and keeps its count placeholder');
 });
 
 test("the connectivity banners' sentences and actions are EXPERIENCE.md's own, from the rows that publish them", () => {

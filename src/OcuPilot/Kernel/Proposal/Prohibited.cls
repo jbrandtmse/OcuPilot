@@ -93,10 +93,14 @@ Parameter UNCOVEREDFIELD = "PROHIBITED.UNCOVEREDFIELD";
 /// and it is what keeps a later story's write tool from shipping without its predicates.</p>
 Parameter UNCOVERED = "PROHIBITED.UNCOVERED";
 
+/// <p>The class a write tool's port declaration lives on, whose own value is the default every
+/// shipped tool carries (AD-52).</p>
+Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
+
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -108,6 +112,8 @@ Parameter TYPEAUDITING = "auditing-configuration";
 Parameter TYPETASK = "task";
 
 Parameter TYPEPROCESS = "process";
+
+Parameter TYPEAPPLICATIONERROR = "application-error";
 
 /// <p>The instance's own predefined account, whose disablement AD-10 forbids. Compared through
 /// <method>NormalizedUser</method>, so every spelling the instance resolves to it is refused.</p>
@@ -214,6 +220,8 @@ ClassMethod CoveredTypes() As %List
 /// <p>A task's is <b>none</b>. Its one write is the bodyless resume (AD-51), which sets no field
 /// at all, so every changed field a <code>task</code> proposal could carry is one nobody has
 /// reviewed. AD-10's Release 1 set names no task effect, and this story invents none.</p>
+/// <p>An application error's is <b>none</b>, for the same reason: its one write is the bodyless
+/// by-namespace delete (AD-48), whose card rows are removals rather than field changes.</p>
 /// <p>The auditing configuration's one is <code>Enabled</code>, and it carries <b>no</b> asymmetric
 /// predicate: AD-10 does not forbid turning auditing off, and the product's answer to it is the
 /// card's warning, the recorded drop and the banner rather than a refusal (AD-15 as amended
@@ -245,11 +253,28 @@ ClassMethod AlwaysProhibitedFields(pType As %String) As %List
     Quit ""
 }
 
-/// <p>The port the target is read through. Overridable so a fixture can answer a known object;
-/// production never overrides it.</p>
+/// <p>The port the target is read through when the proposal's tool declares the base's own default
+/// (AD-52). Overridable so a fixture can answer a known object; production never overrides it.</p>
 ClassMethod PortClass() As %String
 {
     Quit "OcuPilot.Port.AdminPort"
+}
+
+/// <p>The port <var>pToolClass</var> declares its target lives behind (AD-52), or
+/// <method>PortClass</method> where it declares the base's own default, names no class, or cannot
+/// be asked.</p>
+/// <p>The set reads the target through the same port the write will reach it through, so its
+/// verdict is about the object the write is about.</p>
+ClassMethod PortClassOf(pToolClass As %String) As %String [ Private ]
+{
+    Set tPort = ""
+    Try {
+        If pToolClass '= "" Set tPort = $ClassMethod(pToolClass, "PortClass")
+    } Catch {
+        Set tPort = ""
+    }
+    If (tPort = "") || (tPort = $Parameter(..#WRITETOOLBASE, "PORTCLASS")) Quit ..PortClass()
+    Quit tPort
 }
 
 /// <p>The tool registry the target's endpoint and identifying parameter are resolved through, and
@@ -283,7 +308,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -304,7 +329,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         If 'tPresent Quit
 
         Set tPayloadObject = ..ParsedObject(pPayload)
-        Set tSC = ..Changed(pDiff, tPayloadObject, tTarget, ..StateFieldOf($Get(tToolClass)), .tChanged)
+        Set tSC = ..Changed(pDiff, tPayloadObject, tTarget, ..SkippedFields($Get(tToolClass)), .tChanged)
         If $$$ISERR(tSC) Quit
 
         If tType = ..#TYPEUSER {
@@ -321,6 +346,10 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         If tType = ..#TYPEPROCESS {
             Set tSC = ..Process(tTarget, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPEAPPLICATIONERROR {
+            Set tSC = ..ApplicationError(.tChanged, .pProhibits, .pCode)
             Quit
         }
         Set tSC = ..WebApplication(tPayloadObject, tTarget, tServes, .tChanged, .pProhibits, .pCode)
@@ -524,6 +553,23 @@ ClassMethod Auditing(ByRef pChanged, Output pProhibits As %Boolean, Output pCode
 ClassMethod Task(ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
 {
     Quit ..ReviewedFewOnly(..#TYPETASK, .pChanged, .pProhibits, .pCode)
+}
+
+/// <p>The application-error predicates: the reviewed-few sweep over an empty permitted list, and
+/// nothing else.</p>
+/// <p>AD-10's Release 1 set names no application-error effect. The one write over this type is the
+/// bodyless by-namespace delete (AD-48, AD-51), which sets no field at all, so every changed field
+/// a proposal against it could carry is one nobody has reviewed and is refused
+/// <parameter>UNCOVEREDFIELD</parameter>. Its card's removal rows are not changed fields:
+/// <method>Changed</method> skips the names the tool's declared fingerprint subject covers, which
+/// is the set whose movement the fingerprint adjudicates (AD-51).</p>
+/// <p><b>The delete is not prohibited by a predicate here, and that is the design.</b> What bounds
+/// it is the per-namespace gate the port resolves at call time (AD-29, AD-48), the enumerated id
+/// set the confirm removes exactly, and the confirmation itself -- none of which is an effect this
+/// AD forbids.</p>
+ClassMethod ApplicationError(ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Quit ..ReviewedFewOnly(..#TYPEAPPLICATIONERROR, .pChanged, .pProhibits, .pCode)
 }
 
 /// <p>The process predicates, in declared order, first hit wins: a process the confirming user
@@ -967,15 +1013,18 @@ ClassMethod HoldsAll(pUser As %String, Output pHolds As %Boolean) As %Status
 /// set, which also closes the row, rather than 403 for a change nobody proposed. The live
 /// comparison is what makes a verdict an effect rather than a match on a stored field (AD-10): a
 /// field the diff names whose value the instance already holds changes nothing.</p>
-/// <p><var>pStateField</var> is the tool's declared state-row label, or <code>""</code> for a
-/// write that sends a body, and a row naming it is skipped. An action-style write's row names the
-/// state its action moves rather than a payload field (AD-51), and a label may spell a property
+/// <p><var>pSkipped</var> is what this tool's own declarations put outside the sweep
+/// (<method>SkippedFields</method>), and a row naming any of it is skipped.</p>
+/// <p>It holds two things, for one reason. The <b>state-row label</b> names the state an
+/// action-style write moves rather than a payload field (AD-51), and a label may spell a property
 /// the endpoint also answers for its own reasons -- a resume's row is labelled <code>Status</code>
-/// while <code>Task.CRUD</code>'s <code>Status</code> is the last run's result. Reading the label
-/// as a field would compare that unrelated property's live value and refuse
-/// <parameter>UNCOVEREDFIELD</parameter> a change nobody proposed, ahead of the fingerprint gate
-/// that owns the moved-target answer.</p>
-ClassMethod Changed(pDiff As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, pStateField As %String, Output pChanged) As %Status [ Private ]
+/// while <code>Task.CRUD</code>'s <code>Status</code> is the last run's result. The <b>declared
+/// fingerprint subject</b> is by construction the set whose movement the fingerprint adjudicates,
+/// so re-adjudicating it here would answer a moved target 403
+/// <parameter>UNCOVEREDFIELD</parameter> with the proposal row left live, where AD-6 requires 409
+/// <code>PROPOSAL.TARGETCHANGED</code> with it closed. Both are the same defect: a row this sweep
+/// must not read as a payload field.</p>
+ClassMethod Changed(pDiff As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, pSkipped As %List, Output pChanged) As %Status [ Private ]
 {
     Kill pChanged
     Set pChanged = 0
@@ -987,7 +1036,7 @@ ClassMethod Changed(pDiff As %String, pPayload As %DynamicObject, pTarget As %Dy
             If '$IsObject(tRow) Continue
             Set tField = tRow.%Get("field")
             If tField = "" Continue
-            If (pStateField '= "") && (tField = pStateField) Continue
+            If $ListFind(pSkipped, tField) Continue
             If $Data(pChanged(tField)) Continue
             If ..Rendered(pPayload, tField) = ..Rendered(pTarget, tField) Continue
             Set pChanged(tField) = ""
@@ -1032,7 +1081,7 @@ ClassMethod Target(pToolName As %String, pId As %String, Output pTarget As %Dyna
         }
         Kill tQuery
         Set tQuery(tIdParam) = pId
-        Set tReadSC = $ClassMethod(..PortClass(), "Invoke", tEndpoint, ..ReadTypeOf(tClass), .tQuery, "", .tFresh, .tHttp, .tFault)
+        Set tReadSC = $ClassMethod(..PortClassOf(tClass), "Invoke", tEndpoint, ..ReadTypeOf(tClass), .tQuery, "", .tFresh, .tHttp, .tFault)
         If $$$ISERR(tReadSC) {
             If +$Get(tHttp) = 404 Quit
             Set tSC = tReadSC
@@ -1080,6 +1129,30 @@ ClassMethod StateFieldOf(pToolClass As %String) As %String [ Private ]
         Set tField = ""
     }
     Quit tField
+}
+
+/// <p>The diff-row names <method>Changed</method> leaves outside its sweep for
+/// <var>pToolClass</var>: its declared state-row label and every name its declared fingerprint
+/// subject covers (AD-51). Empty for a merge write and for a class that cannot be asked, which is
+/// the answer that leaves every diff row read.</p>
+ClassMethod SkippedFields(pToolClass As %String) As %List
+{
+    Set tSkipped = ""
+    Set tField = ..StateFieldOf(pToolClass)
+    If tField '= "" Set tSkipped = $ListBuild(tField)
+    Try {
+        If pToolClass = "" Quit
+        Set tSubject = $ClassMethod(pToolClass, "FingerprintSubject")
+        For tI = 1:1:$ListLength(tSubject) {
+            Set tName = $List(tSubject, tI)
+            If (tName = "") || $ListFind(tSkipped, tName) Continue
+            Set tSkipped = tSkipped _ $ListBuild(tName)
+        }
+    } Catch {
+        ; Deliberately empty: the state field collected above is kept, and a class that cannot be
+        ; asked narrows nothing further.
+    }
+    Quit tSkipped
 }
 
 /// <p>Whether the web application at <var>pPath</var> is one OcuPilot is served by, in

@@ -22,7 +22,8 @@
 /// and sends no body (AD-51): <parameter>READTYPE</parameter>, <parameter>WRITETYPE</parameter>,
 /// <parameter>SENDSBODY</parameter>, <method>StateDiff</method> and the fingerprint subject
 /// <parameter>FINGERPRINTSUBJECT</parameter> names, which are the merge write's own behavior by
-/// default.</p>
+/// default. Every write also declares the <b>port</b> it reaches its target through
+/// (<parameter>PORTCLASS</parameter>, AD-52), which defaults to the admin port.</p>
 Class OcuPilot.Screen.Tool.Write Extends OcuPilot.Screen.Tool.Base [ Abstract ]
 {
 
@@ -81,15 +82,15 @@ Parameter STATEFIELD = "";
 /// read refuses every confirm whose target moved a counter -- hardest for exactly the targets such
 /// an action exists to act on. The subject is what the user reviewed: this target, in this state.</p>
 /// <p><b>Adequacy is structural.</b> A declared subject carries the scoped target identity
-/// (<method>IdArgument</method>) and <parameter>PRECONDITIONFIELD</parameter>, and every name in it
-/// is one <b>this screen's own declaration</b> knows -- a field of its write tool or one its
-/// declared read names; <method>OcuPilot.Screen.Registry.FingerprintSubjectProblem</method> refuses
-/// anything else at registration, through the extraction that validates
-/// <code>fingerprintExcludes</code>.</p>
-/// <p>That set is <b>not</b> the key set of this tool's own <parameter>READTYPE</parameter> read.
-/// Where a screen's list and the endpoint's single-object read spell a field differently, a name
-/// the screen declares under the list's spelling passes registration and is refused at the mint
-/// instead, by <method>OcuPilot.Kernel.Proposal.Fingerprint.Projection</method>.</p>
+/// (<method>IdArgument</method>) and <parameter>PRECONDITIONFIELD</parameter>, names nothing the
+/// descriptor's <code>fingerprintExcludes</code> also names, and every name in it is one the
+/// screen's own declaration knows <b>or</b> one <parameter>READANSWERS</parameter> declares;
+/// <method>OcuPilot.Screen.Registry.FingerprintSubjectProblem</method> refuses anything else at
+/// registration, through the extraction that validates <code>fingerprintExcludes</code>.</p>
+/// <p>A screen's declared read and this tool's own <parameter>READTYPE</parameter> read are not the
+/// same set: where a list and a single-object read spell a field differently, the name the mint
+/// projects is the tool read's, so a tool whose two sets differ declares its own through
+/// <parameter>READANSWERS</parameter> rather than relying on the screen's spelling.</p>
 Parameter FINGERPRINTSUBJECT = "";
 
 /// <p>The read field this tool's own precondition reads -- the field whose movement between the
@@ -99,6 +100,38 @@ Parameter FINGERPRINTSUBJECT = "";
 /// subject of the identity alone would let a confirm succeed against a target somebody else had
 /// already moved into the state the action was going to move it to (AD-51).</p>
 Parameter PRECONDITIONFIELD = "";
+
+/// <p>The port this tool reaches its target through (AD-52). <code>OcuPilot.Port.AdminPort</code>
+/// here, which is every write whose target is an admin API endpoint; a tool whose target lives
+/// behind another port names it.</p>
+/// <p><b>The declaration is the tool's, because the port is a property of the target rather than of
+/// the screen.</b> The mint's fresh read, the confirm's fingerprint re-read, the prohibited set's
+/// live read and the write itself all resolve through this one declaration, and nothing else about
+/// the write path changes -- a port is where the target lives, never a lighter path to it.</p>
+Parameter PORTCLASS = "OcuPilot.Port.AdminPort";
+
+/// <p>The AD-14 action a confirmed write of this tool performs, which the change event carries and
+/// a screen showing the entity type decides what to do with. <code>updated</code> here, which every
+/// write against an object that already exists performs -- the fingerprint re-read requires the
+/// target to be readable now, so no shipped tool can be a create.</p>
+/// <p><b>It is the tool's declaration, not the client's inference.</b> The action vocabulary is the
+/// kernel's closed set (AD-14), and a client deriving "this looked like a delete" from the shape of
+/// a diff would be authoring the one field a screen routes on. A tool whose write removes its
+/// target declares <code>deleted</code>.</p>
+Parameter CHANGEACTION = "updated";
+
+/// <p>The top-level names this tool's own <parameter>READTYPE</parameter> read answers,
+/// comma-separated, or <code>""</code> where the screen's declared read is the whole record of
+/// them.</p>
+/// <p><b>It exists because a screen's declared read and a tool's own read are not the same set</b>
+/// (DW-1475). The registration guard over <parameter>FINGERPRINTSUBJECT</parameter> checks every
+/// declared name against what the screen knows, and a screen that declares no <code>read</code> at
+/// all -- a drill-down whose levels are three column sets -- knows nothing, so every name its write
+/// tool could declare would be refused at registration. Declaring the read's own names here gives
+/// that guard something real to validate against, through the one extraction
+/// <method>OcuPilot.Screen.Registry.DeclaredNames</method> already answers
+/// <code>fingerprintExcludes</code> with.</p>
+Parameter READANSWERS = "";
 
 /// <p>This tool's own class, which <method>View</method> hands the mint so
 /// <method>ReadType</method>, <method>SendsBody</method> and <method>StateDiff</method> are read
@@ -124,6 +157,52 @@ ClassMethod ReadType() As %String
 ClassMethod WriteType() As %String
 {
     Quit ..#WRITETYPE
+}
+
+/// <p><parameter>PORTCLASS</parameter> (AD-52), read by the mint, the confirm and the prohibited
+/// set, each of which resolves a tool by name and holds only its class.</p>
+ClassMethod PortClass() As %String
+{
+    Quit ..#PORTCLASS
+}
+
+/// <p><parameter>CHANGEACTION</parameter>, read by the confirm, which resolves a tool by name and
+/// holds only its class (AD-14).</p>
+ClassMethod ChangeAction() As %String
+{
+    Quit ..#CHANGEACTION
+}
+
+/// <p><parameter>READANSWERS</parameter> as a <class>%List</class>, for the registration guard.</p>
+ClassMethod ReadAnswers() As %List
+{
+    Set tNames = ""
+    For tI = 1:1:$Length(..#READANSWERS, ",") {
+        Set tName = $ZStrip($Piece(..#READANSWERS, ",", tI), "<>W")
+        If (tName '= "") && '$ListFind(tNames, tName) Set tNames = tNames _ $ListBuild(tName)
+    }
+    Quit tNames
+}
+
+/// <p>Add to <var>pQuery</var> whatever this tool's port needs beyond the identifying parameter,
+/// given the <b>stored</b> payload <var>pPayload</var> the proposal was fingerprinted over.</p>
+/// <p><b>Caller contract:</b> <class>OcuPilot.Kernel.Proposal.Confirm</class> calls it twice, both
+/// inside the transition -- once before the fingerprint re-read and once before the write -- after
+/// the identifying parameter is set and before the port is invoked. It reads nothing but
+/// <var>pPayload</var>, writes nothing, and never replaces the identifying entry.</p>
+/// <p>Empty here, so every write that ships against an admin endpoint is unchanged: the vendor
+/// identifies a target by one query parameter, and both calls pass the same query the mint used.</p>
+/// <p><b>A tool whose port addresses a set rather than an object names that set here</b> -- the
+/// application-error delete, whose subject is the enumerated id set the user reviewed. Both calls
+/// matter and they do different work. On the <b>write</b> it is what makes the confirm remove
+/// exactly those ids rather than re-running its own selection. On the <b>re-read</b> it is what
+/// makes the digest a question about the reviewed set alone: the port answers which of those ids
+/// still exist, so an id another party removed changes the digest while one logged after the
+/// proposal -- which is in no stored set -- does not. Without it the re-read would enumerate afresh
+/// and every error the instance logged in the window would refuse the confirm, which is AD-48's
+/// residue clause read backwards (AD-48, AD-52).</p>
+ClassMethod PortQuery(pPayload As %DynamicObject, ByRef pQuery)
+{
 }
 
 /// <p><parameter>SENDSBODY</parameter> as a boolean.</p>

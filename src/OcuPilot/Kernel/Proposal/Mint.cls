@@ -15,7 +15,9 @@
 /// published schema that carries a property this instance's GET does not cannot add one, and a
 /// property the read returned and the arguments did not name travels unchanged.</p>
 /// <p>Seams a subclass overrides: <method>PortClass</method>, <method>StoreClass</method> and
-/// <method>RegistryClass</method>. Production overrides none of them.</p>
+/// <method>RegistryClass</method>. Production overrides none of them. Which port a given read goes
+/// through is the tool's own declaration (AD-52, <method>PortClassOf</method>); this seam is the
+/// default it resolves to.</p>
 Class OcuPilot.Kernel.Proposal.Mint Extends %RegisteredObject
 {
 
@@ -38,11 +40,34 @@ Parameter AUDITINGFIELD = "Enabled";
 /// ask two different questions.</p>
 Parameter TYPEBOOLEAN = "boolean";
 
-/// <p>The port the fresh read goes through. Overridable so a fixture can answer a known object;
-/// production never overrides it.</p>
+/// <p>The class a write tool's port declaration lives on, whose own value is the default every
+/// shipped tool carries (AD-52).</p>
+Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
+
+/// <p>The port the fresh read goes through when the call names no tool class, and the default a
+/// tool that declares none resolves to (AD-52). Overridable so a fixture can answer a known
+/// object; production never overrides it.</p>
 ClassMethod PortClass() As %String
 {
     Quit "OcuPilot.Port.AdminPort"
+}
+
+/// <p>The port <var>pToolClass</var> declares its target lives behind (AD-52), or
+/// <method>PortClass</method> where it declares the base's own default, names no class, or cannot
+/// be asked.</p>
+/// <p><b>A tool that declares the default resolves to <method>PortClass</method>, not to the
+/// literal</b>, which is what keeps every fixture that overrides that seam answering for the read
+/// it arms. A tool whose target lives behind another port is the only call that leaves the seam.</p>
+ClassMethod PortClassOf(pToolClass As %String) As %String
+{
+    Set tPort = ""
+    Try {
+        If pToolClass '= "" Set tPort = $ClassMethod(pToolClass, "PortClass")
+    } Catch {
+        Set tPort = ""
+    }
+    If (tPort = "") || (tPort = $Parameter(..#WRITETOOLBASE, "PORTCLASS")) Quit ..PortClass()
+    Quit tPort
 }
 
 /// <p>The store a minted proposal is written to. Overridable for the same reason; production never
@@ -115,7 +140,7 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
 
         Kill tQuery
         Set tQuery(pIdParam) = pIdValue
-        Set tReadSC = $ClassMethod(..PortClass(), "Invoke", tEndpoint, ..ReadTypeOf(pToolClass), .tQuery, "", .tFresh, .tReadHttp, .tReadFault)
+        Set tReadSC = $ClassMethod(..PortClassOf(pToolClass), "Invoke", tEndpoint, ..ReadTypeOf(pToolClass), .tQuery, "", .tFresh, .tReadHttp, .tReadFault)
         If $$$ISERR(tReadSC) {
             If +$Get(tReadHttp) = 404 {
                 Set tSC = ..Refuse("'" _ pIdValue _ "' is not present on this instance", .pHttpStatus, .pFault)
@@ -170,7 +195,11 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         ; subject alone, and the stored payload is narrowed to it: nothing is sent, so the rest of
         ; the fresh read has no consumer, and a process's variable table is not a payload to keep
         ; (AD-35).
-        Set tSubject = ..FingerprintSubjectOf(pToolClass)
+        Set tSubject = ..FingerprintSubjectOf(pToolClass, .tSubjectProblem)
+        If tSubjectProblem '= "" {
+            Set tSC = ..Internal(tSubjectProblem, .pHttpStatus, .pFault)
+            Quit
+        }
         If tSubject '= "" {
             Set tProjectSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Projection(tPayload, tSubject, .tPayload)
             If $$$ISERR(tProjectSC) {
@@ -420,13 +449,19 @@ ClassMethod ReadTypeOf(pToolClass As %String) As %String
 /// <p>The fingerprint subject <var>pToolClass</var> declares (AD-51), or <code>""</code> when the
 /// call named no tool class or the class declares none -- which is the descriptor's exclusions
 /// over the whole payload, every merge write's own behavior.</p>
-ClassMethod FingerprintSubjectOf(pToolClass As %String) As %List
+/// <p><b>A class that cannot be asked is <var>pProblem</var>, never an empty subject</b> (DW-1476).
+/// An empty answer is a real declaration -- a merge write's -- so returning it for a class that
+/// raised would silently fingerprint an action write's whole live read, which is the digest AD-51's
+/// amendment exists to remove. The caller refuses instead.</p>
+ClassMethod FingerprintSubjectOf(pToolClass As %String, Output pProblem As %String) As %List
 {
+    Set pProblem = ""
     Set tSubject = ""
     Try {
         If pToolClass '= "" Set tSubject = $ClassMethod(pToolClass, "FingerprintSubject")
-    } Catch {
+    } Catch ex {
         Set tSubject = ""
+        Set pProblem = "the fingerprint subject of '" _ pToolClass _ "' could not be read: " _ ex.DisplayString()
     }
     Quit tSubject
 }

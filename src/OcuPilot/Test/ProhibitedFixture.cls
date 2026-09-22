@@ -173,7 +173,17 @@ ClassMethod Digest(pFresh As %String, pTool As %String = {..#TOOL}) As %String
         Set tExcludes = ""
         Set tDescriptor = $Parameter(tClass, "DESCRIPTORCLASS")
         If tDescriptor '= "" Set tExcludes = $ClassMethod(tDescriptor, "FingerprintExcludes")
-        Set tSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(tPayload, tExcludes, .tDigest)
+        ; AD-51 as amended: an action-style write's digest covers the subject its tool declares,
+        ; and the mint narrows the stored payload to it before hashing. Both halves, in the order
+        ; Confirm.FingerprintMatches runs them, so a seeded action-style proposal carries a digest
+        ; a confirm can match (DW-1470).
+        Set tSubject = ##class(OcuPilot.Kernel.Proposal.Mint).FingerprintSubjectOf(tClass, .tSubjectProblem)
+        If tSubjectProblem '= "" Quit
+        If tSubject '= "" {
+            Set tSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Projection(tPayload, tSubject, .tPayload)
+            If $$$ISERR(tSC) Quit
+        }
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(tPayload, tExcludes, .tDigest, tSubject)
         If $$$ISERR(tSC) Set tDigest = ""
     } Catch {
         Set tDigest = ""

@@ -48,6 +48,10 @@ Parameter PROCRESUMETOOLCLASS = "OcuPilot.Screen.Tool.ProcessResume";
 
 Parameter WRITEBASE = "OcuPilot.Screen.Tool.Write";
 
+Parameter ERRORDELETETOOL = "logs.applicationerrors.delete";
+
+Parameter ERRORDELETETOOLCLASS = "OcuPilot.Screen.Tool.ErrorDelete";
+
 Parameter REGISTRY = "OcuPilot.Screen.Tool.Registry";
 
 Parameter PROBE = "OcuPilot.Test.ToolDispatchProbe";
@@ -556,6 +560,75 @@ Method TestTheProcessResumeToolIsAnActionWriteOverTheScreensOwnPairs()
     Do ..AssertActionWrite(..#PROCRESUMETOOL, ..#PROCRESUMETOOLCLASS, "RESUME", 0)
 }
 
+/// <p>AD-48, AD-51, AD-52: the application-error delete is an action-style write whose port is not
+/// the admin port, whose fingerprint subject is the enumerated id set, and whose pair set is the
+/// screen's own two pairs -- the per-namespace half is resolved by the port at call time and cannot
+/// be declared on a descriptor at all.</p>
+/// <p>Mutation (Rule 19): change <parameter>OcuPilot.Screen.Tool.ErrorDelete.PORTCLASS</parameter>
+/// to the admin port -- the port assertion goes red here, and every mint of this tool then asks the
+/// admin API for an endpoint it does not serve.</p>
+Method TestTheErrorDeleteToolIsAnActionWriteOverItsOwnPort()
+{
+    Set tClass = ..#ERRORDELETETOOLCLASS
+    Set tSC = $ClassMethod(..#REGISTRY, "Resolve", ..#ERRORDELETETOOL, .tTool)
+    Do $$$AssertStatusOK(tSC, "the registry resolves the delete tool by name")
+    Do $$$AssertTrue($IsObject(tTool), "and finds it")
+    If '$IsObject(tTool) Quit
+    Do $$$AssertEquals(tTool.%Get("kind"), "write", "it is a write tool")
+    Do $$$AssertEquals(tTool.%Get("class"), tClass, "answered by its own class")
+    Do $$$AssertEquals($ClassMethod(..#REGISTRY, "FulfilmentOf", tTool), "instance", "fulfilled on the instance, never in the browser")
+
+    Do $$$AssertEquals($ClassMethod(tClass, "PortClass"), "OcuPilot.Port.LogSourcePort", "its target lives behind the log port, not the admin port")
+    Do $$$AssertEquals($Parameter("OcuPilot.Screen.Tool.Write", "PORTCLASS"), "OcuPilot.Port.AdminPort", "which is not the base's default, so the declaration is doing work")
+    Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Tool.TaskResume", "PortClass"), "OcuPilot.Port.AdminPort", "and every admin-backed write still resolves to the default")
+    Do $$$AssertEquals($ClassMethod(tClass, "Endpoint"), $Parameter("OcuPilot.Port.LogSourcePort", "ENDPOINTERRORS"), "over that port's own endpoint name")
+    Do $$$AssertEquals($ClassMethod(tClass, "ReadType"), "ENUMERATE", "its fresh read is the port's id enumeration")
+    Do $$$AssertEquals($ClassMethod(tClass, "WriteType"), "DELETE", "and its write removes exactly those ids")
+    Do $$$AssertEquals($ClassMethod(tClass, "SendsBody"), 0, "it sends no body")
+    Do $$$AssertEquals($ClassMethod(tClass, "Destructive"), 1, "and it is destructive: nothing proposes a deleted error back")
+    Do $$$AssertEquals($ClassMethod(tClass, "IdArgument"), "namespace", "identified by the namespace the user drilled to")
+    Do $$$AssertEquals($ClassMethod(tClass, "IdParam"), "namespace", "which is the port's own query parameter")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "SettableFields")), 0, "it admits no settable field at all")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "FingerprintSubject")), "namespace,entries", "its fingerprint covers the target identity and the enumerated id set")
+    Do $$$AssertEquals($ClassMethod(tClass, "PreconditionField"), "entries", "which is the field its own precondition reads")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).FingerprintSubjectProblem(tClass), "", "and the registration guard holds that subject adequate")
+    ; DW-1475: the screen declares no read at all, so the guard has nothing of the screen's to
+    ; validate these names against and the tool's own READANSWERS is what it reads.
+    Do $$$AssertTrue('$IsObject($ClassMethod($Parameter(tClass, "DESCRIPTORCLASS"), "Read")), "the screen declares no read, which is what makes READANSWERS load-bearing")
+    Do $$$AssertTrue($ListFind($ClassMethod(tClass, "ReadAnswers"), "entries") > 0, "and the tool declares the names its own read answers")
+
+    Set tPairs = $ClassMethod(tClass, "PrivilegePairs", "", .tResolved)
+    Do $$$AssertEquals(tResolved, 1, "its pairs resolve")
+    Set tDeclared = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tClass, "DESCRIPTORCLASS"), .tDeclaredResolved)
+    Do $$$AssertEquals(tDeclaredResolved, 1, "the screen's own declared set resolves")
+    Do $$$AssertEquals(tPairs, tDeclared, "and the write's set is that set, not a superset of it")
+    For tI = 1:1:$ListLength(tPairs) {
+        Set tResource = $List($List(tPairs, tI), 1)
+        If $ListFind($ListFromString($Parameter("OcuPilot.Screen.Gate", "ADMINRESOURCES")), tResource) {
+            Do $$$AssertEquals($List($List(tPairs, tI), 2), $Parameter("OcuPilot.Screen.Gate", "ADMINPERMISSION"), tResource _ " is required at the one permission a shipped role grants it at")
+        }
+    }
+    ; The per-namespace half: read AND write on the resource guarding that namespace's globals
+    ; database, resolved at call time because ^ERRORS is unmapped (AD-48).
+    Set tArgPairs = $ClassMethod(tClass, "ArgumentPairs", "", {"namespace": ($Namespace)}, .tArgResolved)
+    Do $$$AssertEquals(tArgResolved, 1, "the per-namespace pairs resolve")
+    Set tSpelled = ""
+    For tI = 1:1:$ListLength(tArgPairs) {
+        Set tSpelled = tSpelled _ $Select(tI = 1: "", 1: ",") _ $List($List(tArgPairs, tI), 1) _ ":" _ $List($List(tArgPairs, tI), 2)
+    }
+    Do $$$AssertTrue(tSpelled [ ":WRITE", "and carry the WRITE half this story exists for: " _ tSpelled)
+
+    Set tSchema = $ClassMethod(tClass, "InputSchema")
+    Set tProperties = tSchema.%Get("properties")
+    Do $$$AssertEquals(tProperties.%Get("namespace").%Get("type"), "string", "the identifying property is advertised")
+    Do $$$AssertEquals(tProperties.%GetTypeOf("entries"), "unassigned", "and no field of the tool's own read is advertised")
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"namespace": "HSCUSTOM"}, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the namespace alone validates: " _ tProblem)
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"namespace": "HSCUSTOM", "date": "09/11/2026"}, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "while a field on a bodyless write is refused")
+    Do $$$AssertTrue(tProblem [ "date", "naming the argument: " _ tProblem)
+}
+
 /// <p>What both process tools declare, given the tool name <var>pName</var>, its class
 /// <var>pClass</var>, the vendor request type <var>pWriteType</var> it issues and whether it is
 /// <var>pDestructive</var>.</p>
@@ -646,6 +719,16 @@ Method TestAnInadequateFingerprintSubjectIsRefusedAtRegistration()
     Set tBodyTaking = $ClassMethod(tRegistry, "FingerprintSubjectProblem", "OcuPilot.Test.SubjectProbe.BodyTaking")
     Do $$$AssertNotEquals(tBodyTaking, "", "and so is a subject declared on a write that sends a body, which the inversion is not for")
     Do $$$AssertTrue(tBodyTaking [ "sends a body", "naming why: " _ tBodyTaking)
+
+    ; DW-1474. Fingerprint.Of projects the subject and then applies the exclusions, so a name both
+    ; keys carry is hashed out of the very set it is the whole of and every confirm matches. No
+    ; shipped descriptor declares fingerprintExcludes, which is why this direction needs a probe
+    ; descriptor that does.
+    Set tExcluded = $ClassMethod(tRegistry, "FingerprintSubjectProblem", "OcuPilot.Test.SubjectProbe.ExcludedName")
+    Do $$$AssertNotEquals(tExcluded, "", "a subject naming a field the descriptor also excludes is refused")
+    Do $$$AssertTrue(tExcluded [ "LastModified", "naming the overlapping field: " _ tExcluded)
+    Do $$$AssertTrue(tExcluded [ "fingerprintExcludes", "and the key it overlaps: " _ tExcluded)
+
 }
 
 /// <p>AD-51: the guard runs at registration, so a tool with an inadequate subject does not become
@@ -707,9 +790,19 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
     If $$$ISERR(tSC) Quit
     Set tWrites = 0
     Set tActions = 0
+    Set tOtherPorts = 0
     Set tIterator = tTools.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tEntry) {
         If tEntry.%Get("kind") '= "write" Continue
+        ; AD-52: the roster below is a fact about the ADMIN API's own request types, read from
+        ; that port's two parameters. A tool whose target lives behind another port issues that
+        ; port's request types and the admin port answers 501 for them by construction, so holding
+        ; it to this roster would assert the wrong instance's contract. Counted, so a change that
+        ; routed every write off the admin port could not empty this loop silently.
+        If $ClassMethod(tEntry.%Get("class"), "PortClass") '= "OcuPilot.Port.AdminPort" {
+            Set tOtherPorts = tOtherPorts + 1
+            Continue
+        }
         Set tWrites = tWrites + 1
         Set tName = tEntry.%Get("name")
         Set tClass = tEntry.%Get("class")
@@ -720,8 +813,9 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
         Do $$$AssertEquals(tExempt, 'tSends, tName _ " sends " _ $Select(tSends: "a body", 1: "none") _ ", so '" _ tType _ "' is " _ $Select(tSends: "absent from", 1: "in") _ " the port's bodyless roster")
         If 'tSends Set tActions = tActions + 1
     }
-    Do $$$AssertTrue(tWrites > 0, "the registry enumerated write tools at all")
+    Do $$$AssertTrue(tWrites > 0, "the registry enumerated admin-port write tools at all")
     Do $$$AssertTrue(tActions > 0, "and at least one of them is an action-style write, so the bodyless half of the equality was exercised")
+    Do $$$AssertEquals(tOtherPorts, 1, "exactly one shipped write reaches its target through another port, and it is held to that port's contract instead")
 
     ; AD-10, Story 5.12's AC3: the vendor exposes terminating a process twice -- TYPETERMINATE and
     ; RunDelete delegating to it -- so "never advertised" is a statement about OcuPilot. Neither
