@@ -7,7 +7,7 @@ paradigm: 'Descriptor-driven vertical slices, hexagonal at the edges'
 scope: 'OcuPilot in full: Release 1 (119 P0 rows, contest deadline 2026-09-27) binding; Stages 2-6 decided where their gates are already clear, named as staged decisions where they are not.'
 status: final
 created: '2026-09-08'
-updated: '2026-09-21'
+updated: '2026-09-22'
 binds:
   - 'Areas 5.1-5.12 (shell, agent co-pilot, agent tools, agent config, web apps + REST explorer, permissions, security and secrets, tasks, OS management, logs, packaging, polish)'
   - 'FR-1 through FR-79, NFR-1 through NFR-14'
@@ -555,6 +555,21 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **It is read and written through a caller-own shell-chrome endpoint, not through AD-36's declared read, and that is not a hole in AD-36.** A declared read resolves a screen's rows for any caller who passes its gate; AD-36's `state` source kind reaches a store's whole guarded list and takes no per-caller argument. A per-user read is a different question — "what did *this* user save" — and answering it through the declared-read contract would mean giving that contract a caller argument it deliberately does not have, which would widen every other read in the product to get one screen's rows. Preferences therefore follow the shell-chrome precedent already in the tree (`/instance`, `/namespaces`, `/navigation`, `/agent/context`): a route that answers for `$Username` and nobody else. **A preference is never screen context and never a tool's view** — the agent has no reason to read what a user has bookmarked, and AD-24's cap has nothing to bound.
 
   **The per-user store is not a license to move screen state off the instance or onto the browser.** Where a story's acceptance criteria say a preference survives a sign-out, this store is where it lives; browser storage holds only the per-tab token pair (AD-28, AD-47), and a preference kept only in `localStorage` fails the criterion rather than satisfying it cheaply.
+
+
+### AD-51 — An action-style write declares its own request type, sends no body, and fingerprints the fresh read
+
+- **Binds:** Story 5.11 (task resume), 5.12 (process suspend and resume), 5.13 (`SYS.ApplicationError` deletes), Story 7.6's row actions; AD-3, AD-4, AD-6, AD-10, AD-34
+- **Prevents:** three stories each answering "what does the write path do when the vendor's operation takes no body" differently, and the opposite error of reading AD-4 and AD-6 as forbidding such an operation
+- **Rule:** Epic 5's first three writes were all one shape — a `PUT` of a complete body merged over a fresh `GET` — and the write path hardcoded it. Some vendor operations have no such shape: `Task.CRUD` exposes resume only as the bodyless `RESUME` request type, and AD-3 already names `Task.Manager`, `Process` and `Lock` as "action-style with trivial or empty bodies". An **action-style write** is therefore a first-class kind, not an exception:
+
+  - **The request type is declared per tool, not assumed.** The tool names the admin request type it issues; `PUT` is the default a merge write keeps, never a constant the kernel enforces. The same is true of the type the mint reads for its fresh read.
+  - **It admits no settable fields and sends no body.** Its field list is empty by derivation (AD-3), not hand-typed, and the confirm channel admits nothing (AD-6) because there is nothing to admit.
+  - **AD-4 has no subject here.** Its Rule prevents "a confirmed change to two fields silently erasing the other forty"; a write that sends no body erases nothing. An action-style write is not avoiding the merge idiom — the idiom does not apply to it.
+  - **The fingerprint covers the fresh read, not the sent body.** AD-6 words it as "the complete property set the write will send" because for a merge write AD-4 makes the body a copy of the fresh read, so the two sets coincide. For a bodyless write they diverge and the sent body is empty, so the fresh read is the set — which is the reading that preserves what AD-6 protects, a write against state that moved under the diff. Taking the sent body literally would mean an empty fingerprint and no protection at all.
+  - **Every other gate is unmoved.** The prohibited set, read-only and the kill switch are still evaluated at the write inside AD-34's single transition (AD-10, AD-40); the per-target lock, the sibling cancel, the marker (AD-15's ordinary case), the ledger row and the change event are all unchanged. An action-style write is a narrower body, never a lighter path.
+
+  **The diff is over state the read can see.** Because nothing is sent, the card's rows cannot be derived from a payload; they are derived from the fresh read, so the field the action changes must be one the screen's declared read answers. Where the vendor's list coerces it — `Task.CRUD` LIST reports every task's `Suspended` as `false` — the `INFO` detail call AD-36 names is what makes the row, and the fingerprint exclusion, expressible at all.
 
 
 ## Consistency Conventions
