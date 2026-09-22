@@ -5885,11 +5885,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-22T09:03:03Z status=escalated owner=burndown by=harvest note=FOR_THE_DECISION_SHEET_AND_I_AM_NOT_DECIDING_IT:_the_broad_reading_was_the_ORCHESTRATORS_OWN_CALL_and_it_asked_me_to_check_exactly_this_consequence_before_implementing._I_ANSWERED_THE_QUESTION_IT_ASKED_-_no_DEMO_target_falls_inside_the_prohibition,_because_the_fixture_seeds_a_suspended_TASK_and_not_a_process_-_and_the_implement_stage_then_measured_the_half_I_had_only_estimated:_on_a_single-user_instance_the_prohibition_removes_essentially_every_non-daemon_candidate,_so_the_SUITE_needs_a_second_principal_to_have_a_target_at_all._Spec-bound_so_it_is_not_a_defect,_but_it_bears_on_the_DEMO_rather_than_only_the_tests,_and_the_narrow_
 - 2026-09-22T09:28:08Z status=escalated owner=burndown by=cr note=prior trailer's note is truncated mid-word and over budget; disposition unchanged, decision-sheet question about the demo, not a defect
 - 2026-09-22T09:29:23Z note=recommended: keep the broad reading; the narrow $JOB reading remains available
+- 2026-09-22T10:37:48Z status=routed owner=5-13-logs-delete-application-errors-by-namespace by=merge_gate note=broad prohibition stands; demo fixture must create its target under another account - if impossible, that is a Clarification
 
 ### DW-1473: AdminPort.MUTATINGTYPES still admits a request type by bare suffix, so admitting Process/SUSPEND also opens Task.CRUD/SUSPEND
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: MUTATINGTYPES is PUT,RESUME,SUSPEND and EndpointType (AdminPort.cls:813) admits any member on any endpoint; Task.CRUD declares TYPESUSPEND 15 and overrides Run, so Invoke(Task.CRUD,SUSPEND) answered 501 before this story and reaches the vendor after it. No advertised tool declares that pair, so it is a latent widening, not an exposure.
 - 2026-09-22T09:27:56Z status=escalated owner=burndown by=cr note=Sibling of DW-1464, which this story fixed on BODYLESSTYPES only; keying PUT by pair touches every merge write.
+- 2026-09-22T10:37:48Z status=routed owner=burndown by=merge_gate note=downstream-blocking: bare-suffix widening compounds with every action type 7.6 and 9.x add; qualify by endpoint
 
 ### DW-1474: A fingerprint subject name a descriptor's fingerprintExcludes also names collapses the digest to the empty object, and the registration guard relates the two in none of its conditions
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: med | fix-risk: low | footprint: in-story
@@ -5910,3 +5912,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: %syPidtab.inc:128 defines INTERACTIVEJOB as FOREJOB 1 or FORAPPJOB 3 only; APPMODE, IDIRECTSRV, CSPSRV, ODBCSRV and CALLINTYPE are all BACKGROUNDJOB at :132. The allow-list was approved on the words 'the interactive and client job types', which this review corrected at their origin. A JOBed turn job (AD-7) carries APPMODE, and OwnedByCaller refuses only the confirming user's own.
 - 2026-09-22T09:28:04Z status=escalated owner=burndown by=cr note=Spec task 4 enumerated the seven values, so narrowing the list is a product call for the decision sheet.
+- 2026-09-22T10:37:49Z status=routed owner=burndown by=merge_gate note=floor-blocking: APPMODE 2 makes one user's turn job proposable by another, against AD-7 and AD-8; exclude turn jobs

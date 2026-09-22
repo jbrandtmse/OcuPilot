@@ -2,7 +2,7 @@
 title: 'Story 5.13: Logs - delete application errors by namespace'
 type: 'feature'
 created: '2026-09-22'
-status: 'blocked'
+status: 'in-progress'
 baseline_revision: 'dd925555b00cf78f36e329f58b2ad39b973f2719'
 baseline_commit: 'dd925555b00cf78f36e329f58b2ad39b973f2719'
 review_loop_iteration: 0
@@ -112,7 +112,7 @@ amendments starts from this file rather than from scratch.
 
 </intent-contract>
 
-## Blocking Condition
+## Blocking Condition - ALL THREE RESOLVED 2026-09-22
 
 Three gaps. All three are `Ask first` under Rule 5 - they change what the product does or what it
 says - and all three want one sitting.
@@ -428,6 +428,19 @@ them; every probe below was read-only and ran with `server: "ocupilot-slot-a"`.
 
 ## Tasks & Acceptance
 
+- [ ] [Review] Execute the delete as `DeleteByError(ns, date, <ids>)` once per enumerated date,
+  removing exactly the enumerated ids (amended `epics.md:3791`). Scope stays by-namespace.
+- [ ] [Review] Render the authorised residue string on the card:
+  `"Removes exactly the <n> errors listed here. Any logged since the proposal will remain."`
+  Both facts must survive any tightening for width.
+- [ ] [Review] DW-1423: measure whether any reachable path emits the change announcement with
+  action `deleted`. Fix and pin it if one does; record the finding and route the entry out if none
+  does. Do not choose new copy - that half is a UX call.
+- [ ] [Review] DW-1472: the demo fixture creates its target process under an account other than the
+  confirming user. If that cannot be done on the demo instance, HALT with an `intent gap`.
+- [ ] [Review] Declare the port per write tool, defaulting to `AdminPort` (AD-52), and resolve the
+  mint's fresh read, the confirm's re-read, the prohibited-set evaluation and the write through it.
+
 **Execution:**
 
 - `src/OcuPilot/Port/LogSourcePort.cls` -- add the enumeration and the delete, plus a port-uniform
@@ -557,6 +570,32 @@ them; every probe below was read-only and ran with `server: "ocupilot-slot-a"`.
   mintable.
 
 ## Spec Change Log
+
+- **2026-09-22, lead, orchestrator-approved - all three gaps resolved plus the port seam.** The
+  measurements below stand; only the decisions changed.
+  - **Gap 1.** `epics.md:3791` named the right scope and the wrong method. It now reads "removes
+    **exactly the enumerated ids**, executed as `DeleteByError(ns, date, <ids>)` once per enumerated
+    date", carrying an `[AMENDED]` marker. AD-48 is untouched: its enumerated-id-set rule already
+    stated this and gave the reason, and `DeleteByError` is one of its three sanctioned methods.
+  - **Gap 2.** The residue sentence is now an authorised Fixed string in `EXPERIENCE.md`:
+    `"Removes exactly the <n> errors listed here. Any logged since the proposal will remain."`
+    `<n>` resolves to the enumerated count. The wording may be tightened to fit the card's width,
+    but **both facts must survive** - a version saying only "removes <n> errors" fails the AC's
+    second half.
+  - **Gap 3 (DW-1423).** Do **not** defer it blind. This is the only story that would execute the
+    `deleted` branch, so settle it here: determine whether any reachable path emits the change
+    announcement with action `deleted`. If one does, fix the prefix and pin it with a test that
+    reddens on the wrong branch. If nothing reaches it, say so and route the entry out with the
+    finding recorded - a fix on an unexecutable branch banks an unfalsifiable pass wherever it
+    lands. The copy half remains a UX call on the entry.
+  - **The port seam - approved and written as AD-52.** A write tool declares the port it reaches its
+    target through, defaulting to `AdminPort`. Measured: `AdminPort` is a constant at
+    `Confirm.cls:57`, `Mint.cls:45` and `Prohibited.cls:252`, while AD-48 routes this log through
+    `LogSourcePort`, which has no delete methods - so the write path could not express this story's
+    write at all.
+  - **DW-1472 routed here.** The broad ownership prohibition stands; the **demo fixture must create
+    its target process under an account other than the confirming user**. If that is impossible on
+    the demo instance, it is a Clarification, not something to work around.
 
 ## Review Triage Log
 

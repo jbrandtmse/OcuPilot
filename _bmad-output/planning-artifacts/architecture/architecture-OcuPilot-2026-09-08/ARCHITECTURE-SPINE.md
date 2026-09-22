@@ -581,6 +581,17 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **The diff is over state the read can see.** Because nothing is sent, the card's rows cannot be derived from a payload; they are derived from the fresh read, so the field the action changes must be one the screen's declared read answers. Where the vendor's list coerces it — `Task.CRUD` LIST reports every task's `Suspended` as `false` — the `INFO` detail call AD-36 names is what makes the row, and the fingerprint exclusion, expressible at all.
 
 
+### AD-52 — A write tool declares the port it reaches its target through
+
+- **Binds:** every write tool; Story 5.13 (application-error deletes) and every later write whose target is not an admin API endpoint; AD-2, AD-6, AD-29, AD-34, AD-40, AD-48
+- **Prevents:** a write whose target lives behind a port other than `AdminPort` being built *around* the write path instead of *through* it, which is the unconfirmed, unaudited deletion AD-48 exists to prevent
+- **Rule:** The write path resolves its target through a port, and **which port is the tool's declaration, not a constant in the kernel.** Until Story 5.13 it was a constant: `Mint`, `Confirm` and `Prohibited` each returned `AdminPort` outright, which was correct while every write targeted an admin API endpoint and silently wrong the moment one did not. AD-48 routes the application error log through `LogSourcePort`, so the write path as it stood **could not express that story's write at all** — and a builder who reads "no `AdminPort` call" as "not a real write" produces exactly the unconfirmed, unaudited deletion AD-48 names.
+
+  So a write tool declares its port, defaulting to `AdminPort`, and the mint's fresh read, the confirm's re-read, the prohibited-set evaluation and the write itself all resolve through that one declaration. **Nothing else changes**: the proposal, the server-computed diff, the fingerprint (AD-6, and AD-51's declared subject where the write is action-style), the single atomic transition (AD-34), the caller's own privileges through that port's own gate (AD-29, AD-8) and the agent marker (AD-15) are identical whichever port answers. A port is where the target lives; it is never a lighter path to it.
+
+  **The declaration is the tool's, because the port is a property of the target rather than of the screen.** A screen may read through one port and write through another, and two tools on one screen may differ. The default keeps every existing tool unchanged and unedited.
+
+
 ## Consistency Conventions
 
 | Concern | Convention |

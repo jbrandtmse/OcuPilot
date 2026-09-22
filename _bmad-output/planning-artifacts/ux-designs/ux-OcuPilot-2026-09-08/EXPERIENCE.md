@@ -257,6 +257,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "blocked by read-only mode" | agent's reply and the write's tool-call card when a write tool is blocked (FR-19) |
 | "Agent writes are not being marked in the audit database." · "Auditing configuration" · "Turn auditing on" | panel banner when the last observation was that agent writes are not being marked (FR-22) — instance auditing off, OcuPilot's own event registration off, or an emission the instance dropped, which the banner does not distinguish because the panel cannot read which one it was; its link (every user); its action (OcuPilot administrators) |
 | "target changed, re-propose" | proposal card status line after a fingerprint mismatch (FR-17, step 7) |
+| "Removes exactly the <n> errors listed here. Any logged since the proposal will remain." | application-error delete proposal card, the residue sentence AD-48 requires (FR-63); `<n>` resolves to the enumerated count |
 | "leaves the instance" · "Screen context is sent to <host>" | context-chip pill when the endpoint host is not private (FR-11); its tooltip |
 | "Users, HSCUSTOM · 6 rows" | context-chip screen segment pattern: `<Screen>, <NAMESPACE> · <N rows>` (UJ-1) |
 | "Screen context off — nothing from this screen is sent." | context-chip with sharing off |

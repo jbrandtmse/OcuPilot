@@ -3788,7 +3788,7 @@ So that the Logs area has a real, auditable write rather than being read-only.
 
 - **Given** the delete executes
 - **When** it runs
-- **Then** it goes through `SYS.ApplicationError`'s `DeleteByNamespace`, under the port's own per-namespace gate resolved at call time, with the same proposal, server-computed diff, explicit confirmation and agent marker as any other write
+- **Then** it removes **exactly the enumerated ids**, executed as `SYS.ApplicationError`'s `DeleteByError(ns, date, <ids>)` once per enumerated date, under the port's own per-namespace gate resolved at call time, with the same proposal, server-computed diff, explicit confirmation and agent marker as any other write [AMENDED 2026-09-22, Epic 5 runner, Rule 5 tier-1 (orchestrator-approved): the clause read "goes through `SYS.ApplicationError`'s `DeleteByNamespace`", which removes every error for every date and so contradicts this story's own preceding criteria — it deletes rows the user never saw and leaves no residue to be correct. The scope named was right and the method wrong; `DeleteByError` is one of AD-48's three sanctioned methods and AD-48's enumerated-id-set rule is unchanged]
 - **And** the absence of an admin API endpoint changes none of those invariants - a builder reading "no `AdminPort` call" as "not a real write" would produce exactly the unconfirmed, unaudited deletion this rule exists to prevent.
 
 - **Given** the delete is destructive
