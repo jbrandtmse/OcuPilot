@@ -3805,6 +3805,56 @@ So that the Logs area has a real, auditable write rather than being read-only.
 - **When** the agent reads the log
 - **Then** the read tool returns **summary fields only** - time, error number, routine, line, error text - and the variable tables never reach the model.
 
+### Story 5.14: Epic 5 burn-down
+
+As the team shipping the floor,
+I want the defects Epic 5 filed against its own surfaces closed before the floor date,
+So that the agent write path the contest demonstrates is sound where it is most visible.
+
+Chartered by the burn-down gate from the ledger. Each bullet is a filed entry whose reason for
+being here is floor-blocking or downstream-blocking; everything else Epic 5 filed re-owned to
+`range-end-cleanup`.
+
+**Acceptance Criteria:**
+
+- DW-1336: the agent panel's prompt entry box is too small and its Send button too large, so the
+  panel's primary input reads as an afterthought. The panel is the product's centrepiece and every
+  demo frame shows it. The composer and Send are token-driven (`_components.scss:3523`, `:3530`),
+  so this may be a token change rather than a layout rewrite. **(inference)** the two symptoms may
+  be one cause - the composer is `flex: 1 1 auto; min-width: 0` while Send sizes intrinsically
+  beside it, so a Send that is too wide necessarily narrows the box; measure it in the browser tier
+  rather than assuming it, since jsdom computes no layout. If the fix changes the panel's overflow
+  behavior, say so on DW-1388 so Story 15.6 takes its baseline against the corrected tree.
+- DW-1437: AD-10's user-account set is enumerated by verb and by role name, so two equivalent-effect
+  lockouts are permitted - stripping `%All` from the last holder, and a service account nobody can
+  sign in as counting as another holder.
+- DW-1438: the prohibited set has no account-side analogue of its serving-path predicate, so
+  disabling `CSPSystem` is permitted and would break every CSP request including OcuPilot's own - a
+  self-destruct through the product's own tool surface, the class Story 5.5 exists to prevent.
+- DW-1467: Story 5.10's `security.auditing.update` declares `DESTRUCTIVE 1` while `EXPERIENCE.md`
+  and `epics.md` both name disabling auditing a non-destructive warning. It is on the demo's
+  auditing card, and Story 14.7 puts a typed-name field on destructive cards, so a wrong flag today
+  becomes a wrong requirement there.
+- DW-1447: `resetRememberedState` clears only three value kinds, so `recent` rows accumulate and the
+  browser suite is not idempotent on a reused instance - and `suggested-view` imports the reset
+  without ever calling it.
+- DW-1448: `browser-reset.mjs` counts only two literal context spellings, so any spec that gets its
+  page from a helper escapes the reset requirement. This is its **third** under-detection: re-key it
+  on context **creation wherever it occurs, including inside a helper**, because the spellings are a
+  proxy and not the invariant.
+- DW-1452: `OcuPilot.Test.ProhibitedRoute` is armed class-wide, so on a throwaway predating
+  `OCUPILOT_ALLOW_AUDIT_TOGGLE` its nine pre-existing least-privileged legs silently do not run -
+  coverage that reads as green.
+- DW-1473: `AdminPort.MUTATINGTYPES` admits a request type by bare suffix, so admitting
+  `Process/SUSPEND` also opens `Task.CRUD/SUSPEND`. Not exploitable today, but Story 7.6 and Epic 9
+  add action types and the widening compounds with each; `BODYLESSTYPES` already keys by
+  `(endpoint, type)` in the same file.
+- DW-1479: nine documents still state the broad process-ownership rule the narrowing replaced -
+  `epics.md:153`, `:807`, `:3506-3508`, `:5636`; `EXPERIENCE.md:93`, `:220`, `:414`; `prd.md:806`;
+  `SPEC.md:99` - including a worked example that now teaches a false rule, and `spec-5-12`'s
+  `## Verification` recipes naming `OwnedByCaller`, a method that no longer exists. The
+  `EXPERIENCE.md` three are published copy and a UX call governs them.
+
 ---
 
 ## Epic 6: Every screen in the six areas reads live
