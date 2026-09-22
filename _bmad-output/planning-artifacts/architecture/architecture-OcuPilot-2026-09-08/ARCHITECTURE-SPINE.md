@@ -591,6 +591,33 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **The declaration is the tool's, because the port is a property of the target rather than of the screen.** A screen may read through one port and write through another, and two tools on one screen may differ. The default keeps every existing tool unchanged and unedited.
 
 
+### AD-54 - A create write inverts what the fresh read must find, and fingerprints the target's absence
+
+- **Binds:** Story 8.1 and every create in Epics 8 and 9 (a web application, a user, a role, a resource, an X.509 credential, a wallet secret, a device); AD-3, AD-4, AD-6, AD-10, AD-13, AD-34, AD-51, AD-52
+- **Prevents:** a confirmed create silently overwriting an object somebody else created in the window between mint and confirm - and the opposite error, reading AD-4 and AD-6 as forbidding a write that has no prior target at all
+- **Rule:** The write path knew two shapes before this: a **merge** write (`SENDSBODY = 1`, a complete body PUT over a fresh GET, fingerprinted over the property set, AD-4) and an **action-style** write (AD-51, no body, a declared request type and a declared fingerprint subject). Both presuppose a target that already exists - `Kernel.Proposal.Mint.Mint()` issues the fresh read unconditionally and refuses when it is not an object. A **create** has no prior target: nothing to read fresh, no prior state to fingerprint, and an id that is an *output* of the write rather than an input to it. A create write is therefore a first-class kind, not an exception:
+
+  - **A write tool declares whether it creates its target**, defaulting to false. The create reaches its target through the same declared port (AD-52), the same endpoint and the same read type as any other write on that entity.
+  - **The fresh read keeps its place and inverts its acceptance.** The target must be **absent**: a 404 is the success precondition, and a target that is present refuses the mint.
+  - **The fingerprint covers the target's absence under AD-13's canonical spelling**, not a property set. For a create the property set is entirely the caller's own arguments, and nothing about it can move; what must be protected is that the name is still free. Confirm re-reads and refuses when the name has been taken since the mint.
+  - **AD-4 has no subject here.** Its Rule prevents "a confirmed change to two fields silently erasing the other forty"; a create erases nothing, because there was nothing there. The payload is **composed** from the caller's arguments over the endpoint's derived field list (AD-3) rather than merged over a fresh read, so every supplied field is a diff row and the unchanged count is zero.
+  - **Every other gate is unmoved.** `TargetRef` carries the canonical intended name from the mint, so AD-34's per-target lock and sibling cancel cover two concurrent creates of the same name unchanged, and AD-10's prohibited set, AD-15's marker, AD-41's ledger row and AD-14's change event are all identical. A create is a narrower read, never a lighter path.
+
+  This is AD-51's move applied one step further: AD-51 inverted *what the fingerprint covers* for a write that sends no body; a create inverts *what the fresh read must find*. AD-6's purpose survives both inversions intact, because what it prevents is a write against state that **moved under the reviewed diff** - and for a create the reviewed state is "this name is free".
+
+  **The protection is load-bearing, not ceremony, and it was measured rather than assumed.** Verified on this build from `%Api.Admin.Endpoints.WebApp.App`: `RunPut:117-122` reads `If ##class(Security.Applications).Exists(..Name) { Modify(...) } Else { Create(...) ... SetRespStatus(..#HTTP201CREATED) }` - an **upsert with no refusal path**. Without the absence fingerprint a confirmed create silently rewrites whichever fields it sends onto somebody else's application, and answers 200 while doing it. A later create story whose endpoint refuses a duplicate on its own still declares the absence fingerprint: the guarantee is OcuPilot's, not the vendor's, and a per-endpoint exemption is the divergence this Rule exists to prevent.
+
+  **The prohibited set's per-type field lists are keyed by create versus change** (AD-10, whose one-home rule is unchanged - this refines how the predicates are structured, not where they live). "What may a change to a live target touch" and "what may a create set" are different questions, so a create tool carries its own reviewed per-type list, and the absent-target early-out that reasons "the fingerprint will refuse it moments later" does not apply to a create, whose target is correctly absent. A field prohibited because it repoints a **serving** object is prohibited on a change and permitted on a create, which repoints nothing; a field prohibited by effect under AD-10 - setting application roles on any web application - stays prohibited on **both**, unconditionally.
+
+### AD-55 - A screen's own Save against an instance object resolves through the write tool
+
+- **Binds:** every screen-side create and edit of an IRIS object across Epics 8 and 9; AD-3, AD-5, AD-8, AD-10, AD-40, AD-49, AD-52
+- **Prevents:** a screen composing its own payload and naming its own endpoint beside the tool that already does, so that the prohibited set, the field list and the port are each decided twice and drift
+- **Rule:** A screen's Save against an object on the instance and the agent's confirmed write are **two callers of one tool class**. The route resolves the tool for its endpoint, its request type, its settable fields, its payload composition and its port (AD-52), and evaluates AD-10's prohibited set before any port is touched. The screen mints no proposal and takes no confirm token - AD-6's confirmation exists because a *model* proposed the change, and a person pressing Save has already confirmed it - but it inherits every gate AD-10 and AD-40 place "at the write", and AD-8's pair set is the screen's own.
+
+  This is the converse of AD-49, and the two together partition every write a screen can make. AD-49 carves out an action on the user's **own account**, proving identity to the operation itself, which is deliberately outside the write path. Everything else a screen writes to the instance goes **through** it. A screen path that composes its own payload or names its own endpoint is a second source for exactly what AD-5 and AD-3 exist to keep single, and it is also how a prohibited action becomes reachable from the UI while remaining refused for the agent - which would make AD-10's "refused on the instance, whatever the caller" false.
+
+
 ## Consistency Conventions
 
 | Concern | Convention |
