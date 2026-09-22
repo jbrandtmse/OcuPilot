@@ -397,8 +397,10 @@ Method TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal()
     Do $$$AssertEquals(tStatus, 200, "and answers")
     If tStatus '= 200 Quit
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
-    Set tFields = "[""Name"",""Type"",""Namespace"",""Description"",""Id"",""LastFinished"",""NextScheduled""]"
-    Do $$$AssertEquals(tAnswer.fields.%ToJSON(), tFields, "with the seven declared fields")
+    ; Story 5.11 added Suspended, taken per row from the same endpoint's INFO (DW-269, AD-36): it
+    ; is the eighth declared field and the only one the vendor's own LIST row does not carry.
+    Set tFields = "[""Name"",""Type"",""Namespace"",""Description"",""Id"",""LastFinished"",""NextScheduled"",""Suspended""]"
+    Do $$$AssertEquals(tAnswer.fields.%ToJSON(), tFields, "with the eight declared fields")
     Do $$$AssertTrue(tAnswer.rows.%Size() > 0, "and the instance's tasks listed: " _ tAnswer.rows.%Size())
     Set tBad = ""
     Set tIterator = tAnswer.rows.%GetIterator()
@@ -411,7 +413,7 @@ Method TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal()
         If tKeys.%ToJSON() '= tFields Set tBad = "row " _ tIndex _ " carries " _ tKeys.%ToJSON()
         If tBad '= "" Quit
     }
-    Do $$$AssertEquals(tBad, "", "every row carries exactly the seven declared fields, Suspended among none of them")
+    Do $$$AssertEquals(tBad, "", "every row carries exactly the eight declared fields, the detail call's Suspended among them")
     ; The banner is screen chrome the read resolves (AD-36); on a throwaway whose Task Manager is
     ; running it is the empty string, and the suspended half is the browser spec's.
     Do $$$AssertEquals(tAnswer.%GetTypeOf("banner"), "string", "the answer carries the banner key as a string")

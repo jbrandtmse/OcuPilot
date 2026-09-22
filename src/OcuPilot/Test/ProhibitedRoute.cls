@@ -52,6 +52,12 @@ Parameter AUDITINGTOOLCLASS = "OcuPilot.Screen.Tool.AuditingUpdate";
 
 Parameter AUDITINGSCREEN = "OcuPilot.Screen.Descriptor.AuditingConfig";
 
+/// <p>Story 5.11's write tool and its screen: the action-style resume, whose declared pair set is
+/// the task schedule's own.</p>
+Parameter TASKTOOLCLASS = "OcuPilot.Screen.Tool.TaskResume";
+
+Parameter TASKSCREEN = "OcuPilot.Screen.Descriptor.TaskScheduleList";
+
 /// <p>An administrative resource that is <b>not</b> <code>%Admin_Secure</code>, granted to the
 /// principal of <method>TestAnAccountShortOfTheAuditingPairIsRefusedTheNamedPair</method>.
 /// <method>OcuPilot.Api.Router.HoldsAdminResource</method> refuses a caller holding no
@@ -855,6 +861,81 @@ Method TestAnAccountShortOfTheAuditingPairIsRefusedTheNamedPair()
     Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).AuditEnabled(), tBefore, "and this instance's auditing did not move")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "live", "the row was not claimed")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Burned"), 0, "and the token is unspent")
+}
+
+/// <p>AC11, AD-8, AD-29 (Story 5.11): a caller short of <code>%Admin_Task:USE</code> is refused
+/// the task resume 403 <code>AUTH.NOPRIVILEGE</code> naming that pair, and the task stays
+/// suspended.</p>
+/// <p>The principal deliberately holds <parameter>NONSECUREADMIN</parameter> at <code>USE</code>
+/// and the security database read, so the only pair it is short of is the one the refusal must
+/// name: without the first it would be refused <code>AUTH.NOADMIN</code> by the router's floor
+/// before the screen's own gate ran.</p>
+/// <p><b>The state assertion is the point, not the status.</b> A bodyless write leaves nothing
+/// in a payload to inspect, so "refused" means the task is still suspended on the instance --
+/// which is read back through <method>OcuPilot.Test.TaskResume.TaskSuspended</method>, not from
+/// the envelope.</p>
+/// <p>Mutation (Rule 19): answer
+/// <code>$ListBuild($ListBuild("%DB_IRISSYS", "READ"))</code> from
+/// <method>OcuPilot.Screen.Tool.TaskResume.PrivilegePairs</method> -- the one pair this principal
+/// does hold -- and recompile: the screen gate no longer refuses, so the code and failed-pair
+/// assertions go red. <b>Removing the pair from
+/// <class>OcuPilot.Screen.Descriptor.TaskScheduleList</class> is not the mutation</b>: the tool
+/// re-adds it from <parameter>WRITERESOURCE</parameter>, and dropping it from both makes the
+/// registry refuse the roster in <method>OnBeforeAllTests</method>, which reddens the class
+/// without exercising this method at all.</p>
+Method TestAnAccountShortOfTheTaskPairIsRefusedTheNamedPair()
+{
+    Set tCodeResource = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
+    If tCodeResource = "" Quit
+    Set tSC = ..EnsureLeastPrivilegedPrincipal(..#PRINCIPALPASSWORD, ..#NONSECUREADMIN _ ":U,%DB_IRISSYS:R," _ tCodeResource _ ":R")
+    Do $$$AssertStatusOK(tSC, "a principal short of only the task pair is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%Admin_Task", "USE"), 0, "it holds no %Admin_Task:USE, which is the pair this write requires")
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, ..#NONSECUREADMIN, "USE"), 1, "it does hold an administrative resource, so the router's own floor is cleared")
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%DB_IRISSYS", "READ"), 1, "and the security database read, so the task pair is the only one it is short of")
+
+    Set tTaskSC = ##class(OcuPilot.Test.TaskResume).EnsureProbeTask(.tTaskId)
+    Do $$$AssertStatusOK(tTaskSC, "a suspended probe task exists: " _ $System.Status.GetErrorText(tTaskSC))
+    If $$$ISERR(tTaskSC) Quit
+    Try {
+        Do $$$AssertEquals(##class(OcuPilot.Test.TaskResume).TaskSuspended(tTaskId), 1, "and starts suspended, so a permitted resume would have something to change")
+        Kill tQuery
+        Set tQuery($ClassMethod(..#TASKTOOLCLASS, "IdParam")) = tTaskId
+        Set tReadSC = ##class(OcuPilot.Port.AdminPort).Invoke($ClassMethod(..#TASKTOOLCLASS, "Endpoint"), $ClassMethod(..#TASKTOOLCLASS, "ReadType"), .tQuery, "", .tFresh, .tHttp, .tFault)
+        Do $$$AssertStatusOK(tReadSC, "the task reads fresh through the shipped port with the tool's own request type")
+        If $$$ISERR(tReadSC) || '$IsObject(tFresh) Quit
+        Set tKey = ..SeedTaskResume(tTaskId, tFresh)
+        Do $$$AssertNotEquals(tKey, "", "a resume proposal was seeded for that principal")
+        If tKey = "" Quit
+
+        Set tSC = ..CallAs(tKey, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, "the confirm request completes")
+        Do $$$AssertEquals(tStatus, 403, "and is refused -- not 200, not the router's 403 with no body: " _ tBody)
+        Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "with the screen-privilege code, not AUTH.NOADMIN")
+        Do $$$AssertEquals(tEnvelope.%Get("error"), ##class(OcuPilot.Api.Error).#FORBIDDEN, "under the forbidden slug")
+        Do $$$AssertEquals($Select($IsObject(tEnvelope.%Get("detail")): tEnvelope.%Get("detail").%Get("failedPair"), 1: ""), "%Admin_Task:USE", "naming the pair that failed")
+        Do $$$AssertEquals(##class(OcuPilot.Test.TaskResume).TaskSuspended(tTaskId), 1, "and the task is still suspended on the instance")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "live", "the row was not claimed")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Burned"), 0, "and the token is unspent")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the leg completes without raising")
+    }
+    ; Its own frame: this class does not own the probe task's lifetime, so it leaves the instance
+    ; without one whatever happened above.
+    Do ##class(OcuPilot.Test.TaskResume).DeleteProbeTask(tTaskId)
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForUser(..#PRINCIPALUSER)
+}
+
+/// <p>Seed one resume proposal owned by <parameter>PRINCIPALUSER</parameter> against task
+/// <var>pTaskId</var> over the fresh read <var>pFresh</var>, and answer its id.</p>
+/// <p>The tool admits no settable field, so the seeded arguments carry the identifying property
+/// alone -- which is what a real mint stores for an action-style write (AD-51).</p>
+Method SeedTaskResume(pTaskId As %String, pFresh As %DynamicObject) As %String
+{
+    Quit ..SeedForPrincipal(..#PRINCIPALUSER, pTaskId, pFresh, $ClassMethod(..#TASKTOOLCLASS, "IdArgument"), pTaskId, "string", $Parameter(..#TASKTOOLCLASS, "TOOLNAME"), $ClassMethod(..#TASKSCREEN, "PrimaryEntityType"))
 }
 
 /// <p>DW-1431, AD-9, AD-21: what a principal holding the write's two declared pairs and <b>no</b>

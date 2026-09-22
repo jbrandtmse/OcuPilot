@@ -30,6 +30,12 @@ Parameter AUDITTOOL = "security.auditing.update";
 
 Parameter AUDITTOOLCLASS = "OcuPilot.Screen.Tool.AuditingUpdate";
 
+/// <p>Story 5.11's write tool and its class: the first action-style one -- no settable field, a
+/// vendor request type of its own, and no body (AD-51).</p>
+Parameter RESUMETOOL = "tasks.schedule.resume";
+
+Parameter RESUMETOOLCLASS = "OcuPilot.Screen.Tool.TaskResume";
+
 Parameter WRITEBASE = "OcuPilot.Screen.Tool.Write";
 
 Parameter REGISTRY = "OcuPilot.Screen.Tool.Registry";
@@ -447,6 +453,120 @@ Method TestTheAuditingWriteToolAdvertisesEnabledAloneAndDeclaresItsWriteDestruct
     Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "SYSTEM", "AuditEncrypt": false}, .tProblem)
     Do $$$AssertStatusNotOK(tSC, "while an unadvertised property is refused")
     Do $$$AssertTrue(tProblem [ "AuditEncrypt", "naming the argument: " _ tProblem)
+}
+
+/// <p>AC4, AC11 (Story 5.11): the task resume tool is registered as an action-style write --
+/// its <code>INFO</code> read, its <code>RESUME</code> write, no body, no settable field, not
+/// destructive -- over its screen's own two pairs at <code>USE</code>, and its schema is the
+/// identifying property and the agent's own words alone.</p>
+/// <p>It also pins <method>OcuPilot.Screen.Tool.Write.ToolClass</method>, which is what carries a
+/// concrete tool's declarations into the mint: a base that answered its own name would give every
+/// action tool the merge write's read type and no state row.</p>
+/// <p>Mutation (Rule 19): set <parameter>OcuPilot.Screen.Tool.TaskResume.SENDSBODY</parameter> to
+/// <code>1</code> -- the bodyless assertion goes red and so does the empty settable set, because
+/// the endpoint's own template would then be derived from.</p>
+Method TestTheTaskResumeToolIsAnActionWriteOverTheScreensOwnPairs()
+{
+    Set tSC = $ClassMethod(..#REGISTRY, "Resolve", ..#RESUMETOOL, .tTool)
+    Do $$$AssertStatusOK(tSC, "the registry resolves the task resume tool by name")
+    Do $$$AssertTrue($IsObject(tTool), "and finds it")
+    If '$IsObject(tTool) Quit
+    Do $$$AssertEquals(tTool.%Get("kind"), "write", "it is a write tool")
+    Do $$$AssertEquals(tTool.%Get("class"), ..#RESUMETOOLCLASS, "answered by its own class")
+    Do $$$AssertEquals($ClassMethod(..#REGISTRY, "FulfilmentOf", tTool), "instance", "fulfilled on the instance, never in the browser")
+
+    Do $$$AssertEquals($ClassMethod(..#RESUMETOOLCLASS, "ToolClass"), ..#RESUMETOOLCLASS, "the tool answers its own class, which is what the mint reads its declarations from")
+    Do $$$AssertEquals($ClassMethod(..#RESUMETOOLCLASS, "ReadType"), "INFO", "its fresh read is the only request type that answers Suspended truthfully")
+    Do $$$AssertEquals($ClassMethod(..#RESUMETOOLCLASS, "WriteType"), "RESUME", "its write is the vendor's own resume request type")
+    Do $$$AssertEquals($ClassMethod(..#RESUMETOOLCLASS, "SendsBody"), 0, "and it sends no body")
+    Do $$$AssertEquals($ClassMethod(..#RESUMETOOLCLASS, "Destructive"), 0, "a resume is not destructive: proposing the opposite undoes it")
+    Do $$$AssertEquals($ClassMethod(..#RESUMETOOLCLASS, "Endpoint"), "Task.CRUD", "over the task endpoint")
+    Do $$$AssertEquals($ClassMethod(..#RESUMETOOLCLASS, "IdParam"), "id", "identified by the vendor's own query parameter")
+    Do $$$AssertEquals($ListLength($ClassMethod(..#RESUMETOOLCLASS, "SettableFields")), 0, "and it admits no settable field at all")
+
+    ; The merge writes still send one: the seam defaults to today's behavior rather than
+    ; changing it, which is the half no action-tool assertion can see.
+    Do $$$AssertEquals($ClassMethod(..#AUDITTOOLCLASS, "SendsBody"), 1, "while a merge write still sends its body")
+    Do $$$AssertEquals($ClassMethod(..#AUDITTOOLCLASS, "WriteType"), "PUT", "as a PUT")
+    Do $$$AssertEquals($ClassMethod(..#AUDITTOOLCLASS, "ReadType"), "GET", "read fresh with a GET")
+
+    Set tPairs = $ClassMethod(..#RESUMETOOLCLASS, "PrivilegePairs", "", .tResolved)
+    Do $$$AssertEquals(tResolved, 1, "its pairs resolve")
+    Set tSpelled = ""
+    Kill tSeen
+    For tI = 1:1:$ListLength(tPairs) {
+        Set tResource = $List($List(tPairs, tI), 1)
+        Set tPermission = $List($List(tPairs, tI), 2)
+        Set tSpelled = tSpelled _ $Select(tI = 1: "", 1: ",") _ tResource _ ":" _ tPermission
+        Set tSeen(tResource _ ":" _ tPermission) = +$Get(tSeen(tResource _ ":" _ tPermission)) + 1
+        If $ListFind($ListFromString($Parameter("OcuPilot.Screen.Gate", "ADMINRESOURCES")), tResource) {
+            Do $$$AssertEquals(tPermission, $Parameter("OcuPilot.Screen.Gate", "ADMINPERMISSION"), tResource _ " is required at the one permission a shipped role grants it at")
+        }
+    }
+    Do $$$AssertEquals($ListLength(tPairs), 2, "the resolved set is exactly two pairs: " _ tSpelled)
+    Do $$$AssertEquals(+$Get(tSeen("%Admin_Task:USE")), 1, "the screen's own use pair is required once: " _ tSpelled)
+    Do $$$AssertEquals(+$Get(tSeen("%Admin_Task:WRITE")), 0, "and no pair asks for a write permission on an administrative resource: " _ tSpelled)
+    Set tDeclared = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(..#RESUMETOOLCLASS, "DESCRIPTORCLASS"), .tDeclaredResolved)
+    Do $$$AssertEquals(tDeclaredResolved, 1, "the screen's own declared set resolves")
+    Do $$$AssertEquals(tPairs, tDeclared, "and the write's set is that set, not a superset of it")
+
+    Set tSchema = $ClassMethod(..#RESUMETOOLCLASS, "InputSchema")
+    Set tProperties = tSchema.%Get("properties")
+    Do $$$AssertEquals(tProperties.%Get("Id").%Get("type"), "string", "the identifying property is advertised")
+    Do $$$AssertEquals(tProperties.%GetTypeOf("rationale"), "object", "with the agent's own words beside it")
+    Do $$$AssertEquals(tProperties.%GetTypeOf("Suspended"), "unassigned", "and no field of the endpoint's own template is advertised")
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Id": "7"}, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the id alone validates: " _ tProblem)
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Id": "7", "Suspended": false}, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "while a field on a bodyless write is refused")
+    Do $$$AssertTrue(tProblem [ "Suspended", "naming the argument: " _ tProblem)
+}
+
+/// <p>AD-51: every registered write tool's <method>OcuPilot.Screen.Tool.Write.WriteType</method>
+/// is a <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> member, and it is a
+/// <parameter>OcuPilot.Port.AdminPort.BODYLESSTYPES</parameter> member exactly when the tool
+/// answers <method>OcuPilot.Screen.Tool.Write.SendsBody</method> 0.</p>
+/// <p><b>Why the equality is pinned rather than derived.</b> "This write sends no body" is
+/// declared twice -- once by the tool, once by the port, which learns it from the vendor's own
+/// <code>NeedsRequestBody()</code>. Neither can be computed from the other: the port's list is a
+/// fact about the vendor and the tool's is a choice about one operation. Disagreeing is silent in
+/// both directions -- a tool that sends no body over a type the port still requires one for is
+/// refused 500 at the write, and one that sends a body the vendor never reads issues a payload
+/// nobody reviewed. Stories 5.12 and 5.13 each add an action write, so the roster is what keeps
+/// the two halves arriving together.</p>
+/// <p>Mutation (Rule 19): empty <parameter>OcuPilot.Port.AdminPort.BODYLESSTYPES</parameter>, or
+/// set <parameter>OcuPilot.Screen.Tool.TaskResume.SENDSBODY</parameter> to 1 -- the equality goes
+/// red naming the tool and its request type.</p>
+Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
+{
+    Set tMutating = $ListFromString($Parameter("OcuPilot.Port.AdminPort", "MUTATINGTYPES"))
+    Set tBodyless = $ListFromString($Parameter("OcuPilot.Port.AdminPort", "BODYLESSTYPES"))
+    Do $$$AssertTrue($ListLength(tBodyless) > 0, "the port names at least one bodyless request type; a run over none would pass having checked nothing")
+    For tI = 1:1:$ListLength(tBodyless) {
+        Set tType = $List(tBodyless, tI)
+        Do $$$AssertTrue($ListFind(tMutating, tType) > 0, "'" _ tType _ "' is exempted from the object-body refusal, so it is a mutating type the refusal would otherwise reach")
+    }
+
+    Set tSC = $ClassMethod(..#REGISTRY, "ListTools", .tTools)
+    Do $$$AssertStatusOK(tSC, "the tool registry lists: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tWrites = 0
+    Set tActions = 0
+    Set tIterator = tTools.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        If tEntry.%Get("kind") '= "write" Continue
+        Set tWrites = tWrites + 1
+        Set tName = tEntry.%Get("name")
+        Set tClass = tEntry.%Get("class")
+        Set tType = $ClassMethod(tClass, "WriteType")
+        Set tSends = ''$ClassMethod(tClass, "SendsBody")
+        Do $$$AssertTrue($ListFind(tMutating, tType) > 0, tName _ " writes with '" _ tType _ "', which the port declares a mutating type")
+        Set tExempt = ($ListFind(tBodyless, tType) > 0)
+        Do $$$AssertEquals(tExempt, 'tSends, tName _ " sends " _ $Select(tSends: "a body", 1: "none") _ ", so '" _ tType _ "' is " _ $Select(tSends: "absent from", 1: "in") _ " the port's bodyless roster")
+        If 'tSends Set tActions = tActions + 1
+    }
+    Do $$$AssertTrue(tWrites > 0, "the registry enumerated write tools at all")
+    Do $$$AssertTrue(tActions > 0, "and at least one of them is an action-style write, so the bodyless half of the equality was exercised")
 }
 
 /// <p>The class <var>pClass</var> inherits method <var>pName</var> from, or <code>""</code>.</p>

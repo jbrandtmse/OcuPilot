@@ -127,14 +127,30 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// no tool, no screen read and no turn reaches one, and the port itself decides nothing about
 /// whether the write may happen.</p>
 /// <p><b>Synchronous on the endpoints that ship today.</b> The vendor's base
-/// <code>ShouldRunAsync()</code> answers false and <code>Security.Applications</code>'s endpoint
-/// does not override it, so a <code>PUT</code> runs in the caller's job and its answer is the
-/// endpoint's own. An endpoint that <i>did</i> queue a mutating request is refused by
-/// <method>Sequence</method> before the vendor's task row is written, because that row would carry
-/// a supplied secret from the body (AD-35, DW-1279). <method>Sequence</method> reads
+/// <code>ShouldRunAsync()</code> answers false and neither <code>Security.Applications</code>'s
+/// endpoint nor <code>Task.CRUD</code> overrides it, so a mutating call runs in the caller's job
+/// and its answer is the endpoint's own. An endpoint that <i>did</i> queue a mutating request is
+/// refused by <method>Sequence</method> before the vendor's task row is written, because that row
+/// would carry a supplied secret from the body (AD-35, DW-1279). <method>Sequence</method> reads
 /// <code>%request.Method</code>, which <method>HttpMethodFor</method> has already set to the
-/// mutating suffix itself.</p>
-Parameter MUTATINGTYPES = "PUT";
+/// mutating suffix itself -- for <code>RESUME</code> that value is the vendor's request-type
+/// suffix rather than an HTTP verb, since the vendor exposes the operation only as a request
+/// type.</p>
+/// <p><code>RESUME</code> is <code>Task.CRUD</code>'s bodyless resume (AD-51, Story 5.11): the
+/// vendor's <code>NeedsRequestBody()</code> excludes it, its <code>ValidateQueryParams</code>
+/// requires the <code>id</code> query parameter, and its <code>ResourcesOR()</code> answers
+/// <code>%Admin_Task</code> alone. It is listed in <parameter>BODYLESSTYPES</parameter> as well,
+/// which is what exempts it from the object-body refusal below.</p>
+Parameter MUTATINGTYPES = "PUT,RESUME";
+
+/// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
+/// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51).</p>
+/// <p><b>It is a declaration about the vendor, not a relaxation.</b> The refusal exists because a
+/// body-taking write given a non-object body writes nothing and answers 2xx (DW-1427); a request
+/// type whose own <code>NeedsRequestBody()</code> excludes it never reads a body at all, so there
+/// is no silent success to prevent and requiring one would refuse the only call the vendor
+/// offers.</p>
+Parameter BODYLESSTYPES = "RESUME";
 
 /// <p>The pair set the <b>backing query or class</b> of an endpoint requires, beyond the
 /// endpoint's own <code>ResourcesOR()</code> gate (AD-29). Comma-separated entries of the form
@@ -355,7 +371,8 @@ ClassMethod VerifyInstance(Output pVersion As %Integer, Output pDetail As %Strin
 /// outside <parameter>TYPESUFFIXES</parameter>, a suffix the class declares no
 /// <code>TYPE&lt;suffix&gt;</code> parameter for, or a read the class leaves to the vendor base
 /// class (<method>ImplementsRead</method>).</p>
-/// <p><b>A <parameter>MUTATINGTYPES</parameter> call must carry an object body.</b> ObjectScript
+/// <p><b>A <parameter>MUTATINGTYPES</parameter> call must carry an object body, unless its type is
+/// one <parameter>BODYLESSTYPES</parameter> names.</b> ObjectScript
 /// does not enforce a method argument's declared type, and a non-object <var>pBody</var> becomes
 /// <code>{}</code> in <method>RunSequence</method> -- which the vendor's
 /// <code>MergeJsonAndProperties</code> reads as carrying no properties, so a <code>PUT</code> given
@@ -400,9 +417,9 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         ; substitutes {} for it, the vendor reads that as no properties, and the endpoint answers
         ; 2xx having written nothing. A write that reports success and changed nothing is the one
         ; failure a confirmed proposal must not be able to produce, so the port refuses the call
-        ; instead of issuing it. Asked only for a mutating type, so no read's omitted body is
-        ; affected.
-        If $ListFind($ListFromString(..#MUTATINGTYPES), pType) && '$IsObject(pBody) {
+        ; instead of issuing it. Asked only for a body-taking mutating type, so neither a read's
+        ; omitted body nor a BODYLESSTYPES write is affected.
+        If $ListFind($ListFromString(..#MUTATINGTYPES), pType) && '$ListFind($ListFromString(..#BODYLESSTYPES), pType) && '$IsObject(pBody) {
             Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, .pHttpStatus, .pFault)
             Do ..LogFault(pEndpoint _ " " _ pType _ " was given a body that is not an object, which the vendor reads as carrying no properties", $$$ERROR($$$GeneralError, "a mutating call's body must be a %DynamicAbstractObject, never its JSON text"), pFault.code)
             Quit
@@ -747,7 +764,10 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
 /// for a <parameter>MUTATINGTYPES</parameter> entry, <code>GET</code> for everything else.</p>
 /// <p>The vendor's endpoints read their own <code>Type</code> property rather than
 /// <code>%request.Method</code>, so nothing dispatches on this; it is set truthfully so the stub
-/// does not describe a read while a write runs against it.</p>
+/// does not describe a read while a write runs against it. For <code>RESUME</code> the value the
+/// stub carries is that request-type suffix and not an HTTP verb, because the vendor exposes the
+/// operation as a request type alone; <method>Sequence</method>'s async refusal reads it as a
+/// <parameter>MUTATINGTYPES</parameter> member either way.</p>
 ClassMethod HttpMethodFor(pSuffix As %String) As %String [ Private ]
 {
     If $ListFind($ListFromString(..#MUTATINGTYPES), pSuffix) Quit pSuffix

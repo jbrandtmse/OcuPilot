@@ -24,8 +24,10 @@ Parameter PROBEPREFIX = "OcuPilotProbeAgent";
 /// about one target, so <code>Name</code> is required by its input schema and an empty argument
 /// object has nothing to read fresh. That holds for the auditing write as well, whose target is a
 /// singleton: the id names nothing the vendor reads, but it is what keys the lock, so the schema
-/// still requires it (AD-13, AD-34).</p>
-Parameter REFUSEEMPTY = "logs.applicationerrors.read:TOOL.ARGUMENTS,shell.screen.open:NAV.NOTINSTANCE,osmgmt.databasedetails.read:READ.CRITERION,osmgmt.processdetails.read:READ.CRITERION,tasks.taskdetails.read:READ.CRITERION,osmgmt.databasevolumes.read:PORT.VALIDATION,security.secrets.read:PORT.VALIDATION,webapp.openapi.read:PORT.VALIDATION,webapp.list.update:TOOL.ARGUMENTS,permissions.users.update:TOOL.ARGUMENTS,security.auditing.update:TOOL.ARGUMENTS";
+/// still requires it (AD-13, AD-34). It holds for the task resume as well, which admits no field
+/// at all and whose schema is therefore the identifying property and the agent's own words
+/// (AD-51).</p>
+Parameter REFUSEEMPTY = "logs.applicationerrors.read:TOOL.ARGUMENTS,shell.screen.open:NAV.NOTINSTANCE,osmgmt.databasedetails.read:READ.CRITERION,osmgmt.processdetails.read:READ.CRITERION,tasks.taskdetails.read:READ.CRITERION,osmgmt.databasevolumes.read:PORT.VALIDATION,security.secrets.read:PORT.VALIDATION,webapp.openapi.read:PORT.VALIDATION,webapp.list.update:TOOL.ARGUMENTS,permissions.users.update:TOOL.ARGUMENTS,security.auditing.update:TOOL.ARGUMENTS,tasks.schedule.resume:TOOL.ARGUMENTS";
 
 Method OnBeforeOneTest() As %Status
 {

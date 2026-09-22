@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { NavigationEnd, Router } from '@angular/router';
 
 import { ApiService } from '../core/api';
-import { NavigationService, parentCriteria } from '../core/navigation';
+import { NavigationService, ownIdSegment, parentCriteria } from '../core/navigation';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../core/screen-actions';
@@ -42,6 +42,13 @@ interface ListView {
  * at call time so a refresh reads for the id the page is showing. The page drops the store's answers
  * when it opens, and a navigation that keeps this screen and changes its id drops them again and
  * reads, so no parent's rows or selection are shown under another parent's id.
+ *
+ * **A list opened on its own id selects that row** (AD-13, DW-1419). Where the URL carries the
+ * screen's own trailing id segment, the page asks the store for that selection and the table takes
+ * it on the tick a read brings the row in. It is one mechanism for both callers that produce such
+ * a URL -- the agent's `shell.screen.open` with an `entityId`, and a change toast's
+ * "Open in <screen>" -- and an id naming no row the read returned selects nothing, which is not an
+ * error.
  */
 @Component({
   selector: 'app-list-page',
@@ -100,21 +107,25 @@ export class ListPage {
     if (screen.parentScope !== '') store.clearAnswers();
     const criteria = () => parentCriteria(screen, this.router.url);
     this.refresh.bind(screen, createScreenRead(this.api, screen, criteria));
+    // Requested before the first read, so the table consumes it on the tick that brings the row in
+    // rather than on a second pass (DW-1419).
+    this.selectFromRoute(screen, store);
     if (this.scope.loaded()) void this.refresh.readNow();
     let readFor = JSON.stringify(criteria());
-    const stopIdChange =
-      screen.parentScope === ''
-        ? { unsubscribe: () => {} }
-        : this.router.events.subscribe((event) => {
-            if (!(event instanceof NavigationEnd)) return;
-            if (this.navigation.screenForUrl(this.router.url)?.descriptor !== screen.descriptor) return;
-            const next = JSON.stringify(criteria());
-            if (next === readFor) return;
-            readFor = next;
-            // The rows, selection and scroll belong to the parent the page has left, so they are
-            // dropped before the new parent's read, as a namespace switch drops them.
-            if (this.scope.loaded()) this.refresh.noteScopeChanged();
-          });
+    const stopIdChange = this.router.events.subscribe((event) => {
+      if (!(event instanceof NavigationEnd)) return;
+      if (this.navigation.screenForUrl(this.router.url)?.descriptor !== screen.descriptor) return;
+      // A navigation that keeps this screen and changes its id names another row, which is the
+      // toast's "Open in <screen>" while the screen is already open.
+      this.selectFromRoute(screen, store);
+      if (screen.parentScope === '') return;
+      const next = JSON.stringify(criteria());
+      if (next === readFor) return;
+      readFor = next;
+      // The rows, selection and scroll belong to the parent the page has left, so they are
+      // dropped before the new parent's read, as a namespace switch drops them.
+      if (this.scope.loaded()) this.refresh.noteScopeChanged();
+    });
     // Manual Refresh (DW-260): the framework's own silent re-read, which is what preserves sort,
     // filter, selection and scroll and announces nothing. Registered for the life of the page, so
     // the control disappears with it.
@@ -128,6 +139,18 @@ export class ListPage {
       stopRefreshAction();
       if (this.refresh.descriptor() === screen.descriptor) this.refresh.unbind();
     });
+  }
+
+  /**
+   * Ask the store to select the row this screen's own route id names (AD-13, DW-1419).
+   *
+   * The request is the store's existing pending selection, which the table consumes once a read
+   * brings the row in -- so it is the same path a `created` change takes, and an id no row carries
+   * selects nothing rather than raising.
+   */
+  private selectFromRoute(screen: ScreenDeclaration, store: ScreenStore): void {
+    const id = ownIdSegment(screen, this.router.url);
+    if (id !== '') store.setPendingSelection(id);
   }
 
   /**

@@ -39,6 +39,7 @@ const {
   editorScreenFor,
   isListedScreen,
   listedScreensForArea,
+  ownIdSegment,
   parentCriteria,
   parentListFor,
   routeEntityType,
@@ -400,6 +401,42 @@ test('tabMembersFor lists the OAuth 2.0 tabs in position order, and tabGroupFor 
     null,
     'a group no built first tab declares resolves none'
   );
+});
+
+// Story 5.11, DW-1419: a list opened on its own route id names the row to select. One helper
+// serves both callers that produce such a URL -- the agent's `shell.screen.open` with an
+// `entityId`, and a change toast's "Open in <screen>" -- so the selection cannot be right for one
+// and wrong for the other.
+//
+// Mutation (Rule 19): drop the second `decodeEntityId` -> the `%Demo_1` round trip goes red; drop
+// the `segment.includes('/')` guard -> the sub-resource row goes red, because a task details URL
+// would read as the schedule's own id; drop the `parentScope !== ''` guard -> the parent-scoped
+// rows go red, because a sub-resource list would select whichever row shares its parent's key.
+test('ownIdSegment reads a list screen\'s own route id, and nothing else', () => {
+  const tasks = screenForRoute('tasks/schedule');
+  assert.equal(ownIdSegment(tasks, '/tasks/schedule/7?ns=HSCUSTOM'), '7');
+  for (const id of ['%Demo_1', 'a.b', 'a-b_c', '/csp/myapp']) {
+    const url = `/tasks/schedule/${encodeEntityId(id)}?ns=HSCUSTOM`;
+    assert.equal(ownIdSegment(tasks, url), id, `the id ${id} round-trips`);
+  }
+  assert.equal(ownIdSegment(tasks, '/tasks/schedule?ns=HSCUSTOM'), '', 'the bare route names no row');
+  assert.equal(ownIdSegment(tasks, '/tasks/schedule/details/7'), '', 'and a sub-resource route is not this screen\'s id');
+  assert.equal(ownIdSegment(tasks, '/tasks/history?ns=HSCUSTOM'), '', 'nor is another route');
+  assert.equal(ownIdSegment(screenForRoute(''), '/7'), '', 'the root screen administers no entity, so it takes no id');
+  const noId = screenForRoute('agent/switches');
+  assert.equal(hasIdRoute(noId), false, 'a screen whose id kind is none has no id route');
+  assert.equal(ownIdSegment(noId, '/agent/switches/7'), '', 'and reads no id from a segment the route table does not hold');
+
+  // A parent-scoped list's trailing segment is its PARENT's id -- what `parentCriteria` reads it
+  // as -- and none of its rows is keyed by it: a run of task history is keyed by its run id, not
+  // by the task the route names. Both kinds are covered, a composite parent and a single one.
+  for (const route of ['tasks/schedule/history', 'security/wallet/secrets']) {
+    const child = screenForRoute(route);
+    assert.notEqual(child.parentScope, '', `${route} is parent-scoped`);
+    assert.equal(hasIdRoute(child), true, `${route} still takes an id route, so the guard is the thing answering`);
+    assert.equal(ownIdSegment(child, `/${route}/7?ns=HSCUSTOM`), '', `${route} reads its parent's id as no row of its own`);
+    assert.deepEqual(parentCriteria(child, `/${route}/7?ns=HSCUSTOM`), { [child.read.criteria.fields[0].param]: '7' }, 'while parentCriteria reads that same segment as the parent it is');
+  }
 });
 
 // Story 6.3: a parent-scoped list's one criterion comes from the URL's id, decoded once past the

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { ChangeBus, type ChangeAction } from '../core/change-bus';
 import { encodeEntityId } from '../core/entity-id';
+import { ownIdSegment, screenForRoute } from '../core/navigation';
 import { PanelState } from '../core/panel-layout';
 import { ScopeService } from '../core/scope';
 import { ShellState } from '../core/shell-state';
@@ -167,6 +168,10 @@ describe('the change toast region', () => {
     fixture.detectChanges();
 
     expect(router.url).toBe(`/web-applications/list/${encodeEntityId('/csp/myapp')}?ns=HSCUSTOM`);
+    // DW-1419: the URL alone said nothing about the row. The list selects the id it carries
+    // through `ownIdSegment`, so what the action produces is asserted in the spelling the list
+    // reads rather than as a string only this spec knows how to build.
+    expect(ownIdSegment(screenForRoute('web-applications/list')!, router.url)).toBe('/csp/myapp');
     expect(shell.shown).toEqual(['web-applications']);
     // A toast that has been acted on is noise over the row it pointed at.
     expect(toasts()).toEqual([]);

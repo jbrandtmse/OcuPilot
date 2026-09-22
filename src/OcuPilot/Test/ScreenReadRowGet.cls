@@ -234,14 +234,22 @@ Method TestAMalformedExpiryFailsTheRead()
     }
 }
 
-/// <p>A surviving row whose key is not a non-empty string, or whose detail is not an object, fails
+/// <p>A surviving row whose key is not a non-empty scalar, or whose detail is not an object, fails
 /// the read with 500 <code>INTERNAL</code>; a row with no key issues no detail call.</p>
+/// <p><b>A number is a key</b> (Story 5.11): the detail call carries the key as a query parameter,
+/// which is text whatever the row's own JSON type is -- <code>Task.CRUD</code>'s LIST answers its
+/// numeric task id as a number while <code>Security.User</code>'s answers its name as a string,
+/// and both address one object. An object, an array and a null are still refused: none of them is
+/// a value a query parameter can carry.</p>
 Method TestARowOrDetailTheCallCannotReadFailsTheRead()
 {
-    For tName = "", 7 {
+    For tShape = "empty", "object", "array", "null" {
         Do ..ClearFixtures()
         Set tRow = ..Row("x")
-        Do tRow.%Set("Name", tName, $Select(tName = "": "string", 1: "number"))
+        If tShape = "empty" Do tRow.%Set("Name", "", "string")
+        If tShape = "object" Do tRow.%Set("Name", {})
+        If tShape = "array" Do tRow.%Set("Name", [])
+        If tShape = "null" Do tRow.%Set("Name", "", "null")
         Do ..Arm([(tRow)], {})
         Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute(..#USERS, 5, .tResult, .tHttp, .tFault)
         Do $$$AssertStatusNotOK(tSC, "Name " _ tRow.%ToJSON() _ ": the read fails")
@@ -249,6 +257,16 @@ Method TestARowOrDetailTheCallCannotReadFailsTheRead()
         Do $$$AssertTrue($IsObject(tFault) && (tFault.code = "INTERNAL"), "Name " _ tRow.%ToJSON() _ ": with the internal fault")
         Do $$$AssertEquals(##class(OcuPilot.Test.EndpointFixture).Recorded("getCount"), "", "Name " _ tRow.%ToJSON() _ ": and no detail call")
     }
+
+    ; The acceptance half, and the direction this story widened: a numeric key issues the detail
+    ; call and the read succeeds.
+    Do ..ClearFixtures()
+    Set tNumeric = ..Row("x")
+    Do tNumeric.%Set("Name", 7, "number")
+    Do ..Arm([(tNumeric)], {"7": {"Roles": [], "ExpirationDate": (..Day(30))}})
+    Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute(..#USERS, 5, .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "a numeric key reads its detail: " _ $System.Status.GetErrorText(tSC))
+    Do $$$AssertEquals(##class(OcuPilot.Test.EndpointFixture).Recorded("getCount"), 1, "issuing exactly one detail call")
 
     Do ..ClearFixtures()
     Do ..Arm([(..Row("a"))], {"a": "not an object"})

@@ -157,6 +157,50 @@ describe('the list page', () => {
     expect(document.activeElement).toBe(grid);
   });
 
+  // Story 5.11, DW-1419: a list opened on its own route id selects that row on arrival. It is the
+  // store's existing pending-selection path, so the agent's navigation and a change toast's
+  // "Open in <screen>" reach it the same way, and the assertion is on `aria-selected` rather than
+  // on the URL -- which is what DW-1419 names as the gap the two navigation specs left.
+  //
+  // Mutation (Rule 19): drop the `selectFromRoute` call in `ListPage`'s constructor -> the first
+  // row below goes red while every URL assertion stays green; drop the one in its router
+  // subscription -> the navigation half goes red, which is the path a change toast takes while
+  // the list is already open.
+  it('DW-1419: a list opened on its own route id selects that row, and an id naming none selects nothing', async () => {
+    const declaration = tableDeclaration();
+    const page = await mount(declaration, named('A', 'B', 'C'), true, '/web-applications/probe/B?ns=HSCUSTOM');
+
+    const selected = Array.from(page.host().querySelectorAll('.ocu-data-table-body [role="row"]')).filter(
+      (row) => row.getAttribute('aria-selected') === 'true'
+    );
+    expect(selected.length).toBe(1);
+    expect(selected[0].querySelector('.ocu-data-table-link')?.textContent?.trim()).toBe('B');
+    const store = page.stores.for(declaration.descriptor, declaration.refreshRates);
+    expect(store.selection()).toEqual(['B']);
+
+    // The second caller: a navigation that keeps this screen and names another row, which is what
+    // a change toast's "Open in <screen>" does while the list is already open. Angular reuses the
+    // component across that hop, so the constructor does not run again and only the router
+    // subscription can move the selection.
+    await TestBed.inject(Router).navigateByUrl('/web-applications/probe/C?ns=HSCUSTOM');
+    await settle(page.fixture);
+    const moved = Array.from(page.host().querySelectorAll('.ocu-data-table-body [role="row"]')).filter(
+      (row) => row.getAttribute('aria-selected') === 'true'
+    );
+    expect(moved.length).toBe(1);
+    expect(moved[0].querySelector('.ocu-data-table-link')?.textContent?.trim()).toBe('C');
+    expect(store.selection()).toEqual(['C']);
+
+    const absent = await mount(declaration, named('A', 'B', 'C'), true, '/web-applications/probe/Z?ns=HSCUSTOM');
+    expect(rowNames(absent.host())).toEqual(['A', 'B', 'C']);
+    expect(
+      Array.from(absent.host().querySelectorAll('.ocu-data-table-body [role="row"]')).filter(
+        (row) => row.getAttribute('aria-selected') === 'true'
+      ).length
+    ).toBe(0);
+    expect(absent.host().querySelector('[role="alert"]')).toBeNull();
+  });
+
   it('AC8: a changed event for the list entity type and scope issues one read and the row renders changed', async () => {
     const declaration = tableDeclaration();
     const page = await mount(declaration, named('A', 'B'));

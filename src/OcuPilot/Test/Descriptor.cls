@@ -338,15 +338,17 @@ Method TestABannerOutsideTheGrammarIsRefused()
     Do $$$AssertStatusOK(tProdSC, "so the shipped roster validates")
 }
 
-/// <p>Story 2.8 -- the task schedule list's declaration passes the read, banner and classic link
-/// rules; its route and tool identifier resolve to it; it declares the four auto-refresh rates and
-/// no detail call; <code>Suspended</code> is absent from its read, its table and its agent context,
-/// because the vendor LIST coerces it to false for every task; and its classic page is a class
+/// <p>Story 2.8, widened by Story 5.11 -- the task schedule list's declaration passes the read,
+/// banner and classic link rules; its route and tool identifier resolve to it; it declares the
+/// four auto-refresh rates; <code>Suspended</code> reaches the read and the agent's context
+/// through the <code>INFO</code> detail call and reaches no table column, filter or sort, because
+/// the vendor LIST coerces it to false for every task (DW-269); and its classic page is a class
 /// compiled on this instance under the declaration's own case (AD-44).</p>
 /// <p>Mutations: lower-case <code>classicPage</code> in
 /// <class>OcuPilot.Screen.Descriptor.TaskScheduleList</class> -> the compiled-class assertion goes
 /// red; drop <code>Namespace</code> from its <code>read.filter</code> -> the filter pin goes red;
-/// declare <code>Suspended</code> as a read field or a column -> the absence assertions go red.
+/// drop the <code>rowGet</code>, or its <code>type</code>, -> the detail-call assertions go red;
+/// declare <code>Suspended</code> as a table column -> the column-absence assertion goes red.
 /// DW-304: change one declared banner case's <code>equals</code> value to a word the vendor's
 /// <code>RunGet</code> does not spell -> the vendor-source assertion goes red naming it, together
 /// with the typed-copy comparison above it. The two are not independent, and the vendor pin is not
@@ -360,21 +362,28 @@ Method TestTheTaskScheduleListValidatesAndNamesItsClassicPageInItsOwnCase()
     If $$$ISERR(tSC) Quit
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "its read and table are the declared grammar")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).BannerProblem(tDeclaration), "", "and so is its banner")
-    Do $$$AssertEquals(tDeclaration.read.source.%GetTypeOf("rowGet"), "unassigned", "it declares no detail call, so no GET is ever issued for a row")
+    ; DW-269: the truthful Suspended is in the same endpoint's INFO, so the list takes it per row
+    ; (AD-36) rather than from a LIST column the vendor coerces.
+    Do $$$AssertEquals(tDeclaration.read.source.%GetTypeOf("rowGet"), "object", "it declares one per-row detail call")
+    Do $$$AssertEquals(tDeclaration.read.source.rowGet.%ToJSON(), "{""key"":""Id"",""param"":""id"",""type"":""INFO"",""fields"":[""Suspended""],""derived"":[]}", "an INFO keyed by the row's own numeric task id, carrying Suspended alone")
+    Do $$$AssertEquals(tDeclaration.%GetTypeOf("fingerprintExcludes"), "unassigned", "and it excludes nothing from a proposal's fingerprint: no INFO field moves while a task is suspended")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and it links out to nothing")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("tasks/schedule"), tClass, "the route resolves to it")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("tasks.schedule"), tClass, "and so does its tool identifier")
-    Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), "[""Name"",""Type"",""Namespace"",""Description"",""Id"",""LastFinished"",""NextScheduled""]", "the seven declared fields are the live LIST row's key set less Suspended, in the vendor's order")
+    Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), "[""Name"",""Type"",""Namespace"",""Description"",""Id"",""LastFinished"",""NextScheduled"",""Suspended""]", "the eight declared fields are the live LIST row's key set with the detail call's Suspended last")
     Do $$$AssertEquals(tDeclaration.read.filter.%ToJSON(), "[""Name"",""Namespace"",""Type"",""Description""]", "the filter matches on every text field")
     Do $$$AssertEquals(tDeclaration.read.sort.%ToJSON(), "{""fields"":[""Name"",""Namespace"",""Type"",""Description"",""LastFinished"",""NextScheduled""],""default"":""Name"",""direction"":""asc""}", "and the list sorts by name ascending")
     Do $$$AssertEquals(tDeclaration.context.secretFields.%Size(), 0, "and the read carries no secret to strip")
     ; The vendor LIST answers "Suspended":false for every task on this build, suspended ones
-    ; included, so a column over it would read "No" above a suspended task. Absence from the read,
-    ; the table and the context is the claim -- the banner's own `equals` is the word "Suspended"
-    ; as the Task Manager's Status reads it, which is a different value on a different endpoint.
-    Do $$$AssertEquals((tDeclaration.read.%ToJSON() [ "Suspended"), 0, "the read names no Suspended field, filter or sort")
+    ; included, so the value the screen shows comes from the detail call above and nowhere else.
+    ; The table, the filter and the sort stay as EXPERIENCE.md's own "name, namespace, type, last
+    ; run, next run" declares them -- the banner's own
+    ; `equals` is the word "Suspended" as the Task Manager's Status reads it, which is a different
+    ; value on a different endpoint.
+    Do $$$AssertEquals((tDeclaration.read.filter.%ToJSON() [ "Suspended"), 0, "the read filters on no Suspended field")
+    Do $$$AssertEquals((tDeclaration.read.sort.%ToJSON() [ "Suspended"), 0, "and sorts by none")
     Do $$$AssertEquals((tDeclaration.table.%ToJSON() [ "Suspended"), 0, "and the table declares no Suspended column")
-    Do $$$AssertEquals((tDeclaration.context.%ToJSON() [ "Suspended"), 0, "and the agent's context carries none either")
+    Do $$$AssertTrue($ListFind($ClassMethod(tClass, "ContextFields"), "Suspended") > 0, "while the agent's context carries it, so the read tool's view answers it too")
     Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 1, "it is one of the auto-refresh screens")
     Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RefreshRates")), "5,10,30,60", "at the four declared rates")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RefreshProblem($ClassMethod(tClass, "Refreshes"), $ClassMethod(tClass, "RefreshRates")), "", "which are a sound pair")

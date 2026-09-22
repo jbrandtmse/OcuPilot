@@ -156,14 +156,15 @@ Method TestAChangedRoleGrantIsRefused()
 }
 
 /// <p>Matrix row 6: an entity type the set evaluates no predicates for is refused wholesale, and so
-/// is a reference that cannot be parsed at all. The user predicates Story 5.9 added are
-/// <class>OcuPilot.Test.UserUpdate</class>'s, so <code>user</code> is no longer one of the types
-/// named here.</p>
+/// is a reference that cannot be parsed at all. A type whose predicates have landed leaves this
+/// list in the story that lands them -- <code>user</code> in Story 5.9
+/// (<class>OcuPilot.Test.UserUpdate</class>), <code>task</code> in Story 5.11
+/// (<class>OcuPilot.Test.TaskResume</class>).</p>
 /// <p>Mutation: answer <code>pProhibits = 0</code> in the uncovered arm of
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -- this goes red.</p>
 Method TestAnUncoveredEntityTypeIsRefusedWholesale()
 {
-    Set tUncovered = $ListBuild("task", "process", "role", "resource", "service", "database")
+    Set tUncovered = $ListBuild("process", "role", "resource", "service", "database")
     For tI = 1:1:$ListLength(tUncovered) {
         Set tType = $List(tUncovered, tI)
         Set tSC = ..Ask(..Target(), ..Payload(), "Description", .tProhibits, .tCode, "probe-id", tType)
@@ -175,10 +176,10 @@ Method TestAnUncoveredEntityTypeIsRefusedWholesale()
     Do $$$AssertStatusOK(tSC, "an unparseable reference is answered, not raised")
     Do $$$AssertEquals(tProhibits, 1, "and refused")
     Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "UNCOVERED"), "as uncovered")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration", "Release 1 covers exactly three entity types")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task", "Release 1 covers exactly four entity types")
 
     ; The refusal reaches a caller as a 403 with the set's own code, not as an error.
-    Set tKey = ..Seed(..Payload(), "Description", "probe-id", "task")
+    Set tKey = ..Seed(..Payload(), "Description", "probe-id", "process")
     If tKey = "" Quit
     Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Target())
     Set tSC = ..Confirm(tKey, .tHttp, .tCode)
@@ -317,7 +318,17 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         ; advertises nothing outside the set's reviewed few, so a vendor property added to the
         ; endpoint's template reaches no schema until the set has a predicate for it.
         Set tPermitted = ##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields(tType)
-        Do $$$AssertTrue($ListLength(tSettable) > 0, tEntry.%Get("name") _ " admits at least one field")
+        ; An action-style write sends no body (AD-51), so it admits no field by construction and
+        ; the set reviews none for its type: the two loops below are vacuous for it and the floor
+        ; under them is the emptiness itself, asserted on both sides. A body-sending write still
+        ; has to admit something -- a merge tool that admitted nothing would pass those loops
+        ; having checked nothing.
+        If '$ClassMethod(tClass, "SendsBody") {
+            Do $$$AssertEquals($ListLength(tSettable), 0, tEntry.%Get("name") _ " sends no body, so it admits no field")
+            Do $$$AssertEquals($ListLength(tPermitted), 0, "and the set has reviewed no field of " _ tType _ " for it to admit")
+        } Else {
+            Do $$$AssertTrue($ListLength(tSettable) > 0, tEntry.%Get("name") _ " admits at least one field")
+        }
         For tI = 1:1:$ListLength(tSettable) {
             Set tField = $List(tSettable, tI)
             Do $$$AssertTrue($ListFind(tPermitted, tField) > 0, tEntry.%Get("name") _ " admits '" _ tField _ "', which the prohibited set has reviewed for " _ tType)

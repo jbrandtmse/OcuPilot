@@ -11,17 +11,24 @@
 /// percent-encoded path segment carrying the vendor's own numeric task id, because Story 6.6's
 /// per-task history and Story 6.7's task details both key on it. The name cell's link therefore
 /// carries the numeric id rather than the task's name; Story 6.7 re-points it at task details.</p>
-/// <p><b><code>Suspended</code> is deliberately absent</b> from the read fields, the filter, the sort
-/// and the columns. The vendor LIST answers <code>"Suspended":false</code> for every task on this
-/// build, genuinely suspended ones included: <code>RunList</code> applies a Yes/No coercion to a
-/// column whose display values are <code>''</code>, <code>'Suspend Leave'</code> and
-/// <code>'Suspend Reschedule'</code>, none of which contains "YES". A Suspended column sourced from
-/// this LIST would read "No" over a suspended task, which is worse than its absence. The truthful
-/// value is in the same endpoint's INFO; taking it is DW-269's, routed to the story that first needs
-/// the signal.</p>
-/// <p><b>It declares no <code>rowGet</code>:</b> every field this screen needs is in the LIST, so no
-/// detail call is ever issued and <code>context.secretFields</code> is empty because the read carries
-/// no secret to strip (AD-24, AD-35).</p>
+/// <p><b><code>Suspended</code> comes from the same endpoint's <code>INFO</code>, never from its
+/// LIST</b> (DW-269, AD-36). The vendor LIST answers <code>"Suspended":false</code> for every task
+/// on this build, genuinely suspended ones included: <code>RunList</code> applies a Yes/No coercion
+/// to a column whose display values are <code>''</code>, <code>'Suspend Leave'</code> and
+/// <code>'Suspend Reschedule'</code>, none of which contains "YES". The declared <code>rowGet</code>
+/// issues <code>INFO</code> once per surviving row, keyed by the row's own <code>Id</code>, and
+/// merges the truthful value into the row -- so the screen and the read tool see one answer
+/// (AD-36). It stays out of the table, the filter and the sort: <file>EXPERIENCE.md</file>
+/// declares this screen's columns as "name, namespace, type, last run, next run" and this story
+/// adds none.</p>
+/// <p>The read declares no <code>fingerprintExcludes</code>. Measured on
+/// <code>ocupilot-ci</code>, 2026-09-21: none of the eight fields <code>INFO</code> answers moves
+/// while a task is suspended -- a suspended task does not run, so its last-run figures, its
+/// <code>Status</code> and its stale <code>NextScheduled</code> all stand -- so every one of them
+/// is inside the fingerprint and a task another party resumed under a live proposal is refused
+/// (AD-6, AD-51).</p>
+/// <p><code>context.secretFields</code> is empty because the read carries no secret to strip
+/// (AD-24, AD-35).</p>
 /// <p><b>It declares a <code>banner</code></b>, the first screen to: a second
 /// <class>OcuPilot.Port.AdminPort</class> read of <code>Task.Manager</code> whose
 /// <code>Status</code> raises a warning strip above the table -- the one fact that decides whether
@@ -51,8 +58,11 @@
 /// <p><b>The classic page is <code>%CSP.UI.Portal.TaskSchedule</code></b>, spelled in the class's own
 /// case because the custom-resource lookup does not case-fold (AD-44). As a list archetype it links
 /// out to nothing.</p>
-/// <p>It declares no primary or row action, so its empty state names what to do next rather than
-/// inviting the agent.</p>
+/// <p><b>It declares no primary or row action</b>, so its empty state names what to do next rather
+/// than inviting the agent. Its one write tool, <class>OcuPilot.Screen.Tool.TaskResume</class>, is
+/// the agent's (AD-51); the Run, Suspend, Resume and Delete row actions and their handlers are
+/// Story 7.6's, together, because an inert control shipping ahead of its handler is forbidden
+/// (<file>epics.md</file>:3935).</p>
 Class OcuPilot.Screen.Descriptor.TaskScheduleList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -75,14 +85,19 @@ XData Declaration
   "id": {"kind": "composite", "parts": ["Id"]},
   "primaryAction": {"id": "", "selfProtection": ""},
   "rowActions": [],
-  "context": {"fields": ["Name", "Type", "Namespace", "Description", "Id", "LastFinished", "NextScheduled"], "secretFields": []},
+  "context": {"fields": ["Name", "Type", "Namespace", "Description", "Id", "LastFinished", "NextScheduled", "Suspended"], "secretFields": []},
   "emptyStateKey": "taskListEmpty",
   "commandAliases": ["task manager"],
   "classicPage": "%CSP.UI.Portal.TaskSchedule",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
-    "source": {"port": "admin", "endpoint": "Task.CRUD", "type": "LIST"},
-    "fields": ["Name", "Type", "Namespace", "Description", "Id", "LastFinished", "NextScheduled"],
+    "source": {
+      "port": "admin",
+      "endpoint": "Task.CRUD",
+      "type": "LIST",
+      "rowGet": {"key": "Id", "param": "id", "type": "INFO", "fields": ["Suspended"], "derived": []}
+    },
+    "fields": ["Name", "Type", "Namespace", "Description", "Id", "LastFinished", "NextScheduled", "Suspended"],
     "filter": ["Name", "Namespace", "Type", "Description"],
     "sort": {"fields": ["Name", "Namespace", "Type", "Description", "LastFinished", "NextScheduled"], "default": "Name", "direction": "asc"},
     "paging": "cap"

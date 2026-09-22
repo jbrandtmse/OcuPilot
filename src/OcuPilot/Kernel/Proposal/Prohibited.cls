@@ -85,7 +85,7 @@ Parameter UNCOVERED = "PROHIBITED.UNCOVERED";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -93,6 +93,8 @@ Parameter TYPEWEBAPPLICATION = "web-application";
 Parameter TYPEUSER = "user";
 
 Parameter TYPEAUDITING = "auditing-configuration";
+
+Parameter TYPETASK = "task";
 
 /// <p>The instance's own predefined account, whose disablement AD-10 forbids. Compared through
 /// <method>NormalizedUser</method>, so every spelling the instance resolves to it is refused.</p>
@@ -117,8 +119,13 @@ Parameter FIELDESCALATIONROLES = "EscalationRoles";
 /// AutheUnauthenticated 64).</p>
 Parameter UNAUTHENTICATEDBIT As %Integer = 64;
 
-/// <p>The admin request type the target is re-read with (AD-36's single-object <code>GET</code>),
-/// the same one the fingerprint re-read uses.</p>
+/// <p>The admin request type the target is re-read with when the proposal's tool declares none
+/// (AD-36's single-object <code>GET</code>).</p>
+/// <p><b>The tool's own <method>OcuPilot.Screen.Tool.Write.ReadType</method> is what
+/// <method>Target</method> uses</b> (AD-51), which keeps this read and the fingerprint re-read
+/// the same read. They have to be: <method>Changed</method> compares the stored payload against
+/// this answer field by field, and a payload taken from one request type against a target taken
+/// from another would report every field the two types spell differently as changed.</p>
 Parameter READTYPE = "GET";
 
 /// <p>Every <code>PROHIBITED.*</code> code this class declares, as a <class>%List</class>: the
@@ -177,6 +184,9 @@ ClassMethod CoveredTypes() As %List
 /// one is refused for the current user, the last <code>%All</code> holder and
 /// <parameter>SYSTEMACCOUNTNAME</parameter>. <code>Roles</code> is permitted except where the delta
 /// grants privilege, which is the same asymmetry read over a list.</p>
+/// <p>A task's is <b>none</b>. Its one write is the bodyless resume (AD-51), which sets no field
+/// at all, so every changed field a <code>task</code> proposal could carry is one nobody has
+/// reviewed. AD-10's Release 1 set names no task effect, and this story invents none.</p>
 /// <p>The auditing configuration's one is <code>Enabled</code>, and it carries <b>no</b> asymmetric
 /// predicate: AD-10 does not forbid turning auditing off, and the product's answer to it is the
 /// card's warning, the recorded drop and the banner rather than a refusal (AD-15 as amended
@@ -246,7 +256,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -276,6 +286,10 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         If tType = ..#TYPEAUDITING {
             Set tSC = ..Auditing(.tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPETASK {
+            Set tSC = ..Task(.tChanged, .pProhibits, .pCode)
             Quit
         }
         Set tSC = ..WebApplication(tPayloadObject, tTarget, tServes, .tChanged, .pProhibits, .pCode)
@@ -460,11 +474,36 @@ ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %Dynamic
 /// window unrecorded either way.</p>
 ClassMethod Auditing(ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
 {
+    Quit ..ReviewedFewOnly(..#TYPEAUDITING, .pChanged, .pProhibits, .pCode)
+}
+
+/// <p>The task predicate: the reviewed-few sweep and nothing else, over an empty permitted list.</p>
+/// <p><var>pChanged</var> is <method>Changed</method>'s answer. A task's one write sends no body
+/// (AD-51), so a proposal against a task changes no field and this refuses nothing; a proposal
+/// that does carry one is refused <parameter>UNCOVEREDFIELD</parameter>, because
+/// <method>PermittedChangeFields</method> names no task field anybody has reviewed.</p>
+/// <p><b>The state row the card shows is not a changed field.</b> An action-style write's diff
+/// names the state its action moves -- a resume's is labelled <code>Status</code> -- while
+/// <method>Changed</method> keeps only the diff's fields whose payload value differs from the
+/// target's as the instance holds it now. Nothing is sent, so nothing differs, and the verdict is
+/// over effects rather than over a row's label (AD-10).</p>
+ClassMethod Task(ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Quit ..ReviewedFewOnly(..#TYPETASK, .pChanged, .pProhibits, .pCode)
+}
+
+/// <p>The reviewed-few sweep for entity type <var>pType</var>: every field <var>pChanged</var>
+/// names that <method>PermittedChangeFields</method> does not is refused
+/// <parameter>UNCOVEREDFIELD</parameter>.</p>
+/// <p>The whole of the two shortest branches, so a type whose predicates are exactly "the reviewed
+/// few and nothing else" adds a permitted list rather than a second copy of this loop.</p>
+ClassMethod ReviewedFewOnly(pType As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
     Set pProhibits = 0
     Set pCode = ""
     Set tSC = $$$OK
     Try {
-        Set tPermitted = ..PermittedChangeFields(..#TYPEAUDITING)
+        Set tPermitted = ..PermittedChangeFields(pType)
         Set tField = ""
         For {
             Set tField = $Order(pChanged(tField))
@@ -857,7 +896,7 @@ ClassMethod Target(pToolName As %String, pId As %String, Output pTarget As %Dyna
         }
         Kill tQuery
         Set tQuery(tIdParam) = pId
-        Set tReadSC = $ClassMethod(..PortClass(), "Invoke", tEndpoint, ..#READTYPE, .tQuery, "", .tFresh, .tHttp, .tFault)
+        Set tReadSC = $ClassMethod(..PortClass(), "Invoke", tEndpoint, ..ReadTypeOf(tClass), .tQuery, "", .tFresh, .tHttp, .tFault)
         If $$$ISERR(tReadSC) {
             If +$Get(tHttp) = 404 Quit
             Set tSC = tReadSC
@@ -875,6 +914,20 @@ ClassMethod Target(pToolName As %String, pId As %String, Output pTarget As %Dyna
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The admin request type <var>pToolClass</var>'s target is read with (AD-51), or
+/// <parameter>READTYPE</parameter> when the class declares none or cannot be asked.</p>
+ClassMethod ReadTypeOf(pToolClass As %String) As %String [ Private ]
+{
+    Set tType = ""
+    Try {
+        If pToolClass '= "" Set tType = $ClassMethod(pToolClass, "ReadType")
+    } Catch {
+        Set tType = ""
+    }
+    If tType = "" Quit ..#READTYPE
+    Quit tType
 }
 
 /// <p>Whether the web application at <var>pPath</var> is one OcuPilot is served by, in

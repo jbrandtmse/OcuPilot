@@ -19,8 +19,10 @@
 Class OcuPilot.Kernel.Proposal.Mint Extends %RegisteredObject
 {
 
-/// <p>The admin request type the fresh read is made with: one object, by its own id (AD-36's
-/// single-object <code>GET</code>, whose 404 reads as zero rows).</p>
+/// <p>The admin request type the fresh read is made with when the call names no tool class: one
+/// object, by its own id (AD-36's single-object <code>GET</code>, whose 404 reads as zero rows).
+/// A tool that names its class is read with <method>OcuPilot.Screen.Tool.Write.ReadType</method>
+/// instead (AD-51).</p>
 Parameter READTYPE = "GET";
 
 /// <p>The canonical dotted name of the write tool that turns the instance's auditing on and off
@@ -64,10 +66,15 @@ ClassMethod RegistryClass() As %String
 /// resolved arguments <var>pArgs</var>.</p>
 /// <p><var>pEndpoint</var>, <var>pIdParam</var>, <var>pIdValue</var>, <var>pIdArgument</var> and
 /// <var>pSettable</var> are the tool's own answers (<class>OcuPilot.Screen.Tool.Write</class>):
-/// the admin endpoint, the query parameter its <code>GET</code> identifies a target by, that
+/// the admin endpoint, the query parameter its read identifies a target by, that
 /// target's id, the input property that carried it, and the field names the merge may set. An
 /// empty <var>pEndpoint</var> falls back to the descriptor's own declared read source, which is
 /// the endpoint the screen already lists through.</p>
+/// <p><var>pToolClass</var> is the tool's own class, which is what the three action-style
+/// declarations are read from (AD-51): the request type the fresh read is made with, whether the
+/// confirmed write will carry a body, and the state rows the card shows for a write that sends
+/// none. An empty <var>pToolClass</var> is a merge write read with <parameter>READTYPE</parameter>
+/// and no state rows, which is what every caller predating AD-51 gets.</p>
 /// <p>On success <var>pProposal</var> is
 /// <code>{proposalId, target: {type, scope, id}, tool, changed, unchangedCount, expiresAt}</code>,
 /// <var>pHttpStatus</var> 200 and <var>pFault</var> <code>""</code>. On failure the status is an
@@ -77,7 +84,7 @@ ClassMethod RegistryClass() As %String
 /// <p><b>A target the instance no longer holds is a refusal, never an empty success</b>: the
 /// <code>GET</code>'s 404 and an answer that is not an object are the same "target gone", and both
 /// name the target.</p>
-ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String, pConvKey As %String, pTurnKey As %String, pArgs As %DynamicObject, pLimitsClass As %String, Output pProposal As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pEndpoint As %String = "", pIdParam As %String = "", pIdValue As %String = "", pIdArgument As %String = "", pSettable As %List = "") As %Status
+ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String, pConvKey As %String, pTurnKey As %String, pArgs As %DynamicObject, pLimitsClass As %String, Output pProposal As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pEndpoint As %String = "", pIdParam As %String = "", pIdValue As %String = "", pIdArgument As %String = "", pSettable As %List = "", pToolClass As %String = "") As %Status
 {
     Set tSC = $$$OK
     Set pProposal = ""
@@ -108,7 +115,7 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
 
         Kill tQuery
         Set tQuery(pIdParam) = pIdValue
-        Set tReadSC = $ClassMethod(..PortClass(), "Invoke", tEndpoint, ..#READTYPE, .tQuery, "", .tFresh, .tReadHttp, .tReadFault)
+        Set tReadSC = $ClassMethod(..PortClass(), "Invoke", tEndpoint, ..ReadTypeOf(pToolClass), .tQuery, "", .tFresh, .tReadHttp, .tReadFault)
         If $$$ISERR(tReadSC) {
             If +$Get(tReadHttp) = 404 {
                 Set tSC = ..Refuse("'" _ pIdValue _ "' is not present on this instance", .pHttpStatus, .pFault)
@@ -132,6 +139,31 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         If $$$ISERR(tSC) {
             Set tSC = ..Internal("the proposal's payload could not be merged: " _ $System.Status.GetErrorText(tSC), .pHttpStatus, .pFault)
             Quit
+        }
+
+        ; AD-51. A write that sends no body has nothing for Merge to move, so its card's one row
+        ; comes from the fresh read and the tool is what computes it. A target that is not in the
+        ; state the action moves it out of is refused here, before anything is stored, rather than
+        ; minting a proposal whose diff says nothing changes.
+        If pToolClass '= "" {
+            Set tStateSC = $ClassMethod(pToolClass, "StateDiff", tFresh, .tStateRows, .tStateProblem)
+            If $$$ISERR(tStateSC) {
+                Set tSC = ..Internal("the proposal's state diff could not be computed: " _ $System.Status.GetErrorText(tStateSC), .pHttpStatus, .pFault)
+                Quit
+            }
+            If tStateProblem '= "" {
+                Set tSC = ..Refuse(tStateProblem, .pHttpStatus, .pFault)
+                Quit
+            }
+            If $IsObject(tStateRows) {
+                Set tStateIterator = tStateRows.%GetIterator()
+                While tStateIterator.%GetNext(.tStateIndex, .tStateRow) {
+                    If $IsObject(tStateRow) Do tDiff.%Push(tStateRow)
+                }
+            }
+            ; Nothing is sent, so nothing is sent unchanged: the caption and the rows behind it are
+            ; one population (OcuPilot.Kernel.Proposal.Disclosure), and that population is empty.
+            If '$ClassMethod(pToolClass, "SendsBody") Set tUnchanged = 0
         }
 
         Set tSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(tPayload, $ClassMethod(pDescriptor, "FingerprintExcludes"), .tFingerprint)
@@ -355,6 +387,22 @@ ClassMethod DefinitionInForce(Output pId As %String, Output pVersion As %String)
     If $$$ISERR(tSC) Quit tSC
     If pId = "" Quit $$$OK
     Quit ##class(OcuPilot.Kernel.State.Agent).GuardedVersion(pId, .pVersion)
+}
+
+/// <p>The admin request type <var>pToolClass</var>'s fresh read is made with (AD-51), or
+/// <parameter>READTYPE</parameter> when the call named no tool class. A class that answers an
+/// empty type is read with the parameter too, so an unreadable declaration is a merge write's
+/// read rather than a call with no type at all.</p>
+ClassMethod ReadTypeOf(pToolClass As %String) As %String
+{
+    Set tType = ""
+    Try {
+        If pToolClass '= "" Set tType = $ClassMethod(pToolClass, "ReadType")
+    } Catch {
+        Set tType = ""
+    }
+    If tType = "" Quit ..#READTYPE
+    Quit tType
 }
 
 /// <p>The admin endpoint <var>pDescriptor</var>'s own declared read lists through, or

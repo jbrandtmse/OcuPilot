@@ -315,6 +315,36 @@ export function parentCriteria(screen: ScreenDeclaration, url: string): Readonly
   return id === '' ? {} : { [fields[0].param]: id };
 }
 
+/**
+ * The id a screen's **own** route segment carries, decoded (AD-13), or `''` when the URL is the
+ * screen's bare route, when the screen takes no id route, or when what follows the route is not
+ * one segment.
+ *
+ * The companion to `parentCriteria`, which reads a **parent's** id into a sub-resource's one
+ * criterion: this reads the screen's own id, which is what a list selects a row by. One helper
+ * serves both callers that produce such a URL -- the agent's `shell.screen.open` with an
+ * `entityId`, and a change toast's "Open in <screen>" -- so the row is selected on arrival
+ * whichever of them moved the browser (DW-1419).
+ *
+ * **A parent-scoped screen answers `''`.** Its trailing segment is the *parent's* id, which is
+ * what `parentCriteria` reads it as, and no row of such a list is keyed by it -- a run of task
+ * history is keyed by its run id, not by the task the route names. Reading it here would select
+ * whichever row happened to share the parent's key.
+ *
+ * The segment is decoded twice for the reason `parentCriteria` decodes twice: the router hands
+ * over the URL as the address bar carries it, and `encodeEntityId` encodes twice because the web
+ * server consumes one decoding in transit.
+ */
+export function ownIdSegment(screen: ScreenDeclaration, url: string): string {
+  if (screen.route === '' || screen.parentScope !== '' || !hasIdRoute(screen)) return '';
+  const path = routeFromUrl(url);
+  const prefix = `${screen.route}/`;
+  if (!path.startsWith(prefix)) return '';
+  const segment = path.slice(prefix.length);
+  if (segment === '' || segment.includes('/')) return '';
+  return decodeEntityId(decodeEntityId(segment));
+}
+
 /** The screen declared at `route`, or `null`. Home's route is the empty string. */
 export function screenForRoute(route: string): ScreenDeclaration | null {
   return SCREENS.find((screen) => screen.route === route) ?? null;

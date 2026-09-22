@@ -7,9 +7,11 @@
 Class OcuPilot.Test.EntityRef Extends %UnitTest.TestCase
 {
 
-/// <p>The entity type the round-trip rows use. A declared value, so the refusal rows are the
-/// only ones testing an undeclared one.</p>
-Parameter KNOWNTYPE = "task";
+/// <p>The entity type the round-trip rows use: a declared value, so the refusal rows are the only
+/// ones testing an undeclared one, and one <parameter>OcuPilot.Kernel.EntityRef.IDRULES</parameter>
+/// declares no rule for, so the corpus round-trips verbatim. <code>task</code> held this place
+/// until Story 5.11 gave it the <code>integer</code> rule.</p>
+Parameter KNOWNTYPE = "role";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -228,7 +230,20 @@ Method TestTheIdRuleTableIsDeclaredAndIsWhatNormalizationApplies()
 
     ; A type the table holds no pair for canonicalizes to itself, which is what makes adding one a
     ; decision about that type rather than a default applied to it.
-    Do $$$AssertTrue($ListFind(tRuled, ..#KNOWNTYPE) = 0, "the corpus type declares no rule")
+    Do $$$AssertTrue($ListFind(tRuled, ..#KNOWNTYPE) = 0, "the corpus type declares no rule, which is what makes its round trip verbatim")
+
+    ; Story 5.11's rule: a task is addressed by the vendor's integer id, which the model supplies as
+    ; a string, so every spelling of one number is one key. A value the rule cannot read as an
+    ; integer is answered verbatim, as a type with no rule is.
+    Do $$$AssertTrue($ListFind(tRuled, "task") > 0, "the task pair is the one Story 5.11 added")
+    For tSpelling = "7", "007", "+7", " 7 ", "0000007" {
+        Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("task", tSpelling), "7", "'" _ tSpelling _ "' folds to its plain decimal spelling")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("task", "-0"), "0", "a negative zero is zero")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("task", "-007"), "-7", "and a negative id keeps its sign")
+    For tVerbatim = "7.0", "abc", "7a", "0x7" {
+        Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("task", tVerbatim), tVerbatim, "'" _ tVerbatim _ "' is not an integer and is answered verbatim")
+    }
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#KNOWNTYPE, "/API/OcuPilot/"), "/API/OcuPilot/", "so its ids are the instance's own strings")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("role", "%All"), "%All", "and so are a role's")
 

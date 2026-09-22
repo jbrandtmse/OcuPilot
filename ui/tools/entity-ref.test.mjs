@@ -76,7 +76,9 @@ const CORPUS = [
   'a-b',
 ];
 
-const TYPE = 'task';
+// The corpus below round-trips verbatim, so the type it runs under must be one the kernel
+// declares no id rule for. `task` held this place until Story 5.11 gave it the `integer` rule.
+const TYPE = 'role';
 
 test('the vocabulary is the kernel mirror, not a second list', () => {
   assert.ok(ENTITY_TYPES.includes(TYPE));
@@ -205,6 +207,7 @@ test('the id rules are mirrored from the kernel, and every declared rule has an 
     [...IMPLEMENTED_ID_RULES].sort(),
     "the generator's roster and entity-ref.ts's implementations are one list"
   );
+  assert.ok(!(TYPE in ENTITY_ID_RULES), `the corpus type ${TYPE} has no rule, which is what makes the round-trip above verbatim`);
   for (const [type, rule] of Object.entries(ENTITY_ID_RULES)) {
     assert.ok(isKnownEntityType(type), `the mirrored table keys on a declared entity type: ${type}`);
     assert.ok(
@@ -242,5 +245,31 @@ test('AD-13: the singleton rule answers one id for every spelling, from the mirr
     'so two spellings build one key'
   );
   // The rule is per type: an id of another type is untouched by it.
-  assert.equal(normalizeEntityId('task', 'Nightly Purge'), 'Nightly Purge');
+  assert.equal(normalizeEntityId('role', 'Nightly Purge'), 'Nightly Purge');
+});
+
+// Story 5.11, AD-13: a task is addressed by the vendor's own integer id, which the model supplies
+// as a string, so `007`, `+7` and ` 7 ` are spellings of one target. The client answers what
+// `OcuPilot.Kernel.EntityRef.PlainInteger` answers, on the string rather than through arithmetic,
+// because a key builder cannot depend on two languages agreeing about numeric precision.
+//
+// Mutation (Rule 19): implement `integer` as `(id) => id` in `entity-ref.ts` -> every folding row
+// below goes red; drop the verbatim arm -> the non-integer rows go red.
+test('AD-13: the integer rule folds a task id to its plain decimal spelling, and leaves anything else', () => {
+  const type = 'task';
+  assert.equal(ENTITY_ID_RULES[type], 'integer', 'the mirrored table declares the rule');
+  for (const spelling of ['7', '007', '+7', ' 7 ', '\t7', '0000007']) {
+    assert.equal(normalizeEntityId(type, spelling), '7', `'${spelling}' folds to 7`);
+  }
+  assert.equal(normalizeEntityId(type, '-0'), '0', 'a negative zero is zero');
+  assert.equal(normalizeEntityId(type, '-007'), '-7', 'and a negative id keeps its sign');
+  assert.equal(normalizeEntityId(type, '0'), '0');
+  for (const verbatim of ['7.0', 'abc', '', '7a', '1 2', '0x7']) {
+    assert.equal(normalizeEntityId(type, verbatim), verbatim, `'${verbatim}' is not an integer and is answered verbatim`);
+  }
+  assert.equal(
+    entityRefKey(type, 'instance', '007'),
+    entityRefKey(type, 'instance', '7'),
+    'so two spellings of one task build one key'
+  );
 });

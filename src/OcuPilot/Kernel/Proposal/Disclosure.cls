@@ -4,13 +4,18 @@
 /// <p><b>Why it is its own class.</b> <class>OcuPilot.Kernel.State.Propose</class> writes the wire
 /// shape and may name neither a screen nor a tool (AD-9), and the classification that decides
 /// which values may travel is a screen-tool artifact. This class is the one place the two meet: it
-/// names <class>OcuPilot.Screen.Tool.ToolFields</class>' generated block and
-/// <method>OcuPilot.Kernel.Proposal.Mint.Display</method>, and it reaches no port, no tool body and
-/// no area.</p>
+/// names <class>OcuPilot.Screen.Tool.ToolFields</class>' generated block,
+/// <method>OcuPilot.Kernel.Proposal.Mint.Display</method> and the tool registry, and it reaches no
+/// port, no tool body and no area.</p>
 /// <p><b>It masks rather than withholds.</b> Every field the payload sends is disclosed and every
 /// value the classification does not admit reads as the published mask, so the caption's count and
 /// the rows behind it are one population, every field stays available (FR-17), and no secret value
 /// reaches the wire (AD-3, AD-35).</p>
+/// <p><b>A write that sends no body discloses nothing</b> (AD-51). The stored payload of an
+/// action-style write is the fresh read the fingerprint covers, not a payload the confirm will
+/// send, so disclosing its properties would tell the user that fields are being written which
+/// are not. Such a proposal's stored <code>UnchangedCount</code> is 0 and this answers an empty
+/// array, which is the same population read twice.</p>
 Class OcuPilot.Kernel.Proposal.Disclosure Extends %RegisteredObject
 {
 
@@ -42,6 +47,7 @@ ClassMethod Rows(pToolName As %String, pPayload As %String, pDiff As %String) As
     Set tRows = []
     Try {
         If pPayload = "" Quit
+        If '..SendsBody(pToolName) Quit
         Set tPayload = ##class(%DynamicAbstractObject).%FromJSON(pPayload)
         If '$IsObject(tPayload) || 'tPayload.%IsA("%Library.DynamicObject") Quit
         Kill tChanged
@@ -68,6 +74,25 @@ ClassMethod Rows(pToolName As %String, pPayload As %String, pDiff As %String) As
         Set tRows = []
     }
     Quit tRows
+}
+
+/// <p>Whether the write tool <var>pToolName</var> sends a body at all (AD-51), resolved through
+/// the tool registry as <method>OcuPilot.Kernel.Proposal.Mint.DestructiveTool</method> resolves
+/// that tool's own destructive declaration. A name the registry does not carry, or a class that
+/// answers nothing, sends one -- which discloses and masks rather than withholding, the direction
+/// this class fails in everywhere else.</p>
+ClassMethod SendsBody(pToolName As %String) As %Boolean [ Private ]
+{
+    Set tSends = 1
+    Try {
+        If $$$ISERR(##class(OcuPilot.Screen.Tool.Registry).Resolve(pToolName, .tTool)) Quit
+        If '$IsObject(tTool) Quit
+        If tTool.%Get("class") = "" Quit
+        Set tSends = ''$ClassMethod(tTool.%Get("class"), "SendsBody")
+    } Catch {
+        Set tSends = 1
+    }
+    Quit tSends
 }
 
 /// <p>The top-level property names the write tool <var>pToolName</var>'s generated field list

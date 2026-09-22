@@ -3,6 +3,7 @@ import { Router, provideRouter, type CanDeactivateFn } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AuditSearch } from '../areas/logs/audit.store';
+import { ownIdSegment, screenForRoute } from '../core/navigation';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { NAV_REFUSED_UNSAVED_CODE, type TurnNavigation } from '../core/turn';
 import { ShellState } from '../core/shell-state';
@@ -169,6 +170,20 @@ describe('the agent navigator', () => {
     turn.setNavigation({ seq: 1, route: 'permissions/users', entityId: 'a.b', criterion: '' });
     await vi.advanceTimersByTimeAsync(NAVIGATIONDELAYMS);
     expect(router.url).toBe('/permissions/users/a%252Eb');
+    // DW-1419: the URL alone said nothing about the row. `ownIdSegment` is what the list reads it
+    // back through, so asserting it here is asserting that the two ends meet -- `ListPage`'s own
+    // spec asserts the selection that follows.
+    expect(ownIdSegment(screenForRoute('permissions/users')!, router.url)).toBe('a.b');
+  });
+
+  it('DW-1419: a composite-of-one screen takes an entity id too, and the list reads it back', async () => {
+    // The Task schedule's id is a composite over one part, which occupies the same single segment
+    // a `single` id does. `OcuPilot.Screen.Tool.Navigate` admits it for that reason; here the
+    // browser half is pinned -- the route the navigator builds is one `ownIdSegment` resolves.
+    turn.setNavigation({ seq: 1, route: 'tasks/schedule', entityId: '7', criterion: '' });
+    await vi.advanceTimersByTimeAsync(NAVIGATIONDELAYMS);
+    expect(router.url).toBe('/tasks/schedule/7');
+    expect(ownIdSegment(screenForRoute('tasks/schedule')!, router.url)).toBe('7');
   });
 
   it('AC6/AC7: a declined guard never moves the URL and reports "refused" with the one closed-vocabulary code', async () => {

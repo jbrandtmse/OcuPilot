@@ -15,10 +15,12 @@
 /// and refuses <code>NAV.ROUTEUNKNOWN</code> on the rare disagreement between the two: a route that
 /// exists as an enum member at build time but is no longer a built screen when the call actually
 /// runs.</p>
-/// <p><b>No second composite grammar</b> (AD-5). <code>entityId</code> is accepted only when the
-/// target's <code>id.kind</code> is <code>single</code>; a screen whose id is <code>none</code> or
-/// <code>composite</code> is openable only without one, refused <code>NAV.ENTITYNOTALLOWED</code>
-/// otherwise rather than inventing a way to select a composite row.</p>
+/// <p><b>No second composite grammar</b> (AD-5, DW-1419). <code>entityId</code> is accepted when
+/// the target's <code>id.kind</code> is <code>single</code>, and when it is <code>composite</code>
+/// over exactly <b>one</b> part -- a composite of one part occupies the same single route segment
+/// a <code>single</code> id does, through the same shared encoder, so admitting it invents no
+/// grammar. A screen whose id is <code>none</code>, and a composite of two or more parts, are
+/// openable only without one and refused <code>NAV.ENTITYNOTALLOWED</code>.</p>
 /// <p><b><code>criterion</code> names a filter; it never carries one</b> (AD-21, Story 5.8). It is
 /// accepted only when the target descriptor declares a criterion of that name as a <b>flag</b> --
 /// one whose query parameter and value are both the descriptor's own
@@ -169,7 +171,7 @@ ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, 
 /// resolves to a built screen -- the enum and the registry have disagreed, which the enum
 /// construction at advertise time (AC1) makes rare rather than impossible between one turn's
 /// advertisement and the next. Refuses <code>NAV.ENTITYNOTALLOWED</code> when <code>entityId</code>
-/// is supplied against a screen whose <code>id.kind</code> is not <code>single</code> (AD-5), and
+/// is supplied against a screen <method>AcceptsEntityId</method> refuses (AD-5), and
 /// <code>NAV.CRITERIONUNKNOWN</code> when <code>criterion</code> names anything but a flag
 /// criterion that screen declares (AD-21).</p>
 ClassMethod Directive(pDescriptor As %String, pArgs As %DynamicAbstractObject, Output pRoute As %String, Output pEntityId As %String, Output pFault As %DynamicObject, Output pCriterion As %String) As %Status
@@ -190,7 +192,7 @@ ClassMethod Directive(pDescriptor As %String, pArgs As %DynamicAbstractObject, O
         }
         Set tEntityId = ""
         If tArgs.%IsDefined("entityId") && (tArgs.%GetTypeOf("entityId") = "string") Set tEntityId = tArgs.%Get("entityId")
-        If (tEntityId '= "") && ($ClassMethod(tTargetDescriptor, "IdKind") '= "single") {
+        If (tEntityId '= "") && '..AcceptsEntityId(tTargetDescriptor) {
             Set pFault = ..RefusalFault(##class(OcuPilot.Api.Error).#NAVENTITYNOTALLOWED)
             Set tSC = $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#NAVENTITYNOTALLOWED)
             Quit
@@ -214,6 +216,28 @@ ClassMethod Directive(pDescriptor As %String, pArgs As %DynamicAbstractObject, O
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Whether the screen <var>pDescriptor</var> declares can be opened on one row (AD-5,
+/// DW-1419): its id is <code>single</code>, or <code>composite</code> over exactly one part.</p>
+/// <p><b>Both refusals are kept.</b> A screen whose id is <code>none</code> has no segment for a
+/// row to occupy, and a composite of two or more parts would need the agent to compose the shared
+/// encoder's join -- which is the second grammar AD-5 forbids. One part needs no join at all.</p>
+ClassMethod AcceptsEntityId(pDescriptor As %String) As %Boolean
+{
+    Set tAccepts = 0
+    Try {
+        Set tKind = $ClassMethod(pDescriptor, "IdKind")
+        If tKind = "single" {
+            Set tAccepts = 1
+            Quit
+        }
+        If tKind '= "composite" Quit
+        Set tAccepts = ($ListLength($ClassMethod(pDescriptor, "IdParts")) = 1)
+    } Catch {
+        Set tAccepts = 0
+    }
+    Quit tAccepts
 }
 
 /// <p>One <code>{code}</code> fault object, the shape

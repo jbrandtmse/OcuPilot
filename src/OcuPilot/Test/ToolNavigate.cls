@@ -74,13 +74,30 @@ Method TestAC2EntityNotAllowedOnNoneId()
     Do $$$AssertEquals(tRoute, "", "no route is validated")
 }
 
-/// <p>AC2: the same refusal on a <code>composite</code> id (<code>logs/audit</code>).</p>
-Method TestAC2EntityNotAllowedOnCompositeId()
+/// <p>AC2: the same refusal on a <code>composite</code> id of more than one part
+/// (<code>logs/audit</code>, three), which is where a second grammar would have to be invented --
+/// while a composite of exactly <b>one</b> part is accepted, because it occupies the same single
+/// route segment a <code>single</code> id does (DW-1419, Story 5.11).</p>
+/// <p><b>Both directions, deliberately.</b> A fix that admits a composite of one part and also
+/// admits a composite of three is not a fix.</p>
+/// <p>Mutation (Rule 19): restore <method>OcuPilot.Screen.Tool.Navigate.AcceptsEntityId</method>'s
+/// answer to <code>IdKind() = "single"</code> -- the acceptance below goes red; widen it to every
+/// composite -- the three-part refusal goes red.</p>
+Method TestAC2EntityNotAllowedOnACompositeOfMoreThanOnePart()
 {
     Set tArgs = {"route": "logs/audit", "entityId": "x"}
     Set tSC = $ClassMethod(..#TOOL, "Directive", "", tArgs, .tRoute, .tEntityId, .tFault)
     Do $$$AssertStatusNotOK(tSC, "refused")
     Do $$$AssertEquals(tFault.code, "NAV.ENTITYNOTALLOWED", "naming the code")
+    Do $$$AssertEquals($ListLength($ClassMethod(##class(OcuPilot.Screen.Registry).DescriptorForRoute("logs/audit"), "IdParts")), 3, "that screen's composite really has more than one part")
+
+    Set tOneArgs = {"route": "tasks/schedule", "entityId": "7"}
+    Set tOneSC = $ClassMethod(..#TOOL, "Directive", "", tOneArgs, .tOneRoute, .tOneEntityId, .tOneFault)
+    Do $$$AssertStatusOK(tOneSC, "a composite of exactly one part accepts an entityId")
+    Do $$$AssertEquals(tOneRoute, "tasks/schedule", "the route is answered")
+    Do $$$AssertEquals(tOneEntityId, "7", "and the entity id")
+    Do $$$AssertEquals(tOneFault, "", "no fault")
+    Do $$$AssertEquals($ListLength($ClassMethod(##class(OcuPilot.Screen.Registry).DescriptorForRoute("tasks/schedule"), "IdParts")), 1, "that screen's composite really has one part")
 }
 
 /// <p>A <code>single</code>-id screen (<code>permissions/users</code>) accepts an

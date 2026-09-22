@@ -339,10 +339,12 @@ export class ScreenStore {
   /**
    * The key of a row that is to become the selection as soon as a read returns it, or `''`.
    *
-   * **Only a `created` change writes it** (AD-14): a row that did not exist a moment ago is the
-   * one thing a re-fetch can bring that the user has not seen, so the screen puts the caret on
-   * it. An `updated` or `deleted` change writes nothing here -- the row is already where the user
-   * left it, or it is gone and `reconcile` clears the selection.
+   * **Two callers write it.** A `created` change (AD-14): a row that did not exist a moment ago
+   * is the one thing a re-fetch can bring that the user has not seen, so the screen puts the caret
+   * on it -- an `updated` or `deleted` change writes nothing here, because the row is already
+   * where the user left it, or it is gone and `reconcile` clears the selection. And a list opened
+   * on its own route id (`ListPage`, DW-1419), where the id names the row the agent's navigation
+   * or a change toast asked to be shown.
    *
    * It is a request, not a selection: the key is not in the row set yet, and the table consumes
    * it on the tick that brings it. A read that never brings it leaves it standing until the next

@@ -138,6 +138,16 @@ describe('the proposal card', () => {
     expect(line.querySelector('.ocu-proposal-card-chevron')?.getAttribute('aria-hidden')).toBe('true');
   });
 
+  it('AD-51: a proposal that sends no body carries no unchanged-fields line at all', () => {
+    // An action-style write's card has one state row and nothing else: nothing is sent, so
+    // "0 unchanged fields" would be a line about a payload that does not exist.
+    //
+    // Mutation (Rule 19): drop the `discloses` guard in `proposal-card.ts` -> this goes red.
+    const { card } = mount({ ...DELETE_PROPOSAL, unchangedCount: 0, unchanged: [] });
+    expect(card.querySelector('.ocu-proposal-card-unchanged')).toBeNull();
+    expect(card.querySelectorAll('.ocu-diff-row')).toHaveLength(1);
+  });
+
   it('turns the unchanged caption into an aria-expanded button once there are rows behind it, and lists them on open', () => {
     // Mutation (Rule 19): render the disclosure as a button whatever the view carries -> the
     // example's "nothing focusable" assertion goes red. Drop the open panel -> this goes red.

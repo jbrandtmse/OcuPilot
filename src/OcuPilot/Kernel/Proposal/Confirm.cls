@@ -37,13 +37,17 @@
 Class OcuPilot.Kernel.Proposal.Confirm Extends %RegisteredObject
 {
 
-/// <p>The admin request type the target's fresh re-read is made with (AD-36's single-object
-/// <code>GET</code>).</p>
+/// <p>The admin request type the target's fresh re-read is made with when the proposal's tool
+/// declares none (AD-36's single-object <code>GET</code>). The tool's own
+/// <method>OcuPilot.Screen.Tool.Write.ReadType</method> is what the re-read uses, so the digest
+/// compared here covers the same read the mint digested (AD-51).</p>
 Parameter READTYPE = "GET";
 
-/// <p>The admin request type the confirmed write is issued with. It resolves through the vendor
-/// endpoint's own <code>TYPE&lt;suffix&gt;</code> parameter, exactly as the read does
-/// (<parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter>).</p>
+/// <p>The admin request type the confirmed write is issued with when the proposal's tool declares
+/// none. It resolves through the vendor endpoint's own <code>TYPE&lt;suffix&gt;</code> parameter,
+/// exactly as the read does (<parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter>); an
+/// action-style tool declares the vendor's own request type through
+/// <method>OcuPilot.Screen.Tool.Write.WriteType</method> and sends no body (AD-51).</p>
 Parameter WRITETYPE = "PUT";
 
 /// <p>The port the fresh re-read and the write go through. Overridable so a fixture can answer a
@@ -219,6 +223,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
             Set tSC = ..Internal("the proposal names a tool this instance does not carry", .pHttpStatus, .pCode)
             Quit
         }
+        Set tToolClass = tTool.%Get("class")
 
         ; The declared secret-typed names, re-read from the tool rather than carried in from the
         ; channel check, so the merge below and that check read one declaration.
@@ -360,7 +365,14 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
 
         ; AD-35: the supplied secrets are merged in here and nowhere else -- never stored, never
         ; logged, never part of the digest that was just compared.
-        Set tBody = ..WithSecrets($Get(pRow("payload")), pSuppliedSecrets, tSecretNames)
+        ;
+        ; AD-51: an action-style write sends no body at all, so there is nothing to merge a secret
+        ; into and nothing for the ledger to name. The vendor's own request type reads no body
+        ; (OcuPilot.Port.AdminPort.BODYLESSTYPES), and a body sent anyway would be a payload the
+        ; user never reviewed.
+        Set tSendsBody = ..ToolSendsBody(tToolClass)
+        Set tBody = ""
+        If tSendsBody Set tBody = ..WithSecrets($Get(pRow("payload")), pSuppliedSecrets, tSecretNames)
         Kill tQuery
         Set tQuery(tIdParam) = tIdValue
 
@@ -376,7 +388,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         ; target and this user at or after it.
         Set tWrittenAt = ##class(OcuPilot.Kernel.State.Turn).Timestamp()
 
-        Set tWriteSC = $ClassMethod(..PortClass(), "Invoke", tEndpoint, ..#WRITETYPE, .tQuery, tBody, .tWritten, .tWriteHttp, .tWriteFault)
+        Set tWriteSC = $ClassMethod(..PortClass(), "Invoke", tEndpoint, ..ToolWriteType(tToolClass), .tQuery, tBody, .tWritten, .tWriteHttp, .tWriteFault)
         If $$$ISERR(tWriteSC) {
             ; The claim has committed and the token is spent: the proposal stays confirmed and the
             ; port's own normalized envelope is what the caller is answered with. There is no
@@ -571,7 +583,7 @@ ClassMethod FingerprintMatches(pTool As %DynamicObject, ByRef pRow, Output pMatc
         }
         Kill tQuery
         Set tQuery(pIdParam) = pIdValue
-        Set tReadSC = $ClassMethod(..PortClass(), "Invoke", pEndpoint, ..#READTYPE, .tQuery, "", .tFresh, .tReadHttp, .tReadFault)
+        Set tReadSC = $ClassMethod(..PortClass(), "Invoke", pEndpoint, ..ToolReadType(tClass), .tQuery, "", .tFresh, .tReadHttp, .tReadFault)
         If $$$ISERR(tReadSC) {
             ; A target that is gone, or a read that refused, is "the target moved" -- never a
             ; write issued against a record nobody could read back.
@@ -627,6 +639,47 @@ ClassMethod ParsedObject(pText As %String) As %DynamicObject [ Private ]
         Set tObject = {}
     }
     Quit tObject
+}
+
+/// <p>The admin request type <var>pToolClass</var>'s fresh re-read is made with (AD-51), or
+/// <parameter>READTYPE</parameter> when the class declares none or cannot be asked.</p>
+ClassMethod ToolReadType(pToolClass As %String) As %String [ Private ]
+{
+    Set tType = ""
+    Try {
+        If pToolClass '= "" Set tType = $ClassMethod(pToolClass, "ReadType")
+    } Catch {
+        Set tType = ""
+    }
+    If tType = "" Quit ..#READTYPE
+    Quit tType
+}
+
+/// <p>The admin request type <var>pToolClass</var>'s confirmed write is issued with (AD-51), or
+/// <parameter>WRITETYPE</parameter> when the class declares none or cannot be asked.</p>
+ClassMethod ToolWriteType(pToolClass As %String) As %String [ Private ]
+{
+    Set tType = ""
+    Try {
+        If pToolClass '= "" Set tType = $ClassMethod(pToolClass, "WriteType")
+    } Catch {
+        Set tType = ""
+    }
+    If tType = "" Quit ..#WRITETYPE
+    Quit tType
+}
+
+/// <p>Whether <var>pToolClass</var>'s confirmed write carries a body (AD-51). A class that cannot
+/// be asked sends one, which is every write that shipped before this seam existed.</p>
+ClassMethod ToolSendsBody(pToolClass As %String) As %Boolean [ Private ]
+{
+    Set tSends = 1
+    Try {
+        If pToolClass '= "" Set tSends = ''$ClassMethod(pToolClass, "SendsBody")
+    } Catch {
+        Set tSends = 1
+    }
+    Quit tSends
 }
 
 /// <p>The first pair of <var>pPairs</var> that <var>pUser</var> does not hold, as

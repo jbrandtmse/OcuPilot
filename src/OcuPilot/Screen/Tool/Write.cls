@@ -18,7 +18,10 @@
 /// <p>A concrete tool declares its <parameter>TOOLNAME</parameter>,
 /// <parameter>DESCRIPTORCLASS</parameter> and <parameter>DESCRIPTION</parameter>, answers
 /// <method>Endpoint</method> and <method>SettableFields</method>, and adds the pairs its write
-/// requires beyond its screen's own.</p>
+/// requires beyond its screen's own. An <b>action-style</b> write declares its own request types
+/// and sends no body (AD-51): <parameter>READTYPE</parameter>, <parameter>WRITETYPE</parameter>,
+/// <parameter>SENDSBODY</parameter> and <method>StateDiff</method>, which are the merge write's
+/// own behavior by default.</p>
 Class OcuPilot.Screen.Tool.Write Extends OcuPilot.Screen.Tool.Base [ Abstract ]
 {
 
@@ -45,6 +48,70 @@ Parameter TOOLFIELDSCLASS = "OcuPilot.Screen.Tool.ToolFields";
 /// it, and <class>OcuPilot.Kernel.Proposal.Mint</class> reads it through
 /// <method>Destructive</method>.</p>
 Parameter DESTRUCTIVE As BOOLEAN = 0;
+
+/// <p>The admin request type the mint's fresh read and the confirm's fingerprint re-read are made
+/// with. <code>GET</code> here, AD-36's single-object read; a tool whose state is not in that
+/// answer declares the type that carries it (AD-51).</p>
+Parameter READTYPE = "GET";
+
+/// <p>The admin request type the confirmed write is issued with. <code>PUT</code> here, the merge
+/// write every body-taking tool makes; an action-style tool declares the vendor's own request type
+/// instead (AD-51).</p>
+Parameter WRITETYPE = "PUT";
+
+/// <p>Whether the confirmed write carries a body. <code>1</code> here; an action-style tool whose
+/// vendor request type reads no body declares <code>0</code>, and then nothing is sent, nothing is
+/// disclosed as unchanged, and the ledger records no field names (AD-51).</p>
+Parameter SENDSBODY As BOOLEAN = 1;
+
+/// <p>This tool's own class, which <method>View</method> hands the mint so
+/// <method>ReadType</method>, <method>SendsBody</method> and <method>StateDiff</method> are read
+/// from the concrete tool rather than from this base (AD-51).</p>
+/// <p><method>View</method> is <code>Final</code> and every call site is
+/// <code>##class(&lt;tool&gt;).View(...)</code>, so the concrete class is the one this answers --
+/// the same resolution <code>..#TOOLNAME</code> already relies on.
+/// <method>OcuPilot.Test.ToolWrite.TestTheTaskResumeToolIsAnActionWriteOverTheScreensOwnPairs</method>
+/// pins it against that tool's own name.</p>
+ClassMethod ToolClass() As %String
+{
+    Quit $ClassName()
+}
+
+/// <p><parameter>READTYPE</parameter>, for the mint and the confirm, which resolve a tool by name
+/// and hold only its class.</p>
+ClassMethod ReadType() As %String
+{
+    Quit ..#READTYPE
+}
+
+/// <p><parameter>WRITETYPE</parameter>, read at the one site that issues the write.</p>
+ClassMethod WriteType() As %String
+{
+    Quit ..#WRITETYPE
+}
+
+/// <p><parameter>SENDSBODY</parameter> as a boolean.</p>
+ClassMethod SendsBody() As %Boolean
+{
+    Quit ''..#SENDSBODY
+}
+
+/// <p>The <b>state</b> rows this tool's proposal shows, given the fresh read <var>pFresh</var>:
+/// one <code>{field, before, after}</code> per state the action moves, in <var>pRows</var>, with
+/// <var>pProblem</var> naming why the target is not in the state the action moves it out of.</p>
+/// <p><b>Caller contract:</b> <class>OcuPilot.Kernel.Proposal.Mint</class> calls it once, after the
+/// fresh read and before anything is stored, and refuses the mint when <var>pProblem</var> is
+/// non-empty. It reads nothing but <var>pFresh</var> and writes nothing.</p>
+/// <p>Empty here. A merge write's diff is the fields its arguments move
+/// (<method>OcuPilot.Kernel.Proposal.Mint.Merge</method>); an action-style write sends no body, so
+/// the card's rows can only come from the read, and the tool is what knows which state its action
+/// moves (AD-51).</p>
+ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, Output pProblem As %String) As %Status
+{
+    Set pRows = []
+    Set pProblem = ""
+    Quit $$$OK
+}
 
 /// <p>The class a minted proposal is built by. Overridable so a test can observe what a tool
 /// asked for; production never overrides it.</p>
@@ -121,6 +188,8 @@ ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Bo
 /// <p>The rows of this tool's <class>OcuPilot.Screen.Tool.ToolFields</class> entry that a schema
 /// may admit, as <code>pRows(n) = $ListBuild(field, templateType, isArray)</code> in the entry's
 /// own order, with the count in <code>pRows</code>.</p>
+/// <p>A tool that sends no body (<method>SendsBody</method>) answers no rows and no error: its
+/// field list is empty by derivation rather than by an entry nobody wrote (AD-3, AD-51).</p>
 /// <p>A row is admitted when its class is <code>ordinary</code>, its path is a top-level literal
 /// or a top-level array of literals, its name is outside <method>ExcludedFields</method>, its name
 /// is inside <method>PermittedFields</method> where that list is not empty, and the descriptor does
@@ -133,6 +202,11 @@ ClassMethod FieldRows(Output pRows) As %Status
     Set pRows = 0
     Set tSC = $$$OK
     Try {
+        ; AD-51: a write that sends no body admits no field, and its endpoint's own template
+        ; describes the request it does not make. There is nothing to derive, so an absent entry
+        ; is the right answer rather than a failure -- which is what keeps such a tool's schema
+        ; the identifying property and the agent's own words.
+        If '..SendsBody() Quit
         Set tXData = ##class(%Dictionary.XDataDefinition).IDKEYOpen(..#TOOLFIELDSCLASS, "Tools", , .tOpenSC)
         If '$IsObject(tXData) {
             Set tSC = $$$ERROR($$$GeneralError, "the generated tool field lists are missing from " _ ..#TOOLFIELDSCLASS)
@@ -264,7 +338,7 @@ ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pConte
             Set tSC = ..ArgumentsRefusal("'" _ ..IdArgument() _ "' names the target and cannot be empty", .pHttpStatus, .pFault)
             Quit
         }
-        Set tSC = $ClassMethod(..MintClass(), "Mint", ..#DESCRIPTORCLASS, ..#TOOLNAME, $Username, ##class(OcuPilot.Kernel.Proposal.Caller).ConvKey(), ##class(OcuPilot.Kernel.Proposal.Caller).TurnKey(), tArgs, ..LimitsClass(), .pResult, .pHttpStatus, .pFault, ..Endpoint(), ..IdParam(), tId, ..IdArgument(), ..SettableFields())
+        Set tSC = $ClassMethod(..MintClass(), "Mint", ..#DESCRIPTORCLASS, ..#TOOLNAME, $Username, ##class(OcuPilot.Kernel.Proposal.Caller).ConvKey(), ##class(OcuPilot.Kernel.Proposal.Caller).TurnKey(), tArgs, ..LimitsClass(), .pResult, .pHttpStatus, .pFault, ..Endpoint(), ..IdParam(), tId, ..IdArgument(), ..SettableFields(), ..ToolClass())
     } Catch ex {
         Set pResult = ""
         Set tSC = ..InternalRefusal("the write tool failed: " _ ex.DisplayString(), .pHttpStatus, .pFault)

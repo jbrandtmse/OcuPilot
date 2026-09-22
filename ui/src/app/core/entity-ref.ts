@@ -74,6 +74,18 @@ const ID_RULES: Readonly<Record<string, (id: string) => string>> = {
   // own `RULESINGLETONID` rather than written here, so the two key builders cannot disagree about
   // what that id is (DW-1403's defect class).
   singleton: () => ENTITY_SINGLETON_ID,
+  // A task is addressed by the vendor's own integer id, which the model supplies as a string, so
+  // `007`, `+7` and ` 7 ` are spellings of one target. The normalization is on the string --
+  // surrounding space or tab dropped, a leading `+` dropped, leading zeros dropped, a negative
+  // zero answered as `0` -- because `OcuPilot.Kernel.EntityRef.PlainInteger` answers it the same
+  // way, and two languages agreeing about numeric precision is not something a key builder may
+  // depend on. A value that is not an optionally-signed run of digits is answered verbatim.
+  integer: (id) => {
+    const match = /^[ \t]*([+-]?)0*([0-9]+)[ \t]*$/.exec(id);
+    if (match === null) return id;
+    const digits = match[2];
+    return (match[1] === '-' && digits !== '0' ? '-' : '') + digits;
+  },
 };
 
 /**

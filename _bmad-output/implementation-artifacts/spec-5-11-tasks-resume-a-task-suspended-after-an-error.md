@@ -2,13 +2,64 @@
 title: 'Story 5.11: Tasks - resume a task suspended after an error'
 type: 'feature'
 created: '2026-09-21'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '109f6f6b7f6ae8639905d4491e73dfbb683d324a'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      OcuPilot.Test.TaskResume creates, resumes and deletes a real task with no arming
+      variable, while the story's browser spec refuses to run outside a `-ci` throwaway.
+    evidence: |-
+      ui/browser/task-resume.browser-spec.mjs asserts `/-ci$/` on OCUPILOT_BROWSER_CONTAINER in
+      both its before and after hooks; src/OcuPilot/Test/TaskResume.cls has no equivalent gate, so
+      `iris_execute_tests` pointed at a live instance would create and resume a task there. The
+      established pattern is an arming variable (OCUPILOT_ALLOW_AUDIT_TOGGLE, read by
+      OcuPilot.Test.ProhibitedRoute), which also needs roster rows in scripts/ci-throwaway.sh and
+      ui/tools/ci.test.mjs -- more than a patch. Bounded harm: the class creates and deletes its
+      own probe task and never touches the demo fixture's.
+    location: >-
+      src/OcuPilot/Test/TaskResume.cls
+    severity: low
+  - summary: >-
+      NFR-1's two-second budget for the task schedule read is one probe against one container's
+      task population, and the INFO fan-out is bounded only by the row cap.
+    evidence: |-
+      OcuPilot.Test.TaskResume.TestTheScheduleReadAnswersSuspendedTruthfully times one read at
+      maxRows=1000 on ocupilot-ci. AD-36 issues the rowGet once per surviving row, so an instance
+      with hundreds of scheduled tasks issues hundreds of INFO calls inside that budget. The
+      property is AD-36's rowGet rather than this story's -- TaskDetails and X509CredentialList
+      already carry it -- and no story has measured it against a large population.
+    location: >-
+      src/OcuPilot/Screen/Descriptor/TaskScheduleList.cls
+    severity: low
+  - summary: >-
+      AC1's "the tasks.schedule read tool's view carries Suspended" is asserted as the declaration
+      plus the screen read, never through the tool view's own projection.
+    evidence: |-
+      OcuPilot.Test.Descriptor asserts ContextFields contains Suspended and
+      OcuPilot.Test.TaskResume asserts the screen read's rows carry it, but
+      OcuPilot.Screen.Context's projection is not executed for the probe task by any leg of this
+      story. What would settle it: one leg reading the tasks.schedule tool view for a suspended
+      task and finding Suspended true in it.
+    location: >-
+      src/OcuPilot/Screen/Context.cls
+    severity: medium (unverified)
+  - summary: >-
+      Story 13.2's spec carries a mutation line this story made stale -- flipping a descriptor's
+      "built" key no longer orphans a surface-coverage row.
+    evidence: |-
+      DW-1453's fix made OcuPilot.Test.SurfaceCoverage.DeriveScreens roster every declared
+      descriptor, built or not, so spec-13-2's recorded recipe ("flipped LockList's built key to
+      false -> TestEveryBuiltScreenHasACoverageRowAndBack went red") no longer reddens anything,
+      and it names a method this story renamed. The fix edits a closed story's spec in another
+      epic.
+    location: >-
+      _bmad-output/implementation-artifacts/spec-13-2-the-test-suite-grows-in-ci-against-a-stock-image.md:326
+    severity: low
 ---
 
 <intent-contract>
@@ -411,6 +462,27 @@ Line anchors read in this checkout on 2026-09-21. Vendor facts carry the probe t
 
 ## Review Triage Log
 
+### 2026-09-22 - Review pass
+
+- verdicts: 16 findings - high 0, medium 4, low 4, false 7, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` The route-id selection is asserted only on arrival by mount; a navigation that keeps the screen and changes its id was unpinned, which is the toast's own path into an open list -- verified: Angular reuses the component across that hop, so only the router subscription can move the selection. Added the id-to-id case to `list-page.spec.ts`; mutation applied, red read "expected 'B' to be 'C'", reverted.
+  - `[medium]` `[patch]` `ownIdSegment` read a parent-scoped list's **parent** id as a row key on six shipped screens, and neither direction was pinned -- verified against `parentCriteria`, which reads that same segment as the parent it is. Guarded on `parentScope`, with two parent-scoped rows added to `navigation.test.mjs`; mutation applied, red, reverted.
+  - `[low]` `[patch]` AC4, AC9, AC10 and AC11 had no `mutation:` line in `## Verification` (Rule 19's reviewer-closed case). All four named, applied, observed red, reverted, and written into the block.
+  - `[medium]` `[patch]` AC11's recorded recipe could not redden the test it named: `TaskResume.PrivilegePairs` re-adds `%Admin_Task:USE` when the descriptor drops it, and dropping it from both aborts `OnBeforeAllTests` -- so the red attributes nothing. Recipe replaced with the one observed (1 of 12 red, that method alone).
+  - `[medium]` `[patch]` "This write sends no body" is declared twice -- `TaskResume.SENDSBODY` and `AdminPort.BODYLESSTYPES` -- with nothing relating them; a disagreement is a 500 at the write or an unreviewed payload, silently, and Stories 5.12 and 5.13 each add an action write. Added `OcuPilot.Test.ToolWrite.TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster` over every registered write tool; mutation applied, red, reverted.
+  - `[low]` `[patch]` `proposal-card.ts`'s one-line `disclosable` doc comment was displaced onto the new `discloses` getter. Moved back.
+  - `[medium]` `[patch]` AC9 was verified by a direct `%SYS_Task.History` SELECT rather than through the `tasks.history` read the AC names -- verified: `grep` finds that read exercised only by `OcuPilot.Test.TaskHistory` and the tasks browser spec, neither of which touches a resume. Added `HistoryRowsForTask`, which goes through `OcuPilot.Screen.Read`, and asserted the delta across the confirm; mutation applied, red on that leg alone, reverted.
+  - `[low]` `[defer]` `OcuPilot.Test.TaskResume` creates, resumes and deletes a real task with no arming variable, while the browser spec refuses outside a `-ci` throwaway. The established pattern (`OCUPILOT_ALLOW_AUDIT_TOGGLE`) adds a variable plus roster rows in `scripts/ci-throwaway.sh` and `ui/tools/ci.test.mjs`, which is more than a patch.
+  - `[low]` `[defer]` NFR-1's two-second budget for the schedule read is one probe against one container's task population, and the `rowGet` fan-out is bounded only by the row cap. Pre-existing to AD-36's `rowGet`, which `TaskDetails` and `X509CredentialList` already use.
+  - `[maybe-false]` `[defer]` AC1's "the read tool's view" is asserted as the declaration plus the screen read rather than through `OcuPilot.Screen.Context`'s projection for the probe task. What would settle it: a leg reading `tasks.schedule`'s tool view for that task and finding `Suspended`.
+  - `[low]` `[defer]` Story 13.2's spec carries a `mutation:` line that this change made stale -- flipping a descriptor's `built` key no longer orphans a coverage row. The fix edits another epic's closed spec.
+  - `[false]` `[reject]` "The not-suspended refusal emits `TOOL.ARGUMENTS`, not the matrix's `PROPOSAL.*`." Checked: `Mint.Refuse` is the shared mint refusal every other mint refusal uses, including "target gone", and no `PROPOSAL.*` code exists outside `Kernel/Proposal/Write.cls`, which is the confirm path. The implementation is the consistent one; the fix would edit this build's spec.
+  - `[false]` `[reject]` "The `Prohibited` refusal is asserted at the predicate rather than on the proposal path." The spec designs it that way -- the tool admits no field, so arming the predicate's input is the only way its refusing arm runs, and the test's own header says so.
+  - `[false]` `[reject]` "`tasks/schedule` selection is pinned only in the expensive browser gate." The browser spec asserts `aria-selected` on that screen and ran green; the jsdom gate pins the mechanism. Both surfaces are covered.
+  - `[false]` `[reject]` "The no-exclusions measurement is narrated but not asserted." A measurement is evidence for a decision, not a test subject; the consequence is pinned by the moved-under-you leg, and the real-instance confirm would fail on a fingerprint mismatch if an `INFO` field moved.
+  - `[low]` `[reject]` "`TestTheProhibitedSeamIsCalledOnceBeforeThePortCall` pins ordering by source-text position." Pre-existing technique of that file, acknowledged in it; converting it to an executed assertion is more than a direct correction.
+
 ## Design Notes
 
 **Governing ADs (Rule 6).** AD-1 (in-process, as the user), AD-2 (the port reproduces the vendor
@@ -559,17 +631,24 @@ neither is inferable from the source, and the schedule list auto-refreshes at fi
 - **Rule 19 -- one mutation per AC, applied on the throwaway, reverted, tree confirmed byte-identical
   (`git status --short`, `git diff --stat`) after each. Write the `mutation:` line here as each is
   demonstrated:**
-  - `mutation: drop the INFO rowGet from TaskScheduleList's read -> the DW-269 leg of OcuPilot.Test.TaskResume and OcuPilot.Test.Descriptor's read-field assertion (AC1)`
-  - `mutation: restore Navigate.Directive's 'IdKind() = single' guard -> the selection leg of ui/browser/task-resume.browser-spec.mjs and agent-navigator.spec.ts (AC2), which read NAV.ENTITYNOTALLOWED`
-  - `mutation: widen the same guard to every composite -> ui/tools/navigation.test.mjs's three-part refusal (AC2's other direction)`
-  - `mutation: ignore the route's own id segment in list-page -> the aria-selected assertions in list-page.spec.ts and toast-host.spec.ts (AC2, AC3)`
-  - `mutation: remove the not-suspended refusal from the tool's state diff -> OcuPilot.Test.TaskResume's not-suspended leg (AC5), which mints a proposal whose diff says nothing changes`
-  - `mutation: send an empty object body with the RESUME call -> AdminPort's bodyless-type handling and OcuPilot.Test.TaskResume's port leg (AC7)`
-  - `mutation: add Suspended to the descriptor's fingerprintExcludes -> OcuPilot.Test.TaskResume's moved-under-you leg (AC6), which confirms instead of refusing`
-  - `mutation: answer the id verbatim for the task rule in EntityRef.NormalizedId -> the two-spellings-one-key leg (AC7's one-lock half)`
-  - `mutation: remove task from Prohibited.COVEREDTYPES -> OcuPilot.Test.Prohibited's empty-UncoveredWriteTools assertion and the covered-types roster`
-  - `mutation: skip the marker emission in Confirm.Transition -> OcuPilot.Test.TaskResume's marker and ledger legs (AC8)`
-  - `mutation: restore the built filter in SurfaceCoverage.DeriveScreens -> the AuditingConfig screen row goes unchecked; falsify by deleting that row and watching the roster stay green under the mutation and redden without it (AC12)`
+  - `mutation: dropped the INFO rowGet from TaskScheduleList's read -> red: OcuPilot.Test.TaskResume.TestTheScheduleReadAnswersSuspendedTruthfully and OcuPilot.Test.Descriptor's task-schedule read assertions (AC1)`
+  - `mutation: restored Navigate.Directive's 'IdKind() = single' guard -> red: OcuPilot.Test.ToolNavigate.TestAC2EntityNotAllowedOnACompositeOfMoreThanOnePart's acceptance half, which reads NAV.ENTITYNOTALLOWED (AC2)`
+  - `mutation: widened the same guard to every composite (refuse only 'none') -> red: the same method's three-part refusal (AC2's other direction)`
+  - `mutation: ignored the route's own id segment in ListPage.selectFromRoute -> red: list-page.spec.ts's aria-selected assertion (AC2)`
+  - `mutation: dropped the selectFromRoute call in ListPage's router subscription -> red: list-page.spec.ts's DW-1419 navigation half, "expected 'B' to be 'C'" -- the row the previous id named stays selected (AC3, the toast's caller, which reaches an open list by navigation rather than by mount)`
+  - `mutation: dropped the parentScope guard from navigation.ts ownIdSegment -> red: navigation.test.mjs's parent-scoped rows, which read a sub-resource list's parent id as a row key of its own`
+  - `mutation: dropped the pRows.%Push in TaskResume.StateDiff -> red: OcuPilot.Test.TaskResume.TestTheMintAnswersOneStateRowFromTheInfoRead's one-row assertion (AC4)`
+  - `mutation: dropped Username from TaskHistoryList's read fields, filter, sort and table together -> red: TestTheRealResumeIsMarkedAndAttributedToTheCaller's shipped-read leg alone (AC9); removing it from read.fields by itself reddens six methods on a roster the registry then refuses, and attributes nothing`
+  - `mutation: answered $ListBuild($ListBuild("%DB_IRISSYS","READ")) from TaskResume.PrivilegePairs -> red: OcuPilot.Test.ProhibitedRoute.TestAnAccountShortOfTheTaskPairIsRefusedTheNamedPair, 1 of 12 (AC11). Removing the pair from the descriptor is not the mutation: the tool re-adds it, and dropping it from both aborts OnBeforeAllTests`
+  - `mutation: dropped the proposal-open subscription in ui/src/app/core/refresh.ts, rebuilt and redeployed -> red: ui/browser/task-resume.browser-spec.mjs's AC10 leg, 1 of 3 (AC10, AD-43)`
+  - `mutation: emptied AdminPort.BODYLESSTYPES -> red: OcuPilot.Test.ToolWrite.TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster, which is the only thing relating a tool's SendsBody() to the port's own roster`
+  - `mutation: removed the not-suspended arm from TaskResume.StateDiff -> red: OcuPilot.Test.TaskResume.TestATaskThatIsNotSuspendedIsRefusedAtTheMint (AC5)`
+  - `mutation: made Confirm.ToolSendsBody answer 1 -> red: TestTheConfirmedWriteIsABodylessResumeCarryingTheId's empty-body and empty-ledger-fields legs (AC7); and, separately, emptied AdminPort.BODYLESSTYPES -> red: TestTheRealResumeIsMarkedAndAttributedToTheCaller, the port refusing the bodyless call at 500`
+  - `mutation: added Suspended to the descriptor's fingerprintExcludes -> red: TestATaskResumedUnderALiveProposalIsRefused, which confirms instead of refusing (AC6)`
+  - `mutation: answered the id verbatim for the task rule in EntityRef.NormalizedId -> red: TestTwoSpellingsOfOneTaskIdAreOneTarget's one-key and sibling-cancel legs (AC7's one-lock half)`
+  - `mutation: removed task from Prohibited.COVEREDTYPES -> red: OcuPilot.Test.Prohibited's empty-UncoveredWriteTools assertion and its covered-types roster`
+  - `mutation: skipped the marker emission in Confirm.Transition -> red: TestTheRealResumeIsMarkedAndAttributedToTheCaller's marker and marked-ledger legs (AC8)`
+  - `mutation: restored the built filter in SurfaceCoverage.DeriveScreens -> red: TestEveryDeclaredScreenHasACoverageRowAndBack, naming the AuditingConfig row as an orphan (AC12)`
 
 **Full runs, once, before `dev_complete` (once, before dev_complete):**
 
@@ -587,5 +666,85 @@ neither is inferable from the source, and the schedule list auto-refreshes at fi
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**What shipped.** `tasks.schedule.resume`, the first action-style write (AD-51): a bodyless
+`Task.CRUD` `RESUME` whose card's one row comes from the fresh `INFO` read, refused at the mint
+when the task is not suspended, with the lock, the fingerprint, the prohibited set, the marker and
+the ledger row all where they were. Three PUT assumptions became per-tool declarations defaulting
+to today's behavior (`ReadType`/`WriteType`/`SendsBody`/`StateDiff` on the write base, resolved by
+`Mint`, `Confirm`, `Prohibited` and `Disclosure`). The schedule list takes `Suspended` from the
+same endpoint's `INFO` per row (DW-269); `entityId` widens to a composite of one part and a list
+selects the row its own route names (DW-1419); the coverage roster covers unbuilt descriptors
+(DW-1453).
+
+**The two owed measurements, taken on `ocupilot-ci` before anything was declared.** No `INFO` field
+moves while a task is suspended -- all eight identical across a 20-second window -- so the
+descriptor declares no `fingerprintExcludes` and `Suspended` is inside the fingerprint. A vendor
+resume row records the **caller**, not the task's `RunAsUser`: a probe task with `RunAsUser`
+`_SYSTEM`, resumed by `irisowner`, wrote `Username` `irisowner`. AC4 is implementable as written;
+no intent gap.
+
+**Two seams found by a red test rather than by reading.** `Screen.Read.DetailRow` required a string
+row key while `Task.CRUD`'s LIST answers its task id as a number, so the `rowGet` failed the whole
+read; it now accepts either, the spelling `ForEachRows` already used. And `proposal-card.ts`
+rendered "0 unchanged fields" under an action write's one row; the caption is now absent at 0.
+
+**Files changed** (40; 3 new). `Port/AdminPort.cls` admits `RESUME` and exempts it from the
+object-body refusal. `Screen/Tool/Write.cls` gains the four action-write seams and `ToolClass()`.
+`Kernel/Proposal/{Mint,Confirm,Prohibited,Disclosure}.cls` read those declarations from the tool.
+`Screen/Tool/TaskResume.cls` (new) is the tool. `Screen/Descriptor/TaskScheduleList.cls` declares
+the `INFO` `rowGet` and no exclusions. `Kernel/EntityRef.cls` + `ui/src/app/core/entity-ref.ts` +
+`ui/tools/screen-mirror.mjs` add the `task:integer` rule. `Screen/Tool/Navigate.cls` accepts a
+composite of one part. `ui/src/app/core/navigation.ts` + `ui/src/app/shell/list-page.ts` select the
+row a list's own route names. `Screen/Read.cls` accepts a numeric row key.
+`Test/TaskResume.cls` (new, 8 methods) and `ui/browser/task-resume.browser-spec.mjs` (new, 3 tests)
+are the story's own suites; eleven existing suites and four client specs were updated.
+
+**Review findings.** 16 filed across two layers: 7 patched, 4 deferred, 5 rejected.
+Patched -- the id-to-id navigation selection (the toast's own path into an open list) was unpinned;
+`ownIdSegment` read a parent-scoped list's parent id as a row key on six shipped screens;
+AC11's recorded mutation could not redden the test it named; nothing related
+`TaskResume.SENDSBODY` to `AdminPort.BODYLESSTYPES`; AC9 was verified by a SQL probe rather than
+through the `tasks.history` read it names; four ACs had no `mutation:` line; one doc comment sat on
+the wrong getter. Deferred -- `OcuPilot.Test.TaskResume` has no arming variable (low); NFR-1's
+budget is a single-population probe (low); AC1's tool-view projection is unexercised (medium,
+unverified); Story 13.2's spec carries a mutation line this change made stale (low). Rejected --
+the mint's `TOOL.ARGUMENTS` refusal is the shared one every mint refusal uses, so the matrix's
+`PROPOSAL.*` would be the edit (false); the `Prohibited` predicate is armed by design and the spec
+says so (false); `tasks/schedule` selection *is* asserted, in the browser spec (false); a
+measurement is evidence for a decision, not a test subject (false); the source-text ordering
+assertion is that file's pre-existing technique (low, not worth converting).
+
+**Verification.** `npm run build` and `npm test` green (1,302 tool + 816 component).
+`node tools/field-lists.mjs --check` and `screen-mirror.mjs --check` up to date.
+`check-objectscript.py` 0 problems over 600 files. The full ObjectScript sweep on `ocupilot-ci`,
+one class per call, 1,599 tests; the three changed classes re-run after patching
+(`TaskResume` 8/8, `ToolWrite` 15/15, `ProhibitedRoute` 12/12 under `OCUPILOT_ALLOW_AUDIT_TOGGLE=1`,
+`SurfaceCoverage` 4/4, `WireSecurityRead` 18/18). `npm run test:browser` **224 of 224** against the
+redeployed bundle. `smoke.sh --container ocupilot-ci` 46 executed, 46 passed, 0 failed, 0 pending,
+`agentwrite` and `auditmarker` passing. `lint-docs.sh` clean. Every mutation in the block above was
+applied, observed red, and reverted with the tree byte-identical. The demo task reads **suspended**
+on `ocupilot-ci` afterwards and the probe task is deleted; slot A took source loads and read-only
+probes only -- its `%SYS.Task.History` holds zero `Resumed task` rows and `AuditEnabled` reads 1 on
+both containers.
+
+**Three failures seen and diagnosed to the container, not the change.** The reused throwaway had
+accumulated 266 `%SYS.Task.History` rows whose tasks no longer exist -- other classes' probe
+fixtures over 45 hours. They pushed the table past `tasks.history`'s 1,000-row cap
+(`WireSecurityRead`) and pushed the demo task's own row out of the rendered window (two Story 6.6
+legs in `tasks.browser-spec.mjs`): 49 rows matched "OcuPilotDemo", of which 32 and 14 were other
+classes' probes and 3 the real demo task. Deleting the orphaned rows turned all three green with no
+code change, which is what settles the attribution. This story's own 19 resume rows were not the
+cause -- 1,098 stood without them.
+
+**Follow-up review recommended: true.** Five medium entries were patched. The named unverified
+risk: the `parentScope` guard added to `ownIdSegment` decides what six shipped parent-scoped list
+screens do with their route id, and that behavior was chosen during review rather than by the
+spec. No test depended on the previous answer and the full browser suite is green either way, so
+the branch is pinned but its *intent* has not been ratified. Patched by verdict: medium 5, low 2.
+
+**Residual risks.** The action-write seam has one consumer; Stories 5.12 and 5.13 are what will
+show whether the four declarations are the right cut. The `SENDSBODY`/`BODYLESSTYPES` equality is
+pinned by a test rather than derived, because neither half can be computed from the other.

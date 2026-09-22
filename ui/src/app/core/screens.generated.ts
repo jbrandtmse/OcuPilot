@@ -437,7 +437,8 @@ export const ENTITY_REF_SEPARATOR_CODE = 2;
 export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> = {
   "web-application": "foldcase-striptrailingslash",
   "user": "foldcase",
-  "auditing-configuration": "singleton"
+  "auditing-configuration": "singleton",
+  "task": "integer"
 };
 
 /**
@@ -5514,7 +5515,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Description",
         "Id",
         "LastFinished",
-        "NextScheduled"
+        "NextScheduled",
+        "Suspended"
       ],
       "secretFields": []
     },
@@ -5533,7 +5535,16 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "source": {
         "port": "admin",
         "endpoint": "Task.CRUD",
-        "type": "LIST"
+        "type": "LIST",
+        "rowGet": {
+          "key": "Id",
+          "param": "id",
+          "type": "INFO",
+          "fields": [
+            "Suspended"
+          ],
+          "derived": []
+        }
       },
       "fields": [
         "Name",
@@ -5542,7 +5553,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Description",
         "Id",
         "LastFinished",
-        "NextScheduled"
+        "NextScheduled",
+        "Suspended"
       ],
       "filter": [
         "Name",

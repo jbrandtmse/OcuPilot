@@ -56,12 +56,12 @@ Parameter TYPEWEBAPPLICATION = "web-application";
 /// <parameter>OcuPilot.Kernel.EntityType.TYPES</parameter>, or a rule the generator cannot
 /// implement, fails <code>npm run build</code> rather than reaching the client as a silent
 /// no-op. A later write-tool story adds one pair here, never a branch in two languages.</p>
-Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton";
+Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer";
 
 /// <p>The closed rule vocabulary <parameter>IDRULES</parameter> selects from. A rule named there
 /// and absent here is a declaration error, pinned by
 /// <class>OcuPilot.Test.EntityRef</class>.</p>
-Parameter IDRULENAMES = "foldcase-striptrailingslash,foldcase,singleton";
+Parameter IDRULENAMES = "foldcase-striptrailingslash,foldcase,singleton,integer";
 
 /// <p>The web-application rule: fold to lower case, then strip every trailing slash.</p>
 Parameter RULEFOLDCASESTRIPTRAILINGSLASH = "foldcase-striptrailingslash";
@@ -78,6 +78,13 @@ Parameter RULEFOLDCASE = "foldcase";
 /// the target key would be whatever the model typed and two spellings would be two targets,
 /// defeating AD-34's per-target lock and its sibling cancel.</p>
 Parameter RULESINGLETON = "singleton";
+
+/// <p>The task rule: a numeric id in its plain decimal spelling. The vendor's task id is an
+/// integer the model supplies as a string through <method>OcuPilot.Screen.Tool.Write.View</method>,
+/// so <code>"007"</code>, <code>"+7"</code> and <code>" 7 "</code> are spellings of one target and
+/// would otherwise be three keys. A value this rule cannot read as an integer is answered
+/// verbatim, as a type with no rule is.</p>
+Parameter RULEINTEGER = "integer";
 
 /// <p>The one id a <parameter>RULESINGLETON</parameter> type's reference carries.
 /// <code>SYSTEM</code> is <class>Security.System</class>'s own row id, which
@@ -192,8 +199,9 @@ ClassMethod ScopeFor(pDeclaredScope As %String) As %String
 /// <p><b>The rule is per entity type and declared as data</b>, in
 /// <parameter>IDRULES</parameter>, because the instance's own resolution is per type: a web
 /// application's path resolves case-insensitively and with trailing slashes ignored, an account
-/// name resolves case-insensitively and has no path grammar to strip, and a role name and a task
-/// name are the instance's own strings. A type the table holds no pair for is answered verbatim.
+/// name resolves case-insensitively and has no path grammar to strip, a task is addressed by the
+/// vendor's own integer id, and a role name is the instance's own string. A type the table holds
+/// no pair for is answered verbatim.
 /// This method applies the named rule; it does not decide which types have one.</p>
 /// <p><b>Probed on this build, not assumed</b> (<code>ocupilot-ci</code>, 2026-09-20):
 /// <code>Security.Applications</code> keeps a name's case as created
@@ -225,6 +233,7 @@ ClassMethod NormalizedId(pType As %String, pId As %String) As %String
     Set tRule = ..IdRuleFor(pType)
     If tRule = "" Quit pId
     If tRule = ..#RULESINGLETON Quit ..#RULESINGLETONID
+    If tRule = ..#RULEINTEGER Quit ..PlainInteger(pId)
     If tRule = ..#RULEFOLDCASE Quit $ZConvert(pId, "L")
     If tRule '= ..#RULEFOLDCASESTRIPTRAILINGSLASH Quit pId
     Set tId = $ZConvert(pId, "L")
@@ -232,6 +241,28 @@ ClassMethod NormalizedId(pType As %String, pId As %String) As %String
         Set tId = $Extract(tId, 1, $Length(tId) - 1)
     }
     Quit tId
+}
+
+/// <p><var>pId</var>'s plain decimal spelling: surrounding whitespace dropped, a leading
+/// <code>+</code> dropped, leading zeros dropped, and a negative zero answered as
+/// <code>0</code>. A value that is not an optionally-signed run of digits is answered
+/// verbatim.</p>
+/// <p><b>It normalizes the string rather than arithmetic on it</b>, so
+/// <file>ui/src/app/core/entity-ref.ts</file> can answer the same thing without depending on two
+/// languages agreeing about numeric precision -- the divergence a key builder cannot afford
+/// (AD-13, DW-1364).</p>
+ClassMethod PlainInteger(pId As %String) As %String [ Private ]
+{
+    Set tId = $ZStrip(pId, "<>W")
+    If '$Match(tId, "^[+-]?[0-9]+$") Quit pId
+    Set tSign = ""
+    If $Extract(tId) = "+" Set tId = $Extract(tId, 2, *)
+    If $Extract(tId) = "-" Set tSign = "-", tId = $Extract(tId, 2, *)
+    While ($Length(tId) > 1) && ($Extract(tId) = "0") {
+        Set tId = $Extract(tId, 2, *)
+    }
+    If tId = "0" Set tSign = ""
+    Quit tSign _ tId
 }
 
 /// <p>The rule <parameter>IDRULES</parameter> declares for <var>pType</var>, or <code>""</code>

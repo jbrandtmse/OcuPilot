@@ -120,6 +120,7 @@ export interface ProposalConfirmRequest {
           </span>
         </p>
       }
+      @if (discloses) {
       @if (disclosable) {
         <button
           type="button"
@@ -146,6 +147,7 @@ export interface ProposalConfirmRequest {
           <span class="ocu-proposal-card-chevron" aria-hidden="true">{{ chevronGlyph }}</span>
           <span>{{ unchangedCaption }}</span>
         </p>
+      }
       }
     </div>
 
@@ -424,6 +426,17 @@ export class ProposalCard {
    */
   protected shown(value: string): string {
     return value === '' ? STRINGS.tableEmptyValue : value;
+  }
+
+  /**
+   * Whether the card carries an unchanged-fields line at all.
+   *
+   * A write that sends no body has no unchanged fields to disclose (AD-51), and its proposal
+   * carries `unchangedCount` 0 -- "0 unchanged fields" under an action's one state row is a line
+   * that says nothing about anything the confirm will do.
+   */
+  protected get discloses(): boolean {
+    return this.view().unchangedCount > 0;
   }
 
   /** The disclosure is a button exactly when there is something behind it (see the class header). */
