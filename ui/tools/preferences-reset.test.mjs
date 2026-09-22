@@ -9,7 +9,10 @@
  * one by reading it, so this derives both sides: the cleared set from the helper's own POSTs, and
  * the expected set from the ObjectScript parameters.
  *
- * Needs nothing from the environment -- `fetch` is stubbed, so no instance is reached.
+ * Reaches no instance -- `fetch` is stubbed. It does read the browser tier's configuration at
+ * import, because `browser/preferences-reset.mjs` calls `browserConfig()` at module scope, so
+ * `OCUPILOT_BROWSER_ORIGIN` and `OCUPILOT_BROWSER_CONTAINER` must be set together or not at all --
+ * a half-set pair throws there and this file then fails to load rather than failing an assertion.
  *
  * Mutations (Rule 19), each applied, observed red and reverted:
  * - restore `VALUE_KINDS = ['view','refresh','shell']` in place of `PREFERENCE_KINDS` -> "the reset

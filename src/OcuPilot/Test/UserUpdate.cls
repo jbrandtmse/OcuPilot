@@ -53,6 +53,30 @@ Parameter PROPERTYCOUNT As %Integer = 16;
 /// pair the tool actually requires, or <method>MissingPair</method> has nothing to fail on.</p>
 Parameter DENIEDPAIR = "%Admin_Secure:USE";
 
+/// <p>The accounts <parameter>OcuPilot.Kernel.Proposal.Prohibited.SERVICEACCOUNTS</parameter> is
+/// required to name, held here as a second copy on purpose (DW-1437, DW-1438).</p>
+/// <p><b>Both legs that read the shipped parameter iterate whatever it holds</b>, so they prove
+/// "every member earns its verdict" and nothing at all about which accounts are members -- the
+/// distinction this suite has now been caught on twice. A declared roster the test holds the
+/// shipped one against is the pin; its whole job is to go red when the shipped one changes, the
+/// way <file>ui/tools/ci.test.mjs</file> holds the arming rosters.</p>
+/// <p>Neither leg's own floor catches a drop: the refusal leg counts codes earned by the members
+/// that remain, and the census leg's floor is satisfied while any one remaining member still holds
+/// <code>%All</code> on the instance.</p>
+Parameter DECLAREDSERVICEACCOUNTS = "CSPSystem,_Ensemble,irisowner";
+
+/// <p>Assert that <var>pAccounts</var> -- the shipped service-account set -- names every member
+/// <parameter>DECLAREDSERVICEACCOUNTS</parameter> declares.</p>
+Method RosterByName(pAccounts As %List)
+{
+    Set tDeclared = $ListFromString(..#DECLAREDSERVICEACCOUNTS)
+    Do $$$AssertEquals($ListLength(pAccounts), $ListLength(tDeclared), "the shipped set names " _ $ListLength(tDeclared) _ " service accounts: " _ $ListToString(pAccounts))
+    For tI = 1:1:$ListLength(tDeclared) {
+        Set tName = $List(tDeclared, tI)
+        Do $$$AssertTrue($ListFind(pAccounts, tName) > 0, tName _ " is a member by name, not merely one of however many the set happens to hold")
+    }
+}
+
 Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
@@ -417,14 +441,14 @@ Method TestDisablingTheLastAllHolderIsRefused()
 /// <parameter>OcuPilot.Kernel.Proposal.Prohibited.SERVICEACCOUNTS</parameter>, or delete the
 /// <code>IsServiceAccount</code> arm from
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.User</method> -- the refusal legs redden and the
-/// permitted one stays green. Removing <code>CSPSystem</code> alone reddens only the membership
-/// assertion, which is why that assertion exists: the legs below iterate whatever the set holds,
-/// so they cannot tell a complete set from one missing the account this rule was written for.</p>
+/// permitted one stays green. Removing any one member reddens <method>RosterByName</method> alone,
+/// which is why that check exists: the legs below iterate whatever the set holds, so they cannot
+/// tell a complete set from one missing a member.</p>
 Method TestDisablingAServiceAccountIsRefused()
 {
     Set tAccounts = $ClassMethod(..#SHIPPEDSET, "ServiceAccounts")
     Do $$$AssertTrue($ListLength(tAccounts) > 0, "the set names at least one service account; a run over none would pass having checked nothing")
-    Do $$$AssertTrue($ListFind(tAccounts, "CSPSystem") > 0, "CSPSystem is a member by name -- DW-1438 exists for this account specifically, and a set that iterates whatever it holds proves nothing about which accounts it holds")
+    Do ..RosterByName(tAccounts)
     If $ListLength(tAccounts) = 0 Quit
     Set tCode = $Parameter(..#SHIPPEDSET, "SERVICEACCOUNT")
     ; The container's own session runs as one of these accounts (irisowner on the throwaway), and
@@ -476,6 +500,7 @@ Method TestTheCensusDoesNotCountAServiceAccountAsAHolder()
 {
     Set tAccounts = $ClassMethod(..#SHIPPEDSET, "ServiceAccounts")
     Do $$$AssertTrue($ListLength(tAccounts) > 0, "the set names at least one service account")
+    Do ..RosterByName(tAccounts)
     If $ListLength(tAccounts) = 0 Quit
     Set tHolding = ""
     For tI = 1:1:$ListLength(tAccounts) {

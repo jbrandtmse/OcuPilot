@@ -252,6 +252,24 @@ test('an aliased import and a file-local wrapper are charged like a direct call'
   );
 });
 
+test('a helper whose parameter list is destructured is resolved, not scanned to nothing', () => {
+  const files = helperTree(false);
+  files['helper.mjs'] = `import { resetRememberedState } ${RESET_IMPORT};\n`
+    + `export async function signedInAt(browser, { viewport = null } = {}) {\n`
+    + `  const context = await browser.${CONTEXT_CALL});\n  return context;\n}\n`;
+  const graph = buildGraph(new Map(Object.entries(files)));
+  assert.deepEqual(
+    graph.get('helper.mjs').get('signedInAt'),
+    { creates: true, resets: false },
+    'the body brace follows the parameter list; taking the first `{` made the destructuring pattern the body'
+  );
+  assert.notEqual(
+    resetProblem('sourced.browser-spec.mjs', files['sourced.browser-spec.mjs'], graph),
+    null,
+    'a helper written this way resolved to nothing, and every spec importing it was charged zero contexts'
+  );
+});
+
 test('a spelling inside a doc comment is not a call', () => {
   const commented = `/** Opens with browser.${CONTEXT_CALL}) somewhere else. */\nexport const NOTHING = 1;\n`;
   assert.equal(chargeFor('doc.mjs', commented, null).contexts, 0);

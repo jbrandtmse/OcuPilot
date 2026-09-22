@@ -780,7 +780,15 @@ Method TestAnInadequateFingerprintSubjectStopsTheToolListBuilding()
 /// Remove <code>Security.User/PUT</code> from it -- the roster leg goes red naming that tool, and
 /// <class>OcuPilot.Test.UserUpdate</class> reddens on its confirmed writes. Add
 /// <code>Task.CRUD/SUSPEND</code> to it -- the refusal leg goes red, because the port then admits
-/// the call instead of answering 501.</p>
+/// the call instead of answering 501, and so does the width leg, because that pair is one no
+/// registered tool reaches.</p>
+/// <p><b>The roster is held from both sides.</b> The per-tool leg holds the registry within the
+/// roster and is satisfied by a roster of any width; the width leg holds the roster to exactly the
+/// distinct pairs the registry reaches, which is the direction the parameter's own doc claims and
+/// nothing asserted. Asking <method>OcuPilot.Port.AdminPort.IsMutating</method> about a pair taken
+/// out of <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> is not that check and is not
+/// any check: it reconstructs the entry it was given and looks it up in the list it came from
+/// (Rule 19).</p>
 /// <p><b>It compares pairs, not suffixes</b> (DW-1473). A bare-suffix roster reads "PUT is
 /// admitted" as "PUT is admitted on every endpoint", which is the widening that admitted
 /// <code>Task.CRUD/SUSPEND</code> -- a pair no tool issues and AD-10 evaluates no predicate
@@ -794,8 +802,13 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
     For tI = 1:1:$ListLength(tMutating) {
         Set tPair = $List(tMutating, tI)
         Do $$$AssertEquals($Length(tPair, "/"), 2, "'" _ tPair _ "' is an <endpoint>/<type> pair, not a bare suffix (DW-1473)")
-        Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating($Piece(tPair, "/", 1), $Piece(tPair, "/", 2)), "'" _ tPair _ "' resolves through the port's own IsMutating")
         If '$ListFind(tMutatingSuffixes, $Piece(tPair, "/", 2)) Set tMutatingSuffixes = tMutatingSuffixes _ $ListBuild($Piece(tPair, "/", 2))
+    }
+    ; AD-10, Story 5.12's AC3: terminating a process is never advertised, and the pair key must not
+    ; read as permission to admit the suffix somewhere else. Asked over every pair rather than over
+    ; Process's two, which is what the bare-suffix roster used to say and the re-key stopped saying.
+    For tAbsent = "TERMINATE", "DELETE" {
+        Do $$$AssertEquals($ListFind(tMutatingSuffixes, tAbsent), 0, "'" _ tAbsent _ "' is a suffix no endpoint's pair admits, on this port")
     }
     ; DW-1473's own condition: admitting a suffix on one endpoint must not admit it on another.
     ; Task.CRUD declares TYPESUSPEND, Process is the endpoint whose SUSPEND a tool issues.
@@ -833,6 +846,7 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
     Set tWrites = 0
     Set tActions = 0
     Set tOtherPorts = 0
+    Set tReached = ""
     Set tIterator = tTools.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tEntry) {
         If tEntry.%Get("kind") '= "write" Continue
@@ -852,11 +866,17 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
         Set tEndpoint = $ClassMethod(tClass, "Endpoint")
         Set tSends = ''$ClassMethod(tClass, "SendsBody")
         Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating(tEndpoint, tType), tName _ " writes '" _ tEndpoint _ "/" _ tType _ "', which the port declares a mutating pair")
+        If '$ListFind(tReached, tEndpoint _ "/" _ tType) Set tReached = tReached _ $ListBuild(tEndpoint _ "/" _ tType)
         Set tExempt = ''##class(OcuPilot.Port.AdminPort).IsBodyless(tEndpoint, tType)
         Do $$$AssertEquals(tExempt, 'tSends, tName _ " sends " _ $Select(tSends: "a body", 1: "none") _ ", so '" _ tType _ "' is " _ $Select(tSends: "absent from", 1: "in") _ " the port's bodyless roster")
         If 'tSends Set tActions = tActions + 1
     }
     Do $$$AssertTrue(tWrites > 0, "the registry enumerated admin-port write tools at all")
+    ; The roster's other direction. The loop above holds registry within roster, one tool at a time,
+    ; which is satisfied by a roster of any width; the parameter's own claim is that it is EXACTLY
+    ; the pairs the registry reaches, and nothing said so. An admitted pair no tool issues is the
+    ; state Task.CRUD/SUSPEND was in before DW-1473, one entry away.
+    Do $$$AssertEquals($ListLength(tMutating), $ListLength(tReached), "the port admits no pair beyond the ones the registry reaches -- roster '" _ $ListToString(tMutating) _ "' against reached '" _ $ListToString(tReached) _ "'")
     Do $$$AssertTrue(tActions > 0, "and at least one of them is an action-style write, so the bodyless half of the equality was exercised")
     Do $$$AssertEquals(tOtherPorts, 1, "exactly one shipped write reaches its target through another port, and it is held to that port's contract instead")
 

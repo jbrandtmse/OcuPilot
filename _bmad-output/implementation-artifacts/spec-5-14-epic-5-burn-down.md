@@ -448,6 +448,51 @@ Group 2 — ObjectScript:
   when `ui/browser/preferences-reset.mjs` clears remembered state, then it clears exactly the kinds
   that roster holds, observable as the browser suite being idempotent across two consecutive runs.
 
+### Review Findings
+
+Follow-up review, 2026-09-22. Four patched, one escalated, two closed terminal; everything else
+rejected on its refutation (`## Review Triage Log`).
+
+- **Patched.** `SERVICEACCOUNTS`' membership is now pinned by name in both legs that read it
+  (`Test/UserUpdate.DECLAREDSERVICEACCOUNTS` + `RosterByName`); only `CSPSystem` was pinned, and it
+  is the one member whose removal changes no census verdict. `ToolWrite`'s tautological `IsMutating`
+  assertion is gone, replaced by a width leg holding `MUTATINGTYPES` to exactly the distinct pairs
+  the registry reaches, and the suffix-level `TERMINATE`/`DELETE` absence the pair re-key dropped is
+  restored over every pair. `browser-reset.mjs`'s `functionUnits` now skips the parameter list, so
+  an exported helper with a destructured or defaulted parameter resolves instead of scanning to
+  nothing. `preferences-reset.test.mjs`'s "needs nothing from the environment" replaced with what it
+  does read.
+- **Escalated (DW-1486).** `PROHIBITED.SERVICEACCOUNT` is scoped to the disable verb while
+  `LASTALLHOLDER` in the same class is scoped by effect, so a `Roles` delta stripping `%All` from a
+  service account is permitted. AD-10 enumerates disabling the serving path, not de-privileging it,
+  so widening is an AD-10 amendment and a product call rather than a patch.
+- **Closed terminal.** DW-1487 (the checker's remaining lexical blind spots, now all six named at
+  the checker), DW-1488 (`LastAllHolder`'s wrong reason for a service account — a refusal, never a
+  permit). One occurrence appended to DW-1484.
+- **Closed in-pass (Rule 19).** The permitted arm had a falsifiable test and no recorded recipe;
+  the mutation was run and its line written under `## Verification`.
+
+**Rejected.** Eight `false`, on their refutation: AD-10's "one home in the kernel" is where the set
+landed, so no amendment was skipped (the scope question is DW-1486); the deleted `epics.md:807`
+affordance is still specified at `EXPERIENCE.md:220` and `:414`; `Codes()`' doc claims evaluation
+order for the web-application four only; a whitespace-padded account name reaches no proposal
+(`Security.Users.Exists(" CSPSystem")` is 0 on this build, probed); the suffix-level
+`TERMINATE`/`DELETE` leg and `PortFixture`'s growth asymmetry are both now covered rather than open.
+Eight rejected as `low` not worth their fix: `DePrivilegesLastAllHolder`'s unused `pTarget` (churn on
+the safety kernel for no behavior, and the doc says why the target is unread); `RolesGrantAll`'s
+per-name recursion (what makes one unresolvable name fail closed without failing the lot);
+`.ocu-panel-send`'s reliance on source order (true of every same-specificity rule in the file, and
+the browser leg measures the outcome); `ServiceAccounts()`' lack of a production caller (it is the
+accessor both readers and the new roster pin share); `irisowner` as a hard-coded member (spec-bound —
+the task line names the three); Story 16.2's analogy and `epics.md:3845`'s filing-time count (Epic
+16's and a closed charter's blocks, outside this epic's footprint); the browser specs' unguarded
+`querySelector` in `page.evaluate`; DW-1336's proportion measured in the idle appearance only (the
+other two read the same token, so it is entailed). Six rejected because the fix is to edit this
+spec — stale `<intent-contract>` rows, the triage-log arithmetic, the sweep's 175 + 4 against 178,
+`review_loop_iteration`, the duplicated `baseline_*` keys, the `Consumes:` list — all already
+reconciled under `## Matrix Test Audit` or immaterial. Two are the lead's bookkeeping, not this
+stage's: the cycle log's ordering and its date skew against this spec.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -828,6 +873,33 @@ not the 10 the task line states.
   `executed=46 passed=46 failed=0 pending=0 skipped=1`, `PASSED`. `agentwrite` and `auditmarker`
   both pass. The one skip is `agentswitches`, which names its own reason: the switches have been
   written on this reused instance, so whether the install wrote none cannot be told here.
+
+**Follow-up review's mutations (2026-09-22, `ocupilot-ci`), each applied, observed red, reverted in
+worktree and container, `git status --short` unchanged after each.**
+
+- `mutation:` drop `_Ensemble` from `Prohibited.SERVICEACCOUNTS`, whole package recompiled (the
+  container read back the shortened parameter) -> `UserUpdate` red 2 of 18 (run 6073),
+  `TestDisablingAServiceAccountIsRefused` and `TestTheCensusDoesNotCountAServiceAccountAsAHolder`,
+  both on `RosterByName` alone. Every pre-existing assertion in both legs stayed green, which is the
+  gap: before this leg the same mutation passed 18 of 18. Reverted, 18 of 18 (run 6076, 6079).
+- `mutation:` add `Security.Role/PUT` to **both** `AdminPort.MUTATINGTYPES` and
+  `PortFixture.MUTATINGTYPES` -> `ToolWrite` red 1 of 20 (run 6074) on the width leg alone; the
+  fixture-roster leg stayed green, which is why the shipped-only direction was already covered and
+  this one was not. Reverted, 20 of 20 (run 6075).
+- `mutation:` answer 1 from `Prohibited.IsServiceAccount` for every name -> `UserUpdate` red 8 of 18
+  (run 6078), the permitted arm among them at "and permits it, code was
+  'PROHIBITED.SERVICEACCOUNT'" and "is not a service account, which is what makes the permitted arm
+  a contrast". This is the permitted arm's own recipe, which had none. Reverted, 18 of 18 (run 6079).
+- `mutation:` restore `functionUnits`' `code.indexOf('{', ...)` -> `browser-reset.test.mjs` red on
+  "a helper whose parameter list is destructured is resolved, not scanned to nothing" alone, 23 of
+  24. Reverted, 24 of 24, and `node tools/browser-reset.mjs` reports 57/51/12 clean either way --
+  the hole is latent on today's tree, not live.
+- `probe:` `Security.Users.Exists(" CSPSystem")` and `("CSPSystem ")` both answer 0 on
+  `ocupilot-ci`, so a whitespace-padded spelling names no account and reaches no proposal; the
+  identity rule's `foldcase` needs no strip.
+- Re-run after the patches, one class per call: `UserUpdate` 18 (run 6079), `ToolWrite` 20 (run
+  6075), `npm run test:tools` 1,318 pass / 0 fail, `check-objectscript` 612 files / 21 rules / 0
+  problems.
 
 **Matrix Test Audit — the two rows whose covering evidence needed its own measurement.**
 

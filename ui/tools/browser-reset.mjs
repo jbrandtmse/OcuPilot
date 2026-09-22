@@ -21,13 +21,20 @@
  * of one, or a file-local wrapper around one; the reset is charged the same way, so a helper that
  * creates a context without resetting refuses every spec that calls it.
  *
- * **Three residual failure modes, named rather than discovered later.** The leaf predicate is still
- * a spelling (`createBrowserContext(` / `browser.newPage(`), so a helper that reached a page some
- * third way would reopen the hole one layer down; the graph is scoped to `ui/browser/`, so a helper
- * moved to `ui/tools/` or `browser.config.mjs` leaves it; and the graph says a helper *calls* the
- * reset, not that the call is unconditional. `browser-reset.test.mjs`'s floor on the number of
- * helper-sourced specs the graph resolved is what turns "the graph went empty" from a clean report
- * into a red test.
+ * **The residual failure modes, named rather than discovered later.** Three are about what the
+ * graph can see: the leaf predicate is still a spelling (`createBrowserContext(` /
+ * `browser.newPage(`), so a helper that reached a page some third way would reopen the hole one
+ * layer down; the graph is scoped to `ui/browser/`, so a helper moved to `ui/tools/` or
+ * `browser.config.mjs` leaves it; and the graph says a helper *calls* the reset, not that the call
+ * is unconditional. Three more are about the scanner itself, which is lexical rather than a
+ * parser: `stripComments` has no regex-literal state, so a `/` or a quote inside a regex literal
+ * can mis-read the rest of a line or desynchronise quote tracking; `localImports` matches only
+ * single-quoted specifiers; and `functionUnits` matches braces and parentheses without regard for
+ * string literals, so a `}` or a `)` inside one truncates a unit's body. The scanner three can miss
+ * a call either way -- a comment left unstripped is counted, a line wrongly read as a comment is
+ * not -- so neither direction is safe by construction; the shipped tree's own run is what catches
+ * an over-count, and `browser-reset.test.mjs`'s floor on the number of helper-sourced specs the
+ * graph resolved is what turns "the graph went empty" from a clean report into a red test.
  *
  * **The exemption is declared in the spec, never listed here.** A spec that is *about* this state
  * surviving does its own clearing; it says so with a `preferences-reset-exempt:` marker plus a
@@ -204,14 +211,43 @@ function leafMarkers(code) {
   };
 }
 
-/** The top-level function units in `code`, as `[{ name, body }]`. Arrow consts count. */
+/** The index of the `)` closing the parameter list that opens at `openParen`, or `-1`. */
+function parameterListEnd(code, openParen) {
+  let depth = 0;
+  for (let i = openParen; i < code.length; i += 1) {
+    if (code[i] === '(') depth += 1;
+    else if (code[i] === ')') {
+      depth -= 1;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+/**
+ * The top-level function units in `code`, as `[{ name, body }]`. Arrow consts count.
+ *
+ * A `function NAME(` match ends at the parameter list's own `(`, and a destructured or defaulted
+ * parameter puts a `{` inside that list -- so the body brace is the first one after the list
+ * CLOSES, never the first one after the name. Taking the first `{` made the "body" of
+ * `async function listWithLiveCard({ withRefresh = false } = {})` its parameter pattern, which
+ * scans to nothing: an exported helper written that way resolves to `{creates:false}` and every
+ * spec importing it is charged zero contexts and waved through.
+ */
 function functionUnits(code) {
   const units = [];
   const pattern = /(?:export\s+)?(?:async\s+)?function\s+([A-Za-z0-9_$]+)\s*\(|(?:export\s+)?const\s+([A-Za-z0-9_$]+)\s*=\s*(?:async\s*)?\([^)]*\)\s*=>\s*\{/g;
   let match = pattern.exec(code);
   while (match !== null) {
     const name = match[1] ?? match[2];
-    const open = code.indexOf('{', match.index + match[0].length - 1);
+    let open;
+    if (match[1] === undefined) {
+      // The arrow-const alternative already consumed its own body brace.
+      open = code.indexOf('{', match.index + match[0].length - 1);
+    } else {
+      const close = parameterListEnd(code, match.index + match[0].length - 1);
+      open = close === -1 ? -1 : code.indexOf('{', close);
+    }
     if (open !== -1) {
       let depth = 0;
       let end = -1;
