@@ -296,9 +296,9 @@ converse) and carries no OcuPilot marker beside the vendor's own `%Security` eve
 - 2026-09-22, lead spec gate: the plan stage's three intent gaps resolved and `status` set
   `ready-for-dev`. (1) The self-protection refusal and the delete dialog's consequence body are
   now published rows in EXPERIENCE.md's Fixed strings table, added under Rule 5 tier-1 because
-  FR-32 and `:131` already promise the explanation and only its wording was missing; author both
-  `strings.ts` entries in the same pass as the EXPERIENCE.md rows are already committed, or
-  `strings.test.mjs` is red. (2) DW-1423 routed to the epic-close decision sheet, removed from
+  FR-32 and `:131` already promise the explanation and only its wording was missing. Both
+  `strings.ts` keys (`webAppServesOcuPilotRefusal`, `webAppDeleteConsequence`) are **already
+  appended and green** -- consume them, do not re-author them. (2) DW-1423 routed to the epic-close decision sheet, removed from
   Tasks. (3) The seam is **AD-53**, written into the spine at the moment of decision: one
   operation, two callers; the screen caller mints no proposal and emits no agent marker; and
   `Restraint.Verdict` does **not** gate a person's own row action, which is published in FR-20
