@@ -4223,6 +4223,9 @@ So that the area's screen offers the same actions the agent does.
 - DW-1136: `ForgetTask`'s guard leaves a vendor async-task row behind on every unprivileged async read, permanently and silently (ledger; routed by merge_gate 2026-09-18)
 - DW-1137: `AdminPort.ASYNCTASKPAIR` is a literal, so on an instance whose IRISLOCALDATA carries a non-default resource the guard denies every caller (ledger; routed by merge_gate 2026-09-18)
 - DW-1099: no assertion observes a shipped descriptor's `read.filter`, `read.sort.fields` or per-column kind except the Devices list (ledger; routed by merge_gate 2026-09-18)
+- DW-389: Switches declares create and delete row actions its page registers no handler for, so the surfaces draw a permanently disabled action (ledger; routed by x0 2026-09-22)
+- DW-1001: the derived `webapp.openapi.read` criterion is described as a comma list with a `*` wildcard while `MgmntPort` accepts one exact name (ledger; routed by x0 2026-09-22)
+- DW-1013: `permissions.services.read` answers a bare `[]` for an unrestricted service and nothing tells the model that `[]` means any address (ledger; routed by x0 2026-09-22)
 
 ### Story 7.2: User enable, disable, delete, password and roles
 
@@ -4321,6 +4324,8 @@ So that fixing a stopped task does not need an editor.
 - **When** the agent's navigation target for a suspended task is re-pointed from the schedule list to Task details
 - **Then** UJ-6 is replayed end to end: the agent navigates to **Task details**, the Status **field** highlights, and a toast reads the change with "Open in Task schedule" - completing the journey as the PRD writes it, with no earlier story left unverified.
 
+- DW-1463: two of Story 5.11's epic clauses about what the agent's reply says are unimplemented, and the fifth clause never reached a spec (ledger; routed by merge_gate 2026-09-22)
+
 **Vendor quirk, recorded 2026-09-20 from another entry's validation notes (IRIS 2026.2):** the task list's `Suspended` field does not reflect a suspend or resume that has just been applied, while the task's own info read does. The in-place row update and the write's verification read task info, never the list's field.
 
 ### Story 7.8: Terminate, suspend and resume a process
@@ -4344,6 +4349,8 @@ So that I can recover an instance without a terminal.
 - **Then** it is refused on the instance and was never advertised as a tool.
 
 - DW-1155: the fault banner and its control are re-created while a screen refreshes, so a click in that instant is lost and UX-DR52's non-dismissible banner is not honoured; the fix is framework-level (ledger; routed by merge_gate 2026-09-18)
+- DW-1189: the fault banner may clear and be re-raised during initial settle when every screen read is refused, a visible flicker beside DW-1155's refresh-tick case (ledger; routed by cr 2026-09-19)
+- DW-1486 (**floor-blocking**): `PROHIBITED.SERVICEACCOUNT` is gated inside `Disables()` while the same class scopes `LASTALLHOLDER` by effect, so a Roles-only delta stripping `%All` from the serving account is permitted; moving the arm out of `Disables()` needs an AD-10 amendment under Rule 20 (ledger; routed by merge_gate 2026-09-22)
 
 ### Story 7.10: The remaining application error delete scopes
 
