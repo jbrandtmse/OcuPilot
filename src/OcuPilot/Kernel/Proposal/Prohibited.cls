@@ -565,9 +565,12 @@ ClassMethod Task(ByRef pChanged, Output pProhibits As %Boolean, Output pCode As 
 /// <p>AD-10's Release 1 set names no application-error effect. The one write over this type is the
 /// bodyless by-namespace delete (AD-48, AD-51), which sets no field at all, so every changed field
 /// a proposal against it could carry is one nobody has reviewed and is refused
-/// <parameter>UNCOVEREDFIELD</parameter>. Its card's removal rows are not changed fields:
-/// <method>Changed</method> skips the names the tool's declared fingerprint subject covers, which
-/// is the set whose movement the fingerprint adjudicates (AD-51).</p>
+/// <parameter>UNCOVEREDFIELD</parameter>. Its card's removal rows are not changed fields either:
+/// each is labelled by the error's <b>date</b>, a name neither the stored payload nor the live
+/// target answers, so both sides render <code>""</code> and the row is dropped as unchanged. What
+/// <method>Changed</method> skips for this tool is the declared fingerprint subject --
+/// <code>namespace</code> and <code>entries</code> -- which is the set whose movement the
+/// fingerprint adjudicates, so it is not adjudicated a second time here (AD-51).</p>
 /// <p><b>The delete is not prohibited by a predicate here, and that is the design.</b> What bounds
 /// it is the per-namespace gate the port resolves at call time (AD-29, AD-48), the enumerated id
 /// set the confirm removes exactly, and the confirmation itself -- none of which is an effect this

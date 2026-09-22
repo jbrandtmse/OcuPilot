@@ -42,6 +42,12 @@ Parameter TARGETNAMESPACE = "USER";
 /// <p>A namespace no instance carries, for the port's own unknown-namespace refusal.</p>
 Parameter ABSENTNAMESPACE = "OCUPILOTNOSUCHNAMESPACE";
 
+/// <p>A well-formed date <parameter>TARGETNAMESPACE</parameter> holds no application error on, for
+/// the multi-date fan-out leg. It must be in the past and it must parse: the vendor answers
+/// <code>1</code> for a date it holds nothing on and an error for one it cannot read as a
+/// date.</p>
+Parameter EMPTYDATE = "01/01/2020";
+
 Parameter TOOL = "OcuPilot.Screen.Tool.ErrorDelete";
 
 Parameter SCREEN = "OcuPilot.Screen.Descriptor.LogErrorList";
@@ -339,6 +345,73 @@ Method TestTheConfirmRemovesExactlyTheEnumeratedIdsAndLeavesTheResidue()
     Do ..Clear()
 }
 
+/// <p>AC1 as amended -- the write is <code>DeleteByError(ns, date, ids)</code> executed <b>once
+/// per enumerated date</b>, which is what the amendment away from <code>DeleteByNamespace</code>
+/// bought. Every other leg of this class seeds through <class>OcuPilot.Test.ErrorLogSeed</class>,
+/// which stamps each error today, so no other leg puts more than one date in the set and a
+/// fan-out that ran only its first date would pass all of them.</p>
+/// <p>The set therefore carries a second, earlier date the namespace holds no error on, and
+/// carries it <b>first</b>. Measured on <code>ocupilot-ci</code> 2026-09-23:
+/// <code>SYS.ApplicationError.DeleteByError</code> answers <code>1</code> for a well-formed date
+/// it holds nothing on, so that entry is a real iteration that removes nothing.</p>
+/// <p>Mutation (Rule 19): <code>Quit</code> after the first iteration of
+/// <method>OcuPilot.Port.LogSourcePort.RemoveErrorIds</method>'s per-date loop -- the dates
+/// assertion and the removal assertion both go red, because the seeded error is on the second
+/// date.</p>
+Method TestTheDeleteReachesTheVendorOncePerEnumeratedDate()
+{
+    Set tSC = ..Seed(.tDate, .tNumber)
+    Do $$$AssertStatusOK(tSC, "the class seeds the error the delete will name")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ..Seed(.tKeptDate, .tKeptNumber)
+    Do $$$AssertStatusOK(tSC, "and a second it does not name, so the namespace still enumerates afterwards")
+    If $$$ISERR(tSC) Quit
+
+    Kill tQuery
+    Set tQuery($Parameter(..#PORT, "NAMESPACEPARAM")) = ..#TARGETNAMESPACE
+    Set tQuery($Parameter(..#PORT, "ENTRIESPARAM")) = "[{""date"":""" _ ..#EMPTYDATE _ """,""errorNumber"":""1""},{""date"":""" _ tDate _ """,""errorNumber"":""" _ tNumber _ """}]"
+    Set tSC = $ClassMethod(..#PORT, "Invoke", $Parameter(..#PORT, "ENDPOINTERRORS"), $Parameter(..#PORT, "TYPEDELETE"), .tQuery, "", .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the two-date delete succeeds (HTTP " _ +$Get(tHttp) _ ")")
+    If $$$ISERR(tSC) || '$IsObject(tResult) Quit
+    Do $$$AssertEquals(tResult.%Get("dates"), 2, "the port reached the vendor once for each enumerated date, not once for the set")
+
+    Set tSC = ..Enumerate(..#TARGETNAMESPACE, .tAfter, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the namespace still answers, because it still holds the error the set did not name")
+    If '$IsObject(tAfter) Quit
+    Do $$$AssertTrue('..Holds(tAfter, tDate, tNumber), "the named error, which was on the SECOND date of the set, is gone")
+    Do $$$AssertTrue(..Holds(tAfter, tKeptDate, tKeptNumber), "and the one the set did not name survives")
+    Do ..Clear()
+}
+
+/// <p>The truncated-enumeration refusal in
+/// <method>OcuPilot.Screen.Tool.ErrorDelete.StateDiff</method>: a cut set cannot support "the
+/// confirm removes exactly these", so the mint is refused rather than proposing one.</p>
+/// <p>Driven directly, because no reachable seeding makes this instance answer
+/// <code>truncated</code> -- the port's cap is
+/// <parameter>OcuPilot.Port.LogSourcePort.DEFAULTMAXROWS</parameter> and this class seeds single
+/// figures. Without this leg the branch is executed by nothing and inverting it reddens
+/// nothing.</p>
+/// <p>Mutation (Rule 19): invert the guard to <code>If '''pFresh.%Get("truncated")</code> -- the
+/// truncated leg's two assertions go red while the untruncated leg below stays green.</p>
+Method TestATruncatedEnumerationRefusesTheMint()
+{
+    Set tCut = {"namespace": "USER", "count": 1, "truncated": true}
+    Do tCut.%Set("entries", [])
+    Do tCut.%Get("entries").%Push({"date": "09/11/2026", "errorNumber": "1"})
+    Set tSC = $ClassMethod(..#TOOL, "StateDiff", tCut, .tRows, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the tool answers a truncated enumeration")
+    Do $$$AssertNotEquals($Get(tProblem), "", "with a problem, so the mint refuses rather than proposing a cut set")
+    Do $$$AssertEquals(tRows.%Size(), 0, "and no removal row, so nothing about the card claims a scope it cannot keep")
+
+    Set tWhole = {"namespace": "USER", "count": 1, "truncated": false}
+    Do tWhole.%Set("entries", [])
+    Do tWhole.%Get("entries").%Push({"date": "09/11/2026", "errorNumber": "1"})
+    Set tSC = $ClassMethod(..#TOOL, "StateDiff", tWhole, .tWholeRows, .tWholeProblem)
+    Do $$$AssertStatusOK(tSC, "the same enumeration untruncated answers")
+    Do $$$AssertEquals($Get(tWholeProblem), "", "with no problem")
+    Do $$$AssertEquals(tWholeRows.%Size(), 1, "and one removal row, which is what says the refusal above is the truncation's and not the shape's")
+}
+
 /// <p>AC2's refusing direction -- an enumerated id another party removed moves the declared
 /// fingerprint subject, so the confirm is refused 409 with the row closed and nothing is
 /// deleted.</p>
@@ -408,26 +481,76 @@ Method TestTwoSpellingsOfOneNamespaceAreOneTarget()
     Do ..Clear()
 }
 
-/// <p>AD-10's <code>application-error</code> branch: the type is covered, no field of it is one
-/// this release has reviewed, and the tool's declared fingerprint subject is skipped by
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.Changed</method> rather than adjudicated twice --
-/// which is what keeps a moved id set a 409 with the row closed instead of a 403 with it live.</p>
-/// <p>Mutation (Rule 19): remove <code>application-error</code> from
-/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.COVEREDTYPES</parameter> -- every confirm of this
-/// tool is refused <code>UNCOVERED</code> and the coverage assertion goes red.</p>
+/// <p>AD-10's <code>application-error</code> branch, driven through the shipped
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method>: the type is covered, no field
+/// of it is one this release has reviewed, so a proposal carrying a changed field is refused
+/// <parameter>UNCOVEREDFIELD</parameter> -- while the delete's own removal rows, and the declared
+/// fingerprint subject, are not.</p>
+/// <p><b>The refusing arm is reached by arming the predicate's input</b>, not by replacing the
+/// method and not by reading the declarations it derives from: the delete tool admits no settable
+/// field, so no call through it can carry one, and a test that asserted only
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.SkippedFields</method>'s answer would leave this
+/// branch executed by nothing.</p>
+/// <p>Three legs, because three different things must hold. The delete's own shape changes no
+/// field. A moved <code>count</code> -- a name the live read answers and the subject does not
+/// cover -- is the refusing arm. A moved <code>namespace</code> is the subject's skip: without it
+/// the sweep would answer a moved subject 403 with the proposal row left live, where AD-6 requires
+/// 409 <code>PROPOSAL.TARGETCHANGED</code> with it closed.</p>
+/// <p>Mutation (Rule 19): replace
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.ApplicationError</method>'s body with
+/// <code>Set pProhibits = 0 Set pCode = "" Quit $$$OK</code> -- the refusing leg's two assertions
+/// go red. Drop the fingerprint-subject loop from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.SkippedFields</method> -- the subject leg is
+/// refused <code>UNCOVEREDFIELD</code> over a row the fingerprint owns.</p>
 Method TestAChangedFieldOnAnApplicationErrorProposalIsRefused()
 {
     Do $$$AssertTrue($ListFind($ClassMethod(..#SET, "CoveredTypes"), "application-error") > 0, "the type is covered, so a delete is not refused wholesale")
     Do $$$AssertEquals($ListLength($ClassMethod(..#SET, "PermittedChangeFields", "application-error")), 0, "and no field of it is one this release has reviewed")
     Do $$$AssertEquals($ListLength($ClassMethod(..#TOOL, "SettableFields")), 0, "the tool admits none either, so the refusing arm is reached by arming the input rather than through a call")
+    Do $$$AssertEquals($ListToString($ClassMethod(..#TOOL, "FingerprintSubject")), "namespace,entries", "the declared subject is the namespace and the id set")
 
-    Set tRef = ##class(OcuPilot.Kernel.EntityRef).Key("application-error", ##class(OcuPilot.Kernel.Scope).#SCOPEINSTANCE, ..#TARGETNAMESPACE, .tKey)
-    Do $$$AssertStatusOK(tRef, "the target reference builds")
-    Set tSubject = $ListToString($ClassMethod(..#TOOL, "FingerprintSubject"))
-    Do $$$AssertEquals(tSubject, "namespace,entries", "the declared subject is the identity and the id set")
+    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key("application-error", ##class(OcuPilot.Kernel.Scope).#SCOPEINSTANCE, ..#TARGETNAMESPACE, .tRef)
+    Do $$$AssertStatusOK(tSC, "the target reference builds")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ..Seed(.tDate, .tNumber)
+    Do $$$AssertStatusOK(tSC, "the class seeds one error, so the set has a live target to read")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ..Enumerate(..#TARGETNAMESPACE, .tFresh, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "and the namespace enumerates")
+    If $$$ISERR(tSC) || '$IsObject(tFresh) Quit
+
+    ; Leg 1 -- the delete's own shape: the stored payload is the subject projection and the rows
+    ; are labelled by the error's date, a name neither side answers, so no field reads as changed.
+    Set tPayload = {}
+    Do tPayload.%Set("namespace", tFresh.%Get("namespace"), "string")
+    Do tPayload.%Set("entries", tFresh.%Get("entries"))
+    Set tRows = "[{""field"":""" _ tDate _ """,""before"":""" _ tNumber _ """,""after"":"""",""removed"":true}]"
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).Prohibits($Parameter(..#TOOL, "TOOLNAME"), tRef, tPayload.%ToJSON(), tRows, .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the set answers the delete's own shape")
+    Do $$$AssertEquals(tProhibits, 0, "which is prohibited by nothing, code was '" _ $Get(tCode) _ "'")
+
+    ; Leg 2 -- the refusing arm, reached by arming the input: a payload that really moves a field
+    ; the instance holds otherwise, with the diff naming it.
+    Set tMoved = ##class(%DynamicAbstractObject).%FromJSON(tFresh.%ToJSON())
+    Do tMoved.%Set("count", tFresh.%Get("count") + 1, "number")
+    Set tMovedRows = "[{""field"":""count"",""before"":""" _ tFresh.%Get("count") _ """,""after"":""" _ (tFresh.%Get("count") + 1) _ """}]"
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).Prohibits($Parameter(..#TOOL, "TOOLNAME"), tRef, tMoved.%ToJSON(), tMovedRows, .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the set answers the armed input")
+    Do $$$AssertEquals(tProhibits, 1, "a changed field on an application-error proposal is refused")
+    Do $$$AssertEquals($Get(tCode), $Parameter(..#SET, "UNCOVEREDFIELD"), "as a field nobody has reviewed")
+
+    ; Leg 3 -- the declared subject is skipped rather than adjudicated twice. `namespace` is one of
+    ; its two names and both sides render it, so this leg fails without the skip.
     Set tSkipped = $ClassMethod(..#SET, "SkippedFields", ..#TOOL)
-    Do $$$AssertTrue($ListFind(tSkipped, "entries") > 0, "which the prohibited sweep skips, so a moved id set is the fingerprint's answer and not a 403")
-    Do $$$AssertTrue($ListFind(tSkipped, "namespace") > 0, "both names of it")
+    Do $$$AssertTrue($ListFind(tSkipped, "namespace") > 0, "the sweep is told to skip the declared subject")
+    Do $$$AssertTrue($ListFind(tSkipped, "entries") > 0, "both names of it")
+    Set tMovedSubject = ##class(%DynamicAbstractObject).%FromJSON(tFresh.%ToJSON())
+    Do tMovedSubject.%Set("namespace", "OCUPILOTPROBEMOVEDNAMESPACE", "string")
+    Set tSubjectRows = "[{""field"":""namespace"",""before"":""OCUPILOTPROBEMOVEDNAMESPACE"",""after"":""" _ tFresh.%Get("namespace") _ """}]"
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).Prohibits($Parameter(..#TOOL, "TOOLNAME"), tRef, tMovedSubject.%ToJSON(), tSubjectRows, .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the set answers a moved subject named by the diff")
+    Do $$$AssertEquals(tProhibits, 0, "which is prohibited by nothing -- a moved subject is the fingerprint's 409, not this set's 403, code was '" _ $Get(tCode) _ "'")
+    Do ..Clear()
 }
 
 /// <p>AC4 -- the per-namespace gate at the <b>confirm</b>: a principal holding
@@ -438,7 +561,13 @@ Method TestAChangedFieldOnAnApplicationErrorProposalIsRefused()
 /// <code>$Username</code> and every privilege the confirm's own gate and the port's own gate read
 /// are its. Nothing here stands in for <class>OcuPilot.Screen.Gate</class>, the port or the tool's
 /// pair set; the principal's grants are read back from the instance rather than predicted.</p>
-/// <p>Mutation (Rule 19): MUTATIONLINE</p>
+/// <p>Mutation (Rule 19): answer <code>""</code> from
+/// <method>OcuPilot.Screen.Tool.ErrorDelete.ArgumentPairs</method> -- the confirm's combined pair
+/// set then carries no per-namespace requirement, the least-privileged principal passes that gate,
+/// reaches the prohibited set's live read, and is answered a generic 500 <code>INTERNAL</code>
+/// rather than the pair-naming 403: the three assertions on the refusal's shape go red while the
+/// survival assertions stay green (confirmed on <code>ocupilot-ci</code> with the package reloaded
+/// there; reverted).</p>
 Method TestALeastPrivilegedPrincipalIsRefusedAtTheConfirm()
 {
     Do $$$AssertNotEquals(..PreparedTargetResource, "", "setup resolved the target namespace's guarding resource")

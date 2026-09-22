@@ -185,8 +185,11 @@ Method TestTheConfirmedWriteIsABodylessResumeCarryingTheId()
 /// <p>Mutation (Rule 19): declare <code>FINGERPRINTSUBJECT</code> and
 /// <code>PRECONDITIONFIELD</code> as <code>NextScheduled</code> on
 /// <class>OcuPilot.Screen.Tool.TaskResume</class> -- a name the screen also declares, so the
-/// registration guard still admits the tool -- and this goes red, the confirm succeeds and the
-/// resume is issued against a task already running.</p>
+/// registration guard still admits the tool -- and this goes red at the mint: the tool's own
+/// precondition reads <parameter>PRECONDITIONFIELD</parameter>
+/// (<method>OcuPilot.Screen.Tool.TaskResume.StateDiff</method>), so a subject that no longer names
+/// <code>Suspended</code> takes the not-suspended refusal with it and no proposal is minted to
+/// confirm.</p>
 Method TestATaskResumedUnderALiveProposalIsRefused()
 {
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)

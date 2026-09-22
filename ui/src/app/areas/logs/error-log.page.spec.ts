@@ -619,9 +619,10 @@ describe('ErrorLogPage', () => {
     // binding -- and it re-READS rather than removing a row, which is what AD-14 means by "screens
     // re-fetch, never patch".
     //
-    // Mutation (Rule 19): drop the `event.action !== 'deleted'` guard, or the namespace comparison
-    // in `applyDeleted` -> the other-namespace leg goes red, and every delete anywhere would
-    // re-read a drill standing somewhere else.
+    // Mutation (Rule 19): drop the namespace comparison in `applyDeleted` -> the
+    // other-namespace leg goes red, and every delete anywhere would re-read a drill standing
+    // somewhere else. Drop the `event.action !== 'deleted'` guard -> the `updated` leg goes red,
+    // because a non-delete change on this type would re-read the level and could step it up.
     const api = new StubApi();
     api.answer('list', { namespace: 'HSCUSTOM', date: '09/14/2026', rows: [], truncated: false });
     const { fixture, drill, bus } = mount(api);
@@ -640,6 +641,22 @@ describe('ErrorLogPage', () => {
         action: 'deleted',
       })
     ).toBe(true);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(api.paths.length).toBe(before);
+
+    // This namespace's, but not a delete: AD-14's other two actions are not this screen's
+    // business, and the drill must not re-read on one. Only `deleted` reaches `applyDeleted`.
+    expect(
+      bus.publish({
+        kind: 'changed',
+        type: 'application-error',
+        scope: 'instance',
+        id: 'hscustom',
+        action: 'updated',
+      })
+    ).toBe(true);
+    await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
     expect(api.paths.length).toBe(before);

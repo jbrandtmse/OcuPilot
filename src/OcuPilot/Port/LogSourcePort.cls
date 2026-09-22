@@ -1178,6 +1178,12 @@ ClassMethod RequestedIds(pEntriesJson As %String, Output pByDate, Output pOrder 
 /// <parameter>ERRORSNAMESPACE</parameter> and <var>pNamespace</var> is the instance's own spelling.
 /// An entry list that names nothing leaves <var>pRemoved</var> 0 and deletes nothing, which the
 /// caller refuses.</p>
+/// <p><b><var>pRemoved</var> is how many ids were named, not how many rows the vendor removed</b>
+/// -- <code>DeleteByError</code> answers a status and no count, and an id another party removed
+/// between the fingerprint re-read and this call is named here and counted. Nothing may report it
+/// to a user as a measurement. On a failure part-way through a multi-date set it is reset to 0
+/// while the dates before the failure are already gone, so the error the caller raises means "this
+/// delete did not complete", never "nothing was removed".</p>
 ClassMethod RemoveErrorIds(pNamespace As %String, pEntriesJson As %String, Output pRemoved As %Integer, Output pDates As %Integer) As %Status [ Private ]
 {
     Set tSC = $$$OK

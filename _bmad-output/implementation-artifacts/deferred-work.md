@@ -4343,6 +4343,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: The I/O row specifies field - value -> (removed) drawn and read aloud as <field>: <value>, removed, and no delete proposal exists to produce either. Location: ui/src/app/core/proposal-view.ts
 - 2026-09-19T18:03:06Z status=routed owner=5-13-logs-delete-application-errors-by-namespace by=harvest note=downstream-blocking (Rule 27): 5.13 is the first delete proposal, so it is the story whose card must show the removed form
+- 2026-09-22T14:50:56Z status=resolved-by:5-13-logs-delete-application-errors-by-namespace by=adjudication note=the delete row ships a producer; proposal-card.spec.ts carries 17 removed/Reverse assertions
 
 ### DW-1229: The terminal status line is both a role=status live region and a focus target, so it may announce twice or not at all
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: med | footprint: in-epic
@@ -4418,6 +4419,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The QA stage pinned .ocu-proposal-card-agent-text for both agent-tinted fields with children.length === 0 and demonstrated the innerHTML mutation, and left reverse alone because the AD gate scoped the gap to the two agent-tinted fields. Reverse comes from the same model turn and renders on the same card. Location: ui/src/app/shell/proposal-card.ts, proposal-card.spec.ts
 - 2026-09-19T18:11:34Z status=routed owner=5-13-logs-delete-application-errors-by-namespace by=harvest note=downstream-blocking (Rule 27) for 5.13, the first delete proposal, which is the story whose card carries no Reverse line at all and must therefore reason about the field explicitly
+- 2026-09-22T14:50:56Z status=resolved-by:5-13-logs-delete-application-errors-by-namespace by=adjudication note=the Reverse line is pinned alongside rationale and expectedImpact in the same spec
 
 ### DW-1243: A card the user cancels, and New conversation, never publish proposal-closed, so a bound screen stays paused for the rest of AD-6's ten-minute window
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: med | footprint: in-epic
@@ -5769,6 +5771,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: med | fix-risk: med | footprint: scripts/check-objectscript.py:1324
 - evidence: check_destructive_test_guard matches call-shaped regexes over one file and cannot follow a confirm; the tool's class name is no proxy - several classes read its parameters without writing, and an arm on it reddened the shipped tree (tried and reverted by the implement stage). Probe: write a Test class that mints and confirms an auditing proposal with no OnBeforeAllTests refusal.
 - 2026-09-21T23:13:31Z status=routed owner=burndown by=harvest note=Same family as DW-1448: a checker whose detection is call-shaped regexes over one file cannot see an effect reached through an indirection. The limit is at least now stated in the rule's own prose rather than implied.
+- 2026-09-22T14:47:04Z occurrence=5-13-logs-delete-application-errors-by-namespace
 
 ### DW-1452: OcuPilot.Test.ProhibitedRoute is now armed class-wide, so on a throwaway predating OCUPILOT_ALLOW_AUDIT_TOGGLE its nine pre-existing least-privileged legs no longer run
 - source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: med | fix-risk: low | footprint: src/OcuPilot/Test/ProhibitedRoute.cls
@@ -5863,6 +5866,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: 1032 rows on ocupilot-ci, 903 of them ambient rows from two IRIS recurring tasks; the row comparison itself matched exactly and deleting the ambient rows greened it with no code change
 - 2026-09-22T09:03:03Z status=routed owner=burndown by=harvest note=ENVIRONMENTAL_AND_NOT_THIS_STORYS_CODE,_but_it_is_a_LOCAL-VERIFICATION_TRAP_rather_than_a_curiosity:_a_fresh_throwaway_starts_that_table_empty_so_CI_never_sees_it,_which_means_it_reddens_ONLY_for_the_agent_running_locally_on_a_reused_container_and_reads_as_a_regression_in_whatever_story_happens_to_be_in_flight._Two_runners_have_now_lost_time_to_ambient-row_effects_on_this_container_(the_266_orphaned_history_rows_in_5.11_were_the_same_family)._Bound_the_leg_to_the_probe_tasks_own_rows_or_let_it_tolerate_a_truncated_view
+- 2026-09-22T15:27:23Z occurrence=5-13-logs-delete-application-errors-by-namespace
+- 2026-09-22T15:27:23Z note=2nd surface: tasks.browser-spec Story 6.6 AC1/AC3 at 239 rows, under the cap - displacement not truncation. CI fresh is green
 
 ### DW-1469: Eight of Story 5.12's acceptance criteria carry their Rule 19 mutation only in the test method's doc comment, not as a mutation line in the spec's Verification list
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: low | fix-risk: low | footprint: in-story
@@ -5874,6 +5879,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: ProhibitedRoute.Minted was updated in Story 5.12 to project and pass the declared subject; Digest at ProhibitedFixture.cls:176 was not, and both current callers pass merge-write tools so nothing is wrong today
 - 2026-09-22T09:03:03Z status=routed owner=5-13-logs-delete-application-errors-by-namespace by=harvest note=ROUTED_TO_5.13_BECAUSE_THE_ENTRY_NAMES_5.13_AS_THE_FIRST_CALLER_THAT_WOULD_SEED_AN_ACTION_WRITE_THROUGH_IT,_so_this_is_a_LATENT_TRAP_ARMED_EXACTLY_WHEN_THE_NEXT_STORY_ARRIVES_rather_than_a_tidy-up._AD-51s_subject_landed_in_the_minting_half_of_the_fixture_and_not_the_digest_half,_which_is_the_two-sibling-declarations-updated-separately_shape_DW-1206_already_cost_this_epic_once
+- 2026-09-22T14:50:57Z status=resolved-by:5-13-logs-delete-application-errors-by-namespace by=adjudication note=ProhibitedFixture.cls:180-186 now resolves the subject and passes it as Fingerprint.Of's fourth argument
 
 ### DW-1471: AC7's Process-details half has no browser leg; only the Processes list is driven for the AD-43 auto-refresh pause
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: low | fix-risk: low | footprint: in-story
@@ -5889,6 +5895,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-22T10:37:48Z status=routed owner=5-13-logs-delete-application-errors-by-namespace by=merge_gate note=broad prohibition stands; demo fixture must create its target under another account - if impossible, that is a Clarification
 - 2026-09-22T12:37:18Z status=routed owner=5-13-logs-delete-application-errors-by-namespace by=merge_gate note=REVERSED to the NARROW reading: refuse only the confirm's own $JOB and any turn job. AD-10 names accounts, the serving path and system processes - never process ownership - so the broad reading borrowed authority AD-10 does not grant
 - 2026-09-22T12:37:18Z note=broad reading also prohibited the feature's most likely legitimate use: an admin suspending their own runaway job. Demo target is a second portal session's process; record it in the story
+- 2026-09-22T14:50:57Z status=resolved-by:5-13-logs-delete-application-errors-by-namespace by=adjudication note=OwnedByCaller is gone; IsOcuPilotProcess refuses only $Job and a turn job, and the permitted arm is pinned through the shipped Prohibits
 
 ### DW-1473: AdminPort.MUTATINGTYPES still admits a request type by bare suffix, so admitting Process/SUSPEND also opens Task.CRUD/SUSPEND
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: med | fix-risk: high | footprint: in-story
@@ -5900,16 +5907,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Fingerprint.Of applies Projection(pSubject) and then Canonical(..,pExcludes), so an overlapping name is hashed out of the very set it is the whole of. Registry.FingerprintSubjectProblem holds four conditions and checks the subject against fingerprintExcludes in none. No descriptor declares fingerprintExcludes today, so nothing is wrong in the tree; the guard is what AD-51's adequacy condition rests on.
 - 2026-09-22T09:28:00Z status=routed owner=5-13-logs-delete-application-errors-by-namespace by=cr note=Guard is about eight lines; pinning it needs a probe descriptor, which 5.13's own action write can carry safely.
+- 2026-09-22T14:50:57Z status=resolved-by:5-13-logs-delete-application-errors-by-namespace by=adjudication note=guard relates subject and fingerprintExcludes; pinned by a SubjectProbe fixture
 
 ### DW-1475: The fingerprint-subject registration guard validates names against the screen's declared read, so a name the tool's own READTYPE read does not answer passes install and fails at every mint
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: FingerprintSubjectProblem resolves DESCRIPTORCLASS and checks tNames(read) = ProcessList.read.fields, the LIST spellings Pid,Username,Nspace,Routine,State,Commands,Globals, while the tools' READTYPE GET spells them UserName,NameSpace,CommandsExecuted. A subject of Pid,State,Username registers and then fails Fingerprint.Projection at every mint as a 500. Both shipped tools declare Pid,State, which both sets carry, so nothing is wrong today.
 - 2026-09-22T09:28:00Z status=routed owner=5-13-logs-delete-application-errors-by-namespace by=cr note=AD-51 as adopted words the check against the same extraction; the overclaim was Write.cls's doc, corrected by this review.
+- 2026-09-22T14:50:57Z status=resolved-by:5-13-logs-delete-application-errors-by-namespace by=adjudication note=the guard validates against the tool's own READTYPE read, which is what let ErrorDelete declare a subject at all
 
 ### DW-1476: An action-style write that declares no fingerprint subject silently keeps AD-6's whole-read digest, and Mint.FingerprintSubjectOf answers empty on any exception
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: AD-51 as amended says an action write declares its subject, without condition. Registry.FingerprintSubjectProblem only checks a subject that is declared; Screen/Tool/TaskResume.cls (Story 5.11) declares neither FINGERPRINTSUBJECT nor PRECONDITIONFIELD, and Mint.FingerprintSubjectOf catches every exception into an empty subject. Harmless for TaskResume, whose Task INFO read carries no moving counters, but the seam still admits the dead path the amendment exists to remove.
 - 2026-09-22T09:28:04Z status=routed owner=5-13-logs-delete-application-errors-by-namespace by=cr note=Spec task 3 sanctioned the empty default; the spine's amended wording does not, so the two now disagree.
+- 2026-09-22T14:50:57Z status=resolved-by:5-13-logs-delete-application-errors-by-namespace by=adjudication note=Registry refuses an action write declaring no subject; I falsified it myself - emptying TaskResume's subject is refused by name
 
 ### DW-1477: Prohibited.ProcessJobTypes admits APPMODE 2, a background job type, so one user's OcuPilot turn job is proposable for suspension by another
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: med | fix-risk: low | footprint: in-story
@@ -5917,6 +5927,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-22T09:28:04Z status=escalated owner=burndown by=cr note=Spec task 4 enumerated the seven values, so narrowing the list is a product call for the decision sheet.
 - 2026-09-22T10:37:49Z status=routed owner=burndown by=merge_gate note=floor-blocking: APPMODE 2 makes one user's turn job proposable by another, against AD-7 and AD-8; exclude turn jobs
 - 2026-09-22T12:37:18Z status=routed owner=5-13-logs-delete-application-errors-by-namespace by=merge_gate note=folded into DW-1472's narrow predicate rather than kept as a second one (DW-1206's lesson): one rule refusing $JOB and any turn job closes the cross-user vector too
+- 2026-09-22T14:50:57Z status=resolved-by:5-13-logs-delete-application-errors-by-namespace by=adjudication note=folded into IsOcuPilotProcess: a turn job is refused whoever owns it, so the cross-user vector closes in the same predicate
 
 ### DW-1478: Editing a planning document other tests pin by line requires npm run test:tools, not lint-docs; the obvious checker is not the covering checker
 - source: spec-5-13-logs-delete-application-errors-by-namespace.md | severity: med | fix-risk: low | footprint: in-epic
@@ -5927,3 +5938,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-13-logs-delete-application-errors-by-namespace.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: epics.md:153 807 3506-3508 5636, EXPERIENCE.md:93 220 414, prd.md:806, SPEC.md:99; plus spec-5-12's Verification recipes at :928 and :943 naming OwnedByCaller, a method that no longer exists, so 5.12's Rule 19 evidence is not re-runnable as written
 - 2026-09-22T14:04:24Z status=routed owner=burndown by=harvest note=CHARTER_THIS:_it_is_the_pitfall_CLAUDE.md_names_-_a_superseded_claim_left_where_it_was_written_gets_MINED_LATER_AS_EVIDENCE_and_propagates._epics.md:3506-3508_is_the_sharpest_because_it_is_a_WORKED_EXAMPLE_teaching_that_the_instance_refuses_the_users_own_process_on_the_write_path_regardless_of_the_UI,_which_the_narrowing_made_FALSE,_so_a_later_builder_reading_it_learns_the_wrong_rule._EXPERIENCE.mds_three_are_PUBLISHED_COPY_Epic_7s_row_actions_will_read_and_a_UX_call_governs_them,_so_that_third_needs_the_owner._Kept_as_ONE_entry_rather_than_split_because_a_half-corrected_set_is_worse_than_an_uncorrected_one
+
+### DW-1480: The proposal card's residue sentence is gated on any removal row, not on the entity type, so the first non-error delete renders it about errors
+- source: bmad-code-review of spec-5-13 | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: proposal-card.ts residueVisible is removedCount > 0; ProposalCardView carries entityType only as a display string. Unreachable today: logs.applicationerrors.delete is the only tool whose StateDiff emits removed rows. Story 7.1's web-application delete is the first that would render 'Removes exactly the 1 errors listed here.'
+- 2026-09-22T14:47:04Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=cr note=gate the sentence on the write's entity type, or have the instance send the caption
+
+### DW-1481: OcuPilot.Api.Error.LOGENTRY now answers two different refusals at two different statuses
+- source: bmad-code-review of spec-5-13 | severity: low | fix-risk: med | footprint: in-story
+- evidence: LogSourcePort:800 answers LOG.ENTRY as 404 'not recorded for that namespace and date'; :893 answers it as 400 'This delete names no application errors to remove'. AD-39 makes the code the thing a consumer keys on, and error-log.store.ts lists LOG.ENTRY in VANISHED_LEVEL_CODES. Not reachable today: the delete's refusal travels the proposal envelope, never the drill's read-fault path.
+- 2026-09-22T14:47:10Z status=wontfix-accepted owner=5-13-logs-delete-application-errors-by-namespace by=cr note=reopen_if=a surface branches on LOG.ENTRY where the delete's 400 can reach it; fix adds a code to 5 roster gates
+
+### DW-1482: ErrorDelete.ArgumentPairs answers resolved with an empty pair set, so an unresolvable namespace passes the confirm's pair gate
+- source: bmad-code-review of spec-5-13 | severity: low | fix-risk: low | footprint: in-story
+- evidence: ArgumentPairs sets pResolved=1 then returns PairsFor's answer, which is '' when Namespaces.GlobalDatabase yields no resource. Confirm.Transition reads only tArgumentsResolved, so such a caller reaches Prohibited's live read and is answered 500 INTERNAL, not the matrix's AUTH.NOPRIVILEGE with an empty pair. Needs a namespace NamespaceList answers whose globals database reports no guarding resource.
+- 2026-09-22T14:47:15Z status=wontfix-theoretical owner=5-13-logs-delete-application-errors-by-namespace by=cr note=real once a namespace in the error log has a globals database with no resource; both paths refuse, only the code differs
+
+### DW-1483: Prohibited.IsOcuPilotProcess normalizes the pid for its self-job arm and not for its turn-job arm
+- source: bmad-code-review of spec-5-13 | severity: low | fix-risk: med | footprint: in-story
+- evidence: The $Job comparison runs both sides through EntityRef.NormalizedId; GuardedIsTurnJob gets the raw rendered Pid and matches it with %EXACT(JobId). A rendering the integer rule absorbs would defeat the turn-job arm, which is the one that would otherwise fail closed. Both sides are plain integers on this build. Making it symmetric means normalizing the stored Turn.JobId too.
+- 2026-09-22T14:47:22Z status=wontfix-theoretical owner=5-13-logs-delete-application-errors-by-namespace by=cr note=real if a process read ever renders Pid other than as a bare integer; normalizing one side alone can break the match
+
+### DW-1484: OcuPilot.Test.ErrorDelete is 702 lines against the 500-line guideline for a test class
+- source: bmad-code-review of spec-5-13 | severity: low | fix-risk: med | footprint: in-story
+- evidence: objectscript-testing.md: 'keep a test class to roughly 500 lines; split larger suites into several classes'. The class carries nine tests plus principal setup, seeding and teardown helpers; this review added two tests. Splitting means a second armed class and a second entry in every place the sweep names classes.
+- 2026-09-22T14:47:26Z status=wontfix-accepted owner=5-13-logs-delete-application-errors-by-namespace by=cr note=reopen_if=Story 7.10 adds the by-date and by-error scopes to this class rather than its own

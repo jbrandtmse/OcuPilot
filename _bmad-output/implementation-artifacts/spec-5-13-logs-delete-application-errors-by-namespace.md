@@ -597,6 +597,82 @@ them; every probe below was read-only and ran with `server: "ocupilot-slot-a"`.
   builds, then it refuses, naming the class and the problem, and the tool is neither registered nor
   mintable.
 
+### Review Findings
+
+Code review 2026-09-22, four layers (blind-hunter, edge-case-hunter, verification-gap,
+acceptance-auditor), review tier `full-opus`, all four on the parent tier. Diff reviewed over the
+story's **whole** footprint (`4500138..HEAD` plus the working tree), not `baseline_revision`
+(`9f6b481`) alone: `9f6b481..HEAD` is the last pass only, and the AD-52 port declaration, the tool,
+the port's deletes and the client card all landed before it with no code-review stage since.
+
+- [x] [Review][Patch] The `application-error` prohibited branch was pinned by declaration reads, not
+  by the shipped dispatch, and the doc comment named a mechanism the shipped rows do not use
+  [src/OcuPilot/Test/ErrorDelete.cls:505, src/OcuPilot/Kernel/Proposal/Prohibited.cls:562] --
+  `TestAChangedFieldOnAnApplicationErrorProposalIsRefused` asserted `CoveredTypes`,
+  `PermittedChangeFields`, `SettableFields`, `FingerprintSubject` and `SkippedFields` and never
+  called `Prohibits`, so emptying `ApplicationError` reddened nothing. Its claim that "`Changed`
+  skips the names the tool's declared fingerprint subject covers" is not what protects the removal
+  rows either -- they are labeled by **date**, a name neither side answers, so both render `""`.
+  Patched: three armed legs through the shipped `Prohibits` (no-change, refused `count`, skipped
+  `namespace`), and the claim corrected at its origin in `Prohibited.ApplicationError`.
+- [x] [Review][Patch] The per-date fan-out -- the whole substance of Gap 1's amendment -- was never
+  executed with more than one date [src/OcuPilot/Port/LogSourcePort.cls:1188] -- every error this
+  suite seeds is stamped today, so stopping the loop after its first date passed every test.
+  Patched: `TestTheDeleteReachesTheVendorOncePerEnumeratedDate`.
+- [x] [Review][Patch] `ErrorDelete.StateDiff`'s truncated-enumeration refusal was executed by
+  nothing [src/OcuPilot/Screen/Tool/ErrorDelete.cls:155] -- no reachable seeding passes
+  `DEFAULTMAXROWS`, so deleting the branch reddened nothing while a cut set would be proposed and
+  confirmed under a card promising "exactly the `<n>` listed here". Patched:
+  `TestATruncatedEnumerationRefusesTheMint`, driven directly.
+- [x] [Review][Patch] The `action !== 'deleted'` guard had no pinning test and its recorded mutation
+  reddened nothing [ui/src/app/areas/logs/error-log.page.ts:254] -- all three published events in
+  the spec carried `action: 'deleted'`. Patched: an `updated` leg, and the mutation line corrected.
+- [x] [Review][Patch] `RemoveErrorIds`' `removed` is the requested count taken before any delete
+  runs, and a mid-loop failure resets it to 0 while earlier dates are already gone
+  [src/OcuPilot/Port/LogSourcePort.cls:1189] -- no consumer outside the tests today. Patched as a
+  caller contract at the method; not measured, because `DeleteByError` answers no count.
+- [x] [Review][Patch] `Test/TaskResume.cls`'s Rule 19 recipe named a mechanism that is not what
+  happens [src/OcuPilot/Test/TaskResume.cls:186] -- the mutation reddens at the **mint**, through
+  `TaskResume.StateDiff`'s precondition read, not at the confirm. Corrected in-pass (Rule 19 LOW).
+- [x] [Review][Defer] The card's residue sentence is gated on "any removal row", not on the entity
+  type [ui/src/app/shell/proposal-card.ts:517] -- deferred: `DW-1480`, routed to Story 7.1, the
+  first delete of another type. Unreachable today.
+- [x] [Review][Defer] `OcuPilot.Api.Error.LOGENTRY` now answers two refusals at two statuses
+  [src/OcuPilot/Port/LogSourcePort.cls:893] -- deferred: `DW-1481` `wontfix-accepted`. The delete's
+  400 travels the proposal envelope, never the drill's read-fault path that reads
+  `VANISHED_LEVEL_CODES`; the fix adds a code to five `Api.Error` roster gates.
+- [x] [Review][Defer] `ErrorDelete.ArgumentPairs` answers resolved with an empty pair set
+  [src/OcuPilot/Screen/Tool/ErrorDelete.cls:120] -- deferred: `DW-1482` `wontfix-theoretical`.
+  Needs a namespace `NamespaceList` answers whose globals database reports no guarding resource.
+- [x] [Review][Defer] `IsOcuPilotProcess` normalizes the pid for its `$Job` arm and not for its
+  turn-job arm [src/OcuPilot/Kernel/Proposal/Prohibited.cls:667] -- deferred: `DW-1483`
+  `wontfix-theoretical`. Both sides are bare integers on this build, and normalizing one side alone
+  can break the match.
+- [x] [Review][Defer] Destructive test helpers carry no per-call arming guard, unlike
+  `ErrorLogSeed.SeedInto` [src/OcuPilot/Test/ErrorDelete.cls:659] -- deferred: appended as an
+  occurrence on `DW-1451`, whose root cause is the same: the destructive-test gate reads
+  `OnBeforeAllTests` and cannot see a helper. The browser spec reaches `Clear()` through the shared
+  `runIris`, so arming it is not a two-way door.
+- [x] [Review][Defer] `Test/ErrorDelete.cls` is 702 lines against the 500-line guideline
+  [src/OcuPilot/Test/ErrorDelete.cls:1] -- deferred: `DW-1484` `wontfix-accepted`.
+
+**Rejected.** `PortClassOf` triplicated across `Confirm`, `Mint` and `Prohibited` -- `low`, and the
+fix is an extraction across three kernel classes, not a direct correction. `ENDPOINTERRORS` and
+`ERRORSKEY` holding one literal -- `low`, cosmetic. `applyDeleted`'s step-up loop and its
+`reopen()` generation race -- would guard state nothing was shown to reach. `PreparePrincipal`'s
+`'= 1` against the test's `= 0` -- `false`: `CheckUserPermission` answers 1 or 0, so the two agree.
+`StateDiff`'s empty-enumeration branch being unreachable behind the port's 404 -- `low`, and the
+branch is correct defensive code. The spec-hygiene findings (`## Blocking Condition` still argued in
+the present tense, the superseded Gap 1 recommendation, the stale AC9 identity clause, matrix row
+113, the Auto Run Result's tally against the triage log's) -- rejected under step 3's rule that a
+finding whose fix is to edit the spec under review is not a code finding; they are the lead's, and
+the spec is flagged `oversized`. Four coverage suggestions -- `Confirm.ToolPortQuery`'s empty
+`Catch`, `OnAfterAllTests`' teardown assertion not being recorded by `%UnitTest.Manager`, no
+instance-side assertion on `Write.CHANGEACTION` / the confirm answer's `action`, and
+`PortClassOf`'s fallback arms -- `low` each: the AD-14 action is pinned where it is observable, by
+`ui/browser/error-log-delete.browser-spec.mjs` against the real runtime (Rule 3), and the rest add
+assertions rather than correct one.
+
 ## Spec Change Log
 
 - **2026-09-22, lead, orchestrator-approved - both remaining gaps decided.**
@@ -881,6 +957,28 @@ EXPERIENCE.md's roster of seven.
   `mutation: re-add the ownership arm to OcuPilot.Kernel.Proposal.Prohibited.IsOcuPilotProcess
   (refuse a target whose UserName is $Username) -> OcuPilot.Test.ProcessControl,
   TestTheShippedProhibitsPermitsAProcessTheConfirmingUserOwns red, every refusing leg green`.
+  Recorded by the code-review pass (2026-09-22), for the four pinning tests it added or changed --
+  each applied on `ocupilot-ci` only (the worktree copy left pristine and confirmed byte-identical
+  by `shasum`), the named class run singly, observed red, restored and re-run `All PASSED`:
+  `mutation: OcuPilot.Kernel.Proposal.Prohibited.ApplicationError answers permitted unconditionally
+  -> OcuPilot.Test.ErrorDelete, TestAChangedFieldOnAnApplicationErrorProposalIsRefused red on the
+  refused-count leg (run 5651)`;
+  `mutation: drop the FingerprintSubject loop from
+  OcuPilot.Kernel.Proposal.Prohibited.SkippedFields -> the same method red on the skipped-namespace
+  leg, code PROHIBITED.UNCOVEREDFIELD (run 5652, applied alone -- with the ApplicationError mutation
+  also in place the two mask each other on that assertion)`;
+  `mutation: Quit after the first iteration of OcuPilot.Port.LogSourcePort.RemoveErrorIds' per-date
+  loop -> OcuPilot.Test.ErrorDelete, TestTheDeleteReachesTheVendorOncePerEnumeratedDate red on the
+  dates count and on the survival of the named error (run 5653)`;
+  `mutation: delete the truncated branch from OcuPilot.Screen.Tool.ErrorDelete.StateDiff ->
+  OcuPilot.Test.ErrorDelete, TestATruncatedEnumerationRefusesTheMint red, and nothing else (run
+  5653)`;
+  `mutation: drop the event.action !== 'deleted' guard from error-log.page.ts -> npm run
+  test:components, error-log.page.spec.ts red at the updated leg (1 of 822)`.
+  Measured for the multi-date leg: `SYS.ApplicationError.DeleteByError` answers `1` for a
+  well-formed date the namespace holds no error on (`ocupilot-ci`, 2026-09-22), which is what makes
+  a second date buildable without back-dating an `^ERRORS` node AD-48 forbids touching.
+
 
 **Full runs, once, before `dev_complete` (once, before dev_complete):**
 

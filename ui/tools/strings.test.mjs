@@ -376,6 +376,28 @@ test("Story 5.13's two removal forms are EXPERIENCE.md's own, and the residue se
   assert.ok(stringsValues.proposalResidue.includes('<n>'), 'and keeps its count placeholder');
 });
 
+test('AD-48: the residue sentence keeps both its facts, independent of the citation match (QA)', () => {
+  // The test above only requires `proposalResidue` to equal SOME row EXPERIENCE.md's Fixed
+  // strings table publishes. A rewrite that tightens the wording for card width and updates
+  // EXPERIENCE.md to match would still pass that check even if it dropped the second fact -- the
+  // spec's own warning ("a version saying only 'removes <n> errors' fails the AC's second half").
+  // This test reads the string's own content for AD-48's two facts, independent of the citation.
+  //
+  // Mutation (Rule 19): shorten `proposalResidue` in `strings.ts` to its first sentence alone
+  // ("Removes exactly the <n> errors listed here.") -- the second assertion below goes red even
+  // though the count placeholder survives and even if the Fixed strings table's own row were
+  // rewritten to match.
+  const sentence = stringsValues.proposalResidue;
+  assert.ok(
+    /exactly the <n> errors/i.test(sentence),
+    'fact 1 (what the confirm removes): exactly the enumerated count, never a live re-query'
+  );
+  assert.ok(
+    /will remain/i.test(sentence),
+    "fact 2 (the residue AD-48 requires): an error logged since the proposal is not among them and survives"
+  );
+});
+
 test("the connectivity banners' sentences and actions are EXPERIENCE.md's own, from the rows that publish them", () => {
   const values = new Set(Object.values(stringsValues));
 
