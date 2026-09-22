@@ -3831,10 +3831,10 @@ being here is floor-blocking or downstream-blocking; everything else Epic 5 file
 - DW-1438: the prohibited set has no account-side analogue of its serving-path predicate, so
   disabling `CSPSystem` is permitted and would break every CSP request including OcuPilot's own - a
   self-destruct through the product's own tool surface, the class Story 5.5 exists to prevent.
-- DW-1467: Story 5.10's `security.auditing.update` declares `DESTRUCTIVE 1` while `EXPERIENCE.md`
-  and `epics.md` both name disabling auditing a non-destructive warning. It is on the demo's
-  auditing card, and Story 14.7 puts a typed-name field on destructive cards, so a wrong flag today
-  becomes a wrong requirement there.
+- DW-1467 was chartered here and **withdrawn at the spec gate**: its premise was measured false.
+  `epics.md:3677` is Story 5.10's delivered AC declaring the write destructive for the **proposal
+  card**, while `EXPERIENCE.md:426`'s *Use* column scopes its non-destructive warning to the
+  **screen's** dialogs. Two surfaces, both true; the entry is terminal.
 - DW-1447: `resetRememberedState` clears only three value kinds, so `recent` rows accumulate and the
   browser suite is not idempotent on a reused instance - and `suggested-view` imports the reset
   without ever calling it.
@@ -3850,7 +3850,7 @@ being here is floor-blocking or downstream-blocking; everything else Epic 5 file
   add action types and the widening compounds with each; `BODYLESSTYPES` already keys by
   `(endpoint, type)` in the same file.
 - DW-1479: nine documents still state the broad process-ownership rule the narrowing replaced -
-  `epics.md:153`, `:807`, `:3506-3508`, `:5636`; `EXPERIENCE.md:93`, `:220`, `:414`; `prd.md:806`;
+  `epics.md:153`, `:807`, `:3506-3508`, `:5686`; `EXPERIENCE.md:93`, `:220`, `:414`; `prd.md:806`;
   `SPEC.md:99` - including a worked example that now teaches a false rule, and `spec-5-12`'s
   `## Verification` recipes naming `OwnedByCaller`, a method that no longer exists. The
   `EXPERIENCE.md` three are published copy and a UX call governs them.
