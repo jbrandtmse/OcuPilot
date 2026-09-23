@@ -161,3 +161,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T12:57:02Z	Story 7.5	ci_resolved	story=7.5 run=35858909423 attempt=2 result=success resolved_at=cr head=61f9c7dc jobs=8/8 note=attempt_1_browser_stall_did_not_recur_on_the_same_sha;not_labelled_a_flake;recorded_DW-1545;TaskResume_new_methods_green_in_both_attempts
 2026-09-23T12:57:02Z	Story 7.5	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 model=claude-opus-5-5
 2026-09-23T12:57:02Z	Story 7.5	smoke_complete	method=api result=pass iterations=1 defects_caught=0 evidence=probe_task_1265_on_ocupilot-ci:POST_screens/tasks.ondemand/action_run_200;one_%SYS_Task.History_row;task_deleted model=claude-opus-5-5
+2026-09-23T12:57:12Z	Story 7.5	protocol_violation	stage=lead violation=dw1434_code_commit_438d3f46_pushed_under_a_skip-marked_head_3530b258 consequence=no_ci_run_on_the_review_patches detected_by=lead_reading_its_own_push outcome=a_commit_without_the_marker_starts_the_run
