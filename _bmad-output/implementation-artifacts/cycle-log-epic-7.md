@@ -197,3 +197,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T15:30:23Z	Epic 7	spine_updated	ad=AD-52 reason=measured_vendor_gap by=runner story=7-8-terminate-suspend-and-resume-a-process lint=ok
 2026-09-23T15:30:23Z	Story 7.8	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-51,AD-52,AD-53,AD-56,AD-10,AD-6,AD-8,AD-13,AD-14,AD-15,AD-29,AD-34,AD-39,AD-43 owned_ledger=DW-1155,DW-1189,DW-1499,DW-1553 addressed=4 mutates_shared_runtime=true throwaway=ocupilot-ci copy_published=EXPERIENCE.md:419-425 implement_gate=DW-1553_budget_port_needs_orchestrator model=claude-opus-5-5
 2026-09-23T15:30:23Z	Epic 7	runner_clarification_raised	story=7.8 item=port_1967125s_two_bundle-budget_hunks(ui/angular.json,ui/tools/angular-json.test.mjs) tools_tier_red_until_then=DW-371_bundle_test
+2026-09-23T15:30:55Z	Story 7.6	ci_resolved	story=7.6 run=35879196098 result=success resolved_at=next_plan head=e3712592 jobs=8/8
