@@ -133,3 +133,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T10:03:42Z	Story 7.4	ledger_routed_planned	story=7-11-system-and-user-audit-event-configuration entries=2 excess=0 by=cr ids=DW-1529,DW-1530
 2026-09-23T10:03:42Z	Story 7.4	ci_resolved	story=7.4 run=35844424602 result=failure resolved_at=cr head=d757343a job=browser tests=auditing-screen:95,oauth:268,security:227,ssl:202 attribution=this_story
 2026-09-23T10:03:42Z	Story 7.4	rework_opened	cycle_iteration=3 iteration=1 trigger=ci items=CI_side-bar_rosters_in_three_browser_specs,CI_auditing-screen_list_renders_0_rows_on_fresh_throwaway
+2026-09-23T10:04:16Z	Story 7.4	stage_spawned	stage=implement spawn_at=2026-09-23T10:04:16Z model=opus agent_name=7-4-turn-auditing-on-and-off-from-the-screen-implement-3 cycle_iteration=3
