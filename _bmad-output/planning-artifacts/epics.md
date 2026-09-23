@@ -4249,8 +4249,8 @@ So that the commonest administrative task takes one click rather than an editor.
 - **Then** it is refused with an explanation, in the UI **and** on the instance.
 
 - **Given** the change would add `%All` or any `%Admin_*` role
-- **When** it is attempted through the agent
-- **Then** it is refused - privilege grants are prohibited in Release 1 at any confirmation level - while the screen's own role management remains available to a privileged user.
+- **When** it is attempted, from the screen or through the agent
+- **Then** it is refused on the instance whatever the caller (AD-10, AD-53) - privilege grants are prohibited in Release 1 at any confirmation level - while the screen's own role management of every other role remains available to a privileged user, and such grants stay a classic-portal action in Release 1. [AMENDED 2026-09-23, Epic 7 runner, Rule 5 tier-1 on the orchestrator's identical ruling for 8.2 AC3: the clause read "When it is attempted through the agent ... while the screen's own role management remains available", which let the screen grant what AD-10 refuses "whatever the caller"; see the story change log in spec-7-2.]
 
 - DW-1499: Prohibited.ReasonFor's sentences other than SERVINGPATH say the change is not something the agent can propose, which AD-53 makes a defect once a screen caller reaches that arm (ledger; routed by cr 2026-09-23)
 

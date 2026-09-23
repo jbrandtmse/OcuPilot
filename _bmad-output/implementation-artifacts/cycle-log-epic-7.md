@@ -46,3 +46,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T02:53:14Z	Epic 7	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@3317fae merge=4ca8a62 files=4_docs_only conflict=sprint-status.yaml_last_updated_only_resolved_ours validate=true generate_dry_run_changed=0 verification=pending_ci_on_the_next_pushed_head(DW-1435)
 2026-09-23T02:54:38Z	Epic 7	epic_context_compiled	sha=012063d reason=planning_artifact_newer model=opus
 2026-09-23T02:54:38Z	Story 7.2	stage_spawned	stage=plan spawn_at=2026-09-23T02:54:38Z model=opus agent_name=7-2-user-enable-disable-delete-password-and-roles-plan-1 cycle_iteration=1
+2026-09-23T03:06:22Z	Story 7.2	plan_clarification_requested	stage=plan spawn_at=2026-09-23T02:54:38Z model=opus condition=intent_gap items=ac4_vs_ad10(ratified_by_lead),secret_body_action_write_and_screen_route_values(orchestrator),copy_and_userlist_contention_with_8.2(orchestrator) spec_status=blocked
+2026-09-23T03:06:22Z	Epic 7	amendment	file=epics.md:4253 story=7.2 ac=4 tier=1 reason=AD-10_whatever_the_caller;precedent=orchestrator_ruling_on_8.2_AC3
