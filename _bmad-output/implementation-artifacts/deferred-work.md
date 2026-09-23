@@ -6046,6 +6046,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: Confirm.Transition sends tQuery(idParam) from EntityRef.Parse(TargetRef), which is foldcased; Create.Perform sends pName verbatim. Probed on ocupilot-b-ci 2026-09-23: Security.Applications.Create('/csp/CaseProbeX/') stores '/csp/CaseProbeX' (case kept, slash stripped).
 - 2026-09-23T02:11:59Z status=escalated owner=burndown by=cr note=fix stores the typed name at mint and sends it at confirm: new proposal state plus an edit in contended Confirm.Transition
+- 2026-09-23T03:00:18Z occurrence=8-2-create-a-user
 
 ### DW-1494: The screen's Save of a web-application create does not evaluate enforced read-only or the kill switch, while AD-55 says the screen inherits every gate AD-40 places at the write
 - source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: low | footprint: in-story
