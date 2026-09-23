@@ -172,3 +172,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T13:22:09Z	Epic 7	runner_resumed	answer=7.6:Q1_no_toast(DW-1546_range-end-cleanup),Q4_allow_system-task_delete_with_consequence_line,Q5_DW-1463_dropped,Q2/Q3/Q6_accepted self_protection_check=installer_creates_only_the_demo_fixture_task
 2026-09-23T13:22:09Z	Epic 7	amendment	files=epics.md:3732(5.11_AC7),epics.md_7.6_AC3,EXPERIENCE.md:819(UJ-6_step5),EXPERIENCE.md:416-418 tier=1
 2026-09-23T13:22:09Z	Story 7.6	stage_spawned	stage=plan spawn_at=2026-09-23T13:22:09Z model=opus agent_name=7-6-run-suspend-resume-and-delete-a-task-plan-2 cycle_iteration=2
+2026-09-23T13:23:22Z	Epic 7	epic_context_compiled	sha=77337e52 reason=planning_artifact_newer model=opus
