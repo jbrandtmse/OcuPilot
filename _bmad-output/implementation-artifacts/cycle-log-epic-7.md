@@ -96,3 +96,7 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T07:06:26Z	Story 7.2	ci_resolved	story=7.2 run=35828196362 result=failure resolved_at=cr head=e5b7e1b job=browser test=panel.browser-spec.mjs:759_not_ok_104 cause=users_list_content_scrolls_938_at_640(inference:command_bar_with_six_row_actions) attribution=this_story(first_red_on_its_code_commit)
 2026-09-23T07:06:26Z	Story 7.2	rework_opened	cycle_iteration=2 iteration=1 trigger=ci items=CI_panel.browser-spec.mjs:759 scope_baseline=pending_rework_commit
 2026-09-23T07:06:55Z	Story 7.2	stage_spawned	stage=implement spawn_at=2026-09-23T07:06:55Z model=opus agent_name=7-2-user-enable-disable-delete-password-and-roles-implement-2 cycle_iteration=2
+2026-09-23T07:29:01Z	Story 7.2	dev_complete	spawn_at=2026-09-23T07:06:55Z model=opus build_sha=2660e46 baseline_revision=584172a review_loop_iteration=0 followup_review_recommended=false deferred=1 harvested=DW-1522(resolved-by_lead_DESIGN.md_amendment) cycle_iteration=2 tiers=panel_11/11,users*_9/9,web-applications-actions_3/3,tools_1327/0,components_858/0
+2026-09-23T07:29:01Z	Story 7.2	pushed	sha=2660e46 ci=pending run=35831854830
+2026-09-23T07:29:01Z	Epic 7	amendment	file=DESIGN.md:1039 story=7.2 tier=1 what=command-bar_50px_is_a_minimum_and_wraps
+2026-09-23T07:29:01Z	Story 7.2	stage_spawned	stage=code-review spawn_at=2026-09-23T07:29:01Z model=opus agent_name=7-2-user-enable-disable-delete-password-and-roles-code-review-2 cycle_iteration=2

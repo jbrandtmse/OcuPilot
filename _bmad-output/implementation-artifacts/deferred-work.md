@@ -6100,3 +6100,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: AD-10 as amended puts all four arms in front of a %All strip; SYSTEMACCOUNTREASON, CURRENTUSERREASON and SERVICEACCOUNTREASON (EXPERIENCE.md:398-400) name only disable and delete; LASTALLHOLDERREASON alone names the role.
 - 2026-09-23T07:03:26Z status=wontfix-accepted owner=7-2-user-enable-disable-delete-password-and-roles by=cr note=reopen_if=the lead rewords EXPERIENCE.md:398-400, or a user reports a remove-role refusal naming disable
+
+### DW-1522: DESIGN.md gave the command bar a fixed 50px height, which the 640px content minimum cannot hold once a list declares six row actions
+- source: spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: the Users list's bar measured 898px on one line; 7.2's rework lets it wrap and grow, so 50px became a minimum
+- 2026-09-23T07:28:48Z status=resolved-by:7-2-user-enable-disable-delete-password-and-roles owner=7-2-user-enable-disable-delete-password-and-roles by=harvest note=DESIGN.md command-bar amended under Rule 5 tier-1 by the lead, 2026-09-23
