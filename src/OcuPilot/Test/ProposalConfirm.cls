@@ -452,9 +452,10 @@ Method TestTheProhibitedSeamIsCalledOnceBeforeThePortCall()
     Do $$$AssertEquals(tCalls, 1, "the transition names it exactly once")
     ; The write itself is the shared operation's since AD-53, and it resolves the tool's own
     ; request type inside itself -- so the port call is found by the name of the call that issues
-    ; it rather than by the resolver it used to name here.
-    Do $$$AssertTrue($Find(tBody, ").Apply(") > 0, "the transition issues the write through the shared operation")
-    Do $$$AssertTrue($Find(tBody, "..ProhibitedClassName()") < $Find(tBody, ").Apply("), "and names the set before the write goes out")
+    ; it rather than by the resolver it used to name here. The confirm calls the form that takes
+    ; the port it resolved through its own PortClassOf seam (ApplyAt), since the Epic 7/8 merge.
+    Do $$$AssertTrue($Find(tBody, ").ApplyAt(") > 0, "the transition issues the write through the shared operation")
+    Do $$$AssertTrue($Find(tBody, "..ProhibitedClassName()") < $Find(tBody, ").ApplyAt("), "and names the set before the write goes out")
 }
 
 /// <p>AC7, AD-10: what the seam does when it answers a set -- the confirm is refused with that
