@@ -6234,3 +6234,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-6-the-wallet-secret-form.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: No Epic 8 AC covers the delete; AD-53's row-action route exists only on OCU-1-epic7 until both epics merge
 - 2026-09-23T14:47:12Z status=routed owner=9-5-the-ssl-tls-editor by=orchestrator note=orchestrator ruling 2026-09-23, beside DW-1541 (FR-46)
+
+### DW-1559: AD-27's third case described the composed wallet read as carrying Name and fingerprinting three settings; the port answers {Type, Usage, RequireTLS, AllowedHosts} and the fingerprint also covers Type
+- source: spec-8-6-the-wallet-secret-form.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: a Name inside WalletSecretConfig is refused by the vendor (400); Mint.Merge copies the whole fresh read into the payload
+- 2026-09-23T16:07:33Z status=resolved-by:8-6-the-wallet-secret-form owner=8-6-the-wallet-secret-form by=harvest note=lead corrected ARCHITECTURE-SPINE.md AD-27 at its origin in the 8.6 bookkeeping commit (Rule 20)
+
+### DW-1560: On the agent path a wallet secret value's 32,768-character limit is not checked: the mint never sees the value and the card's confirm supplies it
+- source: spec-8-6-the-wallet-secret-form.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: WalletRules.Validate holds the length on the screen's Save only; checking at confirm needs Kernel/Proposal/Confirm.cls (DW-1493 hold); the vendor stores what it is sent
+- 2026-09-23T16:07:33Z status=wontfix-accepted owner=8-6-the-wallet-secret-form by=harvest note=reopen_if=a confirmed agent create stores a value over 32,768 characters, or Confirm.cls is reshaped after the Epic 7/8 merge
