@@ -6254,3 +6254,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-8-the-device-editor.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Needs AD-53's row-action route and typed-name dialog, which exist only on OCU-1-epic7 and arrive when Epic 7 merges; 8.8 ships the agent's osmgmt.devices.delete; Epic 9 has no device story
 - 2026-09-23T16:50:05Z status=routed owner=range-end-cleanup by=orchestrator note=orchestrator ruling 2026-09-23 (a); the orchestrator may re-route it to a story built after Epic 7's merge
+
+### DW-1571: The agent's osmgmt.devices.update cannot clear a device's alias or prompt: the mint's merge refuses an empty value against the fresh read's number
+- source: spec-8-8-the-device-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Mint.Merge type check against the fresh read; the screen's edit clears either through the same tool
+- 2026-09-23T19:11:10Z status=wontfix-accepted owner=8-8-the-device-editor by=harvest note=reopen_if=an agent is asked to clear a device alias or prompt and the proposal is refused
+
+### DW-1572: The AC2 browser list leg cannot see the device form store's change event: while the form is open no list is bound to the bus, and the list reads on arrival
+- source: spec-8-8-the-device-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: mutation dropping publish in device-form.store stayed green on a redeployed bundle (grep-confirmed); device-form.store.spec pins the publish
+- 2026-09-23T19:11:10Z status=wontfix-accepted owner=8-8-the-device-editor by=harvest note=reopen_if=a device create or edit is published but the list shown alongside it does not update
