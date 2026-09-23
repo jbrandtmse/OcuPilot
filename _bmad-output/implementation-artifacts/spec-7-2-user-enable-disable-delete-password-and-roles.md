@@ -2,7 +2,7 @@
 title: 'Story 7.2: User enable, disable, delete, password and roles'
 type: 'feature'
 created: '2026-09-22'
-status: 'draft'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -111,151 +111,224 @@ here (Story 9.1's). No agent marker on the screen's path (AD-15, AD-53).
 
 ## Code Map
 
+Line anchors are this branch's (`OCU-1-epic7` at `220c6a3`). ⚠ = contended with Epic 8: read
+`git show origin/OCU-1-epic8:<path>` first and stay off its hunks.
+
 ### Server
 
-- `src/OcuPilot/Kernel/Proposal/Prohibited.cls` -- CONTENDED. `ReasonFor` `:136-155` (the account
-  sentences `:141`, `:146-149`); `SERVINGPATHREASON` `:58` is the parameter-held precedent;
-  `Prohibits` `:269-333`, which already holds the resolved tool class from `Target` `:294`; `User`
-  `:374-429`, whose three name arms sit inside `If ..Disables(...)` `:380`;
-  `DePrivilegesLastAllHolder` `:467-487` (`tReaches` starts from `Disables`); `Disables` `:448`;
-  `SERVICEACCOUNTS` `:162`. Epic 8 inserts at `:223` (after `AlwaysProhibitedFields`), after `:295`
-  (inside `Prohibits`) and after `UncoveredWriteTools` -- keep off those hunks. Epic 8 does not touch
-  `ReasonFor` or `User`.
-- `src/OcuPilot/Screen/Tool/UserUpdate.cls` -- 5.9's merge tool, `PERMITTEDFIELDS "Enabled"`,
-  authored `Roles`. Gains `SCREENACTIONS` and `ChangePassword` as a reviewed field.
-- `src/OcuPilot/Screen/Tool/WebAppDelete.cls` -- the action-style delete to copy
-  (`WRITETYPE`, `SENDSBODY 0`, `CHANGEACTION`, `DESTRUCTIVE`, `READANSWERS`, `PRECONDITIONFIELD`,
-  `FINGERPRINTSUBJECT`, `StateDiff`, `PrivilegePairs`).
-- `src/OcuPilot/Screen/Tool/Write.cls` -- CONTENDED. `SCREENACTIONS` `:140` and its grammar
-  (`enable=Enabled:true,...`), `ScreenActionIds` `:196`, `ScreenActionArguments` `:216`,
-  `SecretArguments` `:388` (delegates to the descriptor; a tool may override it). Epic 8 edits
-  `:115-130`, adds methods after `ChangeAction` and rewrites `InputSchema` `:416-431` -- append only,
-  at the end of the class.
-- `src/OcuPilot/Api/ScreenAction.cls` -- 7.1's route. `Handle` reads `{action, id}` only; `Run`
-  refuses any declared argument outside `SettableFields`, gates pairs, reads fresh, builds the
-  body (`Body`, via `Mint.Merge`), gates the prohibited set, applies.
-- `src/OcuPilot/Kernel/Proposal/Operation.cls` -- CONTENDED. The shared `Read`/`Gate`/`Apply`.
-- `src/OcuPilot/Kernel/Proposal/Confirm.cls` -- CONTENDED. `ChannelProblem` `:148` closes the confirm
-  channel to `Registry.SecretArguments(tool)` `:233`; `WithSecrets` `:611` merges them into the body
-  only when `tSendsBody` `:358`. Epic 8 inserts one line directly after `:358` -- any edit here must
-  be reconciled at merge; prefer a hook both callers reach through `Operation`.
-- `src/OcuPilot/Port/AdminPort.cls` -- SHARED-APPEND. `MUTATINGTYPES` `:173`, `BODYLESSTYPES` `:189`.
-  Measured 2026-09-23 on `ocupilot-slot-a` (`GetTextAsString` of the hidden class):
-  `%Api.Admin.Endpoints.Security.User` overrides `Run` (so `ImplementsRead` answers 1 for every
-  type), `RunDelete` 404s an absent name then `Security.Users.Delete`, `TYPECHANGEPWD` is 10,
-  `NeedsRequestBody()` is true for it, its validator's schema is exactly `{"NewPassword": ""}`, and
-  `RunChangePassword` sets only `Password` -- it carries no change-on-login flag.
-  `ChangePassword` is a `PUT` template field (`literal|boolean`, pinned by `Test/DerivedFields.cls`).
-- `src/OcuPilot/Screen/Descriptor/UserList.cls` -- `primaryAction`/`rowActions` empty,
-  `emptyNextKey "tableReadOnlyEmptyNext"`, `emptyAgentKey ""`. Epic 8's 8.2 will set
-  `primaryAction create` and the same two empty keys.
-- `src/OcuPilot/Screen/Registry.cls` -- `SELFPROTECTIONRULES` `:2154` (`serves-ocupilot`),
-  validated at `:2167-2190`.
-- `src/OcuPilot/Kernel/EntityRef.cls` -- `IDRULES` `:59` already carries `user:foldcase`.
+- ⚠ `src/OcuPilot/Kernel/Proposal/Prohibited.cls` -- `SERVINGPATHREASON` :58 (the parameter-held
+  sentence to copy); codes :74-94; `ReasonFor` :211-230 (agent-worded account sentences :221-224);
+  `PermittedChangeFields` :277 (user :280); `Prohibits` :344 (`Target` answers `tToolClass` :369,
+  the user dispatch :379-381); `User` :523-578 (name arms gated by `Disables` :529);
+  `Disables` :964; `DePrivilegesLastAllHolder` :983 (role path :989-995); `RolesGrantAll` :1017;
+  `LastAllHolder` :1059 (overridable census seam); `IsServiceAccount` :1141; `SERVICEACCOUNTS` :162;
+  `Changed` :1211 skips `SkippedFields` :1322 (state label + fingerprint subject). Epic 8's hunks:
+  header doc :6-11, after `AlwaysProhibitedFields` :298, inside `Prohibits` between :370 and :371,
+  after `UncoveredWriteTools` :439. Nothing of Epic 8's touches `ReasonFor`, `User` or :379-381.
+- `src/OcuPilot/Api/ScreenAction.cls` -- `Handle` reads `{action, id}` only; `Run` computes
+  `ScreenActionArguments` before the pair gate, reads fresh, `Body` (merge, or projection +
+  `StateDiff` for an action write), prohibited gate, `Apply` with
+  `$Select(tSendsBody: tPayload, 1: "")`.
+- `src/OcuPilot/Kernel/Proposal/Operation.cls` -- Epic 7's own (7.1). `Gate`, `Apply`, `SendsBody`.
+- ⚠ `src/OcuPilot/Kernel/Proposal/Confirm.cls` -- `Set tBody = ""` :357 then
+  `If tSendsBody Set tBody = ..WithSecrets(...)` :358; Epic 8 inserts one line after :358.
+  `ChannelProblem` :428 (closed to the descriptor's `secretArguments`), `FieldNames` :701 (drops
+  declared secret names from the ledger).
+- ⚠ `src/OcuPilot/Screen/Tool/Write.cls` -- `SCREENACTIONS` grammar :125-140, `ScreenActionIds`
+  :196, `ScreenActionArguments` :216, `SecretArguments` :388 (the descriptor's list). Epic 8 adds
+  after `CHANGEACTION` :124, after `ChangeAction()` :193, rewrites `InputSchema`, appends at end.
+- `src/OcuPilot/Screen/Tool/UserUpdate.cls` -- `PERMITTEDFIELDS "Enabled"`, authored `Roles`.
+- `src/OcuPilot/Screen/Tool/WebAppDelete.cls` -- the action-write shape to copy.
+- `src/OcuPilot/Kernel/Proposal/Mint.cls` :128-132 refuses a declared secret from the model;
+  :170-192 pushes `StateDiff` rows into the diff.
+- ⚠ `src/OcuPilot/Port/AdminPort.cls` -- `MUTATINGTYPES` :173, `BODYLESSTYPES` :189,
+  `EndpointType` :837, `ImplementsRead` :862 (`Security.User` overrides `Run`, so every type
+  reads implemented), the object-body refusal :460 then `RunSequence` :466 in `Invoke`.
+- ⚠ `src/OcuPilot/Screen/Registry.cls` -- `SELFPROTECTIONRULES` :2154, `ConfirmChannelProblem`
+  :1993, `DeclaredNames` :2270, `ToolFieldRows` :2485; table empty-key rule :1896-1906 (a
+  write-capable list names `emptyAgentKey`, `emptyNextKey` empty).
+- `src/OcuPilot/Screen/Descriptor/UserList.cls` -- `rowActions []`, no `secretArguments`,
+  `emptyNextKey "tableReadOnlyEmptyNext"`, `emptyAgentKey ""`. `RoleList.cls` is built on the
+  same pairs, endpoint `Security.Role`.
+- `src/OcuPilot/Screen/Tool/Classification.cls` :46-69 -- the `permissions.users.update` entry.
+- Measured on `ocupilot-slot-a`: `Security.User` `GET` answers 16 names (`AccountNeverExpires`,
+  `AutheEnabled`, `ChangePassword`, `Comment`, `EmailAddress`, `Enabled`, `ExpirationDate`,
+  `FullName`, `HOTPKeyDisplay`, `NameSpace`, `PasswordNeverExpires`, `PhoneNumber`,
+  `PhoneProvider`, `Roles`, `EscalationRoles`, `Routine`) and no `Name`. `CHANGEPWD` takes exactly
+  `{NewPassword}` and sets only the password. A trailing space passes `PasswordPattern` 3.255ANP (8.2's measurement; `" "?1P` is 1).
 
 ### Client
 
-- `ui/src/app/shell/screen-action-handler.ts` -- `SCREEN_ACTION_DESCRIPTORS`, `DESTRUCTIVE_ACTIONS`,
-  `DESTRUCTIVE_CONSEQUENCES`, `start` (self-protection then dialog), `send` (`{action, id}` only).
-- `ui/src/app/core/self-protection.ts` -- `selfProtectionReason(rule, rowKey)`; mirrors the roster,
-  pinned by `ui/tools/self-protection.test.mjs`. `ui/tools/screen-mirror.mjs` `:313`
-  `IMPLEMENTED_SELF_PROTECTION_RULES`. `ui/src/app/core/session.ts` `userName()` `:430` is the
-  signed-in account.
-- `ui/src/app/shell/typed-name-dialog.ts`, `ui/src/app/shell/dialog.ts`, `ui/src/app/shell/list-page.ts`
-  (renders `pending()`) -- the delete dialog, reused as is.
-- `ui/src/app/shell/change-password-dialog.ts` -- 15.1's masked-secret-field and reveal toggle
-  (`accountNewPasswordLabel`, `accountShowPassword`, `accountHidePassword`); the pattern to reuse,
-  not the component (it proves the old password; this does not).
-- `ui/src/app/core/screen-actions.ts` -- `ACTION_LABELS` `:61`, `DESCRIPTOR_ACTION_LABELS` `:81`.
-- `ui/src/app/shell/proposal-card.ts` `:199-215` -- the card's masked secret fields and
-  `proposalSecretsRequired`, already built (Story 5.10).
+- `ui/src/app/shell/screen-action-handler.ts` -- `SCREEN_ACTION_DESCRIPTORS`,
+  `DESTRUCTIVE_CONSEQUENCES`, `start`, `send` (`{action, id}`), `PendingConfirm`.
+- `ui/src/app/core/self-protection.ts` `selfProtectionReason(rule, rowKey)`; callers
+  `data-table.ts:667`, `command-bar.ts:397`, `command-box.ts:490`, the handler :139.
+  `ui/tools/screen-mirror.mjs:313` `IMPLEMENTED_SELF_PROTECTION_RULES`;
+  `ui/tools/self-protection.test.mjs` reads `Roster.cls` from the repo (the pin idiom).
+- `ui/src/app/core/session.ts:430` `userName()`.
+- `ui/src/app/core/screen-actions.ts` `DESCRIPTOR_ACTION_LABELS`. A declared action with no
+  registered handler is drawn by no surface (DW-389: `data-table.ts:665`, `command-bar.ts:389`,
+  `command-box.ts:484`).
+- `ui/src/app/shell/list-page.ts` renders `pending()`; `typed-name-dialog.ts`, `dialog.ts`;
+  `change-password-dialog.ts` (15.1's masked field and reveal toggle, the pattern to reuse).
+- `ui/src/app/core/proposal-view.ts` `payloadSecrets` :349 -- the card asks for a declared secret
+  only when a diff row names it; `proposal-card.ts` :199-215 masked inputs.
+- `ui/src/app/core/strings.ts` -- the ruling's keys are appended (:1338-1365).
 
 ### Tests
 
-- `src/OcuPilot/Test/UserUpdate.cls` -- 877 lines, armed by `OCUPILOT_ALLOW_PRINCIPALS`, owns the
-  account fixtures (`ProposalFixture` `USERTARGET`, `USERALLHOLDER*`) and the `%All` census seams.
-- `src/OcuPilot/Test/RefusalCopy.cls` -- the serving-path sentence pin to extend.
-- `src/OcuPilot/Test/SurfaceCoverage.cls` (CONTENDED, Epic 8 +2 lines) -- the write-tool roster.
-- `src/OcuPilot/Test/Prohibited.cls` (CONTENDED) `TestTheSetHasOneHomeAndOneSentencePerCode` `:460`.
-- `ui/browser/users.browser-spec.mjs`, `ui/browser/users-write.browser-spec.mjs`,
-  `ui/browser/web-applications-actions.browser-spec.mjs` (the row-action precedent).
+- `src/OcuPilot/Test/UserUpdate.cls` (armed, 877 lines) -- account fixtures, `Refused`,
+  `ProhibitedFixture.Ask`/`UserObject`/`Diff`, census arming.
+- `src/OcuPilot/Test/ProhibitedByEffect.cls` (unarmed, 519 lines) -- fixture-port set tests.
+- ⚠ `src/OcuPilot/Test/ProhibitedRoute.cls` :1533 -- the "one write verb on users" tripwire this
+  story trips on purpose.
+- `src/OcuPilot/Test/RefusalCopy.cls`; ⚠ `Test/SurfaceCoverage.cls`.
+- `ui/browser/users.browser-spec.mjs`, `users-write.browser-spec.mjs`,
+  `web-applications-actions.browser-spec.mjs` (the row-action precedent).
 
 ## Tasks & Acceptance
 
 **Execution:**
 
-- `src/OcuPilot/Kernel/Proposal/Prohibited.cls` -- make a **removal** reach every account arm the
-  disable reaches: `_SYSTEM`, the signed-in account, a service account and the last `%All` holder
-  (`DePrivilegesLastAllHolder`'s `tReaches`), deciding "removal" from the resolved tool's declared
-  `ChangeAction() = "deleted"`, never from the payload -- AD-53's effect rule.
-- same file -- hold each account sentence (`CURRENTUSER`, `SYSTEMACCOUNT`, `SERVICEACCOUNT`,
-  `LASTALLHOLDER`, `PRIVILEGEGRANT`) in a `…REASON` parameter, caller-neutral, equal to its
-  published row, `ReasonFor` returning the parameter (DW-1499).
-- `src/OcuPilot/Screen/Tool/UserDelete.cls` (new) -- `permissions.users.delete`, action-style over
-  `Security.User` `DELETE`, `DESTRUCTIVE`, `CHANGEACTION "deleted"`, `SCREENACTIONS "delete"`,
-  subject and precondition read from the live `GET` (identity excluded, AD-51).
-- `src/OcuPilot/Screen/Tool/UserPassword.cls` (new) -- `permissions.users.password` over `CHANGEPWD`,
-  declaring `NewPassword` its one secret argument (tool-level `SecretArguments`), body exactly
-  `{NewPassword}` (Gap 2), fingerprint over a declared subject of the fresh read.
-- `src/OcuPilot/Screen/Tool/UserUpdate.cls` -- admit `ChangePassword`; declare `SCREENACTIONS` for
-  `enable`, `disable`, the flag's two values, `add-role` and `remove-role`; the role pair apply one
-  named role as a delta over the fresh read; declare no secret argument, so its confirm channel
-  stays closed to `NewPassword`.
-- `src/OcuPilot/Api/ScreenAction.cls`, `src/OcuPilot/Kernel/Proposal/Operation.cls` -- admit a
-  caller-supplied value only under a name the tool declares for that action (the role name; the
-  tool's secret), refuse any other key 400, and merge a secret only at the write, as confirm does
-  (Gap 2).
-- `src/OcuPilot/Kernel/Proposal/Prohibited.cls` `PermittedChangeFields` -- add `ChangePassword` to
-  the account's reviewed few; AD-10 forbids no change to it.
-- `src/OcuPilot/Port/AdminPort.cls` -- APPEND `Security.User/DELETE` (to `MUTATINGTYPES` and
-  `BODYLESSTYPES`) and `Security.User/CHANGEPWD` (to `MUTATINGTYPES`).
-- `src/OcuPilot/Screen/Descriptor/UserList.cls` -- declare the six row actions in command-bar order,
-  destructive last, `disable` and `delete` carrying `selfProtection "protected-account"`; set
-  `emptyNextKey ""` and `emptyAgentKey "userListEmptyAgent"`.
-- `src/OcuPilot/Screen/Registry.cls`, `ui/tools/screen-mirror.mjs`, `ui/src/app/core/self-protection.ts`
-  -- add `protected-account` to the closed vocabulary on both sides; the client answers the matching
-  sentence for `_SYSTEM`, `Session.userName()` and the mirrored service accounts, `''` otherwise.
-- `ui/src/app/shell/screen-action-handler.ts` -- add `UserList` to the roster and its delete
-  consequence; open the set-password dialog and the role dialog (Gap 3) for their actions, sending
-  their value in the request body; the flag write precedes the password write.
-- `ui/src/app/shell/set-password-dialog.ts` (new) -- masked field with reveal toggle, never
-  pre-filled, `value` read untrimmed, cleared on close, the change-on-login checkbox; nothing sent
-  until submit.
-- `ui/src/app/shell/role-dialog.ts` (new, per Gap 3) -- one role from the instance's roles list
-  (add) or the row's roles (remove); `%All` and `%Admin_*` names drawn unavailable with the
-  `PRIVILEGEGRANT` sentence; the instance decides.
-- `ui/src/app/core/strings.ts` -- APPEND the keys for the rows the lead publishes (Design Notes).
-- `src/OcuPilot/Test/UserUpdate.cls` -- the screen-route and agent legs of every I/O row, the
-  removal arms over the census seam, and the password's no-residue check (ledger, proposal row,
-  error log carry no password). Tests go here because a new armed class needs a roster line in
-  `scripts/ci-throwaway.sh`, Epic 8's exclusive file.
-- `src/OcuPilot/Test/RefusalCopy.cls`, `ui/tools/self-protection.test.mjs` -- pin each account
-  sentence server-parameter = client-string = caller-neutral, and the service-account mirror to
-  `SERVICEACCOUNTS`.
-- `src/OcuPilot/Test/SurfaceCoverage.cls` -- the two roster rows, names read from the instance.
-- `ui/browser/users-actions.browser-spec.mjs` (new) -- AC1-AC4 against `ocupilot-ci`.
+*Prohibited set (DW-1486, DW-1499, AD-10 as amended):*
+
+- `Prohibited.cls` `User` + `Prohibits` :380 -- pass `RemovesOf(tToolClass)` (the tool's
+  `ChangeAction() = "deleted"`; a class that cannot be asked reads as a removal, the fail-closed
+  direction) into `User`. `User` computes one effect: a removal, a disable (`Disables`), or a
+  `Roles` delta that strips `%All` (`Roles` changed, `RolesGrantAll` true over the target's roles
+  and false over the payload's). When it holds, the `_SYSTEM`, signed-in, service-account and
+  last-holder arms run in that order; `DePrivilegesLastAllHolder` folds into it. The escalation,
+  grant and reviewed-few arms follow unchanged. Rewrite the code and method doc comments that say
+  "disable" to say the effect.
+- same file -- `SYSTEMACCOUNTREASON`, `CURRENTUSERREASON`, `SERVICEACCOUNTREASON`,
+  `LASTALLHOLDERREASON` after `SERVINGPATHREASON`, each the published row
+  (`EXPERIENCE.md:398-401`, equal to `strings.ts` `userRefusal*`); `ReasonFor` returns them.
+  `PRIVILEGEGRANT`'s sentence is untouched (ruling 4).
+- same file `PermittedChangeFields` -- user becomes `Enabled, Roles, ChangePassword`; the doc
+  states AD-10 forbids no change to `ChangePassword`.
+
+*Tools:*
+
+- `src/OcuPilot/Screen/Tool/UserDelete.cls` (new) -- `permissions.users.delete` on
+  `WebAppDelete`'s shape: `WRITETYPE "DELETE"`, `SENDSBODY 0`, `CHANGEACTION "deleted"`,
+  `DESTRUCTIVE 1`, `SCREENACTIONS "delete"`, `PRECONDITIONFIELD "Enabled"`,
+  `FINGERPRINTSUBJECT "Enabled,FullName,Roles"`, removal-row `StateDiff`, the screen's pairs.
+- `src/OcuPilot/Screen/Tool/UserPassword.cls` (new) -- `permissions.users.password`:
+  `WRITETYPE "CHANGEPWD"`, `SENDSBODY 0`, `SECRETBODY "Password"`, `STATEFIELD "Password"`,
+  `PRECONDITIONFIELD`/`FINGERPRINTSUBJECT "Enabled"`, `SCREENACTIONS "set-password"`,
+  `SCREENVALUES "set-password=Password"`; `StateDiff` answers one row
+  `{field:"Password", before:"", after:""}` so the card masks it and asks for it; no settable field.
+- `UserUpdate.cls` -- `PERMITTEDFIELDS "Enabled,ChangePassword"` (and `DESCRIPTION`);
+  `SCREENACTIONS "enable=Enabled:true,disable=Enabled:false,require-password-change=ChangePassword:true,add-role,remove-role"`,
+  `SCREENVALUES "add-role=Role,remove-role=Role"`; override `ScreenActionDelta` to build `Roles`
+  from the fresh read plus or minus the one role (case-insensitive match, the instance's spelling
+  kept). Refused 400 `TOOL.ARGUMENTS`: an add of a held role, a remove of an unheld one, and an add
+  of a name `Security.Role` `GET` through the tool's port answers 404 for.
+- ⚠ `Write.cls` -- after `SecretArguments` :393 (and the parameters after `READANSWERS` :153),
+  off Epic 8's hunks: `SECRETBODY` and `SCREENVALUES` parameters, `SecretBodyNames()`,
+  `ScreenActionValueNames(pActionId)`, and `ScreenActionDelta(pActionId, pValues, pFresh, Output
+  pArgs, Output pProblem)` whose default answers `ScreenActionArguments`. Empty defaults leave every
+  shipped tool byte-identical.
+- `Operation.cls` -- `SecretBody(pToolClass, pSupplied, pSecretNames)`: `""` unless the tool
+  declares `SECRETBODY`; otherwise an object holding each `SECRETBODY` name that is also a declared
+  secret and was supplied, under that name, and nothing else.
+- ⚠ `Confirm.cls:357` -- `Set tBody = ##class(OcuPilot.Kernel.Proposal.Operation).SecretBody(tToolClass, pSuppliedSecrets, tSecretNames)`;
+  the one line, so :358 and Epic 8's insert after it are untouched. `FieldNames` then records no
+  field for the password write.
+- `ScreenAction.cls` -- `Handle` accepts `{action, id, values}`; `values` absent or an object of
+  strings keyed only by `ScreenActionValueNames(action)`, every declared name present; any other
+  body key or value name is 400 `TOOL.ARGUMENTS` before any read. A name that is a declared secret
+  goes to a local passed to `Operation.SecretBody` at the write and nowhere else; the rest go to
+  `ScreenActionDelta` after the fresh read, whose answer is held to `SettableFields` as the static
+  arguments are. Values are never trimmed, logged or echoed.
+- ⚠ `AdminPort.cls` -- append `Security.User/DELETE,Security.User/CHANGEPWD` to `MUTATINGTYPES`
+  and `Security.User/DELETE` to `BODYLESSTYPES`; add `RENAMEDTYPES =
+  "Security.User/CHANGEPWD=Password:NewPassword"` and apply it in `Invoke` after the object-body
+  refusal, on a copy, before `RunSequence`. 8.2's `WRAPPEDTYPES` lands at the same point.
+- ⚠ `Classification.cls` + `node tools/field-lists.mjs` -- a `permissions.users.password` entry:
+  `fieldList "Security.User"`, the update entry's classification map, `authored {"Password":
+  "secret"}` (AD-3). Needs 8.2's `authored` grammar (Design Notes).
+
+*Descriptor, registry and mirror:*
+
+- `UserList.cls` -- `rowActions` in order enable, disable (`protected-account`), set-password,
+  add-role, remove-role, require-password-change, delete (`protected-account`); 8.2's
+  `"secretArguments": ["Password"]` line verbatim; the header's "declares no action" sentence
+  replaced. `primaryAction` untouched. The empty keys per Design Notes.
+- ⚠ `Registry.cls` `SELFPROTECTIONRULES` and ⚠ `screen-mirror.mjs:313` -- add
+  `protected-account`; regenerate `screens.generated.ts`.
+
+*Client:*
+
+- `self-protection.ts` -- `selfProtectionReason(rule, rowKey, signedIn = '')`; `protected-account`
+  answers `userRefusalSystemAccount`, `userRefusalCurrentUser`, `userRefusalServiceAccount` in the
+  server's order, else `''`; `SERVICE_ACCOUNTS` mirrored. The four callers pass
+  `Session.userName()`.
+- `screen-action-handler.ts` -- `UserList` on the roster; `delete` consequence
+  `userDeleteConsequence`; `require-password-change` registers no menu handler; `PendingConfirm`
+  becomes a union (typed-name, set-password, role); `send` takes optional `values`. Set password
+  sends `require-password-change` first when the box is checked and stops on its refusal, then
+  `set-password` with `values.Password`, then drops the value.
+- `ui/src/app/shell/set-password-dialog.ts` (new) -- 15.1's masked field and reveal toggle
+  (`accountNewPasswordLabel`, `accountShowPassword`/`accountHidePassword`),
+  `autocomplete="new-password"`, empty and focused on open, `value` read untrimmed, cleared on
+  close; `userPasswordChangeOnLogin` checkbox; submit disabled while empty.
+- `ui/src/app/shell/role-dialog.ts` (new) -- one role in a native `select` labeled
+  `userRoleField`: add lists `permissions.roles`' read names minus the row's roles (AD-5, "issue
+  another built screen's read"); remove lists the row's `Roles`. No pre-mark; the instance decides.
+- `list-page.ts` renders all three dialogs from `pending()`; `screen-actions.ts` adds the UserList
+  labels `userActionSetPassword`, `userActionAddRole`, `userActionRemoveRole`.
+
+*Tests:*
+
+- `ProhibitedByEffect.cls` -- `TestEveryAccountArmRefusesEveryRemovalEffect`: {signed-in,
+  `_SYSTEM`, service account, last holder (census armed)} x {delete, disable, `%All` strip} through
+  `ProhibitedFixture.Ask`, each leg asserting its code, plus an ordinary account permitted for all
+  three and a non-`%All` role change on `_SYSTEM` permitted.
+- `UserUpdate.cls` -- route legs on a probe account: the six actions and the flag; delete and
+  disable of `_SYSTEM`, the caller and `CSPSystem` 403 with the parameter sentence; `%All` strip on
+  the armed last holder 403; `%All`/`%Admin_Secure` add 403 `PRIVILEGEGRANT`; an undeclared
+  `values` key 400 with nothing written; agent legs: password mint refuses a `Password` argument,
+  stores no password, confirm with `{Password}` sets it (`Security.Users.CheckPassword` in `%SYS`);
+  delete confirm removes the account; after either write no ledger row, proposal row, `^ERRORS`
+  or OcuPilot log line holds the password; a token minted for the probe is refused after its delete.
+- `RefusalCopy.cls` -- each of the four codes answers its parameter and names no caller.
+- `ui/tools/self-protection.test.mjs` -- each `*REASON` parameter equals its `strings.ts` key;
+  `SERVICE_ACCOUNTS` equals `SERVICEACCOUNTS`; the rule's answers per account.
+- ⚠ `ProhibitedRoute.cls:1533` -- roster becomes {update, delete, password}; the live leg adds a
+  bodyless `_SYSTEM` delete asked of the shipped set (nothing minted). ⚠ `SurfaceCoverage.cls` --
+  two rows, names read from the instance. Any other roster that reddens is updated.
+- Specs: `screen-action-handler.spec.ts`, `set-password-dialog.spec.ts`, `role-dialog.spec.ts`,
+  `list-page.spec.ts`, `screen-mirror.test.mjs`.
+- `ui/browser/users-actions.browser-spec.mjs` (new) -- `resetRememberedState`; probe account
+  created and removed by exact name through `docker exec`.
 
 **Acceptance Criteria:**
 
-- Given a selected user, when any of the six actions is run from the row menu or the command bar,
-  then it reaches `POST /screens/permissions.users/action`, one AD-14 event is published and the
-  list re-fetches in place preserving sort, filter, selection and scroll.
-- Given the set-password dialog, when it opens, then the masked field is empty and focused, pasted
-  text is sent byte-for-byte once, the change-on-login checkbox is present, and neither the list
-  read, the tool's read, the change event, the proposal, the ledger nor the error log afterwards
-  holds the password.
-- Given the signed-in account, `_SYSTEM` or a service account, when disable or delete is attempted
-  from any surface or the route, then the surfaces draw it non-selectable with the published
-  sentence and the instance refuses it with the same sentence; given the last `%All` holder, the
-  instance refuses both, and the role removal that would strip it.
-- Given `%All`, a `%Admin_*` role, or a role recursing to one, when it is added through the agent
-  or the screen, then the instance refuses it `PROHIBITED.PRIVILEGEGRANT`, while adding and
-  removing any other role works from the screen (reading per Gap 1).
-- Integration AC (Rule 1): the Users list, served by `ListPage` through the generic handler on a
-  real throwaway, disables and re-enables a fixture account, sets its password (then signs in
-  with it), adds and removes an ordinary role and deletes it, each re-fetched in place; and the
-  agent's `permissions.users.delete` and `permissions.users.password` proposals, confirmed, reach the
-  same account.
+- **AC1.** Given a selected user, when enable, disable, delete, set password, add role or remove
+  role is run from the row menu or the command bar, then it reaches
+  `POST /screens/permissions.users/action`, one AD-14 event is published, and the list re-fetches
+  in place. (The editor half is DW-1501, Story 9.1.)
+- **AC2.** Given the set-password dialog, when it opens, then the field is empty, masked and
+  focused with a change-on-login checkbox; pasted text is sent byte for byte once; and no read,
+  change event, proposal, ledger row or log holds it afterwards.
+- **AC3.** Given `_SYSTEM`, the signed-in account or a service account, when disable or delete is
+  attempted, then both surfaces draw it refused with the published sentence and the route answers
+  403 with the same sentence; the last `%All` holder is refused on the instance for delete,
+  disable and a remove-role of `%All`.
+- **AC4.** Given `%All`, a `%Admin_*` role or a role reaching one, when it is added by either
+  caller, then the instance refuses it `PROHIBITED.PRIVILEGEGRANT`, while adding and removing any
+  other role works from the screen as a delta over the fresh read.
+- **AC5 (Integration, Rule 1).** Given a probe account on the throwaway, when the Users list served
+  by `ListPage` disables and re-enables it, sets its password, adds and removes an ordinary role and
+  deletes it, then each change re-fetches in place and `POST /api/ocupilot/login` with the new
+  password answers 200 before the delete.
+- **AC6 (DW-1486).** Given each account predicate and each removal effect (delete, disable, a
+  `Roles` delta stripping `%All`), when the set is asked, then it refuses with that predicate's
+  code, and each leg reddens when its predicate or its effect term is removed.
+- **AC7.** Given `permissions.users.password` or `permissions.users.delete` minted by the agent,
+  when confirmed (the password typed on the card), then the write lands, a marker and an event are
+  emitted, and the password is in no stored argument, payload, diff value or ledger field.
 
 ## Spec Change Log
 
@@ -269,114 +342,104 @@ here (Story 9.1's). No agent marker on the screen's path (AD-15, AD-53).
 
 ## Design Notes
 
-**Intent gaps (why this spec is `blocked`).** Each has a recommended answer the spec above is
-already written to; ratifying all three should need no re-plan.
+**Governing ADs (Rule 6):** AD-3, AD-4, AD-5, AD-6, AD-8, AD-10 (amended 2026-09-23), AD-13,
+AD-14, AD-15, AD-21, AD-27, AD-31, AD-34, AD-35, AD-37, AD-39, AD-40, AD-41, AD-51, AD-52, AD-53,
+AD-55, AD-56, Conventions › Secrets. AD-49 does not apply: an administrator sets another account's
+password through the admin API.
 
-1. **AC4 contradicts AD-10 as literally read.** "Refused through the agent … while the screen's own
-   role management remains available to a privileged user" reads either as (a) the screen may grant
-   `%All`/`%Admin_*`, or (b) role management stays available and privilege grants are refused
-   whatever the caller. (a) contradicts AD-10 ("adding `%All` or any `%Admin_*` role to any user",
-   "whatever the caller") and AD-53 (one prohibited set, two callers). Recommend (b), and a Rule 5
-   tier-1 amendment of 7.2 AC4 on the orchestrator's 2026-09-23 ruling for the identical 8.2 AC3
-   (precedent 7.8 AC2): "refused on the instance whatever the caller; such grants stay a
-   classic-portal action in Release 1".
-2. **The password write fits neither write kind, and the screen route carries no caller value.**
-   `CHANGEPWD` takes exactly `{NewPassword}`: not AD-4's complete property set, not AD-51's "sends
-   no body". And AD-53's route today sends only `{action, id}`, while set password and the role
-   actions need a value the person supplies. Recommend a Rule 20 spine entry covering both: (i) an
-   action-style write may send a body made **only** of its declared secret arguments, supplied at
-   the write (confirm or dialog), never stored, fingerprinted over a declared subject of the fresh
-   read; (ii) a screen action admits caller values only under names its tool declares for that
-   action -- secrets under the confirm channel's own closure (AD-6), an ordinary value validated as
-   the tool's schema validates it -- and a list-valued field is changed by a server-side delta, never
-   a client-computed replacement. The change-on-login flag is a separate `update` write because the
-   vendor type cannot carry it; it goes first, so a failure leaves a forced change against the old
-   password rather than an unforced temporary one.
-3. **UX surface and copy.** EXPERIENCE.md `:173` lists every dialog ("Dialogs exist only for …") and
-   has no role dialog, while `:155` files add/remove roles under actions without a surface "(User
-   editor)"; and the Fixed strings table publishes none of this story's copy. Recommend amending
-   `:173` with a role dialog, and publishing (tier 1, as for 7.1's `:395-397`): the five
-   caller-neutral account refusals -- CURRENTUSER "This is the account you are signed in as.
-   Disabling or deleting it would lock you out."; SYSTEMACCOUNT "_SYSTEM is the instance's own
-   predefined account. Disabling or deleting it is not available here."; SERVICEACCOUNT "The
-   instance's own services run as this account. Disabling or deleting it would stop them, OcuPilot
-   included."; LASTALLHOLDER "This is the last account that holds %All. Disabling it, deleting it or
-   taking the role off it would leave nobody able to administer this instance."; PRIVILEGEGRANT
-   "Granting an administrative privilege, to an account or through a web application, is not
-   available in this release. Use the classic portal."; the delete consequence "Deleting this user
-   removes the account and every role it holds. This cannot be undone."; the labels "Set password",
-   "Require a password change at next sign-in", "Add role", "Remove role", "Role"; and the invitation
-   `userListEmptyAgent` "create a user".
+**The secret: one declaration, two names.** The descriptor's `secretArguments` holds `Password`
+(8.2's line); the vendor's `CHANGEPWD` key is `NewPassword`. The kernel carries `Password`
+everywhere -- the card's field, the confirm channel, the route's `values`, `SecretBody`,
+`FieldNames`' exclusion -- and `AdminPort.RENAMEDTYPES` renames it on the wire, beside 8.2's
+`WRAPPEDTYPES`, because the vendor's key is a wire fact (AD-27). Renaming in the tool would put
+`NewPassword` in the body `FieldNames` records, outside the declared-secret exclusion.
 
-**Governing ADs (Rule 6).** AD-3 (authored secret argument; empty derived list for the bodyless
-delete), AD-4 (the role and flag writes merge over a fresh read), AD-5 (row actions and their
-self-protection rule), AD-6 (proposal, fingerprint, closed confirm channel), AD-8 (screen pairs,
-`USE`), AD-10 (removal arms; privilege grants whatever the caller), AD-13 (`user:foldcase`), AD-14,
-AD-15 (marker on the agent path only), AD-21/AD-35/Conventions › Secrets (password), AD-34, AD-39
-(one published sentence per code), AD-40, AD-51, AD-52 (default `AdminPort`), AD-53. AD-49 does
-**not** apply: this is an administrator setting another account's password through the admin API,
-the route AD-49 names as "the admin story's".
+**What 7.2 needs from 8.2's widening, and the named risk.** 8.2's Registry/mirror widening
+accepts a `secretArguments` name that is a top-level `secret` row of a `permissions.users.*`
+`ToolFields` entry. On this branch no such row exists unless a Classification entry authors one,
+which needs 8.2's `authored` grammar in `Classification.cls`, `ui/tools/field-lists.mjs` and
+`ui/tools/field-lists.test.mjs` -- beyond the three files the rulings name, and field-lists is
+Epic 8's exclusive file. **Risk: the lead's pre-implement port must include those grammar hunks**;
+without them `UserList`'s `secretArguments` is refused at registration and at `npm run build`.
+7.2 then adds only its own `permissions.users.password` entry; if the port also brings 8.2's
+`permissions.users.create` entry, both stay.
 
-**The editor half.** No user editor exists on this branch (no `areas/permissions/`, no user
-form descriptor). Story 9.1 builds it; its actions should reuse this story's handler and tools.
-Recommend the orchestrator add that bullet to 9.1 at the Epic 7 merge. 9.1's AC3 (secret
-`NewPassword` filled at confirm) is delivered here by `permissions.users.password`.
+**Ruling 3 versus the table rule.** A list that declares a row action must name `emptyAgentKey`
+and leave `emptyNextKey` empty (`Registry.cls:1896-1906`, `screen-mirror.mjs:2170`), so
+`rowActions` cannot land alone. If the port carries 8.2's `UserList` lines, 7.2 leaves them;
+otherwise it writes `"emptyNextKey": ""` and `"emptyAgentKey": "userListEmptyAgent"`
+byte-identical to 8.2's, so the merge collapses them and no value diverges.
 
-**Coordination with Epic 8.** `UserList.cls`: 8.2 sets `primaryAction create` and the same two empty
-keys -- identical values, so the merge collapses them; `userListEmptyAgent` must carry 8.2's value
-exactly. `Prohibited.ReasonFor`'s `PRIVILEGEGRANT` line is the sentence 8.2's Roles violation will
-render: whichever story lands second reconciles to one published sentence. Contended edits
-(`Prohibited`, `Write`, `Operation`, `Confirm`, `SurfaceCoverage`) are footprint extensions.
+**The flag is a declared, undrawn action.** AD-56 makes it its own `update` write sent first.
+`require-password-change` is declared so the route admits it and has no menu handler, so no
+surface draws it (DW-389); only the dialog sends it.
 
-**Ledger inbox (Rule 17).** DW-1499 -- addressed for the five codes a screen caller reaches here
-(second Execution task). `OCUPILOTPROCESS` and `SYSTEMPROCESS` are first reached by Story 7.8's
-process row actions, and the web-application and sweep codes by no screen caller on this branch:
-recommend re-owning that residual to `7-8` at adjudication.
+**PRIVILEGEGRANT's sentence.** Consumed as 8.2's (ruling 4). Until 8.2 lands, the screen's refused
+add-role renders today's agent-worded `ReasonFor` text on the refusal line: the DW-1499 residual.
 
-**Consumes:** 7.1 (route, operation, handler, typed-name dialog, `selfProtection` vocabulary), 5.9
-(`permissions.users.update` and its census), 5.10 (the card's masked secret field), 15.1 (the
-masked-field pattern). **Consumed-by:** 8.2 (the password secret discipline and `userListEmptyAgent`),
-9.1 (the editor's actions), 7.8 (the caller-value channel, for terminate's error-to-job flag).
+**Delete consequences (AD-37).** A deleted account's token is refused by the authentication-time
+read (`Kernel/Identity.IsEnabled` answers 0 for an unknown account) and its turn stops at the next
+step boundary (AD-31); pinned by the token leg rather than rebuilt.
+
+**Contended edits** (footprint extensions): `Prohibited`, `Write`, `Confirm`, `AdminPort`,
+`Registry`, `Classification`/`ToolFields`, `screen-mirror.mjs`, `ProhibitedRoute`,
+`SurfaceCoverage`, `screens.generated.ts`. `ProhibitedRoute:1533` also reddens under 8.2's create;
+the merge reconciles the roster to four.
+
+**Ledger inbox (Rule 17).** DW-1486 -- addressed (Execution's first task, AC6). DW-1499 --
+addressed for `SYSTEMACCOUNT`, `CURRENTUSER`, `SERVICEACCOUNT`, `LASTALLHOLDER`; declined for
+`PRIVILEGEGRANT` (8.2's, ruling 4) and for the process and web-application codes no screen caller
+on this branch reaches. Recommend re-owning that residual to `8-2-create-a-user` and `7-8` at
+adjudication. DW-1501 -- routed to 9.1; out of scope.
+
+**Consumes:** 7.1 (route, `Operation`, handler, typed-name dialog, rule vocabulary), 5.9
+(`permissions.users.update`, census), 5.10 (card masking), 15.1 (masked-field pattern), 8.2's
+widening and `authored` grammar (ported by the lead). **Consumed-by:** 9.1 (editor actions, via
+DW-1501), 7.8 (`SCREENVALUES` for terminate's flag), 8.2 at merge (shared `UserList` lines).
+**Integration ACs:** AC5.
 
 ## Verification
 
-**Targeted, inside the implement loop (loop)** -- slot A's throwaway `ocupilot-ci` (web 52776, super
-1975) for every stateful or destructive check; IRIS MCP calls carry `server: "ocupilot-slot-a"`
-(the dev container `ocupilot`, never the target of a destructive check). One test class per call,
-never two in one message, never a re-submit on a client timeout.
+Slot A's throwaway `ocupilot-ci` (web 52776, super 1975) for every stateful or destructive check;
+IRIS MCP calls carry `server: "ocupilot-slot-a"`; one test class per call, never two in one
+message, never a re-submit on a client timeout.
 
-- `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.UserUpdate` --
-  expected: green; then, one at a time, `OcuPilot.Test.RefusalCopy`, `OcuPilot.Test.Prohibited`,
-  `OcuPilot.Test.ProhibitedRoute`, `OcuPilot.Test.SurfaceCoverage`, `OcuPilot.Test.ToolRoundTrip`,
-  `OcuPilot.Test.Descriptor`, `OcuPilot.Test.DerivedFields`.
-- `cd ui && npm run test:tools` -- expected: green (`self-protection`, `strings`, `screen-mirror`,
-  `citations`).
-- `cd ui && npm run test:components` -- expected: green (handler, both dialogs, data table, command
-  bar, command box).
+**Targeted (loop):**
+
+- `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class <C>`, one at a time, for
+  `OcuPilot.Test.UserUpdate`, `ProhibitedByEffect`, `RefusalCopy`, `ProhibitedRoute`, `Prohibited`,
+  `SurfaceCoverage`, `ToolWrite`, `ToolRoundTrip`, `Descriptor`, `DerivedFields`,
+  `EndpointCoverage` -- expected: 0 failures each.
+- `cd ui && npm run test:tools && npm run test:components` -- expected: 0 failures.
+- `cd ui && node tools/field-lists.mjs --check && node tools/screen-mirror.mjs --check && node tools/client-lint.mjs && node tools/browser-reset.mjs` -- expected: no drift.
 - `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`,
-  then `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci node
-  --test --test-concurrency=1 browser/users-actions.browser-spec.mjs browser/users.browser-spec.mjs
-  browser/users-write.browser-spec.mjs` -- expected: green, on a rebuilt and redeployed bundle.
-- `uv run scripts/check-objectscript.py` on the changed paths; `bash scripts/lint-docs.sh` --
-  expected: clean.
-- Rule 19: one `mutation:` line per AC beside its pinning test (e.g. restore the `Disables`-only
-  gate -> the `_SYSTEM` delete legs go red; trim the pasted password -> the byte-for-byte leg goes red).
+  then `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci node --test --test-concurrency=1 browser/users-actions.browser-spec.mjs browser/users.browser-spec.mjs browser/users-write.browser-spec.mjs`
+  -- expected: all pass.
+- `uv run scripts/check-objectscript.py <changed paths>`; `bash scripts/lint-docs.sh` -- clean.
 
-**Once, before `dev_complete`:**
+**Once, before `dev_complete`:** the full ObjectScript sweep on `ocupilot-ci`, per class, totals
+checked against `%UnitTest_Result` with the numeric-run-index probe -- 0 failures, non-zero count.
+The full browser suite is not run locally (Rule 29).
 
-- The full ObjectScript sweep on `ocupilot-ci`, per class, one call at a time, totals verified
-  against `%UnitTest_Result` with the numeric-run-index probe -- expected: green.
-- The full browser suite is **not** run locally (Rule 29): CI's `browser` job runs it on a fresh
-  throwaway.
+**Pinning tests and mutations (Rule 19; the implementer records what was observed):**
+
+| AC | Pinning test | Mutation |
+|---|---|---|
+| AC1 | `users-actions` row-menu leg per action | drop `UserList` from `SCREEN_ACTION_DESCRIPTORS` |
+| AC2 | `users-actions` paste leg (login with `pw1 ` answers 200, `pw1` 401); `UserUpdate` no-residue leg | trim the value in `send`; store it in `Mint` stored arguments |
+| AC3 | `UserUpdate` route legs; `self-protection.test.mjs` | return `''` from `protected-account`; edit one `*REASON` word |
+| AC4 | `UserUpdate` privileged-add legs | skip `GrantsPrivilege` in `User` |
+| AC5 | `users-actions` integration leg | drop the `values` member from `send` |
+| AC6 | `ProhibitedByEffect` arm test | remove each arm's predicate, then each effect term, in turn |
+| AC7 | `UserUpdate` agent legs | remove `Security.User/CHANGEPWD` from `RENAMEDTYPES` |
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap
+Status: ready-for-dev
+Blocking condition: none
 
-Plan written in full against the three recommended answers under Design Notes › Intent gaps:
-(1) AC4 read against AD-10/AD-53 -- recommend refusing privilege grants whatever the caller, with
-a tier-1 AC4 amendment on the 8.2 AC3 precedent; (2) a Rule 20 spine entry for a secret-only-body
-action write (`CHANGEPWD` takes exactly `{NewPassword}`, measured) and a closed caller-value channel
-on the screen-action route; (3) EXPERIENCE.md `:173` role dialog plus the Fixed-strings rows listed,
-published by the lead. Nothing was implemented; nothing was committed.
+Re-planned against the 2026-09-23 rulings: AD-56 secret-only action write with the `Password` to
+`NewPassword` rename in the port, a closed `values` channel on the screen route, the DW-1486
+restructure by effect with per-arm legs, and the published copy consumed rather than authored.
+Named risk: the lead's port must carry 8.2's `authored` grammar as well as its widening (Design
+Notes). Nothing was implemented; nothing was committed.
