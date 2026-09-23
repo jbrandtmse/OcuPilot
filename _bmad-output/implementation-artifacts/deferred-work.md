@@ -6020,3 +6020,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Story 8.1 closes the DEFAULT (AutheEnabled InitialExpression is 64 = Unauthenticated, verified on the instance, so the story requires at least one method and always sends the field explicitly) without prohibiting a choice a %Admin_Secure holder may make through the screen. DW-1207's question one step on. Probe: propose a create with AutheEnabled=64 through the agent and see whether it is refused.
 - 2026-09-22T22:37:25Z status=decision-pending owner=burndown by=spec_gate note=Raised by the story's own spec under 'For the spec gate' rather than left silent. A product call about the prohibited set, so the owner decides it at the merge-gate decision sheet, not a runner. Recommended: prohibit it for the AGENT path only, leaving the screen choice intact -- consistent with AD-10's by-effect framing.
+
+### DW-1490: The web-applications/list/edit/:id route does not re-read the created application on a cold load; it draws an empty create form at an id-bearing URL
+- source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: create-form.page.ts:604 injects no ActivatedRoute and reads no :id. In-session the buffer carries across the route replacement so the values shown are the created ones; on reload retaining() is false and open() fetches only /web-applications/form. Probe: create an application, then hard-reload the /edit/:id URL and look for an empty form.
+- 2026-09-23T00:32:09Z status=routed owner=9-2-the-web-application-editor by=harvest note=AC 'opens the new application editor' holds on the session path and not on a reload. Epic 9's editor is the story that reads the id, so it closes there rather than being retrofitted here.
+
+### DW-1491: A create's confirm compares one digest, not two, so the stored-payload backstop DW-1353 added does not cover a create
+- source: spec-8-1-create-a-web-application.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Confirm.cls:644 returns after the absence comparison. Under AD-54 the create fingerprint covers the target's absence, so there is no stored-payload digest to be the second; a second would be new stored state AD-54 does not provide for. Exposure is bounded by the proposal store being AD-9 protected state with conditional writes.
+- 2026-09-23T00:32:13Z status=wontfix-accepted owner=8-1-create-a-web-application by=harvest note=reopen_if=a create proposal's stored arguments are shown to be mutable between mint and confirm despite the AD-9 conditional write, or AD-54 gains a second stored digest for another reason
+
+### DW-1492: The two-spellings matrix row's instance-resolution half is untested: that the vendor GET resolves /csp/App and /csp/app/ to one application
+- source: spec-8-1-create-a-web-application.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ProposalCreate.cls:196 runs against ProposalFixture, whose armed answer is spelling-blind, and asserts the canonical TargetRef plus the typed spelling on the read. The AD-13 claim the row carries is pinned in full by the sibling-cancel row, so the untested half is redundant rather than uncovered. Probe: create /csp/App on a live instance and mint a create under /csp/app/ -- expect the mint refused as present.
+- 2026-09-23T00:32:18Z status=wontfix-accepted owner=8-1-create-a-web-application by=harvest note=reopen_if=the sibling-cancel row stops pinning the AD-13 canonicalization claim, or a create is observed succeeding against an existing application under a different spelling
