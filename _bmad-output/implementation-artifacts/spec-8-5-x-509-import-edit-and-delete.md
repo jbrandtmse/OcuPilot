@@ -2,10 +2,10 @@
 title: 'Story 8.5: X.509 import, edit and delete'
 type: 'feature'
 created: '2026-09-23'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'bc1c5fdb92eafc31bab557b67f9596b8c0c83f3b'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-8-context.md'
@@ -272,9 +272,9 @@ Before editing a ⚠ file, run `git fetch origin && git show origin/OCU-1-epic7:
 
 ### Orchestrator rulings on the implement halt, 2026-09-23 (work these first)
 
-- [ ] [Lead] **Bundle budget, DW-1166 policy.** Set `ui/angular.json`'s initial `maximumWarning` to `1261kB` (5% above the measured 1,200,871 B; the parser counts 1 kB as 1,000 B) and the literal pinned in `ui/tools/angular-json.test.mjs` to the same, replacing that file's budget-history sentence with the current figure and reason. `maximumError` stays `1600kB`. If the final measured total exceeds 1,261,000 B, re-base to about 5% above it and say so. The commit message cites DW-1166 and the byte count.
-- [ ] [Lead] **`ui/src/app/shell/screen-outlet.ts`** is contended append-only: this story adds one `DESCRIPTOR_PAGES` entry and its import; do not touch the `form-page` doc comment. List it under `footprint_extensions:`.
-- [ ] [Lead] **No private-key literal in the repository** (the repository is public; push protection is off). `Test/X509Material.cls` generates a throwaway RSA key and a self-signed certificate once per class in `OnBeforeAllTests` through `$ZF(-100)` with `openssl` (the image carries `/usr/bin/openssl`, OpenSSL 3.0.13) into a per-run directory under the instance's temp directory, reads them as text, and deletes the directory in `OnAfterAllTests`, asserting it is gone. The expired-certificate and key-mismatch cases generate their own material the same way (for example `-days 0`, or a second key). A certificate with no private key may stay a literal. If `$ZF(-100)` is refused in the test process, HALT `blocked` with `TOOLING: $ZF(-100) openssl refused` -- never fall back to a literal, never obfuscate one. Before the finalize commit, `git diff --cached | grep -c 'BEGIN.*PRIVATE KEY'` must print 0 (the pre-existing `Install/Fixture.cls` demo literal is DW-1544, not this story's).
+- [x] [Lead] **Bundle budget, DW-1166 policy.** Set `ui/angular.json`'s initial `maximumWarning` to `1261kB` (5% above the measured 1,200,871 B; the parser counts 1 kB as 1,000 B) and the literal pinned in `ui/tools/angular-json.test.mjs` to the same, replacing that file's budget-history sentence with the current figure and reason. `maximumError` stays `1600kB`. If the final measured total exceeds 1,261,000 B, re-base to about 5% above it and say so. The commit message cites DW-1166 and the byte count.
+- [x] [Lead] **`ui/src/app/shell/screen-outlet.ts`** is contended append-only: this story adds one `DESCRIPTOR_PAGES` entry and its import; do not touch the `form-page` doc comment. List it under `footprint_extensions:`.
+- [x] [Lead] **No private-key literal in the repository** (the repository is public; push protection is off). `Test/X509Material.cls` generates a throwaway RSA key and a self-signed certificate once per class in `OnBeforeAllTests` through `$ZF(-100)` with `openssl` (the image carries `/usr/bin/openssl`, OpenSSL 3.0.13) into a per-run directory under the instance's temp directory, reads them as text, and deletes the directory in `OnAfterAllTests`, asserting it is gone. The expired-certificate and key-mismatch cases generate their own material the same way (for example `-days 0`, or a second key). A certificate with no private key may stay a literal. If `$ZF(-100)` is refused in the test process, HALT `blocked` with `TOOLING: $ZF(-100) openssl refused` -- never fall back to a literal, never obfuscate one. Before the finalize commit, `git diff --cached | grep -c 'BEGIN.*PRIVATE KEY'` must print 0 (the pre-existing `Install/Fixture.cls` demo literal is DW-1544, not this story's).
 
 ### Acceptance Criteria
 
@@ -293,6 +293,29 @@ Before editing a ⚠ file, run `git fetch origin && git show origin/OCU-1-epic7:
 - 2026-09-23, spec gate (orchestrator rulings): AD-27's second case approved and written (verified first on the throwaway); the X.509-list row action moved to Story 9.5 (DW-1541); `screen-actions.ts` contended for one entry; optional secret rows agreed as an explicit declaration.
 
 ## Review Triage Log
+
+### 2026-09-23 — Review pass
+
+- verdicts: 17 findings — high 0, medium 3, low 10, false 4, maybe-false 0 (plus 1 found by the stage while verifying the patches)
+- findings:
+  - `[medium]` `[patch]` VG: `App`'s sign-out wipe of `X509Form` had no test -- added the store to `app.spec.ts`'s sign-out test (prime key, certificate, password; assert empty); mutation observed red.
+  - `[medium]` `[patch]` VG: `X509Wire.TestZNothingReachedTheMessageLog` passed on an empty or misplaced log read -- it now requires the refused agent import's `X509.PRIVATEKEY.MISMATCH` line before scanning, and scans every generated secret; mutation observed red (run 288).
+  - `[low]` `[patch]` VG: AC4's `CAFile` mutation was planned but not observed -- applied, red (run 289), `mutation:` line written.
+  - `[false]` `[reject]` VG: the browser AC2 leg's no-load check does not observe the change bus -- its title and the spec header say it is reached by Cancel and that the event is pinned in `x509-form.store.spec.ts`; it claims no more.
+  - `[low]` `[patch]` VG: `X509Wire` read assertions guarded by `If $IsObject(...)` could skip silently -- each now asserts the body is an object first.
+  - `[false]` `[reject]` VG: `SecretSpelling`'s always-dropped candidates -- the reviewer's own note: not a defect; the drop is exercised by the four candidates the observed mutation covers.
+  - `[low]` `[reject]` VG: the spec's `## Auto Run Result` was stale -- its fix is a spec edit; rewritten at this pass's finalize.
+  - `[medium]` `[patch]` IA: no test confirmed an agent import the port refuses -- added `X509Wire.TestARefusedAgentImportSavesNothingAndAnswersNoSecret` (mismatched key through the real `Confirm`: 400, nothing saved, no secret in the answer or stored proposal); green runs 285 and later.
+  - `[low]` `[reject]` IA: the certificate is required only on the card; a confirm without one is refused as `X509.CERTIFICATE.SHAPE` -- nothing is written, and requiring it server-side edits the never-edit `Confirm.cls`.
+  - `[low]` `[reject]` IA: the update mint answers an absent alias 400 `TOOL.ARGUMENTS`, not 404 `X509.ALIAS.ABSENT` -- the kernel's shared contract for every update tool (same ruling as 8.4); nothing is sent.
+  - `[low]` `[patch]` IA: the second import's 422 was not checked for its code -- `X509Wire` now asserts `X509.ALIAS.TAKEN`.
+  - `[low]` `[reject]` IA: the screen refuses a file path as 403 `UNCOVEREDFIELD`, and `CAFile`/`PrivateKeyFile` are tested there only through `CertificateFile` -- one code path refuses all three; the port and the schema are tested for each.
+  - `[false]` `[reject]` IA: tests write generated keys to a temp directory and clean up through `%SYS.X509Credentials` -- test material under the 2026-09-23 ruling and probe cleanup by exact alias; the shipped path writes no file, and `X509Save.Create`'s composed diff is a local never stored or logged.
+  - `[low]` `[reject]` IA: no key-type check for a non-RSA key -- the vendor's save refuses a key it cannot use as a mismatch, and no key-type choice is offered (the Never item).
+  - `[low]` `[reject]` IA: no X.509-specific test opens the edit form from a list row -- the name cell follows the generic `editorScreenFor` convention tested in `navigation.test.mjs`.
+  - `[low]` `[reject]` IA: no test drives an agent-initiated leave -- the shared `FormDirty` route guard (Story 3.5) owns that path; the page answers it and its spec pins the answer.
+  - `[false]` `[reject]` IA: the diff reaches beyond the Approach (`optional` rows, `COVEREDTYPES`) -- the matrix and the 2026-09-23 rulings require both.
+  - `[medium]` `[patch]` stage (run 284 red, run 285 green): `X509Rules.KeyMatches` read about one wrong password in two hundred as a key mismatch, because the wrong password decrypted the key to bytes that do not decode (measured 8 of 1500) -- an encrypted key is now a mismatch only on the OAEP decrypt error; 1500 of 1500 read as wrong after the fix; pinned by `X509Import.TestAWrongPasswordThatDecodesToNoKeyIsStillThePassword` (mutation run 287).
 
 ## Design Notes
 
@@ -432,47 +455,50 @@ Stateful checks run on slot B's throwaway `ocupilot-b-ci` (web 52777, super 1976
 
 Observed (implement stage; each applied to the working file, loaded with `cbk-d` or rerun under `node --test`/`ng test`, observed red, restored from a byte copy and reloaded):
 
-- mutation: `AdminPort.CONTENTCOMPLETEDTYPES` emptied -> `X509Wire` import, read-scan and agent-import legs red (run 239) and `X509Import.TestTheSchemaAdvertisesNoSecretAndNoPath` red (run 238) (AD-27 pin; the vendor POST refuses the content keys at 400, so the unit port legs stay green)
-- mutation: `Mint.Mint`'s refusal of a secret argument disabled -> `X509Import.TestNoSecretReachesTheProposalTheLedgerOrAnAnswer` red on the refusal and the stored-row scan (run 241) (AC3 pin, stored proposal)
-- mutation: the key text appended to the status `ImportThroughClass` returns for a refused save -> `X509Import.TestARefusedImportLogsNoSecret` red, cases 1-3 (run 242) (AC3 pin, log output)
+- mutation: `AdminPort.CONTENTCOMPLETEDTYPES` emptied -> `X509Wire` import, read-scan and agent-import legs red (run 254) and `X509Import.TestTheSchemaAdvertisesNoSecretAndNoPath` red (run 255), over run-time material (AD-27 pin; the vendor POST refuses the content keys at 400, so the unit port legs stay green)
+- mutation: `Mint.Mint`'s refusal of a secret argument disabled -> `X509Import.TestNoSecretReachesTheProposalTheLedgerOrAnAnswer` red on the refusal and the stored-row scan (run 257), over run-time material (AC3 pin, stored proposal)
+- mutation: the key text appended to the status `ImportThroughClass` returns for a refused save -> `X509Import.TestARefusedImportLogsNoSecret` red, cases 1-3 (run 256), over run-time material (AC3 pin, log output)
 - mutation: `X509Import.OPTIONALSECRETS` empty -> `TestTheCardRequiresTheCertificateAndLeavesTheKeyOptional` red on both optional rows (run 243); Certificate added to it -> red on the required row (run 244); `proposal-card.ts` `secretsFilled` requiring every field -> the card spec's Story 8.5 leg red; answering true -> that leg and AC4/DW-1232 red; `optionalSecrets` in `proposal-view.ts` marking every row -> `proposal-view.test.mjs` optional leg red (required-row pin)
 - mutation: `AdminPort.IMPORTFIELDS` admitting `CAFile` -> `X509Import.TestAFilePathIsRefusedByEveryCaller` red, the credential saved (run 240; the leaked probe was deleted by exact alias and the class now removes it in `OnAfterOneTest`)
 - mutation: `X509Save.Update` composing instead of `Mint.Merge` -> `X509Update.TestAnEditKeepsTheFieldsTheCallerDidNotChangeOnBothCallers` red (run 246) (AC4)
 - mutation: `X509Delete` subject and precondition `IssuerDN` alone -> `TestTheRemovalRowsAndAReplacedCertificateRefusesTheConfirm` red on the moved serial (run 247) (AC5)
 - mutation: `Write.FieldRows` testing the raw path (`$ListFind(tSecrets, tPath)`) -> `SecretSpelling.TestTheValidatorAdmitsExactlyTheSpellingsTheFieldRowsDrop` red on `OwnerList`, `OwnerList[]`, `PeerNames`, `PeerNames[]` (run 245) (AC7)
-- not run (halted, see Auto Run Result): AC1/AC2/AC6 client legs, the canonical-PEM mutation, the form-read `PrivateKey` mutation
+- mutation: `X509Material.Discard` skips the directory's removal -> `X509Import` red on its class-level `OnAfterAllTests` error (run 252; the leftover directory removed by hand) (no-key-literal ruling)
+- mutation: `AdminPort.PemBlock` keeps a newline-free body on one line -> `X509Import.TestAFlattenedBlockIsRewrappedAndAFlattenedLegacyKeyRefused` red on the canonical block, the 64-column wrap and the key check (run 261) (canonical PEM)
+- mutation: the stored `PrivateKey` added to `X509Rules.HandleForm`'s `credential` -> `X509Wire.TestNoReadCarriesTheKeyOrItsPassword` red on the form read's field and on the read scan (run 260) (AC3)
+- mutation: `rowGet` dropped from the X.509 list's declared read -> `X509Wire.TestAnImportShowsOnTheListAndAnEditKeepsTheOtherList` red on subject, issuer and validity (run 263); over the clean redeployed bundle the browser AC2 leg red alone (AC2)
+- mutation (component specs, `ng test --include`): Private key block before Certificate -> `x509-form.page.spec.ts` AC1 order red; key input `type="text"` -> AC1 masked red; `clearSecrets` keeping the key -> the page's AC1 pre-fill leg and three store legs red; the store's `publish` dropped -> store AC2 and AC4 red; `change` clearing `FormDirty` -> page AC6 and store AC2 red (AC1, AC2, AC3, AC6)
+- mutation (one rebuilt, redeployed bundle): the order swap, the route replacement dropped and `change` clearing `FormDirty` -> browser AC1, AC3 and AC6 red, AC2 green; the restored bundle 4 of 4 green
+- roster: `app.routes.spec.ts` and `screen-mirror.test.mjs` read green with this story's rows and needed no edit (not observed red)
+- mutation: `X509Save.EDITFIELDS` admitting `CAFile` -> `X509Update.TestAnyOtherKeyIsRefusedOnBothCallers` red on `CAFile`, refused and sent (run 289) (AC4)
+- mutation: the key text appended to the status `ImportThroughClass` returns for a refused save -> `X509Wire.TestZNothingReachedTheMessageLog` red on the real message log, its run-marker floor holding (run 288) (AC3, log output)
+- mutation: `X509Rules.KeyMatches` without its encrypted-key line -> `X509Import.TestAWrongPasswordThatDecodesToNoKeyIsStillThePassword` red (run 287) (wrong-password classification)
+- mutation (`ng test --include=src/app/app.spec.ts`): `this.x509Form.reset()` deleted from `App.verifyWhenSignedIn` -> the sign-out test red on the pasted certificate (AC3, AD-35)
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: bundle budget 1200871 (the HEAD bundle is 1174818 bytes against the 1185000-byte `maximumWarning`; this story's form page, store and actions add 26053, so `build-output.test.mjs` DW-371 is red). Budget not raised; halted before the client specs and the browser spec.
+Status: done
+Blocking condition: none
 
-Stage check: the stage agent rebuilt `ui` independently and Angular reported the initial total 1.20 MB, over `maximumWarning` by 15.87 kB (1,200,871 bytes). The implementation is left uncommitted in the worktree (no finalize commit on a halt); `ocupilot-b-ci` is up.
+footprint_extensions: contended `src/OcuPilot/Kernel/Proposal/Prohibited.cls`, `src/OcuPilot/Kernel/Proposal/Mint.cls`, `src/OcuPilot/Api/Router.cls`, `src/OcuPilot/Screen/Tool/Classification.cls` (tail append), `src/OcuPilot/Screen/Tool/ToolFields.cls` (regenerated), `src/OcuPilot/Test/{SurfaceCoverage,EndpointCoverage,ReadTool,ToolRoundTrip,PortFixture,Prohibited}.cls`, `ui/src/app/core/proposal-view.ts`, `ui/src/app/shell/proposal-card.ts`, `ui/src/app/shell/proposal-card.spec.ts`, `ui/src/app/core/screen-actions.ts` (one head entry), `ui/src/app/shell/screen-outlet.ts` (one entry, one import); shared-append `src/OcuPilot/Port/AdminPort.cls` (plus the `RunSequence` hook line), `ui/src/app/core/strings.ts`, `ui/src/styles/_components.scss`, EXPERIENCE.md Fixed strings rows 408-412; in Epic 7's diff but not contended (roster rule, 2026-09-23): `src/OcuPilot/Test/WireSecurityRead.cls` (five rows), `src/OcuPilot/Test/Wire.cls` and `src/OcuPilot/Test/WireOAuthRead.cls` (one X.509 form row in each security roster; the same assertion lines Epic 7 extends, so a merge conflict there is certain), `ui/tools/navigation.test.mjs` (one route), `ui/src/app/core/screens.generated.ts` (regenerated), `ui/src/app/app.ts` (one injection pair, one reset); outside both footprints: `ui/angular.json` and `ui/tools/angular-json.test.mjs` (DW-1166 budget), `ui/src/app/app.spec.ts` (sign-out leg), `scripts/ci-throwaway.sh` (arming roster)
 
-footprint_extensions: contended `src/OcuPilot/Kernel/Proposal/Prohibited.cls`, `src/OcuPilot/Kernel/Proposal/Mint.cls`, `src/OcuPilot/Api/Router.cls`, `src/OcuPilot/Screen/Tool/Classification.cls` (tail append), `src/OcuPilot/Screen/Tool/ToolFields.cls` (regenerated), `src/OcuPilot/Test/{SurfaceCoverage,EndpointCoverage,ReadTool,ToolRoundTrip,PortFixture,Prohibited}.cls`, `ui/src/app/core/proposal-view.ts`, `ui/src/app/shell/proposal-card.ts`, `ui/src/app/shell/proposal-card.spec.ts`, `ui/src/app/core/screen-actions.ts` (one head entry); shared-append `src/OcuPilot/Port/AdminPort.cls` (plus the `RunSequence` hook line), `ui/src/app/core/strings.ts`, `ui/src/styles/_components.scss`, EXPERIENCE.md Fixed strings rows 408-412; in Epic 7's diff but not contended (roster rule, 2026-09-23): `src/OcuPilot/Test/WireSecurityRead.cls` (five X.509 form rows), `ui/tools/navigation.test.mjs` (one route), `ui/src/app/core/screens.generated.ts` (regenerated), `ui/src/app/shell/screen-outlet.ts` (one entry, one import), `ui/src/app/app.ts` (one injection pair, one reset)
+### This pass
 
-### Done
+- **Lead rulings, all three checked off.** The budget is `1261kB`, and the measured initial total is 1,200,871 B (`main` 1,071,922 plus `styles` 128,949), so no re-base was needed. `screen-outlet.ts` holds one entry and one import. `Test/X509Material.cls` now generates its key and certificate material at run time through `$ZF(-100)` and `/usr/bin/openssl` into a per-run temp directory. `Discard` deletes that directory and asserts it is gone. `$ZF(-100)` was not refused. `X509Import` and `X509Wire` generate the material in `OnBeforeAllTests`.
+- **Client work finished.** Added `x509-form.store.spec.ts`, `x509-form.page.spec.ts` and `ui/browser/x509-import.browser-spec.mjs`, with the AC1, AC2, AC3 and AC6 client mutations, the canonical-PEM mutation and the form-read `PrivateKey` mutation. Each is listed under Observed.
+- **Review.** Two layers ran: verification-gap and intent-alignment. Blind-hunter and edge-case-hunter are disabled by this project's customization. They reported 17 findings, and one more came up while verifying the patches (Review Triage Log). Patched:
+  - `app.spec.ts` sign-out test now covers `X509Form`.
+  - `X509Wire`: a log scan floor, a refused agent import through the real `Confirm`, object-first read assertions and the taken code.
+  - The AC4 `CAFile` mutation was run and recorded.
+  - `X509Rules.KeyMatches`: an encrypted key is now a mismatch only on the OAEP decrypt error. About one wrong password in 190 was read as a mismatch (8 of 1500 measured; 1500 of 1500 correct after the fix), which made `X509Wire` red once (run 284). A new test pins the fix.
+  - Rejected: 9 lows and 4 falses, each with its reason in the log. Nothing deferred.
+- **Found by the sweep.** `Test/Wire.cls` and `Test/WireOAuthRead.cls` list the security area's screens, and they now carry the X.509 form's row (roster rule).
+- **Patched counts by verdict:** medium 4, low 3, high 0. `followup_review_recommended: true`. The unverified risk is the `KeyMatches` change: it reads every failure of an encrypted key other than the OAEP decrypt error as a wrong password. That was verified only for RSA keys, in PKCS#8 and legacy form, on this build's OpenSSL 3.0.
 
-- Server: the AD-27 content import in `AdminPort` (`PemBlock`, `PemBytes`, `ImportThroughClass`, `CONTENTCOMPLETEDTYPES`), the three tools, `X509Form`, `X509Rules`/`X509Save`, four routes, the `X509.*` block, the `x509-credential` prohibited type, optional composed secrets in `Mint`.
-- Tests: `X509Material`, `X509Fixture`, `X509LogPort`, `X509SecretProbe`, `X509Import` (10), `X509Update` (4), `X509Delete` (3), `X509Wire` (5, armed), `SecretSpelling` (2), roster rows; `ci-throwaway.sh` arms `X509Wire`.
-- Client: the form page, store and actions; the card's optional secrets; strings and Fixed strings rows; the proposal-view and card legs.
+### Verification (after the last edit, on a throwaway brought up fresh)
 
-### Deviations for the lead
-
-- `Test/Prohibited.cls`' reviewed-few rule requires every declared template secret on the reviewed create list: `PermittedCreateFields("x509-credential")` names `PrivateKeyPassword` and the import's `SettableFields` carries it (never in the schema; the mint refuses it as an argument). `X509Update`/`X509Delete` declare no secret of their own, so their confirm channel is closed.
-- The port answers a save refused as expired, wrong password or mismatched key 400 `PORT.VALIDATION` (not the vendor's 500); any other refused save is 500. No secret text enters a status in either case.
-- `x509FieldAlias` not added: the form reuses `x509ColumnAlias` (the same literal).
-
-### Remaining
-
-- `x509-form.store.spec.ts`, `x509-form.page.spec.ts`, `app.routes.spec.ts`/`screen-mirror.test.mjs` legs if they redden, `ui/browser/x509-import.browser-spec.mjs`, the AC1/AC2/AC6 client mutations.
-- The full ObjectScript sweep on a fresh throwaway, `npm test`, `smoke.sh`, `lint-docs`.
-
-### For the lead's ruling
-
-1. **SPINE DECISION NEEDED**: the second AD-27 case and the AD-3 authored-secret reading for the import (Design Notes). The plan assumes the recommendation.
-2. **Optional secrets on the agent's card** (contended `Mint.cls`, `proposal-view.ts`, `proposal-card.ts`), or narrow the agent import to certificate-only.
-3. **The X.509-list Delete row action**: candidate Story 9.5.
-4. **Needs the lead:** `ui/src/app/core/screen-actions.ts` (the Import label) and `screens.generated.ts` (regenerate) are in Epic 7's diff but not on the contended list.
-
-DW-1456 is addressed by AC7.
+- Full ObjectScript sweep, one class per call: 196 classes, 1753 tests, 0 failed. The totals were checked against `%UnitTest_Result` (1753 passed, 0 failed, 196 classes). An earlier full sweep failed only on the `Wire` and `WireOAuthRead` rosters, which were then fixed.
+- `cd ui && npm run build` succeeded, with the initial total at 1,200,871 B. `npm test`: 1326 of 1326 tools tests and 890 of 890 component tests passed.
+- `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS`: 47 executed, 47 passed.
+- `uv run scripts/check-objectscript.py` over the changed paths: 0 problems. `bash scripts/lint-docs.sh`: clean. No non-ASCII in added source lines.
+- **Private key check.** The staged diff holds no PEM private-key block: a grep for a real key header (five dashes, the begin marker, an optional label, the words private key, five dashes) counts 0. The ruling's own looser pattern counts 2, and both hits are the `-`/`+` pair of the checked-off ruling line above, which quotes that pattern. Neither is key material.

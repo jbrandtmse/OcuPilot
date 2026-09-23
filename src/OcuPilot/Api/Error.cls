@@ -1134,6 +1134,19 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#RESOURCEDESCRIPTIONLENGTH Quit ..#REASONRESOURCEDESCRIPTIONLENGTH
     If pCode = ..#RESOURCEPUBLICPERMISSIONSHAPE Quit ..#REASONRESOURCEPUBLICPERMISSIONSHAPE
     If pCode = ..#RESOURCEPUBLICPERMISSIONLETTERS Quit ..#REASONRESOURCEPUBLICPERMISSIONLETTERS
+    If pCode = ..#X509ALIASREQUIRED Quit ..#REASONX509ALIASREQUIRED
+    If pCode = ..#X509ALIASLENGTH Quit ..#REASONX509ALIASLENGTH
+    If pCode = ..#X509ALIASSHAPE Quit ..#REASONX509ALIASSHAPE
+    If pCode = ..#X509ALIASTAKEN Quit ..#REASONX509ALIASTAKEN
+    If pCode = ..#X509ALIASABSENT Quit ..#REASONX509ALIASABSENT
+    If pCode = ..#X509CERTIFICATEREQUIRED Quit ..#REASONX509CERTIFICATEREQUIRED
+    If pCode = ..#X509CERTIFICATESHAPE Quit ..#REASONX509CERTIFICATESHAPE
+    If pCode = ..#X509CERTIFICATEEXPIRED Quit ..#REASONX509CERTIFICATEEXPIRED
+    If pCode = ..#X509PRIVATEKEYSHAPE Quit ..#REASONX509PRIVATEKEYSHAPE
+    If pCode = ..#X509PRIVATEKEYMISMATCH Quit ..#REASONX509PRIVATEKEYMISMATCH
+    If pCode = ..#X509PRIVATEKEYPASSWORDWRONG Quit ..#REASONX509PRIVATEKEYPASSWORDWRONG
+    If pCode = ..#X509PRIVATEKEYPASSWORDWITHOUTKEY Quit ..#REASONX509PRIVATEKEYPASSWORDWITHOUTKEY
+    If pCode = ..#X509PRIVATEKEYPASSWORDLENGTH Quit ..#REASONX509PRIVATEKEYPASSWORDLENGTH
     If pCode = ..#PORTFIELDREQUIRED Quit ..#REASONPORTFIELDREQUIRED
     If pCode = ..#PORTFIELDUNEXPECTED Quit ..#REASONPORTFIELDUNEXPECTED
     If pCode = ..#PORTFIELDSHAPE Quit ..#REASONPORTFIELDSHAPE
@@ -1170,6 +1183,13 @@ ClassMethod RoleViolationCodes() As %List
 ClassMethod ResourceViolationCodes() As %List
 {
     Quit $ListBuild(..#RESOURCENAMEREQUIRED, ..#RESOURCENAMELENGTH, ..#RESOURCENAMESHAPE, ..#RESOURCENAMETAKEN, ..#RESOURCENAMESYSTEM, ..#RESOURCENAMEABSENT, ..#RESOURCEDESCRIPTIONLENGTH, ..#RESOURCEPUBLICPERMISSIONSHAPE, ..#RESOURCEPUBLICPERMISSIONLETTERS)
+}
+
+/// <p>Every <code>X509.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod X509ViolationCodes() As %List
+{
+    Quit $ListBuild(..#X509ALIASREQUIRED, ..#X509ALIASLENGTH, ..#X509ALIASSHAPE, ..#X509ALIASTAKEN, ..#X509ALIASABSENT, ..#X509CERTIFICATEREQUIRED, ..#X509CERTIFICATESHAPE, ..#X509CERTIFICATEEXPIRED, ..#X509PRIVATEKEYSHAPE, ..#X509PRIVATEKEYMISMATCH, ..#X509PRIVATEKEYPASSWORDWRONG, ..#X509PRIVATEKEYPASSWORDWITHOUTKEY, ..#X509PRIVATEKEYPASSWORDLENGTH)
 }
 
 /// <p>Every <code>AGENT.*</code> field-level violation code that carries a sentence, as a
@@ -1898,6 +1918,85 @@ Parameter REASONRESOURCEPUBLICPERMISSIONSHAPE = "A public permission is some of 
 Parameter RESOURCEPUBLICPERMISSIONLETTERS = "RESOURCE.PUBLICPERMISSION.LETTERS";
 
 Parameter REASONRESOURCEPUBLICPERMISSIONLETTERS = "Give this resource only the public permissions it offers: Read and Write for a database; Use alone for a service, an administrative resource or another system resource the Management Portal limits to Use, such as %Development or %System_; and Read, Write or Use for any other.";
+
+/// <p>Envelope code (AD-39): an X.509 credential's import or edit broke one or more of the rules
+/// <class>OcuPilot.Area.Security.X509Rules</class> applies before the port is touched. Rendered on
+/// the <parameter>VALIDATIONFAILED</parameter> slug with every violation in
+/// <code>detail.violations</code>. No sentence in this block names or quotes a certificate, a key
+/// or a password (AD-35).</p>
+Parameter X509VALIDATION = "X509.VALIDATION";
+
+Parameter REASONX509VALIDATION = "The X.509 credential was refused.";
+
+/// <p>Violation code: no alias was supplied.</p>
+Parameter X509ALIASREQUIRED = "X509.ALIAS.REQUIRED";
+
+Parameter REASONX509ALIASREQUIRED = "Give the credential an alias.";
+
+/// <p>Violation code: the alias is longer than <class>%SYS.X509Credentials</class> stores.</p>
+Parameter X509ALIASLENGTH = "X509.ALIAS.LENGTH";
+
+Parameter REASONX509ALIASLENGTH = "An alias is at most 150 characters.";
+
+/// <p>Violation code: the alias carries a control character or a slash, which cannot travel as one
+/// path segment (AD-13).</p>
+Parameter X509ALIASSHAPE = "X509.ALIAS.SHAPE";
+
+Parameter REASONX509ALIASSHAPE = "An alias has no control character and no slash.";
+
+/// <p>Violation code: a credential already carries that alias, compared exactly, case included.
+/// <code>GET /x509/name</code> answers it on blur.</p>
+Parameter X509ALIASTAKEN = "X509.ALIAS.TAKEN";
+
+Parameter REASONX509ALIASTAKEN = "This instance already has a credential with that alias. Choose a different one.";
+
+/// <p>Violation code: an edit, a form read or an update names an alias this instance does not hold.
+/// Rendered at 404.</p>
+Parameter X509ALIASABSENT = "X509.ALIAS.ABSENT";
+
+Parameter REASONX509ALIASABSENT = "This instance has no X.509 credential with that alias.";
+
+/// <p>Violation code: an import carried no certificate.</p>
+Parameter X509CERTIFICATEREQUIRED = "X509.CERTIFICATE.REQUIRED";
+
+Parameter REASONX509CERTIFICATEREQUIRED = "Paste or load the certificate.";
+
+/// <p>Violation code: the certificate is not one PEM <code>CERTIFICATE</code> block of at most
+/// 65,536 characters that decodes to an X.509 certificate.</p>
+Parameter X509CERTIFICATESHAPE = "X509.CERTIFICATE.SHAPE";
+
+Parameter REASONX509CERTIFICATESHAPE = "The certificate must be one PEM block that begins -----BEGIN CERTIFICATE----- and is at most 64 KB.";
+
+/// <p>Violation code: the certificate's validity has ended, which the vendor refuses.</p>
+Parameter X509CERTIFICATEEXPIRED = "X509.CERTIFICATE.EXPIRED";
+
+Parameter REASONX509CERTIFICATEEXPIRED = "This certificate has expired. Import one that is still valid.";
+
+/// <p>Violation code: the private key is not one PEM private-key block, or it is a legacy encrypted
+/// key whose line breaks were lost.</p>
+Parameter X509PRIVATEKEYSHAPE = "X509.PRIVATEKEY.SHAPE";
+
+Parameter REASONX509PRIVATEKEYSHAPE = "The private key must be one PEM private-key block of at most 64 KB, with its line breaks kept if it is a legacy encrypted key.";
+
+/// <p>Violation code: the private key does not belong to the certificate.</p>
+Parameter X509PRIVATEKEYMISMATCH = "X509.PRIVATEKEY.MISMATCH";
+
+Parameter REASONX509PRIVATEKEYMISMATCH = "This private key does not belong to the certificate.";
+
+/// <p>Violation code: the password does not decrypt the private key.</p>
+Parameter X509PRIVATEKEYPASSWORDWRONG = "X509.PRIVATEKEYPASSWORD.WRONG";
+
+Parameter REASONX509PRIVATEKEYPASSWORDWRONG = "This password does not decrypt the private key.";
+
+/// <p>Violation code: a password was supplied with no private key.</p>
+Parameter X509PRIVATEKEYPASSWORDWITHOUTKEY = "X509.PRIVATEKEYPASSWORD.WITHOUTKEY";
+
+Parameter REASONX509PRIVATEKEYPASSWORDWITHOUTKEY = "A password is only for an encrypted private key. Remove it, or add the key.";
+
+/// <p>Violation code: the password is longer than <class>%SYS.X509Credentials</class> stores.</p>
+Parameter X509PRIVATEKEYPASSWORDLENGTH = "X509.PRIVATEKEYPASSWORD.LENGTH";
+
+Parameter REASONX509PRIVATEKEYPASSWORDLENGTH = "A private key password is at most 128 characters.";
 
 /// <p>Violation code (AD-39): the vendor refused the request because a body field it requires was
 /// absent. Produced at the port boundary by <method>ViolationsFromVendor</method>, on the field the

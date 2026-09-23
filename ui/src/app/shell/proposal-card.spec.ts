@@ -609,6 +609,45 @@ describe('the proposal card', () => {
     expect(values).toEqual([MASKED_VALUE, MASKED_VALUE]);
   });
 
+  it('Story 8.5: a secret the tool marks optional may stay empty, and a required one still holds Confirm', () => {
+    // Mutations (Rule 19): make `secretsFilled` require every masked field -> the optional-only
+    // press below stays aria-disabled and this goes red; make it skip every masked field -> Confirm
+    // is pressable with the required certificate empty and this goes red.
+    const view = liveView({
+      maskedFields: ['Certificate', 'PrivateKey'],
+      optionalFields: ['PrivateKey'],
+      changed: [
+        { field: 'Certificate', before: MASKED_VALUE, after: MASKED_VALUE },
+        { field: 'PrivateKey', before: MASKED_VALUE, after: MASKED_VALUE },
+      ],
+    });
+    const { fixture, card } = mount(view, { phase: 'live' });
+    const fields = Array.from(card.querySelectorAll('.ocu-proposal-card-secret')) as HTMLInputElement[];
+    expect(fields.map((field) => field.getAttribute('aria-required'))).toEqual(['true', 'false']);
+    const labels = Array.from(card.querySelectorAll('.ocu-proposal-card-secrets label.ocu-field-label')).map((node) =>
+      node.textContent?.trim()
+    );
+    expect(labels).toEqual(['Certificate', `PrivateKey (${STRINGS.proposalSecretOptional})`]);
+    const confirm = () => card.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement;
+    expect(confirm().getAttribute('aria-disabled')).toBe('true');
+
+    fields[1].value = 'a key';
+    fields[1].dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(confirm().getAttribute('aria-disabled')).toBe('true');
+
+    fields[1].value = '';
+    fields[1].dispatchEvent(new Event('input'));
+    fields[0].value = 'a certificate';
+    fields[0].dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(confirm().hasAttribute('aria-disabled')).toBe(false);
+    const seen: string[] = [];
+    fixture.componentRef.instance.confirm.subscribe((request) => seen.push(JSON.stringify(request.secrets)));
+    confirm().click();
+    expect(seen).toEqual(['{"Certificate":"a certificate","PrivateKey":""}']);
+  });
+
   it('a proposal that would turn auditing off carries the published warning above the footer', () => {
     // Mutation (Rule 19): stop projecting `auditWarning` in the mint -> the view carries false and
     // this goes red; the ObjectScript half is `OcuPilot.Test.ProposalWire`'s.

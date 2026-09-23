@@ -27,6 +27,7 @@ import { LogViewerPage } from '../areas/logs/log-viewer.page';
 import { UserCreateFormPage } from '../areas/permissions/user-create-form.page';
 import { RoleCreateFormPage } from '../areas/permissions/role-create-form.page';
 import { ResourceListPage } from '../areas/permissions/resource-list.page';
+import { X509FormPage } from '../areas/security/x509-form.page';
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
 import { decodeEntityId } from '../core/entity-id';
@@ -99,6 +100,7 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.UserForm': UserCreateFormPage,
   'OcuPilot.Screen.Descriptor.RoleForm': RoleCreateFormPage,
   'OcuPilot.Screen.Descriptor.ResourceList': ResourceListPage,
+  'OcuPilot.Screen.Descriptor.X509Form': X509FormPage,
 };
 
 /**

@@ -179,7 +179,14 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// resource and 404 for an absent one. A <code>PUT</code> is re-read
 /// (<parameter>VERIFIEDWRITES</parameter>), and one whose public permission is none is completed
 /// through the vendor class (<parameter>CLASSCOMPLETEDTYPES</parameter>).</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE";
+/// <p><code>Security.X509Credential/POST</code>, <code>/PUT</code> and <code>/DELETE</code> are Story
+/// 8.5's X.509 import, edit and delete. Read on this build: the endpoint overrides <code>Run</code>
+/// (for <code>CERTINFO</code>); its <code>RunPut</code> opens the alias (404 when absent) and sets
+/// only the keys the body carries; its <code>NeedsRequestBody()</code> is <code>PUT</code> or
+/// <code>POST</code>, so <code>DELETE</code> reads no body; and its <code>POST</code> takes the
+/// certificate and key only as server file paths, so the port completes it from content instead
+/// (<parameter>CONTENTCOMPLETEDTYPES</parameter>).</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -195,7 +202,7 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> deletes whose vendor answer does not say whether the
 /// object went, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries. After a 2xx
@@ -234,6 +241,36 @@ Parameter VERIFIEDWRITES = "Security.Resource/PUT";
 /// validation, and <parameter>VERIFIEDWRITES</parameter> re-reads it as it re-reads the vendor's
 /// own.</p>
 Parameter CLASSCOMPLETEDTYPES = "Security.Resource/PUT=PublicPermission";
+
+/// <p>AD-27's second named case: the <parameter>MUTATINGTYPES</parameter> writes the port completes
+/// from <b>content</b> through the vendor's own class, because the admin API names only server file
+/// paths for them and AD-21 forbids a caller naming a path. Comma-separated
+/// <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries.</p>
+/// <p><code>Security.X509Credential/POST</code> is the one entry (AD-27 as amended 2026-09-23). Its
+/// <code>RunPost</code> reads the certificate and key through <code>LoadCertificate</code> and
+/// <code>LoadPrivateKey</code> from <code>CertificateFile</code> and <code>PrivateKeyFile</code>;
+/// <method>ImportThroughClass</method> sets them as content on <class>%SYS.X509Credentials</class>
+/// instead, behind the endpoint's own gate. The certificate, key and key password never touch disk,
+/// and no status, fault or log line this path writes carries their text (AD-35).</p>
+Parameter CONTENTCOMPLETEDTYPES = "Security.X509Credential/POST";
+
+/// <p>The keys a content-completed import body may carry: the credential's two lists and the three
+/// secrets. Every other key -- <code>CAFile</code>, <code>CertificateFile</code>,
+/// <code>PrivateKeyFile</code> among them -- is refused (AD-21).</p>
+Parameter IMPORTFIELDS = "OwnerList,PeerNames,Certificate,PrivateKey,PrivateKeyPassword";
+
+/// <p>The longest PEM text <method>PemBlock</method> accepts, in characters.</p>
+Parameter PEMMAXLENGTH As INTEGER = 65536;
+
+/// <p>The longest private key password <class>%SYS.X509Credentials</class> stores: the
+/// <code>MAXLEN</code> of its <code>PrivateKeyPassword</code> property on this build. A longer one is
+/// refused before the save, whose datatype refusal would quote the value.</p>
+Parameter PASSWORDMAXLENGTH As INTEGER = 128;
+
+/// <p>The vendor status codes a content import's save answers for a refused certificate, key or
+/// password, each paired with the OcuPilot code the port's log names in its place: expired, a key
+/// the password does not decrypt, a key that does not belong to the certificate.</p>
+Parameter IMPORTSAVECODES = "728=X509.CERTIFICATE.EXPIRED,732=X509.PRIVATEKEYPASSWORD.WRONG,733=X509.PRIVATEKEY.MISMATCH";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries whose vendor body is a <b>wrapper</b>, as
 /// comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;wrapper&gt;:&lt;outer&gt;[:&lt;outer&gt;...]</code>
@@ -1048,6 +1085,282 @@ ClassMethod CompleteThroughClass(pClass As %String, pType As %Integer, ByRef pQu
 }
 
 /// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
+/// <parameter>CONTENTCOMPLETEDTYPES</parameter> lists.</p>
+ClassMethod IsContentCompleted(pEndpoint As %String, pSuffix As %String) As %Boolean
+{
+    Quit ''$ListFind($ListFromString(..#CONTENTCOMPLETEDTYPES), pEndpoint _ "/" _ pSuffix)
+}
+
+/// <p>Whether <var>pText</var> is exactly one PEM block of kind <var>pKind</var> -- <code>cert</code>
+/// for a <code>CERTIFICATE</code> block, <code>key</code> for a <code>PRIVATE KEY</code>,
+/// <code>RSA PRIVATE KEY</code> or <code>ENCRYPTED PRIVATE KEY</code> block -- of at most
+/// <parameter>PEMMAXLENGTH</parameter> characters. On success <var>pCanonical</var> is the block
+/// rewritten with line feeds only and its base64 body wrapped at 64 columns, which is the shape the
+/// vendor's key check reads; on refusal it is <code>""</code>.</p>
+/// <p><b>A block whose line breaks were lost is re-wrapped</b> -- a password input and the proposal
+/// card both drop them -- unless it carries a <code>Proc-Type</code> header: a legacy encrypted key
+/// separates its headers from its body by a blank line, which cannot be recovered once the line
+/// breaks are gone. Nothing here writes, logs or returns the text anywhere else (AD-35).</p>
+ClassMethod PemBlock(pText As %String, pKind As %String, Output pCanonical As %String) As %Boolean
+{
+    Set pCanonical = ""
+    Set tOK = 0
+    Try {
+        Set tText = $ZStrip($Translate(pText, $Char(13), ""), "<>WC")
+        If (tText = "") || ($Length(tText) > ..#PEMMAXLENGTH) Quit
+        If ($Length(tText, "-----BEGIN ") '= 2) || ($Length(tText, "-----END ") '= 2) Quit
+        Set tLabels = $Select(pKind = "cert": $ListBuild("CERTIFICATE"), pKind = "key": $ListBuild("PRIVATE KEY", "RSA PRIVATE KEY", "ENCRYPTED PRIVATE KEY"), 1: "")
+        Set tBegin = ""
+        Set tEnd = ""
+        For tI = 1:1:$ListLength(tLabels) {
+            Set tTryBegin = "-----BEGIN " _ $List(tLabels, tI) _ "-----"
+            Set tTryEnd = "-----END " _ $List(tLabels, tI) _ "-----"
+            If ($Extract(tText, 1, $Length(tTryBegin)) = tTryBegin) && ($Extract(tText, *-$Length(tTryEnd) + 1, *) = tTryEnd) {
+                Set tBegin = tTryBegin
+                Set tEnd = tTryEnd
+                Quit
+            }
+        }
+        If tBegin = "" Quit
+        Set tInner = $Extract(tText, $Length(tBegin) + 1, *-$Length(tEnd))
+        Set tHeaders = ""
+        Set tBody = ""
+        If tInner '[ $Char(10) {
+            If (tInner [ "Proc-Type") || (tInner [ "DEK-Info") Quit
+            Set tBody = $Translate(tInner, " " _ $Char(9), "")
+        } Else {
+            Set tBad = 0
+            For tI = 1:1:$Length(tInner, $Char(10)) {
+                Set tLine = $ZStrip($Piece(tInner, $Char(10), tI), "<>W")
+                If tLine = "" Continue
+                If tLine [ ":" {
+                    If tBody '= "" Set tBad = 1 Quit
+                    Set tHeaders = tHeaders _ tLine _ $Char(10)
+                    Continue
+                }
+                Set tBody = tBody _ $Translate(tLine, " " _ $Char(9), "")
+            }
+            If tBad Quit
+        }
+        If (tBody = "") || '$Match(tBody, "^[A-Za-z0-9+/]+={0,2}$") || ($Length(tBody) # 4) Quit
+        Set tWrapped = ""
+        For tI = 1:64:$Length(tBody) {
+            Set tWrapped = tWrapped _ $Extract(tBody, tI, tI + 63) _ $Char(10)
+        }
+        Set pCanonical = tBegin _ $Char(10) _ $Select(tHeaders = "": "", 1: tHeaders _ $Char(10)) _ tWrapped _ tEnd
+        Set tOK = 1
+    } Catch {
+        Set pCanonical = ""
+        Set tOK = 0
+    }
+    Set tText = ""
+    Set tInner = ""
+    Set tBody = ""
+    Set tWrapped = ""
+    Quit tOK
+}
+
+/// <p>The DER bytes of the canonical PEM block <var>pCanonical</var> (<method>PemBlock</method>'s
+/// answer), or <code>""</code> when they cannot be decoded.</p>
+ClassMethod PemBytes(pCanonical As %String) As %String
+{
+    Set tBytes = ""
+    Try {
+        Set tLines = ""
+        For tI = 2:1:$Length(pCanonical, $Char(10)) - 1 {
+            Set tLine = $Piece(pCanonical, $Char(10), tI)
+            If (tLine = "") || (tLine [ ":") Continue
+            Set tLines = tLines _ tLine
+        }
+        Set tBytes = $System.Encryption.Base64Decode(tLines)
+    } Catch {
+        Set tBytes = ""
+    }
+    Quit tBytes
+}
+
+/// <p>AD-27's second case (<parameter>CONTENTCOMPLETEDTYPES</parameter>): import the credential
+/// <code>alias</code> names in <var>pQuery</var> from the content in <var>pBody</var> through
+/// <class>%SYS.X509Credentials</class> in <code>%SYS</code> (AD-16), behind the endpoint
+/// <var>pClass</var>'s own <code>ResourcesOR()</code> gate. <var>pAnswer</var> is the credential as
+/// the vendor's own <code>GET</code> then answers it.</p>
+/// <p><b>Caller contract:</b> <var>pHttpStatus</var> is 403 for a caller the gate refuses; 400 for
+/// a missing alias, a body key outside <parameter>IMPORTFIELDS</parameter>, a list that is not an
+/// array of strings, a certificate or key <method>PemBlock</method> refuses, a certificate that
+/// does not decode, a password longer than <parameter>PASSWORDMAXLENGTH</parameter> or one sent
+/// with no key, and a save refused for a code <parameter>IMPORTSAVECODES</parameter> names; 409 for
+/// an alias already present, compared exactly, as the vendor answers it; 500 for any other refused
+/// save, the vendor's own answer shape; 201 on success.</p>
+/// <p><b>No secret text leaves this method</b> (AD-35). Every error status it returns is written
+/// here and names a code, never a value, so neither <method>Fail</method>'s log line nor a fault
+/// can carry one; every local that held key, certificate or password text is cleared before it
+/// returns, on every path.</p>
+ClassMethod ImportThroughClass(pEndpoint As %String, pClass As %String, pType As %Integer, ByRef pQuery, pBody As %DynamicAbstractObject, Output pAnswer, Output pHttpStatus As %Integer) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pAnswer = ""
+    Set pHttpStatus = 0
+    Set tOrigNS = $NAMESPACE
+    Set (tCert, tKey, tPassword, tBytes) = ""
+    Set tCredential = ""
+    Try {
+        Set tEndpoint = $ClassMethod(pClass, "%New", pType, ..#APIVERSION)
+        If '$IsObject(tEndpoint) {
+            Set tSC = $$$ERROR($$$GeneralError, "endpoint did not construct")
+            Quit
+        }
+        Set tAllowed = 0
+        Set tResources = tEndpoint.ResourcesOR()
+        For tI = 1:1:$ListLength(tResources) {
+            Set tAllowed = tAllowed || ..HoldsResource($ListGet(tResources, tI))
+        }
+        If 'tAllowed {
+            Set pHttpStatus = 403
+            Quit
+        }
+        Set tAlias = $Get(pQuery("alias"))
+        If tAlias = "" {
+            Set pHttpStatus = 400
+            Set tSC = $$$ERROR($$$GeneralError, "the alias query parameter is required")
+            Quit
+        }
+        If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") {
+            Set pHttpStatus = 400
+            Set tSC = $$$ERROR($$$GeneralError, "the import body is not an object")
+            Quit
+        }
+        Set tAdmitted = $ListFromString(..#IMPORTFIELDS)
+        Set tIterator = pBody.%GetIterator()
+        While tIterator.%GetNext(.tKeyName, .tValue) {
+            If '$ListFind(tAdmitted, tKeyName) {
+                Set pHttpStatus = 400
+                Set tSC = $$$ERROR($$$GeneralError, "the import body carries a key it does not admit: " _ tKeyName)
+                Quit
+            }
+        }
+        Set tValue = ""
+        If $$$ISERR(tSC) Quit
+        Kill tLists
+        For tField = "OwnerList", "PeerNames" {
+            Set tLists(tField) = ""
+            Set tType = pBody.%GetTypeOf(tField)
+            If (tType = "unassigned") || (tType = "null") Continue
+            If tType '= "array" {
+                Set tSC = $$$ERROR($$$GeneralError, tField _ " is not an array")
+                Quit
+            }
+            Set tJoined = ""
+            Set tItems = pBody.%Get(tField).%GetIterator()
+            While tItems.%GetNext(.tIndex, .tItem) {
+                If $IsObject(tItem) {
+                    Set tSC = $$$ERROR($$$GeneralError, tField _ " holds a value that is not a string")
+                    Quit
+                }
+                If tItem = "" Continue
+                Set tJoined = tJoined _ $Select(tJoined = "": "", 1: ",") _ tItem
+            }
+            Set tLists(tField) = tJoined
+            If $$$ISERR(tSC) Quit
+        }
+        If $$$ISERR(tSC) {
+            Set pHttpStatus = 400
+            Quit
+        }
+        If pBody.%GetTypeOf("Certificate") = "string" Set tCert = pBody.%Get("Certificate")
+        If pBody.%GetTypeOf("PrivateKey") = "string" Set tKey = pBody.%Get("PrivateKey")
+        If pBody.%GetTypeOf("PrivateKeyPassword") = "string" Set tPassword = pBody.%Get("PrivateKeyPassword")
+        Set tRefusal = ""
+        If '..PemBlock(tCert, "cert", .tCert) {
+            Set tRefusal = ##class(OcuPilot.Api.Error).#X509CERTIFICATESHAPE
+        } ElseIf (tKey '= "") && '..PemBlock(tKey, "key", .tKey) {
+            Set tRefusal = ##class(OcuPilot.Api.Error).#X509PRIVATEKEYSHAPE
+        } ElseIf (tPassword '= "") && (tKey = "") {
+            Set tRefusal = ##class(OcuPilot.Api.Error).#X509PRIVATEKEYPASSWORDWITHOUTKEY
+        } ElseIf $Length(tPassword) > ..#PASSWORDMAXLENGTH {
+            Set tRefusal = ##class(OcuPilot.Api.Error).#X509PRIVATEKEYPASSWORDLENGTH
+        }
+        If tRefusal = "" {
+            Set tBytes = ..PemBytes(tCert)
+            If tBytes = "" Set tRefusal = ##class(OcuPilot.Api.Error).#X509CERTIFICATESHAPE
+        }
+        If tRefusal '= "" {
+            Set pHttpStatus = 400
+            Set tSC = $$$ERROR($$$GeneralError, "the import was refused: " _ tRefusal)
+            Quit
+        }
+
+        Set $NAMESPACE = "%SYS"
+        If ##class(%SYS.X509Credentials).Exists(tAlias) {
+            Set $NAMESPACE = tOrigNS
+            Set pHttpStatus = 409
+            Set tSC = $$$ERROR($$$GeneralError, "an X.509 credential already carries that alias")
+            Quit
+        }
+        Set tCredential = ##class(%SYS.X509Credentials).%New()
+        Set tCredential.Alias = tAlias
+        Set tDecoded = 1
+        Try {
+            Set tCredential.Certificate = tBytes
+        } Catch {
+            Set tDecoded = 0
+        }
+        If 'tDecoded {
+            Set tCredential = ""
+            Set $NAMESPACE = tOrigNS
+            Set pHttpStatus = 400
+            Set tSC = $$$ERROR($$$GeneralError, "the import was refused: " _ ##class(OcuPilot.Api.Error).#X509CERTIFICATESHAPE)
+            Quit
+        }
+        If tKey '= "" {
+            Set tCredential.PrivateKey = tKey
+            Set tCredential.PrivateKeyPassword = tPassword
+        }
+        Set tCredential.OwnerList = tLists("OwnerList")
+        Set tCredential.PeerNames = tLists("PeerNames")
+        Set tSaveSC = tCredential.Save()
+        Set tCredential = ""
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSaveSC) {
+            Set tCodes = $System.Status.GetErrorCodes(tSaveSC)
+            Set tSaveSC = ""
+            If ("," _ tCodes _ ",") [ ",5805," {
+                Set pHttpStatus = 409
+                Set tSC = $$$ERROR($$$GeneralError, "an X.509 credential already carries that alias")
+                Quit
+            }
+            Set tMapped = ""
+            For tI = 1:1:$Length(..#IMPORTSAVECODES, ",") {
+                Set tPair = $Piece(..#IMPORTSAVECODES, ",", tI)
+                If ("," _ tCodes _ ",") [ ("," _ $Piece(tPair, "=", 1) _ ",") Set tMapped = $Piece(tPair, "=", 2) Quit
+            }
+            If tMapped '= "" {
+                Set pHttpStatus = 400
+                Set tSC = $$$ERROR($$$GeneralError, "the import was refused: " _ tMapped)
+            } Else {
+                Set pHttpStatus = 500
+                Set tSC = $$$ERROR($$$GeneralError, "%SYS.X509Credentials refused the save with vendor error " _ tCodes)
+            }
+            Quit
+        }
+        Set (tCert, tKey, tPassword, tBytes) = ""
+        Kill tRead
+        Set tRead("alias") = tAlias
+        Set tReadSC = ..Invoke(pEndpoint, "GET", .tRead, "", .tFresh, .tReadHttp, .tReadFault)
+        Set pAnswer = $Select($$$ISOK(tReadSC) && $IsObject($Get(tFresh)): tFresh, 1: {})
+        Set pHttpStatus = 201
+    } Catch ex {
+        Set tCredential = ""
+        Set $NAMESPACE = tOrigNS
+        Set pHttpStatus = 500
+        Set tSC = $$$ERROR($$$GeneralError, "the X.509 import failed inside the port at " _ $Piece(ex.Location, "^", 1))
+    }
+    Set (tCert, tKey, tPassword, tBytes, tValue) = ""
+    Set tCredential = ""
+    If $$$ISERR(tSC) && (pHttpStatus = 0) Set pHttpStatus = 500
+    Quit tSC
+}
+
+/// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
 /// <parameter>BODYLESSTYPES</parameter> exempts from the object-body refusal (AD-51, DW-1464).</p>
 ClassMethod IsBodyless(pEndpoint As %String, pSuffix As %String) As %Boolean
 {
@@ -1195,6 +1508,8 @@ ClassMethod RunSequence(pEndpoint As %String, pClass As %String, pType As %Integ
     Set pLocation = ""
     ; AD-27's named fallback: a value the admin API refuses and the vendor class accepts.
     If ..ClassCompletedField(pEndpoint, pMethod, pBody) '= "" Quit ..CompleteThroughClass(pClass, pType, .pQuery, pBody, .pAnswer, .pHttpStatus)
+    ; AD-27's second case: an import completed from content rather than from server file paths.
+    If ..IsContentCompleted(pEndpoint, pMethod) Quit ..ImportThroughClass(pEndpoint, pClass, pType, .pQuery, pBody, .pAnswer, .pHttpStatus)
     New %request, %response, %session
     Set tOrigNS = $NAMESPACE
     Try {

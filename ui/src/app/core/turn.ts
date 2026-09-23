@@ -178,6 +178,11 @@ export interface TurnProposalDiffRow {
    * rows carry `false`, which is what a row with a real after-state means.
    */
   readonly removed: boolean;
+  /**
+   * Whether this row is a masked secret the tool declares **optional**: the user may confirm with it
+   * empty (AD-6). Present, and `true`, only on such a row; every other row carries no key.
+   */
+  readonly optional?: boolean;
 }
 
 /**
@@ -447,6 +452,7 @@ function parseProposalDiff(value: unknown): TurnProposalDiffRow[] {
       before: textAt(row, 'before'),
       after: textAt(row, 'after'),
       removed: boolAt(row, 'removed'),
+      ...(boolAt(row, 'optional') ? { optional: true } : {}),
     });
   }
   return rows;

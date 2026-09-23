@@ -135,7 +135,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -145,6 +145,8 @@ Parameter TYPEUSER = "user";
 Parameter TYPEROLE = "role";
 
 Parameter TYPERESOURCE = "resource";
+
+Parameter TYPEX509 = "x509-credential";
 
 Parameter TYPEAUDITING = "auditing-configuration";
 
@@ -300,6 +302,9 @@ ClassMethod CoveredTypes() As %List
 /// added to the public permission of one of OcuPilot's own resources is refused
 /// (<method>Resource</method>); on any other resource it is permitted, and marked where the resource
 /// is administrative (<method>GrantsPrivilegeByEffect</method>).</p>
+/// <p>An X.509 credential's two are <code>OwnerList</code> and <code>PeerNames</code>; its
+/// <code>CAFile</code> is a server path the edit sends back as the instance holds it and no caller
+/// changes (AD-21).</p>
 /// <p>The auditing configuration's one is <code>Enabled</code>, and it carries <b>no</b> asymmetric
 /// predicate: AD-10 does not forbid turning auditing off, and the product's answer to it is the
 /// card's warning, the recorded drop and the banner rather than a refusal (AD-15 as amended
@@ -315,6 +320,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEAUDITING Quit $ListBuild(..#FIELDENABLED)
 
     If pType = ..#TYPERESOURCE Quit $ListBuild("Description", ..#FIELDPUBLICPERMISSION)
+    If pType = ..#TYPEX509 Quit $ListBuild("OwnerList", "PeerNames")
     Quit ""
 }
 
@@ -366,12 +372,18 @@ ClassMethod AlwaysProhibitedFields(pType As %String) As %List
 /// it is refused <parameter>UNCOVEREDFIELD</parameter>.</p>
 /// <p>A resource's two are its description and its public permission; a public permission on one of
 /// OcuPilot's own resources is refused (<method>Created</method>).</p>
+/// <p>An X.509 credential's three are its authorized users, its intended peers and its key
+/// password. The password is a template field the import declares secret: the confirm supplies it
+/// from the card and the stored payload never carries it. The certificate and key are secrets the
+/// import authors, which no template names, and <code>CAFile</code> is a server path no caller sets
+/// (AD-21).</p>
 ClassMethod PermittedCreateFields(pType As %String) As %List
 {
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "DispatchClass", "Enabled", "MatchRoles", "NameSpace", "Recurse", "Resource", "WSGIAppLocation", "WSGIAppName", "WSGICallable", "WSGIType")
     If pType = ..#TYPEUSER Quit $ListBuild("ExpirationDate", "FullName", "NameSpace", "Routine", ..#FIELDROLES)
     If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
     If pType = ..#TYPERESOURCE Quit $ListBuild("Description", ..#FIELDPUBLICPERMISSION)
+    If pType = ..#TYPEX509 Quit $ListBuild("OwnerList", "PeerNames", "PrivateKeyPassword")
     Quit ""
 }
 
@@ -442,7 +454,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -489,6 +501,10 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         If tType = ..#TYPERESOURCE {
             Set tSC = ..Resource(tId, $Get(tToolClass), tPayloadObject, tTarget, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPEX509 {
+            Set tSC = ..X509($Get(tToolClass), .tChanged, .pProhibits, .pCode)
             Quit
         }
         If tType = ..#TYPEAUDITING {
@@ -1001,6 +1017,17 @@ ClassMethod Task(ByRef pChanged, Output pProhibits As %Boolean, Output pCode As 
 ClassMethod ApplicationError(ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
 {
     Quit ..ReviewedFewOnly(..#TYPEAPPLICATIONERROR, .pChanged, .pProhibits, .pCode)
+}
+
+/// <p>The X.509 credential predicates: the reviewed-few sweep and nothing else. OcuPilot creates and
+/// uses no X.509 credential, so no credential is its own and AD-10 names no effect on one.</p>
+/// <p>A <code>DELETE</code> sends no body (AD-51), and its card rows are removals read from the
+/// certificate read -- what goes, not fields the write sets -- so it reaches the sweep with nothing
+/// changed. <var>pToolClass</var> is the proposal's tool.</p>
+ClassMethod X509(pToolClass As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    If ..WriteTypeOf(pToolClass) = "DELETE" Kill pChanged
+    Quit ..ReviewedFewOnly(..#TYPEX509, .pChanged, .pProhibits, .pCode)
 }
 
 /// <p>The process predicates, in declared order, first hit wins: a process OcuPilot is itself

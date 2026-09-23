@@ -5316,3 +5316,14 @@ app-resource-list-page {
 .ocu-dialog-status {
   align-self: center;
 }
+
+// Story 8.5: the X.509 credential form's file pickers stay out of view -- the labelled "Load from
+// file" button beside each field opens its picker -- and a pasted PEM block reads in the monospace
+// face its line lengths are measured in.
+.ocu-x509-file {
+  display: none;
+}
+
+.ocu-x509-pem {
+  font-family: var(--ocu-type-code-family);
+}

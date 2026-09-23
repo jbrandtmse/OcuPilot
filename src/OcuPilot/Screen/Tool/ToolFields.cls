@@ -65,6 +65,26 @@ XData Tools
 "security.auditing.update": {"fieldList":"Security.Audit.Enabled","fields":[
   {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
 ]},
+"security.x509.import": {"fieldList":"Security.X509Credential","fields":[
+  {"path":"Alias","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"OwnerList[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"CAFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PeerNames[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PrivateKeyPassword","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"PrivateKeyFile","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"CertificateFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Certificate","shape":"literal","templateType":"string","class":"secret","authored":true},
+  {"path":"PrivateKey","shape":"literal","templateType":"string","class":"secret","authored":true}
+]},
+"security.x509.update": {"fieldList":"Security.X509Credential","fields":[
+  {"path":"Alias","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"OwnerList[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"CAFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PeerNames[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PrivateKeyPassword","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"PrivateKeyFile","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"CertificateFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
 "webapp.list.create": {"fieldList":"WebApp.App","fields":[
   {"path":"AutheEnabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"AutoCompile","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},

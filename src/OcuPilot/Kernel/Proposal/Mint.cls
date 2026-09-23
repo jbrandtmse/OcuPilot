@@ -581,17 +581,30 @@ ClassMethod CreatesOf(pToolClass As %String) As %Boolean
 /// <p>Append to <var>pDiff</var> one <code>{field, before, after}</code> row, both sides empty, per
 /// name <var>pToolClass</var>'s <code>ComposedSecrets()</code> answers (AD-6, AD-35). A class that
 /// names none, or cannot be asked, adds nothing.</p>
+/// <p>A row whose name the tool's <code>OptionalSecrets()</code> also answers carries
+/// <code>optional: true</code>, which is the card's leave to confirm with that field empty. The
+/// declaration is the tool's, per row; a class that compiles no <code>OptionalSecrets</code> marks
+/// nothing, so every composed secret stays required.</p>
 /// <p><b>Caller contract:</b> called for a create only, after <method>Compose</method>. The rows
 /// carry no value: the secret is supplied at confirm and never stored.</p>
 ClassMethod AppendComposedSecrets(pToolClass As %String, pDiff As %DynamicArray) [ Private ]
 {
     Set tNames = ""
+    Set tOptional = ""
     Try {
         If pToolClass '= "" Set tNames = $ClassMethod(pToolClass, "ComposedSecrets")
     } Catch {
         Set tNames = ""
     }
+    Try {
+        If (pToolClass '= "") && ##class(%Dictionary.CompiledMethod).%ExistsId(pToolClass _ "||OptionalSecrets") {
+            Set tOptional = $ClassMethod(pToolClass, "OptionalSecrets")
+        }
+    } Catch {
+        Set tOptional = ""
+    }
     If '$ListValid(tNames) Quit
+    If '$ListValid(tOptional) Set tOptional = ""
     For tI = 1:1:$ListLength(tNames) {
         Set tName = $ListGet(tNames, tI)
         If tName = "" Continue
@@ -599,6 +612,7 @@ ClassMethod AppendComposedSecrets(pToolClass As %String, pDiff As %DynamicArray)
         Do tRow.%Set("field", tName, "string")
         Do tRow.%Set("before", "", "string")
         Do tRow.%Set("after", "", "string")
+        If $ListFind(tOptional, tName) Do tRow.%Set("optional", 1, "boolean")
         Do pDiff.%Push(tRow)
     }
 }

@@ -64,6 +64,13 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// as an authored argument of its own (<class>OcuPilot.Screen.Tool.RoleCreate</class>).
 /// <code>EscalationOnly</code> is <code>ordinary</code> here and absent from the tool's positive
 /// list, so it is never advertised.</p>
+/// <p><b><code>security.x509.import</code></b> and <b><code>security.x509.update</code></b> classify
+/// <code>Security.X509Credential</code>'s alias, two lists, CA file and certificate file
+/// <code>ordinary</code> and its key password and key file <code>secret</code>. Each tool's positive
+/// list admits the two lists alone, so no path is ever advertised (AD-21). The import authors
+/// <code>Certificate</code> and <code>PrivateKey</code> as <code>secret</code>: the port completes
+/// the import from that content (AD-27), and the template, which names only file paths, never
+/// shows it.</p>
 XData Entries
 {
 {
@@ -240,6 +247,34 @@ XData Entries
     "classification": {
       "Description": "ordinary",
       "PublicPermission": "ordinary"
+    }
+  },
+  "security.x509.import": {
+    "fieldList": "Security.X509Credential",
+    "classification": {
+      "Alias": "ordinary",
+      "OwnerList[]": "ordinary",
+      "PeerNames[]": "ordinary",
+      "CAFile": "ordinary",
+      "CertificateFile": "ordinary",
+      "PrivateKeyPassword": "secret",
+      "PrivateKeyFile": "secret"
+    },
+    "authored": {
+      "Certificate": "secret",
+      "PrivateKey": "secret"
+    }
+  },
+  "security.x509.update": {
+    "fieldList": "Security.X509Credential",
+    "classification": {
+      "Alias": "ordinary",
+      "OwnerList[]": "ordinary",
+      "PeerNames[]": "ordinary",
+      "CAFile": "ordinary",
+      "CertificateFile": "ordinary",
+      "PrivateKeyPassword": "secret",
+      "PrivateKeyFile": "secret"
     }
   }
 }

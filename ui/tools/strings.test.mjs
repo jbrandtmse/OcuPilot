@@ -524,9 +524,14 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // tripwire is for is unchanged -- it catches a run that read a fraction of the table or far too
   // much of the document -- and the exact count assertion below, derived from the table itself, is
   // what still holds strings.ts to the table literal for literal.
+  //
+  // Story 8.5 moves the bound to 700 under the same protocol: its five rows publish fourteen
+  // literals -- the X.509 list's Import and agent invitation, the credential form's title, seven
+  // labels, its Load from file button and two helpers, and the proposal card's optional mark -- and
+  // take the table past 600.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 600,
-    `expected between 150 and 600 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 700,
+    `expected between 150 and 700 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

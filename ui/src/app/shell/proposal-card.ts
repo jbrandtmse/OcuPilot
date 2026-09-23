@@ -191,12 +191,12 @@ export interface ProposalConfirmRequest {
     @if (secretsVisible) {
       <div class="ocu-proposal-card-secrets">
         @for (field of maskedFields; track field) {
-          <label class="ocu-field-label" [attr.for]="secretId(field)">{{ field }}</label>
+          <label class="ocu-field-label" [attr.for]="secretId(field)">{{ secretLabel(field) }}</label>
           <input
             class="ocu-field-input ocu-proposal-card-secret"
             type="password"
             autocomplete="off"
-            aria-required="true"
+            [attr.aria-required]="secretRequired(field)"
             [id]="secretId(field)"
             [value]="secretValue(field)"
             (input)="onSecret(field, $event)"
@@ -558,9 +558,24 @@ export class ProposalCard {
     this.secrets.set(next);
   }
 
-  /** Whether every declared masked field has been filled, which is what Confirm waits for. */
+  /** The masked fields the tool declares optional, which Confirm does not wait for. */
+  protected get optionalFields(): readonly string[] {
+    return this.view().optionalFields ?? [];
+  }
+
+  /** Whether `field` must be filled before Confirm: every masked field the tool did not mark optional. */
+  protected secretRequired(field: string): boolean {
+    return !this.optionalFields.includes(field);
+  }
+
+  /** A masked field's label: its name, and the published optional mark when the tool declares it so. */
+  protected secretLabel(field: string): string {
+    return this.secretRequired(field) ? field : `${field} (${STRINGS.proposalSecretOptional})`;
+  }
+
+  /** Whether every required masked field has been filled, which is what Confirm waits for. */
   private get secretsFilled(): boolean {
-    return this.maskedFields.every((field) => this.secretValue(field) !== '');
+    return this.maskedFields.every((field) => !this.secretRequired(field) || this.secretValue(field) !== '');
   }
 
   protected get auditWarningVisible(): boolean {

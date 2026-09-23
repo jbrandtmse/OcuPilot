@@ -81,6 +81,11 @@ export interface ProposalCardView {
   readonly unchanged?: readonly ProposalUnchangedRow[];
   /** The secret argument names the user fills before Confirm (AD-3, AD-6). */
   readonly maskedFields?: readonly string[];
+  /**
+   * The names among `maskedFields` the tool declares optional, which Confirm does not wait for: the
+   * instance's own per-row declaration (`optional` on the diff row), never a guess from the name.
+   */
+  readonly optionalFields?: readonly string[];
   /** Whether this write would stop the instance marking agent writes (AD-15). */
   readonly auditWarning?: boolean;
   /**
@@ -341,11 +346,27 @@ export function toCardView(
     reverse: proposal.reverse,
     expiresAt: proposal.expiresAt,
     maskedFields: payloadSecrets(proposal, secretArguments),
+    optionalFields: optionalSecrets(proposal, secretArguments),
     auditWarning: proposal.auditWarning,
     destructive: proposal.destructive,
     consequence: proposal.consequence,
     refusalReason,
   };
+}
+
+/**
+ * The declared secret names whose diff row the instance marked `optional`: the ones the card lets the
+ * user leave empty. A secret whose row carries no mark is required.
+ */
+function optionalSecrets(
+  proposal: TurnProposal,
+  secretArguments: readonly string[]
+): readonly string[] {
+  const optional = new Set<string>();
+  for (const row of proposal.changed) {
+    if (row.optional === true) optional.add(row.field);
+  }
+  return secretArguments.filter((name) => optional.has(name));
 }
 
 /**

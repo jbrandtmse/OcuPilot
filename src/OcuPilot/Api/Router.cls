@@ -104,6 +104,10 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/resources/name" Method="GET" Call="ResourceNameCheck"/>
   <Route Url="/resources/:id" Method="PUT" Call="ResourceUpdate"/>
   <Route Url="/resources" Method="POST" Call="ResourceCreate"/>
+  <Route Url="/x509/form" Method="GET" Call="X509FormRead"/>
+  <Route Url="/x509/name" Method="GET" Call="X509NameCheck"/>
+  <Route Url="/x509/:id" Method="PUT" Call="X509Update"/>
+  <Route Url="/x509" Method="POST" Call="X509Import"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
   <Route Url="/logs/errors/namespaces" Method="GET" Call="LogErrorNamespaces"/>
   <Route Url="/logs/errors/dates" Method="GET" Call="LogErrorDates"/>
@@ -360,6 +364,35 @@ ClassMethod ResourceCreate() As %Status
 ClassMethod ResourceUpdate(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Area.Permissions.ResourceSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /x509/form</code> (Story 8.5): the X.509 form's
+/// read, delegating to <class>OcuPilot.Area.Security.X509Rules</class>. The two sub-resources
+/// precede <code>/x509/:id</code>.</p>
+ClassMethod X509FormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.X509Rules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /x509/name</code>: the X.509 form's blur check
+/// of whether an alias is taken.</p>
+ClassMethod X509NameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.X509Rules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /x509</code>: the X.509 form's import Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod X509Import() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.X509Save).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /x509/:id</code>: the X.509 form's edit Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod X509Update(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.X509Save).HandleUpdate(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /screens/:screen/read</code>: delegates to

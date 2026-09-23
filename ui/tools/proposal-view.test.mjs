@@ -256,6 +256,27 @@ test("maskedFields is the declared set narrowed to this proposal's own payload",
   );
 });
 
+// Story 8.5: a composed secret row the tool declares optional carries `optional: true` on the wire,
+// and the card view lists exactly those among its masked fields; a row with no mark stays required.
+//
+// Mutation (Rule 19): make `optionalSecrets` answer every masked field -> the certificate is listed
+// optional and this goes red.
+test('optionalFields is the masked set narrowed to the rows the instance marked optional', () => {
+  const proposal = parsedProposal({
+    tool: 'security.x509.import',
+    changed: [
+      { field: 'OwnerList', before: '', after: '["a"]' },
+      { field: 'Certificate', before: '', after: '' },
+      { field: 'PrivateKey', before: '', after: '', optional: true },
+      { field: 'PrivateKeyPassword', before: '', after: '', optional: true },
+    ],
+  });
+  const view = toCardView(proposal, 'x', ['Certificate', 'PrivateKey', 'PrivateKeyPassword']);
+  assert.deepEqual([...view.maskedFields], ['Certificate', 'PrivateKey', 'PrivateKeyPassword'], 'all three are asked for');
+  assert.deepEqual([...view.optionalFields], ['PrivateKey', 'PrivateKeyPassword'], 'and the two marked rows may stay empty');
+  assert.equal(proposal.changed[1].optional, undefined, 'a row with no mark carries no optional key at all');
+});
+
 test('a delete proposal carries no reversal, so the card has no Reverse line to draw', () => {
   const view = toCardView(parsedProposal({ reverse: '' }), 'x');
   assert.equal(view.reverse, '');

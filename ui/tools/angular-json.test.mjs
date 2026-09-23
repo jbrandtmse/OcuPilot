@@ -351,8 +351,9 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 //
 // The figure is re-based under the owner's standing policy on DW-1166: at each epic close the
 // warning is set about 5% above the measured initial total, and `maximumError`'s 1600kB is the
-// hard stop. Story 8.2 set 1185kB against a measured 1,127,978 bytes (5.06% above), and a tight
-// figure keeps each raise a reviewed diff rather than a silent drift. `build-output.test.mjs` measures
+// hard stop. Story 8.5 set 1261kB against a measured 1,200,871 bytes (5.01% above), the X.509
+// form page, store and actions having added 26,053, and a tight figure keeps each raise a reviewed
+// diff rather than a silent drift. `build-output.test.mjs` measures
 // the actual emitted bytes against this figure; this file pins the figure itself, so a later
 // change to it is a reviewed diff here rather than a silent edit nothing else notices.
 //
@@ -367,7 +368,7 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '1185kB', 'a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumWarning, '1261kB', 'a change to this figure must be a reviewed diff, not a silent edit');
   assert.equal(budget.maximumError, '1600kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and

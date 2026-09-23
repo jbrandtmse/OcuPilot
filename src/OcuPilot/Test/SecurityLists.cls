@@ -45,13 +45,14 @@ Method OnAfterOneTest() As %Status
 
 /// <p>The four screens as <code>$ListBuild(descriptor, route, tool, side-bar position, entity type,
 /// classic page, read fields as JSON, privileges as JSON, parent scope, the read's criterion query
-/// suffix)</code>.</p>
+/// suffix, primary action)</code>. The X.509 list's primary action is Create (Story 8.5); the other
+/// three declare none.</p>
 ClassMethod Screens() As %List
 {
     Set tSecure = "[{""resource"":""%Admin_Secure"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]"
     Set tWallet = "[{""resource"":""%Admin_Wallet"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]"
     Set tScreens = ""
-    Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.X509CredentialList", "security/x509", "security.x509", 2, "x509-credential", "%CSP.UI.Portal.X509Credentials", "[""Alias"",""OwnerList"",""PeerNames"",""CAFile"",""SubjectDN"",""IssuerDN"",""ValidityNotBefore"",""ValidityNotAfter""]", tSecure, "", ""))
+    Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.X509CredentialList", "security/x509", "security.x509", 2, "x509-credential", "%CSP.UI.Portal.X509Credentials", "[""Alias"",""OwnerList"",""PeerNames"",""CAFile"",""SubjectDN"",""IssuerDN"",""ValidityNotBefore"",""ValidityNotAfter""]", tSecure, "", "", "create"))
     Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.LdapConfigList", "security/ldap", "security.ldap", 3, "ldap-configuration", "%CSP.UI.Portal.LDAPs", "[""Name"",""Enabled"",""Description"",""LDAPCACertFile""]", tSecure, "", ""))
     Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.WalletCollectionList", "security/wallet", "security.wallet", 4, "wallet-collection", "", "[""Name"",""EditResource"",""UseResource""]", tWallet, "", ""))
     Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.WalletSecretList", "security/wallet/secrets", "security.secrets", 0, "wallet-secret", "", "[""Name"",""Type""]", tWallet, "security/wallet", "&collection=" _ ..#DEMOCOLLECTION))
@@ -156,8 +157,10 @@ Method TestEachListIsDeclaredAsTheSecurityAreaEntryItReplaces()
         Do $$$AssertEquals(tDeclaration.context.fields.%ToJSON(), tDeclaration.read.fields.%ToJSON(), tClass _ ": its context fields are its read fields")
         Do $$$AssertEquals(tDeclaration.context.secretFields.%Size(), 0, tClass _ ": with no secret field")
         Do $$$AssertEquals(tDeclaration.read.sort.direction, "asc", tClass _ ": sorting ascending")
-        Do $$$AssertEquals(tDeclaration.table.emptyNextKey, "tableReadOnlyEmptyNext", tClass _ ": its empty state names what to do next")
-        Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")) + ($ClassMethod(tClass, "PrimaryActionId") '= ""), 0, tClass _ ": because it declares no action")
+        Set tAction = $ListGet(tCase, 11)
+        Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), tAction, tClass _ ": its primary action is the one this class pins")
+        Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, tClass _ ": and it declares no row action")
+        Do $$$AssertEquals(tDeclaration.table.emptyNextKey, $Select(tAction = "": "tableReadOnlyEmptyNext", 1: ""), tClass _ ": its empty state names what to do next exactly when it declares no action")
         Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), $List(tCase, 8), tClass _ ": its pair set, in order")
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs")), "", tClass _ ": and the Security and secrets area covers it")
     }

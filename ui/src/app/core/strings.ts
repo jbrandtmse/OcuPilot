@@ -1420,6 +1420,28 @@ export const STRINGS = {
   resourceEditorCreate: 'New resource',
   resourceEditorEdit: 'Edit resource <name>',
 
+  // Story 8.5: the X.509 list's Import, its agent invitation, the X.509 credential form's labels and
+  // helpers, and the proposal card's mark on a secret the confirm may leave empty.
+  /** EXPERIENCE.md:408 */
+  actionImport: 'Import',
+  /** EXPERIENCE.md:409 */
+  x509ListEmptyAgent: 'import a certificate',
+  /** EXPERIENCE.md:410 */
+  x509FormLabel: 'X.509 credential',
+  x509FieldCertificate: 'Certificate',
+  x509FieldPrivateKey: 'Private key',
+  x509FieldPrivateKeyPassword: 'Private key password',
+  x509FieldOwnerList: 'Authorized users',
+  x509FieldPeerNames: 'Intended peers',
+  x509FieldCaFile: 'Trusted CA file',
+  x509FieldHasPrivateKey: 'Private key present',
+  x509LoadFromFile: 'Load from file',
+  /** EXPERIENCE.md:411 */
+  x509PasswordHelp: 'Only for an encrypted key.',
+  x509ListHelp: 'Comma-separated.',
+  /** EXPERIENCE.md:412 */
+  proposalSecretOptional: 'optional',
+
 } as const;
 
 /**

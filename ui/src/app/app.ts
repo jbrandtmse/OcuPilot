@@ -18,6 +18,8 @@ import { RoleActions } from './areas/permissions/role-actions';
 import { RoleCreateForm } from './areas/permissions/role-create-form.store';
 import { ResourceActions } from './areas/permissions/resource-actions';
 import { ResourceEditor } from './areas/permissions/resource-editor.store';
+import { X509Actions } from './areas/security/x509-actions';
+import { X509Form } from './areas/security/x509-form.store';
 import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
@@ -242,6 +244,9 @@ export class App {
   // (`areas/permissions/resource-actions.ts`).
   private readonly resourceActions = inject(ResourceActions);
   private readonly resourceEditor = inject(ResourceEditor);
+  // The X.509 list's declared Create, labelled Import, the same way (`areas/security/x509-actions.ts`).
+  private readonly x509Actions = inject(X509Actions);
+  private readonly x509Form = inject(X509Form);
   // Constructed for its own sake, the same way: there is no component whose job it is to act on
   // the agent's navigation directive, so injecting it here is what brings it into existence for
   // the life of the tab (`shell/agent-navigator.ts`).
@@ -513,6 +518,8 @@ export class App {
       this.roleCreateForm.reset();
       // The resource editor holds a resource THIS principal was creating or editing and has not saved.
       this.resourceEditor.reset();
+      // The X.509 form holds a certificate, a private key and its password THIS principal pasted and has not saved (AD-35).
+      this.x509Form.reset();
       this.formDirty.reset();
       // The ninth: whether the instance holds an enabled definition is a read THIS principal
       // made, and the panel and the rail's dot pick an audience from it beside the navigation
