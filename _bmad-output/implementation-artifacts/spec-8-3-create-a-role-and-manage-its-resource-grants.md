@@ -2,7 +2,7 @@
 title: 'Story 8.3: Create a role, and manage its resource grants'
 type: 'feature'
 created: '2026-09-22'
-status: 'blocked'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -25,9 +25,9 @@ deferred: []
 
 ### Always
 
-- Escalation (AD-10, AD-55), refused inside the write path whatever the caller, with the one caller-neutral `PRIVILEGEGRANT` sentence. The predicate is the existing one, unchanged:
-  - A **resource grant escalates** when the resource's name is `%All` or begins `%Admin_`, at any permission (`Prohibited.IsPrivilegedRole`).
-  - A **granted role escalates** when `Prohibited.RoleEscalates` says so: its name, a role it recurses to, or a resource any of those carries.
+- Escalation (AD-10, AD-55), refused inside the write path whatever the caller, with the one caller-neutral `PRIVILEGEGRANT` sentence. The predicate is the existing one plus one clause (DW-1512, orchestrator ruling 2026-09-23, AD-10 amended):
+  - A **resource grant escalates** when the resource's name is `%All` or begins `%Admin_`, at any permission (`Prohibited.IsPrivilegedRole`), **or it is `%DB_IRISSECURITY` with WRITE** (the security database; by effect it is `%All`).
+  - A **granted role escalates** when `Prohibited.RoleEscalates` says so: its name, a role it recurses to, or a resource any of those carries -- which now includes a role carrying `%DB_IRISSECURITY:W` (the `%DB_IRISSECURITY` role, and any role recursing to it), for users (8.2) and roles alike.
   - On the screen the refusal is one AD-39 `detail.violations[]` row `{field, code:"PROHIBITED.PRIVILEGEGRANT", reason}` on each offending field (`Resources`, `GrantedRoles`). The bootstrap read ships the same sentence for the pickers' pre-marks. The client holds no copy.
 - The create is `PUT` with `CREATES = 1`. The absence fingerprint (AD-54) is the only thing standing between a confirmed create and a silent rewrite of someone else's role. `Name` travels only as the `name` query parameter, because the vendor refuses it in the body.
 - A grant is `{Name, Permissions}`, the vendor's own shape, in the arguments, the payload and the diff row alike. A permission letter is admitted only if the classic grant dialog offers it for that resource. That rule is authored once, in `RoleCreateRules`, and shipped per resource in the bootstrap read.
@@ -44,8 +44,8 @@ deferred: []
 - Never add `Security.Role/POST` to the port. The vendor's inherited `RunPost` answers `{}` and writes nothing, and a `Run` override makes `ImplementsRead` accept it.
 - No field outside the acceptance criterion's set (name, description, resources, granted roles). `EscalationOnly` stays out of the schema and the payload, and the prohibited set refuses it `UNCOVEREDFIELD`. Story 9.3 owns it.
 - No Epic 9 work. `permissions/roles/edit/:id` redraws the create form with the created values, as 8.1's and 8.2's do. Re-saving there is refused because the name is taken.
-- No change to `RoleEscalates`' verdicts. See `SPINE DECISION NEEDED` under Design Notes.
-- No second row-action mechanism, and no edit to any file Epic 7 added (see `Needs the lead`).
+- No change to `RoleEscalates`' verdicts beyond the `%DB_IRISSECURITY:W` clause. WRITE on `%DB_IRISSYS` and `%DB_IRISLIB` stays out (DW-1512, decision-pending for the owner).
+- No second row-action mechanism, and no edit to any file Epic 7 added. The Roles-list row action is Story 9.3's (DW-1513).
 
 ## I/O & Edge-Case Matrix
 
@@ -125,12 +125,12 @@ Before editing any file marked ⚠, read Epic 7's version with `git fetch origin
 - ⚠ EXPERIENCE.md Fixed strings -- the last row is :400 and `## Component Patterns` is at :402. Epic 7 inserts at its :392-406. The surface rows :119-122 are the role surfaces.
 - `ui/browser/users-create.browser-spec.mjs` -- the harness: `irisSys`, `privilegeSentence`, `signedInAt`, `roleBoxes`, `waitForSaved`.
 
-### Needs the lead
+### Deferred to Story 9.3 (DW-1513)
 
 - **The Roles-list Delete row action (AC3's screen caller) has no conforming mechanism on this branch.** AD-53's generic route (`Api/ScreenAction.cls`), `Kernel/Proposal/Operation.cls`, `shell/screen-action-handler.ts`, `shell/typed-name-dialog.ts` and `core/self-protection.ts` exist only on `origin/OCU-1-epic7`. So do `Write.SCREENACTIONS`, the action route in `Router.cls` and the action validator in `Registry.cls`.
 - A screen is served only after it is added to `screen-action-handler.ts`'s `SCREEN_ACTION_DESCRIPTORS` and `DESTRUCTIVE_CONSEQUENCES`, both inside Epic 7's files.
 - That handler's consequence is a static `STRINGS` key. A live holder count therefore also needs an edit to Epic 7's handler.
-- See the question in `## Auto Run Result`. This spec plans everything else. Its delete tool is the operation AD-53's screen caller will reach.
+- Ruled 2026-09-23: this spec ships everything else; its delete tool is the operation AD-53's screen caller will reach in Story 9.3.
 
 ## Tasks & Acceptance
 
@@ -184,6 +184,8 @@ Before editing any file marked ⚠, read Epic 7's version with `git fetch origin
     - It is 1 when counted holders (`CountsAsHolder`) reach `%All` now, and none of them still does once the role is gone. A holder still reaches `%All` if some direct role, walked through `GrantedRoles` with the deleted role skipped, arrives at `%All`.
   - Add `Parameter OCUPILOTROLE = "PROHIBITED.OCUPILOTROLE"` to `Codes()`. Its caller-neutral `ReasonFor` sentence is "This role belongs to OcuPilot, which stops working without it. It is removed only when OcuPilot is uninstalled."
 - `src/OcuPilot/Test/ProhibitedFixture.cls` -- override `DeletingLeavesNoAllHolder` as `LastAllHolder` is overridden.
+- `src/OcuPilot/Kernel/Proposal/Prohibited.cls` -- DW-1512's ruled clause, added **alongside** the existing predicate (Epic 7's 7.2 has just restructured the account predicates to work by effect; do not restructure them): a resource grant of `%DB_IRISSECURITY` whose permissions include `W` escalates. Put it where both `RoleGrantsPrivilege` (a granted role's resources, which serves 8.2's user roles and its picker) and the `role` step's `Resources` check ask it, as one method (for example `ResourceGrantEscalates(pName, pPermissions)`), so the two cannot drift. `%DB_IRISSYS` and `%DB_IRISLIB` stay out.
+- Tests: `RoleCreate` refuses a `Resources` grant `{Name:"%DB_IRISSECURITY", Permissions:"RW"}` on both callers and admits `{Name:"%DB_IRISSECURITY", Permissions:"R"}`; `UserCreate` refuses granting the `%DB_IRISSECURITY` role on both callers, and the picker pre-marks it. Mutation: drop the `%DB_IRISSECURITY` clause -> both red.
 
 #### Screen routes
 
@@ -270,8 +272,8 @@ Before editing any file marked ⚠, read Epic 7's version with `git fetch origin
   - the role is gone on the instance, the write is marked, and a `deleted` event is published;
   - a `%`-prefixed role, OcuPilot's own role, or the last counted `%All` holder's path is refused;
   - a vendor 2xx that did not delete fails `PORT.NOTAPPLIED`.
-  - The Roles-list row action with its holder count and typed name waits on the lead's ruling (`## Auto Run Result`).
-- **AC4.** Given a grant that would add `%All` or an `%Admin_*` resource to the role, or a granted role that escalates, when saved by either caller, then the instance refuses it:
+  - The Roles-list row action with its holder count and typed name is Story 9.3's (DW-1513, orchestrator ruling 2026-09-23; `epics.md` 8.3 AC3 is marked `[AMENDED]`).
+- **AC4.** Given a grant that would add `%All`, an `%Admin_*` resource or WRITE on `%DB_IRISSECURITY` to the role, or a granted role that escalates, when saved by either caller, then the instance refuses it:
   - on the screen, the server's sentence lands on the field it concerns;
   - the pickers pre-mark those choices with the same sentence.
 - **AC5 (Integration).** Given a valid Save, when the server accepts it, then:
@@ -282,6 +284,8 @@ Before editing any file marked ⚠, read Epic 7's version with `git fetch origin
 - **AC6.** Given `permissions.roles.create`, when the agent proposes a role and the user confirms, then the write is marked, a ledger row names the sent fields, and a `created` event is published.
 
 ## Spec Change Log
+
+- 2026-09-23, spec gate (orchestrator rulings): AC3's screen row action moved to Story 9.3 as DW-1513; `%DB_IRISSECURITY:W` joins the escalation predicate (DW-1512 in part; AD-10 amended); the predicate was checked to decide by effect, not by name (Design Notes). Status reset to `ready-for-dev` without a re-plan.
 
 ## Review Triage Log
 
@@ -317,11 +321,9 @@ It is the one `Prohibited.RoleEscalates`/`IsPrivilegedRole` already apply to use
 
 On this build every stock role that also writes a system database (`%Manager`, `%Operator`, `%SecurityAdministrator`) is already refused through its `%Admin_*` resources. Only the implicit `%DB_IRISSYS`, `%DB_IRISSECURITY`, `%DB_IRISLIB` and `%DB_IRISAUDIT` roles, and `%DB_*` write grants themselves, pass.
 
-**SPINE DECISION NEEDED (non-blocking; this spec ships the existing predicate):** should AD-10's "granting privilege through any path" also cover WRITE on `%DB_IRISSYS` and `%DB_IRISSECURITY`?
+**Ruled 2026-09-23 (DW-1512, in part):** WRITE on `%DB_IRISSECURITY` joins AD-10's set (written into AD-10's Rule). WRITE on `%DB_IRISSYS` and `%DB_IRISLIB` stays decision-pending for the owner; measured, widening would newly refuse only the `%DB_IRISSYS` and `%DB_IRISLIB` roles themselves, since `%Operator`, `%Manager` and `%SecurityAdministrator` are already refused through their `%Admin_*` resources.
 
-- For: Conventions › IRIS security objects already calls `%DB_IRISSYS:RW` a self-escalation primitive, and `%DB_IRISSECURITY` is the security database (inference).
-- It would change 8.2's verdicts on those implicit roles too.
-- If adopted, it is one clause in `RoleGrantsPrivilege` and one leg per test.
+**The predicate decides by effect, not by name (checked 2026-09-23 on `ocupilot-b-ci`).** `RoleEscalates` reads `GetRecursedRoleSet` and each recursed role's resources: `%HS_Administrator` recurses to `%Developer,%HS_Administrator,%HS_CCR_Deployer,%Manager` and escalates through `%Manager`'s `%Admin_Secure:U`; `%Manager`, `%SecurityAdministrator` and `%Operator` escalate by resource; `%Developer` and `%SQL` do not. No fix is needed.
 
 ### Delete refusals
 
@@ -329,9 +331,9 @@ On this build every stock role that also writes a system database (`%Manager`, `
 - The `%` rule is a tool rule rather than a prohibition. It exists because the vendor endpoint can drop a predefined role and still report success, and the classic list refuses the same names.
 - A role that does not reach `%All` cannot change who holds `%All`, so the census runs only for one that does.
 
-### Pending: the Roles-list row action (AC3's screen caller)
+### Deferred to Story 9.3 (DW-1513): the Roles-list row action
 
-Under the lead's ruling, the holder count is the number of distinct `User` and `User (escalation)` rows in `Security.Role` `OWNERLIST`. This is direct holders; nested grants are not expanded, as on the classic Members tab. The confirm also needs a Fixed strings row carrying `<n>`.
+Under the lead's ruling, the holder count is the number of distinct `User` and `User (escalation)` rows in `Security.Role` `OWNERLIST`. This is direct holders; nested grants are not expanded, as on the classic Members tab. The confirm also needs a Fixed strings row carrying `<n>`, and `screen-action-handler.ts`'s fixed confirmation text needs a count slot, which 9.3 plans.
 
 **Known carry-over:** DW-1493 (the agent's create sends the folded name). DW-1502 covers publishing `OCUPILOTROLE`'s sentence, as it covers `PRIVILEGEGRANT`'s.
 
@@ -341,7 +343,7 @@ Under the lead's ruling, the holder count is the number of distinct `User` and `
 
 - Story 9.3 takes over `permissions/roles/edit/:id` and reuses the grant dialog and `RoleCreateRules`.
 - Story 8.4 may reuse `ResourceGrantsAdministrativePrivilege`.
-- The ruled owner of the row action consumes `permissions.roles.delete`.
+- Story 9.3 (DW-1513) puts the Roles-list row action on `permissions.roles.delete`.
 
 **Integration ACs:** AC5 (the Roles list re-reads on the change bus) and AC3 (the confirmed delete's `deleted` event reaches the same list).
 
@@ -373,27 +375,13 @@ Stateful checks run on slot B's throwaway `ocupilot-b-ci` (web 52777, super 1976
 | AC2 | `role-grant-dialog.spec.ts` current/resulting test; the browser edit leg | Render the resulting grant in the current line |
 | AC3 | `RoleDelete.cls` refusal and verified-delete tests; `RoleWire` delete leg | Drop the `Role` branch's delete step; empty `VERIFIEDDELETES` |
 | AC4 | `RoleCreate.cls` both-callers escalation test | Remove the `role` step from `Prohibited.Created` |
+| AC4 (DW-1512) | `RoleCreate.cls` `%DB_IRISSECURITY:W` leg; `UserCreate.cls` `%DB_IRISSECURITY` role leg | Drop the `%DB_IRISSECURITY` write clause |
 | AC5 | `role-create-form.store.spec.ts` change-event test | Drop the `publishCreated()` call |
 | AC6 | `RoleCreate.cls` confirm test; `RoleWire` create leg | Set `CREATES` to 0 on `RoleCreate` |
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap -- AC3's screen caller (a Roles-list Delete row action with a holder count and a typed name) cannot follow AD-53 on this branch without either Epic 7's code or an edit to Epic 7's files, and the lead's instruction forbids both a second mechanism and those edits.
+Status: ready-for-dev
+Blocking condition: none
 
-### The question for the lead
-
-The mechanism AD-53 names exists only on `origin/OCU-1-epic7` (`## Code Map` › `Needs the lead`). That branch's handler also carries only static consequence text, so the holder count needs an edit to `screen-action-handler.ts` in any case. Epic 7 has 7.1 done, 7.3 in progress, 7.2 ready and six stories in backlog. Choose one:
-
-1. **Recommended: split AC3.**
-   - This spec ships as written: the create form, the grant dialog, AC4, and `permissions.roles.delete` with its AD-10 refusals and verified delete.
-   - The row action moves as a `DW-n:` bullet to a story that runs after Epic 7 merges. That story adds `SCREENACTIONS = "delete"` to `RoleDelete`, `rowActions` to `RoleList`, a `GET /roles/holders` count read (`Security.Role` `OWNERLIST`, which needs an `AdminPort` read suffix), a count-bearing consequence in `screen-action-handler.ts`, and its Fixed strings row.
-   - This defers part of an AC, so the user rules on it (Rule 5, ask first). No floor impact: 8.2 already gives Permissions its form.
-2. **Forward-integrate `origin/OCU-1-epic7` into `OCU-1-epic8` before 8.3's implement,** then plan the row action on it (orchestrator's call). It couples the two epics while 7.2 and 7.3 are in flight.
-3. **Allow an interim screen route now** (`DELETE /roles`, AD-55 shape, resolving `RoleDelete`), with a local typed-name dialog on `app-dialog`, retired onto AD-53's route at the merge. It ships AC3 whole, but it is the second mechanism the lead ruled out.
-
-If option 1 is ruled, the spec needs no re-plan: set `status: ready-for-dev`, add the ruling to `## Spec Change Log`, and name the receiving story in AC3's last bullet. Options 2 and 3 re-open the plan for AC3 only.
-
-### Non-blocking
-
-- `SPINE DECISION NEEDED` (Design Notes): whether AD-10 also covers WRITE on `%DB_IRISSYS`/`%DB_IRISSECURITY`. The spec ships the existing predicate unchanged.
+Planned; the AC3 intent gap was ruled by the orchestrator (the row action moves to Story 9.3 as DW-1513) and the lead added the `%DB_IRISSECURITY:W` clause (DW-1512) at the spec gate.

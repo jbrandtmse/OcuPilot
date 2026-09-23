@@ -4477,7 +4477,7 @@ So that access can be shaped without hand-editing security tables.
 
 - **Given** a role granted to users
 - **When** a delete is requested
-- **Then** the confirmation **warns with the count of users holding it** before proceeding, and requires the typed name.
+- **Then** the confirmation **warns with the count of users holding it** before proceeding, and requires the typed name. [AMENDED 2026-09-23, orchestrator-authorised, Rule 5 partial deferral: this story ships the agent's confirmed delete (`permissions.roles.delete`) with its AD-10 refusals; the Roles-list Delete row action - its typed-name confirmation carrying the holder count - moves to Story 9.3 as DW-1513, because AD-53's row-action route and handler exist only on Epic 7's branch until both epics merge.]
 
 - **Given** the grant would add a role to a resource in a way that escalates privilege
 - **When** it is requested, whatever the caller

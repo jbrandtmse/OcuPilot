@@ -6105,3 +6105,12 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: The shipped escalation predicate treats a resource grant as escalating only for %All or %Admin_* resources at any permission; %DB_IRISSYS:W (CLAUDE.md: %Operator carries it and it is a self-escalation primitive) is not covered. Widening changes 8.2's role-picker verdicts and the implicit %DB_* roles.
 - 2026-09-23T05:14:56Z status=decision-pending owner=burndown by=spec_gate note=product/architecture call on AD-10's set; spec 8.3 ships the existing predicate unchanged
+- 2026-09-23T05:17:18Z status=decision-pending owner=burndown by=orchestrator note=ruled in part: %DB_IRISSECURITY:W joins the predicate in 8.3; %DB_IRISSYS:W and %DB_IRISLIB:W stay for the owner
+- 2026-09-23T05:17:18Z status=decision-pending owner=burndown by=runner note=measured slot B: %Operator,%Manager,%SecurityAdministrator already refused (%Admin_* resources); widening adds only
+- 2026-09-23T05:17:18Z status=decision-pending owner=burndown by=runner note=...the %DB_IRISSYS role (for IRISSYS:W) and the %DB_IRISLIB role (for IRISLIB:W); no other shipped role changes verdict
+- 2026-09-23T05:18:56Z status=decision-pending owner=burndown by=runner note=AD-10 amended for %DB_IRISSECURITY:W (spec 8.3 task); predicate verified by-effect (%HS_Administrator->%Manager)
+
+### DW-1513: The Roles-list Delete row action (Story 8.3 AC3's screen caller): SCREENACTIONS on RoleDelete, rowActions on RoleList, a holder-count read, the count in the typed-name confirmation, its Fixed-strings row
+- source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: AD-53's row-action route and handler exist only on OCU-1-epic7; screen-action-handler.ts's confirmation text is fixed, so the 'N users hold this role' count needs a count slot added there. 8.3 ships the agent's permissions.roles.delete.
+- 2026-09-23T05:17:18Z status=routed owner=9-3-the-role-editor by=orchestrator note=Rule 5 partial deferral of 8.3 AC3, orchestrator-authorised 2026-09-23; 9.3 plans the handler's count slot
