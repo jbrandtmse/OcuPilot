@@ -7,7 +7,7 @@ paradigm: 'Descriptor-driven vertical slices, hexagonal at the edges'
 scope: 'OcuPilot in full: Release 1 (119 P0 rows, contest deadline 2026-09-27) binding; Stages 2-6 decided where their gates are already clear, named as staged decisions where they are not.'
 status: final
 created: '2026-09-08'
-updated: '2026-09-22'
+updated: '2026-09-23'
 binds:
   - 'Areas 5.1-5.12 (shell, agent co-pilot, agent tools, agent config, web apps + REST explorer, permissions, security and secrets, tasks, OS management, logs, packaging, polish)'
   - 'FR-1 through FR-79, NFR-1 through NFR-14'
@@ -200,6 +200,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   - Terminating IRIS system processes; deleting OcuPilot's own web applications, resource, role or database.
 
   A self-protection rule that a screen enforces only in its UI is not a prohibition. Every item here is refused on the instance, on the write path, whatever the caller.
+
+  **The account items are refused by effect, not by the verb that reaches them** [AMENDED 2026-09-23, Story 7.2 spec gate, orchestrator-approved, Rule 20, DW-1486]. Each account predicate -- the current user, `_SYSTEM`, the account the instance's own services run as, and the last `%All` holder -- is evaluated for every write whose effect removes that account or its administration: a delete, a disable, and a `Roles` delta that strips `%All`. Stripping `%All` from the service account is the same harm as disabling it, and a delete sends no body, so a predicate gated inside the disable arm, or read off the diff, lets both through. Story 7.2's plan measured exactly that: the four protections fired on a disable only, and a bodyless delete of `_SYSTEM`, the signed-in account, the service account or the last `%All` holder passed every one. Each arm carries a test that fails when its predicate is removed.
 
   **The set has exactly one home.** It is declared once, in the kernel, as predicates evaluated against the resolved target at the moment of the write — never duplicated into a screen, a descriptor or a policy file, and never expressed as a match on request fields, which a caller can vary. Because a predicate reads live state (who the last `%All` holder is, which application serves OcuPilot), it is evaluated inside the same atomic transition as the write (AD-34), so the answer cannot change between the check and the effect.
 
@@ -608,6 +610,18 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A prohibited-set predicate is stated over the effect, never over the payload's shape.** Story 7.1 found the concrete failure: `Prohibited.WebApplication` gated the serving-path arm on `pServes && +$Get(pChanged)`, so a bodyless delete -- which carries no changed fields -- passed straight through the arm meant to protect the application that serves OcuPilot. That is AD-10's own diagnosis ("defined by effect, not by verb") reappearing as "defined by the payload, not by the effect", and it is the same family as DW-1486. A predicate that reads the diff must answer for the write kinds that have no diff.
 
+
+### AD-56 -- An action write may send only its declared secrets, and a screen action accepts only the values its tool declares
+
+- **Binds:** Story 7.2 (set a user's password, add and remove a role) and every later row action that carries a value the person supplies; AD-3, AD-4, AD-6, AD-35, AD-51, AD-53, AD-55, Conventions › Secrets
+- **Prevents:** a password write forced into a merge body or into no body at all, and a screen action route that takes whatever the client sends -- a client-computed role list among it
+- **Rule:** Two gaps Story 7.2 met, closed together because both are about what a caller may put into a write.
+
+  **(i) A secret-only body.** An action-style write (AD-51) may send a body made **only** of its declared secret arguments. Measured on this build: `Security.User`'s password change is its own request type, `CHANGEPWD`, and takes exactly `{NewPassword}` -- neither AD-4's complete property set nor AD-51's empty body. The secret is supplied at the write (the confirm for the agent's caller, the dialog for the screen's) and never stored: not in a proposal's arguments, a diff value, the ledger, screen context or a log line (AD-6, AD-35). The fingerprint covers a declared subject of the fresh read, exactly as AD-51 says; the secret is never part of it. Where the vendor type cannot carry a companion setting -- the change-on-login flag -- that setting is its own ordinary `update` write, sent first, so a failure leaves nothing sent.
+
+  **(ii) A screen action accepts only declared values.** AD-53's route admits a value only under a name the action's tool declares for that action; any other key is refused, not ignored, as AD-6 refuses an undeclared key at confirm. A list-valued field is changed by a **server-side delta over a fresh read** -- add this role, remove that one -- never replaced by a list the client computed, so a concurrent change to another member is never erased (AD-4's concern, reached through a smaller door).
+
+  **This adds no second way for the screen to supply a secret.** A secret travels under the descriptor's existing `secretArguments` declaration -- the one AD-6's confirm channel already closes over, and the one AD-55 routes a screen Save's secrets through (Epic 8, Story 8.2 widens it to accept a top-level secret field of the screen's tools). A screen action's secret is that declaration read by one more caller, never a parallel list.
 
 ## Consistency Conventions
 

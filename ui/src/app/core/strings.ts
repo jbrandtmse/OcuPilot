@@ -1331,6 +1331,39 @@ export const STRINGS = {
   /** EXPERIENCE.md:397 */
   webAppListEmptyAgent: 'create a web application for a REST API',
 
+  // Story 7.2: the Users list's row actions. The four account refusals are caller-neutral because
+  // one predicate refuses the agent and the screen alike (AD-10, AD-53); each is held once on the
+  // server beside the other refusal reasons and pinned equal to this copy.
+  /** EXPERIENCE.md:398 */
+  userRefusalCurrentUser:
+    'This is the account you are signed in as. Disabling or deleting it would lock you out.',
+  /** EXPERIENCE.md:399 */
+  userRefusalSystemAccount:
+    '_SYSTEM is the instance\'s own predefined account. Disabling or deleting it is not available here.',
+  /** EXPERIENCE.md:400 */
+  userRefusalServiceAccount:
+    'The instance\'s own services run as this account. Disabling or deleting it would stop them, OcuPilot included.',
+  /** EXPERIENCE.md:401 */
+  userRefusalLastAllHolder:
+    'This is the last account that holds %All. Disabling it, deleting it or taking the role off it would leave nobody able to administer this instance.',
+  /** EXPERIENCE.md:402 */
+  userDeleteConsequence:
+    'Deleting this user removes the account and every role it holds. This cannot be undone.',
+  /** EXPERIENCE.md:403 */
+  userActionSetPassword: 'Set password',
+  /** EXPERIENCE.md:403 */
+  userPasswordChangeOnLogin: 'Require a password change at next sign-in',
+  /** EXPERIENCE.md:403 */
+  userActionAddRole: 'Add role',
+  /** EXPERIENCE.md:403 */
+  userActionRemoveRole: 'Remove role',
+  /** EXPERIENCE.md:403 */
+  userRoleField: 'Role',
+  // The phrase that resolves `tableWriteCapableEmptyState`'s placeholder on the Users list; Story
+  // 8.2 declares the same key with the same value.
+  /** EXPERIENCE.md:404 */
+  userListEmptyAgent: 'create a user',
+
 } as const;
 
 /**

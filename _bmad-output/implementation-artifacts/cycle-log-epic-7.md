@@ -50,3 +50,9 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T03:06:22Z	Epic 7	amendment	file=epics.md:4253 story=7.2 ac=4 tier=1 reason=AD-10_whatever_the_caller;precedent=orchestrator_ruling_on_8.2_AC3
 2026-09-23T03:11:57Z	Story 7.1	ci_resolved	story=7.1 run=35812092150 result=success resolved_at=next_plan head=377ca9c jobs=8/8
 2026-09-23T03:11:57Z	Epic 7	runner_clarification_raised	story=7.2 items=secret_body_action_write+screen_route_values,copy+UserList.cls+PRIVILEGEGRANT_contention_with_8.2 head_before=452fc6b
+2026-09-23T03:17:21Z	Epic 7	runner_resumed	story=7.2 answer=orchestrator_yes_to_A_and_B condition=implement_waits_for_8.2_code_commit_on_origin/OCU-1-epic8_then_port_the_secretArguments_widening_byte_for_byte
+2026-09-23T03:17:21Z	Epic 7	spine_updated	ad=AD-56 reason=clarification by=runner story=7-2-user-enable-disable-delete-password-and-roles lint=ok_(1_pre-existing_low)
+2026-09-23T03:17:21Z	Epic 7	spine_updated	ad=AD-10 reason=clarification by=runner story=7-2-user-enable-disable-delete-password-and-roles lint=ok dw=DW-1486
+2026-09-23T03:17:21Z	Epic 7	amendment	files=EXPERIENCE.md:173,398-404;strings.ts_userRefusal*/user*_keys;epics.md_7.2_DW-1486_bullet,7.8_DW-1486_note tier=1 by=orchestrator_ruling_B
+2026-09-23T03:17:21Z	Story 7.2	ledger_routed_planned	story=7-2-user-enable-disable-delete-password-and-roles entries=1 excess=0 by=spec_gate ids=DW-1486
+2026-09-23T03:17:21Z	Story 7.2	stage_spawned	stage=plan spawn_at=2026-09-23T03:17:21Z model=opus agent_name=7-2-user-enable-disable-delete-password-and-roles-plan-2 cycle_iteration=2

@@ -2,7 +2,7 @@
 title: 'Story 7.2: User enable, disable, delete, password and roles'
 type: 'feature'
 created: '2026-09-22'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -73,6 +73,40 @@ here (Story 9.1's). No agent marker on the screen's path (AD-15, AD-53).
 | Remove `%All` from the last holder | row action remove-role `%All` | refused | 403 `PROHIBITED.LASTALLHOLDER` |
 | Concurrent role change | another session added role X after the list loaded; this user adds Y | the write holds X and Y | No error expected (delta over fresh read) |
 
+
+**Orchestrator rulings, 2026-09-23 (binding; the three intent gaps are closed).**
+
+1. AC4 is amended (`epics.md` Story 7.2): a grant of `%All` or any `%Admin_*` role is refused on
+   the instance whatever the caller.
+2. **AD-56** (spine) is the write shape: (i) an action write may send a body made only of its
+   declared secret arguments (`CHANGEPWD` takes exactly `{NewPassword}`), supplied at the write,
+   never stored, fingerprinted over a declared subject of the fresh read; (ii) a screen action
+   accepts values only under names its tool declares, a role change is a server-side delta over a
+   fresh read, and the change-on-login flag is its own `update` write sent first. **No second secret
+   channel:** the secret travels under the descriptor's existing `secretArguments` declaration (AD-55,
+   on Epic 8's branch). Epic 8's Story 8.2 owns the widening of that declaration in
+   `Screen/Registry.cls`, `ui/tools/screen-mirror.mjs` and `ui/tools/screen-mirror.test.mjs`; this
+   story does NOT write its own version -- the lead ports 8.2's hunks byte-for-byte before the
+   implement stage starts, and the plan builds on them.
+3. `UserList.cls` is contended: this story adds only `rowActions`, reuses 8.2's
+   `secretArguments: ["Password"]` line verbatim, and never touches `primaryAction` or
+   `emptyAgentKey` (8.2 sets `emptyAgentKey: "userListEmptyAgent"` = "create a user",
+   `EXPERIENCE.md:404`, published by the lead; the `strings.ts` key is this story's shared append).
+4. `Prohibited.ReasonFor`'s `PRIVILEGEGRANT` sentence is Story 8.2's; this story consumes it and
+   publishes only the four caller-neutral account refusals (`EXPERIENCE.md:398-401`), the delete
+   consequence (`:402`) and the labels (`:403`), all published by the lead; the role dialog is added
+   to `:173`'s dialog list. The lead has **already appended and verified** (`npm run test:tools`
+   1,322/0) the `strings.ts` keys for them -- consume, do not re-author: `userRefusalCurrentUser`,
+   `userRefusalSystemAccount`, `userRefusalServiceAccount`, `userRefusalLastAllHolder`,
+   `userDeleteConsequence`, `userActionSetPassword`, `userPasswordChangeOnLogin`, `userActionAddRole`,
+   `userActionRemoveRole`, `userRoleField`, `userListEmptyAgent`.
+5. **DW-1486 folds in, as one restructure with the delete hole** (AD-10 amended 2026-09-23): every
+   account predicate -- current user, `_SYSTEM`, the service account, the last `%All` holder -- is
+   evaluated by effect for a delete, a disable and a `Roles` delta that strips `%All`, with a test per
+   arm that fails when that arm's predicate is removed. `Prohibited.cls` is contended (Epic 8 added
+   ~122 lines): read `git show origin/OCU-1-epic8:src/OcuPilot/Kernel/Proposal/Prohibited.cls` first
+   and stay off its hunks.
+6. AC1's editor half is DW-1501, routed to `9-1-the-user-editor`; this story ships the row-menu half.
 </intent-contract>
 
 ## Code Map
@@ -227,7 +261,9 @@ here (Story 9.1's). No agent marker on the screen's path (AD-15, AD-53).
 
 - 2026-09-23, lead spec gate: intent gap 1 ratified as recommended (b) -- `epics.md` Story 7.2 AC4
   amended under Rule 5 tier-1 on the orchestrator's identical 8.2 AC3 ruling: privilege grants are
-  refused on the instance whatever the caller. Gaps 2 and 3 are with the orchestrator.
+  refused on the instance whatever the caller. Gaps 2 and 3 answered by the orchestrator the same
+  day (rulings in the intent block; AD-56 and the AD-10 amendment written to the spine; copy
+  published at `EXPERIENCE.md:173,398-404`); DW-1486 re-owned here; `status` reset to `draft` to re-plan.
 
 ## Review Triage Log
 
