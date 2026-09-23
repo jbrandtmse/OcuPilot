@@ -6100,3 +6100,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-2-create-a-user.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Spec Tasks (UserList.cls bullet) accepts it; the vendor's UpdateUser copies only Schema() keys into Modify, so a Password on a PUT is never applied (read on ocupilot-b-ci).
 - 2026-09-23T04:51:50Z status=by-design owner=8-2-create-a-user by=cr note=spec-bound; same root cause as DW-1450 (channel is per screen, not per tool)
+
+### DW-1512: Whether AD-10's privilege-grant set should also cover WRITE on %DB_IRISSYS and %DB_IRISSECURITY in a role's resource grants
+- source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: The shipped escalation predicate treats a resource grant as escalating only for %All or %Admin_* resources at any permission; %DB_IRISSYS:W (CLAUDE.md: %Operator carries it and it is a self-escalation primitive) is not covered. Widening changes 8.2's role-picker verdicts and the implicit %DB_* roles.
+- 2026-09-23T05:14:56Z status=decision-pending owner=burndown by=spec_gate note=product/architecture call on AD-10's set; spec 8.3 ships the existing predicate unchanged

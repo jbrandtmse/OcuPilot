@@ -76,3 +76,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T04:55:15Z	Epic 8	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp merge=d01ac20 conflicts=none changed=docs_only(cycle-log-parallel.md) code_paths_changed=0
 2026-09-23T04:56:43Z	Epic 8	epic_context_compiled	sha=pending reason=planning_artifact_newer(spine_DW-1502_row,AD-21_wording;8.2_done) model=opus lines=61
 2026-09-23T04:56:43Z	Story 8.3	stage_spawned	stage=plan spawn_at=2026-09-23T04:56:43Z model=opus agent_name=8-3-create-a-role-plan-1 cycle_iteration=1
+2026-09-23T05:15:03Z	Story 8.2	ci_resolved	story=8.2 run=35820255794 head=843851f result=success resolved_at=next_plan_return
+2026-09-23T05:15:03Z	Story 8.3	plan_clarification_requested	spawn_at=2026-09-23T04:56:43Z model=opus spec=spec-8-3-create-a-role-and-manage-its-resource-grants.md spec_status=blocked spec_bytes=37039 blocking=intent_gap_AC3_role_delete_row_action_needs_AD-53_mechanism_only_on_origin/OCU-1-epic7 options=split_AC3(recommended),merge_epic7_forward,interim_route side_filed=DW-1512(decision-pending,spine_Deferred)
+2026-09-23T05:15:03Z	Epic 8	spine_updated	ad=deferred reason=clarification by=runner story=8-3-create-a-role-and-manage-its-resource-grants rows=DW-1512 lint=ok(preexisting_low)
