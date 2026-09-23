@@ -393,7 +393,7 @@ Actionable work items from the UX design contract (`DESIGN.md` for how it looks,
 #### Brand assets
 
 - UX-DR14: Wire the **logo asset pipeline**: the reversed horizontal lockup at 32px directly on the navy header (no plate, no ground, no hover state), the mark alone where only the mark fits (a slot under ~170px), the **navy-wordmark light lockup** on light grounds only (the form-login card, README, About - it is 1.02:1 on the shell and must never touch the chrome), the globe-iris favicon exported at 16, 32, 180 and 512px, and the robot crop as the agent's avatar at 256px and 64px. **The wordmark is never typeset** in Inter or any face, and the eye-and-globe motif has exactly one assignment - never an empty state illustration, sign-in hero or watermark. The seven transparent files are flood-fill cutouts an owner vector export supersedes file for file.
-- UX-DR15: Ship **icons**: the owner's set when it lands; until then one vendored Material Symbols Outlined glyph per slot (allowed under NFR-10, replaced file for file). **Never an initial in a circle**, which reads as a wireframe in a screenshot.
+- UX-DR15: Ship **icons**: the rail and Home's area tiles carry the icons drawn in `mockups/key-home.html` (owner decision 2026-09-23, Story 15.7); every other slot takes the owner's set when it lands, until then one vendored Material Symbols Outlined glyph (allowed under NFR-10, replaced file for file). **Never an initial in a circle**, which reads as a wireframe in a screenshot.
 
 #### Shell layout
 
@@ -682,11 +682,11 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 | 1-8 (token layer, type ramp, vendored fonts, spacing and density, shapes, elevation, motion) | Story 1.2, established once; applied by every story thereafter |
 | 63-64 (the fixed-string table, the voice rules) | Story 1.2's copy layer, established once and enforced by lint; applied by every story that renders text. Story 14.6 is the only later story that *adds* a string to the table |
 | 9-13 (the contrast floor, the three marginal guard tests, the four rejected pairs, the seven color rules, three-colors-three-meanings) | Story 1.2; the dark half re-verified in Story 15.6 |
-| 14-15 (logo pipeline, icon policy) | Stories 1.10 and 1.2; the agent avatar in Story 4.3 |
+| 14-15 (logo pipeline, icon policy) | Stories 1.10 and 1.2; the agent avatar in Story 4.3; the rail and Home tiles in Story 15.7 |
 | 16-19 (the VS Code shell, the yield order, Home, reflow) | Stories 1.9, 1.10, 1.12, 4.3; the two-dimensional scrolling exception in Story 2.4 |
 | 20-26 (rail, rail item, attention dot, side bar, header, command box, status bar, server-flag badge) | Stories 1.9 and 1.10; the attention dot's agent conditions in Story 3.6 |
 | 27-28 (locator bar, command bar) | Story 1.10 |
-| 29-30 (data table, the APG grid keyboard model) | Story 2.4 |
+| 29-30 (data table, the APG grid keyboard model) | Stories 2.4 and 15.8 |
 | 31 (row-overflow menu) | Story 7.1 builds the component; Story 7.2 reuses it |
 | 32-33 (form-page, tabs) | Story 3.5 builds the form-page shell, Story 8.1 the first full form; Story 9.1 the first tabbed editor |
 | 34 (stepper) | Story 9.7 |
@@ -735,6 +735,8 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 **Owner amendment, 2026-09-20 (contest field).** Story 11.8 adds the privilege line to the proposal card from the endpoint's `ResourcesOR()` list and the shell's privilege map; Story 17.6 also ships the walkthrough as a static no-credentials page; Story 7.6 records the 2026.2 task-list `Suspended` quirk. No dependency changes.
 
 **Owner re-sequence, 2026-09-21.** Epic 12 is ranked ahead of Epic 11 in the polish week. At the pace measured through Story 5.8, two of Epics 9, 11 and 12 finish before the submission deadline, not three, and the OAuth 2.0 editors are what the task statement names; Epic 11's refinements can land in the voting week, where improvements are allowed. Dispatch after the floor follows the dependency graph: Epics 9 and 12 become eligible together once both Epics 7 and 8 have merged, and Epic 11 is dispatched only after both of them; the slot the first of Epics 7 and 8 frees takes Story 15.6, and waits if that finishes first. Epic 14 stays out of the run.
+
+**Owner triage, 2026-09-23.** Three findings from browsing the Epic 5 build. The rail shows letters where UX-DR15 requires icons: Story 15.7 ships the eight drawn in the Home mockup and runs with Story 15.6 in the window after Epic 8 merges. Truncated cells cannot be read: Story 15.8 adds content-sized defaults, resizable columns, horizontal scrolling inside the table and a full-value tooltip; it changes the shared data table Epic 7 is editing, so it is dispatched once Epic 7 merges, ranked after Epic 12 and before Epic 11. Story 17.6's Anthropic key section says to scope the key to one workspace. If Stories 15.6 and 15.7 overrun the window, Epic 12 waits; that delay is accepted.
 
 **Orchestrator amendment, 2026-09-19.** Two consequences of the amendment above, settled on the owner's
 instruction. Story 13.3's acceptance criteria are rewritten so none of them can be closed by publishing:
@@ -864,7 +866,7 @@ An OcuPilot administrator can disable any write tool by tool and action, a user 
 
 ### Epic 15: Shell conveniences and the theme
 
-A user makes the portal their own - own password, favorites, recents, menu search, About, per-screen help, the shortcuts menu, the links panel, Home's system information, UI state that survives a sign-out, and a dark theme the community has been asking for. Polish week.
+A user makes the portal their own - own password, favorites, recents, menu search, About, per-screen help, the shortcuts menu, the links panel, Home's system information, UI state that survives a sign-out, a dark theme the community has been asking for, the rail's icons, and columns wide enough to read. Polish week.
 
 **FRs covered:** FR-73
 
@@ -5514,7 +5516,7 @@ So that "the model is assumed compromised" is a tested claim rather than a postu
 
 ## Epic 15: Shell conveniences and the theme
 
-A user makes the portal their own - own password, favorites, recents, menu search, About, per-screen help, the shortcuts menu, the links panel, Home's system information, UI state that survives a sign-out, and a dark theme the community has been asking for. Polish week.
+A user makes the portal their own - own password, favorites, recents, menu search, About, per-screen help, the shortcuts menu, the links panel, Home's system information, UI state that survives a sign-out, a dark theme the community has been asking for, the rail's icons, and columns wide enough to read. Polish week.
 
 ### Story 15.1: Change your own password
 
@@ -5649,6 +5651,75 @@ So that the portal is usable in the conditions I actually use it in.
 - **Given** any surface in dark mode
 - **When** contrast is measured
 - **Then** it meets the same floor as light, including the three pairs already flagged marginal, whose guard tests run in both modes.
+
+---
+
+### Story 15.7: The rail's icons
+
+**Dispatched with Story 15.6** in the window after Epic 8 merges (owner triage, 2026-09-23).
+
+As a developer-administrator,
+I want each area on the rail to carry its own icon,
+So that the shell reads as a finished product rather than a wireframe of letters.
+
+**Acceptance Criteria:**
+
+- **Given** the rail's eight items
+- **When** they render
+- **Then** each shows the icon drawn for its area in the rail of `ux-designs/ux-OcuPilot-2026-09-08/mockups/key-home.html` - Home, Logs, OS management, Tasks, Permissions, Web applications and REST API explorer, Security and secrets, Agent co-pilot - as inline SVG on its 20 by 20 view box with a 1.5 stroke in `currentColor`, and no letter remains.
+
+- **Given** Home's area tiles
+- **When** they render
+- **Then** each carries the 24px version of the same icon from the same mockup.
+
+- **Given** the rail's states - rest, hover, active, gated and the attention dot
+- **When** each applies
+- **Then** the icon takes that state's color through `currentColor`, in both themes, at the contrast DESIGN.md's `rail-item` rows already record.
+
+- **Given** the icons are decorative
+- **When** a screen reader reaches a rail item or a tile
+- **Then** it hears the area name and nothing from the icon, and nothing loads from outside the bundle.
+
+- **Given** DESIGN.md's rail paragraph names an interim Material Symbols set
+- **When** this story completes
+- **Then** it names the mockup's icons instead; the other interim-glyph slots - empty states, inline notices, sign-in - are outside this story.
+
+---
+
+### Story 15.8: Columns you can read
+
+**Dispatched after Epic 7 merges** and ranked after Epic 12, before Epic 11 (owner triage, 2026-09-23). It changes the data table every list uses, which Epic 7 is editing.
+
+As a developer-administrator scanning a list,
+I want columns wide enough to read, and the whole value when one is cut,
+So that a long path or class name never hides behind an ellipsis.
+
+**Acceptance Criteria:**
+
+- **Given** a list
+- **When** it first renders
+- **Then** each column's default width follows what it holds - identifier and code columns wide, status and number columns narrow - and no header label is ever cut: the label sets the column's minimum.
+
+- **Given** the columns are wider than the content area
+- **When** the table renders
+- **Then** it scrolls horizontally inside its own frame with the sticky header aligned to the body, under the two-dimensional exception UX-DR19 grants data tables, and the page never scrolls sideways.
+
+- **Given** a column edge in the header
+- **When** the user drags it
+- **Then** the column resizes, never below its label
+- **And** the same is possible from the keyboard on the grid's active column, with the binding listed in the shortcuts menu and the new width announced.
+
+- **Given** a width the user set
+- **When** they return to the screen, or sign out and back in
+- **Then** it is restored, stored per screen beside sort, filter and max rows in the instance-side UI state of Story 15.5.
+
+- **Given** a cell whose value is cut
+- **When** the pointer rests on it, or the grid's active cell moves onto it
+- **Then** a tooltip shows the whole value; a cell that is not cut shows none; and the value is never carried by a bare `title` attribute (DW-146).
+
+- **Given** the virtualized list's fixed row height
+- **When** columns resize or the table scrolls
+- **Then** row and header heights do not change, and the browser specs that pin them stay green.
 
 ---
 
@@ -6177,7 +6248,8 @@ So that the entry's central claim is legible to me even though I will not run it
 
 - **Given** each provider OcuPilot ships
 - **When** the README describes getting started
-- **Then** it carries a "get a key in two minutes" section for that provider.
+- **Then** it carries a "get a key in two minutes" section for that provider
+- **And** the Anthropic section says to create a key scoped to one workspace, because a key for all workspaces is refused without an `anthropic-workspace-id` header, which OcuPilot does not send.
 
 - **Given** no hosted demo instance ships, at any point
 - **When** the judge-without-a-key path is assessed
