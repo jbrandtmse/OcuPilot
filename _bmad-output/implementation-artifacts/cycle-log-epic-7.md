@@ -212,3 +212,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T17:03:49Z	Story 7.8	smoke_complete	method=api result=pass iterations=1 defects_caught=0 evidence=probe_routine_job_1586423_on_ocupilot-ci:suspend_200,resume_200,terminate-with-error_200(process_gone);terminate_system_pid_1626_403_PROHIBITED.SYSTEMPROCESS_with_the_published_sentence;probe_routine_deleted model=claude-opus-5-5
 2026-09-23T17:04:34Z	Story 7.8	committed	sha=bd4b1759 submodules= ci=pending run=35893105905 amendments=EXPERIENCE.md:419-425,spine:AD-52_named_case,ui/angular.json_budget(DW-1166)
 2026-09-23T17:04:40Z	Epic 7	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@becb7b57 merge=914412c2 files=1_cycle-log-parallel_only conflict=none
+2026-09-23T17:05:45Z	Epic 7	epic_context_compiled	sha=fe32f74c reason=planning_artifact_newer model=opus
+2026-09-23T17:05:45Z	Story 7.10	stage_spawned	stage=plan spawn_at=2026-09-23T17:05:45Z model=opus agent_name=7-10-the-remaining-application-error-delete-scopes-plan-1 cycle_iteration=1
