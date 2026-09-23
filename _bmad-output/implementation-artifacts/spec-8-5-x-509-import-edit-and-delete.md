@@ -2,7 +2,8 @@
 title: 'Story 8.5: X.509 import, edit and delete'
 type: 'feature'
 created: '2026-09-23'
-status: 'ready-for-dev'
+status: 'blocked'
+baseline_revision: 'bc1c5fdb92eafc31bab557b67f9596b8c0c83f3b'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -421,10 +422,43 @@ Stateful checks run on slot B's throwaway `ocupilot-b-ci` (web 52777, super 1976
 | AC7 | `SecretSpelling` | `Write.cls` :424 matches the raw path (`$ListFind(tSecrets, tPath)`) |
 | Canonical PEM | `X509Import` single-line leg | `PemBlock` stops re-wrapping |
 
+Observed (implement stage; each applied to the working file, loaded with `cbk-d` or rerun under `node --test`/`ng test`, observed red, restored from a byte copy and reloaded):
+
+- mutation: `AdminPort.CONTENTCOMPLETEDTYPES` emptied -> `X509Wire` import, read-scan and agent-import legs red (run 239) and `X509Import.TestTheSchemaAdvertisesNoSecretAndNoPath` red (run 238) (AD-27 pin; the vendor POST refuses the content keys at 400, so the unit port legs stay green)
+- mutation: `Mint.Mint`'s refusal of a secret argument disabled -> `X509Import.TestNoSecretReachesTheProposalTheLedgerOrAnAnswer` red on the refusal and the stored-row scan (run 241) (AC3 pin, stored proposal)
+- mutation: the key text appended to the status `ImportThroughClass` returns for a refused save -> `X509Import.TestARefusedImportLogsNoSecret` red, cases 1-3 (run 242) (AC3 pin, log output)
+- mutation: `X509Import.OPTIONALSECRETS` empty -> `TestTheCardRequiresTheCertificateAndLeavesTheKeyOptional` red on both optional rows (run 243); Certificate added to it -> red on the required row (run 244); `proposal-card.ts` `secretsFilled` requiring every field -> the card spec's Story 8.5 leg red; answering true -> that leg and AC4/DW-1232 red; `optionalSecrets` in `proposal-view.ts` marking every row -> `proposal-view.test.mjs` optional leg red (required-row pin)
+- mutation: `AdminPort.IMPORTFIELDS` admitting `CAFile` -> `X509Import.TestAFilePathIsRefusedByEveryCaller` red, the credential saved (run 240; the leaked probe was deleted by exact alias and the class now removes it in `OnAfterOneTest`)
+- mutation: `X509Save.Update` composing instead of `Mint.Merge` -> `X509Update.TestAnEditKeepsTheFieldsTheCallerDidNotChangeOnBothCallers` red (run 246) (AC4)
+- mutation: `X509Delete` subject and precondition `IssuerDN` alone -> `TestTheRemovalRowsAndAReplacedCertificateRefusesTheConfirm` red on the moved serial (run 247) (AC5)
+- mutation: `Write.FieldRows` testing the raw path (`$ListFind(tSecrets, tPath)`) -> `SecretSpelling.TestTheValidatorAdmitsExactlyTheSpellingsTheFieldRowsDrop` red on `OwnerList`, `OwnerList[]`, `PeerNames`, `PeerNames[]` (run 245) (AC7)
+- not run (halted, see Auto Run Result): AC1/AC2/AC6 client legs, the canonical-PEM mutation, the form-read `PrivateKey` mutation
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap: bundle budget 1200871 (the HEAD bundle is 1174818 bytes against the 1185000-byte `maximumWarning`; this story's form page, store and actions add 26053, so `build-output.test.mjs` DW-371 is red). Budget not raised; halted before the client specs and the browser spec.
+
+Stage check: the stage agent rebuilt `ui` independently and Angular reported the initial total 1.20 MB, over `maximumWarning` by 15.87 kB (1,200,871 bytes). The implementation is left uncommitted in the worktree (no finalize commit on a halt); `ocupilot-b-ci` is up.
+
+footprint_extensions: contended `src/OcuPilot/Kernel/Proposal/Prohibited.cls`, `src/OcuPilot/Kernel/Proposal/Mint.cls`, `src/OcuPilot/Api/Router.cls`, `src/OcuPilot/Screen/Tool/Classification.cls` (tail append), `src/OcuPilot/Screen/Tool/ToolFields.cls` (regenerated), `src/OcuPilot/Test/{SurfaceCoverage,EndpointCoverage,ReadTool,ToolRoundTrip,PortFixture,Prohibited}.cls`, `ui/src/app/core/proposal-view.ts`, `ui/src/app/shell/proposal-card.ts`, `ui/src/app/shell/proposal-card.spec.ts`, `ui/src/app/core/screen-actions.ts` (one head entry); shared-append `src/OcuPilot/Port/AdminPort.cls` (plus the `RunSequence` hook line), `ui/src/app/core/strings.ts`, `ui/src/styles/_components.scss`, EXPERIENCE.md Fixed strings rows 408-412; in Epic 7's diff but not contended (roster rule, 2026-09-23): `src/OcuPilot/Test/WireSecurityRead.cls` (five X.509 form rows), `ui/tools/navigation.test.mjs` (one route), `ui/src/app/core/screens.generated.ts` (regenerated), `ui/src/app/shell/screen-outlet.ts` (one entry, one import), `ui/src/app/app.ts` (one injection pair, one reset)
+
+### Done
+
+- Server: the AD-27 content import in `AdminPort` (`PemBlock`, `PemBytes`, `ImportThroughClass`, `CONTENTCOMPLETEDTYPES`), the three tools, `X509Form`, `X509Rules`/`X509Save`, four routes, the `X509.*` block, the `x509-credential` prohibited type, optional composed secrets in `Mint`.
+- Tests: `X509Material`, `X509Fixture`, `X509LogPort`, `X509SecretProbe`, `X509Import` (10), `X509Update` (4), `X509Delete` (3), `X509Wire` (5, armed), `SecretSpelling` (2), roster rows; `ci-throwaway.sh` arms `X509Wire`.
+- Client: the form page, store and actions; the card's optional secrets; strings and Fixed strings rows; the proposal-view and card legs.
+
+### Deviations for the lead
+
+- `Test/Prohibited.cls`' reviewed-few rule requires every declared template secret on the reviewed create list: `PermittedCreateFields("x509-credential")` names `PrivateKeyPassword` and the import's `SettableFields` carries it (never in the schema; the mint refuses it as an argument). `X509Update`/`X509Delete` declare no secret of their own, so their confirm channel is closed.
+- The port answers a save refused as expired, wrong password or mismatched key 400 `PORT.VALIDATION` (not the vendor's 500); any other refused save is 500. No secret text enters a status in either case.
+- `x509FieldAlias` not added: the form reuses `x509ColumnAlias` (the same literal).
+
+### Remaining
+
+- `x509-form.store.spec.ts`, `x509-form.page.spec.ts`, `app.routes.spec.ts`/`screen-mirror.test.mjs` legs if they redden, `ui/browser/x509-import.browser-spec.mjs`, the AC1/AC2/AC6 client mutations.
+- The full ObjectScript sweep on a fresh throwaway, `npm test`, `smoke.sh`, `lint-docs`.
 
 ### For the lead's ruling
 
