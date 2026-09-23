@@ -2,7 +2,7 @@
 title: 'Story 8.5: X.509 import, edit and delete'
 type: 'feature'
 created: '2026-09-23'
-status: 'blocked'
+status: 'in-progress'
 baseline_revision: 'bc1c5fdb92eafc31bab557b67f9596b8c0c83f3b'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -270,6 +270,12 @@ Before editing a ⚠ file, run `git fetch origin && git show origin/OCU-1-epic7:
 - `ui/src/app/core/screen-actions.ts` is contended (Epic 7 +15): read `git show origin/OCU-1-epic7:ui/src/app/core/screen-actions.ts` immediately before editing, add the single "Import" label entry away from Epic 7's append, list it under `footprint_extensions:`.
 - The X.509-list Delete row action moved to Story 9.5 as DW-1541 (delete is in this story's title only); this story ships `security.x509.delete`.
 
+### Orchestrator rulings on the implement halt, 2026-09-23 (work these first)
+
+- [ ] [Lead] **Bundle budget, DW-1166 policy.** Set `ui/angular.json`'s initial `maximumWarning` to `1261kB` (5% above the measured 1,200,871 B; the parser counts 1 kB as 1,000 B) and the literal pinned in `ui/tools/angular-json.test.mjs` to the same, replacing that file's budget-history sentence with the current figure and reason. `maximumError` stays `1600kB`. If the final measured total exceeds 1,261,000 B, re-base to about 5% above it and say so. The commit message cites DW-1166 and the byte count.
+- [ ] [Lead] **`ui/src/app/shell/screen-outlet.ts`** is contended append-only: this story adds one `DESCRIPTOR_PAGES` entry and its import; do not touch the `form-page` doc comment. List it under `footprint_extensions:`.
+- [ ] [Lead] **No private-key literal in the repository** (the repository is public; push protection is off). `Test/X509Material.cls` generates a throwaway RSA key and a self-signed certificate once per class in `OnBeforeAllTests` through `$ZF(-100)` with `openssl` (the image carries `/usr/bin/openssl`, OpenSSL 3.0.13) into a per-run directory under the instance's temp directory, reads them as text, and deletes the directory in `OnAfterAllTests`, asserting it is gone. The expired-certificate and key-mismatch cases generate their own material the same way (for example `-days 0`, or a second key). A certificate with no private key may stay a literal. If `$ZF(-100)` is refused in the test process, HALT `blocked` with `TOOLING: $ZF(-100) openssl refused` -- never fall back to a literal, never obfuscate one. Before the finalize commit, `git diff --cached | grep -c 'BEGIN.*PRIVATE KEY'` must print 0 (the pre-existing `Install/Fixture.cls` demo literal is DW-1544, not this story's).
+
 ### Acceptance Criteria
 
 - **AC1.** Given the import form, when it renders, then it takes Alias, Certificate, an **optional** Private key in a masked field (password input with a labeled show/hide toggle, never pre-filled or echoed), Private key password, Authorized users and Intended peers, in that order, and no file path.
@@ -281,6 +287,8 @@ Before editing a ⚠ file, run `git fetch origin && git show origin/OCU-1-epic7:
 - **AC7 (DW-1456).** Given a name the registry's confirm-channel validator admits as a settable secret, when a tool's descriptor declares it, then `Write.FieldRows` no longer advertises it. A spelling the consumer never produces (`OwnerList[]`) is refused by the validator.
 
 ## Spec Change Log
+
+- 2026-09-23, lead (orchestrator rulings on the bundle-budget halt): budget re-based to 1261kB under DW-1166; `screen-outlet.ts` contended append-only; no private-key literal -- tests generate key material with openssl at run time. Status reset to `in-progress` with the implementation still uncommitted.
 
 - 2026-09-23, spec gate (orchestrator rulings): AD-27's second case approved and written (verified first on the throwaway); the X.509-list row action moved to Story 9.5 (DW-1541); `screen-actions.ts` contended for one entry; optional secret rows agreed as an explicit declaration.
 

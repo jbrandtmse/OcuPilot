@@ -6187,3 +6187,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-5-x-509-import-edit-and-delete.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: AD-53's row-action route exists only on OCU-1-epic7 until both epics merge; 8.5 ships the agent's security.x509.delete. Delete is in 8.5's title only, not an AC.
 - 2026-09-23T11:02:04Z status=routed owner=9-5-the-ssl-tls-editor by=orchestrator note=orchestrator ruling 2026-09-23, the 8.3/8.4 precedent (DW-1513, DW-1528)
+
+### DW-1544: The demo fixture in Install/Fixture.cls carries a PEM private key literal, already in the public repository's history since b366e45f
+- source: orchestrator ruling on 8.5 test keys | severity: med | fix-risk: med | footprint: in-epic
+- evidence: src/OcuPilot/Install/Fixture.cls:1176 builds '-----BEGIN PRIVATE KEY-----' from literals for the opt-in demo X.509 credential (UX-DR82); the repo is public and push protection is off; removing it from HEAD does not remove it from history
+- 2026-09-23T12:42:13Z status=escalated owner=burndown by=lead note=owner/orchestrator call: generate at install via openssl (absent on some installs), ship a public cert only, or accept the demo key; history stays either way
