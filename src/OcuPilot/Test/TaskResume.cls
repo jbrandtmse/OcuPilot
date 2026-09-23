@@ -16,7 +16,7 @@
 /// <p><b>It also runs a task</b> (Story 7.5): its two run methods create
 /// <class>OcuPilot.Test.TaskRunFixture</class>'s probe, a task that runs <code>Quit</code> on demand,
 /// run it, wait at most 180 s for its history row, and delete it in their own frame.</p>
-/// <p><b>And it suspends, resumes and deletes one</b> (Story 7.6): its two schedule methods create
+/// <p><b>And it suspends, resumes and deletes one</b> (Story 7.6): its three schedule methods create
 /// that fixture's schedule probe -- a user task, or a system-type one for the agent's delete --
 /// act on it, read every result through <code>INFO</code>, and delete it in their own frame.</p>
 Class OcuPilot.Test.TaskResume Extends %UnitTest.TestCase
@@ -766,6 +766,7 @@ Method TestTheScheduleSuspendResumeAndDeleteOverTheWire()
         Do $$$AssertEquals(tStatus, 400, "a second Suspend is refused 400, the route's refusal of a problem: " _ $Extract($Get(tBody), 1, 300))
         If tStatus = 400 {
             Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+            Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "under the code the mint refuses a no-op with")
             Do $$$AssertTrue($IsObject(tEnvelope.%Get("detail")) && (tEnvelope.%Get("detail").%Get("problem") [ "already suspended"), "with the problem naming the no-op")
         }
         Do $$$AssertEquals($ClassMethod(tFixture, "HistoryRowCount", tId), tRows, "and nothing was sent: the task's history gained no row")
@@ -830,6 +831,48 @@ Method TestTheAgentsDeleteOfASystemTaskCarriesItsTypeAndIsMarked()
         Do $$$AssertEquals($ClassMethod(tFixture, "InfoStatus", tId), 404, "and INFO then answers 404")
     } Catch ex {
         Do $$$AssertStatusOK(ex.AsStatus(), "the agent's delete raised")
+    }
+    Do $ClassMethod(tFixture, "DeleteScheduleProbeTask")
+    Do $$$AssertEquals($ClassMethod(tFixture, "ScheduleProbeCount"), 0, "and the schedule probe task is gone")
+    If tTurn '= "" Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+}
+
+/// <p>Story 7.6, AC4 and AD-6 through <class>OcuPilot.Port.TaskPort</class>: an agent delete minted
+/// on a system-type probe is refused <code>PROPOSAL.TARGETCHANGED</code> at 409 once the task has
+/// become a user task, and the task is still there. The moved field is <code>Type</code>, the one
+/// the port completes from <code>INFO</code>, so the confirm's re-read goes through that port.</p>
+/// <p>Mutation (Rule 19): drop <code>Type</code> from
+/// <parameter>OcuPilot.Screen.Tool.TaskDelete.FINGERPRINTSUBJECT</parameter> -- the confirm deletes
+/// the task and the refusal assertions go red.</p>
+Method TestTheAgentsDeleteIsRefusedOnceTheTaskMoved()
+{
+    Set tTool = "OcuPilot.Screen.Tool.TaskDelete"
+    Set tFixture = "OcuPilot.Test.TaskRunFixture"
+    Set tSC = $ClassMethod(tFixture, "EnsureScheduleProbeTask", .tId, 1)
+    Do $$$AssertStatusOK(tSC, "the system-type schedule probe exists: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tTurn = ""
+    Try {
+        Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+        Do $$$AssertStatusOK(tSC, "the probe turn is seeded")
+        If $$$ISERR(tSC) Quit
+        Set tArgs = {}
+        Do tArgs.%Set($ClassMethod(tTool, "IdArgument"), tId, "string")
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint($Parameter(tTool, "DESCRIPTORCLASS"), $Parameter(tTool, "TOOLNAME"), $Username, "", tTurn, tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), tId, $ClassMethod(tTool, "IdArgument"), $ClassMethod(tTool, "SettableFields"), tTool)
+        Do $$$AssertStatusOK(tSC, "the delete mints against the instance: " _ $System.Status.GetErrorText(tSC))
+        If $$$ISERR(tSC) Quit
+
+        ; Somebody else made it a user task in the window.
+        Set tSC = $ClassMethod(tFixture, "EnsureScheduleProbeTask", .tSameId, 0)
+        Do $$$AssertStatusOK(tSC, "the probe becomes a user task: " _ $System.Status.GetErrorText(tSC))
+        Do $$$AssertEquals(tSameId, tId, "and is the same task")
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+        Do $$$AssertStatusNotOK(tSC, "the confirm is refused")
+        Do $$$AssertEquals(+$Get(tHttp), 409, "at 409")
+        Do $$$AssertEquals($Get(tCode), $Parameter("OcuPilot.Kernel.Proposal.Write", "TARGETCHANGED"), "with the moved-target code")
+        Do $$$AssertEquals($ClassMethod(tFixture, "InfoStatus", tId), 200, "and the task is still there")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the moved-target delete raised")
     }
     Do $ClassMethod(tFixture, "DeleteScheduleProbeTask")
     Do $$$AssertEquals($ClassMethod(tFixture, "ScheduleProbeCount"), 0, "and the schedule probe task is gone")

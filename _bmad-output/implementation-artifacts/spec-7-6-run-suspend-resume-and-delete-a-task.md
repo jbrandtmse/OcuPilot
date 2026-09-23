@@ -2,7 +2,7 @@
 title: 'Story 7.6: Run, suspend, resume and delete a task'
 type: 'feature'
 created: '2026-09-23'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'b447f29466120d48b9d83d1ea2067cea6a349240'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -11,7 +11,21 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-7-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-7-5-run-an-on-demand-task.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The initial bundle is 1,119,895 bytes against the 1,120 kB warning budget, 105 bytes of headroom.
+    evidence: |-
+      Measured by the implement pass's build; this pass changed no bundled source. The next story that adds client code trips the budget warning.
+    location: >-
+      ui/angular.json:54
+    severity: low
+  - summary: >-
+      WireSecurityRead's "nothing is cut at 1,000" is not idempotent on a reused throwaway whose task history passes 1,000 rows.
+    evidence: |-
+      The full sweep on ocupilot-ci (run 8192) failed TestTaskHistoryPairSetsAreEnforcedForARealPrincipal on tasks.history and tasks.taskhistory; %SYS_Task.History held 1,026 rows on the 3-day-old throwaway. Code this story did not touch; CI's fresh throwaway stays far under 1,000.
+    location: >-
+      src/OcuPilot/Test/WireSecurityRead.cls:905
+    severity: low
 footprint_extensions: # planned; this story's own members only (roster rule, 2026-09-23)
   - 'src/OcuPilot/Port/TaskPort.cls' # new; outside every listed glob
   - 'src/OcuPilot/Port/AdminPort.cls' # shared-append: two parameter lines gain entries
@@ -282,6 +296,31 @@ Measured on `ocupilot-ci` (2026-09-23, probes created and deleted) and on slot A
 
 ## Review Triage Log
 
+### 2026-09-23 — Review pass
+
+- verdicts: 20 findings — high 0, medium 2, low 9, false 9, maybe-false 0
+- findings:
+  - `[low]` `[reject]` TaskPort's INFO-failure branch has no test — fails closed (TaskDelete.StateDiff refuses an absent Type), the worst case is a TOOL.ARGUMENTS refusal in place of the vendor 404, and a test needs a new stub under TaskPort's ##super; reopen_if a delete of a task removed between GET and INFO is reported with the wrong refusal.
+  - `[low]` `[patch]` AC3's highlight clause and the Task details half of the Integration AC had no recorded mutation — applied (drop Task details' highlights.update), observed red, reverted, recorded under Verification.
+  - `[false]` `[reject]` AC1, AC4, AC5 other legs' mutations live only in comments — Rule 19 asks one recorded mutation per AC, and each AC carries one.
+  - `[medium]` `[patch]` AC4 names every new tool, and no test refused a moved delete TARGETCHANGED — added TaskResume.TestTheAgentsDeleteIsRefusedOnceTheTaskMoved (real mint on a system-type probe, flipped to user, 409 TARGETCHANGED, task kept); green in run 8199, red under its mutation in run 8200.
+  - `[low]` `[patch]` Two TaskPort premise checks were skipped when the call answered a non-object — each is now preceded by an unconditional $IsObject assertion.
+  - `[false]` `[reject]` The bodyless SUSPEND 404 leg cannot see the constant body — the leg claims only that the port admits the call to the vendor, which a dropped constant would refuse first; the body sent is pinned by the armed over-the-wire Suspend.
+  - `[low]` `[reject]` The frozen matrix contradicts the code on the no-op code, the system-task delete, the delete rows and "Status" — superseded by the rulings in Design Notes; the fix would edit the intent.
+  - `[low]` `[patch]` TaskScheduleActions' header said every shipped-port call is a read — corrected to name the one SUSPEND sent to an absent id.
+  - `[low]` `[patch]` screen-action-handler.spec.ts's "registers all four actions" checked three — it now asserts delete is registered too.
+  - `[false]` `[reject]` The no-op is 400 not 422 — the lead's ruling (Design Notes) sets 400 TOOL.ARGUMENTS; both callers now assert the code.
+  - `[false]` `[reject]` The screen caller's negatives (no proposal, marker, ledger row; not gated by the switches) are untested for these actions — the route is generic, and ProhibitedRoute.TestTheScreensOwnRowActionsRunOverTheWire pins it with both switches on.
+  - `[low]` `[reject]` The short-of-pair refusal is tested for Suspend only — AC6 names Suspend; the pair gate in ScreenAction.Run precedes any tool dispatch and is pinned for Run too.
+  - `[medium]` `[patch]` Delete's PROPOSAL.TARGETCHANGED untested (intent layer) — same root cause and fix as the AC4 row above.
+  - `[false]` `[reject]` The dialog reads system-ness from the LIST row and the card from TaskPort's INFO — both render the vendor task's own Type; no disagreement was shown.
+  - `[false]` `[reject]` The Suspended list column is surface the intent does not require — rulings 2 and 6, Design Notes, and EXPERIENCE :102 put it there.
+  - `[false]` `[reject]` Delete ships four removal rows, not the matrix's three — the Design Notes ruling adds Type so the card can know a system task.
+  - `[low]` `[patch]` TaskScheduleActions' "every call is a read" header (intent layer) — same fix as the header row above.
+  - `[false]` `[reject]` The task-writing tests sit in existing classes — informational; no armed class was added, each test deletes its own probe.
+  - `[false]` `[reject]` Delete's check reads GET, not INFO — the owner's quirk concerns Suspended; the delete's verification reads INFO's 404.
+  - `[low]` `[reject]` Resume of a running task has no screen-route test — the refusal is TaskResume.StateDiff, shared by both callers and pinned at the mint by 5.11's test; a route leg adds a probe run for no new branch.
+
 ## Design Notes
 
 **Governing ADs:** AD-53, AD-51 (as amended), AD-52 (the `TaskPort` declaration), AD-56 (ii),
@@ -356,77 +395,52 @@ Recorded (implement, `ocupilot-ci`; each applied, observed red, reverted, tree u
 - `mutation: TaskSuspend.StateDiff without its already-suspended refusal, reloaded → red: TaskScheduleActions.TestTheSuspendStateDiffRefusesANoOpAndAnUnreadableState, run 8003 (AC4)`
 - `mutation: dropped proposal-card.ts's system-task block → red: proposal-card.spec.ts Story 7.6 case; emptied the advisory in TYPED_NAME_ROWS → red: screen-action-handler.spec.ts advisory case (AC5)`
 - `mutation: skipped the first pair-Gate refusal in ScreenAction.Run, reloaded → red: ProhibitedRoute.TestAnAccountShortOfTheTaskPairIsRefusedTheSuspendScreenAction with the run, auditing and web-app legs, run 8004 (AC6)`
+- `mutation: dropped Task details' highlights.update call, rebuilt and redeployed → red: task-resume.browser-spec.mjs "confirmed resume marks the Suspended field" timed out on the changed field (AC3 highlight, Integration AC Task details half)`
+- `mutation: dropped Type from TaskDelete.FINGERPRINTSUBJECT, reloaded → red: TaskResume.TestTheAgentsDeleteIsRefusedOnceTheTaskMoved through an unarmed temporary subclass, run 8200 (AC4, the delete's moved subject)`
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: matrix ambiguity -- the matrix row "No-op" says "refused 422 with
-`detail.problem`. Nothing sent", but both callers refuse a no-op with 400 `TOOL.ARGUMENTS` and
-`detail.problem`: the mint answers 400 (`Mint.cls`, which this spec's Never list closes), and
-`Api/ScreenAction.cls` `Refuse` (`:470-478`) answers 400 on purpose, "the shape the mint answers its
-own refusals in" (AD-53: one behavior for both callers). A 422 on the screen route alone would
-split the two callers and change the refusal every earlier screen action (7.1, 7.2, 7.5) answers.
-The tests assert 400, which the Matrix Test Audit forbids (it says fix the code or halt). Recommended
-ruling, in the style of the existing "Rulings over the frozen matrix": the no-op is refused 400
-`TOOL.ARGUMENTS` with `detail.problem`, and nothing is sent. With that ruling the audit passes as the
-code stands, and the re-dispatch resumes at step-03's Verify.
+Status: done
+Blocking condition: none
+
+**This pass (resumed at step-03 Verify under the no-op ruling).** The Matrix Test Audit passes: the
+no-op is refused 400 `TOOL.ARGUMENTS` with `detail.problem`, and nothing is sent, now asserted by code on
+both callers (`TaskResume` over the wire, `TaskScheduleActions` at the mint). Both review layers ran over
+the whole story's diff since `b447f29`. Triage found 20 findings, and 7 rows were patched:
+
+- one medium: `TestTheAgentsDeleteIsRefusedOnceTheTaskMoved`;
+- five low: the premise asserts, the class header, the handler spec's registration check, and the AC3
+  mutation line, with the intent layer's copy of the header finding counted twice.
+
+No high findings. Rejections are in the triage log.
 
 footprint_extensions: `src/OcuPilot/Port/TaskPort.cls` (new), `Port/AdminPort.cls` (append-only),
-`shell/proposal-card.ts` and `.spec.ts` (off Epic 8's hunks), `Test/ToolWrite.cls`,
-`Test/PortFixture.cls`, `Test/SurfaceCoverage.cls`, `Test/ReadTool.cls`, `Test/ToolRoundTrip.cls`,
-`Test/ProhibitedRoute.cls`, `ui/tools/screen-mirror.test.mjs`, `core/screens.generated.ts`, and,
-beyond the plan: roster files `Test/PortGate.cls`, `Test/AsTheUser.cls`, `Test/TaskRunFixture.cls`
-(none modified by Epic 8).
+`shell/proposal-card.ts` and `.spec.ts` (off Epic 8's hunks), `Test/ToolWrite.cls`, `Test/PortFixture.cls`,
+`Test/SurfaceCoverage.cls`, `Test/ReadTool.cls`, `Test/ToolRoundTrip.cls`, `Test/ProhibitedRoute.cls`,
+`ui/tools/screen-mirror.test.mjs`, `core/screens.generated.ts`, `Test/PortGate.cls`, `Test/AsTheUser.cls`,
+`Test/TaskRunFixture.cls` (none modified by Epic 8).
 
-**Change (uncommitted; the lead's rework commit carries it).**
+**Tiers (`ocupilot-ci`, this pass).**
 
-- Port: `AdminPort` admits `Task.CRUD/SUSPEND`, with the constant body `{"LeaveInQueue":true}`, and
-  `Task.CRUD/DELETE`, which is bodyless.
-- New `TaskPort` completes a `GET` with `INFO`'s `Type`.
-- Tools: `TaskScheduleRun`, `TaskSuspend` and `TaskDelete` are new; `TaskResume` gains the list's
-  `resume` action.
-- `TaskScheduleList` declares four row actions, a Suspended column, `proposalEntityTask` and
-  `taskScheduleEmptyAgent`.
-- Client:
-  - the handler registers the schedule;
-  - the typed-name dialog takes the row's `Name` and a system-task advisory;
-  - the proposal card draws `taskSystemDeleteConsequence`.
-- No new string.
-
-**Tiers run (targeted, `ocupilot-ci`, per class).**
-
-- ObjectScript:
-
-  | Class | Passed/failed |
-  | --- | --- |
-  | `TaskScheduleActions` | 6/0 |
-  | `ToolWrite` | 27/0 |
-  | `Descriptor` | 50/0 |
-  | `SurfaceCoverage` | 4/0 |
-  | `ReadTool` | 27/0 |
-  | `ToolRoundTrip` | 2/0 |
-  | `TaskLists` | 7/0 |
-  | `TaskRun` | 6/0 |
-  | `ProhibitedRoute` | 24/0 |
-  | `PortGate` | 4/0 |
-  | `AsTheUser` | 3/0 |
-  | `ScreenRead` | 29/0 |
-  | `Wire` | 20/0 |
-  | `TaskHistory` | 11/0 |
-
-  `TaskResume` refuses on `ocupilot-ci` (unarmed); its two new methods passed through a temporary
-  unarmed subclass (run 8002), and CI decides.
+- Full ObjectScript sweep:
+  - 183 classes, 1,656 tests, 1 failed (runs 8013–8192).
+  - The four armed classes (`AuditingUpdate`, `ErrorDelete`, `ProcessControl`, `TaskResume`) refused as
+    expected.
+  - The one failure is `WireSecurityRead`'s 1,000-row cap on this reused throwaway's 1,026 history rows
+    (deferred).
+- After the patches:
+  - `TaskScheduleActions` 6/0 (run 8193).
+  - `TaskResume`'s three schedule methods 3/0, through an unarmed temporary subclass since deleted (runs
+    8196, 8197, 8199). CI runs them armed.
+- `smoke.sh`: 49/49 PASSED.
 - Client: `test:tools` 1,327/0 and `test:components` 885/0.
-- Browser, on a rebuilt and redeployed bundle:
-  - `task-schedule-actions` 4/4, `task-resume` 3/3, `screen-height` 15/15;
-  - `tasks` 12/14 -- the two Task history legs 7.5 recorded;
-  - no probe task left.
-- `check-objectscript` is clean.
-- Mutations: one per AC, recorded under `## Verification`.
+- Browser: `task-resume` 3/3 on a rebuilt, redeployed bundle.
+- `check-objectscript`: clean.
+- No probe task is left.
 
-**Not yet run:** the full ObjectScript sweep, `smoke.sh`, and both review layers.
+**Mutations this pass:** the two lines added under Verification (AC3 highlight, AC4 delete).
 
-**Open items:**
+**Follow-up review:** `false` (first pass; one medium patched, no high).
 
-- The initial bundle is 1,119,895 bytes against the 1,120kB budget, 105 bytes of headroom.
-- Lead bookkeeping: add the suspended column to EXPERIENCE `:102`.
+**Residual risk:** the three armed `TaskResume` schedule methods are proven on the throwaway only through
+the temporary subclass; CI's armed run is the deciding one.

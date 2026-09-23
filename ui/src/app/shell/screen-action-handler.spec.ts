@@ -449,6 +449,7 @@ describe('the Task schedule\u2019s Run, Suspend, Resume and Delete (Story 7.6)',
   it('registers all four actions and sends Run, Suspend and Resume at once, keyed by the Id', async () => {
     // Mutation (Rule 19): drop the schedule from `SCREEN_ACTION_DESCRIPTORS` -> nothing registers and
     // nothing is sent.
+    expect(mount({ kind: 'ok', status: 200, body: {} }, SCHEDULE).actions.has(SCHEDULE, 'delete')).toBe(true);
     for (const actionId of ['run', 'suspend', 'resume']) {
       const { actions, handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target } }, SCHEDULE);
       expect(actions.has(SCHEDULE, actionId)).toBe(true);

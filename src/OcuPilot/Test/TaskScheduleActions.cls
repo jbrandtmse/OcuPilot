@@ -7,8 +7,8 @@
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and a caller holding
 /// <code>%Admin_Task:USE</code> and <code>%DB_IRISSYS:READ</code>, on an instance whose Task
 /// Manager holds at least one system task. It writes no task: the mint and the confirm go through
-/// <class>OcuPilot.Test.ProposalFixture</class>'s port, and every call to a shipped port is a
-/// read.</p>
+/// <class>OcuPilot.Test.ProposalFixture</class>'s port, every other call to a shipped port is a
+/// read, except one <code>SUSPEND</code> sent to a task id no task carries.</p>
 Class OcuPilot.Test.TaskScheduleActions Extends %UnitTest.TestCase
 {
 
@@ -175,6 +175,7 @@ Method TestTheSuspendMintCoversSuspendedAndAMovedTargetIsRefused()
     Set tSC = ..MintFor(..#SUSPEND, "41", .tRefused, .tHttp, .tFault)
     Do $$$AssertStatusNotOK(tSC, "a suspend of a suspended task is refused at the mint")
     Do $$$AssertEquals(+$Get(tHttp), 400, "at 400")
+    Do $$$AssertEquals($Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: ""), ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "under TOOL.ARGUMENTS, as the screen route refuses it")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).ProposalCount(), tBefore, "and nothing is proposed")
 
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
@@ -253,12 +254,14 @@ Method TestTheTaskPortNamesASystemTaskAndSaysItIsOne()
     Set tQuery("id") = tSystem.%Get("Id")
     Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Task.CRUD", "GET", .tQuery, "", .tPlain, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the admin port's own GET answers")
-    If $IsObject($Get(tPlain)) Do $$$AssertEquals(tPlain.%GetTypeOf("Type"), "unassigned", "and carries no Type, which is why the task port completes it")
+    Do $$$AssertTrue($IsObject($Get(tPlain)), "and answers an object")
+    If $IsObject($Get(tPlain)) Do $$$AssertEquals(tPlain.%GetTypeOf("Type"), "unassigned", "which carries no Type, which is why the task port completes it")
 
     Kill tQuery
     Set tQuery("id") = tSystem.%Get("Id")
     Set tSC = ##class(OcuPilot.Port.TaskPort).Invoke("Task.CRUD", "INFO", .tQuery, "", .tInfo, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the task port's INFO answers")
+    Do $$$AssertTrue($IsObject($Get(tInfo)), "and answers an object")
     If $IsObject($Get(tInfo)) Do $$$AssertEquals(tInfo.%GetTypeOf("Name"), "unassigned", "unchanged: INFO still names nothing")
 
     Kill tQuery
