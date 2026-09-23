@@ -2,7 +2,7 @@
 title: 'Story 8.8: The device editor'
 type: 'feature'
 created: '2026-09-23'
-status: 'blocked'
+status: 'in-progress'
 baseline_revision: 'd3c75c3b598b9c31982c853ec86441a7a6ad100f'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -263,6 +263,11 @@ These files are in Epic 7's diff and not on the contended list:
 
 - [ ] [Lead] **Screen delete, option (a).** Ship `osmgmt.devices.delete` (agent-only, destructive, verified) with a test that fails when its refusal of an unknown alias is removed. The Devices-list Delete row action is DW-1562 (range-end cleanup; it needs AD-53's route and typed-name dialog from Epic 7's merge); build no row action and no in-editor Delete here. `epics.md` 8.8 AC2 carries the `[AMENDED]` marker. The roster-rule files (`Test/Wire.cls`, `Test/WireSecurityRead.cls`, `navigation.test.mjs`, regenerated `screens.generated.ts`) are covered; the DW-1166 re-base is pre-approved if the bundle passes 1261kB.
 
+### Orchestrator ruling on the implement halt, 2026-09-23 (work these first)
+
+- [ ] [Lead] **AD-8, option 1 (AD-8 amended by the lead; the one named case).** Keep the built design: the three device tools declare `%DB_IRISSYS:WRITE` beyond the screen's read-only set, refused by name before any port call. This supersedes the Tasks line that said to add the pair to both descriptors -- the descriptors keep their two read pairs and `Test/WireSecurityRead.cls` takes no principal change. Tests that fail when it is wrong: a principal holding only the screen's declared set gets 403 naming the pair on the screen's Save AND on the agent's confirm, with **no port call made** (assert on the port, not only the status); a principal that also holds `%DB_IRISSYS:WRITE` succeeds; the read-only Devices list still opens for a principal without it.
+- [ ] [Lead] **The two browser mutations that stayed green** (the deep-link leg; the list leg with the change-bus publish dropped). For each, rebuild and redeploy the bundle into `ocupilot-b-ci` with the mutation applied, and confirm the deployed bundle carries it before running the spec. Then either it reddens (the leg is load-bearing; record the row), or the leg truly cannot see that failure -- strengthen it until it can, or record in `## Verification` exactly why it is not load-bearing and put a `deferred:` entry for the lead. Never delete either leg.
+
 ### Acceptance Criteria
 
 - **AC1.** Given the device editor, when it renders, then it shows the classic device page's nine fields in classic order. The eight settable ones are derived from `FieldLists` `Device.Standard`, so `field-lists.mjs --check` and `DerivedFields` fail when the instance's template disagrees.
@@ -275,6 +280,8 @@ These files are in Epic 7's diff and not on the contended list:
 - **AC6.** Given the form holds a change, when any navigation leaves, the agent's included, then the shared leave question asks first.
 
 ## Spec Change Log
+
+- 2026-09-23, lead (orchestrator ruling on the implement halt): AD-8 option 1 -- the device tools' extra `%DB_IRISSYS:WRITE` pair, written into AD-8 as its one named case; the two green browser mutations are to be re-run on a redeployed bundle. Status reset to `in-progress` with the implementation still uncommitted.
 
 - 2026-09-23, spec gate: the screen's device delete went to DW-1562 (orchestrator ruling (a)); the agent delete ships here.
 
