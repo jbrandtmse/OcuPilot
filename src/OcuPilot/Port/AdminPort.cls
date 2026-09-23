@@ -158,12 +158,20 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// <code>ValidateQueryParams</code> requires the <code>id</code> query parameter, and each is
 /// listed in <parameter>BODYLESSTYPES</parameter> under its own endpoint, which is what exempts
 /// it from the object-body refusal below.</p>
-/// <p><code>TERMINATE</code> and <code>DELETE</code> are deliberately absent. The vendor exposes
-/// terminating a process through both -- <code>Process</code>'s <code>RunDelete</code> is a
-/// one-line delegate to <code>RunTerminate</code> -- and AD-10 names terminating an IRIS system
-/// process in the Release 1 prohibited set, so neither pairs with <code>Process</code> here and
-/// <method>EndpointType</method> answers <code>""</code> for either.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST";
+/// <p><code>TERMINATE</code> and <code>DELETE</code> are deliberately absent for
+/// <code>Process</code>. The vendor exposes terminating a process through both --
+/// <code>Process</code>'s <code>RunDelete</code> is a one-line delegate to <code>RunTerminate</code>
+/// -- and AD-10 names terminating an IRIS system process in the Release 1 prohibited set, so neither
+/// pairs with <code>Process</code> here and <method>EndpointType</method> answers <code>""</code>
+/// for either.</p>
+/// <p><code>Security.Role/PUT</code> and <code>Security.Role/DELETE</code> are Story 8.3's role
+/// create and delete. Read on this build: the endpoint overrides <code>Run</code>, its
+/// <code>RunPut</code> modifies a role that exists and otherwise creates it (an upsert, which the
+/// create's absence fingerprint guards, AD-54), its <code>NeedsRequestBody()</code> is
+/// <code>..IsTypePut()</code> so <code>DELETE</code> reads no body, and its <code>RunDelete</code>
+/// answers 404 for an absent role and otherwise reports success whatever the drop did
+/// (<parameter>VERIFIEDDELETES</parameter>).</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -179,7 +187,18 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE";
+
+/// <p>The <parameter>MUTATINGTYPES</parameter> deletes whose vendor answer does not say whether the
+/// object went, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries. After a 2xx
+/// for a listed pair, <method>Invoke</method> re-issues the endpoint's <code>GET</code> for the same
+/// query: only a 404 confirms the delete, and anything else is a 500 fault with
+/// <parameter>OcuPilot.Api.Error.PORTNOTAPPLIED</parameter>, never a success.</p>
+/// <p><code>Security.Role/DELETE</code> is listed because its <code>RunDelete</code> answers the
+/// status of <code>%SQL.Manager.API.DropUser(name, "ROLE")</code>, which is <code>$$$OK</code>
+/// whether or not the role was dropped (read on this build). That is a wire fact, so it lives here
+/// (AD-27).</p>
+Parameter VERIFIEDDELETES = "Security.Role/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries whose vendor body is a <b>wrapper</b>, as
 /// comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;wrapper&gt;:&lt;outer&gt;[:&lt;outer&gt;...]</code>
@@ -484,6 +503,12 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Quit
         }
         If $$$ISOK(tSeqSC) && (tHttp >= 200) && (tHttp < 300) {
+            ; VERIFIEDDELETES: a delete the vendor reports as made is believed only once a re-read
+            ; finds the object gone.
+            If ..IsVerifiedDelete(pEndpoint, pType) {
+                Set tSC = ..VerifyGone(pEndpoint, .pQuery, .pHttpStatus, .pFault)
+                If $$$ISERR(tSC) Quit
+            }
             Set pResult = tAnswer
             Set pHttpStatus = tHttp
             Quit
@@ -809,6 +834,26 @@ ClassMethod AsyncTimeout() As %Numeric
 ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String = "")
 {
     Do ##class(OcuPilot.Kernel.Fault).LogRaw("adminport", pMessage, pStatus, pCode)
+}
+
+/// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
+/// <parameter>VERIFIEDDELETES</parameter> lists.</p>
+ClassMethod IsVerifiedDelete(pEndpoint As %String, pSuffix As %String) As %Boolean
+{
+    Quit ''$ListFind($ListFromString(..#VERIFIEDDELETES), pEndpoint _ "/" _ pSuffix)
+}
+
+/// <p>Re-read <var>pEndpoint</var> with the query <var>pQuery</var> a delete was issued with, and
+/// answer OK only when the read answers 404. A read that finds the object, or fails any other way,
+/// is a 500 fault carrying <parameter>OcuPilot.Api.Error.PORTNOTAPPLIED</parameter>, with the read's
+/// own answer in the log.</p>
+ClassMethod VerifyGone(pEndpoint As %String, ByRef pQuery, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tReadSC = ..Invoke(pEndpoint, "GET", .pQuery, "", .tFresh, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) && (+$Get(tReadHttp) = 404) Quit $$$OK
+    Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#PORTNOTAPPLIED, ##class(OcuPilot.Api.Error).#REASONPORTNOTAPPLIED, .pHttpStatus, .pFault)
+    Do ..LogFault(pEndpoint _ " answered a delete as made and a re-read answered HTTP " _ +$Get(tReadHttp), $Select($$$ISERR(tReadSC): tReadSC, 1: $$$ERROR($$$GeneralError, "the object is still present")), pFault.code)
+    Quit tSC
 }
 
 /// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one

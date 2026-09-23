@@ -102,8 +102,8 @@ ClassMethod RowShapeProblem(pRows As %DynamicArray, pBoolean As %String) As %Str
 /// <p>Each descriptor passes the read grammar and the classic-link rule; its route and tool
 /// identifier resolve to it; its classic page is a class compiled on this instance under the
 /// declaration's own case (AD-44); it is the declared side-bar entry of the Permissions area, on its
-/// entity type and at instance scope, with no detail call, no action, no refresh and no secret
-/// field; its context fields are its read fields; its pair set is the Users list's set in the
+/// entity type and at instance scope, with no detail call, no action (the Roles list's Create
+/// aside), no refresh and no secret field; its context fields are its read fields; its pair set is the Users list's set in the
 /// Users list's order; and the Permissions area covers it.</p>
 /// <p>Mutation: lower-case <code>classicPage</code> in
 /// <class>OcuPilot.Screen.Descriptor.ResourceList</class> -&gt; its classic-page and compiled-class
@@ -138,8 +138,16 @@ Method TestEachListIsDeclaredAsThePermissionsAreaEntryItReplaces()
         Do $$$AssertEquals(tDeclaration.context.fields.%ToJSON(), tDeclaration.read.fields.%ToJSON(), tClass _ ": its context fields are its read fields")
         Do $$$AssertEquals(tDeclaration.context.secretFields.%Size(), 0, tClass _ ": with no secret field")
         Do $$$AssertEquals(tDeclaration.read.sort.default _ ":" _ tDeclaration.read.sort.direction, "Name:asc", tClass _ ": sorting by name ascending")
-        Do $$$AssertEquals(tDeclaration.table.emptyNextKey, "tableReadOnlyEmptyNext", tClass _ ": its empty state names what to do next")
-        Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")) + ($ClassMethod(tClass, "PrimaryActionId") '= ""), 0, tClass _ ": because it declares no action")
+        If tClass = "OcuPilot.Screen.Descriptor.RoleList" {
+            ; Story 8.3: the Roles list's Create opens the Role form, so its empty state invites
+            ; the agent instead of naming a next step.
+            Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "create", tClass _ ": its primary action is Create")
+            Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, tClass _ ": and it declares no row action")
+            Do $$$AssertEquals(tDeclaration.table.emptyNextKey _ "|" _ tDeclaration.table.emptyAgentKey, "|roleListEmptyAgent", tClass _ ": so its empty state invites the agent")
+        } Else {
+            Do $$$AssertEquals(tDeclaration.table.emptyNextKey, "tableReadOnlyEmptyNext", tClass _ ": its empty state names what to do next")
+            Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")) + ($ClassMethod(tClass, "PrimaryActionId") '= ""), 0, tClass _ ": because it declares no action")
+        }
         Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Secure"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", tClass _ ": its pair set is the Users list's, in the same order")
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("permissions", $ClassMethod(tClass, "PrivilegePairs")), "", tClass _ ": and the Permissions area covers it")
     }

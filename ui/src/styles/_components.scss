@@ -5277,3 +5277,28 @@ app-data-table {
 .ocu-form-authe legend {
   padding: 0;
 }
+
+// --- The role form's resource grants (Story 8.3) ---------------------------------------------------
+//
+// Each grant the form holds is one row: the grant as its dialog's lines write it, then its Edit
+// and Remove text buttons. A plain list, reset so it draws as part of the field rather than as
+// body copy.
+.ocu-role-grants {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+  margin: 0 0 var(--ocu-space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.ocu-role-grant {
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-2);
+}
+
+.ocu-role-grant-line {
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
+}

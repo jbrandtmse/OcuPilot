@@ -10,6 +10,13 @@ Class OcuPilot.Screen.Tool.ToolFields Extends %RegisteredObject
 XData Tools
 {
 {
+"permissions.roles.create": {"fieldList":"Security.Role","fields":[
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"GrantedRoles[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"EscalationOnly","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Resources[].Name","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Resources[].Permissions","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
 "permissions.users.create": {"fieldList":"Security.User","fields":[
   {"path":"AccountNeverExpires","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
   {"path":"AutheEnabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},

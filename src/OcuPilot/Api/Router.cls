@@ -97,6 +97,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/users/form" Method="GET" Call="UserFormRules"/>
   <Route Url="/users/name" Method="GET" Call="UserNameCheck"/>
   <Route Url="/users" Method="POST" Call="UserCreate"/>
+  <Route Url="/roles/form" Method="GET" Call="RoleFormRules"/>
+  <Route Url="/roles/name" Method="GET" Call="RoleNameCheck"/>
+  <Route Url="/roles" Method="POST" Call="RoleCreate"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
   <Route Url="/logs/errors/namespaces" Method="GET" Call="LogErrorNamespaces"/>
   <Route Url="/logs/errors/dates" Method="GET" Call="LogErrorDates"/>
@@ -302,6 +305,28 @@ ClassMethod UserNameCheck() As %Status
 ClassMethod UserCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Permissions.UserCreate).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /roles/form</code> (Story 8.3): delegates to
+/// <class>OcuPilot.Area.Permissions.RoleCreateRules</class> and carries no logic of its own. The two
+/// sub-resources precede <code>POST /roles</code>.</p>
+ClassMethod RoleFormRules() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.RoleCreateRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /roles/name</code>: the Role form's blur check
+/// of whether a name is already taken.</p>
+ClassMethod RoleNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.RoleCreateRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /roles</code>: the Role form's Save, which
+/// resolves the write through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod RoleCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.RoleCreate).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /screens/:screen/read</code>: delegates to

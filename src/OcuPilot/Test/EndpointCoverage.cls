@@ -130,6 +130,9 @@ XData Probes
      documented 422 USER.NAME.REQUIRED envelope. Its own answers are OcuPilot.Test.UserCreateWire's. -->
 <probe class="Api.Router" method="GET" url="/users/name" path="/api/ocupilot/users/name" disposition="envelope"/>
 <probe class="Api.Router" method="POST" url="/users" path="/api/ocupilot/users" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/roles/form" path="/api/ocupilot/roles/form" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/roles/name" path="/api/ocupilot/roles/name" disposition="envelope"/>
+<probe class="Api.Router" method="POST" url="/roles" path="/api/ocupilot/roles" disposition="envelope" refusal="1"/>
 <probe class="Api.Readiness" method="GET" url="/" path="/api/ocupilot/readiness/" disposition="envelope"/>
 <probe class="Api.StaticHandler" method="GET" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>
 <probe class="Api.StaticHandler" method="HEAD" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>

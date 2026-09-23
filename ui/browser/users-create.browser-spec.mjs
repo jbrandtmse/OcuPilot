@@ -48,8 +48,11 @@ const PROBE_PASSWORD = 'ProbePass2026';
 
 const PROBE_FULL_NAME = 'OcuPilot probe account';
 
-/** Roles the server refuses to grant: %All by name, %Manager through an administrative resource it carries. */
-const PRIVILEGED = ['%All', '%Manager'];
+/**
+ * Roles the server refuses to grant: %All by name, %Manager through an administrative resource it
+ * carries, and %DB_IRISSECURITY through the write on the security database it carries (Story 8.3).
+ */
+const PRIVILEGED = ['%All', '%Manager', '%DB_IRISSECURITY'];
 
 let browser = null;
 

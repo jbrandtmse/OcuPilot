@@ -178,17 +178,20 @@ Method TestTheScreenAndTheConfirmSendOneBody()
     Do $$$AssertEquals(tBody.%GetTypeOf("Name"), "unassigned", "and never the name, which is the vendor's query parameter")
 }
 
-/// <p>AD-10 on both callers: a role that grants <code>%All</code> by name, or an administrative
-/// resource it carries, is refused -- on the screen as the Roles violation carrying the server's
-/// sentence, at the agent's confirm inside the transition -- and neither reaches the port. An
-/// ordinary role is not refused. A seeded row carrying escalation roles is refused inside the
-/// transition too.</p>
-/// <p>Mutation: remove the <code>user</code> step from
+/// <p>AD-10 on both callers: a role that grants <code>%All</code> by name, an administrative
+/// resource it carries, or write on <code>%DB_IRISSECURITY</code> it carries (the implicit
+/// <code>%DB_IRISSECURITY</code> role) is refused -- on the screen as the Roles violation carrying
+/// the server's sentence, at the agent's confirm inside the transition -- and none reaches the
+/// port. The picker pre-marks each. An ordinary role is not refused. A seeded row carrying
+/// escalation roles is refused inside the transition too.</p>
+/// <p>Mutations: remove the <code>user</code> step from
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.Created</method> -> every privileged leg goes red on
-/// both callers.</p>
+/// both callers; drop the <code>%DB_IRISSECURITY</code> clause from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.ResourceGrantEscalates</method> -> that role's legs
+/// and its pre-mark go red.</p>
 Method TestAPrivilegedRoleIsRefusedOnBothCallers()
 {
-    For tRole = "%All", "%Manager" {
+    For tRole = "%All", "%Manager", "%DB_IRISSECURITY" {
         Set tArgs = ..Args()
         Do tArgs.%Set("Roles", [(tRole)])
         Set tScreenArgs = ##class(%DynamicAbstractObject).%FromJSON(tArgs.%ToJSON())
@@ -200,6 +203,7 @@ Method TestAPrivilegedRoleIsRefusedOnBothCallers()
         Do $$$AssertEquals($ListGet($Get(tViolations(1)), 3), ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor($Parameter(..#SET, "PRIVILEGEGRANT")), tRole _ ": carrying the server's sentence")
         Do $$$AssertTrue('($ZConvert($ListGet($Get(tViolations(1)), 3), "L") [ "agent"), tRole _ ": a sentence a person reads on the screen names no caller (AD-53)")
         Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, tRole _ ": and nothing reaches the port")
+        Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RoleGrantsAdministrativePrivilege(tRole), 1, tRole _ ": and the picker pre-marks it")
 
         Do ##class(OcuPilot.Test.ProposalFixture).Clear()
         Do ##class(OcuPilot.Test.ProposalFixture).ArmMissing()

@@ -191,6 +191,13 @@ Parameter PORTUNAVAILABLE = "PORT.UNAVAILABLE";
 /// within the port's bounded wait. Rendered on the <parameter>UNAVAILABLE</parameter> slug.</p>
 Parameter PORTTIMEOUT = "PORT.TIMEOUT";
 
+/// <p>Machine code (AD-12, AD-27, AD-39): a vendor delete answered as made and a re-read found the
+/// object still there (<parameter>OcuPilot.Port.AdminPort.VERIFIEDDELETES</parameter>). Rendered on
+/// the <parameter>SERVERERROR</parameter> slug at 500 with <parameter>REASONPORTNOTAPPLIED</parameter>.</p>
+Parameter PORTNOTAPPLIED = "PORT.NOTAPPLIED";
+
+Parameter REASONPORTNOTAPPLIED = "The instance reported the change as made, and it is not there.";
+
 /// <p>Machine code (AD-12, AD-39, AD-42): the provider layer could not be configured at all -- no
 /// definition carries the id the caller named, the definition is not usable, or its provider's
 /// catalog row names no adapter class this instance holds. Produced by
@@ -1103,6 +1110,18 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#USERROUTINELENGTH Quit ..#REASONUSERROUTINELENGTH
     If pCode = ..#USERROLESUNKNOWN Quit ..#REASONUSERROLESUNKNOWN
     If pCode = ..#USERROLESSHAPE Quit ..#REASONUSERROLESSHAPE
+    If pCode = ..#ROLENAMEREQUIRED Quit ..#REASONROLENAMEREQUIRED
+    If pCode = ..#ROLENAMELENGTH Quit ..#REASONROLENAMELENGTH
+    If pCode = ..#ROLENAMESHAPE Quit ..#REASONROLENAMESHAPE
+    If pCode = ..#ROLENAMETAKEN Quit ..#REASONROLENAMETAKEN
+    If pCode = ..#ROLENAMESYSTEM Quit ..#REASONROLENAMESYSTEM
+    If pCode = ..#ROLEDESCRIPTIONLENGTH Quit ..#REASONROLEDESCRIPTIONLENGTH
+    If pCode = ..#ROLERESOURCESSHAPE Quit ..#REASONROLERESOURCESSHAPE
+    If pCode = ..#ROLERESOURCESUNKNOWN Quit ..#REASONROLERESOURCESUNKNOWN
+    If pCode = ..#ROLERESOURCESPERMISSIONS Quit ..#REASONROLERESOURCESPERMISSIONS
+    If pCode = ..#ROLERESOURCESDUPLICATE Quit ..#REASONROLERESOURCESDUPLICATE
+    If pCode = ..#ROLEGRANTEDROLESSHAPE Quit ..#REASONROLEGRANTEDROLESSHAPE
+    If pCode = ..#ROLEGRANTEDROLESUNKNOWN Quit ..#REASONROLEGRANTEDROLESUNKNOWN
     If pCode = ..#PORTFIELDREQUIRED Quit ..#REASONPORTFIELDREQUIRED
     If pCode = ..#PORTFIELDUNEXPECTED Quit ..#REASONPORTFIELDUNEXPECTED
     If pCode = ..#PORTFIELDSHAPE Quit ..#REASONPORTFIELDSHAPE
@@ -1125,6 +1144,13 @@ ClassMethod WebAppViolationCodes() As %List
 ClassMethod UserViolationCodes() As %List
 {
     Quit $ListBuild(..#USERNAMEREQUIRED, ..#USERNAMESHAPE, ..#USERNAMETAKEN, ..#USERPASSWORDREQUIRED, ..#USERPASSWORDPOLICY, ..#USERFULLNAMELENGTH, ..#USEREXPIRATIONDATESHAPE, ..#USERNAMESPACEUNKNOWN, ..#USERROUTINENAMESPACE, ..#USERROUTINELENGTH, ..#USERROLESUNKNOWN, ..#USERROLESSHAPE)
+}
+
+/// <p>Every <code>ROLE.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod RoleViolationCodes() As %List
+{
+    Quit $ListBuild(..#ROLENAMEREQUIRED, ..#ROLENAMELENGTH, ..#ROLENAMESHAPE, ..#ROLENAMETAKEN, ..#ROLENAMESYSTEM, ..#ROLEDESCRIPTIONLENGTH, ..#ROLERESOURCESSHAPE, ..#ROLERESOURCESUNKNOWN, ..#ROLERESOURCESPERMISSIONS, ..#ROLERESOURCESDUPLICATE, ..#ROLEGRANTEDROLESSHAPE, ..#ROLEGRANTEDROLESUNKNOWN)
 }
 
 /// <p>Every <code>AGENT.*</code> field-level violation code that carries a sentence, as a
@@ -1693,6 +1719,85 @@ Parameter REASONUSERROLESUNKNOWN = "One of those roles does not exist on this in
 Parameter USERROLESSHAPE = "USER.ROLES.SHAPE";
 
 Parameter REASONUSERROLESSHAPE = "Roles are a list of role names.";
+
+/// <p>Machine code (AD-12, AD-39): the request to create a role broke one or more of the rules
+/// <class>OcuPilot.Area.Permissions.RoleCreateRules</class> applies before the port is touched.
+/// Rendered on the <parameter>VALIDATIONFAILED</parameter> slug with every violation in
+/// <code>detail.violations</code>, the shape <parameter>USERVALIDATION</parameter> takes.</p>
+Parameter ROLEVALIDATION = "ROLE.VALIDATION";
+
+/// <p>The envelope's <code>reason</code> for <parameter>ROLEVALIDATION</parameter>, which the
+/// screen renders only where no violation named a field.</p>
+Parameter REASONROLEVALIDATION = "The role was refused.";
+
+/// <p>Violation code: no name was supplied. A role's name is the vendor's <code>name</code> query
+/// parameter, which its body refuses.</p>
+Parameter ROLENAMEREQUIRED = "ROLE.NAME.REQUIRED";
+
+Parameter REASONROLENAMEREQUIRED = "Give the role a name.";
+
+/// <p>Violation code: the name is longer than <class>Security.Roles</class> stores.</p>
+Parameter ROLENAMELENGTH = "ROLE.NAME.LENGTH";
+
+Parameter REASONROLENAMELENGTH = "A role name is at most 64 characters.";
+
+/// <p>Violation code: the name carries a control character, a comma or a colon, which
+/// <class>Security.Roles</class> refuses.</p>
+Parameter ROLENAMESHAPE = "ROLE.NAME.SHAPE";
+
+Parameter REASONROLENAMESHAPE = "A role name has no control character, no comma and no colon.";
+
+/// <p>Violation code: a role already carries that name. A role name is compared without regard to
+/// case, so a name taken in any case is taken. A read rather than a validation --
+/// <code>GET /roles/name</code> answers it on blur.</p>
+Parameter ROLENAMETAKEN = "ROLE.NAME.TAKEN";
+
+Parameter REASONROLENAMETAKEN = "This instance already has a role with that name. Choose a different one.";
+
+/// <p>Violation code: the name begins with <code>%</code>, which only the instance's own predefined
+/// roles do. Refused on a create, and on a delete, where the vendor endpoint would drop a
+/// predefined role and report success.</p>
+Parameter ROLENAMESYSTEM = "ROLE.NAME.SYSTEM";
+
+Parameter REASONROLENAMESYSTEM = "A name beginning with % belongs to one of the instance's own roles.";
+
+/// <p>Violation code: the description is longer than <class>Security.Roles</class> stores.</p>
+Parameter ROLEDESCRIPTIONLENGTH = "ROLE.DESCRIPTION.LENGTH";
+
+Parameter REASONROLEDESCRIPTIONLENGTH = "A role description is at most 256 characters.";
+
+/// <p>Violation code: the resource grants are not a list of <code>{Name, Permissions}</code> objects
+/// each naming a resource.</p>
+Parameter ROLERESOURCESSHAPE = "ROLE.RESOURCES.SHAPE";
+
+Parameter REASONROLERESOURCESSHAPE = "Each resource grant names one resource and its permissions.";
+
+/// <p>Violation code: a grant names a resource this instance does not hold.</p>
+Parameter ROLERESOURCESUNKNOWN = "ROLE.RESOURCES.UNKNOWN";
+
+Parameter REASONROLERESOURCESUNKNOWN = "One of those resources does not exist on this instance.";
+
+/// <p>Violation code: a grant carries no permission, repeats one, or carries a letter its resource
+/// does not admit (<method>OcuPilot.Area.Permissions.RoleCreateRules.AdmissiblePermissions</method>,
+/// the classic grant dialog's own rule).</p>
+Parameter ROLERESOURCESPERMISSIONS = "ROLE.RESOURCES.PERMISSIONS";
+
+Parameter REASONROLERESOURCESPERMISSIONS = "Grant each resource only the permissions it offers: Read and Write for a database, Use for a service or an administrative resource, and Read, Write or Use for any other.";
+
+/// <p>Violation code: two grants name the same resource.</p>
+Parameter ROLERESOURCESDUPLICATE = "ROLE.RESOURCES.DUPLICATE";
+
+Parameter REASONROLERESOURCESDUPLICATE = "Grant each resource once.";
+
+/// <p>Violation code: the granted roles are not a list of role names.</p>
+Parameter ROLEGRANTEDROLESSHAPE = "ROLE.GRANTEDROLES.SHAPE";
+
+Parameter REASONROLEGRANTEDROLESSHAPE = "Granted roles are a list of role names.";
+
+/// <p>Violation code: a granted role is not one this instance holds.</p>
+Parameter ROLEGRANTEDROLESUNKNOWN = "ROLE.GRANTEDROLES.UNKNOWN";
+
+Parameter REASONROLEGRANTEDROLESUNKNOWN = "One of those roles does not exist on this instance.";
 
 /// <p>Violation code (AD-39): the vendor refused the request because a body field it requires was
 /// absent. Produced at the port boundary by <method>ViolationsFromVendor</method>, on the field the

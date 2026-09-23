@@ -151,6 +151,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'tasks/on-demand',
       'tasks/upcoming',
       'tasks/history',
+      'permissions/roles/edit',
       'permissions/users/edit',
       'permissions/users',
       'permissions/roles',
@@ -262,6 +263,13 @@ test('documentScreenFor resolves the REST API explorer to its unlisted, id-keyed
   assert.equal(createFormFor(users).route, 'permissions/users/edit', 'the Users list\'s Create opens its own form');
   assert.equal(isListedScreen(screenForRoute('permissions/users/edit')), false, 'which takes no side-bar position');
   assert.equal(editorScreenFor(users), null, 'and a row name does not open it, because it reads no id');
+  // Story 8.3: the Roles list pairs with its create form the same way.
+  // Mutation (Rule 19): drop RoleForm from `CREATE_ONLY_FORMS` -> the editor assertion below and
+  // the role leg of the screenForChange test go red.
+  const roles = screenForRoute('permissions/roles');
+  assert.equal(createFormFor(roles).route, 'permissions/roles/edit', 'the Roles list\'s Create opens its own form');
+  assert.equal(isListedScreen(screenForRoute('permissions/roles/edit')), false, 'which takes no side-bar position');
+  assert.equal(editorScreenFor(roles), null, 'and a row name does not open it, because it reads no id');
   assert.deepEqual(
     listedScreensForArea('web-applications').map((screen) => screen.route),
     ['web-applications/list', 'web-applications/rest-apis'],
@@ -945,6 +953,7 @@ test('screenForChange resolves the screen a change opens and the route that name
   assert.equal(screenForEntityType('task').route, 'tasks/schedule/details', 'a task change opens its details');
   assert.equal(screenForEntityType('agent-definition').route, 'agent/definitions/edit', 'a definition change opens its form');
   assert.equal(screenForEntityType('user').route, 'permissions/users', 'a user change opens the Users list, not the create form');
+  assert.equal(screenForEntityType('role').route, 'permissions/roles', 'a role change opens the Roles list, not the create form');
   assert.ok(!target.route.includes('/csp/myapp'), 'the id is one encoded segment, never raw path (AD-13)');
 
   // A type no built screen shows is not a fault: the toast still says what changed, with nothing

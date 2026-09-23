@@ -1368,6 +1368,39 @@ export const STRINGS = {
   webAppUnauthenticatedEffect:
     'Anyone who can reach this address can use the application without signing in.',
 
+  // Story 8.3. The Roles list becomes write-capable, so its empty state invites the agent (the
+  // create-a-role form's privilege refusal names the same action), and the form and its grant
+  // dialog publish the labels no existing key holds. Name, description, the Resources heading, the
+  // resource picker's label, the permissions group and Edit are keys that already exist
+  // (`tableColumnName`, `tableColumnDescription`, `resourceListLabel`, `webAppColumnResource`,
+  // `navAreaPermissions`, `agentPanelSecretWarningEdit`).
+  /** EXPERIENCE.md:401 */
+  roleListEmptyAgent: 'create a role',
+  /** EXPERIENCE.md:402 */
+  roleFormLabel: 'New role',
+  /** EXPERIENCE.md:402 */
+  roleFormGrantedRoles: 'Granted roles',
+  /** EXPERIENCE.md:402 */
+  roleGrantAdd: 'Add a grant',
+  /** EXPERIENCE.md:402 */
+  roleGrantDialogAdd: 'Add a resource grant',
+  /** EXPERIENCE.md:402 */
+  roleGrantDialogEdit: 'Edit the grant on <resource>',
+  /** EXPERIENCE.md:402 */
+  roleGrantCurrent: 'Current grant',
+  /** EXPERIENCE.md:402 */
+  roleGrantResulting: 'Resulting grant',
+  /** EXPERIENCE.md:402 */
+  roleGrantNone: 'No grant',
+  /** EXPERIENCE.md:402 */
+  permissionRead: 'Read',
+  /** EXPERIENCE.md:402 */
+  permissionWrite: 'Write',
+  /** EXPERIENCE.md:402 */
+  permissionUse: 'Use',
+  /** EXPERIENCE.md:402 */
+  actionRemove: 'Remove',
+
 } as const;
 
 /**

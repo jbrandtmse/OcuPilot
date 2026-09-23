@@ -2,7 +2,8 @@
 title: 'Story 8.3: Create a role, and manage its resource grants'
 type: 'feature'
 created: '2026-09-22'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'a7c155e7e20fa7119e38682817ab58ae964b5497'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -10,7 +11,32 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-8-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-8-2-create-a-user.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The grant dialog offers Read and Write on a database resource as two independent boxes; the
+      classic RoleResourceEdit ticks and locks Read when Write is ticked (writeChanged). A Write-only
+      grant is admitted by the letter rule and reaches the vendor.
+    evidence: 'irislib/%CSP/UI/Portal/Dialog/RoleResourceEdit.cls writeChanged; RoleCreateRules.PermissionsAdmitted is letter-based per the spec.'
+    location: 'ui/src/app/areas/permissions/role-grant-dialog.ts'
+    severity: 'low'
+  - summary: >-
+      Prohibited.cls's class header counts the covered types ("Six types are covered") inside the
+      paragraph Epic 7 rewrites to "Eight"; with the role branch the merged count is nine, and the
+      paragraph was left untouched to stay off Epic 7's hunk.
+    evidence: 'git diff 3317fae origin/OCU-1-epic7 -- src/OcuPilot/Kernel/Proposal/Prohibited.cls (first hunk); COVEREDTYPES now ends ,role.'
+    location: 'src/OcuPilot/Kernel/Proposal/Prohibited.cls:29'
+    severity: 'low'
+  - summary: >-
+      With `role:foldcase` the agent's confirmed role create sends `PUT Security.Role?name=<folded>`,
+      so a role the agent creates is stored under the lower-case spelling while the screen stores
+      the typed one (occurrence of DW-1493, escalated; Confirm.cls is not edited here).
+    evidence: |-
+      Confirm sends the TargetRef's canonical id as the name query parameter; the screen's Perform
+      sends the typed name. The stored spelling is an inference; the delete is unaffected (probed on
+      ocupilot-b-ci: DropUser("ocupilotprobecasedrop","ROLE") dropped OcuPilotProbeCaseDrop).
+    location: >-
+      src/OcuPilot/Kernel/Proposal/Confirm.cls
+    severity: medium
 ---
 
 <intent-contract>
@@ -286,8 +312,30 @@ Before editing any file marked ⚠, read Epic 7's version with `git fetch origin
 ## Spec Change Log
 
 - 2026-09-23, spec gate (orchestrator rulings): AC3's screen row action moved to Story 9.3 as DW-1513; `%DB_IRISSECURITY:W` joins the escalation predicate (DW-1512 in part; AD-10 amended); the predicate was checked to decide by effect, not by name (Design Notes). Status reset to `ready-for-dev` without a re-plan.
+- 2026-09-23, implement (Rule 5 apply-and-report): `Classification.cls` classifies `Resources[].Name` and `Resources[].Permissions` `ordinary` rather than `Resources` `opaque`, because `field-lists.mjs` refuses to classify a member that has member rows; `Resources` stays the tool's authored argument, so the schema and payload are unchanged.
 
 ## Review Triage Log
+
+### 2026-09-23 — Review pass
+
+- verdicts: 16 findings — high 0, medium 3, low 6, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Role-delete census never runs a kept holder or a nested-only holder (verification-gap) — added `RoleWire.TestTheDeleteCensusCountsOnlyHoldersThatLoseAllThroughTheRole` over real probe roles and account with `ArmAllHolders`; both directions observed red (runs 194, 196)
+  - `[low]` `[patch]` Real-port delete tested only with a lower-case name (verification-gap) — vendor drop is case-insensitive (probed); `RoleWire.DELETEPROBE` is now `OcuPilotProbeRoleDelete`, green (run 192)
+  - `[medium]` `[patch]` No screen test for a top-level `EscalationOnly` (verification-gap) — screen leg added to `TestAnEscalatingGrantIsRefusedOnBothCallers`, observed red (run 198)
+  - `[low]` `[patch]` AC5 store test compares the event type with the store's own constant (verification-gap) — asserts `'role'` and the Roles list's declared `entityType`; mutation observed red
+  - `[false]` `[reject]` `TestEveryRoleFieldCodeCarriesItsOwnSentence` reason assertion cannot fail — it fails if `Rules()` stops drawing its sentences from `ReasonForViolation`
+  - `[false]` `[reject]` Store test key computed with `entityRefKey` — the event key equal to the bus's canonical key is the contract; the fold rule is pinned in `entity-ref.test.mjs`
+  - `[low]` `[patch]` AC6's recorded mutation stops before the ledger assertions — `mutation:` line added (run 197)
+  - `[low]` `[reject]` Per-letter pre-mark fails open when `privilegedPermissions` is absent — `RoleCreateRules.Resources` sets it on every row and the server refuses the grant at Save; the fix adds a branch for a state the server never ships
+  - `[medium]` `[defer]` Agent's role create sends the folded name (intent-alignment a) — occurrence of DW-1493, which the spec carries as known and the lead keeps escalated (`Confirm.cls` not edited); deferred with the delete probed unaffected
+  - `[low]` `[reject]` Screen create's name check and `PUT` are not atomic (intent-alignment b) — the same `Taken`-then-`PUT` shape as 8.1's web-application create; two creates of one name inside one request's window, and the fix is a lock
+  - `[false]` `[reject]` `%` refusal only at the mint (intent-alignment c) — the spec makes it a tool rule, not a prohibition, and proposals are only server-minted; the screen caller is Story 9.3's (DW-1513)
+  - `[medium]` `[patch]` Census positive verdict on a reachable role never exercised (intent-alignment d) — same root and patch as the first row
+  - `[low]` `[reject]` `PORT.NOTAPPLIED` not carried through Confirm to the row (intent-alignment e) — the port fault is pinned in `RoleDelete`; a failed write's closure is `ProposalConfirm.TestAFailedWriteLeavesTheProposalBurned`'s, unchanged
+  - `[false]` `[reject]` A custom granted role that escalates is untested (intent-alignment f) — the role step asks 8.2's `GrantsPrivilege`/`RoleEscalates`, whose recursion `UserCreateWire` pins with a nested role
+  - `[medium]` `[patch]` Screen `EscalationOnly` rests on inference (intent-alignment g) — same root and patch as the third row
+  - `[false]` `[reject]` Changes beyond the named surface (intent-alignment h) — each is spec-mandated (`role:foldcase`, `VERIFIEDDELETES`, roster rows) or required by a matrix row (`Mint` asks `ArgumentProblem` of every tool for `ROLE.NAME.SYSTEM`'s 400)
 
 ## Design Notes
 
@@ -379,9 +427,63 @@ Stateful checks run on slot B's throwaway `ocupilot-b-ci` (web 52777, super 1976
 | AC5 | `role-create-form.store.spec.ts` change-event test | Drop the `publishCreated()` call |
 | AC6 | `RoleCreate.cls` confirm test; `RoleWire` create leg | Set `CREATES` to 0 on `RoleCreate` |
 
+Observed (implement stage; each applied to the checked-in file, loaded with `cbk` (subclasses recompiled) or rebuilt and redeployed, observed red, reverted from a byte copy and reloaded):
+
+- mutation: `Prohibited.Created`'s `role` step disabled -> `RoleCreate.TestAnEscalatingGrantIsRefusedOnBothCallers` red on the screen and the confirm legs of all six cases (run 221)
+- mutation: the `%DB_IRISSECURITY` write clause in `Prohibited.ResourceGrantEscalates` answers 0 -> `RoleCreate` escalation cases 3 and 6 red on both callers and `TestTheBootstrapPreMarksWhatTheSetRefuses` red (run 222); `UserCreate.TestAPrivilegedRoleIsRefusedOnBothCallers` red on the `%DB_IRISSECURITY` screen, pre-mark and confirm legs (run 223)
+- mutation: `Prohibited.Role`'s delete step disabled -> `RoleDelete.TestOcuPilotsOwnRolesAreRefusedAtTheWrite` and `TestTheLastAllHoldersPathIsRefused` red (run 224)
+- mutation: `AdminPort.VERIFIEDDELETES` emptied -> `RoleDelete.TestAVendorDeleteThatDidNotApplyFailsNotApplied` red (run 225)
+- mutation: `Mint` asks `ArgumentProblem` of creates only (the pre-story condition) -> `RoleDelete.TestASystemRoleIsRefusedAtTheMint` red (run 226)
+- mutation: `RoleCreate.CREATES` 0 -> `RoleCreate.TestAConfirmedCreateIsMarkedAndAnswersCreated` red, with four other legs (run 227)
+- mutation: `Security.Role/PUT` removed from `AdminPort.MUTATINGTYPES` -> `RoleWire.TestTheCreateMakesTheRoleWithTheSentGrants` red (run 228)
+- mutation: `AdminPort.VerifyGone`'s 404 line removed -> `RoleWire.TestTheAgentDeleteThroughTheRealPortRemovesTheRole` red (run 229)
+- mutation: `EscalationOnly` added to `RoleCreate.PERMITTEDFIELDS` -> `RoleCreate.TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets` red (run 230)
+- mutation: the duplicate-grant rule removed from `RoleCreateRules.ResourceViolation` -> `RoleCreate.TestEveryFieldRuleRefusesOnBothCallers` red (run 231)
+- mutation: `RoleCreate.Perform` composes from a hand-typed list without `Resources` -> `RoleCreate.TestTheScreenAndTheConfirmSendOneBody` red (run 232)
+- mutation: `Prohibited.ResourceGrantsAdministrativePrivilege` answers 0 -> `RoleCreate.TestTheBootstrapPreMarksWhatTheSetRefuses` red (run 233)
+- mutation: `ROLE.VALIDATION` added to `Error.RoleViolationCodes` -> `RoleCreate.TestEveryRoleFieldCodeCarriesItsOwnSentence` red (run 234)
+- mutation: `RoleForm.sideBarPosition` 7 -> `RoleCreate.TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs` red (run 235)
+- mutation: `Resources` dropped from `RoleDelete.READANSWERS` -> the registration guard refuses the tool; five `RoleDelete` tests red, `TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs` among them (run 236)
+- mutation: `Resources` dropped from `RoleDelete.FINGERPRINTSUBJECT` (precondition moved to `Description`, the `StateDiff` check kept on `Resources`) -> `RoleDelete.TestTheRemovalRowsAndAMovedGrantRefusesTheConfirm` red on "a moved grant refuses the confirm" (run 238)
+- mutation: `RoleDelete.CHANGEACTION` `updated` -> `RoleDelete.TestAConfirmedDeleteIsMarkedAndSendsNoBody` red (run 239)
+- mutation: the Use-only branch removed from `RoleCreateRules.AdmissiblePermissions` -> `RoleWire.TestTheFormReadPublishesTheRulesAndMarksThePrivilegedChoices` red (run 240)
+- mutation: `RoleCreate.RenderViolations` renders `USER.VALIDATION` -> `RoleWire.TestEachRouteAnswersOneJsonEnvelopeOverTheWire` red (run 241)
+- mutation: `publishCreated()` dropped from `RoleCreateForm.save()` -> `role-create-form.store.spec.ts` change-event test red
+- mutation: the dialog's current line renders the resulting grant -> the three AC2 tests of `role-grant-dialog.spec.ts` red; rebuilt and redeployed, `roles-create.browser-spec.mjs` AC2 red
+- mutation (one bundle, four legs, each reddening only its own): Description moved after Resources in the page -> browser AC1 field order red; `[disabled]` dropped from the granted-role checkbox -> browser AC4 red on `%All`; the route replacement dropped from `onSave` -> browser AC5 red; the `RoleActions` injection dropped from `app.ts` -> browser "the Roles list offers Create" red; AC2 stayed green
+- mutation: `RoleCreate.CREATES` 0 -> `RoleCreate.TestATakenNameRefusesTheMintAndAConfirmTakenSince` red on its free-name leg (run 190; matrix row "Name taken", mint 400 and confirm 409)
+- mutation: `ReachesAllWithout` answers 0 -> `RoleWire.TestTheDeleteCensusCountsOnlyHoldersThatLoseAllThroughTheRole` red on the kept-holder leg (run 194); the deleted role skipped only among the account's direct roles -> the nested-holder leg red (run 196)
+- mutation: `RoleCreate.SettableFields` without `Resources` -> `RoleCreate.TestAConfirmedCreateIsMarkedAndAnswersCreated` red on "the ledger names Resources" (run 197; AC6's ledger leg)
+- mutation: `RoleCreate.CallerFields` skips `EscalationOnly` -> `RoleCreate.TestAnEscalatingGrantIsRefusedOnBothCallers` red on the screen's `UNCOVEREDFIELD` leg (run 198)
+- mutation: `ROLE_ENTITY` `'roles'` -> `role-create-form.store.spec.ts` AC5 change-event test red (now asserted against the literal and the Roles list's declared `entityType`)
+- mutation: `RoleForm` dropped from `CREATE_ONLY_FORMS` -> `navigation.test.mjs` create-form and screenForChange tests red
+- roster rows: `Prohibited` (covered types, fourteen codes), `AuditingUpdate` (fourteen codes; red in the full sweep, run 23, and green reloaded, run 188), `ToolWrite` (the absent-DELETE assertion, `PortFixture`'s roster), `SurfaceCoverage`, `EndpointCoverage`, `ReadTool`, `ToolRoundTrip`, `PermissionsLists`, `Wire`, `WireSecurityRead`, `EntityRef`, `entity-ref.test.mjs`, `screen-mirror.test.mjs` and `navigation.test.mjs` were each observed red without this story's rows and green with them
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned; the AC3 intent gap was ruled by the orchestrator (the row action moves to Story 9.3 as DW-1513) and the lead added the `%DB_IRISSECURITY:W` clause (DW-1512) at the spec gate.
+footprint_extensions: contended `src/OcuPilot/Kernel/Proposal/Prohibited.cls`, `src/OcuPilot/Kernel/Proposal/Mint.cls` (every tool's `ArgumentProblem` is asked at the mint), `src/OcuPilot/Screen/Tool/Write.cls` (doc comment only), `src/OcuPilot/Api/Router.cls`, `src/OcuPilot/Test/{SurfaceCoverage,EndpointCoverage,ToolRoundTrip,ReadTool,Prohibited,PortFixture,ToolWrite}.cls`, `ui/tools/screen-mirror.test.mjs`, `ui/src/app/core/screens.generated.ts` (regenerated); shared appends `src/OcuPilot/Port/AdminPort.cls`, `ui/src/app/core/strings.ts`, `ui/src/styles/_components.scss`, EXPERIENCE.md Fixed strings rows 401-402; outside Epic 8's footprint `src/OcuPilot/Kernel/EntityRef.cls` (`role:foldcase`), `ui/src/app/app.ts`; outside the Code Map `src/OcuPilot/Test/{EntityRef,AuditingUpdate,RoleDeletePort}.cls`, `ui/tools/entity-ref.test.mjs`, `ui/browser/users-create.browser-spec.mjs`.
+
+### Summary
+
+`permissions.roles.create` and the `permissions/roles/edit` form (with the resource-grant dialog) are two callers of one tool; `permissions.roles.delete` is an action-style write whose `DELETE` the port verifies with a re-read (`VERIFIEDDELETES`, `PORT.NOTAPPLIED`). The prohibited set covers `role`: `ResourceGrantEscalates` adds `%DB_IRISSECURITY:W` beside the existing predicate and both `RoleGrantsPrivilege` and the role create's `Resources` ask it; a delete refuses OcuPilot's own roles (`OCUPILOTROLE`) and the last `%All` holder's path (`DeletingLeavesNoAllHolder`). No Roles-list row action (DW-1513); `Confirm.cls` untouched.
+
+### Files
+
+- Server: new `Screen/Tool/{RoleCreate,RoleDelete}.cls`, `Area/Permissions/{RoleCreate,RoleCreateRules}.cls`, `Screen/Descriptor/RoleForm.cls`; edited `Prohibited.cls`, `AdminPort.cls`, `Api/Error.cls`, `Api/Router.cls`, `EntityRef.cls`, `Classification.cls` + regenerated `ToolFields.cls`, `RoleList.cls`, `Mint.cls`, `Write.cls` (doc).
+- Client: new `areas/permissions/{role-create-form.page,role-create-form.store,role-grant-dialog,role-actions}.ts`; edited `navigation.ts`, `screen-outlet.ts`, `app.ts`, `strings.ts`, `_components.scss`, regenerated `screens.generated.ts`.
+- Tests: new `Test/{RoleCreate,RoleCreateFixture,RoleDelete,RoleDeletePort,RoleWire}.cls`, `role-create-form.store.spec.ts`, `role-grant-dialog.spec.ts`, `roles-create.browser-spec.mjs`; roster updates listed above; `ci-throwaway.sh` arms `RoleWire`.
+
+### Review
+
+Two layers, 16 findings (Review Triage Log): 6 patched (3 medium entries grouped into 2 root causes, 4 low; all test additions or a comment, each mutation observed red), 1 deferred (DW-1493 occurrence), 9 rejected with reasons logged. The lead also added `RoleCreate.TestATakenNameRefusesTheMintAndAConfirmTakenSince` for the matrix's name-taken row and reworded `Mint.cls`'s comment. Follow-up review recommended: false -- patched medium 2, low 4, high 0; each patch is a test whose red was observed, so no unverified risk remains to name.
+
+### Verification
+
+On `ocupilot-b-ci`: every targeted class green, one class per call; the full ObjectScript sweep ran once in the implement pass (187 classes, 1694/1694 in `%UnitTest_Result`), before the review patches, whose touched classes (`RoleCreate`, `RoleWire`, `RoleDelete`, `ProposalCreate`) were re-run green afterwards (runs 199-202). `npm test` 1324 + 850 green; `roles-create` + `users-create` browser specs 10/10 on the rebuilt, redeployed bundle (initial total 1.15 MB, under budget); smoke 46 passed, 1 skipped (`agentswitches`: switches written by the sweep on this reused throwaway); `check-objectscript`, `lint-docs`, `client-lint`, `field-lists --check`, `screen-mirror --check`, `browser-reset` clean.
+
+### Residual risks
+
+Single-line merge conflicts with Epic 7 on `COVEREDTYPES`/the type guard, `MUTATINGTYPES`/`BODYLESSTYPES`, the roster rows and the three shared-append files; `Prohibited.cls`'s header type count (deferred). `PRIVILEGEGRANT`'s sentence names web applications and accounts, not roles (DW-1502 territory).

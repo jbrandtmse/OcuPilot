@@ -42,8 +42,9 @@
 /// write-tool story adds its own type here, and a type listed with no branch is refused
 /// <parameter>UNCOVERED</parameter> at every write.</p>
 /// <p>Seams a subclass overrides: <method>PortClass</method>, <method>RegistryClass</method>,
-/// <method>LastAllHolder</method> and <method>HoldsAll</method>. Production overrides none of them.
-/// The last two are the census, and the difference between them matters to a reader auditing it:
+/// <method>DeletingLeavesNoAllHolder</method>, <method>LastAllHolder</method> and
+/// <method>HoldsAll</method>. Production overrides none of them.
+/// The last two are the account census, and the difference between them matters to a reader auditing it:
 /// replacing <method>LastAllHolder</method> replaces the census, while replacing
 /// <method>HoldsAll</method> only makes its input deterministic and leaves the census body
 /// running.</p>
@@ -106,6 +107,10 @@ Parameter OCUPILOTPROCESS = "PROHIBITED.OCUPILOTPROCESS";
 /// outside <method>ProcessJobTypes</method>'s allow-list, an unnamed value included.</p>
 Parameter SYSTEMPROCESS = "PROHIBITED.SYSTEMPROCESS";
 
+/// <p>The write would delete one of OcuPilot's own roles (<method>OcuPilotRoles</method>), without
+/// which OcuPilot stops working (AD-10). Only uninstall removes them.</p>
+Parameter OCUPILOTROLE = "PROHIBITED.OCUPILOTROLE";
+
 /// <p>The write would change a setting of a covered type that this release has not reviewed. It is
 /// the shape that covers a vendor property nobody has classified yet, rather than the names that
 /// happen to exist on this build.</p>
@@ -123,12 +128,14 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
 
 Parameter TYPEUSER = "user";
+
+Parameter TYPEROLE = "role";
 
 Parameter TYPEAUDITING = "auditing-configuration";
 
@@ -178,6 +185,19 @@ Parameter FIELDROLES = "Roles";
 
 Parameter FIELDESCALATIONROLES = "EscalationRoles";
 
+/// <p>The two <code>Security.Role</code> payload fields the role predicates read, named once: the
+/// roles a role grants, and its resource grants, each an object <code>{Name, Permissions}</code>.</p>
+Parameter FIELDGRANTEDROLES = "GrantedRoles";
+
+Parameter FIELDRESOURCES = "Resources";
+
+/// <p>The security database's resource, and the permission letter whose grant on it is
+/// <code>%All</code> by effect (AD-10 as amended 2026-09-23): write on the database that holds every
+/// role and user.</p>
+Parameter SECURITYDBRESOURCE = "%DB_IRISSECURITY";
+
+Parameter WRITEPERMISSION = "W";
+
 /// <p>The <code>AutheEnabled</code> bit that lets an application be reached without signing in, and
 /// the only bit <method>ClearsUnauthenticatedOnly</method> permits a payload to change
 /// (<file>irissys/%sySecurityMacros.inc</file>:19-20 gives AuthePassword 32 and
@@ -197,10 +217,11 @@ Parameter READTYPE = "GET";
 /// four web-application predicates in the order <method>WebApplication</method> evaluates them,
 /// then the four <method>User</method> adds, then <parameter>PRIVILEGEGRANT</parameter>, which
 /// both those types reach, then the two <method>Process</method> adds, then the one every covered
-/// type shares, with the wholesale refusal last -- thirteen in all.</p>
+/// type shares, with the wholesale refusal last, and then the one <method>Role</method> adds --
+/// fourteen in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -221,6 +242,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#SYSTEMPROCESS Quit "Suspending or resuming an IRIS system process is not something the agent can propose."
     If pCode = ..#UNCOVEREDFIELD Quit "Only a few of this kind of object's settings are ones the agent may propose changing, and that is not one of them."
     If pCode = ..#UNCOVERED Quit "This release does not check writes to that kind of object against its prohibited set, so none is proposable yet."
+    If pCode = ..#OCUPILOTROLE Quit "This role belongs to OcuPilot, which stops working without it. It is removed only when OcuPilot is uninstalled."
     Quit ""
 }
 
@@ -315,10 +337,15 @@ ClassMethod AlwaysProhibitedFields(pType As %String) As %List
 /// password: its expiry, full name, startup namespace and routine, and its roles -- the last
 /// permitted except where <method>Created</method> finds a role that grants privilege. The password
 /// is a declared secret and never part of the payload this set is asked about.</p>
+/// <p>A role's three are its description, the roles it grants and its resource grants -- the last
+/// two permitted except where <method>Created</method> finds a grant that escalates.
+/// <code>EscalationOnly</code> is not among them, so a create carrying it is refused
+/// <parameter>UNCOVEREDFIELD</parameter>.</p>
 ClassMethod PermittedCreateFields(pType As %String) As %List
 {
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "DispatchClass", "Enabled", "NameSpace", "Recurse", "Resource", "WSGIAppLocation", "WSGIAppName", "WSGICallable", "WSGIType")
     If pType = ..#TYPEUSER Quit $ListBuild("ExpirationDate", "FullName", "NameSpace", "Routine", ..#FIELDROLES)
+    If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
     Quit ""
 }
 
@@ -393,7 +420,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -432,6 +459,10 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
 
         If tType = ..#TYPEUSER {
             Set tSC = ..User(tId, tPayloadObject, tTarget, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPEROLE {
+            Set tSC = ..Role(tId, $Get(tToolClass), .tChanged, .pProhibits, .pCode)
             Quit
         }
         If tType = ..#TYPEAUDITING {
@@ -494,7 +525,8 @@ ClassMethod UncoveredWriteTools(Output pTools As %List) As %Status
 
 /// <p>The <b>create</b> predicates, in declared order, first hit wins: a create at a path that
 /// serves OcuPilot, a field AD-10 forbids unconditionally, for a user account a role that grants
-/// an administrative privilege (<method>GrantsPrivilege</method> against no held role), and any
+/// an administrative privilege (<method>GrantsPrivilege</method> against no held role), for a role
+/// a granted role or a resource grant that escalates (<method>ResourcesEscalate</method>), and any
 /// field the release has not reviewed for a create of this type (AD-54).</p>
 /// <p><b>The set here is the payload's own keys, not a diff against a live target</b>, and that is
 /// the whole difference. A create has no prior state to compare against, so
@@ -538,6 +570,22 @@ ClassMethod Created(pType As %String, pServes As %Boolean, pPayload As %DynamicO
             Set tSC = ..GrantsPrivilege(pPayload, {}, .tGrants)
             If $$$ISERR(tSC) Quit
             If tGrants {
+                Do ..Refuse(..#PRIVILEGEGRANT, .pProhibits, .pCode)
+                Quit
+            }
+        }
+        ; AD-10: a new role grants every role it names and every resource grant it carries, so one
+        ; granted role that escalates, or one resource grant that does, refuses the create.
+        If pType = ..#TYPEROLE {
+            If pPayload.%GetTypeOf(..#FIELDGRANTEDROLES) '= "unassigned" {
+                Set tSC = ..GrantsPrivilege(pPayload, {}, .tGrants, ..#FIELDGRANTEDROLES)
+                If $$$ISERR(tSC) Quit
+                If tGrants {
+                    Do ..Refuse(..#PRIVILEGEGRANT, .pProhibits, .pCode)
+                    Quit
+                }
+            }
+            If ..ResourcesEscalate(pPayload) {
                 Do ..Refuse(..#PRIVILEGEGRANT, .pProhibits, .pCode)
                 Quit
             }
@@ -732,6 +780,98 @@ ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %Dynamic
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The role predicates, in declared order, first hit wins. For a tool whose write is a
+/// <code>DELETE</code>: one of OcuPilot's own roles (<method>OcuPilotRoles</method>), then a role
+/// whose removal leaves no counted <code>%All</code> holder
+/// (<method>DeletingLeavesNoAllHolder</method>). Then, for every role write, the reviewed-few sweep
+/// over an empty permitted list, so a change nobody has reviewed is refused
+/// <parameter>UNCOVEREDFIELD</parameter>.</p>
+/// <p><var>pId</var> is the target's id as the reference carries it. <var>pChanged</var> is
+/// <method>Changed</method>'s answer; a delete's card rows are its declared fingerprint subject,
+/// which <method>Changed</method> skips, so a delete reaches the sweep with nothing changed.</p>
+ClassMethod Role(pId As %String, pToolClass As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        If ..WriteTypeOf(pToolClass) = "DELETE" {
+            Set tSC = ..OcuPilotRoles(.tOwn)
+            If $$$ISERR(tSC) Quit
+            If $ListFind(tOwn, ..NormalizedRole(pId)) {
+                Do ..Refuse(..#OCUPILOTROLE, .pProhibits, .pCode)
+                Quit
+            }
+            Set tSC = ..DeletingLeavesNoAllHolder(pId, .tLeaves)
+            If $$$ISERR(tSC) Quit
+            If tLeaves {
+                Do ..Refuse(..#LASTALLHOLDER, .pProhibits, .pCode)
+                Quit
+            }
+        }
+        Set tSC = ..ReviewedFewOnly(..#TYPEROLE, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>OcuPilot's own roles, each in <method>NormalizedRole</method>'s spelling, in
+/// <var>pRoles</var>: the administrative role and the identity role
+/// (<class>OcuPilot.Kernel.State.Base</class>), and every non-empty <code>matchRole</code> the
+/// install roster declares. Read from those declarations, never transcribed. A roster that cannot
+/// be read is an error, never an empty list.</p>
+ClassMethod OcuPilotRoles(Output pRoles As %List) As %Status
+{
+    Set pRoles = ""
+    Set tSC = $$$OK
+    Try {
+        Set tNames = $ListBuild(##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE, ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION)
+        Set tKeys = ##class(OcuPilot.Install.Roster).Keys()
+        If tKeys = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "the install roster's application keys could not be read, so which roles are OcuPilot's own is unknown")
+            Quit
+        }
+        For tI = 1:1:$Length(tKeys, ",") {
+            Set tSC = ##class(OcuPilot.Install.Roster).Application($Piece(tKeys, ",", tI), .tApp)
+            If $$$ISERR(tSC) Quit
+            If '$IsObject(tApp) Continue
+            If tApp.%Get("matchRole") '= "" Set tNames = tNames _ $ListBuild(tApp.%Get("matchRole"))
+        }
+        If $$$ISERR(tSC) Quit
+        For tI = 1:1:$ListLength(tNames) {
+            Set tOne = ..NormalizedRole($List(tNames, tI))
+            If (tOne '= "") && '$ListFind(pRoles, tOne) Set pRoles = pRoles _ $ListBuild(tOne)
+        }
+    } Catch ex {
+        Set pRoles = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p><var>pName</var> in the one spelling a reference to a role carries: the identity layer's
+/// rule, as <method>NormalizedUser</method> is for accounts (AD-13).</p>
+ClassMethod NormalizedRole(pName As %String) As %String
+{
+    Quit ##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#TYPEROLE, pName)
+}
+
+/// <p>The admin request type <var>pToolClass</var>'s write is issued with, or <code>""</code> for
+/// a class that names none or cannot be asked -- which no role predicate reads as a delete.</p>
+ClassMethod WriteTypeOf(pToolClass As %String) As %String [ Private ]
+{
+    Set tType = ""
+    Try {
+        If pToolClass '= "" Set tType = $ClassMethod(pToolClass, "WriteType")
+    } Catch {
+        Set tType = ""
+    }
+    Quit tType
 }
 
 /// <p>The auditing-configuration predicate: the reviewed-few sweep and nothing else.</p>
@@ -954,15 +1094,18 @@ ClassMethod NormalizedUser(pName As %String) As %String
 /// a name saying nothing, are both grants of that privilege, so the question is asked of the
 /// instance rather than of the role's name. A name the instance holds no role for grants nothing
 /// here; the vendor's own validation is what refuses it.</p>
-ClassMethod GrantsPrivilege(pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean) As %Status [ Private ]
+/// <p><var>pField</var> names the member the role list is read from: an account's
+/// <parameter>FIELDROLES</parameter> when empty, a role's <parameter>FIELDGRANTEDROLES</parameter>
+/// for a role create.</p>
+ClassMethod GrantsPrivilege(pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean, pField As %String = "") As %Status [ Private ]
 {
     Set pGrants = 0
     Set tSC = $$$OK
     Try {
         Kill tHeld
         Kill tWanted
-        Do ..RoleNames(pTarget, .tHeld)
-        Do ..RoleNames(pPayload, .tWanted)
+        Do ..RoleNames(pTarget, .tHeld, pField)
+        Do ..RoleNames(pPayload, .tWanted, pField)
         Set tKey = ""
         For {
             Set tKey = $Order(tWanted(tKey))
@@ -982,19 +1125,21 @@ ClassMethod GrantsPrivilege(pPayload As %DynamicObject, pTarget As %DynamicObjec
     Quit tSC
 }
 
-/// <p>The role names <var>pObject</var>'s <code>Roles</code> member carries, as
+/// <p>The role names <var>pObject</var>'s <code>Roles</code> member -- or the member
+/// <var>pField</var> names, when it is not empty -- carries, as
 /// <var>pNames(&lt;upper-cased name&gt;) = &lt;name as written&gt;</var>. An IRIS role name is
 /// case-insensitive, so the key is folded and the value keeps the spelling a recursed lookup is
 /// made with.</p>
 /// <p>The member is an array on the vendor's own <code>GET</code> and in a payload the merge built
 /// from one; a comma-separated string is read too, because that is how the same property reaches
 /// <class>Security.Users</class>, and a member carrying neither names no role.</p>
-ClassMethod RoleNames(pObject As %DynamicObject, Output pNames) [ Private ]
+ClassMethod RoleNames(pObject As %DynamicObject, Output pNames, pField As %String = "") [ Private ]
 {
     Kill pNames
     If '$IsObject(pObject) Quit
-    If pObject.%GetTypeOf(..#FIELDROLES) = "array" {
-        Set tValue = pObject.%Get(..#FIELDROLES)
+    Set tField = $Select(pField = "": ..#FIELDROLES, 1: pField)
+    If pObject.%GetTypeOf(tField) = "array" {
+        Set tValue = pObject.%Get(tField)
         If '$IsObject(tValue) Quit
         Set tIterator = tValue.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tItem) {
@@ -1005,7 +1150,7 @@ ClassMethod RoleNames(pObject As %DynamicObject, Output pNames) [ Private ]
         }
         Quit
     }
-    Set tRaw = ..Rendered(pObject, ..#FIELDROLES)
+    Set tRaw = ..Rendered(pObject, tField)
     For tI = 1:1:$Length(tRaw, ",") {
         Set tOne = $ZStrip($Piece(tRaw, ",", tI), "<>W")
         If tOne = "" Continue
@@ -1083,8 +1228,9 @@ ClassMethod RoleGrantsAdministrativePrivilege(pRole As %String) As %Boolean
 }
 
 /// <p>Whether role <var>pRole</var> carries a privileged <b>resource</b>, in <var>pGrants</var>:
-/// one named <parameter>ALLROLE</parameter> or carrying <parameter>ADMINROLEPREFIX</parameter>, at
-/// any permission.</p>
+/// one whose grant <method>ResourceGrantEscalates</method> answers for -- named
+/// <parameter>ALLROLE</parameter> or carrying <parameter>ADMINROLEPREFIX</parameter> at any
+/// permission, or <parameter>SECURITYDBRESOURCE</parameter> with write.</p>
 /// <p>The resource list is the instance's own (<class>Security.Roles</class>, read in
 /// <code>%SYS</code> and restored, AD-16). A name the instance holds no role for carries nothing,
 /// which is the same answer <method>RoleEscalates</method> gives it: the vendor's own validation is
@@ -1108,7 +1254,8 @@ ClassMethod RoleGrantsPrivilege(pRole As %String, Output pGrants As %Boolean) As
         If $$$ISOK(tGetSC) Set tResources = $Get(tProps("Resources"))
         Set $NAMESPACE = tOrigNS
         For tI = 1:1:$Length(tResources, ",") {
-            If ..IsPrivilegedRole($Piece($Piece(tResources, ",", tI), ":", 1)) Set pGrants = 1
+            Set tGrant = $Piece(tResources, ",", tI)
+            If ..ResourceGrantEscalates($Piece(tGrant, ":", 1), $Piece(tGrant, ":", 2)) Set pGrants = 1
         }
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -1116,6 +1263,48 @@ ClassMethod RoleGrantsPrivilege(pRole As %String, Output pGrants As %Boolean) As
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Whether a grant of resource <var>pName</var> at permissions <var>pPermissions</var> escalates
+/// privilege (AD-10): a resource <method>IsPrivilegedRole</method> names, at any permission, or
+/// <parameter>SECURITYDBRESOURCE</parameter> with <parameter>WRITEPERMISSION</parameter> among its
+/// letters -- write on the security database is <code>%All</code> by effect. Both names compare
+/// case-insensitively, as IRIS resolves a resource name.</p>
+/// <p><b>It is the one question both paths ask</b>: <method>RoleGrantsPrivilege</method>, for the
+/// resources a granted role carries, and a role create's own resource grants
+/// (<method>ResourcesEscalate</method>), so the two cannot drift apart.</p>
+ClassMethod ResourceGrantEscalates(pName As %String, pPermissions As %String) As %Boolean
+{
+    If ..IsPrivilegedRole(pName) Quit 1
+    If $ZConvert($ZStrip(pName, "<>W"), "U") '= $ZConvert(..#SECURITYDBRESOURCE, "U") Quit 0
+    Quit ($ZConvert(pPermissions, "U") [ ..#WRITEPERMISSION)
+}
+
+/// <p>Whether resource <var>pName</var> escalates privilege at <b>every</b> permission -- the name
+/// alone decides it (<method>IsPrivilegedRole</method>). For a picker's pre-mark of a whole
+/// resource; the refusal itself is <method>Prohibits</method>'s, asked at the write.</p>
+ClassMethod ResourceGrantsAdministrativePrivilege(pName As %String) As %Boolean
+{
+    Quit ..IsPrivilegedRole(pName)
+}
+
+/// <p>Whether any of <var>pPayload</var>'s <parameter>FIELDRESOURCES</parameter> grants escalates
+/// (<method>ResourceGrantEscalates</method>). A grant is an object <code>{Name, Permissions}</code>;
+/// an element of any other shape grants nothing here, and the vendor refuses it.</p>
+ClassMethod ResourcesEscalate(pPayload As %DynamicObject) As %Boolean [ Private ]
+{
+    Set tEscalates = 0
+    If '$IsObject(pPayload) Quit 0
+    If pPayload.%GetTypeOf(..#FIELDRESOURCES) '= "array" Quit 0
+    Set tIterator = pPayload.%Get(..#FIELDRESOURCES).%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tGrant) {
+        If '$IsObject(tGrant) || 'tGrant.%IsA("%Library.DynamicObject") Continue
+        If ..ResourceGrantEscalates(..Rendered(tGrant, "Name"), ..Rendered(tGrant, "Permissions")) {
+            Set tEscalates = 1
+            Quit
+        }
+    }
+    Quit tEscalates
 }
 
 /// <p>Whether <var>pRole</var> is <parameter>ALLROLE</parameter> or carries
@@ -1279,6 +1468,124 @@ ClassMethod LastAllHolder(pId As %String, Output pLast As %Boolean) As %Status
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set pLast = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether deleting role <var>pRole</var> would leave the instance with no counted account
+/// holding <code>%All</code>, in <var>pLeaves</var> (AD-10).</p>
+/// <p>It answers 0 unless the role itself reaches <code>%All</code>
+/// (<method>RolesGrantAll</method>): a role that does not cannot change who holds it. Otherwise it
+/// is 1 when at least one counted account (<method>CountsAsHolder</method>) holds <code>%All</code>
+/// now (<method>HoldsAll</method>) and none of them still reaches it once the role is gone
+/// (<method>ReachesAllWithout</method>). Every account the instance holds is asked, so a holder
+/// that reaches <code>%All</code> only through a custom role is counted.</p>
+/// <p><b>Overridable seam</b>, for the reason <method>LastAllHolder</method> is. Production never
+/// overrides it.</p>
+ClassMethod DeletingLeavesNoAllHolder(pRole As %String, Output pLeaves As %Boolean) As %Status
+{
+    Set pLeaves = 0
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        If $ZStrip(pRole, "<>W") = "" Quit
+        Kill tNames
+        Set tNames($ZConvert(pRole, "U")) = pRole
+        Set tSC = ..RolesGrantAll(.tNames, .tReaches)
+        If $$$ISERR(tSC) Quit
+        If 'tReaches Quit
+        ; The population is read in %SYS and judged after the restore, as LastAllHolder does.
+        Set tRows = ""
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%ResultSet).%New("Security.Users:List")
+        Set tSC = tRS.Execute("*", "*")
+        If $$$ISOK(tSC) {
+            While tRS.Next() {
+                Set tRows = tRows _ $ListBuild($ListBuild(tRS.GetData(1), tRS.GetData(2)))
+            }
+            Do tRS.Close()
+        }
+        Set tRS = ""
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) Quit
+        Set tHolders = 0
+        Set tKept = 0
+        For tI = 1:1:$ListLength(tRows) {
+            Set tRow = $List(tRows, tI)
+            If '..CountsAsHolder($List(tRow, 1), $List(tRow, 2)) Continue
+            Set tSC = ..HoldsAll($List(tRow, 1), .tHolds)
+            If $$$ISERR(tSC) Quit
+            If 'tHolds Continue
+            Set tHolders = tHolders + 1
+            Set tSC = ..ReachesAllWithout($List(tRow, 1), pRole, .tStill)
+            If $$$ISERR(tSC) Quit
+            If tStill {
+                Set tKept = 1
+                Quit
+            }
+        }
+        If $$$ISERR(tSC) Quit
+        Set pLeaves = (tHolders > 0) && 'tKept
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pLeaves = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether account <var>pUser</var> still reaches <code>%All</code> once role <var>pSkip</var>
+/// is gone, in <var>pReaches</var>: one of its own roles, walked through each role's
+/// <code>GrantedRoles</code> with <var>pSkip</var> left out wherever it appears, arrives at
+/// <code>%All</code>. Names compare case-insensitively. The walk reads
+/// <class>Security.Users</class> and <class>Security.Roles</class> in <code>%SYS</code> and calls
+/// nothing of OcuPilot's while there (AD-16).</p>
+ClassMethod ReachesAllWithout(pUser As %String, pSkip As %String, Output pReaches As %Boolean) As %Status
+{
+    Set pReaches = 0
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tAll = $ZConvert(..#ALLROLE, "U")
+        Set tSkip = $ZConvert($ZStrip(pSkip, "<>W"), "U")
+        Set $NAMESPACE = "%SYS"
+        Kill tProps
+        Set tSC = ##class(Security.Users).Get(pUser, .tProps)
+        If $$$ISERR(tSC) {
+            Set $NAMESPACE = tOrigNS
+            Quit
+        }
+        Kill tSeen
+        Set tQueue = ""
+        Set tDirect = $Get(tProps("Roles"))
+        For tI = 1:1:$Length(tDirect, ",") {
+            Set tOne = $ZStrip($Piece(tDirect, ",", tI), "<>W")
+            If tOne '= "" Set tQueue = tQueue _ $ListBuild(tOne)
+        }
+        Set tAt = 0
+        While (tAt < $ListLength(tQueue)) && 'pReaches {
+            Set tAt = tAt + 1
+            Set tName = $List(tQueue, tAt)
+            Set tKey = $ZConvert(tName, "U")
+            If (tKey = tSkip) || $Data(tSeen(tKey)) Continue
+            Set tSeen(tKey) = ""
+            If tKey = tAll {
+                Set pReaches = 1
+                Quit
+            }
+            Kill tRoleProps
+            If $$$ISERR(##class(Security.Roles).Get(tName, .tRoleProps)) Continue
+            Set tGranted = $Get(tRoleProps("GrantedRoles"))
+            For tJ = 1:1:$Length(tGranted, ",") {
+                Set tOne = $ZStrip($Piece(tGranted, ",", tJ), "<>W")
+                If tOne '= "" Set tQueue = tQueue _ $ListBuild(tOne)
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pReaches = 0
         Set tSC = ex.AsStatus()
     }
     Quit tSC

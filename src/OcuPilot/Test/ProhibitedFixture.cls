@@ -1,10 +1,11 @@
-/// <p>Test-only <class>OcuPilot.Kernel.Proposal.Prohibited</class> subclass with three replaced
+/// <p>Test-only <class>OcuPilot.Kernel.Proposal.Prohibited</class> subclass with four replaced
 /// seams: the live read goes to <class>OcuPilot.Test.ProposalFixture</class>'s armed object instead
 /// of the admin port, so the <b>shipped</b> predicates run against a target a test composed; and
-/// the two census seams below can be armed.</p>
-/// <p><b>Which of the three replaces a body matters, because a seam that replaces a safety
+/// the three census seams below can be armed.</p>
+/// <p><b>Which of the four replaces a body matters, because a seam that replaces a safety
 /// predicate makes every test through it vacuous.</b> <method>PortClass</method> redirects a read
-/// and replaces no predicate. <method>LastAllHolder</method> armed replaces the census outright.
+/// and replaces no predicate. <method>LastAllHolder</method> and
+/// <method>DeletingLeavesNoAllHolder</method> armed each replace a census outright.
 /// <method>HoldsAll</method> armed replaces only the census's per-account input, so the census body
 /// still runs in full. Everything else -- the covered-type refusal, the predicate order, the
 /// rendered comparison, the diff scoping, the role and resource escalation reads and the
@@ -39,6 +40,19 @@ ClassMethod LastAllHolder(pId As %String, Output pLast As %Boolean) As %Status
         Quit $$$OK
     }
     Quit ##super(pId, .pLast)
+}
+
+/// <p>The shipped role-delete census, except that
+/// <method>OcuPilot.Test.ProposalFixture.ArmLastAllHolder</method> can answer "yes" for it too -- so
+/// AD-10's refusal of a delete that strands the last <code>%All</code> holder is driven without
+/// stripping a real account. Disarmed, the shipped census answers.</p>
+ClassMethod DeletingLeavesNoAllHolder(pRole As %String, Output pLeaves As %Boolean) As %Status
+{
+    If ##class(OcuPilot.Test.ProposalFixture).LastAllHolderArmed() {
+        Set pLeaves = 1
+        Quit $$$OK
+    }
+    Quit ##super(pRole, .pLeaves)
 }
 
 /// <p>The shipped answer, except that <method>OcuPilot.Test.ProposalFixture.ArmAllHolders</method>

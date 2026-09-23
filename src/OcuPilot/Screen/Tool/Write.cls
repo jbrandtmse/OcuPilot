@@ -559,10 +559,10 @@ ClassMethod JsonType(pTemplateType As %String) As %String [ Private ]
     Quit "string"
 }
 
-/// <p>The refusal of a create's arguments under this tool's own field rules, in
-/// <var>pProblem</var>, or <code>""</code> (AD-55). The mint asks it for a tool that declares
-/// <parameter>CREATES</parameter>, after the absence read and before anything is stored, so the
-/// agent cannot mint a create that the screen's Save would refuse.</p>
+/// <p>The refusal of a call's arguments under this tool's own field rules, in
+/// <var>pProblem</var>, or <code>""</code> (AD-55). The mint asks it of every tool, after the fresh
+/// read and before anything is stored, so the agent cannot mint a write that the screen would
+/// refuse.</p>
 /// <p>Empty here: a change merges over a fresh read and a field it omits keeps the instance's
 /// value, while a create's omitted field takes the vendor's default.</p>
 ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status

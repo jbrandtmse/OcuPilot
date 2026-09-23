@@ -56,6 +56,14 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// vendor's POST body is <code>{User, Password}</code>, whose outer <code>Password</code> the
 /// template never shows, so AD-3's "the write tool authors [wrapper fields] as secret fields of its
 /// own" is stated here, where the generator can check it.</p>
+/// <p><b><code>permissions.roles.create</code></b> classifies <code>Security.Role</code>'s every
+/// classifiable row <code>ordinary</code>. <code>Resources</code> itself is not classifiable -- its
+/// template describes each grant's <code>Name</code> and <code>Permissions</code>, so those two are
+/// the rows -- and no nested path reaches a schema
+/// (<method>OcuPilot.Screen.Tool.Write.FieldRows</method>): the tool carries <code>Resources</code>
+/// as an authored argument of its own (<class>OcuPilot.Screen.Tool.RoleCreate</class>).
+/// <code>EscalationOnly</code> is <code>ordinary</code> here and absent from the tool's positive
+/// list, so it is never advertised.</p>
 XData Entries
 {
 {
@@ -208,6 +216,16 @@ XData Entries
     },
     "authored": {
       "Password": "secret"
+    }
+  },
+  "permissions.roles.create": {
+    "fieldList": "Security.Role",
+    "classification": {
+      "Description": "ordinary",
+      "GrantedRoles[]": "ordinary",
+      "EscalationOnly": "ordinary",
+      "Resources[].Name": "ordinary",
+      "Resources[].Permissions": "ordinary"
     }
   }
 }

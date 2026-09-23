@@ -194,13 +194,13 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             Quit
         }
 
-        ; AD-55. A create's omitted field takes the vendor's default rather than the instance's
-        ; current value, so the tool's own field rules -- the ones the screen's Save answers --
-        ; refuse the arguments here, before anything is stored.
-        If tCreates && (pToolClass '= "") {
+        ; AD-55. The tool's own field rules -- the ones the screen answers -- refuse the arguments
+        ; here, before anything is stored. A create needs them because its omitted field takes the
+        ; vendor's default; any tool may declare them, and a tool that declares none answers none.
+        If pToolClass '= "" {
             Set tRuleSC = $ClassMethod(pToolClass, "ArgumentProblem", pIdValue, pArgs, .tRuleProblem)
             If $$$ISERR(tRuleSC) {
-                Set tSC = ..Internal("the create's field rules could not be evaluated: " _ $System.Status.GetErrorText(tRuleSC), .pHttpStatus, .pFault)
+                Set tSC = ..Internal("the tool's field rules could not be evaluated: " _ $System.Status.GetErrorText(tRuleSC), .pHttpStatus, .pFault)
                 Quit
             }
             If tRuleProblem '= "" {

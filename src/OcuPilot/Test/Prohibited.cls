@@ -166,7 +166,7 @@ Method TestAChangedRoleGrantIsRefused()
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -- this goes red.</p>
 Method TestAnUncoveredEntityTypeIsRefusedWholesale()
 {
-    Set tUncovered = $ListBuild("role", "resource", "service", "database")
+    Set tUncovered = $ListBuild("resource", "service", "database")
     For tI = 1:1:$ListLength(tUncovered) {
         Set tType = $List(tUncovered, tI)
         Set tSC = ..Ask(..Target(), ..Payload(), "Description", .tProhibits, .tCode, "probe-id", tType)
@@ -178,10 +178,10 @@ Method TestAnUncoveredEntityTypeIsRefusedWholesale()
     Do $$$AssertStatusOK(tSC, "an unparseable reference is answered, not raised")
     Do $$$AssertEquals(tProhibits, 1, "and refused")
     Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "UNCOVERED"), "as uncovered")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error", "Release 1 covers exactly six entity types")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error,role", "Release 1 covers exactly seven entity types")
 
     ; The refusal reaches a caller as a 403 with the set's own code, not as an error.
-    Set tKey = ..Seed(..Payload(), "Description", "probe-id", "role")
+    Set tKey = ..Seed(..Payload(), "Description", "probe-id", "resource")
     If tKey = "" Quit
     Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Target())
     Set tSC = ..Confirm(tKey, .tHttp, .tCode)
@@ -563,7 +563,7 @@ Method TestTheSetHasOneHomeAndOneSentencePerCode()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RegistryClass(), "OcuPilot.Screen.Tool.Registry", "and resolves the tool through the shipped registry")
 
     Set tCodes = ##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()
-    Do $$$AssertEquals($ListLength(tCodes), 13, "the set declares thirteen codes")
+    Do $$$AssertEquals($ListLength(tCodes), 14, "the set declares fourteen codes")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), tCode _ " matches the machine-code pattern")
