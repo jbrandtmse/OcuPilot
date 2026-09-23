@@ -48,11 +48,20 @@ Parameter PROCRESUMETOOLCLASS = "OcuPilot.Screen.Tool.ProcessResume";
 
 Parameter WRITEBASE = "OcuPilot.Screen.Tool.Write";
 
+/// <p>Story 7.1's delete tool and its class.</p>
+Parameter WEBAPPDELETETOOL = "webapp.list.delete";
+
+Parameter WEBAPPDELETETOOLCLASS = "OcuPilot.Screen.Tool.WebAppDelete";
+
 Parameter ERRORDELETETOOL = "logs.applicationerrors.delete";
 
 Parameter ERRORDELETETOOLCLASS = "OcuPilot.Screen.Tool.ErrorDelete";
 
 Parameter REGISTRY = "OcuPilot.Screen.Tool.Registry";
+
+/// <p>An application every instance OcuPilot is installed on carries, read for its keys alone and
+/// never written -- what the delete tool's declared read set is measured against.</p>
+Parameter APIAPPLICATION = "/api/ocupilot";
 
 Parameter PROBE = "OcuPilot.Test.ToolDispatchProbe";
 
@@ -631,6 +640,79 @@ Method TestTheErrorDeleteToolIsAnActionWriteOverItsOwnPort()
     Do $$$AssertTrue(tProblem [ "date", "naming the argument: " _ tProblem)
 }
 
+/// <p>AD-51, AD-52, AD-53: the web-application delete is an action-style write over the admin
+/// port, whose fingerprint subject is what the list shows about the application beside its name,
+/// whose precondition field it carries, and whose pair set is the screen's own -- never
+/// <code>%Admin_Secure:WRITE</code>, which no shipped role grants (DW-1208).</p>
+/// <p>It also pins the two halves that make the screen's own caller reach it: the row action it
+/// declares it carries out, and the <code>deleted</code> change action the answer publishes.</p>
+/// <p><b>Its declared read set is measured, not recalled.</b> The subject names
+/// <code>NameSpace</code>, which the screen's list spells <code>Namespace</code> -- so the guard
+/// validates it against this tool's own <parameter>READANSWERS</parameter>, and this test holds
+/// that declaration to the live <code>GET</code> for one real application (DW-1475).</p>
+/// <p>Mutation (Rule 19): drop <code>NameSpace</code> from
+/// <parameter>OcuPilot.Screen.Tool.WebAppDelete.READANSWERS</parameter> and recompile the package
+/// -- the registration guard refuses the tool, the registry stops listing it, and the resolve at
+/// the head of this method goes red.</p>
+Method TestTheWebApplicationDeleteToolIsAnActionWriteOverTheScreensOwnPairs()
+{
+    Set tClass = ..#WEBAPPDELETETOOLCLASS
+    Set tSC = $ClassMethod(..#REGISTRY, "Resolve", ..#WEBAPPDELETETOOL, .tTool)
+    Do $$$AssertStatusOK(tSC, "the registry resolves the delete tool by name")
+    Do $$$AssertTrue($IsObject(tTool), "and finds it")
+    If '$IsObject(tTool) Quit
+    Do $$$AssertEquals(tTool.%Get("kind"), "write", "it is a write tool")
+    Do $$$AssertEquals(tTool.%Get("class"), tClass, "answered by its own class")
+    Do $$$AssertEquals($ClassMethod(..#REGISTRY, "FulfilmentOf", tTool), "instance", "fulfilled on the instance, never in the browser")
+
+    Do $$$AssertEquals($ClassMethod(tClass, "PortClass"), "OcuPilot.Port.AdminPort", "its target lives behind the admin port")
+    Do $$$AssertEquals($ClassMethod(tClass, "Endpoint"), "WebApp.App", "over the vendor's own web-application endpoint")
+    Do $$$AssertEquals($ClassMethod(tClass, "ReadType"), "GET", "its fresh read is the endpoint's single-object read")
+    Do $$$AssertEquals($ClassMethod(tClass, "WriteType"), "DELETE", "and its write is the vendor's own delete")
+    Do $$$AssertEquals($ClassMethod(tClass, "SendsBody"), 0, "it sends no body")
+    Do $$$AssertEquals($ClassMethod(tClass, "ChangeAction"), "deleted", "and publishes the deleted action, so a list drops the row")
+    Do $$$AssertEquals($ClassMethod(tClass, "Destructive"), 1, "it is destructive: nothing proposes a deleted application back")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "SettableFields")), 0, "it admits no settable field at all")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "FingerprintSubject")), "NameSpace,DispatchClass,Resource,Enabled", "its fingerprint covers what the list shows beside the name")
+    Do $$$AssertEquals($ClassMethod(tClass, "PreconditionField"), "NameSpace", "which carries the field its own precondition reads")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).FingerprintSubjectProblem(tClass), "", "and the registration guard holds that subject adequate")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "ScreenActionIds")), "delete", "it carries the screen's own delete row action")
+
+    ; The port admits the pair, under its own endpoint, and as one that reads no body.
+    Do $$$AssertTrue($ListFind($ListFromString($Parameter("OcuPilot.Port.AdminPort", "MUTATINGTYPES")), "WebApp.App/DELETE") > 0, "the port admits the mutating pair")
+    Do $$$AssertTrue($ListFind($ListFromString($Parameter("OcuPilot.Port.AdminPort", "BODYLESSTYPES")), "WebApp.App/DELETE") > 0, "and knows the vendor reads no body for it")
+
+    Set tPairs = $ClassMethod(tClass, "PrivilegePairs", "", .tResolved)
+    Do $$$AssertEquals(tResolved, 1, "its pairs resolve")
+    Set tDeclared = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tClass, "DESCRIPTORCLASS"), .tDeclaredResolved)
+    Do $$$AssertEquals(tDeclaredResolved, 1, "the screen's own declared set resolves")
+    Do $$$AssertEquals(tPairs, tDeclared, "and the write's set is that set, not a superset of it")
+    Do $$$AssertEquals($ListFind(tPairs, $ListBuild("%Admin_Secure", "WRITE")), 0, "never the WRITE permission no shipped role grants")
+
+    ; DW-1475, measured: every name the subject carries is one this endpoint's own GET answers,
+    ; and the list's own spelling of the namespace is not.
+    Kill tQuery
+    Set tQuery("name") = ..#APIAPPLICATION
+    Set tReadSC = ##class(OcuPilot.Port.AdminPort).Invoke("WebApp.App", "GET", .tQuery, "", .tFresh, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tReadSC, "the endpoint answers for " _ ..#APIAPPLICATION)
+    If $IsObject(tFresh) {
+        Set tSubject = $ClassMethod(tClass, "FingerprintSubject")
+        Set tMissing = ""
+        For tI = 1:1:$ListLength(tSubject) {
+            If tFresh.%GetTypeOf($List(tSubject, tI)) = "unassigned" Set tMissing = tMissing _ " " _ $List(tSubject, tI)
+        }
+        Do $$$AssertEquals(tMissing, "", "every subject name is one the live GET answers")
+        Do $$$AssertEquals(tFresh.%GetTypeOf("Namespace"), "unassigned", "while the list's own spelling is not, which is why READANSWERS exists")
+        Set tDeclaredNames = $ClassMethod(tClass, "ReadAnswers")
+        Set tUnclaimed = ""
+        Set tIterator = tFresh.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tValue) {
+            If '$ListFind(tDeclaredNames, tKey) Set tUnclaimed = tUnclaimed _ " " _ tKey
+        }
+        Do $$$AssertEquals(tUnclaimed, "", "and READANSWERS names every key that read actually answers")
+    }
+}
+
 /// <p>What both process tools declare, given the tool name <var>pName</var>, its class
 /// <var>pClass</var>, the vendor request type <var>pWriteType</var> it issues and whether it is
 /// <var>pDestructive</var>.</p>
@@ -804,12 +886,17 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
         Do $$$AssertEquals($Length(tPair, "/"), 2, "'" _ tPair _ "' is an <endpoint>/<type> pair, not a bare suffix (DW-1473)")
         If '$ListFind(tMutatingSuffixes, $Piece(tPair, "/", 2)) Set tMutatingSuffixes = tMutatingSuffixes _ $ListBuild($Piece(tPair, "/", 2))
     }
-    ; AD-10, Story 5.12's AC3: terminating a process is never advertised, and the pair key must not
-    ; read as permission to admit the suffix somewhere else. Asked over every pair rather than over
-    ; Process's two, which is what the bare-suffix roster used to say and the re-key stopped saying.
-    For tAbsent = "TERMINATE", "DELETE" {
-        Do $$$AssertEquals($ListFind(tMutatingSuffixes, tAbsent), 0, "'" _ tAbsent _ "' is a suffix no endpoint's pair admits, on this port")
+    ; AD-10, Story 5.12's AC3: terminating a process is never advertised, by either of the two
+    ; request types the vendor exposes it through -- `Process`'s own `RunDelete` is a one-line
+    ; delegate to `RunTerminate`. Asked as a PAIR since Story 7.1 shipped `WebApp.App/DELETE`: the
+    ; suffix is no longer universally absent, and the thing AD-10 forbids never was a suffix. That
+    ; is DW-1473's key doing its work -- admitting a type on one endpoint admits it on no other.
+    For tAbsent = "Process/TERMINATE", "Process/DELETE" {
+        Do $$$AssertEquals($ListFind(tMutating, tAbsent), 0, "'" _ tAbsent _ "' is a pair this port does not admit")
+        Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsMutating($Piece(tAbsent, "/", 1), $Piece(tAbsent, "/", 2)), "and the port answers so")
     }
+    Do $$$AssertTrue($ListFind(tMutatingSuffixes, "DELETE") > 0, "while DELETE is admitted for the endpoint whose delete a tool does issue, which is what makes the pair key load-bearing here")
+    Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("WebApp.App", "DELETE"), "namely WebApp.App")
     ; DW-1473's own condition: admitting a suffix on one endpoint must not admit it on another.
     ; Task.CRUD declares TYPESUSPEND, Process is the endpoint whose SUSPEND a tool issues.
     Do $$$AssertTrue($ListFind(tMutatingSuffixes, "SUSPEND") > 0, "SUSPEND is admitted somewhere, which is what makes the pair key load-bearing")

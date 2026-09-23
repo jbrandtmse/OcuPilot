@@ -1316,14 +1316,20 @@ export const STRINGS = {
 
   // The self-protection refusal for OcuPilot's own web applications, and the delete dialog's
   // consequence body. The refusal is one sentence for two surfaces -- the row action drawn
-  // disabled before a click, and the envelope `reason` after one -- so the server holds the
-  // same literal and OcuPilot.Test.RefusalCopy pins the two equal (AD-53, AD-39).
+  // disabled before a click, and the envelope `reason` after one -- so the server holds the same
+  // literal in `Prohibited.SERVINGPATHREASON`, `ui/tools/self-protection.test.mjs` pins the two
+  // equal, and OcuPilot.Test.RefusalCopy holds the instance's own half (AD-53, AD-39).
   /** EXPERIENCE.md:395 */
   webAppServesOcuPilotRefusal:
     'OcuPilot serves itself through this web application. Disabling or deleting it would cut off every user, including you.',
   /** EXPERIENCE.md:396 */
   webAppDeleteConsequence:
     'Deleting this web application stops every request it serves. This cannot be undone.',
+
+  // The phrase that resolves `tableWriteCapableEmptyState`'s placeholder on the Web applications
+  // list, which Story 7.1 makes write-capable by declaring its three row actions.
+  /** EXPERIENCE.md:397 */
+  webAppListEmptyAgent: 'enable a web application and give it a resource',
 
 } as const;
 

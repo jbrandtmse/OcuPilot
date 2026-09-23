@@ -12,6 +12,8 @@ import type { BannerCase, ScreenDeclaration } from '../core/screens.generated';
 import { stringFor } from '../core/strings';
 import { COMMAND_BAR_FILTER_ID } from './command-bar';
 import { DataTable } from './data-table';
+import { ScreenActionHandler } from './screen-action-handler';
+import { TypedNameDialog } from './typed-name-dialog';
 
 /** The screen this page renders and the store its table reads. */
 interface ListView {
@@ -53,7 +55,7 @@ interface ListView {
 @Component({
   selector: 'app-list-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DataTable],
+  imports: [DataTable, TypedNameDialog],
   template: `<section class="ocu-list-page">
     @if (bannerText) {
       <p [class]="bannerClass" role="status">
@@ -70,6 +72,15 @@ interface ListView {
     @if (list; as view) {
       <app-data-table [screen]="view.screen" [store]="view.store" (focusFilter)="onFocusFilter()" />
     }
+    @if (pendingConfirm; as pending) {
+      <app-typed-name-dialog
+        [verb]="pending.verb"
+        [target]="pending.target"
+        [consequence]="pending.consequence"
+        (confirmed)="onConfirmDestructive()"
+        (cancelled)="onCancelDestructive()"
+      />
+    }
   </section>`,
 })
 export class ListPage {
@@ -81,6 +92,14 @@ export class ListPage {
   private readonly scope = inject(ScopeService);
 
   private readonly actions = inject(ScreenActions);
+
+  /**
+   * Constructed for its own sake, the way `app.ts` constructs `DefinitionActions`: its constructor
+   * is what registers every declared row action this client runs through
+   * `POST /screens/:screen/action` (AD-53), and a list page is where those actions are offered.
+   * Nothing else injects it, so without this line no surface would draw one.
+   */
+  private readonly screenActions = inject(ScreenActionHandler);
 
   protected readonly list: ListView | null;
 
@@ -196,6 +215,25 @@ export class ListPage {
   protected get refusalText(): string {
     this.generation();
     return this.list?.store.refusal() ?? '';
+  }
+
+  /**
+   * The destructive row action waiting on a typed name, or `null` (AD-53). The dialog is rendered
+   * here because a row action belongs to the list it acts on, and because the shell has exactly
+   * one modal surface (`dialog.ts`), which this one is built on.
+   */
+  protected get pendingConfirm(): ReturnType<ScreenActionHandler['pending']> {
+    return this.screenActions.pending();
+  }
+
+  /** The typed name matched: the handler sends the write it was standing in front of. */
+  protected onConfirmDestructive(): void {
+    this.screenActions.confirmPending();
+  }
+
+  /** Escape, Cancel or the scrim: nothing was sent (EXPERIENCE.md `confirm-dialog`). */
+  protected onCancelDestructive(): void {
+    this.screenActions.cancelPending();
   }
 
   /** The strip's sentence, or `''` when none stands. */

@@ -29,10 +29,15 @@
 /// <code>Security.Applications</code> moves no field of its own as a side effect of a PUT. Both
 /// lists are declared empty rather than omitted, because a declaration is what the registry's
 /// credential-pattern refusal is evaluated against.</p>
-/// <p>It declares no primary or row action, so its empty state names what to do next rather than
-/// inviting the agent, and it does not refresh (AD-43). The write tool
-/// <class>OcuPilot.Screen.Tool.WebAppUpdate</class> registers by class scan and needs no declared
-/// action; the screen's own affordance is Story 5.8's.</p>
+/// <p><b>It declares three row actions</b> (AD-5, AD-53), in command-bar order with the
+/// destructive one last: <code>enable</code> and <code>disable</code>, both carried out by
+/// <class>OcuPilot.Screen.Tool.WebAppUpdate</class> over its one <code>Enabled</code> field, and
+/// <code>delete</code>, carried out by <class>OcuPilot.Screen.Tool.WebAppDelete</class>. Each
+/// declares the self-protection rule that <i>explains</i> its refusal on OcuPilot's own
+/// applications; the refusal itself is AD-10's, evaluated at the write whatever the caller, and no
+/// predicate here decides what may be deleted.</p>
+/// <p>It declares no primary action, and it does not refresh (AD-43). Declaring a row action makes
+/// it write-capable, which is what its empty state's agent invitation keys off.</p>
 Class OcuPilot.Screen.Descriptor.WebAppList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -55,7 +60,11 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [
+    {"id": "enable", "selfProtection": "serves-ocupilot"},
+    {"id": "disable", "selfProtection": "serves-ocupilot"},
+    {"id": "delete", "selfProtection": "serves-ocupilot"}
+  ],
   "context": {"fields": ["Name", "Namespace", "Type", "Enabled", "DispatchClass", "Resource"], "secretFields": []},
   "secretArguments": [],
   "fingerprintExcludes": [],
@@ -79,8 +88,8 @@ XData Declaration
       {"field": "DispatchClass", "labelKey": "webAppColumnDispatchClass", "kind": "identifier"},
       {"field": "Resource", "labelKey": "webAppColumnResource", "kind": "identifier"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "webAppListEmptyAgent"
   },
   "toolIdentifier": "webapp.list"
 }

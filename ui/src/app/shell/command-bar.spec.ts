@@ -203,17 +203,20 @@ describe('the command bar', () => {
     //
     // Mutation (Rule 19): change `actionLabel(screen.descriptor, action.id)` in `command-bar.ts`
     // to `actionLabel('', action.id)` -> this goes red, the button drawing the bare id.
-    build(
-      screenDeclaration({
-        descriptor: 'OcuPilot.Screen.Descriptor.AgentSwitches',
-        rowActions: [{ id: 'delete', selfProtection: '' }],
-      })
-    );
+    const declared = screenDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.AgentSwitches',
+      rowActions: [{ id: 'delete', selfProtection: '' }],
+    });
+    build(declared);
+    // DW-389: a declared action with no registered handler is not drawn at all, so the surface
+    // this test is about only exists once something can act on it.
+    actions.register(declared.descriptor, 'delete', () => {});
+    fixture.detectChanges();
 
-    const actions: HTMLButtonElement[] = Array.from(
+    const drawn: HTMLButtonElement[] = Array.from(
       fixture.nativeElement.querySelectorAll('.ocu-command-bar-action')
     );
-    expect(actions.map((action) => action.textContent?.trim())).toEqual([
+    expect(drawn.map((action) => action.textContent?.trim())).toEqual([
       STRINGS.agentSwitchesHoldRemove,
     ]);
     // And the same id on a screen that publishes nothing for it still draws the bare id, so the
@@ -222,24 +225,26 @@ describe('the command bar', () => {
   });
 
   it('row actions are aria-disabled with "Select a row first" on hover and focus', () => {
-    build(
-      screenDeclaration({
-        rowActions: [
-          { id: 'delete', selfProtection: 'current-user' },
-          { id: 'disable', selfProtection: '' },
-        ],
-      })
-    );
+    const declared = screenDeclaration({
+      rowActions: [
+        { id: 'delete', selfProtection: 'current-user' },
+        { id: 'disable', selfProtection: '' },
+      ],
+    });
+    build(declared);
+    actions.register(declared.descriptor, 'delete', () => {});
+    actions.register(declared.descriptor, 'disable', () => {});
+    fixture.detectChanges();
 
-    const actions: HTMLButtonElement[] = Array.from(
+    const drawn: HTMLButtonElement[] = Array.from(
       fixture.nativeElement.querySelectorAll('.ocu-command-bar-action')
     );
-    expect(actions.map((action) => action.textContent?.trim())).toEqual([
-      'delete',
+    expect(drawn.map((action) => action.textContent?.trim())).toEqual([
+      STRINGS.actionDelete,
       STRINGS.agentDefinitionDisable,
     ]);
 
-    for (const action of actions) {
+    for (const action of drawn) {
       expect(action.getAttribute('aria-disabled')).toBe('true');
       // Never the attribute: a control that cannot act keeps its place in the Tab order.
       expect(action.hasAttribute('disabled')).toBe(false);
@@ -988,6 +993,9 @@ describe('the command bar', () => {
     // Refresh is a command-bar action too (DW-260), so the reachability invariant covers it: a
     // control the bar draws and the box does not offer is a surface a keyboard user cannot reach.
     actions.register(declared.descriptor, REFRESH_ACTION_ID, () => {});
+    // DW-389: and the row actions, which neither surface draws without one.
+    actions.register(declared.descriptor, 'delete', () => {});
+    actions.register(declared.descriptor, 'disable', () => {});
     fixture.detectChanges();
     const barActions = Array.from(
       fixture.nativeElement.querySelectorAll('.ocu-command-bar-primary, .ocu-command-bar-action')
@@ -1012,7 +1020,7 @@ describe('the command bar', () => {
 
     expect(barActions).toEqual([
       STRINGS.actionCreate,
-      'delete',
+      STRINGS.actionDelete,
       STRINGS.agentDefinitionDisable,
       STRINGS.actionRefresh,
     ]);
@@ -1028,7 +1036,7 @@ describe('the command bar', () => {
     );
     expect(byLabel.get(STRINGS.actionCreate)?.getAttribute('aria-disabled')).toBeNull();
     expect(byLabel.get(STRINGS.actionRefresh)?.getAttribute('aria-disabled')).toBeNull();
-    for (const rowAction of ['delete', STRINGS.agentDefinitionDisable]) {
+    for (const rowAction of [STRINGS.actionDelete, STRINGS.agentDefinitionDisable]) {
       const option = byLabel.get(rowAction);
       expect(option?.getAttribute('aria-disabled')).toBe('true');
       expect(option?.textContent).toContain(STRINGS.privilegeSelectRowFirst);

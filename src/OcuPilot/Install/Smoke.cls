@@ -240,6 +240,7 @@ ClassMethod Run(pUsername As %String = "", pPassword As %String = "", pDemo As %
         Do ..CheckDatabaseDetails(.tChecks, tAccessToken)
         Do ..CheckMessagesLog(.tChecks, tAccessToken)
         Do ..CheckApplicationErrors(.tChecks, tAccessToken)
+        Do ..CheckScreenAction(.tChecks, tAccessToken, pDemo)
     } Catch ex {
         Do ..Note(.tChecks, "smoke", "fail", "the smoke run raised " _ ex.DisplayString())
     }
@@ -1221,6 +1222,102 @@ ClassMethod CheckDemoFixture(ByRef pChecks, pDemo As %String = "") [ Private ]
 /// <p><b><code>OcuPilot.PKG</code> classes only</b> (this class's own scope wall): the turn row
 /// comes from <class>OcuPilot.Kernel.State.Turn</class>'s guarded reserve, begin and finish, and
 /// the write target is AD-25's fixture rather than a probe application a test class would make.</p>
+/// <p>The other caller of the same operation (AD-53): a person's own row action on the demo
+/// fixture, over the real <code>POST /screens/:screen/action</code> route as the browser makes it,
+/// with the bearer token this run already signed in for.</p>
+/// <p>It asserts the consumer's own tier rather than the operation's internal state: the route
+/// answers the AD-14 verb and the canonical target, and the instance's own record of the
+/// application moves. Enable then disable, so the fixture ends in the disabled, no-resource state
+/// its install creates -- which is the state <method>CheckAgentWrite</method> asserts against
+/// later in the same run.</p>
+/// <p>Skipped, not failed, where the demo fixture was never created or is not this install's:
+/// AD-25 forbids modifying an application OcuPilot did not make.</p>
+ClassMethod CheckScreenAction(ByRef pChecks, pAccessToken As %String, pDemo As %String = "") [ Private ]
+{
+    Set tSkip = ""
+    Try {
+        Set tWanted = $Select(pDemo '= "": pDemo, 1: $System.Util.GetEnviron("OCUPILOT_DEMO"))
+        If tWanted '= "1" {
+            Set tSkip = "the demo opt-in flag is not set for this instance, so the " _ ..WriteTarget() _ " fixture a row action needs was never created (AD-25)"
+            Quit
+        }
+        If '..WriteTargetOwned() {
+            Set tSkip = ..WriteTarget() _ " is absent, or carries an application this install did not create, which AD-25 forbids modifying"
+            Quit
+        }
+        Set tSpelling = ..ApplicationName(..WriteTarget())
+        If tSpelling = "" {
+            Set tSkip = "this instance's own record of " _ ..WriteTarget() _ " could not be read, so there is no application to act on"
+            Quit
+        }
+        Set tBase = ..RosterPath("api")
+        If tBase = "" {
+            Set tSkip = "the install roster declares no API application path"
+            Quit
+        }
+        Set tPath = tBase _ "/screens/" _ ..#WEBAPPLISTTOOL _ "/action"
+
+        Set tEnableSC = ..ScreenAction(tPath, pAccessToken, "enable", tSpelling, .tEnableStatus, .tEnableText)
+        If $$$ISERR(tEnableSC) || (tEnableStatus '= 200) {
+            Do ..Note(.pChecks, "screenaction", "fail", "the row's enable answered HTTP " _ +$Get(tEnableStatus) _ ": " _ $Extract($Get(tEnableText), 1, 200))
+            Quit
+        }
+        Set tAnswer = ##class(%DynamicAbstractObject).%FromJSON(tEnableText)
+        If '$IsObject(tAnswer) || (tAnswer.%Get("action") '= "updated") {
+            Do ..Note(.pChecks, "screenaction", "fail", "the row's enable answered no 'updated' action: " _ $Extract($Get(tEnableText), 1, 200))
+            Quit
+        }
+        If ..ApplicationEnabled(..WriteTarget()) '= 1 {
+            Do ..Note(.pChecks, "screenaction", "fail", "the route answered 200 and this instance still reports " _ ..WriteTarget() _ " disabled")
+            Quit
+        }
+
+        Set tDisableSC = ..ScreenAction(tPath, pAccessToken, "disable", tSpelling, .tDisableStatus, .tDisableText)
+        If $$$ISERR(tDisableSC) || (tDisableStatus '= 200) {
+            Do ..Note(.pChecks, "screenaction", "fail", "the row's disable answered HTTP " _ +$Get(tDisableStatus) _ ": " _ $Extract($Get(tDisableText), 1, 200))
+            Quit
+        }
+        If ..ApplicationEnabled(..WriteTarget()) '= 0 {
+            Do ..Note(.pChecks, "screenaction", "fail", "the fixture was left enabled, which is not the state its install creates")
+            Quit
+        }
+        Do ..Note(.pChecks, "screenaction", "pass", "the row's enable and disable ran over " _ tPath _ " and this instance's own record moved both ways")
+    } Catch ex {
+        Set tSkip = ""
+        Do ..Note(.pChecks, "screenaction", "fail", "the row-action check raised " _ ex.DisplayString())
+    }
+    If tSkip '= "" Do ..Note(.pChecks, "screenaction", "skipped", tSkip)
+}
+
+/// <p>One row action over the wire: <code>POST</code> <var>pPath</var> carrying
+/// <code>{action, id}</code>, as the browser sends it.</p>
+ClassMethod ScreenAction(pPath As %String, pAccessToken As %String, pAction As %String, pId As %String, Output pStatus As %Integer, Output pText As %String) As %Status [ Private ]
+{
+    Set tBody = {}
+    Do tBody.%Set("action", pAction, "string")
+    Do tBody.%Set("id", pId, "string")
+    Quit ..Request("POST", pPath, "Bearer " _ pAccessToken, tBody.%ToJSON(), .pStatus, .pText)
+}
+
+/// <p>Whether this instance reports the web application at <var>pPath</var> enabled, or
+/// <code>""</code> when it holds none. Switches to <code>%SYS</code> and restores, restoring first
+/// on the error path (AD-16).</p>
+ClassMethod ApplicationEnabled(pPath As %String) As %String [ Private ]
+{
+    Set tEnabled = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Applications).Exists(pPath, .tApp, .tSC), $IsObject(tApp) Set tEnabled = ''tApp.Enabled
+        Set tApp = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tEnabled = ""
+    }
+    Quit tEnabled
+}
+
 ClassMethod CheckAgentWrite(ByRef pChecks, pDemo As %String = "") [ Private ]
 {
     Set tSkip = ""

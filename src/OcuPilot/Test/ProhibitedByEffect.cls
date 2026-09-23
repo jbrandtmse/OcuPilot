@@ -465,9 +465,14 @@ Method TestAMintChecksEachStreamWriteOrStoresNoRow()
 /// sent. A row whose stored payload weakens the live target while its diff names nothing -- or
 /// cannot be read at all -- is refused 409 <code>PROPOSAL.TARGETCHANGED</code> and closed, so no
 /// route reaches the port with a payload its own fingerprint does not cover.</p>
+/// <p><b>One case is refused earlier, and by a stronger rule</b> (AD-53, Story 7.1): a row against
+/// one of OcuPilot's own applications is refused 403 <code>PROHIBITED.SERVINGPATH</code> whatever
+/// its diff says, because that predicate is over the target rather than over the payload's shape.
+/// It is kept here as the case that says so: the set is silent on a row that proposes nothing
+/// <b>except</b> on the applications AD-38 protects.</p>
 /// <p>Mutation: drop the stored-payload comparison from
-/// <method>OcuPilot.Kernel.Proposal.Confirm.FingerprintMatches</method> -- this goes red and each
-/// confirm succeeds and writes.</p>
+/// <method>OcuPilot.Kernel.Proposal.Confirm.FingerprintMatches</method> -- the three 409 legs go
+/// red and each of those confirms succeeds and writes.</p>
 Method TestARowWhosePayloadItsFingerprintDoesNotCoverIsRefused()
 {
     Set tServing = "/api/ocupilot"
@@ -476,11 +481,14 @@ Method TestARowWhosePayloadItsFingerprintDoesNotCoverIsRefused()
     Set tHere("NameSpace") = $ListBuild("HSCUSTOM", "string")
     Set tElsewhere("NameSpace") = $ListBuild("USER", "string")
     Set tServingLive = ##class(OcuPilot.Test.ProhibitedFixture).App(tServing, 32, "", "OcuPilot.Api.Router", "", 1, "before", .tHere)
-    ; the live target, the payload the row stores against it, the row's diff, its path, and what it is.
-    Set tCases = $ListBuild($ListBuild(tLive, ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Other", "", 1), "[]", ..#TARGET, "a repointed dispatch class behind an empty diff"))
-    Set tCases = tCases _ $ListBuild($ListBuild(tLive, ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 96, "%Development", "Probe.Dispatch", "", 1), "[]", ..#TARGET, "unauthenticated access behind an empty diff"))
-    Set tCases = tCases _ $ListBuild($ListBuild(tServingLive, ##class(OcuPilot.Test.ProhibitedFixture).App(tServing, 32, "", "OcuPilot.Api.Router", "", 1, "before", .tElsewhere), "[]", tServing, "OcuPilot's own namespace repointed behind an empty diff"))
-    Set tCases = tCases _ $ListBuild($ListBuild(tLive, ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Other", "", 1), "not json", ..#TARGET, "a repointed dispatch class behind a diff nobody can read"))
+    ; the live target, the payload the row stores against it, the row's diff, its path, what it is,
+    ; the HTTP status it earns and the code with it.
+    Set tChanged = ##class(OcuPilot.Kernel.Proposal.Write).#TARGETCHANGED
+    Set tServingCode = $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "SERVINGPATH")
+    Set tCases = $ListBuild($ListBuild(tLive, ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Other", "", 1), "[]", ..#TARGET, "a repointed dispatch class behind an empty diff", 409, tChanged))
+    Set tCases = tCases _ $ListBuild($ListBuild(tLive, ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 96, "%Development", "Probe.Dispatch", "", 1), "[]", ..#TARGET, "unauthenticated access behind an empty diff", 409, tChanged))
+    Set tCases = tCases _ $ListBuild($ListBuild(tServingLive, ##class(OcuPilot.Test.ProhibitedFixture).App(tServing, 32, "", "OcuPilot.Api.Router", "", 1, "before", .tElsewhere), "[]", tServing, "OcuPilot's own namespace repointed behind an empty diff", 403, tServingCode))
+    Set tCases = tCases _ $ListBuild($ListBuild(tLive, ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Other", "", 1), "not json", ..#TARGET, "a repointed dispatch class behind a diff nobody can read", 409, tChanged))
     For tI = 1:1:$ListLength(tCases) {
         Set tCase = $List(tCases, tI)
         Set tLabel = $List(tCase, 5)
@@ -492,11 +500,18 @@ Method TestARowWhosePayloadItsFingerprintDoesNotCoverIsRefused()
         Do ##class(OcuPilot.Test.ProposalFixture).Arm($List(tCase, 1))
         Set tSC = ..Confirm(tKey, .tHttp, .tCode)
         Do $$$AssertStatusNotOK(tSC, "the confirm of " _ tLabel _ " is refused")
-        ; 409 rather than 403 is the point: the set is silent on a row that proposes nothing, and
-        ; the fingerprint gate is what refuses the payload behind it.
-        Do $$$AssertEquals(tHttp, 409, "at 409, code was '" _ tCode _ "'")
-        Do $$$AssertEquals(tCode, ##class(OcuPilot.Kernel.Proposal.Write).#TARGETCHANGED, "with the target-changed code")
-        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "ClosedReason"), "target-changed", "and the row closes rather than staying live")
+        ; 409 rather than 403 is the point on three of the four: the set is silent on a row that
+        ; proposes nothing, and the fingerprint gate is what refuses the payload behind it. The
+        ; fourth is OcuPilot's own application, which the set refuses over the target itself.
+        Do $$$AssertEquals(tHttp, $List(tCase, 6), "at " _ $List(tCase, 6) _ ", code was '" _ tCode _ "'")
+        Do $$$AssertEquals(tCode, $List(tCase, 7), "with the code that refusal carries")
+        If $List(tCase, 6) = 409 {
+            Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "ClosedReason"), "target-changed", "and the row closes rather than staying live")
+        } Else {
+            ; A prohibited refusal leaves the row live: nothing about the target moved, so there is
+            ; nothing to close it over (AD-10, AD-6).
+            Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "live", "and a prohibited row is left live rather than closed")
+        }
         Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "with nothing at the port")
     }
 }

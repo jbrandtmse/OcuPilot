@@ -53,6 +53,182 @@ Method TestTheProductionRosterValidates()
     Do $$$AssertStatusOK(tSC, "and the refusal travels in the status too")
 }
 
+/// <p>DW-1099: the shape of every shipped read, pinned against a committed table.</p>
+/// <p>Each <code>&lt;screen/&gt;</code> row names a descriptor without its package and carries
+/// that screen's <code>read.filter</code>, its <code>read.sort.fields</code> and its per-column
+/// <code>field:kind</code>, comma-separated in declaration order. Only screens that declare a
+/// <code>read</code> have a row; a screen with none has no table to describe.</p>
+/// <p><b>Equality with <code>read.fields</code> is not the invariant.</b> Measured on this build:
+/// <code>DatabaseVolumeList</code> filters on two of its six fields and sorts on all six,
+/// <code>LogMessageViewer</code> sorts on two of the three it filters on, and
+/// <code>ServiceList</code> filters on four while sorting on two -- so a sweep asserting the three
+/// sets equal would refuse declarations that are deliberate. The table records what each screen
+/// declares, and the sweep asserts the two agree in both directions.</p>
+XData ReadShapes
+{
+<shapes>
+<screen name="AgentDefinitionList" filter="name,provider,model" sort="name,provider,model" kinds="name:name,provider:text,model:text,enabled:status,default:status"/>
+<screen name="AuditList" filter="TimeStamp,EventSource,EventType,Event,Username,Pid,Namespace,Description" sort="TimeStamp,EventSource,EventType,Event,Username,Pid,Namespace,Description" kinds="TimeStamp:text,EventSource:text,EventType:text,Event:name,Username:text,Pid:identifier,Namespace:text,Description:text"/>
+<screen name="DatabaseDetails" filter="Directory,MaxSize,ExpansionSize,NewVolumeThreshold,NewVolumeDirectory,ResourceName,NewGlobalIsKeep,NewGlobalCollation,ClusterMountMode,ReadOnly,GlobalJournalState,Size,AvailableSpace,DiskFree,Mounted" sort="Directory,MaxSize,ExpansionSize,NewVolumeThreshold,NewVolumeDirectory,ResourceName,NewGlobalIsKeep,NewGlobalCollation,ClusterMountMode,ReadOnly,GlobalJournalState,Size,AvailableSpace,DiskFree,Mounted" kinds="Directory:name,Size:number,MaxSize:number,AvailableSpace:number,DiskFree:text,Mounted:status,ExpansionSize:number,NewVolumeThreshold:number,NewVolumeDirectory:identifier,ResourceName:identifier,NewGlobalIsKeep:status,NewGlobalCollation:number,ClusterMountMode:status,ReadOnly:status,GlobalJournalState:status"/>
+<screen name="DatabaseFreeSpace" filter="Directory,Size,AvailableSpace,DiskFree,Mounted" sort="Directory,Size,AvailableSpace,DiskFree" kinds="Directory:name,Size:number,AvailableSpace:number,DiskFree:text,Mounted:text"/>
+<screen name="DatabaseList" filter="Directory,Size,MaxSize,Status,Resource" sort="Directory,Size,MaxSize,Status,Resource" kinds="Directory:name,Size:number,MaxSize:text,Status:text,Resource:identifier"/>
+<screen name="DatabaseVolumeList" filter="VolumeDirectory,File" sort="VolumeNumber,File,VolumeDirectory,Size,VolumeDirectoryTotalSize,DiskFree" kinds="File:name,VolumeNumber:number,VolumeDirectory:identifier,Size:number,VolumeDirectoryTotalSize:number,DiskFree:number"/>
+<screen name="DeviceList" filter="Name,PhysicalDevice,Type,SubType,Description,Alias" sort="Name,PhysicalDevice,Type,SubType,Description,Alias" kinds="Name:name,PhysicalDevice:identifier,Type:text,SubType:text,Description:text,Alias:number"/>
+<screen name="LdapConfigList" filter="Name,Description" sort="Name,Description" kinds="Name:name,Enabled:status,Description:text"/>
+<screen name="LockList" filter="Pid,OSUserName,RoutineInfo,ModeCount,Reference,Directory,System" sort="Pid,OSUserName,RoutineInfo,ModeCount,Reference,Directory,System" kinds="Pid:name,OSUserName:text,RoutineInfo:identifier,ModeCount:text,Reference:identifier,Directory:identifier,System:text"/>
+<screen name="LogAlertViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
+<screen name="LogMessageViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
+<screen name="OAuthClientTab" filter="ApplicationName,IssuerEndpoint,ClientType,DefaultScope" sort="ApplicationName,IssuerEndpoint,ClientType,DefaultScope" kinds="ApplicationName:name,IssuerEndpoint:text,ClientType:text,DefaultScope:text"/>
+<screen name="OAuthResourceServerTab" filter="Name,ServerDefinition" sort="Name,ServerDefinition" kinds="Name:name,ServerDefinition:text"/>
+<screen name="OAuthServerClientTab" filter="Name,ClientId,ClientType,RedirectURL,Description" sort="Name,ClientId,ClientType,RedirectURL,Description" kinds="Name:name,ClientId:identifier,ClientType:text,RedirectURL:text,Description:text"/>
+<screen name="OAuthServerDescriptionTab" filter="IssuerEndpoint" sort="IssuerEndpoint,ClientCount,ResourceCount" kinds="IssuerEndpoint:name,ClientCount:number,ResourceCount:number"/>
+<screen name="OAuthServerTab" filter="IssuerEndpoint,Metadata.scopes_supported,Metadata.grant_types_supported,SigningAlgorithm,EncryptionAlgorithm,KeyAlgorithm,ServerCredentials" sort="IssuerEndpoint,Metadata.scopes_supported,Metadata.grant_types_supported,SigningAlgorithm,EncryptionAlgorithm,KeyAlgorithm,ServerCredentials" kinds="IssuerEndpoint:name,Metadata.scopes_supported:text,Metadata.grant_types_supported:text,SigningAlgorithm:text,EncryptionAlgorithm:text,KeyAlgorithm:text,ServerCredentials:text"/>
+<screen name="OpenApiViewer" filter="Path,Verb,Summary" sort="Order,Path,Verb" kinds="Path:name,Verb:text,Summary:text"/>
+<screen name="ProcessDetails" filter="Pid,ParentPid,UserName,LoginRoles,EscalatedRoles,OSUserName,NameSpace,Priority,StartTimeUTC,CPUTime,CommandsExecuted,GlobalReferences,PrivateGlobalReferences,PrivateGlobalBlockCount,MemoryAllocated,MemoryPeak,MemoryUsed,CurrentDevice,OpenDevices,State,InTransaction,Routine,CurrentLineAndRoutine,Location,ClientNodeName,ClientExecutableName,ClientIPAddress" sort="Pid,ParentPid,UserName,LoginRoles,EscalatedRoles,OSUserName,NameSpace,Priority,StartTimeUTC,CPUTime,CommandsExecuted,GlobalReferences,PrivateGlobalReferences,PrivateGlobalBlockCount,MemoryAllocated,MemoryPeak,MemoryUsed,CurrentDevice,OpenDevices,State,InTransaction,Routine,CurrentLineAndRoutine,Location,ClientNodeName,ClientExecutableName,ClientIPAddress" kinds="Pid:name,ParentPid:text,UserName:text,LoginRoles:text,EscalatedRoles:text,OSUserName:text,NameSpace:text,Priority:number,StartTimeUTC:text,CPUTime:number,CommandsExecuted:number,GlobalReferences:number,PrivateGlobalReferences:number,PrivateGlobalBlockCount:number,MemoryAllocated:number,MemoryPeak:number,MemoryUsed:number,CurrentDevice:text,OpenDevices:text,State:text,InTransaction:text,Routine:identifier,CurrentLineAndRoutine:identifier,Location:text,ClientNodeName:text,ClientExecutableName:text,ClientIPAddress:text"/>
+<screen name="ProcessList" filter="Pid,Username,Nspace,Routine,State" sort="Pid,Username,Nspace,Routine,State,Commands,Globals" kinds="Pid:name,Username:text,Nspace:text,Routine:identifier,State:text,Commands:number,Globals:number"/>
+<screen name="ResourceList" filter="Name,Description,PublicPermission,ResourceType" sort="Name,Description,PublicPermission,ResourceType" kinds="Name:name,Description:text,PublicPermission:text,ResourceType:text,AllowDelete:text"/>
+<screen name="RestApiList" filter="Name,Namespace,DispatchClass" sort="Name,Namespace,DispatchClass" kinds="Name:name,Namespace:identifier,DispatchClass:identifier,SpecBased:status,Enabled:status"/>
+<screen name="RoleList" filter="Name,Description,CreatedBy" sort="Name,Description,CreatedBy" kinds="Name:name,Description:text,CreatedBy:text,EscalationOnly:text"/>
+<screen name="ServiceList" filter="Name,Description,AuthenticationMethods,AllowedConnections" sort="Name,Description" kinds="Name:name,Enabled:status,AuthenticationMethods:text,AllowedConnections:identifier,Description:text"/>
+<screen name="SslConfigList" filter="Name,Description,Type" sort="Name,Description,Type" kinds="Name:name,Description:text,Enabled:status,Type:text"/>
+<screen name="SystemUsage" filter="Usage.AllGlobalReferences,Usage.GlobalUpdateReferences,Usage.RoutineCalls,Usage.LogicalBlockRequests,Usage.BlockReads,Usage.BlockWrites,Usage.JournalEntries,Usage.JournalBlockWrites,Usage.LastUpdate,SharedMemory.SMHAllocated,SharedMemory.SMHUsed,SharedMemory.SMHAvailable,Dashboard.Performance.GlobalRefsPerSecond,Dashboard.Performance.CacheEfficiency,Dashboard.SystemUsage.DatabaseSpace,Dashboard.SystemUsage.JournalSpace,Dashboard.SystemUsage.LockTable,Dashboard.SystemUsage.WriteDaemon" sort="Usage.AllGlobalReferences,Usage.GlobalUpdateReferences,Usage.RoutineCalls,Usage.LogicalBlockRequests,Usage.BlockReads,Usage.BlockWrites,Usage.JournalEntries,Usage.JournalBlockWrites,Usage.LastUpdate,SharedMemory.SMHAllocated,SharedMemory.SMHUsed,SharedMemory.SMHAvailable,Dashboard.Performance.GlobalRefsPerSecond,Dashboard.Performance.CacheEfficiency,Dashboard.SystemUsage.DatabaseSpace,Dashboard.SystemUsage.JournalSpace,Dashboard.SystemUsage.LockTable,Dashboard.SystemUsage.WriteDaemon" kinds="Usage.AllGlobalReferences:number,Usage.GlobalUpdateReferences:number,Usage.RoutineCalls:number,Usage.LogicalBlockRequests:number,Usage.BlockReads:number,Usage.BlockWrites:number,Usage.JournalEntries:number,Usage.JournalBlockWrites:number,Usage.LastUpdate:name,SharedMemory.SMHAllocated:number,SharedMemory.SMHUsed:number,SharedMemory.SMHAvailable:number,Dashboard.Performance.GlobalRefsPerSecond:number,Dashboard.Performance.CacheEfficiency:number,Dashboard.SystemUsage.DatabaseSpace:text,Dashboard.SystemUsage.JournalSpace:text,Dashboard.SystemUsage.LockTable:text,Dashboard.SystemUsage.WriteDaemon:text"/>
+<screen name="TaskDetails" filter="Name,Description,NameSpace,TaskClass,Priority,RunAsUser,TimePeriod,TimePeriodEvery,TimePeriodDay,DailyFrequency,DailyFrequencyTime,DailyIncrement,DailyStartTime,DailyEndTime,StartDate,EndDate,Type,Suspended,Error,LastStarted,LastFinished,NextScheduled" sort="Name,Description,NameSpace,TaskClass,Priority,RunAsUser,TimePeriod,TimePeriodEvery,TimePeriodDay,DailyFrequency,DailyFrequencyTime,DailyIncrement,DailyStartTime,DailyEndTime,StartDate,EndDate,Type,Suspended,Error,LastStarted,LastFinished,NextScheduled" kinds="Name:name,Description:text,NameSpace:text,Type:text,Suspended:status,TaskClass:text,Priority:text,RunAsUser:text,LastStarted:text,LastFinished:text,NextScheduled:text,Error:text"/>
+<screen name="TaskHistoryList" filter="Name,Namespace,Status,Result,Username,Routine" sort="LastStart,Completed,Name,Namespace,Status,Result,Username,LogDatetime" kinds="LastStart:text,Completed:text,Name:name,Status:text,Result:text,Username:text,Namespace:text"/>
+<screen name="TaskOnDemandList" filter="Name,Namespace,Type,Description" sort="Name,Namespace,Type,LastFinished" kinds="Name:name,Namespace:text,Type:text,Description:text,LastFinished:text"/>
+<screen name="TaskRunList" filter="Name,Namespace,Status,Result,Username,Routine" sort="LastStart,Completed,Name,Namespace,Status,Result,Username,LogDatetime" kinds="LastStart:text,Completed:text,Name:name,Status:text,Result:text,Username:text,Namespace:text"/>
+<screen name="TaskScheduleList" filter="Name,Namespace,Type,Description" sort="Name,Namespace,Type,Description,LastFinished,NextScheduled" kinds="Name:name,Namespace:text,Type:text,LastFinished:text,NextScheduled:text"/>
+<screen name="TaskUpcomingList" filter="Name,Namespace" sort="Datetime,Name,Namespace" kinds="Datetime:text,Name:name,Namespace:text,Suspended:status"/>
+<screen name="UserList" filter="Name,FullName,Type,Roles" sort="Name,FullName,Type,Roles" kinds="Name:name,FullName:text,Enabled:status,Expired:text,Type:text,Roles:identifier"/>
+<screen name="WalletCollectionList" filter="Name,UseResource,EditResource" sort="Name,UseResource,EditResource" kinds="Name:name,UseResource:text,EditResource:text"/>
+<screen name="WalletSecretList" filter="Name,Type" sort="Name,Type" kinds="Name:name,Type:text"/>
+<screen name="WebAppList" filter="Name,Namespace,Type,DispatchClass,Resource" sort="Name,Namespace,Type,DispatchClass,Resource" kinds="Name:name,Namespace:identifier,Type:text,Enabled:status,DispatchClass:identifier,Resource:identifier"/>
+<screen name="X509CredentialList" filter="Alias,SubjectDN,IssuerDN" sort="Alias,SubjectDN,IssuerDN,ValidityNotAfter" kinds="Alias:name,SubjectDN:text,IssuerDN:text,ValidityNotBefore:text,ValidityNotAfter:text"/>
+</shapes>
+}
+
+/// <p>DW-1099 -- every shipped descriptor's declared read shape is the one the committed table
+/// records, and the table names every screen that declares a read.</p>
+/// <p><b>Both directions.</b> A screen the table does not name is a read nobody reviewed; a row
+/// naming a screen the registry does not carry is a row that pins nothing. The comparison is over
+/// the registry's own enumeration, so a descriptor added without a row reddens here rather than
+/// shipping a filter, a sort order or a column kind nobody looked at.</p>
+/// <p>Mutation (Rule 19): change one column's <code>kind</code> in any shipped descriptor, or drop
+/// one name from a <code>read.filter</code> -- this goes red naming the screen and both
+/// spellings.</p>
+Method TestEveryShippedReadShapeMatchesTheCommittedTable()
+{
+    Set tSC = ..StoredShapes(.tStored)
+    Do $$$AssertStatusOK(tSC, "the committed read-shape table parses")
+    Set tSC = ..DerivedShapes(.tDerived)
+    Do $$$AssertStatusOK(tSC, "the registry enumerates the shipped reads")
+
+    Set tDerivedCount = 0
+    Set tName = ""
+    For {
+        Set tName = $Order(tDerived(tName))
+        If tName = "" Quit
+        Set tDerivedCount = tDerivedCount + 1
+        If '$Data(tStored(tName)) {
+            Do $$$AssertTrue(0, tName _ " declares a read and the committed table names it")
+            Continue
+        }
+        Do $$$AssertEquals($List(tDerived(tName), 1), $List(tStored(tName), 1), tName _ ": read.filter is the table's")
+        Do $$$AssertEquals($List(tDerived(tName), 2), $List(tStored(tName), 2), tName _ ": read.sort.fields is the table's")
+        Do $$$AssertEquals($List(tDerived(tName), 3), $List(tStored(tName), 3), tName _ ": the column kinds are the table's")
+    }
+    Do $$$AssertTrue(tDerivedCount > 0, "the registry enumerated read-declaring screens at all (" _ tDerivedCount _ ")")
+
+    Set tStoredCount = 0
+    Set tName = ""
+    For {
+        Set tName = $Order(tStored(tName))
+        If tName = "" Quit
+        Set tStoredCount = tStoredCount + 1
+        Do $$$AssertTrue($Data(tDerived(tName)), tName _ " is a screen this instance carries")
+    }
+    Do $$$AssertEquals(tStoredCount, tDerivedCount, "and the two sides are the same size")
+}
+
+/// <p>The committed table as <var>pShapes</var>(name) =
+/// <code>$ListBuild(filter, sort, kinds)</code>.</p>
+ClassMethod StoredShapes(Output pShapes) As %Status
+{
+    Kill pShapes
+    Set tSC = $$$OK
+    Try {
+        Set tXData = ##class(%Dictionary.XDataDefinition).IDKEYOpen($ClassName(), "ReadShapes", , .tOpenSC)
+        If '$IsObject(tXData) {
+            Set tSC = $$$ERROR($$$GeneralError, "the committed read-shape table is missing")
+            Quit
+        }
+        Do tXData.Data.Rewind()
+        Set tSC = ##class(%XML.TextReader).ParseStream(tXData.Data, .tReader)
+        If $$$ISERR(tSC) Quit
+        While tReader.Read() {
+            If tReader.NodeType '= "element" Continue
+            If tReader.Name '= "screen" Continue
+            Do tReader.MoveToAttributeName("name")
+            Set tName = tReader.Value
+            Do tReader.MoveToAttributeName("filter")
+            Set tFilter = tReader.Value
+            Do tReader.MoveToAttributeName("sort")
+            Set tSort = tReader.Value
+            Do tReader.MoveToAttributeName("kinds")
+            Set tKinds = tReader.Value
+            If tName = "" Continue
+            Set pShapes(tName) = $ListBuild(tFilter, tSort, tKinds)
+        }
+    } Catch ex {
+        Kill pShapes
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Every shipped descriptor that declares a read, as <var>pShapes</var>(name) =
+/// <code>$ListBuild(filter, sort, kinds)</code>, read from the registry's own enumeration.</p>
+ClassMethod DerivedShapes(Output pShapes) As %Status
+{
+    Kill pShapes
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tList)
+    If $$$ISERR(tSC) Quit tSC
+    Try {
+        For tI = 1:1:$ListLength(tList) {
+            Set tClass = $List(tList, tI)
+            Set tRead = $ClassMethod(tClass, "Read")
+            If '$IsObject(tRead) Continue
+            Set tSC = $ClassMethod(tClass, "DeclarationJson", .tObject)
+            If $$$ISERR(tSC) Quit
+            Set tSort = ""
+            If tRead.%GetTypeOf("sort") = "object" Set tSort = ..Joined(tRead.%Get("sort").%Get("fields"))
+            Set tKinds = ""
+            If tObject.%GetTypeOf("table") = "object" {
+                Set tIterator = tObject.%Get("table").%Get("columns").%GetIterator()
+                While tIterator.%GetNext(.tKey, .tColumn) {
+                    Set tKinds = tKinds _ $Select(tKinds = "": "", 1: ",") _ tColumn.%Get("field") _ ":" _ tColumn.%Get("kind")
+                }
+            }
+            Set pShapes($Piece(tClass, ".", 4, *)) = $ListBuild(..Joined(tRead.%Get("filter")), tSort, tKinds)
+        }
+    } Catch ex {
+        Kill pShapes
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p><var>pArray</var>'s members joined by commas, or <code>""</code>.</p>
+ClassMethod Joined(pArray As %DynamicArray) As %String [ Private ]
+{
+    Set tOut = ""
+    If '$IsObject(pArray) Quit tOut
+    Set tIterator = pArray.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ tValue
+    }
+    Quit tOut
+}
+
 /// <p>AC7 -- the web applications list's declaration passes the read grammar on its own, and its
 /// classic page names a class compiled on this instance, spelled in that class's own case: the
 /// custom-resource lookup does not case-fold, so a mis-cased name would silently union no

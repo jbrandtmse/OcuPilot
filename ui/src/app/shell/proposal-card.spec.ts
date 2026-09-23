@@ -39,6 +39,9 @@ const NOW_MS = Date.parse('2026-09-19T09:50:00Z');
  */
 const DELETE_PROPOSAL: ProposalCardView = {
   entityType: 'Application error',
+  // The wire's own type, which is what the residue sentence is gated on (DW-1480): the published
+  // noun above is a different fact and two screens can spell one type's noun two ways.
+  targetType: 'application-error',
   name: 'HSCUSTOM',
   changed: [
     { field: '09/11/2026', before: '123', after: '', removed: true },
@@ -341,6 +344,25 @@ describe('the proposal card', () => {
     // A card with no removal row says nothing about residue.
     const { card: ordinary } = mount(liveView(), { phase: 'live' });
     expect(ordinary.querySelector('.ocu-proposal-card-residue')).toBeNull();
+
+    // DW-1480: nor does a delete of something else. The sentence resolves its `<n>` to a count of
+    // errors, so a web-application delete -- whose card carries removal rows too (Story 7.1) --
+    // would otherwise read "Removes exactly the 4 errors listed here" about a web application.
+    //
+    // Mutation (Rule 19): drop the `targetType` test from `residueVisible` -> this goes red.
+    const { card: webApp } = mount(
+      {
+        ...DELETE_PROPOSAL,
+        proposalId: 'p5',
+        expiresAt: NOW_MS + 60_000,
+        entityType: 'Web application',
+        targetType: 'web-application',
+        name: '/csp/myapp',
+      },
+      { phase: 'live' }
+    );
+    expect(webApp.querySelectorAll('.ocu-diff-row').length).toBe(DELETE_PROPOSAL.changed.length);
+    expect(webApp.querySelector('.ocu-proposal-card-residue')).toBeNull();
   });
 
   it('with no phase nothing in the card is focusable, and there is no countdown and no footer', () => {

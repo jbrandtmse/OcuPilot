@@ -128,7 +128,7 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// <code>SUSPEND</code> was admitted for <code>Task.CRUD</code>, whose
 /// <code>TYPESUSPEND</code> exists, although no shipped tool issues it and AD-10 has no predicate
 /// for it. The pair is the widening removed.</p>
-/// <p><b>The six are the ones the registry actually reaches</b>, established three ways: the
+/// <p><b>The seven are the ones the registry actually reaches</b>, established three ways: the
 /// registry's own discovery rule, a whole-tree sweep of
 /// <code>Extends OcuPilot.Screen.Tool.Write</code> including transitive subclasses, and
 /// <class>OcuPilot.Test.SurfaceCoverage</class>'s both-directions assertion.
@@ -152,6 +152,13 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// mutating suffix itself -- for <code>RESUME</code> that value is the vendor's request-type
 /// suffix rather than an HTTP verb, since the vendor exposes the operation only as a request
 /// type -- and asks it of the endpoint name threaded in beside it, never of the suffix alone.</p>
+/// <p><code>WebApp.App/DELETE</code> is <class>OcuPilot.Screen.Tool.WebAppDelete</class>'s
+/// (Story 7.1, AD-51). Measured on this build: the endpoint's <code>TYPEDELETE</code> is 3, its
+/// <code>NeedsRequestBody()</code> is <code>..IsTypePut()</code> so the type reads no body, and its
+/// <code>ValidateQueryParams</code> requires the <code>name</code> query parameter -- so it is
+/// listed in <parameter>BODYLESSTYPES</parameter> under its own endpoint too. The
+/// <code>:159-163</code> note that <code>DELETE</code> is deliberately absent is scoped to
+/// <code>Process</code>, whose delete is its terminate.</p>
 /// <p><code>RESUME</code> is <code>Task.CRUD</code>'s bodyless resume and <code>Process</code>'s
 /// own (AD-51, Stories 5.11 and 5.12), and <code>SUSPEND</code> is <code>Process</code>'s
 /// suspend. Each vendor <code>NeedsRequestBody()</code> excludes them, each
@@ -163,7 +170,7 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// one-line delegate to <code>RunTerminate</code> -- and AD-10 names terminating an IRIS system
 /// process in the Release 1 prohibited set, so neither pairs with <code>Process</code> here and
 /// <method>EndpointType</method> answers <code>""</code> for either.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME";
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -179,7 +186,7 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE";
 
 /// <p>The pair set the <b>backing query or class</b> of an endpoint requires, beyond the
 /// endpoint's own <code>ResourcesOR()</code> gate (AD-29). Comma-separated entries of the form
@@ -844,15 +851,19 @@ ClassMethod EndpointType(pEndpoint As %String, pClass As %String, pSuffix As %St
 
 /// <p>Whether <var>pClass</var> implements the operation <var>pSuffix</var> names. The base class's
 /// <code>Run()</code> sends <code>GET</code> to <code>RunGet</code>, <code>LIST</code> to
-/// <code>RunList</code> and <code>PUT</code> to <code>RunPut</code>, answers <code>{}</code> for
-/// any other type, and every one of those runners answers <code>{}</code>; so an operation is
-/// implemented when <code>Run</code>, or the runner for that suffix, is defined below
-/// <parameter>ENDPOINTBASECLASS</parameter>. A class that overrides <code>Run</code> is trusted to
-/// dispatch its own types.</p>
+/// <code>RunList</code>, <code>PUT</code> to <code>RunPut</code> and <code>DELETE</code> to
+/// <code>RunDelete</code>, answers <code>{}</code> for any other type, and every one of those
+/// runners answers <code>{}</code>; so an operation is implemented when <code>Run</code>, or the
+/// runner for that suffix, is defined below <parameter>ENDPOINTBASECLASS</parameter>. A class that
+/// overrides <code>Run</code> is trusted to dispatch its own types.</p>
+/// <p><code>DELETE</code> joined the table with Story 7.1, which shipped the first tool that
+/// issues one through this port. The vendor's base <code>Run()</code> has always dispatched it
+/// (read on this build); the omission here made every such call read as an operation the instance
+/// does not implement, at 501.</p>
 ClassMethod ImplementsRead(pClass As %String, pSuffix As %String) As %Boolean [ Private ]
 {
     If ..MethodOrigin(pClass, "Run") '= ..#ENDPOINTBASECLASS Quit 1
-    Set tRunner = $Case(pSuffix, "GET": "RunGet", "LIST": "RunList", "PUT": "RunPut", : "")
+    Set tRunner = $Case(pSuffix, "GET": "RunGet", "LIST": "RunList", "PUT": "RunPut", "DELETE": "RunDelete", : "")
     If tRunner = "" Quit 0
     Quit ..MethodOrigin(pClass, tRunner) '= ..#ENDPOINTBASECLASS
 }

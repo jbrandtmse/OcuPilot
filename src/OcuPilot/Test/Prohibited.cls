@@ -321,26 +321,34 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         ; endpoint's template reaches no schema until the set has a predicate for it.
         Set tPermitted = ##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields(tType)
         ; An action-style write sends no body (AD-51), so it admits no field by construction and
-        ; the set reviews none for its type: the two loops below are vacuous for it and the floor
-        ; under them is the emptiness itself, asserted on both sides. A body-sending write still
-        ; has to admit something -- a merge tool that admitted nothing would pass those loops
-        ; having checked nothing.
-        If '$ClassMethod(tClass, "SendsBody") {
+        ; the floor under it is that emptiness. A body-sending write still has to admit something
+        ; -- a merge tool that admitted nothing would pass the loops below having checked nothing.
+        ;
+        ; **The reviewed few belong to the entity type, not to the tool** (Story 7.1). Two writes
+        ; over one type ship on this build -- a merge and an action -- so "the set reviews no field
+        ; of this type" is no longer the same claim as "this tool admits none", and asserting the
+        ; first of an action write would refuse the second write the type acquires. What is
+        ; asserted of an action write is its own emptiness; the reviewed-few equality below is the
+        ; body-sending tools' own.
+        Set tSendsBody = ''$ClassMethod(tClass, "SendsBody")
+        If 'tSendsBody {
             Do $$$AssertEquals($ListLength(tSettable), 0, tEntry.%Get("name") _ " sends no body, so it admits no field")
-            Do $$$AssertEquals($ListLength(tPermitted), 0, "and the set has reviewed no field of " _ tType _ " for it to admit")
+            For tI = 1:1:$ListLength(tPermitted) {
+                Do $$$AssertEquals(tSchema.%Get("properties").%GetTypeOf($List(tPermitted, tI)), "unassigned", tEntry.%Get("name") _ " advertises none of its type's reviewed few either, and not '" _ $List(tPermitted, tI) _ "'")
+            }
         } Else {
             Do $$$AssertTrue($ListLength(tSettable) > 0, tEntry.%Get("name") _ " admits at least one field")
-        }
-        For tI = 1:1:$ListLength(tSettable) {
-            Set tField = $List(tSettable, tI)
-            Do $$$AssertTrue($ListFind(tPermitted, tField) > 0, tEntry.%Get("name") _ " admits '" _ tField _ "', which the prohibited set has reviewed for " _ tType)
-        }
-        ; The converse, so the two lists are asserted equal rather than one-way: a name added to the
-        ; set's reviewed few alone reddens here, and so does a PERMITTEDFIELDS spelling the tool's
-        ; own $ListFromString does not trim, since the untrimmed name admits nothing.
-        For tI = 1:1:$ListLength(tPermitted) {
-            Set tField = $List(tPermitted, tI)
-            Do $$$AssertTrue($ListFind(tSettable, tField) > 0, tEntry.%Get("name") _ " advertises '" _ tField _ "', which the prohibited set has reviewed for " _ tType)
+            For tI = 1:1:$ListLength(tSettable) {
+                Set tField = $List(tSettable, tI)
+                Do $$$AssertTrue($ListFind(tPermitted, tField) > 0, tEntry.%Get("name") _ " admits '" _ tField _ "', which the prohibited set has reviewed for " _ tType)
+            }
+            ; The converse, so the two lists are asserted equal rather than one-way: a name added to
+            ; the set's reviewed few alone reddens here, and so does a PERMITTEDFIELDS spelling the
+            ; tool's own $ListFromString does not trim, since the untrimmed name admits nothing.
+            For tI = 1:1:$ListLength(tPermitted) {
+                Set tField = $List(tPermitted, tI)
+                Do $$$AssertTrue($ListFind(tSettable, tField) > 0, tEntry.%Get("name") _ " advertises '" _ tField _ "', which the prohibited set has reviewed for " _ tType)
+            }
         }
         ; And the two lists cannot overlap: a field whose every change is prohibited is never one of
         ; the reviewed few.
@@ -356,6 +364,9 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
             Set tField = $List(tSecrets, tI)
             Do $$$AssertTrue($ListFind(tPermitted, tField) > 0, tEntry.%Get("name") _ " declares '" _ tField _ "' secret, and the prohibited set has reviewed it for " _ tType)
         }
+        ; An action-style write admits nothing at confirmation either: it sends no body, so there
+        ; is nothing for a supplied secret to be merged into (AD-51).
+        If 'tSendsBody Do $$$AssertEquals($ListLength(tSecrets), 0, tEntry.%Get("name") _ " sends no body, so it declares no secret argument")
         ; And no field the tool can set is excluded from the fingerprint. AD-6's exclusions are for
         ; properties the endpoint itself moves as a side effect; an excluded field the tool can set
         ; may differ between the stored payload and the live target with neither digest noticing,

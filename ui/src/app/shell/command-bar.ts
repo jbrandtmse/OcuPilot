@@ -17,6 +17,7 @@ import { RefreshService } from '../core/refresh';
 import { REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
 import { applyView } from '../core/screen-read';
 import { ScreenStores, type SortDirection } from '../core/screen-store';
+import { selfProtectionReason } from '../core/self-protection';
 import { STRINGS, stringFor } from '../core/strings';
 import { formatRowCount } from '../core/table-model';
 import { ViewOptions } from '../core/view-options';
@@ -55,6 +56,12 @@ interface CommandAction {
   readonly reasonId: string;
   readonly ariaDisabled: string | null;
   readonly describedBy: string | null;
+  /**
+   * Why the action cannot be taken right now, or `''`. Either "Select a row first" with nothing
+   * selected, or the selected row's own self-protection sentence (AD-53); an action that can be
+   * taken carries none and is drawn as an ordinary control.
+   */
+  readonly reason: string;
 }
 
 /** One entry of the View menu, resolved from the registered `ViewOptionsBinding`. */
@@ -172,12 +179,15 @@ interface SortOption {
           class="ocu-button-text ocu-command-bar-action"
           [attr.aria-disabled]="action.ariaDisabled"
           [attr.aria-describedby]="action.describedBy"
+          (click)="onRowAction(action)"
         >
           {{ action.label }}
         </button>
-        <span class="ocu-command-bar-reason" role="tooltip" [id]="action.reasonId">{{
-          STRINGS.privilegeSelectRowFirst
-        }}</span>
+        @if (action.reason) {
+          <span class="ocu-command-bar-reason" role="tooltip" [id]="action.reasonId">{{
+            action.reason
+          }}</span>
+        }
       </span>
     }
     @if (hasViewControl) {
@@ -363,24 +373,44 @@ export class CommandBar {
   });
 
   private readonly resolved = computed<readonly CommandAction[]>(() => {
+    this.generation();
     const screen = this.screen();
     if (screen === null) return [];
+    // Asked of every screen that declares a row action, not only one that declares a read: a
+    // screen with no read simply has no selection, and guarding on the read would make the reason
+    // depend on a fact that has nothing to do with it.
+    const selected = screen.rowActions.length === 0
+      ? ''
+      : this.stores.for(screen.descriptor, screen.refreshRates).selection()[0] ?? '';
     return screen.rowActions
       .filter((action) => action.id !== '')
-      .map((action) => ({
-        id: action.id,
-        // Resolved through the one label map, as the command box already does (Story 3.5), and
-        // scoped by the descriptor (DW-370): a declared action carries no label key, so its id is
-        // its name until a screen publishes words for it, and one id can mean two things on two
-        // screens. When a screen does publish words, the bar and the box have to say the same
-        // word, which is what this spec's own reachability assertion compares.
-        label: actionLabel(screen.descriptor, action.id),
-        reasonId: `ocu-command-bar-reason-${action.id}`,
-        // Never the `disabled` attribute: a gated or unavailable control keeps its place in
-        // the Tab order and keeps announcing why (EXPERIENCE.md, Privilege Gating).
-        ariaDisabled: 'true',
-        describedBy: `ocu-command-bar-reason-${action.id}`,
-      }));
+      // DW-389: a declared action with no registered handler is a control nothing can act on, so
+      // it is not drawn at all -- the same test the primary action above already applies.
+      .filter((action) => this.actions.has(screen.descriptor, action.id))
+      .map((action) => {
+        // Two reasons, in this order: with nothing selected the action has no target, and with a
+        // self-protected row selected the instance would refuse it -- with this very sentence
+        // (AD-10, AD-53). Neither is enforcement: the route refuses it identically if it is
+        // pressed anyway.
+        const reason = selected === ''
+          ? STRINGS.privilegeSelectRowFirst
+          : selfProtectionReason(action.selfProtection, selected);
+        return {
+          id: action.id,
+          // Resolved through the one label map, as the command box already does (Story 3.5), and
+          // scoped by the descriptor (DW-370): a declared action carries no label key, so its id is
+          // its name until a screen publishes words for it, and one id can mean two things on two
+          // screens. When a screen does publish words, the bar and the box have to say the same
+          // word, which is what this spec's own reachability assertion compares.
+          label: actionLabel(screen.descriptor, action.id),
+          reasonId: `ocu-command-bar-reason-${action.id}`,
+          // Never the `disabled` attribute: a gated or unavailable control keeps its place in
+          // the Tab order and keeps announcing why (EXPERIENCE.md, Privilege Gating).
+          ariaDisabled: reason === '' ? null : 'true',
+          describedBy: reason === '' ? null : `ocu-command-bar-reason-${action.id}`,
+          reason,
+        };
+      });
   });
 
   /**
@@ -443,9 +473,16 @@ export class CommandBar {
     // screen whose sort fields are not the ones it lists, or -- where the next screen draws no
     // control at all -- be dropped by the `@if` with its overlay entry still registered, which
     // would swallow the next Escape.
+    // The row actions read the current screen's SELECTION, which moves without the router, the
+    // framework or the action registry moving: a click on a row, a row menu opening, a change
+    // event selecting a row. So the bar follows the screen's own store too, re-subscribing on
+    // every navigation because the store it follows is the one the current screen owns.
+    let stopStore = this.bindStore();
     const stopRouter = this.router.events.subscribe(() => {
       this.closeSort(false);
       this.closeView(false);
+      stopStore();
+      stopStore = this.bindStore();
       this.bump();
     });
     const stopNavigation = this.navigation.subscribe(() => this.bump());
@@ -458,6 +495,7 @@ export class CommandBar {
     const stopViewOptions = this.viewOptionsSvc.subscribe(() => this.bump());
     inject(DestroyRef).onDestroy(() => {
       stopRouter.unsubscribe();
+      stopStore();
       stopNavigation();
       stopRefresh();
       stopActions();
@@ -478,6 +516,20 @@ export class CommandBar {
       if (!this.viewMenuOpen()) return;
       this.viewMenuEl()?.nativeElement.querySelector<HTMLElement>('[role="menuitemradio"]')?.focus();
     });
+  }
+
+  /**
+   * Follow the current screen's store, and answer the function that stops. The row actions read
+   * its selection, which moves without the router, the framework or the action registry moving.
+   *
+   * A screen with no declared read has no rows, so its selection never moves and there is nothing
+   * to follow -- and asking the map for its store would create one, which is a side effect a
+   * subscription has no business having.
+   */
+  private bindStore(): () => void {
+    const screen = this.screen();
+    if (screen === null || screen.read === null) return () => {};
+    return this.stores.for(screen.descriptor, screen.refreshRates).subscribe(() => this.bump());
   }
 
   /** A declared primary action with a registered handler. */
@@ -778,6 +830,18 @@ export class CommandBar {
   private viewItems(): HTMLElement[] {
     const menu = this.viewMenuEl()?.nativeElement;
     return menu === undefined ? [] : Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitemradio"]'));
+  }
+
+  /**
+   * Run a row action on the selected row. An action carrying a reason is `aria-disabled` rather
+   * than `disabled`, so the click still arrives here and is refused -- which is what keeps the
+   * control focusable and its reason announced (EXPERIENCE.md, Privilege Gating).
+   */
+  protected onRowAction(action: CommandAction): void {
+    const screen = this.screen();
+    if (screen === null || action.reason !== '') return;
+    this.actions.run(screen.descriptor, action.id);
+    this.bump();
   }
 
   protected onPrimaryAction(): void {

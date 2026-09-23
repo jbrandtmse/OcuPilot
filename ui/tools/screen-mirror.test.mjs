@@ -1612,6 +1612,70 @@ test('the build refuses a privilege pair missing a half, in an area and in a des
 //
 // Mutation (Rule 19): drop the archetype check from `buildMirror` -> the matching case below
 // stops throwing and this test goes red, while the real tree stays green either way.
+test('AD-53: the generator refuses a self-protection rule outside the closed vocabulary, naming both', () => {
+  // The rule is mirrored to the client, which draws a refused row action from it, so a value only
+  // one side understands would render as a word in a row menu. `OcuPilot.Screen.Registry`'s own
+  // `SELFPROTECTIONRULES` is the vocabulary and `ActionProblem` applies the same rules there.
+  //
+  // Mutation (Rule 19): drop the `actionProblem` call from `buildMirror` -> this goes green where
+  // it must be red, and a descriptor naming a rule nothing can evaluate reaches the mirror.
+  const sources = readSources();
+  assert.ok(sources.selfProtectionRules.length > 0, 'the vocabulary reached readSources');
+
+  assert.throws(
+    () =>
+      buildMirror({
+        ...sources,
+        screens: [
+          {
+            file: 'Hostile.cls',
+            className: 'OcuPilot.Screen.Descriptor.Hostile',
+            declaration: { rowActions: [{ id: 'delete', selfProtection: 'never the current user' }] },
+          },
+        ],
+      }),
+    (error) => {
+      assert.match(error.message, /Hostile\.cls/, 'the refusal names the file');
+      assert.match(error.message, /never the current user/, 'and the value');
+      assert.match(error.message, /AD-53/, 'and the decision it comes from');
+      return true;
+    }
+  );
+
+  // The declared rule passes, an empty one passes, and a declaration that names no actions at all
+  // is left alone -- this generator's convention for a partially declared fixture.
+  for (const rowActions of [[{ id: 'delete', selfProtection: sources.selfProtectionRules[0] }], [{ id: 'delete', selfProtection: '' }]]) {
+    assert.doesNotThrow(() =>
+      buildMirror({
+        ...sources,
+        screens: [{ file: 'Fine.cls', className: 'OcuPilot.Screen.Descriptor.Fine', declaration: { rowActions } }],
+      })
+    );
+  }
+  assert.doesNotThrow(() =>
+    buildMirror({
+      ...sources,
+      screens: [{ file: 'Bare.cls', className: 'OcuPilot.Screen.Descriptor.Bare', declaration: {} }],
+    })
+  );
+
+  // And a row action with no id is refused: a control nothing can name is a control nothing runs.
+  assert.throws(
+    () =>
+      buildMirror({
+        ...sources,
+        screens: [
+          {
+            file: 'Nameless.cls',
+            className: 'OcuPilot.Screen.Descriptor.Nameless',
+            declaration: { rowActions: [{ id: '', selfProtection: '' }] },
+          },
+        ],
+      }),
+    /declares an empty id/
+  );
+});
+
 test('AD-44: the generator refuses an archetype outside the closed vocabulary, naming both', () => {
   const sources = readSources();
   assert.ok(sources.archetypes.length >= 16, 'the vocabulary reached readSources');

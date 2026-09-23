@@ -2,7 +2,8 @@
 title: 'Story 7.1: Enable, disable and delete a web application'
 type: 'feature'
 created: '2026-09-22'
-status: 'ready-for-dev'
+status: 'blocked'
+baseline_revision: 'ed1b4c4cf150a5ee14e703823b9a558b737840e5'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -10,7 +11,28 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-7-context.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A screen action takes no per-target lock, so a row action and a confirm of a live proposal
+      against the same application are serialized only by the vendor endpoint.
+    evidence: |-
+      AD-34's lock is the proposal store's atomic claim; a screen action claims nothing, so
+      OcuPilot.Api.ScreenAction gates and writes with nothing in between and no lock around it.
+      Reproduce by confirming a proposal against /csp/x while pressing its row's Disable: both
+      reach Security.Applications.Modify, the later write wins, and the confirm's fingerprint
+      re-read ran before the row action's. Bounded: every gate still runs on both callers and the
+      last write is a complete body over a fresh read (AD-4), so neither can erase a field the
+      other set from a stale read of its own - what is unordered is which of two reviewed writes
+      lands last.
+  - summary: >-
+      The client explains the serving-path refusal for the three roster applications only, while
+      the instance also protects the ones install recorded (a probe profile's).
+    evidence: |-
+      ui/src/app/core/self-protection.ts mirrors Install.Roster's three paths and is pinned to them
+      by ui/tools/self-protection.test.mjs; Prohibited.ServesOcuPilot reads the roster AND
+      Kernel.State.WebApp's records. On a throwaway carrying a probe profile the row menu offers
+      the action and the route refuses it after the click, with the same published sentence. The
+      client cannot read that table (AD-9), so closing it needs the instance to publish the set.
 ---
 
 <intent-contract>
@@ -253,8 +275,10 @@ converse) and carries no OcuPilot marker beside the vendor's own `%Security` eve
   and watching that test redden alone.
 - `src/OcuPilot/Test/Descriptor.cls` -- add one sweep over `Registry.Descriptors()` comparing every
   shipped descriptor's `read.filter`, `read.sort.fields` and per-column `kind` against a committed
-  table (DW-1099). Equality with `read.fields` is NOT the invariant -- `SystemUsage` declares
-  `filter []` deliberately.
+  table (DW-1099). Equality with `read.fields` is NOT the invariant -- measured on this build,
+  `DatabaseVolumeList` filters on two of its six fields, `ServiceList` filters on four and sorts on
+  two, and `LogMessageViewer` sorts on two of the three it filters on. (`SystemUsage` filters on
+  all eighteen; it is not the case.)
 - `src/OcuPilot/Test/SurfaceCoverage.cls` -- add the `webapp.list.delete` roster row.
 - `src/OcuPilot/Install/Smoke.cls` -- extend `CheckAgentWrite`, or add a sibling check, so the smoke
   exercises the row-action path against the demo fixture and restores it, as `RestoreWriteTarget`
@@ -354,8 +378,8 @@ implements, that is a clarification to the lead, not an edit.
 - DW-389 -- addressed: all three surfaces gate a row action on a registered handler, as the primary
   action already does. Covered by the fifth AC and by the new browser spec.
 - DW-1099 -- addressed: one sweep over `Registry.Descriptors()` against a committed table in
-  `Test/Descriptor.cls`, with `SystemUsage`'s deliberate empty `filter` as the case that proves
-  equality with `read.fields` is not the invariant.
+  `Test/Descriptor.cls`, with `DatabaseVolumeList`, `ServiceList` and `LogMessageViewer` as the
+  measured cases that prove equality with `read.fields` is not the invariant.
 - DW-1480 -- addressed: `residueVisible` is gated on the write's entity type. This story is the
   first that would otherwise render "Removes exactly the 1 errors listed here" about a web
   application.
@@ -383,6 +407,28 @@ action is not gated by them, and that recommendation is the lead's to ratify, no
 to assume.
 
 ## Verification
+
+**Mutations applied and observed (Rule 19).** Each was applied, the named run went red, the
+mutation was reverted and the run went green again; the tree is byte-identical to before.
+
+- AD-53's arm (`Prohibited.WebApplication`): restoring `pServes && +$Get(pChanged)` reddened three
+  of `OcuPilot.Test.ProhibitedRoute`'s seventeen -- the screen's refusal leg, the agent's, and the
+  row-action leg whose delete then reached the vendor. Applied, run 6478 red; reverted, run 6479
+  green; the container was asked what it had compiled on both sides of the revert, and the file is
+  byte-identical to before.
+- DW-389 (all three surfaces): the change itself falsified the old behavior -- requiring a
+  registered handler reddened 16 existing assertions in `command-bar.spec.ts`,
+  `command-box.spec.ts` and `data-table.spec.ts`, each of which drew an action nothing could run.
+- DW-1480 (`residueVisible`): drop the `targetType` test -> `proposal-card.spec.ts`'s new
+  web-application leg goes red, the card reading "Removes exactly the 4 errors listed here" about a
+  web application.
+- The `selfProtection` vocabulary: three fixture descriptors (`Screen/Composite`, `Screen/Gated`,
+  `Screen/Refreshing`, `Screen/Multi`) declared free text and were refused at registration by
+  `Registry.ActionProblem` the moment it shipped, which is the validator answering over real
+  declarations rather than over a case written for it.
+- `WebApp.App/DELETE`: the port answered 501 `PORT.NOTIMPLEMENTED` until
+  `AdminPort.ImplementsRead` learnt the vendor's `RunDelete` -- observed red on the wire, not
+  reasoned about.
 
 **Targeted, inside the implement loop (loop):**
 
@@ -414,6 +460,45 @@ to assume.
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none -- the plan stage's three intent gaps were resolved at the lead's spec
-gate (see Spec Change Log); AD-53 is in the spine and the two Fixed strings rows are published.
+Status: blocked
+Blocking condition: intent gap -- the spec's `rowActions` task and its "no new user-facing string"
+constraint are jointly unsatisfiable. Declaring row actions makes `WebAppList` write-capable, and
+`Screen.Registry.ReadProblem` refuses a write-capable descriptor whose `table.emptyAgentKey` is
+empty; that key resolves to a string, and no "Or ask the agent: ..." phrase was ever published for
+this screen (`EXPERIENCE.md:316` publishes only its read-only second line). **Recommended
+amendment, awaiting the lead's ratification and applied in the working tree only so the suites
+could run:** `EXPERIENCE.md:397` gains a Fixed-strings row reading "enable a web application and
+give it a resource", and `strings.ts:1332` gains `webAppListEmptyAgent` for it. The precedent is
+`agentDefinitionListEmptyAgent`, published in its own screen's row at `EXPERIENCE.md:334`. Ratify
+or reword the phrase, then re-open; adding the row shifted the later `EXPERIENCE.md:n` anchors in
+`strings.ts` by one.
+
+What this pass changed. The executed write moved into `Kernel/Proposal/Operation.cls`, reached by
+two callers: `Kernel/Proposal/Confirm` (the agent's, keeping the proposal, fingerprint, ledger row
+and marker) and `Api/ScreenAction.cls` behind `POST /screens/:screen/action` (the screen's).
+`Prohibited.WebApplication`'s serving-path arm is now stated over the effect rather than over the
+diff, so a bodyless delete cannot pass it, and its reason is the published sentence.
+`Screen/Tool/WebAppDelete` ships as the AD-51 action write; `WebAppList` declares
+`enable`/`disable`/`delete` with `selfProtection: serves-ocupilot`, validated against one closed
+vocabulary by `Registry` and `screen-mirror.mjs`. On the client, `shell/screen-action-handler.ts`
+registers every declared row action generically, `shell/typed-name-dialog.ts` is the destructive
+confirm, and all three surfaces draw a row action only while a handler is registered (DW-389).
+`AdminPort` gained `WebApp.App/DELETE` in both rosters and a `DELETE` arm in `ImplementsRead`,
+without which the vendor's own `RunDelete` was unreachable and the call answered 501.
+
+How it was verified. Re-run by this stage: `npm run test:tools` 1,322 pass, 0 fail. Reported by the
+implementation pass and not independently re-run: `npm run test:components` 833 green;
+`check-objectscript` clean over 616 files; the story's browser spec plus `web-applications` and
+`proposal-confirm` green against `ocupilot-ci` on the rebuilt bundle; the full ObjectScript sweep
+179 classes, 1,602 tests, 0 failed; `smoke.sh` 48 of 48 on `ocupilot-ci` and 41 of 41 on
+`ocupilot`. Rule 19: restoring `pServes && +$Get(pChanged)` reddened exactly the three AD-53 legs
+and reverting made them green, with the compiled code confirmed either way. Review layers did not
+run -- the halt precedes them.
+
+Two notes for the lead. `ocupilot-ci` predates the `OCUPILOT_ALLOW_AUDIT_TOGGLE`, `_ERROR_DELETE`,
+`_PROCESS_CONTROL` and `_TASK_CONTROL` arming variables `scripts/ci-throwaway.sh` sets today, so
+four classes refuse in `OnBeforeAllTests` there; that is the container, not the tree, and a fresh
+throwaway arms all four. And `AdminPort.cls` is shared-append with Epic 8: beyond the two roster
+appends this pass rewrote `ImplementsRead`'s `$Case` line and three doc comments, which is a
+forced correction on the story's own path rather than an unrelated edit, but it is a contended-path
+change the merge gate should re-check.

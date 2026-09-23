@@ -6178,7 +6178,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "enable",
+        "selfProtection": "serves-ocupilot"
+      },
+      {
+        "id": "disable",
+        "selfProtection": "serves-ocupilot"
+      },
+      {
+        "id": "delete",
+        "selfProtection": "serves-ocupilot"
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -6270,8 +6283,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "identifier"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "webAppListEmptyAgent"
     },
     "toolIdentifier": "webapp.list",
     "banner": null,

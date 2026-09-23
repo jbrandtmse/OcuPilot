@@ -63,6 +63,10 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   create: STRINGS.actionCreate,
   enable: STRINGS.agentDefinitionEnable,
   disable: STRINGS.agentDefinitionDisable,
+  // The published verb a delete carries wherever one is offered -- the row menu, the command bar,
+  // the command box and the typed-name dialog's own title and button. A screen whose delete means
+  // something narrower publishes its own words below (Switches' removes a hold, not an entity).
+  delete: STRINGS.actionDelete,
   'set-default': STRINGS.agentDefinitionSetDefault,
 };
 

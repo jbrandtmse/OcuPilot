@@ -98,9 +98,14 @@ test('DW-370: one action id draws two labels on two screens', () => {
 
 test("a screen's row action draws its own published words", () => {
   assert.equal(actionLabel(SWITCHES, 'delete'), STRINGS.agentSwitchesHoldRemove);
-  // The same id on a screen that publishes nothing for it renders as itself, which is where every
-  // declared action starts.
-  assert.equal(actionLabel(DEFINITIONS, 'delete'), 'delete');
+  // The same id on a screen that publishes nothing narrower falls back to the shared map, which
+  // carries the plain verb; Switches' own entry means something else (it removes a hold, not an
+  // entity), which is why the two differ.
+  assert.equal(actionLabel(DEFINITIONS, 'delete'), STRINGS.actionDelete);
+  assert.notEqual(actionLabel(SWITCHES, 'delete'), actionLabel(DEFINITIONS, 'delete'));
+  // And an id neither map carries still renders as itself, which is where every declared action
+  // starts.
+  assert.equal(actionLabel(DEFINITIONS, 'terminate'), 'terminate');
 });
 
 test('an action that means the same thing everywhere falls back to the shared map', () => {

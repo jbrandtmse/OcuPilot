@@ -45,10 +45,17 @@
 Class OcuPilot.Kernel.Proposal.Prohibited Extends %RegisteredObject
 {
 
-/// <p>The target is a web application OcuPilot itself is served by, and the write would change it.
-/// AD-38 makes an OcuPilot nobody can reach an instance nobody can repair through OcuPilot, so its
-/// own applications are the installer's to change and not the agent's.</p>
+/// <p>The target is a web application OcuPilot itself is served by. AD-38 makes an OcuPilot nobody
+/// can reach an instance nobody can repair through OcuPilot, so its own applications are the
+/// installer's and no caller's -- the agent's proposal and a person's own row action alike
+/// (AD-53).</p>
 Parameter SERVINGPATH = "PROHIBITED.SERVINGPATH";
+
+/// <p>The one sentence <parameter>SERVINGPATH</parameter> carries, published once in EXPERIENCE.md's
+/// Fixed strings table and held here so the screen's pre-click refusal and this envelope's reason
+/// cannot drift apart (AD-39, AD-53). <class>OcuPilot.Test.RefusalCopy</class> pins it equal to
+/// <file>ui/src/app/core/strings.ts</file>'s <code>webAppServesOcuPilotRefusal</code>.</p>
+Parameter SERVINGPATHREASON = "OcuPilot serves itself through this web application. Disabling or deleting it would cut off every user, including you.";
 
 /// <p>The write would change how the target is authenticated by anything other than clearing its
 /// unauthenticated option: it adds a bit, clears another bit, clears the mask, or carries a value
@@ -207,7 +214,10 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#AUTHORIZATION Quit "Removing the resource that guards a web application is not something the agent can propose."
     If pCode = ..#DISPATCH Quit "Changing which code answers at a web application's address is not something the agent can propose."
     If pCode = ..#PRIVILEGEGRANT Quit "Granting an administrative privilege is not something the agent can propose, whether it is granted by a web application or held by an account."
-    If pCode = ..#SERVINGPATH Quit "Changing a web application that serves OcuPilot itself is not something the agent can propose."
+    ; AD-53: the sentence two surfaces share -- the reason a row action is drawn refused before a
+    ; click and the envelope reason returned after one -- so it names no caller.
+    ; OcuPilot.Test.RefusalCopy pins it equal to the client's own copy.
+    If pCode = ..#SERVINGPATH Quit ..#SERVINGPATHREASON
     If pCode = ..#SYSTEMACCOUNT Quit "Disabling the instance's own _SYSTEM account is not something the agent can propose."
     If pCode = ..#SERVICEACCOUNT Quit "Disabling an account the instance's own services run as is not something the agent can propose."
     If pCode = ..#CURRENTUSER Quit "Disabling the account you are signed in as is not something the agent can propose."
@@ -445,7 +455,13 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
         ; OcuPilot's own applications are the installer's. Every property of one decides whether
         ; OcuPilot answers at that address -- the namespace and the path as completely as the
         ; enabled flag -- so the predicate is over the application, not over a list of properties.
-        If pServes && +$Get(pChanged) {
+        ;
+        ; AD-53: and not over the payload's shape either. Gating this on a non-empty changed set
+        ; made it unreachable for a write that carries no diff, which a bodyless delete is -- the
+        ; one write whose effect on this target the predicate most has to refuse. The effect is
+        ; "this write reaches an application OcuPilot is served by", and that is the whole
+        ; condition.
+        If pServes {
             Do ..Refuse(..#SERVINGPATH, .pProhibits, .pCode)
             Quit
         }

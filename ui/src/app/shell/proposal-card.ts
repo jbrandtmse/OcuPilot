@@ -31,6 +31,15 @@ import {
 } from './example-proposal';
 
 /**
+ * The entity type whose delete carries the residue sentence (AD-48, DW-1480).
+ *
+ * `proposalResidue` resolves its `<n>` to a count of *errors*, so it is published for exactly one
+ * write: the application-error delete, whose card lists the enumerated id set the confirm removes.
+ * Every other delete's card lists removals too and says nothing about residue.
+ */
+const RESIDUE_ENTITY_TYPE = 'application-error';
+
+/**
  * One Confirm press: the proposal's id and the values typed into its masked fields.
  *
  * The values are the card's own and reach the confirm body through this one channel (AD-6's
@@ -508,14 +517,18 @@ export class ProposalCard {
   }
 
   /**
-   * Whether the card carries the residue sentence: exactly when it lists removal rows.
+   * Whether the card carries the residue sentence: a card of removal rows **about an application
+   * error** (DW-1480).
    *
-   * AD-48 requires a delete proposal's card to say that errors logged after the proposal are not
-   * removed, and the sentence is only true of a card whose rows are the enumerated set. A write
-   * with an after-state has no residue to describe.
+   * AD-48 requires that delete's card to say that errors logged after the proposal are not
+   * removed, and the sentence is only true of the enumerated-id-set write it was published for --
+   * its `<n>` resolves to a count of errors. Gating it on removal rows alone made it a property of
+   * the row shape, and Story 7.1's web-application delete has removal rows too: that card would
+   * have read "Removes exactly the 4 errors listed here" about a web application. The gate is
+   * therefore the write's own entity type, which the proposal's target carries (AD-13).
    */
   protected get residueVisible(): boolean {
-    return this.removedCount > 0;
+    return this.removedCount > 0 && this.view().targetType === RESIDUE_ENTITY_TYPE;
   }
 
   /** The published residue sentence with its count resolved from the rows the card lists. */

@@ -94,6 +94,12 @@ async function wire(declaration: ScreenDeclaration, first: () => RefreshReadResu
   });
   const store = stores.for(declaration.descriptor, declaration.refreshRates);
   const actions = new ScreenActions();
+  // DW-389: the menu lists a declared row action only while a handler is registered for it, so a
+  // harness that declares one registers it too -- a menu drawn over an action nothing can run is
+  // the control this rule exists to remove.
+  for (const action of declaration.rowActions) {
+    if (action.id !== '') actions.register(declaration.descriptor, action.id, () => {});
+  }
   const overlays = new OverlayStack();
   TestBed.configureTestingModule({
     providers: [
@@ -482,7 +488,12 @@ describe('the data table', () => {
     await settle(wired.fixture);
     const menu = wired.host().querySelector('[role="menu"]') as HTMLElement;
     expect(menu).not.toBeNull();
-    expect(Array.from(menu.querySelectorAll('[role="menuitem"]')).map((item) => item.textContent?.trim())).toEqual(['disable']);
+    // The published label, resolved through the one label map the command bar and the command box
+    // resolve theirs through (DW-370): a menu naming the bare id would name the same action
+    // differently on the three surfaces.
+    expect(Array.from(menu.querySelectorAll('[role="menuitem"]')).map((item) => item.textContent?.trim())).toEqual([
+      STRINGS.agentDefinitionDisable,
+    ]);
     expect(wired.overlays.top()).not.toBe('');
 
     expect(wired.overlays.closeTop()).toBe(true);

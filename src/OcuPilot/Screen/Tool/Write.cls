@@ -123,6 +123,22 @@ Parameter PORTCLASS = "OcuPilot.Port.AdminPort";
 /// target declares <code>deleted</code>.</p>
 Parameter CHANGEACTION = "updated";
 
+/// <p>The screen row actions (AD-5) this tool carries out, comma-separated, or <code>""</code> for
+/// a tool no screen action reaches. <code>""</code> here.</p>
+/// <p>Each entry is an action id the descriptor declares, optionally followed by the one argument
+/// that action sends: <code>&lt;id&gt;</code>, or <code>&lt;id&gt;=&lt;field&gt;:&lt;value&gt;</code>
+/// where <var>field</var> is one of this tool's own settable fields. An action-style write takes
+/// the bare form, because it sends no body at all (AD-51).</p>
+/// <p><b>The declaration is the tool's, not the descriptor's</b> (AD-53). A descriptor declares
+/// that a row carries an action and what self-protection rule explains its refusal; <i>which</i>
+/// operation carries it out is a property of the write, beside the port it reaches its target
+/// through (<parameter>PORTCLASS</parameter>), the request type it issues
+/// (<parameter>WRITETYPE</parameter>) and the change event it publishes
+/// (<parameter>CHANGEACTION</parameter>). One tool may serve two actions -- enable and disable are
+/// one merge write over one field -- which a per-descriptor map could not express without naming
+/// the field twice.</p>
+Parameter SCREENACTIONS = "";
+
 /// <p>The top-level names this tool's own <parameter>READTYPE</parameter> read answers,
 /// comma-separated, or <code>""</code> where the screen's declared read is the whole record of
 /// them.</p>
@@ -174,6 +190,53 @@ ClassMethod PortClass() As %String
 ClassMethod ChangeAction() As %String
 {
     Quit ..#CHANGEACTION
+}
+
+/// <p>The row-action ids <parameter>SCREENACTIONS</parameter> names, as a <class>%List</class>.</p>
+ClassMethod ScreenActionIds() As %List
+{
+    Set tIds = ""
+    For tI = 1:1:$Length(..#SCREENACTIONS, ",") {
+        Set tId = $ZStrip($Piece($Piece(..#SCREENACTIONS, ",", tI), "=", 1), "<>W")
+        If (tId '= "") && '$ListFind(tIds, tId) Set tIds = tIds _ $ListBuild(tId)
+    }
+    Quit tIds
+}
+
+/// <p>The arguments a screen action <var>pActionId</var> sends this tool, as a
+/// <class>%DynamicObject</class>, with <var>pServes</var> 0 when this tool does not carry that
+/// action at all.</p>
+/// <p><b>Caller contract:</b> <class>OcuPilot.Api.ScreenAction</class> calls it once per request
+/// and merges the answer over the fresh read exactly as the mint merges the agent's own arguments
+/// (AD-4), so the two callers of this operation send one body computed one way. An action that
+/// names no field answers <code>{}</code>, which is every action-style write (AD-51).</p>
+/// <p>A value spelled <code>true</code> or <code>false</code> is carried as a boolean and a numeric
+/// one as a number, so the merge's own type check reads the declaration as the instance holds the
+/// field rather than as a string spelling of it.</p>
+ClassMethod ScreenActionArguments(pActionId As %String, Output pServes As %Boolean) As %DynamicObject
+{
+    Set pServes = 0
+    Set tArgs = {}
+    If pActionId = "" Quit tArgs
+    For tI = 1:1:$Length(..#SCREENACTIONS, ",") {
+        Set tEntry = $ZStrip($Piece(..#SCREENACTIONS, ",", tI), "<>W")
+        If $Piece(tEntry, "=", 1) '= pActionId Continue
+        Set pServes = 1
+        Set tAssignment = $Piece(tEntry, "=", 2, *)
+        If tAssignment = "" Quit
+        Set tField = $Piece(tAssignment, ":", 1)
+        Set tValue = $Piece(tAssignment, ":", 2, *)
+        If tField = "" Quit
+        If (tValue = "true") || (tValue = "false") {
+            Do tArgs.%Set(tField, (tValue = "true"), "boolean")
+        } ElseIf $IsValidNum(tValue) {
+            Do tArgs.%Set(tField, +tValue, "number")
+        } Else {
+            Do tArgs.%Set(tField, tValue, "string")
+        }
+        Quit
+    }
+    Quit tArgs
 }
 
 /// <p><parameter>READANSWERS</parameter> as a <class>%List</class>, for the registration guard.</p>
