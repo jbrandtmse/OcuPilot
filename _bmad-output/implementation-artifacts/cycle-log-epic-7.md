@@ -24,3 +24,8 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T00:30:59Z	Epic 7	epic_runner_paused	reason=orchestrator_pause_order model_refresh head=82fa992 story_in_flight=7.1 next_stage=implement_respawn_after_copy_ratification
 2026-09-23T00:36:38Z	Story 7.1	protocol_violation	stage=lead violation=dw1434_code_commit_pushed_under_a_skip_marked_head consequence=no_ci_run_on_82fa992_or_bca75f5 detected_by=gh_run_list_branch_headsha_match outcome=empty_commit_a0051b8_started_run_35802787091_on_the_same_tree note=the_first_correction_skipped_itself_because_its_body_QUOTED_the_directive_while_explaining_it;_github_scans_the_whole_message_not_the_subject
 2026-09-23T00:36:38Z	Story 7.1	committed	sha=a0051b8 submodules= ci=pending run=35802787091 amendments=EXPERIENCE.md:395-397
+2026-09-23T01:27:09Z	Epic 7	lead_model_gate	model=claude-opus-5-5[1m] action=proceed note=runner_resumed
+2026-09-23T01:27:09Z	Epic 7	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=gh
+2026-09-23T01:27:09Z	Epic 7	epic_branch_checked_out	repos=. head=1fd99da mode=runner_resume branch=OCU-1-epic7 remote_equal=true tree=clean
+2026-09-23T01:27:09Z	Story 7.1	ci_resolved	story=7.1 run=35802812010 result=failure resolved_at=resume head=1fd99da failed_jobs=browser,instance handling=ci_items_into_implement_respawn
+2026-09-23T01:27:09Z	Story 7.1	dev_clarification_answered	item=unpublished_empty_agent_invitation_string answer=create_a_web_application_for_a_REST_API by=orchestrator_decision_1 amendments=EXPERIENCE.md:397,strings.ts:1332

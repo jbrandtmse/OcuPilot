@@ -1329,7 +1329,7 @@ export const STRINGS = {
   // The phrase that resolves `tableWriteCapableEmptyState`'s placeholder on the Web applications
   // list, which Story 7.1 makes write-capable by declaring its three row actions.
   /** EXPERIENCE.md:397 */
-  webAppListEmptyAgent: 'enable a web application and give it a resource',
+  webAppListEmptyAgent: 'create a web application for a REST API',
 
 } as const;
 

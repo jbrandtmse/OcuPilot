@@ -2,7 +2,7 @@
 title: 'Story 7.1: Enable, disable and delete a web application'
 type: 'feature'
 created: '2026-09-22'
-status: 'blocked'
+status: 'in-progress'
 baseline_revision: 'ed1b4c4cf150a5ee14e703823b9a558b737840e5'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -315,6 +315,25 @@ converse) and carries no OcuPilot marker beside the vendor's own `%Security` eve
   `OcuPilot.Install.Smoke`'s check observes it gone and restores the fixture -- the consumer's own
   tier, not the tool's internal state.
 
+**Open items on re-dispatch (2026-09-23, lead):**
+
+- [ ] [CI] `browser`, run 35802812010 on 1fd99da: `ui/browser/data-table.browser-spec.mjs` `not ok 42`
+  (AC2, `:170`), `not ok 43` (AC3, `:286`) and `not ok 48` (row menu on the last visible row,
+  `:553`) each throw `Cannot read properties of null (reading 'getBoundingClientRect')` -- in
+  `:170`'s evaluate the null is the row's `.ocu-data-table-trigger` (inference: the harness declares
+  row actions and registers no handler, so DW-389's rule now draws no trigger). Fix the cause, never
+  the assertion; the three specs pin shipped Story 2.4 behavior.
+- [ ] [CI] `browser`, same run: `ui/browser/gate.browser-spec.mjs` `not ok 71` (`:411`), "the row
+  menu offers "enable"", `false !== true` at `:446`. Confirm or refute that it shares the cause
+  above, and fix it at the source.
+- [ ] [CI] Run the four regressed spec files plus the story's own browser specs locally against a
+  **rebuilt and redeployed** bundle on `ocupilot-ci` before `dev_complete`, and record the result.
+- [ ] [CI] `instance`, same run: `OcuPilot.Test.Installer.TestASecondInstallGrantsNothingAndWritesNoSecondMarker`
+  failed three asserts on the single grant marker (not attributed: this story does not touch
+  `Installer.cls`). Run the class once in the full sweep; if it recurs, diagnose it; if it does not,
+  record the non-recurrence in `## Auto Run Result`. Never call it a flake without evidence.
+- [ ] Finish the halted pass: run the two review layers, triage, finalize.
+
 ## Spec Change Log
 
 - 2026-09-22, lead spec gate: the plan stage's three intent gaps resolved and `status` set
@@ -327,6 +346,11 @@ converse) and carries no OcuPilot marker beside the vendor's own `%Security` eve
   operation, two callers; the screen caller mints no proposal and emits no agent marker; and
   `Restraint.Verdict` does **not** gate a person's own row action, which is published in FR-20
   ("All screens continue to work with the agent disabled") rather than newly decided here.
+
+- 2026-09-23, lead re-open after the implement HALT: the empty-state invitation is ratified by the
+  orchestrator as "create a web application for a REST API" (the value Epic 8's Story 8.1 gives the
+  same `webAppListEmptyAgent` key), applied by the lead to `EXPERIENCE.md:397` and `strings.ts:1332`;
+  `status` reset to `in-progress`. CI run 35802812010 was red; its items are appended above.
 
 ## Review Triage Log
 
