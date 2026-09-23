@@ -132,3 +132,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T10:40:30Z	Epic 8	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp merge=7774cc0c conflicts=none changed=docs_only code_paths_changed=0
 2026-09-23T10:42:25Z	Epic 8	epic_context_compiled	sha=pending reason=planning_artifact_newer(AD-27,AD-10,AD-4;8.4_done) model=opus lines=63
 2026-09-23T10:42:25Z	Story 8.5	stage_spawned	stage=plan spawn_at=2026-09-23T10:42:25Z model=opus agent_name=8-5-x509-plan-1 cycle_iteration=1
+2026-09-23T11:00:28Z	Story 8.4	ci_resolved	story=8.4 run=35850112977 head=5c38be88 result=completed_success resolved_at=plan_return(provisional)
+2026-09-23T11:00:28Z	Story 8.5	story_created	spawn_at=2026-09-23T10:42:25Z model=opus path=_bmad-output/implementation-artifacts/spec-8-5-x-509-import-edit-and-delete.md build_status=ready-for-dev spec_bytes=34000 warnings=oversized epic_context=reused
+2026-09-23T11:00:28Z	Story 8.5	plan_clarification_requested	items=AD-27_second_case(X509Credential_POST_via_%SYS.X509Credentials;criterion_differs:API_takes_only_server_paths),row_action_to_9.5,screen-actions.ts(Epic7_product_source,Import_label) lead_decided=optional_secret_rows_on_card(contended_files_under_discipline)
