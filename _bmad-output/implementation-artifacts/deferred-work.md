@@ -6107,3 +6107,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: the Users list's bar measured 898px on one line; 7.2's rework lets it wrap and grow, so 50px became a minimum
 - 2026-09-23T07:28:48Z status=resolved-by:7-2-user-enable-disable-delete-password-and-roles owner=7-2-user-enable-disable-delete-password-and-roles by=harvest note=DESIGN.md command-bar amended under Rule 5 tier-1 by the lead, 2026-09-23
+
+### DW-1523: The Users list's Add role dialog shows no consequence line when a privileged role is selected: privilegedGrantEffect had not landed on Epic 8's branch by Story 7.2's review
+- source: spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: owner decision 2026-09-23: privileged grants permitted at typed confirmation, the screen shows a consequence line; Epic 8 owns the key privilegedGrantEffect; origin/OCU-1-epic8 carried none at 7.2's review
+- 2026-09-23T07:52:02Z status=routed owner=9-1-the-user-editor by=harvest note=port privilegedGrantEffect byte-for-byte and render it in the role dialog (orchestrator ruling 2026-09-23)
+- 2026-09-23T07:52:09Z note=privilegedGrantEffect appeared on origin/OCU-1-epic8 (59dced7) after 7.2's review closed; per the orchestrator's fallback it stays with 9.1 rather than re-opening 7.2
