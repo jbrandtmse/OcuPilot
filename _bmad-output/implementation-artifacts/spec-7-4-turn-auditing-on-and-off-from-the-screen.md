@@ -350,6 +350,23 @@ Rejected:
   rows, the empty state or the fault, then asserts rows as before. The server-side read answers rows on a fresh
   instance (CI's `instance` job ran `AuditingScreen` 8/0 in the same run).
 
+**Rework re-review (2026-09-23, four layers, full-opus):** 23 raw findings, 0 high, 0 med; 1 low patched; nothing ledgered; the rest rejected.
+
+- [x] [CI] rosters -- confirmed: each of the three specs adds only `auditingConfigurationLink` / "Auditing configuration", last (position 6); no other browser spec holds the roster; Epic 8 has not touched the files at `origin/OCU-1-epic8` e5bc3c31.
+- [x] [CI] event-list wait -- confirmed: each section waits for `tbody tr`, `.ocu-data-table-refusal` or `.ocu-data-table-empty-title`, which match the page template (`showEmpty` needs `loaded`); a missing section resolves at once as `absent`; both `> 0` assertions are unchanged, so an empty or faulted read fails naming its state. The cause is still an inference until run 35848290095's `browser` job.
+- [x] [Review][Patch] The row counts hard-coded both routes beside `EVENT_LIST_ROUTES`, whose doc said "keyed by" [ui/browser/auditing-screen.browser-spec.mjs:37,124] -- the counts read the constant; bundle rebuilt and redeployed, spec 1/1 on `ocupilot-ci`, auditing reads 1.
+
+Rejected:
+
+- low: a list still pending at 30 s throws Puppeteer's `TimeoutError` without the per-section state (BH, ECH, VG) -- needs a read over 30 s, nothing passes wrongly, and the fix adds a catch branch.
+- false: rows kept beside a fault read as `rows` (ECH) -- the page reads once on arrival, so no earlier rows exist here.
+- false: state and count are read at different moments (ECH) -- no read is in flight once all three settle and before the first write.
+- low: `(0, empty)` was never demonstrated (BH) -- the fault arm was, the empty arm has the same shape, and Rule 19 asks one mutation per AC.
+- low: the side-bar roster is hard-coded in three specs (BH) -- a deliberate pin on the published words.
+- low: the embedded lists have no loading state; the user list's heading href is not asserted (BH) -- outside the rework and not high.
+- spec text (BH, AA): the Auto Run Result's 4/6 against the log's 5/5, the baseline triage row, inline inference recipes, no change-log line or roster-rule tag for the three footprint entries, the Epic 8 ref, the dropped `AuditingUpdate` residual -- the fix would edit the spec.
+- process (BH, AA): item 2 ticked before CI confirms (Rule 28 resolves the run before the next implement spawn); the commit message's unlabelled inference and the cycle log's mixed `tiers=` notation are outside a reviewer's writes.
+
 ## Spec Change Log
 
 - 2026-09-23, lead spec gate: intent gap 1 ratified as recommended -- the AD-53 amendment is in the

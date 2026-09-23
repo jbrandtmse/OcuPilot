@@ -33,7 +33,7 @@ const SCREEN_URL = '/ocupilot/security/auditing?ns=HSCUSTOM';
 /** The screen action route this page's two buttons post to. */
 const ACTION_PATH = '/api/ocupilot/screens/security.auditing/action';
 
-/** The two embedded event lists' sections, keyed by their routes. */
+/** The two embedded event lists' section routes, system first: the wait and the counts read them in this order. */
 const EVENT_LIST_ROUTES = ['security/auditing/system-events', 'security/auditing/user-events'];
 
 let browser = null;
@@ -121,12 +121,15 @@ test('AC1-AC4: the warning, the banner with its link and action, the focused ena
         EVENT_LIST_ROUTES
       )
     ).jsonValue();
-    const lists = await page.evaluate(() => ({
-      cross: document.querySelector('a[data-cross-link]')?.getAttribute('href') ?? '',
-      system: document.querySelectorAll('[data-section="security/auditing/system-events"] tbody tr').length,
-      user: document.querySelectorAll('[data-section="security/auditing/user-events"] tbody tr').length,
-      systemHeading: document.querySelector('[data-section="security/auditing/system-events"] h2 a')?.getAttribute('href') ?? '',
-    }));
+    const lists = await page.evaluate(
+      ([systemRoute, userRoute]) => ({
+        cross: document.querySelector('a[data-cross-link]')?.getAttribute('href') ?? '',
+        system: document.querySelectorAll(`[data-section="${systemRoute}"] tbody tr`).length,
+        user: document.querySelectorAll(`[data-section="${userRoute}"] tbody tr`).length,
+        systemHeading: document.querySelector(`[data-section="${systemRoute}"] h2 a`)?.getAttribute('href') ?? '',
+      }),
+      EVENT_LIST_ROUTES
+    );
     assert.equal(lists.cross, 'logs/audit?ns=HSCUSTOM', 'the screen cross-links to the Audit database viewer');
     assert.ok(lists.system > 0, `the system-event list renders rows (${lists.system}, ${systemState})`);
     assert.ok(lists.user > 0, `and so does the user-event list (${lists.user}, ${userState})`);
