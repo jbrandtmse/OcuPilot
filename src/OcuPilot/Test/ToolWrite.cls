@@ -671,6 +671,86 @@ Method TestTheTaskRunToolIsAnActionWriteOverTheScreensOwnPairs()
     Do $$$AssertTrue(tProblem [ "RunNow", "naming the argument: " _ tProblem)
 }
 
+/// <p>AD-51, AD-53, AD-8 (Story 7.6): the Task schedule's run tool is the on-demand run on the
+/// schedule list -- <code>INFO</code> read, <code>RUN</code> written with the port's constant body,
+/// carrying the list's <code>run</code> action over the screen's own pairs.</p>
+/// <p>Mutation (Rule 19): set <parameter>OcuPilot.Screen.Tool.TaskScheduleRun.DESCRIPTORCLASS</parameter>
+/// back to the On-demand list -- the screen-action assertion goes red.</p>
+Method TestTheScheduleRunToolIsAnActionWriteOverTheScreensOwnPairs()
+{
+    Do ..AssertTaskActionWrite("tasks.schedule.run", "OcuPilot.Screen.Tool.TaskScheduleRun", "INFO", "RUN", 0, "NextScheduled,Suspended", "run", "OcuPilot.Port.AdminPort")
+}
+
+/// <p>AD-51, AD-53, AD-8 (Story 7.6): the Task schedule's suspend tool -- <code>INFO</code> read,
+/// <code>SUSPEND</code> written with the port's constant body, not destructive, carrying the list's
+/// <code>suspend</code> action over the screen's own pairs.</p>
+/// <p>Mutation (Rule 19): drop <code>Task.CRUD/SUSPEND</code> from
+/// <parameter>OcuPilot.Port.AdminPort.CONSTANTBODIES</parameter> -- the constant-body assertion
+/// goes red.</p>
+Method TestTheTaskSuspendToolIsAnActionWriteOverTheScreensOwnPairs()
+{
+    Do ..AssertTaskActionWrite("tasks.schedule.suspend", "OcuPilot.Screen.Tool.TaskSuspend", "INFO", "SUSPEND", 0, "Suspended", "suspend", "OcuPilot.Port.AdminPort")
+}
+
+/// <p>AD-51, AD-52, AD-53, AD-8 (Story 7.6): the Task schedule's delete tool -- a
+/// <code>GET</code> through <class>OcuPilot.Port.TaskPort</class>, a bodyless <code>DELETE</code>,
+/// destructive, carrying the list's <code>delete</code> action over the screen's own pairs.</p>
+/// <p>Mutation (Rule 19): set <parameter>OcuPilot.Screen.Tool.TaskDelete.PORTCLASS</parameter> to
+/// the admin port -- the port assertion goes red, and the card could no longer read the type.</p>
+Method TestTheTaskDeleteToolIsAnActionWriteOverTheScreensOwnPairs()
+{
+    Do ..AssertTaskActionWrite("tasks.schedule.delete", "OcuPilot.Screen.Tool.TaskDelete", "GET", "DELETE", 1, "Name,TaskClass,NameSpace,Type", "delete", "OcuPilot.Port.TaskPort")
+}
+
+/// <p>The declarations every task action write shares: registered as an instance-fulfilled write,
+/// over <code>Task.CRUD</code> by the list's <code>Id</code>, no settable field and no body of its
+/// own, the port exempting its type, the given subject held adequate, the given screen action,
+/// and the screen's own two pairs at <code>USE</code>.</p>
+Method AssertTaskActionWrite(pName As %String, pClass As %String, pReadType As %String, pWriteType As %String, pDestructive As %Boolean, pSubject As %String, pAction As %String, pPort As %String)
+{
+    Set tSC = $ClassMethod(..#REGISTRY, "Resolve", pName, .tTool)
+    Do $$$AssertStatusOK(tSC, "the registry resolves " _ pName _ " by name")
+    Do $$$AssertTrue($IsObject(tTool), "and finds it")
+    If '$IsObject(tTool) Quit
+    Do $$$AssertEquals(tTool.%Get("kind"), "write", pName _ " is a write tool")
+    Do $$$AssertEquals(tTool.%Get("class"), pClass, "answered by its own class")
+    Do $$$AssertEquals($ClassMethod(..#REGISTRY, "FulfilmentOf", tTool), "instance", "fulfilled on the instance, never in the browser")
+
+    Do $$$AssertEquals($ClassMethod(pClass, "PortClass"), pPort, pName _ " reaches its target through " _ pPort)
+    Do $$$AssertEquals($ClassMethod(pClass, "ReadType"), pReadType, "its fresh read is " _ pReadType)
+    Do $$$AssertEquals($ClassMethod(pClass, "WriteType"), pWriteType, "its write is the vendor's own " _ pWriteType)
+    Do $$$AssertEquals($ClassMethod(pClass, "SendsBody"), 0, "and it sends no body of its own")
+    Do $$$AssertEquals($ClassMethod(pClass, "Destructive"), pDestructive, "its destructive declaration is the effect it has")
+    Do $$$AssertEquals($ClassMethod(pClass, "Endpoint"), "Task.CRUD", "over the task endpoint")
+    Do $$$AssertEquals($ClassMethod(pClass, "IdArgument"), "Id", "identified by the list's own id property")
+    Do $$$AssertEquals($ClassMethod(pClass, "IdParam"), "id", "and by the vendor's own query parameter")
+    Do $$$AssertEquals($ListLength($ClassMethod(pClass, "SettableFields")), 0, "it admits no settable field at all")
+    Do $$$AssertEquals($ListToString($ClassMethod(pClass, "FingerprintSubject")), pSubject, "its fingerprint covers " _ pSubject)
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).FingerprintSubjectProblem(pClass), "", "and the registration guard holds that subject adequate")
+    Do $$$AssertEquals($ListToString($ClassMethod(pClass, "ScreenActionIds")), pAction, "it carries the schedule's own " _ pAction _ " row action")
+    Do $$$AssertEquals($Parameter(pClass, "DESCRIPTORCLASS"), "OcuPilot.Screen.Descriptor.TaskScheduleList", "on the Task schedule")
+    Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("Task.CRUD", pWriteType), "the port admits the mutating pair")
+    Set tExempt = ##class(OcuPilot.Port.AdminPort).IsBodyless("Task.CRUD", pWriteType) || $IsObject(##class(OcuPilot.Port.AdminPort).ConstantBody("Task.CRUD", pWriteType))
+    Do $$$AssertTrue(tExempt, "and exempts it from a caller body, as bodyless or as the port's constant")
+
+    Set tPairs = $ClassMethod(pClass, "PrivilegePairs", "", .tResolved)
+    Do $$$AssertEquals(tResolved, 1, "its pairs resolve")
+    Set tDeclared = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(pClass, "DESCRIPTORCLASS"), .tDeclaredResolved)
+    Do $$$AssertEquals(tDeclaredResolved, 1, "the screen's own declared set resolves")
+    Do $$$AssertEquals(tPairs, tDeclared, "and the write's set is that set, not a superset of it")
+    Do $$$AssertTrue($ListFind(tPairs, $ListBuild("%Admin_Task", "USE")) > 0, "which holds %Admin_Task:USE")
+    Do $$$AssertEquals($ListFind(tPairs, $ListBuild("%Admin_Task", "WRITE")), 0, "and never a WRITE permission on an administrative resource")
+
+    Set tSchema = $ClassMethod(pClass, "InputSchema")
+    Set tProperties = tSchema.%Get("properties")
+    Do $$$AssertEquals(tProperties.%Get("Id").%Get("type"), "string", "the identifying property is advertised")
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Id": "7"}, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the id alone validates: " _ tProblem)
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Id": "7", "Suspended": false}, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "while a field on a bodyless write is refused")
+    Do $$$AssertTrue(tProblem [ "Suspended", "naming the argument: " _ tProblem)
+}
+
 /// <p>AD-51, AD-8: the process suspend tool is an action-style write -- <code>GET</code> fresh,
 /// <code>SUSPEND</code> written, no body, no settable field, not destructive -- over its screen's
 /// own three pairs at <code>USE</code>, with the fingerprint subject the amended AD-51 requires.</p>
@@ -986,7 +1066,7 @@ Method TestAnInadequateFingerprintSubjectStopsTheToolListBuilding()
 /// <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> -- the absence leg goes red.
 /// Remove <code>Security.User/PUT</code> from it -- the roster leg goes red naming that tool, and
 /// <class>OcuPilot.Test.UserUpdate</class> reddens on its confirmed writes. Add
-/// <code>Task.CRUD/SUSPEND</code> to it -- the refusal leg goes red, because the port then admits
+/// <code>Task.CRUD/PATCH</code> to it -- the refusal leg goes red, because the port then admits
 /// the call instead of answering 501, and so does the width leg, because that pair is one no
 /// registered tool reaches.</p>
 /// <p><b>The roster is held from both sides.</b> The per-tool leg holds the registry within the
@@ -997,9 +1077,8 @@ Method TestAnInadequateFingerprintSubjectStopsTheToolListBuilding()
 /// any check: it reconstructs the entry it was given and looks it up in the list it came from
 /// (Rule 19).</p>
 /// <p><b>It compares pairs, not suffixes</b> (DW-1473). A bare-suffix roster reads "PUT is
-/// admitted" as "PUT is admitted on every endpoint", which is the widening that admitted
-/// <code>Task.CRUD/SUSPEND</code> -- a pair no tool issues and AD-10 evaluates no predicate
-/// for.</p>
+/// admitted" as "PUT is admitted on every endpoint", which is the widening that once admitted
+/// <code>Task.CRUD/SUSPEND</code> before any tool issued it.</p>
 Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
 {
     Set tMutating = $ListFromString($Parameter("OcuPilot.Port.AdminPort", "MUTATINGTYPES"))
@@ -1023,10 +1102,10 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
     Do $$$AssertTrue($ListFind(tMutatingSuffixes, "DELETE") > 0, "while DELETE is admitted for the endpoint whose delete a tool does issue, which is what makes the pair key load-bearing here")
     Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("WebApp.App", "DELETE"), "namely WebApp.App")
     ; DW-1473's own condition: admitting a suffix on one endpoint must not admit it on another.
-    ; Task.CRUD declares TYPESUSPEND, Process is the endpoint whose SUSPEND a tool issues.
-    Do $$$AssertTrue($ListFind(tMutatingSuffixes, "SUSPEND") > 0, "SUSPEND is admitted somewhere, which is what makes the pair key load-bearing")
-    Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsMutating("Task.CRUD", "SUSPEND"), "and Task.CRUD/SUSPEND is not admitted, though Task.CRUD declares TYPESUSPEND and the suffix is admitted for Process")
-    Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("Process", "SUSPEND"), "while Process/SUSPEND is")
+    ; Task.CRUD declares TYPEPUT, and WebApp.App is an endpoint whose PUT a tool issues.
+    Do $$$AssertTrue($ListFind(tMutatingSuffixes, "PUT") > 0, "PUT is admitted somewhere, which is what makes the pair key load-bearing")
+    Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsMutating("Task.CRUD", "PUT"), "and Task.CRUD/PUT is not admitted, though Task.CRUD declares TYPEPUT and the suffix is admitted for WebApp.App")
+    Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("WebApp.App", "PUT"), "while WebApp.App/PUT is")
 
     ; The fixture every port test drives through overrides this parameter to add its probe pair.
     ; It may add; it may never omit, because a shipped pair missing from the override sends a
@@ -1050,7 +1129,7 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
     ; NeedsRequestBody() answer onto the other's.
     Do $$$AssertTrue($ListLength(tEndpoints) > 1, "more than one endpoint declares a bodyless request type, which is what makes the pair key load-bearing: " _ $ListToString(tEndpoints))
     Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsBodyless("Process", "RESUME"), "Process/RESUME is exempt")
-    Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsBodyless("Task.CRUD", "SUSPEND"), "while Task.CRUD/SUSPEND, which no endpoint pairs, is not")
+    Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsBodyless("Task.CRUD", "SUSPEND"), "while Task.CRUD/SUSPEND, whose body is the port's constant, is not")
 
     Set tSC = $ClassMethod(..#REGISTRY, "ListTools", .tTools)
     Do $$$AssertStatusOK(tSC, "the tool registry lists: " _ $System.Status.GetErrorText(tSC))
@@ -1067,7 +1146,9 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
         ; port's request types and the admin port answers 501 for them by construction, so holding
         ; it to this roster would assert the wrong instance's contract. Counted, so a change that
         ; routed every write off the admin port could not empty this loop silently.
-        If $ClassMethod(tEntry.%Get("class"), "PortClass") '= "OcuPilot.Port.AdminPort" {
+        ; A port that extends the admin port (OcuPilot.Port.TaskPort) issues its request types
+        ; through it, so its tools are held to this roster too.
+        If '$ClassMethod($ClassMethod(tEntry.%Get("class"), "PortClass"), "%Extends", "OcuPilot.Port.AdminPort") {
             Set tOtherPorts = tOtherPorts + 1
             Continue
         }
@@ -1089,8 +1170,8 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
     Do $$$AssertTrue(tWrites > 0, "the registry enumerated admin-port write tools at all")
     ; The roster's other direction. The loop above holds registry within roster, one tool at a time,
     ; which is satisfied by a roster of any width; the parameter's own claim is that it is EXACTLY
-    ; the pairs the registry reaches, and nothing said so. An admitted pair no tool issues is the
-    ; state Task.CRUD/SUSPEND was in before DW-1473, one entry away.
+    ; the pairs the registry reaches, and nothing said so. An admitted pair no tool issues is one
+    ; entry away.
     Do $$$AssertEquals($ListLength(tMutating), $ListLength(tReached), "the port admits no pair beyond the ones the registry reaches -- roster '" _ $ListToString(tMutating) _ "' against reached '" _ $ListToString(tReached) _ "'")
     Do $$$AssertTrue(tActions > 0, "and at least one of them is an action-style write, so the bodyless half of the equality was exercised")
     Do $$$AssertEquals(tOtherPorts, 1, "exactly one shipped write reaches its target through another port, and it is held to that port's contract instead")
@@ -1110,14 +1191,13 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
         Do $$$AssertEquals(+$Get(tHttp), 501, "at 501, before the vendor endpoint is entered")
     }
 
-    ; The pair key at the surface a caller meets it. Task.CRUD declares TYPESUSPEND, so a bare
-    ; suffix roster admitted this call once SUSPEND was admitted for Process; asking IsMutating
-    ; alone would pin the predicate rather than the refusal. A task id no task carries, so a
-    ; mutation that re-admits the pair reaches the vendor against nothing.
+    ; The pair key at the surface a caller meets it. Task.CRUD declares TYPEPATCH and no tool
+    ; issues it; asking IsMutating alone would pin the predicate rather than the refusal. A task id
+    ; no task carries, so a mutation that admits the pair reaches the vendor against nothing.
     Kill tQuery
     Set tQuery("id") = 999999999
-    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Task.CRUD", "SUSPEND", .tQuery, "", .tAnswer, .tHttp, .tFault)
-    Do $$$AssertStatusNotOK(tSC, "the port refuses a Task.CRUD SUSPEND outright")
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Task.CRUD", "PATCH", .tQuery, "", .tAnswer, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "the port refuses a Task.CRUD PATCH outright")
     Do $$$AssertEquals(+$Get(tHttp), 501, "at 501, before the vendor endpoint is entered")
     Do $$$AssertTrue($IsObject(tFault), "with a fault object")
     If $IsObject(tFault) {

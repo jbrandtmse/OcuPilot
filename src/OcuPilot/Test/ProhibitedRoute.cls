@@ -1700,4 +1700,48 @@ Method TestAnAccountShortOfTheTaskPairIsRefusedTheRunScreenAction()
     Do $$$AssertEquals($ClassMethod(tFixture, "ProbeCount"), 0, "and the run probe task is gone")
 }
 
+/// <p>AC6, AD-8, AD-53 (Story 7.6): a principal holding <code>%DB_IRISSYS:READ</code> and not
+/// <code>%Admin_Task:USE</code> is refused the Task schedule's Suspend 403
+/// <code>AUTH.NOPRIVILEGE</code> naming that pair, before any read, and the probe's
+/// <code>INFO</code> still reads it not suspended. The probe is deleted in this method's own
+/// frame.</p>
+/// <p>Mutation (Rule 19): skip the pair <code>Gate</code> in
+/// <method>OcuPilot.Api.ScreenAction.Run</method> -- the code and failed-pair assertions go red.</p>
+Method TestAnAccountShortOfTheTaskPairIsRefusedTheSuspendScreenAction()
+{
+    Set tCodeResource = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
+    If tCodeResource = "" Quit
+    Set tSC = ..EnsureLeastPrivilegedPrincipal(..#PRINCIPALPASSWORD, ..#PROCESSFLOORADMIN _ ":U,%DB_IRISSYS:R," _ tCodeResource _ ":R")
+    Do $$$AssertStatusOK(tSC, "a principal short of only the task pair is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%Admin_Task", "USE"), 0, "it holds no %Admin_Task:USE")
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%DB_IRISSYS", "READ"), 1, "and does hold the security database read")
+
+    Set tFixture = "OcuPilot.Test.TaskRunFixture"
+    Set tTaskSC = $ClassMethod(tFixture, "EnsureScheduleProbeTask", .tTaskId)
+    Do $$$AssertStatusOK(tTaskSC, "the schedule probe task exists: " _ $System.Status.GetErrorText(tTaskSC))
+    If $$$ISERR(tTaskSC) Quit
+    Try {
+        Set tBefore = $ClassMethod(tFixture, "InfoField", tTaskId, "Suspended", .tRead)
+        Do $$$AssertEquals(tRead, 1, "the probe's INFO answers before the request")
+        Do $$$AssertEquals(tBefore, "false", "and reads it not suspended")
+        Set tSC = ..ActOn("tasks.schedule", "suspend", tTaskId, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, "the screen action request completes")
+        Do $$$AssertEquals(tStatus, 403, "and is refused -- not 200, not the router's 403 with no body: " _ tBody)
+        If tStatus = 403 {
+            Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+            Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "with the screen-privilege code, not AUTH.NOADMIN")
+            Do $$$AssertEquals($Select($IsObject(tEnvelope.%Get("detail")): tEnvelope.%Get("detail").%Get("failedPair"), 1: ""), "%Admin_Task:USE", "naming the pair that failed")
+        }
+        Set tAfter = $ClassMethod(tFixture, "InfoField", tTaskId, "Suspended", .tRead)
+        Do $$$AssertEquals(tRead, 1, "and after it")
+        Do $$$AssertEquals(tAfter, "false", "and the probe is still not suspended")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the leg completes without raising")
+    }
+    Do $ClassMethod(tFixture, "DeleteScheduleProbeTask")
+    Do $$$AssertEquals($ClassMethod(tFixture, "ScheduleProbeCount"), 0, "and the schedule probe task is gone")
+}
+
 }

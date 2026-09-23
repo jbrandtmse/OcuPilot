@@ -315,14 +315,18 @@ test('AC1: the list reads once under the declared headers, renders its rows, and
   try {
     await waitForRows(page, config.navigationTimeoutMs);
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
+    // Story 7.6: the Suspended column the INFO rowGet feeds, and the row-actions column the table
+    // adds for itself once the screen declares Run, Suspend, Resume and Delete.
     assert.deepEqual(headers, [
       STRINGS.tableColumnName,
       STRINGS.headerNamespaceLabel,
       STRINGS.tableColumnType,
+      STRINGS.taskColumnSuspended,
       STRINGS.taskColumnLastRun,
       STRINGS.taskColumnNextRun,
+      STRINGS.commandBoxGroupActions,
     ]);
-    assert.deepEqual(headers, ['Name', 'Namespace', 'Type', 'Last run', 'Next run']);
+    assert.deepEqual(headers, ['Name', 'Namespace', 'Type', 'Suspended', 'Last run', 'Next run', 'Actions']);
 
     const total = await viewCount(page);
     assert.ok(total >= 2, `the instance lists at least two scheduled tasks: ${total}`);
@@ -339,7 +343,7 @@ test('AC1: the list reads once under the declared headers, renders its rows, and
     const times = await page.$$eval(ROW_SELECTOR, (rows) =>
       rows.map((row) => {
         const cells = Array.from(row.querySelectorAll('[role="gridcell"]')).map((cell) => cell.textContent.trim());
-        return { name: cells[0], last: cells[3], next: cells[4] };
+        return { name: cells[0], last: cells[4], next: cells[5] };
       })
     );
     for (const row of times) {

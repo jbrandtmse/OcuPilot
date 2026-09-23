@@ -138,3 +138,26 @@ describe('the typed-name dialog', () => {
     expect(fixture.componentInstance.confirms()).toBe(1);
   });
 });
+
+describe('the typed-name dialog\u2019s advisory (Story 7.6)', () => {
+  it('draws a passed advisory as a warning after the consequence, and nothing when none is passed', () => {
+    // Mutation (Rule 19): drop the advisory block from the template -> the first half goes red.
+    TestBed.configureTestingModule({ providers: [{ provide: OverlayStack, useValue: new OverlayStack() }] });
+    const fixture = TestBed.createComponent(TypedNameDialog);
+    fixture.componentRef.setInput('verb', VERB);
+    fixture.componentRef.setInput('target', 'Switch Journal');
+    fixture.componentRef.setInput('consequence', STRINGS.taskDeleteConsequence);
+    fixture.componentRef.setInput('advisory', STRINGS.taskSystemDeleteConsequence);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    const advisory = element.querySelector('[data-slot="advisory"]') as HTMLElement | null;
+    expect(advisory).not.toBeNull();
+    expect(advisory?.textContent).toContain(STRINGS.taskSystemDeleteConsequence);
+    expect(advisory?.classList.contains('ocu-banner-warning')).toBe(true);
+
+    fixture.componentRef.setInput('advisory', '');
+    fixture.detectChanges();
+    expect(element.querySelector('[data-slot="advisory"]')).toBeNull();
+    TestBed.resetTestingModule();
+  });
+});

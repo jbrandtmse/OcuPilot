@@ -365,6 +365,36 @@ describe('the proposal card', () => {
     expect(webApp.querySelector('.ocu-proposal-card-residue')).toBeNull();
   });
 
+  it('Story 7.6: a system task\u2019s delete card states the consequence; a user task\u2019s and another type\u2019s do not', () => {
+    // The removal rows are the card's only knowledge of the task's type (the delete tool reads it).
+    //
+    // Mutation (Rule 19): drop the system-task block from the template, or the `targetType` test
+    // from `systemTaskVisible` -> this goes red.
+    const taskDelete = (type: string, targetType = 'task'): ProposalCardView => ({
+      ...DELETE_PROPOSAL,
+      proposalId: 'p6',
+      expiresAt: NOW_MS + 60_000,
+      entityType: 'Task',
+      targetType,
+      name: '42',
+      changed: [
+        { field: 'Name', before: 'Switch Journal', after: '', removed: true },
+        { field: 'TaskClass', before: '%SYS.Task.SwitchJournal', after: '', removed: true },
+        { field: 'NameSpace', before: '%SYS', after: '', removed: true },
+        { field: 'Type', before: type, after: '', removed: true },
+      ],
+    });
+    const { card: system } = mount(taskDelete('System'), { phase: 'live' });
+    const line = system.querySelector('[data-slot="system-task"]') as HTMLElement | null;
+    expect(line).not.toBeNull();
+    expect(line?.textContent).toContain(STRINGS.taskSystemDeleteConsequence);
+    expect(line?.getAttribute('role')).toBe('status');
+
+    expect(mount(taskDelete('User'), { phase: 'live' }).card.querySelector('[data-slot="system-task"]')).toBeNull();
+    expect(mount(taskDelete('System', 'web-application'), { phase: 'live' }).card.querySelector('[data-slot="system-task"]')).toBeNull();
+    expect(mount(liveView(), { phase: 'live' }).card.querySelector('[data-slot="system-task"]')).toBeNull();
+  });
+
   it('with no phase nothing in the card is focusable, and there is no countdown and no footer', () => {
     // Mutation (Rule 19): render the footer whatever the phase -> this goes red on both counts.
     for (const view of [EXAMPLE_PROPOSAL, DELETE_PROPOSAL]) {

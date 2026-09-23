@@ -194,7 +194,18 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// <code>ResourcesOR()</code> answers <code>%Admin_Task</code> for it. Its body is a vendor
 /// constant no caller supplies, so it is listed in <parameter>CONSTANTBODIES</parameter> rather
 /// than in <parameter>BODYLESSTYPES</parameter>.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN";
+/// <p><code>Task.CRUD/SUSPEND</code> and <code>Task.CRUD/DELETE</code> are Story 7.6's
+/// (<class>OcuPilot.Screen.Tool.TaskSuspend</class>, <class>OcuPilot.Screen.Tool.TaskDelete</class>,
+/// AD-51). Measured on this build: <code>SUSPEND</code> reads a body, answers 415 without one and
+/// 400 for a key it does not know, and its <code>RunSuspend</code> reads
+/// <code>LeaveInQueue</code> (default 1, "Suspend Leave"), so it is listed in
+/// <parameter>CONSTANTBODIES</parameter>; <code>DELETE</code> reads no body and its
+/// <code>RunDelete</code> is <code>%DeleteId</code>, which removes a system task as readily as a
+/// user one, so it is listed in <parameter>BODYLESSTYPES</parameter>. Both answer 404 for an
+/// unknown id; <code>ResourcesOR()</code> answers <code>%Admin_Task</code> for
+/// <code>SUSPEND</code> and <code>%Admin_Task</code> or <code>%Admin_Operate</code> for
+/// <code>DELETE</code>.</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -210,7 +221,7 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries whose vendor body spells a key differently
 /// from the name the rest of the product carries it under, as comma-separated
@@ -234,7 +245,10 @@ Parameter RENAMEDTYPES = "Security.User/CHANGEPWD=Password:NewPassword";
 /// <code>RUN</code> reads a body and <code>ValidateRequest</code> requires
 /// <code>{"RunNow":true}</code>, measured on this build. The tool declares no body and the kernel
 /// and the ledger see none; the constant exists only between this port and the vendor.</p>
-Parameter CONSTANTBODIES = "Task.CRUD/RUN={""RunNow"":true}";
+/// <p><code>Task.CRUD</code>'s <code>SUSPEND</code> reads a body too, and answers 415 without one;
+/// its <code>LeaveInQueue</code> defaults to 1 when absent, and the port sends that default
+/// explicitly so the suspend a caller gets is the one written here (measured on this build).</p>
+Parameter CONSTANTBODIES = "Task.CRUD/RUN={""RunNow"":true};Task.CRUD/SUSPEND={""LeaveInQueue"":true}";
 
 /// <p>The pair set the <b>backing query or class</b> of an endpoint requires, beyond the
 /// endpoint's own <code>ResourcesOR()</code> gate (AD-29). Comma-separated entries of the form

@@ -77,8 +77,9 @@ interface ListView {
     @if (pendingTypedName; as pending) {
       <app-typed-name-dialog
         [verb]="pending.verb"
-        [target]="pending.target"
+        [target]="pending.name"
         [consequence]="pending.consequence"
+        [advisory]="pending.advisory"
         (confirmed)="onConfirmDestructive()"
         (cancelled)="onCancelDestructive()"
       />

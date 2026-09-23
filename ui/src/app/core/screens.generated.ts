@@ -5815,6 +5815,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       }
     ],
     "entityType": "task",
+    "entityLabelKey": "proposalEntityTask",
     "secondaryEntityTypes": [],
     "scope": "instance",
     "parentScope": "",
@@ -5828,7 +5829,24 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "run",
+        "selfProtection": ""
+      },
+      {
+        "id": "suspend",
+        "selfProtection": ""
+      },
+      {
+        "id": "resume",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -5916,6 +5934,11 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         },
         {
+          "field": "Suspended",
+          "labelKey": "taskColumnSuspended",
+          "kind": "status"
+        },
+        {
           "field": "LastFinished",
           "labelKey": "taskColumnLastRun",
           "kind": "text"
@@ -5926,8 +5949,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "taskScheduleEmptyAgent"
     },
     "banner": {
       "source": {
@@ -5953,8 +5976,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": [],
-    "entityLabelKey": ""
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskUpcomingList",

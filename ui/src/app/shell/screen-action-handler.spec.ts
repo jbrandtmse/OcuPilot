@@ -441,3 +441,77 @@ describe('the On-demand tasks list\u2019s Run (Story 7.5)', () => {
     expect(events[0].id).toBe('42');
   });
 });
+
+describe('the Task schedule\u2019s Run, Suspend, Resume and Delete (Story 7.6)', () => {
+  const SCHEDULE = 'OcuPilot.Screen.Descriptor.TaskScheduleList';
+  const target = { type: 'task', scope: 'instance', id: '42' };
+
+  it('registers all four actions and sends Run, Suspend and Resume at once, keyed by the Id', async () => {
+    // Mutation (Rule 19): drop the schedule from `SCREEN_ACTION_DESCRIPTORS` -> nothing registers and
+    // nothing is sent.
+    for (const actionId of ['run', 'suspend', 'resume']) {
+      const { actions, handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target } }, SCHEDULE);
+      expect(actions.has(SCHEDULE, actionId)).toBe(true);
+      store.setSelection(['42']);
+
+      actions.run(SCHEDULE, actionId);
+      await settle();
+      expect(handler.pending()).toBeNull();
+      expect(calls).toHaveLength(1);
+      expect(calls[0].path).toBe('/api/ocupilot/screens/tasks.schedule/action');
+      expect(JSON.parse(calls[0].body)).toEqual({ action: actionId, id: '42' });
+      expect(events.map((event) => `${event.type}:${event.action}:${event.id}`)).toEqual(['task:updated:42']);
+    }
+  });
+
+  it('opens Delete\u2019s dialog titled with the row\u2019s Name, and sends its Id once confirmed', async () => {
+    // Mutation (Rule 19): drop the schedule's entry from `TYPED_NAME_ROWS` -> the dialog names the Id
+    // and the `name` assertion goes red.
+    const { actions, handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'deleted', target } }, SCHEDULE);
+    store.applyTick([{ Id: '42', Name: 'Nightly purge', Type: 'User' }], false, '', new Date());
+    store.setSelection(['42']);
+
+    actions.run(SCHEDULE, 'delete');
+    await settle();
+    expect(calls).toHaveLength(0);
+    const pending = handler.pending();
+    expect(pending?.kind).toBe('typed-name');
+    expect(pending?.name).toBe('Nightly purge');
+    expect(pending?.target).toBe('42');
+    expect(pending?.verb).toBe(STRINGS.actionDelete);
+    expect(pending?.consequence).toBe(STRINGS.taskDeleteConsequence);
+    expect(pending?.advisory).toBe('');
+
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'delete', id: '42' });
+    expect(events.map((event) => `${event.type}:${event.action}:${event.id}`)).toEqual(['task:deleted:42']);
+  });
+
+  it('adds the system-task advisory to a System row\u2019s delete, and none to a User row\u2019s', async () => {
+    // Mutation (Rule 19): drop the advisory from `TYPED_NAME_ROWS` -> the System assertion goes red.
+    const { actions, handler, store } = mount({ kind: 'ok', status: 200, body: {} }, SCHEDULE);
+    store.applyTick(
+      [
+        { Id: '1', Name: 'Switch Journal', Type: 'System' },
+        { Id: '42', Name: 'Nightly purge', Type: 'User' },
+      ],
+      false,
+      '',
+      new Date()
+    );
+    store.setSelection(['1']);
+    actions.run(SCHEDULE, 'delete');
+    await settle();
+    expect(handler.pending()?.name).toBe('Switch Journal');
+    expect(handler.pending()?.advisory).toBe(STRINGS.taskSystemDeleteConsequence);
+    handler.cancelPending();
+
+    store.setSelection(['42']);
+    actions.run(SCHEDULE, 'delete');
+    await settle();
+    expect(handler.pending()?.advisory).toBe('');
+    handler.cancelPending();
+  });
+});

@@ -22,6 +22,13 @@ let dialogCount = 0;
  * announcing why (EXPERIENCE.md, Privilege Gating), so the button is always focusable and its click
  * is refused by this component while the name does not match.
  *
+ * **An advisory is a second sentence, drawn only when the caller passes one** -- a delete that is
+ * still offered but carries a consequence the first sentence does not state (a system task's).
+ * It is a warning banner, `data-slot="advisory"`, never a refusal: the button's condition is
+ * unchanged.
+ *
+ * Every control-flow condition is paren-free, for the reason `proposal-card.ts` records.
+ *
  * **Enter submits only once the name matches**, which is the same condition the button is released
  * under -- one predicate, so the keyboard and the pointer cannot disagree.
  *
@@ -35,6 +42,12 @@ let dialogCount = 0;
   imports: [Dialog],
   template: `<app-dialog [heading]="heading()" [closeLabel]="STRINGS.actionCancel" (closed)="cancelled.emit()">
     <p class="ocu-typed-name-consequence">{{ consequence() }}</p>
+    @if (advisoryVisible) {
+      <p class="ocu-banner ocu-banner-warning ocu-typed-name-advisory" data-slot="advisory">
+        <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+        <span class="ocu-banner-message">{{ advisory() }}</span>
+      </p>
+    }
     <label class="ocu-typed-name-label" [attr.for]="fieldId">{{ fieldLabel() }}</label>
     <input
       [id]="fieldId"
@@ -75,6 +88,9 @@ export class TypedNameDialog {
   /** The consequence sentence, a Fixed strings row the caller resolves for its own entity. */
   readonly consequence = input.required<string>();
 
+  /** A second, published sentence for this target, or `''` for none. */
+  readonly advisory = input('');
+
   /** Emitted once, when the typed name matches and the destructive action is taken. */
   readonly confirmed = output<void>();
 
@@ -82,6 +98,9 @@ export class TypedNameDialog {
   readonly cancelled = output<void>();
 
   protected readonly STRINGS = STRINGS;
+
+  /** The warning triangle the shared banner carries, as its escape (Rule 14). */
+  protected readonly bannerGlyph = '\u26A0';
 
   private readonly instance = ++dialogCount;
 
@@ -110,6 +129,10 @@ export class TypedNameDialog {
   protected readonly fieldLabel = computed(() =>
     STRINGS.formTypedNameConfirm.split('<name>').join(this.target())
   );
+
+  protected get advisoryVisible(): boolean {
+    return this.advisory() !== '';
+  }
 
   protected get mismatchVisible(): boolean {
     return this.blurred() && !this.matches();

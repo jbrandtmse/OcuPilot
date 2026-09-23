@@ -99,7 +99,7 @@ XData ReadShapes
 <screen name="TaskHistoryList" filter="Name,Namespace,Status,Result,Username,Routine" sort="LastStart,Completed,Name,Namespace,Status,Result,Username,LogDatetime" kinds="LastStart:text,Completed:text,Name:name,Status:text,Result:text,Username:text,Namespace:text"/>
 <screen name="TaskOnDemandList" filter="Name,Namespace,Type,Description" sort="Name,Namespace,Type,LastFinished,NextScheduled" kinds="Name:name,Namespace:text,Type:text,Description:text,LastFinished:text,NextScheduled:text"/>
 <screen name="TaskRunList" filter="Name,Namespace,Status,Result,Username,Routine" sort="LastStart,Completed,Name,Namespace,Status,Result,Username,LogDatetime" kinds="LastStart:text,Completed:text,Name:name,Status:text,Result:text,Username:text,Namespace:text"/>
-<screen name="TaskScheduleList" filter="Name,Namespace,Type,Description" sort="Name,Namespace,Type,Description,LastFinished,NextScheduled" kinds="Name:name,Namespace:text,Type:text,LastFinished:text,NextScheduled:text"/>
+<screen name="TaskScheduleList" filter="Name,Namespace,Type,Description" sort="Name,Namespace,Type,Description,LastFinished,NextScheduled" kinds="Name:name,Namespace:text,Type:text,Suspended:status,LastFinished:text,NextScheduled:text"/>
 <screen name="TaskUpcomingList" filter="Name,Namespace" sort="Datetime,Name,Namespace" kinds="Datetime:text,Name:name,Namespace:text,Suspended:status"/>
 <screen name="UserList" filter="Name,FullName,Type,Roles" sort="Name,FullName,Type,Roles" kinds="Name:name,FullName:text,Enabled:status,Expired:text,Type:text,Roles:identifier"/>
 <screen name="WalletCollectionList" filter="Name,UseResource,EditResource" sort="Name,UseResource,EditResource" kinds="Name:name,UseResource:text,EditResource:text"/>
@@ -516,15 +516,15 @@ Method TestABannerOutsideTheGrammarIsRefused()
 
 /// <p>Story 2.8, widened by Story 5.11 -- the task schedule list's declaration passes the read,
 /// banner and classic link rules; its route and tool identifier resolve to it; it declares the
-/// four auto-refresh rates; <code>Suspended</code> reaches the read and the agent's context
-/// through the <code>INFO</code> detail call and reaches no table column, filter or sort, because
-/// the vendor LIST coerces it to false for every task (DW-269); and its classic page is a class
-/// compiled on this instance under the declaration's own case (AD-44).</p>
+/// four auto-refresh rates; <code>Suspended</code> reaches the read, the agent's context and the
+/// Suspended column through the <code>INFO</code> detail call and reaches no filter or sort,
+/// because the vendor LIST coerces it to false for every task (DW-269, Story 7.6); and its classic
+/// page is a class compiled on this instance under the declaration's own case (AD-44).</p>
 /// <p>Mutations: lower-case <code>classicPage</code> in
 /// <class>OcuPilot.Screen.Descriptor.TaskScheduleList</class> -> the compiled-class assertion goes
 /// red; drop <code>Namespace</code> from its <code>read.filter</code> -> the filter pin goes red;
 /// drop the <code>rowGet</code>, or its <code>type</code>, -> the detail-call assertions go red;
-/// declare <code>Suspended</code> as a table column -> the column-absence assertion goes red.
+/// drop the Suspended column -> the column assertion goes red.
 /// DW-304: change one declared banner case's <code>equals</code> value to a word the vendor's
 /// <code>RunGet</code> does not spell -> the vendor-source assertion goes red naming it, together
 /// with the typed-copy comparison above it. The two are not independent, and the vendor pin is not
@@ -551,14 +551,18 @@ Method TestTheTaskScheduleListValidatesAndNamesItsClassicPageInItsOwnCase()
     Do $$$AssertEquals(tDeclaration.read.sort.%ToJSON(), "{""fields"":[""Name"",""Namespace"",""Type"",""Description"",""LastFinished"",""NextScheduled""],""default"":""Name"",""direction"":""asc""}", "and the list sorts by name ascending")
     Do $$$AssertEquals(tDeclaration.context.secretFields.%Size(), 0, "and the read carries no secret to strip")
     ; The vendor LIST answers "Suspended":false for every task on this build, suspended ones
-    ; included, so the value the screen shows comes from the detail call above and nowhere else.
-    ; The table, the filter and the sort stay as EXPERIENCE.md's own "name, namespace, type, last
-    ; run, next run" declares them -- the banner's own
-    ; `equals` is the word "Suspended" as the Task Manager's Status reads it, which is a different
-    ; value on a different endpoint.
+    ; included, so the value the screen shows comes from the detail call above and nowhere else --
+    ; the Suspended column Story 7.6 adds is that value. The banner's own `equals` is the word
+    ; "Suspended" as the Task Manager's Status reads it, which is a different value on a different
+    ; endpoint.
     Do $$$AssertEquals((tDeclaration.read.filter.%ToJSON() [ "Suspended"), 0, "the read filters on no Suspended field")
     Do $$$AssertEquals((tDeclaration.read.sort.%ToJSON() [ "Suspended"), 0, "and sorts by none")
-    Do $$$AssertEquals((tDeclaration.table.%ToJSON() [ "Suspended"), 0, "and the table declares no Suspended column")
+    Set tSuspendedColumn = ""
+    Set tColumnIterator = tDeclaration.table.columns.%GetIterator()
+    While tColumnIterator.%GetNext(.tColumnIndex, .tColumn) {
+        If tColumn.field = "Suspended" Set tSuspendedColumn = tColumn.%ToJSON()
+    }
+    Do $$$AssertEquals(tSuspendedColumn, "{""field"":""Suspended"",""labelKey"":""taskColumnSuspended"",""kind"":""status""}", "while the table shows it as a status column, fed by that detail call")
     Do $$$AssertTrue($ListFind($ClassMethod(tClass, "ContextFields"), "Suspended") > 0, "while the agent's context carries it, so the read tool's view answers it too")
     Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 1, "it is one of the auto-refresh screens")
     Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RefreshRates")), "5,10,30,60", "at the four declared rates")

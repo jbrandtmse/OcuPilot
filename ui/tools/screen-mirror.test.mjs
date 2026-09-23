@@ -859,6 +859,22 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.equal(onDemand.declaration.entityLabelKey, 'proposalEntityTask');
   const upcoming = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskUpcomingList');
   assert.equal(upcoming.declaration.read.source.type, 'UPCOMING');
+  // Story 7.6: the Task schedule declares Run, Suspend, Resume and Delete, shows the Suspended
+  // field its INFO rowGet answers, and its empty state invites the agent.
+  const schedule = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskScheduleList');
+  assert.deepEqual(
+    schedule.declaration.rowActions.map((action) => action.id),
+    ['run', 'suspend', 'resume', 'delete']
+  );
+  assert.ok(schedule.declaration.rowActions.every((action) => action.selfProtection === ''), 'no action carries a self-protection rule');
+  assert.deepEqual(
+    schedule.declaration.table.columns.find((column) => column.field === 'Suspended'),
+    { field: 'Suspended', labelKey: 'taskColumnSuspended', kind: 'status' }
+  );
+  assert.deepEqual(schedule.declaration.read.source.rowGet.fields, ['Suspended'], 'fed by the INFO rowGet');
+  assert.equal(schedule.declaration.table.emptyAgentKey, 'taskScheduleEmptyAgent', 'the empty state invites the agent');
+  assert.equal(schedule.declaration.table.emptyNextKey, '', 'and names no read-only next step');
+  assert.equal(schedule.declaration.entityLabelKey, 'proposalEntityTask');
   // Story 2.12: a descriptor that declares NO read is a supported shape, and the generator has to
   // emit it rather than refuse it -- the declared-read pipeline is admin-port-only by two
   // independent hard-codings, so the application error log could not use it whatever port it

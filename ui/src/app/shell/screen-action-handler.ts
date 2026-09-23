@@ -26,7 +26,8 @@ export const SCREEN_ACTION_PATH_SUFFIX = '/action';
  * the OAuth 2.0 screen's Client configurations and Server client descriptions tabs (Story 7.3),
  * whose detail pages render the same `ListPage`, and the Users list (Story 7.2), and the Auditing
  * configuration form (Story 7.4), whose page selects the singleton itself, and the On-demand tasks
- * list (Story 7.5), whose Run is sent at once with no dialog.
+ * list (Story 7.5), whose Run is sent at once with no dialog, and the Task schedule (Story 7.6),
+ * whose Run, Suspend and Resume are sent at once and whose Delete types the task's name.
  */
 export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WebAppList',
@@ -35,10 +36,14 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.UserList',
   'OcuPilot.Screen.Descriptor.AuditingConfig',
   'OcuPilot.Screen.Descriptor.TaskOnDemandList',
+  'OcuPilot.Screen.Descriptor.TaskScheduleList',
 ];
 
 /** The Users list's descriptor, whose row actions carry values (AD-56). */
 const USER_LIST = 'OcuPilot.Screen.Descriptor.UserList';
+
+/** The Task schedule's descriptor, whose delete types a name that is not its row key. */
+const TASK_SCHEDULE = 'OcuPilot.Screen.Descriptor.TaskScheduleList';
 
 /**
  * The change-on-login flag's action (AD-56): a declared, undrawn action. It is declared so the
@@ -96,6 +101,25 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.OAuthClientTab': { delete: STRINGS.oauthClientDeleteConsequence },
   'OcuPilot.Screen.Descriptor.OAuthServerClientTab': { delete: STRINGS.oauthServerClientDeleteConsequence },
   [USER_LIST]: { delete: STRINGS.userDeleteConsequence },
+  [TASK_SCHEDULE]: { delete: STRINGS.taskDeleteConsequence },
+};
+
+/**
+ * What a typed-name dialog reads off the selected row, keyed by descriptor, where it reads more
+ * than the row key.
+ *
+ * `name` is the field the dialog titles and types. A task is keyed by its numeric `Id`, which the
+ * write is sent with, while a person recognises it by its `Name`, so the dialog asks for the name
+ * and the request still carries the id. A screen with no entry types its row key.
+ *
+ * `advisory` is a second sentence the dialog states when the row's `field` reads `equals` -- an
+ * advisory, not a refusal: the delete is still offered, and whether it may happen is the
+ * instance's answer (AD-10).
+ */
+const TYPED_NAME_ROWS: Readonly<
+  Record<string, { readonly name: string; readonly field: string; readonly equals: string; readonly advisory: string }>
+> = {
+  [TASK_SCHEDULE]: { name: 'Name', field: 'Type', equals: 'System', advisory: STRINGS.taskSystemDeleteConsequence },
 };
 
 /**
@@ -122,6 +146,10 @@ export type PendingKind = 'typed-name' | 'warning' | 'set-password' | 'role';
  * the warning before a non-delete write, the set-password dialog, or the role dialog. `kind` says
  * which; `consequence` is the typed-name or warning dialog's own sentence and `options` the role
  * dialog's choices, each empty for the other kinds.
+ *
+ * `target` is the row key the write is sent with. `name` is what the typed-name dialog titles and
+ * asks for -- the row key itself unless the screen names another field (`TYPED_NAME_ROWS`) --
+ * and `advisory` the dialog's second sentence, `''` when none applies.
  */
 export interface PendingConfirm {
   readonly kind: PendingKind;
@@ -129,7 +157,9 @@ export interface PendingConfirm {
   readonly actionId: string;
   readonly verb: string;
   readonly target: string;
+  readonly name: string;
   readonly consequence: string;
+  readonly advisory: string;
   readonly options: readonly string[];
 }
 
@@ -267,7 +297,20 @@ export class ScreenActionHandler {
       void this.send(screen.descriptor, actionId, target);
       return;
     }
-    this.open('typed-name', screen.descriptor, actionId, target, this.consequence(screen.descriptor, actionId), []);
+    // The row's own name and advisory, where the screen declares them; the row key otherwise.
+    const read = TYPED_NAME_ROWS[screen.descriptor];
+    const row = read === undefined ? null : this.row(screen, target);
+    const name = row?.[read?.name ?? ''];
+    this.open(
+      'typed-name',
+      screen.descriptor,
+      actionId,
+      target,
+      this.consequence(screen.descriptor, actionId),
+      [],
+      typeof name === 'string' && name !== '' ? name : target,
+      row !== null && row[read?.field ?? ''] === read?.equals ? (read?.advisory ?? '') : ''
+    );
   }
 
   private open(
@@ -276,7 +319,9 @@ export class ScreenActionHandler {
     actionId: string,
     target: string,
     consequence: string,
-    options: readonly string[]
+    options: readonly string[],
+    name: string = target,
+    advisory = ''
   ): void {
     this.waiting.set({
       kind,
@@ -284,7 +329,9 @@ export class ScreenActionHandler {
       actionId,
       verb: actionLabel(descriptor, actionId),
       target,
+      name,
       consequence,
+      advisory,
       options,
     });
   }
@@ -319,12 +366,19 @@ export class ScreenActionHandler {
 
   /** The roles the row `target` holds on the screen's last read, as the instance spells them. */
   private rowRoles(screen: ScreenDeclaration, target: string): readonly string[] {
+    const row = this.row(screen, target);
+    if (row === null) return [];
+    const roles = row['Roles'];
+    return Array.isArray(roles) ? roles.filter((name): name is string => typeof name === 'string' && name !== '') : [];
+  }
+
+  /** The row keyed `target` on the screen's last read, or `null`. */
+  private row(screen: ScreenDeclaration, target: string): Readonly<Record<string, unknown>> | null {
     const row = this.store(screen.descriptor, screen.refreshRates)
       .data()
       .find((entry) => rowKey(entry, screen) === target);
-    if (row === undefined || row === null || typeof row !== 'object') return [];
-    const roles = (row as Record<string, unknown>)['Roles'];
-    return Array.isArray(roles) ? roles.filter((name): name is string => typeof name === 'string' && name !== '') : [];
+    if (row === undefined || row === null || typeof row !== 'object') return null;
+    return row as Readonly<Record<string, unknown>>;
   }
 
   /**

@@ -40,6 +40,15 @@ import {
 const RESIDUE_ENTITY_TYPE = 'application-error';
 
 /**
+ * The removal row that marks one of the instance's own system tasks (Story 7.6): a `task` card's
+ * `Type` row reading `System`. The delete tool's read carries the task's type into its rows, which
+ * is where the card learns it.
+ */
+const SYSTEM_TASK_ENTITY_TYPE = 'task';
+const SYSTEM_TASK_FIELD = 'Type';
+const SYSTEM_TASK_VALUE = 'System';
+
+/**
  * One Confirm press: the proposal's id and the values typed into its masked fields.
  *
  * The values are the card's own and reach the confirm body through this one channel (AD-6's
@@ -148,6 +157,16 @@ export interface ProposalConfirmRequest {
       }
       @if (residueVisible) {
         <p class="ocu-proposal-card-residue">{{ residueCaption }}</p>
+      }
+      @if (systemTaskVisible) {
+        <p
+          class="ocu-banner ocu-banner-warning ocu-proposal-card-warning"
+          role="status"
+          data-slot="system-task"
+        >
+          <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+          <span class="ocu-banner-message">{{ STRINGS.taskSystemDeleteConsequence }}</span>
+        </p>
       }
       @if (discloses) {
       @if (disclosable) {
@@ -534,6 +553,17 @@ export class ProposalCard {
   /** The published residue sentence with its count resolved from the rows the card lists. */
   protected get residueCaption(): string {
     return formatRemovalResidue(STRINGS.proposalResidue, this.removedCount);
+  }
+
+  /**
+   * Whether the card states a system task's delete consequence: a `task` card with a removal row
+   * whose `Type` was `System`. The delete is still offered; the line says what it costs.
+   */
+  protected get systemTaskVisible(): boolean {
+    if (this.view().targetType !== SYSTEM_TASK_ENTITY_TYPE) return false;
+    return this.changedRows.some(
+      (row) => row.removed === true && row.field === SYSTEM_TASK_FIELD && row.before === SYSTEM_TASK_VALUE
+    );
   }
 
   protected get maskedFields(): readonly string[] {

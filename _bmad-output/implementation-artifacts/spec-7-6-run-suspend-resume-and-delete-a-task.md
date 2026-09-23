@@ -2,7 +2,8 @@
 title: 'Story 7.6: Run, suspend, resume and delete a task'
 type: 'feature'
 created: '2026-09-23'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: 'b447f29466120d48b9d83d1ea2067cea6a349240'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -261,6 +262,10 @@ Measured on `ocupilot-ci` (2026-09-23, probes created and deleted) and on slot A
 
 ## Spec Change Log
 
+- 2026-09-23, lead: the implement stage's matrix ambiguity is ruled -- the no-op is 400
+  `TOOL.ARGUMENTS` (Design Notes); `status` reset to `in-progress`; its uncommitted work is committed as
+  WIP for crash safety before the re-dispatch.
+
 - 2026-09-23, lead spec gate (re-plan): accepted; EXPERIENCE `:102` gains the suspended column
   (tier-1). `Port/TaskPort.cls` is a new port under AD-52 and must reach `Task.CRUD` only through
   `AdminPort` (AD-2, AD-27: only `AdminPort` names an `%Api.Admin.*` class).
@@ -283,7 +288,10 @@ Measured on `ocupilot-ci` (2026-09-23, probes created and deleted) and on slot A
 AD-6, AD-8, AD-10, AD-13, AD-14, AD-15, AD-34, AD-36 (INFO truthful, LIST coerces `Suspended`),
 AD-39, AD-43, AD-27 (the composite read is a vendor wire fact kept in a port).
 
-**Rulings over the frozen matrix.** Ruling 4 supersedes the matrix row "System task delete (Q4)":
+**Rulings over the frozen matrix.** The matrix's "No-op" row is refused **400 `TOOL.ARGUMENTS`** with
+`detail.problem`, and nothing is sent (lead ruling 2026-09-23: the agent's mint answers its own refusals
+in that shape and the screen route mirrors it on purpose, so the two callers of AD-53 agree; 422 on
+one route would split them). Ruling 4 supersedes the matrix row "System task delete (Q4)":
 the delete is allowed and carries the consequence line; nothing refuses it. The matrix's "Status
 reads Suspended" is the Suspended column (ruling 2). The agent delete's removal rows gain `Type`
 beside `Name`, `TaskClass`, `NameSpace`, because the card can only know a system task from its
@@ -340,7 +348,85 @@ re-submitted; no container is stopped, removed or recreated.
 from the numeric-run-index probe; then `bash scripts/smoke.sh --container ocupilot-ci --user
 _SYSTEM --password SYS`. No local full browser suite (Rule 29).
 
+Recorded (implement, `ocupilot-ci`; each applied, observed red, reverted, tree unchanged):
+
+- `mutation: dropped TaskScheduleList's INFO rowGet, reloaded → red: task-schedule-actions.browser-spec.mjs Suspend and Resume leg, the Suspended cell never reads Yes (AC1, Integration AC)`
+- `mutation: TaskResume SCREENACTIONS "", reloaded → red: the same leg at the Resume wait (AC2)`
+- `mutation: navReply routed to tasks/schedule → red: task-resume.browser-spec.mjs "Task details opens" (AC3)`
+- `mutation: TaskSuspend.StateDiff without its already-suspended refusal, reloaded → red: TaskScheduleActions.TestTheSuspendStateDiffRefusesANoOpAndAnUnreadableState, run 8003 (AC4)`
+- `mutation: dropped proposal-card.ts's system-task block → red: proposal-card.spec.ts Story 7.6 case; emptied the advisory in TYPED_NAME_ROWS → red: screen-action-handler.spec.ts advisory case (AC5)`
+- `mutation: skipped the first pair-Gate refusal in ScreenAction.Run, reloaded → red: ProhibitedRoute.TestAnAccountShortOfTheTaskPairIsRefusedTheSuspendScreenAction with the run, auditing and web-app legs, run 8004 (AC6)`
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: matrix ambiguity -- the matrix row "No-op" says "refused 422 with
+`detail.problem`. Nothing sent", but both callers refuse a no-op with 400 `TOOL.ARGUMENTS` and
+`detail.problem`: the mint answers 400 (`Mint.cls`, which this spec's Never list closes), and
+`Api/ScreenAction.cls` `Refuse` (`:470-478`) answers 400 on purpose, "the shape the mint answers its
+own refusals in" (AD-53: one behavior for both callers). A 422 on the screen route alone would
+split the two callers and change the refusal every earlier screen action (7.1, 7.2, 7.5) answers.
+The tests assert 400, which the Matrix Test Audit forbids (it says fix the code or halt). Recommended
+ruling, in the style of the existing "Rulings over the frozen matrix": the no-op is refused 400
+`TOOL.ARGUMENTS` with `detail.problem`, and nothing is sent. With that ruling the audit passes as the
+code stands, and the re-dispatch resumes at step-03's Verify.
+
+footprint_extensions: `src/OcuPilot/Port/TaskPort.cls` (new), `Port/AdminPort.cls` (append-only),
+`shell/proposal-card.ts` and `.spec.ts` (off Epic 8's hunks), `Test/ToolWrite.cls`,
+`Test/PortFixture.cls`, `Test/SurfaceCoverage.cls`, `Test/ReadTool.cls`, `Test/ToolRoundTrip.cls`,
+`Test/ProhibitedRoute.cls`, `ui/tools/screen-mirror.test.mjs`, `core/screens.generated.ts`, and,
+beyond the plan: roster files `Test/PortGate.cls`, `Test/AsTheUser.cls`, `Test/TaskRunFixture.cls`
+(none modified by Epic 8).
+
+**Change (uncommitted; the lead's rework commit carries it).**
+
+- Port: `AdminPort` admits `Task.CRUD/SUSPEND`, with the constant body `{"LeaveInQueue":true}`, and
+  `Task.CRUD/DELETE`, which is bodyless.
+- New `TaskPort` completes a `GET` with `INFO`'s `Type`.
+- Tools: `TaskScheduleRun`, `TaskSuspend` and `TaskDelete` are new; `TaskResume` gains the list's
+  `resume` action.
+- `TaskScheduleList` declares four row actions, a Suspended column, `proposalEntityTask` and
+  `taskScheduleEmptyAgent`.
+- Client:
+  - the handler registers the schedule;
+  - the typed-name dialog takes the row's `Name` and a system-task advisory;
+  - the proposal card draws `taskSystemDeleteConsequence`.
+- No new string.
+
+**Tiers run (targeted, `ocupilot-ci`, per class).**
+
+- ObjectScript:
+
+  | Class | Passed/failed |
+  | --- | --- |
+  | `TaskScheduleActions` | 6/0 |
+  | `ToolWrite` | 27/0 |
+  | `Descriptor` | 50/0 |
+  | `SurfaceCoverage` | 4/0 |
+  | `ReadTool` | 27/0 |
+  | `ToolRoundTrip` | 2/0 |
+  | `TaskLists` | 7/0 |
+  | `TaskRun` | 6/0 |
+  | `ProhibitedRoute` | 24/0 |
+  | `PortGate` | 4/0 |
+  | `AsTheUser` | 3/0 |
+  | `ScreenRead` | 29/0 |
+  | `Wire` | 20/0 |
+  | `TaskHistory` | 11/0 |
+
+  `TaskResume` refuses on `ocupilot-ci` (unarmed); its two new methods passed through a temporary
+  unarmed subclass (run 8002), and CI decides.
+- Client: `test:tools` 1,327/0 and `test:components` 885/0.
+- Browser, on a rebuilt and redeployed bundle:
+  - `task-schedule-actions` 4/4, `task-resume` 3/3, `screen-height` 15/15;
+  - `tasks` 12/14 -- the two Task history legs 7.5 recorded;
+  - no probe task left.
+- `check-objectscript` is clean.
+- Mutations: one per AC, recorded under `## Verification`.
+
+**Not yet run:** the full ObjectScript sweep, `smoke.sh`, and both review layers.
+
+**Open items:**
+
+- The initial bundle is 1,119,895 bytes against the 1,120kB budget, 105 bytes of headroom.
+- Lead bookkeeping: add the suspended column to EXPERIENCE `:102`.
