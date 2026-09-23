@@ -173,3 +173,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T13:22:09Z	Epic 7	amendment	files=epics.md:3732(5.11_AC7),epics.md_7.6_AC3,EXPERIENCE.md:819(UJ-6_step5),EXPERIENCE.md:416-418 tier=1
 2026-09-23T13:22:09Z	Story 7.6	stage_spawned	stage=plan spawn_at=2026-09-23T13:22:09Z model=opus agent_name=7-6-run-suspend-resume-and-delete-a-task-plan-2 cycle_iteration=2
 2026-09-23T13:23:22Z	Epic 7	epic_context_compiled	sha=77337e52 reason=planning_artifact_newer model=opus
+2026-09-23T13:33:22Z	Story 7.6	story_created	spawn_at=2026-09-23T13:22:09Z model=opus path=_bmad-output/implementation-artifacts/spec-7-6-run-suspend-resume-and-delete-a-task.md build_status=ready-for-dev epic_context=reused cycle_iteration=2
+2026-09-23T13:33:22Z	Story 7.6	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-51,AD-52,AD-53,AD-56,AD-6,AD-8,AD-10,AD-13,AD-14,AD-15,AD-34,AD-36,AD-39,AD-43 decision_dependency=none owned_ledger=DW-1463(dropped) mutates_shared_runtime=true throwaway=ocupilot-ci copy_published=EXPERIENCE.md:416-418 amendment=EXPERIENCE.md:102 model=claude-opus-5-5
+2026-09-23T13:33:22Z	Story 7.6	stage_spawned	stage=implement spawn_at=2026-09-23T13:33:22Z model=opus agent_name=7-6-run-suspend-resume-and-delete-a-task-implement-1 cycle_iteration=1

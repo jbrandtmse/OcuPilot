@@ -2,7 +2,7 @@
 title: 'Story 7.6: Run, suspend, resume and delete a task'
 type: 'feature'
 created: '2026-09-23'
-status: 'draft'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -12,10 +12,10 @@ context:
 warnings: ['oversized']
 deferred: []
 footprint_extensions: # planned; this story's own members only (roster rule, 2026-09-23)
-  - 'src/OcuPilot/Port/AdminPort.cls' # shared-append: three parameter lines gain entries
-  - 'src/OcuPilot/Kernel/Proposal/Prohibited.cls' # contended; only if Q4 is answered "refuse"
-  - 'ui/src/app/core/navigation.ts' # Epic 8 modified; only under Q1's answer
-  - 'ui/tools/navigation.test.mjs' # Epic 8's pin at :963; only under Q1's answer
+  - 'src/OcuPilot/Port/TaskPort.cls' # new; outside every listed glob
+  - 'src/OcuPilot/Port/AdminPort.cls' # shared-append: two parameter lines gain entries
+  - 'ui/src/app/shell/proposal-card.ts' # contended; one getter and one template block, off Epic 8's hunks
+  - 'ui/src/app/shell/proposal-card.spec.ts' # Epic 8 modified; this story's cases only
   - 'src/OcuPilot/Test/ToolWrite.cls'
   - 'src/OcuPilot/Test/PortFixture.cls'
   - 'src/OcuPilot/Test/SurfaceCoverage.cls'
@@ -112,206 +112,158 @@ test:tools` 1,327/0) -- consume; `taskSystemDeleteRefused` is not published and 
 
 ## Code Map
 
-Measured on `ocupilot-ci` on 2026-09-23. The probes were `OcuPilotProbe76` (id 1266) and a
-`Type` 0 probe (id 1268); both were created and deleted.
+Measured on `ocupilot-ci` (2026-09-23, probes created and deleted) and on slot A read-only.
 
-- **Vendor `Task.CRUD` (`[Hidden]`)**
-  - Request types: `TYPERESUME` 14 is `POST /task/resume`. `TYPESUSPEND` 15 is
-    `POST /task/suspend`. `DELETE` is `DELETE /task`. Each takes `?id=`.
-  - `RunSuspend` calls `Suspend(id, LeaveInQueue ? 1 : 2)`. `NeedsRequestBody` is true for
-    SUSPEND. Its schema is `{"LeaveInQueue":false}`, and the key is optional. With no body the call
-    answers 415, and an unknown key answers 400.
-  - `RunDelete` calls `%DeleteId`, and its comment says it "allows system tasks". Its
-    `NeedsRequestBody` is false.
-  - `ResourcesOR`: RESUME and SUSPEND answer `%Admin_Task`. DELETE answers `%Admin_Task` or
-    `%Admin_Operate`.
-  - Unknown id: 404 `#5809`. A delete answers 200 `{}`, after which `INFO` answers 404.
-- **What each action leaves behind**
-  - Every suspend or resume writes a `%SYS.Task.History` row, including a no-op one. `Result` is
-    "Suspended task" or "Resumed task", and `Username` is `$username`.
-  - A delete writes "Delete <Name>", and the rows survive the delete. HISTORY serves them as
-    `Result` and `Username`.
-  - The audit event is `%System/%System/ConfigurationChange`, for example "Suspend task X" with
-    the user.
-- **`INFO` versus the list**
-  - `INFO` answers `Type` (System or User), `Status`, `Error`, `LastSchedule`, `LastStarted`,
-    `LastFinished`, `NextScheduled` and a boolean `Suspended`. Suspend and resume leave
-    `NextScheduled` alone.
-  - The list's `Suspended` is always false (`TreatColumnAsBoolean` over display text).
-  - `GET` answers `Name`, `TaskClass`, `NameSpace`, `Description` and the schedule, with no
-    `Suspended` or `Type`.
-- **Task names and system tasks**
-  - `Name` has no unique index.
-  - The classic page (`%CSP.UI.Portal.TaskInfo:88-92`) disables Delete when `Type` is 0. A fixture
-    can create a `Type` 0 task. That `INFO` then reads `Type` "System" is an inference from vendor
-    task 4.
-- **Tools**
-  - `Screen/Tool/TaskResume.cls` is `tasks.schedule.resume` on `TaskScheduleList`. It has no
-    `SCREENACTIONS`, and its `STATEFIELD` is `Status` (Suspended→Scheduled, `:75-79`).
-    `ReadsSuspended` is at `:177`.
-  - `TaskRun.cls:19` holds 7.6's subclass promise. `WebAppDelete.cls:45-49,123` is the delete
-    template.
-- **Port**
-  - `AdminPort.cls`: `MUTATINGTYPES` `:197`, `BODYLESSTYPES` `:213`, `CONSTANTBODIES` `:237`
-    (`;`-separated).
-  - Epic 8 rewrites the first two lines and adds `VERIFIEDDELETES` and `VERIFIEDWRITES` (re-read
-    `GET`) and `PORT.NOTAPPLIED`, none of which is on this branch.
-- **Descriptors**
-  - `TaskScheduleList.cls:70-126` has an id of `composite ["Id"]` and `rowActions []`. It has no
-    `entityLabelKey`. Its `emptyNextKey` is `tableReadOnlyEmptyNext` and its `emptyAgentKey` is
-    `""`.
-  - Its read is `LIST` plus a `rowGet` `INFO` for `Suspended`, which is not yet a column. Its doc at
-    `:62-66` names 7.6.
-  - `TaskDetails` shows `Suspended` (kind `status`). It has no Status field.
-- **Registry**
-  - `TableProblem` `:1917-1932`: a write-capable list has an empty `emptyNextKey` and an
-    `emptyAgentKey`.
-  - `FingerprintSubjectProblem` `:2100`.
-  - The self-protection vocabulary is `serves-ocupilot,protected-account` (`:2186`).
-  - The task arm of `Prohibited.cls` (`:665`) refuses nothing.
-- **Client**
-  - `shell/screen-action-handler.ts`:
-    - roster `:31-38`
-    - `DESTRUCTIVE_CONSEQUENCES` `:94-99`
-    - the typed target is the row key (`:371`), so the numeric `Id` today
-    - send `:334-368`
-  - `core/screen-actions.ts:61-73` has no `suspend` or `resume`. `STRINGS.actionSuspend` and
-    `actionResume` exist.
-- **Toast**
-  - `core/toasts.ts:189` returns nothing when `openScreenShows`, so no toast is raised on Task
-    details.
-  - The target is `navigation.ts:450` `screenForChange`, and for `task` that is the first built
-    screen, Task details. Epic 8 pins it at `navigation.test.mjs:963`.
-- **Details highlight** comes from `core/detail-highlights.ts`, wired at `details.page.ts:178`.
-- **Navigation**
-  - The route is chosen by the model.
-  - The UJ-6 "one line" is `ui/browser/task-resume.browser-spec.mjs:221`, with assertions at
-    `:346-399` and `:455-470`.
-  - `agent-navigator.ts:92-110` announces the destination screen's label.
-- **Tests**
-  - `Test/TaskResume.cls` (armed by `OCUPILOT_ALLOW_TASK_CONTROL`, 739 lines).
-  - Its helpers are `EnsureProbeTask` `:468`, `SuspendProbeTask` `:509`, `InfoSuspended` `:550`,
-    `HistoryRowsForTask` `:590` and `ResumeHistoryUser` `:618`.
-  - `TaskRunFixture` (unarmed).
-- **Rosters**
-  - `ToolWrite` `:1026-1028,:1053,:1113-1124` assert that `Task.CRUD/SUSPEND` is **not** mutating
-    and that the port answers 501. Re-point those to `Task.CRUD/PATCH`.
-  - `ReadTool :93-94` goes from 57 to 60.
-  - `SurfaceCoverage :101-114`, `ToolRoundTrip :33`, `PortFixture :21`, `Descriptor :102,:533`,
-    `ProhibitedRoute :1360`.
-  - `screen-mirror.test.mjs:849-859` is the On-demand template.
-  - `tasks.browser-spec.mjs:318-325` holds the schedule headers.
-  - `screen-action-handler.spec.ts:420-442` is the Run case.
+- **Vendor `Task.CRUD` (`[Hidden]`).** `SUSPEND` (15) and `RESUME` (14) are `POST`, `DELETE` is
+  `DELETE /task`, each `?id=`. `RunSuspend` reads `requestBody.%Get("LeaveInQueue", 1)` (read from
+  the class source): 1 is "Suspend Leave", 0 is "Suspend Reschedule". With no body SUSPEND answers
+  415; an unknown key 400. `RunDelete` is `%DeleteId` and allows system tasks; DELETE reads no
+  body. `ResourcesOR`: SUSPEND/RESUME `%Admin_Task`; DELETE `%Admin_Task` or `%Admin_Operate`.
+  Unknown id 404. A delete answers 200 `{}`; `INFO` then answers 404.
+- **What each write leaves.** Every suspend/resume, no-op included, writes a `%SYS.Task.History`
+  row (`Result` "Suspended task"/"Resumed task", `Username`). A delete writes "Delete <Name>" and
+  the history survives. Audit: `%System/%System/ConfigurationChange`.
+- **The three reads.** `LIST` rows: `Name, Type ("System"|"User"), Namespace, Description, Id,
+  Suspended (always false), LastFinished, NextScheduled`. `GET`: `Name, TaskClass, NameSpace,
+  Description`, schedule, **no `Type`, no `Suspended`**. `INFO`: `Type, Status, Error,
+  LastSchedule, LastStarted, LastFinished, NextScheduled, Suspended` (truthful), **no `Name`**.
+  Suspend and resume leave `NextScheduled` alone.
+- **Tools.** `Screen/Tool/TaskResume.cls` (INFO read, subject `Suspended`, `STATEFIELD` `Status`
+  Suspended→Scheduled, private `ReadsSuspended`) has no `SCREENACTIONS`. `TaskRun.cls:19` promises
+  the schedule subclass. `WebAppDelete.cls` is the delete template (`StateDiff` = one removal row
+  per subject field). Diff-row labels must be `STATEFIELD` or subject names
+  (`Prohibited.ReviewedFewOnly`); the task arm of `Prohibited.cls` refuses nothing and stays so.
+- **Port seam (AD-52).** `Write.PORTCLASS` is read by `Mint.PortClassOf`, `Operation.PortClassOf`
+  (confirm re-read, write, screen caller) and `Prohibited.PortClassOf`; `ErrorDelete` declares
+  `LogSourcePort`. A non-default port bypasses the test seam (`ProposalFixture`), so a canned-read
+  mint cannot reach it. `AdminPort.Invoke` (`:472`) is not `Final`; Epic 8 keeps its signature.
+- **AdminPort.** `MUTATINGTYPES :197`, `BODYLESSTYPES :213`, `CONSTANTBODIES :237` (`;`-separated).
+  Epic 8 rewrites the first two lines; append at the end of each.
+- **Descriptor.** `TaskScheduleList.cls`: `id composite ["Id"]`, `rowActions []`, `rowGet` INFO
+  `fields ["Suspended"]`, no Suspended column, `emptyNextKey tableReadOnlyEmptyNext`,
+  `emptyAgentKey ""`, doc `:62-66` names 7.6. Precedent for the column:
+  `TaskUpcomingList.cls:72` (`Suspended`, `taskColumnSuspended`, kind `status`).
+- **Client.** `shell/screen-action-handler.ts`: roster `:31`, `DESTRUCTIVE_CONSEQUENCES :94`,
+  `PendingConfirm :126` (`target` is both the typed text and the sent id), `start :240`,
+  `rowRoles :321` (the row-lookup idiom). `shell/typed-name-dialog.ts` (one `consequence` input;
+  control flow must be paren-free, see `proposal-card.ts` header). `shell/list-page.ts:78` binds
+  the dialog. `core/screen-actions.ts:61-73` lacks `suspend`/`resume`. `proposal-card.ts`:
+  `RESIDUE_ENTITY_TYPE :40`, residue template `:149`, `residueVisible :530`; Epic 8's hunks sit at
+  `:11-14`, `:216-230` and after `auditWarningVisible` (`~:567`) -- stay off them. Task details
+  re-reads on a `task` change event through `RefreshService.onBusEvent` and highlights through
+  `DetailHighlights` (`areas/tasks/details.page.ts:158-180`).
+- **Tests and rosters.** `Test/TaskRun.cls` (7.5, unarmed) is the shape to copy. `Test/TaskResume.cls`
+  (armed, CI only) helpers `EnsureProbeTask :468`, `SuspendProbeTask :509`, `InfoSuspended :550`,
+  `HistoryRowsForTask :590`, `ResumeHistoryUser :618`. `TaskRunFixture` (unarmed, no OREF).
+  `ToolWrite :1028,:1119` assert `Task.CRUD/SUSPEND` is not admitted -- re-point to
+  `Task.CRUD/PATCH`; `:1053` (`IsBodyless` SUSPEND false) stays true. `ReadTool :93-94` 57→60.
+  `SurfaceCoverage :109-110`, `ToolRoundTrip :33`, `PortFixture :21` (its `MUTATINGTYPES` copy),
+  `Descriptor :102`, `TaskLists`, `ProhibitedRoute`, `screen-mirror.test.mjs:849-859`,
+  `tasks.browser-spec.mjs:318-325`, `screen-action-handler.spec.ts:420-442` (Run case).
+  `task-resume.browser-spec.mjs:221` `navReply` routes to `tasks/schedule`; assertions `:346-399`,
+  `:423-470`.
 
 ## Tasks & Acceptance
 
 **Execution:**
 
-- `src/OcuPilot/Port/AdminPort.cls` (append entries only; no change to `Invoke`):
-  - `MUTATINGTYPES` gains `Task.CRUD/SUSPEND` and `Task.CRUD/DELETE`.
-  - `BODYLESSTYPES` gains `Task.CRUD/DELETE`.
-  - `CONSTANTBODIES` gains `;Task.CRUD/SUSPEND={"LeaveInQueue":true}`.
-  - The doc paragraph names each measured fact.
-- `src/OcuPilot/Screen/Tool/TaskScheduleRun.cls` (new) extends `TaskRun`. It overrides `TOOLNAME`
-  (`tasks.schedule.run`) and `DESCRIPTORCLASS` (`…TaskScheduleList`) and nothing else.
-- `src/OcuPilot/Screen/Tool/TaskSuspend.cls` (new) is `TaskResume` inverted:
-  - `SCREENACTIONS` `suspend`, `WRITETYPE` `SUSPEND`, `READTYPE` `INFO`, `SENDSBODY` 0,
-    `DESTRUCTIVE` 0.
-  - `PRECONDITIONFIELD` and `FINGERPRINTSUBJECT` are `Suspended`.
-  - `STATEFIELD` `Status`, going from `Scheduled` to `Suspended`.
-  - `StateDiff` refuses a task that is already suspended, or whose state it cannot read.
-- `src/OcuPilot/Screen/Tool/TaskResume.cls`: add `Parameter SCREENACTIONS = "resume"` and update
-  its doc.
-- `src/OcuPilot/Screen/Tool/TaskDelete.cls` (new), with `WebAppDelete`'s shape:
-  - `READTYPE` `GET`, `WRITETYPE` `DELETE`, `CHANGEACTION` `deleted`, `DESTRUCTIVE` 1.
-  - `%Admin_Task:USE`.
-  - `PRECONDITIONFIELD` `Name`. `FINGERPRINTSUBJECT` and `READANSWERS` are
-    `Name,TaskClass,NameSpace`.
-  - The removal rows are those three fields.
-- `src/OcuPilot/Kernel/Proposal/Prohibited.cls` (only if Q4 is answered "refuse"):
-  - The task arm refuses a `DELETE` whose target's `INFO` `Type` is `System`, with code
-    `PROHIBITED.SYSTEMTASK` and the reason from Q4. Read `git show origin/OCU-1-epic8:<path>` first
-    and stay off Epic 8's hunks.
-  - Add the self-protection rule `system-task` (Registry vocabulary, mirror and client). That touches
-    `Registry.cls`, so it goes to the lead with Q4.
-- `src/OcuPilot/Screen/Descriptor/TaskScheduleList.cls`:
-  - `rowActions` in the order `run`, `suspend`, `resume`, `delete`, destructive last.
-  - `entityLabelKey` `proposalEntityTask`.
-  - `emptyNextKey` `""` and `emptyAgentKey` `taskScheduleEmptyAgent`.
-  - Add the column `{"field":"Suspended","labelKey":"taskColumnSuspended","kind":"status"}`, fed
-    by the existing `INFO` rowGet and never by the list's field.
-  - Rewrite the doc at `:62-66`.
-- `ui/src/app/core/screen-actions.ts`: add `suspend: STRINGS.actionSuspend` and
-  `resume: STRINGS.actionResume`.
-- `ui/src/app/shell/screen-action-handler.ts`:
-  - Add `TaskScheduleList` to the roster.
-  - Add `DESTRUCTIVE_CONSEQUENCES.TaskScheduleList = {delete: STRINGS.taskDeleteConsequence}`.
-  - Add `TYPED_NAME_FIELDS = {TaskScheduleList: 'Name'}`. The dialog title, the button and the
-    typed match use the selected row's `Name`. The POST still carries the `Id` (Q3).
-- `ui/src/app/core/strings.ts`: append the Design Notes keys. Then regenerate
-  `screens.generated.ts`.
-- Q1 (toast), only under its recommended answer:
-  - `navigation.ts` `screenForChange` resolves to the listed screen of the type.
-  - `toasts.ts` suppresses only when the open screen is that target.
-  - Update Epic 8's `:963` pin under the contended-edit discipline.
-- `src/OcuPilot/Test/TaskScheduleActions.cls` (new, unarmed, runs nothing, through
-  `ProposalFixture`):
-  - Every tool's declarations.
-  - `TaskScheduleRun` differs from `TaskRun` only in its two parameters.
-  - `StateDiff` arms for suspend and delete.
-  - A mint over a canned read, and `TARGETCHANGED`.
-  - `ConstantBody("Task.CRUD","SUSPEND")`.
-  - Under Q4, the system-task refusal is exercised on a `Type` 0 probe it creates.
-- `src/OcuPilot/Test/TaskRunFixture.cls`: add `EnsureScheduleProbeTask` (daily at 03:00,
-  `OcuPilotProbeScheduleTask`) and `DeleteScheduleProbeTask`. They hold no OREF.
-- `src/OcuPilot/Test/TaskResume.cls` (armed, append):
-  - The screen actions over HTTP on the probe:
-    - Suspend, then `InfoSuspended` is 1.
-    - Resume, then it is 0, and the history gains "Resumed task" by the test account (AC2).
-    - Delete, then `INFO` answers 404 and the history is kept.
-  - A real `Mint`/`Confirm` of `tasks.schedule.delete`, with one marker and one ledger row.
-  - Every check reads `INFO`, never the list.
-- Rosters:
-  - `ProhibitedRoute`: a short-of-pair Suspend leg.
-  - `ToolWrite`: three `AssertActionWrite` tests, plus the re-point.
-  - `PortFixture`, `SurfaceCoverage`, `ReadTool` (60), `ToolRoundTrip` (×3), `Descriptor`,
-    `screen-mirror.test.mjs`.
-- `ui/src/app/shell/screen-action-handler.spec.ts`:
-  - Suspend and Resume are sent at once.
-  - Delete opens the dialog naming the `Name`, and sends the `Id`.
-- Browser specs:
-  - `ui/browser/tasks.browser-spec.mjs`: the schedule headers gain Suspended and Actions.
-  - `ui/browser/task-schedule-actions.browser-spec.mjs` (new; `-ci` guard; probe created in
-    `before`, deleted in `after`):
-    - Run, Suspend, Resume and Delete from the row menu and the command bar.
-    - After each action, wait for the rowGet to land before reading the Suspended cell.
-    - The Task history screen shows "Resumed task" and the user.
-  - `ui/browser/task-resume.browser-spec.mjs` (UJ-6 replay):
-    - The scripted navigation is `{route:'tasks/schedule/details', entityId}`.
-    - Heading: "Task details — opened by the agent; Back returns".
-    - After Confirm, the Suspended field is marked Changed within 2 s.
-    - The toast "Open in Task schedule" opens the list with the row selected.
+- `src/OcuPilot/Port/AdminPort.cls` -- append only: `MUTATINGTYPES` gains `Task.CRUD/SUSPEND`,
+  `Task.CRUD/DELETE`; `BODYLESSTYPES` gains `Task.CRUD/DELETE`; `CONSTANTBODIES` gains
+  `;Task.CRUD/SUSPEND={"LeaveInQueue":true}`; doc names each measured fact.
+- `src/OcuPilot/Port/TaskPort.cls` (new) -- extends `AdminPort`; overrides `Invoke` so a successful
+  `Task.CRUD` `GET` also reads `INFO` with the same query and sets its `Type` on the answer; an
+  INFO failure fails the whole read with INFO's status, HTTP code and fault; every other pair is
+  `##super` unchanged -- the one read that names the task and says whether it is a system task.
+- `src/OcuPilot/Screen/Tool/TaskScheduleRun.cls` (new) -- extends `TaskRun`, overrides only
+  `TOOLNAME` `tasks.schedule.run` and `DESCRIPTORCLASS` `…TaskScheduleList`.
+- `src/OcuPilot/Screen/Tool/TaskSuspend.cls` (new) -- `tasks.schedule.suspend`, `TaskResume`
+  inverted (extending it is fine): `SCREENACTIONS suspend`, `WRITETYPE SUSPEND`, INFO read, subject
+  and precondition `Suspended`, row `Status: Scheduled → Suspended`; `StateDiff` refuses a task
+  that reads suspended or whose state is unreadable.
+- `src/OcuPilot/Screen/Tool/TaskResume.cls` -- add `SCREENACTIONS = "resume"`; update the doc.
+- `src/OcuPilot/Screen/Tool/TaskDelete.cls` (new) -- `tasks.schedule.delete`, `WebAppDelete`'s
+  shape: `PORTCLASS OcuPilot.Port.TaskPort`, `READTYPE GET`, `WRITETYPE DELETE`, `SENDSBODY 0`,
+  `CHANGEACTION deleted`, `DESTRUCTIVE 1`, `%Admin_Task:USE`, `PRECONDITIONFIELD Name`,
+  `FINGERPRINTSUBJECT` and `READANSWERS` `Name,TaskClass,NameSpace,Type`; one removal row per
+  subject field; `StateDiff` refuses an empty `Name` or an absent `Type` (fail closed); id argument
+  `Id`, param `id`.
+- `src/OcuPilot/Screen/Descriptor/TaskScheduleList.cls` -- `rowActions` `run, suspend, resume,
+  delete` (selfProtection `""`); `entityLabelKey proposalEntityTask`; `emptyNextKey ""`,
+  `emptyAgentKey taskScheduleEmptyAgent`; column
+  `{"field":"Suspended","labelKey":"taskColumnSuspended","kind":"status"}` after Type, fed by the
+  existing INFO `rowGet`; rewrite the doc (`:62-66` and the no-action paragraph).
+- `ui/src/app/core/screen-actions.ts` -- `suspend: STRINGS.actionSuspend`, `resume:
+  STRINGS.actionResume`.
+- `ui/src/app/shell/screen-action-handler.ts` -- roster gains `TaskScheduleList`;
+  `DESTRUCTIVE_CONSEQUENCES` gains `{delete: STRINGS.taskDeleteConsequence}`; a typed-name field map
+  `{TaskScheduleList: 'Name'}` and a system-task advisory (`Type === 'System'` →
+  `STRINGS.taskSystemDeleteConsequence`), both read off the selected row the way `rowRoles` reads
+  it; `PendingConfirm` gains `name` (typed and titled; defaults to `target`) and `advisory` (`''`
+  when none); the POST still sends the row key `Id`.
+- `ui/src/app/shell/typed-name-dialog.ts`, `ui/src/app/shell/list-page.ts` -- an optional
+  `advisory` input rendered as a second paragraph (existing `ocu-banner ocu-banner-warning`
+  classes, `data-slot="advisory"`, paren-free getter) only when non-empty; `list-page` binds
+  `[target]="pending.name"` and `[advisory]="pending.advisory"`.
+- `ui/src/app/shell/proposal-card.ts` -- beside the residue caption: a `task` card whose removal
+  rows carry `Type` before `System` draws `STRINGS.taskSystemDeleteConsequence` (warning banner,
+  `data-slot="system-task"`); nothing else changes.
+- `ui/src/app/core/screens.generated.ts` -- regenerate.
+- `src/OcuPilot/Test/TaskScheduleActions.cls` (new, unarmed, writes nothing) -- each tool's
+  declarations; `TaskScheduleRun` differs from `TaskRun` only in its two parameters; suspend and
+  delete `StateDiff` arms over canned reads (a `Type` "System" read answers a `Type` row, an absent
+  `Type` refuses); a suspend mint over a canned read and its `TARGETCHANGED`;
+  `ConstantBody("Task.CRUD","SUSPEND")`; `TaskPort` GET of a `Type` System task found through `LIST`
+  answers `Name` and `Type` (read-only).
+- `src/OcuPilot/Test/TaskRunFixture.cls` -- `EnsureScheduleProbeTask` (daily 03:00,
+  `OcuPilotProbeScheduleTask`, optional system type) and `DeleteScheduleProbeTask`; no OREF held.
+- `src/OcuPilot/Test/TaskResume.cls` (armed, append) -- over HTTP on the probe: Suspend then
+  `InfoSuspended` 1; Resume then 0 and history "Resumed task" by the test account; Delete then INFO
+  404 with history kept; a real mint/confirm of `tasks.schedule.delete` on a system-type probe whose
+  diff carries `Type: System`, one marker, one ledger row. Every check reads INFO.
+- Rosters (this story's members only) -- `ProhibitedRoute` short-of-pair Suspend leg; `ToolWrite`
+  three `AssertActionWrite` tests plus the `:1028/:1119` re-point; `PortFixture`, `SurfaceCoverage`,
+  `ReadTool` (60), `ToolRoundTrip` (×3 `TOOL.ARGUMENTS`), `Descriptor`, `TaskLists`,
+  `screen-mirror.test.mjs`.
+- `ui/src/app/shell/screen-action-handler.spec.ts` -- Suspend and Resume sent at once; Delete opens
+  the dialog titled with the row's `Name` and sends its `Id`; a `System` row carries the advisory, a
+  `User` row none.
+- `ui/src/app/shell/proposal-card.spec.ts` -- a task delete card with `Type: System` draws the line;
+  `User`, and a non-task card, do not.
+- `ui/browser/tasks.browser-spec.mjs` -- schedule headers gain Suspended and Actions.
+- `ui/browser/task-schedule-actions.browser-spec.mjs` (new; `-ci` guard; probe in `before`, deleted
+  in `after`) -- Run, Suspend, Resume, Delete from the row menu and the command bar; wait for the
+  rowGet before reading the Suspended cell; Task history shows "Resumed task" and the user; Delete
+  on a `System` vendor row shows the advisory, then Cancel sends nothing.
+- `ui/browser/task-resume.browser-spec.mjs` -- `navReply` routes to `tasks/schedule/details` with
+  the id; heading names Task details; after Confirm the Suspended field is marked changed within
+  2 s; no toast assertion.
 
 **Acceptance Criteria:**
 
-- AC1: Given a selected probe task on Task schedule, when the user runs, suspends, resumes or
-  deletes it, then each action updates the row in place. The Suspended cell is read through
-  `INFO`. Delete names the task and requires its typed name. *Pin:*
-  `task-schedule-actions.browser-spec.mjs`.
-- AC2: Given a suspended task, when the user resumes it, then the task's history shows "Resumed
-  task" by that user. *Pins:* `TaskResume` (CI) and the browser leg.
-- AC3: Given UJ-6, when the agent navigates, then it lands on Task details, the Suspended field
-  highlights on confirm, and a toast offers "Open in Task schedule" (Q1, Q2). *Pin:*
-  `task-resume.browser-spec.mjs`.
-- AC4: Given each new tool, when it is minted, then the diff and the fingerprint cover its declared
-  subject, and a moved subject is refused. *Pin:* `TaskScheduleActions`.
-- AC5: Given a principal short of `%Admin_Task:USE`, when it sends Suspend, then the answer is 403
-  before any read. *Pin:* `ProhibitedRoute`.
-- Integration AC (Rule 1): `ListPage` and Task details consume the `task` change event. They
-  re-read through `INFO`, marking the row or field. This is observed in the browser against
-  `ocupilot-ci`.
+- AC1: Given a selected probe on Task schedule, when the user runs, suspends, resumes or deletes it,
+  then the row updates in place (Suspended from INFO, Next run from the run, the row leaving on
+  delete), and Delete's dialog names the task's `Name` and releases only on that typed name.
+  *Pin:* `task-schedule-actions.browser-spec.mjs`.
+- AC2: Given a suspended task, when the user resumes it, then its history reads "Resumed task" by
+  that user. *Pins:* the browser leg; `TaskResume` (CI).
+- AC3: Given UJ-6, when the agent navigates and the user confirms, then Task details opens and its
+  Suspended field highlights within 2 s. *Pin:* `task-resume.browser-spec.mjs`.
+- AC4: Given each new tool, when it is minted, then its diff and fingerprint cover its declared
+  subject, a no-op suspend or resume is refused, and a moved subject is refused
+  `PROPOSAL.TARGETCHANGED`. *Pin:* `TaskScheduleActions`.
+- AC5: Given a `System` task, when its delete is opened on the screen or proposed by the agent,
+  then the dialog and the card carry `taskSystemDeleteConsequence`; a `User` task carries neither;
+  the delete itself is allowed. *Pins:* the two spec files above; the browser Cancel leg.
+- AC6: Given a principal short of `%Admin_Task:USE`, when it sends Suspend, then 403
+  `AUTH.NOPRIVILEGE` before any read. *Pin:* `ProhibitedRoute`.
+- Integration AC (Rule 1): `ListPage` and Task details consume the `task` change event and re-read
+  through INFO, marking the row or the field; observed in the browser on `ocupilot-ci`.
 
 ## Spec Change Log
+
+- 2026-09-23, lead spec gate (re-plan): accepted; EXPERIENCE `:102` gains the suspended column
+  (tier-1). `Port/TaskPort.cls` is a new port under AD-52 and must reach `Task.CRUD` only through
+  `AdminPort` (AD-2, AD-27: only `AdminPort` names an `%Api.Admin.*` class).
 
 - 2026-09-23, lead spec gate (partial): Q2 ratified -- AC3's "Status field" restates to the
   Suspended field (tier-1, applied to `epics.md` with the orchestrator's answer); Q3 ratified -- the
@@ -319,126 +271,76 @@ Measured on `ocupilot-ci` on 2026-09-23. The probes were `OcuPilotProbe76` (id 1
   row update and every verification read the task's `INFO`, never the list field, and Epic 8's
   runtime re-read must do the same for a task once it merges (merge-gate note). Q1, Q4 and Q5 are
   with the orchestrator; answered the same day (rulings in the intent block); `status` reset to `draft`.
+- 2026-09-23, re-plan over the rulings: toast and `navigation.ts` work removed (Q1); system-task
+  delete allowed with the consequence line on dialog and card, `Prohibited.cls` untouched (Q4);
+  DW-1463 closed (Q5).
 
 ## Review Triage Log
 
 ## Design Notes
 
-**Governing ADs:**
+**Governing ADs:** AD-53, AD-51 (as amended), AD-52 (the `TaskPort` declaration), AD-56 (ii),
+AD-6, AD-8, AD-10, AD-13, AD-14, AD-15, AD-34, AD-36 (INFO truthful, LIST coerces `Suspended`),
+AD-39, AD-43, AD-27 (the composite read is a vendor wire fact kept in a port).
 
-- AD-53, AD-51 (as amended 2026-09-23), AD-56 (ii), AD-6, AD-8 and AD-10, AD-13 and AD-14, AD-15.
-- AD-34, AD-36 (`INFO` is truthful; the `LIST` coerces `Suspended`), AD-39.
-- AD-43 (Task schedule and Task details are on the roster; a live proposal pauses their refresh),
-  AD-52.
+**Rulings over the frozen matrix.** Ruling 4 supersedes the matrix row "System task delete (Q4)":
+the delete is allowed and carries the consequence line; nothing refuses it. The matrix's "Status
+reads Suspended" is the Suspended column (ruling 2). The agent delete's removal rows gain `Type`
+beside `Name`, `TaskClass`, `NameSpace`, because the card can only know a system task from its
+rows (ruling 4) and every row label must be a subject name.
 
-**Suspend body.** The vendor's default, `LeaveInQueue` true (a `Suspended` value of 1), is sent
-explicitly as a port constant (AD-51 amendment).
+**Why a port for the system line.** No proposal channel on this branch carries a tool's judgement
+to the card (Epic 8's `consequence` code is not merged and is computed from the payload, which a
+delete does not have), `GET` has no `Type` and `INFO` no `Name`, and `Mint`, `Write`, `Confirm` are
+out of bounds. A tool-declared port whose `GET` is completed by `INFO`'s `Type` is AD-52's own
+mechanism, so the mint, the confirm re-read and the screen caller all see one answer (inference:
+no spine change). After the Epic 7/8 merge the line may move to a `consequence` code.
 
-**The Suspended column** makes suspend and resume visible in the row. It reuses the published key
-`taskColumnSuspended`. The lead adds it to EXPERIENCE `:102`'s column list.
+**Suspend body.** The vendor default `LeaveInQueue` 1 is sent explicitly as the port constant
+(AD-51 as amended), so the ledger records no body.
 
-**Consumes:**
+**The Suspended column** is what makes suspend and resume visible in the row (ruling 6). Lead
+bookkeeping (tier-1): add "suspended" to EXPERIENCE `:102`'s column list.
 
-- 5.11: `TaskResume` and its helpers.
-- 6.5, 6.6 and 6.7: the lists and Task details.
-- 7.1: the seam and the typed-name dialog.
-- 7.5: `TaskRun`, `CONSTANTBODIES`, `TaskRunFixture`, `actionRun` and `proposalEntityTask`.
+**Consumes:** 5.11 `TaskResume` and its helpers; 6.5-6.7 the lists and Task details; 7.1 the seam
+and the typed-name dialog; 7.5 `TaskRun`, `CONSTANTBODIES`, `TaskRunFixture`, `actionRun`,
+`proposalEntityTask`. **Consumed-by:** none in Epic 7; 16.11 adds the Task Manager controls to this
+list; the range-end cleanup's DW-1546 toast replays AC3's last clause.
 
-**Consumed-by:** none within Epic 7. 16.11 adds the Task Manager controls to the same list.
+**Ledger inbox:** DW-1463 is `dropped` (ruling 5, 2026-09-23T13:21:13Z) and owes this story
+nothing. DW-1546 is `range-end-cleanup`'s. Q6 merge note: Epic 8's post-write re-read for a task
+must read INFO.
 
-**Copy for the lead to publish** (a Fixed strings row and a `strings.ts` append):
-
-| key | wording | note |
-| --- | --- | --- |
-| `taskDeleteConsequence` | "Deleting this task removes it from the schedule, so it no longer runs. Its history is kept. This cannot be undone." | measured: history outlives the task |
-| `taskScheduleEmptyAgent` | "create a task that runs on a schedule" | names create (orchestrator ruling) |
-| `taskSystemDeleteRefused` (Q4) | "This is one of the instance's own system tasks. Deleting it is not available here." | caller-neutral, like 7.2's |
-
-Reused keys: `actionRun`, `actionSuspend`, `actionResume`, `actionDelete`, `taskColumnSuspended`,
-`proposalEntityTask`.
-
-**Intent gaps for the lead.** The spec above is planned as if each recommendation is adopted.
-
-- **Q1: AC3's toast cannot appear as worded.**
-  - *Evidence:*
-    - `toasts.ts:189` raises nothing when the open screen shows the entity, per EXPERIENCE `:446`
-      ("only for changes to entities whose screen is not open"). Task details shows `task`, so UJ-6
-      step 5 gets no toast.
-    - The toast target is Task details, which Epic 8 pinned deliberately
-      (`navigation.test.mjs:963`, "a task change opens its details").
-  - *Recommended (cross-epic, ask first):* a change toast opens the entity's **listed** screen,
-    which is what "navigates with the entity selected" needs. It is suppressed only when that screen
-    is open. The PRD's UJ-6 climax requires this ("a toast links to the row in the task list").
-    This also moves the process and database toasts to their lists (inference).
-    EXPERIENCE `:446` and `:673` are amended, and so is Epic 8's pin.
-  - *Alternative:* drop AC3's toast clause (a narrowing).
-  - The toast text stays the generic "Task <id> was updated"; "Resumed Nightly purge" is not
-    reachable without a name lookup.
-- **Q2: "Status field" (tier 1).** Task details has no Status field. The task's state is its
-  `Suspended` field, which is of kind `status`. Restate AC3 and UJ-6 step 5 as "the Suspended field
-  highlights".
-- **Q3: the typed name.** The epic context says "Row key and typed name use the vendor's IdKey",
-  which here means typing a number. AC1, FR-51, EXPERIENCE `:110` and `:453` ("Delete Nightly
-  purge") all name the task. *Recommended:* type the `Name` for this list only, through a
-  per-descriptor client map, and keep the `Id` on the wire. `Name` is not unique, but the selection
-  already fixes the target.
-- **Q4: deleting system tasks.**
-  - The admin API deletes a `Type` System task. The classic page refuses to (`TaskInfo:92`).
-    Deleting "Purge Journal", for example, silently stops the purge.
-  - *Recommended:* refuse it on the instance, through a new AD-10 bullet (Rule 20), a `Prohibited`
-    predicate and a `system-task` self-protection rule, which is a Registry edit.
-  - *Alternative:* allow it, as the API does.
-- **Q5: DW-1463 (addressed; decision needed).**
-  - *Measured:* no model output follows a confirm. The confirm is a user request outside any turn
-    (AD-7, AD-40). `Confirm.Answer` reaches only the panel, and later turns replay only the user
-    message and the final reply (AD-24, `Convo.HistoryMessages:149-185`).
-  - So 5.11's "the agent's reply names the next run and offers the audit entry", and UJ-6 step 5's
-    last sentence, have no producer.
-  - The fifth clause ("cites that history row by name") is model behavior over the shipped
-    `tasks.taskhistory.read`, with no deterministic OcuPilot surface.
-  - *Recommended:* amend both clauses out of 5.11 and UJ-6, noting that the toast and the
-    transcript carry the change, and close DW-1463 `dropped`.
-  - *Alternative:* a post-write `INFO` re-read in `Confirm.Answer`, with "Next run <time>" rendered
-    on the closed card. That touches the contended `Confirm.cls` and `proposal-card.ts`.
-- **Q6: "the write's VERIFICATION".**
-  - *Read here as:* every check that a write landed reads `INFO`. That covers the row (the rowGet
-    column) and every test and spec.
-  - No runtime port re-read is added. Every measured SUSPEND and RESUME answered truthfully, and the
-    runtime mechanism (`VERIFIEDWRITES`, `PORT.NOTAPPLIED`) is Epic 8's. Once it merges, a task entry
-    there must re-read `INFO`, not `GET`.
-  - If the owner means runtime verification now, that is a new `AdminPort` hook in `Invoke` plus an
-    error code of Epic 8's.
+**Copy** is published (`EXPERIENCE.md:416-418`, `strings.ts:1409-1417`); consume only. Reused:
+`actionRun/Suspend/Resume/Delete`, `taskColumnSuspended`, `proposalEntityTask`.
 
 ## Verification
 
-Writes happen only on `ocupilot-ci` (web port 52776), using the probe tasks. Run one test class per
-call and never re-submit. Never stop, remove or recreate a container.
+Writes only on `ocupilot-ci` (web 52776), only to probe tasks; one test class per call, never
+re-submitted; no container is stopped, removed or recreated.
 
 **Targeted (loop):**
 
 - `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.TaskScheduleActions`
-  must be green. Then run one call each for `ToolWrite`, `Descriptor`, `SurfaceCoverage`,
-  `ReadTool`, `ToolRoundTrip`, `PortFixture`, `TaskRun` and `ProhibitedRoute`.
-- `TaskResume` refuses on the reused `ocupilot-ci`. CI runs it; a refusal is not a pass.
-- `cd ui && npm run test:tools && npm run test:components` must be green.
+  -- green; then one call each for `ToolWrite`, `Descriptor`, `SurfaceCoverage`, `ReadTool`,
+  `ToolRoundTrip`, `PortFixture`, `TaskLists`, `TaskRun`, `ProhibitedRoute`. `TaskResume` runs in CI
+  (armed); a local refusal is not a pass.
+- `cd ui && npm run test:tools && npm run test:components` -- green.
 - `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`,
-  then
-  `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci node --test --test-concurrency=1 browser/task-schedule-actions.browser-spec.mjs browser/task-resume.browser-spec.mjs browser/tasks.browser-spec.mjs`.
-  It must be green, with no probe task left afterwards.
-- `uv run scripts/check-objectscript.py` must be clean on the changed paths.
-- Rule 19 requires one `mutation:` per AC. Expected shapes:
-  - AC1: the Suspended column fed by the list field (drop the rowGet) turns the browser suspend
-    leg red.
-  - AC2: `TaskResume` `SCREENACTIONS` `""` turns the resume leg red.
-  - AC3: revert the navigation route turns the replay red.
-  - AC4: `TaskSuspend` `StateDiff` without its refusal turns `TaskScheduleActions` red.
-  - AC5: skip the pair gate turns `ProhibitedRoute` red.
+  then `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci node --test --test-concurrency=1 browser/task-schedule-actions.browser-spec.mjs browser/task-resume.browser-spec.mjs browser/tasks.browser-spec.mjs`
+  -- green, no probe task left.
+- `uv run scripts/check-objectscript.py` -- clean on changed paths.
+- Rule 19, one `mutation:` per AC: AC1 feed the column from LIST (drop the rowGet) → suspend leg
+  red; AC2 `TaskResume` `SCREENACTIONS ""` → resume leg red; AC3 `navReply` back to
+  `tasks/schedule` → replay red; AC4 `TaskSuspend.StateDiff` without its refusal →
+  `TaskScheduleActions` red; AC5 drop the card block / the advisory → the two specs red; AC6 skip
+  the pair gate → `ProhibitedRoute` red.
 
-**Once, before `dev_complete`:** run the full ObjectScript sweep on `ocupilot-ci` per class, with
-totals from the numeric-run-index probe. Then `bash scripts/smoke.sh --container ocupilot-ci --user
-_SYSTEM --password SYS`. There is no local full browser suite (Rule 29).
+**Once, before `dev_complete`:** the full ObjectScript sweep on `ocupilot-ci`, per class, totals
+from the numeric-run-index probe; then `bash scripts/smoke.sh --container ocupilot-ci --user
+_SYSTEM --password SYS`. No local full browser suite (Rule 29).
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap — Q1 (AC3's toast is suppressed on Task details by EXPERIENCE `:446`, and its target is pinned to Task details by Epic 8 at `navigation.test.mjs:963`; cross-epic toast-target decision), Q2 (AC3 names a "Status field" Task details does not have; tier-1 restatement to "Suspended field"), Q3 (typed name: epic-context IdKey rule vs FR-51 "naming the task"), Q4 (refuse deleting system tasks — an AD-10 addition — or allow), Q5 (DW-1463: no agent reply follows a confirm; amend 5.11/UJ-6 and drop, or add a confirm re-read), Q6 (reading of "the write's VERIFICATION"). Recommendations and evidence are under Design Notes; the spec is planned as if each is adopted.
+Status: ready-for-dev
+Blocking condition: none
