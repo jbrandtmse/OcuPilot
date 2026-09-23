@@ -4,7 +4,7 @@
 /// refused on both callers before anything is sent, a name taken before or after the mint, and open
 /// parameters the instance cannot parse refused on their field and failing the agent's confirm.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, and an account holding
-/// <code>%Admin_Manage</code>. Every write reaches the instance through
+/// <code>%Admin_Manage:USE</code> and <code>%DB_IRISSYS:WRITE</code>. Every write reaches the instance through
 /// <class>OcuPilot.Test.DeviceRecordPort</class>; every device it creates is named with
 /// <parameter>OcuPilot.Test.DeviceProbe.PREFIX</parameter> and removed by exact name.</p>
 Class OcuPilot.Test.DeviceCreate Extends %UnitTest.TestCase
@@ -60,6 +60,7 @@ Method TestTheSchemaAndTheSettableSetAreTheSets()
     Do $$$AssertEquals(tSchema.%Get("properties").%Get("Type").%Get("enum").%ToJSON(), "[""TRM"",""SPL"",""MT"",""BT"",""IPC"",""OTH""]", "the type offered as its six values")
     Do $$$AssertEquals(..Sorted($ClassMethod(..#TOOL, "SettableFields")), ..Sorted($ClassMethod(..#SET, "PermittedCreateFields", "device")), "the settable set is the prohibited set's reviewed create list")
     Do $$$AssertEquals(..Sorted($ClassMethod(..#SET, "PermittedChangeFields", "device")), ..Sorted($ClassMethod(..#SET, "PermittedCreateFields", "device")), "which is the change list too")
+    Do $$$AssertEquals(..Sorted($ListFromString($Parameter(..#RULES, "FIELDS"))), ..Sorted($ClassMethod(..#TOOL, "SettableFields")), "and the set the rules and the screen's edit read")
     Do $$$AssertEquals($ClassMethod(..#TOOL, "Creates") _ " " _ $ClassMethod(..#TOOL, "ChangeAction") _ " " _ $ClassMethod(..#TOOL, "ReadType") _ " " _ $ClassMethod(..#TOOL, "WriteType"), "1 created GET PUT", "a create publishing created, over the vendor's GET and PUT")
     Do $$$AssertEquals($ListToString($ClassMethod(..#TOOL, "PrivilegePairs")), $ListToString($ClassMethod(..#LIST, "PrivilegePairs") _ $ListBuild($ListBuild("%DB_IRISSYS", "WRITE"))), "requiring the list's own pairs and the system database write its save needs")
 }
@@ -152,12 +153,15 @@ Method TestEveryFieldRuleRefusesOnBothCallers()
     Set tCases($Increment(tCases)) = $ListBuild("Name", "value", ..Name("B=x"), "DEVICE.NAME.SHAPE")
     Set tCases($Increment(tCases)) = $ListBuild("Name", "value", ..Name("B" _ $Char(9)), "DEVICE.NAME.SHAPE")
     Set tCases($Increment(tCases)) = $ListBuild("PhysicalDevice", "absent", "", "DEVICE.PHYSICALDEVICE.REQUIRED")
+    Set tCases($Increment(tCases)) = $ListBuild("PhysicalDevice", "value", "", "DEVICE.PHYSICALDEVICE.REQUIRED")
     Set tCases($Increment(tCases)) = $ListBuild("PhysicalDevice", "value", tLong, "DEVICE.PHYSICALDEVICE.LENGTH")
     Set tCases($Increment(tCases)) = $ListBuild("PhysicalDevice", "value", "/tmp/a^b", "DEVICE.PHYSICALDEVICE.SHAPE")
     Set tCases($Increment(tCases)) = $ListBuild("Type", "absent", "", "DEVICE.TYPE.REQUIRED")
+    Set tCases($Increment(tCases)) = $ListBuild("Type", "value", "", "DEVICE.TYPE.REQUIRED")
     Set tCases($Increment(tCases)) = $ListBuild("Type", "value", "ZZZ", "DEVICE.TYPE.VALUE")
     Set tCases($Increment(tCases)) = $ListBuild("Type", "value", "trm", "DEVICE.TYPE.VALUE")
     Set tCases($Increment(tCases)) = $ListBuild("SubType", "absent", "", "DEVICE.SUBTYPE.REQUIRED")
+    Set tCases($Increment(tCases)) = $ListBuild("SubType", "value", "", "DEVICE.SUBTYPE.REQUIRED")
     Set tCases($Increment(tCases)) = $ListBuild("SubType", "value", "OcuPilotNoSuchSubType", "DEVICE.SUBTYPE.ABSENT")
     Set tCases($Increment(tCases)) = $ListBuild("OpenParameters", "value", tLong, "DEVICE.OPENPARAMETERS.LENGTH")
     Set tCases($Increment(tCases)) = $ListBuild("OpenParameters", "value", """W""^", "DEVICE.OPENPARAMETERS.SHAPE")
@@ -239,6 +243,21 @@ Method TestUnparsableOpenParametersAreRefusedOnTheirField()
     Do $$$AssertEquals(..CodeFor(.tViolations, "OpenParameters"), "DEVICE.OPENPARAMETERS.SHAPE", "on the open parameters, with the form's own code")
     Do $$$AssertEquals($ClassMethod(..#RECORD, "WriteCount"), 1, "after the one write the vendor refused")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", tName), 0, "and no device was created")
+}
+
+/// <p>AD-10, AD-55: a screen create carrying a key outside the eight is put to the prohibited set,
+/// which refuses it at 403, rather than dropped; nothing is sent.</p>
+/// <p>Mutation (Rule 19): ask the set over <code>{}</code> instead of the caller's fields in
+/// <method>OcuPilot.Area.OsMgmt.DeviceSave.Create</method> -> the key is dropped, the device is
+/// created and this goes red.</p>
+Method TestAScreenCreateCarryingAnotherKeyIsRefused()
+{
+    Set tName = ..Name("K")
+    Set tSC = $ClassMethod(..#SCREEN, "Create", tName, {"Name": (tName), "PhysicalDevice": "/tmp/p88k.txt", "Type": "OTH", "SubType": "P-DEC", "Settings": "x"}, .tHttp, .tFault, .tViolations)
+    Do $$$AssertStatusNotOK(tSC, "the create is refused")
+    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: ""), "403 " _ ##class(OcuPilot.Kernel.Proposal.Prohibited).#UNCOVEREDFIELD, "by the prohibited set")
+    Do $$$AssertEquals($ClassMethod(..#RECORD, "WriteCount"), 0, "nothing is sent")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", tName), 0, "and no device is created")
 }
 
 /// <p>The Open parameters row, agent half: the rules pass open parameters the instance cannot parse,

@@ -6,7 +6,8 @@
 /// the ones <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedCreateFields</method> has reviewed
 /// for a device create, and requires the three the vendor's create requires. The device editor's own
 /// rules (<method>OcuPilot.Area.OsMgmt.DeviceRules.Validate</method>) refuse the arguments at the
-/// mint, so the agent cannot propose what the screen would refuse.</p>
+/// mint, the same rules the screen's Save applies. Open parameters the instance cannot parse pass
+/// them and are refused by the vendor at the confirm's write.</p>
 /// <p>The name travels only as the vendor's <code>name</code> query parameter. The vendor's
 /// <code>PUT</code> is an upsert, so the absence fingerprint is what stops a confirmed create
 /// rewriting a device somebody else created since the mint (AD-54).</p>

@@ -10,7 +10,7 @@ import { OverlayStack } from '../../core/overlay-stack';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { DeviceFormPage } from './device-form.page';
-import { DEVICE_FORM_PATH } from './device-form.store';
+import { DEVICE_FORM_PATH, DeviceForm } from './device-form.store';
 
 /**
  * The device editor over stubs of the two things an instance supplies -- the URL's screen and the
@@ -146,7 +146,7 @@ describe('the device editor', () => {
       STRINGS.devicePromptAuto,
       STRINGS.devicePromptPredefined,
     ]);
-    expect((host.querySelector('#ocu-device-Alias') as HTMLInputElement).getAttribute('type')).toBe('number');
+    expect((host.querySelector('#ocu-device-Alias') as HTMLInputElement).getAttribute('inputmode')).toBe('numeric');
   });
 
   it('an edit shows the name read-only and the fresh read in every field', async () => {
@@ -159,6 +159,15 @@ describe('the device editor', () => {
     expect((host.querySelector('#ocu-device-Alias') as HTMLInputElement).value).toBe('9955');
     const checked = [...host.querySelectorAll('input[name="ocu-device-Prompt"]')].find((radio) => (radio as HTMLInputElement).checked) as HTMLInputElement;
     expect(checked.value).toBe('1');
+  });
+
+  it('an alias that is not a whole number is kept as typed, for the server to refuse, never cleared', async () => {
+    const { fixture, host } = await mount('/os-management/devices/edit/ProbeDevice');
+    type(fixture, host, 'ocu-device-Alias', '12e');
+    await settle(fixture);
+    // Mutation (Rule 19): make the Alias input `type="number"` -> the browser reads unparsable text as
+    // '', the edit would clear the stored alias, and this goes red.
+    expect(TestBed.inject(DeviceForm).value('Alias')).toBe('12e');
   });
 
   it('AC6: a change raises the dirty flag, and leaving asks the shared question first', async () => {

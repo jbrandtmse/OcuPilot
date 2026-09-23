@@ -192,10 +192,25 @@ describe('the device editor store', () => {
     expect(store.violations()).toEqual([{ field: 'Name', code: NAME_TAKEN_CODE, reason: TAKEN_SENTENCE }]);
   });
 
+  it('a create lands on the new device\'s edit with the saved confirmation', async () => {
+    const { store } = mount();
+    await store.open('');
+    store.setValue('Name', 'ProbeDevice');
+    store.setValue('PhysicalDevice', '/tmp/probe.txt');
+    expect(await store.save()).toBe(true);
+    store.retainAcrossRouteReplacement();
+    await store.open(store.createdId());
+    // Mutation (Rule 19): drop `if (arriving) this.savedValue = true` from `open()` -> `saved()` reads
+    // false and this goes red.
+    expect([store.mode(), store.saved(), store.retaining(), store.value('Name')]).toEqual(['edit', true, false, 'ProbeDevice']);
+  });
+
   it('value shapes: the alias and prompt travel as integers or an empty string, other fields as typed', () => {
     expect(wireValue('Alias', '210')).toBe(210);
     expect(wireValue('Alias', '')).toBe('');
     expect(wireValue('Alias', '1.5')).toBe('1.5');
+    // Mutation (Rule 19): admit a leading zero in `wireValue`'s pattern -> '007' travels as 7 and this goes red.
+    expect(wireValue('Alias', '007')).toBe('007');
     expect(wireValue('Prompt', '2')).toBe(2);
     expect(wireValue('Description', '12')).toBe('12');
   });

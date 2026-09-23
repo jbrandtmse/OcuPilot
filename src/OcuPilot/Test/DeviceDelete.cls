@@ -3,7 +3,7 @@
 /// marked delete, a device changed or deleted since the mint refusing the confirm, a name the instance does not
 /// hold refused at the mint, and a vendor delete that left the device read as not applied.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, and an account holding
-/// <code>%Admin_Manage</code>. Every write reaches the instance through
+/// <code>%Admin_Manage:USE</code> and <code>%DB_IRISSYS:WRITE</code>. Every write reaches the instance through
 /// <class>OcuPilot.Test.DeviceRecordPort</class>; every device it creates is named with
 /// <parameter>OcuPilot.Test.DeviceProbe.PREFIX</parameter> and removed by exact name.</p>
 Class OcuPilot.Test.DeviceDelete Extends %UnitTest.TestCase
@@ -45,7 +45,7 @@ Method OnAfterOneTest() As %Status
 /// <p>AD-51: an action-style, destructive write -- the vendor's <code>GET</code> read and bodyless
 /// <code>DELETE</code> -- advertising the name and the agent's own words, fingerprinted over all eight
 /// fields its read answers with the physical device name as the precondition, over the list's own
-/// pairs.</p>
+/// pairs and the write pair (AD-8).</p>
 Method TestTheDeleteIsAnActionWriteOverTheWholeRead()
 {
     Set tSchema = $ClassMethod(..#TOOL, "InputSchema")

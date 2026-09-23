@@ -290,6 +290,42 @@ These files are in Epic 7's diff and not on the contended list:
 - **AC5.** Given a user without `%Admin_Manage:USE`, when they open the form by any route, then the whole screen is the denial naming the pair, and every device route answers 403.
 - **AC6.** Given the form holds a change, when any navigation leaves, the agent's included, then the shared leave question asks first.
 
+### Review Findings
+
+Code review 2026-09-23 (review_tier full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor).
+
+- [x] [Review][Patch] [medium] Alias is `type="number"`: text the browser cannot parse reads `""`, so an edit's Save silently clears the stored alias [ui/src/app/areas/os-management/device-form.page.ts:253]
+- [x] [Review][Patch] [medium] The screen's refusal of an emptied PhysicalDevice/Type/SubType (`""`, what the screen's create sends) has no test; only the absent key is tested [src/OcuPilot/Test/DeviceCreate.cls:154]
+- [x] [Review][Patch] [medium] No test holds the saved confirmation across the create's route replacement (`if (arriving) this.savedValue = true`) [ui/src/app/areas/os-management/device-form.store.ts:326]
+- [x] [Review][Patch] [medium] AD-8 create leg: the recording port cannot see the rules' and the prohibited set's reads, so a write gate moved after them stays green [src/OcuPilot/Test/DeviceWriteGate.cls:117]
+- [x] [Review][Patch] [medium] The edit route admits keys from `DeviceRules.FIELDS`, a hand-typed list no test ties to the tool's settable set (AD-55) [src/OcuPilot/Area/OsMgmt/DeviceSave.cls:176]
+- [x] [Review][Patch] [low] `DeviceSave.Gate` requires `DeviceCreate`'s write pair for an edit too [src/OcuPilot/Area/OsMgmt/DeviceSave.cls:340]
+- [x] [Review][Patch] [low] `wireValue` sends `"007"` as 7, which the server's rule refuses from the agent [ui/src/app/areas/os-management/device-form.store.ts:109]
+- [x] [Review][Patch] [low] The edit's mapping of vendor error 644 to `DEVICE.OPENPARAMETERS.SHAPE` has no test [src/OcuPilot/Area/OsMgmt/DeviceSave.cls:214]
+- [x] [Review][Patch] [low] A screen create carrying a key outside the eight has no test [src/OcuPilot/Area/OsMgmt/DeviceSave.cls:128]
+- [x] [Review][Patch] [low] Doc claims that are false: agent "cannot propose what the screen would refuse"; Save refused "as the agent's create is at its mint"; DeviceList "the only descriptor that names this entity type"; delete "over the list's own pairs"; test environments naming `%Admin_Manage` alone [src/OcuPilot/Screen/Tool/DeviceCreate.cls:8]
+- [x] [Review][Patch] [low] DeviceWire's writer principal read-back never checks `%DB_IRISSYS:WRITE`, and its delete confirm hard-codes `/api/ocupilot` [src/OcuPilot/Test/DeviceWire.cls:398]
+
+Rejected:
+
+- `low` Alias taken between mint and confirm is not re-checked: the confirm re-runs no rules, `Confirm.cls` is never-edit, and the window needs a concurrent alias edit.
+- `low` A create with an unknown key answers 403 `UNCOVEREDFIELD`, an edit 400: the client never sends one; the test gap is the patch above.
+- `low` A JSON-number `Name` reads as absent: the client sends text; the refusal is safe.
+- `low` Alias and PhysicalDevice compared numerically (inference; the vendor's check is stripped from the export).
+- `low` `HandleName` looks a name up without its shape rules: the same as `X509Rules.HandleName`; the client ignores a failed look-up and Save names the rule.
+- `low` Create and the agent invitation show to a user without the write pair: AD-8's ruling keeps the screen's set read-only; the refusal names the pair and is rendered.
+- `low` Stale roster messages in `Test/WireSecurityRead.cls` and `Test/Wire.cls`: Epic 7-modified assertion text, the settled `Descriptor.cls` precedent.
+- `false` The refused create's banner reuses `deviceListEmptyAgent`: the project reuses a key whose value and meaning match.
+- `low` The agent's update cannot clear an alias or prompt: DW-1571.
+- `low` The screen's edit or create racing a delete or create inside one request: a millisecond window, no user-reachable repro.
+- `low` A bad name returns only the name's violation: the prohibited set's reference needs a valid name, and blur shows it first.
+- `low` Edits typed during an in-flight Save are marked clean: a sub-second window; the fix adds a branch.
+- `low` A JSON boolean Alias or Prompt is accepted as 1: no caller sends one.
+- `false` A vendor read that answers OK with no object reads as free: the port answers an object or an error.
+- `low` `P-DEC` as the default subtype when an instance lacks it: the classic page's default.
+- `low` Names with surrounding whitespace (inference).
+- `low` `Prohibited.Device` clearing `pChanged` on a `DELETE` cannot redden: defensive, as `X509`.
+
 ## Spec Change Log
 
 - 2026-09-23, lead (orchestrator ruling on the implement halt): AD-8 option 1 -- the device tools' extra `%DB_IRISSYS:WRITE` pair, written into AD-8 as its one named case; the two green browser mutations are to be re-run on a redeployed bundle. Status reset to `in-progress` with the implementation still uncommitted.
@@ -440,6 +476,9 @@ Observed. Each ObjectScript mutation was loaded into `ocupilot-b-ci` from a scra
 - mutation (container only): `AdminPort.Fail` answering the vendor's error text as the fault code → `DeviceCreate.TestUnparsableOpenParametersFailTheAgentsConfirm` red alone (run 217) (open parameters row, agent)
 - mutation (container only): `Confirm`'s `If 'tMatches` refusal disabled → `DeviceDelete.TestADeviceDeletedSinceTheMintRefusesTheConfirm` red, a `DELETE` reaching the port, and `TestADeviceChangedSinceTheMintRefusesTheConfirm` red (run 218); `DeviceUpdate.TestADeletedDeviceIsRefusedAndNotRecreated` red, the upsert re-creating the device (run 219) (AC4 agent half; agent delete deleted-since)
 - mutation (container only): `CHANGEACTION` blanked in the three device tools → `DeviceDelete.TestTheCardListsWhatGoesAndAConfirmDeletes` red on `deleted` (run 220), `DeviceCreate.TestACreateSendsOneBodyFromBothCallers` red on `created` (run 221), `DeviceUpdate.TestAnEditSendsTheCompleteSetOnBothCallers` red on `updated` (run 222); restored green (runs 223-225) (AC2 agent half)
+- mutation (QA gap check, container only): the orchestrator's three named gaps re-verified live rather than trusted from the rows above. `DeviceRules.Validate`'s `Type` value check removed → `DeviceCreate.TestEveryFieldRuleRefusesOnBothCallers` red on cases 10 (`ZZZ`) and 11 (`trm`), each failing both the screen assertion ("the screen refuses it on Type") and the agent-mint assertion ("with the field's own sentence") in the same run (run 210); restored green (run 211, `git diff` empty). This is the same shared loop and the same `DeviceRules.Validate` call the `^`, duplicate-`Alias` (case 24) and fractional-`Alias` (case 21) cases run through, so all four rules the orchestrator named are confirmed refused on both callers, not just one. `DeviceDelete.TestAnUnknownNameIsRefusedAtTheMint` (the agent delete's refusal of a name the instance does not hold) and every Device* class's `OnAfterOneTest` `CpfValid` assertion (`DeviceCreate`, `DeviceUpdate`, `DeviceDelete`, `DeviceWire`) were re-run fresh (runs 208, 209, 212, 213, all green) and `Config.CPF.Validate()` confirmed clean directly against `ocupilot-b-ci` with no probe line. No gap found in the three items named at the QA gate; no new test needed.
+- mutation (code review): the Alias input made `type="number"` again → `device-form.page.spec.ts` alias leg red, `12e` read as `''`; `wireValue` admitting a leading zero → the store spec's value-shapes leg red on `007`; `if (arriving) this.savedValue = true` dropped → the store spec's create-lands-saved leg red
+- mutation (code review, container only): the PhysicalDevice `""` REQUIRED arm disabled → `DeviceCreate.TestEveryFieldRuleRefusesOnBothCallers` red on case 7 on both callers (run 219); `DeviceSave.Create` asking the set over `{}` → `TestAScreenCreateCarryingAnotherKeyIsRefused` red alone (run 221); `DeviceSave.Update`'s `PortViolations` dropped → `DeviceUpdate.TestUnparsableOpenParametersAreRefusedOnTheirFieldOnAnEdit` red alone (run 222); the name's rule run before the gate in `HandleCreate` → `DeviceWriteGate`'s bad-name leg red alone (run 223); `Prompt` dropped from `DeviceRules.FIELDS` → `TestTheSchemaAndTheSettableSetAreTheSets` red on the rules-set assertion (run 224); restored green (runs 225-227)
 
 ## Auto Run Result
 

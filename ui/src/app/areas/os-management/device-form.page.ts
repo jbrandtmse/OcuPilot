@@ -250,9 +250,7 @@ interface FieldView {
         <div class="ocu-field-control">
           <input
             class="ocu-field-input"
-            type="number"
-            min="1"
-            step="1"
+            type="text"
             inputmode="numeric"
             [id]="aliasField.id"
             [value]="value('Alias')"

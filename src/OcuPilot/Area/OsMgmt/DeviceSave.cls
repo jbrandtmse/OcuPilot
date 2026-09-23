@@ -55,7 +55,7 @@ ClassMethod HandleCreate() As %Status
 {
     Set tSC = $$$OK
     Try {
-        Set tGateSC = ..Gate(.tRefused, 1)
+        Set tGateSC = ..Gate(.tRefused, ..#CREATETOOL)
         If tRefused || $$$ISERR(tGateSC) {
             Set tSC = tGateSC
             Quit
@@ -82,7 +82,7 @@ ClassMethod HandleUpdate(pId As %String) As %Status
 {
     Set tSC = $$$OK
     Try {
-        Set tGateSC = ..Gate(.tRefused, 1)
+        Set tGateSC = ..Gate(.tRefused, ..#UPDATETOOL)
         If tRefused || $$$ISERR(tGateSC) {
             Set tSC = tGateSC
             Quit
@@ -173,7 +173,7 @@ ClassMethod Update(pName As %String, pArgs As %DynamicObject, Output pHttpStatus
         Set pHttpStatus = 0
         Set pFault = ""
 
-        Set tAllowed = $ListFromString($Parameter(..#RULES, "FIELDS"))
+        Set tAllowed = $ClassMethod(tClass, "SettableFields")
         Set tIterator = pArgs.%GetIterator()
         While tIterator.%GetNext(.tKey, .tValue) {
             If '$ListFind(tAllowed, tKey) {
@@ -324,11 +324,11 @@ ClassMethod RenderViolations(ByRef pViolations) As %Status
 }
 
 /// <p>Refuse a caller who does not hold <parameter>DESCRIPTORCLASS</parameter>'s declared pairs
-/// (AD-8) or, with <var>pWrites</var>, the pair the device tools' write needs beyond them
-/// (<parameter>OcuPilot.Screen.Tool.DeviceCreate.WRITERESOURCE</parameter>), before anything is read
-/// or sent: <var>pRefused</var> 1 means the envelope is written and the handler writes nothing
+/// (AD-8) or, with a tool class in <var>pWriteTool</var>, the pair that tool's write declares beyond
+/// them (its <code>WRITERESOURCE</code>:<code>WRITEPERMISSION</code>), before anything is read or
+/// sent: <var>pRefused</var> 1 means the envelope is written and the handler writes nothing
 /// else.</p>
-ClassMethod Gate(Output pRefused As %Boolean, pWrites As %Boolean = 0) As %Status
+ClassMethod Gate(Output pRefused As %Boolean, pWriteTool As %String = "") As %Status
 {
     Set pRefused = 0
     Set tFailedPair = ""
@@ -336,8 +336,8 @@ ClassMethod Gate(Output pRefused As %Boolean, pWrites As %Boolean = 0) As %Statu
         Set pRefused = 1
         Quit ##class(OcuPilot.Kernel.Denial).Envelope(tFailedPair)
     }
-    If 'pWrites Quit $$$OK
-    Set tPair = $ListBuild($Parameter(..#CREATETOOL, "WRITERESOURCE"), $Parameter(..#CREATETOOL, "WRITEPERMISSION"))
+    If pWriteTool = "" Quit $$$OK
+    Set tPair = $ListBuild($Parameter(pWriteTool, "WRITERESOURCE"), $Parameter(pWriteTool, "WRITEPERMISSION"))
     If ##class(OcuPilot.Screen.Gate).EvaluatePairs($ListBuild(tPair), .tFailedPair) Quit $$$OK
     Set pRefused = 1
     Quit ##class(OcuPilot.Kernel.Denial).Envelope(tFailedPair)

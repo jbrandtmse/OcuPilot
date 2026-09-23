@@ -102,15 +102,21 @@ Method OnAfterOneTest() As %Status
 /// <p>A principal holding the screens' declared pairs alone: the screen's create and edit and the
 /// agent's confirm of a create, an edit and a delete are each refused 403 on the screen-privilege
 /// code naming <code>%DB_IRISSYS:WRITE</code>, and the port is asked nothing -- not even the edit's
-/// fresh read or the confirm's re-read. Nothing is created, changed or deleted.</p>
+/// fresh read or the confirm's re-read. Nothing is created, changed or deleted. A create whose name
+/// breaks the name's own rule is refused on the pair too: the create's rules and the prohibited set
+/// read through the tools' port, which the recording port does not see, so the refusal coming before
+/// the name's rule is what shows the pair is checked before any of them.</p>
 /// <p>Mutations (Rule 19): drop the write pair from
 /// <method>OcuPilot.Area.OsMgmt.DeviceSave.Gate</method> -> the two screen legs reach the port and
-/// go red; drop the write pair from a device tool's <method>PrivilegePairs</method> -> that tool's
+/// go red; run the name's rule before the gate in
+/// <method>OcuPilot.Area.OsMgmt.DeviceSave.HandleCreate</method> -> the bad-name leg answers 422 and
+/// goes red; drop the write pair from a device tool's <method>PrivilegePairs</method> -> that tool's
 /// confirm leg reaches the port and goes red.</p>
 Method TestTheScreensPairsAloneAreRefusedTheWriteBeforeAnyPortCall()
 {
     Set tEdit = ..Name("GateEdit")
     Set tNew = ..Name("GateNew")
+    Set tBad = ..Name("Gate^Bad")
     Set tAgentNew = ..Name("GateAgentNew")
     Set tAgentDel = ..Name("GateAgentDel")
     For tName = tEdit, tAgentDel {
@@ -118,6 +124,7 @@ Method TestTheScreensPairsAloneAreRefusedTheWriteBeforeAnyPortCall()
     }
     Set tPlan = []
     Do tPlan.%Push({"kind": "create", "name": (tNew), "body": (..CreateBody(tNew))})
+    Do tPlan.%Push({"kind": "create", "name": (tBad), "body": (..CreateBody(tBad))})
     Do tPlan.%Push({"kind": "update", "name": (tEdit), "body": {"Description": "changed"}})
     For tCase = $ListBuild(..#CREATETOOL, tAgentNew, ..CreateBody(tAgentNew).%ToJSON()), $ListBuild(..#UPDATETOOL, tEdit, {"Name": (tEdit), "Description": "changed"}.%ToJSON()), $ListBuild(..#DELETETOOL, tAgentDel, {"Name": (tAgentDel)}.%ToJSON()) {
         Set tSC = ..MintFor(..#READERUSER, $List(tCase, 1), $List(tCase, 2), $List(tCase, 3), .tProposal)
@@ -127,7 +134,7 @@ Method TestTheScreensPairsAloneAreRefusedTheWriteBeforeAnyPortCall()
     }
     Set tRun = ..RunAs(..#READERUSER, tPlan)
     Do $$$AssertEquals($Select(tRun.%IsDefined("error"): tRun.%Get("error"), 1: tRun.%Get("username") _ " " _ tRun.%Get("loggedIn")), ..#READERUSER _ " 1", "the child process ran as the principal")
-    Set tLabels = $ListBuild("the screen's create", "the screen's edit", "the agent's create confirm", "the agent's edit confirm", "the agent's delete confirm")
+    Set tLabels = $ListBuild("the screen's create", "the screen's create of a name its rule refuses", "the screen's edit", "the agent's create confirm", "the agent's edit confirm", "the agent's delete confirm")
     For tI = 1:1:$ListLength(tLabels) {
         Do $$$AssertEquals(..LegText(tRun, tI), "403 AUTH.NOPRIVILEGE %DB_IRISSYS:WRITE calls=0 types=", $List(tLabels, tI) _ ": refused naming the write pair, the port asked nothing")
     }

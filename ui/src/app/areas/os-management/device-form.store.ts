@@ -106,7 +106,7 @@ export function wireValue(field: string, text: string): string | number {
   if (field !== ALIAS_FIELD && field !== PROMPT_FIELD) return text;
   const trimmed = text.trim();
   if (trimmed === '') return '';
-  return /^[0-9]+$/.test(trimmed) ? Number(trimmed) : text;
+  return /^[1-9][0-9]*$/.test(trimmed) ? Number(trimmed) : text;
 }
 
 /**

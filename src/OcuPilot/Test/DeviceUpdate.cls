@@ -4,7 +4,7 @@
 /// a device deleted since the read refused rather than re-created (AC4), and rules that read only the
 /// fields an edit changes.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, and an account holding
-/// <code>%Admin_Manage</code>. Every write reaches the instance through
+/// <code>%Admin_Manage:USE</code> and <code>%DB_IRISSYS:WRITE</code>. Every write reaches the instance through
 /// <class>OcuPilot.Test.DeviceRecordPort</class>; every device it creates is named with
 /// <parameter>OcuPilot.Test.DeviceProbe.PREFIX</parameter> and removed by exact name.</p>
 Class OcuPilot.Test.DeviceUpdate Extends %UnitTest.TestCase
@@ -119,6 +119,20 @@ Method TestAnyOtherKeyIsRefusedOnBothCallers()
     }
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments($ClassMethod(..#TOOL, "InputSchema"), {"Name": (..Name("Edit")), "Settings": "x"}, .tProblem)
     Do $$$AssertStatusNotOK(tSC, "the agent's schema refuses it")
+}
+
+/// <p>The Open parameters row on an edit: open parameters the instance cannot parse are refused by the
+/// vendor and answered as the form's own refusal on the field; the stored value is unchanged.</p>
+/// <p>Mutation (Rule 19): drop <method>OcuPilot.Area.OsMgmt.DeviceSave.Update</method>'s
+/// <code>PortViolations</code> call -> the edit carries no violation and this goes red.</p>
+Method TestUnparsableOpenParametersAreRefusedOnTheirFieldOnAnEdit()
+{
+    Set tName = ..Name("Edit")
+    Set tBefore = $ClassMethod(..#PROBE, "Stored", tName, "OpenParameters")
+    Set tSC = $ClassMethod(..#SCREEN, "Update", tName, {"OpenParameters": "((("}, .tHttp, .tFault, .tViolations)
+    Do $$$AssertStatusNotOK(tSC, "the edit is refused")
+    Do $$$AssertEquals($ClassMethod(..#SHARED, "CodeFor", .tViolations, "OpenParameters"), "DEVICE.OPENPARAMETERS.SHAPE", "on the open parameters, with the form's own code")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", tName, "OpenParameters"), tBefore, "and the stored value is unchanged")
 }
 
 /// <p>AC4, the Deleted since the read row: the vendor's <code>PUT</code> is an upsert. An edit whose

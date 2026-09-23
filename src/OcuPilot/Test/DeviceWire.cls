@@ -258,8 +258,9 @@ Method TestACallerWithoutTheManageResourceIsRefusedOnEveryRoute()
 }
 
 /// <p>AD-29: a real principal holding the form's declared pairs alone opens the form, and its Save is
-/// refused naming <code>%DB_IRISSYS:WRITE</code> before anything is sent, as the agent's create is at
-/// its mint; nothing is created.</p>
+/// refused naming <code>%DB_IRISSYS:WRITE</code> before anything is sent; nothing is created. The
+/// agent's confirm of the same write is refused on the pair too
+/// (<class>OcuPilot.Test.DeviceWriteGate</class>).</p>
 /// <p>Mutation (Rule 19): drop the write pair from
 /// <method>OcuPilot.Area.OsMgmt.DeviceSave.Gate</method> -> the Save reaches the vendor, whose save
 /// is refused inside the system database, and this goes red on the 403.</p>
@@ -304,7 +305,7 @@ Method TestTheDeclaredPairsAloneCreateEditAndDeleteADevice()
     Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint($Parameter(..#DELETETOOL, "DESCRIPTORCLASS"), $Parameter(..#DELETETOOL, "TOOLNAME"), ..#MANAGEUSER, "", tTurn, {"Name": (tName)}, "OcuPilot.Kernel.Agent.Limits", .tProposal, .tHttp, .tFault, $ClassMethod(..#DELETETOOL, "Endpoint"), $ClassMethod(..#DELETETOOL, "IdParam"), tName, $ClassMethod(..#DELETETOOL, "IdArgument"), $ClassMethod(..#DELETETOOL, "SettableFields"), ..#DELETETOOL)
     Do $$$AssertStatusOK(tSC, "the principal's delete is minted")
     If $$$ISERR(tSC) Quit
-    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot/proposal/" _ tProposal.%Get("proposalId") _ "/confirm", ..#MANAGEUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders, "", "application/json")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", tBase _ "/proposal/" _ tProposal.%Get("proposalId") _ "/confirm", ..#MANAGEUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders, "", "application/json")
     Do $$$AssertEquals(tStatus, 200, "and confirmed over the wire as the principal: " _ $Extract(tBody, 1, 300))
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", tName), 0, "which deletes the device")
 }
@@ -394,8 +395,8 @@ Method EnsurePrincipal() As %Status
         If ##class(Security.Users).Exists(..#MANAGEUSER) Do ##class(Security.Users).Delete(..#MANAGEUSER)
         Set tSC = ##class(Security.Users).Create(..#MANAGEUSER, ..#MANAGEROLE, ..PreparedPassword, "OcuPilot device test principal (throwaway)", "", "", "", 0, 1, "Created by OcuPilot.Test.DeviceWire; deleted in OnAfterAllTests")
         If $$$ISERR(tSC) Quit
-        If ($SYSTEM.Security.CheckUserPermission(..#MANAGEUSER, "%Admin_Manage", "USE") '= 1) || ($SYSTEM.Security.CheckUserPermission(..#MANAGEUSER, "%Admin_Secure", "USE") = 1) {
-            Set tSC = $$$ERROR($$$GeneralError, "the manage-only principal's grants did not read back as the form's pairs alone")
+        If ($SYSTEM.Security.CheckUserPermission(..#MANAGEUSER, "%Admin_Manage", "USE") '= 1) || ($SYSTEM.Security.CheckUserPermission(..#MANAGEUSER, "%DB_IRISSYS", "WRITE") '= 1) || ($SYSTEM.Security.CheckUserPermission(..#MANAGEUSER, "%Admin_Secure", "USE") = 1) {
+            Set tSC = $$$ERROR($$$GeneralError, "the writer principal's grants did not read back as the device tools' pairs alone")
         }
     } Catch ex {
         Set tSC = ex.AsStatus()

@@ -9,8 +9,8 @@
 /// its own instance-wide table.</p>
 /// <p><b>Its id is <code>single</code>:</b> the device's name, one percent-encoded path segment,
 /// with no second part, the same shape <class>OcuPilot.Screen.Descriptor.ResourceList</class>
-/// keys by. It declares no <code>rowTarget</code>: this is the only descriptor that names this
-/// entity type, so there is nowhere else for the name cell to link.</p>
+/// keys by. It declares no <code>rowTarget</code>: the name cell opens the entity type's unlisted
+/// editor at this route plus <code>/edit</code>, <class>OcuPilot.Screen.Descriptor.DeviceForm</class>.</p>
 /// <p><b>Six fields, not the backing query's nine.</b> <code>Prompt</code>,
 /// <code>OpenParameters</code> and <code>AlternateDevice</code> are the device editor's fields
 /// (<class>OcuPilot.Screen.Descriptor.DeviceForm</class>), and <code>Prompt</code> and
