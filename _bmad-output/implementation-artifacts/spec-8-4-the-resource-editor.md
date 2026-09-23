@@ -2,7 +2,7 @@
 title: 'Story 8.4: The resource editor'
 type: 'feature'
 created: '2026-09-23'
-status: 'blocked'
+status: 'ready-for-dev'
 baseline_revision: 'b0d416a618f2bb0666c5e7729df48a4aabc278cc'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -220,10 +220,17 @@ Before editing a ⚠ file, run `git fetch origin && git show origin/OCU-1-epic7:
   - `Test/PermissionsLists.cls` :35/:146-149, `Test/EntityRef.cls` :211-225;
   - `ui/tools/entity-ref.test.mjs` :83 (pick another unruled type), `screen-mirror.test.mjs` :178-187, `navigation.test.mjs`, `app.routes.spec.ts`.
 
+### Rulings and routed work (lead, 2026-09-23)
+
+- **P1 fallback** (`AdminPort`, shared-append): the `Security.Resource` empty-`PublicPermission` completion through `Security.Resources` in `%SYS` described under Design Notes, with `ResourceWire` legs for create-private, clear and edit-private that fail when the fallback is removed.
+- **P2** (`Prohibited.cls`, contended): `PROHIBITED.OCUPILOTRESOURCE` with a caller-neutral `ReasonFor` sentence; a test on both callers that fails when it is removed.
+- **P4** `Screen/Tool/Classification.cls` is contended append-only (read Epic 7's pushed version first; append only this story's entry at the tail). `Screen/Tool/ToolFields.cls` is regenerated with `node tools/field-lists.mjs`, never hand-edited; the orchestrator regenerates it at the merge.
+- **DW-1524 (floor-blocking).** `Prohibited.User`'s update predicate follows AD-10 as amended: a privilege-granting role delta and any `EscalationRoles` change are permitted, minted destructive with the privilege named (the same `GrantsPrivilegeByEffect`/`consequence` path 8.3 built), keeping only the account protections (current user, `_SYSTEM`, service account, last `%All` holder -- Epic 7's; touch nothing of theirs). `src/OcuPilot/Test/UserUpdate.cls` is contended (Epic 7 added 441 lines): `git fetch origin`, read `git show origin/OCU-1-epic7:src/OcuPilot/Test/UserUpdate.cls` first, recode ONLY the methods that assert the privileged refusal to assert the new terms, touch nothing Epic 7 added, and add a test that fails when the update-path permission regresses. List it under `footprint_extensions:`.
+
 ### Acceptance Criteria
 
 - **AC1.** Given the Resources list, when Create or a row's name cell is used, then the resource editor opens as a dialog (not a route) capturing name, description and public permission, in that order. The name is read-only when editing.
-- **AC2 (agent path).** Given a resource whose vendor `AllowDelete` is false, when `permissions.resources.delete` is proposed, then it is refused with `RESOURCE.NAME.SYSTEM`'s sentence, and the list shows the row with Deletable "No". The Resources-list Delete row action, drawn disabled with that reason, follows the lead's ruling below.
+- **AC2 (agent path).** Given a resource whose vendor `AllowDelete` is false, when `permissions.resources.delete` is proposed, then it is refused with `RESOURCE.NAME.SYSTEM`'s sentence, and the list shows the row with Deletable "No". The Resources-list Delete row action, drawn disabled with that reason, is Story 9.3's (DW-1528).
 - **AC3.** Given an edit saved through either caller, when it is written, then the body is the complete property set from a fresh read with the edits applied. A field the user did not change keeps the instance's current value.
 - **AC4 (Integration).** Given a valid Save, when the server accepts it, then:
   - the instance holds the sent values;
@@ -237,6 +244,8 @@ Before editing a ⚠ file, run `git fetch origin && git show origin/OCU-1-epic7:
 - **AC7.** Given the dialog holds a change, when it is closed or any navigation leaves, the agent's included, then the shared leave question asks first.
 
 ## Spec Change Log
+
+- 2026-09-23, spec gate (orchestrator rulings): P1 is AD-27's fallback (AD-27 amended; the lead ruled out every other encoding); P2 adds `OCUPILOTRESOURCE` to AD-10; the row action goes to Story 9.3 (DW-1528); `Classification.cls` is contended append-only; DW-1524 is routed here as floor-blocking; AD-4 was corrected for `Security.Resource`. Status set to `ready-for-dev` without a re-plan.
 
 ## Review Triage Log
 
@@ -263,40 +272,17 @@ Read on `ocupilot-slot-b`. The probes were on `ocupilot-b-ci` with exact-name cl
   - `Create`/`Modify` with `PublicPermission ""` succeed directly; the endpoint cannot send it.
 - **The classic dialog** orders Name, Description, then Public Permission checkboxes. Name is disabled on edit. The list's name cell is not a link, and its Delete is disabled for ten hard-coded names with no reason shown.
 
-### Pending the lead: P1, a public permission of none (intent gap)
+### Ruled: P1, a public permission of none (AD-27 fallback)
 
-A new resource is private by default (the classic dialog opens with no box checked), and most shipped resources read `PublicPermission ""`. The vendor PUT cannot carry `""`. As a result:
+The vendor PUT cannot carry "no permission": its `RunPut` normalizes `PublicPermission` with `Security.Datatype.Permission.ExternalToInternal`, whose answer for none is `0`, and refuses `If permsNormalized = 0` with a 400. The lead ruled out every other encoding on `ocupilot-b-ci` (`null`, `""`, `"N"`, `0`, `"0"`, `" "`: each 400 on a create and on a clear). Orchestrator ruling 2026-09-23: option (a), AD-27's fallback, now written into AD-27 as its one named case. `AdminPort` completes a `Security.Resource` `PUT` whose `PublicPermission` is empty through `Security.Resources.Create`/`Modify` in `%SYS`, behind the same `%Admin_Secure` gate, answering the vendor's status codes, with `VERIFIEDWRITES` re-reading it; nothing above the port changes. Pin it with a test that fails when the fallback is removed, for creating a private resource and for clearing an existing public permission (and edit-private). DW-1527 records the vendor defect for the contest's feedback channel.
 
-- a private resource cannot be created;
-- an existing permission cannot be cleared;
-- a complete-body edit of any private resource, system resources like `%DocDB_Admin` included, answers 400.
+### Ruled: P2, public permission on OcuPilot's own resources
 
-AC3 as worded cannot hold for those resources. One ruling is needed:
+Orchestrator ruling 2026-09-23: yes. AD-10 now carries the bullet: no public permission on `%DB_OCUPILOT` or `OcuPilotAdmin`, refused `PROHIBITED.OCUPILOTRESOURCE` whatever the caller (self-protection, AD-9). Its refusal needs its own test on both callers.
 
-- **(a) Recommended. SPINE DECISION NEEDED (AD-2 or AD-27):** `AdminPort` completes a `Security.Resource` PUT whose `PublicPermission` is `""` through `Security.Resources.Create`/`Modify` in `%SYS`, behind the same `ResourcesOR` gate. It answers the vendor's status codes, and `VERIFIEDWRITES` re-reads it. This is a wire fact confined to the port; nothing above it changes. Tasks: one `AdminPort` method and one `ResourceWire` leg each for create-private, clear and edit-private.
-- **(b)** Refuse `""` on create (`RESOURCE.PUBLICPERMISSION.REQUIRED`) and on clearing (`RESOURCE.PUBLICPERMISSION.CLEAR`). The port omits an unchanged `""` on edit, because the vendor keeps an absent key. OcuPilot then cannot create a private resource. That is a product narrowing of AC1 for the owner.
+### Deferred to Story 9.3 (DW-1528): the Resources-list row action
 
-### Pending the lead: P2, public permission on OcuPilot's own resources (SPINE DECISION NEEDED, AD-10)
-
-A public letter on `%DB_OCUPILOT` or `OcuPilotAdmin` gives every user OcuPilot's protected data or administration, which falsifies AD-9's FR-29 test. That is the same self-protection family as application roles on OcuPilot's own web applications. The plan refuses it under `OCUPILOTRESOURCE` and asks that AD-10's list gain the bullet. If declined, drop the two public-permission legs of the `Resource` branch and its test rows.
-
-### Pending the lead: the Resources-list row action
-
-AC2's screen half is a Delete row action drawn `aria-disabled` with its reason on a system resource and on OcuPilot's own. The mechanism (AD-53: `Write.SCREENACTIONS`, `Api/ScreenAction.cls`, `self-protection.ts`, `screen-action-handler.ts`, `typed-name-dialog.ts`) exists only on `origin/OCU-1-epic7`.
-
-AD-53's rule vocabulary (`serves-ocupilot`, `protected-account`) receives only the row key, so "system resource" needs:
-
-- a new word that reads the row's `AllowDelete`, with `selfProtectionReason` taking the row;
-- an `ocupilot-resource` key predicate;
-- `ResourceDelete.SCREENACTIONS "delete"`;
-- `rowActions: [{"id":"delete","selfProtection":"system-resource|ocupilot-resource"}]`;
-- a `SCREEN_ACTION_DESCRIPTORS` entry and a `DESTRUCTIVE_CONSEQUENCES` string;
-- `RESOURCE.NAME.SYSTEM`'s and `OCUPILOTRESOURCE`'s sentences published in Fixed strings and pinned through `RefusalCopy` (DW-1502 applies).
-
-Either ruling applies without a re-plan:
-
-- **(a) Ledger entry.** It moves to Story 9.3 (the role editor), which already owns the Roles-list row action (DW-1513). This story ships the tool the row action will reach.
-- **(b) Built here, once Epic 7 has merged.** Add the items above on AD-53's route, the `ResourceWire`/browser legs for the disabled reason and the typed-name delete, and the roster rows Epic 7's `Test/Descriptor.cls` `ReadShapes` holds.
+Orchestrator ruling 2026-09-23, the 8.3 precedent: this story ships `permissions.resources.delete` (refusing a resource whose vendor `AllowDelete` is false and OcuPilot's own two resources); the Delete row action drawn disabled with its reason goes to Story 9.3 as DW-1528, beside DW-1513. It needs a new AD-53 self-protection word that reads the row's `AllowDelete`, an `ocupilot-resource` key predicate, `SCREENACTIONS`, `rowActions`, the handler entries and the published sentences (DW-1502 applies). `epics.md` 8.4 AC2 carries the `[AMENDED]` marker.
 
 ### Consumes and consumed-by
 
@@ -309,7 +295,7 @@ Either ruling applies without a re-plan:
 
 **Consumed-by:**
 
-- Story 9.3, or this story under ruling (b), puts the Resources-list row action on `permissions.resources.delete`;
+- Story 9.3 (DW-1528) puts the Resources-list row action on `permissions.resources.delete`;
 - Story 9.3's grant dialog lists resources this editor creates.
 
 **Integration ACs:** AC4 (the Resources list re-reads on the change bus) and AC5 (the agent's events reach the same list).
@@ -348,15 +334,11 @@ Stateful checks run on slot B's throwaway `ocupilot-b-ci` (web 52777, super 1976
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap -- P1: the vendor `Security.Resource` PUT cannot carry an empty `PublicPermission` (probes 2 and 5 answered 400), so creating a private resource, clearing a permission, and AC3's complete-body edit of any private resource are impossible through the endpoint as it stands. Rule (a) (recommended; SPINE DECISION NEEDED: `AdminPort` completes that one case through `Security.Resources` behind the same gate) or (b) (refuse none; a product narrowing of AC1). Also for the lead: P2 (SPINE DECISION NEEDED: AD-10 gains "a public permission on OcuPilot's own resources"; planned as refused) and the Resources-list row action (ruling (a) ledger to Story 9.3, or (b) build here once Epic 7 merges).
+Status: ready-for-dev
+Blocking condition: none
+
+Planned; the lead applied the orchestrator's rulings on P1-P4 and routed DW-1524 here at the spec gate.
 
 ### Summary
 
-Planned the resource editor dialog (create from the list's Create, edit from the name cell's existing id route), three tools (create, merge update, agent-only action delete), `ResourceRules`/`ResourceSave` screen routes, a `resource` prohibited branch, `VERIFIEDWRITES` in `AdminPort`, and the `resource:foldcase` id rule.
-
-The spec is complete under recommendations (a), P2-refuse and row-action (a). Each pending section states its delta, so the lead can set `ready-for-dev` without a re-plan.
-
-Instance facts are in Design Notes. AC3's premise ("does not merge") is wider than the instance, since `Modify` keeps absent keys. AD-4's list names `Security.Resource`, which the lead may correct at its origin. AC3's outcome is unaffected.
-
-Needs the lead: `Classification.cls` and `ToolFields.cls` (both in Epic 7's diff).
+Planned the resource editor dialog (create from the list's Create, edit from the name cell's existing id route), three tools (create, merge update, agent-only action delete), `ResourceRules`/`ResourceSave` screen routes, a `resource` prohibited branch, `VERIFIEDWRITES` in `AdminPort`, and the `resource:foldcase` id rule. Instance facts are in Design Notes; AD-4 was corrected at its origin for `Security.Resource`.

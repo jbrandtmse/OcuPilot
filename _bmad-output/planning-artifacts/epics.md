@@ -4497,11 +4497,15 @@ So that the permission model is editable from the portal.
 
 - **Given** a system resource
 - **When** it is listed
-- **Then** it is shown but **not deletable**, the delete gated with that as its stated reason rather than hidden.
+- **Then** it is shown but **not deletable**, the delete gated with that as its stated reason rather than hidden. [AMENDED 2026-09-23, orchestrator-authorised, Rule 5 partial deferral: this story ships the agent's `permissions.resources.delete`, refusing a resource whose vendor `AllowDelete` is false and OcuPilot's own two resources; the Resources-list Delete row action drawn disabled with that reason moves to Story 9.3 as DW-1528, because AD-53's row-action route and self-protection rendering exist only on Epic 7's branch until both epics merge.]
 
 - **Given** `Security.Resource` does **not** merge
 - **When** an edit is saved
 - **Then** it sends the complete property set from a fresh read.
+
+**Routed from the deferred-work ledger** - must be addressed in this story or declined with a reason:
+
+- DW-1524: the user-update path (`Prohibited.User`) still refuses a privilege-granting role delta and any `EscalationRoles` change, against AD-10 as amended by the owner; permit both, minted destructive with the privilege named, keeping only the account protections (Epic 7's). **Floor-blocking.** `src/OcuPilot/Test/UserUpdate.cls` is contended with Epic 7: recode only the methods that assert the refusal, and add a test that fails when the update-path permission regresses (ledger; routed by orchestrator 2026-09-23)
 
 ### Story 8.5: X.509 import, edit and delete
 

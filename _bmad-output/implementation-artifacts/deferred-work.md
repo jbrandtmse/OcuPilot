@@ -6133,6 +6133,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Prohibited.cls User predicate unchanged by the owner-reversal rework; Test/UserUpdate.cls (Epic 7-modified, not contended) asserts the refusal, so the fix needs that file; create path now grants the same roles
 - 2026-09-23T07:52:31Z status=escalated owner=burndown by=harvest note=for the merge gate: remove or recode the update refusal once Epic 7's UserUpdate.cls and this branch merge
+- 2026-09-23T08:46:44Z status=routed owner=8-4-the-resource-editor by=orchestrator note=floor-blocking: fix Prohibited.User update predicate to amended AD-10 inside 8.4; Test/UserUpdate.cls now contended
 
 ### DW-1525: Doc comments in Epic 7's files still say privilege is refused through any path (WebAppUpdate.cls:26, Classification.cls:28, Test/UserUpdate.cls:23)
 - source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -6144,3 +6145,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Mint.cls ConsequenceOf's try-ask idiom swallows the arity error; WebAppCreate is the only overrider today
 - 2026-09-23T07:52:38Z status=open owner=8-3-create-a-role-and-manage-its-resource-grants by=harvest note=two-way door for this story's review: make the arity failure loud or the signature single-sourced
 - 2026-09-23T08:19:40Z status=resolved-by:8-3-create-a-role-and-manage-its-resource-grants by=cr note=ConsequenceOf asks only a compiled Consequence, unguarded; one-formal probe tool now fails mint 500 <PARAMETER> (ocupilot-b-ci)
+
+### DW-1527: Candidate vendor defect: the admin API's Security.Resource PUT cannot set or clear a public permission of none -- RunPut refuses ExternalToInternal's 0 as invalid
+- source: spec-8-4-the-resource-editor.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: %Api.Admin.Endpoints.Security.Resource RunPut: If permsNormalized = 0 -> 400; null, "", "N", 0, "0" all refused on create and clear on ocupilot-b-ci 2026-09-23; Security.Resources.Create/Modify accept it. OcuPilot's AD-27 fallback covers it.
+- 2026-09-23T08:46:44Z status=decision-pending owner=burndown by=orchestrator note=human=report to the contest's feedback channel (sysadmin-api-specification) as a candidate vendor defect
+
+### DW-1528: The Resources-list Delete row action (Story 8.4 AC2's screen caller): drawn disabled with its reason when the vendor's AllowDelete is false, on AD-53's route
+- source: spec-8-4-the-resource-editor.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: AD-53's row-action route and self-protection rendering exist only on OCU-1-epic7; it needs a new AD-53 self-protection word that reads the row's AllowDelete. 8.4 ships the agent's permissions.resources.delete.
+- 2026-09-23T08:46:44Z status=routed owner=9-3-the-role-editor by=orchestrator note=Rule 5 partial deferral of 8.4 AC2, orchestrator-authorised 2026-09-23; beside DW-1513
