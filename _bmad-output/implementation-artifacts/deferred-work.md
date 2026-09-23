@@ -6179,3 +6179,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: full sweep on ocupilot-ci run 8192: %SYS_Task.History held 1,026 rows on the 3-day-old throwaway; a fresh CI throwaway holds far fewer
 - 2026-09-23T14:43:42Z status=wontfix-accepted owner=7-6-run-suspend-resume-and-delete-a-task by=harvest note=reopen_if=a CI instance job fails TestTaskHistoryPairSetsAreEnforcedForARealPrincipal
+
+### DW-1557: AdminPort's DW-1473 paragraph still says no shipped tool issues Task.CRUD/SUSPEND, which 7.6 made false; its 'The nine' count and 'no screen read reaches one' are stale too
+- source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: AdminPort.cls:128-143 (MUTATINGTYPES doc) vs the same parameter now listing Task.CRUD/SUSPEND for TaskSuspend. AdminPort is SHARED-APPEND under the 2026-09-23 roster rule, so no Epic 7 story may rewrite those lines; Epic 8's copy of the paragraph already differs ('The six').
+- 2026-09-23T15:01:41Z status=wontfix-accepted owner=7-6-run-suspend-resume-and-delete-a-task by=cr note=reopen_if=after the Epic 7/8 merge resolves that paragraph, it still says Task.CRUD/SUSPEND is issued by no shipped tool
+
+### DW-1558: The task delete's fresh read is Task.CRUD GET, whose vendor TaskToJson switches to the task's own NameSpace, so a task in a namespace the caller cannot reach (or that no longer exists) cannot be deleted from OcuPilot
+- source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: %Api.Admin.Endpoints.Task.CRUD TaskToJson: New $NAMESPACE, Set $NAMESPACE = obj.NameSpace, obj.GetSettings (read on slot A). Fails closed with an error; Task details already reads GET, so the limitation predates 7.6. The privilege half is an inference (not observed).
+- 2026-09-23T15:01:41Z status=wontfix-accepted owner=7-6-run-suspend-resume-and-delete-a-task by=cr note=reopen_if=a user reports a task Task details or the schedule's Delete cannot read because of its namespace, e.g. an orphaned task

@@ -275,6 +275,38 @@ Measured on `ocupilot-ci` (2026-09-23, probes created and deleted) and on slot A
 - Integration AC (Rule 1): `ListPage` and Task details consume the `task` change event and re-read
   through INFO, marking the row or the field; observed in the browser on `ocupilot-ci`.
 
+### Review Findings
+
+Code review 2026-09-23 (full-opus, four layers, none failed): 0 high, 0 medium, 6 low kept, 2 by-design, 22 rejected. The owner's vendor quirk holds everywhere suspended state is decided or checked: tools, the confirm and screen re-reads, the row update, and every test read `INFO`. `TaskPort` names no `%Api.Admin.*` class (AD-2, AD-27). No Epic-8-exclusive file is touched.
+
+- [x] [Review][Patch] `TaskResume.DESCRIPTION` told the agent resume applies only to error suspensions, though 7.6 adds a user Suspend [src/OcuPilot/Screen/Tool/TaskResume.cls:30]
+- [x] [Review][Patch] DW-1473's surface leg, re-pointed to `Task.CRUD/PATCH`, could not catch a suffix-keyed gate, and the `Task.CRUD/PUT` predicate leg did not say it is temporary. Both now use `PUT` and carry a tripwire note naming FR-53 [src/OcuPilot/Test/ToolWrite.cls:1204]
+- [x] [Review][Patch] The Resume history check could match a stale row on a reused probe, and its `since` was dead. `before` now deletes any leftover probe (task ids are never reused), and the dead lines are gone [ui/browser/task-schedule-actions.browser-spec.mjs:72]
+- [x] [Review][Patch] `SUSPENDED_FIELD` selected every Task details field; renamed `DETAILS_FIELD` [ui/browser/task-resume.browser-spec.mjs:54]
+- [x] [Review][Defer] AdminPort's DW-1473 paragraph still says no shipped tool issues `Task.CRUD/SUSPEND` [src/OcuPilot/Port/AdminPort.cls:128] — deferred: DW-1557 wontfix-accepted; the lines are SHARED-APPEND and were not added by this story; reopen at the Epic 7/8 merge
+- [x] [Review][Defer] The delete's `GET` switches to the task's namespace in the vendor's `TaskToJson`, so a task in an unreachable or missing namespace cannot be deleted from OcuPilot [src/OcuPilot/Screen/Tool/TaskDelete.cls:33] — deferred: DW-1558 wontfix-accepted; fails closed, and Task details has the same limitation from before this story
+- by-design: `LeaveInQueue` is not disclosed on the card (Design Notes, Suspend body). EXPERIENCE `:102` lists the Suspended column last while the code puts it after Type as the spec's Execution bullet says; the lead may reorder `:102` (tier-1).
+
+Rejected:
+
+- false: `tasks.schedule.run` shares `TaskRun`'s description. That text names no screen and is true of both lists.
+- false: the Delete mismatch check races the POST. Any send from the mismatch would fail the later `posts.length === 1` and the dialog flow.
+- false: the AC2 and AC3 mutations miss their clause. Each reddens its AC's pin, and AC3 also has the product-side highlight mutation.
+- low: the pre-existing 5.11 unread-state wording on `TaskResume`, and `STATEBEFORE "Scheduled"`, which is UJ-6's word, mirrored from 5.11's `STATEAFTER`.
+- low: copy-pasted task-tool methods. This mirrors `TaskRun` and `TaskResume`, and no divergence was named.
+- low: there is no `%Admin_Operate`-only Delete leg, no screen-route Resume no-op leg, and no screen-route system-type delete. Each is covered by shared code: `ScreenAction.Run`'s pair gate, `TaskResume.StateDiff` and `TaskDelete.StateDiff`.
+- low: all four actions show on every row, and the refusal is generic `setRefusal`. No `selfProtection` is specified.
+- low: DW-1419's browser leg left `task-resume`. It stays pinned with a router at `list-page.spec.ts:178` and `agent-navigator.spec.ts:179`.
+- low: the Cancel leg uses Escape, and cells are read by position. The header assertion in `tasks.browser-spec.mjs` pins the column order.
+- low: the dialog's advisory has no role. It matches the consequence paragraph beside it; the card's `role="status"` exists because the panel updates live.
+- low: `TaskRun`'s inherited `READANSWERS` doc. It is true of its own screen.
+- low: the fixture clears `Suspended` directly. This is test-only, and the probe is fresh each run.
+- low: a `Type` 1 ("Cache") task would miss the consequence line. It is theoretical: slot A holds only types 0 and 2. Reopen if the vendor ever creates a type-1 task.
+- low: a selected row missing from the store read makes the dialog name the Id. It is theoretical: that row was already deleted elsewhere.
+- low: AC6's "before any read" ordering is `ScreenAction.Run`'s, not this story's code.
+- low: AC3 is never replayed as one continuous flow. Both halves stand on the same Task details component.
+- rejected, the fix would edit the spec: the matrix rows superseded by rulings, and the `footprint_extensions` frontmatter omissions (`PortGate`, `AsTheUser`).
+
 ## Spec Change Log
 
 - 2026-09-23, lead: the implement stage's matrix ambiguity is ruled -- the no-op is 400
@@ -398,6 +430,7 @@ Recorded (implement, `ocupilot-ci`; each applied, observed red, reverted, tree u
 - `mutation: skipped the first pair-Gate refusal in ScreenAction.Run, reloaded → red: ProhibitedRoute.TestAnAccountShortOfTheTaskPairIsRefusedTheSuspendScreenAction with the run, auditing and web-app legs, run 8004 (AC6)`
 - `mutation: dropped Task details' highlights.update call, rebuilt and redeployed → red: task-resume.browser-spec.mjs "confirmed resume marks the Suspended field" timed out on the changed field (AC3 highlight, Integration AC Task details half)`
 - `mutation: dropped Type from TaskDelete.FINGERPRINTSUBJECT, reloaded → red: TaskResume.TestTheAgentsDeleteIsRefusedOnceTheTaskMoved through an unarmed temporary subclass, run 8200 (AC4, the delete's moved subject)`
+- `mutation: added Task.CRUD/PUT to AdminPort.MUTATINGTYPES on ocupilot-ci's copy, reloaded → red: ToolWrite.TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster's predicate, surface-501 and width legs, run 8203 (DW-1473 re-point, code review)`
 
 ## Auto Run Result
 

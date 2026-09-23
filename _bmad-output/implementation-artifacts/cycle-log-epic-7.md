@@ -183,3 +183,9 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T14:43:54Z	Story 7.6	ledger_routed_planned	story=7-8-terminate-suspend-and-resume-a-process entries=1 excess=0 by=harvest ids=DW-1553
 2026-09-23T14:43:54Z	Story 7.6	adr_verifications_complete	result=none_required model=claude-opus-5-5
 2026-09-23T14:43:54Z	Story 7.6	stage_spawned	stage=qa spawn_at=2026-09-23T14:43:54Z model=sonnet agent_name=7-6-run-suspend-resume-and-delete-a-task-qa-1 cycle_iteration=1
+2026-09-23T14:46:36Z	Story 7.6	qa_complete	spawn_at=2026-09-23T14:47:00Z model=sonnet tests_added=0 mutations_demonstrated=0 first_run_failures=0 clarifications=0 closing_sections_present=true
+2026-09-23T14:46:36Z	Story 7.6	stage_spawned	stage=code-review spawn_at=2026-09-23T14:46:36Z model=opus agent_name=7-6-run-suspend-resume-and-delete-a-task-code-review-1 cycle_iteration=1
+2026-09-23T15:06:36Z	Story 7.6	ci_resolved	story=7.6 run=35876251305 result=success resolved_at=cr head=6d1bb86d jobs=8/8 note=TaskResume_new_methods_green_in_CI
+2026-09-23T15:06:36Z	Story 7.6	cr_complete	spawn_at=2026-09-23T14:46:36Z model=opus resolved=4 fixed_at_source=4 by_design=2 wontfix_theoretical=0 routed=0 escalated=0 decision_pending=0 deferred=2 dismissed=22 high=0 med=0 low=6 rows=36 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done ledger=DW-1557,DW-1558(wontfix-accepted)
+2026-09-23T15:06:36Z	Story 7.6	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=DW-1463_dropped_at_spec_gate model=claude-opus-5-5
+2026-09-23T15:06:36Z	Story 7.6	smoke_complete	method=api result=pass iterations=1 defects_caught=0 evidence=probe_task_1307_on_ocupilot-ci:suspend_200(INFO_Suspended=1),repeat_suspend_400_TOOL.ARGUMENTS,resume_200(Suspended=0),delete_200(gone) model=claude-opus-5-5

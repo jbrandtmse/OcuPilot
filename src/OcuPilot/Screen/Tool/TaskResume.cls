@@ -27,7 +27,7 @@ Parameter TOOLNAME = "tasks.schedule.resume";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.TaskScheduleList";
 
-Parameter DESCRIPTION = "Propose resuming one task the Task Manager suspended after it failed. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the task by the numeric id the task schedule reports for it, not by its name. A task that is not suspended is refused.";
+Parameter DESCRIPTION = "Propose resuming one suspended task, whether a user suspended it or the Task Manager suspended it after it failed. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the task by the numeric id the task schedule reports for it, not by its name. A task that is not suspended is refused.";
 
 /// <p>The screen's own Resume row action, which sends no argument (AD-51, AD-53).</p>
 Parameter SCREENACTIONS = "resume";

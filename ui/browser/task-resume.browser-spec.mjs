@@ -50,8 +50,8 @@ const LIST_URL = '/ocupilot/tasks/schedule?ns=HSCUSTOM';
 const DETAILS_ROUTE = 'tasks/schedule/details';
 const detailsUrl = (id) => `/ocupilot/${DETAILS_ROUTE}/${encodeURIComponent(id)}?ns=HSCUSTOM`;
 
-/** Task details' Suspended field, and its changed marking. */
-const SUSPENDED_FIELD = '.ocu-details-field';
+/** Task details' fields, and a field's changed marking. */
+const DETAILS_FIELD = '.ocu-details-field';
 const CHANGED_FIELD = '.ocu-details-field.ocu-data-table-row-changed';
 
 /** The two tools' provider-side names: the canonical dotted names with underscores (AD-42). */
@@ -282,7 +282,7 @@ function detailsField(page, label, changed = false) {
       Array.from(document.querySelectorAll(selector))
         .filter((field) => (field.querySelector('.ocu-details-field-label')?.textContent ?? '').trim() === wanted)
         .map((field) => (field.querySelector('.ocu-details-field-value')?.textContent ?? '').trim())[0] ?? null,
-    changed ? CHANGED_FIELD : SUSPENDED_FIELD,
+    changed ? CHANGED_FIELD : DETAILS_FIELD,
     label
   );
 }
@@ -297,7 +297,7 @@ async function waitForSuspendedField(page, value) {
           (field.querySelector('.ocu-details-field-value')?.textContent ?? '').trim() === wanted
       ),
     { timeout: config.navigationTimeoutMs },
-    SUSPENDED_FIELD,
+    DETAILS_FIELD,
     STRINGS.taskColumnSuspended,
     value
   );

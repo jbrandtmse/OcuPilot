@@ -1066,9 +1066,13 @@ Method TestAnInadequateFingerprintSubjectStopsTheToolListBuilding()
 /// <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> -- the absence leg goes red.
 /// Remove <code>Security.User/PUT</code> from it -- the roster leg goes red naming that tool, and
 /// <class>OcuPilot.Test.UserUpdate</class> reddens on its confirmed writes. Add
-/// <code>Task.CRUD/PATCH</code> to it -- the refusal leg goes red, because the port then admits
+/// <code>Task.CRUD/PUT</code> to it -- the refusal leg goes red, because the port then admits
 /// the call instead of answering 501, and so does the width leg, because that pair is one no
 /// registered tool reaches.</p>
+/// <p><b>The <code>Task.CRUD/PUT</code> legs are temporary.</b> They hold until the task editor
+/// (FR-53) ships a tool that issues <code>Task.CRUD/PUT</code>; that story re-points them, in the
+/// same pass, to another pair whose endpoint declares the type while a different endpoint's tool
+/// issues the suffix.</p>
 /// <p><b>The roster is held from both sides.</b> The per-tool leg holds the registry within the
 /// roster and is satisfied by a roster of any width; the width leg holds the roster to exactly the
 /// distinct pairs the registry reaches, which is the direction the parameter's own doc claims and
@@ -1191,13 +1195,14 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
         Do $$$AssertEquals(+$Get(tHttp), 501, "at 501, before the vendor endpoint is entered")
     }
 
-    ; The pair key at the surface a caller meets it. Task.CRUD declares TYPEPATCH and no tool
-    ; issues it; asking IsMutating alone would pin the predicate rather than the refusal. A task id
-    ; no task carries, so a mutation that admits the pair reaches the vendor against nothing.
+    ; The pair key at the surface a caller meets it. Task.CRUD declares TYPEPUT and no tool issues
+    ; it while WebApp.App's PUT is admitted, so a suffix-keyed gate admits this call and answers the
+    ; body refusal instead of 501; asking IsMutating alone would pin the predicate rather than the
+    ; refusal. A task id no task carries, so a mutation that admits the pair reaches nothing.
     Kill tQuery
     Set tQuery("id") = 999999999
-    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Task.CRUD", "PATCH", .tQuery, "", .tAnswer, .tHttp, .tFault)
-    Do $$$AssertStatusNotOK(tSC, "the port refuses a Task.CRUD PATCH outright")
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Task.CRUD", "PUT", .tQuery, "", .tAnswer, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "the port refuses a Task.CRUD PUT outright")
     Do $$$AssertEquals(+$Get(tHttp), 501, "at 501, before the vendor endpoint is entered")
     Do $$$AssertTrue($IsObject(tFault), "with a fault object")
     If $IsObject(tFault) {

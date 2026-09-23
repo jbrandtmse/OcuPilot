@@ -69,6 +69,8 @@ before(async () => {
   assert.equal(ready.state, 'installed', `the throwaway must be installed, not ${JSON.stringify(ready)}`);
   await requireFreeSlot(config);
   browser = await puppeteer.launch(launchOptions(config));
+  // A fresh probe every run: task ids are never reused, so its history holds only this run's rows.
+  runIris([`Do ##class(${FIXTURE}).DeleteScheduleProbeTask()`]);
   taskId = ensureProbe();
   assert.notEqual(taskId, '', 'the schedule probe task exists');
   taskName = probeName();
@@ -305,7 +307,6 @@ test('AC1, AC2, Integration AC: Suspend and Resume re-read the row through INFO,
     assert.equal(await page.$eval(FILTER_SELECTOR, (field) => field.value), taskName, 'the filter survived');
     assert.equal((await rowNamed(page, taskName)).selected, true, 'and so did the selection');
 
-    const since = historyHighWater();
     await openRowMenu(page);
     await chooseMenu(page, STRINGS.actionResume);
     await waitForProbeCell(page, SUSPENDED_CELL, STRINGS.tableStatusNo);
@@ -313,7 +314,6 @@ test('AC1, AC2, Integration AC: Suspend and Resume re-read the row through INFO,
     assert.equal(posts.length, 2, `two requests: ${JSON.stringify(posts)}`);
     assert.deepEqual(JSON.parse(posts[1].body), { action: 'resume', id: taskId });
     assert.equal(infoSuspended(), 'false', "and the task's own INFO reads it not suspended");
-    assert.ok(Number(since) > 0, `the history high-water mark reads: ${since}`);
   } finally {
     await context.close();
   }
