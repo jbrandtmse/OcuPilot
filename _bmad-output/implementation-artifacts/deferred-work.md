@@ -3746,6 +3746,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T22:46:47Z occurrence=6-3-the-x-509-ldap-kerberos-and-wallet-lists note=the security.secrets tool's required single collection criterion is described as an optional comma list with a * wildcard
 - 2026-09-17T11:34:58Z occurrence=6-7-task-details
 - 2026-09-23T02:50:47Z status=routed owner=burndown by=adjudication note=declined by 7.1's plan: 7.1 ships no read tool and adds no read criterion; the fix is a per-criterion description mechanism for derived read tools (Screen/Tool/Read.cls), moves with DW-1013
+- 2026-09-23T20:58:41Z owner=11-1-explain-this-screen by=burndown note=Epic 7 burn-down overflow: no Epic 7 story touches derived read-tool criterion descriptions; 11.1 is the first story whose agent reads a screen through its read tool and must describe its criteria truthfully (not floor-blocking, so Rule 27 charters no burn-down story)
 
 ### DW-1002: AD-8 says no elevation anywhere on the request path, while the vendor path MgmntPort reaches adds all roles temporarily inside %SYS.REST and %REST.API
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -3813,6 +3814,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T20:03:33Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=harvest note=cluster with DW-1001: one descriptor-declared description mechanism for derived read tools
 - 2026-09-16T20:44:36Z occurrence=6-2-the-roles-resources-and-services-lists
 - 2026-09-23T02:50:47Z status=routed owner=burndown by=adjudication note=declined by 7.1's plan: same mechanism as DW-1001 (descriptor-declared field meaning for derived read tools); moves with it
+- 2026-09-23T20:58:41Z owner=11-1-explain-this-screen by=burndown note=Epic 7 burn-down overflow: moves with DW-1001 (descriptor-declared field meaning for derived read tools)
 
 ### DW-1014: An empty AuthenticationMethods cell reads (none) on 7 of 15 stock services, which can read as no authentication where authentication does not apply
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: low | fix-risk: low | footprint: in-story
@@ -4102,6 +4104,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T16:02:00Z status=escalated owner=burndown by=cr note=the guard is the right refusal; what is undecided is the row it now leaves: accept the growth, purge it from a privileged path, or bound it
 - 2026-09-18T19:44:55Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=merge_gate note=ForgetTask leaks a vendor async-task row on every unprivileged async read; fix in AdminPort
 - 2026-09-23T02:50:47Z status=routed owner=burndown by=adjudication note=declined by 7.1's plan: the fix rewrites AdminPort.ForgetTask, a method 7.1 did not add in a shared-append file contended with Epic 8; residual unchanged
+- 2026-09-23T20:58:41Z owner=16-5-background-tasks by=burndown note=Epic 7 burn-down overflow: vendor async-task rows are exactly what 16.5's Background tasks screen lists and purges; the fix rewrites AdminPort.ForgetTask, shared-append and contended with Epic 8
 
 ### DW-1137: AdminPort.ASYNCTASKPAIR is a literal, so on an instance whose IRISLOCALDATA carries a non-default resource the guard denies every caller and ForgetTask silently stops deleting
 - source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: high | footprint: in-epic
@@ -6034,6 +6037,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-7-1-enable-disable-and-delete-a-web-application.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: OcuPilot.Api.ScreenAction gates and writes with no claim around it while AD-34's lock is the proposal store's; confirm a proposal on /csp/x while pressing its row's Disable and the later write wins. Bounded: both callers run every gate and each sends a complete body over its own fresh read
 - 2026-09-23T02:25:57Z status=routed owner=burndown by=harvest note=take AD-34's per-target lock in the screen caller too, or record why ordering by the vendor is enough
+- 2026-09-23T20:58:41Z owner=range-end-cleanup by=burndown note=Epic 7 burn-down overflow: the per-target lock belongs to the screen caller in Operation/ScreenAction, which Epic 8's AD-55 Save route also reaches; one fix after the Epic 7/8 merge covers both callers
 
 ### DW-1498: The client explains the serving-path refusal only for Install.Roster's three applications, while the instance also protects the applications install recorded for a probe profile
 - source: _bmad-output/implementation-artifacts/spec-7-1-enable-disable-and-delete-a-web-application.md | severity: low | fix-risk: low | footprint: in-story
@@ -6081,6 +6085,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: CHANGEPWD clears ChangePassword (measured on ocupilot-ci); the screen sends flag, password, flag, but two agent proposals are confirmed in whatever order the user chooses. AD-56 (ii) amended to require the flag after the password
 - 2026-09-23T06:45:52Z status=routed owner=burndown by=harvest note=make the password tool re-apply a flag set before it, or refuse a flag proposal while a password proposal on the same target is live
+- 2026-09-23T20:58:41Z owner=9-1-the-user-editor by=burndown note=Epic 7 burn-down overflow: the user editor owns the password and change-on-login pair and is where the agent path's ordering (flag after password, AD-56 as amended) is settled
 
 ### DW-1517: AC4 names %Admin_Secure as a role to add, but on this build it is a resource and no role carries that name, so the add answers 400 unknown role
 - source: _bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: low | fix-risk: low | footprint: in-story
