@@ -5,6 +5,7 @@ created: '2026-09-23'
 status: 'done'
 review_loop_iteration: 0
 baseline_revision: '97d3bad240a2fd996a7559833bc4c1799e970770'
+baseline_commit: '97d3bad240a2fd996a7559833bc4c1799e970770'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
@@ -255,7 +256,7 @@ deferred: []
 
 **Acceptance Criteria:**
 
-- **AC1.** Given the Users list's Create, when the create form renders, then it captures name, password, full name, expiry, startup namespace, startup routine and roles, in that order, under the `form-page` contract.
+- **AC1.** Given the Users list's Create, when the create form renders, then it captures name, full name, password, expiry, startup namespace, startup routine and roles, in that order (the classic page's), under the `form-page` contract.
 - **AC2.** Given the password, when it is entered and saved, then:
   - it is sent once, in a masked field that is never pre-filled or echoed;
   - after the save the field is empty and captioned;
