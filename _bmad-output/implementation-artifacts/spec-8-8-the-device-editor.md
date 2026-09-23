@@ -2,7 +2,8 @@
 title: 'Story 8.8: The device editor'
 type: 'feature'
 created: '2026-09-23'
-status: 'ready-for-dev'
+status: 'blocked'
+baseline_revision: 'd3c75c3b598b9c31982c853ec86441a7a6ad100f'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -10,7 +11,17 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-8-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-8-5-x-509-import-edit-and-delete.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The agent's osmgmt.devices.update cannot clear an alias or prompt the device holds: the mint's
+      merge refuses an empty value against the fresh read's number. The screen's edit clears either.
+    evidence: |-
+      Kernel/Proposal/Mint.cls Merge types a scalar by the fresh read (SettableType, Representable);
+      GET answers a set Alias/Prompt as a number. DeviceSave.Update reads them as text first. Mint.cls
+      is never-edit for this story.
+    location: >-
+      src/OcuPilot/Kernel/Proposal/Mint.cls
+    severity: low
 ---
 
 <intent-contract>
@@ -360,12 +371,44 @@ Stateful checks run on slot B's throwaway `ocupilot-b-ci` (web 52777, super 1976
 | AC6 | page spec dirty-leave leg | `change` not setting `FormDirty` |
 | Verified delete | `DeviceDelete` not-applied leg | `Device.Standard/DELETE` removed from `VERIFIEDDELETES` |
 
+Observed. Each ObjectScript mutation was loaded into `ocupilot-b-ci` from a scratch copy with `cbk-d` and reverted by reloading the working file; each client mutation was reverted from a byte copy, and `git diff` was empty afterwards.
+
+- mutation: the `Prompt` row dropped from `FieldLists` `Device.Standard` → `DerivedFields` red on both regeneration tests (run 259), and `field-lists.mjs --check` refuses both device entries (AC1)
+- mutation: the Alias block moved above Description in the page template → `device-form.page.spec.ts` AC1 red (AC1)
+- mutation: `publish` dropped from the store's `save()` → `device-form.store.spec.ts` create and edit legs red (AC2); not observed on the browser list leg, which reads the list on arrival
+- mutation: the `^` test dropped from `DeviceRules.Writable` → `DeviceCreate.TestEveryFieldRuleRefusesOnBothCallers` red on every `^` case (run 243) and `DeviceWire.TestACaretIsRefusedAndTheConfigurationFileStaysValid` red, `Config.CPF.Validate` failing (run 244); the file validated again after cleanup (AC3)
+- mutation: the type-value rule disabled → `DeviceCreate` red on `ZZZ` and `trm` (run 245); the alias-taken rule disabled → red on the duplicate (run 246); a fraction admitted by `WholeNumber` → red on `1.5` (run 247) (AD-55 rules)
+- mutation: `DeviceSave.Update` ignoring a fresh read that finds no device → `DeviceUpdate.TestADeletedDeviceIsRefusedAndNotRecreated` red (run 248) and `DeviceWire`'s envelope and upsert legs red (run 249) (AC4)
+- mutation: `%Admin_Manage` dropped from `DeviceForm`'s privileges → `DeviceWire.TestACallerWithoutTheManageResourceIsRefusedOnEveryRoute` red (run 250) (AC5); the browser deep-link leg was not mutated
+- mutation: the store's `change` clearing `FormDirty` → `device-form.page.spec.ts` AC6 red (AC6)
+- mutation: `Device.Standard/DELETE` removed from `VERIFIEDDELETES` → `DeviceDelete.TestAReportedDeleteThatLeftTheDeviceIsNotApplied` red (run 251) (verified delete)
+- mutation: `Mint.Mint`'s refusal of an absent target removed, in the container only → `DeviceDelete.TestAnUnknownNameIsRefusedAtTheMint` red (run 252) (the delete's unknown-name refusal)
+- mutation: `DeviceRules.Shape` a no-op → `DeviceCreate.TestACreateSendsOneBodyFromBothCallers` red on the JSON types (run 253) (value shapes)
+- mutation: `AdminPort.PROPERTYFAULTS` emptied → `DeviceCreate.TestUnparsableOpenParametersAreRefusedOnTheirField` red (run 254) (open parameters row)
+- mutation: `DeviceDelete.FINGERPRINTSUBJECT` narrowed to `PhysicalDevice` → `TestADeviceChangedSinceTheMintRefusesTheConfirm` red (run 255)
+- mutation: `DeviceSave.Update` validating the whole body → `DeviceUpdate.TestTheRulesReadOnlyTheFieldsAnEditChanges` red (run 256); composing instead of `Mint.Merge` → `TestAnEditSendsTheCompleteSetOnBothCallers` red (run 257) (Always: changed fields only; complete set)
+- mutation: `DeviceSave.Gate` skipping the write pair → `DeviceWire.TestTheFormsPairsAloneReadButCannotSave` red, the Save answering 500 (run 258) (AD-29)
+- mutation (one rebuilt, redeployed bundle): the route replacement dropped and `change` clearing `FormDirty` → browser AC2 and AC6 red, AC1 and AC5 green; the restored bundle 6 of 6 green
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap: AD-8 against Tasks (`%DB_IRISSYS:WRITE`); footprint `src/OcuPilot/Test/WireSecurityRead.cls`, `src/OcuPilot/Screen/Area.cls`
 
 For the lead's ruling:
 
-- The screen's device delete: options (a), (b) and (c) under Design Notes. (a) is recommended.
-- The Needs-the-lead files in the Code Map.
+- **What the instance requires.** A real principal holding exactly `DeviceForm`'s pairs (`%Admin_Manage:USE`, `%DB_IRISSYS:READ`) is refused by `Config.Devices` on every write (`<PROTECT>` on `^SYS("CONFIG",...)`, a 500).
+- **Why Tasks cannot be followed in this footprint.** Tasks says to add the refused pair to both descriptors (AD-29). `Screen.Gate.EvaluatePairs` requires the area's whole union, and `Registry.AreaCoverageProblem` makes the area declare every screen pair. So the pair would gate the whole OS management rail, and the read-only Devices list, on `%DB_IRISSYS:WRITE`, a self-escalation primitive (Conventions, IRIS security objects). It would also change principals and assertions in Epic 7-modified `Test/WireSecurityRead.cls` (orchestrator roster rule: HALT).
+- **Why the shipped alternative needs a ruling.** The three device tools declare `WRITERESOURCE "%DB_IRISSYS"` / `WRITE`, and `DeviceSave.Gate` refuses a Save without it with 403 `AUTH.NOPRIVILEGE` naming the pair, before anything is sent. The descriptors keep the two read pairs. Every other write tool on this branch (21 of them) declares a write pair already inside its screen's set. The device tools are the first outside it, against AD-8's amended Rule: "a write tool's pair set is the screen's own declared set".
+- **Recommended: (1).** Keep the shipped design. Amend AD-8 (Rule 20): a write tool may add one pair beyond its screen's set when the vendor class writes a database the read does not, and a caller without it is refused naming the pair before any port call. Then amend the Tasks line "add any pair the instance still refuses to both descriptors' privileges" in this spec. The `DeviceWire` role then holds `DeviceForm`'s pairs plus the tools' pair. Re-dispatch implement (status `in-progress`) for the review layers and finalize; the code needs no change.
+- **(2)** Follow Tasks literally: the area, both descriptors and the `WireSecurityRead` principals (a footprint ruling from the orchestrator), with the rail denied to every operator without IRISSYS write.
+- **Not done in this pass:** the review layers (verification-gap, intent-alignment) and the finalize commit. The tree holds the uncommitted implementation. Also recorded: the handoff once sent three test-runner calls in one message. The fresh-throwaway sweep supersedes those runs.
+
+footprint_extensions: contended `src/OcuPilot/Kernel/Proposal/Prohibited.cls`, `src/OcuPilot/Api/Router.cls`, `src/OcuPilot/Screen/Tool/Classification.cls` (tail append), `src/OcuPilot/Screen/Tool/ToolFields.cls` (regenerated), `src/OcuPilot/Test/{SurfaceCoverage,EndpointCoverage,ReadTool,ToolRoundTrip,PortFixture,Prohibited,Descriptor}.cls`, `ui/src/app/shell/screen-outlet.ts` (one entry, one import); shared-append `src/OcuPilot/Port/AdminPort.cls` (three list lines, `PROPERTYFAULTS` and its method, and one call line in `Fail`), `ui/src/app/core/strings.ts`, EXPERIENCE.md Fixed strings rows 417-420; in Epic 7's diff, roster rule: `src/OcuPilot/Test/Wire.cls` and `src/OcuPilot/Test/WireSecurityRead.cls` (the form route in the os-management rosters), `ui/tools/navigation.test.mjs` (one route), `ui/src/app/core/screens.generated.ts` (regenerated); outside both: `ui/src/app/app.ts` (one injection pair, one reset), `scripts/ci-throwaway.sh` (arming roster), `src/OcuPilot/Test/Navigation.cls` (the os-management payload roster).
+
+### This pass
+
+- Server: `DeviceRules`, `DeviceSave`, the three tools, `DeviceForm`, `DeviceList`'s Create, the `DEVICE.*` block, the port lists, `PROPERTYFAULTS` (vendor error 644 to `DEVICE.OPENPARAMETERS.SHAPE`) and the prohibited-set `device` type. Client: the store, the page, the Create handler and the strings. Tests: `DeviceCreate`, `DeviceUpdate`, `DeviceDelete`, `DeviceWire`, the helpers, two component specs and the browser spec.
+- Initial bundle: 1,248,402 B (`main` 1,119,453 plus `styles` 128,949), under the 1,261,000 B warning; no re-base.
+- Found by the sweep: `Test/Navigation.cls`'s os-management payload roster now carries the device editor.
+- Verification, after the last edit on a throwaway brought up fresh: the full ObjectScript sweep, 204 classes and 1804 tests, 0 failed, the totals read back from `%UnitTest_Result` (1804 passed, 0 failed, 204 classes); `npm run build` and `npm test` green (1326 tools tests, 918 component tests); `scripts/smoke.sh` 47 of 47; the two device browser specs 6 of 6; `iris.cpf` validates and names no probe device.
