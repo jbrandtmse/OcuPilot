@@ -15,9 +15,10 @@ Class OcuPilot.Test.RefusalCopy Extends %UnitTest.TestCase
 /// <p>AD-53: the sentence the kernel returns for <code>PROHIBITED.SERVINGPATH</code> is byte for
 /// byte the one the client draws on the row it refuses, and it names no caller -- the same
 /// predicate refuses the agent and the screen alike.</p>
-/// <p>Mutation (Rule 19): change one word of
-/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.SERVINGPATHREASON</parameter> and recompile --
-/// this goes red naming both spellings.</p>
+/// <p>Mutation (Rule 19): have <method>OcuPilot.Kernel.Proposal.Prohibited.ReasonFor</method>
+/// answer a literal for the serving-path code instead of
+/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.SERVINGPATHREASON</parameter>, with one word
+/// changed, and recompile -- this goes red naming both spellings.</p>
 Method TestTheServingPathRefusalIsOneSentenceOnBothSurfaces()
 {
     Set tServer = ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor($Parameter("OcuPilot.Kernel.Proposal.Prohibited", "SERVINGPATH"))

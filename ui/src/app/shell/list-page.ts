@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal, viewChild } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 
 import { ApiService } from '../core/api';
@@ -102,6 +102,8 @@ export class ListPage {
   private readonly screenActions = inject(ScreenActionHandler);
 
   protected readonly list: ListView | null;
+
+  private readonly table = viewChild(DataTable);
 
   /**
    * The warning triangle DESIGN.md's banner carries at the left, written as its escape so no
@@ -226,8 +228,16 @@ export class ListPage {
     return this.screenActions.pending();
   }
 
-  /** The typed name matched: the handler sends the write it was standing in front of. */
+  /**
+   * The typed name matched: the handler sends the write it was standing in front of.
+   *
+   * Focus goes to the grid first, before the dialog closes, so it does not return to the opener --
+   * a command-bar button, say, which outlives the row the write is about to remove. When the re-read
+   * drops the row, the table's reconcile moves the active row to the one that took its place, or
+   * hands focus to the empty state or the filter field when none is left (DW-18).
+   */
   protected onConfirmDestructive(): void {
+    this.table()?.focusGrid();
     this.screenActions.confirmPending();
   }
 

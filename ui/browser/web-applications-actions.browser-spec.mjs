@@ -3,10 +3,10 @@
  * declared row actions, end to end through `POST /screens/webapp.list/action` (AD-5, AD-53).
  *
  * What it pins: enable and disable from the row menu and from the command bar, with the row
- * updating in place and the filter and selection surviving; the typed-name delete, including the
- * mismatch message and the button that stays `aria-disabled` until the name matches exactly; and
- * the self-protection refusal on one of OcuPilot's own applications, listed and arrow-reachable
- * rather than Material-disabled.
+ * updating in place, marked changed, and the sort, filter and selection surviving; the typed-name
+ * delete, including the mismatch message, the button that stays `aria-disabled` until the name
+ * matches exactly, and where focus lands once the row is gone; and the self-protection refusal on
+ * one of OcuPilot's own applications, listed and arrow-reachable rather than Material-disabled.
  *
  * **It creates and deletes a web application**, so it refuses the live container. `before` makes
  * the probe application and `after` removes it whether or not a test failed.
@@ -168,6 +168,37 @@ async function selectOnly(page, name) {
   await clickRowCentre(page, { text: name });
 }
 
+/** The command bar's sort trigger and its menu entries. */
+const SORT_TRIGGER = '.ocu-command-bar-sort-trigger';
+const SORT_ITEM = '.ocu-command-bar-sort-item';
+
+/** Open the command bar's sort menu and choose the entry whose label is `label`. */
+async function chooseSort(page, label) {
+  await page.click(SORT_TRIGGER);
+  await page.waitForSelector(SORT_ITEM, { timeout: config.navigationTimeoutMs });
+  const chosen = await page.evaluate(
+    (selector, wanted) => {
+      const item = Array.from(document.querySelectorAll(selector)).find(
+        (candidate) => candidate.textContent.trim() === wanted
+      );
+      if (item === undefined) {
+        return Array.from(document.querySelectorAll(selector)).map((candidate) => candidate.textContent.trim());
+      }
+      item.click();
+      return null;
+    },
+    SORT_ITEM,
+    label
+  );
+  assert.equal(chosen, null, `the sort menu offers ${JSON.stringify(label)}; it offered ${JSON.stringify(chosen)}`);
+  await page.waitForFunction((selector) => document.querySelector(selector) === null, {}, SORT_ITEM);
+}
+
+/** Every column header's `aria-sort`, which is the sort in force as the table announces it. */
+function headerSorts(page) {
+  return page.$$eval('[role="columnheader"]', (cells) => cells.map((cell) => cell.getAttribute('aria-sort')));
+}
+
 /** Open the selected row's overflow menu and describe every entry. */
 async function openRowMenu(page) {
   await page.click('.ocu-data-table-trigger');
@@ -206,6 +237,11 @@ test('AC1: disable and enable run from the row menu and the command bar, and the
   try {
     await selectOnly(page, PROBE);
     assert.equal(await enabledCell(page, PROBE), STRINGS.tableStatusYes, 'the probe application starts enabled');
+    // A sort other than the declared default (Name ascending), so "preserved" cannot be satisfied
+    // by a re-read that resets it.
+    await chooseSort(page, STRINGS.sortDirectionDescending);
+    const sortBefore = await headerSorts(page);
+    assert.ok(sortBefore.includes('descending'), `the chosen sort is in force: ${JSON.stringify(sortBefore)}`);
 
     const entries = await openRowMenu(page);
     assert.deepEqual(
@@ -238,14 +274,35 @@ test('AC1: disable and enable run from the row menu and the command bar, and the
       NAME_TEXT
     );
     assert.equal(probeEnabled(), '0', 'the instance itself reports the application disabled');
-    // In place: the filter that narrowed to this row is still narrowing to it, and it is still
-    // the selected row -- which is what "re-fetches in place" means (AD-14).
+    // In place: the filter that narrowed to this row is still narrowing to it, it is still the
+    // selected row, and the sort chosen above is still the one in force -- which is what
+    // "re-fetches in place" means (AD-14).
     assert.equal(await page.$eval(FILTER_SELECTOR, (field) => field.value), PROBE, 'the filter survived the write');
     assert.equal(
       await page.$$eval(ROW_SELECTOR, (rows) => rows.filter((row) => row.getAttribute('aria-selected') === 'true').length),
       1,
       'and the row is still selected'
     );
+    assert.deepEqual(await headerSorts(page), sortBefore, 'and the sort survived the write');
+    // Highlighted: the change framework marks the written row and tags its name cell "Changed".
+    const marked = await page.evaluate(
+      (selector, wanted, textSelector) => {
+        const row = Array.from(document.querySelectorAll(selector)).find((candidate) => {
+          const cell = candidate.querySelector('[role="gridcell"]');
+          const text = cell.querySelector(textSelector);
+          return (text === null ? cell : text).textContent.trim() === wanted;
+        });
+        if (row === undefined) return null;
+        return {
+          changed: row.classList.contains('ocu-data-table-row-changed'),
+          tag: row.querySelector('[role="gridcell"] .ocu-data-table-changed-tag')?.textContent.trim() ?? '',
+        };
+      },
+      ROW_SELECTOR,
+      PROBE,
+      NAME_TEXT
+    );
+    assert.deepEqual(marked, { changed: true, tag: STRINGS.tableChangedTag }, 'and the written row is marked changed');
 
     // Enable, from the command bar this time: the same handler, the other surface.
     await page.evaluate((label) => {
@@ -267,6 +324,7 @@ test('AC1: disable and enable run from the row menu and the command bar, and the
       NAME_TEXT
     );
     assert.equal(probeEnabled(), '1', 'and the instance reports it enabled again');
+    assert.deepEqual(await headerSorts(page), sortBefore, 'the sort survived the second write too');
     assert.equal(writes.length, 2, 'exactly one request per action, both POSTs');
     assert.deepEqual([...new Set(writes)], ['POST']);
   } finally {
@@ -345,6 +403,18 @@ test('AC2: the delete dialog asks for the name, and only an exact match releases
     );
     assert.equal(writes.length, 1, 'exactly one request, sent only once the name matched');
     assert.equal(probeEnabled(), 'gone', 'and the instance no longer holds the application');
+    // Where focus lands. The confirm hands focus to the grid, so the re-read that drops the row
+    // reconciles a focused grid (DW-18). The filter narrowed the list to the probe alone, so no row
+    // takes its place, and the list still holds other applications, so there is no empty state
+    // either: the table's rule for that case gives focus to the command bar's filter field.
+    await page
+      .waitForFunction((selector) => document.activeElement?.matches(selector) === true, { timeout: 5000 }, FILTER_SELECTOR)
+      .catch(() => {});
+    const focusedAfter = await page.evaluate(() => {
+      const element = document.activeElement;
+      return element === null ? 'nothing' : `${element.tagName.toLowerCase()}#${element.id}`;
+    });
+    assert.equal(focusedAfter, `input${FILTER_SELECTOR}`, 'with no row left in the filtered view, focus is on the filter field');
   } finally {
     // Every later test in this file needs the probe application back.
     createProbe();

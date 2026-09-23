@@ -2,10 +2,10 @@
 title: 'Story 7.1: Enable, disable and delete a web application'
 type: 'feature'
 created: '2026-09-22'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'ed1b4c4cf150a5ee14e703823b9a558b737840e5'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-7-context.md'
@@ -317,22 +317,22 @@ converse) and carries no OcuPilot marker beside the vendor's own `%Security` eve
 
 **Open items on re-dispatch (2026-09-23, lead):**
 
-- [ ] [CI] `browser`, run 35802812010 on 1fd99da: `ui/browser/data-table.browser-spec.mjs` `not ok 42`
+- [x] [CI] `browser`, run 35802812010 on 1fd99da: `ui/browser/data-table.browser-spec.mjs` `not ok 42`
   (AC2, `:170`), `not ok 43` (AC3, `:286`) and `not ok 48` (row menu on the last visible row,
   `:553`) each throw `Cannot read properties of null (reading 'getBoundingClientRect')` -- in
   `:170`'s evaluate the null is the row's `.ocu-data-table-trigger` (inference: the harness declares
   row actions and registers no handler, so DW-389's rule now draws no trigger). Fix the cause, never
   the assertion; the three specs pin shipped Story 2.4 behavior.
-- [ ] [CI] `browser`, same run: `ui/browser/gate.browser-spec.mjs` `not ok 71` (`:411`), "the row
+- [x] [CI] `browser`, same run: `ui/browser/gate.browser-spec.mjs` `not ok 71` (`:411`), "the row
   menu offers "enable"", `false !== true` at `:446`. Confirm or refute that it shares the cause
   above, and fix it at the source.
-- [ ] [CI] Run the four regressed spec files plus the story's own browser specs locally against a
+- [x] [CI] Run the four regressed spec files plus the story's own browser specs locally against a
   **rebuilt and redeployed** bundle on `ocupilot-ci` before `dev_complete`, and record the result.
-- [ ] [CI] `instance`, same run: `OcuPilot.Test.Installer.TestASecondInstallGrantsNothingAndWritesNoSecondMarker`
+- [x] [CI] `instance`, same run: `OcuPilot.Test.Installer.TestASecondInstallGrantsNothingAndWritesNoSecondMarker`
   failed three asserts on the single grant marker (not attributed: this story does not touch
   `Installer.cls`). Run the class once in the full sweep; if it recurs, diagnose it; if it does not,
   record the non-recurrence in `## Auto Run Result`. Never call it a flake without evidence.
-- [ ] Finish the halted pass: run the two review layers, triage, finalize.
+- [x] Finish the halted pass: run the two review layers, triage, finalize.
 
 ## Spec Change Log
 
@@ -353,6 +353,37 @@ converse) and carries no OcuPilot marker beside the vendor's own `%Security` eve
   `status` reset to `in-progress`. CI run 35802812010 was red; its items are appended above.
 
 ## Review Triage Log
+
+### 2026-09-22 — Review pass
+
+- verdicts: 26 findings — high 1, medium 9, low 7, false 9, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` P1 DW-389's "no handler, not drawn" has no negative test on any surface (every fixture registers its actions) — fixed: one negative case per surface spec, each beside a registered action on the same screen.
+  - `[high]` `[patch]` P2 AC7 unmet: nothing mints and confirms `webapp.list.delete`; `Smoke` drives only the screen's enable/disable — fixed: `Smoke.CheckAgentDelete` (`agentdelete`) mints through the tool, checks the card row destructive, confirms, observes the fixture gone and restores it through `Fixture.Create`; smoke 49/49 twice on `ocupilot-ci`.
+  - `[medium]` `[patch]` P3 the command bar's self-protection reason on a protected selected row is untested — fixed: the mirror case, both a protected and an ordinary row.
+  - `[medium]` `[patch]` P4 the screen route's `AUTH.NOPRIVILEGE` refusal (with `failedPair`) is untested — fixed: `TestAnAccountShortOfTheScreenPairIsRefusedTheRowActionNamingIt`; it exposed that `ScreenAction.Run` read before checking pairs (403 `PORT.ACCESSDENIED`, no pair named), so the pair check now precedes the fresh read, as at a confirm.
+  - `[medium]` `[patch]` P5 `TestTheAgentsDeleteOfOcuPilotsOwnApplicationIsRefusedOverTheWire` skips both legs silently when `SeedDelete` answers `""` — fixed: the key is asserted non-empty.
+  - `[low]` `[patch]` P6 `RefusalCopy`'s documented mutation changes both sides of its comparison and cannot redden it — fixed: the doc names `ReasonFor` returning a literal, observed red.
+  - `[medium]` `[patch]` P7 the instance-side `Registry.ActionProblem` has no test once the fixtures conform — fixed: `TestTheActionValidatorRefusesWhatNoSurfaceCanRun`.
+  - `[low]` `[patch]` P8 AC1, AC2, AC3's three surfaces, AC4's canonical spelling, AC5 and AC7 carry no `mutation:` line in `## Verification` — fixed: lines recorded in `## Verification`.
+  - `[medium]` `[patch]` P9 AC1's sort preservation and row highlight are asserted nowhere (only filter and selection) — fixed: AC1 sets a descending sort and asserts it survives both writes, and asserts the row's changed mark; scroll not asserted (one row).
+  - `[low]` `[patch]` P10 `Smoke.CheckScreenAction` was inserted between `CheckAgentWrite`'s doc comment and its method — fixed.
+  - `[low]` `[patch]` P11 a doc line in `ProhibitedRoute.cls` is duplicated and glued onto itself ("...DW-1208/// <p>Story 5.8's residual...") — fixed.
+  - `[low]` `[reject]` the spec's Verification says "three fixture descriptors" and lists four — the fix edits this build's spec.
+  - `[false]` `[reject]` the DW-1099 sweep in `Test/Descriptor.cls` is unrelated scope — it is a Tasks item of this spec.
+  - `[false]` `[reject]` the client's `selfProtectionReason` is a second predicate deciding what may be deleted — it decides only what a surface draws as non-selectable (the matrix's own word); its paths are pinned to the install roster, a subset of what `ServesOcuPilot` protects, and the route refuses identically.
+  - `[low]` `[patch]` P12 `ScreenAction.Handle`'s comment says the canonical key "takes one lock"; no lock is taken — fixed.
+  - `[false]` `[reject]` the screen caller runs no AD-34 transition — the Always constraint's content is that the set is evaluated at the write whatever the caller, which `Run` does with nothing between gate and write; a screen action has no token to claim, and the residual race is frontmatter `deferred` item 1.
+  - `[false]` `[reject]` `webAppListEmptyAgent` and its EXPERIENCE.md row are new copy — ratified by the orchestrator (Spec Change Log, 2026-09-23).
+  - `[false]` `[reject]` `AdminPort` changes beyond the two roster appends (`ImplementsRead`'s `$Case`, a count in a comment) — forced on the story's own path (501 without it); Epic 8's pushed `AdminPort` touches neither line; listed under `footprint_extensions`.
+  - `[false]` `[reject]` the shared `delete` label relabels other screens — it replaces a raw id with published copy; Switches keeps its own words (`screen-actions.test.mjs`).
+  - `[false]` `[reject]` fixture descriptors lost their prose `selfProtection` — required by the closed vocabulary; test fixtures only.
+  - `[false]` `[reject]` `ProhibitedByEffect`'s serving-path case moved 409 to 403 — the consequence AD-53's arm states.
+  - `[medium]` `[patch]` P13 matrix row 3: nothing moves focus to the next row after a delete (the dialog returns focus to an opener that is gone) — fixed: `ListPage` hands focus to the grid before a confirmed delete closes the dialog, and `dialog.ts` leaves focus where its parent placed it; pinned in `list-page.spec.ts` and the browser AC2 (the filtered view empties, so focus lands on the filter field by the table's own rule).
+  - `[medium]` `[patch]` P14 matrix row 7: no test confirms a delete whose target was removed after the proposal — fixed: `TestADeleteWhoseTargetWasRemovedIsRefusedAndWritesNothing`.
+  - `[false]` `[reject]` matrix row 8 relies on generic tests — `GuardedClaimAndClose` reads no tool, so `ProposalRace` is the covering test for every tool's double confirm.
+  - `[low]` `[patch]` duplicate of P11 (intent layer) — fixed with P11.
+  - `[medium]` `[patch]` P15 AC4's "canonical form at mint" is not exercised: the agent legs seed a row rather than mint one — fixed: `TestTheAgentsDeleteMintedUnderAnotherSpellingIsStoredCanonicalAndRefused`.
 
 ## Design Notes
 
@@ -450,6 +481,37 @@ mutation was reverted and the run went green again; the tree is byte-identical t
   `Screen/Refreshing`, `Screen/Multi`) declared free text and were refused at registration by
   `Registry.ActionProblem` the moment it shipped, which is the validator answering over real
   declarations rather than over a case written for it.
+- mutation: table harness registers no handler for its declared `disable` -> `data-table.browser-spec.mjs`
+  AC2, AC3 and the last-visible-row menu test go red on the rebuilt harness (the CI failures,
+  reproduced locally); registering it -> 9 of 9 green.
+- mutation: `definition-actions.ts` stops registering `enable` -> `gate.browser-spec.mjs` AC6 red on a
+  rebuilt and redeployed bundle ("the row menu offers "Enable""); reverted, file hash identical,
+  rebuilt and redeployed -> 5 of 5 green.
+- mutation (AC1): drop `markChanged` from `RefreshService.onBusEvent`, rebuilt and redeployed ->
+  `web-applications-actions.browser-spec.mjs` AC1 red ("the written row is marked changed").
+- mutation (AC2): `TypedNameDialog.matches` compares through `toLowerCase()` ->
+  `typed-name-dialog.spec.ts` "keeps the destructive button aria-disabled ... until the name
+  matches exactly" red. Focus after the delete: drop `(focusFilter)` from `ListPage`'s template,
+  rebuilt and redeployed -> browser AC2 red; drop `focusGrid()` from `onConfirmDestructive` ->
+  `list-page.spec.ts` "a confirmed delete leaves focus on the row that took its place" red.
+- mutation (AC3, row menu): `DataTable.menuItems`' reason forced to `''` -> `data-table.spec.ts`
+  "AD-53: a self-protected row's menu entry stays listed ..." red. Command bar: its
+  `selfProtectionReason(...)` answers `''` -> `command-bar.spec.ts` "AD-53: with a self-protected
+  row selected ..." red. Route, short a pair: delete the pair check ahead of the fresh read in
+  `ScreenAction.Run` -> `ProhibitedRoute.TestAnAccountShortOfTheScreenPairIsRefusedTheRowActionNamingIt` red.
+- mutation (AC4): `Mint.Mint` concatenates the supplied id instead of calling `EntityRef.Key` ->
+  `ProhibitedRoute.TestTheAgentsDeleteMintedUnderAnotherSpellingIsStoredCanonicalAndRefused` red
+  on the stored-ref asserts.
+- mutation (AC5): drop the `actions.has(...)` filter on each surface in turn -> the matching
+  "DW-389: a declared row action with no registered handler ..." case in `command-bar.spec.ts`,
+  `command-box.spec.ts` and `data-table.spec.ts` red, one each.
+- mutation (AC7): `WebAppDelete.DESTRUCTIVE` = 0 -> smoke `agentdelete` fail; drop the
+  `Fixture.Create` restore -> smoke `agentdelete` fail ("/csp/myapp was not put back").
+- mutation (matrix row 7): `Confirm.FingerprintMatches` matches on a failed re-read ->
+  `ProhibitedRoute.TestADeleteWhoseTargetWasRemovedIsRefusedAndWritesNothing` red.
+- mutation (the instance validator): drop `ActionProblem`'s duplicate-id refusal ->
+  `Descriptor.TestTheActionValidatorRefusesWhatNoSurfaceCanRun` red; `Prohibited.ReasonFor`
+  returns a literal for `SERVINGPATH` -> `RefusalCopy` red.
 - `WebApp.App/DELETE`: the port answered 501 `PORT.NOTIMPLEMENTED` until
   `AdminPort.ImplementsRead` learnt the vendor's `RunDelete` -- observed red on the wire, not
   reasoned about.
@@ -484,45 +546,52 @@ mutation was reverted and the run went green again; the tree is byte-identical t
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap -- the spec's `rowActions` task and its "no new user-facing string"
-constraint are jointly unsatisfiable. Declaring row actions makes `WebAppList` write-capable, and
-`Screen.Registry.ReadProblem` refuses a write-capable descriptor whose `table.emptyAgentKey` is
-empty; that key resolves to a string, and no "Or ask the agent: ..." phrase was ever published for
-this screen (`EXPERIENCE.md:316` publishes only its read-only second line). **Recommended
-amendment, awaiting the lead's ratification and applied in the working tree only so the suites
-could run:** `EXPERIENCE.md:397` gains a Fixed-strings row reading "enable a web application and
-give it a resource", and `strings.ts:1332` gains `webAppListEmptyAgent` for it. The precedent is
-`agentDefinitionListEmptyAgent`, published in its own screen's row at `EXPERIENCE.md:334`. Ratify
-or reword the phrase, then re-open; adding the row shifted the later `EXPERIENCE.md:n` anchors in
-`strings.ts` by one.
+Status: done
+Blocking condition: none
 
-What this pass changed. The executed write moved into `Kernel/Proposal/Operation.cls`, reached by
-two callers: `Kernel/Proposal/Confirm` (the agent's, keeping the proposal, fingerprint, ledger row
-and marker) and `Api/ScreenAction.cls` behind `POST /screens/:screen/action` (the screen's).
-`Prohibited.WebApplication`'s serving-path arm is now stated over the effect rather than over the
-diff, so a bodyless delete cannot pass it, and its reason is the published sentence.
-`Screen/Tool/WebAppDelete` ships as the AD-51 action write; `WebAppList` declares
-`enable`/`disable`/`delete` with `selfProtection: serves-ocupilot`, validated against one closed
-vocabulary by `Registry` and `screen-mirror.mjs`. On the client, `shell/screen-action-handler.ts`
-registers every declared row action generically, `shell/typed-name-dialog.ts` is the destructive
-confirm, and all three surfaces draw a row action only while a handler is registered (DW-389).
-`AdminPort` gained `WebApp.App/DELETE` in both rosters and a `DELETE` arm in `ImplementsRead`,
-without which the vendor's own `RunDelete` was unreachable and the call answered 501.
+This pass (re-dispatch after the phrase HALT): closed the CI items, ran the two review layers over
+the whole story (`ed1b4c4..` plus the tree), and patched every finding it kept.
 
-How it was verified. Re-run by this stage: `npm run test:tools` 1,322 pass, 0 fail. Reported by the
-implementation pass and not independently re-run: `npm run test:components` 833 green;
-`check-objectscript` clean over 616 files; the story's browser spec plus `web-applications` and
-`proposal-confirm` green against `ocupilot-ci` on the rebuilt bundle; the full ObjectScript sweep
-179 classes, 1,602 tests, 0 failed; `smoke.sh` 48 of 48 on `ocupilot-ci` and 41 of 41 on
-`ocupilot`. Rule 19: restoring `pServes && +$Get(pChanged)` reddened exactly the three AD-53 legs
-and reverting made them green, with the compiled code confirmed either way. Review layers did not
-run -- the halt precedes them.
-
-Two notes for the lead. `ocupilot-ci` predates the `OCUPILOT_ALLOW_AUDIT_TOGGLE`, `_ERROR_DELETE`,
-`_PROCESS_CONTROL` and `_TASK_CONTROL` arming variables `scripts/ci-throwaway.sh` sets today, so
-four classes refuse in `OnBeforeAllTests` there; that is the container, not the tree, and a fresh
-throwaway arms all four. And `AdminPort.cls` is shared-append with Epic 8: beyond the two roster
-appends this pass rewrote `ImplementsRead`'s `$Case` line and three doc comments, which is a
-forced correction on the story's own path rather than an unrelated edit, but it is a contended-path
-change the merge gate should re-check.
+- CI `browser`: `data-table` 42/43/48 were the table harness declaring a row action with no
+  registered handler (the inference held); the harness now registers one. `gate` 71 had another
+  cause: the row menu now shows the published label ("Enable"), not the id; the spec derives it via
+  `actionLabel`. Assertions unchanged.
+- CI `instance`: `OcuPilot.Test.Installer` did not recur: 27/0 alone (run 6660) and 27/0 inside the
+  full sweep (run 6739), both on the reused `ocupilot-ci`, not a fresh throwaway. Not diagnosed
+  further.
+- Review: 26 findings (high 1, medium 9, low 7, false 9); 16 patched, 1 rejected low, 9 false, 0
+  deferred; rows in `## Review Triage Log`. Patched by verdict: high 1 (AC7's agent delete was
+  never minted or confirmed; `Smoke.CheckAgentDelete` now does), medium 9, low 6. One patch changed
+  behavior: `ScreenAction.Run` now checks the declared pairs before its fresh read, so an account
+  short of `%Admin_Secure:USE` gets `AUTH.NOPRIVILEGE` with `failedPair`, not `PORT.ACCESSDENIED`
+  (AD-8). The other code patch: after a confirmed delete, focus goes to the grid (`ListPage`, `dialog.ts`,
+  `DataTable.focusGrid`).
+- Files this pass: `Api/ScreenAction.cls`, `Install/Smoke.cls`, `Test/ProhibitedRoute.cls` (four
+  methods, a header count), `Test/Descriptor.cls`, `Test/RefusalCopy.cls`; `shell/{list-page,dialog,
+  data-table}.ts` and specs for command bar, command box, data table and list page;
+  `browser/web-applications-actions.browser-spec.mjs`, `browser/gate.browser-spec.mjs`,
+  `testing/table-harness/main.ts`.
+- Tiers run: `npm run test:tools` 1,322/0; `npm run test:components` 839/0 (56 files); browser
+  (rebuilt and redeployed on `ocupilot-ci`): `web-applications-actions`, `web-applications`,
+  `proposal-confirm`, `gate`, `data-table` 23/0; full browser suite NOT run (Rule 29, CI's);
+  full ObjectScript sweep on `ocupilot-ci` 179 classes, 1,606 tests, 0 failed, 0 overlaps, with
+  `AuditingUpdate`, `ErrorDelete`, `ProcessControl`, `TaskResume` refused in `OnBeforeAllTests`
+  (the container predates their arming variables; CI's fresh throwaway arms them);
+  `smoke.sh` 49/49 twice on `ocupilot-ci`, 41/41 on `ocupilot` (demo checks skip);
+  `check-objectscript` 0 problems over 616 files; `lint-docs` clean.
+- footprint_extensions: `src/OcuPilot/Test/ProhibitedRoute.cls` (contended) -- new methods after
+  `SeedDelete`, one line in a 7.1 method, a duplicated doc line removed, the header's method count;
+  Epic 8's `REVIEWEDWRITES` and its rewrite of `TestNoDeleteVerbIsAdvertisedForAWebApplication`
+  untouched, but 7.1 replaced that same method with
+  `TestTheWebApplicationWriteVerbsAreTheTwoThisScreenDeclares`, and Epic 8's version asserts no
+  delete verb exists: the merge gate must reconcile them (a three-verb roster). Earlier in the story,
+  before the contended ruling: `Kernel/Proposal/{Confirm,Prohibited}.cls` and the new
+  `Operation.cls`, `Screen/Tool/Write.cls`, `Screen/Descriptor/WebAppList.cls`, `Api/Router.cls`,
+  `Test/{SurfaceCoverage,EndpointCoverage,ToolRoundTrip,ReadTool,Prohibited}.cls`, and
+  `Port/AdminPort.cls` beyond its two appends (`ImplementsRead`'s `$Case`, a doc count); Epic 8's
+  pushed `AdminPort` changes neither line.
+- Follow-up review recommended: true. A high was patched and the patch has had no review: the
+  `agentdelete` smoke leg deletes and recreates the demo fixture through `Fixture.Create`, which
+  also seeds one application-error entry per smoke run.
+- Residual risks: the two frontmatter `deferred` items (no per-target lock on a screen action; the
+  client names three protected paths while the instance also protects install-recorded ones).

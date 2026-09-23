@@ -1984,6 +1984,33 @@ Method TestTheDevicesListDeclaresExactlyItsSixFieldsAndSixColumns()
     Do $$$AssertTrue($IsObject(##class(%Dictionary.CompiledClass).%OpenId(tPage)), "which is a compiled class on this instance, found under the declaration's own case")
 }
 
+/// <p>AD-5, AD-53: the instance's own validator of a descriptor's declared actions,
+/// <method>OcuPilot.Screen.Registry.ActionProblem</method>, refuses a free-text
+/// <code>selfProtection</code>, a row-action id declared twice and an empty row-action id, each
+/// naming its fault, and accepts a declaration whose actions carry a declared rule or
+/// <code>""</code>. Every shipped and fixture descriptor conforms, so nothing else reaches the
+/// refusing arms.</p>
+/// <p>Mutation (Rule 19): delete the <code>$ListFind(tSeen, tId)</code> refusal from
+/// <method>OcuPilot.Screen.Registry.ActionProblem</method> and recompile it with its subclasses --
+/// the duplicate-id leg goes red.</p>
+Method TestTheActionValidatorRefusesWhatNoSurfaceCanRun()
+{
+    Set tRule = $Piece(##class(OcuPilot.Screen.Registry).#SELFPROTECTIONRULES, ",", 1)
+    Do $$$AssertNotEquals(tRule, "", "the registry declares a self-protection rule to name")
+
+    Set tProblem = ##class(OcuPilot.Screen.Registry).ActionProblem({"primaryAction": {"id": "", "selfProtection": ""}, "rowActions": [{"id": "delete", "selfProtection": "never the last one"}]})
+    Do $$$AssertTrue(tProblem [ "never the last one", "a free-text selfProtection is refused naming the value: " _ tProblem)
+
+    Set tProblem = ##class(OcuPilot.Screen.Registry).ActionProblem({"primaryAction": {"id": "", "selfProtection": ""}, "rowActions": [{"id": "enable", "selfProtection": ""}, {"id": "enable", "selfProtection": ""}]})
+    Do $$$AssertTrue((tProblem [ "'enable'") && (tProblem [ "twice"), "a row-action id declared twice is refused naming the id: " _ tProblem)
+
+    Set tProblem = ##class(OcuPilot.Screen.Registry).ActionProblem({"primaryAction": {"id": "", "selfProtection": ""}, "rowActions": [{"id": "", "selfProtection": ""}]})
+    Do $$$AssertTrue(tProblem [ "empty id", "an empty row-action id is refused naming the fault: " _ tProblem)
+
+    Set tProblem = ##class(OcuPilot.Screen.Registry).ActionProblem({"primaryAction": {"id": "", "selfProtection": ""}, "rowActions": [{"id": "disable", "selfProtection": (tRule)}, {"id": "delete", "selfProtection": ""}]})
+    Do $$$AssertEquals(tProblem, "", "a declared rule and an empty one are both accepted")
+}
+
 /// <p>Area <var>pKey</var>'s declared privilege pairs as <code>resource:permission</code> joined
 /// by <code>, </code> in declared order, empty when the area never gates. An assertion over this
 /// pins the set by content: a length alone passes a set that swapped one pair for another.</p>

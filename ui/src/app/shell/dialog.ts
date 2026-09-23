@@ -32,7 +32,9 @@ export const DIALOG_OVERLAY_ID = 'dialog';
  *   unreachable while it stands (EXPERIENCE.md "**Focus order.** skip link").
  * - **Initial focus is the first field, or the action where there is none** (DESIGN.md `:1215`).
  * - **Focus returns to the opener** when it closes -- the element that was focused when it
- *   mounted, if that element is still in the document.
+ *   mounted, if that element is still in the document -- unless the parent has already moved focus
+ *   to an element outside the surface, which then keeps it. A confirmed delete is the case: its
+ *   opener acted on a row that is about to leave, so `ListPage` hands focus to the list instead.
  * - **Escape closes it through the overlay stack**, never through a key handler of its own, so
  *   the one Escape authority decides the order (`core/overlay-stack.ts`).
  * - **It never stacks.** Every dialog registers under the same `DIALOG_OVERLAY_ID`, and
@@ -99,6 +101,9 @@ export class Dialog {
 
   private closing = false;
 
+  /** The surface as rendered, kept so the close can ask whether focus is still inside it. */
+  private surfaceElement: HTMLElement | null = null;
+
   constructor() {
     this.overlays.push(DIALOG_OVERLAY_ID, () => this.requestClose());
     // One-shot: the first render is where the surface exists and where initial focus belongs.
@@ -106,6 +111,7 @@ export class Dialog {
     let focused = false;
     effect(() => {
       const surface = this.surface().nativeElement;
+      this.surfaceElement = surface;
       if (focused) return;
       focused = true;
       // `:not([disabled])` for the same reason `focusable()` carries it: `.focus()` on a disabled
@@ -119,7 +125,13 @@ export class Dialog {
     inject(DestroyRef).onDestroy(() => {
       this.overlays.remove(DIALOG_OVERLAY_ID);
       const opener = this.opener;
-      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+      const now = document.activeElement;
+      const placed =
+        now instanceof HTMLElement &&
+        now !== document.body &&
+        now.isConnected &&
+        !(this.surfaceElement?.contains(now) ?? false);
+      if (!placed && opener instanceof HTMLElement && opener.isConnected) opener.focus();
     });
   }
 

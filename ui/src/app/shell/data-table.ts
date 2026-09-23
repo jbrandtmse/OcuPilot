@@ -916,6 +916,15 @@ export class DataTable implements OnInit {
     this.actions.run(this.screen().descriptor, item.id);
   }
 
+  /**
+   * Put DOM focus on the grid, so the reconcile that follows the next re-read treats it as focused
+   * (DW-18): the row taking the active row's place becomes active, or, with no row left, focus goes
+   * to the empty state or the filter field. A no-op while no grid is drawn.
+   */
+  focusGrid(): void {
+    this.gridElement()?.nativeElement.focus();
+  }
+
   // --- Footer, empty state, refusal ------------------------------------------------------------------
 
   protected onCommitMaxRows(): void {

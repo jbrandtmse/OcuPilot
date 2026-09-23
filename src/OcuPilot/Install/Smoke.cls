@@ -255,6 +255,7 @@ ClassMethod Run(pUsername As %String = "", pPassword As %String = "", pDemo As %
         Do ..CheckAgentSwitches(.tChecks)
         Do ..CheckDemoFixture(.tChecks, pDemo)
         Do ..CheckAgentWrite(.tChecks, pDemo)
+        Do ..CheckAgentDelete(.tChecks, pDemo)
     } Catch ex {
         Do ..Note(.tChecks, "smoke", "fail", "the smoke run raised " _ ex.DisplayString())
     }
@@ -1183,45 +1184,6 @@ ClassMethod CheckDemoFixture(ByRef pChecks, pDemo As %String = "") [ Private ]
     Do ..Note(.pChecks, "demofixture", "pass")
 }
 
-/// <p>AD-45's two remaining checks, driven as one sequence because they are one event: a proposal
-/// minted and confirmed through the shipped path against AD-25's demo fixture
-/// (<code>agentwrite</code>), and the <code>AgentWrite</code> row that write leaves in the audit
-/// database (<code>auditmarker</code>).</p>
-/// <p><b>The only check that writes to the instance, so it restores what it changed.</b> The
-/// fixture is created disabled with no resource and AD-25 forbids modifying one this install did
-/// not make, so a run that left it enabled would contradict
-/// <class>OcuPilot.Install.Fixture</class>'s own created-state contract and make a second run
-/// assert against a target in a state no install produced. The restore sends the instance's own
-/// record of the application with those two fields put back to the state the install creates, not
-/// the state this run found: a run interrupted between the write and the restore would otherwise
-/// have its own drift restored by every run after it.</p>
-/// <p><b>A fixture not in that state is a <code>fail</code>, not a pass.</b> A write over an
-/// application already enabled with the resource changes nothing, and every assertion after it
-/// would hold of a write that did nothing -- so the mint's own diff is checked to name both
-/// fields, and the fixture is put back either way.</p>
-/// <p><b>Every read, the write and the restore are keyed by one resolution</b>:
-/// <method>ApplicationName</method>'s reading of <class>Security.Applications</class>, which
-/// answers the spelling the instance stores. The proposal's <code>TargetRef</code> is never used
-/// as an id here -- <method>OcuPilot.Kernel.EntityRef.Key</method> folds it (AD-13's canonical
-/// form), and a check that took its id from there would be reporting on an application it
-/// resolved by a name the instance does not hold. <b>Measured on this build, and the reason this
-/// is a correctness property rather than a refusal:</b> both
-/// <method>Security.Applications.Exists</method> and the vendor's <code>WebApp.App</code>
-/// <code>GET</code> resolve a web-application name case-insensitively, so a folded id would find
-/// the same application and answer plausibly. <class>OcuPilot.Test.Smoke</class> drives the whole
-/// check against an application the instance spells in mixed case, and pins that resolution
-/// directly.</p>
-/// <p><b><code>skipped</code>, never <code>fail</code>, where the environment cannot carry it</b>
-/// -- no demo opt-in, no fixture, a fixture this install did not create, or a turn of this user
-/// already running. The reason travels even where the assertion cannot (DW-1402), so
-/// <code>executed=</code> stays honest, and it names the cause it actually met rather than the
-/// likeliest one. <b>No skip writes.</b> A skipped check did not run, so it has nothing to put
-/// back, and a restore on that path would be normalising a drift this run did not cause. The
-/// restore on a <code>fail</code> is the opposite case and is deliberate: there the state was
-/// asserted against and found wrong, and the next run has to be able to assert against it again.</p>
-/// <p><b><code>OcuPilot.PKG</code> classes only</b> (this class's own scope wall): the turn row
-/// comes from <class>OcuPilot.Kernel.State.Turn</class>'s guarded reserve, begin and finish, and
-/// the write target is AD-25's fixture rather than a probe application a test class would make.</p>
 /// <p>The other caller of the same operation (AD-53): a person's own row action on the demo
 /// fixture, over the real <code>POST /screens/:screen/action</code> route as the browser makes it,
 /// with the bearer token this run already signed in for.</p>
@@ -1318,6 +1280,45 @@ ClassMethod ApplicationEnabled(pPath As %String) As %String [ Private ]
     Quit tEnabled
 }
 
+/// <p>AD-45's two remaining checks, driven as one sequence because they are one event: a proposal
+/// minted and confirmed through the shipped path against AD-25's demo fixture
+/// (<code>agentwrite</code>), and the <code>AgentWrite</code> row that write leaves in the audit
+/// database (<code>auditmarker</code>).</p>
+/// <p><b>The only check that writes to the instance, so it restores what it changed.</b> The
+/// fixture is created disabled with no resource and AD-25 forbids modifying one this install did
+/// not make, so a run that left it enabled would contradict
+/// <class>OcuPilot.Install.Fixture</class>'s own created-state contract and make a second run
+/// assert against a target in a state no install produced. The restore sends the instance's own
+/// record of the application with those two fields put back to the state the install creates, not
+/// the state this run found: a run interrupted between the write and the restore would otherwise
+/// have its own drift restored by every run after it.</p>
+/// <p><b>A fixture not in that state is a <code>fail</code>, not a pass.</b> A write over an
+/// application already enabled with the resource changes nothing, and every assertion after it
+/// would hold of a write that did nothing -- so the mint's own diff is checked to name both
+/// fields, and the fixture is put back either way.</p>
+/// <p><b>Every read, the write and the restore are keyed by one resolution</b>:
+/// <method>ApplicationName</method>'s reading of <class>Security.Applications</class>, which
+/// answers the spelling the instance stores. The proposal's <code>TargetRef</code> is never used
+/// as an id here -- <method>OcuPilot.Kernel.EntityRef.Key</method> folds it (AD-13's canonical
+/// form), and a check that took its id from there would be reporting on an application it
+/// resolved by a name the instance does not hold. <b>Measured on this build, and the reason this
+/// is a correctness property rather than a refusal:</b> both
+/// <method>Security.Applications.Exists</method> and the vendor's <code>WebApp.App</code>
+/// <code>GET</code> resolve a web-application name case-insensitively, so a folded id would find
+/// the same application and answer plausibly. <class>OcuPilot.Test.Smoke</class> drives the whole
+/// check against an application the instance spells in mixed case, and pins that resolution
+/// directly.</p>
+/// <p><b><code>skipped</code>, never <code>fail</code>, where the environment cannot carry it</b>
+/// -- no demo opt-in, no fixture, a fixture this install did not create, or a turn of this user
+/// already running. The reason travels even where the assertion cannot (DW-1402), so
+/// <code>executed=</code> stays honest, and it names the cause it actually met rather than the
+/// likeliest one. <b>No skip writes.</b> A skipped check did not run, so it has nothing to put
+/// back, and a restore on that path would be normalising a drift this run did not cause. The
+/// restore on a <code>fail</code> is the opposite case and is deliberate: there the state was
+/// asserted against and found wrong, and the next run has to be able to assert against it again.</p>
+/// <p><b><code>OcuPilot.PKG</code> classes only</b> (this class's own scope wall): the turn row
+/// comes from <class>OcuPilot.Kernel.State.Turn</class>'s guarded reserve, begin and finish, and
+/// the write target is AD-25's fixture rather than a probe application a test class would make.</p>
 ClassMethod CheckAgentWrite(ByRef pChecks, pDemo As %String = "") [ Private ]
 {
     Set tSkip = ""
@@ -1438,6 +1439,140 @@ ClassMethod CheckAgentWrite(ByRef pChecks, pDemo As %String = "") [ Private ]
     If tSkip '= "" {
         Do ..Note(.pChecks, "agentwrite", "skipped", tSkip)
         Do ..Note(.pChecks, "auditmarker", "skipped", tSkip)
+    }
+}
+
+/// <p>Story 7.1's integration check (<code>agentdelete</code>): the agent's own delete tool,
+/// <class>OcuPilot.Screen.Tool.WebAppDelete</class>, mints a proposal against AD-25's demo fixture
+/// through its tool entry point on a completed turn, the card's own row for it reads destructive,
+/// the user's confirm runs through the shipped transition, and this instance's own record no
+/// longer holds the application.</p>
+/// <p><b>It puts the fixture back as install creates it</b>, through
+/// <method>OcuPilot.Install.Fixture.Create</method> -- install's own creator, which recreates an
+/// absent fixture disabled with no resource and keeps the inventory row that already records it, so
+/// <method>WriteTargetOwned</method> still answers yes and the next run finds what this one found.
+/// That call does to the other demo fixtures what every container start does: each one present is
+/// left as it is, and one application-error entry is seeded. A fixture that did not come back in
+/// that state is a <code>fail</code>.</p>
+/// <p>Runs after every other check that reads the fixture. <code>skipped</code>, never
+/// <code>fail</code>, where <method>CheckAgentWrite</method> skips, and where
+/// <method>WriteTarget</method> is not the path that creator makes: an application it did not make
+/// is one this check could not put back.</p>
+ClassMethod CheckAgentDelete(ByRef pChecks, pDemo As %String = "") [ Private ]
+{
+    Set tSkip = ""
+    Set tProblem = ""
+    Set tTurnKey = ""
+    Set tNamespace = ""
+    Set tAttempted = 0
+    Try {
+        Set tWanted = $Select(pDemo '= "": pDemo, 1: $System.Util.GetEnviron("OCUPILOT_DEMO"))
+        If tWanted '= "1" {
+            Set tSkip = "the demo opt-in flag is not set for this instance, so the " _ ..WriteTarget() _ " fixture a confirmed delete needs was never created (AD-25)"
+            Quit
+        }
+        If ..WriteTarget() '= ##class(OcuPilot.Install.Fixture).#APPPATH {
+            Set tSkip = ..WriteTarget() _ " is not the application install's own fixture creator makes, so a delete of it could not be put back"
+            Quit
+        }
+        If '..WriteTargetOwned() {
+            Set tSkip = ..WriteTarget() _ " is absent, or carries an application this install did not create, which AD-25 forbids modifying"
+            Quit
+        }
+        Set tSpelling = ..ApplicationName(..WriteTarget())
+        If tSpelling = "" {
+            Set tSkip = "this instance's own record of " _ ..WriteTarget() _ " could not be read, so there is no application to delete"
+            Quit
+        }
+
+        ; The namespace install bound the fixture to, which is the one the restore binds it to again.
+        Kill tQuery
+        Set tQuery(##class(OcuPilot.Screen.Tool.WebAppDelete).IdParam()) = tSpelling
+        Set tReadSC = ##class(OcuPilot.Port.AdminPort).Invoke("WebApp.App", "GET", .tQuery, "", .tBefore, .tReadHttp, .tReadFault)
+        If $$$ISOK(tReadSC) && $IsObject($Get(tBefore)) Set tNamespace = tBefore.%Get("NameSpace")
+        If tNamespace = "" {
+            Set tProblem = "the fixture's namespace could not be read before the delete (HTTP " _ +$Get(tReadHttp) _ "), so it could not be put back afterwards"
+            Quit
+        }
+
+        Set tReserveSC = ##class(OcuPilot.Kernel.State.Turn).GuardedReserve($Username, "", ##class(OcuPilot.Api.Error).#TURNABANDONEDJOBLOST, ..#LIMITS, .tTurnKey, .tBusy, .tSweepSC)
+        If $$$ISERR(tReserveSC) || tBusy || (tTurnKey = "") {
+            Set tSkip = $Select($$$ISERR(tReserveSC): "a turn row could not be reserved for this check: " _ $System.Status.GetErrorText(tReserveSC), 1: "a turn of " _ $Username _ " is already running on this instance, so this check would race it for the one turn slot")
+            Set tTurnKey = ""
+            Quit
+        }
+        Do ##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tTurnKey, $Username, ..#LIMITS, .tBegun, .tStarted)
+        Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tTurnKey, $Username, "completed", "", "", "", 0, ..#LIMITS)
+
+        ; The tool's own entry point, acting for that turn as the turn job does; the stash is
+        ; cleared before the confirm, which refuses a call made on a turn's behalf (AD-40).
+        Set tArgs = {}
+        Do tArgs.%Set(##class(OcuPilot.Screen.Tool.WebAppDelete).IdArgument(), tSpelling, "string")
+        Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(tTurnKey)
+        Set tMintSC = ##class(OcuPilot.Screen.Tool.WebAppDelete).View("", tArgs, 0, .tProposal, .tMintHttp, .tMintFault)
+        Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+        If $$$ISERR(tMintSC) || '$IsObject($Get(tProposal)) {
+            Set tProblem = "the delete proposal could not be minted (HTTP " _ +$Get(tMintHttp) _ "): " _ $System.Status.GetErrorText(tMintSC)
+            Quit
+        }
+        Set tProposalId = tProposal.%Get("proposalId")
+
+        ; Asserted on the row the card itself is drawn from, not on the tool's declaration.
+        Set tDestructive = ""
+        Set tRowsSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForTurn(tTurnKey, $Username, .tRows)
+        If $$$ISOK(tRowsSC) && $IsObject($Get(tRows)) {
+            Set tRowIterator = tRows.%GetIterator()
+            While tRowIterator.%GetNext(.tRowIndex, .tRow) {
+                If $IsObject(tRow) && (tRow.%Get("proposalId") = tProposalId) Set tDestructive = tRow.%Get("destructive")
+            }
+        }
+        If tDestructive '= 1 {
+            Set tProblem = "the minted delete proposal's card row does not read destructive"
+            Quit
+        }
+
+        Set tAttempted = 1
+        Set tConfirmSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposalId, "", $Username, .tResult, .tConfirmHttp, .tConfirmCode, .tConfirmDetail)
+        If $$$ISERR(tConfirmSC) {
+            Set tProblem = "the confirm was refused at HTTP " _ +$Get(tConfirmHttp) _ " with " _ $Get(tConfirmCode)
+            Quit
+        }
+        If ..ApplicationName(..WriteTarget()) '= "" {
+            Set tProblem = "the confirm answered and this instance still holds " _ ..WriteTarget()
+            Quit
+        }
+    } Catch ex {
+        Set tSkip = ""
+        Set tProblem = "the agent-delete check raised " _ ex.DisplayString()
+    }
+    ; Its own frame: whatever the checks above decided, a fixture this check may have removed is
+    ; put back, and the turn row and its proposal are removed.
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    Try {
+        If tAttempted && (tNamespace '= "") && (..ApplicationName(..WriteTarget()) = "") {
+            Kill tReports
+            Do ##class(OcuPilot.Install.Fixture).Create("", .tReports, , tNamespace)
+        }
+        If tAttempted {
+            Kill tQuery
+            Set tQuery(##class(OcuPilot.Screen.Tool.WebAppDelete).IdParam()) = ..WriteTarget()
+            Set tBackSC = ##class(OcuPilot.Port.AdminPort).Invoke("WebApp.App", "GET", .tQuery, "", .tAfter, .tBackHttp, .tBackFault)
+            If $$$ISERR(tBackSC) || '$IsObject($Get(tAfter)) {
+                Set tProblem = tProblem _ $Select(tProblem = "": "", 1: "; ") _ ..WriteTarget() _ " was not put back (HTTP " _ +$Get(tBackHttp) _ ")"
+            } ElseIf ('..WriteTargetOwned()) || (''tAfter.%Get("Enabled") '= 0) || (tAfter.%Get("Resource") '= "") {
+                Set tProblem = tProblem _ $Select(tProblem = "": "", 1: "; ") _ ..WriteTarget() _ " was put back, but not disabled, with no resource and recorded as this install's own"
+            }
+        }
+    } Catch exRestore {
+        Set tProblem = tProblem _ $Select(tProblem = "": "", 1: "; ") _ "putting " _ ..WriteTarget() _ " back raised " _ exRestore.DisplayString()
+    }
+    Do ..RestoreWriteTarget("", "", tTurnKey)
+    If tSkip '= "" {
+        Do ..Note(.pChecks, "agentdelete", "skipped", tSkip)
+    } ElseIf tProblem '= "" {
+        Do ..Note(.pChecks, "agentdelete", "fail", tProblem)
+    } Else {
+        Do ..Note(.pChecks, "agentdelete", "pass", "a destructive webapp.list.delete proposal was minted and confirmed, " _ ..WriteTarget() _ " was gone, and install's own creator put it back")
     }
 }
 

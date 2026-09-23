@@ -51,20 +51,20 @@ import { resetRememberedState } from './preferences-reset.mjs';
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
 const { SCREENS } = await import(join(uiRoot, 'src', 'app', 'core', 'screens.generated.ts'));
+const { actionLabel } = await import(join(uiRoot, 'src', 'app', 'core', 'screen-actions.ts'));
 
 /**
- * The id of the Definitions list's enable row action, read out of the generated mirror.
- *
- * The shipped table renders a row action's **id** as its menu item, not a published label, so this
- * is what the menu says today -- and reading it from the mirror rather than typing it means a
- * renamed action fails here rather than silently offering nothing to click.
+ * What the Definitions list's row menu says for its enable row action: the action is read out of
+ * the generated mirror, and its label is resolved through `actionLabel`, the one resolver the row
+ * menu, the command bar and the command box all draw with. Neither is typed here, so a renamed
+ * action or a reworded label fails here rather than silently offering nothing to click.
  */
 const ENABLE_ACTION = (() => {
   const list = SCREENS.find((screen) => screen.route === 'agent/definitions');
   assert.ok(list, 'the mirror declares the Definitions list');
   const action = list.rowActions.find((entry) => entry.id.includes('enable') && !entry.id.includes('dis'));
   assert.ok(action, 'and an enable row action on it');
-  return action.id;
+  return actionLabel(list.descriptor, action.id);
 })();
 
 const config = browserConfig();

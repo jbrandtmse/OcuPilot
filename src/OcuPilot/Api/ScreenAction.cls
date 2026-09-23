@@ -110,7 +110,7 @@ ClassMethod Handle(pScreen As %String) As %Status
 
         ; AD-13: the reference key and the id the port is asked about are both the canonical form
         ; for this entity type, so a re-cased or slash-suffixed spelling earns one verdict from the
-        ; prohibited set, takes one lock and publishes one change event.
+        ; prohibited set and publishes one change event.
         Set tType = $ClassMethod(tDescriptor, "PrimaryEntityType")
         Set tId = ##class(OcuPilot.Kernel.EntityRef).NormalizedId(tType, tSuppliedId)
         If tId = "" {
@@ -131,8 +131,8 @@ ClassMethod Handle(pScreen As %String) As %Status
     Quit tSC
 }
 
-/// <p>The fresh read, the body, the two shared gates and the write, in that order, answering one
-/// envelope.</p>
+/// <p>The declared pairs, the fresh read, the body, the two shared gates and the write, in that
+/// order, answering one envelope.</p>
 /// <p><b>Nothing sits between the gates and the write</b> (AD-34, AD-53): the prohibited set reads
 /// live state, so the answer cannot be separated from the effect it decides.</p>
 ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %String, pType As %String, pScope As %String, pId As %String, pTargetRef As %String) As %Status [ Private ]
@@ -146,6 +146,19 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
             Quit
         }
 
+        ; AD-8: the declared pairs answer before the fresh read, as they do at a confirm. The read
+        ; goes through the port, whose own gate refuses a caller short of a pair without naming it.
+        Set tArgs = $ClassMethod(pToolClass, "ScreenActionArguments", pActionId, .tServes)
+        Set tPairSC = ##class(OcuPilot.Kernel.Proposal.Operation).Gate(pTool, pTargetRef, "", "", tArgs.%ToJSON(), ..CallerUsername(), "", "", .tPairs, .tRefused, .tGateHttp, .tGateCode, .tGateDetail)
+        If $$$ISERR(tPairSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tPairSC))
+            Quit
+        }
+        If tRefused {
+            Set tSC = ##class(OcuPilot.Api.Error).Render(tGateHttp, ##class(OcuPilot.Api.Error).#FORBIDDEN, ..ReasonFor(tGateCode), tGateCode, tGateDetail)
+            Quit
+        }
+
         Set tFreshSC = ##class(OcuPilot.Kernel.Proposal.Operation).Read(pToolClass, ..PortClass(), tEndpoint, tIdParam, pId, "", .tFresh, .tReadHttp, .tReadFault)
         If $$$ISERR(tFreshSC) {
             Set tSC = ..Fault(tFreshSC, tReadHttp, .tReadFault)
@@ -156,7 +169,6 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
             Quit
         }
 
-        Set tArgs = $ClassMethod(pToolClass, "ScreenActionArguments", pActionId, .tServes)
         Set tBuildSC = ..Body(pToolClass, tFresh, tArgs, .tPayload, .tDiff, .tProblem)
         If $$$ISERR(tBuildSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tBuildSC))

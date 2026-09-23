@@ -411,6 +411,27 @@ describe('the command box', () => {
     expect(entry?.hasAttribute('disabled')).toBe(false);
   });
 
+  it('DW-389: a declared row action with no registered handler is not listed, beside one that is registered', () => {
+    // Per action, not all-or-nothing: the stub screen registers `delete` (beforeEach) and nothing
+    // for `enable`, which it declares beside it.
+    //
+    // Mutation (Rule 19): drop `&& this.actions.has(screen.descriptor, action.id)` from the row-action
+    // loop in `command-box.ts` -> `enable` is listed beside `delete`, red.
+    navigation.current = screen('permissions/users', 'navAreaPermissions', 'permissions', {
+      primaryAction: { id: '', selfProtection: '' },
+      rowActions: [
+        { id: 'enable', selfProtection: '' },
+        { id: 'delete', selfProtection: 'current-user' },
+      ],
+    });
+    chord();
+    const labels = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
+    ).map((option) => (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim());
+    expect(labels).toEqual([STRINGS.actionDelete]);
+    expect(count()).toBe('2 screens, 1 actions');
+  });
+
   it("DW-370: a screen's own published words for an action reach the box's option, not only the bar's button", () => {
     // `command-bar.spec.ts` pins the bar; this is the other surface `actionLabel` was given a
     // descriptor for. Every other case here uses the stub descriptor, which publishes nothing of

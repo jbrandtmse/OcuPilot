@@ -258,6 +258,66 @@ describe('the command bar', () => {
     expect(fixture.nativeElement.querySelectorAll('[disabled]')).toHaveLength(0);
   });
 
+  it('DW-389: a declared row action with no registered handler draws no button, beside one that is registered', () => {
+    // Per action, not all-or-nothing: the same screen declares two and registers one.
+    //
+    // Mutation (Rule 19): drop the `.filter((action) => this.actions.has(screen.descriptor,
+    // action.id))` line from `command-bar.ts` -> `enable` is drawn beside `disable`, red.
+    const declared = screenDeclaration({
+      rowActions: [
+        { id: 'enable', selfProtection: '' },
+        { id: 'disable', selfProtection: '' },
+      ],
+    });
+    build(declared);
+    actions.register(declared.descriptor, 'disable', () => {});
+    fixture.detectChanges();
+
+    const drawn = Array.from(fixture.nativeElement.querySelectorAll('.ocu-command-bar-action')).map((action) =>
+      (action as HTMLElement).textContent?.trim()
+    );
+    expect(drawn).toEqual([STRINGS.agentDefinitionDisable]);
+    expect(fixture.nativeElement.textContent).not.toContain(STRINGS.agentDefinitionEnable);
+  });
+
+  it("AD-53: with a self-protected row selected, the bar's action carries the instance's own sentence and runs nothing", () => {
+    // The bar says what the command box and the row menu say about the same action on the same row:
+    // `aria-disabled`, never `disabled`, with the published reason as its tooltip. An ordinary row
+    // selected afterwards gets an ordinary control that runs its handler.
+    //
+    // Mutation (Rule 19): make the bar's `selfProtectionReason(...)` call answer `''` -> the
+    // protected row's button is drawn as an ordinary control and its click runs the handler, red.
+    const declared = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.WebAppList',
+      rowActions: [{ id: 'delete', selfProtection: 'serves-ocupilot' }],
+    });
+    build(declared);
+    let runs = 0;
+    actions.register(declared.descriptor, 'delete', () => (runs += 1));
+    const store = stores.for(declared.descriptor, declared.refreshRates);
+    store.setSelection(['/api/ocupilot']);
+    fixture.detectChanges();
+
+    const button = (): HTMLButtonElement => fixture.nativeElement.querySelector('.ocu-command-bar-action');
+    expect(button().textContent?.trim()).toBe(STRINGS.actionDelete);
+    expect(button().getAttribute('aria-disabled')).toBe('true');
+    expect(button().hasAttribute('disabled')).toBe(false);
+    const reason = fixture.nativeElement.querySelector(`#${button().getAttribute('aria-describedby')}`);
+    expect(reason?.textContent?.trim()).toBe(STRINGS.webAppServesOcuPilotRefusal);
+    expect(reason?.getAttribute('role')).toBe('tooltip');
+    button().click();
+    fixture.detectChanges();
+    expect(runs).toBe(0);
+
+    store.setSelection(['/csp/myapp']);
+    fixture.detectChanges();
+    expect(button().hasAttribute('aria-disabled')).toBe(false);
+    expect(button().hasAttribute('aria-describedby')).toBe(false);
+    button().click();
+    fixture.detectChanges();
+    expect(runs).toBe(1);
+  });
+
   it('no chip renders for a screen the framework has not bound, or one that does not refresh', () => {
     expect(chip()).toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain(STRINGS.statusAutoRefreshOff);

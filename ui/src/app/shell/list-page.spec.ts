@@ -57,10 +57,13 @@ async function mount(
   TestBed.resetTestingModule();
   let answerRows = initialRows;
   let answerBanner = '';
+  let actionAnswer: unknown = {};
   const paths: string[] = [];
   const api = {
     requestJson: async <T,>(path: string): Promise<JsonResult<T>> => {
       paths.push(path);
+      // A row action's POST answers the verb and the triple (AD-14); every other path is a read.
+      if (path.endsWith('/action')) return { kind: 'ok', status: 200, body: actionAnswer as T };
       return { kind: 'ok', status: 200, body: { fields: [], rows: answerRows, truncated: false, banner: answerBanner } as T };
     },
   };
@@ -79,6 +82,7 @@ async function mount(
       provideRouter([{ path: '**', children: [] }]),
       { provide: NavigationService, useValue: { screenForUrl: () => declaration } as unknown as NavigationService },
       { provide: ApiService, useValue: api as unknown as ApiService },
+      { provide: ChangeBus, useValue: bus },
       { provide: RefreshService, useValue: refresh },
       { provide: ScreenStores, useValue: stores },
       { provide: ScreenActions, useValue: new ScreenActions() },
@@ -105,6 +109,7 @@ async function mount(
     declaration,
     setRows: (next: unknown[]) => (answerRows = next),
     setBanner: (next: string) => (answerBanner = next),
+    setActionAnswer: (next: unknown) => (actionAnswer = next),
     fireTick: async () => {
       scheduled[scheduled.length - 1]();
       await settle(fixture);
@@ -290,6 +295,60 @@ describe('the list page', () => {
 
     expect(rowNames(page.host())).toEqual(['A']);
     expect(store.selection()).toEqual([]);
+  });
+
+  it('a confirmed delete leaves focus on the row that took its place; a cancel returns it to the opener', async () => {
+    // The opener stands for a command-bar button, which outlives the row it acted on: focus must
+    // not go back there once the write has removed the row. Through the real handler, dialog,
+    // store and table -- only the transport is stubbed.
+    //
+    // Mutation (Rule 19): drop the `focusGrid()` call from `ListPage.onConfirmDestructive` -> the
+    // dialog returns focus to the opener and the first `activeElement` assertion goes red.
+    const declaration = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.WebAppList',
+      rowActions: [{ id: 'delete', selfProtection: 'serves-ocupilot' }],
+    });
+    const page = await mount(declaration, named('A', 'B', 'C'));
+    const store = page.stores.for(declaration.descriptor, declaration.refreshRates);
+    const opener = document.createElement('button');
+    document.body.appendChild(opener);
+    planted.push(opener);
+    const field = () => page.host().querySelector('.ocu-typed-name-field') as HTMLInputElement;
+    const openDelete = async (key: string) => {
+      store.setActive(key);
+      store.setSelection([key]);
+      opener.focus();
+      expect(page.actions.run(declaration.descriptor, 'delete')).toBe(true);
+      await settle(page.fixture);
+      expect(page.host().querySelector('[role="dialog"]')).not.toBeNull();
+    };
+
+    await openDelete('B');
+    field().value = 'B';
+    field().dispatchEvent(new Event('input'));
+    page.fixture.detectChanges();
+    page.setRows(named('A', 'C'));
+    page.setActionAnswer({ action: 'deleted', target: { type: 'web-application', scope: 'HSCUSTOM', id: 'B' } });
+    (page.host().querySelector('.ocu-button-destructive') as HTMLButtonElement).click();
+    await settle(page.fixture);
+
+    expect(page.host().querySelector('[role="dialog"]')).toBeNull();
+    expect(rowNames(page.host())).toEqual(['A', 'C']);
+    const grid = page.host().querySelector('[role="grid"]') as HTMLElement;
+    expect(document.activeElement).toBe(grid);
+    expect(store.active()).toBe('C');
+    const active = page.host().querySelector('.ocu-data-table-row-active') as HTMLElement;
+    expect(active.querySelector('.ocu-data-table-link')?.textContent?.trim()).toBe('C');
+    expect(grid.getAttribute('aria-activedescendant')).toBe(active.id);
+
+    const posts = page.paths.filter((path) => path.endsWith('/action')).length;
+    await openDelete('C');
+    (page.host().querySelector('.ocu-dialog .ocu-button-secondary') as HTMLButtonElement).click();
+    await settle(page.fixture);
+    expect(page.host().querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(opener);
+    expect(page.paths.filter((path) => path.endsWith('/action')).length).toBe(posts);
+    expect(rowNames(page.host())).toEqual(['A', 'C']);
   });
 
   it('before the namespace list arrives the page reads nothing, and the scope resolving reads once', async () => {
