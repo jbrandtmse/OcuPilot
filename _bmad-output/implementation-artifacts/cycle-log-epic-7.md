@@ -142,3 +142,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T10:41:18Z	Story 7.4	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 model=claude-opus-5-5
 2026-09-23T10:41:18Z	Story 7.4	smoke_complete	method=api result=pass iterations=1 defects_caught=0 evidence=POST_screens/security.auditing/action_disable_then_enable_on_ocupilot-ci:_200_each;GET_/agent/restraint_writesMarked_true->false->true;AuditEnabled_1_after model=claude-opus-5-5
 2026-09-23T10:42:01Z	Story 7.4	committed	sha=212241da submodules= ci=pending run=35850264871 amendments=EXPERIENCE.md:409-413,spine:AD-53,epics.md:7.11_DW-1529/1530_bullets
+2026-09-23T10:42:08Z	Epic 7	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@5bc96c7f merge=4428f817 files=1_cycle-log-parallel_only conflict=none

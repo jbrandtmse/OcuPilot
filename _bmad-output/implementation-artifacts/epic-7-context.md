@@ -4,14 +4,14 @@
 
 ## Goal
 
-This is build step 4. Completing it clears the last floor requirement below the create-and-edit line. A user does the small jobs that make up most daily administration (enable, disable, run, suspend, resume, terminate and delete) from the row menu or the command bar, and the row updates in place. The user can also ask the agent to do any of these through a confirmed proposal. Epic 5 built the write path and one write per area, and Epic 6 built the screens. This epic adds the remaining verbs to screens that already exist, so each action has two callers: the screen and the agent's write tool. Stories 7.1 to 7.3 are done. 7.1 built the shared seam, 7.2 added value-carrying actions and secrets, and 7.3 applied the seam to a second family unchanged.
+This is build step 4. Completing it clears the last floor requirement below the create-and-edit line. A user does the small jobs that make up most daily administration (enable, disable, run, suspend, resume, terminate and delete) from the row menu or the command bar, and the row updates in place. The user can also ask the agent to do any of these through a confirmed proposal. Epic 5 built the write path and one write per area, and Epic 6 built the screens. This epic adds the remaining verbs to screens that already exist, so each action has two callers: the screen and the agent's write tool. Stories 7.1 to 7.4 are done. 7.1 built the shared seam, 7.2 added value-carrying actions and secrets, 7.3 applied the seam to a second family unchanged, and 7.4 built the Auditing configuration screen with the first warning (non-destructive) dialog.
 
 ## Stories
 
 - Story 7.1: Enable, disable and delete a web application (done)
 - Story 7.2: User enable, disable, delete, password and roles (done)
 - Story 7.3: Delete an OAuth 2.0 client configuration or server client description (done)
-- Story 7.4: Turn auditing on and off from the screen
+- Story 7.4: Turn auditing on and off from the screen (done)
 - Story 7.5: Run an on-demand task
 - Story 7.6: Run, suspend, resume and delete a task
 - Story 7.8: Terminate, suspend and resume a process
@@ -49,6 +49,9 @@ Stories 7.7 (Task Manager control) and 7.9 (lock removal) moved to Epic 16 as 16
 - **Descriptors declare row actions** with a `selfProtection` rule from a closed vocabulary (`""` where no rule applies). An action is declared only in the same pass that registers its handler. A list that declares a row action names `emptyAgentKey` and leaves `emptyNextKey` empty. Tool names follow `<area>.<screen>.<verb>`. Row key and typed name use the vendor's IdKey. For example, a server client is keyed by `ClientId`, not by its non-unique `Name`.
 - **Identity** is `(entity type, scope, id)` in each type's canonical form (users use `user:foldcase`), and it applies at mint, confirm, row action and change event. There is one change event per write. Screens re-fetch in place and never patch rows from a write response.
 - **Disabling auditing cannot be marked.** Its ledger row reads "done · audit not marked" and the banner shows. The re-enable is marked.
+- **A write that opens or closes the audit channel records the observed marking fact (AD-53, amended 2026-09-23).** The banner reads a stored `writesMarked` fact, not the live setting. The agent's caller records it from its marker's answer. The screen caller emits no marker, so after the write it re-reads through the tool's port, with the caller's own privileges, the instance auditing flag and OcuPilot's marker event (marked = both enabled) and records that. This is OcuPilot's own state, not a marker. A failed observation records nothing, logs, and never fails the write. A tool opts in with `Parameter MOVESMARKING = 1`: `AuditingUpdate` (7.4) is the first, and 7.11's disable of OcuPilot's own events is the second.
+- **Form pages without a table.** The Registry and the client mirror exempt a `form-page` that declares no `table` over a single-object `GET` read from the table-text rule (no column header or empty-state key needed). `AuditingConfig` is the precedent: its `emptyStateKey` is `""`.
+- **Warning pending kind.** The shell's row-action handler has a `warning` pending kind beside `typed-name`, driven by `WARNING_CONSEQUENCES`. A form with no rows selects its singleton itself so the handler, command bar and command box all offer its actions.
 - **Known limits.** A screen action takes no per-target lock. The client mirrors only the install roster's protected paths.
 
 ## UX & Interaction Patterns
@@ -57,17 +60,20 @@ Stories 7.7 (Task Manager control) and 7.9 (lock removal) moved to Epic 16 as 16
 - **Command bar.** Its 50px height is now a minimum. When the actions do not fit, the bar wraps onto more lines and grows, so no action is hidden and the content never scrolls sideways at its 640px minimum.
 - **Typed-name dialog** (in the shell, from 7.1). The title names the action and target, and the body states the consequence. Typing the name is an exact, case-sensitive match, and pasting is allowed. On blur, a mismatch shows "Does not match" and sets `aria-invalid`. The `button-destructive` button is labeled with the verb and target and stays `aria-disabled` until the name matches. After a delete, focus returns to the grid. Terminate adds the optional error-to-job flag and names the pid. Each destructive action has its own consequence body in the shell handler's `DESTRUCTIVE_CONSEQUENCES`.
 - **Destructive proposal card.** It carries the same typed-name field. The removal-residue sentence appears only for `application-error`.
-- **Banner.** "Agent writes are not being marked" appears the moment auditing goes off, clears when it returns, and links to Auditing configuration.
-- **Auditing configuration** (7.4 and 7.11) is a form. The system-event and user-event lists sit beneath it, and the screen cross-links to the Audit database viewer.
+- **Banner.** "Agent writes are not being marked" appears the moment auditing goes off (from either caller) and clears when it returns.
+- **Warning dialog** (`app-warning-dialog`, from 7.4). It precedes a non-delete write. The title is the verb, the body is the consequence, "Proceed" is `button-primary`, and initial focus is on Cancel. Escape, Cancel and the scrim send nothing. Suspend Task Manager and the web-service warning reuse it later.
+- **Auditing configuration** (built by 7.4) is a form: a status line ("Auditing is on." / "Auditing is off.") and one button, "Turn auditing off" (secondary, through the warning dialog) or "Turn auditing on" (primary, no dialog). The read-only System events and User events lists (columns name, status, Total, Written, Lost) sit beneath it, each also at its own route, and the screen cross-links to the Audit database viewer. The page re-reads on an `auditing-configuration` change event and does not bind the refresh service. 7.11 adds the lists' row actions and the SQL wizard on the same descriptors.
+- **Banner links.** The not-marked banner's "Auditing configuration" link is shown to every user. Its "Turn auditing on" action is shown only to an OcuPilot administrator and opens the screen with that button focused.
 - **Strings.** Every new user-facing string goes into EXPERIENCE.md's Fixed strings with its `strings.ts` key in the same pass. `strings.ts` is shared-append and holds nothing the table does not publish.
 
 ## Cross-Story Dependencies
 
 - **Upstream, Epic 5:** 7.4 and 7.11 extend 5.10's auditing toggle, 7.6 extends 5.11's task resume, 7.8 extends 5.12's process suspend and resume, and 7.10 extends 5.13's delete by namespace. **Epic 6** provides the screens.
 - **From 7.1 to 7.3:** later stories reuse the screen-action route, `Operation`, the shell's generic row-action handler, the typed-name dialog, the `selfProtection` vocabulary and 7.2's `SCREENVALUES`. They build no per-area handler of their own.
-- **Within this epic:** 7.6 owns the UJ-6 replay end to end. The agent navigates to Task details, the Status field highlights, and a toast offers "Open in Task schedule". 7.4 and 7.11 are the two halves of the Auditing screen.
+- **Within this epic:** 7.6 owns the UJ-6 replay end to end. The agent navigates to Task details, the Status field highlights, and a toast offers "Open in Task schedule". 7.4 and 7.11 are the two halves of the Auditing screen: 7.11 consumes 7.4's `AuditSystemEventList` and `AuditUserEventList` descriptors (entity type `audit-event`, id `EventName`, read `Security.Audit.Event` `LIST` by `eventOwner`), `MOVESMARKING` and the warning dialog.
 - **Routed ledger items:**
   - 7.6 has DW-1463.
+  - 7.11 has DW-1529 (both event lists declare `audit-event`, so a user event's reference resolves to the system-event list) and DW-1530 (the screen caller's post-write `Security.Audit.Event` GET is never run as a principal holding exactly the declared pairs).
   - 7.8 has DW-1155, DW-1189 and the process half of DW-1499.
   - Still open under 7.1: DW-1001 and DW-1013 (for the first story that amends a derived read's criteria), DW-1136 and DW-1137 (inside `AdminPort`), DW-1099 (descriptor read, filter and sort assertions) and DW-389 (Switches declares row actions with no handler).
 - **Epic 8 runs concurrently.** It owns `areas/web-applications/**`, `scripts/ci-*.sh`, `ci.yml`, `Install/**` except `Smoke.cls`, `Kernel/Secret/Ladder.cls` and `ui/tools/field-lists.*`. Because it owns the arming roster, do not add a new *armed* test class. `AdminPort.cls`, `strings.ts` and `_components.scss` are shared-append. `Prohibited.cls`, `Write.cls`, `Confirm.cls`, `Registry.cls` and the test roster classes are contended: run `git show origin/OCU-1-epic8:<path>` first and stay off its hunks. Epic 8 carries the privilege-grant change. The orchestrator reconciles AD-10's two amendments and the shared `UserList` lines at merge.
