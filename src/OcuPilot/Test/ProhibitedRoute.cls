@@ -1765,7 +1765,10 @@ Method TestAnAccountShortOfTheProcessPairIsRefusedTheTerminateScreenAction()
     Do $$$AssertStatusOK(tSC, "the probe process's owner account exists: " _ $System.Status.GetErrorText(tSC))
     Set tPid = ##class(OcuPilot.Test.ProcessControl).StartProbeProcess()
     Do $$$AssertNotEquals(tPid, "", "a probe process of this suite's own is running")
-    If tPid = "" Quit
+    If tPid = "" {
+        Do ##class(OcuPilot.Test.ProcessControl).RemoveProbeOwner()
+        Quit
+    }
     Try {
         Set tSC = ..ActOn("osmgmt.processes", "terminate", tPid, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
         Do $$$AssertStatusOK(tSC, "the screen action request completes")

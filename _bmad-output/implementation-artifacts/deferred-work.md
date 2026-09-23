@@ -4163,6 +4163,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 6.14's AC8 timed out twice in CI on a screen that declares refreshes true (ProcessList, rates 5/10/30/60): the page never navigated, and the named wait's dump showed it still on the processes list with the banner up. An in-page node.click() on a node the re-render has already detached does nothing. The control, its destination and the side-bar move are all correct; only the element's identity across refresh ticks is at fault. Probe: on a refreshing screen whose read is failing, press the banner's control repeatedly and watch for a press that produces no navigation
 - 2026-09-18T18:33:28Z status=routed owner=7-8-terminate-suspend-and-resume-a-process by=runner note=orchestrator-decided at the 6.14 rework gate: the fix is framework-level -- keep the banner and its control stable across refresh ticks rather than re-creating them -- and it belongs with the story that puts row actions on these same refreshing screens, where the identical lost click would hit a user pressing Terminate
 - 2026-09-18T18:47:08Z by=cr note=code review re-ran the probe this entry asks for: on Processes (refreshes true) and on Locks with the screen read refused, the .ocu-fault-banner element was replaced zero times in 25 s after exactly one refused read -- auto-refresh is off until the chip sets a rate (preferences.refreshRate answers 0 unstored) and a faulted read suspends the timer, so 'every refresh tick' is not the window; the window is a fault cleared by a successful call and re-raised by the parked re-read, which the 7-8 fix should target
+- 2026-09-23T17:03:49Z status=resolved-by:7-8-terminate-suspend-and-resume-a-process by=adjudication note=the fault banner stays mounted 1,500 ms after a fault clears, so a re-raise keeps the element and its control; fault-banner.spec.ts and .wire.spec.ts pin it; commit b35d39c0
 
 ### DW-1156: AC8's two CI timeouts still have no identified cause: the refresh-tick mechanism the rework targeted does not occur
 - source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: low | footprint: in-epic
@@ -4244,6 +4245,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: orchestrator harness-repair directive 2026-09-19 | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: DW-1156's third CI failure showed the Open messages.log control DESTROYED and recreated 1035 ms into the subtest, so the fault cleared and was re-raised during settle rather than on a refresh tick. The control sits inside @if (serverFault) nested in @if (visible). Whether the clear is legitimate is an app question the harness repair deliberately does not answer. Location: ui/src/app/shell/fault-banner.ts
 - 2026-09-19T07:34:54Z status=routed owner=7-8-terminate-suspend-and-resume-a-process by=cr note=the app half DW-1156 names and the orchestrator's directive explicitly excludes from the harness commit; beside DW-1155, which is the refresh-tick case on the same element
+- 2026-09-23T17:03:49Z status=resolved-by:7-8-terminate-suspend-and-resume-a-process by=adjudication note=same hold covers the initial-settle clear-and-re-raise; fault-banner specs; commit b35d39c0
 
 ### DW-1190: messages-log AC6 and AC5 fail deterministically on every browser-suite run after the first against one throwaway, because the suite's own logging pushes the seeded severity mix out of the viewer's tail window
 - source: harness repair, three-consecutive-run proof 2026-09-19 | severity: med | fix-risk: low | footprint: in-story
@@ -6043,6 +6045,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: src/OcuPilot/Kernel/Proposal/Prohibited.cls ReasonFor: SYSTEMACCOUNT, CURRENTUSER, LASTALLHOLDER (and the web-application arms) name the agent; AD-53 Rule says such a reason is a defect once a screen caller shares the predicate. Unreachable from 7.1's Enabled-only merge and bodyless delete; 7.2's row disable of a user reaches the user arms.
 - 2026-09-23T02:48:49Z status=routed owner=7-2-user-enable-disable-delete-password-and-roles by=cr note=first screen caller to reach the user arms; reword each reached reason caller-neutral and pin it as RefusalCopy does SERVINGPATH
 - 2026-09-23T07:41:58Z status=routed owner=7-8-terminate-suspend-and-resume-a-process by=adjudication note=resolved for CURRENTUSER, SYSTEMACCOUNT, SERVICEACCOUNT, LASTALLHOLDER (published caller-neutral sentences, commit e5b7e1b). Residual: OCUPILOTPROCESS and SYSTEMPROCESS, first reached by 7.8's process row actions; PRIVILEGEGRANT is Story 8.2's by orchestrator ruling; the web-application arms are reached by no screen caller on this branch
+- 2026-09-23T17:03:49Z status=resolved-by:7-8-terminate-suspend-and-resume-a-process by=adjudication note=OCUPILOTPROCESS and SYSTEMPROCESS now read the published caller-neutral sentences (RefusalCopy, self-protection.test.mjs); the account arms closed in 7.2; PRIVILEGEGRANT is Epic 8's by ruling; no other arm is reached by a screen caller on this branch
 
 ### DW-1500: The row-action handler decides which actions get the typed-name dialog by action id (DESTRUCTIVE_ACTIONS = delete) rather than from the write tool's own DESTRUCTIVE declaration
 - source: spec-7-1-enable-disable-and-delete-a-web-application.md | severity: low | fix-risk: med | footprint: in-story
@@ -6174,6 +6177,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: measured by 7.6's build; ui/angular.json:54 maximumWarning 1120kB, pinned by ui/tools/angular-json.test.mjs; Epic 8's 8.2 re-based its own copy under DW-1166's owner policy (about 5% above the measured total)
 - 2026-09-23T14:43:42Z status=routed owner=7-8-terminate-suspend-and-resume-a-process by=harvest note=7.8 re-bases maximumWarning under DW-1166 if it adds client bytes; angular.json and its test are Epic-8-modified, so the edit is a clarification unless the orchestrator's merge-gate re-base lands first
+- 2026-09-23T17:03:49Z status=resolved-by:7-8-terminate-suspend-and-resume-a-process by=adjudication note=maximumWarning re-based 1120kB->1181kB on 7.8's measured 1,124,199 B under DW-1166 (value line and pinned literal only, orchestrator ruling); commit b35d39c0
 
 ### DW-1554: WireSecurityRead's 'nothing is cut at 1,000' fails on a reused throwaway whose task history exceeds 1,000 rows
 - source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: low | fix-risk: low | footprint: in-epic
@@ -6189,3 +6193,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: low | fix-risk: med | footprint: out-of-footprint
 - evidence: %Api.Admin.Endpoints.Task.CRUD TaskToJson: New $NAMESPACE, Set $NAMESPACE = obj.NameSpace, obj.GetSettings (read on slot A). Fails closed with an error; Task details already reads GET, so the limitation predates 7.6. The privilege half is an inference (not observed).
 - 2026-09-23T15:01:41Z status=wontfix-accepted owner=7-6-run-suspend-resume-and-delete-a-task by=cr note=reopen_if=a user reports a task Task details or the schedule's Delete cannot read because of its namespace, e.g. an orphaned task
+
+### DW-1563: Three doc sites Story 7.8 made stale sit on lines it may not edit: Prohibited OCUPILOTPROCESS/SYSTEMPROCESS docs say suspend or resume, AdminPort :160-172 says TERMINATE is absent, the angular-json pin comment describes 1120kB
+- source: spec-7-8-terminate-suspend-and-resume-a-process.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Prohibited.cls:125,136 (spec: touch nothing else in a contended file), AdminPort.cls:160-172 (shared-append), ui/tools/angular-json.test.mjs:352-356 (DW-1553 ruling: value line only). Each now contradicts the code beside it.
+- 2026-09-23T16:59:16Z status=wontfix-accepted owner=7-8-terminate-suspend-and-resume-a-process by=cr note=reopen_if=after the Epic 7/8 merge any of the three still names only suspend/resume, TERMINATE absent, or 1120kB
+
+### DW-1564: ProcessPort's <PROTECT>->403 and failed-Terminate->500 branches are never executed by a test
+- source: spec-7-8-terminate-suspend-and-resume-a-process.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ProcessPort.cls:96-109: no leg raises <PROTECT> in the %SYS frame or gets an error status from Terminate(1); every caller that reaches it has passed the screen's three pairs (%DB_IRISSYS:R, %Admin_Manage:U), so neither branch is reachable today (inference).
+- 2026-09-23T16:59:16Z status=wontfix-theoretical owner=7-8-terminate-suspend-and-resume-a-process by=cr note=real if a caller can reach TerminateWithError without %DB_IRISSYS:R or %Admin_Manage:U, or Terminate(1) can fail on an open process
+
+### DW-1565: Either caller can terminate a pooled CSP server (JobType 27) that is serving another user's OcuPilot request at that moment
+- source: spec-7-8-terminate-suspend-and-resume-a-process.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Prohibited.IsOcuPilotProcess refuses $Job and running turn jobs only; ProcessJobTypes admits CSPSRV and the vendor reports CanBeTerminated 1 for it. Spec matrix row 'OcuPilot process' and AD-10's items (serving path = web app and service) define the set this way, 5.12's reading.
+- 2026-09-23T16:59:26Z status=by-design owner=7-8-terminate-suspend-and-resume-a-process by=cr note=spec-bound: AD-10 prohibits disabling the serving path, not one pooled server; the classic portal allows it; reopen via AD-10 amendment only
+
+### DW-1566: The screen route's Terminate carries no StartTimeUTC, so a pid that ends and is reused while the dialog is open would terminate the new process
+- source: spec-7-8-terminate-suspend-and-resume-a-process.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: screen-action-handler confirmPending sends {action,id}; AD-53 gives the screen caller no proposal or fingerprint. Needs the probe to end and the OS to hand its pid to a new IRIS process within the dialog's lifetime (inference: needs a pid wrap).
+- 2026-09-23T16:59:26Z status=wontfix-theoretical owner=7-8-terminate-suspend-and-resume-a-process by=cr note=real if the throwaway or an operator instance shows pid reuse within seconds (small pid_max or very high process churn)

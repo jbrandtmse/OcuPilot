@@ -347,6 +347,51 @@ self-JOBbed processes only, and were all cleaned up.
 
   Both are observed on `ocupilot-ci`.
 
+### Review Findings
+
+Code review 1 (2026-09-23, full-opus, 4 layers; BH blind, ECH edge case, VG verification gap, AA
+acceptance). AD-52's named case holds on all four points; AD-10 reaches all four tools; the budget
+re-base is the two lines. 29 findings: 0 high, 2 medium, 20 low, 7 false. 10 patched, 4 ledgered
+(DW-1563 to DW-1566), 15 rejected.
+
+- [x] [Review][Patch] (med, VG+BH+AA) `ProcessPort`'s gate resource was pinned by no test: `Deny` refused every resource, so `GATERESOURCE` could drift from the vendor's `%Admin_Operate` with the suite green. `ProcessPortProbe.Deny` now names one resource; the leg asserts 403 without `%Admin_Operate` and 404 without `%Admin_Manage` [src/OcuPilot/Test/ProcessTerminate.cls:265]
+- [x] [Review][Patch] (low, BH) `AsTheUser`'s tool-path scan omitted `ProcessPort`, own member appended [src/OcuPilot/Test/AsTheUser.cls:137]
+- [x] [Review][Patch] (low, BH+VG) the agent terminate leg never asserted the probe's namespace, so its "no `<RESJOB>`" check could pass on an empty one [src/OcuPilot/Test/ProcessControl.cls:698]
+- [x] [Review][Patch] (low, ECH) `ResjobEntries` read a failed `DateList`/`ErrorList` execute as zero entries; it now answers -1 [src/OcuPilot/Test/ProcessControl.cls:1117]
+- [x] [Review][Patch] (low, BH+ECH) `ProcessControl`'s header named only 5.12's writes and one principal; a failed `EnsureThreePairsPrincipal` left its role behind [src/OcuPilot/Test/ProcessControl.cls:1]
+- [x] [Review][Patch] (low, BH+ECH) the new short-of-pair Terminate leg leaked the probe owner when no probe started [src/OcuPilot/Test/ProhibitedRoute.cls:1767]
+- [x] [Review][Patch] (low, BH+ECH) the browser spec's `after` hook asserted inside its loop, so one failed probe left the rest running [ui/browser/process-actions.browser-spec.mjs:64]
+- [x] [Review][Patch] (low, BH) stale sentences in the two descriptor docs this story rewrote ("the two tools read `State`"; "refuses a suspend or a resume") [src/OcuPilot/Screen/Descriptor/ProcessList.cls:32]
+- [x] [Review][Patch] (low, BH) the unknown-id pin used `broadcast`, which is Story 16.6's verb on this list; now `no-such-action` [ui/tools/screen-actions.test.mjs:108]
+- [x] [Review][Patch] (low, BH) `ProcessTerminate`'s header omitted its HTTP route leg and the test account it needs [src/OcuPilot/Test/ProcessTerminate.cls:6]
+- [x] [Review][Defer] (low) three doc sites this story made stale are on lines it may not edit: `Prohibited` `OCUPILOTPROCESS`/`SYSTEMPROCESS`, `AdminPort :160-172`, the `angular-json` pin comment [src/OcuPilot/Kernel/Proposal/Prohibited.cls:125] — DW-1563 wontfix-accepted, reopen at the Epic 7/8 merge
+- [x] [Review][Defer] (low, VG) `ProcessPort`'s `<PROTECT>`→403 and failed-`Terminate`→500 branches never run; unreachable behind the three pairs (inference) [src/OcuPilot/Port/ProcessPort.cls:96] — DW-1564 wontfix-theoretical
+- [x] [Review][Defer] (med, AA) a pooled CSP server serving another user's OcuPilot request can be terminated [src/OcuPilot/Kernel/Proposal/Prohibited.cls:720] — DW-1565 by-design: spec matrix and AD-10 define the OcuPilot process as `$Job` or a turn job, and the serving path as the application and service
+- [x] [Review][Defer] (low, ECH) the screen route's Terminate carries no `StartTimeUTC`, so a pid reused while the dialog is open would be terminated [ui/src/app/shell/screen-action-handler.ts:268] — DW-1566 wontfix-theoretical (needs a pid wrap within the dialog's life)
+
+Verification: `ProcessTerminate` 8/0 (run 8422), `AsTheUser` 3/0 (8424), `ProhibitedRoute` 25/0
+(8425), `ProcessControl` 15/0 through a temporary unarmed subclass (8423, deleted, no principal
+left), `process-actions.browser-spec.mjs` 3/3, `screen-actions.test.mjs` 8/8, `screen-mirror
+--check` and `check-objectscript` clean.
+
+Rejected:
+
+- low: `sendError` other than `1` falls through to a plain terminate. Only `ProcessTerminateWithError.PortQuery` writes it, server-side.
+- low: the missing-id 400 and non-pid 404 are not compared with the vendor. Every tool passes an id, and the non-pid 404 is asserted at the port.
+- low: Process details keeps the dialog and refusal when Back/Forward changes the pid under a reused component. The dialog still terminates exactly the pid it names.
+- low: `ProcessControl.CodeResource` duplicates `ProhibitedRoute.CodeDatabaseResource`. That one is an instance method on another test class.
+- low: `ProcessPort` could open a reused pid between the confirm's re-read and `%OpenId`. Both happen in one request (theoretical; see DW-1566).
+- low: `StopProbeProcess` could terminate a process that reused a gone probe's pid. It reads the state first, so this needs a pid wrap within about a second (5.12 helper).
+- low: an older `<RESJOB>` entry under the same pid. The pre-count assertion goes red rather than vacuous, and it can only happen on a throwaway.
+- low: the `fault` pass-through `computed`, and the flag's checkbox not wrapped in `.ocu-field`. Cosmetic; `ocu-criteria-marker` styles it.
+- false: the suspend/resume no-op leg leaves the probe suspended. `OnAfterOneTest` resumes it and reports it.
+- false: the new short-of-pair leg lacks the 5.12 leg's control assertions. `failedPair = PROCESSPAIR` goes red if another pair is missing first.
+- false: the card's `State` row is outside the fingerprint (AD-6/AD-51). AD-51's subject is the fields whose movement invalidates the intent, the registry's adequacy guard passes, and Design Notes give the reason.
+- false: pre-existing lines were rewritten in `AdminPort`, `PortFixture` and `PortGate`. Each line gains only this story's member (roster rule), as declared in the footprint and the merge notes.
+- false: `ProcessPort` skips `VerifyInstance` and `IsMutating`. The flagged path calls no admin API, the same operation's fresh read and re-read pass `VerifyInstance`, and `IsMutating` guards a body this write does not send.
+- false: `ToolWrite`'s TERMINATE legs contradict Epic 8's copy. That is already a merge note, not a defect on this branch.
+- false: AC5's marker clause has no mutation of its own. Rule 19 asks for one mutation per AC, and AC5 has one (run 8220). The same marker assertions were proven red in 5.12's leg.
+
 ## Spec Change Log
 
 - 2026-09-23, lead spec gate: AD-52's sentence is in the spine; the seven strings are published at
@@ -519,6 +564,7 @@ Recorded (implement, `ocupilot-ci`; each applied, observed red, reverted, tree b
 - `mutation: ProcessPort.TerminateWithError skips its HoldsResource gate, reloaded → red: ProcessTerminate.TestTheProcessPortRefusesACallerShortOfItsGate, run 8229 (AD-52 gate)`
 - `mutation: ProcessResume.StateDiff accepts a running process, reloaded → red: ProcessControl.TestAScreenSuspendOrResumeThatChangesNothingIsRefused, run 8231 (matrix no-op row)`
 - `mutation: PortGate ROSTER without ProcessPort → red: PortGate.TestEveryPortDeclaresANamedGate, sweep run 8326 (the roster row)`
+- `mutation: ProcessPort GATERESOURCE "%Admin_Manage", reloaded with ProcessPortProbe → red: ProcessTerminate.TestTheProcessPortRefusesACallerShortOfItsGate, both legs, run 8421; reverted, green at run 8422 (AD-52 gate resource; code review)`
 
 ## Auto Run Result
 

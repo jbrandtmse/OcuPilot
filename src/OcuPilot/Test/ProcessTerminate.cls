@@ -5,11 +5,12 @@
 /// guard, and the prohibited set's two process refusals for both tools.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and a caller holding
 /// <code>%Admin_Operate:USE</code>, <code>%Admin_Manage:USE</code> and <code>%DB_IRISSYS:READ</code>,
-/// on an instance running at least one process of a kind the allow-list does not admit.</p>
+/// on an instance running at least one process of a kind the allow-list does not admit, and
+/// OcuPilot's API reachable over HTTP as <class>OcuPilot.Test.Http</class>'s test account.</p>
 /// <p><b>It terminates nothing.</b> The mint and the confirm go through
-/// <class>OcuPilot.Test.ProposalFixture</class>'s port; the port legs send a terminate only to a pid
-/// no process carries, and to this test's own job after reading that the instance refuses to
-/// terminate it; the prohibited set is asked, never applied.</p>
+/// <class>OcuPilot.Test.ProposalFixture</class>'s port; the port and route legs send a terminate
+/// only to a pid no process carries, and to this test's own job after reading that the instance
+/// refuses to terminate it; the prohibited set is asked, never applied.</p>
 Class OcuPilot.Test.ProcessTerminate Extends %UnitTest.TestCase
 {
 
@@ -253,22 +254,29 @@ Method TestTheProcessPortRepeatsTheVendorsGuardAndTerminatesNothing()
     Do $$$AssertEquals(..CanBeTerminated($Job), 0, "and this job is still running")
 }
 
-/// <p>AD-52: the port's own gate. A caller that does not hold
-/// <parameter>OcuPilot.Port.ProcessPort.GATERESOURCE</parameter> at <code>USE</code> is refused 403
-/// before the process is looked up, so even a pid no process carries answers 403, not 404.</p>
+/// <p>AD-52: the port's own gate is the vendor endpoint's <code>%Admin_Operate</code> at
+/// <code>USE</code>. A caller that does not hold it is refused 403 before the process is looked up,
+/// so even a pid no process carries answers 403, not 404; a caller short of another resource is
+/// not refused by this gate, and reads the 404.</p>
 /// <p>Mutation (Rule 19): remove the <code>HoldsResource</code> check from
-/// <method>OcuPilot.Port.ProcessPort.TerminateWithError</method> -- the leg reads 404 and goes
-/// red.</p>
+/// <method>OcuPilot.Port.ProcessPort.TerminateWithError</method>, or set
+/// <parameter>OcuPilot.Port.ProcessPort.GATERESOURCE</parameter> to <code>%Admin_Manage</code> --
+/// the 403 leg reads 404 and goes red.</p>
 Method TestTheProcessPortRefusesACallerShortOfItsGate()
 {
-    Do $ClassMethod(..#PROBEPORT, "Deny")
     Kill tQuery
     Set tQuery("id") = ..#ABSENTPID
     Set tQuery($Parameter(..#PORT, "SENDERRORPARAM")) = 1
-    Set tSC = $ClassMethod(..#PROBEPORT, "Invoke", "Process", "TERMINATE", .tQuery, "", .tAnswer, .tHttp, .tFault)
-    Do $$$AssertStatusNotOK(tSC, "a flagged terminate by a caller short of the gate fails")
-    Do $$$AssertEquals(+$Get(tHttp), 403, "at 403, before the process is looked up")
-    Do $$$AssertEquals($Select($IsObject($Get(tFault)): tFault.code, 1: ""), ##class(OcuPilot.Api.Error).#PORTACCESSDENIED, "as the admin port's own access-denied code")
+    For tStep = $ListBuild("%Admin_Operate", 403, ##class(OcuPilot.Api.Error).#PORTACCESSDENIED), $ListBuild("%Admin_Manage", 404, ##class(OcuPilot.Api.Error).#PORTNOTFOUND) {
+        Do $ClassMethod(..#PROBEPORT, "Clear")
+        Do $ClassMethod(..#PROBEPORT, "Deny", $List(tStep, 1))
+        Kill tAnswer, tHttp, tFault
+        Set tSC = $ClassMethod(..#PROBEPORT, "Invoke", "Process", "TERMINATE", .tQuery, "", .tAnswer, .tHttp, .tFault)
+        Do $$$AssertStatusNotOK(tSC, "without " _ $List(tStep, 1) _ ": a flagged terminate of a pid no process carries fails")
+        Do $$$AssertEquals(+$Get(tHttp), $List(tStep, 2), "without " _ $List(tStep, 1) _ ": at " _ $List(tStep, 2))
+        Do $$$AssertEquals($Select($IsObject($Get(tFault)): tFault.code, 1: ""), $List(tStep, 3), "without " _ $List(tStep, 1) _ ": as " _ $List(tStep, 3))
+    }
+    Do $ClassMethod(..#PROBEPORT, "Clear")
 }
 
 /// <p>A process that ends before the Terminate is confirmed: the screen route answers the port's

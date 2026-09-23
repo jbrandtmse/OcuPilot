@@ -36,7 +36,7 @@
 /// <p><b><code>JobType</code> is declared because a refusal rests on it.</b> It is the
 /// authoritative kind of a process -- <code>GET</code>-only, absent from the <code>CONTROLPANEL</code>
 /// row behind LIST -- and <method>OcuPilot.Kernel.Proposal.Prohibited.Process</method> refuses a
-/// suspend or a resume on it, so the operator is shown the field the refusal reads. It takes no
+/// suspend, a resume or a terminate on it, so the operator is shown the field the refusal reads. It takes no
 /// table column: the page's three labeled groups are the classic page's, and this is the agent's
 /// context rather than a figure a reader compares.</p>
 /// <p><b>It is one of the seven screens the shared auto-refresh framework binds</b> (AD-43), at the

@@ -61,14 +61,18 @@ before(async () => {
 after(async () => {
   if (browser !== null) await browser.close();
   if (!/-ci$/.test(config.container)) return;
+  // Every probe is stopped and cleaned before anything is asserted, so one probe's failure never
+  // leaves the others running.
+  const left = [];
   for (const { pid, namespace } of started) {
     const output = runIris([
       `Do ##class(${FIXTURE}).StopProbeProcess("${escapeOs(pid)}")`,
       `Do ##class(${FIXTURE}).DeleteResjob("${escapeOs(namespace)}","${escapeOs(pid)}")`,
       `Write "OCU-PAGONE-START:"_##class(${FIXTURE}).ProcessState("${escapeOs(pid)}")_"|"_##class(${FIXTURE}).ResjobCount("${escapeOs(namespace)}","${escapeOs(pid)}")_":OCU-PAGONE-END",!`,
     ]);
-    assert.equal(markerValue(output, 'PAGONE'), '|0', `probe ${pid} is gone and left no <RESJOB> entry: ${output}`);
+    if (markerValue(output, 'PAGONE') !== '|0') left.push(`probe ${pid}: ${output}`);
   }
+  assert.deepEqual(left, [], 'every probe is gone and left no <RESJOB> entry');
 });
 
 function runIris(lines) {

@@ -204,3 +204,9 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T16:40:54Z	Story 7.8	pushed	sha=b35d39c0 ci=pending run=35890385806
 2026-09-23T16:40:54Z	Story 7.8	adr_verifications_complete	result=none_required model=claude-opus-5-5
 2026-09-23T16:40:54Z	Story 7.8	stage_spawned	stage=qa spawn_at=2026-09-23T16:40:54Z model=sonnet agent_name=7-8-terminate-suspend-and-resume-a-process-qa-1 cycle_iteration=1
+2026-09-23T16:43:13Z	Story 7.8	qa_complete	spawn_at=2026-09-23T16:41:00Z model=sonnet tests_added=0 mutations_demonstrated=0 first_run_failures=0 clarifications=0 closing_sections_present=true
+2026-09-23T16:43:13Z	Story 7.8	stage_spawned	stage=code-review spawn_at=2026-09-23T16:43:13Z model=opus agent_name=7-8-terminate-suspend-and-resume-a-process-code-review-1 cycle_iteration=1
+2026-09-23T17:03:49Z	Story 7.8	ci_resolved	story=7.8 run=35890385806 result=success resolved_at=cr head=b35d39c0 jobs=8/8 note=ProcessControl_armed_legs_green_in_CI
+2026-09-23T17:03:49Z	Story 7.8	cr_complete	spawn_at=2026-09-23T16:43:13Z model=opus resolved=10 fixed_at_source=10 by_design=1 wontfix_theoretical=2 routed=0 escalated=0 decision_pending=0 deferred=4 dismissed=15 high=0 med=2 low=20 rows=29 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done ledger=DW-1563..DW-1566
+2026-09-23T17:03:49Z	Story 7.8	ledger_adjudicated	owned=4 resolved=4 reowned=0 terminal=0 resolved_ids=DW-1155,DW-1189,DW-1499,DW-1553 model=claude-opus-5-5
+2026-09-23T17:03:49Z	Story 7.8	smoke_complete	method=api result=pass iterations=1 defects_caught=0 evidence=probe_routine_job_1586423_on_ocupilot-ci:suspend_200,resume_200,terminate-with-error_200(process_gone);terminate_system_pid_1626_403_PROHIBITED.SYSTEMPROCESS_with_the_published_sentence;probe_routine_deleted model=claude-opus-5-5

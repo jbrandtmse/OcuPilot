@@ -1,10 +1,13 @@
 /// <p>Pins Story 5.12's two writes (AD-51, AD-6, AD-10, AD-13, AD-34): the bodyless
 /// <code>SUSPEND</code> and <code>RESUME</code>, their diffs taken from the fresh <code>GET</code>,
-/// the declared fingerprint subject in both directions, and AD-10's two target predicates.</p>
+/// the declared fingerprint subject in both directions, and AD-10's two target predicates; and Story
+/// 7.8's real terminates, through the screen route and the agent's confirm, with and without the
+/// <code>&lt;RESJOB&gt;</code> flag.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, <code>%Admin_Operate:USE</code>
 /// and <code>%DB_IRISSYS:READ</code>, an account holding <code>%All</code>, and both
 /// <parameter>ARMINGVARIABLE</parameter> and <parameter>PRINCIPALVARIABLE</parameter> reading
-/// <code>1</code>. It suspends a real process and creates one principal, so
+/// <code>1</code>. It suspends and terminates real processes, creates two principals and deletes the
+/// <code>&lt;RESJOB&gt;</code> entries its flagged terminates log, so
 /// <method>OnBeforeAllTests</method> refuses anywhere either does not; only
 /// <file>scripts/ci-throwaway.sh</file> sets them.</p>
 /// <p><b>It acts only on processes it starts.</b>
@@ -660,7 +663,10 @@ Method TestAFlaggedTerminateAsTheThreePairsLogsOneResjobEntry()
 {
     Set tSC = ..EnsureThreePairsPrincipal()
     Do $$$AssertStatusOK(tSC, "a principal holding exactly the list's three pairs is created: " _ $System.Status.GetErrorText(tSC))
-    If $$$ISERR(tSC) Quit
+    If $$$ISERR(tSC) {
+        Do ..RemoveThreePairsPrincipal()
+        Quit
+    }
     Set tPid = ..StartUntrappedProbeProcess()
     Do $$$AssertNotEquals(tPid, "", "a probe process of this method's own is running")
     If tPid '= "" {
@@ -696,6 +702,7 @@ Method TestTheAgentsTerminatesAreMarkedAndCarryTheStateRow()
         Do $$$AssertNotEquals(tPid, "", "a probe process of this leg's own is running")
         If tPid = "" Continue
         Set tNamespace = ..NamespaceOf(tPid)
+        Do $$$AssertNotEquals(tNamespace, "", "its namespace reads, so the <RESJOB> counts below read a real log")
         Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
         Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
         Do $$$AssertStatusOK(tSC, "the probe turn is seeded")
@@ -1117,8 +1124,13 @@ ClassMethod ResjobEntries(pNamespace As %String, pPid As %String, Output pEntrie
         Set $NAMESPACE = "%SYS"
         Set tDates = ##class(%ResultSet).%New("SYS.ApplicationError:DateList")
         Set tSC = tDates.Execute(pNamespace)
+        If $$$ISERR(tSC) {
+            Set $NAMESPACE = tOrigNS
+            Set tCount = -1
+            Quit
+        }
         Set tList = ""
-        While $$$ISOK(tSC) && tDates.Next() {
+        While tDates.Next() {
             Set tList = tList _ $ListBuild(tDates.Get("Date"))
         }
         Do tDates.Close()
@@ -1126,7 +1138,11 @@ ClassMethod ResjobEntries(pNamespace As %String, pPid As %String, Output pEntrie
             Set tDate = $List(tList, tI)
             Set tRS = ##class(%ResultSet).%New("SYS.ApplicationError:ErrorList")
             Set tSC = tRS.Execute(pNamespace, tDate)
-            While $$$ISOK(tSC) && tRS.Next() {
+            If $$$ISERR(tSC) {
+                Set tCount = -1
+                Quit
+            }
+            While tRS.Next() {
                 If (tRS.Get("Process") '= pPid) && (tRS.Get("DisplayPID") '= pPid) Continue
                 If '(tRS.Get("Error message") [ "RESJOB") Continue
                 Set tCount = tCount + 1

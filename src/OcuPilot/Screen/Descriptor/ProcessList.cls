@@ -28,8 +28,9 @@
 /// <code>CanReceiveBroadcast</code> exist only to gate the vendor's own controls, so a read that
 /// carried them would ship the inputs to a decision nothing here makes -- and
 /// <code>CanBeSuspended</code> is not even the suspended-state discriminator, since its retrieval
-/// code ends <code>i State'["SUSP"</code>. The state the two tools read is <code>State</code>,
-/// which this screen already declares.</p>
+/// code ends <code>i State'["SUSP"</code>. Suspend and Resume read <code>State</code>, which this
+/// screen already declares; the two terminates also read <code>StartTimeUTC</code>, through their
+/// own <code>GET</code>.</p>
 /// <p><b>The client and identity columns are absent too</b> -- <code>Device</code>,
 /// <code>ClientName</code>, <code>EXEname</code>, <code>IPAddress</code>, <code>OSUserName</code>,
 /// <code>ParentPid</code>, <code>Job</code>, <code>PrvGblBlkCnt</code>, <code>CPUTime</code> and
