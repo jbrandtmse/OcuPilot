@@ -347,10 +347,6 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         ; AD-3: a wrapper secret one of the screen's tools authors -- Security.User's POST
         ; Password -- is no field of the endpoint's template, so no predicate reviews it and the
         ; reviewed-few floor below is asked about the declared secrets that are fields.
-        Set tSecrets = ..WithoutAuthoredSecrets(tDescriptor, tSecrets)
-        ; AD-3: a wrapper secret one of the screen's tools authors -- Security.User's POST
-        ; Password -- is no field of the endpoint's template, so no predicate reviews it and the
-        ; reviewed-few floor below is asked about the declared secrets that are fields.
         Set tDeclaredSecrets = tSecrets
         Set tSecrets = ..WithoutAuthoredSecrets(tDescriptor, tSecrets)
         ; The other half of AD-10's title, and the one that covers a field nobody has named: a tool

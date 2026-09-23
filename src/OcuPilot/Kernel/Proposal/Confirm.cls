@@ -378,7 +378,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         ; screen action's are one call site. AD-52's port declaration, AD-51's request type and the
         ; tool's own port query (read off the STORED payload the fingerprint just compared) all
         ; resolve inside it.
-        Set tWriteSC = ##class(OcuPilot.Kernel.Proposal.Operation).Apply(tToolClass, ..PortClass(), tEndpoint, tIdParam, tIdValue, $Get(pRow("payload")), tBody, .tWritten, .tWriteHttp, .tWriteFault)
+        Set tWriteSC = ##class(OcuPilot.Kernel.Proposal.Operation).ApplyAt(tToolClass, ..PortClassOf(tToolClass), tEndpoint, tIdParam, tIdValue, $Get(pRow("payload")), tBody, .tWritten, .tWriteHttp, .tWriteFault)
         If $$$ISERR(tWriteSC) {
             ; The claim has committed and the token is spent: the proposal stays confirmed and the
             ; port's own normalized envelope is what the caller is answered with. There is no
@@ -585,7 +585,7 @@ ClassMethod FingerprintMatches(pTool As %DynamicObject, ByRef pRow, Output pMatc
         ; tool's own question about the reviewed target -- for a set-addressing port, "which of
         ; these ids still exist". Empty for every shipped tool against an admin endpoint, so their
         ; re-read is byte-identical to the mint's.
-        Set tReadSC = ##class(OcuPilot.Kernel.Proposal.Operation).Read(tClass, ..PortClass(), pEndpoint, pIdParam, pIdValue, $Get(pRow("payload")), .tFresh, .tReadHttp, .tReadFault)
+        Set tReadSC = ##class(OcuPilot.Kernel.Proposal.Operation).ReadAt(tClass, ..PortClassOf(tClass), pEndpoint, pIdParam, pIdValue, $Get(pRow("payload")), .tFresh, .tReadHttp, .tReadFault)
         Set tCreates = ##class(OcuPilot.Kernel.Proposal.Mint).CreatesOf(tClass)
         If tCreates {
             ; AD-54. The re-read asks the create's own question -- is this name still free -- and

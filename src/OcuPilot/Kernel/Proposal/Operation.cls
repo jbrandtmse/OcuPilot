@@ -191,11 +191,21 @@ ClassMethod Query(pToolClass As %String, pIdParam As %String, pIdValue As %Strin
 /// target that could not be read -- gone, or refused -- and no caller writes after one.</p>
 ClassMethod Read(pToolClass As %String, pDefaultPort As %String, pEndpoint As %String, pIdParam As %String, pIdValue As %String, pPayloadJson As %String, Output pFresh As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
+    Quit ..ReadAt(pToolClass, ..PortClassOf(pToolClass, pDefaultPort), pEndpoint, pIdParam, pIdValue, pPayloadJson, .pFresh, .pHttpStatus, .pFault)
+}
+
+/// <p>Read through <var>pPort</var>, a port the caller has already resolved. A caller that
+/// resolves the port through a seam of its own -- the confirm, whose <method>PortClassOf</method>
+/// a test overrides to record what reaches the port -- calls this form, so the read and the write
+/// both reach the port it resolved; <method>Read</method> resolves the tool's declared port and
+/// calls this.</p>
+ClassMethod ReadAt(pToolClass As %String, pPort As %String, pEndpoint As %String, pIdParam As %String, pIdValue As %String, pPayloadJson As %String, Output pFresh As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
     Set pFresh = ""
     Set pHttpStatus = 0
     Set pFault = ""
     Do ..Query(pToolClass, pIdParam, pIdValue, pPayloadJson, .tQuery)
-    Quit $ClassMethod(..PortClassOf(pToolClass, pDefaultPort), "Invoke", pEndpoint, ..ReadType(pToolClass), .tQuery, "", .pFresh, .pHttpStatus, .pFault)
+    Quit $ClassMethod(pPort, "Invoke", pEndpoint, ..ReadType(pToolClass), .tQuery, "", .pFresh, .pHttpStatus, .pFault)
 }
 
 /// <p>Whether the write <var>pTool</var> would make against <var>pTargetRef</var> may happen, for
@@ -287,11 +297,21 @@ ClassMethod Gate(pTool As %DynamicObject, pTargetRef As %String, pPayloadJson As
 /// spent by the time this runs (AD-34).</p>
 ClassMethod Apply(pToolClass As %String, pDefaultPort As %String, pEndpoint As %String, pIdParam As %String, pIdValue As %String, pPayloadJson As %String, pBody As %DynamicObject, Output pWritten As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
+    Quit ..ApplyAt(pToolClass, ..PortClassOf(pToolClass, pDefaultPort), pEndpoint, pIdParam, pIdValue, pPayloadJson, pBody, .pWritten, .pHttpStatus, .pFault)
+}
+
+/// <p>Apply through <var>pPort</var>, a port the caller has already resolved. A caller that
+/// resolves the port through a seam of its own -- the confirm, whose <method>PortClassOf</method>
+/// a test overrides to record what reaches the port -- calls this form, so the read and the write
+/// both reach the port it resolved; <method>Apply</method> resolves the tool's declared port and
+/// calls this.</p>
+ClassMethod ApplyAt(pToolClass As %String, pPort As %String, pEndpoint As %String, pIdParam As %String, pIdValue As %String, pPayloadJson As %String, pBody As %DynamicObject, Output pWritten As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
     Set pWritten = ""
     Set pHttpStatus = 0
     Set pFault = ""
     Do ..Query(pToolClass, pIdParam, pIdValue, pPayloadJson, .tQuery)
-    Quit $ClassMethod(..PortClassOf(pToolClass, pDefaultPort), "Invoke", pEndpoint, ..WriteType(pToolClass), .tQuery, pBody, .pWritten, .pHttpStatus, .pFault)
+    Quit $ClassMethod(pPort, "Invoke", pEndpoint, ..WriteType(pToolClass), .tQuery, pBody, .pWritten, .pHttpStatus, .pFault)
 }
 
 /// <p>The first pair of <var>pPairs</var> that <var>pUser</var> does not hold, as
