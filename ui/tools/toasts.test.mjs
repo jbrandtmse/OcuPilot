@@ -293,6 +293,11 @@ test('the published copy resolves its placeholders, and each action has its own 
   assert.equal(changeSentenceTemplate('deleted'), STRINGS.tableChangeDeleted);
 
   assert.equal(formatChangeSentence(STRINGS.tableChangeDeleted, '/csp/myapp'), '/csp/myapp was deleted');
+  // Story 7.10: a composite id reads as its breadcrumb, never with the control character.
+  assert.equal(
+    formatChangeSentence(STRINGS.tableChangeDeleted, 'user\u000109/23/2026'),
+    'user \u203a 09/23/2026 was deleted'
+  );
   assert.equal(
     formatChangeToastLink(STRINGS.tableChangeToastLink, 'Web applications'),
     'Open in Web applications'

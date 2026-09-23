@@ -903,6 +903,13 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.equal(readless.declaration.read, undefined, 'and declares no read at all');
   assert.equal(readless.declaration.table, undefined, 'and no table either');
   assert.equal(readProblem(readless.declaration), null, 'which the read grammar admits');
+  // Story 7.10: one delete on every drill level, whose scope is the level's own id prefix.
+  assert.deepEqual(
+    readless.declaration.rowActions,
+    [{ id: 'delete', selfProtection: '' }],
+    'one delete row action, with no self-protection rule'
+  );
+  assert.equal(readless.declaration.entityLabelKey, 'errorLogListLabel', "and the card's noun is the screen's own label");
 });
 
 // Story 6.2: every case in `OcuPilot.Test.ColumnCorpus`, read off disk from the XData block

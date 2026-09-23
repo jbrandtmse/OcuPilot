@@ -260,6 +260,33 @@ describe('the command bar', () => {
     expect(fixture.nativeElement.querySelectorAll('[disabled]')).toHaveLength(0);
   });
 
+  it('Story 7.10: on a screen with row actions and no declared read, the bar follows the selection the page writes', () => {
+    // The application error log's drill-down declares no read and writes its own selection into
+    // its store; the bar has to see it move.
+    //
+    // Mutation (Rule 19): restore `bindStore`'s early return for every screen with no read -> the
+    // action stays "Select a row first" after the selection lands, red.
+    const declared = screenDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.LogErrorList',
+      entityType: 'application-error',
+      rowActions: [{ id: 'delete', selfProtection: '' }],
+    });
+    build(declared);
+    let runs = 0;
+    actions.register(declared.descriptor, 'delete', () => (runs += 1));
+    fixture.detectChanges();
+    const button = (): HTMLButtonElement => fixture.nativeElement.querySelector('.ocu-command-bar-action');
+    expect(declared.read).toBeNull();
+    expect(button().getAttribute('aria-disabled')).toBe('true');
+
+    stores.for(declared.descriptor, declared.refreshRates).setSelection(['USER\u000109/23/2026']);
+    fixture.detectChanges();
+    expect(button().hasAttribute('aria-disabled')).toBe(false);
+    button().click();
+    fixture.detectChanges();
+    expect(runs).toBe(1);
+  });
+
   it('DW-389: a declared row action with no registered handler draws no button, beside one that is registered', () => {
     // Per action, not all-or-nothing: the same screen declares two and registers one.
     //

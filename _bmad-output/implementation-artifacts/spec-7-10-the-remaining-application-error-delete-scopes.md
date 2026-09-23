@@ -2,7 +2,8 @@
 title: 'Story 7.10: The remaining application error delete scopes'
 type: 'feature'
 created: '2026-09-23'
-status: 'ready-for-dev'
+status: 'in-review'
+baseline_revision: 'b23f3d530168257564cad06f6d1634a27c8ca61a'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -11,7 +12,33 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-5-13-logs-delete-application-errors-by-namespace.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-7-8-terminate-suspend-and-resume-a-process.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The agent's absent-scope refusal is 400 TOOL.ARGUMENTS, not the matrix's 404 LOG.DATE or
+      LOG.ENTRY: the kernel mint maps any port 404 to a refused argument naming the id.
+    evidence: |-
+      Kernel/Proposal/Mint.cls Mint: `If +$Get(tReadHttp) = 404` -> Refuse("'<id>' is not present").
+      The port answers 404 LOG.DATE/LOG.ENTRY (ErrorDeleteScope, run 8437) and the screen route
+      passes it through; Mint.cls is on this story's Never list. (inference: intended by 5.13)
+    location: src/OcuPilot/Kernel/Proposal/Mint.cls
+    severity: low
+  - summary: >-
+      A number reused within the same second as the error it replaces is not detected: the
+      vendor's ErrorList Time has one-second resolution.
+    evidence: |-
+      ErrorList Time reads HH:MM:SS on ocupilot-ci (probe 2026-09-23). Needs the date emptied and a
+      new error logged at the same number inside the original's second. (inference: theoretical)
+    location: src/OcuPilot/Port/LogSourcePort.cls
+    severity: low
+  - summary: >-
+      The ?ns= leg's "HSCUSTOM untouched" half cannot fail unless HSCUSTOM holds an error with the
+      same date and number as the USER seed.
+    evidence: |-
+      ErrorDelete.TestAScreenDeleteIgnoresTheRoutesNamespace seeds only USER (the spec confines seeds
+      to USER), so a port deleting in both namespaces would stay green. Settled by a colliding
+      HSCUSTOM seed, which needs the USER-only rule relaxed.
+    location: src/OcuPilot/Test/ErrorDelete.cls
+    severity: low
 footprint_extensions: # planned; this story's own members only (roster rule, 2026-09-23)
   - 'src/OcuPilot/Test/ToolWrite.cls' # Epic 8 modified; only the ErrorDelete leg :818-878, off its hunks (~:164, ~:1133-1145, ~:1188-1190)
   - 'ui/tools/screen-mirror.test.mjs' # Epic 8 modified; only the LogErrorList pin :899-905
@@ -359,6 +386,28 @@ baseline was restored and diffed identical.
 
 ## Review Triage Log
 
+### 2026-09-23 — Review pass
+
+- verdicts: 17 findings — high 0, medium 3, low 7, false 7, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` A date-scoped enumeration was never checked against a namespace with several dates — added a `QueriesNamed(DateList) = 1` assertion to `ErrorDeleteScope`'s narrowing leg; red under "walk every date" (run 8446).
+  - `[medium]` `[patch]` AC4's named pin stays green under its own mutation; "before any read" unobserved on the route — added `ErrorDeleteScope.TestTheRouteGateRefusesEveryScopeShortOfItsWritePair` (the shared `Operation.Gate` the route runs before `Read`, `ScreenAction.cls:192`, with each composite id); red under "whole id to PairsFor" (run 8446).
+  - `[low]` `[defer]` The `?ns=` leg's HSCUSTOM half cannot fail without a colliding HSCUSTOM seed — settling it needs a non-USER seed the intent excludes; recorded in `deferred:`.
+  - `[low]` `[reject]` Tasks and Design Notes still name `proposalEntityApplicationErrors` — the fix edits this spec; the Spec Change Log records the switch to `errorLogListLabel`.
+  - `[low]` `[reject]` A proposal pending across the deploy gets 409 because entries gained `time` — safe refusal, short-lived; a guard adds complexity.
+  - `[low]` `[defer]` Agent-side absent scope is 400 `TOOL.ARGUMENTS`, not 404 — `Kernel/Proposal/Mint.cls` maps any port 404 and is on the Never list; carried in `deferred:` from implement.
+  - `[medium]` `[patch]` Short of the pair "before any read" — same root cause as the AC4 row above and patched by the same leg; the agent half is false, since the agent's `ArgumentPairs` reads the bare `namespace` argument and 5.13's confirm leg covers it.
+  - `[low]` `[reject]` Bad arguments tested through `ErrorDeleteMint.Mint`, not the dispatcher — the `MintClass` lever is pre-existing (`Write.cls:617`) and `ErrorDeleteScope` asserts the tool answers `ErrorDeleteMint`; a dispatcher leg adds fixture complexity.
+  - `[low]` `[reject]` Agent by date: card residue and event id not asserted — the card and the client's event read the proposal target, asserted `user␁<date>` in the by-date leg; the residue sentence is keyed on the unchanged entity type.
+  - `[low]` `[patch]` Delete from the detail level and its step-up untested — added a detail-level leg to `error-log.page.spec.ts`; red with `syncSelection`'s detail branch removed.
+  - `[false]` `[reject]` Too large not tested for the screen caller — `ScreenAction.cls:344` runs the tool's `StateDiff` and refuses on its problem; 5.13's `TestATruncatedEnumerationRefusesTheMint` pins the refusal.
+  - `[false]` `[reject]` `time` goes beyond `namespace,entries` — the Tasks mandate `{date, errorNumber, time}` entries; the fingerprint subject is unchanged.
+  - `[false]` `[reject]` Mismatch asserted by element, not "Does not match" text — the text is the shared typed-name dialog's (7.6), unchanged here.
+  - `[false]` `[reject]` `displayEntityId` in `formatProposalTitle`/`formatChangeSentence` reaches other screens — mandated by the Tasks; a one-part id reads as itself (`entity-id.test.mjs`).
+  - `[false]` `[reject]` `bindStore` follows any read-less screen with row actions — mandated by the Tasks; a screen with neither keeps the early return.
+  - `[false]` `[reject]` The page re-implements DataTable's menu — the Tasks direct copying DataTable's idiom.
+  - `[false]` `[reject]` `ErrorDeleteScopeTool` might be listed as a tool — `Registry` excludes `OcuPilot.Test.` (`EXCLUDEDPACKAGE`, `Registry.cls:27`).
+
 ## Design Notes
 
 **Governing ADs:** AD-48, AD-53, AD-51, AD-52, AD-56 (ii), AD-6, AD-8, AD-10, AD-13, AD-14, AD-15,
@@ -463,6 +512,31 @@ class per call and never re-submit. No container is stopped, removed or recreate
     `error-log.page.spec.ts`.
   - AC4: `ArgumentPairs` passes the whole id. Expected red: the principal leg's `failedPair`.
   - AC5: remove the `errorNumber`-needs-`date` refusal. Expected red: `ErrorDeleteScope`.
+
+**Recorded (implement, `ocupilot-ci`).** ObjectScript mutations were applied to the
+`/tmp/ocupilot-ci/src` copy only, the package reloaded, the class run singly, then the copy
+restored from the worktree (`diff -r` identical) and reloaded; client mutations were applied in the
+worktree and restored from a backup (`shasum` identical). `ErrorDelete` ran through a temporary
+unarmed subclass, deleted afterwards.
+
+- `mutation: ErrorDelete SCREENACTIONS "" -> red: ErrorDelete's three screen legs (run 8442) and error-log-actions.browser-spec.mjs 3/3 (AC1)`
+- `mutation: LogSourcePort delete calls DeleteByDate for a date scope -> red: ErrorDelete.TestAnAgentDeleteByDateLeavesAnErrorLoggedAfterTheProposal, the later error gone (run 8440) (AC2)`
+- `mutation: drop time from ErrorIdRows and SurvivingIdRows -> red: ErrorDelete.TestANumberReusedAfterTheDateWasEmptiedRefusesTheConfirm, the confirm succeeds (run 8441) (AC2)`
+- `mutation: selectionKey takes the route's ns for the dates level -> red: error-log.page.spec.ts AC3 leg (AC3)`
+- `mutation: ArgumentPairs passes the whole id -> red: ErrorDeleteScope.TestArgumentPairsOnACompositeAreItsNamespacesPairs (run 8438); the principal leg stays green (run 8439), because the port's own gate refuses the same pair with the same envelope (AC4)`
+- `mutation: delete ErrorDeleteMint's errorNumber-needs-date refusal -> red: ErrorDeleteScope.TestTheMintRefusesAMalformedScopeBeforeAnyRead (run 8436) (AC5)`
+- `mutation: applyDeleted compares the whole id -> red: error-log.page.spec.ts composite deleted-event leg (Integration AC)`
+- `mutation: command-bar bindStore returns early for every read-less screen -> red: command-bar.spec.ts Story 7.10 leg`
+- `mutation: SCOPED_TARGETS without the log's entry -> red: screen-action-handler.spec.ts Story 7.10 scope leg`
+- `mutation: ErrorIdRows walks every date for a date scope -> red: ErrorDeleteScope.TestThePortNarrowsToADateOrOneErrorAndRefusesOneItDoesNotHold, DateList read twice (run 8446) (review)`
+- `mutation: ArgumentPairs passes the whole id -> red: ErrorDeleteScope.TestTheRouteGateRefusesEveryScopeShortOfItsWritePair, 2- and 3-part scopes let through (run 8446) (AC4, review)`
+- `mutation: drop syncSelection's detail branch -> red: error-log.page.spec.ts detail-level Delete leg (review)`
+
+Green after restore: `ErrorDeleteScope` 7/0 (run 8437), `ErrorDelete` 15/0 via the subclass (run
+8443), `ToolWrite` 29/0 (8427), `Descriptor` 50/0 (8431), `ErrorLog` 15/0 (8432), `ErrorLogWire` 7/0
+(8433), `ReadTool` 27/0 (8434), `ToolRoundTrip` 2/0 (8435); `test:tools` 1,330/0;
+`test:components` 905/0; browser trio 9/9 on the redeployed bundle; initial bundle 1,134,019 B,
+under the 1181kB warning, so no re-base.
 
 **Once, before `dev_complete`:**
 

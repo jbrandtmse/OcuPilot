@@ -34,6 +34,7 @@ import {
   screenForUrl,
   screenShowsEntity,
 } from './navigation.ts';
+import { displayEntityId } from './entity-id.ts';
 import { STRINGS, stringFor } from './strings.ts';
 
 /**
@@ -89,10 +90,11 @@ export function changeSentenceTemplate(action: ChangeAction): string {
 /**
  * `<entity> was updated` resolved to the entity the change was about. A function for the reason
  * `formatArea` is one: renaming the placeholder on one side only would ship the placeholder to
- * the user, and a source-text pin cannot see that.
+ * the user, and a source-text pin cannot see that. A composite id reads through
+ * `displayEntityId`, so no control character reaches the sentence.
  */
 export function formatChangeSentence(template: string, entity: string): string {
-  return template.split(ENTITY_PLACEHOLDER).join(entity);
+  return template.split(ENTITY_PLACEHOLDER).join(displayEntityId(entity));
 }
 
 /** `Open in <screen>` resolved to the screen the action opens. */

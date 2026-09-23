@@ -1,5 +1,6 @@
-/// <p>Story 5.13's suite: the application error log's by-namespace delete, end to end on the
-/// instance (AD-48, AD-51, AD-52).</p>
+/// <p>Story 5.13's and Story 7.10's suite: the application error log's deletes, by namespace, by
+/// date and by error, through both callers, end to end on the instance (AD-48, AD-51, AD-52,
+/// AD-53).</p>
 /// <p><b>What it pins.</b> The port's enumeration is the identifying id set and resolves either
 /// spelling of a namespace; the mint lists every enumerated error as a removal row; the confirm
 /// removes <b>exactly</b> those ids and leaves an error logged after the proposal standing; an
@@ -9,7 +10,11 @@
 /// <p>It also measures the per-namespace gate on the <b>confirm</b>: a purpose-built
 /// least-privileged principal, holding the screen's two instance pairs and READ but not WRITE on
 /// the target namespace's globals database, is refused 403 naming that pair and every error
-/// survives (AD-8, AD-29, AD-48).</p>
+/// survives (AD-8, AD-29, AD-48). Story 7.10's legs pin the narrower scopes: an agent delete by date
+/// or by one error removes exactly its enumerated entries and leaves an error logged after the
+/// proposal; a number reused after its date was emptied refuses the confirm; the screen route
+/// deletes each scope its id names, ignores the route's <code>?ns=</code>, and refuses a principal
+/// short of the namespace's WRITE pair before any read.</p>
 /// <p><b>What it needs from the environment.</b> A throwaway container: it writes real application
 /// errors and then deletes them, and it creates and deletes one IRIS principal.
 /// <parameter>ARMINGVARIABLE</parameter>, <parameter>PRINCIPALVARIABLE</parameter> and
@@ -606,6 +611,242 @@ Method TestALeastPrivilegedPrincipalIsRefusedAtTheConfirm()
     Do ..Clear()
 }
 
+/// <p>Story 7.10 AC2 -- an agent delete by date lists that date's enumerated errors, and the
+/// confirm removes exactly those: an error logged on the same date after the proposal survives.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.LogSourcePort.ErrorSetRun</method>'s delete
+/// call <code>DeleteByDate</code> for a date scope -- the later error is removed with the rest and
+/// the survival assertion goes red.</p>
+Method TestAnAgentDeleteByDateLeavesAnErrorLoggedAfterTheProposal()
+{
+    Do ..Clear()
+    Set tSC = ..Seed(.tDate, .tNumber)
+    Do $$$AssertStatusOK(tSC, "the class seeds the error the date's proposal will enumerate")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+    Do $$$AssertStatusOK(tSC, "the probe turn is seeded")
+    If $$$ISERR(tSC) Quit
+    Set tArgs = {}
+    Do tArgs.%Set("namespace", ..#TARGETNAMESPACE, "string")
+    Do tArgs.%Set("date", tDate, "string")
+    Set tSC = ..MintScope(tArgs, tTurn, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the by-date proposal mints: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tProposal.%Get("target").%Get("id"), $ZConvert(..#TARGETNAMESPACE, "L") _ $Char(1) _ tDate, "its target is the namespace-and-date prefix of the composite id")
+    Do $$$AssertEquals(tProposal.%Get("changed").%Size(), 1, "one removal row per error that date holds")
+
+    Set tSC = ..Seed(.tLaterDate, .tLaterNumber)
+    Do $$$AssertStatusOK(tSC, "an error is logged on the same date after the proposal")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tLaterDate, tDate, "on the date the proposal names")
+
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertStatusOK(tSC, "the confirm succeeds (HTTP " _ +$Get(tHttp) _ " " _ $Get(tCode) _ ")")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tResult.%Get("auditMarked"), 1, "and is marked")
+
+    Set tSC = ..Enumerate(..#TARGETNAMESPACE, .tAfter, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the namespace still answers")
+    If '$IsObject($Get(tAfter)) Quit
+    Do $$$AssertTrue('..Holds(tAfter, tDate, tNumber), "the enumerated error is gone")
+    Do $$$AssertTrue(..Holds(tAfter, tLaterDate, tLaterNumber), "and the one logged after the proposal remains, on the same date")
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+    Do ..Clear()
+}
+
+/// <p>Story 7.10 AC2 -- an agent delete by error lists one removal row, and the confirm removes that
+/// error alone.</p>
+/// <p>Mutation (Rule 19): drop the <code>errorNumber</code> part in
+/// <method>OcuPilot.Screen.Tool.ErrorDeleteMint.Mint</method> -- the proposal becomes the date's,
+/// lists two rows, and the row-count and survival assertions go red.</p>
+Method TestAnAgentDeleteByErrorRemovesThatErrorAlone()
+{
+    Do ..Clear()
+    Set tSC = ..Seed(.tDate, .tNumber)
+    Do $$$AssertStatusOK(tSC, "the class seeds the error the proposal names")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ..Seed(.tOtherDate, .tOtherNumber)
+    Do $$$AssertStatusOK(tSC, "and one beside it that it does not")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+    Do $$$AssertStatusOK(tSC, "the probe turn is seeded")
+    If $$$ISERR(tSC) Quit
+    Set tArgs = {}
+    Do tArgs.%Set("namespace", ..#TARGETNAMESPACE, "string")
+    Do tArgs.%Set("date", tDate, "string")
+    Do tArgs.%Set("errorNumber", +tNumber, "number")
+    Set tSC = ..MintScope(tArgs, tTurn, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the by-error proposal mints: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tProposal.%Get("changed").%Size(), 1, "one removal row")
+    Do $$$AssertEquals(tProposal.%Get("changed").%Get(0).%Get("before"), tNumber, "naming that error")
+
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertStatusOK(tSC, "the confirm succeeds (HTTP " _ +$Get(tHttp) _ " " _ $Get(tCode) _ ")")
+    If $$$ISERR(tSC) Quit
+
+    Set tSC = ..Enumerate(..#TARGETNAMESPACE, .tAfter, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the namespace still answers")
+    If '$IsObject($Get(tAfter)) Quit
+    Do $$$AssertTrue('..Holds(tAfter, tDate, tNumber), "the named error is gone")
+    Do $$$AssertTrue(..Holds(tAfter, tOtherDate, tOtherNumber), "and the one beside it remains")
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+    Do ..Clear()
+}
+
+/// <p>Story 7.10 AC2 -- a date emptied after the mint restarts its numbering, so a new error can
+/// take the number the proposal lists. Its <code>time</code> differs, the fingerprint re-read
+/// differs, and the confirm is refused 409 with the new error left standing.</p>
+/// <p>Mutation (Rule 19): drop <code>time</code> from the entries
+/// <method>OcuPilot.Port.LogSourcePort.ErrorIdRows</method> and <code>SurvivingIdRows</code>
+/// answer -- the digest matches, the confirm deletes the new error, and this goes red.</p>
+Method TestANumberReusedAfterTheDateWasEmptiedRefusesTheConfirm()
+{
+    Do ..Clear()
+    Set tSC = ..Seed(.tDate, .tNumber)
+    Do $$$AssertStatusOK(tSC, "the class seeds the error the proposal names")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+    Do $$$AssertStatusOK(tSC, "the probe turn is seeded")
+    If $$$ISERR(tSC) Quit
+    Set tArgs = {}
+    Do tArgs.%Set("namespace", ..#TARGETNAMESPACE, "string")
+    Do tArgs.%Set("date", tDate, "string")
+    Do tArgs.%Set("errorNumber", +tNumber, "number")
+    Set tSC = ..MintScope(tArgs, tTurn, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the proposal mints: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+
+    ; Another party empties the date, and the next error on it -- logged a second later, so the
+    ; vendor's Time differs -- takes the number back.
+    Do ..Clear()
+    Hang 1.1
+    Set tSC = ..Seed(.tReusedDate, .tReusedNumber)
+    Do $$$AssertStatusOK(tSC, "a new error is logged on the emptied date")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tReusedDate _ "#" _ tReusedNumber, tDate _ "#" _ tNumber, "and takes the number the proposal lists, which is what this leg is about")
+
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertStatusNotOK(tSC, "the confirm is refused")
+    Do $$$AssertEquals(+$Get(tHttp), 409, "at 409")
+    Do $$$AssertEquals($Get(tCode), $Parameter("OcuPilot.Kernel.Proposal.Write", "TARGETCHANGED"), "as a moved target")
+
+    Set tSC = ..Enumerate(..#TARGETNAMESPACE, .tAfter, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the namespace still answers")
+    If '$IsObject($Get(tAfter)) Quit
+    Do $$$AssertTrue(..Holds(tAfter, tReusedDate, tReusedNumber), "and the new error survives")
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+    Do ..Clear()
+}
+
+/// <p>Story 7.10 AC1 -- the screen route deletes each scope its id names: one error, then a date,
+/// then a namespace, each answered <code>deleted</code> with the canonical composite id, and each
+/// leaving exactly what its scope does not cover.</p>
+/// <p>Mutation (Rule 19): <parameter>OcuPilot.Screen.Tool.ErrorDelete.SCREENACTIONS</parameter>
+/// <code>""</code> -- the route finds no tool for the action, answers 404, and every leg goes
+/// red.</p>
+Method TestTheScreenRouteDeletesEachScopeItsIdNames()
+{
+    Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
+    Set tPassword = ##class(OcuPilot.Test.Http).GetTestPassword()
+    Set tSeparator = $Char(1)
+    Do ..Clear()
+    Set tSC = ..Seed(.tDate, .tFirst)
+    Do $$$AssertStatusOK(tSC, "the class seeds two errors")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ..Seed(.tDate, .tSecond)
+    If $$$ISERR(tSC) Quit
+
+    Set tId = ..#TARGETNAMESPACE _ tSeparator _ tDate _ tSeparator _ tFirst
+    Set tSC = ..DeleteOnScreen(tId, tUser, tPassword, "", .tStatus, .tBody)
+    Do $$$AssertStatusOK(tSC, "the by-error request completes")
+    Do $$$AssertEquals(tStatus, 200, "and is answered 200: " _ tBody)
+    If tStatus = 200 {
+        Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tAnswer.%Get("action"), "deleted", "announcing a removal")
+        Do $$$AssertEquals(tAnswer.%Get("target").%Get("id"), $ZConvert(tId, "L"), "of the canonical composite id")
+    }
+    Set tSC = ..Enumerate(..#TARGETNAMESPACE, .tAfter, .tHttp, .tFault)
+    Do $$$AssertTrue('..Holds($Get(tAfter), tDate, tFirst), "the named error is gone")
+    Do $$$AssertTrue(..Holds($Get(tAfter), tDate, tSecond), "and the other on its date remains")
+
+    Set tSC = ..DeleteOnScreen(..#TARGETNAMESPACE _ tSeparator _ tDate, tUser, tPassword, "", .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "the by-date request is answered 200: " _ tBody)
+    Set tSC = ..Enumerate(..#TARGETNAMESPACE, .tAfter, .tHttp, .tFault)
+    Do $$$AssertEquals(+$Get(tHttp), 404, "and the date's last error is gone with it, so the namespace holds none")
+
+    Set tSC = ..Seed(.tDate, .tThird)
+    Do $$$AssertStatusOK(tSC, "a third error is seeded")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ..DeleteOnScreen(..#TARGETNAMESPACE, tUser, tPassword, "", .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "the by-namespace request is answered 200: " _ tBody)
+    Set tSC = ..Enumerate(..#TARGETNAMESPACE, .tAfter, .tHttp, .tFault)
+    Do $$$AssertEquals(+$Get(tHttp), 404, "and the namespace holds no error")
+    Do ..Clear()
+}
+
+/// <p>Story 7.10 AC3 -- a screen delete carrying the route's <code>?ns=HSCUSTOM</code> while its id
+/// names <parameter>TARGETNAMESPACE</parameter> touches only the id's namespace: every error
+/// HSCUSTOM held before is still there.</p>
+/// <p>Mutation (Rule 19): resolve the port's namespace from the request's <code>ns</code>
+/// parameter rather than the id -- HSCUSTOM's error is removed and this goes red.</p>
+Method TestAScreenDeleteIgnoresTheRoutesNamespace()
+{
+    Do ..Clear()
+    Set tSC = ..Seed(.tDate, .tNumber)
+    Do $$$AssertStatusOK(tSC, "the class seeds the error the id names")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ..Enumerate("HSCUSTOM", .tBefore, .tHttp, .tFault)
+    Set tBeforeCount = $Select($IsObject($Get(tBefore)): tBefore.%Get("count"), 1: 0)
+
+    Set tId = ..#TARGETNAMESPACE _ $Char(1) _ tDate _ $Char(1) _ tNumber
+    Set tSC = ..DeleteOnScreen(tId, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "?ns=HSCUSTOM", .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "the request with a conflicting ?ns= is answered 200: " _ tBody)
+
+    Set tSC = ..Enumerate(..#TARGETNAMESPACE, .tAfter, .tHttp, .tFault)
+    Do $$$AssertTrue('..Holds($Get(tAfter), tDate, tNumber), "the id's namespace lost the named error")
+    Set tSC = ..Enumerate("HSCUSTOM", .tOther, .tHttp, .tFault)
+    Set tOtherCount = $Select($IsObject($Get(tOther)): tOther.%Get("count"), 1: 0)
+    Do $$$AssertTrue(tOtherCount >= tBeforeCount, "HSCUSTOM's count is unchanged or grown by its own faults: " _ tBeforeCount _ " then " _ tOtherCount)
+    Set tLost = 0
+    If $IsObject($Get(tBefore)) {
+        Set tIterator = tBefore.%Get("entries").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tEntry) {
+            If '..Holds($Get(tOther), tEntry.%Get("date"), tEntry.%Get("errorNumber")) Set tLost = tLost + 1
+        }
+    }
+    Do $$$AssertEquals(tLost, 0, "and every error HSCUSTOM held before is still there")
+    Do ..Clear()
+}
+
+/// <p>Story 7.10 AC4 -- a screen delete by date made as a principal holding READ but not WRITE on
+/// <parameter>TARGETNAMESPACE</parameter>'s globals database is refused 403 naming that pair, and
+/// the error survives.</p>
+/// <p>The route's pair gate and the port's own gate refuse this principal with the same envelope,
+/// so this leg pins the refusal and not which of the two gave it; the composite's namespace in
+/// <method>OcuPilot.Screen.Tool.ErrorDelete.ArgumentPairs</method> is pinned by
+/// <class>OcuPilot.Test.ErrorDeleteScope</class>.</p>
+/// <p>Mutation (Rule 19): set <parameter>OcuPilot.Port.LogSourcePort.ERRORSDATABASEPERMISSIONS</parameter>
+/// to <code>READ</code> -- both gates pass, the delete is answered 200 and this goes red.</p>
+Method TestAScreenDeleteShortOfTheWritePairIsRefused()
+{
+    Do $$$AssertNotEquals(..PreparedTargetResource, "", "setup resolved the target namespace's guarding resource")
+    Do ..Clear()
+    Set tSC = ..Seed(.tDate, .tNumber)
+    Do $$$AssertStatusOK(tSC, "the class seeds the error the date holds")
+    If $$$ISERR(tSC) Quit
+
+    Set tSC = ..DeleteOnScreen(..#TARGETNAMESPACE _ $Char(1) _ tDate, ..#PRINCIPALUSER, ..PreparedPassword, "", .tStatus, .tBody)
+    Do $$$AssertStatusOK(tSC, "the request completes")
+    Do $$$AssertEquals(tStatus, 403, "and is refused 403: " _ $Extract(tBody, 1, 240))
+    Set tFault = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tFault.code, ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "with the privilege code")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ErrorLogDenial).FailedPairOf(tBody), ..PreparedTargetResource _ ":WRITE", "naming the WRITE pair it lacks")
+
+    Set tSC = ..Enumerate(..#TARGETNAMESPACE, .tAfter, .tHttp, .tFault)
+    Do $$$AssertTrue(..Holds($Get(tAfter), tDate, tNumber), "and the error survives")
+    Do ..Clear()
+}
+
 /// <p>Seed one application error into <parameter>TARGETNAMESPACE</parameter>, answering its
 /// identifying pair as the port spells it: the <code>MM/DD/YYYY</code> date and the entry
 /// number.</p>
@@ -684,6 +925,24 @@ ClassMethod RemoveDirect(pNamespace As %String, pDate As %String, pNumber As %St
     }
     Set $NAMESPACE = tOrigNS
     Quit tSC
+}
+
+/// <p>Mint through the delete tool's own declared mint (Story 7.10), so the scope arguments
+/// <var>pArgs</var> are joined into the composite target as the dispatcher's call would join
+/// them.</p>
+ClassMethod MintScope(pArgs As %DynamicObject, pTurnKey As %String, Output pProposal As %DynamicObject, Output pHttp As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Quit $ClassMethod($ClassMethod(..#TOOL, "MintClass"), "Mint", ..#SCREEN, $Parameter(..#TOOL, "TOOLNAME"), $Username, "", pTurnKey, pArgs, ..#LIMITS, .pProposal, .pHttp, .pFault, $ClassMethod(..#TOOL, "Endpoint"), $ClassMethod(..#TOOL, "IdParam"), pArgs.%Get($ClassMethod(..#TOOL, "IdArgument")), $ClassMethod(..#TOOL, "IdArgument"), $ClassMethod(..#TOOL, "SettableFields"), ..#TOOL)
+}
+
+/// <p>One <code>POST</code> of the error log's <code>delete</code> against scope <var>pId</var> on
+/// the screen-action route, as <var>pUser</var>, with <var>pQuery</var> appended to the path.</p>
+ClassMethod DeleteOnScreen(pId As %String, pUser As %String, pPassword As %String, pQuery As %String, Output pStatus As %Integer, Output pBody As %String) As %Status
+{
+    Set tRequest = {}
+    Do tRequest.%Set("action", "delete", "string")
+    Do tRequest.%Set("id", pId, "string")
+    Quit ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", ..#APIBASE _ "/screens/" _ $ClassMethod(..#SCREEN, "ToolIdentifier") _ "/action" _ pQuery, pUser, pPassword, .pStatus, .pBody, .tHeaders, tRequest.%ToJSON(), "application/json")
 }
 
 /// <p>Remove every application error this class's namespace still holds, so a method leaves the

@@ -872,9 +872,11 @@ Method TestTheErrorDeleteToolIsAnActionWriteOverItsOwnPort()
     Do $$$AssertEquals(tProperties.%GetTypeOf("entries"), "unassigned", "and no field of the tool's own read is advertised")
     Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"namespace": "HSCUSTOM"}, .tProblem)
     Do $$$AssertStatusOK(tSC, "the namespace alone validates: " _ tProblem)
-    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"namespace": "HSCUSTOM", "date": "09/11/2026"}, .tProblem)
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"namespace": "HSCUSTOM", "date": "09/11/2026", "errorNumber": 4}, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the two scope arguments validate beside it (Story 7.10): " _ tProblem)
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"namespace": "HSCUSTOM", "count": 1}, .tProblem)
     Do $$$AssertStatusNotOK(tSC, "while a field on a bodyless write is refused")
-    Do $$$AssertTrue(tProblem [ "date", "naming the argument: " _ tProblem)
+    Do $$$AssertTrue(tProblem [ "count", "naming the argument: " _ tProblem)
 }
 
 /// <p>AD-51, AD-52, AD-53: the web-application delete is an action-style write over the admin

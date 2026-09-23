@@ -2703,6 +2703,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       }
     ],
     "entityType": "application-error",
+    "entityLabelKey": "errorLogListLabel",
     "secondaryEntityTypes": [],
     "scope": "instance",
     "parentScope": "",
@@ -2718,7 +2719,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "errorNumber",
@@ -2747,8 +2753,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": [],
-    "entityLabelKey": ""
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.LogMessageViewer",

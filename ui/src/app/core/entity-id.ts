@@ -47,6 +47,19 @@ export function splitCompositeId(value: string): string[] {
   return value.split(COMPOSITE_SEPARATOR);
 }
 
+/**
+ * What a composite id reads as where a person sees it: its parts joined by the breadcrumb
+ * separator (U+203A with a space either side). A separator, not copy; authored as an escape
+ * (Rule 14).
+ * An id with one part reads as itself.
+ */
+export const COMPOSITE_DISPLAY_SEPARATOR = ' \u203a ';
+
+/** `id` as a person reads it (`COMPOSITE_DISPLAY_SEPARATOR`). */
+export function displayEntityId(id: string): string {
+  return splitCompositeId(id).join(COMPOSITE_DISPLAY_SEPARATOR);
+}
+
 /** One percent-encoding pass, with the dot escaped so no `..` survives into a path segment. */
 function percentEncodeOnce(value: string): string {
   return encodeURIComponent(value).split('.').join('%2E');

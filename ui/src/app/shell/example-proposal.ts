@@ -16,6 +16,7 @@
  * comes from `core/strings.ts`.
  */
 
+import { displayEntityId } from '../core/entity-id.ts';
 import type { ProposalCardView } from '../core/proposal-view';
 
 /**
@@ -34,14 +35,14 @@ export const ENTITY_NAME_PLACEHOLDER = '<name>';
  *
  * A function rather than a `replace` inside the template, for the reason `formatVersionMismatch`
  * is one: renaming a placeholder on one side only would ship the placeholder to the reader, and a
- * source-text pin cannot see that.
+ * source-text pin cannot see that. A composite id reads through `displayEntityId`.
  */
 export function formatProposalTitle(template: string, entityType: string, name: string): string {
   return template
     .split(ENTITY_TYPE_PLACEHOLDER)
     .join(entityType)
     .split(ENTITY_NAME_PLACEHOLDER)
-    .join(name);
+    .join(displayEntityId(name));
 }
 
 /** The placeholder the published unchanged-fields caption leaves for the count. */

@@ -893,7 +893,7 @@ Method TestTheApplicationErrorLogDeclaresNoReadAndGatesOnItsNamespaceFreePairs()
     While tIterator.%GetNext(.tKey, .tValue) {
         Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
     }
-    Do $$$AssertEquals(tKeys, "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,secondaryEntityTypes,scope,parentScope,id,primaryAction,rowActions,context,emptyStateKey,commandAliases,classicPage,classicLinkExemption,toolIdentifier", "the twenty-two declared keys, and no read, table, banner or criteria among them: " _ tKeys)
+    Do $$$AssertEquals(tKeys, "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,primaryAction,rowActions,context,emptyStateKey,commandAliases,classicPage,classicLinkExemption,toolIdentifier", "the twenty-three declared keys, and no read, table, banner or criteria among them: " _ tKeys)
 
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "a declaration with no read is a supported shape")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).CriteriaProblem(tDeclaration), "", "and it declares no criteria")
@@ -919,7 +919,7 @@ Method TestTheApplicationErrorLogDeclaresNoReadAndGatesOnItsNamespaceFreePairs()
 
     Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "it never auto-refreshes: EXPERIENCE.md's roster does not name it (AD-43)")
     Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RefreshRates")), 0, "and declares no rate")
-    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "and no row action: the three delete scopes are Epic 5's")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "delete", "and one row action, delete, whose scope is the drill level's own id prefix (Story 7.10)")
     Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "and no primary action")
 
     ; The classic page, checked through the portal's OWN resolver rather than through

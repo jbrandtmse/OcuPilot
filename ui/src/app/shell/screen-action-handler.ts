@@ -2,6 +2,7 @@ import { Injectable, Injector, inject, signal } from '@angular/core';
 
 import { ApiService } from '../core/api';
 import { ChangeBus, type ChangeAction } from '../core/change-bus';
+import { splitCompositeId } from '../core/entity-id';
 import { ScreenActions, actionLabel } from '../core/screen-actions';
 import { SCREEN_READ_PATH_PREFIX, screenReadPath } from '../core/screen-read';
 import { DEFAULT_MAX_ROWS, ScreenStores } from '../core/screen-store';
@@ -29,7 +30,8 @@ export const SCREEN_ACTION_PATH_SUFFIX = '/action';
  * list (Story 7.5), whose Run is sent at once with no dialog, and the Task schedule (Story 7.6),
  * whose Run, Suspend and Resume are sent at once and whose Delete types the task's name, and
  * Processes and Process details (Story 7.8), whose Suspend and Resume are sent at once and whose
- * Terminate types the pid.
+ * Terminate types the pid, and the application error log (Story 7.10), whose one Delete names the
+ * scope its target's composite id selects.
  */
 export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WebAppList',
@@ -41,6 +43,7 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.TaskScheduleList',
   'OcuPilot.Screen.Descriptor.ProcessList',
   'OcuPilot.Screen.Descriptor.ProcessDetails',
+  'OcuPilot.Screen.Descriptor.LogErrorList',
 ];
 
 /** The Users list's descriptor, whose row actions carry values (AD-56). */
@@ -52,6 +55,9 @@ const TASK_SCHEDULE = 'OcuPilot.Screen.Descriptor.TaskScheduleList';
 /** The processes list and Process details, whose Terminate carries the error-to-job flag. */
 const PROCESS_LIST = 'OcuPilot.Screen.Descriptor.ProcessList';
 const PROCESS_DETAILS = 'OcuPilot.Screen.Descriptor.ProcessDetails';
+
+/** The application error log, whose delete's scope is its target's composite id (Story 7.10). */
+const LOG_ERROR_LIST = 'OcuPilot.Screen.Descriptor.LogErrorList';
 
 /** The Terminate dialog's flagged action: declared, undrawn, sent only by the checked flag. */
 export const TERMINATE_WITH_ERROR = 'terminate-with-error';
@@ -137,6 +143,27 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [TASK_SCHEDULE]: { delete: STRINGS.taskDeleteConsequence },
   [PROCESS_LIST]: { terminate: STRINGS.processTerminateConsequence },
   [PROCESS_DETAILS]: { terminate: STRINGS.processTerminateConsequence },
+  [LOG_ERROR_LIST]: { delete: STRINGS.errorDeleteEveryConsequence },
+};
+
+/**
+ * A destructive action whose target is a composite id naming a scope, keyed by descriptor and
+ * then by action id: one `{verb, consequence}` per part count, the whole namespace first. The
+ * typed-name dialog takes the entry for the target's own count, and asks for the target's last
+ * part -- the namespace, the date or the error number -- rather than the joined id, which carries
+ * a separator no one can type. A count with no entry falls back to the action's own label and
+ * `DESTRUCTIVE_CONSEQUENCES`.
+ */
+const SCOPED_TARGETS: Readonly<
+  Record<string, Readonly<Record<string, ReadonlyArray<{ readonly verb: string; readonly consequence: string }>>>>
+> = {
+  [LOG_ERROR_LIST]: {
+    delete: [
+      { verb: STRINGS.errorDeleteEveryVerb, consequence: STRINGS.errorDeleteEveryConsequence },
+      { verb: STRINGS.errorDeleteDateVerb, consequence: STRINGS.errorDeleteDateConsequence },
+      { verb: STRINGS.errorDeleteOneVerb, consequence: STRINGS.errorDeleteOneConsequence },
+    ],
+  },
 };
 
 /**
@@ -339,6 +366,11 @@ export class ScreenActionHandler {
       void this.send(screen.descriptor, actionId, target);
       return;
     }
+    const scoped = this.scoped(screen.descriptor, actionId, target);
+    if (scoped !== null) {
+      this.open('typed-name', screen.descriptor, actionId, target, scoped.consequence, [], scoped.name, '', scoped.verb);
+      return;
+    }
     // The row's own name and advisory, where the screen declares them; the row key otherwise.
     const read = TYPED_NAME_ROWS[screen.descriptor];
     const row = read === undefined ? null : this.row(screen, target);
@@ -363,13 +395,14 @@ export class ScreenActionHandler {
     consequence: string,
     options: readonly string[],
     name: string = target,
-    advisory = ''
+    advisory = '',
+    verb: string = actionLabel(descriptor, actionId)
   ): void {
     this.waiting.set({
       kind,
       descriptor,
       actionId,
-      verb: actionLabel(descriptor, actionId),
+      verb,
       target,
       name,
       consequence,
@@ -496,6 +529,23 @@ export class ScreenActionHandler {
     const own = FLAGGED_ACTIONS[descriptor];
     if (own === undefined) return null;
     return Object.hasOwn(own, actionId) ? own[actionId] : null;
+  }
+
+  /**
+   * The verb, consequence and typed name `SCOPED_TARGETS` gives `target`'s part count, or `null`
+   * where the action is not scoped or the count has no entry.
+   */
+  private scoped(
+    descriptor: string,
+    actionId: string,
+    target: string
+  ): { readonly verb: string; readonly consequence: string; readonly name: string } | null {
+    const own = SCOPED_TARGETS[descriptor];
+    if (own === undefined || !Object.hasOwn(own, actionId)) return null;
+    const parts = splitCompositeId(target);
+    const entry = own[actionId][parts.length - 1];
+    if (entry === undefined) return null;
+    return { verb: entry.verb, consequence: entry.consequence, name: parts[parts.length - 1] };
   }
 
   private consequence(descriptor: string, actionId: string): string {

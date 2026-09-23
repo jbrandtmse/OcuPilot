@@ -1,6 +1,7 @@
 import { Injectable, Injector, inject } from '@angular/core';
 
 import { ApiService } from '../../core/api';
+import { joinCompositeId, splitCompositeId } from '../../core/entity-id';
 import { classifyFault, type Fault } from '../../core/fault';
 import { ERROR_LOG_PATH_PREFIX } from '../../core/log-paths';
 
@@ -123,6 +124,12 @@ function sectionOf(body: unknown, key: string): readonly unknown[] {
  * `RefreshService` holds one binding, and one descriptor gets one persisted view entry. This store
  * issues its own reads and holds its own rows.
  *
+ * **It holds the one selected row, as the composite id its delete targets** (AD-13, AD-53). The
+ * level is the scope: a namespace row is keyed by the namespace, a date row by the namespace and
+ * date, an error row -- and the detail level -- by all three. The namespace is always the row's
+ * own or the drilled one, never the route's. A level change clears it, and so does a re-read the
+ * selected row is no longer in.
+ *
  * Framework-only in its injection, like `AuditSearch`: the API service is resolved on the first
  * read rather than in the constructor, so constructing the shell does not drag a leaf screen's data
  * dependency in behind it.
@@ -170,6 +177,9 @@ export class ErrorLogDrill {
    */
   private failedPairValue = '';
 
+  /** The selected row's composite id, `''` when nothing is selected. */
+  private selectedValue = '';
+
   /** Bumped per issued read, so a late answer to a level the user has left is dropped. */
   private generation = 0;
 
@@ -203,6 +213,7 @@ export class ErrorLogDrill {
     this.loadedValue = false;
     this.faultValue = null;
     this.failedPairValue = '';
+    this.selectedValue = '';
     this.generation += 1;
     this.notify();
   }
@@ -262,9 +273,35 @@ export class ErrorLogDrill {
     return this.failedPairValue;
   }
 
+  /**
+   * The composite id a row of the current level is selected and deleted by, from that row's own
+   * key: the namespace; the drilled namespace and the row's date; the drilled namespace and date
+   * and the row's error number. On the detail level the row key is ignored and the id is the
+   * error on screen.
+   */
+  selectionKey(rowKey: string): string {
+    if (this.levelValue === 'namespaces') return rowKey;
+    if (this.levelValue === 'dates') return joinCompositeId([this.namespaceValue, rowKey]);
+    if (this.levelValue === 'list') return joinCompositeId([this.namespaceValue, this.dateValue, rowKey]);
+    return joinCompositeId([this.namespaceValue, this.dateValue, this.errorNumberValue]);
+  }
+
+  /** The selected row's composite id, or `''`. */
+  selected(): string {
+    return this.selectedValue;
+  }
+
+  /** Select the row whose composite id is `key` (`selectionKey`), or nothing with `''`. */
+  select(key: string): void {
+    if (key === this.selectedValue) return;
+    this.selectedValue = key;
+    this.notify();
+  }
+
   /** The instance-wide namespace list: the drill's first level, and where Back from a date ends. */
   openNamespaces(): Promise<void> {
     this.levelValue = 'namespaces';
+    this.selectedValue = '';
     this.namespaceValue = '';
     this.dateValue = '';
     this.errorNumberValue = '';
@@ -285,6 +322,7 @@ export class ErrorLogDrill {
    */
   openDates(namespace: string): Promise<void> {
     this.levelValue = 'dates';
+    this.selectedValue = '';
     this.namespaceValue = namespace;
     this.dateValue = '';
     this.errorNumberValue = '';
@@ -297,6 +335,7 @@ export class ErrorLogDrill {
   /** One namespace and date's errors. Drops its own rows first, for `openDates`'s reason. */
   openList(date: string): Promise<void> {
     this.levelValue = 'list';
+    this.selectedValue = '';
     this.dateValue = date;
     this.errorNumberValue = '';
     this.errorRows = [];
@@ -312,6 +351,7 @@ export class ErrorLogDrill {
    */
   openDetail(errorNumber: number): Promise<void> {
     this.levelValue = 'detail';
+    this.selectedValue = '';
     this.errorNumberValue = String(errorNumber);
     this.detailValue = null;
     this.truncatedValue = false;
@@ -352,8 +392,9 @@ export class ErrorLogDrill {
   }
 
   /**
-   * Re-read in place after a confirmed delete against `namespace` (AD-14: a screen showing the
-   * type re-fetches and never patches its own rows).
+   * Re-read in place after a confirmed delete against `id` (AD-14: a screen showing the type
+   * re-fetches and never patches its own rows). `id` is the deleted scope's composite id, whose
+   * first part is its namespace.
    *
    * **It re-reads, it does not remove a row.** The rows that leave are the ones the instance stops
    * answering with, so a delete that removed less than the card listed still shows the truth.
@@ -367,7 +408,8 @@ export class ErrorLogDrill {
    * namespace ignores an event about another; the top level re-reads either way, because the
    * purged namespace leaves its list.
    */
-  async applyDeleted(namespace: string): Promise<void> {
+  async applyDeleted(id: string): Promise<void> {
+    const namespace = splitCompositeId(id)[0];
     if (this.levelValue !== 'namespaces' && !sameNamespace(this.namespaceValue, namespace)) return;
     await this.reopen();
     for (let step = 0; step < 3; step += 1) {
@@ -413,7 +455,16 @@ export class ErrorLogDrill {
     }
     this.loadedValue = true;
     this.absorb(level, result.body);
+    if (this.selectedValue !== '' && !this.rowKeys().includes(this.selectedValue)) this.selectedValue = '';
     this.notify();
+  }
+
+  /** The composite ids of the current level's rows (`selectionKey`); the detail level's one error. */
+  private rowKeys(): readonly string[] {
+    if (this.levelValue === 'namespaces') return this.namespaceRows.map((row) => this.selectionKey(row.namespace));
+    if (this.levelValue === 'dates') return this.dateRows.map((row) => this.selectionKey(row.date));
+    if (this.levelValue === 'list') return this.errorRows.map((row) => this.selectionKey(String(row.errorNumber)));
+    return this.detailValue === null ? [] : [this.selectionKey('')];
   }
 
   private absorb(level: ErrorLogLevel, body: unknown): void {

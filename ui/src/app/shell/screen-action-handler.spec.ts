@@ -598,3 +598,55 @@ describe('Processes and Process details: Suspend, Resume and Terminate (Story 7.
     handler.cancelPending();
   });
 });
+
+describe('the application error log: one Delete whose target names its scope (Story 7.10)', () => {
+  const LOG = 'OcuPilot.Screen.Descriptor.LogErrorList';
+  const SEP = '\u0001';
+
+  it('titles, types and explains each scope by the target\u2019s own part count, and sends the whole id', async () => {
+    // Mutation (Rule 19): drop the log's entry from `SCOPED_TARGETS` -> every scope opens as
+    // "Delete <the joined id>" with the namespace sentence, and the verb, name and consequence go
+    // red for the date and error legs.
+    const scopes = [
+      { id: 'USER', verb: STRINGS.errorDeleteEveryVerb, name: 'USER', consequence: STRINGS.errorDeleteEveryConsequence },
+      { id: `USER${SEP}09/23/2026`, verb: STRINGS.errorDeleteDateVerb, name: '09/23/2026', consequence: STRINGS.errorDeleteDateConsequence },
+      { id: `USER${SEP}09/23/2026${SEP}4`, verb: STRINGS.errorDeleteOneVerb, name: '4', consequence: STRINGS.errorDeleteOneConsequence },
+    ];
+    for (const scope of scopes) {
+      const target = { type: 'application-error', scope: 'instance', id: scope.id.toLowerCase() };
+      const { actions, handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'deleted', target } }, LOG);
+      expect(actions.has(LOG, 'delete')).toBe(true);
+      store.setSelection([scope.id]);
+
+      actions.run(LOG, 'delete');
+      await settle();
+      expect(calls).toHaveLength(0);
+      const pending = handler.pending();
+      expect(pending?.kind).toBe('typed-name');
+      expect(pending?.verb).toBe(scope.verb);
+      expect(pending?.name).toBe(scope.name);
+      expect(pending?.target).toBe(scope.id);
+      expect(pending?.consequence).toBe(scope.consequence);
+      expect(pending?.flagLabel).toBe('');
+
+      handler.confirmPending();
+      await settle();
+      expect(calls).toHaveLength(1);
+      expect(calls[0].path).toBe('/api/ocupilot/screens/logs.applicationerrors/action');
+      expect(JSON.parse(calls[0].body)).toEqual({ action: 'delete', id: scope.id });
+      expect(events.map((event) => `${event.type}:${event.action}:${event.id}`)).toEqual([
+        `application-error:deleted:${scope.id.toLowerCase()}`,
+      ]);
+    }
+  });
+
+  it('keeps another screen\u2019s delete on its own label and consequence', async () => {
+    const { actions, handler, store } = mount({ kind: 'ok', status: 200, body: {} }, 'OcuPilot.Screen.Descriptor.TaskScheduleList');
+    store.setSelection(['42']);
+    actions.run('OcuPilot.Screen.Descriptor.TaskScheduleList', 'delete');
+    await settle();
+    expect(handler.pending()?.verb).toBe(STRINGS.actionDelete);
+    expect(handler.pending()?.consequence).toBe(STRINGS.taskDeleteConsequence);
+    handler.cancelPending();
+  });
+});

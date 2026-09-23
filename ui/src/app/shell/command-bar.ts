@@ -524,13 +524,16 @@ export class CommandBar {
    * Follow the current screen's store, and answer the function that stops. The row actions read
    * its selection, which moves without the router, the framework or the action registry moving.
    *
-   * A screen with no declared read has no rows, so its selection never moves and there is nothing
-   * to follow -- and asking the map for its store would create one, which is a side effect a
-   * subscription has no business having.
+   * A screen with neither a declared read nor a row action has no selection to follow -- and
+   * asking the map for its store would create one, which is a side effect a subscription has no
+   * business having. A screen that declares row actions without a read, such as the application
+   * error log's drill-down (Story 7.10), writes its own selection into its store, so it is
+   * followed.
    */
   private bindStore(): () => void {
     const screen = this.screen();
-    if (screen === null || screen.read === null) return () => {};
+    if (screen === null) return () => {};
+    if (screen.read === null && !screen.rowActions.some((action) => action.id !== '')) return () => {};
     return this.stores.for(screen.descriptor, screen.refreshRates).subscribe(() => this.bump());
   }
 
