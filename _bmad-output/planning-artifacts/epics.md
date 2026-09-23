@@ -4657,6 +4657,15 @@ So that account administration does not send me back to the classic portal.
 - **When** it lands
 - **Then** its tab, validation, error-summary and unsaved-changes behavior is the pattern the remaining seven follow.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1501: Story 7.2 AC1's editor half (every user action also available from the user editor) has no surface on Epic 7: no user editor exists until Story 9.1 (ledger; routed by merge_gate 2026-09-23)
+- DW-1516: The agent path can leave the change-on-login flag cleared: a flag proposal confirmed before the password proposal is undone by the vendor's password change (ledger; routed by merge_gate 2026-09-23)
+- DW-1520: Set password and the change-on-login flag are permitted on _SYSTEM, the signed-in account and a service account; AD-10's account arms fire only on delete, disable and a %All strip (ledger; routed by merge_gate 2026-09-23)
+- DW-1523: The Users list's Add role dialog shows no consequence line when a privileged role is selected: privilegedGrantEffect had not landed on Epic 8's branch by Story 7.2's review (ledger; routed by merge_gate 2026-09-23)
+- DW-1546: UJ-6's change toast ('Open in Task schedule') cannot appear on Task details: a change toast opens the entity's details and is hidden while that screen is open, where the PRD wants it to open the list at the row and hide only while the list is open (ledger; routed by merge_gate 2026-09-23)
+- DW-1576: The reset tools' card row reads Total before "" after 0: its before is not derived from the fresh read, which AD-51 requires (ledger; routed by merge_gate 2026-09-23)
+
 ### Story 9.2: The web application editor
 
 As a developer-administrator,
@@ -4681,6 +4690,7 @@ So that configuring a REST service is a single task.
 
 - DW-1490: The web-applications/list/edit/:id route does not re-read the created application on a cold load; it draws an empty create form at an id-bearing URL (ledger; routed by merge_gate 2026-09-23)
 - DW-1493: A confirmed agent create writes the name in AD-13's canonical spelling while the screen's Save writes it as typed, so one input creates /csp/myapp or /csp/MyApp depending on the caller (ledger; routed by merge_gate 2026-09-23)
+- DW-1577: An agent update that sets Enabled to its current value mints a proposal with no changed rows instead of the 400 TOOL.ARGUMENTS no-op refusal (ledger; routed by merge_gate 2026-09-23)
 
 ### Story 9.3: The role editor
 

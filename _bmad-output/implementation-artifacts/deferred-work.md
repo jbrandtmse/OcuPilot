@@ -4114,6 +4114,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T16:02:00Z status=escalated owner=burndown by=cr note=fix-risk high: resolving the resource at call time adds a %SYS switch to the async path in a file Epic 4 shares; the alternative is to attempt the delete and suppress only PROTECT
 - 2026-09-18T19:44:55Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=merge_gate note=ASYNCTASKPAIR literal denies every caller where IRISLOCALDATA carries a non-default resource
 - 2026-09-23T02:50:47Z status=escalated owner=burndown by=adjudication note=MED with fix-risk high (a %SYS switch on the async path to resolve IRISLOCALDATA's resource at call time) in the shared-append AdminPort.cls; Rule 15 escalates it to the decision sheet
+- 2026-09-23T22:26:32Z status=routed owner=16-5-background-tasks by=merge_gate note=Epic 7 merge decision sheet, recommended disposition taken: fix together with DW-1136.
 
 ### DW-1138: The planning artifacts still put the log viewer's Clear control in the shell command bar, and the new Fixed strings row cites two wrong lines
 - source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -5490,6 +5491,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-22T02:34:15Z status=routed owner=5-13-logs-delete-application-errors-by-namespace by=lead note=THE_ORCHESTRATOR_RULED_IT_FLOOR-BLOCKING_AND_ASKED_ME_TO_TAKE_IT_IF_CHEAP_INSIDE_5.11-5.13,_AND_THE_RIGHT_ANSWER_IS_5.13_RATHER_THAN_5.11._The_defect_is_that_a_FIXED_Updated_prefix_precedes_created_and_deleted._5.11_resumes_a_task_and_5.12_suspends_a_process_-_both_emit_AD-14_action_updated,_so_on_both_paths_the_prefix_is_ACCIDENTALLY_CORRECT_and_the_wrong_branch_is_unexecutable._Fixing_it_in_5.11_would_bank_a_pass_no_test_on_that_story_could_redden,_which_is_the_exact_anti-pattern_this_epic_keeps_finding_and_the_same_reasoning_that_re-owned_DW-1456_to_8.5._5.13_DELETES_application_errors,_so_its_own_demo_path_executes_the_deleted_branch_and_can_falsify_the_fix._THE_HUMAN_HALF_IS_UNCHANGED_AND_I_AM_NOT_DECIDING_IT:_the_note_says_amending_EXPERIENCE.mds_Fixed-strings_row_is_a_UX_call,_so_5.13s_plan_stage_raises_the_copy_as_a_Rule_5_amendment_rather_than_choosing_new_wording_itself
 - 2026-09-22T12:33:44Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=lead note=measured: announceChanged is private to data-table.ts; error-log's data-table strings are CSS classes, not the component. 5.13 does not execute the branch either
 - 2026-09-22T22:37:14Z status=decision-pending owner=7-1-enable-disable-and-delete-a-web-application by=spec_gate note=human=amending_EXPERIENCE.md's_Fixed-strings_row_is_a_UX_call._Recommend_the_announcement_select_per_action_from_the_already-published_'<entity>_was_created/updated/deleted'_row_and_the_'Updated:_<entity>_<action>'_row_be_restated_for_updated_or_struck._Removed_from_7.1's_tasks;_to_the_epic-close_decision_sheet
+- 2026-09-23T22:26:32Z status=routed owner=range-end-cleanup by=merge_gate note=Epic 7 merge decision sheet, recommended disposition taken: one announcement sentence per action (the toast's three).
 
 ### DW-1424: ToastEntry.entityLabel is computed on every publish and rendered nowhere
 - source: spec-5-7-the-screen-shows-the-change.md | severity: low | fix-risk: low | footprint: in-story
@@ -6364,6 +6366,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Prohibited.User asks the account arms only when RemovesAdministration holds; UserPassword changes no field and ChangePassword carries no predicate (PermittedChangeFields). (inference) a new password or a forced change on CSPSystem stops the gateway's sign-in, the harm SERVICEACCOUNT names.
 - 2026-09-23T07:03:26Z status=decision-pending owner=burndown by=cr note=recommend: add a password/flag effect term for the service-account arm only; _SYSTEM and self are admin intent
+- 2026-09-23T22:26:32Z status=routed owner=9-1-the-user-editor by=merge_gate note=Epic 7 merge decision sheet, recommended disposition taken: extend the service-account protection to password and change-on-login changes (a new password on CSPSystem stops the gateway's sign-in), an AD-10 amendment under Rule 20. _SYSTEM and the signed-in account stay permitted (developer tool first; the signed-in account's own change is AD-49's).
 
 ### DW-1521: The _SYSTEM, signed-in and service-account refusal sentences say 'Disabling or deleting it' when the refused write is a remove-role of %All
 - source: _bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: low | fix-risk: low | footprint: in-story
@@ -6437,6 +6440,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: EXPERIENCE.md:446 hides the toast while the entity's screen is open; Epic 8 pinned screenForEntityType('task') -> tasks/schedule/details in navigation.test.mjs:963; PRD UJ-6 climax: 'a toast links to the row in the task list'
 - 2026-09-23T13:21:12Z status=routed owner=range-end-cleanup by=spec_gate note=orchestrator ruling 2026-09-23: taken by the orchestrator right after the second of the Epic 7/8 merges; the UJ-6 replay checks the toast after that fix, not in 7.6
+- 2026-09-23T22:26:32Z status=routed owner=9-1-the-user-editor by=merge_gate note=Epic 7 merge. Plan changed from 'orchestrator after the merge': the toast rule (a change toast opens the entity's LIST at the row and is hidden only when that list is open, PRD UJ-6) changes Epic 8's pins in navigation.test.mjs (task -> details; 'the same lookup') and needs browser verification, which a runner with a throwaway does properly. Placed in 9.1 so it lands early for the UJ-6 demo.
 
 ### DW-1553: The initial bundle is 1,119,895 bytes against the 1,120 kB maximumWarning, 105 bytes of headroom, so the next story that adds client code fails the DW-371 bundle test
 - source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: med | fix-risk: low | footprint: in-epic
@@ -6510,16 +6514,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: med | fix-risk: med | footprint: in-story
 - evidence: AuditEvent*/AuditUserEvent* tools read Security.Audit.Event GET by source/type/name with no owner check; the target type is the tool descriptor's (Mint.cls:135). Vendor: a system event is exactly one whose Source starts with % (Security.Events.cls:24; ListByFilter on slot A: 75 system, 4 user, 0 mismatches).
 - 2026-09-23T20:54:31Z status=escalated owner=burndown by=cr note=no id-aware hook shared by mint and screen read inside the approved footprint; fix via port owner rule or kernel seam
+- 2026-09-23T22:26:32Z status=routed owner=range-end-cleanup by=merge_gate note=Epic 7 merge decision sheet, recommended disposition taken: one owner check both callers pass through (a Source starting with % is a system event).
 
 ### DW-1576: The reset tools' card row reads Total before "" after 0: its before is not derived from the fresh read, which AD-51 requires
 - source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: med | fix-risk: med | footprint: in-story
 - evidence: AuditEventReset.StateDiff hardcodes before "" (spec Tasks prescribe it) because READTYPE GET answers only {Description, Enabled}; AD-51: rows are derived from the fresh read. LIST names=<EventName> answers Total.
 - 2026-09-23T20:54:31Z status=decision-pending owner=burndown by=cr note=amend AD-51 for a counter the tool's read type cannot answer, or read the counters (LIST names=)
+- 2026-09-23T22:26:32Z status=routed owner=9-1-the-user-editor by=merge_gate note=Epic 7 merge decision sheet. REGRADED HIGH under Rule 6: a card row not derived from the tool's own fresh read is a gap against AD-51's Rule, and Rule 15 bars parking a high at range-end-cleanup, which runs after Epic 12. Floor-blocking in 9.1, the earliest story in the range; unrelated to the user editor by subject, placed there for timing. Fix: the reset tools read Total through LIST names=<EventName>, or the row is dropped from the card.
 
 ### DW-1577: An agent update that sets Enabled to its current value mints a proposal with no changed rows instead of the 400 TOOL.ARGUMENTS no-op refusal
 - source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: epic-7-context.md:41 says both callers refuse a no-op with 400 TOOL.ARGUMENTS; Mint.Merge skips an unchanged field (Mint.cls:388) and mints changed=[]; the refusal exists only in each tool's ScreenActionDelta. Same for WebAppUpdate.
 - 2026-09-23T20:54:31Z status=escalated owner=burndown by=cr note=kernel-wide for merge tools; the fix is in Mint.cls, which Epic 8 rewrites in that region
+- 2026-09-23T22:26:32Z status=routed owner=9-2-the-web-application-editor by=merge_gate note=Epic 7 merge decision sheet: refuse a no-op update in Mint.cls (400 TOOL.ARGUMENTS) for every merge tool. Placed in 9.2 because the web-application update shares the path and 9.2's editor exercises it.
 
 ### DW-1578: Prohibited.cls's header still says eight types are covered; COVEREDTYPES now lists ten
 - source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: low | fix-risk: low | footprint: in-epic
