@@ -12,7 +12,9 @@
 /// <code>registration_access_token</code>, nor <code>ClientCredentials</code>, so the stored payload,
 /// the diff, the ledger row and the answer carry no secret (AD-35).</p>
 /// <p><b>It is destructive</b>: the vendor's <code>DeleteId</code> also deletes every token stored for
-/// the configuration, and nothing proposes it back.</p>
+/// the configuration, and nothing proposes it back. For a dynamically registered configuration
+/// (<code>Metadata.registration_client_uri</code> set) it also asks the authorization server to
+/// delete the registration, and ignores that request's outcome.</p>
 /// <p>AD-10 names no OAuth 2.0 effect, so the prohibited set covers this type with the reviewed-few
 /// sweep alone (<class>OcuPilot.Kernel.Proposal.Prohibited</class>).</p>
 Class OcuPilot.Screen.Tool.OAuthClientDelete Extends OcuPilot.Screen.Tool.Write
@@ -22,7 +24,7 @@ Parameter TOOLNAME = "security.oauthclients.delete";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.OAuthClientTab";
 
-Parameter DESCRIPTION = "Propose deleting one OAuth 2.0 client configuration from this instance, together with every token stored for it. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the configuration exactly as the client configurations list reports it.";
+Parameter DESCRIPTION = "Propose deleting one OAuth 2.0 client configuration from this instance, together with every token stored for it; a dynamically registered configuration is also deregistered at its authorization server. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the configuration exactly as the client configurations list reports it.";
 
 /// <p>The row action this tool carries out from the Client configurations tab (AD-5, AD-53). It
 /// sends no argument, because it sends no body.</p>

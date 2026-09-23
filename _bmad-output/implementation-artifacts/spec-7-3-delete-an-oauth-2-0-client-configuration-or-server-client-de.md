@@ -251,6 +251,20 @@ Tests (existing, to extend):
   throwaway client configuration, and `security.oauthclients/read` over the wire then no longer lists
   it (the AC3 leg asserts through the read route, not through tool state).
 
+### Review Findings
+
+Code review 2026-09-23 (first review; 4 layers, 25 raw findings, 0 high, 1 medium, 9 low).
+
+- [x] [Review][Patch] MED: AC4's server-client half of the `OAuthEntry` branch was unpinned (`DefaultScope` is refused by the web-application fall-through too) -- `OAuthDelete` adds an `Enabled` server-client leg [src/OcuPilot/Test/OAuthDelete.cls:129]
+- [x] [Review][Patch] LOW: the tool docs and client `DESCRIPTION` omitted DCR deregistration and the CORS rebuild -- stated [src/OcuPilot/Screen/Tool/OAuthClientDelete.cls:14]; the dialog copy is DW-1508
+- [x] [Review][Patch] LOW: the client-configuration agent leg asserted the marker only when `tResult` was an object -- unconditional [src/OcuPilot/Test/OAuthTabs.cls:603]
+- [x] [Review][Patch] LOW: `DeleteAs` parsed without `$ZConvert` and a non-envelope skipped the code and pair asserts silently [src/OcuPilot/Test/WireOAuthRead.cls:361]
+- [x] [Review][Patch] LOW: the server-client browser leg never opened Delete from the row menu (Tasks: per tab) -- row menu confirms, command bar opens and dismisses [ui/browser/oauth-delete.browser-spec.mjs:240]
+- [x] [Review][Patch] LOW: stale wording in the `IdKind` assertion message and the browser spec header [src/OcuPilot/Test/OAuthTabs.cls:166]
+- [x] [Review][Defer] LOW: the browser spec refuses only the live container -- DW-1015 occurrence
+- [x] [Review][Defer] LOW: the card shows `ServerDefinition` as a row id -- DW-1509 by-design; `OAuthTabs` at 688 lines -- DW-1510 by-design; `AdminPort` count sentence rewritten in a shared-append file -- DW-1511, the merge gate sets "ten"
+- Rejected: empty-state create invitation (orchestrator-ruled copy), typed `ClientId` length (accepted plan; the column shows it), AD-4 OAuth merge claim (unverified, low; Epic 12 re-measures), AC5 merge-half classifier, `AdminPort` sync paragraph (pre-existing), ledger/closed-proposal/pair-combination legs (carried refutations), probe-helper SQL and cap guards, simulated turn (the pattern Tasks name).
+
 ## Spec Change Log
 
 - 2026-09-23, lead spec gate: the four strings under Design Notes › Copy are published at
@@ -382,6 +396,7 @@ per message, and never re-submit on a timeout.
 - mutation: `Security.OAuth2.Client.ClientConfiguration/DELETE` dropped from `AdminPort.MUTATINGTYPES` → `OAuthTabs` route and agent legs red, `PORT.NOTIMPLEMENTED` (run 6877).
 - mutation (matrix row "Agent delete", fingerprint refusal): `DefaultScope` dropped from `OAuthClientDelete.FINGERPRINTSUBJECT` → `OAuthTabs.TestTheAgentsDeleteOfAChangedClientConfigurationIsRefused` red on the 409, the code and the survival asserts (run 6882).
 - mutation (matrix row "Target already gone", server client): `OAuthServerClientDelete.IdParam` answering `name`, applied to the throwaway's copy only → `OAuthTabs.TestARowActionAgainstAVanishedServerClientIsNotFound` red on the 404 and code asserts (run 7139); restored → 17/0 (run 7140).
+- mutation (AC4, server client): the `OAuthEntry` guard in `Prohibited.Prohibits` narrowed to the client type, on the throwaway's copy only → `OAuthDelete.TestEachOAuthTypeIsCoveredAndRefusesAChangedField` red on the server client's `Enabled` leg (run 7142); restored → 5/0 (run 7143).
 - Every mutation was reverted and the class reloaded; the tree hash matched before and after.
 
 **Once, before `dev_complete`:**

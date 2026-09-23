@@ -7,11 +7,12 @@
  * stating the tab's own published consequence, with focus in the typed-name field and the
  * destructive button `aria-disabled`; a mismatch on blur reads the published message; the exact name
  * sends one request, the row leaves the tab in place and the other rows stay. The server client leg
- * types and sends the `ClientId`, goes through the command bar, and its namesake survives.
+ * also opens the dialog from the command bar, types and sends the `ClientId`, and its namesake
+ * survives.
  *
  * **It needs the demo fixture** (`OCUPILOT_DEMO=1`, AD-25), whose SSL/TLS configuration the probe's
- * client configurations name. `before` runs `OcuPilot.Test.OAuthProbe.Create()` and
- * `CreateDisposable()`; `after` runs `Remove()`, so it refuses the live container.
+ * client configurations name. `before` refuses the live container, then runs
+ * `OcuPilot.Test.OAuthProbe.Create()` and `CreateDisposable()`; `after` runs `Remove()`.
  *
  * Run: `npm run test:browser` (after `npm run build` and `sh scripts/ci-throwaway.sh up`).
  */
@@ -237,7 +238,7 @@ test('AC1: a client configuration is deleted from the row menu behind the typed-
   }
 });
 
-test('AC1, AC2: a server client is deleted by its ClientId from the command bar, and its namesake stays', async () => {
+test('AC1, AC2: a server client is deleted by its ClientId from the row menu or the command bar, and its namesake stays', async () => {
   const initial = disposables();
   assert.equal(initial.ids.length, 2, 'two server clients share one name');
   const [gone, kept] = initial.ids;
@@ -245,6 +246,11 @@ test('AC1, AC2: a server client is deleted by its ClientId from the command bar,
   try {
     await selectOnly(page, gone);
     await deleteFromCommandBar(page);
+    const barTitle = await page.evaluate(() => document.querySelector('.ocu-dialog-title').textContent.trim());
+    assert.equal(barTitle, `${STRINGS.actionDelete} ${gone}`, 'the command bar opens the same dialog on the ClientId');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+    await deleteFromRowMenu(page);
     await confirmDialog(page, writes, gone, STRINGS.oauthServerClientDeleteConsequence);
     await page.waitForFunction((selector) => document.querySelectorAll(selector).length === 0, { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
     assert.equal(writes.length, 1, 'exactly one request, sent once the client id matched');

@@ -3828,6 +3828,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-17T17:05:54Z occurrence=6-9-system-usage-and-the-dashboard-meters note=system-usage.browser-spec.mjs:80 creates a principal and refuses only LIVE_CONTAINER
 - 2026-09-18T19:44:55Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=merge_gate note=extend the browser-spec container refusal to ocupilot-slot-* as well as the live name
 - 2026-09-20T00:48:34Z status=routed owner=range-end-cleanup by=merge_gate note=RE-ROUTED off story 13.2. Epic 13 declined it correctly: all three need edits in ui/browser/*.browser-spec.mjs, which is Epic 5's footprint, and Epic 13 has no browser-spec footprint at all. That was an orchestrator error - epic-dependencies.yaml gave Epic 13 the glob ui/src/**/*.browser.spec.ts, which is the wrong directory, extension and separator and matched nothing; the real specs are the 34 ui/browser/*.browser-spec.mjs files. Glob dropped from the graph with the reason recorded inline. Non-blocking under Rule 27: none of the three blocks the 2026-09-27 floor or a downstream-epic story, and DW-1223's five error-log timeouts have already failed to reproduce twice
+- 2026-09-23T05:12:39Z occurrence=7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de note=oauth-delete.browser-spec.mjs:78 creates and deletes OAuth objects and refuses only LIVE_CONTAINER
 
 ### DW-1016: A proposal diff-row has no empty-cell word, so a service-editor proposal restricting AllowedConnections would read (none) -> 10.0.0.1
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -6049,3 +6050,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: areas/permissions/ has no user form on OCU-1-epic7; 9.1 builds the editor. 7.2 ships the row-menu half, the handler and the tools (permissions.users.password and the role delta) the editor should reuse
 - 2026-09-23T03:14:55Z status=routed owner=9-1-the-user-editor by=spec_gate note=orchestrator plants the DW bullet under 9.1 at the Epic 7 merge gate
+
+### DW-1508: The published oauthClientDeleteConsequence omits that deleting a dynamically registered client configuration also deletes its registration at the authorization server
+- source: spec-7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: irissys/OAuth2/Client.cls:1201-1203: DeleteId calls DeleteClientRegistration when Metadata.registration_client_uri is set and ignores its result. The tool doc and DESCRIPTION now say so (review patch); the dialog copy is the lead's published string (EXPERIENCE.md:405).
+- 2026-09-23T05:12:39Z status=wontfix-accepted owner=7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de by=cr note=reopen_if=an operator deletes a dynamically registered configuration and reports the remote deregistration as unexpected
+
+### DW-1509: The client configuration delete card shows ServerDefinition as the server description's bare row id, not the issuer the tab shows
+- source: spec-7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: OAuthClientDelete.FINGERPRINTSUBJECT names ServerDefinition, which the vendor GET answers as ServerDefinition.%Id(); the tab's column is IssuerEndpoint. The subject is the one the spec's Tasks specify.
+- 2026-09-23T05:12:39Z status=by-design owner=7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de by=cr note=subject specified in Tasks; changing the card's display needs a spec amendment
+
+### DW-1510: OcuPilot.Test.OAuthTabs is 688 lines against the 500-line test-class guidance
+- source: spec-7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Story 7.3 appended about 280 lines of live delete legs to the 394-line class; the spec's Never list forbids a new armed test class and its Tasks place the legs here.
+- 2026-09-23T05:12:40Z status=by-design owner=7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de by=cr note=spec Never: no new class that needs an arming variable
+
+### DW-1511: AdminPort's count sentence was rewritten seven to nine in a shared-append file, and reads wrong again once Epic 8's Security.User/POST merges
+- source: spec-7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: AdminPort.cls:131 'The nine are the ones the registry actually reaches'; origin/OCU-1-epic8 appends Security.User/POST to MUTATINGTYPES without touching the sentence, so the merged count is ten. Reverting to seven would be false now.
+- 2026-09-23T05:12:40Z status=wontfix-accepted owner=7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de by=cr note=merge gate sets ten; reopen_if=post-merge the sentence's count differs from MUTATINGTYPES' entry count

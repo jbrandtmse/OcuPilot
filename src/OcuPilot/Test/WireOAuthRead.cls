@@ -358,7 +358,7 @@ Method DeleteAs(pUser As %String, pScreen As %String, pId As %String, Output pSt
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot/screens/" _ pScreen _ "/action", pUser, ..PreparedPassword, .pStatus, .tBody, .tHeaders, tRequest.%ToJSON(), "application/json")
     If $$$ISERR(tSC) Quit tSC
     Try {
-        Set pAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+        Set pAnswer = ##class(%DynamicObject).%FromJSON($ZConvert(tBody, "I", "UTF8"))
     } Catch {
         Set pAnswer = ""
     }
@@ -372,6 +372,7 @@ Method AssertDeleteRefused(pUser As %String, pScreen As %String, pId As %String,
     Set tSC = ..DeleteAs(pUser, pScreen, pId, .tStatus, .tAnswer)
     Do $$$AssertStatusOK(tSC, pUser _ " " _ pScreen _ ": the delete request completes")
     Do $$$AssertEquals(tStatus, 403, pUser _ " " _ pScreen _ ": the delete is refused")
+    Do $$$AssertTrue($IsObject(tAnswer), pUser _ " " _ pScreen _ ": with an envelope")
     If '$IsObject(tAnswer) Quit
     Do $$$AssertEquals(tAnswer.code, "AUTH.NOPRIVILEGE", pUser _ " " _ pScreen _ ": on the screen-privilege code")
     Do $$$AssertEquals($Select($IsObject(tAnswer.detail): tAnswer.detail.failedPair, 1: ""), pPair, pUser _ " " _ pScreen _ ": naming " _ pPair)

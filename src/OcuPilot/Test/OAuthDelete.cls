@@ -116,17 +116,21 @@ ClassMethod Fresh(pTool As %String, pDescription As %String = "before") As %Dyna
 
 /// <p>AC4, AD-10: each type is covered. A subject-only delete, with the tool's own removal rows as
 /// its diff, is not prohibited; a diff naming a field outside the subject that the payload changes
-/// -- <code>Description</code> for a configuration, <code>DefaultScope</code> for a server client,
-/// whose subject carries its description -- is refused <code>PROHIBITED.UNCOVEREDFIELD</code>,
+/// -- <code>Description</code> for a configuration, <code>DefaultScope</code> and <code>Enabled</code>
+/// for a server client, whose subject carries its description -- is refused
+/// <code>PROHIBITED.UNCOVEREDFIELD</code>,
 /// because the reviewed-few list is empty. A subject field is the fingerprint's to adjudicate, not
 /// this sweep's.</p>
 /// <p>Mutation (Rule 19): drop either type from
 /// <parameter>OcuPilot.Kernel.Proposal.Prohibited.COVEREDTYPES</parameter> -- its subject-only leg
-/// is refused <code>PROHIBITED.UNCOVERED</code> and goes red.</p>
+/// is refused <code>PROHIBITED.UNCOVERED</code> and goes red. Send the server client past the
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.OAuthEntry</method> branch -- it falls through to the
+/// web application predicates, which permit <code>Enabled</code>, and its <code>Enabled</code> leg
+/// goes red.</p>
 Method TestEachOAuthTypeIsCoveredAndRefusesAChangedField()
 {
     Set tUncoveredField = $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "UNCOVEREDFIELD")
-    For tCase = $ListBuild(..#CLIENTTOOL, ..#CLIENTTOOLCLASS, "oauth2-client-configuration", "OcuPilotTestDelete", "Description"), $ListBuild(..#SERVERCLIENTTOOL, ..#SERVERCLIENTTOOLCLASS, "oauth2-server-client", "probe-client-id", "DefaultScope") {
+    For tCase = $ListBuild(..#CLIENTTOOL, ..#CLIENTTOOLCLASS, "oauth2-client-configuration", "OcuPilotTestDelete", "Description"), $ListBuild(..#SERVERCLIENTTOOL, ..#SERVERCLIENTTOOLCLASS, "oauth2-server-client", "probe-client-id", "DefaultScope"), $ListBuild(..#SERVERCLIENTTOOL, ..#SERVERCLIENTTOOLCLASS, "oauth2-server-client", "probe-client-id", "Enabled") {
         Set tTool = $List(tCase, 1)
         Set tClass = $List(tCase, 2)
         Set tType = $List(tCase, 3)

@@ -163,7 +163,7 @@ Method TestEachTabIsDeclaredAsTheOAuthScreenTab()
         Do $$$AssertEquals($ListToString($ClassMethod(tClass, "EntityTypes")), $List(tCase, 6), tClass _ ": on its entity types, primary first")
         Do $$$AssertEquals($ClassMethod(tClass, "Scope"), "instance", tClass _ ": at instance scope")
         Set tDeletable = ..Deletable(tClass)
-        Do $$$AssertEquals($ClassMethod(tClass, "IdKind"), $Select(tClass = "OcuPilot.Screen.Descriptor.OAuthServerClientTab": "composite", 1: "single"), tClass _ ": keyed by one id")
+        Do $$$AssertEquals($ClassMethod(tClass, "IdKind"), $Select(tClass = "OcuPilot.Screen.Descriptor.OAuthServerClientTab": "composite", 1: "single"), tClass _ ": keyed as declared, the server clients by ClientId")
         If tClass = "OcuPilot.Screen.Descriptor.OAuthServerClientTab" Do $$$AssertEquals(tDeclaration.%Get("id").%Get("parts").%ToJSON(), "[""ClientId""]", tClass _ ": the vendor's IdKey, ClientId")
         Do $$$AssertEquals($ClassMethod(tClass, "Refreshes"), 0, tClass _ ": and it does not refresh")
         Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), $List(tCase, 5), tClass _ ": at its side-bar position")
@@ -600,7 +600,7 @@ Method TestTheAgentsClientConfigurationDeleteIsMintedConfirmedAndLeavesTheRead()
     Set tResult = ""
     Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tKey, "", $Username, .tResult, .tHttp, .tCode, .tDetail)
     Do $$$AssertStatusOK(tSC, "the confirm succeeds: " _ $Get(tCode))
-    If $IsObject(tResult) Do $$$AssertEquals(tResult.%Get("auditMarked"), 1, "and the agent marker is recorded")
+    Do $$$AssertTrue($IsObject(tResult) && (tResult.%Get("auditMarked") = 1), "and the agent marker is recorded")
     Set tLedger = ""
     Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Arguments, Fields, Status FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(TurnKey) = ?", tTurnKey)
     While tRS.%Next() {

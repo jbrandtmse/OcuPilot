@@ -15,7 +15,8 @@
 /// names neither <code>Metadata</code>, which carries <code>client_secret</code> and
 /// <code>registration_access_token</code>, nor <code>ClientCredentials</code> (AD-35).</p>
 /// <p><b>It is destructive</b>: the vendor's <code>DeleteId</code> revokes every access token issued
-/// to the client, and nothing proposes it back.</p>
+/// to the client, and nothing proposes it back. The vendor's <code>%OnAfterDelete</code> then
+/// rebuilds the authorization server application's CORS allow-list from the clients that remain.</p>
 /// <p>AD-10 names no OAuth 2.0 effect, so the prohibited set covers this type with the reviewed-few
 /// sweep alone (<class>OcuPilot.Kernel.Proposal.Prohibited</class>).</p>
 Class OcuPilot.Screen.Tool.OAuthServerClientDelete Extends OcuPilot.Screen.Tool.Write
