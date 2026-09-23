@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-23'
 status: 'done'
 baseline_revision: '068eb924c345066d38b2d47b716fafde9942f05f'
+baseline_commit: '068eb924c345066d38b2d47b716fafde9942f05f'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -218,6 +219,32 @@ Before editing a ⚠ file, run `git fetch origin && git show origin/OCU-1-epic7:
 - AC4: Given the owner scheduled this check after the 2026-09-27 floor and accepted the late-failure risk, when it ran, then the spec records that it ran on 2026-09-23, before the floor. The risk was retired rather than realized. This is recorded under Design Notes.
 - Integration (Rule 1): the Definition form, as consumer, reads `credentialsRungAvailable` from `GET /agent/providers` and renders env mode. This is pinned by the page spec against the served shape, and the flag's real value by the HTTP leg in task 8.
 
+### Review Findings
+
+Code review 2026-09-23 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). Each line: severity, fix-risk, disposition.
+
+- [x] [Review][Patch] List Enable/Disable (`PUT {enabled}`) was refused `AGENT.CREDTYPE.UNAVAILABLE` on a stored `creds` row where the rung is unreachable [src/OcuPilot/Api/Definitions.cls:320] — med, fix-risk low (one argument); update now refuses only a body that names `credType`; `TestAPartialUpdateOfAStoredCredsRowIsNotRefused`.
+- [x] [Review][Patch] AC2's "unchanged on plain Community `USER`" had no CI pin [.github/workflows/ci.yml:images] — med, fix-risk low; images step reads `credentialsRungAvailable:true` over HTTP, held by `DECLARED_GATES` and the one-fact test; run locally on both editions (exit 0).
+- [x] [Review][Patch] The env-mode "no Stored. caption" assertion sat only on the create leg, where it cannot fail [ui/src/app/areas/agent/definition-form.page.spec.ts] — med (Rule 19), fix-risk low; added to the loaded-`creds` leg.
+- [x] [Review][Patch] The gate landing banner said "paste a key" above an env-mode form [ui/src/app/areas/agent/definition-form.page.ts:121] — low, fix-risk low; `agentGateLandingBannerEnv` + EXPERIENCE.md:423 row + leg.
+- [x] [Review][Patch] `smoke.sh` re-derived `container-start.sh`'s HSCUSTOM-else-USER choice with nothing holding them equal [ui/tools/ci.test.mjs] — low, fix-risk low; cross-file test added.
+- [x] [Review][Patch] Wrong or stale prose at origin — low, fix-risk low: `HandleProviders` "no instance detail"; `ci.yml` "the namespace the install resolved" (header and smoke step); `ci.test.mjs` "THIRD time"/"two jobs"; `smoke.sh` exit-1 clause missing the unreadable-answer arm; README smoke env source and the plain-Community env-mode implication; `ci-image-compile.sh` "in seconds".
+- [x] [Review][Defer] The new server-only refusal sentence has no Fixed strings row [src/OcuPilot/Api/Error.cls] — deferred: occurrence on DW-1502 (decision-pending, burndown).
+
+Rejected:
+
+- `false`: full sweep predates the `RouterFixture` reorder — CI run 35918425785's `instance` job ran the full suite on `ced33f77`, which carries it, and passed.
+- `false`: task 2 wrote a second stub harness — every required leg exists; no AC lost.
+- `false`: `ValidateDefinition`'s hand-built `$ListBuild` can drift from `AgentRules` — the verbatim-sentence and `CarriesTheRefusal` legs read the wire shape and would redden.
+- `low` by-design: third port pair and unguarded `--super` — task 3 fixes the ports.
+- `low` by-design: smoke picks `HSCUSTOM` when OcuPilot was installed elsewhere — the spec's Always fixes that order; `--namespace` overrides.
+- `low` by-design: Test connection in env mode tests the stored row — `HandleTest` is out of scope (implement triage log).
+- `low` by-design: the env field shows with "No API key" ticked — the key field does the same in rung-present mode; `Normalize` drops the value.
+- `low` wontfix-accepted: a `ProvidersBody` exception renders "The provider catalog could not be read" — reopen_if a 500 with that reason is traced to a non-catalog fault.
+- `low` wontfix-accepted: `images` keeps `timeout-minutes: 30` and no port-range diagnostic — reopen_if an images leg times out or fails a port bind.
+- `low` wontfix-accepted: a `credType` refusal lands on no control when the providers read failed in a rung-less namespace — reopen_if that refusal is observed on a form not in env mode.
+- `low` rejected: Auto Run Result counts differ from the triage log after QA — the fix edits the spec under review.
+
 ## Spec Change Log
 
 ### Lead rulings at the spec gate, 2026-09-23
@@ -335,6 +362,32 @@ Stateful checks run on slot B's throwaway `ocupilot-b-ci` (web 52777, super 1976
   - mutation: images `admin-spec.mjs` step deleted from `ci.yml` → red: "the throwaway's port and name are one fact..." plus the three `run:`-equality tests
 - CI shape: the capture-before-teardown loop. Mutation: drop the images teardown's `if: always()`.
   - mutation: images teardown's `if: always()` removed → red: "no step can fail without failing the job" (the always/teardown pairing; the capture loop now also covers `images`)
+- Code review 2026-09-23 (Rule 19):
+  - mutation: `HandleUpdate` passes `1` for `pNamesCredType`, whole tree reloaded on `ocupilot-b-ci` → red: `TestAPartialUpdateOfAStoredCredsRowIsNotRefused` (run 451)
+  - mutation: images rung step deleted from `ci.yml` → red: the three `run:`-equality tests and "the throwaway's port and name are one fact..."
+  - mutation: a `formSecretStored` caption rendered in the env branch → red: "...a stored `creds` definition opens on `env`, as an unsaved change"
+  - mutation: the banner renders `agentGateLandingBanner` whatever `envMode` says → red: "...the gate landing banner asks for the variable, never for a key"
+  - mutation: smoke's `1,[01])` and `0,1)` answers swapped → red: "...default install namespace is container-start.sh's..." and the AC1 USER leg
+  - AC4 and AC1's README clause are records, not behavior; no mutation applies.
+
+### QA gap audit (2026-09-23)
+
+Two verification gaps found and closed; the rest of the Matrix and ACs were already pinned.
+
+- `ui/tools/ci.test.mjs` (QA): `smoke.sh`'s catch-all `*)` probe arm (an answer the grep cannot
+  parse) shared every existing assertion with the `0,0)` "neither exists" arm, so collapsing the
+  two branches would not have reddened anything.
+  - mutation: the `*)` arm's echo replaced with the `0,0)` arm's sentence and its raw-output dump
+    deleted → red: "Story 8.9: a garbled probe answer is refused with its own message and the raw
+    output, never read as 'neither exists'"
+- `src/OcuPilot/Test/CredentialRungOffer.cls` (QA): the create/update handler legs pinned the
+  violation's `field` and `code` but not its `reason`, so the sentence
+  `AGENT.CREDTYPE.UNAVAILABLE` carries in `Api/Error.cls` (AD-39) was never checked against what
+  the wire actually sends.
+  - mutation: `ValidateDefinition`'s appended violation given a literal third element
+    (`"Contact support."`) instead of leaving it for `ViolationsJson` to resolve via
+    `Error.ReasonForViolation`, whole tree reloaded on `ocupilot-b-ci` → red:
+    `TestTheCreateHandlerRefusalCarriesThePublishedSentenceVerbatim` (run 448)
 
 ## Auto Run Result
 

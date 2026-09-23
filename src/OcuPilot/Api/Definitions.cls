@@ -216,10 +216,10 @@ ClassMethod ProviderColumns() As %List
 /// is <parameter>OcuPilot.Api.Error.REASONAGENTKEYSHAPE</parameter> with that row's prefix in it,
 /// so the form's inline key-shape check (DW-339) renders the sentence the server's own refusal
 /// would have carried rather than a second wording of it (AD-39).</p>
-/// <p><b>It carries no secret and no instance detail.</b> Every value is a build-time table entry;
+/// <p><b>It carries no secret.</b> Every provider row is a build-time table entry;
 /// <code>keyPrefix</code> is the shape a key starts with, never a key (AD-35).</p>
-/// <p>Beside <code>providers</code> it carries <code>credentialsRungAvailable</code>, a JSON
-/// boolean: whether this namespace can reach the credentials rung
+/// <p>Its one instance fact sits beside <code>providers</code>: <code>credentialsRungAvailable</code>,
+/// a JSON boolean saying whether this namespace can reach the credentials rung
 /// (<method>ProvidersBody</method>).</p>
 ClassMethod HandleProviders() As %Status
 {
@@ -314,10 +314,13 @@ ClassMethod CredTypeRefusal(pCredType As %String) As %String
 /// <p>Run <method>OcuPilot.Kernel.AgentRules.Validate</method> over <var>pValues</var> and add
 /// <method>CredTypeRefusal</method>'s answer to the same violation set, on <code>credType</code>.
 /// Answers how many violations <var>pViolations</var> holds. Used by a create and an update.</p>
-ClassMethod ValidateDefinition(ByRef pValues, pExistingId As %String, Output pViolations) As %Integer
+/// <p><var>pNamesCredType</var> is whether the request itself carries <code>credType</code>. An
+/// update that does not (the list's Enable/Disable sends <code>{enabled}</code> alone) leaves a
+/// stored row's rung as it is, so it is not refused on it.</p>
+ClassMethod ValidateDefinition(ByRef pValues, pExistingId As %String, Output pViolations, pNamesCredType As %Boolean = 1) As %Integer
 {
     Do ##class(OcuPilot.Kernel.AgentRules).Validate(.pValues, pExistingId, .pViolations)
-    Set tRefusal = ..CredTypeRefusal($Get(pValues("credType")))
+    Set tRefusal = $Select(pNamesCredType: ..CredTypeRefusal($Get(pValues("credType"))), 1: "")
     If tRefusal '= "" Set pViolations($Increment(pViolations)) = $ListBuild("credType", tRefusal, "")
     Quit +$Get(pViolations)
 }
@@ -440,7 +443,7 @@ ClassMethod HandleUpdate(pId As %String) As %Status
         ; already declares connectionVerified unwritable, so this is the braces to that belt.
         Set tValues("connectionVerified") = $Get(tBefore("connectionVerified"))
         Do ##class(OcuPilot.Kernel.AgentRules).Normalize(.tValues)
-        If ..ValidateDefinition(.tValues, pId, .tViolations) {
+        If ..ValidateDefinition(.tValues, pId, .tViolations, $Data(tPresent("credType")) > 0) {
             Set tSC = ..RenderViolations(.tViolations)
             Quit
         }

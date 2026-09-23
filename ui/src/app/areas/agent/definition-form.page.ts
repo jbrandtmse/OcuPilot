@@ -118,7 +118,7 @@ interface FieldView {
     @if (showGateBanner) {
       <p class="ocu-banner ocu-banner-info ocu-form-gate-banner">
         <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
-        <span class="ocu-banner-message">{{ STRINGS.agentGateLandingBanner }}</span>
+        <span class="ocu-banner-message">{{ envMode ? STRINGS.agentGateLandingBannerEnv : STRINGS.agentGateLandingBanner }}</span>
       </p>
     }
 

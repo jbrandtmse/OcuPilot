@@ -31,9 +31,9 @@ bring-your-own-model: OpenAI, Anthropic, Google Gemini, or any OpenAI-compatible
 configured on first login. OcuPilot installs as one IPM module, and the Docker Compose
 workspace in this repo self-installs it on start; it runs on IRIS Community and IRIS for Health
 Community. On plain IRIS Community, which has no `HSCUSTOM` namespace, the container install lands
-in `USER`. In a namespace that is not interoperability-enabled there is no credential store, so the
-agent definition form asks for the environment variable the key is read from instead of the API
-key itself.
+in `USER`, which is interoperability-enabled there, so the agent definition form is the same on
+both editions. In a namespace that is not interoperability-enabled there is no credential store,
+so the form asks for the environment variable the key is read from instead of the API key itself.
 
 **The OpenAI-compatible option is the privacy option.** A small model served on your own network —
 Ollama, vLLM or LM Studio on the instance's host or beside it — is configured by declaring the
@@ -461,9 +461,10 @@ sh scripts/smoke.sh --container ocupilot-fresh --user _SYSTEM --password SYS
 ```
 
 It takes `--container NAME`, or `--compose-file FILE [--project NAME]`, or neither (an instance
-with `iris` on the PATH). The namespace is `--namespace NS`, else the instance's
-`OCUPILOT_NAMESPACE`, else the instance's own answer: `HSCUSTOM` if it exists, else `USER`, the
-way the container install resolves it. An instance with neither is refused by name, exit 1,
+with `iris` on the PATH). The namespace is `--namespace NS`, else `OCUPILOT_NAMESPACE` (the
+container's own with `--container` or `--compose-file`, the caller's otherwise), else the
+instance's own answer: `HSCUSTOM` if it exists, else `USER`, the way the container install
+resolves it. An instance with neither, or one whose answer cannot be read, is refused with exit 1
 before any session opens in a namespace that does not exist. Its assertions are **not** in the shell script: they live in
 `OcuPilot.Install.Smoke`, inside the instance, which is what makes "the same script with the same
 assertions" literally true rather than a claim about two implementations that happen to agree.

@@ -6078,6 +6078,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-2-create-a-user.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Prohibited.ReasonFor(PRIVILEGEGRANT) reaches the Roles field and the picker from the server; no EXPERIENCE row quotes it and 8.2's form row says 'never one published here'. AD-53 is on origin/OCU-1-epic7 only; its pin test (RefusalCopy) and client-copy convention are Epic 7's.
 - 2026-09-23T04:51:49Z status=decision-pending owner=burndown by=cr note=reconcile at the merge: publish+pin via RefusalCopy, or amend AD-53 to exempt server-shipped sentences
+- 2026-09-23T21:14:39Z occurrence=8-9-plain-iris-community-verification
 
 ### DW-1503: A user create whose vendor Modify refuses after Create leaves an account holding only its password
 - source: spec-8-2-create-a-user.md | severity: low | fix-risk: med | footprint: in-story

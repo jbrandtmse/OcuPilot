@@ -1520,6 +1520,9 @@ describe('the Definition form', () => {
       '/agent/definitions/edit/7'
     );
     expect(host.querySelector('#ocu-definition-apiKey')).toBeNull();
+    // An edit is where the key field's "Stored." caption would render, so this is the leg that can
+    // see it leak into env mode; the create leg cannot, since a create never shows it.
+    expect(host.textContent).not.toContain(STRINGS.formSecretStored);
     expect((host.querySelector('#ocu-definition-envVarName') as HTMLInputElement).value).toBe('ANTHROPIC_API_KEY');
     // Nothing was written by opening it: the move is the operator's to save, and the leave guard
     // holds it until they do.
@@ -1576,6 +1579,14 @@ describe('the Definition form', () => {
     rewritten.dispatchEvent(new Event('blur'));
     await settle(fixture);
     expect(host.querySelector('#ocu-definition-envVarName-reason')).toBeNull();
+  });
+
+  it('Story 8.9 AC2: in env mode the gate landing banner asks for the variable, never for a key', async () => {
+    // Mutation (Rule 19): render `agentGateLandingBanner` whatever `envMode` says -> this goes red.
+    const { host } = await mount(envAnswer(withRung(PROVIDERS_BODY, false)), '/agent/definitions/edit', { definitions: [] });
+    const banner = host.querySelector('.ocu-form-gate-banner') as HTMLElement;
+    expect(banner.textContent).toContain(STRINGS.agentGateLandingBannerEnv);
+    expect(banner.textContent).not.toContain(STRINGS.agentGateLandingBanner);
   });
 
   it('Story 8.9 AC2: where the rung is reachable, or the flag is absent, the form is unchanged', async () => {

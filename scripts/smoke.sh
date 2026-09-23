@@ -32,7 +32,7 @@
 #
 # Exit 0 when the run passed: at least one check executed and none failed. Exit 1 when it did not,
 # including a run in which every check was skipped, because zero executed checks is a failure and
-# never a pass, and an instance holding neither HSCUSTOM nor USER, where no session is opened.
+# never a pass, and an instance holding neither HSCUSTOM nor USER or not answering, with no report run.
 # Exit 2 for a caller error: a bad argument, or a credential this script refuses.
 #
 # `iris session` echoes a banner and a fresh prompt after every line it reads, so the report is

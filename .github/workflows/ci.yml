@@ -17,8 +17,9 @@
 #             `instance` rather than after it.
 #   images    both stock Community editions at the pinned version: src/OcuPilot/ compiles and the
 #             admin API reports v2 through the port's own version read, then a throwaway on that
-#             edition installs, drift-checks /api/admin and smokes in the namespace the install
-#             resolved, so no HealthShare-only dependency can go unnoticed (NFR-13).
+#             edition installs, drift-checks /api/admin, smokes with no --namespace (HSCUSTOM, else
+#             USER) and reads the credentials rung as offered, so no HealthShare-only dependency
+#             can go unnoticed (NFR-13).
 #   package   two throwaway containers with NO NETWORK AT ALL: the distributable IPM archive is
 #             built on the first and loaded on the second, which smoke then reports on. It waits
 #             on nothing, so it runs beside `instance` rather than after it.
@@ -266,10 +267,14 @@ jobs:
       - name: admin API drift against the vendored table
         working-directory: ui
         run: node tools/admin-spec.mjs --origin http://localhost:52781
-      # No --namespace, deliberately: the fallback to the namespace the install resolved is what
-      # is under test on an edition that has no HSCUSTOM.
+      # No --namespace, deliberately: smoke's own fallback (HSCUSTOM, else USER -- the choice the
+      # install makes) is what is under test on an edition that has no HSCUSTOM.
       - name: smoke
         run: sh scripts/smoke.sh --container ocupilot-images-ci --user _SYSTEM --password SYS
+      # The install namespace is interoperability-enabled on both stock editions, so the Definition
+      # form must offer the API key there and not the environment-variable rung (Story 8.9 AC2).
+      - name: the credentials rung is offered in the install namespace
+        run: curl -fsS -u _SYSTEM:SYS http://localhost:52781/api/ocupilot/agent/providers | grep -q '"credentialsRungAvailable":true'
       - name: capture the throwaway on failure
         if: ${{ failure() || cancelled() }}
         run: sh scripts/ci-throwaway.sh logs --dir /tmp/ocupilot-images-ci

@@ -59,6 +59,21 @@ ClassMethod CarriesTheRefusal(pBody As %String) As %Boolean
     Quit tFound
 }
 
+/// <p>The <code>credType</code>/<code>AGENT.CREDTYPE.UNAVAILABLE</code> violation's own
+/// <code>reason</code> in <var>pBody</var>, or <code>""</code> when no such violation is present --
+/// the wire text a form renders on the field (AD-39).</p>
+ClassMethod RefusalReason(pBody As %String) As %String
+{
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(pBody)
+    If '$IsObject(tAnswer.detail) || '$IsObject(tAnswer.detail.violations) Quit ""
+    Set tReason = ""
+    Set tIter = tAnswer.detail.violations.%GetIterator()
+    While tIter.%GetNext(.tKey, .tViolation) {
+        If (tViolation.field = "credType") && (tViolation.code = "AGENT.CREDTYPE.UNAVAILABLE") Set tReason = tViolation.reason
+    }
+    Quit tReason
+}
+
 /// <p>With the rung reported unreachable, the providers body says so as a JSON boolean
 /// <code>false</code>, a <code>creds</code> definition is refused with the new code, and the
 /// <code>env</code> rung and the keyless type are not refused.</p>
@@ -147,6 +162,23 @@ Method TestTheCreateHandlerRefusesCredsWhereTheRungIsUnreachable()
     Do $$$AssertEquals(tStatus, 201, "an env definition is created: " _ tBody)
 }
 
+/// <p>The create handler's refusal carries <method>OcuPilot.Api.Error.ReasonForViolation</method>'s
+/// published sentence for <code>AGENT.CREDTYPE.UNAVAILABLE</code> verbatim, over the wire, in
+/// <code>detail.violations[].reason</code> -- proving the sentence authored once in
+/// <class>OcuPilot.Api.Error</class> actually reaches the client rather than merely existing on
+/// its own (AD-39). <method>TestTheCreateHandlerRefusesCredsWhereTheRungIsUnreachable</method>
+/// pins the field and the code; this pins the text between them.</p>
+Method TestTheCreateHandlerRefusalCarriesThePublishedSentenceVerbatim()
+{
+    Do ##class(OcuPilot.Test.SecretProbe).SetRungAvailable(0)
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/agent-definitions", "POST", , .tBody, .tStatus, , , ..Body("RungReason", "creds"))
+    Do $$$AssertStatusOK(tSC, "dispatch through the shipped, inherited HandleCreate completes")
+    Do $$$AssertEquals(tStatus, 422, "a creds definition is refused: " _ tBody)
+    Set tReason = ..RefusalReason(tBody)
+    Do $$$AssertNotEquals(tReason, "", "the violation carries a reason at all: " _ tBody)
+    Do $$$AssertEquals(tReason, ##class(OcuPilot.Api.Error).ReasonForViolation("AGENT.CREDTYPE.UNAVAILABLE"), "and it is the server's one published sentence, verbatim over the wire")
+}
+
 /// <p>Through the shipped update handler with the rung unreachable: moving a stored
 /// <code>env</code> definition onto <code>creds</code> answers 422 carrying the refusal, and the
 /// stored row keeps its rung.</p>
@@ -166,6 +198,29 @@ Method TestTheUpdateHandlerRefusesCredsWhereTheRungIsUnreachable()
     Do $$$AssertStatusOK(tOpenSC, "the stored row reads back")
     If $IsObject($Get(tRow)) Do $$$AssertEquals(tRow.CredType, "env", "still on the env rung")
     Set tRow = ""
+}
+
+/// <p>Through the shipped update handler: a <code>creds</code> definition stored while the rung was
+/// reachable can still be disabled once it is not, because a body that does not carry
+/// <code>credType</code> leaves the stored rung as it is. A body that names <code>creds</code> is
+/// still refused.</p>
+Method TestAPartialUpdateOfAStoredCredsRowIsNotRefused()
+{
+    Do ##class(OcuPilot.Test.SecretProbe).SetRungAvailable(1)
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/agent-definitions", "POST", , .tBody, .tStatus, , , ..Body("RungStored", "creds"))
+    Do $$$AssertEquals(tStatus, 201, "a creds definition is stored while the rung is reachable: " _ tBody)
+    If tStatus '= 201 Quit
+    Set tId = ##class(%DynamicObject).%FromJSON(tBody).id
+
+    Do ##class(OcuPilot.Test.SecretProbe).SetRungAvailable(0)
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/agent-definitions/" _ tId, "PUT", , .tBody, .tStatus, , , {"enabled":false}.%ToJSON())
+    Do $$$AssertStatusOK(tSC, "dispatch through the shipped, inherited HandleUpdate completes")
+    Do $$$AssertEquals(tStatus, 200, "disabling it is accepted where the rung is unreachable: " _ tBody)
+    Do $$$AssertTrue('..CarriesTheRefusal(tBody), "and carries no credType refusal: " _ tBody)
+
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/agent-definitions/" _ tId, "PUT", , .tBody, .tStatus, , , {"credType":"creds"}.%ToJSON())
+    Do $$$AssertEquals(tStatus, 422, "a body that names creds is refused: " _ tBody)
+    Do $$$AssertTrue(..CarriesTheRefusal(tBody), "with AGENT.CREDTYPE.UNAVAILABLE on credType: " _ tBody)
 }
 
 }

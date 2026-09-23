@@ -1490,6 +1490,9 @@ export const STRINGS = {
   /** EXPERIENCE.md:422 */
   agentDefinitionEnvVarCaption:
     'The key is read from this variable on the instance\u2019s host. Set it there; this form never takes the key.',
+  /** EXPERIENCE.md:423 */
+  agentGateLandingBannerEnv:
+    'OcuPilot needs one agent definition before the panel can help. Anthropic is selected \u2014 set the environment variable named below on the instance\u2019s host and press Test connection. You can skip this and browse.',
 
 } as const;
 

@@ -2,8 +2,8 @@
 # Compile src/OcuPilot/ on one stock InterSystems Community image and confirm the instance's own
 # administration API reports v2 (Story 1.17, NFR-13, AD-27).
 #
-# **It compiles and probes; it does not install.** It answers, in seconds and before anything
-# else on that edition runs, that nothing in the tree is HealthShare-only and that the one vendor
+# **It compiles and probes; it does not install.** It answers, before anything else on that
+# edition runs, that nothing in the tree is HealthShare-only and that the one vendor
 # API OcuPilot depends on is present at the version it depends on. A compile failure here names a
 # class OcuPilot could not build on that edition. The install on that edition is the images job's
 # own later steps: a throwaway from scripts/ci-throwaway.sh, readiness, the admin API drift check

@@ -143,10 +143,11 @@ export const DECLARED_GATES = [
   'sh scripts/wait-readiness.sh --url http://localhost:52781/api/ocupilot/readiness/',
   'node tools/admin-spec.mjs --origin http://localhost:52781',
   'sh scripts/smoke.sh --container ocupilot-images-ci --user _SYSTEM --password SYS',
+  `curl -fsS -u _SYSTEM:SYS http://localhost:52781/api/ocupilot/agent/providers | grep -q '"credentialsRungAvailable":true'`,
   'sh scripts/ci-throwaway.sh logs --dir /tmp/ocupilot-images-ci',
   'sh scripts/ci-throwaway.sh down --dir /tmp/ocupilot-images-ci --project ocupilot-images-ci --image ${{ matrix.image }}',
-  // package -- `npm ci` and `npm run build` run a THIRD time here, in a job with its own
-  // checkout, because the IPM manifest copies the built bundle into the archive.
+  // package -- `npm ci` and `npm run build` run again here, in a job with its own checkout,
+  // because the IPM manifest copies the built bundle into the archive.
   'npm ci',
   'npm run build',
   'sh scripts/ci-ipm-archive.sh --image intersystems/irishealth-community:2026.2',
@@ -156,8 +157,8 @@ export const DECLARED_GATES = [
  * Every `run:` command in the workflow, in order, with duplicates KEPT.
  *
  * De-duplicating would quietly weaken the equality this file's whole claim rests on: `npm ci`
- * and `npm run build` each appear in two jobs, so against a de-duplicated set, deleting one of
- * the two occurrences left both directions green and "a gate deleted from either side is red"
+ * and `npm run build` each appear in several jobs, so against a de-duplicated set, deleting one
+ * occurrence left both directions green and "a gate deleted from either side is red"
  * was false for exactly those commands. The declared list below therefore carries a command
  * once per occurrence.
  */
@@ -1587,6 +1588,10 @@ test("the throwaway's port and name are one fact, not six declarations of one", 
   assert.ok(imagesSmoke, 'the images job smokes the installed edition');
   assert.equal(/--container (\S+)/.exec(imagesSmoke)?.[1], imagesProject[1], "smoke names the images throwaway's container, which follows --project");
   assert.doesNotMatch(imagesSmoke, /--namespace/, "and names no namespace: the fallback to the one the install resolved is what is under test (AC1)");
+  assert.ok(
+    imagesRuns.includes(`curl -fsS -u _SYSTEM:SYS http://localhost:${imagesPort[1]}/api/ocupilot/agent/providers | grep -q '"credentialsRungAvailable":true'`),
+    `the images job reads the credentials rung as offered in the install namespace, on its own port ${imagesPort[1]} (AC2)`
+  );
   const imagesDown = imagesRuns.find((command) => command.startsWith('sh scripts/ci-throwaway.sh down'));
   assert.ok(imagesDown, 'the images job tears its throwaway down');
   assert.equal(/--project (\S+)/.exec(imagesDown)?.[1], imagesProject[1], 'the teardown removes the project the bring-up created');
@@ -2331,6 +2336,30 @@ test('Story 8.9: an instance with neither HSCUSTOM nor USER is refused by name, 
   assert.deepEqual(silent.sessions, ['%SYS'], 'and no report session opens over a guess');
 });
 
+test('Story 8.9: a garbled probe answer is refused with its own message and the raw output, never read as "neither exists"', () => {
+  // smoke.sh's `case "$PROBE" in` has two failing arms with different sentences: `0,0)` for an
+  // instance that definitively answered "neither exists", and `*)` for an answer the grep could
+  // not parse at all, which additionally dumps the raw session output for diagnosis. The test
+  // above only asserts that both mention "HSCUSTOM" and "USER" by name -- true of both arms'
+  // sentences -- so it cannot tell them apart, and collapsing the `*)` arm into the `0,0)` one
+  // (losing the distinct wording and the diagnostic dump) would leave every existing assertion
+  // green.
+  //
+  // Mutation (Rule 19): replace the `*)` arm's echo with the `0,0)` arm's sentence, and drop the
+  // `printf ... | tail -n 30 ...` dump -> this goes red on both the distinguishing phrase and the
+  // missing raw output below.
+  const garbled = runSmokeResolving('sideways-answer', []);
+  assert.equal(garbled.status, 1, garbled.output);
+  assert.match(garbled.output, /did not say whether/, 'the catch-all names itself distinctly from the explicit "neither" answer');
+  assert.doesNotMatch(garbled.output, /this instance has neither/, 'never the explicit-neither sentence for an answer that could not be parsed');
+  assert.match(garbled.output, /sideways-answer/, 'and the raw probe output is dumped for diagnosis');
+  assert.deepEqual(garbled.sessions, ['%SYS'], 'and no report session opens over a guess');
+
+  const neither = runSmokeResolving('0,0', []);
+  assert.match(neither.output, /this instance has neither/, 'the explicit "neither" answer gets its own sentence');
+  assert.doesNotMatch(neither.output, /did not say whether/, 'never the catch-all one');
+});
+
 test('Story 8.9: --namespace and OCUPILOT_NAMESPACE still name the namespace, with no probe', () => {
   const named = runSmokeResolving('0,1', ['--namespace', 'HSCUSTOM']);
   assert.equal(named.status, 0, named.output);
@@ -2339,4 +2368,19 @@ test('Story 8.9: --namespace and OCUPILOT_NAMESPACE still name the namespace, wi
   const fromEnv = runSmokeResolving('0,1', [], { OCUPILOT_NAMESPACE: 'OCUPILOT' });
   assert.equal(fromEnv.status, 0, fromEnv.output);
   assert.deepEqual(fromEnv.sessions, ['OCUPILOT'], 'and the environment override, unchanged from before');
+});
+
+test("Story 8.9: smoke.sh's default install namespace is container-start.sh's, candidate for candidate", () => {
+  // Two copies of one choice: the install picks its namespace in container-start.sh, and smoke
+  // re-derives it from the same instance. Held equal here so they cannot drift apart.
+  //
+  // Mutation (Rule 19): swap smoke's `1,[01])` and `0,1)` answers -> this goes red.
+  const start = readFileSync(join(REPO_ROOT, 'scripts', 'container-start.sh'), 'utf8');
+  const smoke = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'smoke.sh'), 'utf8'));
+  const chosen = /tDefault=\$Select\(tHas\w+:"(\w+)",tHas\w+:"(\w+)",1:""\)/.exec(start);
+  assert.ok(chosen, 'container-start.sh chooses between two candidates');
+  const asked = /Exists\("(\w+)"\)_","_##class\(%SYS\.Namespace\)\.Exists\("(\w+)"\)/.exec(smoke);
+  assert.deepEqual(asked?.slice(1), chosen.slice(1), 'smoke asks about the same candidates, in the same order');
+  assert.match(smoke, new RegExp(`1,\\[01\\]\\) NAMESPACE="${chosen[1]}"`), `the first existing candidate wins: ${chosen[1]}`);
+  assert.match(smoke, new RegExp(`0,1\\) NAMESPACE="${chosen[2]}"`), `and the second only without it: ${chosen[2]}`);
 });
