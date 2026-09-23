@@ -178,3 +178,8 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T13:33:22Z	Story 7.6	stage_spawned	stage=implement spawn_at=2026-09-23T13:33:22Z model=opus agent_name=7-6-run-suspend-resume-and-delete-a-task-implement-1 cycle_iteration=1
 2026-09-23T14:10:56Z	Story 7.6	dev_clarification_requested	stage=dev spawn_at=2026-09-23T13:33:22Z model=opus condition=matrix_ambiguity item=no-op_refusal_422_vs_400 resolved_by=lead(400_TOOL.ARGUMENTS,_AD-53_two_callers_agree) wip=committed_for_crash_safety
 2026-09-23T14:10:56Z	Story 7.6	stage_spawned	stage=implement spawn_at=2026-09-23T14:10:56Z model=opus agent_name=7-6-run-suspend-resume-and-delete-a-task-implement-2 cycle_iteration=2
+2026-09-23T14:43:54Z	Story 7.6	dev_complete	spawn_at=2026-09-23T14:10:56Z model=opus build_sha=6d1bb86d baseline_revision=b447f29 review_loop_iteration=0 followup_review_recommended=false deferred=2 harvested=DW-1553(routed_7-8),DW-1554(wontfix-accepted) cycle_iteration=2 tiers=sweep_183cls/1656/1(WireSecurityRead_1000-row_cap_on_the_reused_throwaway,DW-1554),smoke_49/49,tools_1327/0,components_885/0
+2026-09-23T14:43:54Z	Story 7.6	pushed	sha=6d1bb86d ci=pending run=35876251305
+2026-09-23T14:43:54Z	Story 7.6	ledger_routed_planned	story=7-8-terminate-suspend-and-resume-a-process entries=1 excess=0 by=harvest ids=DW-1553
+2026-09-23T14:43:54Z	Story 7.6	adr_verifications_complete	result=none_required model=claude-opus-5-5
+2026-09-23T14:43:54Z	Story 7.6	stage_spawned	stage=qa spawn_at=2026-09-23T14:43:54Z model=sonnet agent_name=7-6-run-suspend-resume-and-delete-a-task-qa-1 cycle_iteration=1

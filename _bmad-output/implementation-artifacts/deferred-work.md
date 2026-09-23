@@ -6169,3 +6169,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: EXPERIENCE.md:446 hides the toast while the entity's screen is open; Epic 8 pinned screenForEntityType('task') -> tasks/schedule/details in navigation.test.mjs:963; PRD UJ-6 climax: 'a toast links to the row in the task list'
 - 2026-09-23T13:21:12Z status=routed owner=range-end-cleanup by=spec_gate note=orchestrator ruling 2026-09-23: taken by the orchestrator right after the second of the Epic 7/8 merges; the UJ-6 replay checks the toast after that fix, not in 7.6
+
+### DW-1553: The initial bundle is 1,119,895 bytes against the 1,120 kB maximumWarning, 105 bytes of headroom, so the next story that adds client code fails the DW-371 bundle test
+- source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: measured by 7.6's build; ui/angular.json:54 maximumWarning 1120kB, pinned by ui/tools/angular-json.test.mjs; Epic 8's 8.2 re-based its own copy under DW-1166's owner policy (about 5% above the measured total)
+- 2026-09-23T14:43:42Z status=routed owner=7-8-terminate-suspend-and-resume-a-process by=harvest note=7.8 re-bases maximumWarning under DW-1166 if it adds client bytes; angular.json and its test are Epic-8-modified, so the edit is a clarification unless the orchestrator's merge-gate re-base lands first
+
+### DW-1554: WireSecurityRead's 'nothing is cut at 1,000' fails on a reused throwaway whose task history exceeds 1,000 rows
+- source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: full sweep on ocupilot-ci run 8192: %SYS_Task.History held 1,026 rows on the 3-day-old throwaway; a fresh CI throwaway holds far fewer
+- 2026-09-23T14:43:42Z status=wontfix-accepted owner=7-6-run-suspend-resume-and-delete-a-task by=harvest note=reopen_if=a CI instance job fails TestTaskHistoryPairSetsAreEnforcedForARealPrincipal
