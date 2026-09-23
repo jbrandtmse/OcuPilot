@@ -2,8 +2,9 @@
 title: 'Story 8.2: Create a user'
 type: 'feature'
 created: '2026-09-23'
-status: 'ready-for-dev'
+status: 'blocked'
 review_loop_iteration: 0
+baseline_revision: '97d3bad240a2fd996a7559833bc4c1799e970770'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
@@ -241,6 +242,12 @@ deferred: []
 - `ui/browser/web-applications-create.browser-spec.mjs` -- add the resolved-path legs and the unauthenticated-effect legs.
 - Update the rosters that redden: `ui/tools/navigation.test.mjs` 133-176 and 250-262, `ui/tools/proposal-view.test.mjs` (the `consequence` field), ⚠ `ui/src/app/shell/proposal-card.spec.ts` (the consequence line), `strings.test.mjs` (via EXPERIENCE.md), ⚠ `Test/{SurfaceCoverage,EndpointCoverage,ReadTool,ToolRoundTrip,Prohibited,ToolWrite,Descriptor}.cls`, and `scripts/ci-throwaway.sh` with `ui/tools/ci.test.mjs` only if a new class declares an arming parameter.
 
+*Orchestrator rulings 2026-09-23 (from Epic 7's Story 7.2), apply before review:*
+
+- [ ] [Lead] `userListEmptyAgent` is exactly `'create a user'` in `strings.ts` (it is `'create a user account'` now), and its EXPERIENCE.md Fixed strings row quotes the same value -- Epic 7's 7.2 adopts the same key and value.
+- [ ] [Lead] This story owns `Prohibited.ReasonFor`'s `PRIVILEGEGRANT` sentence: make it caller-neutral (it reads "not something the agent can propose", and a person now meets it on the Roles field -- DW-1496's reopen condition), and use that one published sentence for the Roles violation and the picker's pre-mark rather than a second `REASONUSERROLESPRIVILEGED` (AD-53: a refusal is written once). Do not touch the CURRENTUSER, SYSTEMACCOUNT, SERVICEACCOUNT or LASTALLHOLDER reasons. `Prohibited.cls` is contended: read Epic 7's version first and stay off its hunks.
+- [ ] [Lead] The `secretArguments` widening in `Screen/Registry.cls`, `ui/tools/screen-mirror.mjs` and `ui/tools/screen-mirror.test.mjs` stays self-contained (no unrelated edits to those three files): Epic 7 ports it byte-for-byte. `Screen/Descriptor/UserList.cls` is contended; this story owns its `primaryAction`, `emptyAgentKey` and `secretArguments` lines, Epic 7 adds `rowActions`.
+
 **Acceptance Criteria:**
 
 - **AC1.** Given the Users list's Create, when the create form renders, then it captures name, password, full name, expiry, startup namespace, startup routine and roles, in that order, under the `form-page` contract.
@@ -325,7 +332,33 @@ Stateful checks run on slot B's throwaway, brought up after the last edit: `sh s
 | AC6 | `WebAppLocation.cls` both-callers test | Make `Location.Resolve` return 1 with the caller's text |
 | AC7 | `WebAppLocation.cls` consequence test; `proposal-view.test.mjs` | Return `""` from `WebAppCreate.Consequence` |
 
+Observed (implement stage, each applied to the checked-in file, recompiled with `cbk` or rebuilt and redeployed, observed red, reverted, tree byte-identical):
+
+- mutation: swapped the Full name and Password blocks in `user-create-form.page.ts` → `users-create.browser-spec.mjs` AC1 red
+- mutation: `Mint.StoredArguments` sets `Password` on the stored text → `UserCreate.TestThePasswordIsAbsentFromEveryStoredSurface` red
+- mutation: the store keeps the password through a Save and the route replacement → `users-create.browser-spec.mjs` AC2 red (binding the page's `[value]` to a copy did not redden: the route replacement builds a new page)
+- mutation: disabled the `user` step in `Prohibited.Created` → `UserCreate.TestAPrivilegedRoleIsRefusedOnBothCallers` red on the screen and the confirm, for `%All` and `%Manager`
+- mutation: removed the `publishCreated()` call from `UserCreateForm.save()` → `user-create-form.store.spec.ts` change-event test red
+- mutation: emptied `AdminPort.WRAPPEDTYPES` → `UserCreate.TestAConfirmedCreateIsMarkedAndItsBodyIsWrapped` red
+- mutation: `Location.Resolve` returns 1 with the caller's text → `WebAppLocation.TestAnEscapingLocationIsRefusedOnBothCallers` red on the screen route and on `webapp.list.create` for all three inputs, and `TestAValidNameIsSentAsItsDirectoryUnderTheRootOnBothCallers` red on both bodies
+- mutation: `WebAppCreate.Consequence` returns `""` → `WebAppLocation.TestTheUnauthenticatedConsequenceIsStoredAndNotRefused` red; deleting `consequence` from `toCardView` → `proposal-view.test.mjs` consequence test red
+- mutation: dropped the `SecretRowNames` clause from `Registry.ConfirmChannelProblem` → `UserCreate.TestTheConfirmChannelAdmitsATopLevelSecretRowAndNothingElseNew` red; the same clause in `screen-mirror.mjs` → `screen-mirror.test.mjs` red (the Users list is refused)
+- mutation: dropped the authored row's push in `field-lists.mjs` `classify` → `field-lists.test.mjs` authored-field test and the committed-output tests red
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap: footprint src/OcuPilot/Test/PortFixture.cls (and a bundle-budget decision, item 2)
+
+The implementation pass is complete and uncommitted in the worktree (45 tracked files changed, 18 new); review layers did not run. Two gates stay red, each needing a lead decision:
+
+1. `OcuPilot.Test.ToolWrite` `TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster` (19/20): it requires every `AdminPort.MUTATINGTYPES` pair in `Test/PortFixture.cls`'s override, and the spec's `Security.User/POST` is not there. `PortFixture.cls` is in Epic 7's diff (it appends `WebApp.App/DELETE` to the same line) and not in the spec. Recommended: authorize appending `Security.User/POST` to `PortFixture.MUTATINGTYPES`.
+2. `ui/tools/build-output.test.mjs`: the initial bundle is 1,128,027 B against `maximumWarning` 1120kB (DW-371 gate; the build exits 0). Recommended: raise `ui/angular.json`'s `maximumWarning` and `angular-json.test.mjs`'s pinned literal together (e.g. 1200kB, under the 1600kB error), as the Epic 4 raise was done.
+
+Verified on `ocupilot-b-ci` by the handoff pass, one class per call: UserCreate 9/9, UserCreateWire 5/5, WebAppLocation 4/4, and ProposalCreate, WebAppCreate, WebAppWire, Prohibited, SurfaceCoverage, EndpointCoverage, ReadTool, Descriptor, DerivedFields, ToolRoundTrip, UserUpdate, AgentViolation green; browser users-create 4/4 and web-applications-create 7/7 on a rebuilt bundle; `test:components` 841/841; `test:tools` 1323 pass, 1 fail (item 2); generators, `client-lint`, `check-objectscript` and `lint-docs` clean. Rule 19 mutations are recorded under `## Verification`. The full ObjectScript sweep has not run.
+
+Deviations for review: the form orders Name, Full name, Password (the classic order the tasks give; AC1's sentence lists password first); the `USER.*` codes are registered in a new `UserViolationCodes`, since `ViolationCodes` is agent-only and pinned exactly by `AgentViolation`; `Test/Prohibited`'s reviewed-secret check excludes authored wrapper secrets; no `userFormPassword` key (`fieldPassword` already holds 'Password').
+
+Resume: after the two rulings, apply them, set `status: in-review`, and re-dispatch; `baseline_revision` stays valid.
+
+footprint_extensions: src/OcuPilot/Kernel/Proposal/Prohibited.cls, src/OcuPilot/Screen/Registry.cls, ui/tools/screen-mirror.mjs, ui/tools/screen-mirror.test.mjs, src/OcuPilot/Api/Router.cls, src/OcuPilot/Test/SurfaceCoverage.cls, src/OcuPilot/Test/EndpointCoverage.cls, src/OcuPilot/Test/ToolRoundTrip.cls, src/OcuPilot/Test/ReadTool.cls, src/OcuPilot/Test/Prohibited.cls, src/OcuPilot/Kernel/Proposal/Mint.cls, ui/src/app/core/proposal-view.ts, ui/src/app/shell/proposal-card.ts, ui/src/app/shell/proposal-card.spec.ts, src/OcuPilot/Port/AdminPort.cls (append), ui/src/app/core/strings.ts (append), EXPERIENCE.md Fixed strings (append)

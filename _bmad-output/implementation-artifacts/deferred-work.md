@@ -6064,3 +6064,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: smoke 8-1-create-a-web-application | severity: low | fix-risk: low | footprint: in-story
 - evidence: POST /api/ocupilot/web-applications with MatchRoles answered 403 PROHIBITED.PRIVILEGEGRANT with that sentence on ocupilot-b-ci 2026-09-23; Prohibited.ReasonFor is one sentence for both callers (AD-10 one home).
 - 2026-09-23T02:16:25Z status=wontfix-accepted owner=8-1-create-a-web-application by=smoke note=reopen_if=a screen surfaces a PROHIBITED.* reason to a person (MatchRoles is absent from the form, so today only a hand-built POST sees it)
+- 2026-09-23T03:36:52Z status=routed owner=8-2-create-a-user by=orchestrator note=reopened: 8.2 owns the PRIVILEGEGRANT sentence and a person meets it on the Roles field; make it caller-neutral
