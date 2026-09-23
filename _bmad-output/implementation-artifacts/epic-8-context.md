@@ -4,7 +4,7 @@
 
 ## Goal
 
-Build step 5. A user creates what the six areas administer through medium forms that validate server-side and open the new entity on success. Stories 8.1 to 8.6 (done) settled the patterns the device editor and Epic 9's editors inherit. At least one create or edit form per area is part of the 2026-09-27 floor; Story 8.9, a verification, is the floor's last act.
+Build step 5. A user creates what the six areas administer through medium forms that validate server-side and open the new entity on success. Stories 8.1 to 8.8 are done and settled the create, edit and delete patterns that Epic 9's editors inherit. At least one create or edit form per area is part of the 2026-09-27 floor. Story 8.9 is the floor's last act: it checks that OcuPilot installs and works on stock plain IRIS Community, then either confirms the README's claim or corrects it. The owner scheduled it after the floor and accepted the risk of a late failure.
 
 ## Stories
 
@@ -14,51 +14,63 @@ Build step 5. A user creates what the six areas administer through medium forms 
 - Story 8.4: The resource editor (done)
 - Story 8.5: X.509 import, edit and delete (done)
 - Story 8.6: The wallet secret form (done)
-- Story 8.8: The device editor
+- Story 8.8: The device editor (done)
 - Story 8.9: Plain IRIS Community verification
 
-There is no Story 8.7: it moved to Epic 7 as Story 7.11 with `Security.Audit.Event`.
+There is no Story 8.7. It moved to Epic 7 as Story 7.11.
 
 ## Requirements & Constraints
 
-- **One form contract.** A full-page route under the locator bar: one column of at most 720px, fields of at most 480px, fields in **the classic order**, outlined fields with label above and helper text beneath, an asterisk plus one-line legend for required fields, and a sticky 56px action bar with Save as the one primary and Cancel as a text button.
-- **Validation** runs inline on blur and on Save. Field sentences are authored once on the server as `{field, code, reason}` violations; a failed Save runs the shared error-summary focus sequence. No validate-only route. Rule sentences ship with the form's bootstrap read, and a name-in-use check is its own read.
-- **Save destinations.** Save on a create route opens the new entity's editor. Leaving unsaved changes asks first; an agent navigation waits. A save publishes to the change-event bus, so an open list updates itself.
-- **Every write ships with its agent write tool.**
-- **Secrets are write-only end to end:** the user's password, the X.509 certificate, private key and key password, and the wallet value. Each is sent once, returned by no read, and absent from diffs, ledger rows, logs and screen context, excluded by schema declaration, never by name matching, and never touches disk. A masked field never pre-fills or echoes; after a save it is empty and captioned that a new value replaces it.
-- **Privilege grants are permitted at the strongest confirmation, whatever the caller:** `%All`, an `%Admin_*` role or a role carrying one, an escalating resource grant, a public permission adding a letter on an administrative resource, and a privileged application role go through the one tool, no caller-scoped predicate; an agent proposal confirms by typed name, its diff naming the privilege. The screen shows `privilegedGrantEffect` (or `privilegedGrantEffectUnauthenticated`) at the field while such a grant is selected. **Only OcuPilot's self-protection stays refused**, on create and change alike: application roles on its own web applications (`PROHIBITED.PRIVILEGEGRANT`, server-only) and any public permission on its own resources, `%DB_OCUPILOT` and `OcuPilotAdmin` (`PROHIBITED.OCUPILOTRESOURCE`).
-- **No caller-supplied filesystem path.** Only 8.1's WSGI/ASGI create takes one directory segment, contained under `<ManagerDirectory>wsgi/`; the X.509 import takes content.
-- **Gating.** An administrative resource is required at `USE`, never `WRITE`; a gated screen names it. The wallet screens are gated whole on `%Admin_Wallet:USE`.
-- **Deletes confirm by name**, and a delete with a blast radius states it first. A delete ships as the agent's confirmed tool (`permissions.roles.delete`; `permissions.resources.delete`, which refuses a resource whose vendor `AllowDelete` is false and OcuPilot's own two; agent-only `security.x509.delete`). The wallet ships no delete. The list Delete row actions are Epic 9's.
-- **Story 8.8** covers the fields of the classic device page, whose exported source in `irislib/` is the field list; create, edit and delete each reach the list without a refresh, and delete confirms by name.
-- **Story 8.9** confirms on stock plain IRIS Community (no `HSCUSTOM`) that install falls back to `USER`, the credential ladder offers the environment-variable rung and does not offer the IRIS-credentials rung, and `/api/admin` is present with its version; a failure is documented and the README corrected.
+- **Story 8.9's four checks.** Each one passes, or its failure is documented and the README corrected.
+  1. On a stock plain IRIS Community image, which has no `HSCUSTOM` namespace, install falls back to `USER` and completes.
+  2. The credential ladder offers the environment-variable rung, and that rung works. The IRIS-credentials rung is **not offered** in a namespace that is not interoperability-enabled. Offering it and letting it fail does not pass.
+  3. `/api/admin` is present, and its version is confirmed.
+  4. The check runs after the floor, and the risk of a late failure is recorded as accepted, not discovered.
+- **The claim under test.** The README's opening says OcuPilot "runs on IRIS Community and IRIS for Health Community". Its namespace table (container start: `HSCUSTOM` if present, else `USER`, overridable with `OCUPILOT_NAMESPACE`; install refuses when neither exists) is the other claim 8.9 confirms or corrects. The research containers and every dev and throwaway instance so far have been IRIS for Health Community. Until 8.9 runs, the plain-Community half of Community Edition compatibility is an untested claim.
+- **The automated tests must run against both stock images and confirm the admin API is present on each.** The admin API is pinned to v2.
+- **Form contract, settled by 8.1 to 8.8.** A full-page route. Fields follow the classic order. Validation is server-authored and inline, errors run through the shared error-summary focus sequence, and the sticky action bar has Save as its one primary. Save on a create opens the new entity. The unsaved-changes guard also holds an agent navigation. Every write ships with its agent write tool, and a save publishes to the change-event bus.
+- **Secrets are write-only end to end**, excluded by schema declaration: the user password, the X.509 certificate, key and key password, and the wallet value.
+- **Only OcuPilot's self-protection is refused.** Privilege grants go through at the strongest confirmation.
+- **Deletes confirm by name.**
 
 ## Technical Decisions
 
-- **Create is a third write kind (AD-54), beside merge and action-style.** A 404 is the precondition; a present target refuses the mint. The fingerprint covers the target's **absence** under the canonical spelling, and confirm refuses if the name was taken since.
-- **The screen's Save and the agent's confirm are two callers of one tool class (AD-55).** The route takes endpoint, fields, payload composition and port from the tool, evaluates the prohibited set before any port is touched, and inherits the write's gates. **Enforced read-only and the kill switch do not gate a screen Save.** A screen composing its own payload is a review failure (self-service on one's own account excepted).
-- **The prohibited set is keyed by create versus change.** A field prohibited because it repoints a *serving* object is allowed on a create; one prohibited by effect (OcuPilot's self-protection) stays prohibited on both.
-- **A proposal can carry a kernel `consequence` code**, stated at the field: an unauthenticated web-application create, and a privilege grant (minted destructive; `Prohibited.GrantsPrivilegeByEffect` is the one classifier).
-- **Secret arguments.** Derived field lists classify each field `ordinary`, `secret` or `opaque` (unclassified emits secret); a tool can author a top-level secret the template lacks (`authored`, as 8.2's password). A secret is required unless its row declares it optional (the X.509 key and key password; the wallet value on update).
-- **The admin port can wrap a POST body.** `Security.User` is sent as `{User, Password}` through the port's `WRAPPEDTYPES`. Check each new type's wire shape on the instance first.
-- **Each new entity type adds its canonical-spelling rule** to the identity layer when it first writes.
-- **Verified writes.** `AdminPort` re-reads after an action-style delete (`VERIFIEDDELETES`) and a `Security.Resource` PUT (`VERIFIEDWRITES`); a mismatch refuses `PORT.NOTAPPLIED`, since the vendor can answer 2xx without applying.
-- **Three named port completions (AD-27), no general license.** The port goes through the vendor class only where the admin API refuses or lacks what the class supports, for a named endpoint: the `Security.Resource` PUT with an empty `PublicPermission`, through `Security.Resources`; the `Security.X509Credential` POST, completed from content through `%SYS.X509Credentials`; and the `Wallet.Secret` read, which the admin API lacks, composed by `Port/WalletPort` as `{Type, Usage, RequireTLS, AllowedHosts}` and **never the stored value**. So a value change between propose and confirm is undetectable by design; only those four fields are fingerprinted. Nothing above the port knows; a further case needs its own spine entry.
-- **Assume nothing merges (AD-4).** `Security.User` and `Security.X509Credential` erase omitted fields; `Security.Resource` and `Wallet.Secret` keep them. A `Wallet.Secret` PUT is an upsert: with a value it creates an absent name, without one it answers 500; the fresh read plus fingerprint is the guard. Every edit reads fresh and sends the complete property set regardless.
-- **Wallet shape (8.6, settled).** Body `{Type, WalletSecretConfig}`, one field list per `Type`, derived from the classes and pinned by a test. `Usage` is a number (HTTP 1, SQL 2, SOAP 4, Custom 8, summed); the value is a string. Only `%Wallet.KeyValue` is created and edited (`security.secrets.create`, `.update`); RSA and symmetric-key secrets open read-only with a line naming the `%Wallet` classes, since 2026.2 has no classic wallet page. Their create and edit is DW-1555 (range-end cleanup).
-- **Client.** Reuse the shared unsaved-changes guard and the error-summary focus sequence. Register a command-bar Create handler tab-scoped, never from a routed page's constructor (NG0100). A form opened from its list's Create declares side-bar position 0. The bundle-size warning follows the owner's DW-1166 policy: re-base about 5% above the measured total, `angular.json` and its test pin together; 1600kB is the hard stop.
-- **Test discipline.** Sweep on a throwaway started after the last edit; redeploy the bundle before trusting a browser spec. A denial test uses a purpose-built least-privileged role, never `%Operator`. The cross-file rosters are the story's to update. Test key material is generated at run time with openssl; no private-key literal enters the repository.
-
-## UX & Interaction Patterns
-
-- The resource editor is a dialog on the Resources list, not a route: the list's Create and a row's name cell open it, and a create switches it to edit mode in place. The role grant dialog shows the current and the resulting grant.
-- **Masked secret field:** a password input with a labelled show/hide toggle. On a proposal card, the user fills it at confirm and the diff shows dots on both sides.
-- "Saved" appears in the sticky bar's caption slot. A change to an entity whose screen is not open raises a toast with an "Open in <screen>" link.
-- Every new string goes into the published Fixed strings table and the client string source in the same pass, reusing a key whose value and meaning match.
+- **Install (one installer class, two entry points, idempotent).** Install runs at container start, never at image build, and each start re-runs it. The default namespace is `HSCUSTOM` when it exists, then `USER`. When neither exists the answer is empty and every entry point refuses, naming both namespaces. `Installer.ResolveNamespace` probes each candidate through the `NamespaceExists` seam. The container path honours `OCUPILOT_NAMESPACE`. An IPM install lands in the namespace `zpm` runs from and refuses system namespaces. The `_SYSTEM` password is unexpired only from the container start path, only on a genuinely first install, and only for that account by name. Install enables auditing and registers OcuPilot's events. It also creates a named SSL configuration for outbound TLS, with server-identity checking on.
+- **Readiness is the contract, not IRIS startup.** The health check reports healthy only once this start's install has recorded success. The unauthenticated readiness endpoint is `/api/ocupilot/readiness/`. There is one smoke path, `scripts/smoke.sh`, and its assertions live in `OcuPilot.Install.Smoke`. A run that executes zero checks is a failure. IPM is never a runtime dependency: the vendor image ships no loaded IPM.
+- **Credential ladder (`Kernel/Secret/Ladder`).** It has two rungs:
+  - `env` reads an environment variable in any namespace. It checks no namespace and no rung predicate, and it has no store path, because the operator owns that value.
+  - `creds` reads `Ens.Config.Credentials` and is the only rung with `Store` and `Clear`. Its reachability predicate requires all three of: the credentials class is compiled in the namespace, `%Library.EnsembleMgr.IsEnsembleNamespace` is true, and the instance is licensed for interoperability (`$System.License.GetFeature(1)`).
+  - The ladder never returns a value in a status or an error. An unresolvable credential fails the turn with a named reason.
+  - Tests that exercise the non-interop shape through seams: `SecretNotInterop`, `NotEnsembleNamespace` and `RaisingEnsembleNamespace`.
+- **Admin API dependency.** It is experimental, marked `[Hidden]`, and stays subject to change until IRIS 2027.1. Only `Port/AdminPort` names an `%Api.Admin.*` class. At startup `AdminPort` checks that the API reports v2 and that a named probe endpoint answers. If either check fails, it fails loudly with an actionable message. The version is **read**, not inferred: `AdminPort.HighestDispatchVersion(AdminPort.AdminApiClass())` parses `%Api.Admin`'s UrlMap and takes the highest `Dispatch.v<N>`. An endpoint-inventory fixture re-derives from the instance and fails CI on vendor drift. Images are pinned to an explicit tag, and a floating `latest-cd` or an untagged reference is refused.
+- **CI (`.github/workflows/ci.yml`; Epic 8's footprint is it and `scripts/ci-*.sh`).** It has five jobs: `gates`, `instance`, `browser`, `images` and `package`.
+  - `gates` runs the checkers, the build and the client suite, once per Node band at each band's floor.
+  - `instance` starts an IRIS for Health throwaway on 52776/1975 and runs admin-API drift, the ObjectScript suite one class at a time, and smoke.
+  - `browser` starts its own throwaway on 52780/1979.
+  - `images` runs with `fail-fast: false` over `intersystems/irishealth-community:2026.2` and `intersystems/iris-community:2026.2`. For each, `scripts/ci-image-compile.sh` compiles `src/OcuPilot/` and reads the admin API version in a portless container with no start hook. **It compiles and probes; it never installs and never issues an HTTP request.** That is the gap 8.9 closes.
+  - `package` builds the IPM archive and loads it on a second container. Both containers run `--network none`.
+  - `ui/tools/ci.test.mjs` holds the workflow's shape in both directions: the job names, each `run:` command, the images matrix naming plain Community, the images job's `fail-fast: false`, `ci-image-compile.sh`'s verdict arms, and the throwaway's copied compose keys. A workflow or script change updates that test in the same pass.
+  - Nothing in CI publishes, pushes or references `secrets.`, and the test asserts each absence. No step uses `continue-on-error` or `|| true`.
+- **Throwaways and reserved ports.** `scripts/ci-throwaway.sh up|logs|down` takes `--dir`, `--project`, `--web`, `--super` and `--image`, and defaults to the IRIS for Health image. It refuses outright the live and slot ports and names (52774/1973 `ocupilot`, 52775/1974 slot B, 52778/1977 slot C) and a project name Compose already knows. The per-slot throwaways are `ocupilot-ci` on 52776/1975, `ocupilot-b-ci` on 52777/1976 and `ocupilot-c-ci` on 52779/1978. 52773/1972 belong to the unrelated `iris-community-edition` container. CI reserves 52776 and 52780 from the Linux ephemeral range. Tear down only a throwaway whose `up` you ran yourself. Never touch `ocupilot` or any `ocupilot-slot-*` container.
+- **Write model, settled by 8.1 to 8.8.**
+  - Create is its own write kind: it fingerprints the target's absence.
+  - A screen Save and an agent confirm are two callers of one tool class.
+  - Nothing merges on the server. OcuPilot reads fresh and sends the complete property set.
+  - Verified writes re-read and refuse `PORT.NOTAPPLIED`.
+  - There are three named port completions through vendor classes: the resource PUT with an empty public permission, the X.509 import from content, and the wallet-secret read. There is no general licence.
+  - A write tool may declare pairs beyond its screen's read-only set only when the vendor class writes a database the screen's read does not. It is then refused by name before any port call. The one case is the device tools' `%DB_IRISSYS:WRITE`.
+  - Administrative resources are gated at `USE`, never `WRITE`.
+- **Devices (8.8).** The `os-management/devices/edit` form uses `osmgmt.devices.create`, `osmgmt.devices.update` (merge) and the agent-only `osmgmt.devices.delete`. Tool validation refuses `^` in any field (the vendor writes it straight into `iris.cpf`), an out-of-range `Type`, and a duplicate or fractional `Alias`.
+- **Test discipline.** Run one test class at a time, and never two in one message. Sweep on a throwaway started after the last edit. Redeploy the bundle before trusting a browser spec. A denial test uses a purpose-built least-privileged role. The cross-file rosters are the story's to update.
 
 ## Cross-Story Dependencies
 
-- **Upstream:** Epic 5 (write model, prohibited set, ledger, change bus), Epic 6 (the lists and descriptors), Epic 3 (form precedent, unsaved-changes guard, masked field). 8.8 reuses the create kind, tool pattern, form contract, verified write and action-style delete from 8.1 to 8.6. 8.5 shipped `security/x509/edit`; 8.6 shipped `security/wallet/secrets/edit`.
-- **Epic 7 runs concurrently** over the same write-path, router, descriptor and coverage-test files; reconcile carefully at merge.
-- **Open at the merge gate (DW-1502):** whether a server-only refusal sentence such as `PRIVILEGEGRANT` must also be published in Fixed strings via Epic 7's `RefusalCopy`, or AD-53 amended to exempt it. Do not pre-empt it in a story.
-- **Downstream:** Epic 9's editors extend this contract into tabs and take over `web-applications/list/edit/:id`; Story 9.3 owns the Roles- and Resources-list Delete row actions (DW-1513, DW-1528) and Story 9.5 the X.509-list row action (DW-1541) and the wallet delete, tool and row action (DW-1556), each on Epic 7's AD-53 row-action route. Epic 12 needs Epics 7 and 8 merged.
+- **8.9 depends on** the installer and container start path (Epic 1), the credential ladder and provider configuration (Epic 3), and `AdminPort`'s version read. It extends CI rather than replacing it. A plain-Community install run is likely a throwaway using `--image intersystems/iris-community:2026.2` (inference). The README correction, if one is needed, is part of the story.
+- **Epic 7 runs concurrently** over the same write-path, router, descriptor and coverage-test files. Reconcile carefully at the merge.
+- **Range-end cleanup, after Epic 7's merge:** DW-1562, the Devices-list Delete row action on Epic 7's row-action route; and DW-1555, RSA and symmetric-key wallet create and edit.
+- **Open at the merge gate:** DW-1502, whether a server-only refusal sentence must also be published in Fixed strings.
+- **Downstream:**
+  - Epic 9's editors extend the form contract and take over `web-applications/list/edit/:id`.
+  - Story 9.3 owns the Roles- and Resources-list Delete row actions.
+  - Story 9.5 owns the X.509-list row action and the wallet delete.
+  - Epic 12 needs Epics 7 and 8 merged.
