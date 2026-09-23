@@ -239,3 +239,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T19:18:40Z	Story 7.11	plan_clarification_requested	stage=plan spawn_at=2026-09-23T19:02:49Z model=opus condition=intent_gap items=IG-1_user-event_create/configure_needs_AD-54/55(orchestrator),IG-2_six_Epic8-modified_product_files(orchestrator),IG-3_consequence_only_for_AgentWrite(ratified_by_lead) spec_status=blocked
 2026-09-23T19:18:40Z	Story 7.11	protocol_violation	stage=plan depth=1 agent=7-11-...-plan-1 violation=two_Security.Events.Create_probes_on_slot_A(ocupilot)_instead_of_ocupilot-ci consequence=none:both_refused(#851,<SUBSCRIPT>),Exists=0_for_both detected_by=the_stage_self-report outcome=recorded;slot_A_unchanged
 2026-09-23T19:18:40Z	Epic 7	runner_clarification_raised	story=7.11 items=IG-1,IG-2
+2026-09-23T19:24:32Z	Story 7.10	ci_resolved	story=7.10 run=35906402289 result=success resolved_at=next_plan head=29b98a10 jobs=8/8
