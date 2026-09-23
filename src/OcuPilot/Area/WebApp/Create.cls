@@ -259,7 +259,13 @@ ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolatio
         Set tIsWsgi = ((tWsgiName '= "") || (tWsgiLocation '= "") || (tWsgiType '= "") || (..Text(pArgs, ..#FIELDWSGICALLABLE) '= ""))
         If tIsWsgi {
             If tWsgiName = "" Do ..Add(.pViolations, ..#FIELDWSGINAME, ##class(OcuPilot.Api.Error).#WEBAPPWSGIAPPNAME)
-            If tWsgiLocation = "" Do ..Add(.pViolations, ..#FIELDWSGILOCATION, ##class(OcuPilot.Api.Error).#WEBAPPWSGILOCATION)
+            ; AD-21: the location is one directory name resolved under the fixed WSGI root, never a
+            ; path; OcuPilot.Area.WebApp.Location is the one resolver both callers pass.
+            If tWsgiLocation = "" {
+                Do ..Add(.pViolations, ..#FIELDWSGILOCATION, ##class(OcuPilot.Api.Error).#WEBAPPWSGILOCATION)
+            } ElseIf '##class(OcuPilot.Area.WebApp.Location).Resolve(tWsgiLocation, .tResolvedLocation) {
+                Do ..Add(.pViolations, ..#FIELDWSGILOCATION, ##class(OcuPilot.Api.Error).#WEBAPPWSGIAPPLOCATIONSHAPE)
+            }
             If '..IsWsgiType(tWsgiType) Do ..Add(.pViolations, ..#FIELDWSGITYPE, ##class(OcuPilot.Api.Error).#WEBAPPWSGITYPE)
             If ..Text(pArgs, ..#FIELDDISPATCH) '= "" Do ..Add(.pViolations, ..#FIELDDISPATCH, ##class(OcuPilot.Api.Error).#WEBAPPTYPECONFLICT)
         } ElseIf (pArgs.%GetTypeOf(..#FIELDDISPATCH) = "string") && (..Text(pArgs, ..#FIELDDISPATCH) = "") {

@@ -11,6 +11,7 @@ import {
 
 import {
   type ProposalPhase,
+  consequenceSentence,
   countdownPhase,
   countdownRemaining,
   formatCountdown,
@@ -213,6 +214,17 @@ export interface ProposalConfirmRequest {
       <p class="ocu-banner ocu-banner-warning ocu-proposal-card-warning" role="status">
         <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
         <span class="ocu-banner-message">{{ STRINGS.proposalAuditWarning }}</span>
+      </p>
+    }
+
+    @if (consequenceVisible) {
+      <p
+        class="ocu-banner ocu-banner-warning ocu-proposal-card-warning"
+        role="status"
+        data-slot="consequence"
+      >
+        <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+        <span class="ocu-banner-message">{{ consequenceText }}</span>
       </p>
     }
 
@@ -553,6 +565,18 @@ export class ProposalCard {
 
   protected get auditWarningVisible(): boolean {
     return this.phase() !== null && this.view().auditWarning === true;
+  }
+
+  /**
+   * The published sentence for the kernel's `consequence` code, an advisory beside the audit
+   * warning: the write is still offered (DW-1489). `''` where the code has no sentence.
+   */
+  protected get consequenceText(): string {
+    return consequenceSentence(this.view().consequence);
+  }
+
+  protected get consequenceVisible(): boolean {
+    return this.phase() !== null && this.consequenceText !== '';
   }
 
   /**

@@ -40,6 +40,12 @@ export const WRITABLE_FIELDS = [
   'AutheEnabled',
 ] as const;
 
+/**
+ * The vendor's `AutheEnabled` bit for the Unauthenticated method. The form states that method's
+ * effect while it is ticked (DW-1489); the kernel marks a proposal's `consequence` on the same bit.
+ */
+export const UNAUTHENTICATED_BIT = 64;
+
 /** The fields whose value is a JSON boolean on the wire. */
 const BOOLEAN_FIELDS: readonly string[] = ['Enabled', 'Recurse'];
 
@@ -85,6 +91,12 @@ export interface FormRules {
   readonly wsgiTypes: readonly string[];
   readonly maxLengths: Readonly<Record<string, number>>;
   readonly rules: readonly FieldRule[];
+  /**
+   * The fixed directory a Python application's directory name resolves under, as the server
+   * computed it for this read (AD-21), or `''`. Display only: the server resolves the name again
+   * at the call and sends the resolved directory itself.
+   */
+  readonly wsgiRoot: string;
 }
 
 /** The edit buffer: text for an input, a flag for a checkbox. */
@@ -162,6 +174,7 @@ export class WebAppCreateForm {
     wsgiTypes: [],
     maxLengths: {},
     rules: [],
+    wsgiRoot: '',
   };
 
   private loadedValue = false;
@@ -222,6 +235,23 @@ export class WebAppCreateForm {
   /** Whether the authentication bit `bit` is ticked. */
   autheChecked(bit: number): boolean {
     return this.autheBits.includes(bit);
+  }
+
+  /** Whether the Unauthenticated method is ticked, which the form states the effect of (DW-1489). */
+  unauthenticated(): boolean {
+    return this.autheChecked(UNAUTHENTICATED_BIT);
+  }
+
+  /**
+   * The directory the typed application directory name resolves to on this instance, for display:
+   * the bootstrap read's `wsgiRoot` followed by the name and a separator, or `''` while the read
+   * published no root. It is not validated here and never sent; the server resolves the name.
+   */
+  resolvedDirectory(): string {
+    const root = this.rulesValue.wsgiRoot;
+    if (root === '') return '';
+    const name = this.value('WSGIAppLocation');
+    return name === '' ? root : `${root}${name}/`;
   }
 
   /** The mask the ticked methods add up to, which is what the body sends. */
@@ -638,5 +668,6 @@ function absorbRules(body: unknown): FormRules {
     wsgiTypes: stringsAt(body, 'wsgiTypes'),
     maxLengths: lengths,
     rules,
+    wsgiRoot: textAt(body, 'wsgiRoot'),
   };
 }

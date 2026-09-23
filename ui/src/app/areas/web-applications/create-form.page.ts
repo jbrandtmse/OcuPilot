@@ -257,11 +257,16 @@ interface FieldView {
               aria-required="true"
               [attr.maxlength]="maxLength('WSGIAppLocation')"
               [attr.aria-invalid]="directoryField.invalid"
-              [attr.aria-describedby]="directoryField.describedBy"
+              [attr.aria-describedby]="directoryDescribedBy"
               (input)="onText('WSGIAppLocation', $event)"
               (blur)="onBlur('WSGIAppLocation')"
             />
           </div>
+          @if (hasResolvedDirectory) {
+            <p class="ocu-field-caption" [id]="directoryField.id + '-resolved'">
+              {{ STRINGS.webAppFormPythonDirectoryResolved }} <code>{{ resolvedDirectory }}</code>
+            </p>
+          }
           @if (directoryField.invalid) {
             <p class="ocu-form-error" [id]="directoryField.id + '-reason'">{{ directoryField.reason }}</p>
           }
@@ -311,7 +316,12 @@ interface FieldView {
         }
       </div>
 
-      <fieldset class="ocu-field ocu-form-authe" [attr.id]="autheField.id" tabindex="-1">
+      <fieldset
+        class="ocu-field ocu-form-authe"
+        [attr.id]="autheField.id"
+        tabindex="-1"
+        [attr.aria-describedby]="unauthenticatedFlag ? autheField.id + '-effect' : null"
+      >
         <legend class="ocu-field-label ocu-field-label-required">{{ STRINGS.serviceColumnAuthentication }}</legend>
         @for (method of autheMethods; track method.bit) {
           <label class="ocu-field-checkbox">
@@ -323,6 +333,9 @@ interface FieldView {
             />
             <span>{{ method.label }}</span>
           </label>
+        }
+        @if (unauthenticatedFlag) {
+          <p class="ocu-field-caption" [id]="autheField.id + '-effect'">{{ STRINGS.webAppUnauthenticatedEffect }}</p>
         }
         @if (autheField.invalid) {
           <p class="ocu-form-error" [id]="autheField.id + '-reason'">{{ autheField.reason }}</p>
@@ -478,6 +491,31 @@ export class WebAppCreateFormPage {
   protected get autheMethods(): readonly AutheMethod[] {
     this.generation();
     return this.store.rules().authenticationMethods;
+  }
+
+  /** Whether the Unauthenticated method is ticked, which is when its effect is stated (DW-1489). */
+  protected get unauthenticatedFlag(): boolean {
+    this.generation();
+    return this.store.unauthenticated();
+  }
+
+  /** The directory the typed name resolves under on this instance, shown read-only (AD-21). */
+  protected get resolvedDirectory(): string {
+    this.generation();
+    return this.store.resolvedDirectory();
+  }
+
+  protected get hasResolvedDirectory(): boolean {
+    return this.resolvedDirectory !== '';
+  }
+
+  /** The directory field's described-by: its resolved line, then its refusal. */
+  protected get directoryDescribedBy(): string | null {
+    const field = this.directoryField;
+    const described: string[] = [];
+    if (this.hasResolvedDirectory) described.push(`${field.id}-resolved`);
+    if (field.describedBy !== null) described.push(field.describedBy);
+    return described.length === 0 ? null : described.join(' ');
   }
 
   protected get showSaved(): boolean {

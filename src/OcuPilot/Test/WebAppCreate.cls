@@ -157,8 +157,9 @@ Method TestTheScreenRouteAndTheToolComposeOnePayloadAndOneDerivedPath()
     ; And the one field the tool derives is derived on both real call sites, not merely in
     ; isolation: a body with no WSGI directory would leave it unset, so the field's presence here
     ; is the derivation actually running rather than the property surviving from the arguments.
-    Do $$$AssertEquals(##class(%DynamicAbstractObject).%FromJSON(tScreenBody).%Get("Path"), tArgs.%Get("WSGIAppLocation"), "the screen's own write carries the tool-derived path")
-    Do $$$AssertEquals(##class(%DynamicAbstractObject).%FromJSON(tAgentBody).%Get("Path"), tArgs.%Get("WSGIAppLocation"), "and so does the agent's")
+    Set tResolved = ##class(OcuPilot.Area.WebApp.Location).Root() _ tArgs.%Get("WSGIAppLocation") _ "/"
+    Do $$$AssertEquals(##class(%DynamicAbstractObject).%FromJSON(tScreenBody).%Get("Path"), tResolved, "the screen's own write carries the tool-derived path")
+    Do $$$AssertEquals(##class(%DynamicAbstractObject).%FromJSON(tAgentBody).%Get("Path"), tResolved, "and so does the agent's")
 
     Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
     Do $$$AssertEquals(tRemaining, 0, "the probe proposal and turn are removed")
@@ -186,7 +187,7 @@ ClassMethod PayloadArgs() As %DynamicObject
     Do tArgs.%Set("Recurse", 1, "boolean")
     Do tArgs.%Set("WSGIAppName", "probe.py", "string")
     Do tArgs.%Set("WSGICallable", "app", "string")
-    Do tArgs.%Set("WSGIAppLocation", "/tmp/ocupilot-probe-wsgi-payload", "string")
+    Do tArgs.%Set("WSGIAppLocation", "ocupilot-probe-wsgi-payload", "string")
     Do tArgs.%Set("WSGIType", "WSGI", "string")
     Quit tArgs
 }
@@ -434,7 +435,7 @@ ClassMethod Args() As %DynamicObject
     Do tArgs.%Set("AutheEnabled", 32, "number")
     Do tArgs.%Set("WSGIAppName", "probe.py", "string")
     Do tArgs.%Set("WSGICallable", "app", "string")
-    Do tArgs.%Set("WSGIAppLocation", "/tmp/ocupilot-probe-wsgi", "string")
+    Do tArgs.%Set("WSGIAppLocation", "ocupilot-probe-wsgi", "string")
     Do tArgs.%Set("WSGIType", "WSGI", "string")
     Quit tArgs
 }

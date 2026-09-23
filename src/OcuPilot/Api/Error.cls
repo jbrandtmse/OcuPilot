@@ -1090,6 +1090,19 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#WEBAPPWSGITYPE Quit ..#REASONWEBAPPWSGITYPE
     If pCode = ..#WEBAPPTYPECONFLICT Quit ..#REASONWEBAPPTYPECONFLICT
     If pCode = ..#WEBAPPFIELDLENGTH Quit ..#REASONWEBAPPFIELDLENGTH
+    If pCode = ..#WEBAPPWSGIAPPLOCATIONSHAPE Quit ..#REASONWEBAPPWSGIAPPLOCATIONSHAPE
+    If pCode = ..#USERNAMEREQUIRED Quit ..#REASONUSERNAMEREQUIRED
+    If pCode = ..#USERNAMESHAPE Quit ..#REASONUSERNAMESHAPE
+    If pCode = ..#USERNAMETAKEN Quit ..#REASONUSERNAMETAKEN
+    If pCode = ..#USERPASSWORDREQUIRED Quit ..#REASONUSERPASSWORDREQUIRED
+    If pCode = ..#USERPASSWORDPOLICY Quit ..#REASONUSERPASSWORDPOLICY
+    If pCode = ..#USERFULLNAMELENGTH Quit ..#REASONUSERFULLNAMELENGTH
+    If pCode = ..#USEREXPIRATIONDATESHAPE Quit ..#REASONUSEREXPIRATIONDATESHAPE
+    If pCode = ..#USERNAMESPACEUNKNOWN Quit ..#REASONUSERNAMESPACEUNKNOWN
+    If pCode = ..#USERROUTINENAMESPACE Quit ..#REASONUSERROUTINENAMESPACE
+    If pCode = ..#USERROUTINELENGTH Quit ..#REASONUSERROUTINELENGTH
+    If pCode = ..#USERROLESUNKNOWN Quit ..#REASONUSERROLESUNKNOWN
+    If pCode = ..#USERROLESSHAPE Quit ..#REASONUSERROLESSHAPE
     If pCode = ..#PORTFIELDREQUIRED Quit ..#REASONPORTFIELDREQUIRED
     If pCode = ..#PORTFIELDUNEXPECTED Quit ..#REASONPORTFIELDUNEXPECTED
     If pCode = ..#PORTFIELDSHAPE Quit ..#REASONPORTFIELDSHAPE
@@ -1102,7 +1115,16 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
 /// added with no sentence behind it reddens.</p>
 ClassMethod WebAppViolationCodes() As %List
 {
-    Quit $ListBuild(..#WEBAPPNAMEREQUIRED, ..#WEBAPPNAMESHAPE, ..#WEBAPPNAMETAKEN, ..#WEBAPPNAMESPACEREQUIRED, ..#WEBAPPAUTHEREQUIRED, ..#WEBAPPAUTHEUNKNOWN, ..#WEBAPPDISPATCHREQUIRED, ..#WEBAPPWSGIAPPNAME, ..#WEBAPPWSGILOCATION, ..#WEBAPPWSGITYPE, ..#WEBAPPTYPECONFLICT, ..#WEBAPPFIELDLENGTH, ..#PORTFIELDREQUIRED, ..#PORTFIELDUNEXPECTED, ..#PORTFIELDSHAPE)
+    Quit $ListBuild(..#WEBAPPNAMEREQUIRED, ..#WEBAPPNAMESHAPE, ..#WEBAPPNAMETAKEN, ..#WEBAPPNAMESPACEREQUIRED, ..#WEBAPPAUTHEREQUIRED, ..#WEBAPPAUTHEUNKNOWN, ..#WEBAPPDISPATCHREQUIRED, ..#WEBAPPWSGIAPPNAME, ..#WEBAPPWSGILOCATION, ..#WEBAPPWSGITYPE, ..#WEBAPPTYPECONFLICT, ..#WEBAPPFIELDLENGTH, ..#WEBAPPWSGIAPPLOCATIONSHAPE, ..#PORTFIELDREQUIRED, ..#PORTFIELDUNEXPECTED, ..#PORTFIELDSHAPE)
+}
+
+/// <p>Every <code>USER.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>WebAppViolationCodes</method> exists: a test holds
+/// <method>ReasonForViolation</method> to the vocabulary, so a code added with no sentence behind
+/// it reddens.</p>
+ClassMethod UserViolationCodes() As %List
+{
+    Quit $ListBuild(..#USERNAMEREQUIRED, ..#USERNAMESHAPE, ..#USERNAMETAKEN, ..#USERPASSWORDREQUIRED, ..#USERPASSWORDPOLICY, ..#USERFULLNAMELENGTH, ..#USEREXPIRATIONDATESHAPE, ..#USERNAMESPACEUNKNOWN, ..#USERROUTINENAMESPACE, ..#USERROUTINELENGTH, ..#USERROLESUNKNOWN, ..#USERROLESSHAPE)
 }
 
 /// <p>Every <code>AGENT.*</code> field-level violation code that carries a sentence, as a
@@ -1583,6 +1605,93 @@ Parameter REASONWEBAPPTYPECONFLICT = "An application is either a REST applicatio
 Parameter WEBAPPFIELDLENGTH = "WEBAPP.FIELD.LENGTH";
 
 Parameter REASONWEBAPPFIELDLENGTH = "That value is longer than this instance stores for the field.";
+
+/// <p>Violation code: a WSGI or ASGI application's directory is not one directory name that
+/// resolves under this instance's own WSGI root (AD-21, <class>OcuPilot.Area.WebApp.Location</class>).
+/// A path, a <code>..</code> and a name outside the pattern are each refused rather than sent.</p>
+Parameter WEBAPPWSGIAPPLOCATIONSHAPE = "WEBAPP.WSGIAPPLOCATION.SHAPE";
+
+Parameter REASONWEBAPPWSGIAPPLOCATIONSHAPE = "Name one directory of letters, digits, dots, dashes and underscores, at most 64 characters; it is placed in this instance's own WSGI directory. Any other location is set in the classic portal.";
+
+/// <p>Machine code (AD-12, AD-39): the request to create a user broke one or more of the rules
+/// <class>OcuPilot.Area.Permissions.UserCreateRules</class> applies before the port is touched.
+/// Rendered on the <parameter>VALIDATIONFAILED</parameter> slug with every violation in
+/// <code>detail.violations</code>, the shape <parameter>WEBAPPVALIDATION</parameter> takes.</p>
+Parameter USERVALIDATION = "USER.VALIDATION";
+
+/// <p>The envelope's <code>reason</code> for <parameter>USERVALIDATION</parameter>, which the
+/// screen renders only where no violation named a field.</p>
+Parameter REASONUSERVALIDATION = "The user was refused.";
+
+/// <p>Violation code: no name was supplied. A user's name is the vendor's <code>name</code> query
+/// parameter rather than a body field.</p>
+Parameter USERNAMEREQUIRED = "USER.NAME.REQUIRED";
+
+Parameter REASONUSERNAMEREQUIRED = "Give the account a name.";
+
+/// <p>Violation code: the name is not one this instance can hold -- longer than
+/// <class>%Library.Username</class> stores, or carrying a control character or an <code>@</code>.</p>
+Parameter USERNAMESHAPE = "USER.NAME.SHAPE";
+
+Parameter REASONUSERNAMESHAPE = "A user name is at most 160 characters, with no control character and no @ sign.";
+
+/// <p>Violation code: an account already carries that name. <class>Security.Users</class> keys on
+/// the lower-cased name, so a name taken in any case is taken. A read rather than a validation --
+/// <code>GET /users/name</code> answers it on blur.</p>
+Parameter USERNAMETAKEN = "USER.NAME.TAKEN";
+
+Parameter REASONUSERNAMETAKEN = "This instance already has a user with that name. Choose a different one.";
+
+/// <p>Violation code: no password was supplied. The vendor's create requires one.</p>
+Parameter USERPASSWORDREQUIRED = "USER.PASSWORD.REQUIRED";
+
+Parameter REASONUSERPASSWORDREQUIRED = "Give the account a password.";
+
+/// <p>Violation code: the password does not match <property>Security.System.PasswordPattern</property>.
+/// The sentence names the policy, never the value (AD-35).</p>
+Parameter USERPASSWORDPOLICY = "USER.PASSWORD.POLICY";
+
+Parameter REASONUSERPASSWORDPOLICY = "The password does not meet this instance's password policy.";
+
+/// <p>Violation code: the full name is longer than <property>Security.Users.FullName</property>
+/// stores.</p>
+Parameter USERFULLNAMELENGTH = "USER.FULLNAME.LENGTH";
+
+Parameter REASONUSERFULLNAMELENGTH = "That full name is longer than this instance stores.";
+
+/// <p>Violation code: the expiration date is not a real date in the <code>YYYY-MM-DD</code> form
+/// <property>Security.Users.ExpirationDate</property> is set from.</p>
+Parameter USEREXPIRATIONDATESHAPE = "USER.EXPIRATIONDATE.SHAPE";
+
+Parameter REASONUSEREXPIRATIONDATESHAPE = "An expiration date is a real date, written YYYY-MM-DD.";
+
+/// <p>Violation code: the startup namespace is not a namespace this instance holds.</p>
+Parameter USERNAMESPACEUNKNOWN = "USER.NAMESPACE.UNKNOWN";
+
+Parameter REASONUSERNAMESPACEUNKNOWN = "That is not a namespace on this instance.";
+
+/// <p>Violation code: a startup routine was named with no startup namespace to run it in.</p>
+Parameter USERROUTINENAMESPACE = "USER.ROUTINE.NAMESPACE";
+
+Parameter REASONUSERROUTINENAMESPACE = "A startup routine runs in a startup namespace, so choose one as well.";
+
+/// <p>Violation code: the startup routine is longer than <property>Security.Users.Routine</property>
+/// stores.</p>
+Parameter USERROUTINELENGTH = "USER.ROUTINE.LENGTH";
+
+Parameter REASONUSERROUTINELENGTH = "A startup tag^routine is at most 64 characters.";
+
+/// <p>Violation code: a role named is not one this instance holds.
+/// <method>Security.Users.Create</method> accepts an unknown role silently, so the rule is
+/// OcuPilot's.</p>
+Parameter USERROLESUNKNOWN = "USER.ROLES.UNKNOWN";
+
+Parameter REASONUSERROLESUNKNOWN = "One of those roles does not exist on this instance.";
+
+/// <p>Violation code: the roles are not a list of role names.</p>
+Parameter USERROLESSHAPE = "USER.ROLES.SHAPE";
+
+Parameter REASONUSERROLESSHAPE = "Roles are a list of role names.";
 
 /// <p>Violation code (AD-39): the vendor refused the request because a body field it requires was
 /// absent. Produced at the port boundary by <method>ViolationsFromVendor</method>, on the field the

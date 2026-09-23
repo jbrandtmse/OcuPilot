@@ -39,10 +39,10 @@ Parameter OTHERSPELLING = "/CSP/OcuPilotProbeCreate/";
 /// create's inverted acceptance refuses.</p>
 Parameter PRESENT = "{""Name"":""/csp/ocupilotprobecreate"",""Enabled"":true,""NameSpace"":""HSCUSTOM""}";
 
-/// <p>The vendor property the server derives, and the directory it derives it from.</p>
+/// <p>The vendor property the server derives, and the directory name it resolves it from.</p>
 Parameter DERIVEDFIELD = "Path";
 
-Parameter WSGILOCATION = "/tmp/ocupilot-probe-wsgi";
+Parameter WSGILOCATION = "ocupilot-probe-wsgi";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -307,7 +307,7 @@ Method TestTheConfirmedBodyCarriesTheServerDerivedPath()
     Do $$$AssertStatusOK(tSC, "and confirmed")
     If $$$ISERR(tSC) Quit
     Set tSent = ##class(%DynamicAbstractObject).%FromJSON(##class(OcuPilot.Test.ProposalFixture).LastWriteBody())
-    Do $$$AssertEquals(tSent.%Get(..#DERIVEDFIELD), ..#WSGILOCATION, "the body the port received carries the path the tool derived from the WSGI directory")
+    Do $$$AssertEquals(tSent.%Get(..#DERIVEDFIELD), ##class(OcuPilot.Area.WebApp.Location).Root() _ ..#WSGILOCATION _ "/", "the body the port received carries the path the tool resolved from the WSGI directory name")
 }
 
 /// <p>AD-10 and AD-54 inside the atomic transition: a stored create payload carrying

@@ -75,7 +75,7 @@ Parameter NAMEMAXLENGTH As INTEGER = 64;
 /// <p>Answer <code>GET /web-applications/form</code>: everything the create form needs before it
 /// can draw a field (AD-39, DW-376).</p>
 /// <p>The body is
-/// <code>{authenticationMethods, requiredFields, conditionalFields, wsgiTypes, maxLengths, rules}</code>.
+/// <code>{authenticationMethods, defaultMethod, requiredFields, conditionalFields, wsgiTypes, maxLengths, rules, wsgiRoot}</code>.
 /// <code>rules</code> is one <code>{field, code, reason}</code> per rule the server applies, in the
 /// same shape a refusal's own <code>detail.violations</code> row takes -- so the client renders an
 /// inline blur refusal and a failed Save through one path and holds no copy of its own.</p>
@@ -96,6 +96,9 @@ ClassMethod HandleForm() As %Status
         Do tBody.%Set("wsgiTypes", ..Names(..#WSGITYPES))
         Do tBody.%Set("maxLengths", ..Lengths())
         Do tBody.%Set("rules", ..Rules())
+        ; AD-21: the root a WSGI or ASGI directory name resolves under, computed for this read, so
+        ; the form can show the resolved path read-only. The server resolves again at the write.
+        Do tBody.%Set("wsgiRoot", ##class(OcuPilot.Area.WebApp.Location).Root(), "string")
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tBody)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -309,6 +312,7 @@ ClassMethod Rules() As %DynamicArray
     Set tSpec = tSpec _ ",DispatchClass:" _ ##class(OcuPilot.Api.Error).#WEBAPPDISPATCHREQUIRED
     Set tSpec = tSpec _ ",WSGIAppName:" _ ##class(OcuPilot.Api.Error).#WEBAPPWSGIAPPNAME
     Set tSpec = tSpec _ ",WSGIAppLocation:" _ ##class(OcuPilot.Api.Error).#WEBAPPWSGILOCATION
+    Set tSpec = tSpec _ ",WSGIAppLocation:" _ ##class(OcuPilot.Api.Error).#WEBAPPWSGIAPPLOCATIONSHAPE
     Set tSpec = tSpec _ ",WSGIType:" _ ##class(OcuPilot.Api.Error).#WEBAPPWSGITYPE
     For tI = 1:1:$Length(tSpec, ",") {
         Set tPair = $Piece(tSpec, ",", tI)

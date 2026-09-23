@@ -28,12 +28,14 @@ const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
 
 const {
+  CONSEQUENCE_UNAUTHENTICATED,
   COUNTDOWN_PLACEHOLDER,
   COUNTDOWN_WARNING_MS,
   CONFIRMED_TIME_PLACEHOLDER,
   MASKED_VALUE,
   RESIDUE_COUNT_PLACEHOLDER,
   USER_NAME_PLACEHOLDER,
+  consequenceSentence,
   countdownPhase,
   countdownRemaining,
   formatCountdown,
@@ -49,6 +51,7 @@ const {
 const { PROPOSAL_EXPIRED_STATE, PROPOSAL_LIVE_STATE, parseProposals, restoredProposals } =
   await import(corePath('turn.ts'));
 const { STRINGS } = await import(corePath('strings.ts'));
+const { screenForToolName } = await import(corePath('navigation.ts'));
 
 const PROPOSE_CLS = join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'State', 'Propose.cls');
 const DISCLOSURE_CLS = join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Disclosure.cls');
@@ -163,6 +166,47 @@ test("a field the screen declares secret reads the mask on both sides, and nothi
 test('the audit warning travels off the wire rather than being decided here', () => {
   assert.equal(toCardView(parsedProposal({ auditWarning: true }), 'x').auditWarning, true);
   assert.equal(toCardView(parsedProposal({ auditWarning: false }), 'x').auditWarning, false);
+});
+
+// DW-1489: the kernel marks a web-application create that admits unauthenticated access with a
+// consequence code, and the card states the published sentence for it. The code travels off the
+// wire; the sentence is the string source's, resolved here and nowhere else.
+//
+// Mutation (Rule 19): drop `consequence` from `toCardView`'s result, or from `parseProposal` ->
+// the first assertion goes red.
+test('the consequence code travels off the wire and resolves to the published sentence', () => {
+  const marked = toCardView(parsedProposal({ consequence: 'WEBAPP.UNAUTHENTICATED' }), 'x');
+  assert.equal(marked.consequence, CONSEQUENCE_UNAUTHENTICATED);
+  assert.equal(consequenceSentence(marked.consequence), STRINGS.webAppUnauthenticatedEffect);
+  const plain = toCardView(parsedProposal(), 'x');
+  assert.equal(plain.consequence, '', 'a wire row that omits it carries no consequence');
+  assert.equal(consequenceSentence(plain.consequence), '');
+  assert.equal(consequenceSentence('SOMETHING.ELSE'), '', 'and a code this client publishes nothing for reads as none');
+  assert.equal(consequenceSentence(undefined), '');
+});
+
+// AD-3, AD-35: a user create's diff carries one Password row the kernel composes with both values
+// empty, and the Users screen declares the name secret. The card reads the mask on both sides and
+// asks for it at confirm -- with the screen resolved the way the panel resolves it, by tool name.
+test("a user create's composed Password row is masked on both sides and asked for at confirm", () => {
+  const screen = screenForToolName('permissions.users.create');
+  assert.ok(screen, 'the create tool resolves to its screen');
+  assert.ok(screen.secretArguments.includes('Password'), 'which declares Password secret');
+  const view = toCardView(
+    parsedProposal({
+      target: { type: 'user', scope: 'instance', id: 'probe' },
+      tool: 'permissions.users.create',
+      changed: [
+        { field: 'Name', before: '', after: 'probe' },
+        { field: 'Password', before: '', after: '' },
+      ],
+      unchangedCount: 0,
+    }),
+    'x',
+    screen.secretArguments
+  );
+  assert.deepEqual(view.changed[1], { field: 'Password', before: MASKED_VALUE, after: MASKED_VALUE, removed: false });
+  assert.deepEqual([...view.maskedFields], ['Password'], 'and the confirm asks for it');
 });
 
 // AC1 (Story 5.10): the declaration is the write tool's own and reaches the card on the wire, so no

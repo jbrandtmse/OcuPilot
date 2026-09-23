@@ -12,6 +12,7 @@ import {
   SET_DEFAULT_ACTION,
 } from './areas/agent/definition-actions';
 import { DefinitionForm } from './areas/agent/definition-form.store';
+import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
 import { AgentContext } from './core/agent-context';
@@ -1015,6 +1016,12 @@ describe('the shell frame', () => {
     expect(definitionForm.key()).not.toBe('');
     expect(formDirty.dirty()).toBe(true);
 
+    // The same answer for the create-a-user form (Story 8.2): a password THIS principal typed and
+    // has not saved, in a root-provided store (AD-35).
+    const userCreateForm = TestBed.inject(UserCreateForm);
+    userCreateForm.setPassword('a-password-this-principal-typed');
+    expect(userCreateForm.password()).not.toBe('');
+
     // The ninth answer of the same kind (Story 3.6, AC5). Whether the instance holds an enabled
     // definition is a read THIS principal made, and the panel and the rail's dot pick an audience
     // from it. Left standing, the next principal's first paint shows an administrator's reminder
@@ -1048,6 +1055,10 @@ describe('the shell frame', () => {
     expect(definitionForm.key()).toBe('');
     expect(definitionForm.value('name')).toBe('');
     expect(formDirty.dirty()).toBe(false);
+
+    // Mutation (Rule 19): delete `this.userCreateForm.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's tab holds the previous one's typed password.
+    expect(userCreateForm.password()).toBe('');
 
     expect(scope.resets).toBe(1);
     // The fourth answer of the same kind (Story 1.13). A re-read parked with connectivity is a

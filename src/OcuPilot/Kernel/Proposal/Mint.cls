@@ -178,6 +178,10 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
 
         If tCreates {
             Set tSC = ..Compose(pArgs, pIdArgument, pSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
+            ; AD-6, AD-35: a create whose body carries a secret the user supplies at confirm shows
+            ; one row per such name, empty on both sides, so the card asks for it beside the diff.
+            ; The payload does not carry it and unchangedCount stays 0.
+            If $$$ISOK(tSC) && (tProblem = "") Do ..AppendComposedSecrets(pToolClass, tDiff)
         } Else {
             Set tSC = ..Merge(tFresh, pArgs, pIdArgument, pSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
         }
@@ -284,6 +288,7 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             Quit
         }
         Set tValues("auditWarning") = ..WarnsAuditingOff(pToolName, tType, tScope, pArgs)
+        Set tValues("consequence") = ..ConsequenceOf(pToolClass, tPayload)
         Set tValues("destructive") = ..DestructiveTool(pToolName)
         ; FR-17's definition condition is answered at confirm against the definition that was in
         ; force here. Read, never written: the definition store is Epic 10's.
@@ -557,6 +562,46 @@ ClassMethod CreatesOf(pToolClass As %String) As %Boolean
         Set tCreates = 0
     }
     Quit tCreates
+}
+
+/// <p>Append to <var>pDiff</var> one <code>{field, before, after}</code> row, both sides empty, per
+/// name <var>pToolClass</var>'s <code>ComposedSecrets()</code> answers (AD-6, AD-35). A class that
+/// names none, or cannot be asked, adds nothing.</p>
+/// <p><b>Caller contract:</b> called for a create only, after <method>Compose</method>. The rows
+/// carry no value: the secret is supplied at confirm and never stored.</p>
+ClassMethod AppendComposedSecrets(pToolClass As %String, pDiff As %DynamicArray) [ Private ]
+{
+    Set tNames = ""
+    Try {
+        If pToolClass '= "" Set tNames = $ClassMethod(pToolClass, "ComposedSecrets")
+    } Catch {
+        Set tNames = ""
+    }
+    If '$ListValid(tNames) Quit
+    For tI = 1:1:$ListLength(tNames) {
+        Set tName = $ListGet(tNames, tI)
+        If tName = "" Continue
+        Set tRow = {}
+        Do tRow.%Set("field", tName, "string")
+        Do tRow.%Set("before", "", "string")
+        Do tRow.%Set("after", "", "string")
+        Do pDiff.%Push(tRow)
+    }
+}
+
+/// <p>The kernel-owned consequence code <var>pToolClass</var> answers for the payload
+/// <var>pPayload</var> (<code>Consequence(payload)</code>), or <code>""</code> where the class
+/// names none or cannot be asked. The card renders the code's sentence; it decides nothing about
+/// whether the write may happen.</p>
+ClassMethod ConsequenceOf(pToolClass As %String, pPayload As %DynamicObject) As %String [ Private ]
+{
+    Set tCode = ""
+    Try {
+        If pToolClass '= "" Set tCode = $ClassMethod(pToolClass, "Consequence", pPayload)
+    } Catch {
+        Set tCode = ""
+    }
+    Quit tCode
 }
 
 /// <p>The agent definition in force and the version it carries, for the proposal's row.</p>

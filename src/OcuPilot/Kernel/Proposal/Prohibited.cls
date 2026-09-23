@@ -211,7 +211,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#UNAUTHENTICATED Quit "The only change to how a web application is authenticated that the agent can propose is removing the option of reaching it without signing in."
     If pCode = ..#AUTHORIZATION Quit "Removing the resource that guards a web application is not something the agent can propose."
     If pCode = ..#DISPATCH Quit "Changing which code answers at a web application's address is not something the agent can propose."
-    If pCode = ..#PRIVILEGEGRANT Quit "Granting an administrative privilege is not something the agent can propose, whether it is granted by a web application or held by an account."
+    If pCode = ..#PRIVILEGEGRANT Quit "OcuPilot does not grant %All or an administrative privilege, whether to a web application or to an account. Grant it in the classic portal."
     If pCode = ..#SERVINGPATH Quit "Changing a web application that serves OcuPilot itself is not something the agent can propose."
     If pCode = ..#SYSTEMACCOUNT Quit "Disabling the instance's own _SYSTEM account is not something the agent can propose."
     If pCode = ..#SERVICEACCOUNT Quit "Disabling an account the instance's own services run as is not something the agent can propose."
@@ -311,9 +311,14 @@ ClassMethod AlwaysProhibitedFields(pType As %String) As %List
 /// them and is never settable by a caller: the server derives it from
 /// <code>WSGIAppLocation</code> (<method>OcuPilot.Screen.Tool.Write.DerivedFields</method>), and
 /// <method>Security.Applications.Create</method> creates the directory a CSP application names.</p>
+/// <p>A user account's five are the settings the create form captures beside the name and the
+/// password: its expiry, full name, startup namespace and routine, and its roles -- the last
+/// permitted except where <method>Created</method> finds a role that grants privilege. The password
+/// is a declared secret and never part of the payload this set is asked about.</p>
 ClassMethod PermittedCreateFields(pType As %String) As %List
 {
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "DispatchClass", "Enabled", "NameSpace", "Recurse", "Resource", "WSGIAppLocation", "WSGIAppName", "WSGICallable", "WSGIType")
+    If pType = ..#TYPEUSER Quit $ListBuild("ExpirationDate", "FullName", "NameSpace", "Routine", ..#FIELDROLES)
     Quit ""
 }
 
@@ -324,10 +329,12 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
 /// sentence of its own rather than the reviewed-few one. Setting application roles on any web
 /// application is a privilege grant through a path, and creating the application is no exception:
 /// <code>MatchRoles</code> is refused here exactly as
-/// <method>AlwaysProhibitedFields</method> refuses it on a change.</p>
+/// <method>AlwaysProhibitedFields</method> refuses it on a change, and an account's
+/// <code>EscalationRoles</code> for the same reason.</p>
 ClassMethod AlwaysProhibitedCreateFields(pType As %String) As %List
 {
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("MatchRoles")
+    If pType = ..#TYPEUSER Quit $ListBuild(..#FIELDESCALATIONROLES)
     Quit ""
 }
 
@@ -486,8 +493,9 @@ ClassMethod UncoveredWriteTools(Output pTools As %List) As %Status
 }
 
 /// <p>The <b>create</b> predicates, in declared order, first hit wins: a create at a path that
-/// serves OcuPilot, a field AD-10 forbids unconditionally, and any field the release has not
-/// reviewed for a create of this type (AD-54).</p>
+/// serves OcuPilot, a field AD-10 forbids unconditionally, for a user account a role that grants
+/// an administrative privilege (<method>GrantsPrivilege</method> against no held role), and any
+/// field the release has not reviewed for a create of this type (AD-54).</p>
 /// <p><b>The set here is the payload's own keys, not a diff against a live target</b>, and that is
 /// the whole difference. A create has no prior state to compare against, so
 /// <method>Changed</method> has no subject: every property the composed body carries is a property
@@ -524,6 +532,16 @@ ClassMethod Created(pType As %String, pServes As %Boolean, pPayload As %DynamicO
             }
         }
         If pProhibits Quit
+        ; AD-10: a new account holds no role yet, so every role the create names is a grant, and
+        ; one that reaches %All or an %Admin_* resource refuses the create.
+        If (pType = ..#TYPEUSER) && (pPayload.%GetTypeOf(..#FIELDROLES) '= "unassigned") {
+            Set tSC = ..GrantsPrivilege(pPayload, {}, .tGrants)
+            If $$$ISERR(tSC) Quit
+            If tGrants {
+                Do ..Refuse(..#PRIVILEGEGRANT, .pProhibits, .pCode)
+                Quit
+            }
+        }
         Set tIterator = pPayload.%GetIterator()
         While tIterator.%GetNext(.tKey, .tValue) {
             If '$ListFind(tPermitted, tKey) {
@@ -1045,6 +1063,23 @@ ClassMethod RoleEscalates(pRole As %String, Output pEscalates As %Boolean) As %S
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Whether granting <var>pRole</var> would grant <code>%All</code> or an administrative
+/// privilege, by name, through its nested roles, or through a resource it carries
+/// (<method>RoleEscalates</method>). For a picker's pre-mark: the refusal itself is
+/// <method>Prohibits</method>'s, asked at the write. A role whose answer cannot be read is reported
+/// as granting, the fail-closed direction for a mark that disables a choice.</p>
+ClassMethod RoleGrantsAdministrativePrivilege(pRole As %String) As %Boolean
+{
+    Set tEscalates = 1
+    Try {
+        Set tSC = ..RoleEscalates(pRole, .tEscalates)
+        If $$$ISERR(tSC) Set tEscalates = 1
+    } Catch {
+        Set tEscalates = 1
+    }
+    Quit ''tEscalates
 }
 
 /// <p>Whether role <var>pRole</var> carries a privileged <b>resource</b>, in <var>pGrants</var>:

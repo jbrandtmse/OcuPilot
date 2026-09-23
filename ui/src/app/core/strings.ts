@@ -1345,6 +1345,29 @@ export const STRINGS = {
   /** EXPERIENCE.md:396 */
   webAppFormRefusedAction: 'create a web application',
 
+  // Story 8.2. The Users list becomes write-capable, so its empty state invites the agent (the
+  // create-a-user form's privilege refusal names the same action), and the form publishes the
+  // labels the classic editor carries that no existing key holds.
+  // Name, full name, password and roles are keys that already exist (`tableColumnName`,
+  // `userColumnFullName`, `fieldPassword`, `userColumnRoles`). The last two are the web-application
+  // form's resolved Python directory line and the unauthenticated effect, which the proposal card
+  // reads too.
+  /** EXPERIENCE.md:397 */
+  userListEmptyAgent: 'create a user',
+  /** EXPERIENCE.md:398 */
+  userFormLabel: 'New user',
+  /** EXPERIENCE.md:398 */
+  userFormExpiry: 'Account expiration date',
+  /** EXPERIENCE.md:398 */
+  userFormNamespace: 'Startup namespace',
+  /** EXPERIENCE.md:398 */
+  userFormRoutine: 'Startup tag^routine',
+  /** EXPERIENCE.md:399 */
+  webAppFormPythonDirectoryResolved: 'Resolved directory on this instance',
+  /** EXPERIENCE.md:400 */
+  webAppUnauthenticatedEffect:
+    'Anyone who can reach this address can use the application without signing in.',
+
 } as const;
 
 /**

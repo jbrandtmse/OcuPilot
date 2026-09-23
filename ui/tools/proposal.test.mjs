@@ -430,8 +430,10 @@ test('nothing shipped in the client authors a proposal value, and nothing posts 
   // from the client rather than from the tool, which is the safety signal the declaration exists
   // to keep on the instance, so it is in the alternation with `auditWarning` and admits the two
   // boolean spellings for the same reason.
+  // `consequence` is the kernel's code for what a write does beyond its diff, and the card states
+  // its sentence as a warning -- a shipped literal there would author or suppress that warning.
   const authoring =
-    /\b(before|after|unchanged|unchangedCount|rationale|expectedImpact|reverse|fingerprint|auditWarning|destructive)\s*:\s*('|"|\d|`|true\b|false\b)/;
+    /\b(before|after|unchanged|unchangedCount|rationale|expectedImpact|reverse|fingerprint|auditWarning|destructive|consequence)\s*:\s*('|"|\d|`|true\b|false\b)/;
   // Since Story 5.3 the client does POST to a proposal route -- the id in the path and, in the
   // body, only the fields the target screen declares secret-typed. What it still may not do is
   // post a proposal's own content, so the scan is for a request body that names one.

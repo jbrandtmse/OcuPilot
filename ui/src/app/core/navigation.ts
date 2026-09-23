@@ -194,10 +194,14 @@ export function createFormFor(screen: ScreenDeclaration): ScreenDeclaration | nu
 /**
  * Paired forms that create and never open an existing entity: their `:id` route exists so a Save
  * can replace the URL with the new entity's, but the page reads no id, so neither a row's name cell
- * nor a change toast may open one. The Web application form (Story 8.1) is the create half of that
- * list's editor; Epic 9's editor reads the id, and its story removes the entry.
+ * nor a change toast may open one. The Web application form (Story 8.1) and the create-a-user form
+ * (Story 8.2) are the create halves of their lists' editors; Epic 9's editors read the id, and
+ * their stories remove the entries.
  */
-export const CREATE_ONLY_FORMS: ReadonlySet<string> = new Set(['OcuPilot.Screen.Descriptor.WebAppForm']);
+export const CREATE_ONLY_FORMS: ReadonlySet<string> = new Set([
+  'OcuPilot.Screen.Descriptor.WebAppForm',
+  'OcuPilot.Screen.Descriptor.UserForm',
+]);
 
 /**
  * The route segment a list's own document viewer is declared under, appended to the list's route.

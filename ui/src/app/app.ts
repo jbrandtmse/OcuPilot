@@ -12,6 +12,8 @@ import { NavigationStart, Router, RouterOutlet } from '@angular/router';
 
 import { DefinitionActions } from './areas/agent/definition-actions';
 import { WebAppActions } from './areas/web-applications/web-app-actions';
+import { UserActions } from './areas/permissions/user-actions';
+import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
@@ -225,6 +227,10 @@ export class App {
   // pass, is what keeps `CommandBar`'s own signal write out of a pass that has already checked it
   // (`areas/web-applications/web-app-actions.ts`).
   private readonly webAppActions = inject(WebAppActions);
+  // Constructed for its own sake, the same way and for the same reason: the Users list's declared
+  // Create (`areas/permissions/user-actions.ts`).
+  private readonly userActions = inject(UserActions);
+  private readonly userCreateForm = inject(UserCreateForm);
   // Constructed for its own sake, the same way: there is no component whose job it is to act on
   // the agent's navigation directive, so injecting it here is what brings it into existence for
   // the life of the tab (`shell/agent-navigator.ts`).
@@ -490,6 +496,8 @@ export class App {
       // pasted API key that has not been stored yet (AD-35) -- and its dirty flag would otherwise
       // make the next principal's first navigation ask about work that is not theirs.
       this.definitionForm.reset();
+      // The create-a-user form holds a password THIS principal typed and has not saved (AD-35).
+      this.userCreateForm.reset();
       this.formDirty.reset();
       // The ninth: whether the instance holds an enabled definition is a read THIS principal
       // made, and the panel and the rail's dot pick an audience from it beside the navigation

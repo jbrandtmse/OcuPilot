@@ -92,12 +92,14 @@ XData Coverage
 <screen name="TaskRunList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="TaskScheduleList" class="OcuPilot.Test.Descriptor" method="TestTheTaskScheduleListValidatesAndNamesItsClassicPageInItsOwnCase"/>
 <screen name="TaskUpcomingList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
+<screen name="UserForm" class="OcuPilot.Test.UserCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="UserList" class="OcuPilot.Test.Descriptor" method="TestTheUsersListValidatesAndNamesItsClassicPageInItsOwnCase"/>
 <screen name="WalletCollectionList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="WalletSecretList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="WebAppForm" class="OcuPilot.Test.WebAppCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="WebAppList" class="OcuPilot.Test.Descriptor" method="TestTheWebApplicationsListValidatesAndNamesItsClassicPageInItsOwnCase"/>
 <screen name="X509CredentialList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
+<tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="logs.applicationerrors.delete" class="OcuPilot.Test.ToolWrite" method="TestTheErrorDeleteToolIsAnActionWriteOverItsOwnPort"/>
 <tool name="osmgmt.processes.resume" class="OcuPilot.Test.ToolWrite" method="TestTheProcessResumeToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="osmgmt.processes.suspend" class="OcuPilot.Test.ToolWrite" method="TestTheProcessSuspendToolIsAnActionWriteOverTheScreensOwnPairs"/>

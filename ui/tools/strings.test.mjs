@@ -599,13 +599,15 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
   // application error log publishes for a namespace this log does not carry -- so on this screen
   // there IS now a sentence for an unknown namespace, which supersedes the claim this roster
   // carried for DW-126: the shell is silent for a namespace only where no screen publishes copy.
+  // `userFormNamespace` is a field label, not a sentence about a namespace: the create-a-user
+  // form's startup namespace, which the account enters on sign-in.
   const namespaceSentences = Object.entries(stringsValues).filter(([key]) =>
     key.toLowerCase().includes('namespace')
   );
   assert.deepEqual(
     namespaceSentences.map(([key]) => key).sort(),
-    ['errorLogEmptyNamespace', 'errorLogRefusedNamespace', 'headerNamespaceLabel'],
-    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state and one named refusal'
+    ['errorLogEmptyNamespace', 'errorLogRefusedNamespace', 'headerNamespaceLabel', 'userFormNamespace'],
+    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state, one named refusal and one field label'
   );
 });
 

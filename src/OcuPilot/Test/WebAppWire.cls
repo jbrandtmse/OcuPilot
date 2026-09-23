@@ -198,21 +198,21 @@ Method TestAVendorFieldRefusalCrossesThePortOnTheFieldItNames()
 }
 
 /// <p>AD-55 at the <b>screen's</b> own call site: a WSGI create made over the wire leaves the
-/// instance holding a <code>Path</code> equal to the directory the caller named, derived by the
-/// tool rather than accepted from the body (AD-21).</p>
+/// instance holding a <code>Path</code> equal to the directory the caller's name resolves to under
+/// the fixed WSGI root, derived by the tool rather than accepted from the body (AD-21).</p>
 /// <p>Mutation: remove the <method>DerivedFields</method> call from
 /// <method>OcuPilot.Area.WebApp.Create.Perform</method> -> this goes red, and the application
 /// serves from whatever directory <method>Security.Applications.Create</method> defaults to.</p>
 Method TestAWsgiCreateLeavesTheInstanceHoldingTheDerivedPath()
 {
-    Set tLocation = "/tmp/ocupilot-probe-wire-wsgi"
+    Set tLocation = "ocupilot-probe-wire-wsgi"
     Set tBody = "{""Name"":""" _ ..#PROBEAPP _ """,""NameSpace"":""" _ $Namespace _ """,""AutheEnabled"":32,""WSGIAppName"":""probe.py"",""WSGICallable"":""app"",""WSGIAppLocation"":""" _ tLocation _ """,""WSGIType"":""WSGI""}"
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#CREATEPATH, .tStatus, .tBody2, tBody, "application/json")
     Do $$$AssertStatusOK(tSC, "a WSGI create answers")
     Do $$$AssertEquals(tStatus, 201, "at 201")
     If tStatus '= 201 Quit
     Do $$$AssertEquals(..Exists(..#PROBEAPP), 1, "and the instance holds it")
-    Do $$$AssertEquals(..PathOf(..#PROBEAPP), tLocation, "with the path the server derived from the directory the caller named")
+    Do $$$AssertEquals(..PathOf(..#PROBEAPP), ##class(OcuPilot.Area.WebApp.Location).Root() _ tLocation _ "/", "with the path the server resolved from the directory name the caller gave")
 }
 
 /// <p><var>pName</var>'s stored physical path, or <code>""</code>.</p>

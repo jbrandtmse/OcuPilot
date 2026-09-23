@@ -163,7 +163,7 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// one-line delegate to <code>RunTerminate</code> -- and AD-10 names terminating an IRIS system
 /// process in the Release 1 prohibited set, so neither pairs with <code>Process</code> here and
 /// <method>EndpointType</method> answers <code>""</code> for either.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME";
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -180,6 +180,22 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
 Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME";
+
+/// <p>The <parameter>MUTATINGTYPES</parameter> entries whose vendor body is a <b>wrapper</b>, as
+/// comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;wrapper&gt;:&lt;outer&gt;[:&lt;outer&gt;...]</code>
+/// entries. <method>Invoke</method> applies it before the vendor's <code>ValidateRequest</code>:
+/// every key of the caller's flat body except the listed outer keys moves under the wrapper key,
+/// and an outer key the body does not carry stays missing, so the vendor's own required-field
+/// refusal answers for it.</p>
+/// <p><code>Security.User/POST</code> is <code>%Api.Admin.Endpoints.Security.User</code>'s create
+/// (read on this build): <code>TYPEPOST</code> 5, <code>NeedsRequestBody()</code> true, a
+/// <code>ValidateRequest</code> requiring <code>{User:{...}, Password}</code>, and a
+/// <code>RunPost</code> that calls <method>Security.Users.Create</method> with the password and then
+/// <code>Modify</code> with <code>User</code>'s fields. The wrapper is a wire fact, so it lives in
+/// the port (AD-27) and the rest of the product reads <code>Security.User</code>'s flat derived
+/// field list. <method>Fail</method> strips the wrapper's leading segment from a field a vendor
+/// refusal names, so the refusal lands on the flat field the caller sent.</p>
+Parameter WRAPPEDTYPES = "Security.User/POST=User:Password";
 
 /// <p>The pair set the <b>backing query or class</b> of an endpoint requires, beyond the
 /// endpoint's own <code>ResourcesOR()</code> gate (AD-29). Comma-separated entries of the form
@@ -456,7 +472,11 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Quit
         }
 
-        Set tSeqSC = ..RunSequence(pEndpoint, tClass, tType, .pQuery, pBody, .tAnswer, .tHttp, .tLocation, ..HttpMethodFor(pEndpoint, pType))
+        ; WRAPPEDTYPES: a flat body becomes the vendor's wrapper here, before ValidateRequest reads
+        ; it, so no caller above the port composes the wire shape.
+        Set tBody = pBody
+        If $IsObject(pBody) Set tBody = ..Wrapped(pEndpoint, pType, pBody)
+        Set tSeqSC = ..RunSequence(pEndpoint, tClass, tType, .pQuery, tBody, .tAnswer, .tHttp, .tLocation, ..HttpMethodFor(pEndpoint, pType))
         If $$$ISOK(tSeqSC) && (tHttp = 202) && (tLocation [ ..#ASYNCLOCATION) {
             Set tAnswer = ""
             Set tGuid = $Piece($Piece(tLocation, ..#ASYNCLOCATION, 2), "&", 1)
@@ -479,7 +499,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..Denied(pEndpoint, tFailedPair, tSeqSC, .pHttpStatus, .pFault)
             Quit
         }
-        Set tSC = ..Fail(pEndpoint, tHttp, tSeqSC, .pHttpStatus, .pFault)
+        Set tSC = ..Fail(pEndpoint, tHttp, tSeqSC, .pHttpStatus, .pFault, ..WrapperKey(pEndpoint, pType))
     } Catch ex {
         Set pResult = ""
         Set pHttpStatus = 500
@@ -798,6 +818,58 @@ ClassMethod IsBodyless(pEndpoint As %String, pSuffix As %String) As %Boolean
     Quit ''$ListFind($ListFromString(..#BODYLESSTYPES), pEndpoint _ "/" _ pSuffix)
 }
 
+/// <p>The wrapper key <parameter>WRAPPEDTYPES</parameter> declares for <var>pEndpoint</var>'s
+/// request type <var>pSuffix</var>, or <code>""</code> for a type whose body is sent as it is.</p>
+ClassMethod WrapperKey(pEndpoint As %String, pSuffix As %String) As %String
+{
+    Set tKey = ""
+    Set tEntries = $ListFromString(..#WRAPPEDTYPES)
+    For tI = 1:1:$ListLength(tEntries) {
+        Set tEntry = $List(tEntries, tI)
+        If $Piece(tEntry, "=", 1) '= (pEndpoint _ "/" _ pSuffix) Continue
+        Set tKey = $Piece($Piece(tEntry, "=", 2), ":", 1)
+        Quit
+    }
+    Quit tKey
+}
+
+/// <p><var>pBody</var> in the vendor's wrapper shape for <var>pEndpoint</var>'s request type
+/// <var>pSuffix</var>, or <var>pBody</var> itself where <parameter>WRAPPEDTYPES</parameter> declares
+/// none. Every key except the declared outer keys moves under the wrapper key, each keeping its own
+/// JSON type; an outer key <var>pBody</var> does not carry stays missing. <var>pBody</var> is not
+/// modified.</p>
+ClassMethod Wrapped(pEndpoint As %String, pSuffix As %String, pBody As %DynamicObject) As %DynamicObject
+{
+    Set tWrapper = ..WrapperKey(pEndpoint, pSuffix)
+    If tWrapper = "" Quit pBody
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit pBody
+    Set tOuter = ""
+    Set tEntries = $ListFromString(..#WRAPPEDTYPES)
+    For tI = 1:1:$ListLength(tEntries) {
+        Set tEntry = $List(tEntries, tI)
+        If $Piece(tEntry, "=", 1) '= (pEndpoint _ "/" _ pSuffix) Continue
+        Set tSpec = $Piece(tEntry, "=", 2)
+        For tJ = 2:1:$Length(tSpec, ":") {
+            If $Piece(tSpec, ":", tJ) '= "" Set tOuter = tOuter _ $ListBuild($Piece(tSpec, ":", tJ))
+        }
+        Quit
+    }
+    Set tOut = {}
+    Set tInner = {}
+    Set tIterator = pBody.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        Set tType = pBody.%GetTypeOf(tKey)
+        Set tTarget = $Select($ListFind(tOuter, tKey): tOut, 1: tInner)
+        If (tType = "object") || (tType = "array") {
+            Do tTarget.%Set(tKey, tValue)
+        } Else {
+            Do tTarget.%Set(tKey, tValue, tType)
+        }
+    }
+    Do tOut.%Set(tWrapper, tInner)
+    Quit tOut
+}
+
 /// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
 /// <parameter>MUTATINGTYPES</parameter> admits (DW-1473). Every read of that parameter is this
 /// method, so admitting a type on one endpoint can never be read as admitting it on another.</p>
@@ -853,6 +925,7 @@ ClassMethod ImplementsRead(pClass As %String, pSuffix As %String) As %Boolean [ 
 {
     If ..MethodOrigin(pClass, "Run") '= ..#ENDPOINTBASECLASS Quit 1
     Set tRunner = $Case(pSuffix, "GET": "RunGet", "LIST": "RunList", "PUT": "RunPut", : "")
+    If pSuffix = "POST" Set tRunner = "RunPost"
     If tRunner = "" Quit 0
     Quit ..MethodOrigin(pClass, tRunner) '= ..#ENDPOINTBASECLASS
 }
@@ -1047,8 +1120,10 @@ ClassMethod AwaitTask(pEndpoint As %String, pGuid As %String, Output pResult, Ou
 }
 
 /// <p>A failed vendor outcome: the fault from <method>OcuPilot.Kernel.Fault.Outcome</method>,
-/// the vendor status to the log, and an error status carrying only the fault's own text.</p>
-ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// the vendor status to the log, and an error status carrying only the fault's own text.
+/// <var>pWrapper</var> is the request's <parameter>WRAPPEDTYPES</parameter> wrapper key, or
+/// <code>""</code>; a violation field that begins with it and a dot loses that segment.</p>
+ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pWrapper As %String = "") As %Status [ Private ]
 {
     Set pHttpStatus = $Select(+pHttp: +pHttp, 1: 500)
     Set tOutcomeSC = ##class(OcuPilot.Kernel.Fault).Outcome(pHttpStatus, pVendorSC, .pFault, .tDetail)
@@ -1058,6 +1133,14 @@ ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, 
     ; own sentence -- so a screen renders it on the field it is about and a tool result renders the
     ; code. The vendor's own text still reaches the log alone, on the line below.
     Set tViolations = ##class(OcuPilot.Api.Error).ViolationsFromVendor(pVendorSC)
+    If (pWrapper '= "") && $IsObject(tViolations) {
+        Set tRowIterator = tViolations.%GetIterator()
+        While tRowIterator.%GetNext(.tRowIndex, .tRow) {
+            If '$IsObject(tRow) Continue
+            Set tField = tRow.%Get("field")
+            If $Extract(tField, 1, $Length(pWrapper) + 1) = (pWrapper _ ".") Do tRow.%Set("field", $Extract(tField, $Length(pWrapper) + 2, *), "string")
+        }
+    }
     If $IsObject(pFault) && $IsObject(tViolations) && (tViolations.%Size() > 0) {
         Set tFieldDetail = {}
         Do tFieldDetail.%Set("violations", tViolations)

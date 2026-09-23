@@ -229,6 +229,11 @@ export interface TurnProposal {
    * fall out of step.
    */
   readonly destructive: boolean;
+  /**
+   * The kernel's code for what the write does beyond its diff (`WEBAPP.UNAUTHENTICATED`), or `''`.
+   * A code, not a sentence: the card resolves it to the published string (`consequenceSentence`).
+   */
+  readonly consequence: string;
 }
 
 /**
@@ -488,6 +493,7 @@ function parseProposal(value: unknown): TurnProposal | null {
     confirmedAt: textAt(row, 'confirmedAt'),
     auditWarning: boolAt(row, 'auditWarning'),
     destructive: boolAt(row, 'destructive'),
+    consequence: textAt(row, 'consequence'),
   };
 }
 

@@ -64,6 +64,13 @@ Parameter USERTOOL = "permissions.users.update";
 
 Parameter USERSCREEN = "OcuPilot.Screen.Descriptor.UserList";
 
+/// <p>Every <code>write</code>-kind tool this release has reviewed on the
+/// <code>permissions.users</code> identifier, comma-separated: Story 5.9's update and Story 8.2's
+/// create. A verb outside it -- a delete or a disable above all -- is what
+/// <method>TestNoDeleteVerbIsAdvertisedForAUserAccountAndALiveSystemDisableIsRefused</method>
+/// refuses (AD-10).</p>
+Parameter USERREVIEWEDWRITES = "permissions.users.update,permissions.users.create";
+
 /// <p>Story 5.10's write tool and the screen that owns it, for the auditing legs below. The tool's
 /// name, its one settable field and the screen's entity type are all read off these classes rather
 /// than spelled again here.</p>
@@ -1145,12 +1152,12 @@ Method TestAnAccountWithoutTheCodeDatabaseReadIsRefusedABareForbidden()
 }
 
 /// <p>Story 5.9, AD-10: <b>the registry advertises no delete or disable verb for a user account at
-/// all</b>, and the one write verb it does advertise refuses a real disable of a real account
-/// through the real port and the real set.</p>
+/// all</b> -- only the reviewed writes in <parameter>USERREVIEWEDWRITES</parameter> -- and the update
+/// refuses a real disable of a real account through the real port and the real set.</p>
 /// <p>The refusal target is <code>_SYSTEM</code>, which this suite only ever reads: the set is
 /// asked directly, so nothing is minted and no <code>PUT</code> is issued, and the account's own
 /// enabled flag is read back afterwards to show it.</p>
-/// <p>Mutations (Rule 19): add a second <code>write</code> tool under the
+/// <p>Mutations (Rule 19): add a third <code>write</code> tool under the
 /// <code>permissions.users</code> identifier and recompile the package (the roster assertion goes
 /// red naming it), or return <code>pProhibits = 0</code> from
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.User</method> (the live refusal goes red).</p>
@@ -1168,10 +1175,10 @@ Method TestNoDeleteVerbIsAdvertisedForAUserAccountAndALiveSystemDisableIsRefused
         Set tSeen = tSeen + 1
         If tTool.%Get("kind") '= "write" Continue
         Set tWrites = tWrites + 1
-        Do $$$AssertEquals(tTool.%Get("name"), ..#USERTOOL, "the only write verb on " _ tIdentifier _ " is the reviewed update, not '" _ tTool.%Get("name") _ "'")
+        Do $$$AssertTrue($ListFind($ListFromString(..#USERREVIEWEDWRITES), tTool.%Get("name")) > 0, "the write verbs on " _ tIdentifier _ " are the reviewed update and create, not '" _ tTool.%Get("name") _ "'")
     }
     Do $$$AssertTrue(tSeen > 0, "the registry carries tools on " _ tIdentifier _ " at all, so this assertion ran over something")
-    Do $$$AssertEquals(tWrites, 1, "and exactly one of them is write-kind, so the assertion inside that branch ran")
+    Do $$$AssertEquals(tWrites, $Length(..#USERREVIEWEDWRITES, ","), "and exactly the reviewed ones are write-kind, so the assertion inside that branch ran")
 
     Kill tQuery
     Set tQuery("name") = ..#SYSTEMACCOUNT

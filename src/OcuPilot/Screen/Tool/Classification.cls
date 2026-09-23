@@ -7,9 +7,12 @@
 /// (<code>&lt;area&gt;.&lt;screen&gt;.&lt;verb&gt;</code>, lower case, dots only). Each entry holds
 /// <code>fieldList</code>, a list key <class>OcuPilot.Screen.Tool.FieldLists</class> carries, and
 /// <code>classification</code>, an object mapping a classifiable path of that list (a row no other
-/// row's path extends) to <code>ordinary</code>, <code>secret</code> or <code>opaque</code>. The
-/// keys <code>required</code>, <code>enum</code> and <code>description</code> are reserved for the
-/// semantic half of a tool's schema and accept no content yet; no other key is accepted.</p>
+/// row's path extends) to <code>ordinary</code>, <code>secret</code> or <code>opaque</code>. An
+/// optional <code>authored</code> object maps a top-level name the endpoint's request wrapper
+/// carries and its template does not to <code>secret</code>, the only class it accepts; such a name
+/// may not collide with a derived path. The keys <code>required</code>, <code>enum</code> and
+/// <code>description</code> are reserved for the semantic half of a tool's schema and accept no
+/// content yet; no other key is accepted.</p>
 /// <p><b>It fails closed.</b> A classifiable path the entry does not name is emitted
 /// <code>secret</code>. <code>opaque</code> is for a member-less object or array only, and a
 /// member-less object or array may not be <code>ordinary</code>. A string literal whose last path
@@ -48,6 +51,11 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// <code>ordinary</code> on a member-less array, so <code>opaque</code> is also the only class
 /// either row can carry. The tool's one authored array argument is its semantic half
 /// (<class>OcuPilot.Screen.Tool.UserUpdate</class>), not a derived field.</p>
+/// <p><b><code>permissions.users.create</code></b> classifies the same <code>Security.User</code>
+/// list as the update entry does, and authors <code>Password</code> as <code>secret</code>: the
+/// vendor's POST body is <code>{User, Password}</code>, whose outer <code>Password</code> the
+/// template never shows, so AD-3's "the write tool authors [wrapper fields] as secret fields of its
+/// own" is stated here, where the generator can check it.</p>
 XData Entries
 {
 {
@@ -176,6 +184,30 @@ XData Entries
       "WSGICallable": "ordinary",
       "WSGIDebug": "ordinary",
       "WSGIType": "ordinary"
+    }
+  },
+  "permissions.users.create": {
+    "fieldList": "Security.User",
+    "classification": {
+      "AccountNeverExpires": "ordinary",
+      "AutheEnabled": "ordinary",
+      "ChangePassword": "ordinary",
+      "Comment": "ordinary",
+      "EmailAddress": "ordinary",
+      "Enabled": "ordinary",
+      "ExpirationDate": "ordinary",
+      "FullName": "ordinary",
+      "HOTPKeyDisplay": "ordinary",
+      "NameSpace": "ordinary",
+      "PasswordNeverExpires": "ordinary",
+      "PhoneNumber": "ordinary",
+      "PhoneProvider": "ordinary",
+      "Roles": "opaque",
+      "EscalationRoles": "opaque",
+      "Routine": "ordinary"
+    },
+    "authored": {
+      "Password": "secret"
     }
   }
 }

@@ -349,13 +349,10 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // Story 4.6 raised `maximumWarning` off the stock 500kB default to make room for three vendored
 // libraries (`marked`, `dompurify`, `lowlight`+`highlight.js`).
 //
-// Raised again 1050kB -> 1120kB at Epic 15's merge into Epic 5 (2026-09-21), which is the first
-// time this pin has actually bitten. Two epics' client work landed together -- Epic 5's proposal
-// card, change toast and field disclosure, and Epic 15's account-held preferences -- and the
-// emitted initial total measured 1,073,860 bytes against the 1,050,000 the figure stood at. The
-// new figure leaves roughly 46kB of headroom, deliberately tight: a loose, unmeasured figure is
-// the thing DW-371 was filed against, and a tight one means the next raise is another reviewed
-// diff rather than a silent drift. `build-output.test.mjs` measures
+// The figure is re-based under the owner's standing policy on DW-1166: at each epic close the
+// warning is set about 5% above the measured initial total, and `maximumError`'s 1600kB is the
+// hard stop. Story 8.2 set 1185kB against a measured 1,127,978 bytes (5.06% above), and a tight
+// figure keeps each raise a reviewed diff rather than a silent drift. `build-output.test.mjs` measures
 // the actual emitted bytes against this figure; this file pins the figure itself, so a later
 // change to it is a reviewed diff here rather than a silent edit nothing else notices.
 //
@@ -370,7 +367,7 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '1120kB', 'a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumWarning, '1185kB', 'a change to this figure must be a reviewed diff, not a silent edit');
   assert.equal(budget.maximumError, '1600kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and

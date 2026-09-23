@@ -94,6 +94,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/web-applications/form" Method="GET" Call="WebAppFormRules"/>
   <Route Url="/web-applications/name" Method="GET" Call="WebAppNameCheck"/>
   <Route Url="/web-applications" Method="POST" Call="WebAppCreate"/>
+  <Route Url="/users/form" Method="GET" Call="UserFormRules"/>
+  <Route Url="/users/name" Method="GET" Call="UserNameCheck"/>
+  <Route Url="/users" Method="POST" Call="UserCreate"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
   <Route Url="/logs/errors/namespaces" Method="GET" Call="LogErrorNamespaces"/>
   <Route Url="/logs/errors/dates" Method="GET" Call="LogErrorDates"/>
@@ -277,6 +280,28 @@ ClassMethod WebAppNameCheck() As %Status
 ClassMethod WebAppCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.WebApp.Create).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /users/form</code> (Story 8.2): delegates to
+/// <class>OcuPilot.Area.Permissions.UserCreateRules</class> and carries no logic of its own. The
+/// two sub-resources precede <code>POST /users</code>, the order the REST convention requires.</p>
+ClassMethod UserFormRules() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.UserCreateRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /users/name</code>: the User form's blur check
+/// of whether a name is already taken.</p>
+ClassMethod UserNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.UserCreateRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /users</code>: the User form's Save, which
+/// resolves the write through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod UserCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.UserCreate).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /screens/:screen/read</code>: delegates to

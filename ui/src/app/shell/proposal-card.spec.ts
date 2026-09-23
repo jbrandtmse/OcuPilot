@@ -621,6 +621,22 @@ describe('the proposal card', () => {
     expect(mount(liveView(), { phase: 'live' }).card.querySelector('.ocu-proposal-card-warning')).toBeNull();
   });
 
+  it('DW-1489: a proposal the kernel marks with the unauthenticated consequence states it on the card', () => {
+    // The code is the kernel's and the sentence the string source's; the create is still offered.
+    //
+    // Mutation (Rule 19): drop the consequence block from the template, or make
+    // `consequenceSentence` answer '' -> this goes red.
+    const { card } = mount(liveView({ consequence: 'WEBAPP.UNAUTHENTICATED' }), { phase: 'live' });
+    const line = card.querySelector('[data-slot="consequence"]') as HTMLElement;
+    expect(line).not.toBeNull();
+    expect(line.textContent).toContain(STRINGS.webAppUnauthenticatedEffect);
+    expect(line.getAttribute('role')).toBe('status');
+    expect(card.querySelector('.ocu-proposal-card-confirm')).not.toBeNull();
+
+    expect(mount(liveView({ consequence: '' }), { phase: 'live' }).card.querySelector('[data-slot="consequence"]')).toBeNull();
+    expect(mount(EXAMPLE_PROPOSAL).card.querySelector('[data-slot="consequence"]')).toBeNull();
+  });
+
   it('the in-card warning is a status region, the convention for an advisory', () => {
     // DW-1246, corrected: four warning banners in this shell are already `role="status"`. The
     // convention is `alert` for a fault or a refusal and `status` for an advisory, and this is an

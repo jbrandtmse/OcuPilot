@@ -42,6 +42,7 @@ const RULES = {
   conditionalFields: { rest: ['DispatchClass', 'WSGICallable'], wsgi: ['WSGIAppName', 'WSGIAppLocation', 'WSGIType'] },
   wsgiTypes: ['WSGI', 'ASGI'],
   maxLengths: { Name: 64, Description: 256 },
+  wsgiRoot: '/durable/iris/mgr/wsgi/',
   rules: [
     { field: 'NameSpace', code: 'WEBAPP.NAMESPACE.REQUIRED', reason: 'Choose the namespace.' },
     { field: 'WSGIAppName', code: 'WEBAPP.WSGI.APPNAME', reason: 'Name the file.' },
@@ -231,6 +232,32 @@ describe('the Web application create form store', () => {
     const rest = postedBody(calls.filter((call) => call.method === 'POST').slice(-1));
     expect(rest['WSGICallable']).toBe('app');
     expect('WSGIAppName' in rest).toBe(false);
+  });
+
+  it('AD-21: the resolved directory is the read\'s root plus the typed name, displayed and never sent', async () => {
+    const { store, calls } = mount();
+    await store.open();
+    store.setType(TYPE_PYTHON);
+    expect(store.resolvedDirectory()).toBe('/durable/iris/mgr/wsgi/');
+    store.setValue('WSGIAppLocation', 'probeapp');
+    expect(store.resolvedDirectory()).toBe('/durable/iris/mgr/wsgi/probeapp/');
+    store.setValue('Name', '/csp/probe');
+    store.setValue('NameSpace', 'HSCUSTOM');
+    await store.save();
+    // The body sends the name as typed; the server resolves it under the root at the call.
+    const python = postedBody(calls);
+    expect(python['WSGIAppLocation']).toBe('probeapp');
+    expect('Path' in python).toBe(false);
+  });
+
+  it('DW-1489: the unauthenticated effect follows the Unauthenticated method being ticked', async () => {
+    const { store } = mount();
+    await store.open();
+    expect(store.unauthenticated()).toBe(false);
+    store.setAuthe(64, true);
+    expect(store.unauthenticated()).toBe(true);
+    store.setAuthe(64, false);
+    expect(store.unauthenticated()).toBe(false);
   });
 
   it('the blur look-up marks a taken name with the server sentence, and leaves the field unmarked when it could not be made', async () => {

@@ -1,7 +1,7 @@
 /**
  * The Web application create form in a real browser, against the throwaway instance (Story 8.1).
  *
- * Five claims, each asserted on rendered DOM, on measured geometry or on the real URL rather than
+ * Seven claims, each asserted on rendered DOM, on measured geometry or on the real URL rather than
  * on store state:
  *
  * 1. **The form captures the field set in the classic order** (AC1), and the type control shows
@@ -22,6 +22,10 @@
  *    and a value longer than the field, with the token read off the document so the comparison
  *    cannot be 0 against 0. `ui/tools/design-tokens.test.mjs` is what makes the confirmed figures
  *    bind every later form.
+ * 6. **A Python application's directory is shown resolved under the instance's fixed root**
+ *    (AD-21, DW-1495), read-only, with the root read from the throwaway itself.
+ * 7. **Choosing Unauthenticated states its effect at the authentication field** (DW-1489), and only
+ *    while it is ticked.
  *
  * **It refuses the live container**, for the reason its siblings do: the throwaway is the instance
  * a browser run drives, and this spec creates web applications. It removes every one it created in
@@ -95,6 +99,23 @@ async function removeProbeApplications() {
     encoding: 'utf8',
     timeout: 600000,
   });
+}
+
+/**
+ * The fixed WSGI root, computed inside the throwaway the way AD-21 states it: `wsgi` under the
+ * Manager Directory, normalized. Read independently of OcuPilot, so the form's line is compared
+ * with the instance rather than with itself.
+ */
+function wsgiRoot() {
+  const result = spawnSync('docker', ['exec', '-i', config.container, 'iris', 'session', 'iris', '-U', '%SYS'], {
+    input: 'Write "OCU-ROOT-START:",##class(%File).NormalizeDirectory("wsgi", $System.Util.ManagerDirectory()),":OCU-ROOT-END",!\nHalt\n',
+    encoding: 'utf8',
+    timeout: 600000,
+  });
+  const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
+  const match = /OCU-ROOT-START:(.*?):OCU-ROOT-END/.exec(output);
+  assert.ok(match !== null && match[1] !== '', `the throwaway answered its WSGI root: ${output}`);
+  return match[1];
 }
 
 /** Whether the instance holds a web application called `name`, read inside the throwaway. */
@@ -460,6 +481,58 @@ test('AC4: the form column is --ocu-form-max-width and its fields --ocu-field-ma
       );
       assert.equal(label.clipped, false, `and "${label.text}" is not clipped`);
     }
+  } finally {
+    await context.close();
+  }
+});
+
+// AD-21, DW-1495. Mutation (Rule 19): drop the typed name from the store's `resolvedDirectory` ->
+// the resolved line reads the bare root and this goes red.
+test('a Python application\'s directory is shown resolved under the fixed root, read-only', async () => {
+  const root = wsgiRoot();
+  const { context, page } = await signedInAt(FORM_URL);
+  try {
+    await page.waitForSelector('#ocu-web-app-Name', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.select('#ocu-web-app-Type', 'python');
+    await fill(page, 'ocu-web-app-WSGIAppLocation', 'probeapp');
+    await page.waitForFunction(
+      (expected) => document.querySelector('#ocu-web-app-WSGIAppLocation-resolved code')?.textContent?.trim() === expected,
+      { timeout: config.navigationTimeoutMs },
+      `${root}probeapp/`
+    );
+    const line = await page.$eval('#ocu-web-app-WSGIAppLocation-resolved', (node) => ({
+      text: node.textContent.trim(),
+      editable: node.querySelector('input, textarea, [contenteditable]') !== null,
+    }));
+    assert.ok(line.text.startsWith(STRINGS.webAppFormPythonDirectoryResolved), `the line is labelled: ${line.text}`);
+    assert.equal(line.editable, false, 'and it is display only');
+    const describedBy = await page.$eval('#ocu-web-app-WSGIAppLocation', (node) => node.getAttribute('aria-describedby') ?? '');
+    assert.ok(describedBy.split(' ').includes('ocu-web-app-WSGIAppLocation-resolved'), 'the field is described by it');
+  } finally {
+    await context.close();
+  }
+});
+
+// DW-1489. Mutation (Rule 19): drop the effect line from the authentication fieldset -> this goes
+// red on the ticked leg.
+test('ticking Unauthenticated states its effect at the authentication field, and unticking removes it', async () => {
+  const { context, page } = await signedInAt(FORM_URL);
+  try {
+    await page.waitForSelector('fieldset.ocu-form-authe', { visible: true, timeout: config.navigationTimeoutMs });
+    const box = '#ocu-web-app-AutheEnabled-64';
+    assert.ok(await page.$(box), 'the instance offers the Unauthenticated method (bit 64)');
+    const effect = '#ocu-web-app-AutheEnabled-effect';
+    if (await page.$eval(box, (node) => node.checked)) await page.click(box);
+    assert.equal(await page.$(effect), null, 'no effect is stated while Unauthenticated is not ticked');
+
+    await page.click(box);
+    await page.waitForSelector(effect, { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval(effect, (node) => node.textContent.trim()), STRINGS.webAppUnauthenticatedEffect);
+    const describedBy = await page.$eval('fieldset.ocu-form-authe', (node) => node.getAttribute('aria-describedby') ?? '');
+    assert.equal(describedBy, 'ocu-web-app-AutheEnabled-effect', 'the group is described by the effect');
+
+    await page.click(box);
+    await page.waitForFunction((selector) => document.querySelector(selector) === null, { timeout: config.navigationTimeoutMs }, effect);
   } finally {
     await context.close();
   }

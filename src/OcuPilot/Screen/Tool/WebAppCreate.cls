@@ -26,9 +26,12 @@
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.AlwaysProhibitedCreateFields</method>. <code>Name</code>
 /// is the vendor's <code>name</code> query parameter and a 400 in the body
 /// (<code>UnexpectedRequestBodyField</code>). And <code>Path</code> is never settable by a caller:
-/// <method>DerivedFields</method> derives it from <code>WSGIAppLocation</code> for a WSGI or ASGI
-/// application, and <method>Security.Applications.Create</method> creates the directory a CSP
-/// application names.</p>
+/// <method>DerivedFields</method> sets it, and <code>WSGIAppLocation</code>, to the directory the
+/// caller's one directory name resolves to under the instance's fixed WSGI root (AD-21), and
+/// <method>Security.Applications.Create</method> creates the directory a CSP application names.</p>
+/// <p><b>Choosing Unauthenticated is permitted and named</b> (DW-1489): <method>Consequence</method>
+/// carries <parameter>CONSEQUENCEUNAUTHENTICATED</parameter> onto the proposal, and the card states
+/// it.</p>
 /// <p><b><code>Type</code> is never sent.</b> <code>MergeJsonAndProperties</code> hard-codes it to
 /// <code>$$$AppTypeCSP</code> and <method>RequestBodySchema</method> does not carry it, so sending
 /// it is a 400. The CSP, REST, WSGI and ASGI choice a caller makes is a combination of
@@ -63,11 +66,20 @@ Parameter PERMITTEDFIELDS = "AutheEnabled,Description,DispatchClass,Enabled,Name
 
 /// <p>The vendor property the server derives, and the property it derives it from. Not settable by
 /// a caller and absent from <parameter>PERMITTEDFIELDS</parameter>: no OcuPilot endpoint accepts a
-/// filesystem path from a caller (AD-21), and a WSGI application's directory is the one the caller
-/// already named.</p>
+/// filesystem path from a caller (AD-21), so both are set to the directory
+/// <class>OcuPilot.Area.WebApp.Location</class> resolves the caller's one directory name to.</p>
 Parameter DERIVEDPATH = "Path";
 
 Parameter WSGILOCATION = "WSGIAppLocation";
+
+/// <p>The authentication mask field, and the bit that makes an application reachable without
+/// signing in (<file>irissys/%sySecurityMacros.inc</file>).</p>
+Parameter AUTHEFIELD = "AutheEnabled";
+
+Parameter UNAUTHENTICATEDBIT As INTEGER = 64;
+
+/// <p>The consequence code a create choosing Unauthenticated carries onto its proposal (DW-1489).</p>
+Parameter CONSEQUENCEUNAUTHENTICATED = "WEBAPP.UNAUTHENTICATED";
 
 /// <p>The pair a create requires: <code>%Admin_Secure:USE</code>, which is exactly what
 /// <method>%CSP.Portal.Application.CheckSecurity</method> checks before the classic editor saves,
@@ -103,24 +115,56 @@ ClassMethod PermittedFields() As %List
     Quit $ListFromString(..#PERMITTEDFIELDS)
 }
 
-/// <p>Derive <code>Path</code> from <code>WSGIAppLocation</code> for a WSGI or ASGI application,
-/// and leave the body alone otherwise (AD-55).</p>
+/// <p>Set <code>WSGIAppLocation</code> and <code>Path</code> to the directory the caller's
+/// location name resolves to under the fixed WSGI root, or remove both where it does not resolve
+/// (AD-21, AD-55). A body that names no location is left alone.</p>
 /// <p><b>Caller contract:</b> <class>OcuPilot.Kernel.Proposal.Confirm</class> and
 /// <class>OcuPilot.Area.WebApp.Create</class> each call it once, on the body about to be sent,
-/// after the prohibited set has reached its verdict. Both callers resolve it here, which is what
-/// makes the screen's Save and the agent's confirm one composition rather than two.</p>
-/// <p>A WSGI or ASGI application serves from the directory holding its callable, so the vendor's
-/// own physical path is that directory; a CSP or REST application's is left unset, and
-/// <method>Security.Applications.Create</method> creates the directory it then defaults to. An
-/// empty location derives nothing, so a body that names a protocol and no directory reaches the
-/// vendor's own refusal rather than a path this method invented.</p>
+/// after the prohibited set has reached its verdict. The root is computed at this call by
+/// <method>OcuPilot.Area.WebApp.Location.Resolve</method>, so the directory sent is the one the
+/// instance answers now; the caller's own text never reaches the vendor. A name that no longer
+/// resolves at confirm drops both keys rather than passing the text through.</p>
 ClassMethod DerivedFields(pPayload As %DynamicObject)
 {
     If '$IsObject(pPayload) Quit
-    If pPayload.%GetTypeOf(..#WSGILOCATION) '= "string" Quit
-    Set tLocation = pPayload.%Get(..#WSGILOCATION)
-    If tLocation = "" Quit
-    Do pPayload.%Set(..#DERIVEDPATH, tLocation, "string")
+    If pPayload.%GetTypeOf(..#WSGILOCATION) = "unassigned" Quit
+    Set tLocation = ""
+    If pPayload.%GetTypeOf(..#WSGILOCATION) = "string" Set tLocation = pPayload.%Get(..#WSGILOCATION)
+    If (tLocation '= "") && ##class(OcuPilot.Area.WebApp.Location).Resolve(tLocation, .tPath) {
+        Do pPayload.%Set(..#WSGILOCATION, tPath, "string")
+        Do pPayload.%Set(..#DERIVEDPATH, tPath, "string")
+        Quit
+    }
+    Do pPayload.%Remove(..#WSGILOCATION)
+    Do pPayload.%Remove(..#DERIVEDPATH)
+}
+
+/// <p>The kernel-owned consequence code this create's payload <var>pPayload</var> carries, or
+/// <code>""</code> (DW-1489): <parameter>CONSEQUENCEUNAUTHENTICATED</parameter> when
+/// <code>AutheEnabled</code> includes the unauthenticated bit. The mint stores it on the proposal
+/// and the card states its sentence; the create is not refused.</p>
+ClassMethod Consequence(pPayload As %DynamicObject) As %String
+{
+    If '$IsObject(pPayload) Quit ""
+    Set tType = pPayload.%GetTypeOf(..#AUTHEFIELD)
+    If (tType '= "number") && (tType '= "string") Quit ""
+    Set tMask = pPayload.%Get(..#AUTHEFIELD)
+    If '$IsValidNum(tMask) Quit ""
+    If ((tMask \ 1) \ ..#UNAUTHENTICATEDBIT) # 2 Quit ..#CONSEQUENCEUNAUTHENTICATED
+    Quit ""
+}
+
+/// <p>The derived schema with <code>WSGIAppLocation</code> described as the one directory name it
+/// is (AD-21): a name, not a path, placed under the instance's own WSGI directory.</p>
+ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
+{
+    Set tSchema = ##super(pDescriptor)
+    If '$IsObject(tSchema) Quit tSchema
+    If tSchema.%GetTypeOf("properties") '= "object" Quit tSchema
+    Set tProperties = tSchema.%Get("properties")
+    If tProperties.%GetTypeOf(..#WSGILOCATION) '= "object" Quit tSchema
+    Do tProperties.%Get(..#WSGILOCATION).%Set("description", "For a WSGI or ASGI application only: the name of one directory, such as myapp -- letters, digits, dots, dashes and underscores, at most 64 characters. It is placed in this instance's own WSGI directory. A path, or a name containing .., is refused.")
+    Quit tSchema
 }
 
 /// <p>The screen's own field rules (<method>OcuPilot.Area.WebApp.Create.Validate</method>) over the

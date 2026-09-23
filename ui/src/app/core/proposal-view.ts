@@ -17,9 +17,8 @@
  *
  * **The screen's two facts arrive as parameters, not as a module-level lookup.** The singular
  * entity noun and the declared secret argument names both come from the screen mirror, and
- * reading `screens.generated.ts` here would make the masked field untestable until the first real
- * secret ships: no descriptor declares one yet (`Kernel/Proposal/Mint.cls` refuses a secret
- * argument outright), so a test has to be able to supply a screen record as data.
+ * reading `screens.generated.ts` here would tie the masked field's tests to whichever descriptor
+ * declares a secret, so a test supplies a screen record as data.
  */
 
 import { STRINGS } from './strings.ts';
@@ -99,6 +98,23 @@ export interface ProposalCardView {
    * copy and invents no phase -- the row is still live, and a phase is a terminal state.
    */
   readonly refusalReason?: string;
+  /**
+   * The kernel's code for what the write does beyond its diff, or `''`; the wire's own value,
+   * projected the way `auditWarning` is. The card reads it through `consequenceSentence`.
+   */
+  readonly consequence?: string;
+}
+
+/** The consequence the kernel marks a web-application create that admits unauthenticated access with. */
+export const CONSEQUENCE_UNAUTHENTICATED = 'WEBAPP.UNAUTHENTICATED';
+
+/**
+ * The published sentence for a proposal's `consequence` code, or `''` for no code or one this
+ * client publishes nothing for. The sentence is `STRINGS`'; the code is the kernel's (AD-39).
+ */
+export function consequenceSentence(code: string | undefined): string {
+  if (code === CONSEQUENCE_UNAUTHENTICATED) return STRINGS.webAppUnauthenticatedEffect;
+  return '';
 }
 
 /**
@@ -285,7 +301,8 @@ function maskedRow(row: ProposalDiffRow): ProposalDiffRow {
  * declares, `secretArguments` the names that screen declares secret, and everything else is
  * `proposal`'s own -- the instance-computed diff with every declared secret masked on both sides,
  * the unchanged count and the instance's own already-masked unchanged rows, the agent's two
- * blocks, the reversal, the expiry, the audit warning and the tool's destructive declaration.
+ * blocks, the reversal, the expiry, the audit warning, the tool's destructive declaration and the
+ * kernel's consequence code.
  * `maskedFields` is `secretArguments` narrowed to the names this proposal's own payload carries
  * (`payloadSecrets`).
  * `refusalReason` is the envelope's own sentence for a decision the instance refused on a row it
@@ -293,8 +310,7 @@ function maskedRow(row: ProposalDiffRow): ProposalDiffRow {
  * caller's to hold, and nothing here writes it.
  *
  * Both of the screen's facts are parameters rather than a lookup of `screens.generated.ts` here,
- * for the reason the header gives: no shipped descriptor declares a secret argument yet, so a test
- * has to be able to supply one as data.
+ * for the reason the header gives.
  *
  * Nothing here writes a proposal value down (AD-6).
  */
@@ -319,6 +335,7 @@ export function toCardView(
     maskedFields: payloadSecrets(proposal, secretArguments),
     auditWarning: proposal.auditWarning,
     destructive: proposal.destructive,
+    consequence: proposal.consequence,
     refusalReason,
   };
 }
@@ -334,9 +351,9 @@ export function toCardView(
  * restriction rather than a consequence of the merge: `Confirm.WithSecrets` calls `%Set` for every
  * declared name the body supplied, which **adds** one the payload does not carry.
  * The payload's own field names are its diff rows and its unchanged rows -- together the
- * projection of the stored body the instance published (AD-4); a secret is never a diff row,
- * because the mint refuses a secret argument outright, so in practice it is the unchanged half
- * that names one.
+ * projection of the stored body the instance published (AD-4). The mint refuses a secret argument
+ * outright, so an update names a secret in its unchanged half; a create names one as the diff row
+ * the kernel composes for it, masked on both sides.
  */
 function payloadSecrets(
   proposal: TurnProposal,

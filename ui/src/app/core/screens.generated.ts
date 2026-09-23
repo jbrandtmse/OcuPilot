@@ -5783,6 +5783,64 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.UserForm",
+    "route": "permissions/users/edit",
+    "area": "permissions",
+    "labelKey": "userFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "user",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": [
+        "Password"
+      ]
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "classicPage": "%CSP.UI.Portal.User",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "permissions.userform",
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.UserList",
     "route": "permissions/users",
     "area": "permissions",
@@ -5811,7 +5869,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "parts": []
     },
     "primaryAction": {
-      "id": "",
+      "id": "create",
       "selfProtection": ""
     },
     "rowActions": [],
@@ -5827,6 +5885,9 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ],
       "secretFields": []
     },
+    "secretArguments": [
+      "Password"
+    ],
     "emptyStateKey": "userListEmpty",
     "commandAliases": [
       "accounts"
@@ -5919,14 +5980,13 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "identifier"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "userListEmptyAgent"
     },
     "toolIdentifier": "permissions.users",
     "banner": null,
     "tab": null,
     "rowTarget": null,
-    "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },
