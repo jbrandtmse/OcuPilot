@@ -1463,6 +1463,29 @@ export const STRINGS = {
   walletTypeReadOnly: 'Only key-value secrets are edited here.',
   walletTypeElsewhere: 'Manage RSA and symmetric-key secrets through the %Wallet classes. The classic portal has no wallet page.',
 
+  // Story 8.8: the Devices list's agent invitation, the device editor's title, the labels of the
+  // fields the list does not carry, and its type and prompt choices.
+  /** EXPERIENCE.md:417 */
+  deviceListEmptyAgent: 'create a device',
+  /** EXPERIENCE.md:418 */
+  deviceFormLabel: 'Device',
+  deviceFieldOpenParameters: 'Open parameters',
+  deviceFieldAlternate: 'Alternate device',
+  deviceFieldPrompt: 'Prompt',
+  /** EXPERIENCE.md:419 */
+  deviceTypeTerminal: 'Terminal',
+  deviceTypeSpool: 'Spooling device',
+  deviceTypeMagTape: 'Magnetic tape drive',
+  deviceTypeCartridge: 'Cartridge tape drive',
+  deviceTypeIpc: 'Interprocess communication',
+  deviceTypeOther: 'Other',
+  /** EXPERIENCE.md:420 */
+  devicePromptShow: 'Show device prompt',
+  devicePromptAuto: 'Use this device automatically when it is the current device',
+  devicePromptPredefined: 'Use this device automatically with predefined settings',
+  /** EXPERIENCE.md:421 */
+  deviceFormRefusedAction: 'change this device',
+
 } as const;
 
 /**

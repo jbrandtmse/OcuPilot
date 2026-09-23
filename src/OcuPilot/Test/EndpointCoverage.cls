@@ -145,6 +145,10 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/wallet/secret/name" path="/api/ocupilot/wallet/secret/name" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/wallet/secret/:id" path="/api/ocupilot/wallet/secret/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/wallet/secret" path="/api/ocupilot/wallet/secret" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/device/form" path="/api/ocupilot/device/form" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/device/name" path="/api/ocupilot/device/name" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/device/:id" path="/api/ocupilot/device/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/device" path="/api/ocupilot/device" disposition="envelope" refusal="1"/>
 <probe class="Api.Readiness" method="GET" url="/" path="/api/ocupilot/readiness/" disposition="envelope"/>
 <probe class="Api.StaticHandler" method="GET" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>
 <probe class="Api.StaticHandler" method="HEAD" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>

@@ -301,6 +301,32 @@ XData Entries
       "Secret64": "secret",
       "Usage": "ordinary"
     }
+  },
+  "osmgmt.devices.create": {
+    "fieldList": "Device.Standard",
+    "classification": {
+      "Alias": "ordinary",
+      "Description": "ordinary",
+      "OpenParameters": "ordinary",
+      "PhysicalDevice": "ordinary",
+      "AlternateDevice": "ordinary",
+      "Prompt": "ordinary",
+      "SubType": "ordinary",
+      "Type": "ordinary"
+    }
+  },
+  "osmgmt.devices.update": {
+    "fieldList": "Device.Standard",
+    "classification": {
+      "Alias": "ordinary",
+      "Description": "ordinary",
+      "OpenParameters": "ordinary",
+      "PhysicalDevice": "ordinary",
+      "AlternateDevice": "ordinary",
+      "Prompt": "ordinary",
+      "SubType": "ordinary",
+      "Type": "ordinary"
+    }
   }
 }
 }

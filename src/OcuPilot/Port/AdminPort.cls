@@ -192,7 +192,13 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// only the keys the body carries and keeps the stored value when <code>Secret</code> is absent or
 /// empty; and it answers 400 for an unknown key and 422 for an absent collection. The body is a
 /// wrapper (<parameter>WRAPPEDTYPES</parameter>).</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT";
+/// <p><code>Device.Standard/PUT</code> and <code>/DELETE</code> are Story 8.8's device create, edit
+/// and delete. Read on this build: its <code>RunPut</code> modifies a device that exists and otherwise
+/// creates it (an upsert, which the create's absence fingerprint and the edit's fresh read guard,
+/// AD-4, AD-54), setting only the keys the body carries; its <code>NeedsRequestBody()</code> is
+/// <code>..IsTypePut()</code>, so <code>DELETE</code> reads no body; and its <code>RunDelete</code>
+/// answers 404 for an absent device (<parameter>VERIFIEDDELETES</parameter>).</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -208,7 +214,7 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> deletes whose vendor answer does not say whether the
 /// object went, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries. After a 2xx
@@ -219,7 +225,10 @@ Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Secur
 /// status of <code>%SQL.Manager.API.DropUser(name, "ROLE")</code>, which is <code>$$$OK</code>
 /// whether or not the role was dropped (read on this build). That is a wire fact, so it lives here
 /// (AD-27).</p>
-Parameter VERIFIEDDELETES = "Security.Role/DELETE";
+/// <p><code>Device.Standard/DELETE</code> is listed because its <code>RunDelete</code> answers the
+/// status of <code>Config.Devices.Delete</code>, whose body is stripped from this build's export, so
+/// its 200 is not trusted unread.</p>
+Parameter VERIFIEDDELETES = "Security.Role/DELETE,Device.Standard/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> writes whose vendor answer does not say whether the
 /// sent values were stored, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries.
@@ -1704,6 +1713,7 @@ ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, 
     ; own sentence -- so a screen renders it on the field it is about and a tool result renders the
     ; code. The vendor's own text still reaches the log alone, on the line below.
     Set tViolations = ##class(OcuPilot.Api.Error).ViolationsFromVendor(pVendorSC)
+    Do ..PropertyViolations(pEndpoint, pVendorSC, tViolations)
     If (pWrapper '= "") && $IsObject(tViolations) {
         Set tRowIterator = tViolations.%GetIterator()
         While tRowIterator.%GetNext(.tRowIndex, .tRow) {
@@ -1748,6 +1758,45 @@ ClassMethod Denied(pEndpoint As %String, pFailedPair As %String, pVendorSC As %S
     Set tSC = ..Refuse(403, tMapped.error, tMapped.code, tMapped.reason, .pHttpStatus, .pFault, tDetail)
     Do ..LogFault(pEndpoint _ "'s backing query refused a caller holding no pair of the set naming " _ pFailedPair, pVendorSC, pFault.code)
     Quit tSC
+}
+
+/// <p>The vendor class errors that name one property of the object an endpoint saves, as
+/// comma-separated <code>&lt;endpoint&gt;:&lt;vendor code&gt;:&lt;property&gt;=&lt;violation code&gt;</code>
+/// entries (AD-39). Such an error's first parameter is <code>&lt;object&gt;.&lt;property&gt;</code>,
+/// which <method>OcuPilot.Api.Error.ViolationsFromVendor</method> does not read as a body field.</p>
+/// <p><code>Device.Standard:644:OpenParameters</code> is the one entry: <code>Config.Devices</code>
+/// parses a device's open parameters when it saves one and refuses what it cannot parse with error
+/// 644, which the endpoint answers at 500 (read on this build).</p>
+Parameter PROPERTYFAULTS = "Device.Standard:644:OpenParameters=DEVICE.OPENPARAMETERS.SHAPE";
+
+/// <p>Append to <var>pRows</var> one <code>{field, code, reason}</code> row per error in
+/// <var>pVendorSC</var> that <parameter>PROPERTYFAULTS</parameter> names for <var>pEndpoint</var>. The
+/// vendor's own text is not carried; the sentence is OcuPilot's.</p>
+ClassMethod PropertyViolations(pEndpoint As %String, pVendorSC As %Status, pRows As %DynamicArray) [ Private ]
+{
+    Try {
+        If $$$ISOK(pVendorSC) || '$IsObject(pRows) Quit
+        Do $System.Status.DecomposeStatus(pVendorSC, .tErrors, "-d")
+        For tI = 1:1:+$Get(tErrors) {
+            Set tParam = $Get(tErrors(tI, "param", 1))
+            Set tProperty = $Piece(tParam, ".", $Length(tParam, "."))
+            For tJ = 1:1:$Length(..#PROPERTYFAULTS, ",") {
+                Set tEntry = $Piece(..#PROPERTYFAULTS, ",", tJ)
+                Set tKey = $Piece(tEntry, "=", 1)
+                If $Piece(tKey, ":", 1) '= pEndpoint Continue
+                If $Piece(tKey, ":", 2) '= $Get(tErrors(tI, "code")) Continue
+                If $Piece(tKey, ":", 3) '= tProperty Continue
+                Set tCode = $Piece(tEntry, "=", 2)
+                Set tRow = {}
+                Do tRow.%Set("field", tProperty, "string")
+                Do tRow.%Set("code", tCode, "string")
+                Do tRow.%Set("reason", ##class(OcuPilot.Api.Error).ReasonForViolation(tCode), "string")
+                Do pRows.%Push(tRow)
+            }
+        }
+    } Catch {
+        ; A status that cannot be decomposed names no property; the fault keeps its other rows.
+    }
 }
 
 }

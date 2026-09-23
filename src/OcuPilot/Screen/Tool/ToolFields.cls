@@ -10,6 +10,26 @@ Class OcuPilot.Screen.Tool.ToolFields Extends %RegisteredObject
 XData Tools
 {
 {
+"osmgmt.devices.create": {"fieldList":"Device.Standard","fields":[
+  {"path":"Alias","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"OpenParameters","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PhysicalDevice","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"AlternateDevice","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Prompt","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SubType","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Type","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"osmgmt.devices.update": {"fieldList":"Device.Standard","fields":[
+  {"path":"Alias","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"OpenParameters","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PhysicalDevice","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"AlternateDevice","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Prompt","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SubType","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Type","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
 "permissions.resources.create": {"fieldList":"Security.Resource","fields":[
   {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"PublicPermission","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}

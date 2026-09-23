@@ -16,6 +16,7 @@ import { RoleCreateForm } from './areas/permissions/role-create-form.store';
 import { ResourceEditor } from './areas/permissions/resource-editor.store';
 import { WalletSecretForm } from './areas/security/wallet-secret-form.store';
 import { X509Form } from './areas/security/x509-form.store';
+import { DeviceForm } from './areas/os-management/device-form.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
@@ -1054,6 +1055,13 @@ describe('the shell frame', () => {
     walletSecretForm.setSecret('a-value-this-principal-typed');
     expect(walletSecretForm.secretText()).not.toBe('');
 
+    // The same answer for the device editor (Story 8.8): a device THIS principal typed and has not
+    // saved, in a root-provided store. A create takes input before its form read is made.
+    const deviceForm = TestBed.inject(DeviceForm);
+    deviceForm.setValue('Name', 'a-device-this-principal-typed');
+    deviceForm.setValue('PhysicalDevice', '/tmp/a-path-this-principal-typed');
+    expect(deviceForm.value('Name')).not.toBe('');
+
     // The ninth answer of the same kind (Story 3.6, AC5). Whether the instance holds an enabled
     // definition is a read THIS principal made, and the panel and the rail's dot pick an audience
     // from it. Left standing, the next principal's first paint shows an administrator's reminder
@@ -1110,6 +1118,11 @@ describe('the shell frame', () => {
     // Mutation (Rule 19): delete `this.walletSecretForm.reset()` from `App.verifyWhenSignedIn` ->
     // this goes red, and the next principal's wallet form holds the previous one's typed value.
     expect(walletSecretForm.secretText()).toBe('');
+
+    // Mutation (Rule 19): delete `this.deviceForm.reset()` from `App.verifyWhenSignedIn` -> these
+    // two go red, and the next principal's device editor holds the previous one's typed device.
+    expect(deviceForm.value('Name')).toBe('');
+    expect(deviceForm.value('PhysicalDevice')).toBe('');
 
     expect(scope.resets).toBe(1);
     // The fourth answer of the same kind (Story 1.13). A re-read parked with connectivity is a

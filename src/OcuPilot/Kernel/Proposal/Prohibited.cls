@@ -135,7 +135,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -149,6 +149,8 @@ Parameter TYPERESOURCE = "resource";
 Parameter TYPEX509 = "x509-credential";
 
 Parameter TYPEWALLETSECRET = "wallet-secret";
+
+Parameter TYPEDEVICE = "device";
 
 Parameter TYPEAUDITING = "auditing-configuration";
 
@@ -311,6 +313,8 @@ ClassMethod CoveredTypes() As %List
 /// <code>AllowedHosts</code> and its value, <code>Secret</code>: a template field the edit declares
 /// secret, which the confirm supplies from the card and the stored payload never carries. Its
 /// <code>Type</code> is the fresh read's and no caller changes it.</p>
+/// <p>A device's eight are every field of its classic page but its name (<method>DeviceFields</method>);
+/// the name is its id and never changes.</p>
 /// <p>The auditing configuration's one is <code>Enabled</code>, and it carries <b>no</b> asymmetric
 /// predicate: AD-10 does not forbid turning auditing off, and the product's answer to it is the
 /// card's warning, the recorded drop and the banner rather than a refusal (AD-15 as amended
@@ -328,6 +332,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPERESOURCE Quit $ListBuild("Description", ..#FIELDPUBLICPERMISSION)
     If pType = ..#TYPEX509 Quit $ListBuild("OwnerList", "PeerNames")
     If pType = ..#TYPEWALLETSECRET Quit $ListBuild("Usage", "RequireTLS", "AllowedHosts", "Secret")
+    If pType = ..#TYPEDEVICE Quit ..DeviceFields()
     Quit ""
 }
 
@@ -388,6 +393,7 @@ ClassMethod AlwaysProhibitedFields(pType As %String) As %List
 /// The value is a template field the create declares secret: the confirm supplies it from the card
 /// and the stored payload never carries it. Its <code>Type</code> is derived by the tool after this
 /// set has answered.</p>
+/// <p>A device's eight are the same as a change's (<method>DeviceFields</method>).</p>
 ClassMethod PermittedCreateFields(pType As %String) As %List
 {
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "DispatchClass", "Enabled", "MatchRoles", "NameSpace", "Recurse", "Resource", "WSGIAppLocation", "WSGIAppName", "WSGICallable", "WSGIType")
@@ -396,6 +402,7 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPERESOURCE Quit $ListBuild("Description", ..#FIELDPUBLICPERMISSION)
     If pType = ..#TYPEX509 Quit $ListBuild("OwnerList", "PeerNames", "PrivateKeyPassword")
     If pType = ..#TYPEWALLETSECRET Quit $ListBuild("Usage", "RequireTLS", "AllowedHosts", "Secret")
+    If pType = ..#TYPEDEVICE Quit ..DeviceFields()
     Quit ""
 }
 
@@ -466,7 +473,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -521,6 +528,10 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         If tType = ..#TYPEWALLETSECRET {
             Set tSC = ..ReviewedFewOnly(..#TYPEWALLETSECRET, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPEDEVICE {
+            Set tSC = ..Device($Get(tToolClass), .tChanged, .pProhibits, .pCode)
             Quit
         }
         If tType = ..#TYPEAUDITING {
@@ -1044,6 +1055,25 @@ ClassMethod X509(pToolClass As %String, ByRef pChanged, Output pProhibits As %Bo
 {
     If ..WriteTypeOf(pToolClass) = "DELETE" Kill pChanged
     Quit ..ReviewedFewOnly(..#TYPEX509, .pChanged, .pProhibits, .pCode)
+}
+
+/// <p>The device predicates: the reviewed-few sweep and nothing else. OcuPilot creates and relies on
+/// no device, so none is its own and AD-10 names no effect on one; a stock device's delete is the
+/// destructive treatment's, not a refusal.</p>
+/// <p>A <code>DELETE</code> sends no body (AD-51), and its card rows are removals read from the
+/// fresh read, so it reaches the sweep with nothing changed. <var>pToolClass</var> is the
+/// proposal's tool.</p>
+ClassMethod Device(pToolClass As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    If ..WriteTypeOf(pToolClass) = "DELETE" Kill pChanged
+    Quit ..ReviewedFewOnly(..#TYPEDEVICE, .pChanged, .pProhibits, .pCode)
+}
+
+/// <p>A device's settable fields, create and change alike: the eight
+/// <code>Device.Standard</code> template fields, the name excluded.</p>
+ClassMethod DeviceFields() As %List [ Private ]
+{
+    Quit $ListBuild("PhysicalDevice", "Type", "SubType", "OpenParameters", "Description", "Alias", "AlternateDevice", "Prompt")
 }
 
 /// <p>The process predicates, in declared order, first hit wins: a process OcuPilot is itself

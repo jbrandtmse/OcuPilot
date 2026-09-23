@@ -1843,6 +1843,62 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.DeviceForm",
+    "route": "os-management/devices/edit",
+    "area": "os-management",
+    "labelKey": "deviceFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "device",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "classicPage": "%CSP.UI.Portal.Config.Device",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "osmgmt.deviceform",
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.DeviceList",
     "route": "os-management/devices",
     "area": "os-management",
@@ -1871,7 +1927,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "parts": []
     },
     "primaryAction": {
-      "id": "",
+      "id": "create",
       "selfProtection": ""
     },
     "rowActions": [],
@@ -1967,8 +2023,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "number"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "deviceListEmptyAgent"
     },
     "toolIdentifier": "osmgmt.devices",
     "banner": null,

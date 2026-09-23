@@ -1158,6 +1158,28 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#WALLETUSAGERANGE Quit ..#REASONWALLETUSAGERANGE
     If pCode = ..#WALLETALLOWEDHOSTSSHAPE Quit ..#REASONWALLETALLOWEDHOSTSSHAPE
     If pCode = ..#WALLETTYPEUNSUPPORTED Quit ..#REASONWALLETTYPEUNSUPPORTED
+    If pCode = ..#DEVICENAMEREQUIRED Quit ..#REASONDEVICENAMEREQUIRED
+    If pCode = ..#DEVICENAMELENGTH Quit ..#REASONDEVICENAMELENGTH
+    If pCode = ..#DEVICENAMESHAPE Quit ..#REASONDEVICENAMESHAPE
+    If pCode = ..#DEVICENAMETAKEN Quit ..#REASONDEVICENAMETAKEN
+    If pCode = ..#DEVICENAMEABSENT Quit ..#REASONDEVICENAMEABSENT
+    If pCode = ..#DEVICEPHYSICALDEVICEREQUIRED Quit ..#REASONDEVICEPHYSICALDEVICEREQUIRED
+    If pCode = ..#DEVICEPHYSICALDEVICELENGTH Quit ..#REASONDEVICEPHYSICALDEVICELENGTH
+    If pCode = ..#DEVICEPHYSICALDEVICESHAPE Quit ..#REASONDEVICEPHYSICALDEVICESHAPE
+    If pCode = ..#DEVICETYPEREQUIRED Quit ..#REASONDEVICETYPEREQUIRED
+    If pCode = ..#DEVICETYPEVALUE Quit ..#REASONDEVICETYPEVALUE
+    If pCode = ..#DEVICESUBTYPEREQUIRED Quit ..#REASONDEVICESUBTYPEREQUIRED
+    If pCode = ..#DEVICESUBTYPEABSENT Quit ..#REASONDEVICESUBTYPEABSENT
+    If pCode = ..#DEVICEOPENPARAMETERSLENGTH Quit ..#REASONDEVICEOPENPARAMETERSLENGTH
+    If pCode = ..#DEVICEOPENPARAMETERSSHAPE Quit ..#REASONDEVICEOPENPARAMETERSSHAPE
+    If pCode = ..#DEVICEDESCRIPTIONLENGTH Quit ..#REASONDEVICEDESCRIPTIONLENGTH
+    If pCode = ..#DEVICEDESCRIPTIONSHAPE Quit ..#REASONDEVICEDESCRIPTIONSHAPE
+    If pCode = ..#DEVICEALTERNATEDEVICELENGTH Quit ..#REASONDEVICEALTERNATEDEVICELENGTH
+    If pCode = ..#DEVICEALTERNATEDEVICESHAPE Quit ..#REASONDEVICEALTERNATEDEVICESHAPE
+    If pCode = ..#DEVICEALIASSHAPE Quit ..#REASONDEVICEALIASSHAPE
+    If pCode = ..#DEVICEALIASTAKEN Quit ..#REASONDEVICEALIASTAKEN
+    If pCode = ..#DEVICEALIASSAME Quit ..#REASONDEVICEALIASSAME
+    If pCode = ..#DEVICEPROMPTVALUE Quit ..#REASONDEVICEPROMPTVALUE
     If pCode = ..#PORTFIELDREQUIRED Quit ..#REASONPORTFIELDREQUIRED
     If pCode = ..#PORTFIELDUNEXPECTED Quit ..#REASONPORTFIELDUNEXPECTED
     If pCode = ..#PORTFIELDSHAPE Quit ..#REASONPORTFIELDSHAPE
@@ -1208,6 +1230,13 @@ ClassMethod X509ViolationCodes() As %List
 ClassMethod WalletViolationCodes() As %List
 {
     Quit $ListBuild(..#WALLETNAMEREQUIRED, ..#WALLETNAMESHAPE, ..#WALLETNAMELENGTH, ..#WALLETNAMETAKEN, ..#WALLETNAMEABSENT, ..#WALLETCOLLECTIONABSENT, ..#WALLETSECRETREQUIRED, ..#WALLETSECRETLENGTH, ..#WALLETUSAGERANGE, ..#WALLETALLOWEDHOSTSSHAPE, ..#WALLETTYPEUNSUPPORTED)
+}
+
+/// <p>Every <code>DEVICE.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod DeviceViolationCodes() As %List
+{
+    Quit $ListBuild(..#DEVICENAMEREQUIRED, ..#DEVICENAMELENGTH, ..#DEVICENAMESHAPE, ..#DEVICENAMETAKEN, ..#DEVICENAMEABSENT, ..#DEVICEPHYSICALDEVICEREQUIRED, ..#DEVICEPHYSICALDEVICELENGTH, ..#DEVICEPHYSICALDEVICESHAPE, ..#DEVICETYPEREQUIRED, ..#DEVICETYPEVALUE, ..#DEVICESUBTYPEREQUIRED, ..#DEVICESUBTYPEABSENT, ..#DEVICEOPENPARAMETERSLENGTH, ..#DEVICEOPENPARAMETERSSHAPE, ..#DEVICEDESCRIPTIONLENGTH, ..#DEVICEDESCRIPTIONSHAPE, ..#DEVICEALTERNATEDEVICELENGTH, ..#DEVICEALTERNATEDEVICESHAPE, ..#DEVICEALIASSHAPE, ..#DEVICEALIASTAKEN, ..#DEVICEALIASSAME, ..#DEVICEPROMPTVALUE)
 }
 
 /// <p>Every <code>AGENT.*</code> field-level violation code that carries a sentence, as a
@@ -2085,6 +2114,131 @@ Parameter REASONWALLETALLOWEDHOSTSSHAPE = "Each allowed host is a name or addres
 Parameter WALLETTYPEUNSUPPORTED = "WALLET.TYPE.UNSUPPORTED";
 
 Parameter REASONWALLETTYPEUNSUPPORTED = "Only key-value secrets are edited here.";
+
+/// <p>Envelope code (AD-39): a device's create or edit broke one or more of the rules
+/// <class>OcuPilot.Area.OsMgmt.DeviceRules</class> applies before the port is touched, or the
+/// instance could not read its open parameters. Rendered on the <parameter>VALIDATIONFAILED</parameter>
+/// slug with every violation in <code>detail.violations</code>.</p>
+Parameter DEVICEVALIDATION = "DEVICE.VALIDATION";
+
+Parameter REASONDEVICEVALIDATION = "The device was refused.";
+
+/// <p>Violation code: no name was supplied.</p>
+Parameter DEVICENAMEREQUIRED = "DEVICE.NAME.REQUIRED";
+
+Parameter REASONDEVICENAMEREQUIRED = "Give the device a name.";
+
+/// <p>Violation code: the name is longer than <class>Config.Devices</class> stores.</p>
+Parameter DEVICENAMELENGTH = "DEVICE.NAME.LENGTH";
+
+Parameter REASONDEVICENAMELENGTH = "A device name is at most 64 characters.";
+
+/// <p>Violation code: the name holds a <code>^</code>, an <code>=</code> or a control character,
+/// which the instance writes raw into its configuration file.</p>
+Parameter DEVICENAMESHAPE = "DEVICE.NAME.SHAPE";
+
+Parameter REASONDEVICENAMESHAPE = "A device name has no ^, no = and no control character.";
+
+/// <p>Violation code: a device already carries that name, compared exactly, case included.
+/// <code>GET /device/name</code> answers it on blur.</p>
+Parameter DEVICENAMETAKEN = "DEVICE.NAME.TAKEN";
+
+Parameter REASONDEVICENAMETAKEN = "This instance already has a device with that name. Choose a different one.";
+
+/// <p>Violation code: an edit or a form read names a device this instance does not hold. Rendered at
+/// 404.</p>
+Parameter DEVICENAMEABSENT = "DEVICE.NAME.ABSENT";
+
+Parameter REASONDEVICENAMEABSENT = "This instance has no device with that name.";
+
+/// <p>Violation code: a create carried no physical device name, or an edit emptied it.</p>
+Parameter DEVICEPHYSICALDEVICEREQUIRED = "DEVICE.PHYSICALDEVICE.REQUIRED";
+
+Parameter REASONDEVICEPHYSICALDEVICEREQUIRED = "Give the physical device name.";
+
+/// <p>Violation code: the physical device name is longer than <class>Config.Devices</class>
+/// stores.</p>
+Parameter DEVICEPHYSICALDEVICELENGTH = "DEVICE.PHYSICALDEVICE.LENGTH";
+
+Parameter REASONDEVICEPHYSICALDEVICELENGTH = "A physical device name is at most 128 characters.";
+
+/// <p>Violation code: the physical device name holds a <code>^</code> or a control character.</p>
+Parameter DEVICEPHYSICALDEVICESHAPE = "DEVICE.PHYSICALDEVICE.SHAPE";
+
+Parameter REASONDEVICEPHYSICALDEVICESHAPE = "A physical device name has no ^ and no control character.";
+
+/// <p>Violation code: a create carried no type, or an edit emptied it.</p>
+Parameter DEVICETYPEREQUIRED = "DEVICE.TYPE.REQUIRED";
+
+Parameter REASONDEVICETYPEREQUIRED = "Choose the device's type.";
+
+/// <p>Violation code: the type is not one of the six the classic device page offers.</p>
+Parameter DEVICETYPEVALUE = "DEVICE.TYPE.VALUE";
+
+Parameter REASONDEVICETYPEVALUE = "A device's type is one of TRM, SPL, MT, BT, IPC or OTH.";
+
+/// <p>Violation code: a create carried no subtype, or an edit emptied it.</p>
+Parameter DEVICESUBTYPEREQUIRED = "DEVICE.SUBTYPE.REQUIRED";
+
+Parameter REASONDEVICESUBTYPEREQUIRED = "Choose the device's subtype.";
+
+/// <p>Violation code: the subtype is not one this instance defines.</p>
+Parameter DEVICESUBTYPEABSENT = "DEVICE.SUBTYPE.ABSENT";
+
+Parameter REASONDEVICESUBTYPEABSENT = "This instance has no subtype with that name. Choose one from the list.";
+
+/// <p>Violation code: the open parameters are longer than <class>Config.Devices</class> stores.</p>
+Parameter DEVICEOPENPARAMETERSLENGTH = "DEVICE.OPENPARAMETERS.LENGTH";
+
+Parameter REASONDEVICEOPENPARAMETERSLENGTH = "Open parameters are at most 128 characters.";
+
+/// <p>Violation code: the open parameters hold a <code>^</code> or a control character, or the
+/// instance could not parse them (its error 644, mapped at the port).</p>
+Parameter DEVICEOPENPARAMETERSSHAPE = "DEVICE.OPENPARAMETERS.SHAPE";
+
+Parameter REASONDEVICEOPENPARAMETERSSHAPE = "This instance cannot use these open parameters. Write them as the OPEN command takes them, with no ^ and no control character.";
+
+/// <p>Violation code: the description is longer than <class>Config.Devices</class> stores.</p>
+Parameter DEVICEDESCRIPTIONLENGTH = "DEVICE.DESCRIPTION.LENGTH";
+
+Parameter REASONDEVICEDESCRIPTIONLENGTH = "A description is at most 256 characters.";
+
+/// <p>Violation code: the description holds a <code>^</code> or a control character.</p>
+Parameter DEVICEDESCRIPTIONSHAPE = "DEVICE.DESCRIPTION.SHAPE";
+
+Parameter REASONDEVICEDESCRIPTIONSHAPE = "A description has no ^ and no control character.";
+
+/// <p>Violation code: the alternate device is longer than <class>Config.Devices</class> stores.</p>
+Parameter DEVICEALTERNATEDEVICELENGTH = "DEVICE.ALTERNATEDEVICE.LENGTH";
+
+Parameter REASONDEVICEALTERNATEDEVICELENGTH = "An alternate device is at most 128 characters.";
+
+/// <p>Violation code: the alternate device holds a <code>^</code> or a control character.</p>
+Parameter DEVICEALTERNATEDEVICESHAPE = "DEVICE.ALTERNATEDEVICE.SHAPE";
+
+Parameter REASONDEVICEALTERNATEDEVICESHAPE = "An alternate device has no ^ and no control character.";
+
+/// <p>Violation code: the alias is not a whole number of at least 1. The instance would store a
+/// fraction truncated.</p>
+Parameter DEVICEALIASSHAPE = "DEVICE.ALIAS.SHAPE";
+
+Parameter REASONDEVICEALIASSHAPE = "An alias is a whole number of at least 1.";
+
+/// <p>Violation code: another device already carries that alias. <class>Config.Devices</class>
+/// requires aliases to be unique and does not enforce it.</p>
+Parameter DEVICEALIASTAKEN = "DEVICE.ALIAS.TAKEN";
+
+Parameter REASONDEVICEALIASTAKEN = "Another device already has that alias. Choose a different one.";
+
+/// <p>Violation code: the alias equals the physical device name, which the instance refuses.</p>
+Parameter DEVICEALIASSAME = "DEVICE.ALIAS.SAME";
+
+Parameter REASONDEVICEALIASSAME = "An alias cannot be the same as the physical device name.";
+
+/// <p>Violation code: the prompt is not empty, 1 or 2.</p>
+Parameter DEVICEPROMPTVALUE = "DEVICE.PROMPT.VALUE";
+
+Parameter REASONDEVICEPROMPTVALUE = "Choose one of the prompt options.";
 
 /// <p>Violation code (AD-39): the vendor refused the request because a body field it requires was
 /// absent. Produced at the port boundary by <method>ViolationsFromVendor</method>, on the field the

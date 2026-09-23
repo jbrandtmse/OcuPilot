@@ -2,7 +2,7 @@
 title: 'Story 8.8: The device editor'
 type: 'feature'
 created: '2026-09-23'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'd3c75c3b598b9c31982c853ec86441a7a6ad100f'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -21,6 +21,16 @@ deferred:
       is never-edit for this story.
     location: >-
       src/OcuPilot/Kernel/Proposal/Mint.cls
+    severity: low
+  - summary: >-
+      The browser AC2 list leg cannot see the device form store's change event: while the form is the
+      open screen no list is bound to the bus, so the list reads on arrival whether or not Save published.
+    evidence: |-
+      RefreshService binds list-page alone and unbinds on its destroy; the toast store skips a change the open screen (the form, type device) shows.
+      Mutation: the store's publish short-circuited, deployed main-LENNPPQ4.js -> device-editor browser spec 4 of 4 green.
+      The publish is pinned by device-form.store.spec.ts's create and edit legs (observed red).
+    location: >-
+      ui/browser/device-editor.browser-spec.mjs
     severity: low
 ---
 
@@ -265,8 +275,8 @@ These files are in Epic 7's diff and not on the contended list:
 
 ### Orchestrator ruling on the implement halt, 2026-09-23 (work these first)
 
-- [ ] [Lead] **AD-8, option 1 (AD-8 amended by the lead; the one named case).** Keep the built design: the three device tools declare `%DB_IRISSYS:WRITE` beyond the screen's read-only set, refused by name before any port call. This supersedes the Tasks line that said to add the pair to both descriptors -- the descriptors keep their two read pairs and `Test/WireSecurityRead.cls` takes no principal change. Tests that fail when it is wrong: a principal holding only the screen's declared set gets 403 naming the pair on the screen's Save AND on the agent's confirm, with **no port call made** (assert on the port, not only the status); a principal that also holds `%DB_IRISSYS:WRITE` succeeds; the read-only Devices list still opens for a principal without it.
-- [ ] [Lead] **The two browser mutations that stayed green** (the deep-link leg; the list leg with the change-bus publish dropped). For each, rebuild and redeploy the bundle into `ocupilot-b-ci` with the mutation applied, and confirm the deployed bundle carries it before running the spec. Then either it reddens (the leg is load-bearing; record the row), or the leg truly cannot see that failure -- strengthen it until it can, or record in `## Verification` exactly why it is not load-bearing and put a `deferred:` entry for the lead. Never delete either leg.
+- [x] [Lead] **AD-8, option 1 (AD-8 amended by the lead; the one named case).** Keep the built design: the three device tools declare `%DB_IRISSYS:WRITE` beyond the screen's read-only set, refused by name before any port call. This supersedes the Tasks line that said to add the pair to both descriptors -- the descriptors keep their two read pairs and `Test/WireSecurityRead.cls` takes no principal change. Tests that fail when it is wrong: a principal holding only the screen's declared set gets 403 naming the pair on the screen's Save AND on the agent's confirm, with **no port call made** (assert on the port, not only the status); a principal that also holds `%DB_IRISSYS:WRITE` succeeds; the read-only Devices list still opens for a principal without it.
+- [x] [Lead] **The two browser mutations that stayed green** (the deep-link leg; the list leg with the change-bus publish dropped). For each, rebuild and redeploy the bundle into `ocupilot-b-ci` with the mutation applied, and confirm the deployed bundle carries it before running the spec. Then either it reddens (the leg is load-bearing; record the row), or the leg truly cannot see that failure -- strengthen it until it can, or record in `## Verification` exactly why it is not load-bearing and put a `deferred:` entry for the lead. Never delete either leg.
 
 ### Acceptance Criteria
 
@@ -286,6 +296,27 @@ These files are in Epic 7's diff and not on the contended list:
 - 2026-09-23, spec gate: the screen's device delete went to DW-1562 (orchestrator ruling (a)); the agent delete ships here.
 
 ## Review Triage Log
+
+### 2026-09-23 — Review pass
+
+- verdicts: 16 findings — high 0, medium 6, low 7, false 3, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The sign-out test did not assert `DeviceForm`'s reset, as it does every sibling form's — seed and assertion added to `app.spec.ts` with its mutation row.
+  - `[medium]` `[patch]` A Save refused 403 `AUTH.NOPRIVILEGE` naming `%DB_IRISSYS:WRITE` was never rendered in a client test — page spec leg added in both modes, with its mutation row.
+  - `[low]` `[patch]` AC2's and AC4's agent halves had no `mutation:` row — `CHANGEACTION` blanked and the confirm's fingerprint refusal disabled (container only), each observed red, rows added.
+  - `[medium]` `[patch]` The agent half of the unparsable-open-parameters row had no test — `DeviceCreate.TestUnparsableOpenParametersFailTheAgentsConfirm` added: the confirm fails with no vendor text, one refused PUT, no device.
+  - `[low]` `[patch]` An edit's refused Save read "to create a device" — `deviceFormRefusedAction` "change this device" added (strings and Fixed strings row) and used in edit mode.
+  - `[medium]` `[patch]` Agent side of the unparsable open parameters untested (same root as the row above) — covered by the same new test.
+  - `[medium]` `[patch]` The agent delete's "deleted since" 409 was untested — `DeviceDelete.TestADeviceDeletedSinceTheMintRefusesTheConfirm` added, asserting no `DELETE` reaches the port.
+  - `[low]` `[patch]` The list's reaction to the agent's confirms is checked only through the change action (same root as the missing agent-half mutation rows) — rows added; the browser list leg's limit was already in `deferred:`.
+  - `[low]` `[patch]` The server's one-body test sent seven fields, not the matrix's eight — `AlternateDevice` added and all eight asserted at the port from both callers.
+  - `[false]` `[reject]` The screen and agent keep separate code paths — the spec's Tasks prescribe `DeviceSave` on the `X509Save` template; the one-body test pins the shared result.
+  - `[low]` `[reject]` No test drives an agent navigation against a dirty device form — the shared `FormDirty` leave guard answers agent navigation for every form; the page spec pins that `change` sets it.
+  - `[false]` `[reject]` An object or array value is refused `PORT.FIELD.SHAPE`, not `DEVICE.*` — the matrix's field rules cover scalar values only; non-scalar shapes are the shared port refusal.
+  - `[low]` `[reject]` Rule text repeated in the agent schema descriptions, and an inline delete problem sentence — the descriptions are model-facing input docs, not refusal sentences; the inline one fires only if the vendor omits `PhysicalDevice`, as in `X509Delete`.
+  - `[medium]` `[patch]` Client rendering of the write-pair refusal untested (same root as the second row) — covered by the same page spec leg.
+  - `[false]` `[reject]` `PROPERTYFAULTS` is a general port mechanism beyond the lists — the spec's Code Map names `AdminPort.Fail` as where vendor error 644 is mapped; not AD-27 completion.
+  - `[low]` `[reject]` `Test/Descriptor.cls`'s DeviceList message "no other screen names this entity type" is stale now that `DeviceForm` declares `device` — message text in an Epic 7-modified contended file, where the roster rule forbids changing an assertion.
 
 ## Design Notes
 
@@ -386,7 +417,7 @@ Observed. Each ObjectScript mutation was loaded into `ocupilot-b-ci` from a scra
 - mutation: the `^` test dropped from `DeviceRules.Writable` → `DeviceCreate.TestEveryFieldRuleRefusesOnBothCallers` red on every `^` case (run 243) and `DeviceWire.TestACaretIsRefusedAndTheConfigurationFileStaysValid` red, `Config.CPF.Validate` failing (run 244); the file validated again after cleanup (AC3)
 - mutation: the type-value rule disabled → `DeviceCreate` red on `ZZZ` and `trm` (run 245); the alias-taken rule disabled → red on the duplicate (run 246); a fraction admitted by `WholeNumber` → red on `1.5` (run 247) (AD-55 rules)
 - mutation: `DeviceSave.Update` ignoring a fresh read that finds no device → `DeviceUpdate.TestADeletedDeviceIsRefusedAndNotRecreated` red (run 248) and `DeviceWire`'s envelope and upsert legs red (run 249) (AC4)
-- mutation: `%Admin_Manage` dropped from `DeviceForm`'s privileges → `DeviceWire.TestACallerWithoutTheManageResourceIsRefusedOnEveryRoute` red (run 250) (AC5); the browser deep-link leg was not mutated
+- mutation: `%Admin_Manage` dropped from `DeviceForm`'s privileges → `DeviceWire.TestACallerWithoutTheManageResourceIsRefusedOnEveryRoute` red (run 250) (AC5)
 - mutation: the store's `change` clearing `FormDirty` → `device-form.page.spec.ts` AC6 red (AC6)
 - mutation: `Device.Standard/DELETE` removed from `VERIFIEDDELETES` → `DeviceDelete.TestAReportedDeleteThatLeftTheDeviceIsNotApplied` red (run 251) (verified delete)
 - mutation: `Mint.Mint`'s refusal of an absent target removed, in the container only → `DeviceDelete.TestAnUnknownNameIsRefusedAtTheMint` red (run 252) (the delete's unknown-name refusal)
@@ -396,26 +427,28 @@ Observed. Each ObjectScript mutation was loaded into `ocupilot-b-ci` from a scra
 - mutation: `DeviceSave.Update` validating the whole body → `DeviceUpdate.TestTheRulesReadOnlyTheFieldsAnEditChanges` red (run 256); composing instead of `Mint.Merge` → `TestAnEditSendsTheCompleteSetOnBothCallers` red (run 257) (Always: changed fields only; complete set)
 - mutation: `DeviceSave.Gate` skipping the write pair → `DeviceWire.TestTheFormsPairsAloneReadButCannotSave` red, the Save answering 500 (run 258) (AD-29)
 - mutation (one rebuilt, redeployed bundle): the route replacement dropped and `change` clearing `FormDirty` → browser AC2 and AC6 red, AC1 and AC5 green; the restored bundle 6 of 6 green
+- mutation: `DeviceSave.Gate` skipping the write pair → `DeviceWriteGate.TestTheScreensPairsAloneAreRefusedTheWriteBeforeAnyPortCall` red on the screen's create and edit legs alone, each reaching the recording port (run 206) (AD-8, screen Save)
+- mutation: the write pair dropped from `PrivilegePairs` in `DeviceCreate`, `DeviceUpdate` and `DeviceDelete` → the same test red on the three confirm legs alone (run 207) (AD-8, agent confirm)
+- mutation: `%DB_IRISSYS:WRITE` added to `DeviceList`'s privileges → `DeviceWriteGate.TestTheDevicesListStillOpensWithoutTheWritePair` red, the list read 403 naming the pair (run 208) (AD-8, read-only list)
+- mutation: the three tools' `WRITERESOURCE`/`WRITEPERMISSION` set to `%Admin_Secure`/`USE` → `DeviceWriteGate.TestTheWritePairAddedLetsBothCallersWrite` red on all five legs (run 209); restored green (run 210) (AD-8, write pair suffices)
+- mutation (redeployed `main-MSPPWKHD.js`, whose deployed device-form mirror entry reads `privileges:[{resource:"%DB_IRISSYS",permission:"READ"}]`; `DeviceForm.cls` loaded with the same change): `%Admin_Manage` dropped from `DeviceForm`'s privileges → browser AC5 red, the screen-wide denial never rendering, AC1, AC2 and AC6 green; the restored bundle (`main-AT5FVDOS.js`) 4 of 4 green (AC5)
+- mutation (redeployed `main-LENNPPQ4.js`, whose deployed device store reads `publish(t,e){t===""||t!==""||...}`): `publish` short-circuited in the store's `save()` → browser AC2 green, 4 of 4, not load-bearing for the event (ledgered in `deferred:`); the restored bundle 4 of 4 green (AC2)
+- mutation: `this.deviceForm.reset()` deleted from `App.verifyWhenSignedIn` → `app.spec.ts` sign-out test red on the device form's typed name (sign-out teardown)
+- mutation: `rememberRefusal` reading `detail.missingPair` → `device-form.page.spec.ts` write-pair refusal leg red, the banner reading the envelope's reason; the create's action resolved in both modes → the same leg red on the edit's banner (AD-8, client)
+- mutation (container only): `DeviceRules.Shape` dropping `AlternateDevice` → `DeviceCreate.TestACreateSendsOneBodyFromBothCallers` red on both callers' bodies and the stored alternate (run 216) (eight fields)
+- mutation (container only): `AdminPort.Fail` answering the vendor's error text as the fault code → `DeviceCreate.TestUnparsableOpenParametersFailTheAgentsConfirm` red alone (run 217) (open parameters row, agent)
+- mutation (container only): `Confirm`'s `If 'tMatches` refusal disabled → `DeviceDelete.TestADeviceDeletedSinceTheMintRefusesTheConfirm` red, a `DELETE` reaching the port, and `TestADeviceChangedSinceTheMintRefusesTheConfirm` red (run 218); `DeviceUpdate.TestADeletedDeviceIsRefusedAndNotRecreated` red, the upsert re-creating the device (run 219) (AC4 agent half; agent delete deleted-since)
+- mutation (container only): `CHANGEACTION` blanked in the three device tools → `DeviceDelete.TestTheCardListsWhatGoesAndAConfirmDeletes` red on `deleted` (run 220), `DeviceCreate.TestACreateSendsOneBodyFromBothCallers` red on `created` (run 221), `DeviceUpdate.TestAnEditSendsTheCompleteSetOnBothCallers` red on `updated` (run 222); restored green (runs 223-225) (AC2 agent half)
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: AD-8 against Tasks (`%DB_IRISSYS:WRITE`); footprint `src/OcuPilot/Test/WireSecurityRead.cls`, `src/OcuPilot/Screen/Area.cls`
+Status: done
+Blocking condition: none
 
-For the lead's ruling:
+- **Change.** The device editor (Story 8.8): `DeviceRules` and `DeviceSave` screen routes, `osmgmt.devices.create`/`.update`/`.delete`, `DeviceForm` and the list's Create, the `DEVICE.*` codes, the port lists and `PROPERTYFAULTS`, the prohibited-set `device` type, the client store, page and Create handler, and their tests. Implemented in the first pass; this pass worked the two halt-ruling items, the review layers and finalize.
+- **Halt-ruling items.** AD-8: `Test/DeviceWriteGate.cls` (with `DeviceWriteGateProbe`) runs the screen's Save and the agent's confirm as real principals in a child process; with the screen's pairs alone every leg answers 403 naming `%DB_IRISSYS:WRITE` and the recording port sees no call, reads included; with the pair every leg writes; the Devices list opens without it. Browser: the deep-link leg reddened on a redeployed mutated bundle; the list leg cannot see the store's publish (recorded in `## Verification` and `deferred:`).
+- **Review.** 16 findings: 10 patched in 6 entries (4 medium, 2 low), 6 rejected with reasons in the triage log, none deferred. Patches: the device form's sign-out reset asserted; the write-pair refusal rendered in both modes with a new `deviceFormRefusedAction`; agent legs for unparsable open parameters and delete-after-delete; all eight fields in the one-body test; the missing agent-half mutation rows. Follow-up review: `false` (every patch is a test or a string choice, each observed red under its mutation, and the sweep ran after the last edit).
+- **Verification**, after the last edit, on a throwaway brought up fresh: the full ObjectScript sweep 205 classes, 1809 tests, 0 failed (`%UnitTest_Result`: 1809 passed, 0 failed, 205 classes); `npm run build` green, initial total 1,248,521 B (under 1,261,000; no re-base); `npm test` 1326 tools tests and 919 component tests green; `scripts/smoke.sh` 47 of 47; the two device browser specs 6 of 6 on the deployed build; `lint-docs` clean; `iris.cpf` validates and names no probe device.
+- **Residual risk.** The agent's update cannot clear a set Alias or Prompt, and the browser list leg cannot observe the store's change event (both in `deferred:`).
 
-- **What the instance requires.** A real principal holding exactly `DeviceForm`'s pairs (`%Admin_Manage:USE`, `%DB_IRISSYS:READ`) is refused by `Config.Devices` on every write (`<PROTECT>` on `^SYS("CONFIG",...)`, a 500).
-- **Why Tasks cannot be followed in this footprint.** Tasks says to add the refused pair to both descriptors (AD-29). `Screen.Gate.EvaluatePairs` requires the area's whole union, and `Registry.AreaCoverageProblem` makes the area declare every screen pair. So the pair would gate the whole OS management rail, and the read-only Devices list, on `%DB_IRISSYS:WRITE`, a self-escalation primitive (Conventions, IRIS security objects). It would also change principals and assertions in Epic 7-modified `Test/WireSecurityRead.cls` (orchestrator roster rule: HALT).
-- **Why the shipped alternative needs a ruling.** The three device tools declare `WRITERESOURCE "%DB_IRISSYS"` / `WRITE`, and `DeviceSave.Gate` refuses a Save without it with 403 `AUTH.NOPRIVILEGE` naming the pair, before anything is sent. The descriptors keep the two read pairs. Every other write tool on this branch (21 of them) declares a write pair already inside its screen's set. The device tools are the first outside it, against AD-8's amended Rule: "a write tool's pair set is the screen's own declared set".
-- **Recommended: (1).** Keep the shipped design. Amend AD-8 (Rule 20): a write tool may add one pair beyond its screen's set when the vendor class writes a database the read does not, and a caller without it is refused naming the pair before any port call. Then amend the Tasks line "add any pair the instance still refuses to both descriptors' privileges" in this spec. The `DeviceWire` role then holds `DeviceForm`'s pairs plus the tools' pair. Re-dispatch implement (status `in-progress`) for the review layers and finalize; the code needs no change.
-- **(2)** Follow Tasks literally: the area, both descriptors and the `WireSecurityRead` principals (a footprint ruling from the orchestrator), with the rail denied to every operator without IRISSYS write.
-- **Not done in this pass:** the review layers (verification-gap, intent-alignment) and the finalize commit. The tree holds the uncommitted implementation. Also recorded: the handoff once sent three test-runner calls in one message. The fresh-throwaway sweep supersedes those runs.
-
-footprint_extensions: contended `src/OcuPilot/Kernel/Proposal/Prohibited.cls`, `src/OcuPilot/Api/Router.cls`, `src/OcuPilot/Screen/Tool/Classification.cls` (tail append), `src/OcuPilot/Screen/Tool/ToolFields.cls` (regenerated), `src/OcuPilot/Test/{SurfaceCoverage,EndpointCoverage,ReadTool,ToolRoundTrip,PortFixture,Prohibited,Descriptor}.cls`, `ui/src/app/shell/screen-outlet.ts` (one entry, one import); shared-append `src/OcuPilot/Port/AdminPort.cls` (three list lines, `PROPERTYFAULTS` and its method, and one call line in `Fail`), `ui/src/app/core/strings.ts`, EXPERIENCE.md Fixed strings rows 417-420; in Epic 7's diff, roster rule: `src/OcuPilot/Test/Wire.cls` and `src/OcuPilot/Test/WireSecurityRead.cls` (the form route in the os-management rosters), `ui/tools/navigation.test.mjs` (one route), `ui/src/app/core/screens.generated.ts` (regenerated); outside both: `ui/src/app/app.ts` (one injection pair, one reset), `scripts/ci-throwaway.sh` (arming roster), `src/OcuPilot/Test/Navigation.cls` (the os-management payload roster).
-
-### This pass
-
-- Server: `DeviceRules`, `DeviceSave`, the three tools, `DeviceForm`, `DeviceList`'s Create, the `DEVICE.*` block, the port lists, `PROPERTYFAULTS` (vendor error 644 to `DEVICE.OPENPARAMETERS.SHAPE`) and the prohibited-set `device` type. Client: the store, the page, the Create handler and the strings. Tests: `DeviceCreate`, `DeviceUpdate`, `DeviceDelete`, `DeviceWire`, the helpers, two component specs and the browser spec.
-- Initial bundle: 1,248,402 B (`main` 1,119,453 plus `styles` 128,949), under the 1,261,000 B warning; no re-base.
-- Found by the sweep: `Test/Navigation.cls`'s os-management payload roster now carries the device editor.
-- Verification, after the last edit on a throwaway brought up fresh: the full ObjectScript sweep, 204 classes and 1804 tests, 0 failed, the totals read back from `%UnitTest_Result` (1804 passed, 0 failed, 204 classes); `npm run build` and `npm test` green (1326 tools tests, 918 component tests); `scripts/smoke.sh` 47 of 47; the two device browser specs 6 of 6; `iris.cpf` validates and names no probe device.
+footprint_extensions: contended `src/OcuPilot/Kernel/Proposal/Prohibited.cls`, `src/OcuPilot/Api/Router.cls`, `src/OcuPilot/Screen/Tool/Classification.cls` (tail append), `src/OcuPilot/Screen/Tool/ToolFields.cls` (regenerated), `src/OcuPilot/Test/{SurfaceCoverage,EndpointCoverage,ReadTool,ToolRoundTrip,PortFixture,Prohibited,Descriptor}.cls`, `ui/src/app/shell/screen-outlet.ts` (one entry, one import); shared-append `src/OcuPilot/Port/AdminPort.cls` (three list lines, `PROPERTYFAULTS` and its method, and one call line in `Fail`), `ui/src/app/core/strings.ts`, EXPERIENCE.md Fixed strings rows 417-421; in Epic 7's diff, roster rule: `src/OcuPilot/Test/Wire.cls` and `src/OcuPilot/Test/WireSecurityRead.cls` (the form route in the os-management rosters), `ui/tools/navigation.test.mjs` (one route), `ui/src/app/core/screens.generated.ts` (regenerated); outside both: `ui/src/app/app.ts` (one injection pair, one reset), `ui/src/app/app.spec.ts` (the device form's sign-out reset), `scripts/ci-throwaway.sh` (arming roster), `src/OcuPilot/Test/Navigation.cls` (the os-management payload roster); this story's own new tests `src/OcuPilot/Test/DeviceWriteGate.cls` and `DeviceWriteGateProbe.cls`.

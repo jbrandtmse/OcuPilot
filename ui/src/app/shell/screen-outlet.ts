@@ -29,6 +29,7 @@ import { RoleCreateFormPage } from '../areas/permissions/role-create-form.page';
 import { ResourceListPage } from '../areas/permissions/resource-list.page';
 import { WalletSecretFormPage } from '../areas/security/wallet-secret-form.page';
 import { X509FormPage } from '../areas/security/x509-form.page';
+import { DeviceFormPage } from '../areas/os-management/device-form.page';
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
 import { decodeEntityId } from '../core/entity-id';
@@ -103,6 +104,7 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.ResourceList': ResourceListPage,
   'OcuPilot.Screen.Descriptor.X509Form': X509FormPage,
   'OcuPilot.Screen.Descriptor.WalletSecretForm': WalletSecretFormPage,
+  'OcuPilot.Screen.Descriptor.DeviceForm': DeviceFormPage,
 };
 
 /**

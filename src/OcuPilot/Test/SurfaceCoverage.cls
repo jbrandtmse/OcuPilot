@@ -102,6 +102,7 @@ XData Coverage
 <screen name="WebAppList" class="OcuPilot.Test.Descriptor" method="TestTheWebApplicationsListValidatesAndNamesItsClassicPageInItsOwnCase"/>
 <screen name="X509Form" class="OcuPilot.Test.X509Import" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="X509CredentialList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
+<screen name="DeviceForm" class="OcuPilot.Test.DeviceCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
@@ -113,6 +114,9 @@ XData Coverage
 <tool name="security.x509.delete" class="OcuPilot.Test.X509Delete" method="TestTheDeleteIsAnActionWriteOverTheCertificate"/>
 <tool name="security.secrets.create" class="OcuPilot.Test.WalletSecretCreate" method="TestTheSchemaAdvertisesNoValue"/>
 <tool name="security.secrets.update" class="OcuPilot.Test.WalletSecretUpdate" method="TestTheEditIsAMergeWriteOverTheThreeSettings"/>
+<tool name="osmgmt.devices.create" class="OcuPilot.Test.DeviceCreate" method="TestTheSchemaAndTheSettableSetAreTheSets"/>
+<tool name="osmgmt.devices.update" class="OcuPilot.Test.DeviceUpdate" method="TestTheEditIsAMergeWriteOverTheEightFields"/>
+<tool name="osmgmt.devices.delete" class="OcuPilot.Test.DeviceDelete" method="TestTheDeleteIsAnActionWriteOverTheWholeRead"/>
 <tool name="logs.applicationerrors.delete" class="OcuPilot.Test.ToolWrite" method="TestTheErrorDeleteToolIsAnActionWriteOverItsOwnPort"/>
 <tool name="osmgmt.processes.resume" class="OcuPilot.Test.ToolWrite" method="TestTheProcessResumeToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="osmgmt.processes.suspend" class="OcuPilot.Test.ToolWrite" method="TestTheProcessSuspendToolIsAnActionWriteOverTheScreensOwnPairs"/>

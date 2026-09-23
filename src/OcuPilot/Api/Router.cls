@@ -112,6 +112,10 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/x509/name" Method="GET" Call="X509NameCheck"/>
   <Route Url="/x509/:id" Method="PUT" Call="X509Update"/>
   <Route Url="/x509" Method="POST" Call="X509Import"/>
+  <Route Url="/device/form" Method="GET" Call="DeviceFormRead"/>
+  <Route Url="/device/name" Method="GET" Call="DeviceNameCheck"/>
+  <Route Url="/device/:id" Method="PUT" Call="DeviceUpdate"/>
+  <Route Url="/device" Method="POST" Call="DeviceCreate"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
   <Route Url="/logs/errors/namespaces" Method="GET" Call="LogErrorNamespaces"/>
   <Route Url="/logs/errors/dates" Method="GET" Call="LogErrorDates"/>
@@ -426,6 +430,35 @@ ClassMethod X509Import() As %Status
 ClassMethod X509Update(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Area.Security.X509Save).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /device/form</code> (Story 8.8): the device
+/// editor's read, delegating to <class>OcuPilot.Area.OsMgmt.DeviceRules</class>. The two
+/// sub-resources precede <code>/device/:id</code>.</p>
+ClassMethod DeviceFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DeviceRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /device/name</code>: the device editor's blur
+/// check of whether a name is taken.</p>
+ClassMethod DeviceNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DeviceRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /device</code>: the device editor's create Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod DeviceCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DeviceSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /device/:id</code>: the device editor's edit Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod DeviceUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DeviceSave).HandleUpdate(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /screens/:screen/read</code>: delegates to
