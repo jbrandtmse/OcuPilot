@@ -2,7 +2,7 @@
 title: 'Story 7.10: The remaining application error delete scopes'
 type: 'feature'
 created: '2026-09-23'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'b23f3d530168257564cad06f6d1634a27c8ca61a'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -39,12 +39,10 @@ deferred:
       HSCUSTOM seed, which needs the USER-only rule relaxed.
     location: src/OcuPilot/Test/ErrorDelete.cls
     severity: low
-footprint_extensions: # planned; this story's own members only (roster rule, 2026-09-23)
+footprint_extensions: # as landed; Epic 8-modified files, this story's own members only (roster rule, 2026-09-23)
   - 'src/OcuPilot/Test/ToolWrite.cls' # Epic 8 modified; only the ErrorDelete leg :818-878, off its hunks (~:164, ~:1133-1145, ~:1188-1190)
   - 'ui/tools/screen-mirror.test.mjs' # Epic 8 modified; only the LogErrorList pin :899-905
   - 'ui/src/app/core/screens.generated.ts' # regenerated
-  - 'ui/angular.json' # conditional, DW-1166 re-base, value line only
-  - 'ui/tools/angular-json.test.mjs' # conditional, its pinned literal only
 ---
 
 <intent-contract>
@@ -547,16 +545,64 @@ under the 1181kB warning, so no re-base.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only; nothing is implemented. On evidence from `ocupilot-ci`, the by-date scope enumerates
-and deletes through `DeleteByError`, and `DeleteByDate` is refused. It deleted an error logged
-after the enumeration, and it restarts the date's numbering.
+**Change.** `logs.applicationerrors.delete` takes a scope, which is a prefix of the error's composite
+id: the namespace, the namespace and date, or the namespace, date and number. `ErrorDeleteMint` (new)
+joins the agent's `namespace`, `date` and `errorNumber` into that id, and refuses `errorNumber` without
+`date`, or any argument that contains U+0001. `LogSourcePort` parses the id, narrows `ENUMERATE` to
+the scope (404 `LOG.DATE` or `LOG.ENTRY` when the scope is absent), and records each entry's `Time`.
+It deletes only through `DeleteByError`. `ArgumentPairs` gates on the id's own namespace.
+`LogErrorList` declares one `delete` row action. The error log page hosts it on every drill level:
+a row menu, a typed-name dialog and a refusal banner. The handler picks the verb and the
+consequence from the part count, the command bar follows a screen that has no read, and
+`displayEntityId` renders a composite id as `a › b › c`.
 
-The lead still has to publish two things (see `## Design Notes`):
+**Files.**
 
-- the AD-48 spine sentence;
-- the copy: seven `strings.ts` keys and the EXPERIENCE `:87` amendment.
+- Server: `Port/LogSourcePort.cls`, `Screen/Tool/ErrorDelete.cls`, `Screen/Tool/ErrorDeleteMint.cls`
+  (new) and `Screen/Descriptor/LogErrorList.cls`.
+- Client: `error-log.page.ts`, `error-log.store.ts`, `screen-action-handler.ts`, `command-bar.ts`,
+  `entity-id.ts`, `toasts.ts`, `example-proposal.ts` and the regenerated `screens.generated.ts`.
+- Tests: `ErrorDeleteScope` (new) with its helper `ErrorDeleteScopeTool`; the `ErrorDelete` legs; the
+  `ToolWrite`, `Descriptor` and `screen-mirror` roster rows; the page, handler and command-bar specs;
+  `entity-id`, `toasts` and `example-proposal`; the new `error-log-actions.browser-spec.mjs`; and the
+  header lists in `error-log.browser-spec.mjs`.
 
-No ledger inbox.
+**Review.** The first pass logged 17 findings: 3 medium, 7 low and 7 false. It patched two medium
+entries: the date-scope narrowing assertion, and the route-gate leg for AC4, which also answers the
+"short of the pair" finding. It patched one low, the detail-level page leg. Every patch was test-only
+and was observed red under its mutation. Three lows are in `deferred:`, and the rejections carry their
+reasons in the Triage Log. `followup_review_recommended: false`: no patch changed product code, so
+there is no unverified risk to name. This pass re-ran no review layer; it checked that the patches
+were present and green.
+
+**Verification** (on `ocupilot-ci`, the source rsynced from the worktree and `LoadDir` returned OK
+with 0 errors):
+
+- ObjectScript unit tests. The disk roster (`testClassesOnDisk`) has 185 classes:
+  - **From the recorded sweep** (runs 8443–8610): 159 classes, 1,436 tests, 0 failed. One skip is
+    by design: `ProhibitedRoute`'s auditing method, `Status=2`.
+  - **The four armed classes** (`AuditingUpdate`, `ErrorDelete`, `ProcessControl`, `TaskResume`)
+    refuse on this reused throwaway and run in CI. `ErrorDelete`'s legs ran 15/0 through a
+    temporary subclass (run 8443), which was later deleted.
+  - **Missed by the sweep and run now**, one class per call (runs 8612–8633): 22 classes, 240 tests,
+    1 failed. The failure is `WireSecurityRead`'s 1,000-row task-history check, DW-1554, which is
+    not this story's.
+  - **Re-run for the review patches**: `ErrorDeleteScope` 8/0 (run 8611).
+- `smoke.sh --container ocupilot-ci`: 49 of 49 passed.
+- `test:tools`: 1,330 of 1,330 passed.
+- `test:components`: 906 of 906 passed.
+- `check-objectscript.py`: 0 problems in 642 files.
+- `npm run build`: the initial total is 1.13 MB, under the 1181kB warning, so there was no DW-1166
+  re-base.
+- The rebuilt bundle was redeployed to `ocupilot-ci`, and the story's three browser specs passed 9
+  of 9.
+
+**Footprint.** The story lies inside Epic 7's footprint. Epic 8 also modified three of its files
+(`ToolWrite.cls`, `screen-mirror.test.mjs` and `screens.generated.ts`), and the story adds only its
+own members to them (roster rule, 2026-09-23).
+
+**Residual risks.** The three lows in `deferred:`. The stale "by-namespace" sentences in
+`Prohibited.cls` are left for the merge (see Merge notes).
