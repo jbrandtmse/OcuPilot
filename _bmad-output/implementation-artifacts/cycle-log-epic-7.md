@@ -193,3 +193,7 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T15:07:34Z	Epic 7	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@dbc0c347 merge=6bbe2827 files=1_cycle-log-parallel_only conflict=none
 2026-09-23T15:08:46Z	Epic 7	epic_context_compiled	sha=aeaecd4e reason=planning_artifact_newer model=opus
 2026-09-23T15:08:46Z	Story 7.8	stage_spawned	stage=plan spawn_at=2026-09-23T15:08:46Z model=opus agent_name=7-8-terminate-suspend-and-resume-a-process-plan-1 cycle_iteration=1
+2026-09-23T15:30:23Z	Story 7.8	story_created	spawn_at=2026-09-23T15:08:46Z model=opus path=_bmad-output/implementation-artifacts/spec-7-8-terminate-suspend-and-resume-a-process.md build_status=ready-for-dev epic_context=reused cycle_iteration=1
+2026-09-23T15:30:23Z	Epic 7	spine_updated	ad=AD-52 reason=measured_vendor_gap by=runner story=7-8-terminate-suspend-and-resume-a-process lint=ok
+2026-09-23T15:30:23Z	Story 7.8	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-51,AD-52,AD-53,AD-56,AD-10,AD-6,AD-8,AD-13,AD-14,AD-15,AD-29,AD-34,AD-39,AD-43 owned_ledger=DW-1155,DW-1189,DW-1499,DW-1553 addressed=4 mutates_shared_runtime=true throwaway=ocupilot-ci copy_published=EXPERIENCE.md:419-425 implement_gate=DW-1553_budget_port_needs_orchestrator model=claude-opus-5-5
+2026-09-23T15:30:23Z	Epic 7	runner_clarification_raised	story=7.8 item=port_1967125s_two_bundle-budget_hunks(ui/angular.json,ui/tools/angular-json.test.mjs) tools_tier_red_until_then=DW-371_bundle_test

@@ -593,6 +593,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **The declaration is the tool's, because the port is a property of the target rather than of the screen.** A screen may read through one port and write through another, and two tools on one screen may differ. The default keeps every existing tool unchanged and unedited.
 
+  **A tool-declared port may carry out a write the admin API cannot express, through the documented `%SYS` class the vendor endpoint itself calls** [AMENDED 2026-09-23, Story 7.8 spec gate, Rule 20]. It then reproduces that endpoint's gate (its `ResourcesOR()` resource at `USE`), its not-found answer and its guard before the call, so the write is refused exactly where the vendor's would be. Measured: `Process` `RunTerminate` never passes `SYS.Process.Terminate`'s `SendError`, so the error-to-job flag FR-55 names is reachable only this way; `ProcessPort` does it, confirmed with a least-privileged principal on a throwaway. This is AD-49's "belongs behind a port", not a second self-service exception, and AD-27's containment is untouched because no `%Api.Admin.*` class is named.
+
 ### AD-53 — A screen's own action and the agent's write are one operation, reached by two callers
 
 - **Binds:** Story 7.1 and every later row action, command-bar action and editor Save across Epics 7, 8, 9 and 12; AD-5, AD-6, AD-8, AD-10, AD-14, AD-15, AD-30, AD-34, AD-39, AD-40, AD-49, AD-52; FR-19, FR-20, FR-32

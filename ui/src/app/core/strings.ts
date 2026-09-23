@@ -1416,6 +1416,25 @@ export const STRINGS = {
   taskSystemDeleteConsequence:
     'This is one of the instance\'s own system tasks, and the instance relies on it. The classic portal does not allow deleting it.',
 
+  // Story 7.8: process terminate, suspend and resume from the list and the details page.
+  /** EXPERIENCE.md:419 */
+  actionTerminate: 'Terminate',
+  /** EXPERIENCE.md:420 */
+  processTerminateConsequence:
+    'Terminating this process stops it at once, and it does not finish what it was doing. This cannot be undone.',
+  /** EXPERIENCE.md:421 */
+  processTerminateErrorFlag: 'Log a <RESJOB> error in its namespace\'s application error log',
+  /** EXPERIENCE.md:422 */
+  processRefusalOcuPilot:
+    'OcuPilot itself is running in this process, for this request or for an agent turn. It cannot be suspended, resumed or terminated from OcuPilot.',
+  /** EXPERIENCE.md:423 */
+  processRefusalSystem:
+    'This is an IRIS system process, and the instance relies on it. It cannot be suspended, resumed or terminated from OcuPilot.',
+  /** EXPERIENCE.md:424 */
+  processListEmptyAgent: 'suspend or terminate a process that has stopped responding',
+  /** EXPERIENCE.md:425 */
+  proposalEntityProcess: 'Process',
+
 } as const;
 
 /**
