@@ -190,3 +190,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T15:06:36Z	Story 7.6	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=DW-1463_dropped_at_spec_gate model=claude-opus-5-5
 2026-09-23T15:06:36Z	Story 7.6	smoke_complete	method=api result=pass iterations=1 defects_caught=0 evidence=probe_task_1307_on_ocupilot-ci:suspend_200(INFO_Suspended=1),repeat_suspend_400_TOOL.ARGUMENTS,resume_200(Suspended=0),delete_200(gone) model=claude-opus-5-5
 2026-09-23T15:07:23Z	Story 7.6	committed	sha=e3712592 submodules= ci=pending run=35879196098 amendments=EXPERIENCE.md:102,416-418,819;epics.md_5.11_AC7,7.6_AC3
+2026-09-23T15:07:34Z	Epic 7	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@dbc0c347 merge=6bbe2827 files=1_cycle-log-parallel_only conflict=none
