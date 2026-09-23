@@ -2,11 +2,12 @@
 /// AD-8, AD-12, AD-27, AD-35, AD-39, AD-54, AD-55): the routes' envelopes, a create over the route
 /// that the list's own read then shows and an edit that keeps the stored value, the vendor's upsert
 /// that would re-create a deleted secret and the two callers that refuse first (AC4), every wallet
-/// route refused to a real principal without the wallet resource (AC5), and no value in the
-/// instance's message log after a refused save (AC2).</p>
+/// route refused to a real principal without the wallet resource (AC5), a secret read and edited by a
+/// real principal holding only the form's declared pairs (AD-8), and no value in the instance's message
+/// log after a refused save (AC2).</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, an account holding
 /// the wallet screens' own pairs, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>,
-/// because the legs create and delete a user, a role, a second probe collection and secrets.
+/// because the legs create and delete two users, two roles, a second probe collection and secrets.
 /// <method>OnBeforeAllTests</method> refuses anywhere it does not; every probe is removed by exact
 /// name.</p>
 Class OcuPilot.Test.WalletWire Extends %UnitTest.TestCase
@@ -36,7 +37,7 @@ Parameter PROBE = "OcuPilot.Test.WalletProbe";
 Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 
 /// <p>The secrets this class stores in the probe collection, by the part after it.</p>
-Parameter PARTS = "WireRoute,WireGone,WireSym";
+Parameter PARTS = "WireRoute,WireGone,WireSym,WireLeast";
 
 /// <p>A second collection the refused-save leg deletes between its mint and its confirm.</p>
 Parameter GONECOLLECTION = "OcuPilotProbe86Gone";
@@ -46,6 +47,12 @@ Parameter GONECOLLECTION = "OcuPilotProbe86Gone";
 Parameter NOWALLETUSER = "OcuPilotWireNoWallet";
 
 Parameter NOWALLETROLE = "OcuPilotWireNoWalletRole";
+
+/// <p>The purpose-built principal that holds the install namespace's code read and the form's declared
+/// pairs, <code>%Admin_Wallet:USE</code> and <code>%DB_IRISSYS:READ</code>, and nothing else.</p>
+Parameter WALLETUSER = "OcuPilotWireWalletOnly";
+
+Parameter WALLETROLE = "OcuPilotWireWalletOnlyRole";
 
 /// <p>Where the instance's message log was when this class began, which the log scan reads
 /// from.</p>
@@ -88,10 +95,14 @@ Method OnAfterAllTests() As %Status
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        If ##class(Security.Users).Exists(..#NOWALLETUSER) Do ##class(Security.Users).Delete(..#NOWALLETUSER)
-        If ##class(Security.Roles).Exists(..#NOWALLETROLE) Do ##class(Security.Roles).Delete(..#NOWALLETROLE)
-        If ##class(Security.Users).Exists(..#NOWALLETUSER) || ##class(Security.Roles).Exists(..#NOWALLETROLE) {
-            Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "OcuPilot.Test.WalletWire left its throwaway principal on the instance"))
+        For tUser = ..#NOWALLETUSER, ..#WALLETUSER {
+            If ##class(Security.Users).Exists(tUser) Do ##class(Security.Users).Delete(tUser)
+        }
+        For tRole = ..#NOWALLETROLE, ..#WALLETROLE {
+            If ##class(Security.Roles).Exists(tRole) Do ##class(Security.Roles).Delete(tRole)
+        }
+        If ##class(Security.Users).Exists(..#NOWALLETUSER) || ##class(Security.Roles).Exists(..#NOWALLETROLE) || ##class(Security.Users).Exists(..#WALLETUSER) || ##class(Security.Roles).Exists(..#WALLETROLE) {
+            Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "OcuPilot.Test.WalletWire left a throwaway principal on the instance"))
         }
         Set $NAMESPACE = tOrigNS
     } Catch ex {
@@ -251,6 +262,30 @@ Method TestACallerWithoutTheWalletResourceIsRefusedOnEveryRoute()
     Do $$$AssertTrue(tBody [ "{""route"":""security/wallet/secrets/edit"",""labelKey"":""walletSecretFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Wallet:USE""}", "and lists the form denied on the wallet pair")
 }
 
+/// <p>AD-8, AD-27: a real principal holding only the install namespace's code read and the form's
+/// declared pairs reads a key-value secret's settings through the composed read, which opens the
+/// secret in <code>%SYS</code>, and edits it, keeping the value -- so neither the class read nor the
+/// write needs a pair the screen does not declare.</p>
+/// <p>Mutation (Rule 19): add <code>%Admin_Secure:USE</code> to
+/// <class>OcuPilot.Screen.Descriptor.WalletSecretForm</class>'s privileges -> the principal is refused
+/// and this goes red.</p>
+Method TestTheDeclaredPairsAloneReadAndEditASecret()
+{
+    Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")
+    Set tName = ..Name("WireLeast")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddKeyValue", tName, {"Secret": "v1", "Usage": 3, "RequireTLS": true, "AllowedHosts": ["h.example"]}), "a key-value secret is stored")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ ..#FORMPATH _ "?name=" _ tName, ..#WALLETUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the form read answers the principal")
+    Set tSecret = ""
+    Try { Set tSecret = ##class(%DynamicObject).%FromJSON(tBody).%Get("secret") } Catch {}
+    Do $$$AssertEquals($Select($IsObject(tSecret): tSecret.%ToJSON(), 1: ""), "{""Name"":""" _ tName _ """,""Collection"":""" _ ..Collection() _ """,""Type"":""%Wallet.KeyValue"",""Usage"":3,""RequireTLS"":true,""AllowedHosts"":[""h.example""],""editable"":true}", "with the secret's settings and no value")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("PUT", tBase _ ..EditPath(tName), ..#WALLETUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders, "{""Usage"":1}", "application/json")
+    Do $$$AssertEquals(tStatus, 200, "and the principal's edit answers 200")
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", ..#FORMPATH _ "?name=" _ tName, .tStatus, .tBody)
+    Do $$$AssertEquals($Select($IsObject($Get(tBody)) && $IsObject(tBody.%Get("secret")): tBody.%Get("secret").%Get("Usage"), 1: ""), 1, "which the instance applied")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "StoredValue", tName), "v1", "keeping the value")
+}
+
 /// <p>AC2 through the real port: an agent create whose collection was deleted between the mint and
 /// the confirm is refused by the vendor at 422, and the confirm's answer carries no value. The port
 /// logs the refusal, which <method>TestZNothingReachedTheMessageLog</method> then finds and
@@ -358,9 +393,10 @@ ClassMethod RemoveGoneCollection() As %Status
     Quit tSC
 }
 
-/// <p>Create the throwaway role -- the install namespace's code read, the system database read and
-/// the secure resource, and no wallet resource -- and the account that holds it, then read the grant
-/// back.</p>
+/// <p>Create the two throwaway roles and the accounts that hold them, then read the grants back:
+/// <parameter>NOWALLETROLE</parameter> -- the install namespace's code read, the system database read
+/// and the secure resource, and no wallet resource -- and <parameter>WALLETROLE</parameter> -- the code
+/// read and the form's two declared pairs alone.</p>
 Method EnsurePrincipal() As %Status
 {
     Set tSC = $$$OK
@@ -381,6 +417,16 @@ Method EnsurePrincipal() As %Status
         If $$$ISERR(tSC) Quit
         If ($SYSTEM.Security.CheckUserPermission(..#NOWALLETUSER, "%Admin_Wallet", "USE") = 1) || ($SYSTEM.Security.CheckUserPermission(..#NOWALLETUSER, "%DB_IRISSYS", "READ") '= 1) {
             Set tSC = $$$ERROR($$$GeneralError, "the throwaway principal's grants did not read back as the system read without the wallet resource")
+            Quit
+        }
+        If ##class(Security.Roles).Exists(..#WALLETROLE) Do ##class(Security.Roles).Delete(..#WALLETROLE)
+        Set tSC = ##class(Security.Roles).Create(..#WALLETROLE, "OcuPilot test: the wallet form's pairs alone (throwaway)", tSysDb.ResourceName _ ":R,%DB_IRISSYS:R,%Admin_Wallet:U", "")
+        If $$$ISERR(tSC) Quit
+        If ##class(Security.Users).Exists(..#WALLETUSER) Do ##class(Security.Users).Delete(..#WALLETUSER)
+        Set tSC = ##class(Security.Users).Create(..#WALLETUSER, ..#WALLETROLE, ..PreparedPassword, "OcuPilot wallet test principal (throwaway)", "", "", "", 0, 1, "Created by OcuPilot.Test.WalletWire; deleted in OnAfterAllTests")
+        If $$$ISERR(tSC) Quit
+        If ($SYSTEM.Security.CheckUserPermission(..#WALLETUSER, "%Admin_Wallet", "USE") '= 1) || ($SYSTEM.Security.CheckUserPermission(..#WALLETUSER, "%Admin_Secure", "USE") = 1) {
+            Set tSC = $$$ERROR($$$GeneralError, "the wallet-only principal's grants did not read back as the wallet pairs alone")
         }
     } Catch ex {
         Set tSC = ex.AsStatus()

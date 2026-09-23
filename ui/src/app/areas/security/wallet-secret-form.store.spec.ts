@@ -32,6 +32,7 @@ const RULES = {
   rules: [
     { field: 'Name', code: 'WALLET.NAME.REQUIRED', reason: 'Give the secret a name.' },
     { field: 'Secret', code: 'WALLET.SECRET.REQUIRED', reason: 'Enter the value to store.' },
+    { field: 'Name', code: 'WALLET.COLLECTION.ABSENT', reason: 'This instance has no wallet collection with that name.' },
   ],
 };
 
@@ -63,7 +64,8 @@ interface Call {
 
 function mount(
   saveAnswer: JsonResult<unknown> = { kind: 'ok', status: 201, body: { name: 'Probe.New' } },
-  editRead: JsonResult<unknown> = { kind: 'ok', status: 200, body: { ...RULES, secret: SECRET } }
+  editRead: JsonResult<unknown> = { kind: 'ok', status: 200, body: { ...RULES, secret: SECRET } },
+  nameAnswer: JsonResult<unknown> = { kind: 'ok', status: 200, body: { taken: true, reason: TAKEN_SENTENCE } }
 ) {
   TestBed.resetTestingModule();
   const calls: Call[] = [];
@@ -74,9 +76,7 @@ function mount(
       if (path.startsWith(WALLET_SECRET_FORM_PATH)) {
         return { kind: 'ok', status: 200, body: { ...RULES, collection: 'Probe' } } as unknown as JsonResult<T>;
       }
-      if (path.startsWith(WALLET_SECRET_NAME_PATH)) {
-        return { kind: 'ok', status: 200, body: { taken: true, reason: TAKEN_SENTENCE } } as unknown as JsonResult<T>;
-      }
+      if (path.startsWith(WALLET_SECRET_NAME_PATH)) return nameAnswer as JsonResult<T>;
       return saveAnswer as JsonResult<T>;
     },
   };
@@ -187,6 +187,33 @@ describe('the wallet secret form store', () => {
     expect(store.secretText()).toBe('');
   });
 
+  it('AC1: a create lands on the new secret\'s edit with the saved confirmation, a stored caption and no value', async () => {
+    const { store } = mount(undefined, { kind: 'ok', status: 200, body: { ...RULES, secret: { ...SECRET, Name: 'Probe.New' } } });
+    await store.open('', 'Probe');
+    store.setValue('Name', 'New');
+    store.setSecret(VALUE);
+    expect(await store.save()).toBe(true);
+    store.retainAcrossRouteReplacement();
+    await store.open(store.createdId());
+    // Mutation (Rule 19): drop `if (arriving) this.savedValue = true` from `open()` -> `saved()` reads
+    // false and this goes red.
+    expect([store.mode(), store.saved(), store.retaining(), store.secretText(), store.stored()]).toEqual([
+      'edit',
+      true,
+      false,
+      '',
+      true,
+    ]);
+  });
+
+  it('AD-39: a create opened without a collection says why it cannot save, in the server\'s sentence', async () => {
+    const { store } = mount();
+    await store.open('');
+    expect(store.absent()).toBe(true);
+    expect(store.reason()).toBe('This instance has no wallet collection with that name.');
+    expect(store.canSave()).toBe(false);
+  });
+
   it('AD-4: an edit sends only the setting it changed, no value unless one was entered, and publishes updated', async () => {
     const { store, calls, events } = mount({ kind: 'ok', status: 200, body: { name: 'Probe.Kv' } });
     await store.open('Probe.Kv');
@@ -258,6 +285,21 @@ describe('the wallet secret form store', () => {
       code: NAME_TAKEN_CODE,
       reason: TAKEN_SENTENCE,
     });
+  });
+
+  it('AD-39: a name the blur look-up refuses on a rule is marked with the server\'s sentence', async () => {
+    const shape = { field: 'Name', code: 'WALLET.NAME.SHAPE', reason: 'A secret\'s name uses only letters, digits, dots, hyphens and underscores.' };
+    const { store } = mount(undefined, undefined, {
+      kind: 'error',
+      status: 422,
+      code: 'WALLET.VALIDATION',
+      reason: 'The secret was refused.',
+      detail: { violations: [shape] },
+    });
+    await store.open('', 'Probe');
+    store.setValue('Name', 'has space');
+    await store.onBlur('Name');
+    expect(store.violations().filter((entry) => entry.field === 'Name')).toEqual([shape]);
   });
 
   it('the hosts are typed comma-separated and sent as an array, each entry trimmed and empties dropped', () => {

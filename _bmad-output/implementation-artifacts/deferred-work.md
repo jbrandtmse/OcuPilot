@@ -6244,3 +6244,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-6-the-wallet-secret-form.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: WalletRules.Validate holds the length on the screen's Save only; checking at confirm needs Kernel/Proposal/Confirm.cls (DW-1493 hold); the vendor stores what it is sent
 - 2026-09-23T16:07:33Z status=wontfix-accepted owner=8-6-the-wallet-secret-form by=harvest note=reopen_if=a confirmed agent create stores a value over 32,768 characters, or Confirm.cls is reshaped after the Epic 7/8 merge
+
+### DW-1561: EXPERIENCE.md rows for the X.509 and Secrets lists still describe their empty state's second line as the read-only Web applications line after 8.5 and 8.6 gave both lists a Create
+- source: spec-8-6-the-wallet-secret-form.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: EXPERIENCE.md :365 says the Secrets empty state's second line is the Web applications row's; WalletSecretList now declares emptyNextKey "" and emptyAgentKey walletSecretListEmptyAgent (row :413). Row :362 (X.509) has the same drift from 8.5. EXPERIENCE.md is shared-append for this story, so the existing rows were not edited.
+- 2026-09-23T16:30:05Z status=wontfix-accepted owner=8-6-the-wallet-secret-form by=cr note=reopen_if=a UX or strings review cites EXPERIENCE.md :362/:365 against the descriptors' empty keys

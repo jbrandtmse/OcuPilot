@@ -212,6 +212,33 @@ Before editing a ⚠ file, run `git fetch origin && git show origin/OCU-1-epic7:
 - **AC7 (Integration).** Given a secret created or edited by either caller, when the Secrets list (the change bus's consumer) is open, then it shows the row without a manual refresh, and its name cell opens the form.
 - **AC8.** Given the form holds a change, when any navigation leaves, the agent's included, then the shared leave question asks first.
 
+### Review Findings
+
+Code review 2026-09-23, `review_tier: full-opus` (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). No AD mismatch found (AD-3, AD-4, AD-6, AD-8, AD-10, AD-27 third case, AD-35, AD-52, AD-54, AD-55).
+
+- [x] [Review][Patch] `[medium]` The composed read and the edit were never run as a principal holding only the form's declared pairs -- added `WalletWire.TestTheDeclaredPairsAloneReadAndEditASecret` (code read, `%Admin_Wallet:U`, `%DB_IRISSYS:R`): form read 200 with the settings, edit 200, value kept [src/OcuPilot/Test/WalletWire.cls]
+- [x] [Review][Patch] `[medium]` `formSaved` surviving the create's route replacement was unpinned -- added the store leg "a create lands on the new secret's edit with the saved confirmation" [ui/src/app/areas/security/wallet-secret-form.store.spec.ts]
+- [x] [Review][Patch] `[low]` "nor does the minted answer" compared an answer minted before the value existed (Rule 19) -- deleted [src/OcuPilot/Test/WalletSecretCreate.cls:220]
+- [x] [Review][Patch] `[low]` A create opened without a collection was a dead form with no reason -- the store now marks it absent and shows the server's `WALLET.COLLECTION.ABSENT` sentence [ui/src/app/areas/security/wallet-secret-form.store.ts]
+- [x] [Review][Patch] `[low]` The blur look-up's 422 for a name that breaks a rule was discarded -- its name rows now render on blur [ui/src/app/areas/security/wallet-secret-form.store.ts]
+- [x] [Review][Patch] `[low]` `epic-8-context.md`'s "Assume nothing merges" bullet still said `Wallet.Secret` erases omitted fields -- corrected to AD-4 [_bmad-output/implementation-artifacts/epic-8-context.md]
+- [x] [Review][Defer] `[low]` EXPERIENCE.md :365 (and 8.5's :362) still describe the empty state's second line as the read-only one -- deferred: EXPERIENCE.md is shared-append for this story; DW-1561 `wontfix-accepted`
+
+Rejected:
+
+- `false` The collection part of a name is not shape-checked -- the vendor's `Wallet.Collection` GET answers 404 for `my coll`, `1coll`, `a/b` (probed on `ocupilot-b-ci`), so the save refuses `WALLET.COLLECTION.ABSENT`, never 500.
+- `false` `ToolWrite`'s comment names `TaskPort` and widens the predicate -- the hunk is byte-identical to `origin/OCU-1-epic7` :1153-1155, so the merge is clean and the class exists after it.
+- `false` A create's unknown key answers 403, an edit's 400 -- the prohibited set runs first on a create (AD-10), pinned by `TestAnUnreviewedFieldIsRefusedOnTheScreen`, as on the other create routes.
+- `false` A collection named `edit` cannot be opened -- accepted in the Code Map.
+- `low` The name look-up answers free for a name whose collection is gone -- the collection is read-only and was found by the form read; Save refuses it correctly.
+- `low` The agent's confirm checks neither an empty nor an object value -- DW-1560's root cause (needs `Confirm.cls`), settled.
+- `low` The upsert guard is check-then-act; a delete or create between the fresh read and the PUT races -- wontfix-theoretical: a millisecond window between two admins; the vendor offers no conditional PUT.
+- `low` A secret deleted between the LIST and `Exists`, or between the mint's two reads, answers 500 -- the same millisecond window.
+- `low` The spine's AD-27 wording omits the `{Type}`-alone answer; the memlog appends its correction; this spec's `deferred:` AD-27 item is superseded -- the lead's artifacts, append-only or oversized; the port's doc is exact.
+- `low` An edit's privilege banner says "store a secret" -- 8.5's pattern; the screen gate denies first.
+- `low` Edits typed while a Save is in flight become the baseline; a failed form read with no reason shows no banner -- the X.509 form's shared pattern; sub-second window.
+- `low` `walletValueHelp` and the Value label differ from the task list's wording -- `strings.ts` and the Fixed-strings rows agree; the task line is the plan.
+
 ## Spec Change Log
 
 - 2026-09-23, spec gate (orchestrator rulings): AD-27's third case approved and written with its fingerprint limit; key-value only with a classic-portal line for the other types (DW-1555); delete to Story 9.5 (DW-1556); one assertion in `security.browser-spec.mjs` approved; AD-4 corrected for `Wallet.Secret` at its origin.
@@ -357,8 +384,36 @@ Stateful checks run on slot B's throwaway `ocupilot-b-ci` (web 52777, super 1976
 | Field rules (review) | `WalletSecretCreate.TestEveryFieldRuleRefuses` case 14 (a host holding two line breaks) | mutation: `WalletRules.HostUsable` back to `'$Match(pHost, ".*\s.*")` -> case 14 red (run 255) |
 | Another type (review) | `WalletWire.TestEachRouteAnswersOneJsonEnvelopeOverTheWire` symmetric-key leg | mutation: `tEditable` set to 1 in `WalletRules.HandleForm` -> the leg red (run 257) |
 | Name taken (review) | `WalletWire.TestACreateShowsOnTheListAndAnEditKeepsTheValue` look-up leg | mutation: `HandleName` answering `reason` `""` -> the taken leg red (run 257) |
+| AD-8 least privilege (code review) | `WalletWire.TestTheDeclaredPairsAloneReadAndEditASecret` | mutation: `%Admin_Secure:USE` added to `WalletSecretForm`'s privileges -> the leg red (run 214); reverted, green (run 215) |
+| Saved after the route replacement (code review) | store spec "a create lands on the new secret's edit" | mutation: `if (arriving) this.savedValue = true` dropped from `open()` -> that leg red |
+| No collection (code review) | store spec "a create opened without a collection" | mutation: the `COLLECTION_ABSENT_CODE` reason line dropped from `absorb` -> that leg red |
+| Blur refusal (code review) | store spec "a name the blur look-up refuses on a rule" | mutation: `onBlur` returning on every non-ok answer -> that leg red |
 
 Observed at implement: each server mutation was applied to the working file, loaded with `LoadDir` `ck-d`, observed red on `ocupilot-b-ci`, restored from a byte copy and reloaded (`git status --short` and `git diff --stat` unchanged); each client mutation was run under `ng test --include` and restored the same way. The browser legs were not mutated (each needs a rebuilt, redeployed bundle); they ran green over the deployed bundle.
+
+### QA verification pass, 2026-09-23 (QA)
+
+Gaps-only pass over AC1, AC2, AC4, AC5, the I/O matrix and the read-only view; no new test files. Baseline
+re-run on `ocupilot-b-ci`, one class per call: `WalletPortRead`, `WalletSecretCreate`, `WalletSecretUpdate`,
+`WalletWire`, `Prohibited`, `SurfaceCoverage` -- 0 failed. `ui/tools/ci.test.mjs` (65 tests, DW-1276 rows
+included) and `ng test --include` on both wallet component specs -- 0 failed.
+
+Spot-checked three already-recorded mutations for truthfulness, one per tier, each reverted to a
+byte-identical tree (`git status --short` / `git diff --stat` empty) and reloaded green before the next:
+
+- AC2: `WalletPort.KeyValueSettings` set `Secret` from `%Wallet.KeyValue.GetSecretValue` -> `WalletPortRead.TestTheComposedReadNeverCarriesTheStoredValue` red (run 207); reverted, green (run 208).
+- AC5: `%Admin_Wallet` dropped from `WalletSecretForm`'s privileges -> `WalletWire.TestACallerWithoutTheWalletResourceIsRefusedOnEveryRoute` red (run 209); reverted, green (run 210).
+- AC1: `wallet-secret-form.page.ts`'s `secretInputType` hardcoded to `'text'` -> the page spec's AC1 masked leg red; reverted, green.
+
+mutations_demonstrated=3 (re-verification; the story's own Verification table above already carries the
+full set recorded at implement and review).
+
+No coverage gap found. `%Wallet.RSA` is not separately probed for the read-only view: `WalletPort.Completed`
+and the client's `readOnly()` both branch only on `Type = %Wallet.KeyValue`, so the existing
+`%Wallet.SymmetricKey` legs (`WalletPortRead.TestAnotherTypeAnswersItsTypeAlone`,
+`WalletSecretUpdate.TestAnotherTypeIsLeftAlone`, the page spec's Another-type test, `WalletWire`'s
+symmetric-key form-read leg) already falsify that one shared branch; an RSA-specific test would exercise the
+identical code path with no added discriminating power.
 
 ## Auto Run Result
 

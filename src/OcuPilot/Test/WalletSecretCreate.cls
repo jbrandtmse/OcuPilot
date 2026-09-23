@@ -217,7 +217,6 @@ Method TestNoValueReachesTheProposalTheLedgerOrAnyRead()
     Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tKey, .tFound, .tValues)
     Do $$$AssertTrue($Get(tFound), "the stored proposal is read back")
     Do $$$AssertEquals(($Get(tValues("arguments")) _ $Get(tValues("payload")) _ $Get(tValues("diff"))) [ tValue, 0, "the stored proposal carries no value")
-    Do $$$AssertEquals(tProposal.%ToJSON() [ tValue, 0, "nor does the minted answer")
     Do $$$AssertEquals($Select($IsObject($Get(tResult)): tResult.%ToJSON(), 1: "") [ tValue, 0, "nor the confirm's answer")
     Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).WriteRow(tTurnKey, .tRow), 1, "one write-kind ledger row")
     Set tLedger = ""

@@ -43,6 +43,9 @@ export const ALL_USAGE = 15;
 /** The machine code the blur look-up reports a taken name under -- the server's own (AD-39). */
 export const NAME_TAKEN_CODE = 'WALLET.NAME.TAKEN';
 
+/** The code whose sentence a create opened without a collection shows (AD-39). */
+export const COLLECTION_ABSENT_CODE = 'WALLET.COLLECTION.ABSENT';
+
 /** What the form is doing: storing a new secret in a collection, or editing the one its route names. */
 export type FormMode = 'create' | 'edit';
 
@@ -399,8 +402,8 @@ export class WalletSecretForm {
   /**
    * On blur: drop a refusal that no longer describes what the field holds, render the server's
    * required-field sentence on an empty required field, and -- for the name of a create alone -- ask
-   * the instance whether the full name is still free. A look-up that could not be made leaves the
-   * field unmarked.
+   * the instance whether the full name is still free, rendering its sentence for a taken name or a
+   * name that breaks a rule. A look-up that could not be made leaves the field unmarked.
    */
   async onBlur(field: string): Promise<void> {
     this.dropStaleViolation(field);
@@ -412,7 +415,13 @@ export class WalletSecretForm {
     const generation = this.generation;
     const result = await this.api().requestJson<unknown>(`${WALLET_SECRET_NAME_PATH}?name=${encodeURIComponent(name)}`);
     if (generation !== this.generation || this.buffer.part !== part) return;
-    if (result.kind !== 'ok') return;
+    if (result.kind !== 'ok') {
+      const refused = violationsOf(result).filter((entry) => entry.field === NAME_FIELD);
+      if (refused.length === 0) return;
+      this.violationList = [...this.violationList.filter((entry) => entry.field !== NAME_FIELD), ...refused];
+      this.notify();
+      return;
+    }
     const body = result.body;
     if (body === null || typeof body !== 'object' || (body as Record<string, unknown>)['taken'] !== true) return;
     const reason = textAt(body, 'reason');
@@ -580,6 +589,11 @@ export class WalletSecretForm {
       }
     }
     this.maxLengths = lengths;
+    if (name === '' && this.collectionValue === '') {
+      this.absentValue = true;
+      this.envelopeReason = rules.find((entry) => entry.code === COLLECTION_ABSENT_CODE)?.reason ?? '';
+      return;
+    }
     if (name === '') return;
     const secret = body !== null && typeof body === 'object' ? (body as Record<string, unknown>)['secret'] : null;
     if (secret === null || typeof secret !== 'object') {
