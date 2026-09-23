@@ -44,3 +44,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T02:51:49Z	Story 7.1	smoke_complete	method=api result=pass iterations=1 defects_caught=0 evidence=smoke.sh_ocupilot-ci_49/49_(screenaction,agentdelete)+curl_POST_screens/webapp.list/action_delete_and_disable_on_/api/ocupilot_403_PROHIBITED.SERVINGPATH_with_the_published_sentence;_bundle_rebuilt_and_redeployed,src_LoadDir_ck_rc=1 model=claude-opus-5-5
 2026-09-23T02:52:44Z	Story 7.1	committed	sha=377ca9c submodules= ci=pending run=35812092150 amendments=EXPERIENCE.md:395-397,epics.md:4255(DW-1499_bullet)
 2026-09-23T02:53:14Z	Epic 7	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@3317fae merge=4ca8a62 files=4_docs_only conflict=sprint-status.yaml_last_updated_only_resolved_ours validate=true generate_dry_run_changed=0 verification=pending_ci_on_the_next_pushed_head(DW-1435)
+2026-09-23T02:54:38Z	Epic 7	epic_context_compiled	sha=012063d reason=planning_artifact_newer model=opus
+2026-09-23T02:54:38Z	Story 7.2	stage_spawned	stage=plan spawn_at=2026-09-23T02:54:38Z model=opus agent_name=7-2-user-enable-disable-delete-password-and-roles-plan-1 cycle_iteration=1
