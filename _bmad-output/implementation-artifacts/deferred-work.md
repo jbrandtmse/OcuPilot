@@ -5824,6 +5824,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Write.cls:159-165 strips the name itself, Registry.cls:2289 is a second copy and screen-mirror.mjs:610 a third; no test declares secretArguments against a tool with a real ToolFields entry (the only non-empty declaration is ProposalScreen's, whose probe.proposal owns none), so FieldRows' drop branch is unexecuted. Probe: match by raw path in Write.cls and watch every gate stay green.
 - 2026-09-22T00:43:47Z status=routed owner=burndown by=cr note=DW-1206 closed the two VALIDATORS' divergence; this is the validator-to-CONSUMER one, in the same place. Arms with the first shipped secretArguments entry (FR-43, FR-46) - not floor-blocking, Rule 27.
 - 2026-09-22T00:53:41Z status=routed owner=8-5-x-509-import-edit-and-delete by=adjudication note=RE-OWNED OFF burndown BY THE LEAD, for a reason the reviewer did not weigh: THE FIX IS NOT FALSIFIABLE TODAY. The entrys own evidence says FieldRows drop branch is unexecuted because no tool has a non-empty secretArguments - and I verified that, WebAppList.cls:60 is the only shipped declaration and it is []. So an in-story patch would bank an unfalsifiable pass on AD-3/AD-6-adjacent code, which is what DW-1206 itself was about. 8.5 is the first story that BOTH arms the branch and can redden a test for it: AD-3 names X509Credentials PrivateKeyPassword as a template credential field, so it ships the first non-empty secretArguments. Not Epic 5s burn-down, which cannot observe the defect
+- 2026-09-23T14:23:52Z status=resolved-by:8-5-x-509-import-edit-and-delete by=adjudication note=Test/SecretSpelling.cls binds the validator to Write.FieldRows' drop; QA reddened it via FieldRows mutation; edbd4ac0
 
 ### DW-1457: A credential-named array row is an unsatisfiable secretArguments declaration: the membership rule wants the []-stripped name and the credential rule wants the full row path
 - source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: low | fix-risk: med | footprint: in-story
@@ -6193,3 +6194,33 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: src/OcuPilot/Install/Fixture.cls:1176 builds '-----BEGIN PRIVATE KEY-----' from literals for the opt-in demo X.509 credential (UX-DR82); the repo is public and push protection is off; removing it from HEAD does not remove it from history
 - 2026-09-23T12:42:13Z status=escalated owner=burndown by=lead note=owner/orchestrator call: generate at install via openssl (absent on some installs), ship a public cert only, or accept the demo key; history stays either way
 - 2026-09-23T13:55:11Z status=by-design owner=burndown by=orchestrator note=the installer's demo credential must ship its material (no openssl guarantee on a customer instance); documented disposable literal
+
+### DW-1547: An X.509 import on an instance holding mgr/iris.cer whose certificate does not chain to it is refused by the vendor save (#734) and answers 500 without a field sentence
+- source: spec-8-5-x-509-import-edit-and-delete.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: irissys/%SYS/X509Credentials.cls %OnValidateObject verifies a keyless certificate against mgr/iris.cer and refuses with CertVerifyFailed; AdminPort.IMPORTSAVECODES maps no code for it, and no OcuPilot code or sentence fits a chain failure. The pinned image carries no iris.cer (checked on ocupilot-b-ci).
+- 2026-09-23T14:22:02Z status=wontfix-accepted owner=8-5-x-509-import-edit-and-delete by=cr note=reopen_if=an import on an instance with mgr/iris.cer answers 500 naming vendor error 734
+
+### DW-1548: A certificate and key that are not RSA are refused with the key-mismatch sentence rather than one saying only RSA credentials are supported
+- source: spec-8-5-x-509-import-edit-and-delete.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: X509Rules.KeyMatches answers mismatch when RSAEncrypt cannot use the certificate, and AdminPort maps vendor #731 to X509.PRIVATEKEY.MISMATCH; the spec's Never item excludes non-RSA keys, so a key-type sentence would be a new code, sentence and Fixed strings row.
+- 2026-09-23T14:22:02Z status=wontfix-accepted owner=8-5-x-509-import-edit-and-delete by=cr note=reopen_if=a user or the owner reports an EC or other non-RSA credential import misread as a key mismatch
+
+### DW-1549: An edit of an X.509 credential whose certificate has expired, or whose CA file is gone, is refused by the vendor PUT's re-validation with a generic envelope, not a field sentence
+- source: spec-8-5-x-509-import-edit-and-delete.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: X509Save.Update sends the merged {OwnerList,CAFile,PeerNames} to the vendor PUT, which re-runs %OnValidateObject (#728 expired, #5012 missing CA file); the refusal is correct and nothing is written, only the wording is generic.
+- 2026-09-23T14:22:02Z status=wontfix-accepted owner=8-5-x-509-import-edit-and-delete by=cr note=reopen_if=an owner-list edit of an expired credential is reported as an unexplained failure
+
+### DW-1550: The X.509 private-key and key-password inputs carry autocomplete=new-password, which can invite a browser's strong-password suggestion in those fields
+- source: spec-8-5-x-509-import-edit-and-delete.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ui/src/app/areas/security/x509-form.page.ts marks both masked inputs new-password, the project's masked-secret-field pattern from user-create-form (pinned in x509-form.page.spec.ts); it also keeps the browser from autofilling the sign-in password there (inference on browser behaviour).
+- 2026-09-23T14:22:02Z status=wontfix-accepted owner=8-5-x-509-import-edit-and-delete by=cr note=reopen_if=a browser offers or inserts a generated password in the X.509 private key or key password field
+
+### DW-1551: On the X.509 edit page a privilege denial names the action as import a certificate, though the user is editing an existing credential
+- source: spec-8-5-x-509-import-edit-and-delete.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: x509-form.page.ts reason() always passes STRINGS.x509ListEmptyAgent to formatDeniedAction; an edit-specific wording needs a new string and Fixed strings row; the pair named is right and nothing is written.
+- 2026-09-23T14:22:02Z status=wontfix-accepted owner=8-5-x-509-import-edit-and-delete by=cr note=reopen_if=the owner flags the edit-page denial sentence in a smoke or demo
+
+### DW-1552: X509Material's cleanup of the generated key directory is untested on the generation-failure path and nothing sweeps a directory an interrupted test process leaves
+- source: spec-8-5-x-509-import-edit-and-delete.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Generate calls Discard on failure (status now propagated) and OnAfterAllTests calls it on success, but no test forces a failure midway; a killed test process leaves ocupilot-x509-* under the instance temp directory (test-only throwaway keys).
+- 2026-09-23T14:22:02Z status=wontfix-accepted owner=8-5-x-509-import-edit-and-delete by=cr note=reopen_if=an ocupilot-x509-* directory is found under an instance's mgr/Temp after a test run

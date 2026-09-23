@@ -3,8 +3,8 @@
 /// <code>$ZF(-100)</code> in a directory of its own under the instance's temp directory and reads each
 /// file into this process as text; <method>Discard</method> forgets the text and deletes the directory,
 /// failing when it survives. A test class calls the first from <code>OnBeforeAllTests</code> and the
-/// second from <code>OnAfterAllTests</code>. None of it is used but a throwaway instance's probe
-/// credentials, each deleted by exact alias.</p>
+/// second from <code>OnAfterAllTests</code>. A credential saved from it is a probe, deleted by exact
+/// alias.</p>
 /// <p><b>Needs:</b> <code>/usr/bin/openssl</code> (OpenSSL 3.0 on the pinned image) and the privilege
 /// <code>$ZF(-100)</code> requires. A refusal of either fails <method>Generate</method>; nothing falls
 /// back to stored material.</p>
@@ -13,6 +13,9 @@
 /// openssl pkcs8 -topk8 -in key.pem -out key-enc.pem -v2 aes-256-cbc -passout pass:PASSWORD
 /// openssl rsa -in key.pem -out key-legacy.pem -aes256 -traditional -passout pass:PASSWORD
 /// openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out other.pem
+/// openssl pkcs8 -topk8 -in other.pem -out other-enc.pem -v2 aes-256-cbc -passout pass:PASSWORD
+/// openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -keyout eckey.pem -out eccert.pem -days 36500 -subj "/CN=OcuPilot EC Test Certificate"
+/// openssl pkcs8 -topk8 -in eckey.pem -out eckey-enc.pem -v2 aes-256-cbc -passout pass:PASSWORD
 /// openssl req -new -key key.pem -out expired.csr -subj "/CN=OcuPilot Expired Certificate"
 /// openssl ca -config ca.cnf -selfsign -keyfile key.pem -in expired.csr -startdate 20200101000000Z -enddate 20210101000000Z -batch -notext -out expired.pem
 /// </pre>
@@ -29,11 +32,11 @@ Parameter OPENSSL = "/usr/bin/openssl";
 Parameter PREFIX = "ocupilot-x509-";
 
 /// <p>Each block's name and the file it is read from.</p>
-Parameter FILES = "Certificate:cert.pem,PrivateKey:key.pem,EncryptedKey:key-enc.pem,LegacyKey:key-legacy.pem,OtherKey:other.pem,ExpiredCertificate:expired.pem";
+Parameter FILES = "Certificate:cert.pem,PrivateKey:key.pem,EncryptedKey:key-enc.pem,LegacyKey:key-legacy.pem,OtherKey:other.pem,OtherEncryptedKey:other-enc.pem,EcCertificate:eccert.pem,EcKey:eckey.pem,EcEncryptedKey:eckey-enc.pem,ExpiredCertificate:expired.pem";
 
 /// <p>Make the material in a new directory under the instance's temp directory, returned in
 /// <var>pDirectory</var>, and hold each block in this process for <method>Pem</method>. On failure
-/// the directory is already deleted.</p>
+/// the directory is already deleted, or the error also says it survived.</p>
 ClassMethod Generate(Output pDirectory As %String) As %Status
 {
     Set tSC = $$$OK
@@ -52,6 +55,12 @@ ClassMethod Generate(Output pDirectory As %String) As %Status
         Set tSC = ..Run(pDirectory, "rsa", "-in", pDirectory _ "key.pem", "-out", pDirectory _ "key-legacy.pem", "-aes256", "-traditional", "-passout", tPass)
         If $$$ISERR(tSC) Quit
         Set tSC = ..Run(pDirectory, "genpkey", "-algorithm", "RSA", "-pkeyopt", "rsa_keygen_bits:2048", "-out", pDirectory _ "other.pem")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Run(pDirectory, "pkcs8", "-topk8", "-in", pDirectory _ "other.pem", "-out", pDirectory _ "other-enc.pem", "-v2", "aes-256-cbc", "-passout", tPass)
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Run(pDirectory, "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:P-256", "-nodes", "-keyout", pDirectory _ "eckey.pem", "-out", pDirectory _ "eccert.pem", "-days", 36500, "-subj", "/CN=OcuPilot EC Test Certificate")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Run(pDirectory, "pkcs8", "-topk8", "-in", pDirectory _ "eckey.pem", "-out", pDirectory _ "eckey-enc.pem", "-v2", "aes-256-cbc", "-passout", tPass)
         If $$$ISERR(tSC) Quit
         Set tSC = ..Run(pDirectory, "req", "-new", "-key", pDirectory _ "key.pem", "-out", pDirectory _ "expired.csr", "-subj", "/CN=OcuPilot Expired Certificate")
         If $$$ISERR(tSC) Quit
@@ -73,7 +82,10 @@ ClassMethod Generate(Output pDirectory As %String) As %Status
     }
     ; A class whose OnBeforeAllTests fails never reaches its OnAfterAllTests, so a failed run removes
     ; its own directory here.
-    If $$$ISERR(tSC) Do ..Discard(pDirectory)
+    If $$$ISERR(tSC) {
+        Set tDiscardSC = ..Discard(pDirectory)
+        If $$$ISERR(tDiscardSC) Set tSC = $$$ADDSC(tSC, tDiscardSC)
+    }
     Quit tSC
 }
 

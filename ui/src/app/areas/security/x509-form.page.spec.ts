@@ -44,11 +44,14 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
   }
 }
 
-async function mount(url = '/security/x509/edit') {
+async function mount(url = '/security/x509/edit', absent = false) {
   TestBed.resetTestingModule();
   const api = {
     requestJson: async <T,>(path: string, init: { method?: string } = {}): Promise<JsonResult<T>> => {
       if ((init.method ?? 'GET') !== 'GET') return { kind: 'ok', status: 201, body: { alias: 'ProbeCredential' } } as JsonResult<T>;
+      if (absent && path !== X509_FORM_PATH) {
+        return { kind: 'error', status: 404, code: 'X509.ALIAS.ABSENT', reason: 'No such credential.', detail: null } as unknown as JsonResult<T>;
+      }
       const body = path === X509_FORM_PATH ? RULES : { ...RULES, credential: CREDENTIAL };
       return { kind: 'ok', status: 200, body } as unknown as JsonResult<T>;
     },
@@ -199,5 +202,14 @@ describe('the X.509 credential form', () => {
     expect(await asked).toBe(false);
     expect(formDirty.dirty()).toBe(true);
     expect(host.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it('an edit of an alias the instance does not hold renders Save aria-disabled (I/O matrix: Absent on edit)', async () => {
+    // Mutation (Rule 19): make `saveBlocked` ignore `store.canSave()` (e.g. return false unconditionally)
+    // -> the absent-alias case renders Save pressable and this goes red.
+    const { host } = await mount('/security/x509/edit/OcuPilotProbeAbsent', true);
+    const save = host.querySelector('.ocu-form-bar-actions button.ocu-button-primary') as HTMLButtonElement;
+    expect(save).not.toBeNull();
+    expect(save.getAttribute('aria-disabled')).toBe('true');
   });
 });

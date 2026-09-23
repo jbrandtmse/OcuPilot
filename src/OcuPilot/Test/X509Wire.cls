@@ -124,7 +124,8 @@ Method TestEachRouteAnswersOneJsonEnvelopeOverTheWire()
     Do $$$AssertEquals(tStatus, 404, "and so is the form read of one")
 }
 
-/// <p>AC2, AC4 over the wire: <code>POST /x509</code> imports a certificate alone with both lists;
+/// <p>AC2, AC4 over the wire: <code>POST /x509</code> imports a certificate alone with both lists,
+/// its key and password empty as the form sends them;
 /// the list's own read then shows its subject, issuer and validity; <code>PUT /x509/:id</code> with
 /// the authorized users alone keeps the peers; a second import of the alias is refused as taken,
 /// while the same alias in lower case is another credential.</p>
@@ -133,7 +134,7 @@ Method TestEachRouteAnswersOneJsonEnvelopeOverTheWire()
 /// leg goes red.</p>
 Method TestAnImportShowsOnTheListAndAnEditKeepsTheOtherList()
 {
-    Set tRequest = {"Alias": (..#PROBE), "Certificate": (..Pem("Certificate")), "OwnerList": ["OcuPilotProbeOwner"], "PeerNames": ["probe.example"]}
+    Set tRequest = {"Alias": (..#PROBE), "Certificate": (..Pem("Certificate")), "PrivateKey": "", "PrivateKeyPassword": "", "OwnerList": ["OcuPilotProbeOwner"], "PeerNames": ["probe.example"]}
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#CREATEPATH, .tStatus, .tBody, tRequest.%ToJSON(), "application/json")
     Do $$$AssertEquals(tStatus, 201, "the import answers 201")
     Do $$$AssertEquals($Select($IsObject($Get(tBody)): tBody.%Get("alias"), 1: ""), ..#PROBE, "naming the alias")

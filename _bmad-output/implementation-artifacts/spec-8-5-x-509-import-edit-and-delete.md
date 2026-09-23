@@ -287,6 +287,40 @@ Before editing a ⚠ file, run `git fetch origin && git show origin/OCU-1-epic7:
 - **AC6.** Given the form holds a change, when any navigation leaves, the agent's included, then the shared leave question asks first.
 - **AC7 (DW-1456).** Given a name the registry's confirm-channel validator admits as a settable secret, when a tool's descriptor declares it, then `Write.FieldRows` no longer advertises it. A spelling the consumer never produces (`OwnerList[]`) is refused by the validator.
 
+### Review Findings
+
+Code review 2026-09-23, `review_tier: full-opus`, four layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 1 high, 3 medium and 8 low survived triage. Every patch is applied; every other finding is ledgered or rejected below.
+
+- [x] [Review][Patch] (high, AD-16) `ImportThroughClass`'s catch blocks did not restore the namespace as their first line: the outer one cleared the OREF first, and the inner certificate-decode one had no restore [src/OcuPilot/Port/AdminPort.cls:1353]
+- [x] [Review][Patch] (medium) `KeyMatches` read the right password for an encrypted key of another size or algorithm as a wrong password (probed on `ocupilot-b-ci`: a 1024-bit key gives `data greater than mod len`, an EC key `operation not supported`), and nothing pinned the mismatch direction. Only OpenSSL's `DECODER` error, which every non-`bad decrypt` wrong password produced in 1,500 PKCS#8 and 1,500 legacy trials, now reads as the password [src/OcuPilot/Area/Security/X509Rules.cls:164]
+- [x] [Review][Patch] (medium) a certificate that is not RSA, imported with a key (vendor #731), or one the vendor cannot read (#742) answered 500 at the port instead of a mapped refusal [src/OcuPilot/Port/AdminPort.cls:274]
+- [x] [Review][Patch] (medium, Rule 19) no test sent the real port an import with `PrivateKey` and `PrivateKeyPassword` empty, which is the shape the form and the card send for a certificate alone [src/OcuPilot/Test/X509Wire.cls:137]
+- [x] [Review][Patch] (low) `X509Material.Generate` dropped `Discard`'s status on its failure path [src/OcuPilot/Test/X509Material.cls:86]
+- [x] [Review][Patch] (low) four doc claims were wrong: the `X509Import` and `X509Material` headers (what saves and where the material is used), and `X509Rules.Validate`/`KeyMatches` ("the vendor's own test") [src/OcuPilot/Test/X509Import.cls:7]
+- [x] [Review][Defer] vendor #734 (`mgr/iris.cer` chain check) answers 500 [src/OcuPilot/Port/AdminPort.cls:274] -- deferred: DW-1547 wontfix-accepted
+- [x] [Review][Defer] a non-RSA pair reads the key-mismatch sentence [src/OcuPilot/Area/Security/X509Rules.cls:156] -- deferred: DW-1548 wontfix-accepted
+- [x] [Review][Defer] editing an expired credential, or one whose CA file is gone, gets a generic envelope [src/OcuPilot/Area/Security/X509Save.cls:172] -- deferred: DW-1549 wontfix-accepted
+- [x] [Review][Defer] `autocomplete="new-password"` on the key fields [ui/src/app/areas/security/x509-form.page.ts:147] -- deferred: DW-1550 wontfix-accepted
+- [x] [Review][Defer] the edit page's privilege denial names "import a certificate" [ui/src/app/areas/security/x509-form.page.ts:404] -- deferred: DW-1551 wontfix-accepted
+- [x] [Review][Defer] the material directory's failure-path cleanup has no test, and nothing sweeps one a killed run leaves [src/OcuPilot/Test/X509Material.cls:37] -- deferred: DW-1552 wontfix-accepted
+
+Rejected:
+
+- settled: the agent's refused import answers the generic 400 `PORT.VALIDATION` with the code only in the log (orchestrator-approved).
+- low: on a `DECODER` wrong password the screen says "wrong password" while the vendor logs #733. The difference shows only in the port's log line.
+- by-design: a legacy `Proc-Type` key cannot travel through the card, and the key-shape sentence names the line-break rule (the Single-line PEM matrix row).
+- low: `GET /x509/name` renders a port refusal as internal. The gate has already passed, and the fix adds outputs to `Taken`.
+- low: list items that carry commas, that are not strings, or a whitespace-only key. Only a crafted request produces them, and a comma splits into the owners the text names.
+- low: the alias is not trimmed (the vendor does not trim it either); the limits are declared twice with no divergence named; the password's `maxlength` truncates.
+- by-design: both toggles are named with `accountShowPassword`/`accountHidePassword` (Code Map reuse).
+- low: "Load from file" has no size guard, `onerror` or late-`onload` guard. A late load needs a sign-out within milliseconds.
+- false: the `DECODER` pin, because no `DECODER` wrong-password error carried `bad decrypt` in the trials above, and its mutation was observed red (run 287).
+- low: the name look-up's taken answer and the form read's DN and validity fields have no test. They are not AC pins.
+- by-design: an encrypted non-RSA key sent with no password saves (vendor behavior, kept); the delete fingerprints `SerialNumber,IssuerDN` (spec).
+- low: an `EC PRIVATE KEY` label, a `Bag Attributes` preamble, legacy headers joined on one line, a non-string secret, a stray password beside an unencrypted key.
+- false: AC5 has observed mutations (runs 243, 244, 247). The QA absent-on-edit leg is falsifiable (its mutation is observed), and `absent()` is pinned in the store spec.
+- false: Rule 3 is met by `x509-import.browser-spec.mjs` and `X509Wire` over HTTP. AC2's list refresh has no new evidence beyond the triage log's rejected item: the list and the form both declare `x509-credential`.
+
 ## Spec Change Log
 
 - 2026-09-23, lead (orchestrator rulings on the bundle-budget halt): budget re-based to 1261kB under DW-1166; `screen-outlet.ts` contended append-only; no private-key literal -- tests generate key material with openssl at run time. Status reset to `in-progress` with the implementation still uncommitted.
@@ -453,6 +487,7 @@ Stateful checks run on slot B's throwaway `ocupilot-b-ci` (web 52777, super 1976
 | AC6 | `x509-form.page.spec.ts` dirty-leave leg | Clear `FormDirty` on edit |
 | AC7 | `SecretSpelling` | `Write.cls` :424 matches the raw path (`$ListFind(tSecrets, tPath)`) |
 | Canonical PEM | `X509Import` single-line leg | `PemBlock` stops re-wrapping |
+| I/O: Absent on edit | (QA) `x509-form.page.spec.ts` "renders Save aria-disabled" leg | `X509FormPage.saveBlocked` ignores `store.canSave()` |
 
 Observed (implement stage; each applied to the working file, loaded with `cbk-d` or rerun under `node --test`/`ng test`, observed red, restored from a byte copy and reloaded):
 
@@ -475,6 +510,12 @@ Observed (implement stage; each applied to the working file, loaded with `cbk-d`
 - mutation: the key text appended to the status `ImportThroughClass` returns for a refused save -> `X509Wire.TestZNothingReachedTheMessageLog` red on the real message log, its run-marker floor holding (run 288) (AC3, log output)
 - mutation: `X509Rules.KeyMatches` without its encrypted-key line -> `X509Import.TestAWrongPasswordThatDecodesToNoKeyIsStillThePassword` red (run 287) (wrong-password classification)
 - mutation (`ng test --include=src/app/app.spec.ts`): `this.x509Form.reset()` deleted from `App.verifyWhenSignedIn` -> the sign-out test red on the pasted certificate (AC3, AD-35)
+- (QA) mutation: `X509FormPage.saveBlocked` returns `false` unconditionally, ignoring `store.canSave()` -> the new `x509-form.page.spec.ts` "Absent on edit" leg red alone, the other four legs in that file staying green; reverted, byte-identical, green again (I/O matrix row "Absent on edit": "Save is aria-disabled" had no page-level DOM assertion before this pass)
+- (QA) reverified on `ocupilot-b-ci`: `Write.cls` :424 mutated to test the raw path (`$ListFind(tSecrets, tPath)`) -> `SecretSpelling.TestTheValidatorAdmitsExactlyTheSpellingsTheFieldRowsDrop` red on all four list-field candidates (run 200), reverted and green (run 201) -- the AC7 pin is truthful
+- (QA) reverified on `ocupilot-b-ci`: the key text appended to `AdminPort.ImportThroughClass`'s save-refusal status -> `X509Wire.TestZNothingReachedTheMessageLog` red alone (run 203), reverted and green (run 204) -- the AC3 log-line pin is truthful
+- (CR) mutation: `KeyMatches` restored to its pre-review line (any encrypted-key failure but the OAEP error reads as the password) -> `X509Import.TestEveryFieldRuleRefuses` secret case 12 red (an encrypted EC key with its right password) (run 209); every encrypted-key failure read as the password -> cases 11 and 12 red (run 210) (wrong-password classification)
+- (CR) mutation: `AdminPort.IMPORTSAVECODES` without `731` and `742` -> `X509Import.TestARefusedImportLogsNoSecret` case 5 red at 500 (run 209, loaded with the `KeyMatches` mutation above; distinct assertions)
+- (CR) mutation: `ImportThroughClass` checks the key's shape whenever `PrivateKey` is a string -> `X509Wire.TestAnImportShowsOnTheListAndAnEditKeepsTheOtherList` red at the import (run 211); restored: `X509Wire` green (run 212), `X509Import` green (run 213) (AC5 optional key, real port)
 
 ## Auto Run Result
 

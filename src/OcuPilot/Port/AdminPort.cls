@@ -269,8 +269,9 @@ Parameter PASSWORDMAXLENGTH As INTEGER = 128;
 
 /// <p>The vendor status codes a content import's save answers for a refused certificate, key or
 /// password, each paired with the OcuPilot code the port's log names in its place: expired, a key
-/// the password does not decrypt, a key that does not belong to the certificate.</p>
-Parameter IMPORTSAVECODES = "728=X509.CERTIFICATE.EXPIRED,732=X509.PRIVATEKEYPASSWORD.WRONG,733=X509.PRIVATEKEY.MISMATCH";
+/// the password does not decrypt, a key that does not belong to the certificate, a certificate
+/// whose public key is not RSA carried with a key, and a certificate the vendor cannot read.</p>
+Parameter IMPORTSAVECODES = "728=X509.CERTIFICATE.EXPIRED,732=X509.PRIVATEKEYPASSWORD.WRONG,733=X509.PRIVATEKEY.MISMATCH,731=X509.PRIVATEKEY.MISMATCH,742=X509.CERTIFICATE.SHAPE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries whose vendor body is a <b>wrapper</b>, as
 /// comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;wrapper&gt;:&lt;outer&gt;[:&lt;outer&gt;...]</code>
@@ -1302,6 +1303,7 @@ ClassMethod ImportThroughClass(pEndpoint As %String, pClass As %String, pType As
         Try {
             Set tCredential.Certificate = tBytes
         } Catch {
+            Set $NAMESPACE = tOrigNS
             Set tDecoded = 0
         }
         If 'tDecoded {
@@ -1349,8 +1351,8 @@ ClassMethod ImportThroughClass(pEndpoint As %String, pClass As %String, pType As
         Set pAnswer = $Select($$$ISOK(tReadSC) && $IsObject($Get(tFresh)): tFresh, 1: {})
         Set pHttpStatus = 201
     } Catch ex {
-        Set tCredential = ""
         Set $NAMESPACE = tOrigNS
+        Set tCredential = ""
         Set pHttpStatus = 500
         Set tSC = $$$ERROR($$$GeneralError, "the X.509 import failed inside the port at " _ $Piece(ex.Location, "^", 1))
     }

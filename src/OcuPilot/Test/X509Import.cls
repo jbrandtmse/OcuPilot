@@ -5,7 +5,7 @@
 /// block whose line breaks were lost, and the port's refusal of a file path.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and its protected state
 /// readable. Every write goes to <class>OcuPilot.Test.ProposalFixture</class> or is refused by the
-/// port before a save, so nothing here imports a credential; the alias look-up and the prohibited
+/// port, before or at the vendor's save, so nothing here imports a credential; the alias look-up and the prohibited
 /// set's target read are live, so the probe alias must be one the instance does not hold. The PEM
 /// material is made once for the class by <class>OcuPilot.Test.X509Material</class>, which needs the
 /// image's OpenSSL and <code>$ZF(-100)</code>. No arming variable is required.</p>
@@ -99,7 +99,9 @@ Method TestTheSchemaAdvertisesNoSecretAndNoPath()
 /// certificate, key and password rules refuse on the screen, whose Save carries them, each on the
 /// field it names and with nothing sent.</p>
 /// <p>Mutation: drop the expiry test from <method>OcuPilot.Area.Security.X509Rules.Validate</method>
-/// -> the expired case goes red.</p>
+/// -> the expired case goes red. Mutation: make
+/// <method>OcuPilot.Area.Security.X509Rules.KeyMatches</method> read any encrypted key's failure other
+/// than the OAEP error as the password -> case 12 goes red.</p>
 Method TestEveryFieldRuleRefuses()
 {
     For tCase = 1:1:3 {
@@ -120,7 +122,7 @@ Method TestEveryFieldRuleRefuses()
 
     Set tCert = ..Pem("Certificate")
     Set tKey = ..Pem("PrivateKey")
-    For tCase = 1:1:10 {
+    For tCase = 1:1:12 {
         Set tArgs = ..Args()
         If tCase = 1 Do tArgs.%Remove("Certificate") Set tField = "Certificate", tCode = "X509CERTIFICATEREQUIRED"
         If tCase = 2 Do tArgs.%Set("Certificate", $Replace(tCert, "CERTIFICATE", "PUBLIC KEY")) Set tField = "Certificate", tCode = "X509CERTIFICATESHAPE"
@@ -132,6 +134,8 @@ Method TestEveryFieldRuleRefuses()
         If tCase = 8 Do tArgs.%Set("PrivateKey", ..Pem("OtherKey")) Set tField = "PrivateKey", tCode = "X509PRIVATEKEYMISMATCH"
         If tCase = 9 Do tArgs.%Set("PrivateKey", ..Pem("EncryptedKey")), tArgs.%Set("PrivateKeyPassword", "not the password") Set tField = "PrivateKeyPassword", tCode = "X509PRIVATEKEYPASSWORDWRONG"
         If tCase = 10 Do tArgs.%Remove("PrivateKey"), tArgs.%Set("PrivateKeyPassword", "orphan") Set tField = "PrivateKeyPassword", tCode = "X509PRIVATEKEYPASSWORDWITHOUTKEY"
+        If tCase = 11 Do tArgs.%Set("PrivateKey", ..Pem("OtherEncryptedKey")) Set tField = "PrivateKey", tCode = "X509PRIVATEKEYMISMATCH"
+        If tCase = 12 Do tArgs.%Set("PrivateKey", ..Pem("EcEncryptedKey")) Set tField = "PrivateKey", tCode = "X509PRIVATEKEYMISMATCH"
         Set tExpected = $Parameter("OcuPilot.Api.Error", tCode)
         Do ##class(OcuPilot.Test.ProposalFixture).Clear()
         Set tSC = $ClassMethod(..#SCREEN, "Create", ..#PROBE, tArgs, .tHttp, .tFault, .tViolations)
@@ -291,7 +295,8 @@ Method TestNoSecretReachesTheProposalTheLedgerOrAnAnswer()
 
 /// <p>AC3, AD-35: a refused import writes no secret text to the port's log. Each case runs the
 /// shipped port's content import, refused before or at the save, and every line the port logs is
-/// scanned for the certificate, the key and the password.</p>
+/// scanned for the certificate, the key and the password. Case 5, a certificate and key that are not
+/// RSA, is refused by the vendor's save for a code of its own, which the port maps like the rest.</p>
 /// <p>Mutation: append the key text to the status
 /// <method>OcuPilot.Port.AdminPort.ImportThroughClass</method> returns for a refused save -> the
 /// mismatch case's log line carries it and this goes red.</p>
@@ -299,12 +304,13 @@ Method TestARefusedImportLogsNoSecret()
 {
     Set tPassword = ##class(OcuPilot.Test.X509Material).#PASSWORD
     Do ##class(OcuPilot.Test.X509LogPort).Taken()
-    For tCase = 1:1:4 {
+    For tCase = 1:1:5 {
         Set tBody = {"Certificate": (..Pem("Certificate"))}
         If tCase = 1 Do tBody.%Set("PrivateKey", ..Pem("OtherKey"))
         If tCase = 2 Do tBody.%Set("PrivateKey", ..Pem("EncryptedKey")), tBody.%Set("PrivateKeyPassword", tPassword _ "x")
         If tCase = 3 Do tBody.%Set("Certificate", ..Pem("ExpiredCertificate")), tBody.%Set("PrivateKey", ..Pem("PrivateKey"))
         If tCase = 4 Do tBody.%Set("PrivateKey", ..Flattened(..Pem("LegacyKey"))), tBody.%Set("PrivateKeyPassword", tPassword)
+        If tCase = 5 Do tBody.%Set("Certificate", ..Pem("EcCertificate")), tBody.%Set("PrivateKey", ..Pem("EcKey"))
         Kill tQuery
         Set tQuery("alias") = ..#PROBE
         Set tSC = ##class(OcuPilot.Test.X509LogPort).Invoke("Security.X509Credential", "POST", .tQuery, tBody, .tResult, .tHttp, .tFault)

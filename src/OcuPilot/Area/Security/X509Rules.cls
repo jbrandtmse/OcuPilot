@@ -48,11 +48,11 @@ Parameter LISTFIELDS = "OwnerList,PeerNames";
 /// credential's; <var>pCheckTaken</var> 0 skips the look-up, for an edit and for the agent's mint,
 /// which has read the target itself; <var>pCheckSecrets</var> 0 skips the certificate, key and
 /// password rules, for an edit, which carries none, and for the agent's mint, whose secrets arrive at
-/// confirm. The secret checks are the vendor's own: one PEM block each
+/// confirm. The secret checks follow the vendor's: one PEM block each
 /// (<method>OcuPilot.Port.AdminPort.PemBlock</method>, through the edit tool's port), a certificate
 /// whose validity has not ended, and a key that decrypts what the certificate encrypts with the
-/// password given -- skipped, as the vendor skips it, for an encrypted key sent with no
-/// password.</p>
+/// password given (<method>KeyMatches</method>) -- skipped, as the vendor skips it, for an encrypted
+/// key sent with no password.</p>
 ClassMethod Validate(pAlias As %String, pArgs As %DynamicObject, Output pViolations, pCheckAlias As %Boolean = 1, pCheckTaken As %Boolean = 1, pCheckSecrets As %Boolean = 1) As %Status
 {
     Kill pViolations
@@ -140,12 +140,13 @@ ClassMethod Validate(pAlias As %String, pArgs As %DynamicObject, Output pViolati
 
 /// <p>Whether the canonical key <var>pKey</var> belongs to the certificate <var>pCertificate</var>
 /// (DER bytes) under <var>pPassword</var>: <code>ok</code>, <code>wrong</code> for a password that
-/// does not decrypt the key, or <code>mismatch</code>. The vendor's own test from
+/// does not decrypt the key, or <code>mismatch</code>. The test of
 /// <code>%SYS.X509Credentials</code>'s <code>%OnValidateObject</code>: a fixed plaintext encrypted
-/// with the certificate's public key must decrypt with the private key. An encrypted key is a
-/// mismatch only when it loaded and could not decrypt that ciphertext; any other failure is the
-/// password, because a wrong password can also decrypt the key to bytes that do not decode as one
-/// (about one wrong password in two hundred on this build).</p>
+/// with the certificate's public key must decrypt with the private key, and OpenSSL's decrypt errors
+/// name the password. One addition: a wrong password can also decrypt an encrypted key to bytes that
+/// do not decode as a key (about one wrong password in two hundred on this build), which OpenSSL
+/// reports as a <code>DECODER</code> error and which is the password too. Every other failure --
+/// a key of another certificate, another size or another algorithm -- is a mismatch.</p>
 ClassMethod KeyMatches(pCertificate As %String, pKey As %String, pPassword As %String) As %String
 {
     Set tAnswer = "mismatch"
@@ -160,7 +161,7 @@ ClassMethod KeyMatches(pCertificate As %String, pKey As %String, pPassword As %S
         }
         Set tError = $System.Encryption.RSAGetLastError()
         If (tError [ "pkcs12 cipherfinal error") || (tError [ "bad decrypt") Set tAnswer = "wrong"
-        If (pKey [ "ENCRYPTED") && '(tError [ "oaep decoding error") Set tAnswer = "wrong"
+        If (pKey [ "ENCRYPTED") && (tError [ "DECODER routines") Set tAnswer = "wrong"
     } Catch {
         Set tAnswer = "mismatch"
     }
