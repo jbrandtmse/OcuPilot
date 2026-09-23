@@ -6020,6 +6020,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Story 8.1 closes the DEFAULT (AutheEnabled InitialExpression is 64 = Unauthenticated, verified on the instance, so the story requires at least one method and always sends the field explicitly) without prohibiting a choice a %Admin_Secure holder may make through the screen. DW-1207's question one step on. Probe: propose a create with AutheEnabled=64 through the agent and see whether it is refused.
 - 2026-09-22T22:37:25Z status=decision-pending owner=burndown by=spec_gate note=Raised by the story's own spec under 'For the spec gate' rather than left silent. A product call about the prohibited set, so the owner decides it at the merge-gate decision sheet, not a runner. Recommended: prohibit it for the AGENT path only, leaving the screen choice intact -- consistent with AD-10's by-effect framing.
+- 2026-09-23T01:25:39Z status=decision-pending owner=burndown by=runner note=recommend (b): no prohibition; proposal and confirm name the unauthenticated effect. (a) bars public REST; (c) breaks AD-10
 
 ### DW-1490: The web-applications/list/edit/:id route does not re-read the created application on a cold load; it draws an empty create form at an id-bearing URL
 - source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: med | footprint: out-of-footprint
