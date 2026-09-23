@@ -5648,9 +5648,9 @@ So that the portal is usable in the conditions I actually use it in.
 
 **Acceptance Criteria:**
 
-- **Given** both token sets already exist and are contrast-checked in both modes
+- **Given** every color role has a dark value - the 30 `--mat-sys-*` roles and the 34 `--ocu-*` roles, which DW-39 measured as theme-static (the dark scope re-points 30 `--mat-sys-*` variables and redefines 0 `--ocu-*` roles) - defined in the token files and contrast-checked in both modes
 - **When** the toggle is wired
-- **Then** it is a **flag flip**, not a re-theming exercise.
+- **Then** it is a **flag flip**, not a per-component re-theming exercise. [AMENDED 2026-09-23, orchestrator-authorised at the pre-dispatch AC audit, Rule 5 tier-1: was "**Given** both token sets already exist and are contrast-checked in both modes". DW-39 and DW-118, both routed here, measured that premise false for the `--ocu-*` layer; the intent - a toggle that is a flag flip over complete token sets - is unchanged, and defining the missing dark values is now stated as this story's work rather than assumed done.]
 
 - **Given** the toggle
 - **When** it is placed
