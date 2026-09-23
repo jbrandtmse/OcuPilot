@@ -86,6 +86,25 @@ Method TestAPresentTargetRefusesTheMintAndAnAbsentOneProceeds()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LastQuery($ClassMethod(..#TOOL, "IdParam")), ..#TARGET, "and its own identifying parameter")
 }
 
+/// <p>AD-55: a create's arguments pass the screen's own field rules at the mint, so the agent
+/// cannot mint a create the screen's Save would refuse. One naming no authentication method would
+/// otherwise be created with the vendor's Unauthenticated default.</p>
+/// <p>Mutation: make <method>OcuPilot.Screen.Tool.WebAppCreate.ArgumentProblem</method> answer no
+/// problem -> the create is minted and every assertion below goes red.</p>
+Method TestACreateNamingNoAuthenticationMethodIsRefusedAtTheMint()
+{
+    Set tBefore = ##class(OcuPilot.Test.ProposalFixture).ProposalCount($Username)
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmMissing()
+    Set tArgs = ..Args()
+    Do tArgs.%Remove("AutheEnabled")
+    Set tSC = ..Mint(..#TARGET, tArgs, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "a create naming no authentication method is refused")
+    Do $$$AssertEquals(tHttp, 400, "at 400")
+    Do $$$AssertEquals($Select($IsObject(tFault): tFault.%Get("code"), 1: ""), ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "with the arguments code")
+    Do $$$AssertTrue($Select($IsObject(tFault) && $IsObject(tFault.%Get("detail")): tFault.%Get("detail").%Get("problem"), 1: "") [ "'AutheEnabled': ", "and a problem naming the field the screen's rule names")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).ProposalCount($Username), tBefore, "and no proposal was stored")
+}
+
 /// <p>AD-54's payload rule: a create composes from the caller's arguments over the tool's settable
 /// field list rather than merging over a read that answered nothing, so every supplied field is a
 /// diff row and the unchanged count is zero.</p>

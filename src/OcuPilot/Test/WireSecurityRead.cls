@@ -797,6 +797,26 @@ Method TestAdminSecureAloneIsDeniedOnTheSystemDatabaseRead()
     Do ..AssertReadRefused(..#SECUREUSER, "security.ldap", "%DB_IRISSYS:READ")
 }
 
+/// <p>Story 8.1 (AD-8): the three web-application create routes refuse a caller without
+/// <code>%Admin_Secure:USE</code>, naming it, before anything is read or written -- so the name
+/// look-up cannot tell such a caller whether an application exists.</p>
+/// <p>Mutation: drop <code>tRefused ||</code> from the three handlers' gate checks -> each route
+/// writes its own answer after the refusal envelope, and the body no longer parses.</p>
+Method TestTheWebApplicationCreateRoutesRefuseACallerWithoutAdminSecure()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the fourteen principals' pairs")
+    For tI = 1:1:3 {
+        Set tMethod = $Piece("GET,GET,POST", ",", tI)
+        Set tPath = "/api/ocupilot/web-applications" _ $Piece("/form,/name?name=%2Fcsp%2Fmyapp,", ",", tI)
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest(tMethod, tPath, ..#SYSREADUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders, $Select(tMethod = "POST": "{}", 1: ""), $Select(tMethod = "POST": "application/json", 1: ""))
+        Do $$$AssertStatusOK(tSC, tMethod _ " " _ tPath _ ": the request completes")
+        Do $$$AssertEquals(tStatus, 403, tMethod _ " " _ tPath _ ": is refused")
+        Set tRefusal = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tRefusal.code, "AUTH.NOPRIVILEGE", tMethod _ " " _ tPath _ ": on the screen-privilege code")
+        Do $$$AssertEquals($Select($IsObject(tRefusal.detail): tRefusal.detail.failedPair, 1: ""), "%Admin_Secure:USE", tMethod _ " " _ tPath _ ": naming %Admin_Secure:USE")
+    }
+}
+
 /// <p>AC6 -- <code>%DB_IRISSYS:READ</code> without <code>%Admin_Secure</code>: the same security lists
 /// and their three areas are listed denied on <code>%Admin_Secure:USE</code>, and every one of those
 /// reads is refused naming it.</p>

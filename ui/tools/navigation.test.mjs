@@ -36,6 +36,7 @@ const {
   childListFor,
   detailScreenFor,
   documentScreenFor,
+  createFormFor,
   editorScreenFor,
   isListedScreen,
   listedScreensForArea,
@@ -244,11 +245,15 @@ test('documentScreenFor resolves the REST API explorer to its unlisted, id-keyed
   assert.equal(editorScreenFor(explorer), null, 'and it pairs with no editor');
   assert.equal(documentScreenFor(screenForRoute('')), null, 'Home resolves no viewer');
   assert.equal(documentScreenFor(screenForRoute('web-applications/list')), null, 'and neither does a list with none');
-  // Story 8.1: the Web applications list pairs with an editor now, and that editor is the one
-  // `editorScreenFor`'s three halves admit -- built, unlisted and keyed by an id.
+  // Story 8.1: the Web applications list's Create opens its own form -- built, unlisted and keyed
+  // by an id -- but a row's name cell does not, because that form reads no id.
+  // Mutation (Rule 19): drop WebAppForm from `CREATE_ONLY_FORMS` -> the editor assertion below and
+  // the toast leg of the screenForChange test go red.
   const webApps = screenForRoute('web-applications/list');
-  assert.equal(editorScreenFor(webApps).route, 'web-applications/list/edit', 'the Web applications list opens its own form');
+  assert.equal(createFormFor(webApps).route, 'web-applications/list/edit', 'the Web applications list\'s Create opens its own form');
   assert.equal(isListedScreen(screenForRoute('web-applications/list/edit')), false, 'which takes no side-bar position');
+  assert.equal(editorScreenFor(webApps), null, 'but a row name opens the list\'s own id route');
+  assert.equal(createFormFor(screenForRoute('agent/definitions')).route, 'agent/definitions/edit', 'and a form that reads its id is both');
   assert.deepEqual(
     listedScreensForArea('web-applications').map((screen) => screen.route),
     ['web-applications/list', 'web-applications/rest-apis'],
@@ -927,6 +932,10 @@ test('screenForChange resolves the screen a change opens and the route that name
   assert.equal(target.screen.route, 'web-applications/list');
   assert.equal(target.screen, screenForEntityType('web-application'), 'the same lookup, not a second one');
   assert.equal(target.route, `web-applications/list/${encodeEntityId('/csp/myapp')}`);
+  // A create-only form is skipped, and nothing else changes: the first built screen of a type
+  // still wins, so a task's toast opens the task's own details rather than a list.
+  assert.equal(screenForEntityType('task').route, 'tasks/schedule/details', 'a task change opens its details');
+  assert.equal(screenForEntityType('agent-definition').route, 'agent/definitions/edit', 'a definition change opens its form');
   assert.ok(!target.route.includes('/csp/myapp'), 'the id is one encoded segment, never raw path (AD-13)');
 
   // A type no built screen shows is not a fault: the toast still says what changed, with nothing

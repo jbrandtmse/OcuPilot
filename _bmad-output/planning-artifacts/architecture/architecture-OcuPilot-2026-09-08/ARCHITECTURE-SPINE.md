@@ -7,7 +7,7 @@ paradigm: 'Descriptor-driven vertical slices, hexagonal at the edges'
 scope: 'OcuPilot in full: Release 1 (119 P0 rows, contest deadline 2026-09-27) binding; Stages 2-6 decided where their gates are already clear, named as staged decisions where they are not.'
 status: final
 created: '2026-09-08'
-updated: '2026-09-22'
+updated: '2026-09-23'
 binds:
   - 'Areas 5.1-5.12 (shell, agent co-pilot, agent tools, agent config, web apps + REST explorer, permissions, security and secrets, tasks, OS management, logs, packaging, polish)'
   - 'FR-1 through FR-79, NFR-1 through NFR-14'
@@ -829,6 +829,8 @@ Decisions intentionally pushed down, each with the reason it can wait. Nothing h
 | CORS | Same-origin by construction in **both** production and development — the dev loop proxies through the IRIS origin (AD-47) rather than enabling cross-origin requests, so there is no allowance to leave switched on | If an external consumer ever appears |
 | Accessibility mechanics | NFR-12 and the whole keyboard, focus and announcement contract are owned by EXPERIENCE.md and are component-level. The only architectural hook is AD-19's component model and AD-43's silent refresh, both of which exist | Not an architecture concern |
 | A disabled account's live tokens (DW-444, **decided**) | Probed 2026-09-16: a disabled account's access token keeps answering and `/refresh` keeps minting pairs until the pair lapses. AD-31 bounds a running turn by its wall-clock limit meanwhile. **Decided at Epic 4's merge gate, 2026-09-19:** refuse it - check `Enabled` at authentication and refuse `/refresh` for a disabled user. It is a security hole and ships in Release 1, so the enabled-flag read is escalated deliberately rather than avoided. Routed to Story 5.4 | Decided; Story 5.4 implements it |
+| Whether enforced read-only and the kill switch bar a person's own Save (DW-1494, **decision-pending**) | AD-55 says a screen's Save "inherits every gate AD-40 places at the write", which includes read-only and the kill switch (AD-30), while FR-19 and AD-30 describe both as restraints on the agent's write tools. Story 8.1's create route evaluates the prohibited set and not `Restraint.Verdict`. Either the route calls it or AD-55's wording narrows to the prohibited set | The owner's Epic 8 merge-gate decision sheet |
+| A web-application create's caller-supplied `WSGIAppLocation` (DW-1495, **decision-pending**) | AD-21 says no OcuPilot endpoint accepts a filesystem path from a caller; Story 8.1's create admits `WSGIAppLocation` and derives `Path` from it on both the screen and agent paths. Either AD-21 carries a stated exception for a WSGI/ASGI create's directory or the location is contained under a fixed root | The owner's Epic 8 merge-gate decision sheet |
 
 ### Superseded by decisions in this spine
 

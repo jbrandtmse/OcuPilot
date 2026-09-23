@@ -96,7 +96,7 @@ XData Probes
 <!-- /web-applications/name carries no query string here: path is rebuilt from url and a
      query string would not survive that, so this row draws the documented 422
      WEBAPP.NAME.REQUIRED envelope instead of a 200. It is still a dispatch, which is what
-     this class asserts; the route's own answers are OcuPilot.Test.WebAppCreate's. -->
+     this class asserts; the route's own answers are OcuPilot.Test.WebAppWire's. -->
 <probe class="Api.Router" method="GET" url="/web-applications/name" path="/api/ocupilot/web-applications/name" disposition="envelope"/>
 <probe class="Api.Router" method="POST" url="/web-applications" path="/api/ocupilot/web-applications" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/screens/:screen/read" path="/api/ocupilot/screens/osmgmt.locks/read" disposition="envelope" substitute="osmgmt.locks" substitutewhy="a screen identifier that resolves to nothing answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this one route probes a real screen"/>

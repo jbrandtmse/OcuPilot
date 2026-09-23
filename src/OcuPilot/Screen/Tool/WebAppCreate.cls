@@ -123,6 +123,24 @@ ClassMethod DerivedFields(pPayload As %DynamicObject)
     Do pPayload.%Set(..#DERIVEDPATH, tLocation, "string")
 }
 
+/// <p>The screen's own field rules (<method>OcuPilot.Area.WebApp.Create.Validate</method>) over the
+/// agent's arguments, each broken rule as its field and published sentence (AD-55). A create that
+/// names no authentication method is refused here rather than created with the vendor's
+/// Unauthenticated default. The name look-up is skipped: the mint's absence read has answered
+/// it.</p>
+ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Set pProblem = ""
+    Set tSC = ##class(OcuPilot.Area.WebApp.Create).Validate(pIdValue, pArgs, .tViolations, 0)
+    If $$$ISERR(tSC) Quit tSC
+    For tI = 1:1:$Get(tViolations) {
+        Set tField = $List(tViolations(tI), 1)
+        Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation($List(tViolations(tI), 2))
+        Set pProblem = pProblem _ $Select(pProblem = "": "", 1: " ") _ "'" _ tField _ "': " _ tReason
+    }
+    Quit $$$OK
+}
+
 /// <p>What the caller must hold: the screen's own pairs
 /// (<method>OcuPilot.Screen.Gate.RequiredPairs</method>, which unions the declared set with the
 /// classic page's custom resource) together with

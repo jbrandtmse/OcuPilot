@@ -438,9 +438,9 @@ export class WebAppCreateForm {
    * Render the server's own sentence on a required field the operator left empty (DW-376, AD-39).
    *
    * **It is the bootstrap read's rule, not a sentence authored here.** `GET /web-applications/form`
-   * publishes one `{field, code, reason}` per rule the server applies, and this renders the one
-   * whose field matches and whose code is that field's required-ness rule -- the same wording a
-   * refused Save would carry, without a save and without a validate-only route. A field the read
+   * publishes one `{field, code, reason}` per rule the server applies, and this renders the
+   * field's first, which is its required-ness rule (`FormRules.Rules` lists that one first) -- the
+   * same wording a refused Save would carry, without a save and without a validate-only route. A field the read
    * published no rule for renders nothing, which is the fail-closed direction: an empty sentence
    * on a field is worse than none.
    */
@@ -449,9 +449,7 @@ export class WebAppCreateForm {
     if (!this.sends(field)) return;
     if (!this.required(field)) return;
     if (this.currentText(field) !== '') return;
-    const rule = this.rulesValue.rules.find(
-      (entry) => entry.field === field && entry.code.endsWith('.REQUIRED')
-    );
+    const rule = this.rulesValue.rules.find((entry) => entry.field === field);
     if (rule === undefined) return;
     if (this.violationList.some((entry) => entry.field === field)) return;
     this.violationList = [...this.violationList, { field, code: rule.code, reason: rule.reason }];

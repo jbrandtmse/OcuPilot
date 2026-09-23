@@ -184,9 +184,9 @@ test('AC1: the form captures the classic field set in order, and the type contro
         STRINGS.headerNamespaceLabel,
         STRINGS.tableColumnEnabled,
         STRINGS.webAppFormType,
-        STRINGS.webAppFormRecurse,
         STRINGS.webAppColumnResource,
         STRINGS.serviceColumnAuthentication,
+        STRINGS.webAppFormRecurse,
       ],
       'a CSP application draws the classic order over the reviewed create fields'
     );
@@ -235,8 +235,8 @@ test('AC2: a valid Save creates the application, replaces the route and reads th
       { timeout: config.navigationTimeoutMs },
       STRINGS.formSaved
     );
-    // AC2: the route is replaced with the new application's editor, so a reload lands on the
-    // entity rather than on an empty create form.
+    // AC2: the route is replaced with the new application's editor, so the URL names the
+    // application just created.
     await page.waitForFunction(
       () => /\/web-applications\/list\/edit\/[^/]+$/.test(new URL(window.location.href).pathname),
       { timeout: config.navigationTimeoutMs }
@@ -339,10 +339,9 @@ test('AC3: Create is offered, runs once per click, survives leaving and returnin
   }
 });
 
-// The refusal leg. Mutation (Rule 19): drop `params[0]` when mapping the vendor status onto
-// `detail.violations[].field` (`OcuPilot.Api.Error.ViolationsFromVendor`) -> a vendor refusal no
-// longer lands on a field; the OcuPilot-authored namespace rule still does, so this leg is
-// written against the sentence AND the field it renders on.
+// The refusal leg. Mutation (Rule 19): drop the namespace rule from `OcuPilot.Area.WebApp.Create`'s
+// `Validate` -> the namespace field no longer carries OcuPilot's own sentence. The leg is written
+// against the sentence AND the field it renders on.
 test('a refused Save renders the field-level sentence the server authored, on the field it names', async () => {
   const { context, page } = await signedInAt(FORM_URL);
   try {

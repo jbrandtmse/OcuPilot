@@ -433,6 +433,12 @@ Method TestACreateIsRefusedAtOcuPilotsOwnPathForRolesAndForAnUnreviewedField()
     Do $$$AssertEquals(tProhibits, 1, "which is prohibited")
     Do $$$AssertEquals(tCode, tExpectedServing, "on the serving-path predicate")
 
+    ; A path beneath OcuPilot's own would answer the requests OcuPilot serves there.
+    Set tSC = ..AskCreate(tPlain, "/api/ocupilot/agent", .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the set answers a create beneath OcuPilot's own path")
+    Do $$$AssertEquals(tProhibits, 1, "which is prohibited")
+    Do $$$AssertEquals(tCode, tExpectedServing, "on the serving-path predicate as well")
+
     ; AD-10 forbids setting application roles on ANY web application, and creating one is no
     ; exception -- which is why MatchRoles is in the create list's always-prohibited half as well.
     Set tSC = ..AskCreate(..CreatePayload("MatchRoles"), ..#TARGET, .tProhibits, .tCode)

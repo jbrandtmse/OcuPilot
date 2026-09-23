@@ -42,7 +42,10 @@ const RULES = {
   conditionalFields: { rest: ['DispatchClass', 'WSGICallable'], wsgi: ['WSGIAppName', 'WSGIAppLocation', 'WSGIType'] },
   wsgiTypes: ['WSGI', 'ASGI'],
   maxLengths: { Name: 64, Description: 256 },
-  rules: [{ field: 'NameSpace', code: 'WEBAPP.NAMESPACE.REQUIRED', reason: 'Choose the namespace.' }],
+  rules: [
+    { field: 'NameSpace', code: 'WEBAPP.NAMESPACE.REQUIRED', reason: 'Choose the namespace.' },
+    { field: 'WSGIAppName', code: 'WEBAPP.WSGI.APPNAME', reason: 'Name the file.' },
+  ],
 };
 
 async function settle(): Promise<void> {
@@ -204,6 +207,15 @@ describe('the Web application create form store', () => {
     // A field the read published no rule for renders nothing rather than an empty sentence.
     await store.onBlur('Description');
     expect(store.violationFor('Description')).toBe('');
+  });
+
+  it('DW-376: a Python field renders its own rule on blur, whatever its code is spelled', async () => {
+    const { store } = mount();
+    await store.open();
+    store.setType(TYPE_PYTHON);
+    // Mutation (Rule 19): match only codes ending in `.REQUIRED` in `markEmptyRequired` -> red.
+    await store.onBlur('WSGIAppName');
+    expect(store.violationFor('WSGIAppName')).toBe('Name the file.');
   });
 
   it('AD-3: which fields a type sends is the server\'s conditionalFields, not a constant in this client', async () => {

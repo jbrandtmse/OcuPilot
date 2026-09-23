@@ -115,9 +115,9 @@ Method TestTheNameReadAnswersFreeAndTakenAndRefusesAnEmptyName()
 
 /// <p><code>POST /web-applications</code>: the create, its field-level refusals and AD-10's
 /// prohibited refusals, each over the wire (AD-12, AD-39, AD-55).</p>
-/// <p>Mutation: render the port's fault without its <code>detail</code> in
-/// <method>OcuPilot.Area.WebApp.Create.HandleCreate</method> -> the prohibited legs lose their
-/// codes and go red.</p>
+/// <p>Mutation: render the fault's <code>error</code> where
+/// <method>OcuPilot.Area.WebApp.Create.HandleCreate</method> renders its <code>code</code> -> the
+/// prohibited legs lose their codes and go red.</p>
 Method TestTheCreateAnswersOneEnvelopeForEachOutcome()
 {
     ; Field rules: one response naming every broken rule, never one response per rule.

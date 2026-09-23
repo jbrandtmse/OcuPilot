@@ -210,6 +210,34 @@ deferred:
 - Given `webapp.list.create` in the registry, when the agent proposes a create and the user confirms it, then the write is marked with an audit event, a ledger row records the fields actually sent, and a `created` change event reaches the list.
 - Given any caller, when `MatchRoles` is supplied or the intended path serves OcuPilot, then the write is refused on the instance inside the atomic transition.
 
+### Review Findings
+
+Code review 2026-09-23 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 61 rows, 21 entries after grouping.
+
+- [x] [Review][Patch] [High][CI] The list's name link opened the create form: `editorScreenFor` resolved `WebAppForm`, so `/csp/myapp` landed on an empty create form at `list/edit/<id>` (CI run 35802532386, AC5) -- `CREATE_ONLY_FORMS` now keeps it out of `editorScreenFor`, and the Create action resolves it through `createFormFor` [ui/src/app/core/navigation.ts:177]
+- [x] [Review][Patch] [High] The agent's create ran none of the create's field rules, so a proposal naming no `AutheEnabled` was created Unauthenticated -- the mint now asks `Write.ArgumentProblem`, which `WebAppCreate` answers with `Create.Validate`'s rules [src/OcuPilot/Kernel/Proposal/Mint.cls:197]
+- [x] [Review][Patch] [High] The three create routes' privilege gate did not stop the handler: `Denial.Envelope` returns `$$$OK`, so a caller without `%Admin_Secure` got the 403 envelope followed by the route's own answer -- `Gate` now returns `pRefused` [src/OcuPilot/Area/WebApp/Create.cls:420]
+- [x] [Review][Patch] [Med] `screenForEntityType`'s listed-first rule moved six other types' change toasts (a task's to `tasks/on-demand`) -- first match restored, create-only forms skipped [ui/src/app/core/navigation.ts:394]
+- [x] [Review][Patch] [Med] A create beneath OcuPilot's own path (`/api/ocupilot/agent`) was not refused although it would answer OcuPilot's requests -- `Prohibited.UnderOcuPilot` [src/OcuPilot/Kernel/Proposal/Prohibited.cls:546]
+- [x] [Review][Patch] [Med] `WEBAPP.DISPATCH.REQUIRED` was published and never applied, so a REST Save with no class created a CSP application [src/OcuPilot/Area/WebApp/Create.cls:268]
+- [x] [Review][Patch] [Med] AC1's classic order: Recurse sat before Resource and the Python protocol before the file; both moved, AC1's roster updated [ui/src/app/areas/web-applications/create-form.page.ts:271]
+- [x] [Review][Patch] [Med] The AD-55 one-body test covered 7 of 11 settable fields; `PayloadArgs` now carries 10 (all but `DispatchClass`) [src/OcuPilot/Test/WebAppCreate.cls:178]
+- [x] [Review][Patch] [Low] `WSGICallable` was missing from the server's `wsgi` list, so a callable typed under Python was sent for CSP/REST [src/OcuPilot/Area/WebApp/FormRules.cls:249]
+- [x] [Review][Patch] [Low] A blurred empty Python field showed no sentence: the blur matched only `.REQUIRED` codes [ui/src/app/areas/web-applications/create-form.store.ts:452]
+- [x] [Review][Patch] [Low] The authentication fieldset took no focus from the summary link [ui/src/app/areas/web-applications/create-form.page.ts:314]
+- [x] [Review][Patch] [Low] The type-conflict and WSGI-completeness rules had no test [src/OcuPilot/Test/WebAppCreate.cls:202]
+- [x] [Review][Patch] [Low] `PAYLOADPROBE` was not removed after a regressed run [src/OcuPilot/Test/WebAppCreate.cls:49]
+- [x] [Review][Patch] [Low] Stale claims corrected: `WebAppCreate`'s header, `CreateFixture`'s "the gate", `Create`'s class doc, the browser spec's AC2 reload and refusal-leg notes, `WebAppWire`'s mutation note, the strings comment's "type", `EndpointCoverage`'s class name [src/OcuPilot/Test/WebAppCreate.cls:5]
+- [x] [Review][Patch] [Low] DESIGN.md and UX-DR80 gained a paragraph the task said not to add, and UX-DR80 still said "five" [_bmad-output/planning-artifacts/epics.md:491]
+- [x] [Review][Defer] [Med] The agent's create writes the canonical spelling, the screen's the typed one [src/OcuPilot/Kernel/Proposal/Confirm.cls:417] -- deferred: DW-1493 escalated (contended Confirm, new stored state)
+- [x] [Review][Defer] [Med] The screen's Save evaluates neither read-only nor the kill switch, against AD-55's literal wording [src/OcuPilot/Area/WebApp/Create.cls:142] -- deferred: DW-1494 decision-pending
+- [x] [Review][Defer] [Med] `WSGIAppLocation` is a caller-supplied path copied into `Path`, against AD-21 [src/OcuPilot/Screen/Tool/WebAppCreate.cls:117] -- deferred: DW-1495 decision-pending
+- [x] [Review][Defer] [Med] `Prohibited.Created` checks names, not values, so a create may be Unauthenticated [src/OcuPilot/Kernel/Proposal/Prohibited.cls:504] -- deferred: DW-1489 occurrence (decision-pending); an arbitrary `DispatchClass` on a create is AD-54's by-design asymmetry
+- [x] [Review][Defer] [Med] `edit/<id>` is still the writable create form after a Save [ui/src/app/areas/web-applications/create-form.page.ts:606] -- deferred: DW-1490 occurrence (routed 9-2)
+- [x] [Review][Defer] [Med] The screen's name check and the vendor upsert are not atomic, and a vendor 200 answers 201 [src/OcuPilot/Area/WebApp/Create.cls:142] -- wontfix-theoretical: two creates of one new name within the same milliseconds; the confirm's own write also follows its claim (AD-34). Real if a create route ever records a vendor 200.
+
+Rejected: `HandleName` 500s on a malformed name -- false, probed 200 for `csp/app`, `/a%b`, `/csp/a b`. `Compose`'s object-field problem reported as the name's shape -- low, the client never sends an object. A failed `Taken` renders 500 -- low, needs privilege lost between the gate and the read. `Methods()` swallows errors; a successful non-object read reads as free; a rejected `navigateByUrl` leaves the buffer retained; `ToolDerivedFields` fails silently -- theoretical. AC4 and AC6 have no mutation row -- false, both carry one. `CreateFixture.cls` untracked -- the lead's commit, not a defect.
+
 ## Spec Change Log
 
 - 2026-09-22, implement: `## Verification`'s mutation table records the mutation actually applied
@@ -352,12 +380,37 @@ The **full browser suite is deliberately not run locally** (owner instruction 20
 | A vendor field refusal crosses the port on its own field | `WebAppWire.cls`, the port-boundary test | Drop the violations block from `AdminPort.Fail` | red |
 | The screen's create leaves the derived `Path` on the instance | `WebAppWire.cls`, the WSGI test | Remove the `DerivedFields` call from `Create.Perform` | red |
 | Create makes exactly one navigation per click | `web-applications-create.browser-spec.mjs`, AC3 | Push a second history entry from `WebAppActions.openCreate` | red |
+| (QA) AD-55: the screen's Save and the agent's confirm send the identical body from the same real call sites, and the derived `Path` is on both | `WebAppCreate.cls`, `TestTheScreenRouteAndTheToolComposeOnePayloadAndOneDerivedPath` (rewritten -- the prior version called `Mint.Compose` twice and never `Create.Perform`, so it stayed green under this mutation) | Replace `$ClassMethod(tClass, "SettableFields")` with a hand-typed list missing `Recurse` in `Create.Perform` | red (observed on run 10, reverted, green on run 11, tree byte-identical) |
+| (QA) Name already exists at mint | `ProposalCreate.cls`, `TestAPresentTargetRefusesTheMintAndAnAbsentOneProceeds` | Make `Mint.CreatesOf` answer 0 | red (7 of 8 class methods, observed run 12, reverted, green run 13) |
+| (QA) `NameSpace` omitted on a create is refused on the namespace field | `WebAppCreate.cls`, `TestACreateWithNoAuthenticationMethodAndNoNamespaceIsRefusedOnTheFieldsThatNameThem` | Drop the `NameSpace`-required leg from `Create.Validate` | red (observed run 17, reverted, green run 18) |
+| (QA) No authentication method chosen on a create is refused on `AutheEnabled` | same test as above | Drop the `AutheEnabled`-required leg from `Create.Validate` | red (observed run 16, reverted, green) |
+| (QA) Two spellings of one name reach one target | `ProposalCreate.cls`, `TestTwoSpellingsOfOneNameReachOneTarget` | Make `EntityRef.NormalizedId` answer its argument verbatim for `web-application` | red (also reddened the sibling-cancel test below, observed run 14, reverted, green run 15) |
+| (QA) Two live creates of one name serialize and the sibling is canceled | `ProposalCreate.cls`, `TestTwoLiveCreatesOfOneNameSerializeAndTheSiblingIsCanceled` | Same mutation as the row above (the two targets stop being one target) | red (same run) |
+| (QA) A create at OcuPilot's own path is refused | `Prohibited.cls`, `TestACreateIsRefusedAtOcuPilotsOwnPathForRolesAndForAnUnreviewedField` | Make `Prohibited.CreatesOf` answer 0 | red (1 of 12 class methods, all four legs of this test, observed run 19, reverted, green run 20) |
+| (CR) The list's name link keeps the list route; toasts skip the create form | `web-applications.browser-spec.mjs` AC5; `navigation.test.mjs` | Let `editorScreenFor` ignore `CREATE_ONLY_FORMS`; separately, empty the set | red (AC5, rebuilt bundle); red (2 tools tests) |
+| (CR) AC2: the route is replaced with `edit/<id>` | `web-applications-create.browser-spec.mjs` AC2 | Drop the `navigateByUrl` replacement from `onSave` | red (rebuilt bundle) |
+| (CR) An agent create naming no authentication method is refused at the mint | `ProposalCreate.TestACreateNamingNoAuthenticationMethodIsRefusedAtTheMint` | Make `WebAppCreate.ArgumentProblem` answer no problem | red (run 25) |
+| (CR) A create beneath OcuPilot's path is refused | `Prohibited.TestACreateIsRefusedAtOcuPilotsOwnPath...` | Make `UnderOcuPilot` never fire | red (run 26) |
+| (CR) An empty dispatch class is refused | `WebAppCreate.TestACreateWithNoAuthenticationMethod...` | Drop the dispatch leg from `Create.Validate` | red (run 27) |
+| (CR) AD-55's one body over ten fields | `WebAppCreate.TestTheScreenRouteAndTheToolCompose...` | Hand-typed list missing `Description` in `Create.Perform` | red (run 28) |
+| (CR) The create routes refuse a caller without `%Admin_Secure` | `WireSecurityRead.TestTheWebApplicationCreateRoutesRefuse...` | Handlers ignore `tRefused` (the pre-review code) | red (run 29) |
+| (CR) The handler renders the prohibited code | `WebAppWire.TestTheCreateAnswersOneEnvelopeForEachOutcome` | Render `tFault.error` as the code in `HandleCreate` | red (run 32) |
+| (CR) A Python field's rule renders on blur | `create-form.store.spec.ts`, the WSGI blur test | Match only `.REQUIRED` codes in `markEmptyRequired` | red |
 
 **Where the change event is pinned, and why not in the browser:** the form replaces its own route
 with the new application's editor, which declares the same entity type as the list, so no
 off-screen toast is raised -- and the list the browser leg then navigates to re-reads the instance
 on open whether or not anything was published. The publish is therefore pinned in
 `create-form.store.spec.ts`, where the bus is real and dropping the call reddens.
+
+**(QA) Files added/changed this pass:** `src/OcuPilot/Test/CreateFixture.cls` (new -- a test-only
+`OcuPilot.Area.WebApp.Create` subclass replacing only `PortClass`, the seam the class's own doc
+comment names, so `Perform` can be driven for real without a write reaching the instance);
+`src/OcuPilot/Test/WebAppCreate.cls` (QA -- `TestTheScreenRouteAndTheToolComposeOnePayloadAndOneDerivedPath`
+rewritten to drive both real call sites instead of two independent `Mint.Compose` calls; added
+`PayloadArgs()` and the `SCREEN`/`MINT`/`CONFIRM`/`PAYLOADPROBE` parameters). No other file under
+`src` or `ui` differs from baseline; every mutation above was applied to the checked-in file,
+confirmed red, reverted, and confirmed byte-identical (`git status --short` clean) before the next.
 
 ## Auto Run Result
 

@@ -1317,7 +1317,7 @@ export const STRINGS = {
   // Story 8.1's twelve. The Web applications list becomes write-capable, so its empty state
   // invites the agent instead of naming a next step, and the create form beside it publishes the
   // labels the classic editor's own field order carries. Every other label the form draws is a key
-  // that already exists: the name, description, namespace, enabled, type, dispatch class and
+  // that already exists: the name, description, namespace, enabled, dispatch class and
   // resource columns, the Services list's own "Authentication methods" heading, the
   // required-fields legend, Save, Cancel and the saved confirmation.
   /** EXPERIENCE.md:395 */

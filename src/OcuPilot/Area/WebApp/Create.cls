@@ -1,6 +1,7 @@
-/// <p>The one operation both callers of a web-application create use (AD-55): the screen's Save,
-/// over <code>POST /web-applications</code>, and the agent's confirmed proposal, through
-/// <class>OcuPilot.Kernel.Proposal.Confirm</class>.</p>
+/// <p>The screen's half of a web-application create (AD-55), over <code>POST /web-applications</code>.
+/// The agent's half is the same tool class read by <class>OcuPilot.Kernel.Proposal.Mint</class> and
+/// <class>OcuPilot.Kernel.Proposal.Confirm</class>, and its mint applies <method>Validate</method>'s
+/// rules through <method>OcuPilot.Screen.Tool.WebAppCreate.ArgumentProblem</method>.</p>
 /// <p><b>It resolves everything about the write from the tool class</b>
 /// (<class>OcuPilot.Screen.Tool.WebAppCreate</class>): the endpoint, the request type, the port,
 /// the settable field list and the derived fields. Nothing here names an endpoint, a field or a
@@ -38,7 +39,7 @@ Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.WebAppForm";
 /// parameter and never a body field.</p>
 Parameter IDARGUMENT = "Name";
 
-/// <p>The three body fields a type's own rules turn on, named once.</p>
+/// <p>The body fields a type's own rules turn on, named once.</p>
 Parameter FIELDDISPATCH = "DispatchClass";
 
 Parameter FIELDWSGINAME = "WSGIAppName";
@@ -46,6 +47,8 @@ Parameter FIELDWSGINAME = "WSGIAppName";
 Parameter FIELDWSGILOCATION = "WSGIAppLocation";
 
 Parameter FIELDWSGITYPE = "WSGIType";
+
+Parameter FIELDWSGICALLABLE = "WSGICallable";
 
 /// <p>The authentication mask field, always sent explicitly (AD-54's create list).</p>
 Parameter FIELDAUTHE = "AutheEnabled";
@@ -90,8 +93,8 @@ ClassMethod HandleCreate() As %Status
 {
     Set tSC = $$$OK
     Try {
-        Set tGateSC = ..Gate()
-        If $$$ISERR(tGateSC) {
+        Set tGateSC = ..Gate(.tRefused)
+        If tRefused || $$$ISERR(tGateSC) {
             Set tSC = tGateSC
             Quit
         }
@@ -214,14 +217,17 @@ ClassMethod Perform(pName As %String, pArgs As %DynamicObject, Output pCreated A
 /// application, the three WSGI fields make a WSGI or ASGI one, and an application that names
 /// neither is a CSP application, which is what the vendor's own hard-coded
 /// <code>Type = $$$AppTypeCSP</code> makes every one of them at the class level anyway.</p>
-ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolations) As %Status
+/// <p><var>pCheckTaken</var> 0 skips the name look-up, for a caller that has already read the
+/// target's absence (the agent's mint, through
+/// <method>OcuPilot.Screen.Tool.WebAppCreate.ArgumentProblem</method>).</p>
+ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolations, pCheckTaken As %Boolean = 1) As %Status
 {
     Kill pViolations
     Set pViolations = 0
     Set tSC = $$$OK
     Try {
         Do ..NameViolation(pName, .pViolations)
-        If pViolations = 0 {
+        If (pViolations = 0) && pCheckTaken {
             Set tTakenSC = ##class(OcuPilot.Area.WebApp.FormRules).Taken(pName, .tTaken)
             If $$$ISERR(tTakenSC) {
                 Set tSC = tTakenSC
@@ -250,12 +256,16 @@ ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolatio
         Set tWsgiName = ..Text(pArgs, ..#FIELDWSGINAME)
         Set tWsgiLocation = ..Text(pArgs, ..#FIELDWSGILOCATION)
         Set tWsgiType = ..Text(pArgs, ..#FIELDWSGITYPE)
-        Set tIsWsgi = ((tWsgiName '= "") || (tWsgiLocation '= "") || (tWsgiType '= ""))
+        Set tIsWsgi = ((tWsgiName '= "") || (tWsgiLocation '= "") || (tWsgiType '= "") || (..Text(pArgs, ..#FIELDWSGICALLABLE) '= ""))
         If tIsWsgi {
             If tWsgiName = "" Do ..Add(.pViolations, ..#FIELDWSGINAME, ##class(OcuPilot.Api.Error).#WEBAPPWSGIAPPNAME)
             If tWsgiLocation = "" Do ..Add(.pViolations, ..#FIELDWSGILOCATION, ##class(OcuPilot.Api.Error).#WEBAPPWSGILOCATION)
             If '..IsWsgiType(tWsgiType) Do ..Add(.pViolations, ..#FIELDWSGITYPE, ##class(OcuPilot.Api.Error).#WEBAPPWSGITYPE)
             If ..Text(pArgs, ..#FIELDDISPATCH) '= "" Do ..Add(.pViolations, ..#FIELDDISPATCH, ##class(OcuPilot.Api.Error).#WEBAPPTYPECONFLICT)
+        } ElseIf (pArgs.%GetTypeOf(..#FIELDDISPATCH) = "string") && (..Text(pArgs, ..#FIELDDISPATCH) = "") {
+            ; A body that carries the dispatch class at all asks for a REST application, and one
+            ; carrying it empty would be created as a CSP one.
+            Do ..Add(.pViolations, ..#FIELDDISPATCH, ##class(OcuPilot.Api.Error).#WEBAPPDISPATCHREQUIRED)
         }
 
         Do ..AddLengthViolations(pArgs, .pViolations)
@@ -403,11 +413,16 @@ ClassMethod RenderViolations(ByRef pViolations) As %Status
 
 /// <p>Refuse a caller who does not hold <parameter>DESCRIPTORCLASS</parameter>'s declared pairs
 /// (AD-8), by rendering the one privilege envelope
-/// <method>OcuPilot.Kernel.Denial.Envelope</method> writes, or <code>$$$OK</code>.</p>
-ClassMethod Gate() As %Status
+/// <method>OcuPilot.Kernel.Denial.Envelope</method> writes.</p>
+/// <p><b>Caller contract:</b> <var>pRefused</var> 1 means the envelope has been written and the
+/// handler writes nothing else; the returned status is the render's, which is <code>$$$OK</code>
+/// on a refusal as on a pass, so it cannot be the signal.</p>
+ClassMethod Gate(Output pRefused As %Boolean) As %Status
 {
+    Set pRefused = 0
     Set tFailedPair = ""
     If ##class(OcuPilot.Screen.Gate).Evaluate(..#DESCRIPTORCLASS, .tFailedPair) Quit $$$OK
+    Set pRefused = 1
     Quit ##class(OcuPilot.Kernel.Denial).Envelope(tFailedPair)
 }
 

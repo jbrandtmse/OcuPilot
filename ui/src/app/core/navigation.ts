@@ -171,14 +171,33 @@ export const EDITOR_ROUTE_SUFFIX = 'edit';
  *
  * A row's name cell is a link to the entity's own surface (EXPERIENCE.md's `data-table`), and for
  * a list paired with a form that surface is the form, not the list's own route with an id on the
- * end. Both halves are required: the editor is built, it is unlisted (so this cannot resolve to an
- * ordinary sibling screen that merely sorts after the list), and it is keyed by an id.
+ * end. It is `createFormFor`'s form less the `CREATE_ONLY_FORMS`, which read no id and so cannot
+ * open the row's entity.
  */
 export function editorScreenFor(screen: ScreenDeclaration): ScreenDeclaration | null {
+  const editor = createFormFor(screen);
+  if (editor === null || CREATE_ONLY_FORMS.has(editor.descriptor)) return null;
+  return editor;
+}
+
+/**
+ * The form a list's Create opens, or `null` when the list has none. Both halves are required: the
+ * form is built, it is unlisted (so this cannot resolve to an ordinary sibling screen that merely
+ * sorts after the list), and it is keyed by an id.
+ */
+export function createFormFor(screen: ScreenDeclaration): ScreenDeclaration | null {
   const editor = screenForRoute(`${screen.route}/${EDITOR_ROUTE_SUFFIX}`);
   if (editor === null || !editor.built || isListedScreen(editor) || !hasIdRoute(editor)) return null;
   return editor;
 }
+
+/**
+ * Paired forms that create and never open an existing entity: their `:id` route exists so a Save
+ * can replace the URL with the new entity's, but the page reads no id, so neither a row's name cell
+ * nor a change toast may open one. The Web application form (Story 8.1) is the create half of that
+ * list's editor; Epic 9's editor reads the id, and its story removes the entry.
+ */
+export const CREATE_ONLY_FORMS: ReadonlySet<string> = new Set(['OcuPilot.Screen.Descriptor.WebAppForm']);
 
 /**
  * The route segment a list's own document viewer is declared under, appended to the list's route.
@@ -367,18 +386,17 @@ export function screenForDescriptor(descriptor: string): ScreenDeclaration | nul
  * the declaration that publishes that type's singular noun and its secret argument names. Unbuilt
  * screens are skipped: they declare no surface, so nothing they publish is renderable yet.
  *
- * **A listed screen wins over an unlisted one declaring the same type** (Story 8.1). Two screens
- * declaring one primary type is an ordinary shape now -- a list and the form paired with it -- and
- * `screenForChange` reads this to decide which route an off-screen change toast opens. An unlisted
- * editor is reached from its own list, never from a toast, and its route needs an id the toast's
- * entity may not even have yet, so the list is the surface a change opens. Beyond that, first match
- * wins, which is sound because what else this is read for -- `entityLabelKey`, `secretArguments` --
- * is a property of the entity rather than of the surface.
+ * The first match wins where two screens declare the same primary type (a list and its detail),
+ * which is sound because what this is read for -- `entityLabelKey`, `secretArguments` -- is a
+ * property of the entity rather than of the surface. `CREATE_ONLY_FORMS` are skipped, because
+ * `screenForChange` reads this for the route a change toast opens and such a form opens nothing.
  */
 export function screenForEntityType(type: string): ScreenDeclaration | null {
   if (type === '') return null;
-  const candidates = SCREENS.filter((screen) => screen.built && screen.entityType === type);
-  return candidates.find((screen) => isListedScreen(screen)) ?? candidates[0] ?? null;
+  return (
+    SCREENS.find((screen) => screen.built && screen.entityType === type && !CREATE_ONLY_FORMS.has(screen.descriptor)) ??
+    null
+  );
 }
 
 /**

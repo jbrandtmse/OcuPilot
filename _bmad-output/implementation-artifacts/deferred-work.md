@@ -1630,6 +1630,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-0-epic-1-deferred-cleanup.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: ui/src/app/core/screen-actions.ts: only component specs register; settled by a spec that registers in a routed page, unregisters via DestroyRef, navigates away and back, and asserts no NG0100 and one run per click (inference)
 - 2026-09-14T03:54:44Z status=routed owner=8-1-create-a-web-application by=harvest note=Story 8.1 registers the first real handler
+- 2026-09-23T02:14:40Z status=resolved-by:8-1-create-a-web-application by=adjudication note=create handler tab-scoped from app.ts (web-app-actions.ts); browser AC3 pins once-per-click, no NG0100, survives nav
 
 ### DW-247: After an in-app sign-in or instance recovery swaps the frame in, the first Tab may not land on Skip to content
 - source: spec-2-0-epic-1-deferred-cleanup.md | severity: med | fix-risk: low | footprint: in-story
@@ -2468,6 +2469,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: the key field validates on blur only because GET /agent/providers ships keyShapeReason with the rule; Kernel/AgentRules.Validate and Api/Error.cls hold all 17 reasons and Api/Router carries no validate route. A client-authored sentence would be the second copy source AD-39 exists to prevent
 - 2026-09-16T02:20:06Z status=routed owner=burndown by=harvest note=decide between a validate-only endpoint that returns violations without writing, and accepting that non-key fields validate on save alone
 - 2026-09-16T10:21:59Z status=routed owner=8-1-create-a-web-application by=burndown_gate note=the next form over a validating endpoint, which is where a validate-only route would earn itself
+- 2026-09-23T02:14:41Z status=resolved-by:8-1-create-a-web-application by=adjudication note=rules+sentences ship on GET /web-applications/form (FormRules.cls); blur reads them; no validate route added
 
 ### DW-377: The administrator reminder banner carries no link, which EXPERIENCE.md publishes for it, because no link label exists in the Fixed strings table
 - source: spec-3-6 | severity: med | fix-risk: low | footprint: in-epic
@@ -6021,11 +6023,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 8.1 closes the DEFAULT (AutheEnabled InitialExpression is 64 = Unauthenticated, verified on the instance, so the story requires at least one method and always sends the field explicitly) without prohibiting a choice a %Admin_Secure holder may make through the screen. DW-1207's question one step on. Probe: propose a create with AutheEnabled=64 through the agent and see whether it is refused.
 - 2026-09-22T22:37:25Z status=decision-pending owner=burndown by=spec_gate note=Raised by the story's own spec under 'For the spec gate' rather than left silent. A product call about the prohibited set, so the owner decides it at the merge-gate decision sheet, not a runner. Recommended: prohibit it for the AGENT path only, leaving the screen choice intact -- consistent with AD-10's by-effect framing.
 - 2026-09-23T01:25:39Z status=decision-pending owner=burndown by=runner note=recommend (b): no prohibition; proposal and confirm name the unauthenticated effect. (a) bars public REST; (c) breaks AD-10
+- 2026-09-23T02:11:59Z occurrence=8-1-create-a-web-application
 
 ### DW-1490: The web-applications/list/edit/:id route does not re-read the created application on a cold load; it draws an empty create form at an id-bearing URL
 - source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: create-form.page.ts:604 injects no ActivatedRoute and reads no :id. In-session the buffer carries across the route replacement so the values shown are the created ones; on reload retaining() is false and open() fetches only /web-applications/form. Probe: create an application, then hard-reload the /edit/:id URL and look for an empty form.
 - 2026-09-23T00:32:09Z status=routed owner=9-2-the-web-application-editor by=harvest note=AC 'opens the new application editor' holds on the session path and not on a reload. Epic 9's editor is the story that reads the id, so it closes there rather than being retrofitted here.
+- 2026-09-23T02:11:59Z occurrence=8-1-create-a-web-application
 
 ### DW-1491: A create's confirm compares one digest, not two, so the stored-payload backstop DW-1353 added does not cover a create
 - source: spec-8-1-create-a-web-application.md | severity: low | fix-risk: low | footprint: in-story
@@ -6036,3 +6040,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-1-create-a-web-application.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: ProposalCreate.cls:196 runs against ProposalFixture, whose armed answer is spelling-blind, and asserts the canonical TargetRef plus the typed spelling on the read. The AD-13 claim the row carries is pinned in full by the sibling-cancel row, so the untested half is redundant rather than uncovered. Probe: create /csp/App on a live instance and mint a create under /csp/app/ -- expect the mint refused as present.
 - 2026-09-23T00:32:18Z status=wontfix-accepted owner=8-1-create-a-web-application by=harvest note=reopen_if=the sibling-cancel row stops pinning the AD-13 canonicalization claim, or a create is observed succeeding against an existing application under a different spelling
+
+### DW-1493: A confirmed agent create writes the name in AD-13's canonical spelling while the screen's Save writes it as typed, so one input creates /csp/myapp or /csp/MyApp depending on the caller
+- source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: Confirm.Transition sends tQuery(idParam) from EntityRef.Parse(TargetRef), which is foldcased; Create.Perform sends pName verbatim. Probed on ocupilot-b-ci 2026-09-23: Security.Applications.Create('/csp/CaseProbeX/') stores '/csp/CaseProbeX' (case kept, slash stripped).
+- 2026-09-23T02:11:59Z status=escalated owner=burndown by=cr note=fix stores the typed name at mint and sends it at confirm: new proposal state plus an edit in contended Confirm.Transition
+
+### DW-1494: The screen's Save of a web-application create does not evaluate enforced read-only or the kill switch, while AD-55 says the screen inherits every gate AD-40 places at the write
+- source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Create.Perform asks the prohibited set and never OcuPilot.Kernel.Restraint.Verdict; AD-40 lists read-only and the kill switch (AD-30) among the gates at the write, while FR-19 and AD-30 describe them as restraints on the agent's write tools.
+- 2026-09-23T02:12:06Z status=decision-pending owner=burndown by=cr note=product call: does enforced read-only bar a person's own Save? Either call Restraint.Verdict in Perform or narrow AD-55's wording
+
+### DW-1495: The web-application create accepts WSGIAppLocation, a caller-supplied filesystem directory, and copies it into Path, while AD-21 says no OcuPilot endpoint accepts a filesystem path from a caller
+- source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: WebAppCreate.PERMITTEDFIELDS admits WSGIAppLocation (the spec's own list) and DerivedFields sets Path from it verbatim, on POST /web-applications and on webapp.list.create alike; no containment check is applied.
+- 2026-09-23T02:12:06Z status=decision-pending owner=burndown by=cr note=spec versus spine: carve a stated AD-21 exception for a WSGI create's directory, or contain the location under a fixed root
+
+### DW-1496: A screen Save refused for MatchRoles reads 'not something the agent can propose' although a person pressed Save
+- source: smoke 8-1-create-a-web-application | severity: low | fix-risk: low | footprint: in-story
+- evidence: POST /api/ocupilot/web-applications with MatchRoles answered 403 PROHIBITED.PRIVILEGEGRANT with that sentence on ocupilot-b-ci 2026-09-23; Prohibited.ReasonFor is one sentence for both callers (AD-10 one home).
+- 2026-09-23T02:16:25Z status=wontfix-accepted owner=8-1-create-a-web-application by=smoke note=reopen_if=a screen surfaces a PROHIBITED.* reason to a person (MatchRoles is absent from the form, so today only a hand-built POST sees it)

@@ -83,8 +83,8 @@ ClassMethod HandleForm() As %Status
 {
     Set tSC = $$$OK
     Try {
-        Set tGateSC = ..Gate()
-        If $$$ISERR(tGateSC) {
+        Set tGateSC = ..Gate(.tRefused)
+        If tRefused || $$$ISERR(tGateSC) {
             Set tSC = tGateSC
             Quit
         }
@@ -115,8 +115,8 @@ ClassMethod HandleName() As %Status
 {
     Set tSC = $$$OK
     Try {
-        Set tGateSC = ..Gate()
-        If $$$ISERR(tGateSC) {
+        Set tGateSC = ..Gate(.tRefused)
+        If tRefused || $$$ISERR(tGateSC) {
             Set tSC = tGateSC
             Quit
         }
@@ -242,14 +242,15 @@ ClassMethod Mask() As %Integer
     Quit tMask
 }
 
-/// <p>The fields a create requires only for one kind of application, as
-/// <code>{rest: [...], wsgi: [...]}</code>. The form's type control is what decides which list
-/// applies, and <method>OcuPilot.Area.WebApp.Create</method> applies the same one.</p>
+/// <p>The fields only one kind of application sends, as <code>{rest: [...], wsgi: [...]}</code>.
+/// The form's type control decides which list applies, and a field on the other list is not sent.
+/// Every field listed is required for its kind except <code>WSGICallable</code>, which the
+/// vendor defaults; <method>OcuPilot.Area.WebApp.Create</method> applies the same rules.</p>
 ClassMethod Conditional() As %DynamicObject
 {
     Set tObject = {}
     Do tObject.%Set("rest", ..Names("DispatchClass"))
-    Do tObject.%Set("wsgi", ..Names("WSGIAppName,WSGIAppLocation,WSGIType"))
+    Do tObject.%Set("wsgi", ..Names("WSGIAppName,WSGICallable,WSGIAppLocation,WSGIType"))
     Quit tObject
 }
 
@@ -290,7 +291,8 @@ ClassMethod Lengths() As %DynamicObject
 }
 
 /// <p>Every rule this form applies, as <code>[{field, code, reason}]</code> -- the same shape a
-/// refusal's own <code>detail.violations</code> row takes (AD-39).</p>
+/// refusal's own <code>detail.violations</code> row takes (AD-39). Each field's required-ness rule
+/// is its first row, which is the one the form renders on a blurred empty field.</p>
 /// <p><b>The sentences are <method>OcuPilot.Api.Error.ReasonForViolation</method>'s</b>, so the
 /// inline check a blur runs and the refusal a Save earns are one wording rather than two. A rule
 /// whose code carries no published sentence is absent, which is the fail-closed direction: a field
@@ -333,11 +335,12 @@ ClassMethod Names(pList As %String) As %DynamicArray [ Private ]
     Quit tRows
 }
 
-/// <p>Refuse a caller who does not hold the form screen's own declared pairs (AD-8), or
-/// <code>$$$OK</code>. The refusal is rendered here and the caller quits on it.</p>
-ClassMethod Gate() As %Status
+/// <p>Refuse a caller who does not hold the form screen's own declared pairs (AD-8)
+/// (<method>OcuPilot.Area.WebApp.Create.Gate</method>): <var>pRefused</var> 1 means the refusal
+/// is rendered and the caller quits on it.</p>
+ClassMethod Gate(Output pRefused As %Boolean) As %Status
 {
-    Quit ##class(OcuPilot.Area.WebApp.Create).Gate()
+    Quit ##class(OcuPilot.Area.WebApp.Create).Gate(.pRefused)
 }
 
 }

@@ -1,13 +1,13 @@
 import { Injectable, Injector, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { editorScreenFor, screenForRoute, withQuery } from '../../core/navigation';
+import { createFormFor, screenForRoute, withQuery } from '../../core/navigation';
 import { ScreenActions } from '../../core/screen-actions';
 
 /** The descriptor whose command bar this action appears on. */
 export const WEB_APP_LIST_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.WebAppList';
 
-/** That descriptor's own route, which resolves its paired form through `editorScreenFor`. */
+/** That descriptor's own route, which resolves its paired form through `createFormFor`. */
 export const WEB_APP_LIST_ROUTE = 'web-applications/list';
 
 /** The declared primary action id: the command bar's Create, which opens the form. */
@@ -33,7 +33,7 @@ export const CREATE_ACTION = 'create';
  * behaviour, so the next principal's list needs the same handler and there is nothing to tear
  * down.
  *
- * **The route is resolved, never written.** `editorScreenFor` is the one reader of the convention
+ * **The route is resolved, never written.** `createFormFor` is the one reader of the convention
  * that says where a list's editor lives (`<list route>/edit`), and `withQuery` carries the
  * namespace, as every other navigation in this client does.
  */
@@ -49,7 +49,7 @@ export class WebAppActions {
 
   private openCreate(): void {
     const list = screenForRoute(WEB_APP_LIST_ROUTE);
-    const editor = list === null ? null : editorScreenFor(list);
+    const editor = list === null ? null : createFormFor(list);
     if (editor === null) return;
     const router = this.injector.get(Router);
     void router.navigateByUrl(withQuery(editor.route, router.url));

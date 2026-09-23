@@ -3,8 +3,11 @@
 /// the server derives rather than accepting, and that the screen's Save and the agent's confirm
 /// compose one payload from one field list.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, its compiled tool registry and
-/// its screen registry. Every port call is <class>OcuPilot.Test.ProposalFixture</class>'s, so
-/// nothing here writes to the instance and no principal or application is created.</p>
+/// its screen registry. Every port call is <class>OcuPilot.Test.ProposalFixture</class>'s except
+/// <method>TestTheScreenSaveRefusesAProhibitedCreateBeforeThePortIsTouched</method>'s, which drives
+/// the shipped create against the real port; on a sound build every one of its legs is refused
+/// before the port, and <method>OnAfterOneTest</method> removes its probe name if a regressed build
+/// created it.</p>
 Class OcuPilot.Test.WebAppCreate Extends %UnitTest.TestCase
 {
 
@@ -20,6 +23,23 @@ Parameter SET = "OcuPilot.Kernel.Proposal.Prohibited";
 
 Parameter TYPE = "web-application";
 
+/// <p>The screen path's own fixture: the shipped <class>OcuPilot.Area.WebApp.Create</class> with
+/// only the port replaced (its own declared seam), so <method>Perform</method> runs for real.</p>
+Parameter SCREEN = "OcuPilot.Test.CreateFixture";
+
+/// <p>The shipped mint with the port replaced, so the agent path runs for real too.</p>
+Parameter MINT = "OcuPilot.Test.ProposalMint";
+
+/// <p>The shipped confirm with the port replaced, which records what a write was sent.</p>
+Parameter CONFIRM = "OcuPilot.Test.ConfirmFixture";
+
+/// <p>The name <method>TestTheScreenRouteAndTheToolComposeOnePayloadAndOneDerivedPath</method>
+/// names on both paths. Its own, distinct from <parameter>PROBEAPP</parameter>: the write never
+/// reaches the instance on either path (the screen's through the fixture port above, the agent's
+/// through the same fixture), so nothing here needs removing, but a name shared with a class that
+/// does write would make a stray failure there read as this test's residue instead.</p>
+Parameter PAYLOADPROBE = "/csp/ocupilotprobecreatepayload";
+
 /// <p>The name <method>TestTheScreenSaveRefusesAProhibitedCreateBeforeThePortIsTouched</method>
 /// drives the refused creates against. Nothing here creates it on a sound build -- every leg is a
 /// refusal -- so an application answering that name afterwards is the residue of a build where the
@@ -33,6 +53,7 @@ Method OnAfterOneTest() As %Status
     ; A mutation run leaves one behind, and a leftover would then redden the next run for the
     ; previous run's reason rather than its own.
     If ##class(OcuPilot.Test.WebAppWire).Exists(..#PROBEAPP) Do ##class(OcuPilot.Test.WebAppWire).Remove(..#PROBEAPP)
+    If ##class(OcuPilot.Test.WebAppWire).Exists(..#PAYLOADPROBE) Do ##class(OcuPilot.Test.WebAppWire).Remove(..#PAYLOADPROBE)
     Quit $$$OK
 }
 
@@ -80,40 +101,94 @@ Method TestTheToolAdvertisesTheReviewedCreateFieldsAndExcludesMatchRoles()
 }
 
 /// <p>AD-55: the screen's Save and the agent's confirm resolve one tool class, so the same
-/// arguments compose the same payload whichever caller supplied them -- and the one field the
-/// server derives is derived by the tool, for both.</p>
-/// <p>Mutations: give <class>OcuPilot.Area.WebApp.Create</class> a field list of its own instead of
-/// <method>OcuPilot.Screen.Tool.WebAppCreate.SettableFields</method> -> the two payloads diverge.
-/// Make <method>OcuPilot.Screen.Tool.WebAppCreate.DerivedFields</method> a no-op -> the derived
-/// path assertion goes red.</p>
+/// arguments drive the SAME real bodies to the port whichever caller supplied them -- and the one
+/// field the server derives is derived by the tool, for both.</p>
+/// <p><b>Both paths run for real.</b> The screen leg drives <method>OcuPilot.Area.WebApp.Create.Perform</method>
+/// itself (through <parameter>SCREEN</parameter>, which replaces only the port); the agent leg mints
+/// and confirms through the shipped <class>OcuPilot.Kernel.Proposal.Mint</class> and
+/// <class>OcuPilot.Kernel.Proposal.Confirm</class> (through <parameter>MINT</parameter> and
+/// <parameter>CONFIRM</parameter>, the same replacement). Comparing two independent calls to
+/// <method>OcuPilot.Kernel.Proposal.Mint.Compose</method> proved nothing: a screen-side field list
+/// of its own would only show up in what <method>Perform</method> actually sends, and this reads
+/// that body back from <method>OcuPilot.Test.ProposalFixture.LastWriteBody</method> for both
+/// callers rather than reconstructing it a second time.</p>
+/// <p>Mutation: in <method>OcuPilot.Area.WebApp.Create.Perform</method>, replace
+/// <code>$ClassMethod(tClass, "SettableFields")</code> with a hand-typed list missing
+/// <code>Recurse</code> -> the screen's own composed body drops the field the caller supplied and
+/// the equality assertion goes red, because the agent's still carries it.</p>
 Method TestTheScreenRouteAndTheToolComposeOnePayloadAndOneDerivedPath()
 {
     Do $$$AssertEquals(##class(OcuPilot.Area.WebApp.Create).ToolClass(), ..#TOOL, "the screen route resolves the same tool class the agent path does")
 
-    Set tArgs = ..Args()
-    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Compose(tArgs, $ClassMethod(..#TOOL, "IdArgument"), $ClassMethod(..#TOOL, "SettableFields"), .tAgent, .tDiff, .tUnchanged, .tProblem)
-    Do $$$AssertStatusOK(tSC, "the agent path composes its payload")
-    Do $$$AssertEquals(tProblem, "", "with no argument problem")
-    If $$$ISERR(tSC) Quit
+    Set tName = ..#PAYLOADPROBE
+    Set tArgs = ..PayloadArgs()
 
-    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Compose(..Args(), "Name", $ClassMethod(##class(OcuPilot.Area.WebApp.Create).ToolClass(), "SettableFields"), .tScreen, .tScreenDiff, .tScreenUnchanged, .tScreenProblem)
-    Do $$$AssertStatusOK(tSC, "and the screen path composes its own from the same list")
-    If $$$ISERR(tSC) Quit
-    Do $$$AssertEquals(tScreen.%ToJSON(), tAgent.%ToJSON(), "and the two bodies are the same")
-    Do $$$AssertEquals(tUnchanged, 0, "a create sends no property the caller did not name")
-    Do $$$AssertEquals(tScreenUnchanged, 0, "on either path")
+    ; The screen path: the real Perform, with only the port replaced. Validate's name-taken read is
+    ; not that seam and still reads the live instance, which is why PAYLOADPROBE is its own name.
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+    Set tScreenSC = $ClassMethod(..#SCREEN, "Perform", tName, tArgs, .tScreenCreated, .tScreenHttp, .tScreenFault, .tScreenViolations)
+    Do $$$AssertStatusOK(tScreenSC, "the screen's own Perform accepts the create")
+    Do $$$AssertEquals($Get(tScreenViolations), 0, "with no field violation")
+    If $$$ISERR(tScreenSC) || ($Get(tScreenViolations) > 0) Quit
+    Set tScreenBody = ##class(OcuPilot.Test.ProposalFixture).LastWriteBody()
+    Do $$$AssertNotEquals(tScreenBody, "", "and a write reached the port")
 
-    ; The derivation is the tool's, so both callers get it by calling one method.
-    Do $$$AssertEquals(tAgent.%GetTypeOf("Path"), "unassigned", "the composed body carries no path")
-    Do $ClassMethod(..#TOOL, "DerivedFields", tAgent)
-    Do $$$AssertEquals(tAgent.%Get("Path"), tArgs.%Get("WSGIAppLocation"), "and the tool derives it from the WSGI application's own directory")
+    ; The agent path: the shipped mint and the shipped confirm transition, over the same name and
+    ; the same arguments, with the same port replacement.
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmMissing()
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "a probe turn is seeded")
+    If $$$ISERR(tSC) Quit
+    Set tMintSC = $ClassMethod(..#MINT, "Mint", ..#LIST, ..#TOOLNAME, $Username, "", tTurnKey, tArgs, "OcuPilot.Kernel.Agent.Limits", .tProposal, .tMintHttp, .tMintFault, $ClassMethod(..#TOOL, "Endpoint"), $ClassMethod(..#TOOL, "IdParam"), tName, $ClassMethod(..#TOOL, "IdArgument"), $ClassMethod(..#TOOL, "SettableFields"), ..#TOOL)
+    Do $$$AssertStatusOK(tMintSC, "the agent path mints the same create")
+    If $$$ISERR(tMintSC) Quit
+
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmWrite("{}")
+    Set tConfirmSC = $ClassMethod(..#CONFIRM, "Confirm", tProposal.%Get("proposalId"), "", $Username, .tConfirmResult, .tConfirmHttp, .tConfirmCode, .tConfirmDetail)
+    Do $$$AssertStatusOK(tConfirmSC, "and the confirm applies it")
+    If $$$ISERR(tConfirmSC) Quit
+    Set tAgentBody = ##class(OcuPilot.Test.ProposalFixture).LastWriteBody()
+    Do $$$AssertNotEquals(tAgentBody, "", "and a write reached the port")
+
+    ; AD-55's claim, over what the port actually received from each real call site.
+    Do $$$AssertEquals(##class(%DynamicAbstractObject).%FromJSON(tScreenBody).%ToJSON(), ##class(%DynamicAbstractObject).%FromJSON(tAgentBody).%ToJSON(), "the screen's Save and the agent's confirm send the identical body")
+
+    ; And the one field the tool derives is derived on both real call sites, not merely in
+    ; isolation: a body with no WSGI directory would leave it unset, so the field's presence here
+    ; is the derivation actually running rather than the property surviving from the arguments.
+    Do $$$AssertEquals(##class(%DynamicAbstractObject).%FromJSON(tScreenBody).%Get("Path"), tArgs.%Get("WSGIAppLocation"), "the screen's own write carries the tool-derived path")
+    Do $$$AssertEquals(##class(%DynamicAbstractObject).%FromJSON(tAgentBody).%Get("Path"), tArgs.%Get("WSGIAppLocation"), "and so does the agent's")
+
+    Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
+    Do $$$AssertEquals(tRemaining, 0, "the probe proposal and turn are removed")
 
     ; A body with no WSGI directory derives nothing, so a CSP or REST create leaves the vendor to
-    ; create the directory it defaults to.
+    ; create the directory it defaults to -- the tool's own DerivedFields as a pure function.
     Set tPlain = {}
     Do tPlain.%Set("NameSpace", $Namespace, "string")
     Do $ClassMethod(..#TOOL, "DerivedFields", tPlain)
     Do $$$AssertEquals(tPlain.%GetTypeOf("Path"), "unassigned", "a create that names no directory derives no path")
+}
+
+/// <p>The arguments <method>TestTheScreenRouteAndTheToolComposeOnePayloadAndOneDerivedPath</method>
+/// drives both call sites with: every settable field but <code>DispatchClass</code>, which a WSGI
+/// create may not carry. The four WSGI fields give the derived path something to derive from, and
+/// <code>Recurse</code> is the field the mutation this test names drops from a hand-typed list.</p>
+ClassMethod PayloadArgs() As %DynamicObject
+{
+    Set tArgs = {}
+    Do tArgs.%Set("NameSpace", $Namespace, "string")
+    Do tArgs.%Set("AutheEnabled", 32, "number")
+    Do tArgs.%Set("Description", "OcuPilot payload probe", "string")
+    Do tArgs.%Set("Enabled", 1, "boolean")
+    Do tArgs.%Set("Resource", "%Development", "string")
+    Do tArgs.%Set("Recurse", 1, "boolean")
+    Do tArgs.%Set("WSGIAppName", "probe.py", "string")
+    Do tArgs.%Set("WSGICallable", "app", "string")
+    Do tArgs.%Set("WSGIAppLocation", "/tmp/ocupilot-probe-wsgi-payload", "string")
+    Do tArgs.%Set("WSGIType", "WSGI", "string")
+    Quit tArgs
 }
 
 /// <p>The rules the create applies before the port is touched, and the one it does not invent: a
@@ -146,6 +221,27 @@ Method TestACreateWithNoAuthenticationMethodAndNoNamespaceIsRefusedOnTheFieldsTh
     Set tSC = ..Validate(tArgs, .tViolations)
     Do $$$AssertStatusOK(tSC, "the rules run over a malformed name")
     Do $$$AssertEquals(..CodeFor(.tViolations, "Name"), ##class(OcuPilot.Api.Error).#WEBAPPNAMESHAPE, "which is refused on its own field")
+
+    ; A body carrying the dispatch class asks for a REST application, so an empty one is refused
+    ; rather than created as a CSP application. Mutation: drop that leg from Validate -> red.
+    Set tArgs = {}
+    Do tArgs.%Set("Name", "/csp/ocupilotprobecreaterules", "string")
+    Do tArgs.%Set("NameSpace", $Namespace, "string")
+    Do tArgs.%Set("AutheEnabled", 32, "number")
+    Do tArgs.%Set("DispatchClass", "", "string")
+    Set tSC = ..Validate(tArgs, .tViolations)
+    Do $$$AssertStatusOK(tSC, "the rules run over a REST create naming no class")
+    Do $$$AssertEquals(..CodeFor(.tViolations, "DispatchClass"), ##class(OcuPilot.Api.Error).#WEBAPPDISPATCHREQUIRED, "which is refused on the dispatch-class field")
+
+    ; A Python body missing its directory, and one that also names a dispatch class.
+    Set tArgs = ..Args()
+    Do tArgs.%Set("Name", "/csp/ocupilotprobecreaterules", "string")
+    Do tArgs.%Remove("WSGIAppLocation")
+    Do tArgs.%Set("DispatchClass", "Some.Dispatch", "string")
+    Set tSC = ..Validate(tArgs, .tViolations)
+    Do $$$AssertStatusOK(tSC, "the rules run over an incomplete Python create")
+    Do $$$AssertEquals(..CodeFor(.tViolations, "WSGIAppLocation"), ##class(OcuPilot.Api.Error).#WEBAPPWSGILOCATION, "which is refused on the directory field")
+    Do $$$AssertEquals(..CodeFor(.tViolations, "DispatchClass"), ##class(OcuPilot.Api.Error).#WEBAPPTYPECONFLICT, "and on the dispatch class it cannot also carry")
 
     ; And a sound one earns no violation at all, which is the floor under the three above.
     Set tArgs = ..Args()

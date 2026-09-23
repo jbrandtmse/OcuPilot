@@ -206,29 +206,6 @@ interface FieldView {
 
       @if (showsPython) {
         <div class="ocu-field">
-          <label class="ocu-field-label ocu-field-label-required" [attr.for]="protocolField.id">{{ STRINGS.webAppFormPythonProtocol }}</label>
-          <div class="ocu-field-control">
-            <select
-              class="ocu-field-input"
-              [id]="protocolField.id"
-              [value]="value('WSGIType')"
-              aria-required="true"
-              [attr.aria-invalid]="protocolField.invalid"
-              [attr.aria-describedby]="protocolField.describedBy"
-              (change)="onText('WSGIType', $event)"
-              (blur)="onBlur('WSGIType')"
-            >
-              @for (option of protocolOptions; track option) {
-                <option [value]="option" [selected]="option === value('WSGIType')">{{ option }}</option>
-              }
-            </select>
-          </div>
-          @if (protocolField.invalid) {
-            <p class="ocu-form-error" [id]="protocolField.id + '-reason'">{{ protocolField.reason }}</p>
-          }
-        </div>
-
-        <div class="ocu-field">
           <label class="ocu-field-label ocu-field-label-required" [attr.for]="appNameField.id">{{ STRINGS.webAppFormPythonFile }}</label>
           <div class="ocu-field-control">
             <input
@@ -289,19 +266,30 @@ interface FieldView {
             <p class="ocu-form-error" [id]="directoryField.id + '-reason'">{{ directoryField.reason }}</p>
           }
         </div>
-      }
 
-      <div class="ocu-field">
-        <label class="ocu-field-checkbox">
-          <input
-            type="checkbox"
-            [id]="recurseField.id"
-            [checked]="flag('Recurse')"
-            (change)="onFlag('Recurse', $event)"
-          />
-          <span>{{ STRINGS.webAppFormRecurse }}</span>
-        </label>
-      </div>
+        <div class="ocu-field">
+          <label class="ocu-field-label ocu-field-label-required" [attr.for]="protocolField.id">{{ STRINGS.webAppFormPythonProtocol }}</label>
+          <div class="ocu-field-control">
+            <select
+              class="ocu-field-input"
+              [id]="protocolField.id"
+              [value]="value('WSGIType')"
+              aria-required="true"
+              [attr.aria-invalid]="protocolField.invalid"
+              [attr.aria-describedby]="protocolField.describedBy"
+              (change)="onText('WSGIType', $event)"
+              (blur)="onBlur('WSGIType')"
+            >
+              @for (option of protocolOptions; track option) {
+                <option [value]="option" [selected]="option === value('WSGIType')">{{ option }}</option>
+              }
+            </select>
+          </div>
+          @if (protocolField.invalid) {
+            <p class="ocu-form-error" [id]="protocolField.id + '-reason'">{{ protocolField.reason }}</p>
+          }
+        </div>
+      }
 
       <div class="ocu-field">
         <label class="ocu-field-label" [attr.for]="resourceField.id">{{ STRINGS.webAppColumnResource }}</label>
@@ -323,7 +311,7 @@ interface FieldView {
         }
       </div>
 
-      <fieldset class="ocu-field ocu-form-authe" [attr.id]="autheField.id">
+      <fieldset class="ocu-field ocu-form-authe" [attr.id]="autheField.id" tabindex="-1">
         <legend class="ocu-field-label ocu-field-label-required">{{ STRINGS.serviceColumnAuthentication }}</legend>
         @for (method of autheMethods; track method.bit) {
           <label class="ocu-field-checkbox">
@@ -340,6 +328,18 @@ interface FieldView {
           <p class="ocu-form-error" [id]="autheField.id + '-reason'">{{ autheField.reason }}</p>
         }
       </fieldset>
+
+      <div class="ocu-field">
+        <label class="ocu-field-checkbox">
+          <input
+            type="checkbox"
+            [id]="recurseField.id"
+            [checked]="flag('Recurse')"
+            (change)="onFlag('Recurse', $event)"
+          />
+          <span>{{ STRINGS.webAppFormRecurse }}</span>
+        </label>
+      </div>
     </div>
 
     <div class="ocu-form-bar">

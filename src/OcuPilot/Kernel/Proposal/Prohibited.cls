@@ -408,6 +408,10 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; behind this set would refuse the write. The create predicates are evaluated instead, over
         ; the fields the caller actually supplied.
         If ..CreatesOf($Get(tToolClass)) {
+            If 'tServes && (tType = ..#TYPEWEBAPPLICATION) {
+                Set tSC = ..UnderOcuPilot(tId, .tServes)
+                If $$$ISERR(tSC) Quit
+            }
             Set tSC = ..Created(tType, tServes, ..ParsedObject(pPayload), .pProhibits, .pCode)
             Quit
         }
@@ -530,6 +534,35 @@ ClassMethod Created(pType As %String, pServes As %Boolean, pPayload As %DynamicO
     } Catch ex {
         Set pProhibits = 0
         Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pPath</var> lies beneath one of OcuPilot's own application paths, in
+/// <var>pUnder</var>. The web server routes a request to the longest matching application name, so
+/// a new application at <code>/api/ocupilot/x</code> would answer requests OcuPilot's own API
+/// serves today; a create there is refused on the serving-path predicate.</p>
+ClassMethod UnderOcuPilot(pPath As %String, Output pUnder As %Boolean) As %Status [ Private ]
+{
+    Set pUnder = 0
+    Set tSC = $$$OK
+    Try {
+        Set tPath = ..NormalizedPath(pPath)
+        Set tKeys = ##class(OcuPilot.Install.Roster).Keys()
+        If tKeys = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "the install roster's application keys could not be read, so which paths serve OcuPilot is unknown")
+            Quit
+        }
+        For tI = 1:1:$Length(tKeys, ",") {
+            Set tSC = ##class(OcuPilot.Install.Roster).Application($Piece(tKeys, ",", tI), .tApp)
+            If $$$ISERR(tSC) Quit
+            If '$IsObject(tApp) Continue
+            Set tOwn = ..NormalizedPath(tApp.path) _ "/"
+            If $Extract(tPath, 1, $Length(tOwn)) = tOwn Set pUnder = 1
+        }
+    } Catch ex {
+        Set pUnder = 0
         Set tSC = ex.AsStatus()
     }
     Quit tSC
