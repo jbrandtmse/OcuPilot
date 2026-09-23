@@ -6192,3 +6192,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: orchestrator ruling on 8.5 test keys | severity: med | fix-risk: med | footprint: in-epic
 - evidence: src/OcuPilot/Install/Fixture.cls:1176 builds '-----BEGIN PRIVATE KEY-----' from literals for the opt-in demo X.509 credential (UX-DR82); the repo is public and push protection is off; removing it from HEAD does not remove it from history
 - 2026-09-23T12:42:13Z status=escalated owner=burndown by=lead note=owner/orchestrator call: generate at install via openssl (absent on some installs), ship a public cert only, or accept the demo key; history stays either way
+- 2026-09-23T13:55:11Z status=by-design owner=burndown by=orchestrator note=the installer's demo credential must ship its material (no openssl guarantee on a customer instance); documented disposable literal
