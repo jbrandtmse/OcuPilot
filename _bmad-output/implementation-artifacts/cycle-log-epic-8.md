@@ -38,3 +38,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T02:17:54Z	Epic 8	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp merge=7a4ac96 conflicts=sprint-status.yaml(resolved_ours+SPRINT_PLAN_generate,validate_ok) changed=docs_only(epics.md_epic11_reorder,epic-dependencies.yaml,cycle-log-parallel.md) code_paths_changed=0 verification=no_code_in_merge_so_story_specs_unaffected;CI_on_merge_head_is_the_gate
 2026-09-23T02:19:36Z	Epic 8	epic_context_compiled	sha=pending reason=planning_artifact_newer(spine_deferred_rows+epics.md_merge) model=opus lines=63
 2026-09-23T02:19:43Z	Story 8.2	stage_spawned	stage=plan spawn_at=2026-09-23T02:19:43Z model=opus agent_name=8-2-create-a-user-plan-1 cycle_iteration=1
+2026-09-23T02:36:49Z	Story 8.1	ci_resolved	story=8.1 run=35809740217 head=30fafca result=success jobs=8/8 resolved_at=next_implement(rule28)
+2026-09-23T02:36:49Z	Epic 8	throwaway_down	container=ocupilot-b-ci by=runner_this_session(up_at_01:26Z) reason=pause_for_clarification
+2026-09-23T02:36:49Z	Story 8.2	plan_clarification_requested	question=AC3_screen_may_grant_%All/%Admin_*_contradicts_AD-10(grants_refused_whatever_the_caller)+AD-55(screen_Save_through_tool's_prohibited_set) related=8.3_AC4_wording,DW-1489,DW-1494,7.8_AC2_precedent spawned=false
