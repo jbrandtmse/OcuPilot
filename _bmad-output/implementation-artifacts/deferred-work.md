@@ -6158,3 +6158,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-5-run-an-on-demand-task.md (code review) | severity: low | fix-risk: med | footprint: in-story
 - evidence: TaskResume.TestTheAgentsRunIsConfirmedAndLandsInTheTasksHistory reads INFO right after Confirm, and the browser screen leg waits for a digit in Next run; a run landing in that ms window clears NextScheduled first (inference; landing measured 26-43 s).
 - 2026-09-23T12:25:52Z status=wontfix-accepted owner=7-5-run-an-on-demand-task by=cr note=reopen_if=a CI run reds 'INFO's NextScheduled is set at once' or the Next-run wait while AwaitRun shows the run landed
+
+### DW-1545: CI browser job stalled once for about 2.5 minutes on turn.browser-spec.mjs (213-217: a 30 s wait, then four sign-in navigation timeouts, then recovery) and did not recur on a rerun of the same sha
+- source: spec-7-5-run-an-on-demand-task.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: run 35858909423 attempt 1 red at 12:32-12:34Z on 61f9c7dc, attempt 2 green on the same sha; tests 218+ green in attempt 1; cause not established
+- 2026-09-23T12:57:02Z status=wontfix-accepted owner=7-5-run-an-on-demand-task by=lead note=reopen_if=turn.browser-spec.mjs or any sign-in navigation times out again in a CI browser job
