@@ -290,6 +290,13 @@ Measured on `ocupilot-ci` on 2026-09-23. The probes were `OcuPilotProbe76` (id 1
 
 ## Spec Change Log
 
+- 2026-09-23, lead spec gate (partial): Q2 ratified -- AC3's "Status field" restates to the
+  Suspended field (tier-1, applied to `epics.md` with the orchestrator's answer); Q3 ratified -- the
+  delete dialog types the task's Name while the request sends the numeric id; Q6 ratified -- the
+  row update and every verification read the task's `INFO`, never the list field, and Epic 8's
+  runtime re-read must do the same for a task once it merges (merge-gate note). Q1, Q4 and Q5 are
+  with the orchestrator.
+
 ## Review Triage Log
 
 ## Design Notes
