@@ -6274,3 +6274,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-9-plain-iris-community-verification.md | severity: low | fix-risk: med | footprint: out-of-footprint
 - evidence: Plan-time run 2026-09-23 on a plain Community throwaway, ci-runner --namespace USER: 205 classes, 1798 tests; ErrorDelete, ErrorLogDenial, FixtureNamespace, ErrorLog, Namespaces by assertion text; MgmntPortWire, MgmntPortDenial, TurnContext (inference)
 - 2026-09-23T20:04:06Z status=routed owner=range-end-cleanup by=lead note=Story 8.9 spec gate: install, admin API and smoke are verified on plain Community in CI; a plain-Community suite job (~16 min) needs portable fixtures first; not floor-blocking
+
+### DW-1580: The DW-1337 structural baseline was taken on local Chrome against ocupilot-b-ci; whether its 190 keys reproduce in CI's browser job is unverified
+- source: spec-15-6-the-light-and-dark-theme.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Overflow keys trip at more than 1px and several recorded overshoots are 4-6px; two min-width keys depend on a data-table link's text width (7.2px, 21.6px). Settled by the first CI browser run on 6878250a: zero fresh and zero stale keys
+- 2026-09-23T23:33:35Z status=open owner=15-6-the-light-and-dark-theme by=harvest note=adjudicated against CI run 35934116068
+
+### DW-1581: The page ground paints no surface role: the content area shows the browser canvas rather than surface / surface-dark, visible in dark after the flip
+- source: spec-15-6-the-light-and-dark-theme.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: No rule sets a background on html, body or the shell content (body carries only margin: 0 in _components.scss:605); pre-existing in light, visible in dark. The fix is one appended root rule in 15.6's own block
+- 2026-09-23T23:33:35Z status=open owner=15-6-the-light-and-dark-theme by=harvest note=in-footprint as an appended own block; for the reviewer
