@@ -6100,6 +6100,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-23T04:51:49Z status=decision-pending owner=burndown by=cr note=reconcile at the merge: publish+pin via RefusalCopy, or amend AD-53 to exempt server-shipped sentences
 - 2026-09-23T21:14:39Z occurrence=8-9-plain-iris-community-verification
 - 2026-09-23T21:41:20Z status=routed owner=range-end-cleanup by=merge_gate note=Epic 8 merge decision sheet, recommended disposition taken: publish the PRIVILEGEGRANT and AGENT.CREDTYPE.UNAVAILABLE sentences as Fixed strings and pin them through Epic 7's RefusalCopy; AD-53 unchanged. The orchestrator takes it right after Epic 7 merges, since RefusalCopy is on that branch.
+- 2026-09-23T23:44:11Z status=routed owner=9-2-the-web-application-editor by=merge_gate note=Re-routed from 'orchestrator after the Epic 7 merge': publishing PRIVILEGEGRANT and AGENT.CREDTYPE.UNAVAILABLE as Fixed strings touches Prohibited.cls (a REASON parameter), RefusalCopy, strings.ts, EXPERIENCE.md and self-protection.test.mjs, and PRIVILEGEGRANT's sentence is exactly what 9.2's editor shows for roles on OcuPilot's own applications -- a runner with a throwaway does this properly.
 
 ### DW-1503: A user create whose vendor Modify refuses after Create leaves an account holding only its password
 - source: spec-8-2-create-a-user.md | severity: low | fix-risk: med | footprint: in-story
@@ -6192,6 +6193,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: src/OcuPilot/Screen/Tool/UserUpdate.cls InputSchema Roles description; the file is in Epic 7's diff and not on the contended list, so 8.4 did not edit it (DW-1524's remaining half)
 - 2026-09-23T10:09:30Z status=escalated owner=burndown by=harvest note=one-sentence description edit; needs the orchestrator to put Screen/Tool/UserUpdate.cls under the contended discipline
 - 2026-09-23T21:41:20Z status=routed owner=range-end-cleanup by=merge_gate note=Epic 8 merge decision sheet, recommended disposition taken: fix the model-facing Roles sentence in Screen/Tool/UserUpdate.cls. The orchestrator fixes it right after Epic 7 merges, because the file is Epic 7's.
+- 2026-09-23T23:44:10Z status=resolved-by:orchestrator-post-merge by=merge_gate note=The model-facing Roles description in Screen/Tool/UserUpdate.cls now says a privileged role add is permitted, marked destructive and named on the card (Mint.GrantsPrivilegeByEffect), instead of listing roles as refused -- the sentence would have made the agent decline grants the owner reversed. No test pinned the old wording.
 
 ### DW-1538: Story 8.4 has no real-port leg confirming an agent create or update of a resource, and no browser leg that saves an edit
 - source: spec-8-4-the-resource-editor.md | severity: low | fix-risk: low | footprint: in-story
