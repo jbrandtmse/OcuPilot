@@ -2,7 +2,8 @@
 title: 'Story 7.4: Turn auditing on and off from the screen'
 type: 'feature'
 created: '2026-09-23'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: '6ae2918f4cc1c958b936254cf5849001c8d00d39'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -11,6 +12,15 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md'
 warnings: ['oversized']
 deferred: []
+footprint_extensions:
+  - 'ui/src/app/shell/screen-outlet.ts'
+  - 'ui/src/app/core/screens.generated.ts'
+  - 'src/OcuPilot/Test/ToolWrite.cls'
+  - 'src/OcuPilot/Test/AuditingUpdate.cls'
+  - 'src/OcuPilot/Test/ProhibitedRoute.cls'
+  - 'src/OcuPilot/Test/SurfaceCoverage.cls'
+  - 'src/OcuPilot/Test/ReadTool.cls'
+  - 'src/OcuPilot/Kernel/Audit/Event.cls'
 ---
 
 <intent-contract>
@@ -258,6 +268,24 @@ Tests that pin today's shape and must move:
 - Integration AC (Rule 1): the panel consumes the `writesMarked` fact that the screen caller now
   records, observed in the browser banner leg against a real throwaway, never a mock.
 
+**Open items on re-dispatch (2026-09-23, lead, orchestrator rulings):**
+
+- [ ] Update the three Epic-8-modified roster tests the new screens redden -- `ui/tools/navigation.test.mjs`,
+  `src/OcuPilot/Test/WireSecurityRead.cls`, `src/OcuPilot/Test/Wire.cls` -- adding only 7.4's own
+  screens, off Epic 8's hunks (read `git show origin/OCU-1-epic8:<path>` first); list each under
+  `footprint_extensions:`. Standing roster rule (2026-09-23): a shared test or roster file the other
+  epic modified may take this story's own members under that discipline; its members, or a product
+  source file it modified that is not on the contended list, stay a HALT.
+- [ ] Replace the three borrowed strings the read's table and empty-state declaration names but the
+  page never shows. Choose the option that matches what the page does, and record the choice under
+  Design Notes: (1) a real state that text would describe -> HALT with the exact proposed copy for
+  the lead to publish (tier-1); or (2) scope the registry rule in `Screen/Registry.cls` and its twin
+  `ui/tools/screen-mirror.mjs` (both contended) so a form page whose read renders no table needs no
+  table text, pinned by a test that fails when the scoping is removed.
+- [ ] Finish the halted pass: the full ObjectScript sweep, the smoke check, the review layers,
+  finalize; delete `_bmad-output/implementation-artifacts/7-4-wip.patch` and
+  `7-4-wip-untracked.tgz` in the finalize commit.
+
 ## Spec Change Log
 
 - 2026-09-23, lead spec gate: intent gap 1 ratified as recommended -- the AD-53 amendment is in the
@@ -266,6 +294,16 @@ Tests that pin today's shape and must move:
   `npm run test:tools` 1,327/0) -- consume, do not re-author. Intent gap 2: `Test/ToolWrite.cls` is
   contended for both epics (edit off Epic 8's hunks) and `screens.generated.ts` is regenerated;
   `screen-outlet.ts` and `Test/AuditingUpdate.cls` await the orchestrator.
+- 2026-09-23, orchestrator ruling (implement dispatch): intent gap 2 approved. Before editing any
+  file Epic 8 has touched, `git fetch origin` and read `git show origin/OCU-1-epic8:<path>`; list
+  each under `footprint_extensions:`. `screen-outlet.ts`: append one import and one
+  `DESCRIPTOR_PAGES` entry only, never the `form-page` doc comment. `Test/AuditingUpdate.cls`:
+  append the method, never the code-count line. Any other file Epic 8 modified (`git diff --stat
+  dd70e59 origin/OCU-1-epic8 -- <path>`) outside the lists above is an intent-gap HALT.
+
+- 2026-09-23, lead: the implement HALT's three roster files are approved by the orchestrator
+  (standing roster rule); the borrowed strings are ruled out; the WIP is committed as a patch and
+  tarball for crash safety; `status` reset to `in-progress`.
 
 ## Review Triage Log
 
@@ -377,6 +415,13 @@ any container.
   - AC4: swap the two `eventOwner` values → `AuditingScreen`'s read legs go red.
   - AC5: skip the pair check in `ScreenAction.Run` → the `ProhibitedRoute` leg goes red.
   - `ObserveMarking` ignoring the event flag → the `AuditingScreen` off-arm goes red.
+  - `mutation: AC1 -- add 'disable' to screen-action-handler.ts DESTRUCTIVE_ACTIONS, rebuild, redeploy to ocupilot-ci -> auditing-screen.browser-spec.mjs red (no warning dialog opens; 30 s timeout). DEMONSTRATED 2026-09-23, reverted, tree fingerprint unchanged, both browser specs 4/4 green after redeploy`
+  - `mutation: AC2 -- remove the MovesMarking/ObserveMarking hook from ScreenAction.Run, reload on ocupilot-ci (compiled Run checked free of MovesMarking) -> auditing-screen.browser-spec.mjs red waiting for the banner. DEMONSTRATED 2026-09-23, reverted and reloaded, auditing read 1 after`
+  - `mutation: AC3 -- drop the banner anchor from panel.ts -> panel.spec.ts's two banner tests red. DEMONSTRATED 2026-09-23, reverted`
+  - `mutation: AC4 -- swap the two eventOwner values, reload the two descriptors on ocupilot-ci -> AuditingScreen's two list-read tests red (run 7384). DEMONSTRATED 2026-09-23, reverted, tree fingerprint unchanged`
+  - `mutation: AC5 -- Set tRefused = 0 after ScreenAction.Run's pair Gate, reload on ocupilot-ci -> ProhibitedRoute.TestAnAccountShortOfTheAuditingPairIsRefusedTheScreenAction red on code and failedPair (run 7386). DEMONSTRATED 2026-09-23, reverted, ProhibitedRoute 22/22 (run 7388)`
+  - `mutation: ObserveMarking answers the auditing flag alone -> AuditingScreen.TestObservingMarkingNeedsAuditingAndTheMarkerEvent red on the on/off arm (run 7385). DEMONSTRATED 2026-09-23, reverted`
+  - `mutation: drop ScreenAction.ObserveMarking's LogObserveFailure call -> AuditingScreen.TestAFailedObservationAfterTheScreensWriteRecordsNothingAndLogs red (run 7404). DEMONSTRATED 2026-09-23, reverted, AuditingScreen 6/6 (run 7405)`
 
 **Once, before `dev_complete`:** run the full ObjectScript sweep on `ocupilot-ci`, per class and
 one call at a time, with totals from the numeric-run-index probe. Then run `bash scripts/smoke.sh
@@ -386,10 +431,20 @@ full browser suite is not run locally (Rule 29).
 ## Auto Run Result
 
 Status: blocked
-Blocking condition: intent gap -- (1) ratify the recommended AD-53 amendment under Design Notes:
-the screen caller of an auditing write records the observed marking fact the banner reads, so the
-banner cannot stay hidden after a screen-side disable (AC2); (2) approve the edits to four files
-Epic 8 has modified -- `ui/src/app/shell/screen-outlet.ts`, `src/OcuPilot/Test/ToolWrite.cls:513`,
-`src/OcuPilot/Test/AuditingUpdate.cls` (append) and the regenerated `screens.generated.ts` -- as
-footprint extensions. The plan is complete to both recommended answers. Set `status:
-ready-for-dev` once they are ratified.
+Blocking condition: intent gap -- three files Epic 8 has modified, on neither approved list, pin the
+Security side-bar roster that `AuditingConfig` (position 6) and the two event lists (position 0)
+change, so the full sweep and `test:tools` go red without them: `ui/tools/navigation.test.mjs`
+(4 red: `:120`, `:260`, `:918`, `:945`), `src/OcuPilot/Test/WireSecurityRead.cls` (5 red: `:786`,
+`:812`, `:840`, `:939`, `:958`; beside Epic 8's hunks at 781-785 and 807-811) and
+`src/OcuPilot/Test/Wire.cls` (the SSL-list Security roster near `:577`). Recommended: approve all
+three as footprint extensions (mechanical roster rows), then re-dispatch at `in-progress`.
+
+footprint_extensions: as frontmatter, plus `WireOAuthRead.cls` and `ui/tools/toasts.test.mjs`
+(neither touched by Epic 8).
+
+Tiers run (implement, uncommitted in the worktree): `ocupilot-ci` per class -- AuditingScreen 6/6,
+Descriptor 50/50, ToolWrite 23/23, ReadTool 27/27, SurfaceCoverage 4/4, ToolRoundTrip 2/2,
+ProhibitedRoute 22/22, WireOAuthRead 6/6; AuditingUpdate refuses there (unarmed; 7/7 once in an
+armed session, run 7382 -- CI's result governs). `test:components` 873/873; `test:tools`
+1,323/1,327 (the four above); both browser specs 4/4 on a redeployed bundle; check-objectscript 0.
+Not run: the full ObjectScript sweep, smoke, the review layers. Auditing reads 1 on `ocupilot-ci`.

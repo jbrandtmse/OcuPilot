@@ -121,3 +121,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T08:22:18Z	Story 7.4	stage_spawned	stage=implement spawn_at=2026-09-23T08:22:18Z model=opus agent_name=7-4-turn-auditing-on-and-off-from-the-screen-implement-1 cycle_iteration=1
 2026-09-23T08:49:57Z	Story 7.4	dev_clarification_requested	stage=dev spawn_at=2026-09-23T08:22:18Z model=opus condition=intent_gap item=roster_tests_epic8_modified:navigation.test.mjs,Test/WireSecurityRead.cls,Test/Wire.cls tree=uncommitted_31_paths_backed_up_to_scratchpad spec_status=blocked
 2026-09-23T08:49:57Z	Epic 7	runner_clarification_raised	story=7.4 items=three_roster_test_files_epic8_modified;proposed_standing_rule_for_roster_pins
+2026-09-23T08:51:01Z	Epic 7	runner_resumed	answer=roster_files_approved;standing_roster_rule_2026-09-23_adopted;borrowed_strings_ruled_out(publish_real_copy_or_scope_the_registry_rule);WIP_committed_as_patch+tgz
+2026-09-23T08:51:01Z	Story 7.4	stage_spawned	stage=implement spawn_at=2026-09-23T08:51:01Z model=opus agent_name=7-4-turn-auditing-on-and-off-from-the-screen-implement-2 cycle_iteration=2
