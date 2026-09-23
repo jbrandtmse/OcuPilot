@@ -276,3 +276,42 @@ test('the check is named in prebuild, in prestart and in the pre-commit hook, an
   assert.match(block, /node tools\/field-lists\.mjs --check\)?\s*\|\|\s*STATUS=1/, 'the hook dispatches it inside OS_TRIGGER and feeds STATUS');
   assert.match(hook, /Field lists:/, 'and explains its failure');
 });
+
+// Story 8.2, AD-3: an entry may author a wrapper field the endpoint's template does not carry, as
+// `secret` and nothing else, and it is emitted as its own secret literal row marked `authored`.
+//
+// Mutation (Rule 19): drop the `fields.push(...)` of an authored row in classify() -> the emitted
+// row assertions go red; accept any class for an authored name -> the 'ordinary' refusal goes red.
+test('an authored wrapper field is emitted secret and marked, and every other shape is refused', () => {
+  const entry = (authored) => ({
+    'permissions.users.create': { fieldList: 'Security.User', classification: { Roles: 'opaque', EscalationRoles: 'opaque' }, authored },
+  });
+  const accepted = classify(lists, entry({ Password: 'secret' }));
+  assert.deepEqual(accepted.problems, [], 'an authored secret is accepted');
+  assert.deepEqual(
+    fieldOf(accepted, 'permissions.users.create', 'Password'),
+    { path: 'Password', shape: 'literal', templateType: 'string', class: 'secret', authored: true },
+    'and emitted as a secret literal row marked authored'
+  );
+  const text = generateFrom({ lists, entries: entry({ Password: 'secret' }) }).text;
+  assert.match(text, /\{"path":"Password","shape":"literal","templateType":"string","class":"secret","authored":true\}/, 'ToolFields carries it');
+
+  const refusals = [
+    [{ Password: 'ordinary' }, /authored name Password is classified "ordinary"/],
+    [{ Password: 'opaque' }, /authored name Password is classified "opaque"/],
+    [{ FullName: 'secret' }, /authored name FullName collides with a derived path/],
+    [{ Roles: 'secret' }, /authored name Roles collides with a derived path/],
+    [{ 'User.Password': 'secret' }, /authored name "User.Password" is not one top-level field name/],
+    [{ 'Pass[]': 'secret' }, /authored name "Pass\[\]" is not one top-level field name/],
+  ];
+  for (const [authored, pattern] of refusals) {
+    const refused = generateFrom({ lists, entries: entry(authored) });
+    assert.equal(refused.text, null, `${JSON.stringify(authored)} emits nothing`);
+    assert.ok(refused.problems.some((problem) => pattern.test(problem)), `${JSON.stringify(authored)} is refused: ${refused.problems.join('; ')}`);
+  }
+  const notAnObject = generateFrom({ lists, entries: entry(['Password']) });
+  assert.ok(notAnObject.problems.some((problem) => /authored is not a JSON object/.test(problem)), 'an authored list that is not an object is refused');
+
+  // The committed entry is the one the Users list's create tool carries.
+  assert.deepEqual(committedEntries['permissions.users.create']?.authored, { Password: 'secret' }, 'the committed create entry authors Password');
+});

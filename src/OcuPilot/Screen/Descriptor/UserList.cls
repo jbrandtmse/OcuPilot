@@ -44,6 +44,7 @@ XData Declaration
   "primaryAction": {"id": "", "selfProtection": ""},
   "rowActions": [],
   "context": {"fields": ["Name", "FullName", "Enabled", "Type", "Roles", "ExpirationDate", "Expired"], "secretFields": []},
+  "secretArguments": ["Password"],
   "emptyStateKey": "userListEmpty",
   "commandAliases": ["accounts"],
   "classicPage": "%CSP.UI.Portal.Users",

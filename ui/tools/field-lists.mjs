@@ -17,6 +17,12 @@
  * segment matches the credential pattern (Conventions, Secrets) classified anything but `secret`
  * is refused; a boolean or number never is.
  *
+ * **An entry may author a wrapper field** (`authored`, AD-3): a top-level name the endpoint's
+ * request wrapper carries and its template does not -- `Security.User`'s POST `Password` -- mapped
+ * to `secret`, the only class accepted. It is emitted as its own `secret` literal row marked
+ * `authored: true`. A name that is not one top-level segment, or that collides with a derived
+ * path, is refused.
+ *
  * Usage: `node tools/field-lists.mjs` writes `ToolFields.cls`; `--check` reports and exits 1 on
  * a refusal or when the committed file differs from what would be written.
  */
@@ -46,7 +52,13 @@ export const CLASSES = ['ordinary', 'secret', 'opaque'];
 export const DEFAULT_CLASS = 'secret';
 
 /** The keys an entry may carry. */
-export const ENTRY_KEYS = ['fieldList', 'classification', 'required', 'enum', 'description'];
+export const ENTRY_KEYS = ['fieldList', 'classification', 'authored', 'required', 'enum', 'description'];
+
+/** The one class an authored wrapper field may carry. */
+export const AUTHORED_CLASS = 'secret';
+
+/** An authored field's name: one top-level segment, no member and no element. */
+const AUTHORED_NAME_RE = /^[A-Za-z][A-Za-z0-9]*$/;
 
 /** The keys reserved for the semantic half of a schema; until that half is defined, only empty. */
 export const RESERVED_KEYS = ['required', 'enum', 'description'];
@@ -239,6 +251,27 @@ export function classify(lists, entries) {
       }
       return { ...row, class: value };
     });
+    if (entry.authored !== undefined) {
+      if (!isObject(entry.authored)) {
+        refuse('authored is not a JSON object of name to class');
+      } else {
+        for (const [name, value] of Object.entries(entry.authored)) {
+          if (!AUTHORED_NAME_RE.test(name)) {
+            refuse(`authored name ${JSON.stringify(name)} is not one top-level field name`);
+            continue;
+          }
+          if (rows.some((row) => row.path === name || extends_(row.path, name))) {
+            refuse(`authored name ${name} collides with a derived path of list ${entry.fieldList}`);
+            continue;
+          }
+          if (value !== AUTHORED_CLASS) {
+            refuse(`authored name ${name} is classified ${JSON.stringify(value)}; an authored field may only be ${AUTHORED_CLASS}`);
+            continue;
+          }
+          fields.push({ path: name, shape: 'literal', templateType: 'string', class: AUTHORED_CLASS, authored: true });
+        }
+      }
+    }
     if (problems.length === before) tools[tool] = { fieldList: entry.fieldList, fields };
   }
   return { tools, problems };
@@ -258,13 +291,23 @@ export function buildToolFields(tools) {
   const entries = names.map((name) => {
     const { fieldList, fields } = tools[name];
     const rows = fields.map((field) =>
-      JSON.stringify({
-        path: field.path,
-        shape: field.shape,
-        templateType: field.templateType,
-        itemType: field.itemType,
-        class: field.class,
-      })
+      JSON.stringify(
+        field.authored === true
+          ? {
+              path: field.path,
+              shape: field.shape,
+              templateType: field.templateType,
+              class: field.class,
+              authored: true,
+            }
+          : {
+              path: field.path,
+              shape: field.shape,
+              templateType: field.templateType,
+              itemType: field.itemType,
+              class: field.class,
+            }
+      )
     );
     const head = `${JSON.stringify(name)}: {"fieldList":${JSON.stringify(fieldList)},"fields":[`;
     return rows.length === 0 ? `${head}]}` : `${head}\n  ${rows.join(',\n  ')}\n]}`;

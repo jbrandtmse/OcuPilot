@@ -530,6 +530,11 @@ export function entityLabelProblem(declaration) {
  * pattern and is absent from `secretArguments` is refused (DW-1121): it is a secret the confirm
  * channel would otherwise carry in clear.
  *
+ * A `secretArguments` name also qualifies when it is a top-level `secret` literal row of one of
+ * the screen's write tools (`secretRowNames`) -- a derived credential such as X.509's
+ * `PrivateKeyPassword`, or an authored wrapper field such as `Security.User`'s POST `Password`.
+ * That is additive: every name the two sources above admit is still admitted.
+ *
  * `toolFields` is the generated `ToolFields.cls` block; a caller that supplies none (every fixture
  * in `screen-mirror.test.mjs`) is read as "this screen owns no write tool", which is what a
  * descriptor with no entry means anyway.
@@ -546,8 +551,9 @@ export function confirmChannelProblem(declaration, toolFields = {}) {
       return `fingerprintExcludes names '${path}', which is neither a field of this screen's write tool nor one its read declares (AD-6)`;
     }
   }
+  const secretRows = secretRowNames(declaration.toolIdentifier, toolFields);
   for (const name of secrets) {
-    if (!names.settable.includes(name) && !names.read.includes(name)) {
+    if (!names.settable.includes(name) && !names.read.includes(name) && !secretRows.includes(name)) {
       return `secretArguments names '${name}', which is neither a settable field of this screen's write tool nor one its read declares (AD-6)`;
     }
   }
@@ -737,6 +743,27 @@ function toolFieldRows(identifier, toolFields) {
     }
   }
   return rows;
+}
+
+/**
+ * The top-level `secret` literal rows of the write tools `identifier` owns, by name -- the third
+ * source a `secretArguments` entry may name (`OcuPilot.Screen.Registry.SecretRowNames`). A nested
+ * path, an array element and a row of any other class contribute nothing.
+ */
+export function secretRowNames(identifier, toolFields) {
+  const names = [];
+  if (typeof identifier !== 'string' || identifier === '' || !isObject(toolFields)) return names;
+  for (const [name, entry] of Object.entries(toolFields)) {
+    if (name.split('.').slice(0, 2).join('.') !== identifier) continue;
+    if (!isObject(entry) || !Array.isArray(entry.fields)) continue;
+    for (const field of entry.fields) {
+      if (!isObject(field) || typeof field.path !== 'string') continue;
+      if (field.class !== 'secret' || field.shape !== 'literal') continue;
+      if (field.path.includes('.') || field.path.includes('[')) continue;
+      if (!names.includes(field.path)) names.push(field.path);
+    }
+  }
+  return names;
 }
 
 /** The first name matching the credential pattern that `secrets` does not declare, as a refusal. */

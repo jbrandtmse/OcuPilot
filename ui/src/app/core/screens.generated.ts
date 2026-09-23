@@ -5839,6 +5839,9 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ],
       "secretFields": []
     },
+    "secretArguments": [
+      "Password"
+    ],
     "emptyStateKey": "userListEmpty",
     "commandAliases": [
       "accounts"
@@ -5938,7 +5941,6 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
-    "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },

@@ -10,6 +10,25 @@ Class OcuPilot.Screen.Tool.ToolFields Extends %RegisteredObject
 XData Tools
 {
 {
+"permissions.users.create": {"fieldList":"Security.User","fields":[
+  {"path":"AccountNeverExpires","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheEnabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ChangePassword","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Comment","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"EmailAddress","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"ExpirationDate","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"FullName","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"HOTPKeyDisplay","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"NameSpace","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PasswordNeverExpires","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"PhoneNumber","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PhoneProvider","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Roles","shape":"array","templateType":"array","itemType":"","class":"opaque"},
+  {"path":"EscalationRoles","shape":"array","templateType":"array","itemType":"","class":"opaque"},
+  {"path":"Routine","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Password","shape":"literal","templateType":"string","class":"secret","authored":true}
+]},
 "permissions.users.update": {"fieldList":"Security.User","fields":[
   {"path":"AccountNeverExpires","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
   {"path":"AutheEnabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
