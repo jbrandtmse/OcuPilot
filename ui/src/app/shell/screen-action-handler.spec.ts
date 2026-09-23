@@ -7,6 +7,7 @@ import { ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { SCREENS } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
+import { rowKey } from '../core/table-model';
 import { stubAccountPreferences } from '../testing/account-preferences';
 import { SCREEN_ACTION_DESCRIPTORS, ScreenActionHandler } from './screen-action-handler';
 
@@ -22,7 +23,7 @@ async function settle(): Promise<void> {
   for (let pass = 0; pass < 4; pass += 1) await new Promise((resolve) => setTimeout(resolve, 2));
 }
 
-function mount(answer: JsonResult<unknown> = { kind: 'ok', status: 200, body: {} }) {
+function mount(answer: JsonResult<unknown> = { kind: 'ok', status: 200, body: {} }, descriptor = WEB_APPS.descriptor) {
   TestBed.resetTestingModule();
   const calls: { path: string; method: string; body: string }[] = [];
   const api = {
@@ -45,7 +46,8 @@ function mount(answer: JsonResult<unknown> = { kind: 'ok', status: 200, body: {}
   });
   const actions = TestBed.inject(ScreenActions);
   const handler = TestBed.inject(ScreenActionHandler);
-  const store = stores.for(WEB_APPS.descriptor, WEB_APPS.refreshRates);
+  const screen = SCREENS.find((entry) => entry.descriptor === descriptor)!;
+  const store = stores.for(screen.descriptor, screen.refreshRates);
   return { actions, handler, store, calls, events };
 }
 
@@ -171,5 +173,68 @@ describe('the generic screen-action handler', () => {
     await settle();
     expect(events).toHaveLength(0);
     expect(store.refusal()).toBe(STRINGS.webAppServesOcuPilotRefusal);
+  });
+});
+
+/** Story 7.3's two OAuth 2.0 tabs, read from the mirror rather than restated here. */
+const OAUTH_CLIENTS = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.OAuthClientTab')!;
+
+const OAUTH_SERVER_CLIENTS = SCREENS.find(
+  (screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.OAuthServerClientTab'
+)!;
+
+/**
+ * AD-53, Story 7.3: the OAuth 2.0 tabs' delete runs through the same handler, with each tab's own
+ * published consequence, and a server client is targeted by its `ClientId` -- the vendor's IdKey --
+ * never by its `Name`, which two clients may share.
+ */
+describe('the OAuth 2.0 tabs\u2019 delete', () => {
+  it('registers delete on both tabs and opens each tab\u2019s own consequence', async () => {
+    // Mutation (Rule 19): drop either descriptor from `SCREEN_ACTION_DESCRIPTORS` -> its `has`
+    // assertion goes red, and no surface draws its delete (DW-389).
+    for (const [screen, consequence, row, type] of [
+      [OAUTH_CLIENTS, STRINGS.oauthClientDeleteConsequence, 'OcuPilotTestDelete', 'oauth2-client-configuration'],
+      [OAUTH_SERVER_CLIENTS, STRINGS.oauthServerClientDeleteConsequence, 'probe-client-id', 'oauth2-server-client'],
+    ] as const) {
+      const answer: JsonResult<unknown> = {
+        kind: 'ok',
+        status: 200,
+        body: { action: 'deleted', target: { type, scope: 'instance', id: row } },
+      };
+      const { actions, handler, store, calls, events } = mount(answer, screen.descriptor);
+      expect(screen.rowActions.map((action) => action.id)).toEqual(['delete']);
+      expect(actions.has(screen.descriptor, 'delete')).toBe(true);
+      store.setSelection([row]);
+      actions.run(screen.descriptor, 'delete');
+      await settle();
+      expect(calls).toHaveLength(0);
+      expect(handler.pending()?.consequence).toBe(consequence);
+      expect(handler.pending()?.verb).toBe(STRINGS.actionDelete);
+      handler.confirmPending();
+      await settle();
+      expect(calls).toHaveLength(1);
+      expect(calls[0].path).toBe(`/api/ocupilot/screens/${screen.toolIdentifier}/action`);
+      expect(JSON.parse(calls[0].body)).toEqual({ action: 'delete', id: row });
+      expect(events).toHaveLength(1);
+      expect(events[0].action).toBe('deleted');
+      expect(events[0].type).toBe(type);
+      expect(events[0].id).toBe(row);
+    }
+  });
+
+  it('targets a server client by its ClientId, not by the Name it may share', async () => {
+    // Mutation (Rule 19): declare the tab's id `single` -> the row key is the Name cell's, and the
+    // pending target and the sent id go red.
+    const row = { Name: 'Shared name', ClientId: 'abc-123', ClientType: 'resource', RedirectURL: [], Description: '' };
+    const key = rowKey(row, OAUTH_SERVER_CLIENTS);
+    expect(key).toBe('abc-123');
+    const { actions, handler, store, calls } = mount(undefined, OAUTH_SERVER_CLIENTS.descriptor);
+    store.setSelection([key]);
+    actions.run(OAUTH_SERVER_CLIENTS.descriptor, 'delete');
+    await settle();
+    expect(handler.pending()?.target).toBe('abc-123');
+    handler.confirmPending();
+    await settle();
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'delete', id: 'abc-123' });
   });
 });

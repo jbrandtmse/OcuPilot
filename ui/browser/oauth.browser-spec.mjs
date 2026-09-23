@@ -57,7 +57,14 @@ const TABS = [
     route: 'security/oauth/clients',
     read: `${READ_PREFIX}security.oauthclients/read`,
     label: STRINGS.oauthTabClients,
-    headers: [STRINGS.tableColumnName, STRINGS.x509ColumnIssuer, STRINGS.oauthColumnClientType, STRINGS.oauthColumnDefaultScope],
+    // Story 7.3: the tab declares a row action, so the table carries the actions column's header.
+    headers: [
+      STRINGS.tableColumnName,
+      STRINGS.x509ColumnIssuer,
+      STRINGS.oauthColumnClientType,
+      STRINGS.oauthColumnDefaultScope,
+      STRINGS.commandBoxGroupActions,
+    ],
   },
   {
     route: 'security/oauth/resource-servers',
@@ -83,7 +90,15 @@ const TABS = [
     route: 'security/oauth/server-clients',
     read: `${READ_PREFIX}security.oauthserverclients/read`,
     label: STRINGS.oauthTabServerClients,
-    headers: [STRINGS.tableColumnName, STRINGS.oauthColumnClientId, STRINGS.oauthColumnClientType, STRINGS.oauthColumnRedirectUrls, STRINGS.tableColumnDescription],
+    // Story 7.3: as the Client configurations tab.
+    headers: [
+      STRINGS.tableColumnName,
+      STRINGS.oauthColumnClientId,
+      STRINGS.oauthColumnClientType,
+      STRINGS.oauthColumnRedirectUrls,
+      STRINGS.tableColumnDescription,
+      STRINGS.commandBoxGroupActions,
+    ],
   },
 ];
 

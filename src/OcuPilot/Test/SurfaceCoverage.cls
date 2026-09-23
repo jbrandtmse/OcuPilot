@@ -102,6 +102,8 @@ XData Coverage
 <tool name="osmgmt.processes.suspend" class="OcuPilot.Test.ToolWrite" method="TestTheProcessSuspendToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="permissions.users.update" class="OcuPilot.Test.ToolWrite" method="TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs"/>
 <tool name="security.auditing.update" class="OcuPilot.Test.ToolWrite" method="TestTheAuditingWriteToolAdvertisesEnabledAloneAndDeclaresItsWriteDestructive"/>
+<tool name="security.oauthclients.delete" class="OcuPilot.Test.OAuthDelete" method="TestTheClientConfigurationDeleteIsAnActionWriteOverTheTabsOwnPairs"/>
+<tool name="security.oauthserverclients.delete" class="OcuPilot.Test.OAuthDelete" method="TestTheServerClientDeleteIsAnActionWriteOverTheTabsOwnPairs"/>
 <tool name="tasks.schedule.resume" class="OcuPilot.Test.ToolWrite" method="TestTheTaskResumeToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="webapp.list.delete" class="OcuPilot.Test.ToolWrite" method="TestTheWebApplicationDeleteToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="webapp.list.update" class="OcuPilot.Test.ToolWrite" method="TestTheRegistryAdvertisesItAsAWriteToolFulfilledOnTheInstance"/>

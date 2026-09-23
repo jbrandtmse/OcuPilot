@@ -2,7 +2,8 @@
 title: 'Story 7.3: Delete an OAuth 2.0 client configuration or server client description'
 type: 'feature'
 created: '2026-09-23'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '5ca4d59858f35cb8dcd29fc68392cf8175018ddc'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -258,6 +259,44 @@ Tests (existing, to extend):
 
 ## Review Triage Log
 
+### 2026-09-22 — Review pass
+
+- verdicts: 15 findings — high 0, medium 2, low 3, false 10, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` (verification-gap) The agent's `security.oauthserverclients.delete` was never minted or confirmed; AC3 says "either delete" -- added `OAuthTabs.TestTheAgentsServerClientDeleteIsMintedConfirmedAndSparesItsNamesake` (subject-only payload, no secret, marker, namesake survives); red under `IdParam` = `name` (run 6886).
+  - `[medium]` `[patch]` (verification-gap) AC6's exact-two-pairs success was proven for the client tab only -- `REGUSER` now deletes a server client in `WireOAuthRead`; red under `WRITERESOURCE` = `%Admin_Secure` (run 6887).
+  - `[low]` `[patch]` (verification-gap) Neither tool's `StateDiff` precondition refusal was tested -- added `OAuthDelete.TestAReadWithoutTheClientTypeIsAPreconditionProblem`; red with the block removed (run 6888).
+  - `[low]` `[patch]` (verification-gap) AC2's recorded mutation could not redden the named route leg -- ran `IdParam` = `name`, route leg red (run 6886); `## Verification` and the leg's doc line now name it.
+  - `[false]` `[reject]` (verification-gap, other) AC4 and the matrix say "any changed field (e.g. `Description`) against either type" is `UNCOVEREDFIELD`, but a server client's `Description` is a subject field -- the literal reading contradicts AC4's own "a subject-only delete passes", since a delete's diff is every subject field; a changed `Description` is refused 409 `PROPOSAL.TARGETCHANGED` before the write, so no change goes through. The fix would edit this spec's intent.
+  - `[false]` `[reject]` (intent-alignment A) Same root as the previous row -- same refutation.
+  - `[false]` `[reject]` (intent-alignment B) Keying the whole server-client tab on `ClientId` is wider than the delete -- Tasks mandate the one-part composite id; the Name column stays the name cell, and `oauth.browser-spec.mjs` is green on it.
+  - `[low]` `[patch]` (intent-alignment C) One `deleted` event per caller was not asserted for the OAuth tabs -- the handler spec now answers a realistic target and asserts one `deleted` event of each type; red with the publish skipped.
+  - `[false]` `[reject]` (intent-alignment) "Target gone: no event" is inferred from the missing `target` -- the handler publishes only from an answered target, and 7.1's "a refused write ... publishes nothing" component test pins it for every descriptor.
+  - `[medium]` `[patch]` (intent-alignment E) The agent server-client path is declaration-only -- grouped with the first row, same patch.
+  - `[false]` `[reject]` (intent-alignment D) The vendor `GET` still answers `Metadata` in memory -- unavoidable at the port; no declaration names it and the mint projects to the subject, which the agent legs assert on everything stored and answered.
+  - `[false]` `[reject]` (intent-alignment) The no-secret check omits the ledger's `Target` and `Route` columns -- `Target` is the input's id and `Route` the screen route (`Kernel/State/Ledger.cls:96-102`); neither can carry `Metadata`.
+  - `[false]` `[reject]` (intent-alignment H) "Before any read" is shown by mutation only -- run 6875 removed the pair check and the refusal asserts went red; the refusal leg also asserts nothing was deleted.
+  - `[false]` `[reject]` (intent-alignment G) `AdminPort`'s count sentence "seven" became "nine" beyond the appends -- no Epic 8 hunk touches it (`git merge-tree` against `origin/OCU-1-epic8` merges the file clean); reverting would leave a false count. Listed under footprint_extensions.
+  - `[false]` `[reject]` (intent-alignment) Empty-state keys and the actions header changed on the two tabs -- the Registry requires `emptyAgentKey` with `emptyNextKey` empty on a write-capable table (Tasks mandate it), and the header follows from declaring a row action.
+
+### 2026-09-22 — Review pass
+
+- verdicts: 13 findings — high 0, medium 2, low 0, false 11, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` (verification-gap) The server client's vanished-target 404 was unpinned (client-configuration leg only) -- added `OAuthTabs.TestARowActionAgainstAVanishedServerClientIsNotFound`; green (run 7140), red under `IdParam` = `name` (run 7139).
+  - `[false]` `[reject]` (intent-alignment) `UNCOVEREDFIELD` is asserted in-process, not as a route 403 -- no delete tool can carry a non-subject field (carried reasoning, first pass), and the set-to-403 mapping is generic and pinned by `ProhibitedRoute`.
+  - `[false]` `[reject]` (intent-alignment) The server-client agent leg omits the ledger check and the "wire" check is in-process -- the ledger row is written by the same generic confirm from the subject-projected payload the leg asserts; the client-configuration leg pins it.
+  - `[false]` `[reject]` (intent-alignment) No server-client fingerprint-refusal leg -- `Fingerprint.Projection`/`Canonical` are generic and canonicalise arrays in order (`Fingerprint.cls:78-86,106-110`), and the server-client mint/confirm leg is green.
+  - `[false]` `[reject]` (intent-alignment) The agent path's client-side `deleted` event is unchecked for these tools -- `turn.ts:1074` publishes from the confirm answer's `action` for every tool; the agent legs assert that answer.
+  - `[medium]` `[patch]` (intent-alignment) No 404 leg for server clients -- grouped with the first row, same patch.
+  - `[false]` `[reject]` carried (intent-alignment) "No event" on a vanished target is inferred from the missing `target` -- first pass's refutation.
+  - `[false]` `[reject]` carried (intent-alignment H) "Before any read" is shown by mutation only -- first pass's refutation (run 6875).
+  - `[false]` `[reject]` carried (intent-alignment D) The fresh `GET` holds `Metadata` in memory -- first pass's refutation.
+  - `[false]` `[reject]` (intent-alignment) "No new armed test class" holds only by the letter -- the one new class, `OAuthDelete`, is unarmed; the live legs sit in existing armed classes as Tasks direct.
+  - `[false]` `[reject]` (intent-alignment) Shared single-line lists collide with Epic 8 -- `git merge-file` against `origin/OCU-1-epic8` gives the same conflict-hunk count before and after this story in all six contended files; those hunks date from 7.1/8.2 and the merge gate reconciles them (`dispatch.yaml` `contended_extension_8_2b`).
+  - `[false]` `[reject]` carried (intent-alignment B) Re-keying the server-client tab and its empty-state keys -- first pass's refutation.
+  - `[false]` `[reject]` (intent-alignment) The AC5 family test and fixture helpers are outside the contract -- Tasks mandate both; `ChangeDisposableClientScope` serves the matrix's fingerprint-refusal row.
+
 ## Design Notes
 
 **Governing ADs (Rule 6).** AD-3, AD-4 with AD-51 (AC5), AD-5 (one descriptor per tab; the action is
@@ -330,6 +369,19 @@ per message, and never re-submit on a timeout.
   - Remove a type from `COVEREDTYPES`: AC4 goes red.
   - Set `SENDSBODY = 1` on one delete: AC5 goes red.
   - Drop the pair check in `ScreenAction.Run`: AC6 goes red.
+- mutation: drop `OcuPilot.Screen.Descriptor.OAuthClientTab` from `SCREEN_ACTION_DESCRIPTORS`, rebuilt and redeployed → `oauth-delete.browser-spec.mjs` AC1 (client configuration) red; restored, rebuilt, redeployed → 2/2 green.
+- mutation: `OAuthServerClientTab` id back to `single` → `OAuthTabs.TestEachTabIsDeclaredAsTheOAuthScreenTab` red (run 6876); with the mirror regenerated, `screen-action-handler.spec.ts` "targets a server client by its ClientId" red ("Shared name" for "abc-123"). AC2's route leg: `OAuthServerClientDelete.IdParam` answering `name` → `OAuthTabs.TestTheServerClientRowActionDeletesByClientIdAndSparesItsNamesake` and `TestTheAgentsServerClientDeleteIsMintedConfirmedAndSparesItsNamesake` red (run 6886).
+- mutation (AC6, server client): `OAuthServerClientDelete.WRITERESOURCE` = `%Admin_Secure` → `WireOAuthRead.TestTheDeleteRowActionsRequireEachTabsOwnPairs` red on the `REGUSER` success leg alone (run 6887).
+- mutation (precondition): the `tReported = ""` block removed from `OAuthClientDelete.StateDiff` → `OAuthDelete.TestAReadWithoutTheClientTypeIsAPreconditionProblem` red (run 6888).
+- mutation (AC1 event): the handler's `ChangeBus.publish` skipped for the OAuth descriptors → `screen-action-handler.spec.ts` "registers delete on both tabs…" red on `events` length.
+- mutation: `Metadata` added to `OAuthClientDelete`'s `FINGERPRINTSUBJECT` and `READANSWERS` → `OAuthTabs.TestTheAgentsClientConfigurationDeleteIsMintedConfirmedAndLeavesTheRead` red on the subject-projection and no-secret asserts (run 6874).
+- mutation: `oauth2-client-configuration` dropped from `Prohibited.COVEREDTYPES` → `OAuthDelete.TestEachOAuthTypeIsCoveredAndRefusesAChangedField` red, `PROHIBITED.UNCOVERED` (run 6871).
+- mutation: `OAuthClientDelete.SENDSBODY` = 1 with `FINGERPRINTSUBJECT` "" → `OAuthDelete.TestEveryOAuthWriteToolIsBodylessOrAMerge` red on both family asserts (run 6873); `SENDSBODY` = 1 alone is refused at registration (run 6872).
+- mutation: the pair check ahead of the fresh read in `ScreenAction.Run` removed → `WireOAuthRead.TestTheDeleteRowActionsRequireEachTabsOwnPairs` red on code and `failedPair` (run 6875).
+- mutation: `Security.OAuth2.Client.ClientConfiguration/DELETE` dropped from `AdminPort.MUTATINGTYPES` → `OAuthTabs` route and agent legs red, `PORT.NOTIMPLEMENTED` (run 6877).
+- mutation (matrix row "Agent delete", fingerprint refusal): `DefaultScope` dropped from `OAuthClientDelete.FINGERPRINTSUBJECT` → `OAuthTabs.TestTheAgentsDeleteOfAChangedClientConfigurationIsRefused` red on the 409, the code and the survival asserts (run 6882).
+- mutation (matrix row "Target already gone", server client): `OAuthServerClientDelete.IdParam` answering `name`, applied to the throwaway's copy only → `OAuthTabs.TestARowActionAgainstAVanishedServerClientIsNotFound` red on the 404 and code asserts (run 7139); restored → 17/0 (run 7140).
+- Every mutation was reverted and the class reloaded; the tree hash matched before and after.
 
 **Once, before `dev_complete`:**
 
@@ -341,10 +393,67 @@ per message, and never re-submit on a timeout.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only; nothing is implemented. The spec is ready for the lead's spec gate, which must first
-publish the four keys under Design Notes › Copy for the lead to publish (EXPERIENCE.md rows and
-`strings.ts`). It flags two decisions for the lead: the server client tab keys on `ClientId`, and no
-`%Admin_Secure` pair is required (both measured). Ledger inbox: none.
+Two AD-51 action deletes, `security.oauthclients.delete` and `security.oauthserverclients.delete`,
+ship on the Story 7.1 seam. Each OAuth tab now declares a `delete` row action, and the server
+client tab is keyed by `ClientId`. Both types are covered in `Prohibited.cls`, and both `DELETE`
+pairs are appended to `AdminPort`. The generic handler holds both descriptors with the published
+consequence copy. The four `strings.ts` keys were consumed, not authored.
+
+Files:
+
+- `Screen/Tool/OAuthClientDelete.cls`, `OAuthServerClientDelete.cls` (new): the two tools.
+- `Screen/Descriptor/OAuthClientTab.cls`, `OAuthServerClientTab.cls`: the row action, the agent
+  empty state, and `ClientId` as the server client key.
+- `Kernel/Proposal/Prohibited.cls`: both types covered through the reviewed-few `OAuthEntry`.
+- `Port/AdminPort.cls`: two appended pairs and one doc paragraph.
+- `ui/.../screen-action-handler.ts` and `screens.generated.ts`: the roster and the regenerated
+  mirror.
+- Tests:
+  - `Test/OAuthDelete.cls` (new, unarmed).
+  - `OAuthTabs`, `WireOAuthRead`, `OAuthProbe`.
+  - Roster rows in `Prohibited`, `ToolRoundTrip`, `ReadTool`, `SurfaceCoverage` and `PortFixture`.
+  - `screen-action-handler.spec.ts`.
+  - `oauth-delete.browser-spec.mjs` (new) and `oauth.browser-spec.mjs`.
+
+This pass had two review layers and 13 findings. The two medium findings share one root cause and
+got one patch: the new server-client vanished-target leg. There were 11 false findings (rows under
+Review Triage Log) and nothing deferred. `followup_review_recommended: false`: only one patched
+entry, and it was medium.
+
+Verification, all on `ocupilot-ci` with `src/` reloaded (`LoadDir` SC=1):
+
+- The story's classes, one per call: `OAuthDelete` 5/0, `OAuthTabs` 17/0 (run 7140),
+  `WireOAuthRead` 6/0, `Prohibited` 11/0, `ToolRoundTrip` 2/0, `ReadTool` 27/0,
+  `SurfaceCoverage` 4/0. The reds recorded at 6886-6888 were the mutation runs.
+- The full ObjectScript sweep ran once, serialized through `ci-runner.mjs`, over 180 classes (runs
+  6958-7137). The `%UnitTest_Result` probe gives 176 classes with 1,619 methods: 1,618 passed,
+  0 failed, and 1 skipped (`ProhibitedRoute`'s auditing-over-the-wire leg).
+- `AuditingUpdate`, `ErrorDelete`, `ProcessControl` and `TaskResume` refuse on this container,
+  which predates their arming variables. They are recorded here, not fixed.
+- `smoke.sh` 49/49.
+- `check-objectscript` 0 problems.
+- `npm run test:tools` 1,322/0 and `npm run test:components` 842/0.
+- Bundle rebuilt and redeployed, then the browser specs `oauth-delete`, `oauth` and
+  `web-applications-actions` 9/0.
+
+Deviation: the server-client prohibited leg changes `DefaultScope`, not `Description`, because
+that tool's subject carries `Description` and `Changed` skips subject fields.
+
+footprint_extensions:
+
+- Contended files, edited after `fetch` and `git show origin/OCU-1-epic8`, off Epic 8's hunks:
+  `src/OcuPilot/Kernel/Proposal/Prohibited.cls`, `src/OcuPilot/Test/Prohibited.cls`,
+  `src/OcuPilot/Test/SurfaceCoverage.cls`, `src/OcuPilot/Test/ToolRoundTrip.cls` and
+  `src/OcuPilot/Test/ReadTool.cls`.
+- `src/OcuPilot/Test/PortFixture.cls` (`contended_extension_8_2b`): the one `MUTATINGTYPES` line,
+  and the merge keeps both new entries.
+- `src/OcuPilot/Port/AdminPort.cls` (shared-append): the appends, plus the count sentence "seven"
+  changed to "nine".
+- `ui/src/app/core/screens.generated.ts`: regenerated.
+- `git merge-file` against `origin/OCU-1-epic8` gives the same conflict-hunk count before and after
+  this story in every contended file.
+
+Residual risk: none beyond the known merge-gate reconciliation of the shared single-line rosters.

@@ -3,7 +3,10 @@
 /// read over the wire as the configured test account (<class>OcuPilot.Test.Http</class>) against the
 /// objects <class>OcuPilot.Test.OAuthProbe</class> makes; the key set of every row the five reads,
 /// the five derived tools and the raw port LISTs answer, with no secret key among them; and each
-/// derived read tool, which answers the route's rows narrowed by its cap.</p>
+/// derived read tool, which answers the route's rows narrowed by its cap. Story 7.3's live legs
+/// delete <method>OcuPilot.Test.OAuthProbe.CreateDisposable</method>'s objects through the row-action
+/// route and through the agent's mint and confirm, and <method>OnAfterOneTest</method> removes
+/// whatever of them survives.</p>
 /// <p>Needs the API application installed in <code>HSCUSTOM</code>, the demo fixture's SSL/TLS
 /// configuration, and both the test account and the process running this class holding every OAuth 2.0
 /// resource, <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code>. <b>It makes OAuth 2.0
@@ -53,7 +56,16 @@ Method OnBeforeOneTest() As %Status
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Scope).Clear()
-    Quit $$$OK
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 Quit $$$OK
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
+    Quit $$$ADDSC(tSC, ##class(OcuPilot.Test.OAuthProbe).RemoveDisposable())
+}
+
+/// <p>Whether <var>pClass</var> is one of the two tabs Story 7.3 made write-capable.</p>
+ClassMethod Deletable(pClass As %String) As %Boolean
+{
+    Quit (pClass = "OcuPilot.Screen.Descriptor.OAuthClientTab") || (pClass = "OcuPilot.Screen.Descriptor.OAuthServerClientTab")
 }
 
 /// <p>The five tabs as <code>$ListBuild(descriptor, route, tool, tab position, side-bar position,
@@ -123,8 +135,10 @@ ClassMethod KeySetProblem(pRows As %DynamicArray, pFields As %String) As %String
 
 /// <p>Each tab passes the read, classic-link and tab grammars; its route and tool identifier resolve to
 /// it; it is a built <code>detail</code> view in the Security and secrets area on its declared entity
-/// types, at instance scope, with no action, no refresh and no secret field, its context fields its
-/// read fields; it is tab <code>n</code> of <code>security/oauth</code>, the first listed at side-bar
+/// types, at instance scope, with no refresh and no secret field, its context fields its read
+/// fields; the Client configurations and Server client descriptions tabs declare the one
+/// <code>delete</code> row action and invite the agent when empty, the server clients keyed by a
+/// one-part composite <code>ClientId</code>, and the other three declare no action; it is tab <code>n</code> of <code>security/oauth</code>, the first listed at side-bar
 /// position 5 and the rest unlisted; its classic page and editor page compile under the declared case,
 /// and its exemption carries the one reason, the editor page's own <code>PAGENAME</code> as its label,
 /// the editor's root-relative href and its row link params; its pair set is its resource then
@@ -148,7 +162,9 @@ Method TestEachTabIsDeclaredAsTheOAuthScreenTab()
         Do $$$AssertEquals($ClassMethod(tClass, "IsBuilt"), 1, tClass _ ": built")
         Do $$$AssertEquals($ListToString($ClassMethod(tClass, "EntityTypes")), $List(tCase, 6), tClass _ ": on its entity types, primary first")
         Do $$$AssertEquals($ClassMethod(tClass, "Scope"), "instance", tClass _ ": at instance scope")
-        Do $$$AssertEquals($ClassMethod(tClass, "IdKind"), "single", tClass _ ": keyed by one id")
+        Set tDeletable = ..Deletable(tClass)
+        Do $$$AssertEquals($ClassMethod(tClass, "IdKind"), $Select(tClass = "OcuPilot.Screen.Descriptor.OAuthServerClientTab": "composite", 1: "single"), tClass _ ": keyed by one id")
+        If tClass = "OcuPilot.Screen.Descriptor.OAuthServerClientTab" Do $$$AssertEquals(tDeclaration.%Get("id").%Get("parts").%ToJSON(), "[""ClientId""]", tClass _ ": the vendor's IdKey, ClientId")
         Do $$$AssertEquals($ClassMethod(tClass, "Refreshes"), 0, tClass _ ": and it does not refresh")
         Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), $List(tCase, 5), tClass _ ": at its side-bar position")
         Do $$$AssertEquals(tDeclaration.tab.group, "security/oauth", tClass _ ": in the OAuth 2.0 tab group")
@@ -156,8 +172,10 @@ Method TestEachTabIsDeclaredAsTheOAuthScreenTab()
         Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), $List(tCase, 9), tClass _ ": its read fields are the ones this class pins")
         Do $$$AssertEquals(tDeclaration.context.fields.%ToJSON(), tDeclaration.read.fields.%ToJSON(), tClass _ ": its context fields are its read fields")
         Do $$$AssertEquals(tDeclaration.context.secretFields.%Size(), 0, tClass _ ": with no secret field")
-        Do $$$AssertEquals(tDeclaration.table.emptyNextKey, "tableReadOnlyEmptyNext", tClass _ ": its empty state names what to do next")
-        Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")) + ($ClassMethod(tClass, "PrimaryActionId") '= ""), 0, tClass _ ": because it declares no action")
+        Do $$$AssertEquals(tDeclaration.table.emptyNextKey, $Select(tDeletable: "", 1: "tableReadOnlyEmptyNext"), tClass _ ": its empty state names what to do next")
+        Do $$$AssertEquals(tDeclaration.table.emptyAgentKey, $Case(tClass, "OcuPilot.Screen.Descriptor.OAuthClientTab": "oauthClientsEmptyAgent", "OcuPilot.Screen.Descriptor.OAuthServerClientTab": "oauthServerClientsEmptyAgent", : ""), tClass _ ": or invites the agent")
+        Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), $Select(tDeletable: "delete", 1: ""), tClass _ ": its row actions")
+        Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", tClass _ ": and no primary action")
         Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""" _ $List(tCase, 10) _ """,""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", tClass _ ": its pair set, its resource first")
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs")), "", tClass _ ": and the Security and secrets area covers it")
 
@@ -389,6 +407,282 @@ Method TestTheReadToolAnswersTheRoutesRowsNarrowedByItsCap()
         }
         Do $$$AssertEquals(tKeys, "fields,rows,truncated,rowsAvailable", tTool _ ": and nothing else")
     }
+}
+
+/// <p>One <code>POST</code> of <var>pAction</var> against <var>pId</var> on the screen whose tool
+/// identifier is <var>pScreen</var>, as the test account, with the parsed body in <var>pAnswer</var>.</p>
+Method Act(pScreen As %String, pAction As %String, pId As %String, Output pStatus As %Integer, Output pAnswer As %DynamicObject) As %Status
+{
+    Set pAnswer = ""
+    Set tRequest = {}
+    Do tRequest.%Set("action", pAction, "string")
+    Do tRequest.%Set("id", pId, "string")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", ..#READPATH _ pScreen _ "/action", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .pStatus, .tBody, .tHeaders, tRequest.%ToJSON(), "application/json")
+    If $$$ISERR(tSC) Quit tSC
+    Try {
+        Set pAnswer = ##class(%DynamicObject).%FromJSON($ZConvert(tBody, "I", "UTF8"))
+    } Catch {
+        Set pAnswer = ""
+    }
+    Do $$$AssertEquals((tBody [ "}{"), 0, pScreen _ " " _ pAction _ ": one envelope")
+    Quit tSC
+}
+
+/// <p>Whether <var>pTool</var>'s route read lists a row whose <var>pKey</var> is <var>pValue</var>;
+/// <code>-1</code> when the read does not answer.</p>
+Method Lists(pTool As %String, pKey As %String, pValue As %String) As %Integer
+{
+    Set tSC = ..Read(pTool, 1000, .tStatus, .tAnswer)
+    If $$$ISERR(tSC) || (tStatus '= 200) || '$IsObject(tAnswer) Quit -1
+    Quit $IsObject(..RowWhere(tAnswer.rows, pKey, pValue))
+}
+
+/// <p>The top-level key names of <var>pObject</var>, sorted, comma-separated.</p>
+ClassMethod SortedKeys(pObject As %DynamicObject) As %String
+{
+    Set tIterator = pObject.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        Set tSorted(tKey) = ""
+    }
+    Set tKeys = ""
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tSorted(tKey))
+        If tKey = "" Quit
+        Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
+    }
+    Quit tKeys
+}
+
+/// <p>Story 7.3, DW-1475 -- each delete tool's <code>READANSWERS</code> is exactly the key set its
+/// endpoint's live <code>GET</code> answers, less <code>Metadata</code>, which the <code>GET</code>
+/// answers and no declaration names (AD-35).</p>
+Method TestTheDeleteToolsReadAnswersAreTheLiveGetLessMetadata()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.OAuthProbe).CreateDisposable(), "the disposable objects are made")
+    Set tIds = ##class(OcuPilot.Test.OAuthProbe).DisposableRegistrationIds()
+    Do $$$AssertEquals($ListLength(tIds), 2, "two server clients share the disposable name")
+    If $ListLength(tIds) < 1 Quit
+    For tCase = $ListBuild("OcuPilot.Screen.Tool.OAuthClientDelete", ##class(OcuPilot.Test.OAuthProbe).#CLIENTDELETE), $ListBuild("OcuPilot.Screen.Tool.OAuthServerClientDelete", $List(tIds, 1)) {
+        Set tClass = $List(tCase, 1)
+        Kill tQuery
+        Set tQuery($ClassMethod(tClass, "IdParam")) = $List(tCase, 2)
+        Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke($ClassMethod(tClass, "Endpoint"), "GET", .tQuery, "", .tLive, .tHttp, .tFault)
+        Do $$$AssertStatusOK(tSC, tClass _ ": the live GET answers")
+        If '$IsObject($Get(tLive)) Continue
+        Do $$$AssertEquals(tLive.%GetTypeOf("Metadata"), "object", tClass _ ": and carries Metadata, which is why no declaration names it")
+        Do tLive.%Remove("Metadata")
+        Set tDeclared = {}
+        Set tNames = $ClassMethod(tClass, "ReadAnswers")
+        For tI = 1:1:$ListLength(tNames) Do tDeclared.%Set($List(tNames, tI), "")
+        Do $$$AssertEquals(..SortedKeys(tDeclared), ..SortedKeys(tLive), tClass _ ": READANSWERS is the live GET's key set less Metadata")
+    }
+}
+
+/// <p>Story 7.3 AC1's instance half -- the row action deletes the disposable client configuration
+/// over <code>POST /screens/security.oauthclients/action</code>, answering the
+/// <code>deleted</code> action and the AD-13 triple; the read no longer lists it, and the other
+/// configurations are still listed.</p>
+/// <p>Mutation (Rule 19): drop <code>Security.OAuth2.Client.ClientConfiguration/DELETE</code> from
+/// <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> -- the route answers 501 and the
+/// status and gone assertions go red.</p>
+Method TestTheRowActionDeletesAClientConfiguration()
+{
+    Set tName = ##class(OcuPilot.Test.OAuthProbe).#CLIENTDELETE
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.OAuthProbe).CreateDisposable(), "the disposable objects are made")
+    Do $$$AssertEquals(..Lists("security.oauthclients", "ApplicationName", tName), 1, "the disposable configuration is listed")
+    Set tSC = ..Act("security.oauthclients", "delete", tName, .tStatus, .tAnswer)
+    Do $$$AssertStatusOK(tSC, "the row action completes")
+    Do $$$AssertEquals(tStatus, 200, "and answers")
+    If $IsObject(tAnswer) && (tStatus = 200) {
+        Do $$$AssertEquals(tAnswer.%Get("action"), "deleted", "the deleted action")
+        Do $$$AssertEquals(tAnswer.%Get("target").%ToJSON(), "{""type"":""oauth2-client-configuration"",""scope"":""instance"",""id"":""" _ tName _ """}", "and the triple the write was made against")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Test.OAuthProbe).DisposableClientExists(), 0, "the configuration is gone from the instance")
+    Do $$$AssertEquals(..Lists("security.oauthclients", "ApplicationName", tName), 0, "and from the read")
+    Do $$$AssertEquals(..Lists("security.oauthclients", "ApplicationName", ##class(OcuPilot.Test.OAuthProbe).#CLIENTA), 1, "while client A is still listed")
+    Do $$$AssertEquals(..Lists("security.oauthclients", "ApplicationName", ##class(OcuPilot.Test.OAuthProbe).#CLIENTB), 1, "and so is client B")
+}
+
+/// <p>Story 7.3 AC2 -- the server client row action is keyed by <code>ClientId</code>: of two
+/// clients sharing one name, the one whose client id is sent is deleted and the other survives.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.OAuthServerClientDelete.IdParam</method>
+/// answers <code>name</code> -- the vendor refuses the request and this leg goes red.</p>
+Method TestTheServerClientRowActionDeletesByClientIdAndSparesItsNamesake()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.OAuthProbe).CreateDisposable(), "the disposable objects are made")
+    Set tIds = ##class(OcuPilot.Test.OAuthProbe).DisposableRegistrationIds()
+    Do $$$AssertEquals($ListLength(tIds), 2, "two server clients share one name")
+    If $ListLength(tIds) '= 2 Quit
+    Set tGone = $List(tIds, 1)
+    Set tKept = $List(tIds, 2)
+    Set tSC = ..Act("security.oauthserverclients", "delete", tGone, .tStatus, .tAnswer)
+    Do $$$AssertStatusOK(tSC, "the row action completes")
+    Do $$$AssertEquals(tStatus, 200, "and answers")
+    If $IsObject(tAnswer) && (tStatus = 200) {
+        Do $$$AssertEquals(tAnswer.%Get("action"), "deleted", "the deleted action")
+        Do $$$AssertEquals(tAnswer.%Get("target").%ToJSON(), "{""type"":""oauth2-server-client"",""scope"":""instance"",""id"":""" _ tGone _ """}", "against the client id sent")
+    }
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Test.OAuthProbe).DisposableRegistrationIds()), tKept, "only the other client keeps the name")
+    Do $$$AssertEquals(..Lists("security.oauthserverclients", "ClientId", tGone), 0, "the deleted client leaves the read")
+    Do $$$AssertEquals(..Lists("security.oauthserverclients", "ClientId", tKept), 1, "and its namesake is still listed")
+}
+
+/// <p>Story 7.3's vanished target -- a row action against a configuration removed out of band is
+/// the port's 404 <code>PORT.NOTFOUND</code>, answering no action and no target.</p>
+Method TestARowActionAgainstAVanishedTargetIsNotFound()
+{
+    Set tName = ##class(OcuPilot.Test.OAuthProbe).#CLIENTDELETE
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.OAuthProbe).CreateDisposable(), "the disposable objects are made")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.OAuthProbe).RemoveDisposable(), "and removed out of band")
+    Set tSC = ..Act("security.oauthclients", "delete", tName, .tStatus, .tAnswer)
+    Do $$$AssertStatusOK(tSC, "the row action completes")
+    Do $$$AssertEquals(tStatus, 404, "and is not found")
+    If $IsObject(tAnswer) {
+        Do $$$AssertEquals(tAnswer.%Get("code"), "PORT.NOTFOUND", "with the port's own code")
+        Do $$$AssertEquals(tAnswer.%GetTypeOf("target"), "unassigned", "and no target, so no change event is published")
+    }
+}
+
+/// <p>Story 7.3's vanished target on the server client tab -- a row action against a client id
+/// removed out of band is the port's 404 <code>PORT.NOTFOUND</code>, answering no action and no
+/// target.</p>
+Method TestARowActionAgainstAVanishedServerClientIsNotFound()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.OAuthProbe).CreateDisposable(), "the disposable objects are made")
+    Set tIds = ##class(OcuPilot.Test.OAuthProbe).DisposableRegistrationIds()
+    Do $$$AssertTrue($ListLength(tIds) > 0, "a disposable server client exists to remove")
+    If $ListLength(tIds) = 0 Quit
+    Set tGone = $List(tIds, 1)
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.OAuthProbe).RemoveDisposable(), "and is removed out of band")
+    Set tSC = ..Act("security.oauthserverclients", "delete", tGone, .tStatus, .tAnswer)
+    Do $$$AssertStatusOK(tSC, "the row action completes")
+    Do $$$AssertEquals(tStatus, 404, "and is not found")
+    If $IsObject(tAnswer) {
+        Do $$$AssertEquals(tAnswer.%Get("code"), "PORT.NOTFOUND", "with the port's own code")
+        Do $$$AssertEquals(tAnswer.%GetTypeOf("target"), "unassigned", "and no target, so no change event is published")
+    }
+}
+
+/// <p>Story 7.3 AC3 and its integration AC -- the agent's <code>security.oauthclients.delete</code>,
+/// minted through the tool's own <method>OcuPilot.Screen.Tool.Write.View</method> on a completed
+/// probe turn and confirmed through the shipped transition as the minting user: the card is
+/// destructive, the stored payload is exactly the subject projection, nothing stored or answered
+/// carries <code>Metadata</code> or <code>client_secret</code>, the agent marker is recorded, and
+/// the read route no longer lists the configuration.</p>
+/// <p>Mutation (Rule 19): add <code>Metadata</code> to
+/// <parameter>OcuPilot.Screen.Tool.OAuthClientDelete.FINGERPRINTSUBJECT</parameter> and to its
+/// <parameter>OcuPilot.Screen.Tool.OAuthClientDelete.READANSWERS</parameter>, without which the
+/// registration guard refuses the subject -- the subject-projection and no-secret assertions go
+/// red.</p>
+Method TestTheAgentsClientConfigurationDeleteIsMintedConfirmedAndLeavesTheRead()
+{
+    Set tName = ##class(OcuPilot.Test.OAuthProbe).#CLIENTDELETE
+    Set tClass = "OcuPilot.Screen.Tool.OAuthClientDelete"
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.OAuthProbe).CreateDisposable(), "the disposable objects are made")
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "a completed probe turn is seeded for the minting user")
+    If $$$ISERR(tSC) Quit
+    Set tArgs = {}
+    Do tArgs.%Set($ClassMethod(tClass, "IdArgument"), tName, "string")
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(tTurnKey)
+    Set tSC = $ClassMethod(tClass, "View", "", tArgs, 0, .tProposal, .tHttp, .tFault)
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    Do $$$AssertStatusOK(tSC, "the tool mints a proposal (HTTP " _ +$Get(tHttp) _ ")")
+    If '$IsObject($Get(tProposal)) Quit
+    Set tKey = tProposal.%Get("proposalId")
+    Do ##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tKey, .tFound, .tValues)
+    Do $$$AssertTrue(tFound, "the proposal is stored")
+    If 'tFound Quit
+    Do $$$AssertEquals(tValues("destructive"), 1, "the card is destructive")
+    Set tPayload = ##class(%DynamicObject).%FromJSON(tValues("payload"))
+    Do $$$AssertEquals(..SortedKeys(tPayload), "ClientType,DefaultScope,Enabled,ServerDefinition", "the stored payload is exactly the subject projection")
+    Set tResult = ""
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tKey, "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertStatusOK(tSC, "the confirm succeeds: " _ $Get(tCode))
+    If $IsObject(tResult) Do $$$AssertEquals(tResult.%Get("auditMarked"), 1, "and the agent marker is recorded")
+    Set tLedger = ""
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Arguments, Fields, Status FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(TurnKey) = ?", tTurnKey)
+    While tRS.%Next() {
+        Set tLedger = tLedger _ tRS.%Get("Arguments") _ tRS.%Get("Fields") _ tRS.%Get("Status")
+    }
+    Do $$$AssertNotEquals(tLedger, "", "the write left a ledger row")
+    Set tStored = tValues("payload") _ tValues("diff") _ tValues("arguments") _ tProposal.%ToJSON() _ $Select($IsObject(tResult): tResult.%ToJSON(), 1: "") _ tLedger
+    Do $$$AssertEquals((tStored [ "Metadata") || (tStored [ "client_secret") || (tStored [ "registration_access_token"), 0, "no stored or answered value carries Metadata or a client secret")
+    Do $$$AssertEquals(##class(OcuPilot.Test.OAuthProbe).DisposableClientExists(), 0, "the configuration is gone from the instance")
+    Do $$$AssertEquals(..Lists("security.oauthclients", "ApplicationName", tName), 0, "and the read route no longer lists it")
+}
+
+/// <p>Story 7.3 AC3 for the server client -- the agent's <code>security.oauthserverclients.delete</code>,
+/// minted by <code>ClientId</code> and confirmed as the minting user: the card is destructive, the
+/// stored payload is exactly the subject projection, nothing stored or answered carries
+/// <code>Metadata</code> or a client secret, the agent marker is recorded, and only that client
+/// leaves the read while its namesake stays.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.OAuthServerClientDelete.IdParam</method>
+/// answers <code>name</code> -- the vendor refuses the read and this leg goes red.</p>
+Method TestTheAgentsServerClientDeleteIsMintedConfirmedAndSparesItsNamesake()
+{
+    Set tClass = "OcuPilot.Screen.Tool.OAuthServerClientDelete"
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.OAuthProbe).CreateDisposable(), "the disposable objects are made")
+    Set tIds = ##class(OcuPilot.Test.OAuthProbe).DisposableRegistrationIds()
+    Do $$$AssertEquals($ListLength(tIds), 2, "two server clients share one name")
+    If $ListLength(tIds) '= 2 Quit
+    Set tGone = $List(tIds, 1)
+    Set tKept = $List(tIds, 2)
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "a completed probe turn is seeded for the minting user")
+    If $$$ISERR(tSC) Quit
+    Set tArgs = {}
+    Do tArgs.%Set($ClassMethod(tClass, "IdArgument"), tGone, "string")
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(tTurnKey)
+    Set tSC = $ClassMethod(tClass, "View", "", tArgs, 0, .tProposal, .tHttp, .tFault)
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    Do $$$AssertStatusOK(tSC, "the tool mints a proposal (HTTP " _ +$Get(tHttp) _ ")")
+    If '$IsObject($Get(tProposal)) Quit
+    Set tKey = tProposal.%Get("proposalId")
+    Do ##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tKey, .tFound, .tValues)
+    Do $$$AssertTrue(tFound, "the proposal is stored")
+    If 'tFound Quit
+    Do $$$AssertEquals(tValues("destructive"), 1, "the card is destructive")
+    Do $$$AssertEquals(..SortedKeys(##class(%DynamicObject).%FromJSON(tValues("payload"))), "ClientType,Description,Name,RedirectURL", "the stored payload is exactly the subject projection")
+    Set tResult = ""
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tKey, "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertStatusOK(tSC, "the confirm succeeds: " _ $Get(tCode))
+    Do $$$AssertTrue($IsObject(tResult) && (tResult.%Get("auditMarked") = 1), "and the agent marker is recorded")
+    Set tStored = tValues("payload") _ tValues("diff") _ tValues("arguments") _ tProposal.%ToJSON() _ $Select($IsObject(tResult): tResult.%ToJSON(), 1: "")
+    Do $$$AssertEquals((tStored [ "Metadata") || (tStored [ "client_secret") || (tStored [ "registration_access_token"), 0, "no stored or answered value carries Metadata or a client secret")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Test.OAuthProbe).DisposableRegistrationIds()), tKept, "only the other client keeps the name")
+    Do $$$AssertEquals(..Lists("security.oauthserverclients", "ClientId", tGone), 0, "the deleted client leaves the read")
+    Do $$$AssertEquals(..Lists("security.oauthserverclients", "ClientId", tKept), 1, "and its namesake is still listed")
+}
+
+/// <p>Story 7.3's changed subject -- a client configuration whose <code>DefaultScope</code>, a
+/// subject field, changes between the agent's mint and the user's confirm is refused 409
+/// <code>PROPOSAL.TARGETCHANGED</code> (AD-6), and the configuration survives.</p>
+/// <p>Mutation (Rule 19): remove <code>DefaultScope</code> from
+/// <parameter>OcuPilot.Screen.Tool.OAuthClientDelete.FINGERPRINTSUBJECT</parameter> -- the confirm
+/// deletes the changed configuration and the refusal assertions go red.</p>
+Method TestTheAgentsDeleteOfAChangedClientConfigurationIsRefused()
+{
+    Set tName = ##class(OcuPilot.Test.OAuthProbe).#CLIENTDELETE
+    Set tClass = "OcuPilot.Screen.Tool.OAuthClientDelete"
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.OAuthProbe).CreateDisposable(), "the disposable objects are made")
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "a completed probe turn is seeded for the minting user")
+    If $$$ISERR(tSC) Quit
+    Set tArgs = {}
+    Do tArgs.%Set($ClassMethod(tClass, "IdArgument"), tName, "string")
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(tTurnKey)
+    Set tSC = $ClassMethod(tClass, "View", "", tArgs, 0, .tProposal, .tHttp, .tFault)
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    Do $$$AssertStatusOK(tSC, "the tool mints a proposal (HTTP " _ +$Get(tHttp) _ ")")
+    If '$IsObject($Get(tProposal)) Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.OAuthProbe).ChangeDisposableClientScope("changed-after-mint"), "the default scope changes out of band")
+    Set tResult = ""
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertEquals($Get(tHttp), 409, "the confirm is refused")
+    Do $$$AssertEquals($Get(tCode), ##class(OcuPilot.Kernel.Proposal.Write).#TARGETCHANGED, "because the target changed")
+    Do $$$AssertEquals(##class(OcuPilot.Test.OAuthProbe).DisposableClientExists(), 1, "and the configuration survives")
 }
 
 }

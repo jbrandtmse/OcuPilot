@@ -28,8 +28,8 @@ Parameter PROBEPREFIX = "OcuPilotProbeAgent";
 /// at all and whose schema is therefore the identifying property and the agent's own words
 /// (AD-51), and for the two process writes, whose schemas are the pid and those same words. The
 /// web-application delete (Story 7.1) is the same shape: it admits no field either, so its schema
-/// is the application's name and those words.</p>
-Parameter REFUSEEMPTY = "logs.applicationerrors.read:TOOL.ARGUMENTS,logs.applicationerrors.delete:TOOL.ARGUMENTS,shell.screen.open:NAV.NOTINSTANCE,osmgmt.databasedetails.read:READ.CRITERION,osmgmt.processdetails.read:READ.CRITERION,tasks.taskdetails.read:READ.CRITERION,osmgmt.databasevolumes.read:PORT.VALIDATION,security.secrets.read:PORT.VALIDATION,webapp.openapi.read:PORT.VALIDATION,webapp.list.update:TOOL.ARGUMENTS,webapp.list.delete:TOOL.ARGUMENTS,permissions.users.update:TOOL.ARGUMENTS,security.auditing.update:TOOL.ARGUMENTS,tasks.schedule.resume:TOOL.ARGUMENTS,osmgmt.processes.suspend:TOOL.ARGUMENTS,osmgmt.processes.resume:TOOL.ARGUMENTS";
+/// is the application's name and those words, and so are the two OAuth 2.0 deletes (Story 7.3).</p>
+Parameter REFUSEEMPTY = "logs.applicationerrors.read:TOOL.ARGUMENTS,logs.applicationerrors.delete:TOOL.ARGUMENTS,shell.screen.open:NAV.NOTINSTANCE,osmgmt.databasedetails.read:READ.CRITERION,osmgmt.processdetails.read:READ.CRITERION,tasks.taskdetails.read:READ.CRITERION,osmgmt.databasevolumes.read:PORT.VALIDATION,security.secrets.read:PORT.VALIDATION,webapp.openapi.read:PORT.VALIDATION,webapp.list.update:TOOL.ARGUMENTS,webapp.list.delete:TOOL.ARGUMENTS,permissions.users.update:TOOL.ARGUMENTS,security.auditing.update:TOOL.ARGUMENTS,security.oauthclients.delete:TOOL.ARGUMENTS,security.oauthserverclients.delete:TOOL.ARGUMENTS,tasks.schedule.resume:TOOL.ARGUMENTS,osmgmt.processes.suspend:TOOL.ARGUMENTS,osmgmt.processes.resume:TOOL.ARGUMENTS";
 
 Method OnBeforeOneTest() As %Status
 {

@@ -2597,7 +2597,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "ApplicationName",
@@ -2702,8 +2707,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "oauthClientsEmptyAgent"
     },
     "tab": {
       "group": "security/oauth",
@@ -2855,14 +2860,21 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "scope": "instance",
     "parentScope": "",
     "id": {
-      "kind": "single",
-      "parts": []
+      "kind": "composite",
+      "parts": [
+        "ClientId"
+      ]
     },
     "primaryAction": {
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -2951,8 +2963,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "oauthServerClientsEmptyAgent"
     },
     "tab": {
       "group": "security/oauth",

@@ -15,6 +15,8 @@
 /// <code>%Admin_OAuth2_Server:U</code>, <code>%Admin_OAuth2_Registration:U</code> and
 /// <code>%Admin_Secure:U</code>; <parameter>NODBUSER</parameter> adds <code>%Admin_OAuth2_Client:U</code>
 /// alone. The rows come from <class>OcuPilot.Test.OAuthProbe</class>, made and removed alongside.
+/// Story 7.3's delete legs post the row-action route as these principals against the probe's
+/// disposable objects.
 /// <b>It creates security principals and OAuth 2.0 objects, so <method>OnBeforeAllTests</method> refuses
 /// to run unless <parameter>ARMINGVARIABLE</parameter> arms it.</b></p>
 /// <p>Needs the API application installed, the demo fixture's SSL/TLS configuration, and a configured
@@ -342,6 +344,76 @@ Method TestTheClientResourceWithoutTheSystemReadIsDenied()
     Do ..AssertReadRefused(..#NODBUSER, "security.oauthresourceservers", "%Admin_Secure:USE")
     Do ..AssertReadRefused(..#NODBUSER, "security.oauthserver", "%Admin_OAuth2_Server:USE")
     Do ..AssertReadRefused(..#NODBUSER, "security.oauthserverclients", "%Admin_OAuth2_Registration:USE")
+}
+
+/// <p>One <code>POST</code> of the <code>delete</code> row action against <var>pId</var> on the
+/// screen whose tool identifier is <var>pScreen</var>, as <var>pUser</var>, with the parsed body in
+/// <var>pAnswer</var>.</p>
+Method DeleteAs(pUser As %String, pScreen As %String, pId As %String, Output pStatus As %Integer, Output pAnswer As %DynamicObject) As %Status
+{
+    Set pAnswer = ""
+    Set tRequest = {}
+    Do tRequest.%Set("action", "delete", "string")
+    Do tRequest.%Set("id", pId, "string")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot/screens/" _ pScreen _ "/action", pUser, ..PreparedPassword, .pStatus, .tBody, .tHeaders, tRequest.%ToJSON(), "application/json")
+    If $$$ISERR(tSC) Quit tSC
+    Try {
+        Set pAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    } Catch {
+        Set pAnswer = ""
+    }
+    Quit tSC
+}
+
+/// <p>Assert that <var>pUser</var>'s delete of <var>pId</var> on <var>pScreen</var> is refused 403
+/// <code>AUTH.NOPRIVILEGE</code> naming <var>pPair</var>.</p>
+Method AssertDeleteRefused(pUser As %String, pScreen As %String, pId As %String, pPair As %String)
+{
+    Set tSC = ..DeleteAs(pUser, pScreen, pId, .tStatus, .tAnswer)
+    Do $$$AssertStatusOK(tSC, pUser _ " " _ pScreen _ ": the delete request completes")
+    Do $$$AssertEquals(tStatus, 403, pUser _ " " _ pScreen _ ": the delete is refused")
+    If '$IsObject(tAnswer) Quit
+    Do $$$AssertEquals(tAnswer.code, "AUTH.NOPRIVILEGE", pUser _ " " _ pScreen _ ": on the screen-privilege code")
+    Do $$$AssertEquals($Select($IsObject(tAnswer.detail): tAnswer.detail.failedPair, 1: ""), pPair, pUser _ " " _ pScreen _ ": naming " _ pPair)
+}
+
+/// <p>Story 7.3 AC6 -- the row-action route checks the tab's own pairs before any read: the
+/// principal short of <code>%DB_IRISSYS:READ</code> is refused the client configuration delete
+/// naming it, and the one holding <code>%Admin_OAuth2_Server</code> instead of
+/// <code>%Admin_OAuth2_Registration</code> is refused the server client delete naming the latter.
+/// Nothing is deleted. The principals holding exactly each tab's two pairs delete the disposable
+/// configuration and one disposable server client.</p>
+/// <p>Mutation (Rule 19): delete the pair check ahead of the fresh read in
+/// <method>OcuPilot.Api.ScreenAction.Run</method> -- neither refusal is
+/// <code>AUTH.NOPRIVILEGE</code> naming its pair any more, and the code and failed-pair assertions
+/// go red.</p>
+Method TestTheDeleteRowActionsRequireEachTabsOwnPairs()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the five principals' pairs and made the probe objects")
+    Set tClient = ##class(OcuPilot.Test.OAuthProbe).#CLIENTDELETE
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.OAuthProbe).CreateDisposable(), "the disposable objects are made")
+    Set tIds = ##class(OcuPilot.Test.OAuthProbe).DisposableRegistrationIds()
+    Do $$$AssertEquals($ListLength(tIds), 2, "with two server clients")
+    If $ListLength(tIds) < 1 Quit
+    Do ..AssertDeleteRefused(..#NODBUSER, "security.oauthclients", tClient, "%DB_IRISSYS:READ")
+    Do ..AssertDeleteRefused(..#SERVERUSER, "security.oauthserverclients", $List(tIds, 1), "%Admin_OAuth2_Registration:USE")
+    Do $$$AssertEquals(##class(OcuPilot.Test.OAuthProbe).DisposableClientExists(), 1, "the configuration survives the refusal")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Test.OAuthProbe).DisposableRegistrationIds()), $ListToString(tIds), "and so do both server clients")
+
+    Set tSC = ..DeleteAs(..#CLIENTUSER, "security.oauthclients", tClient, .tStatus, .tAnswer)
+    Do $$$AssertStatusOK(tSC, "the client principal's delete completes")
+    Do $$$AssertEquals(tStatus, 200, "and succeeds with exactly the tab's two pairs")
+    If $IsObject(tAnswer) Do $$$AssertEquals(tAnswer.%Get("action"), "deleted", "answering the deleted action")
+    Do $$$AssertEquals(##class(OcuPilot.Test.OAuthProbe).DisposableClientExists(), 0, "and the configuration is gone")
+
+    If $ListLength(tIds) = 2 {
+        Set tSC = ..DeleteAs(..#REGUSER, "security.oauthserverclients", $List(tIds, 2), .tStatus, .tAnswer)
+        Do $$$AssertStatusOK(tSC, "the registration principal's delete completes")
+        Do $$$AssertEquals(tStatus, 200, "and succeeds with exactly the server clients tab's two pairs")
+        If $IsObject(tAnswer) Do $$$AssertEquals(tAnswer.%Get("action"), "deleted", "answering the deleted action")
+        Do $$$AssertEquals($ListToString(##class(OcuPilot.Test.OAuthProbe).DisposableRegistrationIds()), $List(tIds, 1), "and only that server client is gone")
+    }
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.OAuthProbe).RemoveDisposable(), "the remaining disposable objects are removed")
 }
 
 }

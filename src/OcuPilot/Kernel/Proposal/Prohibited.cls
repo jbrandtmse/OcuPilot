@@ -27,11 +27,12 @@
 /// (<method>AlwaysProhibitedFields</method>), and so is every field outside the reviewed few: a
 /// write tool advertises the reviewed names and nothing else, so the model cannot author the rest,
 /// and this class refuses them at the write so no other route can either.</p>
-/// <p><b>Six types are covered</b> (<parameter>COVEREDTYPES</parameter>): a web application
+/// <p><b>Eight types are covered</b> (<parameter>COVEREDTYPES</parameter>): a web application
 /// (<method>WebApplication</method>), a user account (<method>User</method>), the instance's
-/// auditing configuration (<method>Auditing</method>), a task (<method>Task</method>) and an
-/// application error (<method>ApplicationError</method>) -- the last three the reviewed-few sweep
-/// alone, because AD-10 forbids no change to any of them -- and a process
+/// auditing configuration (<method>Auditing</method>), a task (<method>Task</method>), an
+/// application error (<method>ApplicationError</method>), and an OAuth 2.0 client configuration and
+/// server client (<method>OAuthEntry</method>) -- those five the reviewed-few sweep alone, because
+/// AD-10 forbids no change to any of them -- and a process
 /// (<method>Process</method>), which adds two target predicates -- a process OcuPilot is itself
 /// running in (AD-7, and AD-10's serving path) and an IRIS system process (AD-10). Each later
 /// write-tool story adds its own type here, and a type listed with no branch is refused
@@ -125,7 +126,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,oauth2-client-configuration,oauth2-server-client";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -139,6 +140,10 @@ Parameter TYPETASK = "task";
 Parameter TYPEPROCESS = "process";
 
 Parameter TYPEAPPLICATIONERROR = "application-error";
+
+Parameter TYPEOAUTHCLIENT = "oauth2-client-configuration";
+
+Parameter TYPEOAUTHSERVERCLIENT = "oauth2-server-client";
 
 /// <p>The instance's own predefined account, whose disablement AD-10 forbids. Compared through
 /// <method>NormalizedUser</method>, so every spelling the instance resolves to it is refused.</p>
@@ -352,7 +357,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -394,6 +399,10 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         If tType = ..#TYPEAPPLICATIONERROR {
             Set tSC = ..ApplicationError(.tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If (tType = ..#TYPEOAUTHCLIENT) || (tType = ..#TYPEOAUTHSERVERCLIENT) {
+            Set tSC = ..OAuthEntry(tType, .tChanged, .pProhibits, .pCode)
             Quit
         }
         Set tSC = ..WebApplication(tPayloadObject, tTarget, tServes, .tChanged, .pProhibits, .pCode)
@@ -631,6 +640,20 @@ ClassMethod Task(ByRef pChanged, Output pProhibits As %Boolean, Output pCode As 
 ClassMethod ApplicationError(ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
 {
     Quit ..ReviewedFewOnly(..#TYPEAPPLICATIONERROR, .pChanged, .pProhibits, .pCode)
+}
+
+/// <p>The OAuth 2.0 client configuration and server client predicates, <var>pType</var> being one
+/// of the two: the reviewed-few sweep over an empty permitted list, and nothing else.</p>
+/// <p><b>No predicate exists because AD-10 names no OAuth 2.0 effect.</b> Its Release 1 set is
+/// accounts, privilege grants, the path serving OcuPilot and system processes, and install creates
+/// no OAuth 2.0 object, so no configuration or client is OcuPilot's own. The one write over either
+/// type is its bodyless delete (AD-51), which sets no field, so every changed field a proposal
+/// could carry is one nobody has reviewed and is refused <parameter>UNCOVEREDFIELD</parameter>.
+/// The card's removal rows are the declared fingerprint subject, which <method>Changed</method>
+/// skips.</p>
+ClassMethod OAuthEntry(pType As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Quit ..ReviewedFewOnly(pType, .pChanged, .pProhibits, .pCode)
 }
 
 /// <p>The process predicates, in declared order, first hit wins: a process OcuPilot is itself

@@ -20,9 +20,15 @@ export const SCREEN_ACTION_PATH_SUFFIX = '/action';
  * its own routes, and the Switches screen's `create`/`delete` add and remove a per-user hold.
  * Neither is an instance write and neither goes through `POST /screens/:screen/action`, so
  * registering generically for them would replace a handler that does something else. It grows one
- * entry per story, beside the consequence copy below.
+ * entry per story, beside the consequence copy below: the Web applications list (Story 7.1), and
+ * the OAuth 2.0 screen's Client configurations and Server client descriptions tabs (Story 7.3),
+ * whose detail pages render the same `ListPage`.
  */
-export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = ['OcuPilot.Screen.Descriptor.WebAppList'];
+export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
+  'OcuPilot.Screen.Descriptor.WebAppList',
+  'OcuPilot.Screen.Descriptor.OAuthClientTab',
+  'OcuPilot.Screen.Descriptor.OAuthServerClientTab',
+];
 
 /**
  * The row actions this handler confirms with the typed-name dialog before it sends anything.
@@ -45,6 +51,8 @@ const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete'];
  */
 const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   'OcuPilot.Screen.Descriptor.WebAppList': { delete: STRINGS.webAppDeleteConsequence },
+  'OcuPilot.Screen.Descriptor.OAuthClientTab': { delete: STRINGS.oauthClientDeleteConsequence },
+  'OcuPilot.Screen.Descriptor.OAuthServerClientTab': { delete: STRINGS.oauthServerClientDeleteConsequence },
 };
 
 /** What the screen-action route answers (AD-14): the verb, and the triple the write was made against. */

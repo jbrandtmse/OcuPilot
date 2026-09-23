@@ -128,7 +128,7 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// <code>SUSPEND</code> was admitted for <code>Task.CRUD</code>, whose
 /// <code>TYPESUSPEND</code> exists, although no shipped tool issues it and AD-10 has no predicate
 /// for it. The pair is the widening removed.</p>
-/// <p><b>The seven are the ones the registry actually reaches</b>, established three ways: the
+/// <p><b>The nine are the ones the registry actually reaches</b>, established three ways: the
 /// registry's own discovery rule, a whole-tree sweep of
 /// <code>Extends OcuPilot.Screen.Tool.Write</code> including transitive subclasses, and
 /// <class>OcuPilot.Test.SurfaceCoverage</class>'s both-directions assertion.
@@ -170,7 +170,17 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// one-line delegate to <code>RunTerminate</code> -- and AD-10 names terminating an IRIS system
 /// process in the Release 1 prohibited set, so neither pairs with <code>Process</code> here and
 /// <method>EndpointType</method> answers <code>""</code> for either.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE";
+/// <p><code>Security.OAuth2.Client.ClientConfiguration/DELETE</code> and
+/// <code>Security.OAuth2.ServerClients/DELETE</code> are Story 7.3's
+/// (<class>OcuPilot.Screen.Tool.OAuthClientDelete</class>,
+/// <class>OcuPilot.Screen.Tool.OAuthServerClientDelete</class>, AD-51). Measured on this build: each
+/// endpoint's <code>RunDelete</code> answers 404 when the object does not exist and otherwise calls
+/// its class's <code>DeleteId</code>; the first's <code>NeedsRequestBody()</code> is a put or the
+/// change-secret type and the second's a put, a post or the secret type, so neither reads a body
+/// for <code>DELETE</code>; and they require <code>applicationName</code> and <code>clientId</code>
+/// respectively. Both are listed in <parameter>BODYLESSTYPES</parameter> under their own
+/// endpoints.</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -186,7 +196,7 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE";
 
 /// <p>The pair set the <b>backing query or class</b> of an endpoint requires, beyond the
 /// endpoint's own <code>ResourcesOR()</code> gate (AD-29). Comma-separated entries of the form

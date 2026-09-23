@@ -10,7 +10,12 @@
 /// <code>%DB_IRISSYS:READ</code></b> (AD-8).</p>
 /// <p><b>Its name cells open the classic server client editor in a new tab</b>, sending the client id
 /// as <code>ClientId</code> (AD-44).</p>
-/// <p>It declares no primary or row action and does not refresh (AD-43).</p>
+/// <p><b>Rows are keyed by <code>ClientId</code></b>, the vendor's IdKey, declared as a one-part
+/// composite id so the row key, the typed name and the target of a delete are the client id while the
+/// Name column stays the name cell. <code>Name</code> is not unique on this build.</p>
+/// <p><b>Its one row action is <code>delete</code></b>, carried out by
+/// <class>OcuPilot.Screen.Tool.OAuthServerClientDelete</class> (AD-51, AD-53). It declares no primary
+/// action and does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.OAuthServerClientTab Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -30,9 +35,9 @@ XData Declaration
   "secondaryEntityTypes": ["oauth2-server"],
   "scope": "instance",
   "parentScope": "",
-  "id": {"kind": "single", "parts": []},
+  "id": {"kind": "composite", "parts": ["ClientId"]},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "delete", "selfProtection": ""}],
   "context": {"fields": ["Name", "ClientId", "ClientType", "RedirectURL", "Description"], "secretFields": []},
   "emptyStateKey": "oauthServerClientsEmpty",
   "commandAliases": [],
@@ -59,8 +64,8 @@ XData Declaration
       {"field": "RedirectURL", "labelKey": "oauthColumnRedirectUrls", "kind": "text"},
       {"field": "Description", "labelKey": "tableColumnDescription", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "oauthServerClientsEmptyAgent"
   },
   "tab": {"group": "security/oauth", "position": 5, "labelKey": "oauthTabServerClients"},
   "toolIdentifier": "security.oauthserverclients"

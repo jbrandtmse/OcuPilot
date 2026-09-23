@@ -178,7 +178,7 @@ Method TestAnUncoveredEntityTypeIsRefusedWholesale()
     Do $$$AssertStatusOK(tSC, "an unparseable reference is answered, not raised")
     Do $$$AssertEquals(tProhibits, 1, "and refused")
     Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "UNCOVERED"), "as uncovered")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error", "Release 1 covers exactly six entity types")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error,oauth2-client-configuration,oauth2-server-client", "Release 1 covers exactly eight entity types")
 
     ; The refusal reaches a caller as a 403 with the set's own code, not as an error.
     Set tKey = ..Seed(..Payload(), "Description", "probe-id", "role")
