@@ -2,7 +2,7 @@
 title: 'Story 8.2: Create a user'
 type: 'feature'
 created: '2026-09-23'
-status: 'blocked'
+status: 'in-progress'
 review_loop_iteration: 0
 baseline_revision: '97d3bad240a2fd996a7559833bc4c1799e970770'
 followup_review_recommended: false
@@ -248,6 +248,11 @@ deferred: []
 - [ ] [Lead] This story owns `Prohibited.ReasonFor`'s `PRIVILEGEGRANT` sentence: make it caller-neutral (it reads "not something the agent can propose", and a person now meets it on the Roles field -- DW-1496's reopen condition), and use that one published sentence for the Roles violation and the picker's pre-mark rather than a second `REASONUSERROLESPRIVILEGED` (AD-53: a refusal is written once). Do not touch the CURRENTUSER, SYSTEMACCOUNT, SERVICEACCOUNT or LASTALLHOLDER reasons. `Prohibited.cls` is contended: read Epic 7's version first and stay off its hunks.
 - [ ] [Lead] The `secretArguments` widening in `Screen/Registry.cls`, `ui/tools/screen-mirror.mjs` and `ui/tools/screen-mirror.test.mjs` stays self-contained (no unrelated edits to those three files): Epic 7 ports it byte-for-byte. `Screen/Descriptor/UserList.cls` is contended; this story owns its `primaryAction`, `emptyAgentKey` and `secretArguments` lines, Epic 7 adds `rowActions`.
 
+*Orchestrator rulings on the implement halt, 2026-09-23:*
+
+- [ ] [Lead] `src/OcuPilot/Test/PortFixture.cls` joins the contended-edit discipline: read `git show origin/OCU-1-epic7:src/OcuPilot/Test/PortFixture.cls` first, then append `Security.User/POST` to its `MUTATINGTYPES` line and change nothing else on that line (Epic 7 appends `WebApp.App/DELETE` there; the merge keeps both). `ToolWrite` goes green 20/20; its roster assertion is not weakened.
+- [ ] [Lead] The bundle budget, per the owner's standing policy on DW-1166 (`23f8f3b`: re-base the warning to about 5% above the measured total at each epic close; 1,600 kB raw is the hard stop): set `ui/angular.json`'s initial `maximumWarning` to `1185kB` (the Angular parser counts 1 kB as 1,000 bytes; 1,185,000 is 5.05% above the measured 1,128,027 B), and the literal pinned in `ui/tools/angular-json.test.mjs` to the same, in the same change, replacing that file's budget-history comment sentence with the current figure and its reason rather than appending a paragraph. `maximumError` stays `1600kB`. `ui/angular.json` goes under `footprint_extensions:`. Re-measure after the last edit; if the emitted total has grown past 1,185,000 B, re-base to about 5% above the new measurement and say so in `## Auto Run Result`.
+
 **Acceptance Criteria:**
 
 - **AC1.** Given the Users list's Create, when the create form renders, then it captures name, password, full name, expiry, startup namespace, startup routine and roles, in that order, under the `form-page` contract.
@@ -272,6 +277,8 @@ deferred: []
 - **AC7 (DW-1489).** Given a web-application create choosing Unauthenticated, when it is proposed or filled in, then the proposal card and the form's authentication-method field state the unauthenticated effect, and the create is not refused.
 
 ## Spec Change Log
+
+- 2026-09-23, lead: implement halted on two gates; both ruled by the orchestrator and added as `[Lead]` tasks with the three Story 7.2 rulings; status reset to `in-progress` with the implementation still uncommitted in the tree.
 
 - 2026-09-23, spec gate: AD-21 amended with the WSGI directory rule this spec proposed; the Design Notes heading says so.
 
