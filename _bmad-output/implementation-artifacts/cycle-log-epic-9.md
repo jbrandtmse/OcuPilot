@@ -12,3 +12,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T23:50:55Z	Epic 9	sprint_planning_complete	gate=PASS model=claude-opus-5-5-1m stories=7 new_entries=0 in_sync=true scope=epic9 warnings=3_known_non_epic_headings
 2026-09-23T23:50:55Z	Epic 9	retro_review_skipped	reason=rule27_gating_epic_no_x0 note=epic11_waits_on_9_and_12;orchestrator_instruction_no_9.0;ledger_entries_already_routed_to_9.1_9.2_9.3_9.5_with_epics.md_bullets
 2026-09-23T23:52:55Z	Epic 9	epic_context_compiled	sha=pending reason=initial model=opus lines=117
+2026-09-23T23:53:31Z	Story 9.1	stage_spawned	stage=plan spawn_at=2026-09-23T23:53:31Z model=opus agent_name=9-1-the-user-editor-plan-1 cycle_iteration=1
