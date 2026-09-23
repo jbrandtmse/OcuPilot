@@ -5826,7 +5826,36 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "enable",
+        "selfProtection": ""
+      },
+      {
+        "id": "disable",
+        "selfProtection": "protected-account"
+      },
+      {
+        "id": "set-password",
+        "selfProtection": ""
+      },
+      {
+        "id": "add-role",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove-role",
+        "selfProtection": ""
+      },
+      {
+        "id": "require-password-change",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": "protected-account"
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -5934,8 +5963,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "identifier"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "userListEmptyAgent"
     },
     "toolIdentifier": "permissions.users",
     "banner": null,

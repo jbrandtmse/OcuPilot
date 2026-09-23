@@ -58,6 +58,24 @@ Parameter SERVINGPATH = "PROHIBITED.SERVINGPATH";
 /// <file>ui/src/app/core/strings.ts</file>'s <code>webAppServesOcuPilotRefusal</code>.</p>
 Parameter SERVINGPATHREASON = "OcuPilot serves itself through this web application. Disabling or deleting it would cut off every user, including you.";
 
+/// <p>The one sentence <parameter>SYSTEMACCOUNT</parameter> carries, published once in
+/// EXPERIENCE.md's Fixed strings table for the reason <parameter>SERVINGPATHREASON</parameter> is.
+/// <file>ui/tools/self-protection.test.mjs</file> pins it equal to <file>strings.ts</file>'s
+/// <code>userRefusalSystemAccount</code>.</p>
+Parameter SYSTEMACCOUNTREASON = "_SYSTEM is the instance's own predefined account. Disabling or deleting it is not available here.";
+
+/// <p>The one sentence <parameter>CURRENTUSER</parameter> carries, pinned equal to
+/// <code>userRefusalCurrentUser</code>.</p>
+Parameter CURRENTUSERREASON = "This is the account you are signed in as. Disabling or deleting it would lock you out.";
+
+/// <p>The one sentence <parameter>SERVICEACCOUNT</parameter> carries, pinned equal to
+/// <code>userRefusalServiceAccount</code>.</p>
+Parameter SERVICEACCOUNTREASON = "The instance's own services run as this account. Disabling or deleting it would stop them, OcuPilot included.";
+
+/// <p>The one sentence <parameter>LASTALLHOLDER</parameter> carries, pinned equal to
+/// <code>userRefusalLastAllHolder</code>.</p>
+Parameter LASTALLHOLDERREASON = "This is the last account that holds %All. Disabling it, deleting it or taking the role off it would leave nobody able to administer this instance.";
+
 /// <p>The write would change how the target is authenticated by anything other than clearing its
 /// unauthenticated option: it adds a bit, clears another bit, clears the mask, or carries a value
 /// that is not a non-negative whole number.</p>
@@ -74,24 +92,26 @@ Parameter DISPATCH = "PROHIBITED.DISPATCH";
 /// through a path (AD-10).</p>
 Parameter PRIVILEGEGRANT = "PROHIBITED.PRIVILEGEGRANT";
 
-/// <p>The write would disable the account the caller is signed in as.</p>
+/// <p>The write would remove the account the caller is signed in as, or its administration
+/// (<method>RemovesAdministration</method>).</p>
 Parameter CURRENTUSER = "PROHIBITED.CURRENTUSER";
 
 /// <p>The write would leave the instance with no account a person can sign in as holding
-/// <code>%All</code> -- by disabling the only such account, or by taking <code>%All</code> off it
-/// through a role change. Both are the same effect and reach the same predicate
-/// (<method>DePrivilegesLastAllHolder</method>), because AD-10's set is defined by effect and not
-/// by verb.</p>
+/// <code>%All</code> -- by deleting or disabling the only such account, or by taking
+/// <code>%All</code> off it through a role change. All three are one effect
+/// (<method>RemovesAdministration</method>), because AD-10's set is defined by effect and not by
+/// verb.</p>
 Parameter LASTALLHOLDER = "PROHIBITED.LASTALLHOLDER";
 
-/// <p>The write would disable <code>_SYSTEM</code>, the instance's own predefined account.</p>
+/// <p>The write would remove <code>_SYSTEM</code>, the instance's own predefined account, or its
+/// administration.</p>
 Parameter SYSTEMACCOUNT = "PROHIBITED.SYSTEMACCOUNT";
 
-/// <p>The write would disable one of the accounts the instance's own services run as
-/// (<parameter>SERVICEACCOUNTS</parameter>). It is the account-side analogue of
-/// <parameter>SERVINGPATH</parameter>: disabling the account the CSP service runs as ends every
-/// CSP request on the instance, OcuPilot's own among them, so AD-38 makes it the same harm as
-/// disabling the application that serves OcuPilot.</p>
+/// <p>The write would remove one of the accounts the instance's own services run as
+/// (<parameter>SERVICEACCOUNTS</parameter>), or its administration. It is the account-side
+/// analogue of <parameter>SERVINGPATH</parameter>: disabling the account the CSP service runs as
+/// ends every CSP request on the instance, OcuPilot's own among them, so AD-38 makes it the same
+/// harm as disabling the application that serves OcuPilot.</p>
 Parameter SERVICEACCOUNT = "PROHIBITED.SERVICEACCOUNT";
 
 /// <p>The write would suspend or resume a process OcuPilot is itself running in: the job serving
@@ -178,12 +198,19 @@ Parameter FIELDJOBTYPE = "JobType";
 
 Parameter FIELDPID = "Pid";
 
-/// <p>The three <code>Security.User</code> payload fields the user predicates read, named once.</p>
+/// <p>The <code>Security.User</code> payload fields the user predicates read or permit, named
+/// once.</p>
 Parameter FIELDENABLED = "Enabled";
 
 Parameter FIELDROLES = "Roles";
 
 Parameter FIELDESCALATIONROLES = "EscalationRoles";
+
+Parameter FIELDCHANGEPASSWORD = "ChangePassword";
+
+/// <p>The AD-14 action a write tool declares when its write removes its target
+/// (<method>RemovesOf</method>).</p>
+Parameter ACTIONDELETED = "deleted";
 
 /// <p>The <code>AutheEnabled</code> bit that lets an application be reached without signing in, and
 /// the only bit <method>ClearsUnauthenticatedOnly</method> permits a payload to change
@@ -223,10 +250,11 @@ ClassMethod ReasonFor(pCode As %String) As %String
     ; click and the envelope reason returned after one -- so it names no caller.
     ; OcuPilot.Test.RefusalCopy pins it equal to the client's own copy.
     If pCode = ..#SERVINGPATH Quit ..#SERVINGPATHREASON
-    If pCode = ..#SYSTEMACCOUNT Quit "Disabling the instance's own _SYSTEM account is not something the agent can propose."
-    If pCode = ..#SERVICEACCOUNT Quit "Disabling an account the instance's own services run as is not something the agent can propose."
-    If pCode = ..#CURRENTUSER Quit "Disabling the account you are signed in as is not something the agent can propose."
-    If pCode = ..#LASTALLHOLDER Quit "Leaving this instance with no account that holds %All is not something the agent can propose, whether by disabling the last one or by taking the role off it."
+    ; The four account sentences, likewise shared with the screen's pre-click refusal.
+    If pCode = ..#SYSTEMACCOUNT Quit ..#SYSTEMACCOUNTREASON
+    If pCode = ..#SERVICEACCOUNT Quit ..#SERVICEACCOUNTREASON
+    If pCode = ..#CURRENTUSER Quit ..#CURRENTUSERREASON
+    If pCode = ..#LASTALLHOLDER Quit ..#LASTALLHOLDERREASON
     If pCode = ..#OCUPILOTPROCESS Quit "Suspending or resuming a process OcuPilot is itself running in -- this confirmation, or an agent turn -- is not something the agent can propose."
     If pCode = ..#SYSTEMPROCESS Quit "Suspending or resuming an IRIS system process is not something the agent can propose."
     If pCode = ..#UNCOVEREDFIELD Quit "Only a few of this kind of object's settings are ones the agent may propose changing, and that is not one of them."
@@ -258,11 +286,14 @@ ClassMethod CoveredTypes() As %List
 /// already-declared configuration on and off rather than changing any of it, and the applications
 /// AD-38 protects are refused every change by the serving-path predicate; <code>Description</code>
 /// because it is display text no request is routed or authorized by.</p>
-/// <p>An account's two are <code>Enabled</code> and <code>Roles</code>. <code>Enabled</code> carries
-/// the asymmetric predicate: enabling an account is a change AD-10 does not forbid, while disabling
-/// one is refused for the current user, the last <code>%All</code> holder and
-/// <parameter>SYSTEMACCOUNTNAME</parameter>. <code>Roles</code> is permitted except where the delta
-/// grants privilege, which is the same asymmetry read over a list.</p>
+/// <p>An account's three are <code>Enabled</code>, <code>Roles</code> and
+/// <code>ChangePassword</code>. <code>Enabled</code> carries the asymmetric predicate: enabling an
+/// account is a change AD-10 does not forbid, while disabling one is refused for the four protected
+/// accounts (<method>User</method>). <code>Roles</code> is permitted except where the delta grants
+/// privilege or strips <code>%All</code> from a protected account, which is the same asymmetry read
+/// over a list. <code>ChangePassword</code> -- whether the account must choose a new password at
+/// its next sign-in -- carries none: AD-10 forbids no change to it, since it removes neither the
+/// account nor its administration.</p>
 /// <p>A process's is <b>none</b>, for the reason a task's is: both of its writes are bodyless
 /// (AD-51), so every changed field a <code>process</code> proposal could carry is one nobody has
 /// reviewed.</p>
@@ -282,7 +313,7 @@ ClassMethod CoveredTypes() As %List
 ClassMethod PermittedChangeFields(pType As %String) As %List
 {
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "Enabled", "Resource")
-    If pType = ..#TYPEUSER Quit $ListBuild(..#FIELDENABLED, ..#FIELDROLES)
+    If pType = ..#TYPEUSER Quit $ListBuild(..#FIELDENABLED, ..#FIELDROLES, ..#FIELDCHANGEPASSWORD)
     If pType = ..#TYPEAUDITING Quit $ListBuild(..#FIELDENABLED)
     Quit ""
 }
@@ -382,7 +413,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         If $$$ISERR(tSC) Quit
 
         If tType = ..#TYPEUSER {
-            Set tSC = ..User(tId, tPayloadObject, tTarget, .tChanged, .pProhibits, .pCode)
+            Set tSC = ..User(tId, tPayloadObject, tTarget, .tChanged, ..RemovesOf($Get(tToolClass)), .pProhibits, .pCode)
             Quit
         }
         If tType = ..#TYPEAUDITING {
@@ -508,34 +539,33 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
     Quit tSC
 }
 
-/// <p>The user predicates, in declared order, first hit wins: a disable of
-/// <parameter>SYSTEMACCOUNTNAME</parameter>, of the signed-in account, or of the last
-/// <code>%All</code> holder; an escalation-role change; a role delta that grants privilege; and any
-/// other changed field the release has not reviewed.</p>
+/// <p>The user predicates, in declared order, first hit wins: the four account arms --
+/// <parameter>SYSTEMACCOUNTNAME</parameter>, the signed-in account, a service account and the last
+/// <code>%All</code> holder -- when the write removes the account or its administration; then an
+/// escalation-role change; a role delta that grants privilege; and any other changed field the
+/// release has not reviewed.</p>
 /// <p><var>pId</var> is the target's id as the reference carries it -- already canonical, and
 /// compared through <method>NormalizedUser</method> anyway so an account addressed in another case
 /// earns the same verdict. <var>pChanged</var> is <method>Changed</method>'s answer: the fields this
-/// proposal changes, and the only fields any predicate here looks at.</p>
-/// <p><b><code>$Username</code> is the one thing read from process state rather than from the stored
-/// row</b>, and it is the right source: a confirm is a user-originated foreground request executing
-/// as the caller (AD-40), confirmable only by the user who minted the proposal (AD-6), so the
-/// process's user is the row's owner and is the person the refusal protects from signing themselves
-/// out.</p>
-/// <p><b>The name-matched disable refusals are scoped to a disable, by effect.</b> AD-10 forbids
-/// deleting or disabling those accounts, so enabling one, or renaming its full name, is not this
-/// predicate's business -- and <method>PermittedChangeFields</method> is what refuses every field
-/// beyond the reviewed two in the first place.</p>
-/// <p><b>Losing the last <code>%All</code> holder is not scoped to a disable</b>, because the
-/// effect AD-10 names is reachable two ways: disabling that account, and taking the role off it.
-/// <method>DePrivilegesLastAllHolder</method> is the one predicate both reach, which is why this
-/// method asks it once rather than once per verb.</p>
-ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+/// proposal changes. <var>pRemoves</var> is whether the tool's write removes its target
+/// (<method>RemovesOf</method>).</p>
+/// <p><b>The account arms are one effect, not three verbs</b> (AD-10 as amended 2026-09-23).
+/// <method>RemovesAdministration</method> answers whether this write deletes the account, disables
+/// it, or strips <code>%All</code> from it, and every arm is asked on that answer alone -- so a
+/// bodyless delete, which changes no field, reaches all four exactly as a disable does.</p>
+/// <p><b><code>$Username</code> is the one thing read from process state rather than from the
+/// stored row</b>, and it is the right source: both callers of the write run as the person the
+/// refusal protects from signing themselves out -- a confirm is confirmable only by the user who
+/// minted it (AD-6), and a screen action is that user's own request (AD-53).</p>
+ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, pRemoves As %Boolean, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
 {
     Set pProhibits = 0
     Set pCode = ""
     Set tSC = $$$OK
     Try {
-        If ..Disables(pPayload, .pChanged) {
+        Set tSC = ..RemovesAdministration(pPayload, pTarget, .pChanged, pRemoves, .tRemoval)
+        If $$$ISERR(tSC) Quit
+        If tRemoval {
             Set tCanonical = ..NormalizedUser(pId)
             If tCanonical = ..NormalizedUser(..#SYSTEMACCOUNTNAME) {
                 Do ..Refuse(..#SYSTEMACCOUNT, .pProhibits, .pCode)
@@ -549,12 +579,12 @@ ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %Dynamic
                 Do ..Refuse(..#SERVICEACCOUNT, .pProhibits, .pCode)
                 Quit
             }
-        }
-        Set tSC = ..DePrivilegesLastAllHolder(pId, pPayload, pTarget, .pChanged, .tLast)
-        If $$$ISERR(tSC) Quit
-        If tLast {
-            Do ..Refuse(..#LASTALLHOLDER, .pProhibits, .pCode)
-            Quit
+            Set tSC = ..LastAllHolder(pId, .tLast)
+            If $$$ISERR(tSC) Quit
+            If tLast {
+                Do ..Refuse(..#LASTALLHOLDER, .pProhibits, .pCode)
+                Quit
+            }
         }
         If $Data(pChanged(..#FIELDESCALATIONROLES)) {
             Do ..Refuse(..#PRIVILEGEGRANT, .pProhibits, .pCode)
@@ -584,6 +614,21 @@ ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %Dynamic
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Whether <var>pToolClass</var>'s write removes its target: its declared AD-14 action is
+/// <parameter>ACTIONDELETED</parameter>. A class that names none or cannot be asked reads as a
+/// removal, the fail-closed direction -- it puts the account arms in front of the write rather than
+/// behind it.</p>
+ClassMethod RemovesOf(pToolClass As %String) As %Boolean [ Private ]
+{
+    Set tRemoves = 1
+    Try {
+        If pToolClass '= "" Set tRemoves = ($ClassMethod(pToolClass, "ChangeAction") = ..#ACTIONDELETED)
+    } Catch {
+        Set tRemoves = 1
+    }
+    Quit tRemoves
 }
 
 /// <p>The auditing-configuration predicate: the reviewed-few sweep and nothing else.</p>
@@ -785,7 +830,7 @@ ClassMethod ReviewedFewOnly(pType As %String, ByRef pChanged, Output pProhibits 
 /// <p><b>Only <code>true</code> reads as on.</b> A numeric spelling is read for its value, and
 /// every other rendering -- an absent member, and any spelling this method does not know -- is read
 /// as off, because a value the predicate cannot read as on must not be treated as leaving the
-/// account enabled: the three disable refusals behind this guard would then be skipped. An
+/// account enabled: the account refusals behind this guard would then be skipped. An
 /// unreadable payload renders every member <code>""</code>
 /// (<method>ParsedObject</method>), which is the reachable case.</p>
 ClassMethod IsOff(pValue As %String) As %Boolean [ Private ]
@@ -981,45 +1026,49 @@ ClassMethod IsPrivilegedRole(pRole As %String) As %Boolean [ Private ]
     Quit $Extract(tName, 1, $Length(..#ADMINROLEPREFIX)) = $ZConvert(..#ADMINROLEPREFIX, "U")
 }
 
-/// <p>Whether this proposal turns the target's <code>Enabled</code> off, in the sense the disable
-/// refusals are scoped to: the diff names that field and the payload's value reads as off
-/// (<method>IsOff</method>).</p>
+/// <p>Whether this proposal turns the target's <code>Enabled</code> off: the diff names that field
+/// and the payload's value reads as off (<method>IsOff</method>).</p>
 ClassMethod Disables(pPayload As %DynamicObject, ByRef pChanged) As %Boolean [ Private ]
 {
     If '$Data(pChanged(..#FIELDENABLED)) Quit 0
     Quit ..IsOff(..Rendered(pPayload, ..#FIELDENABLED))
 }
 
-/// <p>Whether this proposal would leave the instance with no account a person can sign in as
-/// holding <code>%All</code>, in <var>pLast</var> (AD-10).</p>
-/// <p><b>One predicate, two paths to the same effect.</b> Disabling the last counting holder and
-/// taking <code>%All</code> off it through a role change end in the same place -- an instance
-/// nobody can administer -- so AD-10's by-effect set answers them with one rule rather than two
-/// kept in step. Either path asks <method>LastAllHolder</method>, whose census
-/// (<method>CountsAsHolder</method>) is what decides which rows are a fallback at all.</p>
-/// <p>The role path's own half is <method>RolesGrantAll</method> over the <b>payload's</b> role
-/// list, which AD-4 makes the complete set the write will send: a payload that still grants
-/// <code>%All</code> removes nothing, and the census is not consulted. Where it does not, the
-/// census decides, and <method>LastAllHolder</method> answers 0 for a target that does not hold
-/// <code>%All</code> today -- so an ordinary account's role change costs one live read and is
-/// permitted.</p>
-ClassMethod DePrivilegesLastAllHolder(pId As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, Output pLast As %Boolean) As %Status [ Private ]
+/// <p>Whether this write removes the target account or its administration, in <var>pRemoval</var>
+/// (AD-10 as amended 2026-09-23): the tool's write deletes the account (<var>pRemoves</var>), it
+/// disables it (<method>Disables</method>), or it changes <code>Roles</code> so that the target's
+/// live roles grant <code>%All</code> and the payload's no longer do
+/// (<method>RolesGrantAll</method> over each).</p>
+/// <p><b>Every term is an effect, never the payload's shape.</b> A delete carries no changed field,
+/// so a test over the diff alone would let it through; and a role list that still grants
+/// <code>%All</code> -- AD-4 makes the payload the complete set -- removes nothing, so an ordinary
+/// role change to an account holding <code>%All</code> is not a removal.</p>
+ClassMethod RemovesAdministration(pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, pRemoves As %Boolean, Output pRemoval As %Boolean) As %Status [ Private ]
 {
-    Set pLast = 0
+    Set pRemoval = 0
     Set tSC = $$$OK
     Try {
-        Set tReaches = ..Disables(pPayload, .pChanged)
-        If 'tReaches && $Data(pChanged(..#FIELDROLES)) {
-            Kill tWanted
-            Do ..RoleNames(pPayload, .tWanted)
-            Set tSC = ..RolesGrantAll(.tWanted, .tGrants)
-            If $$$ISERR(tSC) Quit
-            Set tReaches = 'tGrants
+        If pRemoves {
+            Set pRemoval = 1
+            Quit
         }
-        If 'tReaches Quit
-        Set tSC = ..LastAllHolder(pId, .pLast)
+        If ..Disables(pPayload, .pChanged) {
+            Set pRemoval = 1
+            Quit
+        }
+        If '$Data(pChanged(..#FIELDROLES)) Quit
+        Kill tHeld
+        Do ..RoleNames(pTarget, .tHeld)
+        Set tSC = ..RolesGrantAll(.tHeld, .tHeldGrants)
+        If $$$ISERR(tSC) Quit
+        If 'tHeldGrants Quit
+        Kill tWanted
+        Do ..RoleNames(pPayload, .tWanted)
+        Set tSC = ..RolesGrantAll(.tWanted, .tWantedGrants)
+        If $$$ISERR(tSC) Quit
+        Set pRemoval = 'tWantedGrants
     } Catch ex {
-        Set pLast = 0
+        Set pRemoval = 0
         Set tSC = ex.AsStatus()
     }
     Quit tSC

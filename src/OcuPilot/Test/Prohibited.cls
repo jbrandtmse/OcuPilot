@@ -316,6 +316,11 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
             ; the prohibited verdict is reached, so a tool must not declare one of these a secret.
             Do $$$AssertEquals($ListFind(tSecrets, tField), 0, "and does not declare it a secret argument")
         }
+        ; AD-3: a wrapper secret one of the screen's tools authors -- Security.User's POST
+        ; Password -- is no field of the endpoint's template, so no predicate reviews it and the
+        ; reviewed-few floor below is asked about the declared secrets that are fields.
+        Set tDeclaredSecrets = tSecrets
+        Set tSecrets = ..WithoutAuthoredSecrets(tDescriptor, tSecrets)
         ; The other half of AD-10's title, and the one that covers a field nobody has named: a tool
         ; advertises nothing outside the set's reviewed few, so a vendor property added to the
         ; endpoint's template reaches no schema until the set has a predicate for it.
@@ -364,9 +369,20 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
             Set tField = $List(tSecrets, tI)
             Do $$$AssertTrue($ListFind(tPermitted, tField) > 0, tEntry.%Get("name") _ " declares '" _ tField _ "' secret, and the prohibited set has reviewed it for " _ tType)
         }
-        ; An action-style write admits nothing at confirmation either: it sends no body, so there
-        ; is nothing for a supplied secret to be merged into (AD-51).
-        If 'tSendsBody Do $$$AssertEquals($ListLength(tSecrets), 0, tEntry.%Get("name") _ " sends no body, so it declares no secret argument")
+        ; An action-style write sends no merge body, so a supplied secret reaches the vendor only
+        ; where its SECRETBODY names it, and each such name is a declared secret (AD-51, AD-56 (i)).
+        If 'tSendsBody {
+            Set tBodyNames = $ClassMethod(tClass, "SecretBodyNames")
+            For tI = 1:1:$ListLength(tBodyNames) {
+                Do $$$AssertTrue($ListFind(tDeclaredSecrets, $List(tBodyNames, tI)) > 0, tEntry.%Get("name") _ " sends '" _ $List(tBodyNames, tI) _ "' as its body, which the screen declares secret")
+            }
+            Set tSupplied = {}
+            For tI = 1:1:$ListLength(tDeclaredSecrets) {
+                Do tSupplied.%Set($List(tDeclaredSecrets, tI), "probe", "string")
+            }
+            Set tSent = ##class(OcuPilot.Kernel.Proposal.Operation).SecretBody(tClass, tSupplied, tDeclaredSecrets)
+            If tBodyNames = "" Do $$$AssertEquals(tSent, "", tEntry.%Get("name") _ " sends no body, so no declared secret reaches its write")
+        }
         ; And no field the tool can set is excluded from the fingerprint. AD-6's exclusions are for
         ; properties the endpoint itself moves as a side effect; an excluded field the tool can set
         ; may differ between the stored payload and the live target with neither digest noticing,
@@ -541,6 +557,36 @@ Method Sources(Output pSources) As %Status
     }
     If $$$ISERR(tSC) Kill pSources
     Quit tSC
+}
+
+/// <p><var>pSecrets</var> minus every name a write tool of descriptor <var>pDescriptor</var>'s
+/// screen authors as a <code>secret</code> wrapper field in
+/// <class>OcuPilot.Screen.Tool.ToolFields</class> (a row marked <code>authored</code>): a name the
+/// endpoint's template does not carry, which the confirm merges into the body and the vendor reads
+/// only as its wrapper's outer key.</p>
+ClassMethod WithoutAuthoredSecrets(pDescriptor As %String, pSecrets As %List) As %List
+{
+    Set tIdentifier = ""
+    If pDescriptor '= "" Set tIdentifier = $ClassMethod(pDescriptor, "ToolIdentifier")
+    If tIdentifier = "" Quit pSecrets
+    Set tXData = ##class(%Dictionary.XDataDefinition).IDKEYOpen("OcuPilot.Screen.Tool.ToolFields", "Tools")
+    If '$IsObject(tXData) Quit pSecrets
+    Set tTools = ##class(%DynamicAbstractObject).%FromJSON(tXData.Data)
+    Kill tAuthored
+    Set tIterator = tTools.%GetIterator()
+    While tIterator.%GetNext(.tName, .tEntry) {
+        If $Piece(tName, ".", 1, 2) '= tIdentifier Continue
+        Set tFields = tEntry.%Get("fields").%GetIterator()
+        While tFields.%GetNext(.tIndex, .tField) {
+            If (tField.%Get("authored") = 1) && (tField.%Get("class") = "secret") Set tAuthored(tField.%Get("path")) = ""
+        }
+    }
+    Set tOut = ""
+    For tI = 1:1:$ListLength(pSecrets) {
+        If $Data(tAuthored($List(pSecrets, tI))) Continue
+        Set tOut = tOut _ $ListBuild($List(pSecrets, tI))
+    }
+    Quit tOut
 }
 
 }

@@ -354,7 +354,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         ; (OcuPilot.Port.AdminPort.BODYLESSTYPES), and a body sent anyway would be a payload the
         ; user never reviewed.
         Set tSendsBody = ..ToolSendsBody(tToolClass)
-        Set tBody = ""
+        Set tBody = ##class(OcuPilot.Kernel.Proposal.Operation).SecretBody(tToolClass, pSuppliedSecrets, tSecretNames)
         If tSendsBody Set tBody = ..WithSecrets($Get(pRow("payload")), pSuppliedSecrets, tSecretNames)
 
         ; AD-41: the row is opened BEFORE the port call and finalized after it. A row that only

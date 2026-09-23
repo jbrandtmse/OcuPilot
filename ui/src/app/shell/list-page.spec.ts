@@ -60,9 +60,11 @@ async function mount(
   let answerBanner = '';
   let actionAnswer: unknown = {};
   const paths: string[] = [];
+  const bodies: string[] = [];
   const api = {
-    requestJson: async <T,>(path: string): Promise<JsonResult<T>> => {
+    requestJson: async <T,>(path: string, init: { body?: string } = {}): Promise<JsonResult<T>> => {
       paths.push(path);
+      if (path.endsWith('/action')) bodies.push(init.body ?? '');
       // A row action's POST answers the verb and the triple (AD-14); every other path is a read.
       if (path.endsWith('/action')) return { kind: 'ok', status: 200, body: actionAnswer as T };
       return { kind: 'ok', status: 200, body: { fields: [], rows: answerRows, truncated: false, banner: answerBanner } as T };
@@ -106,6 +108,7 @@ async function mount(
     stores,
     bus,
     paths,
+    bodies,
     actions: TestBed.inject(ScreenActions),
     declaration,
     setRows: (next: unknown[]) => (answerRows = next),
@@ -350,6 +353,48 @@ describe('the list page', () => {
     expect(document.activeElement).toBe(opener);
     expect(page.paths.filter((path) => path.endsWith('/action')).length).toBe(posts);
     expect(rowNames(page.host())).toEqual(['A', 'C']);
+  });
+
+  it('Story 7.2: set password opens its own dialog and sends the typed value once, untrimmed', async () => {
+    // Through the real handler, dialog and page; only the transport is stubbed.
+    // Mutation (Rule 19): render no set-password dialog for its pending kind -> the dialog
+    // assertion goes red and nothing is sent.
+    const declaration = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.UserList',
+      rowActions: [{ id: 'set-password', selfProtection: '' }],
+    });
+    const page = await mount(declaration, named('probe'));
+    const store = page.stores.for(declaration.descriptor, declaration.refreshRates);
+    store.setSelection(['probe']);
+    expect(page.actions.run(declaration.descriptor, 'set-password')).toBe(true);
+    await settle(page.fixture);
+    const field = page.host().querySelector('input[autocomplete="new-password"]') as HTMLInputElement;
+    expect(field).not.toBeNull();
+    expect(page.host().querySelector('.ocu-typed-name-field')).toBeNull();
+    field.value = 'pw1 ';
+    field.dispatchEvent(new Event('input'));
+    page.fixture.detectChanges();
+    page.setActionAnswer({ action: 'updated', target: { type: 'user', scope: 'instance', id: 'probe' } });
+    (page.host().querySelector('.ocu-dialog .ocu-button-primary') as HTMLButtonElement).click();
+    await settle(page.fixture);
+    expect(page.host().querySelector('[role="dialog"]')).toBeNull();
+    expect(page.bodies.map((body) => JSON.parse(body))).toEqual([
+      { action: 'set-password', id: 'probe', values: { Password: 'pw1 ' } },
+    ]);
+  });
+
+  it('Story 7.2: remove role opens the role dialog over the row\u2019s own roles', async () => {
+    const declaration = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.UserList',
+      rowActions: [{ id: 'remove-role', selfProtection: '' }],
+    });
+    const page = await mount(declaration, [{ ...named('probe')[0], Roles: ['%SQL'] }]);
+    const store = page.stores.for(declaration.descriptor, declaration.refreshRates);
+    store.setSelection(['probe']);
+    expect(page.actions.run(declaration.descriptor, 'remove-role')).toBe(true);
+    await settle(page.fixture);
+    const select = page.host().querySelector('.ocu-dialog select') as HTMLSelectElement;
+    expect([...select.options].map((option) => option.value)).toEqual(['', '%SQL']);
   });
 
   it('a typed-name confirm left open does not outlive the list it was opened on', async () => {

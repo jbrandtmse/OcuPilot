@@ -180,7 +180,15 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// for <code>DELETE</code>; and they require <code>applicationName</code> and <code>clientId</code>
 /// respectively. Both are listed in <parameter>BODYLESSTYPES</parameter> under their own
 /// endpoints.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE";
+/// <p><code>Security.User/DELETE</code> and <code>Security.User/CHANGEPWD</code> are Story 7.2's
+/// (<class>OcuPilot.Screen.Tool.UserDelete</class>, <class>OcuPilot.Screen.Tool.UserPassword</class>,
+/// AD-51, AD-56). Read on this build: the endpoint's <code>RunDelete</code> answers 404 for an
+/// account <code>Security.Users.Exists</code> denies and otherwise calls
+/// <code>Security.Users.Delete</code>; <code>TYPECHANGEPWD</code> is 10, its
+/// <code>RunChangePassword</code> sets only the password from the body's <code>NewPassword</code>,
+/// and <code>NeedsRequestBody()</code> is a put, a post or that type -- so <code>DELETE</code> is
+/// listed in <parameter>BODYLESSTYPES</parameter> and <code>CHANGEPWD</code> is not.</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -196,7 +204,19 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE";
+
+/// <p>The <parameter>MUTATINGTYPES</parameter> entries whose vendor body spells a key differently
+/// from the name the rest of the product carries it under, as comma-separated
+/// <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;ours&gt;:&lt;vendor's&gt;[:&lt;ours&gt;:&lt;vendor's&gt;...]</code>
+/// entries. <method>Invoke</method> applies it to a copy of the body before the vendor's
+/// <code>ValidateRequest</code> reads it; the caller's body is not modified.</p>
+/// <p><code>Security.User/CHANGEPWD</code> reads its password as <code>NewPassword</code>, while
+/// the descriptor declares the secret once as <code>Password</code> (AD-3, AD-56). The vendor's key
+/// is a wire fact, so it lives in the port (AD-27): renaming in the tool would put
+/// <code>NewPassword</code> in the body the ledger's field names are taken from, outside the
+/// declared-secret exclusion.</p>
+Parameter RENAMEDTYPES = "Security.User/CHANGEPWD=Password:NewPassword";
 
 /// <p>The pair set the <b>backing query or class</b> of an endpoint requires, beyond the
 /// endpoint's own <code>ResourcesOR()</code> gate (AD-29). Comma-separated entries of the form
@@ -473,6 +493,9 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Quit
         }
 
+        ; RENAMEDTYPES: the vendor's own spelling of a body key, applied to a copy so the caller's
+        ; body -- and whatever it records from it -- keeps the product's name.
+        If $IsObject(pBody) Set pBody = ..Renamed(pEndpoint, pType, pBody)
         Set tSeqSC = ..RunSequence(pEndpoint, tClass, tType, .pQuery, pBody, .tAnswer, .tHttp, .tLocation, ..HttpMethodFor(pEndpoint, pType))
         If $$$ISOK(tSeqSC) && (tHttp = 202) && (tLocation [ ..#ASYNCLOCATION) {
             Set tAnswer = ""
@@ -813,6 +836,42 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
 ClassMethod IsBodyless(pEndpoint As %String, pSuffix As %String) As %Boolean
 {
     Quit ''$ListFind($ListFromString(..#BODYLESSTYPES), pEndpoint _ "/" _ pSuffix)
+}
+
+/// <p><var>pBody</var> with every key <parameter>RENAMEDTYPES</parameter> declares for
+/// <var>pEndpoint</var>'s request type <var>pSuffix</var> carried under the vendor's own name, each
+/// keeping its JSON type; <var>pBody</var> itself where the type declares none. A copy is answered,
+/// so <var>pBody</var> is never modified.</p>
+ClassMethod Renamed(pEndpoint As %String, pSuffix As %String, pBody As %DynamicObject) As %DynamicObject
+{
+    Set tSpec = ""
+    Set tEntries = $ListFromString(..#RENAMEDTYPES)
+    For tI = 1:1:$ListLength(tEntries) {
+        Set tEntry = $List(tEntries, tI)
+        If $Piece(tEntry, "=", 1) '= (pEndpoint _ "/" _ pSuffix) Continue
+        Set tSpec = $Piece(tEntry, "=", 2)
+        Quit
+    }
+    If tSpec = "" Quit pBody
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit pBody
+    Kill tRename
+    For tJ = 1:2:$Length(tSpec, ":") {
+        Set tOurs = $Piece(tSpec, ":", tJ)
+        Set tTheirs = $Piece(tSpec, ":", tJ + 1)
+        If (tOurs '= "") && (tTheirs '= "") Set tRename(tOurs) = tTheirs
+    }
+    Set tOut = {}
+    Set tIterator = pBody.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        Set tType = pBody.%GetTypeOf(tKey)
+        Set tName = $Get(tRename(tKey), tKey)
+        If (tType = "object") || (tType = "array") {
+            Do tOut.%Set(tName, tValue)
+        } Else {
+            Do tOut.%Set(tName, tValue, tType)
+        }
+    }
+    Quit tOut
 }
 
 /// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one

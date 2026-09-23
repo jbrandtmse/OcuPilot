@@ -12,7 +12,9 @@ import type { BannerCase, ScreenDeclaration } from '../core/screens.generated';
 import { stringFor } from '../core/strings';
 import { COMMAND_BAR_FILTER_ID } from './command-bar';
 import { DataTable } from './data-table';
+import { RoleDialog } from './role-dialog';
 import { ScreenActionHandler } from './screen-action-handler';
+import { SetPasswordDialog } from './set-password-dialog';
 import { TypedNameDialog } from './typed-name-dialog';
 
 /** The screen this page renders and the store its table reads. */
@@ -55,7 +57,7 @@ interface ListView {
 @Component({
   selector: 'app-list-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DataTable, TypedNameDialog],
+  imports: [DataTable, RoleDialog, SetPasswordDialog, TypedNameDialog],
   template: `<section class="ocu-list-page">
     @if (bannerText) {
       <p [class]="bannerClass" role="status">
@@ -72,12 +74,29 @@ interface ListView {
     @if (list; as view) {
       <app-data-table [screen]="view.screen" [store]="view.store" (focusFilter)="onFocusFilter()" />
     }
-    @if (pendingConfirm; as pending) {
+    @if (pendingTypedName; as pending) {
       <app-typed-name-dialog
         [verb]="pending.verb"
         [target]="pending.target"
         [consequence]="pending.consequence"
         (confirmed)="onConfirmDestructive()"
+        (cancelled)="onCancelDestructive()"
+      />
+    }
+    @if (pendingSetPassword; as pending) {
+      <app-set-password-dialog
+        [verb]="pending.verb"
+        [target]="pending.target"
+        (submitted)="onSubmitPassword($event)"
+        (cancelled)="onCancelDestructive()"
+      />
+    }
+    @if (pendingRole; as pending) {
+      <app-role-dialog
+        [verb]="pending.verb"
+        [target]="pending.target"
+        [options]="pending.options"
+        (submitted)="onSubmitRole($event)"
         (cancelled)="onCancelDestructive()"
       />
     }
@@ -230,6 +249,36 @@ export class ListPage {
   protected get pendingConfirm(): ReturnType<ScreenActionHandler['pending']> {
     const pending = this.screenActions.pending();
     return pending !== null && pending.descriptor === this.list?.screen.descriptor ? pending : null;
+  }
+
+  /** The pending action when it waits on the typed-name dialog, or `null`. */
+  protected get pendingTypedName(): ReturnType<ScreenActionHandler['pending']> {
+    const pending = this.pendingConfirm;
+    return pending?.kind === 'typed-name' ? pending : null;
+  }
+
+  /** The pending action when it waits on the set-password dialog, or `null` (AD-56). */
+  protected get pendingSetPassword(): ReturnType<ScreenActionHandler['pending']> {
+    const pending = this.pendingConfirm;
+    return pending?.kind === 'set-password' ? pending : null;
+  }
+
+  /** The pending action when it waits on the role dialog, or `null` (AD-56). */
+  protected get pendingRole(): ReturnType<ScreenActionHandler['pending']> {
+    const pending = this.pendingConfirm;
+    return pending?.kind === 'role' ? pending : null;
+  }
+
+  /** The set-password dialog's value goes straight to the handler and is held nowhere here. */
+  protected onSubmitPassword(event: { readonly password: string; readonly changeOnLogin: boolean }): void {
+    this.table()?.focusGrid();
+    void this.screenActions.submitPassword(event.password, event.changeOnLogin);
+  }
+
+  /** The role dialog's one role. */
+  protected onSubmitRole(role: string): void {
+    this.table()?.focusGrid();
+    this.screenActions.submitRole(role);
   }
 
   /**

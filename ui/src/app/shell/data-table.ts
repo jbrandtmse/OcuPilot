@@ -36,6 +36,7 @@ import { applyView, textOf } from '../core/screen-read';
 import type { ScreenStore } from '../core/screen-store';
 import type { ScreenDeclaration, TableColumn } from '../core/screens.generated';
 import { selfProtectionReason } from '../core/self-protection';
+import { Session } from '../core/session';
 import { STRINGS, stringFor } from '../core/strings';
 import { formatChangeAnnouncement } from '../core/toasts';
 import {
@@ -395,6 +396,7 @@ export class DataTable implements OnInit {
   readonly focusFilter = output<void>();
 
   private readonly refresh = inject(RefreshService);
+  private readonly session = inject(Session, { optional: true });
   private readonly actions = inject(ScreenActions);
   private readonly scope = inject(ScopeService);
   private readonly overlays = inject(OverlayStack);
@@ -664,7 +666,7 @@ export class DataTable implements OnInit {
       .filter((action) => action.id !== '')
       .filter((action) => this.actions.has(screen.descriptor, action.id))
       .map((action) => {
-        const reason = selfProtectionReason(action.selfProtection, selected);
+        const reason = selfProtectionReason(action.selfProtection, selected, this.signedIn());
         const label = actionLabel(screen.descriptor, action.id);
         return {
           id: action.id,
@@ -1198,6 +1200,14 @@ export class DataTable implements OnInit {
   private menuButtons(): HTMLElement[] {
     const menu = this.menuElement()?.nativeElement;
     return menu === undefined ? [] : Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+  }
+
+  /**
+   * The account this tab is signed in as, which the `protected-account` rule compares a row
+   * against (AD-53). Optional, so a surface rendered without a session explains nothing by it.
+   */
+  private signedIn(): string {
+    return this.session?.userName() ?? '';
   }
 }
 

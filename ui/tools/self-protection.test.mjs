@@ -102,3 +102,54 @@ test("AD-53: the client's OcuPilot application paths are the install roster's ow
     'the paths the client explains a refusal for are the ones install creates'
   );
 });
+
+/** The four account refusals, each a `Prohibited.cls` parameter and a `strings.ts` key (Story 7.2). */
+const ACCOUNT_REFUSALS = [
+  ['SYSTEMACCOUNTREASON', 'userRefusalSystemAccount'],
+  ['CURRENTUSERREASON', 'userRefusalCurrentUser'],
+  ['SERVICEACCOUNTREASON', 'userRefusalServiceAccount'],
+  ['LASTALLHOLDERREASON', 'userRefusalLastAllHolder'],
+];
+
+test('AD-53, AD-39: each account refusal is one sentence on both surfaces', () => {
+  // Mutation (Rule 19): change one word of any *REASON parameter -> this goes red naming both.
+  const source = readFileSync(PROHIBITED, 'utf8');
+  for (const [parameter, key] of ACCOUNT_REFUSALS) {
+    const kernel = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(source);
+    assert.notEqual(kernel, null, `Prohibited.cls declares ${parameter}`);
+    assert.equal(kernel[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(!kernel[1].toLowerCase().includes('the agent'), `${parameter} names no caller: ${kernel[1]}`);
+  }
+});
+
+test("AD-53: the client's service accounts are the prohibited set's own", async () => {
+  const { SERVICE_ACCOUNTS, SYSTEM_ACCOUNT } = await import('../src/app/core/self-protection.ts');
+  const source = readFileSync(PROHIBITED, 'utf8');
+  const declared = /Parameter SERVICEACCOUNTS = "([^"]+)";/.exec(source);
+  assert.notEqual(declared, null, 'Prohibited.cls declares SERVICEACCOUNTS');
+  assert.deepEqual([...SERVICE_ACCOUNTS], declared[1].split(','), 'one list, read by both sides');
+  const system = /Parameter SYSTEMACCOUNTNAME = "([^"]+)";/.exec(source);
+  assert.equal(SYSTEM_ACCOUNT, system?.[1], 'and one predefined account');
+});
+
+test('AD-53: protected-account answers the instance sentence per account, in its order', async () => {
+  const { selfProtectionReason, SERVICE_ACCOUNTS } = await import('../src/app/core/self-protection.ts');
+  const { STRINGS } = await import('../src/app/core/strings.ts');
+  const rule = 'protected-account';
+  // Mutation (Rule 19): return '' from the protected-account branch -> every leg below goes red.
+  assert.equal(selfProtectionReason(rule, '_SYSTEM', 'Dana'), STRINGS.userRefusalSystemAccount);
+  assert.equal(selfProtectionReason(rule, '_system', 'Dana'), STRINGS.userRefusalSystemAccount, 'any spelling');
+  assert.equal(selfProtectionReason(rule, 'dana', 'Dana'), STRINGS.userRefusalCurrentUser, 'the signed-in account');
+  for (const name of SERVICE_ACCOUNTS) {
+    assert.equal(selfProtectionReason(rule, name.toUpperCase(), 'Dana'), STRINGS.userRefusalServiceAccount, name);
+  }
+  // _SYSTEM is asked first, as the instance asks it: a person signed in as _SYSTEM reads its sentence.
+  assert.equal(selfProtectionReason(rule, '_SYSTEM', '_SYSTEM'), STRINGS.userRefusalSystemAccount);
+  // An ordinary account, no row, and no session each explain nothing.
+  assert.equal(selfProtectionReason(rule, 'Priya', 'Dana'), '');
+  assert.equal(selfProtectionReason(rule, '', 'Dana'), '');
+  assert.equal(selfProtectionReason(rule, 'Dana'), '', 'with no signed-in name the current-user arm is silent');
+  // And the other rule is unmoved by the new one.
+  assert.equal(selfProtectionReason('serves-ocupilot', '_SYSTEM', '_SYSTEM'), '');
+  assert.equal(selfProtectionReason(rule, '/api/ocupilot', 'Dana'), '');
+});

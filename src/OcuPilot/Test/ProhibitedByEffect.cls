@@ -52,6 +52,8 @@ Method OnBeforeOneTest() As %Status
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.ProposalFixture).ArmProhibited("")
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmLastAllHolder("")
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmAllHolders("")
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#RECORDEDPATH), "install's record of the probe path is removed")
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
@@ -514,6 +516,75 @@ Method TestARowWhosePayloadItsFingerprintDoesNotCoverIsRefused()
         }
         Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "with nothing at the port")
     }
+}
+
+/// <p>AD-10 as amended 2026-09-23 (DW-1486): each account predicate -- <code>_SYSTEM</code>, the
+/// signed-in account, a service account and the last <code>%All</code> holder -- refuses each
+/// removal effect with its own code: a bodyless delete, a disable, and a <code>Roles</code> delta
+/// that strips <code>%All</code>. An ordinary account is permitted all three, and a role change on
+/// <code>_SYSTEM</code> that keeps <code>%All</code> is permitted too, so neither the predicates nor
+/// the effect terms can pass by refusing everything.</p>
+/// <p>Every leg goes through the shipped <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method>
+/// with the target armed on <class>OcuPilot.Test.ProposalFixture</class>, so nothing reaches the
+/// instance. The census is armed: answered "last" for the last-holder legs, and deterministic
+/// otherwise.</p>
+/// <p>Mutations (Rule 19): remove any one arm from <method>OcuPilot.Kernel.Proposal.Prohibited.User</method>,
+/// or any one term from <method>OcuPilot.Kernel.Proposal.Prohibited.RemovesAdministration</method>
+/// -- the legs of that arm, or of that effect, go red.</p>
+Method TestEveryAccountArmRefusesEveryRemovalEffect()
+{
+    Set tSet = "OcuPilot.Test.ProhibitedFixture"
+    Set tUpdate = "permissions.users.update"
+    Set tDelete = "permissions.users.delete"
+    Set tFixture = "OcuPilot.Test.ProposalFixture"
+    Set tSystem = $Parameter(..#SHIPPEDSET, "SYSTEMACCOUNTNAME")
+    Set tService = $List($ClassMethod(..#SHIPPEDSET, "ServiceAccounts"), 1)
+    Set tHolder = "OcuPilotProbeByEffectLastHolder"
+    Set tOrdinary = "OcuPilotProbeByEffectOrdinary"
+    ; The signed-in account must not be _SYSTEM or the service account the leg names, or the
+    ; first-hit-wins order would answer its code for the wrong row.
+    Do $$$AssertNotEquals($ZConvert($Username, "L"), $ZConvert(tSystem, "L"), "the runner is not _SYSTEM, so the two arms are separable")
+    Do $$$AssertNotEquals($ZConvert($Username, "L"), $ZConvert(tService, "L"), "and not " _ tService)
+    Set tLegs = $ListBuild($ListBuild(tSystem, "SYSTEMACCOUNT", 0), $ListBuild($Username, "CURRENTUSER", 0), $ListBuild(tService, "SERVICEACCOUNT", 0), $ListBuild(tHolder, "LASTALLHOLDER", 1))
+    Set tRefused = 0
+    For tI = 1:1:$ListLength(tLegs) {
+        Set tLeg = $List(tLegs, tI)
+        Set tName = $List(tLeg, 1)
+        Set tExpected = $Parameter(..#SHIPPEDSET, $List(tLeg, 2))
+        Do $ClassMethod(tFixture, "ArmLastAllHolder", $Select($List(tLeg, 3): 1, 1: ""))
+        Set tFresh = $ClassMethod(tSet, "UserObject", tName, 1, "%All")
+        For tEffect = "delete", "disable", "strip" {
+            If tEffect = "delete" {
+                Set tSC = $ClassMethod(tSet, "Ask", tFresh, tFresh, $ClassMethod(tSet, "Diff", "Enabled,FullName,Roles"), tName, "user", .tProhibits, .tCode, tDelete)
+            } ElseIf tEffect = "disable" {
+                Set tSC = $ClassMethod(tSet, "Ask", tFresh, $ClassMethod(tSet, "UserObject", tName, 0, "%All"), $ClassMethod(tSet, "Diff", "Enabled"), tName, "user", .tProhibits, .tCode, tUpdate)
+            } Else {
+                Set tSC = $ClassMethod(tSet, "Ask", tFresh, $ClassMethod(tSet, "UserObject", tName, 1, "%SQL"), $ClassMethod(tSet, "Diff", "Roles"), tName, "user", .tProhibits, .tCode, tUpdate)
+            }
+            Do $$$AssertStatusOK(tSC, tName _ " / " _ tEffect _ ": the set answers: " _ $System.Status.GetErrorText(tSC))
+            Do $$$AssertEquals(tCode, tExpected, tName _ " / " _ tEffect _ ": refused with " _ tExpected)
+            If tProhibits && (tCode = tExpected) Set tRefused = tRefused + 1
+        }
+    }
+    Do $$$AssertEquals(tRefused, 12, "all twelve legs were refused with their own code")
+
+    ; The controls: an ordinary account holding %All, with the census answering that another holder
+    ; exists, is permitted every effect; and _SYSTEM may gain an ordinary role that keeps %All.
+    Do $ClassMethod(tFixture, "ArmLastAllHolder", "")
+    ; The other holder is a real, enabled, signable account the census lists: _SYSTEM.
+    Do $ClassMethod(tFixture, "ArmAllHolders", tOrdinary _ "," _ tSystem)
+    Set tFresh = $ClassMethod(tSet, "UserObject", tOrdinary, 1, "%All")
+    Set tSC = $ClassMethod(tSet, "Ask", tFresh, tFresh, $ClassMethod(tSet, "Diff", "Enabled,FullName,Roles"), tOrdinary, "user", .tProhibits, .tCode, tDelete)
+    Do $$$AssertStatusOK(tSC, "the ordinary delete is answered")
+    Do $$$AssertEquals(tProhibits, 0, "an ordinary account's delete is permitted, code was '" _ tCode _ "'")
+    Set tSC = $ClassMethod(tSet, "Ask", tFresh, $ClassMethod(tSet, "UserObject", tOrdinary, 0, "%All"), $ClassMethod(tSet, "Diff", "Enabled"), tOrdinary, "user", .tProhibits, .tCode, tUpdate)
+    Do $$$AssertEquals(tProhibits, 0, "and its disable, code was '" _ tCode _ "'")
+    Set tSC = $ClassMethod(tSet, "Ask", tFresh, $ClassMethod(tSet, "UserObject", tOrdinary, 1, "%SQL"), $ClassMethod(tSet, "Diff", "Roles"), tOrdinary, "user", .tProhibits, .tCode, tUpdate)
+    Do $$$AssertEquals(tProhibits, 0, "and its %All strip, code was '" _ tCode _ "'")
+    Do $ClassMethod(tFixture, "ArmAllHolders", "")
+    Set tSC = $ClassMethod(tSet, "Ask", $ClassMethod(tSet, "UserObject", tSystem, 1, "%All"), $ClassMethod(tSet, "UserObject", tSystem, 1, "%All,%SQL"), $ClassMethod(tSet, "Diff", "Roles"), tSystem, "user", .tProhibits, .tCode, tUpdate)
+    Do $$$AssertStatusOK(tSC, "the _SYSTEM role add is answered")
+    Do $$$AssertEquals(tProhibits, 0, "a role change on _SYSTEM that keeps %All removes nothing, code was '" _ tCode _ "'")
 }
 
 }

@@ -58,10 +58,18 @@ ClassMethod CallerUsername() As %String
 }
 
 /// <p>Answer the request for <var>pScreen</var>, a <code>toolIdentifier</code>. The body is
-/// <code>{action, id}</code>: the row action the descriptor declares, and the target the screen's
-/// own list reports. On success, one envelope carrying
+/// <code>{action, id, values}</code>: the row action the descriptor declares, the target the
+/// screen's own list reports, and -- only where the action's tool declares any
+/// (<parameter>OcuPilot.Screen.Tool.Write.SCREENVALUES</parameter>) -- an object of strings keyed
+/// by exactly those names. On success, one envelope carrying
 /// <code>{action, target: {type, scope, id}}</code> -- the AD-14 change event's own triple and
 /// verb, which the client publishes rather than inferring.</p>
+/// <p><b>The value channel is closed, as the confirm channel is</b> (AD-6, AD-56 (ii)). A body key
+/// other than those three, a value name the action does not declare, a declared name left out, and
+/// a value that is not a non-empty string are each 400 <code>TOOL.ARGUMENTS</code> before anything
+/// is read. A value whose name the descriptor declares secret is held in this request's own local
+/// and reaches the write alone (<method>OcuPilot.Kernel.Proposal.Operation.SecretBody</method>);
+/// no value is trimmed, logged or echoed.</p>
 ClassMethod Handle(pScreen As %String) As %Status
 {
     Set tSC = $$$OK
@@ -83,6 +91,17 @@ ClassMethod Handle(pScreen As %String) As %Status
         }
         If '$IsObject(tBody) || 'tBody.%IsA("%Library.DynamicObject") {
             Set tSC = ..BadBody()
+            Quit
+        }
+        ; AD-56 (ii): the body's own keys are closed too, so a client cannot put a field beside the
+        ; declared values and have it ignored rather than refused.
+        Set tKeyIterator = tBody.%GetIterator()
+        Set tStrayKey = ""
+        While tKeyIterator.%GetNext(.tBodyKey, .tBodyValue) {
+            If '$ListFind($ListBuild("action", "id", "values"), tBodyKey) Set tStrayKey = tBodyKey
+        }
+        If tStrayKey '= "" {
+            Set tSC = ..Refuse("'" _ tStrayKey _ "' is not a key this route accepts")
             Quit
         }
         Set tActionId = tBody.%Get("action")
@@ -108,6 +127,12 @@ ClassMethod Handle(pScreen As %String) As %Status
             Quit
         }
 
+        Set tValuesProblem = ..Values(tBody, tTool, tToolClass, tActionId, .tValues, .tSecrets)
+        If tValuesProblem '= "" {
+            Set tSC = ..Refuse(tValuesProblem)
+            Quit
+        }
+
         ; AD-13: the reference key and the id the port is asked about are both the canonical form
         ; for this entity type, so a re-cased or slash-suffixed spelling earns one verdict from the
         ; prohibited set and publishes one change event.
@@ -124,7 +149,8 @@ ClassMethod Handle(pScreen As %String) As %Status
             Quit
         }
 
-        Set tSC = ..Run(tTool, tToolClass, tActionId, tType, tScope, tId, tTargetRef)
+        Set tSC = ..Run(tTool, tToolClass, tActionId, tType, tScope, tId, tTargetRef, tValues, tSecrets)
+        Set tSecrets = ""
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
@@ -135,7 +161,7 @@ ClassMethod Handle(pScreen As %String) As %Status
 /// order, answering one envelope.</p>
 /// <p><b>Nothing sits between the gates and the write</b> (AD-34, AD-53): the prohibited set reads
 /// live state, so the answer cannot be separated from the effect it decides.</p>
-ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %String, pType As %String, pScope As %String, pId As %String, pTargetRef As %String) As %Status [ Private ]
+ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %String, pType As %String, pScope As %String, pId As %String, pTargetRef As %String, pValues As %DynamicObject, pSecrets As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Try {
@@ -182,6 +208,29 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
             Quit
         }
 
+        ; AD-56 (ii): a declared value becomes the tool's own arguments over the fresh read -- a
+        ; role add or remove is a delta, never a list the client computed -- and those arguments
+        ; are held to the tool's settable fields exactly as the static ones were.
+        Set tDeltaSC = $ClassMethod(pToolClass, "ScreenActionDelta", pActionId, pValues, tFresh, .tDelta, .tProblem)
+        If $$$ISERR(tDeltaSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tDeltaSC))
+            Quit
+        }
+        If tProblem '= "" {
+            Set tSC = ..Refuse(tProblem)
+            Quit
+        }
+        Set tDeltaIterator = tDelta.%GetIterator()
+        While tDeltaIterator.%GetNext(.tDeltaField, .tDeltaValue) {
+            If '$ListFind(tSettable, tDeltaField) Set tServes = 0
+        }
+        If 'tServes {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "'" _ $ClassMethod(pToolClass, "ToolClass") _ "' answers the screen action '" _ pActionId _ "' with an argument it cannot set")))
+            Quit
+        }
+        Do tDelta.%Set($ClassMethod(pToolClass, "IdArgument"), pId, "string")
+        Set tArgs = tDelta
+
         Set tBuildSC = ..Body(pToolClass, tFresh, tArgs, .tPayload, .tDiff, .tProblem)
         If $$$ISERR(tBuildSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tBuildSC))
@@ -204,7 +253,12 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
         }
 
         Set tSendsBody = ##class(OcuPilot.Kernel.Proposal.Operation).SendsBody(pToolClass)
-        Set tWriteSC = ##class(OcuPilot.Kernel.Proposal.Operation).Apply(pToolClass, ..PortClass(), tEndpoint, tIdParam, pId, tPayloadJson, $Select(tSendsBody: tPayload, 1: ""), .tWritten, .tWriteHttp, .tWriteFault)
+        ; AD-56 (i): a write made only of its declared secrets takes them here and nowhere earlier,
+        ; from this request's own local; every other action-style write sends none.
+        Set tSendBody = tPayload
+        If 'tSendsBody Set tSendBody = ##class(OcuPilot.Kernel.Proposal.Operation).SecretBody(pToolClass, pSecrets, ##class(OcuPilot.Screen.Tool.Registry).SecretArguments(pTool, .tSecretsDeclared))
+        Set tWriteSC = ##class(OcuPilot.Kernel.Proposal.Operation).Apply(pToolClass, ..PortClass(), tEndpoint, tIdParam, pId, tPayloadJson, tSendBody, .tWritten, .tWriteHttp, .tWriteFault)
+        Set tSendBody = ""
         If $$$ISERR(tWriteSC) {
             Set tSC = ..Fault(tWriteSC, tWriteHttp, .tWriteFault)
             Quit
@@ -269,6 +323,55 @@ ClassMethod Body(pToolClass As %String, pFresh As %DynamicObject, pArgs As %Dyna
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>What is wrong with <var>pBody</var>'s <code>values</code> for action <var>pActionId</var> of
+/// <var>pToolClass</var>, or <code>""</code>, with the declared values split into
+/// <var>pValues</var> and the declared secrets into <var>pSecrets</var> (AD-56 (ii)).</p>
+/// <p>Absent is sound only for an action that declares no value. Otherwise it is an object of
+/// strings whose keys are exactly the names the action declares, each non-empty. A name the
+/// descriptor declares secret goes to <var>pSecrets</var> and nowhere else. No problem sentence
+/// names a value, so a refused request never echoes one.</p>
+ClassMethod Values(pBody As %DynamicObject, pTool As %DynamicObject, pToolClass As %String, pActionId As %String, Output pValues As %DynamicObject, Output pSecrets As %DynamicObject) As %String [ Private ]
+{
+    Set pValues = {}
+    Set pSecrets = {}
+    Set tDeclared = $ClassMethod(pToolClass, "ScreenActionValueNames", pActionId)
+    Set tType = pBody.%GetTypeOf("values")
+    If tType = "unassigned" {
+        If tDeclared = "" Quit ""
+        Quit "'values' must name " _ $ListToString(tDeclared, ", ") _ " for this action"
+    }
+    If tType '= "object" Quit "'values' must be an object"
+    Set tSecretNames = ##class(OcuPilot.Screen.Tool.Registry).SecretArguments(pTool, .tSecretsDeclared)
+    Set tGiven = pBody.%Get("values")
+    Set tSeen = ""
+    Set tIterator = tGiven.%GetIterator()
+    While tIterator.%GetNext(.tName, .tValue) {
+        If '$ListFind(tDeclared, tName) Quit
+        If tGiven.%GetTypeOf(tName) '= "string" Quit
+        If tValue = "" Quit
+        Set tSeen = tSeen _ $ListBuild(tName)
+        If $ListFind(tSecretNames, tName) {
+            Do pSecrets.%Set(tName, tValue, "string")
+        } Else {
+            Do pValues.%Set(tName, tValue, "string")
+        }
+    }
+    If $ListLength(tSeen) '= tGiven.%Size() {
+        Set pValues = {}
+        Set pSecrets = {}
+        Quit "'values' may carry only " _ $Select(tDeclared = "": "nothing for this action", 1: "a non-empty string for " _ $ListToString(tDeclared, ", "))
+    }
+    For tI = 1:1:$ListLength(tDeclared) {
+        If '$ListFind(tSeen, $List(tDeclared, tI)) {
+            Set pValues = {}
+            Set pSecrets = {}
+            Quit
+        }
+    }
+    If $ListLength(tSeen) '= $ListLength(tDeclared) Quit "'values' must name " _ $ListToString(tDeclared, ", ") _ " for this action"
+    Quit ""
 }
 
 /// <p>The one write tool registered against <var>pDescriptor</var> that carries out

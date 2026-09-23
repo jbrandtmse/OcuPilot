@@ -4,11 +4,15 @@
 /// nothing.</p>
 /// <p><b>It registers by being compiled.</b> <class>OcuPilot.Screen.Tool.Registry</class> lists
 /// every concrete class under <package>OcuPilot</package> that extends the tool base, so adding
-/// this class is the whole registration; the descriptor declares no action and declaring one would
-/// make the screen write-capable, which this story does not own.</p>
-/// <p><b>It admits two of the sixteen fields its classified field list carries:</b>
-/// <code>Enabled</code>, the one derived literal <parameter>PERMITTEDFIELDS</parameter> names, and
-/// <code>Roles</code>, which is authored here rather than derived. Every other field is absent from
+/// this class is the whole registration.</p>
+/// <p><b>It is also the Users list's merge write for five row actions</b> (AD-53,
+/// <parameter>SCREENACTIONS</parameter>): enable, disable, the change-on-login flag the
+/// set-password dialog sends first (AD-56), and adding or removing one role, which
+/// <method>ScreenActionDelta</method> computes over the fresh read.</p>
+/// <p><b>It admits three of the sixteen fields its classified field list carries:</b>
+/// <code>Enabled</code> and <code>ChangePassword</code>, the derived literals
+/// <parameter>PERMITTEDFIELDS</parameter> names, and <code>Roles</code>, which is authored here
+/// rather than derived. Every other field is absent from
 /// the schema, so the model cannot author it, and a change to one is refused at the write by
 /// <class>OcuPilot.Kernel.Proposal.Prohibited</class> whatever the caller.</p>
 /// <p><b>Why <code>Roles</code> is authored and not derived</b> (AD-3). The endpoint's template
@@ -31,14 +35,31 @@ Parameter TOOLNAME = "permissions.users.update";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.UserList";
 
-Parameter DESCRIPTION = "Propose a change to one user account on this instance: whether it is enabled, and which roles it holds. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the account exactly as the users list reports it, and send only the fields to change.";
+Parameter DESCRIPTION = "Propose a change to one user account on this instance: whether it is enabled, whether it must choose a new password at its next sign-in, and which roles it holds. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the account exactly as the users list reports it, and send only the fields to change.";
 
-/// <p>The one derived top-level field this tool admits, comma-separated: the
-/// <code>Security.User</code> setting whose change AD-10's prohibited set has reviewed and which the
-/// derivation types (<method>OcuPilot.Kernel.Proposal.Prohibited.PermittedChangeFields</method>
-/// names this and <parameter>ROLESARGUMENT</parameter>). A test asserts the two agree; the kernel is
-/// never read from here.</p>
-Parameter PERMITTEDFIELDS = "Enabled";
+/// <p>The derived top-level fields this tool admits, comma-separated: the
+/// <code>Security.User</code> settings whose change AD-10's prohibited set has reviewed and which
+/// the derivation types (<method>OcuPilot.Kernel.Proposal.Prohibited.PermittedChangeFields</method>
+/// names these and <parameter>ROLESARGUMENT</parameter>). A test asserts the two agree; the kernel
+/// is never read from here.</p>
+Parameter PERMITTEDFIELDS = "Enabled,ChangePassword";
+
+/// <p>The Users list's row actions this merge write carries out (AD-53). Enable and disable set
+/// <code>Enabled</code>; <code>require-password-change</code> sets <code>ChangePassword</code> and is
+/// declared so the route admits it, though no menu draws it -- the set-password dialog sends it
+/// first when its flag is checked (AD-56); the two role actions take their role as a declared value
+/// (<parameter>SCREENVALUES</parameter>).</p>
+Parameter SCREENACTIONS = "enable=Enabled:true,disable=Enabled:false,require-password-change=ChangePassword:true,add-role,remove-role";
+
+/// <p>The one value each role action admits: the role, applied as a delta
+/// (<method>ScreenActionDelta</method>).</p>
+Parameter SCREENVALUES = "add-role=Role,remove-role=Role";
+
+/// <p>The role actions' value name.</p>
+Parameter ROLEVALUE = "Role";
+
+/// <p>The endpoint a role named in an add is resolved against.</p>
+Parameter ROLEENDPOINT = "Security.Role";
 
 /// <p>The one authored argument, and the other field the prohibited set has reviewed: the complete
 /// replacement list of roles the account holds.</p>
@@ -118,6 +139,77 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
     Set tOwn = $ListBuild(..#WRITERESOURCE, ..#WRITEPERMISSION)
     If $ListFind(tPairs, tOwn) Quit tPairs
     Quit tPairs _ $ListBuild(tOwn)
+}
+
+/// <p>The arguments a screen action sends (AD-56 (ii)): for <code>add-role</code> and
+/// <code>remove-role</code>, the complete <code>Roles</code> list built from the fresh read
+/// <var>pFresh</var> plus or minus the one role <var>pValues</var> names, so a role another session
+/// added after the list loaded is kept; for every other action, the static argument.</p>
+/// <p>The role is matched case-insensitively, as the instance resolves a role name, and a held role
+/// keeps the instance's own spelling. Refused in <var>pProblem</var>: an empty role, adding a role
+/// the account already holds, removing one it does not, and adding a name the
+/// <parameter>ROLEENDPOINT</parameter> read, through this tool's own port, answers 404 for. Whether
+/// the add grants privilege, or the removal strips <code>%All</code> from a protected account, is the
+/// prohibited set's question at the write, never this method's. No problem sentence names the
+/// role, so a refused request echoes no value (AD-56 (ii)).</p>
+ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, pFresh As %DynamicObject, Output pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Set pProblem = ""
+    Set tSC = $$$OK
+    Try {
+        If (pActionId '= "add-role") && (pActionId '= "remove-role") {
+            Set tSC = ##super(pActionId, pValues, pFresh, .pArgs, .pProblem)
+            Quit
+        }
+        Set pArgs = {}
+        Set tRole = ""
+        If $IsObject(pValues) Set tRole = pValues.%Get(..#ROLEVALUE)
+        If $ZStrip(tRole, "<>W") = "" {
+            Set pProblem = "'" _ ..#ROLEVALUE _ "' names the role and cannot be empty"
+            Quit
+        }
+        Set tWanted = $ZConvert(tRole, "U")
+        Set tRoles = []
+        Set tHeld = 0
+        If $IsObject(pFresh) && (pFresh.%GetTypeOf(..#ROLESARGUMENT) = "array") {
+            Set tIterator = pFresh.%Get(..#ROLESARGUMENT).%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tOne) {
+                If $IsObject(tOne) || (tOne = "") Continue
+                If $ZConvert(tOne, "U") = tWanted {
+                    Set tHeld = 1
+                    If pActionId = "remove-role" Continue
+                }
+                Do tRoles.%Push(tOne)
+            }
+        }
+        If pActionId = "remove-role" {
+            If 'tHeld Set pProblem = "the account does not hold that role"
+        } Else {
+            If tHeld {
+                Set pProblem = "the account already holds that role"
+                Quit
+            }
+            Kill tQuery
+            Set tQuery("name") = tRole
+            Set tReadSC = $ClassMethod(..PortClass(), "Invoke", ..#ROLEENDPOINT, "GET", .tQuery, "", .tRoleObject, .tHttp, .tFault)
+            If $$$ISERR(tReadSC) {
+                If +$Get(tHttp) = 404 {
+                    Set pProblem = "this instance holds no role by that name"
+                    Quit
+                }
+                Set tSC = tReadSC
+                Quit
+            }
+            Do tRoles.%Push(tRole)
+        }
+        If pProblem '= "" Quit
+        Do pArgs.%Set(..#ROLESARGUMENT, tRoles)
+    } Catch ex {
+        Set pArgs = {}
+        Set pProblem = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 }

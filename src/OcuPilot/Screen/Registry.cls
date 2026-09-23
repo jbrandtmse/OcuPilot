@@ -2152,12 +2152,17 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
 /// this parameter and refuses the same values this class does, so a rule neither side understands
 /// is refused at the build rather than rendered as a word -- the discipline
 /// <parameter>DECLAREDNAMEKINDS</parameter> already follows.</p>
-/// <p><code>serves-ocupilot</code> is the one rule Release 1 declares: the target is a web
+/// <p><code>serves-ocupilot</code> is one rule Release 1 declares: the target is a web
 /// application OcuPilot is itself served through. It <b>explains</b> a refusal and never enforces
 /// one -- the refusal is <class>OcuPilot.Kernel.Proposal.Prohibited</class>'s, evaluated at the
 /// write whatever the caller (AD-10), and its sentence is that class's
-/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.SERVINGPATHREASON</parameter>.</p>
-Parameter SELFPROTECTIONRULES = "serves-ocupilot";
+/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.SERVINGPATHREASON</parameter>.
+/// <code>protected-account</code> is the account one: the target is <code>_SYSTEM</code>, the
+/// signed-in account or a service account, and its sentences are that class's
+/// <code>SYSTEMACCOUNTREASON</code>, <code>CURRENTUSERREASON</code> and
+/// <code>SERVICEACCOUNTREASON</code>. The last <code>%All</code> holder is a census no client can
+/// read, so it is refused at the write alone.</p>
+Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account";
 
 /// <p>The projections <method>DeclaredNames</method> fills, comma-separated. Declared as data
 /// because a generator reads it: <file>ui/tools/screen-mirror.mjs</file> parses this parameter and

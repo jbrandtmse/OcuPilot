@@ -310,7 +310,7 @@ function oneActionProblem(action, where, rules) {
  * no explanation, which is the divergence `checkedDeclaredNameKinds` exists to prevent for its own
  * vocabulary (AD-5, AD-53).
  */
-export const IMPLEMENTED_SELF_PROTECTION_RULES = ['serves-ocupilot'];
+export const IMPLEMENTED_SELF_PROTECTION_RULES = ['serves-ocupilot', 'protected-account'];
 
 /**
  * The projection names this module's `declaredNames` fills, for the roster check against

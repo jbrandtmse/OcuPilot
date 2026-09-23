@@ -51,6 +51,9 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// vendor's POST body is <code>{User, Password}</code>, whose outer <code>Password</code> the
 /// template never shows, so AD-3's "the write tool authors [wrapper fields] as secret fields of its
 /// own" is stated here, where the generator can check it.</p>
+/// <p><b><code>permissions.users.password</code></b> classifies the same list again and authors
+/// <code>Password</code> as <code>secret</code>: its write sends that declared secret and nothing
+/// else (AD-56), under the vendor's <code>CHANGEPWD</code> key the port renames it to.</p>
 XData Entries
 {
 {
@@ -132,6 +135,30 @@ XData Entries
     }
   },
   "permissions.users.create": {
+    "fieldList": "Security.User",
+    "classification": {
+      "AccountNeverExpires": "ordinary",
+      "AutheEnabled": "ordinary",
+      "ChangePassword": "ordinary",
+      "Comment": "ordinary",
+      "EmailAddress": "ordinary",
+      "Enabled": "ordinary",
+      "ExpirationDate": "ordinary",
+      "FullName": "ordinary",
+      "HOTPKeyDisplay": "ordinary",
+      "NameSpace": "ordinary",
+      "PasswordNeverExpires": "ordinary",
+      "PhoneNumber": "ordinary",
+      "PhoneProvider": "ordinary",
+      "Roles": "opaque",
+      "EscalationRoles": "opaque",
+      "Routine": "ordinary"
+    },
+    "authored": {
+      "Password": "secret"
+    }
+  },
+  "permissions.users.password": {
     "fieldList": "Security.User",
     "classification": {
       "AccountNeverExpires": "ordinary",

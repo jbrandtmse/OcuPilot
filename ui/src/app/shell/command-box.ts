@@ -23,6 +23,7 @@ import { REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-ac
 import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { selfProtectionReason } from '../core/self-protection';
+import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
 
@@ -215,6 +216,7 @@ export class CommandBox {
    */
   private readonly stores = inject(ScreenStores);
   private readonly router = inject(Router);
+  private readonly session = inject(Session, { optional: true });
   private readonly shell = inject(ShellState);
   private readonly preferences = inject(AccountPreferences);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
@@ -487,7 +489,7 @@ export class CommandBox {
           rowScoped: true,
           reason: selected === ''
             ? STRINGS.privilegeSelectRowFirst
-            : selfProtectionReason(action.selfProtection, selected),
+            : selfProtectionReason(action.selfProtection, selected, this.signedIn()),
         });
       }
     }
@@ -517,6 +519,14 @@ export class CommandBox {
 
   private bump(): void {
     this.generation.set(this.generation() + 1);
+  }
+
+  /**
+   * The account this tab is signed in as, which the `protected-account` rule compares a row
+   * against (AD-53). Optional, so a surface rendered without a session explains nothing by it.
+   */
+  private signedIn(): string {
+    return this.session?.userName() ?? '';
   }
 }
 

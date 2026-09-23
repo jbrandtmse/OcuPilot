@@ -19,8 +19,15 @@
 /// account in the healthy colour, so the word carries the state.</p>
 /// <p><b>The classic page is <code>%CSP.UI.Portal.Users</code></b>, in the class's own case
 /// (AD-44). As a list archetype it links out to nothing. The context carries no secret field.</p>
-/// <p>It declares no primary or row action, so its empty state names what to do next, and it does
-/// not refresh (AD-43).</p>
+/// <p><b>It declares seven row actions</b> (AD-5, AD-53), destructive last: <code>enable</code>,
+/// <code>disable</code>, <code>require-password-change</code> and the two role actions carried out
+/// by <class>OcuPilot.Screen.Tool.UserUpdate</class>, <code>set-password</code> by
+/// <class>OcuPilot.Screen.Tool.UserPassword</class> and <code>delete</code> by
+/// <class>OcuPilot.Screen.Tool.UserDelete</class>. <code>require-password-change</code> is declared
+/// so the route admits the flag the set-password dialog sends first (AD-56); no menu draws it.
+/// Disable and delete declare the <code>protected-account</code> rule, which <i>explains</i> the
+/// refusal the prohibited set makes at the write (AD-10). Being write-capable, its empty state
+/// invites the agent, and it does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.UserList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -42,7 +49,15 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [
+    {"id": "enable", "selfProtection": ""},
+    {"id": "disable", "selfProtection": "protected-account"},
+    {"id": "set-password", "selfProtection": ""},
+    {"id": "add-role", "selfProtection": ""},
+    {"id": "remove-role", "selfProtection": ""},
+    {"id": "require-password-change", "selfProtection": ""},
+    {"id": "delete", "selfProtection": "protected-account"}
+  ],
   "context": {"fields": ["Name", "FullName", "Enabled", "Type", "Roles", "ExpirationDate", "Expired"], "secretFields": []},
   "secretArguments": ["Password"],
   "emptyStateKey": "userListEmpty",
@@ -75,8 +90,8 @@ XData Declaration
       {"field": "Type", "labelKey": "tableColumnType", "kind": "text"},
       {"field": "Roles", "labelKey": "userColumnRoles", "kind": "identifier"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "userListEmptyAgent"
   },
   "toolIdentifier": "permissions.users"
 }

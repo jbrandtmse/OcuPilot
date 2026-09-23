@@ -18,6 +18,7 @@ import { REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-ac
 import { applyView } from '../core/screen-read';
 import { ScreenStores, type SortDirection } from '../core/screen-store';
 import { selfProtectionReason } from '../core/self-protection';
+import { Session } from '../core/session';
 import { STRINGS, stringFor } from '../core/strings';
 import { formatRowCount } from '../core/table-model';
 import { ViewOptions } from '../core/view-options';
@@ -320,6 +321,7 @@ export class CommandBar {
   private readonly router = inject(Router);
   private readonly stores = inject(ScreenStores);
   private readonly overlays = inject(OverlayStack);
+  private readonly session = inject(Session, { optional: true });
   // Optional: a harness that never mounts a page with a View control (most of them) need not
   // provide one. The fallback is a private instance nothing else can reach, so it is permanently
   // empty -- exactly the "no control registered" state such a harness wants.
@@ -394,7 +396,7 @@ export class CommandBar {
         // pressed anyway.
         const reason = selected === ''
           ? STRINGS.privilegeSelectRowFirst
-          : selfProtectionReason(action.selfProtection, selected);
+          : selfProtectionReason(action.selfProtection, selected, this.signedIn());
         return {
           id: action.id,
           // Resolved through the one label map, as the command box already does (Story 3.5), and
@@ -864,5 +866,13 @@ export class CommandBar {
 
   private bump(): void {
     this.generation.set(this.generation() + 1);
+  }
+
+  /**
+   * The account this tab is signed in as, which the `protected-account` rule compares a row
+   * against (AD-53). Optional, so a surface rendered without a session explains nothing by it.
+   */
+  private signedIn(): string {
+    return this.session?.userName() ?? '';
   }
 }

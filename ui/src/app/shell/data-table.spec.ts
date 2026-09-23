@@ -10,6 +10,7 @@ import { RefreshService, type RefreshReadResult } from '../core/refresh';
 import { ScopeService } from '../core/scope';
 import { ScreenActions } from '../core/screen-actions';
 import { ScreenStores, type ScreenStore } from '../core/screen-store';
+import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS, stringFor } from '../core/strings';
 import { tableDeclaration } from '../testing/table-declaration';
@@ -111,6 +112,7 @@ async function wire(
       { provide: RefreshService, useValue: refresh },
       { provide: ScreenActions, useValue: actions },
       { provide: OverlayStack, useValue: overlays },
+      { provide: Session, useValue: { userName: () => 'Dana' } as unknown as Session },
       { provide: ScopeService, useValue: { namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService },
       { provide: TABLE_STRING_LOOKUP, useValue: (key: string) => (key === 'commandBoxNoMatch' ? EMPTY_TITLE : stringFor(key)) },
     ],
@@ -588,6 +590,24 @@ describe('the data table', () => {
     offered.click();
     await settle(wired.fixture);
     expect(runs).toBe(1);
+  });
+
+  it("Story 7.2: the signed-in account's protected-account entry carries its published sentence and runs nothing", async () => {
+    // Mutation (Rule 19): drop `this.signedIn()` from `menuItems`' call -> the entry is offered, red.
+    const declaration = tableDeclaration({ rowActions: [{ id: 'delete', selfProtection: 'protected-account' }] });
+    const wired = await wire(declaration, ok([{ Name: 'dana', NameSpace: 'USER', Count: 0, Enabled: true, Note: 'n' }]), ['delete']);
+    let runs = 0;
+    wired.actions.register(declaration.descriptor, 'delete', () => (runs += 1));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    (wired.host().querySelector('[aria-rowindex="2"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const entry = wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    expect(entry.querySelector('.ocu-data-table-menu-reason')?.textContent?.trim()).toBe(STRINGS.userRefusalCurrentUser);
+    expect(entry.getAttribute('aria-disabled')).toBe('true');
+    entry.click();
+    await settle(wired.fixture);
+    expect(runs).toBe(0);
   });
 
   it('a click selects its row and clears its changed mark; a click on the name link navigates and selects nothing', async () => {

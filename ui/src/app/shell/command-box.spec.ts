@@ -6,6 +6,7 @@ import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
+import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
@@ -145,6 +146,7 @@ describe('the command box', () => {
         { provide: OverlayStack, useValue: overlays },
         { provide: ScreenActions, useValue: actions },
         { provide: ShellState, useValue: shell },
+        { provide: Session, useValue: { userName: () => 'Dana' } as unknown as Session },
       ],
     });
     fixture = TestBed.createComponent(CommandBox);
@@ -409,6 +411,27 @@ describe('the command box', () => {
     expect(entry?.textContent).toContain(STRINGS.webAppServesOcuPilotRefusal);
     expect(entry?.getAttribute('aria-disabled')).toBe('true');
     expect(entry?.hasAttribute('disabled')).toBe(false);
+  });
+
+  it("Story 7.2: with the signed-in account selected, the box lists its protected-account action with the published sentence", () => {
+    // Mutation (Rule 19): drop `this.signedIn()` from `actionCandidates`' call -> no reason, red.
+    navigation.current = screen('permissions/users', 'navAreaPermissions', 'permissions', {
+      descriptor: 'OcuPilot.Screen.Descriptor.UserList',
+      primaryAction: { id: '', selfProtection: '' },
+      rowActions: [{ id: 'delete', selfProtection: 'protected-account' }],
+    });
+    TestBed.inject(ScreenActions).register('OcuPilot.Screen.Descriptor.UserList', 'delete', () => {});
+    TestBed.inject(ScreenStores).for('OcuPilot.Screen.Descriptor.UserList', []).setSelection(['dana']);
+    chord();
+    const entry = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
+    ).find(
+      (option) =>
+        (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim() ===
+        STRINGS.actionDelete
+    ) as HTMLElement | undefined;
+    expect(entry?.textContent).toContain(STRINGS.userRefusalCurrentUser);
+    expect(entry?.getAttribute('aria-disabled')).toBe('true');
   });
 
   it('DW-389: a declared row action with no registered handler is not listed, beside one that is registered', () => {

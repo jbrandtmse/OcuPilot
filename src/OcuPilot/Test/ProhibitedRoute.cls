@@ -1520,22 +1520,24 @@ Method TestAnAccountWithoutTheCodeDatabaseReadIsRefusedABareForbidden()
     Do $$$AssertEquals(tLoginStatus, 200, "200 for the same principal, because the token endpoints are the framework's own and reach no OcuPilot class")
 }
 
-/// <p>Story 5.9, AD-10: <b>the registry advertises no delete or disable verb for a user account at
-/// all</b>, and the one write verb it does advertise refuses a real disable of a real account
-/// through the real port and the real set.</p>
+/// <p>Stories 5.9 and 7.2, AD-10: <b>the registry advertises exactly three write verbs for a user
+/// account</b> -- the reviewed update, the delete and the password change -- and a real disable
+/// and a real bodyless delete of <code>_SYSTEM</code> are each refused through the real port and
+/// the real set.</p>
 /// <p>The refusal target is <code>_SYSTEM</code>, which this suite only ever reads: the set is
-/// asked directly, so nothing is minted and no <code>PUT</code> is issued, and the account's own
-/// enabled flag is read back afterwards to show it.</p>
-/// <p>Mutations (Rule 19): add a second <code>write</code> tool under the
+/// asked directly, so nothing is minted and no write is issued, and the account's own enabled flag
+/// is read back afterwards to show it.</p>
+/// <p>Mutations (Rule 19): add a fourth <code>write</code> tool under the
 /// <code>permissions.users</code> identifier and recompile the package (the roster assertion goes
 /// red naming it), or return <code>pProhibits = 0</code> from
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.User</method> (the live refusal goes red).</p>
-Method TestNoDeleteVerbIsAdvertisedForAUserAccountAndALiveSystemDisableIsRefused()
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.User</method> (both live refusals go red).</p>
+Method TestTheUserWriteVerbsAreRosteredAndALiveSystemDisableOrDeleteIsRefused()
 {
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
     Do $$$AssertStatusOK(tSC, "the tool registry lists its tools")
     Set tIdentifier = $ClassMethod(..#USERSCREEN, "ToolIdentifier")
     Do $$$AssertNotEquals(tIdentifier, "", "the users screen declares a tool identifier")
+    Set tRoster = $ListBuild(..#USERTOOL, "permissions.users.delete", "permissions.users.password")
     Set tSeen = 0
     Set tWrites = 0
     Set tIterator = tTools.%GetIterator()
@@ -1544,10 +1546,10 @@ Method TestNoDeleteVerbIsAdvertisedForAUserAccountAndALiveSystemDisableIsRefused
         Set tSeen = tSeen + 1
         If tTool.%Get("kind") '= "write" Continue
         Set tWrites = tWrites + 1
-        Do $$$AssertEquals(tTool.%Get("name"), ..#USERTOOL, "the only write verb on " _ tIdentifier _ " is the reviewed update, not '" _ tTool.%Get("name") _ "'")
+        Do $$$AssertTrue($ListFind(tRoster, tTool.%Get("name")) > 0, "every write verb on " _ tIdentifier _ " is a rostered one, not '" _ tTool.%Get("name") _ "'")
     }
     Do $$$AssertTrue(tSeen > 0, "the registry carries tools on " _ tIdentifier _ " at all, so this assertion ran over something")
-    Do $$$AssertEquals(tWrites, 1, "and exactly one of them is write-kind, so the assertion inside that branch ran")
+    Do $$$AssertEquals(tWrites, $ListLength(tRoster), "and exactly the rostered three are write-kind")
 
     Kill tQuery
     Set tQuery("name") = ..#SYSTEMACCOUNT
@@ -1564,6 +1566,12 @@ Method TestNoDeleteVerbIsAdvertisedForAUserAccountAndALiveSystemDisableIsRefused
     Do $$$AssertStatusOK(tSC, "the shipped set answers over the shipped port: " _ $System.Status.GetErrorText(tSC))
     Do $$$AssertEquals(tProhibits, 1, "disabling the predefined account is refused")
     Do $$$AssertEquals(tCode, $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "SYSTEMACCOUNT"), "with the code that names the cause")
+
+    ; AD-10 as amended: the bodyless delete changes no field, and is refused all the same.
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).Prohibits("permissions.users.delete", tRef, tFresh.%ToJSON(), ##class(OcuPilot.Test.ProhibitedFixture).Diff("Enabled,FullName,Roles"), .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the shipped set answers the delete over the shipped port: " _ $System.Status.GetErrorText(tSC))
+    Do $$$AssertEquals(tProhibits, 1, "deleting the predefined account is refused")
+    Do $$$AssertEquals(tCode, $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "SYSTEMACCOUNT"), "with the same code")
 
     Kill tQuery
     Set tQuery("name") = ..#SYSTEMACCOUNT

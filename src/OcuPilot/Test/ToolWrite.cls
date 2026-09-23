@@ -24,6 +24,9 @@ Parameter USERTOOL = "permissions.users.update";
 
 Parameter USERTOOLCLASS = "OcuPilot.Screen.Tool.UserUpdate";
 
+/// <p>The Users list, whose declared secrets the password tool's body is drawn from.</p>
+Parameter SCREEN = "OcuPilot.Screen.Descriptor.UserList";
+
 /// <p>Story 5.10's write tool and its class: the first destructive one, and the first whose screen
 /// is not built.</p>
 Parameter AUDITTOOL = "security.auditing.update";
@@ -392,7 +395,7 @@ Method TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs()
     Do $$$AssertEquals(tPairs, tDeclared, "and the write's set is that set, not a superset of it")
 
     Set tFields = $ClassMethod(..#USERTOOLCLASS, "SettableFields")
-    Do $$$AssertEquals($ListToString(tFields), "Enabled,Roles", "the settable fields are the one derived literal and the one authored array")
+    Do $$$AssertEquals($ListToString(tFields), "ChangePassword,Enabled,Roles", "the settable fields are the two derived literals and the one authored array")
     Set tPermittedByTheSet = ##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("user")
     Do $$$AssertEquals($ListLength(tPermittedByTheSet), $ListLength(tFields), "and the kernel has reviewed exactly as many fields as the tool advertises")
     For tI = 1:1:$ListLength(tFields) {
@@ -415,8 +418,77 @@ Method TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs()
     Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "OcuPilotProbeSchema", "FullName": "renamed"}, .tProblem)
     Do $$$AssertStatusNotOK(tSC, "and so is an unreviewed ordinary literal")
     Do $$$AssertTrue(tProblem [ "FullName", "naming that argument too: " _ tProblem)
-    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "OcuPilotProbeSchema", "Roles": ["%Developer"], "Enabled": true}, .tProblem)
-    Do $$$AssertStatusOK(tSC, "while the two advertised fields together validate: " _ tProblem)
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "OcuPilotProbeSchema", "Roles": ["%Developer"], "Enabled": true, "ChangePassword": true}, .tProblem)
+    Do $$$AssertStatusOK(tSC, "while the three advertised fields together validate: " _ tProblem)
+    Do $$$AssertEquals(tProperties.%Get("ChangePassword").%Get("type"), "boolean", "ChangePassword is advertised with its derived JSON type (Story 7.2)")
+    Do $$$AssertEquals($ListToString($ClassMethod(..#USERTOOLCLASS, "ScreenActionIds")), "enable,disable,require-password-change,add-role,remove-role", "it carries the Users list's five merge row actions")
+    Do $$$AssertEquals($ListToString($ClassMethod(..#USERTOOLCLASS, "ScreenActionValueNames", "add-role")), "Role", "and each role action admits one value, the role")
+}
+
+/// <p>Story 7.2, AD-51: the users delete tool is an action write over the vendor's own
+/// <code>Security.User</code> <code>DELETE</code>, destructive, publishing <code>deleted</code>,
+/// fingerprinted over what the list shows, and required at the screen's own pairs.</p>
+/// <p>Mutation (Rule 19): set <parameter>OcuPilot.Screen.Tool.UserDelete.CHANGEACTION</parameter>
+/// to <code>updated</code> -- the action assertion goes red here, and the account arms stop reaching
+/// a delete (<class>OcuPilot.Test.ProhibitedByEffect</class>).</p>
+Method TestTheUserDeleteToolIsAnActionWriteOverTheScreensOwnPairs()
+{
+    Set tClass = "OcuPilot.Screen.Tool.UserDelete"
+    Do ..AssertUserActionWrite("permissions.users.delete", tClass, "DELETE")
+    Do $$$AssertEquals($ClassMethod(tClass, "ChangeAction"), "deleted", "it publishes the deleted action, which is also what the account arms key on")
+    Do $$$AssertEquals($ClassMethod(tClass, "Destructive"), 1, "it is destructive")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "FingerprintSubject")), "Enabled,FullName,Roles", "its fingerprint covers what the list shows beside the name")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "ScreenActionIds")), "delete", "it carries the screen's delete row action")
+    Do $$$AssertTrue($ListFind($ListFromString($Parameter("OcuPilot.Port.AdminPort", "BODYLESSTYPES")), "Security.User/DELETE") > 0, "and the port knows the vendor reads no body for it")
+}
+
+/// <p>Story 7.2, AD-56 (i): the users password tool is an action write over the vendor's own
+/// <code>CHANGEPWD</code>, whose only body is its declared secret, which the model can never
+/// supply -- its schema advertises none, and the port renames it to the vendor's key on the
+/// wire.</p>
+/// <p>Mutation (Rule 19): empty <parameter>OcuPilot.Screen.Tool.UserPassword.SECRETBODY</parameter>
+/// -- the secret-body assertion goes red, and the confirm sends an empty body.</p>
+Method TestTheUserPasswordToolSendsOnlyItsDeclaredSecret()
+{
+    Set tClass = "OcuPilot.Screen.Tool.UserPassword"
+    Do ..AssertUserActionWrite("permissions.users.password", tClass, "CHANGEPWD")
+    Do $$$AssertEquals($ClassMethod(tClass, "ChangeAction"), "updated", "it publishes the updated action")
+    Do $$$AssertEquals($ClassMethod(tClass, "Destructive"), 0, "and is not destructive")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "SecretBodyNames")), "Password", "its body is its one declared secret")
+    Do $$$AssertTrue($ListFind($ClassMethod(..#SCREEN, "SecretArguments"), "Password") > 0, "which the screen declares secret")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "ScreenActionValueNames", "set-password")), "Password", "and its row action admits that one value")
+    Do $$$AssertEquals($ClassMethod(tClass, "StateField"), "Password", "its card's row names the secret it asks for")
+    Do $$$AssertEquals($ClassMethod(tClass, "InputSchema").%Get("properties").%GetTypeOf("Password"), "unassigned", "and the model is never offered it")
+    Do $$$AssertTrue($ListFind($ListFromString($Parameter("OcuPilot.Port.AdminPort", "BODYLESSTYPES")), "Security.User/CHANGEPWD") = 0, "the port requires its body")
+    Set tRenamed = ##class(OcuPilot.Port.AdminPort).Renamed("Security.User", "CHANGEPWD", {"Password": "pw1 "})
+    Do $$$AssertEquals(tRenamed.%ToJSON(), {"NewPassword": "pw1 "}.%ToJSON(), "and renames it on the wire, untrimmed")
+    Set tBody = ##class(OcuPilot.Kernel.Proposal.Operation).SecretBody(tClass, {"Password": "pw1 ", "Other": "x"}, $ListBuild("Password"))
+    Do $$$AssertEquals(tBody.%ToJSON(), {"Password": "pw1 "}.%ToJSON(), "the write's body holds the declared secret and nothing else")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Operation).SecretBody("OcuPilot.Screen.Tool.UserDelete", {"Password": "x"}, $ListBuild("Password")), "", "while a tool declaring none sends none")
+}
+
+/// <p>What the two users action tools declare, given the tool name <var>pName</var>, its class
+/// <var>pClass</var> and the vendor request type <var>pWriteType</var> it issues.</p>
+Method AssertUserActionWrite(pName As %String, pClass As %String, pWriteType As %String)
+{
+    Set tSC = $ClassMethod(..#REGISTRY, "Resolve", pName, .tTool)
+    Do $$$AssertStatusOK(tSC, pName _ ": the registry resolves it by name")
+    Do $$$AssertTrue($IsObject(tTool), pName _ ": and finds it")
+    If '$IsObject(tTool) Quit
+    Do $$$AssertEquals(tTool.%Get("kind"), "write", pName _ ": it is a write tool")
+    Do $$$AssertEquals(tTool.%Get("class"), pClass, pName _ ": answered by its own class")
+    Do $$$AssertEquals($ClassMethod(pClass, "Endpoint"), "Security.User", pName _ ": over the vendor's own user endpoint")
+    Do $$$AssertEquals($ClassMethod(pClass, "ReadType"), "GET", pName _ ": its fresh read is the single-object read")
+    Do $$$AssertEquals($ClassMethod(pClass, "WriteType"), pWriteType, pName _ ": and its write is the vendor's " _ pWriteType)
+    Do $$$AssertEquals($ClassMethod(pClass, "SendsBody"), 0, pName _ ": it sends no merge body")
+    Do $$$AssertEquals($ListLength($ClassMethod(pClass, "SettableFields")), 0, pName _ ": and admits no settable field")
+    Do $$$AssertEquals($ClassMethod(pClass, "PreconditionField"), "Enabled", pName _ ": its precondition reads Enabled")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).FingerprintSubjectProblem(pClass), "", pName _ ": and the registration guard holds its subject adequate")
+    Do $$$AssertTrue($ListFind($ListFromString($Parameter("OcuPilot.Port.AdminPort", "MUTATINGTYPES")), "Security.User/" _ pWriteType) > 0, pName _ ": the port admits the mutating pair")
+    Set tPairs = $ClassMethod(pClass, "PrivilegePairs", "", .tResolved)
+    Set tDeclared = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(pClass, "DESCRIPTORCLASS"), .tDeclaredResolved)
+    Do $$$AssertEquals(tResolved && tDeclaredResolved, 1, pName _ ": its pairs and the screen's resolve")
+    Do $$$AssertEquals(tPairs, tDeclared, pName _ ": and the write's set is the screen's own")
 }
 
 /// <p>AC1, AC4 (Story 5.10): the auditing write tool advertises its one derived field, requires its
@@ -951,7 +1023,8 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
         Set tClass = tEntry.%Get("class")
         Set tType = $ClassMethod(tClass, "WriteType")
         Set tEndpoint = $ClassMethod(tClass, "Endpoint")
-        Set tSends = ''$ClassMethod(tClass, "SendsBody")
+        ; AD-56 (i): a write whose body is its declared secrets sends one, though it sends no merge body.
+        Set tSends = ''$ClassMethod(tClass, "SendsBody") || ($ClassMethod(tClass, "SecretBodyNames") '= "")
         Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating(tEndpoint, tType), tName _ " writes '" _ tEndpoint _ "/" _ tType _ "', which the port declares a mutating pair")
         If '$ListFind(tReached, tEndpoint _ "/" _ tType) Set tReached = tReached _ $ListBuild(tEndpoint _ "/" _ tType)
         Set tExempt = ''##class(OcuPilot.Port.AdminPort).IsBodyless(tEndpoint, tType)

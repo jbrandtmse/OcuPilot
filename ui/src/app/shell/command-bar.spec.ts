@@ -10,6 +10,7 @@ import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
+import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
@@ -133,6 +134,7 @@ describe('the command bar', () => {
         { provide: ScreenActions, useValue: actions },
         { provide: OverlayStack, useValue: overlays },
         { provide: ViewOptions, useValue: viewOptionsSvc },
+        { provide: Session, useValue: { userName: () => 'Dana' } as unknown as Session },
         { provide: ShellState, useValue: new ShellState({ account: stubAccountPreferences() }) },
         { provide: ScopeService, useValue: { loaded: () => true, namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService },
       ],
@@ -316,6 +318,26 @@ describe('the command bar', () => {
     button().click();
     fixture.detectChanges();
     expect(runs).toBe(1);
+  });
+
+  it("Story 7.2: with the signed-in account selected, the bar's protected-account action carries its sentence and runs nothing", () => {
+    // Mutation (Rule 19): drop `this.signedIn()` from the bar's call -> the button runs, red.
+    const declared = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.UserList',
+      rowActions: [{ id: 'disable', selfProtection: 'protected-account' }],
+    });
+    build(declared);
+    let runs = 0;
+    actions.register(declared.descriptor, 'disable', () => (runs += 1));
+    stores.for(declared.descriptor, declared.refreshRates).setSelection(['dana']);
+    fixture.detectChanges();
+    const button: HTMLButtonElement = fixture.nativeElement.querySelector('.ocu-command-bar-action');
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    const reason = fixture.nativeElement.querySelector(`#${button.getAttribute('aria-describedby')}`);
+    expect(reason?.textContent?.trim()).toBe(STRINGS.userRefusalCurrentUser);
+    button.click();
+    fixture.detectChanges();
+    expect(runs).toBe(0);
   });
 
   it('no chip renders for a screen the framework has not bound, or one that does not refresh', () => {

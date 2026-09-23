@@ -9,7 +9,15 @@ import { SCREENS } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
 import { rowKey } from '../core/table-model';
 import { stubAccountPreferences } from '../testing/account-preferences';
-import { SCREEN_ACTION_DESCRIPTORS, ScreenActionHandler } from './screen-action-handler';
+import { Session } from '../core/session';
+import {
+  ADD_ROLE,
+  REMOVE_ROLE,
+  REQUIRE_PASSWORD_CHANGE,
+  SCREEN_ACTION_DESCRIPTORS,
+  SET_PASSWORD,
+  ScreenActionHandler,
+} from './screen-action-handler';
 
 /** The screen this handler serves first, read from the mirror rather than restated here. */
 const WEB_APPS = SCREENS.find((screen) => screen.descriptor === SCREEN_ACTION_DESCRIPTORS[0])!;
@@ -236,5 +244,131 @@ describe('the OAuth 2.0 tabs\u2019 delete', () => {
     handler.confirmPending();
     await settle();
     expect(JSON.parse(calls[0].body)).toEqual({ action: 'delete', id: 'abc-123' });
+  });
+});
+
+/** The Users list, read from the mirror (Story 7.2). */
+const USERS = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.UserList')!;
+
+/** Mount with one answer per request, in order, and a session signed in as `Dana`. */
+function mountUsers(answers: readonly JsonResult<unknown>[]) {
+  TestBed.resetTestingModule();
+  const calls: { path: string; method: string; body: string }[] = [];
+  const queue = [...answers];
+  const api = {
+    requestJson: async <T,>(path: string, init: ApiRequestInit = {}): Promise<JsonResult<T>> => {
+      calls.push({ path, method: init.method ?? 'GET', body: init.body ?? '' });
+      return (queue.shift() ?? { kind: 'ok', status: 200, body: {} }) as JsonResult<T>;
+    },
+  };
+  const bus = new ChangeBus();
+  const events: ChangeEvent[] = [];
+  bus.subscribe((event) => events.push(event));
+  const stores = new ScreenStores({ account: stubAccountPreferences() });
+  TestBed.configureTestingModule({
+    providers: [
+      { provide: ApiService, useValue: api as unknown as ApiService },
+      { provide: ChangeBus, useValue: bus },
+      { provide: ScreenStores, useValue: stores },
+      { provide: ScreenActions, useValue: new ScreenActions() },
+      { provide: Session, useValue: { userName: () => 'Dana' } as unknown as Session },
+    ],
+  });
+  const actions = TestBed.inject(ScreenActions);
+  const handler = TestBed.inject(ScreenActionHandler);
+  const store = stores.for(USERS.descriptor, USERS.refreshRates);
+  store.applyTick([{ Name: 'probe', Roles: ['%SQL', '%Developer'] }], false, '', new Date());
+  store.setSelection(['probe']);
+  return { actions, handler, store, calls, events };
+}
+
+const UPDATED: JsonResult<unknown> = {
+  kind: 'ok',
+  status: 200,
+  body: { action: 'updated', target: { type: 'user', scope: 'instance', id: 'probe' } },
+};
+
+describe('the Users list row actions (Story 7.2)', () => {
+  it('registers every declared action but the undrawn change-on-login flag', () => {
+    // Mutation (Rule 19): drop the Users list from `SCREEN_ACTION_DESCRIPTORS` -> nothing registers
+    // and this goes red on every id, so no surface draws a Users row action (AC1).
+    const { actions } = mountUsers([]);
+    const drawn = USERS.rowActions.map((action) => action.id).filter((id) => id !== REQUIRE_PASSWORD_CHANGE);
+    expect(drawn).toEqual(['enable', 'disable', SET_PASSWORD, ADD_ROLE, REMOVE_ROLE, 'delete']);
+    for (const id of drawn) expect(actions.has(USERS.descriptor, id)).toBe(true);
+    expect(actions.has(USERS.descriptor, REQUIRE_PASSWORD_CHANGE)).toBe(false);
+  });
+
+  it('opens delete with its own consequence and a protected account with its published refusal', async () => {
+    const { actions, handler, store, calls } = mountUsers([]);
+    actions.run(USERS.descriptor, 'delete');
+    expect(handler.pending()?.kind).toBe('typed-name');
+    expect(handler.pending()?.consequence).toBe(STRINGS.userDeleteConsequence);
+    handler.cancelPending();
+
+    store.setSelection(['dana']);
+    actions.run(USERS.descriptor, 'disable');
+    await settle();
+    expect(calls).toHaveLength(0);
+    expect(store.refusal()).toBe(STRINGS.userRefusalCurrentUser);
+  });
+
+  it('sends the flag first, then the password exactly as pasted, then the flag again, and nothing after a refused flag', async () => {
+    // Mutation (Rule 19): trim the value, or drop `values` from `send` -> the body assertion goes red.
+    const pasted = 'pw1 ';
+    const first = mountUsers([UPDATED, UPDATED, UPDATED]);
+    first.actions.run(USERS.descriptor, SET_PASSWORD);
+    expect(first.handler.pending()?.kind).toBe('set-password');
+    await first.handler.submitPassword(pasted, true);
+    // The flag is re-asserted after the password, because the vendor's password change clears it.
+    expect(first.calls.map((call) => JSON.parse(call.body))).toEqual([
+      { action: REQUIRE_PASSWORD_CHANGE, id: 'probe' },
+      { action: SET_PASSWORD, id: 'probe', values: { Password: pasted } },
+      { action: REQUIRE_PASSWORD_CHANGE, id: 'probe' },
+    ]);
+    expect(first.events).toHaveLength(3);
+
+    const refused = mountUsers([{ kind: 'error', status: 403, code: 'PROHIBITED.UNCOVEREDFIELD', reason: 'no', detail: null }]);
+    refused.actions.run(USERS.descriptor, SET_PASSWORD);
+    await refused.handler.submitPassword(pasted, true);
+    expect(refused.calls).toHaveLength(1);
+    expect(refused.store.refusal()).toBe('no');
+
+    // A password the instance refuses (its policy): its sentence on the refusal line, the flag
+    // written first left set, and no second flag write.
+    const policy = mountUsers([UPDATED, { kind: 'error', status: 400, code: 'PORT.VALIDATION', reason: 'too short', detail: null }]);
+    policy.actions.run(USERS.descriptor, SET_PASSWORD);
+    await policy.handler.submitPassword(pasted, true);
+    expect(policy.calls.map((call) => JSON.parse(call.body).action)).toEqual([REQUIRE_PASSWORD_CHANGE, SET_PASSWORD]);
+    expect(policy.store.refusal()).toBe('too short');
+    expect(policy.events).toHaveLength(1);
+
+    const unflagged = mountUsers([UPDATED]);
+    unflagged.actions.run(USERS.descriptor, SET_PASSWORD);
+    await unflagged.handler.submitPassword(pasted, false);
+    expect(unflagged.calls.map((call) => JSON.parse(call.body))).toEqual([
+      { action: SET_PASSWORD, id: 'probe', values: { Password: pasted } },
+    ]);
+  });
+
+  it('offers a remove of the row\u2019s own roles and an add of the Roles list\u2019s others, sending one role', async () => {
+    const { actions, handler, calls } = mountUsers([
+      { kind: 'ok', status: 200, body: { rows: [{ Name: '%SQL' }, { Name: '%Operator' }, { Name: '%developer' }, { Name: 'Probe' }] } },
+      UPDATED,
+    ]);
+    actions.run(USERS.descriptor, REMOVE_ROLE);
+    await settle();
+    expect(handler.pending()?.kind).toBe('role');
+    expect(handler.pending()?.options).toEqual(['%SQL', '%Developer']);
+    handler.cancelPending();
+
+    actions.run(USERS.descriptor, ADD_ROLE);
+    await settle();
+    expect(calls[0].path).toBe('/api/ocupilot/screens/permissions.roles/read?maxRows=1000');
+    // Held roles are left out, case-insensitively; a privileged role is offered and the instance decides.
+    expect(handler.pending()?.options).toEqual(['%Operator', 'Probe']);
+    handler.submitRole('Probe');
+    await settle();
+    expect(JSON.parse(calls[1].body)).toEqual({ action: ADD_ROLE, id: 'probe', values: { Role: 'Probe' } });
   });
 });

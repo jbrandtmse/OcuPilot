@@ -2,7 +2,8 @@
 title: 'Story 7.2: User enable, disable, delete, password and roles'
 type: 'feature'
 created: '2026-09-22'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'c7ef11bdfb1569512f967cc056bbc06043a3a01f'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -10,7 +11,11 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-7-context.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - 'AD-56 (i) "the change-on-login flag is its own update write, sent first": measured on ocupilot-ci, a CHANGEPWD (Security.Users.Modify with Password) clears ChangePassword, so the flag sent first alone ends cleared. The client re-sends it after the password lands (flag, password, flag); the spine sentence and the agent path (a password proposal and a flag proposal, in either order) need the same rule.'
+  - 'AC4 names `%Admin_Secure` as a role to add; it is a resource on this build and no role carries that name, so the add is 400 (unknown role) before the prohibited set. The privileged-add legs use `%All` and `%Manager` (a role carrying `%Admin_Secure:U`).'
+  - 'The armed last-holder `%All` strip is pinned through the tool delta plus `Operation.Gate` in-process (UserUpdate.TestAnAllStripOfTheLastHolderIsRefusedAtTheSharedGate): the census is armable only in the test process, never in the web server serving the route.'
+  - 'Prohibited.cls-test port: `WithoutAuthoredSecrets` taken byte-for-byte from Epic 8 (its absence already reddened TestNoWriteToolAdmitsAnAlwaysProhibitedField after the lead port 771b08b); the action-write secret check was restated for AD-56 (i).' 
 ---
 
 <intent-contract>
@@ -340,6 +345,33 @@ Line anchors are this branch's (`OCU-1-epic7` at `220c6a3`). ⚠ = contended wit
 
 ## Review Triage Log
 
+### 2026-09-22 — Review pass
+
+- verdicts: 22 findings — high 0, medium 5, low 10, false 7, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` VG1: the signed-in account's refusal is untested on the row menu, command bar and command box — added one leg each (`data-table`, `command-bar`, `command-box` specs, `Session` stubbed); dropping `this.signedIn()` at the three call sites reddened exactly those three.
+  - `[medium]` `[patch]` VG2: the route's stray-key, non-object `values`, non-string value and empty-value refusals are unexercised — four legs added to `UserUpdate.TestEveryRowActionReachesTheRouteAndChangesTheAccount`; opening the stray-key check reddened its leg.
+  - `[low]` `[patch]` VG3: a password confirm with no password is untested — measured on `ocupilot-ci` the vendor answers `{}` with 400 `PORT.VALIDATION`; leg added (undeclared key refused by the channel, empty confirm refused, old password still signs in).
+  - `[low]` `[reject]` VG4: the ported `WithoutAuthoredSecrets` floor lets a bodyless user tool's confirm channel accept `Password` — the write drops it (`SecretBody` answers `""`), nothing is stored or sent; closing it needs a new guard in Epic 8's AD-55 channel.
+  - `[low]` `[reject]` VG-other: `openRole` shows nothing when the Roles read answers `ok` without `rows` — the read route always answers `rows`; unlikely.
+  - `[low]` `[reject]` VG-other: an added role is written in the client's spelling — the dialog offers the Roles list's own spelling, so the everyday path writes the instance's.
+  - `[false]` `[reject]` VG-other: `TestEveryAccountArmRefusesEveryRemovalEffect` depends on `$Username` — it asserts the precondition first, so it cannot pass vacuously; green on `ocupilot-ci`.
+  - `[low]` `[reject]` IA: the last-holder delete is pinned at the kernel, not the route — the census is armable only in the test process; `ProhibitedByEffect` and the shared-gate leg cover it (spec `deferred:` item 3).
+  - `[low]` `[reject]` IA: the last-holder `%All` strip rebuilds the route's steps rather than calling it — same root cause as the row above.
+  - `[low]` `[reject]` IA: no agent delete of a protected account is minted and confirmed — a live confirm against `_SYSTEM` or a service account would delete it under any mutation; the set call the transition makes is pinned live by `ProhibitedRoute`.
+  - `[low]` `[reject]` IA: no card spec for the password proposal — the card's secret masking is 5.10's generic `proposal-card.spec`, and the server legs pin the row, the channel and the confirm.
+  - `[false]` `[reject]` IA: set password sends three writes and three events — AD-14 is one event per write and the intent's own flag-then-password is already two; the re-assert is what makes the flag hold (spec `deferred:` item 1).
+  - `[medium]` `[patch]` IA: the bar and box half of AC3's "both surfaces" is untested — grouped with VG1, same patch.
+  - `[low]` `[reject]` IA: no Users-specific typed-name mismatch leg — the same `TypedNameDialog` and handler path 7.1 pins.
+  - `[low]` `[reject]` IA: the route legs assert the action, not the event triple or the row mark — the handler publishes the route's own triple generically (7.1's `list-page.spec`).
+  - `[medium]` `[patch]` IA: "the password is nowhere" is checked on the agent path only — `AssertNotLogged` (`^ERRORS`, `messages.log`, now asserting the log opens) runs after the route's `set-password` too.
+  - `[false]` `[reject]` IA: seven declared actions against six — the spec's Tasks declare `require-password-change` undrawn.
+  - `[false]` `[reject]` IA: the add-role dialog depends on the Roles screen's gate — specified ("issue another built screen's read", AD-5).
+  - `[false]` `[reject]` IA: `permissions.users.update` admits `ChangePassword` — specified (`PERMITTEDFIELDS "Enabled,ChangePassword"`).
+  - `[false]` `[reject]` IA: `RemovesOf` fails closed beyond the three effects — specified ("a class that cannot be asked reads as a removal").
+  - `[false]` `[reject]` IA: edits beside Epic 8's hunks in `UserList`, `AdminPort`, `Confirm`, `Prohibited` — each is the spec's or the lead's instruction, listed as footprint extensions.
+  - `[medium]` `[defer]` IA: on the agent path a password confirmed after a flag proposal clears the flag — a vendor fact; the fix is AD-56's sentence, which only the lead amends (spec `deferred:` item 1).
+
 ## Design Notes
 
 **Governing ADs (Rule 6):** AD-3, AD-4, AD-5, AD-6, AD-8, AD-10 (amended 2026-09-23), AD-13,
@@ -423,23 +455,72 @@ The full browser suite is not run locally (Rule 29).
 
 **Pinning tests and mutations (Rule 19; the implementer records what was observed):**
 
-| AC | Pinning test | Mutation |
-|---|---|---|
-| AC1 | `users-actions` row-menu leg per action | drop `UserList` from `SCREEN_ACTION_DESCRIPTORS` |
-| AC2 | `users-actions` paste leg (login with `pw1 ` answers 200, `pw1` 401); `UserUpdate` no-residue leg | trim the value in `send`; store it in `Mint` stored arguments |
-| AC3 | `UserUpdate` route legs; `self-protection.test.mjs` | return `''` from `protected-account`; edit one `*REASON` word |
-| AC4 | `UserUpdate` privileged-add legs | skip `GrantsPrivilege` in `User` |
-| AC5 | `users-actions` integration leg | drop the `values` member from `send` |
-| AC6 | `ProhibitedByEffect` arm test | remove each arm's predicate, then each effect term, in turn |
-| AC7 | `UserUpdate` agent legs | remove `Security.User/CHANGEPWD` from `RENAMEDTYPES` |
+| AC | Pinning test | Mutation | Observed |
+|---|---|---|---|
+| AC1 | `users-actions` row-menu leg per action | drop `UserList` from `SCREEN_ACTION_DESCRIPTORS` | mutation: roster entry removed, bundle rebuilt and redeployed → both `users-actions` tests red |
+| AC2 | `users-actions` paste leg (login with `pw1 ` answers 200, `pw1` 401); `UserUpdate` no-residue leg | trim the value in `send`; store it in `Mint` stored arguments | mutation: `password.trim()` in `submitPassword`, rebuilt → paste leg red ("one request carrying the value byte for byte"); mutation: `Confirm` logs the secret body (the `Mint` variant is unreachable, the schema refuses a `Password` argument first) → `TestTheAgentsPasswordAndDeleteLandAndThePasswordIsNowhere` red on "no messages.log line holds it" |
+| AC3 | `UserUpdate` route legs; `self-protection.test.mjs` | return `''` from `protected-account`; edit one `*REASON` word | mutation: `protected-account` answers `''` → `self-protection.test.mjs` per-account test red; mutation: one word of `CURRENTUSERREASON` → the one-sentence test red (the route legs compare against the parameter, so only the pin catches a word edit) |
+| AC4 | `UserUpdate` privileged-add legs | skip `GrantsPrivilege` in `User` | mutation: grant arm gated `If 0` → `UserUpdate` 5 methods red, the route's `%All` and `%Manager` adds among them |
+| AC5 | `users-actions` integration leg | drop the `values` member from `send` | mutation: `values` never set on the request, rebuilt → integration leg red |
+| AC6 | `ProhibitedByEffect` arm test | remove each arm's predicate, then each effect term, in turn | mutation: each of the four arms and each of the three effect terms (`pRemoves`, `Disables`, the `%All` strip) gated off in turn, reloaded with subclasses → `TestEveryAccountArmRefusesEveryRemovalEffect` red naming exactly that arm's three legs or that effect's four |
+| AC7 | `UserUpdate` agent legs | remove `Security.User/CHANGEPWD` from `RENAMEDTYPES` | mutation: `RENAMEDTYPES` emptied → confirm answers `PORT.VALIDATION`, sign-in legs red in both the route and the agent methods |
+
+Review patches: mutation: `this.signedIn()` dropped at the three surfaces → the three new `data-table`/`command-bar`/`command-box` legs red (AC3); mutation: stray-key check opened in `ScreenAction.Handle` → the stray-key route leg red; mutation: flag re-sent after a refused password → the handler's policy leg red.
+
+Every mutation was reverted and the original reloaded (or the bundle rebuilt and redeployed);
+`git diff --stat` read the same before and after.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Re-planned against the 2026-09-23 rulings: AD-56 secret-only action write with the `Password` to
-`NewPassword` rename in the port, a closed `values` channel on the screen route, the DW-1486
-restructure by effect with per-arm legs, and the published copy consumed rather than authored.
-Named risk: the lead's port must carry 8.2's `authored` grammar as well as its widening (Design
-Notes). Nothing was implemented; nothing was committed.
+**Change.** The Users list declares seven row actions (six drawn; `require-password-change` is
+undrawn). They run through `permissions.users.update` (with a server-side role delta over the
+fresh read), a new `permissions.users.delete` and a new `permissions.users.password`. The password
+tool's write is its declared secret alone (`SECRETBODY`, `Operation.SecretBody`), and
+`AdminPort.RENAMEDTYPES` renames it to `NewPassword` on the wire. The route's `values` channel is
+closed. `Prohibited.User` asks all four account arms on one effect (`RemovesAdministration`: a
+delete, a disable or a `%All` strip), and the four account refusal sentences are caller-neutral
+parameters. The client explains `protected-account` on the row menu, the command bar and the
+command box, and adds the set-password and role dialogs.
+
+**Files.** Server: `Prohibited`, `ScreenAction`, `Operation`, `Confirm` (one line), `Write`,
+`UserUpdate`, the new `UserDelete` and `UserPassword`, `AdminPort`, `UserList`, `Registry`,
+`Classification`, and `ToolFields` (regenerated). Client: `self-protection`, `screen-action-handler`,
+`list-page`, `screen-actions`, `data-table`, `command-bar`, `command-box`, the new `set-password-dialog`
+and `role-dialog`, `screens.generated`, and `screen-mirror.mjs`. Tests: `UserUpdate`,
+`ProhibitedByEffect`, `ProhibitedRoute`, `RefusalCopy`, `SurfaceCoverage`, `ToolWrite`,
+`ToolRoundTrip`, `ReadTool`, `PortFixture`, `Prohibited` (Epic 8's `WithoutAuthoredSecrets` taken
+byte-for-byte), their specs, `self-protection.test.mjs`, and the new
+`users-actions.browser-spec.mjs`.
+
+**Review.** 22 findings. Three medium entries were patched, all test additions (surface legs for
+the signed-in refusal, closed-channel route legs, the route-path log check), plus one low
+(password confirm without a password). One medium was deferred (the agent-path flag order,
+`deferred:` item 1). Ten lows and seven false findings were rejected, with reasons in the triage
+log. Stage self-fixes: stray blank lines in `command-box.ts` and `data-table.ts`, a merged import,
+the delta's refusals no longer echo the role, and a handler leg for a password refused by policy.
+followup_review_recommended: false (patched entries were test additions with demonstrated
+mutations; no unverified risk can be named).
+
+**Verification (tiers run):** ObjectScript full sweep once on `ocupilot-ci`: 180 classes, 1,628
+tests, 0 failed. It carries four class-level refusals, `AuditingUpdate`, `ErrorDelete`,
+`ProcessControl` and `TaskResume`, because the throwaway predates their arming variables (known,
+recorded). `UserUpdate` was re-run after the patches: 22/0. `test:tools` 1,327/0 and
+`test:components` 858/0. Browser (bundle rebuilt and redeployed): `users-actions`, `users` and
+`users-write`, 9/9. Generator checks, `client-lint`, `check-objectscript` and `lint-docs` are clean.
+The full browser suite was not run (Rule 29).
+
+**footprint_extensions:** `Kernel/Proposal/Prohibited.cls`, `Kernel/Proposal/Confirm.cls`,
+`Kernel/Proposal/Operation.cls`, `Screen/Tool/Write.cls`, `Screen/Descriptor/UserList.cls`,
+`Screen/Registry.cls`, `Screen/Tool/Classification.cls` (+ `ToolFields.cls`),
+`ui/tools/screen-mirror.mjs` (+ `screens.generated.ts`), `Port/AdminPort.cls` (own entries),
+`Test/ProhibitedRoute.cls`, `Test/SurfaceCoverage.cls`, `Test/ToolRoundTrip.cls`,
+`Test/ReadTool.cls`, `Test/Prohibited.cls`, `Test/PortFixture.cls`. Expected merge contacts with
+Epic 8: the `UserList` header, `AdminPort` `MUTATINGTYPES` and the line before `RunSequence`,
+`ReasonFor` beside `PRIVILEGEGRANT`, the end of `Test/Prohibited.cls`, and the `ProhibitedRoute`
+users roster (four at merge).
+
+**Residual risks:** the flag-order deviation from AD-56's sentence (`deferred:` item 1, for the
+lead under Rule 20). The last-holder route legs are pinned in-process only (`deferred:` item 3).
