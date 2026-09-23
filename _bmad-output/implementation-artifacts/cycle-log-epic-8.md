@@ -209,3 +209,8 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T19:38:11Z	Epic 8	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp merge=08bf1ed1 conflicts=none changed=docs_only code_paths_changed=0
 2026-09-23T19:40:13Z	Epic 8	epic_context_compiled	sha=pending reason=planning_artifact_newer(AD-8;8.8_done;8.9_focus) model=opus lines=76
 2026-09-23T19:40:13Z	Story 8.9	stage_spawned	stage=plan spawn_at=2026-09-23T19:40:13Z model=opus agent_name=8-9-community-plan-1 cycle_iteration=1
+2026-09-23T20:04:27Z	Story 8.9	story_created	spawn_at=2026-09-23T19:40:13Z model=opus path=_bmad-output/implementation-artifacts/spec-8-9-plain-iris-community-verification.md build_status=ready-for-dev spec_bytes=25813 warnings=oversized epic_context=reused probe=ocupilot-b-community(up+down_by_plan_stage)
+2026-09-23T20:04:27Z	Epic 8	amendment	file=ARCHITECTURE-SPINE.md rows=Stack(IRIS_Community_installed+smoked_in_CI),CI(browser_named;images_installs+smokes) tier=lead_rule20 memlog=151
+2026-09-23T20:04:27Z	Story 8.9	spec_validated	service_introducing=false integration_ac=present(form_reads_credentialsRungAvailable) adr_constrained_acs=AD-12,AD-17,AD-27,AD-38,AD-39,AD-42,AD-45 decision_dependency=none sections_created=Spec_Change_Log(lead_rulings) owned_ledger=none mutates_shared_runtime=true throwaway=ocupilot-b-ci+own_community_throwaway filed=DW-1574 rulings=AC2_env_mode_approved,suite_job_out,CLAUDE.md_footprint_extension model=claude-opus-5-5-1m
+2026-09-23T20:04:27Z	Story 8.8	ci_resolved	story=8.8 run=35910575945 head=fe483e18 result=success resolved_at=next_implement(rule28)
+2026-09-23T20:04:41Z	Story 8.9	stage_spawned	stage=implement spawn_at=2026-09-23T20:04:41Z model=opus agent_name=8-9-community-implement-1 cycle_iteration=1

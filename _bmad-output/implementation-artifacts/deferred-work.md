@@ -6264,3 +6264,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-8-the-device-editor.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: mutation dropping publish in device-form.store stayed green on a redeployed bundle (grep-confirmed); device-form.store.spec pins the publish
 - 2026-09-23T19:11:10Z status=wontfix-accepted owner=8-8-the-device-editor by=harvest note=reopen_if=a device create or edit is published but the list shown alongside it does not update
+
+### DW-1574: The ObjectScript suite is not portable to plain IRIS Community: 19 failures in 8 classes whose fixtures assume the IRIS for Health layout (HSCUSTOM, HSLIB, a non-USER install namespace), and CI runs no suite there
+- source: spec-8-9-plain-iris-community-verification.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Plan-time run 2026-09-23 on a plain Community throwaway, ci-runner --namespace USER: 205 classes, 1798 tests; ErrorDelete, ErrorLogDenial, FixtureNamespace, ErrorLog, Namespaces by assertion text; MgmntPortWire, MgmntPortDenial, TurnContext (inference)
+- 2026-09-23T20:04:06Z status=routed owner=range-end-cleanup by=lead note=Story 8.9 spec gate: install, admin API and smoke are verified on plain Community in CI; a plain-Community suite job (~16 min) needs portable fixtures first; not floor-blocking

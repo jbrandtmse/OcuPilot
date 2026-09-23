@@ -655,7 +655,7 @@ Verified against the live instance and the web on 2026-09-09.
 
 | Name | Version |
 | --- | --- |
-| InterSystems IRIS for Health Community | 2026.2 (build 221U) — floor for the project, the only version tested |
+| InterSystems IRIS for Health Community | 2026.2 (build 221U) — floor for the project, where the full suite runs; plain IRIS Community 2026.2 is installed and smoked in CI, landing in `USER` (Story 8.9) |
 | Angular | 22.1.x (v22.0.0 released 2026-06-03; zoneless default since v21) |
 | Angular Material + CDK | 22.x |
 | Node.js | `^22.22.3 \|\| ^24.15.0 \|\| ^26.0.0` — Node 20 is not supported by Angular 22 |
@@ -667,7 +667,7 @@ Verified against the live instance and the web on 2026-09-09.
 | Monitoring API | `/api/monitor` |
 | Management API | `/api/mgmnt` v2 |
 | Client test runners | `node --test` over `ui/tools/*.test.mjs` for the framework-free layer; `@angular/build:unit-test` on vitest + jsdom for components (jsdom computes no layout); puppeteer driving a pinned headless Chrome for anything about geometry, run against a throwaway container (`npm run test:browser`) |
-| CI | GitHub Actions on `ubuntu-24.04`: `gates` once per `engines.node` band floor, `instance` against a throwaway container, `images` on both stock Community editions. Every `uses:` action is pinned to a full commit SHA |
+| CI | GitHub Actions on `ubuntu-24.04`: `gates` once per `engines.node` band floor, `instance` and `browser` each against their own throwaway container, `images` compiling, installing, drift-checking `/api/admin` and smoking on both stock Community editions. Every `uses:` action is pinned to a full commit SHA |
 | CI tool pins | uv `0.12.9`; Python `3.12.14` (`.python-version`); `markdownlint-cli2@0.23.2`; puppeteer `24.24.0` |
 | Docker Compose | image `intersystems/irishealth-community` pinned to an explicit 2026.2 tag (not the floating `latest-cd`, per AD-27), durable `%SYS` at `/durable/iris`; a one-shot `durable-init` service makes the bind-mounted `/durable` writable by the image's uid 51773 before `iris` starts, because a Linux bind mount keeps host ownership |
 
