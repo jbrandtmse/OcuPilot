@@ -100,3 +100,8 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T07:29:01Z	Story 7.2	pushed	sha=2660e46 ci=pending run=35831854830
 2026-09-23T07:29:01Z	Epic 7	amendment	file=DESIGN.md:1039 story=7.2 tier=1 what=command-bar_50px_is_a_minimum_and_wraps
 2026-09-23T07:29:01Z	Story 7.2	stage_spawned	stage=code-review spawn_at=2026-09-23T07:29:01Z model=opus agent_name=7-2-user-enable-disable-delete-password-and-roles-code-review-2 cycle_iteration=2
+2026-09-23T07:51:15Z	Story 7.2	ci_resolved	story=7.2 run=35831854830 result=success resolved_at=cr head=2660e46 jobs=8/8
+2026-09-23T07:51:15Z	Story 7.2	cr_complete	spawn_at=2026-09-23T07:29:01Z model=opus resolved=4 fixed_at_source=4 by_design=0 wontfix_theoretical=0 routed=0 escalated=0 decision_pending=0 deferred=0 dismissed=21 high=0 med=1 low=3 rows=0 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done cycle_iteration=2 scope=584172a..HEAD
+2026-09-23T07:51:15Z	Story 7.2	ledger_adjudicated	owned=2 resolved=1 reowned=1 terminal=0 resolved_ids=DW-1486 reowned_ids=DW-1499(residual_to_7-8) set_aside=DW-1520(decision-pending) model=claude-opus-5-5
+2026-09-23T07:51:15Z	Story 7.2	ledger_routed_planned	story=7-8-terminate-suspend-and-resume-a-process entries=1 excess=0 by=adjudication ids=DW-1499
+2026-09-23T07:51:15Z	Story 7.2	smoke_complete	method=api result=pass iterations=1 defects_caught=0 evidence=smoke.sh_ocupilot-ci_PASSED;probe_account_OcuSmoke72:disable/enable/add-role_%SQL/remove-role/set-password_untrimmed(new_pw_200,old_pw_401)/delete_all_200;undeclared_value_400_TOOL.ARGUMENTS;delete/disable__SYSTEM_403_SYSTEMACCOUNT;add-role_%Operator_403_PRIVILEGEGRANT(the_pre-Epic-8_predicate,no_refusal_of_this_storys_own) model=claude-opus-5-5

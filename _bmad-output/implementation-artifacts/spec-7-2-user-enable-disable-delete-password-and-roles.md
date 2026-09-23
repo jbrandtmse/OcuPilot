@@ -415,6 +415,15 @@ Rejected:
   never by relaxing the assertion, and run `panel.browser-spec.mjs` plus the story's own browser
   specs against a rebuilt, redeployed bundle.
 
+**Rework re-review (2026-09-23, code review 2):** the CI item is fixed at its cause (the bar wraps),
+`:796` "and the content does not scroll" is unchanged, and its mutations are recorded. No high.
+
+- [x] [Review][Patch] `med` The wrap rule made the refresh chip start a line of its own: on Databases at the docked 832 the paused sentence grew the bar from 50 to 90px each time a proposal arrived, and the chip moved to the left edge (measured). Fixed with `.ocu-command-bar > .ocu-command-bar-refresh` (zero flex basis, `max-width: max-content`), plus a new test in `panel.browser-spec.mjs` [ui/src/styles/_components.scss:5357]
+- [x] [Review][Patch] `low` The new SCSS comment said no narrower treatment of the bar was published; it now cites DESIGN.md `command-bar` [ui/src/styles/_components.scss:5340]
+- [x] [Review][Patch] `low` DESIGN.md's `command-bar` token still read `height`; it now reads `min-height` [DESIGN.md:327]
+- [x] [Review][Patch] `low` Neither "no control sits past its right edge" nor "the list starts below it" had been seen to fail; mutation lines are now in `## Verification` [ui/browser/panel.browser-spec.mjs:801]
+- Rejected: other lists not measured at 640 (low: one generic rule, pinned on Users); the chip on row-action bars (false: the three refreshing screens declare no row actions); DW-173's comment and test out of date (false after the chip patch: measured clipped on one line); `Math.max` of no items and a null bar (false: the filter always renders, and a missing bar throws); the list-below check compared with the bar box (false: an overlap by controls fails assertion one); the wrap not asserted docked, or not asserted as a precondition (low); the 88px figure (low, spec prose); the reason tooltip overflowing on hover (pre-existing, outside the rework); the dead original `height`, DW-1522's `by=`, and `last_updated` (low, no harm); only four browser specs run by the implement stage (Rule 29 by policy; CI run 35831854830 pending; this review also ran `process-control`, `task-resume` and `databases`); the spec-text items (deferred item 5, the review tally, the checkbox before CI, the triage log, the Spec Change Log entry for the DESIGN.md amendment: spec edits, left to the lead).
+
 ## Spec Change Log
 
 - 2026-09-23, lead spec gate: intent gap 1 ratified as recommended (b) -- `epics.md` Story 7.2 AC4
@@ -425,6 +434,10 @@ Rejected:
 
 - 2026-09-23, lead: AC4 rewritten to the owner's reversal (offered, no refusal of this story's own);
   re-opened for one rework iteration on CI run 35828196362's `browser` failure.
+
+- 2026-09-23, lead: DESIGN.md `command-bar` amended under Rule 5 tier-1 (50px is a minimum and the
+  bar wraps); the rework re-review changed the token to `min-height`. `deferred:` item 5 is closed as
+  DW-1522.
 
 ## Review Triage Log
 
@@ -553,6 +566,8 @@ Review patches: mutation: `this.signedIn()` dropped at the three surfaces → th
 Code review patches: mutation: `If 'tHeldGrants Quit` removed from `Prohibited.RemovesAdministration` → `ProhibitedByEffect.TestEveryAccountArmRefusesEveryRemovalEffect` red on the new service-account ordinary-add control alone; mutation: the empty-value `Continue` removed from `Operation.SecretBody` → `ToolWrite.TestTheUserPasswordToolSendsOnlyItsDeclaredSecret` red on "an empty password is not sent". Each applied to the `/tmp/ocupilot-ci/src` copy only, loaded, observed red, then the copy re-synced from the worktree (`diff -r` identical) and reloaded.
 
 Rework iteration 1 (CI item): mutation: the appended `.ocu-command-bar` rule removed, bundle rebuilt and redeployed → `panel.browser-spec.mjs` "the 640px content minimum ..." red alone (10/11, "and the content does not scroll", 898 !== 640); mutation: `height: auto` removed from that rule, rebuilt and redeployed → the same leg red on "the command bar grows to hold every line its six row actions wrap onto" (bar bottom 187 against controls at 217), content scroll still 640.
+
+Rework re-review: mutation: `.ocu-command-bar > .ocu-command-bar-refresh` removed, rebuilt and redeployed → the new "a refreshing list keeps its command bar on one line ..." red (height 90, expected 50); mutation: `app-command-bar { height: var(--ocu-command-bar-height) }` appended → the 640 leg red on "and the list starts below it" alone (list at 187, bar bottom 225); mutation: `.ocu-command-bar { overflow: hidden; flex-wrap: nowrap }` appended → the 640 leg red on "and no control sits past its right edge" alone (controls to 946, bar edge 688).
 
 Every mutation was reverted and the original reloaded (or the bundle rebuilt and redeployed);
 `git diff --stat` read the same before and after.

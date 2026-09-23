@@ -4353,7 +4353,8 @@ So that I can recover an instance without a terminal.
 
 - DW-1155: the fault banner and its control are re-created while a screen refreshes, so a click in that instant is lost and UX-DR52's non-dismissible banner is not honoured; the fix is framework-level (ledger; routed by merge_gate 2026-09-18)
 - DW-1189: the fault banner may clear and be re-raised during initial settle when every screen read is refused, a visible flicker beside DW-1155's refresh-tick case (ledger; routed by cr 2026-09-19)
-- DW-1486 (**floor-blocking**): `PROHIBITED.SERVICEACCOUNT` is gated inside `Disables()` while the same class scopes `LASTALLHOLDER` by effect, so a Roles-only delta stripping `%All` from the serving account is permitted; moving the arm out of `Disables()` needs an AD-10 amendment under Rule 20 (ledger; routed by merge_gate 2026-09-22) [Re-owned to Story 7.2 on 2026-09-23 by the orchestrator: one restructure with 7.2's delete hole. It returns here only if 7.2's adjudication re-owns a residual.]
+- DW-1486 (**floor-blocking**): `PROHIBITED.SERVICEACCOUNT` is gated inside `Disables()` while the same class scopes `LASTALLHOLDER` by effect, so a Roles-only delta stripping `%All` from the serving account is permitted; moving the arm out of `Disables()` needs an AD-10 amendment under Rule 20 (ledger; routed by merge_gate 2026-09-22) [Re-owned to Story 7.2 on 2026-09-23 by the orchestrator: one restructure with 7.2's delete hole. It returns here only if 7.2's adjudication re-owns a residual.] [Resolved by Story 7.2, 2026-09-23: no residual.]
+- DW-1499: Prohibited.ReasonFor's OCUPILOTPROCESS and SYSTEMPROCESS sentences still say the change is not something the agent can propose; 7.8's process row actions are the first screen caller to reach them (AD-53) (ledger; routed by adjudication 2026-09-23)
 
 ### Story 7.10: The remaining application error delete scopes
 

@@ -5337,14 +5337,24 @@ app-data-table {
 // Every row-overflow-menu item is also on the command bar (EXPERIENCE.md, `command-bar`), so a
 // list with several row actions -- the Users list's six -- is wider than one line of a 640px
 // content column.
-// The bar wraps onto a further line rather than force the column wider, the rule DESIGN.md gives
-// Home's tiles; no narrower treatment of this bar is published. While one line holds it the bar
-// is still `{spacing.command-bar-height}`: the padding and the 34px border box of a control fill it
-// exactly, and `border-box` keeps the padding inside that minimum.
+// The bar wraps onto a further line rather than force the column wider (DESIGN.md `command-bar`:
+// 50px is a minimum, and the bar grows to hold the lines it wraps onto). While one line holds it
+// the bar is still `{spacing.command-bar-height}`: the padding and the 34px border box of a control
+// fill it exactly, and `border-box` keeps the padding inside that minimum.
 .ocu-command-bar {
   box-sizing: border-box;
   flex-wrap: wrap;
   height: auto;
   min-height: var(--ocu-command-bar-height);
   padding-block: var(--ocu-space-2);
+}
+
+// The auto-refresh chip never starts a line of its own. A wrapping row breaks lines on each item's
+// base size, and the chip's label is the paused sentence while a proposal awaits confirmation, so at
+// its content size the chip would move the bar onto a second line each time a proposal arrives. A
+// zero base size keeps it on the line it shares; it then takes that line's free space up to its
+// content width, ellipsizing inside it as before (DW-173), and still ends at the right edge.
+.ocu-command-bar > .ocu-command-bar-refresh {
+  flex: 999 1 0;
+  max-width: max-content;
 }

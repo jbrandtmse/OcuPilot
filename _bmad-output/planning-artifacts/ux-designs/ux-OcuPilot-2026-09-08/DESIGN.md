@@ -324,7 +324,7 @@ components:
     current-typography: '{typography.display}'
     current-color: '{colors.on-surface}'
   command-bar:
-    height: '{spacing.command-bar-height}'
+    min-height: '{spacing.command-bar-height}'
     gap: '{spacing.2}'
     filter-width: 220px
     stamp-typography: '{typography.caption}'
