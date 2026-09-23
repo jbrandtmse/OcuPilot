@@ -222,3 +222,7 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T18:22:34Z	Story 7.10	protocol_violation	stage=implement depth=1 agent=7-10-the-remaining-application-error-delete-scopes-implement-1 violation=interim_return_while_its_full_sweep_ran consequence=spec_not_final,tree_dirty detected_by=lead_reading_the_return outcome=pending:watch_the_sweep_and_the_tree
 2026-09-23T18:25:50Z	Story 7.10	stage_respawn_decided	reason=implement-1_returned_early;its_in-IRIS_sweep_ran_runs_8426-8610(164_classes)_and_finished_18:24:05Z;tree_quiet;WIP_committed spec_status=in-review
 2026-09-23T18:25:50Z	Story 7.10	stage_spawned	stage=implement spawn_at=2026-09-23T18:25:50Z model=opus agent_name=7-10-the-remaining-application-error-delete-scopes-implement-2 cycle_iteration=2
+2026-09-23T18:37:48Z	Story 7.10	dev_complete	spawn_at=2026-09-23T18:25:50Z model=opus build_sha=c4717af9 baseline_revision=b23f3d5 review_loop_iteration=0 followup_review_recommended=false deferred=3 harvested=DW-1567,DW-1568,DW-1569 cycle_iteration=2 tiers=sweep_recorded_159cls/1436/0+22cls_rerun/240/1(DW-1554),smoke_49/49,tools_1330/0,components_906/0,browser_9/9
+2026-09-23T18:37:48Z	Story 7.10	pushed	sha=c4717af9 ci=pending run=35903741544
+2026-09-23T18:37:48Z	Story 7.10	adr_verifications_complete	result=none_required model=claude-opus-5-5
+2026-09-23T18:37:48Z	Story 7.10	stage_spawned	stage=qa spawn_at=2026-09-23T18:37:48Z model=sonnet agent_name=7-10-the-remaining-application-error-delete-scopes-qa-1 cycle_iteration=1

@@ -6213,3 +6213,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-8-terminate-suspend-and-resume-a-process.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: screen-action-handler confirmPending sends {action,id}; AD-53 gives the screen caller no proposal or fingerprint. Needs the probe to end and the OS to hand its pid to a new IRIS process within the dialog's lifetime (inference: needs a pid wrap).
 - 2026-09-23T16:59:26Z status=wontfix-theoretical owner=7-8-terminate-suspend-and-resume-a-process by=cr note=real if the throwaway or an operator instance shows pid reuse within seconds (small pid_max or very high process churn)
+
+### DW-1567: The agent's absent-scope refusal is 400 TOOL.ARGUMENTS, not the matrix's 404 LOG.DATE or LOG.ERROR
+- source: spec-7-10-the-remaining-application-error-delete-scopes.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Kernel/Proposal/Mint.cls maps any port 404 to TOOL.ARGUMENTS and is contended with Epic 8; the screen route answers 404
+- 2026-09-23T18:37:47Z status=wontfix-accepted owner=7-10-the-remaining-application-error-delete-scopes by=harvest note=reopen_if=Mint.cls is reconciled after the Epic 7/8 merge and still maps a port 404 to 400
+
+### DW-1568: A number reused within the same second as the error it replaces is not detected by the Time-carrying fingerprint
+- source: spec-7-10-the-remaining-application-error-delete-scopes.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: emptying a date restarts its numbering (measured); the fingerprint pairs each number with its Time at one-second resolution
+- 2026-09-23T18:37:47Z status=wontfix-theoretical owner=7-10-the-remaining-application-error-delete-scopes by=harvest note=real only if a date is emptied and a new error takes the same number inside one second of the old one's Time
+
+### DW-1569: The ?ns= leg's 'HSCUSTOM untouched' half cannot fail unless HSCUSTOM holds an error with the same date and number as the seed
+- source: spec-7-10-the-remaining-application-error-delete-scopes.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: the test seeds USER; the intent excludes seeding HSCUSTOM
+- 2026-09-23T18:37:47Z status=wontfix-accepted owner=7-10-the-remaining-application-error-delete-scopes by=harvest note=reopen_if=a later story seeds HSCUSTOM's error log in the same test class
