@@ -30,7 +30,10 @@ server code — the rest is UI and an agent layered over an API IRIS already exp
 bring-your-own-model: OpenAI, Anthropic, Google Gemini, or any OpenAI-compatible endpoint,
 configured on first login. OcuPilot installs as one IPM module, and the Docker Compose
 workspace in this repo self-installs it on start; it runs on IRIS Community and IRIS for Health
-Community.
+Community. On plain IRIS Community, which has no `HSCUSTOM` namespace, the container install lands
+in `USER`. In a namespace that is not interoperability-enabled there is no credential store, so the
+agent definition form asks for the environment variable the key is read from instead of the API
+key itself.
 
 **The OpenAI-compatible option is the privacy option.** A small model served on your own network —
 Ollama, vLLM or LM Studio on the instance's host or beside it — is configured by declaring the
@@ -458,7 +461,10 @@ sh scripts/smoke.sh --container ocupilot-fresh --user _SYSTEM --password SYS
 ```
 
 It takes `--container NAME`, or `--compose-file FILE [--project NAME]`, or neither (an instance
-with `iris` on the PATH). Its assertions are **not** in the shell script: they live in
+with `iris` on the PATH). The namespace is `--namespace NS`, else the instance's
+`OCUPILOT_NAMESPACE`, else the instance's own answer: `HSCUSTOM` if it exists, else `USER`, the
+way the container install resolves it. An instance with neither is refused by name, exit 1,
+before any session opens in a namespace that does not exist. Its assertions are **not** in the shell script: they live in
 `OcuPilot.Install.Smoke`, inside the instance, which is what makes "the same script with the same
 assertions" literally true rather than a claim about two implementations that happen to agree.
 The script locates an instance, runs that class, prints what it returns and maps its verdict to
@@ -486,13 +492,14 @@ indistinguishable from one that passed, and a smoke script is exactly the gate a
 ### What CI runs (Story 1.17)
 
 [.github/workflows/ci.yml](.github/workflows/ci.yml) is the first place in this repository where a
-gate is run rather than described. Four jobs, split by what each needs:
+gate is run rather than described. Five jobs, split by what each needs:
 
 | Job | Needs | Runs |
 | --- | --- | --- |
 | `gates` | a checkout, Node and uv | `npm ci`, `npm run build`, `npm test`, `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py`, `bash scripts/lint-docs.sh` — **once per Node band** `ui/package.json` declares (`22.22.3`, `24.15.0`, `26.0.0`, each band's floor), `fail-fast: false`. `ui/tools/ci.test.mjs` holds that list equal to `engines.node` in both directions, so a declared band CI never runs is red |
-| `instance` | a throwaway container | first `scripts/ci-durable-ownership.sh` (the Linux durable-directory reproduction, on named volumes), then the client build, `scripts/ci-throwaway.sh up`, `scripts/wait-readiness.sh`, `ui/tools/ci-runner.mjs`, `scripts/smoke.sh`, `npm run test:browser`, then — on failure only — `scripts/ci-throwaway.sh logs`, and always `scripts/ci-throwaway.sh down` |
-| `images` | both stock Community editions at the pinned `2026.2` | `scripts/ci-image-compile.sh` per edition: `src/OcuPilot/` compiles, and the admin API reports v2 through `AdminPort`'s own version read — a compile and a version read, not an HTTP request (NFR-13) |
+| `instance` | a throwaway container | first `scripts/ci-durable-ownership.sh` (the Linux durable-directory reproduction, on named volumes), then the client build, `scripts/ci-throwaway.sh up`, `scripts/wait-readiness.sh`, `ui/tools/admin-spec.mjs`, `ui/tools/ci-runner.mjs`, `scripts/smoke.sh`, then — on failure only — `scripts/ci-throwaway.sh logs`, and always `scripts/ci-throwaway.sh down` |
+| `browser` | a second throwaway container, on 52780/1979 | the client build, the pinned headless Chrome, `scripts/ci-throwaway.sh up`, `scripts/wait-readiness.sh`, `npm run test:browser`, then the same capture and teardown. Runs beside `instance` rather than after it |
+| `images` | both stock Community editions at the pinned `2026.2` | per edition, `scripts/ci-image-compile.sh` first: `src/OcuPilot/` compiles, and the admin API reports v2 through `AdminPort`'s own version read. Then the client build and a throwaway on that edition (52781/1980): `scripts/wait-readiness.sh`, `ui/tools/admin-spec.mjs` over HTTP, and `scripts/smoke.sh` with no `--namespace`, so plain IRIS Community installs, drift-checks and smokes in `USER` (NFR-13) |
 | `package` | two throwaway containers with **no network at all** | the client build, then `scripts/ci-ipm-archive.sh`: the distributable IPM archive is built on one fresh instance and loaded on a second, which `scripts/smoke.sh` then reports on. Runs beside `instance` rather than after it |
 
 **The ObjectScript suite runs one class at a time.** `ui/tools/ci-runner.mjs` drives

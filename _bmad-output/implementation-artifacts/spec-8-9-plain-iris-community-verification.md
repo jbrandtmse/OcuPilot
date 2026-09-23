@@ -2,7 +2,8 @@
 title: 'Story 8.9: Plain IRIS Community verification'
 type: 'feature'
 created: '2026-09-23'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '068eb924c345066d38b2d47b716fafde9942f05f'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -228,6 +229,28 @@ Before editing a ⚠ file, run `git fetch origin && git show origin/OCU-1-epic7:
 
 ## Review Triage Log
 
+### 2026-09-23 — Review pass
+
+- verdicts: 17 findings — high 0, medium 2 (one root cause), low 7, false 8, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` (verification-gap) `HandleCreate`/`HandleUpdate`'s swap to `ValidateDefinition` runs in no test — added `RouterFixture` create/update routes and two `CredentialRungOffer` legs through the inherited handlers (422, violation, nothing stored, row keeps `env`; env create 201); mutation run 235 red.
+  - `[low]` `[patch]` (verification-gap) the Test connection leg could not fail — the store is now handed a key directly, so the guard is what the leg tests; mutation red.
+  - `[low]` `[patch]` (verification-gap) env-mode violation kept across a provider change is untested — one page leg added; mutation red.
+  - `[low]` `[patch]` (verification-gap) Integration AC and AC2's unchanged half had no `mutation:` line — four mutations applied, observed red, lines recorded.
+  - `[low]` `[reject]` (verification-gap) `HandleTest` lacks the check, so testing a stored `creds` row before Save in env mode fails — the route tests the stored row and answers the existing rung-unavailable sentence, which is accurate; the spec scopes the check to create and update.
+  - `[false]` `[reject]` (verification-gap) AC1/AC3 not yet run in CI — pending the push by design; the plain-Community path ran locally below.
+  - `[medium]` `[patch]` (intent-alignment) create/update refusal not exercised at the route surface — same root cause as the first row, closed there.
+  - `[false]` `[reject]` (intent-alignment) env create 201 exercised only at the seam — the new create leg answers 201 through the handler.
+  - `[false]` `[reject]` (intent-alignment) no real non-interop namespace or browser run — the matrix places rung-absent at the seam, and the Integration line pins the served shape by the page spec and the real value by the HTTP leg.
+  - `[false]` `[reject]` (intent-alignment) CI steps not yet executed — as above.
+  - `[low]` `[reject]` (intent-alignment) smoke copies `container-start.sh`'s HSCUSTOM-else-USER choice with no cross-file test — unlikely to drift in use; a cross-file roster is more than a direct correction.
+  - `[false]` `[reject]` (intent-alignment) the one-fact test's `--container` loop now skips the images smoke line — every pre-existing gate still faces the unchanged assertion; the new line is held by stricter images assertions.
+  - `[false]` `[reject]` (intent-alignment) `package` has no reserved-ports step — "every job" means the throwaway-owning jobs that reserve ports; `package` owns none on these ports.
+  - `[low]` `[reject]` (intent-alignment) the HTTP leg asserts `true` unconditionally — the class header states it needs an interoperability-enabled install namespace, which both CI editions provide.
+  - `[low]` `[reject]` (intent-alignment) capture/teardown run against a never-created directory when `ci-image-compile.sh` fails — the same shape as the instance and browser jobs, on a job already red.
+  - `[false]` `[reject]` (intent-alignment) `AGENT.ENVVAR.REQUIRED` is played by the stub — the server rule is pre-existing and pinned elsewhere; the leg pins the form's rendering.
+  - `[false]` `[reject]` (intent-alignment) the leave guard checked through `formDirty.dirty()` — the guard reads that service; the existing legs use the same observation.
+
 ## Design Notes
 
 **Governing ADs:** AD-12, AD-17, AD-18, AD-19, AD-27, AD-35, AD-38, AD-39, AD-42, AD-45.
@@ -295,27 +318,47 @@ Stateful checks run on slot B's throwaway `ocupilot-b-ci` (web 52777, super 1976
 ### Pinning tests (Rule 19; record `mutation: <change> → <red test>` for each)
 
 - AC1: the ci.test smoke-stub leg "no `--namespace`, only `USER`". Mutation: restore `NAMESPACE="HSCUSTOM"` as the fallback.
+  - mutation: `[ -n "$NAMESPACE" ] || NAMESPACE="HSCUSTOM"` restored in `smoke.sh` → red: "Story 8.9 AC1: with no --namespace, smoke runs in USER..." and "...neither HSCUSTOM nor USER is refused by name..."
 - AC2 server: `CredentialRungOffer`. Mutation: make `CredTypeRefusal` answer `""` always.
+  - mutation: `Quit ""` as `CredTypeRefusal`'s first line, whole tree reloaded on `ocupilot-b-ci` (the `DefinitionsProbe` copy confirmed answering `""`) → red: `TestAnUnreachableRungIsPublishedAndRefused`, `TestTheRefusalJoinsTheRuleViolations` (run 230)
+  - mutation: `HandleCreate` and `HandleUpdate` call `AgentRules.Validate` instead of `ValidateDefinition`, recompiled with subclasses → red: `TestTheCreateHandlerRefusesCredsWhereTheRungIsUnreachable`, `TestTheUpdateHandlerRefusesCredsWhereTheRungIsUnreachable` (run 235)
 - AC2 client: the page-spec env-mode create leg. Mutation: render the API-key field whatever the flag says.
+  - mutation: the page's `envMode` getter answers `false` → red: the env-mode create, provider-change and loaded-`creds` legs
+  - mutation: `onNoKey` restores `heldCredType` unfiltered → red: "...a provider change and an unticked No API key restore `env`..." (stored keyless row)
+  - mutation: `record?.['credentialsRungAvailable'] === true` in `loadProviders` (an absent flag turns env mode on) → red: "...where the rung is reachable, or the flag is absent, the form is unchanged" and 11 existing key-field legs
+  - mutation: drop `&& !this.envMode()` from `testConnection`'s credential post → red: "...Test connection posts no credential, even with a key held"
+  - mutation: delete the env-mode `continue` in `setProvider`'s violation clear → red: "...a refused variable keeps its reason across a provider change until blurred"
+- Integration (Rule 1): the served flag, read by the form.
+  - mutation: delete `ProvidersBody`'s `credentialsRungAvailable` `%Set`, recompiled with subclasses → red: `TestAnUnreachableRungIsPublishedAndRefused`, `TestAReachableRungIsPublishedAndAccepted`, `TestTheProvidersRouteCarriesTheInstanceAnswer` (run 236)
+  - mutation: `loadProviders` reads `credentialsRungAvailableX` → red: all five env-mode page legs
 - AC3: the ci.test images-shape assertion. Mutation: delete the images job's `admin-spec.mjs` step.
+  - mutation: images `admin-spec.mjs` step deleted from `ci.yml` → red: "the throwaway's port and name are one fact..." plus the three `run:`-equality tests
 - CI shape: the capture-before-teardown loop. Mutation: drop the images teardown's `if: always()`.
+  - mutation: images teardown's `if: always()` removed → red: "no step can fail without failing the job" (the always/teardown pairing; the capture loop now also covers `images`)
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- **Planned.** The spec is ready for development; nothing is implemented.
-- **The probe** ran on 2026-09-23, on its own throwaway `ocupilot-b-community` (52780/1979, `intersystems/iris-community:2026.2`). It was brought up and torn down by this stage.
-  - Install fell back to `USER` and completed, and the container was healthy.
-  - `/api/admin` answered v2 through `AdminPort.VerifyInstance`, `admin-spec.mjs` was clean, and HTTP GET answered 200.
-  - Smoke passed 47 of 47 with `--namespace USER`. Without it, smoke answered "Access Denied" (defect, task 1).
-  - `USER` is interoperability-enabled on the stock image. In a non-interop namespace, the Definition form still offers the API-key field (defect, tasks 6-12).
-  - The full suite in `USER` recorded 19 failures in 8 classes, all read as fixture assumptions.
-- **For the lead's ruling:**
-  - the AC2 design, env mode in the form;
-  - the two spine rows (Rule 20);
-  - whether a plain-Community suite job is wanted;
-  - `CLAUDE.md` as a footprint extension.
-
-  Contended paths: `strings.ts` and EXPERIENCE.md, append only.
+- **Implemented.** Tasks 1-14. Smoke resolves `--namespace`, then `OCUPILOT_NAMESPACE`, then the instance's `%SYS` answer (HSCUSTOM, else USER), and refuses by name when neither exists. The `images` job installs, drift-checks and smokes each edition on its own throwaway (52781/1980), in parallel with `instance` and `browser` (no `needs:`). The providers route publishes `credentialsRungAvailable`; create and update refuse `creds` with `AGENT.CREDTYPE.UNAVAILABLE` where the rung is unreachable; the form runs in env mode on an explicit `false`.
+- **Files.**
+  - `scripts/smoke.sh`: the namespace resolution and its refusal.
+  - `.github/workflows/ci.yml`: the images install steps, the three-port reservation in all three jobs, the five-job header.
+  - `ui/tools/ci.test.mjs`: the new gates, `images` in the capture and Node-pin loops, the images throwaway in the one-fact test, three smoke stub legs.
+  - `scripts/ci-image-compile.sh`, `README.md`, `CLAUDE.md`: the deferral and four-job sentences corrected at origin.
+  - `src/OcuPilot/Api/Error.cls`: the new code, sentence, mapping and roster entry.
+  - `src/OcuPilot/Api/Definitions.cls`: `ProvidersBody`, `CredTypeRefusal`, `ValidateDefinition`, used by create and update.
+  - `src/OcuPilot/Test/CredentialRungOffer.cls` (new, 6 tests), `src/OcuPilot/Test/RouterFixture.cls` (create and update fixture routes to `DefinitionsProbe`), `src/OcuPilot/Test/AgentViolation.cls` (code count 31 to 32).
+  - `ui/src/app/areas/agent/definition-form.{store,page,page.spec}.ts`: env mode and six legs.
+  - `ui/src/app/core/strings.ts`, EXPERIENCE.md: two keys and one Fixed strings row, appended.
+- **Additions beyond the task list.** The images teardown passes `--image ${{ matrix.image }}`, so the clean-up container uses the image the leg pulled. `HandleTest` is unchanged (the spec names create and update).
+- **Review.** 17 findings: 4 entries patched (1 medium: handler-level create/update legs; 3 low: a falsifiable Test connection leg, an env-mode violation leg, four recorded mutations), 0 deferred, the rest rejected with reasons in the triage log. `followup_review_recommended: false` (patched: high 0, medium 1, low 3).
+- **Verification.**
+  - Full ObjectScript sweep on `ocupilot-b-ci` after a whole-tree reload: 206 classes, 1,817 tests, 0 failed. After the fixture's route reorder (a rule-ordering fix, no behavior change): `CredentialRungOffer` 6/6 (run 443), `AgentConnection` 18/18 (run 444).
+  - `npm run build` clean; `npm test` 1,329 tool and 927 component tests pass; `check-objectscript.py` 0 problems over 696 files; `lint-docs.sh` 0 problems.
+  - Plain Community, 2026-09-23, `ocupilot-b-community` (52780/1979, `intersystems/iris-community:2026.2`), brought up and torn down by this stage: install resolved to `USER` (`STARTPATH-OK`), readiness `installed`, `admin-spec.mjs` clean (185 paths, 184 common, 0 method differences), `smoke.sh` with no `--namespace` 47/47 PASSED, exit 0. `ci-image-compile.sh` on the same image compiled into `USER` and read admin API version 2.
+  - Every `mutation:` line under `## Verification` was applied, observed red and reverted; the tree and `ocupilot-b-ci` hold the reverted code.
+- **CI wall clock.** Before: run `35907576233`, 21m00s (critical path `browser` 20m55s; images legs 0m51s and 1m48s). The images legs first run on the next push; the lead measures.
+- **Shared and roster files touched.** `src/OcuPilot/Test/AgentViolation.cls` (roster count 32; Epic 7 adding a code conflicts here at merge), `src/OcuPilot/Test/RouterFixture.cls` (two fixture routes), `ui/src/app/core/strings.ts` and EXPERIENCE.md (contended, append-only; union merge with Epic 7, whose copies end at `:1488` and `:437`), `CLAUDE.md` (footprint extension approved by the lead).
+- **Residual risk.** The images install steps are proven locally, not yet in CI. Smoke's HSCUSTOM-else-USER choice is a second copy of `container-start.sh`'s, held by no cross-file test.

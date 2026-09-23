@@ -419,6 +419,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "Terminal" · "Spooling device" · "Magnetic tape drive" · "Cartridge tape drive" · "Interprocess communication" · "Other" | the device editor's type choices (Story 8.8), naming the six types the instance stores as TRM, SPL, MT, BT, IPC and OTH; Other is the default a new device starts with, as on the classic page |
 | "Show device prompt" · "Use this device automatically when it is the current device" · "Use this device automatically with predefined settings" | the device editor's prompt choices (Story 8.8), stored as empty, 1 and 2; the first is the default |
 | "change this device" | the action slot the request-refused pattern resolves - "You need <resource> to <action>." - when the device editor's Save of an existing device is refused for privilege (Story 8.8); a create's refusal resolves "create a device" |
+| "Environment variable" · "The key is read from this variable on the instance’s host. Set it there; this form never takes the key." | the Definition form in env mode (Story 8.9, FR-26): where the namespace cannot reach the credentials rung, the environment-variable field and its caption take the API key field's place, and the form sends `credType` `env`. The operator sets the variable on the host; the form holds no key |
 
 ## Component Patterns
 

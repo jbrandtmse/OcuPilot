@@ -2,11 +2,12 @@
 # Compile src/OcuPilot/ on one stock InterSystems Community image and confirm the instance's own
 # administration API reports v2 (Story 1.17, NFR-13, AD-27).
 #
-# **It compiles and probes; it does not install.** The epic defers the plain-Community INSTALL
-# path past the 2026-09-27 floor by owner decision, with the risk of a late failure accepted.
-# What this closes is the half that can be closed now: that nothing in the tree is
-# HealthShare-only, and that the one vendor API OcuPilot depends on is present at the version it
-# depends on. A compile failure here names a class OcuPilot could not build on that edition.
+# **It compiles and probes; it does not install.** It answers, in seconds and before anything
+# else on that edition runs, that nothing in the tree is HealthShare-only and that the one vendor
+# API OcuPilot depends on is present at the version it depends on. A compile failure here names a
+# class OcuPilot could not build on that edition. The install on that edition is the images job's
+# own later steps: a throwaway from scripts/ci-throwaway.sh, readiness, the admin API drift check
+# over HTTP and smoke (Story 8.9).
 #
 # **The version is READ, not inferred from a class name.** The probe calls the port's own
 # OcuPilot.Port.AdminPort.HighestDispatchVersion(AdminPort.AdminApiClass()), which parses %Api.Admin's UrlMap
@@ -17,7 +18,8 @@
 #
 # It stops short of issuing a request: the probe container publishes no port and the image ships
 # no HTTP client. AD-27's "a named probe endpoint answers" is AdminPort's startup duty on a real
-# instance, which the instance job exercises; this job's claim is the version and the compile.
+# instance, which the images job's own throwaway and the instance job exercise; this script's
+# claim is the version and the compile.
 #
 # The container is a throwaway with its own project name, its own container name, no published
 # ports at all and no start hook: it never installs, so it needs no health check and nothing it

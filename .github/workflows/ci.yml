@@ -6,16 +6,19 @@
 # and run by a human at most once; `/epic-cycle` recorded `ci=none` for all sixteen stories
 # before this one.
 #
-# Four jobs, and the split is by what each needs rather than by taste:
+# Five jobs, and the split is by what each needs rather than by taste:
 #
 #   gates     nothing but a checkout, Node and uv. Every mechanical checker, and the build and
 #             the client suite they gate -- once per Node band `ui/package.json` declares, at
 #             each band's floor, because a suite that runs on one Node only proves one Node.
-#   instance  a throwaway container. The ObjectScript suite, the smoke script and the one
-#             real-browser spec, none of which means anything without an installed instance.
-#   images    both stock Community editions at the pinned version: src/OcuPilot/ compiles, and
-#             the admin API reports v2 through the port's own version read, so no
-#             HealthShare-only dependency can go unnoticed (NFR-13).
+#   instance  a throwaway container. The admin API drift check, the ObjectScript suite and the
+#             smoke script, none of which means anything without an installed instance.
+#   browser   a second throwaway container, and the real-browser suite against it, beside
+#             `instance` rather than after it.
+#   images    both stock Community editions at the pinned version: src/OcuPilot/ compiles and the
+#             admin API reports v2 through the port's own version read, then a throwaway on that
+#             edition installs, drift-checks /api/admin and smokes in the namespace the install
+#             resolved, so no HealthShare-only dependency can go unnoticed (NFR-13).
 #   package   two throwaway containers with NO NETWORK AT ALL: the distributable IPM archive is
 #             built on the first and loaded on the second, which smoke then reports on. It waits
 #             on nothing, so it runs beside `instance` rather than after it.
@@ -129,7 +132,7 @@ jobs:
         run: npm run build
       - name: the runner's ephemeral port range
         run: cat /proc/sys/net/ipv4/ip_local_port_range
-      # DW-439's actual fix, not its third retry. 52776 and 52780 sit inside the range a Linux
+      # DW-439's actual fix, not its third retry. 52776, 52780 and 52781 sit inside the range a Linux
       # runner allocates outbound source ports from, so a transient occupant can hold one when
       # compose asks for it -- which exhausted `ci-throwaway.sh`'s three bounded retries on
       # 2026-09-21 and reddened a job that had run no test. Reserving them tells the kernel never
@@ -137,7 +140,7 @@ jobs:
       # own comment rejected moving them, since they are written into CLAUDE.md, parallel.yaml
       # and every runner's spawn prompt -- while removing the race rather than retrying through it.
       - name: reserve the throwaway host ports
-        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780,52781
       - name: bring up a throwaway container
         run: sh scripts/ci-throwaway.sh up
       - name: wait for readiness to report installed
@@ -199,7 +202,7 @@ jobs:
         run: npx puppeteer browsers install chrome
       - name: the runner's ephemeral port range
         run: cat /proc/sys/net/ipv4/ip_local_port_range
-      # DW-439's actual fix, not its third retry. 52776 and 52780 sit inside the range a Linux
+      # DW-439's actual fix, not its third retry. 52776, 52780 and 52781 sit inside the range a Linux
       # runner allocates outbound source ports from, so a transient occupant can hold one when
       # compose asks for it -- which exhausted `ci-throwaway.sh`'s three bounded retries on
       # 2026-09-21 and reddened a job that had run no test. Reserving them tells the kernel never
@@ -207,7 +210,7 @@ jobs:
       # own comment rejected moving them, since they are written into CLAUDE.md, parallel.yaml
       # and every runner's spawn prompt -- while removing the race rather than retrying through it.
       - name: reserve the throwaway host ports
-        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780,52781
       - name: bring up a throwaway container
         run: sh scripts/ci-throwaway.sh up --dir /tmp/ocupilot-browser-ci --project ocupilot-browser-ci --web 52780 --super 1979
       - name: wait for readiness to report installed
@@ -241,6 +244,40 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: compile and read the admin API version on this edition
         run: sh scripts/ci-image-compile.sh --image ${{ matrix.image }}
+      # From here on the edition is INSTALLED, not only compiled (Story 8.9): the container start
+      # path runs on this image's stock namespaces, which on plain IRIS Community means USER.
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22.22.3
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: install client dependencies
+        working-directory: ui
+        run: npm ci
+      - name: build the client bundle the container installs
+        working-directory: ui
+        run: npm run build
+      - name: reserve the throwaway host ports
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780,52781
+      - name: bring up a throwaway container on this edition
+        run: sh scripts/ci-throwaway.sh up --dir /tmp/ocupilot-images-ci --project ocupilot-images-ci --web 52781 --super 1980 --image ${{ matrix.image }}
+      - name: wait for readiness to report installed
+        run: sh scripts/wait-readiness.sh --url http://localhost:52781/api/ocupilot/readiness/
+      - name: admin API drift against the vendored table
+        working-directory: ui
+        run: node tools/admin-spec.mjs --origin http://localhost:52781
+      # No --namespace, deliberately: the fallback to the namespace the install resolved is what
+      # is under test on an edition that has no HSCUSTOM.
+      - name: smoke
+        run: sh scripts/smoke.sh --container ocupilot-images-ci --user _SYSTEM --password SYS
+      - name: capture the throwaway on failure
+        if: ${{ failure() || cancelled() }}
+        run: sh scripts/ci-throwaway.sh logs --dir /tmp/ocupilot-images-ci
+      # --image as well, so the teardown's own clean-up container runs from the image this leg
+      # already pulled rather than pulling the default edition.
+      - name: tear the throwaway down
+        if: always()
+        run: sh scripts/ci-throwaway.sh down --dir /tmp/ocupilot-images-ci --project ocupilot-images-ci --image ${{ matrix.image }}
 
   package:
     name: package

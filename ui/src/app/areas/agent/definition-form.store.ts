@@ -82,6 +82,13 @@ const BOOLEAN_FIELDS: readonly string[] = [
 export const CRED_TYPE_CREDS = 'creds';
 
 /**
+ * The `credType` that reads the key from an environment variable on the instance's host. It is the
+ * only rung a namespace without the credentials store can use, so the form holds a definition on
+ * it there (FR-26).
+ */
+export const CRED_TYPE_ENV = 'env';
+
+/**
  * The `credType` that names no credential at all, accepted by the server only on a provider whose
  * catalog row sets `allowsLocal` (`OcuPilot.Kernel.AgentRules.CREDTYPENONE`).
  */
@@ -93,6 +100,9 @@ export const CRED_TYPE_NONE = 'none';
  * They are sent in every body and the server refuses on them by name (`AGENT.CREDNAME.*`,
  * `AGENT.ENVVAR.*`), so their violations reach the error summary -- but nothing can focus or blur
  * them, so `dropStaleViolation` can never run on either. `setProvider` clears them itself.
+ *
+ * `envVarName` is rendered in env mode (`envMode()`), and is then treated like any other rendered
+ * field.
  */
 const CASCADE_ONLY_FIELDS: readonly string[] = ['credentialName', 'envVarName'];
 
@@ -176,6 +186,13 @@ export class DefinitionForm {
   private loadedRecord: Record<string, unknown> | null = null;
 
   private providerRows: readonly ProviderRow[] = [];
+
+  /**
+   * Whether this namespace can reach the credentials rung, as `GET /agent/providers` reports it.
+   * Only an explicit `false` turns it off, so an answer that omits the flag keeps the form as it
+   * was.
+   */
+  private credentialsRungValue = true;
 
   private violationList: readonly Violation[] = [];
 
@@ -285,6 +302,23 @@ export class DefinitionForm {
     return this.providerRows;
   }
 
+  /**
+   * Whether the form is in env mode: the namespace cannot reach the credentials rung, so the
+   * definition reads its key from an environment variable, the key field is not offered, and
+   * `envVarName` is a field the form renders.
+   */
+  envMode(): boolean {
+    return !this.credentialsRungValue;
+  }
+
+  /**
+   * The rung `credType` may hold in this namespace: `creds` becomes `env` in env mode, and every
+   * other value is itself.
+   */
+  admissibleCredType(credType: string): string {
+    return this.envMode() && credType === CRED_TYPE_CREDS ? CRED_TYPE_ENV : credType;
+  }
+
   /** The catalog row for the provider now selected, or `null`. */
   provider(): ProviderRow | null {
     return this.providerRows.find((row) => row.key === this.value('provider')) ?? null;
@@ -389,6 +423,7 @@ export class DefinitionForm {
     this.testingValue = false;
     this.buffer = emptyBuffer();
     this.loadedRecord = null;
+    this.credentialsRungValue = true;
     this.violationList = [];
     this.envelopeReason = '';
     this.refusalCodeValue = '';
@@ -448,6 +483,7 @@ export class DefinitionForm {
       return;
     }
     this.absorb(result.body);
+    this.holdEnvRung();
     this.loadedValue = true;
     this.notify();
   }
@@ -485,7 +521,10 @@ export class DefinitionForm {
     // just made untrue would stand in the summary with no way to clear it but another Save. The
     // four rewritten fields that DO render a control keep their violations until the reader blurs
     // them, which is where they can see what replaced the value.
-    for (const field of CASCADE_ONLY_FIELDS) this.clearFieldViolation(field);
+    for (const field of CASCADE_ONLY_FIELDS) {
+      if (field === 'envVarName' && this.envMode()) continue;
+      this.clearFieldViolation(field);
+    }
     this.markDirty();
     this.notify();
   }
@@ -637,7 +676,8 @@ export class DefinitionForm {
       this.publishChange('created');
     }
 
-    if (this.keyValue !== '') {
+    // Env mode stores no key: the operator sets the variable on the host (FR-26).
+    if (this.keyValue !== '' && !this.envMode()) {
       const sentToStore = this.snapshotValues();
       const stored = await this.post(
         `${AGENT_DEFINITIONS_PATH}/${encodeURIComponent(this.idValue)}/credential`,
@@ -752,7 +792,9 @@ export class DefinitionForm {
     if (generation !== this.generation) return;
     if (result.kind !== 'ok') return;
     const raw = result.body;
-    const rows = raw !== null && typeof raw === 'object' ? (raw as Record<string, unknown>)['providers'] : null;
+    const record = raw !== null && typeof raw === 'object' ? (raw as Record<string, unknown>) : null;
+    this.credentialsRungValue = record?.['credentialsRungAvailable'] !== false;
+    const rows = record === null ? null : record['providers'];
     if (!Array.isArray(rows)) return;
     this.providerRows = rows.map((row) => ({
       key: textAt(row, 'key'),
@@ -792,7 +834,21 @@ export class DefinitionForm {
         if (next['credType'] === CRED_TYPE_NONE) next['credType'] = CRED_TYPE_CREDS;
       }
     }
+    // Last, so every path above that lands on `creds` lands on `env` in env mode instead.
+    next['credType'] = this.admissibleCredType(typeof next['credType'] === 'string' ? next['credType'] : '');
     this.buffer = next;
+  }
+
+  /**
+   * In env mode, move a loaded `creds` definition onto the `env` rung: its own `envVarName`, or the
+   * catalog's default for its provider. The move is an unsaved change, so the leave guard applies
+   * and nothing is saved without the operator's Save.
+   */
+  private holdEnvRung(): void {
+    if (!this.envMode() || this.value('credType') !== CRED_TYPE_CREDS) return;
+    const envVarName = this.value('envVarName') !== '' ? this.value('envVarName') : (this.provider()?.defaultEnvVarName ?? '');
+    this.buffer = { ...this.buffer, credType: CRED_TYPE_ENV, envVarName };
+    this.markDirty();
   }
 
   /** The complete writable field set, typed as the wire expects (AD-4). */

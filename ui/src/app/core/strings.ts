@@ -1485,6 +1485,11 @@ export const STRINGS = {
   devicePromptPredefined: 'Use this device automatically with predefined settings',
   /** EXPERIENCE.md:421 */
   deviceFormRefusedAction: 'change this device',
+  /** EXPERIENCE.md:422 */
+  agentDefinitionFieldEnvVar: 'Environment variable',
+  /** EXPERIENCE.md:422 */
+  agentDefinitionEnvVarCaption:
+    'The key is read from this variable on the instance\u2019s host. Set it there; this form never takes the key.',
 
 } as const;
 
