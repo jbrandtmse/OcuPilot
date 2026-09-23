@@ -11,6 +11,7 @@ import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
+import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import { ErrorLogPage, LOG_ERROR_LIST } from './error-log.page';
 import { ErrorLogDrill } from './error-log.store';
@@ -914,6 +915,28 @@ describe('ErrorLogPage', () => {
     expect(alert?.getAttribute('role')).toBe('alert');
     expect(alert?.textContent).toContain('You need %DB_USER:WRITE to delete these errors.');
     expect(api.paths.length).toBe(before);
+
+    // Mutation (Rule 19): drop the page's refusal reset on a drill move -> the alert survives the
+    // step to the namespaces level and this goes red.
+    await drill.openNamespaces();
+    await settle(fixture);
+    expect(fixture.nativeElement.querySelector('[data-ocu-drill="action-refusal"]')).toBeNull();
+  });
+
+  it('Story 7.10: a dialog left open does not outlive the page it was opened on', async () => {
+    // Mutation (Rule 19): drop the page's `cancelPending()` on destroy -> the handler still holds
+    // the namespace delete after the page is gone, and this goes red.
+    const api = seeded();
+    const { fixture, drill } = mount(api);
+    await drill.openNamespaces();
+    fixture.detectChanges();
+    await deleteFromMenu(fixture, 'USER');
+    const handler = TestBed.inject(ScreenActionHandler);
+    expect(handler.pending()?.descriptor).toBe(LOG_ERROR_LIST);
+
+    fixture.destroy();
+    expect(handler.pending()).toBeNull();
+    expect(api.actions).toEqual([]);
   });
 
   it('Story 7.10: a composite deleted event re-reads its namespace, steps up when the level has gone, and clears the selection', async () => {
@@ -970,6 +993,16 @@ describe('ErrorLogPage', () => {
     expect(storeSelection()).toEqual(['USER']);
 
     api.answer('namespaces', { rows: [{ namespace: 'HSCUSTOM' }], truncated: false });
+    expect(actions.run(ERROR_LOG_SCREEN.descriptor, REFRESH_ACTION_ID)).toBe(true);
+    await settle(fixture);
+    expect(storeSelection()).toEqual([]);
+
+    // A re-read the instance refuses shows no rows, so it clears the selection too.
+    // Mutation (Rule 19): drop the reset from the store's fault branch -> 'HSCUSTOM' stays selected.
+    (row(fixture, 'HSCUSTOM').querySelector('[data-ocu-drill="trigger"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual(['HSCUSTOM']);
+    api.refuse('namespaces', 500, null);
     expect(actions.run(ERROR_LOG_SCREEN.descriptor, REFRESH_ACTION_ID)).toBe(true);
     await settle(fixture);
     expect(storeSelection()).toEqual([]);

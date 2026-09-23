@@ -84,9 +84,9 @@ Method TestTheSchemaAdmitsTheTwoScopeArgumentsAndStaysClosed()
     Do $$$AssertTrue(tProblem [ "entries", "naming it: " _ tProblem)
 }
 
-/// <p>AC5 -- the mint refuses an <code>errorNumber</code> without a <code>date</code>, and any
-/// argument carrying <code>$Char(1)</code>, with 400 <code>TOOL.ARGUMENTS</code>, before the port
-/// opens a single query.</p>
+/// <p>AC5 -- the mint refuses an <code>errorNumber</code> without a <code>date</code>, an empty
+/// <code>date</code>, and any argument carrying <code>$Char(1)</code>, with 400
+/// <code>TOOL.ARGUMENTS</code>, before the port opens a single query.</p>
 /// <p>Mutation (Rule 19): delete the <code>errorNumber</code>-needs-<code>date</code> refusal from
 /// <method>OcuPilot.Screen.Tool.ErrorDeleteMint.Mint</method> -- the mint then asks the port about
 /// <code>USER &#8250; 4</code>, the query counter moves and the problem no longer names the missing
@@ -115,6 +115,13 @@ Method TestTheMintRefusesAMalformedScopeBeforeAnyRead()
     Do $ClassMethod(..#FIXTURE, "ClearCounts")
     Set tSC = ..MintWith({"namespace": "USER", "date": ("09/23/2026" _ $Char(1) _ "4")}, "USER", ..#PROBETOOL, .tProposal, .tHttp, .tFault)
     Do $$$AssertStatusNotOK(tSC, "a date carrying the separator is refused too")
+    Do $$$AssertTrue(..ProblemOf(.tFault) [ "date", "naming the date: " _ ..ProblemOf(.tFault))
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Queries"), 0, "before any query")
+
+    Do $ClassMethod(..#FIXTURE, "ClearCounts")
+    Set tSC = ..MintWith({"namespace": "USER", "date": ""}, "USER", ..#PROBETOOL, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "an empty date is refused rather than read as the whole namespace")
+    Do $$$AssertEquals(+$Get(tHttp), 400, "at 400")
     Do $$$AssertTrue(..ProblemOf(.tFault) [ "date", "naming the date: " _ ..ProblemOf(.tFault))
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Queries"), 0, "before any query")
 }

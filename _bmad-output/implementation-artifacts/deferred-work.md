@@ -6223,8 +6223,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-10-the-remaining-application-error-delete-scopes.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: emptying a date restarts its numbering (measured); the fingerprint pairs each number with its Time at one-second resolution
 - 2026-09-23T18:37:47Z status=wontfix-theoretical owner=7-10-the-remaining-application-error-delete-scopes by=harvest note=real only if a date is emptied and a new error takes the same number inside one second of the old one's Time
+- 2026-09-23T18:50:05Z occurrence=7-10-the-remaining-application-error-delete-scopes
+- 2026-09-23T18:50:05Z status=wontfix-theoretical owner=7-10-the-remaining-application-error-delete-scopes by=cr note=also the write: RemoveErrorIds matches (date,number) only after the re-read; real only if a date is emptied mid-confirm
 
 ### DW-1569: The ?ns= leg's 'HSCUSTOM untouched' half cannot fail unless HSCUSTOM holds an error with the same date and number as the seed
 - source: spec-7-10-the-remaining-application-error-delete-scopes.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: the test seeds USER; the intent excludes seeding HSCUSTOM
 - 2026-09-23T18:37:47Z status=wontfix-accepted owner=7-10-the-remaining-application-error-delete-scopes by=harvest note=reopen_if=a later story seeds HSCUSTOM's error log in the same test class
+
+### DW-1570: A date-scoped delete is never tested end to end against a namespace holding a second date
+- source: spec-7-10-the-remaining-application-error-delete-scopes.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ErrorDelete's screen by-date leg and agent by-date leg run with USER holding one date, so a namespace-wide delete passes both; date narrowing is pinned only by ErrorDeleteScope's DateList query count. Seeds log on today only (inference).
+- 2026-09-23T18:50:04Z status=wontfix-accepted owner=7-10-the-remaining-application-error-delete-scopes by=cr note=reopen_if=a fixture or seed can place an error in USER on a second date, or a date-scoped delete removes another date's errors

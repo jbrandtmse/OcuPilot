@@ -28,7 +28,8 @@
 /// namespace rather than a constant, which is why <method>PairsFor</method> takes one.</p>
 /// <p><b>Deletes have three scopes, and every one is a prefix of the error's composite id</b>
 /// (AD-13, AD-48): the namespace; the namespace and a date; the namespace, a date and an error
-/// number. <method>Invoke</method>'s enumeration lists exactly the errors the scope holds, and its
+/// number. <method>Invoke</method>'s enumeration lists the errors the scope holds, up to the row cap
+/// and reporting a cut, and its
 /// delete removes exactly the enumerated ids through <code>DeleteByError</code>, one call per date.
 /// <b><code>DeleteByDate</code> and <code>DeleteByNamespace</code> are never called.</b> Both
 /// remove whatever the scope holds when they run, so an error logged after the enumeration would
@@ -1260,10 +1261,10 @@ ClassMethod RequestedIds(pEntriesJson As %String, Output pByDate, Output pOrder 
 /// <p>Remove exactly the ids <var>pEntriesJson</var> names from <var>pNamespace</var>, through
 /// <code>SYS.ApplicationError</code>'s <code>DeleteByError</code> once per enumerated date, with
 /// how many ids were named in <var>pRemoved</var> and how many dates in <var>pDates</var>.</p>
-/// <p><b><code>DeleteByNamespace</code> is not what this calls, and that is the point</b> (AD-48).
-/// It removes every error in the namespace for every date, which would destroy rows logged after
-/// the proposal and never shown to the user -- the outcome the enumerated-id-set fingerprint exists
-/// to prevent. <code>DeleteByError</code> takes a comma-separated list of error numbers for one
+/// <p><b><code>DeleteByNamespace</code> and <code>DeleteByDate</code> are not what this calls, and
+/// that is the point</b> (AD-48). They remove every error in the scope, which would destroy rows
+/// logged after the proposal and never shown to the user -- the outcome the enumerated-id-set
+/// fingerprint exists to prevent. <code>DeleteByError</code> takes a comma-separated list of error numbers for one
 /// date (the vendor's own doc comment), so one call per date removes exactly the reviewed set and
 /// leaves the residue.</p>
 /// <p><b>Caller contract:</b> <code>$NAMESPACE</code> is already

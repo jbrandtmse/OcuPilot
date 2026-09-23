@@ -373,6 +373,42 @@ baseline was restored and diffed identical.
   `deleted` event and re-reads. `Confirm` consumes `ErrorDeleteMint`'s composite target and removes
   exactly the enumerated entries. Both are observed on `ocupilot-ci`.
 
+### Review Findings
+
+Code review 2026-09-23 (full-opus, four layers): 0 decision-needed, 6 patch, 2 deferred, 28 rejected. No AD violation. All six patches were applied and verified on `ocupilot-ci`: `ErrorDeleteScope` 8/0 (run 8637), the page spec 21/0, `test:components` 907/0, and the two browser specs 8/8 on the rebuilt bundle. `ErrorDelete`'s added assertion runs in CI.
+
+- [x] [Review][Patch] (medium) The page's cancel-on-destroy has no test: a dialog left open outlives the page and reopens with its old target [ui/src/app/areas/logs/error-log.page.spec.ts]
+- [x] [Review][Patch] (low) A present-but-empty `date` widens the agent's proposal to the whole namespace [src/OcuPilot/Screen/Tool/ErrorDeleteMint.cls:56]
+- [x] [Review][Patch] (low) A refused delete's banner survives a level change and a return to the page [ui/src/app/areas/logs/error-log.page.ts]
+- [x] [Review][Patch] (low) A re-read that faults keeps the selection, so Delete stays enabled over a level showing no rows [ui/src/app/areas/logs/error-log.store.ts:446]
+- [x] [Review][Patch] (low) The second seed of the screen-route leg is unasserted, so a failed seed ends the method green [src/OcuPilot/Test/ErrorDelete.cls:756]
+- [x] [Review][Patch] (low) Docs: the class doc says the enumeration lists "exactly" the scope (it is capped), and `RemoveErrorIds` names only `DeleteByNamespace` [src/OcuPilot/Port/LogSourcePort.cls:31, :1263]
+- [x] [Review][Defer] A date-scoped delete is never tested end to end against a second date [src/OcuPilot/Test/ErrorDelete.cls] -- deferred: DW-1570 `wontfix-accepted`, seeds log on today only
+- [x] [Review][Defer] `RemoveErrorIds` matches `(date, number)` without `time` after the re-read [src/OcuPilot/Port/LogSourcePort.cls:1279] -- deferred: occurrence on DW-1568, `wontfix-theoretical`
+
+Rejected:
+
+- `false`: the delete removes entries outside its scope. `entries` never comes from a caller: the agent schema is closed and the screen route admits no values (AD-56 ii).
+- `false`: an id with more than three parts falls back to the namespace consequence. Every client id comes from `selectionKey` (at most three parts), and the port refuses four with 400.
+- `false`: clicking an open menu's trigger reopens it. `DataTable.onTriggerClick` behaves the same way.
+- `false`: AC3 has no `mutation:` line. The page-spec pin carries one, and Rule 19 needs one per AC.
+- `false`: the unarmed narrowing assertions are environment-dependent. CI's armed by-error legs and the `DateList` count pin them.
+- by-design: a scope over 1,000 errors is refused for both callers (5.13's truncation rule, the matrix's "Too large" row).
+- by-design: the card noun `errorLogListLabel`, the absence of a count in the dialog, and card rows without `time` follow the published copy and the diff shape.
+- by-design: the row menu copies DataTable's idiom (Tasks).
+- pre-existing: the deleted toast reads the lowercased id ("user was deleted"), as it did in 5.13.
+- low: `time` is not re-checked between the re-read and `DeleteByError` on the screen route. Its window is one request.
+- low: `ErrorHeld` reads `ErrorList` twice.
+- low: a malformed third part answers 404, not 400. The agent's path answers 400 anyway (DW-1567).
+- low: `DATEARGUMENT` is declared in both the tool and the mint. ErrorDeleteScope's schema and mint legs and the CI by-date leg pin both copies.
+- low: only `detail.problem` is made readable.
+- low: the schema's `minimum` is untested. A 0 reaches the port and answers 400 through the mint.
+- low: seeds straddling midnight; a non-JSON body crashing the WRITE-pair leg; `count <= tQty` racing a live error.
+- low: the page dialog leg leaves the date dialog open; no page leg covers a dialog outliving a level change, since it names its own target.
+- low: the browser legs check only successful deletes, only the target namespace, and the date and namespace legs never check `posts.length`. Rule 3 is met.
+- low: the browser spec hard-codes `USER`; the mismatch leg checks `posts.length` after waiting for the mismatch mark.
+- DW-1569: the `?ns=` leg's HSCUSTOM half, already ledgered.
+
 ## Spec Change Log
 
 - 2026-09-23, lead spec gate: the AD-48 sentence is in the spine; EXPERIENCE `:87` is amended; the copy is
@@ -530,6 +566,10 @@ unarmed subclass, deleted afterwards.
 - `mutation: ErrorIdRows walks every date for a date scope -> red: ErrorDeleteScope.TestThePortNarrowsToADateOrOneErrorAndRefusesOneItDoesNotHold, DateList read twice (run 8446) (review)`
 - `mutation: ArgumentPairs passes the whole id -> red: ErrorDeleteScope.TestTheRouteGateRefusesEveryScopeShortOfItsWritePair, 2- and 3-part scopes let through (run 8446) (AC4, review)`
 - `mutation: drop syncSelection's detail branch -> red: error-log.page.spec.ts detail-level Delete leg (review)`
+- `mutation: ErrorDeleteMint's empty-date refusal made 'If 0' -> red: ErrorDeleteScope.TestTheMintRefusesAMalformedScopeBeforeAnyRead, the empty date minted (run 8636) (code review)`
+- `mutation: drop the page's cancelPending() on destroy -> red: error-log.page.spec.ts "a dialog left open does not outlive the page" (code review)`
+- `mutation: drop the page's refusal reset on a drill move -> red: error-log.page.spec.ts refused-delete leg, the alert survives the step up (code review)`
+- `mutation: drop the store's fault-branch selection reset -> red: error-log.page.spec.ts "a re-read the selected row is no longer in clears the selection" (code review)`
 
 Green after restore: `ErrorDeleteScope` 7/0 (run 8437), `ErrorDelete` 15/0 via the subclass (run
 8443), `ToolWrite` 29/0 (8427), `Descriptor` 50/0 (8431), `ErrorLog` 15/0 (8432), `ErrorLogWire` 7/0

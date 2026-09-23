@@ -9,8 +9,9 @@
 /// is the superclass's, unchanged.</p>
 /// <p>Refused before anything is read, with 400 <code>TOOL.ARGUMENTS</code>: an
 /// <code>errorNumber</code> without a <code>date</code>, since a number identifies an error only
-/// within one date; and any argument carrying <code>$Char(1)</code>, the composite separator,
-/// which would let one argument stand for several parts.</p>
+/// within one date; an empty <code>date</code>, which would widen the scope to the whole
+/// namespace; and any argument carrying <code>$Char(1)</code>, the composite separator, which would
+/// let one argument stand for several parts.</p>
 Class OcuPilot.Screen.Tool.ErrorDeleteMint Extends OcuPilot.Kernel.Proposal.Mint
 {
 
@@ -55,6 +56,10 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             }
             Set tDate = pArgs.%Get(..#DATEARGUMENT)
             Set tNumber = pArgs.%Get(..#ERRORNUMBERARGUMENT)
+            If (pArgs.%GetTypeOf(..#DATEARGUMENT) = "string") && (tDate = "") {
+                Set tSC = ..Refuse("'" _ ..#DATEARGUMENT _ "' is empty; omit it to name the whole namespace", .pHttpStatus, .pFault)
+                Quit
+            }
         }
         If (tNumber '= "") && (tDate = "") {
             Set tSC = ..Refuse("'" _ ..#ERRORNUMBERARGUMENT _ "' names an error within one date, so it needs '" _ ..#DATEARGUMENT _ "' as well", .pHttpStatus, .pFault)

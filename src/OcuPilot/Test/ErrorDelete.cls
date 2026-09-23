@@ -754,6 +754,7 @@ Method TestTheScreenRouteDeletesEachScopeItsIdNames()
     Do $$$AssertStatusOK(tSC, "the class seeds two errors")
     If $$$ISERR(tSC) Quit
     Set tSC = ..Seed(.tDate, .tSecond)
+    Do $$$AssertStatusOK(tSC, "and the second")
     If $$$ISERR(tSC) Quit
 
     Set tId = ..#TARGETNAMESPACE _ tSeparator _ tDate _ tSeparator _ tFirst

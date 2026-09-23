@@ -377,7 +377,16 @@ export class ErrorLogPage {
   protected readonly skeletonRows = [0, 1, 2, 3, 4, 5];
 
   constructor() {
+    // A refused delete is about the level it was pressed on: moving the drill, or opening the page
+    // again, drops it, as a list page drops its answers when it opens.
+    let place = this.drillPlace();
+    this.store.setRefusal('');
     const stop = this.drill.subscribe(() => {
+      const next = this.drillPlace();
+      if (next !== place) {
+        place = next;
+        this.store.setRefusal('');
+      }
       this.syncSelection();
       this.generation.update((value) => value + 1);
     });
@@ -809,6 +818,11 @@ export class ErrorLogPage {
     }
     if (held.length === 1 && held[0] === key) return;
     this.store.setSelection([key]);
+  }
+
+  /** Where the drill stands: its level and the scope that level is of. */
+  private drillPlace(): string {
+    return [this.drill.level(), this.drill.namespace(), this.drill.date(), this.drill.errorNumber()].join('\u0001');
   }
 
   /** Put the menu under its row, or above it where the frame has no room below, as `DataTable` does. */

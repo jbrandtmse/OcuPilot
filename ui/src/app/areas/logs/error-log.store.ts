@@ -450,6 +450,8 @@ export class ErrorLogDrill {
         const pair = result.detail === null ? undefined : result.detail['failedPair'];
         this.failedPairValue = typeof pair === 'string' ? pair : '';
       }
+      // A refused level shows no rows, so nothing on it can stay selected.
+      this.selectedValue = '';
       this.notify();
       return;
     }

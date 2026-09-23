@@ -226,3 +226,9 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T18:37:48Z	Story 7.10	pushed	sha=c4717af9 ci=pending run=35903741544
 2026-09-23T18:37:48Z	Story 7.10	adr_verifications_complete	result=none_required model=claude-opus-5-5
 2026-09-23T18:37:48Z	Story 7.10	stage_spawned	stage=qa spawn_at=2026-09-23T18:37:48Z model=sonnet agent_name=7-10-the-remaining-application-error-delete-scopes-qa-1 cycle_iteration=1
+2026-09-23T18:40:42Z	Story 7.10	qa_complete	spawn_at=2026-09-23T18:50:00Z model=sonnet tests_added=0 mutations_demonstrated=0 first_run_failures=0 clarifications=0 closing_sections_present=true
+2026-09-23T18:40:42Z	Story 7.10	stage_spawned	stage=code-review spawn_at=2026-09-23T18:40:42Z model=opus agent_name=7-10-the-remaining-application-error-delete-scopes-code-review-1 cycle_iteration=1
+2026-09-23T19:00:12Z	Story 7.10	ci_resolved	story=7.10 run=35903741544 result=success resolved_at=cr head=c4717af9 jobs=8/8 note=ErrorDelete_armed_legs_green_in_CI
+2026-09-23T19:00:12Z	Story 7.10	cr_complete	spawn_at=2026-09-23T18:40:42Z model=opus resolved=6 fixed_at_source=6 by_design=5 wontfix_theoretical=0 routed=0 escalated=0 decision_pending=0 deferred=2 dismissed=28 high=0 med=1 low=30 rows=36 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done ledger=DW-1570,DW-1568(occurrence)
+2026-09-23T19:00:12Z	Story 7.10	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 model=claude-opus-5-5
+2026-09-23T19:00:12Z	Story 7.10	smoke_complete	method=browser result=pass iterations=1 defects_caught=0 evidence=bundle_rebuilt_and_redeployed_to_ocupilot-ci;error-log-actions+error-log-delete_browser_specs_4/4_against_the_live_instance_(three_scopes_via_the_row_menu_and_the_agent) model=claude-opus-5-5
