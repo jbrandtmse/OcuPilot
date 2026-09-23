@@ -1630,10 +1630,11 @@ Parameter USERNAMEREQUIRED = "USER.NAME.REQUIRED";
 Parameter REASONUSERNAMEREQUIRED = "Give the account a name.";
 
 /// <p>Violation code: the name is not one this instance can hold -- longer than
-/// <class>%Library.Username</class> stores, or carrying a control character or an <code>@</code>.</p>
+/// <class>%Library.Username</class> stores, or carrying a control character, a <code>*</code> or an
+/// <code>@</code>.</p>
 Parameter USERNAMESHAPE = "USER.NAME.SHAPE";
 
-Parameter REASONUSERNAMESHAPE = "A user name is at most 160 characters, with no control character and no @ sign.";
+Parameter REASONUSERNAMESHAPE = "A user name is at most 160 characters, with no control character, no * and no @ sign.";
 
 /// <p>Violation code: an account already carries that name. <class>Security.Users</class> keys on
 /// the lower-cased name, so a name taken in any case is taken. A read rather than a validation --

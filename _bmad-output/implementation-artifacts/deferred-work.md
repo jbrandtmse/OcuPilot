@@ -5096,6 +5096,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T04:48:27Z occurrence=15-1-change-your-own-password by=cr note=code review re-confirmed the closed list reaches further than the ledger title: WRONGPASSWORDCODE is likewise closed to 952, so a legacy-hash, LDAP or delegated account's wrong-password refusal is an opaque 500 too. The 500 fall-through arm this entry describes has no server-side test, and the spec's Review Triage Log records it as patched by a patch that in fact drives the body-refusal branch.
 - 2026-09-20T04:51:32Z status=escalated owner=range-end-cleanup by=cr note=re-owned off 15.1 because the fix is an architecture amendment, not a code change: the embedded code a PasswordValidationRoutine refusal carries is 5001, which is $$$GeneralError, so allow-listing it opens the catch-all channel AD-39 exists to close. The matrix's Policy-rejection row names PasswordValidationRoutine in its trigger while its own Error Handling column closes the list to 845 and 958 -- the implementation follows the column, so it is by-design against the spec as written. Closing it needs AD-39 to say how a validation routine's text reaches a caller without the general-error channel.
 - 2026-09-22T13:39:52Z status=routed owner=range-end-cleanup by=merge_gate note=Decided at Epic 15's merge gate and applied here; the entry still read escalated because only the owner was written. Real correctness defect with an unambiguous promise to measure against, but it fires only where a PasswordValidationRoutine is configured, which is not the demo path.
+- 2026-09-23T04:51:49Z occurrence=8-2-create-a-user
 
 ### DW-1290: The wire test derives its expected policy sentence with the same index-2 assumption the code uses, so both would move together and stay green
 - source: spec-15-1-change-your-own-password.md | severity: med | fix-risk: low | footprint: in-story
@@ -5786,6 +5787,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: DeclaredNames' settable projection is the field list's ordinary top-level literals, not Write.FieldRows' output, which also applies PermittedFields and drops declared secrets - narrowing to it would reject every declared secret. Probe: declare secretArguments Timeout on webapp.list.update's screen and confirm with a Timeout key.
 - 2026-09-21T23:13:31Z status=routed owner=burndown by=harvest note=DW-1206's RESIDUAL and a different claim to it: the decided union stops a name that matches NOTHING, this is a name that matches the wrong thing. Naming the obvious narrower set would reject every legitimate declared secret, which is why it is not a one-line follow-on.
 - 2026-09-22T15:30:14Z status=routed owner=range-end-cleanup by=burndown note=Rule 27: real but neither floor- nor downstream-blocking, so not chartered
+- 2026-09-23T04:51:49Z occurrence=8-2-create-a-user
 
 ### DW-1451: The destructive-test gate cannot see a class that turns auditing off through the shipped confirm path, so such a class is guarded by its author's decision rather than by the gate
 - source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: med | fix-risk: med | footprint: scripts/check-objectscript.py:1324
@@ -6025,6 +6027,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-23T01:25:39Z status=decision-pending owner=burndown by=runner note=recommend (b): no prohibition; proposal and confirm name the unauthenticated effect. (a) bars public REST; (c) breaks AD-10
 - 2026-09-23T02:11:59Z occurrence=8-1-create-a-web-application
 - 2026-09-23T02:40:01Z status=routed owner=8-2-create-a-user by=orchestrator note=(b) decided: no prohibition; agent proposal and the form's auth-method field name the unauthenticated effect
+- 2026-09-23T04:53:00Z status=resolved-by:8-2-create-a-user by=adjudication note=consequence WEBAPP.UNAUTHENTICATED on card and form field; proposal-card.spec + WebAppLocation pins; 1967125
 
 ### DW-1490: The web-applications/list/edit/:id route does not re-read the created application on a cold load; it draws an empty create form at an id-bearing URL
 - source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -6059,9 +6062,41 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: WebAppCreate.PERMITTEDFIELDS admits WSGIAppLocation (the spec's own list) and DerivedFields sets Path from it verbatim, on POST /web-applications and on webapp.list.create alike; no containment check is applied.
 - 2026-09-23T02:12:06Z status=decision-pending owner=burndown by=cr note=spec versus spine: carve a stated AD-21 exception for a WSGI create's directory, or contain the location under a fixed root
 - 2026-09-23T02:40:01Z status=routed owner=8-2-create-a-user by=orchestrator note=regraded HIGH (AD-21, Rule 6): relative name under one fixed root, .. refused, both callers; floor-blocking
+- 2026-09-23T04:53:00Z status=resolved-by:8-2-create-a-user by=adjudication note=Location.Resolve under ManagerDirectory/wsgi/; WebAppLocation red on both callers under lead mutation; commit 1967125
 
 ### DW-1496: A screen Save refused for MatchRoles reads 'not something the agent can propose' although a person pressed Save
 - source: smoke 8-1-create-a-web-application | severity: low | fix-risk: low | footprint: in-story
 - evidence: POST /api/ocupilot/web-applications with MatchRoles answered 403 PROHIBITED.PRIVILEGEGRANT with that sentence on ocupilot-b-ci 2026-09-23; Prohibited.ReasonFor is one sentence for both callers (AD-10 one home).
 - 2026-09-23T02:16:25Z status=wontfix-accepted owner=8-1-create-a-web-application by=smoke note=reopen_if=a screen surfaces a PROHIBITED.* reason to a person (MatchRoles is absent from the form, so today only a hand-built POST sees it)
 - 2026-09-23T03:36:52Z status=routed owner=8-2-create-a-user by=orchestrator note=reopened: 8.2 owns the PRIVILEGEGRANT sentence and a person meets it on the Roles field; make it caller-neutral
+- 2026-09-23T04:53:00Z status=resolved-by:8-2-create-a-user by=adjudication note=PRIVILEGEGRANT sentence now caller-neutral, used on Roles field and picker; no-agent-word assertion; 1967125
+
+### DW-1502: PROHIBITED.PRIVILEGEGRANT's caller-neutral sentence is server-shipped only; AD-53 (Epic 7) publishes a refusal sentence in EXPERIENCE.md Fixed strings with a pin test
+- source: spec-8-2-create-a-user.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Prohibited.ReasonFor(PRIVILEGEGRANT) reaches the Roles field and the picker from the server; no EXPERIENCE row quotes it and 8.2's form row says 'never one published here'. AD-53 is on origin/OCU-1-epic7 only; its pin test (RefusalCopy) and client-copy convention are Epic 7's.
+- 2026-09-23T04:51:49Z status=decision-pending owner=burndown by=cr note=reconcile at the merge: publish+pin via RefusalCopy, or amend AD-53 to exempt server-shipped sentences
+
+### DW-1503: A user create whose vendor Modify refuses after Create leaves an account holding only its password
+- source: spec-8-2-create-a-user.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: %Api.Admin.Endpoints.Security.User RunPost calls Security.Users.Create then UpdateUser/Modify; the screen validates every Modify field first, the agent path only at mint (Confirm.cls re-runs no rule).
+- 2026-09-23T04:51:49Z status=wontfix-accepted owner=8-2-create-a-user by=cr note=reopen_if=a POST /users or confirmed create answers an error while Security.Users.Exists(name) is 1 afterwards
+
+### DW-1504: A user name equal to an existing role name is not refused inline; the vendor's Create refuses it as a non-field error
+- source: spec-8-2-create-a-user.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Security.Users documents 'A user name cannot be the same as a role name'; UserCreateRules.NameIsUsable checks length, control chars, * and @ only (the * leg was patched in review).
+- 2026-09-23T04:51:49Z status=wontfix-accepted owner=8-2-create-a-user by=cr note=reopen_if=POST /users with Name equal to a role name answers a banner rather than a Name violation and a user reports it
+
+### DW-1505: The agent-path confirm of a user create applies no OcuPilot password rule; an empty-typed or policy-failing card password reaches the vendor
+- source: spec-8-2-create-a-user.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Tool/UserCreate.ArgumentProblem skips password rules at mint (no password yet) and Confirm.cls runs no tool rule on the supplied secret; the card gates only emptiness.
+- 2026-09-23T04:51:49Z status=wontfix-accepted owner=8-2-create-a-user by=cr note=reopen_if=a confirmed create with a policy-failing card password leaves no field-level reason on the card
+
+### DW-1506: PROHIBITED.UNCOVEREDFIELD's reason names the agent and reaches a person through a hand-made POST /users body
+- source: spec-8-2-create-a-user.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Area/Permissions/UserCreate.Perform renders any non-Roles refusal with Prohibited.ReasonFor(code); UNCOVEREDFIELD reads 'ones the agent may propose changing'. The form never sends an unreviewed field.
+- 2026-09-23T04:51:50Z status=wontfix-accepted owner=8-2-create-a-user by=cr note=reopen_if=a shipped form or tool sends a field outside PermittedCreateFields to POST /users or POST /web-applications
+
+### DW-1507: UserList.secretArguments Password opens permissions.users.update's confirm channel, and Test/Prohibited exempts authored secrets per identifier
+- source: spec-8-2-create-a-user.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Spec Tasks (UserList.cls bullet) accepts it; the vendor's UpdateUser copies only Schema() keys into Modify, so a Password on a PUT is never applied (read on ocupilot-b-ci).
+- 2026-09-23T04:51:50Z status=by-design owner=8-2-create-a-user by=cr note=spec-bound; same root cause as DW-1450 (channel is per screen, not per tool)

@@ -277,6 +277,30 @@ deferred: []
   - Removing containment reddens the pinning test on both callers.
 - **AC7 (DW-1489).** Given a web-application create choosing Unauthenticated, when it is proposed or filled in, then the proposal card and the form's authentication-method field state the unauthenticated effect, and the create is not refused.
 
+### Review Findings
+
+Code review 2026-09-23, tier `full-opus`, four layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). No HIGH. Every AC has an observed `mutation:` line; Rule 3 met (`users-create.browser-spec.mjs`, `UserCreateWire`).
+
+- [x] [Review][Patch] A user name carrying `*` passed the rules and reached the vendor's Create as a non-field error (`Security.Users`: "cannot contain * or @") [src/OcuPilot/Area/Permissions/UserCreateRules.cls:35] -- `NAMEFORBIDDEN = "@*"`, sentence updated in `Api/Error.cls`, case 12 in `UserCreate.TestEveryFieldRuleRefusesOnBothCallers`. mutation: `NAMEFORBIDDEN` back to `"@"` → that test red; restored, `UserCreate` 9/9 green.
+- [x] [Review][Patch] The error summary tracked violations by field, and the Routine field can carry two (`USER.ROUTINE.NAMESPACE` + `USER.ROUTINE.LENGTH`), a duplicate `@for` key [ui/src/app/areas/permissions/user-create-form.page.ts:66] -- `track $index`; rebuilt, redeployed, `users-create` 5/5.
+- [x] [Review][Defer] AD-53 (Epic 7) publishes a refusal sentence in EXPERIENCE.md with a pin test; `PRIVILEGEGRANT`'s is server-shipped only -- DW-1502 `decision-pending owner=burndown`, for the merge.
+- [x] [Review][Defer] A vendor `Modify` refusal after `Create` leaves an account with only a password (agent path validates at mint only) -- DW-1503 `wontfix-accepted`.
+- [x] [Review][Defer] A user name equal to a role name is refused by the vendor, not inline -- DW-1504 `wontfix-accepted`.
+- [x] [Review][Defer] The agent confirm applies no OcuPilot password rule to the card's password -- DW-1505 `wontfix-accepted`; `PasswordValidationRoutine` is DW-1289 (occurrence).
+- [x] [Review][Defer] `UNCOVEREDFIELD`'s agent-worded reason reaches a hand-made `POST /users` -- DW-1506 `wontfix-accepted`.
+- [x] [Review][Defer] `UserList.secretArguments` opens the update tool's confirm channel to `Password` -- DW-1507 `by-design` (spec Tasks; the vendor's `UpdateUser` copies only `Schema()` keys); root cause DW-1450 (occurrence).
+
+Rejected (one line each):
+
+- `false` RunPost's 201 surviving an error -- `RunSequence` raises an error with a 2xx status to 500.
+- `false` Expiry/routine never reach the real vendor intact -- probed `Perform` on `ocupilot-b-ci`: `2030-01-15`, `HSCUSTOM`, `start^...` read back exactly; probe deleted.
+- `low` `IsInsideRoot` unreachable inside `Resolve` -- AD-21 requires both checks; the prefix check has its own direct test.
+- `low` Vendor-read password-absence legs, `UserForm.secretFields` assertion, `innerText` leg -- tripwires/declarations the spec asks for; the field-value assertion carries AC2.
+- `low` `EscalationRoles` screen branch and the `Consequence` bit arithmetic lack a discriminating leg -- both still refuse or warn correctly today.
+- `low` Lookups whose `Catch` answers a verdict (`MeetsPolicy`, `NamespaceExists`, `Lengths`), `Mint`'s try idiom -- theoretical; the idiom was triaged in implement.
+- `low` Hard-coded lengths in sentences, past expiry accepted, native `disabled` on privileged roles, `HandleName` on a shape-invalid name, blur/save race, route-replacement rejection, symlink under the WSGI root -- rare or not user-visible; fixes add branches.
+- `false`/by-ruling: resolved-directory line, `edit/:id` redraw, omitted classic fields, bundle budget, `[ADDED 2026-09-23]` dates, DW-1495/1489 scope, `ImplementsRead` placement, `EndpointCoverage` comment (matches 8.1's).
+
 ## Spec Change Log
 
 - 2026-09-23, lead: implement halted on two gates; both ruled by the orchestrator and added as `[Lead]` tasks with the three Story 7.2 rulings; status reset to `in-progress` with the implementation still uncommitted in the tree.
@@ -366,7 +390,7 @@ Stateful checks run on slot B's throwaway, brought up after the last edit: `sh s
 | AC4 | `user-create-form.store.spec.ts` change-event test | Drop the `ChangeBus.publish` call |
 | AC5 | `UserCreate.cls` confirm test (it wraps the fixture port's recorded body through `AdminPort.Wrapped`); `UserCreateWire` pins the port's own call site | Remove `Security.User/POST` from `WRAPPEDTYPES` |
 | AC6 | `WebAppLocation.cls` both-callers test | Make `Location.Resolve` return 1 with the caller's text |
-| AC7 | `WebAppLocation.cls` consequence test; `proposal-view.test.mjs` | Return `""` from `WebAppCreate.Consequence` |
+| AC7 | `WebAppLocation.cls` consequence test; `proposal-view.test.mjs`; `proposal-card.spec.ts` DW-1489 render test | Return `""` from `WebAppCreate.Consequence`; make `ProposalCard.consequenceVisible` answer `false` |
 
 Observed (implement stage, each applied to the checked-in file, recompiled with `cbk` or rebuilt and redeployed, observed red, reverted, tree byte-identical):
 
@@ -387,6 +411,7 @@ Observed (implement stage, each applied to the checked-in file, recompiled with 
 - mutation (review pass): made `WebAppCreate.DerivedFields` leave an unresolvable body alone → `WebAppLocation.TestAnUnresolvableLocationDropsBothKeys` red
 - mutation (review pass): deleted `this.userCreateForm.reset()` from `App.verifyWhenSignedIn` → `app.spec.ts` sign-out test red
 - roster rows (sweep): `ProhibitedRoute`, `ProposalWire`, `Wire` and `WireSecurityRead` were observed red in the first full sweep without the rows this story adds, and green with them
+- mutation (QA pass): made `ProposalCard.consequenceVisible` return `false` unconditionally → `proposal-card.spec.ts` "DW-1489: a proposal the kernel marks with the unauthenticated consequence states it on the card" red (`expected null not to be null`); reverted, `git diff --stat` on `proposal-card.ts` empty. This was the one AC7 pinning test the implement stage's `## Verification` table and Observed list did not name a demonstrated mutation for -- the code's own `// Mutation (Rule 19)` comment on the test was correct but unverified.
 
 ## Auto Run Result
 

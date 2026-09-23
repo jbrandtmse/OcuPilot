@@ -31,8 +31,9 @@ Parameter LENGTHFIELDS = "Name,FullName,NameSpace,Routine";
 /// the type <property>Security.Users.Name</property> is declared with.</p>
 Parameter NAMEMAXLENGTH As INTEGER = 160;
 
-/// <p>The one character a user name may not carry beyond the control characters.</p>
-Parameter NAMEFORBIDDEN = "@";
+/// <p>The characters a user name may not carry beyond the control characters, as
+/// <class>Security.Users</class> documents them.</p>
+Parameter NAMEFORBIDDEN = "@*";
 
 /// <p>The endpoint and request type the role picker lists through, on the tool's own port.</p>
 Parameter ROLEENDPOINT = "Security.Role";
@@ -117,8 +118,8 @@ ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolatio
 }
 
 /// <p>Add the name's own shape violation to <var>pViolations</var>, or none: an absent name, and
-/// one longer than <parameter>NAMEMAXLENGTH</parameter> or carrying a control character or
-/// <parameter>NAMEFORBIDDEN</parameter>. Run first by the create route, because everything after it
+/// one longer than <parameter>NAMEMAXLENGTH</parameter> or carrying a control character or a
+/// character of <parameter>NAMEFORBIDDEN</parameter>. Run first by the create route, because everything after it
 /// addresses the target by this name.</p>
 ClassMethod NameViolation(pName As %String, Output pViolations)
 {
@@ -133,8 +134,11 @@ ClassMethod NameViolation(pName As %String, Output pViolations)
 ClassMethod NameIsUsable(pName As %String) As %Boolean
 {
     If $Length(pName) > ..#NAMEMAXLENGTH Quit 0
-    If pName [ ..#NAMEFORBIDDEN Quit 0
     Set tUsable = 1
+    For tI = 1:1:$Length(..#NAMEFORBIDDEN) {
+        If pName [ $Extract(..#NAMEFORBIDDEN, tI) Set tUsable = 0 Quit
+    }
+    If 'tUsable Quit 0
     For tI = 1:1:$Length(pName) {
         Set tCode = $Ascii(pName, tI)
         If (tCode < 32) || (tCode = 127) Set tUsable = 0 Quit

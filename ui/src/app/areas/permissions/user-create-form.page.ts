@@ -63,7 +63,7 @@ interface FieldView {
     @if (hasSummary) {
       <div #summary class="ocu-banner ocu-form-summary" role="alert" tabindex="-1">
         <ul class="ocu-form-summary-list">
-          @for (entry of violations; track entry.field) {
+          @for (entry of violations; track $index) {
             <li>
               <button type="button" class="ocu-button-text" (click)="focusField(entry.field)">
                 {{ entry.reason }}

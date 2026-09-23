@@ -83,7 +83,7 @@ Method TestEveryFieldRuleRefusesOnBothCallers()
     Set tLong = $Translate($Justify("", 161), " ", "a")
     Set tFullNameMax = +##class(OcuPilot.Area.Permissions.UserCreateRules).Lengths().%Get("FullName")
     Do $$$AssertTrue(tFullNameMax > 0, "the instance publishes the full name's stored length")
-    For tCase = 1:1:11 {
+    For tCase = 1:1:12 {
         Set tName = ..#PROBEUSER
         Set tArgs = ..Args()
         If tCase = 1 Set tName = "probe@user", tField = "Name", tCode = "USERNAMESHAPE"
@@ -97,6 +97,7 @@ Method TestEveryFieldRuleRefusesOnBothCallers()
         If tCase = 9 Do tArgs.%Set("FullName", $Translate($Justify("", tFullNameMax + 1), " ", "f"), "string") Set tField = "FullName", tCode = "USERFULLNAMELENGTH"
         If tCase = 10 Do tArgs.%Set("Roles", "%Developer", "string") Set tField = "Roles", tCode = "USERROLESSHAPE"
         If tCase = 11 Do tArgs.%Set("FullName", {"first": "probe"}) Set tField = "FullName", tCode = "PORTFIELDSHAPE"
+        If tCase = 12 Set tName = "probe*user", tField = "Name", tCode = "USERNAMESHAPE"
         Set tExpected = $Parameter("OcuPilot.Api.Error", tCode)
 
         Set tScreenArgs = ##class(%DynamicAbstractObject).%FromJSON(tArgs.%ToJSON())
