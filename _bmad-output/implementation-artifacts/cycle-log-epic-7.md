@@ -150,3 +150,7 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T11:05:35Z	Epic 7	spine_updated	ad=AD-51 reason=rule5_measured_vendor_body by=runner story=7-5-run-an-on-demand-task lint=ok
 2026-09-23T11:05:35Z	Story 7.5	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-51,AD-53,AD-56,AD-6,AD-8,AD-10,AD-13,AD-14,AD-15,AD-34,AD-36,AD-39,AD-43,AD-52 decision_dependency=none sections_created=none owned_ledger=none mutates_shared_runtime=true throwaway=ocupilot-ci copy_published=EXPERIENCE.md:414-415 model=claude-opus-5-5
 2026-09-23T11:05:35Z	Story 7.5	stage_spawned	stage=implement spawn_at=2026-09-23T11:05:35Z model=opus agent_name=7-5-run-an-on-demand-task-implement-1 cycle_iteration=1
+2026-09-23T12:11:30Z	Story 7.5	dev_complete	spawn_at=2026-09-23T11:05:35Z model=opus build_sha=61f9c7dc baseline_revision=4442851 review_loop_iteration=0 followup_review_recommended=false deferred=0 tiers=sweep_182cls/1646/0,smoke_49/49,tools_1327/0,components_880/0,browser_task-run_2/2,tasks.browser-spec_12/14(two_6.6_legs_red_on_reused_ocupilot-ci_history_pollution,inference_not_on_fresh)
+2026-09-23T12:11:30Z	Story 7.5	pushed	sha=61f9c7dc ci=pending run=35858909423
+2026-09-23T12:11:30Z	Story 7.5	adr_verifications_complete	result=none_required model=claude-opus-5-5
+2026-09-23T12:11:30Z	Story 7.5	stage_spawned	stage=qa spawn_at=2026-09-23T12:11:30Z model=sonnet agent_name=7-5-run-an-on-demand-task-qa-1 cycle_iteration=1
