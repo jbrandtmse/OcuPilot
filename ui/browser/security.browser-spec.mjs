@@ -305,7 +305,7 @@ test("AC3: the demo collection's name cell opens its Secrets list, read once for
     const secret = await describeRow(page, DEMO_SECRET);
     assert.ok(secret !== null, `the ${DEMO_SECRET} row is rendered`);
     assert.equal(secret[1].text, '%Wallet.KeyValue', 'as a key-value secret');
-    assert.equal(secret[0].link, false, 'and its name cell is not a link');
+    assert.ok(await page.$$eval('[role="grid"] .ocu-data-table-body .ocu-data-table-link', (links, name) => links.some((link) => link.textContent.trim() === name && decodeURIComponent(decodeURIComponent(new URL(link.href).pathname)).endsWith(`/security/wallet/secrets/edit/${name}`)), DEMO_SECRET), 'and its name cell is a link that opens security/wallet/secrets/edit/<name>');
 
     const segment = await page.evaluate((label) => {
       const links = Array.from(document.querySelectorAll('app-locator-bar .ocu-locator-link'));

@@ -488,7 +488,7 @@ Actionable work items from the UX design contract (`DESIGN.md` for how it looks,
 
 - UX-DR78: Wire the **light/dark theme toggle** as a flag flip - both token sets already exist and are contrast-checked - in the status bar account menu alongside Change password (FR-73).
 - UX-DR79: Ship the polish-week UX: "Explain this screen" as a one-click panel action everywhere; an explain entry point per log and audit row; at least three suggested prompts per screen grouped by task; click-through citation chips replacing Release 1's plain-text row names; the data-egress line on every turn with context on; the agent audit viewer; the copy-out draft on any card; governance-disabled results ("This tool is disabled by policy", the tool still advertised); and the Transcripts history screen (New conversation's earlier conversation is not reopenable in Release 1).
-- UX-DR80: Close the five **`[ASSUMPTION]`** confirmations before the surfaces that depend on them ship: the 24px status bar height and its shell color (Bridge has no status bar); 28px log rows against a real tail; 640px as the content minimum below which content scrolls horizontally; the 720px form and 480px field widths (the sticky bar itself is decided); and the meter's 80% warning and 95% error thresholds (the behavior is decided).
+- UX-DR80: Close the four **`[ASSUMPTION]`** confirmations before the surfaces that depend on them ship: the 24px status bar height and its shell color (Bridge has no status bar); 28px log rows against a real tail; 640px as the content minimum below which content scrolls horizontally; and the meter's 80% warning and 95% error thresholds (the behavior is decided).
 - UX-DR81: Close the **`[NOTE FOR PRD]`** items: bound "visible rows" in the screen context so the context chip can carry a row count (**resolved by AD-24's 200-row and total-size cap** - wire the count into the chip and the read tool-call card); and give build step 7's per-user turn limits a "turn limit reached" banner and a refusal sentence **before that step ships** - the one UX item the architecture spine did not answer.
 - UX-DR82: Satisfy the three **release-blocking installer asks** the UX raised, all of which the architecture adopted, so the first screen a judge meets is not a defect: unexpire `_SYSTEM` at install (AD-17), enable auditing and register OcuPilot's audit events (AD-17), and seed the demo fixtures - a demo SSL/TLS configuration, a self-signed X.509 credential and a disabled `/csp/myapp` with no resource - under the compose flow's clearly named opt-in (AD-25), so five empty Security lists and a missing `/csp/myapp` do not greet the README walkthrough.
 
@@ -4453,8 +4453,13 @@ So that a new account is usable without a second trip to the editor.
 - **Then** it is sent **once** and returned by no read, entered in a masked field that never pre-fills or echoes.
 
 - **Given** the roles being granted
-- **When** they include `%All` or any `%Admin_*` role and the request comes through the agent
-- **Then** it is refused, while a privileged user creating the account through the screen may grant them.
+- **When** they include `%All`, any `%Admin_*` role or a role that carries one
+- **Then** the grant is permitted at the strongest confirmation, whatever the caller, through the one tool (AD-10, AD-55): an agent proposal is confirmed as a delete is and its diff names the privilege; on the screen a consequence line (`privilegedGrantEffect`) appears at the Roles field while such a role is selected. [AMENDED 2026-09-23, owner decision: privilege grants permitted at typed confirmation; was "refused whatever the caller" (and, before that, "refused through the agent while a privileged user creating the account through the screen may grant them")]
+
+**Routed from the deferred-work ledger** - must be addressed in this story or declined with a reason:
+
+- DW-1495: the web-application create (Story 8.1, `webapp.list.create` and `POST /web-applications`) accepts `WSGIAppLocation`, a caller-supplied filesystem directory, and copies it into `Path`, against AD-21's "no OcuPilot endpoint accepts a filesystem path from a caller". **HIGH, floor-blocking, lands before Epic 8 merges.** The caller supplies only a relative directory name, resolved under one fixed root found on the instance and computed at call time (never cached); a literal `..` is rejected and a strict name pattern enforced, per AD-21's static-handler precedent; both callers go through the one tool (AD-55); the form shows the resolved path read-only; arbitrary locations stay a classic-portal action in Release 1. A test that fails when containment is removed: `..`, an absolute path and a sibling escape are each refused on BOTH the screen route and `webapp.list.create`. A needed hint string is a tier-1 Fixed-strings row (ledger; routed by orchestrator 2026-09-23)
+- DW-1489: a web application reachable unauthenticated is **not** prohibited (owner ruling (b)); instead the agent's `webapp.list.create` proposal names the unauthenticated consequence, and the create form names it at the authentication-method field, since the screen has no confirmation dialog (AD-55). The copy is a tier-1 Fixed-strings row (ledger; routed by orchestrator 2026-09-23)
 
 ### Story 8.3: Create a role, and manage its resource grants
 
@@ -4474,11 +4479,11 @@ So that access can be shaped without hand-editing security tables.
 
 - **Given** a role granted to users
 - **When** a delete is requested
-- **Then** the confirmation **warns with the count of users holding it** before proceeding, and requires the typed name.
+- **Then** the confirmation **warns with the count of users holding it** before proceeding, and requires the typed name. [AMENDED 2026-09-23, orchestrator-authorised, Rule 5 partial deferral: this story ships the agent's confirmed delete (`permissions.roles.delete`) with its AD-10 refusals; the Roles-list Delete row action - its typed-name confirmation carrying the holder count - moves to Story 9.3 as DW-1513, because AD-53's row-action route and handler exist only on Epic 7's branch until both epics merge.]
 
-- **Given** the grant would add a role to a resource in a way that escalates privilege
-- **When** it is proposed through the agent
-- **Then** it is refused, because privilege grants are prohibited in Release 1 through any path.
+- **Given** the grant would add a role to a resource in a way that escalates privilege, or a granted role that carries `%All` or an `%Admin_*` resource
+- **When** it is requested, whatever the caller
+- **Then** it is permitted at the strongest confirmation through the one tool: an agent proposal is confirmed as a delete is and its diff names the privilege; on the screen the consequence line (`privilegedGrantEffect`) appears at the field and in the grant dialog. [AMENDED 2026-09-23, owner decision: privilege grants permitted at typed confirmation; was "refused whatever the caller"]
 
 ### Story 8.4: The resource editor
 
@@ -4494,11 +4499,15 @@ So that the permission model is editable from the portal.
 
 - **Given** a system resource
 - **When** it is listed
-- **Then** it is shown but **not deletable**, the delete gated with that as its stated reason rather than hidden.
+- **Then** it is shown but **not deletable**, the delete gated with that as its stated reason rather than hidden. [AMENDED 2026-09-23, orchestrator-authorised, Rule 5 partial deferral: this story ships the agent's `permissions.resources.delete`, refusing a resource whose vendor `AllowDelete` is false and OcuPilot's own two resources; the Resources-list Delete row action drawn disabled with that reason moves to Story 9.3 as DW-1528, because AD-53's row-action route and self-protection rendering exist only on Epic 7's branch until both epics merge.]
 
 - **Given** `Security.Resource` does **not** merge
 - **When** an edit is saved
 - **Then** it sends the complete property set from a fresh read.
+
+**Routed from the deferred-work ledger** - must be addressed in this story or declined with a reason:
+
+- DW-1524: the user-update path (`Prohibited.User`) still refuses a privilege-granting role delta and any `EscalationRoles` change, against AD-10 as amended by the owner; permit both, minted destructive with the privilege named, keeping only the account protections (Epic 7's). **Floor-blocking.** `src/OcuPilot/Test/UserUpdate.cls` is contended with Epic 7: recode only the methods that assert the refusal, and add a test that fails when the update-path permission regresses (ledger; routed by orchestrator 2026-09-23)
 
 ### Story 8.5: X.509 import, edit and delete
 
@@ -4524,6 +4533,10 @@ So that outbound TLS and signed exchanges can be configured here.
 - **When** an edit is saved
 - **Then** it sends the complete property set from a fresh read
 - **And** the edit body is the PUT contract - `OwnerList`, `CAFile` and `PeerNames` only (published spec, 2026-09-16); the certificate, private key and password travel only in the import body, which is a different request.
+
+**Routed from the deferred-work ledger** - must be addressed in this story or declined with a reason:
+
+- DW-1456: the union's settable spelling is never bound to `Write.FieldRows`' own drop, so a divergence between the three copies of the `[]`-stripping rule would accept a declared secret the tool still advertises; this story ships the first non-empty `secretArguments` (AD-3 names `X509Credential`'s `PrivateKeyPassword` a template credential field), so it is the first that can redden a test for it (ledger; routed by adjudication 2026-09-22)
 
 ### Story 8.6: The wallet secret form
 
@@ -4571,7 +4584,7 @@ So that the "devices" the contest names is editable, not just readable.
 
 - **Given** a device is created, edited or deleted
 - **When** the write completes
-- **Then** the list reflects it without a manual refresh, and delete confirms by name.
+- **Then** the list reflects it without a manual refresh, and delete confirms by name. [AMENDED 2026-09-23, orchestrator: the screen's Delete row action follows Epic 7's merge on AD-53's route -- DW-1562; the agent's delete ships here]
 
 ### Story 8.9: Plain IRIS Community verification
 

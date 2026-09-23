@@ -191,6 +191,13 @@ Parameter PORTUNAVAILABLE = "PORT.UNAVAILABLE";
 /// within the port's bounded wait. Rendered on the <parameter>UNAVAILABLE</parameter> slug.</p>
 Parameter PORTTIMEOUT = "PORT.TIMEOUT";
 
+/// <p>Machine code (AD-12, AD-27, AD-39): a vendor delete answered as made and a re-read found the
+/// object still there (<parameter>OcuPilot.Port.AdminPort.VERIFIEDDELETES</parameter>). Rendered on
+/// the <parameter>SERVERERROR</parameter> slug at 500 with <parameter>REASONPORTNOTAPPLIED</parameter>.</p>
+Parameter PORTNOTAPPLIED = "PORT.NOTAPPLIED";
+
+Parameter REASONPORTNOTAPPLIED = "The instance reported the change as made, and it is not there.";
+
 /// <p>Machine code (AD-12, AD-39, AD-42): the provider layer could not be configured at all -- no
 /// definition carries the id the caller named, the definition is not usable, or its provider's
 /// catalog row names no adapter class this instance holds. Produced by
@@ -407,6 +414,11 @@ Parameter AGENTTEMPERATURERANGE = "AGENT.TEMPERATURE.RANGE";
 /// <p>Violation code (rule 5): the credential type is neither <code>env</code> nor
 /// <code>creds</code>.</p>
 Parameter AGENTCREDTYPEUNKNOWN = "AGENT.CREDTYPE.UNKNOWN";
+
+/// <p>Violation code: the credential type is <code>creds</code> in a namespace whose credentials
+/// rung is unreachable (<method>OcuPilot.Kernel.Secret.Ladder.CredentialsRungAvailable</method>
+/// answers 0), so the definition could never resolve its key.</p>
+Parameter AGENTCREDTYPEUNAVAILABLE = "AGENT.CREDTYPE.UNAVAILABLE";
 
 /// <p>Violation code (rule 6): the credential type is <code>env</code> and no environment
 /// variable is named. Reported <b>after</b> the XOR invariant has normalized the pair, so a body
@@ -1046,6 +1058,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#AGENTMAXTOKENSRANGE Quit ..#REASONAGENTMAXTOKENSRANGE
     If pCode = ..#AGENTTEMPERATURERANGE Quit ..#REASONAGENTTEMPERATURERANGE
     If pCode = ..#AGENTCREDTYPEUNKNOWN Quit ..#REASONAGENTCREDTYPEUNKNOWN
+    If pCode = ..#AGENTCREDTYPEUNAVAILABLE Quit ..#REASONAGENTCREDTYPEUNAVAILABLE
     If pCode = ..#AGENTENVVARREQUIRED Quit ..#REASONAGENTENVVARREQUIRED
     If pCode = ..#AGENTCREDNAMEREQUIRED Quit ..#REASONAGENTCREDNAMEREQUIRED
     If pCode = ..#AGENTCREDNAMELENGTH Quit ..#REASONAGENTCREDNAMELENGTH
@@ -1078,7 +1091,158 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#HELPROUTE Quit ..#REASONHELPROUTE
     If pCode = ..#PREFERENCESVALUE Quit ..#REASONPREFERENCESVALUE
     If pCode = ..#PREFERENCESNAME Quit ..#REASONPREFERENCESNAME
+    If pCode = ..#WEBAPPNAMEREQUIRED Quit ..#REASONWEBAPPNAMEREQUIRED
+    If pCode = ..#WEBAPPNAMESHAPE Quit ..#REASONWEBAPPNAMESHAPE
+    If pCode = ..#WEBAPPNAMETAKEN Quit ..#REASONWEBAPPNAMETAKEN
+    If pCode = ..#WEBAPPNAMESPACEREQUIRED Quit ..#REASONWEBAPPNAMESPACEREQUIRED
+    If pCode = ..#WEBAPPAUTHEREQUIRED Quit ..#REASONWEBAPPAUTHEREQUIRED
+    If pCode = ..#WEBAPPAUTHEUNKNOWN Quit ..#REASONWEBAPPAUTHEUNKNOWN
+    If pCode = ..#WEBAPPDISPATCHREQUIRED Quit ..#REASONWEBAPPDISPATCHREQUIRED
+    If pCode = ..#WEBAPPWSGIAPPNAME Quit ..#REASONWEBAPPWSGIAPPNAME
+    If pCode = ..#WEBAPPWSGILOCATION Quit ..#REASONWEBAPPWSGILOCATION
+    If pCode = ..#WEBAPPWSGITYPE Quit ..#REASONWEBAPPWSGITYPE
+    If pCode = ..#WEBAPPTYPECONFLICT Quit ..#REASONWEBAPPTYPECONFLICT
+    If pCode = ..#WEBAPPFIELDLENGTH Quit ..#REASONWEBAPPFIELDLENGTH
+    If pCode = ..#WEBAPPWSGIAPPLOCATIONSHAPE Quit ..#REASONWEBAPPWSGIAPPLOCATIONSHAPE
+    If pCode = ..#WEBAPPMATCHROLESSHAPE Quit ..#REASONWEBAPPMATCHROLESSHAPE
+    If pCode = ..#WEBAPPMATCHROLESUNKNOWN Quit ..#REASONWEBAPPMATCHROLESUNKNOWN
+    If pCode = ..#USERNAMEREQUIRED Quit ..#REASONUSERNAMEREQUIRED
+    If pCode = ..#USERNAMESHAPE Quit ..#REASONUSERNAMESHAPE
+    If pCode = ..#USERNAMETAKEN Quit ..#REASONUSERNAMETAKEN
+    If pCode = ..#USERPASSWORDREQUIRED Quit ..#REASONUSERPASSWORDREQUIRED
+    If pCode = ..#USERPASSWORDPOLICY Quit ..#REASONUSERPASSWORDPOLICY
+    If pCode = ..#USERFULLNAMELENGTH Quit ..#REASONUSERFULLNAMELENGTH
+    If pCode = ..#USEREXPIRATIONDATESHAPE Quit ..#REASONUSEREXPIRATIONDATESHAPE
+    If pCode = ..#USERNAMESPACEUNKNOWN Quit ..#REASONUSERNAMESPACEUNKNOWN
+    If pCode = ..#USERROUTINENAMESPACE Quit ..#REASONUSERROUTINENAMESPACE
+    If pCode = ..#USERROUTINELENGTH Quit ..#REASONUSERROUTINELENGTH
+    If pCode = ..#USERROLESUNKNOWN Quit ..#REASONUSERROLESUNKNOWN
+    If pCode = ..#USERROLESSHAPE Quit ..#REASONUSERROLESSHAPE
+    If pCode = ..#ROLENAMEREQUIRED Quit ..#REASONROLENAMEREQUIRED
+    If pCode = ..#ROLENAMELENGTH Quit ..#REASONROLENAMELENGTH
+    If pCode = ..#ROLENAMESHAPE Quit ..#REASONROLENAMESHAPE
+    If pCode = ..#ROLENAMETAKEN Quit ..#REASONROLENAMETAKEN
+    If pCode = ..#ROLENAMESYSTEM Quit ..#REASONROLENAMESYSTEM
+    If pCode = ..#ROLEDESCRIPTIONLENGTH Quit ..#REASONROLEDESCRIPTIONLENGTH
+    If pCode = ..#ROLERESOURCESSHAPE Quit ..#REASONROLERESOURCESSHAPE
+    If pCode = ..#ROLERESOURCESUNKNOWN Quit ..#REASONROLERESOURCESUNKNOWN
+    If pCode = ..#ROLERESOURCESPERMISSIONS Quit ..#REASONROLERESOURCESPERMISSIONS
+    If pCode = ..#ROLERESOURCESDUPLICATE Quit ..#REASONROLERESOURCESDUPLICATE
+    If pCode = ..#ROLERESOURCESWRITEONLY Quit ..#REASONROLERESOURCESWRITEONLY
+    If pCode = ..#ROLEGRANTEDROLESSHAPE Quit ..#REASONROLEGRANTEDROLESSHAPE
+    If pCode = ..#ROLEGRANTEDROLESUNKNOWN Quit ..#REASONROLEGRANTEDROLESUNKNOWN
+    If pCode = ..#RESOURCENAMEREQUIRED Quit ..#REASONRESOURCENAMEREQUIRED
+    If pCode = ..#RESOURCENAMELENGTH Quit ..#REASONRESOURCENAMELENGTH
+    If pCode = ..#RESOURCENAMESHAPE Quit ..#REASONRESOURCENAMESHAPE
+    If pCode = ..#RESOURCENAMETAKEN Quit ..#REASONRESOURCENAMETAKEN
+    If pCode = ..#RESOURCENAMESYSTEM Quit ..#REASONRESOURCENAMESYSTEM
+    If pCode = ..#RESOURCENAMEABSENT Quit ..#REASONRESOURCENAMEABSENT
+    If pCode = ..#RESOURCEDESCRIPTIONLENGTH Quit ..#REASONRESOURCEDESCRIPTIONLENGTH
+    If pCode = ..#RESOURCEPUBLICPERMISSIONSHAPE Quit ..#REASONRESOURCEPUBLICPERMISSIONSHAPE
+    If pCode = ..#RESOURCEPUBLICPERMISSIONLETTERS Quit ..#REASONRESOURCEPUBLICPERMISSIONLETTERS
+    If pCode = ..#X509ALIASREQUIRED Quit ..#REASONX509ALIASREQUIRED
+    If pCode = ..#X509ALIASLENGTH Quit ..#REASONX509ALIASLENGTH
+    If pCode = ..#X509ALIASSHAPE Quit ..#REASONX509ALIASSHAPE
+    If pCode = ..#X509ALIASTAKEN Quit ..#REASONX509ALIASTAKEN
+    If pCode = ..#X509ALIASABSENT Quit ..#REASONX509ALIASABSENT
+    If pCode = ..#X509CERTIFICATEREQUIRED Quit ..#REASONX509CERTIFICATEREQUIRED
+    If pCode = ..#X509CERTIFICATESHAPE Quit ..#REASONX509CERTIFICATESHAPE
+    If pCode = ..#X509CERTIFICATEEXPIRED Quit ..#REASONX509CERTIFICATEEXPIRED
+    If pCode = ..#X509PRIVATEKEYSHAPE Quit ..#REASONX509PRIVATEKEYSHAPE
+    If pCode = ..#X509PRIVATEKEYMISMATCH Quit ..#REASONX509PRIVATEKEYMISMATCH
+    If pCode = ..#X509PRIVATEKEYPASSWORDWRONG Quit ..#REASONX509PRIVATEKEYPASSWORDWRONG
+    If pCode = ..#X509PRIVATEKEYPASSWORDWITHOUTKEY Quit ..#REASONX509PRIVATEKEYPASSWORDWITHOUTKEY
+    If pCode = ..#X509PRIVATEKEYPASSWORDLENGTH Quit ..#REASONX509PRIVATEKEYPASSWORDLENGTH
+    If pCode = ..#WALLETNAMEREQUIRED Quit ..#REASONWALLETNAMEREQUIRED
+    If pCode = ..#WALLETNAMESHAPE Quit ..#REASONWALLETNAMESHAPE
+    If pCode = ..#WALLETNAMELENGTH Quit ..#REASONWALLETNAMELENGTH
+    If pCode = ..#WALLETNAMETAKEN Quit ..#REASONWALLETNAMETAKEN
+    If pCode = ..#WALLETNAMEABSENT Quit ..#REASONWALLETNAMEABSENT
+    If pCode = ..#WALLETCOLLECTIONABSENT Quit ..#REASONWALLETCOLLECTIONABSENT
+    If pCode = ..#WALLETSECRETREQUIRED Quit ..#REASONWALLETSECRETREQUIRED
+    If pCode = ..#WALLETSECRETLENGTH Quit ..#REASONWALLETSECRETLENGTH
+    If pCode = ..#WALLETUSAGERANGE Quit ..#REASONWALLETUSAGERANGE
+    If pCode = ..#WALLETALLOWEDHOSTSSHAPE Quit ..#REASONWALLETALLOWEDHOSTSSHAPE
+    If pCode = ..#WALLETTYPEUNSUPPORTED Quit ..#REASONWALLETTYPEUNSUPPORTED
+    If pCode = ..#DEVICENAMEREQUIRED Quit ..#REASONDEVICENAMEREQUIRED
+    If pCode = ..#DEVICENAMELENGTH Quit ..#REASONDEVICENAMELENGTH
+    If pCode = ..#DEVICENAMESHAPE Quit ..#REASONDEVICENAMESHAPE
+    If pCode = ..#DEVICENAMETAKEN Quit ..#REASONDEVICENAMETAKEN
+    If pCode = ..#DEVICENAMEABSENT Quit ..#REASONDEVICENAMEABSENT
+    If pCode = ..#DEVICEPHYSICALDEVICEREQUIRED Quit ..#REASONDEVICEPHYSICALDEVICEREQUIRED
+    If pCode = ..#DEVICEPHYSICALDEVICELENGTH Quit ..#REASONDEVICEPHYSICALDEVICELENGTH
+    If pCode = ..#DEVICEPHYSICALDEVICESHAPE Quit ..#REASONDEVICEPHYSICALDEVICESHAPE
+    If pCode = ..#DEVICETYPEREQUIRED Quit ..#REASONDEVICETYPEREQUIRED
+    If pCode = ..#DEVICETYPEVALUE Quit ..#REASONDEVICETYPEVALUE
+    If pCode = ..#DEVICESUBTYPEREQUIRED Quit ..#REASONDEVICESUBTYPEREQUIRED
+    If pCode = ..#DEVICESUBTYPEABSENT Quit ..#REASONDEVICESUBTYPEABSENT
+    If pCode = ..#DEVICEOPENPARAMETERSLENGTH Quit ..#REASONDEVICEOPENPARAMETERSLENGTH
+    If pCode = ..#DEVICEOPENPARAMETERSSHAPE Quit ..#REASONDEVICEOPENPARAMETERSSHAPE
+    If pCode = ..#DEVICEDESCRIPTIONLENGTH Quit ..#REASONDEVICEDESCRIPTIONLENGTH
+    If pCode = ..#DEVICEDESCRIPTIONSHAPE Quit ..#REASONDEVICEDESCRIPTIONSHAPE
+    If pCode = ..#DEVICEALTERNATEDEVICELENGTH Quit ..#REASONDEVICEALTERNATEDEVICELENGTH
+    If pCode = ..#DEVICEALTERNATEDEVICESHAPE Quit ..#REASONDEVICEALTERNATEDEVICESHAPE
+    If pCode = ..#DEVICEALIASSHAPE Quit ..#REASONDEVICEALIASSHAPE
+    If pCode = ..#DEVICEALIASTAKEN Quit ..#REASONDEVICEALIASTAKEN
+    If pCode = ..#DEVICEALIASSAME Quit ..#REASONDEVICEALIASSAME
+    If pCode = ..#DEVICEPROMPTVALUE Quit ..#REASONDEVICEPROMPTVALUE
+    If pCode = ..#PORTFIELDREQUIRED Quit ..#REASONPORTFIELDREQUIRED
+    If pCode = ..#PORTFIELDUNEXPECTED Quit ..#REASONPORTFIELDUNEXPECTED
+    If pCode = ..#PORTFIELDSHAPE Quit ..#REASONPORTFIELDSHAPE
     Quit ""
+}
+
+/// <p>Every <code>WEBAPP.*</code> and <code>PORT.FIELD.*</code> field-level violation code, as a
+/// <class>%List</class>, for the reason <method>ViolationCodes</method> exists: a test holds
+/// <method>ReasonForViolation</method> to the vocabulary without re-spelling either, so a code
+/// added with no sentence behind it reddens.</p>
+ClassMethod WebAppViolationCodes() As %List
+{
+    Quit $ListBuild(..#WEBAPPNAMEREQUIRED, ..#WEBAPPNAMESHAPE, ..#WEBAPPNAMETAKEN, ..#WEBAPPNAMESPACEREQUIRED, ..#WEBAPPAUTHEREQUIRED, ..#WEBAPPAUTHEUNKNOWN, ..#WEBAPPDISPATCHREQUIRED, ..#WEBAPPWSGIAPPNAME, ..#WEBAPPWSGILOCATION, ..#WEBAPPWSGITYPE, ..#WEBAPPTYPECONFLICT, ..#WEBAPPFIELDLENGTH, ..#WEBAPPWSGIAPPLOCATIONSHAPE, ..#WEBAPPMATCHROLESSHAPE, ..#WEBAPPMATCHROLESUNKNOWN, ..#PORTFIELDREQUIRED, ..#PORTFIELDUNEXPECTED, ..#PORTFIELDSHAPE)
+}
+
+/// <p>Every <code>USER.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>WebAppViolationCodes</method> exists: a test holds
+/// <method>ReasonForViolation</method> to the vocabulary, so a code added with no sentence behind
+/// it reddens.</p>
+ClassMethod UserViolationCodes() As %List
+{
+    Quit $ListBuild(..#USERNAMEREQUIRED, ..#USERNAMESHAPE, ..#USERNAMETAKEN, ..#USERPASSWORDREQUIRED, ..#USERPASSWORDPOLICY, ..#USERFULLNAMELENGTH, ..#USEREXPIRATIONDATESHAPE, ..#USERNAMESPACEUNKNOWN, ..#USERROUTINENAMESPACE, ..#USERROUTINELENGTH, ..#USERROLESUNKNOWN, ..#USERROLESSHAPE)
+}
+
+/// <p>Every <code>ROLE.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod RoleViolationCodes() As %List
+{
+    Quit $ListBuild(..#ROLENAMEREQUIRED, ..#ROLENAMELENGTH, ..#ROLENAMESHAPE, ..#ROLENAMETAKEN, ..#ROLENAMESYSTEM, ..#ROLEDESCRIPTIONLENGTH, ..#ROLERESOURCESSHAPE, ..#ROLERESOURCESUNKNOWN, ..#ROLERESOURCESPERMISSIONS, ..#ROLERESOURCESDUPLICATE, ..#ROLERESOURCESWRITEONLY, ..#ROLEGRANTEDROLESSHAPE, ..#ROLEGRANTEDROLESUNKNOWN)
+}
+
+/// <p>Every <code>RESOURCE.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod ResourceViolationCodes() As %List
+{
+    Quit $ListBuild(..#RESOURCENAMEREQUIRED, ..#RESOURCENAMELENGTH, ..#RESOURCENAMESHAPE, ..#RESOURCENAMETAKEN, ..#RESOURCENAMESYSTEM, ..#RESOURCENAMEABSENT, ..#RESOURCEDESCRIPTIONLENGTH, ..#RESOURCEPUBLICPERMISSIONSHAPE, ..#RESOURCEPUBLICPERMISSIONLETTERS)
+}
+
+/// <p>Every <code>X509.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod X509ViolationCodes() As %List
+{
+    Quit $ListBuild(..#X509ALIASREQUIRED, ..#X509ALIASLENGTH, ..#X509ALIASSHAPE, ..#X509ALIASTAKEN, ..#X509ALIASABSENT, ..#X509CERTIFICATEREQUIRED, ..#X509CERTIFICATESHAPE, ..#X509CERTIFICATEEXPIRED, ..#X509PRIVATEKEYSHAPE, ..#X509PRIVATEKEYMISMATCH, ..#X509PRIVATEKEYPASSWORDWRONG, ..#X509PRIVATEKEYPASSWORDWITHOUTKEY, ..#X509PRIVATEKEYPASSWORDLENGTH)
+}
+
+/// <p>Every <code>WALLET.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod WalletViolationCodes() As %List
+{
+    Quit $ListBuild(..#WALLETNAMEREQUIRED, ..#WALLETNAMESHAPE, ..#WALLETNAMELENGTH, ..#WALLETNAMETAKEN, ..#WALLETNAMEABSENT, ..#WALLETCOLLECTIONABSENT, ..#WALLETSECRETREQUIRED, ..#WALLETSECRETLENGTH, ..#WALLETUSAGERANGE, ..#WALLETALLOWEDHOSTSSHAPE, ..#WALLETTYPEUNSUPPORTED)
+}
+
+/// <p>Every <code>DEVICE.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod DeviceViolationCodes() As %List
+{
+    Quit $ListBuild(..#DEVICENAMEREQUIRED, ..#DEVICENAMELENGTH, ..#DEVICENAMESHAPE, ..#DEVICENAMETAKEN, ..#DEVICENAMEABSENT, ..#DEVICEPHYSICALDEVICEREQUIRED, ..#DEVICEPHYSICALDEVICELENGTH, ..#DEVICEPHYSICALDEVICESHAPE, ..#DEVICETYPEREQUIRED, ..#DEVICETYPEVALUE, ..#DEVICESUBTYPEREQUIRED, ..#DEVICESUBTYPEABSENT, ..#DEVICEOPENPARAMETERSLENGTH, ..#DEVICEOPENPARAMETERSSHAPE, ..#DEVICEDESCRIPTIONLENGTH, ..#DEVICEDESCRIPTIONSHAPE, ..#DEVICEALTERNATEDEVICELENGTH, ..#DEVICEALTERNATEDEVICESHAPE, ..#DEVICEALIASSHAPE, ..#DEVICEALIASTAKEN, ..#DEVICEALIASSAME, ..#DEVICEPROMPTVALUE)
 }
 
 /// <p>Every <code>AGENT.*</code> field-level violation code that carries a sentence, as a
@@ -1089,7 +1253,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
 /// <class>OcuPilot.Test.AccountPasswordWire</class>, which asserts each sentence over the wire.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTHTTPACKREQUIRED, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE, ..#AGENTCREDENTIALNOTOWNED, ..#AGENTCREDENTIALNOPRIVILEGE, ..#AGENTSWITCHREASONREQUIRED, ..#AGENTSWITCHCONTEXTROWCAP, ..#AGENTHOLDUSERREQUIRED, ..#AGENTHOLDREASONREQUIRED, ..#AGENTHOLDDUPLICATE)
+    Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTCREDTYPEUNAVAILABLE, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTHTTPACKREQUIRED, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE, ..#AGENTCREDENTIALNOTOWNED, ..#AGENTCREDENTIALNOPRIVILEGE, ..#AGENTSWITCHREASONREQUIRED, ..#AGENTSWITCHCONTEXTROWCAP, ..#AGENTHOLDUSERREQUIRED, ..#AGENTHOLDREASONREQUIRED, ..#AGENTHOLDDUPLICATE)
 }
 
 /// <p>Refusal sentence for <parameter>AGENTNAMEREQUIRED</parameter>.</p>
@@ -1109,6 +1273,9 @@ Parameter REASONAGENTTEMPERATURERANGE = "Temperature is a number from 0 to 2.";
 
 /// <p>Refusal sentence for <parameter>AGENTCREDTYPEUNKNOWN</parameter>.</p>
 Parameter REASONAGENTCREDTYPEUNKNOWN = "Choose where the key is read from: an environment variable, or a credential entry.";
+
+/// <p>Refusal sentence for <parameter>AGENTCREDTYPEUNAVAILABLE</parameter>.</p>
+Parameter REASONAGENTCREDTYPEUNAVAILABLE = "The credential store is not available in this namespace. Read the key from an environment variable instead.";
 
 /// <p>Refusal sentence for <parameter>AGENTENVVARREQUIRED</parameter>.</p>
 Parameter REASONAGENTENVVARREQUIRED = "Name the environment variable the key is read from.";
@@ -1466,6 +1633,697 @@ ClassMethod GetSlugForStatus(pStatusCode As %Integer) As %String
     If pStatusCode = 501 Quit ..#NOTIMPLEMENTED
     If pStatusCode = 503 Quit ..#UNAVAILABLE
     Quit ..#SERVERERROR
+}
+
+/// <p>Machine code (AD-12, AD-39): the request to create a web application broke one or more of
+/// the rules <class>OcuPilot.Area.WebApp.Create</class> applies before the port is touched.
+/// Rendered on the <parameter>VALIDATIONFAILED</parameter> slug, with every violation as a
+/// <code>{field, code, reason}</code> entry in the envelope's <code>detail.violations</code> --
+/// one response for a submission that breaks four rules, never four responses (AD-39).</p>
+Parameter WEBAPPVALIDATION = "WEBAPP.VALIDATION";
+
+/// <p>The envelope's <code>reason</code> for <parameter>WEBAPPVALIDATION</parameter>, which the
+/// screen renders only where no violation named a field.</p>
+Parameter REASONWEBAPPVALIDATION = "The web application was refused.";
+
+/// <p>Violation code: no name was supplied. A web application is identified by the URL path it
+/// answers at, and that path is the vendor's <code>name</code> query parameter rather than a body
+/// field, so an absent one is refused here rather than by the endpoint.</p>
+Parameter WEBAPPNAMEREQUIRED = "WEBAPP.NAME.REQUIRED";
+
+Parameter REASONWEBAPPNAMEREQUIRED = "Give the application the URL path it answers at, such as /csp/myapp.";
+
+/// <p>Violation code: the name is not a path this instance can serve. Checked before the port so
+/// the sentence names the field rather than arriving as a vendor status about an internal class.</p>
+Parameter WEBAPPNAMESHAPE = "WEBAPP.NAME.SHAPE";
+
+Parameter REASONWEBAPPNAMESHAPE = "An application name starts with / and is at most 64 characters, with no space and no percent sign.";
+
+/// <p>Violation code: a web application already answers that name. It is a <b>read</b> rather than
+/// a validation -- <code>GET /web-applications/name</code> answers the same question on blur -- and
+/// it matters more than the rest, because the vendor's own PUT is an upsert (AD-54).</p>
+Parameter WEBAPPNAMETAKEN = "WEBAPP.NAME.TAKEN";
+
+Parameter REASONWEBAPPNAMETAKEN = "This instance already has a web application with that name. Choose a different one.";
+
+/// <p>Violation code: no namespace was supplied. <method>%Api.Admin.Endpoints.WebApp.App.ValidateRequest</method>
+/// adds <code>NameSpace</code> to its required set only when the application does not already
+/// exist, so this is the create path's own rule and OcuPilot states it on the field.</p>
+Parameter WEBAPPNAMESPACEREQUIRED = "WEBAPP.NAMESPACE.REQUIRED";
+
+Parameter REASONWEBAPPNAMESPACEREQUIRED = "Choose the namespace this application runs in.";
+
+/// <p>Violation code: no authentication method was chosen.
+/// <property>Security.Applications.AutheEnabled</property> carries
+/// <code>InitialExpression = 64</code> (Unauthenticated), so an omitted value would create an
+/// application anyone can reach without signing in. The field is always sent explicitly and an
+/// empty one is refused.</p>
+Parameter WEBAPPAUTHEREQUIRED = "WEBAPP.AUTHE.REQUIRED";
+
+Parameter REASONWEBAPPAUTHEREQUIRED = "Choose at least one authentication method. An application with none is reachable without signing in.";
+
+/// <p>Violation code: the value carries a bit outside the ones this instance itself has enabled
+/// for a web application (<method>OcuPilot.Area.WebApp.FormRules.Methods</method>).</p>
+Parameter WEBAPPAUTHEUNKNOWN = "WEBAPP.AUTHE.UNKNOWN";
+
+Parameter REASONWEBAPPAUTHEUNKNOWN = "That authentication method is not one this instance offers for a web application.";
+
+/// <p>Violation code: a REST application names no dispatch class. The vendor accepts the
+/// combination and serves nothing at the address, which is why the rule is OcuPilot's.</p>
+Parameter WEBAPPDISPATCHREQUIRED = "WEBAPP.DISPATCH.REQUIRED";
+
+Parameter REASONWEBAPPDISPATCHREQUIRED = "A REST application names the class that answers its requests.";
+
+/// <p>Violation code: a WSGI or ASGI application names no callable file.</p>
+Parameter WEBAPPWSGIAPPNAME = "WEBAPP.WSGI.APPNAME";
+
+Parameter REASONWEBAPPWSGIAPPNAME = "A WSGI or ASGI application names the file that holds its callable.";
+
+/// <p>Violation code: a WSGI or ASGI application names no directory. It is also what
+/// <method>OcuPilot.Screen.Tool.WebAppCreate.DerivedFields</method> derives the physical path
+/// from, so an empty one would leave the application serving from nowhere.</p>
+Parameter WEBAPPWSGILOCATION = "WEBAPP.WSGI.LOCATION";
+
+Parameter REASONWEBAPPWSGILOCATION = "A WSGI or ASGI application names the directory its application is in.";
+
+/// <p>Violation code: the Python protocol type is neither of the two
+/// <property>Security.Applications.WSGIType</property> publishes. It travels as its display string
+/// because the endpoint runs <code>WSGITypeDisplayToLogical</code> over it.</p>
+Parameter WEBAPPWSGITYPE = "WEBAPP.WSGI.TYPE";
+
+Parameter REASONWEBAPPWSGITYPE = "The Python protocol type is WSGI or ASGI.";
+
+/// <p>Violation code: the body names both a dispatch class and the fields of a Python callable.
+/// An application answers one way or the other, and the vendor's own editor expresses that as one
+/// radio group rather than as two independent sets of fields.</p>
+Parameter WEBAPPTYPECONFLICT = "WEBAPP.TYPE.CONFLICT";
+
+Parameter REASONWEBAPPTYPECONFLICT = "An application is either a REST application with a dispatch class or a Python application with a callable, not both.";
+
+/// <p>Violation code: the value is longer than the instance stores for that field. The bound is
+/// the property's own <code>MAXLEN</code>, served to the form by
+/// <method>OcuPilot.Area.WebApp.FormRules.Lengths</method> so the sentence and the control agree.</p>
+Parameter WEBAPPFIELDLENGTH = "WEBAPP.FIELD.LENGTH";
+
+Parameter REASONWEBAPPFIELDLENGTH = "That value is longer than this instance stores for the field.";
+
+/// <p>Violation code: a WSGI or ASGI application's directory is not one directory name that
+/// resolves under this instance's own WSGI root (AD-21, <class>OcuPilot.Area.WebApp.Location</class>).
+/// A path, a <code>..</code> and a name outside the pattern are each refused rather than sent.</p>
+Parameter WEBAPPWSGIAPPLOCATIONSHAPE = "WEBAPP.WSGIAPPLOCATION.SHAPE";
+
+Parameter REASONWEBAPPWSGIAPPLOCATIONSHAPE = "Name one directory of letters, digits, dots, dashes and underscores, at most 64 characters; it is placed in this instance's own WSGI directory. Any other location is set in the classic portal.";
+
+/// <p>Violation code: the application roles are not a list of <code>{MatchRole, TargetRoles}</code>
+/// entries, each a matching role (empty for every request) and a list of role names.</p>
+Parameter WEBAPPMATCHROLESSHAPE = "WEBAPP.MATCHROLES.SHAPE";
+
+Parameter REASONWEBAPPMATCHROLESSHAPE = "Each application-role entry names a matching role, or none, and the roles it grants.";
+
+/// <p>Violation code: an application-role entry names a role this instance does not hold.</p>
+Parameter WEBAPPMATCHROLESUNKNOWN = "WEBAPP.MATCHROLES.UNKNOWN";
+
+Parameter REASONWEBAPPMATCHROLESUNKNOWN = "One of those roles does not exist on this instance.";
+
+/// <p>Machine code (AD-12, AD-39): the request to create a user broke one or more of the rules
+/// <class>OcuPilot.Area.Permissions.UserCreateRules</class> applies before the port is touched.
+/// Rendered on the <parameter>VALIDATIONFAILED</parameter> slug with every violation in
+/// <code>detail.violations</code>, the shape <parameter>WEBAPPVALIDATION</parameter> takes.</p>
+Parameter USERVALIDATION = "USER.VALIDATION";
+
+/// <p>The envelope's <code>reason</code> for <parameter>USERVALIDATION</parameter>, which the
+/// screen renders only where no violation named a field.</p>
+Parameter REASONUSERVALIDATION = "The user was refused.";
+
+/// <p>Violation code: no name was supplied. A user's name is the vendor's <code>name</code> query
+/// parameter rather than a body field.</p>
+Parameter USERNAMEREQUIRED = "USER.NAME.REQUIRED";
+
+Parameter REASONUSERNAMEREQUIRED = "Give the account a name.";
+
+/// <p>Violation code: the name is not one this instance can hold -- longer than
+/// <class>%Library.Username</class> stores, or carrying a control character, a <code>*</code> or an
+/// <code>@</code>.</p>
+Parameter USERNAMESHAPE = "USER.NAME.SHAPE";
+
+Parameter REASONUSERNAMESHAPE = "A user name is at most 160 characters, with no control character, no * and no @ sign.";
+
+/// <p>Violation code: an account already carries that name. <class>Security.Users</class> keys on
+/// the lower-cased name, so a name taken in any case is taken. A read rather than a validation --
+/// <code>GET /users/name</code> answers it on blur.</p>
+Parameter USERNAMETAKEN = "USER.NAME.TAKEN";
+
+Parameter REASONUSERNAMETAKEN = "This instance already has a user with that name. Choose a different one.";
+
+/// <p>Violation code: no password was supplied. The vendor's create requires one.</p>
+Parameter USERPASSWORDREQUIRED = "USER.PASSWORD.REQUIRED";
+
+Parameter REASONUSERPASSWORDREQUIRED = "Give the account a password.";
+
+/// <p>Violation code: the password does not match <property>Security.System.PasswordPattern</property>.
+/// The sentence names the policy, never the value (AD-35).</p>
+Parameter USERPASSWORDPOLICY = "USER.PASSWORD.POLICY";
+
+Parameter REASONUSERPASSWORDPOLICY = "The password does not meet this instance's password policy.";
+
+/// <p>Violation code: the full name is longer than <property>Security.Users.FullName</property>
+/// stores.</p>
+Parameter USERFULLNAMELENGTH = "USER.FULLNAME.LENGTH";
+
+Parameter REASONUSERFULLNAMELENGTH = "That full name is longer than this instance stores.";
+
+/// <p>Violation code: the expiration date is not a real date in the <code>YYYY-MM-DD</code> form
+/// <property>Security.Users.ExpirationDate</property> is set from.</p>
+Parameter USEREXPIRATIONDATESHAPE = "USER.EXPIRATIONDATE.SHAPE";
+
+Parameter REASONUSEREXPIRATIONDATESHAPE = "An expiration date is a real date, written YYYY-MM-DD.";
+
+/// <p>Violation code: the startup namespace is not a namespace this instance holds.</p>
+Parameter USERNAMESPACEUNKNOWN = "USER.NAMESPACE.UNKNOWN";
+
+Parameter REASONUSERNAMESPACEUNKNOWN = "That is not a namespace on this instance.";
+
+/// <p>Violation code: a startup routine was named with no startup namespace to run it in.</p>
+Parameter USERROUTINENAMESPACE = "USER.ROUTINE.NAMESPACE";
+
+Parameter REASONUSERROUTINENAMESPACE = "A startup routine runs in a startup namespace, so choose one as well.";
+
+/// <p>Violation code: the startup routine is longer than <property>Security.Users.Routine</property>
+/// stores.</p>
+Parameter USERROUTINELENGTH = "USER.ROUTINE.LENGTH";
+
+Parameter REASONUSERROUTINELENGTH = "A startup tag^routine is at most 64 characters.";
+
+/// <p>Violation code: a role named is not one this instance holds.
+/// <method>Security.Users.Create</method> accepts an unknown role silently, so the rule is
+/// OcuPilot's.</p>
+Parameter USERROLESUNKNOWN = "USER.ROLES.UNKNOWN";
+
+Parameter REASONUSERROLESUNKNOWN = "One of those roles does not exist on this instance.";
+
+/// <p>Violation code: the roles are not a list of role names.</p>
+Parameter USERROLESSHAPE = "USER.ROLES.SHAPE";
+
+Parameter REASONUSERROLESSHAPE = "Roles are a list of role names.";
+
+/// <p>Machine code (AD-12, AD-39): the request to create a role broke one or more of the rules
+/// <class>OcuPilot.Area.Permissions.RoleCreateRules</class> applies before the port is touched.
+/// Rendered on the <parameter>VALIDATIONFAILED</parameter> slug with every violation in
+/// <code>detail.violations</code>, the shape <parameter>USERVALIDATION</parameter> takes.</p>
+Parameter ROLEVALIDATION = "ROLE.VALIDATION";
+
+/// <p>The envelope's <code>reason</code> for <parameter>ROLEVALIDATION</parameter>, which the
+/// screen renders only where no violation named a field.</p>
+Parameter REASONROLEVALIDATION = "The role was refused.";
+
+/// <p>Violation code: no name was supplied. A role's name is the vendor's <code>name</code> query
+/// parameter, which its body refuses.</p>
+Parameter ROLENAMEREQUIRED = "ROLE.NAME.REQUIRED";
+
+Parameter REASONROLENAMEREQUIRED = "Give the role a name.";
+
+/// <p>Violation code: the name is longer than <class>Security.Roles</class> stores.</p>
+Parameter ROLENAMELENGTH = "ROLE.NAME.LENGTH";
+
+Parameter REASONROLENAMELENGTH = "A role name is at most 64 characters.";
+
+/// <p>Violation code: the name carries a control character, a comma or a colon, which
+/// <class>Security.Roles</class> refuses.</p>
+Parameter ROLENAMESHAPE = "ROLE.NAME.SHAPE";
+
+Parameter REASONROLENAMESHAPE = "A role name has no control character, no comma and no colon.";
+
+/// <p>Violation code: a role already carries that name. A role name is compared without regard to
+/// case, so a name taken in any case is taken. A read rather than a validation --
+/// <code>GET /roles/name</code> answers it on blur.</p>
+Parameter ROLENAMETAKEN = "ROLE.NAME.TAKEN";
+
+Parameter REASONROLENAMETAKEN = "This instance already has a role with that name. Choose a different one.";
+
+/// <p>Violation code: the name begins with <code>%</code>, which only the instance's own predefined
+/// roles do. Refused on a create, and on a delete, where the vendor endpoint would drop a
+/// predefined role and report success.</p>
+Parameter ROLENAMESYSTEM = "ROLE.NAME.SYSTEM";
+
+Parameter REASONROLENAMESYSTEM = "A name beginning with % belongs to one of the instance's own roles.";
+
+/// <p>Violation code: the description is longer than <class>Security.Roles</class> stores.</p>
+Parameter ROLEDESCRIPTIONLENGTH = "ROLE.DESCRIPTION.LENGTH";
+
+Parameter REASONROLEDESCRIPTIONLENGTH = "A role description is at most 256 characters.";
+
+/// <p>Violation code: the resource grants are not a list of <code>{Name, Permissions}</code> objects
+/// each naming a resource.</p>
+Parameter ROLERESOURCESSHAPE = "ROLE.RESOURCES.SHAPE";
+
+Parameter REASONROLERESOURCESSHAPE = "Each resource grant names one resource and its permissions.";
+
+/// <p>Violation code: a grant names a resource this instance does not hold.</p>
+Parameter ROLERESOURCESUNKNOWN = "ROLE.RESOURCES.UNKNOWN";
+
+Parameter REASONROLERESOURCESUNKNOWN = "One of those resources does not exist on this instance.";
+
+/// <p>Violation code: a grant carries no permission, repeats one, or carries a letter its resource
+/// does not admit (<method>OcuPilot.Area.Permissions.RoleCreateRules.AdmissiblePermissions</method>,
+/// the classic grant dialog's own rule).</p>
+Parameter ROLERESOURCESPERMISSIONS = "ROLE.RESOURCES.PERMISSIONS";
+
+Parameter REASONROLERESOURCESPERMISSIONS = "Grant each resource only the permissions it offers: Read and Write for a database; Use alone for a service, an administrative resource or another system resource the Management Portal limits to Use, such as %Development or %System_; and Read, Write or Use for any other.";
+
+/// <p>Violation code: two grants name the same resource.</p>
+Parameter ROLERESOURCESDUPLICATE = "ROLE.RESOURCES.DUPLICATE";
+
+Parameter REASONROLERESOURCESDUPLICATE = "Grant each resource once.";
+
+/// <p>Violation code: a database's resource is granted Write without Read. The classic grant dialog
+/// ticks and locks Read when Write is ticked (<code>RoleResourceEdit.writeChanged</code>), so the
+/// form does the same and the rule refuses what a caller sends otherwise.</p>
+Parameter ROLERESOURCESWRITEONLY = "ROLE.RESOURCES.WRITEONLY";
+
+Parameter REASONROLERESOURCESWRITEONLY = "A database grant that includes Write includes Read as well.";
+
+/// <p>Violation code: the granted roles are not a list of role names.</p>
+Parameter ROLEGRANTEDROLESSHAPE = "ROLE.GRANTEDROLES.SHAPE";
+
+Parameter REASONROLEGRANTEDROLESSHAPE = "Granted roles are a list of role names.";
+
+/// <p>Violation code: a granted role is not one this instance holds.</p>
+Parameter ROLEGRANTEDROLESUNKNOWN = "ROLE.GRANTEDROLES.UNKNOWN";
+
+Parameter REASONROLEGRANTEDROLESUNKNOWN = "One of those roles does not exist on this instance.";
+
+/// <p>Machine code (AD-12, AD-39): a resource create or edit broke one or more of the rules
+/// <class>OcuPilot.Area.Permissions.ResourceRules</class> applies before the port is touched.
+/// Rendered on the <parameter>VALIDATIONFAILED</parameter> slug with every violation in
+/// <code>detail.violations</code>, the shape <parameter>ROLEVALIDATION</parameter> takes.</p>
+Parameter RESOURCEVALIDATION = "RESOURCE.VALIDATION";
+
+/// <p>The envelope's <code>reason</code> for <parameter>RESOURCEVALIDATION</parameter>, which the
+/// screen renders only where no violation named a field.</p>
+Parameter REASONRESOURCEVALIDATION = "The resource was refused.";
+
+/// <p>Violation code: no name was supplied. A resource's name is the vendor's <code>name</code>
+/// query parameter, which its body refuses.</p>
+Parameter RESOURCENAMEREQUIRED = "RESOURCE.NAME.REQUIRED";
+
+Parameter REASONRESOURCENAMEREQUIRED = "Give the resource a name.";
+
+/// <p>Violation code: the name is longer than <class>Security.Resources</class> stores.</p>
+Parameter RESOURCENAMELENGTH = "RESOURCE.NAME.LENGTH";
+
+Parameter REASONRESOURCENAMELENGTH = "A resource name is at most 64 characters.";
+
+/// <p>Violation code: the name carries a control character, a comma or a colon, which
+/// <class>Security.Resources</class> refuses.</p>
+Parameter RESOURCENAMESHAPE = "RESOURCE.NAME.SHAPE";
+
+Parameter REASONRESOURCENAMESHAPE = "A resource name has no control character, no comma and no colon.";
+
+/// <p>Violation code: a resource already carries that name, compared without regard to case.
+/// <code>GET /resources/name</code> answers it on blur.</p>
+Parameter RESOURCENAMETAKEN = "RESOURCE.NAME.TAKEN";
+
+Parameter REASONRESOURCENAMETAKEN = "This instance already has a resource with that name. Choose a different one.";
+
+/// <p>Violation code: the resource is a system resource, one the vendor's own
+/// <code>AllowDelete</code> answers false for, which IRIS refuses to delete.</p>
+Parameter RESOURCENAMESYSTEM = "RESOURCE.NAME.SYSTEM";
+
+Parameter REASONRESOURCENAMESYSTEM = "This is a system resource. IRIS does not allow it to be deleted.";
+
+/// <p>Violation code: an edit, a form read or an update names a resource this instance does not
+/// hold. Rendered at 404.</p>
+Parameter RESOURCENAMEABSENT = "RESOURCE.NAME.ABSENT";
+
+Parameter REASONRESOURCENAMEABSENT = "This instance has no resource with that name.";
+
+/// <p>Violation code: the description is longer than <class>Security.Resources</class> stores.</p>
+Parameter RESOURCEDESCRIPTIONLENGTH = "RESOURCE.DESCRIPTION.LENGTH";
+
+Parameter REASONRESOURCEDESCRIPTIONLENGTH = "A resource description is at most 256 characters.";
+
+/// <p>Violation code: the public permission is not a string of the letters R, W and U, each at most
+/// once.</p>
+Parameter RESOURCEPUBLICPERMISSIONSHAPE = "RESOURCE.PUBLICPERMISSION.SHAPE";
+
+Parameter REASONRESOURCEPUBLICPERMISSIONSHAPE = "A public permission is some of the letters R, W and U, each at most once.";
+
+/// <p>Violation code: the public permission carries a letter the resource does not offer
+/// (<method>OcuPilot.Area.Permissions.ResourceRules.AdmissibleLetters</method>, the classic resource
+/// dialog's own rule).</p>
+Parameter RESOURCEPUBLICPERMISSIONLETTERS = "RESOURCE.PUBLICPERMISSION.LETTERS";
+
+Parameter REASONRESOURCEPUBLICPERMISSIONLETTERS = "Give this resource only the public permissions it offers: Read and Write for a database; Use alone for a service, an administrative resource or another system resource the Management Portal limits to Use, such as %Development or %System_; and Read, Write or Use for any other.";
+
+/// <p>Envelope code (AD-39): an X.509 credential's import or edit broke one or more of the rules
+/// <class>OcuPilot.Area.Security.X509Rules</class> applies before the port is touched. Rendered on
+/// the <parameter>VALIDATIONFAILED</parameter> slug with every violation in
+/// <code>detail.violations</code>. No sentence in this block names or quotes a certificate, a key
+/// or a password (AD-35).</p>
+Parameter X509VALIDATION = "X509.VALIDATION";
+
+Parameter REASONX509VALIDATION = "The X.509 credential was refused.";
+
+/// <p>Violation code: no alias was supplied.</p>
+Parameter X509ALIASREQUIRED = "X509.ALIAS.REQUIRED";
+
+Parameter REASONX509ALIASREQUIRED = "Give the credential an alias.";
+
+/// <p>Violation code: the alias is longer than <class>%SYS.X509Credentials</class> stores.</p>
+Parameter X509ALIASLENGTH = "X509.ALIAS.LENGTH";
+
+Parameter REASONX509ALIASLENGTH = "An alias is at most 150 characters.";
+
+/// <p>Violation code: the alias carries a control character or a slash, which cannot travel as one
+/// path segment (AD-13).</p>
+Parameter X509ALIASSHAPE = "X509.ALIAS.SHAPE";
+
+Parameter REASONX509ALIASSHAPE = "An alias has no control character and no slash.";
+
+/// <p>Violation code: a credential already carries that alias, compared exactly, case included.
+/// <code>GET /x509/name</code> answers it on blur.</p>
+Parameter X509ALIASTAKEN = "X509.ALIAS.TAKEN";
+
+Parameter REASONX509ALIASTAKEN = "This instance already has a credential with that alias. Choose a different one.";
+
+/// <p>Violation code: an edit, a form read or an update names an alias this instance does not hold.
+/// Rendered at 404.</p>
+Parameter X509ALIASABSENT = "X509.ALIAS.ABSENT";
+
+Parameter REASONX509ALIASABSENT = "This instance has no X.509 credential with that alias.";
+
+/// <p>Violation code: an import carried no certificate.</p>
+Parameter X509CERTIFICATEREQUIRED = "X509.CERTIFICATE.REQUIRED";
+
+Parameter REASONX509CERTIFICATEREQUIRED = "Paste or load the certificate.";
+
+/// <p>Violation code: the certificate is not one PEM <code>CERTIFICATE</code> block of at most
+/// 65,536 characters that decodes to an X.509 certificate.</p>
+Parameter X509CERTIFICATESHAPE = "X509.CERTIFICATE.SHAPE";
+
+Parameter REASONX509CERTIFICATESHAPE = "The certificate must be one PEM block that begins -----BEGIN CERTIFICATE----- and is at most 64 KB.";
+
+/// <p>Violation code: the certificate's validity has ended, which the vendor refuses.</p>
+Parameter X509CERTIFICATEEXPIRED = "X509.CERTIFICATE.EXPIRED";
+
+Parameter REASONX509CERTIFICATEEXPIRED = "This certificate has expired. Import one that is still valid.";
+
+/// <p>Violation code: the private key is not one PEM private-key block, or it is a legacy encrypted
+/// key whose line breaks were lost.</p>
+Parameter X509PRIVATEKEYSHAPE = "X509.PRIVATEKEY.SHAPE";
+
+Parameter REASONX509PRIVATEKEYSHAPE = "The private key must be one PEM private-key block of at most 64 KB, with its line breaks kept if it is a legacy encrypted key.";
+
+/// <p>Violation code: the private key does not belong to the certificate.</p>
+Parameter X509PRIVATEKEYMISMATCH = "X509.PRIVATEKEY.MISMATCH";
+
+Parameter REASONX509PRIVATEKEYMISMATCH = "This private key does not belong to the certificate.";
+
+/// <p>Violation code: the password does not decrypt the private key.</p>
+Parameter X509PRIVATEKEYPASSWORDWRONG = "X509.PRIVATEKEYPASSWORD.WRONG";
+
+Parameter REASONX509PRIVATEKEYPASSWORDWRONG = "This password does not decrypt the private key.";
+
+/// <p>Violation code: a password was supplied with no private key.</p>
+Parameter X509PRIVATEKEYPASSWORDWITHOUTKEY = "X509.PRIVATEKEYPASSWORD.WITHOUTKEY";
+
+Parameter REASONX509PRIVATEKEYPASSWORDWITHOUTKEY = "A password is only for an encrypted private key. Remove it, or add the key.";
+
+/// <p>Violation code: the password is longer than <class>%SYS.X509Credentials</class> stores.</p>
+Parameter X509PRIVATEKEYPASSWORDLENGTH = "X509.PRIVATEKEYPASSWORD.LENGTH";
+
+Parameter REASONX509PRIVATEKEYPASSWORDLENGTH = "A private key password is at most 128 characters.";
+
+/// <p>Envelope code (AD-39): a wallet secret's create or edit broke one or more of the rules
+/// <class>OcuPilot.Area.Security.WalletRules</class> applies before the port is touched. Rendered on
+/// the <parameter>VALIDATIONFAILED</parameter> slug with every violation in
+/// <code>detail.violations</code>. No sentence in this block quotes a secret's value (AD-35).</p>
+Parameter WALLETVALIDATION = "WALLET.VALIDATION";
+
+Parameter REASONWALLETVALIDATION = "The secret was refused.";
+
+/// <p>Violation code: no name was supplied.</p>
+Parameter WALLETNAMEREQUIRED = "WALLET.NAME.REQUIRED";
+
+Parameter REASONWALLETNAMEREQUIRED = "Give the secret a name.";
+
+/// <p>Violation code: the name is not a collection, a dot and a secret name of letters, digits,
+/// dots, hyphens and underscores.</p>
+Parameter WALLETNAMESHAPE = "WALLET.NAME.SHAPE";
+
+Parameter REASONWALLETNAMESHAPE = "A secret's name uses only letters, digits, dots, hyphens and underscores, after its collection's name and a dot.";
+
+/// <p>Violation code: the full name, collection included, is longer than
+/// <class>%Wallet.Secret</class> stores.</p>
+Parameter WALLETNAMELENGTH = "WALLET.NAME.LENGTH";
+
+Parameter REASONWALLETNAMELENGTH = "A secret's full name, its collection's name included, is at most 128 characters.";
+
+/// <p>Violation code: the collection already holds a secret with that exact name, case included.
+/// <code>GET /wallet/secret/name</code> answers it on blur.</p>
+Parameter WALLETNAMETAKEN = "WALLET.NAME.TAKEN";
+
+Parameter REASONWALLETNAMETAKEN = "This collection already has a secret with that name. Choose a different one.";
+
+/// <p>Violation code: an edit, a form read or a read names a secret this instance does not hold.
+/// Rendered at 404.</p>
+Parameter WALLETNAMEABSENT = "WALLET.NAME.ABSENT";
+
+Parameter REASONWALLETNAMEABSENT = "This instance has no wallet secret with that name.";
+
+/// <p>Violation code: the name's collection does not exist on this instance. Rendered at 404 on a
+/// read and at 422 on a Save.</p>
+Parameter WALLETCOLLECTIONABSENT = "WALLET.COLLECTION.ABSENT";
+
+Parameter REASONWALLETCOLLECTIONABSENT = "This instance has no wallet collection with that name.";
+
+/// <p>Violation code: a create carried no value.</p>
+Parameter WALLETSECRETREQUIRED = "WALLET.SECRET.REQUIRED";
+
+Parameter REASONWALLETSECRETREQUIRED = "Enter the value to store.";
+
+/// <p>Violation code: the value is longer than the form accepts.</p>
+Parameter WALLETSECRETLENGTH = "WALLET.SECRET.LENGTH";
+
+Parameter REASONWALLETSECRETLENGTH = "A value is at most 32,768 characters.";
+
+/// <p>Violation code: the uses are not a whole number from 0 to 15.</p>
+Parameter WALLETUSAGERANGE = "WALLET.USAGE.RANGE";
+
+Parameter REASONWALLETUSAGERANGE = "Usage is a whole number from 0 to 15: HTTP 1, SQL gateway 2, SOAP 4 and Custom 8, added together.";
+
+/// <p>Violation code: the allowed hosts are not a list of host names, or one of them is empty,
+/// longer than 255 characters, or holds whitespace or a comma.</p>
+Parameter WALLETALLOWEDHOSTSSHAPE = "WALLET.ALLOWEDHOSTS.SHAPE";
+
+Parameter REASONWALLETALLOWEDHOSTSSHAPE = "Each allowed host is a name or address of at most 255 characters, with no space or comma.";
+
+/// <p>Violation code: an edit names a secret that is not a key-value secret, which this form does
+/// not change.</p>
+Parameter WALLETTYPEUNSUPPORTED = "WALLET.TYPE.UNSUPPORTED";
+
+Parameter REASONWALLETTYPEUNSUPPORTED = "Only key-value secrets are edited here.";
+
+/// <p>Envelope code (AD-39): a device's create or edit broke one or more of the rules
+/// <class>OcuPilot.Area.OsMgmt.DeviceRules</class> applies before the port is touched, or the
+/// instance could not read its open parameters. Rendered on the <parameter>VALIDATIONFAILED</parameter>
+/// slug with every violation in <code>detail.violations</code>.</p>
+Parameter DEVICEVALIDATION = "DEVICE.VALIDATION";
+
+Parameter REASONDEVICEVALIDATION = "The device was refused.";
+
+/// <p>Violation code: no name was supplied.</p>
+Parameter DEVICENAMEREQUIRED = "DEVICE.NAME.REQUIRED";
+
+Parameter REASONDEVICENAMEREQUIRED = "Give the device a name.";
+
+/// <p>Violation code: the name is longer than <class>Config.Devices</class> stores.</p>
+Parameter DEVICENAMELENGTH = "DEVICE.NAME.LENGTH";
+
+Parameter REASONDEVICENAMELENGTH = "A device name is at most 64 characters.";
+
+/// <p>Violation code: the name holds a <code>^</code>, an <code>=</code> or a control character,
+/// which the instance writes raw into its configuration file.</p>
+Parameter DEVICENAMESHAPE = "DEVICE.NAME.SHAPE";
+
+Parameter REASONDEVICENAMESHAPE = "A device name has no ^, no = and no control character.";
+
+/// <p>Violation code: a device already carries that name, compared exactly, case included.
+/// <code>GET /device/name</code> answers it on blur.</p>
+Parameter DEVICENAMETAKEN = "DEVICE.NAME.TAKEN";
+
+Parameter REASONDEVICENAMETAKEN = "This instance already has a device with that name. Choose a different one.";
+
+/// <p>Violation code: an edit or a form read names a device this instance does not hold. Rendered at
+/// 404.</p>
+Parameter DEVICENAMEABSENT = "DEVICE.NAME.ABSENT";
+
+Parameter REASONDEVICENAMEABSENT = "This instance has no device with that name.";
+
+/// <p>Violation code: a create carried no physical device name, or an edit emptied it.</p>
+Parameter DEVICEPHYSICALDEVICEREQUIRED = "DEVICE.PHYSICALDEVICE.REQUIRED";
+
+Parameter REASONDEVICEPHYSICALDEVICEREQUIRED = "Give the physical device name.";
+
+/// <p>Violation code: the physical device name is longer than <class>Config.Devices</class>
+/// stores.</p>
+Parameter DEVICEPHYSICALDEVICELENGTH = "DEVICE.PHYSICALDEVICE.LENGTH";
+
+Parameter REASONDEVICEPHYSICALDEVICELENGTH = "A physical device name is at most 128 characters.";
+
+/// <p>Violation code: the physical device name holds a <code>^</code> or a control character.</p>
+Parameter DEVICEPHYSICALDEVICESHAPE = "DEVICE.PHYSICALDEVICE.SHAPE";
+
+Parameter REASONDEVICEPHYSICALDEVICESHAPE = "A physical device name has no ^ and no control character.";
+
+/// <p>Violation code: a create carried no type, or an edit emptied it.</p>
+Parameter DEVICETYPEREQUIRED = "DEVICE.TYPE.REQUIRED";
+
+Parameter REASONDEVICETYPEREQUIRED = "Choose the device's type.";
+
+/// <p>Violation code: the type is not one of the six the classic device page offers.</p>
+Parameter DEVICETYPEVALUE = "DEVICE.TYPE.VALUE";
+
+Parameter REASONDEVICETYPEVALUE = "A device's type is one of TRM, SPL, MT, BT, IPC or OTH.";
+
+/// <p>Violation code: a create carried no subtype, or an edit emptied it.</p>
+Parameter DEVICESUBTYPEREQUIRED = "DEVICE.SUBTYPE.REQUIRED";
+
+Parameter REASONDEVICESUBTYPEREQUIRED = "Choose the device's subtype.";
+
+/// <p>Violation code: the subtype is not one this instance defines.</p>
+Parameter DEVICESUBTYPEABSENT = "DEVICE.SUBTYPE.ABSENT";
+
+Parameter REASONDEVICESUBTYPEABSENT = "This instance has no subtype with that name. Choose one from the list.";
+
+/// <p>Violation code: the open parameters are longer than <class>Config.Devices</class> stores.</p>
+Parameter DEVICEOPENPARAMETERSLENGTH = "DEVICE.OPENPARAMETERS.LENGTH";
+
+Parameter REASONDEVICEOPENPARAMETERSLENGTH = "Open parameters are at most 128 characters.";
+
+/// <p>Violation code: the open parameters hold a <code>^</code> or a control character, or the
+/// instance could not parse them (its error 644, mapped at the port).</p>
+Parameter DEVICEOPENPARAMETERSSHAPE = "DEVICE.OPENPARAMETERS.SHAPE";
+
+Parameter REASONDEVICEOPENPARAMETERSSHAPE = "This instance cannot use these open parameters. Write them as the OPEN command takes them, with no ^ and no control character.";
+
+/// <p>Violation code: the description is longer than <class>Config.Devices</class> stores.</p>
+Parameter DEVICEDESCRIPTIONLENGTH = "DEVICE.DESCRIPTION.LENGTH";
+
+Parameter REASONDEVICEDESCRIPTIONLENGTH = "A description is at most 256 characters.";
+
+/// <p>Violation code: the description holds a <code>^</code> or a control character.</p>
+Parameter DEVICEDESCRIPTIONSHAPE = "DEVICE.DESCRIPTION.SHAPE";
+
+Parameter REASONDEVICEDESCRIPTIONSHAPE = "A description has no ^ and no control character.";
+
+/// <p>Violation code: the alternate device is longer than <class>Config.Devices</class> stores.</p>
+Parameter DEVICEALTERNATEDEVICELENGTH = "DEVICE.ALTERNATEDEVICE.LENGTH";
+
+Parameter REASONDEVICEALTERNATEDEVICELENGTH = "An alternate device is at most 128 characters.";
+
+/// <p>Violation code: the alternate device holds a <code>^</code> or a control character.</p>
+Parameter DEVICEALTERNATEDEVICESHAPE = "DEVICE.ALTERNATEDEVICE.SHAPE";
+
+Parameter REASONDEVICEALTERNATEDEVICESHAPE = "An alternate device has no ^ and no control character.";
+
+/// <p>Violation code: the alias is not a whole number of at least 1. The instance would store a
+/// fraction truncated.</p>
+Parameter DEVICEALIASSHAPE = "DEVICE.ALIAS.SHAPE";
+
+Parameter REASONDEVICEALIASSHAPE = "An alias is a whole number of at least 1.";
+
+/// <p>Violation code: another device already carries that alias. <class>Config.Devices</class>
+/// requires aliases to be unique and does not enforce it.</p>
+Parameter DEVICEALIASTAKEN = "DEVICE.ALIAS.TAKEN";
+
+Parameter REASONDEVICEALIASTAKEN = "Another device already has that alias. Choose a different one.";
+
+/// <p>Violation code: the alias equals the physical device name, which the instance refuses.</p>
+Parameter DEVICEALIASSAME = "DEVICE.ALIAS.SAME";
+
+Parameter REASONDEVICEALIASSAME = "An alias cannot be the same as the physical device name.";
+
+/// <p>Violation code: the prompt is not empty, 1 or 2.</p>
+Parameter DEVICEPROMPTVALUE = "DEVICE.PROMPT.VALUE";
+
+Parameter REASONDEVICEPROMPTVALUE = "Choose one of the prompt options.";
+
+/// <p>Violation code (AD-39): the vendor refused the request because a body field it requires was
+/// absent. Produced at the port boundary by <method>ViolationsFromVendor</method>, on the field the
+/// vendor's own status names, so a refusal lands on the field it is about.</p>
+Parameter PORTFIELDREQUIRED = "PORT.FIELD.REQUIRED";
+
+Parameter REASONPORTFIELDREQUIRED = "This instance requires a value for that field.";
+
+/// <p>Violation code (AD-39): the vendor refused the request because the body carried a field its
+/// own template does not declare.</p>
+Parameter PORTFIELDUNEXPECTED = "PORT.FIELD.UNEXPECTED";
+
+Parameter REASONPORTFIELDUNEXPECTED = "This instance does not accept that field on this request.";
+
+/// <p>Violation code (AD-39): the vendor refused the request because the field carried a value of
+/// the wrong shape -- an object where it wanted a literal, or a value outside the set it names.</p>
+Parameter PORTFIELDSHAPE = "PORT.FIELD.SHAPE";
+
+Parameter REASONPORTFIELDSHAPE = "This instance expects a different kind of value for that field.";
+
+/// <p>The vendor status codes whose <b>first</b> parameter is the dotted name of the body field
+/// they are about, comma-separated, each paired with the OcuPilot violation code it maps onto
+/// (AD-39).</p>
+/// <p><b>Read off the instance, not recalled</b>: <code>%Api.Admin.Util.RequestValidator</code>
+/// raises exactly these, each as <code>$$$ERROR(&lt;code&gt;, name)</code> where <code>name</code>
+/// is the field path with <code>.</code> between members and <code>[0]</code> for an array's first
+/// element. 40301 is <code>MissingRequestBodyField</code>, 40307 is
+/// <code>UnexpectedRequestBodyField</code>, 40302 to 40306 are its value-set refusals and 40308 and
+/// 40309 its two shape refusals.</p>
+Parameter VENDORFIELDCODES = "40301=PORT.FIELD.REQUIRED,40302=PORT.FIELD.SHAPE,40303=PORT.FIELD.SHAPE,40304=PORT.FIELD.SHAPE,40305=PORT.FIELD.SHAPE,40306=PORT.FIELD.SHAPE,40307=PORT.FIELD.UNEXPECTED,40308=PORT.FIELD.SHAPE,40309=PORT.FIELD.SHAPE";
+
+/// <p>The <code>detail.violations</code> rows a vendor status carries, as a
+/// <class>%DynamicArray</class> of <code>{field, code, reason}</code>, or <code>[]</code> when it
+/// names no field (AD-39).</p>
+/// <p><b>It is the port boundary's job, and it is what makes a vendor refusal land on the field it
+/// names.</b> The vendor's own text is written for a portal developer and never reaches either
+/// consumer; what crosses is the field name it carried, OcuPilot's stable code for that kind of
+/// refusal, and OcuPilot's own sentence. The field is the vendor's <b>first</b> parameter, taken
+/// verbatim including its dots and its <code>[0]</code>, so a refusal about
+/// <code>MatchRoles[0].MatchRole</code> names that path rather than its last segment.</p>
+/// <p>A status carrying several such errors answers one row each, in the order
+/// <method>$System.Status.DecomposeStatus</method> reports them.</p>
+ClassMethod ViolationsFromVendor(pStatus As %Status) As %DynamicArray
+{
+    Set tRows = []
+    Try {
+        If $$$ISOK(pStatus) Quit
+        Do $System.Status.DecomposeStatus(pStatus, .tErrors, "-d")
+        For tI = 1:1:+$Get(tErrors) {
+            Set tCode = ..VendorFieldCode($Get(tErrors(tI, "code")))
+            If tCode = "" Continue
+            Set tField = $Get(tErrors(tI, "param", 1))
+            If tField = "" Continue
+            Set tRow = {}
+            Do tRow.%Set("field", tField, "string")
+            Do tRow.%Set("code", tCode, "string")
+            Do tRow.%Set("reason", ..ReasonForViolation(tCode), "string")
+            Do tRows.%Push(tRow)
+        }
+    } Catch {
+        Set tRows = []
+    }
+    Quit tRows
+}
+
+/// <p>The OcuPilot violation code <parameter>VENDORFIELDCODES</parameter> pairs with the vendor
+/// status code <var>pVendorCode</var>, or <code>""</code> for a code that names no field.</p>
+ClassMethod VendorFieldCode(pVendorCode As %String) As %String [ Private ]
+{
+    Set tFound = ""
+    If pVendorCode = "" Quit tFound
+    For tI = 1:1:$Length(..#VENDORFIELDCODES, ",") {
+        Set tPair = $Piece(..#VENDORFIELDCODES, ",", tI)
+        If $Piece(tPair, "=", 1) = pVendorCode Set tFound = $Piece(tPair, "=", 2) Quit
+    }
+    Quit tFound
 }
 
 /// <p>Whether <var>pSlug</var> is one of the twelve closed-enum slugs above. Private —

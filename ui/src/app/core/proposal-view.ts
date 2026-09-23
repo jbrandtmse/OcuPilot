@@ -17,9 +17,8 @@
  *
  * **The screen's two facts arrive as parameters, not as a module-level lookup.** The singular
  * entity noun and the declared secret argument names both come from the screen mirror, and
- * reading `screens.generated.ts` here would make the masked field untestable until the first real
- * secret ships: no descriptor declares one yet (`Kernel/Proposal/Mint.cls` refuses a secret
- * argument outright), so a test has to be able to supply a screen record as data.
+ * reading `screens.generated.ts` here would tie the masked field's tests to whichever descriptor
+ * declares a secret, so a test supplies a screen record as data.
  */
 
 import { STRINGS } from './strings.ts';
@@ -82,6 +81,11 @@ export interface ProposalCardView {
   readonly unchanged?: readonly ProposalUnchangedRow[];
   /** The secret argument names the user fills before Confirm (AD-3, AD-6). */
   readonly maskedFields?: readonly string[];
+  /**
+   * The names among `maskedFields` the tool declares optional, which Confirm does not wait for: the
+   * instance's own per-row declaration (`optional` on the diff row), never a guess from the name.
+   */
+  readonly optionalFields?: readonly string[];
   /** Whether this write would stop the instance marking agent writes (AD-15). */
   readonly auditWarning?: boolean;
   /**
@@ -99,6 +103,31 @@ export interface ProposalCardView {
    * copy and invents no phase -- the row is still live, and a phase is a terminal state.
    */
   readonly refusalReason?: string;
+  /**
+   * The kernel's code for what the write does beyond its diff, or `''`; the wire's own value,
+   * projected the way `auditWarning` is. The card reads it through `consequenceSentence`.
+   */
+  readonly consequence?: string;
+}
+
+/** The consequence the kernel marks a web-application create that admits unauthenticated access with. */
+export const CONSEQUENCE_UNAUTHENTICATED = 'WEBAPP.UNAUTHENTICATED';
+
+/** The consequence the kernel marks a write that grants %All or an administrative privilege with (AD-10). */
+export const CONSEQUENCE_PRIVILEGED = 'GRANT.PRIVILEGED';
+
+/** The one consequence a web-application create carries when it is both unauthenticated and privileged. */
+export const CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED = 'WEBAPP.UNAUTHENTICATEDPRIVILEGED';
+
+/**
+ * The published sentence for a proposal's `consequence` code, or `''` for no code or one this
+ * client publishes nothing for. The sentence is `STRINGS`'; the code is the kernel's (AD-39).
+ */
+export function consequenceSentence(code: string | undefined): string {
+  if (code === CONSEQUENCE_UNAUTHENTICATED) return STRINGS.webAppUnauthenticatedEffect;
+  if (code === CONSEQUENCE_PRIVILEGED) return STRINGS.privilegedGrantEffect;
+  if (code === CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED) return STRINGS.privilegedGrantEffectUnauthenticated;
+  return '';
 }
 
 /**
@@ -285,7 +314,8 @@ function maskedRow(row: ProposalDiffRow): ProposalDiffRow {
  * declares, `secretArguments` the names that screen declares secret, and everything else is
  * `proposal`'s own -- the instance-computed diff with every declared secret masked on both sides,
  * the unchanged count and the instance's own already-masked unchanged rows, the agent's two
- * blocks, the reversal, the expiry, the audit warning and the tool's destructive declaration.
+ * blocks, the reversal, the expiry, the audit warning, the tool's destructive declaration and the
+ * kernel's consequence code.
  * `maskedFields` is `secretArguments` narrowed to the names this proposal's own payload carries
  * (`payloadSecrets`).
  * `refusalReason` is the envelope's own sentence for a decision the instance refused on a row it
@@ -293,8 +323,7 @@ function maskedRow(row: ProposalDiffRow): ProposalDiffRow {
  * caller's to hold, and nothing here writes it.
  *
  * Both of the screen's facts are parameters rather than a lookup of `screens.generated.ts` here,
- * for the reason the header gives: no shipped descriptor declares a secret argument yet, so a test
- * has to be able to supply one as data.
+ * for the reason the header gives.
  *
  * Nothing here writes a proposal value down (AD-6).
  */
@@ -317,10 +346,27 @@ export function toCardView(
     reverse: proposal.reverse,
     expiresAt: proposal.expiresAt,
     maskedFields: payloadSecrets(proposal, secretArguments),
+    optionalFields: optionalSecrets(proposal, secretArguments),
     auditWarning: proposal.auditWarning,
     destructive: proposal.destructive,
+    consequence: proposal.consequence,
     refusalReason,
   };
+}
+
+/**
+ * The declared secret names whose diff row the instance marked `optional`: the ones the card lets the
+ * user leave empty. A secret whose row carries no mark is required.
+ */
+function optionalSecrets(
+  proposal: TurnProposal,
+  secretArguments: readonly string[]
+): readonly string[] {
+  const optional = new Set<string>();
+  for (const row of proposal.changed) {
+    if (row.optional === true) optional.add(row.field);
+  }
+  return secretArguments.filter((name) => optional.has(name));
 }
 
 /**
@@ -334,9 +380,9 @@ export function toCardView(
  * restriction rather than a consequence of the merge: `Confirm.WithSecrets` calls `%Set` for every
  * declared name the body supplied, which **adds** one the payload does not carry.
  * The payload's own field names are its diff rows and its unchanged rows -- together the
- * projection of the stored body the instance published (AD-4); a secret is never a diff row,
- * because the mint refuses a secret argument outright, so in practice it is the unchanged half
- * that names one.
+ * projection of the stored body the instance published (AD-4). The mint refuses a secret argument
+ * outright, so an update names a secret in its unchanged half; a create names one as the diff row
+ * the kernel composes for it, masked on both sides.
  */
 function payloadSecrets(
   proposal: TurnProposal,

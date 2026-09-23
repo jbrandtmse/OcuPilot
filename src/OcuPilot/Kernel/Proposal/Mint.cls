@@ -14,6 +14,15 @@
 /// list: the payload's property names are exactly the ones the instance answered with, so a
 /// published schema that carries a property this instance's GET does not cannot add one, and a
 /// property the read returned and the arguments did not name travels unchanged.</p>
+/// <p><b>A create inverts two of those steps and nothing else</b> (AD-54,
+/// <method>OcuPilot.Screen.Tool.Write.Creates</method>). The fresh read keeps its place and its
+/// port, and its acceptance is inverted: the target must be <b>absent</b>, so a 404 proceeds and a
+/// present target refuses the mint. And the payload is <b>composed</b> from the caller's arguments
+/// over the tool's settable field list (<method>Compose</method>) rather than merged over a read
+/// that answered nothing, with every supplied field a diff row and the unchanged count zero. The
+/// fingerprint then covers <method>AbsenceState</method> rather than the property set, because for
+/// a create nothing about the payload can move and what must be protected is that the name is
+/// still free.</p>
 /// <p>Seams a subclass overrides: <method>PortClass</method>, <method>StoreClass</method> and
 /// <method>RegistryClass</method>. Production overrides none of them. Which port a given read goes
 /// through is the tool's own declaration (AD-52, <method>PortClassOf</method>); this seam is the
@@ -43,6 +52,16 @@ Parameter TYPEBOOLEAN = "boolean";
 /// <p>The class a write tool's port declaration lives on, whose own value is the default every
 /// shipped tool carries (AD-52).</p>
 Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
+
+/// <p>The one member <method>AbsenceState</method>'s object carries, spelled once so the mint and
+/// the confirm cannot digest two differently shaped answers to the same question (AD-54).</p>
+Parameter ABSENCEFIELD = "present";
+
+/// <p>The consequence code a proposal carries when its write grants <code>%All</code> or an
+/// administrative privilege (<method>OcuPilot.Kernel.Proposal.Prohibited.GrantsPrivilegeByEffect</method>)
+/// and its tool names no consequence of its own for that payload (<method>ConsequenceOf</method>).
+/// The card renders <code>STRINGS.privilegedGrantEffect</code> for it.</p>
+Parameter CONSEQUENCEPRIVILEGED = "GRANT.PRIVILEGED";
 
 /// <p>The port the fresh read goes through when the call names no tool class, and the default a
 /// tool that declares none resolves to (AD-52). Overridable so a fixture can answer a known
@@ -138,25 +157,40 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             Quit
         }
 
+        ; AD-54. The same read, through the same port, at the same request type, for both kinds of
+        ; write -- what differs is which answer is the success precondition. A read that failed for
+        ; any reason other than absence is the port's own refusal on either path, and is never read
+        ; as "the target is not there".
+        Set tCreates = ..CreatesOf(pToolClass)
         Kill tQuery
         Set tQuery(pIdParam) = pIdValue
         Set tReadSC = $ClassMethod(..PortClassOf(pToolClass), "Invoke", tEndpoint, ..ReadTypeOf(pToolClass), .tQuery, "", .tFresh, .tReadHttp, .tReadFault)
-        If $$$ISERR(tReadSC) {
-            If +$Get(tReadHttp) = 404 {
-                Set tSC = ..Refuse("'" _ pIdValue _ "' is not present on this instance", .pHttpStatus, .pFault)
-                Quit
-            }
+        If $$$ISERR(tReadSC) && (+$Get(tReadHttp) '= 404) {
             Set pHttpStatus = +$Get(tReadHttp)
             Set pFault = $Get(tReadFault)
             Set tSC = tReadSC
             Quit
         }
-        If '$IsObject(tFresh) || 'tFresh.%IsA("%Library.DynamicObject") {
+        Set tPresent = ($$$ISOK(tReadSC) && $IsObject(tFresh) && tFresh.%IsA("%Library.DynamicObject"))
+        If tCreates {
+            If tPresent {
+                Set tSC = ..Refuse("'" _ pIdValue _ "' is already present on this instance", .pHttpStatus, .pFault)
+                Quit
+            }
+        } ElseIf 'tPresent {
             Set tSC = ..Refuse("'" _ pIdValue _ "' is not present on this instance", .pHttpStatus, .pFault)
             Quit
         }
 
-        Set tSC = ..Merge(tFresh, pArgs, pIdArgument, pSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
+        If tCreates {
+            Set tSC = ..Compose(pArgs, pIdArgument, pSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
+            ; AD-6, AD-35: a create whose body carries a secret the user supplies at confirm shows
+            ; one row per such name, empty on both sides, so the card asks for it beside the diff.
+            ; The payload does not carry it and unchangedCount stays 0.
+            If $$$ISOK(tSC) && (tProblem = "") Do ..AppendComposedSecrets(pToolClass, tDiff)
+        } Else {
+            Set tSC = ..Merge(tFresh, pArgs, pIdArgument, pSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
+        }
         If tProblem '= "" {
             Set tSC = ..Refuse(tProblem, .pHttpStatus, .pFault)
             Quit
@@ -166,11 +200,26 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             Quit
         }
 
+        ; AD-55. The tool's own field rules -- the ones the screen answers -- refuse the arguments
+        ; here, before anything is stored. A create needs them because its omitted field takes the
+        ; vendor's default; any tool may declare them, and a tool that declares none answers none.
+        If pToolClass '= "" {
+            Set tRuleSC = $ClassMethod(pToolClass, "ArgumentProblem", pIdValue, pArgs, .tRuleProblem)
+            If $$$ISERR(tRuleSC) {
+                Set tSC = ..Internal("the tool's field rules could not be evaluated: " _ $System.Status.GetErrorText(tRuleSC), .pHttpStatus, .pFault)
+                Quit
+            }
+            If tRuleProblem '= "" {
+                Set tSC = ..Refuse(tRuleProblem, .pHttpStatus, .pFault)
+                Quit
+            }
+        }
+
         ; AD-51. A write that sends no body has nothing for Merge to move, so its card's one row
         ; comes from the fresh read and the tool is what computes it. A target that is not in the
         ; state the action moves it out of is refused here, before anything is stored, rather than
         ; minting a proposal whose diff says nothing changes.
-        If pToolClass '= "" {
+        If (pToolClass '= "") && 'tCreates {
             Set tStateSC = $ClassMethod(pToolClass, "StateDiff", tFresh, .tStateRows, .tStateProblem)
             If $$$ISERR(tStateSC) {
                 Set tSC = ..Internal("the proposal's state diff could not be computed: " _ $System.Status.GetErrorText(tStateSC), .pHttpStatus, .pFault)
@@ -191,26 +240,38 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             If '$ClassMethod(pToolClass, "SendsBody") Set tUnchanged = 0
         }
 
-        ; AD-51 as amended. A tool that declares a fingerprint subject is fingerprinted over that
-        ; subject alone, and the stored payload is narrowed to it: nothing is sent, so the rest of
-        ; the fresh read has no consumer, and a process's variable table is not a payload to keep
-        ; (AD-35).
-        Set tSubject = ..FingerprintSubjectOf(pToolClass, .tSubjectProblem)
-        If tSubjectProblem '= "" {
-            Set tSC = ..Internal(tSubjectProblem, .pHttpStatus, .pFault)
-            Quit
-        }
-        If tSubject '= "" {
-            Set tProjectSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Projection(tPayload, tSubject, .tPayload)
-            If $$$ISERR(tProjectSC) {
-                Set tSC = ..Internal("the proposal's fingerprint subject could not be read: " _ $System.Status.GetErrorText(tProjectSC), .pHttpStatus, .pFault)
+        If tCreates {
+            ; AD-54. A create's digest covers the target's absence under AD-13's canonical spelling,
+            ; not the payload: the payload is the caller's own arguments and nothing about it can
+            ; move, while what a confirm must refuse is a name somebody has taken since the mint.
+            ; The stored payload is kept whole, because it is the body the confirmed write sends.
+            Set tSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(..AbsenceState(0), "", .tFingerprint)
+            If $$$ISERR(tSC) {
+                Set tSC = ..Internal("the proposal's absence fingerprint could not be taken: " _ $System.Status.GetErrorText(tSC), .pHttpStatus, .pFault)
                 Quit
             }
-        }
-        Set tSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(tPayload, $ClassMethod(pDescriptor, "FingerprintExcludes"), .tFingerprint, tSubject)
-        If $$$ISERR(tSC) {
-            Set tSC = ..Internal("the proposal's fingerprint could not be taken: " _ $System.Status.GetErrorText(tSC), .pHttpStatus, .pFault)
-            Quit
+        } Else {
+            ; AD-51 as amended. A tool that declares a fingerprint subject is fingerprinted over
+            ; that subject alone, and the stored payload is narrowed to it: nothing is sent, so the
+            ; rest of the fresh read has no consumer, and a process's variable table is not a
+            ; payload to keep (AD-35).
+            Set tSubject = ..FingerprintSubjectOf(pToolClass, .tSubjectProblem)
+            If tSubjectProblem '= "" {
+                Set tSC = ..Internal(tSubjectProblem, .pHttpStatus, .pFault)
+                Quit
+            }
+            If tSubject '= "" {
+                Set tProjectSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Projection(tPayload, tSubject, .tPayload)
+                If $$$ISERR(tProjectSC) {
+                    Set tSC = ..Internal("the proposal's fingerprint subject could not be read: " _ $System.Status.GetErrorText(tProjectSC), .pHttpStatus, .pFault)
+                    Quit
+                }
+            }
+            Set tSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(tPayload, $ClassMethod(pDescriptor, "FingerprintExcludes"), .tFingerprint, tSubject)
+            If $$$ISERR(tSC) {
+                Set tSC = ..Internal("the proposal's fingerprint could not be taken: " _ $System.Status.GetErrorText(tSC), .pHttpStatus, .pFault)
+                Quit
+            }
         }
 
         Kill tValues
@@ -233,7 +294,16 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             Quit
         }
         Set tValues("auditWarning") = ..WarnsAuditingOff(pToolName, tType, tScope, pArgs)
-        Set tValues("destructive") = ..DestructiveTool(pToolName)
+        ; AD-10: a write that grants %All or an administrative privilege is confirmed as a delete
+        ; is. The one classifier answers it from the payload against the target it changes, and
+        ; its verdict is OR'd with the tool's own declaration and named in the consequence.
+        Set tGrantSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).GrantsPrivilegeByEffect(tType, tPayload, $Select(tCreates: {}, 1: tFresh), .tPrivileged, tId)
+        If $$$ISERR(tGrantSC) {
+            Set tSC = ..Internal("whether the proposal grants privilege could not be read: " _ $System.Status.GetErrorText(tGrantSC), .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tValues("consequence") = ..ConsequenceOf(pToolClass, tPayload, tPrivileged)
+        Set tValues("destructive") = (..DestructiveTool(pToolName) || tPrivileged)
         ; FR-17's definition condition is answered at confirm against the definition that was in
         ; force here. Read, never written: the definition store is Epic 10's.
         Set tDefinitionSC = ..DefinitionInForce(.tDefinitionId, .tDefinitionVersion)
@@ -414,6 +484,155 @@ ClassMethod Merge(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdArgument
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The composed payload and the diff for a <b>create</b> from the arguments <var>pArgs</var>
+/// alone (AD-54).</p>
+/// <p><b>There is no fresh read to merge over</b>, because the target's absence is the mint's own
+/// precondition. The payload carries one property per argument in <var>pSettable</var> the call
+/// supplied, in the order that list declares, in the argument's own JSON type; the identifying
+/// argument <var>pIdArgument</var> and every argument outside <var>pSettable</var> (the agent's own
+/// words) are skipped, because they describe the call rather than the body.</p>
+/// <p><var>pDiff</var> is one <code>{field, before, after}</code> per supplied field, with
+/// <code>before</code> empty: a create moves every field it carries from nothing. <var>pUnchanged</var>
+/// is <b>0</b>, and that is a statement rather than a default -- a create sends no property the
+/// caller did not name, so there is no unchanged population for AD-4's "N unchanged fields"
+/// caption to count.</p>
+/// <p><var>pProblem</var> is a refusal the caller renders 400 <code>TOOL.ARGUMENTS</code>; it names
+/// a supplied argument whose value is a structure where the endpoint's derived field list carries a
+/// literal, which is the one shape a composed payload cannot carry safely.</p>
+ClassMethod Compose(pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
+{
+    Set pPayload = ""
+    Set pDiff = []
+    Set pUnchanged = 0
+    Set pProblem = ""
+    Set tSC = $$$OK
+    Try {
+        Set tPayload = {}
+        For tI = 1:1:$ListLength(pSettable) {
+            Set tField = $List(pSettable, tI)
+            If tField = pIdArgument Continue
+            Set tArgType = pArgs.%GetTypeOf(tField)
+            If tArgType = "unassigned" Continue
+            If tArgType = "object" {
+                Set pProblem = "'" _ tField _ "' was supplied as an object, and this create sets it from a single value"
+                Quit
+            }
+            If tArgType = "array" {
+                Do tPayload.%Set(tField, pArgs.%Get(tField))
+            } Else {
+                Do tPayload.%Set(tField, pArgs.%Get(tField), tArgType)
+            }
+            Set tRow = {}
+            Do tRow.%Set("field", tField, "string")
+            Do tRow.%Set("before", "", "string")
+            Do tRow.%Set("after", ..Display(pArgs.%Get(tField), tArgType), "string")
+            Do pDiff.%Push(tRow)
+        }
+        If pProblem '= "" {
+            Set pDiff = []
+            Quit
+        }
+        Set pPayload = tPayload
+        ; Nothing is sent that the caller did not name, so the unchanged population is empty --
+        ; the same reasoning AD-51 applies to a write that sends no body at all.
+        Set pUnchanged = 0
+    } Catch ex {
+        Set pPayload = ""
+        Set pDiff = []
+        Set pUnchanged = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The one object a create's fingerprint is taken over: whether the target is present, in
+/// <parameter>ABSENCEFIELD</parameter> (AD-54).</p>
+/// <p><b>It is the single producer of that shape, and that is the point.</b> The mint digests
+/// <code>AbsenceState(0)</code> -- the target it just found absent -- and the confirm digests
+/// <code>AbsenceState(&lt;present now&gt;)</code>; the two compare only because neither composes an
+/// object of its own. A name taken since the mint therefore reaches the existing
+/// <code>TARGETCHANGED</code> close and its 409 rather than a refusal path written for it.</p>
+ClassMethod AbsenceState(pPresent As %Boolean) As %DynamicObject
+{
+    Set tState = {}
+    Do tState.%Set(..#ABSENCEFIELD, ''pPresent, ..#TYPEBOOLEAN)
+    Quit tState
+}
+
+/// <p>Whether <var>pToolClass</var> declares that its write <b>creates</b> its target (AD-54), or
+/// <code>0</code> when the call named no tool class or the class cannot be asked.</p>
+/// <p>A class that cannot be asked is a merge or action write, which is every write that shipped
+/// before Epic 8: the fail-closed direction here is the one that keeps the fresh read's ordinary
+/// acceptance, so an unreadable declaration refuses a target that is absent rather than writing to
+/// one that is present.</p>
+ClassMethod CreatesOf(pToolClass As %String) As %Boolean
+{
+    Set tCreates = 0
+    Try {
+        If pToolClass '= "" Set tCreates = ''$ClassMethod(pToolClass, "Creates")
+    } Catch {
+        Set tCreates = 0
+    }
+    Quit tCreates
+}
+
+/// <p>Append to <var>pDiff</var> one <code>{field, before, after}</code> row, both sides empty, per
+/// name <var>pToolClass</var>'s <code>ComposedSecrets()</code> answers (AD-6, AD-35). A class that
+/// names none, or cannot be asked, adds nothing.</p>
+/// <p>A row whose name the tool's <code>OptionalSecrets()</code> also answers carries
+/// <code>optional: true</code>, which is the card's leave to confirm with that field empty. The
+/// declaration is the tool's, per row; a class that compiles no <code>OptionalSecrets</code> marks
+/// nothing, so every composed secret stays required.</p>
+/// <p><b>Caller contract:</b> called for a create only, after <method>Compose</method>. The rows
+/// carry no value: the secret is supplied at confirm and never stored.</p>
+ClassMethod AppendComposedSecrets(pToolClass As %String, pDiff As %DynamicArray) [ Private ]
+{
+    Set tNames = ""
+    Set tOptional = ""
+    Try {
+        If pToolClass '= "" Set tNames = $ClassMethod(pToolClass, "ComposedSecrets")
+    } Catch {
+        Set tNames = ""
+    }
+    Try {
+        If (pToolClass '= "") && ##class(%Dictionary.CompiledMethod).%ExistsId(pToolClass _ "||OptionalSecrets") {
+            Set tOptional = $ClassMethod(pToolClass, "OptionalSecrets")
+        }
+    } Catch {
+        Set tOptional = ""
+    }
+    If '$ListValid(tNames) Quit
+    If '$ListValid(tOptional) Set tOptional = ""
+    For tI = 1:1:$ListLength(tNames) {
+        Set tName = $ListGet(tNames, tI)
+        If tName = "" Continue
+        Set tRow = {}
+        Do tRow.%Set("field", tName, "string")
+        Do tRow.%Set("before", "", "string")
+        Do tRow.%Set("after", "", "string")
+        If $ListFind(tOptional, tName) Do tRow.%Set("optional", 1, "boolean")
+        Do pDiff.%Push(tRow)
+    }
+}
+
+/// <p>The kernel-owned consequence code for the payload <var>pPayload</var>: the one
+/// <var>pToolClass</var> answers (<code>Consequence(payload, privileged)</code>), which is told
+/// whether the write grants privilege (<var>pPrivileged</var>) so it can name one combined effect
+/// rather than two; otherwise <parameter>CONSEQUENCEPRIVILEGED</parameter> for a privileged grant,
+/// and <code>""</code> for none. A class that compiles no <code>Consequence</code> answers none of
+/// its own; one that does is asked unguarded, so a declaration that cannot take both arguments
+/// fails the mint rather than silently dropping its consequence. The card renders the code's
+/// sentence; it decides nothing about whether the write may happen.</p>
+ClassMethod ConsequenceOf(pToolClass As %String, pPayload As %DynamicObject, pPrivileged As %Boolean = 0) As %String [ Private ]
+{
+    Set tCode = ""
+    If (pToolClass '= "") && ##class(%Dictionary.CompiledMethod).%ExistsId(pToolClass _ "||Consequence") {
+        Set tCode = $ClassMethod(pToolClass, "Consequence", pPayload, ''pPrivileged)
+    }
+    If (tCode = "") && pPrivileged Set tCode = ..#CONSEQUENCEPRIVILEGED
+    Quit tCode
 }
 
 /// <p>The agent definition in force and the version it carries, for the proposal's row.</p>

@@ -16,9 +16,14 @@
 /// <p><b>The privilege set is <code>%Admin_Wallet:USE</code> and <code>%DB_IRISSYS:READ</code></b>,
 /// the Wallet list's set and order (AD-8).</p>
 /// <p><b>No classic page exists</b>, so <code>classicPage</code> is empty and the list links out to
-/// nothing (AD-44). Its name cell is not a link, because it pairs no editor or viewer.</p>
-/// <p>It declares no primary or row action, so its empty state names what to do next, and it does
-/// not refresh (AD-43).</p>
+/// nothing (AD-44).</p>
+/// <p><b>Its primary action is Create</b>: it opens
+/// <class>OcuPilot.Screen.Descriptor.WalletSecretForm</class> at
+/// <code>security/wallet/secrets/edit</code> for the collection on screen, and a row's name cell
+/// opens the same form for that secret. Both save through the wallet secret tools (AD-55). It
+/// declares no row action, its empty state invites the agent, and it does not refresh (AD-43).</p>
+/// <p><b><code>Secret</code> is its <code>secretArguments</code></b> (AD-3, AD-6): the value, supplied
+/// only at confirm and never read back by any read.</p>
 Class OcuPilot.Screen.Descriptor.WalletSecretList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -39,9 +44,10 @@ XData Declaration
   "scope": "instance",
   "parentScope": "security/wallet",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
+  "primaryAction": {"id": "create", "selfProtection": ""},
   "rowActions": [],
   "context": {"fields": ["Name", "Type"], "secretFields": []},
+  "secretArguments": ["Secret"],
   "emptyStateKey": "walletSecretListEmpty",
   "commandAliases": [],
   "classicPage": "",
@@ -61,8 +67,8 @@ XData Declaration
       {"field": "Name", "labelKey": "tableColumnName", "kind": "name"},
       {"field": "Type", "labelKey": "tableColumnType", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "walletSecretListEmptyAgent"
   },
   "toolIdentifier": "security.secrets"
 }

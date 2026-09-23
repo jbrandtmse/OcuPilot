@@ -23,8 +23,14 @@
 /// the second the vendor endpoint fails inside <code>%SYS</code> and the port answers 500 (AD-8).</p>
 /// <p><b>The classic page is <code>%CSP.UI.Portal.X509Credentials</code></b>, in the class's own case
 /// (AD-44). As a list archetype it links out to nothing.</p>
-/// <p>It declares no primary or row action, so its empty state names what to do next, and it does
-/// not refresh (AD-43).</p>
+/// <p><b>Its primary action is Create, labelled Import</b>: it opens
+/// <class>OcuPilot.Screen.Descriptor.X509Form</class> at <code>security/x509/edit</code>, and a row's
+/// name cell opens the same form for that credential. Both save through the X.509 tools (AD-55).
+/// It declares no row action, and its empty state invites the agent. It does not refresh
+/// (AD-43).</p>
+/// <p><b><code>Certificate</code>, <code>PrivateKey</code> and <code>PrivateKeyPassword</code> are its
+/// <code>secretArguments</code></b> (AD-3, AD-6): the import's authored secrets, supplied only at
+/// confirm and never read back by any read.</p>
 Class OcuPilot.Screen.Descriptor.X509CredentialList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -45,9 +51,10 @@ XData Declaration
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
+  "primaryAction": {"id": "create", "selfProtection": ""},
   "rowActions": [],
   "context": {"fields": ["Alias", "OwnerList", "PeerNames", "CAFile", "SubjectDN", "IssuerDN", "ValidityNotBefore", "ValidityNotAfter"], "secretFields": []},
+  "secretArguments": ["Certificate", "PrivateKey", "PrivateKeyPassword"],
   "emptyStateKey": "x509ListEmpty",
   "commandAliases": ["x509"],
   "classicPage": "%CSP.UI.Portal.X509Credentials",
@@ -78,8 +85,8 @@ XData Declaration
       {"field": "ValidityNotBefore", "labelKey": "x509ColumnValidFrom", "kind": "text"},
       {"field": "ValidityNotAfter", "labelKey": "x509ColumnValidUntil", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "x509ListEmptyAgent"
   },
   "toolIdentifier": "security.x509"
 }

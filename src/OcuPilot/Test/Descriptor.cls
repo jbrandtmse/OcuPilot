@@ -1732,9 +1732,9 @@ Method TestDatabaseVolumesDeclaresTheVendorSixAndNoDetailCall()
 /// <p>AC1, AC4, AC5, AC6, Story 6.12 -- the Devices list declares exactly its six fields and six
 /// columns, in order and by kind; sorts by <code>Name</code> ascending; declares
 /// <code>%Admin_Manage:USE</code> then <code>%DB_IRISSYS:READ</code> and no third pair; names its
-/// own empty state and its own classic key; is OS management's fifth side-bar entry; and offers no
-/// primary action, no row action and no outbound classic link: it is the list only, the device
-/// editor is Story 8.8's.</p>
+/// own empty state and its own classic key; is OS management's fifth side-bar entry; and offers
+/// Create as its primary action, which opens the device editor, and no row action and no outbound
+/// classic link.</p>
 /// <p>Mutation: add a <code>rowActions</code> entry with no handler in
 /// <class>OcuPilot.Screen.Descriptor.DeviceList</class> -> the row-action assertion goes red; set
 /// <code>classicLinkExemption.exempt</code> true -> the exemption assertion goes red, and
@@ -1796,8 +1796,8 @@ Method TestTheDevicesListDeclaresExactlyItsSixFieldsAndSixColumns()
     ; so another screen's key would validate, mirror and ship.
     Do $$$AssertEquals($ClassMethod(tClass, "EmptyStateKey"), "deviceListEmpty", "its own empty state, not another list's")
 
-    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "no row action: the device editor is Story 8.8's")
-    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "and no primary action")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "no row action: the agent's delete tool is the delete")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "create", "and Create as its primary action, which opens the device editor")
     Do $$$AssertEquals(''$ClassMethod(tClass, "ClassicLinkExempt"), 0, "and no outbound classic link: a list archetype never links out (AD-44)")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Descriptor.DeviceList).RowTarget(), "", "and no rowTarget: no other screen names this entity type")
 

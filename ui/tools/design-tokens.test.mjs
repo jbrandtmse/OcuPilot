@@ -336,6 +336,44 @@ test('the frame gives the rail a height to push its bottom slot against (DW-138)
   assert.match(componentsRaw, /app-rail,\napp-side-bar\s*\{[^}]*display:\s*flex/);
 });
 
+// --- Story 8.1: UX-DR80's form widths, confirmed ------------------------------------------
+//
+// DESIGN.md carried `[ASSUMPTION]` on the `form-page` column and field widths until a form with a
+// real field set was drawn at its longest label and its longest value. Story 8.1 drew one and
+// measured it in the browser (`ui/browser/web-applications-create.browser-spec.mjs`), which is
+// where the geometry claim is falsifiable; this is the half that makes the measured figures BIND
+// -- every later form in Epics 8 and 9 inherits them because the tokens are pinned here, not
+// because somebody measured once.
+//
+// Mutation (Rule 19): change `--ocu-form-max-width` to 640px in `_metrics.scss` -> this goes red
+// naming the token and the figure DESIGN.md publishes.
+test("UX-DR80: the form-page column is 720px, its fields 480px, and both tokens are read by the component layer", () => {
+  const metrics = parseTokens(metricsRaw.split(/@media\s*\(\s*prefers-reduced-motion/)[0]).light;
+  assert.equal(metrics['form-max-width'], '720px', "DESIGN.md's Content column row, confirmed by Story 8.1");
+  assert.equal(metrics['field-max-width'], '480px', "DESIGN.md's `form-page` field width, confirmed by Story 8.1");
+  assert.equal(metrics['form-bar-height'], '56px', 'and the sticky action bar, which was decided rather than assumed');
+
+  // Declared and unread is a value nobody can be wrong about, which is the state UX-DR80's two
+  // assumptions were in: the browser spec measures the rendered column against the token, so the
+  // token has to be what the column is drawn from.
+  const unread = ['form-max-width', 'field-max-width', 'form-bar-height'].filter(
+    (name) => !componentsRaw.includes(`var(--ocu-${name})`)
+  );
+  assert.deepEqual(unread, [], `declared in _metrics.scss and read by nothing: ${JSON.stringify(unread)}`);
+
+  // And DESIGN.md no longer marks either figure as an assumption, so the document and the
+  // stylesheet say the same thing.
+  const contentColumn = designMdRaw
+    .split('\n')
+    .find((line) => line.startsWith('**Content column.**'));
+  assert.ok(contentColumn, "DESIGN.md must carry its Content column paragraph");
+  assert.ok(contentColumn.includes('720px'), 'which names the column width');
+  assert.ok(
+    !contentColumn.includes('[ASSUMPTION]'),
+    'and no longer marks it an assumption, because Story 8.1 measured it'
+  );
+});
+
 test('the rail tooltip delay is a token, is consumed, and is zeroed under reduced motion', () => {
   const metrics = parseTokens(metricsRaw.split(/@media\s*\(\s*prefers-reduced-motion/)[0]).light;
   assert.equal(metrics['motion-tooltip-delay'], '300ms', "DESIGN.md's rail-item Hover row");

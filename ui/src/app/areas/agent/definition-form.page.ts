@@ -118,7 +118,7 @@ interface FieldView {
     @if (showGateBanner) {
       <p class="ocu-banner ocu-banner-info ocu-form-gate-banner">
         <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
-        <span class="ocu-banner-message">{{ STRINGS.agentGateLandingBanner }}</span>
+        <span class="ocu-banner-message">{{ envMode ? STRINGS.agentGateLandingBannerEnv : STRINGS.agentGateLandingBanner }}</span>
       </p>
     }
 
@@ -266,6 +266,27 @@ interface FieldView {
         </div>
       }
 
+      @if (envMode) {
+      <div class="ocu-field">
+        <label class="ocu-field-label" [attr.for]="envVarField.id">{{ STRINGS.agentDefinitionFieldEnvVar }}</label>
+        <div class="ocu-field-control">
+          <input
+            class="ocu-field-input"
+            type="text"
+            [id]="envVarField.id"
+            [value]="envVarValue"
+            [attr.aria-invalid]="envVarField.invalid"
+            [attr.aria-describedby]="envVarField.describedBy"
+            (input)="onText('envVarName', $event)"
+            (blur)="onFieldBlur('envVarName')"
+          />
+        </div>
+        <p class="ocu-field-caption" [id]="envVarField.id + '-caption'">{{ STRINGS.agentDefinitionEnvVarCaption }}</p>
+        @if (envVarField.invalid) {
+          <p class="ocu-form-error" [id]="envVarField.id + '-reason'">{{ envVarField.reason }}</p>
+        }
+      </div>
+      } @else {
       <div class="ocu-field">
         <label class="ocu-field-label" [attr.for]="keyField.id">{{ STRINGS.agentDefinitionFieldApiKey }}</label>
         <div class="ocu-field-control">
@@ -297,6 +318,7 @@ interface FieldView {
           <p class="ocu-form-error" [id]="keyField.id + '-reason'">{{ keyField.reason }}</p>
         }
       </div>
+      }
 
       <div class="ocu-form-test">
         <button
@@ -749,6 +771,20 @@ export class DefinitionFormPage {
     return this.store.key();
   }
 
+  protected get envVarValue(): string {
+    this.generation();
+    return this.store.value('envVarName');
+  }
+
+  /**
+   * Whether the namespace cannot reach the credentials rung, so the environment-variable field
+   * takes the API key field's place and no key is ever asked for (FR-26).
+   */
+  protected get envMode(): boolean {
+    this.generation();
+    return this.store.envMode();
+  }
+
   protected get maxTokensValue(): string {
     this.generation();
     return this.store.value('maxTokens');
@@ -792,6 +828,10 @@ export class DefinitionFormPage {
 
   protected get keyField(): FieldView {
     return this.fieldView('apiKey');
+  }
+
+  protected get envVarField(): FieldView {
+    return this.fieldView('envVarName');
   }
 
   protected get markedLocalField(): FieldView {
@@ -910,7 +950,7 @@ export class DefinitionFormPage {
    * The keyless credential choice. Ticking it moves `credType` to `none` and remembers the rung
    * the buffer held; unticking restores that rung rather than forcing `creds`, so an `env`
    * definition opened for editing does not silently change rung on a control it never rendered.
-   * The credential references themselves are cleared server-side: `AgentRules.Normalize` clears
+   * In env mode the restored rung is never `creds`. The credential references themselves are cleared server-side: `AgentRules.Normalize` clears
    * both for `none`.
    */
   protected onNoKey(event: Event): void {
@@ -922,7 +962,7 @@ export class DefinitionFormPage {
       this.store.setValue('credType', CRED_TYPE_NONE);
       return;
     }
-    this.store.setValue('credType', this.heldCredType);
+    this.store.setValue('credType', this.store.admissibleCredType(this.heldCredType));
   }
 
   protected onHttpAcknowledge(event: Event): void {
@@ -1081,6 +1121,7 @@ export class DefinitionFormPage {
     const invalid = reason !== '';
     const described: string[] = [];
     if (field === 'apiKey' && this.showStoredCaption) described.push(`${id}-caption`);
+    if (field === 'envVarName') described.push(`${id}-caption`);
     if (invalid) described.push(`${id}-reason`);
     return {
       id,

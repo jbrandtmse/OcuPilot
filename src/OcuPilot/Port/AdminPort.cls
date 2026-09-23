@@ -158,12 +158,47 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// <code>ValidateQueryParams</code> requires the <code>id</code> query parameter, and each is
 /// listed in <parameter>BODYLESSTYPES</parameter> under its own endpoint, which is what exempts
 /// it from the object-body refusal below.</p>
-/// <p><code>TERMINATE</code> and <code>DELETE</code> are deliberately absent. The vendor exposes
-/// terminating a process through both -- <code>Process</code>'s <code>RunDelete</code> is a
-/// one-line delegate to <code>RunTerminate</code> -- and AD-10 names terminating an IRIS system
-/// process in the Release 1 prohibited set, so neither pairs with <code>Process</code> here and
-/// <method>EndpointType</method> answers <code>""</code> for either.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME";
+/// <p><code>TERMINATE</code> and <code>DELETE</code> are deliberately absent for
+/// <code>Process</code>. The vendor exposes terminating a process through both --
+/// <code>Process</code>'s <code>RunDelete</code> is a one-line delegate to <code>RunTerminate</code>
+/// -- and AD-10 names terminating an IRIS system process in the Release 1 prohibited set, so neither
+/// pairs with <code>Process</code> here and <method>EndpointType</method> answers <code>""</code>
+/// for either.</p>
+/// <p><code>Security.Role/PUT</code> and <code>Security.Role/DELETE</code> are Story 8.3's role
+/// create and delete. Read on this build: the endpoint overrides <code>Run</code>, its
+/// <code>RunPut</code> modifies a role that exists and otherwise creates it (an upsert, which the
+/// create's absence fingerprint guards, AD-54), its <code>NeedsRequestBody()</code> is
+/// <code>..IsTypePut()</code> so <code>DELETE</code> reads no body, and its <code>RunDelete</code>
+/// answers 404 for an absent role and otherwise reports success whatever the drop did
+/// (<parameter>VERIFIEDDELETES</parameter>).</p>
+/// <p><code>Security.Resource/PUT</code> and <code>Security.Resource/DELETE</code> are Story 8.4's
+/// resource create, edit and delete. Read on this build: the endpoint does not override
+/// <code>Run</code>; its <code>RunPut</code> creates an absent resource (201) and otherwise modifies
+/// only the keys the body carries; its <code>NeedsRequestBody()</code> is <code>..IsTypePut()</code>
+/// so <code>DELETE</code> reads no body; and its <code>RunDelete</code> answers 409 for a system
+/// resource and 404 for an absent one. A <code>PUT</code> is re-read
+/// (<parameter>VERIFIEDWRITES</parameter>), and one whose public permission is none is completed
+/// through the vendor class (<parameter>CLASSCOMPLETEDTYPES</parameter>).</p>
+/// <p><code>Security.X509Credential/POST</code>, <code>/PUT</code> and <code>/DELETE</code> are Story
+/// 8.5's X.509 import, edit and delete. Read on this build: the endpoint overrides <code>Run</code>
+/// (for <code>CERTINFO</code>); its <code>RunPut</code> opens the alias (404 when absent) and sets
+/// only the keys the body carries; its <code>NeedsRequestBody()</code> is <code>PUT</code> or
+/// <code>POST</code>, so <code>DELETE</code> reads no body; and its <code>POST</code> takes the
+/// certificate and key only as server file paths, so the port completes it from content instead
+/// (<parameter>CONTENTCOMPLETEDTYPES</parameter>).</p>
+/// <p><code>Wallet.Secret/PUT</code> is Story 8.6's wallet secret create and edit. Read on this build:
+/// its <code>RunPut</code> modifies a secret that exists and otherwise creates it (an upsert, which
+/// the create's absence fingerprint and the edit's fresh read guard, AD-4, AD-54); a modify sets
+/// only the keys the body carries and keeps the stored value when <code>Secret</code> is absent or
+/// empty; and it answers 400 for an unknown key and 422 for an absent collection. The body is a
+/// wrapper (<parameter>WRAPPEDTYPES</parameter>).</p>
+/// <p><code>Device.Standard/PUT</code> and <code>/DELETE</code> are Story 8.8's device create, edit
+/// and delete. Read on this build: its <code>RunPut</code> modifies a device that exists and otherwise
+/// creates it (an upsert, which the create's absence fingerprint and the edit's fresh read guard,
+/// AD-4, AD-54), setting only the keys the body carries; its <code>NeedsRequestBody()</code> is
+/// <code>..IsTypePut()</code>, so <code>DELETE</code> reads no body; and its <code>RunDelete</code>
+/// answers 404 for an absent device (<parameter>VERIFIEDDELETES</parameter>).</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -179,7 +214,101 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE";
+
+/// <p>The <parameter>MUTATINGTYPES</parameter> deletes whose vendor answer does not say whether the
+/// object went, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries. After a 2xx
+/// for a listed pair, <method>Invoke</method> re-issues the endpoint's <code>GET</code> for the same
+/// query: only a 404 confirms the delete, and anything else is a 500 fault with
+/// <parameter>OcuPilot.Api.Error.PORTNOTAPPLIED</parameter>, never a success.</p>
+/// <p><code>Security.Role/DELETE</code> is listed because its <code>RunDelete</code> answers the
+/// status of <code>%SQL.Manager.API.DropUser(name, "ROLE")</code>, which is <code>$$$OK</code>
+/// whether or not the role was dropped (read on this build). That is a wire fact, so it lives here
+/// (AD-27).</p>
+/// <p><code>Device.Standard/DELETE</code> is listed because its <code>RunDelete</code> answers the
+/// status of <code>Config.Devices.Delete</code>, whose body is stripped from this build's export, so
+/// its 200 is not trusted unread.</p>
+Parameter VERIFIEDDELETES = "Security.Role/DELETE,Device.Standard/DELETE";
+
+/// <p>The <parameter>MUTATINGTYPES</parameter> writes whose vendor answer does not say whether the
+/// sent values were stored, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries.
+/// After a 2xx for a listed pair, <method>Invoke</method> re-issues the endpoint's <code>GET</code>
+/// for the same query, and every key of the sent body must read back equal
+/// (<method>VerifyApplied</method>); anything else is a 500 fault with
+/// <parameter>OcuPilot.Api.Error.PORTNOTAPPLIED</parameter>, never a success.</p>
+/// <p><code>Security.Resource/PUT</code> is listed because its <code>RunPut</code> ends by calling
+/// <code>Security.Resources.Exists(..Name, .obj, .sc)</code>, which overwrites the status of the
+/// <code>Create</code> or <code>Modify</code> it just made: measured on this build, a 300-character
+/// <code>Description</code> answered 200 and left the resource unchanged. That is a wire fact, so it
+/// lives here (AD-27).</p>
+Parameter VERIFIEDWRITES = "Security.Resource/PUT";
+
+/// <p>AD-27's named fallback: the <parameter>MUTATINGTYPES</parameter> writes the port completes
+/// through the vendor's own class when the body carries a value the admin API refuses and the class
+/// accepts, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;field&gt;</code> entries. It
+/// applies only when <code>&lt;field&gt;</code> is the empty string.</p>
+/// <p><code>Security.Resource/PUT=PublicPermission</code> is the one entry (AD-27 as amended
+/// 2026-09-23). The endpoint's <code>RunPut</code> normalizes the value with
+/// <code>Security.Datatype.Permission.ExternalToInternal</code>, whose answer for no permission is
+/// 0, and refuses that with a 400, so no encoding of "none" is accepted on a create or a clear;
+/// <code>Security.Resources.Create</code> and <code>Modify</code> accept an empty permission.
+/// <method>CompleteThroughClass</method> makes that call behind the endpoint's own gate and
+/// validation, and <parameter>VERIFIEDWRITES</parameter> re-reads it as it re-reads the vendor's
+/// own.</p>
+Parameter CLASSCOMPLETEDTYPES = "Security.Resource/PUT=PublicPermission";
+
+/// <p>AD-27's second named case: the <parameter>MUTATINGTYPES</parameter> writes the port completes
+/// from <b>content</b> through the vendor's own class, because the admin API names only server file
+/// paths for them and AD-21 forbids a caller naming a path. Comma-separated
+/// <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries.</p>
+/// <p><code>Security.X509Credential/POST</code> is the one entry (AD-27 as amended 2026-09-23). Its
+/// <code>RunPost</code> reads the certificate and key through <code>LoadCertificate</code> and
+/// <code>LoadPrivateKey</code> from <code>CertificateFile</code> and <code>PrivateKeyFile</code>;
+/// <method>ImportThroughClass</method> sets them as content on <class>%SYS.X509Credentials</class>
+/// instead, behind the endpoint's own gate. The certificate, key and key password never touch disk,
+/// and no status, fault or log line this path writes carries their text (AD-35).</p>
+Parameter CONTENTCOMPLETEDTYPES = "Security.X509Credential/POST";
+
+/// <p>The keys a content-completed import body may carry: the credential's two lists and the three
+/// secrets. Every other key -- <code>CAFile</code>, <code>CertificateFile</code>,
+/// <code>PrivateKeyFile</code> among them -- is refused (AD-21).</p>
+Parameter IMPORTFIELDS = "OwnerList,PeerNames,Certificate,PrivateKey,PrivateKeyPassword";
+
+/// <p>The longest PEM text <method>PemBlock</method> accepts, in characters.</p>
+Parameter PEMMAXLENGTH As INTEGER = 65536;
+
+/// <p>The longest private key password <class>%SYS.X509Credentials</class> stores: the
+/// <code>MAXLEN</code> of its <code>PrivateKeyPassword</code> property on this build. A longer one is
+/// refused before the save, whose datatype refusal would quote the value.</p>
+Parameter PASSWORDMAXLENGTH As INTEGER = 128;
+
+/// <p>The vendor status codes a content import's save answers for a refused certificate, key or
+/// password, each paired with the OcuPilot code the port's log names in its place: expired, a key
+/// the password does not decrypt, a key that does not belong to the certificate, a certificate
+/// whose public key is not RSA carried with a key, and a certificate the vendor cannot read.</p>
+Parameter IMPORTSAVECODES = "728=X509.CERTIFICATE.EXPIRED,732=X509.PRIVATEKEYPASSWORD.WRONG,733=X509.PRIVATEKEY.MISMATCH,731=X509.PRIVATEKEY.MISMATCH,742=X509.CERTIFICATE.SHAPE";
+
+/// <p>The <parameter>MUTATINGTYPES</parameter> entries whose vendor body is a <b>wrapper</b>, as
+/// comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;wrapper&gt;:&lt;outer&gt;[:&lt;outer&gt;...]</code>
+/// entries. <method>Invoke</method> applies it before the vendor's <code>ValidateRequest</code>:
+/// every key of the caller's flat body except the listed outer keys moves under the wrapper key,
+/// and an outer key the body does not carry stays missing, so the vendor's own required-field
+/// refusal answers for it.</p>
+/// <p><code>Security.User/POST</code> is <code>%Api.Admin.Endpoints.Security.User</code>'s create
+/// (read on this build): <code>TYPEPOST</code> 5, <code>NeedsRequestBody()</code> true, a
+/// <code>ValidateRequest</code> requiring <code>{User:{...}, Password}</code>, and a
+/// <code>RunPost</code> that calls <method>Security.Users.Create</method> with the password and then
+/// <code>Modify</code> with <code>User</code>'s fields. The wrapper is a wire fact, so it lives in
+/// the port (AD-27) and the rest of the product reads <code>Security.User</code>'s flat derived
+/// field list. <method>Fail</method> strips the wrapper's leading segment from a field a vendor
+/// refusal names, so the refusal lands on the flat field the caller sent.</p>
+/// <p><code>Wallet.Secret/PUT</code> is <code>%Api.Admin.Endpoints.Wallet.Secret</code>'s create and
+/// edit (read on this build): a <code>ValidateRequest</code> requiring <code>{Type,
+/// WalletSecretConfig:{...}}</code> and a <code>RunPut</code> that hands
+/// <code>WalletSecretConfig</code> to the <code>Type</code> class's <code>Create</code> or
+/// <code>Modify</code>. The rest of the product reads the flat <code>%Wallet.KeyValue</code> field
+/// list with <code>Type</code> beside it.</p>
+Parameter WRAPPEDTYPES = "Security.User/POST=User:Password,Wallet.Secret/PUT=WalletSecretConfig:Type";
 
 /// <p>The pair set the <b>backing query or class</b> of an endpoint requires, beyond the
 /// endpoint's own <code>ResourcesOR()</code> gate (AD-29). Comma-separated entries of the form
@@ -456,7 +585,11 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Quit
         }
 
-        Set tSeqSC = ..RunSequence(pEndpoint, tClass, tType, .pQuery, pBody, .tAnswer, .tHttp, .tLocation, ..HttpMethodFor(pEndpoint, pType))
+        ; WRAPPEDTYPES: a flat body becomes the vendor's wrapper here, before ValidateRequest reads
+        ; it, so no caller above the port composes the wire shape.
+        Set tBody = pBody
+        If $IsObject(pBody) Set tBody = ..Wrapped(pEndpoint, pType, pBody)
+        Set tSeqSC = ..RunSequence(pEndpoint, tClass, tType, .pQuery, tBody, .tAnswer, .tHttp, .tLocation, ..HttpMethodFor(pEndpoint, pType))
         If $$$ISOK(tSeqSC) && (tHttp = 202) && (tLocation [ ..#ASYNCLOCATION) {
             Set tAnswer = ""
             Set tGuid = $Piece($Piece(tLocation, ..#ASYNCLOCATION, 2), "&", 1)
@@ -464,6 +597,18 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Quit
         }
         If $$$ISOK(tSeqSC) && (tHttp >= 200) && (tHttp < 300) {
+            ; VERIFIEDDELETES: a delete the vendor reports as made is believed only once a re-read
+            ; finds the object gone.
+            If ..IsVerifiedDelete(pEndpoint, pType) {
+                Set tSC = ..VerifyGone(pEndpoint, .pQuery, .pHttpStatus, .pFault)
+                If $$$ISERR(tSC) Quit
+            }
+            ; VERIFIEDWRITES: a write the vendor reports as made is believed only once a re-read
+            ; answers every sent value.
+            If ..IsVerifiedWrite(pEndpoint, pType) {
+                Set tSC = ..VerifyApplied(pEndpoint, .pQuery, pBody, .pHttpStatus, .pFault)
+                If $$$ISERR(tSC) Quit
+            }
             Set pResult = tAnswer
             Set pHttpStatus = tHttp
             Quit
@@ -479,7 +624,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..Denied(pEndpoint, tFailedPair, tSeqSC, .pHttpStatus, .pFault)
             Quit
         }
-        Set tSC = ..Fail(pEndpoint, tHttp, tSeqSC, .pHttpStatus, .pFault)
+        Set tSC = ..Fail(pEndpoint, tHttp, tSeqSC, .pHttpStatus, .pFault, ..WrapperKey(pEndpoint, pType))
     } Catch ex {
         Set pResult = ""
         Set pHttpStatus = 500
@@ -792,10 +937,509 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
 }
 
 /// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
+/// <parameter>VERIFIEDDELETES</parameter> lists.</p>
+ClassMethod IsVerifiedDelete(pEndpoint As %String, pSuffix As %String) As %Boolean
+{
+    Quit ''$ListFind($ListFromString(..#VERIFIEDDELETES), pEndpoint _ "/" _ pSuffix)
+}
+
+/// <p>Re-read <var>pEndpoint</var> with the query <var>pQuery</var> a delete was issued with, and
+/// answer OK only when the read answers 404. A read that finds the object, or fails any other way,
+/// is a 500 fault carrying <parameter>OcuPilot.Api.Error.PORTNOTAPPLIED</parameter>, with the read's
+/// own answer in the log.</p>
+ClassMethod VerifyGone(pEndpoint As %String, ByRef pQuery, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tReadSC = ..Invoke(pEndpoint, "GET", .pQuery, "", .tFresh, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) && (+$Get(tReadHttp) = 404) Quit $$$OK
+    Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#PORTNOTAPPLIED, ##class(OcuPilot.Api.Error).#REASONPORTNOTAPPLIED, .pHttpStatus, .pFault)
+    Do ..LogFault(pEndpoint _ " answered a delete as made and a re-read answered HTTP " _ +$Get(tReadHttp), $Select($$$ISERR(tReadSC): tReadSC, 1: $$$ERROR($$$GeneralError, "the object is still present")), pFault.code)
+    Quit tSC
+}
+
+/// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
+/// <parameter>VERIFIEDWRITES</parameter> lists.</p>
+ClassMethod IsVerifiedWrite(pEndpoint As %String, pSuffix As %String) As %Boolean
+{
+    Quit ''$ListFind($ListFromString(..#VERIFIEDWRITES), pEndpoint _ "/" _ pSuffix)
+}
+
+/// <p>Re-read <var>pEndpoint</var> with the query <var>pQuery</var> a write was issued with, and
+/// answer OK only when every key of the sent <var>pBody</var> reads back with the value sent
+/// (<method>SameValue</method>). A read that fails, or a value that differs, is a 500 fault carrying
+/// <parameter>OcuPilot.Api.Error.PORTNOTAPPLIED</parameter>, with the differing key in the log.</p>
+ClassMethod VerifyApplied(pEndpoint As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tReadSC = ..Invoke(pEndpoint, "GET", .pQuery, "", .tFresh, .tReadHttp, .tReadFault)
+    Set tDiffers = ""
+    If $$$ISOK(tReadSC) && $IsObject(tFresh) && $IsObject(pBody) && pBody.%IsA("%Library.DynamicObject") {
+        Set tIterator = pBody.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tValue) {
+            If '..SameValue(tKey, pBody, tFresh) Set tDiffers = tKey Quit
+        }
+        If tDiffers = "" Quit $$$OK
+    }
+    Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#PORTNOTAPPLIED, ##class(OcuPilot.Api.Error).#REASONPORTNOTAPPLIED, .pHttpStatus, .pFault)
+    Do ..LogFault(pEndpoint _ " answered a write as made and a re-read answered HTTP " _ +$Get(tReadHttp), $Select($$$ISERR(tReadSC): tReadSC, 1: $$$ERROR($$$GeneralError, "the re-read does not carry the sent value of '" _ tDiffers _ "'")), pFault.code)
+    Quit tSC
+}
+
+/// <p>Whether <var>pKey</var> reads the same on the sent <var>pSent</var> and the re-read
+/// <var>pRead</var>: rendered as the proposal diff renders a value, and a
+/// <code>PublicPermission</code> compared as a set of letters, since the vendor writes the letters
+/// in its own order.</p>
+ClassMethod SameValue(pKey As %String, pSent As %DynamicObject, pRead As %DynamicObject) As %Boolean [ Private ]
+{
+    Set tSent = ##class(OcuPilot.Kernel.Proposal.Mint).Display(pSent.%Get(pKey), pSent.%GetTypeOf(pKey))
+    Set tRead = ##class(OcuPilot.Kernel.Proposal.Mint).Display(pRead.%Get(pKey), pRead.%GetTypeOf(pKey))
+    If pKey '= "PublicPermission" Quit (tSent = tRead)
+    Quit (..LetterSet(tSent) = ..LetterSet(tRead))
+}
+
+/// <p>The distinct letters of <var>pLetters</var>, upper-cased and in alphabetical order.</p>
+ClassMethod LetterSet(pLetters As %String) As %String [ Private ]
+{
+    Kill tSeen
+    Set tLetters = $ZConvert(pLetters, "U")
+    For tI = 1:1:$Length(tLetters) Set tSeen($Extract(tLetters, tI)) = ""
+    Set tOut = ""
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tSeen(tKey))
+        If tKey = "" Quit
+        Set tOut = tOut _ tKey
+    }
+    Quit tOut
+}
+
+/// <p>The field <parameter>CLASSCOMPLETEDTYPES</parameter> names for <var>pEndpoint</var>'s request
+/// type <var>pSuffix</var>, when <var>pBody</var> carries it as the empty string; otherwise
+/// <code>""</code>, and the call goes to the vendor's endpoint.</p>
+ClassMethod ClassCompletedField(pEndpoint As %String, pSuffix As %String, pBody As %DynamicAbstractObject) As %String
+{
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit ""
+    Set tField = ""
+    Set tEntries = $ListFromString(..#CLASSCOMPLETEDTYPES)
+    For tI = 1:1:$ListLength(tEntries) {
+        Set tEntry = $List(tEntries, tI)
+        If $Piece(tEntry, "=", 1) '= (pEndpoint _ "/" _ pSuffix) Continue
+        Set tField = $Piece(tEntry, "=", 2)
+        Quit
+    }
+    If tField = "" Quit ""
+    If pBody.%GetTypeOf(tField) '= "string" Quit ""
+    If pBody.%Get(tField) '= "" Quit ""
+    Quit tField
+}
+
+/// <p>AD-27's fallback for <code>Security.Resource/PUT</code> with no public permission
+/// (<parameter>CLASSCOMPLETEDTYPES</parameter>): the endpoint <var>pClass</var>, constructed at
+/// <var>pType</var>, is gated on its own <code>ResourcesOR()</code> and validates the body with its
+/// own <code>ValidateRequest</code>; the resource is then created (201) or modified (200) through
+/// <class>Security.Resources</class> in <code>%SYS</code> (AD-16), with the keys the body carries.
+/// <var>pAnswer</var> is the resource as <code>{Description, PublicPermission}</code>.</p>
+/// <p><b>Caller contract:</b> <var>pHttpStatus</var> is 403 for a caller the gate refuses, 400 for
+/// a missing <code>name</code> or a body the endpoint refuses, and 500 with the vendor status for a
+/// class call that fails, which is <method>RunSequence</method>'s own answer shape.</p>
+ClassMethod CompleteThroughClass(pClass As %String, pType As %Integer, ByRef pQuery, pBody As %DynamicObject, Output pAnswer, Output pHttpStatus As %Integer) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pAnswer = ""
+    Set pHttpStatus = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tEndpoint = $ClassMethod(pClass, "%New", pType, ..#APIVERSION)
+        If '$IsObject(tEndpoint) {
+            Set tSC = $Get(%objlasterror, $$$ERROR($$$GeneralError, "endpoint did not construct"))
+            Quit
+        }
+        Set tAllowed = 0
+        Set tResources = tEndpoint.ResourcesOR()
+        For tI = 1:1:$ListLength(tResources) {
+            Set tAllowed = tAllowed || ..HoldsResource($ListGet(tResources, tI))
+        }
+        If 'tAllowed {
+            Set pHttpStatus = 403
+            Quit
+        }
+        Set tName = $Get(pQuery("name"))
+        If tName = "" {
+            Set pHttpStatus = 400
+            Set tSC = $$$ERROR($$$GeneralError, "the name query parameter is required")
+            Quit
+        }
+        Set tEndpoint.Name = tName
+        Set $NAMESPACE = "%SYS"
+        Set tSC = tEndpoint.ValidateRequest(pBody)
+        If $$$ISERR(tSC) {
+            Set $NAMESPACE = tOrigNS
+            Set pHttpStatus = 400
+            Quit
+        }
+        Set tCreated = 0
+        If '##class(Security.Resources).Exists(tName) {
+            Set tSC = ##class(Security.Resources).Create(tName, pBody.%Get("Description"), "")
+            Set tCreated = 1
+        } Else {
+            Kill tProps
+            If pBody.%IsDefined("Description") Set tProps("Description") = pBody.%Get("Description")
+            Set tProps("PublicPermission") = ""
+            Set tSC = ##class(Security.Resources).Modify(tName, .tProps)
+        }
+        If $$$ISOK(tSC) && ##class(Security.Resources).Exists(tName, .tObject) {
+            Set pAnswer = {}
+            Do pAnswer.%Set("Description", tObject.Description, "string")
+            Do pAnswer.%Set("PublicPermission", ##class(Security.Datatype.Permission).InternalToExternal(tObject.PublicPermission), "string")
+        }
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) {
+            Set pHttpStatus = 500
+            Quit
+        }
+        Set pHttpStatus = $Select(tCreated: 201, 1: 200)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+        Set pHttpStatus = 500
+    }
+    If $$$ISERR(tSC) && (pHttpStatus = 0) Set pHttpStatus = 500
+    Quit tSC
+}
+
+/// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
+/// <parameter>CONTENTCOMPLETEDTYPES</parameter> lists.</p>
+ClassMethod IsContentCompleted(pEndpoint As %String, pSuffix As %String) As %Boolean
+{
+    Quit ''$ListFind($ListFromString(..#CONTENTCOMPLETEDTYPES), pEndpoint _ "/" _ pSuffix)
+}
+
+/// <p>Whether <var>pText</var> is exactly one PEM block of kind <var>pKind</var> -- <code>cert</code>
+/// for a <code>CERTIFICATE</code> block, <code>key</code> for a <code>PRIVATE KEY</code>,
+/// <code>RSA PRIVATE KEY</code> or <code>ENCRYPTED PRIVATE KEY</code> block -- of at most
+/// <parameter>PEMMAXLENGTH</parameter> characters. On success <var>pCanonical</var> is the block
+/// rewritten with line feeds only and its base64 body wrapped at 64 columns, which is the shape the
+/// vendor's key check reads; on refusal it is <code>""</code>.</p>
+/// <p><b>A block whose line breaks were lost is re-wrapped</b> -- a password input and the proposal
+/// card both drop them -- unless it carries a <code>Proc-Type</code> header: a legacy encrypted key
+/// separates its headers from its body by a blank line, which cannot be recovered once the line
+/// breaks are gone. Nothing here writes, logs or returns the text anywhere else (AD-35).</p>
+ClassMethod PemBlock(pText As %String, pKind As %String, Output pCanonical As %String) As %Boolean
+{
+    Set pCanonical = ""
+    Set tOK = 0
+    Try {
+        Set tText = $ZStrip($Translate(pText, $Char(13), ""), "<>WC")
+        If (tText = "") || ($Length(tText) > ..#PEMMAXLENGTH) Quit
+        If ($Length(tText, "-----BEGIN ") '= 2) || ($Length(tText, "-----END ") '= 2) Quit
+        Set tLabels = $Select(pKind = "cert": $ListBuild("CERTIFICATE"), pKind = "key": $ListBuild("PRIVATE KEY", "RSA PRIVATE KEY", "ENCRYPTED PRIVATE KEY"), 1: "")
+        Set tBegin = ""
+        Set tEnd = ""
+        For tI = 1:1:$ListLength(tLabels) {
+            Set tTryBegin = "-----BEGIN " _ $List(tLabels, tI) _ "-----"
+            Set tTryEnd = "-----END " _ $List(tLabels, tI) _ "-----"
+            If ($Extract(tText, 1, $Length(tTryBegin)) = tTryBegin) && ($Extract(tText, *-$Length(tTryEnd) + 1, *) = tTryEnd) {
+                Set tBegin = tTryBegin
+                Set tEnd = tTryEnd
+                Quit
+            }
+        }
+        If tBegin = "" Quit
+        Set tInner = $Extract(tText, $Length(tBegin) + 1, *-$Length(tEnd))
+        Set tHeaders = ""
+        Set tBody = ""
+        If tInner '[ $Char(10) {
+            If (tInner [ "Proc-Type") || (tInner [ "DEK-Info") Quit
+            Set tBody = $Translate(tInner, " " _ $Char(9), "")
+        } Else {
+            Set tBad = 0
+            For tI = 1:1:$Length(tInner, $Char(10)) {
+                Set tLine = $ZStrip($Piece(tInner, $Char(10), tI), "<>W")
+                If tLine = "" Continue
+                If tLine [ ":" {
+                    If tBody '= "" Set tBad = 1 Quit
+                    Set tHeaders = tHeaders _ tLine _ $Char(10)
+                    Continue
+                }
+                Set tBody = tBody _ $Translate(tLine, " " _ $Char(9), "")
+            }
+            If tBad Quit
+        }
+        If (tBody = "") || '$Match(tBody, "^[A-Za-z0-9+/]+={0,2}$") || ($Length(tBody) # 4) Quit
+        Set tWrapped = ""
+        For tI = 1:64:$Length(tBody) {
+            Set tWrapped = tWrapped _ $Extract(tBody, tI, tI + 63) _ $Char(10)
+        }
+        Set pCanonical = tBegin _ $Char(10) _ $Select(tHeaders = "": "", 1: tHeaders _ $Char(10)) _ tWrapped _ tEnd
+        Set tOK = 1
+    } Catch {
+        Set pCanonical = ""
+        Set tOK = 0
+    }
+    Set tText = ""
+    Set tInner = ""
+    Set tBody = ""
+    Set tWrapped = ""
+    Quit tOK
+}
+
+/// <p>The DER bytes of the canonical PEM block <var>pCanonical</var> (<method>PemBlock</method>'s
+/// answer), or <code>""</code> when they cannot be decoded.</p>
+ClassMethod PemBytes(pCanonical As %String) As %String
+{
+    Set tBytes = ""
+    Try {
+        Set tLines = ""
+        For tI = 2:1:$Length(pCanonical, $Char(10)) - 1 {
+            Set tLine = $Piece(pCanonical, $Char(10), tI)
+            If (tLine = "") || (tLine [ ":") Continue
+            Set tLines = tLines _ tLine
+        }
+        Set tBytes = $System.Encryption.Base64Decode(tLines)
+    } Catch {
+        Set tBytes = ""
+    }
+    Quit tBytes
+}
+
+/// <p>AD-27's second case (<parameter>CONTENTCOMPLETEDTYPES</parameter>): import the credential
+/// <code>alias</code> names in <var>pQuery</var> from the content in <var>pBody</var> through
+/// <class>%SYS.X509Credentials</class> in <code>%SYS</code> (AD-16), behind the endpoint
+/// <var>pClass</var>'s own <code>ResourcesOR()</code> gate. <var>pAnswer</var> is the credential as
+/// the vendor's own <code>GET</code> then answers it.</p>
+/// <p><b>Caller contract:</b> <var>pHttpStatus</var> is 403 for a caller the gate refuses; 400 for
+/// a missing alias, a body key outside <parameter>IMPORTFIELDS</parameter>, a list that is not an
+/// array of strings, a certificate or key <method>PemBlock</method> refuses, a certificate that
+/// does not decode, a password longer than <parameter>PASSWORDMAXLENGTH</parameter> or one sent
+/// with no key, and a save refused for a code <parameter>IMPORTSAVECODES</parameter> names; 409 for
+/// an alias already present, compared exactly, as the vendor answers it; 500 for any other refused
+/// save, the vendor's own answer shape; 201 on success.</p>
+/// <p><b>No secret text leaves this method</b> (AD-35). Every error status it returns is written
+/// here and names a code, never a value, so neither <method>Fail</method>'s log line nor a fault
+/// can carry one; every local that held key, certificate or password text is cleared before it
+/// returns, on every path.</p>
+ClassMethod ImportThroughClass(pEndpoint As %String, pClass As %String, pType As %Integer, ByRef pQuery, pBody As %DynamicAbstractObject, Output pAnswer, Output pHttpStatus As %Integer) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pAnswer = ""
+    Set pHttpStatus = 0
+    Set tOrigNS = $NAMESPACE
+    Set (tCert, tKey, tPassword, tBytes) = ""
+    Set tCredential = ""
+    Try {
+        Set tEndpoint = $ClassMethod(pClass, "%New", pType, ..#APIVERSION)
+        If '$IsObject(tEndpoint) {
+            Set tSC = $$$ERROR($$$GeneralError, "endpoint did not construct")
+            Quit
+        }
+        Set tAllowed = 0
+        Set tResources = tEndpoint.ResourcesOR()
+        For tI = 1:1:$ListLength(tResources) {
+            Set tAllowed = tAllowed || ..HoldsResource($ListGet(tResources, tI))
+        }
+        If 'tAllowed {
+            Set pHttpStatus = 403
+            Quit
+        }
+        Set tAlias = $Get(pQuery("alias"))
+        If tAlias = "" {
+            Set pHttpStatus = 400
+            Set tSC = $$$ERROR($$$GeneralError, "the alias query parameter is required")
+            Quit
+        }
+        If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") {
+            Set pHttpStatus = 400
+            Set tSC = $$$ERROR($$$GeneralError, "the import body is not an object")
+            Quit
+        }
+        Set tAdmitted = $ListFromString(..#IMPORTFIELDS)
+        Set tIterator = pBody.%GetIterator()
+        While tIterator.%GetNext(.tKeyName, .tValue) {
+            If '$ListFind(tAdmitted, tKeyName) {
+                Set pHttpStatus = 400
+                Set tSC = $$$ERROR($$$GeneralError, "the import body carries a key it does not admit: " _ tKeyName)
+                Quit
+            }
+        }
+        Set tValue = ""
+        If $$$ISERR(tSC) Quit
+        Kill tLists
+        For tField = "OwnerList", "PeerNames" {
+            Set tLists(tField) = ""
+            Set tType = pBody.%GetTypeOf(tField)
+            If (tType = "unassigned") || (tType = "null") Continue
+            If tType '= "array" {
+                Set tSC = $$$ERROR($$$GeneralError, tField _ " is not an array")
+                Quit
+            }
+            Set tJoined = ""
+            Set tItems = pBody.%Get(tField).%GetIterator()
+            While tItems.%GetNext(.tIndex, .tItem) {
+                If $IsObject(tItem) {
+                    Set tSC = $$$ERROR($$$GeneralError, tField _ " holds a value that is not a string")
+                    Quit
+                }
+                If tItem = "" Continue
+                Set tJoined = tJoined _ $Select(tJoined = "": "", 1: ",") _ tItem
+            }
+            Set tLists(tField) = tJoined
+            If $$$ISERR(tSC) Quit
+        }
+        If $$$ISERR(tSC) {
+            Set pHttpStatus = 400
+            Quit
+        }
+        If pBody.%GetTypeOf("Certificate") = "string" Set tCert = pBody.%Get("Certificate")
+        If pBody.%GetTypeOf("PrivateKey") = "string" Set tKey = pBody.%Get("PrivateKey")
+        If pBody.%GetTypeOf("PrivateKeyPassword") = "string" Set tPassword = pBody.%Get("PrivateKeyPassword")
+        Set tRefusal = ""
+        If '..PemBlock(tCert, "cert", .tCert) {
+            Set tRefusal = ##class(OcuPilot.Api.Error).#X509CERTIFICATESHAPE
+        } ElseIf (tKey '= "") && '..PemBlock(tKey, "key", .tKey) {
+            Set tRefusal = ##class(OcuPilot.Api.Error).#X509PRIVATEKEYSHAPE
+        } ElseIf (tPassword '= "") && (tKey = "") {
+            Set tRefusal = ##class(OcuPilot.Api.Error).#X509PRIVATEKEYPASSWORDWITHOUTKEY
+        } ElseIf $Length(tPassword) > ..#PASSWORDMAXLENGTH {
+            Set tRefusal = ##class(OcuPilot.Api.Error).#X509PRIVATEKEYPASSWORDLENGTH
+        }
+        If tRefusal = "" {
+            Set tBytes = ..PemBytes(tCert)
+            If tBytes = "" Set tRefusal = ##class(OcuPilot.Api.Error).#X509CERTIFICATESHAPE
+        }
+        If tRefusal '= "" {
+            Set pHttpStatus = 400
+            Set tSC = $$$ERROR($$$GeneralError, "the import was refused: " _ tRefusal)
+            Quit
+        }
+
+        Set $NAMESPACE = "%SYS"
+        If ##class(%SYS.X509Credentials).Exists(tAlias) {
+            Set $NAMESPACE = tOrigNS
+            Set pHttpStatus = 409
+            Set tSC = $$$ERROR($$$GeneralError, "an X.509 credential already carries that alias")
+            Quit
+        }
+        Set tCredential = ##class(%SYS.X509Credentials).%New()
+        Set tCredential.Alias = tAlias
+        Set tDecoded = 1
+        Try {
+            Set tCredential.Certificate = tBytes
+        } Catch {
+            Set $NAMESPACE = tOrigNS
+            Set tDecoded = 0
+        }
+        If 'tDecoded {
+            Set tCredential = ""
+            Set $NAMESPACE = tOrigNS
+            Set pHttpStatus = 400
+            Set tSC = $$$ERROR($$$GeneralError, "the import was refused: " _ ##class(OcuPilot.Api.Error).#X509CERTIFICATESHAPE)
+            Quit
+        }
+        If tKey '= "" {
+            Set tCredential.PrivateKey = tKey
+            Set tCredential.PrivateKeyPassword = tPassword
+        }
+        Set tCredential.OwnerList = tLists("OwnerList")
+        Set tCredential.PeerNames = tLists("PeerNames")
+        Set tSaveSC = tCredential.Save()
+        Set tCredential = ""
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSaveSC) {
+            Set tCodes = $System.Status.GetErrorCodes(tSaveSC)
+            Set tSaveSC = ""
+            If ("," _ tCodes _ ",") [ ",5805," {
+                Set pHttpStatus = 409
+                Set tSC = $$$ERROR($$$GeneralError, "an X.509 credential already carries that alias")
+                Quit
+            }
+            Set tMapped = ""
+            For tI = 1:1:$Length(..#IMPORTSAVECODES, ",") {
+                Set tPair = $Piece(..#IMPORTSAVECODES, ",", tI)
+                If ("," _ tCodes _ ",") [ ("," _ $Piece(tPair, "=", 1) _ ",") Set tMapped = $Piece(tPair, "=", 2) Quit
+            }
+            If tMapped '= "" {
+                Set pHttpStatus = 400
+                Set tSC = $$$ERROR($$$GeneralError, "the import was refused: " _ tMapped)
+            } Else {
+                Set pHttpStatus = 500
+                Set tSC = $$$ERROR($$$GeneralError, "%SYS.X509Credentials refused the save with vendor error " _ tCodes)
+            }
+            Quit
+        }
+        Set (tCert, tKey, tPassword, tBytes) = ""
+        Kill tRead
+        Set tRead("alias") = tAlias
+        Set tReadSC = ..Invoke(pEndpoint, "GET", .tRead, "", .tFresh, .tReadHttp, .tReadFault)
+        Set pAnswer = $Select($$$ISOK(tReadSC) && $IsObject($Get(tFresh)): tFresh, 1: {})
+        Set pHttpStatus = 201
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCredential = ""
+        Set pHttpStatus = 500
+        Set tSC = $$$ERROR($$$GeneralError, "the X.509 import failed inside the port at " _ $Piece(ex.Location, "^", 1))
+    }
+    Set (tCert, tKey, tPassword, tBytes, tValue) = ""
+    Set tCredential = ""
+    If $$$ISERR(tSC) && (pHttpStatus = 0) Set pHttpStatus = 500
+    Quit tSC
+}
+
+/// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
 /// <parameter>BODYLESSTYPES</parameter> exempts from the object-body refusal (AD-51, DW-1464).</p>
 ClassMethod IsBodyless(pEndpoint As %String, pSuffix As %String) As %Boolean
 {
     Quit ''$ListFind($ListFromString(..#BODYLESSTYPES), pEndpoint _ "/" _ pSuffix)
+}
+
+/// <p>The wrapper key <parameter>WRAPPEDTYPES</parameter> declares for <var>pEndpoint</var>'s
+/// request type <var>pSuffix</var>, or <code>""</code> for a type whose body is sent as it is.</p>
+ClassMethod WrapperKey(pEndpoint As %String, pSuffix As %String) As %String
+{
+    Set tKey = ""
+    Set tEntries = $ListFromString(..#WRAPPEDTYPES)
+    For tI = 1:1:$ListLength(tEntries) {
+        Set tEntry = $List(tEntries, tI)
+        If $Piece(tEntry, "=", 1) '= (pEndpoint _ "/" _ pSuffix) Continue
+        Set tKey = $Piece($Piece(tEntry, "=", 2), ":", 1)
+        Quit
+    }
+    Quit tKey
+}
+
+/// <p><var>pBody</var> in the vendor's wrapper shape for <var>pEndpoint</var>'s request type
+/// <var>pSuffix</var>, or <var>pBody</var> itself where <parameter>WRAPPEDTYPES</parameter> declares
+/// none. Every key except the declared outer keys moves under the wrapper key, each keeping its own
+/// JSON type; an outer key <var>pBody</var> does not carry stays missing. <var>pBody</var> is not
+/// modified.</p>
+ClassMethod Wrapped(pEndpoint As %String, pSuffix As %String, pBody As %DynamicObject) As %DynamicObject
+{
+    Set tWrapper = ..WrapperKey(pEndpoint, pSuffix)
+    If tWrapper = "" Quit pBody
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit pBody
+    Set tOuter = ""
+    Set tEntries = $ListFromString(..#WRAPPEDTYPES)
+    For tI = 1:1:$ListLength(tEntries) {
+        Set tEntry = $List(tEntries, tI)
+        If $Piece(tEntry, "=", 1) '= (pEndpoint _ "/" _ pSuffix) Continue
+        Set tSpec = $Piece(tEntry, "=", 2)
+        For tJ = 2:1:$Length(tSpec, ":") {
+            If $Piece(tSpec, ":", tJ) '= "" Set tOuter = tOuter _ $ListBuild($Piece(tSpec, ":", tJ))
+        }
+        Quit
+    }
+    Set tOut = {}
+    Set tInner = {}
+    Set tIterator = pBody.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        Set tType = pBody.%GetTypeOf(tKey)
+        Set tTarget = $Select($ListFind(tOuter, tKey): tOut, 1: tInner)
+        If (tType = "object") || (tType = "array") {
+            Do tTarget.%Set(tKey, tValue)
+        } Else {
+            Do tTarget.%Set(tKey, tValue, tType)
+        }
+    }
+    Do tOut.%Set(tWrapper, tInner)
+    Quit tOut
 }
 
 /// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
@@ -849,10 +1493,15 @@ ClassMethod EndpointType(pEndpoint As %String, pClass As %String, pSuffix As %St
 /// implemented when <code>Run</code>, or the runner for that suffix, is defined below
 /// <parameter>ENDPOINTBASECLASS</parameter>. A class that overrides <code>Run</code> is trusted to
 /// dispatch its own types.</p>
+/// <p>The base <code>Run()</code> also sends <code>DELETE</code> to <code>RunDelete</code> (read on
+/// this build), which joined here with Story 7.1, the first tool that issues one through this port;
+/// without it every such call read as an operation the instance does not implement, at 501.</p>
 ClassMethod ImplementsRead(pClass As %String, pSuffix As %String) As %Boolean [ Private ]
 {
     If ..MethodOrigin(pClass, "Run") '= ..#ENDPOINTBASECLASS Quit 1
     Set tRunner = $Case(pSuffix, "GET": "RunGet", "LIST": "RunList", "PUT": "RunPut", : "")
+    If pSuffix = "DELETE" Set tRunner = "RunDelete"
+    If pSuffix = "POST" Set tRunner = "RunPost"
     If tRunner = "" Quit 0
     Quit ..MethodOrigin(pClass, tRunner) '= ..#ENDPOINTBASECLASS
 }
@@ -880,6 +1529,10 @@ ClassMethod RunSequence(pEndpoint As %String, pClass As %String, pType As %Integ
     Set pAnswer = ""
     Set pHttpStatus = 0
     Set pLocation = ""
+    ; AD-27's named fallback: a value the admin API refuses and the vendor class accepts.
+    If ..ClassCompletedField(pEndpoint, pMethod, pBody) '= "" Quit ..CompleteThroughClass(pClass, pType, .pQuery, pBody, .pAnswer, .pHttpStatus)
+    ; AD-27's second case: an import completed from content rather than from server file paths.
+    If ..IsContentCompleted(pEndpoint, pMethod) Quit ..ImportThroughClass(pEndpoint, pClass, pType, .pQuery, pBody, .pAnswer, .pHttpStatus)
     New %request, %response, %session
     Set tOrigNS = $NAMESPACE
     Try {
@@ -1047,12 +1700,33 @@ ClassMethod AwaitTask(pEndpoint As %String, pGuid As %String, Output pResult, Ou
 }
 
 /// <p>A failed vendor outcome: the fault from <method>OcuPilot.Kernel.Fault.Outcome</method>,
-/// the vendor status to the log, and an error status carrying only the fault's own text.</p>
-ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// the vendor status to the log, and an error status carrying only the fault's own text.
+/// <var>pWrapper</var> is the request's <parameter>WRAPPEDTYPES</parameter> wrapper key, or
+/// <code>""</code>; a violation field that begins with it and a dot loses that segment.</p>
+ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pWrapper As %String = "") As %Status [ Private ]
 {
     Set pHttpStatus = $Select(+pHttp: +pHttp, 1: 500)
     Set tOutcomeSC = ##class(OcuPilot.Kernel.Fault).Outcome(pHttpStatus, pVendorSC, .pFault, .tDetail)
     If $$$ISERR(tOutcomeSC) Do ..LogFault(pEndpoint _ " fault mapping failed", tOutcomeSC, pFault.code)
+    ; AD-39. A vendor refusal that names a body field crosses the boundary as detail.violations --
+    ; the field the vendor named, OcuPilot's stable code for that kind of refusal, and OcuPilot's
+    ; own sentence -- so a screen renders it on the field it is about and a tool result renders the
+    ; code. The vendor's own text still reaches the log alone, on the line below.
+    Set tViolations = ##class(OcuPilot.Api.Error).ViolationsFromVendor(pVendorSC)
+    Do ..PropertyViolations(pEndpoint, pVendorSC, tViolations)
+    If (pWrapper '= "") && $IsObject(tViolations) {
+        Set tRowIterator = tViolations.%GetIterator()
+        While tRowIterator.%GetNext(.tRowIndex, .tRow) {
+            If '$IsObject(tRow) Continue
+            Set tField = tRow.%Get("field")
+            If $Extract(tField, 1, $Length(pWrapper) + 1) = (pWrapper _ ".") Do tRow.%Set("field", $Extract(tField, $Length(pWrapper) + 2, *), "string")
+        }
+    }
+    If $IsObject(pFault) && $IsObject(tViolations) && (tViolations.%Size() > 0) {
+        Set tFieldDetail = {}
+        Do tFieldDetail.%Set("violations", tViolations)
+        Do pFault.%Set("detail", tFieldDetail)
+    }
     If $$$ISERR(pVendorSC) Do ..LogFault(pEndpoint _ " failed with HTTP " _ pHttpStatus, pVendorSC, pFault.code)
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
 }
@@ -1084,6 +1758,45 @@ ClassMethod Denied(pEndpoint As %String, pFailedPair As %String, pVendorSC As %S
     Set tSC = ..Refuse(403, tMapped.error, tMapped.code, tMapped.reason, .pHttpStatus, .pFault, tDetail)
     Do ..LogFault(pEndpoint _ "'s backing query refused a caller holding no pair of the set naming " _ pFailedPair, pVendorSC, pFault.code)
     Quit tSC
+}
+
+/// <p>The vendor class errors that name one property of the object an endpoint saves, as
+/// comma-separated <code>&lt;endpoint&gt;:&lt;vendor code&gt;:&lt;property&gt;=&lt;violation code&gt;</code>
+/// entries (AD-39). Such an error's first parameter is <code>&lt;object&gt;.&lt;property&gt;</code>,
+/// which <method>OcuPilot.Api.Error.ViolationsFromVendor</method> does not read as a body field.</p>
+/// <p><code>Device.Standard:644:OpenParameters</code> is the one entry: <code>Config.Devices</code>
+/// parses a device's open parameters when it saves one and refuses what it cannot parse with error
+/// 644, which the endpoint answers at 500 (read on this build).</p>
+Parameter PROPERTYFAULTS = "Device.Standard:644:OpenParameters=DEVICE.OPENPARAMETERS.SHAPE";
+
+/// <p>Append to <var>pRows</var> one <code>{field, code, reason}</code> row per error in
+/// <var>pVendorSC</var> that <parameter>PROPERTYFAULTS</parameter> names for <var>pEndpoint</var>. The
+/// vendor's own text is not carried; the sentence is OcuPilot's.</p>
+ClassMethod PropertyViolations(pEndpoint As %String, pVendorSC As %Status, pRows As %DynamicArray) [ Private ]
+{
+    Try {
+        If $$$ISOK(pVendorSC) || '$IsObject(pRows) Quit
+        Do $System.Status.DecomposeStatus(pVendorSC, .tErrors, "-d")
+        For tI = 1:1:+$Get(tErrors) {
+            Set tParam = $Get(tErrors(tI, "param", 1))
+            Set tProperty = $Piece(tParam, ".", $Length(tParam, "."))
+            For tJ = 1:1:$Length(..#PROPERTYFAULTS, ",") {
+                Set tEntry = $Piece(..#PROPERTYFAULTS, ",", tJ)
+                Set tKey = $Piece(tEntry, "=", 1)
+                If $Piece(tKey, ":", 1) '= pEndpoint Continue
+                If $Piece(tKey, ":", 2) '= $Get(tErrors(tI, "code")) Continue
+                If $Piece(tKey, ":", 3) '= tProperty Continue
+                Set tCode = $Piece(tEntry, "=", 2)
+                Set tRow = {}
+                Do tRow.%Set("field", tProperty, "string")
+                Do tRow.%Set("code", tCode, "string")
+                Do tRow.%Set("reason", ##class(OcuPilot.Api.Error).ReasonForViolation(tCode), "string")
+                Do pRows.%Push(tRow)
+            }
+        }
+    } Catch {
+        ; A status that cannot be decomposed names no property; the fault keeps its other rows.
+    }
 }
 
 }

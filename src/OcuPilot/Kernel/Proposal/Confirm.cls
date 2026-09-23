@@ -408,6 +408,11 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         Set tSendsBody = ..ToolSendsBody(tToolClass)
         Set tBody = ""
         If tSendsBody Set tBody = ..WithSecrets($Get(pRow("payload")), pSuppliedSecrets, tSecretNames)
+        ; AD-55. The one place a tool's server-derived fields reach the body, and it is after the
+        ; prohibited verdict above: a derived field is one no caller may set, so it is outside the
+        ; diff the user reviewed and outside the set those predicates sweep. Empty for every tool
+        ; that shipped before Epic 8, so their body is byte-identical to the stored payload.
+        If tSendsBody Do ..ToolDerivedFields(tToolClass, tBody)
         Kill tQuery
         Set tQuery(tIdParam) = tIdValue
         ; AD-52. A port that addresses a set rather than an object needs more than the identifying
@@ -584,8 +589,18 @@ ClassMethod DefinitionMoved(pDefinitionId As %String, pStoredVersion As %String,
 /// read exactly as the mint merged them, and the digest is taken with the descriptor's own
 /// exclusions. A target the instance no longer holds does not match, which closes the row rather
 /// than writing to something that is not there.</p>
+/// <p><b>A create inverts the question and reuses everything behind it</b> (AD-54). The same
+/// re-read, through the same port and request type, is digested as
+/// <method>OcuPilot.Kernel.Proposal.Mint.AbsenceState</method> rather than merged: the mint
+/// digested that shape for an absent target, so a name taken since answers a different digest,
+/// <var>pMatches</var> is 0, and the row reaches the <code>REASONTARGETCHANGED</code> close and
+/// its 409 above. That refusal is load-bearing rather than ceremony --
+/// <code>%Api.Admin.Endpoints.WebApp.App:RunPut</code> is an upsert with no refusal path of its
+/// own, so without it a confirmed create would silently rewrite somebody else's application.</p>
 /// <p><b>Two digests must equal the stored one, not one</b> (AD-6): the fresh read merged as above,
-/// and the stored payload the port will actually be sent.</p>
+/// and the stored payload the port will actually be sent. <b>A create compares one</b>, and
+/// necessarily: its digest covers the target's absence rather than the payload (AD-54), so there
+/// is no stored-payload digest to be the second, and the branch above returns before this one.</p>
 /// <p>What the second one does, stated exactly, because it is easy to read more into it. The mint
 /// takes the row's fingerprint over that same payload, so for every row a mint produced the two are
 /// equal by construction and this comparison refuses nothing -- it is not what makes the fingerprint
@@ -627,7 +642,21 @@ ClassMethod FingerprintMatches(pTool As %DynamicObject, ByRef pRow, Output pMatc
         ; for a set-addressing port is "which of these ids still exist". Empty for every shipped
         ; tool, so their re-read is byte-identical to the mint's.
         Do ..ToolPortQuery(tClass, $Get(pRow("payload")), .tQuery)
+        Set tCreates = ##class(OcuPilot.Kernel.Proposal.Mint).CreatesOf(tClass)
         Set tReadSC = $ClassMethod(..PortClassOf(tClass), "Invoke", pEndpoint, ..ToolReadType(tClass), .tQuery, "", .tFresh, .tReadHttp, .tReadFault)
+        If tCreates {
+            ; AD-54. The re-read asks the create's own question -- is this name still free -- and
+            ; its outcome is digested through the mint's single producer of that shape, so a name
+            ; taken since the mint answers a different digest and reaches the existing
+            ; TARGETCHANGED close and its 409. A read that refused for any reason other than
+            ; absence is "the target moved", exactly as it is for every other kind.
+            If $$$ISERR(tReadSC) && (+$Get(tReadHttp) '= 404) Quit
+            Set tPresent = ($$$ISOK(tReadSC) && $IsObject(tFresh) && tFresh.%IsA("%Library.DynamicObject"))
+            Set tSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(##class(OcuPilot.Kernel.Proposal.Mint).AbsenceState(tPresent), "", .tAbsenceDigest)
+            If $$$ISERR(tSC) Quit
+            Set pMatches = (tAbsenceDigest = $Get(pRow("fingerprint")))
+            Quit
+        }
         If $$$ISERR(tReadSC) {
             ; A target that is gone, or a read that refused, is "the target moved" -- never a
             ; write issued against a record nobody could read back.
@@ -736,6 +765,21 @@ ClassMethod ToolPortQuery(pToolClass As %String, pPayloadJson As %String, ByRef 
     } Catch {
         ; Deliberately empty: a tool that cannot answer adds no parameter, and the port refuses the
         ; call it then receives rather than issuing a delete with no subject.
+    }
+}
+
+/// <p>Apply <var>pToolClass</var>'s own server-derived fields to <var>pBody</var>
+/// (<method>OcuPilot.Screen.Tool.Write.DerivedFields</method>, AD-55). A class that cannot be
+/// asked derives nothing, which is what every write that shipped before Epic 8 does.</p>
+ClassMethod ToolDerivedFields(pToolClass As %String, pBody As %DynamicObject) [ Private ]
+{
+    Try {
+        If pToolClass = "" Quit
+        If '$IsObject(pBody) Quit
+        Do $ClassMethod(pToolClass, "DerivedFields", pBody)
+    } Catch {
+        ; Deliberately empty: a tool that cannot answer derives nothing, and the vendor refuses the
+        ; body it then receives on its own terms rather than the confirm inventing a refusal here.
     }
 }
 

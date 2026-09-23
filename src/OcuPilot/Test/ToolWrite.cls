@@ -133,8 +133,9 @@ Method TestTheSchemaIsDerivedFromTheClassifiedFieldList()
     Do $$$AssertEquals($ListFind(tFields, "MatchRoles"), 0, "and neither is the role subtree")
 }
 
-/// <p>AD-10: privilege is not granted through any path, so the role subtree is not in the schema
-/// and a call carrying it is refused as an unknown argument.</p>
+/// <p>AD-10: the change tool's reviewed few do not include application roles -- a change to them is
+/// refused as unreviewed, or on OcuPilot's own applications as a privilege grant -- so the role
+/// subtree is not in the schema and a call carrying it is refused as an unknown argument.</p>
 /// <p>Mutation: classify the subtree <code>ordinary</code> in
 /// <class>OcuPilot.Screen.Tool.Classification</class> and give it a top-level field-list row --
 /// this goes red. Removing <code>MatchRoles</code> from <method>ExcludedFields</method> alone does
@@ -804,12 +805,16 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
         Do $$$AssertEquals($Length(tPair, "/"), 2, "'" _ tPair _ "' is an <endpoint>/<type> pair, not a bare suffix (DW-1473)")
         If '$ListFind(tMutatingSuffixes, $Piece(tPair, "/", 2)) Set tMutatingSuffixes = tMutatingSuffixes _ $ListBuild($Piece(tPair, "/", 2))
     }
-    ; AD-10, Story 5.12's AC3: terminating a process is never advertised, and the pair key must not
-    ; read as permission to admit the suffix somewhere else. Asked over every pair rather than over
-    ; Process's two, which is what the bare-suffix roster used to say and the re-key stopped saying.
-    For tAbsent = "TERMINATE", "DELETE" {
-        Do $$$AssertEquals($ListFind(tMutatingSuffixes, tAbsent), 0, "'" _ tAbsent _ "' is a suffix no endpoint's pair admits, on this port")
+    ; AD-10, Story 5.12's AC3: terminating a process is never advertised, by either of the two
+    ; request types the vendor exposes it through -- `Process`'s own `RunDelete` is a one-line
+    ; delegate to `RunTerminate`. Asked as a PAIR since Story 8.3 shipped `Security.Role/DELETE`:
+    ; the suffix is no longer universally absent, and the thing AD-10 forbids never was a suffix.
+    For tAbsent = "Process/TERMINATE", "Process/DELETE" {
+        Do $$$AssertEquals($ListFind(tMutating, tAbsent), 0, "'" _ tAbsent _ "' is a pair this port does not admit")
+        Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsMutating($Piece(tAbsent, "/", 1), $Piece(tAbsent, "/", 2)), "and the port answers so")
     }
+    Do $$$AssertTrue($ListFind(tMutatingSuffixes, "DELETE") > 0, "while DELETE is admitted for the endpoint whose delete a tool does issue, which is what makes the pair key load-bearing here")
+    Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("Security.Role", "DELETE"), "namely Security.Role")
     ; DW-1473's own condition: admitting a suffix on one endpoint must not admit it on another.
     ; Task.CRUD declares TYPESUSPEND, Process is the endpoint whose SUSPEND a tool issues.
     Do $$$AssertTrue($ListFind(tMutatingSuffixes, "SUSPEND") > 0, "SUSPEND is admitted somewhere, which is what makes the pair key load-bearing")
@@ -855,7 +860,9 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
         ; port's request types and the admin port answers 501 for them by construction, so holding
         ; it to this roster would assert the wrong instance's contract. Counted, so a change that
         ; routed every write off the admin port could not empty this loop silently.
-        If $ClassMethod(tEntry.%Get("class"), "PortClass") '= "OcuPilot.Port.AdminPort" {
+        ; A port that extends the admin port (OcuPilot.Port.TaskPort) issues its request types
+        ; through it, so its tools are held to this roster too.
+        If '$ClassMethod($ClassMethod(tEntry.%Get("class"), "PortClass"), "%Extends", "OcuPilot.Port.AdminPort") {
             Set tOtherPorts = tOtherPorts + 1
             Continue
         }

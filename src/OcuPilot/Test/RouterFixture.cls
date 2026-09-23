@@ -77,6 +77,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/vendor-fault" Method="GET" Call="VendorFaultRoute" />
   <Route Url="/agent-definitions/:id/test" Method="POST" Call="AgentDefinitionTestRoute" />
   <Route Url="/agent-definitions/:id/credential" Method="POST" Call="AgentDefinitionCredentialRoute" />
+  <Route Url="/agent-definitions/:id" Method="PUT" Call="AgentDefinitionUpdateRoute" />
+  <Route Url="/agent-definitions" Method="POST" Call="AgentDefinitionCreateRoute" />
   <Route Url="/agent-switches-stale" Method="PUT" Call="AgentSwitchesStaleRoute" />
   <Route Url="/:resource" Method="POST" Call="CreateResource" />
 </Routes>
@@ -249,6 +251,23 @@ ClassMethod InstanceFaultRoute() As %Status
 ClassMethod AgentDefinitionTestRoute(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Test.DefinitionsProbe).HandleTest(pId)
+}
+
+/// <p>A create, through the same fixture dispatch and for the same reason: the shipped
+/// <code>POST /agent/definitions</code> route names the real handler by a hardcoded
+/// <code>##class(...)</code> call, and the <code>credType</code> refusal where the credentials
+/// rung is unreachable is reachable only with the probe's secret seam substituted underneath the
+/// literal, inherited <method>OcuPilot.Api.Definitions.HandleCreate</method> body.</p>
+ClassMethod AgentDefinitionCreateRoute() As %Status
+{
+    Quit ##class(OcuPilot.Test.DefinitionsProbe).HandleCreate()
+}
+
+/// <p>An update, for the reason <method>AgentDefinitionCreateRoute</method> gives, through the
+/// literal, inherited <method>OcuPilot.Api.Definitions.HandleUpdate</method> body.</p>
+ClassMethod AgentDefinitionUpdateRoute(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Test.DefinitionsProbe).HandleUpdate(pId)
 }
 
 /// <p>The credential store, through the same fixture dispatch and for the same reason: the

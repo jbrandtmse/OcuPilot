@@ -10,8 +10,9 @@ Class OcuPilot.Test.EntityRef Extends %UnitTest.TestCase
 /// <p>The entity type the round-trip rows use: a declared value, so the refusal rows are the only
 /// ones testing an undeclared one, and one <parameter>OcuPilot.Kernel.EntityRef.IDRULES</parameter>
 /// declares no rule for, so the corpus round-trips verbatim. <code>task</code> held this place
-/// until Story 5.11 gave it the <code>integer</code> rule.</p>
-Parameter KNOWNTYPE = "role";
+/// until Story 5.11 gave it the <code>integer</code> rule, <code>role</code> until Story 8.3 gave it
+/// <code>foldcase</code>, and <code>resource</code> until Story 8.4 did.</p>
+Parameter KNOWNTYPE = "service";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -127,7 +128,7 @@ Method TestAWebApplicationIdReachesAKeyInOneSpelling()
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key(..#KNOWNTYPE, "USER", "Nightly Purge", .tTask), "a task name builds a key")
     Do $$$AssertTrue((tTask [ "Nightly Purge"), "and reaches it in the case it was given")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("role", "instance", "%All", .tRole), "a role name builds a key")
-    Do $$$AssertTrue((tRole [ "%All"), "and so does a role name")
+    Do $$$AssertTrue((tRole [ "%all"), "folded, because the instance resolves a role name without regard to case")
 
     ; An id that normalizes to nothing is an id no reference carries, rather than a key with none.
     Do $$$AssertStatusNotOK(##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", "/", .tSlash), "an id that normalizes to nothing is refused")
@@ -249,7 +250,8 @@ Method TestTheIdRuleTableIsDeclaredAndIsWhatNormalizationApplies()
     }
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("task", ""), "", "and an empty id is answered verbatim rather than folded to a number")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#KNOWNTYPE, "/API/OcuPilot/"), "/API/OcuPilot/", "so its ids are the instance's own strings")
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("role", "%All"), "%All", "and so are a role's")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("role", "%All"), "%all", "while a role's fold, by Story 8.3's rule")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("resource", "%DB_OcuPilot"), "%db_ocupilot", "and a resource's, by Story 8.4's")
 
     ; A key built from a non-canonical spelling is the key built from the canonical one, which is
     ; the necessary condition behind AD-34's per-target lock.

@@ -10,6 +10,60 @@ Class OcuPilot.Screen.Tool.ToolFields Extends %RegisteredObject
 XData Tools
 {
 {
+"osmgmt.devices.create": {"fieldList":"Device.Standard","fields":[
+  {"path":"Alias","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"OpenParameters","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PhysicalDevice","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"AlternateDevice","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Prompt","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SubType","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Type","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"osmgmt.devices.update": {"fieldList":"Device.Standard","fields":[
+  {"path":"Alias","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"OpenParameters","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PhysicalDevice","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"AlternateDevice","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Prompt","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SubType","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Type","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"permissions.resources.create": {"fieldList":"Security.Resource","fields":[
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PublicPermission","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"permissions.resources.update": {"fieldList":"Security.Resource","fields":[
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PublicPermission","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"permissions.roles.create": {"fieldList":"Security.Role","fields":[
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"GrantedRoles[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"EscalationOnly","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Resources[].Name","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Resources[].Permissions","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"permissions.users.create": {"fieldList":"Security.User","fields":[
+  {"path":"AccountNeverExpires","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"AutheEnabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ChangePassword","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Comment","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"EmailAddress","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"ExpirationDate","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"FullName","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"HOTPKeyDisplay","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"NameSpace","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PasswordNeverExpires","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"PhoneNumber","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PhoneProvider","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Roles","shape":"array","templateType":"array","itemType":"","class":"opaque"},
+  {"path":"EscalationRoles","shape":"array","templateType":"array","itemType":"","class":"opaque"},
+  {"path":"Routine","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Password","shape":"literal","templateType":"string","class":"secret","authored":true}
+]},
 "permissions.users.update": {"fieldList":"Security.User","fields":[
   {"path":"AccountNeverExpires","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
   {"path":"AutheEnabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
@@ -30,6 +84,89 @@ XData Tools
 ]},
 "security.auditing.update": {"fieldList":"Security.Audit.Enabled","fields":[
   {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
+]},
+"security.secrets.create": {"fieldList":"Wallet.Secret:%Wallet.KeyValue","fields":[
+  {"path":"AllowedHosts","shape":"array","templateType":"array","itemType":"","class":"opaque"},
+  {"path":"RequireTLS","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Secret","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Secret64","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Usage","shape":"literal","templateType":"number","itemType":"","class":"ordinary"}
+]},
+"security.secrets.update": {"fieldList":"Wallet.Secret:%Wallet.KeyValue","fields":[
+  {"path":"AllowedHosts","shape":"array","templateType":"array","itemType":"","class":"opaque"},
+  {"path":"RequireTLS","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Secret","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Secret64","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Usage","shape":"literal","templateType":"number","itemType":"","class":"ordinary"}
+]},
+"security.x509.import": {"fieldList":"Security.X509Credential","fields":[
+  {"path":"Alias","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"OwnerList[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"CAFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PeerNames[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PrivateKeyPassword","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"PrivateKeyFile","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"CertificateFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Certificate","shape":"literal","templateType":"string","class":"secret","authored":true},
+  {"path":"PrivateKey","shape":"literal","templateType":"string","class":"secret","authored":true}
+]},
+"security.x509.update": {"fieldList":"Security.X509Credential","fields":[
+  {"path":"Alias","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"OwnerList[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"CAFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PeerNames[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PrivateKeyPassword","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"PrivateKeyFile","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"CertificateFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"webapp.list.create": {"fieldList":"WebApp.App","fields":[
+  {"path":"AutheEnabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"AutoCompile","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"ChangePasswordPage","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"CookiePath","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"CorsAllowlist[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"CorsCredentialsAllowed","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"CorsHeadersList[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"CSPZENEnabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"CSRFToken","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"DeepSeeEnabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"DispatchClass","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"ErrorPage","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"EventClass","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"GroupById","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"iKnowEnabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"InbndWebServicesEnabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"IsNameSpaceDefault","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"JWTAuthEnabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"JWTAccessTokenTimeout","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"JWTRefreshTokenTimeout","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LockCSPName","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"LoginPage","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"MatchRoles[].MatchRole","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"MatchRoles[].TargetRoles[]","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"NameSpace","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Package","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Path","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"PermittedClasses","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Recurse","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"RedirectEmptyPath","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Resource","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ServeFiles","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ServeFilesTimeout","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SuperClass","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Timeout","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"TraceEnabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"TwoFactorEnabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"UseCookies","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SessionScope","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"UserCookieScope","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"WSGIAppLocation","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"WSGIAppName","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"WSGICallable","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"WSGIDebug","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"WSGIType","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
 ]},
 "webapp.list.update": {"fieldList":"WebApp.App","fields":[
   {"path":"AutheEnabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},

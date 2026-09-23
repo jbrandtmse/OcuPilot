@@ -216,8 +216,11 @@ ClassMethod ProviderColumns() As %List
 /// is <parameter>OcuPilot.Api.Error.REASONAGENTKEYSHAPE</parameter> with that row's prefix in it,
 /// so the form's inline key-shape check (DW-339) renders the sentence the server's own refusal
 /// would have carried rather than a second wording of it (AD-39).</p>
-/// <p><b>It carries no secret and no instance detail.</b> Every value is a build-time table entry;
+/// <p><b>It carries no secret.</b> Every provider row is a build-time table entry;
 /// <code>keyPrefix</code> is the shape a key starts with, never a key (AD-35).</p>
+/// <p>Its one instance fact sits beside <code>providers</code>: <code>credentialsRungAvailable</code>,
+/// a JSON boolean saying whether this namespace can reach the credentials rung
+/// (<method>ProvidersBody</method>).</p>
 ClassMethod HandleProviders() As %Status
 {
     Set tSC = $$$OK
@@ -226,9 +229,33 @@ ClassMethod HandleProviders() As %Status
             Set tSC = ..RenderForbidden()
             Quit
         }
+        Set tBodySC = ..ProvidersBody(.tBody)
+        If $$$ISERR(tBodySC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The provider catalog could not be read", ##class(%Exception.StatusException).CreateFromStatus(tBodySC))
+            Quit
+        }
+        Set tSC = ##class(OcuPilot.Api.Response).JSON(tBody)
+    } Catch ex {
+        Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
+    }
+    Quit tSC
+}
+
+/// <p>The body <method>HandleProviders</method> answers: <code>providers</code>, every catalog row
+/// projected to <method>ProviderColumns</method> plus its <code>keyShapeReason</code>, and
+/// <code>credentialsRungAvailable</code>, the answer of
+/// <method>OcuPilot.Kernel.Secret.Ladder.CredentialsRungAvailable</method> reached through
+/// <method>SecretClass</method>. The Definition form offers the environment-variable rung in the
+/// API key's place when it is <code>false</code>.</p>
+/// <p>An error status when the catalog answers no table; <var>pBody</var> is then empty.</p>
+ClassMethod ProvidersBody(Output pBody As %DynamicObject) As %Status
+{
+    Set pBody = ""
+    Set tSC = $$$OK
+    Try {
         Set tTableSC = $ClassMethod(..CatalogClass(), "Table", .tTable)
         If $$$ISERR(tTableSC) || '$IsObject(tTable) {
-            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The provider catalog could not be read", ##class(%Exception.StatusException).CreateFromStatus($Select($$$ISERR(tTableSC): tTableSC, 1: $$$ERROR($$$GeneralError, "the provider catalog answered no table"))))
+            Set tSC = $Select($$$ISERR(tTableSC): tTableSC, 1: $$$ERROR($$$GeneralError, "the provider catalog answered no table"))
             Quit
         }
         Set tColumns = ..ProviderColumns()
@@ -259,13 +286,43 @@ ClassMethod HandleProviders() As %Status
             Do tOut.%Set("keyShapeReason", $Select(tRow.keyPrefix = "": ##class(OcuPilot.Api.Error).#REASONAGENTKEYSHAPE _ ".", 1: ##class(OcuPilot.Api.Error).#REASONAGENTKEYSHAPE _ ": keys for this provider begin with " _ tRow.keyPrefix _ "."), "string")
             Do tList.%Push(tOut)
         }
-        Set tBody = {}
-        Do tBody.%Set("providers", tList)
-        Set tSC = ##class(OcuPilot.Api.Response).JSON(tBody)
+        Set pBody = {}
+        Do pBody.%Set("providers", tList)
+        Do pBody.%Set("credentialsRungAvailable", ''$ClassMethod(..SecretClass(), "CredentialsRungAvailable"), "boolean")
     } Catch ex {
-        Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
+        Set pBody = ""
+        Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The <code>credType</code> refusal no rule in <class>OcuPilot.Kernel.AgentRules</class> can
+/// make, because it depends on the namespace rather than on the values: <code>creds</code> where
+/// the credentials rung is unreachable answers
+/// <parameter>OcuPilot.Api.Error.AGENTCREDTYPEUNAVAILABLE</parameter>; anything else, and
+/// <code>creds</code> where the rung is reachable, answers <code>""</code>.</p>
+/// <p>Availability is read through <method>SecretClass</method>, the one source the providers
+/// route reads too. Public so a test can drive the unavailable answer through
+/// <class>OcuPilot.Test.DefinitionsProbe</class> on an instance whose rung is present.</p>
+ClassMethod CredTypeRefusal(pCredType As %String) As %String
+{
+    If pCredType '= ##class(OcuPilot.Kernel.AgentRules).#CREDTYPECREDS Quit ""
+    If $ClassMethod(..SecretClass(), "CredentialsRungAvailable") Quit ""
+    Quit ##class(OcuPilot.Api.Error).#AGENTCREDTYPEUNAVAILABLE
+}
+
+/// <p>Run <method>OcuPilot.Kernel.AgentRules.Validate</method> over <var>pValues</var> and add
+/// <method>CredTypeRefusal</method>'s answer to the same violation set, on <code>credType</code>.
+/// Answers how many violations <var>pViolations</var> holds. Used by a create and an update.</p>
+/// <p><var>pNamesCredType</var> is whether the request itself carries <code>credType</code>. An
+/// update that does not (the list's Enable/Disable sends <code>{enabled}</code> alone) leaves a
+/// stored row's rung as it is, so it is not refused on it.</p>
+ClassMethod ValidateDefinition(ByRef pValues, pExistingId As %String, Output pViolations, pNamesCredType As %Boolean = 1) As %Integer
+{
+    Do ##class(OcuPilot.Kernel.AgentRules).Validate(.pValues, pExistingId, .pViolations)
+    Set tRefusal = $Select(pNamesCredType: ..CredTypeRefusal($Get(pValues("credType"))), 1: "")
+    If tRefusal '= "" Set pViolations($Increment(pViolations)) = $ListBuild("credType", tRefusal, "")
+    Quit +$Get(pViolations)
 }
 
 /// <p>Answer <code>GET /agent/definitions/:id</code>: the full projection of one definition.</p>
@@ -324,7 +381,7 @@ ClassMethod HandleCreate() As %Status
         ; connectionVerified unwritable, so this is the braces to that belt, not the only guard.
         Set tValues("connectionVerified") = 0
         Do ##class(OcuPilot.Kernel.AgentRules).Normalize(.tValues)
-        If ##class(OcuPilot.Kernel.AgentRules).Validate(.tValues, "", .tViolations) {
+        If ..ValidateDefinition(.tValues, "", .tViolations) {
             Set tSC = ..RenderViolations(.tViolations)
             Quit
         }
@@ -386,7 +443,7 @@ ClassMethod HandleUpdate(pId As %String) As %Status
         ; already declares connectionVerified unwritable, so this is the braces to that belt.
         Set tValues("connectionVerified") = $Get(tBefore("connectionVerified"))
         Do ##class(OcuPilot.Kernel.AgentRules).Normalize(.tValues)
-        If ##class(OcuPilot.Kernel.AgentRules).Validate(.tValues, pId, .tViolations) {
+        If ..ValidateDefinition(.tValues, pId, .tViolations, $Data(tPresent("credType")) > 0) {
             Set tSC = ..RenderViolations(.tViolations)
             Quit
         }

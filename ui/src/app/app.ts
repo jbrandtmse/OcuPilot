@@ -11,6 +11,19 @@ import {
 import { NavigationStart, Router, RouterOutlet } from '@angular/router';
 
 import { DefinitionActions } from './areas/agent/definition-actions';
+import { WebAppActions } from './areas/web-applications/web-app-actions';
+import { UserActions } from './areas/permissions/user-actions';
+import { UserCreateForm } from './areas/permissions/user-create-form.store';
+import { RoleActions } from './areas/permissions/role-actions';
+import { RoleCreateForm } from './areas/permissions/role-create-form.store';
+import { ResourceActions } from './areas/permissions/resource-actions';
+import { ResourceEditor } from './areas/permissions/resource-editor.store';
+import { WalletActions } from './areas/security/wallet-actions';
+import { WalletSecretForm } from './areas/security/wallet-secret-form.store';
+import { X509Actions } from './areas/security/x509-actions';
+import { X509Form } from './areas/security/x509-form.store';
+import { DeviceActions } from './areas/os-management/device-actions';
+import { DeviceForm } from './areas/os-management/device-form.store';
 import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
@@ -218,6 +231,32 @@ export class App {
   // its three row actions are registered by this service rather than by a page of its own
   // (`areas/agent/definition-actions.ts`). Injecting it here is what brings it into existence.
   private readonly definitionActions = inject(DefinitionActions);
+  // Constructed for its own sake, the same way, and for the same reason DW-246 gives: the Web
+  // applications list is served by the generic `ListPage`, so its declared Create is registered by
+  // a service rather than by a page -- and registering it here, before the first change-detection
+  // pass, is what keeps `CommandBar`'s own signal write out of a pass that has already checked it
+  // (`areas/web-applications/web-app-actions.ts`).
+  private readonly webAppActions = inject(WebAppActions);
+  // Constructed for its own sake, the same way and for the same reason: the Users list's declared
+  // Create (`areas/permissions/user-actions.ts`).
+  private readonly userActions = inject(UserActions);
+  private readonly userCreateForm = inject(UserCreateForm);
+  // The Roles list's declared Create, the same way (`areas/permissions/role-actions.ts`).
+  private readonly roleActions = inject(RoleActions);
+  private readonly roleCreateForm = inject(RoleCreateForm);
+  // The Resources list's declared Create, the same way, which opens the resource editor dialog
+  // (`areas/permissions/resource-actions.ts`).
+  private readonly resourceActions = inject(ResourceActions);
+  private readonly resourceEditor = inject(ResourceEditor);
+  // The X.509 list's declared Create, labelled Import, the same way (`areas/security/x509-actions.ts`).
+  private readonly x509Actions = inject(X509Actions);
+  private readonly x509Form = inject(X509Form);
+  // The Secrets list's declared Create, the same way (`areas/security/wallet-actions.ts`).
+  private readonly walletActions = inject(WalletActions);
+  private readonly walletSecretForm = inject(WalletSecretForm);
+  // The Devices list's declared Create, the same way (`areas/os-management/device-actions.ts`).
+  private readonly deviceActions = inject(DeviceActions);
+  private readonly deviceForm = inject(DeviceForm);
   // Constructed for its own sake, the same way: there is no component whose job it is to act on
   // the agent's navigation directive, so injecting it here is what brings it into existence for
   // the life of the tab (`shell/agent-navigator.ts`).
@@ -483,6 +522,18 @@ export class App {
       // pasted API key that has not been stored yet (AD-35) -- and its dirty flag would otherwise
       // make the next principal's first navigation ask about work that is not theirs.
       this.definitionForm.reset();
+      // The create-a-user form holds a password THIS principal typed and has not saved (AD-35).
+      this.userCreateForm.reset();
+      // The create-a-role form holds a role THIS principal was composing and has not saved.
+      this.roleCreateForm.reset();
+      // The resource editor holds a resource THIS principal was creating or editing and has not saved.
+      this.resourceEditor.reset();
+      // The X.509 form holds a certificate, a private key and its password THIS principal pasted and has not saved (AD-35).
+      this.x509Form.reset();
+      // The wallet secret form holds a value THIS principal typed and has not saved (AD-35).
+      this.walletSecretForm.reset();
+      // The device editor holds a device THIS principal was creating or editing and has not saved.
+      this.deviceForm.reset();
       this.formDirty.reset();
       // The ninth: whether the instance holds an enabled definition is a read THIS principal
       // made, and the panel and the rail's dot pick an audience from it beside the navigation

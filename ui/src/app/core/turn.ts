@@ -178,6 +178,11 @@ export interface TurnProposalDiffRow {
    * rows carry `false`, which is what a row with a real after-state means.
    */
   readonly removed: boolean;
+  /**
+   * Whether this row is a masked secret the tool declares **optional**: the user may confirm with it
+   * empty (AD-6). Present, and `true`, only on such a row; every other row carries no key.
+   */
+  readonly optional?: boolean;
 }
 
 /**
@@ -229,6 +234,11 @@ export interface TurnProposal {
    * fall out of step.
    */
   readonly destructive: boolean;
+  /**
+   * The kernel's code for what the write does beyond its diff (`WEBAPP.UNAUTHENTICATED`), or `''`.
+   * A code, not a sentence: the card resolves it to the published string (`consequenceSentence`).
+   */
+  readonly consequence: string;
 }
 
 /**
@@ -442,6 +452,7 @@ function parseProposalDiff(value: unknown): TurnProposalDiffRow[] {
       before: textAt(row, 'before'),
       after: textAt(row, 'after'),
       removed: boolAt(row, 'removed'),
+      ...(boolAt(row, 'optional') ? { optional: true } : {}),
     });
   }
   return rows;
@@ -488,6 +499,7 @@ function parseProposal(value: unknown): TurnProposal | null {
     confirmedAt: textAt(row, 'confirmedAt'),
     auditWarning: boolAt(row, 'auditWarning'),
     destructive: boolAt(row, 'destructive'),
+    consequence: textAt(row, 'consequence'),
   };
 }
 

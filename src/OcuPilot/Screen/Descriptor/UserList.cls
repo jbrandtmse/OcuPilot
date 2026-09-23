@@ -19,8 +19,13 @@
 /// account in the healthy colour, so the word carries the state.</p>
 /// <p><b>The classic page is <code>%CSP.UI.Portal.Users</code></b>, in the class's own case
 /// (AD-44). As a list archetype it links out to nothing. The context carries no secret field.</p>
-/// <p>It declares no primary or row action, so its empty state names what to do next, and it does
+/// <p><b>Its primary action is Create</b>, which opens <class>OcuPilot.Screen.Descriptor.UserForm</class>;
+/// being write-capable, its empty state invites the agent rather than naming a next step. It does
 /// not refresh (AD-43).</p>
+/// <p><b><code>Password</code> is its one secret argument</b> (AD-3, AD-6): the create tool's
+/// authored wrapper field, supplied on the screen once and at confirm on the card, and never
+/// accepted from the model. The declaration opens the update tool's confirm channel to the same
+/// name, which that tool's card never asks for because no update diff names it.</p>
 Class OcuPilot.Screen.Descriptor.UserList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -41,9 +46,10 @@ XData Declaration
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
+  "primaryAction": {"id": "create", "selfProtection": ""},
   "rowActions": [],
   "context": {"fields": ["Name", "FullName", "Enabled", "Type", "Roles", "ExpirationDate", "Expired"], "secretFields": []},
+  "secretArguments": ["Password"],
   "emptyStateKey": "userListEmpty",
   "commandAliases": ["accounts"],
   "classicPage": "%CSP.UI.Portal.Users",
@@ -74,8 +80,8 @@ XData Declaration
       {"field": "Type", "labelKey": "tableColumnType", "kind": "text"},
       {"field": "Roles", "labelKey": "userColumnRoles", "kind": "identifier"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "userListEmptyAgent"
   },
   "toolIdentifier": "permissions.users"
 }

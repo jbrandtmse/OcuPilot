@@ -17,8 +17,9 @@
 /// these pairs and holds its rows to the test account's.</p>
 /// <p><b>The classic page is <code>%CSP.UI.Portal.Roles</code></b>, in the class's own case
 /// (AD-44). As a list archetype it links out to nothing. The context carries no secret field.</p>
-/// <p>It declares no primary or row action, so its empty state names what to do next, and it does
-/// not refresh (AD-43).</p>
+/// <p>It declares a Create primary action, which opens <class>OcuPilot.Screen.Descriptor.RoleForm</class>,
+/// so its empty state invites the agent rather than naming a next step. It declares no row action,
+/// and it does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.RoleList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -39,7 +40,7 @@ XData Declaration
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
+  "primaryAction": {"id": "create", "selfProtection": ""},
   "rowActions": [],
   "context": {"fields": ["Name", "Description", "CreatedBy", "EscalationOnly"], "secretFields": []},
   "emptyStateKey": "roleListEmpty",
@@ -60,8 +61,8 @@ XData Declaration
       {"field": "CreatedBy", "labelKey": "roleColumnCreatedBy", "kind": "text"},
       {"field": "EscalationOnly", "labelKey": "roleColumnEscalationOnly", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "roleListEmptyAgent"
   },
   "toolIdentifier": "permissions.roles"
 }

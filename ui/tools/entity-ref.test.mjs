@@ -77,8 +77,9 @@ const CORPUS = [
 ];
 
 // The corpus below round-trips verbatim, so the type it runs under must be one the kernel
-// declares no id rule for. `task` held this place until Story 5.11 gave it the `integer` rule.
-const TYPE = 'role';
+// declares no id rule for. `task` held this place until Story 5.11 gave it the `integer` rule,
+// `role` until Story 8.3 gave it `foldcase`, and `resource` until Story 8.4 did.
+const TYPE = 'service';
 
 test('the vocabulary is the kernel mirror, not a second list', () => {
   assert.ok(ENTITY_TYPES.includes(TYPE));
@@ -245,7 +246,7 @@ test('AD-13: the singleton rule answers one id for every spelling, from the mirr
     'so two spellings build one key'
   );
   // The rule is per type: an id of another type is untouched by it.
-  assert.equal(normalizeEntityId('role', 'Nightly Purge'), 'Nightly Purge');
+  assert.equal(normalizeEntityId('service', 'Nightly Purge'), 'Nightly Purge');
 });
 
 // Story 5.11, AD-13: a task is addressed by the vendor's own integer id, which the model supplies

@@ -1630,6 +1630,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-2-0-epic-1-deferred-cleanup.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: ui/src/app/core/screen-actions.ts: only component specs register; settled by a spec that registers in a routed page, unregisters via DestroyRef, navigates away and back, and asserts no NG0100 and one run per click (inference)
 - 2026-09-14T03:54:44Z status=routed owner=8-1-create-a-web-application by=harvest note=Story 8.1 registers the first real handler
+- 2026-09-23T02:14:40Z status=resolved-by:8-1-create-a-web-application by=adjudication note=create handler tab-scoped from app.ts (web-app-actions.ts); browser AC3 pins once-per-click, no NG0100, survives nav
 
 ### DW-247: After an in-app sign-in or instance recovery swaps the frame in, the first Tab may not land on Skip to content
 - source: spec-2-0-epic-1-deferred-cleanup.md | severity: med | fix-risk: low | footprint: in-story
@@ -2468,6 +2469,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: the key field validates on blur only because GET /agent/providers ships keyShapeReason with the rule; Kernel/AgentRules.Validate and Api/Error.cls hold all 17 reasons and Api/Router carries no validate route. A client-authored sentence would be the second copy source AD-39 exists to prevent
 - 2026-09-16T02:20:06Z status=routed owner=burndown by=harvest note=decide between a validate-only endpoint that returns violations without writing, and accepting that non-key fields validate on save alone
 - 2026-09-16T10:21:59Z status=routed owner=8-1-create-a-web-application by=burndown_gate note=the next form over a validating endpoint, which is where a validate-only route would earn itself
+- 2026-09-23T02:14:41Z status=resolved-by:8-1-create-a-web-application by=adjudication note=rules+sentences ship on GET /web-applications/form (FormRules.cls); blur reads them; no validate route added
 
 ### DW-377: The administrator reminder banner carries no link, which EXPERIENCE.md publishes for it, because no link label exists in the Fixed strings table
 - source: spec-3-6 | severity: med | fix-risk: low | footprint: in-epic
@@ -5094,6 +5096,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T04:48:27Z occurrence=15-1-change-your-own-password by=cr note=code review re-confirmed the closed list reaches further than the ledger title: WRONGPASSWORDCODE is likewise closed to 952, so a legacy-hash, LDAP or delegated account's wrong-password refusal is an opaque 500 too. The 500 fall-through arm this entry describes has no server-side test, and the spec's Review Triage Log records it as patched by a patch that in fact drives the body-refusal branch.
 - 2026-09-20T04:51:32Z status=escalated owner=range-end-cleanup by=cr note=re-owned off 15.1 because the fix is an architecture amendment, not a code change: the embedded code a PasswordValidationRoutine refusal carries is 5001, which is $$$GeneralError, so allow-listing it opens the catch-all channel AD-39 exists to close. The matrix's Policy-rejection row names PasswordValidationRoutine in its trigger while its own Error Handling column closes the list to 845 and 958 -- the implementation follows the column, so it is by-design against the spec as written. Closing it needs AD-39 to say how a validation routine's text reaches a caller without the general-error channel.
 - 2026-09-22T13:39:52Z status=routed owner=range-end-cleanup by=merge_gate note=Decided at Epic 15's merge gate and applied here; the entry still read escalated because only the owner was written. Real correctness defect with an unambiguous promise to measure against, but it fires only where a PasswordValidationRoutine is configured, which is not the demo path.
+- 2026-09-23T04:51:49Z occurrence=8-2-create-a-user
 
 ### DW-1290: The wire test derives its expected policy sentence with the same index-2 assumption the code uses, so both would move together and stay green
 - source: spec-15-1-change-your-own-password.md | severity: med | fix-risk: low | footprint: in-story
@@ -5784,6 +5787,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: DeclaredNames' settable projection is the field list's ordinary top-level literals, not Write.FieldRows' output, which also applies PermittedFields and drops declared secrets - narrowing to it would reject every declared secret. Probe: declare secretArguments Timeout on webapp.list.update's screen and confirm with a Timeout key.
 - 2026-09-21T23:13:31Z status=routed owner=burndown by=harvest note=DW-1206's RESIDUAL and a different claim to it: the decided union stops a name that matches NOTHING, this is a name that matches the wrong thing. Naming the obvious narrower set would reject every legitimate declared secret, which is why it is not a one-line follow-on.
 - 2026-09-22T15:30:14Z status=routed owner=range-end-cleanup by=burndown note=Rule 27: real but neither floor- nor downstream-blocking, so not chartered
+- 2026-09-23T04:51:49Z occurrence=8-2-create-a-user
 
 ### DW-1451: The destructive-test gate cannot see a class that turns auditing off through the shipped confirm path, so such a class is guarded by its author's decision rather than by the gate
 - source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: med | fix-risk: med | footprint: scripts/check-objectscript.py:1324
@@ -5820,6 +5824,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Write.cls:159-165 strips the name itself, Registry.cls:2289 is a second copy and screen-mirror.mjs:610 a third; no test declares secretArguments against a tool with a real ToolFields entry (the only non-empty declaration is ProposalScreen's, whose probe.proposal owns none), so FieldRows' drop branch is unexecuted. Probe: match by raw path in Write.cls and watch every gate stay green.
 - 2026-09-22T00:43:47Z status=routed owner=burndown by=cr note=DW-1206 closed the two VALIDATORS' divergence; this is the validator-to-CONSUMER one, in the same place. Arms with the first shipped secretArguments entry (FR-43, FR-46) - not floor-blocking, Rule 27.
 - 2026-09-22T00:53:41Z status=routed owner=8-5-x-509-import-edit-and-delete by=adjudication note=RE-OWNED OFF burndown BY THE LEAD, for a reason the reviewer did not weigh: THE FIX IS NOT FALSIFIABLE TODAY. The entrys own evidence says FieldRows drop branch is unexecuted because no tool has a non-empty secretArguments - and I verified that, WebAppList.cls:60 is the only shipped declaration and it is []. So an in-story patch would bank an unfalsifiable pass on AD-3/AD-6-adjacent code, which is what DW-1206 itself was about. 8.5 is the first story that BOTH arms the branch and can redden a test for it: AD-3 names X509Credentials PrivateKeyPassword as a template credential field, so it ships the first non-empty secretArguments. Not Epic 5s burn-down, which cannot observe the defect
+- 2026-09-23T14:23:52Z status=resolved-by:8-5-x-509-import-edit-and-delete by=adjudication note=Test/SecretSpelling.cls binds the validator to Write.FieldRows' drop; QA reddened it via FieldRows mutation; edbd4ac0
 
 ### DW-1457: A credential-named array row is an unsatisfiable secretArguments declaration: the membership rule wants the []-stripped name and the credential rule wants the full row path
 - source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: low | fix-risk: med | footprint: in-story
@@ -6015,3 +6020,253 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: bmad-code-review of spec-5-14 | severity: low | fix-risk: low | footprint: in-story
 - evidence: LastAllHolder short-circuits on HoldsAll(pId) alone and never asks CountsAsHolder about the TARGET. _Ensemble and irisowner hold %All on this build, so stripping it from one where no counting holder remains earns PROHIBITED.LASTALLHOLDER, whose reason reads that the instance would be left with no %All holder -- an account the census never counted. Conservative direction: a refusal, never a permit.
 - 2026-09-22T19:38:38Z status=wontfix-accepted owner=5-14-epic-5-burn-down by=cr note=a wrong reason on a refusal, not a permit. reopen_if=a user meets this refusal and the reason misleads them
+
+### DW-1489: Whether creating a web application reachable unauthenticated should join AD-10's prohibited set for the agent path
+- source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Story 8.1 closes the DEFAULT (AutheEnabled InitialExpression is 64 = Unauthenticated, verified on the instance, so the story requires at least one method and always sends the field explicitly) without prohibiting a choice a %Admin_Secure holder may make through the screen. DW-1207's question one step on. Probe: propose a create with AutheEnabled=64 through the agent and see whether it is refused.
+- 2026-09-22T22:37:25Z status=decision-pending owner=burndown by=spec_gate note=Raised by the story's own spec under 'For the spec gate' rather than left silent. A product call about the prohibited set, so the owner decides it at the merge-gate decision sheet, not a runner. Recommended: prohibit it for the AGENT path only, leaving the screen choice intact -- consistent with AD-10's by-effect framing.
+- 2026-09-23T01:25:39Z status=decision-pending owner=burndown by=runner note=recommend (b): no prohibition; proposal and confirm name the unauthenticated effect. (a) bars public REST; (c) breaks AD-10
+- 2026-09-23T02:11:59Z occurrence=8-1-create-a-web-application
+- 2026-09-23T02:40:01Z status=routed owner=8-2-create-a-user by=orchestrator note=(b) decided: no prohibition; agent proposal and the form's auth-method field name the unauthenticated effect
+- 2026-09-23T04:53:00Z status=resolved-by:8-2-create-a-user by=adjudication note=consequence WEBAPP.UNAUTHENTICATED on card and form field; proposal-card.spec + WebAppLocation pins; 1967125
+
+### DW-1490: The web-applications/list/edit/:id route does not re-read the created application on a cold load; it draws an empty create form at an id-bearing URL
+- source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: create-form.page.ts:604 injects no ActivatedRoute and reads no :id. In-session the buffer carries across the route replacement so the values shown are the created ones; on reload retaining() is false and open() fetches only /web-applications/form. Probe: create an application, then hard-reload the /edit/:id URL and look for an empty form.
+- 2026-09-23T00:32:09Z status=routed owner=9-2-the-web-application-editor by=harvest note=AC 'opens the new application editor' holds on the session path and not on a reload. Epic 9's editor is the story that reads the id, so it closes there rather than being retrofitted here.
+- 2026-09-23T02:11:59Z occurrence=8-1-create-a-web-application
+
+### DW-1491: A create's confirm compares one digest, not two, so the stored-payload backstop DW-1353 added does not cover a create
+- source: spec-8-1-create-a-web-application.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Confirm.cls:644 returns after the absence comparison. Under AD-54 the create fingerprint covers the target's absence, so there is no stored-payload digest to be the second; a second would be new stored state AD-54 does not provide for. Exposure is bounded by the proposal store being AD-9 protected state with conditional writes.
+- 2026-09-23T00:32:13Z status=wontfix-accepted owner=8-1-create-a-web-application by=harvest note=reopen_if=a create proposal's stored arguments are shown to be mutable between mint and confirm despite the AD-9 conditional write, or AD-54 gains a second stored digest for another reason
+
+### DW-1492: The two-spellings matrix row's instance-resolution half is untested: that the vendor GET resolves /csp/App and /csp/app/ to one application
+- source: spec-8-1-create-a-web-application.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ProposalCreate.cls:196 runs against ProposalFixture, whose armed answer is spelling-blind, and asserts the canonical TargetRef plus the typed spelling on the read. The AD-13 claim the row carries is pinned in full by the sibling-cancel row, so the untested half is redundant rather than uncovered. Probe: create /csp/App on a live instance and mint a create under /csp/app/ -- expect the mint refused as present.
+- 2026-09-23T00:32:18Z status=wontfix-accepted owner=8-1-create-a-web-application by=harvest note=reopen_if=the sibling-cancel row stops pinning the AD-13 canonicalization claim, or a create is observed succeeding against an existing application under a different spelling
+
+### DW-1493: A confirmed agent create writes the name in AD-13's canonical spelling while the screen's Save writes it as typed, so one input creates /csp/myapp or /csp/MyApp depending on the caller
+- source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: Confirm.Transition sends tQuery(idParam) from EntityRef.Parse(TargetRef), which is foldcased; Create.Perform sends pName verbatim. Probed on ocupilot-b-ci 2026-09-23: Security.Applications.Create('/csp/CaseProbeX/') stores '/csp/CaseProbeX' (case kept, slash stripped).
+- 2026-09-23T02:11:59Z status=escalated owner=burndown by=cr note=fix stores the typed name at mint and sends it at confirm: new proposal state plus an edit in contended Confirm.Transition
+- 2026-09-23T03:00:18Z occurrence=8-2-create-a-user
+- 2026-09-23T06:42:07Z occurrence=8-3-create-a-role-and-manage-its-resource-grants
+- 2026-09-23T10:37:18Z occurrence=8-4-the-resource-editor
+
+### DW-1494: The screen's Save of a web-application create does not evaluate enforced read-only or the kill switch, while AD-55 says the screen inherits every gate AD-40 places at the write
+- source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Create.Perform asks the prohibited set and never OcuPilot.Kernel.Restraint.Verdict; AD-40 lists read-only and the kill switch (AD-30) among the gates at the write, while FR-19 and AD-30 describe them as restraints on the agent's write tools.
+- 2026-09-23T02:12:06Z status=decision-pending owner=burndown by=cr note=product call: does enforced read-only bar a person's own Save? Either call Restraint.Verdict in Perform or narrow AD-55's wording
+- 2026-09-23T02:40:01Z status=by-design owner=8-1-create-a-web-application by=orchestrator note=ruling 2026-09-23: read-only/kill switch are the agent's (FR-20, AD-30, AD-53); AD-55 narrowed; no code change
+
+### DW-1495: The web-application create accepts WSGIAppLocation, a caller-supplied filesystem directory, and copies it into Path, while AD-21 says no OcuPilot endpoint accepts a filesystem path from a caller
+- source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: WebAppCreate.PERMITTEDFIELDS admits WSGIAppLocation (the spec's own list) and DerivedFields sets Path from it verbatim, on POST /web-applications and on webapp.list.create alike; no containment check is applied.
+- 2026-09-23T02:12:06Z status=decision-pending owner=burndown by=cr note=spec versus spine: carve a stated AD-21 exception for a WSGI create's directory, or contain the location under a fixed root
+- 2026-09-23T02:40:01Z status=routed owner=8-2-create-a-user by=orchestrator note=regraded HIGH (AD-21, Rule 6): relative name under one fixed root, .. refused, both callers; floor-blocking
+- 2026-09-23T04:53:00Z status=resolved-by:8-2-create-a-user by=adjudication note=Location.Resolve under ManagerDirectory/wsgi/; WebAppLocation red on both callers under lead mutation; commit 1967125
+
+### DW-1496: A screen Save refused for MatchRoles reads 'not something the agent can propose' although a person pressed Save
+- source: smoke 8-1-create-a-web-application | severity: low | fix-risk: low | footprint: in-story
+- evidence: POST /api/ocupilot/web-applications with MatchRoles answered 403 PROHIBITED.PRIVILEGEGRANT with that sentence on ocupilot-b-ci 2026-09-23; Prohibited.ReasonFor is one sentence for both callers (AD-10 one home).
+- 2026-09-23T02:16:25Z status=wontfix-accepted owner=8-1-create-a-web-application by=smoke note=reopen_if=a screen surfaces a PROHIBITED.* reason to a person (MatchRoles is absent from the form, so today only a hand-built POST sees it)
+- 2026-09-23T03:36:52Z status=routed owner=8-2-create-a-user by=orchestrator note=reopened: 8.2 owns the PRIVILEGEGRANT sentence and a person meets it on the Roles field; make it caller-neutral
+- 2026-09-23T04:53:00Z status=resolved-by:8-2-create-a-user by=adjudication note=PRIVILEGEGRANT sentence now caller-neutral, used on Roles field and picker; no-agent-word assertion; 1967125
+
+### DW-1502: PROHIBITED.PRIVILEGEGRANT's caller-neutral sentence is server-shipped only; AD-53 (Epic 7) publishes a refusal sentence in EXPERIENCE.md Fixed strings with a pin test
+- source: spec-8-2-create-a-user.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Prohibited.ReasonFor(PRIVILEGEGRANT) reaches the Roles field and the picker from the server; no EXPERIENCE row quotes it and 8.2's form row says 'never one published here'. AD-53 is on origin/OCU-1-epic7 only; its pin test (RefusalCopy) and client-copy convention are Epic 7's.
+- 2026-09-23T04:51:49Z status=decision-pending owner=burndown by=cr note=reconcile at the merge: publish+pin via RefusalCopy, or amend AD-53 to exempt server-shipped sentences
+- 2026-09-23T21:14:39Z occurrence=8-9-plain-iris-community-verification
+
+### DW-1503: A user create whose vendor Modify refuses after Create leaves an account holding only its password
+- source: spec-8-2-create-a-user.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: %Api.Admin.Endpoints.Security.User RunPost calls Security.Users.Create then UpdateUser/Modify; the screen validates every Modify field first, the agent path only at mint (Confirm.cls re-runs no rule).
+- 2026-09-23T04:51:49Z status=wontfix-accepted owner=8-2-create-a-user by=cr note=reopen_if=a POST /users or confirmed create answers an error while Security.Users.Exists(name) is 1 afterwards
+
+### DW-1504: A user name equal to an existing role name is not refused inline; the vendor's Create refuses it as a non-field error
+- source: spec-8-2-create-a-user.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Security.Users documents 'A user name cannot be the same as a role name'; UserCreateRules.NameIsUsable checks length, control chars, * and @ only (the * leg was patched in review).
+- 2026-09-23T04:51:49Z status=wontfix-accepted owner=8-2-create-a-user by=cr note=reopen_if=POST /users with Name equal to a role name answers a banner rather than a Name violation and a user reports it
+- 2026-09-23T08:19:41Z occurrence=8-3-create-a-role-and-manage-its-resource-grants
+
+### DW-1505: The agent-path confirm of a user create applies no OcuPilot password rule; an empty-typed or policy-failing card password reaches the vendor
+- source: spec-8-2-create-a-user.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Tool/UserCreate.ArgumentProblem skips password rules at mint (no password yet) and Confirm.cls runs no tool rule on the supplied secret; the card gates only emptiness.
+- 2026-09-23T04:51:49Z status=wontfix-accepted owner=8-2-create-a-user by=cr note=reopen_if=a confirmed create with a policy-failing card password leaves no field-level reason on the card
+
+### DW-1506: PROHIBITED.UNCOVEREDFIELD's reason names the agent and reaches a person through a hand-made POST /users body
+- source: spec-8-2-create-a-user.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Area/Permissions/UserCreate.Perform renders any non-Roles refusal with Prohibited.ReasonFor(code); UNCOVEREDFIELD reads 'ones the agent may propose changing'. The form never sends an unreviewed field.
+- 2026-09-23T04:51:50Z status=wontfix-accepted owner=8-2-create-a-user by=cr note=reopen_if=a shipped form or tool sends a field outside PermittedCreateFields to POST /users or POST /web-applications
+
+### DW-1507: UserList.secretArguments Password opens permissions.users.update's confirm channel, and Test/Prohibited exempts authored secrets per identifier
+- source: spec-8-2-create-a-user.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Spec Tasks (UserList.cls bullet) accepts it; the vendor's UpdateUser copies only Schema() keys into Modify, so a Password on a PUT is never applied (read on ocupilot-b-ci).
+- 2026-09-23T04:51:50Z status=by-design owner=8-2-create-a-user by=cr note=spec-bound; same root cause as DW-1450 (channel is per screen, not per tool)
+
+### DW-1512: Whether AD-10's privilege-grant set should also cover WRITE on %DB_IRISSYS and %DB_IRISSECURITY in a role's resource grants
+- source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: The shipped escalation predicate treats a resource grant as escalating only for %All or %Admin_* resources at any permission; %DB_IRISSYS:W (CLAUDE.md: %Operator carries it and it is a self-escalation primitive) is not covered. Widening changes 8.2's role-picker verdicts and the implicit %DB_* roles.
+- 2026-09-23T05:14:56Z status=decision-pending owner=burndown by=spec_gate note=product/architecture call on AD-10's set; spec 8.3 ships the existing predicate unchanged
+- 2026-09-23T05:17:18Z status=decision-pending owner=burndown by=orchestrator note=ruled in part: %DB_IRISSECURITY:W joins the predicate in 8.3; %DB_IRISSYS:W and %DB_IRISLIB:W stay for the owner
+- 2026-09-23T05:17:18Z status=decision-pending owner=burndown by=runner note=measured slot B: %Operator,%Manager,%SecurityAdministrator already refused (%Admin_* resources); widening adds only
+- 2026-09-23T05:17:18Z status=decision-pending owner=burndown by=runner note=...the %DB_IRISSYS role (for IRISSYS:W) and the %DB_IRISLIB role (for IRISLIB:W); no other shipped role changes verdict
+- 2026-09-23T05:18:56Z status=decision-pending owner=burndown by=runner note=AD-10 amended for %DB_IRISSECURITY:W (spec 8.3 task); predicate verified by-effect (%HS_Administrator->%Manager)
+- 2026-09-23T06:41:43Z status=dropped owner=burndown by=owner note=moot 2026-09-23: owner permitted privilege grants at typed confirmation; no grant is refused for its privilege
+
+### DW-1513: The Roles-list Delete row action (Story 8.3 AC3's screen caller): SCREENACTIONS on RoleDelete, rowActions on RoleList, a holder-count read, the count in the typed-name confirmation, its Fixed-strings row
+- source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: AD-53's row-action route and handler exist only on OCU-1-epic7; screen-action-handler.ts's confirmation text is fixed, so the 'N users hold this role' count needs a count slot added there. 8.3 ships the agent's permissions.roles.delete.
+- 2026-09-23T05:17:18Z status=routed owner=9-3-the-role-editor by=orchestrator note=Rule 5 partial deferral of 8.3 AC3, orchestrator-authorised 2026-09-23; 9.3 plans the handler's count slot
+
+### DW-1514: The role grant dialog offers Read and Write on a database resource as independent boxes, so a Write-only grant reaches the vendor; the classic dialog ticks and locks Read when Write is ticked
+- source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: irislib/%CSP/UI/Portal/Dialog/RoleResourceEdit.cls writeChanged; RoleCreateRules.PermissionsAdmitted is letter-based; location ui/src/app/areas/permissions/role-grant-dialog.ts
+- 2026-09-23T06:42:07Z status=open owner=8-3-create-a-role-and-manage-its-resource-grants by=harvest note=two-way door; added to the owner-reversal rework as a [Lead] item
+- 2026-09-23T07:52:31Z status=resolved-by:8-3-create-a-role-and-manage-its-resource-grants by=adjudication note=grant dialog locks Read with Write; ROLE.RESOURCES.WRITEONLY on both callers; commit 59dced7
+
+### DW-1515: Prohibited.cls's class header counts the covered types inside a paragraph Epic 7 rewrites; with the role branch the merged count is stale
+- source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: git diff 3317fae origin/OCU-1-epic7 -- src/OcuPilot/Kernel/Proposal/Prohibited.cls first hunk; COVEREDTYPES now ends ,role; header says Six (Epic 7: Eight)
+- 2026-09-23T06:42:07Z status=wontfix-accepted owner=8-3-create-a-role-and-manage-its-resource-grants by=harvest note=reopen_if=the merged Prohibited.cls header's covered-type count differs from COVEREDTYPES after Epic 7 and 8 merge
+
+### DW-1524: A user update's privilege-granting role delta and any EscalationRoles change are still refused PROHIBITED.PRIVILEGEGRANT by Prohibited.User, against AD-10 as amended, with a sentence that now names OcuPilot's own web applications
+- source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Prohibited.cls User predicate unchanged by the owner-reversal rework; Test/UserUpdate.cls (Epic 7-modified, not contended) asserts the refusal, so the fix needs that file; create path now grants the same roles
+- 2026-09-23T07:52:31Z status=escalated owner=burndown by=harvest note=for the merge gate: remove or recode the update refusal once Epic 7's UserUpdate.cls and this branch merge
+- 2026-09-23T08:46:44Z status=routed owner=8-4-the-resource-editor by=orchestrator note=floor-blocking: fix Prohibited.User update predicate to amended AD-10 inside 8.4; Test/UserUpdate.cls now contended
+- 2026-09-23T10:09:30Z status=resolved-by:8-4-the-resource-editor by=adjudication note=Prohibited.User update predicate permits privileged role deltas, destructive+named; UserUpdate tests recoded; e954e2db; remainder DW-DW-1537
+
+### DW-1525: Doc comments in Epic 7's files still say privilege is refused through any path (WebAppUpdate.cls:26, Classification.cls:28, Test/UserUpdate.cls:23)
+- source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: all three are in Epic 7's diff and not contended; AD-10 amended 2026-09-23
+- 2026-09-23T07:52:31Z status=wontfix-accepted owner=8-3-create-a-role-and-manage-its-resource-grants by=harvest note=reopen_if=the merged tree still carries a doc comment saying privilege grants are refused on every path
+
+### DW-1526: Mint.ConsequenceOf asks Consequence(payload, privileged); a later tool overriding Consequence with one formal raises <PARAMETER>, which the catch turns silently into no consequence
+- source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Mint.cls ConsequenceOf's try-ask idiom swallows the arity error; WebAppCreate is the only overrider today
+- 2026-09-23T07:52:38Z status=open owner=8-3-create-a-role-and-manage-its-resource-grants by=harvest note=two-way door for this story's review: make the arity failure loud or the signature single-sourced
+- 2026-09-23T08:19:40Z status=resolved-by:8-3-create-a-role-and-manage-its-resource-grants by=cr note=ConsequenceOf asks only a compiled Consequence, unguarded; one-formal probe tool now fails mint 500 <PARAMETER> (ocupilot-b-ci)
+
+### DW-1527: Candidate vendor defect: the admin API's Security.Resource PUT cannot set or clear a public permission of none -- RunPut refuses ExternalToInternal's 0 as invalid
+- source: spec-8-4-the-resource-editor.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: %Api.Admin.Endpoints.Security.Resource RunPut: If permsNormalized = 0 -> 400; null, "", "N", 0, "0" all refused on create and clear on ocupilot-b-ci 2026-09-23; Security.Resources.Create/Modify accept it. OcuPilot's AD-27 fallback covers it.
+- 2026-09-23T08:46:44Z status=decision-pending owner=burndown by=orchestrator note=human=report to the contest's feedback channel (sysadmin-api-specification) as a candidate vendor defect
+
+### DW-1528: The Resources-list Delete row action (Story 8.4 AC2's screen caller): drawn disabled with its reason when the vendor's AllowDelete is false, on AD-53's route
+- source: spec-8-4-the-resource-editor.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: AD-53's row-action route and self-protection rendering exist only on OCU-1-epic7; it needs a new AD-53 self-protection word that reads the row's AllowDelete. 8.4 ships the agent's permissions.resources.delete.
+- 2026-09-23T08:46:44Z status=routed owner=9-3-the-role-editor by=orchestrator note=Rule 5 partial deferral of 8.4 AC2, orchestrator-authorised 2026-09-23; beside DW-1513
+
+### DW-1536: A user update's EscalationRoles change is refused UNCOVEREDFIELD because the Users write tool never admitted the field
+- source: spec-8-4-the-resource-editor.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Prohibited.User no longer refuses it PRIVILEGEGRANT (DW-1524); UserUpdate's admitted field list excludes EscalationRoles and ToolWrite pins the kernel's uncovered-field refusal
+- 2026-09-23T10:09:30Z status=wontfix-accepted owner=8-4-the-resource-editor by=harvest note=reopen_if=the owner asks the agent or a screen to edit a user's escalation roles (Story 9.1's editor is the natural owner)
+
+### DW-1537: The Users write tool's model-facing Roles description still says a role granting an administrative privilege is refused, steering the agent away from a write amended AD-10 permits
+- source: spec-8-4-the-resource-editor.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: src/OcuPilot/Screen/Tool/UserUpdate.cls InputSchema Roles description; the file is in Epic 7's diff and not on the contended list, so 8.4 did not edit it (DW-1524's remaining half)
+- 2026-09-23T10:09:30Z status=escalated owner=burndown by=harvest note=one-sentence description edit; needs the orchestrator to put Screen/Tool/UserUpdate.cls under the contended discipline
+
+### DW-1538: Story 8.4 has no real-port leg confirming an agent create or update of a resource, and no browser leg that saves an edit
+- source: spec-8-4-the-resource-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ResourceWire drives the screen routes and the agent delete only; resources-editor.browser-spec saves only a create. Each piece is pinned in-process (ResourceCreate/ResourceUpdate via ResourceFixture) and in jsdom.
+- 2026-09-23T10:37:18Z status=wontfix-accepted owner=8-4-the-resource-editor by=cr note=reopen_if=a resource agent create/update or an edit Save regresses in CI or smoke with every Resource* class green
+
+### DW-1539: EXPERIENCE.md still says the Resources list's empty-state second line is the Web applications row's, and the privilegedGrantEffect row omits the resource editor's Public permission field
+- source: spec-8-4-the-resource-editor.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Story 8.4 set ResourceList emptyNextKey to empty (agent invitation) and shows privilegedGrantEffect in the resource editor; EXPERIENCE.md rows :360 and :403 are existing rows, append-only for this story while Epic 7 is concurrent.
+- 2026-09-23T10:37:18Z status=wontfix-accepted owner=8-4-the-resource-editor by=cr note=reopen_if=after the Epic 7/8 merge, EXPERIENCE.md :360 still ends 'whose second line is the Web applications row's'
+
+### DW-1540: DW-1524's change left stale text: Test/UserUpdate.cls's header still counts six Prohibited.User refusals, and Prohibited.FIELDESCALATIONROLES is referenced by nothing on this branch
+- source: spec-8-4-the-resource-editor.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Prohibited.User now answers five codes; both files are contended with Epic 7, whose version still references FIELDESCALATIONROLES (Prohibited.cls e7 :332, :589) and edits the UserUpdate header's hunk.
+- 2026-09-23T10:37:18Z status=wontfix-accepted owner=8-4-the-resource-editor by=cr note=reopen_if=after the Epic 7 merge, FIELDESCALATIONROLES has no reference or the header still says six refusals
+
+### DW-1541: The X.509-list Delete row action (Story 8.5's screen delete): SCREENACTIONS on the delete tool, rowActions on the X.509 list, the typed-name confirmation, on AD-53's route
+- source: spec-8-5-x-509-import-edit-and-delete.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: AD-53's row-action route exists only on OCU-1-epic7 until both epics merge; 8.5 ships the agent's security.x509.delete. Delete is in 8.5's title only, not an AC.
+- 2026-09-23T11:02:04Z status=routed owner=9-5-the-ssl-tls-editor by=orchestrator note=orchestrator ruling 2026-09-23, the 8.3/8.4 precedent (DW-1513, DW-1528)
+
+### DW-1544: The demo fixture in Install/Fixture.cls carries a PEM private key literal, already in the public repository's history since b366e45f
+- source: orchestrator ruling on 8.5 test keys | severity: med | fix-risk: med | footprint: in-epic
+- evidence: src/OcuPilot/Install/Fixture.cls:1176 builds '-----BEGIN PRIVATE KEY-----' from literals for the opt-in demo X.509 credential (UX-DR82); the repo is public and push protection is off; removing it from HEAD does not remove it from history
+- 2026-09-23T12:42:13Z status=escalated owner=burndown by=lead note=owner/orchestrator call: generate at install via openssl (absent on some installs), ship a public cert only, or accept the demo key; history stays either way
+- 2026-09-23T13:55:11Z status=by-design owner=burndown by=orchestrator note=the installer's demo credential must ship its material (no openssl guarantee on a customer instance); documented disposable literal
+
+### DW-1547: An X.509 import on an instance holding mgr/iris.cer whose certificate does not chain to it is refused by the vendor save (#734) and answers 500 without a field sentence
+- source: spec-8-5-x-509-import-edit-and-delete.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: irissys/%SYS/X509Credentials.cls %OnValidateObject verifies a keyless certificate against mgr/iris.cer and refuses with CertVerifyFailed; AdminPort.IMPORTSAVECODES maps no code for it, and no OcuPilot code or sentence fits a chain failure. The pinned image carries no iris.cer (checked on ocupilot-b-ci).
+- 2026-09-23T14:22:02Z status=wontfix-accepted owner=8-5-x-509-import-edit-and-delete by=cr note=reopen_if=an import on an instance with mgr/iris.cer answers 500 naming vendor error 734
+
+### DW-1548: A certificate and key that are not RSA are refused with the key-mismatch sentence rather than one saying only RSA credentials are supported
+- source: spec-8-5-x-509-import-edit-and-delete.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: X509Rules.KeyMatches answers mismatch when RSAEncrypt cannot use the certificate, and AdminPort maps vendor #731 to X509.PRIVATEKEY.MISMATCH; the spec's Never item excludes non-RSA keys, so a key-type sentence would be a new code, sentence and Fixed strings row.
+- 2026-09-23T14:22:02Z status=wontfix-accepted owner=8-5-x-509-import-edit-and-delete by=cr note=reopen_if=a user or the owner reports an EC or other non-RSA credential import misread as a key mismatch
+
+### DW-1549: An edit of an X.509 credential whose certificate has expired, or whose CA file is gone, is refused by the vendor PUT's re-validation with a generic envelope, not a field sentence
+- source: spec-8-5-x-509-import-edit-and-delete.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: X509Save.Update sends the merged {OwnerList,CAFile,PeerNames} to the vendor PUT, which re-runs %OnValidateObject (#728 expired, #5012 missing CA file); the refusal is correct and nothing is written, only the wording is generic.
+- 2026-09-23T14:22:02Z status=wontfix-accepted owner=8-5-x-509-import-edit-and-delete by=cr note=reopen_if=an owner-list edit of an expired credential is reported as an unexplained failure
+
+### DW-1550: The X.509 private-key and key-password inputs carry autocomplete=new-password, which can invite a browser's strong-password suggestion in those fields
+- source: spec-8-5-x-509-import-edit-and-delete.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ui/src/app/areas/security/x509-form.page.ts marks both masked inputs new-password, the project's masked-secret-field pattern from user-create-form (pinned in x509-form.page.spec.ts); it also keeps the browser from autofilling the sign-in password there (inference on browser behaviour).
+- 2026-09-23T14:22:02Z status=wontfix-accepted owner=8-5-x-509-import-edit-and-delete by=cr note=reopen_if=a browser offers or inserts a generated password in the X.509 private key or key password field
+
+### DW-1551: On the X.509 edit page a privilege denial names the action as import a certificate, though the user is editing an existing credential
+- source: spec-8-5-x-509-import-edit-and-delete.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: x509-form.page.ts reason() always passes STRINGS.x509ListEmptyAgent to formatDeniedAction; an edit-specific wording needs a new string and Fixed strings row; the pair named is right and nothing is written.
+- 2026-09-23T14:22:02Z status=wontfix-accepted owner=8-5-x-509-import-edit-and-delete by=cr note=reopen_if=the owner flags the edit-page denial sentence in a smoke or demo
+
+### DW-1552: X509Material's cleanup of the generated key directory is untested on the generation-failure path and nothing sweeps a directory an interrupted test process leaves
+- source: spec-8-5-x-509-import-edit-and-delete.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Generate calls Discard on failure (status now propagated) and OnAfterAllTests calls it on success, but no test forces a failure midway; a killed test process leaves ocupilot-x509-* under the instance temp directory (test-only throwaway keys).
+- 2026-09-23T14:22:02Z status=wontfix-accepted owner=8-5-x-509-import-edit-and-delete by=cr note=reopen_if=an ocupilot-x509-* directory is found under an instance's mgr/Temp after a test run
+
+### DW-1555: Creating and editing RSA and symmetric-key wallet secrets (the key-material design); Story 8.6 ships key-value secrets and shows the other types read-only
+- source: spec-8-6-the-wallet-secret-form.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Wallet.Secret Type accepts %Wallet.KeyValue, %Wallet.RSA, %Wallet.SymmetricKey (vendor 40303); 8.6 is key-value only by orchestrator ruling 2026-09-23 (tier-1 reading of AC1); developer tool first
+- 2026-09-23T14:47:12Z status=routed owner=range-end-cleanup by=orchestrator note=Rule 27 range-end cleanup: a real capability, not floor-blocking
+
+### DW-1556: Deleting a wallet secret (FR-46): the agent delete tool and the Secrets-list row action; FR-46's delete has no other owning story
+- source: spec-8-6-the-wallet-secret-form.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: No Epic 8 AC covers the delete; AD-53's row-action route exists only on OCU-1-epic7 until both epics merge
+- 2026-09-23T14:47:12Z status=routed owner=9-5-the-ssl-tls-editor by=orchestrator note=orchestrator ruling 2026-09-23, beside DW-1541 (FR-46)
+
+### DW-1559: AD-27's third case described the composed wallet read as carrying Name and fingerprinting three settings; the port answers {Type, Usage, RequireTLS, AllowedHosts} and the fingerprint also covers Type
+- source: spec-8-6-the-wallet-secret-form.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: a Name inside WalletSecretConfig is refused by the vendor (400); Mint.Merge copies the whole fresh read into the payload
+- 2026-09-23T16:07:33Z status=resolved-by:8-6-the-wallet-secret-form owner=8-6-the-wallet-secret-form by=harvest note=lead corrected ARCHITECTURE-SPINE.md AD-27 at its origin in the 8.6 bookkeeping commit (Rule 20)
+
+### DW-1560: On the agent path a wallet secret value's 32,768-character limit is not checked: the mint never sees the value and the card's confirm supplies it
+- source: spec-8-6-the-wallet-secret-form.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: WalletRules.Validate holds the length on the screen's Save only; checking at confirm needs Kernel/Proposal/Confirm.cls (DW-1493 hold); the vendor stores what it is sent
+- 2026-09-23T16:07:33Z status=wontfix-accepted owner=8-6-the-wallet-secret-form by=harvest note=reopen_if=a confirmed agent create stores a value over 32,768 characters, or Confirm.cls is reshaped after the Epic 7/8 merge
+
+### DW-1561: EXPERIENCE.md rows for the X.509 and Secrets lists still describe their empty state's second line as the read-only Web applications line after 8.5 and 8.6 gave both lists a Create
+- source: spec-8-6-the-wallet-secret-form.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: EXPERIENCE.md :365 says the Secrets empty state's second line is the Web applications row's; WalletSecretList now declares emptyNextKey "" and emptyAgentKey walletSecretListEmptyAgent (row :413). Row :362 (X.509) has the same drift from 8.5. EXPERIENCE.md is shared-append for this story, so the existing rows were not edited.
+- 2026-09-23T16:30:05Z status=wontfix-accepted owner=8-6-the-wallet-secret-form by=cr note=reopen_if=a UX or strings review cites EXPERIENCE.md :362/:365 against the descriptors' empty keys
+
+### DW-1562: The Devices-list Delete row action with its typed-name confirmation (Story 8.8 AC2's screen delete)
+- source: spec-8-8-the-device-editor.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Needs AD-53's row-action route and typed-name dialog, which exist only on OCU-1-epic7 and arrive when Epic 7 merges; 8.8 ships the agent's osmgmt.devices.delete; Epic 9 has no device story
+- 2026-09-23T16:50:05Z status=routed owner=range-end-cleanup by=orchestrator note=orchestrator ruling 2026-09-23 (a); the orchestrator may re-route it to a story built after Epic 7's merge
+
+### DW-1571: The agent's osmgmt.devices.update cannot clear a device's alias or prompt: the mint's merge refuses an empty value against the fresh read's number
+- source: spec-8-8-the-device-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Mint.Merge type check against the fresh read; the screen's edit clears either through the same tool
+- 2026-09-23T19:11:10Z status=wontfix-accepted owner=8-8-the-device-editor by=harvest note=reopen_if=an agent is asked to clear a device alias or prompt and the proposal is refused
+
+### DW-1572: The AC2 browser list leg cannot see the device form store's change event: while the form is open no list is bound to the bus, and the list reads on arrival
+- source: spec-8-8-the-device-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: mutation dropping publish in device-form.store stayed green on a redeployed bundle (grep-confirmed); device-form.store.spec pins the publish
+- 2026-09-23T19:11:10Z status=wontfix-accepted owner=8-8-the-device-editor by=harvest note=reopen_if=a device create or edit is published but the list shown alongside it does not update
+
+### DW-1574: The ObjectScript suite is not portable to plain IRIS Community: 19 failures in 8 classes whose fixtures assume the IRIS for Health layout (HSCUSTOM, HSLIB, a non-USER install namespace), and CI runs no suite there
+- source: spec-8-9-plain-iris-community-verification.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Plan-time run 2026-09-23 on a plain Community throwaway, ci-runner --namespace USER: 205 classes, 1798 tests; ErrorDelete, ErrorLogDenial, FixtureNamespace, ErrorLog, Namespaces by assertion text; MgmntPortWire, MgmntPortDenial, TurnContext (inference)
+- 2026-09-23T20:04:06Z status=routed owner=range-end-cleanup by=lead note=Story 8.9 spec gate: install, admin API and smoke are verified on plain Community in CI; a plain-Community suite job (~16 min) needs portable fixtures first; not floor-blocking

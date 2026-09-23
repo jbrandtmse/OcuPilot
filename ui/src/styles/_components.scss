@@ -5259,3 +5259,71 @@ app-data-table {
 .ocu-home-system-value.ocu-home-system-absent {
   color: var(--ocu-restrained);
 }
+
+// --- The web-application form's authentication group (Story 8.1) ------------------------------
+//
+// A `fieldset` rather than a labelled control, because the methods are one question with several
+// answers and a screen reader has to hear the group's own name before each of them. The user
+// agent's default border, padding and margin are reset so the group draws as a `form-page` field
+// like every other one, and `min-inline-size: 0` is what stops a `fieldset` refusing to shrink
+// below its content -- the one box in this stylesheet that does not honour a width on its own.
+.ocu-form-authe {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ocu-form-authe legend {
+  padding: 0;
+}
+
+// --- The role form's resource grants (Story 8.3) ---------------------------------------------------
+//
+// Each grant the form holds is one row: the grant as its dialog's lines write it, then its Edit
+// and Remove text buttons. A plain list, reset so it draws as part of the field rather than as
+// body copy.
+.ocu-role-grants {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+  margin: 0 0 var(--ocu-space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.ocu-role-grant {
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-2);
+}
+
+.ocu-role-grant-line {
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
+}
+
+// Story 8.4: the Resources list's page wraps the shared list page with its editor dialog, so its
+// host carries the height chain every other page host carries, and the editor's saved sentence
+// sits in the dialog's action row beside Save.
+app-resource-list-page {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ocu-dialog-status {
+  align-self: center;
+}
+
+// Story 8.5: the X.509 credential form's file pickers stay out of view -- the labelled "Load from
+// file" button beside each field opens its picker -- and a pasted PEM block reads in the monospace
+// face its line lengths are measured in.
+.ocu-x509-file {
+  display: none;
+}
+
+.ocu-x509-pem {
+  font-family: var(--ocu-type-code-family);
+}

@@ -183,6 +183,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['task', 'integer'],
     ['process', 'integer'],
     ['application-error', 'foldcase'],
+    ['role', 'foldcase'],
+    ['resource', 'foldcase'],
   ]);
   assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
@@ -2066,5 +2068,59 @@ test('entityLabelProblem returns the instance-side sentences, and every shipped 
         screens: [{ ...webApp, declaration: hostile }],
       }),
     /entityLabelKey names the singular noun/
+  );
+});
+
+// AD-3, AD-6: a `secretArguments` name also qualifies when it is a top-level `secret` literal row
+// of the screen's write tools -- a derived credential, or an authored wrapper field such as
+// `Security.User`'s POST `Password` (Story 8.2). The widening is additive, so both directions are
+// pinned: a top-level secret row passes, and every name that qualified before still qualifies
+// while an unknown name, a nested secret path and an array element are still refused.
+//
+// Mutation (Rule 19): drop the `secretRows` clause from `confirmChannelProblem` -> the Users list
+// and the synthetic secret row below are refused; make `secretRowNames` admit nested paths -> the
+// `MatchRoles[].MatchRole` assertion goes red.
+test('a secretArguments entry may name a top-level secret row, and nothing that qualified stops qualifying', async () => {
+  const { secretRowNames } = await import('./screen-mirror.mjs');
+  const { screens, toolFields } = readSources();
+  const users = screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.UserList');
+  assert.ok(users !== undefined, 'the users list is among the descriptors');
+  assert.deepEqual(users.declaration.secretArguments, ['Password'], 'it declares the authored Password');
+  assert.ok(secretRowNames('permissions.users', toolFields).includes('Password'), "the create tool's authored row is a top-level secret");
+  assert.equal(confirmChannelProblem(users.declaration, toolFields), null, 'the declaration passes');
+  assert.equal(
+    confirmChannelProblem({ ...users.declaration, secretArguments: ['Pasword'] }, toolFields),
+    "secretArguments names 'Pasword', which is neither a settable field of this screen's write " +
+      'tool nor one its read declares (AD-6)',
+    'a name no source carries is still refused'
+  );
+
+  const webApp = screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.WebAppList');
+  const synthetic = {
+    'webapp.list.probe': {
+      fieldList: 'WebApp.App',
+      fields: [
+        { path: 'ProbeSecret', shape: 'literal', templateType: 'string', class: 'secret', authored: true },
+        { path: 'ProbeNested.Key', shape: 'literal', templateType: 'string', itemType: '', class: 'secret' },
+        { path: 'ProbeList[]', shape: 'literal', templateType: 'string', itemType: '', class: 'secret' },
+        { path: 'ProbeOpaque', shape: 'literal', templateType: 'string', itemType: '', class: 'opaque' },
+      ],
+    },
+  };
+  const widened = { ...toolFields, ...synthetic };
+  const of = (secretArguments) => ({ ...webApp.declaration, secretArguments });
+  assert.equal(confirmChannelProblem(of(['ProbeSecret']), widened), null, 'a top-level secret row qualifies');
+  assert.equal(confirmChannelProblem(of(['ProbeSecret']), toolFields), confirmChannelProblem(of(['ProbeSecret']), {}), 'and only while the row exists');
+  assert.notEqual(confirmChannelProblem(of(['ProbeSecret']), toolFields), null, 'absent the row it is refused');
+  for (const name of ['ProbeNested.Key', 'ProbeNested', 'ProbeList', 'ProbeList[]', 'ProbeOpaque']) {
+    assert.notEqual(confirmChannelProblem(of([name]), widened), null, `${name} does not qualify`);
+  }
+  for (const name of ['Timeout', 'AutoCompile', 'CorsAllowlist', webApp.declaration.read.fields[0]]) {
+    assert.equal(confirmChannelProblem(of([name]), widened), null, `${name} still qualifies`);
+  }
+  assert.notEqual(
+    confirmChannelProblem(of(['MatchRoles[].MatchRole']), widened),
+    null,
+    'a nested secret path of the shipped list is not admitted'
   );
 });

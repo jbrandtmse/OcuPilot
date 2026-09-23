@@ -169,7 +169,7 @@ services:
     environment:
       ISC_DATA_DIRECTORY: /durable/iris
       OCUPILOT_DEMO: "1"
-      # ARMING ROSTERS. Each block below carries one or more `classes:` lines naming, in
+      # ARMING ROSTERS. Each block below carries one or more \`classes:\` lines naming, in
       # OcuPilot.Test.* short form, every class that declares that variable -- and nothing else
       # does. ui/tools/ci.test.mjs derives the same set from the declarations under
       # src/OcuPilot/Test/ and holds the two equal in both directions, so a class that gains or
@@ -200,6 +200,8 @@ services:
       # classes: ProcessControl, ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token
       # classes: ToolSetFull
       # classes: ToolWire, TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire
+      # classes: WebAppWire
+      # classes: UserCreateWire, RoleWire, ResourceWire, X509Wire, WalletWire, DeviceWire, DeviceWriteGate
       # classes: TurnWireFixture, UnexpireScope, UserUpdate, Version, Wire, WireOAuthRead, WireSecurityRead
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one

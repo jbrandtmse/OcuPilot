@@ -20,8 +20,10 @@
 /// these pairs and holds its rows to the test account's.</p>
 /// <p><b>The classic page is <code>%CSP.UI.Portal.Resources</code></b>, in the class's own case
 /// (AD-44). As a list archetype it links out to nothing. The context carries no secret field.</p>
-/// <p>It declares no primary or row action, so its empty state names what to do next, and it does
-/// not refresh (AD-43).</p>
+/// <p><b>Its primary action is Create</b>, which opens the resource editor as a dialog over the
+/// list; a row's name cell opens the same editor for that resource through the list's own id route.
+/// Both save through the resource tools (AD-55). It declares no row action, and its empty state
+/// invites the agent. It does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.ResourceList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -42,7 +44,7 @@ XData Declaration
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
+  "primaryAction": {"id": "create", "selfProtection": ""},
   "rowActions": [],
   "context": {"fields": ["Name", "Description", "PublicPermission", "ResourceType", "AllowDelete"], "secretFields": []},
   "emptyStateKey": "resourceListEmpty",
@@ -64,8 +66,8 @@ XData Declaration
       {"field": "ResourceType", "labelKey": "tableColumnType", "kind": "text"},
       {"field": "AllowDelete", "labelKey": "resourceColumnDeletable", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "resourceListEmptyAgent"
   },
   "toolIdentifier": "permissions.resources"
 }

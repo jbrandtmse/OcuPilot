@@ -1314,6 +1314,186 @@ export const STRINGS = {
   proposalResidue:
     'Removes exactly the <n> errors listed here. Any logged since the proposal will remain.',
 
+  // Story 8.1's twelve. The Web applications list becomes write-capable, so its empty state
+  // invites the agent instead of naming a next step, and the create form beside it publishes the
+  // labels the classic editor's own field order carries. Every other label the form draws is a key
+  // that already exists: the name, description, namespace, enabled, dispatch class and
+  // resource columns, the Services list's own "Authentication methods" heading, the
+  // required-fields legend, Save, Cancel and the saved confirmation.
+  /** EXPERIENCE.md:395 */
+  webAppListEmptyAgent: 'create a web application for a REST API',
+  /** EXPERIENCE.md:396 */
+  webAppFormLabel: 'New web application',
+  /** EXPERIENCE.md:396 */
+  webAppFormType: 'Application type',
+  /** EXPERIENCE.md:396 */
+  webAppFormTypeCsp: 'CSP/ZEN',
+  /** EXPERIENCE.md:396 */
+  webAppFormTypeRest: 'REST',
+  /** EXPERIENCE.md:396 */
+  webAppFormTypePython: 'Python (WSGI or ASGI)',
+  /** EXPERIENCE.md:396 */
+  webAppFormPythonProtocol: 'Python protocol type',
+  /** EXPERIENCE.md:396 */
+  webAppFormPythonFile: 'Application file',
+  /** EXPERIENCE.md:396 */
+  webAppFormPythonCallable: 'Callable name',
+  /** EXPERIENCE.md:396 */
+  webAppFormPythonDirectory: 'Application directory',
+  /** EXPERIENCE.md:396 */
+  webAppFormRecurse: 'Include subdirectories',
+  /** EXPERIENCE.md:396 */
+  webAppFormRefusedAction: 'create a web application',
+
+  // Story 8.2. The Users list becomes write-capable, so its empty state invites the agent (the
+  // create-a-user form's privilege refusal names the same action), and the form publishes the
+  // labels the classic editor carries that no existing key holds.
+  // Name, full name, password and roles are keys that already exist (`tableColumnName`,
+  // `userColumnFullName`, `fieldPassword`, `userColumnRoles`). The last two are the web-application
+  // form's resolved Python directory line and the unauthenticated effect, which the proposal card
+  // reads too.
+  /** EXPERIENCE.md:397 */
+  userListEmptyAgent: 'create a user',
+  /** EXPERIENCE.md:398 */
+  userFormLabel: 'New user',
+  /** EXPERIENCE.md:398 */
+  userFormExpiry: 'Account expiration date',
+  /** EXPERIENCE.md:398 */
+  userFormNamespace: 'Startup namespace',
+  /** EXPERIENCE.md:398 */
+  userFormRoutine: 'Startup tag^routine',
+  /** EXPERIENCE.md:399 */
+  webAppFormPythonDirectoryResolved: 'Resolved directory on this instance',
+  /** EXPERIENCE.md:400 */
+  webAppUnauthenticatedEffect:
+    'Anyone who can reach this address can use the application without signing in.',
+
+  // Story 8.3. The Roles list becomes write-capable, so its empty state invites the agent (the
+  // create-a-role form's privilege refusal names the same action), and the form and its grant
+  // dialog publish the labels no existing key holds. Name, description, the Resources heading, the
+  // resource picker's label, the permissions group and Edit are keys that already exist
+  // (`tableColumnName`, `tableColumnDescription`, `resourceListLabel`, `webAppColumnResource`,
+  // `navAreaPermissions`, `agentPanelSecretWarningEdit`).
+  /** EXPERIENCE.md:401 */
+  roleListEmptyAgent: 'create a role',
+  /** EXPERIENCE.md:402 */
+  roleFormLabel: 'New role',
+  /** EXPERIENCE.md:402 */
+  roleFormGrantedRoles: 'Granted roles',
+  /** EXPERIENCE.md:402 */
+  roleGrantAdd: 'Add a grant',
+  /** EXPERIENCE.md:402 */
+  roleGrantDialogAdd: 'Add a resource grant',
+  /** EXPERIENCE.md:402 */
+  roleGrantDialogEdit: 'Edit the grant on <resource>',
+  /** EXPERIENCE.md:402 */
+  roleGrantCurrent: 'Current grant',
+  /** EXPERIENCE.md:402 */
+  roleGrantResulting: 'Resulting grant',
+  /** EXPERIENCE.md:402 */
+  roleGrantNone: 'No grant',
+  /** EXPERIENCE.md:402 */
+  permissionRead: 'Read',
+  /** EXPERIENCE.md:402 */
+  permissionWrite: 'Write',
+  /** EXPERIENCE.md:402 */
+  permissionUse: 'Use',
+  /** EXPERIENCE.md:402 */
+  actionRemove: 'Remove',
+
+  // Story 8.3, AD-10: a privilege grant is permitted at the strongest confirmation. The form states
+  // its consequence at the field and the proposal card at the diff; the second replaces both it and
+  // `webAppUnauthenticatedEffect` on an unauthenticated web application.
+  /** EXPERIENCE.md:403 */
+  privilegedGrantEffect:
+    'This grants %All or an administrative privilege. Whoever holds it can administer this instance.',
+  /** EXPERIENCE.md:404 */
+  privilegedGrantEffectUnauthenticated:
+    'Anyone who can reach this address runs with %All or an administrative privilege without signing in. With %All, that is full control of this instance.',
+  /** EXPERIENCE.md:405 */
+  webAppFormApplicationRoles: 'Application roles',
+
+  // Story 8.4: the Resources list's agent invitation, and the resource editor dialog's two headings.
+  /** EXPERIENCE.md:406 */
+  resourceListEmptyAgent: 'create a resource',
+  /** EXPERIENCE.md:407 */
+  resourceEditorCreate: 'New resource',
+  resourceEditorEdit: 'Edit resource <name>',
+
+  // Story 8.5: the X.509 list's Import, its agent invitation, the X.509 credential form's labels and
+  // helpers, and the proposal card's mark on a secret the confirm may leave empty.
+  /** EXPERIENCE.md:408 */
+  actionImport: 'Import',
+  /** EXPERIENCE.md:409 */
+  x509ListEmptyAgent: 'import a certificate',
+  /** EXPERIENCE.md:410 */
+  x509FormLabel: 'X.509 credential',
+  x509FieldCertificate: 'Certificate',
+  x509FieldPrivateKey: 'Private key',
+  x509FieldPrivateKeyPassword: 'Private key password',
+  x509FieldOwnerList: 'Authorized users',
+  x509FieldPeerNames: 'Intended peers',
+  x509FieldCaFile: 'Trusted CA file',
+  x509FieldHasPrivateKey: 'Private key present',
+  x509LoadFromFile: 'Load from file',
+  /** EXPERIENCE.md:411 */
+  x509PasswordHelp: 'Only for an encrypted key.',
+  x509ListHelp: 'Comma-separated.',
+  /** EXPERIENCE.md:412 */
+  proposalSecretOptional: 'optional',
+
+  // Story 8.6: the Secrets list's agent invitation, the wallet secret form's title, labels, uses and
+  // helpers, and what its read-only view says of a secret type it does not edit.
+  /** EXPERIENCE.md:413 */
+  walletSecretListEmptyAgent: 'store a secret',
+  /** EXPERIENCE.md:414 */
+  walletSecretFormLabel: 'Secret',
+  walletFieldCollection: 'Collection',
+  walletFieldUsage: 'Usage',
+  walletFieldRequireTls: 'Require TLS',
+  walletFieldAllowedHosts: 'Allowed hosts',
+  walletUsageHttp: 'HTTP',
+  walletUsageSql: 'SQL gateway',
+  walletUsageSoap: 'SOAP',
+  walletUsageCustom: 'Custom',
+  /** EXPERIENCE.md:415 */
+  walletValueHelp: 'Stored as typed. For HTTP, SOAP or SQL use, enter a JSON object with user and password members.',
+  walletHostsHelp: 'Comma-separated. Applies only when TLS is required.',
+  /** EXPERIENCE.md:416 */
+  walletTypeReadOnly: 'Only key-value secrets are edited here.',
+  walletTypeElsewhere: 'Manage RSA and symmetric-key secrets through the %Wallet classes. The classic portal has no wallet page.',
+
+  // Story 8.8: the Devices list's agent invitation, the device editor's title, the labels of the
+  // fields the list does not carry, and its type and prompt choices.
+  /** EXPERIENCE.md:417 */
+  deviceListEmptyAgent: 'create a device',
+  /** EXPERIENCE.md:418 */
+  deviceFormLabel: 'Device',
+  deviceFieldOpenParameters: 'Open parameters',
+  deviceFieldAlternate: 'Alternate device',
+  deviceFieldPrompt: 'Prompt',
+  /** EXPERIENCE.md:419 */
+  deviceTypeTerminal: 'Terminal',
+  deviceTypeSpool: 'Spooling device',
+  deviceTypeMagTape: 'Magnetic tape drive',
+  deviceTypeCartridge: 'Cartridge tape drive',
+  deviceTypeIpc: 'Interprocess communication',
+  deviceTypeOther: 'Other',
+  /** EXPERIENCE.md:420 */
+  devicePromptShow: 'Show device prompt',
+  devicePromptAuto: 'Use this device automatically when it is the current device',
+  devicePromptPredefined: 'Use this device automatically with predefined settings',
+  /** EXPERIENCE.md:421 */
+  deviceFormRefusedAction: 'change this device',
+  /** EXPERIENCE.md:422 */
+  agentDefinitionFieldEnvVar: 'Environment variable',
+  /** EXPERIENCE.md:422 */
+  agentDefinitionEnvVarCaption:
+    'The key is read from this variable on the instance\u2019s host. Set it there; this form never takes the key.',
+  /** EXPERIENCE.md:423 */
+  agentGateLandingBannerEnv:
+    'OcuPilot needs one agent definition before the panel can help. Anthropic is selected \u2014 set the environment variable named below on the instance\u2019s host and press Test connection. You can skip this and browse.',
+
 } as const;
 
 /**

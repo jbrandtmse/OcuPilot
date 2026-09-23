@@ -11,6 +11,7 @@ import {
 
 import {
   type ProposalPhase,
+  consequenceSentence,
   countdownPhase,
   countdownRemaining,
   formatCountdown,
@@ -190,12 +191,12 @@ export interface ProposalConfirmRequest {
     @if (secretsVisible) {
       <div class="ocu-proposal-card-secrets">
         @for (field of maskedFields; track field) {
-          <label class="ocu-field-label" [attr.for]="secretId(field)">{{ field }}</label>
+          <label class="ocu-field-label" [attr.for]="secretId(field)">{{ secretLabel(field) }}</label>
           <input
             class="ocu-field-input ocu-proposal-card-secret"
             type="password"
             autocomplete="off"
-            aria-required="true"
+            [attr.aria-required]="secretRequired(field)"
             [id]="secretId(field)"
             [value]="secretValue(field)"
             (input)="onSecret(field, $event)"
@@ -213,6 +214,17 @@ export interface ProposalConfirmRequest {
       <p class="ocu-banner ocu-banner-warning ocu-proposal-card-warning" role="status">
         <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
         <span class="ocu-banner-message">{{ STRINGS.proposalAuditWarning }}</span>
+      </p>
+    }
+
+    @if (consequenceVisible) {
+      <p
+        class="ocu-banner ocu-banner-warning ocu-proposal-card-warning"
+        role="status"
+        data-slot="consequence"
+      >
+        <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+        <span class="ocu-banner-message">{{ consequenceText }}</span>
       </p>
     }
 
@@ -546,13 +558,40 @@ export class ProposalCard {
     this.secrets.set(next);
   }
 
-  /** Whether every declared masked field has been filled, which is what Confirm waits for. */
+  /** The masked fields the tool declares optional, which Confirm does not wait for. */
+  protected get optionalFields(): readonly string[] {
+    return this.view().optionalFields ?? [];
+  }
+
+  /** Whether `field` must be filled before Confirm: every masked field the tool did not mark optional. */
+  protected secretRequired(field: string): boolean {
+    return !this.optionalFields.includes(field);
+  }
+
+  /** A masked field's label: its name, and the published optional mark when the tool declares it so. */
+  protected secretLabel(field: string): string {
+    return this.secretRequired(field) ? field : `${field} (${STRINGS.proposalSecretOptional})`;
+  }
+
+  /** Whether every required masked field has been filled, which is what Confirm waits for. */
   private get secretsFilled(): boolean {
-    return this.maskedFields.every((field) => this.secretValue(field) !== '');
+    return this.maskedFields.every((field) => !this.secretRequired(field) || this.secretValue(field) !== '');
   }
 
   protected get auditWarningVisible(): boolean {
     return this.phase() !== null && this.view().auditWarning === true;
+  }
+
+  /**
+   * The published sentence for the kernel's `consequence` code, an advisory beside the audit
+   * warning: the write is still offered (DW-1489). `''` where the code has no sentence.
+   */
+  protected get consequenceText(): string {
+    return consequenceSentence(this.view().consequence);
+  }
+
+  protected get consequenceVisible(): boolean {
+    return this.phase() !== null && this.consequenceText !== '';
   }
 
   /**

@@ -149,10 +149,21 @@ Method TestARepointedDispatchClassIsRefused()
     Do ..Refused(..Target(), ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Other", "", 1, "after"), "DispatchClass", $Parameter(..#SHIPPEDSET, "DISPATCH"))
 }
 
-/// <p>Matrix row 4: a payload changing the roles the application grants is refused.</p>
-Method TestAChangedRoleGrantIsRefused()
+/// <p>Matrix row 4, AD-10: a payload changing an application's roles is refused
+/// <code>PRIVILEGEGRANT</code> on one of OcuPilot's own applications, ahead of the serving-path
+/// refusal every other change to one earns, and on any other application as a field the change
+/// tool has not reviewed.</p>
+/// <p>Mutation: drop the application-roles leg from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.WebApplication</method> -- the own-application half
+/// goes red, answered <code>SERVINGPATH</code> instead.</p>
+Method TestAChangedRoleGrantIsRefusedOnOcuPilotsOwnApplication()
 {
-    Do ..Refused(..Target(), ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Dispatch", ":%All", 1, "after"), "MatchRoles", $Parameter(..#SHIPPEDSET, "PRIVILEGEGRANT"))
+    Set tServing = "/api/ocupilot"
+    Set tSC = ..Ask(##class(OcuPilot.Test.ProhibitedFixture).App(tServing, 32, "%Development", "Probe.Dispatch", "", 1), ##class(OcuPilot.Test.ProhibitedFixture).App(tServing, 32, "%Development", "Probe.Dispatch", ":%All", 1), "MatchRoles", .tProhibits, .tCode, tServing)
+    Do $$$AssertStatusOK(tSC, "the set answers a role change on OcuPilot's own application")
+    Do $$$AssertEquals(tProhibits, 1, "which is prohibited")
+    Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "PRIVILEGEGRANT"), "as a privilege grant on OcuPilot's own application")
+    Do ..Refused(..Target(), ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Dispatch", ":%All", 1, "after"), "MatchRoles", $Parameter(..#SHIPPEDSET, "UNCOVEREDFIELD"))
 }
 
 /// <p>Matrix row 6: an entity type the set evaluates no predicates for is refused wholesale, and so
@@ -161,12 +172,13 @@ Method TestAChangedRoleGrantIsRefused()
 /// (<class>OcuPilot.Test.UserUpdate</class>), <code>task</code> in Story 5.11
 /// (<class>OcuPilot.Test.TaskResume</class>), <code>process</code> in Story 5.12
 /// (<class>OcuPilot.Test.ProcessControl</class>), <code>application-error</code> in Story 5.13
-/// (<class>OcuPilot.Test.ErrorDelete</class>).</p>
+/// (<class>OcuPilot.Test.ErrorDelete</class>), <code>resource</code> in Story 8.4
+/// (<class>OcuPilot.Test.ResourceDelete</class>).</p>
 /// <p>Mutation: answer <code>pProhibits = 0</code> in the uncovered arm of
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -- this goes red.</p>
 Method TestAnUncoveredEntityTypeIsRefusedWholesale()
 {
-    Set tUncovered = $ListBuild("role", "resource", "service", "database")
+    Set tUncovered = $ListBuild("service", "database")
     For tI = 1:1:$ListLength(tUncovered) {
         Set tType = $List(tUncovered, tI)
         Set tSC = ..Ask(..Target(), ..Payload(), "Description", .tProhibits, .tCode, "probe-id", tType)
@@ -178,10 +190,10 @@ Method TestAnUncoveredEntityTypeIsRefusedWholesale()
     Do $$$AssertStatusOK(tSC, "an unparseable reference is answered, not raised")
     Do $$$AssertEquals(tProhibits, 1, "and refused")
     Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "UNCOVERED"), "as uncovered")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error", "Release 1 covers exactly six entity types")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device", "Release 1 covers exactly eleven entity types")
 
     ; The refusal reaches a caller as a 403 with the set's own code, not as an error.
-    Set tKey = ..Seed(..Payload(), "Description", "probe-id", "role")
+    Set tKey = ..Seed(..Payload(), "Description", "probe-id", "service")
     If tKey = "" Quit
     Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Target())
     Set tSC = ..Confirm(tKey, .tHttp, .tCode)
@@ -282,6 +294,8 @@ Method TestAnUnreadableTargetFailsClosedAndAMissingOneDoesNot()
 /// <p>Mutations: add a field to
 /// <parameter>OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS</parameter> that
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedChangeFields</method> does not name, add
+/// <code>MatchRoles</code> to
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedCreateFields</method>, add
 /// one to <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedChangeFields</method> alone, make
 /// the tool declare <code>DispatchClass</code> a secret argument, declare an unreviewed field such
 /// as <code>EventClass</code> a secret argument, or put a settable field in the descriptor's
@@ -295,6 +309,16 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
     Do $$$AssertStatusOK(tSC, "the tool registry lists")
     If $$$ISERR(tSC) Quit
     Set tWrites = 0
+    ; The types a body-sending tool of either kind writes, so an action-style tool on a type that
+    ; also has one (a resource's delete beside its edit) is not held to an empty reviewed list.
+    Kill tBodyTypes
+    Set tIterator = tTools.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        If tEntry.%Get("kind") '= "write" Continue
+        If '$ClassMethod(tEntry.%Get("class"), "SendsBody") Continue
+        Set tBodyDescriptor = $Parameter(tEntry.%Get("class"), "DESCRIPTORCLASS")
+        If tBodyDescriptor '= "" Set tBodyTypes(''$ClassMethod(tEntry.%Get("class"), "Creates"), $ClassMethod(tBodyDescriptor, "PrimaryEntityType")) = ""
+    }
     Set tIterator = tTools.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tEntry) {
         If tEntry.%Get("kind") '= "write" Continue
@@ -303,7 +327,11 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         Set tDescriptor = $Parameter(tClass, "DESCRIPTORCLASS")
         Set tType = ""
         If tDescriptor '= "" Set tType = $ClassMethod(tDescriptor, "PrimaryEntityType")
-        Set tAlways = ##class(OcuPilot.Kernel.Proposal.Prohibited).AlwaysProhibitedFields(tType)
+        ; AD-54: "what may a change touch" and "what may a create set" are different questions,
+        ; so a create tool is held to the create lists. Which pair applies is the tool's own
+        ; declaration, never a name this test knows.
+        Set tCreates = ''$ClassMethod(tClass, "Creates")
+        Set tAlways = $Select(tCreates: ##class(OcuPilot.Kernel.Proposal.Prohibited).AlwaysProhibitedCreateFields(tType), 1: ##class(OcuPilot.Kernel.Proposal.Prohibited).AlwaysProhibitedFields(tType))
         Set tSchema = $ClassMethod(tClass, "InputSchema")
         Set tSettable = $ClassMethod(tClass, "SettableFields")
         Set tSecrets = $ClassMethod(tClass, "SecretArguments", "", .tSecretsDeclared)
@@ -316,10 +344,14 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
             ; the prohibited verdict is reached, so a tool must not declare one of these a secret.
             Do $$$AssertEquals($ListFind(tSecrets, tField), 0, "and does not declare it a secret argument")
         }
+        ; AD-3: a wrapper secret one of the screen's tools authors -- Security.User's POST
+        ; Password -- is no field of the endpoint's template, so no predicate reviews it and the
+        ; reviewed-few floor below is asked about the declared secrets that are fields.
+        Set tSecrets = ..WithoutAuthoredSecrets(tDescriptor, tSecrets)
         ; The other half of AD-10's title, and the one that covers a field nobody has named: a tool
         ; advertises nothing outside the set's reviewed few, so a vendor property added to the
         ; endpoint's template reaches no schema until the set has a predicate for it.
-        Set tPermitted = ##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields(tType)
+        Set tPermitted = $Select(tCreates: ##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedCreateFields(tType), 1: ##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields(tType))
         ; An action-style write sends no body (AD-51), so it admits no field by construction and
         ; the set reviews none for its type: the two loops below are vacuous for it and the floor
         ; under them is the emptiness itself, asserted on both sides. A body-sending write still
@@ -327,7 +359,9 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         ; having checked nothing.
         If '$ClassMethod(tClass, "SendsBody") {
             Do $$$AssertEquals($ListLength(tSettable), 0, tEntry.%Get("name") _ " sends no body, so it admits no field")
-            Do $$$AssertEquals($ListLength(tPermitted), 0, "and the set has reviewed no field of " _ tType _ " for it to admit")
+            If '$Data(tBodyTypes(tCreates, tType)) Do $$$AssertEquals($ListLength(tPermitted), 0, "and the set has reviewed no field of " _ tType _ " for it to admit")
+            ; A sibling tool on the type sends the reviewed fields; this one sends none of them.
+            If $Data(tBodyTypes(tCreates, tType)) Set tPermitted = ""
         } Else {
             Do $$$AssertTrue($ListLength(tSettable) > 0, tEntry.%Get("name") _ " admits at least one field")
         }
@@ -369,7 +403,16 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         }
     }
     Do $$$AssertTrue(tWrites > 0, "there is at least one registered write tool to check")
-    Do $$$AssertEquals($ListLength(##class(OcuPilot.Kernel.Proposal.Prohibited).AlwaysProhibitedFields("web-application")), 2, "two web-application fields carry an always-prohibited predicate of their own")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).AlwaysProhibitedFields("web-application")), "DispatchClass", "one web-application field carries an always-prohibited predicate of its own")
+    ; AD-54's asymmetry, asserted rather than implied: DispatchClass is prohibited on a change (it
+    ; repoints a serving application) and permitted on a create (which repoints nothing, and which is
+    ; what makes a REST application a REST application). AD-10 refuses application roles by target
+    ; -- OcuPilot's own applications -- so no create field is prohibited by name, and a create may
+    ; set them.
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).AlwaysProhibitedCreateFields("web-application"), "", "no web-application field is prohibited on a create by name")
+    Do $$$AssertTrue($ListFind(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedCreateFields("web-application"), "MatchRoles") > 0, "a create may set application roles")
+    Do $$$AssertEquals($ListFind(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("web-application"), "DispatchClass"), 0, "a change may not repoint a serving application's dispatch class")
+    Do $$$AssertTrue($ListFind(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedCreateFields("web-application"), "DispatchClass") > 0, "and a create may set it, because a create repoints nothing")
 
     ; A real application, so "and mints nothing" is an observation: a tool that admitted the field
     ; would read this target through the shipped port and mint a row for the running account.
@@ -383,6 +426,105 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
     Do $$$AssertEquals(tAfter, tBefore, "and no proposal was minted for this account")
     Do $$$AssertEquals(tHttp, 400, "at 400")
     Do $$$AssertEquals($Select($IsObject(tFault): tFault.%Get("code"), 1: ""), ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "with the arguments code")
+}
+
+/// <p>Story 8.1, AD-54: the create predicates. A create's target is <b>correctly</b> absent, so the
+/// absent-target early-out that answers "not prohibited" for every other kind does not apply to
+/// one -- and the effects AD-10 names for a create are refused over the payload's own keys rather
+/// than over a diff against a live target that is not there. Application roles are refused on
+/// OcuPilot's own paths alone (AD-10), and permitted anywhere else.</p>
+/// <p>Mutations: make
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.CreatesOf</method> answer 0 -> the refusal legs go
+/// red, because the early-out then answers first. Make
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.Created</method> answer
+/// <code>SERVINGPATH</code> whatever an own-path create sets, and the own-path role leg goes red.
+/// Add <code>EventClass</code> to
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedCreateFields</method> and the
+/// unreviewed-field leg goes red.</p>
+Method TestACreateIsRefusedAtOcuPilotsOwnPathForRolesAndForAnUnreviewedField()
+{
+    Set tCreateTool = "webapp.list.create"
+    Set tPlain = ..CreatePayload("")
+    Set tExpectedServing = $Parameter(..#SHIPPEDSET, "SERVINGPATH")
+    Set tExpectedGrant = $Parameter(..#SHIPPEDSET, "PRIVILEGEGRANT")
+    Set tExpectedField = $Parameter(..#SHIPPEDSET, "UNCOVEREDFIELD")
+
+    ; A create at a path nobody holds and that is not OcuPilot's own: permitted, which is the
+    ; floor under the three refusals below.
+    Set tSC = ..AskCreate(tPlain, ..#TARGET, .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the set answers a create at an ordinary path")
+    Do $$$AssertEquals(tProhibits, 0, "which is not prohibited")
+    Do $$$AssertEquals(tCode, "", "and carries no code")
+
+    ; AD-10, AD-38: creating a second application at the address that serves OcuPilot is the same
+    ; harm as changing the first, and the same predicate refuses it.
+    Set tSC = ..AskCreate(tPlain, "/api/ocupilot", .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the set answers a create at OcuPilot's own path")
+    Do $$$AssertEquals(tProhibits, 1, "which is prohibited")
+    Do $$$AssertEquals(tCode, tExpectedServing, "on the serving-path predicate")
+
+    ; A path beneath OcuPilot's own would answer the requests OcuPilot serves there.
+    Set tSC = ..AskCreate(tPlain, "/api/ocupilot/agent", .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the set answers a create beneath OcuPilot's own path")
+    Do $$$AssertEquals(tProhibits, 1, "which is prohibited")
+    Do $$$AssertEquals(tCode, tExpectedServing, "on the serving-path predicate as well")
+
+    ; AD-10: application roles on one of OcuPilot's own applications would run every OcuPilot
+    ; request with them, so a create beneath OcuPilot's own path that sets them is refused on its
+    ; own code rather than the serving-path one; anywhere else they are a create's to set.
+    Set tSC = ..AskCreate(..CreatePayload("MatchRoles"), "/api/ocupilot/agent", .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the set answers a create at OcuPilot's own path carrying application roles")
+    Do $$$AssertEquals(tProhibits, 1, "which is prohibited")
+    Do $$$AssertEquals(tCode, tExpectedGrant, "as a privilege grant on OcuPilot's own application")
+    Set tSC = ..AskCreate(..CreatePayload("MatchRoles"), ..#TARGET, .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the set answers a create carrying application roles elsewhere")
+    Do $$$AssertEquals(tProhibits, 0, "which is not prohibited")
+    Do $$$AssertEquals(tCode, "", "and carries no code")
+
+    ; The reviewed-few rule, over the create list rather than the change list.
+    Set tSC = ..AskCreate(..CreatePayload("EventClass"), ..#TARGET, .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the set answers a create carrying an unreviewed field")
+    Do $$$AssertEquals(tProhibits, 1, "which is prohibited")
+    Do $$$AssertEquals(tCode, tExpectedField, "as a field this release has not reviewed for a create")
+
+    ; And a field the create list DOES name is permitted although the change list does not name it,
+    ; which is AD-54's one asymmetry driven through the set rather than read off the two lists.
+    Set tSC = ..AskCreate(..CreatePayload("DispatchClass"), ..#TARGET, .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the set answers a create naming a dispatch class")
+    Do $$$AssertEquals(tProhibits, 0, "which is not prohibited, because a create repoints nothing")
+    Do $$$AssertEquals(tCode, "", "and carries no code")
+}
+
+/// <p>A composed create payload: the namespace and the authentication mask every create carries,
+/// plus <var>pExtra</var> (comma-separated) set to a probe value.</p>
+/// <p>It is shaped the way <method>OcuPilot.Kernel.Proposal.Mint.Compose</method> shapes one --
+/// the caller's own arguments and nothing else -- because that is what the create predicates
+/// sweep.</p>
+Method CreatePayload(pExtra As %String) As %String
+{
+    Set tObject = {}
+    Do tObject.%Set("NameSpace", $Namespace, "string")
+    Do tObject.%Set("AutheEnabled", 32, "number")
+    For tI = 1:1:$Length(pExtra, ",") {
+        Set tField = $Piece(pExtra, ",", tI)
+        If tField '= "" Do tObject.%Set(tField, "probe", "string")
+    }
+    Quit tObject.%ToJSON()
+}
+
+/// <p>Ask the set about a create of <var>pPath</var> carrying <var>pPayload</var>, with the port
+/// answering 404 for that name -- which is a create's own precondition.</p>
+/// <p>The diff is <method>OcuPilot.Kernel.Proposal.Mint.Compose</method>'s: one row per supplied
+/// field. The set reads the payload rather than the diff for a create, and the diff is passed
+/// anyway so the call is the one the confirm makes.</p>
+Method AskCreate(pPayload As %String, pPath As %String, Output pProhibits As %Boolean, Output pCode As %String) As %Status
+{
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmReadFault(404)
+    Set tArgs = ##class(%DynamicAbstractObject).%FromJSON(pPayload)
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Compose(tArgs, "Name", $ClassMethod("OcuPilot.Screen.Tool.WebAppCreate", "SettableFields"), .tComposed, .tDiff, .tUnchanged, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the shipped compose runs over the create's arguments")
+    If $$$ISERR(tSC) Quit tSC
+    Quit $ClassMethod(..#SET, "Prohibits", "webapp.list.create", ##class(OcuPilot.Test.ProhibitedFixture).Reference(pPath), pPayload, tDiff.%ToJSON(), .pProhibits, .pCode)
 }
 
 /// <p>AC3: every registered write tool's entity type has predicates here, so the next story's tool
@@ -452,7 +594,7 @@ Method TestTheSetHasOneHomeAndOneSentencePerCode()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RegistryClass(), "OcuPilot.Screen.Tool.Registry", "and resolves the tool through the shipped registry")
 
     Set tCodes = ##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()
-    Do $$$AssertEquals($ListLength(tCodes), 13, "the set declares thirteen codes")
+    Do $$$AssertEquals($ListLength(tCodes), 15, "the set declares fifteen codes")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), tCode _ " matches the machine-code pattern")
@@ -530,6 +672,36 @@ Method Sources(Output pSources) As %Status
     }
     If $$$ISERR(tSC) Kill pSources
     Quit tSC
+}
+
+/// <p><var>pSecrets</var> minus every name a write tool of descriptor <var>pDescriptor</var>'s
+/// screen authors as a <code>secret</code> wrapper field in
+/// <class>OcuPilot.Screen.Tool.ToolFields</class> (a row marked <code>authored</code>): a name the
+/// endpoint's template does not carry, which the confirm merges into the body and the vendor reads
+/// only as its wrapper's outer key.</p>
+ClassMethod WithoutAuthoredSecrets(pDescriptor As %String, pSecrets As %List) As %List
+{
+    Set tIdentifier = ""
+    If pDescriptor '= "" Set tIdentifier = $ClassMethod(pDescriptor, "ToolIdentifier")
+    If tIdentifier = "" Quit pSecrets
+    Set tXData = ##class(%Dictionary.XDataDefinition).IDKEYOpen("OcuPilot.Screen.Tool.ToolFields", "Tools")
+    If '$IsObject(tXData) Quit pSecrets
+    Set tTools = ##class(%DynamicAbstractObject).%FromJSON(tXData.Data)
+    Kill tAuthored
+    Set tIterator = tTools.%GetIterator()
+    While tIterator.%GetNext(.tName, .tEntry) {
+        If $Piece(tName, ".", 1, 2) '= tIdentifier Continue
+        Set tFields = tEntry.%Get("fields").%GetIterator()
+        While tFields.%GetNext(.tIndex, .tField) {
+            If (tField.%Get("authored") = 1) && (tField.%Get("class") = "secret") Set tAuthored(tField.%Get("path")) = ""
+        }
+    }
+    Set tOut = ""
+    For tI = 1:1:$ListLength(pSecrets) {
+        If $Data(tAuthored($List(pSecrets, tI))) Continue
+        Set tOut = tOut _ $ListBuild($List(pSecrets, tI))
+    }
+    Quit tOut
 }
 
 }

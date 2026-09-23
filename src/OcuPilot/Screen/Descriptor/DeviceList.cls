@@ -9,32 +9,35 @@
 /// its own instance-wide table.</p>
 /// <p><b>Its id is <code>single</code>:</b> the device's name, one percent-encoded path segment,
 /// with no second part, the same shape <class>OcuPilot.Screen.Descriptor.ResourceList</class>
-/// keys by. It declares no <code>rowTarget</code>: this is the only descriptor that names this
-/// entity type, so there is nowhere else for the name cell to link.</p>
+/// keys by. It declares no <code>rowTarget</code>: the name cell opens the entity type's unlisted
+/// editor at this route plus <code>/edit</code>, <class>OcuPilot.Screen.Descriptor.DeviceForm</class>.</p>
 /// <p><b>Six fields, not the backing query's nine.</b> <code>Prompt</code>,
 /// <code>OpenParameters</code> and <code>AlternateDevice</code> are the device editor's fields
-/// (Story 8.8), and <code>Prompt</code> and <code>AlternateDevice</code> are empty on every row
-/// of a stock instance. <code>Alias</code> is an integer alternate id, rendered as a
-/// <code>number</code> column the same way <code>VolumeNumber</code> is on
-/// <class>OcuPilot.Screen.Descriptor.DatabaseVolumeList</class>; it reads empty on every stock
-/// row, and an empty <code>Alias</code> or <code>Description</code> means absent -- "(none)"
+/// (<class>OcuPilot.Screen.Descriptor.DeviceForm</class>), and <code>Prompt</code> and
+/// <code>AlternateDevice</code> are empty on every row of a stock instance. <code>Alias</code> is
+/// an integer alternate id, rendered as a <code>number</code> column the same way
+/// <code>VolumeNumber</code> is on <class>OcuPilot.Screen.Descriptor.DatabaseVolumeList</class>;
+/// it reads empty on every stock row, and an empty <code>Alias</code> or <code>Description</code> means absent -- "(none)"
 /// already says that, so neither column declares an <code>emptyKey</code>.</p>
 /// <p><b>The privilege set is <code>%Admin_Manage:USE</code> and <code>%DB_IRISSYS:READ</code>,
 /// established rather than copied</b> (AD-29): <code>Device.Standard.ResourcesOR()</code> answers
 /// <code>%Admin_Manage</code> alone, and the backing query,
 /// <code>Config.Devices:List</code>, carries no privilege check of its own, so the pair set is
 /// exactly the endpoint's gate plus the port's own namespace-switch requirement -- no third pair
-/// a real least-privileged principal still refuses.</p>
+/// a real least-privileged principal still refuses. The device tools add the one pair their write
+/// needs beyond the read (<parameter>OcuPilot.Screen.Tool.DeviceCreate.WRITERESOURCE</parameter>).</p>
 /// <p><b>The classic key is <code>%CSP.UI.Portal.Config.Devices</code></b>, the Zen list page
 /// whose own <code>queryClass</code>/<code>queryName</code> is the same
 /// <code>Config.Devices:List</code> this read calls; its own <code>RESOURCE</code> is
 /// <code>%Admin_Manage</code>, which AD-44 unions into the gate above with nothing left to add.
-/// As a list archetype it links out to nothing (<code>classicLinkExemption.exempt</code> false);
-/// the device editor at <code>%CSP.UI.Portal.Config.Device</code> is Story 8.8's page.</p>
-/// <p>It declares no <code>rowGet</code>: every field this screen needs is on the LIST row. It
-/// declares no primary or row action, so its empty state names what to do next rather than
-/// inviting the agent, and it does not refresh -- Devices is not among AD-43's seven
-/// auto-refreshing screens.</p>
+/// As a list archetype it links out to nothing (<code>classicLinkExemption.exempt</code> false).</p>
+/// <p>It declares no <code>rowGet</code>: every field this screen needs is on the LIST row, and it
+/// does not refresh -- Devices is not among AD-43's seven auto-refreshing screens.</p>
+/// <p><b>Its primary action is Create</b>: it opens <class>OcuPilot.Screen.Descriptor.DeviceForm</class>
+/// at <code>os-management/devices/edit</code>, and a row's name cell opens the same form for that
+/// device. Both save through the device tools (AD-55); the agent's
+/// <code>osmgmt.devices.delete</code> is the delete. It declares no row action, and its empty state
+/// invites the agent.</p>
 Class OcuPilot.Screen.Descriptor.DeviceList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -55,7 +58,7 @@ XData Declaration
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
+  "primaryAction": {"id": "create", "selfProtection": ""},
   "rowActions": [],
   "context": {"fields": ["Name", "PhysicalDevice", "Type", "SubType", "Description", "Alias"], "secretFields": []},
   "emptyStateKey": "deviceListEmpty",
@@ -78,8 +81,8 @@ XData Declaration
       {"field": "Description", "labelKey": "tableColumnDescription", "kind": "text"},
       {"field": "Alias", "labelKey": "x509ColumnAlias", "kind": "number"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "deviceListEmptyAgent"
   },
   "toolIdentifier": "osmgmt.devices"
 }

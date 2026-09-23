@@ -117,7 +117,7 @@ export const DECLARED_GATES = [
   'sh scripts/ci-throwaway.sh up',
   'sh scripts/wait-readiness.sh --url http://localhost:52776/api/ocupilot/readiness/',
   'node tools/admin-spec.mjs --origin http://localhost:52776',
-  'sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780',
+  'sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780,52781',
   'node tools/ci-runner.mjs --container ocupilot-ci',
   'sh scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS',
   'npm run test:browser',
@@ -128,15 +128,26 @@ export const DECLARED_GATES = [
   'npm ci',
   'npm run build',
   'cat /proc/sys/net/ipv4/ip_local_port_range',
-  'sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780',
+  'sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780,52781',
   'sh scripts/ci-throwaway.sh up --dir /tmp/ocupilot-browser-ci --project ocupilot-browser-ci --web 52780 --super 1979',
   'sh scripts/wait-readiness.sh --url http://localhost:52780/api/ocupilot/readiness/',
   'sh scripts/ci-throwaway.sh logs --dir /tmp/ocupilot-browser-ci',
   'sh scripts/ci-throwaway.sh down --dir /tmp/ocupilot-browser-ci --project ocupilot-browser-ci',
-  // images
+  // images -- compiled portless first, then installed on a throwaway of the same edition, which
+  // takes a third port pair so it never collides with the other two jobs' throwaways.
   'sh scripts/ci-image-compile.sh --image ${{ matrix.image }}',
-  // package -- `npm ci` and `npm run build` run a THIRD time here, in a job with its own
-  // checkout, because the IPM manifest copies the built bundle into the archive.
+  'npm ci',
+  'npm run build',
+  'sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780,52781',
+  'sh scripts/ci-throwaway.sh up --dir /tmp/ocupilot-images-ci --project ocupilot-images-ci --web 52781 --super 1980 --image ${{ matrix.image }}',
+  'sh scripts/wait-readiness.sh --url http://localhost:52781/api/ocupilot/readiness/',
+  'node tools/admin-spec.mjs --origin http://localhost:52781',
+  'sh scripts/smoke.sh --container ocupilot-images-ci --user _SYSTEM --password SYS',
+  `curl -fsS -u _SYSTEM:SYS http://localhost:52781/api/ocupilot/agent/providers | grep -q '"credentialsRungAvailable":true'`,
+  'sh scripts/ci-throwaway.sh logs --dir /tmp/ocupilot-images-ci',
+  'sh scripts/ci-throwaway.sh down --dir /tmp/ocupilot-images-ci --project ocupilot-images-ci --image ${{ matrix.image }}',
+  // package -- `npm ci` and `npm run build` run again here, in a job with its own checkout,
+  // because the IPM manifest copies the built bundle into the archive.
   'npm ci',
   'npm run build',
   'sh scripts/ci-ipm-archive.sh --image intersystems/irishealth-community:2026.2',
@@ -146,8 +157,8 @@ export const DECLARED_GATES = [
  * Every `run:` command in the workflow, in order, with duplicates KEPT.
  *
  * De-duplicating would quietly weaken the equality this file's whole claim rests on: `npm ci`
- * and `npm run build` each appear in two jobs, so against a de-duplicated set, deleting one of
- * the two occurrences left both directions green and "a gate deleted from either side is red"
+ * and `npm run build` each appear in several jobs, so against a de-duplicated set, deleting one
+ * occurrence left both directions green and "a gate deleted from either side is red"
  * was false for exactly those commands. The declared list below therefore carries a command
  * once per occurrence.
  */
@@ -399,10 +410,11 @@ test('a failing instance job captures the throwaway before the teardown removes 
   //
   // Mutation (Rule 19): delete the capture step, or move it below the teardown, or narrow its
   // condition to `failure()` -> this goes red.
-  // Both throwaway-owning jobs, not just the first: the browser job was split out of instance on
-  // 2026-09-22 and inherits the same hazard, so asserting only `instance` would let the newer job
-  // lose its capture silently -- which is the exact shape of the defect this test was written for.
-  for (const jobName of ['instance', 'browser']) {
+  // Every throwaway-owning job, not just the first: the browser job was split out of instance on
+  // 2026-09-22 and the images job gained its own throwaway in Story 8.9, and each inherits the same
+  // hazard, so asserting only `instance` would let a newer job lose its capture silently -- which
+  // is the exact shape of the defect this test was written for.
+  for (const jobName of ['instance', 'browser', 'images']) {
   const instance = jobSlice(workflow, jobName);
   const captureAt = instance.indexOf('capture the throwaway on failure');
   const teardownAt = instance.indexOf('tear the throwaway down');
@@ -574,7 +586,7 @@ test('every job that pins a literal Node pins one the engines range admits', () 
   // report it as an npm failure in a job no gate had ever looked at.
   const packageJson = JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8'));
   const declared = packageJson.engines.node;
-  const literalPinners = ['instance', 'browser', 'package'];
+  const literalPinners = ['instance', 'browser', 'images', 'package'];
   for (const job of literalPinners) {
     const pinned = /node-version:\s*(\S+)/.exec(jobSlice(workflow, job));
     assert.ok(pinned, `the ${job} job pins a node version`);
@@ -1541,9 +1553,60 @@ test("the throwaway's port and name are one fact, not six declarations of one", 
 
   const project = /^PROJECT="([^"]+)"/m.exec(throwaway);
   assert.ok(project, 'ci-throwaway.sh declares a PROJECT default');
+
+  // The images job's throwaway (Story 8.9) is the third, and its facts are held the same way: its
+  // port is declared once on its `up` line and read back by the reservation, the readiness wait and
+  // the admin-spec origin; its project is the container smoke names and the project the teardown
+  // removes; and it installs the edition the matrix names, which is the point of the leg.
+  //
+  // Mutation (Rule 19): delete the images job's admin-spec step -> this goes red.
+  const images = jobSlice(workflow, 'images');
+  const imagesRuns = runCommands(images);
+  const imagesUp = imagesRuns.find((command) => command.startsWith('sh scripts/ci-throwaway.sh up'));
+  assert.ok(imagesUp, 'the images job brings up a throwaway of its own');
+  const imagesPort = /--web (\d+)/.exec(imagesUp);
+  const imagesProject = /--project (\S+)/.exec(imagesUp);
+  assert.ok(imagesPort && imagesProject, 'that throwaway names its own port and project');
+  assert.ok(![port, browserPort[1]].includes(imagesPort[1]), 'on a port neither other throwaway uses');
+  assert.notEqual(imagesProject[1], project[1], 'under a project the instance throwaway does not use');
+  assert.notEqual(imagesProject[1], browserProject[1], 'nor the browser throwaway');
+  assert.match(imagesUp, / --image \$\{\{ matrix\.image \}\}$/, 'installing the edition this leg of the matrix names');
+  assert.match(reserve, new RegExp(`(=|,)${imagesPort[1]}(,|$)`), `the reservation covers ${imagesPort[1]}`);
+  for (const job of ['instance', 'browser', 'images']) {
+    const reserved = runCommands(jobSlice(workflow, job)).find((command) => command.startsWith('sudo sysctl -w net.ipv4.ip_local_reserved_ports='));
+    assert.equal(reserved, reserve, `the ${job} job reserves the same three ports as every other job`);
+  }
+  assert.ok(
+    imagesRuns.includes(`sh scripts/wait-readiness.sh --url http://localhost:${imagesPort[1]}/api/ocupilot/readiness/`),
+    `the images job waits on its own port ${imagesPort[1]}`
+  );
+  assert.ok(
+    imagesRuns.includes(`node tools/admin-spec.mjs --origin http://localhost:${imagesPort[1]}`),
+    `the images job drift-checks /api/admin on its own port ${imagesPort[1]} (AC3)`
+  );
+  const imagesSmoke = imagesRuns.find((command) => command.startsWith('sh scripts/smoke.sh'));
+  assert.ok(imagesSmoke, 'the images job smokes the installed edition');
+  assert.equal(/--container (\S+)/.exec(imagesSmoke)?.[1], imagesProject[1], "smoke names the images throwaway's container, which follows --project");
+  assert.doesNotMatch(imagesSmoke, /--namespace/, "and names no namespace: the fallback to the one the install resolved is what is under test (AC1)");
+  assert.ok(
+    imagesRuns.includes(`curl -fsS -u _SYSTEM:SYS http://localhost:${imagesPort[1]}/api/ocupilot/agent/providers | grep -q '"credentialsRungAvailable":true'`),
+    `the images job reads the credentials rung as offered in the install namespace, on its own port ${imagesPort[1]} (AC2)`
+  );
+  const imagesDown = imagesRuns.find((command) => command.startsWith('sh scripts/ci-throwaway.sh down'));
+  assert.ok(imagesDown, 'the images job tears its throwaway down');
+  assert.equal(/--project (\S+)/.exec(imagesDown)?.[1], imagesProject[1], 'the teardown removes the project the bring-up created');
+  const imagesDir = /--dir (\S+)/.exec(imagesUp)?.[1];
+  assert.ok(imagesDir, 'the bring-up names its own directory');
+  for (const command of [imagesDown, imagesRuns.find((run) => run.startsWith('sh scripts/ci-throwaway.sh logs'))]) {
+    assert.equal(/--dir (\S+)/.exec(command ?? '')?.[1], imagesDir, `"${command}" names the directory the bring-up wrote`);
+  }
+
   for (const gate of DECLARED_GATES) {
     const named = /--container (\S+)/.exec(gate);
     if (named === null) continue;
+    // Each `--container` names the throwaway its own job created: the images job's smoke names
+    // that job's project, held above, and every other one names the default.
+    if (gate === imagesSmoke) continue;
     assert.equal(
       named[1],
       project[1],
@@ -2188,4 +2251,136 @@ test('DW-1079: a FAIL verdict with no parseable row still says the run did not p
   const run = runSmokeOverReport(['ocupilot-smoke: docker exec ocupilot-ci', 'ocupilot-smoke: executed=0'].join('\n'));
   assert.equal(run.status, 1);
   assert.match(run.output, /smoke: the instance did not pass/, 'the fallback sentence, rather than an empty list');
+});
+
+// --- The install namespace smoke falls back to (Story 8.9) -----------------------------------
+
+/**
+ * Run `smoke.sh` against a stub `iris` that plays the instance's namespace answer.
+ *
+ * A session opened in `%SYS` is the namespace probe: the stub answers it with
+ * `OCUPILOT_STUB_NS_FLAGS` (`<HSCUSTOM exists>,<USER exists>`). Any other session is the report
+ * run, answered with a passing verdict. Every session's `-U` argument is recorded in order, so a
+ * leg reads which sessions ran and in which namespace. `OCUPILOT_NAMESPACE` is removed from the
+ * environment unless the leg supplies it, since with no container named the script reads it from
+ * this process's own environment.
+ */
+function runSmokeResolving(flags, argv, extraEnv = {}) {
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-smoke-namespace-'));
+  try {
+    const sessions = join(dir, 'sessions.txt');
+    const stub = join(dir, 'iris');
+    writeFileSync(
+      stub,
+      [
+        '#!/bin/sh',
+        'printf \'%s\\n\' "$4" >> "$OCUPILOT_STUB_SESSIONS"',
+        'cat > /dev/null',
+        'if [ "$4" = "%SYS" ]; then',
+        '  printf \'%s\\n\' "OCUPILOT-SMOKE-NS-START:$OCUPILOT_STUB_NS_FLAGS:OCUPILOT-SMOKE-NS-END"',
+        '  exit 0',
+        'fi',
+        'printf \'%s\\n\' "OCUPILOT-SMOKE-REPORT-START:"',
+        'printf \'%s\\n\' "  pass     readiness"',
+        'printf \'%s\\n\' "OCUPILOT-SMOKE-VERDICT-START:PASS:OCUPILOT-SMOKE-VERDICT-END"',
+        'exit 0',
+        '',
+      ].join('\n')
+    );
+    chmodSync(stub, 0o755);
+    const env = { ...process.env };
+    delete env.OCUPILOT_NAMESPACE;
+    const run = spawnSync('/bin/sh', [join(REPO_ROOT, 'scripts', 'smoke.sh'), '--demo', '0', ...argv], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      env: {
+        ...env,
+        ...extraEnv,
+        PATH: `${dir}:${process.env.PATH ?? ''}`,
+        OCUPILOT_STUB_SESSIONS: sessions,
+        OCUPILOT_STUB_NS_FLAGS: flags,
+      },
+    });
+    const opened = existsSync(sessions) ? readFileSync(sessions, 'utf8').split('\n').filter((line) => line !== '') : [];
+    return { status: run.status, output: `${run.stdout}${run.stderr}`, sessions: opened };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test('Story 8.9 AC1: with no --namespace, smoke runs in USER on an instance that has USER and no HSCUSTOM', () => {
+  // The defect the plain-Community probe found: the fallback was a literal HSCUSTOM, so on the
+  // stock plain image smoke opened a session in a namespace that does not exist and answered
+  // "Access Denied" with no verdict.
+  //
+  // Mutation (Rule 19): restore `NAMESPACE="HSCUSTOM"` as the fallback -> this goes red on the
+  // report session's namespace.
+  const run = runSmokeResolving('0,1', []);
+  assert.equal(run.status, 0, run.output);
+  assert.deepEqual(run.sessions, ['%SYS', 'USER'], 'the namespace is asked in %SYS, then the report runs in USER');
+
+  const both = runSmokeResolving('1,1', []);
+  assert.equal(both.status, 0, both.output);
+  assert.deepEqual(both.sessions, ['%SYS', 'HSCUSTOM'], 'and HSCUSTOM wins where it exists, as the install resolves it');
+});
+
+test('Story 8.9: an instance with neither HSCUSTOM nor USER is refused by name, and no report session opens', () => {
+  const run = runSmokeResolving('0,0', []);
+  assert.equal(run.status, 1, run.output);
+  assert.match(run.output, /HSCUSTOM/, 'the refusal names HSCUSTOM');
+  assert.match(run.output, /USER/, 'and USER');
+  assert.deepEqual(run.sessions, ['%SYS'], 'and only the probe session ran');
+
+  const silent = runSmokeResolving('', []);
+  assert.equal(silent.status, 1, `an instance that gave no answer is not a pass: ${silent.output}`);
+  assert.deepEqual(silent.sessions, ['%SYS'], 'and no report session opens over a guess');
+});
+
+test('Story 8.9: a garbled probe answer is refused with its own message and the raw output, never read as "neither exists"', () => {
+  // smoke.sh's `case "$PROBE" in` has two failing arms with different sentences: `0,0)` for an
+  // instance that definitively answered "neither exists", and `*)` for an answer the grep could
+  // not parse at all, which additionally dumps the raw session output for diagnosis. The test
+  // above only asserts that both mention "HSCUSTOM" and "USER" by name -- true of both arms'
+  // sentences -- so it cannot tell them apart, and collapsing the `*)` arm into the `0,0)` one
+  // (losing the distinct wording and the diagnostic dump) would leave every existing assertion
+  // green.
+  //
+  // Mutation (Rule 19): replace the `*)` arm's echo with the `0,0)` arm's sentence, and drop the
+  // `printf ... | tail -n 30 ...` dump -> this goes red on both the distinguishing phrase and the
+  // missing raw output below.
+  const garbled = runSmokeResolving('sideways-answer', []);
+  assert.equal(garbled.status, 1, garbled.output);
+  assert.match(garbled.output, /did not say whether/, 'the catch-all names itself distinctly from the explicit "neither" answer');
+  assert.doesNotMatch(garbled.output, /this instance has neither/, 'never the explicit-neither sentence for an answer that could not be parsed');
+  assert.match(garbled.output, /sideways-answer/, 'and the raw probe output is dumped for diagnosis');
+  assert.deepEqual(garbled.sessions, ['%SYS'], 'and no report session opens over a guess');
+
+  const neither = runSmokeResolving('0,0', []);
+  assert.match(neither.output, /this instance has neither/, 'the explicit "neither" answer gets its own sentence');
+  assert.doesNotMatch(neither.output, /did not say whether/, 'never the catch-all one');
+});
+
+test('Story 8.9: --namespace and OCUPILOT_NAMESPACE still name the namespace, with no probe', () => {
+  const named = runSmokeResolving('0,1', ['--namespace', 'HSCUSTOM']);
+  assert.equal(named.status, 0, named.output);
+  assert.deepEqual(named.sessions, ['HSCUSTOM'], 'the named namespace, unchanged from before');
+
+  const fromEnv = runSmokeResolving('0,1', [], { OCUPILOT_NAMESPACE: 'OCUPILOT' });
+  assert.equal(fromEnv.status, 0, fromEnv.output);
+  assert.deepEqual(fromEnv.sessions, ['OCUPILOT'], 'and the environment override, unchanged from before');
+});
+
+test("Story 8.9: smoke.sh's default install namespace is container-start.sh's, candidate for candidate", () => {
+  // Two copies of one choice: the install picks its namespace in container-start.sh, and smoke
+  // re-derives it from the same instance. Held equal here so they cannot drift apart.
+  //
+  // Mutation (Rule 19): swap smoke's `1,[01])` and `0,1)` answers -> this goes red.
+  const start = readFileSync(join(REPO_ROOT, 'scripts', 'container-start.sh'), 'utf8');
+  const smoke = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'smoke.sh'), 'utf8'));
+  const chosen = /tDefault=\$Select\(tHas\w+:"(\w+)",tHas\w+:"(\w+)",1:""\)/.exec(start);
+  assert.ok(chosen, 'container-start.sh chooses between two candidates');
+  const asked = /Exists\("(\w+)"\)_","_##class\(%SYS\.Namespace\)\.Exists\("(\w+)"\)/.exec(smoke);
+  assert.deepEqual(asked?.slice(1), chosen.slice(1), 'smoke asks about the same candidates, in the same order');
+  assert.match(smoke, new RegExp(`1,\\[01\\]\\) NAMESPACE="${chosen[1]}"`), `the first existing candidate wins: ${chosen[1]}`);
+  assert.match(smoke, new RegExp(`0,1\\) NAMESPACE="${chosen[2]}"`), `and the second only without it: ${chosen[2]}`);
 });

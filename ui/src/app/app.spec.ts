@@ -12,6 +12,12 @@ import {
   SET_DEFAULT_ACTION,
 } from './areas/agent/definition-actions';
 import { DefinitionForm } from './areas/agent/definition-form.store';
+import { RoleCreateForm } from './areas/permissions/role-create-form.store';
+import { ResourceEditor } from './areas/permissions/resource-editor.store';
+import { WalletSecretForm } from './areas/security/wallet-secret-form.store';
+import { X509Form } from './areas/security/x509-form.store';
+import { DeviceForm } from './areas/os-management/device-form.store';
+import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
 import { AgentContext } from './core/agent-context';
@@ -1015,6 +1021,47 @@ describe('the shell frame', () => {
     expect(definitionForm.key()).not.toBe('');
     expect(formDirty.dirty()).toBe(true);
 
+    // The same answer for the create-a-user form (Story 8.2): a password THIS principal typed and
+    // has not saved, in a root-provided store (AD-35).
+    const userCreateForm = TestBed.inject(UserCreateForm);
+    userCreateForm.setPassword('a-password-this-principal-typed');
+    expect(userCreateForm.password()).not.toBe('');
+
+    // The same answer for the create-a-role form (Story 8.3): a half-composed role THIS principal
+    // typed and has not saved, in a root-provided store.
+    const roleCreateForm = TestBed.inject(RoleCreateForm);
+    roleCreateForm.setValue('Name', 'a-role-this-principal-typed');
+    roleCreateForm.applyGrant('%DB_USER', 'RW');
+    expect(roleCreateForm.grants().length).toBe(1);
+
+    // The same answer for the resource editor (Story 8.4): a description THIS principal typed and
+    // has not saved, in a root-provided store.
+    const resourceEditor = TestBed.inject(ResourceEditor);
+    resourceEditor.setDescription('a-description-this-principal-typed');
+    expect(resourceEditor.description()).not.toBe('');
+
+    // The same answer for the X.509 credential form (Story 8.5): a certificate, a private key and
+    // its password THIS principal pasted and has not saved, in a root-provided store (AD-35).
+    const x509Form = TestBed.inject(X509Form);
+    x509Form.setCertificate('a-certificate-this-principal-pasted');
+    x509Form.setPrivateKey('a-key-this-principal-pasted');
+    x509Form.setPassword('a-password-this-principal-typed');
+    expect(x509Form.privateKey()).not.toBe('');
+
+    // The same answer for the wallet secret form (Story 8.6): a value THIS principal typed and has
+    // not saved, in a root-provided store (AD-35). A create in a collection takes input before its
+    // form read is made.
+    const walletSecretForm = TestBed.inject(WalletSecretForm);
+    walletSecretForm.setSecret('a-value-this-principal-typed');
+    expect(walletSecretForm.secretText()).not.toBe('');
+
+    // The same answer for the device editor (Story 8.8): a device THIS principal typed and has not
+    // saved, in a root-provided store. A create takes input before its form read is made.
+    const deviceForm = TestBed.inject(DeviceForm);
+    deviceForm.setValue('Name', 'a-device-this-principal-typed');
+    deviceForm.setValue('PhysicalDevice', '/tmp/a-path-this-principal-typed');
+    expect(deviceForm.value('Name')).not.toBe('');
+
     // The ninth answer of the same kind (Story 3.6, AC5). Whether the instance holds an enabled
     // definition is a read THIS principal made, and the panel and the rail's dot pick an audience
     // from it. Left standing, the next principal's first paint shows an administrator's reminder
@@ -1048,6 +1095,34 @@ describe('the shell frame', () => {
     expect(definitionForm.key()).toBe('');
     expect(definitionForm.value('name')).toBe('');
     expect(formDirty.dirty()).toBe(false);
+
+    // Mutation (Rule 19): delete `this.userCreateForm.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's tab holds the previous one's typed password.
+    expect(userCreateForm.password()).toBe('');
+
+    // Mutation (Rule 19): delete `this.roleCreateForm.reset()` from `App.verifyWhenSignedIn` ->
+    // these two go red, and the next principal's role form holds the previous one's name and grants.
+    expect(roleCreateForm.value('Name')).toBe('');
+    expect(roleCreateForm.grants().length).toBe(0);
+
+    // Mutation (Rule 19): delete `this.resourceEditor.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's editor holds the previous one's typed description.
+    expect(resourceEditor.description()).toBe('');
+
+    // Mutation (Rule 19): delete `this.x509Form.reset()` from `App.verifyWhenSignedIn` -> these
+    // three go red, and the next principal's X.509 form holds the previous one's pasted key.
+    expect(x509Form.certificate()).toBe('');
+    expect(x509Form.privateKey()).toBe('');
+    expect(x509Form.password()).toBe('');
+
+    // Mutation (Rule 19): delete `this.walletSecretForm.reset()` from `App.verifyWhenSignedIn` ->
+    // this goes red, and the next principal's wallet form holds the previous one's typed value.
+    expect(walletSecretForm.secretText()).toBe('');
+
+    // Mutation (Rule 19): delete `this.deviceForm.reset()` from `App.verifyWhenSignedIn` -> these
+    // two go red, and the next principal's device editor holds the previous one's typed device.
+    expect(deviceForm.value('Name')).toBe('');
+    expect(deviceForm.value('PhysicalDevice')).toBe('');
 
     expect(scope.resets).toBe(1);
     // The fourth answer of the same kind (Story 1.13). A re-read parked with connectivity is a

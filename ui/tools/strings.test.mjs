@@ -524,9 +524,14 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // tripwire is for is unchanged -- it catches a run that read a fraction of the table or far too
   // much of the document -- and the exact count assertion below, derived from the table itself, is
   // what still holds strings.ts to the table literal for literal.
+  //
+  // Story 8.5 moves the bound to 700 under the same protocol: its five rows publish fourteen
+  // literals -- the X.509 list's Import and agent invitation, the credential form's title, seven
+  // labels, its Load from file button and two helpers, and the proposal card's optional mark -- and
+  // take the table past 600.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 600,
-    `expected between 150 and 600 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 700,
+    `expected between 150 and 700 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 
@@ -599,13 +604,15 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
   // application error log publishes for a namespace this log does not carry -- so on this screen
   // there IS now a sentence for an unknown namespace, which supersedes the claim this roster
   // carried for DW-126: the shell is silent for a namespace only where no screen publishes copy.
+  // `userFormNamespace` is a field label, not a sentence about a namespace: the create-a-user
+  // form's startup namespace, which the account enters on sign-in.
   const namespaceSentences = Object.entries(stringsValues).filter(([key]) =>
     key.toLowerCase().includes('namespace')
   );
   assert.deepEqual(
     namespaceSentences.map(([key]) => key).sort(),
-    ['errorLogEmptyNamespace', 'errorLogRefusedNamespace', 'headerNamespaceLabel'],
-    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state and one named refusal'
+    ['errorLogEmptyNamespace', 'errorLogRefusedNamespace', 'headerNamespaceLabel', 'userFormNamespace'],
+    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state, one named refusal and one field label'
   );
 });
 

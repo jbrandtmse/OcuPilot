@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { builtScreens, hasIdRoute } from './core/navigation';
+import { DIALOG_EDITORS, builtScreens, hasIdRoute } from './core/navigation';
 import type { ScreenDeclaration } from './core/screens.generated';
 import { ScreenOutlet } from './shell/screen-outlet';
-import { buildRoutes, routes } from './app.routes';
+import { buildRoutes, leaveFormGuard, routes } from './app.routes';
 
 /**
  * The route table is derived from the descriptor mirror, not typed out (AD-5). Adding a screen
@@ -77,5 +77,32 @@ describe('the route table', () => {
     expect(paths[paths.length - 1]).toBe('**');
     for (const route of built) expect(route.component).toBe(ScreenOutlet);
     expect(built.some((route) => route.pathMatch === 'full')).toBe(false);
+  });
+
+  // Story 8.4, AC7: a screen whose editor is a dialog over it asks before any navigation leaves it,
+  // as a `form-page` does, and an ordinary list does not.
+  //
+  // Mutation (Rule 19): drop the `DIALOG_EDITORS` test from `buildRoutes` -> the dialog-editor
+  // assertions go red.
+  it('guards a form page and a dialog-editor screen on both routes, and no other screen', () => {
+    const screen = (route: string, archetype: string, descriptor: string): ScreenDeclaration =>
+      ({ route, archetype, descriptor, area: 'permissions', built: true, sideBarPosition: 1, id: { kind: 'single', parts: [] } }) as unknown as ScreenDeclaration;
+    const [editor] = [...DIALOG_EDITORS];
+    const built = buildRoutes([
+      screen('permissions/resources', 'list', editor),
+      screen('permissions/roles/edit', 'form-page', 'Probe.Form'),
+      screen('permissions/services', 'list', 'Probe.List'),
+    ]);
+    const guarded = (path: string) => built.find((route) => route.path === path)?.canDeactivate ?? [];
+    expect(guarded('permissions/resources')).toEqual([leaveFormGuard]);
+    expect(guarded('permissions/resources/:id')).toEqual([leaveFormGuard]);
+    expect(guarded('permissions/roles/edit')).toEqual([leaveFormGuard]);
+    expect(guarded('permissions/services')).toEqual([]);
+    expect(guarded('permissions/services/:id')).toEqual([]);
+
+    expect(editor).toBe('OcuPilot.Screen.Descriptor.ResourceList');
+    const shipped = (path: string) => routes.find((route) => route.path === path)?.canDeactivate ?? [];
+    expect(shipped('permissions/resources')).toEqual([leaveFormGuard]);
+    expect(shipped('permissions/resources/:id')).toEqual([leaveFormGuard]);
   });
 });

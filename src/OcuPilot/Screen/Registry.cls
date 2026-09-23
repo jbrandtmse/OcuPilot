@@ -1975,6 +1975,11 @@ ClassMethod NameArrayProblem(pParent As %DynamicObject, pKey As %String, pAllowe
 /// spelling nobody sends. Both entries are now checked against one set,
 /// <method>DeclaredNames</method>'s, so the two sibling declarations cannot be validated against
 /// different sets, which is the cause rather than the symptom.</p>
+/// <p><b>A <code>secretArguments</code> entry also qualifies when it is a top-level
+/// <code>secret</code> literal row of the screen's write tools</b> (<method>SecretRowNames</method>):
+/// a derived credential, or a wrapper field the tool authors (AD-3). The source is additive --
+/// every name the two sources above admit is still admitted -- and
+/// <file>ui/tools/screen-mirror.mjs</file>'s <code>secretRowNames</code> applies the same rule.</p>
 /// <p><b>Both directions moved, and both are pinned.</b> Folding the declared criteria into the
 /// set <b>loosens</b> <code>fingerprintExcludes</code> -- a criterion name was refused before and
 /// is a name the read declares. Scoping the tool half to the rows a write tool may actually set
@@ -2010,9 +2015,10 @@ ClassMethod ConfirmChannelProblem(pDeclaration As %DynamicObject) As %String
         }
         If tProblem '= "" Quit
 
+        Set tSecretRows = ..SecretRowNames(.tRows)
         For tI = 1:1:$ListLength(tSecrets) {
             Set tName = $List(tSecrets, tI)
-            If '$ListFind(tNames("settable"), tName) && '$ListFind(tNames("read"), tName) {
+            If '$ListFind(tNames("settable"), tName) && '$ListFind(tNames("read"), tName) && '$ListFind(tSecretRows, tName) {
                 Set tProblem = "secretArguments names '" _ tName _ "', which is neither a settable field of this screen's write tool nor one its read declares (AD-6)"
                 Quit
             }
@@ -2373,7 +2379,7 @@ ClassMethod LastSegment(pPath As %String) As %String [ Private ]
 }
 
 /// <p>The classified field rows of the write tool <var>pIdentifier</var> owns, as
-/// <code>pRows(path) = $ListBuild(isSettable, strippedName, isSettableStringLiteral)</code>;
+/// <code>pRows(path) = $ListBuild(isSettable, strippedName, isSettableStringLiteral, isTopLevelSecret)</code>;
 /// empty when the identifier owns no <class>OcuPilot.Screen.Tool.ToolFields</class> entry. A
 /// refusal is returned when that generated block cannot be read, because an unreadable field list
 /// is not a negative result.</p>
@@ -2387,8 +2393,9 @@ ClassMethod LastSegment(pPath As %String) As %String [ Private ]
 /// which is the circularity this shape avoids. The consequence is stated rather than hidden: a
 /// derived field the tool does not permit is still a nameable secret here, and closing that is
 /// this spec's <code>deferred:</code> item. The third element narrows the rows to a string
-/// placeholder, which is the credential-name rule's own qualification and nothing else's. One
-/// reader of the generated block, three questions asked of its rows.</p>
+/// placeholder, which is the credential-name rule's own qualification and nothing else's; the
+/// fourth marks a top-level <code>secret</code> literal (<method>SecretRowNames</method>). One
+/// reader of the generated block, four questions asked of its rows.</p>
 ClassMethod ToolFieldRows(pIdentifier As %String, Output pRows) As %String [ Private ]
 {
     Kill pRows
@@ -2418,7 +2425,8 @@ ClassMethod ToolFieldRows(pIdentifier As %String, Output pRows) As %String [ Pri
                 Set tLiteral = (tField.%Get("class") = "ordinary") && (tField.%Get("shape") = "literal")
                 Set tName = $Select($Extract(tPath, *-1, *) = "[]": $Extract(tPath, 1, *-2), 1: tPath)
                 If (tPath [ ".") || (tName [ "[") Set tName = ""
-                Set pRows(tPath) = $ListBuild((tLiteral && (tName '= "")), tName, (tLiteral && (tField.%Get("templateType") = "string")))
+                Set tTopSecret = (tField.%Get("class") = "secret") && (tField.%Get("shape") = "literal") && '(tPath [ ".") && '(tPath [ "[")
+                Set pRows(tPath) = $ListBuild((tLiteral && (tName '= "")), tName, (tLiteral && (tField.%Get("templateType") = "string")), tTopSecret)
             }
         }
     } Catch ex {
@@ -2426,6 +2434,25 @@ ClassMethod ToolFieldRows(pIdentifier As %String, Output pRows) As %String [ Pri
         Set tProblem = "the generated tool field lists could not be read: " _ ex.DisplayString()
     }
     Quit tProblem
+}
+
+/// <p>The names of the top-level <code>secret</code> literal rows in <var>pRows</var>
+/// (<method>ToolFieldRows</method>'s answer), as a <class>%List</class>: the third source a
+/// <code>secretArguments</code> entry may name. A nested path, an array element and a row of any
+/// other class contribute nothing.</p>
+ClassMethod SecretRowNames(ByRef pRows) As %List [ Private ]
+{
+    Set tNames = ""
+    Set tPath = ""
+    For {
+        Set tPath = $Order(pRows(tPath))
+        If tPath = "" Quit
+        Set tRow = pRows(tPath)
+        If '$ListValid(tRow) || ($ListLength(tRow) < 4) Continue
+        If '$List(tRow, 4) Continue
+        If '$ListFind(tNames, tPath) Set tNames = tNames _ $ListBuild(tPath)
+    }
+    Quit tNames
 }
 
 /// <p>A refusal naming the first key of <var>pObject</var> outside <var>pAllowed</var>, or

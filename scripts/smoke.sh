@@ -18,7 +18,8 @@
 #   --compose-file FILE  run inside a compose project's `iris` service
 #   --project NAME       the compose project name, with --compose-file
 #   --service NAME       the compose service to exec into (default: iris)
-#   --namespace NS       the install namespace (default: OCUPILOT_NAMESPACE, else HSCUSTOM)
+#   --namespace NS       the install namespace (default: OCUPILOT_NAMESPACE, else the instance's
+#                        own answer: HSCUSTOM if it exists, else USER, as the install resolves it)
 #   --user NAME          sign-in credentials; the two list reads need %Admin_Secure:USE and %DB_IRISSYS:READ
 #   --password VALUE     ...its password. With no --user the sign-in check is SKIPPED, and so
 #                        are the API reads that need its token -- which is honest, and
@@ -31,7 +32,8 @@
 #
 # Exit 0 when the run passed: at least one check executed and none failed. Exit 1 when it did not,
 # including a run in which every check was skipped, because zero executed checks is a failure and
-# never a pass. Exit 2 for a caller error: a bad argument, or a credential this script refuses.
+# never a pass, and an instance holding neither HSCUSTOM nor USER or not answering, with no report run.
+# Exit 2 for a caller error: a bad argument, or a credential this script refuses.
 #
 # `iris session` echoes a banner and a fresh prompt after every line it reads, so the report is
 # extracted between markers rather than assumed to be "the last lines". Each marker is written
@@ -57,7 +59,7 @@ while [ $# -gt 0 ]; do
         --user) SMOKE_USER="$2"; shift 2 ;;
         --password) SMOKE_PASSWORD="$2"; shift 2 ;;
         --demo) DEMO="$2"; shift 2 ;;
-        -h|--help) sed -n '2,38p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,40p' "$0"; exit 0 ;;
         *) echo "smoke: unknown argument $1"; exit 2 ;;
     esac
 done
@@ -143,7 +145,33 @@ if [ -z "$NAMESPACE" ]; then
         NS_RAW="${OCUPILOT_NAMESPACE:-}"
     fi
     NAMESPACE=$(printf '%s' "$NS_RAW" | tr -cd 'A-Za-z0-9_%-')
-    [ -n "$NAMESPACE" ] || NAMESPACE="HSCUSTOM"
+fi
+
+# No override: the instance's own answer, resolved the way scripts/container-start.sh resolves the
+# install namespace -- HSCUSTOM when it exists, else USER. Asked in %SYS, which every instance has,
+# so a missing namespace is refused here by name rather than answered "Access Denied" by a session
+# opened in it. The instance reports both flags and this script chooses, so the choice is testable
+# with a stub `iris`.
+if [ -z "$NAMESPACE" ]; then
+    PROBE_RAW=$($RUNNER iris session iris -U %SYS 2>&1 <<'EOF' || true
+Write "OCUPILOT-"_"SMOKE-NS-START:"_##class(%SYS.Namespace).Exists("HSCUSTOM")_","_##class(%SYS.Namespace).Exists("USER")_":OCUPILOT-"_"SMOKE-NS-END",!
+Halt
+EOF
+)
+    PROBE=$(printf '%s\n' "$PROBE_RAW" | tr '\r' ' ' | grep -o 'OCUPILOT-SMOKE-NS-START:[01],[01]:OCUPILOT-SMOKE-NS-END' | tail -n 1 | sed -e 's/^OCUPILOT-SMOKE-NS-START://' -e 's/:OCUPILOT-SMOKE-NS-END$//')
+    case "$PROBE" in
+        1,[01]) NAMESPACE="HSCUSTOM" ;;
+        0,1) NAMESPACE="USER" ;;
+        0,0)
+            echo "smoke: this instance has neither HSCUSTOM nor USER, so OcuPilot has no install namespace here; pass --namespace to name one"
+            exit 1
+            ;;
+        *)
+            echo "smoke: the instance did not say whether HSCUSTOM or USER exists, so no install namespace could be chosen; pass --namespace to name one"
+            printf '%s\n' "$PROBE_RAW" | tail -n 30 | sed -e 's/^/smoke: | /'
+            exit 1
+            ;;
+    esac
 fi
 
 USER_LITERAL=$(escape_literal "$SMOKE_USER")

@@ -91,6 +91,31 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/agent/definitions" Method="GET" Call="AgentDefinitionList"/>
   <Route Url="/agent/definitions" Method="POST" Call="AgentDefinitionCreate"/>
   <Route Url="/agent/providers" Method="GET" Call="AgentProviders"/>
+  <Route Url="/web-applications/form" Method="GET" Call="WebAppFormRules"/>
+  <Route Url="/web-applications/name" Method="GET" Call="WebAppNameCheck"/>
+  <Route Url="/web-applications" Method="POST" Call="WebAppCreate"/>
+  <Route Url="/users/form" Method="GET" Call="UserFormRules"/>
+  <Route Url="/users/name" Method="GET" Call="UserNameCheck"/>
+  <Route Url="/users" Method="POST" Call="UserCreate"/>
+  <Route Url="/roles/form" Method="GET" Call="RoleFormRules"/>
+  <Route Url="/roles/name" Method="GET" Call="RoleNameCheck"/>
+  <Route Url="/roles" Method="POST" Call="RoleCreate"/>
+  <Route Url="/resources/form" Method="GET" Call="ResourceFormRules"/>
+  <Route Url="/resources/name" Method="GET" Call="ResourceNameCheck"/>
+  <Route Url="/resources/:id" Method="PUT" Call="ResourceUpdate"/>
+  <Route Url="/resources" Method="POST" Call="ResourceCreate"/>
+  <Route Url="/wallet/secret/form" Method="GET" Call="WalletSecretFormRead"/>
+  <Route Url="/wallet/secret/name" Method="GET" Call="WalletSecretNameCheck"/>
+  <Route Url="/wallet/secret/:id" Method="PUT" Call="WalletSecretUpdate"/>
+  <Route Url="/wallet/secret" Method="POST" Call="WalletSecretCreate"/>
+  <Route Url="/x509/form" Method="GET" Call="X509FormRead"/>
+  <Route Url="/x509/name" Method="GET" Call="X509NameCheck"/>
+  <Route Url="/x509/:id" Method="PUT" Call="X509Update"/>
+  <Route Url="/x509" Method="POST" Call="X509Import"/>
+  <Route Url="/device/form" Method="GET" Call="DeviceFormRead"/>
+  <Route Url="/device/name" Method="GET" Call="DeviceNameCheck"/>
+  <Route Url="/device/:id" Method="PUT" Call="DeviceUpdate"/>
+  <Route Url="/device" Method="POST" Call="DeviceCreate"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
   <Route Url="/logs/errors/namespaces" Method="GET" Call="LogErrorNamespaces"/>
   <Route Url="/logs/errors/dates" Method="GET" Call="LogErrorDates"/>
@@ -246,6 +271,194 @@ ClassMethod AgentDefinitionCreate() As %Status
 ClassMethod AgentProviders() As %Status
 {
     Quit ##class(OcuPilot.Api.Definitions).HandleProviders()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /web-applications/form</code> (Story 8.1):
+/// delegates to <class>OcuPilot.Area.WebApp.FormRules</class> and carries no logic of its own.</p>
+/// <p>The three web-application routes are declared sub-resource first, per the second ordering
+/// invariant: <code>/web-applications/form</code> and <code>/web-applications/name</code> are both
+/// two-segment literals under the one-segment <code>/web-applications</code>, so a shorter route
+/// declared first would swallow neither -- but the invariant is structural and the checker holds
+/// the whole map to it, so they lead.</p>
+ClassMethod WebAppFormRules() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.FormRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /web-applications/name</code> -- see
+/// <method>WebAppFormRules</method>. The create form's blur check: whether a name is already
+/// taken, which is a read of the instance rather than a validation of the value.</p>
+ClassMethod WebAppNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.FormRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /web-applications</code> -- see
+/// <method>WebAppFormRules</method>. The screen's own Save, which resolves the write through the
+/// same tool class the agent's confirm does (AD-55).</p>
+ClassMethod WebAppCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.Create).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /users/form</code> (Story 8.2): delegates to
+/// <class>OcuPilot.Area.Permissions.UserCreateRules</class> and carries no logic of its own. The
+/// two sub-resources precede <code>POST /users</code>, the order the REST convention requires.</p>
+ClassMethod UserFormRules() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.UserCreateRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /users/name</code>: the User form's blur check
+/// of whether a name is already taken.</p>
+ClassMethod UserNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.UserCreateRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /users</code>: the User form's Save, which
+/// resolves the write through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod UserCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.UserCreate).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /roles/form</code> (Story 8.3): delegates to
+/// <class>OcuPilot.Area.Permissions.RoleCreateRules</class> and carries no logic of its own. The two
+/// sub-resources precede <code>POST /roles</code>.</p>
+ClassMethod RoleFormRules() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.RoleCreateRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /roles/name</code>: the Role form's blur check
+/// of whether a name is already taken.</p>
+ClassMethod RoleNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.RoleCreateRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /roles</code>: the Role form's Save, which
+/// resolves the write through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod RoleCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.RoleCreate).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /resources/form</code> (Story 8.4): the resource
+/// editor's form read, delegating to <class>OcuPilot.Area.Permissions.ResourceRules</class>. The two
+/// sub-resources precede <code>/resources/:id</code>.</p>
+ClassMethod ResourceFormRules() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.ResourceRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /resources/name</code>: the resource editor's
+/// blur check of whether a name is taken.</p>
+ClassMethod ResourceNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.ResourceRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /resources</code>: the resource editor's create
+/// Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod ResourceCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.ResourceSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /resources/:id</code>: the resource editor's edit
+/// Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod ResourceUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.ResourceSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /wallet/secret/form</code> (Story 8.6): the wallet
+/// secret form's read, delegating to <class>OcuPilot.Area.Security.WalletRules</class>. The two
+/// sub-resources precede <code>/wallet/secret/:id</code>.</p>
+ClassMethod WalletSecretFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.WalletRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /wallet/secret/name</code>: the wallet secret
+/// form's blur check of whether a name is taken.</p>
+ClassMethod WalletSecretNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.WalletRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /wallet/secret</code>: the wallet secret form's
+/// create Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod WalletSecretCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.WalletSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /wallet/secret/:id</code>: the wallet secret
+/// form's edit Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod WalletSecretUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.WalletSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /x509/form</code> (Story 8.5): the X.509 form's
+/// read, delegating to <class>OcuPilot.Area.Security.X509Rules</class>. The two sub-resources
+/// precede <code>/x509/:id</code>.</p>
+ClassMethod X509FormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.X509Rules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /x509/name</code>: the X.509 form's blur check
+/// of whether an alias is taken.</p>
+ClassMethod X509NameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.X509Rules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /x509</code>: the X.509 form's import Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod X509Import() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.X509Save).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /x509/:id</code>: the X.509 form's edit Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod X509Update(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.X509Save).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /device/form</code> (Story 8.8): the device
+/// editor's read, delegating to <class>OcuPilot.Area.OsMgmt.DeviceRules</class>. The two
+/// sub-resources precede <code>/device/:id</code>.</p>
+ClassMethod DeviceFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DeviceRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /device/name</code>: the device editor's blur
+/// check of whether a name is taken.</p>
+ClassMethod DeviceNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DeviceRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /device</code>: the device editor's create Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod DeviceCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DeviceSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /device/:id</code>: the device editor's edit Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod DeviceUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.OsMgmt.DeviceSave).HandleUpdate(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /screens/:screen/read</code>: delegates to

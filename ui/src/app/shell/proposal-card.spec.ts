@@ -609,6 +609,45 @@ describe('the proposal card', () => {
     expect(values).toEqual([MASKED_VALUE, MASKED_VALUE]);
   });
 
+  it('Story 8.5: a secret the tool marks optional may stay empty, and a required one still holds Confirm', () => {
+    // Mutations (Rule 19): make `secretsFilled` require every masked field -> the optional-only
+    // press below stays aria-disabled and this goes red; make it skip every masked field -> Confirm
+    // is pressable with the required certificate empty and this goes red.
+    const view = liveView({
+      maskedFields: ['Certificate', 'PrivateKey'],
+      optionalFields: ['PrivateKey'],
+      changed: [
+        { field: 'Certificate', before: MASKED_VALUE, after: MASKED_VALUE },
+        { field: 'PrivateKey', before: MASKED_VALUE, after: MASKED_VALUE },
+      ],
+    });
+    const { fixture, card } = mount(view, { phase: 'live' });
+    const fields = Array.from(card.querySelectorAll('.ocu-proposal-card-secret')) as HTMLInputElement[];
+    expect(fields.map((field) => field.getAttribute('aria-required'))).toEqual(['true', 'false']);
+    const labels = Array.from(card.querySelectorAll('.ocu-proposal-card-secrets label.ocu-field-label')).map((node) =>
+      node.textContent?.trim()
+    );
+    expect(labels).toEqual(['Certificate', `PrivateKey (${STRINGS.proposalSecretOptional})`]);
+    const confirm = () => card.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement;
+    expect(confirm().getAttribute('aria-disabled')).toBe('true');
+
+    fields[1].value = 'a key';
+    fields[1].dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(confirm().getAttribute('aria-disabled')).toBe('true');
+
+    fields[1].value = '';
+    fields[1].dispatchEvent(new Event('input'));
+    fields[0].value = 'a certificate';
+    fields[0].dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(confirm().hasAttribute('aria-disabled')).toBe(false);
+    const seen: string[] = [];
+    fixture.componentRef.instance.confirm.subscribe((request) => seen.push(JSON.stringify(request.secrets)));
+    confirm().click();
+    expect(seen).toEqual(['{"Certificate":"a certificate","PrivateKey":""}']);
+  });
+
   it('a proposal that would turn auditing off carries the published warning above the footer', () => {
     // Mutation (Rule 19): stop projecting `auditWarning` in the mint -> the view carries false and
     // this goes red; the ObjectScript half is `OcuPilot.Test.ProposalWire`'s.
@@ -619,6 +658,39 @@ describe('the proposal card', () => {
     expect(warning.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
     expect(mount(liveView(), { phase: 'live' }).card.querySelector('.ocu-proposal-card-warning')).toBeNull();
+  });
+
+  it('DW-1489: a proposal the kernel marks with the unauthenticated consequence states it on the card', () => {
+    // The code is the kernel's and the sentence the string source's; the create is still offered.
+    //
+    // Mutation (Rule 19): drop the consequence block from the template, or make
+    // `consequenceSentence` answer '' -> this goes red.
+    const { card } = mount(liveView({ consequence: 'WEBAPP.UNAUTHENTICATED' }), { phase: 'live' });
+    const line = card.querySelector('[data-slot="consequence"]') as HTMLElement;
+    expect(line).not.toBeNull();
+    expect(line.textContent).toContain(STRINGS.webAppUnauthenticatedEffect);
+    expect(line.getAttribute('role')).toBe('status');
+    expect(card.querySelector('.ocu-proposal-card-confirm')).not.toBeNull();
+
+    expect(mount(liveView({ consequence: '' }), { phase: 'live' }).card.querySelector('[data-slot="consequence"]')).toBeNull();
+    expect(mount(EXAMPLE_PROPOSAL).card.querySelector('[data-slot="consequence"]')).toBeNull();
+  });
+
+  it('AD-10: a privileged grant is drawn destructive and names the privilege in one consequence line', () => {
+    // The kernel marks the proposal destructive and carries the code; an unauthenticated
+    // application that is also privileged carries one combined code, never two lines.
+    //
+    // Mutation (Rule 19): drop either privilege code from `consequenceSentence` -> this goes red.
+    const privileged = mount(liveView({ consequence: 'GRANT.PRIVILEGED', destructive: true, maskedFields: [] }), { phase: 'live' });
+    expect(privileged.card.classList.contains('ocu-proposal-card-destructive')).toBe(true);
+    const line = privileged.card.querySelector('[data-slot="consequence"]') as HTMLElement;
+    expect(line.textContent).toContain(STRINGS.privilegedGrantEffect);
+
+    const combined = mount(liveView({ consequence: 'WEBAPP.UNAUTHENTICATEDPRIVILEGED', destructive: true, maskedFields: [] }), { phase: 'live' });
+    const lines = combined.card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.privilegedGrantEffectUnauthenticated);
+    expect(lines[0].textContent).not.toContain(STRINGS.webAppUnauthenticatedEffect);
   });
 
   it('the in-card warning is a status region, the convention for an advisory', () => {

@@ -130,6 +130,16 @@ Property AuditWarning As %Boolean [ InitialExpression = 0 ];
 /// declaration answers for every tool that shipped before this property existed.</p>
 Property Destructive As %Boolean [ InitialExpression = 0 ];
 
+/// <p>The kernel-owned consequence code the write's tool answered for its payload at mint time
+/// (<code>Consequence(payload)</code>), such as <code>WEBAPP.UNAUTHENTICATED</code>, or
+/// <code>""</code>. The card renders the code's sentence beside the audit warning; it refuses
+/// nothing.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b>, for the reason
+/// <property>AuditWarning</property> records: every pre-existing row reads <code>""</code>, which
+/// is what every tool that shipped before this property existed answers, so no older row means
+/// anything different once a newer OcuPilot reads it.</p>
+Property Consequence As %String(MAXLEN = 64);
+
 /// <p>When the confirmed write was committed, ISO-8601 UTC; <code>""</code> while the row is not
 /// <parameter>STATECONFIRMED</parameter>. Written inside the claim's own transition and read by the
 /// card's confirmed status line.</p>
@@ -180,8 +190,8 @@ Index ProposalTargetIdx On (TargetRef As Exact, State);
 /// <code>turnKey</code>, <code>toolName</code>, <code>targetRef</code>, <code>fingerprint</code>,
 /// <code>arguments</code>, <code>payload</code>, <code>diff</code>, <code>unchangedCount</code>,
 /// <code>rationale</code>, <code>expectedImpact</code>, <code>reverse</code>,
-/// <code>auditWarning</code>, <code>definitionId</code> and <code>definitionVersion</code>, every
-/// one already
+/// <code>auditWarning</code>, <code>consequence</code>, <code>definitionId</code> and
+/// <code>definitionVersion</code>, every one already
 /// built and already stripped of secret-declared keys by
 /// <method>OcuPilot.Kernel.Proposal.Mint.Mint</method>; nothing here strips anything.
 /// <var>pLimitsClass</var> is the class <code>PROPOSALEXPIRYSECONDS</code> is read from, so a test
@@ -220,6 +230,7 @@ ClassMethod GuardedMint(ByRef pValues, pLimitsClass As %String, Output pKey As %
         Set tRow.Reverse = ..Cut($Get(pValues("reverse")), tSummaryMax)
         Set tRow.AuditWarning = ''$Get(pValues("auditWarning"))
         Set tRow.Destructive = ''$Get(pValues("destructive"))
+        Set tRow.Consequence = ..Cut($Get(pValues("consequence")), 64)
         Set tRow.DefinitionId = ..Cut($Get(pValues("definitionId")), 64)
         Set tRow.DefinitionVersion = ..Cut($Get(pValues("definitionVersion")), 32)
         Set tRow.CreatedAt = ..Stamp(tStamp)
@@ -492,7 +503,7 @@ ClassMethod ProjectedState(pStored As %String, pExpiresAt As %String) As %String
 /// <p>Turn <var>pTurnKey</var>'s proposals owned by <var>pUser</var>, oldest first, as the wire
 /// array the turn's progress payload carries:
 /// <code>{proposalId, target: {type, scope, id}, expiresAt, tool, changed, unchangedCount,
-/// unchanged, rationale, expectedImpact, reverse, state, auditWarning}</code>.</p>
+/// unchanged, rationale, expectedImpact, reverse, state, auditWarning, consequence}</code>.</p>
 /// <p><b>Every value is the row's own.</b> The target triple is
 /// <method>OcuPilot.Kernel.EntityRef.Parse</method>'s reading of the stored key, so a reader
 /// cannot be handed a triple this store never wrote; <code>changed</code> is the stored diff,
@@ -607,6 +618,7 @@ ClassMethod RowValues(pRow As OcuPilot.Kernel.State.Propose, Output pValues) As 
     Set pValues("definitionVersion") = ..Text(pRow.DefinitionVersion)
     Set pValues("auditWarning") = ''pRow.AuditWarning
     Set pValues("destructive") = ''pRow.Destructive
+    Set pValues("consequence") = ..Text(pRow.Consequence)
     Set tSC = ..GuardedStreamText(pRow, "Arguments", .tArguments)
     If $$$ISERR(tSC) Quit tSC
     Set pValues("arguments") = tArguments
@@ -650,6 +662,7 @@ ClassMethod WireRow(ByRef pValues, Output pOut As %DynamicObject) As %Status [ P
     Do tOut.%Set("confirmedAt", $Get(pValues("confirmedAt")), "string")
     Do tOut.%Set("auditWarning", ''$Get(pValues("auditWarning")), "boolean")
     Do tOut.%Set("destructive", ''$Get(pValues("destructive")), "boolean")
+    Do tOut.%Set("consequence", $Get(pValues("consequence")), "string")
     Set pOut = tOut
     Quit $$$OK
 }

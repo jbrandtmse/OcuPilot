@@ -25,7 +25,7 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 Parameter FRESH = "{""Enabled"":false,""Description"":""before"",""Resource"":""""}";
 
 /// <p>The keys the progress payload's <code>proposals[]</code> entry carries, comma-separated.</p>
-Parameter WIREKEYS = "proposalId,target,expiresAt,tool,changed,unchangedCount,unchanged,rationale,expectedImpact,reverse,state,closedReason,confirmedAt,auditWarning,destructive";
+Parameter WIREKEYS = "proposalId,target,expiresAt,tool,changed,unchangedCount,unchanged,rationale,expectedImpact,reverse,state,closedReason,confirmedAt,auditWarning,destructive,consequence";
 
 /// <p>The write tool whose generated field list the disclosure's masking is driven against
 /// (DW-1223). The probe descriptor owns no field-list entry, which is the fail-closed case and not

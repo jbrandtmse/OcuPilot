@@ -11,6 +11,7 @@ import { OverlayStack } from '../../core/overlay-stack';
 import { STRINGS } from '../../core/strings';
 import { stubAgentStatus } from '../../testing/agent-status';
 import { DefinitionFormPage } from './definition-form.page';
+import { DefinitionForm } from './definition-form.store';
 
 /**
  * The Definition form over stubs of the two things an instance supplies -- the URL's screen and
@@ -1358,5 +1359,248 @@ describe('the Definition form', () => {
     const posted = JSON.parse(calls.filter((call) => call.method === 'PUT').at(-1)?.body ?? '{}');
     expect(posted.credType).toBe('env');
     expect(posted.envVarName).toBe('OPENAI_COMPATIBLE_API_KEY');
+  });
+
+  // --- Story 8.9 AC2: env mode, where the namespace cannot reach the credentials rung ----------
+
+  /** The providers answer with the rung flag the server publishes beside the rows. */
+  const withRung = (body: { providers: unknown[] }, available: boolean | undefined) =>
+    available === undefined ? body : { ...body, credentialsRungAvailable: available };
+
+  /** Two vendor rows whose environment-variable defaults differ, so a cascade is observable. */
+  const ENV_PROVIDERS = {
+    providers: [
+      PROVIDERS_BODY.providers[0],
+      { ...TWO_PROVIDERS.providers[1], defaultEnvVarName: 'OPENAI_API_KEY' },
+    ],
+  };
+
+  /**
+   * Every route the form issues, answered the way the instance does: a create echoes the body it
+   * was sent under a new id, an empty variable is refused on its own field, and Test connection
+   * passes.
+   */
+  const envAnswer =
+    (providers: unknown): Answer =>
+    (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(providers);
+      if (path.endsWith('/test')) return ok({ reply: 'Hello', connectionVerified: true, testedAsStored: true });
+      if (init.method === 'POST' || init.method === 'PUT') {
+        const sent = JSON.parse(init.body ?? '{}') as Record<string, unknown>;
+        if (sent['envVarName'] === '') {
+          return refused([{ field: 'envVarName', code: 'AGENT.ENVVAR.REQUIRED', reason: 'Name the environment variable the key is read from.' }]);
+        }
+        return init.method === 'POST' ? created(definition({ ...sent, id: '9' })) : ok(definition(sent));
+      }
+      return path.endsWith('/definitions') ? ok({ definitions: [] }) : ok(definition());
+    };
+
+  const saveButton = (host: HTMLElement) =>
+    [...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement;
+
+  const lastBody = (calls: { method: string; body: string }[], method: string) =>
+    JSON.parse(calls.filter((call) => call.method === method).at(-1)?.body ?? '{}') as Record<string, unknown>;
+
+  it('Story 8.9 AC2: in env mode a create offers the environment variable in the key field\'s place and sends `env`', async () => {
+    // Mutation (Rule 19): render the API-key field whatever the flag says -> this goes red on the
+    // key field being present.
+    const { fixture, host, calls } = await mount(envAnswer(withRung(PROVIDERS_BODY, false)));
+
+    expect(host.querySelector('#ocu-definition-apiKey')).toBeNull();
+    expect(host.querySelector('.ocu-reveal-toggle')).toBeNull();
+    expect(host.textContent).not.toContain(STRINGS.formSecretStored);
+
+    const envVar = host.querySelector('#ocu-definition-envVarName') as HTMLInputElement;
+    expect(envVar).not.toBeNull();
+    expect(envVar.value).toBe('ANTHROPIC_API_KEY');
+    const labels = [...host.querySelectorAll('.ocu-field-label')].map((label) => label.textContent?.trim());
+    expect(labels).toEqual([
+      STRINGS.tableColumnName,
+      STRINGS.tableColumnProvider,
+      STRINGS.tableColumnModel,
+      STRINGS.agentDefinitionFieldEndpoint,
+      STRINGS.agentDefinitionFieldEnvVar,
+    ]);
+    const caption = host.querySelector('#ocu-definition-envVarName-caption') as HTMLElement;
+    expect(caption.textContent?.trim()).toBe(STRINGS.agentDefinitionEnvVarCaption);
+    expect(envVar.getAttribute('aria-describedby')).toBe('ocu-definition-envVarName-caption');
+
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'Claude';
+    name.dispatchEvent(new Event('input'));
+    envVar.value = '';
+    envVar.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    saveButton(host).click();
+    await settle(fixture);
+    expect(lastBody(calls, 'POST')['credType']).toBe('env');
+    const reason = host.querySelector('#ocu-definition-envVarName-reason') as HTMLElement;
+    expect(reason.textContent?.trim()).toBe('Name the environment variable the key is read from.');
+    expect(document.activeElement?.id).toBe('ocu-definition-envVarName');
+
+    const again = host.querySelector('#ocu-definition-envVarName') as HTMLInputElement;
+    again.value = 'MY_ANTHROPIC_KEY';
+    again.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    saveButton(host).click();
+    await settle(fixture);
+    const posted = calls.filter((call) => call.method === 'POST');
+    const body = JSON.parse(posted.at(-1)?.body ?? '{}') as Record<string, unknown>;
+    expect(body['credType']).toBe('env');
+    expect(body['envVarName']).toBe('MY_ANTHROPIC_KEY');
+  });
+
+  it('Story 8.9 AC2: in env mode a provider change and an unticked No API key restore `env`, never `creds`', async () => {
+    const vendor = await mount(envAnswer(withRung(ENV_PROVIDERS, false)));
+    const provider = vendor.host.querySelector('#ocu-definition-provider') as HTMLSelectElement;
+    provider.value = 'openai';
+    provider.dispatchEvent(new Event('change'));
+    await settle(vendor.fixture);
+    expect((vendor.host.querySelector('#ocu-definition-envVarName') as HTMLInputElement).value).toBe('OPENAI_API_KEY');
+    const name = vendor.host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'GPT';
+    name.dispatchEvent(new Event('input'));
+    await settle(vendor.fixture);
+    saveButton(vendor.host).click();
+    await settle(vendor.fixture);
+    expect(lastBody(vendor.calls, 'POST')['credType']).toBe('env');
+    expect(lastBody(vendor.calls, 'POST')['envVarName']).toBe('OPENAI_API_KEY');
+
+    const local = await mount(envAnswer(withRung(LOCAL_PROVIDERS, false)));
+    const localProvider = local.host.querySelector('#ocu-definition-provider') as HTMLSelectElement;
+    localProvider.value = 'compatible';
+    localProvider.dispatchEvent(new Event('change'));
+    await settle(local.fixture);
+    const noKey = local.host.querySelector('#ocu-definition-credType') as HTMLInputElement;
+    noKey.checked = true;
+    noKey.dispatchEvent(new Event('change'));
+    await settle(local.fixture);
+    noKey.checked = false;
+    noKey.dispatchEvent(new Event('change'));
+    await settle(local.fixture);
+    const localName = local.host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    localName.value = 'Local';
+    localName.dispatchEvent(new Event('input'));
+    await settle(local.fixture);
+    saveButton(local.host).click();
+    await settle(local.fixture);
+    expect(lastBody(local.calls, 'POST')['credType']).toBe('env');
+
+    // A stored keyless definition has no rung for the checkbox to have remembered, so unticking
+    // falls back to the default rung -- which in env mode is `env`.
+    const keyless = definition({
+      provider: 'compatible',
+      model: 'llama-3.3-70b-instruct',
+      endpointUrl: 'https://ocupilot.invalid/v1',
+      credType: 'none',
+      envVarName: '',
+      credentialName: '',
+    });
+    const stored = await mount(
+      (path, init) => (init.method === undefined && /\/definitions\/7$/.test(path) ? ok(keyless) : envAnswer(withRung(LOCAL_PROVIDERS, false))(path, init)),
+      '/agent/definitions/edit/7'
+    );
+    const storedNoKey = stored.host.querySelector('#ocu-definition-credType') as HTMLInputElement;
+    expect(storedNoKey.checked).toBe(true);
+    storedNoKey.checked = false;
+    storedNoKey.dispatchEvent(new Event('change'));
+    await settle(stored.fixture);
+    const storedEnv = stored.host.querySelector('#ocu-definition-envVarName') as HTMLInputElement;
+    storedEnv.value = 'OPENAI_COMPATIBLE_API_KEY';
+    storedEnv.dispatchEvent(new Event('input'));
+    await settle(stored.fixture);
+    saveButton(stored.host).click();
+    await settle(stored.fixture);
+    expect(lastBody(stored.calls, 'PUT')['credType']).toBe('env');
+  });
+
+  it('Story 8.9 AC2: in env mode a stored `creds` definition opens on `env`, as an unsaved change', async () => {
+    const { fixture, host, calls, formDirty } = await mount(
+      envAnswer(withRung(PROVIDERS_BODY, false)),
+      '/agent/definitions/edit/7'
+    );
+    expect(host.querySelector('#ocu-definition-apiKey')).toBeNull();
+    // An edit is where the key field's "Stored." caption would render, so this is the leg that can
+    // see it leak into env mode; the create leg cannot, since a create never shows it.
+    expect(host.textContent).not.toContain(STRINGS.formSecretStored);
+    expect((host.querySelector('#ocu-definition-envVarName') as HTMLInputElement).value).toBe('ANTHROPIC_API_KEY');
+    // Nothing was written by opening it: the move is the operator's to save, and the leave guard
+    // holds it until they do.
+    expect(calls.filter((call) => call.method !== 'GET')).toEqual([]);
+    expect(formDirty.dirty()).toBe(true);
+
+    saveButton(host).click();
+    await settle(fixture);
+    const body = lastBody(calls, 'PUT');
+    expect(body['credType']).toBe('env');
+    expect(body['envVarName']).toBe('ANTHROPIC_API_KEY');
+  });
+
+  it('Story 8.9 AC2: in env mode Test connection posts no credential, even with a key held', async () => {
+    // Mutation (Rule 19): drop `&& !this.envMode()` from testConnection's credential post -> this
+    // goes red on the `/credential` POST.
+    const { fixture, host, calls } = await mount(envAnswer(withRung(PROVIDERS_BODY, false)));
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'Claude';
+    name.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    // No control can type a key in env mode; the store is handed one directly so the guard, not
+    // the missing field, is what stands between it and the credential route.
+    TestBed.inject(DefinitionForm).setKey('sk-ant-held-before-env-mode');
+    (host.querySelector('.ocu-form-test button') as HTMLButtonElement).click();
+    await settle(fixture);
+    const posts = calls.filter((call) => call.method === 'POST').map((call) => call.path);
+    expect(posts.some((path) => path.endsWith('/credential'))).toBe(false);
+    expect(posts.some((path) => path.endsWith('/test'))).toBe(true);
+    expect(JSON.parse(calls.find((call) => call.method === 'POST')?.body ?? '{}')['credType']).toBe('env');
+  });
+
+  it('Story 8.9 AC2: in env mode a refused variable keeps its reason across a provider change until blurred', async () => {
+    const { fixture, host } = await mount(envAnswer(withRung(ENV_PROVIDERS, false)));
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'Claude';
+    name.dispatchEvent(new Event('input'));
+    const envVar = host.querySelector('#ocu-definition-envVarName') as HTMLInputElement;
+    envVar.value = '';
+    envVar.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    saveButton(host).click();
+    await settle(fixture);
+    expect(host.querySelector('#ocu-definition-envVarName-reason')).not.toBeNull();
+
+    const provider = host.querySelector('#ocu-definition-provider') as HTMLSelectElement;
+    provider.value = 'openai';
+    provider.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    const rewritten = host.querySelector('#ocu-definition-envVarName') as HTMLInputElement;
+    expect(rewritten.value).toBe('OPENAI_API_KEY');
+    expect(host.querySelector('#ocu-definition-envVarName-reason')).not.toBeNull();
+
+    rewritten.dispatchEvent(new Event('blur'));
+    await settle(fixture);
+    expect(host.querySelector('#ocu-definition-envVarName-reason')).toBeNull();
+  });
+
+  it('Story 8.9 AC2: in env mode the gate landing banner asks for the variable, never for a key', async () => {
+    // Mutation (Rule 19): render `agentGateLandingBanner` whatever `envMode` says -> this goes red.
+    const { host } = await mount(envAnswer(withRung(PROVIDERS_BODY, false)), '/agent/definitions/edit', { definitions: [] });
+    const banner = host.querySelector('.ocu-form-gate-banner') as HTMLElement;
+    expect(banner.textContent).toContain(STRINGS.agentGateLandingBannerEnv);
+    expect(banner.textContent).not.toContain(STRINGS.agentGateLandingBanner);
+  });
+
+  it('Story 8.9 AC2: where the rung is reachable, or the flag is absent, the form is unchanged', async () => {
+    for (const available of [true, undefined]) {
+      const { fixture, host, calls } = await mount(envAnswer(withRung(PROVIDERS_BODY, available)));
+      expect(host.querySelector('#ocu-definition-apiKey')).not.toBeNull();
+      expect(host.querySelector('#ocu-definition-envVarName')).toBeNull();
+      const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+      name.value = 'Claude';
+      name.dispatchEvent(new Event('input'));
+      await settle(fixture);
+      saveButton(host).click();
+      await settle(fixture);
+      expect(lastBody(calls, 'POST')['credType']).toBe('creds');
+    }
   });
 });

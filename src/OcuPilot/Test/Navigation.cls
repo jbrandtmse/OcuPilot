@@ -321,35 +321,37 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
     Do $$$AssertEquals(tHome.screens.%Get(0).route, "", "whose route is the application root")
 
     ; OS management proves the screen half follows the roster rather than a fixed list: it
-    ; carries its nine built screens sorted by (sideBarPosition, class name) -- ScreensForArea's
+    ; carries its ten built screens sorted by (sideBarPosition, class name) -- ScreensForArea's
     ; own collation (Registry.cls) -- so the four unlisted, sideBarPosition-0 screens sort first,
     ; alphabetically by descriptor class name (Database details, Database free-space, Database
-    ; volumes, then Process details), ahead of the listed ones in position order (Processes,
-    ; Locks, System usage, Databases, Devices last at position 5). Story 6.11 took this from four
-    ; to eight, and Story 6.12 took it from eight to nine; an added os-management screen updates
-    ; this count and the per-index assertions below with it.
+    ; volumes, the device editor, then Process details), ahead of the listed ones in position order
+    ; (Processes, Locks, System usage, Databases, Devices last at position 5). Story 6.11 took this
+    ; from four to eight, Story 6.12 to nine and Story 8.8 to ten; an added os-management screen
+    ; updates this count and the per-index assertions below with it.
     Set tOsMgmt = ##class(OcuPilot.Test.Descriptor).AreaEntry(tObject.areas, "os-management")
     Do $$$AssertTrue($IsObject(tOsMgmt), "the payload carries the os-management area")
     If $IsObject(tOsMgmt) {
-        Do $$$AssertEquals(tOsMgmt.screens.%Size(), 9, "which carries its nine built screens -- an added os-management screen updates this count and the per-index assertions below with it")
+        Do $$$AssertEquals(tOsMgmt.screens.%Size(), 10, "which carries its ten built screens -- an added os-management screen updates this count and the per-index assertions below with it")
         Do $$$AssertEquals(tOsMgmt.screens.%Get(0).route, "os-management/databases/details", "the unlisted database details, first alphabetically among sideBarPosition 0")
         Do $$$AssertEquals(tOsMgmt.screens.%Get(0).labelKey, "databaseDetailsLabel", "under its own label key")
         Do $$$AssertEquals(tOsMgmt.screens.%Get(1).route, "os-management/database-free-space", "then the unlisted free-space view")
         Do $$$AssertEquals(tOsMgmt.screens.%Get(1).labelKey, "databaseFreeSpaceLabel", "under its own label key")
         Do $$$AssertEquals(tOsMgmt.screens.%Get(2).route, "os-management/databases/volumes", "then the unlisted volume files")
         Do $$$AssertEquals(tOsMgmt.screens.%Get(2).labelKey, "databaseVolumeListLabel", "under its own label key")
-        Do $$$AssertEquals(tOsMgmt.screens.%Get(3).route, "os-management/processes/details", "then the unlisted process details, last alphabetically among sideBarPosition 0")
-        Do $$$AssertEquals(tOsMgmt.screens.%Get(3).labelKey, "processDetailsLabel", "under its own label key")
-        Do $$$AssertEquals(tOsMgmt.screens.%Get(4).route, "os-management/processes", "then the processes list, position 1")
-        Do $$$AssertEquals(tOsMgmt.screens.%Get(4).labelKey, "processListLabel", "under its own label key")
-        Do $$$AssertEquals(tOsMgmt.screens.%Get(5).route, "os-management/locks", "then Locks, position 2")
-        Do $$$AssertEquals(tOsMgmt.screens.%Get(5).labelKey, "lockListLabel", "under its own label key")
-        Do $$$AssertEquals(tOsMgmt.screens.%Get(6).route, "os-management/system-usage", "then system usage, position 3")
-        Do $$$AssertEquals(tOsMgmt.screens.%Get(6).labelKey, "systemUsageLabel", "under its own label key")
-        Do $$$AssertEquals(tOsMgmt.screens.%Get(7).route, "os-management/databases", "then Databases, position 4")
-        Do $$$AssertEquals(tOsMgmt.screens.%Get(7).labelKey, "databaseListLabel", "under its own label key")
-        Do $$$AssertEquals(tOsMgmt.screens.%Get(8).route, "os-management/devices", "and Devices last, position 5")
-        Do $$$AssertEquals(tOsMgmt.screens.%Get(8).labelKey, "deviceListLabel", "under its own label key")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(3).route, "os-management/devices/edit", "then the unlisted device editor")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(3).labelKey, "deviceFormLabel", "under its own label key")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(4).route, "os-management/processes/details", "then the unlisted process details, last alphabetically among sideBarPosition 0")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(4).labelKey, "processDetailsLabel", "under its own label key")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(5).route, "os-management/processes", "then the processes list, position 1")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(5).labelKey, "processListLabel", "under its own label key")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(6).route, "os-management/locks", "then Locks, position 2")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(6).labelKey, "lockListLabel", "under its own label key")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(7).route, "os-management/system-usage", "then system usage, position 3")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(7).labelKey, "systemUsageLabel", "under its own label key")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(8).route, "os-management/databases", "then Databases, position 4")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(8).labelKey, "databaseListLabel", "under its own label key")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(9).route, "os-management/devices", "and Devices last, position 5")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(9).labelKey, "deviceListLabel", "under its own label key")
     }
 
     ; Logs, pinned the same way and for the same reason: its four screens declare four

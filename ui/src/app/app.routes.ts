@@ -2,7 +2,7 @@ import { inject } from '@angular/core';
 import { type CanDeactivateFn, Routes } from '@angular/router';
 
 import { FormDirty } from './core/form-dirty';
-import { builtScreens, hasIdRoute } from './core/navigation';
+import { DIALOG_EDITORS, builtScreens, hasIdRoute } from './core/navigation';
 import type { ScreenDeclaration } from './core/screens.generated';
 import { ScreenOutlet } from './shell/screen-outlet';
 
@@ -40,7 +40,8 @@ const GUARDED_ARCHETYPE = 'form-page';
  * keeps it out of the side bar, the command box, Home's tile caption, the locator bar and the rail
  * must not reach this table or the screen would be unreachable.
  *
- * Every `form-page` route carries the unsaved-changes guard above.
+ * Every `form-page` route carries the unsaved-changes guard above, and so does every route of a
+ * screen whose editor is a dialog over it (`DIALOG_EDITORS`).
  *
  * Home's declared route is the empty string, which is the application root: it is reached from
  * the rail's Home item, the logo lockup and straight after sign-in, all three of which mean
@@ -69,7 +70,10 @@ export function buildRoutes(screens: readonly ScreenDeclaration[]): Routes {
       built.push({ path: '', pathMatch: 'full', component: ScreenOutlet });
       continue;
     }
-    const guarded = screen.archetype === GUARDED_ARCHETYPE ? { canDeactivate: [leaveFormGuard] } : {};
+    const guarded =
+      screen.archetype === GUARDED_ARCHETYPE || DIALOG_EDITORS.has(screen.descriptor)
+        ? { canDeactivate: [leaveFormGuard] }
+        : {};
     built.push({ path: screen.route, component: ScreenOutlet, ...guarded });
     if (hasIdRoute(screen)) {
       built.push({ path: `${screen.route}/:id`, component: ScreenOutlet, ...guarded });
