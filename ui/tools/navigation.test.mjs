@@ -37,6 +37,7 @@ const {
   detailScreenFor,
   documentScreenFor,
   createFormFor,
+  DIALOG_EDITORS,
   editorScreenFor,
   isListedScreen,
   listedScreensForArea,
@@ -266,6 +267,15 @@ test('documentScreenFor resolves the REST API explorer to its unlisted, id-keyed
   // Story 8.3: the Roles list pairs with its create form the same way.
   // Mutation (Rule 19): drop RoleForm from `CREATE_ONLY_FORMS` -> the editor assertion below and
   // the role leg of the screenForChange test go red.
+  // Story 8.4: the Resources list's editor is a dialog over the list, not a paired form, so it
+  // resolves no form and no editor screen, and it is the one dialog-editor screen, id-keyed so a
+  // row's name cell opens its own id route.
+  // Mutation (Rule 19): drop ResourceList from `DIALOG_EDITORS` -> the dialog-editor assertion goes red.
+  const resources = screenForRoute('permissions/resources');
+  assert.deepEqual([...DIALOG_EDITORS], [resources.descriptor], 'the Resources list is the one screen whose editor is a dialog');
+  assert.equal(createFormFor(resources), null, 'so its Create opens no form page');
+  assert.equal(editorScreenFor(resources), null, 'and a row name opens the list\'s own id route');
+  assert.equal(hasIdRoute(resources), true, 'which it declares');
   const roles = screenForRoute('permissions/roles');
   assert.equal(createFormFor(roles).route, 'permissions/roles/edit', 'the Roles list\'s Create opens its own form');
   assert.equal(isListedScreen(screenForRoute('permissions/roles/edit')), false, 'which takes no side-bar position');

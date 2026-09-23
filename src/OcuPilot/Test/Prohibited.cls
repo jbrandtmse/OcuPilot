@@ -172,12 +172,13 @@ Method TestAChangedRoleGrantIsRefusedOnOcuPilotsOwnApplication()
 /// (<class>OcuPilot.Test.UserUpdate</class>), <code>task</code> in Story 5.11
 /// (<class>OcuPilot.Test.TaskResume</class>), <code>process</code> in Story 5.12
 /// (<class>OcuPilot.Test.ProcessControl</class>), <code>application-error</code> in Story 5.13
-/// (<class>OcuPilot.Test.ErrorDelete</class>).</p>
+/// (<class>OcuPilot.Test.ErrorDelete</class>), <code>resource</code> in Story 8.4
+/// (<class>OcuPilot.Test.ResourceDelete</class>).</p>
 /// <p>Mutation: answer <code>pProhibits = 0</code> in the uncovered arm of
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -- this goes red.</p>
 Method TestAnUncoveredEntityTypeIsRefusedWholesale()
 {
-    Set tUncovered = $ListBuild("resource", "service", "database")
+    Set tUncovered = $ListBuild("service", "database")
     For tI = 1:1:$ListLength(tUncovered) {
         Set tType = $List(tUncovered, tI)
         Set tSC = ..Ask(..Target(), ..Payload(), "Description", .tProhibits, .tCode, "probe-id", tType)
@@ -189,10 +190,10 @@ Method TestAnUncoveredEntityTypeIsRefusedWholesale()
     Do $$$AssertStatusOK(tSC, "an unparseable reference is answered, not raised")
     Do $$$AssertEquals(tProhibits, 1, "and refused")
     Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "UNCOVERED"), "as uncovered")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error,role", "Release 1 covers exactly seven entity types")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error,role,resource", "Release 1 covers exactly eight entity types")
 
     ; The refusal reaches a caller as a 403 with the set's own code, not as an error.
-    Set tKey = ..Seed(..Payload(), "Description", "probe-id", "resource")
+    Set tKey = ..Seed(..Payload(), "Description", "probe-id", "service")
     If tKey = "" Quit
     Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Target())
     Set tSC = ..Confirm(tKey, .tHttp, .tCode)
@@ -308,6 +309,16 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
     Do $$$AssertStatusOK(tSC, "the tool registry lists")
     If $$$ISERR(tSC) Quit
     Set tWrites = 0
+    ; The types a body-sending tool of either kind writes, so an action-style tool on a type that
+    ; also has one (a resource's delete beside its edit) is not held to an empty reviewed list.
+    Kill tBodyTypes
+    Set tIterator = tTools.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        If tEntry.%Get("kind") '= "write" Continue
+        If '$ClassMethod(tEntry.%Get("class"), "SendsBody") Continue
+        Set tBodyDescriptor = $Parameter(tEntry.%Get("class"), "DESCRIPTORCLASS")
+        If tBodyDescriptor '= "" Set tBodyTypes(''$ClassMethod(tEntry.%Get("class"), "Creates"), $ClassMethod(tBodyDescriptor, "PrimaryEntityType")) = ""
+    }
     Set tIterator = tTools.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tEntry) {
         If tEntry.%Get("kind") '= "write" Continue
@@ -348,7 +359,9 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         ; having checked nothing.
         If '$ClassMethod(tClass, "SendsBody") {
             Do $$$AssertEquals($ListLength(tSettable), 0, tEntry.%Get("name") _ " sends no body, so it admits no field")
-            Do $$$AssertEquals($ListLength(tPermitted), 0, "and the set has reviewed no field of " _ tType _ " for it to admit")
+            If '$Data(tBodyTypes(tCreates, tType)) Do $$$AssertEquals($ListLength(tPermitted), 0, "and the set has reviewed no field of " _ tType _ " for it to admit")
+            ; A sibling tool on the type sends the reviewed fields; this one sends none of them.
+            If $Data(tBodyTypes(tCreates, tType)) Set tPermitted = ""
         } Else {
             Do $$$AssertTrue($ListLength(tSettable) > 0, tEntry.%Get("name") _ " admits at least one field")
         }
@@ -581,7 +594,7 @@ Method TestTheSetHasOneHomeAndOneSentencePerCode()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RegistryClass(), "OcuPilot.Screen.Tool.Registry", "and resolves the tool through the shipped registry")
 
     Set tCodes = ##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()
-    Do $$$AssertEquals($ListLength(tCodes), 14, "the set declares fourteen codes")
+    Do $$$AssertEquals($ListLength(tCodes), 15, "the set declares fifteen codes")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), tCode _ " matches the machine-code pattern")

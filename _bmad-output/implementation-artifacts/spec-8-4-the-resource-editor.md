@@ -2,8 +2,8 @@
 title: 'Story 8.4: The resource editor'
 type: 'feature'
 created: '2026-09-23'
-status: 'ready-for-dev'
-baseline_revision: 'b0d416a618f2bb0666c5e7729df48a4aabc278cc'
+status: 'done'
+baseline_revision: '4d317b997a54c05b71656836b8a4651311ea664a'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -11,7 +11,26 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-8-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-8-3-create-a-role-and-manage-its-resource-grants.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A user update's EscalationRoles change is no longer refused PRIVILEGEGRANT but is still refused
+      UNCOVEREDFIELD, because the Users write tool excludes the field and ToolWrite holds the kernel's
+      reviewed list equal to the tool's advertised one.
+    evidence: |-
+      Prohibited.User no longer names EscalationRoles; Screen/Tool/UserUpdate.cls (Epic 7's diff, not
+      contended) keeps EXCLUDEDFIELD EscalationRoles. Making it reachable needs that tool file.
+    location: >-
+      src/OcuPilot/Screen/Tool/UserUpdate.cls
+    severity: low
+  - summary: >-
+      The Users write tool's model-facing Roles description still says a role granting an administrative
+      privilege is refused, which now steers the agent away from a write AD-10 permits.
+    evidence: |-
+      Screen/Tool/UserUpdate.cls InputSchema Roles description (Epic 7's diff, not contended); the
+      predicate now permits the delta and the mint marks it destructive (UserUpdate test, run 270).
+    location: >-
+      src/OcuPilot/Screen/Tool/UserUpdate.cls (InputSchema)
+    severity: medium
 ---
 
 <intent-contract>
@@ -249,6 +268,34 @@ Before editing a ⚠ file, run `git fetch origin && git show origin/OCU-1-epic7:
 
 ## Review Triage Log
 
+### 2026-09-23 — Review pass
+
+- verdicts: 23 findings — high 0, medium 4, low 12, false 7, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` VG: `showsPrivilegedEffect()`'s `privileged` half is unpinned; an ordinary name with a letter checked could state the privilege sentence with the suite green — added the store leg `AC6: no consequence is stated on a name the server did not mark privileged` (mutation below).
+  - `[medium]` `[patch]` VG: `ResourceUpdate`'s "letters in another order" leg reverses `%DB_USER`'s empty permission, so it compares `""` with `""` and `AdminPort.SameValue`'s letter-set comparison is unpinned — the vacuous claim removed from `ResourceUpdate`, and `ResourceWire.TestARealWriteTheVendorDidNotApplyFailsNotApplied` now sends `UR` to a probe the vendor stores as `RU` through the real port (mutation below).
+  - `[low]` `[reject]` VG: the AD-27 fallback's own `ResourcesOR()` gate and `ValidateRequest` have no test — defense in depth: every caller above the port (the screen gate, each tool's `PrivilegePairs`, `EDITFIELDS`, the composed settable fields) already refuses both cases; a test needs a principal without `%Admin_Secure`.
+  - `[low]` `[patch]` VG other: `Prohibited.Codes()`'s doc said `PRIVILEGEGRANT` is reached by users as well as web applications — corrected to "only a web application reaches".
+  - `[false]` `[reject]` VG other: an AC without a `mutation:` line — every AC has one in the Observed block.
+  - `[low]` `[reject]` VG other and IA: the browser AC4 leg cannot tell a change-bus update from a re-read after navigation — the publish is pinned by the store spec against the Resources list's declared entity type (`SCREENS ... entityType 'resource'`), and the list's consumption is the shared refresh framework's, pinned by its own specs.
+  - `[low]` `[reject]` IA R3: the agent's out-of-order or lower-case letters reach the vendor as given — the vendor stores them canonically and `VerifyApplied` compares as a set; the only visible effect is a card row `RU -> UR`, and canonicalizing needs a new rule and sentence.
+  - `[low]` `[reject]` IA R4: a screen create with a bad name reports only the name, where the mint reports every field — the dialog validates the other fields inline on blur, and reporting both needs a second `Validate` pass in `ResourceSave.Create`.
+  - `[false]` `[reject]` IA R5: the effect shows on an administrative resource already holding a letter — the matrix row says "while a letter is checked"; implemented as specified.
+  - `[false]` `[reject]` IA R7: only an added letter on OcuPilot's own resources is refused — the spec's task says exactly that, and a clear stays possible.
+  - `[low]` `[reject]` IA R8: the delete of an own resource is proposed and refused at the confirm — AD-10's set is evaluated at the write path by design (`Mint` never calls `Prohibits`), the role delete of 8.3 behaves the same.
+  - `[false]` `[reject]` IA R10: the agent create requires both fields — the vendor create requires both; one diff row per supplied field still holds.
+  - `[medium]` `[defer]` IA R11 (DW-1524): an `EscalationRoles` change is refused `UNCOVEREDFIELD`, not permitted — reaching it needs `Screen/Tool/UserUpdate.cls` (Epic 7's diff, not contended); already in `deferred:` with the stale Roles description.
+  - `[low]` `[reject]` IA: the screen create checks the name then upserts with no fingerprint — a millisecond window between two reads of the same request, the 8.3 role create's shape.
+  - `[low]` `[reject]` IA: `Type` in a screen create body is refused 403 `UNCOVEREDFIELD`, in an edit 400 — refused on both; only the code differs.
+  - `[medium]` `[patch]` IA: `PORT.NOTAPPLIED` reaching the dialog was untested — added the store leg `AC5: a Save the vendor did not apply reports the refusal, never saved, and publishes nothing` (mutation below).
+  - `[low]` `[reject]` IA: an absent resource's reason shows in the dialog's alert banner rather than the violations summary — the reason is shown and announced, and Save is blocked (store test).
+  - `[low]` `[reject]` IA: the update mint for an absent name answers the kernel's shared 400 `TOOL.ARGUMENTS` naming the target, not 404 `RESOURCE.NAME.ABSENT` — every update tool answers so; nothing is sent; changing it edits the contended kernel.
+  - `[false]` `[reject]` IA: Deletable may render the raw `false` — `ResourceList` renders a system resource as No (pre-existing column, its doc and list specs).
+  - `[low]` `[reject]` IA: the agent's navigation away from a dirty dialog is not driven by a test — agent navigation goes through the router, whose guard `app.routes.spec.ts` pins on the Resources routes.
+  - `[low]` `[reject]` IA R9: the client keeps `RWU` as the alphabet for ordering — the admissible letters per name are the server's `letterRules`; `RWU` is the vendor's fixed permission alphabet.
+  - `[false]` `[reject]` IA: `resourceEditorEdit` has no Fixed strings comment of its own — row 407 carries both headings and `client-lint` passes.
+  - `[false]` `[reject]` IA: "No forbidden file is touched" noted as alignment, not a defect.
+
 ## Design Notes
 
 **Governing ADs:** AD-2, AD-3, AD-4, AD-5, AD-6, AD-8, AD-10, AD-13, AD-14, AD-15, AD-16, AD-19, AD-27, AD-34, AD-39, AD-49, AD-51, AD-52, AD-54, AD-55. Epic 7's AD-53 governs the pending row action.
@@ -332,13 +379,58 @@ Stateful checks run on slot B's throwaway `ocupilot-b-ci` (web 52777, super 1976
 | AC6 | `ResourceCreate`/`ResourceUpdate` privileged tests; dialog spec | The `resource` branch of `GrantsPrivilegeByEffect` answers 0; the dialog's effect flag is false |
 | AC7 | `resource-editor-dialog.spec.ts` dirty-close test; browser Escape leg | Close without `requestLeave()`; drop `DIALOG_EDITORS` from `app.routes.ts` |
 
+Observed (implement stage; each applied to the working file, loaded with `cbk` (subclasses recompiled) or rebuilt and redeployed, observed red, restored from a byte copy and reloaded):
+
+- mutation: `ResourceDelete.ArgumentProblem` answers no problem -> `ResourceDelete.TestASystemResourceIsRefusedAtTheMint` (run 230) and `ResourceWire.TestAnAgentDeleteThroughTheRealPortRemovesTheResource` (run 231) red (AC2)
+- mutation: `ResourceSave.Update` sends the caller's fields without `Mint.Merge` -> `ResourceUpdate.TestAnEditKeepsTheFieldTheCallerDidNotChangeOnBothCallers` red (run 232, AC3)
+- mutation: `Prohibited.Resource` drops its `DELETE` leg -> `ResourceDelete.TestOcuPilotsOwnResourcesAreRefusedAtTheWrite` red (run 233, AC5, P2)
+- mutation: `AdminPort.VERIFIEDWRITES` emptied -> `ResourceUpdate.TestAVendorWriteThatDidNotApplyFailsNotApplied` (run 234) and `ResourceWire.TestARealWriteTheVendorDidNotApplyFailsNotApplied` (run 235) red (AC5)
+- mutation: the `resource` branch of `Prohibited.GrantsPrivilegeByEffect` answers 0 -> `ResourceCreate.TestAPrivilegedPublicPermissionIsGrantedAtTheStrongestConfirmationOnBothCallers` (run 236) and `ResourceUpdate.TestAPrivilegedPublicPermissionIsMarkedOnTheAgentsEdit` (run 237) red; `Mint` passes no target id -> the create's privileged test red (run 238) (AC6)
+- mutation: `Prohibited.Created`'s `resource` step disabled -> `ResourceCreate.TestACreateOpeningOcuPilotsOwnResourceIsRefusedOnBothCallers` red on both callers (run 239); `Prohibited.Resource`'s added-letter test dropped -> `ResourceUpdate.TestAnAddedPublicLetterOnOcuPilotsOwnResourceIsRefusedOnBothCallers` red on both callers (run 240) (P2)
+- mutation: `AdminPort.CLASSCOMPLETEDTYPES` emptied -> `ResourceWire.TestAPublicPermissionOfNoneIsCreatedClearedAndKept` red with its create-private, clear and edit-private legs each red on its own (run 243; each leg starts from a resource made directly) (P1)
+- mutation: `Prohibited.User` refuses a privilege-granting `Roles` delta `PRIVILEGEGRANT` again -> `UserUpdate.TestAPrivilegedRoleDeltaIsMintedDestructiveAndConfirmed` and `TestARoleDeltaThatGrantsPrivilegeIsPermittedAndClassifiedPrivileged` red (run 244); `EscalationRoles` back in `AlwaysProhibitedFields("user")` -> `UserUpdate.TestAChangedEscalationRoleAndAnUnreviewedFieldAreRefused` red (run 245); `IsPrivilegedRole` compares unfolded -> the different-case test red with four other classifier legs (run 264); `RoleNames` string branch reads nothing -> `TestARoleDeltaIsReadWhenTheRolesMemberIsAString` red alone (run 265) (DW-1524)
+- mutation: `resource:foldcase` dropped from `EntityRef.IDRULES` -> `EntityRef.TestTheIdRuleTableIsDeclaredAndIsWhatNormalizationApplies` (run 246) and `ResourceDelete`'s canonical-spelling and own-resource legs (run 247) red
+- mutation: `ResourceUpdate.Described` adds no required field -> `ResourceCreate.TestTheSchemaAndTheSettableSetAreTheSets` red (run 248); `ResourceRules.Validate`'s admitted-letters test dropped -> `TestEveryFieldRuleRefusesOnBothCallers` red (run 249); its repeated-letter test dropped -> the same red on case 6 (run 250); `ResourceSave.Create` composes over `Description` alone -> `TestTheScreenAndTheConfirmSendOneBody` red (run 251); `ResourceCreate.CREATES` 0 -> the confirmed-create and taken-name tests red with four others (run 252); the database prefix dropped from `LetterRules` -> `TestTheFormReadPublishesTheSentencesAndTheLetterRules` red (run 253)
+- mutation: `PublicPermission` dropped from `ResourceUpdate.PERMITTEDFIELDS` -> `ResourceUpdate.TestTheUpdateIsAMergeWriteOverTheScreensOwnPairs` red with two others (run 254); `ResourceSave.Update`'s `EDITFIELDS` check dropped -> `TestTheEditRulesRefuseOnBothCallers` red (run 255)
+- mutation: `PublicPermission` dropped from `ResourceDelete.READANSWERS` -> `ResourceDelete.TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs` red on the live-read comparison (run 259); subject and precondition moved to `Description` -> that test and `TestTheRemovalRowsAndAMovedPublicPermissionRefusesTheConfirm` red (run 257); `CHANGEACTION` `updated` -> `TestAConfirmedDeleteIsMarkedAndSendsNoBody` red (run 258)
+- mutation: `ResourceSave.RenderViolations` renders `ROLEVALIDATION` -> `ResourceWire.TestEachRouteAnswersOneJsonEnvelopeOverTheWire` red (run 261); `Security.Resource/PUT` removed from `MUTATINGTYPES` -> the create, fallback and not-applied legs red (run 262); `Security.Resource/DELETE` removed from `BODYLESSTYPES` -> the agent delete leg red (run 263)
+- mutation (component specs): the store's `publish` dropped -> `resource-editor.store.spec.ts` AC4 and AC3 red; `changedFields` sends every field -> AC3 red; the created id not recorded -> AC4 red; `[readOnly]="editing"` dropped -> `resource-editor-dialog.spec.ts` edit-mode AC1 red; `showEffect` false -> both AC6 legs red; `requestClose()` resets without asking -> the store's and the dialog's AC7 red; `DIALOG_EDITORS` dropped from `buildRoutes` -> `app.routes.spec.ts` guard test red; `resourceEditor.reset()` dropped from `app.ts` -> `app.spec.ts` sign-out test red; `DIALOG_EDITORS` emptied -> `navigation.test.mjs` red
+- mutation (two rebuilt, redeployed bundles): Description moved after the Public permission fieldset, the page's route replacement dropped and `showEffect` false -> browser AC1 (create), AC4 and AC6 red, the edit and AC7 legs green; `[readOnly]` dropped and `requestClose()` not asking -> browser AC1 (edit), AC4 (its read-only check), AC7 and AC6 (its Escape) red; green again on the restored bundle (15/15 across `resources-editor`, `roles-create`, `users-create`)
+- roster rows: `Prohibited` (the reviewed-list sweep over a type with both a merge and an action tool, run 212), `PermissionsLists` (run 220), `EntityRef` (run 223), `entity-ref.test.mjs` and `screen-mirror.test.mjs` were observed red before this story's rows and green with them; the `SurfaceCoverage`, `EndpointCoverage`, `ReadTool`, `ToolRoundTrip`, `PortFixture` and `Prohibited` code-count rows were added before their first run and are green (runs 213-219), not observed red
+- mutation (review pass): `showsPrivilegedEffect()` answers `letters !== ''` alone -> `resource-editor.store.spec.ts` "AC6: no consequence is stated on a name the server did not mark privileged" red (AC6); a failed Save marks the editor saved -> the store's "AC5: a Save the vendor did not apply ..." red (AC5); `AdminPort.SameValue` compares `PublicPermission` verbatim -> `ResourceWire.TestARealWriteTheVendorDidNotApplyFailsNotApplied` red on its letter-order leg (run 273; green at run 272 before it) (AC5)
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned; the lead applied the orchestrator's rulings on P1-P4 and routed DW-1524 here at the spec gate.
+footprint_extensions: contended `src/OcuPilot/Kernel/Proposal/Prohibited.cls`, `src/OcuPilot/Kernel/Proposal/Mint.cls`, `src/OcuPilot/Api/Router.cls`, `src/OcuPilot/Screen/Tool/Classification.cls` (tail append), `src/OcuPilot/Screen/Tool/ToolFields.cls` (regenerated), `src/OcuPilot/Test/{SurfaceCoverage,EndpointCoverage,ReadTool,ToolRoundTrip,PortFixture,Prohibited,UserUpdate}.cls`, `ui/tools/screen-mirror.test.mjs`; shared-append `src/OcuPilot/Port/AdminPort.cls` (plus one-line hooks in `Invoke` and `RunSequence`), `ui/src/app/core/strings.ts`, `ui/src/styles/_components.scss`, EXPERIENCE.md Fixed strings rows 406-407; in Epic 7's diff but not contended: `ui/src/app/core/screens.generated.ts` (regenerated) and `src/OcuPilot/Test/AuditingUpdate.cls` (one-line code-count roster at :505, off Epic 7's tail hunk, the line Story 8.3 already moved to 14)
 
 ### Summary
 
-Planned the resource editor dialog (create from the list's Create, edit from the name cell's existing id route), three tools (create, merge update, agent-only action delete), `ResourceRules`/`ResourceSave` screen routes, a `resource` prohibited branch, `VERIFIEDWRITES` in `AdminPort`, and the `resource:foldcase` id rule. Instance facts are in Design Notes; AD-4 was corrected at its origin for `Security.Resource`.
+The resource editor dialog on the Resources list (create from Create, edit from the name cell's route), `permissions.resources.create`/`.update`/`.delete`, the `ResourceRules`/`ResourceSave` routes, the `resource` prohibited branch with `PROHIBITED.OCUPILOTRESOURCE`, `VERIFIEDWRITES` and AD-27's empty-`PublicPermission` fallback in `AdminPort`, `resource:foldcase`, and DW-1524's role-delta permission in `Prohibited.User`. No row action (Story 9.3, DW-1528). The form read ships `rules`, not `privilegeReason`, which 8.3's reversal removed.
+
+### Files
+
+- Server: `Port/AdminPort.cls` (write types, `VERIFIEDWRITES`, `CLASSCOMPLETEDTYPES`), `Kernel/Proposal/Prohibited.cls` (resource branch, own resources, DW-1524), `Mint.cls` (target id to the classifier), `Kernel/EntityRef.cls`, `Api/Error.cls` (`RESOURCE.*`), `Api/Router.cls` (four routes), `Area/Permissions/Resource{Rules,Save}.cls`, `Screen/Tool/Resource{Create,Update,Delete}.cls`, `Screen/Descriptor/ResourceList.cls`, `Classification.cls`/`ToolFields.cls`.
+- Client: `areas/permissions/resource-{actions,editor.store,editor-dialog,list.page}.ts`, `navigation.ts` (`DIALOG_EDITORS`), `app.routes.ts`, `screen-outlet.ts`, `app.ts`, `strings.ts`, `_components.scss`, `screens.generated.ts`.
+- Tests: `Test/Resource{Create,Update,Delete,Wire,Fixture,WritePort}.cls`, `resource-editor{.store,-dialog}.spec.ts`, `resources-editor.browser-spec.mjs`, roster rows in the classes above, `UserUpdate.cls` (five privileged-refusal methods recoded plus a regression test), `AuditingUpdate.cls` (code count), `scripts/ci-throwaway.sh` (`ResourceWire` armed).
+
+### Review
+
+Two layers (verification-gap, intent-alignment), 23 findings: patched 3 medium (the effect's non-privileged half, the vacuous letter-order leg now a real-port leg in `ResourceWire`, `PORT.NOTAPPLIED` reaching the store) and 1 low (a stale `Codes()` doc); deferred 1 (DW-1524's `EscalationRoles`, already in `deferred:`); rejected 12 low and 7 false, each with its reason in the triage log. Follow-up review: not recommended; the patches are tests whose mutations were observed, and no production code changed in the review pass.
+
+### Verification
+
+- Full ObjectScript sweep on a throwaway brought up after the review patches: 191 classes, 1727 tests, one failure, `AuditingUpdate`'s code-count roster (14 -> 15); fixed, reloaded, and that class re-ran green (6 tests). No other file changed after the sweep.
+- `npm run build` green, initial total 1.17 MB (under the 1185 kB warning); `npm test` 1325 tool tests and 871 component tests green.
+- `smoke.sh --container ocupilot-b-ci`: 46 executed, 46 passed.
+- Browser (bundle redeployed): `resources-editor`, `roles-create`, `users-create` 15/15.
+- `field-lists`/`screen-mirror --check`, `client-lint`, `browser-reset`, `check-objectscript`, `lint-docs`: clean.
+- Mutations for every AC, P1, P2 and DW-1524 are in `## Verification`.
+
+### Residual risks
+
+- DW-1524 is part-done: a privilege-granting role delta is permitted and marked, but an `EscalationRoles` change is still refused (`UNCOVEREDFIELD`), and `permissions.users.update`'s Roles description still tells the agent a privileged role is refused. Both need `Screen/Tool/UserUpdate.cls`, which is in Epic 7's diff and not contended (see `deferred:`).
+- Expect merge hunks next to Epic 7 in `Prohibited.cls` (`COVEREDTYPES`, type gate, the `User` block), `AdminPort.cls` type lists, `Classification.cls` tail and `Router.cls`.
+- The resource delete's vendor 409 is not exercised over the wire; the mint's `AllowDelete` check refuses first.

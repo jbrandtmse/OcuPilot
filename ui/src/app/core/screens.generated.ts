@@ -441,7 +441,8 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "task": "integer",
   "process": "integer",
   "application-error": "foldcase",
-  "role": "foldcase"
+  "role": "foldcase",
+  "resource": "foldcase"
 };
 
 /**
@@ -3888,7 +3889,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "parts": []
     },
     "primaryAction": {
-      "id": "",
+      "id": "create",
       "selfProtection": ""
     },
     "rowActions": [],
@@ -3972,8 +3973,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "resourceListEmptyAgent"
     },
     "toolIdentifier": "permissions.resources",
     "banner": null,

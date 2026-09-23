@@ -215,6 +215,48 @@ Method Refused(pName As %String, pFresh As %String, pPayload As %String, pFields
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Field", tKey, "Burned"), 0, "and the token is unspent")
 }
 
+/// <p>Drive <var>pPayload</var> and its diff against the armed target <var>pFresh</var> through the
+/// shipped confirm transition with the armed set in the seam, and assert it is permitted: the
+/// confirm succeeds and one write reaches the fixture port. The proposal carries the payload as its
+/// arguments and the digest of it, which is what the confirm re-computes by merging those arguments
+/// over <var>pFresh</var>.</p>
+Method Permitted(pName As %String, pFresh As %String, pPayload As %String, pFields As %String)
+{
+    Do $ClassMethod(..#FIXTURE, "ArmProhibited", ..#SET)
+    Set tSC = $ClassMethod(..#FIXTURE, "SeedTurn", $Username, "completed", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "a probe turn is seeded")
+    If $$$ISERR(tSC) Quit
+    Kill tValues
+    Set tValues("user") = $Username
+    Set tValues("convKey") = ""
+    Set tValues("turnKey") = tTurnKey
+    Set tValues("toolName") = ..#TOOL
+    Set tValues("targetRef") = $ClassMethod(..#SET, "Reference", pName, "user")
+    Set tValues("fingerprint") = $ClassMethod(..#SET, "Digest", pPayload, ..#TOOL)
+    Set tValues("arguments") = pPayload
+    Set tValues("payload") = pPayload
+    Set tValues("diff") = $ClassMethod(..#SET, "Diff", pFields)
+    Set tValues("unchangedCount") = 0
+    Set tSC = $ClassMethod(..#FIXTURE, "SeedProposal", .tValues, .tKey, .tToken)
+    Do $$$AssertStatusOK(tSC, "a probe proposal is seeded")
+    If $$$ISERR(tSC) Quit
+    Do $ClassMethod(..#FIXTURE, "Arm", pFresh)
+    Do $ClassMethod(..#FIXTURE, "ArmWrite", "{}")
+    Set tSC = $ClassMethod(..#CONFIRMFIXTURE, "Confirm", tKey, "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertStatusOK(tSC, "the confirm is permitted, code was '" _ $Get(tCode) _ "'")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "WriteCount"), 1, "and the write reaches the port")
+    Do $ClassMethod(..#FIXTURE, "Clear")
+}
+
+/// <p>Whether the one classifier (<method>OcuPilot.Kernel.Proposal.Prohibited.GrantsPrivilegeByEffect</method>)
+/// calls the user write carrying <var>pPayload</var> against <var>pFresh</var> privileged.</p>
+Method Privileged(pFresh As %String, pPayload As %String) As %Boolean
+{
+    Set tSC = $ClassMethod(..#SHIPPEDSET, "GrantsPrivilegeByEffect", "user", ##class(%DynamicAbstractObject).%FromJSON(pPayload), ##class(%DynamicAbstractObject).%FromJSON(pFresh), .tGrants)
+    Do $$$AssertStatusOK(tSC, "the classifier answers")
+    Quit +$Get(tGrants)
+}
+
 /// <p>AC1, AC2, AC3, AD-4: a confirmed enable plus an ordinary role add sends the complete property
 /// set the fresh read carried, and every property except the two the diff names comes back byte
 /// equal. The instance's own record of the account is what the round trip is read from.</p>
@@ -556,43 +598,61 @@ Method TestARoleDeltaRemovingAllFromTheLastHolderIsRefused()
     Do ..Refused(tName, tFresh, tStrips, "Roles", $Parameter(..#SHIPPEDSET, "LASTALLHOLDER"))
 }
 
-/// <p>AC5, AD-10: a <code>Roles</code> delta that adds <code>%All</code>, any <code>%Admin_</code>
-/// role, or a custom role that grants <code>%All</code> is refused; a delta that adds an ordinary
-/// role is not, and neither is one that only removes a role.</p>
+/// <p>AC5, AD-10 as amended 2026-09-23 (DW-1524): a <code>Roles</code> delta that adds
+/// <code>%All</code>, any <code>%Admin_</code> role, or a custom role that grants <code>%All</code>
+/// is permitted by the set and is what the one classifier calls privileged, which the mint marks
+/// destructive; a delta that adds an ordinary role, one that only removes a role, and an unchanged
+/// list are none of those.</p>
 /// <p>Mutation: compare the payload's roles against nothing instead of against the live target in
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.GrantsPrivilege</method> -- the removal leg reddens,
 /// because an account that already holds a privileged role sends it back on every write.</p>
-Method TestARoleDeltaThatGrantsPrivilegeIsRefused()
+Method TestARoleDeltaThatGrantsPrivilegeIsPermittedAndClassifiedPrivileged()
 {
     Set tName = ..Target()
     Set tOrdinary = $Parameter(..#FIXTURE, "USERINITIALROLE")
     Set tFresh = $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary)
-    Set tCode = $Parameter(..#SHIPPEDSET, "PRIVILEGEGRANT")
 
-    Do ..Refused(tName, tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ ",%All"), "Roles", tCode)
-    Do ..Refused(tName, tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ ",%Admin_Secure"), "Roles", tCode)
-    Do ..Refused(tName, tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ "," _ $Parameter(..#FIXTURE, "USERALLROLE")), "Roles", tCode)
+    For tAdded = "%All", "%Admin_Secure", $Parameter(..#FIXTURE, "USERALLROLE") {
+        Set tPayload = $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ "," _ tAdded)
+        Do ..Permitted(tName, tFresh, tPayload, "Roles")
+        Do $$$AssertEquals(..Privileged(tFresh, tPayload), 1, "adding " _ tAdded _ " is classified privileged")
+    }
 
-    Do $ClassMethod(..#FIXTURE, "ArmProhibited", ..#SET)
-    Set tSC = $ClassMethod(..#SET, "Ask", tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ "," _ $Parameter(..#FIXTURE, "USERORDINARYROLE")), $ClassMethod(..#SET, "Diff", "Roles"), tName, "user", .tProhibits, .tOut, ..#TOOL)
-    Do $$$AssertStatusOK(tSC, "the set answers the ordinary add")
-    Do $$$AssertEquals(tProhibits, 0, "adding an ordinary role is not prohibited, code was '" _ tOut _ "'")
+    Do $$$AssertEquals(..Privileged(tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ "," _ $Parameter(..#FIXTURE, "USERORDINARYROLE"))), 0, "adding an ordinary role is not privileged")
 
     ; A privileged role the account already holds travels in every payload (AD-4), so the delta is
     ; what decides: dropping it is a removal, not a grant.
     Set tHeld = $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ ",%All")
-    Set tSC = $ClassMethod(..#SET, "Ask", tHeld, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary), $ClassMethod(..#SET, "Diff", "Roles"), tName, "user", .tProhibits, .tOut, ..#TOOL)
-    Do $$$AssertStatusOK(tSC, "the set answers the removal")
-    Do $$$AssertEquals(tProhibits, 0, "removing a privileged role is not a grant, code was '" _ tOut _ "'")
-
-    Set tSC = $ClassMethod(..#SET, "Ask", tHeld, tHeld, $ClassMethod(..#SET, "Diff", "Roles"), tName, "user", .tProhibits, .tOut, ..#TOOL)
-    Do $$$AssertStatusOK(tSC, "the set answers an unchanged role list")
-    Do $$$AssertEquals(tProhibits, 0, "and sending back the roles the account holds changes nothing, code was '" _ tOut _ "'")
+    Do $$$AssertEquals(..Privileged(tHeld, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary)), 0, "removing a privileged role is not a grant")
+    Do $$$AssertEquals(..Privileged(tHeld, tHeld), 0, "and sending back the roles the account holds grants nothing")
 }
 
-/// <p>AD-10: the privileged-role match is case-insensitive, the way the instance itself resolves a
-/// role name -- every other leg in this class adds <code>%All</code> or <code>%Admin_Secure</code>
-/// in their own already-canonical spelling, so none of them would notice if the fold were lost.</p>
+/// <p>DW-1524, AD-10: the update path's permission, end to end. A privileged role delta minted
+/// through the shipped mint against a real account is destructive and names the privilege, and the
+/// same delta confirmed through the shipped transition reaches the port instead of being refused.</p>
+/// <p>Mutation: restore the <code>PRIVILEGEGRANT</code> refusal of a privilege-granting
+/// <code>Roles</code> delta in <method>OcuPilot.Kernel.Proposal.Prohibited.User</method> -- the
+/// confirm leg reddens.</p>
+Method TestAPrivilegedRoleDeltaIsMintedDestructiveAndConfirmed()
+{
+    Set tName = ..Target()
+    Set tArgs = {}
+    Do tArgs.%Set("Name", tName, "string")
+    Do tArgs.%Set("Roles", [($Parameter(..#FIXTURE, "USERINITIALROLE")), "%All"])
+    Set tKey = ..Mint(tArgs, .tTurnKey)
+    If tKey = "" Quit
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Field", tKey, "Destructive"), 1, "the proposal is destructive")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Field", tKey, "Consequence"), $Parameter(..#MINT, "CONSEQUENCEPRIVILEGED"), "and names the privilege")
+
+    Set tOrdinary = $Parameter(..#FIXTURE, "USERINITIALROLE")
+    Set tFresh = $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary)
+    Do ..Permitted(tName, tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ ",%All"), "Roles")
+}
+
+/// <p>AD-10: the privileged-role classifier is case-insensitive, the way the instance itself
+/// resolves a role name -- every other leg in this class adds <code>%All</code> or
+/// <code>%Admin_Secure</code> in their own already-canonical spelling, so none of them would notice
+/// if the fold were lost.</p>
 /// <p>Mutation: in <method>OcuPilot.Kernel.Proposal.Prohibited.IsPrivilegedRole</method>, compare
 /// <var>pRole</var> against <parameter>ALLROLE</parameter> and <parameter>ADMINROLEPREFIX</parameter>
 /// without folding case (drop both <code>$ZConvert(...,"U")</code> calls on the compared side) --
@@ -603,25 +663,24 @@ Method TestARoleAddedInADifferentCaseIsStillRecognizedAsPrivileged()
     Set tName = ..Target()
     Set tOrdinary = $Parameter(..#FIXTURE, "USERINITIALROLE")
     Set tFresh = $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary)
-    Set tCode = $Parameter(..#SHIPPEDSET, "PRIVILEGEGRANT")
 
-    Do ..Refused(tName, tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ ",%all"), "Roles", tCode)
-    Do ..Refused(tName, tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ ",%ADMIN_secure"), "Roles", tCode)
+    Do $$$AssertEquals(..Privileged(tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ ",%all")), 1, "%all is %All")
+    Do $$$AssertEquals(..Privileged(tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ ",%ADMIN_secure")), 1, "and %ADMIN_secure an administrative role")
 }
 
-/// <p>AC4, AD-10: every change to <code>EscalationRoles</code> is refused, and a field outside the
-/// reviewed two is refused as unreviewed even though no tool can author one.</p>
-/// <p>Mutation: remove <code>EscalationRoles</code> from
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.AlwaysProhibitedFields</method> and its branch from
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.User</method> -- the first leg reddens on the code it
-/// earns instead.</p>
+/// <p>AC4, AD-10 as amended 2026-09-23 (DW-1524): an <code>EscalationRoles</code> change is no
+/// longer a privilege refusal; no tool admits the field, so a change to it is refused as unreviewed,
+/// as a <code>FullName</code> change is.</p>
+/// <p>Mutation: put <code>EscalationRoles</code> back in
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.AlwaysProhibitedFields</method> -- the last assertion
+/// reddens.</p>
 Method TestAChangedEscalationRoleAndAnUnreviewedFieldAreRefused()
 {
     Set tName = ..Target()
     Set tFresh = $ClassMethod(..#SET, "UserObject", tName, 1, $Parameter(..#FIXTURE, "USERINITIALROLE"))
-    Do ..Refused(tName, tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, $Parameter(..#FIXTURE, "USERINITIALROLE"), "%Developer"), "EscalationRoles", $Parameter(..#SHIPPEDSET, "PRIVILEGEGRANT"))
+    Do ..Refused(tName, tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, $Parameter(..#FIXTURE, "USERINITIALROLE"), "%Developer"), "EscalationRoles", $Parameter(..#SHIPPEDSET, "UNCOVEREDFIELD"))
     Do ..Refused(tName, tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, $Parameter(..#FIXTURE, "USERINITIALROLE"), "", "after"), "FullName", $Parameter(..#SHIPPEDSET, "UNCOVEREDFIELD"))
-    Do $$$AssertEquals($ListToString($ClassMethod(..#SHIPPEDSET, "AlwaysProhibitedFields", "user")), "EscalationRoles", "one user field carries an always-prohibited predicate of its own")
+    Do $$$AssertEquals($ListToString($ClassMethod(..#SHIPPEDSET, "AlwaysProhibitedFields", "user")), "", "no user field carries an always-prohibited predicate")
 }
 
 /// <p>AC5's second half: the census asks the instance for each account's recursed role set, so an
@@ -706,7 +765,7 @@ Method TestOnlyAnEnabledHolderCountsAsAnotherAllHolder()
 /// into <class>Security.Users</class>, so that branch has an executed test host. Read as nothing it
 /// would empty the role delta and permit <b>every</b> grant.</p>
 /// <p>Mutation: return without parsing in the string branch of <code>RoleNames</code> -- the delta
-/// is empty, nothing is refused, and this goes red.</p>
+/// is empty, nothing is classified privileged, and this goes red.</p>
 Method TestARoleDeltaIsReadWhenTheRolesMemberIsAString()
 {
     Set tName = ..Target()
@@ -715,15 +774,12 @@ Method TestARoleDeltaIsReadWhenTheRolesMemberIsAString()
     ; The shape really is a string on both sides, or the leg would be a second array test.
     Do $$$AssertEquals(##class(%DynamicAbstractObject).%FromJSON(tFresh).%GetTypeOf("Roles"), "string", "the fixture sends Roles as a string, not an array")
 
-    Do ..Refused(tName, tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ ",%All", "", "before", 1), "Roles", $Parameter(..#SHIPPEDSET, "PRIVILEGEGRANT"))
-    Do ..Refused(tName, tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ "," _ $Parameter(..#FIXTURE, "USERALLROLE"), "", "before", 1), "Roles", $Parameter(..#SHIPPEDSET, "PRIVILEGEGRANT"))
+    Do $$$AssertEquals(..Privileged(tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ ",%All", "", "before", 1)), 1, "adding %All in string shape is classified privileged")
+    Do $$$AssertEquals(..Privileged(tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ "," _ $Parameter(..#FIXTURE, "USERALLROLE"), "", "before", 1)), 1, "and so is a custom role granting it")
 
-    ; And the permitted add is still permitted through the same branch, so the leg above is not
-    ; passing because the string shape refuses everything.
-    Do $ClassMethod(..#FIXTURE, "ArmProhibited", ..#SET)
-    Set tSC = $ClassMethod(..#SET, "Ask", tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ "," _ $Parameter(..#FIXTURE, "USERORDINARYROLE"), "", "before", 1), $ClassMethod(..#SET, "Diff", "Roles"), tName, "user", .tProhibits, .tOut, ..#TOOL)
-    Do $$$AssertStatusOK(tSC, "the set answers the ordinary add in string shape")
-    Do $$$AssertEquals(tProhibits, 0, "adding an ordinary role is still not prohibited, code was '" _ tOut _ "'")
+    ; And the ordinary add is not, through the same branch, so the leg above is not passing because
+    ; the string shape classifies everything.
+    Do $$$AssertEquals(..Privileged(tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ "," _ $Parameter(..#FIXTURE, "USERORDINARYROLE"), "", "before", 1)), 0, "adding an ordinary role is not privileged in string shape")
 }
 
 /// <p>AD-10: an <code>Enabled</code> value the predicate cannot read as on is treated as a
@@ -771,7 +827,7 @@ Method TestAnEnabledValueTheGuardCannotReadAsOnIsADisable()
 }
 
 /// <p>AD-10: a role whose <b>name</b> says nothing can still carry an administrative resource, and
-/// granting it is a privilege grant through a path. Every other privilege-grant leg here adds
+/// granting it is a privilege grant through a path, which the classifier names. Every other privilege-grant leg here adds
 /// <code>%All</code>, an <code>%Admin_</code>-named role or a role that grants <code>%All</code> as
 /// a role, so the recursed-role test alone satisfied all of them -- and IRIS ships no role whose
 /// name carries the prefix at all.</p>
@@ -781,12 +837,11 @@ Method TestAnEnabledValueTheGuardCannotReadAsOnIsADisable()
 /// <p>Mutation: drop the <method>OcuPilot.Kernel.Proposal.Prohibited.RoleGrantsPrivilege</method>
 /// call from <method>OcuPilot.Kernel.Proposal.Prohibited.RoleEscalates</method> -- this goes red and
 /// nothing else in the class does.</p>
-Method TestARoleCarryingAnAdministrativeResourceIsRefusedThoughItsNameSaysNothing()
+Method TestARoleCarryingAnAdministrativeResourceIsPrivilegedThoughItsNameSaysNothing()
 {
     Set tName = ..Target()
     Set tOrdinary = $Parameter(..#FIXTURE, "USERINITIALROLE")
     Set tFresh = $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary)
-    Set tCode = $Parameter(..#SHIPPEDSET, "PRIVILEGEGRANT")
     Set tAdminPrefix = $Parameter(..#SHIPPEDSET, "ADMINROLEPREFIX")
 
     Set tManagerRoles = ""
@@ -796,16 +851,13 @@ Method TestARoleCarryingAnAdministrativeResourceIsRefusedThoughItsNameSaysNothin
     Set tManagerResources = $ClassMethod(..#FIXTURE, "RoleResources", "%Manager")
     Do $$$AssertTrue(tManagerResources [ tAdminPrefix, "%Manager carries an " _ tAdminPrefix _ " resource: " _ tManagerResources)
 
-    Do ..Refused(tName, tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ ",%Manager"), "Roles", tCode)
+    Do $$$AssertEquals(..Privileged(tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ ",%Manager")), 1, "adding %Manager is classified privileged")
 
     ; The other side: the ordinary role this suite adds carries no administrative resource, so the
-    ; resource test must not turn every role add into a refusal.
+    ; resource test must not turn every role add into a privileged grant.
     Set tOrdinaryAdd = $Parameter(..#FIXTURE, "USERORDINARYROLE")
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "RoleResources", tOrdinaryAdd) [ tAdminPrefix, 0, tOrdinaryAdd _ " carries no administrative resource")
-    Do $ClassMethod(..#FIXTURE, "ArmProhibited", ..#SET)
-    Set tSC = $ClassMethod(..#SET, "Ask", tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ "," _ tOrdinaryAdd), $ClassMethod(..#SET, "Diff", "Roles"), tName, "user", .tProhibits, .tOut, ..#TOOL)
-    Do $$$AssertStatusOK(tSC, "the set answers the ordinary add")
-    Do $$$AssertEquals(tProhibits, 0, "adding a role that carries no administrative resource is still permitted, code was '" _ tOut _ "'")
+    Do $$$AssertEquals(..Privileged(tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ "," _ tOrdinaryAdd)), 0, "adding a role that carries no administrative resource is not privileged")
 }
 
 /// <p>AD-10, AD-21: which population rows the census may count. An unauthenticated placeholder is

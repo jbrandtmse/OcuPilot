@@ -1413,6 +1413,13 @@ export const STRINGS = {
   /** EXPERIENCE.md:405 */
   webAppFormApplicationRoles: 'Application roles',
 
+  // Story 8.4: the Resources list's agent invitation, and the resource editor dialog's two headings.
+  /** EXPERIENCE.md:406 */
+  resourceListEmptyAgent: 'create a resource',
+  /** EXPERIENCE.md:407 */
+  resourceEditorCreate: 'New resource',
+  resourceEditorEdit: 'Edit resource <name>',
+
 } as const;
 
 /**

@@ -227,6 +227,20 @@ XData Entries
       "Resources[].Name": "ordinary",
       "Resources[].Permissions": "ordinary"
     }
+  },
+  "permissions.resources.create": {
+    "fieldList": "Security.Resource",
+    "classification": {
+      "Description": "ordinary",
+      "PublicPermission": "ordinary"
+    }
+  },
+  "permissions.resources.update": {
+    "fieldList": "Security.Resource",
+    "classification": {
+      "Description": "ordinary",
+      "PublicPermission": "ordinary"
+    }
   }
 }
 }

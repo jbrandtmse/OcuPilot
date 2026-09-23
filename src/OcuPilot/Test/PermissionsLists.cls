@@ -144,6 +144,12 @@ Method TestEachListIsDeclaredAsThePermissionsAreaEntryItReplaces()
             Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "create", tClass _ ": its primary action is Create")
             Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, tClass _ ": and it declares no row action")
             Do $$$AssertEquals(tDeclaration.table.emptyNextKey _ "|" _ tDeclaration.table.emptyAgentKey, "|roleListEmptyAgent", tClass _ ": so its empty state invites the agent")
+        } ElseIf tClass = "OcuPilot.Screen.Descriptor.ResourceList" {
+            ; Story 8.4: the Resources list's Create opens the resource editor, so its empty state
+            ; invites the agent instead of naming a next step.
+            Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "create", tClass _ ": its primary action is Create")
+            Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, tClass _ ": and it declares no row action")
+            Do $$$AssertEquals(tDeclaration.table.emptyNextKey _ "|" _ tDeclaration.table.emptyAgentKey, "|resourceListEmptyAgent", tClass _ ": so its empty state invites the agent")
         } Else {
             Do $$$AssertEquals(tDeclaration.table.emptyNextKey, "tableReadOnlyEmptyNext", tClass _ ": its empty state names what to do next")
             Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")) + ($ClassMethod(tClass, "PrimaryActionId") '= ""), 0, tClass _ ": because it declares no action")

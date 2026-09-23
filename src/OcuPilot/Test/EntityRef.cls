@@ -10,9 +10,9 @@ Class OcuPilot.Test.EntityRef Extends %UnitTest.TestCase
 /// <p>The entity type the round-trip rows use: a declared value, so the refusal rows are the only
 /// ones testing an undeclared one, and one <parameter>OcuPilot.Kernel.EntityRef.IDRULES</parameter>
 /// declares no rule for, so the corpus round-trips verbatim. <code>task</code> held this place
-/// until Story 5.11 gave it the <code>integer</code> rule, and <code>role</code> until Story 8.3
-/// gave it <code>foldcase</code>.</p>
-Parameter KNOWNTYPE = "resource";
+/// until Story 5.11 gave it the <code>integer</code> rule, <code>role</code> until Story 8.3 gave it
+/// <code>foldcase</code>, and <code>resource</code> until Story 8.4 did.</p>
+Parameter KNOWNTYPE = "service";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -251,6 +251,7 @@ Method TestTheIdRuleTableIsDeclaredAndIsWhatNormalizationApplies()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("task", ""), "", "and an empty id is answered verbatim rather than folded to a number")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#KNOWNTYPE, "/API/OcuPilot/"), "/API/OcuPilot/", "so its ids are the instance's own strings")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("role", "%All"), "%all", "while a role's fold, by Story 8.3's rule")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("resource", "%DB_OcuPilot"), "%db_ocupilot", "and a resource's, by Story 8.4's")
 
     ; A key built from a non-canonical spelling is the key built from the canonical one, which is
     ; the necessary condition behind AD-34's per-target lock.

@@ -56,7 +56,7 @@ Parameter TYPEWEBAPPLICATION = "web-application";
 /// <parameter>OcuPilot.Kernel.EntityType.TYPES</parameter>, or a rule the generator cannot
 /// implement, fails <code>npm run build</code> rather than reaching the client as a silent
 /// no-op. A later write-tool story adds one pair here, never a branch in two languages.</p>
-Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integer,application-error:foldcase,role:foldcase";
+Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integer,application-error:foldcase,role:foldcase,resource:foldcase";
 
 /// <p>The closed rule vocabulary <parameter>IDRULES</parameter> selects from. A rule named there
 /// and absent here is a declaration error, pinned by
@@ -66,9 +66,9 @@ Parameter IDRULENAMES = "foldcase-striptrailingslash,foldcase,singleton,integer"
 /// <p>The web-application rule: fold to lower case, then strip every trailing slash.</p>
 Parameter RULEFOLDCASESTRIPTRAILINGSLASH = "foldcase-striptrailingslash";
 
-/// <p>The user rule, the application error log's and a role's. Fold to lower case, and nothing else.
-/// A role name is compared case-insensitively by <class>Security.Roles</class>, so two spellings
-/// are one role. An
+/// <p>The user rule, the application error log's, a role's and a resource's. Fold to lower case,
+/// and nothing else. A role name is compared case-insensitively by <class>Security.Roles</class>
+/// and a resource name by <class>Security.Resources</class>, so two spellings are one object. An
 /// account name is an IRIS identifier with no path grammar, so there is no slash to strip and a
 /// trailing one is part of no name the instance resolves.</p>
 /// <p>An <code>application-error</code> id is the namespace the drill reached, and

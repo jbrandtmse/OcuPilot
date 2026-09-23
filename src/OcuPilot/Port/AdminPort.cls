@@ -171,7 +171,15 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// <code>..IsTypePut()</code> so <code>DELETE</code> reads no body, and its <code>RunDelete</code>
 /// answers 404 for an absent role and otherwise reports success whatever the drop did
 /// (<parameter>VERIFIEDDELETES</parameter>).</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE";
+/// <p><code>Security.Resource/PUT</code> and <code>Security.Resource/DELETE</code> are Story 8.4's
+/// resource create, edit and delete. Read on this build: the endpoint does not override
+/// <code>Run</code>; its <code>RunPut</code> creates an absent resource (201) and otherwise modifies
+/// only the keys the body carries; its <code>NeedsRequestBody()</code> is <code>..IsTypePut()</code>
+/// so <code>DELETE</code> reads no body; and its <code>RunDelete</code> answers 409 for a system
+/// resource and 404 for an absent one. A <code>PUT</code> is re-read
+/// (<parameter>VERIFIEDWRITES</parameter>), and one whose public permission is none is completed
+/// through the vendor class (<parameter>CLASSCOMPLETEDTYPES</parameter>).</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -187,7 +195,7 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> deletes whose vendor answer does not say whether the
 /// object went, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries. After a 2xx
@@ -199,6 +207,33 @@ Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Secur
 /// whether or not the role was dropped (read on this build). That is a wire fact, so it lives here
 /// (AD-27).</p>
 Parameter VERIFIEDDELETES = "Security.Role/DELETE";
+
+/// <p>The <parameter>MUTATINGTYPES</parameter> writes whose vendor answer does not say whether the
+/// sent values were stored, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries.
+/// After a 2xx for a listed pair, <method>Invoke</method> re-issues the endpoint's <code>GET</code>
+/// for the same query, and every key of the sent body must read back equal
+/// (<method>VerifyApplied</method>); anything else is a 500 fault with
+/// <parameter>OcuPilot.Api.Error.PORTNOTAPPLIED</parameter>, never a success.</p>
+/// <p><code>Security.Resource/PUT</code> is listed because its <code>RunPut</code> ends by calling
+/// <code>Security.Resources.Exists(..Name, .obj, .sc)</code>, which overwrites the status of the
+/// <code>Create</code> or <code>Modify</code> it just made: measured on this build, a 300-character
+/// <code>Description</code> answered 200 and left the resource unchanged. That is a wire fact, so it
+/// lives here (AD-27).</p>
+Parameter VERIFIEDWRITES = "Security.Resource/PUT";
+
+/// <p>AD-27's named fallback: the <parameter>MUTATINGTYPES</parameter> writes the port completes
+/// through the vendor's own class when the body carries a value the admin API refuses and the class
+/// accepts, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;field&gt;</code> entries. It
+/// applies only when <code>&lt;field&gt;</code> is the empty string.</p>
+/// <p><code>Security.Resource/PUT=PublicPermission</code> is the one entry (AD-27 as amended
+/// 2026-09-23). The endpoint's <code>RunPut</code> normalizes the value with
+/// <code>Security.Datatype.Permission.ExternalToInternal</code>, whose answer for no permission is
+/// 0, and refuses that with a 400, so no encoding of "none" is accepted on a create or a clear;
+/// <code>Security.Resources.Create</code> and <code>Modify</code> accept an empty permission.
+/// <method>CompleteThroughClass</method> makes that call behind the endpoint's own gate and
+/// validation, and <parameter>VERIFIEDWRITES</parameter> re-reads it as it re-reads the vendor's
+/// own.</p>
+Parameter CLASSCOMPLETEDTYPES = "Security.Resource/PUT=PublicPermission";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries whose vendor body is a <b>wrapper</b>, as
 /// comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;wrapper&gt;:&lt;outer&gt;[:&lt;outer&gt;...]</code>
@@ -507,6 +542,12 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             ; finds the object gone.
             If ..IsVerifiedDelete(pEndpoint, pType) {
                 Set tSC = ..VerifyGone(pEndpoint, .pQuery, .pHttpStatus, .pFault)
+                If $$$ISERR(tSC) Quit
+            }
+            ; VERIFIEDWRITES: a write the vendor reports as made is believed only once a re-read
+            ; answers every sent value.
+            If ..IsVerifiedWrite(pEndpoint, pType) {
+                Set tSC = ..VerifyApplied(pEndpoint, .pQuery, pBody, .pHttpStatus, .pFault)
                 If $$$ISERR(tSC) Quit
             }
             Set pResult = tAnswer
@@ -857,6 +898,156 @@ ClassMethod VerifyGone(pEndpoint As %String, ByRef pQuery, Output pHttpStatus As
 }
 
 /// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
+/// <parameter>VERIFIEDWRITES</parameter> lists.</p>
+ClassMethod IsVerifiedWrite(pEndpoint As %String, pSuffix As %String) As %Boolean
+{
+    Quit ''$ListFind($ListFromString(..#VERIFIEDWRITES), pEndpoint _ "/" _ pSuffix)
+}
+
+/// <p>Re-read <var>pEndpoint</var> with the query <var>pQuery</var> a write was issued with, and
+/// answer OK only when every key of the sent <var>pBody</var> reads back with the value sent
+/// (<method>SameValue</method>). A read that fails, or a value that differs, is a 500 fault carrying
+/// <parameter>OcuPilot.Api.Error.PORTNOTAPPLIED</parameter>, with the differing key in the log.</p>
+ClassMethod VerifyApplied(pEndpoint As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tReadSC = ..Invoke(pEndpoint, "GET", .pQuery, "", .tFresh, .tReadHttp, .tReadFault)
+    Set tDiffers = ""
+    If $$$ISOK(tReadSC) && $IsObject(tFresh) && $IsObject(pBody) && pBody.%IsA("%Library.DynamicObject") {
+        Set tIterator = pBody.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tValue) {
+            If '..SameValue(tKey, pBody, tFresh) Set tDiffers = tKey Quit
+        }
+        If tDiffers = "" Quit $$$OK
+    }
+    Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#PORTNOTAPPLIED, ##class(OcuPilot.Api.Error).#REASONPORTNOTAPPLIED, .pHttpStatus, .pFault)
+    Do ..LogFault(pEndpoint _ " answered a write as made and a re-read answered HTTP " _ +$Get(tReadHttp), $Select($$$ISERR(tReadSC): tReadSC, 1: $$$ERROR($$$GeneralError, "the re-read does not carry the sent value of '" _ tDiffers _ "'")), pFault.code)
+    Quit tSC
+}
+
+/// <p>Whether <var>pKey</var> reads the same on the sent <var>pSent</var> and the re-read
+/// <var>pRead</var>: rendered as the proposal diff renders a value, and a
+/// <code>PublicPermission</code> compared as a set of letters, since the vendor writes the letters
+/// in its own order.</p>
+ClassMethod SameValue(pKey As %String, pSent As %DynamicObject, pRead As %DynamicObject) As %Boolean [ Private ]
+{
+    Set tSent = ##class(OcuPilot.Kernel.Proposal.Mint).Display(pSent.%Get(pKey), pSent.%GetTypeOf(pKey))
+    Set tRead = ##class(OcuPilot.Kernel.Proposal.Mint).Display(pRead.%Get(pKey), pRead.%GetTypeOf(pKey))
+    If pKey '= "PublicPermission" Quit (tSent = tRead)
+    Quit (..LetterSet(tSent) = ..LetterSet(tRead))
+}
+
+/// <p>The distinct letters of <var>pLetters</var>, upper-cased and in alphabetical order.</p>
+ClassMethod LetterSet(pLetters As %String) As %String [ Private ]
+{
+    Kill tSeen
+    Set tLetters = $ZConvert(pLetters, "U")
+    For tI = 1:1:$Length(tLetters) Set tSeen($Extract(tLetters, tI)) = ""
+    Set tOut = ""
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tSeen(tKey))
+        If tKey = "" Quit
+        Set tOut = tOut _ tKey
+    }
+    Quit tOut
+}
+
+/// <p>The field <parameter>CLASSCOMPLETEDTYPES</parameter> names for <var>pEndpoint</var>'s request
+/// type <var>pSuffix</var>, when <var>pBody</var> carries it as the empty string; otherwise
+/// <code>""</code>, and the call goes to the vendor's endpoint.</p>
+ClassMethod ClassCompletedField(pEndpoint As %String, pSuffix As %String, pBody As %DynamicAbstractObject) As %String
+{
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit ""
+    Set tField = ""
+    Set tEntries = $ListFromString(..#CLASSCOMPLETEDTYPES)
+    For tI = 1:1:$ListLength(tEntries) {
+        Set tEntry = $List(tEntries, tI)
+        If $Piece(tEntry, "=", 1) '= (pEndpoint _ "/" _ pSuffix) Continue
+        Set tField = $Piece(tEntry, "=", 2)
+        Quit
+    }
+    If tField = "" Quit ""
+    If pBody.%GetTypeOf(tField) '= "string" Quit ""
+    If pBody.%Get(tField) '= "" Quit ""
+    Quit tField
+}
+
+/// <p>AD-27's fallback for <code>Security.Resource/PUT</code> with no public permission
+/// (<parameter>CLASSCOMPLETEDTYPES</parameter>): the endpoint <var>pClass</var>, constructed at
+/// <var>pType</var>, is gated on its own <code>ResourcesOR()</code> and validates the body with its
+/// own <code>ValidateRequest</code>; the resource is then created (201) or modified (200) through
+/// <class>Security.Resources</class> in <code>%SYS</code> (AD-16), with the keys the body carries.
+/// <var>pAnswer</var> is the resource as <code>{Description, PublicPermission}</code>.</p>
+/// <p><b>Caller contract:</b> <var>pHttpStatus</var> is 403 for a caller the gate refuses, 400 for
+/// a missing <code>name</code> or a body the endpoint refuses, and 500 with the vendor status for a
+/// class call that fails, which is <method>RunSequence</method>'s own answer shape.</p>
+ClassMethod CompleteThroughClass(pClass As %String, pType As %Integer, ByRef pQuery, pBody As %DynamicObject, Output pAnswer, Output pHttpStatus As %Integer) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pAnswer = ""
+    Set pHttpStatus = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tEndpoint = $ClassMethod(pClass, "%New", pType, ..#APIVERSION)
+        If '$IsObject(tEndpoint) {
+            Set tSC = $Get(%objlasterror, $$$ERROR($$$GeneralError, "endpoint did not construct"))
+            Quit
+        }
+        Set tAllowed = 0
+        Set tResources = tEndpoint.ResourcesOR()
+        For tI = 1:1:$ListLength(tResources) {
+            Set tAllowed = tAllowed || ..HoldsResource($ListGet(tResources, tI))
+        }
+        If 'tAllowed {
+            Set pHttpStatus = 403
+            Quit
+        }
+        Set tName = $Get(pQuery("name"))
+        If tName = "" {
+            Set pHttpStatus = 400
+            Set tSC = $$$ERROR($$$GeneralError, "the name query parameter is required")
+            Quit
+        }
+        Set tEndpoint.Name = tName
+        Set $NAMESPACE = "%SYS"
+        Set tSC = tEndpoint.ValidateRequest(pBody)
+        If $$$ISERR(tSC) {
+            Set $NAMESPACE = tOrigNS
+            Set pHttpStatus = 400
+            Quit
+        }
+        Set tCreated = 0
+        If '##class(Security.Resources).Exists(tName) {
+            Set tSC = ##class(Security.Resources).Create(tName, pBody.%Get("Description"), "")
+            Set tCreated = 1
+        } Else {
+            Kill tProps
+            If pBody.%IsDefined("Description") Set tProps("Description") = pBody.%Get("Description")
+            Set tProps("PublicPermission") = ""
+            Set tSC = ##class(Security.Resources).Modify(tName, .tProps)
+        }
+        If $$$ISOK(tSC) && ##class(Security.Resources).Exists(tName, .tObject) {
+            Set pAnswer = {}
+            Do pAnswer.%Set("Description", tObject.Description, "string")
+            Do pAnswer.%Set("PublicPermission", ##class(Security.Datatype.Permission).InternalToExternal(tObject.PublicPermission), "string")
+        }
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) {
+            Set pHttpStatus = 500
+            Quit
+        }
+        Set pHttpStatus = $Select(tCreated: 201, 1: 200)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+        Set pHttpStatus = 500
+    }
+    If $$$ISERR(tSC) && (pHttpStatus = 0) Set pHttpStatus = 500
+    Quit tSC
+}
+
+/// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
 /// <parameter>BODYLESSTYPES</parameter> exempts from the object-body refusal (AD-51, DW-1464).</p>
 ClassMethod IsBodyless(pEndpoint As %String, pSuffix As %String) As %Boolean
 {
@@ -966,10 +1157,14 @@ ClassMethod EndpointType(pEndpoint As %String, pClass As %String, pSuffix As %St
 /// implemented when <code>Run</code>, or the runner for that suffix, is defined below
 /// <parameter>ENDPOINTBASECLASS</parameter>. A class that overrides <code>Run</code> is trusted to
 /// dispatch its own types.</p>
+/// <p>The base <code>Run()</code> also sends <code>DELETE</code> to <code>RunDelete</code> (read on
+/// this build), which joined here with Story 7.1, the first tool that issues one through this port;
+/// without it every such call read as an operation the instance does not implement, at 501.</p>
 ClassMethod ImplementsRead(pClass As %String, pSuffix As %String) As %Boolean [ Private ]
 {
     If ..MethodOrigin(pClass, "Run") '= ..#ENDPOINTBASECLASS Quit 1
     Set tRunner = $Case(pSuffix, "GET": "RunGet", "LIST": "RunList", "PUT": "RunPut", : "")
+    If pSuffix = "DELETE" Set tRunner = "RunDelete"
     If pSuffix = "POST" Set tRunner = "RunPost"
     If tRunner = "" Quit 0
     Quit ..MethodOrigin(pClass, tRunner) '= ..#ENDPOINTBASECLASS
@@ -998,6 +1193,8 @@ ClassMethod RunSequence(pEndpoint As %String, pClass As %String, pType As %Integ
     Set pAnswer = ""
     Set pHttpStatus = 0
     Set pLocation = ""
+    ; AD-27's named fallback: a value the admin API refuses and the vendor class accepts.
+    If ..ClassCompletedField(pEndpoint, pMethod, pBody) '= "" Quit ..CompleteThroughClass(pClass, pType, .pQuery, pBody, .pAnswer, .pHttpStatus)
     New %request, %response, %session
     Set tOrigNS = $NAMESPACE
     Try {

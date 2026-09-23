@@ -297,7 +297,7 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         ; AD-10: a write that grants %All or an administrative privilege is confirmed as a delete
         ; is. The one classifier answers it from the payload against the target it changes, and
         ; its verdict is OR'd with the tool's own declaration and named in the consequence.
-        Set tGrantSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).GrantsPrivilegeByEffect(tType, tPayload, $Select(tCreates: {}, 1: tFresh), .tPrivileged)
+        Set tGrantSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).GrantsPrivilegeByEffect(tType, tPayload, $Select(tCreates: {}, 1: tFresh), .tPrivileged, tId)
         If $$$ISERR(tGrantSC) {
             Set tSC = ..Internal("whether the proposal grants privilege could not be read: " _ $System.Status.GetErrorText(tGrantSC), .pHttpStatus, .pFault)
             Quit

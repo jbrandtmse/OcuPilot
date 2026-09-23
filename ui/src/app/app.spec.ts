@@ -13,6 +13,7 @@ import {
 } from './areas/agent/definition-actions';
 import { DefinitionForm } from './areas/agent/definition-form.store';
 import { RoleCreateForm } from './areas/permissions/role-create-form.store';
+import { ResourceEditor } from './areas/permissions/resource-editor.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
@@ -1030,6 +1031,12 @@ describe('the shell frame', () => {
     roleCreateForm.applyGrant('%DB_USER', 'RW');
     expect(roleCreateForm.grants().length).toBe(1);
 
+    // The same answer for the resource editor (Story 8.4): a description THIS principal typed and
+    // has not saved, in a root-provided store.
+    const resourceEditor = TestBed.inject(ResourceEditor);
+    resourceEditor.setDescription('a-description-this-principal-typed');
+    expect(resourceEditor.description()).not.toBe('');
+
     // The ninth answer of the same kind (Story 3.6, AC5). Whether the instance holds an enabled
     // definition is a read THIS principal made, and the panel and the rail's dot pick an audience
     // from it. Left standing, the next principal's first paint shows an administrator's reminder
@@ -1072,6 +1079,10 @@ describe('the shell frame', () => {
     // these two go red, and the next principal's role form holds the previous one's name and grants.
     expect(roleCreateForm.value('Name')).toBe('');
     expect(roleCreateForm.grants().length).toBe(0);
+
+    // Mutation (Rule 19): delete `this.resourceEditor.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's editor holds the previous one's typed description.
+    expect(resourceEditor.description()).toBe('');
 
     expect(scope.resets).toBe(1);
     // The fourth answer of the same kind (Story 1.13). A re-read parked with connectivity is a

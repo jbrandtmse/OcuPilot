@@ -16,6 +16,8 @@ import { UserActions } from './areas/permissions/user-actions';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { RoleActions } from './areas/permissions/role-actions';
 import { RoleCreateForm } from './areas/permissions/role-create-form.store';
+import { ResourceActions } from './areas/permissions/resource-actions';
+import { ResourceEditor } from './areas/permissions/resource-editor.store';
 import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
@@ -236,6 +238,10 @@ export class App {
   // The Roles list's declared Create, the same way (`areas/permissions/role-actions.ts`).
   private readonly roleActions = inject(RoleActions);
   private readonly roleCreateForm = inject(RoleCreateForm);
+  // The Resources list's declared Create, the same way, which opens the resource editor dialog
+  // (`areas/permissions/resource-actions.ts`).
+  private readonly resourceActions = inject(ResourceActions);
+  private readonly resourceEditor = inject(ResourceEditor);
   // Constructed for its own sake, the same way: there is no component whose job it is to act on
   // the agent's navigation directive, so injecting it here is what brings it into existence for
   // the life of the tab (`shell/agent-navigator.ts`).
@@ -505,6 +511,8 @@ export class App {
       this.userCreateForm.reset();
       // The create-a-role form holds a role THIS principal was composing and has not saved.
       this.roleCreateForm.reset();
+      // The resource editor holds a resource THIS principal was creating or editing and has not saved.
+      this.resourceEditor.reset();
       this.formDirty.reset();
       // The ninth: whether the instance holds an enabled definition is a read THIS principal
       // made, and the panel and the rail's dot pick an audience from it beside the navigation

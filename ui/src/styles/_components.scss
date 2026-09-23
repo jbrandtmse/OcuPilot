@@ -5302,3 +5302,17 @@ app-data-table {
   flex: 1 1 auto;
   overflow-wrap: anywhere;
 }
+
+// Story 8.4: the Resources list's page wraps the shared list page with its editor dialog, so its
+// host carries the height chain every other page host carries, and the editor's saved sentence
+// sits in the dialog's action row beside Save.
+app-resource-list-page {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ocu-dialog-status {
+  align-self: center;
+}

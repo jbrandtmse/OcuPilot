@@ -100,6 +100,10 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/roles/form" Method="GET" Call="RoleFormRules"/>
   <Route Url="/roles/name" Method="GET" Call="RoleNameCheck"/>
   <Route Url="/roles" Method="POST" Call="RoleCreate"/>
+  <Route Url="/resources/form" Method="GET" Call="ResourceFormRules"/>
+  <Route Url="/resources/name" Method="GET" Call="ResourceNameCheck"/>
+  <Route Url="/resources/:id" Method="PUT" Call="ResourceUpdate"/>
+  <Route Url="/resources" Method="POST" Call="ResourceCreate"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
   <Route Url="/logs/errors/namespaces" Method="GET" Call="LogErrorNamespaces"/>
   <Route Url="/logs/errors/dates" Method="GET" Call="LogErrorDates"/>
@@ -327,6 +331,35 @@ ClassMethod RoleNameCheck() As %Status
 ClassMethod RoleCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Permissions.RoleCreate).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /resources/form</code> (Story 8.4): the resource
+/// editor's form read, delegating to <class>OcuPilot.Area.Permissions.ResourceRules</class>. The two
+/// sub-resources precede <code>/resources/:id</code>.</p>
+ClassMethod ResourceFormRules() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.ResourceRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /resources/name</code>: the resource editor's
+/// blur check of whether a name is taken.</p>
+ClassMethod ResourceNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.ResourceRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /resources</code>: the resource editor's create
+/// Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod ResourceCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.ResourceSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /resources/:id</code>: the resource editor's edit
+/// Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod ResourceUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.ResourceSave).HandleUpdate(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /screens/:screen/read</code>: delegates to

@@ -70,10 +70,8 @@ Parameter DISPATCH = "PROHIBITED.DISPATCH";
 
 /// <p>The write would set application roles on a web application OcuPilot is served by
 /// (<parameter>APPLICATIONROLEFIELDS</parameter>): a role granted there would run every later
-/// OcuPilot request with it, turn jobs included, which would quietly falsify AD-8 (AD-10). A
-/// change to an existing account's escalation roles, or a role delta that grants privilege, is
-/// refused on this code too (<method>User</method>). Every other privilege grant is permitted and
-/// marked (<method>GrantsPrivilegeByEffect</method>).</p>
+/// OcuPilot request with it, turn jobs included, which would quietly falsify AD-8 (AD-10). Every
+/// other privilege grant is permitted and marked (<method>GrantsPrivilegeByEffect</method>).</p>
 Parameter PRIVILEGEGRANT = "PROHIBITED.PRIVILEGEGRANT";
 
 /// <p>The write would disable the account the caller is signed in as.</p>
@@ -115,6 +113,11 @@ Parameter SYSTEMPROCESS = "PROHIBITED.SYSTEMPROCESS";
 /// which OcuPilot stops working (AD-10). Only uninstall removes them.</p>
 Parameter OCUPILOTROLE = "PROHIBITED.OCUPILOTROLE";
 
+/// <p>The write would delete one of OcuPilot's own resources (<method>OcuPilotResources</method>),
+/// or give it a public permission it does not carry: every user would then hold OcuPilot's protected
+/// state or its administration, breaking AD-9 (AD-10). Only the installer changes them.</p>
+Parameter OCUPILOTRESOURCE = "PROHIBITED.OCUPILOTRESOURCE";
+
 /// <p>The write would change a setting of a covered type that this release has not reviewed. It is
 /// the shape that covers a vendor property nobody has classified yet, rather than the names that
 /// happen to exist on this build.</p>
@@ -132,7 +135,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -140,6 +143,8 @@ Parameter TYPEWEBAPPLICATION = "web-application";
 Parameter TYPEUSER = "user";
 
 Parameter TYPEROLE = "role";
+
+Parameter TYPERESOURCE = "resource";
 
 Parameter TYPEAUDITING = "auditing-configuration";
 
@@ -195,6 +200,10 @@ Parameter FIELDGRANTEDROLES = "GrantedRoles";
 
 Parameter FIELDRESOURCES = "Resources";
 
+/// <p>The <code>Security.Resource</code> payload field the resource predicates read: the permission
+/// letters every user holds on the resource.</p>
+Parameter FIELDPUBLICPERMISSION = "PublicPermission";
+
 /// <p>The <code>WebApp.App</code> payload fields that set a web application's application roles,
 /// comma-separated. An entry of <code>MatchRoles</code> whose matching role is empty grants its
 /// target roles to every request the application serves; one naming a matching role grants them
@@ -219,12 +228,12 @@ Parameter READTYPE = "GET";
 /// <p>Every <code>PROHIBITED.*</code> code this class declares, as a <class>%List</class>: the
 /// four web-application predicates in the order <method>WebApplication</method> evaluates them,
 /// then the four <method>User</method> adds, then <parameter>PRIVILEGEGRANT</parameter>, which
-/// both those types reach, then the two <method>Process</method> adds, then the one every covered
-/// type shares, with the wholesale refusal last, and then the one <method>Role</method> adds --
-/// fourteen in all.</p>
+/// only a web application reaches, then the two <method>Process</method> adds, then the one every
+/// covered type shares, with the wholesale refusal last, and then the one <method>Role</method> adds and
+/// the one <method>Resource</method> adds -- fifteen in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -246,6 +255,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#UNCOVEREDFIELD Quit "Only a few of this kind of object's settings are ones the agent may propose changing, and that is not one of them."
     If pCode = ..#UNCOVERED Quit "This release does not check writes to that kind of object against its prohibited set, so none is proposable yet."
     If pCode = ..#OCUPILOTROLE Quit "This role belongs to OcuPilot, which stops working without it. It is removed only when OcuPilot is uninstalled."
+    If pCode = ..#OCUPILOTRESOURCE Quit "This resource guards OcuPilot's own data or administration. It cannot be deleted or opened to every user; only OcuPilot's installer changes it."
     Quit ""
 }
 
@@ -286,6 +296,10 @@ ClassMethod CoveredTypes() As %List
 /// reviewed. AD-10's Release 1 set names no task effect, and this story invents none.</p>
 /// <p>An application error's is <b>none</b>, for the same reason: its one write is the bodyless
 /// by-namespace delete (AD-48), whose card rows are removals rather than field changes.</p>
+/// <p>A resource's two are <code>Description</code> and <code>PublicPermission</code>. A letter
+/// added to the public permission of one of OcuPilot's own resources is refused
+/// (<method>Resource</method>); on any other resource it is permitted, and marked where the resource
+/// is administrative (<method>GrantsPrivilegeByEffect</method>).</p>
 /// <p>The auditing configuration's one is <code>Enabled</code>, and it carries <b>no</b> asymmetric
 /// predicate: AD-10 does not forbid turning auditing off, and the product's answer to it is the
 /// card's warning, the recorded drop and the banner rather than a refusal (AD-15 as amended
@@ -299,6 +313,8 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "Enabled", "Resource")
     If pType = ..#TYPEUSER Quit $ListBuild(..#FIELDENABLED, ..#FIELDROLES)
     If pType = ..#TYPEAUDITING Quit $ListBuild(..#FIELDENABLED)
+
+    If pType = ..#TYPERESOURCE Quit $ListBuild("Description", ..#FIELDPUBLICPERMISSION)
     Quit ""
 }
 
@@ -307,15 +323,16 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
 /// none.</p>
 /// <p>They are a subset of the fields outside <method>PermittedChangeFields</method> -- the names
 /// whose refusal carries a sentence of its own rather than the reviewed-few one, so the user is
-/// told which effect was refused. A web application's dispatch class is one; an account's
-/// escalation roles are the other. A web application's application roles are not here: AD-10
+/// told which effect was refused. A web application's dispatch class is the one. An account's
+/// escalation roles are not here: AD-10 permits a privilege grant, and no tool admits the field, so
+/// a change to it is refused as an unreviewed field. A web application's application roles are not
+/// here either: AD-10
 /// refuses them on OcuPilot's own applications only, which is a predicate over the target
 /// (<method>WebApplication</method>), and on any other application a change to them is refused as
 /// an unreviewed field.</p>
 ClassMethod AlwaysProhibitedFields(pType As %String) As %List
 {
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("DispatchClass")
-    If pType = ..#TYPEUSER Quit $ListBuild(..#FIELDESCALATIONROLES)
     Quit ""
 }
 
@@ -347,11 +364,14 @@ ClassMethod AlwaysProhibitedFields(pType As %String) As %List
 /// <p>A role's three are its description, the roles it grants and its resource grants, a
 /// privileged grant included. <code>EscalationOnly</code> is not among them, so a create carrying
 /// it is refused <parameter>UNCOVEREDFIELD</parameter>.</p>
+/// <p>A resource's two are its description and its public permission; a public permission on one of
+/// OcuPilot's own resources is refused (<method>Created</method>).</p>
 ClassMethod PermittedCreateFields(pType As %String) As %List
 {
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "DispatchClass", "Enabled", "MatchRoles", "NameSpace", "Recurse", "Resource", "WSGIAppLocation", "WSGIAppName", "WSGICallable", "WSGIType")
     If pType = ..#TYPEUSER Quit $ListBuild("ExpirationDate", "FullName", "NameSpace", "Routine", ..#FIELDROLES)
     If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
+    If pType = ..#TYPERESOURCE Quit $ListBuild("Description", ..#FIELDPUBLICPERMISSION)
     Quit ""
 }
 
@@ -422,7 +442,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -448,7 +468,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
                 Set tSC = ..UnderOcuPilot(tId, .tServes)
                 If $$$ISERR(tSC) Quit
             }
-            Set tSC = ..Created(tType, tServes, ..ParsedObject(pPayload), .pProhibits, .pCode)
+            Set tSC = ..Created(tType, tServes, ..ParsedObject(pPayload), .pProhibits, .pCode, tId)
             Quit
         }
         ; A target the instance no longer holds is not prohibited: the fingerprint re-read refuses
@@ -465,6 +485,10 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         If tType = ..#TYPEROLE {
             Set tSC = ..Role(tId, $Get(tToolClass), .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPERESOURCE {
+            Set tSC = ..Resource(tId, $Get(tToolClass), tPayloadObject, tTarget, .tChanged, .pProhibits, .pCode)
             Quit
         }
         If tType = ..#TYPEAUDITING {
@@ -544,7 +568,10 @@ ClassMethod UncoveredWriteTools(Output pTools As %List) As %Status
 /// <p>A type <method>PermittedCreateFields</method> reviews nothing for is refused
 /// <parameter>UNCOVERED</parameter> wholesale rather than permitted an empty body: a create tool
 /// registering before its type's list exists is the shape this fails closed against.</p>
-ClassMethod Created(pType As %String, pServes As %Boolean, pPayload As %DynamicObject, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+/// <p><var>pId</var> is the intended name, canonical under AD-13. A resource create that gives one of
+/// OcuPilot's own resources (<method>OcuPilotResources</method>) a public permission is refused
+/// <parameter>OCUPILOTRESOURCE</parameter>.</p>
+ClassMethod Created(pType As %String, pServes As %Boolean, pPayload As %DynamicObject, Output pProhibits As %Boolean, Output pCode As %String, pId As %String = "") As %Status [ Private ]
 {
     Set pProhibits = 0
     Set pCode = ""
@@ -558,6 +585,14 @@ ClassMethod Created(pType As %String, pServes As %Boolean, pPayload As %DynamicO
             }
             Do ..Refuse($Select(tSetsRoles: ..#PRIVILEGEGRANT, 1: ..#SERVINGPATH), .pProhibits, .pCode)
             Quit
+        }
+        If pType = ..#TYPERESOURCE {
+            Set tSC = ..OcuPilotResources(.tOwn)
+            If $$$ISERR(tSC) Quit
+            If $ListFind(tOwn, ..NormalizedResource(pId)) && ..AddsPublicLetter(pPayload, {}) {
+                Do ..Refuse(..#OCUPILOTRESOURCE, .pProhibits, .pCode)
+                Quit
+            }
         }
         Set tPermitted = ..PermittedCreateFields(pType)
         If tPermitted = "" {
@@ -687,8 +722,9 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
 
 /// <p>The user predicates, in declared order, first hit wins: a disable of
 /// <parameter>SYSTEMACCOUNTNAME</parameter>, of the signed-in account, or of the last
-/// <code>%All</code> holder; an escalation-role change; a role delta that grants privilege; and any
-/// other changed field the release has not reviewed.</p>
+/// <code>%All</code> holder; and any changed field the release has not reviewed. A role delta that
+/// grants <code>%All</code> or an administrative privilege is permitted (AD-10): the mint marks the
+/// proposal destructive and names the privilege (<method>GrantsPrivilegeByEffect</method>).</p>
 /// <p><var>pId</var> is the target's id as the reference carries it -- already canonical, and
 /// compared through <method>NormalizedUser</method> anyway so an account addressed in another case
 /// earns the same verdict. <var>pChanged</var> is <method>Changed</method>'s answer: the fields this
@@ -732,18 +768,6 @@ ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %Dynamic
         If tLast {
             Do ..Refuse(..#LASTALLHOLDER, .pProhibits, .pCode)
             Quit
-        }
-        If $Data(pChanged(..#FIELDESCALATIONROLES)) {
-            Do ..Refuse(..#PRIVILEGEGRANT, .pProhibits, .pCode)
-            Quit
-        }
-        If $Data(pChanged(..#FIELDROLES)) {
-            Set tSC = ..GrantsPrivilege(pPayload, pTarget, .tGrants)
-            If $$$ISERR(tSC) Quit
-            If tGrants {
-                Do ..Refuse(..#PRIVILEGEGRANT, .pProhibits, .pCode)
-                Quit
-            }
         }
         Set tPermitted = ..PermittedChangeFields(..#TYPEUSER)
         Set tField = ""
@@ -840,6 +864,74 @@ ClassMethod OcuPilotRoles(Output pRoles As %List) As %Status
 ClassMethod NormalizedRole(pName As %String) As %String
 {
     Quit ##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#TYPEROLE, pName)
+}
+
+/// <p>The resource predicates, in declared order, first hit wins: for one of OcuPilot's own
+/// resources (<method>OcuPilotResources</method>), a <code>DELETE</code> and a change that adds a
+/// public-permission letter are refused <parameter>OCUPILOTRESOURCE</parameter>; then, for every
+/// resource write, the reviewed-few sweep.</p>
+/// <p><var>pId</var> is the target's id as the reference carries it; <var>pPayload</var> the stored
+/// payload and <var>pTarget</var> the fresh read. A delete's card rows are its declared fingerprint
+/// subject, which <method>Changed</method> skips, so a delete reaches the sweep with nothing
+/// changed. A system resource's delete is the tool's refusal at the mint, not this set's.</p>
+ClassMethod Resource(pId As %String, pToolClass As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ..OcuPilotResources(.tOwn)
+        If $$$ISERR(tSC) Quit
+        If $ListFind(tOwn, ..NormalizedResource(pId)) {
+            If (..WriteTypeOf(pToolClass) = "DELETE") || ..AddsPublicLetter(pPayload, pTarget) {
+                Do ..Refuse(..#OCUPILOTRESOURCE, .pProhibits, .pCode)
+                Quit
+            }
+        }
+        Set tSC = ..ReviewedFewOnly(..#TYPERESOURCE, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>OcuPilot's own resources, each in <method>NormalizedResource</method>'s spelling, in
+/// <var>pResources</var>: the database resource and the administrative resource
+/// <class>OcuPilot.Kernel.State.Base</class> declares and the installer creates. Read from those
+/// declarations, never transcribed.</p>
+ClassMethod OcuPilotResources(Output pResources As %List) As %Status
+{
+    Set pResources = ""
+    Set tNames = $ListBuild(##class(OcuPilot.Kernel.State.Base).#DBRESOURCE, ##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE)
+    For tI = 1:1:$ListLength(tNames) {
+        Set tOne = ..NormalizedResource($List(tNames, tI))
+        If (tOne '= "") && '$ListFind(pResources, tOne) Set pResources = pResources _ $ListBuild(tOne)
+    }
+    Quit $$$OK
+}
+
+/// <p><var>pName</var> in the one spelling a reference to a resource carries: the identity layer's
+/// rule (AD-13).</p>
+ClassMethod NormalizedResource(pName As %String) As %String
+{
+    Quit ##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#TYPERESOURCE, pName)
+}
+
+/// <p>Whether <var>pPayload</var>'s <parameter>FIELDPUBLICPERMISSION</parameter> carries a letter
+/// <var>pTarget</var>'s does not, compared without regard to case or order. An absent member on the
+/// payload adds nothing.</p>
+ClassMethod AddsPublicLetter(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean
+{
+    If '$IsObject(pPayload) Quit 0
+    Set tWanted = $ZConvert(..Rendered(pPayload, ..#FIELDPUBLICPERMISSION), "U")
+    Set tHeld = $ZConvert(..Rendered(pTarget, ..#FIELDPUBLICPERMISSION), "U")
+    Set tAdds = 0
+    For tI = 1:1:$Length(tWanted) {
+        If '(tHeld [ $Extract(tWanted, tI)) Set tAdds = 1 Quit
+    }
+    Quit tAdds
 }
 
 /// <p>The admin request type <var>pToolClass</var>'s write is issued with, or <code>""</code> for
@@ -1306,9 +1398,12 @@ ClassMethod ResourceNames(pObject As %DynamicObject, Output pNames) [ Private ]
 /// <p>Each is a delta, for the reason <method>GrantsPrivilege</method> is: an account's
 /// <parameter>FIELDROLES</parameter>; a role's <parameter>FIELDGRANTEDROLES</parameter> and
 /// <parameter>FIELDRESOURCES</parameter>; and a web application's target roles in
-/// <parameter>APPLICATIONROLEFIELDS</parameter> (<method>ApplicationRoleNames</method>). Any other
-/// type grants nothing here.</p>
-ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean) As %Status
+/// <parameter>APPLICATIONROLEFIELDS</parameter> (<method>ApplicationRoleNames</method>); and a
+/// resource's <parameter>FIELDPUBLICPERMISSION</parameter>, which grants privilege when it adds a
+/// letter (<method>AddsPublicLetter</method>) on a resource
+/// <method>ResourceGrantsAdministrativePrivilege</method> names -- <var>pId</var>, the target's id,
+/// is what names it. Any other type grants nothing here.</p>
+ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean, pId As %String = "") As %Status
 {
     Set pGrants = 0
     Set tSC = $$$OK
@@ -1317,6 +1412,10 @@ ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject
         Set tTarget = $Select($IsObject(pTarget): pTarget, 1: {})
         If pType = ..#TYPEUSER {
             Set tSC = ..GrantsPrivilege(pPayload, tTarget, .pGrants)
+            Quit
+        }
+        If pType = ..#TYPERESOURCE {
+            Set pGrants = (..ResourceGrantsAdministrativePrivilege(pId) && ..AddsPublicLetter(pPayload, tTarget))
             Quit
         }
         If pType = ..#TYPEROLE {

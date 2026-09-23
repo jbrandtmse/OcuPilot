@@ -1125,6 +1125,15 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#ROLERESOURCESWRITEONLY Quit ..#REASONROLERESOURCESWRITEONLY
     If pCode = ..#ROLEGRANTEDROLESSHAPE Quit ..#REASONROLEGRANTEDROLESSHAPE
     If pCode = ..#ROLEGRANTEDROLESUNKNOWN Quit ..#REASONROLEGRANTEDROLESUNKNOWN
+    If pCode = ..#RESOURCENAMEREQUIRED Quit ..#REASONRESOURCENAMEREQUIRED
+    If pCode = ..#RESOURCENAMELENGTH Quit ..#REASONRESOURCENAMELENGTH
+    If pCode = ..#RESOURCENAMESHAPE Quit ..#REASONRESOURCENAMESHAPE
+    If pCode = ..#RESOURCENAMETAKEN Quit ..#REASONRESOURCENAMETAKEN
+    If pCode = ..#RESOURCENAMESYSTEM Quit ..#REASONRESOURCENAMESYSTEM
+    If pCode = ..#RESOURCENAMEABSENT Quit ..#REASONRESOURCENAMEABSENT
+    If pCode = ..#RESOURCEDESCRIPTIONLENGTH Quit ..#REASONRESOURCEDESCRIPTIONLENGTH
+    If pCode = ..#RESOURCEPUBLICPERMISSIONSHAPE Quit ..#REASONRESOURCEPUBLICPERMISSIONSHAPE
+    If pCode = ..#RESOURCEPUBLICPERMISSIONLETTERS Quit ..#REASONRESOURCEPUBLICPERMISSIONLETTERS
     If pCode = ..#PORTFIELDREQUIRED Quit ..#REASONPORTFIELDREQUIRED
     If pCode = ..#PORTFIELDUNEXPECTED Quit ..#REASONPORTFIELDUNEXPECTED
     If pCode = ..#PORTFIELDSHAPE Quit ..#REASONPORTFIELDSHAPE
@@ -1154,6 +1163,13 @@ ClassMethod UserViolationCodes() As %List
 ClassMethod RoleViolationCodes() As %List
 {
     Quit $ListBuild(..#ROLENAMEREQUIRED, ..#ROLENAMELENGTH, ..#ROLENAMESHAPE, ..#ROLENAMETAKEN, ..#ROLENAMESYSTEM, ..#ROLEDESCRIPTIONLENGTH, ..#ROLERESOURCESSHAPE, ..#ROLERESOURCESUNKNOWN, ..#ROLERESOURCESPERMISSIONS, ..#ROLERESOURCESDUPLICATE, ..#ROLERESOURCESWRITEONLY, ..#ROLEGRANTEDROLESSHAPE, ..#ROLEGRANTEDROLESUNKNOWN)
+}
+
+/// <p>Every <code>RESOURCE.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod ResourceViolationCodes() As %List
+{
+    Quit $ListBuild(..#RESOURCENAMEREQUIRED, ..#RESOURCENAMELENGTH, ..#RESOURCENAMESHAPE, ..#RESOURCENAMETAKEN, ..#RESOURCENAMESYSTEM, ..#RESOURCENAMEABSENT, ..#RESOURCEDESCRIPTIONLENGTH, ..#RESOURCEPUBLICPERMISSIONSHAPE, ..#RESOURCEPUBLICPERMISSIONLETTERS)
 }
 
 /// <p>Every <code>AGENT.*</code> field-level violation code that carries a sentence, as a
@@ -1819,6 +1835,69 @@ Parameter REASONROLEGRANTEDROLESSHAPE = "Granted roles are a list of role names.
 Parameter ROLEGRANTEDROLESUNKNOWN = "ROLE.GRANTEDROLES.UNKNOWN";
 
 Parameter REASONROLEGRANTEDROLESUNKNOWN = "One of those roles does not exist on this instance.";
+
+/// <p>Machine code (AD-12, AD-39): a resource create or edit broke one or more of the rules
+/// <class>OcuPilot.Area.Permissions.ResourceRules</class> applies before the port is touched.
+/// Rendered on the <parameter>VALIDATIONFAILED</parameter> slug with every violation in
+/// <code>detail.violations</code>, the shape <parameter>ROLEVALIDATION</parameter> takes.</p>
+Parameter RESOURCEVALIDATION = "RESOURCE.VALIDATION";
+
+/// <p>The envelope's <code>reason</code> for <parameter>RESOURCEVALIDATION</parameter>, which the
+/// screen renders only where no violation named a field.</p>
+Parameter REASONRESOURCEVALIDATION = "The resource was refused.";
+
+/// <p>Violation code: no name was supplied. A resource's name is the vendor's <code>name</code>
+/// query parameter, which its body refuses.</p>
+Parameter RESOURCENAMEREQUIRED = "RESOURCE.NAME.REQUIRED";
+
+Parameter REASONRESOURCENAMEREQUIRED = "Give the resource a name.";
+
+/// <p>Violation code: the name is longer than <class>Security.Resources</class> stores.</p>
+Parameter RESOURCENAMELENGTH = "RESOURCE.NAME.LENGTH";
+
+Parameter REASONRESOURCENAMELENGTH = "A resource name is at most 64 characters.";
+
+/// <p>Violation code: the name carries a control character, a comma or a colon, which
+/// <class>Security.Resources</class> refuses.</p>
+Parameter RESOURCENAMESHAPE = "RESOURCE.NAME.SHAPE";
+
+Parameter REASONRESOURCENAMESHAPE = "A resource name has no control character, no comma and no colon.";
+
+/// <p>Violation code: a resource already carries that name, compared without regard to case.
+/// <code>GET /resources/name</code> answers it on blur.</p>
+Parameter RESOURCENAMETAKEN = "RESOURCE.NAME.TAKEN";
+
+Parameter REASONRESOURCENAMETAKEN = "This instance already has a resource with that name. Choose a different one.";
+
+/// <p>Violation code: the resource is a system resource, one the vendor's own
+/// <code>AllowDelete</code> answers false for, which IRIS refuses to delete.</p>
+Parameter RESOURCENAMESYSTEM = "RESOURCE.NAME.SYSTEM";
+
+Parameter REASONRESOURCENAMESYSTEM = "This is a system resource. IRIS does not allow it to be deleted.";
+
+/// <p>Violation code: an edit, a form read or an update names a resource this instance does not
+/// hold. Rendered at 404.</p>
+Parameter RESOURCENAMEABSENT = "RESOURCE.NAME.ABSENT";
+
+Parameter REASONRESOURCENAMEABSENT = "This instance has no resource with that name.";
+
+/// <p>Violation code: the description is longer than <class>Security.Resources</class> stores.</p>
+Parameter RESOURCEDESCRIPTIONLENGTH = "RESOURCE.DESCRIPTION.LENGTH";
+
+Parameter REASONRESOURCEDESCRIPTIONLENGTH = "A resource description is at most 256 characters.";
+
+/// <p>Violation code: the public permission is not a string of the letters R, W and U, each at most
+/// once.</p>
+Parameter RESOURCEPUBLICPERMISSIONSHAPE = "RESOURCE.PUBLICPERMISSION.SHAPE";
+
+Parameter REASONRESOURCEPUBLICPERMISSIONSHAPE = "A public permission is some of the letters R, W and U, each at most once.";
+
+/// <p>Violation code: the public permission carries a letter the resource does not offer
+/// (<method>OcuPilot.Area.Permissions.ResourceRules.AdmissibleLetters</method>, the classic resource
+/// dialog's own rule).</p>
+Parameter RESOURCEPUBLICPERMISSIONLETTERS = "RESOURCE.PUBLICPERMISSION.LETTERS";
+
+Parameter REASONRESOURCEPUBLICPERMISSIONLETTERS = "Give this resource only the public permissions it offers: Read and Write for a database, Use for a service or an administrative resource, and Read, Write or Use for any other.";
 
 /// <p>Violation code (AD-39): the vendor refused the request because a body field it requires was
 /// absent. Produced at the port boundary by <method>ViolationsFromVendor</method>, on the field the
