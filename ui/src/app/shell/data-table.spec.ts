@@ -221,7 +221,7 @@ describe('the data table', () => {
     expect(link.getAttribute('href')).toBe('/agent/definitions/edit/0?ns=HSCUSTOM');
   });
 
-  it('Story 6.3: the Wallet list links each name cell at its Secrets list, and the parent-scoped Secrets list links nothing', async () => {
+  it('Story 6.3: the Wallet list links each name cell at its Secrets list, and the Secrets list links each at the wallet secret form', async () => {
     // `childListFor` resolves the built, unlisted, id-keyed screen whose `parentScope` is the list's
     // route out of the generated mirror, so the Wallet list's own route is what is needed here.
     //
@@ -235,14 +235,14 @@ describe('the data table', () => {
     expect(link.getAttribute('href')).toBe('/security/wallet/secrets/%252Fcsp%252Fapp00?ns=HSCUSTOM');
     for (const element of planted.splice(0)) element.remove();
 
-    // A parent-scoped list's own id route names its parent's id, so a row id there would name the
-    // wrong thing: the name is drawn as text.
+    // A parent-scoped list's own id route names its parent's id, so a row is never linked there;
+    // the Secrets list pairs the wallet secret form (Story 8.6), which is where its name cell goes.
     const secrets = await wire(tableDeclaration({ route: 'security/wallet/secrets', parentScope: 'security/wallet' }), ok(rows(2)));
     await secrets.refresh.readNow();
     await settle(secrets.fixture);
-    const nameCell = secrets.host().querySelector('[aria-rowindex="2"] [role="gridcell"]') as HTMLElement;
-    expect(nameCell.querySelector('a')).toBeNull();
-    expect(nameCell.textContent?.trim()).toBe('/csp/app00');
+    const secretLink = secrets.host().querySelector('[aria-rowindex="2"] [role="gridcell"] a') as HTMLAnchorElement;
+    expect(secretLink).not.toBeNull();
+    expect(secretLink.getAttribute('href')).toBe('/security/wallet/secrets/edit/%252Fcsp%252Fapp00?ns=HSCUSTOM');
   });
 
   const CLASSIC_HREF = '/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Client.Configuration.zen';

@@ -135,7 +135,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -147,6 +147,8 @@ Parameter TYPEROLE = "role";
 Parameter TYPERESOURCE = "resource";
 
 Parameter TYPEX509 = "x509-credential";
+
+Parameter TYPEWALLETSECRET = "wallet-secret";
 
 Parameter TYPEAUDITING = "auditing-configuration";
 
@@ -305,6 +307,10 @@ ClassMethod CoveredTypes() As %List
 /// <p>An X.509 credential's two are <code>OwnerList</code> and <code>PeerNames</code>; its
 /// <code>CAFile</code> is a server path the edit sends back as the instance holds it and no caller
 /// changes (AD-21).</p>
+/// <p>A wallet secret's four are <code>Usage</code>, <code>RequireTLS</code>,
+/// <code>AllowedHosts</code> and its value, <code>Secret</code>: a template field the edit declares
+/// secret, which the confirm supplies from the card and the stored payload never carries. Its
+/// <code>Type</code> is the fresh read's and no caller changes it.</p>
 /// <p>The auditing configuration's one is <code>Enabled</code>, and it carries <b>no</b> asymmetric
 /// predicate: AD-10 does not forbid turning auditing off, and the product's answer to it is the
 /// card's warning, the recorded drop and the banner rather than a refusal (AD-15 as amended
@@ -321,6 +327,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
 
     If pType = ..#TYPERESOURCE Quit $ListBuild("Description", ..#FIELDPUBLICPERMISSION)
     If pType = ..#TYPEX509 Quit $ListBuild("OwnerList", "PeerNames")
+    If pType = ..#TYPEWALLETSECRET Quit $ListBuild("Usage", "RequireTLS", "AllowedHosts", "Secret")
     Quit ""
 }
 
@@ -377,6 +384,10 @@ ClassMethod AlwaysProhibitedFields(pType As %String) As %List
 /// from the card and the stored payload never carries it. The certificate and key are secrets the
 /// import authors, which no template names, and <code>CAFile</code> is a server path no caller sets
 /// (AD-21).</p>
+/// <p>A wallet secret's four are its uses, whether it requires TLS, its allowed hosts and its value.
+/// The value is a template field the create declares secret: the confirm supplies it from the card
+/// and the stored payload never carries it. Its <code>Type</code> is derived by the tool after this
+/// set has answered.</p>
 ClassMethod PermittedCreateFields(pType As %String) As %List
 {
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "DispatchClass", "Enabled", "MatchRoles", "NameSpace", "Recurse", "Resource", "WSGIAppLocation", "WSGIAppName", "WSGICallable", "WSGIType")
@@ -384,6 +395,7 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
     If pType = ..#TYPERESOURCE Quit $ListBuild("Description", ..#FIELDPUBLICPERMISSION)
     If pType = ..#TYPEX509 Quit $ListBuild("OwnerList", "PeerNames", "PrivateKeyPassword")
+    If pType = ..#TYPEWALLETSECRET Quit $ListBuild("Usage", "RequireTLS", "AllowedHosts", "Secret")
     Quit ""
 }
 
@@ -454,7 +466,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -505,6 +517,10 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         If tType = ..#TYPEX509 {
             Set tSC = ..X509($Get(tToolClass), .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPEWALLETSECRET {
+            Set tSC = ..ReviewedFewOnly(..#TYPEWALLETSECRET, .tChanged, .pProhibits, .pCode)
             Quit
         }
         If tType = ..#TYPEAUDITING {

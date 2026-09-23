@@ -860,7 +860,9 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
         ; port's request types and the admin port answers 501 for them by construction, so holding
         ; it to this roster would assert the wrong instance's contract. Counted, so a change that
         ; routed every write off the admin port could not empty this loop silently.
-        If $ClassMethod(tEntry.%Get("class"), "PortClass") '= "OcuPilot.Port.AdminPort" {
+        ; A port that extends the admin port (OcuPilot.Port.TaskPort) issues its request types
+        ; through it, so its tools are held to this roster too.
+        If '$ClassMethod($ClassMethod(tEntry.%Get("class"), "PortClass"), "%Extends", "OcuPilot.Port.AdminPort") {
             Set tOtherPorts = tOtherPorts + 1
             Continue
         }

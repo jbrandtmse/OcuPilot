@@ -71,6 +71,11 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// <code>Certificate</code> and <code>PrivateKey</code> as <code>secret</code>: the port completes
 /// the import from that content (AD-27), and the template, which names only file paths, never
 /// shows it.</p>
+/// <p><b><code>security.secrets.create</code></b> and <b><code>security.secrets.update</code></b>
+/// classify <code>%Wallet.KeyValue</code>'s class-derived list (AD-3): <code>Usage</code> and
+/// <code>RequireTLS</code> <code>ordinary</code>, the member-less <code>AllowedHosts</code> array
+/// <code>opaque</code>, which each tool adds back as a string array of its own, and the value,
+/// <code>Secret</code> and <code>Secret64</code>, <code>secret</code>.</p>
 XData Entries
 {
 {
@@ -275,6 +280,26 @@ XData Entries
       "CertificateFile": "ordinary",
       "PrivateKeyPassword": "secret",
       "PrivateKeyFile": "secret"
+    }
+  },
+  "security.secrets.create": {
+    "fieldList": "Wallet.Secret:%Wallet.KeyValue",
+    "classification": {
+      "AllowedHosts": "opaque",
+      "RequireTLS": "ordinary",
+      "Secret": "secret",
+      "Secret64": "secret",
+      "Usage": "ordinary"
+    }
+  },
+  "security.secrets.update": {
+    "fieldList": "Wallet.Secret:%Wallet.KeyValue",
+    "classification": {
+      "AllowedHosts": "opaque",
+      "RequireTLS": "ordinary",
+      "Secret": "secret",
+      "Secret64": "secret",
+      "Usage": "ordinary"
     }
   }
 }

@@ -1442,6 +1442,27 @@ export const STRINGS = {
   /** EXPERIENCE.md:412 */
   proposalSecretOptional: 'optional',
 
+  // Story 8.6: the Secrets list's agent invitation, the wallet secret form's title, labels, uses and
+  // helpers, and what its read-only view says of a secret type it does not edit.
+  /** EXPERIENCE.md:413 */
+  walletSecretListEmptyAgent: 'store a secret',
+  /** EXPERIENCE.md:414 */
+  walletSecretFormLabel: 'Secret',
+  walletFieldCollection: 'Collection',
+  walletFieldUsage: 'Usage',
+  walletFieldRequireTls: 'Require TLS',
+  walletFieldAllowedHosts: 'Allowed hosts',
+  walletUsageHttp: 'HTTP',
+  walletUsageSql: 'SQL gateway',
+  walletUsageSoap: 'SOAP',
+  walletUsageCustom: 'Custom',
+  /** EXPERIENCE.md:415 */
+  walletValueHelp: 'Stored as typed. For HTTP, SOAP or SQL use, enter a JSON object with user and password members.',
+  walletHostsHelp: 'Comma-separated. Applies only when TLS is required.',
+  /** EXPERIENCE.md:416 */
+  walletTypeReadOnly: 'Only key-value secrets are edited here.',
+  walletTypeElsewhere: 'Manage RSA and symmetric-key secrets through the %Wallet classes. The classic portal has no wallet page.',
+
 } as const;
 
 /**

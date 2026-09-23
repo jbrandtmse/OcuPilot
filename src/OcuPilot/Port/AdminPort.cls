@@ -186,7 +186,13 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// <code>POST</code>, so <code>DELETE</code> reads no body; and its <code>POST</code> takes the
 /// certificate and key only as server file paths, so the port completes it from content instead
 /// (<parameter>CONTENTCOMPLETEDTYPES</parameter>).</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE";
+/// <p><code>Wallet.Secret/PUT</code> is Story 8.6's wallet secret create and edit. Read on this build:
+/// its <code>RunPut</code> modifies a secret that exists and otherwise creates it (an upsert, which
+/// the create's absence fingerprint and the edit's fresh read guard, AD-4, AD-54); a modify sets
+/// only the keys the body carries and keeps the stored value when <code>Secret</code> is absent or
+/// empty; and it answers 400 for an unknown key and 422 for an absent collection. The body is a
+/// wrapper (<parameter>WRAPPEDTYPES</parameter>).</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -287,7 +293,13 @@ Parameter IMPORTSAVECODES = "728=X509.CERTIFICATE.EXPIRED,732=X509.PRIVATEKEYPAS
 /// the port (AD-27) and the rest of the product reads <code>Security.User</code>'s flat derived
 /// field list. <method>Fail</method> strips the wrapper's leading segment from a field a vendor
 /// refusal names, so the refusal lands on the flat field the caller sent.</p>
-Parameter WRAPPEDTYPES = "Security.User/POST=User:Password";
+/// <p><code>Wallet.Secret/PUT</code> is <code>%Api.Admin.Endpoints.Wallet.Secret</code>'s create and
+/// edit (read on this build): a <code>ValidateRequest</code> requiring <code>{Type,
+/// WalletSecretConfig:{...}}</code> and a <code>RunPut</code> that hands
+/// <code>WalletSecretConfig</code> to the <code>Type</code> class's <code>Create</code> or
+/// <code>Modify</code>. The rest of the product reads the flat <code>%Wallet.KeyValue</code> field
+/// list with <code>Type</code> beside it.</p>
+Parameter WRAPPEDTYPES = "Security.User/POST=User:Password,Wallet.Secret/PUT=WalletSecretConfig:Type";
 
 /// <p>The pair set the <b>backing query or class</b> of an endpoint requires, beyond the
 /// endpoint's own <code>ResourcesOR()</code> gate (AD-29). Comma-separated entries of the form

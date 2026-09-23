@@ -134,7 +134,7 @@ Method TestNoSecondAuthenticatedHopExists()
     Set tProbeLogin = ..SitesNaming(".Security.Login", "OcuPilot.Test.", 1)
     Do $$$AssertTrue(tProbeLogin [ "OcuPilot.Test.ToolSetProbe", "the scan does find the probe's own deliberate login: " _ tProbeLogin)
 
-    Set tPath = "OcuPilot.Screen.Tool.,OcuPilot.Area.,OcuPilot.Kernel.Agent.,OcuPilot.Port.AdminPort,OcuPilot.Port.MgmntPort,OcuPilot.Port.LogSourcePort"
+    Set tPath = "OcuPilot.Screen.Tool.,OcuPilot.Area.,OcuPilot.Kernel.Agent.,OcuPilot.Port.AdminPort,OcuPilot.Port.MgmntPort,OcuPilot.Port.LogSourcePort,OcuPilot.Port.WalletPort"
     Set tHttpSites = ..SitesNaming("%Net.HttpRequest", tPath)
     Do $$$AssertEquals(tHttpSites, "", "nothing on the tool path issues an HTTP request: " _ tHttpSites)
     Set tApiSites = ..SitesNaming("/api/ocupilot", tPath)

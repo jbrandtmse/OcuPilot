@@ -14,6 +14,7 @@ import {
 import { DefinitionForm } from './areas/agent/definition-form.store';
 import { RoleCreateForm } from './areas/permissions/role-create-form.store';
 import { ResourceEditor } from './areas/permissions/resource-editor.store';
+import { WalletSecretForm } from './areas/security/wallet-secret-form.store';
 import { X509Form } from './areas/security/x509-form.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
@@ -1046,6 +1047,13 @@ describe('the shell frame', () => {
     x509Form.setPassword('a-password-this-principal-typed');
     expect(x509Form.privateKey()).not.toBe('');
 
+    // The same answer for the wallet secret form (Story 8.6): a value THIS principal typed and has
+    // not saved, in a root-provided store (AD-35). A create in a collection takes input before its
+    // form read is made.
+    const walletSecretForm = TestBed.inject(WalletSecretForm);
+    walletSecretForm.setSecret('a-value-this-principal-typed');
+    expect(walletSecretForm.secretText()).not.toBe('');
+
     // The ninth answer of the same kind (Story 3.6, AC5). Whether the instance holds an enabled
     // definition is a read THIS principal made, and the panel and the rail's dot pick an audience
     // from it. Left standing, the next principal's first paint shows an administrator's reminder
@@ -1098,6 +1106,10 @@ describe('the shell frame', () => {
     expect(x509Form.certificate()).toBe('');
     expect(x509Form.privateKey()).toBe('');
     expect(x509Form.password()).toBe('');
+
+    // Mutation (Rule 19): delete `this.walletSecretForm.reset()` from `App.verifyWhenSignedIn` ->
+    // this goes red, and the next principal's wallet form holds the previous one's typed value.
+    expect(walletSecretForm.secretText()).toBe('');
 
     expect(scope.resets).toBe(1);
     // The fourth answer of the same kind (Story 1.13). A re-read parked with connectivity is a

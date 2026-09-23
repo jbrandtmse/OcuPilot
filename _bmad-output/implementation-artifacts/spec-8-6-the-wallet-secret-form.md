@@ -2,7 +2,8 @@
 title: 'Story 8.6: The wallet secret form'
 type: 'feature'
 created: '2026-09-23'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'c78622ec6bee1a9877e65898f987ed36dfb15711'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -10,7 +11,24 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-8-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-8-5-x-509-import-edit-and-delete.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - 'The edit card discloses Type and AllowedHosts as masked unchanged rows: Disclosure reads OrdinaryPaths from ToolFields, where Type has no row and AllowedHosts is opaque. Fail-closed and harmless; a reviewed ordinary row for them needs a field-list change.'
+  - 'ui/browser/security.browser-spec.mjs AC3 test title still says the Secrets name cell is text; only its :308 assertion was flipped, as ruled.'
+  - summary: >-
+      AD-27's third case lists the composed read as {Name, Type, Usage, RequireTLS, AllowedHosts} and says only the three settings are fingerprinted; the port answers {Type, Usage, RequireTLS, AllowedHosts}, as this spec's task list says, and the edit's fingerprint also covers Type.
+    evidence: |-
+      Mint.Merge copies the whole fresh read into the payload, so a Name key would travel inside WalletSecretConfig, which the vendor refuses (unknown key, 400). Fingerprinting Type adds a field and loses nothing. Recommended: correct ARCHITECTURE-SPINE.md:356 at its origin (Rule 20) to the shape shipped.
+    location: >-
+      _bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md:356
+    severity: medium
+  - summary: >-
+      On the agent path the value's 32,768-character limit is not checked: the mint never sees the value and the card's confirm supplies it.
+    evidence: |-
+      WalletRules.Validate holds the length on the screen's Save only. Checking it at confirm needs Kernel/Proposal/Confirm.cls, which this story may not edit (DW-1493); the vendor stores what it is sent.
+    location: >-
+      src/OcuPilot/Kernel/Proposal/Confirm.cls
+    severity: low
+
 ---
 
 <intent-contract>
@@ -177,10 +195,10 @@ Before editing a ⚠ file, run `git fetch origin && git show origin/OCU-1-epic7:
 
 ### Orchestrator rulings at the spec gate, 2026-09-23
 
-- [ ] [Lead] **`Port/WalletPort` is AD-27's third named case** (written into AD-27, with the fingerprint's limit stated there: the stored value is never read, so a value change between propose and confirm cannot be detected; only `Usage`, `RequireTLS` and `AllowedHosts` are fingerprinted). Both wallet tools declare the port (AD-52). Add a test that fails when the composed read starts returning the stored value.
-- [ ] [Lead] **Key-value secrets only** (a tier-1 reading of AC1). An RSA or symmetric-key secret opens read-only, and the read-only view says plainly that those types are edited in the classic portal -- a tier-1 Fixed-strings row (EXPERIENCE.md, append-only) if no existing string says it. Creating and editing them is DW-1555 (range-end cleanup).
-- [ ] [Lead] **Delete moves to Story 9.5** as DW-1556 (FR-46's delete: the agent tool and the Secrets-list row action). This story ships no delete.
-- [ ] [Lead] **`ui/browser/security.browser-spec.mjs:308`** (Epic 7-modified; its hunks are at 224 and 238-247): flip only that one assertion to "the Secrets name cell is a link and opens `security/wallet/secrets/edit/<name>`". Touch no other line. The form route's entries in `Test/{Wire,WireSecurityRead,WireOAuthRead}.cls` fall under the roster rule, 2026-09-23; `screens.generated.ts` is regenerate-only.
+- [x] [Lead] **`Port/WalletPort` is AD-27's third named case** (written into AD-27, with the fingerprint's limit stated there: the stored value is never read, so a value change between propose and confirm cannot be detected; only `Usage`, `RequireTLS` and `AllowedHosts` are fingerprinted). Both wallet tools declare the port (AD-52). Add a test that fails when the composed read starts returning the stored value.
+- [x] [Lead] **Key-value secrets only** (a tier-1 reading of AC1). An RSA or symmetric-key secret opens read-only, and the read-only view says plainly that those types are edited in the classic portal -- a tier-1 Fixed-strings row (EXPERIENCE.md, append-only) if no existing string says it. Creating and editing them is DW-1555 (range-end cleanup).
+- [x] [Lead] **Delete moves to Story 9.5** as DW-1556 (FR-46's delete: the agent tool and the Secrets-list row action). This story ships no delete.
+- [x] [Lead] **`ui/browser/security.browser-spec.mjs:308`** (Epic 7-modified; its hunks are at 224 and 238-247): flip only that one assertion to "the Secrets name cell is a link and opens `security/wallet/secrets/edit/<name>`". Touch no other line. The form route's entries in `Test/{Wire,WireSecurityRead,WireOAuthRead}.cls` fall under the roster rule, 2026-09-23; `screens.generated.ts` is regenerate-only.
 
 ### Acceptance Criteria
 
@@ -198,6 +216,33 @@ Before editing a ⚠ file, run `git fetch origin && git show origin/OCU-1-epic7:
 - 2026-09-23, spec gate (orchestrator rulings): AD-27's third case approved and written with its fingerprint limit; key-value only with a classic-portal line for the other types (DW-1555); delete to Story 9.5 (DW-1556); one assertion in `security.browser-spec.mjs` approved; AD-4 corrected for `Wallet.Secret` at its origin.
 
 ## Review Triage Log
+
+### 2026-09-23 — Review pass
+
+- verdicts: 22 findings — high 0, medium 4, low 12, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The form read's `editable: false` for a key of another type had no server-side test — added a symmetric-key leg to `WalletWire.TestEachRouteAnswersOneJsonEnvelopeOverTheWire`; mutation observed red (run 257).
+  - `[medium]` `[patch]` No test sent the wallet create an unreviewed field — added `WalletSecretCreate.TestAnUnreviewedFieldIsRefusedOnTheScreen` (`Secret64`, `Type` → 403 `PROHIBITED.UNCOVEREDFIELD`, nothing sent); mutation observed red (run 256).
+  - `[low]` `[patch]` The name look-up's taken answer and its sentence were untested — added a taken leg and a case-variant free leg to `WalletWire`; mutation observed red (run 257).
+  - `[medium]` `[patch]` `WalletPortRead`'s object-versus-text fact compared two values that could both be `""` (Rule 19) — it now asserts each stored value equals the JSON text and the second PUT's 201.
+  - `[low]` `[reject]` Several named pins carry no mutation of their own — every AC row has at least one demonstrated mutation, which is what Rule 19 requires.
+  - `[low]` `[reject]` AC7's browser leg reaches the list by Cancel and cannot fail on the bus — the publish is pinned by the store spec and the list's reaction by `list-page.spec.ts`.
+  - `[low]` `[patch]` `HostUsable`'s `.*\s.*` missed a host holding two line breaks (reproduced on the instance) — now `$Locate(pHost, "\s")`, with a field-rules case; mutation observed red (run 255).
+  - `[low]` `[patch]` `WalletWire.LogSince` seeked a character stream to a byte offset — now `%Stream.FileBinary`.
+  - `[false]` `[reject]` The port receives a flat body, not the wrapper — `AdminPort.WRAPPEDTYPES` wraps it inside the port, and the vendor refuses an unwrapped body (400), so every 201 over the real port exercises the wrapper.
+  - `[false]` `[reject]` The client sends only changed fields — the spec's store task says so; the complete set is composed server-side and pinned by `TestAnEditKeepsWhatTheCallerDidNotChangeOnBothCallers`.
+  - `[low]` `[defer]` The value's length limit is not checked on the agent path — it needs `Confirm.cls` (DW-1493); recorded in `deferred:`.
+  - `[low]` `[reject]` A bad name suppresses other fields' rows on a create — merging the two passes adds branches for a case a user rarely meets; each field still reports once the name is right.
+  - `[false]` `[reject]` Collection absent on Save carries the code inside the 422 envelope — the same shape every screen route uses (X.509, roles), and the matrix's "same code" is that violation code.
+  - `[low]` `[reject]` The other-type PUT and the agent refusals are pinned at class level and by HTTP status — the router handlers are one-line delegations and the mint's refusal is the shared `TOOL.ARGUMENTS` path pinned by `ToolRoundTrip`.
+  - `[false]` `[reject]` An absent secret answers 404 before a bad key's 400 — nothing is sent either way, as the matrix requires.
+  - `[low]` `[reject]` AC4's "no such secret" is checked on the instance, not the list read — the list read is the vendor's `LIST` over the same instance.
+  - `[low]` `[reject]` No test drives the agent's navigator away from a dirty form — the shared `FormDirty` guard is navigation-agnostic and pinned by Story 3.5's tests.
+  - `[medium]` `[defer]` AD-27's third case names `{Name, Type, Usage, RequireTLS, AllowedHosts}` and three fingerprinted fields; the port answers the spec's `{Type, Usage, RequireTLS, AllowedHosts}` and the fingerprint also covers `Type` — a `Name` key would reach `WalletSecretConfig` and be refused; the spine wording is the lead's to correct (Rule 20), recorded in `deferred:`.
+  - `[low]` `[reject]` A test helper calls `GetSecretValue` — test-only and documented, and the only way to show a stored value was kept or replaced; no shipped class calls it.
+  - `[false]` `[reject]` The read-only view adds `walletTypeElsewhere` — the spec-gate ruling requires the view to say where those types are managed.
+  - `[low]` `[reject]` The agent's field-rule cases assert HTTP 400 without the code — the mint's one refusal path answers `TOOL.ARGUMENTS`, pinned by `ToolRoundTrip`'s rows for both tools.
+  - `[low]` `[defer]` The edit card shows `Type` and `AllowedHosts` as masked unchanged rows — already in `deferred:` from implementation.
 
 ## Design Notes
 
@@ -298,25 +343,50 @@ Stateful checks run on slot B's throwaway `ocupilot-b-ci` (web 52777, super 1976
 
 | AC | Pinning test | Mutation |
 |---|---|---|
-| AC1 | The page spec's masked and caption legs; the browser AC1 leg | Render Value as `type="text"`; pre-fill it from the store; drop the caption |
-| AC2 | `WalletSecretCreate`'s value scan; `WalletWire`'s log scan | Add the stored value to `WalletPort`'s answer; put the value in a refusal status |
-| AC3 | `DerivedFields` :175; `field-lists.mjs --check` | Remove `Usage` from `FieldLists`'s KeyValue list |
-| AC4 | `WalletWire`'s deleted-target legs; `WalletSecretUpdate`'s screen absent leg | Skip the fresh `GET` in `WalletSave.Update`; answer 200 for an absent name in `WalletPort` |
-| AC5 | `WalletWire`'s 403 legs; the browser deep-link leg | Drop `%Admin_Wallet` from `WalletSecretForm`'s privileges |
-| AC6 | `WalletPortRead`'s shape legs | Drop the exact-case filter |
-| AC7 | The store spec's publish leg; the browser list leg | Drop the store's `publish` |
-| AC8 | The page spec's dirty-leave leg | Clear `FormDirty` on edit |
+| AC1 | `wallet-secret-form.page.spec.ts` masked and caption legs; `wallet-secret-form.store.spec.ts` value legs; the browser AC1 leg | mutation: the value input rendered `type="text"` -> page spec AC1 masked leg red; the stored-caption block dropped -> page spec AC1 edit leg red; `clearSecret` keeping the value -> four store legs and the page AC1 masked leg red |
+| AC2 | `WalletPortRead.TestTheComposedReadNeverCarriesTheStoredValue` (the composed-read pin); `WalletSecretCreate` value scan; `WalletWire.TestZNothingReachedTheMessageLog` | mutation: `WalletPort.KeyValueSettings` setting `Secret` from `%Wallet.KeyValue.GetSecretValue` -> `WalletPortRead` key-set and value-scan assertions red (run 242); the sent body's JSON added to the vendor status `AdminPort.Invoke` hands `Fail` -> `WalletWire.TestZNothingReachedTheMessageLog` red (run 247) |
+| AC3 | `DerivedFields`; `field-lists.mjs --check` | mutation: the `Usage` row dropped from `FieldLists.cls`'s `Wallet.Secret:%Wallet.KeyValue` -> `field-lists.mjs --check` refuses both classification entries, and `DerivedFields.TestTheCommittedListsEqualAFreshDerivation` and `TestTheCommittedClassIsARegeneration` red (run 244) |
+| AC4 | `WalletSecretUpdate.TestADeletedSecretIsRefusedAndNotRecreated`; `WalletWire` upsert leg (raw port 201) | mutation: `WalletPort.Completed` answering an absent name 200 with a key-value object -> the screen's edit is sent, the upsert re-creates the secret, and the test is red (run 243) |
+| AC5 | `WalletWire.TestACallerWithoutTheWalletResourceIsRefusedOnEveryRoute`; the browser deep-link leg | mutation: `%Admin_Wallet` dropped from `WalletSecretForm`'s privileges -> the `WalletWire` 403 leg red (run 245) |
+| AC6 | `WalletPortRead` shape legs | mutation: case folded in `Completed`'s name comparison -> `TestTheNameIsComparedExactly` red on the third spelling (run 246) |
+| AC7 | the store spec's publish legs; the browser list leg | mutation: `publish` dropped from the store's `save()` -> the store spec's create and edit legs red |
+| AC8 | the page spec's dirty-leave leg | mutation: `change` setting `FormDirty` false -> page AC8 and the store create leg red |
+| AD-35 sign-out | `app.spec.ts` sign-out leg | mutation: `this.walletSecretForm.reset()` removed from `App` -> the sign-out leg red |
+| AD-10 (review) | `WalletSecretCreate.TestAnUnreviewedFieldIsRefusedOnTheScreen` | mutation: `Secret64` and `Type` added to `Prohibited.PermittedCreateFields("wallet-secret")` -> both legs' 403 assertions red (run 256) |
+| Field rules (review) | `WalletSecretCreate.TestEveryFieldRuleRefuses` case 14 (a host holding two line breaks) | mutation: `WalletRules.HostUsable` back to `'$Match(pHost, ".*\s.*")` -> case 14 red (run 255) |
+| Another type (review) | `WalletWire.TestEachRouteAnswersOneJsonEnvelopeOverTheWire` symmetric-key leg | mutation: `tEditable` set to 1 in `WalletRules.HandleForm` -> the leg red (run 257) |
+| Name taken (review) | `WalletWire.TestACreateShowsOnTheListAndAnEditKeepsTheValue` look-up leg | mutation: `HandleName` answering `reason` `""` -> the taken leg red (run 257) |
+
+Observed at implement: each server mutation was applied to the working file, loaded with `LoadDir` `ck-d`, observed red on `ocupilot-b-ci`, restored from a byte copy and reloaded (`git status --short` and `git diff --stat` unchanged); each client mutation was run under `ng test --include` and restored the same way. The browser legs were not mutated (each needs a rebuilt, redeployed bundle); they ran green over the deployed bundle.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only; nothing implemented. The ledger inbox was empty. Wire probes ran on `ocupilot-b-ci` and were cleaned up by exact name (the demo collection again holds only `OcuPilotDemo.Sample`). `ocupilot-slot-b` was read only.
+footprint_extensions: contended — `Kernel/Proposal/Prohibited.cls`, `Api/Router.cls`, `Screen/Tool/Classification.cls` (tail append), `Screen/Tool/ToolFields.cls` (regenerated), `Test/{SurfaceCoverage,EndpointCoverage,ReadTool,ToolRoundTrip,PortFixture,Prohibited,ToolWrite}.cls`, `ui/src/app/shell/screen-outlet.ts` (one entry, one import), `ui/browser/security.browser-spec.mjs` (:308 only); shared-append — `Port/AdminPort.cls`, `ui/src/app/core/strings.ts`, EXPERIENCE.md Fixed strings rows 413-416; Epic 7-modified, roster rule — `Test/{Wire,WireOAuthRead,WireSecurityRead,PortGate,AsTheUser}.cls`, `ui/tools/navigation.test.mjs`, `ui/src/app/core/screens.generated.ts`, and `ui/src/app/shell/data-table.spec.ts` (one Story 6.3 leg flipped: the Secrets name cell is now a link); outside both footprints — `Api/Error.cls`, `Screen/Descriptor/WalletSecretList.cls`, `Test/SecurityLists.cls`, `ui/src/app/app.ts`, `ui/src/app/app.spec.ts`, `scripts/ci-throwaway.sh` (arming roster comment).
 
-For the lead's ruling at the spec gate (each is planned as recommended in Design Notes):
+amendments: the ruling's "edited in the classic portal" line has no true referent — 2026.2 ships no classic wallet page (no `%CSP.UI.Portal` wallet class; both wallet descriptors carry `classicPage ""`). The read-only view says `walletTypeElsewhere` instead ("Manage RSA and symmetric-key secrets through the %Wallet classes. The classic portal has no wallet page."), EXPERIENCE.md row 416. The lead may replace the sentence.
 
-- SPINE DECISION NEEDED: AD-27's third case, the `Wallet.Secret` `GET` completed in `Port/WalletPort` (recommended), or an AD-4 amendment instead.
-- SPINE DECISION NEEDED: correct AD-4 :129 and :133 and `epic-8-context.md` at their origin; `Wallet.Secret`'s PUT keeps omitted fields (measured).
-- Product scope: key-value secrets only; the value stored as typed; FR-46's delete and row action unowned (candidate Story 9.5).
-- Needs the lead: `ui/browser/security.browser-spec.mjs`, `Test/{WireSecurityRead,Wire,WireOAuthRead}.cls`, `screens.generated.ts` (Code Map).
+### What changed
+
+- **Server.** `Port/WalletPort` completes `Wallet.Secret` `GET` from the vendor `LIST` (exact-case filter) plus `%Wallet.Secret.Exists` in `%SYS`, never the value; `AdminPort` gains the `PUT` as mutating and wrapped. `security.secrets.create` and `security.secrets.update`, `WalletSecretForm`, `WalletRules`/`WalletSave`, four routes, the `WALLET.*` block, and `wallet-secret` in the prohibited set. The Secrets list declares Create and `secretArguments ["Secret"]`.
+- **Client.** `wallet-secret-form.{store,page}.ts`, `wallet-actions.ts`, the outlet entry, the sign-out reset, strings and Fixed strings rows.
+- **Tests.** `WalletPortRead`, `WalletSecretCreate`, `WalletSecretUpdate`, `WalletWire` (armed), helpers `WalletProbe`, `WalletRecordPort`, `WalletConfirm`, `WalletSaveFixture`; both component specs; `wallet-secret.browser-spec.mjs`; roster rows.
+
+### Review
+
+Two layers (verification-gap, intent-alignment), 22 findings: 7 patched (3 medium, 4 low: four test legs, one unfalsifiable assertion, the host whitespace rule, the log scan's byte offset), 3 deferred (the spine's AD-27 key list for the lead, the agent-path value length, the edit card's masked rows), 12 rejected with reasons in the triage log. Follow-up review: false; every patch is a test leg or a one-line rule with an observed mutation.
+
+### Verification
+
+- Full ObjectScript sweep once, on a throwaway brought up after the last edit: 200 classes, 1,779 tests, 0 failed, each run confirmed against `%UnitTest_Result` by `ci-runner`.
+- `npm run build` (initial total 1,224,620 B, under the 1,261,000 B warning, no re-base) and `npm test`: 1,326 tool tests and 904 component tests, 0 failed.
+- `wallet-secret` and `security` browser specs over the redeployed bundle: 8/8. `smoke.sh --container ocupilot-b-ci`: 47/47.
+- `field-lists --check`, `screen-mirror --check`, `client-lint`, `browser-reset`, `check-objectscript`, `lint-docs`: clean.
+- Mutations are in the Verification table; the review's four were applied, observed red (runs 255-257) and reverted byte-identically.
+
+### Residual risks
+
+- Merging Epic 7 will conflict on single-line rosters. `AsTheUser.cls` and `PortGate.cls` gain one new conflict each, both a plain union. The other overlaps predate this story.
+- AD-27's key list in the spine differs from what ships. See `deferred:`.

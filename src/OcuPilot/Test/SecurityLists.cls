@@ -45,8 +45,8 @@ Method OnAfterOneTest() As %Status
 
 /// <p>The four screens as <code>$ListBuild(descriptor, route, tool, side-bar position, entity type,
 /// classic page, read fields as JSON, privileges as JSON, parent scope, the read's criterion query
-/// suffix, primary action)</code>. The X.509 list's primary action is Create (Story 8.5); the other
-/// three declare none.</p>
+/// suffix, primary action)</code>. The X.509 and Secrets lists' primary action is Create; the other
+/// two declare none.</p>
 ClassMethod Screens() As %List
 {
     Set tSecure = "[{""resource"":""%Admin_Secure"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]"
@@ -55,7 +55,7 @@ ClassMethod Screens() As %List
     Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.X509CredentialList", "security/x509", "security.x509", 2, "x509-credential", "%CSP.UI.Portal.X509Credentials", "[""Alias"",""OwnerList"",""PeerNames"",""CAFile"",""SubjectDN"",""IssuerDN"",""ValidityNotBefore"",""ValidityNotAfter""]", tSecure, "", "", "create"))
     Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.LdapConfigList", "security/ldap", "security.ldap", 3, "ldap-configuration", "%CSP.UI.Portal.LDAPs", "[""Name"",""Enabled"",""Description"",""LDAPCACertFile""]", tSecure, "", ""))
     Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.WalletCollectionList", "security/wallet", "security.wallet", 4, "wallet-collection", "", "[""Name"",""EditResource"",""UseResource""]", tWallet, "", ""))
-    Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.WalletSecretList", "security/wallet/secrets", "security.secrets", 0, "wallet-secret", "", "[""Name"",""Type""]", tWallet, "security/wallet", "&collection=" _ ..#DEMOCOLLECTION))
+    Set tScreens = tScreens _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.WalletSecretList", "security/wallet/secrets", "security.secrets", 0, "wallet-secret", "", "[""Name"",""Type""]", tWallet, "security/wallet", "&collection=" _ ..#DEMOCOLLECTION, "create"))
     Quit tScreens
 }
 

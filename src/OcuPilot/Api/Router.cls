@@ -104,6 +104,10 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/resources/name" Method="GET" Call="ResourceNameCheck"/>
   <Route Url="/resources/:id" Method="PUT" Call="ResourceUpdate"/>
   <Route Url="/resources" Method="POST" Call="ResourceCreate"/>
+  <Route Url="/wallet/secret/form" Method="GET" Call="WalletSecretFormRead"/>
+  <Route Url="/wallet/secret/name" Method="GET" Call="WalletSecretNameCheck"/>
+  <Route Url="/wallet/secret/:id" Method="PUT" Call="WalletSecretUpdate"/>
+  <Route Url="/wallet/secret" Method="POST" Call="WalletSecretCreate"/>
   <Route Url="/x509/form" Method="GET" Call="X509FormRead"/>
   <Route Url="/x509/name" Method="GET" Call="X509NameCheck"/>
   <Route Url="/x509/:id" Method="PUT" Call="X509Update"/>
@@ -364,6 +368,35 @@ ClassMethod ResourceCreate() As %Status
 ClassMethod ResourceUpdate(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Area.Permissions.ResourceSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /wallet/secret/form</code> (Story 8.6): the wallet
+/// secret form's read, delegating to <class>OcuPilot.Area.Security.WalletRules</class>. The two
+/// sub-resources precede <code>/wallet/secret/:id</code>.</p>
+ClassMethod WalletSecretFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.WalletRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /wallet/secret/name</code>: the wallet secret
+/// form's blur check of whether a name is taken.</p>
+ClassMethod WalletSecretNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.WalletRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /wallet/secret</code>: the wallet secret form's
+/// create Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod WalletSecretCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.WalletSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /wallet/secret/:id</code>: the wallet secret
+/// form's edit Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod WalletSecretUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.WalletSave).HandleUpdate(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /x509/form</code> (Story 8.5): the X.509 form's

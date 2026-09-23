@@ -1147,6 +1147,17 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#X509PRIVATEKEYPASSWORDWRONG Quit ..#REASONX509PRIVATEKEYPASSWORDWRONG
     If pCode = ..#X509PRIVATEKEYPASSWORDWITHOUTKEY Quit ..#REASONX509PRIVATEKEYPASSWORDWITHOUTKEY
     If pCode = ..#X509PRIVATEKEYPASSWORDLENGTH Quit ..#REASONX509PRIVATEKEYPASSWORDLENGTH
+    If pCode = ..#WALLETNAMEREQUIRED Quit ..#REASONWALLETNAMEREQUIRED
+    If pCode = ..#WALLETNAMESHAPE Quit ..#REASONWALLETNAMESHAPE
+    If pCode = ..#WALLETNAMELENGTH Quit ..#REASONWALLETNAMELENGTH
+    If pCode = ..#WALLETNAMETAKEN Quit ..#REASONWALLETNAMETAKEN
+    If pCode = ..#WALLETNAMEABSENT Quit ..#REASONWALLETNAMEABSENT
+    If pCode = ..#WALLETCOLLECTIONABSENT Quit ..#REASONWALLETCOLLECTIONABSENT
+    If pCode = ..#WALLETSECRETREQUIRED Quit ..#REASONWALLETSECRETREQUIRED
+    If pCode = ..#WALLETSECRETLENGTH Quit ..#REASONWALLETSECRETLENGTH
+    If pCode = ..#WALLETUSAGERANGE Quit ..#REASONWALLETUSAGERANGE
+    If pCode = ..#WALLETALLOWEDHOSTSSHAPE Quit ..#REASONWALLETALLOWEDHOSTSSHAPE
+    If pCode = ..#WALLETTYPEUNSUPPORTED Quit ..#REASONWALLETTYPEUNSUPPORTED
     If pCode = ..#PORTFIELDREQUIRED Quit ..#REASONPORTFIELDREQUIRED
     If pCode = ..#PORTFIELDUNEXPECTED Quit ..#REASONPORTFIELDUNEXPECTED
     If pCode = ..#PORTFIELDSHAPE Quit ..#REASONPORTFIELDSHAPE
@@ -1190,6 +1201,13 @@ ClassMethod ResourceViolationCodes() As %List
 ClassMethod X509ViolationCodes() As %List
 {
     Quit $ListBuild(..#X509ALIASREQUIRED, ..#X509ALIASLENGTH, ..#X509ALIASSHAPE, ..#X509ALIASTAKEN, ..#X509ALIASABSENT, ..#X509CERTIFICATEREQUIRED, ..#X509CERTIFICATESHAPE, ..#X509CERTIFICATEEXPIRED, ..#X509PRIVATEKEYSHAPE, ..#X509PRIVATEKEYMISMATCH, ..#X509PRIVATEKEYPASSWORDWRONG, ..#X509PRIVATEKEYPASSWORDWITHOUTKEY, ..#X509PRIVATEKEYPASSWORDLENGTH)
+}
+
+/// <p>Every <code>WALLET.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod WalletViolationCodes() As %List
+{
+    Quit $ListBuild(..#WALLETNAMEREQUIRED, ..#WALLETNAMESHAPE, ..#WALLETNAMELENGTH, ..#WALLETNAMETAKEN, ..#WALLETNAMEABSENT, ..#WALLETCOLLECTIONABSENT, ..#WALLETSECRETREQUIRED, ..#WALLETSECRETLENGTH, ..#WALLETUSAGERANGE, ..#WALLETALLOWEDHOSTSSHAPE, ..#WALLETTYPEUNSUPPORTED)
 }
 
 /// <p>Every <code>AGENT.*</code> field-level violation code that carries a sentence, as a
@@ -1997,6 +2015,76 @@ Parameter REASONX509PRIVATEKEYPASSWORDWITHOUTKEY = "A password is only for an en
 Parameter X509PRIVATEKEYPASSWORDLENGTH = "X509.PRIVATEKEYPASSWORD.LENGTH";
 
 Parameter REASONX509PRIVATEKEYPASSWORDLENGTH = "A private key password is at most 128 characters.";
+
+/// <p>Envelope code (AD-39): a wallet secret's create or edit broke one or more of the rules
+/// <class>OcuPilot.Area.Security.WalletRules</class> applies before the port is touched. Rendered on
+/// the <parameter>VALIDATIONFAILED</parameter> slug with every violation in
+/// <code>detail.violations</code>. No sentence in this block quotes a secret's value (AD-35).</p>
+Parameter WALLETVALIDATION = "WALLET.VALIDATION";
+
+Parameter REASONWALLETVALIDATION = "The secret was refused.";
+
+/// <p>Violation code: no name was supplied.</p>
+Parameter WALLETNAMEREQUIRED = "WALLET.NAME.REQUIRED";
+
+Parameter REASONWALLETNAMEREQUIRED = "Give the secret a name.";
+
+/// <p>Violation code: the name is not a collection, a dot and a secret name of letters, digits,
+/// dots, hyphens and underscores.</p>
+Parameter WALLETNAMESHAPE = "WALLET.NAME.SHAPE";
+
+Parameter REASONWALLETNAMESHAPE = "A secret's name uses only letters, digits, dots, hyphens and underscores, after its collection's name and a dot.";
+
+/// <p>Violation code: the full name, collection included, is longer than
+/// <class>%Wallet.Secret</class> stores.</p>
+Parameter WALLETNAMELENGTH = "WALLET.NAME.LENGTH";
+
+Parameter REASONWALLETNAMELENGTH = "A secret's full name, its collection's name included, is at most 128 characters.";
+
+/// <p>Violation code: the collection already holds a secret with that exact name, case included.
+/// <code>GET /wallet/secret/name</code> answers it on blur.</p>
+Parameter WALLETNAMETAKEN = "WALLET.NAME.TAKEN";
+
+Parameter REASONWALLETNAMETAKEN = "This collection already has a secret with that name. Choose a different one.";
+
+/// <p>Violation code: an edit, a form read or a read names a secret this instance does not hold.
+/// Rendered at 404.</p>
+Parameter WALLETNAMEABSENT = "WALLET.NAME.ABSENT";
+
+Parameter REASONWALLETNAMEABSENT = "This instance has no wallet secret with that name.";
+
+/// <p>Violation code: the name's collection does not exist on this instance. Rendered at 404 on a
+/// read and at 422 on a Save.</p>
+Parameter WALLETCOLLECTIONABSENT = "WALLET.COLLECTION.ABSENT";
+
+Parameter REASONWALLETCOLLECTIONABSENT = "This instance has no wallet collection with that name.";
+
+/// <p>Violation code: a create carried no value.</p>
+Parameter WALLETSECRETREQUIRED = "WALLET.SECRET.REQUIRED";
+
+Parameter REASONWALLETSECRETREQUIRED = "Enter the value to store.";
+
+/// <p>Violation code: the value is longer than the form accepts.</p>
+Parameter WALLETSECRETLENGTH = "WALLET.SECRET.LENGTH";
+
+Parameter REASONWALLETSECRETLENGTH = "A value is at most 32,768 characters.";
+
+/// <p>Violation code: the uses are not a whole number from 0 to 15.</p>
+Parameter WALLETUSAGERANGE = "WALLET.USAGE.RANGE";
+
+Parameter REASONWALLETUSAGERANGE = "Usage is a whole number from 0 to 15: HTTP 1, SQL gateway 2, SOAP 4 and Custom 8, added together.";
+
+/// <p>Violation code: the allowed hosts are not a list of host names, or one of them is empty,
+/// longer than 255 characters, or holds whitespace or a comma.</p>
+Parameter WALLETALLOWEDHOSTSSHAPE = "WALLET.ALLOWEDHOSTS.SHAPE";
+
+Parameter REASONWALLETALLOWEDHOSTSSHAPE = "Each allowed host is a name or address of at most 255 characters, with no space or comma.";
+
+/// <p>Violation code: an edit names a secret that is not a key-value secret, which this form does
+/// not change.</p>
+Parameter WALLETTYPEUNSUPPORTED = "WALLET.TYPE.UNSUPPORTED";
+
+Parameter REASONWALLETTYPEUNSUPPORTED = "Only key-value secrets are edited here.";
 
 /// <p>Violation code (AD-39): the vendor refused the request because a body field it requires was
 /// absent. Produced at the port boundary by <method>ViolationsFromVendor</method>, on the field the

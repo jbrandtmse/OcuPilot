@@ -65,6 +65,20 @@ XData Tools
 "security.auditing.update": {"fieldList":"Security.Audit.Enabled","fields":[
   {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
 ]},
+"security.secrets.create": {"fieldList":"Wallet.Secret:%Wallet.KeyValue","fields":[
+  {"path":"AllowedHosts","shape":"array","templateType":"array","itemType":"","class":"opaque"},
+  {"path":"RequireTLS","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Secret","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Secret64","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Usage","shape":"literal","templateType":"number","itemType":"","class":"ordinary"}
+]},
+"security.secrets.update": {"fieldList":"Wallet.Secret:%Wallet.KeyValue","fields":[
+  {"path":"AllowedHosts","shape":"array","templateType":"array","itemType":"","class":"opaque"},
+  {"path":"RequireTLS","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
+  {"path":"Secret","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Secret64","shape":"literal","templateType":"string","itemType":"","class":"secret"},
+  {"path":"Usage","shape":"literal","templateType":"number","itemType":"","class":"ordinary"}
+]},
 "security.x509.import": {"fieldList":"Security.X509Credential","fields":[
   {"path":"Alias","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"OwnerList[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
