@@ -1400,6 +1400,12 @@ export const STRINGS = {
   /** EXPERIENCE.md:413 */
   auditUserEventListEmpty: 'No user events.',
 
+  // Story 7.5: running an on-demand task.
+  /** EXPERIENCE.md:414 */
+  taskOnDemandEmptyAgent: 'create a task that runs on demand',
+  /** EXPERIENCE.md:415 */
+  proposalEntityTask: 'Task',
+
 } as const;
 
 /**

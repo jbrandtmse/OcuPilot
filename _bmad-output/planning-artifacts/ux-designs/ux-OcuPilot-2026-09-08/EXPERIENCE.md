@@ -411,6 +411,8 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "System events" · "User events" | the titles and section headings of the two audit event lists embedded beneath the Auditing configuration form (Story 7.4) [ADDED 2026-09-23 - see the story change log] |
 | "Total" · "Written" · "Lost" | the audit event lists' count columns (Story 7.4) [ADDED 2026-09-23 - see the story change log] |
 | "No system events." · "No user events." | the audit event lists' empty states (Story 7.4) [ADDED 2026-09-23 - see the story change log] |
+| "create a task that runs on demand" | the phrase that resolves `:315`'s agent invitation on On-demand tasks, which Story 7.5's Run makes write-capable; an empty list has no row to run, so it names create, the task editor's action (the orchestrator's ruling), and supersedes `:369`'s read-only second line for this list [ADDED 2026-09-23 - see the story change log] |
+| "Task" | the proposal card's noun for a task (UJ-6's "Proposal · Task Nightly purge"; Story 7.5) [ADDED 2026-09-23 - see the story change log] |
 
 ## Component Patterns
 
