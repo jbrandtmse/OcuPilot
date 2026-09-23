@@ -236,3 +236,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T19:00:59Z	Epic 7	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@d085278e merge=7797a044 conflict=none
 2026-09-23T19:02:49Z	Epic 7	epic_context_compiled	sha=1c362829 reason=planning_artifact_newer model=opus
 2026-09-23T19:02:49Z	Story 7.11	stage_spawned	stage=plan spawn_at=2026-09-23T19:02:49Z model=opus agent_name=7-11-system-and-user-audit-event-configuration-plan-1 cycle_iteration=1
+2026-09-23T19:18:40Z	Story 7.11	plan_clarification_requested	stage=plan spawn_at=2026-09-23T19:02:49Z model=opus condition=intent_gap items=IG-1_user-event_create/configure_needs_AD-54/55(orchestrator),IG-2_six_Epic8-modified_product_files(orchestrator),IG-3_consequence_only_for_AgentWrite(ratified_by_lead) spec_status=blocked
+2026-09-23T19:18:40Z	Story 7.11	protocol_violation	stage=plan depth=1 agent=7-11-...-plan-1 violation=two_Security.Events.Create_probes_on_slot_A(ocupilot)_instead_of_ocupilot-ci consequence=none:both_refused(#851,<SUBSCRIPT>),Exists=0_for_both detected_by=the_stage_self-report outcome=recorded;slot_A_unchanged
+2026-09-23T19:18:40Z	Epic 7	runner_clarification_raised	story=7.11 items=IG-1,IG-2
