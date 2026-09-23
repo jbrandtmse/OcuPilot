@@ -848,6 +848,15 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   // UPCOMING request type.
   const onDemand = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskOnDemandList');
   assert.deepEqual(onDemand.declaration.read.source, { port: 'admin', endpoint: 'Task.CRUD', type: 'LIST', query: { onDemand: '1' } });
+  // Story 7.5: Run makes the list write-capable -- its rows are keyed by the vendor's numeric Id,
+  // it declares the one row action, it shows the next run, and its empty state invites the agent.
+  assert.deepEqual(onDemand.declaration.id, { kind: 'composite', parts: ['Id'] });
+  assert.deepEqual(onDemand.declaration.rowActions, [{ id: 'run', selfProtection: '' }]);
+  assert.ok(onDemand.declaration.read.fields.includes('NextScheduled'), 'the read carries the next run');
+  assert.equal(onDemand.declaration.table.columns.at(-1).field, 'NextScheduled', 'shown after Last run');
+  assert.equal(onDemand.declaration.table.emptyAgentKey, 'taskOnDemandEmptyAgent', 'the empty state invites the agent');
+  assert.equal(onDemand.declaration.table.emptyNextKey, '', 'and names no read-only next step');
+  assert.equal(onDemand.declaration.entityLabelKey, 'proposalEntityTask');
   const upcoming = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskUpcomingList');
   assert.equal(upcoming.declaration.read.source.type, 'UPCOMING');
   // Story 2.12: a descriptor that declares NO read is a supported shape, and the generator has to

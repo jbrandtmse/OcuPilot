@@ -644,4 +644,93 @@ ClassMethod DeleteProbeTask(pId As %String)
     }
 }
 
+/// <p>Story 7.5, AC2 and AD-53's agent caller: a real mint and confirm of
+/// <code>tasks.ondemand.run</code> on <class>OcuPilot.Test.TaskRunFixture</class>'s probe task
+/// answers <code>updated</code> with one marker and a marked ledger row; <code>INFO</code>
+/// <code>NextScheduled</code> is set at once and this process holds no lock on the task; the run
+/// lands in the task's history within one Task Manager pass, and the shipped
+/// <code>tasks.taskhistory</code> read gains that row.</p>
+/// <p>The wait is bounded at 180 s, so a lock held across the write reads red rather than
+/// hanging. The probe is deleted in this method's own frame.</p>
+Method TestTheAgentsRunIsConfirmedAndLandsInTheTasksHistory()
+{
+    Set tTool = "OcuPilot.Screen.Tool.TaskRun"
+    Set tFixture = "OcuPilot.Test.TaskRunFixture"
+    Set tSC = $ClassMethod(tFixture, "EnsureRunProbeTask", .tId)
+    Do $$$AssertStatusOK(tSC, "the run probe task exists: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tTurn = ""
+    Try {
+        Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+        Set tHistorySince = $ClassMethod(tFixture, "HistoryHighWater")
+        Set tHistoryBefore = $ClassMethod(tFixture, "HistoryReadRows", tId)
+        Do $$$AssertTrue(tHistoryBefore '< 0, "the shipped tasks.taskhistory read answers before the run")
+        Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+        Do $$$AssertStatusOK(tSC, "the probe turn is seeded")
+        If $$$ISERR(tSC) Quit
+        Set tArgs = {}
+        Do tArgs.%Set($ClassMethod(tTool, "IdArgument"), tId, "string")
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint($Parameter(tTool, "DESCRIPTORCLASS"), $Parameter(tTool, "TOOLNAME"), $Username, "", tTurn, tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), tId, $ClassMethod(tTool, "IdArgument"), $ClassMethod(tTool, "SettableFields"), tTool)
+        Do $$$AssertStatusOK(tSC, "the run mints against the instance: " _ $System.Status.GetErrorText(tSC))
+        If $$$ISERR(tSC) Quit
+        Do $$$AssertEquals(tProposal.%Get("changed").%Get(0).%Get("field"), "NextScheduled", "its card's row is the next run")
+        Set tKey = tProposal.%Get("proposalId")
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tKey, "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+        Do $$$AssertStatusOK(tSC, "the confirm succeeds (HTTP " _ +$Get(tHttp) _ " " _ $Get(tCode) _ ")")
+        If $$$ISERR(tSC) Quit
+        Do $$$AssertEquals(tResult.%Get("action"), "updated", "answering updated")
+        Do $$$AssertEquals(tResult.%Get("auditMarked"), 1, "and marked")
+        Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).MarkerRows(tSince, tKey, .tData), 1, "one agent-write marker carries this proposal's id")
+        Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).LedgerColumn(tTurn, "auditMarked"), $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDYES"), "and the ledger row reads marked")
+        Do $$$AssertNotEquals($ClassMethod(tFixture, "InfoField", tId, "NextScheduled"), "", "INFO's NextScheduled is set at once")
+        Do $$$AssertTrue($ClassMethod(tFixture, "NoLockHeld", tId), "and this process holds no lock on the task")
+        Set tLanded = $ClassMethod(tFixture, "AwaitRun", tId, tHistorySince, 180, .tElapsed)
+        Do $$$AssertTrue(tLanded, "a Success history row lands within 180 s (waited " _ $Get(tElapsed) _ " s)")
+        Do $$$AssertTrue($ClassMethod(tFixture, "HistoryReadRows", tId) > tHistoryBefore, "and the shipped tasks.taskhistory read answers it")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the real run raised")
+    }
+    Do $ClassMethod(tFixture, "DeleteRunProbeTask")
+    Do $$$AssertEquals($ClassMethod(tFixture, "ProbeCount"), 0, "and the run probe task is gone")
+    If tTurn '= "" Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+}
+
+/// <p>Story 7.5, AC1 and AD-53's screen caller: <code>POST /screens/tasks.ondemand/action</code>
+/// with <code>run</code> as the test account answers 200 with the <code>updated</code> triple, writes
+/// no ledger row and emits no OcuPilot marker, and the run lands in the task's history within one
+/// Task Manager pass. The probe is deleted in this method's own frame.</p>
+Method TestTheScreenActionRunsTheTaskOverTheWire()
+{
+    Set tFixture = "OcuPilot.Test.TaskRunFixture"
+    Set tSC = $ClassMethod(tFixture, "EnsureRunProbeTask", .tId)
+    Do $$$AssertStatusOK(tSC, "the run probe task exists: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Try {
+        Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
+        Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+        Set tLedgerBefore = ##class(OcuPilot.Test.AuditingUpdate).LedgerCount(tUser)
+        Do $$$AssertNotEquals(tLedgerBefore, -1, "the ledger reads before the write")
+        Set tHistorySince = $ClassMethod(tFixture, "HistoryHighWater")
+        Set tRequest = {}
+        Do tRequest.%Set("action", "run", "string")
+        Do tRequest.%Set("id", tId, "string")
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot/screens/tasks.ondemand/action", tUser, ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tBody, .tHeaders, tRequest.%ToJSON(), "application/json")
+        Do $$$AssertStatusOK(tSC, "the request completes")
+        Do $$$AssertEquals(tStatus, 200, "the screen's run answers 200: " _ $Extract($Get(tBody), 1, 300))
+        If tStatus = 200 {
+            Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+            Do $$$AssertEquals(tAnswer.%Get("action"), "updated", "with the updated verb")
+            Do $$$AssertEquals(tAnswer.%Get("target").%ToJSON(), "{""type"":""task"",""scope"":""instance"",""id"":""" _ tId _ """}", "and the task's triple")
+        }
+        Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).LedgerCount(tUser), tLedgerBefore, "no ledger row was written")
+        Do $$$AssertEquals(##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, ##class(OcuPilot.Kernel.Audit.Event).#EVENTAGENTWRITE, "tasks.ondemand.run", .tData), 0, "and no agent-write marker names the run tool")
+        Set tLanded = $ClassMethod(tFixture, "AwaitRun", tId, tHistorySince, 180, .tElapsed)
+        Do $$$AssertTrue(tLanded, "a Success history row lands within 180 s (waited " _ $Get(tElapsed) _ " s)")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the screen run raised")
+    }
+    Do $ClassMethod(tFixture, "DeleteRunProbeTask")
+    Do $$$AssertEquals($ClassMethod(tFixture, "ProbeCount"), 0, "and the run probe task is gone")
+}
+
 }

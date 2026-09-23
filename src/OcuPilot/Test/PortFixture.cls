@@ -18,7 +18,7 @@ Class OcuPilot.Test.PortFixture Extends OcuPilot.Port.AdminPort
 /// surface has no place in it. <class>OcuPilot.Test.ToolWrite</class> reads
 /// <class>OcuPilot.Port.AdminPort</class>'s own copy, so this override cannot satisfy that
 /// roster.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,OcuPilotProbeAsyncWrite/PUT";
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,OcuPilotProbeAsyncWrite/PUT";
 
 /// <p>Point the derivation at <var>pClass</var> instead of the vendor's routing class.
 /// <code>""</code> restores the production value.</p>

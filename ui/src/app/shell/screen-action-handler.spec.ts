@@ -416,3 +416,28 @@ describe('the screen-action handler on the Auditing configuration form', () => {
     expect(JSON.parse(calls[0].body)).toEqual({ action: 'enable', id: 'SYSTEM' });
   });
 });
+
+describe('the On-demand tasks list\u2019s Run (Story 7.5)', () => {
+  const ON_DEMAND = 'OcuPilot.Screen.Descriptor.TaskOnDemandList';
+
+  it('sends Run at once with no dialog, keyed by the task\u2019s Id, and publishes the answered task change', async () => {
+    // Mutation (Rule 19): drop the list from `SCREEN_ACTION_DESCRIPTORS` -> nothing registers and
+    // nothing is sent.
+    const target = { type: 'task', scope: 'instance', id: '42' };
+    const { actions, handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target } }, ON_DEMAND);
+    expect(actions.has(ON_DEMAND, 'run')).toBe(true);
+    store.setSelection(['42']);
+
+    actions.run(ON_DEMAND, 'run');
+    await settle();
+    expect(handler.pending()).toBeNull();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe('/api/ocupilot/screens/tasks.ondemand/action');
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'run', id: '42' });
+    expect(events).toHaveLength(1);
+    expect(events[0].kind).toBe('changed');
+    expect(events[0].type).toBe('task');
+    expect(events[0].action).toBe('updated');
+    expect(events[0].id).toBe('42');
+  });
+});

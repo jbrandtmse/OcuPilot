@@ -68,6 +68,8 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   // something narrower publishes its own words below (Switches' removes a hold, not an entity).
   delete: STRINGS.actionDelete,
   'set-default': STRINGS.agentDefinitionSetDefault,
+  // Story 7.5: a task's Run, on On-demand tasks now and on the Task schedule in Story 7.6.
+  run: STRINGS.actionRun,
 };
 
 /**

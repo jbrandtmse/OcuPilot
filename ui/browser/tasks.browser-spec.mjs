@@ -981,23 +981,42 @@ test('Story 6.5/6.6 AC1: the Tasks side bar reads Task schedule, On-demand tasks
   }
 });
 
-test('Story 6.5 AC2: On-demand tasks reads once under its headers, lists the demo task, and offers no action but Refresh', async () => {
+test('Story 6.5 AC2 / 7.5: On-demand tasks reads once under its headers, lists the demo task, and offers Run beside Refresh', async () => {
   const { context, page, reads } = await signedInAtList(config.username, config.password, ON_DEMAND_URL);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
+    // The six declared columns, plus the row-actions column the table adds for itself once the
+    // screen declares a row action (Story 7.5's Run).
     assert.deepEqual(headers, [
       STRINGS.tableColumnName,
       STRINGS.headerNamespaceLabel,
       STRINGS.tableColumnType,
       STRINGS.tableColumnDescription,
       STRINGS.taskColumnLastRun,
+      STRINGS.taskColumnNextRun,
+      STRINGS.commandBoxGroupActions,
     ]);
-    assert.deepEqual(headers, ['Name', 'Namespace', 'Type', 'Description', 'Last run']);
+    assert.deepEqual(headers, ['Name', 'Namespace', 'Type', 'Description', 'Last run', 'Next run', 'Actions']);
     await filterToSubset(page, { text: 'nightly purge', expectRow: DEMO_TASK, total: await viewCount(page), timeoutMs: config.navigationTimeoutMs });
     assert.ok((await describeRow(page, DEMO_TASK)) !== null, `the ${DEMO_TASK} row is rendered`);
     assert.deepEqual(reads.map((url) => new URL(url).pathname), [ON_DEMAND_READ_PATH], 'exactly one tasks.ondemand read');
-    await assertRefreshAlone(page);
+    // Story 7.5: Run is the list's one row action, so every row carries the menu and the command
+    // bar offers Run beside Refresh. The demo task is never run here.
+    const offered = await page.evaluate(() => ({
+      rowTriggers: document.querySelectorAll('.ocu-data-table-trigger').length,
+      barActions: Array.from(document.querySelectorAll('.ocu-command-bar-action')).map((button) => ({
+        refresh: button.classList.contains('ocu-command-bar-refresh-action'),
+        label: button.textContent.trim(),
+      })),
+    }));
+    assert.ok(offered.rowTriggers > 0, 'the rows carry an action menu');
+    assert.deepEqual(
+      offered.barActions.filter((action) => !action.refresh).map((action) => action.label),
+      [STRINGS.actionRun],
+      `the command bar offers Run: ${JSON.stringify(offered.barActions)}`
+    );
+    assert.equal(offered.barActions.filter((action) => action.refresh).length, 1, 'beside Refresh');
   } finally {
     await context.close();
   }

@@ -25,7 +25,8 @@ export const SCREEN_ACTION_PATH_SUFFIX = '/action';
  * entry per story, beside the consequence copy below: the Web applications list (Story 7.1), and
  * the OAuth 2.0 screen's Client configurations and Server client descriptions tabs (Story 7.3),
  * whose detail pages render the same `ListPage`, and the Users list (Story 7.2), and the Auditing
- * configuration form (Story 7.4), whose page selects the singleton itself.
+ * configuration form (Story 7.4), whose page selects the singleton itself, and the On-demand tasks
+ * list (Story 7.5), whose Run is sent at once with no dialog.
  */
 export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WebAppList',
@@ -33,6 +34,7 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.OAuthServerClientTab',
   'OcuPilot.Screen.Descriptor.UserList',
   'OcuPilot.Screen.Descriptor.AuditingConfig',
+  'OcuPilot.Screen.Descriptor.TaskOnDemandList',
 ];
 
 /** The Users list's descriptor, whose row actions carry values (AD-56). */

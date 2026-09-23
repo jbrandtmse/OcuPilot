@@ -2,7 +2,8 @@
 title: 'Story 7.5: Run an on-demand task'
 type: 'feature'
 created: '2026-09-23'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '44428515205395e3a8de162b2542e4d9835574b3'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -281,6 +282,23 @@ Measured on the throwaway `ocupilot-ci`, 2026-09-23, with a `%SYS.Task.RunLegacy
 
 ## Review Triage Log
 
+### 2026-09-23 — Review pass
+
+- verdicts: 12 findings — high 0, medium 3, low 5, false 3, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` The Integration AC had no `mutation:` line, and the screen leg never asserted Next run was empty before the press — added the empty-before check (`tableEmptyValue`), a Last-run-moved check after Refresh, and the mutation line below.
+  - `[medium]` `[patch]` The browser agent leg's history-screen check passed on the screen leg's row, and `since` was unasserted — `since > 0` in both legs; the history screen must list more probe rows than `HistoryReadRows` read before the confirm.
+  - `[medium]` `[patch]` `ProhibitedRoute`'s "nothing requested" compared two `InfoField` reads that both answer `""` on failure — `InfoField` gained `Output pRead`, and both reads are asserted to have answered.
+  - `[false]` `[reject]` `ProhibitedRoute` creates a task outside the task-control roster — it already creates `TaskResume`'s probe (`:1373`); the task is the harmless `Quit` probe on an armed throwaway and runs only under a deliberate regression.
+  - `[low]` `[patch]` The port test's fault-code check was skipped when no fault object came back — asserted the fault object first.
+  - `[low]` `[reject]` A suspended task's resume is shown only as a diff row, not run live — a vendor fact measured at planning (Code Map); a third 180 s armed run buys no coverage of OcuPilot code.
+  - `[low]` `[patch]` The mint-level unreadable-state refusal did not check the problem names the state — asserted `detail.problem` contains "suspended".
+  - `[false]` `[reject]` Kill-switch and read-only gating are not exercised — they live in `Kernel/Agent/Loop.Boundary` for every write tool, which this diff does not touch.
+  - `[maybe-false]` `[reject]` The agent caller's `task` change event is not asserted — published by the unchanged confirm path every write tool shares; settled by a browser assertion on the list row after Confirm; if true it is low.
+  - `[low]` `[reject]` "The screen caller mints no proposal" is not asserted directly — `ScreenAction.Run` (unchanged) calls `Operation.Apply`, never `Mint`; no everyday path to the defect.
+  - `[low]` `[reject]` The screen caller's server twin does not read `NextScheduled` — the browser screen leg observes it and the agent twin reads it.
+  - `[false]` `[reject]` The port test infers "vendor not called" — 500 against the vendor's own 404 for the same absent id (the bodyless leg) discriminates the two.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -366,6 +384,14 @@ Task runs happen only on the throwaway `ocupilot-ci` (web 52776), with the probe
   - AC5: `emptyAgentKey` `""` → `screen-mirror.test.mjs` goes red.
   - The port: remove `CONSTANTBODIES` → `TaskRun`'s constant-body test and the browser screen leg
     (vendor 400) go red.
+- Recorded (implement, `ocupilot-ci`; each applied, observed red, reverted, tree unchanged):
+  - `mutation: dropped TaskOnDemandList from SCREEN_ACTION_DESCRIPTORS, rebuilt and redeployed → red: task-run.browser-spec.mjs screen leg ("the command bar offers Run") and screen-action-handler.spec.ts's Run case (AC1)`
+  - `mutation: TaskRun WRITETYPE "INFO", reloaded → red: task-run.browser-spec.mjs agent leg, "a Success history row lands within 180 s (waited 180.27 s)" (AC2)`
+  - `mutation: skipped the first pair-Gate refusal in ScreenAction.Run, reloaded → red: ProhibitedRoute.TestAnAccountShortOfTheTaskPairIsRefusedTheRunScreenAction, with the auditing and web-app screen-action legs (AC3)`
+  - `mutation: StateDiff without the Suspended row → red: TaskRun.TestTheStateDiffAnswersItsThreeArms and TestTheMintCarriesTheRowsFromTheInfoRead (AC4)`
+  - `mutation: emptyAgentKey "" on TaskOnDemandList → red: screen-mirror.test.mjs, the generator refusing the write-capable list (AC5)`
+  - `mutation: CONSTANTBODIES "" → red: TaskRun.TestThePortSendsRunsConstantBodyAndRefusesACallersBody and the browser screen leg (the port refuses the bodyless RUN 500, so the row never marks) (port)`
+  - `mutation: RefreshService.onBusEvent without its readNow(), rebuilt and redeployed → red: task-run.browser-spec.mjs screen leg, Next run never fills after the press (Integration AC)`
 
 **Once, before `dev_complete`:**
 
@@ -377,16 +403,45 @@ Task runs happen only on the throwaway `ocupilot-ci` (web 52776), with the probe
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-This pass planned the story and halted as the dispatch asked ("Halt after planning."). Two items
-are for the lead at the spec gate:
+**Change.** `tasks.ondemand.run` (`Screen/Tool/TaskRun.cls`) is an `INFO`-read, `RUN`-written action
+write with two callers: the On-demand list's Run row action and the agent's proposal. `AdminPort`
+admits `Task.CRUD/RUN` and keeps its `{"RunNow":true}` body in `CONSTANTBODIES`, refusing a caller
+body as a port fault. `TaskOnDemandList` is keyed by `Id`, declares Run, shows Next run and invites
+the agent when empty; the client registers the list and the shared `run` label.
 
-- **Rule 20.** A recommended one-sentence clarification of AD-51 for the port-kept constant `RUN`
-  body is quoted under Design Notes.
-- **Copy.** Two keys, `taskOnDemandEmptyAgent` and `proposalEntityTask`, are listed under Design
-  Notes for the lead to publish.
+**Files.** Port `AdminPort.cls`; tool `TaskRun.cls` (new); descriptor `TaskOnDemandList.cls`;
+client `screen-action-handler.ts`, `screen-actions.ts`, `screens.generated.ts` (regenerated); tests
+`TaskRun.cls` and `TaskRunFixture.cls` (new), two methods in armed `TaskResume.cls`, one in
+`ProhibitedRoute.cls`, roster rows in `ToolWrite`, `PortFixture`, `SurfaceCoverage`, `ReadTool`,
+`ToolRoundTrip`, `Descriptor`, `TaskLists`, `screen-mirror.test.mjs`; `screen-action-handler.spec.ts`;
+browser `task-run.browser-spec.mjs` (new) and `tasks.browser-spec.mjs` (seven headers, Run beside
+Refresh).
 
-The vendor facts were measured on `ocupilot-ci` with two harmless `RunLegacyTask` probes, both
-deleted afterwards (a query for the `OcuPilotPlan` prefix returns no rows).
+footprint_extensions: `AdminPort.cls`, `ToolWrite.cls`, `PortFixture.cls`, `SurfaceCoverage.cls`,
+`ReadTool.cls`, `ToolRoundTrip.cls`, `ProhibitedRoute.cls`, `ui/tools/screen-mirror.test.mjs`,
+`screens.generated.ts` -- this story's own members only (roster rule, 2026-09-23).
+
+**Review.** 12 findings: 5 patched (3 medium, 2 low: test strengthening in the browser legs,
+`InfoField`'s read flag, two port/mint assertions), 7 rejected (3 false, 1 maybe-false, 3 low);
+none deferred. Follow-up review: false -- every patched entry was re-run green and the Integration
+AC's new mutation went red.
+
+**Verification** (`ocupilot-ci`):
+
+- ObjectScript sweep, once: 182 classes, 1,646 methods, 1,645 passed, 0 failed (numeric-run-index
+  probe, runs 7803-7984); `AuditingUpdate`, `ErrorDelete`, `ProcessControl`, `TaskResume` refuse
+  here as armed classes. Targeted after patching: `TaskRun` 6/0, `ProhibitedRoute` 23/0.
+- `smoke.sh`: executed 49, passed 49. `test:tools` 1,327/0, `test:components` 880/0,
+  `check-objectscript` clean, build green.
+- Browser (rebuilt, redeployed): `task-run.browser-spec.mjs` 2/2; no `OcuPilotProbeRunTask` remains.
+  `tasks.browser-spec.mjs` 12/14: the two Task history tests (6.6 AC1, AC3) miss the demo row among
+  49 `OcuPilotDemo` matches left by other classes' probes (history ids 1962-2249, before this
+  story's first probe row 2301; none of this story's rows match the search). CI's fresh throwaway
+  does not carry them (inference).
+- Rule 19: seven `mutation:` lines under `## Verification`, each observed red and reverted.
+
+**Residual risk.** `TaskResume`'s two new methods have only compiled locally; their result is read
+from CI.

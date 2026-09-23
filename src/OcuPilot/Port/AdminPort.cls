@@ -188,7 +188,13 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// <code>RunChangePassword</code> sets only the password from the body's <code>NewPassword</code>,
 /// and <code>NeedsRequestBody()</code> is a put, a post or that type -- so <code>DELETE</code> is
 /// listed in <parameter>BODYLESSTYPES</parameter> and <code>CHANGEPWD</code> is not.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD";
+/// <p><code>Task.CRUD/RUN</code> is Story 7.5's (<class>OcuPilot.Screen.Tool.TaskRun</class>,
+/// AD-51). Measured on this build: <code>TYPERUN</code> is 12, <code>NeedsRequestBody()</code>
+/// includes it, <code>ValidateRequest</code> requires <code>RunNow</code>, and
+/// <code>ResourcesOR()</code> answers <code>%Admin_Task</code> for it. Its body is a vendor
+/// constant no caller supplies, so it is listed in <parameter>CONSTANTBODIES</parameter> rather
+/// than in <parameter>BODYLESSTYPES</parameter>.</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -217,6 +223,18 @@ Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebAp
 /// <code>NewPassword</code> in the body the ledger's field names are taken from, outside the
 /// declared-secret exclusion.</p>
 Parameter RENAMEDTYPES = "Security.User/CHANGEPWD=Password:NewPassword";
+
+/// <p>The <parameter>MUTATINGTYPES</parameter> entries whose vendor type requires a fixed body no
+/// caller supplies, as <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;JSON object&gt;</code> entries
+/// separated by <code>;</code>, because a body's JSON may carry commas. <method>Invoke</method>
+/// sends the entry's body in place of an absent caller body, and refuses a caller body for such a
+/// pair as a port fault without calling the vendor.</p>
+/// <p><b>It is a vendor wire fact</b> (AD-27, AD-51), kept here as
+/// <parameter>RENAMEDTYPES</parameter> keeps a vendor key: <code>Task.CRUD</code>'s
+/// <code>RUN</code> reads a body and <code>ValidateRequest</code> requires
+/// <code>{"RunNow":true}</code>, measured on this build. The tool declares no body and the kernel
+/// and the ledger see none; the constant exists only between this port and the vendor.</p>
+Parameter CONSTANTBODIES = "Task.CRUD/RUN={""RunNow"":true}";
 
 /// <p>The pair set the <b>backing query or class</b> of an endpoint requires, beyond the
 /// endpoint's own <code>ResourcesOR()</code> gate (AD-29). Comma-separated entries of the form
@@ -445,6 +463,9 @@ ClassMethod VerifyInstance(Output pVersion As %Integer, Output pDetail As %Strin
 /// JSON <i>text</i> answers 2xx with the target unchanged and writes nothing, and the caller cannot
 /// tell that from a write. It is refused here instead, as an internal failure with the generic
 /// reason (AD-12) and the cause in the log (DW-1427).</p>
+/// <p><b>A <parameter>CONSTANTBODIES</parameter> pair takes no caller body.</b> Given none, it is
+/// sent the port's constant; given an object, it is refused the same way and the vendor is not
+/// called (AD-27, AD-51).</p>
 /// <p>Must not be called from an escalated frame (AD-9). The caller's namespace,
 /// <code>%request</code>, <code>%response</code> and <code>%session</code> are unchanged on
 /// return.</p>
@@ -477,6 +498,19 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         If tType = "" {
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, "This instance does not implement that operation", .pHttpStatus, .pFault)
             Quit
+        }
+
+        ; CONSTANTBODIES: a vendor type whose body is a fixed wire fact takes it here, so no caller
+        ; above the port composes it. A caller body for such a pair is a caller bug, refused before
+        ; the vendor is reached rather than merged or replaced.
+        Set tConstant = ..ConstantBody(pEndpoint, pType)
+        If $IsObject(tConstant) {
+            If $IsObject(pBody) {
+                Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, .pHttpStatus, .pFault)
+                Do ..LogFault(pEndpoint _ " " _ pType _ " was given a caller body, and its body is the port's constant", $$$ERROR($$$GeneralError, "a CONSTANTBODIES pair takes no caller body"), pFault.code)
+                Quit
+            }
+            Set pBody = tConstant
         }
 
         ; DW-1427. A mutating call with a non-object body is refused rather than run: RunSequence
@@ -836,6 +870,27 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
 ClassMethod IsBodyless(pEndpoint As %String, pSuffix As %String) As %Boolean
 {
     Quit ''$ListFind($ListFromString(..#BODYLESSTYPES), pEndpoint _ "/" _ pSuffix)
+}
+
+/// <p>A new <class>%DynamicObject</class> holding the body <parameter>CONSTANTBODIES</parameter>
+/// declares for <var>pEndpoint</var>/<var>pType</var>, or <code>""</code> for a pair it does not
+/// name. Each call answers a fresh object, so nothing a caller does to it reaches the next call.</p>
+ClassMethod ConstantBody(pEndpoint As %String, pType As %String) As %DynamicObject
+{
+    Set tBody = ""
+    Try {
+        Set tKey = pEndpoint _ "/" _ pType _ "="
+        For tI = 1:1:$Length(..#CONSTANTBODIES, ";") {
+            Set tEntry = $ZStrip($Piece(..#CONSTANTBODIES, ";", tI), "<>W")
+            If $Extract(tEntry, 1, $Length(tKey)) '= tKey Continue
+            Set tParsed = ##class(%DynamicAbstractObject).%FromJSON($Extract(tEntry, $Length(tKey) + 1, *))
+            If $IsObject(tParsed) && tParsed.%IsA("%Library.DynamicObject") Set tBody = tParsed
+            Quit
+        }
+    } Catch {
+        Set tBody = ""
+    }
+    Quit tBody
 }
 
 /// <p><var>pBody</var> with every key <parameter>RENAMEDTYPES</parameter> declares for

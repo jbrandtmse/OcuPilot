@@ -5497,18 +5497,26 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       }
     ],
     "entityType": "task",
+    "entityLabelKey": "proposalEntityTask",
     "secondaryEntityTypes": [],
     "scope": "instance",
     "parentScope": "",
     "id": {
-      "kind": "single",
-      "parts": []
+      "kind": "composite",
+      "parts": [
+        "Id"
+      ]
     },
     "primaryAction": {
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "run",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -5516,7 +5524,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Type",
         "Description",
         "Id",
-        "LastFinished"
+        "LastFinished",
+        "NextScheduled"
       ],
       "secretFields": []
     },
@@ -5547,7 +5556,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Type",
         "Description",
         "Id",
-        "LastFinished"
+        "LastFinished",
+        "NextScheduled"
       ],
       "filter": [
         "Name",
@@ -5560,7 +5570,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "Name",
           "Namespace",
           "Type",
-          "LastFinished"
+          "LastFinished",
+          "NextScheduled"
         ],
         "default": "Name",
         "direction": "asc"
@@ -5593,18 +5604,22 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "field": "LastFinished",
           "labelKey": "taskColumnLastRun",
           "kind": "text"
+        },
+        {
+          "field": "NextScheduled",
+          "labelKey": "taskColumnNextRun",
+          "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "taskOnDemandEmptyAgent"
     },
     "toolIdentifier": "tasks.ondemand",
     "banner": null,
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": [],
-    "entityLabelKey": ""
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskRunList",

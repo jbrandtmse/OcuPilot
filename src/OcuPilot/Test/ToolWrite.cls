@@ -619,6 +619,58 @@ Method TestTheTaskResumeToolIsAnActionWriteOverTheScreensOwnPairs()
     Do $$$AssertTrue(tProblem [ "Suspended", "naming the argument: " _ tProblem)
 }
 
+/// <p>AD-51, AD-53, AD-8 (Story 7.5): the on-demand run tool is an action-style write --
+/// <code>INFO</code> read fresh, <code>RUN</code> written, no body of its own, no settable field, not
+/// destructive -- over its screen's own two pairs at <code>USE</code>, carrying the list's
+/// <code>run</code> row action, and the port supplies <code>RUN</code>'s constant body.</p>
+/// <p>Mutation (Rule 19): set <parameter>OcuPilot.Screen.Tool.TaskRun.SENDSBODY</parameter> to
+/// <code>1</code> -- the bodyless assertion goes red.</p>
+Method TestTheTaskRunToolIsAnActionWriteOverTheScreensOwnPairs()
+{
+    Set tClass = "OcuPilot.Screen.Tool.TaskRun"
+    Set tSC = $ClassMethod(..#REGISTRY, "Resolve", "tasks.ondemand.run", .tTool)
+    Do $$$AssertStatusOK(tSC, "the registry resolves the run tool by name")
+    Do $$$AssertTrue($IsObject(tTool), "and finds it")
+    If '$IsObject(tTool) Quit
+    Do $$$AssertEquals(tTool.%Get("kind"), "write", "it is a write tool")
+    Do $$$AssertEquals(tTool.%Get("class"), tClass, "answered by its own class")
+    Do $$$AssertEquals($ClassMethod(..#REGISTRY, "FulfilmentOf", tTool), "instance", "fulfilled on the instance, never in the browser")
+
+    Do $$$AssertEquals($ClassMethod(tClass, "PortClass"), "OcuPilot.Port.AdminPort", "its target lives behind the admin port")
+    Do $$$AssertEquals($ClassMethod(tClass, "ReadType"), "INFO", "its fresh read is INFO")
+    Do $$$AssertEquals($ClassMethod(tClass, "WriteType"), "RUN", "its write is the vendor's own RUN")
+    Do $$$AssertEquals($ClassMethod(tClass, "SendsBody"), 0, "and it sends no body of its own")
+    Do $$$AssertEquals($ClassMethod(tClass, "Destructive"), 0, "a run is not destructive")
+    Do $$$AssertEquals($ClassMethod(tClass, "Endpoint"), "Task.CRUD", "over the task endpoint")
+    Do $$$AssertEquals($ClassMethod(tClass, "IdArgument"), "Id", "identified by the list's own id property")
+    Do $$$AssertEquals($ClassMethod(tClass, "IdParam"), "id", "and by the vendor's own query parameter")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "SettableFields")), 0, "it admits no settable field at all")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "FingerprintSubject")), "NextScheduled,Suspended", "its fingerprint covers what the run moves")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).FingerprintSubjectProblem(tClass), "", "and the registration guard holds that subject adequate")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "ScreenActionIds")), "run", "it carries the screen's own run row action")
+    Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("Task.CRUD", "RUN"), "the port admits the mutating pair")
+    Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsBodyless("Task.CRUD", "RUN"), "not as a bodyless type, since the vendor reads a body")
+    Do $$$AssertTrue($IsObject(##class(OcuPilot.Port.AdminPort).ConstantBody("Task.CRUD", "RUN")), "but as one whose body is the port's constant")
+
+    Set tPairs = $ClassMethod(tClass, "PrivilegePairs", "", .tResolved)
+    Do $$$AssertEquals(tResolved, 1, "its pairs resolve")
+    Set tDeclared = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tClass, "DESCRIPTORCLASS"), .tDeclaredResolved)
+    Do $$$AssertEquals(tDeclaredResolved, 1, "the screen's own declared set resolves")
+    Do $$$AssertEquals(tPairs, tDeclared, "and the write's set is that set, not a superset of it")
+    Do $$$AssertTrue($ListFind(tPairs, $ListBuild("%Admin_Task", "USE")) > 0, "which holds %Admin_Task:USE")
+    Do $$$AssertEquals($ListFind(tPairs, $ListBuild("%Admin_Task", "WRITE")), 0, "and never a WRITE permission on an administrative resource")
+
+    Set tSchema = $ClassMethod(tClass, "InputSchema")
+    Set tProperties = tSchema.%Get("properties")
+    Do $$$AssertEquals(tProperties.%Get("Id").%Get("type"), "string", "the identifying property is advertised")
+    Do $$$AssertEquals(tProperties.%GetTypeOf("NextScheduled"), "unassigned", "and no field of the endpoint's own read is advertised")
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Id": "7"}, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the id alone validates: " _ tProblem)
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Id": "7", "RunNow": true}, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "while a field on a bodyless write is refused")
+    Do $$$AssertTrue(tProblem [ "RunNow", "naming the argument: " _ tProblem)
+}
+
 /// <p>AD-51, AD-8: the process suspend tool is an action-style write -- <code>GET</code> fresh,
 /// <code>SUSPEND</code> written, no body, no settable field, not destructive -- over its screen's
 /// own three pairs at <code>USE</code>, with the fingerprint subject the amended AD-51 requires.</p>
@@ -916,7 +968,8 @@ Method TestAnInadequateFingerprintSubjectStopsTheToolListBuilding()
 /// <p>AD-51: every registered write tool's
 /// <code>(endpoint, <method>OcuPilot.Screen.Tool.Write.WriteType</method>)</code> pair is a
 /// <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> member, and it is a
-/// <parameter>OcuPilot.Port.AdminPort.BODYLESSTYPES</parameter> member exactly when the tool
+/// <parameter>OcuPilot.Port.AdminPort.BODYLESSTYPES</parameter> or
+/// <parameter>OcuPilot.Port.AdminPort.CONSTANTBODIES</parameter> member exactly when the tool
 /// answers <method>OcuPilot.Screen.Tool.Write.SendsBody</method> 0.</p>
 /// <p><b>Why the equality is pinned rather than derived.</b> "This write sends no body" is
 /// declared twice -- once by the tool, once by the port, which learns it from the vendor's own
@@ -1027,8 +1080,10 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
         Set tSends = ''$ClassMethod(tClass, "SendsBody") || ($ClassMethod(tClass, "SecretBodyNames") '= "")
         Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating(tEndpoint, tType), tName _ " writes '" _ tEndpoint _ "/" _ tType _ "', which the port declares a mutating pair")
         If '$ListFind(tReached, tEndpoint _ "/" _ tType) Set tReached = tReached _ $ListBuild(tEndpoint _ "/" _ tType)
-        Set tExempt = ''##class(OcuPilot.Port.AdminPort).IsBodyless(tEndpoint, tType)
-        Do $$$AssertEquals(tExempt, 'tSends, tName _ " sends " _ $Select(tSends: "a body", 1: "none") _ ", so '" _ tType _ "' is " _ $Select(tSends: "absent from", 1: "in") _ " the port's bodyless roster")
+        ; AD-51 as amended by Story 7.5: a type whose body is a vendor constant the port supplies
+        ; is exempt too, through CONSTANTBODIES rather than BODYLESSTYPES.
+        Set tExempt = ''##class(OcuPilot.Port.AdminPort).IsBodyless(tEndpoint, tType) || $IsObject(##class(OcuPilot.Port.AdminPort).ConstantBody(tEndpoint, tType))
+        Do $$$AssertEquals(tExempt, 'tSends, tName _ " sends " _ $Select(tSends: "a body", 1: "none") _ ", so '" _ tType _ "' is " _ $Select(tSends: "absent from", 1: "in") _ " the port's bodyless or constant-body roster")
         If 'tSends Set tActions = tActions + 1
     }
     Do $$$AssertTrue(tWrites > 0, "the registry enumerated admin-port write tools at all")

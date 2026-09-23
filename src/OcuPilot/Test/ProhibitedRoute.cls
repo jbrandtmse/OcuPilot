@@ -1651,4 +1651,52 @@ Method TestALeastPrivilegedPrincipalReadsTheThreeAuditingScreens()
     Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).AuditEnabled(), 1, "and this instance's auditing did not move")
 }
 
+/// <p>AC3, AD-8, AD-53 (Story 7.5): a principal holding <code>%DB_IRISSYS:READ</code> and not
+/// <code>%Admin_Task:USE</code> is refused the On-demand tasks list's Run 403
+/// <code>AUTH.NOPRIVILEGE</code> naming that pair, before any read, and the probe task's
+/// <code>INFO</code> <code>NextScheduled</code> does not move. Nothing is run: the refusal lands
+/// before the port is called. The probe is deleted in this method's own frame.</p>
+/// <p><b>"Before any read" is observable here</b>: the principal clears the router's floor with
+/// <parameter>PROCESSFLOORADMIN</parameter> and holds neither resource <code>INFO</code>'s vendor
+/// gate admits, so a read issued ahead of the pair check would be refused by the port with an
+/// envelope naming no <code>failedPair</code>.</p>
+/// <p>Mutation (Rule 19): skip the pair <code>Gate</code> in
+/// <method>OcuPilot.Api.ScreenAction.Run</method> -- the code and failed-pair assertions go red.</p>
+Method TestAnAccountShortOfTheTaskPairIsRefusedTheRunScreenAction()
+{
+    Set tCodeResource = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
+    If tCodeResource = "" Quit
+    Set tSC = ..EnsureLeastPrivilegedPrincipal(..#PRINCIPALPASSWORD, ..#PROCESSFLOORADMIN _ ":U,%DB_IRISSYS:R," _ tCodeResource _ ":R")
+    Do $$$AssertStatusOK(tSC, "a principal short of only the task pair is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%Admin_Task", "USE"), 0, "it holds no %Admin_Task:USE")
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%Admin_Operate", "USE"), 0, "nor %Admin_Operate:USE, so INFO's own vendor gate would refuse a read")
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%DB_IRISSYS", "READ"), 1, "and does hold the security database read")
+
+    Set tFixture = "OcuPilot.Test.TaskRunFixture"
+    Set tTaskSC = $ClassMethod(tFixture, "EnsureRunProbeTask", .tTaskId)
+    Do $$$AssertStatusOK(tTaskSC, "the run probe task exists: " _ $System.Status.GetErrorText(tTaskSC))
+    If $$$ISERR(tTaskSC) Quit
+    Try {
+        Set tBefore = $ClassMethod(tFixture, "InfoField", tTaskId, "NextScheduled", .tRead)
+        Do $$$AssertEquals(tRead, 1, "the probe's INFO answers before the request")
+        Do $$$AssertEquals(tBefore, "", "an on-demand task has no next run before anything is requested")
+        Set tSC = ..ActOn("tasks.ondemand", "run", tTaskId, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, "the screen action request completes")
+        Do $$$AssertEquals(tStatus, 403, "and is refused -- not 200, not the router's 403 with no body: " _ tBody)
+        If tStatus = 403 {
+            Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+            Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "with the screen-privilege code, not AUTH.NOADMIN")
+            Do $$$AssertEquals($Select($IsObject(tEnvelope.%Get("detail")): tEnvelope.%Get("detail").%Get("failedPair"), 1: ""), "%Admin_Task:USE", "naming the pair that failed")
+        }
+        Set tAfter = $ClassMethod(tFixture, "InfoField", tTaskId, "NextScheduled", .tRead)
+        Do $$$AssertEquals(tRead, 1, "and after it")
+        Do $$$AssertEquals(tAfter, tBefore, "and no run was requested")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the leg completes without raising")
+    }
+    Do $ClassMethod(tFixture, "DeleteRunProbeTask")
+}
+
 }
