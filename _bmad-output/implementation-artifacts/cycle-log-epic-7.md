@@ -200,3 +200,7 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T15:30:55Z	Story 7.6	ci_resolved	story=7.6 run=35879196098 result=success resolved_at=next_plan head=e3712592 jobs=8/8
 2026-09-23T15:32:08Z	Epic 7	runner_resumed	answer=7.8_budget:rebase_under_DW-1166_on_own_measurement(value_line+pinned_literal_only);AD-52_amendment_as_named_case(AD-27_fold_at_merge)
 2026-09-23T15:32:08Z	Story 7.8	stage_spawned	stage=implement spawn_at=2026-09-23T15:32:08Z model=opus agent_name=7-8-terminate-suspend-and-resume-a-process-implement-1 cycle_iteration=1
+2026-09-23T16:40:54Z	Story 7.8	dev_complete	spawn_at=2026-09-23T15:32:08Z model=opus build_sha=b35d39c0 baseline_revision=66c3dfa review_loop_iteration=0 followup_review_recommended=true deferred=0 budget=maximumWarning_1120kB->1181kB_measured_1124199B(DW-1166) tiers=sweep_184cls/1668/2(PortGate_roster_fixed_4/0;WireSecurityRead_1000-row_cap_on_reused_throwaway_DW-1554),smoke_49/49,tools_1328/0,components_896/0,browser_13/13
+2026-09-23T16:40:54Z	Story 7.8	pushed	sha=b35d39c0 ci=pending run=35890385806
+2026-09-23T16:40:54Z	Story 7.8	adr_verifications_complete	result=none_required model=claude-opus-5-5
+2026-09-23T16:40:54Z	Story 7.8	stage_spawned	stage=qa spawn_at=2026-09-23T16:40:54Z model=sonnet agent_name=7-8-terminate-suspend-and-resume-a-process-qa-1 cycle_iteration=1
