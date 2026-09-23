@@ -29,3 +29,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T01:27:09Z	Epic 7	epic_branch_checked_out	repos=. head=1fd99da mode=runner_resume branch=OCU-1-epic7 remote_equal=true tree=clean
 2026-09-23T01:27:09Z	Story 7.1	ci_resolved	story=7.1 run=35802812010 result=failure resolved_at=resume head=1fd99da failed_jobs=browser,instance handling=ci_items_into_implement_respawn
 2026-09-23T01:27:09Z	Story 7.1	dev_clarification_answered	item=unpublished_empty_agent_invitation_string answer=create_a_web_application_for_a_REST_API by=orchestrator_decision_1 amendments=EXPERIENCE.md:397,strings.ts:1332
+2026-09-23T01:27:45Z	Epic 7	epic_context_compiled	sha=81aab0a reason=planning_artifact_newer model=opus
+2026-09-23T01:27:45Z	Story 7.1	stage_spawned	stage=implement spawn_at=2026-09-23T01:27:45Z model=opus agent_name=7-1-enable-disable-and-delete-a-web-application-implement-2 cycle_iteration=2
