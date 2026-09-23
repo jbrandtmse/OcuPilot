@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '09-23-2026 03:35'
+last_updated: '09-23-2026 03:50'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -140,7 +140,7 @@ development_status:
   epic-7: in-progress
   7-1-enable-disable-and-delete-a-web-application: done
   7-2-user-enable-disable-delete-password-and-roles: ready-for-dev
-  7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de: backlog
+  7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de: in-progress
   7-4-turn-auditing-on-and-off-from-the-screen: backlog
   7-5-run-an-on-demand-task: backlog
   7-6-run-suspend-resume-and-delete-a-task: backlog

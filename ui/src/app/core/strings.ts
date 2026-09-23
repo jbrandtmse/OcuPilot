@@ -1364,6 +1364,18 @@ export const STRINGS = {
   /** EXPERIENCE.md:404 */
   userListEmptyAgent: 'create a user',
 
+  // Story 7.3: the two OAuth 2.0 tabs' delete row action.
+  /** EXPERIENCE.md:405 */
+  oauthClientDeleteConsequence:
+    'Deleting this client configuration removes every token stored for it, and applications that use it can no longer obtain new ones. This cannot be undone.',
+  /** EXPERIENCE.md:406 */
+  oauthServerClientDeleteConsequence:
+    'Deleting this server client description revokes every access token issued to it, and the client can no longer obtain new ones from this authorization server. This cannot be undone.',
+  /** EXPERIENCE.md:407 */
+  oauthClientsEmptyAgent: 'create an OAuth 2.0 client configuration',
+  /** EXPERIENCE.md:408 */
+  oauthServerClientsEmptyAgent: 'create a server client description',
+
 } as const;
 
 /**
