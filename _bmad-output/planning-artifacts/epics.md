@@ -4401,7 +4401,7 @@ So that the audit database records what matters here rather than everything or n
 
 - **Given** the user events list
 - **When** the user acts
-- **Then** an event can be created, configured and deleted.
+- **Then** an event can be enabled, disabled, reset and deleted. [AMENDED 2026-09-23, orchestrator: create and configure follow the Epic 7/8 merge on AD-54/AD-55 — DW-1573]
 
 - **Given** `Security.Audit.Event` publishes **no** body template and its PUT is an **upsert**
 - **When** the write tool is built

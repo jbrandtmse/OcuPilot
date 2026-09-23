@@ -427,6 +427,13 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "Deleting removes every application error this namespace has logged, on every date, and everything each one captured. Errors logged after you confirm are kept. This cannot be undone." | the confirm-dialog body for a by-namespace delete (Story 7.10) [ADDED 2026-09-23 - see the story change log] |
 | "Deleting removes every application error this namespace logged on this date, and everything each one captured. Errors logged after you confirm are kept. This cannot be undone." | the confirm-dialog body for a by-date delete (Story 7.10) [ADDED 2026-09-23 - see the story change log] |
 | "Deleting removes this application error and everything it captured. This cannot be undone." | the confirm-dialog body for a one-error delete (Story 7.10) [ADDED 2026-09-23 - see the story change log] |
+| "Reset counters" | the row action and command-bar action on both audit event lists (Story 7.11) [ADDED 2026-09-23 - see the story change log] |
+| "Deleting this event removes its registration, and the instance discards every record raised for it until it is registered again. This cannot be undone." | the confirm-dialog body for Delete user event (Story 7.11), above the typed-name field [ADDED 2026-09-23 - see the story change log] |
+| "enable an event this instance should record" | the phrase that resolves `:315`'s agent invitation on the System events list, which Story 7.11's row actions make write-capable; system events are never created, so it names the list's own verb [ADDED 2026-09-23 - see the story change log] |
+| "register an audit event for an application" | the phrase that resolves `:315`'s agent invitation on the User events list; an empty list has no row to act on, so it names create, which follows the Epic 7/8 merge (DW-1573) [ADDED 2026-09-23 - see the story change log] |
+| "Selective SQL auditing" · "Which SQL statement types and sources should this instance audit?" | the Auditing configuration page's SQL auditing button and dialog title, and the dialog's prompt (Story 7.11) [ADDED 2026-09-23 - see the story change log] |
+| "Dynamic" · "Embedded" · "XDBC" · "Query" · "DDL" · "DML" · "Utility" | the selective SQL auditing dialog's grid headers: the three statement sources and four statement kinds of the `%System/%SQL` events (Story 7.11) [ADDED 2026-09-23 - see the story change log] |
+| "Apply" · "Not every change was applied. The list shows each event as it is now." | the selective SQL auditing dialog's primary action, and the line it shows after a refusal stops it (Story 7.11) [ADDED 2026-09-23 - see the story change log] |
 
 ## Component Patterns
 

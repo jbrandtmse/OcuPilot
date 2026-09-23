@@ -6235,3 +6235,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-10-the-remaining-application-error-delete-scopes.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: ErrorDelete's screen by-date leg and agent by-date leg run with USER holding one date, so a namespace-wide delete passes both; date narrowing is pinned only by ErrorDeleteScope's DateList query count. Seeds log on today only (inference).
 - 2026-09-23T18:50:04Z status=wontfix-accepted owner=7-10-the-remaining-application-error-delete-scopes by=cr note=reopen_if=a fixture or seed can place an error in USER on a second date, or a date-scoped delete removes another date's errors
+
+### DW-1573: User audit events cannot be created or configured (Description edited) from OcuPilot: 7.11 ships enable, disable, reset and delete, and create and configure need AD-54's create kind and AD-55's screen Save
+- source: spec-7-11-system-and-user-audit-event-configuration.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: AD-54 and AD-55 exist only on OCU-1-epic8 (Write.cls, Mint.cls, Router.cls); building a second create path here duplicates them; orchestrator ruling 2026-09-23 amended 7.11 AC3
+- 2026-09-23T19:25:32Z status=routed owner=range-end-cleanup by=spec_gate note=a dialog editor over an AD-54 create and an AD-55 Save, following Story 8.4's resource editor; the orchestrator has offered the owner a Story 9.10 charter for it

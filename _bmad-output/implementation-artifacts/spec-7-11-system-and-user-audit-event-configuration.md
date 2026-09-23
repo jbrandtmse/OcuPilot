@@ -2,7 +2,7 @@
 title: 'Story 7.11: System and user audit event configuration'
 type: 'feature'
 created: '2026-09-23'
-status: 'blocked'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -369,7 +369,16 @@ Tests:
 
 - 2026-09-23, lead spec gate (partial): IG-3 ratified -- the "agent writes stop being marked"
   consequence appears only for `OcuPilot/Security/AgentWrite`, the one event whose disable or delete
-  stops marking. IG-1 and IG-2 are with the orchestrator.
+  stops marking. Orchestrator, same day: **IG-1** -- AC3 amended to "enabled, disabled, reset and
+  deleted" (`epics.md`); create and configure are DW-1573 (`range-end-cleanup`, a dialog editor over
+  AD-54/AD-55 after the merge), not a new story, and Epic 9's section is not edited. **IG-2** -- the six
+  files are approved under the contended-edit discipline: read Epic 8's version first, add only 7.11's
+  members, `Mint.cls` limited to `WarnsAuditingOff`'s body, append at the end of `EntityRef.cls:59` and
+  the two `AdminPort` roster lines. Copy published at `EXPERIENCE.md:430-436` and appended to
+  `strings.ts` (keys as listed, except `auditUserEventListEmptyAgent` reads "register an audit event for
+  an application", naming create per the orchestrator's rule); `proposalEntityAuditEvent` is not
+  published -- the card reuses the existing `auditDialogTitle` ("Audit event"). `strings.test.mjs`'s
+  literal band took Epic 8's identical 600->700 hunk. `status` set `ready-for-dev`.
 
 ## Review Triage Log
 

@@ -1452,6 +1452,39 @@ export const STRINGS = {
   errorDeleteOneConsequence:
     'Deleting removes this application error and everything it captured. This cannot be undone.',
 
+  // Story 7.11: system and user audit event configuration, and selective SQL auditing.
+  /** EXPERIENCE.md:430 */
+  actionResetCounters: 'Reset counters',
+  /** EXPERIENCE.md:431 */
+  auditUserEventDeleteConsequence:
+    'Deleting this event removes its registration, and the instance discards every record raised for it until it is registered again. This cannot be undone.',
+  /** EXPERIENCE.md:432 */
+  auditSystemEventListEmptyAgent: 'enable an event this instance should record',
+  /** EXPERIENCE.md:433 */
+  auditUserEventListEmptyAgent: 'register an audit event for an application',
+  /** EXPERIENCE.md:434 */
+  auditSqlWizardAction: 'Selective SQL auditing',
+  /** EXPERIENCE.md:434 */
+  auditSqlWizardPrompt: 'Which SQL statement types and sources should this instance audit?',
+  /** EXPERIENCE.md:435 */
+  auditSqlSourceDynamic: 'Dynamic',
+  /** EXPERIENCE.md:435 */
+  auditSqlSourceEmbedded: 'Embedded',
+  /** EXPERIENCE.md:435 */
+  auditSqlSourceXdbc: 'XDBC',
+  /** EXPERIENCE.md:435 */
+  auditSqlKindQuery: 'Query',
+  /** EXPERIENCE.md:435 */
+  auditSqlKindDdl: 'DDL',
+  /** EXPERIENCE.md:435 */
+  auditSqlKindDml: 'DML',
+  /** EXPERIENCE.md:435 */
+  auditSqlKindUtility: 'Utility',
+  /** EXPERIENCE.md:436 */
+  actionApply: 'Apply',
+  /** EXPERIENCE.md:436 */
+  auditSqlWizardStopped: 'Not every change was applied. The list shows each event as it is now.',
+
 } as const;
 
 /**
