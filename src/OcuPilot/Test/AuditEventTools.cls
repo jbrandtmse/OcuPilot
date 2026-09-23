@@ -172,11 +172,16 @@ Method TestTheProhibitedSetPermitsEnabledAloneForBothTypes()
     Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke(..#ENDPOINT, "GET", .tQuery, "", .tLive, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the live user event reads")
     If $$$ISERR(tSC) Quit
-    Set tEnabled = $Select(tLive.Enabled: "true", 1: "false")
-    For tCase = $ListBuild("security.audituserevents.reset", "[{""field"":""Total"",""before"":"""",""after"":""0""}]"), $ListBuild("security.audituserevents.delete", "[{""field"":""Description"",""before"":""" _ tLive.Description _ """,""after"":"""",""removed"":true},{""field"":""Enabled"",""before"":""" _ tEnabled _ """,""after"":"""",""removed"":true}]") {
-        Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).Prohibits($List(tCase, 1), tRef, tLive.%ToJSON(), $List(tCase, 2), .tProhibits, .tCode)
-        Do $$$AssertStatusOK(tSC, "the set answers " _ $List(tCase, 1))
-        Do $$$AssertEquals(tProhibits _ "|" _ tCode, "0|", $List(tCase, 1) _ "'s own rows are prohibited by nothing")
+    For tClass = ..#USERRESET, ..#USERDELETE {
+        Set tTool = $Parameter(tClass, "TOOLNAME")
+        Set tSC = $ClassMethod(tClass, "StateDiff", tLive, .tRows, .tProblem)
+        Do $$$AssertStatusOK(tSC, tTool _ "'s own rows are drawn from the live read")
+        Do $$$AssertEquals($Get(tProblem), "", "with no problem")
+        Do $$$AssertTrue($IsObject($Get(tRows)) && (tRows.%Size() > 0), "and at least one row")
+        If '$IsObject($Get(tRows)) Continue
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).Prohibits(tTool, tRef, tLive.%ToJSON(), tRows.%ToJSON(), .tProhibits, .tCode)
+        Do $$$AssertStatusOK(tSC, "the set answers " _ tTool)
+        Do $$$AssertEquals(tProhibits _ "|" _ tCode, "0|", tTool _ "'s own rows are prohibited by nothing")
     }
 }
 

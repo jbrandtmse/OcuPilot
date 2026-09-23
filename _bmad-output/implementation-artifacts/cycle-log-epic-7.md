@@ -248,3 +248,9 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T20:34:42Z	Story 7.11	pushed	sha=a6152980 ci=pending run=35916847848
 2026-09-23T20:34:42Z	Story 7.11	adr_verifications_complete	result=none_required model=claude-opus-5-5
 2026-09-23T20:34:42Z	Story 7.11	stage_spawned	stage=qa spawn_at=2026-09-23T20:34:42Z model=sonnet agent_name=7-11-system-and-user-audit-event-configuration-qa-1 cycle_iteration=1
+2026-09-23T20:37:44Z	Story 7.11	qa_complete	spawn_at=2026-09-23T20:36:00Z model=sonnet tests_added=0 mutations_demonstrated=0 first_run_failures=0 clarifications=0 closing_sections_present=true
+2026-09-23T20:37:44Z	Story 7.11	stage_spawned	stage=code-review spawn_at=2026-09-23T20:37:44Z model=opus agent_name=7-11-system-and-user-audit-event-configuration-code-review-1 cycle_iteration=1
+2026-09-23T20:57:33Z	Story 7.11	ci_resolved	story=7.11 run=35916847848 result=success resolved_at=cr head=a6152980 jobs=8/8 note=AuditingUpdate_armed_legs_green_in_CI
+2026-09-23T20:57:33Z	Story 7.11	cr_complete	spawn_at=2026-09-23T20:37:44Z model=opus resolved=4 fixed_at_source=4 by_design=0 wontfix_theoretical=0 routed=0 escalated=2 decision_pending=1 deferred=5 dismissed=13 high=0 med=3 low=6 rows=22 unresolved_high_med=3 clarifications=0 closing_sections_present=true final=done ledger=DW-1575(escalated),DW-1576(decision-pending),DW-1577(escalated),DW-1578,DW-1579(wontfix-accepted)
+2026-09-23T20:57:33Z	Story 7.11	ledger_adjudicated	owned=2 resolved=2 reowned=0 terminal=0 resolved_ids=DW-1529,DW-1530 model=claude-opus-5-5
+2026-09-23T20:57:33Z	Story 7.11	smoke_complete	method=api result=pass iterations=1 defects_caught=0 evidence=probe_user_event_OcuSmoke711/Probe/Evt_on_ocupilot-ci:disable/enable/reset/delete_200_(audit-user-event,gone);system_event_%System/%Login/Login_reset_200_(audit-event) model=claude-opus-5-5

@@ -371,6 +371,34 @@ Tests:
 - Integration AC (Rule 1): the panel's banner consumes the fact the event tools record, observed
   in the browser against `ocupilot-ci`, never a mock.
 
+### Review Findings
+
+Code review 2026-09-23 (full-opus, four layers). Patches verified on `ocupilot-ci`, one class per call.
+
+- [x] [Review][Decision] Reset card's `Total` before-value is blank, not derived from the fresh read as AD-51 requires — DW-1576, decision-pending owner=burndown (amend AD-51, or read counters via `LIST names=`).
+- [x] [Review][Patch] AC4 agent leg now asserts `409 PROPOSAL.TARGETCHANGED`, with a demonstrated mutation [src/OcuPilot/Test/AuditingUpdate.cls:698]
+- [x] [Review][Patch] Browser AC5 asserts `writesMarked` is true before the disable, so the banner wait can only be met by this disable [ui/browser/audit-events.browser-spec.mjs:232]
+- [x] [Review][Patch] Reset/delete prohibited-set rows come from each tool's own `StateDiff`, not hand-concatenated JSON [src/OcuPilot/Test/AuditEventTools.cls:175]
+- [x] [Review][Patch] Contended-edit hygiene: the `Classification.cls` doc paragraph and the `PermittedChangeFields` line moved off Epic 8's insertion points (`git merge-file` conflict counts now equal pre-7.11: 2 and 7) [src/OcuPilot/Screen/Tool/Classification.cls:36, src/OcuPilot/Kernel/Proposal/Prohibited.cls:329]
+- [x] [Review][Defer] Each event tool accepts the other list's events and publishes its own list's entity type [src/OcuPilot/Screen/Tool/AuditEventUpdate.cls:84] — deferred: DW-1575, escalated owner=burndown (medium; no hook shared by both callers inside the approved footprint).
+- [x] [Review][Defer] An agent no-op `update` mints an empty proposal instead of a 400 [src/OcuPilot/Kernel/Proposal/Mint.cls:388] — deferred: DW-1577, escalated owner=burndown (medium; pre-existing, affects every merge tool).
+- [x] [Review][Defer] `Prohibited.cls` header still says eight covered types [src/OcuPilot/Kernel/Proposal/Prohibited.cls:35] — deferred: DW-1578, wontfix-accepted (Epic 8 rewrites the header).
+- [x] [Review][Defer] `AdminPort.Invoke`'s `RunSequence` line rewritten (`.tQuery`) in a shared-append file [src/OcuPilot/Port/AdminPort.cls:583] — deferred: DW-1579, wontfix-accepted (inside an existing Epic 7/8 conflict hunk).
+
+Rejected:
+
+- `false` SplitQuery passes an absent `event` key through — `LIST` legitimately carries none (`eventOwner`, `names`), so a 404 there would break both list reads.
+- `false` `AuditingConfig.cls:16` doc is stale — `audit-event` is still one row of the (system) event roster.
+- `low` Wizard's bus-triggered reloads can land out of order — needs a read-sequence guard; overlapping answers reordering on one instance is unlikely.
+- `low` Second Apply while one is in flight, and a sticky wizard refusal banner — each needs a new guard for a rare interleaving.
+- `low` Wizard stops on a box already in the requested state — the specified first-refusal stop; the re-read shows the truth.
+- `low` Upsert window between the confirm's re-read and the `PUT` — needs a concurrent external delete inside the transition; AD-4 names the fresh read and fingerprint as the coverage.
+- `low` Probe left disabled by an aborted earlier run — every method deletes the probe on exit.
+- `low` AC1 browser leg reads the instance, not the grid cell — in-place re-fetch is the shared list mechanism; the handler spec pins the publish.
+- `low` No agent reset/delete confirm with a folded id — the screen `DELETE`/`CLEARCOUNT` already send the folded id through the same port path.
+- `low` Empty corner column header in the SQL grid — a common pattern; relabelling needs new copy and spec changes.
+- `low`, spec-bound or ruled: `MOVESMARKING` on the system update; `audit-event` in `RESTRAINT_ENTITIES`; public `sendFor`; the user empty-state copy (orchestrator ruling); warning only on `AgentWrite` (IG-3); the agent's own marker disable going unmarked (AD-15 as amended); the AD-53 amendment's "disable" wording; case-sensitive client marker match (triage log, no new evidence); recovery copy after deleting the marker.
+
 ## Spec Change Log
 
 - 2026-09-23, lead spec gate (partial): IG-3 ratified -- the "agent writes stop being marked"
@@ -533,6 +561,7 @@ re-submitted. Each restores `AgentWrite` and auditing. Never stop, remove or rec
 - `mutation: AC2 -- drop the unchanged-box skip in sqlAuditChanges -> sql-audit-dialog.spec.ts 3 red and the page spec's exact-POST test red. DEMONSTRATED 2026-09-23, restored byte-identical`
 - `mutation: AC3 -- drop the User events list's DESTRUCTIVE_CONSEQUENCES entry -> screen-action-handler.spec.ts's typed-name test red. DEMONSTRATED 2026-09-23, restored`
 - `mutation: AC4 -- ScreenAction.Run answers a stub object when the fresh read fails (ocupilot-ci copy) -> AuditingUpdate's user-event leg red on the 404 and no-stub assertions (run through a temporary arming-free subclass on ocupilot-ci, since removed). DEMONSTRATED 2026-09-23, re-synced`
+- `mutation: AC4 (agent) -- Confirm.FingerprintMatches answers matched on a failed re-read (ocupilot-ci copy, Confirm and its subclasses recompiled) -> AuditingUpdate.TestAConfirmAgainstAVanishedEventIsRefusedAndCreatesNoStub red on the refusal, the 409 TARGETCHANGED and the no-stub assertions (run 8872, temporary arming-free subclass, since removed). DEMONSTRATED 2026-09-23 in code review, re-synced; 11/11 green (run 8873)`
 - `mutation: AC5 -- ClosesMarking answers 0 (ocupilot-ci copy) -> AuditEventTools.TestTheCardWarnsOnTheMarkerEventAlone red (run 8659); drop WARNING_ROWS -> the handler and list-page specs red, and, rebuilt and redeployed, the browser AC5 leg red. DEMONSTRATED 2026-09-23, restored; the browser run exposed AuditingUpdate.RestoreMarker naming an OcuPilot class from %SYS, fixed`
 - `mutation: AC5 (agent banner) -- ClosesMarking answers 0 (ocupilot-ci copy, subclass recompiled) -> AuditingUpdate.TestTheAgentsMarkerDisableCarriesTheWarningAndRaisesTheBanner red on the stored-warning leg (run through a temporary arming-free subclass, since removed). DEMONSTRATED 2026-09-23, re-synced`
 - `mutation: AC6 -- AuditUserEventList back to audit-event, mirror regenerated -> navigation.test.mjs's screenForChange test red. DEMONSTRATED 2026-09-23, both files restored, mirror --check up to date`

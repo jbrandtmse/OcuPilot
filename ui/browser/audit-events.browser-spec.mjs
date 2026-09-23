@@ -229,6 +229,7 @@ test('AC5: disabling the marker event warns first, shows the banner, and enablin
   const { context, page, posts } = await signedInAtList(USER_URL, USER_ACTION);
   try {
     await select(page, 'AgentWrite', MARKER_ID);
+    assert.equal(iris(`##class(${HELPER}).RestraintMarked()`), '1', 'writesMarked reads true before the disable, so a banner after it is the disable\u2019s');
     assert.equal(await bannerShowing(page), false, 'the banner is absent while agent writes are marked');
     await pressBar(page, STRINGS.agentDefinitionDisable);
     await page.waitForSelector('[role="dialog"]', { timeout: config.navigationTimeoutMs });

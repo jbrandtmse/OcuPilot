@@ -6122,11 +6122,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-4-turn-auditing-on-and-off-from-the-screen.md (cr) | severity: med | fix-risk: med | footprint: in-epic
 - evidence: AuditSystemEventList and AuditUserEventList both declare entityType audit-event; navigation.test.mjs pins screenForEntityType('audit-event') to security/auditing/system-events. Once 7.11 emits audit-event changes for user events, their toast/link opens a list that never shows them.
 - 2026-09-23T10:01:27Z status=routed owner=7-11-system-and-user-audit-event-configuration by=cr note=7.11 emits audit-event changes on these descriptors; decide a second type or an owner-aware lookup there
+- 2026-09-23T20:57:33Z status=resolved-by:7-11-system-and-user-audit-event-configuration by=adjudication note=user events carry their own entity type audit-user-event, so a change opens the User events list; navigation.test.mjs screenForChange; commit a6152980
 
 ### DW-1530: The screen caller's post-write Security.Audit.Event GET is never run as a principal holding exactly the declared pairs
 - source: spec-7-4-turn-auditing-on-and-off-from-the-screen.md (cr) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: (inference) unverified: ProhibitedRoute's least-privileged principal reads the event LIST 200, but only the test account runs the screen action; if the GET needs more than %Admin_Secure:U + %DB_IRISSYS:R, the fact is never recorded and only a log line shows it. Settle: run a screen action as DECLAREDPAIRSONLY and assert no OBSERVEFAILED line.
 - 2026-09-23T10:01:27Z status=routed owner=7-11-system-and-user-audit-event-configuration by=cr note=7.11 is the second MOVESMARKING tool on the same endpoint; its least-privileged test settles this
+- 2026-09-23T20:57:33Z status=resolved-by:7-11-system-and-user-audit-event-configuration by=adjudication note=ProhibitedRoute.TestALeastPrivilegedPrincipalRunsTheUserEventActionsAndTheMarkingIsObserved runs the screen caller's post-write read as the declared pairs; commit a6152980
 
 ### DW-1531: Nothing pins ScreenAction.Run's MovesMarking guard: observing after every screen write stays green in every suite
 - source: spec-7-4-turn-auditing-on-and-off-from-the-screen.md (cr) | severity: low | fix-risk: low | footprint: in-story
@@ -6240,3 +6242,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-11-system-and-user-audit-event-configuration.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: AD-54 and AD-55 exist only on OCU-1-epic8 (Write.cls, Mint.cls, Router.cls); building a second create path here duplicates them; orchestrator ruling 2026-09-23 amended 7.11 AC3
 - 2026-09-23T19:25:32Z status=routed owner=range-end-cleanup by=spec_gate note=a dialog editor over an AD-54 create and an AD-55 Save, following Story 8.4's resource editor; the orchestrator has offered the owner a Story 9.10 charter for it
+
+### DW-1575: Each audit event tool accepts the other list's events, so a user event changed through a system tool publishes audit-event (and the reverse)
+- source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: med | fix-risk: med | footprint: in-story
+- evidence: AuditEvent*/AuditUserEvent* tools read Security.Audit.Event GET by source/type/name with no owner check; the target type is the tool descriptor's (Mint.cls:135). Vendor: a system event is exactly one whose Source starts with % (Security.Events.cls:24; ListByFilter on slot A: 75 system, 4 user, 0 mismatches).
+- 2026-09-23T20:54:31Z status=escalated owner=burndown by=cr note=no id-aware hook shared by mint and screen read inside the approved footprint; fix via port owner rule or kernel seam
+
+### DW-1576: The reset tools' card row reads Total before "" after 0: its before is not derived from the fresh read, which AD-51 requires
+- source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: med | fix-risk: med | footprint: in-story
+- evidence: AuditEventReset.StateDiff hardcodes before "" (spec Tasks prescribe it) because READTYPE GET answers only {Description, Enabled}; AD-51: rows are derived from the fresh read. LIST names=<EventName> answers Total.
+- 2026-09-23T20:54:31Z status=decision-pending owner=burndown by=cr note=amend AD-51 for a counter the tool's read type cannot answer, or read the counters (LIST names=)
+
+### DW-1577: An agent update that sets Enabled to its current value mints a proposal with no changed rows instead of the 400 TOOL.ARGUMENTS no-op refusal
+- source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: epic-7-context.md:41 says both callers refuse a no-op with 400 TOOL.ARGUMENTS; Mint.Merge skips an unchanged field (Mint.cls:388) and mints changed=[]; the refusal exists only in each tool's ScreenActionDelta. Same for WebAppUpdate.
+- 2026-09-23T20:54:31Z status=escalated owner=burndown by=cr note=kernel-wide for merge tools; the fix is in Mint.cls, which Epic 8 rewrites in that region
+
+### DW-1578: Prohibited.cls's header still says eight types are covered; COVEREDTYPES now lists ten
+- source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Prohibited.cls:35 'Eight types are covered'; 7.11 appended audit-event and audit-user-event to COVEREDTYPES. Epic 8 rewrites the same header, so an edit here adds a merge conflict.
+- 2026-09-23T20:54:37Z status=wontfix-accepted owner=7-11-system-and-user-audit-event-configuration by=cr note=reopen_if=after the Epic 7/8 merge the header's count differs from COVEREDTYPES' length
+
+### DW-1579: AdminPort.Invoke's RunSequence call (a line 7.11 did not add, in a shared-append file) now passes .tQuery; Epic 8 rewrites the same line
+- source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: low | fix-risk: med | footprint: in-story
+- evidence: 7.11 changed .pQuery to .tQuery so SPLITQUERIES reaches the vendor; Epic 8 changed pBody to tBody on that line. It is inside a conflict hunk that already exists without 7.11 (merge-tree: 6 AdminPort conflicts before and after).
+- 2026-09-23T20:54:37Z status=wontfix-accepted owner=7-11-system-and-user-audit-event-configuration by=cr note=reopen_if=merged Invoke passes .pQuery to RunSequence (AuditEventTools split GET goes red)

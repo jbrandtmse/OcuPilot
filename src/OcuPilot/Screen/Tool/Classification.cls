@@ -33,15 +33,15 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// path may be carried; which paths a write tool advertises is that tool's own positive list
 /// (<parameter>OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS</parameter>, four of these rows),
 /// and <code>DispatchClass</code> and the rest stay <code>ordinary</code> and unadvertised.</p>
+/// <p><b><code>security.auditsystemevents.update</code></b> and
+/// <b><code>security.audituserevents.update</code></b> classify the class-derived
+/// <code>Security.Audit.Event:Security.Events</code> list's two literals <code>ordinary</code>; each
+/// tool admits <code>Enabled</code> alone (<class>OcuPilot.Screen.Tool.AuditEventUpdate</class>).</p>
 /// <p><b><code>security.auditing.update</code></b> classifies the one row of
 /// <code>Security.Audit.Enabled</code> -- the derived <code>Enabled</code> boolean --
 /// <code>ordinary</code>. A path no entry names is emitted <code>secret</code>, and a secret row
 /// never reaches a schema (<method>OcuPilot.Screen.Tool.Write.FieldRows</method>), so without this
 /// entry the tool would advertise the id property and nothing to change.</p>
-/// <p><b><code>security.auditsystemevents.update</code></b> and
-/// <b><code>security.audituserevents.update</code></b> classify the class-derived
-/// <code>Security.Audit.Event:Security.Events</code> list's two literals <code>ordinary</code>; each
-/// tool admits <code>Enabled</code> alone (<class>OcuPilot.Screen.Tool.AuditEventUpdate</class>).</p>
 /// <p><b><code>permissions.users.update</code></b> classifies <code>Security.User</code>'s fourteen
 /// literals <code>ordinary</code> and its two arrays -- <code>Roles</code> and
 /// <code>EscalationRoles</code> -- <code>opaque</code>: the endpoint's template answers

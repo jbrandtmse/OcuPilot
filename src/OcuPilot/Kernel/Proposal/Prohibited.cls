@@ -326,10 +326,10 @@ ClassMethod CoveredTypes() As %List
 /// reads the kernel.</p>
 ClassMethod PermittedChangeFields(pType As %String) As %List
 {
+    If (pType = ..#TYPEAUDITEVENT) || (pType = ..#TYPEAUDITUSEREVENT) Quit $ListBuild(..#FIELDENABLED)
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "Enabled", "Resource")
     If pType = ..#TYPEUSER Quit $ListBuild(..#FIELDENABLED, ..#FIELDROLES, ..#FIELDCHANGEPASSWORD)
     If pType = ..#TYPEAUDITING Quit $ListBuild(..#FIELDENABLED)
-    If (pType = ..#TYPEAUDITEVENT) || (pType = ..#TYPEAUDITUSEREVENT) Quit $ListBuild(..#FIELDENABLED)
     Quit ""
 }
 

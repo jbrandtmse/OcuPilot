@@ -695,6 +695,7 @@ Method TestAConfirmAgainstAVanishedEventIsRefusedAndCreatesNoStub()
         Do $$$AssertEquals(..ProbeExists(), 0, "the event is deleted behind the proposal")
         Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
         Do $$$AssertStatusNotOK(tSC, "the confirm is refused (HTTP " _ +$Get(tHttp) _ " " _ $Get(tCode) _ ")")
+        Do $$$AssertEquals(+$Get(tHttp) _ " " _ $Get(tCode), "409 " _ ##class(OcuPilot.Kernel.Proposal.Write).#TARGETCHANGED, "by the fingerprint re-read, as a target that changed")
         Do $$$AssertEquals(..ProbeExists(), 0, "and the vendor's upsert created no stub")
     } Catch ex {
         Do $$$AssertStatusOK(ex.AsStatus(), "the vanished-event sequence raised")
