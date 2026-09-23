@@ -41,3 +41,10 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T02:36:49Z	Story 8.1	ci_resolved	story=8.1 run=35809740217 head=30fafca result=success jobs=8/8 resolved_at=next_implement(rule28)
 2026-09-23T02:36:49Z	Epic 8	throwaway_down	container=ocupilot-b-ci by=runner_this_session(up_at_01:26Z) reason=pause_for_clarification
 2026-09-23T02:36:49Z	Story 8.2	plan_clarification_requested	question=AC3_screen_may_grant_%All/%Admin_*_contradicts_AD-10(grants_refused_whatever_the_caller)+AD-55(screen_Save_through_tool's_prohibited_set) related=8.3_AC4_wording,DW-1489,DW-1494,7.8_AC2_precedent spawned=false
+2026-09-23T02:40:21Z	Epic 8	runner_resumed	by=orchestrator_answer rulings=8.2_AC3:(a)+8.3_AC4_reword,DW-1494:no(AD-55_narrowed),DW-1495:HIGH_contain_route_to_8.2,DW-1489:(b)_route_to_8.2,DW-1493:stays_escalated
+2026-09-23T02:40:21Z	Epic 8	amendment	file=epics.md story=8.2 ac=3 tier=1 authorised_by=orchestrator marker=AMENDED_2026-09-23
+2026-09-23T02:40:21Z	Epic 8	amendment	file=epics.md story=8.3 ac=4 tier=1 authorised_by=orchestrator marker=AMENDED_2026-09-23
+2026-09-23T02:40:21Z	Epic 8	spine_updated	ad=AD-55 reason=decision_sheet by=runner story=8-1-create-a-web-application change=narrowed_to_prohibited_set+validation+fingerprint;read-only_and_kill_switch_not_screen_gates deferred_rows=DW-1494,DW-1495_decided lint=ok(preexisting_low)
+2026-09-23T02:40:21Z	Story 8.2	ledger_routed_planned	story=8-2-create-a-user entries=2 ids=DW-1495,DW-1489 excess=0 by=merge_gate(orchestrator_ruling)
+2026-09-23T02:41:43Z	Epic 8	epic_context_compiled	sha=pending reason=nfr_amendment(8.2_AC3,8.3_AC4,AD-55_narrowed,8.2_ledger_bullets) model=opus lines=61
+2026-09-23T02:41:43Z	Story 8.2	stage_spawned	stage=plan spawn_at=2026-09-23T02:41:43Z model=opus agent_name=8-2-create-a-user-plan-1 cycle_iteration=1

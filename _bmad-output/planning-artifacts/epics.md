@@ -4451,8 +4451,13 @@ So that a new account is usable without a second trip to the editor.
 - **Then** it is sent **once** and returned by no read, entered in a masked field that never pre-fills or echoes.
 
 - **Given** the roles being granted
-- **When** they include `%All` or any `%Admin_*` role and the request comes through the agent
-- **Then** it is refused, while a privileged user creating the account through the screen may grant them.
+- **When** they include `%All` or any `%Admin_*` role
+- **Then** the grant is refused on the instance whatever the caller (AD-10, AD-55), and on the screen the server's refusal sentence lands on the Roles field as an AD-39 `detail.violations[]` row; the picker may pre-mark those roles unavailable with the same sentence, but the instance refusal is the prohibition, and such grants stay a classic-portal action in Release 1. [AMENDED 2026-09-23, orchestrator-authorised, Rule 5 tier-1: was "…and the request comes through the agent … while a privileged user creating the account through the screen may grant them". AD-10 refuses adding `%All` or any `%Admin_*` role to any user "whatever the caller", and AD-55 routes the screen's Save through the same prohibited set; the precedent is Story 7.8's AC2.]
+
+**Routed from the deferred-work ledger** - must be addressed in this story or declined with a reason:
+
+- DW-1495: the web-application create (Story 8.1, `webapp.list.create` and `POST /web-applications`) accepts `WSGIAppLocation`, a caller-supplied filesystem directory, and copies it into `Path`, against AD-21's "no OcuPilot endpoint accepts a filesystem path from a caller". **HIGH, floor-blocking, lands before Epic 8 merges.** The caller supplies only a relative directory name, resolved under one fixed root found on the instance and computed at call time (never cached); a literal `..` is rejected and a strict name pattern enforced, per AD-21's static-handler precedent; both callers go through the one tool (AD-55); the form shows the resolved path read-only; arbitrary locations stay a classic-portal action in Release 1. A test that fails when containment is removed: `..`, an absolute path and a sibling escape are each refused on BOTH the screen route and `webapp.list.create`. A needed hint string is a tier-1 Fixed-strings row (ledger; routed by orchestrator 2026-09-23)
+- DW-1489: a web application reachable unauthenticated is **not** prohibited (owner ruling (b)); instead the agent's `webapp.list.create` proposal names the unauthenticated consequence, and the create form names it at the authentication-method field, since the screen has no confirmation dialog (AD-55). The copy is a tier-1 Fixed-strings row (ledger; routed by orchestrator 2026-09-23)
 
 ### Story 8.3: Create a role, and manage its resource grants
 
@@ -4475,8 +4480,8 @@ So that access can be shaped without hand-editing security tables.
 - **Then** the confirmation **warns with the count of users holding it** before proceeding, and requires the typed name.
 
 - **Given** the grant would add a role to a resource in a way that escalates privilege
-- **When** it is proposed through the agent
-- **Then** it is refused, because privilege grants are prohibited in Release 1 through any path.
+- **When** it is requested, whatever the caller
+- **Then** it is refused on the instance, because privilege grants are prohibited in Release 1 through any path. [AMENDED 2026-09-23, orchestrator-authorised, Rule 5 tier-1: was "When it is proposed through the agent". AD-10 refuses its set "whatever the caller" and AD-55 routes the screen's Save through the same prohibited set.]
 
 ### Story 8.4: The resource editor
 

@@ -6024,6 +6024,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-22T22:37:25Z status=decision-pending owner=burndown by=spec_gate note=Raised by the story's own spec under 'For the spec gate' rather than left silent. A product call about the prohibited set, so the owner decides it at the merge-gate decision sheet, not a runner. Recommended: prohibit it for the AGENT path only, leaving the screen choice intact -- consistent with AD-10's by-effect framing.
 - 2026-09-23T01:25:39Z status=decision-pending owner=burndown by=runner note=recommend (b): no prohibition; proposal and confirm name the unauthenticated effect. (a) bars public REST; (c) breaks AD-10
 - 2026-09-23T02:11:59Z occurrence=8-1-create-a-web-application
+- 2026-09-23T02:40:01Z status=routed owner=8-2-create-a-user by=orchestrator note=(b) decided: no prohibition; agent proposal and the form's auth-method field name the unauthenticated effect
 
 ### DW-1490: The web-applications/list/edit/:id route does not re-read the created application on a cold load; it draws an empty create form at an id-bearing URL
 - source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -6050,11 +6051,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Create.Perform asks the prohibited set and never OcuPilot.Kernel.Restraint.Verdict; AD-40 lists read-only and the kill switch (AD-30) among the gates at the write, while FR-19 and AD-30 describe them as restraints on the agent's write tools.
 - 2026-09-23T02:12:06Z status=decision-pending owner=burndown by=cr note=product call: does enforced read-only bar a person's own Save? Either call Restraint.Verdict in Perform or narrow AD-55's wording
+- 2026-09-23T02:40:01Z status=by-design owner=8-1-create-a-web-application by=orchestrator note=ruling 2026-09-23: read-only/kill switch are the agent's (FR-20, AD-30, AD-53); AD-55 narrowed; no code change
 
 ### DW-1495: The web-application create accepts WSGIAppLocation, a caller-supplied filesystem directory, and copies it into Path, while AD-21 says no OcuPilot endpoint accepts a filesystem path from a caller
 - source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: WebAppCreate.PERMITTEDFIELDS admits WSGIAppLocation (the spec's own list) and DerivedFields sets Path from it verbatim, on POST /web-applications and on webapp.list.create alike; no containment check is applied.
 - 2026-09-23T02:12:06Z status=decision-pending owner=burndown by=cr note=spec versus spine: carve a stated AD-21 exception for a WSGI create's directory, or contain the location under a fixed root
+- 2026-09-23T02:40:01Z status=routed owner=8-2-create-a-user by=orchestrator note=regraded HIGH (AD-21, Rule 6): relative name under one fixed root, .. refused, both callers; floor-blocking
 
 ### DW-1496: A screen Save refused for MatchRoles reads 'not something the agent can propose' although a person pressed Save
 - source: smoke 8-1-create-a-web-application | severity: low | fix-risk: low | footprint: in-story
