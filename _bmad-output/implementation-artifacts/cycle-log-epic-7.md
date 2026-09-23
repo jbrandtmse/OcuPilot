@@ -217,3 +217,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T17:25:14Z	Story 7.10	story_created	spawn_at=2026-09-23T17:05:45Z model=opus path=_bmad-output/implementation-artifacts/spec-7-10-the-remaining-application-error-delete-scopes.md build_status=ready-for-dev epic_context=reused cycle_iteration=1
 2026-09-23T17:25:14Z	Epic 7	spine_updated	ad=AD-48 reason=measured_vendor_behaviour by=runner story=7-10-the-remaining-application-error-delete-scopes lint=ok
 2026-09-23T17:25:14Z	Story 7.10	spec_validated	service_introducing=false integration_ac=present adr_constrained_acs=AD-48,AD-51,AD-52,AD-53,AD-56,AD-6,AD-8,AD-10,AD-13,AD-14,AD-15,AD-21,AD-29,AD-34,AD-39 owned_ledger=none mutates_shared_runtime=true throwaway=ocupilot-ci copy_published=EXPERIENCE.md:426-429 amendment=EXPERIENCE.md:87 model=claude-opus-5-5
+2026-09-23T17:27:23Z	Story 7.8	ci_resolved	story=7.8 run=35893105905 result=success resolved_at=next_implement head=bd4b1759 jobs=8/8
+2026-09-23T17:27:23Z	Story 7.10	stage_spawned	stage=implement spawn_at=2026-09-23T17:27:23Z model=opus agent_name=7-10-the-remaining-application-error-delete-scopes-implement-1 cycle_iteration=1

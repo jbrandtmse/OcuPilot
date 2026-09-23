@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '09-23-2026 17:40'
+last_updated: '09-23-2026 17:50'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -145,7 +145,7 @@ development_status:
   7-5-run-an-on-demand-task: done
   7-6-run-suspend-resume-and-delete-a-task: done
   7-8-terminate-suspend-and-resume-a-process: done
-  7-10-the-remaining-application-error-delete-scopes: ready-for-dev
+  7-10-the-remaining-application-error-delete-scopes: in-progress
   7-11-system-and-user-audit-event-configuration: backlog
   epic-7-retrospective: optional
 
