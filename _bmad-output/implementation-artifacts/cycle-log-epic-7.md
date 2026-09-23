@@ -164,3 +164,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T12:57:12Z	Story 7.5	protocol_violation	stage=lead violation=dw1434_code_commit_438d3f46_pushed_under_a_skip-marked_head_3530b258 consequence=no_ci_run_on_the_review_patches detected_by=lead_reading_its_own_push outcome=a_commit_without_the_marker_starts_the_run
 2026-09-23T12:57:31Z	Story 7.5	committed	sha=796a779b code_sha=438d3f46 submodules= ci=pending run=35863786111 amendments=EXPERIENCE.md:414-415,spine:AD-51
 2026-09-23T12:57:51Z	Epic 7	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@b153eac6 merge=eb170c27 files=4_docs(epics.md_Epic15_triage) conflict=sprint-status_last_updated_resolved_ours+generate validate=true
+2026-09-23T12:59:07Z	Epic 7	epic_context_compiled	sha=e9a1172e reason=planning_artifact_newer model=opus
+2026-09-23T12:59:07Z	Story 7.6	stage_spawned	stage=plan spawn_at=2026-09-23T12:59:07Z model=opus agent_name=7-6-run-suspend-resume-and-delete-a-task-plan-1 cycle_iteration=1
