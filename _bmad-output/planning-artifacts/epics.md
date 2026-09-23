@@ -4691,6 +4691,7 @@ So that configuring a REST service is a single task.
 - DW-1490: The web-applications/list/edit/:id route does not re-read the created application on a cold load; it draws an empty create form at an id-bearing URL (ledger; routed by merge_gate 2026-09-23)
 - DW-1493: A confirmed agent create writes the name in AD-13's canonical spelling while the screen's Save writes it as typed, so one input creates /csp/myapp or /csp/MyApp depending on the caller (ledger; routed by merge_gate 2026-09-23)
 - DW-1577: An agent update that sets Enabled to its current value mints a proposal with no changed rows instead of the 400 TOOL.ARGUMENTS no-op refusal (ledger; routed by merge_gate 2026-09-23)
+- DW-1502: PROHIBITED.PRIVILEGEGRANT's caller-neutral sentence is server-shipped only; AD-53 (Epic 7) publishes a refusal sentence in EXPERIENCE.md Fixed strings with a pin test (ledger; routed by merge_gate 2026-09-23)
 
 ### Story 9.3: The role editor
 

@@ -117,7 +117,7 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Set tSchema = ##super(pDescriptor)
     If '$IsObject(tSchema) Quit tSchema
     If tSchema.%GetTypeOf("properties") '= "object" Quit tSchema
-    Set tRoles = {"type": "array", "description": "The complete list of roles this account is to hold after the change, each named exactly as this instance's own roles list reports it. It replaces the account's current roles rather than adding to them, so a role left out is a role removed. Adding a role that would grant an administrative privilege is refused, whether it grants it by name, through another role, or as a resource it carries -- %All, %Manager, %Operator and %SecurityAdministrator are all refused."}
+    Set tRoles = {"type": "array", "description": "The complete list of roles this account is to hold after the change, each named exactly as this instance's own roles list reports it. It replaces the account's current roles rather than adding to them, so a role left out is a role removed. Adding a role that grants %All or an administrative privilege -- by name, through another role, or as a resource it carries -- is permitted: the proposal is marked destructive and names the privilege it grants, and the user confirms it on the card."}
     Do tRoles.%Set("items", {"type": "string"})
     Do tSchema.%Get("properties").%Set(..#ROLESARGUMENT, tRoles)
     Quit tSchema
