@@ -108,3 +108,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T08:23:17Z	Epic 8	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp merge=5175798b conflicts=none changed=docs_only(cycle-log-parallel.md) code_paths_changed=0
 2026-09-23T08:25:00Z	Epic 8	epic_context_compiled	sha=pending reason=planning_artifact_newer(AD-10_owner_reversal,AD-54,8.3_done) model=opus lines=62
 2026-09-23T08:25:00Z	Story 8.4	stage_spawned	stage=plan spawn_at=2026-09-23T08:25:00Z model=opus agent_name=8-4-the-resource-editor-plan-1 cycle_iteration=1
+2026-09-23T08:44:32Z	Story 8.3	ci_resolved	story=8.3 run=35836793855 head=9aa6d02 result=success resolved_at=next_plan_return
+2026-09-23T08:44:32Z	Story 8.4	plan_clarification_requested	spawn_at=2026-09-23T08:25:00Z model=opus spec=spec-8-4-the-resource-editor.md spec_status=blocked spec_bytes=35500 blocking=intent_gap_P1_vendor_Security.Resource_PUT_requires_PublicPermission_refuses_empty(lead_reprobed_/api/admin/v2/security/resource:omitted=400_#40301,empty=400,R=201,clear=400) also=P2_AD-10_own_resources_public_permission,row_action_ruling,footprint_Classification.cls+ToolFields.cls_in_Epic7_diff
