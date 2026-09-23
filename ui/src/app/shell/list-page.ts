@@ -159,6 +159,9 @@ export class ListPage {
       stopStore();
       stopRefreshAction();
       if (this.refresh.descriptor() === screen.descriptor) this.refresh.unbind();
+      // The handler is the app's, so a typed-name confirm left open would otherwise outlive the
+      // list it was opened on and reappear on the next one.
+      if (this.screenActions.pending()?.descriptor === screen.descriptor) this.screenActions.cancelPending();
     });
   }
 
@@ -220,12 +223,13 @@ export class ListPage {
   }
 
   /**
-   * The destructive row action waiting on a typed name, or `null` (AD-53). The dialog is rendered
-   * here because a row action belongs to the list it acts on, and because the shell has exactly
-   * one modal surface (`dialog.ts`), which this one is built on.
+   * The destructive row action waiting on a typed name for this list's own screen, or `null`
+   * (AD-53). The dialog is rendered here because a row action belongs to the list it acts on, and
+   * because the shell has exactly one modal surface (`dialog.ts`), which this one is built on.
    */
   protected get pendingConfirm(): ReturnType<ScreenActionHandler['pending']> {
-    return this.screenActions.pending();
+    const pending = this.screenActions.pending();
+    return pending !== null && pending.descriptor === this.list?.screen.descriptor ? pending : null;
   }
 
   /**

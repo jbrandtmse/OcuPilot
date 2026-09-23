@@ -1602,16 +1602,6 @@ test('the build refuses a privilege pair missing a half, in an area and in a des
   for (const area of areas) assert.equal(malformedPair(area.privileges), null, area.key);
 });
 
-// AD-44, Story 1.15: `archetype` was free text every reader ignored, so "only a detail view may
-// declare a classic link-out" had no predicate to evaluate -- a typo answered "not a detail
-// view" and passed. The vocabulary is closed in `OcuPilot.Screen.Archetype` and refused here,
-// the second of the two places a declared value fails the build, the other being
-// `ui/tools/classic-links.mjs`. `OcuPilot.Screen.Registry.ClassicLinkProblem` makes the same
-// refusal on the instance, but it is reached only through `Validate`, which nothing on the
-// serving path calls (`Registry.cls:27-31`), so it fails no build.
-//
-// Mutation (Rule 19): drop the archetype check from `buildMirror` -> the matching case below
-// stops throwing and this test goes red, while the real tree stays green either way.
 test('AD-53: the generator refuses a self-protection rule outside the closed vocabulary, naming both', () => {
   // The rule is mirrored to the client, which draws a refused row action from it, so a value only
   // one side understands would render as a word in a row menu. `OcuPilot.Screen.Registry`'s own
@@ -1676,6 +1666,16 @@ test('AD-53: the generator refuses a self-protection rule outside the closed voc
   );
 });
 
+// AD-44, Story 1.15: `archetype` was free text every reader ignored, so "only a detail view may
+// declare a classic link-out" had no predicate to evaluate -- a typo answered "not a detail
+// view" and passed. The vocabulary is closed in `OcuPilot.Screen.Archetype` and refused here,
+// the second of the two places a declared value fails the build, the other being
+// `ui/tools/classic-links.mjs`. `OcuPilot.Screen.Registry.ClassicLinkProblem` makes the same
+// refusal on the instance, but it is reached only through `Validate`, which nothing on the
+// serving path calls (`Registry.cls:27-31`), so it fails no build.
+//
+// Mutation (Rule 19): drop the archetype check from `buildMirror` -> the matching case below
+// stops throwing and this test goes red, while the real tree stays green either way.
 test('AD-44: the generator refuses an archetype outside the closed vocabulary, naming both', () => {
   const sources = readSources();
   assert.ok(sources.archetypes.length >= 16, 'the vocabulary reached readSources');

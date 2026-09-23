@@ -1188,12 +1188,13 @@ ClassMethod CheckDemoFixture(ByRef pChecks, pDemo As %String = "") [ Private ]
 /// fixture, over the real <code>POST /screens/:screen/action</code> route as the browser makes it,
 /// with the bearer token this run already signed in for.</p>
 /// <p>It asserts the consumer's own tier rather than the operation's internal state: the route
-/// answers the AD-14 verb and the canonical target, and the instance's own record of the
-/// application moves. Enable then disable, so the fixture ends in the disabled, no-resource state
-/// its install creates -- which is the state <method>CheckAgentWrite</method> asserts against
-/// later in the same run.</p>
-/// <p>Skipped, not failed, where the demo fixture was never created or is not this install's:
-/// AD-25 forbids modifying an application OcuPilot did not make.</p>
+/// answers the AD-14 verb, and the instance's own record of the application moves. Enable then
+/// disable, so the fixture ends in the disabled, no-resource state its install creates -- which is
+/// the state <method>CheckAgentWrite</method> asserts against later in the same run. A run that
+/// stops after the enable landed puts the fixture back disabled before it returns.</p>
+/// <p>Skipped, not failed, where the demo fixture was never created or is not this install's
+/// (AD-25 forbids modifying an application OcuPilot did not make), and where this run minted no
+/// token.</p>
 ClassMethod CheckScreenAction(ByRef pChecks, pAccessToken As %String, pDemo As %String = "") [ Private ]
 {
     Set tSkip = ""
@@ -1217,6 +1218,10 @@ ClassMethod CheckScreenAction(ByRef pChecks, pAccessToken As %String, pDemo As %
             Set tSkip = "the install roster declares no API application path"
             Quit
         }
+        If pAccessToken = "" {
+            Set tSkip = "no token pair was minted by this run, so the authenticated row action was not attempted"
+            Quit
+        }
         Set tPath = tBase _ "/screens/" _ ..#WEBAPPLISTTOOL _ "/action"
 
         Set tEnableSC = ..ScreenAction(tPath, pAccessToken, "enable", tSpelling, .tEnableStatus, .tEnableText)
@@ -1229,6 +1234,7 @@ ClassMethod CheckScreenAction(ByRef pChecks, pAccessToken As %String, pDemo As %
             Do ..Note(.pChecks, "screenaction", "fail", "the row's enable answered no 'updated' action: " _ $Extract($Get(tEnableText), 1, 200))
             Quit
         }
+        Set tEnabled = 1
         If ..ApplicationEnabled(..WriteTarget()) '= 1 {
             Do ..Note(.pChecks, "screenaction", "fail", "the route answered 200 and this instance still reports " _ ..WriteTarget() _ " disabled")
             Quit
@@ -1239,16 +1245,43 @@ ClassMethod CheckScreenAction(ByRef pChecks, pAccessToken As %String, pDemo As %
             Do ..Note(.pChecks, "screenaction", "fail", "the row's disable answered HTTP " _ +$Get(tDisableStatus) _ ": " _ $Extract($Get(tDisableText), 1, 200))
             Quit
         }
+        Set tDisabled = ##class(%DynamicAbstractObject).%FromJSON(tDisableText)
+        If '$IsObject(tDisabled) || (tDisabled.%Get("action") '= "updated") {
+            Do ..Note(.pChecks, "screenaction", "fail", "the row's disable answered no 'updated' action: " _ $Extract($Get(tDisableText), 1, 200))
+            Quit
+        }
         If ..ApplicationEnabled(..WriteTarget()) '= 0 {
             Do ..Note(.pChecks, "screenaction", "fail", "the fixture was left enabled, which is not the state its install creates")
             Quit
         }
+        Set tEnabled = 0
         Do ..Note(.pChecks, "screenaction", "pass", "the row's enable and disable ran over " _ tPath _ " and this instance's own record moved both ways")
     } Catch ex {
         Set tSkip = ""
         Do ..Note(.pChecks, "screenaction", "fail", "the row-action check raised " _ ex.DisplayString())
     }
+    If $Get(tEnabled) Do ..DisableWriteTarget()
     If tSkip '= "" Do ..Note(.pChecks, "screenaction", "skipped", tSkip)
+}
+
+/// <p>Put the demo fixture back disabled, the state its install creates, after a
+/// <method>CheckScreenAction</method> that stopped with it enabled. Only ever called for
+/// <method>WriteTarget</method> once that check has established the fixture is this install's.
+/// <b>Best effort, and silent</b>, for the reason <method>RestoreWriteTarget</method> gives.
+/// Switches to <code>%SYS</code> and restores, restoring first on the error path (AD-16).</p>
+ClassMethod DisableWriteTarget() [ Private ]
+{
+    Set tPath = ..WriteTarget()
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill tProps
+        Set tProps("Enabled") = 0
+        Do ##class(Security.Applications).Modify(tPath, .tProps)
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
 }
 
 /// <p>One row action over the wire: <code>POST</code> <var>pPath</var> carrying

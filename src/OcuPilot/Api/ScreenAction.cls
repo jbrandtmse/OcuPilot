@@ -149,6 +149,19 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
         ; AD-8: the declared pairs answer before the fresh read, as they do at a confirm. The read
         ; goes through the port, whose own gate refuses a caller short of a pair without naming it.
         Set tArgs = $ClassMethod(pToolClass, "ScreenActionArguments", pActionId, .tServes)
+        Set tSettable = $ClassMethod(pToolClass, "SettableFields")
+        Set tArgIterator = tArgs.%GetIterator()
+        While tArgIterator.%GetNext(.tArgField, .tArgValue) {
+            If '$ListFind(tSettable, tArgField) Set tServes = 0
+        }
+        If 'tServes {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "'" _ $ClassMethod(pToolClass, "ToolClass") _ "' declares the screen action '" _ pActionId _ "' with an argument it cannot set")))
+            Quit
+        }
+        ; The target travels as the tool's own id argument, as it does in a proposal's stored
+        ; arguments, so a tool whose pairs depend on it (ArgumentPairs) resolves them identically
+        ; on both callers. Merge skips the id argument, so the body is unchanged by it.
+        Do tArgs.%Set($ClassMethod(pToolClass, "IdArgument"), pId, "string")
         Set tPairSC = ##class(OcuPilot.Kernel.Proposal.Operation).Gate(pTool, pTargetRef, "", "", tArgs.%ToJSON(), ..CallerUsername(), "", "", .tPairs, .tRefused, .tGateHttp, .tGateCode, .tGateDetail)
         If $$$ISERR(tPairSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tPairSC))
@@ -304,8 +317,9 @@ ClassMethod Fault(pStatus As %Status, pHttpStatus As %Integer, ByRef pFault As %
 }
 
 /// <p>The framework's own not-found envelope: an unknown screen, an action the screen does not
-/// declare, an action no write tool carries out, and a target this instance no longer holds are
-/// the same answer -- there is no operation at that address.</p>
+/// declare and an action no write tool carries out are the same answer -- there is no operation at
+/// that address. A target this instance no longer holds is the port's own fault, rendered by
+/// <method>Fault</method>.</p>
 ClassMethod NotFound() As %Status [ Private ]
 {
     Quit ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, "The requested route does not exist", ##class(OcuPilot.Api.Error).#ROUTENOTFOUND)

@@ -851,19 +851,19 @@ ClassMethod EndpointType(pEndpoint As %String, pClass As %String, pSuffix As %St
 
 /// <p>Whether <var>pClass</var> implements the operation <var>pSuffix</var> names. The base class's
 /// <code>Run()</code> sends <code>GET</code> to <code>RunGet</code>, <code>LIST</code> to
-/// <code>RunList</code>, <code>PUT</code> to <code>RunPut</code> and <code>DELETE</code> to
-/// <code>RunDelete</code>, answers <code>{}</code> for any other type, and every one of those
-/// runners answers <code>{}</code>; so an operation is implemented when <code>Run</code>, or the
-/// runner for that suffix, is defined below <parameter>ENDPOINTBASECLASS</parameter>. A class that
-/// overrides <code>Run</code> is trusted to dispatch its own types.</p>
-/// <p><code>DELETE</code> joined the table with Story 7.1, which shipped the first tool that
-/// issues one through this port. The vendor's base <code>Run()</code> has always dispatched it
-/// (read on this build); the omission here made every such call read as an operation the instance
-/// does not implement, at 501.</p>
+/// <code>RunList</code> and <code>PUT</code> to <code>RunPut</code>, answers <code>{}</code> for
+/// any other type, and every one of those runners answers <code>{}</code>; so an operation is
+/// implemented when <code>Run</code>, or the runner for that suffix, is defined below
+/// <parameter>ENDPOINTBASECLASS</parameter>. A class that overrides <code>Run</code> is trusted to
+/// dispatch its own types.</p>
+/// <p>The base <code>Run()</code> also sends <code>DELETE</code> to <code>RunDelete</code> (read on
+/// this build), which joined here with Story 7.1, the first tool that issues one through this port;
+/// without it every such call read as an operation the instance does not implement, at 501.</p>
 ClassMethod ImplementsRead(pClass As %String, pSuffix As %String) As %Boolean [ Private ]
 {
     If ..MethodOrigin(pClass, "Run") '= ..#ENDPOINTBASECLASS Quit 1
-    Set tRunner = $Case(pSuffix, "GET": "RunGet", "LIST": "RunList", "PUT": "RunPut", "DELETE": "RunDelete", : "")
+    Set tRunner = $Case(pSuffix, "GET": "RunGet", "LIST": "RunList", "PUT": "RunPut", : "")
+    If pSuffix = "DELETE" Set tRunner = "RunDelete"
     If tRunner = "" Quit 0
     Quit ..MethodOrigin(pClass, tRunner) '= ..#ENDPOINTBASECLASS
 }

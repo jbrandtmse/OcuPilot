@@ -15,6 +15,7 @@ import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
 import { tableDeclaration } from '../testing/table-declaration';
 import { ListPage } from './list-page';
+import { ScreenActionHandler } from './screen-action-handler';
 import { stubAccountPreferences } from '../testing/account-preferences';
 
 /**
@@ -349,6 +350,29 @@ describe('the list page', () => {
     expect(document.activeElement).toBe(opener);
     expect(page.paths.filter((path) => path.endsWith('/action')).length).toBe(posts);
     expect(rowNames(page.host())).toEqual(['A', 'C']);
+  });
+
+  it('a typed-name confirm left open does not outlive the list it was opened on', async () => {
+    // The handler is the app's, so without the page letting go of it a Back press with the dialog
+    // open would carry the pending delete onto the next list page.
+    //
+    // Mutation (Rule 19): drop the `cancelPending()` call from `ListPage`'s destroy hook -> the
+    // pending confirm survives the page and this goes red.
+    const declaration = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.WebAppList',
+      rowActions: [{ id: 'delete', selfProtection: 'serves-ocupilot' }],
+    });
+    const page = await mount(declaration, named('A', 'B'));
+    const store = page.stores.for(declaration.descriptor, declaration.refreshRates);
+    const handler = TestBed.inject(ScreenActionHandler);
+    store.setSelection(['B']);
+    expect(page.actions.run(declaration.descriptor, 'delete')).toBe(true);
+    await settle(page.fixture);
+    expect(handler.pending()?.target).toBe('B');
+
+    page.fixture.destroy();
+    expect(handler.pending()).toBeNull();
+    expect(page.paths.filter((path) => path.endsWith('/action'))).toHaveLength(0);
   });
 
   it('before the namespace list arrives the page reads nothing, and the scope resolving reads once', async () => {

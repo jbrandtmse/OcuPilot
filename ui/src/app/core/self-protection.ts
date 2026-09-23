@@ -3,9 +3,10 @@
  *
  * **A rule explains a refusal; it never makes one.** The refusal itself is the instance's, in
  * `OcuPilot.Kernel.Proposal.Prohibited`, evaluated at the write whatever the caller (AD-10) -- so
- * a row action this file calls refused is still sent if it is pressed anyway, and still refused,
- * with the same sentence. What this file decides is what a surface *draws* before a click, which
- * is the half AD-53 calls "the row action drawn disabled before a click".
+ * a surface that draws an action refused sends nothing when it is pressed, and the route refuses
+ * the same write with the same sentence if it is called anyway. What this file decides is what a
+ * surface *draws* before a click, which is the half AD-53 calls "the row action drawn disabled
+ * before a click".
  *
  * **The vocabulary is closed and both sides read it.** `OcuPilot.Screen.Registry`'s
  * `SELFPROTECTIONRULES` is the declaration; `ui/tools/screen-mirror.mjs` refuses a descriptor

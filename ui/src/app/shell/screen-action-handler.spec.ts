@@ -135,15 +135,24 @@ describe('the generic screen-action handler', () => {
 
   it('explains a self-protected row rather than sending, in the instance\u2019s own published words', async () => {
     // AD-10, AD-53: this is an explanation, not a gate -- the route refuses the same write with
-    // the same sentence. Mutation (Rule 19): make `selfProtectionReason` answer `''` -> the
-    // request is sent and the `calls` assertion goes red.
-    const { actions, store, calls, events } = mount();
+    // the same sentence. Disable is the leg that can go red on `calls`: it sends at once where it
+    // is not refused, while a delete sends nothing before its dialog is confirmed either way.
+    // Mutation (Rule 19): make `selfProtectionReason` answer `''` -> the disable is sent and the
+    // `calls` assertion goes red, and the delete opens its dialog and `pending()` goes red.
+    const { actions, handler, store, calls, events } = mount();
     store.setSelection([OWN_ROW]);
 
-    actions.run(WEB_APPS.descriptor, 'delete');
+    actions.run(WEB_APPS.descriptor, 'disable');
     await settle();
     expect(calls).toHaveLength(0);
     expect(events).toHaveLength(0);
+    expect(store.refusal()).toBe(STRINGS.webAppServesOcuPilotRefusal);
+
+    store.setRefusal('');
+    actions.run(WEB_APPS.descriptor, 'delete');
+    await settle();
+    expect(handler.pending()).toBeNull();
+    expect(calls).toHaveLength(0);
     expect(store.refusal()).toBe(STRINGS.webAppServesOcuPilotRefusal);
   });
 

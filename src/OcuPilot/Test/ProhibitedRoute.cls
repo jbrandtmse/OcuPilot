@@ -589,6 +589,10 @@ Method TestTheWebApplicationWriteVerbsAreTheTwoThisScreenDeclares()
 /// <p><b>It lives here rather than in a class of its own</b> because it creates and deletes a web
 /// application, which is what <parameter>ARMINGVARIABLE</parameter> arms and what this class is
 /// already rostered for in <file>scripts/ci-throwaway.sh</file>.</p>
+/// <p>AD-53's two differences from the agent's caller are asserted on the same legs: the disable
+/// runs with the kill switch and enforced read-only both on, because those switches are the
+/// agent's; and no OcuPilot <code>AgentWrite</code> marker names the probe after either write,
+/// because a person's row action is the human write that marker is distinguished from.</p>
 /// <p>Mutation (Rule 19): remove <code>enable=Enabled:true</code> from
 /// <parameter>OcuPilot.Screen.Tool.WebAppUpdate.SCREENACTIONS</parameter> and recompile -- the
 /// enable leg answers 404 and its read-back goes red.</p>
@@ -599,7 +603,10 @@ Method TestTheScreensOwnRowActionsRunOverTheWire()
 
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteTargetField("Enabled"), 1, "the probe application starts enabled")
 
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.SwitchFixture).SetSwitches(1, "OcuPilot probe: the agent is off", 1), "the kill switch and enforced read-only are both on")
     Set tSC = ..Act("disable", ..#TARGET, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.SwitchFixture).Reset(.tHolds), "and both are off again")
     Do $$$AssertStatusOK(tSC, "the disable request completes")
     Do $$$AssertEquals(tStatus, 200, "and is accepted: " _ tBody)
     Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", "as application/json")
@@ -616,6 +623,7 @@ Method TestTheScreensOwnRowActionsRunOverTheWire()
     Do $$$AssertStatusOK(tSC, "the enable request completes")
     Do $$$AssertEquals(tStatus2, 200, "and is accepted: " _ tBody2)
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteTargetField("Enabled"), 1, "and the record reads enabled again")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, $Parameter("OcuPilot.Kernel.Audit.Event", "EVENTAGENTWRITE"), $Piece(..#TARGET, "/", *), .tMarkerData), 0, "and neither write left an agent marker naming the probe")
 
     ; An action the screen does not declare has no operation at that address, and writes nothing.
     Set tSC = ..Act("terminate", ..#TARGET, .tStatus3, .tBody3, .tHeaders3)
@@ -675,6 +683,12 @@ Method TestTheScreensOwnRowActionIsRefusedForOcuPilotsOwnApplication()
     Set tSC = ..Act("disable", ..#TARGET, .tStatus2, .tBody2, .tHeaders2)
     Do $$$AssertStatusOK(tSC, "the disable request completes")
     Do $$$AssertEquals(tStatus2, 403, "and is refused too: " _ tBody2)
+    If tStatus2 = 403 {
+        Set tEnvelope2 = ##class(%DynamicObject).%FromJSON(tBody2)
+        Do $$$AssertEquals(tEnvelope2.%Get("code"), tExpected, "with the serving-path code")
+        Do $$$AssertEquals(tEnvelope2.%Get("error"), ##class(OcuPilot.Api.Error).#FORBIDDEN, "under the forbidden slug")
+        Do $$$AssertEquals(tEnvelope2.%Get("reason"), tReason, "and the set's own published sentence")
+    }
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteTargetField("Enabled"), 1, "and the application is untouched")
 
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#TARGET), "the temporary record is removed")

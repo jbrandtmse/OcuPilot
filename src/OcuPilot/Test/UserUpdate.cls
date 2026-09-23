@@ -357,7 +357,7 @@ Method TestATargetThatMovedAfterTheMintIsRefused()
 /// pair. Driven through <class>OcuPilot.Test.ConfirmFixture</class>, so no grant on the instance
 /// changes and no write leaves.</p>
 /// <p>Mutation: delete the <method>MissingPair</method> branch from
-/// <method>OcuPilot.Kernel.Proposal.Confirm.Transition</method> -- this goes red.</p>
+/// <method>OcuPilot.Kernel.Proposal.Operation.Gate</method> -- this goes red.</p>
 Method TestAPairTheCallerHasLostRefusesNamingIt()
 {
     Set tFresh = $ClassMethod(..#SET, "UserObject", ..Target(), 1, $Parameter(..#FIXTURE, "USERINITIALROLE"))

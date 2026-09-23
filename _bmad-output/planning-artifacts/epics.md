@@ -4252,6 +4252,8 @@ So that the commonest administrative task takes one click rather than an editor.
 - **When** it is attempted through the agent
 - **Then** it is refused - privilege grants are prohibited in Release 1 at any confirmation level - while the screen's own role management remains available to a privileged user.
 
+- DW-1499: Prohibited.ReasonFor's sentences other than SERVINGPATH say the change is not something the agent can propose, which AD-53 makes a defect once a screen caller reaches that arm (ledger; routed by cr 2026-09-23)
+
 ### Story 7.3: Delete an OAuth 2.0 client configuration or server client description
 
 As a developer-administrator,

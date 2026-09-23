@@ -2565,6 +2565,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T05:46:35Z status=routed owner=burndown by=harvest note=either the descriptor stops declaring what the page does not handle, or the surfaces stop drawing an action with no handler; the second is the rule that holds for every later screen
 - 2026-09-16T10:21:59Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=burndown_gate note=the action registry is what draws a handler-less action
 - 2026-09-16T15:11:12Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=x0 note=the first row-action story is where the surfaces stop drawing an action with no handler
+- 2026-09-23T02:50:46Z status=resolved-by:7-1-enable-disable-and-delete-a-web-application by=adjudication note=command-bar, command-box and data-table draw a row action only while a handler is registered; negative cases in each surface spec; commit 17055d3
 
 ### DW-390: Kernel/Restraint.Verdict's fail-closed path has no store seam, so nothing pins what happens when a restraint store cannot be read
 - source: spec-3-7 | severity: med | fix-risk: low | footprint: in-epic
@@ -3744,6 +3745,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T17:43:04Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=harvest note=route: first later-epic story in the web-applications area that works in Screen/Tool/**; the fix is a per-criterion description declared by the descriptor or a single-name text kind
 - 2026-09-16T22:46:47Z occurrence=6-3-the-x-509-ldap-kerberos-and-wallet-lists note=the security.secrets tool's required single collection criterion is described as an optional comma list with a * wildcard
 - 2026-09-17T11:34:58Z occurrence=6-7-task-details
+- 2026-09-23T02:50:47Z status=routed owner=burndown by=adjudication note=declined by 7.1's plan: 7.1 ships no read tool and adds no read criterion; the fix is a per-criterion description mechanism for derived read tools (Screen/Tool/Read.cls), moves with DW-1013
 
 ### DW-1002: AD-8 says no elevation anywhere on the request path, while the vendor path MgmntPort reaches adds all roles temporarily inside %SYS.REST and %REST.API
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -3810,6 +3812,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The spec keeps the vendor's [] on the read and the tool; only the screen cell reads Unrestricted. The generic read-tool description and screen context carry no field meaning. Same mechanism gap as DW-1001: descriptor-declared field or criterion descriptions for derived tools (Screen/Tool/**, contended for Epic 6).
 - 2026-09-16T20:03:33Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=harvest note=cluster with DW-1001: one descriptor-declared description mechanism for derived read tools
 - 2026-09-16T20:44:36Z occurrence=6-2-the-roles-resources-and-services-lists
+- 2026-09-23T02:50:47Z status=routed owner=burndown by=adjudication note=declined by 7.1's plan: same mechanism as DW-1001 (descriptor-declared field meaning for derived read tools); moves with it
 
 ### DW-1014: An empty AuthenticationMethods cell reads (none) on 7 of 15 stock services, which can read as no authentication where authentication does not apply
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: low | fix-risk: low | footprint: in-story
@@ -4011,6 +4014,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Test/Descriptor.cls's new Devices method is the only place in the ObjectScript suite that reads a real descriptor's read.filter or a column's kind; every other hit is a synthetic corpus. Registry.cls requires only that filter and sort names be a SUBSET of read.fields and each kind be in TABLECOLUMNKINDS, and screens.generated.ts mirrors whatever is declared, so screen-mirror --check agrees with any mutation.
 - 2026-09-18T07:39:57Z status=routed owner=burndown by=cr note=one sweep over Registry.Descriptors() against a committed table closes it; equality with read.fields is NOT the invariant -- SystemUsage declares filter [] deliberately
 - 2026-09-18T16:43:00Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=burndown note=overflow re-owned to the first story of the next epic, which touches a shipped descriptor's declared actions and its pinning tests: one sweep over Registry.Descriptors() against a committed table closes it, and equality with read.fields is NOT the invariant
+- 2026-09-23T02:50:46Z status=resolved-by:7-1-enable-disable-and-delete-a-web-application by=adjudication note=Test/Descriptor.cls sweeps Registry.Descriptors() against a committed table of filter, sort fields and column kinds; commit 17055d3
 
 ### DW-1100: The messages.log viewer has no declared-read source, so its read tool cannot be descriptor-derived and needs a Screen/Tool class Epic 6's footprint excludes
 - source: spec-6-13-the-alerts-log-viewer.md | severity: med | fix-risk: med | footprint: in-epic
@@ -4096,12 +4100,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AdminPort.cls:682 skips %DeleteId without ASYNCTASKPAIR and logs nothing (AC9, by design). Observed on ocupilot-b-ci: removing the guard makes the PROTECT appear, so the path is taken per unprivileged async read. This ledger's own 2026-09-18T08:32 note records that the vendor's PurgeAsyncQueue() is [Internal] and scheduled by nothing, so Api.Admin.Util.AsyncTaskD grows without bound for such callers.
 - 2026-09-18T16:02:00Z status=escalated owner=burndown by=cr note=the guard is the right refusal; what is undecided is the row it now leaves: accept the growth, purge it from a privileged path, or bound it
 - 2026-09-18T19:44:55Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=merge_gate note=ForgetTask leaks a vendor async-task row on every unprivileged async read; fix in AdminPort
+- 2026-09-23T02:50:47Z status=routed owner=burndown by=adjudication note=declined by 7.1's plan: the fix rewrites AdminPort.ForgetTask, a method 7.1 did not add in a shared-append file contended with Epic 8; residual unchanged
 
 ### DW-1137: AdminPort.ASYNCTASKPAIR is a literal, so on an instance whose IRISLOCALDATA carries a non-default resource the guard denies every caller and ForgetTask silently stops deleting
 - source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: high | footprint: in-epic
 - evidence: Parameter ASYNCTASKPAIR = "%DB_IRISLOCALDATA:WRITE" under a doc comment headed 'Derived from the vendor's storage, not chosen'; the code derives nothing. A database's resource is SYS.Database.ResourceName and need not be %DB_<name>. Test.AdminPortForget.TestTheDeclaredPairNamesTheDatabaseTheRowsLiveIn derives and compares, so any instance the suite runs on reddens - an instance it does not run on skips every delete with nothing logged.
 - 2026-09-18T16:02:00Z status=escalated owner=burndown by=cr note=fix-risk high: resolving the resource at call time adds a %SYS switch to the async path in a file Epic 4 shares; the alternative is to attempt the delete and suppress only PROTECT
 - 2026-09-18T19:44:55Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=merge_gate note=ASYNCTASKPAIR literal denies every caller where IRISLOCALDATA carries a non-default resource
+- 2026-09-23T02:50:47Z status=escalated owner=burndown by=adjudication note=MED with fix-risk high (a %SYS switch on the async path to resolve IRISLOCALDATA's resource at call time) in the shared-append AdminPort.cls; Rule 15 escalates it to the decision sheet
 
 ### DW-1138: The planning artifacts still put the log viewer's Clear control in the shell command bar, and the new Fixed strings row cites two wrong lines
 - source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -5972,6 +5978,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: bmad-code-review of spec-5-13 | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: proposal-card.ts residueVisible is removedCount > 0; ProposalCardView carries entityType only as a display string. Unreachable today: logs.applicationerrors.delete is the only tool whose StateDiff emits removed rows. Story 7.1's web-application delete is the first that would render 'Removes exactly the 1 errors listed here.'
 - 2026-09-22T14:47:04Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=cr note=gate the sentence on the write's entity type, or have the instance send the caption
+- 2026-09-23T02:50:47Z status=resolved-by:7-1-enable-disable-and-delete-a-web-application by=adjudication note=proposal-card residueVisible gated on the write's entity type; proposal-card.spec.ts pins both directions; commit 17055d3
 
 ### DW-1481: OcuPilot.Api.Error.LOGENTRY now answers two different refusals at two different statuses
 - source: bmad-code-review of spec-5-13 | severity: low | fix-risk: med | footprint: in-story
@@ -6026,3 +6033,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-7-1-enable-disable-and-delete-a-web-application.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: self-protection.ts mirrors the roster's three paths (pinned by self-protection.test.mjs); Prohibited.ServesOcuPilot also reads Kernel.State.WebApp. On a probe profile the row menu offers the action and the route refuses it after the click with the same published sentence
 - 2026-09-23T02:25:57Z status=wontfix-accepted owner=7-1-enable-disable-and-delete-a-web-application by=harvest note=reopen_if=an install path other than a test probe records a web application outside Install.Roster's three paths
+
+### DW-1499: Prohibited.ReasonFor's sentences other than SERVINGPATH say the change is not something the agent can propose, which AD-53 makes a defect once a screen caller reaches that arm
+- source: spec-7-1-enable-disable-and-delete-a-web-application.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: src/OcuPilot/Kernel/Proposal/Prohibited.cls ReasonFor: SYSTEMACCOUNT, CURRENTUSER, LASTALLHOLDER (and the web-application arms) name the agent; AD-53 Rule says such a reason is a defect once a screen caller shares the predicate. Unreachable from 7.1's Enabled-only merge and bodyless delete; 7.2's row disable of a user reaches the user arms.
+- 2026-09-23T02:48:49Z status=routed owner=7-2-user-enable-disable-delete-password-and-roles by=cr note=first screen caller to reach the user arms; reword each reached reason caller-neutral and pin it as RefusalCopy does SERVINGPATH
+
+### DW-1500: The row-action handler decides which actions get the typed-name dialog by action id (DESTRUCTIVE_ACTIONS = delete) rather than from the write tool's own DESTRUCTIVE declaration
+- source: spec-7-1-enable-disable-and-delete-a-web-application.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ui/src/app/shell/screen-action-handler.ts:35 keys the dialog on the id 'delete'; the mirror does not carry the tool's DESTRUCTIVE, so a later destructive verb with another id (e.g. terminate) would send at once unless its story adds the id.
+- 2026-09-23T02:48:49Z status=wontfix-accepted owner=7-1-enable-disable-and-delete-a-web-application by=cr note=reopen_if=a Screen/Tool/*.cls with DESTRUCTIVE=1 declares a SCREENACTIONS id absent from DESTRUCTIVE_ACTIONS

@@ -167,14 +167,11 @@ ClassMethod StoredShapes(Output pShapes) As %Status
         While tReader.Read() {
             If tReader.NodeType '= "element" Continue
             If tReader.Name '= "screen" Continue
-            Do tReader.MoveToAttributeName("name")
-            Set tName = tReader.Value
-            Do tReader.MoveToAttributeName("filter")
-            Set tFilter = tReader.Value
-            Do tReader.MoveToAttributeName("sort")
-            Set tSort = tReader.Value
-            Do tReader.MoveToAttributeName("kinds")
-            Set tKinds = tReader.Value
+            ; An absent attribute reads as "", never as the value of the one read before it.
+            Set tName = $Select(tReader.MoveToAttributeName("name"): tReader.Value, 1: "")
+            Set tFilter = $Select(tReader.MoveToAttributeName("filter"): tReader.Value, 1: "")
+            Set tSort = $Select(tReader.MoveToAttributeName("sort"): tReader.Value, 1: "")
+            Set tKinds = $Select(tReader.MoveToAttributeName("kinds"): tReader.Value, 1: "")
             If tName = "" Continue
             Set pShapes(tName) = $ListBuild(tFilter, tSort, tKinds)
         }

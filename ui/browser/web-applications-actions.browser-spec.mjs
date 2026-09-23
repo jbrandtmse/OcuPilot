@@ -436,11 +436,14 @@ test("AC3: OcuPilot's own application lists its actions with the refusal inline,
       assert.equal(entry.tabIndex, '-1', 'and still in the menu, reachable by the arrow keys');
     }
 
-    // Pressing one anyway sends nothing: the surfaces explain, and the instance refuses.
+    // Pressing one anyway sends nothing: the surfaces explain, and the instance refuses. Disable is
+    // pressed, because it is the action that would send at once; the network is let settle before
+    // the count is read, so a request the click made has been recorded by then.
     await page.evaluate((label) => {
       const items = Array.from(document.querySelectorAll('[role="menu"] [role="menuitem"]'));
       items.find((item) => item.textContent.trim().startsWith(label)).click();
-    }, STRINGS.actionDelete);
+    }, STRINGS.agentDefinitionDisable);
+    await page.waitForNetworkIdle({ idleTime: 500, timeout: config.navigationTimeoutMs });
     assert.equal(writes.length, 0, 'no request left the browser');
     assert.equal(await page.$('[role="dialog"]'), null, 'and no typed-name dialog opened');
   } finally {

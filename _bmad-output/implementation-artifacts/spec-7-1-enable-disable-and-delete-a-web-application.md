@@ -335,6 +335,48 @@ converse) and carries no OcuPilot marker beside the vendor's own `%Security` eve
   record the non-recurrence in `## Auto Run Result`. Never call it a flake without evidence.
 - [x] Finish the halted pass: run the two review layers, triage, finalize.
 
+### Review Findings
+
+Code review 2026-09-23 (four layers, `ed1b4c4..` plus the tree). 2 `defer`, 16 `patch` (all applied), 21 rejected, 0 `decision-needed`.
+
+- [x] [Review][Patch] [med] The typed-name confirm is app-scoped and outlived its list: Back with the dialog open carried the pending delete onto the next list page [ui/src/app/shell/list-page.ts:227]
+- [x] [Review][Patch] [med] `Smoke.CheckScreenAction` left the fixture enabled when it stopped after the enable, failing `agentwrite` as a knock-on; the disable's verb was unchecked and the doc claimed a target check [src/OcuPilot/Install/Smoke.cls:1197]
+- [x] [Review][Patch] [med] `Smoke.CheckScreenAction` failed rather than skipped when the run minted no token [src/OcuPilot/Install/Smoke.cls:1225]
+- [x] [Review][Patch] [med] AD-53's "the kill switch and enforced read-only do not gate a row action" had no test [src/OcuPilot/Test/ProhibitedRoute.cls:606]
+- [x] [Review][Patch] [med] AD-53's "a row action emits no agent marker" had no test [src/OcuPilot/Test/ProhibitedRoute.cls:627]
+- [x] [Review][Patch] [med] AC3's "sends nothing for a protected row" was asserted only on `delete`, which sends nothing before its dialog either way [ui/src/app/shell/screen-action-handler.spec.ts:136, ui/browser/web-applications-actions.browser-spec.mjs:441]
+- [x] [Review][Patch] [med] AC3's route disable leg asserted 403 but not the code, slug or sentence [src/OcuPilot/Test/ProhibitedRoute.cls:697]
+- [x] [Review][Patch] [med] The screen gate resolved `ArgumentPairs` from arguments without the tool's id argument, so a tool whose pairs depend on it would be under-checked on the screen caller [src/OcuPilot/Api/ScreenAction.cls:161]
+- [x] [Review][Patch] [med] `AdminPort` rewrote lines this story did not add (`ImplementsRead`'s `$Case` and its doc); now an appended line and paragraph. The "six" to "seven" count word stays: leaving it would keep a false count [src/OcuPilot/Port/AdminPort.cls:866]
+- [x] [Review][Patch] [low] A `SCREENACTIONS` argument naming a field the tool cannot set was dropped by the merge and answered 200; `tServes` was computed and unused [src/OcuPilot/Api/ScreenAction.cls:152]
+- [x] [Review][Patch] [low] `self-protection.ts` said a refused action "is still sent if it is pressed anyway"; every surface sends nothing [ui/src/app/core/self-protection.ts:5]
+- [x] [Review][Patch] [low] `ScreenAction.NotFound`'s doc said a vanished target gets `ROUTE.NOTFOUND`; it gets the port's fault [src/OcuPilot/Api/ScreenAction.cls:318]
+- [x] [Review][Patch] [low] The AD-53 mirror test was inserted under the AD-44 test's comment [ui/tools/screen-mirror.test.mjs:1605]
+- [x] [Review][Patch] [low] `Descriptor.StoredShapes` read an absent attribute as the previous one's value [src/OcuPilot/Test/Descriptor.cls:170]
+- [x] [Review][Patch] [low] `UserUpdate`'s mutation recipe named `Confirm.Transition`'s `MissingPair` branch, which moved to `Operation.Gate` [src/OcuPilot/Test/UserUpdate.cls:359]
+- [x] [Review][Patch] [low] AC3's command-box leg had no `mutation:` line -- recorded in `## Verification`
+- [x] [Review][Defer] [med] Refusal reasons other than `SERVINGPATH` say "not something the agent can propose", which AD-53 makes a defect once a screen caller reaches the arm [src/OcuPilot/Kernel/Proposal/Prohibited.cls:213] — deferred: DW-1499, routed to 7-2 (its row disable reaches the user arms; 7.1's cannot reach any)
+- [x] [Review][Defer] [low] The handler picks the typed-name dialog by action id (`delete`), not the tool's `DESTRUCTIVE` [ui/src/app/shell/screen-action-handler.ts:35] — deferred: DW-1500, wontfix-accepted with `reopen_if`
+
+Rejected:
+
+- false: empty refusal on a transport fault or `installing` -- status 0 goes to the connectivity strip and `installing` to `Session`, as for `DefinitionActions`.
+- false: multi-row selection judged on its first key -- the table only ever selects one row.
+- false: the command bar's `stores.for` on a readless screen -- deliberate and commented, no harm named.
+- false: the empty-state invitation -- ratified (Spec Change Log 2026-09-23).
+- false: DW-1099's sweep is unrelated scope -- a Tasks item of this spec.
+- duplicate: no per-target serialization between a row action and a confirm -- DW-1497 (harvested; the commit message's "atomic transition" wording is the same gap).
+- by-design: system web applications (`/csp/sys`, `/api/atelier`) can be deleted -- AD-10's Release 1 set names OcuPilot's own only; reopen via a spine amendment.
+- by-design: the route's refusal is exercised on a probe marked OcuPilot's, not on a roster path -- a regression would disable the live API; the roster arm is pinned by the prohibited-set suites.
+- wontfix-theoretical: `TOOL.ARGUMENTS`'s "tool call" wording on the screen route -- the client never sends an empty id and every served application reports `NameSpace`; real once a screen action can meet either.
+- wontfix-theoretical: two tools claiming one `SCREENACTIONS` id; a 200 without `target`; a non-string `id` in the body.
+- low: enable on an enabled row writes an unchanged body and marks the row -- harmless, and a guard is new behavior.
+- low: double-click sends two identical writes -- idempotent; a delete goes through the dialog.
+- low: focus stays on the grid after a refused delete; a stale refusal banner survives a selection change -- the banner is `role="alert"`; same as the Definitions list.
+- low: `ProhibitedRoute` cascades if a delete leg regresses; `CheckAgentDelete` drops two statuses; test classes over 500 lines -- the fix is not a direct correction.
+- low: Enter-on-mismatch's zero-request check runs without a wait -- a submit there would close the dialog and fail the steps that follow.
+- low: `enable` carries `serves-ocupilot` -- the instance refuses every write to a serving application, so listing it refused is accurate.
+
 ## Spec Change Log
 
 - 2026-09-22, lead spec gate: the plan stage's three intent gaps resolved and `status` set
@@ -516,6 +558,16 @@ mutation was reverted and the run went green again; the tree is byte-identical t
 - `WebApp.App/DELETE`: the port answered 501 `PORT.NOTIMPLEMENTED` until
   `AdminPort.ImplementsRead` learnt the vendor's `RunDelete` -- observed red on the wire, not
   reasoned about.
+- mutation (AD-53, restraint): `ScreenAction.Run` refuses when `Restraint.Verdict` blocks ->
+  `ProhibitedRoute.TestTheScreensOwnRowActionsRunOverTheWire` red (run 6856); reverted, file hash
+  identical, run 6858 green.
+- mutation (AD-53, marker): `ScreenAction.Run` calls `Event.RecordAgentWrite` after the write -> the
+  same test red on "neither write left an agent marker" (run 6857).
+- mutation (AC3, command box): `actionCandidates`' `selected` forced to `''` -> `command-box.spec.ts`
+  "AD-53: with a row selected ..." red. Handler: `start` ignores `selfProtectionReason` ->
+  `screen-action-handler.spec.ts` "explains a self-protected row ..." red on the disable leg's calls.
+- mutation (pending confirm): drop `cancelPending()` from `ListPage`'s destroy hook ->
+  `list-page.spec.ts` "a typed-name confirm left open does not outlive ..." red.
 
 **Targeted, inside the implement loop (loop):**
 
