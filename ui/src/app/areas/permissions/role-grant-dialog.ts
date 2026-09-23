@@ -83,7 +83,11 @@ function isDatabase(resource: ResourceOption | null): boolean {
         </div>
       </div>
     }
-    <fieldset class="ocu-field ocu-form-authe" id="ocu-role-grant-permissions">
+    <fieldset
+      class="ocu-field ocu-form-authe"
+      id="ocu-role-grant-permissions"
+      [attr.aria-describedby]="resourceDescribedBy"
+    >
       <legend class="ocu-field-label">{{ STRINGS.navAreaPermissions }}</legend>
       @for (entry of letters; track entry.letter) {
         <label class="ocu-field-checkbox">

@@ -141,6 +141,15 @@ describe('the role grant dialog', () => {
     expect(host.querySelector('#ocu-role-grant-effect')).toBeNull();
   });
 
+  it('AC4: in edit mode the consequence describes the permissions, where no resource picker is drawn', () => {
+    // Mutation (Rule 19): drop the permissions fieldset's `aria-describedby` -> this goes red.
+    const held = { name: '%Admin_Secure', permissions: 'U' };
+    const { host } = mount([held], held);
+    expect(host.querySelector('#ocu-role-grant-resource')).toBeNull();
+    expect(text(host, 'ocu-role-grant-effect')).toBe(STRINGS.privilegedGrantEffect);
+    expect(host.querySelector('#ocu-role-grant-permissions')?.getAttribute('aria-describedby')).toBe('ocu-role-grant-effect');
+  });
+
   it('DW-1514: ticking Write on a database ticks and locks Read, as the classic dialog does', () => {
     // Mutation (Rule 19): drop the `writeChanged` line from `onLetter` -> the Read assertions go red.
     const { fixture, host, applied } = mount([]);

@@ -336,6 +336,43 @@ Two owner decisions supersede this spec's escalation refusals, 8.2's AC3 refusal
 - **AC6.** Given `permissions.roles.create`, when the agent proposes a role and the user confirms, then the write is marked, a ledger row names the sent fields, and a `created` event is published.
 - **AC7.** [owner decision 2026-09-23: developer tool first] Given a web-application create through either caller with `MatchRoles` naming a privileged role, then it is permitted at the strongest confirmation (agent: destructive, diff names the privilege; screen: the Application roles control shows `privilegedGrantEffect`, or `privilegedGrantEffectUnauthenticated` when Unauthenticated is also chosen); on one of OcuPilot's own web applications, application roles are refused `PROHIBITED.PRIVILEGEGRANT` on both callers.
 
+### Review Findings
+
+Code review 2026-09-23 (first review of the story; both code commits, `a7c155e..HEAD`). Tier `full-opus`, four layers.
+
+- [x] [Review][Patch] Mint's privileged-grant check against the target it changes (update, delete) is unpinned [src/OcuPilot/Test/RoleDelete.cls] -- added `TestDeletingAPrivilegedRoleNamesNoGrant`
+- [x] [Review][Patch] Role form reset at sign-out is untested [ui/src/app/app.spec.ts] -- role-store legs added to the sign-out test
+- [x] [Review][Patch] `USEONLYPREFIXES` is unpinned against the vendor's prefixes [src/OcuPilot/Test/RoleCreate.cls] -- added `TestTheAdmittedLettersFollowTheVendorsPrefixes` over `%sySecurity.inc`
+- [x] [Review][Patch] The Resources consequence line and the dialog's edit-mode consequence reach no `aria-describedby` [ui/src/app/areas/permissions/role-create-form.page.ts, role-grant-dialog.ts] -- wired; dialog spec and browser AC4 leg assert it
+- [x] [Review][Patch] Stale doc comments say privileged choices are disabled or refused [role-create-form.page.ts, user-create-form.page.ts, src/OcuPilot/Test/RoleWire.cls:3]
+- [x] [Review][Patch] DW-1526: `Mint.ConsequenceOf` swallowed an arity error [src/OcuPilot/Kernel/Proposal/Mint.cls] -- asks only a compiled `Consequence`, unguarded; a one-formal probe tool now fails the mint 500 `<PARAMETER>`
+- [x] [Review][Defer] A user update still refuses a privileged role delta with the web-application sentence, after the mint marks it destructive [src/OcuPilot/Kernel/Proposal/Prohibited.cls (User)] -- deferred: DW-1524, escalated for the merge gate (confirmed by three layers)
+- [x] [Review][Defer] Agent create posts the folded name [src/OcuPilot/Kernel/EntityRef.cls:59] -- deferred: DW-1493, escalated
+
+Rejected:
+
+- `%DB_IRISSECURITY:W` is not marked privileged -- by-design: the reversal work list removes that leg and keeps the classifier at `%All`/`%Admin_*` (DW-1512 moot); reopens only by amending AD-10's classifier
+- Combined unauthenticated-privileged code when the privileged target roles sit under a non-empty `MatchRole` -- low: agent-only, and the card over-warns rather than under-warns
+- `GET /roles/name` skips the name's own rules -- low: 8.2's shape (blur answers `TAKEN` only, per the matrix), and Save carries the rule; bad names read 404, never 500
+- `GrantedRoles` has no duplicate rule -- low: the screen cannot produce one, and the fix is a new code
+- Lower-case or unordered permission letters sent raw -- false: probed, the vendor stores `%DB_USER:wr` as `%DB_USER:RW`
+- A non-string `Description` is accepted -- low: 8.2's `IsScalar` precedent; the vendor stores the literal as text
+- `MatchRoles` entries with empty `TargetRoles` or a repeated `MatchRole` -- low: rare, and the fix adds branches
+- The role delete predicates are skipped when `WriteTypeOf` answers `""` -- wontfix-theoretical: `Target()` resolves the tool class and every role write tool declares `WRITETYPE`; real only if a role write resolves no class
+- The `%` refusal lives only at the mint -- false: a tool rule by spec; already ruled in the first pass
+- An unticked privileged role is described by the consequence line -- low: describing an option's consequence is correct information
+- Case-insensitive prefixes differ from the vendor -- false: deliberate and documented
+- A copy of OcuPilot's API at another path can take `%All` -- by-design: AD-10 as amended keys the refusal to the installer's applications
+- Strongest confirmation is one click until Story 14.7 -- by-design: the typed-name field is 14.7's, reading the flag this story pins
+- `PRIVILEGEGRANT`'s sentence misstates a create under OcuPilot's path -- false: an application under that path answers OcuPilot's requests
+- A proposal certain to be refused is minted -- by-design: AD-10 evaluates at the write inside AD-34, pinned by `ProposalCreate`
+- No guard on deleting the caller's own access role -- by-design: AD-10's set is closed; the last-`%All`-holder census covers the unrecoverable case
+- `PORT.NOTAPPLIED` also answers a failed re-read -- low: deliberate fail-closed in `VerifyGone`, rare
+- A role name equal to a user name is a banner, not a field error -- low: mirror of DW-1504 (`wontfix-accepted`), occurrence appended
+- Edit button and legend reuse other keys -- by-design: the spec mandates the reuse
+- The spec still defers AD-54's paragraph, which this diff amends -- rejected: the fix edits the spec under review (lead's bookkeeping)
+- `Classification.cls` keeps `MatchRoles` `secret` -- low: `Disclosure` renders unchanged rows only and a create has none; the doc is already deferred (Epic 7's file)
+
 ## Spec Change Log
 
 - 2026-09-23, lead (owner reversal, rework iteration 1): privilege grants permitted at the strongest confirmation; only application roles on OcuPilot's own web applications stay refused; `%DB_IRISSECURITY:W` clause dropped (DW-1512 moot); 8.1's `MatchRoles` refusal removed inside this story. Work list under `### Owner reversal 2026-09-23`; AC4 amended, AC7 added.
@@ -516,6 +553,7 @@ Observed (implement stage; each applied to the checked-in file, loaded with `cbk
 - mutation: `ROLE_ENTITY` `'roles'` -> `role-create-form.store.spec.ts` AC5 change-event test red (now asserted against the literal and the Roles list's declared `entityType`)
 - mutation: `RoleForm` dropped from `CREATE_ONLY_FORMS` -> `navigation.test.mjs` create-form and screenForChange tests red
 - roster rows: `Prohibited` (covered types, fourteen codes), `AuditingUpdate` (fourteen codes; red in the full sweep, run 23, and green reloaded, run 188), `ToolWrite` (the absent-DELETE assertion, `PortFixture`'s roster), `SurfaceCoverage`, `EndpointCoverage`, `ReadTool`, `ToolRoundTrip`, `PermissionsLists`, `Wire`, `WireSecurityRead`, `EntityRef`, `entity-ref.test.mjs`, `screen-mirror.test.mjs` and `navigation.test.mjs` were each observed red without this story's rows and green with them
+- mutation (code review): the mint measures every write's grant against `{}` -> `RoleDelete.TestDeletingAPrivilegedRoleNamesNoGrant` red alone (run 202); `RoleCreateRules.USEONLYPREFIXES` without `%SQL` -> `RoleCreate.TestTheAdmittedLettersFollowTheVendorsPrefixes` red alone (run 203); `roleCreateForm.reset()` dropped from `app.ts` -> `app.spec.ts` sign-out test red; the dialog's permissions-fieldset `aria-describedby` dropped -> `role-grant-dialog.spec.ts` edit-mode AC4 red; the Resources fieldset given its refusal id alone (rebuilt, redeployed) -> browser `roles-create` AC4 red on "which describes the Resources field", green on the restored bundle (5/5)
 
 ## Auto Run Result
 

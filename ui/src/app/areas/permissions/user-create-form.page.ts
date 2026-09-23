@@ -48,8 +48,9 @@ interface FieldView {
  * browser for a new password rather than a saved one. After a Save it carries the published
  * stored-secret caption.
  *
- * **A role the server refuses to grant is drawn disabled, described by the server's own sentence**
- * from the bootstrap read. The refusal itself is the server's, on either caller (AD-10, AD-39).
+ * **A privileged role is offered, never disabled** (AD-10): while one the bootstrap read marks
+ * privileged is ticked, the Roles field states `privilegedGrantEffect`. Any refusal is the
+ * server's, on either caller (AD-39).
  *
  * It composes no payload and authors no field sentence; the unsaved-changes guard is the
  * `form-page` route guard, answered here. Every control-flow condition is a paren-free member

@@ -296,7 +296,8 @@ async function textOf(page, selector) {
 
 // AC4, AD-10. Mutation (Rule 19): make the page's `privilegedRoleChecked` answer false -> the
 // granted-role consequence leg goes red; make the dialog's `showEffect` answer false -> the dialog
-// leg goes red; drop the `writeChanged` line from the dialog's `onLetter` -> the DW-1514 leg goes red.
+// leg goes red; drop the `writeChanged` line from the dialog's `onLetter` -> the DW-1514 leg goes red;
+// give the Resources fieldset its refusal alone as `aria-describedby` -> the description leg goes red.
 test('AC4: a privileged choice is available, states its consequence, and a Save applies it', async () => {
   const { context, page } = await signedInAt(FORM_URL);
   try {
@@ -335,6 +336,8 @@ test('AC4: a privileged choice is available, states its consequence, and a Save 
     await clickButton(page, '[role="dialog"]', STRINGS.actionConfirm);
     await waitForDialogClosed(page);
     assert.equal(await textOf(page, RESOURCES_EFFECT), STRINGS.privilegedGrantEffect, 'as does the Resources field once it is held');
+    const resourcesDescribedBy = await page.$eval('#ocu-role-Resources', (node) => node.getAttribute('aria-describedby') ?? '');
+    assert.ok(resourcesDescribedBy.split(' ').includes(RESOURCES_EFFECT.slice(1)), 'which describes the Resources field');
 
     await fill(page, 'ocu-role-Name', NAMES[1]);
     await (await saveButton(page)).click();

@@ -7,6 +7,8 @@
 /// creates a role; the name-taken read and the prohibited set's absence read are live, so
 /// <parameter>PROBEROLE</parameter> must be a name the instance does not hold. No arming variable
 /// is required.</p>
+Include %sySecurity
+
 Class OcuPilot.Test.RoleCreate Extends %UnitTest.TestCase
 {
 
@@ -263,6 +265,20 @@ Method TestTheBootstrapMarksWhatTheClassifierCallsPrivileged()
     Do $$$AssertEquals($Get(tRoleByName("%MANAGER")), 1, "%Manager is marked privileged")
     Do $$$AssertEquals($Get(tRoleByName("%DEVELOPER")), 0, "%Developer is not")
     Do $$$AssertEquals($Get(tRoleByName("%DB_IRISSECURITY")), 0, "nor is the %DB_IRISSECURITY role")
+}
+
+/// <p>The admitted letters follow the classic grant dialog's own rule:
+/// <parameter>OcuPilot.Area.Permissions.RoleCreateRules.USEONLYPREFIXES</parameter> is, in order,
+/// the prefixes <code>%CSP.UI.Portal.Dialog.RoleResourceEdit</code> offers Use alone for, and
+/// <parameter>OcuPilot.Area.Permissions.RoleCreateRules.DATABASEPREFIX</parameter> its database
+/// prefix, each read from <file>%sySecurity.inc</file> as the running build compiles it.</p>
+/// <p>Mutation: drop <code>%SQL</code> from
+/// <parameter>OcuPilot.Area.Permissions.RoleCreateRules.USEONLYPREFIXES</parameter> -> this goes red.</p>
+Method TestTheAdmittedLettersFollowTheVendorsPrefixes()
+{
+    Set tVendor = $$$ServiceResourcePrefix _ "," _ $$$DeepSeeResourcePrefix _ "," _ $$$AdminResourcePrefix _ "," _ $$$DeveloperResourcePrefix _ "," _ $$$ApplicationResourcePrefix _ "," _ $$$SystemResourcePrefix _ "," _ $$$DocDBResourcePrefix _ "," _ $$$GatewayResourcePrefix _ "," _ $$$IAMResourcePrefix _ "," _ $$$NativeResourcePrefix _ "," _ $$$SQLResourcePrefix _ "," _ $$$SecureShellResourcePrefix
+    Do $$$AssertEquals($Parameter(..#RULES, "USEONLYPREFIXES"), tVendor, "the Use-only prefixes are the classic dialog's, in its order")
+    Do $$$AssertEquals($Parameter(..#RULES, "DATABASEPREFIX"), $$$DBResourcePrefix, "and the database prefix is the vendor's")
 }
 
 /// <p>AD-15, AD-41, AD-14: a confirmed create is marked, its ledger row names the sent fields, and

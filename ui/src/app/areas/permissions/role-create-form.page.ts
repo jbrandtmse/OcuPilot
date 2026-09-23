@@ -67,9 +67,9 @@ interface GrantRow {
  * shows the current and the resulting grant before Confirm applies it to the store. The dialog is
  * closed before the leave question renders, because dialogs never stack.
  *
- * **A granted role the server refuses is drawn disabled, described by the server's own sentence**
- * from the bootstrap read. The refusal itself is the server's, on the field it concerns, on either
- * caller (AD-10, AD-39).
+ * **A privileged choice is offered, never disabled** (AD-10): while a granted role or a resource
+ * grant the bootstrap read marks privileged is held, its field states `privilegedGrantEffect`.
+ * Any refusal is the server's, on the field it concerns, on either caller (AD-39).
  *
  * It composes no payload and authors no field sentence; the unsaved-changes guard is the
  * `form-page` route guard, answered here. Every control-flow condition is a paren-free member
@@ -146,7 +146,7 @@ interface GrantRow {
         class="ocu-field ocu-form-authe"
         [attr.id]="resourcesField.id"
         tabindex="-1"
-        [attr.aria-describedby]="resourcesField.describedBy"
+        [attr.aria-describedby]="resourcesDescribedBy"
       >
         <legend class="ocu-field-label">{{ STRINGS.resourceListLabel }}</legend>
         <ul class="ocu-role-grants">
@@ -353,6 +353,13 @@ export class RoleCreateFormPage {
 
   protected get rolesEffectId(): string {
     return `${this.controlId(GRANTED_ROLES_FIELD)}-effect`;
+  }
+
+  /** The Resources fieldset's descriptions: its consequence while a privileged grant is held, and its refusal. */
+  protected get resourcesDescribedBy(): string | null {
+    const ids = [this.privilegedGrantHeld ? this.resourcesEffectId : null, this.resourcesField.describedBy];
+    const joined = ids.filter((id): id is string => id !== null).join(' ');
+    return joined === '' ? null : joined;
   }
 
   protected get resourcesEffectId(): string {

@@ -607,16 +607,15 @@ ClassMethod AppendComposedSecrets(pToolClass As %String, pDiff As %DynamicArray)
 /// <var>pToolClass</var> answers (<code>Consequence(payload, privileged)</code>), which is told
 /// whether the write grants privilege (<var>pPrivileged</var>) so it can name one combined effect
 /// rather than two; otherwise <parameter>CONSEQUENCEPRIVILEGED</parameter> for a privileged grant,
-/// and <code>""</code> for none. A class that names no consequence or cannot be asked answers
-/// none of its own. The card renders the code's sentence; it decides nothing about whether the
-/// write may happen.</p>
+/// and <code>""</code> for none. A class that compiles no <code>Consequence</code> answers none of
+/// its own; one that does is asked unguarded, so a declaration that cannot take both arguments
+/// fails the mint rather than silently dropping its consequence. The card renders the code's
+/// sentence; it decides nothing about whether the write may happen.</p>
 ClassMethod ConsequenceOf(pToolClass As %String, pPayload As %DynamicObject, pPrivileged As %Boolean = 0) As %String [ Private ]
 {
     Set tCode = ""
-    Try {
-        If pToolClass '= "" Set tCode = $ClassMethod(pToolClass, "Consequence", pPayload, ''pPrivileged)
-    } Catch {
-        Set tCode = ""
+    If (pToolClass '= "") && ##class(%Dictionary.CompiledMethod).%ExistsId(pToolClass _ "||Consequence") {
+        Set tCode = $ClassMethod(pToolClass, "Consequence", pPayload, ''pPrivileged)
     }
     If (tCode = "") && pPrivileged Set tCode = ..#CONSEQUENCEPRIVILEGED
     Quit tCode

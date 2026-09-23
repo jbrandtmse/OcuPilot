@@ -1,7 +1,7 @@
 /// <p>The role routes and the role delete against the instance itself (AD-10, AD-12, AD-39, AD-54,
 /// AD-55): the form's bootstrap read, the name look-up, a create whose role reads back with the sent
-/// grants, an escalating grant refused on its field, and an agent delete minted and confirmed
-/// through the real port.</p>
+/// grants, a privileged create confirmed and applied through the real port, and an agent delete
+/// minted and confirmed through it.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, an account holding
 /// the screen's own pairs, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code> --
 /// because the create and delete legs create and delete a real role, and the census leg a real

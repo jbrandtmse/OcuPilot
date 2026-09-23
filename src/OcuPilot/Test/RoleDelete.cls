@@ -244,6 +244,24 @@ Method TestAVendorDeleteThatDidNotApplyFailsNotApplied()
     Do $$$AssertStatusOK(tSC, "and the stock role is untouched")
 }
 
+/// <p>AD-10: deleting a role that carries a privileged grant grants nothing, so the proposal is
+/// destructive by the tool's own declaration and names no privileged-grant consequence. The mint
+/// measures a grant against the target the write changes, and only a create's target is empty.</p>
+/// <p>Mutation: measure the mint's grant against <code>{}</code> for every write, not for a
+/// create's only -> the consequence assertion goes red.</p>
+Method TestDeletingAPrivilegedRoleNamesNoGrant()
+{
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..RoleJson("[{""Name"":""%Admin_Secure"",""Permissions"":""U""}]"))
+    Set tSC = ..Mint(..#PROBEROLE, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the delete of a role carrying %Admin_Secure is proposed")
+    If $$$ISERR(tSC) Quit
+    Set tFound = 0
+    Set tSC = $ClassMethod("OcuPilot.Kernel.State.Propose", "GuardedByKey", tProposal.%Get("proposalId"), .tFound, .tValues)
+    Do $$$AssertTrue($$$ISOK(tSC) && tFound, "its stored row is read")
+    Do $$$AssertEquals(+$Get(tValues("destructive")), 1, "it is destructive by the tool's own declaration")
+    Do $$$AssertEquals($Get(tValues("consequence")), "", "and names no privileged grant, which a delete does not make")
+}
+
 /// <p>One role as the vendor's <code>GET</code> shapes it, as compact JSON, with
 /// <var>pResources</var> as its grants.</p>
 ClassMethod RoleJson(pResources As %String = "[{""Name"":""%DB_USER"",""Permissions"":""RW""}]") As %String

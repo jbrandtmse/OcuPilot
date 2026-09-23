@@ -6086,6 +6086,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-2-create-a-user.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Security.Users documents 'A user name cannot be the same as a role name'; UserCreateRules.NameIsUsable checks length, control chars, * and @ only (the * leg was patched in review).
 - 2026-09-23T04:51:49Z status=wontfix-accepted owner=8-2-create-a-user by=cr note=reopen_if=POST /users with Name equal to a role name answers a banner rather than a Name violation and a user reports it
+- 2026-09-23T08:19:41Z occurrence=8-3-create-a-role-and-manage-its-resource-grants
 
 ### DW-1505: The agent-path confirm of a user create applies no OcuPilot password rule; an empty-typed or policy-failing card password reaches the vendor
 - source: spec-8-2-create-a-user.md | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -6142,3 +6143,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Mint.cls ConsequenceOf's try-ask idiom swallows the arity error; WebAppCreate is the only overrider today
 - 2026-09-23T07:52:38Z status=open owner=8-3-create-a-role-and-manage-its-resource-grants by=harvest note=two-way door for this story's review: make the arity failure loud or the signature single-sourced
+- 2026-09-23T08:19:40Z status=resolved-by:8-3-create-a-role-and-manage-its-resource-grants by=cr note=ConsequenceOf asks only a compiled Consequence, unguarded; one-formal probe tool now fails mint 500 <PARAMETER> (ocupilot-b-ci)
