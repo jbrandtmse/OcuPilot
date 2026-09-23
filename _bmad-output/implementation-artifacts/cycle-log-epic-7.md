@@ -163,3 +163,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T12:57:02Z	Story 7.5	smoke_complete	method=api result=pass iterations=1 defects_caught=0 evidence=probe_task_1265_on_ocupilot-ci:POST_screens/tasks.ondemand/action_run_200;one_%SYS_Task.History_row;task_deleted model=claude-opus-5-5
 2026-09-23T12:57:12Z	Story 7.5	protocol_violation	stage=lead violation=dw1434_code_commit_438d3f46_pushed_under_a_skip-marked_head_3530b258 consequence=no_ci_run_on_the_review_patches detected_by=lead_reading_its_own_push outcome=a_commit_without_the_marker_starts_the_run
 2026-09-23T12:57:31Z	Story 7.5	committed	sha=796a779b code_sha=438d3f46 submodules= ci=pending run=35863786111 amendments=EXPERIENCE.md:414-415,spine:AD-51
+2026-09-23T12:57:51Z	Epic 7	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@b153eac6 merge=eb170c27 files=4_docs(epics.md_Epic15_triage) conflict=sprint-status_last_updated_resolved_ours+generate validate=true
