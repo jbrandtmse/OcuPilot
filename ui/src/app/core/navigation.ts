@@ -367,13 +367,18 @@ export function screenForDescriptor(descriptor: string): ScreenDeclaration | nul
  * the declaration that publishes that type's singular noun and its secret argument names. Unbuilt
  * screens are skipped: they declare no surface, so nothing they publish is renderable yet.
  *
- * The first match wins where two screens declare the same primary type (a list and its detail),
- * which is sound because what this is read for -- `entityLabelKey`, `secretArguments` -- is a
- * property of the entity rather than of the surface.
+ * **A listed screen wins over an unlisted one declaring the same type** (Story 8.1). Two screens
+ * declaring one primary type is an ordinary shape now -- a list and the form paired with it -- and
+ * `screenForChange` reads this to decide which route an off-screen change toast opens. An unlisted
+ * editor is reached from its own list, never from a toast, and its route needs an id the toast's
+ * entity may not even have yet, so the list is the surface a change opens. Beyond that, first match
+ * wins, which is sound because what else this is read for -- `entityLabelKey`, `secretArguments` --
+ * is a property of the entity rather than of the surface.
  */
 export function screenForEntityType(type: string): ScreenDeclaration | null {
   if (type === '') return null;
-  return SCREENS.find((screen) => screen.built && screen.entityType === type) ?? null;
+  const candidates = SCREENS.filter((screen) => screen.built && screen.entityType === type);
+  return candidates.find((screen) => isListedScreen(screen)) ?? candidates[0] ?? null;
 }
 
 /**

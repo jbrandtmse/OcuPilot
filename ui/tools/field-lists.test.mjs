@@ -276,3 +276,38 @@ test('the check is named in prebuild, in prestart and in the pre-commit hook, an
   assert.match(block, /node tools\/field-lists\.mjs --check\)?\s*\|\|\s*STATUS=1/, 'the hook dispatches it inside OS_TRIGGER and feeds STATUS');
   assert.match(hook, /Field lists:/, 'and explains its failure');
 });
+
+// --- Story 8.1: the create form's own control roster, held to the tool that admits its fields ---
+//
+// AD-3 forbids a hand-transcribed field list. The create form necessarily holds one -- a form
+// draws named controls -- so what stops it drifting is this: the wire names the store writes are
+// exactly the fields `OcuPilot.Screen.Tool.WebAppCreate` admits, plus `Name`, which is the
+// vendor's query parameter and a 400 in the body. A field added to one side and not the other
+// means the form either offers a control the server refuses or hides one it accepts.
+//
+// Mutation (Rule 19): drop a name from the store's `WRITABLE_FIELDS`, or add one to the tool's
+// `PERMITTEDFIELDS` -> this goes red naming the side that has it.
+test('Story 8.1: the create form writes exactly the fields its tool admits, plus the name (AD-3)', () => {
+  const storeSource = readFileSync(
+    join(REPO_ROOT, 'ui', 'src', 'app', 'areas', 'web-applications', 'create-form.store.ts'),
+    'utf8'
+  );
+  const declared = /export const WRITABLE_FIELDS = \[([\s\S]*?)\] as const;/.exec(storeSource);
+  assert.ok(declared, 'the store declares WRITABLE_FIELDS');
+  const clientFields = [...declared[1].matchAll(/'([^']+)'/g)].map((match) => match[1]);
+  assert.ok(clientFields.length > 1, `the roster is not empty: ${JSON.stringify(clientFields)}`);
+
+  const toolSource = readFileSync(
+    join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'WebAppCreate.cls'),
+    'utf8'
+  );
+  const permitted = /Parameter PERMITTEDFIELDS = "([^"]+)";/.exec(toolSource);
+  assert.ok(permitted, 'the tool declares PERMITTEDFIELDS');
+  const serverFields = permitted[1].split(',');
+
+  assert.deepEqual(
+    [...clientFields].sort(),
+    ['Name', ...serverFields].sort(),
+    'the form writes exactly the tool\'s admitted fields plus the identifying name'
+  );
+});

@@ -35,6 +35,11 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// <code>ordinary</code>. A path no entry names is emitted <code>secret</code>, and a secret row
 /// never reaches a schema (<method>OcuPilot.Screen.Tool.Write.FieldRows</method>), so without this
 /// entry the tool would advertise the id property and nothing to change.</p>
+/// <p><b><code>webapp.list.create</code></b> classifies the same <code>WebApp.App</code> list the
+/// same way, and for the same reason: classification decides how a path may be carried, not which
+/// paths a tool advertises. The two tools' <b>advertised</b> sets differ -- a create admits
+/// <code>DispatchClass</code> and a change does not (AD-54) -- and that difference lives in each
+/// tool's own positive list, never here.</p>
 /// <p><b><code>permissions.users.update</code></b> classifies <code>Security.User</code>'s fourteen
 /// literals <code>ordinary</code> and its two arrays -- <code>Roles</code> and
 /// <code>EscalationRoles</code> -- <code>opaque</code>: the endpoint's template answers
@@ -71,6 +76,56 @@ XData Entries
     "fieldList": "Security.Audit.Enabled",
     "classification": {
       "Enabled": "ordinary"
+    }
+  },
+  "webapp.list.create": {
+    "fieldList": "WebApp.App",
+    "classification": {
+      "AutheEnabled": "ordinary",
+      "AutoCompile": "ordinary",
+      "ChangePasswordPage": "ordinary",
+      "CookiePath": "ordinary",
+      "CorsAllowlist[]": "ordinary",
+      "CorsCredentialsAllowed": "ordinary",
+      "CorsHeadersList[]": "ordinary",
+      "CSPZENEnabled": "ordinary",
+      "CSRFToken": "ordinary",
+      "DeepSeeEnabled": "ordinary",
+      "Description": "ordinary",
+      "DispatchClass": "ordinary",
+      "Enabled": "ordinary",
+      "ErrorPage": "ordinary",
+      "EventClass": "ordinary",
+      "GroupById": "ordinary",
+      "iKnowEnabled": "ordinary",
+      "InbndWebServicesEnabled": "ordinary",
+      "IsNameSpaceDefault": "ordinary",
+      "JWTAuthEnabled": "ordinary",
+      "JWTAccessTokenTimeout": "ordinary",
+      "JWTRefreshTokenTimeout": "ordinary",
+      "LockCSPName": "ordinary",
+      "LoginPage": "ordinary",
+      "NameSpace": "ordinary",
+      "Package": "ordinary",
+      "Path": "ordinary",
+      "PermittedClasses": "ordinary",
+      "Recurse": "ordinary",
+      "RedirectEmptyPath": "ordinary",
+      "Resource": "ordinary",
+      "ServeFiles": "ordinary",
+      "ServeFilesTimeout": "ordinary",
+      "SuperClass": "ordinary",
+      "Timeout": "ordinary",
+      "TraceEnabled": "ordinary",
+      "TwoFactorEnabled": "ordinary",
+      "UseCookies": "ordinary",
+      "SessionScope": "ordinary",
+      "UserCookieScope": "ordinary",
+      "WSGIAppLocation": "ordinary",
+      "WSGIAppName": "ordinary",
+      "WSGICallable": "ordinary",
+      "WSGIDebug": "ordinary",
+      "WSGIType": "ordinary"
     }
   },
   "webapp.list.update": {

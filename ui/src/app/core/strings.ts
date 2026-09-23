@@ -1314,6 +1314,37 @@ export const STRINGS = {
   proposalResidue:
     'Removes exactly the <n> errors listed here. Any logged since the proposal will remain.',
 
+  // Story 8.1's twelve. The Web applications list becomes write-capable, so its empty state
+  // invites the agent instead of naming a next step, and the create form beside it publishes the
+  // labels the classic editor's own field order carries. Every other label the form draws is a key
+  // that already exists: the name, description, namespace, enabled, type, dispatch class and
+  // resource columns, the Services list's own "Authentication methods" heading, the
+  // required-fields legend, Save, Cancel and the saved confirmation.
+  /** EXPERIENCE.md:395 */
+  webAppListEmptyAgent: 'create a web application for a REST API',
+  /** EXPERIENCE.md:396 */
+  webAppFormLabel: 'New web application',
+  /** EXPERIENCE.md:396 */
+  webAppFormType: 'Application type',
+  /** EXPERIENCE.md:396 */
+  webAppFormTypeCsp: 'CSP/ZEN',
+  /** EXPERIENCE.md:396 */
+  webAppFormTypeRest: 'REST',
+  /** EXPERIENCE.md:396 */
+  webAppFormTypePython: 'Python (WSGI or ASGI)',
+  /** EXPERIENCE.md:396 */
+  webAppFormPythonProtocol: 'Python protocol type',
+  /** EXPERIENCE.md:396 */
+  webAppFormPythonFile: 'Application file',
+  /** EXPERIENCE.md:396 */
+  webAppFormPythonCallable: 'Callable name',
+  /** EXPERIENCE.md:396 */
+  webAppFormPythonDirectory: 'Application directory',
+  /** EXPERIENCE.md:396 */
+  webAppFormRecurse: 'Include subdirectories',
+  /** EXPERIENCE.md:396 */
+  webAppFormRefusedAction: 'create a web application',
+
 } as const;
 
 /**

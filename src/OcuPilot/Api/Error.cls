@@ -1078,7 +1078,31 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#HELPROUTE Quit ..#REASONHELPROUTE
     If pCode = ..#PREFERENCESVALUE Quit ..#REASONPREFERENCESVALUE
     If pCode = ..#PREFERENCESNAME Quit ..#REASONPREFERENCESNAME
+    If pCode = ..#WEBAPPNAMEREQUIRED Quit ..#REASONWEBAPPNAMEREQUIRED
+    If pCode = ..#WEBAPPNAMESHAPE Quit ..#REASONWEBAPPNAMESHAPE
+    If pCode = ..#WEBAPPNAMETAKEN Quit ..#REASONWEBAPPNAMETAKEN
+    If pCode = ..#WEBAPPNAMESPACEREQUIRED Quit ..#REASONWEBAPPNAMESPACEREQUIRED
+    If pCode = ..#WEBAPPAUTHEREQUIRED Quit ..#REASONWEBAPPAUTHEREQUIRED
+    If pCode = ..#WEBAPPAUTHEUNKNOWN Quit ..#REASONWEBAPPAUTHEUNKNOWN
+    If pCode = ..#WEBAPPDISPATCHREQUIRED Quit ..#REASONWEBAPPDISPATCHREQUIRED
+    If pCode = ..#WEBAPPWSGIAPPNAME Quit ..#REASONWEBAPPWSGIAPPNAME
+    If pCode = ..#WEBAPPWSGILOCATION Quit ..#REASONWEBAPPWSGILOCATION
+    If pCode = ..#WEBAPPWSGITYPE Quit ..#REASONWEBAPPWSGITYPE
+    If pCode = ..#WEBAPPTYPECONFLICT Quit ..#REASONWEBAPPTYPECONFLICT
+    If pCode = ..#WEBAPPFIELDLENGTH Quit ..#REASONWEBAPPFIELDLENGTH
+    If pCode = ..#PORTFIELDREQUIRED Quit ..#REASONPORTFIELDREQUIRED
+    If pCode = ..#PORTFIELDUNEXPECTED Quit ..#REASONPORTFIELDUNEXPECTED
+    If pCode = ..#PORTFIELDSHAPE Quit ..#REASONPORTFIELDSHAPE
     Quit ""
+}
+
+/// <p>Every <code>WEBAPP.*</code> and <code>PORT.FIELD.*</code> field-level violation code, as a
+/// <class>%List</class>, for the reason <method>ViolationCodes</method> exists: a test holds
+/// <method>ReasonForViolation</method> to the vocabulary without re-spelling either, so a code
+/// added with no sentence behind it reddens.</p>
+ClassMethod WebAppViolationCodes() As %List
+{
+    Quit $ListBuild(..#WEBAPPNAMEREQUIRED, ..#WEBAPPNAMESHAPE, ..#WEBAPPNAMETAKEN, ..#WEBAPPNAMESPACEREQUIRED, ..#WEBAPPAUTHEREQUIRED, ..#WEBAPPAUTHEUNKNOWN, ..#WEBAPPDISPATCHREQUIRED, ..#WEBAPPWSGIAPPNAME, ..#WEBAPPWSGILOCATION, ..#WEBAPPWSGITYPE, ..#WEBAPPTYPECONFLICT, ..#WEBAPPFIELDLENGTH, ..#PORTFIELDREQUIRED, ..#PORTFIELDUNEXPECTED, ..#PORTFIELDSHAPE)
 }
 
 /// <p>Every <code>AGENT.*</code> field-level violation code that carries a sentence, as a
@@ -1466,6 +1490,175 @@ ClassMethod GetSlugForStatus(pStatusCode As %Integer) As %String
     If pStatusCode = 501 Quit ..#NOTIMPLEMENTED
     If pStatusCode = 503 Quit ..#UNAVAILABLE
     Quit ..#SERVERERROR
+}
+
+/// <p>Machine code (AD-12, AD-39): the request to create a web application broke one or more of
+/// the rules <class>OcuPilot.Area.WebApp.Create</class> applies before the port is touched.
+/// Rendered on the <parameter>VALIDATIONFAILED</parameter> slug, with every violation as a
+/// <code>{field, code, reason}</code> entry in the envelope's <code>detail.violations</code> --
+/// one response for a submission that breaks four rules, never four responses (AD-39).</p>
+Parameter WEBAPPVALIDATION = "WEBAPP.VALIDATION";
+
+/// <p>The envelope's <code>reason</code> for <parameter>WEBAPPVALIDATION</parameter>, which the
+/// screen renders only where no violation named a field.</p>
+Parameter REASONWEBAPPVALIDATION = "The web application was refused.";
+
+/// <p>Violation code: no name was supplied. A web application is identified by the URL path it
+/// answers at, and that path is the vendor's <code>name</code> query parameter rather than a body
+/// field, so an absent one is refused here rather than by the endpoint.</p>
+Parameter WEBAPPNAMEREQUIRED = "WEBAPP.NAME.REQUIRED";
+
+Parameter REASONWEBAPPNAMEREQUIRED = "Give the application the URL path it answers at, such as /csp/myapp.";
+
+/// <p>Violation code: the name is not a path this instance can serve. Checked before the port so
+/// the sentence names the field rather than arriving as a vendor status about an internal class.</p>
+Parameter WEBAPPNAMESHAPE = "WEBAPP.NAME.SHAPE";
+
+Parameter REASONWEBAPPNAMESHAPE = "An application name starts with / and is at most 64 characters, with no space and no percent sign.";
+
+/// <p>Violation code: a web application already answers that name. It is a <b>read</b> rather than
+/// a validation -- <code>GET /web-applications/name</code> answers the same question on blur -- and
+/// it matters more than the rest, because the vendor's own PUT is an upsert (AD-54).</p>
+Parameter WEBAPPNAMETAKEN = "WEBAPP.NAME.TAKEN";
+
+Parameter REASONWEBAPPNAMETAKEN = "This instance already has a web application with that name. Choose a different one.";
+
+/// <p>Violation code: no namespace was supplied. <method>%Api.Admin.Endpoints.WebApp.App.ValidateRequest</method>
+/// adds <code>NameSpace</code> to its required set only when the application does not already
+/// exist, so this is the create path's own rule and OcuPilot states it on the field.</p>
+Parameter WEBAPPNAMESPACEREQUIRED = "WEBAPP.NAMESPACE.REQUIRED";
+
+Parameter REASONWEBAPPNAMESPACEREQUIRED = "Choose the namespace this application runs in.";
+
+/// <p>Violation code: no authentication method was chosen.
+/// <property>Security.Applications.AutheEnabled</property> carries
+/// <code>InitialExpression = 64</code> (Unauthenticated), so an omitted value would create an
+/// application anyone can reach without signing in. The field is always sent explicitly and an
+/// empty one is refused.</p>
+Parameter WEBAPPAUTHEREQUIRED = "WEBAPP.AUTHE.REQUIRED";
+
+Parameter REASONWEBAPPAUTHEREQUIRED = "Choose at least one authentication method. An application with none is reachable without signing in.";
+
+/// <p>Violation code: the value carries a bit outside the ones this instance itself has enabled
+/// for a web application (<method>OcuPilot.Area.WebApp.FormRules.Methods</method>).</p>
+Parameter WEBAPPAUTHEUNKNOWN = "WEBAPP.AUTHE.UNKNOWN";
+
+Parameter REASONWEBAPPAUTHEUNKNOWN = "That authentication method is not one this instance offers for a web application.";
+
+/// <p>Violation code: a REST application names no dispatch class. The vendor accepts the
+/// combination and serves nothing at the address, which is why the rule is OcuPilot's.</p>
+Parameter WEBAPPDISPATCHREQUIRED = "WEBAPP.DISPATCH.REQUIRED";
+
+Parameter REASONWEBAPPDISPATCHREQUIRED = "A REST application names the class that answers its requests.";
+
+/// <p>Violation code: a WSGI or ASGI application names no callable file.</p>
+Parameter WEBAPPWSGIAPPNAME = "WEBAPP.WSGI.APPNAME";
+
+Parameter REASONWEBAPPWSGIAPPNAME = "A WSGI or ASGI application names the file that holds its callable.";
+
+/// <p>Violation code: a WSGI or ASGI application names no directory. It is also what
+/// <method>OcuPilot.Screen.Tool.WebAppCreate.DerivedFields</method> derives the physical path
+/// from, so an empty one would leave the application serving from nowhere.</p>
+Parameter WEBAPPWSGILOCATION = "WEBAPP.WSGI.LOCATION";
+
+Parameter REASONWEBAPPWSGILOCATION = "A WSGI or ASGI application names the directory its application is in.";
+
+/// <p>Violation code: the Python protocol type is neither of the two
+/// <property>Security.Applications.WSGIType</property> publishes. It travels as its display string
+/// because the endpoint runs <code>WSGITypeDisplayToLogical</code> over it.</p>
+Parameter WEBAPPWSGITYPE = "WEBAPP.WSGI.TYPE";
+
+Parameter REASONWEBAPPWSGITYPE = "The Python protocol type is WSGI or ASGI.";
+
+/// <p>Violation code: the body names both a dispatch class and the fields of a Python callable.
+/// An application answers one way or the other, and the vendor's own editor expresses that as one
+/// radio group rather than as two independent sets of fields.</p>
+Parameter WEBAPPTYPECONFLICT = "WEBAPP.TYPE.CONFLICT";
+
+Parameter REASONWEBAPPTYPECONFLICT = "An application is either a REST application with a dispatch class or a Python application with a callable, not both.";
+
+/// <p>Violation code: the value is longer than the instance stores for that field. The bound is
+/// the property's own <code>MAXLEN</code>, served to the form by
+/// <method>OcuPilot.Area.WebApp.FormRules.Lengths</method> so the sentence and the control agree.</p>
+Parameter WEBAPPFIELDLENGTH = "WEBAPP.FIELD.LENGTH";
+
+Parameter REASONWEBAPPFIELDLENGTH = "That value is longer than this instance stores for the field.";
+
+/// <p>Violation code (AD-39): the vendor refused the request because a body field it requires was
+/// absent. Produced at the port boundary by <method>ViolationsFromVendor</method>, on the field the
+/// vendor's own status names, so a refusal lands on the field it is about.</p>
+Parameter PORTFIELDREQUIRED = "PORT.FIELD.REQUIRED";
+
+Parameter REASONPORTFIELDREQUIRED = "This instance requires a value for that field.";
+
+/// <p>Violation code (AD-39): the vendor refused the request because the body carried a field its
+/// own template does not declare.</p>
+Parameter PORTFIELDUNEXPECTED = "PORT.FIELD.UNEXPECTED";
+
+Parameter REASONPORTFIELDUNEXPECTED = "This instance does not accept that field on this request.";
+
+/// <p>Violation code (AD-39): the vendor refused the request because the field carried a value of
+/// the wrong shape -- an object where it wanted a literal, or a value outside the set it names.</p>
+Parameter PORTFIELDSHAPE = "PORT.FIELD.SHAPE";
+
+Parameter REASONPORTFIELDSHAPE = "This instance expects a different kind of value for that field.";
+
+/// <p>The vendor status codes whose <b>first</b> parameter is the dotted name of the body field
+/// they are about, comma-separated, each paired with the OcuPilot violation code it maps onto
+/// (AD-39).</p>
+/// <p><b>Read off the instance, not recalled</b>: <code>%Api.Admin.Util.RequestValidator</code>
+/// raises exactly these, each as <code>$$$ERROR(&lt;code&gt;, name)</code> where <code>name</code>
+/// is the field path with <code>.</code> between members and <code>[0]</code> for an array's first
+/// element. 40301 is <code>MissingRequestBodyField</code>, 40307 is
+/// <code>UnexpectedRequestBodyField</code>, 40302 to 40306 are its value-set refusals and 40308 and
+/// 40309 its two shape refusals.</p>
+Parameter VENDORFIELDCODES = "40301=PORT.FIELD.REQUIRED,40302=PORT.FIELD.SHAPE,40303=PORT.FIELD.SHAPE,40304=PORT.FIELD.SHAPE,40305=PORT.FIELD.SHAPE,40306=PORT.FIELD.SHAPE,40307=PORT.FIELD.UNEXPECTED,40308=PORT.FIELD.SHAPE,40309=PORT.FIELD.SHAPE";
+
+/// <p>The <code>detail.violations</code> rows a vendor status carries, as a
+/// <class>%DynamicArray</class> of <code>{field, code, reason}</code>, or <code>[]</code> when it
+/// names no field (AD-39).</p>
+/// <p><b>It is the port boundary's job, and it is what makes a vendor refusal land on the field it
+/// names.</b> The vendor's own text is written for a portal developer and never reaches either
+/// consumer; what crosses is the field name it carried, OcuPilot's stable code for that kind of
+/// refusal, and OcuPilot's own sentence. The field is the vendor's <b>first</b> parameter, taken
+/// verbatim including its dots and its <code>[0]</code>, so a refusal about
+/// <code>MatchRoles[0].MatchRole</code> names that path rather than its last segment.</p>
+/// <p>A status carrying several such errors answers one row each, in the order
+/// <method>$System.Status.DecomposeStatus</method> reports them.</p>
+ClassMethod ViolationsFromVendor(pStatus As %Status) As %DynamicArray
+{
+    Set tRows = []
+    Try {
+        If $$$ISOK(pStatus) Quit
+        Do $System.Status.DecomposeStatus(pStatus, .tErrors, "-d")
+        For tI = 1:1:+$Get(tErrors) {
+            Set tCode = ..VendorFieldCode($Get(tErrors(tI, "code")))
+            If tCode = "" Continue
+            Set tField = $Get(tErrors(tI, "param", 1))
+            If tField = "" Continue
+            Set tRow = {}
+            Do tRow.%Set("field", tField, "string")
+            Do tRow.%Set("code", tCode, "string")
+            Do tRow.%Set("reason", ..ReasonForViolation(tCode), "string")
+            Do tRows.%Push(tRow)
+        }
+    } Catch {
+        Set tRows = []
+    }
+    Quit tRows
+}
+
+/// <p>The OcuPilot violation code <parameter>VENDORFIELDCODES</parameter> pairs with the vendor
+/// status code <var>pVendorCode</var>, or <code>""</code> for a code that names no field.</p>
+ClassMethod VendorFieldCode(pVendorCode As %String) As %String [ Private ]
+{
+    Set tFound = ""
+    If pVendorCode = "" Quit tFound
+    For tI = 1:1:$Length(..#VENDORFIELDCODES, ",") {
+        Set tPair = $Piece(..#VENDORFIELDCODES, ",", tI)
+        If $Piece(tPair, "=", 1) = pVendorCode Set tFound = $Piece(tPair, "=", 2) Quit
+    }
+    Quit tFound
 }
 
 /// <p>Whether <var>pSlug</var> is one of the twelve closed-enum slugs above. Private —

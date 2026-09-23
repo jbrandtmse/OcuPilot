@@ -6,6 +6,11 @@
 /// what the proposal changes relative to the target it was minted against, and a fresh read of the
 /// target, which is what makes the answer an effect. A field one of them names and the other does
 /// not changes nothing the agent proposed, so the set is silent and the gates behind it answer.</p>
+/// <p><b>A create is a second set of lists over the same types</b> (AD-54). "What may a change to a
+/// live target touch" and "what may a create set" are different questions, so a create tool's
+/// fields are <method>PermittedCreateFields</method>'s and
+/// <method>AlwaysProhibitedCreateFields</method>'s, and the absent-target early-out below does not
+/// apply to a tool whose target is correctly absent (<method>Created</method>).</p>
 /// <p><b>It permits, rather than forbids, by name.</b> AD-4 makes the payload the complete property
 /// set, and a vendor web application carries 45 settable properties of which a great many decide
 /// which compiled code answers at the URL or how a caller gets in. Enumerating those would leave
@@ -287,6 +292,45 @@ ClassMethod AlwaysProhibitedFields(pType As %String) As %List
     Quit ""
 }
 
+/// <p>The payload field names of entity type <var>pType</var> a <b>create</b> may set, as a
+/// <class>%List</class>; <code>""</code> for a type this release reviews no create for, which is
+/// refused <parameter>UNCOVERED</parameter> wholesale (AD-54).</p>
+/// <p><b>"What may a change to a live target touch" and "what may a create set" are different
+/// questions</b>, so a create carries its own reviewed list rather than reusing
+/// <method>PermittedChangeFields</method>. The difference is not a relaxation: a field prohibited
+/// because it repoints a <b>serving</b> object is prohibited on a change and permitted on a create,
+/// which repoints nothing, while a field prohibited by effect under AD-10 stays prohibited on both.
+/// <code>DispatchClass</code> is the first kind -- DW-1207's owner decision is about pointing a
+/// running application at arbitrary compiled code, and it is also what makes a REST application a
+/// REST application. <code>MatchRoles</code> is the second kind and appears in neither list
+/// (<method>AlwaysProhibitedCreateFields</method>).</p>
+/// <p>A web application's eleven are the settings the create form captures: the namespace it runs
+/// in, its description, whether it is enabled, its authentication methods, its guarding resource,
+/// whether it recurses into subdirectories, the dispatch class that makes it a REST application,
+/// and the four WSGI properties that make it a WSGI or ASGI one. <code>Path</code> is not among
+/// them and is never settable by a caller: the server derives it from
+/// <code>WSGIAppLocation</code> (<method>OcuPilot.Screen.Tool.Write.DerivedFields</method>), and
+/// <method>Security.Applications.Create</method> creates the directory a CSP application names.</p>
+ClassMethod PermittedCreateFields(pType As %String) As %List
+{
+    If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "DispatchClass", "Enabled", "NameSpace", "Recurse", "Resource", "WSGIAppLocation", "WSGIAppName", "WSGICallable", "WSGIType")
+    Quit ""
+}
+
+/// <p>The payload field names of entity type <var>pType</var> whose presence in a <b>create</b> is
+/// prohibited by a named predicate, as a <class>%List</class>; <code>""</code> for a type with
+/// none (AD-54).</p>
+/// <p>They are the fields AD-10 forbids <b>unconditionally</b> -- the ones whose refusal carries a
+/// sentence of its own rather than the reviewed-few one. Setting application roles on any web
+/// application is a privilege grant through a path, and creating the application is no exception:
+/// <code>MatchRoles</code> is refused here exactly as
+/// <method>AlwaysProhibitedFields</method> refuses it on a change.</p>
+ClassMethod AlwaysProhibitedCreateFields(pType As %String) As %List
+{
+    If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("MatchRoles")
+    Quit ""
+}
+
 /// <p>The port the target is read through when the proposal's tool declares the base's own default
 /// (AD-52). Overridable so a fixture can answer a known object; production never overrides it.</p>
 ClassMethod PortClass() As %String
@@ -358,6 +402,15 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
 
         Set tSC = ..Target(pToolName, tId, .tTarget, .tPresent, .tToolClass)
         If $$$ISERR(tSC) Quit
+        ; AD-54. A create's target is CORRECTLY absent, so the early-out below -- which reasons that
+        ; the fingerprint re-read refuses an absent target moments later -- does not apply to one:
+        ; for a create that re-read compares the target's absence and finds it matching, so nothing
+        ; behind this set would refuse the write. The create predicates are evaluated instead, over
+        ; the fields the caller actually supplied.
+        If ..CreatesOf($Get(tToolClass)) {
+            Set tSC = ..Created(tType, tServes, ..ParsedObject(pPayload), .pProhibits, .pCode)
+            Quit
+        }
         ; A target the instance no longer holds is not prohibited: the fingerprint re-read refuses
         ; it TARGETCHANGED a few lines later and closes the row, which is the answer the user sees.
         If 'tPresent Quit
@@ -426,6 +479,75 @@ ClassMethod UncoveredWriteTools(Output pTools As %List) As %Status
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The <b>create</b> predicates, in declared order, first hit wins: a create at a path that
+/// serves OcuPilot, a field AD-10 forbids unconditionally, and any field the release has not
+/// reviewed for a create of this type (AD-54).</p>
+/// <p><b>The set here is the payload's own keys, not a diff against a live target</b>, and that is
+/// the whole difference. A create has no prior state to compare against, so
+/// <method>Changed</method> has no subject: every property the composed body carries is a property
+/// the caller asked this write to set, and the sweep is over exactly those.
+/// <method>OcuPilot.Kernel.Proposal.Mint.Compose</method> puts nothing else there.</p>
+/// <p><var>pServes</var> is whether the intended path is one of OcuPilot's own applications,
+/// already resolved by <method>ServesOcuPilot</method> so no escalated read happens here. It is
+/// answered from the id the proposal carries -- which for a create is the name the write will take,
+/// canonical under AD-13 -- so creating a second application at OcuPilot's own address is refused
+/// on the same predicate that refuses changing the first.</p>
+/// <p>A type <method>PermittedCreateFields</method> reviews nothing for is refused
+/// <parameter>UNCOVERED</parameter> wholesale rather than permitted an empty body: a create tool
+/// registering before its type's list exists is the shape this fails closed against.</p>
+ClassMethod Created(pType As %String, pServes As %Boolean, pPayload As %DynamicObject, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        If pServes {
+            Do ..Refuse(..#SERVINGPATH, .pProhibits, .pCode)
+            Quit
+        }
+        Set tPermitted = ..PermittedCreateFields(pType)
+        If tPermitted = "" {
+            Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
+            Quit
+        }
+        Set tAlways = ..AlwaysProhibitedCreateFields(pType)
+        For tI = 1:1:$ListLength(tAlways) {
+            If pPayload.%GetTypeOf($List(tAlways, tI)) '= "unassigned" {
+                Do ..Refuse(..#PRIVILEGEGRANT, .pProhibits, .pCode)
+                Quit
+            }
+        }
+        If pProhibits Quit
+        Set tIterator = pPayload.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tValue) {
+            If '$ListFind(tPermitted, tKey) {
+                Do ..Refuse(..#UNCOVEREDFIELD, .pProhibits, .pCode)
+                Quit
+            }
+        }
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pToolClass</var> declares that its write creates its target
+/// (<method>OcuPilot.Screen.Tool.Write.Creates</method>, AD-54), or <code>0</code> for a class that
+/// names none or cannot be asked -- which is every write that shipped before Epic 8, and is the
+/// answer that keeps the absent-target early-out in place for them.</p>
+ClassMethod CreatesOf(pToolClass As %String) As %Boolean [ Private ]
+{
+    Set tCreates = 0
+    Try {
+        If pToolClass '= "" Set tCreates = ''$ClassMethod(pToolClass, "Creates")
+    } Catch {
+        Set tCreates = 0
+    }
+    Quit tCreates
 }
 
 /// <p>The web-application predicates, in declared order, first hit wins: OcuPilot's own serving

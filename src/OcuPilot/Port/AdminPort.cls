@@ -1053,6 +1053,16 @@ ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, 
     Set pHttpStatus = $Select(+pHttp: +pHttp, 1: 500)
     Set tOutcomeSC = ##class(OcuPilot.Kernel.Fault).Outcome(pHttpStatus, pVendorSC, .pFault, .tDetail)
     If $$$ISERR(tOutcomeSC) Do ..LogFault(pEndpoint _ " fault mapping failed", tOutcomeSC, pFault.code)
+    ; AD-39. A vendor refusal that names a body field crosses the boundary as detail.violations --
+    ; the field the vendor named, OcuPilot's stable code for that kind of refusal, and OcuPilot's
+    ; own sentence -- so a screen renders it on the field it is about and a tool result renders the
+    ; code. The vendor's own text still reaches the log alone, on the line below.
+    Set tViolations = ##class(OcuPilot.Api.Error).ViolationsFromVendor(pVendorSC)
+    If $IsObject(pFault) && $IsObject(tViolations) && (tViolations.%Size() > 0) {
+        Set tFieldDetail = {}
+        Do tFieldDetail.%Set("violations", tViolations)
+        Do pFault.%Set("detail", tFieldDetail)
+    }
     If $$$ISERR(pVendorSC) Do ..LogFault(pEndpoint _ " failed with HTTP " _ pHttpStatus, pVendorSC, pFault.code)
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
 }

@@ -91,6 +91,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/agent/definitions" Method="GET" Call="AgentDefinitionList"/>
   <Route Url="/agent/definitions" Method="POST" Call="AgentDefinitionCreate"/>
   <Route Url="/agent/providers" Method="GET" Call="AgentProviders"/>
+  <Route Url="/web-applications/form" Method="GET" Call="WebAppFormRules"/>
+  <Route Url="/web-applications/name" Method="GET" Call="WebAppNameCheck"/>
+  <Route Url="/web-applications" Method="POST" Call="WebAppCreate"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
   <Route Url="/logs/errors/namespaces" Method="GET" Call="LogErrorNamespaces"/>
   <Route Url="/logs/errors/dates" Method="GET" Call="LogErrorDates"/>
@@ -246,6 +249,34 @@ ClassMethod AgentDefinitionCreate() As %Status
 ClassMethod AgentProviders() As %Status
 {
     Quit ##class(OcuPilot.Api.Definitions).HandleProviders()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /web-applications/form</code> (Story 8.1):
+/// delegates to <class>OcuPilot.Area.WebApp.FormRules</class> and carries no logic of its own.</p>
+/// <p>The three web-application routes are declared sub-resource first, per the second ordering
+/// invariant: <code>/web-applications/form</code> and <code>/web-applications/name</code> are both
+/// two-segment literals under the one-segment <code>/web-applications</code>, so a shorter route
+/// declared first would swallow neither -- but the invariant is structural and the checker holds
+/// the whole map to it, so they lead.</p>
+ClassMethod WebAppFormRules() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.FormRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /web-applications/name</code> -- see
+/// <method>WebAppFormRules</method>. The create form's blur check: whether a name is already
+/// taken, which is a read of the instance rather than a validation of the value.</p>
+ClassMethod WebAppNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.FormRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /web-applications</code> -- see
+/// <method>WebAppFormRules</method>. The screen's own Save, which resolves the write through the
+/// same tool class the agent's confirm does (AD-55).</p>
+ClassMethod WebAppCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.Create).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /screens/:screen/read</code>: delegates to

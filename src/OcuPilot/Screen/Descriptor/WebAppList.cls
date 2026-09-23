@@ -29,10 +29,14 @@
 /// <code>Security.Applications</code> moves no field of its own as a side effect of a PUT. Both
 /// lists are declared empty rather than omitted, because a declaration is what the registry's
 /// credential-pattern refusal is evaluated against.</p>
-/// <p>It declares no primary or row action, so its empty state names what to do next rather than
-/// inviting the agent, and it does not refresh (AD-43). The write tool
-/// <class>OcuPilot.Screen.Tool.WebAppUpdate</class> registers by class scan and needs no declared
-/// action; the screen's own affordance is Story 5.8's.</p>
+/// <p><b>It declares one primary action, <code>create</code></b>, which is what makes it
+/// write-capable: the command bar offers Create, the route it opens is the paired form
+/// (<class>OcuPilot.Screen.Descriptor.WebAppForm</class>) resolved by convention rather than by a
+/// declaration, and the empty state invites the agent instead of naming a next step --
+/// <method>OcuPilot.Screen.Registry.TableProblem</method> holds those two keys as a pair. It does
+/// not refresh (AD-43). Its two write tools, <class>OcuPilot.Screen.Tool.WebAppUpdate</class> and
+/// <class>OcuPilot.Screen.Tool.WebAppCreate</class>, register by class scan and need no declared
+/// action of their own.</p>
 Class OcuPilot.Screen.Descriptor.WebAppList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -54,7 +58,7 @@ XData Declaration
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
+  "primaryAction": {"id": "create", "selfProtection": ""},
   "rowActions": [],
   "context": {"fields": ["Name", "Namespace", "Type", "Enabled", "DispatchClass", "Resource"], "secretFields": []},
   "secretArguments": [],
@@ -79,8 +83,8 @@ XData Declaration
       {"field": "DispatchClass", "labelKey": "webAppColumnDispatchClass", "kind": "identifier"},
       {"field": "Resource", "labelKey": "webAppColumnResource", "kind": "identifier"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "webAppListEmptyAgent"
   },
   "toolIdentifier": "webapp.list"
 }

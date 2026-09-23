@@ -115,13 +115,30 @@ Parameter PORTCLASS = "OcuPilot.Port.AdminPort";
 
 /// <p>The AD-14 action a confirmed write of this tool performs, which the change event carries and
 /// a screen showing the entity type decides what to do with. <code>updated</code> here, which every
-/// write against an object that already exists performs -- the fingerprint re-read requires the
-/// target to be readable now, so no shipped tool can be a create.</p>
+/// write against an object that already exists performs; a tool that declares
+/// <parameter>CREATES</parameter> declares <code>created</code> beside it (AD-54).</p>
 /// <p><b>It is the tool's declaration, not the client's inference.</b> The action vocabulary is the
 /// kernel's closed set (AD-14), and a client deriving "this looked like a delete" from the shape of
 /// a diff would be authoring the one field a screen routes on. A tool whose write removes its
 /// target declares <code>deleted</code>.</p>
 Parameter CHANGEACTION = "updated";
+
+/// <p>Whether this tool <b>creates</b> its target rather than changing one that already exists
+/// (AD-54). <code>0</code> here, which is every write the product shipped before Epic 8.</p>
+/// <p>A create changes exactly two things about the write path and nothing else. The mint's fresh
+/// read keeps its place through the same declared port (<parameter>PORTCLASS</parameter>), the same
+/// endpoint and the same <parameter>READTYPE</parameter>, and <b>inverts its acceptance</b>: the
+/// target must be absent, so a 404 is the success precondition and a present target refuses the
+/// mint. And the fingerprint covers the target's <b>absence</b> under AD-13's canonical spelling
+/// rather than a property set, because for a create the property set is entirely the caller's own
+/// arguments and nothing about it can move, while what must be protected is that the name is still
+/// free.</p>
+/// <p><b>The payload is composed, not merged</b> (AD-4 has no subject here): every field the
+/// arguments supply is a diff row and the unchanged count is zero. A tool that declares this also
+/// declares <parameter>CHANGEACTION</parameter> <code>created</code>, and its permitted field set
+/// is <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedCreateFields</method>'s rather than
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedChangeFields</method>'s.</p>
+Parameter CREATES As BOOLEAN = 0;
 
 /// <p>The top-level names this tool's own <parameter>READTYPE</parameter> read answers,
 /// comma-separated, or <code>""</code> where the screen's declared read is the whole record of
@@ -174,6 +191,30 @@ ClassMethod PortClass() As %String
 ClassMethod ChangeAction() As %String
 {
     Quit ..#CHANGEACTION
+}
+
+/// <p><parameter>CREATES</parameter> as a boolean (AD-54), read by the mint, the confirm and the
+/// prohibited set, each of which resolves a tool by name and holds only its class.</p>
+ClassMethod Creates() As %Boolean
+{
+    Quit ''..#CREATES
+}
+
+/// <p>Add to <var>pPayload</var> the fields this tool's <b>server</b> derives from the caller's
+/// own arguments, immediately before the port is invoked.</p>
+/// <p><b>Caller contract:</b> called once per write, on the body the write will actually send,
+/// after the prohibited set has reached its verdict over the fields the caller supplied and after
+/// a declared secret has been merged in. It reads nothing but <var>pPayload</var> and writes
+/// nothing else, and it never touches a field <method>SettableFields</method> admits -- a derived
+/// field is one no caller may set, so it is outside the diff the user reviewed and outside the set
+/// the prohibited predicates sweep.</p>
+/// <p>Empty here, so every write that shipped before Epic 8 sends exactly its stored payload. The
+/// web-application create is the first tool with one: <code>Path</code> is derived from
+/// <code>WSGIAppLocation</code> for a WSGI or ASGI application and left alone otherwise, because
+/// <method>Security.Applications.Create</method> creates the directory a CSP application names and
+/// a caller-supplied path is a filesystem path this product never accepts (AD-21).</p>
+ClassMethod DerivedFields(pPayload As %DynamicObject)
+{
 }
 
 /// <p><parameter>READANSWERS</parameter> as a <class>%List</class>, for the registration guard.</p>
@@ -416,7 +457,17 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Set tSchema = {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
     Set tProperties = tSchema.%Get("properties")
-    Do tProperties.%Set(..IdArgument(), {"type": "string", "description": "The target this write is about, exactly as this instance's own list reports it. A target it does not report is refused."})
+    ; AD-54: a create's target is one the instance does NOT hold, so the identifying property's own
+    ; description is inverted with the read's acceptance rather than left saying the opposite.
+    Set tIdDescription = "The target this write is about, exactly as this instance's own list reports it. A target it does not report is refused."
+    Set tValueDescription = "The new value for this field. Omit it to leave the field as the instance holds it."
+    Set tListDescription = "The new value for this field, replacing the whole list."
+    If ..Creates() {
+        Set tIdDescription = "The name the new object will take. A name this instance already holds is refused, so check the list first."
+        Set tValueDescription = "The value this create sets. Omit it to leave the field at the instance's own default."
+        Set tListDescription = "The whole list this create sets."
+    }
+    Do tProperties.%Set(..IdArgument(), {"type": "string", "description": (tIdDescription)})
     Do tSchema.%Get("required").%Push(..IdArgument())
     Set tSC = ..FieldRows(.tRows)
     If $$$ISERR(tSC) Quit tSchema
@@ -425,10 +476,10 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
         If tName = ..IdArgument() Continue
         Set tType = ..JsonType($List(tRows(tI), 2))
         If $List(tRows(tI), 3) {
-            Set tProperty = {"type": "array", "description": "The new value for this field, replacing the whole list."}
+            Set tProperty = {"type": "array", "description": (tListDescription)}
             Do tProperty.%Set("items", {"type": (tType)})
         } Else {
-            Set tProperty = {"description": "The new value for this field. Omit it to leave the field as the instance holds it."}
+            Set tProperty = {"description": (tValueDescription)}
             Do tProperty.%Set("type", tType, "string")
         }
         Do tProperties.%Set(tName, tProperty)

@@ -24,6 +24,7 @@ import { HomePage } from '../areas/home/home.page';
 import { AuditPage } from '../areas/logs/audit.page';
 import { ErrorLogPage } from '../areas/logs/error-log.page';
 import { LogViewerPage } from '../areas/logs/log-viewer.page';
+import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
@@ -73,9 +74,9 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
  * (DW-369).
  *
  * An archetype one screen serves is a map entry; an archetype several screens serve each in their
- * own way is not. `form-page` is the first of those: the Definition form and Switches are both
- * `form-page` screens with nothing in common but their shell, and a map keyed by archetype alone
- * can only ever hand both the same component. Registering the exception here, rather than widening
+ * own way is not. `form-page` is the first of those: the Definition form, Switches and the Web
+ * application form are all `form-page` screens with nothing in common but their shell, and a map
+ * keyed by archetype alone can only ever hand all three the same component. Registering the exception here, rather than widening
  * the archetype vocabulary, keeps `ARCHETYPE_PAGES`' exhaustiveness guarantee -- every
  * `BuiltArchetypeKey` still needs an entry there, so a new built archetype with no page still
  * fails `ng build`.
@@ -91,6 +92,7 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.ProcessDetails': ProcessDetailsPage,
   'OcuPilot.Screen.Descriptor.DatabaseFreeSpace': DatabasesPage,
   'OcuPilot.Screen.Descriptor.DatabaseDetails': DatabaseDetailsPage,
+  'OcuPilot.Screen.Descriptor.WebAppForm': WebAppCreateFormPage,
 };
 
 /**

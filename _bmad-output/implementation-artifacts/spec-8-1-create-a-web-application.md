@@ -2,14 +2,51 @@
 title: 'Story 8.1: Create a web application'
 type: 'feature'
 created: '2026-09-22'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'e8f037fd8611fbb3bcb5fbac2a4b0ad12bc5f59b'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-8-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The web-applications/list/edit/:id route does not re-read the created application on a
+      cold load; it draws an empty create form at an id-bearing URL.
+    evidence: |-
+      The :id route resolves through DESCRIPTOR_PAGES to the same create-form page, which
+      injects no ActivatedRoute and reads no :id. Within the session the buffer is carried
+      across the route replacement, so the values on screen are the created ones; on a reload
+      retaining() is false, open() resets and fetches only /web-applications/form. The
+      intent contract's "opens with the created application loaded" is therefore true of the
+      session path and not of a reload. Epic 9's web-application editor is what reads the id.
+    location: >-
+      ui/src/app/areas/web-applications/create-form.page.ts:604
+    severity: medium
+  - summary: >-
+      A create's confirm compares one digest, not two, so the stored-payload backstop DW-1353
+      added does not cover a create.
+    evidence: |-
+      Confirm.FingerprintMatches returns after the absence comparison (AD-54: the digest covers
+      the target's absence, so there is no stored-payload digest to be the second). Restoring
+      the backstop means storing a second digest at mint and comparing it at confirm, which is
+      new stored state AD-54 does not provide for. The proposal store is OcuPilot's protected
+      state under AD-9 with conditional writes, which is what bounds the exposure.
+    location: >-
+      src/OcuPilot/Kernel/Proposal/Confirm.cls:644
+    severity: low
+  - summary: >-
+      The two-spellings matrix row's instance-resolution half is untested -- that the vendor GET
+      resolves /csp/App and /csp/app/ to one application.
+    evidence: |-
+      ProposalCreate.TestTwoSpellingsOfOneNameReachOneTarget runs against ProposalFixture, whose
+      armed answer is spelling-blind, and asserts the canonical TargetRef and the typed spelling
+      on the read. The AD-13 claim the row carries is pinned by the sibling-cancel row, which is
+      full. Settling it needs a live instance holding one spelling and a mint under the other.
+    location: >-
+      src/OcuPilot/Test/ProposalCreate.cls:196
+    severity: low
 ---
 
 <intent-contract>
@@ -174,7 +211,33 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-09-22, implement: `## Verification`'s mutation table records the mutation actually applied
+  and what it reddened; the change-event row moves from the browser spec to
+  `create-form.store.spec.ts`, which is where it is falsifiable.
+
 ## Review Triage Log
+
+### 2026-09-22 - Review pass
+
+- verdicts: 17 findings - high 0, medium 7, low 9, false 1, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The port's vendor-refusal to `detail.violations` mapping had no test at any call site - `ViolationsFromVendor` was called only from a unit test; added `WebAppWire.TestAVendorFieldRefusalCrossesThePortOnTheFieldItNames`, which drives `AdminPort.Invoke` with a body field the vendor's template does not declare and asserts the field, code and sentence that cross.
+  - `[medium]` `[patch]` `DerivedFields` verified only as a pure function; neither call site exercised - added `ProposalCreate.TestTheConfirmedBodyCarriesTheServerDerivedPath` (the confirm site, asserted on the body the port received) and `WebAppWire.TestAWsgiCreateLeavesTheInstanceHoldingTheDerivedPath` (the screen site, asserted on the instance's stored `Path`).
+  - `[medium]` `[patch]` The bootstrap read's `rules` and `conditionalFields` had no client consumer, leaving AC4 unimplemented - `onBlur` now renders the server's published sentence on a required field left empty, and `sends()` reads the server's `conditionalFields` instead of the client's constants; two `create-form.store.spec.ts` cases pin both.
+  - `[medium]` `[patch]` AC3's "runs exactly once per click" rested on `history.length > 0`, which cannot fail - replaced with a count of `history.pushState` calls across the click. `history.length` deltas were measured unreliable (3 to 3 for a real navigation, because a push truncates forward entries).
+  - `[low]` `[patch]` `create-form.page.ts` claimed a reload lands on the entity; it does not - the sentence is replaced with what the code does, and the cold-load behavior is recorded under `deferred`.
+  - `[low]` `[patch]` The browser spec's AC2 comment named a mutation its own header says is not load-bearing there - corrected to name the route-replacement mutation and to point at the store spec for the publish.
+  - `[low]` `[patch]` `Test/WebAppCreate.cls` claimed the fixture port answers the name look-up; `FormRules.Taken` resolves the tool's own port - the comment now says the read is live and why the arming is still there.
+  - `[low]` `[patch]` `Area/WebApp/Create.cls` described seams "a fixture subclass overrides" with no such subclass, and did not say the name read bypasses them - both corrected.
+  - `[low]` `[patch]` `Confirm.FingerprintMatches`' doc comment presented "two digests, not one" as unconditional; a create compares one - the comment now says so and why; the behavioral half is recorded under `deferred`.
+  - `[false]` `[reject]` `ci-throwaway.sh:172`'s unescaped backticks - this is the fix applied in this pass, not a defect remaining in it; the generated compose comment is whole again and the bring-up prints no shell error.
+  - `[medium]` `[patch]` The `NameSpace` matrix row's vendor path is unreachable because OcuPilot refuses first, so the port mapping shipped unpinned - same root cause as the first row, closed by the same test; the row's observable half (a sentence on the field it names) is pinned by the browser refusal leg.
+  - `[medium]` `[patch]` Nothing exercised `Prohibited.Created` from inside `Confirm.Transition` on the refusal path - added `ProposalCreate.TestASeededCreateCarryingApplicationRolesIsRefusedInsideTheTransition`, which seeds the row the shipped mint cannot produce and asserts 403 with no write.
+  - `[medium]` `[patch]` The client's `WRITABLE_FIELDS` is a hand-transcribed copy of the tool's admitted set with nothing holding the two equal - added a roster pin to `ui/tools/field-lists.test.mjs` over `WebAppCreate.PERMITTEDFIELDS`.
+  - `[low]` `[reject]` The client sends empty strings for fields the agent omits, so the two bodies differ - on a create the two have identical effect (no prior value to preserve), and the only difference is a diff row and a ledger name; not worth a branch.
+  - `[low]` `[patch]` `.../edit/<id>` is a retained buffer rather than an entity read - same root cause as the reload-claim row and closed with it; the behavior is under `deferred`.
+  - `[low]` `[defer]` The two-spellings row's instance-resolution half is untested - the fixture port is spelling-blind; settling it needs a live instance holding one spelling while a mint uses the other. Recorded under `deferred`.
+  - `[low]` `[reject]` The `AutheEnabled`-empty refusal is not reachable from the browser leg, since the form always posts a mask - the rule is pinned at the unit and wire tiers, and the rendered path it would exercise is the same one the namespace refusal leg already drives.
 
 ## Design Notes
 
@@ -267,24 +330,84 @@ The **full browser suite is deliberately not run locally** (owner instruction 20
 
 **Pinning tests and their mutations (Rule 19 — the implementer writes each `mutation:` line beside its test):**
 
-| Acceptance criterion | Pinning test | Mutation to apply |
-|---|---|---|
-| The form captures the field set in the classic order | `web-applications-create.browser-spec.mjs`, the field-roster test | Remove the authentication-methods field from the template |
-| A server refusal lands on the field it names | the same spec's failed-Save test | Drop `params[0]` when mapping the vendor status onto `detail.violations[].field` |
-| The list reflects the change without a refresh | the same spec's create-then-return test | Remove the `ChangeBus.publish` call from the create store |
-| 720px and 480px confirmed | the same spec's geometry test, plus `design-tokens.test.mjs` | Change `--ocu-form-max-width` to 640px in `_metrics.scss` |
-| Create runs once per click, no NG0100 | the same spec's command-bar test | Move the handler registration into the page constructor |
-| A name taken since the mint is refused | `ProposalCreate.cls` | Return the stored digest unchanged from the create branch of `FingerprintMatches` |
-| `MatchRoles` is refused on a create | `Prohibited.cls` | Add `MatchRoles` to `PermittedCreateFields("web-application")` |
+| Acceptance criterion | Pinning test | Mutation applied | Observed |
+|---|---|---|---|
+| The form captures the field set in the classic order | `web-applications-create.browser-spec.mjs`, AC1 | Remove the authentication-methods fieldset from `create-form.page.ts` | red (AC1, and AC2 collaterally) |
+| A server refusal lands on the field it names | the same spec's failed-Save test | Drop the namespace rule from `Create.Validate` | red |
+| The list reflects the change without a refresh | `create-form.store.spec.ts`, the change-event test | Remove the `ChangeBus.publish` call from `save()` | red |
+| 720px and 480px confirmed | the same spec's AC4, plus `design-tokens.test.mjs` | Change `--ocu-form-max-width` to 640px in `_metrics.scss` | red in both |
+| Create runs once per click, no NG0100 | the same spec's AC3 | Drop the `WebAppActions` injection from `app.ts` | red |
+| A name taken since the mint is refused | `ProposalCreate.cls` | Return `pMatches = 1` from the create branch of `FingerprintMatches` | red |
+| A create's unchanged count is zero | `ProposalCreate.cls` | Return a non-zero `pUnchanged` from `Mint.Compose` | red |
+| `MatchRoles` is refused on a create | `Prohibited.cls` | Add `MatchRoles` to `PermittedCreateFields("web-application")`; and, separately, empty `AlwaysProhibitedCreateFields` | red in both |
+| The screen's Save is refused on the caller's own fields | `WebAppCreate.cls` | Ask the prohibited set about the composed body rather than `Create.CallerFields` | red |
+| A confirmed create is marked and ledgered | `ProposalCreate.cls`, the marker/ledger test | Return `""` from `WebAppCreate.ChangeAction` | red |
+| A vendor refusal lands on the field it names | `WebAppCreate.cls`, the boundary test | Take the last dotted segment instead of `param 1` in `ViolationsFromVendor` | red |
+| A failed name look-up leaves the field unmarked | `create-form.store.spec.ts`, the blur test | Mark the name taken on a refused look-up in `onBlur` | red |
+| A blurred required field reads the server's own sentence | `create-form.store.spec.ts`, the DW-376 test | Delete the `markEmptyRequired` call from `onBlur` | red |
+| The type's field set is the server's, not the client's | `create-form.store.spec.ts`, the AD-3 test | Make `sends()` read `REST_FIELDS`/`PYTHON_FIELDS` again | red |
+| The confirmed body carries the derived `Path` | `ProposalCreate.cls`, the derived-path test | Remove the `ToolDerivedFields` call from `Confirm.Transition` | red |
+| A prohibited create is refused inside the transition | `ProposalCreate.cls`, the seeded-roles test | Make `Prohibited.Created` answer not-prohibited | red |
+| A vendor field refusal crosses the port on its own field | `WebAppWire.cls`, the port-boundary test | Drop the violations block from `AdminPort.Fail` | red |
+| The screen's create leaves the derived `Path` on the instance | `WebAppWire.cls`, the WSGI test | Remove the `DerivedFields` call from `Create.Perform` | red |
+| Create makes exactly one navigation per click | `web-applications-create.browser-spec.mjs`, AC3 | Push a second history entry from `WebAppActions.openCreate` | red |
+
+**Where the change event is pinned, and why not in the browser:** the form replaces its own route
+with the new application's editor, which declares the same entity type as the list, so no
+off-screen toast is raised -- and the list the browser leg then navigates to re-reads the instance
+on open whether or not anything was published. The publish is therefore pinned in
+`create-form.store.spec.ts`, where the bus is real and dropping the call reddens.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only; the invocation directed a halt after planning. Nothing was implemented and the spec
-is left uncommitted for the lead's validation gate. Three `SPINE DECISION NEEDED:` lines under
-`## Design Notes` await the lead's `AD-n` ids (Rule 20). Both routed ledger entries are addressed
-rather than declined: DW-246 by a tab-scoped handler plus a browser spec that pins its evidence
-line, DW-376 by server-authored field rules on the form's own bootstrap read, with the admin API's
-absence of any validate-only route settled against the live spec.
+The create write kind is three declarations and two inversions: `Write.CREATES`,
+`Mint.CreatesOf`/`Compose`/`AbsenceState`, and a create branch in `Confirm.FingerprintMatches`.
+`Prohibited` gains `PermittedCreateFields`, `AlwaysProhibitedCreateFields` and `Created`, and its
+absent-target early-out is now conditional on the tool not being a create. `WebAppCreate` is the one
+tool both callers resolve through; `Area/WebApp/{Create,FormRules}`, three routes, fifteen
+field-level codes, one `form-page` descriptor, one client page and store, and twelve strings carry
+the screen half. UX-DR80's two widths are measured, pinned and no longer marked an assumption.
+
+Files changed, by what they carry: the write kind (`Screen/Tool/Write.cls`,
+`Kernel/Proposal/{Mint,Confirm,Prohibited}.cls`); the tool and its derived schema
+(`Screen/Tool/{WebAppCreate,Classification,ToolFields}.cls`); the screen and its routes
+(`Screen/Descriptor/{WebAppForm,WebAppList}.cls`, `Area/WebApp/{Create,FormRules}.cls`,
+`Api/{Router,Error}.cls`, `Port/AdminPort.cls`); the client (`areas/web-applications/*`,
+`app.ts`, `core/{navigation,strings,screens.generated}.ts`, `shell/screen-outlet.ts`,
+`styles/_components.scss`); the tests and rosters (`Test/{ProposalCreate,WebAppCreate,WebAppWire,
+Prohibited,ProhibitedRoute,ReadTool,ToolRoundTrip,Wire,WireSecurityRead,SurfaceCoverage,
+EndpointCoverage}.cls`, four `ui/tools/*.test.mjs`, one browser spec, `scripts/ci-throwaway.sh`);
+and the planning artifacts (`DESIGN.md`, `EXPERIENCE.md`, `epics.md`).
+
+Review: 17 findings across two layers - 7 medium, 9 low, 1 false. Thirteen were patched, one
+deferred, three rejected with their reasons in the triage log above. The medium patches were all
+verification gaps rather than defects: the port's vendor-refusal mapping, both `DerivedFields` call
+sites, the in-transition prohibited refusal, the client-to-tool field roster, AC4's blur sentence,
+and AC3's unfalsifiable click assertion. Every new pinning test carries a `mutation:` row above, and
+every one of those mutations was applied, observed red and reverted with the tree byte-identical.
+
+Verification, all on a throwaway brought up fresh after the last edit (`ocupilot-b-ci`, 52777/1976):
+the full ObjectScript sweep, 181 classes and 1,648 tests, which found seven failures in five roster
+classes this story legitimately moved - each updated and re-run green, and no production ObjectScript
+has changed since that sweep but four doc comments. `npm run build` with all seven prebuild checkers
+clean; `npm test` 1,320 tools and 829 component tests; `web-applications-create.browser-spec.mjs`
+five for five against the deployed bundle; `check-objectscript.py` 0 problems over 619 files;
+`lint-docs.sh` clean; `smoke.sh` 46 executed, 46 passed, 0 failed.
+
+Two deviations the lead should see. The smoke ran against the throwaway rather than
+`ocupilot-slot-b`: slot B mounts `/Users/jbrandt/git/OcuPilot-slot-b/src`, which is outside this
+worktree and does not carry this story, so a smoke there would have answered about other code.
+And `Port/AdminPort.cls` took a ten-line edit inside `Fail` although the intent contract says it
+needs none - that sentence is about `MUTATINGTYPES`, while the spec's own `Api/Error.cls` task
+requires the vendor's `params[0]` to be mapped "at the port boundary", which is where `Fail` is.
+
+Residual risk, which is why a follow-up review is recommended: the full ObjectScript sweep has not
+re-run since the last round of test-class edits (every class touched was re-run individually and is
+green, and no production behavior changed), and Epic 7 is concurrently editing seven of the files
+this story also changed - `Api/Router.cls`, `Kernel/Proposal/{Confirm,Prohibited}.cls`,
+`Screen/Tool/Write.cls`, `Screen/Descriptor/WebAppList.cls` and
+`Test/{Prohibited,SurfaceCoverage}.cls`, with overlapping hunks in `Confirm.cls` and `Write.cls`,
+so the merge needs reading rather than accepting. The three `deferred` entries carry the rest.

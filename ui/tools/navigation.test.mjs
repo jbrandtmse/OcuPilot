@@ -155,6 +155,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'permissions/resources',
       'permissions/services',
       'web-applications/rest-apis/document',
+      'web-applications/list/edit',
       'web-applications/list',
       'web-applications/rest-apis',
       'security/oauth/clients',
@@ -171,7 +172,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/definitions',
       'agent/switches',
     ],
-    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view and Volume files, process details, processes, Locks, System usage, Databases, the unlisted task details and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, users, roles, resources, services, OpenAPI document viewer, web applications, REST API explorer, the four unlisted OAuth 2.0 tabs, Secrets, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view and Volume files, process details, processes, Locks, System usage, Databases, the unlisted task details and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, the four unlisted OAuth 2.0 tabs, Secrets, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
   );
 });
 
@@ -243,6 +244,11 @@ test('documentScreenFor resolves the REST API explorer to its unlisted, id-keyed
   assert.equal(editorScreenFor(explorer), null, 'and it pairs with no editor');
   assert.equal(documentScreenFor(screenForRoute('')), null, 'Home resolves no viewer');
   assert.equal(documentScreenFor(screenForRoute('web-applications/list')), null, 'and neither does a list with none');
+  // Story 8.1: the Web applications list pairs with an editor now, and that editor is the one
+  // `editorScreenFor`'s three halves admit -- built, unlisted and keyed by an id.
+  const webApps = screenForRoute('web-applications/list');
+  assert.equal(editorScreenFor(webApps).route, 'web-applications/list/edit', 'the Web applications list opens its own form');
+  assert.equal(isListedScreen(screenForRoute('web-applications/list/edit')), false, 'which takes no side-bar position');
   assert.deepEqual(
     listedScreensForArea('web-applications').map((screen) => screen.route),
     ['web-applications/list', 'web-applications/rest-apis'],

@@ -53,6 +53,12 @@ Parameter APIBASE = "/api/ocupilot";
 
 Parameter TOOL = "webapp.list.update";
 
+/// <p>Every <code>write</code>-kind tool this release has reviewed on the <code>webapp.list</code>
+/// identifier, comma-separated: Story 5.5's update and Story 8.1's create. A verb outside it --
+/// a delete above all -- is what
+/// <method>TestNoDeleteVerbIsAdvertisedForAWebApplication</method> refuses (AD-10).</p>
+Parameter REVIEWEDWRITES = "webapp.list.update,webapp.list.create";
+
 /// <p>Story 5.9's write tool and the screen that owns it, for the user legs below.</p>
 Parameter USERTOOL = "permissions.users.update";
 
@@ -524,15 +530,19 @@ Method Weakened(pField As %String, pValue As %RawString, pType As %String, pExpe
 /// nothing to propose it with.</p>
 /// <p>Asked of every registered tool rather than of one name: a delete could arrive under any
 /// verb, and the shape that would make it reachable is a <code>write</code>-kind tool on this
-/// screen's identifier that is not the one update this release reviewed.</p>
-/// <p>Mutation (Rule 19): add a second <code>write</code> tool under the
-/// <code>webapp.list</code> identifier and recompile the package -- this goes red naming it.</p>
+/// screen's identifier outside <parameter>REVIEWEDWRITES</parameter> -- the reviewed set, which
+/// Story 8.1's create joined and which holds no verb that removes anything.</p>
+/// <p>Mutation (Rule 19): add a third <code>write</code> tool under the <code>webapp.list</code>
+/// identifier and recompile the package -- this goes red naming it. Removing a name from
+/// <parameter>REVIEWEDWRITES</parameter> reddens it the same way, which is what keeps the roster
+/// a decision rather than a running total.</p>
 Method TestNoDeleteVerbIsAdvertisedForAWebApplication()
 {
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
     Do $$$AssertStatusOK(tSC, "the tool registry lists its tools")
     Set tIdentifier = $ClassMethod("OcuPilot.Screen.Descriptor.WebAppList", "ToolIdentifier")
     Do $$$AssertNotEquals(tIdentifier, "", "the web applications screen declares a tool identifier")
+    Set tReviewed = $ListFromString(..#REVIEWEDWRITES)
     Set tSeen = 0
     Set tWrites = 0
     Set tIterator = tTools.%GetIterator()
@@ -541,13 +551,18 @@ Method TestNoDeleteVerbIsAdvertisedForAWebApplication()
         Set tSeen = tSeen + 1
         If tTool.%Get("kind") '= "write" Continue
         Set tWrites = tWrites + 1
-        Do $$$AssertEquals(tTool.%Get("name"), ..#TOOL, "the only write verb on " _ tIdentifier _ " is the reviewed update, not '" _ tTool.%Get("name") _ "'")
+        Do $$$AssertTrue($ListFind(tReviewed, tTool.%Get("name")) > 0, "every write verb on " _ tIdentifier _ " is one this release reviewed, and '" _ tTool.%Get("name") _ "' is not")
     }
     Do $$$AssertTrue(tSeen > 0, "the registry carries tools on " _ tIdentifier _ " at all, so this assertion ran over something")
     ; The write-kind count, not only the tool count: the read tool alone satisfies tSeen, so a
     ; registry that advertised no write verb at all would pass the loop above having never entered
-    ; the branch that carries the claim.
-    Do $$$AssertEquals(tWrites, 1, "and exactly one of them is write-kind, so the assertion inside that branch ran")
+    ; the branch that carries the claim. Held equal to the reviewed roster's own length, so a tool
+    ; added to one and not the other reddens whichever way round it happened.
+    Do $$$AssertEquals(tWrites, $ListLength(tReviewed), "and there are exactly as many write verbs as the roster reviewed")
+    ; The claim in the method's own name, asserted rather than left to the roster's spelling.
+    For tI = 1:1:$ListLength(tReviewed) {
+        Do $$$AssertEquals($Piece($List(tReviewed, tI), ".", 3) [ "delete", 0, "no reviewed write verb removes a web application: " _ $List(tReviewed, tI))
+    }
 }
 
 /// <p>Story 5.8's residual: the pairs-before-prohibited reorder that fixed DW-1208 (a caller short

@@ -5259,3 +5259,21 @@ app-data-table {
 .ocu-home-system-value.ocu-home-system-absent {
   color: var(--ocu-restrained);
 }
+
+// --- The web-application form's authentication group (Story 8.1) ------------------------------
+//
+// A `fieldset` rather than a labelled control, because the methods are one question with several
+// answers and a screen reader has to hear the group's own name before each of them. The user
+// agent's default border, padding and margin are reset so the group draws as a `form-page` field
+// like every other one, and `min-inline-size: 0` is what stops a `fieldset` refusing to shrink
+// below its content -- the one box in this stylesheet that does not honour a width on its own.
+.ocu-form-authe {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ocu-form-authe legend {
+  padding: 0;
+}

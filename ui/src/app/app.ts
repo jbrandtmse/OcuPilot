@@ -11,6 +11,7 @@ import {
 import { NavigationStart, Router, RouterOutlet } from '@angular/router';
 
 import { DefinitionActions } from './areas/agent/definition-actions';
+import { WebAppActions } from './areas/web-applications/web-app-actions';
 import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
@@ -218,6 +219,12 @@ export class App {
   // its three row actions are registered by this service rather than by a page of its own
   // (`areas/agent/definition-actions.ts`). Injecting it here is what brings it into existence.
   private readonly definitionActions = inject(DefinitionActions);
+  // Constructed for its own sake, the same way, and for the same reason DW-246 gives: the Web
+  // applications list is served by the generic `ListPage`, so its declared Create is registered by
+  // a service rather than by a page -- and registering it here, before the first change-detection
+  // pass, is what keeps `CommandBar`'s own signal write out of a pass that has already checked it
+  // (`areas/web-applications/web-app-actions.ts`).
+  private readonly webAppActions = inject(WebAppActions);
   // Constructed for its own sake, the same way: there is no component whose job it is to act on
   // the agent's navigation directive, so injecting it here is what brings it into existence for
   // the life of the tab (`shell/agent-navigator.ts`).
