@@ -1697,6 +1697,7 @@ Method TestAnAccountShortOfTheTaskPairIsRefusedTheRunScreenAction()
         Do $$$AssertStatusOK(ex.AsStatus(), "the leg completes without raising")
     }
     Do $ClassMethod(tFixture, "DeleteRunProbeTask")
+    Do $$$AssertEquals($ClassMethod(tFixture, "ProbeCount"), 0, "and the run probe task is gone")
 }
 
 }

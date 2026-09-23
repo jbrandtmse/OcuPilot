@@ -154,3 +154,7 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T12:11:30Z	Story 7.5	pushed	sha=61f9c7dc ci=pending run=35858909423
 2026-09-23T12:11:30Z	Story 7.5	adr_verifications_complete	result=none_required model=claude-opus-5-5
 2026-09-23T12:11:30Z	Story 7.5	stage_spawned	stage=qa spawn_at=2026-09-23T12:11:30Z model=sonnet agent_name=7-5-run-an-on-demand-task-qa-1 cycle_iteration=1
+2026-09-23T12:13:54Z	Story 7.5	qa_complete	spawn_at=2026-09-23T12:13:00Z model=sonnet tests_added=0 mutations_demonstrated=0 first_run_failures=0 clarifications=0 closing_sections_present=true
+2026-09-23T12:13:54Z	Story 7.5	stage_spawned	stage=code-review spawn_at=2026-09-23T12:13:54Z model=opus agent_name=7-5-run-an-on-demand-task-code-review-1 cycle_iteration=1
+2026-09-23T12:37:13Z	Story 7.5	cr_complete	spawn_at=2026-09-23T12:13:54Z model=opus resolved=6 fixed_at_source=6 by_design=1 wontfix_theoretical=0 routed=0 escalated=0 decision_pending=0 deferred=2 dismissed=19 high=0 med=2 low=6 rows=27 unresolved_high_med=0 clarifications=0 closing_sections_present=true final=done ledger=DW-1542(by-design),DW-1543(wontfix-accepted)
+2026-09-23T12:37:13Z	Story 7.5	ci_observed	run=35858909423 attempt=1 result=failure job=browser tests=turn.browser-spec.mjs_213-217(a_30s_wait_then_four_navigation_timeouts_over_~2.5min,then_recovery;tests_218+_green) attribution=undetermined action=rerun_failed_job_for_evidence

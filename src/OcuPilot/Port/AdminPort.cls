@@ -464,8 +464,8 @@ ClassMethod VerifyInstance(Output pVersion As %Integer, Output pDetail As %Strin
 /// tell that from a write. It is refused here instead, as an internal failure with the generic
 /// reason (AD-12) and the cause in the log (DW-1427).</p>
 /// <p><b>A <parameter>CONSTANTBODIES</parameter> pair takes no caller body.</b> Given none, it is
-/// sent the port's constant; given an object, it is refused the same way and the vendor is not
-/// called (AD-27, AD-51).</p>
+/// sent the port's constant; given any body, an object or JSON text, it is refused the same way and
+/// the vendor is not called (AD-27, AD-51).</p>
 /// <p>Must not be called from an escalated frame (AD-9). The caller's namespace,
 /// <code>%request</code>, <code>%response</code> and <code>%session</code> are unchanged on
 /// return.</p>
@@ -505,7 +505,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         ; the vendor is reached rather than merged or replaced.
         Set tConstant = ..ConstantBody(pEndpoint, pType)
         If $IsObject(tConstant) {
-            If $IsObject(pBody) {
+            If $IsObject(pBody) || (pBody '= "") {
                 Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, .pHttpStatus, .pFault)
                 Do ..LogFault(pEndpoint _ " " _ pType _ " was given a caller body, and its body is the port's constant", $$$ERROR($$$GeneralError, "a CONSTANTBODIES pair takes no caller body"), pFault.code)
                 Quit

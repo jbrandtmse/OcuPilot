@@ -13,6 +13,9 @@
 /// skips a method's tail -- and <method>OnAfterOneTest</method> restores it again and asserts the
 /// restore worked, so a method that aborted mid-write cannot leave a later method reading a task
 /// that is no longer suspended. <method>OnAfterAllTests</method> deletes it.</p>
+/// <p><b>It also runs a task</b> (Story 7.5): its two run methods create
+/// <class>OcuPilot.Test.TaskRunFixture</class>'s probe, a task that runs <code>Quit</code> on demand,
+/// run it, wait at most 180 s for its history row, and delete it in their own frame.</p>
 Class OcuPilot.Test.TaskResume Extends %UnitTest.TestCase
 {
 

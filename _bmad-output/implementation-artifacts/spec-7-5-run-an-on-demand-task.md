@@ -275,6 +275,41 @@ Measured on the throwaway `ocupilot-ci`, 2026-09-23, with a `%SYS.Task.RunLegacy
 - Integration AC (Rule 1): `ListPage` consumes the `task` change event this write publishes and
   re-reads the row in place, observed in the browser screen leg against a real throwaway.
 
+### Review Findings
+
+Code review 2026-09-23 (four layers, full-opus): 8 kept -- 0 high, 2 med, 6 low; 6 patched, 2 ledgered; 19 rejected. Patches verified on `ocupilot-ci`: `TaskRun` 6/6 (run 7988); `ProhibitedRoute` 22 passed, 1 skipped (the auditing method, as designed), 0 failed (run 7989). `TaskResume` compiles; it runs in CI only.
+
+- [x] [Review][Patch] The run's "ledger records no field" check passed when the confirm wrote no ledger row at all [src/OcuPilot/Test/TaskRun.cls:186] -- it now asserts exactly one write ledger row first.
+- [x] [Review][Patch] A caller body sent as JSON text was silently replaced by the constant [src/OcuPilot/Port/AdminPort.cls:508] -- any non-empty caller body is now refused 500, pinned by a leg in `TestThePortSendsRunsConstantBodyAndRefusesACallersBody`.
+- [x] [Review][Patch] AC4's fingerprint half had no recorded mutation -- recorded under Verification.
+- [x] [Review][Patch] The `TaskRun` test header said "the one call" to the shipped port (there are three), and the 404 message claimed the vendor validated the body [src/OcuPilot/Test/TaskRun.cls:7,228]
+- [x] [Review][Patch] `TaskResume`'s header did not say the class now runs a task [src/OcuPilot/Test/TaskResume.cls:15]
+- [x] [Review][Patch] `ProhibitedRoute`'s run leg did not assert the probe task is gone [src/OcuPilot/Test/ProhibitedRoute.cls]
+- [x] [Review][Defer] Run from the list resumes a suspended task with no dialog -- DW-1542, by-design (spec Never: no dialog; the Suspended-target matrix row)
+- [x] [Review][Defer] The two "NextScheduled is set at once" checks race a Task Manager pass -- DW-1543, wontfix-accepted
+
+Rejected:
+
+- false: `NoLockHeld` cannot go red. On `ocupilot-ci`, holding `^SYS("Task","TaskD",999999999)` in `%SYS` made it answer 0, and releasing the lock made it answer 1.
+- false: the input schema's "a task the list does not report is refused" is never enforced. The on-demand set is every task (`TaskLists`), and an absent id fails `INFO`.
+- false: `ProhibitedRoute` runs a task under the wrong arming variable. The refusal lands before the port, and the class already creates `TaskResume`'s probe.
+- low: `StateDiff` refuses a numeric `Suspended`, which `TaskResume` accepts. `INFO` answers a JSON boolean (task 1 on `ocupilot-ci`).
+- low: a string `"true"` passes as a boolean. The vendor sends a boolean.
+- low: nothing checks that `CONSTANTBODIES` is well formed. A malformed entry turns `ToolWrite`'s bodyless-roster test red for its tool.
+- low: a `;` inside a constant body would split the entry. No such body exists.
+- low: the run legs do not check that the Task Manager is running. `tasks.browser-spec.mjs` restores it, and a suspended one turns the wait red anyway.
+- low: `EnsureRunProbeTask` keeps a leaked probe's pending run. That run clears at the next pass.
+- low: a failed `HistoryHighWater` could let an older Success row count. That also needs a reused probe id.
+- low: a localized `Success` would not match. This build writes the literal.
+- low: running a task that is already running queues a second run. That is the vendor's `RunNow`, as in the classic page.
+- low: the fingerprint's `NextScheduled` refuses a confirm when a scheduled run fires in between. The refusal is safe, and AC4 names the field.
+- low: `TaskRun` repeats six `TaskResume` members. Story 7.6 subclasses `TaskRun`, so no third copy is planned.
+- low: the browser agent leg does not read the card's status, and it counts history rows by name. `AwaitRun` proves the confirm, and the history screen is scoped to the task id.
+- low: the handler spec covers only the 200. The refusal path is the shared handler's, which 7.1-7.4 pin.
+- low: the `REFUSEEMPTY` doc does not name the run. Its general sentence covers every write tool.
+- spec: `TaskResume` is 736 lines, over the 500-line guideline. The spec puts the armed methods there because a new armed class is forbidden.
+- process: `TaskResume`'s two new methods have not run yet. CI run 35858909423 decides that (Rule 28).
+
 ## Spec Change Log
 
 - 2026-09-23, lead spec gate: the AD-51 sentence (a fixed vendor body comes from the port) is in the
@@ -393,6 +428,8 @@ Task runs happen only on the throwaway `ocupilot-ci` (web 52776), with the probe
   - `mutation: emptyAgentKey "" on TaskOnDemandList → red: screen-mirror.test.mjs, the generator refusing the write-capable list (AC5)`
   - `mutation: CONSTANTBODIES "" → red: TaskRun.TestThePortSendsRunsConstantBodyAndRefusesACallersBody and the browser screen leg (the port refuses the bodyless RUN 500, so the row never marks) (port)`
   - `mutation: RefreshService.onBusEvent without its readNow(), rebuilt and redeployed → red: task-run.browser-spec.mjs screen leg, Next run never fills after the press (Integration AC)`
+  - `mutation: TaskRun FINGERPRINTSUBJECT "Suspended", reloaded on ocupilot-ci → red: TaskRun.TestAConfirmAfterEitherFieldMovedIsRefused, the NextScheduled-moved leg confirms (AC4, code review)`
+  - `mutation: AdminPort.Invoke's constant-body guard back to $IsObject(pBody) only, reloaded → red: TaskRun.TestThePortSendsRunsConstantBodyAndRefusesACallersBody, "as the same port fault" reads 404 (port, code review)`
 
 **Once, before `dev_complete`:**
 

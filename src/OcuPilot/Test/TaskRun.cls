@@ -3,7 +3,7 @@
 /// <code>RUN</code> body.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and a caller holding
 /// <code>%Admin_Task:USE</code> and <code>%DB_IRISSYS:READ</code>. It runs no task: the mint and the
-/// confirm go through <class>OcuPilot.Test.ProposalFixture</class>'s port, and the one call it makes
+/// confirm go through <class>OcuPilot.Test.ProposalFixture</class>'s port, and every call it makes
 /// to the shipped port names a task id no task carries.</p>
 Class OcuPilot.Test.TaskRun Extends %UnitTest.TestCase
 {
@@ -182,6 +182,8 @@ Method TestTheConfirmedRunCarriesNoBodyFromTheKernel()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LastType(), "RUN", "as the vendor's RUN")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LastQuery("id"), "41", "carrying the id")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LastWriteBody(), "", "and no body from the kernel")
+    Set tMarked = ##class(OcuPilot.Test.AuditingUpdate).LedgerColumn(tTurn, "auditMarked")
+    Do $$$AssertTrue((tMarked '= "") && ($Length(tMarked, ",") = 1), "the confirm wrote exactly one write ledger row: '" _ tMarked _ "'")
     Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).LedgerColumn(tTurn, "fields"), "", "so the ledger row names no field")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
 }
@@ -215,9 +217,15 @@ Method TestThePortSendsRunsConstantBodyAndRefusesACallersBody()
 
     Kill tQuery
     Set tQuery("id") = ..#ABSENTID
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Task.CRUD", "RUN", .tQuery, "{""RunNow"":false}", .tAnswer, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "a caller body sent as JSON text is refused too")
+    Do $$$AssertEquals(+$Get(tHttp), 500, "as the same port fault, not replaced by the constant")
+
+    Kill tQuery
+    Set tQuery("id") = ..#ABSENTID
     Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Task.CRUD", "RUN", .tQuery, "", .tAnswer, .tHttp, .tFault)
     Do $$$AssertStatusNotOK(tSC, "a RUN for a task no task carries fails")
-    Do $$$AssertEquals(+$Get(tHttp), 404, "at the vendor's own 404, so the constant body passed its validation")
+    Do $$$AssertEquals(+$Get(tHttp), 404, "at the vendor's own 404, past the port's body guard")
 }
 
 /// <p>Mint one <code>tasks.ondemand.run</code> proposal for <var>pId</var> through

@@ -6148,3 +6148,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-4-turn-auditing-on-and-off-from-the-screen.md (cr) | severity: low | fix-risk: low | footprint: in-story
 - evidence: panel.ts shows the action for administrator; an OcuPilot administrator without %Admin_Secure lands on the screen's refusal. AC3 and the I/O matrix specify the administrator gate and the denied user's refusal.
 - 2026-09-23T10:01:27Z status=by-design owner=7-4-turn-auditing-on-and-off-from-the-screen by=cr note=AC3 names OcuPilot administrators; reopens only via spec amendment
+
+### DW-1542: Run from the On-demand list resumes a suspended task with no dialog and no Suspended column on the list
+- source: spec-7-5-run-an-on-demand-task.md (code review) | severity: med | fix-risk: low | footprint: in-story
+- evidence: The vendor's RunNow clears Suspended (measured at planning); the agent's card shows the resume row, the screen's Run sends at once (TaskRun.StateDiff; screen-action-handler.ts sends a non-destructive action with no warning).
+- 2026-09-23T12:25:51Z status=by-design owner=7-5-run-an-on-demand-task by=cr note=spec Never: no dialog before Run (EXPERIENCE :173); matrix row Suspended target accepts the resume; reopens only via spec amendment
+
+### DW-1543: The two 'NextScheduled is set at once' checks race a Task Manager pass that lands between the write and the read
+- source: spec-7-5-run-an-on-demand-task.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: TaskResume.TestTheAgentsRunIsConfirmedAndLandsInTheTasksHistory reads INFO right after Confirm, and the browser screen leg waits for a digit in Next run; a run landing in that ms window clears NextScheduled first (inference; landing measured 26-43 s).
+- 2026-09-23T12:25:52Z status=wontfix-accepted owner=7-5-run-an-on-demand-task by=cr note=reopen_if=a CI run reds 'INFO's NextScheduled is set at once' or the Next-run wait while AwaitRun shows the run landed
