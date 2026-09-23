@@ -4,7 +4,7 @@
 
 ## Goal
 
-This is build step 4. Completing it clears the last floor requirement below the create-and-edit line. A user does the small jobs that make up most daily administration (enable, disable, run, suspend, resume, terminate and delete) from the row menu or the command bar, and the row updates in place. The user can also ask the agent to do any of these through a confirmed proposal. Epic 5 built the write path and one write per area, and Epic 6 built the screens. This epic adds the remaining verbs to screens that already exist, so each action has two callers: the screen and the agent's write tool. Stories 7.1 to 7.6 and 7.8 are done. 7.1 built the shared seam, 7.2 added value-carrying actions and secrets, 7.3 applied the seam to a second family unchanged, 7.4 built the Auditing configuration screen with the first warning (non-destructive) dialog, 7.5 added the first task action (Run on On-demand tasks), 7.6 put Run, Suspend, Resume and Delete on the Task schedule and replayed UJ-6 against Task details, and 7.8 put Suspend, Resume and Terminate on Processes and Process details. 7.10 and 7.11 remain.
+This is build step 4. Completing it clears the last floor requirement below the create-and-edit line. A user does the small jobs that make up most daily administration (enable, disable, run, suspend, resume, terminate and delete) from the row menu or the command bar, and the row updates in place. The user can also ask the agent to do any of these through a confirmed proposal. Epic 5 built the write path and one write per area, and Epic 6 built the screens. This epic adds the remaining verbs to screens that already exist, so each action has two callers: the screen and the agent's write tool. Stories 7.1 to 7.6, 7.8 and 7.10 are done. The one remaining story is 7.11. It completes the Auditing configuration screen that 7.4 built by adding row actions to its system-event and user-event lists, plus the selective SQL auditing wizard.
 
 ## Stories
 
@@ -15,84 +15,137 @@ This is build step 4. Completing it clears the last floor requirement below the 
 - Story 7.5: Run an on-demand task (done)
 - Story 7.6: Run, suspend, resume and delete a task (done)
 - Story 7.8: Terminate, suspend and resume a process (done)
-- Story 7.10: The remaining application error delete scopes
+- Story 7.10: The remaining application error delete scopes (done)
 - Story 7.11: System and user audit event configuration
 
 Stories 7.7 (Task Manager control) and 7.9 (lock removal) moved to Epic 16 as 16.11 and 16.12.
 
 ## Requirements & Constraints
 
-- **Two callers, one operation.** A story is not done when the button works. The agent's write tool follows the full model: a server-minted proposal built from a fresh read, a diff computed on the instance, and a confirmation sent as a separate authenticated request that executes the stored arguments. The prohibited set and both switches are evaluated at the write, inside the atomic transition, and the agent's write carries the agent marker. Both callers publish the change event.
-- **Self-protection is enforced on the instance, never only in the UI.** The row menu only explains a refusal. The instance refuses the following whatever the caller:
-  - removing an account or its administration when the account is the current user, `_SYSTEM`, the service account or the last `%All` holder. "Removing" covers a delete, a disable and a `Roles` delta that strips `%All`. 7.2 restructured these predicates to work by effect and closed DW-1486 with no residual;
-  - deleting or disabling OcuPilot's own web applications or the web service it runs on, and setting application roles on OcuPilot's own web applications;
-  - control actions (suspend, resume, terminate) on the process serving the request or on any OcuPilot turn job, or on an IRIS system process (`JobType` off the allow-list). A process rule cannot be computed on the client, so those row actions declare `selfProtection ""` and the refusal is shown after the click from the envelope's `reason`.
-- **Privilege grants are permitted (owner reversal, 2026-09-23).** A caller may add `%All`, any `%Admin_*` role or a role that carries them, from the screen or through the agent. The agent's proposal takes the strongest confirmation, the typed name, and its diff names the privilege granted. The screen's Add role dialog shows a consequence line (`privilegedGrantEffect`). The account protections are unchanged. Epic 8 implements the predicate, the confirmation level and the key, and amends AD-10's grant bullet. Until Epic 8 merges, this branch's spine and kernel still refuse grants with `PROHIBITED.PRIVILEGEGRANT`. DW-1523 routes the dialog's consequence line to 9.1.
-- **Warnings before a non-delete write** use a primary button, not a destructive one: disabling auditing ("agent writes will no longer be marked") and disabling OcuPilot's own audit events. A proposal for either carries the warning in its card.
-- **Secrets are write-only.** The set-password dialog never pre-fills, never echoes a stored value, accepts pasted text without trimming and carries a change-on-login flag. The password is sent once and no read returns it.
-- **Application error deletes need all three scopes:** by namespace, by date and by individual error. `DeleteByDate` is either implemented or explicitly refused. The fingerprint is the set of ids enumerated at mint, and confirm deletes exactly those. The namespace comes from the level the user has drilled to, never from `?ns=`. The gate is per namespace: `%Admin_Operate` plus read and write on the database that holds that namespace's `^ERRORS`.
-- **`Security.Audit.Event` (7.11)** has no body template and its PUT is an upsert. Derive its field list from the class, pin the list with a test, and test the upsert path.
-- **Task-list quirk (IRIS 2026.2).** After a suspend or resume, the list's `Suspended` field is stale while the task's info read is correct. The in-place update and the write's verification both read task info.
-- **Task runs (measured).** A run sets `NextScheduled` to the request time at once. The run itself lands at the Task Manager's next whole-minute pass (measured 26–43 s), which sets `LastStarted`/`LastFinished` and adds a `Success` history row. Running a suspended task also resumes it, so the diff shows that rather than refusing. Run opens no dialog.
-- **Task delete (7.6).** Delete confirms by the typed task `Name` while the request sends the numeric `Id`. Deleting one of the instance's own system tasks is permitted, never prohibited (the owner's "developer tool first"): it takes the typed-name confirmation and carries a consequence line in the dialog and on the agent's proposal card. The vendor keeps a deleted task's history rows (measured).
-- **A no-op action is refused 400 `TOOL.ARGUMENTS` with `detail.problem`, and nothing is sent** (7.6's ruling: suspending a suspended task, resuming a running one). Both callers answer in that shape so the two callers of AD-53 agree; the vendor itself would answer 200 and log a history row.
-- **Task reads differ (measured).** `LIST` rows carry `Name`, `Type` and `Id` but a `Suspended` that is always false; `GET` has `Name` but no `Type` or `Suspended`; `INFO` has a truthful `Suspended`, `Status` and `Type` but no `Name`. Every suspend or resume, a no-op included, writes a history row.
-- **A confirm is a user request outside any turn.** No agent reply follows it, so nothing after a confirmed resume names the next run or offers the audit entry; that clause is amended out of 5.11 and UJ-6.
-- **Tests that run a task** use a harmless probe task they create and delete themselves, on a throwaway only, never the demo task. A wait for the run is bounded (180 s), so a held lock reads red rather than hanging.
+- **Two callers, one operation.** A story is not done when the button works. The agent's write tool follows the full model:
+  - a server-minted proposal built from a fresh read;
+  - a diff computed on the instance;
+  - a confirmation sent as a separate authenticated request that executes the stored arguments;
+  - the prohibited set and both switches, evaluated at the write inside the atomic transition;
+  - the agent marker.
+
+  Both callers publish the change event, and the row updates in place.
+- **Audit event configuration (7.11).**
+  - A system event can be enabled, disabled and have its counter reset.
+  - A user event can be created, configured and deleted.
+  - The selective SQL auditing wizard configures the SQL audit events it covers.
+- **`Security.Audit.Event` publishes no body template, and its PUT is an upsert.** Derive the write's field list from the underlying class, pin it with a test, and test the upsert path explicitly.
+- **Disabling OcuPilot's own audit events** must state the consequence: agent writes stop being marked. It is a non-delete write, so it takes the warning dialog with a primary button. The panel's "Agent writes are not being marked" banner must appear the moment the disable takes effect, and a proposal for it carries the warning in its card.
+- **Self-protection is enforced on the instance, never only in the UI.** The row menu only explains a refusal, and the kernel refuses the prohibited set whatever the caller. Each predicate is stated over the effect, so a bodyless delete still reaches the arm that protects its target.
+- **Privilege grants are permitted (owner reversal, 2026-09-23).** Epic 8 implements this. Until it merges, this branch's kernel still refuses grants with `PROHIBITED.PRIVILEGEGRANT`.
+- **A no-op action is refused with 400 `TOOL.ARGUMENTS` and `detail.problem`, and nothing is sent.** Both callers answer in that shape.
+- **A confirm is a user request outside any turn**, so no agent reply follows it.
+- **Destructive or state-changing tests run only on a throwaway**, only against fixtures the test created itself, and one test class per call.
 
 ## Technical Decisions
 
-- **AD-53 is the seam.** A user-originated `POST /screens/:screen/action` sits beside `GET /screens/:screen/read`, and both callers share one operation. They share target resolution through the tool's declared port, the fresh read, the prohibited set evaluated at the write, and the caller's own privilege pairs. The pairs are checked **before** the fresh read, so a short account gets `AUTH.NOPRIVILEGE` naming the failed pair. They also share the change event and the vendor's audit record. The screen caller mints no proposal, emits no agent marker, and is not gated by the kill switch or enforced read-only.
-- **Predicates are stated over the effect, never over the payload's shape or the verb (AD-10, AD-53).** A bodyless delete has no changed fields and must still reach the arm that protects its target. Each arm carries a test that fails when its predicate is removed. Every new entity type a write touches is covered in `Prohibited.cls`, or its writes are refused as `PROHIBITED.UNCOVERED`. For an example, see 7.3's `OAuthEntry`.
-- **Refusal copy is written once.** Each self-protection sentence is a row in EXPERIENCE.md's Fixed strings. The same sentence is the kernel's envelope `reason` and the inline reason on the non-selectable row action, and a test pins the two equal. A reason that names "the agent" is a defect once a screen caller reaches its arm. 7.2 fixed the four account sentences and 7.8 the two process ones (`OCUPILOTPROCESSREASON`, `SYSTEMPROCESSREASON`); the DW-1499 residual is Epic 8's `PRIVILEGEGRANT`.
-- **AD-56 governs values a caller puts into a write:**
-  - *Secret-only body.* An action write may send a body made only of its declared secrets. A password change is `Security.User`'s `CHANGEPWD` request with `{NewPassword}`. The kernel carries the secret as `Password`, and `AdminPort.RENAMEDTYPES` renames it on the wire. The secret is never stored, and the fingerprint never includes it. The change-on-login flag is a separate `update` write, sent **first** and **again after the password lands**, because the vendor's password change clears `ChangePassword` (amended 2026-09-23). When two agent proposals carry the pair, the flag's proposal is confirmed after the password's. A declared action with no menu handler is admitted by the route but drawn by no surface; 7.2's `require-password-change` is the example.
-  - *Declared values only.* The route refuses, and never ignores, a key the tool does not declare. A list field changes by a **server-side delta over a fresh read**, one member at a time, never by a list the client computes. 7.2's `SCREENVALUES` is the mechanism. A non-secret value must land in a settable field, so a bodyless action cannot carry one: 7.8's error-to-job flag is instead a second tool reached through an undrawn declared action (`terminate-with-error`).
-  - *One secret declaration.* Secrets use the descriptor's existing `secretArguments` and nothing parallel.
-- **Action-style writes** (delete, run, suspend, resume, terminate) declare `WRITETYPE`, `SENDSBODY = 0` (except for AD-56's secret body), `CHANGEACTION`, `DESTRUCTIVE` where it applies, and a non-empty `FINGERPRINTSUBJECT` with a `PRECONDITIONFIELD` inside it. The subject is drawn from keys the target's read actually answers, measured on the instance. It excludes identity, fast-moving counters and any secret-pattern key. `WebAppDelete`, `ErrorDelete`, 7.3's two OAuth deletes, 7.5's `TaskRun` (subject `NextScheduled,Suspended`, `STATEFIELD` `NextScheduled`) and 7.8's `ProcessTerminate` (subject `Pid,StartTimeUTC`, the pid-reuse guard; `State` left out because it moves on busy processes; `STATEFIELD State` with a server-side after-value) are the precedents. A subject field the screen's read does not declare is named in `READANSWERS`. Every diff-row label must be the `STATEFIELD` or a subject name, or `Prohibited.ReviewedFewOnly` refuses it.
-- **A fixed vendor body comes from the port (AD-51, amended 2026-09-23).** Where a vendor type requires a body no caller supplies (`Task.CRUD` `RUN`'s `{"RunNow":true}`), `AdminPort.CONSTANTBODIES` supplies it, keyed by endpoint and type, as `RENAMEDTYPES` supplies a renamed key. The tool still sends no body, the ledger records none, and a caller body for such a pair is refused as a port fault before the vendor is called.
-- **Task writes hold no `%SYS.Task` OREF and no transaction across the write.** `RunNow` raises a held OREF to concurrency 4, and the Task Manager skips a locked task, so a held reference stops the run. The write path already runs at `$TLEVEL` 0 with no OcuPilot lock.
-- **Task targets** use the vendor's numeric `Id` under the `task:integer` identity rule. A task list that declares a row action keys rows by `composite ["Id"]`, never by name.
-- **A tool-declared port can compose a read (AD-52).** 7.6's `Port/TaskPort.cls` extends `AdminPort` and completes a `Task.CRUD` `GET` with `INFO`'s `Type`, so the mint, the confirm re-read and the screen caller see one answer; an `INFO` failure fails the read. A new port reaches the vendor only through `AdminPort`, the one class that names an `%Api.Admin.*` class (AD-2, AD-27). A non-default port bypasses `ProposalFixture`'s canned-read seam.
-- **A port may write through the vendor's own `%SYS` class (AD-52 named case, amended 2026-09-23).** Where the admin API cannot express a write, a tool-declared port may call the documented `%SYS` method the vendor endpoint itself calls, after repeating that endpoint's gate (its `ResourcesOR()` resource at `USE`), its not-found answer and its guard. 7.8's `Port/ProcessPort.cls` is the case: `Process` `TERMINATE` never passes `SYS.Process.Terminate`'s `SendError`, so the port checks `%Admin_Operate:USE` (403), opens `SYS.Process` in `%SYS` (404), refuses `'CanBeTerminated` (409) and calls `Terminate(1)`, holding no OREF. Every other call goes to `##super`. The tool selects it through `PortQuery` (`ErrorDelete` precedent).
-- **Merge writes** (enable, disable and role deltas among them) reuse the area's shipped update tool, and nothing else writes those fields. Field lists are derived, never hand-typed.
-- **Pair sets are the screen's own**, with administrative resources at `USE`, never `WRITE`. Measure the vendor gate rather than recalling it. 7.3 found that OAuth needs only the tab's resource, not `%Admin_Secure`.
-- **Descriptors declare row actions** with a `selfProtection` rule from a closed vocabulary (`""` where no rule applies). An action is declared only in the same pass that registers its handler. A list that declares a row action names `emptyAgentKey` and leaves `emptyNextKey` empty. Tool names follow `<area>.<screen>.<verb>`. Row key and typed name use the vendor's IdKey. For example, a server client is keyed by `ClientId`, not by its non-unique `Name`.
-- **Identity** is `(entity type, scope, id)` in each type's canonical form (users use `user:foldcase`), and it applies at mint, confirm, row action and change event. There is one change event per write. Screens re-fetch in place and never patch rows from a write response.
-- **Disabling auditing cannot be marked.** Its ledger row reads "done · audit not marked" and the banner shows. The re-enable is marked.
-- **A write that opens or closes the audit channel records the observed marking fact (AD-53, amended 2026-09-23).** The banner reads a stored `writesMarked` fact, not the live setting. The agent's caller records it from its marker's answer. The screen caller emits no marker, so after the write it re-reads through the tool's port, with the caller's own privileges, the instance auditing flag and OcuPilot's marker event (marked = both enabled) and records that. This is OcuPilot's own state, not a marker. A failed observation records nothing, logs, and never fails the write. A tool opts in with `Parameter MOVESMARKING = 1`: `AuditingUpdate` (7.4) is the first, and 7.11's disable of OcuPilot's own events is the second.
-- **Form pages without a table.** The Registry and the client mirror exempt a `form-page` that declares no `table` over a single-object `GET` read from the table-text rule (no column header or empty-state key needed). `AuditingConfig` is the precedent: its `emptyStateKey` is `""`.
-- **Warning pending kind.** The shell's row-action handler has a `warning` pending kind beside `typed-name`, driven by `WARNING_CONSEQUENCES`. A form with no rows selects its singleton itself so the handler, command bar and command box all offer its actions.
-- **Known limits.** A screen action takes no per-target lock, and the screen caller carries no fingerprint, so a pid reused while the terminate dialog is open would be terminated (DW-1566, theoretical). A pooled CSP server serving another user's OcuPilot request is not an OcuPilot process by AD-10's definition and can be terminated (DW-1565, by design). The client mirrors only the install roster's protected paths. A task whose namespace is unreachable cannot be deleted from OcuPilot, because the vendor's `GET` switches into it (DW-1558, accepted; fails closed).
+- **AD-53 is the seam.**
+  - The screen action is a user-originated `POST /screens/:screen/action`, beside `GET /screens/:screen/read`.
+  - Both callers share:
+    - target resolution through the tool's declared port;
+    - the fresh read;
+    - the prohibited set, evaluated at the write;
+    - the caller's own privilege pairs, checked **before** the fresh read, so a short account gets `AUTH.NOPRIVILEGE` naming the failed pair;
+    - the change event;
+    - the vendor's audit record.
+  - The screen caller mints no proposal, emits no agent marker, and is not gated by the kill switch or enforced read-only.
+- **`MOVESMARKING` (AD-53, amended 2026-09-23).** A write that opens or closes the audit channel records the observed marking fact that the banner reads.
+  - The agent's caller takes the fact from its marker's own answer.
+  - The screen caller emits no marker, so after the write it re-reads through the tool's port, with the caller's own privileges. It reads the instance auditing flag and OcuPilot's marker event (marked = both enabled) and records that.
+  - A failed observation records nothing and never fails the write.
+  - A tool opts in with `Parameter MOVESMARKING = 1`. `AuditingUpdate` (7.4) is the first, and 7.11's disable of OcuPilot's own events is the second.
+  - `Kernel/Audit/Event.cls` provides `ObserveMarking`, `MovesMarking` and `RecordMarking`. The install rule it mirrors: with auditing off, the answer is 0 without reading the event, and a 404 on the event means "not marked".
+- **Closing the audit channel cannot be marked (AD-15).** Once the write closes the channel, the marker has nowhere to land. The ledger row reads "done · audit not marked" and the banner shows. The re-enable is marked. OcuPilot registers its events under its own Source at install (for example `OcuPilot/Security/AgentWrite`, `OcuPilot/Security/ConfigChange`), and they appear among the user events.
+- **Audit event reads (measured in 7.4).**
+  - `Security.Audit.Event` `LIST` takes `eventOwner`:
+    - 1 answers the system events (75 rows);
+    - 0 answers the user events (4 rows, OcuPilot's own among them);
+    - 2 answers all of them.
+  - A row is `{EventName, Enabled, Total, Written, Lost}`.
+  - `GET` needs `source`, `type` and `name`, and answers `{Description, Enabled}`.
+  - The vendor gate (`ResourcesOR`) is `%Admin_Secure`, so the pair is `%Admin_Secure:USE`.
+  - The lists are 7.4's `AuditSystemEventList` and `AuditUserEventList`: entity type `audit-event`, id `EventName`.
+- **Merge writes** (enable, disable) reuse the area's update tool, and nothing else writes those fields.
+  - `SCREENACTIONS` maps an action to fixed values. Its grammar is `enable=Enabled:true,disable=Enabled:false`, as in `WebAppUpdate` and `AuditingUpdate`.
+  - Field lists are derived, never hand-typed.
+- **Action-style writes** (delete, reset) declare:
+  - `WRITETYPE`;
+  - `SENDSBODY = 0`;
+  - `CHANGEACTION`;
+  - `DESTRUCTIVE` where it applies;
+  - a non-empty `FINGERPRINTSUBJECT` with a `PRECONDITIONFIELD` inside it, drawn from keys the target's read actually answers (measured). It excludes identity, fast-moving counters and secret-pattern keys.
+
+  Every diff-row label must be the `STATEFIELD` or a subject name, or `Prohibited.ReviewedFewOnly` refuses it. A fixed vendor body that no caller supplies comes from `AdminPort.CONSTANTBODIES`, keyed by endpoint and type.
+- **AD-56: values a caller puts into a write.**
+  - The route refuses, and never ignores, a key the tool does not declare.
+  - A non-secret value must land in a settable field, so a bodyless action cannot carry one. Use a second tool reached through an undrawn declared action instead; 7.8's `terminate-with-error` is the precedent.
+  - A list field changes by a server-side delta over a fresh read (7.2's `SCREENVALUES`).
+- **The prohibited set has one home, in `Prohibited.cls`.** Every new entity type a write touches is covered there, or its writes are refused as `PROHIBITED.UNCOVERED`. Each arm has a test that fails when the arm is removed.
+- **Refusal copy is written once.** The same sentence appears in EXPERIENCE.md's Fixed strings, as the kernel's envelope `reason`, and as the row action's inline reason, and a test pins them equal. A reason that names "the agent" is a defect.
+- **Ports (AD-52, AD-27).** A tool may declare its own port, and only `AdminPort` names an `%Api.Admin.*` class. Where the admin API cannot express a write, a port may call the documented `%SYS` method the vendor endpoint itself calls. It must first repeat that endpoint's gate, its not-found answer and its guard (7.8's `ProcessPort` is the precedent). A non-default port bypasses `ProposalFixture`'s canned-read seam.
+- **Descriptors.**
+  - A row action has a `selfProtection` rule from a closed vocabulary (`""` where none applies).
+  - An action is declared only in the same pass that registers its handler.
+  - A list that declares a row action names `emptyAgentKey` and leaves `emptyNextKey` empty.
+  - Tool names follow `<area>.<screen>.<verb>`.
+  - The row key and the typed name use the vendor's IdKey.
+- **Identity** is `(entity type, scope, id)` in canonical form, at mint, confirm, row action and change event. Each write publishes one change event. Screens re-fetch and never patch.
+- **Application errors (AD-48, amended 2026-09-23).** All three delete scopes (namespace; namespace and date; one error) are prefixes of the composite id. Each is enumerated at mint and deleted through `DeleteByError`. `DeleteByDate` and `DeleteByNamespace` are never called.
 
 ## UX & Interaction Patterns
 
-- **Row menu.** Actions appear in command-bar order with destructive ones last. Refused and privilege-gated actions stay listed as non-selectable rows that the arrow keys still reach, with the reason inline, and they are never Material-disabled. Every row-menu item is also on the command bar.
-- **Command bar.** Its 50px height is now a minimum. When the actions do not fit, the bar wraps onto more lines and grows, so no action is hidden and the content never scrolls sideways at its 640px minimum.
-- **Typed-name dialog** (in the shell, from 7.1). The title names the action and target, and the body states the consequence. Typing the name is an exact, case-sensitive match, and pasting is allowed. On blur, a mismatch shows "Does not match" and sets `aria-invalid`. The `button-destructive` button is labeled with the verb and target and stays `aria-disabled` until the name matches. After a delete, focus returns to the grid. Terminate (7.8) is titled with the pid, which the person types, and adds an optional, unchecked error-to-job checkbox (`flagLabel` input; `confirmed` emits its state; a checked box sends the flag's undrawn action instead). Process details, a bespoke page, selects its own pid after each load, hosts the dialog itself, posts to the list's tool through an action-address map, and after a `process` change event re-reads to show `processDetailsGone`. Each destructive action has its own consequence body in the shell handler's `DESTRUCTIVE_CONSEQUENCES`. Since 7.6 the dialog's typed and titled `name` can differ from the sent `target` (a per-list typed-name field map read off the selected row), and an optional `advisory` second paragraph (warning banner) carries a row-dependent consequence such as the system-task line.
-- **Destructive proposal card.** It carries the same typed-name field. The removal-residue sentence appears only for `application-error`. A `task` card whose removal rows read `Type: System` draws the system-task line; the card knows only what its rows carry, so a row-dependent line needs its field in the tool's subject.
-- **Banner.** "Agent writes are not being marked" appears the moment auditing goes off (from either caller) and clears when it returns.
-- **Warning dialog** (`app-warning-dialog`, from 7.4). It precedes a non-delete write. The title is the verb, the body is the consequence, "Proceed" is `button-primary`, and initial focus is on Cancel. Escape, Cancel and the scrim send nothing. Suspend Task Manager and the web-service warning reuse it later.
-- **Auditing configuration** (built by 7.4) is a form: a status line ("Auditing is on." / "Auditing is off.") and one button, "Turn auditing off" (secondary, through the warning dialog) or "Turn auditing on" (primary, no dialog). The read-only System events and User events lists (columns name, status, Total, Written, Lost) sit beneath it, each also at its own route, and the screen cross-links to the Audit database viewer. The page re-reads on an `auditing-configuration` change event and does not bind the refresh service. 7.11 adds the lists' row actions and the SQL wizard on the same descriptors.
-- **Banner links.** The not-marked banner's "Auditing configuration" link is shown to every user. Its "Turn auditing on" action is shown only to an OcuPilot administrator and opens the screen with that button focused.
-- **Fault banner hold (7.8).** A cleared fault keeps the strip mounted for `FAULT_CLEAR_HOLD_MS` (1,500 ms); a fault raised within the hold reuses the same strip and control. This closed the lost-click and flicker window (DW-1155, DW-1189).
-- **Non-destructive, unwarned actions** (Run, Suspend, Resume) are sent at once with no dialog. The row is marked changed in place, keeping its filter and selection. On-demand tasks shows a Next run column so the run is visible at the write. The Task schedule shows a Suspended column after Type, fed by the task's `INFO` rowGet, never the list's field. The lists do not auto-refresh, so Last run changes only on re-read.
-- **Task copy.** The proposal card's noun for a task is "Task" (`proposalEntityTask`). On-demand tasks' empty state invites "create a task that runs on demand" (`taskOnDemandEmptyAgent`), and the Task schedule's invites "create a task that runs on a schedule". The Run label is the shared `actionRun` in `ACTION_LABELS`. Process copy (7.8) is published: `actionTerminate`, `processTerminateConsequence`, `processTerminateErrorFlag`, `processRefusalOcuPilot`, `processRefusalSystem`, `processListEmptyAgent` (the invitation names the list's own verbs, since it has no create) and `proposalEntityProcess`. Delete task's dialog body reads "Deleting this task removes it from the schedule, so it no longer runs. Its history is kept. This cannot be undone." A system task's delete adds "This is one of the instance's own system tasks, and the instance relies on it. The classic portal does not allow deleting it." in the dialog and on the proposal card.
-- **Strings.** Every new user-facing string goes into EXPERIENCE.md's Fixed strings with its `strings.ts` key in the same pass. `strings.ts` is shared-append and holds nothing the table does not publish.
+- **Row menu.** Actions appear in command-bar order, with destructive actions last. A refused or privilege-gated action stays listed as a non-selectable row with its reason inline, and the arrow keys still reach it. Such rows are never Material-disabled. Every row-menu item is also on the command bar, which wraps rather than hiding an action.
+- **Warning dialog** (`app-warning-dialog`, the shell's `warning` pending kind, keyed by `WARNING_CONSEQUENCES`). It comes before a non-delete write.
+  - The title is the verb and the body is the consequence.
+  - "Proceed" is `button-primary`, and initial focus is on Cancel.
+  - Escape, Cancel and the scrim send nothing.
+- **Typed-name dialog** (for deletes).
+  - The name must match exactly, case-sensitive, and pasting is allowed.
+  - A mismatch shows "Does not match" on blur.
+  - The `button-destructive` button is labeled with the verb and target and stays `aria-disabled` until the name matches.
+  - Each action has its own consequence body in `DESTRUCTIVE_CONSEQUENCES`.
+  - The typed `name` can differ from the sent `target`.
+  - An optional `advisory` paragraph carries a consequence that depends on the row.
+- **Non-destructive, unwarned actions** (enable, reset a counter) are sent at once with no dialog. The row is marked changed in place, keeping its filter and selection.
+- **Auditing configuration** is a form-page.
+  - A status line and one toggle button; turning auditing off goes through the warning dialog.
+  - Beneath it, the System events and User events lists (columns name, status, Total, Written, Lost), each also at its own route.
+  - A cross-link to the Audit database viewer.
+  - The page re-reads on an `auditing-configuration` change event.
+  - 7.11 adds the lists' row actions and the SQL wizard on the same descriptors. The catalog lists enable/disable audit events and reset counters among the row-menu and command-bar actions that have no surface of their own.
+- **Banner.** "Agent writes are not being marked" appears the moment marking stops, from either caller, and clears when marking returns.
+- **Strings.** Every new user-facing string goes into EXPERIENCE.md's Fixed strings together with its `strings.ts` key, in the same pass. `strings.ts` is shared-append.
 
 ## Cross-Story Dependencies
 
-- **Upstream, Epic 5:** 7.4 and 7.11 extend 5.10's auditing toggle, 7.6 extended 5.11's task resume, 7.8 extended 5.12's process suspend and resume, and 7.10 extends 5.13's delete by namespace (`ErrorDelete`, `LogSourcePort` per AD-48). **Epic 6** provides the screens.
-- **From 7.1 to 7.3:** later stories reuse the screen-action route, `Operation`, the shell's generic row-action handler, the typed-name dialog, the `selfProtection` vocabulary and 7.2's `SCREENVALUES`. They build no per-area handler of their own.
-- **From 7.5 and 7.6 (done):** the task tools (`TaskRun`, `TaskScheduleRun`, `TaskSuspend`, `TaskResume` with `SCREENACTIONS resume`, `TaskDelete`), `TaskPort`, the shared `actionRun/Suspend/Resume/Delete` labels, `CONSTANTBODIES` (`Task.CRUD/RUN`, `Task.CRUD/SUSPEND` `{"LeaveInQueue":true}`) and `TaskRunFixture` (unarmed, holds no OREF; run and schedule probes) are in place. Armed methods that really write a task live in `TaskResume` (no new armed class). The typed-name dialog's `name`/`advisory` inputs are available to later destructive actions. UJ-6 now ends at Task details with the **Suspended** field highlighted; the change toast is DW-1546's.
-- **From 7.8 (done):** `ProcessTerminate`, `ProcessTerminateWithError`, `ProcessPort`, `SCREENACTIONS` on `ProcessSuspend`/`ProcessResume`, `Process/TERMINATE` in `AdminPort`'s `MUTATINGTYPES` and `BODYLESSTYPES`, the typed-name dialog's `flagLabel`, the handler's flag map and action-address map, and the fault-banner hold. `Test/ProcessTerminate` (unarmed) and `Test/ProcessControl` (armed; own probes only) hold them.
-- **Within this epic:** 7.4 and 7.11 are the two halves of the Auditing screen: 7.11 consumes 7.4's `AuditSystemEventList` and `AuditUserEventList` descriptors (entity type `audit-event`, id `EventName`, read `Security.Audit.Event` `LIST` by `eventOwner`), `MOVESMARKING` and the warning dialog.
-- **Routed ledger items:**
-  - DW-1463 (5.11's agent-reply clauses) is dropped by ruling; see the confirm bullet above. DW-1546 (a change toast opens the entity's details and hides while that screen is open, where UJ-6 wants it to open the list at the row and hide only while the list is open) is routed to the orchestrator's cleanup right after the Epic 7/8 merges; Epic 8 pinned `screenForEntityType('task')` to Task details.
-  - 7.11 has DW-1529 (both event lists declare `audit-event`, so a user event's reference resolves to the system-event list) and DW-1530 (the screen caller's post-write `Security.Audit.Event` GET is never run as a principal holding exactly the declared pairs).
-  - Closed by 7.8: DW-1155, DW-1189, the process half of DW-1499, and DW-1553 (the bundle's `maximumWarning` was re-based under DW-1166 to 1181kB, 5% above the measured initial total; a later story that adds client bytes checks its headroom against that). DW-1563 (stale docs at `Prohibited` `OCUPILOTPROCESS`/`SYSTEMPROCESS`, `AdminPort :160-172` saying TERMINATE is absent, and the `angular-json` pin comment) reopens at the Epic 7/8 merge; DW-1564 to DW-1566 are accepted.
-  - DW-1557 (`AdminPort`'s DW-1473 paragraph still says no shipped tool issues `Task.CRUD/SUSPEND`) is accepted and reopens at the Epic 7/8 merge. Merge note from 7.6: Epic 8's post-write re-read of a task must read `INFO`. Merge notes from 7.8: its `ToolWrite` TERMINATE leg, `ReadTool :93` (62 tools), `PortFixture :21`, `PortGate`'s roster and the two `AdminPort` lines conflict with Epic 8 by construction, and AD-52's named case folds into the list of named cases Epic 8 records under AD-27.
-  - On a reused throwaway, `WireSecurityRead`'s 1,000-row history check fails once task history passes 1,000 rows (deferred; CI's fresh throwaway is far below).
-  - Still open under 7.1: DW-1001 and DW-1013 (for the first story that amends a derived read's criteria), DW-1136 and DW-1137 (inside `AdminPort`), DW-1099 (descriptor read, filter and sort assertions) and DW-389 (Switches declares row actions with no handler).
-- **Epic 8 runs concurrently.** It owns `areas/web-applications/**`, `scripts/ci-*.sh`, `ci.yml`, `Install/**` except `Smoke.cls`, `Kernel/Secret/Ladder.cls` and `ui/tools/field-lists.*`. Because it owns the arming roster, do not add a new *armed* test class. `AdminPort.cls`, `strings.ts` and `_components.scss` are shared-append. `Prohibited.cls`, `Write.cls`, `Confirm.cls`, `Registry.cls` and the test roster classes are contended: run `git show origin/OCU-1-epic8:<path>` first and stay off its hunks. Epic 8 carries the privilege-grant change. The orchestrator reconciles AD-10's two amendments and the shared `UserList` lines at merge.
-- **Downstream:** Epics 9 and 12 become eligible once Epics 7 and 8 have both merged. 9.1's user editor consumes 7.2's actions and DW-1523. Epic 12's OAuth editors replace 7.3's merge-write tripwire. Those editors must send the complete property set from a fresh read, because no `Security.OAuth2.*` endpoint merges. They must also classify `Metadata` (`client_secret`, `registration_access_token`) as secret before storing a body.
+- **7.11 consumes 7.4:**
+  - the `AuditSystemEventList` and `AuditUserEventList` descriptors;
+  - `AuditingUpdate` and `MOVESMARKING`;
+  - the warning dialog and `ObserveMarking`.
+
+  It also uses 7.1's route, `Operation`, generic row-action handler and typed-name dialog, and 5.10's recorded fact and banner. It builds no per-area handler of its own.
+- **Routed to 7.11:**
+  - **DW-1529.** Both event lists declare `audit-event`, so `screenForEntityType` resolves a user event's reference to the system-event list.
+  - **DW-1530.** The screen caller's post-write `Security.Audit.Event` GET has never run as a principal holding exactly the declared pairs.
+- **Still open from 7.1:**
+  - DW-1001 and DW-1013, for the first story that amends a derived read's criteria;
+  - DW-1136 and DW-1137, in `AdminPort`;
+  - DW-1099, descriptor read, filter and sort assertions;
+  - DW-389, Switches declares row actions with no handler.
+- **Reopen at the Epic 7/8 merge:** DW-1557 and DW-1563, both stale `AdminPort` and `Prohibited` docs.
+- **Epic 8 runs concurrently.**
+  - It owns:
+    - `areas/web-applications/**`;
+    - `scripts/ci-*.sh` and `ci.yml`;
+    - `Install/**` except `Smoke.cls`;
+    - `Kernel/Secret/Ladder.cls`;
+    - `ui/tools/field-lists.*`;
+    - the arming roster, so do not add a new *armed* test class.
+  - Shared-append: `AdminPort.cls`, `strings.ts` and `_components.scss`.
+  - Contended: `Prohibited.cls`, `Write.cls`, `Confirm.cls`, `Registry.cls` and the test roster classes. Before editing one, run `git show origin/OCU-1-epic8:<path>` and stay off its hunks. A story that touches an Epic 8-modified file lists it under `footprint_extensions` with the line ranges of its own members.
+- **Downstream:** Epics 9 and 12 become eligible once Epics 7 and 8 have both merged.
