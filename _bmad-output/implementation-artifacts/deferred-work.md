@@ -6113,3 +6113,38 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: owner decision 2026-09-23: privileged grants permitted at typed confirmation, the screen shows a consequence line; Epic 8 owns the key privilegedGrantEffect; origin/OCU-1-epic8 carried none at 7.2's review
 - 2026-09-23T07:52:02Z status=routed owner=9-1-the-user-editor by=harvest note=port privilegedGrantEffect byte-for-byte and render it in the role dialog (orchestrator ruling 2026-09-23)
 - 2026-09-23T07:52:09Z note=privilegedGrantEffect appeared on origin/OCU-1-epic8 (59dced7) after 7.2's review closed; per the orchestrator's fallback it stays with 9.1 rather than re-opening 7.2
+
+### DW-1529: Both audit event lists declare entity type audit-event, so screenForEntityType resolves every audit-event reference to the system-event list
+- source: spec-7-4-turn-auditing-on-and-off-from-the-screen.md (cr) | severity: med | fix-risk: med | footprint: in-epic
+- evidence: AuditSystemEventList and AuditUserEventList both declare entityType audit-event; navigation.test.mjs pins screenForEntityType('audit-event') to security/auditing/system-events. Once 7.11 emits audit-event changes for user events, their toast/link opens a list that never shows them.
+- 2026-09-23T10:01:27Z status=routed owner=7-11-system-and-user-audit-event-configuration by=cr note=7.11 emits audit-event changes on these descriptors; decide a second type or an owner-aware lookup there
+
+### DW-1530: The screen caller's post-write Security.Audit.Event GET is never run as a principal holding exactly the declared pairs
+- source: spec-7-4-turn-auditing-on-and-off-from-the-screen.md (cr) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: (inference) unverified: ProhibitedRoute's least-privileged principal reads the event LIST 200, but only the test account runs the screen action; if the GET needs more than %Admin_Secure:U + %DB_IRISSYS:R, the fact is never recorded and only a log line shows it. Settle: run a screen action as DECLAREDPAIRSONLY and assert no OBSERVEFAILED line.
+- 2026-09-23T10:01:27Z status=routed owner=7-11-system-and-user-audit-event-configuration by=cr note=7.11 is the second MOVESMARKING tool on the same endpoint; its least-privileged test settles this
+
+### DW-1531: Nothing pins ScreenAction.Run's MovesMarking guard: observing after every screen write stays green in every suite
+- source: spec-7-4-turn-auditing-on-and-off-from-the-screen.md (cr) | severity: low | fix-risk: low | footprint: in-story
+- evidence: VG layer: making the observation unconditional reddens no test; the cost would be two extra reads and an error log line per non-auditing screen action by a principal without %Admin_Secure.
+- 2026-09-23T10:01:27Z status=wontfix-accepted owner=7-4-turn-auditing-on-and-off-from-the-screen by=cr note=reopen_if=an OBSERVEFAILED console line follows a non-auditing screen action, or 7.11 adds a MOVESMARKING tool
+
+### DW-1532: DW-1453's and DW-1227's built-filter regression guards lost their witness: no descriptor is built:false any more
+- source: spec-7-4-turn-auditing-on-and-off-from-the-screen.md (cr) | severity: low | fix-risk: low | footprint: in-story
+- evidence: 7.4 built AuditingConfig, the last unbuilt descriptor (grep for built false under src/OcuPilot/Screen/Descriptor is empty); restoring either built filter now reddens nothing.
+- 2026-09-23T10:01:27Z status=wontfix-accepted owner=7-4-turn-auditing-on-and-off-from-the-screen by=cr note=reopen_if=a descriptor declares built:false again and navigation.test.mjs/SurfaceCoverage do not name it
+
+### DW-1533: AuditingUpdate.LedgerCount caps at 1000 ids over 24 h, so the no-ledger-row assertion saturates on a busy test account
+- source: spec-7-4-turn-auditing-on-and-off-from-the-screen.md (cr) | severity: low | fix-risk: low | footprint: in-story
+- evidence: Both counts read at most 1000 ids; at the cap before==after whatever was written. CI's fresh throwaway holds far fewer rows.
+- 2026-09-23T10:01:27Z status=wontfix-theoretical owner=7-4-turn-auditing-on-and-off-from-the-screen by=cr note=real if the armed class runs where the test user has 1000+ ledger rows in 24 h
+
+### DW-1534: The banner offers 'Turn auditing on' when auditing is on and only OcuPilot's marker event is off, which that action cannot fix
+- source: spec-7-4-turn-auditing-on-and-off-from-the-screen.md (cr) | severity: low | fix-risk: med | footprint: in-epic
+- evidence: ObserveMarking needs both flags; with the event disabled the banner shows, and the screen it opens offers only 'Turn auditing off'. The event-enable action does not exist until 7.11.
+- 2026-09-23T10:01:27Z status=wontfix-accepted owner=7-4-turn-auditing-on-and-off-from-the-screen by=cr note=reopen_if=7.11 ships enabling OcuPilot's own events and the banner still offers only 'Turn auditing on' in that state
+
+### DW-1535: The banner's 'Turn auditing on' is gated on the OcuPilot-administrator verdict, not on the auditing screen's %Admin_Secure:USE pair
+- source: spec-7-4-turn-auditing-on-and-off-from-the-screen.md (cr) | severity: low | fix-risk: low | footprint: in-story
+- evidence: panel.ts shows the action for administrator; an OcuPilot administrator without %Admin_Secure lands on the screen's refusal. AC3 and the I/O matrix specify the administrator gate and the denied user's refusal.
+- 2026-09-23T10:01:27Z status=by-design owner=7-4-turn-auditing-on-and-off-from-the-screen by=cr note=AC3 names OcuPilot administrators; reopens only via spec amendment

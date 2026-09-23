@@ -2113,14 +2113,19 @@ export function rowGetProblem(source, fields, keyAllowed = []) {
 }
 
 /**
- * Whether a declaration is a `form-page` that declares no `table`
- * (`OcuPilot.Screen.Registry.RendersNoTable`). A form renders its read's one object as fields and
- * actions, never as a grid, so it names no column header and no empty-state sentence a user could
- * never see. Such a declaration is exempt from `tableProblem`; one that does declare a table is
- * still held to it.
+ * Whether a declaration is a `form-page` over a single-object `GET` read that declares no `table`
+ * and no `composite` id (`OcuPilot.Screen.Registry.RendersNoTable`). A form renders that one
+ * object as fields and actions, never as a grid, so it names no column header and no empty-state
+ * sentence a user could never see. Such a declaration is exempt from `tableProblem`; a form over a
+ * list-shaped read, one with a composite id, and one that declares a table are still held to it.
  */
 export function rendersNoTable(declaration) {
-  return declaration.archetype === 'form-page' && (declaration.table === undefined || declaration.table === null);
+  return (
+    declaration.archetype === 'form-page' &&
+    (declaration.table === undefined || declaration.table === null) &&
+    declaration.id?.kind !== 'composite' &&
+    declaration.read?.source?.type === 'GET'
+  );
 }
 
 /** The kinds a table column may declare (AD-5). */

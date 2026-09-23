@@ -233,8 +233,10 @@ export class AuditingConfigPage {
     afterRenderEffect(() => {
       const button = this.controlButton();
       if (!this.focusEnable() || button === undefined) return;
-      if (button.nativeElement.getAttribute('data-action') !== AUDITING_ENABLE_ACTION) return;
+      // The request is answered by the first control rendered, so a later one never takes focus.
+      // The request is answered by the first control rendered, so a later one never takes focus.
       this.focusEnable.set(false);
+      if (button.nativeElement.getAttribute('data-action') !== AUDITING_ENABLE_ACTION) return;
       button.nativeElement.focus();
     });
 
@@ -287,7 +289,7 @@ export class AuditingConfigPage {
 
   private get enabled(): boolean | null {
     this.generation();
-    if (this.form === null || !this.form.loaded()) return null;
+    if (this.form === null || !this.form.loaded() || this.form.fault()) return null;
     return auditingEnabled(this.form.store.data()[0]);
   }
 

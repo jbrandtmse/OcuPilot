@@ -1813,16 +1813,22 @@ ClassMethod RowGetProblem(pSource As %DynamicObject, pFields As %List, pKeyAllow
     Quit tProblem
 }
 
-/// <p>Whether <var>pDeclaration</var> is a <code>form-page</code> that declares no
-/// <code>table</code>. A form renders its read's one object as fields and actions, never as a
-/// grid, so it names no column header and no empty-state sentence a user could never see. Such a
-/// declaration is exempt from <method>TableProblem</method>; one that does declare a table is still
-/// held to it. <file>ui/tools/screen-mirror.mjs</file>'s <code>rendersNoTable</code> is the twin.</p>
+/// <p>Whether <var>pDeclaration</var> is a <code>form-page</code> over a single-object
+/// <code>GET</code> read that declares no <code>table</code> and no <code>composite</code> id. A
+/// form renders that one object as fields and actions, never as a grid, so it names no column
+/// header and no empty-state sentence a user could never see. Such a declaration is exempt from
+/// <method>TableProblem</method>; a form over a list-shaped read, one with a composite id, and one
+/// that declares a table are still held to it. <file>ui/tools/screen-mirror.mjs</file>'s
+/// <code>rendersNoTable</code> is the twin.</p>
 ClassMethod RendersNoTable(pDeclaration As %DynamicObject) As %Boolean [ Private ]
 {
     If pDeclaration.%Get("archetype") '= "form-page" Quit 0
     Set tTableType = pDeclaration.%GetTypeOf("table")
-    Quit (tTableType = "unassigned") || (tTableType = "null")
+    If (tTableType '= "unassigned") && (tTableType '= "null") Quit 0
+    If (pDeclaration.%GetTypeOf("id") = "object") && (pDeclaration.%Get("id").%Get("kind") = "composite") Quit 0
+    Set tRead = pDeclaration.%Get("read")
+    If '$IsObject(tRead) || (tRead.%GetTypeOf("source") '= "object") Quit 0
+    Quit tRead.%Get("source").%Get("type") = "GET"
 }
 
 /// <p>The kinds a table column may declare (AD-5).</p>

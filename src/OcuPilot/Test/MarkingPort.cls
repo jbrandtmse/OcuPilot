@@ -8,7 +8,8 @@ Class OcuPilot.Test.MarkingPort Extends OcuPilot.Port.AdminPort
 
 /// <p>Arm the answers: <var>pAuditing</var> for <code>Security.Audit.Enabled</code> and
 /// <var>pEvent</var> for <code>Security.Audit.Event</code>, each <code>"1"</code>,
-/// <code>"0"</code> or <code>"fault"</code> (a 500 with an error status).</p>
+/// <code>"0"</code>, <code>"fault"</code> (a 500 with an error status), <code>"missing"</code> (a
+/// 404 with an error status) or <code>"number"</code> (200 with <code>Enabled</code> a number).</p>
 ClassMethod Arm(pAuditing As %String, pEvent As %String)
 {
     Kill ^||OcuPilotMarkingPort
@@ -44,8 +45,17 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set pFault = {"error": "server_error", "reason": "armed fault", "code": "INTERNAL"}
         Quit $$$ERROR($$$GeneralError, "armed fault")
     }
+    If tArmed = "missing" {
+        Set pHttpStatus = 404
+        Set pFault = {"error": "not_found", "reason": "armed missing", "code": "PORT.NOTFOUND"}
+        Quit $$$ERROR($$$GeneralError, "armed missing")
+    }
     Set pHttpStatus = 200
     Set pResult = {}
+    If tArmed = "number" {
+        Do pResult.%Set("Enabled", 1, "number")
+        Quit $$$OK
+    }
     Do pResult.%Set("Enabled", ''tArmed, "boolean")
     Quit $$$OK
 }

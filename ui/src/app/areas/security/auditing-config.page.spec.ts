@@ -39,11 +39,15 @@ async function mount(
     state?: Record<string, unknown>;
     ownRows?: unknown[];
     ownFault?: boolean;
+    listFault?: boolean;
+    faultAfterPost?: boolean;
     postRefusal?: boolean;
   } = {}
 ) {
   TestBed.resetTestingModule();
   let enabled = options.enabled ?? true;
+  let posted = false;
+  const healed = { value: false };
   const userRows = options.userRows ?? USER_ROWS;
   const calls: { path: string; method: string; body: string }[] = [];
   const api = {
@@ -59,6 +63,7 @@ async function mount(
         };
       }
       if (init.method === 'POST') {
+        posted = true;
         enabled = JSON.parse(init.body ?? '{}').action === 'enable';
         return {
           kind: 'ok',
@@ -67,7 +72,10 @@ async function mount(
         };
       }
       const own = !path.includes('security.auditsystemevents') && !path.includes('security.audituserevents');
-      if (own && options.ownFault === true) {
+      if (own && (options.ownFault === true || (options.faultAfterPost === true && posted && !healed.value))) {
+        return { kind: 'error', status: 500, code: 'PORT.FAULT', reason: null, detail: null };
+      }
+      if (path.includes('security.audituserevents') && options.listFault === true) {
         return { kind: 'error', status: 500, code: 'PORT.FAULT', reason: null, detail: null };
       }
       const rows = path.includes('security.auditsystemevents')
@@ -98,7 +106,7 @@ async function mount(
   planted.push(fixture.nativeElement);
   fixture.detectChanges();
   await settle(fixture);
-  return { fixture, host: fixture.nativeElement as HTMLElement, calls };
+  return { fixture, host: fixture.nativeElement as HTMLElement, calls, heal: () => (healed.value = true) };
 }
 
 function control(host: HTMLElement): HTMLButtonElement {
@@ -212,7 +220,7 @@ describe('the Auditing configuration page', () => {
     await settle(fixture);
     const banner = host.querySelector('.ocu-banner-warning');
     expect(banner).not.toBeNull();
-    expect(banner?.textContent?.trim()).not.toBe('');
+    expect(banner?.textContent?.trim()).toBe('Requires %Admin_Secure:USE');
   });
 
   it('shows the read fault with Retry and offers no control when its own read fails', async () => {
@@ -222,6 +230,44 @@ describe('the Auditing configuration page', () => {
     expect(refusal?.textContent).toContain(STRINGS.connectivityRequestRefused);
     expect(refusal?.querySelector('button')?.textContent?.trim()).toBe(STRINGS.actionRetry);
     expect(control(host)).toBeNull();
+  });
+
+  it('AC4: a list whose read fails shows the read fault with Retry, never its empty state', async () => {
+    // Mutation (Rule 19): drop `!view.fault()` from `showEmpty` -> the empty-state assertion goes red.
+    const { host } = await mount({ listFault: true });
+    const user = host.querySelector('[data-section="security/auditing/user-events"]') as HTMLElement;
+    expect(user.querySelector('.ocu-data-table-refusal')?.textContent).toContain(STRINGS.connectivityRequestRefused);
+    expect(user.querySelector('.ocu-data-table-refusal button')?.textContent?.trim()).toBe(STRINGS.actionRetry);
+    expect(user.querySelector('.ocu-data-table-empty-title')).toBeNull();
+  });
+
+  it('offers no stale control when the re-read after a write fails', async () => {
+    // Mutation (Rule 19): drop the `fault()` guard in `enabled` -> the stale control renders.
+    const { fixture, host } = await mount({ faultAfterPost: true });
+    control(host).click();
+    await settle(fixture);
+    (host.querySelector('[role="dialog"] .ocu-button-primary') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(host.querySelector('.ocu-data-table-refusal')).not.toBeNull();
+    expect(control(host)).toBeNull();
+    expect(host.querySelector('[data-auditing-status]')).toBeNull();
+  });
+
+  it('AC3: a focus request answered by "Turn auditing off" is not kept for a later control', async () => {
+    // Mutation (Rule 19): clear the request only when the enable button is focused -> the
+    // re-created "Turn auditing on" button takes focus, and this goes red.
+    const { fixture, host, heal } = await mount({ faultAfterPost: true, state: { [AUDITING_FOCUS_ENABLE]: true } });
+    expect(control(host).textContent?.trim()).toBe(STRINGS.auditingTurnOffAction);
+    control(host).click();
+    await settle(fixture);
+    (host.querySelector('[role="dialog"] .ocu-button-primary') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(control(host)).toBeNull();
+    heal();
+    (host.querySelector('.ocu-data-table-refusal button') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(control(host).textContent?.trim()).toBe(STRINGS.auditingTurnOnAction);
+    expect(document.activeElement).not.toBe(control(host));
   });
 
   it('offers no control when the row carries no boolean Enabled, never a guess', async () => {

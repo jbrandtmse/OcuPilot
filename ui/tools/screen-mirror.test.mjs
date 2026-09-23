@@ -1191,10 +1191,19 @@ test('AD-5: the generator refuses a table outside the declared grammar, naming t
   // Mutation (Rule 19): make `rendersNoTable` answer false -> the first assertion goes red.
   const form = sound();
   form.archetype = 'form-page';
+  form.read.source.type = 'GET';
   delete form.table;
   form.emptyStateKey = '';
-  assert.equal(readProblem(form), null, 'a form-page read with no table and no empty-state key passes');
+  assert.equal(readProblem(form), null, 'a form-page single-object read with no table and no empty-state key passes');
   assert.match(readProblem({ ...form, archetype: 'list' }), /table is not an object/, 'which a list with the same read is refused');
+  const formOverList = structuredClone(form);
+  formOverList.read.source.type = 'LIST';
+  assert.match(readProblem(formOverList), /table is not an object/, 'as is a form-page over a list-shaped read');
+  assert.match(
+    readProblem({ ...form, id: { kind: 'composite', parts: ['NameSpace', 'Name'] } }),
+    /table is not an object/,
+    'and a form-page with a composite id'
+  );
   const formWithTable = sound();
   formWithTable.archetype = 'form-page';
   formWithTable.table.columns = [];

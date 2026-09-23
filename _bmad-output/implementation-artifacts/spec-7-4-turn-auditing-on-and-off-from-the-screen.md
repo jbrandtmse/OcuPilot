@@ -2,7 +2,7 @@
 title: 'Story 7.4: Turn auditing on and off from the screen'
 type: 'feature'
 created: '2026-09-23'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '6ae2918f4cc1c958b936254cf5849001c8d00d39'
 baseline_commit: '6ae2918f4cc1c958b936254cf5849001c8d00d39'
 review_loop_iteration: 0
@@ -295,6 +295,53 @@ Tests that pin today's shape and must move:
   finalize; delete `_bmad-output/implementation-artifacts/7-4-wip.patch` and
   `7-4-wip-untracked.tgz` in the finalize commit.
 
+### Review Findings
+
+Code review 2026-09-23 (four layers, full-opus): 16 kept -- 0 high, 4 med, 12 low; 9 patched, 7 ledgered; 11 rejected.
+
+- [x] [Review][Patch] `ObserveMarking` breaks install's rule: an unregistered marker event is an error, so nothing is recorded; auditing off still needs the event read [src/OcuPilot/Kernel/Audit/Event.cls:352] -- auditing off now answers 0 without the event read, and a 404 means "not marked", as at install. Measured on slot A, where `OcuPilot/Security/AgentWrite` is not registered: `PORT.NOTFOUND` 404.
+- [x] [Review][Patch] `RendersNoTable` also exempts a form over a list-shaped read and skips the composite-id check [src/OcuPilot/Screen/Registry.cls:1821, ui/tools/screen-mirror.mjs:2122] -- the exemption now requires a single-object `GET` and a non-composite id, in both engines. Only `AuditingConfig` matches, here and on `origin/OCU-1-epic8`.
+- [x] [Review][Patch] The empty `Catch` in `ScreenAction.ObserveMarking` logs nothing on an exception, and `LogObserveFailure` makes a redundant `$ClassMethod` call [src/OcuPilot/Api/ScreenAction.cls:306]
+- [x] [Review][Patch] A failed re-read after a write leaves a stale status line and control beside the fault [ui/src/app/areas/security/auditing-config.page.ts:290]
+- [x] [Review][Patch] A focus request stays armed when the first control is "Turn auditing off", so a re-created enable button steals focus later [ui/src/app/areas/security/auditing-config.page.ts:236]
+- [x] [Review][Patch] An embedded list's read fault, and its empty-state guard, are untested [ui/src/app/areas/security/auditing-config.page.spec.ts]
+- [x] [Review][Patch] The refusal-banner test accepts any non-empty text [ui/src/app/areas/security/auditing-config.page.spec.ts:215]
+- [x] [Review][Patch] `ObserveMarking`'s non-boolean arms are untested [src/OcuPilot/Test/MarkingPort.cls, src/OcuPilot/Test/AuditingScreen.cls]
+- [x] [Review][Patch] The `pending()` doc still says "typed name" and "ListPage renders it" [ui/src/app/shell/screen-action-handler.ts:189]
+- [x] [Review][Defer] Both event lists declare `audit-event`, so `screenForEntityType` always opens the system list -- DW-1529, routed to 7-11
+- [x] [Review][Defer] The post-write `Security.Audit.Event` GET has never run as a principal holding only the declared pairs (maybe-false, med if true) -- DW-1530, routed to 7-11
+- [x] [Review][Defer] Nothing pins `Run`'s `MovesMarking` guard -- DW-1531, wontfix-accepted
+- [x] [Review][Defer] The built-filter guards for DW-1453 and DW-1227 have no unbuilt witness left -- DW-1532, wontfix-accepted
+- [x] [Review][Defer] `LedgerCount` caps at 1000 -- DW-1533, wontfix-theoretical
+- [x] [Review][Defer] When only OcuPilot's marker event is off, the banner still offers "Turn auditing on" -- DW-1534, wontfix-accepted
+- [x] [Review][Defer] The banner action is gated on the OcuPilot-administrator verdict -- DW-1535, by-design (AC3)
+
+Rejected:
+
+- false: the population claims in the `navigation.test.mjs` and `toasts.test.mjs` comments hold. All 29 declared entity types have a built primary screen (checked per type).
+- false: the browser enable leg does not need a "no dialog" assertion. A dialog would hold back the POST, and the POST count is asserted.
+- false: the embedded lists cannot truncate. `DEFAULT_MAX_ROWS` is 1000 against 79 events.
+- false: the empty `href` when the auditing route does not resolve cannot happen, because the screen is built and declared.
+- low: `MOVESMARKING` has no base default, but the spec forbids editing `Screen/Tool/Write.cls`, and `MovesMarking` already answers 0 for an absent parameter.
+- low: the panel imports its focus key from the page module, which is the same precedent as `screen-outlet.ts`. No named harm.
+- low: some assertions are repeated across `AuditingScreen`, `Descriptor` and `ToolWrite`. No named harm.
+- low: after the enable probe, `ProhibitedRoute`'s "did not move" line checks the exit state (auditing left on), not the refusal. The refusal is pinned by the 403, code and failedPair assertions.
+- low: a same-URL banner navigation while the page is open does not re-read. This is unlikely, and the fix adds a branch.
+- process: `AuditingUpdate`'s armed leg runs only in CI. Rule 28 resolves that run before the next implement spawn.
+- spec text (A3/A4/A6: "always one row", the dropped second empty-state line, the "drops its table" wording): the fix would edit the spec.
+
+**Rework iteration 1 (2026-09-23, lead, CI run 35844424602 on d757343a):**
+
+- [ ] [CI] `browser`: `oauth.browser-spec.mjs:268` (`not ok 90`), `security.browser-spec.mjs:227`
+  (`not ok 158`) and `ssl.browser-spec.mjs:202` (`not ok 171`) hard-code the Security and secrets side
+  bar, which now also lists "Auditing configuration". Add only this story's entry (standing roster
+  rule, 2026-09-23; stay off Epic 8's hunks if it has modified the file).
+- [ ] [CI] `browser`: `auditing-screen.browser-spec.mjs:95` (`not ok 21`) -- "the system-event list
+  renders rows (0)" at `:109` on CI's fresh throwaway, while it passed on the reused `ocupilot-ci`.
+  Find the cause from the CI log (`gh run view 35844424602 --log-failed`) and the page: a missing
+  wait for the embedded list's read, or a read that answers nothing on a fresh instance. Fix it at
+  its cause; never relax the assertion.
+
 ## Spec Change Log
 
 - 2026-09-23, lead spec gate: intent gap 1 ratified as recommended -- the AD-53 amendment is in the
@@ -470,6 +517,9 @@ any container.
   - `mutation: AC5 re-shown with the enable probe -- Set tRefused = 0 after the pair Gate -> ProhibitedRoute's auditing refusal red on code and failedPair (run 7777), auditing read 1 throughout. Reverted, ProhibitedRoute 22/22`
   - `mutation: screenForToolName keyed on the first name segment -> navigation.test.mjs's screenForToolName test red. DEMONSTRATED 2026-09-23, reverted`
   - `mutation: drop ScreenAction.ObserveMarking's LogObserveFailure call -> AuditingScreen.TestAFailedObservationAfterTheScreensWriteRecordsNothingAndLogs red (run 7404). DEMONSTRATED 2026-09-23, reverted, AuditingScreen 6/6 (run 7405)`
+  - `mutation: (code review) ObserveMarking without the auditing-off short-circuit and without the 404 arm, plus RendersNoTable ignoring the GET condition, all in the ocupilot-ci copy only -> AuditingScreen.TestObservingMarkingNeedsAuditingAndTheMarkerEvent red on its three new assertions and TestAFormPageReadNeedsNoTable red on "a form over a list-shaped read". DEMONSTRATED 2026-09-23, re-synced from the worktree, AuditingScreen 8/8, Descriptor and AgentDefinitionForm green`
+  - `mutation: (code review) rendersNoTable without its composite-id and GET conditions -> screen-mirror.test.mjs AD-5 table test red ("as is a form-page over a list-shaped read"). DEMONSTRATED 2026-09-23, reverted, 53/53`
+  - `mutation: (code review) drop the fault() guard in the page's enabled getter -> "offers no stale control" and the AC3 focus-request test red; drop !view.fault() from showEmpty -> "a list whose read fails" red; clear the focus request only when the enable button is focused -> "a focus request answered by Turn auditing off" red. DEMONSTRATED 2026-09-23, reverted, page spec 13/13`
 
 **Once, before `dev_complete`:** run the full ObjectScript sweep on `ocupilot-ci`, per class and
 one call at a time, with totals from the numeric-run-index probe. Then run `bash scripts/smoke.sh

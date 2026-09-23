@@ -304,8 +304,11 @@ ClassMethod ObserveMarking(pToolClass As %String) [ Private ]
         }
         Do ..LogObserveFailure(pToolClass, tObserveSC)
     } Catch ex {
-        ; Deliberately empty: the write has already been applied and its answer is not this
-        ; method's to change (AD-15).
+        ; The write has already been applied and its answer is not this method's to change (AD-15).
+        Try {
+            Do ..LogObserveFailure(pToolClass, ex.AsStatus())
+        } Catch {
+        }
     }
 }
 
@@ -314,7 +317,7 @@ ClassMethod ObserveMarking(pToolClass As %String) [ Private ]
 ClassMethod LogObserveFailure(pToolClass As %String, pStatus As %Status)
 {
     Set tData = {}
-    Do tData.%Set("tool", $ClassMethod(pToolClass, "ToolClass"), "string")
+    Do tData.%Set("tool", pToolClass, "string")
     Do tData.%Set("reason", $System.Status.GetErrorText(pStatus), "string")
     Do ##class(OcuPilot.Kernel.Audit.Log).Error(##class(OcuPilot.Kernel.Audit.Event).#LOGSUBSYSTEM, ..#OBSERVEFAILED, tData)
 }

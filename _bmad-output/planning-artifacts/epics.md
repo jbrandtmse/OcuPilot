@@ -4408,6 +4408,9 @@ So that the audit database records what matters here rather than everything or n
 - **When** a disable is attempted
 - **Then** the consequence is stated - agent writes stop being marked - and the panel's banner appears the moment it takes effect.
 
+- DW-1529: Both audit event lists declare entity type audit-event, so screenForEntityType resolves every audit-event reference, a user event's included, to the system-event list (ledger; routed by cr 2026-09-23)
+- DW-1530: The screen caller's post-write Security.Audit.Event GET is never run as a principal holding exactly the declared pairs (ledger; routed by cr 2026-09-23)
+
 ---
 
 ## Epic 8: Create and import

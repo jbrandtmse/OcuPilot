@@ -345,7 +345,9 @@ ClassMethod RecordMarking(pMarked As %Boolean) As %Status
 /// (<code>Security.Audit.Enabled</code> <code>GET</code>) <b>and</b> OcuPilot's marker event
 /// (<code>Security.Audit.Event</code> <code>GET</code> for <method>Source</method>,
 /// <method>Type</method> and <parameter>EVENTAGENTWRITE</parameter>) are both enabled -- the rule
-/// <method>OcuPilot.Install.Installer.ObserveAuditMarking</method> applies at install.</p>
+/// <method>OcuPilot.Install.Installer.ObserveAuditMarking</method> applies at install. Auditing
+/// off is not marked whatever the event says, so the event is read only when auditing is on, and
+/// a marker event that is not registered (a 404) is not marked, as at install.</p>
 /// <p><b>Caller contract:</b> an error status means nothing was observed and <var>pMarked</var>
 /// is not an answer; a failed read is never read as "off". The screen's caller of an auditing
 /// write calls this after the write and records <var>pMarked</var> only on OK (AD-53).</p>
@@ -361,11 +363,17 @@ ClassMethod ObserveMarking(pPortClass As %String, Output pMarked As %Boolean) As
             Set tSC = $$$ERROR($$$GeneralError, "the instance auditing flag was not answered as a boolean")
             Quit
         }
+        If 'tSystem.%Get("Enabled") Quit
         Kill tQuery
         Set tQuery("source") = ..Source()
         Set tQuery("type") = ..Type()
         Set tQuery("name") = ..#EVENTAGENTWRITE
+        Set tHttp = ""
         Set tSC = $ClassMethod(pPortClass, "Invoke", "Security.Audit.Event", "GET", .tQuery, "", .tEvent, .tHttp, .tFault)
+        If $$$ISERR(tSC) && (tHttp = 404) {
+            Set tSC = $$$OK
+            Quit
+        }
         If $$$ISERR(tSC) Quit
         If '$IsObject(tEvent) || (tEvent.%GetTypeOf("Enabled") '= "boolean") {
             Set tSC = $$$ERROR($$$GeneralError, "the marker event's flag was not answered as a boolean")

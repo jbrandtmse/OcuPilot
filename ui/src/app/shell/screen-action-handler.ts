@@ -186,7 +186,7 @@ export class ScreenActionHandler {
     }
   }
 
-  /** The dialog waiting on a typed name, or `null`. `ListPage` renders it. */
+  /** The dialog a row action is waiting on (`PendingKind`), or `null`. The page that ran the action renders it. */
   pending(): PendingConfirm | null {
     return this.waiting();
   }

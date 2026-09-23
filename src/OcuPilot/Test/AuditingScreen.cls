@@ -45,8 +45,9 @@ Method TestTheScreenIsBuiltWithBothActionsAndItsRead()
 }
 
 /// <p>A form renders its read's one object, never a grid, so the screen declares no table and no
-/// empty-state sentence and its read still validates; the same read on a list is refused for want
-/// of a table, and a form that does declare a table is still held to it.</p>
+/// empty-state sentence and its read still validates; the same read on a list, and a form over a
+/// list-shaped read, are refused for want of a table, and a form that does declare a table is
+/// still held to it.</p>
 Method TestAFormPageReadNeedsNoTable()
 {
     Set tSC = $ClassMethod(..#CONFIG, "DeclarationJson", .tDeclaration)
@@ -58,6 +59,9 @@ Method TestAFormPageReadNeedsNoTable()
     Set tList = ##class(%DynamicObject).%FromJSON(tDeclaration.%ToJSON())
     Set tList.archetype = "list"
     Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).ReadProblem(tList) [ "table is not an object", "the same read on a list is refused for want of a table")
+    Set tOverList = ##class(%DynamicObject).%FromJSON(tDeclaration.%ToJSON())
+    Set tOverList.read.source.type = "LIST"
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).ReadProblem(tOverList) [ "table is not an object", "as is a form over a list-shaped read")
     Set tTabled = ##class(%DynamicObject).%FromJSON(tDeclaration.%ToJSON())
     Do tTabled.%Set("table", {"columns": [], "emptyNextKey": "", "emptyAgentKey": "auditingTurnOnAction"})
     Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).ReadProblem(tTabled) [ "table.columns is empty", "and a form that declares a table is still held to it")
@@ -84,9 +88,21 @@ Method TestObservingMarkingNeedsAuditingAndTheMarkerEvent()
     Set tSC = ##class(OcuPilot.Kernel.Audit.Event).ObserveMarking(tPort, .tMarked)
     Do $$$AssertStatusOK(tSC, "on/off is observed")
     Do $$$AssertEquals(tMarked, 0, "a disabled marker event is not marked")
+
+    Do ##class(OcuPilot.Test.MarkingPort).Arm("0", "fault")
+    Set tSC = ##class(OcuPilot.Kernel.Audit.Event).ObserveMarking(tPort, .tMarked)
+    Do $$$AssertStatusOK(tSC, "auditing off is observed without the event read")
+    Do $$$AssertEquals(tMarked, 0, "and is not marked")
+    Do $$$AssertEquals(##class(OcuPilot.Test.MarkingPort).AskedEvent(), "", "the event is not read when auditing is off")
+
+    Do ##class(OcuPilot.Test.MarkingPort).Arm("1", "missing")
+    Set tSC = ##class(OcuPilot.Kernel.Audit.Event).ObserveMarking(tPort, .tMarked)
+    Do $$$AssertStatusOK(tSC, "an unregistered marker event is observed")
+    Do $$$AssertEquals(tMarked, 0, "and is not marked, as install records it")
 }
 
-/// <p>A read fault on either half is an error status, never an answer.</p>
+/// <p>A read fault on either half, or a flag that is not a boolean, is an error status, never an
+/// answer.</p>
 Method TestAFailedObservationIsAnErrorNotAnAnswer()
 {
     Set tPort = "OcuPilot.Test.MarkingPort"
@@ -96,6 +112,12 @@ Method TestAFailedObservationIsAnErrorNotAnAnswer()
     Do ##class(OcuPilot.Test.MarkingPort).Arm("1", "fault")
     Set tSC = ##class(OcuPilot.Kernel.Audit.Event).ObserveMarking(tPort, .tMarked)
     Do $$$AssertStatusNotOK(tSC, "a faulted marker-event read is an error")
+    Do ##class(OcuPilot.Test.MarkingPort).Arm("number", "1")
+    Set tSC = ##class(OcuPilot.Kernel.Audit.Event).ObserveMarking(tPort, .tMarked)
+    Do $$$AssertStatusNotOK(tSC, "an auditing flag that is not a boolean is an error")
+    Do ##class(OcuPilot.Test.MarkingPort).Arm("1", "number")
+    Set tSC = ##class(OcuPilot.Kernel.Audit.Event).ObserveMarking(tPort, .tMarked)
+    Do $$$AssertStatusNotOK(tSC, "a marker-event flag that is not a boolean is an error")
 }
 
 /// <p>The screen caller's post-write observation, on a failed read, records nothing and logs one

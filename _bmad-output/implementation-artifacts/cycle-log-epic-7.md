@@ -127,3 +127,9 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T09:41:53Z	Story 7.4	pushed	sha=d757343a ci=pending run=35844424602
 2026-09-23T09:41:53Z	Story 7.4	adr_verifications_complete	result=none_required model=claude-opus-5-5
 2026-09-23T09:41:53Z	Story 7.4	stage_spawned	stage=qa spawn_at=2026-09-23T09:41:53Z model=sonnet agent_name=7-4-turn-auditing-on-and-off-from-the-screen-qa-1 cycle_iteration=1
+2026-09-23T09:44:09Z	Story 7.4	qa_complete	spawn_at=2026-09-23T09:41:53Z model=sonnet tests_added=0 mutations_demonstrated=0 first_run_failures=0 clarifications=0 closing_sections_present=true
+2026-09-23T09:44:09Z	Story 7.4	stage_spawned	stage=code-review spawn_at=2026-09-23T09:44:09Z model=opus agent_name=7-4-turn-auditing-on-and-off-from-the-screen-code-review-1 cycle_iteration=1
+2026-09-23T10:03:42Z	Story 7.4	cr_complete	spawn_at=2026-09-23T09:44:09Z model=opus resolved=9 fixed_at_source=9 by_design=1 wontfix_theoretical=1 routed=2 escalated=0 decision_pending=0 deferred=7 dismissed=11 high=0 med=4 low=12 rows=27 unresolved_high_med=2 clarifications=0 closing_sections_present=true final=done ledger=DW-1529..DW-1535
+2026-09-23T10:03:42Z	Story 7.4	ledger_routed_planned	story=7-11-system-and-user-audit-event-configuration entries=2 excess=0 by=cr ids=DW-1529,DW-1530
+2026-09-23T10:03:42Z	Story 7.4	ci_resolved	story=7.4 run=35844424602 result=failure resolved_at=cr head=d757343a job=browser tests=auditing-screen:95,oauth:268,security:227,ssl:202 attribution=this_story
+2026-09-23T10:03:42Z	Story 7.4	rework_opened	cycle_iteration=3 iteration=1 trigger=ci items=CI_side-bar_rosters_in_three_browser_specs,CI_auditing-screen_list_renders_0_rows_on_fresh_throwaway
