@@ -1592,4 +1592,63 @@ Method Read(pPath As %String) As %String
     Quit tFresh.%ToJSON()
 }
 
+/// <p>One <code>POST</code> of <var>pAction</var> against <var>pId</var> on the screen whose tool
+/// identifier is <var>pScreen</var>, as <var>pUser</var>.</p>
+Method ActOn(pScreen As %String, pAction As %String, pId As %String, pUser As %String, pPassword As %String, Output pStatus As %Integer, Output pBody As %String, Output pHeaders) As %Status
+{
+    Set tRequest = {}
+    Do tRequest.%Set("action", pAction, "string")
+    Do tRequest.%Set("id", pId, "string")
+    Quit ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", ..#APIBASE _ "/screens/" _ pScreen _ "/action", pUser, pPassword, .pStatus, .pBody, .pHeaders, tRequest.%ToJSON(), "application/json")
+}
+
+/// <p>AC5, AD-8, AD-53 (Story 7.4): a principal short of <code>%Admin_Secure:USE</code> is refused
+/// the Auditing configuration screen's own action 403 <code>AUTH.NOPRIVILEGE</code> naming that
+/// pair, before any read, and this instance's auditing does not move. It sends <code>enable</code>
+/// to an audited instance, so a refusal that regressed into a write still leaves auditing on.</p>
+/// <p>The principal holds <parameter>NONSECUREADMIN</parameter> at <code>USE</code> and the two
+/// database reads, so the pair the refusal names is the only one it is short of.</p>
+Method TestAnAccountShortOfTheAuditingPairIsRefusedTheScreenAction()
+{
+    Set tCodeResource = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
+    If tCodeResource = "" Quit
+    Set tSC = ..EnsureLeastPrivilegedPrincipal(..#PRINCIPALPASSWORD, ..#NONSECUREADMIN _ ":U,%DB_IRISSYS:R," _ tCodeResource _ ":R")
+    Do $$$AssertStatusOK(tSC, "a principal short of only the administrative pair is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%Admin_Secure", "USE"), 0, "it holds no %Admin_Secure:USE")
+
+    Set tBefore = ##class(OcuPilot.Test.AuditingUpdate).AuditEnabled()
+    Do $$$AssertEquals(tBefore, 1, "this instance is audited before the refusal")
+    Set tSC = ..ActOn($ClassMethod(..#AUDITINGSCREEN, "ToolIdentifier"), "enable", ##class(OcuPilot.Kernel.EntityRef).#RULESINGLETONID, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the screen action request completes")
+    Do $$$AssertEquals(tStatus, 403, "and is refused -- not 200, not the router's 403 with no body: " _ tBody)
+    If tStatus = 403 {
+        Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "with the screen-privilege code, not AUTH.NOADMIN")
+        Do $$$AssertEquals($Select($IsObject(tEnvelope.%Get("detail")): tEnvelope.%Get("detail").%Get("failedPair"), 1: ""), "%Admin_Secure:USE", "naming the pair that failed")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).AuditEnabled(), tBefore, "and this instance's auditing did not move")
+}
+
+/// <p>AD-29 (Story 7.4): a principal holding exactly the Auditing configuration screen's declared
+/// pairs reads that screen and both embedded event lists 200 over their own read routes. Nothing
+/// is written.</p>
+Method TestALeastPrivilegedPrincipalReadsTheThreeAuditingScreens()
+{
+    Set tCodeResource = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
+    If tCodeResource = "" Quit
+    Set tSC = ..EnsureLeastPrivilegedPrincipal(..#PRINCIPALPASSWORD, ..#DECLAREDPAIRSONLY _ "," _ tCodeResource _ ":R")
+    Do $$$AssertStatusOK(tSC, "a principal holding only the declared pairs is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    For tScreen = "OcuPilot.Screen.Descriptor.AuditingConfig", "OcuPilot.Screen.Descriptor.AuditSystemEventList", "OcuPilot.Screen.Descriptor.AuditUserEventList" {
+        Set tPath = ..#APIBASE _ "/screens/" _ $ClassMethod(tScreen, "ToolIdentifier") _ "/read?maxRows=5"
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tPath, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, tScreen _ ": the read request completes")
+        Do $$$AssertEquals(tStatus, 200, tScreen _ ": and answers 200: " _ $Extract(tBody, 1, 300))
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).AuditEnabled(), 1, "and this instance's auditing did not move")
+}
+
 }

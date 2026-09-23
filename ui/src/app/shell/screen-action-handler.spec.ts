@@ -5,7 +5,7 @@ import { ApiService, type ApiRequestInit, type JsonResult } from '../core/api';
 import { ChangeBus, type ChangeEvent } from '../core/change-bus';
 import { ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
-import { SCREENS } from '../core/screens.generated';
+import { ENTITY_SINGLETON_ID, SCREENS } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
 import { rowKey } from '../core/table-model';
 import { stubAccountPreferences } from '../testing/account-preferences';
@@ -370,5 +370,49 @@ describe('the Users list row actions (Story 7.2)', () => {
     handler.submitRole('Probe');
     await settle();
     expect(JSON.parse(calls[1].body)).toEqual({ action: ADD_ROLE, id: 'probe', values: { Role: 'Probe' } });
+  });
+});
+
+/** Story 7.4: the Auditing configuration form's two actions over the singleton. */
+describe('the screen-action handler on the Auditing configuration form', () => {
+  const AUDITING = 'OcuPilot.Screen.Descriptor.AuditingConfig';
+  const TARGET = { type: 'auditing-configuration', scope: 'instance', id: ENTITY_SINGLETON_ID };
+
+  it('opens the warning before turning auditing off, and sends nothing until it is proceeded past', async () => {
+    // Mutation (Rule 19): drop the `warning` branch from `start` -> the disable is sent at once and
+    // the first `calls` assertion goes red.
+    const { actions, handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, AUDITING);
+    store.setSelection([ENTITY_SINGLETON_ID]);
+
+    actions.run(AUDITING, 'disable');
+    await settle();
+    expect(calls).toHaveLength(0);
+    const pending = handler.pending();
+    expect(pending?.kind).toBe('warning');
+    expect(pending?.verb).toBe(STRINGS.auditingTurnOffAction);
+    expect(pending?.consequence).toBe(STRINGS.proposalAuditWarning);
+
+    handler.cancelPending();
+    await settle();
+    expect(calls).toHaveLength(0);
+
+    actions.run(AUDITING, 'disable');
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe('/api/ocupilot/screens/security.auditing/action');
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'disable', id: ENTITY_SINGLETON_ID });
+    expect(events.map((event) => event.type)).toEqual(['auditing-configuration']);
+  });
+
+  it('turns auditing on at once, against the singleton', async () => {
+    const { actions, handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, AUDITING);
+    store.setSelection([ENTITY_SINGLETON_ID]);
+
+    actions.run(AUDITING, 'enable');
+    await settle();
+    expect(handler.pending()).toBeNull();
+    expect(calls).toHaveLength(1);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'enable', id: 'SYSTEM' });
   });
 });

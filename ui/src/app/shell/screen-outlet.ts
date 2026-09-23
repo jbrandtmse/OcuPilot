@@ -17,6 +17,7 @@ import { DatabaseDetailsPage } from '../areas/os-management/database-details.pag
 import { DatabasesPage } from '../areas/os-management/databases.page';
 import { ProcessDetailsPage } from '../areas/os-management/process-details.page';
 import { SystemUsagePage } from '../areas/os-management/system-usage.page';
+import { AuditingConfigPage } from '../areas/security/auditing-config.page';
 import { TaskDetailsPage } from '../areas/tasks/details.page';
 import { HistoryPage } from '../areas/tasks/history.page';
 import { UpcomingPage } from '../areas/tasks/upcoming.page';
@@ -85,6 +86,7 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
  */
 export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.AgentSwitches': SwitchesPage,
+  'OcuPilot.Screen.Descriptor.AuditingConfig': AuditingConfigPage,
   'OcuPilot.Screen.Descriptor.TaskUpcomingList': UpcomingPage,
   'OcuPilot.Screen.Descriptor.TaskHistoryList': HistoryPage,
   'OcuPilot.Screen.Descriptor.TaskDetails': TaskDetailsPage,

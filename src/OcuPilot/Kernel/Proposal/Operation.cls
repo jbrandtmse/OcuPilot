@@ -135,6 +135,21 @@ ClassMethod SecretBody(pToolClass As %String, pSupplied As %DynamicObject, pSecr
     Quit tBody
 }
 
+/// <p>Whether <var>pToolClass</var>'s write opens or closes the audit channel AD-15 marks through,
+/// so its caller records the observed marking fact after it (AD-53). Read from the tool's own
+/// <code>MOVESMARKING</code> parameter; <code>""</code>, an undeclared parameter and a class that
+/// cannot be asked all answer 0.</p>
+ClassMethod MovesMarking(pToolClass As %String) As %Boolean
+{
+    Set tMoves = 0
+    Try {
+        If pToolClass '= "" Set tMoves = ''$Parameter(pToolClass, "MOVESMARKING")
+    } Catch {
+        Set tMoves = 0
+    }
+    Quit tMoves
+}
+
 /// <p>The AD-14 action <var>pToolClass</var>'s write performs, or <code>""</code> for a class that
 /// cannot be asked -- which leaves the answer carrying no action and the client publishing its own
 /// default.</p>

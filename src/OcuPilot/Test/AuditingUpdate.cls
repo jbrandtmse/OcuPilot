@@ -534,4 +534,80 @@ ClassMethod Diff(pField As %String) As %String
     Quit "[{""field"":""" _ pField _ """,""before"":""true"",""after"":""false""}]"
 }
 
+/// <p>AC2, AC5 (Story 7.4): the Auditing configuration screen's own actions, over
+/// <code>POST /screens/security.auditing/action</code> as the test account. The disable answers
+/// 200 with the change triple, turns auditing off and records the fact the panel banner reads,
+/// through <code>GET /agent/restraint</code>; the enable turns it back on and clears the fact. The
+/// screen caller mints nothing, writes no ledger row and emits no OcuPilot marker (AD-53).</p>
+Method TestTheScreenActionTurnsAuditingOffAndOnAndMovesTheBanner()
+{
+    Do $$$AssertEquals(..AuditEnabled(), 1, "the instance starts audited, so the disable has something to change")
+    Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tLedgerBefore = ..LedgerCount(tUser)
+    Do $$$AssertNotEquals(tLedgerBefore, -1, "the ledger reads before the write, so the no-row assertion compares counts")
+    Try {
+        Set tAnswer = ..ScreenAction("disable", .tStatus)
+        Do $$$AssertEquals(tStatus, 200, "the screen's disable answers 200")
+        If $IsObject(tAnswer) {
+            Do $$$AssertEquals(tAnswer.%Get("action"), "updated", "with the updated verb")
+            Do $$$AssertEquals($Select($IsObject(tAnswer.%Get("target")): tAnswer.%Get("target").%ToJSON(), 1: ""), "{""type"":""auditing-configuration"",""scope"":""instance"",""id"":""SYSTEM""}", "and the singleton's triple")
+        }
+        Do $$$AssertEquals(..AuditEnabled(), 0, "auditing is off")
+        Do $$$AssertEquals(..RestraintMarked(), 0, "and GET /agent/restraint reads writesMarked false, so the banner shows")
+
+        Set tAnswer = ..ScreenAction("enable", .tStatus)
+        Do $$$AssertEquals(tStatus, 200, "the screen's enable answers 200")
+        Do $$$AssertEquals(..AuditEnabled(), 1, "auditing is on again")
+        Do $$$AssertEquals(..RestraintMarked(), 1, "and writesMarked reads true, so the banner clears")
+
+        Do $$$AssertEquals(..LedgerCount(tUser), tLedgerBefore, "no ledger row was written")
+        Do $$$AssertEquals(##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, ##class(OcuPilot.Kernel.Audit.Event).#EVENTAGENTWRITE, $Parameter(..#TOOL, "TOOLNAME"), .tData), 0, "and no AgentWrite marker names the auditing tool")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the screen-action sequence raised")
+    }
+    ; Its own frame, for the reason TestTheDisableDropsItsMarkerRecordsTheDropAndIsBracketedByTheReEnable gives.
+    Do ..RestoreAuditing()
+    Do $$$AssertEquals(..AuditEnabled(), 1, "and the instance is audited again")
+}
+
+/// <p>One screen action <var>pAction</var> on the Auditing configuration screen as the test
+/// account, answering the parsed body, or <code>""</code>.</p>
+Method ScreenAction(pAction As %String, Output pStatus As %Integer) As %DynamicObject
+{
+    Set tRequest = {}
+    Do tRequest.%Set("action", pAction, "string")
+    Do tRequest.%Set("id", ##class(OcuPilot.Kernel.EntityRef).#RULESINGLETONID, "string")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot/screens/" _ $ClassMethod(..#SCREEN, "ToolIdentifier") _ "/action", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .pStatus, .tBody, .tHeaders, tRequest.%ToJSON(), "application/json")
+    Do $$$AssertStatusOK(tSC, pAction _ ": the request completes")
+    If $$$ISERR(tSC) || (tBody = "") Quit ""
+    Quit ##class(%DynamicObject).%FromJSON(tBody)
+}
+
+/// <p><code>writesMarked</code> as <code>GET /agent/restraint</code> answers it to the test
+/// account, or <code>-1</code> when it did not answer.</p>
+ClassMethod RestraintMarked() As %Integer
+{
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/agent/restraint", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tBody, .tHeaders)
+    If $$$ISERR(tSC) || (tStatus '= 200) Quit -1
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    If tAnswer.%GetTypeOf("writesMarked") '= "boolean" Quit -1
+    Quit +tAnswer.%Get("writesMarked")
+}
+
+/// <p>How many of <var>pUser</var>'s ledger rows the last day holds, or <code>-1</code>.</p>
+ClassMethod LedgerCount(pUser As %String) As %Integer
+{
+    Set tSC = ##class(OcuPilot.Kernel.State.Ledger).GuardedIdsForWindow(pUser, 24, "", 1000, .tIds, .tProblem)
+    If $$$ISERR(tSC) Quit -1
+    Set tCount = 0
+    Set tI = ""
+    For {
+        Set tI = $Order(tIds(tI))
+        If tI = "" Quit
+        Set tCount = tCount + 1
+    }
+    Quit tCount
+}
+
 }

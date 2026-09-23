@@ -320,14 +320,13 @@ test('AC5, AC6, AC7: the confirmed disable raises the banner, and the re-enable 
       { timeout: config.navigationTimeoutMs },
       STRINGS.auditingOffBanner
     );
-    // Its sentence alone: the link and the action stay unrendered until Story 7.4 builds the screen
-    // they open.
+    // Story 7.4 built the screen the banner links to, so the link is there.
     assert.equal(
       await disable.page.evaluate(
-        () => document.querySelector('[data-slot="not-marked"] .ocu-panel-banner-link') === null
+        () => (document.querySelector('[data-slot="not-marked"] .ocu-panel-banner-link')?.textContent ?? '').trim()
       ),
-      true,
-      'and carries no link to a screen that does not exist yet'
+      STRINGS.auditingConfigurationLink,
+      'and carries the link to the Auditing configuration screen'
     );
   } finally {
     await disable.context.close();

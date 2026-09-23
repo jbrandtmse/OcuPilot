@@ -21,8 +21,9 @@
 /// <method>OcuPilot.Kernel.Proposal.Mint.Merge</method> the agent's proposal is built with, so no
 /// second code path writes a field.</p>
 /// <p>Seams a fixture subclass overrides: <method>RegistryClass</method>,
-/// <method>ToolRegistryClass</method>, <method>PortClass</method> and
-/// <method>ProhibitedClassName</method>. Production overrides none of them.</p>
+/// <method>ToolRegistryClass</method>, <method>PortClass</method>,
+/// <method>ProhibitedClassName</method> and <method>LogObserveFailure</method>. Production
+/// overrides none of them.</p>
 Class OcuPilot.Api.ScreenAction Extends %RegisteredObject
 {
 
@@ -263,6 +264,9 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
             Set tSC = ..Fault(tWriteSC, tWriteHttp, .tWriteFault)
             Quit
         }
+        ; AD-53 as amended: a write that opens or closes the audit channel records the observed
+        ; marking fact the banner reads. It never alters this answer.
+        If ##class(OcuPilot.Kernel.Proposal.Operation).MovesMarking(pToolClass) Do ..ObserveMarking(pToolClass)
 
         Set tSC = ##class(OcuPilot.Kernel.EntityRef).Wire(pType, pScope, pId, .tTarget)
         If $$$ISERR(tSC) {
@@ -279,6 +283,40 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
     Quit tSC
+}
+
+/// <p>The log message a failed post-write marking observation reports.</p>
+Parameter OBSERVEFAILED = "the auditing write was applied and the marking state could not be observed";
+
+/// <p>Re-read, through <var>pToolClass</var>'s own port and as the caller, whether this instance
+/// marks agent writes, and record what was observed (AD-53 as amended, AD-15). A failed observation
+/// records nothing and logs one error line.</p>
+/// <p><b>Never propagates and never fails the write</b>: the write has already been applied, so
+/// every outcome here is swallowed.</p>
+ClassMethod ObserveMarking(pToolClass As %String) [ Private ]
+{
+    Try {
+        Set tPort = ##class(OcuPilot.Kernel.Proposal.Operation).PortClassOf(pToolClass, ..PortClass())
+        Set tObserveSC = ##class(OcuPilot.Kernel.Audit.Event).ObserveMarking(tPort, .tMarked)
+        If $$$ISOK(tObserveSC) {
+            Do ##class(OcuPilot.Kernel.Audit.Event).RecordMarking(tMarked)
+            Quit
+        }
+        Do ..LogObserveFailure(pToolClass, tObserveSC)
+    } Catch ex {
+        ; Deliberately empty: the write has already been applied and its answer is not this
+        ; method's to change (AD-15).
+    }
+}
+
+/// <p>Log one error line for a failed post-write marking observation of <var>pToolClass</var>.
+/// A seam a fixture overrides to capture the line; production overrides none.</p>
+ClassMethod LogObserveFailure(pToolClass As %String, pStatus As %Status)
+{
+    Set tData = {}
+    Do tData.%Set("tool", $ClassMethod(pToolClass, "ToolClass"), "string")
+    Do tData.%Set("reason", $System.Status.GetErrorText(pStatus), "string")
+    Do ##class(OcuPilot.Kernel.Audit.Log).Error(##class(OcuPilot.Kernel.Audit.Event).#LOGSUBSYSTEM, ..#OBSERVEFAILED, tData)
 }
 
 /// <p>The body this action sends and the diff it makes, from the fresh read <var>pFresh</var> and

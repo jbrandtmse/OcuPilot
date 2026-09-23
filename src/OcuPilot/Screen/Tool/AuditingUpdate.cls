@@ -60,6 +60,15 @@ Parameter WRITEPERMISSION = "USE";
 /// statements are about two surfaces and both hold.</p>
 Parameter DESTRUCTIVE As BOOLEAN = 1;
 
+/// <p>The screen's two row actions (AD-53): each is this tool's one merge write over
+/// <code>Enabled</code>.</p>
+Parameter SCREENACTIONS = "enable=Enabled:true,disable=Enabled:false";
+
+/// <p>This write opens or closes the channel AD-15 marks through, so the screen's caller records
+/// the observed marking fact after it (AD-53 as amended 2026-09-23,
+/// <method>OcuPilot.Kernel.Proposal.Operation.MovesMarking</method>).</p>
+Parameter MOVESMARKING As BOOLEAN = 1;
+
 ClassMethod Endpoint() As %String
 {
     Quit "Security.Audit.Enabled"

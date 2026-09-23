@@ -24,13 +24,15 @@ export const SCREEN_ACTION_PATH_SUFFIX = '/action';
  * registering generically for them would replace a handler that does something else. It grows one
  * entry per story, beside the consequence copy below: the Web applications list (Story 7.1), and
  * the OAuth 2.0 screen's Client configurations and Server client descriptions tabs (Story 7.3),
- * whose detail pages render the same `ListPage`, and the Users list (Story 7.2).
+ * whose detail pages render the same `ListPage`, and the Users list (Story 7.2), and the Auditing
+ * configuration form (Story 7.4), whose page selects the singleton itself.
  */
 export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WebAppList',
   'OcuPilot.Screen.Descriptor.OAuthClientTab',
   'OcuPilot.Screen.Descriptor.OAuthServerClientTab',
   'OcuPilot.Screen.Descriptor.UserList',
+  'OcuPilot.Screen.Descriptor.AuditingConfig',
 ];
 
 /** The Users list's descriptor, whose row actions carry values (AD-56). */
@@ -94,6 +96,16 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [USER_LIST]: { delete: STRINGS.userDeleteConsequence },
 };
 
+/**
+ * The warning a non-delete write states before it is sent, keyed by descriptor and then by action
+ * id (EXPERIENCE.md `confirm-dialog`: a warning's confirming action is `button-primary`, never
+ * destructive). An action with a warning here opens the warning dialog; nothing is sent until its
+ * Proceed.
+ */
+const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  'OcuPilot.Screen.Descriptor.AuditingConfig': { disable: STRINGS.proposalAuditWarning },
+};
+
 /** What the screen-action route answers (AD-14): the verb, and the triple the write was made against. */
 interface ScreenActionAnswer {
   readonly action?: string;
@@ -101,12 +113,13 @@ interface ScreenActionAnswer {
 }
 
 /** Which dialog a pending row action is waiting on. */
-export type PendingKind = 'typed-name' | 'set-password' | 'role';
+export type PendingKind = 'typed-name' | 'warning' | 'set-password' | 'role';
 
 /**
  * The dialog a row action is waiting on, or `null`: the typed-name confirm of a destructive action,
- * the set-password dialog, or the role dialog. `kind` says which; `consequence` is the typed-name
- * dialog's own sentence and `options` the role dialog's choices, each empty for the other kinds.
+ * the warning before a non-delete write, the set-password dialog, or the role dialog. `kind` says
+ * which; `consequence` is the typed-name or warning dialog's own sentence and `options` the role
+ * dialog's choices, each empty for the other kinds.
  */
 export interface PendingConfirm {
   readonly kind: PendingKind;
@@ -178,11 +191,11 @@ export class ScreenActionHandler {
     return this.waiting();
   }
 
-  /** The typed name matched: send the write the dialog was standing in front of. */
+  /** The typed name matched, or the warning was proceeded past: send the write the dialog was standing in front of. */
   confirmPending(): void {
     const pending = this.waiting();
     this.waiting.set(null);
-    if (pending === null || pending.kind !== 'typed-name') return;
+    if (pending === null || (pending.kind !== 'typed-name' && pending.kind !== 'warning')) return;
     void this.send(pending.descriptor, pending.actionId, pending.target);
   }
 
@@ -241,6 +254,11 @@ export class ScreenActionHandler {
     }
     if (dialog === 'role') {
       void this.openRole(screen, actionId, target);
+      return;
+    }
+    const warning = this.warning(screen.descriptor, actionId);
+    if (warning !== '') {
+      this.open('warning', screen.descriptor, actionId, target, warning, []);
       return;
     }
     if (!this.isDestructive(actionId)) {
@@ -363,6 +381,12 @@ export class ScreenActionHandler {
 
   private isDestructive(actionId: string): boolean {
     return DESTRUCTIVE_ACTIONS.includes(actionId);
+  }
+
+  private warning(descriptor: string, actionId: string): string {
+    const own = WARNING_CONSEQUENCES[descriptor];
+    if (own === undefined) return '';
+    return Object.hasOwn(own, actionId) ? own[actionId] : '';
   }
 
   private consequence(descriptor: string, actionId: string): string {

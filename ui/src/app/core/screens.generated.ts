@@ -1119,13 +1119,271 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.AuditSystemEventList",
+    "route": "security/auditing/system-events",
+    "area": "security",
+    "labelKey": "auditSystemEventListLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "audit-event",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "EventName"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "EventName",
+        "Enabled",
+        "Total",
+        "Written",
+        "Lost"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "auditSystemEventListEmpty",
+    "commandAliases": [],
+    "classicPage": "%CSP.UI.Portal.Audit.SystemEvents",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.Audit.Event",
+        "type": "LIST",
+        "query": {
+          "eventOwner": "1"
+        }
+      },
+      "fields": [
+        "EventName",
+        "Enabled",
+        "Total",
+        "Written",
+        "Lost"
+      ],
+      "filter": [
+        "EventName",
+        "Enabled",
+        "Total",
+        "Written",
+        "Lost"
+      ],
+      "sort": {
+        "fields": [
+          "EventName",
+          "Enabled",
+          "Total",
+          "Written",
+          "Lost"
+        ],
+        "default": "EventName",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "EventName",
+          "labelKey": "auditColumnEventName",
+          "kind": "name"
+        },
+        {
+          "field": "Enabled",
+          "labelKey": "tableColumnEnabled",
+          "kind": "status"
+        },
+        {
+          "field": "Total",
+          "labelKey": "auditEventColumnTotal",
+          "kind": "number"
+        },
+        {
+          "field": "Written",
+          "labelKey": "auditEventColumnWritten",
+          "kind": "number"
+        },
+        {
+          "field": "Lost",
+          "labelKey": "auditEventColumnLost",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "security.auditsystemevents",
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AuditUserEventList",
+    "route": "security/auditing/user-events",
+    "area": "security",
+    "labelKey": "auditUserEventListLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "audit-event",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "EventName"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "EventName",
+        "Enabled",
+        "Total",
+        "Written",
+        "Lost"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "auditUserEventListEmpty",
+    "commandAliases": [],
+    "classicPage": "%CSP.UI.Portal.Audit.UserEvents",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.Audit.Event",
+        "type": "LIST",
+        "query": {
+          "eventOwner": "0"
+        }
+      },
+      "fields": [
+        "EventName",
+        "Enabled",
+        "Total",
+        "Written",
+        "Lost"
+      ],
+      "filter": [
+        "EventName",
+        "Enabled",
+        "Total",
+        "Written",
+        "Lost"
+      ],
+      "sort": {
+        "fields": [
+          "EventName",
+          "Enabled",
+          "Total",
+          "Written",
+          "Lost"
+        ],
+        "default": "EventName",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "EventName",
+          "labelKey": "auditColumnEventName",
+          "kind": "name"
+        },
+        {
+          "field": "Enabled",
+          "labelKey": "tableColumnEnabled",
+          "kind": "status"
+        },
+        {
+          "field": "Total",
+          "labelKey": "auditEventColumnTotal",
+          "kind": "number"
+        },
+        {
+          "field": "Written",
+          "labelKey": "auditEventColumnWritten",
+          "kind": "number"
+        },
+        {
+          "field": "Lost",
+          "labelKey": "auditEventColumnLost",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "security.audituserevents",
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.AuditingConfig",
     "route": "security/auditing",
     "area": "security",
     "labelKey": "auditingConfigurationLink",
-    "sideBarPosition": 0,
+    "sideBarPosition": 6,
     "archetype": "form-page",
-    "built": false,
+    "built": true,
     "refreshes": false,
     "refreshRates": [],
     "privileges": [
@@ -1151,13 +1409,26 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "enable",
+        "selfProtection": ""
+      },
+      {
+        "id": "disable",
+        "selfProtection": ""
+      }
+    ],
     "context": {
-      "fields": [],
+      "fields": [
+        "Enabled"
+      ],
       "secretFields": []
     },
     "emptyStateKey": "",
-    "commandAliases": [],
+    "commandAliases": [
+      "auditing"
+    ],
     "classicPage": "%CSP.UI.Portal.Audit.SystemEvents",
     "classicLinkExemption": {
       "exempt": false,
@@ -1165,8 +1436,28 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "label": "",
       "href": ""
     },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.Audit.Enabled",
+        "type": "GET"
+      },
+      "fields": [
+        "Enabled"
+      ],
+      "filter": [
+        "Enabled"
+      ],
+      "sort": {
+        "fields": [
+          "Enabled"
+        ],
+        "default": "Enabled",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
     "toolIdentifier": "security.auditing",
-    "read": null,
     "table": null,
     "banner": null,
     "tab": null,

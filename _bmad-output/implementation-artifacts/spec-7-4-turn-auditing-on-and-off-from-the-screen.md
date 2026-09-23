@@ -2,10 +2,10 @@
 title: 'Story 7.4: Turn auditing on and off from the screen'
 type: 'feature'
 created: '2026-09-23'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '6ae2918f4cc1c958b936254cf5849001c8d00d39'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-7-context.md'
@@ -21,6 +21,14 @@ footprint_extensions:
   - 'src/OcuPilot/Test/SurfaceCoverage.cls'
   - 'src/OcuPilot/Test/ReadTool.cls'
   - 'src/OcuPilot/Kernel/Audit/Event.cls'
+  - 'src/OcuPilot/Test/WireOAuthRead.cls'
+  - 'ui/tools/toasts.test.mjs'
+  - 'ui/tools/navigation.test.mjs' # roster rule, 2026-09-23
+  - 'src/OcuPilot/Test/WireSecurityRead.cls' # roster rule, 2026-09-23
+  - 'src/OcuPilot/Test/Wire.cls' # roster rule, 2026-09-23
+  - 'src/OcuPilot/Screen/Registry.cls' # contended; RendersNoTable only
+  - 'ui/tools/screen-mirror.mjs' # contended; rendersNoTable only
+  - 'ui/tools/screen-mirror.test.mjs' # contended; two in-place edits
 ---
 
 <intent-contract>
@@ -270,19 +278,19 @@ Tests that pin today's shape and must move:
 
 **Open items on re-dispatch (2026-09-23, lead, orchestrator rulings):**
 
-- [ ] Update the three Epic-8-modified roster tests the new screens redden -- `ui/tools/navigation.test.mjs`,
+- [x] Update the three Epic-8-modified roster tests the new screens redden -- `ui/tools/navigation.test.mjs`,
   `src/OcuPilot/Test/WireSecurityRead.cls`, `src/OcuPilot/Test/Wire.cls` -- adding only 7.4's own
   screens, off Epic 8's hunks (read `git show origin/OCU-1-epic8:<path>` first); list each under
   `footprint_extensions:`. Standing roster rule (2026-09-23): a shared test or roster file the other
   epic modified may take this story's own members under that discipline; its members, or a product
   source file it modified that is not on the contended list, stay a HALT.
-- [ ] Replace the three borrowed strings the read's table and empty-state declaration names but the
+- [x] Replace the three borrowed strings the read's table and empty-state declaration names but the
   page never shows. Choose the option that matches what the page does, and record the choice under
   Design Notes: (1) a real state that text would describe -> HALT with the exact proposed copy for
   the lead to publish (tier-1); or (2) scope the registry rule in `Screen/Registry.cls` and its twin
   `ui/tools/screen-mirror.mjs` (both contended) so a form page whose read renders no table needs no
   table text, pinned by a test that fails when the scoping is removed.
-- [ ] Finish the halted pass: the full ObjectScript sweep, the smoke check, the review layers,
+- [x] Finish the halted pass: the full ObjectScript sweep, the smoke check, the review layers,
   finalize; delete `_bmad-output/implementation-artifacts/7-4-wip.patch` and
   `7-4-wip-untracked.tgz` in the finalize commit.
 
@@ -306,6 +314,29 @@ Tests that pin today's shape and must move:
   tarball for crash safety; `status` reset to `in-progress`.
 
 ## Review Triage Log
+
+### 2026-09-23 — Review pass
+
+- verdicts: 18 findings — high 0, medium 3, low 13, false 0, maybe-false 0 (two grouped pairs)
+- findings:
+  - `[medium]` `[patch]` VG: the real `ScreenAction.LogObserveFailure` body never ran under test (the fixture overrides it) — added `AuditingScreen.TestAFailedObservationLogLineNamesTheToolAndTheReason`, reading the appended console line.
+  - `[low]` `[patch]` VG: the "records nothing" test depended on the stored fact starting at 1 — the test now records 1 first, asserts it, and puts the original back.
+  - `[medium]` `[patch]` VG: the page's refusal banner, read fault with Retry, and malformed-row paths were untested — three cases added to `auditing-config.page.spec.ts`.
+  - `[low]` `[patch]` VG: `AuditingUpdate`'s no-ledger assertion passed if both reads answered -1 — added the `tLedgerBefore '= -1` precondition.
+  - `[low]` `[reject]` VG: AC5's no-marker and no-ledger clauses carry no mutation line — Rule 19 asks one demonstrated mutation per AC and AC5 has its 403 line; those clauses run only in CI's armed class.
+  - `[low]` `[patch]` VG: AC3's focus half had no Verification line — focus mutation demonstrated and recorded.
+  - `[low]` `[patch]` VG: AC4's client pin had no Verification line — section mutation demonstrated and recorded.
+  - `[low]` `[patch]` VG: AC1's `warning-dialog.spec.ts` pin had no Verification line — destructive-class mutation demonstrated and recorded.
+  - `[low]` `[patch]` VG: `Wire.cls` message said "ten built screens" for thirteen — corrected.
+  - `[low]` `[reject]` VG: nothing asserts the shipped mirror emits `table: null` for AuditingConfig — `AuditingScreen` asserts the declaration has no table and `screen-mirror.mjs --check` pins the generated file to it.
+  - `[low]` `[reject]` IA: Escape and scrim cancel are covered at component level only — all three emit the one `cancelled` output (`warning-dialog.spec.ts`), and the page's cancel path is pinned by the page and browser Cancel legs.
+  - `[medium]` `[patch]` IA: the observation-failure row is not exercised through a real write (grouped with the first VG row) — the production log body now runs; the never-raise half is the helper test.
+  - `[medium]` `[patch]` IA: a regressed refusal in `ProhibitedRoute` would have disabled auditing with nothing restoring it — the probe now sends `enable` to an audited instance; AC5 mutation re-demonstrated (run 7777).
+  - `[low]` `[patch]` IA: no test shows a denied user the page's refusal (grouped with the third VG row).
+  - `[low]` `[reject]` IA: the kill switch and read-only not gating the screen action is not re-exercised — unchanged `ScreenAction` behavior from Story 7.1.
+  - `[low]` `[reject]` IA: neither event list is rendered at its own route in a test — built list screens are served by the generic `ListPage`, and the roster is pinned by `navigation.test.mjs`.
+  - `[low]` `[reject]` IA: the marker-disabled arm is proved only against `MarkingPort` — disabling OcuPilot's own event on a shared instance is Story 7.11's write.
+  - `[low]` `[reject]` IA: "before any read" is not observed — the pair gate precedes the fresh read in `Run`, and the AC5 mutation shows the gate is what refuses.
 
 ## Design Notes
 
@@ -388,6 +419,12 @@ table says "Auditing" (inference: the table names the entry, not its label).
 Reused: `proposalAuditWarning` (dialog body), `auditingTurnOnAction`, `auditingConfigurationLink`,
 `auditListLabel`, `actionCancel`.
 
+**Borrowed strings, choice (2).** The page renders `Enabled` as a status line and never as a grid,
+and the single-object read always answers one row, so no real state needs a column header or an
+empty-state sentence. `Registry.RendersNoTable` and its twin `rendersNoTable` exempt a `form-page`
+that declares no `table` from the table rule; `AuditingConfig` drops its `table` and sets
+`emptyStateKey` to `""`.
+
 ## Verification
 
 Destructive checks run only on the throwaway `ocupilot-ci` (web 52776). Run one test class per
@@ -421,6 +458,16 @@ any container.
   - `mutation: AC4 -- swap the two eventOwner values, reload the two descriptors on ocupilot-ci -> AuditingScreen's two list-read tests red (run 7384). DEMONSTRATED 2026-09-23, reverted, tree fingerprint unchanged`
   - `mutation: AC5 -- Set tRefused = 0 after ScreenAction.Run's pair Gate, reload on ocupilot-ci -> ProhibitedRoute.TestAnAccountShortOfTheAuditingPairIsRefusedTheScreenAction red on code and failedPair (run 7386). DEMONSTRATED 2026-09-23, reverted, ProhibitedRoute 22/22 (run 7388)`
   - `mutation: ObserveMarking answers the auditing flag alone -> AuditingScreen.TestObservingMarkingNeedsAuditingAndTheMarkerEvent red on the on/off arm (run 7385). DEMONSTRATED 2026-09-23, reverted`
+  - `mutation: RendersNoTable answers 0, Registry reloaded on ocupilot-ci -> AuditingScreen.TestAFormPageReadNeedsNoTable red (run 7408). DEMONSTRATED 2026-09-23, reverted and reloaded, tree unchanged`
+  - `mutation: rendersNoTable answers false -> screen-mirror.test.mjs's AD-5 table test red (and the shipped mirror no longer builds). DEMONSTRATED 2026-09-23, reverted, tree unchanged`
+  - `mutation: the roster files without 7.4's three screens (the pre-edit files) -> navigation.test.mjs 4 red, WireSecurityRead 5 red (run 7406); with them, 36/36 and 18/18`
+  - `mutation: AC1 client -- render Proceed as ocu-button-destructive -> warning-dialog.spec.ts red. DEMONSTRATED 2026-09-23, reverted`
+  - `mutation: AC3 focus -- drop the focus call in the page's focus effect -> auditing-config.page.spec.ts AC3 focus test red. DEMONSTRATED 2026-09-23, reverted`
+  - `mutation: AC4 client -- drop the sections' data-section attribute -> the two AC4 page-spec tests red. DEMONSTRATED 2026-09-23, reverted`
+  - `mutation: delete the page's refusalText block / drop view.fault.set(true) / auditingEnabled answers Boolean(value) -> the three new page-spec cases red, one each. DEMONSTRATED 2026-09-23, reverted, tree unchanged`
+  - `mutation: RecordMarking whatever the status, and LogObserveFailure with subsystem and message swapped -> AuditingScreen's two failure tests red (run 7774). DEMONSTRATED 2026-09-23, reverted and reloaded, AuditingScreen 8/8`
+  - `mutation: AC5 re-shown with the enable probe -- Set tRefused = 0 after the pair Gate -> ProhibitedRoute's auditing refusal red on code and failedPair (run 7777), auditing read 1 throughout. Reverted, ProhibitedRoute 22/22`
+  - `mutation: screenForToolName keyed on the first name segment -> navigation.test.mjs's screenForToolName test red. DEMONSTRATED 2026-09-23, reverted`
   - `mutation: drop ScreenAction.ObserveMarking's LogObserveFailure call -> AuditingScreen.TestAFailedObservationAfterTheScreensWriteRecordsNothingAndLogs red (run 7404). DEMONSTRATED 2026-09-23, reverted, AuditingScreen 6/6 (run 7405)`
 
 **Once, before `dev_complete`:** run the full ObjectScript sweep on `ocupilot-ci`, per class and
@@ -430,21 +477,40 @@ full browser suite is not run locally (Rule 29).
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap -- three files Epic 8 has modified, on neither approved list, pin the
-Security side-bar roster that `AuditingConfig` (position 6) and the two event lists (position 0)
-change, so the full sweep and `test:tools` go red without them: `ui/tools/navigation.test.mjs`
-(4 red: `:120`, `:260`, `:918`, `:945`), `src/OcuPilot/Test/WireSecurityRead.cls` (5 red: `:786`,
-`:812`, `:840`, `:939`, `:958`; beside Epic 8's hunks at 781-785 and 807-811) and
-`src/OcuPilot/Test/Wire.cls` (the SSL-list Security roster near `:577`). Recommended: approve all
-three as footprint extensions (mechanical roster rows), then re-dispatch at `in-progress`.
+Status: done
+Blocking condition: none
 
-footprint_extensions: as frontmatter, plus `WireOAuthRead.cls` and `ui/tools/toasts.test.mjs`
-(neither touched by Epic 8).
+This pass (re-dispatch, cycle 2) worked the three open items only:
 
-Tiers run (implement, uncommitted in the worktree): `ocupilot-ci` per class -- AuditingScreen 6/6,
-Descriptor 50/50, ToolWrite 23/23, ReadTool 27/27, SurfaceCoverage 4/4, ToolRoundTrip 2/2,
-ProhibitedRoute 22/22, WireOAuthRead 6/6; AuditingUpdate refuses there (unarmed; 7/7 once in an
-armed session, run 7382 -- CI's result governs). `test:components` 873/873; `test:tools`
-1,323/1,327 (the four above); both browser specs 4/4 on a redeployed bundle; check-objectscript 0.
-Not run: the full ObjectScript sweep, smoke, the review layers. Auditing reads 1 on `ocupilot-ci`.
+- Roster rule, 2026-09-23: 7.4's three screens added to `ui/tools/navigation.test.mjs`,
+  `Test/WireSecurityRead.cls` and `Test/Wire.cls`, off Epic 8's lines. A trial `git merge-file`
+  against `origin/OCU-1-epic8` is clean for two files. `WireSecurityRead.cls` shows three textual
+  conflicts: 7.4's security-row lines 786, 812 and 840 sit directly below Epic 8's rewritten
+  permissions and web-applications lines. The resolution is to keep both sides.
+- Borrowed strings, choice (2): `Registry.RendersNoTable` and its twin `rendersNoTable` added.
+  `AuditingConfig` drops its `table`, and its `emptyStateKey` is now `""`.
+  `Test/Descriptor.cls` (key list, read-shape row), `screen-mirror.test.mjs` and the regenerated
+  mirror follow. Both engines' pins are demonstrated.
+- Review: 18 findings (3 medium, 15 low, no high). The 10 patches are test-only, apart from the
+  `Wire.cls` message. 8 findings were rejected, with reasons in the triage log. Nothing was
+  deferred.
+
+footprint_extensions: as frontmatter.
+
+Follow-up review recommended: true. Three medium entries were patched on a first review. The unverified risk is the
+`AuditingUpdate` ledger precondition: that class refuses on `ocupilot-ci`, so only CI's armed run
+shows it.
+
+Tiers run, all on `ocupilot-ci`:
+
+- Full ObjectScript sweep, one class at a time: 181 classes, 1,637 tests, 0 failed. Four classes
+  refuse unarmed there, as expected: `AuditingUpdate`, `ErrorDelete`, `ProcessControl` and
+  `TaskResume`.
+- Re-run after the patches: `AuditingScreen` 8/8, `ProhibitedRoute` 22/22, `Wire` 20/20,
+  `WireSecurityRead` 18/18.
+- Smoke: 49 of 49 executed and passed.
+- Client: `test:tools` 1,327/1,327 and `test:components` 876/876. Both browser specs pass 4/4 on a
+  rebuilt and redeployed bundle.
+- `check-objectscript` reports 0 problems.
+
+Auditing reads 1 on `ocupilot-ci`.

@@ -92,6 +92,12 @@ function wired({ url = HOME_URL, namespace = 'HSCUSTOM' } = {}) {
   };
 }
 
+/**
+ * A type no built screen shows. Every declared entity type has a built screen, so this one is
+ * outside the vocabulary; the store resolves it to no screen, as it would a declared type with none.
+ */
+const UNSHOWN_TYPE = 'unshown-probe';
+
 function changed(overrides = {}) {
   return {
     kind: 'changed',
@@ -163,7 +169,7 @@ test('nothing but a `changed` event reaches the stack, and no fault can', () => 
 
 test('a type no built screen shows raises a toast with no action, which lives ten seconds', () => {
   const harness = wired();
-  assert.equal(harness.store.publish(changed({ type: 'audit-event', id: '42' })), true);
+  assert.equal(harness.store.publish(changed({ type: UNSHOWN_TYPE, id: '42' })), true);
   const [toast] = harness.store.toasts();
   assert.equal(toast.route, '', 'nothing to open');
   assert.equal(toast.entityLabel, '', 'and no screen publishes a noun for it');
@@ -187,7 +193,7 @@ test('four toasts leave three, newest first, and the oldest is gone', () => {
 
 test('each toast leaves on its own deadline, and dismiss takes one without touching the others', () => {
   const harness = wired();
-  harness.store.publish(changed({ type: 'audit-event', id: '42' })); // no action -> 10 s
+  harness.store.publish(changed({ type: UNSHOWN_TYPE, id: '42' })); // no action -> 10 s
   harness.store.publish(changed({ id: '/csp/myapp' })); // action -> 30 s
   assert.equal(harness.store.toasts().length, 2);
 
@@ -205,7 +211,7 @@ test('each toast leaves on its own deadline, and dismiss takes one without touch
 
 test('a hover or a focus holds every countdown, and releasing gives back exactly the time held', () => {
   const harness = wired();
-  harness.store.publish(changed({ type: 'audit-event', id: '42' }));
+  harness.store.publish(changed({ type: UNSHOWN_TYPE, id: '42' }));
   const deadline = harness.store.toasts()[0].expiresAt;
 
   harness.store.holdTimers('pointer');
@@ -234,7 +240,7 @@ test('a hover or a focus holds every countdown, and releasing gives back exactly
 
 test('an emptied stack forgets the hold it was under, so the next toast still expires', () => {
   const harness = wired();
-  harness.store.publish(changed({ type: 'audit-event', id: '42' }));
+  harness.store.publish(changed({ type: UNSHOWN_TYPE, id: '42' }));
   // Acting on a toast focuses its own control and then dismisses it; the region unmounts with the
   // last entry, and no `focusout` is owed for an element that is gone.
   harness.store.holdTimers();
@@ -242,7 +248,7 @@ test('an emptied stack forgets the hold it was under, so the next toast still ex
   assert.deepEqual(harness.store.toasts(), []);
   assert.equal(harness.store.holding(), false, 'there is no region left to hold the clocks');
 
-  harness.store.publish(changed({ type: 'audit-event', id: '43' }));
+  harness.store.publish(changed({ type: UNSHOWN_TYPE, id: '43' }));
   harness.advance(TOAST_LIFETIME_MS);
   harness.fire();
   assert.deepEqual(harness.store.toasts(), [], 'and the next toast leaves on its own deadline');
@@ -250,8 +256,8 @@ test('an emptied stack forgets the hold it was under, so the next toast still ex
 
 test('dismissing one of two forgets the focus hold, so the survivor still expires', () => {
   const harness = wired();
-  harness.store.publish(changed({ type: 'audit-event', id: '42' }));
-  harness.store.publish(changed({ type: 'audit-event', id: '43' }));
+  harness.store.publish(changed({ type: UNSHOWN_TYPE, id: '42' }));
+  harness.store.publish(changed({ type: UNSHOWN_TYPE, id: '43' }));
   assert.equal(harness.store.toasts().length, 2);
 
   // Acting on a toast focuses its own control and then removes it. No `focusout` is owed for an
@@ -269,8 +275,8 @@ test('dismissing one of two forgets the focus hold, so the survivor still expire
 
 test('a pointer that is still over the region keeps holding after a dismiss', () => {
   const harness = wired();
-  harness.store.publish(changed({ type: 'audit-event', id: '42' }));
-  harness.store.publish(changed({ type: 'audit-event', id: '43' }));
+  harness.store.publish(changed({ type: UNSHOWN_TYPE, id: '42' }));
+  harness.store.publish(changed({ type: UNSHOWN_TYPE, id: '43' }));
 
   // The pointer never left, so its `pointerleave` is still owed and the clocks stay stopped.
   harness.store.holdTimers('pointer');

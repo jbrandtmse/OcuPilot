@@ -1037,8 +1037,9 @@ export function sideBarPositionProblem(declaration) {
  * `sort.direction` is `asc` or `desc`, `paging` is `cap` (no LIST accepts a cursor), and the
  * `toolIdentifier` is `<area>.<screen>` in lower case. `read`, `read.source`, `read.sort` and
  * `context` carry only their declared keys, and `context.secretFields` is declared, so a misspelt
- * key is refused rather than read as no secret field. A read declares its table (`tableProblem`),
- * and a table with no read is refused. Last of all, a read on the `admin` port whose `privileges`
+ * key is refused rather than read as no secret field. A read declares its table (`tableProblem`)
+ * unless it is a `form-page` that declares none (`rendersNoTable`), and a table with no read is
+ * refused. Last of all, a read on the `admin` port whose `privileges`
  * omit `%DB_IRISSYS:READ` is refused, because the port runs every endpoint in `%SYS` -- a `state`
  * read runs in the install namespace and needs no such pair, so the rule is on the source kind
  * rather than on every read; `OcuPilot.Test.AdminPairCorpus` is the corpus both engines run.
@@ -1243,7 +1244,7 @@ export function readProblem(declaration) {
       'lower case, so its read tool could not be named <area>.<screen>.read'
     );
   }
-  const tableFault = tableProblem(declaration, read.fields, secrets);
+  const tableFault = rendersNoTable(declaration) ? null : tableProblem(declaration, read.fields, secrets);
   if (tableFault !== null) return tableFault;
 
   // The last arm, so no earlier refusal changes which sentence a declaration gets.
@@ -2109,6 +2110,17 @@ export function rowGetProblem(source, fields, keyAllowed = []) {
     if (!detail.includes(entry.from)) return `${at} from '${entry.from}' is not one of read.source.rowGet.fields`;
   }
   return null;
+}
+
+/**
+ * Whether a declaration is a `form-page` that declares no `table`
+ * (`OcuPilot.Screen.Registry.RendersNoTable`). A form renders its read's one object as fields and
+ * actions, never as a grid, so it names no column header and no empty-state sentence a user could
+ * never see. Such a declaration is exempt from `tableProblem`; one that does declare a table is
+ * still held to it.
+ */
+export function rendersNoTable(declaration) {
+  return declaration.archetype === 'form-page' && (declaration.table === undefined || declaration.table === null);
 }
 
 /** The kinds a table column may declare (AD-5). */

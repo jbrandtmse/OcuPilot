@@ -1186,6 +1186,19 @@ test('AD-5: the generator refuses a table outside the declared grammar, naming t
   const composite = sound();
   composite.id = { kind: 'composite', parts: ['NameSpace', 'Name'] };
   assert.equal(readProblem(composite), null, 'and a composite id over declared fields');
+  // Story 7.4: a form renders its read's one object, never a grid, so a form-page declares no
+  // table and no empty-state sentence -- while a form that does declare a table is still held to it.
+  // Mutation (Rule 19): make `rendersNoTable` answer false -> the first assertion goes red.
+  const form = sound();
+  form.archetype = 'form-page';
+  delete form.table;
+  form.emptyStateKey = '';
+  assert.equal(readProblem(form), null, 'a form-page read with no table and no empty-state key passes');
+  assert.match(readProblem({ ...form, archetype: 'list' }), /table is not an object/, 'which a list with the same read is refused');
+  const formWithTable = sound();
+  formWithTable.archetype = 'form-page';
+  formWithTable.table.columns = [];
+  assert.match(readProblem(formWithTable), /table\.columns is empty/, 'and a form-page that declares a table is still held to it');
 
   const refused = [
     [(d) => delete d.table, /table is not an object/],
@@ -1230,7 +1243,7 @@ test('the mirror emits table as null for a screen that declares none', () => {
   const readless = shipped.filter((screen) => screen.read === null);
   assert.ok(readless.length > 0, 'the shipped mirror carries a screen that declares no read');
   for (const screen of readless) assert.equal(screen.table, null, `${screen.descriptor} declares no table`);
-  for (const screen of shipped.filter((candidate) => candidate.read !== null)) {
+  for (const screen of shipped.filter((candidate) => candidate.read !== null && candidate.archetype !== 'form-page')) {
     assert.notEqual(screen.table, null, `${screen.descriptor} declares a read, so it declares its table`);
   }
   assert.match(readCheckedInMirror(), /readonly table: TableDeclaration \| null;/, 'and the interface declares it');

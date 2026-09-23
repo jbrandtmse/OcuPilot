@@ -495,9 +495,7 @@ Method AssertUserActionWrite(pName As %String, pClass As %String, pWriteType As 
 /// <p>AC1, AC4 (Story 5.10): the auditing write tool advertises its one derived field, requires its
 /// screen's own pairs at <code>USE</code>, and declares its write destructive -- from the tool
 /// rather than from a kernel list naming tools.</p>
-/// <p>It is also the first registered write tool whose descriptor is <code>built: false</code>, so
-/// the registry is asserted to list it: a tool is registered by being compiled, and a screen that
-/// is not built yet is no reason for its operation to be absent.</p>
+/// <p>Its descriptor is built (Story 7.4), and the tool carries that screen's two row actions.</p>
 /// <p>Mutation (Rule 19): set <parameter>OcuPilot.Screen.Tool.AuditingUpdate.WRITEPERMISSION</parameter>
 /// back to <code>"WRITE"</code> -- the administrative-permission assertion goes red; answer 0 from
 /// <method>OcuPilot.Screen.Tool.Write.Destructive</method> -- the destructive assertion goes red.</p>
@@ -505,12 +503,13 @@ Method TestTheAuditingWriteToolAdvertisesEnabledAloneAndDeclaresItsWriteDestruct
 {
     Set tSC = $ClassMethod(..#REGISTRY, "Resolve", ..#AUDITTOOL, .tTool)
     Do $$$AssertStatusOK(tSC, "the registry resolves the auditing write tool by name")
-    Do $$$AssertTrue($IsObject(tTool), "and finds it, though its screen is not built")
+    Do $$$AssertTrue($IsObject(tTool), "and finds it")
     If '$IsObject(tTool) Quit
     Do $$$AssertEquals(tTool.%Get("kind"), "write", "it is a write tool")
     Do $$$AssertEquals(tTool.%Get("class"), ..#AUDITTOOLCLASS, "answered by its own class")
     Do $$$AssertEquals($ClassMethod(..#REGISTRY, "FulfilmentOf", tTool), "instance", "fulfilled on the instance, never in the browser")
-    Do $$$AssertEquals($ClassMethod($Parameter(..#AUDITTOOLCLASS, "DESCRIPTORCLASS"), "IsBuilt"), 0, "its descriptor is declared built: false")
+    Do $$$AssertEquals($ClassMethod($Parameter(..#AUDITTOOLCLASS, "DESCRIPTORCLASS"), "IsBuilt"), 1, "its descriptor is built")
+    Do $$$AssertEquals($ListToString($ClassMethod(..#AUDITTOOLCLASS, "ScreenActionIds")), "enable,disable", "and it carries that screen's two row actions")
 
     Set tPairs = $ClassMethod(..#AUDITTOOLCLASS, "PrivilegePairs", "", .tResolved)
     Do $$$AssertEquals(tResolved, 1, "its pairs resolve")

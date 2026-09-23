@@ -69,6 +69,9 @@ XData ReadShapes
 <shapes>
 <screen name="AgentDefinitionList" filter="name,provider,model" sort="name,provider,model" kinds="name:name,provider:text,model:text,enabled:status,default:status"/>
 <screen name="AuditList" filter="TimeStamp,EventSource,EventType,Event,Username,Pid,Namespace,Description" sort="TimeStamp,EventSource,EventType,Event,Username,Pid,Namespace,Description" kinds="TimeStamp:text,EventSource:text,EventType:text,Event:name,Username:text,Pid:identifier,Namespace:text,Description:text"/>
+<screen name="AuditSystemEventList" filter="EventName,Enabled,Total,Written,Lost" sort="EventName,Enabled,Total,Written,Lost" kinds="EventName:name,Enabled:status,Total:number,Written:number,Lost:number"/>
+<screen name="AuditUserEventList" filter="EventName,Enabled,Total,Written,Lost" sort="EventName,Enabled,Total,Written,Lost" kinds="EventName:name,Enabled:status,Total:number,Written:number,Lost:number"/>
+<screen name="AuditingConfig" filter="Enabled" sort="Enabled" kinds=""/>
 <screen name="DatabaseDetails" filter="Directory,MaxSize,ExpansionSize,NewVolumeThreshold,NewVolumeDirectory,ResourceName,NewGlobalIsKeep,NewGlobalCollation,ClusterMountMode,ReadOnly,GlobalJournalState,Size,AvailableSpace,DiskFree,Mounted" sort="Directory,MaxSize,ExpansionSize,NewVolumeThreshold,NewVolumeDirectory,ResourceName,NewGlobalIsKeep,NewGlobalCollation,ClusterMountMode,ReadOnly,GlobalJournalState,Size,AvailableSpace,DiskFree,Mounted" kinds="Directory:name,Size:number,MaxSize:number,AvailableSpace:number,DiskFree:text,Mounted:status,ExpansionSize:number,NewVolumeThreshold:number,NewVolumeDirectory:identifier,ResourceName:identifier,NewGlobalIsKeep:status,NewGlobalCollation:number,ClusterMountMode:status,ReadOnly:status,GlobalJournalState:status"/>
 <screen name="DatabaseFreeSpace" filter="Directory,Size,AvailableSpace,DiskFree,Mounted" sort="Directory,Size,AvailableSpace,DiskFree" kinds="Directory:name,Size:number,AvailableSpace:number,DiskFree:text,Mounted:text"/>
 <screen name="DatabaseList" filter="Directory,Size,MaxSize,Status,Resource" sort="Directory,Size,MaxSize,Status,Resource" kinds="Directory:name,Size:number,MaxSize:text,Status:text,Resource:identifier"/>
@@ -346,15 +349,10 @@ Method TestTheConfirmChannelRefusesACredentialNamedFieldItDoesNotDeclare()
     }
 }
 
-/// <p>Story 5.10's descriptor: the first <code>built: false</code> screen in this tree. It
-/// validates, its route and its tool identifier resolve to it, it declares the security area's own
-/// pairs, and it is absent from every surface a <b>built</b> screen appears on -- which is what lets
-/// the agent's write tool ship before Story 7.4 builds the screen.</p>
-/// <p>Mutation (Rule 19): flip its <code>"built"</code> key to true and recompile -- the mirror's
-/// own <code>BuiltArchetypeKey</code> gate would then require an Angular page for
-/// <code>form-page</code> (it has one, Story 4.2's), so what reddens here is the unbuilt
-/// assertions below and <class>OcuPilot.Test.SurfaceCoverage</class>'s screen roster.</p>
-Method TestTheAuditingConfigurationDescriptorIsDeclaredUnbuiltAndOwnsTheWriteTool()
+/// <p>Story 5.10's descriptor as Story 7.4 built it out: a built, listed <code>form-page</code> with
+/// a single-object read and the two row actions its write tool carries. It validates, its route and
+/// its tool identifier resolve to it, and it declares the security area's own pairs.</p>
+Method TestTheAuditingConfigurationDescriptorIsBuiltWithItsReadAndOwnsTheWriteTool()
 {
     Set tClass = "OcuPilot.Screen.Descriptor.AuditingConfig"
     Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
@@ -366,13 +364,18 @@ Method TestTheAuditingConfigurationDescriptorIsDeclaredUnbuiltAndOwnsTheWriteToo
     While tIterator.%GetNext(.tKey, .tValue) {
         Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
     }
-    Do $$$AssertEquals(tKeys, "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,primaryAction,rowActions,context,emptyStateKey,commandAliases,classicPage,classicLinkExemption,toolIdentifier", "the declared keys, with no read, table, banner or criteria among them: " _ tKeys)
+    Do $$$AssertEquals(tKeys, "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,primaryAction,rowActions,context,emptyStateKey,commandAliases,classicPage,classicLinkExemption,read,toolIdentifier", "the declared keys, a read among them, and no table or banner, since a form renders no grid: " _ tKeys)
 
-    Do $$$AssertEquals($ClassMethod(tClass, "IsBuilt"), 0, "it is declared unbuilt")
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).SideBarPositionProblem(tDeclaration), "", "so its side-bar position says nothing yet")
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "a declaration with no read is a supported shape")
+    Do $$$AssertEquals($ClassMethod(tClass, "IsBuilt"), 1, "it is built")
+    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 6, "and listed sixth in the Security side bar")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).SideBarPositionProblem(tDeclaration), "", "which the side-bar rule accepts")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "its read is sound")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tDeclaration), "", "and it declares no secret and no exclusion")
-    Do $$$AssertEquals($IsObject($ClassMethod(tClass, "Read")), 0, "the accessor answers no read at all")
+    Set tRead = $ClassMethod(tClass, "Read")
+    Do $$$AssertTrue($IsObject(tRead), "the accessor answers its read")
+    If $IsObject(tRead) Do $$$AssertEquals(tRead.source.%ToJSON(), "{""port"":""admin"",""endpoint"":""Security.Audit.Enabled"",""type"":""GET""}", "the single-object Security.Audit.Enabled GET")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "enable,disable", "its two row actions")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "CommandAliases")), "auditing", "and its command alias")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("security/auditing"), tClass, "the route resolves to it")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("security.auditing"), tClass, "and so does the tool identifier its write tool's name opens with")
     Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType"), "auditing-configuration", "its entity type is the instance's auditing configuration")

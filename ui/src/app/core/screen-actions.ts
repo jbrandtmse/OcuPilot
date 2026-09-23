@@ -89,6 +89,11 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     'add-role': STRINGS.userActionAddRole,
     'remove-role': STRINGS.userActionRemoveRole,
   },
+  // Story 7.4: the Auditing configuration form's two actions, and the warning dialog's title.
+  'OcuPilot.Screen.Descriptor.AuditingConfig': {
+    enable: STRINGS.auditingTurnOnAction,
+    disable: STRINGS.auditingTurnOffAction,
+  },
 };
 
 export class ScreenActions {
