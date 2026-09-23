@@ -109,3 +109,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T07:52:21Z	Epic 7	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@07c7a6d merge=b5b734c files=1_cycle-log-parallel_only conflict=none verification=ci_on_the_next_pushed_code_head(DW-1435)
 2026-09-23T07:54:19Z	Epic 7	epic_context_compiled	sha=4cb57c0 reason=planning_artifact_newer model=opus
 2026-09-23T07:54:19Z	Story 7.4	stage_spawned	stage=plan spawn_at=2026-09-23T07:54:19Z model=opus agent_name=7-4-turn-auditing-on-and-off-from-the-screen-plan-1 cycle_iteration=1
+2026-09-23T07:58:46Z	Story 7.4	protocol_violation	stage=plan depth=1 agent=7-4-turn-auditing-on-and-off-from-the-screen-plan-1 violation=interim_return_while_two_exploration_subagents_ran consequence=possible_resume_of_a_returned_writer detected_by=lead_reading_the_return outcome=pending:watch_the_tree_before_any_re-spawn
+2026-09-23T08:07:53Z	Story 7.4	stage_respawn_decided	reason=plan-1_returned_early;both_read-only_exploration_subagents_finished_(orchestrator_observed);tree_quiet_10min;no_spec_written
+2026-09-23T08:07:53Z	Story 7.4	stage_spawned	stage=plan spawn_at=2026-09-23T08:07:53Z model=opus agent_name=7-4-turn-auditing-on-and-off-from-the-screen-plan-2 cycle_iteration=2
