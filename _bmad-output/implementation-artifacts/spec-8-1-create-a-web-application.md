@@ -240,6 +240,8 @@ Rejected: `HandleName` 500s on a malformed name -- false, probed 200 for `csp/ap
 
 ## Spec Change Log
 
+- 2026-09-23, lead (owner decision: developer tool first): `MatchRoles` is no longer refused on a web-application create except on OcuPilot's own applications; the change, its tests and the Application roles control land in Story 8.3 (`spec-8-3-...`, `### Owner reversal 2026-09-23`). This spec's `MatchRoles` refusal clauses are superseded there.
+
 - 2026-09-22, implement: `## Verification`'s mutation table records the mutation actually applied
   and what it reddened; the change-event row moves from the browser spec to
   `create-form.store.spec.ts`, which is where it is falsifiable.

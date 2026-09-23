@@ -4451,8 +4451,8 @@ So that a new account is usable without a second trip to the editor.
 - **Then** it is sent **once** and returned by no read, entered in a masked field that never pre-fills or echoes.
 
 - **Given** the roles being granted
-- **When** they include `%All` or any `%Admin_*` role
-- **Then** the grant is refused on the instance whatever the caller (AD-10, AD-55), and on the screen the server's refusal sentence lands on the Roles field as an AD-39 `detail.violations[]` row; the picker may pre-mark those roles unavailable with the same sentence, but the instance refusal is the prohibition, and such grants stay a classic-portal action in Release 1. [AMENDED 2026-09-23, orchestrator-authorised, Rule 5 tier-1: was "…and the request comes through the agent … while a privileged user creating the account through the screen may grant them". AD-10 refuses adding `%All` or any `%Admin_*` role to any user "whatever the caller", and AD-55 routes the screen's Save through the same prohibited set; the precedent is Story 7.8's AC2.]
+- **When** they include `%All`, any `%Admin_*` role or a role that carries one
+- **Then** the grant is permitted at the strongest confirmation, whatever the caller, through the one tool (AD-10, AD-55): an agent proposal is confirmed as a delete is and its diff names the privilege; on the screen a consequence line (`privilegedGrantEffect`) appears at the Roles field while such a role is selected. [AMENDED 2026-09-23, owner decision: privilege grants permitted at typed confirmation; was "refused whatever the caller" (and, before that, "refused through the agent while a privileged user creating the account through the screen may grant them")]
 
 **Routed from the deferred-work ledger** - must be addressed in this story or declined with a reason:
 
@@ -4479,9 +4479,9 @@ So that access can be shaped without hand-editing security tables.
 - **When** a delete is requested
 - **Then** the confirmation **warns with the count of users holding it** before proceeding, and requires the typed name. [AMENDED 2026-09-23, orchestrator-authorised, Rule 5 partial deferral: this story ships the agent's confirmed delete (`permissions.roles.delete`) with its AD-10 refusals; the Roles-list Delete row action - its typed-name confirmation carrying the holder count - moves to Story 9.3 as DW-1513, because AD-53's row-action route and handler exist only on Epic 7's branch until both epics merge.]
 
-- **Given** the grant would add a role to a resource in a way that escalates privilege
+- **Given** the grant would add a role to a resource in a way that escalates privilege, or a granted role that carries `%All` or an `%Admin_*` resource
 - **When** it is requested, whatever the caller
-- **Then** it is refused on the instance, because privilege grants are prohibited in Release 1 through any path. [AMENDED 2026-09-23, orchestrator-authorised, Rule 5 tier-1: was "When it is proposed through the agent". AD-10 refuses its set "whatever the caller" and AD-55 routes the screen's Save through the same prohibited set.]
+- **Then** it is permitted at the strongest confirmation through the one tool: an agent proposal is confirmed as a delete is and its diff names the privilege; on the screen the consequence line (`privilegedGrantEffect`) appears at the field and in the grant dialog. [AMENDED 2026-09-23, owner decision: privilege grants permitted at typed confirmation; was "refused whatever the caller"]
 
 ### Story 8.4: The resource editor
 

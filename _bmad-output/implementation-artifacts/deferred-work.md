@@ -6050,6 +6050,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Confirm.Transition sends tQuery(idParam) from EntityRef.Parse(TargetRef), which is foldcased; Create.Perform sends pName verbatim. Probed on ocupilot-b-ci 2026-09-23: Security.Applications.Create('/csp/CaseProbeX/') stores '/csp/CaseProbeX' (case kept, slash stripped).
 - 2026-09-23T02:11:59Z status=escalated owner=burndown by=cr note=fix stores the typed name at mint and sends it at confirm: new proposal state plus an edit in contended Confirm.Transition
 - 2026-09-23T03:00:18Z occurrence=8-2-create-a-user
+- 2026-09-23T06:42:07Z occurrence=8-3-create-a-role-and-manage-its-resource-grants
 
 ### DW-1494: The screen's Save of a web-application create does not evaluate enforced read-only or the kill switch, while AD-55 says the screen inherits every gate AD-40 places at the write
 - source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: low | footprint: in-story
@@ -6109,8 +6110,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-23T05:17:18Z status=decision-pending owner=burndown by=runner note=measured slot B: %Operator,%Manager,%SecurityAdministrator already refused (%Admin_* resources); widening adds only
 - 2026-09-23T05:17:18Z status=decision-pending owner=burndown by=runner note=...the %DB_IRISSYS role (for IRISSYS:W) and the %DB_IRISLIB role (for IRISLIB:W); no other shipped role changes verdict
 - 2026-09-23T05:18:56Z status=decision-pending owner=burndown by=runner note=AD-10 amended for %DB_IRISSECURITY:W (spec 8.3 task); predicate verified by-effect (%HS_Administrator->%Manager)
+- 2026-09-23T06:41:43Z status=dropped owner=burndown by=owner note=moot 2026-09-23: owner permitted privilege grants at typed confirmation; no grant is refused for its privilege
 
 ### DW-1513: The Roles-list Delete row action (Story 8.3 AC3's screen caller): SCREENACTIONS on RoleDelete, rowActions on RoleList, a holder-count read, the count in the typed-name confirmation, its Fixed-strings row
 - source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: AD-53's row-action route and handler exist only on OCU-1-epic7; screen-action-handler.ts's confirmation text is fixed, so the 'N users hold this role' count needs a count slot added there. 8.3 ships the agent's permissions.roles.delete.
 - 2026-09-23T05:17:18Z status=routed owner=9-3-the-role-editor by=orchestrator note=Rule 5 partial deferral of 8.3 AC3, orchestrator-authorised 2026-09-23; 9.3 plans the handler's count slot
+
+### DW-1514: The role grant dialog offers Read and Write on a database resource as independent boxes, so a Write-only grant reaches the vendor; the classic dialog ticks and locks Read when Write is ticked
+- source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: irislib/%CSP/UI/Portal/Dialog/RoleResourceEdit.cls writeChanged; RoleCreateRules.PermissionsAdmitted is letter-based; location ui/src/app/areas/permissions/role-grant-dialog.ts
+- 2026-09-23T06:42:07Z status=open owner=8-3-create-a-role-and-manage-its-resource-grants by=harvest note=two-way door; added to the owner-reversal rework as a [Lead] item
+
+### DW-1515: Prohibited.cls's class header counts the covered types inside a paragraph Epic 7 rewrites; with the role branch the merged count is stale
+- source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: git diff 3317fae origin/OCU-1-epic7 -- src/OcuPilot/Kernel/Proposal/Prohibited.cls first hunk; COVEREDTYPES now ends ,role; header says Six (Epic 7: Eight)
+- 2026-09-23T06:42:07Z status=wontfix-accepted owner=8-3-create-a-role-and-manage-its-resource-grants by=harvest note=reopen_if=the merged Prohibited.cls header's covered-type count differs from COVEREDTYPES after Epic 7 and 8 merge
