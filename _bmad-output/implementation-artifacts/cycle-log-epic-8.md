@@ -182,3 +182,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T16:33:27Z	Epic 8	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp merge=2e41ea57 conflicts=none changed=docs_only code_paths_changed=0
 2026-09-23T16:34:58Z	Epic 8	epic_context_compiled	sha=pending reason=planning_artifact_newer(AD-27_third_case,AD-4;8.6_done) model=opus lines=64
 2026-09-23T16:34:58Z	Story 8.8	stage_spawned	stage=plan spawn_at=2026-09-23T16:34:58Z model=opus agent_name=8-8-device-plan-1 cycle_iteration=1
+2026-09-23T16:48:42Z	Story 8.6	ci_resolved	story=8.6 run=35889513600 head=3947bc12 result=in_progress_ resolved_at=plan_return(provisional)
+2026-09-23T16:48:42Z	Story 8.8	story_created	spawn_at=2026-09-23T16:34:58Z model=opus path=_bmad-output/implementation-artifacts/spec-8-8-the-device-editor.md build_status=ready-for-dev spec_bytes=30700 warnings=oversized epic_context=reused
+2026-09-23T16:48:42Z	Story 8.8	plan_clarification_requested	items=screen_device_delete(options:a_ledger_row_action_after_Epic7_merge,b_editor_Delete_own_route+typed_name,c_wait_for_Epic7) roster_rule_covered=Wire.cls,WireSecurityRead.cls,navigation.test.mjs,screens.generated.ts budget=pre-approved
