@@ -50,6 +50,12 @@ Parameter EXCLUDEDDISPATCH = "DispatchClass";
 /// two agree; the kernel is never read from here.</p>
 Parameter PERMITTEDFIELDS = "AutheEnabled,Description,Enabled,Resource";
 
+/// <p>The two row actions this tool carries out from the Web applications list (AD-5, AD-53), each
+/// sending the one field it moves. Enable and disable are one merge write over one property, so
+/// nothing writes <code>Enabled</code> a second way: the screen's own caller and the agent's both
+/// reach this tool (AD-4's merge is computed on the instance either way).</p>
+Parameter SCREENACTIONS = "enable=Enabled:true,disable=Enabled:false";
+
 /// <p>The pair a change to a web application requires: <code>%Admin_Secure:USE</code>, which is
 /// exactly what <method>%CSP.Portal.Application.CheckSecurity</method> checks before the classic
 /// editor saves, and exactly the pair

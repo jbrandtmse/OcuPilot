@@ -8,10 +8,12 @@ import { ScopeService } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { createScreenRead } from '../../core/screen-read';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
-import { cellView, fieldOf } from '../../core/table-model';
+import { cellView, fieldOf, rowKey } from '../../core/table-model';
 import { DetailHighlights } from '../../core/detail-highlights';
 import type { ScreenDeclaration, TableColumn } from '../../core/screens.generated';
 import { STRINGS, stringFor } from '../../core/strings';
+import { ScreenActionHandler } from '../../shell/screen-action-handler';
+import { TypedNameDialog } from '../../shell/typed-name-dialog';
 import { groupFor, inTransactionText, type ProcessDetailsGroup } from './process-details.store';
 
 /** The screen this page renders and the store its fields read. */
@@ -51,13 +53,28 @@ interface FieldView {
  * No meter component and no thresholds: process metrics declare none (Story 6.9 builds the
  * meter).
  *
+ * **Its actions are the processes list's** (Story 7.8, AD-53). The page has no rows to select, so
+ * after each read it selects the one process it shows, which is what the command bar and the
+ * command box act on; the shell's `ScreenActionHandler` sends each action to that list's action
+ * route. Terminate's typed-name dialog renders here while it is this page's own, and a refused
+ * action's sentence renders as the list's does, `role="alert"`. A `process` change event re-reads
+ * the page through the refresh framework, so a terminated process reads "This process no longer
+ * exists.".
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
  */
 @Component({
   selector: 'app-process-details-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [TypedNameDialog],
   template: `<section class="ocu-details-page" [attr.aria-busy]="busy">
+    @if (actionRefusal) {
+      <p class="ocu-banner ocu-list-page-banner ocu-banner-warning" role="alert">
+        <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+        <span class="ocu-banner-message">{{ actionRefusal }}</span>
+      </p>
+    }
     @if (showRefusal) {
       <div class="ocu-data-table-refusal" role="alert">
         <span class="ocu-data-table-refusal-message">{{ STRINGS.connectivityRequestRefused }}</span>
@@ -97,6 +114,17 @@ interface FieldView {
         </section>
       }
     }
+    @if (pendingTypedName; as pending) {
+      <app-typed-name-dialog
+        [verb]="pending.verb"
+        [target]="pending.name"
+        [consequence]="pending.consequence"
+        [advisory]="pending.advisory"
+        [flagLabel]="pending.flagLabel"
+        (confirmed)="onConfirmDestructive($event)"
+        (cancelled)="onCancelDestructive()"
+      />
+    }
   </section>`,
 })
 export class ProcessDetailsPage {
@@ -108,7 +136,13 @@ export class ProcessDetailsPage {
   private readonly scope = inject(ScopeService);
   private readonly actions = inject(ScreenActions);
 
+  /** Constructed for its own sake, as `ListPage` constructs it: its constructor registers the row actions. */
+  private readonly screenActions = inject(ScreenActionHandler);
+
   protected readonly STRINGS = STRINGS;
+
+  /** The banner's warning triangle, as its escape (Rule 14). */
+  protected readonly bannerGlyph = '\u26A0';
 
   protected readonly skeletonRows = [0, 1, 2];
 
@@ -158,6 +192,7 @@ export class ProcessDetailsPage {
       // one, so it starts with nothing highlighted.
       if (row === undefined) this.highlights.reset();
       else this.highlights.update(row, this.fieldNames(screen));
+      this.selectShown(store, screen, row);
       this.generation.update((value) => value + 1);
     });
 
@@ -171,7 +206,45 @@ export class ProcessDetailsPage {
       stopRefresh();
       stopRefreshAction();
       if (this.refresh.descriptor() === screen.descriptor) this.refresh.unbind();
+      // The handler is the app's, so a dialog left open would outlive the page it was opened on.
+      if (this.screenActions.pending()?.descriptor === screen.descriptor) this.screenActions.cancelPending();
     });
+  }
+
+  /**
+   * Select the process this page shows, or nothing once it has gone: the page has no table to
+   * select a row in, and the command bar acts on the store's selection (AD-19).
+   */
+  private selectShown(store: ScreenStore, screen: ScreenDeclaration, row: unknown): void {
+    const key = row === undefined ? '' : rowKey(row, screen);
+    const selection = store.selection();
+    if (key === '') {
+      if (selection.length > 0) store.setSelection([]);
+      return;
+    }
+    if (selection.length === 1 && selection[0] === key) return;
+    store.setSelection([key]);
+  }
+
+  /** The Terminate dialog, while it is this page's own, or `null`. */
+  protected get pendingTypedName(): ReturnType<ScreenActionHandler['pending']> {
+    this.generation();
+    const pending = this.screenActions.pending();
+    return pending !== null && pending.kind === 'typed-name' && pending.descriptor === this.view?.screen.descriptor ? pending : null;
+  }
+
+  /** The sentence the last refused action answered with, or `''` (AD-39). */
+  protected get actionRefusal(): string {
+    this.generation();
+    return this.view?.store.refusal() ?? '';
+  }
+
+  protected onConfirmDestructive(flag: boolean): void {
+    this.screenActions.confirmPending(flag);
+  }
+
+  protected onCancelDestructive(): void {
+    this.screenActions.cancelPending();
   }
 
   private fieldNames(screen: ScreenDeclaration): readonly string[] {

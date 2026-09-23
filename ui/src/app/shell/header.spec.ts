@@ -7,6 +7,7 @@ import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { ScopeService, type NamespaceEntry, type UnresolvedScope } from '../core/scope';
 import { ScreenActions } from '../core/screen-actions';
+import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
@@ -112,6 +113,9 @@ describe('the header', () => {
         { provide: ScopeService, useValue: new StubScope() as unknown as ScopeService },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },
+        // The command box this header hosts reads the current screen's selection to decide
+        // whether a row action is offered or explained (AD-53).
+        { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
         { provide: ShellState, useValue: new ShellState({ account: stubAccountPreferences() }) },
       ],
     });
@@ -232,6 +236,9 @@ describe('the header', () => {
         { provide: ScopeService, useValue: new StubScopeNamed() as unknown as ScopeService },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },
+        // The command box this header hosts reads the current screen's selection to decide
+        // whether a row action is offered or explained (AD-53).
+        { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
         { provide: ShellState, useValue: new ShellState({ account: stubAccountPreferences() }) },
       ],
     });

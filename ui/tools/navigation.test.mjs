@@ -163,6 +163,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'web-applications/list/edit',
       'web-applications/list',
       'web-applications/rest-apis',
+      // Story 7.4: the two unlisted audit event lists, then Auditing configuration at position 6.
+      'security/auditing/system-events',
+      'security/auditing/user-events',
       'security/oauth/clients',
       'security/oauth/resource-servers',
       'security/oauth/server-clients',
@@ -175,6 +178,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'security/ldap',
       'security/wallet',
       'security/oauth',
+      'security/auditing',
       'agent/definitions/edit',
       'agent/definitions',
       'agent/switches',
@@ -317,8 +321,8 @@ test('childListFor pairs the Wallet list with its Secrets list, parentListFor in
   assert.equal(isListedScreen(secrets), false, 'the Secrets list is never listed');
   assert.deepEqual(
     listedScreensForArea('security').map((screen) => screen.route),
-    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet', 'security/oauth'],
-    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0'
+    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet', 'security/oauth', 'security/auditing'],
+    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0 and Auditing configuration'
   );
 
   assert.equal(screenForUrl('/security/wallet/secrets/OcuPilotDemo?ns=HSCUSTOM')?.route, 'security/wallet/secrets', 'a secrets URL with a collection id resolves to the Secrets list');
@@ -970,9 +974,16 @@ test('screenForChange resolves the screen a change opens and the route that name
   assert.ok(!target.route.includes('/csp/myapp'), 'the id is one encoded segment, never raw path (AD-13)');
 
   // A type no built screen shows is not a fault: the toast still says what changed, with nothing
-  // to open. `audit-event` is the one declared type the shipped roster shows on no screen.
-  assert.equal(screenForEntityType('audit-event'), null, 'no built screen shows an audit event');
-  assert.equal(screenForChange({ type: 'audit-event', id: 'x' }), null);
+  // to open. Every declared type now has a built screen, so an undeclared type stands in for one.
+  // DW-1529: a system event and a user event are two types, so each change opens its own list.
+  assert.equal(screenForEntityType('audit-event')?.route, 'security/auditing/system-events', 'a system audit event opens the System events list');
+  assert.equal(screenForEntityType('audit-user-event')?.route, 'security/auditing/user-events', 'a user audit event opens the User events list');
+  assert.equal(
+    screenForChange({ type: 'audit-user-event', id: 'ocupilot/security/agentwrite' })?.screen.route,
+    'security/auditing/user-events',
+    "a user event's change toast opens the User events list"
+  );
+  assert.equal(screenForEntityType('not-an-entity-type'), null, 'no built screen shows an undeclared type');
   assert.equal(screenForChange({ type: 'not-an-entity-type', id: 'x' }), null);
 
   // A screen whose descriptor declares no id route takes the bare route: there is no segment for
@@ -984,20 +995,17 @@ test('screenForChange resolves the screen a change opens and the route that name
 
 // DW-1227: a proposal card's masked-field lookup is keyed on the proposal's own tool, not on its
 // entity type. A tool name is claimed by exactly one screen, while two screens may declare one
-// entity type -- and the auditing write's screen is not built at all, so the entity-type lookup
-// answers `null` for it and would silently ask for no secret.
+// entity type. Since Story 7.4 every write tool's screen is built, so the auditing row reads the
+// same screen through both lookups.
 //
-// Mutation (Rule 19): filter `screenForToolName` to built screens -> the auditing row goes red.
-test('screenForToolName resolves a write tool to its own screen, built or not', () => {
+// Mutation (Rule 19): key `screenForToolName` on the first name segment alone -> the auditing and
+// web-application rows go red.
+test('screenForToolName resolves a write tool to its own screen', () => {
   const auditing = screenForToolName('security.auditing.update');
   assert.ok(auditing !== null, 'the auditing write resolves');
   assert.equal(auditing.toolIdentifier, 'security.auditing', "to the screen whose identifier its name opens with");
-  assert.equal(auditing.built, false, 'which is not built yet');
-  assert.equal(
-    screenForEntityType(auditing.entityType),
-    null,
-    'and which the entity-type lookup cannot reach, because that one answers built screens only'
-  );
+  assert.equal(auditing.built, true, 'which Story 7.4 built');
+  assert.equal(screenForEntityType(auditing.entityType), auditing, 'and which the entity-type lookup reaches too');
 
   const webApp = screenForToolName('webapp.list.update');
   assert.ok(webApp !== null && webApp.toolIdentifier === 'webapp.list', 'a built screen resolves the same way');

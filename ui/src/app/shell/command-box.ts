@@ -20,7 +20,10 @@ import {
 } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { REFRESH_ACTION_ID, ScreenActions, actionLabel } from '../core/screen-actions';
+import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
+import { selfProtectionReason } from '../core/self-protection';
+import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
 
@@ -207,7 +210,13 @@ export class CommandBox {
   private readonly navigation = inject(NavigationService);
   private readonly overlays = inject(OverlayStack);
   private readonly actions = inject(ScreenActions);
+  /**
+   * Read for one thing only: which row the current screen has selected, which is what a
+   * self-protection rule is judged against (AD-53). The box writes to no store.
+   */
+  private readonly stores = inject(ScreenStores);
   private readonly router = inject(Router);
+  private readonly session = inject(Session, { optional: true });
   private readonly shell = inject(ShellState);
   private readonly preferences = inject(AccountPreferences);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
@@ -456,7 +465,7 @@ export class CommandBox {
   private actionCandidates(needle: string): readonly CommandRow[] {
     const screen = this.navigation.screenForUrl(this.router.url);
     if (screen === null) return [];
-    const declared: { id: string; rowScoped: boolean }[] = [];
+    const declared: { id: string; rowScoped: boolean; reason?: string }[] = [];
     // Refresh first, and only where a handler is registered -- which is the same test the bar
     // applies, so a screen that cannot re-read offers it on neither surface (DW-260).
     if (this.actions.has(screen.descriptor, REFRESH_ACTION_ID)) {
@@ -465,8 +474,24 @@ export class CommandBox {
     if (this.actions.has(screen.descriptor, screen.primaryAction.id)) {
       declared.push({ id: screen.primaryAction.id, rowScoped: false });
     }
+    // The row a self-protection rule is judged against is the one the screen has selected, read
+    // from the same store the command bar reads (AD-53). With nothing selected the reason stays
+    // "Select a row first", which is what both surfaces already say.
+    const selected = screen.rowActions.length === 0
+      ? ''
+      : this.stores.for(screen.descriptor, screen.refreshRates).selection()[0] ?? '';
     for (const action of screen.rowActions) {
-      if (action.id !== '') declared.push({ id: action.id, rowScoped: true });
+      // DW-389: the same test the primary action above already applies -- a declared action with
+      // no registered handler is a control nothing can act on, so no surface offers it.
+      if (action.id !== '' && this.actions.has(screen.descriptor, action.id)) {
+        declared.push({
+          id: action.id,
+          rowScoped: true,
+          reason: selected === ''
+            ? STRINGS.privilegeSelectRowFirst
+            : selfProtectionReason(action.selfProtection, selected, this.signedIn()),
+        });
+      }
     }
     return declared
       .filter(
@@ -479,18 +504,29 @@ export class CommandBox {
         kind: 'action',
         label: actionLabel(screen.descriptor, action.id),
         detail: '',
-        reason: action.rowScoped ? STRINGS.privilegeSelectRowFirst : '',
-        gated: action.rowScoped,
+        // A row action is offered while nothing stands in its way, and listed with the reason
+        // inline when something does -- "Select a row first", or the selected row's own
+        // self-protection sentence (AD-53). The bar resolves the same two in the same order.
+        reason: action.reason ?? '',
+        gated: (action.reason ?? '') !== '',
         route: '',
         area: '',
         descriptor: screen.descriptor,
         actionId: action.id,
-        ariaDisabled: action.rowScoped ? 'true' : null,
+        ariaDisabled: (action.reason ?? '') !== '' ? 'true' : null,
       }));
   }
 
   private bump(): void {
     this.generation.set(this.generation() + 1);
+  }
+
+  /**
+   * The account this tab is signed in as, which the `protected-account` rule compares a row
+   * against (AD-53). Optional, so a surface rendered without a session explains nothing by it.
+   */
+  private signedIn(): string {
+    return this.session?.userName() ?? '';
   }
 }
 

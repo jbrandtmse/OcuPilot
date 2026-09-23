@@ -96,6 +96,14 @@ const refresh = new RefreshService({
 const store = stores.for(declaration.descriptor, declaration.refreshRates);
 const overlays = new OverlayStack();
 
+// The table draws a row action only while a handler is registered for it (DW-389), so every row
+// action the harness declares is registered here. Running one does nothing: the specs over this
+// harness pin the menu's geometry and keyboard, never an action's effect.
+const actions = new ScreenActions();
+for (const action of declaration.rowActions) {
+  actions.register(declaration.descriptor, action.id, () => {});
+}
+
 refresh.bind(declaration, createScreenRead(api, declaration));
 
 window.ocuHarness = {
@@ -142,7 +150,7 @@ bootstrapApplication(TableHarness, {
     { provide: ScreenStores, useValue: stores },
     { provide: ChangeBus, useValue: bus },
     { provide: OverlayStack, useValue: overlays },
-    { provide: ScreenActions, useValue: new ScreenActions() },
+    { provide: ScreenActions, useValue: actions },
     { provide: ScopeService, useValue: { namespace: () => NAMESPACE, subscribe: () => () => {} } as unknown as ScopeService },
   ],
 })

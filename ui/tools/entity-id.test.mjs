@@ -25,8 +25,15 @@ const entityIdPath = join(
   'core',
   'entity-id.ts'
 );
-const { encodeEntityId, decodeEntityId, joinCompositeId, splitCompositeId, COMPOSITE_SEPARATOR } =
-  await import(entityIdPath);
+const {
+  encodeEntityId,
+  decodeEntityId,
+  joinCompositeId,
+  splitCompositeId,
+  displayEntityId,
+  COMPOSITE_SEPARATOR,
+  COMPOSITE_DISPLAY_SEPARATOR,
+} = await import(entityIdPath);
 
 // original -> the segment a browser must put in the URL (percent-encoded twice, UTF-8
 // first). Every value is authored as an ASCII escape rather than a literal byte.
@@ -141,4 +148,14 @@ test('DW-130: a tilde survives the round trip even though the server escapes it 
 test('decodeEntityId returns a malformed segment unchanged rather than throwing', () => {
   assert.equal(decodeEntityId('%'), '%');
   assert.equal(decodeEntityId('%zz'), '%zz');
+});
+
+// Story 7.10. Mutation (Rule 19): make `displayEntityId` return its argument -> the composite row
+// carries the control character and goes red.
+test('displayEntityId reads a composite as a breadcrumb and a single id as itself', () => {
+  assert.equal(COMPOSITE_DISPLAY_SEPARATOR, ' \u203a ', 'the separator is the breadcrumb, spaced');
+  assert.equal(displayEntityId(joinCompositeId(['USER', '09/23/2026', '4'])), 'USER \u203a 09/23/2026 \u203a 4');
+  assert.equal(displayEntityId(joinCompositeId(['USER', '09/23/2026'])), 'USER \u203a 09/23/2026');
+  assert.equal(displayEntityId('/csp/myapp'), '/csp/myapp', 'an id with one part reads as itself');
+  assert.ok(!displayEntityId(joinCompositeId(['a', 'b'])).includes(COMPOSITE_SEPARATOR), 'no control character survives');
 });

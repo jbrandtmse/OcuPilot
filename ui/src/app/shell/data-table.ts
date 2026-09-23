@@ -31,10 +31,12 @@ import { childListFor, detailScreenFor, documentScreenFor, editorScreenFor, hasI
 import { OverlayStack } from '../core/overlay-stack';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
-import { ScreenActions } from '../core/screen-actions';
+import { ScreenActions, actionLabel } from '../core/screen-actions';
 import { applyView, textOf } from '../core/screen-read';
 import type { ScreenStore } from '../core/screen-store';
 import type { ScreenDeclaration, TableColumn } from '../core/screens.generated';
+import { selfProtectionReason } from '../core/self-protection';
+import { Session } from '../core/session';
 import { STRINGS, stringFor } from '../core/strings';
 import { formatChangeAnnouncement } from '../core/toasts';
 import {
@@ -84,6 +86,18 @@ interface CellModel {
   readonly active: boolean;
   /** This one cell draws a skeleton bar instead of `view` (Story 6.11, `pendingFields`). */
   readonly pending: boolean;
+}
+
+/** One row-menu entry, resolved for rendering (EXPERIENCE.md `row-overflow-menu`). */
+interface MenuItemModel {
+  readonly id: string;
+  /** The action's published label, or its id where the screen publishes none. */
+  readonly label: string;
+  /** Why the selected row refuses it, or `''`. Rendered inline after the label. */
+  readonly reason: string;
+  /** The entry's accessible name: the label, plus the reason where there is one. */
+  readonly name: string;
+  readonly ariaDisabled: string | null;
 }
 
 interface RowModel {
@@ -321,9 +335,20 @@ interface HeaderModel {
           (mousedown)="onMenuMouseDown($event)"
           (focusout)="onMenuFocusOut($event)"
         >
-          @for (item of menuItems; track item) {
-            <button type="button" class="ocu-data-table-menu-item" role="menuitem" tabindex="-1" (click)="onMenuItem(item)">
-              {{ item }}
+          @for (item of menuItems; track item.id) {
+            <button
+              type="button"
+              class="ocu-data-table-menu-item"
+              role="menuitem"
+              tabindex="-1"
+              [attr.aria-disabled]="item.ariaDisabled"
+              [attr.aria-label]="item.name"
+              (click)="onMenuItem(item)"
+            >
+              <span class="ocu-data-table-menu-label">{{ item.label }}</span>
+              @if (item.reason) {
+                <span class="ocu-data-table-menu-reason">{{ item.reason }}</span>
+              }
             </button>
           }
         </div>
@@ -371,6 +396,7 @@ export class DataTable implements OnInit {
   readonly focusFilter = output<void>();
 
   private readonly refresh = inject(RefreshService);
+  private readonly session = inject(Session, { optional: true });
   private readonly actions = inject(ScreenActions);
   private readonly scope = inject(ScopeService);
   private readonly overlays = inject(OverlayStack);
@@ -619,10 +645,37 @@ export class DataTable implements OnInit {
     return this.menuItems.length > 0;
   }
 
-  protected get menuItems(): readonly string[] {
-    return this.screen()
-      .rowActions.map((action) => action.id)
-      .filter((id) => id !== '');
+  /**
+   * The row menu's entries (EXPERIENCE.md `row-overflow-menu`): every declared row action with a
+   * registered handler, in command-bar order with the destructive one last, each carrying its own
+   * label and -- where the selected row refuses it -- the published reason inline after it.
+   *
+   * **A declared action with no handler is not listed** (DW-389), for the reason the command bar
+   * does not draw one: a control nothing can act on.
+   *
+   * **A refused action stays listed and arrow-reachable, never Material-disabled** (EXPERIENCE.md,
+   * Privilege Gating): a key manager skips a disabled item and no tooltip can ever show in a menu,
+   * so the reason is part of the entry's own accessible name and the entry is `aria-disabled`
+   * rather than `disabled`.
+   */
+  protected get menuItems(): readonly MenuItemModel[] {
+    this.generation();
+    const screen = this.screen();
+    const selected = this.store().selection()[0] ?? '';
+    return screen.rowActions
+      .filter((action) => action.id !== '')
+      .filter((action) => this.actions.has(screen.descriptor, action.id))
+      .map((action) => {
+        const reason = selfProtectionReason(action.selfProtection, selected, this.signedIn());
+        const label = actionLabel(screen.descriptor, action.id);
+        return {
+          id: action.id,
+          label,
+          reason,
+          name: reason === '' ? label : `${label} ${reason}`,
+          ariaDisabled: reason === '' ? null : 'true',
+        };
+      });
   }
 
   protected get headers(): readonly HeaderModel[] {
@@ -854,9 +907,24 @@ export class DataTable implements OnInit {
     this.closeMenu(false);
   }
 
-  protected onMenuItem(actionId: string): void {
+  /**
+   * Run one menu entry. A refused entry is `aria-disabled` rather than `disabled`, so the click
+   * still arrives here and is refused; the menu closes either way, because the reason was already
+   * announced when the entry took focus.
+   */
+  protected onMenuItem(item: MenuItemModel): void {
     this.closeMenu(true);
-    this.actions.run(this.screen().descriptor, actionId);
+    if (item.reason !== '') return;
+    this.actions.run(this.screen().descriptor, item.id);
+  }
+
+  /**
+   * Put DOM focus on the grid, so the reconcile that follows the next re-read treats it as focused
+   * (DW-18): the row taking the active row's place becomes active, or, with no row left, focus goes
+   * to the empty state or the filter field. A no-op while no grid is drawn.
+   */
+  focusGrid(): void {
+    this.gridElement()?.nativeElement.focus();
   }
 
   // --- Footer, empty state, refusal ------------------------------------------------------------------
@@ -1132,6 +1200,14 @@ export class DataTable implements OnInit {
   private menuButtons(): HTMLElement[] {
     const menu = this.menuElement()?.nativeElement;
     return menu === undefined ? [] : Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+  }
+
+  /**
+   * The account this tab is signed in as, which the `protected-account` rule compares a row
+   * against (AD-53). Optional, so a surface rendered without a session explains nothing by it.
+   */
+  private signedIn(): string {
+    return this.session?.userName() ?? '';
   }
 }
 

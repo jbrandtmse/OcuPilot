@@ -60,6 +60,17 @@ export const AGENT_SWITCH_ENTITY = 'agent-switch';
  */
 export const AUDITING_CONFIG_ENTITY = 'auditing-configuration';
 
+/** The entity types a system and a user audit event travel under (AD-13, AD-14, Story 7.11). */
+export const AUDIT_EVENT_ENTITY = 'audit-event';
+export const AUDIT_USER_EVENT_ENTITY = 'audit-user-event';
+
+/**
+ * OcuPilot's own marker event, `Source/Type/Name` as the User events list reports it: disabling or
+ * deleting it stops agent writes being marked (AD-15), which is what `writesMarked` reports. Held
+ * equal to `Kernel/State/Base.cls` and `Kernel/Audit/Event.cls` by `ui/tools/audit-marker.test.mjs`.
+ */
+export const AGENT_WRITE_EVENT = 'OcuPilot/Security/AgentWrite';
+
 /**
  * The entity types a change to which can move this payload's own answer, so a `changed` event on
  * one costs a re-read and an event on anything else costs nothing.
@@ -72,6 +83,8 @@ export const RESTRAINT_ENTITIES: readonly string[] = [
   AGENT_DEFINITION_ENTITY,
   AGENT_SWITCH_ENTITY,
   AUDITING_CONFIG_ENTITY,
+  AUDIT_EVENT_ENTITY,
+  AUDIT_USER_EVENT_ENTITY,
 ];
 
 /**

@@ -1494,6 +1494,173 @@ export const STRINGS = {
   agentGateLandingBannerEnv:
     'OcuPilot needs one agent definition before the panel can help. Anthropic is selected \u2014 set the environment variable named below on the instance\u2019s host and press Test connection. You can skip this and browse.',
 
+  // The self-protection refusal for OcuPilot's own web applications, and the delete dialog's
+  // consequence body. The refusal is one sentence for two surfaces -- the row action drawn
+  // disabled before a click, and the envelope `reason` after one -- so the server holds the same
+  // literal in `Prohibited.SERVINGPATHREASON`, `ui/tools/self-protection.test.mjs` pins the two
+  // equal, and OcuPilot.Test.RefusalCopy holds the instance's own half (AD-53, AD-39).
+  /** EXPERIENCE.md:424 */
+  webAppServesOcuPilotRefusal:
+    'OcuPilot serves itself through this web application. Disabling or deleting it would cut off every user, including you.',
+  /** EXPERIENCE.md:425 */
+  webAppDeleteConsequence:
+    'Deleting this web application stops every request it serves. This cannot be undone.',
+
+  // The phrase that resolves `tableWriteCapableEmptyState`'s placeholder on the Web applications
+  // list, which Story 7.1 makes write-capable by declaring its three row actions.
+
+  // Story 7.2: the Users list's row actions. The four account refusals are caller-neutral because
+  // one predicate refuses the agent and the screen alike (AD-10, AD-53); each is held once on the
+  // server beside the other refusal reasons and pinned equal to this copy.
+  /** EXPERIENCE.md:426 */
+  userRefusalCurrentUser:
+    'This is the account you are signed in as. Disabling or deleting it would lock you out.',
+  /** EXPERIENCE.md:427 */
+  userRefusalSystemAccount:
+    '_SYSTEM is the instance\'s own predefined account. Disabling or deleting it is not available here.',
+  /** EXPERIENCE.md:428 */
+  userRefusalServiceAccount:
+    'The instance\'s own services run as this account. Disabling or deleting it would stop them, OcuPilot included.',
+  /** EXPERIENCE.md:429 */
+  userRefusalLastAllHolder:
+    'This is the last account that holds %All. Disabling it, deleting it or taking the role off it would leave nobody able to administer this instance.',
+  /** EXPERIENCE.md:430 */
+  userDeleteConsequence:
+    'Deleting this user removes the account and every role it holds. This cannot be undone.',
+  /** EXPERIENCE.md:431 */
+  userActionSetPassword: 'Set password',
+  /** EXPERIENCE.md:431 */
+  userPasswordChangeOnLogin: 'Require a password change at next sign-in',
+  /** EXPERIENCE.md:431 */
+  userActionAddRole: 'Add role',
+  /** EXPERIENCE.md:431 */
+  userActionRemoveRole: 'Remove role',
+  /** EXPERIENCE.md:431 */
+  userRoleField: 'Role',
+  // The phrase that resolves `tableWriteCapableEmptyState`'s placeholder on the Users list; Story
+  // 8.2 declares the same key with the same value.
+
+  // Story 7.3: the two OAuth 2.0 tabs' delete row action.
+  /** EXPERIENCE.md:432 */
+  oauthClientDeleteConsequence:
+    'Deleting this client configuration removes every token stored for it, and applications that use it can no longer obtain new ones. This cannot be undone.',
+  /** EXPERIENCE.md:433 */
+  oauthServerClientDeleteConsequence:
+    'Deleting this server client description revokes every access token issued to it, and the client can no longer obtain new ones from this authorization server. This cannot be undone.',
+  /** EXPERIENCE.md:434 */
+  oauthClientsEmptyAgent: 'create an OAuth 2.0 client configuration',
+  /** EXPERIENCE.md:435 */
+  oauthServerClientsEmptyAgent: 'create a server client description',
+
+  // Story 7.4: the Auditing configuration screen and its two embedded event lists.
+  /** EXPERIENCE.md:436 */
+  auditingTurnOffAction: 'Turn auditing off',
+  /** EXPERIENCE.md:436 */
+  actionProceed: 'Proceed',
+  /** EXPERIENCE.md:437 */
+  auditingStatusOn: 'Auditing is on.',
+  /** EXPERIENCE.md:437 */
+  auditingStatusOff: 'Auditing is off.',
+  /** EXPERIENCE.md:438 */
+  auditSystemEventListLabel: 'System events',
+  /** EXPERIENCE.md:438 */
+  auditUserEventListLabel: 'User events',
+  /** EXPERIENCE.md:439 */
+  auditEventColumnTotal: 'Total',
+  /** EXPERIENCE.md:439 */
+  auditEventColumnWritten: 'Written',
+  /** EXPERIENCE.md:439 */
+  auditEventColumnLost: 'Lost',
+  /** EXPERIENCE.md:440 */
+  auditSystemEventListEmpty: 'No system events.',
+  /** EXPERIENCE.md:440 */
+  auditUserEventListEmpty: 'No user events.',
+
+  // Story 7.5: running an on-demand task.
+  /** EXPERIENCE.md:441 */
+  taskOnDemandEmptyAgent: 'create a task that runs on demand',
+  /** EXPERIENCE.md:442 */
+  proposalEntityTask: 'Task',
+
+  // Story 7.6: the Task schedule's row actions.
+  /** EXPERIENCE.md:443 */
+  taskDeleteConsequence:
+    'Deleting this task removes it from the schedule, so it no longer runs. Its history is kept. This cannot be undone.',
+  /** EXPERIENCE.md:444 */
+  taskScheduleEmptyAgent: 'create a task that runs on a schedule',
+  /** EXPERIENCE.md:445 */
+  taskSystemDeleteConsequence:
+    'This is one of the instance\'s own system tasks, and the instance relies on it. The classic portal does not allow deleting it.',
+
+  // Story 7.8: process terminate, suspend and resume from the list and the details page.
+  /** EXPERIENCE.md:446 */
+  actionTerminate: 'Terminate',
+  /** EXPERIENCE.md:447 */
+  processTerminateConsequence:
+    'Terminating this process stops it at once, and it does not finish what it was doing. This cannot be undone.',
+  /** EXPERIENCE.md:448 */
+  processTerminateErrorFlag: 'Log a <RESJOB> error in its namespace\'s application error log',
+  /** EXPERIENCE.md:449 */
+  processRefusalOcuPilot:
+    'OcuPilot itself is running in this process, for this request or for an agent turn. It cannot be suspended, resumed or terminated from OcuPilot.',
+  /** EXPERIENCE.md:450 */
+  processRefusalSystem:
+    'This is an IRIS system process, and the instance relies on it. It cannot be suspended, resumed or terminated from OcuPilot.',
+  /** EXPERIENCE.md:451 */
+  processListEmptyAgent: 'suspend or terminate a process that has stopped responding',
+  /** EXPERIENCE.md:452 */
+  proposalEntityProcess: 'Process',
+
+  // Story 7.10: the application error log's three delete scopes.
+  /** EXPERIENCE.md:453 */
+  errorDeleteEveryVerb: 'Delete the errors in',
+  /** EXPERIENCE.md:453 */
+  errorDeleteDateVerb: 'Delete the errors of',
+  /** EXPERIENCE.md:453 */
+  errorDeleteOneVerb: 'Delete error',
+  /** EXPERIENCE.md:454 */
+  errorDeleteEveryConsequence:
+    'Deleting removes every application error this namespace has logged, on every date, and everything each one captured. Errors logged after you confirm are kept. This cannot be undone.',
+  /** EXPERIENCE.md:455 */
+  errorDeleteDateConsequence:
+    'Deleting removes every application error this namespace logged on this date, and everything each one captured. Errors logged after you confirm are kept. This cannot be undone.',
+  /** EXPERIENCE.md:456 */
+  errorDeleteOneConsequence:
+    'Deleting removes this application error and everything it captured. This cannot be undone.',
+
+  // Story 7.11: system and user audit event configuration, and selective SQL auditing.
+  /** EXPERIENCE.md:457 */
+  actionResetCounters: 'Reset counters',
+  /** EXPERIENCE.md:458 */
+  auditUserEventDeleteConsequence:
+    'Deleting this event removes its registration, and the instance discards every record raised for it until it is registered again. This cannot be undone.',
+  /** EXPERIENCE.md:459 */
+  auditSystemEventListEmptyAgent: 'enable an event this instance should record',
+  /** EXPERIENCE.md:460 */
+  auditUserEventListEmptyAgent: 'register an audit event for an application',
+  /** EXPERIENCE.md:461 */
+  auditSqlWizardAction: 'Selective SQL auditing',
+  /** EXPERIENCE.md:461 */
+  auditSqlWizardPrompt: 'Which SQL statement types and sources should this instance audit?',
+  /** EXPERIENCE.md:462 */
+  auditSqlSourceDynamic: 'Dynamic',
+  /** EXPERIENCE.md:462 */
+  auditSqlSourceEmbedded: 'Embedded',
+  /** EXPERIENCE.md:462 */
+  auditSqlSourceXdbc: 'XDBC',
+  /** EXPERIENCE.md:462 */
+  auditSqlKindQuery: 'Query',
+  /** EXPERIENCE.md:462 */
+  auditSqlKindDdl: 'DDL',
+  /** EXPERIENCE.md:462 */
+  auditSqlKindDml: 'DML',
+  /** EXPERIENCE.md:462 */
+  auditSqlKindUtility: 'Utility',
+  /** EXPERIENCE.md:463 */
+  actionApply: 'Apply',
+  /** EXPERIENCE.md:463 */
+  auditSqlWizardStopped: 'Not every change was applied. The list shows each event as it is now.',
+
 } as const;
 
 /**

@@ -12,7 +12,8 @@
 /// routes under <code>/agent/definitions</code>, the two proposal decisions
 /// <code>POST /proposal/:id/{confirm,cancel}</code> -- together the map's only write verbs -- the
 /// provider catalog the Definition form cascades from, the generic screen read,
-/// <code>GET /screens/:screen/read</code>, the four application-error-log levels
+/// <code>GET /screens/:screen/read</code>, the screen's own row-action write
+/// <code>POST /screens/:screen/action</code>, the four application-error-log levels
 /// <code>GET /logs/errors/{namespaces,dates,list,detail}</code>, the console-log page
 /// <code>GET /logs/messages</code>, the alert-log page <code>GET /logs/alerts</code>, and the three
 /// shell routes, <code>GET /instance</code>,
@@ -116,6 +117,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/device/name" Method="GET" Call="DeviceNameCheck"/>
   <Route Url="/device/:id" Method="PUT" Call="DeviceUpdate"/>
   <Route Url="/device" Method="POST" Call="DeviceCreate"/>
+  <Route Url="/screens/:screen/action" Method="POST" Call="ScreenAction"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
   <Route Url="/logs/errors/namespaces" Method="GET" Call="LogErrorNamespaces"/>
   <Route Url="/logs/errors/dates" Method="GET" Call="LogErrorDates"/>
@@ -459,6 +461,17 @@ ClassMethod DeviceCreate() As %Status
 ClassMethod DeviceUpdate(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.DeviceSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /screens/:screen/action</code>: delegates to
+/// <class>OcuPilot.Api.ScreenAction</class> and carries no logic of its own.</p>
+/// <p>It sits beside <code>GET /screens/:screen/read</code> and above it, which decides nothing
+/// that <code>%CSP.REST</code> would notice -- the two differ in their last segment and in their
+/// verb, and neither matches the other's leading segments. A method other than <code>POST</code>
+/// on this path is the framework's own 405.</p>
+ClassMethod ScreenAction(pScreen As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.ScreenAction).Handle(pScreen)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /screens/:screen/read</code>: delegates to

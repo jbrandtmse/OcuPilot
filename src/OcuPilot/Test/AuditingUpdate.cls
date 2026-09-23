@@ -534,4 +534,349 @@ ClassMethod Diff(pField As %String) As %String
     Quit "[{""field"":""" _ pField _ """,""before"":""true"",""after"":""false""}]"
 }
 
+/// <p>AC2, AC5 (Story 7.4): the Auditing configuration screen's own actions, over
+/// <code>POST /screens/security.auditing/action</code> as the test account. The disable answers
+/// 200 with the change triple, turns auditing off and records the fact the panel banner reads,
+/// through <code>GET /agent/restraint</code>; the enable turns it back on and clears the fact. The
+/// screen caller mints nothing, writes no ledger row and emits no OcuPilot marker (AD-53).</p>
+Method TestTheScreenActionTurnsAuditingOffAndOnAndMovesTheBanner()
+{
+    Do $$$AssertEquals(..AuditEnabled(), 1, "the instance starts audited, so the disable has something to change")
+    Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tLedgerBefore = ..LedgerCount(tUser)
+    Do $$$AssertNotEquals(tLedgerBefore, -1, "the ledger reads before the write, so the no-row assertion compares counts")
+    Try {
+        Set tAnswer = ..ScreenAction("disable", .tStatus)
+        Do $$$AssertEquals(tStatus, 200, "the screen's disable answers 200")
+        If $IsObject(tAnswer) {
+            Do $$$AssertEquals(tAnswer.%Get("action"), "updated", "with the updated verb")
+            Do $$$AssertEquals($Select($IsObject(tAnswer.%Get("target")): tAnswer.%Get("target").%ToJSON(), 1: ""), "{""type"":""auditing-configuration"",""scope"":""instance"",""id"":""SYSTEM""}", "and the singleton's triple")
+        }
+        Do $$$AssertEquals(..AuditEnabled(), 0, "auditing is off")
+        Do $$$AssertEquals(..RestraintMarked(), 0, "and GET /agent/restraint reads writesMarked false, so the banner shows")
+
+        Set tAnswer = ..ScreenAction("enable", .tStatus)
+        Do $$$AssertEquals(tStatus, 200, "the screen's enable answers 200")
+        Do $$$AssertEquals(..AuditEnabled(), 1, "auditing is on again")
+        Do $$$AssertEquals(..RestraintMarked(), 1, "and writesMarked reads true, so the banner clears")
+
+        Do $$$AssertEquals(..LedgerCount(tUser), tLedgerBefore, "no ledger row was written")
+        Do $$$AssertEquals(##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, ##class(OcuPilot.Kernel.Audit.Event).#EVENTAGENTWRITE, $Parameter(..#TOOL, "TOOLNAME"), .tData), 0, "and no AgentWrite marker names the auditing tool")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the screen-action sequence raised")
+    }
+    ; Its own frame, for the reason TestTheDisableDropsItsMarkerRecordsTheDropAndIsBracketedByTheReEnable gives.
+    Do ..RestoreAuditing()
+    Do $$$AssertEquals(..AuditEnabled(), 1, "and the instance is audited again")
+}
+
+/// <p>One screen action <var>pAction</var> on the Auditing configuration screen as the test
+/// account, answering the parsed body, or <code>""</code>.</p>
+Method ScreenAction(pAction As %String, Output pStatus As %Integer) As %DynamicObject
+{
+    Set tRequest = {}
+    Do tRequest.%Set("action", pAction, "string")
+    Do tRequest.%Set("id", ##class(OcuPilot.Kernel.EntityRef).#RULESINGLETONID, "string")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot/screens/" _ $ClassMethod(..#SCREEN, "ToolIdentifier") _ "/action", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .pStatus, .tBody, .tHeaders, tRequest.%ToJSON(), "application/json")
+    Do $$$AssertStatusOK(tSC, pAction _ ": the request completes")
+    If $$$ISERR(tSC) || (tBody = "") Quit ""
+    Quit ##class(%DynamicObject).%FromJSON(tBody)
+}
+
+/// <p><code>writesMarked</code> as <code>GET /agent/restraint</code> answers it to the test
+/// account, or <code>-1</code> when it did not answer.</p>
+ClassMethod RestraintMarked() As %Integer
+{
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/agent/restraint", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tBody, .tHeaders)
+    If $$$ISERR(tSC) || (tStatus '= 200) Quit -1
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    If tAnswer.%GetTypeOf("writesMarked") '= "boolean" Quit -1
+    Quit +tAnswer.%Get("writesMarked")
+}
+
+/// <p>How many of <var>pUser</var>'s ledger rows the last day holds, or <code>-1</code>.</p>
+ClassMethod LedgerCount(pUser As %String) As %Integer
+{
+    Set tSC = ##class(OcuPilot.Kernel.State.Ledger).GuardedIdsForWindow(pUser, 24, "", 1000, .tIds, .tProblem)
+    If $$$ISERR(tSC) Quit -1
+    Set tCount = 0
+    Set tI = ""
+    For {
+        Set tI = $Order(tIds(tI))
+        If tI = "" Quit
+        Set tCount = tCount + 1
+    }
+    Quit tCount
+}
+
+/// <p>Story 7.11's user event the tests below create and remove, as its three parts.</p>
+Parameter PROBESOURCE = "OcuPilotProbe";
+
+Parameter PROBETYPE = "Story711";
+
+Parameter PROBENAME = "ProbeEvent";
+
+Parameter USERLIST = "OcuPilot.Screen.Descriptor.AuditUserEventList";
+
+Parameter USERUPDATE = "OcuPilot.Screen.Tool.AuditUserEventUpdate";
+
+/// <p>AC1, AC3, AC4 -- the User events list's screen actions over HTTP as the test account, on a
+/// probe event this test creates: disable, enable, reset (counters read 0 after an emitted record),
+/// a no-op enable refused 400 <code>TOOL.ARGUMENTS</code>, delete, and then an enable against the
+/// deleted id refused 404 with no stub created by the vendor's upsert.</p>
+/// <p>Mutation (Rule 19): skip the fresh read's 404 in <method>OcuPilot.Api.ScreenAction.Run</method>
+/// (answer a stub object) -> the last enable reaches the vendor's upsert and the no-stub leg goes
+/// red.</p>
+Method TestTheUserEventScreenActionsEnableDisableResetAndDelete()
+{
+    Set tId = ..ProbeId()
+    Do $$$AssertStatusOK(..ProbeCreate(), "the probe user event is created")
+    Try {
+        Set tAnswer = ..EventAction("disable", tId, .tStatus)
+        Do $$$AssertEquals(tStatus, 200, "disable answers 200")
+        Do $$$AssertTrue($IsObject(tAnswer), "with a body")
+        If $IsObject(tAnswer) Do $$$AssertEquals($Select($IsObject(tAnswer.%Get("target")): tAnswer.%Get("target").%ToJSON(), 1: ""), "{""type"":""audit-user-event"",""scope"":""instance"",""id"":""" _ $ZConvert(tId, "L") _ """}", "with the user event's own type and the folded id (DW-1529)")
+        Do $$$AssertEquals(..ProbeEnabled(), 0, "the probe is disabled")
+
+        Set tAnswer = ..EventAction("enable", tId, .tStatus)
+        Do $$$AssertEquals(tStatus, 200, "enable answers 200")
+        Do $$$AssertEquals(..ProbeEnabled(), 1, "the probe is enabled")
+
+        Set tAnswer = ..EventAction("enable", tId, .tStatus)
+        Do $$$AssertEquals(tStatus, 400, "enabling it again is refused 400")
+        Do $$$AssertTrue($IsObject(tAnswer), "with a body")
+        If $IsObject(tAnswer) {
+            Do $$$AssertEquals(tAnswer.%Get("code"), "TOOL.ARGUMENTS", "as TOOL.ARGUMENTS")
+            Do $$$AssertTrue($IsObject(tAnswer.%Get("detail")) && (tAnswer.%Get("detail").%Get("problem") '= ""), "naming the problem")
+        }
+
+        Do $$$AssertEquals($System.Security.Audit(..#PROBESOURCE, ..#PROBETYPE, ..#PROBENAME, "Story 7.11 probe", "Story 7.11 probe"), 1, "a record is emitted for the probe")
+        Do $$$AssertTrue(..ProbeTotal() > 0, "so its Total counts it")
+        Set tAnswer = ..EventAction("reset", tId, .tStatus)
+        Do $$$AssertEquals(tStatus, 200, "reset answers 200")
+        Do $$$AssertTrue($IsObject(tAnswer), "with a body")
+        If $IsObject(tAnswer) Do $$$AssertEquals(tAnswer.%Get("action"), "updated", "as an update")
+        Do $$$AssertEquals(..ProbeTotal(), 0, "and Total reads 0")
+
+        Set tAnswer = ..EventAction("delete", tId, .tStatus)
+        Do $$$AssertEquals(tStatus, 200, "delete answers 200")
+        Do $$$AssertTrue($IsObject(tAnswer), "with a body")
+        If $IsObject(tAnswer) Do $$$AssertEquals(tAnswer.%Get("action"), "deleted", "as a delete")
+        Do $$$AssertEquals(..ProbeExists(), 0, "the probe is gone")
+
+        Set tAnswer = ..EventAction("enable", tId, .tStatus)
+        Do $$$AssertEquals(tStatus, 404, "an enable against the deleted event is refused 404")
+        Do $$$AssertEquals(..ProbeExists(), 0, "and the vendor's upsert created no stub")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the user-event sequence raised")
+    }
+    Do ..ProbeDelete()
+    Do $$$AssertEquals(..ProbeExists(), 0, "the probe is removed")
+}
+
+/// <p>AC4's agent half -- a proposal minted against the probe, whose event is then deleted, is
+/// refused at confirm, and the vendor's upsert creates no stub.</p>
+Method TestAConfirmAgainstAVanishedEventIsRefusedAndCreatesNoStub()
+{
+    Do $$$AssertStatusOK(..ProbeCreate(), "the probe user event is created")
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+    Do $$$AssertStatusOK(tSC, "the probe turn is seeded")
+    Try {
+        If $$$ISERR(tSC) Quit
+        Set tArgs = {}
+        Do tArgs.%Set("EventName", ..ProbeId(), "string")
+        Do tArgs.%Set("Enabled", 0, "boolean")
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint(..#USERLIST, $Parameter(..#USERUPDATE, "TOOLNAME"), $Username, "", tTurn, tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, $ClassMethod(..#USERUPDATE, "Endpoint"), $ClassMethod(..#USERUPDATE, "IdParam"), ..ProbeId(), $ClassMethod(..#USERUPDATE, "IdArgument"), $ClassMethod(..#USERUPDATE, "SettableFields"), ..#USERUPDATE)
+        Do $$$AssertStatusOK(tSC, "the disable mints: " _ $System.Status.GetErrorText(tSC))
+        If $$$ISERR(tSC) Quit
+        Do $$$AssertEquals(tProposal.%Get("changed").%Size(), 1, "with its one Enabled row")
+        Do ..ProbeDelete()
+        Do $$$AssertEquals(..ProbeExists(), 0, "the event is deleted behind the proposal")
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+        Do $$$AssertStatusNotOK(tSC, "the confirm is refused (HTTP " _ +$Get(tHttp) _ " " _ $Get(tCode) _ ")")
+        Do $$$AssertEquals(+$Get(tHttp) _ " " _ $Get(tCode), "409 " _ ##class(OcuPilot.Kernel.Proposal.Write).#TARGETCHANGED, "by the fingerprint re-read, as a target that changed")
+        Do $$$AssertEquals(..ProbeExists(), 0, "and the vendor's upsert created no stub")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the vanished-event sequence raised")
+    }
+    Do ..ProbeDelete()
+    If $Get(tTurn) '= "" Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+}
+
+/// <p>AC5 -- disabling OcuPilot's own marker event from the User events list turns the banner's
+/// fact off, and enabling it turns it back on. The marker event is restored in its own frame.</p>
+/// <p>Mutation (Rule 19): drop <parameter>OcuPilot.Screen.Tool.AuditEventUpdate.MOVESMARKING</parameter>
+/// -> the screen caller records nothing and the <code>writesMarked</code> false leg goes red.</p>
+Method TestDisablingTheMarkerEventFromTheScreenMovesTheBanner()
+{
+    Set tMarker = ##class(OcuPilot.Kernel.Audit.Event).Source() _ "/" _ ##class(OcuPilot.Kernel.Audit.Event).Type() _ "/" _ ##class(OcuPilot.Kernel.Audit.Event).#EVENTAGENTWRITE
+    Do $$$AssertEquals(..MarkerEnabled(), 1, "the marker event starts enabled")
+    Try {
+        Set tAnswer = ..EventAction("disable", tMarker, .tStatus)
+        Do $$$AssertEquals(tStatus, 200, "the marker disable answers 200")
+        Do $$$AssertEquals(..MarkerEnabled(), 0, "the marker event is disabled")
+        Do $$$AssertEquals(..RestraintMarked(), 0, "and writesMarked reads false, so the banner shows")
+        Set tAnswer = ..EventAction("enable", tMarker, .tStatus)
+        Do $$$AssertEquals(tStatus, 200, "the marker enable answers 200")
+        Do $$$AssertEquals(..RestraintMarked(), 1, "and writesMarked reads true, so the banner clears")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the marker sequence raised")
+    }
+    Do ..RestoreMarker()
+    Do $$$AssertEquals(..MarkerEnabled(), 1, "and the marker event is enabled again")
+}
+
+/// <p>AC5's agent half -- a proposal disabling OcuPilot's own marker event carries the audit
+/// warning on its stored row, and its confirm leaves the recorded marking fact false, so the banner
+/// shows. The marker event is restored in its own frame.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.AuditEventUpdate.ClosesMarking</method>
+/// answers 0 -> the stored-warning leg goes red.</p>
+Method TestTheAgentsMarkerDisableCarriesTheWarningAndRaisesTheBanner()
+{
+    Set tMarker = ##class(OcuPilot.Kernel.Audit.Event).Source() _ "/" _ ##class(OcuPilot.Kernel.Audit.Event).Type() _ "/" _ ##class(OcuPilot.Kernel.Audit.Event).#EVENTAGENTWRITE
+    Do $$$AssertEquals(..MarkerEnabled(), 1, "the marker event starts enabled")
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+    Do $$$AssertStatusOK(tSC, "the probe turn is seeded")
+    Try {
+        If $$$ISERR(tSC) Quit
+        Set tArgs = {}
+        Do tArgs.%Set("EventName", tMarker, "string")
+        Do tArgs.%Set("Enabled", 0, "boolean")
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint(..#USERLIST, $Parameter(..#USERUPDATE, "TOOLNAME"), $Username, "", tTurn, tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, $ClassMethod(..#USERUPDATE, "Endpoint"), $ClassMethod(..#USERUPDATE, "IdParam"), tMarker, $ClassMethod(..#USERUPDATE, "IdArgument"), $ClassMethod(..#USERUPDATE, "SettableFields"), ..#USERUPDATE)
+        Do $$$AssertStatusOK(tSC, "the marker disable mints: " _ $System.Status.GetErrorText(tSC))
+        If $$$ISERR(tSC) Quit
+        Set tReadSC = ##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tProposal.%Get("proposalId"), .tFound, .tRow)
+        Do $$$AssertStatusOK(tReadSC, "the stored row reads back")
+        Do $$$AssertEquals(''$Get(tRow("auditWarning")), 1, "and its card carries the audit warning")
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+        Do $$$AssertStatusOK(tSC, "the confirm applies (HTTP " _ +$Get(tHttp) _ " " _ $Get(tCode) _ ")")
+        Do $$$AssertEquals(..MarkerEnabled(), 0, "the marker event is disabled")
+        Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Event).WritesMarked(), 0, "and writesMarked reads false, so the banner shows")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the agent marker sequence raised")
+    }
+    Do ..RestoreMarker()
+    Do $$$AssertEquals(..MarkerEnabled(), 1, "the marker event is enabled again")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Event).WritesMarked(), 1, "and the banner fact is cleared")
+    If $Get(tTurn) '= "" Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+}
+
+/// <p>One User events screen action <var>pAction</var> on <var>pId</var> as the test account,
+/// answering the parsed body, or <code>""</code>.</p>
+Method EventAction(pAction As %String, pId As %String, Output pStatus As %Integer) As %DynamicObject
+{
+    Set tRequest = {}
+    Do tRequest.%Set("action", pAction, "string")
+    Do tRequest.%Set("id", pId, "string")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot/screens/" _ $ClassMethod(..#USERLIST, "ToolIdentifier") _ "/action", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .pStatus, .tBody, .tHeaders, tRequest.%ToJSON(), "application/json")
+    Do $$$AssertStatusOK(tSC, pAction _ ": the request completes")
+    If $$$ISERR(tSC) || (tBody = "") Quit ""
+    Quit ##class(%DynamicObject).%FromJSON(tBody)
+}
+
+/// <p>The probe event's row key.</p>
+ClassMethod ProbeId() As %String
+{
+    Quit ..#PROBESOURCE _ "/" _ ..#PROBETYPE _ "/" _ ..#PROBENAME
+}
+
+/// <p>Create the probe event, enabled, when it does not already exist.</p>
+ClassMethod ProbeCreate() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If '##class(Security.Events).Exists(..#PROBESOURCE, ..#PROBETYPE, ..#PROBENAME) Set tSC = ##class(Security.Events).Create(..#PROBESOURCE, ..#PROBETYPE, ..#PROBENAME, "Story 7.11 probe", 1)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Remove the probe event if it exists.</p>
+ClassMethod ProbeDelete()
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Events).Exists(..#PROBESOURCE, ..#PROBETYPE, ..#PROBENAME) Do ##class(Security.Events).Delete(..#PROBESOURCE, ..#PROBETYPE, ..#PROBENAME)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+    }
+}
+
+/// <p>Whether the probe event exists, or <code>-1</code> when that could not be read.</p>
+ClassMethod ProbeExists() As %Integer
+{
+    Quit ..EventFlag(..#PROBESOURCE, ..#PROBETYPE, ..#PROBENAME, 0)
+}
+
+/// <p>The probe event's <code>Enabled</code>, or <code>-1</code>.</p>
+ClassMethod ProbeEnabled() As %Integer
+{
+    Quit ..EventFlag(..#PROBESOURCE, ..#PROBETYPE, ..#PROBENAME, 1)
+}
+
+/// <p>OcuPilot's marker event's <code>Enabled</code>, or <code>-1</code>.</p>
+ClassMethod MarkerEnabled() As %Integer
+{
+    Quit ..EventFlag(##class(OcuPilot.Kernel.Audit.Event).Source(), ##class(OcuPilot.Kernel.Audit.Event).Type(), ##class(OcuPilot.Kernel.Audit.Event).#EVENTAGENTWRITE, 1)
+}
+
+/// <p>Whether the event exists (<var>pEnabled</var> 0) or is enabled (<var>pEnabled</var> 1), read
+/// in <code>%SYS</code>, or <code>-1</code>.</p>
+ClassMethod EventFlag(pSource As %String, pType As %String, pName As %String, pEnabled As %Boolean) As %Integer
+{
+    Set tValue = -1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tExists = ##class(Security.Events).Exists(pSource, pType, pName, .tEvent)
+        Set tValue = $Select('pEnabled: ''tExists, 'tExists: 0, 1: ''tEvent.Enabled)
+        Set tEvent = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tValue = -1
+    }
+    Quit tValue
+}
+
+/// <p>The probe event's <code>Total</code> as the vendor's own list answers it, or <code>-1</code>.</p>
+ClassMethod ProbeTotal() As %Integer
+{
+    Kill tQuery
+    Set tQuery("names") = ..ProbeId()
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Security.Audit.Event", "LIST", .tQuery, "", .tRows, .tHttp, .tFault)
+    If $$$ISERR(tSC) || '$IsObject(tRows) || (tRows.%Size() '= 1) Quit -1
+    Quit +tRows.%Get(0).%Get("Total")
+}
+
+/// <p>Enable OcuPilot's marker event if it is not, and record the marking fact the banner reads.</p>
+ClassMethod RestoreMarker()
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        If ..MarkerEnabled() '= 1 {
+            ; Read before the switch: OcuPilot's classes are not visible from %SYS.
+            Set tSource = ##class(OcuPilot.Kernel.Audit.Event).Source()
+            Set tType = ##class(OcuPilot.Kernel.Audit.Event).Type()
+            Set tName = ##class(OcuPilot.Kernel.Audit.Event).#EVENTAGENTWRITE
+            Set $NAMESPACE = "%SYS"
+            Kill tProps
+            Set tProps("Enabled") = 1
+            Do ##class(Security.Events).Modify(tSource, tType, tName, .tProps)
+            Set $NAMESPACE = tOrigNS
+        }
+        If (..MarkerEnabled() = 1) && (..AuditEnabled() = 1) Do ##class(OcuPilot.Kernel.Audit.Event).RecordMarking(1)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+    }
+}
+
 }

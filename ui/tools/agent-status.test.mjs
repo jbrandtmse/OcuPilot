@@ -39,6 +39,8 @@ const {
   AGENT_SWITCH_ENTITY,
   AUDITING_CONFIG_ENTITY,
   RESTRAINT_ENTITIES,
+  AUDIT_EVENT_ENTITY,
+  AUDIT_USER_EVENT_ENTITY,
   AGENT_DEFINITION_SCOPE,
   FOOTER_KEYS,
   UNRESTRAINED,
@@ -338,8 +340,8 @@ test("AD-14: a definition's `changed` event re-reads, and nothing else on the bu
 test('a confirmed change to the auditing configuration is a re-read, and the roster says which types are', async () => {
   assert.deepEqual(
     [...RESTRAINT_ENTITIES].sort(),
-    [AGENT_DEFINITION_ENTITY, AGENT_SWITCH_ENTITY, AUDITING_CONFIG_ENTITY].sort(),
-    'the roster is exactly the three types this payload is computed from'
+    [AGENT_DEFINITION_ENTITY, AGENT_SWITCH_ENTITY, AUDITING_CONFIG_ENTITY, AUDIT_EVENT_ENTITY, AUDIT_USER_EVENT_ENTITY].sort(),
+    'the roster is exactly the five types this payload is computed from -- the two audit-event types since Story 7.11, whose marker event feeds writesMarked'
   );
   // The roster above compares the constants with themselves, so it cannot see a misspelling. The
   // enum is the kernel's and mirrored (AD-14), so the constants are held against it instead: a

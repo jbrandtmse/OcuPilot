@@ -293,7 +293,8 @@ ClassMethod RecordAgentWrite(pProposalId As %String, pToolName As %String, pTarg
 /// <class>Security.System</class> and "is this event enabled" in <class>Security.Events</class>,
 /// both <code>%SYS</code>-only, and reading either from the ungated restraint route would need a
 /// third privileged routine application, which AD-8 and AD-9 do not carry. So the fact is written
-/// by the two parties that can see it -- install and the confirm executor -- and read here. A read
+/// by the parties that can see it -- install, the confirm executor and a screen action whose tool
+/// moves the marking (AD-53) -- and read here. A read
 /// that fails answers the default, because the banner this feeds must never be shown on an
 /// unreadable store: its absence is never a claim that marking works.</p>
 ClassMethod WritesMarked() As %Boolean
@@ -336,6 +337,53 @@ ClassMethod RecordMarking(pMarked As %Boolean) As %Status
         Do tData.%Set("reason", $System.Status.GetErrorText(tSC), "string")
         Do ##class(OcuPilot.Kernel.Audit.Log).Error(..#LOGSUBSYSTEM, ..#REFRESHFAILED, tData)
     }
+    Quit tSC
+}
+
+/// <p>Observe, through <var>pPortClass</var> and with the caller's own privileges, whether this
+/// instance marks agent writes: <var>pMarked</var> is 1 when the instance auditing flag
+/// (<code>Security.Audit.Enabled</code> <code>GET</code>) <b>and</b> OcuPilot's marker event
+/// (<code>Security.Audit.Event</code> <code>GET</code> for <method>Source</method>,
+/// <method>Type</method> and <parameter>EVENTAGENTWRITE</parameter>) are both enabled -- the rule
+/// <method>OcuPilot.Install.Installer.ObserveAuditMarking</method> applies at install. Auditing
+/// off is not marked whatever the event says, so the event is read only when auditing is on, and
+/// a marker event that is not registered (a 404) is not marked, as at install.</p>
+/// <p><b>Caller contract:</b> an error status means nothing was observed and <var>pMarked</var>
+/// is not an answer; a failed read is never read as "off". The screen's caller of an auditing
+/// write calls this after the write and records <var>pMarked</var> only on OK (AD-53).</p>
+ClassMethod ObserveMarking(pPortClass As %String, Output pMarked As %Boolean) As %Status
+{
+    Set pMarked = 0
+    Set tSC = $$$OK
+    Try {
+        Kill tQuery
+        Set tSC = $ClassMethod(pPortClass, "Invoke", "Security.Audit.Enabled", "GET", .tQuery, "", .tSystem, .tHttp, .tFault)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject(tSystem) || (tSystem.%GetTypeOf("Enabled") '= "boolean") {
+            Set tSC = $$$ERROR($$$GeneralError, "the instance auditing flag was not answered as a boolean")
+            Quit
+        }
+        If 'tSystem.%Get("Enabled") Quit
+        Kill tQuery
+        Set tQuery("source") = ..Source()
+        Set tQuery("type") = ..Type()
+        Set tQuery("name") = ..#EVENTAGENTWRITE
+        Set tHttp = ""
+        Set tSC = $ClassMethod(pPortClass, "Invoke", "Security.Audit.Event", "GET", .tQuery, "", .tEvent, .tHttp, .tFault)
+        If $$$ISERR(tSC) && (tHttp = 404) {
+            Set tSC = $$$OK
+            Quit
+        }
+        If $$$ISERR(tSC) Quit
+        If '$IsObject(tEvent) || (tEvent.%GetTypeOf("Enabled") '= "boolean") {
+            Set tSC = $$$ERROR($$$GeneralError, "the marker event's flag was not answered as a boolean")
+            Quit
+        }
+        Set pMarked = tSystem.%Get("Enabled") && tEvent.%Get("Enabled")
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pMarked = 0
     Quit tSC
 }
 

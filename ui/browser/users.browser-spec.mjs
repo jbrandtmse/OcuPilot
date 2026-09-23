@@ -174,8 +174,10 @@ test('AC1: the list reads once, with roles from the detail call, under the decla
       STRINGS.userColumnExpired,
       STRINGS.tableColumnType,
       STRINGS.userColumnRoles,
+      // Story 7.2's row actions give the list the row-menu column the table draws for them.
+      STRINGS.commandBoxGroupActions,
     ]);
-    assert.deepEqual(headers, ['Name', 'Full name', 'Enabled', 'Account expired', 'Type', 'Roles']);
+    assert.deepEqual(headers, ['Name', 'Full name', 'Enabled', 'Account expired', 'Type', 'Roles', 'Actions']);
 
     // Each filter leg runs from the whole list and must leave a proper, non-empty subset
     // (DW-267): chained onto the previous leg, a needle the survivors already carried satisfied

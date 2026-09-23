@@ -22,6 +22,14 @@
 /// <p><b>Its primary action is Create</b>, which opens <class>OcuPilot.Screen.Descriptor.UserForm</class>;
 /// being write-capable, its empty state invites the agent rather than naming a next step. It does
 /// not refresh (AD-43).</p>
+/// <p><b>It declares seven row actions</b> (AD-5, AD-53), destructive last: <code>enable</code>,
+/// <code>disable</code>, <code>require-password-change</code> and the two role actions carried out
+/// by <class>OcuPilot.Screen.Tool.UserUpdate</class>, <code>set-password</code> by
+/// <class>OcuPilot.Screen.Tool.UserPassword</class> and <code>delete</code> by
+/// <class>OcuPilot.Screen.Tool.UserDelete</class>. <code>require-password-change</code> is declared
+/// so the route admits the flag the set-password dialog sends first (AD-56); no menu draws it.
+/// Disable and delete declare the <code>protected-account</code> rule, which <i>explains</i> the
+/// refusal the prohibited set makes at the write (AD-10).</p>
 /// <p><b><code>Password</code> is its one secret argument</b> (AD-3, AD-6): the create tool's
 /// authored wrapper field, supplied on the screen once and at confirm on the card, and never
 /// accepted from the model. The declaration opens the update tool's confirm channel to the same
@@ -47,7 +55,15 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "create", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [
+    {"id": "enable", "selfProtection": ""},
+    {"id": "disable", "selfProtection": "protected-account"},
+    {"id": "set-password", "selfProtection": ""},
+    {"id": "add-role", "selfProtection": ""},
+    {"id": "remove-role", "selfProtection": ""},
+    {"id": "require-password-change", "selfProtection": ""},
+    {"id": "delete", "selfProtection": "protected-account"}
+  ],
   "context": {"fields": ["Name", "FullName", "Enabled", "Type", "Roles", "ExpirationDate", "Expired"], "secretFields": []},
   "secretArguments": ["Password"],
   "emptyStateKey": "userListEmpty",

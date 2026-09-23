@@ -3729,7 +3729,7 @@ So that a question becomes a fix without me navigating anywhere myself.
 
 - **Given** the user confirms
 - **When** the write runs
-- **Then** the task resumes as that user, the schedule list re-fetches and the row highlights within two seconds, and the agent's reply names the next run and offers the audit entry.
+- **Then** the task resumes as that user, and the schedule list re-fetches and the row highlights within two seconds. [AMENDED 2026-09-23, orchestrator ruling on DW-1463, Rule 5 tier-1: the clause ended "and the agent's reply names the next run and offers the audit entry"; a confirm is a user request outside any turn (AD-40), so no agent reply follows it and nothing could produce that sentence.]
 
 - **Given** the task's own history
 - **When** it is opened afterwards
@@ -4225,6 +4225,9 @@ So that the area's screen offers the same actions the agent does.
 - DW-1136: `ForgetTask`'s guard leaves a vendor async-task row behind on every unprivileged async read, permanently and silently (ledger; routed by merge_gate 2026-09-18)
 - DW-1137: `AdminPort.ASYNCTASKPAIR` is a literal, so on an instance whose IRISLOCALDATA carries a non-default resource the guard denies every caller (ledger; routed by merge_gate 2026-09-18)
 - DW-1099: no assertion observes a shipped descriptor's `read.filter`, `read.sort.fields` or per-column kind except the Devices list (ledger; routed by merge_gate 2026-09-18)
+- DW-389: Switches declares create and delete row actions its page registers no handler for, so the surfaces draw a permanently disabled action (ledger; routed by x0 2026-09-22)
+- DW-1001: the derived `webapp.openapi.read` criterion is described as a comma list with a `*` wildcard while `MgmntPort` accepts one exact name (ledger; routed by x0 2026-09-22)
+- DW-1013: `permissions.services.read` answers a bare `[]` for an unrestricted service and nothing tells the model that `[]` means any address (ledger; routed by x0 2026-09-22)
 
 ### Story 7.2: User enable, disable, delete, password and roles
 
@@ -4247,9 +4250,12 @@ So that the commonest administrative task takes one click rather than an editor.
 - **When** a disable or delete is attempted
 - **Then** it is refused with an explanation, in the UI **and** on the instance.
 
-- **Given** the change would add `%All` or any `%Admin_*` role
-- **When** it is attempted through the agent
-- **Then** it is refused - privilege grants are prohibited in Release 1 at any confirmation level - while the screen's own role management remains available to a privileged user.
+- **Given** the change would add `%All`, any `%Admin_*` role, or a role that carries them
+- **When** it is attempted, from the screen or through the agent
+- **Then** it is permitted: the agent's proposal takes the strongest confirmation, the typed name, and its diff names the privilege granted, and the screen's Add role dialog shows a consequence line when a privileged role is selected; the account protections (the signed-in user, `_SYSTEM`, the service account, the last `%All` holder) are unchanged. [AMENDED 2026-09-23, owner decision: privilege grants permitted at typed confirmation; was "refused whatever the caller". The earlier tier-1 amendment of the same day, on the orchestrator's 8.2 AC3 ruling, is superseded; Epic 8 implements the predicate, confirmation-level and `privilegedGrantEffect` changes, and this story consumes them.]
+
+- DW-1486: PROHIBITED.SERVICEACCOUNT is scoped to the disable verb while LASTALLHOLDER is scoped by effect, so a Roles delta stripping %All from the service account is permitted; with 7.2's delete hole, evaluate every account predicate by effect for delete, disable and a Roles delta stripping %All (AD-10 as amended 2026-09-23) (ledger; routed by spec_gate 2026-09-23)
+- DW-1499: Prohibited.ReasonFor's sentences other than SERVINGPATH say the change is not something the agent can propose, which AD-53 makes a defect once a screen caller reaches that arm (ledger; routed by cr 2026-09-23)
 
 ### Story 7.3: Delete an OAuth 2.0 client configuration or server client description
 
@@ -4321,7 +4327,9 @@ So that fixing a stopped task does not need an editor.
 
 - **Given** Task details (Story 6.7) and the agent's resume proposal (Story 5.11) both exist
 - **When** the agent's navigation target for a suspended task is re-pointed from the schedule list to Task details
-- **Then** UJ-6 is replayed end to end: the agent navigates to **Task details**, the Status **field** highlights, and a toast reads the change with "Open in Task schedule" - completing the journey as the PRD writes it, with no earlier story left unverified.
+- **Then** UJ-6 is replayed end to end: the agent navigates to **Task details** and the Suspended **field** highlights - completing the journey as the PRD writes it, with no earlier story left unverified. [AMENDED 2026-09-23, Epic 7 runner, Rule 5 tier-1: "the Status field" restated as the Suspended field, the one Task details carries.] [AMENDED 2026-09-23, orchestrator: the toast is delivered after the Epic 7/8 merge — a change toast opens the entity's list at the row and is hidden only when that list is open (PRD UJ-6); DW-1546]
+
+- DW-1463: two of Story 5.11's epic clauses about what the agent's reply says are unimplemented, and the fifth clause never reached a spec (ledger; routed by merge_gate 2026-09-22)
 
 **Vendor quirk, recorded 2026-09-20 from another entry's validation notes (IRIS 2026.2):** the task list's `Suspended` field does not reflect a suspend or resume that has just been applied, while the task's own info read does. The in-place row update and the write's verification read task info, never the list's field.
 
@@ -4346,6 +4354,10 @@ So that I can recover an instance without a terminal.
 - **Then** it is refused on the instance and was never advertised as a tool.
 
 - DW-1155: the fault banner and its control are re-created while a screen refreshes, so a click in that instant is lost and UX-DR52's non-dismissible banner is not honoured; the fix is framework-level (ledger; routed by merge_gate 2026-09-18)
+- DW-1189: the fault banner may clear and be re-raised during initial settle when every screen read is refused, a visible flicker beside DW-1155's refresh-tick case (ledger; routed by cr 2026-09-19)
+- DW-1486 (**floor-blocking**): `PROHIBITED.SERVICEACCOUNT` is gated inside `Disables()` while the same class scopes `LASTALLHOLDER` by effect, so a Roles-only delta stripping `%All` from the serving account is permitted; moving the arm out of `Disables()` needs an AD-10 amendment under Rule 20 (ledger; routed by merge_gate 2026-09-22) [Re-owned to Story 7.2 on 2026-09-23 by the orchestrator: one restructure with 7.2's delete hole. It returns here only if 7.2's adjudication re-owns a residual.] [Resolved by Story 7.2, 2026-09-23: no residual.]
+- DW-1499: Prohibited.ReasonFor's OCUPILOTPROCESS and SYSTEMPROCESS sentences still say the change is not something the agent can propose; 7.8's process row actions are the first screen caller to reach them (AD-53) (ledger; routed by adjudication 2026-09-23)
+- DW-1553: the initial bundle has 105 bytes of headroom under the 1,120 kB maximumWarning, so the next client bytes fail the DW-371 bundle test; re-base under DW-1166's owner policy (ledger; routed by harvest 2026-09-23)
 
 ### Story 7.10: The remaining application error delete scopes
 
@@ -4389,7 +4401,7 @@ So that the audit database records what matters here rather than everything or n
 
 - **Given** the user events list
 - **When** the user acts
-- **Then** an event can be created, configured and deleted.
+- **Then** an event can be enabled, disabled, reset and deleted. [AMENDED 2026-09-23, orchestrator: create and configure follow the Epic 7/8 merge on AD-54/AD-55 — DW-1573]
 
 - **Given** `Security.Audit.Event` publishes **no** body template and its PUT is an **upsert**
 - **When** the write tool is built
@@ -4398,6 +4410,9 @@ So that the audit database records what matters here rather than everything or n
 - **Given** OcuPilot's own audit event types
 - **When** a disable is attempted
 - **Then** the consequence is stated - agent writes stop being marked - and the panel's banner appears the moment it takes effect.
+
+- DW-1529: Both audit event lists declare entity type audit-event, so screenForEntityType resolves every audit-event reference, a user event's included, to the system-event list (ledger; routed by cr 2026-09-23)
+- DW-1530: The screen caller's post-write Security.Audit.Event GET is never run as a principal holding exactly the declared pairs (ledger; routed by cr 2026-09-23)
 
 ---
 

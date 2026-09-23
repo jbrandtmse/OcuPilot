@@ -5327,3 +5327,102 @@ app-resource-list-page {
 .ocu-x509-pem {
   font-family: var(--ocu-type-code-family);
 }
+
+// Story 7.1's row actions and the destructive confirm (AD-53, EXPERIENCE.md `row-overflow-menu`,
+// `confirm-dialog`, `typed-name-field`, `button-destructive`).
+//
+// A refused row-menu entry stays in the menu and keeps its place in the arrow order (Privilege
+// Gating), so the reason is drawn inline after the label rather than as a tooltip a menu can never
+// show. Such an entry becomes two lines: the action, then why it cannot be taken on this row.
+//
+// Scoped to the entries that carry a reason, so an ordinary entry keeps the single-line shape the
+// rule above gives it rather than being restyled by this block.
+.ocu-data-table-menu-item:has(.ocu-data-table-menu-reason) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  height: auto;
+  min-height: var(--ocu-control-height);
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+// Restrained rather than hidden: it is the reason the entry above it cannot be chosen, and colour
+// alone never carries that -- the words do.
+.ocu-data-table-menu-reason {
+  @include typo.ocu-type('caption');
+
+  max-width: 34ch;
+  color: var(--ocu-on-surface-variant);
+}
+
+// The destructive dialog's own three parts. The consequence sits above the field, as
+// EXPERIENCE.md's `confirm-dialog` orders them; the field is the dialog's first focusable, which
+// is what `dialog.ts` puts initial focus on.
+.ocu-typed-name-consequence {
+  @include typo.ocu-type('body');
+
+  margin: 0 0 var(--ocu-space-4);
+  color: var(--ocu-on-surface);
+}
+
+.ocu-typed-name-label {
+  @include typo.ocu-type('caption');
+
+  display: block;
+  margin-bottom: var(--ocu-space-2);
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-typed-name-field {
+  @include typo.ocu-type('body');
+
+  width: 100%;
+  height: var(--ocu-control-height);
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 1px solid var(--ocu-outline);
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-surface);
+  color: var(--ocu-on-surface);
+}
+
+.ocu-typed-name-field[aria-invalid='true'] {
+  border-color: var(--ocu-error);
+}
+
+// The mismatch message is what `aria-describedby` names, so it is visible text rather than a
+// visually hidden one: the reader and the screen reader are told the same thing.
+.ocu-typed-name-mismatch {
+  @include typo.ocu-type('caption');
+
+  margin: var(--ocu-space-2) 0 0;
+  color: var(--ocu-error);
+}
+
+// --- The command bar at the content minimum (Story 7.2) -------------------------------------------
+//
+// Every row-overflow-menu item is also on the command bar (EXPERIENCE.md, `command-bar`), so a
+// list with several row actions -- the Users list's six -- is wider than one line of a 640px
+// content column.
+// The bar wraps onto a further line rather than force the column wider (DESIGN.md `command-bar`:
+// 50px is a minimum, and the bar grows to hold the lines it wraps onto). While one line holds it
+// the bar is still `{spacing.command-bar-height}`: the padding and the 34px border box of a control
+// fill it exactly, and `border-box` keeps the padding inside that minimum.
+.ocu-command-bar {
+  box-sizing: border-box;
+  flex-wrap: wrap;
+  height: auto;
+  min-height: var(--ocu-command-bar-height);
+  padding-block: var(--ocu-space-2);
+}
+
+// The auto-refresh chip never starts a line of its own. A wrapping row breaks lines on each item's
+// base size, and the chip's label is the paused sentence while a proposal awaits confirmation, so at
+// its content size the chip would move the bar onto a second line each time a proposal arrives. A
+// zero base size keeps it on the line it shares; it then takes that line's free space up to its
+// content width, ellipsizing inside it as before (DW-173), and still ends at the right edge.
+.ocu-command-bar > .ocu-command-bar-refresh {
+  flex: 999 1 0;
+  max-width: max-content;
+}

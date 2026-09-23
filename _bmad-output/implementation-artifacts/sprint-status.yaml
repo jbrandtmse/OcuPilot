@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '09-23-2026 14:15'
+last_updated: '09-23-2026 22:19'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -137,16 +137,16 @@ development_status:
   6-14-the-messages-log-viewer: done
   epic-6-retrospective: optional
 
-  epic-7: backlog
-  7-1-enable-disable-and-delete-a-web-application: backlog
-  7-2-user-enable-disable-delete-password-and-roles: backlog
-  7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de: backlog
-  7-4-turn-auditing-on-and-off-from-the-screen: backlog
-  7-5-run-an-on-demand-task: backlog
-  7-6-run-suspend-resume-and-delete-a-task: backlog
-  7-8-terminate-suspend-and-resume-a-process: backlog
-  7-10-the-remaining-application-error-delete-scopes: backlog
-  7-11-system-and-user-audit-event-configuration: backlog
+  epic-7: done
+  7-1-enable-disable-and-delete-a-web-application: done
+  7-2-user-enable-disable-delete-password-and-roles: done
+  7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de: done
+  7-4-turn-auditing-on-and-off-from-the-screen: done
+  7-5-run-an-on-demand-task: done
+  7-6-run-suspend-resume-and-delete-a-task: done
+  7-8-terminate-suspend-and-resume-a-process: done
+  7-10-the-remaining-application-error-delete-scopes: done
+  7-11-system-and-user-audit-event-configuration: done
   epic-7-retrospective: optional
 
   epic-8: done

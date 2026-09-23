@@ -1,7 +1,8 @@
-/// <p>The task schedule's resume tool (AD-6, AD-51, FR-52): propose resuming a task the instance
-/// suspended after an error. It reads the task fresh through the vendor's own
-/// <code>Task.CRUD</code> <code>INFO</code>, refuses a task that is not suspended, and mints a
-/// proposal carrying one state row. It writes nothing.</p>
+/// <p>The task schedule's resume tool (AD-6, AD-51, AD-53, FR-52): resume a suspended task. Two
+/// callers reach it: the list's Resume row action through
+/// <class>OcuPilot.Api.ScreenAction</class>, and the agent's proposal and confirmation. Both read
+/// the task fresh through the vendor's own <code>Task.CRUD</code> <code>INFO</code> and refuse a
+/// task that is not suspended; the agent's caller mints a proposal carrying one state row.</p>
 /// <p><b>It is the first action-style write</b> (AD-51). The vendor exposes resume only as the
 /// bodyless <code>RESUME</code> request type: <code>MergeJsonAndObj</code>'s settable list omits
 /// <code>Suspended</code>, <code>TaskToJson</code> does not carry it, and
@@ -13,8 +14,8 @@
 /// row is <method>StateDiff</method>'s, computed from the fresh <code>INFO</code> answer; the
 /// row's label is the product's word for the state (<file>epics.md</file>, UJ-6), not the vendor's
 /// <code>Status</code> field, which reports the last run's result and which no resume changes.
-/// A task that is not suspended is refused at the mint, so the vendor's own "this returns ok even
-/// if it is not suspended" is never reached.</p>
+/// A task that is not suspended is refused at the fresh read, by either caller, so the vendor's
+/// own "this returns ok even if it is not suspended" is never reached.</p>
 /// <p><b>The target is the vendor's numeric task id</b>, which the schedule list's own rows carry
 /// as <code>Id</code> and its route names. <class>OcuPilot.Kernel.EntityRef</class>'s
 /// <code>integer</code> rule folds every spelling of one id to one key, which is what gives
@@ -26,7 +27,10 @@ Parameter TOOLNAME = "tasks.schedule.resume";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.TaskScheduleList";
 
-Parameter DESCRIPTION = "Propose resuming one task the Task Manager suspended after it failed. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the task by the numeric id the task schedule reports for it, not by its name. A task that is not suspended is refused.";
+Parameter DESCRIPTION = "Propose resuming one suspended task, whether a user suspended it or the Task Manager suspended it after it failed. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the task by the numeric id the task schedule reports for it, not by its name. A task that is not suspended is refused.";
+
+/// <p>The screen's own Resume row action, which sends no argument (AD-51, AD-53).</p>
+Parameter SCREENACTIONS = "resume";
 
 /// <p>The state read: <code>Task.CRUD</code>'s <code>INFO</code>, which is the only request type
 /// that answers <code>Suspended</code> truthfully on this build. The endpoint's <code>LIST</code>

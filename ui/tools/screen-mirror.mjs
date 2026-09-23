@@ -65,6 +65,7 @@ const REFSEPARATOR_PARAM_RE = /^Parameter\s+REFSEPARATOR\s*=\s*(\d+)\s*;/m;
 const IDRULENAMES_PARAM_RE = /^Parameter\s+IDRULENAMES\s*=\s*"([^"]*)"\s*;/m;
 const SINGLETONID_PARAM_RE = /^Parameter\s+RULESINGLETONID\s*=\s*"([^"]*)"\s*;/m;
 const DECLAREDNAMEKINDS_PARAM_RE = /^Parameter\s+DECLAREDNAMEKINDS\s*=\s*"([^"]*)"\s*;/m;
+const SELFPROTECTIONRULES_PARAM_RE = /^Parameter\s+SELFPROTECTIONRULES\s*=\s*"([^"]*)"\s*;/m;
 const SCOPE_PARAM_RE = /^Parameter\s+(SCOPEINSTANCE|SCOPENAMESPACE)\s*=\s*"([^"]*)"\s*;/gm;
 
 /**
@@ -230,6 +231,86 @@ export function parseSingletonId(text) {
   if (match === null || match[1] === '') return null;
   return match[1];
 }
+
+/**
+ * The self-protection rules a declared action may name -- `OcuPilot.Screen.Registry`'s own
+ * `SELFPROTECTIONRULES` parameter; `null` when the parameter is missing.
+ *
+ * Read rather than copied, for `parseDeclaredNameKinds`' reason (AD-5, AD-53): the rule is
+ * mirrored to the client, which draws a refused row action from it, so a value the instance would
+ * refuse must be refused here too. `null` rather than `[]`, because an absent declaration and a
+ * declaration of nothing are different facts.
+ */
+export function parseSelfProtectionRules(text) {
+  const match = SELFPROTECTIONRULES_PARAM_RE.exec(text);
+  if (match === null) return null;
+  return match[1]
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => value !== '');
+}
+
+/**
+ * What is wrong with `declaration`'s declared actions, or `null` -- the same rules
+ * `OcuPilot.Screen.Registry.ActionProblem` applies: the primary action and every row action carry
+ * only `id` and `selfProtection`, a row action's id is non-empty and unique, and a non-empty
+ * `selfProtection` names one of `rules`.
+ *
+ * The vocabulary is the instance's own, passed in rather than held here, so the two validators
+ * cannot disagree about what a rule is (AD-5, AD-53).
+ */
+export function actionProblem(declaration, rules) {
+  // An absent key is left alone, this generator's convention for a partially declared fixture
+  // (`scope` and `archetype` are treated the same way). `declarationProblem` above has already
+  // refused a misspelt one, and `OcuPilot.Screen.Registry.ActionProblem` is lenient identically.
+  if (declaration.primaryAction !== undefined) {
+    const primaryFault = oneActionProblem(declaration.primaryAction, 'primaryAction', rules);
+    if (primaryFault !== null) return primaryFault;
+  }
+  const rows = declaration.rowActions;
+  if (rows === undefined) return null;
+  if (!Array.isArray(rows)) return 'rowActions is not an array of declared actions';
+  const seen = new Set();
+  for (let index = 0; index < rows.length; index += 1) {
+    const where = `rowActions entry #${index + 1}`;
+    const fault = oneActionProblem(rows[index], where, rules);
+    if (fault !== null) return fault;
+    const { id } = rows[index];
+    if (id === '') return `${where} declares an empty id, and an action with no id is a control nothing can run`;
+    if (seen.has(id)) return `rowActions names the action '${id}' twice`;
+    seen.add(id);
+  }
+  return null;
+}
+
+/** What is wrong with one declared action, or `null`. Read for `actionProblem` alone. */
+function oneActionProblem(action, where, rules) {
+  if (action === null || typeof action !== 'object' || Array.isArray(action)) {
+    return `${where} is not an object declaring its id and self-protection rule`;
+  }
+  const keysFault = unknownKeyProblem(where, action, ['id', 'selfProtection']);
+  if (keysFault !== null) return keysFault;
+  if (typeof action.id !== 'string') return `${where} id is not a string`;
+  if (typeof action.selfProtection !== 'string') return `${where} selfProtection is not a string`;
+  if (action.selfProtection === '') return null;
+  if (!rules.includes(action.selfProtection)) {
+    return (
+      `${where} selfProtection '${action.selfProtection}' is not one of ${rules.join(',')}, ` +
+      'and a rule neither the instance nor the client understands explains nothing (AD-5, AD-53)'
+    );
+  }
+  return null;
+}
+
+/**
+ * The self-protection rules `ui/src/app/core/self-protection.ts` can actually evaluate, for the
+ * roster check against `OcuPilot.Screen.Registry`'s own `SELFPROTECTIONRULES`.
+ *
+ * A rule the instance declares and the client cannot draw would ship as a row action offered with
+ * no explanation, which is the divergence `checkedDeclaredNameKinds` exists to prevent for its own
+ * vocabulary (AD-5, AD-53).
+ */
+export const IMPLEMENTED_SELF_PROTECTION_RULES = ['serves-ocupilot', 'protected-account'];
 
 /**
  * The projection names this module's `declaredNames` fills, for the roster check against
@@ -399,9 +480,14 @@ export function readSources({ descriptorDir = DESCRIPTOR_DIR, areaSource = AREA_
   }
   screens.sort((a, b) => (a.className < b.className ? -1 : a.className > b.className ? 1 : 0));
 
-  const declaredNameKinds = parseDeclaredNameKinds(readFileSync(SCREEN_REGISTRY_SOURCE, 'utf8'));
+  const screenRegistryText = readFileSync(SCREEN_REGISTRY_SOURCE, 'utf8');
+  const declaredNameKinds = parseDeclaredNameKinds(screenRegistryText);
   if (declaredNameKinds === null) {
     throw new Error(`${SCREEN_REGISTRY_SOURCE} declares no 'Parameter DECLAREDNAMEKINDS'`);
+  }
+  const selfProtectionRules = parseSelfProtectionRules(screenRegistryText);
+  if (selfProtectionRules === null) {
+    throw new Error(`${SCREEN_REGISTRY_SOURCE} declares no 'Parameter SELFPROTECTIONRULES'`);
   }
 
   const toolFieldsText = readFileSync(TOOL_FIELDS_SOURCE, 'utf8');
@@ -409,7 +495,7 @@ export function readSources({ descriptorDir = DESCRIPTOR_DIR, areaSource = AREA_
   if (toolFieldsBody === null) throw new Error(`${TOOL_FIELDS_SOURCE} carries no 'XData Tools' block`);
   const toolFields = parseXDataJson(toolFieldsBody, TOOL_FIELDS_SOURCE, 'Tools');
 
-  return { entityTypes, idRules, idRuleNames, refSeparator, singletonId, declaredNameKinds, scopeWords, archetypes, areas, screens, toolFields };
+  return { entityTypes, idRules, idRuleNames, refSeparator, singletonId, declaredNameKinds, selfProtectionRules, scopeWords, archetypes, areas, screens, toolFields };
 }
 
 /**
@@ -539,6 +625,25 @@ function checkedDeclaredNameKinds(kinds) {
     );
   }
   return kinds;
+}
+
+/**
+ * The self-protection roster, refused by name when the instance declares a rule this client cannot
+ * draw, or cannot draw one it declares (AD-5, AD-53) -- the shape `checkedDeclaredNameKinds` uses,
+ * and for the same reason: a rule only one side knows ships as a row action offered with no
+ * explanation, or as a declaration the instance refuses at install.
+ */
+function checkedSelfProtectionRules(rules) {
+  const declared = [...rules].sort().join(',');
+  const implemented = [...IMPLEMENTED_SELF_PROTECTION_RULES].sort().join(',');
+  if (declared !== implemented) {
+    throw new Error(
+      `src/OcuPilot/Screen/Registry.cls: SELFPROTECTIONRULES declares "${rules.join(',')}" while ` +
+        `ui/src/app/core/self-protection.ts draws "${IMPLEMENTED_SELF_PROTECTION_RULES.join(',')}"; ` +
+        `a rule only one side knows explains nothing on the row it refuses (AD-5, AD-53)`
+    );
+  }
+  return rules;
 }
 
 /**
@@ -932,8 +1037,9 @@ export function sideBarPositionProblem(declaration) {
  * `sort.direction` is `asc` or `desc`, `paging` is `cap` (no LIST accepts a cursor), and the
  * `toolIdentifier` is `<area>.<screen>` in lower case. `read`, `read.source`, `read.sort` and
  * `context` carry only their declared keys, and `context.secretFields` is declared, so a misspelt
- * key is refused rather than read as no secret field. A read declares its table (`tableProblem`),
- * and a table with no read is refused. Last of all, a read on the `admin` port whose `privileges`
+ * key is refused rather than read as no secret field. A read declares its table (`tableProblem`)
+ * unless it is a `form-page` that declares none (`rendersNoTable`), and a table with no read is
+ * refused. Last of all, a read on the `admin` port whose `privileges`
  * omit `%DB_IRISSYS:READ` is refused, because the port runs every endpoint in `%SYS` -- a `state`
  * read runs in the install namespace and needs no such pair, so the rule is on the source kind
  * rather than on every read; `OcuPilot.Test.AdminPairCorpus` is the corpus both engines run.
@@ -1138,7 +1244,7 @@ export function readProblem(declaration) {
       'lower case, so its read tool could not be named <area>.<screen>.read'
     );
   }
-  const tableFault = tableProblem(declaration, read.fields, secrets);
+  const tableFault = rendersNoTable(declaration) ? null : tableProblem(declaration, read.fields, secrets);
   if (tableFault !== null) return tableFault;
 
   // The last arm, so no earlier refusal changes which sentence a declaration gets.
@@ -2006,6 +2112,22 @@ export function rowGetProblem(source, fields, keyAllowed = []) {
   return null;
 }
 
+/**
+ * Whether a declaration is a `form-page` over a single-object `GET` read that declares no `table`
+ * and no `composite` id (`OcuPilot.Screen.Registry.RendersNoTable`). A form renders that one
+ * object as fields and actions, never as a grid, so it names no column header and no empty-state
+ * sentence a user could never see. Such a declaration is exempt from `tableProblem`; a form over a
+ * list-shaped read, one with a composite id, and one that declares a table are still held to it.
+ */
+export function rendersNoTable(declaration) {
+  return (
+    declaration.archetype === 'form-page' &&
+    (declaration.table === undefined || declaration.table === null) &&
+    declaration.id?.kind !== 'composite' &&
+    declaration.read?.source?.type === 'GET'
+  );
+}
+
 /** The kinds a table column may declare (AD-5). */
 export const TABLE_COLUMN_KINDS = ['name', 'identifier', 'text', 'number', 'status'];
 
@@ -2189,6 +2311,7 @@ export function buildMirror({
   refSeparator,
   singletonId,
   declaredNameKinds = IMPLEMENTED_DECLARED_NAME_KINDS,
+  selfProtectionRules = IMPLEMENTED_SELF_PROTECTION_RULES,
   scopeWords,
   archetypes,
   areas,
@@ -2212,6 +2335,7 @@ export function buildMirror({
     );
   }
   checkedDeclaredNameKinds(declaredNameKinds);
+  checkedSelfProtectionRules(selfProtectionRules);
   const knownScopes = new Set(scopeWords ?? []);
   const archetypeKeys = (archetypes ?? []).map((archetype) => archetype.key);
   const knownArchetypes = new Set(archetypeKeys);
@@ -2325,6 +2449,13 @@ export function buildMirror({
     const rowTargetFault = rowTargetProblem(screen.declaration);
     if (rowTargetFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${rowTargetFault}`);
+    }
+    // AD-5, AD-53: the self-protection rule the client draws a refused row action from, refused
+    // here against the instance's own closed vocabulary so a rule neither side understands fails
+    // the build rather than rendering as a word in a row menu.
+    const actionFault = actionProblem(screen.declaration, selfProtectionRules);
+    if (actionFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${actionFault}`);
     }
   }
   const tabGroupFault = tabGroupProblem(screens);

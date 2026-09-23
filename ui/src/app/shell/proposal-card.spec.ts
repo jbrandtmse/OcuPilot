@@ -39,6 +39,9 @@ const NOW_MS = Date.parse('2026-09-19T09:50:00Z');
  */
 const DELETE_PROPOSAL: ProposalCardView = {
   entityType: 'Application error',
+  // The wire's own type, which is what the residue sentence is gated on (DW-1480): the published
+  // noun above is a different fact and two screens can spell one type's noun two ways.
+  targetType: 'application-error',
   name: 'HSCUSTOM',
   changed: [
     { field: '09/11/2026', before: '123', after: '', removed: true },
@@ -341,6 +344,55 @@ describe('the proposal card', () => {
     // A card with no removal row says nothing about residue.
     const { card: ordinary } = mount(liveView(), { phase: 'live' });
     expect(ordinary.querySelector('.ocu-proposal-card-residue')).toBeNull();
+
+    // DW-1480: nor does a delete of something else. The sentence resolves its `<n>` to a count of
+    // errors, so a web-application delete -- whose card carries removal rows too (Story 7.1) --
+    // would otherwise read "Removes exactly the 4 errors listed here" about a web application.
+    //
+    // Mutation (Rule 19): drop the `targetType` test from `residueVisible` -> this goes red.
+    const { card: webApp } = mount(
+      {
+        ...DELETE_PROPOSAL,
+        proposalId: 'p5',
+        expiresAt: NOW_MS + 60_000,
+        entityType: 'Web application',
+        targetType: 'web-application',
+        name: '/csp/myapp',
+      },
+      { phase: 'live' }
+    );
+    expect(webApp.querySelectorAll('.ocu-diff-row').length).toBe(DELETE_PROPOSAL.changed.length);
+    expect(webApp.querySelector('.ocu-proposal-card-residue')).toBeNull();
+  });
+
+  it('Story 7.6: a system task\u2019s delete card states the consequence; a user task\u2019s and another type\u2019s do not', () => {
+    // The removal rows are the card's only knowledge of the task's type (the delete tool reads it).
+    //
+    // Mutation (Rule 19): drop the system-task block from the template, or the `targetType` test
+    // from `systemTaskVisible` -> this goes red.
+    const taskDelete = (type: string, targetType = 'task'): ProposalCardView => ({
+      ...DELETE_PROPOSAL,
+      proposalId: 'p6',
+      expiresAt: NOW_MS + 60_000,
+      entityType: 'Task',
+      targetType,
+      name: '42',
+      changed: [
+        { field: 'Name', before: 'Switch Journal', after: '', removed: true },
+        { field: 'TaskClass', before: '%SYS.Task.SwitchJournal', after: '', removed: true },
+        { field: 'NameSpace', before: '%SYS', after: '', removed: true },
+        { field: 'Type', before: type, after: '', removed: true },
+      ],
+    });
+    const { card: system } = mount(taskDelete('System'), { phase: 'live' });
+    const line = system.querySelector('[data-slot="system-task"]') as HTMLElement | null;
+    expect(line).not.toBeNull();
+    expect(line?.textContent).toContain(STRINGS.taskSystemDeleteConsequence);
+    expect(line?.getAttribute('role')).toBe('status');
+
+    expect(mount(taskDelete('User'), { phase: 'live' }).card.querySelector('[data-slot="system-task"]')).toBeNull();
+    expect(mount(taskDelete('System', 'web-application'), { phase: 'live' }).card.querySelector('[data-slot="system-task"]')).toBeNull();
+    expect(mount(liveView(), { phase: 'live' }).card.querySelector('[data-slot="system-task"]')).toBeNull();
   });
 
   it('with no phase nothing in the card is focusable, and there is no countdown and no footer', () => {

@@ -154,3 +154,11 @@ test('the example carries no countdown and no footer: the two things a live card
     ['changed', 'entityType', 'expectedImpact', 'name', 'rationale', 'reverse', 'unchangedCount']
   );
 });
+
+// Story 7.10. Mutation (Rule 19): drop `displayEntityId` from `formatProposalTitle` -> the title
+// carries the control character and goes red.
+test('a composite target reads as its breadcrumb in the card title', () => {
+  const title = formatProposalTitle(strings.proposalCardTitle, strings.errorLogListLabel, 'user\u000109/23/2026\u00014');
+  assert.ok(title.endsWith('user \u203a 09/23/2026 \u203a 4'), title);
+  assert.ok(!title.includes('\u0001'), 'no control character reaches the title');
+});

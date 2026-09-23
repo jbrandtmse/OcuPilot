@@ -25,7 +25,7 @@ XData Declaration
   "id": {"kind": "composite", "parts": ["namespace", "name"]},
   "context": {"fields": ["name", "namespace", "enabled"], "secretFields": []},
   "primaryAction": {"id": "create", "selfProtection": ""},
-  "rowActions": [{"id": "disable", "selfProtection": "never the application that serves OcuPilot"}],
+  "rowActions": [{"id": "disable", "selfProtection": "serves-ocupilot"}],
   "emptyStateKey": "",
   "commandAliases": ["web apps", "applications"],
   "classicPage": "OcuPilotTestClassicPageComposite",

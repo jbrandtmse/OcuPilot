@@ -2567,6 +2567,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T05:46:35Z status=routed owner=burndown by=harvest note=either the descriptor stops declaring what the page does not handle, or the surfaces stop drawing an action with no handler; the second is the rule that holds for every later screen
 - 2026-09-16T10:21:59Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=burndown_gate note=the action registry is what draws a handler-less action
 - 2026-09-16T15:11:12Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=x0 note=the first row-action story is where the surfaces stop drawing an action with no handler
+- 2026-09-23T02:50:46Z status=resolved-by:7-1-enable-disable-and-delete-a-web-application by=adjudication note=command-bar, command-box and data-table draw a row action only while a handler is registered; negative cases in each surface spec; commit 17055d3
 
 ### DW-390: Kernel/Restraint.Verdict's fail-closed path has no store seam, so nothing pins what happens when a restraint store cannot be read
 - source: spec-3-7 | severity: med | fix-risk: low | footprint: in-epic
@@ -3746,6 +3747,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T17:43:04Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=harvest note=route: first later-epic story in the web-applications area that works in Screen/Tool/**; the fix is a per-criterion description declared by the descriptor or a single-name text kind
 - 2026-09-16T22:46:47Z occurrence=6-3-the-x-509-ldap-kerberos-and-wallet-lists note=the security.secrets tool's required single collection criterion is described as an optional comma list with a * wildcard
 - 2026-09-17T11:34:58Z occurrence=6-7-task-details
+- 2026-09-23T02:50:47Z status=routed owner=burndown by=adjudication note=declined by 7.1's plan: 7.1 ships no read tool and adds no read criterion; the fix is a per-criterion description mechanism for derived read tools (Screen/Tool/Read.cls), moves with DW-1013
+- 2026-09-23T20:58:41Z owner=11-1-explain-this-screen by=burndown note=Epic 7 burn-down overflow: no Epic 7 story touches derived read-tool criterion descriptions; 11.1 is the first story whose agent reads a screen through its read tool and must describe its criteria truthfully (not floor-blocking, so Rule 27 charters no burn-down story)
 
 ### DW-1002: AD-8 says no elevation anywhere on the request path, while the vendor path MgmntPort reaches adds all roles temporarily inside %SYS.REST and %REST.API
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -3812,6 +3815,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The spec keeps the vendor's [] on the read and the tool; only the screen cell reads Unrestricted. The generic read-tool description and screen context carry no field meaning. Same mechanism gap as DW-1001: descriptor-declared field or criterion descriptions for derived tools (Screen/Tool/**, contended for Epic 6).
 - 2026-09-16T20:03:33Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=harvest note=cluster with DW-1001: one descriptor-declared description mechanism for derived read tools
 - 2026-09-16T20:44:36Z occurrence=6-2-the-roles-resources-and-services-lists
+- 2026-09-23T02:50:47Z status=routed owner=burndown by=adjudication note=declined by 7.1's plan: same mechanism as DW-1001 (descriptor-declared field meaning for derived read tools); moves with it
+- 2026-09-23T20:58:41Z owner=11-1-explain-this-screen by=burndown note=Epic 7 burn-down overflow: moves with DW-1001 (descriptor-declared field meaning for derived read tools)
 
 ### DW-1014: An empty AuthenticationMethods cell reads (none) on 7 of 15 stock services, which can read as no authentication where authentication does not apply
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: low | fix-risk: low | footprint: in-story
@@ -3827,6 +3832,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-17T17:05:54Z occurrence=6-9-system-usage-and-the-dashboard-meters note=system-usage.browser-spec.mjs:80 creates a principal and refuses only LIVE_CONTAINER
 - 2026-09-18T19:44:55Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=merge_gate note=extend the browser-spec container refusal to ocupilot-slot-* as well as the live name
 - 2026-09-20T00:48:34Z status=routed owner=range-end-cleanup by=merge_gate note=RE-ROUTED off story 13.2. Epic 13 declined it correctly: all three need edits in ui/browser/*.browser-spec.mjs, which is Epic 5's footprint, and Epic 13 has no browser-spec footprint at all. That was an orchestrator error - epic-dependencies.yaml gave Epic 13 the glob ui/src/**/*.browser.spec.ts, which is the wrong directory, extension and separator and matched nothing; the real specs are the 34 ui/browser/*.browser-spec.mjs files. Glob dropped from the graph with the reason recorded inline. Non-blocking under Rule 27: none of the three blocks the 2026-09-27 floor or a downstream-epic story, and DW-1223's five error-log timeouts have already failed to reproduce twice
+- 2026-09-23T05:12:39Z occurrence=7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de note=oauth-delete.browser-spec.mjs:78 creates and deletes OAuth objects and refuses only LIVE_CONTAINER
 
 ### DW-1016: A proposal diff-row has no empty-cell word, so a service-editor proposal restricting AllowedConnections would read (none) -> 10.0.0.1
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -4013,6 +4019,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Test/Descriptor.cls's new Devices method is the only place in the ObjectScript suite that reads a real descriptor's read.filter or a column's kind; every other hit is a synthetic corpus. Registry.cls requires only that filter and sort names be a SUBSET of read.fields and each kind be in TABLECOLUMNKINDS, and screens.generated.ts mirrors whatever is declared, so screen-mirror --check agrees with any mutation.
 - 2026-09-18T07:39:57Z status=routed owner=burndown by=cr note=one sweep over Registry.Descriptors() against a committed table closes it; equality with read.fields is NOT the invariant -- SystemUsage declares filter [] deliberately
 - 2026-09-18T16:43:00Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=burndown note=overflow re-owned to the first story of the next epic, which touches a shipped descriptor's declared actions and its pinning tests: one sweep over Registry.Descriptors() against a committed table closes it, and equality with read.fields is NOT the invariant
+- 2026-09-23T02:50:46Z status=resolved-by:7-1-enable-disable-and-delete-a-web-application by=adjudication note=Test/Descriptor.cls sweeps Registry.Descriptors() against a committed table of filter, sort fields and column kinds; commit 17055d3
 
 ### DW-1100: The messages.log viewer has no declared-read source, so its read tool cannot be descriptor-derived and needs a Screen/Tool class Epic 6's footprint excludes
 - source: spec-6-13-the-alerts-log-viewer.md | severity: med | fix-risk: med | footprint: in-epic
@@ -4098,12 +4105,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AdminPort.cls:682 skips %DeleteId without ASYNCTASKPAIR and logs nothing (AC9, by design). Observed on ocupilot-b-ci: removing the guard makes the PROTECT appear, so the path is taken per unprivileged async read. This ledger's own 2026-09-18T08:32 note records that the vendor's PurgeAsyncQueue() is [Internal] and scheduled by nothing, so Api.Admin.Util.AsyncTaskD grows without bound for such callers.
 - 2026-09-18T16:02:00Z status=escalated owner=burndown by=cr note=the guard is the right refusal; what is undecided is the row it now leaves: accept the growth, purge it from a privileged path, or bound it
 - 2026-09-18T19:44:55Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=merge_gate note=ForgetTask leaks a vendor async-task row on every unprivileged async read; fix in AdminPort
+- 2026-09-23T02:50:47Z status=routed owner=burndown by=adjudication note=declined by 7.1's plan: the fix rewrites AdminPort.ForgetTask, a method 7.1 did not add in a shared-append file contended with Epic 8; residual unchanged
+- 2026-09-23T20:58:41Z owner=16-5-background-tasks by=burndown note=Epic 7 burn-down overflow: vendor async-task rows are exactly what 16.5's Background tasks screen lists and purges; the fix rewrites AdminPort.ForgetTask, shared-append and contended with Epic 8
 
 ### DW-1137: AdminPort.ASYNCTASKPAIR is a literal, so on an instance whose IRISLOCALDATA carries a non-default resource the guard denies every caller and ForgetTask silently stops deleting
 - source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: high | footprint: in-epic
 - evidence: Parameter ASYNCTASKPAIR = "%DB_IRISLOCALDATA:WRITE" under a doc comment headed 'Derived from the vendor's storage, not chosen'; the code derives nothing. A database's resource is SYS.Database.ResourceName and need not be %DB_<name>. Test.AdminPortForget.TestTheDeclaredPairNamesTheDatabaseTheRowsLiveIn derives and compares, so any instance the suite runs on reddens - an instance it does not run on skips every delete with nothing logged.
 - 2026-09-18T16:02:00Z status=escalated owner=burndown by=cr note=fix-risk high: resolving the resource at call time adds a %SYS switch to the async path in a file Epic 4 shares; the alternative is to attempt the delete and suppress only PROTECT
 - 2026-09-18T19:44:55Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=merge_gate note=ASYNCTASKPAIR literal denies every caller where IRISLOCALDATA carries a non-default resource
+- 2026-09-23T02:50:47Z status=escalated owner=burndown by=adjudication note=MED with fix-risk high (a %SYS switch on the async path to resolve IRISLOCALDATA's resource at call time) in the shared-append AdminPort.cls; Rule 15 escalates it to the decision sheet
 
 ### DW-1138: The planning artifacts still put the log viewer's Clear control in the shell command bar, and the new Fixed strings row cites two wrong lines
 - source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -4158,6 +4168,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 6.14's AC8 timed out twice in CI on a screen that declares refreshes true (ProcessList, rates 5/10/30/60): the page never navigated, and the named wait's dump showed it still on the processes list with the banner up. An in-page node.click() on a node the re-render has already detached does nothing. The control, its destination and the side-bar move are all correct; only the element's identity across refresh ticks is at fault. Probe: on a refreshing screen whose read is failing, press the banner's control repeatedly and watch for a press that produces no navigation
 - 2026-09-18T18:33:28Z status=routed owner=7-8-terminate-suspend-and-resume-a-process by=runner note=orchestrator-decided at the 6.14 rework gate: the fix is framework-level -- keep the banner and its control stable across refresh ticks rather than re-creating them -- and it belongs with the story that puts row actions on these same refreshing screens, where the identical lost click would hit a user pressing Terminate
 - 2026-09-18T18:47:08Z by=cr note=code review re-ran the probe this entry asks for: on Processes (refreshes true) and on Locks with the screen read refused, the .ocu-fault-banner element was replaced zero times in 25 s after exactly one refused read -- auto-refresh is off until the chip sets a rate (preferences.refreshRate answers 0 unstored) and a faulted read suspends the timer, so 'every refresh tick' is not the window; the window is a fault cleared by a successful call and re-raised by the parked re-read, which the 7-8 fix should target
+- 2026-09-23T17:03:49Z status=resolved-by:7-8-terminate-suspend-and-resume-a-process by=adjudication note=the fault banner stays mounted 1,500 ms after a fault clears, so a re-raise keeps the element and its control; fault-banner.spec.ts and .wire.spec.ts pin it; commit b35d39c0
 
 ### DW-1156: AC8's two CI timeouts still have no identified cause: the refresh-tick mechanism the rework targeted does not occur
 - source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: low | footprint: in-epic
@@ -4239,6 +4250,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: orchestrator harness-repair directive 2026-09-19 | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: DW-1156's third CI failure showed the Open messages.log control DESTROYED and recreated 1035 ms into the subtest, so the fault cleared and was re-raised during settle rather than on a refresh tick. The control sits inside @if (serverFault) nested in @if (visible). Whether the clear is legitimate is an app question the harness repair deliberately does not answer. Location: ui/src/app/shell/fault-banner.ts
 - 2026-09-19T07:34:54Z status=routed owner=7-8-terminate-suspend-and-resume-a-process by=cr note=the app half DW-1156 names and the orchestrator's directive explicitly excludes from the harness commit; beside DW-1155, which is the refresh-tick case on the same element
+- 2026-09-23T17:03:49Z status=resolved-by:7-8-terminate-suspend-and-resume-a-process by=adjudication note=same hold covers the initial-settle clear-and-re-raise; fault-banner specs; commit b35d39c0
 
 ### DW-1190: messages-log AC6 and AC5 fail deterministically on every browser-suite run after the first against one throwaway, because the suite's own logging pushes the seeded severity mix out of the viewer's tail window
 - source: harness repair, three-consecutive-run proof 2026-09-19 | severity: med | fix-risk: low | footprint: in-story
@@ -5477,6 +5489,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-21T03:04:36Z status=decision-pending owner=burndown by=cr note=human=published copy; amending EXPERIENCE.md's Fixed-strings row is a UX call
 - 2026-09-22T02:34:15Z status=routed owner=5-13-logs-delete-application-errors-by-namespace by=lead note=THE_ORCHESTRATOR_RULED_IT_FLOOR-BLOCKING_AND_ASKED_ME_TO_TAKE_IT_IF_CHEAP_INSIDE_5.11-5.13,_AND_THE_RIGHT_ANSWER_IS_5.13_RATHER_THAN_5.11._The_defect_is_that_a_FIXED_Updated_prefix_precedes_created_and_deleted._5.11_resumes_a_task_and_5.12_suspends_a_process_-_both_emit_AD-14_action_updated,_so_on_both_paths_the_prefix_is_ACCIDENTALLY_CORRECT_and_the_wrong_branch_is_unexecutable._Fixing_it_in_5.11_would_bank_a_pass_no_test_on_that_story_could_redden,_which_is_the_exact_anti-pattern_this_epic_keeps_finding_and_the_same_reasoning_that_re-owned_DW-1456_to_8.5._5.13_DELETES_application_errors,_so_its_own_demo_path_executes_the_deleted_branch_and_can_falsify_the_fix._THE_HUMAN_HALF_IS_UNCHANGED_AND_I_AM_NOT_DECIDING_IT:_the_note_says_amending_EXPERIENCE.mds_Fixed-strings_row_is_a_UX_call,_so_5.13s_plan_stage_raises_the_copy_as_a_Rule_5_amendment_rather_than_choosing_new_wording_itself
 - 2026-09-22T12:33:44Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=lead note=measured: announceChanged is private to data-table.ts; error-log's data-table strings are CSS classes, not the component. 5.13 does not execute the branch either
+- 2026-09-22T22:37:14Z status=decision-pending owner=7-1-enable-disable-and-delete-a-web-application by=spec_gate note=human=amending_EXPERIENCE.md's_Fixed-strings_row_is_a_UX_call._Recommend_the_announcement_select_per_action_from_the_already-published_'<entity>_was_created/updated/deleted'_row_and_the_'Updated:_<entity>_<action>'_row_be_restated_for_updated_or_struck._Removed_from_7.1's_tasks;_to_the_epic-close_decision_sheet
 
 ### DW-1424: ToastEntry.entityLabel is computed on every publish and rendered nowhere
 - source: spec-5-7-the-screen-shows-the-change.md | severity: low | fix-risk: low | footprint: in-story
@@ -5864,6 +5877,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AC7 ends 'the agent's reply names the next run': Confirm.Answer carries proposalId, state, closedReason, confirmedAt and auditMarked only, nothing supplies a next-run figure, and no mutation line covers that half. epics.md:3737-3739's fifth clause ('the error recurs on the next run -> the agent's follow-up cites that history row by name rather than claiming success') appears in no spec AC, boundary, deferral or ledger entry and carries no AMENDED marker, unlike UJ-6's retarget.
 - 2026-09-22T05:20:31Z status=decision-pending owner=burndown by=cr note=human=is the next-run half owed by Confirm.Answer or by the model re-reading, and is the fifth clause dropped or 7.6's
 - 2026-09-22T06:52:35Z status=routed owner=7-6-run-suspend-resume-and-delete-a-task by=merge_gate note=ORCHESTRATOR-DECIDED._7.6_already_owns_this_descriptors_retarget_and_its_Run/Suspend/Delete_row_actions,_so_the_unimplemented_reply_clauses_land_with_the_story_that_touches_the_same_surface._I_FIRST_WROTE_AN_INVENTED_KEY_AND_ledger.sh_REFUSED_IT,_naming_the_real_one_-_the_owner_check_doing_exactly_the_job_the_routing-to-an-unvalidated-key_anti-pattern_describes
+- 2026-09-23T13:21:13Z status=dropped by=spec_gate note=orchestrator ruling 2026-09-23 (Q5): a confirm is a user request outside any turn, so no agent reply follows it; 5.11's 'the agent's reply names the next run and offers the audit entry' and the end of UJ-6 step 5 are amended out (tier-1, markers cite the reason); the proposal-card alternative is declined because it lands in Confirm.cls
 
 ### DW-1464: AdminPort.BODYLESSTYPES exempts a request-type name globally rather than an (endpoint, type) pair
 - source: spec-5-11-tasks-resume-a-task-suspended-after-an-error.md | severity: med | fix-risk: med | footprint: in-epic
@@ -5976,6 +5990,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: bmad-code-review of spec-5-13 | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: proposal-card.ts residueVisible is removedCount > 0; ProposalCardView carries entityType only as a display string. Unreachable today: logs.applicationerrors.delete is the only tool whose StateDiff emits removed rows. Story 7.1's web-application delete is the first that would render 'Removes exactly the 1 errors listed here.'
 - 2026-09-22T14:47:04Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=cr note=gate the sentence on the write's entity type, or have the instance send the caption
+- 2026-09-23T02:50:47Z status=resolved-by:7-1-enable-disable-and-delete-a-web-application by=adjudication note=proposal-card residueVisible gated on the write's entity type; proposal-card.spec.ts pins both directions; commit 17055d3
 
 ### DW-1481: OcuPilot.Api.Error.LOGENTRY now answers two different refusals at two different statuses
 - source: bmad-code-review of spec-5-13 | severity: low | fix-risk: med | footprint: in-story
@@ -6010,6 +6025,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-22T19:38:24Z status=escalated owner=burndown by=cr note=widening needs an AD-10 amendment; the disable arm and the census half both ship correct. Decision sheet
 - 2026-09-22T20:54:22Z status=routed owner=burndown by=merge_gate note=FLOOR-BLOCKING, and owner=burndown means the NEXT epic's N.0 cleanup story must charter it, exactly as 5-0 carried Epic 4's residue. AD-10's own text diagnoses this: the set is defined by effect not by verb, and its first draft enumerated deletes and disables while two classes of privilege change slipped between them. De-privileging the serving account is the same effect as disabling it, so the SERVICEACCOUNT arm must move out of Disables(). Needs an AD-10 amendment under Rule 20; fix-risk high; same family as DW-1437 and DW-1438, which Epic 5 chartered floor-blocking.
 - 2026-09-22T21:36:47Z status=routed owner=7-8-terminate-suspend-and-resume-a-process by=merge_gate note=RE-OWNED off the N.0 charter pool (owner instruction 2026-09-22: keep the cleanup story off the critical path). It was the ONLY entry owned by burndown, so a 7.0 cleanup story would have been one story of overhead on the epics that gate 9, 12 and 11, for one fix. 7.8 is its natural home rather than a compromise: Prohibited.cls is in Epic 7's exclusive footprint, 7.8's AC3 already refuses an IRIS system process on the instance and never advertises it, and 7.8's AC2 was amended the same day to reference the very predicate this entry widens. The prohibited-set reasoning is already open on that story's desk.
+- 2026-09-23T03:14:55Z status=routed owner=7-2-user-enable-disable-delete-password-and-roles by=spec_gate note=orchestrator 2026-09-23: one restructure with 7.2's delete hole -- account predicates by effect for delete, disable and a Roles delta stripping %All; AD-10 amended in the spine; a failing-when-removed test per arm. If 7.2 closes it, 7.8's bullet is noted
+- 2026-09-23T07:41:58Z status=resolved-by:7-2-user-enable-disable-delete-password-and-roles by=adjudication note=account predicates by effect for delete, disable and a Roles delta stripping %All (AD-10 amended); ProhibitedByEffect.TestEveryAccountArmRefusesEveryRemovalEffect, 4 arms x 3 effects, each arm and effect mutated red; commit e5b7e1b
 
 ### DW-1487: browser-reset.mjs scans JavaScript lexically, so a regex literal, a double-quoted import or a brace inside a string literal can hide a call from the reset gate
 - source: bmad-code-review of spec-5-14 | severity: low | fix-risk: med | footprint: in-story
@@ -6274,3 +6291,242 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-9-plain-iris-community-verification.md | severity: low | fix-risk: med | footprint: out-of-footprint
 - evidence: Plan-time run 2026-09-23 on a plain Community throwaway, ci-runner --namespace USER: 205 classes, 1798 tests; ErrorDelete, ErrorLogDenial, FixtureNamespace, ErrorLog, Namespaces by assertion text; MgmntPortWire, MgmntPortDenial, TurnContext (inference)
 - 2026-09-23T20:04:06Z status=routed owner=range-end-cleanup by=lead note=Story 8.9 spec gate: install, admin API and smoke are verified on plain Community in CI; a plain-Community suite job (~16 min) needs portable fixtures first; not floor-blocking
+### DW-1497: A screen row action takes no per-target lock, so it and a concurrent confirm of a live proposal against the same target are ordered only by the vendor endpoint
+- source: _bmad-output/implementation-artifacts/spec-7-1-enable-disable-and-delete-a-web-application.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: OcuPilot.Api.ScreenAction gates and writes with no claim around it while AD-34's lock is the proposal store's; confirm a proposal on /csp/x while pressing its row's Disable and the later write wins. Bounded: both callers run every gate and each sends a complete body over its own fresh read
+- 2026-09-23T02:25:57Z status=routed owner=burndown by=harvest note=take AD-34's per-target lock in the screen caller too, or record why ordering by the vendor is enough
+- 2026-09-23T20:58:41Z owner=range-end-cleanup by=burndown note=Epic 7 burn-down overflow: the per-target lock belongs to the screen caller in Operation/ScreenAction, which Epic 8's AD-55 Save route also reaches; one fix after the Epic 7/8 merge covers both callers
+
+### DW-1498: The client explains the serving-path refusal only for Install.Roster's three applications, while the instance also protects the applications install recorded for a probe profile
+- source: _bmad-output/implementation-artifacts/spec-7-1-enable-disable-and-delete-a-web-application.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: self-protection.ts mirrors the roster's three paths (pinned by self-protection.test.mjs); Prohibited.ServesOcuPilot also reads Kernel.State.WebApp. On a probe profile the row menu offers the action and the route refuses it after the click with the same published sentence
+- 2026-09-23T02:25:57Z status=wontfix-accepted owner=7-1-enable-disable-and-delete-a-web-application by=harvest note=reopen_if=an install path other than a test probe records a web application outside Install.Roster's three paths
+
+### DW-1499: Prohibited.ReasonFor's sentences other than SERVINGPATH say the change is not something the agent can propose, which AD-53 makes a defect once a screen caller reaches that arm
+- source: spec-7-1-enable-disable-and-delete-a-web-application.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: src/OcuPilot/Kernel/Proposal/Prohibited.cls ReasonFor: SYSTEMACCOUNT, CURRENTUSER, LASTALLHOLDER (and the web-application arms) name the agent; AD-53 Rule says such a reason is a defect once a screen caller shares the predicate. Unreachable from 7.1's Enabled-only merge and bodyless delete; 7.2's row disable of a user reaches the user arms.
+- 2026-09-23T02:48:49Z status=routed owner=7-2-user-enable-disable-delete-password-and-roles by=cr note=first screen caller to reach the user arms; reword each reached reason caller-neutral and pin it as RefusalCopy does SERVINGPATH
+- 2026-09-23T07:41:58Z status=routed owner=7-8-terminate-suspend-and-resume-a-process by=adjudication note=resolved for CURRENTUSER, SYSTEMACCOUNT, SERVICEACCOUNT, LASTALLHOLDER (published caller-neutral sentences, commit e5b7e1b). Residual: OCUPILOTPROCESS and SYSTEMPROCESS, first reached by 7.8's process row actions; PRIVILEGEGRANT is Story 8.2's by orchestrator ruling; the web-application arms are reached by no screen caller on this branch
+- 2026-09-23T17:03:49Z status=resolved-by:7-8-terminate-suspend-and-resume-a-process by=adjudication note=OCUPILOTPROCESS and SYSTEMPROCESS now read the published caller-neutral sentences (RefusalCopy, self-protection.test.mjs); the account arms closed in 7.2; PRIVILEGEGRANT is Epic 8's by ruling; no other arm is reached by a screen caller on this branch
+
+### DW-1500: The row-action handler decides which actions get the typed-name dialog by action id (DESTRUCTIVE_ACTIONS = delete) rather than from the write tool's own DESTRUCTIVE declaration
+- source: spec-7-1-enable-disable-and-delete-a-web-application.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ui/src/app/shell/screen-action-handler.ts:35 keys the dialog on the id 'delete'; the mirror does not carry the tool's DESTRUCTIVE, so a later destructive verb with another id (e.g. terminate) would send at once unless its story adds the id.
+- 2026-09-23T02:48:49Z status=wontfix-accepted owner=7-1-enable-disable-and-delete-a-web-application by=cr note=reopen_if=a Screen/Tool/*.cls with DESTRUCTIVE=1 declares a SCREENACTIONS id absent from DESTRUCTIVE_ACTIONS
+
+### DW-1501: Story 7.2 AC1's editor half (every user action also available from the user editor) has no surface on Epic 7: no user editor exists until Story 9.1
+- source: spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: areas/permissions/ has no user form on OCU-1-epic7; 9.1 builds the editor. 7.2 ships the row-menu half, the handler and the tools (permissions.users.password and the role delta) the editor should reuse
+- 2026-09-23T03:14:55Z status=routed owner=9-1-the-user-editor by=spec_gate note=orchestrator plants the DW bullet under 9.1 at the Epic 7 merge gate
+
+### DW-1508: The published oauthClientDeleteConsequence omits that deleting a dynamically registered client configuration also deletes its registration at the authorization server
+- source: spec-7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: irissys/OAuth2/Client.cls:1201-1203: DeleteId calls DeleteClientRegistration when Metadata.registration_client_uri is set and ignores its result. The tool doc and DESCRIPTION now say so (review patch); the dialog copy is the lead's published string (EXPERIENCE.md:405).
+- 2026-09-23T05:12:39Z status=wontfix-accepted owner=7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de by=cr note=reopen_if=an operator deletes a dynamically registered configuration and reports the remote deregistration as unexpected
+
+### DW-1509: The client configuration delete card shows ServerDefinition as the server description's bare row id, not the issuer the tab shows
+- source: spec-7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: OAuthClientDelete.FINGERPRINTSUBJECT names ServerDefinition, which the vendor GET answers as ServerDefinition.%Id(); the tab's column is IssuerEndpoint. The subject is the one the spec's Tasks specify.
+- 2026-09-23T05:12:39Z status=by-design owner=7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de by=cr note=subject specified in Tasks; changing the card's display needs a spec amendment
+
+### DW-1510: OcuPilot.Test.OAuthTabs is 688 lines against the 500-line test-class guidance
+- source: spec-7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Story 7.3 appended about 280 lines of live delete legs to the 394-line class; the spec's Never list forbids a new armed test class and its Tasks place the legs here.
+- 2026-09-23T05:12:40Z status=by-design owner=7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de by=cr note=spec Never: no new class that needs an arming variable
+
+### DW-1511: AdminPort's count sentence was rewritten seven to nine in a shared-append file, and reads wrong again once Epic 8's Security.User/POST merges
+- source: spec-7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: AdminPort.cls:131 'The nine are the ones the registry actually reaches'; origin/OCU-1-epic8 appends Security.User/POST to MUTATINGTYPES without touching the sentence, so the merged count is ten. Reverting to seven would be false now.
+- 2026-09-23T05:12:40Z status=wontfix-accepted owner=7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de by=cr note=merge gate sets ten; reopen_if=post-merge the sentence's count differs from MUTATINGTYPES' entry count
+
+### DW-1516: The agent path can leave the change-on-login flag cleared: a flag proposal confirmed before the password proposal is undone by the vendor's password change
+- source: _bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: CHANGEPWD clears ChangePassword (measured on ocupilot-ci); the screen sends flag, password, flag, but two agent proposals are confirmed in whatever order the user chooses. AD-56 (ii) amended to require the flag after the password
+- 2026-09-23T06:45:52Z status=routed owner=burndown by=harvest note=make the password tool re-apply a flag set before it, or refuse a flag proposal while a password proposal on the same target is live
+- 2026-09-23T20:58:41Z owner=9-1-the-user-editor by=burndown note=Epic 7 burn-down overflow: the user editor owns the password and change-on-login pair and is where the agent path's ordering (flag after password, AD-56 as amended) is settled
+
+### DW-1517: AC4 names %Admin_Secure as a role to add, but on this build it is a resource and no role carries that name, so the add answers 400 unknown role
+- source: _bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Security.Roles has no %Admin_Secure on ocupilot-ci; the privileged-add legs used %All and %Manager instead
+- 2026-09-23T06:45:52Z status=by-design owner=7-2-user-enable-disable-delete-password-and-roles by=harvest note=the AC's example; the owner's 2026-09-23 decision rewrote AC4 around %All and roles carrying %Admin_* anyway
+
+### DW-1518: The last-%All-holder strip is pinned in-process through the tool delta and Operation.Gate, not over the HTTP route
+- source: _bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: the census can be armed only in the test process, never in the web server serving the route; UserUpdate.TestAnAllStripOfTheLastHolderIsRefusedAtTheSharedGate
+- 2026-09-23T06:45:52Z status=wontfix-accepted owner=7-2-user-enable-disable-delete-password-and-roles by=harvest note=reopen_if=the census gains a switch the web server process can read
+
+### DW-1519: Test/Prohibited.cls took Epic 8's WithoutAuthoredSecrets byte-for-byte after the lead's port reddened TestNoWriteToolAdmitsAnAlwaysProhibitedField
+- source: _bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: the port 771b08b made UserList declare an authored secret; the helper that excludes it came from Epic 8 unchanged
+- 2026-09-23T06:45:52Z status=dropped owner=7-2-user-enable-disable-delete-password-and-roles by=harvest note=a merge note, not a defect: identical hunks on both branches
+
+### DW-1520: Set password and the change-on-login flag are permitted on _SYSTEM, the signed-in account and a service account; AD-10's account arms fire only on delete, disable and a %All strip
+- source: _bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Prohibited.User asks the account arms only when RemovesAdministration holds; UserPassword changes no field and ChangePassword carries no predicate (PermittedChangeFields). (inference) a new password or a forced change on CSPSystem stops the gateway's sign-in, the harm SERVICEACCOUNT names.
+- 2026-09-23T07:03:26Z status=decision-pending owner=burndown by=cr note=recommend: add a password/flag effect term for the service-account arm only; _SYSTEM and self are admin intent
+
+### DW-1521: The _SYSTEM, signed-in and service-account refusal sentences say 'Disabling or deleting it' when the refused write is a remove-role of %All
+- source: _bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: AD-10 as amended puts all four arms in front of a %All strip; SYSTEMACCOUNTREASON, CURRENTUSERREASON and SERVICEACCOUNTREASON (EXPERIENCE.md:398-400) name only disable and delete; LASTALLHOLDERREASON alone names the role.
+- 2026-09-23T07:03:26Z status=wontfix-accepted owner=7-2-user-enable-disable-delete-password-and-roles by=cr note=reopen_if=the lead rewords EXPERIENCE.md:398-400, or a user reports a remove-role refusal naming disable
+
+### DW-1522: DESIGN.md gave the command bar a fixed 50px height, which the 640px content minimum cannot hold once a list declares six row actions
+- source: spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: the Users list's bar measured 898px on one line; 7.2's rework lets it wrap and grow, so 50px became a minimum
+- 2026-09-23T07:28:48Z status=resolved-by:7-2-user-enable-disable-delete-password-and-roles owner=7-2-user-enable-disable-delete-password-and-roles by=harvest note=DESIGN.md command-bar amended under Rule 5 tier-1 by the lead, 2026-09-23
+
+### DW-1523: The Users list's Add role dialog shows no consequence line when a privileged role is selected: privilegedGrantEffect had not landed on Epic 8's branch by Story 7.2's review
+- source: spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: owner decision 2026-09-23: privileged grants permitted at typed confirmation, the screen shows a consequence line; Epic 8 owns the key privilegedGrantEffect; origin/OCU-1-epic8 carried none at 7.2's review
+- 2026-09-23T07:52:02Z status=routed owner=9-1-the-user-editor by=harvest note=port privilegedGrantEffect byte-for-byte and render it in the role dialog (orchestrator ruling 2026-09-23)
+- 2026-09-23T07:52:09Z note=privilegedGrantEffect appeared on origin/OCU-1-epic8 (59dced7) after 7.2's review closed; per the orchestrator's fallback it stays with 9.1 rather than re-opening 7.2
+
+### DW-1529: Both audit event lists declare entity type audit-event, so screenForEntityType resolves every audit-event reference to the system-event list
+- source: spec-7-4-turn-auditing-on-and-off-from-the-screen.md (cr) | severity: med | fix-risk: med | footprint: in-epic
+- evidence: AuditSystemEventList and AuditUserEventList both declare entityType audit-event; navigation.test.mjs pins screenForEntityType('audit-event') to security/auditing/system-events. Once 7.11 emits audit-event changes for user events, their toast/link opens a list that never shows them.
+- 2026-09-23T10:01:27Z status=routed owner=7-11-system-and-user-audit-event-configuration by=cr note=7.11 emits audit-event changes on these descriptors; decide a second type or an owner-aware lookup there
+- 2026-09-23T20:57:33Z status=resolved-by:7-11-system-and-user-audit-event-configuration by=adjudication note=user events carry their own entity type audit-user-event, so a change opens the User events list; navigation.test.mjs screenForChange; commit a6152980
+
+### DW-1530: The screen caller's post-write Security.Audit.Event GET is never run as a principal holding exactly the declared pairs
+- source: spec-7-4-turn-auditing-on-and-off-from-the-screen.md (cr) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: (inference) unverified: ProhibitedRoute's least-privileged principal reads the event LIST 200, but only the test account runs the screen action; if the GET needs more than %Admin_Secure:U + %DB_IRISSYS:R, the fact is never recorded and only a log line shows it. Settle: run a screen action as DECLAREDPAIRSONLY and assert no OBSERVEFAILED line.
+- 2026-09-23T10:01:27Z status=routed owner=7-11-system-and-user-audit-event-configuration by=cr note=7.11 is the second MOVESMARKING tool on the same endpoint; its least-privileged test settles this
+- 2026-09-23T20:57:33Z status=resolved-by:7-11-system-and-user-audit-event-configuration by=adjudication note=ProhibitedRoute.TestALeastPrivilegedPrincipalRunsTheUserEventActionsAndTheMarkingIsObserved runs the screen caller's post-write read as the declared pairs; commit a6152980
+
+### DW-1531: Nothing pins ScreenAction.Run's MovesMarking guard: observing after every screen write stays green in every suite
+- source: spec-7-4-turn-auditing-on-and-off-from-the-screen.md (cr) | severity: low | fix-risk: low | footprint: in-story
+- evidence: VG layer: making the observation unconditional reddens no test; the cost would be two extra reads and an error log line per non-auditing screen action by a principal without %Admin_Secure.
+- 2026-09-23T10:01:27Z status=wontfix-accepted owner=7-4-turn-auditing-on-and-off-from-the-screen by=cr note=reopen_if=an OBSERVEFAILED console line follows a non-auditing screen action, or 7.11 adds a MOVESMARKING tool
+
+### DW-1532: DW-1453's and DW-1227's built-filter regression guards lost their witness: no descriptor is built:false any more
+- source: spec-7-4-turn-auditing-on-and-off-from-the-screen.md (cr) | severity: low | fix-risk: low | footprint: in-story
+- evidence: 7.4 built AuditingConfig, the last unbuilt descriptor (grep for built false under src/OcuPilot/Screen/Descriptor is empty); restoring either built filter now reddens nothing.
+- 2026-09-23T10:01:27Z status=wontfix-accepted owner=7-4-turn-auditing-on-and-off-from-the-screen by=cr note=reopen_if=a descriptor declares built:false again and navigation.test.mjs/SurfaceCoverage do not name it
+
+### DW-1533: AuditingUpdate.LedgerCount caps at 1000 ids over 24 h, so the no-ledger-row assertion saturates on a busy test account
+- source: spec-7-4-turn-auditing-on-and-off-from-the-screen.md (cr) | severity: low | fix-risk: low | footprint: in-story
+- evidence: Both counts read at most 1000 ids; at the cap before==after whatever was written. CI's fresh throwaway holds far fewer rows.
+- 2026-09-23T10:01:27Z status=wontfix-theoretical owner=7-4-turn-auditing-on-and-off-from-the-screen by=cr note=real if the armed class runs where the test user has 1000+ ledger rows in 24 h
+
+### DW-1534: The banner offers 'Turn auditing on' when auditing is on and only OcuPilot's marker event is off, which that action cannot fix
+- source: spec-7-4-turn-auditing-on-and-off-from-the-screen.md (cr) | severity: low | fix-risk: med | footprint: in-epic
+- evidence: ObserveMarking needs both flags; with the event disabled the banner shows, and the screen it opens offers only 'Turn auditing off'. The event-enable action does not exist until 7.11.
+- 2026-09-23T10:01:27Z status=wontfix-accepted owner=7-4-turn-auditing-on-and-off-from-the-screen by=cr note=reopen_if=7.11 ships enabling OcuPilot's own events and the banner still offers only 'Turn auditing on' in that state
+
+### DW-1535: The banner's 'Turn auditing on' is gated on the OcuPilot-administrator verdict, not on the auditing screen's %Admin_Secure:USE pair
+- source: spec-7-4-turn-auditing-on-and-off-from-the-screen.md (cr) | severity: low | fix-risk: low | footprint: in-story
+- evidence: panel.ts shows the action for administrator; an OcuPilot administrator without %Admin_Secure lands on the screen's refusal. AC3 and the I/O matrix specify the administrator gate and the denied user's refusal.
+- 2026-09-23T10:01:27Z status=by-design owner=7-4-turn-auditing-on-and-off-from-the-screen by=cr note=AC3 names OcuPilot administrators; reopens only via spec amendment
+
+### DW-1542: Run from the On-demand list resumes a suspended task with no dialog and no Suspended column on the list
+- source: spec-7-5-run-an-on-demand-task.md (code review) | severity: med | fix-risk: low | footprint: in-story
+- evidence: The vendor's RunNow clears Suspended (measured at planning); the agent's card shows the resume row, the screen's Run sends at once (TaskRun.StateDiff; screen-action-handler.ts sends a non-destructive action with no warning).
+- 2026-09-23T12:25:51Z status=by-design owner=7-5-run-an-on-demand-task by=cr note=spec Never: no dialog before Run (EXPERIENCE :173); matrix row Suspended target accepts the resume; reopens only via spec amendment
+
+### DW-1543: The two 'NextScheduled is set at once' checks race a Task Manager pass that lands between the write and the read
+- source: spec-7-5-run-an-on-demand-task.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: TaskResume.TestTheAgentsRunIsConfirmedAndLandsInTheTasksHistory reads INFO right after Confirm, and the browser screen leg waits for a digit in Next run; a run landing in that ms window clears NextScheduled first (inference; landing measured 26-43 s).
+- 2026-09-23T12:25:52Z status=wontfix-accepted owner=7-5-run-an-on-demand-task by=cr note=reopen_if=a CI run reds 'INFO's NextScheduled is set at once' or the Next-run wait while AwaitRun shows the run landed
+
+### DW-1545: CI browser job stalled once for about 2.5 minutes on turn.browser-spec.mjs (213-217: a 30 s wait, then four sign-in navigation timeouts, then recovery) and did not recur on a rerun of the same sha
+- source: spec-7-5-run-an-on-demand-task.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: run 35858909423 attempt 1 red at 12:32-12:34Z on 61f9c7dc, attempt 2 green on the same sha; tests 218+ green in attempt 1; cause not established
+- 2026-09-23T12:57:02Z status=wontfix-accepted owner=7-5-run-an-on-demand-task by=lead note=reopen_if=turn.browser-spec.mjs or any sign-in navigation times out again in a CI browser job
+
+### DW-1546: UJ-6's change toast ('Open in Task schedule') cannot appear on Task details: a change toast opens the entity's details and is hidden while that screen is open, where the PRD wants it to open the list at the row and hide only while the list is open
+- source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: EXPERIENCE.md:446 hides the toast while the entity's screen is open; Epic 8 pinned screenForEntityType('task') -> tasks/schedule/details in navigation.test.mjs:963; PRD UJ-6 climax: 'a toast links to the row in the task list'
+- 2026-09-23T13:21:12Z status=routed owner=range-end-cleanup by=spec_gate note=orchestrator ruling 2026-09-23: taken by the orchestrator right after the second of the Epic 7/8 merges; the UJ-6 replay checks the toast after that fix, not in 7.6
+
+### DW-1553: The initial bundle is 1,119,895 bytes against the 1,120 kB maximumWarning, 105 bytes of headroom, so the next story that adds client code fails the DW-371 bundle test
+- source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: measured by 7.6's build; ui/angular.json:54 maximumWarning 1120kB, pinned by ui/tools/angular-json.test.mjs; Epic 8's 8.2 re-based its own copy under DW-1166's owner policy (about 5% above the measured total)
+- 2026-09-23T14:43:42Z status=routed owner=7-8-terminate-suspend-and-resume-a-process by=harvest note=7.8 re-bases maximumWarning under DW-1166 if it adds client bytes; angular.json and its test are Epic-8-modified, so the edit is a clarification unless the orchestrator's merge-gate re-base lands first
+- 2026-09-23T17:03:49Z status=resolved-by:7-8-terminate-suspend-and-resume-a-process by=adjudication note=maximumWarning re-based 1120kB->1181kB on 7.8's measured 1,124,199 B under DW-1166 (value line and pinned literal only, orchestrator ruling); commit b35d39c0
+
+### DW-1554: WireSecurityRead's 'nothing is cut at 1,000' fails on a reused throwaway whose task history exceeds 1,000 rows
+- source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: full sweep on ocupilot-ci run 8192: %SYS_Task.History held 1,026 rows on the 3-day-old throwaway; a fresh CI throwaway holds far fewer
+- 2026-09-23T14:43:42Z status=wontfix-accepted owner=7-6-run-suspend-resume-and-delete-a-task by=harvest note=reopen_if=a CI instance job fails TestTaskHistoryPairSetsAreEnforcedForARealPrincipal
+
+### DW-1557: AdminPort's DW-1473 paragraph still says no shipped tool issues Task.CRUD/SUSPEND, which 7.6 made false; its 'The nine' count and 'no screen read reaches one' are stale too
+- source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: AdminPort.cls:128-143 (MUTATINGTYPES doc) vs the same parameter now listing Task.CRUD/SUSPEND for TaskSuspend. AdminPort is SHARED-APPEND under the 2026-09-23 roster rule, so no Epic 7 story may rewrite those lines; Epic 8's copy of the paragraph already differs ('The six').
+- 2026-09-23T15:01:41Z status=wontfix-accepted owner=7-6-run-suspend-resume-and-delete-a-task by=cr note=reopen_if=after the Epic 7/8 merge resolves that paragraph, it still says Task.CRUD/SUSPEND is issued by no shipped tool
+
+### DW-1558: The task delete's fresh read is Task.CRUD GET, whose vendor TaskToJson switches to the task's own NameSpace, so a task in a namespace the caller cannot reach (or that no longer exists) cannot be deleted from OcuPilot
+- source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: %Api.Admin.Endpoints.Task.CRUD TaskToJson: New $NAMESPACE, Set $NAMESPACE = obj.NameSpace, obj.GetSettings (read on slot A). Fails closed with an error; Task details already reads GET, so the limitation predates 7.6. The privilege half is an inference (not observed).
+- 2026-09-23T15:01:41Z status=wontfix-accepted owner=7-6-run-suspend-resume-and-delete-a-task by=cr note=reopen_if=a user reports a task Task details or the schedule's Delete cannot read because of its namespace, e.g. an orphaned task
+
+### DW-1563: Three doc sites Story 7.8 made stale sit on lines it may not edit: Prohibited OCUPILOTPROCESS/SYSTEMPROCESS docs say suspend or resume, AdminPort :160-172 says TERMINATE is absent, the angular-json pin comment describes 1120kB
+- source: spec-7-8-terminate-suspend-and-resume-a-process.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Prohibited.cls:125,136 (spec: touch nothing else in a contended file), AdminPort.cls:160-172 (shared-append), ui/tools/angular-json.test.mjs:352-356 (DW-1553 ruling: value line only). Each now contradicts the code beside it.
+- 2026-09-23T16:59:16Z status=wontfix-accepted owner=7-8-terminate-suspend-and-resume-a-process by=cr note=reopen_if=after the Epic 7/8 merge any of the three still names only suspend/resume, TERMINATE absent, or 1120kB
+
+### DW-1564: ProcessPort's <PROTECT>->403 and failed-Terminate->500 branches are never executed by a test
+- source: spec-7-8-terminate-suspend-and-resume-a-process.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ProcessPort.cls:96-109: no leg raises <PROTECT> in the %SYS frame or gets an error status from Terminate(1); every caller that reaches it has passed the screen's three pairs (%DB_IRISSYS:R, %Admin_Manage:U), so neither branch is reachable today (inference).
+- 2026-09-23T16:59:16Z status=wontfix-theoretical owner=7-8-terminate-suspend-and-resume-a-process by=cr note=real if a caller can reach TerminateWithError without %DB_IRISSYS:R or %Admin_Manage:U, or Terminate(1) can fail on an open process
+
+### DW-1565: Either caller can terminate a pooled CSP server (JobType 27) that is serving another user's OcuPilot request at that moment
+- source: spec-7-8-terminate-suspend-and-resume-a-process.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Prohibited.IsOcuPilotProcess refuses $Job and running turn jobs only; ProcessJobTypes admits CSPSRV and the vendor reports CanBeTerminated 1 for it. Spec matrix row 'OcuPilot process' and AD-10's items (serving path = web app and service) define the set this way, 5.12's reading.
+- 2026-09-23T16:59:26Z status=by-design owner=7-8-terminate-suspend-and-resume-a-process by=cr note=spec-bound: AD-10 prohibits disabling the serving path, not one pooled server; the classic portal allows it; reopen via AD-10 amendment only
+
+### DW-1566: The screen route's Terminate carries no StartTimeUTC, so a pid that ends and is reused while the dialog is open would terminate the new process
+- source: spec-7-8-terminate-suspend-and-resume-a-process.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: screen-action-handler confirmPending sends {action,id}; AD-53 gives the screen caller no proposal or fingerprint. Needs the probe to end and the OS to hand its pid to a new IRIS process within the dialog's lifetime (inference: needs a pid wrap).
+- 2026-09-23T16:59:26Z status=wontfix-theoretical owner=7-8-terminate-suspend-and-resume-a-process by=cr note=real if the throwaway or an operator instance shows pid reuse within seconds (small pid_max or very high process churn)
+
+### DW-1567: The agent's absent-scope refusal is 400 TOOL.ARGUMENTS, not the matrix's 404 LOG.DATE or LOG.ERROR
+- source: spec-7-10-the-remaining-application-error-delete-scopes.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Kernel/Proposal/Mint.cls maps any port 404 to TOOL.ARGUMENTS and is contended with Epic 8; the screen route answers 404
+- 2026-09-23T18:37:47Z status=wontfix-accepted owner=7-10-the-remaining-application-error-delete-scopes by=harvest note=reopen_if=Mint.cls is reconciled after the Epic 7/8 merge and still maps a port 404 to 400
+
+### DW-1568: A number reused within the same second as the error it replaces is not detected by the Time-carrying fingerprint
+- source: spec-7-10-the-remaining-application-error-delete-scopes.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: emptying a date restarts its numbering (measured); the fingerprint pairs each number with its Time at one-second resolution
+- 2026-09-23T18:37:47Z status=wontfix-theoretical owner=7-10-the-remaining-application-error-delete-scopes by=harvest note=real only if a date is emptied and a new error takes the same number inside one second of the old one's Time
+- 2026-09-23T18:50:05Z occurrence=7-10-the-remaining-application-error-delete-scopes
+- 2026-09-23T18:50:05Z status=wontfix-theoretical owner=7-10-the-remaining-application-error-delete-scopes by=cr note=also the write: RemoveErrorIds matches (date,number) only after the re-read; real only if a date is emptied mid-confirm
+
+### DW-1569: The ?ns= leg's 'HSCUSTOM untouched' half cannot fail unless HSCUSTOM holds an error with the same date and number as the seed
+- source: spec-7-10-the-remaining-application-error-delete-scopes.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: the test seeds USER; the intent excludes seeding HSCUSTOM
+- 2026-09-23T18:37:47Z status=wontfix-accepted owner=7-10-the-remaining-application-error-delete-scopes by=harvest note=reopen_if=a later story seeds HSCUSTOM's error log in the same test class
+
+### DW-1570: A date-scoped delete is never tested end to end against a namespace holding a second date
+- source: spec-7-10-the-remaining-application-error-delete-scopes.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ErrorDelete's screen by-date leg and agent by-date leg run with USER holding one date, so a namespace-wide delete passes both; date narrowing is pinned only by ErrorDeleteScope's DateList query count. Seeds log on today only (inference).
+- 2026-09-23T18:50:04Z status=wontfix-accepted owner=7-10-the-remaining-application-error-delete-scopes by=cr note=reopen_if=a fixture or seed can place an error in USER on a second date, or a date-scoped delete removes another date's errors
+
+### DW-1573: User audit events cannot be created or configured (Description edited) from OcuPilot: 7.11 ships enable, disable, reset and delete, and create and configure need AD-54's create kind and AD-55's screen Save
+- source: spec-7-11-system-and-user-audit-event-configuration.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: AD-54 and AD-55 exist only on OCU-1-epic8 (Write.cls, Mint.cls, Router.cls); building a second create path here duplicates them; orchestrator ruling 2026-09-23 amended 7.11 AC3
+- 2026-09-23T19:25:32Z status=routed owner=range-end-cleanup by=spec_gate note=a dialog editor over an AD-54 create and an AD-55 Save, following Story 8.4's resource editor; the orchestrator has offered the owner a Story 9.10 charter for it
+
+### DW-1575: Each audit event tool accepts the other list's events, so a user event changed through a system tool publishes audit-event (and the reverse)
+- source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: med | fix-risk: med | footprint: in-story
+- evidence: AuditEvent*/AuditUserEvent* tools read Security.Audit.Event GET by source/type/name with no owner check; the target type is the tool descriptor's (Mint.cls:135). Vendor: a system event is exactly one whose Source starts with % (Security.Events.cls:24; ListByFilter on slot A: 75 system, 4 user, 0 mismatches).
+- 2026-09-23T20:54:31Z status=escalated owner=burndown by=cr note=no id-aware hook shared by mint and screen read inside the approved footprint; fix via port owner rule or kernel seam
+
+### DW-1576: The reset tools' card row reads Total before "" after 0: its before is not derived from the fresh read, which AD-51 requires
+- source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: med | fix-risk: med | footprint: in-story
+- evidence: AuditEventReset.StateDiff hardcodes before "" (spec Tasks prescribe it) because READTYPE GET answers only {Description, Enabled}; AD-51: rows are derived from the fresh read. LIST names=<EventName> answers Total.
+- 2026-09-23T20:54:31Z status=decision-pending owner=burndown by=cr note=amend AD-51 for a counter the tool's read type cannot answer, or read the counters (LIST names=)
+
+### DW-1577: An agent update that sets Enabled to its current value mints a proposal with no changed rows instead of the 400 TOOL.ARGUMENTS no-op refusal
+- source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: epic-7-context.md:41 says both callers refuse a no-op with 400 TOOL.ARGUMENTS; Mint.Merge skips an unchanged field (Mint.cls:388) and mints changed=[]; the refusal exists only in each tool's ScreenActionDelta. Same for WebAppUpdate.
+- 2026-09-23T20:54:31Z status=escalated owner=burndown by=cr note=kernel-wide for merge tools; the fix is in Mint.cls, which Epic 8 rewrites in that region
+
+### DW-1578: Prohibited.cls's header still says eight types are covered; COVEREDTYPES now lists ten
+- source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Prohibited.cls:35 'Eight types are covered'; 7.11 appended audit-event and audit-user-event to COVEREDTYPES. Epic 8 rewrites the same header, so an edit here adds a merge conflict.
+- 2026-09-23T20:54:37Z status=wontfix-accepted owner=7-11-system-and-user-audit-event-configuration by=cr note=reopen_if=after the Epic 7/8 merge the header's count differs from COVEREDTYPES' length
+
+### DW-1579: AdminPort.Invoke's RunSequence call (a line 7.11 did not add, in a shared-append file) now passes .tQuery; Epic 8 rewrites the same line
+- source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: low | fix-risk: med | footprint: in-story
+- evidence: 7.11 changed .pQuery to .tQuery so SPLITQUERIES reaches the vendor; Epic 8 changed pBody to tBody on that line. It is inside a conflict hunk that already exists without 7.11 (merge-tree: 6 AdminPort conflicts before and after).
+- 2026-09-23T20:54:37Z status=wontfix-accepted owner=7-11-system-and-user-audit-event-configuration by=cr note=reopen_if=merged Invoke passes .pQuery to RunSequence (AuditEventTools split GET goes red)

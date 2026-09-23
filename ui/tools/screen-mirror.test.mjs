@@ -185,6 +185,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['application-error', 'foldcase'],
     ['role', 'foldcase'],
     ['resource', 'foldcase'],
+    ['audit-event', 'foldcase'],
+    ['audit-user-event', 'foldcase'],
   ]);
   assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
@@ -850,8 +852,49 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   // UPCOMING request type.
   const onDemand = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskOnDemandList');
   assert.deepEqual(onDemand.declaration.read.source, { port: 'admin', endpoint: 'Task.CRUD', type: 'LIST', query: { onDemand: '1' } });
+  // Story 7.5: Run makes the list write-capable -- its rows are keyed by the vendor's numeric Id,
+  // it declares the one row action, it shows the next run, and its empty state invites the agent.
+  assert.deepEqual(onDemand.declaration.id, { kind: 'composite', parts: ['Id'] });
+  assert.deepEqual(onDemand.declaration.rowActions, [{ id: 'run', selfProtection: '' }]);
+  assert.ok(onDemand.declaration.read.fields.includes('NextScheduled'), 'the read carries the next run');
+  assert.equal(onDemand.declaration.table.columns.at(-1).field, 'NextScheduled', 'shown after Last run');
+  assert.equal(onDemand.declaration.table.emptyAgentKey, 'taskOnDemandEmptyAgent', 'the empty state invites the agent');
+  assert.equal(onDemand.declaration.table.emptyNextKey, '', 'and names no read-only next step');
+  assert.equal(onDemand.declaration.entityLabelKey, 'proposalEntityTask');
   const upcoming = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskUpcomingList');
   assert.equal(upcoming.declaration.read.source.type, 'UPCOMING');
+  // Story 7.6: the Task schedule declares Run, Suspend, Resume and Delete, shows the Suspended
+  // field its INFO rowGet answers, and its empty state invites the agent.
+  const schedule = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskScheduleList');
+  assert.deepEqual(
+    schedule.declaration.rowActions.map((action) => action.id),
+    ['run', 'suspend', 'resume', 'delete']
+  );
+  assert.ok(schedule.declaration.rowActions.every((action) => action.selfProtection === ''), 'no action carries a self-protection rule');
+  assert.deepEqual(
+    schedule.declaration.table.columns.find((column) => column.field === 'Suspended'),
+    { field: 'Suspended', labelKey: 'taskColumnSuspended', kind: 'status' }
+  );
+  assert.deepEqual(schedule.declaration.read.source.rowGet.fields, ['Suspended'], 'fed by the INFO rowGet');
+  assert.equal(schedule.declaration.table.emptyAgentKey, 'taskScheduleEmptyAgent', 'the empty state invites the agent');
+  assert.equal(schedule.declaration.table.emptyNextKey, '', 'and names no read-only next step');
+  assert.equal(schedule.declaration.entityLabelKey, 'proposalEntityTask');
+  // Story 7.8: Processes and Process details declare Suspend, Resume, Terminate and the Terminate
+  // dialog's flag, none self-protected, and invite the agent from their empty states.
+  for (const name of ['ProcessList', 'ProcessDetails']) {
+    const process = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
+    assert.deepEqual(
+      process.declaration.rowActions,
+      ['suspend', 'resume', 'terminate', 'terminate-with-error'].map((id) => ({ id, selfProtection: '' })),
+      `${name} declares the four process actions`
+    );
+    assert.equal(process.declaration.table.emptyAgentKey, 'processListEmptyAgent', `${name}'s empty state invites the agent`);
+    assert.equal(process.declaration.table.emptyNextKey, '', `and names no read-only next step`);
+  }
+  assert.equal(
+    screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.ProcessList').declaration.entityLabelKey,
+    'proposalEntityProcess'
+  );
   // Story 2.12: a descriptor that declares NO read is a supported shape, and the generator has to
   // emit it rather than refuse it -- the declared-read pipeline is admin-port-only by two
   // independent hard-codings, so the application error log could not use it whatever port it
@@ -864,6 +907,13 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.equal(readless.declaration.read, undefined, 'and declares no read at all');
   assert.equal(readless.declaration.table, undefined, 'and no table either');
   assert.equal(readProblem(readless.declaration), null, 'which the read grammar admits');
+  // Story 7.10: one delete on every drill level, whose scope is the level's own id prefix.
+  assert.deepEqual(
+    readless.declaration.rowActions,
+    [{ id: 'delete', selfProtection: '' }],
+    'one delete row action, with no self-protection rule'
+  );
+  assert.equal(readless.declaration.entityLabelKey, 'errorLogListLabel', "and the card's noun is the screen's own label");
 });
 
 // Story 6.2: every case in `OcuPilot.Test.ColumnCorpus`, read off disk from the XData block
@@ -1188,6 +1238,28 @@ test('AD-5: the generator refuses a table outside the declared grammar, naming t
   const composite = sound();
   composite.id = { kind: 'composite', parts: ['NameSpace', 'Name'] };
   assert.equal(readProblem(composite), null, 'and a composite id over declared fields');
+  // Story 7.4: a form renders its read's one object, never a grid, so a form-page declares no
+  // table and no empty-state sentence -- while a form that does declare a table is still held to it.
+  // Mutation (Rule 19): make `rendersNoTable` answer false -> the first assertion goes red.
+  const form = sound();
+  form.archetype = 'form-page';
+  form.read.source.type = 'GET';
+  delete form.table;
+  form.emptyStateKey = '';
+  assert.equal(readProblem(form), null, 'a form-page single-object read with no table and no empty-state key passes');
+  assert.match(readProblem({ ...form, archetype: 'list' }), /table is not an object/, 'which a list with the same read is refused');
+  const formOverList = structuredClone(form);
+  formOverList.read.source.type = 'LIST';
+  assert.match(readProblem(formOverList), /table is not an object/, 'as is a form-page over a list-shaped read');
+  assert.match(
+    readProblem({ ...form, id: { kind: 'composite', parts: ['NameSpace', 'Name'] } }),
+    /table is not an object/,
+    'and a form-page with a composite id'
+  );
+  const formWithTable = sound();
+  formWithTable.archetype = 'form-page';
+  formWithTable.table.columns = [];
+  assert.match(readProblem(formWithTable), /table\.columns is empty/, 'and a form-page that declares a table is still held to it');
 
   const refused = [
     [(d) => delete d.table, /table is not an object/],
@@ -1232,7 +1304,7 @@ test('the mirror emits table as null for a screen that declares none', () => {
   const readless = shipped.filter((screen) => screen.read === null);
   assert.ok(readless.length > 0, 'the shipped mirror carries a screen that declares no read');
   for (const screen of readless) assert.equal(screen.table, null, `${screen.descriptor} declares no table`);
-  for (const screen of shipped.filter((candidate) => candidate.read !== null)) {
+  for (const screen of shipped.filter((candidate) => candidate.read !== null && candidate.archetype !== 'form-page')) {
     assert.notEqual(screen.table, null, `${screen.descriptor} declares a read, so it declares its table`);
   }
   assert.match(readCheckedInMirror(), /readonly table: TableDeclaration \| null;/, 'and the interface declares it');
@@ -1602,6 +1674,70 @@ test('the build refuses a privilege pair missing a half, in an area and in a des
   );
   for (const screen of screens) assert.equal(malformedPair(screen.declaration.privileges), null, screen.file);
   for (const area of areas) assert.equal(malformedPair(area.privileges), null, area.key);
+});
+
+test('AD-53: the generator refuses a self-protection rule outside the closed vocabulary, naming both', () => {
+  // The rule is mirrored to the client, which draws a refused row action from it, so a value only
+  // one side understands would render as a word in a row menu. `OcuPilot.Screen.Registry`'s own
+  // `SELFPROTECTIONRULES` is the vocabulary and `ActionProblem` applies the same rules there.
+  //
+  // Mutation (Rule 19): drop the `actionProblem` call from `buildMirror` -> this goes green where
+  // it must be red, and a descriptor naming a rule nothing can evaluate reaches the mirror.
+  const sources = readSources();
+  assert.ok(sources.selfProtectionRules.length > 0, 'the vocabulary reached readSources');
+
+  assert.throws(
+    () =>
+      buildMirror({
+        ...sources,
+        screens: [
+          {
+            file: 'Hostile.cls',
+            className: 'OcuPilot.Screen.Descriptor.Hostile',
+            declaration: { rowActions: [{ id: 'delete', selfProtection: 'never the current user' }] },
+          },
+        ],
+      }),
+    (error) => {
+      assert.match(error.message, /Hostile\.cls/, 'the refusal names the file');
+      assert.match(error.message, /never the current user/, 'and the value');
+      assert.match(error.message, /AD-53/, 'and the decision it comes from');
+      return true;
+    }
+  );
+
+  // The declared rule passes, an empty one passes, and a declaration that names no actions at all
+  // is left alone -- this generator's convention for a partially declared fixture.
+  for (const rowActions of [[{ id: 'delete', selfProtection: sources.selfProtectionRules[0] }], [{ id: 'delete', selfProtection: '' }]]) {
+    assert.doesNotThrow(() =>
+      buildMirror({
+        ...sources,
+        screens: [{ file: 'Fine.cls', className: 'OcuPilot.Screen.Descriptor.Fine', declaration: { rowActions } }],
+      })
+    );
+  }
+  assert.doesNotThrow(() =>
+    buildMirror({
+      ...sources,
+      screens: [{ file: 'Bare.cls', className: 'OcuPilot.Screen.Descriptor.Bare', declaration: {} }],
+    })
+  );
+
+  // And a row action with no id is refused: a control nothing can name is a control nothing runs.
+  assert.throws(
+    () =>
+      buildMirror({
+        ...sources,
+        screens: [
+          {
+            file: 'Nameless.cls',
+            className: 'OcuPilot.Screen.Descriptor.Nameless',
+            declaration: { rowActions: [{ id: '', selfProtection: '' }] },
+          },
+        ],
+      }),
+    /declares an empty id/
+  );
 });
 
 // AD-44, Story 1.15: `archetype` was free text every reader ignored, so "only a detail view may

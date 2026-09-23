@@ -13,6 +13,12 @@
 /// skips a method's tail -- and <method>OnAfterOneTest</method> restores it again and asserts the
 /// restore worked, so a method that aborted mid-write cannot leave a later method reading a task
 /// that is no longer suspended. <method>OnAfterAllTests</method> deletes it.</p>
+/// <p><b>It also runs a task</b> (Story 7.5): its two run methods create
+/// <class>OcuPilot.Test.TaskRunFixture</class>'s probe, a task that runs <code>Quit</code> on demand,
+/// run it, wait at most 180 s for its history row, and delete it in their own frame.</p>
+/// <p><b>And it suspends, resumes and deletes one</b> (Story 7.6): its three schedule methods create
+/// that fixture's schedule probe -- a user task, or a system-type one for the agent's delete --
+/// act on it, read every result through <code>INFO</code>, and delete it in their own frame.</p>
 Class OcuPilot.Test.TaskResume Extends %UnitTest.TestCase
 {
 
@@ -642,6 +648,245 @@ ClassMethod DeleteProbeTask(pId As %String)
     } Catch ex {
         Set $NAMESPACE = tOrigNS
     }
+}
+
+/// <p>Story 7.5, AC2 and AD-53's agent caller: a real mint and confirm of
+/// <code>tasks.ondemand.run</code> on <class>OcuPilot.Test.TaskRunFixture</class>'s probe task
+/// answers <code>updated</code> with one marker and a marked ledger row; <code>INFO</code>
+/// <code>NextScheduled</code> is set at once and this process holds no lock on the task; the run
+/// lands in the task's history within one Task Manager pass, and the shipped
+/// <code>tasks.taskhistory</code> read gains that row.</p>
+/// <p>The wait is bounded at 180 s, so a lock held across the write reads red rather than
+/// hanging. The probe is deleted in this method's own frame.</p>
+Method TestTheAgentsRunIsConfirmedAndLandsInTheTasksHistory()
+{
+    Set tTool = "OcuPilot.Screen.Tool.TaskRun"
+    Set tFixture = "OcuPilot.Test.TaskRunFixture"
+    Set tSC = $ClassMethod(tFixture, "EnsureRunProbeTask", .tId)
+    Do $$$AssertStatusOK(tSC, "the run probe task exists: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tTurn = ""
+    Try {
+        Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+        Set tHistorySince = $ClassMethod(tFixture, "HistoryHighWater")
+        Set tHistoryBefore = $ClassMethod(tFixture, "HistoryReadRows", tId)
+        Do $$$AssertTrue(tHistoryBefore '< 0, "the shipped tasks.taskhistory read answers before the run")
+        Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+        Do $$$AssertStatusOK(tSC, "the probe turn is seeded")
+        If $$$ISERR(tSC) Quit
+        Set tArgs = {}
+        Do tArgs.%Set($ClassMethod(tTool, "IdArgument"), tId, "string")
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint($Parameter(tTool, "DESCRIPTORCLASS"), $Parameter(tTool, "TOOLNAME"), $Username, "", tTurn, tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), tId, $ClassMethod(tTool, "IdArgument"), $ClassMethod(tTool, "SettableFields"), tTool)
+        Do $$$AssertStatusOK(tSC, "the run mints against the instance: " _ $System.Status.GetErrorText(tSC))
+        If $$$ISERR(tSC) Quit
+        Do $$$AssertEquals(tProposal.%Get("changed").%Get(0).%Get("field"), "NextScheduled", "its card's row is the next run")
+        Set tKey = tProposal.%Get("proposalId")
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tKey, "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+        Do $$$AssertStatusOK(tSC, "the confirm succeeds (HTTP " _ +$Get(tHttp) _ " " _ $Get(tCode) _ ")")
+        If $$$ISERR(tSC) Quit
+        Do $$$AssertEquals(tResult.%Get("action"), "updated", "answering updated")
+        Do $$$AssertEquals(tResult.%Get("auditMarked"), 1, "and marked")
+        Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).MarkerRows(tSince, tKey, .tData), 1, "one agent-write marker carries this proposal's id")
+        Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).LedgerColumn(tTurn, "auditMarked"), $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDYES"), "and the ledger row reads marked")
+        Do $$$AssertNotEquals($ClassMethod(tFixture, "InfoField", tId, "NextScheduled"), "", "INFO's NextScheduled is set at once")
+        Do $$$AssertTrue($ClassMethod(tFixture, "NoLockHeld", tId), "and this process holds no lock on the task")
+        Set tLanded = $ClassMethod(tFixture, "AwaitRun", tId, tHistorySince, 180, .tElapsed)
+        Do $$$AssertTrue(tLanded, "a Success history row lands within 180 s (waited " _ $Get(tElapsed) _ " s)")
+        Do $$$AssertTrue($ClassMethod(tFixture, "HistoryReadRows", tId) > tHistoryBefore, "and the shipped tasks.taskhistory read answers it")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the real run raised")
+    }
+    Do $ClassMethod(tFixture, "DeleteRunProbeTask")
+    Do $$$AssertEquals($ClassMethod(tFixture, "ProbeCount"), 0, "and the run probe task is gone")
+    If tTurn '= "" Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+}
+
+/// <p>Story 7.5, AC1 and AD-53's screen caller: <code>POST /screens/tasks.ondemand/action</code>
+/// with <code>run</code> as the test account answers 200 with the <code>updated</code> triple, writes
+/// no ledger row and emits no OcuPilot marker, and the run lands in the task's history within one
+/// Task Manager pass. The probe is deleted in this method's own frame.</p>
+Method TestTheScreenActionRunsTheTaskOverTheWire()
+{
+    Set tFixture = "OcuPilot.Test.TaskRunFixture"
+    Set tSC = $ClassMethod(tFixture, "EnsureRunProbeTask", .tId)
+    Do $$$AssertStatusOK(tSC, "the run probe task exists: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Try {
+        Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
+        Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+        Set tLedgerBefore = ##class(OcuPilot.Test.AuditingUpdate).LedgerCount(tUser)
+        Do $$$AssertNotEquals(tLedgerBefore, -1, "the ledger reads before the write")
+        Set tHistorySince = $ClassMethod(tFixture, "HistoryHighWater")
+        Set tRequest = {}
+        Do tRequest.%Set("action", "run", "string")
+        Do tRequest.%Set("id", tId, "string")
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot/screens/tasks.ondemand/action", tUser, ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tBody, .tHeaders, tRequest.%ToJSON(), "application/json")
+        Do $$$AssertStatusOK(tSC, "the request completes")
+        Do $$$AssertEquals(tStatus, 200, "the screen's run answers 200: " _ $Extract($Get(tBody), 1, 300))
+        If tStatus = 200 {
+            Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+            Do $$$AssertEquals(tAnswer.%Get("action"), "updated", "with the updated verb")
+            Do $$$AssertEquals(tAnswer.%Get("target").%ToJSON(), "{""type"":""task"",""scope"":""instance"",""id"":""" _ tId _ """}", "and the task's triple")
+        }
+        Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).LedgerCount(tUser), tLedgerBefore, "no ledger row was written")
+        Do $$$AssertEquals(##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, ##class(OcuPilot.Kernel.Audit.Event).#EVENTAGENTWRITE, "tasks.ondemand.run", .tData), 0, "and no agent-write marker names the run tool")
+        Set tLanded = $ClassMethod(tFixture, "AwaitRun", tId, tHistorySince, 180, .tElapsed)
+        Do $$$AssertTrue(tLanded, "a Success history row lands within 180 s (waited " _ $Get(tElapsed) _ " s)")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the screen run raised")
+    }
+    Do $ClassMethod(tFixture, "DeleteRunProbeTask")
+    Do $$$AssertEquals($ClassMethod(tFixture, "ProbeCount"), 0, "and the run probe task is gone")
+}
+
+/// <p>Story 7.6, AC1, AC2 and AD-53's screen caller: over the wire as the test account, the Task
+/// schedule's Suspend answers 200 and <code>INFO</code> then reads the probe suspended; a second
+/// Suspend is refused 400 with a problem and adds no history row; Resume answers 200,
+/// <code>INFO</code> reads it not suspended and the history records "Resumed task" by the test
+/// account; Delete answers <code>deleted</code>, <code>INFO</code> then answers 404, and the
+/// task's history rows are kept. Every check reads <code>INFO</code>, never the list's field.</p>
+Method TestTheScheduleSuspendResumeAndDeleteOverTheWire()
+{
+    Set tFixture = "OcuPilot.Test.TaskRunFixture"
+    Set tSC = $ClassMethod(tFixture, "EnsureScheduleProbeTask", .tId, 0)
+    Do $$$AssertStatusOK(tSC, "the schedule probe task exists: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Try {
+        Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
+        Set tPassword = ##class(OcuPilot.Test.Http).GetTestPassword()
+        Do $$$AssertEquals($ClassMethod(tFixture, "InfoField", tId, "Suspended"), "false", "the probe starts not suspended")
+
+        Set tSC = ..ScheduleAction("suspend", tId, tUser, tPassword, .tStatus, .tBody)
+        Do $$$AssertEquals(tStatus, 200, "Suspend answers 200: " _ $Extract($Get(tBody), 1, 300))
+        If tStatus = 200 Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tBody).%Get("target").%ToJSON(), "{""type"":""task"",""scope"":""instance"",""id"":""" _ tId _ """}", "with the task's triple")
+        Do $$$AssertEquals($ClassMethod(tFixture, "InfoField", tId, "Suspended"), "true", "and INFO reads it suspended")
+
+        Set tRows = $ClassMethod(tFixture, "HistoryRowCount", tId)
+        Set tSC = ..ScheduleAction("suspend", tId, tUser, tPassword, .tStatus, .tBody)
+        Do $$$AssertEquals(tStatus, 400, "a second Suspend is refused 400, the route's refusal of a problem: " _ $Extract($Get(tBody), 1, 300))
+        If tStatus = 400 {
+            Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+            Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "under the code the mint refuses a no-op with")
+            Do $$$AssertTrue($IsObject(tEnvelope.%Get("detail")) && (tEnvelope.%Get("detail").%Get("problem") [ "already suspended"), "with the problem naming the no-op")
+        }
+        Do $$$AssertEquals($ClassMethod(tFixture, "HistoryRowCount", tId), tRows, "and nothing was sent: the task's history gained no row")
+
+        Set tSince = ..HistoryHighWater()
+        Set tSC = ..ScheduleAction("resume", tId, tUser, tPassword, .tStatus, .tBody)
+        Do $$$AssertEquals(tStatus, 200, "Resume answers 200: " _ $Extract($Get(tBody), 1, 300))
+        Do $$$AssertEquals($ClassMethod(tFixture, "InfoField", tId, "Suspended"), "false", "INFO reads it not suspended")
+        Do $$$AssertEquals(..ResumeHistoryUser(tId, tSince), tUser, "and its history records the resume by the test account")
+
+        Set tRows = $ClassMethod(tFixture, "HistoryRowCount", tId)
+        Do $$$AssertTrue(tRows > 0, "the task has history rows before the delete")
+        Set tSC = ..ScheduleAction("delete", tId, tUser, tPassword, .tStatus, .tBody)
+        Do $$$AssertEquals(tStatus, 200, "Delete answers 200: " _ $Extract($Get(tBody), 1, 300))
+        If tStatus = 200 Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tBody).%Get("action"), "deleted", "with the deleted verb")
+        Do $$$AssertEquals($ClassMethod(tFixture, "InfoStatus", tId), 404, "INFO then answers 404")
+        Do $$$AssertTrue($ClassMethod(tFixture, "HistoryRowCount", tId) '< tRows, "and the task's history rows are kept")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the schedule actions raised")
+    }
+    Do $ClassMethod(tFixture, "DeleteScheduleProbeTask")
+    Do $$$AssertEquals($ClassMethod(tFixture, "ScheduleProbeCount"), 0, "and the schedule probe task is gone")
+}
+
+/// <p>Story 7.6, AC5 and AD-53's agent caller: a real mint of <code>tasks.schedule.delete</code> on
+/// a system-type probe carries a <code>Type: System</code> removal row; its confirm answers
+/// <code>deleted</code> with one marker and a marked ledger row, and <code>INFO</code> then answers
+/// 404.</p>
+Method TestTheAgentsDeleteOfASystemTaskCarriesItsTypeAndIsMarked()
+{
+    Set tTool = "OcuPilot.Screen.Tool.TaskDelete"
+    Set tFixture = "OcuPilot.Test.TaskRunFixture"
+    Set tSC = $ClassMethod(tFixture, "EnsureScheduleProbeTask", .tId, 1)
+    Do $$$AssertStatusOK(tSC, "the system-type schedule probe exists: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tTurn = ""
+    Try {
+        Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+        Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+        Do $$$AssertStatusOK(tSC, "the probe turn is seeded")
+        If $$$ISERR(tSC) Quit
+        Set tArgs = {}
+        Do tArgs.%Set($ClassMethod(tTool, "IdArgument"), tId, "string")
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint($Parameter(tTool, "DESCRIPTORCLASS"), $Parameter(tTool, "TOOLNAME"), $Username, "", tTurn, tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), tId, $ClassMethod(tTool, "IdArgument"), $ClassMethod(tTool, "SettableFields"), tTool)
+        Do $$$AssertStatusOK(tSC, "the delete mints against the instance: " _ $System.Status.GetErrorText(tSC))
+        If $$$ISERR(tSC) Quit
+        Set tTypeRow = ""
+        Set tIterator = tProposal.%Get("changed").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            If tRow.%Get("field") = "Type" Set tTypeRow = tRow.%ToJSON()
+        }
+        Do $$$AssertEquals(tTypeRow, "{""field"":""Type"",""before"":""System"",""after"":"""",""removed"":true}", "its card carries the system type as a removal row")
+        Set tKey = tProposal.%Get("proposalId")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Destructive"), 1, "and the stored row declares the write destructive")
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tKey, "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+        Do $$$AssertStatusOK(tSC, "the confirm succeeds (HTTP " _ +$Get(tHttp) _ " " _ $Get(tCode) _ ")")
+        If $$$ISERR(tSC) Quit
+        Do $$$AssertEquals(tResult.%Get("action"), "deleted", "answering deleted")
+        Do $$$AssertEquals(tResult.%Get("auditMarked"), 1, "and marked")
+        Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).MarkerRows(tSince, tKey, .tData), 1, "one agent-write marker carries this proposal's id")
+        Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).LedgerColumn(tTurn, "auditMarked"), $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDYES"), "and the ledger row reads marked")
+        Do $$$AssertEquals($ClassMethod(tFixture, "InfoStatus", tId), 404, "and INFO then answers 404")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the agent's delete raised")
+    }
+    Do $ClassMethod(tFixture, "DeleteScheduleProbeTask")
+    Do $$$AssertEquals($ClassMethod(tFixture, "ScheduleProbeCount"), 0, "and the schedule probe task is gone")
+    If tTurn '= "" Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+}
+
+/// <p>Story 7.6, AC4 and AD-6 through <class>OcuPilot.Port.TaskPort</class>: an agent delete minted
+/// on a system-type probe is refused <code>PROPOSAL.TARGETCHANGED</code> at 409 once the task has
+/// become a user task, and the task is still there. The moved field is <code>Type</code>, the one
+/// the port completes from <code>INFO</code>, so the confirm's re-read goes through that port.</p>
+/// <p>Mutation (Rule 19): drop <code>Type</code> from
+/// <parameter>OcuPilot.Screen.Tool.TaskDelete.FINGERPRINTSUBJECT</parameter> -- the confirm deletes
+/// the task and the refusal assertions go red.</p>
+Method TestTheAgentsDeleteIsRefusedOnceTheTaskMoved()
+{
+    Set tTool = "OcuPilot.Screen.Tool.TaskDelete"
+    Set tFixture = "OcuPilot.Test.TaskRunFixture"
+    Set tSC = $ClassMethod(tFixture, "EnsureScheduleProbeTask", .tId, 1)
+    Do $$$AssertStatusOK(tSC, "the system-type schedule probe exists: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tTurn = ""
+    Try {
+        Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+        Do $$$AssertStatusOK(tSC, "the probe turn is seeded")
+        If $$$ISERR(tSC) Quit
+        Set tArgs = {}
+        Do tArgs.%Set($ClassMethod(tTool, "IdArgument"), tId, "string")
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint($Parameter(tTool, "DESCRIPTORCLASS"), $Parameter(tTool, "TOOLNAME"), $Username, "", tTurn, tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), tId, $ClassMethod(tTool, "IdArgument"), $ClassMethod(tTool, "SettableFields"), tTool)
+        Do $$$AssertStatusOK(tSC, "the delete mints against the instance: " _ $System.Status.GetErrorText(tSC))
+        If $$$ISERR(tSC) Quit
+
+        ; Somebody else made it a user task in the window.
+        Set tSC = $ClassMethod(tFixture, "EnsureScheduleProbeTask", .tSameId, 0)
+        Do $$$AssertStatusOK(tSC, "the probe becomes a user task: " _ $System.Status.GetErrorText(tSC))
+        Do $$$AssertEquals(tSameId, tId, "and is the same task")
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+        Do $$$AssertStatusNotOK(tSC, "the confirm is refused")
+        Do $$$AssertEquals(+$Get(tHttp), 409, "at 409")
+        Do $$$AssertEquals($Get(tCode), $Parameter("OcuPilot.Kernel.Proposal.Write", "TARGETCHANGED"), "with the moved-target code")
+        Do $$$AssertEquals($ClassMethod(tFixture, "InfoStatus", tId), 200, "and the task is still there")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the moved-target delete raised")
+    }
+    Do $ClassMethod(tFixture, "DeleteScheduleProbeTask")
+    Do $$$AssertEquals($ClassMethod(tFixture, "ScheduleProbeCount"), 0, "and the schedule probe task is gone")
+    If tTurn '= "" Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+}
+
+/// <p>One <code>POST /screens/tasks.schedule/action</code> of <var>pAction</var> on task
+/// <var>pId</var> as <var>pUser</var>.</p>
+Method ScheduleAction(pAction As %String, pId As %String, pUser As %String, pPassword As %String, Output pStatus As %Integer, Output pBody As %String) As %Status
+{
+    Set tRequest = {}
+    Do tRequest.%Set("action", pAction, "string")
+    Do tRequest.%Set("id", pId, "string")
+    Quit ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot/screens/tasks.schedule/action", pUser, pPassword, .pStatus, .pBody, .tHeaders, tRequest.%ToJSON(), "application/json")
 }
 
 }

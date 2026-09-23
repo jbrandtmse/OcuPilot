@@ -324,7 +324,7 @@ components:
     current-typography: '{typography.display}'
     current-color: '{colors.on-surface}'
   command-bar:
-    height: '{spacing.command-bar-height}'
+    min-height: '{spacing.command-bar-height}'
     gap: '{spacing.2}'
     filter-width: 220px
     stamp-typography: '{typography.caption}'
@@ -1035,7 +1035,7 @@ What fills the content column on a route: the locator and command bars, the tabl
 
 #### `command-bar`
 
-50px, items vertically centered, `{spacing.2}` gaps. Left to right: the screen's primary action as `button-primary` (Create, Import), the filter field (220px, `{spacing.control-height}`, 1px `{colors.outline}`, `{rounded.md}`, a 13px search glyph, placeholder `{colors.on-surface-variant}`), the View menu as `button-secondary` with a ▾, the auto-refresh chip (28px, 1px `{colors.outline}`, `{rounded.md}`, `{typography.caption}`; its state words are EXPERIENCE.md's), further screen actions as `button-text`. Right-aligned: the last-update stamp in `{typography.caption}` `{colors.on-surface-variant}`. Actions that act on a row are unavailable (38%) until one is selected; privilege-gated actions are `{colors.restrained}` at full opacity with the resource tooltip on hover and focus.
+50px when its items fit on one line, and a minimum rather than a fixed height: where they do not fit the content region's width, the bar wraps onto further lines and grows to hold them, so the content region never scrolls sideways at its 640px minimum [AMENDED 2026-09-23, Story 7.2, Rule 5 tier-1: was a fixed 50px; the Users list's six row actions measured 898px on one line]. Items vertically centered, `{spacing.2}` gaps. Left to right: the screen's primary action as `button-primary` (Create, Import), the filter field (220px, `{spacing.control-height}`, 1px `{colors.outline}`, `{rounded.md}`, a 13px search glyph, placeholder `{colors.on-surface-variant}`), the View menu as `button-secondary` with a ▾, the auto-refresh chip (28px, 1px `{colors.outline}`, `{rounded.md}`, `{typography.caption}`; its state words are EXPERIENCE.md's), further screen actions as `button-text`. Right-aligned: the last-update stamp in `{typography.caption}` `{colors.on-surface-variant}`. Actions that act on a row are unavailable (38%) until one is selected; privilege-gated actions are `{colors.restrained}` at full opacity with the resource tooltip on hover and focus.
 
 #### `data-table`
 

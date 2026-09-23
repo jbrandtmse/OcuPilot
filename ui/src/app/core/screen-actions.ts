@@ -63,7 +63,20 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   create: STRINGS.actionCreate,
   enable: STRINGS.agentDefinitionEnable,
   disable: STRINGS.agentDefinitionDisable,
+  // The published verb a delete carries wherever one is offered -- the row menu, the command bar,
+  // the command box and the typed-name dialog's own title and button. A screen whose delete means
+  // something narrower publishes its own words below (Switches' removes a hold, not an entity).
+  delete: STRINGS.actionDelete,
   'set-default': STRINGS.agentDefinitionSetDefault,
+  // Story 7.5: a task's Run, on On-demand tasks and the Task schedule.
+  run: STRINGS.actionRun,
+  // Story 7.6: a task's Suspend and Resume, on the Task schedule.
+  suspend: STRINGS.actionSuspend,
+  resume: STRINGS.actionResume,
+  // Story 7.8: a process's Terminate, on Processes and Process details.
+  terminate: STRINGS.actionTerminate,
+  // Story 7.11: an audit event's Reset counters, on System events and User events.
+  reset: STRINGS.actionResetCounters,
 };
 
 /**
@@ -80,6 +93,17 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.AgentSwitches': {
     create: STRINGS.agentSwitchesHoldAdd,
     delete: STRINGS.agentSwitchesHoldRemove,
+  },
+  // Story 7.2: the Users list's three value-carrying row actions.
+  'OcuPilot.Screen.Descriptor.UserList': {
+    'set-password': STRINGS.userActionSetPassword,
+    'add-role': STRINGS.userActionAddRole,
+    'remove-role': STRINGS.userActionRemoveRole,
+  },
+  // Story 7.4: the Auditing configuration form's two actions, and the warning dialog's title.
+  'OcuPilot.Screen.Descriptor.AuditingConfig': {
+    enable: STRINGS.auditingTurnOnAction,
+    disable: STRINGS.auditingTurnOffAction,
   },
 };
 

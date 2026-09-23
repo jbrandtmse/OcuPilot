@@ -17,6 +17,7 @@ import { DatabaseDetailsPage } from '../areas/os-management/database-details.pag
 import { DatabasesPage } from '../areas/os-management/databases.page';
 import { ProcessDetailsPage } from '../areas/os-management/process-details.page';
 import { SystemUsagePage } from '../areas/os-management/system-usage.page';
+import { AuditingConfigPage } from '../areas/security/auditing-config.page';
 import { TaskDetailsPage } from '../areas/tasks/details.page';
 import { HistoryPage } from '../areas/tasks/history.page';
 import { UpcomingPage } from '../areas/tasks/upcoming.page';
@@ -80,9 +81,10 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
  * (DW-369).
  *
  * An archetype one screen serves is a map entry; an archetype several screens serve each in their
- * own way is not. `form-page` is the first of those: the Definition form, Switches and the Web
- * application form are all `form-page` screens with nothing in common but their shell, and a map
- * keyed by archetype alone can only ever hand all three the same component. Registering the exception here, rather than widening
+ * own way is not. `form-page` is the first of those: the Definition form, Switches, Auditing
+ * configuration and the create and edit forms are all `form-page` screens with nothing in common
+ * but their shell, and a map keyed by archetype alone can only ever hand them all the same
+ * component. Registering the exception here, rather than widening
  * the archetype vocabulary, keeps `ARCHETYPE_PAGES`' exhaustiveness guarantee -- every
  * `BuiltArchetypeKey` still needs an entry there, so a new built archetype with no page still
  * fails `ng build`.
@@ -92,6 +94,7 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
  */
 export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.AgentSwitches': SwitchesPage,
+  'OcuPilot.Screen.Descriptor.AuditingConfig': AuditingConfigPage,
   'OcuPilot.Screen.Descriptor.TaskUpcomingList': UpcomingPage,
   'OcuPilot.Screen.Descriptor.TaskHistoryList': HistoryPage,
   'OcuPilot.Screen.Descriptor.TaskDetails': TaskDetailsPage,

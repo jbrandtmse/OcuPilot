@@ -15,7 +15,9 @@
 /// <code>PID</code>, <code>IssuerEndpointID</code> and <code>IssuerEndpoint</code> as the classic list
 /// sends them. The editor treats an empty <code>IssuerEndpointID</code> as a new server description,
 /// so a row whose description id reads empty renders its name as text.</p>
-/// <p>It declares no primary or row action and does not refresh (AD-43).</p>
+/// <p><b>Its one row action is <code>delete</code></b>, carried out by
+/// <class>OcuPilot.Screen.Tool.OAuthClientDelete</class> (AD-51, AD-53). It declares no primary action
+/// and does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.OAuthClientTab Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -37,7 +39,7 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "delete", "selfProtection": ""}],
   "context": {"fields": ["ApplicationName", "ClientType", "DefaultScope", "ServerDefinitionID", "IssuerEndpoint"], "secretFields": []},
   "emptyStateKey": "oauthClientsEmpty",
   "commandAliases": [],
@@ -73,8 +75,8 @@ XData Declaration
       {"field": "ClientType", "labelKey": "oauthColumnClientType", "kind": "text"},
       {"field": "DefaultScope", "labelKey": "oauthColumnDefaultScope", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "oauthClientsEmptyAgent"
   },
   "tab": {"group": "security/oauth", "position": 2, "labelKey": "oauthTabClients"},
   "toolIdentifier": "security.oauthclients"

@@ -1,8 +1,8 @@
 /**
- * Story 5.11 end to end in a real browser against the throwaway instance: the agent reads the task
- * schedule, opens it on one suspended task, proposes the resume, and the user confirms -- with the
- * row selected on arrival, the card's one state row, the re-fetch inside NFR-1's budget, and the
- * auto-refresh paused while the proposal is live.
+ * Story 5.11 end to end in a real browser against the throwaway instance, replayed as UJ-6 by
+ * Story 7.6: the agent reads the task schedule, opens Task details on one suspended task, proposes
+ * the resume, and the user confirms -- with the card's one state row, the Suspended field marked
+ * changed inside NFR-1's budget, and the schedule's auto-refresh paused while a proposal is live.
  *
  * **It resumes a task.** It refuses outright to run outside a throwaway, it creates and resumes a
  * task of its own rather than the demo fixture's, and its `after` hook puts that task back into
@@ -10,8 +10,8 @@
  * task, and a spec that left one running would take it away.
  *
  * **What only a browser can answer here:** the announcement's ordering against the route change,
- * `aria-selected` on the row the route names (DW-1419), and NFR-1's two-second budget, which needs
- * a clock on the rendered page. Everything about the write itself is `OcuPilot.Test.TaskResume`'s.
+ * the page the route names, and NFR-1's two-second budget, which needs a clock on the rendered
+ * page. Everything about the write itself is `OcuPilot.Test.TaskResume`'s.
  *
  * Run, from `ui/`: `npm run build && docker cp dist/ocupilot-ui/browser/. <throwaway>:/durable/iris/csp/ocupilot/`,
  * then `OCUPILOT_BROWSER_ORIGIN=... OCUPILOT_BROWSER_CONTAINER=... node --test
@@ -46,6 +46,14 @@ const STRINGS = loadStrings();
 const HOME_URL = '/ocupilot/?ns=HSCUSTOM';
 const LIST_URL = '/ocupilot/tasks/schedule?ns=HSCUSTOM';
 
+/** UJ-6's destination (Story 7.6): Task details, whose route id is the task's numeric Id. */
+const DETAILS_ROUTE = 'tasks/schedule/details';
+const detailsUrl = (id) => `/ocupilot/${DETAILS_ROUTE}/${encodeURIComponent(id)}?ns=HSCUSTOM`;
+
+/** Task details' fields, and a field's changed marking. */
+const DETAILS_FIELD = '.ocu-details-field';
+const CHANGED_FIELD = '.ocu-details-field.ocu-data-table-row-changed';
+
 /** The two tools' provider-side names: the canonical dotted names with underscores (AD-42). */
 const RESUME_WIRE_NAME = 'tasks_schedule_resume';
 const READ_WIRE_NAME = 'tasks_schedule_read';
@@ -62,7 +70,6 @@ const HIGHLIGHT_BUDGET_MS = 2000;
 const HIGHLIGHT_WAIT_MS = HIGHLIGHT_BUDGET_MS * 5;
 
 const ROW_SELECTOR = '[role="grid"] .ocu-data-table-body [role="row"]';
-const CHANGED_ROW = '.ocu-data-table-row-changed';
 
 let browser = null;
 let preparedId = '';
@@ -216,9 +223,9 @@ function readReply() {
   return `##class(OcuPilot.Test.TurnProvider).ToolUseReply([{"id": "toolu_read", "name": "${READ_WIRE_NAME}", "input": {}}])`;
 }
 
-/** A `tool_use` reply calling `shell.screen.open` on the schedule with one task's id. */
+/** A `tool_use` reply calling `shell.screen.open` on Task details with one task's id (UJ-6). */
 function navReply(id) {
-  const input = { route: 'tasks/schedule', entityId: id };
+  const input = { route: DETAILS_ROUTE, entityId: id };
   return `##class(OcuPilot.Test.TurnProvider).ToolUseReply([{"id": "toolu_nav", "name": "${NAV_WIRE_NAME}", "input": ${JSON.stringify(input)}}])`;
 }
 
@@ -265,16 +272,51 @@ async function enableAutoRefresh(page) {
   );
 }
 
-/** A signed-in page standing on the Task schedule with one live resume card. */
-async function listWithLiveCard({ withRefresh = false } = {}) {
+/**
+ * The text of Task details' field labelled `label`, or `null` while it is not rendered; with
+ * `changed` true, only a field the page has marked changed.
+ */
+function detailsField(page, label, changed = false) {
+  return page.evaluate(
+    (selector, wanted) =>
+      Array.from(document.querySelectorAll(selector))
+        .filter((field) => (field.querySelector('.ocu-details-field-label')?.textContent ?? '').trim() === wanted)
+        .map((field) => (field.querySelector('.ocu-details-field-value')?.textContent ?? '').trim())[0] ?? null,
+    changed ? CHANGED_FIELD : DETAILS_FIELD,
+    label
+  );
+}
+
+/** Wait until Task details renders its Suspended field reading `value`. */
+async function waitForSuspendedField(page, value) {
+  await page.waitForFunction(
+    (selector, label, wanted) =>
+      Array.from(document.querySelectorAll(selector)).some(
+        (field) =>
+          (field.querySelector('.ocu-details-field-label')?.textContent ?? '').trim() === label &&
+          (field.querySelector('.ocu-details-field-value')?.textContent ?? '').trim() === wanted
+      ),
+    { timeout: config.navigationTimeoutMs },
+    DETAILS_FIELD,
+    STRINGS.taskColumnSuspended,
+    value
+  );
+}
+
+/**
+ * A signed-in page standing on the Task schedule, or on the probe's Task details with `details`,
+ * with one live resume card.
+ */
+async function listWithLiveCard({ withRefresh = false, details = false } = {}) {
   await requireFreeSlot(config);
   suspendTask(taskId);
   const tag = nextTag();
   setTag(tag);
   scriptReply(tag, 0, proposeReply(taskId));
   scriptReply(tag, 0, textReply('done'));
-  const { context, page } = await signedInAt(browser, config, LIST_URL);
-  await waitForTaskRow(page);
+  const { context, page } = await signedInAt(browser, config, details ? detailsUrl(taskId) : LIST_URL);
+  if (details) await waitForSuspendedField(page, STRINGS.tableStatusYes);
+  else await waitForTaskRow(page);
   if (withRefresh) await enableAutoRefresh(page);
   await page.waitForFunction(
     () => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'),
@@ -318,12 +360,11 @@ async function listWithLiveCard({ withRefresh = false } = {}) {
   return { context, page, tag };
 }
 
-test('AC1, AC2: the agent reads the schedule, announces the move, and the row it names is selected on arrival', async () => {
-  // Mutation (Rule 19): restore `OcuPilot.Screen.Tool.Navigate.AcceptsEntityId`'s
-  // `IdKind() = "single"` answer -> the directive is refused NAV.ENTITYNOTALLOWED, the URL never
-  // carries the id and both the route and the selection assertions go red. Drop `ListPage`'s
-  // `selectFromRoute` call -> the URL assertion stays green and the selection goes red, which is
-  // the gap DW-1419 names.
+test('AC1, AC2, Story 7.6 AC3: the agent reads the schedule, announces the move, and Task details opens on the task it names', async () => {
+  // Mutation (Rule 19): route `navReply` back to `tasks/schedule` -> the URL and heading
+  // assertions go red. Restore `OcuPilot.Screen.Tool.Navigate.AcceptsEntityId`'s
+  // `IdKind() = "single"` answer -> the directive is refused NAV.ENTITYNOTALLOWED and the URL
+  // never carries the id.
   await requireFreeSlot(config);
   suspendTask(taskId);
   const tag = nextTag();
@@ -346,7 +387,7 @@ test('AC1, AC2: the agent reads the schedule, announces the move, and the row it
       (wanted) =>
         (document.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '').includes(wanted),
       { timeout: config.navigationTimeoutMs },
-      STRINGS.taskListLabel
+      STRINGS.taskDetailsLabel
     );
     assert.equal(
       await page.evaluate(() => location.pathname),
@@ -367,39 +408,23 @@ test('AC1, AC2: the agent reads the schedule, announces the move, and the row it
     );
 
     await page.waitForFunction(
-      (wanted) => location.pathname.endsWith(`/tasks/schedule/${wanted}`),
+      (route, wanted) => location.pathname.endsWith(`/${route}/${wanted}`),
       { timeout: config.navigationTimeoutMs },
+      DETAILS_ROUTE,
       taskId
     );
-    await waitForTaskRow(page);
 
     const heading = await page.$eval('#ocu-locator-screen', (node) => node.getAttribute('aria-label') ?? '');
     assert.equal(
       heading,
-      STRINGS.agentNavigationHeadingAnnouncement.split('<title>').join(STRINGS.taskListLabel),
-      'the destination heading says it was opened by the agent'
+      STRINGS.agentNavigationHeadingAnnouncement.split('<title>').join(STRINGS.taskDetailsLabel),
+      'the destination heading names Task details and says the agent opened it'
     );
 
-    // DW-1419's own clause: the row is selected, not merely addressed by the URL.
-    await page.waitForFunction(
-      (selector) =>
-        Array.from(document.querySelectorAll(selector)).filter(
-          (row) => row.getAttribute('aria-selected') === 'true'
-        ).length === 1,
-      { timeout: config.navigationTimeoutMs },
-      ROW_SELECTOR
-    );
-    const selectedName = await page.evaluate(
-      (selector) =>
-        Array.from(document.querySelectorAll(selector))
-          .filter((row) => row.getAttribute('aria-selected') === 'true')
-          .map((row) => (row.querySelector('[role="gridcell"]')?.textContent ?? '').trim())[0] ?? '',
-      ROW_SELECTOR
-    );
-    assert.equal(selectedName, taskName, 'the selected row is the one the route names');
-
-    // AC1, DW-269: the row the screen shows carries the truthful Suspended, taken from the same
-    // endpoint's INFO per row -- the vendor LIST answers false for every task on this build.
+    // Task details shows the task the route names, and its Suspended field reads the truthful
+    // INFO value -- the vendor LIST answers false for every task on this build (DW-269).
+    await waitForSuspendedField(page, STRINGS.tableStatusYes);
+    assert.equal(await detailsField(page, STRINGS.tableColumnName), taskName, 'Task details names the task the route names');
     assert.equal(infoSuspended(taskId), 'true', 'and the instance still reports that task suspended');
 
     // Wait for the turn's own final reply before letting go of the context: every test in this
@@ -420,11 +445,11 @@ test('AC1, AC2: the agent reads the schedule, announces the move, and the row it
   }
 });
 
-test('AC4, AC7: the card carries one state row, and the confirmed resume re-fetches and highlights inside the budget', async () => {
+test('AC4, AC7, Story 7.6 AC3: on Task details the card carries one state row, and the confirmed resume marks the Suspended field inside the budget', async () => {
   // Mutation (Rule 19): drop the `StateDiff` push in `OcuPilot.Screen.Tool.TaskResume` -> the card
   // has no row and the diff assertion goes red; make `Confirm.ToolSendsBody` answer 1 -> the port
   // is given a body the vendor RESUME does not read and the write leg goes red.
-  const { context, page, tag } = await listWithLiveCard();
+  const { context, page, tag } = await listWithLiveCard({ details: true });
   try {
     const drawn = await page.evaluate(() => ({
       destructive: document
@@ -443,7 +468,7 @@ test('AC4, AC7: the card carries one state row, and the confirmed resume re-fetc
     assert.equal(drawn.unchanged, false, 'and no unchanged-fields caption, because no body is sent');
     assert.equal(drawn.destructive, false, 'a resume is not destructive');
     assert.equal(drawn.warning, false, 'and carries no auditing warning');
-    assert.equal(await page.$(CHANGED_ROW), null, 'nothing is highlighted before the confirm');
+    assert.equal(await page.$(CHANGED_FIELD), null, 'nothing is highlighted before the confirm');
 
     await page.click('.ocu-proposal-card-confirm');
     // The clock starts at the earliest instant the browser can know the write completed, which is
@@ -452,22 +477,27 @@ test('AC4, AC7: the card carries one state row, and the confirmed resume re-fetc
       timeout: config.navigationTimeoutMs,
     });
     const startedAt = Date.now();
-    await page.waitForSelector(CHANGED_ROW, { timeout: HIGHLIGHT_WAIT_MS });
+    await page.waitForFunction(
+      (selector, label) =>
+        Array.from(document.querySelectorAll(selector)).some(
+          (field) => (field.querySelector('.ocu-details-field-label')?.textContent ?? '').trim() === label
+        ),
+      { timeout: HIGHLIGHT_WAIT_MS },
+      CHANGED_FIELD,
+      STRINGS.taskColumnSuspended
+    );
     const elapsed = Date.now() - startedAt;
     // Printed on a green run too: a budget assertion that only speaks when it fails leaves the
     // margin invisible, and the margin is what says whether the budget is nearly being missed.
-    console.log(`task-resume: the row carried the highlight ${elapsed} ms after the status line`);
+    console.log(`task-resume: the Suspended field carried the highlight ${elapsed} ms after the status line`);
     assert.ok(
       elapsed <= HIGHLIGHT_BUDGET_MS,
       `the re-fetch and highlight land inside NFR-1's ${HIGHLIGHT_BUDGET_MS} ms budget, took ${elapsed} ms`
     );
-    const highlighted = await page.evaluate(
-      (changed) => (document.querySelector(changed)?.querySelector('[role="gridcell"]')?.textContent ?? '').trim(),
-      CHANGED_ROW
-    );
-    assert.ok(
-      highlighted.startsWith(taskName),
-      `the highlighted row is the resumed task, with the table's own Changed tag after its name: ${highlighted}`
+    assert.equal(
+      await detailsField(page, STRINGS.taskColumnSuspended, true),
+      STRINGS.tableStatusNo,
+      'the marked field is Suspended, now reading No -- re-read through INFO'
     );
 
     // The instance itself: the bodyless RESUME landed.

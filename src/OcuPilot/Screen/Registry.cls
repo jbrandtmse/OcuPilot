@@ -296,6 +296,14 @@ ClassMethod Validate(Output pProblem As %String) As %Status
                 Set pProblem = tClass _ ": " _ tRowTargetProblem
                 Quit
             }
+            ; AD-5, AD-53: a declared action's self-protection rule is drawn by the client from a
+            ; closed vocabulary both sides read, so a rule neither understands is refused where it
+            ; is declared rather than rendered as a word in a row menu.
+            Set tActionProblem = ..ActionProblem(tObject)
+            If tActionProblem '= "" {
+                Set pProblem = tClass _ ": " _ tActionProblem
+                Quit
+            }
             Set tRoute = $ClassMethod(tClass, "Route")
             If $ListFind(tRoutes, tRoute) > 0 {
                 Set pProblem = tClass _ ": route '" _ tRoute _ "' is already declared by another descriptor"
@@ -841,7 +849,8 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// <code>read.sort</code> and <code>context</code> carry only their declared keys, and
 /// <code>context.secretFields</code> is declared, so a misspelt key is refused rather than read as
 /// no secret field. A read-declaring declaration also declares its <code>table</code>, whose
-/// shape <method>TableProblem</method> checks; a <code>table</code> with no read is refused here.
+/// shape <method>TableProblem</method> checks, unless it is a <code>form-page</code> that declares none
+/// (<method>RendersNoTable</method>); a <code>table</code> with no read is refused here.
 /// Last of all, a read on the <code>admin</code> port whose <code>privileges</code> omit
 /// <code>%DB_IRISSYS:READ</code> is refused, because the port runs every endpoint in
 /// <code>%SYS</code> -- a <code>state</code> read runs in the install namespace and needs no such
@@ -1096,8 +1105,10 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
 
-        Set tProblem = ..TableProblem(pDeclaration, tFields, tSecrets)
-        If tProblem '= "" Quit
+        If '..RendersNoTable(pDeclaration) {
+            Set tProblem = ..TableProblem(pDeclaration, tFields, tSecrets)
+            If tProblem '= "" Quit
+        }
 
         ; The last arm, so no earlier refusal changes which sentence a declaration gets.
         ; OcuPilot.Port.AdminPort.RunSequence sets $NAMESPACE to %SYS for every request type with
@@ -1802,6 +1813,24 @@ ClassMethod RowGetProblem(pSource As %DynamicObject, pFields As %List, pKeyAllow
     Quit tProblem
 }
 
+/// <p>Whether <var>pDeclaration</var> is a <code>form-page</code> over a single-object
+/// <code>GET</code> read that declares no <code>table</code> and no <code>composite</code> id. A
+/// form renders that one object as fields and actions, never as a grid, so it names no column
+/// header and no empty-state sentence a user could never see. Such a declaration is exempt from
+/// <method>TableProblem</method>; a form over a list-shaped read, one with a composite id, and one
+/// that declares a table are still held to it. <file>ui/tools/screen-mirror.mjs</file>'s
+/// <code>rendersNoTable</code> is the twin.</p>
+ClassMethod RendersNoTable(pDeclaration As %DynamicObject) As %Boolean [ Private ]
+{
+    If pDeclaration.%Get("archetype") '= "form-page" Quit 0
+    Set tTableType = pDeclaration.%GetTypeOf("table")
+    If (tTableType '= "unassigned") && (tTableType '= "null") Quit 0
+    If (pDeclaration.%GetTypeOf("id") = "object") && (pDeclaration.%Get("id").%Get("kind") = "composite") Quit 0
+    Set tRead = pDeclaration.%Get("read")
+    If '$IsObject(tRead) || (tRead.%GetTypeOf("source") '= "object") Quit 0
+    Quit tRead.%Get("source").%Get("type") = "GET"
+}
+
 /// <p>The kinds a table column may declare (AD-5).</p>
 Parameter TABLECOLUMNKINDS = "name,identifier,text,number,status";
 
@@ -2139,6 +2168,23 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
     Quit tProblem
 }
 
+/// <p>The self-protection rules a declared action may name, comma-separated (AD-5, AD-53).
+/// Declared as data because a generator reads it: <file>ui/tools/screen-mirror.mjs</file> parses
+/// this parameter and refuses the same values this class does, so a rule neither side understands
+/// is refused at the build rather than rendered as a word -- the discipline
+/// <parameter>DECLAREDNAMEKINDS</parameter> already follows.</p>
+/// <p><code>serves-ocupilot</code> is one rule Release 1 declares: the target is a web
+/// application OcuPilot is itself served through. It <b>explains</b> a refusal and never enforces
+/// one -- the refusal is <class>OcuPilot.Kernel.Proposal.Prohibited</class>'s, evaluated at the
+/// write whatever the caller (AD-10), and its sentence is that class's
+/// <parameter>OcuPilot.Kernel.Proposal.Prohibited.SERVINGPATHREASON</parameter>.
+/// <code>protected-account</code> is the account one: the target is <code>_SYSTEM</code>, the
+/// signed-in account or a service account, and its sentences are that class's
+/// <code>SYSTEMACCOUNTREASON</code>, <code>CURRENTUSERREASON</code> and
+/// <code>SERVICEACCOUNTREASON</code>. The last <code>%All</code> holder is a census no client can
+/// read, so it is refused at the write alone.</p>
+Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account";
+
 /// <p>The projections <method>DeclaredNames</method> fills, comma-separated. Declared as data
 /// because a generator reads it: <file>ui/tools/screen-mirror.mjs</file> parses this parameter and
 /// fails <code>npm run build</code> when its own builder answers a different set, so the mirror
@@ -2146,6 +2192,79 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
 /// <parameter>OcuPilot.Kernel.EntityRef.IDRULENAMES</parameter> already follows for its own closed
 /// vocabulary. What each projection means is <method>DeclaredNames</method>'s doc comment.</p>
 Parameter DECLAREDNAMEKINDS = "settable,path,criteria,read,credential,toolRead";
+
+/// <p>What is wrong with <var>pDeclaration</var>'s declared actions, or <code>""</code> (AD-5,
+/// AD-53): the primary action and every row action carry only <code>id</code> and
+/// <code>selfProtection</code>, an id is unique across the row actions, and a non-empty
+/// <code>selfProtection</code> names a rule <parameter>SELFPROTECTIONRULES</parameter> declares.</p>
+/// <p><b>The vocabulary is closed because both sides read it.</b> The rule is mirrored to the
+/// client, which draws the action refused before a click; a value neither side understands would
+/// render as a word in a menu rather than as a reason. An action with no rule declares
+/// <code>""</code>, which is every shipped action but this story's three.</p>
+/// <p><b>It validates the declaration, not the refusal.</b> Whether a given target is protected is
+/// AD-10's question, asked at the write; this refuses a declaration that names a rule nothing can
+/// evaluate.</p>
+ClassMethod ActionProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        If '$IsObject(pDeclaration) {
+            Set tProblem = "the declaration is not an object"
+            Quit
+        }
+        Set tRules = $ListFromString(..#SELFPROTECTIONRULES)
+        ; An absent key is left alone, the leniency ui/tools/screen-mirror.mjs keeps for a
+        ; partially declared fixture; DeclarationProblem has already refused a misspelt one.
+        If pDeclaration.%GetTypeOf("primaryAction") '= "unassigned" {
+            Set tProblem = ..OneActionProblem(pDeclaration.%Get("primaryAction"), "primaryAction", tRules)
+            If tProblem '= "" Quit
+        }
+        If pDeclaration.%GetTypeOf("rowActions") = "unassigned" Quit
+        If pDeclaration.%GetTypeOf("rowActions") '= "array" {
+            Set tProblem = "rowActions is not an array of declared actions"
+            Quit
+        }
+        Set tSeen = ""
+        Set tIterator = pDeclaration.%Get("rowActions").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tAction) {
+            Set tWhere = "rowActions entry #" _ (tIndex + 1)
+            Set tProblem = ..OneActionProblem(tAction, tWhere, tRules)
+            If tProblem '= "" Quit
+            Set tId = tAction.%Get("id")
+            If tId = "" {
+                Set tProblem = tWhere _ " declares an empty id, and an action with no id is a control nothing can run"
+                Quit
+            }
+            If $ListFind(tSeen, tId) {
+                Set tProblem = "rowActions names the action '" _ tId _ "' twice"
+                Quit
+            }
+            Set tSeen = tSeen _ $ListBuild(tId)
+        }
+    } Catch ex {
+        Set tProblem = "the declared actions could not be validated: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>What is wrong with one declared action <var>pAction</var> at <var>pWhere</var>, or
+/// <code>""</code>. Read for <method>ActionProblem</method> alone.</p>
+ClassMethod OneActionProblem(pAction As %DynamicObject, pWhere As %String, pRules As %List) As %String [ Private ]
+{
+    If '$IsObject(pAction) || 'pAction.%IsA("%Library.DynamicObject") {
+        Quit pWhere _ " is not an object declaring its id and self-protection rule"
+    }
+    Set tKeysProblem = ..UnknownKeyProblem(pAction, pWhere, $ListBuild("id", "selfProtection"))
+    If tKeysProblem '= "" Quit tKeysProblem
+    If pAction.%GetTypeOf("id") '= "string" Quit pWhere _ " id is not a string"
+    If pAction.%GetTypeOf("selfProtection") '= "string" Quit pWhere _ " selfProtection is not a string"
+    Set tRule = pAction.%Get("selfProtection")
+    If tRule = "" Quit ""
+    If '$ListFind(pRules, tRule) {
+        Quit pWhere _ " selfProtection '" _ tRule _ "' is not one of " _ ..#SELFPROTECTIONRULES _ ", and a rule neither the instance nor the client understands explains nothing (AD-5, AD-53)"
+    }
+    Quit ""
+}
 
 /// <p>The one set of names <var>pDeclaration</var>'s two confirm-channel keys are validated
 /// against (DW-1206), built once from its write tool's classified rows <var>pRows</var> and from

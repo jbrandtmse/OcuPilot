@@ -49,8 +49,14 @@
 /// controls roster -- Processes, Databases, Database details, Task schedule, Task details, System
 /// usage -- does not name it (AD-43). The roster is cited by its own words rather than by a line
 /// number, because an insert anywhere above it moves the number and nothing re-resolves it
-/// (DW-272). <b>No primary or row action</b>: AD-48's three
-/// delete scopes are Epic 5's, where a proposal, a confirm and an audit marker first exist.</p>
+/// (DW-272).</p>
+/// <p><b>One row action, <code>delete</code>, on every drill level</b> (AD-48, AD-53). The level
+/// is the scope: the target the screen sends is the prefix of the composite id its row names --
+/// the namespace, the namespace and date, or the namespace, date and error number -- and
+/// <class>OcuPilot.Screen.Tool.ErrorDelete</class> carries it out for both callers. One action
+/// rather than three, because the command bar offers every declared row action on every level.
+/// It declares no <code>selfProtection</code>: no application error is one OcuPilot must keep.
+/// No primary action.</p>
 /// <p><b>The classic page is <code>%cspapp.op.utilsysapperrornamespaces</code></b>, the drill's own
 /// entry point, spelled in the class's own case because the custom-resource lookup does not
 /// case-fold (AD-44). None of the four classic classes declares a <code>RESOURCE</code> or
@@ -75,12 +81,13 @@ XData Declaration
   "refreshRates": [],
   "privileges": [{"resource": "%Admin_Operate", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
   "entityType": "application-error",
+  "entityLabelKey": "errorLogListLabel",
   "secondaryEntityTypes": [],
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "composite", "parts": ["namespace", "date", "errorNumber"]},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "delete", "selfProtection": ""}],
   "context": {"fields": ["errorNumber", "time", "errorText", "routine", "line"], "secretFields": []},
   "emptyStateKey": "errorLogEmptyInstance",
   "commandAliases": ["application errors"],

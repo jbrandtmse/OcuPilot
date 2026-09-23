@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { ApiService, type JsonResult } from '../../core/api';
+import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
 import type { ConnectivityService } from '../../core/connectivity';
 import { NavigationService } from '../../core/navigation';
@@ -13,6 +13,7 @@ import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS, stringFor } from '../../core/strings';
+import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { ProcessDetailsPage } from './process-details.page';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 
@@ -95,20 +96,27 @@ async function mount(initialRows: unknown[] = [row()], url = '/os-management/pro
   const declaration = SCREENS.find((screen) => screen.descriptor === DESCRIPTOR) ?? null;
   let answerRows = initialRows;
   let failing = false;
+  let actionAnswer: JsonResult<unknown> = { kind: 'ok', status: 200, body: {} };
   const paths: string[] = [];
+  const posts: { path: string; body: string }[] = [];
   const scheduled: (() => void)[] = [];
   const api = {
-    requestJson: async <T,>(path: string): Promise<JsonResult<T>> => {
+    requestJson: async <T,>(path: string, init: ApiRequestInit = {}): Promise<JsonResult<T>> => {
+      if (init.method === 'POST') {
+        posts.push({ path, body: init.body ?? '' });
+        return actionAnswer as JsonResult<T>;
+      }
       paths.push(path);
       if (failing) return { kind: 'error', status: 500, code: 'SERVER.INTERNAL', reason: null, detail: null };
       return { kind: 'ok', status: 200, body: { fields: [], rows: answerRows, truncated: false, banner: '' } as T };
     },
   };
   const stores = new ScreenStores({ account: stubAccountPreferences() });
+  const bus = new ChangeBus();
   const refresh = new RefreshService({
     stores,
     connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,
-    bus: new ChangeBus(),
+    bus,
     namespace: () => 'HSCUSTOM',
     schedule: (run) => scheduled.push(run),
   });
@@ -119,6 +127,7 @@ async function mount(initialRows: unknown[] = [row()], url = '/os-management/pro
       { provide: ApiService, useValue: api as unknown as ApiService },
       { provide: RefreshService, useValue: refresh },
       { provide: ScreenStores, useValue: stores },
+      { provide: ChangeBus, useValue: bus },
       { provide: ScreenActions, useValue: new ScreenActions() },
       { provide: OverlayStack, useValue: new OverlayStack() },
       {
@@ -143,6 +152,12 @@ async function mount(initialRows: unknown[] = [row()], url = '/os-management/pro
       failing = next;
     },
     refresh,
+    posts,
+    setActionAnswer: (answer: JsonResult<unknown>) => {
+      actionAnswer = answer;
+    },
+    store: stores.for(DESCRIPTOR, declaration?.refreshRates ?? []),
+    handler: TestBed.inject(ScreenActionHandler),
     fireTick: async () => {
       scheduled[scheduled.length - 1]();
       await settle(fixture);
@@ -286,12 +301,72 @@ describe('ProcessDetailsPage', () => {
     expect(changedLabels(host)).toEqual([]);
   });
 
-  it('offers Refresh and no other action, and no name-cell link', async () => {
+  it('offers Refresh and the processes list\u2019s actions, and no name-cell link', async () => {
     const { actions, host } = await mount();
     expect(actions.has(DESCRIPTOR, REFRESH_ACTION_ID)).toBe(true);
     const declaration = SCREENS.find((screen) => screen.descriptor === DESCRIPTOR);
-    expect(declaration?.rowActions).toEqual([]);
+    expect(declaration?.rowActions.map((action) => action.id)).toEqual(['suspend', 'resume', 'terminate', 'terminate-with-error']);
     expect(declaration?.primaryAction.id).toBe('');
+    for (const actionId of ['suspend', 'resume', 'terminate']) expect(actions.has(DESCRIPTOR, actionId)).toBe(true);
+    expect(actions.has(DESCRIPTOR, 'terminate-with-error')).toBe(false);
     expect(host.querySelector('.ocu-details-field-value a')).toBeNull();
+  });
+});
+
+describe('ProcessDetailsPage actions (Story 7.8)', () => {
+  it('selects the pid it shows after each read, and nothing once the process has gone', async () => {
+    // Mutation (Rule 19): drop `selectShown` from the store subscription -> the selection assertion
+    // goes red, and the command bar offers the actions with "Select a row first".
+    const { fixture, store, setRows, actions } = await mount();
+    expect(store.selection()).toEqual(['4242']);
+    setRows([]);
+    expect(actions.run(DESCRIPTOR, REFRESH_ACTION_ID)).toBe(true);
+    await settle(fixture);
+    expect(store.selection()).toEqual([]);
+  });
+
+  it('renders Terminate\u2019s dialog, posts to the processes list, and reads the gone state after the deleted event', async () => {
+    // Mutation (Rule 19): drop the dialog block from the page's template -> no dialog is found.
+    const { fixture, host, posts, setActionAnswer, setRows, actions, handler } = await mount();
+    setActionAnswer({ kind: 'ok', status: 200, body: { action: 'deleted', target: { type: 'process', scope: 'instance', id: '4242' } } });
+    expect(actions.run(DESCRIPTOR, 'terminate')).toBe(true);
+    await settle(fixture);
+    const dialog = host.querySelector('app-typed-name-dialog') as HTMLElement | null;
+    expect(dialog).not.toBeNull();
+    expect(dialog?.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(`${STRINGS.actionTerminate} 4242`);
+    expect(dialog?.querySelector('[data-slot="flag"]')?.textContent?.trim()).toBe(STRINGS.processTerminateErrorFlag);
+    expect(posts).toEqual([]);
+
+    const field = dialog?.querySelector('.ocu-typed-name-field') as HTMLInputElement;
+    field.value = '4242';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    setRows([]);
+    (dialog?.querySelector('.ocu-button-destructive') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(posts).toHaveLength(1);
+    expect(posts[0].path).toBe('/api/ocupilot/screens/osmgmt.processes/action');
+    expect(JSON.parse(posts[0].body)).toEqual({ action: 'terminate', id: '4242' });
+    expect(handler.pending()).toBeNull();
+    expect(host.querySelector('app-typed-name-dialog')).toBeNull();
+    expect(host.textContent).toContain(STRINGS.processDetailsGone);
+  });
+
+  it('shows a refused action\u2019s own sentence as an alert', async () => {
+    const { fixture, host, setActionAnswer, actions } = await mount();
+    setActionAnswer({ kind: 'error', status: 403, code: 'PROHIBITED.SYSTEMPROCESS', reason: STRINGS.processRefusalSystem, detail: null } as unknown as JsonResult<unknown>);
+    expect(actions.run(DESCRIPTOR, 'suspend')).toBe(true);
+    await settle(fixture);
+    const alert = host.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain(STRINGS.processRefusalSystem);
+  });
+
+  it('cancels its own open dialog when it is destroyed', async () => {
+    const { fixture, actions, handler } = await mount();
+    expect(actions.run(DESCRIPTOR, 'terminate')).toBe(true);
+    await settle(fixture);
+    expect(handler.pending()?.descriptor).toBe(DESCRIPTOR);
+    fixture.destroy();
+    expect(handler.pending()).toBeNull();
   });
 });

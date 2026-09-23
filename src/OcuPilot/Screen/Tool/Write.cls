@@ -140,6 +140,22 @@ Parameter CHANGEACTION = "updated";
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedChangeFields</method>'s.</p>
 Parameter CREATES As BOOLEAN = 0;
 
+/// <p>The screen row actions (AD-5) this tool carries out, comma-separated, or <code>""</code> for
+/// a tool no screen action reaches. <code>""</code> here.</p>
+/// <p>Each entry is an action id the descriptor declares, optionally followed by the one argument
+/// that action sends: <code>&lt;id&gt;</code>, or <code>&lt;id&gt;=&lt;field&gt;:&lt;value&gt;</code>
+/// where <var>field</var> is one of this tool's own settable fields. An action-style write takes
+/// the bare form, because it sends no body at all (AD-51).</p>
+/// <p><b>The declaration is the tool's, not the descriptor's</b> (AD-53). A descriptor declares
+/// that a row carries an action and what self-protection rule explains its refusal; <i>which</i>
+/// operation carries it out is a property of the write, beside the port it reaches its target
+/// through (<parameter>PORTCLASS</parameter>), the request type it issues
+/// (<parameter>WRITETYPE</parameter>) and the change event it publishes
+/// (<parameter>CHANGEACTION</parameter>). One tool may serve two actions -- enable and disable are
+/// one merge write over one field -- which a per-descriptor map could not express without naming
+/// the field twice.</p>
+Parameter SCREENACTIONS = "";
+
 /// <p>The top-level names this tool's own <parameter>READTYPE</parameter> read answers,
 /// comma-separated, or <code>""</code> where the screen's declared read is the whole record of
 /// them.</p>
@@ -152,6 +168,26 @@ Parameter CREATES As BOOLEAN = 0;
 /// <method>OcuPilot.Screen.Registry.DeclaredNames</method> already answers
 /// <code>fingerprintExcludes</code> with.</p>
 Parameter READANSWERS = "";
+
+/// <p>The declared secret arguments an action-style write sends as its <b>only</b> body,
+/// comma-separated, or <code>""</code> for a write whose body is a merge or nothing (AD-56 (i)).
+/// <code>""</code> here, which is every write but a password change.</p>
+/// <p>Each name must also be one the descriptor's <code>secretArguments</code> declares:
+/// <method>OcuPilot.Kernel.Proposal.Operation.SecretBody</method> carries a name only when both
+/// lists hold it, so the confirm channel and the screen's value channel stay the one declaration
+/// AD-6 closes. The vendor's own spelling of the body key is the port's wire fact, not this
+/// list's (<parameter>OcuPilot.Port.AdminPort.RENAMEDTYPES</parameter>).</p>
+Parameter SECRETBODY = "";
+
+/// <p>The values a screen action sends this tool beyond its static argument, comma-separated
+/// <code>&lt;action&gt;=&lt;name&gt;[:&lt;name&gt;...]</code> entries, or <code>""</code>
+/// (AD-56 (ii)). <code>""</code> here, so every shipped action admits no value.</p>
+/// <p><b>A value name is a declaration, never a field.</b> The route admits a request's
+/// <code>values</code> only under the names its action declares here and refuses any other key; a
+/// name that is a declared secret goes to <method>OcuPilot.Kernel.Proposal.Operation.SecretBody</method>
+/// and nowhere else, and the rest are handed to <method>ScreenActionDelta</method>, which turns
+/// them into this tool's own settable arguments over the fresh read.</p>
+Parameter SCREENVALUES = "";
 
 /// <p>This tool's own class, which <method>View</method> hands the mint so
 /// <method>ReadType</method>, <method>SendsBody</method> and <method>StateDiff</method> are read
@@ -215,6 +251,53 @@ ClassMethod Creates() As %Boolean
 /// a caller-supplied path is a filesystem path this product never accepts (AD-21).</p>
 ClassMethod DerivedFields(pPayload As %DynamicObject)
 {
+}
+
+/// <p>The row-action ids <parameter>SCREENACTIONS</parameter> names, as a <class>%List</class>.</p>
+ClassMethod ScreenActionIds() As %List
+{
+    Set tIds = ""
+    For tI = 1:1:$Length(..#SCREENACTIONS, ",") {
+        Set tId = $ZStrip($Piece($Piece(..#SCREENACTIONS, ",", tI), "=", 1), "<>W")
+        If (tId '= "") && '$ListFind(tIds, tId) Set tIds = tIds _ $ListBuild(tId)
+    }
+    Quit tIds
+}
+
+/// <p>The arguments a screen action <var>pActionId</var> sends this tool, as a
+/// <class>%DynamicObject</class>, with <var>pServes</var> 0 when this tool does not carry that
+/// action at all.</p>
+/// <p><b>Caller contract:</b> <class>OcuPilot.Api.ScreenAction</class> calls it once per request
+/// and merges the answer over the fresh read exactly as the mint merges the agent's own arguments
+/// (AD-4), so the two callers of this operation send one body computed one way. An action that
+/// names no field answers <code>{}</code>, which is every action-style write (AD-51).</p>
+/// <p>A value spelled <code>true</code> or <code>false</code> is carried as a boolean and a numeric
+/// one as a number, so the merge's own type check reads the declaration as the instance holds the
+/// field rather than as a string spelling of it.</p>
+ClassMethod ScreenActionArguments(pActionId As %String, Output pServes As %Boolean) As %DynamicObject
+{
+    Set pServes = 0
+    Set tArgs = {}
+    If pActionId = "" Quit tArgs
+    For tI = 1:1:$Length(..#SCREENACTIONS, ",") {
+        Set tEntry = $ZStrip($Piece(..#SCREENACTIONS, ",", tI), "<>W")
+        If $Piece(tEntry, "=", 1) '= pActionId Continue
+        Set pServes = 1
+        Set tAssignment = $Piece(tEntry, "=", 2, *)
+        If tAssignment = "" Quit
+        Set tField = $Piece(tAssignment, ":", 1)
+        Set tValue = $Piece(tAssignment, ":", 2, *)
+        If tField = "" Quit
+        If (tValue = "true") || (tValue = "false") {
+            Do tArgs.%Set(tField, (tValue = "true"), "boolean")
+        } ElseIf $IsValidNum(tValue) {
+            Do tArgs.%Set(tField, +tValue, "number")
+        } Else {
+            Do tArgs.%Set(tField, tValue, "string")
+        }
+        Quit
+    }
+    Quit tArgs
 }
 
 /// <p><parameter>READANSWERS</parameter> as a <class>%List</class>, for the registration guard.</p>
@@ -368,6 +451,55 @@ ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Bo
     Set pDeclared = 1
     If ..#DESCRIPTORCLASS = "" Quit ""
     Quit $ClassMethod(..#DESCRIPTORCLASS, "SecretArguments")
+}
+
+/// <p><parameter>SECRETBODY</parameter> as a <class>%List</class> (AD-56).</p>
+ClassMethod SecretBodyNames() As %List
+{
+    Set tNames = ""
+    For tI = 1:1:$Length(..#SECRETBODY, ",") {
+        Set tName = $ZStrip($Piece(..#SECRETBODY, ",", tI), "<>W")
+        If (tName '= "") && '$ListFind(tNames, tName) Set tNames = tNames _ $ListBuild(tName)
+    }
+    Quit tNames
+}
+
+/// <p>The value names <parameter>SCREENVALUES</parameter> declares for screen action
+/// <var>pActionId</var>, as a <class>%List</class>; <code>""</code> for an action that admits
+/// none.</p>
+ClassMethod ScreenActionValueNames(pActionId As %String) As %List
+{
+    Set tNames = ""
+    If pActionId = "" Quit tNames
+    For tI = 1:1:$Length(..#SCREENVALUES, ",") {
+        Set tEntry = $ZStrip($Piece(..#SCREENVALUES, ",", tI), "<>W")
+        If $Piece(tEntry, "=", 1) '= pActionId Continue
+        Set tSpec = $Piece(tEntry, "=", 2, *)
+        For tJ = 1:1:$Length(tSpec, ":") {
+            Set tName = $ZStrip($Piece(tSpec, ":", tJ), "<>W")
+            If (tName '= "") && '$ListFind(tNames, tName) Set tNames = tNames _ $ListBuild(tName)
+        }
+    }
+    Quit tNames
+}
+
+/// <p>The arguments screen action <var>pActionId</var> sends this tool, given the declared
+/// non-secret values <var>pValues</var> and the fresh read <var>pFresh</var>, in <var>pArgs</var>;
+/// <var>pProblem</var> names why the values cannot be applied to this target (AD-56 (ii)).</p>
+/// <p><b>Caller contract:</b> <class>OcuPilot.Api.ScreenAction</class> calls it once, after the
+/// fresh read, and holds every key of <var>pArgs</var> to <method>SettableFields</method> exactly
+/// as it holds the static arguments; a non-empty <var>pProblem</var> is refused 400
+/// <code>TOOL.ARGUMENTS</code> with nothing written. It writes nothing; an override may read through
+/// the tool's own port to resolve a value.</p>
+/// <p>The default answers <method>ScreenActionArguments</method>, so every tool that declares no
+/// value is unchanged. A tool whose value changes a list declares the delta here -- over the fresh
+/// read, never as a list the client computed -- so a concurrent change to another member
+/// survives.</p>
+ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, pFresh As %DynamicObject, Output pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Set pProblem = ""
+    Set pArgs = ..ScreenActionArguments(pActionId, .tServes)
+    Quit $$$OK
 }
 
 /// <p>The rows of this tool's <class>OcuPilot.Screen.Tool.ToolFields</class> entry that a schema

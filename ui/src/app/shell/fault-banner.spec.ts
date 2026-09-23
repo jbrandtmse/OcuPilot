@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ConnectivityService } from '../core/connectivity';
 import type { Fault, FaultKind } from '../core/fault';
@@ -9,7 +9,7 @@ import { SCREENS, type ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { screenDeclaration } from '../testing/screen-declaration';
-import { FaultBanner } from './fault-banner';
+import { FAULT_CLEAR_HOLD_MS, FaultBanner } from './fault-banner';
 
 /**
  * The connectivity banner's rendered contract (EXPERIENCE.md "connectivity probe", "Generic internal").
@@ -147,6 +147,10 @@ describe('the connectivity banner', () => {
     fixture.detectChanges();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('draws nothing while no fault is published', () => {
     expect(strip()).toBeNull();
     expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull();
@@ -193,7 +197,10 @@ describe('the connectivity banner', () => {
     }
   });
 
-  it('the banner goes the moment the fault clears -- it is never dismissible while it holds', () => {
+  it('a lone clear keeps the strip for the hold, then unmounts it -- it is never dismissible', () => {
+    // DW-1155, DW-1189. Mutation (Rule 19): set `shown` to null at once when the fault clears ->
+    // the held-strip assertion goes red.
+    vi.useFakeTimers();
     connectivity.publish('unreachable');
     fixture.detectChanges();
     expect(strip()).not.toBeNull();
@@ -202,7 +209,51 @@ describe('the connectivity banner', () => {
 
     connectivity.publish(null);
     fixture.detectChanges();
+    expect(strip(), 'held through the hold').not.toBeNull();
+    vi.advanceTimersByTime(FAULT_CLEAR_HOLD_MS - 1);
+    fixture.detectChanges();
+    expect(strip(), 'still held one millisecond before the hold ends').not.toBeNull();
+    vi.advanceTimersByTime(1);
+    fixture.detectChanges();
     expect(strip()).toBeNull();
+  });
+
+  it('a fault raised again inside the hold keeps the same strip and control nodes, updated in place', () => {
+    // DW-1155: a click on Retry must not be lost to a remount between a clear and the park that
+    // re-raises it, and the strip must not flicker.
+    vi.useFakeTimers();
+    connectivity.publish('server-fault');
+    fixture.detectChanges();
+    const firstStrip = strip();
+    const firstRetry = button(STRINGS.actionRetry);
+    const firstOpen = button(STRINGS.actionOpenMessagesLog);
+    expect(firstStrip).not.toBeNull();
+
+    connectivity.publish(null);
+    fixture.detectChanges();
+    vi.advanceTimersByTime(FAULT_CLEAR_HOLD_MS / 2);
+    connectivity.publish('server-fault');
+    fixture.detectChanges();
+    expect(strip()).toBe(firstStrip);
+    expect(button(STRINGS.actionRetry)).toBe(firstRetry);
+    expect(button(STRINGS.actionOpenMessagesLog)).toBe(firstOpen);
+
+    // The re-raise ended the hold: the strip stays however long the fault does.
+    vi.advanceTimersByTime(FAULT_CLEAR_HOLD_MS * 2);
+    fixture.detectChanges();
+    expect(strip()).toBe(firstStrip);
+
+    // A different fault inside a later hold updates the sentence in the same strip.
+    connectivity.publish(null);
+    fixture.detectChanges();
+    vi.advanceTimersByTime(FAULT_CLEAR_HOLD_MS / 2);
+    connectivity.publish('unreachable');
+    fixture.detectChanges();
+    expect(strip()).toBe(firstStrip);
+    expect(strip()?.querySelector('.ocu-fault-banner-message')?.textContent?.trim()).toBe(
+      STRINGS.connectivityBannerUnreachable
+    );
+    expect(button(STRINGS.actionRetry)).toBe(firstRetry);
   });
 
   it('Retry asks connectivity to probe now, rather than re-running the failed call itself', () => {
