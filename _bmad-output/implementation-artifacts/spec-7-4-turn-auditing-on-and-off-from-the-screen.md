@@ -2,11 +2,11 @@
 title: 'Story 7.4: Turn auditing on and off from the screen'
 type: 'feature'
 created: '2026-09-23'
-status: 'in-progress'
-baseline_revision: '6ae2918f4cc1c958b936254cf5849001c8d00d39'
+status: 'done'
+baseline_revision: 'be93a50536a7a23539bc8d1223598856a6b422a8'
 baseline_commit: '6ae2918f4cc1c958b936254cf5849001c8d00d39'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-7-context.md'
@@ -30,6 +30,9 @@ footprint_extensions:
   - 'src/OcuPilot/Screen/Registry.cls' # contended; RendersNoTable only
   - 'ui/tools/screen-mirror.mjs' # contended; rendersNoTable only
   - 'ui/tools/screen-mirror.test.mjs' # contended; two in-place edits
+  - 'ui/browser/oauth.browser-spec.mjs' # roster rule, 2026-09-23
+  - 'ui/browser/security.browser-spec.mjs' # roster rule, 2026-09-23
+  - 'ui/browser/ssl.browser-spec.mjs' # roster rule, 2026-09-23
 ---
 
 <intent-contract>
@@ -332,15 +335,20 @@ Rejected:
 
 **Rework iteration 1 (2026-09-23, lead, CI run 35844424602 on d757343a):**
 
-- [ ] [CI] `browser`: `oauth.browser-spec.mjs:268` (`not ok 90`), `security.browser-spec.mjs:227`
+- [x] [CI] `browser`: `oauth.browser-spec.mjs:268` (`not ok 90`), `security.browser-spec.mjs:227`
   (`not ok 158`) and `ssl.browser-spec.mjs:202` (`not ok 171`) hard-code the Security and secrets side
   bar, which now also lists "Auditing configuration". Add only this story's entry (standing roster
-  rule, 2026-09-23; stay off Epic 8's hunks if it has modified the file).
-- [ ] [CI] `browser`: `auditing-screen.browser-spec.mjs:95` (`not ok 21`) -- "the system-event list
+  rule, 2026-09-23; stay off Epic 8's hunks if it has modified the file). -- Closed: each roster gains
+  `auditingConfigurationLink` / "Auditing configuration" last; Epic 8 has not modified any of the three
+  (`git diff --stat dd70e59 origin/OCU-1-epic8 -- <path>` empty for each); the four specs 13/13 on `ocupilot-ci`.
+- [x] [CI] `browser`: `auditing-screen.browser-spec.mjs:95` (`not ok 21`) -- "the system-event list
   renders rows (0)" at `:109` on CI's fresh throwaway, while it passed on the reused `ocupilot-ci`.
   Find the cause from the CI log (`gh run view 35844424602 --log-failed`) and the page: a missing
   wait for the embedded list's read, or a read that answers nothing on a fresh instance. Fix it at
-  its cause; never relax the assertion.
+  its cause; never relax the assertion. -- Closed: the spec counted rows as soon as the form's own read
+  drew its button (inference, from a local slowed-read reproduction), while each list's read is a separate request; it now waits until both sections show
+  rows, the empty state or the fault, then asserts rows as before. The server-side read answers rows on a fresh
+  instance (CI's `instance` job ran `AuditingScreen` 8/0 in the same run).
 
 ## Spec Change Log
 
@@ -385,6 +393,21 @@ Rejected:
   - `[low]` `[reject]` IA: neither event list is rendered at its own route in a test — built list screens are served by the generic `ListPage`, and the roster is pinned by `navigation.test.mjs`.
   - `[low]` `[reject]` IA: the marker-disabled arm is proved only against `MarkingPort` — disabling OcuPilot's own event on a shared instance is Story 7.11's write.
   - `[low]` `[reject]` IA: "before any read" is not observed — the pair gate precedes the fresh read in `Run`, and the AC5 mutation shows the gate is what refuses.
+
+### 2026-09-23 — Review pass (rework iteration 1)
+
+- verdicts: 10 findings — high 0, medium 0, low 6, false 4, maybe-false 0
+- findings:
+  - `[low]` `[patch]` VG: CI item 2 kept `- [ ]` while its note said closed — ticked.
+  - `[low]` `[patch]` VG: item 1's "Epic 8 has not modified" note cited `git diff --stat` without the path limiter (unscoped it lists 135 files) — note now names `-- <path>`; scoped, each file's diff is empty.
+  - `[low]` `[patch]` VG: item 2's cause was stated as fact though only reproduced locally — labeled `(inference)`; the new `(n, state)` message shows on the next CI run whether it was timing or an empty read.
+  - `[false]` `[reject]` VG: the Auto Run Result was not updated for this pass — written at finalize, after the layers ran.
+  - `[low]` `[patch]` IA: item 2's cause rests on a slowed read on the reused container and on the `instance` job's server-side read, not on the browser job's HTTP read (grouped with the third VG row).
+  - `[low]` `[reject]` IA: item 1 also edits the `security` test title and two assertion messages beyond the list — the wording now matches the six entries it asserts; no named harm.
+  - `[false]` `[reject]` IA: this pass does not re-exercise the product surface — `auditing-screen.browser-spec.mjs` ran 13/13 with the other three, which covers the dialog, the POST and the banner legs.
+  - `[false]` `[reject]` IA: no test arranges instance state (reading 2b) — no evidence of an instance-state cause; an empty or faulted list read still fails, naming its state.
+  - `[low]` `[patch]` IA: item 2's checkbox unchecked (grouped with the first VG row).
+  - `[false]` `[reject]` IA: `baseline_revision` moved while `baseline_commit` stayed — step 3 records this pass's baseline by design.
 
 ## Design Notes
 
@@ -519,6 +542,8 @@ any container.
   - `mutation: drop ScreenAction.ObserveMarking's LogObserveFailure call -> AuditingScreen.TestAFailedObservationAfterTheScreensWriteRecordsNothingAndLogs red (run 7404). DEMONSTRATED 2026-09-23, reverted, AuditingScreen 6/6 (run 7405)`
   - `mutation: (code review) ObserveMarking without the auditing-off short-circuit and without the 404 arm, plus RendersNoTable ignoring the GET condition, all in the ocupilot-ci copy only -> AuditingScreen.TestObservingMarkingNeedsAuditingAndTheMarkerEvent red on its three new assertions and TestAFormPageReadNeedsNoTable red on "a form over a list-shaped read". DEMONSTRATED 2026-09-23, re-synced from the worktree, AuditingScreen 8/8, Descriptor and AgentDefinitionForm green`
   - `mutation: (code review) rendersNoTable without its composite-id and GET conditions -> screen-mirror.test.mjs AD-5 table test red ("as is a form-page over a list-shaped read"). DEMONSTRATED 2026-09-23, reverted, 53/53`
+  - `mutation: roster rule -- the pre-edit oauth, security and ssl specs against the current bundle -> exactly CI's three tests red (12 run, 3 fail); with 7.4's entry, 13/13 with auditing-screen. DEMONSTRATED 2026-09-23, files restored byte-identical`
+  - `mutation: CI item 2 -- a 2 s Hang on Security.Audit.Event LIST in the ocupilot-ci copy of AdminPort.Invoke (slow list read, standing in for CI's cold instance) -> the pre-fix spec red with CI's own message "the system-event list renders rows (0)" at :109; the fixed spec green under the same delay; the LIST made to fault instead -> the fixed spec red "(0, fault)", so the wait masks nothing. DEMONSTRATED 2026-09-23, copy re-synced from the worktree and AdminPort reloaded (LIST back to 6 ms), auditing read 1`
   - `mutation: (code review) drop the fault() guard in the page's enabled getter -> "offers no stale control" and the AC3 focus-request test red; drop !view.fault() from showEmpty -> "a list whose read fails" red; clear the focus request only when the enable button is focused -> "a focus request answered by Turn auditing off" red. DEMONSTRATED 2026-09-23, reverted, page spec 13/13`
 
 **Once, before `dev_complete`:** run the full ObjectScript sweep on `ocupilot-ci`, per class and
@@ -531,37 +556,23 @@ full browser suite is not run locally (Rule 29).
 Status: done
 Blocking condition: none
 
-This pass (re-dispatch, cycle 2) worked the three open items only:
+This pass (rework iteration 1) closed the two `[CI]` items from run 35844424602, test files only:
 
-- Roster rule, 2026-09-23: 7.4's three screens added to `ui/tools/navigation.test.mjs`,
-  `Test/WireSecurityRead.cls` and `Test/Wire.cls`, off Epic 8's lines. A trial `git merge-file`
-  against `origin/OCU-1-epic8` is clean for two files. `WireSecurityRead.cls` shows three textual
-  conflicts: 7.4's security-row lines 786, 812 and 840 sit directly below Epic 8's rewritten
-  permissions and web-applications lines. The resolution is to keep both sides.
-- Borrowed strings, choice (2): `Registry.RendersNoTable` and its twin `rendersNoTable` added.
-  `AuditingConfig` drops its `table`, and its `emptyStateKey` is now `""`.
-  `Test/Descriptor.cls` (key list, read-shape row), `screen-mirror.test.mjs` and the regenerated
-  mirror follow. Both engines' pins are demonstrated.
-- Review: 18 findings (3 medium, 15 low, no high). The 10 patches are test-only, apart from the
-  `Wire.cls` message. 8 findings were rejected, with reasons in the triage log. Nothing was
-  deferred.
+- `ui/browser/oauth.browser-spec.mjs`, `security.browser-spec.mjs`, `ssl.browser-spec.mjs`: each
+  Security and secrets side-bar roster gains "Auditing configuration" last (roster rule,
+  2026-09-23; Epic 8 has not touched the three files).
+- `ui/browser/auditing-screen.browser-spec.mjs`: waits until both embedded lists show rows, the
+  empty state or the fault before asserting rows, and names that state in the failure message.
+  Cause: each list's read is its own request and can answer after the form's button draws
+  (inference, reproduced with a slowed list read on `ocupilot-ci`).
 
-footprint_extensions: as frontmatter.
+footprint_extensions: as frontmatter (three browser specs added, `# roster rule, 2026-09-23`).
 
-Follow-up review recommended: true. Three medium entries were patched on a first review. The unverified risk is the
-`AuditingUpdate` ledger precondition: that class refuses on `ocupilot-ci`, so only CI's armed run
-shows it.
+Review: 10 findings (6 low, 4 false, no high or medium). 4 patched, all spec tracking-section
+corrections; 6 rejected with reasons in the triage log; nothing deferred. Follow-up review
+recommended: false (follow-up pass, no high patched). Residual risk: the next CI `browser` job
+confirms the timing cause; an empty read there would fail as `(0, empty)`.
 
-Tiers run, all on `ocupilot-ci`:
-
-- Full ObjectScript sweep, one class at a time: 181 classes, 1,637 tests, 0 failed. Four classes
-  refuse unarmed there, as expected: `AuditingUpdate`, `ErrorDelete`, `ProcessControl` and
-  `TaskResume`.
-- Re-run after the patches: `AuditingScreen` 8/8, `ProhibitedRoute` 22/22, `Wire` 20/20,
-  `WireSecurityRead` 18/18.
-- Smoke: 49 of 49 executed and passed.
-- Client: `test:tools` 1,327/1,327 and `test:components` 876/876. Both browser specs pass 4/4 on a
-  rebuilt and redeployed bundle.
-- `check-objectscript` reports 0 problems.
-
-Auditing reads 1 on `ocupilot-ci`.
+Tiers run on `ocupilot-ci` (bundle rebuilt and redeployed): the four browser specs 13/13;
+`test:tools` 1,327/1,327; `test:components` 879/879; `client-lint` and `browser-reset` clean.
+No ObjectScript changed, so no class run or sweep. Auditing reads 1.

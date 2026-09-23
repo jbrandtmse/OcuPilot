@@ -224,7 +224,7 @@ async function answerFor(answers, readPath) {
   return answered.filter((entry) => entry.path === readPath).pop();
 }
 
-test('AC1: the Security and secrets side bar reads SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, and each new list renders its declared headers from exactly one read', async () => {
+test('AC1: the Security and secrets side bar reads SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0, Auditing configuration, and each new list renders its declared headers from exactly one read', async () => {
   for (const [key, list] of Object.entries(LISTS)) {
     const { context, page, reads } = await signedInAt(list.url, config.username, config.password);
     try {
@@ -238,10 +238,10 @@ test('AC1: the Security and secrets side bar reads SSL/TLS, X.509, LDAP / Kerber
       assert.equal(sideBar.area, STRINGS.navAreaSecurity, `${key}: in the Security and secrets area`);
       assert.deepEqual(
         sideBar.entries,
-        [STRINGS.sslListLabel, STRINGS.x509ListLabel, STRINGS.ldapListLabel, STRINGS.walletListLabel, STRINGS.oauthLabel],
-        `${key}: the side bar lists the five entries in their declared order`
+        [STRINGS.sslListLabel, STRINGS.x509ListLabel, STRINGS.ldapListLabel, STRINGS.walletListLabel, STRINGS.oauthLabel, STRINGS.auditingConfigurationLink],
+        `${key}: the side bar lists the six entries in their declared order`
       );
-      assert.deepEqual(sideBar.entries, ['SSL/TLS', 'X.509', 'LDAP / Kerberos', 'Wallet', 'OAuth 2.0']);
+      assert.deepEqual(sideBar.entries, ['SSL/TLS', 'X.509', 'LDAP / Kerberos', 'Wallet', 'OAuth 2.0', 'Auditing configuration']);
       if (list.listed) assert.equal(sideBar.current, list.label, `${key}: and the current entry is this list`);
       else assert.equal(sideBar.entries.includes(list.label), false, `${key}: which is never listed`);
     } finally {

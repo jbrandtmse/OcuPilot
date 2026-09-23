@@ -33,6 +33,9 @@ const SCREEN_URL = '/ocupilot/security/auditing?ns=HSCUSTOM';
 /** The screen action route this page's two buttons post to. */
 const ACTION_PATH = '/api/ocupilot/screens/security.auditing/action';
 
+/** The two embedded event lists' sections, keyed by their routes. */
+const EVENT_LIST_ROUTES = ['security/auditing/system-events', 'security/auditing/user-events'];
+
 let browser = null;
 
 before(async () => {
@@ -98,7 +101,26 @@ test('AC1-AC4: the warning, the banner with its link and action, the focused ena
   try {
     await page.waitForSelector('button[data-action="disable"]', { timeout: config.navigationTimeoutMs });
 
-    // AC4: the cross-link and both embedded lists, each rendering rows from its declared read.
+    // AC4: the cross-link and both embedded lists, each rendering rows from its declared read. Each
+    // list's read is its own request and can answer after the form's, so wait until both have
+    // answered: rows, the empty state, or the fault.
+    const [systemState, userState] = await (
+      await page.waitForFunction(
+        (routes) => {
+          const states = routes.map((route) => {
+            const section = document.querySelector(`[data-section="${route}"]`);
+            if (section === null) return 'absent';
+            if (section.querySelector('tbody tr') !== null) return 'rows';
+            if (section.querySelector('.ocu-data-table-refusal') !== null) return 'fault';
+            if (section.querySelector('.ocu-data-table-empty-title') !== null) return 'empty';
+            return 'pending';
+          });
+          return states.includes('pending') ? false : states;
+        },
+        { timeout: config.navigationTimeoutMs },
+        EVENT_LIST_ROUTES
+      )
+    ).jsonValue();
     const lists = await page.evaluate(() => ({
       cross: document.querySelector('a[data-cross-link]')?.getAttribute('href') ?? '',
       system: document.querySelectorAll('[data-section="security/auditing/system-events"] tbody tr').length,
@@ -106,8 +128,8 @@ test('AC1-AC4: the warning, the banner with its link and action, the focused ena
       systemHeading: document.querySelector('[data-section="security/auditing/system-events"] h2 a')?.getAttribute('href') ?? '',
     }));
     assert.equal(lists.cross, 'logs/audit?ns=HSCUSTOM', 'the screen cross-links to the Audit database viewer');
-    assert.ok(lists.system > 0, `the system-event list renders rows (${lists.system})`);
-    assert.ok(lists.user > 0, `and so does the user-event list (${lists.user})`);
+    assert.ok(lists.system > 0, `the system-event list renders rows (${lists.system}, ${systemState})`);
+    assert.ok(lists.user > 0, `and so does the user-event list (${lists.user}, ${userState})`);
     assert.equal(lists.systemHeading, 'security/auditing/system-events?ns=HSCUSTOM', 'each list is headed by a link to its own route');
 
     // AC1: the warning dialog, and Cancel sends nothing.
