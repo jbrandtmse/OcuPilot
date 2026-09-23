@@ -347,8 +347,11 @@ self-JOBbed processes only, and were all cleaned up.
 - 2026-09-23, lead spec gate: AD-52's sentence is in the spine; the seven strings are published at
   `EXPERIENCE.md:419-425` and appended to `strings.ts` (`actionTerminate`, `processTerminateConsequence`,
   `processTerminateErrorFlag`, `processRefusalOcuPilot`, `processRefusalSystem`, `processListEmptyAgent`,
-  `proposalEntityProcess`) -- consume them. The card's after-values stay server-side. DW-1553's port of
-  `1967125`'s two budget hunks awaits the orchestrator; implement does not start without it.
+  `proposalEntityProcess`) -- consume them. The card's after-values stay server-side. DW-1553 (orchestrator
+  ruling): no port of Epic 8's value -- the implement stage re-bases `maximumWarning` under DW-1166 to
+  5% above the measured initial total with this story's client code in place (rounded up to a whole kB,
+  1 kB = 1,000 B), changing only the value line in `ui/angular.json` and the pinned literal in
+  `ui/tools/angular-json.test.mjs`. The AD-52 amendment is phrased as a named case.
 
 ## Review Triage Log
 
