@@ -6121,8 +6121,24 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: irislib/%CSP/UI/Portal/Dialog/RoleResourceEdit.cls writeChanged; RoleCreateRules.PermissionsAdmitted is letter-based; location ui/src/app/areas/permissions/role-grant-dialog.ts
 - 2026-09-23T06:42:07Z status=open owner=8-3-create-a-role-and-manage-its-resource-grants by=harvest note=two-way door; added to the owner-reversal rework as a [Lead] item
+- 2026-09-23T07:52:31Z status=resolved-by:8-3-create-a-role-and-manage-its-resource-grants by=adjudication note=grant dialog locks Read with Write; ROLE.RESOURCES.WRITEONLY on both callers; commit 59dced7
 
 ### DW-1515: Prohibited.cls's class header counts the covered types inside a paragraph Epic 7 rewrites; with the role branch the merged count is stale
 - source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: git diff 3317fae origin/OCU-1-epic7 -- src/OcuPilot/Kernel/Proposal/Prohibited.cls first hunk; COVEREDTYPES now ends ,role; header says Six (Epic 7: Eight)
 - 2026-09-23T06:42:07Z status=wontfix-accepted owner=8-3-create-a-role-and-manage-its-resource-grants by=harvest note=reopen_if=the merged Prohibited.cls header's covered-type count differs from COVEREDTYPES after Epic 7 and 8 merge
+
+### DW-1524: A user update's privilege-granting role delta and any EscalationRoles change are still refused PROHIBITED.PRIVILEGEGRANT by Prohibited.User, against AD-10 as amended, with a sentence that now names OcuPilot's own web applications
+- source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Prohibited.cls User predicate unchanged by the owner-reversal rework; Test/UserUpdate.cls (Epic 7-modified, not contended) asserts the refusal, so the fix needs that file; create path now grants the same roles
+- 2026-09-23T07:52:31Z status=escalated owner=burndown by=harvest note=for the merge gate: remove or recode the update refusal once Epic 7's UserUpdate.cls and this branch merge
+
+### DW-1525: Doc comments in Epic 7's files still say privilege is refused through any path (WebAppUpdate.cls:26, Classification.cls:28, Test/UserUpdate.cls:23)
+- source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: all three are in Epic 7's diff and not contended; AD-10 amended 2026-09-23
+- 2026-09-23T07:52:31Z status=wontfix-accepted owner=8-3-create-a-role-and-manage-its-resource-grants by=harvest note=reopen_if=the merged tree still carries a doc comment saying privilege grants are refused on every path
+
+### DW-1526: Mint.ConsequenceOf asks Consequence(payload, privileged); a later tool overriding Consequence with one formal raises <PARAMETER>, which the catch turns silently into no consequence
+- source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Mint.cls ConsequenceOf's try-ask idiom swallows the arity error; WebAppCreate is the only overrider today
+- 2026-09-23T07:52:38Z status=open owner=8-3-create-a-role-and-manage-its-resource-grants by=harvest note=two-way door for this story's review: make the arity failure loud or the signature single-sourced
