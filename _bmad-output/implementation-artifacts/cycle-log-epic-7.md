@@ -258,3 +258,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T21:22:22Z	Story 7.11	ci_resolved	story=7.11 run=35919426281 result=success resolved_at=burndown head=d472d203 jobs=8/8
 2026-09-23T21:22:22Z	Epic 7	ledger_burndown_complete	open_before=11 resolved=0 terminal=0 chartered=0 chartered_size=0 overflow=5 reowned=5 to_decision_sheet=6 open_after=6 cap=8 story_max=12 filed_this_epic=46 closed_this_epic=43 drain_ratio=0.93 reowned_to=DW-1001,DW-1013:11-1;DW-1136:16-5;DW-1497:range-end-cleanup;DW-1516:9-1 decision_sheet=DW-1137,DW-1520,DW-1575,DW-1576,DW-1577,DW-1423 note=no_charter_under_Rule_27(no_floor-_or_downstream-blocking_entry;DW-1001_has_2_occurrences_but_is_neither)
 2026-09-23T21:22:22Z	Epic 7	epic_runner_complete	stories=9 head_code=d472d203 ci=35919426281_success
+2026-09-23T21:46:28Z	Epic 7	integrate_forward	skipped reason=orchestrator_instruction_epic_8_merged feature_head=811e0072 branch_contains_811e0072=false
+2026-09-23T21:46:28Z	Epic 7	ci_resolved	run=35922022069 result=success resolved_at=runner_complete head=477783b4 jobs=8/8
