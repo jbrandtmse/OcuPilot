@@ -3,7 +3,7 @@
 # edges the orchestrator's analysis added, per the owner's standing instruction (2026-09-16):
 # "If your analysis adds an edge, take the more conservative graph and note the difference in the
 # parallel log; if it would remove one of these, keep mine."
-epics_md_hash: "45f60c257b56c2aedab5760bfb1bdd40cfca4b51b3c9a89ac736d355ed8ce61d"
+epics_md_hash: "3e00bb258a451ff849db2b15b84f65f1f9b1214dc1d20e9d06a429fcf7814a61"
 analyzed_by: claude-opus-5
 analyzed_at: "2026-09-16T15:02:34Z"
 approved: true
@@ -154,7 +154,17 @@ epics:
           Epic 5 lands. Epic 15 ships 15.1-15.5 and reports done with 15.6 left in backlog; the
           orchestrator dispatches 15.6 afterwards. It is NOT dropped -- see pending_units in
           .worktrees/.coordination/dispatch.yaml, which is what stops it being forgotten.
+      - story: "15-7-the-rail-s-icons"
+        after: epic-5        # owner triage 2026-09-23: dispatched with 15.6 in the window after epic-8 merges
+        reason: >-
+          The rail and Home tiles take the mockup's eight icons (UX-DR15 as amended). ui/src/app/shell/rail* and
+          ui/src/app/areas/home/** are touched by no floor epic.
+      - story: "15-8-columns-you-can-read"
+        after: epic-7        # owner triage 2026-09-23: Epic 7 edits ui/src/app/shell/data-table*; ranked after epic-12, before epic-11
+        reason: >-
+          Resizable, content-sized columns, horizontal scroll inside the table and a full-value tooltip change
+          the shared data table every list uses.
     # Owner carve 2026-09-19: Epic 15 works OUTSIDE ui/src/app/shell/panel, proposal-card, reply and
     # tool-call-card, which Epic 5 owns. Its own shell surfaces are header*, account-menu*, side-bar*
     # and command-box*.
-    paths_hint: ["ui/src/app/shell/header*", "ui/src/app/shell/account-menu*", "ui/src/app/shell/side-bar*", "ui/src/app/shell/command-box*", "ui/src/app/core/**", "ui/src/styles/**", "src/OcuPilot/Screen/Descriptor/Home.cls", "src/OcuPilot/Api/Account*.cls", "src/OcuPilot/Api/Ui*.cls"]
+    paths_hint: ["ui/src/app/shell/header*", "ui/src/app/shell/account-menu*", "ui/src/app/shell/side-bar*", "ui/src/app/shell/command-box*", "ui/src/app/core/**", "ui/src/styles/**", "src/OcuPilot/Screen/Descriptor/Home.cls", "src/OcuPilot/Api/Account*.cls", "src/OcuPilot/Api/Ui*.cls", "ui/src/app/shell/rail*", "ui/src/app/areas/home/**", "ui/src/app/shell/data-table*"]
