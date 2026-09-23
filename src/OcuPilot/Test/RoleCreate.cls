@@ -1,7 +1,7 @@
 /// <p>Pins Story 8.3's role create (AD-3, AD-10, AD-39, AD-54, AD-55): what
 /// <class>OcuPilot.Screen.Tool.RoleCreate</class> advertises, the one rule set both callers apply,
-/// the escalating-grant refusal on both callers and on the field it concerns, the one body the
-/// screen and the confirm send, the bootstrap's pre-marks, and the marked confirm.</p>
+/// a privileged grant permitted on both callers and marked destructive on the agent's, the one body
+/// the screen and the confirm send, the bootstrap's privileged marks, and the marked confirm.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and its protected state
 /// readable. Every write goes to <class>OcuPilot.Test.ProposalFixture</class>, so nothing here
 /// creates a role; the name-taken read and the prohibited set's absence read are live, so
@@ -78,12 +78,12 @@ Method TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets()
 
 /// <p>AD-55: every field rule refuses on the screen route and at the agent's mint alike, on the
 /// field it names; the name look-up and the required name are the screen's alone.</p>
-/// <p>Mutation: drop the duplicate check from
+/// <p>Mutations: drop the duplicate check from
 /// <method>OcuPilot.Area.Permissions.RoleCreateRules.ResourceViolation</method> -> the duplicate
-/// case goes red on both callers.</p>
+/// case goes red on both callers; drop its write-only check -> case 14 goes red on both.</p>
 Method TestEveryFieldRuleRefusesOnBothCallers()
 {
-    For tCase = 1:1:13 {
+    For tCase = 1:1:14 {
         Set tName = ..#PROBEROLE
         Set tArgs = ..Args()
         If tCase = 1 Set tName = $Translate($Justify("", 65), " ", "r"), tField = "Name", tCode = "ROLENAMELENGTH"
@@ -95,10 +95,12 @@ Method TestEveryFieldRuleRefusesOnBothCallers()
         If tCase = 7 Do tArgs.%Set("Resources", [{"Name": "%DB_USER"}]) Set tField = "Resources", tCode = "ROLERESOURCESSHAPE"
         If tCase = 8 Do tArgs.%Set("Resources", [{"Name": "OcuPilotNoSuchResource", "Permissions": "R"}]) Set tField = "Resources", tCode = "ROLERESOURCESUNKNOWN"
         If tCase = 9 Do tArgs.%Set("Resources", [{"Name": "%DB_USER", "Permissions": "U"}]) Set tField = "Resources", tCode = "ROLERESOURCESPERMISSIONS"
-        If tCase = 10 Do tArgs.%Set("Resources", [{"Name": "%DB_USER", "Permissions": "R"}, {"Name": "%db_user", "Permissions": "W"}]) Set tField = "Resources", tCode = "ROLERESOURCESDUPLICATE"
+        If tCase = 10 Do tArgs.%Set("Resources", [{"Name": "%DB_USER", "Permissions": "R"}, {"Name": "%db_user", "Permissions": "RW"}]) Set tField = "Resources", tCode = "ROLERESOURCESDUPLICATE"
         If tCase = 11 Do tArgs.%Set("GrantedRoles", ["OcuPilotNoSuchRole"]) Set tField = "GrantedRoles", tCode = "ROLEGRANTEDROLESUNKNOWN"
         If tCase = 12 Do tArgs.%Set("GrantedRoles", "%Developer", "string") Set tField = "GrantedRoles", tCode = "ROLEGRANTEDROLESSHAPE"
         If tCase = 13 Do tArgs.%Set("Resources", [{"Name": "%DB_USER", "Permissions": "RW", "EscalationOnly": true}]) Set tField = "Resources", tCode = "ROLERESOURCESSHAPE"
+        ; DW-1514: Write on a database carries Read, as the classic dialog's writeChanged ties them.
+        If tCase = 14 Do tArgs.%Set("Resources", [{"Name": "%DB_USER", "Permissions": "W"}]) Set tField = "Resources", tCode = "ROLERESOURCESWRITEONLY"
         Set tExpected = $Parameter("OcuPilot.Api.Error", tCode)
 
         Do ##class(OcuPilot.Test.ProposalFixture).Clear()
@@ -162,81 +164,55 @@ Method TestTheScreenAndTheConfirmSendOneBody()
     Do $$$AssertEquals(tBody.%GetTypeOf("EscalationOnly"), "unassigned", "nor escalation-only")
 }
 
-/// <p>AD-10 on both callers: a resource grant of <code>%All</code> or an <code>%Admin_*</code>
-/// resource, write on <code>%DB_IRISSECURITY</code>, and a granted role that escalates are each
-/// refused -- on the screen as one violation on the field it concerns carrying the server's
-/// sentence, at the agent's confirm inside the transition -- and none reaches the port. Read on
-/// <code>%DB_IRISSECURITY</code> is admitted.</p>
-/// <p>Mutations: remove the <code>role</code> step from
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.Created</method> -> every escalating leg goes red on
-/// both callers; drop the <code>%DB_IRISSECURITY</code> clause from
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.ResourceGrantEscalates</method> -> the
-/// <code>%DB_IRISSECURITY</code> legs go red on both callers.</p>
-Method TestAnEscalatingGrantIsRefusedOnBothCallers()
+/// <p>AD-10 on both callers: a resource grant of an <code>%Admin_*</code> resource and a granted
+/// role that grants <code>%All</code> or an administrative privilege are granted, not refused. The
+/// screen's Save reaches the port with each; the agent's proposal is minted <b>destructive</b> with
+/// the privilege-grant consequence and its confirm applies it. An ordinary grant -- write on
+/// <code>%DB_IRISSECURITY</code>, and its implicit role, among them -- is neither.</p>
+/// <p>Mutations: drop <code>tPrivileged</code> from the destructive value in
+/// <method>OcuPilot.Kernel.Proposal.Mint.Mint</method> -> the destructive legs go red; make
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.ResourcesEscalate</method> answer 0 -> the resource
+/// cases go red.</p>
+Method TestAPrivilegedGrantIsGrantedAtTheStrongestConfirmationOnBothCallers()
 {
-    Set tGrant = $Parameter(..#SET, "PRIVILEGEGRANT")
-    For tCase = 1:1:6 {
+    Set tPrivilegedCode = $Parameter("OcuPilot.Kernel.Proposal.Mint", "CONSEQUENCEPRIVILEGED")
+    For tCase = 1:1:7 {
         Set tArgs = ..Args()
+        Set tPrivileged = 1
         If tCase = 1 Do tArgs.%Set("Resources", [{"Name": "%Admin_Secure", "Permissions": "U"}]) Set tField = "Resources"
         If tCase = 2 Do tArgs.%Set("Resources", [{"Name": "%DB_USER", "Permissions": "RW"}, {"Name": "%Admin_Operate", "Permissions": "U"}]) Set tField = "Resources"
-        If tCase = 3 Do tArgs.%Set("Resources", [{"Name": "%DB_IRISSECURITY", "Permissions": "RW"}]) Set tField = "Resources"
-        If tCase = 4 Do tArgs.%Set("GrantedRoles", ["%Manager"]) Set tField = "GrantedRoles"
-        If tCase = 5 Do tArgs.%Set("GrantedRoles", ["%All"]) Set tField = "GrantedRoles"
-        If tCase = 6 Do tArgs.%Set("GrantedRoles", ["%DB_IRISSECURITY"]) Set tField = "GrantedRoles"
+        If tCase = 3 Do tArgs.%Set("GrantedRoles", ["%Manager"]) Set tField = "GrantedRoles"
+        If tCase = 4 Do tArgs.%Set("GrantedRoles", ["%All"]) Set tField = "GrantedRoles"
+        If tCase = 5 Do tArgs.%Set("Resources", [{"Name": "%DB_IRISSECURITY", "Permissions": "RW"}]) Set tField = "Resources", tPrivileged = 0
+        If tCase = 6 Do tArgs.%Set("GrantedRoles", ["%DB_IRISSECURITY"]) Set tField = "GrantedRoles", tPrivileged = 0
+        If tCase = 7 Set tField = "Resources", tPrivileged = 0
         Set tLabel = "case " _ tCase _ " (" _ tField _ ")"
 
         Do ##class(OcuPilot.Test.ProposalFixture).Clear()
         Set tSC = $ClassMethod(..#SCREEN, "Perform", ..#PROBEROLE, tArgs, .tCreated, .tHttp, .tFault, .tViolations)
-        Do $$$AssertEquals(+$Get(tViolations), 1, tLabel _ ": the screen answers one violation")
-        Do $$$AssertEquals(..CodeFor(.tViolations, tField), tGrant, tLabel _ ": on the field it concerns, as a privilege grant")
-        Do $$$AssertEquals($ListGet($Get(tViolations(1)), 3), ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tGrant), tLabel _ ": carrying the server's sentence")
-        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, tLabel _ ": and nothing reaches the port")
+        Do $$$AssertStatusOK(tSC, tLabel _ ": the screen's Save is accepted")
+        Do $$$AssertEquals(+$Get(tViolations), 0, tLabel _ ": with no violation")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 1, tLabel _ ": and the create reaches the port")
 
         Do ##class(OcuPilot.Test.ProposalFixture).Clear()
         Do ##class(OcuPilot.Test.ProposalFixture).ArmMissing()
         Set tSC = ..Mint(..#PROBEROLE, tArgs, .tProposal, .tHttp, .tFault)
         Do $$$AssertStatusOK(tSC, tLabel _ ": the agent's mint proposes it")
         If $$$ISERR(tSC) Continue
+        Do ..Stored(tProposal.%Get("proposalId"), .tDestructive, .tConsequence)
+        Do $$$AssertEquals(tDestructive, tPrivileged, tLabel _ ": the proposal is destructive exactly when the grant is privileged")
+        Do $$$AssertEquals(tConsequence, $Select(tPrivileged: tPrivilegedCode, 1: ""), tLabel _ ": and names the privilege as its consequence")
         Do ##class(OcuPilot.Test.ProposalFixture).ArmWrite("{}")
         Set tSC = ..Confirm(tProposal.%Get("proposalId"), .tHttp, .tCode, .tResult)
-        Do $$$AssertStatusNotOK(tSC, tLabel _ ": and its confirm refuses it")
-        Do $$$AssertEquals(tHttp, 403, tLabel _ ": at 403")
-        Do $$$AssertEquals(tCode, tGrant, tLabel _ ": on the privilege-grant predicate")
-        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, tLabel _ ": and nothing reaches the port")
+        Do $$$AssertStatusOK(tSC, tLabel _ ": and its confirm applies it")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 1, tLabel _ ": at the port")
     }
 
-    ; Both fields escalate: each carries its own row.
-    Set tArgs = ..Args()
-    Do tArgs.%Set("Resources", [{"Name": "%Admin_Secure", "Permissions": "U"}])
-    Do tArgs.%Set("GrantedRoles", ["%Manager"])
+    ; A seeded row the shipped mint cannot produce: an escalation-only flag, refused inside the
+    ; transition as a field nobody reviewed.
     Do ##class(OcuPilot.Test.ProposalFixture).Clear()
-    Set tSC = $ClassMethod(..#SCREEN, "Perform", ..#PROBEROLE, tArgs, .tCreated, .tHttp, .tFault, .tViolations)
-    Do $$$AssertEquals(+$Get(tViolations), 2, "two escalating fields answer two violations")
-    Do $$$AssertEquals(..CodeFor(.tViolations, "Resources") _ "|" _ ..CodeFor(.tViolations, "GrantedRoles"), tGrant _ "|" _ tGrant, "one on each field")
-
-    ; Read on the security database is not write on it.
-    Set tArgs = ..Args()
-    Do tArgs.%Set("Resources", [{"Name": "%DB_IRISSECURITY", "Permissions": "R"}])
-    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
-    Set tSC = $ClassMethod(..#SCREEN, "Perform", ..#PROBEROLE, tArgs, .tCreated, .tHttp, .tFault, .tViolations)
-    Do $$$AssertStatusOK(tSC, "read on %DB_IRISSECURITY is admitted on the screen")
-    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 1, "and reaches the port")
-    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
-    Do ##class(OcuPilot.Test.ProposalFixture).ArmMissing()
-    Set tSC = ..Mint(..#PROBEROLE, tArgs, .tProposal, .tHttp, .tFault)
-    Do $$$AssertStatusOK(tSC, "and the agent's mint proposes it")
-    If $$$ISOK(tSC) {
-        Do ##class(OcuPilot.Test.ProposalFixture).ArmWrite("{}")
-        Set tSC = ..Confirm(tProposal.%Get("proposalId"), .tHttp, .tCode, .tResult)
-        Do $$$AssertStatusOK(tSC, "whose confirm applies it")
-    }
-
-    ; Seeded rows the shipped mint cannot produce, refused inside the transition.
-    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
-    Set tSC = ..SeedAndConfirm({"Resources": [{"Name": "%Admin_Secure", "Permissions": "U"}]}, .tHttp, .tCode)
-    Do $$$AssertEquals(tHttp _ " " _ tCode, "403 " _ tGrant, "a seeded administrative grant is refused as a privilege grant")
     Set tSC = ..SeedAndConfirm({"Description": "probe", "EscalationOnly": true}, .tHttp, .tCode)
-    Do $$$AssertEquals(tHttp _ " " _ tCode, "403 " _ $Parameter(..#SET, "UNCOVEREDFIELD"), "and a seeded escalation-only flag as a field nobody reviewed")
+    Do $$$AssertEquals(tHttp _ " " _ tCode, "403 " _ $Parameter(..#SET, "UNCOVEREDFIELD"), "a seeded escalation-only flag is refused as a field nobody reviewed")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "with no write")
 
     ; The screen asks the set about the caller's own fields, so the flag is refused there too rather
@@ -249,12 +225,12 @@ Method TestAnEscalatingGrantIsRefusedOnBothCallers()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "and nothing reaches the port")
 }
 
-/// <p>AD-39, AD-53: the bootstrap's resource list carries each resource's admissible letters and
-/// pre-marks, from the prohibited set, the grants it would refuse; the role list is 8.2's. The
-/// client holds no copy of either rule.</p>
+/// <p>AD-10, AD-39: the bootstrap's resource list carries each resource's admissible letters and
+/// marks, from the prohibited set's classifier, the grants that grant <code>%All</code> or an
+/// administrative privilege; the role list is 8.2's. The client holds no copy of either rule.</p>
 /// <p>Mutation: make <method>OcuPilot.Kernel.Proposal.Prohibited.ResourceGrantsAdministrativePrivilege</method>
-/// answer 0 -> the <code>%Admin_Secure</code> pre-mark goes red.</p>
-Method TestTheBootstrapPreMarksWhatTheSetRefuses()
+/// answer 0 -> the <code>%Admin_Secure</code> mark goes red.</p>
+Method TestTheBootstrapMarksWhatTheClassifierCallsPrivileged()
 {
     Set tSC = $ClassMethod(..#RULES, "Resources", .tResources)
     Do $$$AssertStatusOK(tSC, "the resources are listed through the tool's port")
@@ -273,9 +249,8 @@ Method TestTheBootstrapPreMarksWhatTheSetRefuses()
     Do $$$AssertEquals(tSecure.%Get("permissions"), "U", "and admits Use alone")
     Do $$$AssertEquals(tUser.%Get("privileged"), 0, "%DB_USER is not")
     Do $$$AssertEquals(tUser.%Get("permissions"), "RW", "and admits read and write")
-    Do $$$AssertEquals(tUser.%Get("privilegedPermissions"), "", "with no escalating letter")
-    Do $$$AssertEquals(tSecurity.%Get("privileged"), 0, "%DB_IRISSECURITY is not privileged as a whole")
-    Do $$$AssertEquals(tSecurity.%Get("privilegedPermissions"), "W", "but its write letter is marked")
+    Do $$$AssertEquals(tSecurity.%Get("privileged"), 0, "nor is %DB_IRISSECURITY, at any permission")
+    Do $$$AssertEquals(tSecurity.%GetTypeOf("privilegedPermissions"), "unassigned", "and no entry marks a letter")
     Do $$$AssertEquals($ClassMethod(..#RULES, "AdmissiblePermissions", "OcuPilotAdmin"), "RWU", "a resource with no system prefix admits all three letters")
 
     Set tSC = ##class(OcuPilot.Area.Permissions.UserCreateRules).Roles(.tRoles)
@@ -287,7 +262,7 @@ Method TestTheBootstrapPreMarksWhatTheSetRefuses()
     }
     Do $$$AssertEquals($Get(tRoleByName("%MANAGER")), 1, "%Manager is marked privileged")
     Do $$$AssertEquals($Get(tRoleByName("%DEVELOPER")), 0, "%Developer is not")
-    Do $$$AssertEquals($Get(tRoleByName("%DB_IRISSECURITY")), 1, "the %DB_IRISSECURITY role is, through the write it carries")
+    Do $$$AssertEquals($Get(tRoleByName("%DB_IRISSECURITY")), 0, "nor is the %DB_IRISSECURITY role")
 }
 
 /// <p>AD-15, AD-41, AD-14: a confirmed create is marked, its ledger row names the sent fields, and
@@ -391,6 +366,17 @@ ClassMethod Args() As %DynamicObject
     Do tArgs.%Set("Resources", [{"Name": "%DB_USER", "Permissions": "RW"}])
     Do tArgs.%Set("GrantedRoles", ["%Developer"])
     Quit tArgs
+}
+
+/// <p>The stored proposal <var>pKey</var>'s destructive marking and consequence code.</p>
+ClassMethod Stored(pKey As %String, Output pDestructive As %Boolean, Output pConsequence As %String)
+{
+    Set pDestructive = ""
+    Set pConsequence = "<absent>"
+    Set tSC = $ClassMethod("OcuPilot.Kernel.State.Propose", "GuardedByKey", pKey, .tFound, .tValues)
+    If $$$ISERR(tSC) || '$Get(tFound) Quit
+    Set pDestructive = +$Get(tValues("destructive"))
+    Set pConsequence = $Get(tValues("consequence"))
 }
 
 /// <p>The canonical reference of <parameter>PROBEROLE</parameter>.</p>

@@ -67,6 +67,12 @@ Parameter SECURITYCLASS = "Security.Applications";
 /// <p>The properties whose <code>MAXLEN</code> the form renders, comma-separated.</p>
 Parameter LENGTHFIELDS = "Name,Description,NameSpace,Resource,DispatchClass,WSGIAppName,WSGICallable,WSGIAppLocation";
 
+/// <p>The endpoint and request type the application-roles picker lists roles through, on the
+/// create tool's own port (AD-52).</p>
+Parameter ROLEENDPOINT = "Security.Role";
+
+Parameter ROLELISTTYPE = "LIST";
+
 /// <p>The longest a web application's own name may be. <property>Security.Applications.Name</property>
 /// is the id key and carries no <code>MAXLEN</code> of its own, so the bound the form renders for
 /// it is the one <method>OcuPilot.Area.WebApp.Create</method> refuses at.</p>
@@ -75,10 +81,12 @@ Parameter NAMEMAXLENGTH As INTEGER = 64;
 /// <p>Answer <code>GET /web-applications/form</code>: everything the create form needs before it
 /// can draw a field (AD-39, DW-376).</p>
 /// <p>The body is
-/// <code>{authenticationMethods, defaultMethod, requiredFields, conditionalFields, wsgiTypes, maxLengths, rules, wsgiRoot}</code>.
+/// <code>{authenticationMethods, defaultMethod, requiredFields, conditionalFields, wsgiTypes, maxLengths, rules, wsgiRoot, roles}</code>.
 /// <code>rules</code> is one <code>{field, code, reason}</code> per rule the server applies, in the
 /// same shape a refusal's own <code>detail.violations</code> row takes -- so the client renders an
-/// inline blur refusal and a failed Save through one path and holds no copy of its own.</p>
+/// inline blur refusal and a failed Save through one path and holds no copy of its own.
+/// <code>roles</code> is <method>Roles</method>'s <code>[{name, privileged}]</code>, for the
+/// application-roles control.</p>
 ClassMethod HandleForm() As %Status
 {
     Set tSC = $$$OK
@@ -86,6 +94,11 @@ ClassMethod HandleForm() As %Status
         Set tGateSC = ..Gate(.tRefused)
         If tRefused || $$$ISERR(tGateSC) {
             Set tSC = tGateSC
+            Quit
+        }
+        Set tRolesSC = ..Roles(.tRoles)
+        If $$$ISERR(tRolesSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tRolesSC))
             Quit
         }
         Set tBody = {}
@@ -99,6 +112,7 @@ ClassMethod HandleForm() As %Status
         ; AD-21: the root a WSGI or ASGI directory name resolves under, computed for this read, so
         ; the form can show the resolved path read-only. The server resolves again at the write.
         Do tBody.%Set("wsgiRoot", ##class(OcuPilot.Area.WebApp.Location).Root(), "string")
+        Do tBody.%Set("roles", tRoles)
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tBody)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -314,6 +328,8 @@ ClassMethod Rules() As %DynamicArray
     Set tSpec = tSpec _ ",WSGIAppLocation:" _ ##class(OcuPilot.Api.Error).#WEBAPPWSGILOCATION
     Set tSpec = tSpec _ ",WSGIAppLocation:" _ ##class(OcuPilot.Api.Error).#WEBAPPWSGIAPPLOCATIONSHAPE
     Set tSpec = tSpec _ ",WSGIType:" _ ##class(OcuPilot.Api.Error).#WEBAPPWSGITYPE
+    Set tSpec = tSpec _ ",MatchRoles:" _ ##class(OcuPilot.Api.Error).#WEBAPPMATCHROLESSHAPE
+    Set tSpec = tSpec _ ",MatchRoles:" _ ##class(OcuPilot.Api.Error).#WEBAPPMATCHROLESUNKNOWN
     For tI = 1:1:$Length(tSpec, ",") {
         Set tPair = $Piece(tSpec, ",", tI)
         Set tCode = $Piece(tPair, ":", 2)
@@ -326,6 +342,38 @@ ClassMethod Rules() As %DynamicArray
         Do tRows.%Push(tRow)
     }
     Quit tRows
+}
+
+/// <p>The roles this instance holds, as <code>[{name, privileged}]</code> in the order the vendor
+/// lists them, read through the create tool's own port (AD-52). <code>privileged</code> is
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.RoleGrantsAdministrativePrivilege</method>'s answer,
+/// the one the agent's proposal is marked destructive by, so the form's consequence line and the
+/// card's cannot disagree (AD-10).</p>
+ClassMethod Roles(Output pRoles As %DynamicArray) As %Status
+{
+    Set pRoles = []
+    Set tSC = $$$OK
+    Try {
+        Set tClass = ##class(OcuPilot.Area.WebApp.Create).ToolClass()
+        Kill tQuery
+        Set tSC = $ClassMethod($ClassMethod(tClass, "PortClass"), "Invoke", ..#ROLEENDPOINT, ..#ROLELISTTYPE, .tQuery, "", .tList, .tHttp, .tFault)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject(tList) || 'tList.%IsA("%Library.DynamicArray") Quit
+        Set tIterator = tList.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            If '$IsObject(tRow) Continue
+            Set tName = tRow.%Get("Name")
+            If tName = "" Continue
+            Set tEntry = {}
+            Do tEntry.%Set("name", tName, "string")
+            Do tEntry.%Set("privileged", ##class(OcuPilot.Kernel.Proposal.Prohibited).RoleGrantsAdministrativePrivilege(tName), "boolean")
+            Do pRoles.%Push(tEntry)
+        }
+    } Catch ex {
+        Set pRoles = []
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>A comma-separated list as a <class>%DynamicArray</class> of strings.</p>

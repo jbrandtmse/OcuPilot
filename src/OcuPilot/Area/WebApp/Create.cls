@@ -56,6 +56,10 @@ Parameter FIELDAUTHE = "AutheEnabled";
 /// <p>The namespace field the vendor requires on a create and on no other request.</p>
 Parameter FIELDNAMESPACE = "NameSpace";
 
+/// <p>The application-roles field: an array of <code>{MatchRole, TargetRoles}</code> entries
+/// (<parameter>OcuPilot.Screen.Tool.WebAppCreate.MATCHROLESARGUMENT</parameter>).</p>
+Parameter FIELDMATCHROLES = "MatchRoles";
+
 /// <p>The characters a web application's name may not carry. <code>%2F</code> and <code>%00</code>
 /// are refused by the web server before IRIS sees them (AD-13), so a name holding a percent sign
 /// or a space is one no route could address afterwards.</p>
@@ -170,10 +174,10 @@ ClassMethod Perform(pName As %String, pArgs As %DynamicObject, Output pCreated A
         ; refused on the prohibition rather than on whichever field rule happened to run first.
         ;
         ; **The payload it is asked about is the CALLER's own fields, not the composed body.**
-        ; Compose keeps only what the tool admits, so a body carrying MatchRoles would reach the
-        ; vendor with that key silently dropped -- a 201 for a request AD-10 says is refused. The
-        ; agent cannot author such a key at all (its schema is closed), so this is the screen
-        ; path's own half of "refused on the instance, whatever the caller".
+        ; Compose keeps only what the tool admits, so a body carrying a field it does not admit
+        ; would reach the vendor with that key silently dropped -- a 201 for a request AD-10 says is
+        ; refused. The agent cannot author such a key at all (its schema is closed), so this is the
+        ; screen path's own half of "refused on the instance, whatever the caller".
         Set tRefSC = ##class(OcuPilot.Kernel.EntityRef).Key($ClassMethod(..#DESCRIPTORCLASS, "PrimaryEntityType"), ##class(OcuPilot.Kernel.EntityRef).ScopeFor($ClassMethod(..#DESCRIPTORCLASS, "Scope")), pName, .tTargetRef)
         If $$$ISERR(tRefSC) {
             Set tSC = tRefSC
@@ -274,8 +278,66 @@ ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolatio
             Do ..Add(.pViolations, ..#FIELDDISPATCH, ##class(OcuPilot.Api.Error).#WEBAPPDISPATCHREQUIRED)
         }
 
+        Set tSC = ..MatchRolesViolation(pArgs, .pViolations)
+        If $$$ISERR(tSC) Quit
+
         Do ..AddLengthViolations(pArgs, .pViolations)
     } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Add the application roles' violation to <var>pViolations</var>, or none: a member that is not
+/// a list of <code>{MatchRole, TargetRoles}</code> objects -- a string matching role, possibly
+/// empty, and a list of role names (<parameter>OcuPilot.Api.Error.WEBAPPMATCHROLESSHAPE</parameter>)
+/// -- or one naming a role the instance does not hold
+/// (<parameter>OcuPilot.Api.Error.WEBAPPMATCHROLESUNKNOWN</parameter>). An absent member grants no
+/// role. Role names are looked up in <code>%SYS</code> by AD-16's explicit save and restore.</p>
+ClassMethod MatchRolesViolation(pArgs As %DynamicObject, Output pViolations) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    If '$IsObject(pArgs) Quit tSC
+    Set tType = pArgs.%GetTypeOf(..#FIELDMATCHROLES)
+    If tType = "unassigned" Quit tSC
+    Set tShape = (tType '= "array")
+    Set tNames = ""
+    If 'tShape {
+        Set tIterator = pArgs.%Get(..#FIELDMATCHROLES).%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tEntry) {
+            If '$IsObject(tEntry) || 'tEntry.%IsA("%Library.DynamicObject") Set tShape = 1 Quit
+            If tEntry.%GetTypeOf("MatchRole") '= "string" Set tShape = 1 Quit
+            If tEntry.%GetTypeOf("TargetRoles") '= "array" Set tShape = 1 Quit
+            Set tKeys = tEntry.%GetIterator()
+            While tKeys.%GetNext(.tKey, .tIgnored) {
+                If (tKey '= "MatchRole") && (tKey '= "TargetRoles") Set tShape = 1
+            }
+            If tShape Quit
+            If tEntry.%Get("MatchRole") '= "" Set tNames = tNames _ $ListBuild(tEntry.%Get("MatchRole"))
+            Set tTargets = tEntry.%Get("TargetRoles").%GetIterator()
+            While tTargets.%GetNext(.tTargetIndex, .tRole, .tRoleType) {
+                If (tRoleType '= "string") || (tRole = "") Set tShape = 1 Quit
+                Set tNames = tNames _ $ListBuild(tRole)
+            }
+            If tShape Quit
+        }
+    }
+    If tShape {
+        Do ..Add(.pViolations, ..#FIELDMATCHROLES, ##class(OcuPilot.Api.Error).#WEBAPPMATCHROLESSHAPE)
+        Quit tSC
+    }
+    If tNames = "" Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tUnknown = 0
+        Set $NAMESPACE = "%SYS"
+        For tI = 1:1:$ListLength(tNames) {
+            If '##class(Security.Roles).Exists($List(tNames, tI)) Set tUnknown = 1 Quit
+        }
+        Set $NAMESPACE = tOrigNS
+        If tUnknown Do ..Add(.pViolations, ..#FIELDMATCHROLES, ##class(OcuPilot.Api.Error).#WEBAPPMATCHROLESUNKNOWN)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
     Quit tSC

@@ -5,8 +5,9 @@
 /// <method>Taken</method>).</p>
 /// <p><b>Every sentence is <method>OcuPilot.Api.Error.ReasonForViolation</method>'s</b>, and the
 /// bootstrap read serves the same sentences, so an inline blur refusal and a failed Save are one
-/// wording. The privilege-grant sentence the pickers are marked with is the prohibited set's own
-/// (<method>OcuPilot.Kernel.Proposal.Prohibited.ReasonFor</method>).</p>
+/// wording. Which choices grant privilege is the prohibited set's one classifier
+/// (<method>OcuPilot.Kernel.Proposal.Prohibited.GrantsPrivilegeByEffect</method>'s per-choice
+/// halves), never decided here.</p>
 /// <p>Role and resource names are looked up in <code>%SYS</code> by AD-16's explicit save and
 /// restore; both compare without regard to case, as <class>Security.Roles</class> and
 /// <class>Security.Resources</class> do.</p>
@@ -139,7 +140,7 @@ ClassMethod NameViolation(pName As %String, Output pViolations)
 ClassMethod AdmissiblePermissions(pResource As %String) As %String
 {
     Set tName = $ZConvert(pResource, "U")
-    If $Extract(tName, 1, $Length(..#DATABASEPREFIX)) = $ZConvert(..#DATABASEPREFIX, "U") Quit "RW"
+    If ..IsDatabaseResource(pResource) Quit "RW"
     Set tUseOnly = 0
     For tI = 1:1:$Length(..#USEONLYPREFIXES, ",") {
         Set tPrefix = $ZConvert($Piece(..#USEONLYPREFIXES, ",", tI), "U")
@@ -147,6 +148,13 @@ ClassMethod AdmissiblePermissions(pResource As %String) As %String
     }
     If tUseOnly Quit "U"
     Quit ..#LETTERS
+}
+
+/// <p>Whether <var>pResource</var> is a database's resource (<parameter>DATABASEPREFIX</parameter>),
+/// compared without regard to case.</p>
+ClassMethod IsDatabaseResource(pResource As %String) As %Boolean
+{
+    Quit $Extract($ZConvert(pResource, "U"), 1, $Length(..#DATABASEPREFIX)) = $ZConvert(..#DATABASEPREFIX, "U")
 }
 
 /// <p>Whether <var>pPermissions</var> is a grant resource <var>pResource</var> admits: at least one
@@ -169,9 +177,10 @@ ClassMethod PermissionsAdmitted(pResource As %String, pPermissions As %String) A
 /// <p>Add the resource grants' violations to <var>pViolations</var>, each code at most once: a
 /// member that is not a list of <code>{Name, Permissions}</code> objects naming a resource
 /// (<code>SHAPE</code>, which stops the other checks); a resource this instance does not hold
-/// (<code>UNKNOWN</code>); a resource granted twice (<code>DUPLICATE</code>); and a grant whose
-/// letters its resource does not admit (<code>PERMISSIONS</code>). An absent member grants
-/// nothing.</p>
+/// (<code>UNKNOWN</code>); a resource granted twice (<code>DUPLICATE</code>); a grant whose
+/// letters its resource does not admit (<code>PERMISSIONS</code>); and a database's resource
+/// granted Write without Read (<code>WRITEONLY</code>, the classic dialog's
+/// <code>writeChanged</code>). An absent member grants nothing.</p>
 ClassMethod ResourceViolation(pArgs As %DynamicObject, Output pViolations) As %Status
 {
     Set tSC = $$$OK
@@ -218,15 +227,19 @@ ClassMethod ResourceViolation(pArgs As %DynamicObject, Output pViolations) As %S
     Kill tSeen
     Set tDuplicate = 0
     Set tLetters = 0
+    Set tWriteOnly = 0
     For tI = 1:1:$ListLength(tGrants) {
         Set tName = $List($List(tGrants, tI), 1)
+        Set tPermissions = $ZConvert($List($List(tGrants, tI), 2), "U")
         Set tKey = $ZConvert(tName, "U")
         If $Data(tSeen(tKey)) Set tDuplicate = 1
         Set tSeen(tKey) = ""
-        If '..PermissionsAdmitted(tName, $List($List(tGrants, tI), 2)) Set tLetters = 1
+        If '..PermissionsAdmitted(tName, tPermissions) Set tLetters = 1
+        If ..IsDatabaseResource(tName) && (tPermissions [ "W") && '(tPermissions [ "R") Set tWriteOnly = 1
     }
     If tDuplicate Do ..Add(.pViolations, ..#FIELDRESOURCES, ##class(OcuPilot.Api.Error).#ROLERESOURCESDUPLICATE)
     If tLetters Do ..Add(.pViolations, ..#FIELDRESOURCES, ##class(OcuPilot.Api.Error).#ROLERESOURCESPERMISSIONS)
+    If tWriteOnly Do ..Add(.pViolations, ..#FIELDRESOURCES, ##class(OcuPilot.Api.Error).#ROLERESOURCESWRITEONLY)
     Quit tSC
 }
 
@@ -271,16 +284,14 @@ ClassMethod GrantedRoleViolation(pArgs As %DynamicObject, Output pViolations) As
 }
 
 /// <p>Answer <code>GET /roles/form</code>: everything the create form needs before it can draw a
-/// field (AD-39): <code>{requiredFields, maxLengths, rules, roles, resources,
-/// privilegeReason}</code>.</p>
+/// field (AD-39): <code>{requiredFields, maxLengths, rules, roles, resources}</code>.</p>
 /// <p><code>roles</code> is <method>OcuPilot.Area.Permissions.UserCreateRules.Roles</method>'s
 /// <code>[{name, privileged}]</code>. <code>resources</code> is
-/// <code>[{name, permissions, privileged, privilegedPermissions}]</code>, listed through the tool's
-/// own port: <code>permissions</code> the letters the resource admits
-/// (<method>AdmissiblePermissions</method>), <code>privileged</code> whether a grant of it
-/// escalates at any permission, and <code>privilegedPermissions</code> the admitted letters whose
-/// grant escalates -- each asked of the prohibited set, never decided here. <code>privilegeReason</code>
-/// is the prohibited set's privilege-grant sentence, the one a refusal on either field carries.</p>
+/// <code>[{name, permissions, privileged}]</code>, listed through the tool's own port:
+/// <code>permissions</code> the letters the resource admits (<method>AdmissiblePermissions</method>)
+/// and <code>privileged</code> whether a grant of it grants <code>%All</code> or an administrative
+/// privilege, asked of the prohibited set's classifier. The form states the grant's consequence
+/// while a privileged choice is selected; it refuses nothing.</p>
 ClassMethod HandleForm() As %Status
 {
     Set tSC = $$$OK
@@ -305,7 +316,6 @@ ClassMethod HandleForm() As %Status
         Do tBody.%Set("rules", ..Rules())
         Do tBody.%Set("roles", tRoles)
         Do tBody.%Set("resources", tResources)
-        Do tBody.%Set("privilegeReason", ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(##class(OcuPilot.Kernel.Proposal.Prohibited).#PRIVILEGEGRANT), "string")
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tBody)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -373,9 +383,8 @@ ClassMethod Taken(pName As %String, Output pTaken As %Boolean) As %Status
     Quit tSC
 }
 
-/// <p>The resources this instance holds, as
-/// <code>[{name, permissions, privileged, privilegedPermissions}]</code> in the order the vendor
-/// lists them, read through the create tool's own port (AD-52).</p>
+/// <p>The resources this instance holds, as <code>[{name, permissions, privileged}]</code> in the
+/// order the vendor lists them, read through the create tool's own port (AD-52).</p>
 ClassMethod Resources(Output pResources As %DynamicArray) As %Status
 {
     Set pResources = []
@@ -391,17 +400,10 @@ ClassMethod Resources(Output pResources As %DynamicArray) As %Status
             If '$IsObject(tRow) Continue
             Set tName = tRow.%Get("Name")
             If tName = "" Continue
-            Set tAdmitted = ..AdmissiblePermissions(tName)
-            Set tEscalating = ""
-            For tI = 1:1:$Length(tAdmitted) {
-                Set tLetter = $Extract(tAdmitted, tI)
-                If ##class(OcuPilot.Kernel.Proposal.Prohibited).ResourceGrantEscalates(tName, tLetter) Set tEscalating = tEscalating _ tLetter
-            }
             Set tEntry = {}
             Do tEntry.%Set("name", tName, "string")
-            Do tEntry.%Set("permissions", tAdmitted, "string")
+            Do tEntry.%Set("permissions", ..AdmissiblePermissions(tName), "string")
             Do tEntry.%Set("privileged", ##class(OcuPilot.Kernel.Proposal.Prohibited).ResourceGrantsAdministrativePrivilege(tName), "boolean")
-            Do tEntry.%Set("privilegedPermissions", tEscalating, "string")
             Do pResources.%Push(tEntry)
         }
     } Catch ex {

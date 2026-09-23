@@ -310,49 +310,66 @@ Method TestTheConfirmedBodyCarriesTheServerDerivedPath()
     Do $$$AssertEquals(tSent.%Get(..#DERIVEDFIELD), ##class(OcuPilot.Area.WebApp.Location).Root() _ ..#WSGILOCATION _ "/", "the body the port received carries the path the tool resolved from the WSGI directory name")
 }
 
-/// <p>AD-10 and AD-54 inside the atomic transition: a stored create payload carrying
-/// <code>MatchRoles</code> is refused at the confirm, before the port, whatever put it there.</p>
-/// <p><b>The shipped mint cannot produce such a row</b> -- the field is outside the tool's schema
-/// and <method>OcuPilot.Kernel.Proposal.Mint.Compose</method> drops anything outside
-/// <method>SettableFields</method> -- so the row is seeded, which is what makes the
-/// in-transition gate observable rather than merely present. It is the agent path's half of
-/// "refused on the instance, whatever the caller"; the screen path's half is
-/// <class>OcuPilot.Test.WebAppCreate</class>'s.</p>
-/// <p>Mutation: remove the prohibited call from
-/// <method>OcuPilot.Kernel.Proposal.Confirm.Transition</method>, or make
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.CreatesOf</method> answer 0 -> this goes red with a
-/// write at the port.</p>
-Method TestASeededCreateCarryingApplicationRolesIsRefusedInsideTheTransition()
+/// <p>AD-10 at the mint: a create granting a privileged application role is proposable, and the
+/// mint marks <b>that proposal</b> destructive and names the privilege in its consequence -- one
+/// combined code when the application is also unauthenticated, never two. A create granting an
+/// ordinary role, or none, carries neither. The confirm applies the privileged grant.</p>
+/// <p>Mutations: drop <code>tPrivileged</code> from the destructive value in
+/// <method>OcuPilot.Kernel.Proposal.Mint.Mint</method> -> the destructive legs go red; make
+/// <method>OcuPilot.Kernel.Proposal.Mint.ConsequenceOf</method> ignore <var>pPrivileged</var> -> the
+/// consequence legs go red; make <method>OcuPilot.Screen.Tool.WebAppCreate.Consequence</method>
+/// ignore it -> the combined leg goes red.</p>
+Method TestAPrivilegedApplicationRoleIsMintedDestructiveAndNamed()
 {
-    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
-    Do $$$AssertStatusOK(tSC, "a probe turn is seeded")
-    If $$$ISERR(tSC) Quit
+    Set tPrivileged = $Parameter("OcuPilot.Kernel.Proposal.Mint", "CONSEQUENCEPRIVILEGED")
+    Set tCombined = $Parameter(..#TOOL, "CONSEQUENCEUNAUTHENTICATEDPRIVILEGED")
+    ; The codes are a wire contract with the client's proposal-view.ts, which matches the literals.
+    Do $$$AssertEquals(tPrivileged, "GRANT.PRIVILEGED", "the privileged-grant code is the literal the card resolves")
+    Do $$$AssertEquals(tCombined, "WEBAPP.UNAUTHENTICATEDPRIVILEGED", "and so is the combined one")
+    For tCase = 1:1:4 {
+        Set tArgs = ..Args()
+        If tCase '= 4 Do tArgs.%Set("MatchRoles", ##class(%DynamicAbstractObject).%FromJSON("[{""MatchRole"":"""",""TargetRoles"":[""" _ $Select(tCase = 3: "%Developer", 1: "%All") _ """]}]"))
+        If tCase = 2 Do tArgs.%Set("AutheEnabled", 64, "number")
+        Set tExpectedDestructive = (tCase < 3)
+        Set tExpectedConsequence = $Case(tCase, 1: tPrivileged, 2: tCombined, : "")
+        Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+        Do ##class(OcuPilot.Test.ProposalFixture).ArmMissing()
+        Set tSC = ..Mint(..#TARGET, tArgs, .tProposal, .tHttp, .tFault)
+        Do $$$AssertStatusOK(tSC, "case " _ tCase _ ": the create is minted")
+        If $$$ISERR(tSC) Continue
+        Set tSC = $ClassMethod(..#STORE, "GuardedByKey", tProposal.%Get("proposalId"), .tFound, .tValues)
+        Do $$$AssertEquals(+$Get(tValues("destructive")), tExpectedDestructive, "case " _ tCase _ ": the proposal is destructive exactly when it grants privilege")
+        Do $$$AssertEquals($Get(tValues("consequence")), tExpectedConsequence, "case " _ tCase _ ": and its consequence names it")
+        If tCase '= 1 Continue
+        Do ##class(OcuPilot.Test.ProposalFixture).ArmWrite("{}")
+        Set tSC = ..Confirm(tProposal.%Get("proposalId"), .tHttp, .tCode, .tResult)
+        Do $$$AssertStatusOK(tSC, "the privileged create's confirm applies it")
+        Set tSent = ##class(%DynamicAbstractObject).%FromJSON(##class(OcuPilot.Test.ProposalFixture).LastWriteBody())
+        Do $$$AssertEquals(tSent.%Get("MatchRoles").%ToJSON(), tArgs.%Get("MatchRoles").%ToJSON(), "and the port receives the application roles")
+    }
+}
 
-    Set tRefSC = ##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", ..#TARGET, .tRef)
-    Do $$$AssertStatusOK(tRefSC, "the canonical reference is built")
-    Set tFpSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(##class(OcuPilot.Kernel.Proposal.Mint).AbsenceState(0), "", .tFingerprint)
-    Do $$$AssertStatusOK(tFpSC, "the absence digest a create's mint would have stored is taken")
-    If $$$ISERR(tFpSC) Quit
-
-    Set tPayload = {}
-    Do tPayload.%Set("NameSpace", $Namespace, "string")
-    Do tPayload.%Set("MatchRoles", ##class(%DynamicAbstractObject).%FromJSON("[{""MatchRole"":"""",""TargetRoles"":[""%All""]}]"))
-    Kill tValues
-    Set tValues("user") = $Username
-    Set tValues("turnKey") = tTurnKey
-    Set tValues("toolName") = $Parameter(..#TOOL, "TOOLNAME")
-    Set tValues("targetRef") = tRef
-    Set tValues("fingerprint") = tFingerprint
-    Set tValues("arguments") = tPayload.%ToJSON()
-    Set tValues("payload") = tPayload.%ToJSON()
-    Set tValues("diff") = "[]"
-    Set tValues("unchangedCount") = 0
-    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedProposal(.tValues, .tKey, .tToken)
-    Do $$$AssertStatusOK(tSC, "and a create proposal carrying application roles is seeded")
-    If $$$ISERR(tSC) Quit
-
+/// <p>AD-10 inside the atomic transition: a create at OcuPilot's own path that sets application
+/// roles is refused <code>PRIVILEGEGRANT</code> at the confirm, before the port -- the agent's half
+/// of AD-10's one remaining privilege-grant refusal; the screen's half is
+/// <class>OcuPilot.Test.WebAppCreate</class>'s. The shipped mint proposes it, because the prohibited
+/// set is asked at the write.</p>
+/// <p>Mutation: make <method>OcuPilot.Kernel.Proposal.Prohibited.Created</method> answer
+/// <code>SERVINGPATH</code> whatever an own-path create sets -> the code assertion goes red.</p>
+Method TestApplicationRolesOnOcuPilotsOwnPathAreRefusedInsideTheTransition()
+{
+    Set tSC = ##class(OcuPilot.Install.Roster).Application("api", .tApplication)
+    Do $$$AssertStatusOK(tSC, "the roster names OcuPilot's own API application")
+    If '$IsObject($Get(tApplication)) Quit
+    Set tName = tApplication.%Get("path") _ "/ocupilotprobe"
+    Set tArgs = ..Args()
+    Do tArgs.%Set("MatchRoles", ##class(%DynamicAbstractObject).%FromJSON("[{""MatchRole"":"""",""TargetRoles"":[""%All""]}]"))
     Do ##class(OcuPilot.Test.ProposalFixture).ArmMissing()
-    Set tSC = ..Confirm(tKey, .tHttp, .tCode, .tResult)
+    Set tSC = ..Mint(tName, tArgs, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the mint proposes it")
+    If $$$ISERR(tSC) Quit
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmMissing()
+    Set tSC = ..Confirm(tProposal.%Get("proposalId"), .tHttp, .tCode, .tResult)
     Do $$$AssertStatusNotOK(tSC, "the confirm refuses it")
     Do $$$AssertEquals(tHttp, 403, "at 403")
     Do $$$AssertEquals(tCode, $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "PRIVILEGEGRANT"), "on the privilege-grant predicate")

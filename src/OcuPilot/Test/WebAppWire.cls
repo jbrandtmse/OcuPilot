@@ -114,7 +114,8 @@ Method TestTheNameReadAnswersFreeAndTakenAndRefusesAnEmptyName()
 }
 
 /// <p><code>POST /web-applications</code>: the create, its field-level refusals and AD-10's
-/// prohibited refusals, each over the wire (AD-12, AD-39, AD-55).</p>
+/// prohibited refusals, each over the wire (AD-12, AD-39, AD-55). Application roles are refused on
+/// OcuPilot's own application and granted, <code>%All</code> included, on any other.</p>
 /// <p>Mutation: render the fault's <code>error</code> where
 /// <method>OcuPilot.Area.WebApp.Create.HandleCreate</method> renders its <code>code</code> -> the
 /// prohibited legs lose their codes and go red.</p>
@@ -131,17 +132,19 @@ Method TestTheCreateAnswersOneEnvelopeForEachOutcome()
     }
     Do $$$AssertEquals(..Exists(..#PROBEAPP), 0, "and nothing was created")
 
-    ; AD-10: a role grant through a path, refused whatever the caller.
-    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#CREATEPATH, .tStatus, .tBody, "{""Name"":""" _ ..#PROBEAPP _ """,""NameSpace"":""" _ $Namespace _ """,""AutheEnabled"":32,""MatchRoles"":[{""MatchRole"":"""",""TargetRoles"":[""%All""]}]}", "application/json")
-    Do $$$AssertStatusOK(tSC, "a create carrying application roles answers")
+    ; AD-10: application roles on OcuPilot's own application, refused whatever the caller.
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#CREATEPATH, .tStatus, .tBody, "{""Name"":""" _ ..ApiPath() _ """,""NameSpace"":""" _ $Namespace _ """,""AutheEnabled"":32,""MatchRoles"":[{""MatchRole"":"""",""TargetRoles"":[""%All""]}]}", "application/json")
+    Do $$$AssertStatusOK(tSC, "a create at OcuPilot's own path carrying application roles answers")
     Do $$$AssertEquals(tStatus, 403, "at 403")
     If $IsObject($Get(tBody)) {
         Do $$$AssertEquals(tBody.%Get("code"), $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "PRIVILEGEGRANT"), "on the privilege-grant predicate")
     }
     Do $$$AssertEquals(..Exists(..#PROBEAPP), 0, "and nothing was created")
 
-    ; The create itself: 201, the application the instance then holds, and a second one refused.
-    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#CREATEPATH, .tStatus, .tBody, "{""Name"":""" _ ..#PROBEAPP _ """,""NameSpace"":""" _ $Namespace _ """,""AutheEnabled"":32,""Enabled"":true}", "application/json")
+    ; The create itself: 201, the application the instance then holds -- granting %All as an
+    ; application role, which AD-10 permits on any application but OcuPilot's own -- and a second
+    ; one refused.
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#CREATEPATH, .tStatus, .tBody, "{""Name"":""" _ ..#PROBEAPP _ """,""NameSpace"":""" _ $Namespace _ """,""AutheEnabled"":32,""Enabled"":true,""MatchRoles"":[{""MatchRole"":"""",""TargetRoles"":[""%All""]}]}", "application/json")
     Do $$$AssertStatusOK(tSC, "a sound create answers")
     Do $$$AssertEquals(tStatus, 201, "at 201")
     If $IsObject($Get(tBody)) {
@@ -150,6 +153,7 @@ Method TestTheCreateAnswersOneEnvelopeForEachOutcome()
         Do $$$AssertEquals(+tBody.%Get("application").%Get("AutheEnabled"), 32, "with the authentication method the body sent explicitly")
     }
     Do $$$AssertEquals(..Exists(..#PROBEAPP), 1, "and the instance holds it")
+    Do $$$AssertEquals(..MatchRoles(..#PROBEAPP), ":%All", "with %All as its application role")
 
     ; AD-54's load-bearing half over the screen path: the vendor's PUT is an upsert with no
     ; refusal of its own, so a second create of the same name is refused here rather than
@@ -306,6 +310,23 @@ ClassMethod Description(pName As %String) As %String
         Set tValue = ""
     }
     Quit $Select(tValue = $Char(0): "", 1: tValue)
+}
+
+/// <p><var>pName</var>'s stored application roles, or <code>""</code>.</p>
+ClassMethod MatchRoles(pName As %String) As %String
+{
+    Set tValue = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill tProps
+        If $$$ISOK(##class(Security.Applications).Get(pName, .tProps)) Set tValue = $Get(tProps("MatchRoles"))
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tValue = ""
+    }
+    Quit tValue
 }
 
 /// <p>Delete <var>pName</var>. Called only for <parameter>PROBEAPP</parameter>, which this class

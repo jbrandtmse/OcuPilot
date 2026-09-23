@@ -20,10 +20,12 @@
 /// ones a change may touch: DW-1207's refusal is about repointing a serving application at
 /// arbitrary compiled code, and a create repoints nothing -- it is also what makes a REST
 /// application a REST application.</p>
-/// <p><b>Three names are absent from every path.</b> <code>MatchRoles</code> sets a web
-/// application's roles, which AD-10 forbids granting through any path on a create exactly as on a
-/// change, so it is excluded by name here and refused at the write by
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.AlwaysProhibitedCreateFields</method>. <code>Name</code>
+/// <p><b>Application roles are the one authored argument</b> (<parameter>MATCHROLESARGUMENT</parameter>):
+/// <code>MatchRoles</code>, an array of <code>{MatchRole, TargetRoles}</code> entries, the vendor's
+/// own shape. Granting <code>%All</code> or an administrative role there is permitted and confirmed
+/// as a delete is -- the mint marks the proposal destructive and names the privilege
+/// (<method>Consequence</method>) -- and it is refused on one of OcuPilot's own paths (AD-10).</p>
+/// <p><b>Two names are absent from every path.</b> <code>Name</code>
 /// is the vendor's <code>name</code> query parameter and a 400 in the body
 /// (<code>UnexpectedRequestBodyField</code>). And <code>Path</code> is never settable by a caller:
 /// <method>DerivedFields</method> sets it, and <code>WSGIAppLocation</code>, to the directory the
@@ -31,7 +33,8 @@
 /// <method>Security.Applications.Create</method> creates the directory a CSP application names.</p>
 /// <p><b>Choosing Unauthenticated is permitted and named</b> (DW-1489): <method>Consequence</method>
 /// carries <parameter>CONSEQUENCEUNAUTHENTICATED</parameter> onto the proposal, and the card states
-/// it.</p>
+/// it -- or <parameter>CONSEQUENCEUNAUTHENTICATEDPRIVILEGED</parameter>, one line for both, when
+/// the create also grants a privileged application role.</p>
 /// <p><b><code>Type</code> is never sent.</b> <code>MergeJsonAndProperties</code> hard-codes it to
 /// <code>$$$AppTypeCSP</code> and <method>RequestBodySchema</method> does not carry it, so sending
 /// it is a 400. The CSP, REST, WSGI and ASGI choice a caller makes is a combination of
@@ -44,7 +47,7 @@ Parameter TOOLNAME = "webapp.list.create";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.WebAppList";
 
-Parameter DESCRIPTION = "Propose a new web application on this instance. It creates nothing by itself: it answers a proposal the user reviews and confirms. Name the application by the URL path it will answer at, such as /csp/myapp, give it a namespace, and choose at least one authentication method -- a create that names none would be reachable without signing in.";
+Parameter DESCRIPTION = "Propose a new web application on this instance. It creates nothing by itself: it answers a proposal the user reviews and confirms. Name the application by the URL path it will answer at, such as /csp/myapp, give it a namespace, and choose at least one authentication method -- a create that names none would be reachable without signing in. It may also grant application roles.";
 
 /// <p>This tool creates its target, which is what inverts the mint's fresh read and moves the
 /// fingerprint onto the target's absence (AD-54).</p>
@@ -54,9 +57,11 @@ Parameter CREATES As BOOLEAN = 1;
 /// rather than re-reading an existing one.</p>
 Parameter CHANGEACTION = "created";
 
-/// <p>The subtree AD-10 forbids on every path: a web application's application and matching
-/// roles.</p>
-Parameter EXCLUDEDFIELD = "MatchRoles";
+/// <p>The one authored argument: the application's roles, each entry
+/// <code>{MatchRole, TargetRoles}</code>, the vendor's own shape. An entry whose
+/// <code>MatchRole</code> is empty grants its <code>TargetRoles</code> to every request the
+/// application serves.</p>
+Parameter MATCHROLESARGUMENT = "MatchRoles";
 
 /// <p>The only top-level fields this tool admits, comma-separated: the web-application settings
 /// whose creation AD-10's prohibited set has reviewed
@@ -81,6 +86,11 @@ Parameter UNAUTHENTICATEDBIT As INTEGER = 64;
 /// <p>The consequence code a create choosing Unauthenticated carries onto its proposal (DW-1489).</p>
 Parameter CONSEQUENCEUNAUTHENTICATED = "WEBAPP.UNAUTHENTICATED";
 
+/// <p>The one consequence code a create carries when it is both unauthenticated and grants a
+/// privileged application role (AD-10): anyone who reaches the application, without signing in,
+/// runs with that privilege. The card renders one line for it, never two.</p>
+Parameter CONSEQUENCEUNAUTHENTICATEDPRIVILEGED = "WEBAPP.UNAUTHENTICATEDPRIVILEGED";
+
 /// <p>The pair a create requires: <code>%Admin_Secure:USE</code>, which is exactly what
 /// <method>%CSP.Portal.Application.CheckSecurity</method> checks before the classic editor saves,
 /// and exactly the pair <class>OcuPilot.Screen.Descriptor.WebAppList</class> already declares for
@@ -95,16 +105,11 @@ ClassMethod Endpoint() As %String
 }
 
 /// <p>The field names the composed payload may set: every <code>ordinary</code> top-level literal
-/// of this tool's own field-list entry, derived rather than transcribed (AD-3).</p>
+/// of this tool's own field-list entry, derived rather than transcribed (AD-3), plus
+/// <parameter>MATCHROLESARGUMENT</parameter>.</p>
 ClassMethod SettableFields() As %List
 {
-    Quit ..AdmittedFields()
-}
-
-/// <p><parameter>EXCLUDEDFIELD</parameter>, so no path of this tool admits a role grant.</p>
-ClassMethod ExcludedFields() As %List
-{
-    Quit $ListBuild(..#EXCLUDEDFIELD)
+    Quit ..AdmittedFields() _ $ListBuild(..#MATCHROLESARGUMENT)
 }
 
 /// <p><parameter>PERMITTEDFIELDS</parameter>, so a field the prohibited set has not reviewed for a
@@ -141,27 +146,38 @@ ClassMethod DerivedFields(pPayload As %DynamicObject)
 
 /// <p>The kernel-owned consequence code this create's payload <var>pPayload</var> carries, or
 /// <code>""</code> (DW-1489): <parameter>CONSEQUENCEUNAUTHENTICATED</parameter> when
-/// <code>AutheEnabled</code> includes the unauthenticated bit. The mint stores it on the proposal
-/// and the card states its sentence; the create is not refused.</p>
-ClassMethod Consequence(pPayload As %DynamicObject) As %String
+/// <code>AutheEnabled</code> includes the unauthenticated bit, and
+/// <parameter>CONSEQUENCEUNAUTHENTICATEDPRIVILEGED</parameter> instead when the mint also found the
+/// create granting privilege (<var>pPrivileged</var>,
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.GrantsPrivilegeByEffect</method>). A privileged
+/// grant alone answers <code>""</code>, and the mint names it with its own code. The mint stores the
+/// code on the proposal and the card states its sentence; the create is not refused.</p>
+ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean = 0) As %String
 {
     If '$IsObject(pPayload) Quit ""
     Set tType = pPayload.%GetTypeOf(..#AUTHEFIELD)
     If (tType '= "number") && (tType '= "string") Quit ""
     Set tMask = pPayload.%Get(..#AUTHEFIELD)
     If '$IsValidNum(tMask) Quit ""
-    If ((tMask \ 1) \ ..#UNAUTHENTICATEDBIT) # 2 Quit ..#CONSEQUENCEUNAUTHENTICATED
-    Quit ""
+    If '(((tMask \ 1) \ ..#UNAUTHENTICATEDBIT) # 2) Quit ""
+    Quit $Select(pPrivileged: ..#CONSEQUENCEUNAUTHENTICATEDPRIVILEGED, 1: ..#CONSEQUENCEUNAUTHENTICATED)
 }
 
 /// <p>The derived schema with <code>WSGIAppLocation</code> described as the one directory name it
-/// is (AD-21): a name, not a path, placed under the instance's own WSGI directory.</p>
+/// is (AD-21): a name, not a path, placed under the instance's own WSGI directory; and
+/// <parameter>MATCHROLESARGUMENT</parameter> added as an array of <code>{MatchRole, TargetRoles}</code>
+/// entries, whose shape <method>ArgumentProblem</method> refuses, because the schema subset a
+/// provider is sent describes no member below a property.</p>
 ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Set tSchema = ##super(pDescriptor)
     If '$IsObject(tSchema) Quit tSchema
     If tSchema.%GetTypeOf("properties") '= "object" Quit tSchema
     Set tProperties = tSchema.%Get("properties")
+    Set tEntry = {"type": "object", "description": "One entry, an object with exactly two members: MatchRole, empty to grant the target roles to every request the application serves or a role a caller must hold to receive them, and TargetRoles, an array of role names as this instance's own roles list reports them."}
+    Set tRoles = {"type": "array", "description": "The application's roles. Granting %All, or a role that carries an administrative privilege, is proposable and is confirmed as a delete is. Application roles are refused on OcuPilot's own web applications."}
+    Do tRoles.%Set("items", tEntry)
+    Do tProperties.%Set(..#MATCHROLESARGUMENT, tRoles)
     If tProperties.%GetTypeOf(..#WSGILOCATION) '= "object" Quit tSchema
     Do tProperties.%Get(..#WSGILOCATION).%Set("description", "For a WSGI or ASGI application only: the name of one directory, such as myapp -- letters, digits, dots, dashes and underscores, at most 64 characters. It is placed in this instance's own WSGI directory. A path, or a name containing .., is refused.")
     Quit tSchema

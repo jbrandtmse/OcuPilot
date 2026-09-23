@@ -149,10 +149,21 @@ Method TestARepointedDispatchClassIsRefused()
     Do ..Refused(..Target(), ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Other", "", 1, "after"), "DispatchClass", $Parameter(..#SHIPPEDSET, "DISPATCH"))
 }
 
-/// <p>Matrix row 4: a payload changing the roles the application grants is refused.</p>
-Method TestAChangedRoleGrantIsRefused()
+/// <p>Matrix row 4, AD-10: a payload changing an application's roles is refused
+/// <code>PRIVILEGEGRANT</code> on one of OcuPilot's own applications, ahead of the serving-path
+/// refusal every other change to one earns, and on any other application as a field the change
+/// tool has not reviewed.</p>
+/// <p>Mutation: drop the application-roles leg from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.WebApplication</method> -- the own-application half
+/// goes red, answered <code>SERVINGPATH</code> instead.</p>
+Method TestAChangedRoleGrantIsRefusedOnOcuPilotsOwnApplication()
 {
-    Do ..Refused(..Target(), ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Dispatch", ":%All", 1, "after"), "MatchRoles", $Parameter(..#SHIPPEDSET, "PRIVILEGEGRANT"))
+    Set tServing = "/api/ocupilot"
+    Set tSC = ..Ask(##class(OcuPilot.Test.ProhibitedFixture).App(tServing, 32, "%Development", "Probe.Dispatch", "", 1), ##class(OcuPilot.Test.ProhibitedFixture).App(tServing, 32, "%Development", "Probe.Dispatch", ":%All", 1), "MatchRoles", .tProhibits, .tCode, tServing)
+    Do $$$AssertStatusOK(tSC, "the set answers a role change on OcuPilot's own application")
+    Do $$$AssertEquals(tProhibits, 1, "which is prohibited")
+    Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "PRIVILEGEGRANT"), "as a privilege grant on OcuPilot's own application")
+    Do ..Refused(..Target(), ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Dispatch", ":%All", 1, "after"), "MatchRoles", $Parameter(..#SHIPPEDSET, "UNCOVEREDFIELD"))
 }
 
 /// <p>Matrix row 6: an entity type the set evaluates no predicates for is refused wholesale, and so
@@ -379,13 +390,14 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         }
     }
     Do $$$AssertTrue(tWrites > 0, "there is at least one registered write tool to check")
-    Do $$$AssertEquals($ListLength(##class(OcuPilot.Kernel.Proposal.Prohibited).AlwaysProhibitedFields("web-application")), 2, "two web-application fields carry an always-prohibited predicate of their own")
-    ; AD-54's asymmetry, asserted rather than implied: MatchRoles is prohibited on both paths
-    ; because AD-10 forbids setting application roles unconditionally, while DispatchClass is
-    ; prohibited on a change (it repoints a serving application) and permitted on a create (which
-    ; repoints nothing, and which is what makes a REST application a REST application).
-    Do $$$AssertEquals($ListLength(##class(OcuPilot.Kernel.Proposal.Prohibited).AlwaysProhibitedCreateFields("web-application")), 1, "and one of them is prohibited on a create too")
-    Do $$$AssertTrue($ListFind(##class(OcuPilot.Kernel.Proposal.Prohibited).AlwaysProhibitedCreateFields("web-application"), "MatchRoles") > 0, "and it is MatchRoles, which grants privilege through a path whichever kind of write carries it")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).AlwaysProhibitedFields("web-application")), "DispatchClass", "one web-application field carries an always-prohibited predicate of its own")
+    ; AD-54's asymmetry, asserted rather than implied: DispatchClass is prohibited on a change (it
+    ; repoints a serving application) and permitted on a create (which repoints nothing, and which is
+    ; what makes a REST application a REST application). AD-10 refuses application roles by target
+    ; -- OcuPilot's own applications -- so no create field is prohibited by name, and a create may
+    ; set them.
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).AlwaysProhibitedCreateFields("web-application"), "", "no web-application field is prohibited on a create by name")
+    Do $$$AssertTrue($ListFind(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedCreateFields("web-application"), "MatchRoles") > 0, "a create may set application roles")
     Do $$$AssertEquals($ListFind(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("web-application"), "DispatchClass"), 0, "a change may not repoint a serving application's dispatch class")
     Do $$$AssertTrue($ListFind(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedCreateFields("web-application"), "DispatchClass") > 0, "and a create may set it, because a create repoints nothing")
 
@@ -405,14 +417,15 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
 
 /// <p>Story 8.1, AD-54: the create predicates. A create's target is <b>correctly</b> absent, so the
 /// absent-target early-out that answers "not prohibited" for every other kind does not apply to
-/// one -- and the three effects AD-10 names for a create are refused over the payload's own keys
-/// rather than over a diff against a live target that is not there.</p>
+/// one -- and the effects AD-10 names for a create are refused over the payload's own keys rather
+/// than over a diff against a live target that is not there. Application roles are refused on
+/// OcuPilot's own paths alone (AD-10), and permitted anywhere else.</p>
 /// <p>Mutations: make
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.CreatesOf</method> answer 0 -> all three legs go
-/// red, because the early-out then answers first. Add <code>MatchRoles</code> to
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.AlwaysProhibitedCreateFields</method>'s complement
-/// -- that is, return <code>""</code> from it -- and the role leg goes red. Add
-/// <code>EventClass</code> to
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.CreatesOf</method> answer 0 -> the refusal legs go
+/// red, because the early-out then answers first. Make
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.Created</method> answer
+/// <code>SERVINGPATH</code> whatever an own-path create sets, and the own-path role leg goes red.
+/// Add <code>EventClass</code> to
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedCreateFields</method> and the
 /// unreviewed-field leg goes red.</p>
 Method TestACreateIsRefusedAtOcuPilotsOwnPathForRolesAndForAnUnreviewedField()
@@ -443,12 +456,17 @@ Method TestACreateIsRefusedAtOcuPilotsOwnPathForRolesAndForAnUnreviewedField()
     Do $$$AssertEquals(tProhibits, 1, "which is prohibited")
     Do $$$AssertEquals(tCode, tExpectedServing, "on the serving-path predicate as well")
 
-    ; AD-10 forbids setting application roles on ANY web application, and creating one is no
-    ; exception -- which is why MatchRoles is in the create list's always-prohibited half as well.
-    Set tSC = ..AskCreate(..CreatePayload("MatchRoles"), ..#TARGET, .tProhibits, .tCode)
-    Do $$$AssertStatusOK(tSC, "the set answers a create carrying application roles")
+    ; AD-10: application roles on one of OcuPilot's own applications would run every OcuPilot
+    ; request with them, so a create beneath OcuPilot's own path that sets them is refused on its
+    ; own code rather than the serving-path one; anywhere else they are a create's to set.
+    Set tSC = ..AskCreate(..CreatePayload("MatchRoles"), "/api/ocupilot/agent", .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the set answers a create at OcuPilot's own path carrying application roles")
     Do $$$AssertEquals(tProhibits, 1, "which is prohibited")
-    Do $$$AssertEquals(tCode, tExpectedGrant, "as a privilege grant through a path")
+    Do $$$AssertEquals(tCode, tExpectedGrant, "as a privilege grant on OcuPilot's own application")
+    Set tSC = ..AskCreate(..CreatePayload("MatchRoles"), ..#TARGET, .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the set answers a create carrying application roles elsewhere")
+    Do $$$AssertEquals(tProhibits, 0, "which is not prohibited")
+    Do $$$AssertEquals(tCode, "", "and carries no code")
 
     ; The reviewed-few rule, over the create list rather than the change list.
     Set tSC = ..AskCreate(..CreatePayload("EventClass"), ..#TARGET, .tProhibits, .tCode)

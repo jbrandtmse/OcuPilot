@@ -7,19 +7,18 @@ import type { Grant, ResourceOption } from './role-create-form.store';
 import { RoleGrantDialog, type GrantResult, grantLine } from './role-grant-dialog';
 
 /**
- * The role form's resource-grant dialog (AC2): it offers only the letters the bootstrap read
- * ships for a resource, marks the ones the server refuses, and shows the current and the
- * resulting grant before Confirm hands the result back. jsdom computes no layout; nothing here
- * asserts geometry.
+ * The role form's resource-grant dialog (AC2, AC4): it offers only the letters the bootstrap read
+ * ships for a resource, ties Read to Write on a database as the classic dialog does, states the
+ * privilege-grant consequence while the resulting grant is of a privileged resource, and shows the
+ * current and the resulting grant before Confirm hands the result back. jsdom computes no layout;
+ * nothing here asserts geometry.
  */
 
-const REASON = 'OcuPilot does not grant %All or an administrative privilege.';
-
 const RESOURCES: readonly ResourceOption[] = [
-  { name: '%Admin_Secure', permissions: 'U', privileged: true, privilegedPermissions: 'U' },
-  { name: '%DB_IRISSECURITY', permissions: 'RW', privileged: false, privilegedPermissions: 'W' },
-  { name: '%DB_USER', permissions: 'RW', privileged: false, privilegedPermissions: '' },
-  { name: 'OcuPilotProbeResource', permissions: 'RWU', privileged: false, privilegedPermissions: '' },
+  { name: '%Admin_Secure', permissions: 'U', privileged: true },
+  { name: '%DB_IRISSECURITY', permissions: 'RW', privileged: false },
+  { name: '%DB_USER', permissions: 'RW', privileged: false },
+  { name: 'OcuPilotProbeResource', permissions: 'RWU', privileged: false },
 ];
 
 function mount(granted: readonly Grant[], editing: Grant | null = null, clearing = false) {
@@ -32,7 +31,6 @@ function mount(granted: readonly Grant[], editing: Grant | null = null, clearing
   fixture.componentRef.setInput('granted', granted);
   fixture.componentRef.setInput('editing', editing);
   fixture.componentRef.setInput('clearing', clearing);
-  fixture.componentRef.setInput('privilegeReason', REASON);
   const applied: GrantResult[] = [];
   fixture.componentInstance.applied.subscribe((result) => applied.push(result));
   fixture.detectChanges();
@@ -70,15 +68,17 @@ describe('the role grant dialog', () => {
 
   it('AC2: add mode offers the resources not yet granted, the admitted letters only, and the current and resulting grant', () => {
     const { fixture, host, applied } = mount([{ name: '%DB_USER', permissions: 'RW' }]);
-    const options = [...host.querySelectorAll<HTMLOptionElement>('#ocu-role-grant-resource option')];
+    const select = host.querySelector<HTMLSelectElement>('#ocu-role-grant-resource')!;
+    const options = [...select.querySelectorAll<HTMLOptionElement>('option')];
     expect(options.map((option) => option.value)).toEqual(['%Admin_Secure', '%DB_IRISSECURITY', 'OcuPilotProbeResource']);
-    expect(options[0].disabled).toBe(true);
-    expect(host.querySelector('#ocu-role-grant-reason')?.textContent?.trim()).toBe(REASON);
+    expect(options.some((option) => option.disabled)).toBe(false);
 
-    // The first resource the server does not refuse is chosen: a database admits Read and Write.
+    // A database admits Read and Write, and nothing is refused.
+    select.value = '%DB_IRISSECURITY';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
     expect(host.querySelector('#ocu-role-grant-U')).toBeNull();
-    expect(box(host, 'W').disabled).toBe(true);
-    expect(box(host, 'W').getAttribute('aria-describedby')).toBe('ocu-role-grant-reason');
+    expect(box(host, 'W').disabled).toBe(false);
     expect(text(host, 'ocu-role-grant-current')).toBe(STRINGS.roleGrantNone);
     expect(text(host, 'ocu-role-grant-resulting')).toBe(STRINGS.roleGrantNone);
     expect(confirmButton(host).getAttribute('aria-disabled')).toBe('true');
@@ -115,6 +115,59 @@ describe('the role grant dialog', () => {
     expect(text(host, 'ocu-role-grant-resulting')).toBe(`OcuPilotProbeResource: ${STRINGS.permissionRead}, ${STRINGS.permissionWrite}`);
     confirmButton(host).click();
     expect(applied).toEqual([{ name: 'OcuPilotProbeResource', permissions: 'RW' }]);
+  });
+
+  it('AC4: the privilege-grant consequence shows while the resulting grant is of a privileged resource', () => {
+    // Mutation (Rule 19): make `showEffect` answer false -> the consequence assertions go red.
+    const { fixture, host, applied } = mount([]);
+    const select = host.querySelector<HTMLSelectElement>('#ocu-role-grant-resource')!;
+    select.value = '%Admin_Secure';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(host.querySelector('#ocu-role-grant-effect')).toBeNull();
+    box(host, 'U').click();
+    fixture.detectChanges();
+    expect(box(host, 'U').disabled).toBe(false);
+    expect(text(host, 'ocu-role-grant-effect')).toBe(STRINGS.privilegedGrantEffect);
+    expect(select.getAttribute('aria-describedby')).toBe('ocu-role-grant-effect');
+    confirmButton(host).click();
+    expect(applied).toEqual([{ name: '%Admin_Secure', permissions: 'U' }]);
+
+    select.value = '%DB_IRISSECURITY';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    box(host, 'W').click();
+    fixture.detectChanges();
+    expect(host.querySelector('#ocu-role-grant-effect')).toBeNull();
+  });
+
+  it('DW-1514: ticking Write on a database ticks and locks Read, as the classic dialog does', () => {
+    // Mutation (Rule 19): drop the `writeChanged` line from `onLetter` -> the Read assertions go red.
+    const { fixture, host, applied } = mount([]);
+    const select = host.querySelector<HTMLSelectElement>('#ocu-role-grant-resource')!;
+    select.value = '%DB_IRISSECURITY';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    box(host, 'W').click();
+    fixture.detectChanges();
+    expect(box(host, 'R').checked).toBe(true);
+    expect(box(host, 'R').disabled).toBe(true);
+    expect(text(host, 'ocu-role-grant-resulting')).toBe(`%DB_IRISSECURITY: ${STRINGS.permissionRead}, ${STRINGS.permissionWrite}`);
+    box(host, 'W').click();
+    fixture.detectChanges();
+    expect(box(host, 'R').disabled).toBe(false);
+    expect(box(host, 'R').checked).toBe(true);
+    confirmButton(host).click();
+    expect(applied).toEqual([{ name: '%DB_IRISSECURITY', permissions: 'R' }]);
+
+    // A resource that is not a database's keeps Read and Write independent.
+    select.value = 'OcuPilotProbeResource';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    box(host, 'W').click();
+    fixture.detectChanges();
+    expect(box(host, 'R').checked).toBe(false);
+    expect(box(host, 'R').disabled).toBe(false);
   });
 
   it('AC2: a Remove opens with no letter ticked, so the resulting grant reads "No grant" before Confirm', () => {

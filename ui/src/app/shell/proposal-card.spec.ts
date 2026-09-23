@@ -637,6 +637,23 @@ describe('the proposal card', () => {
     expect(mount(EXAMPLE_PROPOSAL).card.querySelector('[data-slot="consequence"]')).toBeNull();
   });
 
+  it('AD-10: a privileged grant is drawn destructive and names the privilege in one consequence line', () => {
+    // The kernel marks the proposal destructive and carries the code; an unauthenticated
+    // application that is also privileged carries one combined code, never two lines.
+    //
+    // Mutation (Rule 19): drop either privilege code from `consequenceSentence` -> this goes red.
+    const privileged = mount(liveView({ consequence: 'GRANT.PRIVILEGED', destructive: true, maskedFields: [] }), { phase: 'live' });
+    expect(privileged.card.classList.contains('ocu-proposal-card-destructive')).toBe(true);
+    const line = privileged.card.querySelector('[data-slot="consequence"]') as HTMLElement;
+    expect(line.textContent).toContain(STRINGS.privilegedGrantEffect);
+
+    const combined = mount(liveView({ consequence: 'WEBAPP.UNAUTHENTICATEDPRIVILEGED', destructive: true, maskedFields: [] }), { phase: 'live' });
+    const lines = combined.card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.privilegedGrantEffectUnauthenticated);
+    expect(lines[0].textContent).not.toContain(STRINGS.webAppUnauthenticatedEffect);
+  });
+
   it('the in-card warning is a status region, the convention for an advisory', () => {
     // DW-1246, corrected: four warning banners in this shell are already `role="status"`. The
     // convention is `alert` for a fault or a refusal and `status` for an advisory, and this is an

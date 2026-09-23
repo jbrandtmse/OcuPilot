@@ -1,7 +1,7 @@
 /**
  * The Web application create form in a real browser, against the throwaway instance (Story 8.1).
  *
- * Seven claims, each asserted on rendered DOM, on measured geometry or on the real URL rather than
+ * Eight claims, each asserted on rendered DOM, on measured geometry or on the real URL rather than
  * on store state:
  *
  * 1. **The form captures the field set in the classic order** (AC1), and the type control shows
@@ -26,6 +26,9 @@
  *    (AD-21, DW-1495), read-only, with the root read from the throwaway itself.
  * 7. **Choosing Unauthenticated states its effect at the authentication field** (DW-1489), and only
  *    while it is ticked.
+ * 8. **Application roles follow the authentication methods** (AC7, AD-10): a privileged role states
+ *    the privilege-grant consequence -- one combined line, in place of both, while Unauthenticated
+ *    is also ticked -- and a Save applies it.
  *
  * **It refuses the live container**, for the reason its siblings do: the throwaway is the instance
  * a browser run drives, and this spec creates web applications. It removes every one it created in
@@ -58,7 +61,7 @@ const FORM_URL = '/ocupilot/web-applications/list/edit?ns=HSCUSTOM';
 /** Every application this spec creates lives under this prefix and is removed in `after`. */
 const PREFIX = '/csp/ocupilotbrowserprobe';
 
-const NAMES = [`${PREFIX}create`, `${PREFIX}refusal`, `${PREFIX}geometry`];
+const NAMES = [`${PREFIX}create`, `${PREFIX}refusal`, `${PREFIX}geometry`, `${PREFIX}roles`];
 
 /** A value far longer than the field it is typed into, for the geometry leg. */
 const LONG_VALUE = 'a-very-long-web-application-description-'.padEnd(220, 'x');
@@ -86,7 +89,7 @@ function credentials() {
 /**
  * Remove every application this spec creates, by name, inside the throwaway.
  *
- * Only the three names above, never a prefix sweep over whatever the instance holds: an
+ * Only the names above, never a prefix sweep over whatever the instance holds: an
  * application this spec did not create is somebody else's, and deleting one would be the failure
  * `ProposalFixture.EnsureWriteTarget` refuses for the same reason.
  */
@@ -207,6 +210,7 @@ test('AC1: the form captures the classic field set in order, and the type contro
         STRINGS.webAppFormType,
         STRINGS.webAppColumnResource,
         STRINGS.serviceColumnAuthentication,
+        STRINGS.webAppFormApplicationRoles,
         STRINGS.webAppFormRecurse,
       ],
       'a CSP application draws the classic order over the reviewed create fields'
@@ -533,6 +537,66 @@ test('ticking Unauthenticated states its effect at the authentication field, and
 
     await page.click(box);
     await page.waitForFunction((selector) => document.querySelector(selector) === null, { timeout: config.navigationTimeoutMs }, effect);
+  } finally {
+    await context.close();
+  }
+});
+
+/** The stored application roles of `name`, read inside the throwaway. */
+function storedMatchRoles(name) {
+  const result = spawnSync('docker', ['exec', '-i', config.container, 'iris', 'session', 'iris', '-U', '%SYS'], {
+    input: `Set tOK = ##class(Security.Applications).Get("${name}", .tProps)\nWrite "OCU-ROLES-START:",$Get(tProps("MatchRoles")),":OCU-ROLES-END",!\nHalt\n`,
+    encoding: 'utf8',
+    timeout: 600000,
+  });
+  const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
+  const match = /OCU-ROLES-START:(.*?):OCU-ROLES-END/.exec(output);
+  return match === null ? null : match[1];
+}
+
+// AC7, AD-10. Mutation (Rule 19): make the page's `privilegedRoleFlag` answer false -> the
+// consequence leg goes red; make `privilegeEffect` ignore Unauthenticated -> the combined leg goes
+// red.
+test('AC7: a privileged application role states its consequence, one line with Unauthenticated, and a Save applies it', async () => {
+  const { context, page } = await signedInAt(FORM_URL);
+  try {
+    await fillMinimal(page, NAMES[3]);
+    const unauthenticated = '#ocu-web-app-AutheEnabled-64';
+    const roleEffect = '#ocu-web-app-MatchRoles-effect';
+    const autheEffect = '#ocu-web-app-AutheEnabled-effect';
+    await page.waitForSelector('#ocu-web-app-MatchRoles', { visible: true, timeout: config.navigationTimeoutMs });
+    if (await page.$eval(unauthenticated, (node) => node.checked)) await page.click(unauthenticated);
+    const offered = await page.evaluate(() => document.getElementById('ocu-web-app-MatchRoles-%All') !== null);
+    assert.ok(offered, 'the application-roles control offers %All');
+    assert.equal(await page.$(roleEffect), null, 'no consequence before a privileged role is ticked');
+
+    await page.evaluate(() => document.getElementById('ocu-web-app-MatchRoles-%All').click());
+    await page.waitForSelector(roleEffect, { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval(roleEffect, (node) => node.textContent.trim()), STRINGS.privilegedGrantEffect);
+
+    await page.click(unauthenticated);
+    await page.waitForFunction(
+      (selector, sentence) => document.querySelector(selector)?.textContent?.trim() === sentence,
+      { timeout: config.navigationTimeoutMs },
+      roleEffect,
+      STRINGS.privilegedGrantEffectUnauthenticated
+    );
+    assert.equal(await page.$(autheEffect), null, 'the one combined line replaces the unauthenticated effect');
+
+    await page.click(unauthenticated);
+    await page.waitForFunction(
+      (selector, sentence) => document.querySelector(selector)?.textContent?.trim() === sentence,
+      { timeout: config.navigationTimeoutMs },
+      roleEffect,
+      STRINGS.privilegedGrantEffect
+    );
+    await (await saveButton(page)).click();
+    await page.waitForFunction(
+      (sentence) => document.querySelector('.ocu-form-bar-status')?.textContent?.includes(sentence) === true,
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.formSaved
+    );
+    assert.equal(storedMatchRoles(NAMES[3]), ':%All', 'the Save grants %All as the application role');
   } finally {
     await context.close();
   }

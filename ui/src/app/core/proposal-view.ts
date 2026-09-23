@@ -108,12 +108,20 @@ export interface ProposalCardView {
 /** The consequence the kernel marks a web-application create that admits unauthenticated access with. */
 export const CONSEQUENCE_UNAUTHENTICATED = 'WEBAPP.UNAUTHENTICATED';
 
+/** The consequence the kernel marks a write that grants %All or an administrative privilege with (AD-10). */
+export const CONSEQUENCE_PRIVILEGED = 'GRANT.PRIVILEGED';
+
+/** The one consequence a web-application create carries when it is both unauthenticated and privileged. */
+export const CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED = 'WEBAPP.UNAUTHENTICATEDPRIVILEGED';
+
 /**
  * The published sentence for a proposal's `consequence` code, or `''` for no code or one this
  * client publishes nothing for. The sentence is `STRINGS`'; the code is the kernel's (AD-39).
  */
 export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_UNAUTHENTICATED) return STRINGS.webAppUnauthenticatedEffect;
+  if (code === CONSEQUENCE_PRIVILEGED) return STRINGS.privilegedGrantEffect;
+  if (code === CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED) return STRINGS.privilegedGrantEffectUnauthenticated;
   return '';
 }
 

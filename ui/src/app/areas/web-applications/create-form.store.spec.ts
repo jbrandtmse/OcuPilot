@@ -47,6 +47,11 @@ const RULES = {
     { field: 'NameSpace', code: 'WEBAPP.NAMESPACE.REQUIRED', reason: 'Choose the namespace.' },
     { field: 'WSGIAppName', code: 'WEBAPP.WSGI.APPNAME', reason: 'Name the file.' },
   ],
+  roles: [
+    { name: '%Developer', privileged: false },
+    { name: '%All', privileged: true },
+    { name: 'ProbeUnmarked' },
+  ],
 };
 
 async function settle(): Promise<void> {
@@ -258,6 +263,31 @@ describe('the Web application create form store', () => {
     expect(store.unauthenticated()).toBe(true);
     store.setAuthe(64, false);
     expect(store.unauthenticated()).toBe(false);
+  });
+
+  it('AC7, AD-10: ticked application roles travel as one entry with no matching role, and a privileged one is flagged', async () => {
+    // Mutation (Rule 19): drop the `MatchRoles` entry from `body()` -> the posted-body assertion
+    // goes red; make `privilegedMatchRoleChecked` answer false -> the flag assertion goes red.
+    const { store, calls } = mount();
+    await store.open();
+    expect(store.rules().roles.map((role) => role.name)).toEqual(['%Developer', '%All', 'ProbeUnmarked']);
+    expect(store.rules().roles.find((role) => role.name === 'ProbeUnmarked')?.privileged).toBe(true);
+    store.setValue('Name', '/csp/probe');
+    store.setValue('NameSpace', 'HSCUSTOM');
+    await store.save();
+    expect('MatchRoles' in postedBody(calls), 'no role ticked sends no key').toBe(false);
+
+    const second = mount();
+    await second.store.open();
+    second.store.setValue('Name', '/csp/probe');
+    second.store.setValue('NameSpace', 'HSCUSTOM');
+    second.store.setMatchRole('%Developer', true);
+    expect(second.store.privilegedMatchRoleChecked()).toBe(false);
+    second.store.setMatchRole('%All', true);
+    expect(second.store.matchRoleChecked('%All')).toBe(true);
+    expect(second.store.privilegedMatchRoleChecked()).toBe(true);
+    await second.store.save();
+    expect(postedBody(second.calls)['MatchRoles']).toEqual([{ MatchRole: '', TargetRoles: ['%Developer', '%All'] }]);
   });
 
   it('the blur look-up marks a taken name with the server sentence, and leaves the field unmarked when it could not be made', async () => {

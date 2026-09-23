@@ -1,7 +1,8 @@
 /// <p>Pins Story 8.1's tool and its form screen (AD-54, AD-55, AD-3, AD-10): what
 /// <class>OcuPilot.Screen.Tool.WebAppCreate</class> advertises, what it refuses to advertise, what
-/// the server derives rather than accepting, and that the screen's Save and the agent's confirm
-/// compose one payload from one field list.</p>
+/// the server derives rather than accepting, that the screen's Save and the agent's confirm
+/// compose one payload from one field list, and that application roles are refused on OcuPilot's
+/// own path alone.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, its compiled tool registry and
 /// its screen registry. Every port call is <class>OcuPilot.Test.ProposalFixture</class>'s except
 /// <method>TestTheScreenSaveRefusesAProhibitedCreateBeforeThePortIsTouched</method>'s, which drives
@@ -58,16 +59,16 @@ Method OnAfterOneTest() As %Status
 }
 
 /// <p>AD-3 and AD-10 over a create: the tool advertises exactly the fields the set has reviewed
-/// for a create of this type, and <code>MatchRoles</code> reaches neither the schema nor the
-/// settable list nor the excluded-by-classification path.</p>
+/// for a create of this type, application roles among them as the one authored argument -- an
+/// array of <code>{MatchRole, TargetRoles}</code> entries, never a declared secret.</p>
 /// <p>Mutations: drop a name from
 /// <parameter>OcuPilot.Screen.Tool.WebAppCreate.PERMITTEDFIELDS</parameter>, or add one to
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedCreateFields</method> alone -> the
-/// set-equality goes red in that direction. Remove <code>MatchRoles</code> from
-/// <method>OcuPilot.Screen.Tool.WebAppCreate.ExcludedFields</method> -> it is still absent, because
-/// the reviewed classification leaves that subtree unnamed and the generator emits it secret, and
-/// the assertion below says so rather than resting on the exclusion alone.</p>
-Method TestTheToolAdvertisesTheReviewedCreateFieldsAndExcludesMatchRoles()
+/// set-equality goes red in that direction. Drop
+/// <parameter>OcuPilot.Screen.Tool.WebAppCreate.MATCHROLESARGUMENT</parameter> from
+/// <method>OcuPilot.Screen.Tool.WebAppCreate.SettableFields</method> -> the application-roles
+/// assertions go red.</p>
+Method TestTheToolAdvertisesTheReviewedCreateFieldsAndApplicationRoles()
 {
     Do $$$AssertEquals(''$ClassMethod(..#TOOL, "Creates"), 1, "the tool declares that its write creates its target")
     Do $$$AssertEquals($ClassMethod(..#TOOL, "ChangeAction"), "created", "and the change event it publishes is a create")
@@ -87,9 +88,11 @@ Method TestTheToolAdvertisesTheReviewedCreateFieldsAndExcludesMatchRoles()
     }
 
     Set tSchema = $ClassMethod(..#TOOL, "InputSchema")
-    Do $$$AssertEquals(tSchema.%Get("properties").%GetTypeOf("MatchRoles"), "unassigned", "MatchRoles reaches no schema of this tool")
-    Do $$$AssertEquals($ListFind(tSettable, "MatchRoles"), 0, "and no settable list")
-    Do $$$AssertEquals($ListFind($ClassMethod(..#TOOL, "SecretArguments", "", .tDeclared), "MatchRoles"), 0, "and is not smuggled in as a declared secret")
+    Set tRoles = tSchema.%Get("properties").%Get("MatchRoles")
+    Do $$$AssertEquals($Select($IsObject(tRoles): tRoles.%Get("type"), 1: ""), "array", "the schema offers application roles as an array")
+    Do $$$AssertEquals($Select($IsObject(tRoles) && $IsObject(tRoles.%Get("items")): tRoles.%Get("items").%Get("type"), 1: ""), "object", "of entries")
+    Do $$$AssertTrue($ListFind(tSettable, "MatchRoles") > 0, "which the tool can set")
+    Do $$$AssertEquals($ListFind($ClassMethod(..#TOOL, "SecretArguments", "", .tDeclared), "MatchRoles"), 0, "and which is not a declared secret")
     Do $$$AssertEquals(tDeclared, 1, "whose declaration the descriptor answers")
     Do $$$AssertEquals(tSchema.%Get("properties").%GetTypeOf("Type"), "unassigned", "Type reaches no schema either: the endpoint hard-codes it and refuses it in the body")
     Do $$$AssertEquals(tSchema.%Get("properties").%GetTypeOf("Path"), "unassigned", "and neither does Path, which the server derives")
@@ -157,6 +160,7 @@ Method TestTheScreenRouteAndTheToolComposeOnePayloadAndOneDerivedPath()
     ; And the one field the tool derives is derived on both real call sites, not merely in
     ; isolation: a body with no WSGI directory would leave it unset, so the field's presence here
     ; is the derivation actually running rather than the property surviving from the arguments.
+    Do $$$AssertEquals(##class(%DynamicAbstractObject).%FromJSON(tScreenBody).%Get("MatchRoles").%ToJSON(), tArgs.%Get("MatchRoles").%ToJSON(), "both carry the privileged application roles the caller granted")
     Set tResolved = ##class(OcuPilot.Area.WebApp.Location).Root() _ tArgs.%Get("WSGIAppLocation") _ "/"
     Do $$$AssertEquals(##class(%DynamicAbstractObject).%FromJSON(tScreenBody).%Get("Path"), tResolved, "the screen's own write carries the tool-derived path")
     Do $$$AssertEquals(##class(%DynamicAbstractObject).%FromJSON(tAgentBody).%Get("Path"), tResolved, "and so does the agent's")
@@ -174,8 +178,9 @@ Method TestTheScreenRouteAndTheToolComposeOnePayloadAndOneDerivedPath()
 
 /// <p>The arguments <method>TestTheScreenRouteAndTheToolComposeOnePayloadAndOneDerivedPath</method>
 /// drives both call sites with: every settable field but <code>DispatchClass</code>, which a WSGI
-/// create may not carry. The four WSGI fields give the derived path something to derive from, and
-/// <code>Recurse</code> is the field the mutation this test names drops from a hand-typed list.</p>
+/// create may not carry. The four WSGI fields give the derived path something to derive from,
+/// <code>Recurse</code> is the field the mutation this test names drops from a hand-typed list,
+/// and the application roles grant <code>%All</code>, which both callers apply (AD-10).</p>
 ClassMethod PayloadArgs() As %DynamicObject
 {
     Set tArgs = {}
@@ -189,6 +194,7 @@ ClassMethod PayloadArgs() As %DynamicObject
     Do tArgs.%Set("WSGICallable", "app", "string")
     Do tArgs.%Set("WSGIAppLocation", "ocupilot-probe-wsgi-payload", "string")
     Do tArgs.%Set("WSGIType", "WSGI", "string")
+    Do tArgs.%Set("MatchRoles", ##class(%DynamicAbstractObject).%FromJSON("[{""MatchRole"":"""",""TargetRoles"":[""%All""]}]"))
     Quit tArgs
 }
 
@@ -254,31 +260,32 @@ Method TestACreateWithNoAuthenticationMethodAndNoNamespaceIsRefusedOnTheFieldsTh
 
 /// <p>AD-10 and AD-55 over the screen's own Save: a prohibited create is refused before the port
 /// is touched, on the prohibition rather than on whichever field rule happened to run first, and
-/// nothing is written.</p>
+/// nothing is written. Application roles at OcuPilot's own path are the screen's half of AD-10's
+/// one remaining privilege-grant refusal (<class>OcuPilot.Test.ProposalCreate</class> holds the
+/// agent's).</p>
 /// <p><b>The set is asked about the caller's own fields, not the composed body.</b>
 /// <method>OcuPilot.Kernel.Proposal.Mint.Compose</method> keeps only what the tool admits, so a
-/// body carrying <code>MatchRoles</code> would otherwise reach the vendor with that key silently
-/// dropped -- a 201 for a request AD-10 says is refused. The agent cannot author such a key at all
-/// (its schema is closed), so this leg is the screen path's own half of "refused whatever the
-/// caller".</p>
-/// <p>Mutation: pass the composed payload to <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method>
-/// instead of <method>OcuPilot.Area.WebApp.Create.CallerFields</method>'s answer -> the role leg
-/// goes red, because the key is gone by the time the set is asked.</p>
+/// body carrying a field it does not admit would otherwise reach the vendor with that key silently
+/// dropped -- a 201 for a request AD-10 says is refused.</p>
+/// <p>Mutations: pass the composed payload to <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method>
+/// instead of <method>OcuPilot.Area.WebApp.Create.CallerFields</method>'s answer -> the
+/// unreviewed-field leg goes red, because the key is gone by the time the set is asked; make
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.Created</method> answer <code>SERVINGPATH</code>
+/// whatever an own-path create sets -> the role leg goes red.</p>
 Method TestTheScreenSaveRefusesAProhibitedCreateBeforeThePortIsTouched()
 {
     Set tName = ..#PROBEAPP
     Do $$$AssertEquals(##class(OcuPilot.Test.WebAppWire).Exists(tName), 0, "the probe name is free before the first refusal is driven")
 
-    ; A role grant through a path, which AD-10 forbids on a create exactly as on a change.
+    ; AD-10: application roles on OcuPilot's own application would run every OcuPilot request
+    ; with them, so they are refused on their own code there -- ahead of the serving-path refusal.
     Set tArgs = ..Args()
     Do tArgs.%Set("MatchRoles", ##class(%DynamicAbstractObject).%FromJSON("[{""MatchRole"":"""",""TargetRoles"":[""%All""]}]"))
-    Set tSC = ##class(OcuPilot.Area.WebApp.Create).Perform(tName, tArgs, .tCreated, .tHttp, .tFault, .tViolations)
-    Do $$$AssertStatusNotOK(tSC, "a create carrying application roles is refused")
+    Set tSC = ##class(OcuPilot.Area.WebApp.Create).Perform(..OcuPilotPath(), tArgs, .tCreated, .tHttp, .tFault, .tViolations)
+    Do $$$AssertStatusNotOK(tSC, "a create at OcuPilot's own path carrying application roles is refused")
     Do $$$AssertEquals($Get(tViolations), 0, "not as a field rule")
     Do $$$AssertEquals(tHttp, 403, "but at 403")
     Do $$$AssertEquals($Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: ""), $Parameter(..#SET, "PRIVILEGEGRANT"), "on the privilege-grant predicate")
-    Do $$$AssertEquals(##class(OcuPilot.Area.WebApp.FormRules).Taken(tName, .tTaken), $$$OK, "the name is read back")
-    Do $$$AssertEquals(tTaken, 0, "and nothing was created")
 
     ; A field this release has not reviewed for a create.
     Set tArgs = ..Args()
@@ -304,6 +311,62 @@ ClassMethod OcuPilotPath() As %String
     Set tSC = ##class(OcuPilot.Install.Roster).Application("api", .tApplication)
     If $$$ISERR(tSC) || '$IsObject(tApplication) Quit ""
     Quit tApplication.%Get("path")
+}
+
+/// <p>AD-55: the application-roles rules refuse on the screen route and at the agent's mint alike,
+/// on the <code>MatchRoles</code> field, with one sentence: a member that is not a list of
+/// <code>{MatchRole, TargetRoles}</code> entries, and an entry naming a role the instance does not
+/// hold. Nothing reaches the port on either caller.</p>
+/// <p>Mutation: remove the <method>OcuPilot.Area.WebApp.Create.MatchRolesViolation</method> call
+/// from <method>OcuPilot.Area.WebApp.Create.Validate</method> -> every case goes red on both
+/// callers.</p>
+Method TestTheApplicationRoleRulesRefuseOnBothCallers()
+{
+    Set tName = "/csp/ocupilotprobematchroles"
+    For tCase = 1:1:3 {
+        Set tArgs = ..Args()
+        If tCase = 1 Do tArgs.%Set("MatchRoles", "%All", "string") Set tCode = "WEBAPPMATCHROLESSHAPE"
+        If tCase = 2 Do tArgs.%Set("MatchRoles", ##class(%DynamicAbstractObject).%FromJSON("[{""TargetRoles"":[""%Developer""]}]")) Set tCode = "WEBAPPMATCHROLESSHAPE"
+        If tCase = 3 Do tArgs.%Set("MatchRoles", ##class(%DynamicAbstractObject).%FromJSON("[{""MatchRole"":"""",""TargetRoles"":[""OcuPilotNoSuchRole""]}]")) Set tCode = "WEBAPPMATCHROLESUNKNOWN"
+        Set tExpected = $Parameter("OcuPilot.Api.Error", tCode)
+
+        Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+        Set tSC = $ClassMethod(..#SCREEN, "Perform", tName, tArgs, .tCreated, .tHttp, .tFault, .tViolations)
+        Do $$$AssertEquals(..CodeFor(.tViolations, "MatchRoles"), tExpected, "case " _ tCase _ ": the screen refuses on MatchRoles")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "case " _ tCase _ ": and nothing reaches the port")
+
+        Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+        Do ##class(OcuPilot.Test.ProposalFixture).ArmMissing()
+        Set tTurnSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
+        Do $$$AssertStatusOK(tTurnSC, "case " _ tCase _ ": a probe turn is seeded")
+        If $$$ISERR(tTurnSC) Continue
+        Set tSC = $ClassMethod(..#MINT, "Mint", ..#LIST, ..#TOOLNAME, $Username, "", tTurnKey, tArgs, "OcuPilot.Kernel.Agent.Limits", .tProposal, .tHttp, .tFault, $ClassMethod(..#TOOL, "Endpoint"), $ClassMethod(..#TOOL, "IdParam"), tName, $ClassMethod(..#TOOL, "IdArgument"), $ClassMethod(..#TOOL, "SettableFields"), ..#TOOL)
+        Do $$$AssertStatusNotOK(tSC, "case " _ tCase _ ": the agent's mint refuses it too")
+        Do $$$AssertEquals(tHttp, 400, "case " _ tCase _ ": at 400")
+        Set tProblem = ""
+        If $IsObject($Get(tFault)) && $IsObject(tFault.%Get("detail")) Set tProblem = tFault.%Get("detail").%Get("problem")
+        Do $$$AssertTrue(tProblem [ ##class(OcuPilot.Api.Error).ReasonForViolation(tExpected), "case " _ tCase _ ": with the same sentence: " _ tProblem)
+        Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
+    }
+}
+
+/// <p>AD-10: the form read's application roles are marked by the prohibited set's classifier, the
+/// one the agent's proposal is marked destructive by, so the form's consequence line and the card's
+/// agree.</p>
+/// <p>Mutation: make <method>OcuPilot.Area.WebApp.FormRules.Roles</method> mark every role
+/// privileged -> the <code>%Developer</code> assertion goes red.</p>
+Method TestTheFormReadMarksThePrivilegedApplicationRoles()
+{
+    Set tSC = ##class(OcuPilot.Area.WebApp.FormRules).Roles(.tRoles)
+    Do $$$AssertStatusOK(tSC, "the roles are listed through the create tool's port")
+    If $$$ISERR(tSC) Quit
+    Set tIterator = tRoles.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRole) {
+        Set tByName($ZConvert(tRole.%Get("name"), "U")) = tRole.%Get("privileged")
+    }
+    Do $$$AssertEquals($Get(tByName("%ALL")), 1, "%All is marked privileged")
+    Do $$$AssertEquals($Get(tByName("%MANAGER")), 1, "%Manager is, through the administrative resources it carries")
+    Do $$$AssertEquals($Get(tByName("%DEVELOPER")), 0, "%Developer is not")
 }
 
 /// <p>Every field-level code this story publishes carries a sentence, and every sentence is

@@ -1098,6 +1098,8 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#WEBAPPTYPECONFLICT Quit ..#REASONWEBAPPTYPECONFLICT
     If pCode = ..#WEBAPPFIELDLENGTH Quit ..#REASONWEBAPPFIELDLENGTH
     If pCode = ..#WEBAPPWSGIAPPLOCATIONSHAPE Quit ..#REASONWEBAPPWSGIAPPLOCATIONSHAPE
+    If pCode = ..#WEBAPPMATCHROLESSHAPE Quit ..#REASONWEBAPPMATCHROLESSHAPE
+    If pCode = ..#WEBAPPMATCHROLESUNKNOWN Quit ..#REASONWEBAPPMATCHROLESUNKNOWN
     If pCode = ..#USERNAMEREQUIRED Quit ..#REASONUSERNAMEREQUIRED
     If pCode = ..#USERNAMESHAPE Quit ..#REASONUSERNAMESHAPE
     If pCode = ..#USERNAMETAKEN Quit ..#REASONUSERNAMETAKEN
@@ -1120,6 +1122,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#ROLERESOURCESUNKNOWN Quit ..#REASONROLERESOURCESUNKNOWN
     If pCode = ..#ROLERESOURCESPERMISSIONS Quit ..#REASONROLERESOURCESPERMISSIONS
     If pCode = ..#ROLERESOURCESDUPLICATE Quit ..#REASONROLERESOURCESDUPLICATE
+    If pCode = ..#ROLERESOURCESWRITEONLY Quit ..#REASONROLERESOURCESWRITEONLY
     If pCode = ..#ROLEGRANTEDROLESSHAPE Quit ..#REASONROLEGRANTEDROLESSHAPE
     If pCode = ..#ROLEGRANTEDROLESUNKNOWN Quit ..#REASONROLEGRANTEDROLESUNKNOWN
     If pCode = ..#PORTFIELDREQUIRED Quit ..#REASONPORTFIELDREQUIRED
@@ -1134,7 +1137,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
 /// added with no sentence behind it reddens.</p>
 ClassMethod WebAppViolationCodes() As %List
 {
-    Quit $ListBuild(..#WEBAPPNAMEREQUIRED, ..#WEBAPPNAMESHAPE, ..#WEBAPPNAMETAKEN, ..#WEBAPPNAMESPACEREQUIRED, ..#WEBAPPAUTHEREQUIRED, ..#WEBAPPAUTHEUNKNOWN, ..#WEBAPPDISPATCHREQUIRED, ..#WEBAPPWSGIAPPNAME, ..#WEBAPPWSGILOCATION, ..#WEBAPPWSGITYPE, ..#WEBAPPTYPECONFLICT, ..#WEBAPPFIELDLENGTH, ..#WEBAPPWSGIAPPLOCATIONSHAPE, ..#PORTFIELDREQUIRED, ..#PORTFIELDUNEXPECTED, ..#PORTFIELDSHAPE)
+    Quit $ListBuild(..#WEBAPPNAMEREQUIRED, ..#WEBAPPNAMESHAPE, ..#WEBAPPNAMETAKEN, ..#WEBAPPNAMESPACEREQUIRED, ..#WEBAPPAUTHEREQUIRED, ..#WEBAPPAUTHEUNKNOWN, ..#WEBAPPDISPATCHREQUIRED, ..#WEBAPPWSGIAPPNAME, ..#WEBAPPWSGILOCATION, ..#WEBAPPWSGITYPE, ..#WEBAPPTYPECONFLICT, ..#WEBAPPFIELDLENGTH, ..#WEBAPPWSGIAPPLOCATIONSHAPE, ..#WEBAPPMATCHROLESSHAPE, ..#WEBAPPMATCHROLESUNKNOWN, ..#PORTFIELDREQUIRED, ..#PORTFIELDUNEXPECTED, ..#PORTFIELDSHAPE)
 }
 
 /// <p>Every <code>USER.*</code> field-level violation code, as a <class>%List</class>, for the
@@ -1150,7 +1153,7 @@ ClassMethod UserViolationCodes() As %List
 /// reason <method>UserViolationCodes</method> exists.</p>
 ClassMethod RoleViolationCodes() As %List
 {
-    Quit $ListBuild(..#ROLENAMEREQUIRED, ..#ROLENAMELENGTH, ..#ROLENAMESHAPE, ..#ROLENAMETAKEN, ..#ROLENAMESYSTEM, ..#ROLEDESCRIPTIONLENGTH, ..#ROLERESOURCESSHAPE, ..#ROLERESOURCESUNKNOWN, ..#ROLERESOURCESPERMISSIONS, ..#ROLERESOURCESDUPLICATE, ..#ROLEGRANTEDROLESSHAPE, ..#ROLEGRANTEDROLESUNKNOWN)
+    Quit $ListBuild(..#ROLENAMEREQUIRED, ..#ROLENAMELENGTH, ..#ROLENAMESHAPE, ..#ROLENAMETAKEN, ..#ROLENAMESYSTEM, ..#ROLEDESCRIPTIONLENGTH, ..#ROLERESOURCESSHAPE, ..#ROLERESOURCESUNKNOWN, ..#ROLERESOURCESPERMISSIONS, ..#ROLERESOURCESDUPLICATE, ..#ROLERESOURCESWRITEONLY, ..#ROLEGRANTEDROLESSHAPE, ..#ROLEGRANTEDROLESUNKNOWN)
 }
 
 /// <p>Every <code>AGENT.*</code> field-level violation code that carries a sentence, as a
@@ -1639,6 +1642,17 @@ Parameter WEBAPPWSGIAPPLOCATIONSHAPE = "WEBAPP.WSGIAPPLOCATION.SHAPE";
 
 Parameter REASONWEBAPPWSGIAPPLOCATIONSHAPE = "Name one directory of letters, digits, dots, dashes and underscores, at most 64 characters; it is placed in this instance's own WSGI directory. Any other location is set in the classic portal.";
 
+/// <p>Violation code: the application roles are not a list of <code>{MatchRole, TargetRoles}</code>
+/// entries, each a matching role (empty for every request) and a list of role names.</p>
+Parameter WEBAPPMATCHROLESSHAPE = "WEBAPP.MATCHROLES.SHAPE";
+
+Parameter REASONWEBAPPMATCHROLESSHAPE = "Each application-role entry names a matching role, or none, and the roles it grants.";
+
+/// <p>Violation code: an application-role entry names a role this instance does not hold.</p>
+Parameter WEBAPPMATCHROLESUNKNOWN = "WEBAPP.MATCHROLES.UNKNOWN";
+
+Parameter REASONWEBAPPMATCHROLESUNKNOWN = "One of those roles does not exist on this instance.";
+
 /// <p>Machine code (AD-12, AD-39): the request to create a user broke one or more of the rules
 /// <class>OcuPilot.Area.Permissions.UserCreateRules</class> applies before the port is touched.
 /// Rendered on the <parameter>VALIDATIONFAILED</parameter> slug with every violation in
@@ -1788,6 +1802,13 @@ Parameter REASONROLERESOURCESPERMISSIONS = "Grant each resource only the permiss
 Parameter ROLERESOURCESDUPLICATE = "ROLE.RESOURCES.DUPLICATE";
 
 Parameter REASONROLERESOURCESDUPLICATE = "Grant each resource once.";
+
+/// <p>Violation code: a database's resource is granted Write without Read. The classic grant dialog
+/// ticks and locks Read when Write is ticked (<code>RoleResourceEdit.writeChanged</code>), so the
+/// form does the same and the rule refuses what a caller sends otherwise.</p>
+Parameter ROLERESOURCESWRITEONLY = "ROLE.RESOURCES.WRITEONLY";
+
+Parameter REASONROLERESOURCESWRITEONLY = "A database grant that includes Write includes Read as well.";
 
 /// <p>Violation code: the granted roles are not a list of role names.</p>
 Parameter ROLEGRANTEDROLESSHAPE = "ROLE.GRANTEDROLES.SHAPE";

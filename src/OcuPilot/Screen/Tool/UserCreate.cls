@@ -14,8 +14,8 @@
 /// <parameter>PERMITTEDFIELDS</parameter> names and the authored <code>Roles</code> array, which are
 /// exactly the ones <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedCreateFields</method> has
 /// reviewed for a user create. A role that grants <code>%All</code> or an administrative privilege
-/// is refused at the write, whatever the caller. <code>EscalationRoles</code> is excluded by
-/// name.</p>
+/// is permitted and confirmed as a delete is: the mint marks the proposal destructive and names the
+/// privilege (AD-10). <code>EscalationRoles</code> is excluded by name.</p>
 Class OcuPilot.Screen.Tool.UserCreate Extends OcuPilot.Screen.Tool.Write
 {
 
@@ -98,7 +98,7 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Set tSchema = ##super(pDescriptor)
     If '$IsObject(tSchema) Quit tSchema
     If tSchema.%GetTypeOf("properties") '= "object" Quit tSchema
-    Set tRoles = {"type": "array", "description": "The roles the new account holds, each named exactly as this instance's own roles list reports it. A role that would grant an administrative privilege is refused, whether it grants it by name, through another role, or as a resource it carries -- %All, %Manager, %Operator and %SecurityAdministrator are all refused."}
+    Set tRoles = {"type": "array", "description": "The roles the new account holds, each named exactly as this instance's own roles list reports it. A role that grants %All or an administrative privilege -- by name, through another role, or as a resource it carries, as %Manager, %Operator and %SecurityAdministrator do -- is proposable and is confirmed as a delete is."}
     Do tRoles.%Set("items", {"type": "string"})
     Do tSchema.%Get("properties").%Set(..#ROLESARGUMENT, tRoles)
     Quit tSchema

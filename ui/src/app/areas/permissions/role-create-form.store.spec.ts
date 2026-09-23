@@ -34,12 +34,13 @@ const RULES = {
     { name: 'ProbeUnmarked' },
   ],
   resources: [
-    { name: '%DB_USER', permissions: 'RW', privileged: false, privilegedPermissions: '' },
-    { name: '%Admin_Secure', permissions: 'U', privileged: true, privilegedPermissions: 'U' },
+    { name: '%DB_USER', permissions: 'RW', privileged: false },
+    { name: '%Admin_Secure', permissions: 'U', privileged: true },
     { name: 'ProbeUnmarked', permissions: 'RWU' },
   ],
-  privilegeReason: 'OcuPilot does not grant %All or an administrative privilege.',
 };
+
+const WRITE_ONLY_SENTENCE = 'A database grant that includes Write includes Read as well.';
 
 const TAKEN_SENTENCE = 'This instance already has a role with that name.';
 
@@ -115,7 +116,7 @@ describe('the create-a-role form store', () => {
     expect(store.createdId()).toBe('ProbeRole');
   });
 
-  it('AD-54: the body carries the name, the description, each grant as {Name, Permissions} and the ticked roles', async () => {
+  it('AD-54: the body carries the name, the description, each grant as {Name, Permissions} and the ticked roles, a privileged one included', async () => {
     const { store, calls } = mount();
     await store.open();
     store.setValue('Name', 'ProbeRole');
@@ -133,7 +134,7 @@ describe('the create-a-role form store', () => {
         { Name: '%DB_USER', Permissions: 'R' },
         { Name: 'ProbeUnmarked', Permissions: 'U' },
       ],
-      GrantedRoles: ['%Developer'],
+      GrantedRoles: ['%Developer', '%Manager'],
     });
   });
 
@@ -148,29 +149,49 @@ describe('the create-a-role form store', () => {
     expect(store.grants()).toEqual([]);
   });
 
-  it('AC4, AD-39: the bootstrap marks read fail-closed, and a server refusal lands on the field it names', async () => {
+  it('AC4: a privileged role and a privileged resource grant are held, and each flags its consequence', async () => {
+    // Mutation (Rule 19): restore the early return for a privileged role in `setRole` -> the
+    // granted-role assertions go red.
+    const { store } = mount();
+    await store.open();
+    // A mark the server did not send as false reads as privileged, so the consequence is stated.
+    expect(store.rules().roles.find((role) => role.name === 'ProbeUnmarked')?.privileged).toBe(true);
+    expect(store.resource('ProbeUnmarked')?.privileged).toBe(true);
+    expect(store.resource('%db_user')?.privileged).toBe(false);
+    expect(store.privilegedRoleChecked()).toBe(false);
+    store.setRole('%Manager', true);
+    expect(store.roleChecked('%Manager')).toBe(true);
+    expect(store.privilegedRoleChecked()).toBe(true);
+    store.setRole('%Manager', false);
+    expect(store.privilegedRoleChecked()).toBe(false);
+    store.applyGrant('%DB_USER', 'RW');
+    expect(store.privilegedGrantHeld()).toBe(false);
+    store.applyGrant('%Admin_Secure', 'U');
+    expect(store.privilegedGrantHeld()).toBe(true);
+    expect(store.grants()).toEqual([
+      { name: '%DB_USER', permissions: 'RW' },
+      { name: '%Admin_Secure', permissions: 'U' },
+    ]);
+  });
+
+  it('AD-39: a server refusal lands on the field it names, and editing that field drops it', async () => {
     const refusal: JsonResult<unknown> = {
       kind: 'error',
       status: 422,
       code: 'ROLE.VALIDATION',
       reason: 'The role was refused.',
       detail: {
-        violations: [{ field: 'Resources', code: 'PROHIBITED.PRIVILEGEGRANT', reason: RULES.privilegeReason }],
+        violations: [{ field: 'Resources', code: 'ROLE.RESOURCES.WRITEONLY', reason: WRITE_ONLY_SENTENCE }],
       },
     } as unknown as JsonResult<unknown>;
     const { store } = mount(refusal);
     await store.open();
-    expect(store.rules().roles.find((role) => role.name === 'ProbeUnmarked')?.privileged).toBe(true);
-    expect(store.resource('ProbeUnmarked')?.privileged).toBe(true);
-    expect(store.resource('%db_user')?.privileged).toBe(false);
-    expect(store.rules().privilegeReason).toBe(RULES.privilegeReason);
     store.setValue('Name', 'ProbeRole');
-    store.applyGrant('%DB_USER', 'RW');
+    store.applyGrant('%DB_USER', 'W');
     expect(await store.save()).toBe(false);
-    expect(store.violationFor('Resources')).toBe(RULES.privilegeReason);
+    expect(store.violationFor('Resources')).toBe(WRITE_ONLY_SENTENCE);
     expect(store.reason()).toBe('');
-    // Editing the grants drops the refusal on that field.
-    store.applyGrant('%DB_USER', 'R');
+    store.applyGrant('%DB_USER', 'RW');
     expect(store.violationFor('Resources')).toBe('');
   });
 

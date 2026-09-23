@@ -46,16 +46,17 @@ Method OnAfterOneTest() As %Status
 }
 
 /// <p><code>GET /users/form</code> publishes the rules with the server's own sentences, and the
-/// roles with the privileged ones pre-marked by the sentence the refusal carries.</p>
+/// roles with the privileged ones marked -- the classifier's answer, for the form's consequence
+/// line -- and no refusal sentence.</p>
 /// <p>Mutation: make <method>OcuPilot.Kernel.Proposal.Prohibited.RoleGrantsAdministrativePrivilege</method>
-/// answer 0 -> the pre-mark assertions go red.</p>
+/// answer 0 -> the mark assertions go red.</p>
 Method TestTheFormReadPublishesTheRulesAndMarksThePrivilegedRoles()
 {
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", ..#FORMPATH, .tStatus, .tBody)
     Do $$$AssertStatusOK(tSC, "the form read answers")
     Do $$$AssertEquals(tStatus, 200, "at 200")
     If '$IsObject($Get(tBody)) Quit
-    Do $$$AssertEquals(tBody.%Get("rolesReason"), ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor($Parameter("OcuPilot.Kernel.Proposal.Prohibited", "PRIVILEGEGRANT")), "it ships the Roles sentence")
+    Do $$$AssertEquals(tBody.%GetTypeOf("rolesReason"), "unassigned", "it ships no refusal sentence for a privileged role")
     Do $$$AssertTrue(tBody.%Get("requiredFields").%Size() = 2, "and the two required fields")
     Set tIterator = tBody.%Get("rules").%GetIterator()
     Set tRules = 0
@@ -69,7 +70,7 @@ Method TestTheFormReadPublishesTheRulesAndMarksThePrivilegedRoles()
     While tIterator.%GetNext(.tIndex, .tRole) {
         Set tMarked(tRole.%Get("name")) = tRole.%Get("privileged")
     }
-    Do $$$AssertEquals($Get(tMarked("%All"), "absent"), 1, "%All is pre-marked")
+    Do $$$AssertEquals($Get(tMarked("%All"), "absent"), 1, "%All is marked privileged")
     Do $$$AssertEquals($Get(tMarked("%Manager"), "absent"), 1, "and %Manager, which carries an administrative resource")
     Do $$$AssertEquals($Get(tMarked("%Developer"), "absent"), 0, "and an ordinary role is not")
 }
@@ -142,26 +143,27 @@ Method TestAVendorRefusalOfTheWrappedBodyLandsOnTheFlatField()
 }
 
 /// <p>AD-10 over the wire: a role that grants <code>%All</code> only through its nested roles is
-/// refused on the Roles field, and no account is created.</p>
+/// marked privileged by the form read and granted by the create, which creates the account
+/// holding it; <code>%All</code> itself is granted the same way.</p>
 /// <p>Mutation: make <method>OcuPilot.Kernel.Proposal.Prohibited.RoleEscalates</method> ignore
-/// the recursed role set -> the nested role passes and this goes red.</p>
-Method TestARoleReachingAllThroughItsNestedRolesIsRefused()
+/// the recursed role set -> the nested role's mark goes red.</p>
+Method TestARoleReachingAllThroughItsNestedRolesIsMarkedAndGranted()
 {
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).EnsureAllRole(.tCreated)
     Do $$$AssertStatusOK(tSC, "a probe role granting %All through a nested role is created")
     If $$$ISERR(tSC) Quit
     Try {
         Set tRole = $Parameter("OcuPilot.Test.ProposalFixture", "USERALLROLE")
+        Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RoleGrantsAdministrativePrivilege(tRole), 1, "the nested role is marked privileged")
         Set tRequest = {"Name": (..#PROBEUSER), "Password": (..#PROBEPASSWORD), "Roles": [(tRole)]}
         Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#CREATEPATH, .tStatus, .tBody, tRequest.%ToJSON(), "application/json")
-        Do $$$AssertEquals(tStatus, 422, "the create is refused at 422")
-        If $IsObject($Get(tBody)) {
-            Set tRow = tBody.%Get("detail").%Get("violations").%Get(0)
-            Do $$$AssertEquals(tRow.%Get("field"), "Roles", "on the Roles field")
-            Do $$$AssertEquals(tRow.%Get("code"), $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "PRIVILEGEGRANT"), "as a privilege grant")
-            Do $$$AssertEquals(tRow.%Get("reason"), ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor($Parameter("OcuPilot.Kernel.Proposal.Prohibited", "PRIVILEGEGRANT")), "with the server's sentence")
-        }
-        Do $$$AssertEquals(..Exists(..#PROBEUSER), 0, "and no account was created")
+        Do $$$AssertEquals(tStatus, 201, "the create is granted at 201")
+        Do $$$AssertTrue((","_$ZConvert(..Property(..#PROBEUSER, "Roles"), "U")_",") [ (","_$ZConvert(tRole, "U")_","), "and the account holds the role: " _ ..Property(..#PROBEUSER, "Roles"))
+        Do ..Remove(..#PROBEUSER)
+        Set tRequest = {"Name": (..#PROBEUSER), "Password": (..#PROBEPASSWORD), "Roles": ["%All"]}
+        Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#CREATEPATH, .tStatus, .tBody, tRequest.%ToJSON(), "application/json")
+        Do $$$AssertEquals(tStatus, 201, "a create granting %All is granted at 201")
+        Do $$$AssertTrue((","_$ZConvert(..Property(..#PROBEUSER, "Roles"), "U")_",") [ ",%ALL,", "and the account holds %All: " _ ..Property(..#PROBEUSER, "Roles"))
     } Catch ex {
         Do $$$AssertStatusOK(ex.AsStatus(), "the nested-role leg ran")
     }

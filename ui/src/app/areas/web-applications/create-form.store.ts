@@ -66,6 +66,19 @@ export interface AutheMethod {
   readonly label: string;
 }
 
+/** One role the instance holds, as `GET /web-applications/form` projects it for the application-roles control. */
+export interface ApplicationRoleOption {
+  readonly name: string;
+  /**
+   * Whether granting it grants %All or an administrative privilege, which the form states at the
+   * field while it is ticked (AD-10). The server's classifier decides; the client decides nothing.
+   */
+  readonly privileged: boolean;
+}
+
+/** The application-roles field: `[{MatchRole, TargetRoles}]` on the wire, the vendor's own shape. */
+export const MATCH_ROLES_FIELD = 'MatchRoles';
+
 /** One rule the server applies, with the sentence it refuses with (DW-376, AD-39). */
 export interface FieldRule {
   readonly field: string;
@@ -97,6 +110,8 @@ export interface FormRules {
    * at the call and sends the resolved directory itself.
    */
   readonly wsgiRoot: string;
+  /** The roles the application-roles control offers, in the order the instance lists them. */
+  readonly roles: readonly ApplicationRoleOption[];
 }
 
 /** The edit buffer: text for an input, a flag for a checkbox. */
@@ -165,6 +180,9 @@ export class WebAppCreateForm {
   /** The authentication bits ticked, as a set of bit values. */
   private autheBits: readonly number[] = [];
 
+  /** The application roles ticked, in the order the instance lists them. */
+  private matchRolesValue: readonly string[] = [];
+
   private rulesValue: FormRules = {
     authenticationMethods: [],
     defaultMethod: 0,
@@ -175,6 +193,7 @@ export class WebAppCreateForm {
     maxLengths: {},
     rules: [],
     wsgiRoot: '',
+    roles: [],
   };
 
   private loadedValue = false;
@@ -240,6 +259,16 @@ export class WebAppCreateForm {
   /** Whether the Unauthenticated method is ticked, which the form states the effect of (DW-1489). */
   unauthenticated(): boolean {
     return this.autheChecked(UNAUTHENTICATED_BIT);
+  }
+
+  /** Whether application role `name` is ticked. */
+  matchRoleChecked(name: string): boolean {
+    return this.matchRolesValue.includes(name);
+  }
+
+  /** Whether a ticked application role is one the server marked privileged (AD-10). */
+  privilegedMatchRoleChecked(): boolean {
+    return this.rulesValue.roles.some((role) => role.privileged && this.matchRoleChecked(role.name));
   }
 
   /**
@@ -342,6 +371,7 @@ export class WebAppCreateForm {
     this.buffer = emptyBuffer();
     this.typeValue = TYPE_CSP;
     this.autheBits = [];
+    this.matchRolesValue = [];
     this.loadedValue = false;
     this.savingValue = false;
     this.violationList = [];
@@ -425,6 +455,17 @@ export class WebAppCreateForm {
       ? [...this.autheBits, bit]
       : this.autheBits.filter((entry) => entry !== bit);
     this.clearFieldViolation('AutheEnabled');
+    this.markDirty();
+    this.notify();
+  }
+
+  /** Tick or untick one application role, a privileged one included (AD-10). */
+  setMatchRole(name: string, on: boolean): void {
+    if (this.matchRoleChecked(name) === on) return;
+    this.matchRolesValue = on
+      ? this.rulesValue.roles.map((role) => role.name).filter((role) => role === name || this.matchRoleChecked(role))
+      : this.matchRolesValue.filter((entry) => entry !== name);
+    this.clearFieldViolation(MATCH_ROLES_FIELD);
     this.markDirty();
     this.notify();
   }
@@ -571,6 +612,11 @@ export class WebAppCreateForm {
       }
       out[field] = this.value(field);
     }
+    // One entry with no matching role grants the ticked roles to every request the application
+    // serves, the classic editor's "application roles". None ticked sends no key.
+    if (this.matchRolesValue.length > 0) {
+      out[MATCH_ROLES_FIELD] = [{ MatchRole: '', TargetRoles: [...this.matchRolesValue] }];
+    }
     return out;
   }
 
@@ -654,6 +700,16 @@ function absorbRules(body: unknown): FormRules {
     if (field === '' || code === '' || reason === '') continue;
     rules.push({ field, code, reason });
   }
+  const roles: ApplicationRoleOption[] = [];
+  for (const entry of arrayAt(body, 'roles')) {
+    if (entry === null || typeof entry !== 'object') continue;
+    const name = textAt(entry, 'name');
+    if (name === '' || roles.some((role) => role.name === name)) continue;
+    // A role whose flag the server did not send as false is treated as privileged, so the
+    // consequence is stated rather than missed.
+    const flag = (entry as Record<string, unknown>)['privileged'];
+    roles.push({ name, privileged: !(flag === false || flag === 0) });
+  }
   const restFields = stringsAt(conditional, 'rest');
   const pythonFields = stringsAt(conditional, 'wsgi');
   const defaultMethod = body !== null && typeof body === 'object'
@@ -669,5 +725,6 @@ function absorbRules(body: unknown): FormRules {
     maxLengths: lengths,
     rules,
     wsgiRoot: textAt(body, 'wsgiRoot'),
+    roles,
   };
 }

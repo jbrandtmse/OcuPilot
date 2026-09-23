@@ -2,8 +2,8 @@
 title: 'Story 8.3: Create a role, and manage its resource grants'
 type: 'feature'
 created: '2026-09-22'
-status: 'in-progress'
-baseline_revision: 'a7c155e7e20fa7119e38682817ab58ae964b5497'
+status: 'done'
+baseline_revision: 'f1783ea2bde538a990d7f610936d8859a6876e79'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -13,30 +13,42 @@ context:
 warnings: ['oversized']
 deferred:
   - summary: >-
-      The grant dialog offers Read and Write on a database resource as two independent boxes; the
-      classic RoleResourceEdit ticks and locks Read when Write is ticked (writeChanged). A Write-only
-      grant is admitted by the letter rule and reaches the vendor.
-    evidence: 'irislib/%CSP/UI/Portal/Dialog/RoleResourceEdit.cls writeChanged; RoleCreateRules.PermissionsAdmitted is letter-based per the spec.'
-    location: 'ui/src/app/areas/permissions/role-grant-dialog.ts'
-    severity: 'low'
-  - summary: >-
-      Prohibited.cls's class header counts the covered types ("Six types are covered") inside the
-      paragraph Epic 7 rewrites to "Eight"; with the role branch the merged count is nine, and the
-      paragraph was left untouched to stay off Epic 7's hunk.
-    evidence: 'git diff 3317fae origin/OCU-1-epic7 -- src/OcuPilot/Kernel/Proposal/Prohibited.cls (first hunk); COVEREDTYPES now ends ,role.'
-    location: 'src/OcuPilot/Kernel/Proposal/Prohibited.cls:29'
-    severity: 'low'
-  - summary: >-
-      With `role:foldcase` the agent's confirmed role create sends `PUT Security.Role?name=<folded>`,
-      so a role the agent creates is stored under the lower-case spelling while the screen stores
-      the typed one (occurrence of DW-1493, escalated; Confirm.cls is not edited here).
+      A user update's role delta that grants privilege, and any EscalationRoles change, is still
+      refused PROHIBITED.PRIVILEGEGRANT by Prohibited.User, whose sentence now names OcuPilot's own
+      web applications; AD-10 as amended permits the delta, and the create path grants it.
     evidence: |-
-      Confirm sends the TargetRef's canonical id as the name query parameter; the screen's Perform
-      sends the typed name. The stored spelling is an inference; the delete is unaffected (probed on
-      ocupilot-b-ci: DropUser("ocupilotprobecasedrop","ROLE") dropped OcuPilotProbeCaseDrop).
+      Prohibited.cls User predicate unchanged; Test/UserUpdate.cls (Epic 7's, not contended) asserts
+      the refusal, so the fix needs that file. The mint marks such an update destructive before the
+      confirm refuses it (inference).
     location: >-
-      src/OcuPilot/Kernel/Proposal/Confirm.cls
+      src/OcuPilot/Kernel/Proposal/Prohibited.cls (User)
     severity: medium
+  - summary: >-
+      Doc comments in Epic 7's files still say privilege is refused through any path.
+    evidence: |-
+      Screen/Tool/WebAppUpdate.cls:26, Screen/Tool/Classification.cls:28, Test/UserUpdate.cls:23
+      (all in Epic 7's diff, not contended).
+    location: >-
+      src/OcuPilot/Screen/Tool/WebAppUpdate.cls:26
+    severity: low
+  - summary: >-
+      AD-54's last paragraph still says setting application roles on any web application stays
+      prohibited on both paths, against AD-10 as amended 2026-09-23.
+    evidence: |-
+      ARCHITECTURE-SPINE.md AD-54 final paragraph; AD-10's "Granting application roles on
+      OcuPilot's own web applications" bullet.
+    location: >-
+      _bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md (AD-54)
+    severity: low
+  - summary: >-
+      Mint.ConsequenceOf now asks Consequence(payload, privileged); a later tool overriding
+      Consequence with one formal raises <PARAMETER>, which the catch turns into no consequence.
+    evidence: |-
+      Only WebAppCreate declares Consequence today, with both formals; the call is in a Try that
+      answers "" on any error.
+    location: >-
+      src/OcuPilot/Kernel/Proposal/Mint.cls (ConsequenceOf)
+    severity: low
 ---
 
 <intent-contract>
@@ -292,14 +304,14 @@ Before editing any file marked ⚠, read Epic 7's version with `git fetch origin
 
 Two owner decisions supersede this spec's escalation refusals, 8.2's AC3 refusal and 8.1's `MatchRoles` refusal: "I want to be able to grant those other roles, so grant %All" and "Web applications should allow %All as well, remember this is a developer tool first". AD-10 is amended (the lead wrote it): the only grant still prohibited is an application role (`MatchRoles`, `Roles`) on **OcuPilot's own** web applications. Vendor verified by the lead on `ocupilot-b-ci` through `AdminPort.Invoke`: `Security.User` POST with `Roles:["%All"]` answered 201 and stored `%All`; `WebApp.App` PUT with `MatchRoles:[{MatchRole:"",TargetRoles:["%All"]}]` answered 201 and stored `:%All`; both probes deleted. Work these items; the rest of the story stands.
 
-- [ ] [Lead] **Prohibited set.** Remove the privilege-grant refusal for users (8.2's `user` step), roles (this story's `role` step's escalation legs) and application roles on any web application that is not OcuPilot's own. `PROHIBITED.PRIVILEGEGRANT` now refuses exactly `MatchRoles`/`Roles` on a web application that is OcuPilot's own (the API, the static application, and any other application the installer creates -- reuse the existing identity of OcuPilot's own applications, `ServesOcuPilot`/`UnderOcuPilot` or the installer roster, never a transcribed list), on create and change alike; reword `ReasonFor(PRIVILEGEGRANT)` to exactly that case, caller-neutral. Remove the `%DB_IRISSECURITY:W` clause (`ResourceGrantEscalates`' DB leg) -- DW-1512 is moot. The role-delete refusals (`ROLE.NAME.SYSTEM`, `OCUPILOTROLE`, `LASTALLHOLDER`) stay. Do not touch the account protections (current user, `_SYSTEM`, service account, last `%All` holder -- Epic 7's). `Prohibited.cls` is contended: `git fetch origin`, read `git show origin/OCU-1-epic7:src/OcuPilot/Kernel/Proposal/Prohibited.cls` first, stay off its hunks.
-- [ ] [Lead] **One classifier, kept.** `RoleEscalates`/`RoleGrantsAdministrativePrivilege` (by effect: the role, the roles it recurses to, their resources) and the `%All`/`%Admin_*` resource test stay, no longer as refusals but as the one answer to "is this grant privileged?", asked by the kernel (agent path) and by the bootstrap reads (screen path), so the two cannot drift.
-- [ ] [Lead] **Agent path: the strongest confirmation.** A proposal whose payload grants a privileged role (a user's `Roles`, a role's `GrantedRoles`), an escalating resource (a role's `Resources`) or a privileged application role (`MatchRoles`/`Roles` on a web application) is confirmed as a delete is: the mint marks **that proposal** destructive (the kernel computes it from the payload with the classifier, OR'd with the tool's own `destructive` declaration), so the card draws the destructive treatment now and Story 14.7's typed-name field applies to it from one place. Its server-computed diff names the privilege: the proposal's `consequence` (8.2's column) carries a code for the privileged grant, rendered as `STRINGS.privilegedGrantEffect`; a web-application create that is both unauthenticated and granted a privileged application role carries one combined code rendered as `STRINGS.privilegedGrantEffectUnauthenticated`, never two lines. Pin both: a test that fails when the per-proposal destructive marking is removed, and one that fails when the consequence is removed.
-- [ ] [Lead] **Screen path: a consequence line, never a refusal.** The user form's Roles fieldset, this story's GrantedRoles and Resources fields and its grant dialog show `STRINGS.privilegedGrantEffect` at the field while a privileged choice is selected, from the bootstrap reads' `privileged` flags; privileged choices are no longer disabled. The web-application create form gains an **Application roles** control (a role checkbox fieldset reusing 8.2's roles bootstrap shape, sent as `MatchRoles: [{MatchRole:"", TargetRoles:[...]}]`) placed after the authentication methods; while a privileged role is checked it shows `privilegedGrantEffect`, or `privilegedGrantEffectUnauthenticated` instead of both it and `webAppUnauthenticatedEffect` when Unauthenticated is also checked. The screen's Save then applies the grant (AD-55: same tool, same prohibited set).
-- [ ] [Lead] **8.1's tool admits `MatchRoles`.** `WebAppCreate`: remove `MatchRoles` from `ExcludedFields` and add it to `PERMITTEDFIELDS`; `Prohibited.PermittedCreateFields("web-application")` gains it and `AlwaysProhibitedCreateFields("web-application")` loses it; regenerate `ToolFields.cls` if its classification changes (`MatchRoles[].*` rows are already derived). The update tool (`webapp.list.update`) keeps its admitted field list; its change-path `AlwaysProhibitedFields` loses `MatchRoles` except on OcuPilot's own applications, so the prohibition means what AD-10 now says.
-- [ ] [Lead] **Strings.** Append `privilegedGrantEffect` and `privilegedGrantEffectUnauthenticated` to `strings.ts` (the key family is this story's; Epic 7 ports it byte-for-byte) with matching EXPERIENCE.md Fixed-strings rows (tier-1). Meaning, in plain words: the first says the grant gives `%All` or an administrative privilege and whoever holds it can administer this instance; the second says anyone who reaches this application, without signing in, runs with that privilege -- with `%All`, full control of the instance.
-- [ ] [Lead] **DW-1514 (LOW, two-way door).** In the grant dialog, ticking Write on a database resource ticks and locks Read, as the classic `RoleResourceEdit` does (`writeChanged`); `RoleCreateRules` refuses a Write-only database grant on both callers with a field sentence. One test each side.
-- [ ] [Lead] **Tests rewritten, not deleted.** Every test that asserted a privilege-grant refusal (8.2's `UserCreate` both-callers test and picker pre-mark, this story's `RoleCreate` escalation legs, the `%DB_IRISSECURITY` legs, 8.1's `MatchRoles` refusal in `WebAppCreate`/`ProposalCreate`/`Prohibited`/`ToolWrite` and the browser specs) now asserts the new terms: the grant is proposable, its proposal is destructive and names the privilege, it applies on the throwaway once confirmed, and on the screen the consequence line appears. Keep a test that fails when OcuPilot's own applications stop being refused (both callers). Update every `mutation:` row these touch.
+- [x] [Lead] **Prohibited set.** Remove the privilege-grant refusal for users (8.2's `user` step), roles (this story's `role` step's escalation legs) and application roles on any web application that is not OcuPilot's own. `PROHIBITED.PRIVILEGEGRANT` now refuses exactly `MatchRoles`/`Roles` on a web application that is OcuPilot's own (the API, the static application, and any other application the installer creates -- reuse the existing identity of OcuPilot's own applications, `ServesOcuPilot`/`UnderOcuPilot` or the installer roster, never a transcribed list), on create and change alike; reword `ReasonFor(PRIVILEGEGRANT)` to exactly that case, caller-neutral. Remove the `%DB_IRISSECURITY:W` clause (`ResourceGrantEscalates`' DB leg) -- DW-1512 is moot. The role-delete refusals (`ROLE.NAME.SYSTEM`, `OCUPILOTROLE`, `LASTALLHOLDER`) stay. Do not touch the account protections (current user, `_SYSTEM`, service account, last `%All` holder -- Epic 7's). `Prohibited.cls` is contended: `git fetch origin`, read `git show origin/OCU-1-epic7:src/OcuPilot/Kernel/Proposal/Prohibited.cls` first, stay off its hunks.
+- [x] [Lead] **One classifier, kept.** `RoleEscalates`/`RoleGrantsAdministrativePrivilege` (by effect: the role, the roles it recurses to, their resources) and the `%All`/`%Admin_*` resource test stay, no longer as refusals but as the one answer to "is this grant privileged?", asked by the kernel (agent path) and by the bootstrap reads (screen path), so the two cannot drift.
+- [x] [Lead] **Agent path: the strongest confirmation.** A proposal whose payload grants a privileged role (a user's `Roles`, a role's `GrantedRoles`), an escalating resource (a role's `Resources`) or a privileged application role (`MatchRoles`/`Roles` on a web application) is confirmed as a delete is: the mint marks **that proposal** destructive (the kernel computes it from the payload with the classifier, OR'd with the tool's own `destructive` declaration), so the card draws the destructive treatment now and Story 14.7's typed-name field applies to it from one place. Its server-computed diff names the privilege: the proposal's `consequence` (8.2's column) carries a code for the privileged grant, rendered as `STRINGS.privilegedGrantEffect`; a web-application create that is both unauthenticated and granted a privileged application role carries one combined code rendered as `STRINGS.privilegedGrantEffectUnauthenticated`, never two lines. Pin both: a test that fails when the per-proposal destructive marking is removed, and one that fails when the consequence is removed.
+- [x] [Lead] **Screen path: a consequence line, never a refusal.** The user form's Roles fieldset, this story's GrantedRoles and Resources fields and its grant dialog show `STRINGS.privilegedGrantEffect` at the field while a privileged choice is selected, from the bootstrap reads' `privileged` flags; privileged choices are no longer disabled. The web-application create form gains an **Application roles** control (a role checkbox fieldset reusing 8.2's roles bootstrap shape, sent as `MatchRoles: [{MatchRole:"", TargetRoles:[...]}]`) placed after the authentication methods; while a privileged role is checked it shows `privilegedGrantEffect`, or `privilegedGrantEffectUnauthenticated` instead of both it and `webAppUnauthenticatedEffect` when Unauthenticated is also checked. The screen's Save then applies the grant (AD-55: same tool, same prohibited set).
+- [x] [Lead] **8.1's tool admits `MatchRoles`.** `WebAppCreate`: remove `MatchRoles` from `ExcludedFields` and add it to `PERMITTEDFIELDS`; `Prohibited.PermittedCreateFields("web-application")` gains it and `AlwaysProhibitedCreateFields("web-application")` loses it; regenerate `ToolFields.cls` if its classification changes (`MatchRoles[].*` rows are already derived). The update tool (`webapp.list.update`) keeps its admitted field list; its change-path `AlwaysProhibitedFields` loses `MatchRoles` except on OcuPilot's own applications, so the prohibition means what AD-10 now says.
+- [x] [Lead] **Strings.** Append `privilegedGrantEffect` and `privilegedGrantEffectUnauthenticated` to `strings.ts` (the key family is this story's; Epic 7 ports it byte-for-byte) with matching EXPERIENCE.md Fixed-strings rows (tier-1). Meaning, in plain words: the first says the grant gives `%All` or an administrative privilege and whoever holds it can administer this instance; the second says anyone who reaches this application, without signing in, runs with that privilege -- with `%All`, full control of the instance.
+- [x] [Lead] **DW-1514 (LOW, two-way door).** In the grant dialog, ticking Write on a database resource ticks and locks Read, as the classic `RoleResourceEdit` does (`writeChanged`); `RoleCreateRules` refuses a Write-only database grant on both callers with a field sentence. One test each side.
+- [x] [Lead] **Tests rewritten, not deleted.** Every test that asserted a privilege-grant refusal (8.2's `UserCreate` both-callers test and picker pre-mark, this story's `RoleCreate` escalation legs, the `%DB_IRISSECURITY` legs, 8.1's `MatchRoles` refusal in `WebAppCreate`/`ProposalCreate`/`Prohibited`/`ToolWrite` and the browser specs) now asserts the new terms: the grant is proposable, its proposal is destructive and names the privilege, it applies on the throwaway once confirmed, and on the screen the consequence line appears. Keep a test that fails when OcuPilot's own applications stop being refused (both callers). Update every `mutation:` row these touch.
 
 ### Acceptance Criteria
 
@@ -352,6 +364,25 @@ Two owner decisions supersede this spec's escalation refusals, 8.2's AC3 refusal
   - `[false]` `[reject]` A custom granted role that escalates is untested (intent-alignment f) — the role step asks 8.2's `GrantsPrivilege`/`RoleEscalates`, whose recursion `UserCreateWire` pins with a nested role
   - `[medium]` `[patch]` Screen `EscalationOnly` rests on inference (intent-alignment g) — same root and patch as the third row
   - `[false]` `[reject]` Changes beyond the named surface (intent-alignment h) — each is spec-mandated (`role:foldcase`, `VERIFIEDDELETES`, roster rows) or required by a matrix row (`Mint` asks `ArgumentProblem` of every tool for `ROLE.NAME.SYSTEM`'s 400)
+
+### 2026-09-23 — Review pass (rework iteration 1, owner reversal)
+
+- verdicts: 14 findings — high 0, medium 4, low 4, false 6, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `WEBAPP.MATCHROLES.SHAPE`/`.UNKNOWN` untested on either caller (verification-gap) — added `WebAppCreate.TestTheApplicationRoleRulesRefuseOnBothCallers`, three cases on both callers; observed red with the rule call removed (run 241)
+  - `[medium]` `[patch]` The web-application form read's `roles` marks are unpinned (verification-gap) — added `WebAppCreate.TestTheFormReadMarksThePrivilegedApplicationRoles` (`%All`, `%Manager` 1, `%Developer` 0); observed red with every role marked (run 241)
+  - `[low]` `[patch]` The two consequence codes are pinned only against the client's own literals (verification-gap) — `ProposalCreate` asserts both literals; observed red with the code renamed (run 242)
+  - `[low]` `[patch]` AC7's combined line has no observed mutation (verification-gap) — both page mutations applied on rebuilt, redeployed bundles and observed red on the browser AC7 leg; `mutation:` line written
+  - `[medium]` `[defer]` A user update's privileged role delta or `EscalationRoles` change is still refused `PRIVILEGEGRANT`, whose sentence now names OcuPilot's own web applications (verification-gap other) — the fix edits `Test/UserUpdate.cls`, Epic 7's file, which asserts the refusal; deferred for the lead
+  - `[low]` `[reject]` The create branch of `Prohibited.TestNoWriteToolAdmitsAnAlwaysProhibitedField` loops zero times (verification-gap other) — explicit `""` assertions on `AlwaysProhibitedCreateFields` pin the emptiness; removing the method touches the contended `Prohibited.cls` for no user-reachable harm
+  - `[low]` `[reject]` `GrantsPrivilegeByEffect`'s error path is untested (verification-gap other) — it fails closed (no proposal is minted); a `%SYS` role read failing is not reachable in everyday use, and a seam to force it adds surface
+  - `[medium]` `[defer]` The user update surface: mint marks destructive, confirm refuses with a web-application sentence (intent-alignment a) — same root and route as the user-update row above
+  - `[false]` `[reject]` A web-application change refuses `MatchRoles` as `UNCOVEREDFIELD` off OcuPilot's own applications (intent-alignment b) — the reversal's `MatchRoles` item keeps the update tool's admitted field list; by design
+  - `[false]` `[reject]` The consequence names the category, not the specific role (intent-alignment c) — the reversal specifies the `consequence` code rendered as `privilegedGrantEffect`; the diff rows already name each granted role
+  - `[false]` `[reject]` The typed-name half of "confirmed as a delete is" is not exercised (intent-alignment d) — Story 14.7's, reading the per-proposal flag this pass pins
+  - `[false]` `[reject]` The own-application change refusal is exercised only as a predicate test (intent-alignment e) — no caller can author `MatchRoles` on a change (the update tool's schema), so the predicate is the reachable surface; the create half is pinned on both callers
+  - `[false]` `[reject]` The screen's consequence line is computed client-side (intent-alignment f) — AD-10 asks for a line at the field from the one classifier; the flags are server-computed and pinned in `RoleCreate`, `UserCreateWire` and `WebAppCreate`
+  - `[false]` `[reject]` The dialog detects a database by `permissions === 'RW'` (intent-alignment g) — `AdmissiblePermissions` answers `RW` exactly for `IsDatabaseResource` names (`U` for Use-only prefixes, `RWU` otherwise), so the test is equivalent
 
 ## Design Notes
 
@@ -438,15 +469,25 @@ Stateful checks run on slot B's throwaway `ocupilot-b-ci` (web 52777, super 1976
 | AC1 | `roles-create.browser-spec.mjs` field-order leg | Swap Description and Resources in the page |
 | AC2 | `role-grant-dialog.spec.ts` current/resulting test; the browser edit leg | Render the resulting grant in the current line |
 | AC3 | `RoleDelete.cls` refusal and verified-delete tests; `RoleWire` delete leg | Drop the `Role` branch's delete step; empty `VERIFIEDDELETES` |
-| AC4 | `RoleCreate.cls` both-callers escalation test | Remove the `role` step from `Prohibited.Created` |
-| AC4 (DW-1512) | `RoleCreate.cls` `%DB_IRISSECURITY:W` leg; `UserCreate.cls` `%DB_IRISSECURITY` role leg | Drop the `%DB_IRISSECURITY` write clause |
+| AC4 | `RoleCreate`/`UserCreate`/`ProposalCreate` privileged-grant tests; `RoleWire` real-port create; the dialog and browser AC4/AC3 legs | Drop `tPrivileged` from the mint's destructive value; drop the privileged consequence; make the page's or dialog's consequence flag false |
+| AC7 | `WebAppCreate` screen refusal and `ProposalCreate` in-transition refusal at OcuPilot's own path; `WebAppWire`; `Prohibited` create and change legs; browser AC7 | Stop refusing application roles at OcuPilot's own path; drop the change path's own-application leg; make the page's application-role flag false |
 | AC5 | `role-create-form.store.spec.ts` change-event test | Drop the `publishCreated()` call |
 | AC6 | `RoleCreate.cls` confirm test; `RoleWire` create leg | Set `CREATES` to 0 on `RoleCreate` |
 
 Observed (implement stage; each applied to the checked-in file, loaded with `cbk` (subclasses recompiled) or rebuilt and redeployed, observed red, reverted from a byte copy and reloaded):
 
-- mutation: `Prohibited.Created`'s `role` step disabled -> `RoleCreate.TestAnEscalatingGrantIsRefusedOnBothCallers` red on the screen and the confirm legs of all six cases (run 221)
-- mutation: the `%DB_IRISSECURITY` write clause in `Prohibited.ResourceGrantEscalates` answers 0 -> `RoleCreate` escalation cases 3 and 6 red on both callers and `TestTheBootstrapPreMarksWhatTheSetRefuses` red (run 222); `UserCreate.TestAPrivilegedRoleIsRefusedOnBothCallers` red on the `%DB_IRISSECURITY` screen, pre-mark and confirm legs (run 223)
+- mutation: `tPrivileged` dropped from the mint's destructive value -> `ProposalCreate.TestAPrivilegedApplicationRoleIsMintedDestructiveAndNamed` (rework run 217), `UserCreate.TestAPrivilegedRoleIsGrantedAtTheStrongestConfirmationOnBothCallers` (rework run 218), `RoleCreate.TestAPrivilegedGrantIsGrantedAtTheStrongestConfirmationOnBothCallers` (rework run 219) and `RoleWire.TestAPrivilegedCreateConfirmedThroughTheRealPortIsApplied` (rework run 220) red
+- mutation: `Mint.ConsequenceOf`'s privileged fallback removed -> `ProposalCreate` case 1 consequence red (rework run 221); `UserCreate` `%All` and `%Manager` consequence legs red (rework run 222)
+- mutation: `WebAppCreate.Consequence` ignores `pPrivileged` -> `ProposalCreate` case 2 (the combined code) red (rework run 229)
+- mutation: `Prohibited.Created` stops refusing application roles at OcuPilot's own path -> `WebAppCreate.TestTheScreenSaveRefusesAProhibitedCreateBeforeThePortIsTouched` (screen, rework run 223), `ProposalCreate.TestApplicationRolesOnOcuPilotsOwnPathAreRefusedInsideTheTransition` (agent, rework run 224), `WebAppWire.TestTheCreateAnswersOneEnvelopeForEachOutcome` (rework run 225) and `Prohibited.TestACreateIsRefusedAtOcuPilotsOwnPathForRolesAndForAnUnreviewedField` (rework run 226) red
+- mutation: `Prohibited.WebApplication`'s own-application roles leg dropped -> `Prohibited.TestAChangedRoleGrantIsRefusedOnOcuPilotsOwnApplication` red (rework run 227)
+- mutation: `RoleCreateRules`' write-only rule removed -> `RoleCreate.TestEveryFieldRuleRefusesOnBothCallers` red on case 14 (rework run 228)
+- mutation: `MATCHROLESARGUMENT` dropped from `WebAppCreate.SettableFields` -> `WebAppCreate.TestTheToolAdvertisesTheReviewedCreateFieldsAndApplicationRoles` and the one-body test red (rework run 230)
+- mutation (one client pass, each reddening its own): the dialog's `writeChanged` line dropped -> `role-grant-dialog.spec.ts` DW-1514 red; `showEffect` false -> its AC4 red; `CONSEQUENCE_PRIVILEGED` branch dropped from `consequenceSentence` -> `proposal-card.spec.ts` AD-10 and `proposal-view.test.mjs` red; the `MatchRoles` entry dropped from the web-application store's body -> its AC7 red; the privileged early return restored in either store's `setRole` -> the user store's AC3 and the role store's AC4 and AD-54 body tests red
+- mutation (one rebuilt, redeployed bundle, each reddening only its own): the user page's `privilegedChecked`, the role page's `privilegedRoleChecked` and the web-application page's `privilegedRoleFlag` answer false -> browser `users-create` AC3, `roles-create` AC4 and `web-applications-create` AC7 red; green again on the reverted bundle (22/22 across the four specs)
+- mutation: the `MatchRolesViolation` call removed from `Area.WebApp.Create.Validate` -> `WebAppCreate.TestTheApplicationRoleRulesRefuseOnBothCallers` red on all three cases on both callers; `FormRules.Roles` marks every role privileged -> `WebAppCreate.TestTheFormReadMarksThePrivilegedApplicationRoles` red on `%Developer` (one load, each reddening only its own method, rework run 241)
+- mutation: `Mint.CONSEQUENCEPRIVILEGED` `"GRANT.PRIVILEGE"` -> `ProposalCreate.TestAPrivilegedApplicationRoleIsMintedDestructiveAndNamed` red on the literal the card resolves (rework run 242)
+- mutation (two rebuilt, redeployed bundles): the web-application page's `unauthenticatedEffect` answers `unauthenticatedFlag` alone -> browser `web-applications-create` AC7 red on "the one combined line replaces the unauthenticated effect"; `privilegeEffect` ignores Unauthenticated -> the same leg red waiting for the combined sentence
 - mutation: `Prohibited.Role`'s delete step disabled -> `RoleDelete.TestOcuPilotsOwnRolesAreRefusedAtTheWrite` and `TestTheLastAllHoldersPathIsRefused` red (run 224)
 - mutation: `AdminPort.VERIFIEDDELETES` emptied -> `RoleDelete.TestAVendorDeleteThatDidNotApplyFailsNotApplied` red (run 225)
 - mutation: `Mint` asks `ArgumentProblem` of creates only (the pre-story condition) -> `RoleDelete.TestASystemRoleIsRefusedAtTheMint` red (run 226)
@@ -456,7 +497,7 @@ Observed (implement stage; each applied to the checked-in file, loaded with `cbk
 - mutation: `EscalationOnly` added to `RoleCreate.PERMITTEDFIELDS` -> `RoleCreate.TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets` red (run 230)
 - mutation: the duplicate-grant rule removed from `RoleCreateRules.ResourceViolation` -> `RoleCreate.TestEveryFieldRuleRefusesOnBothCallers` red (run 231)
 - mutation: `RoleCreate.Perform` composes from a hand-typed list without `Resources` -> `RoleCreate.TestTheScreenAndTheConfirmSendOneBody` red (run 232)
-- mutation: `Prohibited.ResourceGrantsAdministrativePrivilege` answers 0 -> `RoleCreate.TestTheBootstrapPreMarksWhatTheSetRefuses` red (run 233)
+- mutation: `Prohibited.ResourceGrantsAdministrativePrivilege` answers 0 -> `RoleCreate.TestTheBootstrapMarksWhatTheClassifierCallsPrivileged` and the privileged-grant test red (rework run 231)
 - mutation: `ROLE.VALIDATION` added to `Error.RoleViolationCodes` -> `RoleCreate.TestEveryRoleFieldCodeCarriesItsOwnSentence` red (run 234)
 - mutation: `RoleForm.sideBarPosition` 7 -> `RoleCreate.TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs` red (run 235)
 - mutation: `Resources` dropped from `RoleDelete.READANSWERS` -> the registration guard refuses the tool; five `RoleDelete` tests red, `TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs` among them (run 236)
@@ -466,7 +507,7 @@ Observed (implement stage; each applied to the checked-in file, loaded with `cbk
 - mutation: `RoleCreate.RenderViolations` renders `USER.VALIDATION` -> `RoleWire.TestEachRouteAnswersOneJsonEnvelopeOverTheWire` red (run 241)
 - mutation: `publishCreated()` dropped from `RoleCreateForm.save()` -> `role-create-form.store.spec.ts` change-event test red
 - mutation: the dialog's current line renders the resulting grant -> the three AC2 tests of `role-grant-dialog.spec.ts` red; rebuilt and redeployed, `roles-create.browser-spec.mjs` AC2 red
-- mutation (one bundle, four legs, each reddening only its own): Description moved after Resources in the page -> browser AC1 field order red; `[disabled]` dropped from the granted-role checkbox -> browser AC4 red on `%All`; the route replacement dropped from `onSave` -> browser AC5 red; the `RoleActions` injection dropped from `app.ts` -> browser "the Roles list offers Create" red; AC2 stayed green
+- mutation (one bundle, three legs, each reddening only its own): Description moved after Resources in the page -> browser AC1 field order red; the route replacement dropped from `onSave` -> browser AC5 red; the `RoleActions` injection dropped from `app.ts` -> browser "the Roles list offers Create" red; AC2 stayed green
 - mutation: `RoleCreate.CREATES` 0 -> `RoleCreate.TestATakenNameRefusesTheMintAndAConfirmTakenSince` red on its free-name leg (run 190; matrix row "Name taken", mint 400 and confirm 409)
 - mutation: `ReachesAllWithout` answers 0 -> `RoleWire.TestTheDeleteCensusCountsOnlyHoldersThatLoseAllThroughTheRole` red on the kept-holder leg (run 194); the deleted role skipped only among the account's direct roles -> the nested-holder leg red (run 196)
 - mutation: `RoleCreate.SettableFields` without `Resources` -> `RoleCreate.TestAConfirmedCreateIsMarkedAndAnswersCreated` red on "the ledger names Resources" (run 197; AC6's ledger leg)
@@ -480,26 +521,20 @@ Observed (implement stage; each applied to the checked-in file, loaded with `cbk
 Status: done
 Blocking condition: none
 
-footprint_extensions: contended `src/OcuPilot/Kernel/Proposal/Prohibited.cls`, `src/OcuPilot/Kernel/Proposal/Mint.cls` (every tool's `ArgumentProblem` is asked at the mint), `src/OcuPilot/Screen/Tool/Write.cls` (doc comment only), `src/OcuPilot/Api/Router.cls`, `src/OcuPilot/Test/{SurfaceCoverage,EndpointCoverage,ToolRoundTrip,ReadTool,Prohibited,PortFixture,ToolWrite}.cls`, `ui/tools/screen-mirror.test.mjs`, `ui/src/app/core/screens.generated.ts` (regenerated); shared appends `src/OcuPilot/Port/AdminPort.cls`, `ui/src/app/core/strings.ts`, `ui/src/styles/_components.scss`, EXPERIENCE.md Fixed strings rows 401-402; outside Epic 8's footprint `src/OcuPilot/Kernel/EntityRef.cls` (`role:foldcase`), `ui/src/app/app.ts`; outside the Code Map `src/OcuPilot/Test/{EntityRef,AuditingUpdate,RoleDeletePort}.cls`, `ui/tools/entity-ref.test.mjs`, `ui/browser/users-create.browser-spec.mjs`.
+footprint_extensions: contended `src/OcuPilot/Kernel/Proposal/Prohibited.cls`, `src/OcuPilot/Kernel/Proposal/Mint.cls`, `src/OcuPilot/Test/Prohibited.cls`, `src/OcuPilot/Test/SurfaceCoverage.cls` (8.1's own row edited for a renamed test method, not an append), `src/OcuPilot/Test/ToolWrite.cls` (doc comment), `ui/src/app/core/proposal-view.ts`, `ui/src/app/shell/proposal-card.spec.ts`; shared appends `ui/src/app/core/strings.ts`, EXPERIENCE.md Fixed strings rows 403-405 (rows 398 and 402, 8.2's and 8.3's own, reworded); Epic 8 files outside 8.3's own `src/OcuPilot/Api/Error.cls`, `src/OcuPilot/Area/WebApp/{Create,FormRules}.cls`, `src/OcuPilot/Area/Permissions/{UserCreate,UserCreateRules}.cls`, `src/OcuPilot/Screen/Tool/{WebAppCreate,UserCreate}.cls`, `src/OcuPilot/Test/{WebAppCreate,ProposalCreate,WebAppWire,UserCreate,UserCreateWire}.cls`, `ui/src/app/areas/web-applications/create-form.{page,store,store.spec}.ts`, `ui/src/app/areas/permissions/user-create-form.{page,store,store.spec}.ts`, `ui/browser/{users-create,web-applications-create}.browser-spec.mjs`, `ui/tools/proposal-view.test.mjs`. No file Epic 7 alone modified, and none of the never-edit files, was touched.
 
 ### Summary
 
-`permissions.roles.create` and the `permissions/roles/edit` form (with the resource-grant dialog) are two callers of one tool; `permissions.roles.delete` is an action-style write whose `DELETE` the port verifies with a re-read (`VERIFIEDDELETES`, `PORT.NOTAPPLIED`). The prohibited set covers `role`: `ResourceGrantEscalates` adds `%DB_IRISSECURITY:W` beside the existing predicate and both `RoleGrantsPrivilege` and the role create's `Resources` ask it; a delete refuses OcuPilot's own roles (`OCUPILOTROLE`) and the last `%All` holder's path (`DeletingLeavesNoAllHolder`). No Roles-list row action (DW-1513); `Confirm.cls` untouched.
-
-### Files
-
-- Server: new `Screen/Tool/{RoleCreate,RoleDelete}.cls`, `Area/Permissions/{RoleCreate,RoleCreateRules}.cls`, `Screen/Descriptor/RoleForm.cls`; edited `Prohibited.cls`, `AdminPort.cls`, `Api/Error.cls`, `Api/Router.cls`, `EntityRef.cls`, `Classification.cls` + regenerated `ToolFields.cls`, `RoleList.cls`, `Mint.cls`, `Write.cls` (doc).
-- Client: new `areas/permissions/{role-create-form.page,role-create-form.store,role-grant-dialog,role-actions}.ts`; edited `navigation.ts`, `screen-outlet.ts`, `app.ts`, `strings.ts`, `_components.scss`, regenerated `screens.generated.ts`.
-- Tests: new `Test/{RoleCreate,RoleCreateFixture,RoleDelete,RoleDeletePort,RoleWire}.cls`, `role-create-form.store.spec.ts`, `role-grant-dialog.spec.ts`, `roles-create.browser-spec.mjs`; roster updates listed above; `ci-throwaway.sh` arms `RoleWire`.
+Owner reversal 2026-09-23 (AD-10 amended): privilege grants are permitted at the strongest confirmation. `PROHIBITED.PRIVILEGEGRANT` now refuses only application roles on OcuPilot's own web applications, on create (ahead of `SERVINGPATH`) and on change, with a reworded sentence; the user and role create refusals and the `%DB_IRISSECURITY:W` clause are gone. `Prohibited.GrantsPrivilegeByEffect` is the one classifier: the mint ORs it into the proposal's `destructive` flag and names it in `consequence` (`GRANT.PRIVILEGED`, or one combined `WEBAPP.UNAUTHENTICATEDPRIVILEGED`); the bootstrap reads mark choices with its per-choice halves. The user, role and web-application forms state `privilegedGrantEffect` (or `privilegedGrantEffectUnauthenticated`) at the field instead of disabling choices; the web-application form and tool gain `MatchRoles` (Application roles). DW-1514: the grant dialog ticks and locks Read with Write on a database, and `ROLE.RESOURCES.WRITEONLY` refuses a Write-only database grant on both callers. `Confirm.cls` untouched.
 
 ### Review
 
-Two layers, 16 findings (Review Triage Log): 6 patched (3 medium entries grouped into 2 root causes, 4 low; all test additions or a comment, each mutation observed red), 1 deferred (DW-1493 occurrence), 9 rejected with reasons logged. The lead also added `RoleCreate.TestATakenNameRefusesTheMintAndAConfirmTakenSince` for the matrix's name-taken row and reworded `Mint.cls`'s comment. Follow-up review recommended: false -- patched medium 2, low 4, high 0; each patch is a test whose red was observed, so no unverified risk remains to name.
+Two layers, 14 findings (Review Triage Log, rework pass): 4 patched (medium 2, low 2; all test additions or recorded mutations, each observed red), 2 deferred as one root (medium: the user update path still refuses a privileged role delta with a sentence that now names web applications; the fix needs Epic 7's `Test/UserUpdate.cls`), 8 rejected with reasons logged. Follow-up review recommended: false -- follow-up pass, no high patched (patched: high 0, medium 2, low 2).
 
 ### Verification
 
-On `ocupilot-b-ci`: every targeted class green, one class per call; the full ObjectScript sweep ran once in the implement pass (187 classes, 1694/1694 in `%UnitTest_Result`), before the review patches, whose touched classes (`RoleCreate`, `RoleWire`, `RoleDelete`, `ProposalCreate`) were re-run green afterwards (runs 199-202). `npm test` 1324 + 850 green; `roles-create` + `users-create` browser specs 10/10 on the rebuilt, redeployed bundle (initial total 1.15 MB, under budget); smoke 46 passed, 1 skipped (`agentswitches`: switches written by the sweep on this reused throwaway); `check-objectscript`, `lint-docs`, `client-lint`, `field-lists --check`, `screen-mirror --check`, `browser-reset` clean.
+On a fresh `ocupilot-b-ci` brought up after the last code edit: the full ObjectScript sweep, 187 classes one at a time, 1700/1700 confirmed in `%UnitTest_Result`; smoke 47/47; `roles-create`, `users-create`, `web-applications-create` and `web-applications` browser specs 22/22 on the deployed bundle (initial total 1.16 MB). `npm run build` and `npm test` green (1325 tool tests, 855 component tests); `check-objectscript`, `lint-docs`, `client-lint`, `field-lists --check`, `screen-mirror --check`, `browser-reset` clean. Matrix rows "Escalating resource" and "Escalating granted role" are superseded by amended AC4 and pinned by the privileged-grant tests; the frozen intent block still states the refusal.
 
 ### Residual risks
 
-Single-line merge conflicts with Epic 7 on `COVEREDTYPES`/the type guard, `MUTATINGTYPES`/`BODYLESSTYPES`, the roster rows and the three shared-append files; `Prohibited.cls`'s header type count (deferred). `PRIVILEGEGRANT`'s sentence names web applications and accounts, not roles (DW-1502 territory).
+The deferred user-update refusal (medium) until Epic 7 or the merge drops or recodes it; the intent-contract's escalation rows and AD-54's last paragraph still describe the old rule (lead's to amend); single-line merges with Epic 7 on `Prohibited.cls` and the shared-append files.

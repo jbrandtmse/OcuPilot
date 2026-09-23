@@ -57,6 +57,12 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// the confirm cannot digest two differently shaped answers to the same question (AD-54).</p>
 Parameter ABSENCEFIELD = "present";
 
+/// <p>The consequence code a proposal carries when its write grants <code>%All</code> or an
+/// administrative privilege (<method>OcuPilot.Kernel.Proposal.Prohibited.GrantsPrivilegeByEffect</method>)
+/// and its tool names no consequence of its own for that payload (<method>ConsequenceOf</method>).
+/// The card renders <code>STRINGS.privilegedGrantEffect</code> for it.</p>
+Parameter CONSEQUENCEPRIVILEGED = "GRANT.PRIVILEGED";
+
 /// <p>The port the fresh read goes through when the call names no tool class, and the default a
 /// tool that declares none resolves to (AD-52). Overridable so a fixture can answer a known
 /// object; production never overrides it.</p>
@@ -288,8 +294,16 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             Quit
         }
         Set tValues("auditWarning") = ..WarnsAuditingOff(pToolName, tType, tScope, pArgs)
-        Set tValues("consequence") = ..ConsequenceOf(pToolClass, tPayload)
-        Set tValues("destructive") = ..DestructiveTool(pToolName)
+        ; AD-10: a write that grants %All or an administrative privilege is confirmed as a delete
+        ; is. The one classifier answers it from the payload against the target it changes, and
+        ; its verdict is OR'd with the tool's own declaration and named in the consequence.
+        Set tGrantSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).GrantsPrivilegeByEffect(tType, tPayload, $Select(tCreates: {}, 1: tFresh), .tPrivileged)
+        If $$$ISERR(tGrantSC) {
+            Set tSC = ..Internal("whether the proposal grants privilege could not be read: " _ $System.Status.GetErrorText(tGrantSC), .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tValues("consequence") = ..ConsequenceOf(pToolClass, tPayload, tPrivileged)
+        Set tValues("destructive") = (..DestructiveTool(pToolName) || tPrivileged)
         ; FR-17's definition condition is answered at confirm against the definition that was in
         ; force here. Read, never written: the definition store is Epic 10's.
         Set tDefinitionSC = ..DefinitionInForce(.tDefinitionId, .tDefinitionVersion)
@@ -589,18 +603,22 @@ ClassMethod AppendComposedSecrets(pToolClass As %String, pDiff As %DynamicArray)
     }
 }
 
-/// <p>The kernel-owned consequence code <var>pToolClass</var> answers for the payload
-/// <var>pPayload</var> (<code>Consequence(payload)</code>), or <code>""</code> where the class
-/// names none or cannot be asked. The card renders the code's sentence; it decides nothing about
-/// whether the write may happen.</p>
-ClassMethod ConsequenceOf(pToolClass As %String, pPayload As %DynamicObject) As %String [ Private ]
+/// <p>The kernel-owned consequence code for the payload <var>pPayload</var>: the one
+/// <var>pToolClass</var> answers (<code>Consequence(payload, privileged)</code>), which is told
+/// whether the write grants privilege (<var>pPrivileged</var>) so it can name one combined effect
+/// rather than two; otherwise <parameter>CONSEQUENCEPRIVILEGED</parameter> for a privileged grant,
+/// and <code>""</code> for none. A class that names no consequence or cannot be asked answers
+/// none of its own. The card renders the code's sentence; it decides nothing about whether the
+/// write may happen.</p>
+ClassMethod ConsequenceOf(pToolClass As %String, pPayload As %DynamicObject, pPrivileged As %Boolean = 0) As %String [ Private ]
 {
     Set tCode = ""
     Try {
-        If pToolClass '= "" Set tCode = $ClassMethod(pToolClass, "Consequence", pPayload)
+        If pToolClass '= "" Set tCode = $ClassMethod(pToolClass, "Consequence", pPayload, ''pPrivileged)
     } Catch {
         Set tCode = ""
     }
+    If (tCode = "") && pPrivileged Set tCode = ..#CONSEQUENCEPRIVILEGED
     Quit tCode
 }
 

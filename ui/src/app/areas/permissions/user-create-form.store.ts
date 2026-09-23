@@ -31,7 +31,10 @@ export const TEXT_FIELDS = ['Name', 'FullName', 'ExpirationDate', 'NameSpace', '
 /** One role the instance holds, as `GET /users/form` projects it. */
 export interface RoleOption {
   readonly name: string;
-  /** Whether the server refuses to grant it from OcuPilot (AD-10). The client decides nothing. */
+  /**
+   * Whether granting it grants %All or an administrative privilege, which the form states at the
+   * field while it is ticked (AD-10). The server's classifier decides; the client decides nothing.
+   */
   readonly privileged: boolean;
 }
 
@@ -48,8 +51,6 @@ export interface UserFormRules {
   readonly maxLengths: Readonly<Record<string, number>>;
   readonly rules: readonly FieldRule[];
   readonly roles: readonly RoleOption[];
-  /** The server's sentence for a role it refuses to grant, which a privileged role is described by. */
-  readonly rolesReason: string;
 }
 
 /** The machine code the blur look-up reports a taken name under -- the server's own (AD-39). */
@@ -78,7 +79,7 @@ function emptyBuffer(): TextBuffer {
 }
 
 function emptyRules(): UserFormRules {
-  return { requiredFields: [], maxLengths: {}, rules: [], roles: [], rolesReason: '' };
+  return { requiredFields: [], maxLengths: {}, rules: [], roles: [] };
 }
 
 /**
@@ -86,8 +87,8 @@ function emptyRules(): UserFormRules {
  *
  * **It composes no payload of its own.** `POST /users` resolves the same tool class the agent's
  * `permissions.users.create` does, so the screen's Save and the agent's confirm are two callers of
- * one operation, and every field sentence -- including the refusal of a privileged role -- is the
- * server's (AD-39).
+ * one operation, and every field sentence is the server's (AD-39). A privileged role is granted,
+ * not refused; the page states its consequence while one is ticked (AD-10).
  *
  * **The password is a secret end to end** (AD-3, AD-35). It is held in one private member apart
  * from the edit buffer, sent once in the Save body, and cleared on an accepted Save, on `reset()`
@@ -165,6 +166,11 @@ export class UserCreateForm {
   /** Whether role `name` is ticked. */
   roleChecked(name: string): boolean {
     return this.rolesValue.includes(name);
+  }
+
+  /** Whether a ticked role is one the server marked privileged, which is when the page states the grant's consequence. */
+  privilegedChecked(): boolean {
+    return this.rulesValue.roles.some((role) => role.privileged && this.roleChecked(role.name));
   }
 
   violations(): readonly Violation[] {
@@ -280,14 +286,9 @@ export class UserCreateForm {
     this.notify();
   }
 
-  /**
-   * Tick or untick one role. A role the server marked privileged is never added: its checkbox is
-   * drawn disabled, and this keeps a stray event from putting it in the body anyway. The server's
-   * refusal of it is the authority either way (AD-10).
-   */
+  /** Tick or untick one role, a privileged one included (AD-10). */
   setRole(name: string, on: boolean): void {
     if (this.roleChecked(name) === on) return;
-    if (on && this.rulesValue.roles.some((role) => role.name === name && role.privileged)) return;
     this.rolesValue = on
       ? this.rulesValue.roles.map((role) => role.name).filter((role) => role === name || this.roleChecked(role))
       : this.rolesValue.filter((entry) => entry !== name);
@@ -495,7 +496,8 @@ function absorbRules(body: unknown): UserFormRules {
     if (entry === null || typeof entry !== 'object') continue;
     const name = textAt(entry, 'name');
     if (name === '' || roles.some((role) => role.name === name)) continue;
-    // Fail closed: a role whose flag the server did not send as false is drawn unavailable.
+    // A role whose flag the server did not send as false is treated as privileged, so the
+    // consequence is stated rather than missed.
     const flag = (entry as Record<string, unknown>)['privileged'];
     roles.push({ name, privileged: !(flag === false || flag === 0) });
   }
@@ -507,6 +509,5 @@ function absorbRules(body: unknown): UserFormRules {
     maxLengths: lengths,
     rules,
     roles,
-    rolesReason: textAt(body, 'rolesReason'),
   };
 }

@@ -238,14 +238,12 @@ ClassMethod RoleViolation(pArgs As %DynamicObject, Output pViolations) As %Statu
 }
 
 /// <p>Answer <code>GET /users/form</code>: everything the create form needs before it can draw a
-/// field (AD-39): <code>{requiredFields, maxLengths, rules, roles, rolesReason}</code>.
-/// <code>rules</code> is one <code>{field, code, reason}</code> per rule, each field's required
-/// rule first; <code>roles</code> is <code>[{name, privileged}]</code>, listed through the tool's
-/// own port and each marked by
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.RoleGrantsAdministrativePrivilege</method>; and
-/// <code>rolesReason</code> is the prohibited set's privilege-grant sentence, which a privileged
-/// role's refusal also carries on the Roles field, so the pre-mark and the refusal are one wording
-/// (AD-53).</p>
+/// field (AD-39): <code>{requiredFields, maxLengths, rules, roles}</code>. <code>rules</code> is
+/// one <code>{field, code, reason}</code> per rule, each field's required rule first;
+/// <code>roles</code> is <code>[{name, privileged}]</code>, listed through the tool's own port and
+/// each marked by <method>OcuPilot.Kernel.Proposal.Prohibited.RoleGrantsAdministrativePrivilege</method>,
+/// the one answer the agent's proposal is marked destructive by too, so the form's consequence line
+/// and the card's cannot disagree (AD-10).</p>
 ClassMethod HandleForm() As %Status
 {
     Set tSC = $$$OK
@@ -265,7 +263,6 @@ ClassMethod HandleForm() As %Status
         Do tBody.%Set("maxLengths", ..Lengths())
         Do tBody.%Set("rules", ..Rules())
         Do tBody.%Set("roles", tRoles)
-        Do tBody.%Set("rolesReason", ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(##class(OcuPilot.Kernel.Proposal.Prohibited).#PRIVILEGEGRANT), "string")
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tBody)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)

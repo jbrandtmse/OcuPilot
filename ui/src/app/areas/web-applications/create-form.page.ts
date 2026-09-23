@@ -18,9 +18,11 @@ import { STRINGS } from '../../core/strings';
 import { STATE_CONFLICT_CODE, type Violation } from '../../core/violations';
 import { Dialog } from '../../shell/dialog';
 import {
+  MATCH_ROLES_FIELD,
   TYPE_CSP,
   TYPE_PYTHON,
   TYPE_REST,
+  type ApplicationRoleOption,
   type AutheMethod,
   WebAppCreateForm,
 } from './create-form.store';
@@ -320,7 +322,7 @@ interface FieldView {
         class="ocu-field ocu-form-authe"
         [attr.id]="autheField.id"
         tabindex="-1"
-        [attr.aria-describedby]="unauthenticatedFlag ? autheField.id + '-effect' : null"
+        [attr.aria-describedby]="unauthenticatedEffect ? autheField.id + '-effect' : null"
       >
         <legend class="ocu-field-label ocu-field-label-required">{{ STRINGS.serviceColumnAuthentication }}</legend>
         @for (method of autheMethods; track method.bit) {
@@ -334,11 +336,37 @@ interface FieldView {
             <span>{{ method.label }}</span>
           </label>
         }
-        @if (unauthenticatedFlag) {
+        @if (unauthenticatedEffect) {
           <p class="ocu-field-caption" [id]="autheField.id + '-effect'">{{ STRINGS.webAppUnauthenticatedEffect }}</p>
         }
         @if (autheField.invalid) {
           <p class="ocu-form-error" [id]="autheField.id + '-reason'">{{ autheField.reason }}</p>
+        }
+      </fieldset>
+
+      <fieldset
+        class="ocu-field ocu-form-authe"
+        [attr.id]="matchRolesField.id"
+        tabindex="-1"
+        [attr.aria-describedby]="matchRolesDescribedBy"
+      >
+        <legend class="ocu-field-label">{{ STRINGS.webAppFormApplicationRoles }}</legend>
+        @for (role of applicationRoles; track role.name) {
+          <label class="ocu-field-checkbox">
+            <input
+              type="checkbox"
+              [id]="matchRolesField.id + '-' + role.name"
+              [checked]="matchRoleChecked(role.name)"
+              (change)="onMatchRole(role.name, $event)"
+            />
+            <span>{{ role.name }}</span>
+          </label>
+        }
+        @if (privilegedRoleFlag) {
+          <p class="ocu-field-caption" [id]="matchRolesField.id + '-effect'">{{ privilegeEffect }}</p>
+        }
+        @if (matchRolesField.invalid) {
+          <p class="ocu-form-error" [id]="matchRolesField.id + '-reason'">{{ matchRolesField.reason }}</p>
         }
       </fieldset>
 
@@ -499,6 +527,44 @@ export class WebAppCreateFormPage {
     return this.store.unauthenticated();
   }
 
+  /**
+   * Whether the authentication field states the unauthenticated effect on its own: Unauthenticated
+   * is ticked and no privileged application role is, since the combined line replaces it (AD-10).
+   */
+  protected get unauthenticatedEffect(): boolean {
+    return this.unauthenticatedFlag && !this.privilegedRoleFlag;
+  }
+
+  /** Whether a ticked application role grants %All or an administrative privilege (AD-10). */
+  protected get privilegedRoleFlag(): boolean {
+    this.generation();
+    return this.store.privilegedMatchRoleChecked();
+  }
+
+  /** The one consequence line the application-roles field states while a privileged role is ticked. */
+  protected get privilegeEffect(): string {
+    return this.unauthenticatedFlag ? STRINGS.privilegedGrantEffectUnauthenticated : STRINGS.privilegedGrantEffect;
+  }
+
+  protected get applicationRoles(): readonly ApplicationRoleOption[] {
+    this.generation();
+    return this.store.rules().roles;
+  }
+
+  /** The application-roles field's described-by: its consequence line, then its refusal. */
+  protected get matchRolesDescribedBy(): string | null {
+    const field = this.matchRolesField;
+    const described: string[] = [];
+    if (this.privilegedRoleFlag) described.push(`${field.id}-effect`);
+    if (field.describedBy !== null) described.push(field.describedBy);
+    return described.length === 0 ? null : described.join(' ');
+  }
+
+  protected matchRoleChecked(name: string): boolean {
+    this.generation();
+    return this.store.matchRoleChecked(name);
+  }
+
   /** The directory the typed name resolves under on this instance, shown read-only (AD-21). */
   protected get resolvedDirectory(): string {
     this.generation();
@@ -602,6 +668,10 @@ export class WebAppCreateFormPage {
     return this.fieldView('AutheEnabled');
   }
 
+  protected get matchRolesField(): FieldView {
+    return this.fieldView(MATCH_ROLES_FIELD);
+  }
+
   // --- intents ---------------------------------------------------------------------------------
 
   protected onText(field: string, event: Event): void {
@@ -624,6 +694,11 @@ export class WebAppCreateFormPage {
   protected onAuthe(bit: number, event: Event): void {
     const target = event.target;
     if (target instanceof HTMLInputElement) this.store.setAuthe(bit, target.checked);
+  }
+
+  protected onMatchRole(name: string, event: Event): void {
+    const target = event.target;
+    if (target instanceof HTMLInputElement) this.store.setMatchRole(name, target.checked);
   }
 
   protected onBlur(field: string): void {

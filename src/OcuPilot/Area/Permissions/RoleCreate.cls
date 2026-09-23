@@ -6,8 +6,9 @@
 /// <p><b>It resolves everything about the write from the tool class</b>: the endpoint, the request
 /// type, the port, the settable field list and the payload composition. It mints no proposal and
 /// takes no confirm token. In order: the caller's own pairs (AD-8); the name's own rules; AD-10's
-/// prohibited set over the caller's own fields, a privilege grant answered as a violation on each
-/// field that carries one; the form's rules; the composed payload; and only then the port.</p>
+/// prohibited set over the caller's own fields; the form's rules; the composed payload; and only
+/// then the port. A grant of <code>%All</code> or an administrative privilege is not refused: the
+/// form states its consequence at the field before Save (AD-10).</p>
 /// <p>Seams a subclass may override: <method>PortClass</method> and <method>ProhibitedClass</method>.
 /// Production overrides neither. The name look-up goes through
 /// <method>OcuPilot.Area.Permissions.RoleCreateRules.Taken</method>, which resolves the tool's own
@@ -23,10 +24,6 @@ Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.RoleForm";
 
 /// <p>The input property that names the target: the vendor's <code>name</code> query parameter.</p>
 Parameter IDARGUMENT = "Name";
-
-/// <p>The two fields a privilege-grant refusal can land on, comma-separated, in the form's
-/// order.</p>
-Parameter GRANTFIELDS = "Resources,GrantedRoles";
 
 ClassMethod ToolClass() As %String
 {
@@ -98,9 +95,6 @@ ClassMethod HandleCreate() As %Status
 /// <code>pViolations</code>); a non-zero count means nothing was written and the other outputs say
 /// nothing. Otherwise an error status carries <var>pHttpStatus</var> and <var>pFault</var>, and
 /// success carries the created role.</p>
-/// <p><b>A privilege-grant verdict is attributed, not re-derived.</b> The set is asked again with
-/// each of <parameter>GRANTFIELDS</parameter> alone, and every field whose own answer is a privilege
-/// grant carries the set's one sentence (AD-39, AD-53). The predicate lives in the set alone.</p>
 ClassMethod Perform(pName As %String, pArgs As %DynamicObject, Output pCreated As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations) As %Status
 {
     Set pCreated = ""
@@ -124,21 +118,6 @@ ClassMethod Perform(pName As %String, pArgs As %DynamicObject, Output pCreated A
         Set tSC = $ClassMethod(..ProhibitedClass(), "Prohibits", $Parameter(tClass, "TOOLNAME"), tTargetRef, tFields.%ToJSON(), "[]", .tProhibits, .tProhibitCode)
         If $$$ISERR(tSC) Quit
         If tProhibits {
-            Set tGrant = ##class(OcuPilot.Kernel.Proposal.Prohibited).#PRIVILEGEGRANT
-            If tProhibitCode = tGrant {
-                For tI = 1:1:$Length(..#GRANTFIELDS, ",") {
-                    Set tField = $Piece(..#GRANTFIELDS, ",", tI)
-                    If tFields.%GetTypeOf(tField) = "unassigned" Continue
-                    Set tAlone = {}
-                    Do tAlone.%Set(tField, tFields.%Get(tField))
-                    Set tSC = $ClassMethod(..ProhibitedClass(), "Prohibits", $Parameter(tClass, "TOOLNAME"), tTargetRef, tAlone.%ToJSON(), "[]", .tFieldProhibits, .tFieldCode)
-                    If $$$ISERR(tSC) Quit
-                    If tFieldProhibits && (tFieldCode = tGrant) {
-                        Set pViolations($Increment(pViolations)) = $ListBuild(tField, tGrant, ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tGrant))
-                    }
-                }
-                If $$$ISERR(tSC) || (pViolations > 0) Quit
-            }
             Set pHttpStatus = 403
             Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#FORBIDDEN, tProhibitCode, ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tProhibitCode))
             Set tSC = $$$ERROR($$$GeneralError, tProhibitCode)

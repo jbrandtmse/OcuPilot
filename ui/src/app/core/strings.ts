@@ -1401,6 +1401,18 @@ export const STRINGS = {
   /** EXPERIENCE.md:402 */
   actionRemove: 'Remove',
 
+  // Story 8.3, AD-10: a privilege grant is permitted at the strongest confirmation. The form states
+  // its consequence at the field and the proposal card at the diff; the second replaces both it and
+  // `webAppUnauthenticatedEffect` on an unauthenticated web application.
+  /** EXPERIENCE.md:403 */
+  privilegedGrantEffect:
+    'This grants %All or an administrative privilege. Whoever holds it can administer this instance.',
+  /** EXPERIENCE.md:404 */
+  privilegedGrantEffectUnauthenticated:
+    'Anyone who can reach this address runs with %All or an administrative privilege without signing in. With %All, that is full control of this instance.',
+  /** EXPERIENCE.md:405 */
+  webAppFormApplicationRoles: 'Application roles',
+
 } as const;
 
 /**

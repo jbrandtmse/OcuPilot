@@ -161,6 +161,9 @@ interface GrantRow {
         <div>
           <button type="button" class="ocu-button-secondary" id="ocu-role-grant-add" (click)="openAdd()">{{ STRINGS.roleGrantAdd }}</button>
         </div>
+        @if (privilegedGrantHeld) {
+          <p class="ocu-field-caption" [id]="resourcesEffectId">{{ STRINGS.privilegedGrantEffect }}</p>
+        }
         @if (resourcesField.invalid) {
           <p class="ocu-form-error" [id]="resourcesField.id + '-reason'">{{ resourcesField.reason }}</p>
         }
@@ -179,15 +182,14 @@ interface GrantRow {
               type="checkbox"
               [id]="roleId(role.name)"
               [checked]="roleChecked(role.name)"
-              [disabled]="role.privileged"
-              [attr.aria-describedby]="role.privileged ? privilegeReasonId : null"
+              [attr.aria-describedby]="role.privileged && privilegedRoleChecked ? rolesEffectId : null"
               (change)="onRole(role.name, $event)"
             />
             <span>{{ role.name }}</span>
           </label>
         }
-        @if (hasPrivilegedRole) {
-          <p class="ocu-field-caption" [id]="privilegeReasonId">{{ privilegeReason }}</p>
+        @if (privilegedRoleChecked) {
+          <p class="ocu-field-caption" [id]="rolesEffectId">{{ STRINGS.privilegedGrantEffect }}</p>
         }
         @if (grantedRolesField.invalid) {
           <p class="ocu-form-error" [id]="grantedRolesField.id + '-reason'">{{ grantedRolesField.reason }}</p>
@@ -221,7 +223,6 @@ interface GrantRow {
         [granted]="heldGrants"
         [editing]="dialogEditing"
         [clearing]="dialogClearing"
-        [privilegeReason]="privilegeReason"
         (applied)="applyGrant($event)"
         (closed)="closeGrantDialog()"
       />
@@ -338,18 +339,24 @@ export class RoleCreateFormPage {
     return this.store.rules().roles;
   }
 
-  protected get hasPrivilegedRole(): boolean {
-    return this.privilegeReason !== '' && this.roleOptions.some((role) => role.privileged);
-  }
-
-  /** The server's sentence for a grant it refuses, which each refused choice is described by. */
-  protected get privilegeReason(): string {
+  /** Whether a ticked granted role grants %All or an administrative privilege (AD-10). */
+  protected get privilegedRoleChecked(): boolean {
     this.generation();
-    return this.store.rules().privilegeReason;
+    return this.store.privilegedRoleChecked();
   }
 
-  protected get privilegeReasonId(): string {
-    return `${this.controlId(GRANTED_ROLES_FIELD)}-privileged`;
+  /** Whether a held resource grant grants %All or an administrative privilege (AD-10). */
+  protected get privilegedGrantHeld(): boolean {
+    this.generation();
+    return this.store.privilegedGrantHeld();
+  }
+
+  protected get rolesEffectId(): string {
+    return `${this.controlId(GRANTED_ROLES_FIELD)}-effect`;
+  }
+
+  protected get resourcesEffectId(): string {
+    return `${this.controlId(RESOURCES_FIELD)}-effect`;
   }
 
   protected get grantDialogOpen(): boolean {

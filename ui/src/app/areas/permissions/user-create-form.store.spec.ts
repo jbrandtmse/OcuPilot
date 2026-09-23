@@ -21,8 +21,8 @@ import {
  * It pins what no browser leg can falsify: the change event a Save publishes (the form replaces
  * its own route, and the list the browser then opens re-reads on arrival either way), that the
  * password leaves the store on an accepted Save, on `reset()` and before the route replacement,
- * and that the server's refusal of a privileged role lands on the Roles field. The bus is real and
- * only the server's answers are stubbed.
+ * that a server refusal lands on the Roles field, and that a privileged role is sent and flagged for
+ * its consequence rather than withheld. The bus is real and only the server's answers are stubbed.
  */
 
 /** What `GET /users/form` answers, narrowed to what these tests read. */
@@ -38,8 +38,9 @@ const RULES = {
     { name: '%All', privileged: true },
     { name: '%SQL', privileged: false },
   ],
-  rolesReason: 'OcuPilot cannot grant this role.',
 };
+
+const UNKNOWN_ROLE_SENTENCE = 'One of those roles does not exist on this instance.';
 
 const TAKEN_SENTENCE = 'This instance already has a user with that name.';
 
@@ -179,7 +180,7 @@ describe('the create-a-user form store', () => {
     expect(store.saved()).toBe(false);
   });
 
-  it('AC3: a privileged role refused by the server lands on the Roles field with the server sentence', async () => {
+  it('AC3: a role refusal from the server lands on the Roles field with the server sentence', async () => {
     const { store, events } = mount({
       kind: 'error',
       status: 422,
@@ -188,7 +189,7 @@ describe('the create-a-user form store', () => {
       code: 'USER.VALIDATION',
       detail: {
         violations: [
-          { field: 'Roles', code: 'PROHIBITED.PRIVILEGEGRANT', reason: 'OcuPilot cannot grant this role.' },
+          { field: 'Roles', code: 'USER.ROLES.UNKNOWN', reason: UNKNOWN_ROLE_SENTENCE },
         ],
       },
     } as unknown as JsonResult<unknown>);
@@ -198,7 +199,7 @@ describe('the create-a-user form store', () => {
     store.setRole('%Developer', true);
     expect(await store.save()).toBe(false);
 
-    expect(store.violationFor('Roles')).toBe('OcuPilot cannot grant this role.');
+    expect(store.violationFor('Roles')).toBe(UNKNOWN_ROLE_SENTENCE);
     expect(store.violations()[0]?.field).toBe('Roles');
     expect(store.reason(), 'a field violation is not an envelope banner').toBe('');
     expect(events).toEqual([]);
@@ -207,17 +208,21 @@ describe('the create-a-user form store', () => {
     expect(store.violationFor('Roles')).toBe('');
   });
 
-  it('AC3: the picker marks a privileged role from the bootstrap read and never adds it to the body', async () => {
+  it('AC3, AD-10: a privileged role is sent and flags its consequence while it is ticked', async () => {
+    // Mutation (Rule 19): restore the early return for a privileged role in `setRole` -> the
+    // ticked and posted assertions go red.
     const { store, calls } = mount();
     await store.open();
     expect(store.rules().roles.find((role) => role.name === '%All')?.privileged).toBe(true);
-    expect(store.rules().rolesReason).toBe('OcuPilot cannot grant this role.');
     store.setValue('Name', 'probeuser');
     store.setPassword('probe-secret-1');
+    store.setRole('%Developer', true);
+    expect(store.privilegedChecked()).toBe(false);
     store.setRole('%All', true);
-    expect(store.roleChecked('%All')).toBe(false);
+    expect(store.roleChecked('%All')).toBe(true);
+    expect(store.privilegedChecked()).toBe(true);
     await store.save();
-    expect(postedBody(calls)['Roles']).toEqual([]);
+    expect(postedBody(calls)['Roles']).toEqual(['%Developer', '%All']);
   });
 
   it('the blur look-up marks a taken name with the server sentence, and leaves the field unmarked when it could not be made', async () => {

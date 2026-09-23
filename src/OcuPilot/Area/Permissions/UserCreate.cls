@@ -5,10 +5,11 @@
 /// <p><b>It resolves everything about the write from the tool class</b>: the endpoint, the request
 /// type, the port, the settable field list and the payload composition. It mints no proposal and
 /// takes no confirm token. In order: the caller's own pairs (AD-8); the name's shape; AD-10's
-/// prohibited set over the caller's own fields minus the declared secrets, a privileged role
-/// answered as a violation on the Roles field; the form's rules; the composed payload with the
-/// password merged in after that verdict, as <method>OcuPilot.Kernel.Proposal.Confirm</method>
-/// merges a supplied secret; and only then the port, which builds the vendor's wrapper.</p>
+/// prohibited set over the caller's own fields minus the declared secrets; the form's rules; the
+/// composed payload with the password merged in after that verdict, as
+/// <method>OcuPilot.Kernel.Proposal.Confirm</method> merges a supplied secret; and only then the
+/// port, which builds the vendor's wrapper. A privileged role is not refused: the form states its
+/// consequence at the Roles field before Save (AD-10).</p>
 /// <p><b>The password is a secret</b> (AD-35): it is never logged, echoed or returned, and the
 /// created account the route answers is the vendor's own read, which carries none.</p>
 /// <p>Seams a subclass may override: <method>PortClass</method> and <method>ProhibitedClass</method>.
@@ -26,13 +27,6 @@ Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.UserForm";
 
 /// <p>The input property that names the target: the vendor's <code>name</code> query parameter.</p>
 Parameter IDARGUMENT = "Name";
-
-/// <p>The field a privileged role's refusal lands on.</p>
-Parameter FIELDROLES = "Roles";
-
-/// <p>The field whose presence is a privilege grant whatever it holds; its refusal is the
-/// prohibited set's own envelope rather than a Roles violation.</p>
-Parameter FIELDESCALATIONROLES = "EscalationRoles";
 
 ClassMethod ToolClass() As %String
 {
@@ -135,12 +129,6 @@ ClassMethod Perform(pName As %String, pArgs As %DynamicObject, Output pCreated A
             Quit
         }
         If tProhibits {
-            If (tProhibitCode = ##class(OcuPilot.Kernel.Proposal.Prohibited).#PRIVILEGEGRANT) && (pArgs.%GetTypeOf(..#FIELDESCALATIONROLES) = "unassigned") {
-                ; AD-39, AD-53: the refusal lands on the field it concerns, in the prohibited
-                ; set's one sentence, which the form's bootstrap read also ships for the picker.
-                Set pViolations($Increment(pViolations)) = $ListBuild(..#FIELDROLES, tProhibitCode, ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tProhibitCode))
-                Quit
-            }
             Set pHttpStatus = 403
             Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#FORBIDDEN, tProhibitCode, ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tProhibitCode))
             Set tSC = $$$ERROR($$$GeneralError, tProhibitCode)

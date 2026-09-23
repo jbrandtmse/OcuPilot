@@ -222,15 +222,14 @@ interface FieldView {
               type="checkbox"
               [id]="roleId(role.name)"
               [checked]="roleChecked(role.name)"
-              [disabled]="role.privileged"
-              [attr.aria-describedby]="role.privileged ? rolesReasonId : null"
+              [attr.aria-describedby]="role.privileged && privilegedChecked ? rolesEffectId : null"
               (change)="onRole(role.name, $event)"
             />
             <span>{{ role.name }}</span>
           </label>
         }
-        @if (hasPrivilegedRole) {
-          <p class="ocu-field-caption" [id]="rolesReasonId">{{ rolesReason }}</p>
+        @if (privilegedChecked) {
+          <p class="ocu-field-caption" [id]="rolesEffectId">{{ STRINGS.privilegedGrantEffect }}</p>
         }
         @if (rolesField.invalid) {
           <p class="ocu-form-error" [id]="rolesField.id + '-reason'">{{ rolesField.reason }}</p>
@@ -377,18 +376,14 @@ export class UserCreateFormPage {
     return this.store.rules().roles;
   }
 
-  protected get hasPrivilegedRole(): boolean {
-    return this.rolesReason !== '' && this.roleOptions.some((role) => role.privileged);
-  }
-
-  /** The server's sentence for a role it refuses to grant, which each such checkbox is described by. */
-  protected get rolesReason(): string {
+  /** Whether a ticked role grants %All or an administrative privilege, which is when its consequence is stated (AD-10). */
+  protected get privilegedChecked(): boolean {
     this.generation();
-    return this.store.rules().rolesReason;
+    return this.store.privilegedChecked();
   }
 
-  protected get rolesReasonId(): string {
-    return `${this.controlId(ROLES_FIELD)}-privileged`;
+  protected get rolesEffectId(): string {
+    return `${this.controlId(ROLES_FIELD)}-effect`;
   }
 
   protected get showSaved(): boolean {

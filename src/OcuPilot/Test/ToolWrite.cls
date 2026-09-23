@@ -133,8 +133,9 @@ Method TestTheSchemaIsDerivedFromTheClassifiedFieldList()
     Do $$$AssertEquals($ListFind(tFields, "MatchRoles"), 0, "and neither is the role subtree")
 }
 
-/// <p>AD-10: privilege is not granted through any path, so the role subtree is not in the schema
-/// and a call carrying it is refused as an unknown argument.</p>
+/// <p>AD-10: the change tool's reviewed few do not include application roles -- a change to them is
+/// refused as unreviewed, or on OcuPilot's own applications as a privilege grant -- so the role
+/// subtree is not in the schema and a call carrying it is refused as an unknown argument.</p>
 /// <p>Mutation: classify the subtree <code>ordinary</code> in
 /// <class>OcuPilot.Screen.Tool.Classification</class> and give it a top-level field-list row --
 /// this goes red. Removing <code>MatchRoles</code> from <method>ExcludedFields</method> alone does

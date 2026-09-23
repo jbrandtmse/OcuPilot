@@ -32,8 +32,17 @@ interface LetterView {
   readonly letter: string;
   readonly label: string;
   readonly checked: boolean;
-  /** Whether the server refuses a grant carrying this letter, which the checkbox is disabled for. */
-  readonly refused: boolean;
+  /** Whether the letter is held ticked and locked: Read on a database while Write is ticked. */
+  readonly locked: boolean;
+}
+
+/**
+ * Whether `resource` is a database's resource: the one kind the bootstrap read admits Read and Write
+ * alone for (`RoleCreateRules.AdmissiblePermissions`), and the one the classic dialog's
+ * `writeChanged` ties Read to Write on.
+ */
+function isDatabase(resource: ResourceOption | null): boolean {
+  return resource !== null && resource.permissions === 'RW';
 }
 
 /**
@@ -47,9 +56,10 @@ interface LetterView {
  * the grant.
  *
  * **It offers only the letters the server ships for the resource** -- the classic grant dialog's
- * own rule, read from the bootstrap -- and draws the ones the server would refuse disabled,
- * described by the server's own sentence. It makes no server call and decides nothing the server
- * does not (AD-10, AD-39).
+ * own rule, read from the bootstrap -- and, as that dialog's `writeChanged` does, ticking Write on a
+ * database's resource ticks and locks Read, which `RoleCreateRules` also refuses otherwise. While
+ * the resulting grant is of a resource the server marked privileged it states the grant's
+ * consequence. It makes no server call and decides nothing the server does not (AD-10, AD-39).
  */
 @Component({
   selector: 'app-role-grant-dialog',
@@ -67,7 +77,7 @@ interface LetterView {
             (change)="onResource($event)"
           >
             @for (option of addOptions; track option.name) {
-              <option [value]="option.name" [selected]="option.selected" [disabled]="option.privileged">{{ option.name }}</option>
+              <option [value]="option.name" [selected]="option.selected">{{ option.name }}</option>
             }
           </select>
         </div>
@@ -81,16 +91,15 @@ interface LetterView {
             type="checkbox"
             [id]="'ocu-role-grant-' + entry.letter"
             [checked]="entry.checked"
-            [disabled]="entry.refused"
-            [attr.aria-describedby]="entry.refused ? reasonId : null"
+            [disabled]="entry.locked"
             (change)="onLetter(entry.letter, $event)"
           />
           <span>{{ entry.label }}</span>
         </label>
       }
     </fieldset>
-    @if (showReason) {
-      <p class="ocu-field-caption" [id]="reasonId">{{ privilegeReason() }}</p>
+    @if (showEffect) {
+      <p class="ocu-field-caption" [id]="effectId">{{ STRINGS.privilegedGrantEffect }}</p>
     }
     <p class="ocu-dialog-field">{{ STRINGS.roleGrantCurrent }}</p>
     <p class="ocu-dialog-value" id="ocu-role-grant-current">{{ currentLine }}</p>
@@ -122,16 +131,13 @@ export class RoleGrantDialog {
   /** Whether the dialog opens with no letter ticked: a Remove. */
   readonly clearing = input(false);
 
-  /** The server's sentence for a grant it refuses. */
-  readonly privilegeReason = input('');
-
   /** Emitted on Confirm with the resulting grant; an empty `permissions` removes it. */
   readonly applied = output<GrantResult>();
 
   /** Emitted for every dismissal path of the underlying dialog. */
   readonly closed = output<void>();
 
-  protected readonly reasonId = 'ocu-role-grant-reason';
+  protected readonly effectId = 'ocu-role-grant-effect';
 
   private readonly chosenName = signal<string | null>(null);
 
@@ -148,7 +154,7 @@ export class RoleGrantDialog {
     if (editing !== null) return editing.name;
     const chosen = this.chosenName();
     if (chosen !== null) return chosen;
-    return this.offered().find((resource) => !resource.privileged)?.name ?? '';
+    return this.offered()[0]?.name ?? '';
   });
 
   private readonly selectedLetters = computed(() => {
@@ -177,21 +183,23 @@ export class RoleGrantDialog {
     const resource = this.selectedResource();
     const admitted = resource === null ? PERMISSION_LETTERS : resource.permissions;
     const ticked = this.selectedLetters();
+    const readLocked = isDatabase(resource) && ticked.includes('W');
     return [...admitted].map((letter) => ({
       letter,
       label: permissionWord(letter),
       checked: ticked.includes(letter),
-      refused: resource !== null && (resource.privileged || resource.privilegedPermissions.includes(letter)),
+      locked: letter === 'R' && readLocked,
     }));
   }
 
-  protected get showReason(): boolean {
-    if (this.privilegeReason() === '') return false;
-    return this.letters.some((entry) => entry.refused) || this.hasPrivilegedOption;
+  /** Whether the resulting grant is of a resource the server marked privileged (AD-10). */
+  protected get showEffect(): boolean {
+    const resource = this.selectedResource();
+    return resource !== null && resource.privileged && this.selectedLetters() !== '';
   }
 
   protected get resourceDescribedBy(): string | null {
-    return this.showReason && this.hasPrivilegedOption ? this.reasonId : null;
+    return this.showEffect ? this.effectId : null;
   }
 
   protected get currentLine(): string {
@@ -222,7 +230,9 @@ export class RoleGrantDialog {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) return;
     const held = this.selectedLetters();
-    const next = target.checked ? held + letter : held.replace(letter, '');
+    let next = target.checked ? held + letter : held.replace(letter, '');
+    // writeChanged: Write on a database's resource carries Read with it.
+    if (letter === 'W' && target.checked && isDatabase(this.selectedResource())) next += 'R';
     this.chosenLetters.set(canonicalLetters(next));
   }
 
@@ -232,10 +242,6 @@ export class RoleGrantDialog {
   }
 
   // --- internals -------------------------------------------------------------------------------
-
-  private get hasPrivilegedOption(): boolean {
-    return this.isAdd && this.offered().some((resource) => resource.privileged);
-  }
 
   private selectedResource(): ResourceOption | null {
     const name = this.selectedName().toUpperCase();

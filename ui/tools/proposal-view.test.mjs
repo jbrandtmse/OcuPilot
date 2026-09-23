@@ -28,7 +28,9 @@ const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
 
 const {
+  CONSEQUENCE_PRIVILEGED,
   CONSEQUENCE_UNAUTHENTICATED,
+  CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED,
   COUNTDOWN_PLACEHOLDER,
   COUNTDOWN_WARNING_MS,
   CONFIRMED_TIME_PLACEHOLDER,
@@ -183,6 +185,17 @@ test('the consequence code travels off the wire and resolves to the published se
   assert.equal(consequenceSentence(plain.consequence), '');
   assert.equal(consequenceSentence('SOMETHING.ELSE'), '', 'and a code this client publishes nothing for reads as none');
   assert.equal(consequenceSentence(undefined), '');
+});
+
+// AD-10: a privilege grant is permitted and named. The kernel's two codes resolve to the two
+// published sentences, the combined one standing alone for an unauthenticated application.
+//
+// Mutation (Rule 19): drop either branch from `consequenceSentence` -> this goes red.
+test('the two privilege-grant consequence codes resolve to their published sentences', () => {
+  assert.equal(CONSEQUENCE_PRIVILEGED, 'GRANT.PRIVILEGED');
+  assert.equal(CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED, 'WEBAPP.UNAUTHENTICATEDPRIVILEGED');
+  assert.equal(consequenceSentence(CONSEQUENCE_PRIVILEGED), STRINGS.privilegedGrantEffect);
+  assert.equal(consequenceSentence(CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED), STRINGS.privilegedGrantEffectUnauthenticated);
 });
 
 // AD-3, AD-35: a user create's diff carries one Password row the kernel composes with both values

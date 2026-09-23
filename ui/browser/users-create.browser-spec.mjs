@@ -7,8 +7,8 @@
  *    expiration date, startup namespace, startup routine, then roles.
  * 2. **The password is never pre-filled or echoed** (AC2): the field is empty on arrival, asks the
  *    browser for a new password, and is empty and captioned as stored after a Save.
- * 3. **A role the server refuses to grant is drawn unavailable before any Save** (AC3), described by
- *    the server's sentence from the bootstrap read.
+ * 3. **A privileged role is available, and ticking it states the privilege-grant consequence at the
+ *    Roles field** (AC3, AD-10), from the bootstrap read's mark; an ordinary role states none.
  * 4. **A valid Save creates the account** (AC4) with the fields sent, replaces the route with
  *    `permissions/users/edit/<id>`, reads the saved sentence, and the Users list then shows it. The
  *    change event itself is pinned in `user-create-form.store.spec.ts`, for the reason
@@ -49,10 +49,13 @@ const PROBE_PASSWORD = 'ProbePass2026';
 const PROBE_FULL_NAME = 'OcuPilot probe account';
 
 /**
- * Roles the server refuses to grant: %All by name, %Manager through an administrative resource it
- * carries, and %DB_IRISSECURITY through the write on the security database it carries (Story 8.3).
+ * Roles whose grant is privileged: %All by name, and %Manager through an administrative resource
+ * it carries (AD-10).
  */
-const PRIVILEGED = ['%All', '%Manager', '%DB_IRISSECURITY'];
+const PRIVILEGED = ['%All', '%Manager'];
+
+/** The Roles field's consequence line, which the page draws while a privileged role is ticked. */
+const ROLES_EFFECT = '#ocu-user-Roles-effect';
 
 let browser = null;
 
@@ -87,23 +90,6 @@ function irisSys(lines) {
 /** Remove every account this spec creates, by its exact name -- never a prefix sweep. */
 function removeProbeUsers() {
   irisSys(NAMES.map((name) => `Do ##class(Security.Users).Delete("${name}")`));
-}
-
-/**
- * The prohibited set's privilege-grant sentence, read from the throwaway itself, so the picker's
- * pre-mark is compared with the server's one sentence rather than with the page's own copy.
- */
-function privilegeSentence() {
-  const result = spawnSync('docker', ['exec', '-i', config.container, 'iris', 'session', 'iris', '-U', 'HSCUSTOM'], {
-    input:
-      'Write "OCU-SENTENCE-START:",##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(##class(OcuPilot.Kernel.Proposal.Prohibited).#PRIVILEGEGRANT),":OCU-SENTENCE-END",!\nHalt\n',
-    encoding: 'utf8',
-    timeout: 600000,
-  });
-  const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
-  const match = /OCU-SENTENCE-START:(.*?):OCU-SENTENCE-END/.exec(output);
-  assert.ok(match !== null && match[1] !== '', `the throwaway answered the privilege-grant sentence: ${output}`);
-  return match[1];
 }
 
 /** The stored account `name` as the vendor reads it, or `null` when it does not exist. */
@@ -247,24 +233,31 @@ test('AC2: the password is never pre-filled, asks for a new password, and is emp
   }
 });
 
-// AC3. Mutation (Rule 19): drop `[disabled]` from the role checkbox -> this goes red on %All;
-// make the caption read anything but the bootstrap's `rolesReason` -> the sentence leg goes red.
-test('AC3: a role the server refuses to grant is drawn unavailable, described by the server sentence', async () => {
-  const sentence = privilegeSentence();
+// AC3, AD-10. Mutation (Rule 19): make the page's `privilegedChecked` answer false -> the
+// consequence leg goes red on %All; restore `[disabled]` on a privileged checkbox -> the
+// availability leg goes red.
+test('AC3: a privileged role is available, and ticking it states the privilege-grant consequence', async () => {
   const { context, page } = await signedInAt(FORM_URL);
   try {
     await page.waitForSelector('fieldset.ocu-form-authe', { visible: true, timeout: config.navigationTimeoutMs });
     const roles = await roleBoxes(page);
+    assert.equal(await page.$(ROLES_EFFECT), null, 'no consequence is stated before a privileged role is ticked');
     for (const name of PRIVILEGED) {
       const role = roles.find((entry) => entry.name === name);
       assert.ok(role, `the instance offers ${name}: ${JSON.stringify(roles.map((entry) => entry.name))}`);
-      assert.equal(role.disabled, true, `${name} is unavailable`);
-      assert.equal(role.description, sentence, `${name} is described by the prohibited set's own sentence`);
+      assert.equal(role.disabled, false, `${name} is available`);
+      await page.evaluate((id) => document.getElementById(id).click(), role.id);
+      await page.waitForSelector(ROLES_EFFECT, { visible: true, timeout: config.navigationTimeoutMs });
+      assert.equal(await page.$eval(ROLES_EFFECT, (node) => node.textContent.trim()), STRINGS.privilegedGrantEffect);
+      const ticked = (await roleBoxes(page)).find((entry) => entry.name === name);
+      assert.equal(ticked.description, STRINGS.privilegedGrantEffect, `${name} is described by the consequence while ticked`);
+      await page.evaluate((id) => document.getElementById(id).click(), role.id);
+      await page.waitForFunction((selector) => document.querySelector(selector) === null, { timeout: config.navigationTimeoutMs }, ROLES_EFFECT);
     }
-    assert.ok(
-      roles.some((entry) => !entry.disabled),
-      'and a role the server grants stays available'
-    );
+    const ordinary = roles.find((entry) => entry.name === '%Developer');
+    assert.ok(ordinary, 'the instance offers %Developer');
+    await page.evaluate((id) => document.getElementById(id).click(), ordinary.id);
+    assert.equal(await page.$(ROLES_EFFECT), null, 'an ordinary role states no consequence');
   } finally {
     await context.close();
   }
@@ -278,9 +271,13 @@ test('AC4: a valid Save creates the account with the sent fields, replaces the r
     await fill(page, 'ocu-user-Name', NAMES[0]);
     await fill(page, 'ocu-user-FullName', PROBE_FULL_NAME);
     await fill(page, 'ocu-user-Password', PROBE_PASSWORD);
-    const granted = (await roleBoxes(page)).find((entry) => !entry.disabled);
-    assert.ok(granted, 'the instance offers a role the server grants');
+    // A privileged role applies on Save (AD-10): the account holds %All once created.
+    const boxes = await roleBoxes(page);
+    const granted = boxes.find((entry) => entry.name === '%Developer');
+    const privileged = boxes.find((entry) => entry.name === '%All');
+    assert.ok(granted && privileged, 'the instance offers %Developer and %All');
     await page.evaluate((id) => document.getElementById(id).click(), granted.id);
+    await page.evaluate((id) => document.getElementById(id).click(), privileged.id);
     await (await saveButton(page)).click();
     await waitForSaved(page);
 
@@ -295,6 +292,7 @@ test('AC4: a valid Save creates the account with the sent fields, replaces the r
     assert.ok(stored !== null, 'the instance holds the account the form created');
     assert.equal(stored.fullName, PROBE_FULL_NAME, 'with the full name sent');
     assert.ok(stored.roles.includes(granted.name), `and the role sent: ${JSON.stringify(stored.roles)}`);
+    assert.ok(stored.roles.includes('%All'), `and %All, granted: ${JSON.stringify(stored.roles)}`);
 
     await page.goto(`${config.origin}${LIST_URL}`, { waitUntil: 'networkidle2' });
     await leaveFirstLoginGate(page, config.navigationTimeoutMs, LIST_URL);

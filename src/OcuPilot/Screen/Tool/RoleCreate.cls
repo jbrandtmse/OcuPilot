@@ -6,8 +6,9 @@
 /// and <code>GrantedRoles</code> <parameter>PERMITTEDFIELDS</parameter> names, and the authored
 /// <code>Resources</code> array of <code>{Name, Permissions}</code> grants -- exactly the ones
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedCreateFields</method> has reviewed for a
-/// role create. A granted role or a resource grant that escalates privilege is refused at the
-/// write, whatever the caller. <code>EscalationOnly</code> is not admitted.</p>
+/// role create. A granted role or a resource grant that grants <code>%All</code> or an
+/// administrative privilege is permitted and confirmed as a delete is: the mint marks the proposal
+/// destructive and names the privilege (AD-10). <code>EscalationOnly</code> is not admitted.</p>
 /// <p>The name travels only as the vendor's <code>name</code> query parameter; the vendor's body
 /// validator refuses it as a field.</p>
 Class OcuPilot.Screen.Tool.RoleCreate Extends OcuPilot.Screen.Tool.Write
@@ -82,12 +83,12 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Set tProperties = tSchema.%Get("properties")
     ; The emitted subset admits no keyword below a property but its type and description, so a
     ; grant's two members are described here and their shape is refused by ArgumentProblem.
-    Set tGrant = {"type": "object", "description": "One grant, an object with exactly two members: Name, the resource as this instance's own resources list reports it, and Permissions, the letters granted from R (read), W (write) and U (use) -- a database resource takes R and W, a service or administrative resource takes U, and any other resource takes any of the three."}
-    Set tResources = {"type": "array", "description": "The role's resource grants, one per resource. A grant of %All or of any %Admin_ resource, and a grant of write on %DB_IRISSECURITY, are refused."}
+    Set tGrant = {"type": "object", "description": "One grant, an object with exactly two members: Name, the resource as this instance's own resources list reports it, and Permissions, the letters granted from R (read), W (write) and U (use) -- a database resource takes R and W, and W only with R; a service or administrative resource takes U; and any other resource takes any of the three."}
+    Set tResources = {"type": "array", "description": "The role's resource grants, one per resource. A grant of %All or of any %Admin_ resource is proposable and is confirmed as a delete is."}
     Do tResources.%Set("items", tGrant)
     Do tProperties.%Set(..#RESOURCESARGUMENT, tResources)
     If tProperties.%GetTypeOf(..#GRANTEDROLESARGUMENT) = "object" {
-        Do tProperties.%Get(..#GRANTEDROLESARGUMENT).%Set("description", "The roles the new role grants, each named exactly as this instance's own roles list reports it. A role that would grant an administrative privilege is refused, whether it grants it by name, through another role, or as a resource it carries -- %All, %Manager, %Operator and %SecurityAdministrator are all refused.", "string")
+        Do tProperties.%Get(..#GRANTEDROLESARGUMENT).%Set("description", "The roles the new role grants, each named exactly as this instance's own roles list reports it. A role that grants %All or an administrative privilege -- by name, through another role, or as a resource it carries, as %Manager, %Operator and %SecurityAdministrator do -- is proposable and is confirmed as a delete is.", "string")
     }
     Quit tSchema
 }

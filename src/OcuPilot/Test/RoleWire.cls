@@ -33,6 +33,10 @@ Parameter PROBEROLE = "OcuPilotProbeRoleWire";
 
 Parameter DELETEPROBE = "OcuPilotProbeRoleDelete";
 
+/// <p>The role <method>TestAPrivilegedCreateConfirmedThroughTheRealPortIsApplied</method> creates
+/// through the agent's path, granting <code>%All</code>.</p>
+Parameter GRANTPROBE = "OcuPilotProbeRoleGrant";
+
 /// <p>The census leg's principals: a role granting <code>%All</code>, a role granting that role,
 /// and an account whose only path to <code>%All</code> runs through both.</p>
 Parameter PATHPROBE = "OcuPilotProbeAllPath";
@@ -49,7 +53,7 @@ Method OnBeforeAllTests() As %Status
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.RoleWire creates and deletes a role on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
-    If ..Exists(..#PROBEROLE) || ..Exists(..#DELETEPROBE) || ..Exists(..#PATHPROBE) || ..Exists(..#OUTERPROBE) || ..UserExists(..#HOLDERPROBE) {
+    If ..Exists(..#PROBEROLE) || ..Exists(..#DELETEPROBE) || ..Exists(..#GRANTPROBE) || ..Exists(..#PATHPROBE) || ..Exists(..#OUTERPROBE) || ..UserExists(..#HOLDERPROBE) {
         Quit $$$ERROR($$$GeneralError, "a probe role of OcuPilot.Test.RoleWire already exists on this instance, and this class deletes what it creates -- it will not adopt one it did not make.")
     }
     Quit $$$OK
@@ -62,17 +66,19 @@ Method OnAfterOneTest() As %Status
     Do ..RemoveUser(..#HOLDERPROBE)
     Do ..Remove(..#PROBEROLE)
     Do ..Remove(..#DELETEPROBE)
+    Do ..Remove(..#GRANTPROBE)
     Do ..Remove(..#OUTERPROBE)
     Do ..Remove(..#PATHPROBE)
-    Do $$$AssertEquals(..Exists(..#PROBEROLE) + ..Exists(..#DELETEPROBE) + ..Exists(..#OUTERPROBE) + ..Exists(..#PATHPROBE) + ..UserExists(..#HOLDERPROBE), 0, "the probe principals are gone")
+    Do $$$AssertEquals(..Exists(..#PROBEROLE) + ..Exists(..#DELETEPROBE) + ..Exists(..#GRANTPROBE) + ..Exists(..#OUTERPROBE) + ..Exists(..#PATHPROBE) + ..UserExists(..#HOLDERPROBE), 0, "the probe principals are gone")
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
     Do $$$AssertStatusOK(tSC, "the probe proposals and turns are removed")
     Quit $$$OK
 }
 
 /// <p><code>GET /roles/form</code> publishes the rules with the server's own sentences, each
-/// resource with the letters it admits and the grants the set refuses pre-marked, and the roles
-/// with the privileged ones pre-marked.</p>
+/// resource with the letters it admits and whether a grant of it is privileged, and the roles with
+/// the privileged ones marked -- the classifier's answers, for the form's consequence line, and no
+/// refusal sentence.</p>
 /// <p>Mutation: drop the Use-only branch from
 /// <method>OcuPilot.Area.Permissions.RoleCreateRules.AdmissiblePermissions</method> -> the
 /// <code>%Admin_Secure</code> letters go red.</p>
@@ -82,29 +88,29 @@ Method TestTheFormReadPublishesTheRulesAndMarksThePrivilegedChoices()
     Do $$$AssertStatusOK(tSC, "the form read answers")
     Do $$$AssertEquals(tStatus, 200, "at 200")
     If '$IsObject($Get(tBody)) Quit
-    Do $$$AssertEquals(tBody.%Get("privilegeReason"), ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor($Parameter("OcuPilot.Kernel.Proposal.Prohibited", "PRIVILEGEGRANT")), "it ships the privilege-grant sentence")
+    Do $$$AssertEquals(tBody.%GetTypeOf("privilegeReason"), "unassigned", "it ships no refusal sentence for a privileged choice")
     Do $$$AssertEquals(tBody.%Get("requiredFields").%ToJSON(), "[""Name""]", "and the one required field")
     Do $$$AssertEquals(tBody.%Get("rules").%Size(), $ListLength(##class(OcuPilot.Api.Error).RoleViolationCodes()), "and one rule per role code")
     Kill tResources
     Set tIterator = tBody.%Get("resources").%GetIterator()
     While tIterator.%GetNext(.tIndex, .tEntry) {
-        Set tResources(tEntry.%Get("name")) = tEntry.%Get("permissions") _ "|" _ tEntry.%Get("privileged") _ "|" _ tEntry.%Get("privilegedPermissions")
+        Set tResources(tEntry.%Get("name")) = tEntry.%Get("permissions") _ "|" _ tEntry.%Get("privileged")
     }
-    Do $$$AssertEquals($Get(tResources("%DB_USER")), "RW|0|", "%DB_USER admits read and write, neither refused")
-    Do $$$AssertEquals($Get(tResources("%Admin_Secure")), "U|1|U", "%Admin_Secure admits Use and is refused")
-    Do $$$AssertEquals($Get(tResources("%DB_IRISSECURITY")), "RW|0|W", "on %DB_IRISSECURITY the write letter is refused and the read letter is not")
+    Do $$$AssertEquals($Get(tResources("%DB_USER")), "RW|0", "%DB_USER admits read and write, and is not privileged")
+    Do $$$AssertEquals($Get(tResources("%Admin_Secure")), "U|1", "%Admin_Secure admits Use and is privileged")
+    Do $$$AssertEquals($Get(tResources("%DB_IRISSECURITY")), "RW|0", "%DB_IRISSECURITY admits read and write, and is not privileged")
     Kill tMarked
     Set tIterator = tBody.%Get("roles").%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRole) {
         Set tMarked(tRole.%Get("name")) = tRole.%Get("privileged")
     }
-    Do $$$AssertEquals($Get(tMarked("%Manager"), "absent"), 1, "%Manager is pre-marked")
+    Do $$$AssertEquals($Get(tMarked("%Manager"), "absent"), 1, "%Manager is marked privileged")
     Do $$$AssertEquals($Get(tMarked("%Developer"), "absent"), 0, "and an ordinary role is not")
 }
 
 /// <p><code>POST /roles</code> creates the role, whose vendor read carries the sent grants; a second
-/// create under another spelling is refused as taken, and an escalating grant is refused on its
-/// field with nothing created.</p>
+/// create under another spelling is refused as taken; and a privileged grant -- an administrative
+/// resource and <code>%All</code> as a granted role -- is applied (AD-10).</p>
 /// <p>Mutation: remove <code>Security.Role/PUT</code> from
 /// <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> -> the port answers 501 and the
 /// create leg goes red.</p>
@@ -138,11 +144,42 @@ Method TestTheCreateMakesTheRoleWithTheSentGrants()
     If $IsObject($Get(tBody)) Do $$$AssertEquals(..FirstViolation(tBody), "Name " _ ##class(OcuPilot.Api.Error).#ROLENAMETAKEN, "on the name, as taken")
     Do $$$AssertEquals(..Property(..#PROBEROLE, "Description"), "OcuPilot wire probe", "and the role was not rewritten")
 
-    Set tEscalating = {"Name": (..#DELETEPROBE), "Resources": [{"Name": "%DB_IRISSECURITY", "Permissions": "RW"}]}
-    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#CREATEPATH, .tStatus, .tBody, tEscalating.%ToJSON(), "application/json")
-    Do $$$AssertEquals(tStatus, 422, "a grant of write on the security database is refused")
-    If $IsObject($Get(tBody)) Do $$$AssertEquals(..FirstViolation(tBody), "Resources " _ $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "PRIVILEGEGRANT"), "on the resources, as a privilege grant")
-    Do $$$AssertEquals(..Exists(..#DELETEPROBE), 0, "and nothing was created")
+    Set tPrivileged = {"Name": (..#DELETEPROBE), "Resources": [{"Name": "%Admin_Secure", "Permissions": "U"}], "GrantedRoles": ["%All"]}
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#CREATEPATH, .tStatus, .tBody, tPrivileged.%ToJSON(), "application/json")
+    Do $$$AssertEquals(tStatus, 201, "a privileged grant is created at 201")
+    Kill tQuery
+    Set tQuery("name") = ..#DELETEPROBE
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Security.Role", "GET", .tQuery, "", .tRead, .tHttp, .tFault)
+    If $IsObject($Get(tRead)) {
+        Do $$$AssertEquals(..Grants(tRead.%Get("Resources")), "%Admin_Secure:U", "with the administrative resource granted")
+        Do $$$AssertEquals(tRead.%Get("GrantedRoles").%ToJSON(), "[""%All""]", "and %All granted")
+    } Else {
+        Do $$$AssertTrue(0, "the privileged role reads back")
+    }
+}
+
+/// <p>AD-10 through the agent's path and the real port: a role create granting <code>%All</code> is
+/// minted destructive with the privilege-grant consequence, and its confirm creates the role with
+/// the grant.</p>
+/// <p>Mutation: drop <code>tPrivileged</code> from the destructive value in
+/// <method>OcuPilot.Kernel.Proposal.Mint.Mint</method> -> the destructive assertion goes red.</p>
+Method TestAPrivilegedCreateConfirmedThroughTheRealPortIsApplied()
+{
+    Set tTool = "OcuPilot.Screen.Tool.RoleCreate"
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "a probe turn is seeded")
+    If $$$ISERR(tSC) Quit
+    Set tArgs = {"Name": (..#GRANTPROBE), "GrantedRoles": ["%All"]}
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint(..#LIST, $Parameter(tTool, "TOOLNAME"), $Username, "", tTurnKey, tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), ..#GRANTPROBE, $ClassMethod(tTool, "IdArgument"), $ClassMethod(tTool, "SettableFields"), tTool)
+    Do $$$AssertStatusOK(tSC, "the create is minted")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tProposal.%Get("proposalId"), .tFound, .tValues)
+    Do $$$AssertEquals(+$Get(tValues("destructive")), 1, "destructive")
+    Do $$$AssertEquals($Get(tValues("consequence")), $Parameter("OcuPilot.Kernel.Proposal.Mint", "CONSEQUENCEPRIVILEGED"), "and naming the privilege")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertStatusOK(tSC, "and confirmed: " _ $Get(tCode))
+    Do $$$AssertEquals(..Exists(..#GRANTPROBE), 1, "the instance holds the role")
+    Do $$$AssertTrue((","_$ZConvert(..Property(..#GRANTPROBE, "GrantedRoles"), "U")_",") [ ",%ALL,", "granting %All: " _ ..Property(..#GRANTPROBE, "GrantedRoles"))
 }
 
 /// <p><code>permissions.roles.delete</code> minted and confirmed through the shipped mint, confirm

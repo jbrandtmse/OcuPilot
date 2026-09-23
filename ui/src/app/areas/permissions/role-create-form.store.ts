@@ -34,7 +34,10 @@ export const PERMISSION_LETTERS = 'RWU';
 /** One role the instance holds, as `GET /roles/form` projects it. */
 export interface RoleOption {
   readonly name: string;
-  /** Whether the server refuses to grant it from OcuPilot (AD-10). The client decides nothing. */
+  /**
+   * Whether granting it grants %All or an administrative privilege, which the form states at the
+   * field while it is ticked (AD-10). The server's classifier decides; the client decides nothing.
+   */
   readonly privileged: boolean;
 }
 
@@ -43,10 +46,8 @@ export interface ResourceOption {
   readonly name: string;
   /** The letters the classic grant dialog offers for it, in `PERMISSION_LETTERS` order. */
   readonly permissions: string;
-  /** Whether the server refuses a grant of it at any permission. */
+  /** Whether a grant of it, at any permission, grants %All or an administrative privilege (AD-10). */
   readonly privileged: boolean;
-  /** The admitted letters whose grant the server refuses. */
-  readonly privilegedPermissions: string;
 }
 
 /** One resource grant, in the vendor's own `{Name, Permissions}` shape. */
@@ -69,8 +70,6 @@ export interface RoleFormRules {
   readonly rules: readonly FieldRule[];
   readonly roles: readonly RoleOption[];
   readonly resources: readonly ResourceOption[];
-  /** The server's sentence for a grant it refuses, which each refused choice is described by. */
-  readonly privilegeReason: string;
 }
 
 /** The machine code the blur look-up reports a taken name under -- the server's own (AD-39). */
@@ -99,7 +98,7 @@ function emptyBuffer(): TextBuffer {
 }
 
 function emptyRules(): RoleFormRules {
-  return { requiredFields: [], maxLengths: {}, rules: [], roles: [], resources: [], privilegeReason: '' };
+  return { requiredFields: [], maxLengths: {}, rules: [], roles: [], resources: [] };
 }
 
 /** `letters` reduced to the distinct letters of `PERMISSION_LETTERS` it carries, in that order. */
@@ -113,12 +112,12 @@ export function canonicalLetters(letters: string): string {
  *
  * **It composes no payload of its own.** `POST /roles` resolves the same tool class the agent's
  * `permissions.roles.create` does, so the screen's Save and the agent's confirm are two callers of
- * one operation, and every field sentence -- including the refusal of an escalating grant on the
- * field it concerns -- is the server's (AD-39).
+ * one operation, and every field sentence is the server's (AD-39). A privileged grant is granted,
+ * not refused; the page and the grant dialog state its consequence while one is chosen (AD-10).
  *
  * **A grant is the vendor's `{Name, Permissions}`**, held in the order it was added. The grant
  * dialog decides nothing the server does not: it offers the letters the bootstrap read ships for
- * each resource, and the server refuses whatever it would refuse anyway (AD-10).
+ * each resource, and the server refuses whatever it would refuse anyway.
  */
 @Injectable({ providedIn: 'root' })
 export class RoleCreateForm {
@@ -203,6 +202,16 @@ export class RoleCreateForm {
   /** Whether role `name` is ticked. */
   roleChecked(name: string): boolean {
     return this.rolesValue.includes(name);
+  }
+
+  /** Whether a ticked granted role is one the server marked privileged (AD-10). */
+  privilegedRoleChecked(): boolean {
+    return this.rulesValue.roles.some((role) => role.privileged && this.roleChecked(role.name));
+  }
+
+  /** Whether a held resource grant is of a resource the server marked privileged (AD-10). */
+  privilegedGrantHeld(): boolean {
+    return this.grantsValue.some((grant) => this.resource(grant.name)?.privileged ?? true);
   }
 
   violations(): readonly Violation[] {
@@ -333,14 +342,9 @@ export class RoleCreateForm {
     this.notify();
   }
 
-  /**
-   * Tick or untick one granted role. A role the server marked privileged is never added: its
-   * checkbox is drawn disabled, and this keeps a stray event from putting it in the body anyway.
-   * The server's refusal of it is the authority either way (AD-10).
-   */
+  /** Tick or untick one granted role, a privileged one included (AD-10). */
   setRole(name: string, on: boolean): void {
     if (this.roleChecked(name) === on) return;
-    if (on && this.rulesValue.roles.some((role) => role.name === name && role.privileged)) return;
     this.rolesValue = on
       ? this.rulesValue.roles.map((role) => role.name).filter((role) => role === name || this.roleChecked(role))
       : this.rolesValue.filter((entry) => entry !== name);
@@ -542,7 +546,8 @@ function absorbRules(body: unknown): RoleFormRules {
     if (entry === null || typeof entry !== 'object') continue;
     const name = textAt(entry, 'name');
     if (name === '' || roles.some((role) => role.name === name)) continue;
-    // Fail closed: a role whose flag the server did not send as false is drawn unavailable.
+    // A role whose flag the server did not send as false is treated as privileged, so the
+    // consequence is stated rather than missed.
     const flag = (entry as Record<string, unknown>)['privileged'];
     roles.push({ name, privileged: !(flag === false || flag === 0) });
   }
@@ -552,14 +557,9 @@ function absorbRules(body: unknown): RoleFormRules {
     const name = textAt(entry, 'name');
     const permissions = canonicalLetters(textAt(entry, 'permissions'));
     if (name === '' || permissions === '' || resources.some((resource) => resource.name === name)) continue;
-    // Fail closed for the same reason: a whole-resource flag not sent as false marks it refused.
+    // Treated as privileged unless the server sent the flag as false, for the same reason.
     const flag = (entry as Record<string, unknown>)['privileged'];
-    resources.push({
-      name,
-      permissions,
-      privileged: !(flag === false || flag === 0),
-      privilegedPermissions: canonicalLetters(textAt(entry, 'privilegedPermissions')),
-    });
+    resources.push({ name, permissions, privileged: !(flag === false || flag === 0) });
   }
   const required = arrayAt(body, 'requiredFields').filter(
     (entry): entry is string => typeof entry === 'string'
@@ -570,6 +570,5 @@ function absorbRules(body: unknown): RoleFormRules {
     rules,
     roles,
     resources,
-    privilegeReason: textAt(body, 'privilegeReason'),
   };
 }

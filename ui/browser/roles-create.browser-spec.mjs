@@ -8,9 +8,10 @@
  * 2. **A resource grant is added, edited and removed in its dialog** (AC2), which shows the current
  *    and the resulting grant before Confirm applies it, and offers only the letters the resource
  *    admits.
- * 3. **A choice the server refuses is drawn unavailable before any Save** (AC4): an escalating
- *    granted role, an administrative resource, and write on `%DB_IRISSECURITY`, each described by
- *    the server's own sentence from the bootstrap read.
+ * 3. **A privileged choice is available and states its consequence** (AC4, AD-10): a granted role
+ *    or a resource grant that grants `%All` or an administrative privilege shows the privilege-grant
+ *    line at its field and in the grant dialog, and a Save applies it. Write on a database ticks and
+ *    locks Read (DW-1514).
  * 4. **A valid Save creates the role** (AC5) with the grants sent, replaces the route with
  *    `permissions/roles/edit/<id>`, reads the saved sentence, and the Roles list then shows it. The
  *    change event itself is pinned in `role-create-form.store.spec.ts`.
@@ -42,12 +43,17 @@ const LIST_URL = '/ocupilot/permissions/roles?ns=HSCUSTOM';
 const FORM_URL = '/ocupilot/permissions/roles/edit?ns=HSCUSTOM';
 
 /** Every role this spec creates, removed by exact name in `before` and `after`. */
-const NAMES = ['OcuPilotProbeRoleCreate'];
+const NAMES = ['OcuPilotProbeRoleCreate', 'OcuPilotProbeRolePrivileged'];
 
 const PROBE_DESCRIPTION = 'OcuPilot probe role';
 
-/** Granted roles the server refuses: %All by name, %Manager through an administrative resource. */
+/** Granted roles whose grant is privileged: %All by name, %Manager through an administrative resource. */
 const PRIVILEGED_ROLES = ['%All', '%Manager'];
+
+/** The consequence lines the page and the dialog draw while a privileged choice is made. */
+const ROLES_EFFECT = '#ocu-role-GrantedRoles-effect';
+const RESOURCES_EFFECT = '#ocu-role-Resources-effect';
+const DIALOG_EFFECT = '#ocu-role-grant-effect';
 
 let browser = null;
 
@@ -82,23 +88,6 @@ function irisSys(lines) {
 /** Remove every role this spec creates, by its exact name -- never a prefix sweep. */
 function removeProbeRoles() {
   irisSys(NAMES.map((name) => `If ##class(Security.Roles).Exists("${name}") Do ##class(Security.Roles).Delete("${name}")`));
-}
-
-/**
- * The prohibited set's privilege-grant sentence, read from the throwaway itself, so each pre-mark
- * is compared with the server's one sentence rather than with the page's own copy.
- */
-function privilegeSentence() {
-  const result = spawnSync('docker', ['exec', '-i', config.container, 'iris', 'session', 'iris', '-U', 'HSCUSTOM'], {
-    input:
-      'Write "OCU-SENTENCE-START:",##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(##class(OcuPilot.Kernel.Proposal.Prohibited).#PRIVILEGEGRANT),":OCU-SENTENCE-END",!\nHalt\n',
-    encoding: 'utf8',
-    timeout: 600000,
-  });
-  const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
-  const match = /OCU-SENTENCE-START:(.*?):OCU-SENTENCE-END/.exec(output);
-  assert.ok(match !== null && match[1] !== '', `the throwaway answered the privilege-grant sentence: ${output}`);
-  return match[1];
 }
 
 /** The stored role `name` as the vendor reads it, or `null` when it does not exist. */
@@ -299,11 +288,16 @@ test('AC2: a grant is added, edited and removed in its dialog, which shows the c
   }
 });
 
-// AC4. Mutation (Rule 19): drop `[disabled]` from the granted-role checkbox -> the %All leg goes
-// red; make the dialog's caption read anything but the bootstrap's sentence -> the resource legs go
-// red.
-test('AC4: every choice the server refuses is drawn unavailable, described by the server sentence', async () => {
-  const sentence = privilegeSentence();
+/** The text of the element `selector`, once it is drawn. */
+async function textOf(page, selector) {
+  await page.waitForSelector(selector, { visible: true, timeout: config.navigationTimeoutMs });
+  return page.$eval(selector, (node) => node.textContent.trim());
+}
+
+// AC4, AD-10. Mutation (Rule 19): make the page's `privilegedRoleChecked` answer false -> the
+// granted-role consequence leg goes red; make the dialog's `showEffect` answer false -> the dialog
+// leg goes red; drop the `writeChanged` line from the dialog's `onLetter` -> the DW-1514 leg goes red.
+test('AC4: a privileged choice is available, states its consequence, and a Save applies it', async () => {
   const { context, page } = await signedInAt(FORM_URL);
   try {
     await page.waitForSelector('#ocu-role-GrantedRoles', { visible: true, timeout: config.navigationTimeoutMs });
@@ -311,34 +305,48 @@ test('AC4: every choice the server refuses is drawn unavailable, described by th
     for (const name of PRIVILEGED_ROLES) {
       const role = roles.find((entry) => entry.name === name);
       assert.ok(role, `the instance offers ${name}`);
-      assert.equal(role.disabled, true, `${name} is unavailable`);
-      assert.equal(role.description, sentence, `${name} is described by the prohibited set's own sentence`);
+      assert.equal(role.disabled, false, `${name} is available`);
     }
-    assert.ok(roles.some((entry) => !entry.disabled), 'and a role the server grants stays available');
+    assert.equal(await page.$(ROLES_EFFECT), null, 'no consequence before a privileged role is ticked');
+    const all = roles.find((entry) => entry.name === '%All');
+    await page.evaluate((id) => document.getElementById(id).click(), all.id);
+    assert.equal(await textOf(page, ROLES_EFFECT), STRINGS.privilegedGrantEffect, 'ticking %All states the consequence');
 
+    // DW-1514: Write on a database carries Read, locked, as the classic dialog does.
     await page.click('#ocu-role-grant-add');
     await page.waitForSelector('[role="dialog"] #ocu-role-grant-resource', { visible: true, timeout: config.navigationTimeoutMs });
-    const secure = await page.$eval('#ocu-role-grant-resource option[value="%Admin_Secure"]', (node) => node.disabled);
-    assert.equal(secure, true, 'an administrative resource is unavailable');
-    const described = await page.$eval('#ocu-role-grant-resource', (node) => {
-      const id = node.getAttribute('aria-describedby');
-      return id === null ? '' : document.getElementById(id)?.textContent?.trim() ?? '';
-    });
-    assert.equal(described, sentence, 'and the picker is described by the server sentence');
-
     await page.select('#ocu-role-grant-resource', '%DB_IRISSECURITY');
-    // The view repaints on the next frame; wait for it before reading the refused letter.
-    await page
-      .waitForFunction(() => document.getElementById('ocu-role-grant-W')?.disabled === true, {
-        timeout: config.navigationTimeoutMs,
-      })
-      .catch(() => undefined);
-    const write = await page.$eval('#ocu-role-grant-W', (node) => ({
-      disabled: node.disabled,
-      description: document.getElementById(node.getAttribute('aria-describedby') ?? '')?.textContent?.trim() ?? '',
-    }));
-    assert.deepEqual(write, { disabled: true, description: sentence }, 'write on the security database is unavailable');
-    assert.equal(await page.$eval('#ocu-role-grant-R', (node) => node.disabled), false, 'while read on it is not');
+    await page.waitForSelector('#ocu-role-grant-W', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('#ocu-role-grant-W', (node) => node.disabled), false, 'write on the security database is available');
+    await page.click('#ocu-role-grant-W');
+    await page.waitForFunction(() => document.getElementById('ocu-role-grant-R')?.disabled === true, { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('#ocu-role-grant-R', (node) => node.checked), true, 'and ticking it ticks Read');
+    assert.equal(await page.$(DIALOG_EFFECT), null, 'which states no privilege consequence');
+
+    await page.select('#ocu-role-grant-resource', '%Admin_Secure');
+    await page.waitForSelector('#ocu-role-grant-U', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(
+      await page.$eval('#ocu-role-grant-resource option[value="%Admin_Secure"]', (node) => node.disabled),
+      false,
+      'an administrative resource is available'
+    );
+    await page.click('#ocu-role-grant-U');
+    assert.equal(await textOf(page, DIALOG_EFFECT), STRINGS.privilegedGrantEffect, 'and the dialog states its consequence');
+    await clickButton(page, '[role="dialog"]', STRINGS.actionConfirm);
+    await waitForDialogClosed(page);
+    assert.equal(await textOf(page, RESOURCES_EFFECT), STRINGS.privilegedGrantEffect, 'as does the Resources field once it is held');
+
+    await fill(page, 'ocu-role-Name', NAMES[1]);
+    await (await saveButton(page)).click();
+    await page.waitForFunction(
+      (sentence) => document.querySelector('.ocu-form-bar-status')?.textContent?.includes(sentence) === true,
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.formSaved
+    );
+    const stored = storedRole(NAMES[1]);
+    assert.ok(stored !== null, 'the Save creates the role');
+    assert.deepEqual(stored.resources, ['%Admin_Secure:U'], 'with the administrative resource granted');
+    assert.deepEqual(stored.grantedRoles, ['%All'], 'and %All granted');
   } finally {
     await context.close();
   }
@@ -356,7 +364,7 @@ test('AC5: a valid Save creates the role with the sent grants, replaces the rout
     await clickButton(page, '[role="dialog"]', STRINGS.actionConfirm);
     await waitForDialogClosed(page);
     const granted = (await roleBoxes(page)).find((entry) => entry.name === '%Developer');
-    assert.ok(granted !== undefined && !granted.disabled, 'the instance offers %Developer, which the server grants');
+    assert.ok(granted !== undefined, 'the instance offers %Developer');
     await page.evaluate((id) => document.getElementById(id).click(), granted.id);
     await (await saveButton(page)).click();
 

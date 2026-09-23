@@ -1,6 +1,6 @@
 /// <p>Pins Story 8.2's user create (AD-3, AD-6, AD-10, AD-35, AD-54, AD-55): what
 /// <class>OcuPilot.Screen.Tool.UserCreate</class> advertises, the one rule set both callers apply,
-/// the privileged-role refusal on both callers, the password's absence from every stored surface,
+/// a privileged role granted on both callers and marked destructive on the agent's, the password's absence from every stored surface,
 /// the one body the screen and the confirm send, and the port's wrapper.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and its protected state
 /// readable. Every write goes to <class>OcuPilot.Test.ProposalFixture</class>, so nothing here
@@ -65,7 +65,7 @@ Method TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets()
     Do $$$AssertEquals(tProperties.%GetTypeOf("Roles"), "object", "and it offers the roles")
     Do $$$AssertEquals(tSchema.%Get("additionalProperties"), 0, "closed to everything else")
     Do $$$AssertEquals(..Sorted($ClassMethod(..#TOOL, "SettableFields")), ..Sorted($ClassMethod(..#SET, "PermittedCreateFields", "user")), "the settable set is the prohibited set's reviewed create list")
-    Do $$$AssertTrue($ListFind($ClassMethod(..#SET, "AlwaysProhibitedCreateFields", "user"), "EscalationRoles"), "and escalation roles are always prohibited on a create")
+    Do $$$AssertEquals($ListFind($ClassMethod(..#SET, "PermittedCreateFields", "user"), "EscalationRoles"), 0, "and escalation roles are no field a create reviews")
     Do $$$AssertEquals($ClassMethod(..#TOOL, "WriteType"), "POST", "the create is the vendor's POST")
     Do $$$AssertEquals($ClassMethod(..#TOOL, "Creates"), 1, "and a create (AD-54)")
     Do $$$AssertEquals($ListToString($ClassMethod(..#TOOL, "ComposedSecrets")), "Password", "whose one composed secret is the password")
@@ -178,55 +178,50 @@ Method TestTheScreenAndTheConfirmSendOneBody()
     Do $$$AssertEquals(tBody.%GetTypeOf("Name"), "unassigned", "and never the name, which is the vendor's query parameter")
 }
 
-/// <p>AD-10 on both callers: a role that grants <code>%All</code> by name, an administrative
-/// resource it carries, or write on <code>%DB_IRISSECURITY</code> it carries (the implicit
-/// <code>%DB_IRISSECURITY</code> role) is refused -- on the screen as the Roles violation carrying
-/// the server's sentence, at the agent's confirm inside the transition -- and none reaches the
-/// port. The picker pre-marks each. An ordinary role is not refused. A seeded row carrying
-/// escalation roles is refused inside the transition too.</p>
-/// <p>Mutations: remove the <code>user</code> step from
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.Created</method> -> every privileged leg goes red on
-/// both callers; drop the <code>%DB_IRISSECURITY</code> clause from
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.ResourceGrantEscalates</method> -> that role's legs
-/// and its pre-mark go red.</p>
-Method TestAPrivilegedRoleIsRefusedOnBothCallers()
+/// <p>AD-10 on both callers: a role that grants <code>%All</code> by name or through an
+/// administrative resource it carries is granted, not refused. The screen's Save reaches the port
+/// with it; the agent's proposal is minted <b>destructive</b> and carries the privilege-grant
+/// consequence, and its confirm applies it. The bootstrap read marks each such role, and an
+/// ordinary role -- <code>%DB_IRISSECURITY</code>'s implicit role among them -- is neither marked
+/// nor destructive. A seeded row carrying escalation roles is refused inside the transition as a
+/// field no create reviews.</p>
+/// <p>Mutations: drop <code>tPrivileged</code> from the destructive value in
+/// <method>OcuPilot.Kernel.Proposal.Mint.Mint</method> -> the destructive legs go red; make
+/// <method>OcuPilot.Kernel.Proposal.Mint.ConsequenceOf</method> ignore <var>pPrivileged</var> -> the
+/// consequence legs go red.</p>
+Method TestAPrivilegedRoleIsGrantedAtTheStrongestConfirmationOnBothCallers()
 {
-    For tRole = "%All", "%Manager", "%DB_IRISSECURITY" {
+    Set tPrivilegedCode = $Parameter("OcuPilot.Kernel.Proposal.Mint", "CONSEQUENCEPRIVILEGED")
+    For tRole = "%All", "%Manager", "%Developer", "%DB_IRISSECURITY" {
+        Set tPrivileged = ((tRole = "%All") || (tRole = "%Manager"))
         Set tArgs = ..Args()
         Do tArgs.%Set("Roles", [(tRole)])
         Set tScreenArgs = ##class(%DynamicAbstractObject).%FromJSON(tArgs.%ToJSON())
         Do tScreenArgs.%Set("Password", ..#PROBEPASSWORD, "string")
         Do ##class(OcuPilot.Test.ProposalFixture).Clear()
         Set tSC = $ClassMethod(..#SCREEN, "Perform", ..#PROBEUSER, tScreenArgs, .tCreated, .tHttp, .tFault, .tViolations)
-        Do $$$AssertEquals(+$Get(tViolations), 1, tRole _ ": the screen answers one violation")
-        Do $$$AssertEquals(..CodeFor(.tViolations, "Roles"), $Parameter(..#SET, "PRIVILEGEGRANT"), tRole _ ": on the Roles field, as a privilege grant")
-        Do $$$AssertEquals($ListGet($Get(tViolations(1)), 3), ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor($Parameter(..#SET, "PRIVILEGEGRANT")), tRole _ ": carrying the server's sentence")
-        Do $$$AssertTrue('($ZConvert($ListGet($Get(tViolations(1)), 3), "L") [ "agent"), tRole _ ": a sentence a person reads on the screen names no caller (AD-53)")
-        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, tRole _ ": and nothing reaches the port")
-        Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RoleGrantsAdministrativePrivilege(tRole), 1, tRole _ ": and the picker pre-marks it")
+        Do $$$AssertStatusOK(tSC, tRole _ ": the screen's Save is accepted")
+        Do $$$AssertEquals(+$Get(tViolations), 0, tRole _ ": with no violation")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 1, tRole _ ": and the create reaches the port")
+        Set tSent = ##class(OcuPilot.Test.ProposalFixture).LastWriteBody()
+        Do $$$AssertTrue(tSent [ tRole, tRole _ ": carrying the role: " _ tSent)
+        Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RoleGrantsAdministrativePrivilege(tRole), tPrivileged, tRole _ ": the bootstrap read marks it privileged exactly when it is")
 
         Do ##class(OcuPilot.Test.ProposalFixture).Clear()
         Do ##class(OcuPilot.Test.ProposalFixture).ArmMissing()
         Set tSC = ..Mint(..#PROBEUSER, tArgs, .tProposal, .tHttp, .tFault)
         Do $$$AssertStatusOK(tSC, tRole _ ": the agent's mint proposes it")
         If $$$ISERR(tSC) Continue
+        Do ..Stored(tProposal.%Get("proposalId"), .tDestructive, .tConsequence)
+        Do $$$AssertEquals(tDestructive, tPrivileged, tRole _ ": the proposal is destructive exactly when the grant is privileged")
+        Do $$$AssertEquals(tConsequence, $Select(tPrivileged: tPrivilegedCode, 1: ""), tRole _ ": and names the privilege as its consequence")
         Do ##class(OcuPilot.Test.ProposalFixture).ArmWrite("{}")
         Set tSC = ..Confirm(tProposal.%Get("proposalId"), .tHttp, .tCode, .tResult, ..Secrets())
-        Do $$$AssertStatusNotOK(tSC, tRole _ ": and its confirm refuses it")
-        Do $$$AssertEquals(tHttp, 403, tRole _ ": at 403")
-        Do $$$AssertEquals(tCode, $Parameter(..#SET, "PRIVILEGEGRANT"), tRole _ ": on the privilege-grant predicate")
-        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, tRole _ ": and nothing reaches the port")
+        Do $$$AssertStatusOK(tSC, tRole _ ": and its confirm applies it")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 1, tRole _ ": at the port")
     }
 
-    ; An ordinary role grants nothing AD-10 names.
-    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
-    Set tSC = $ClassMethod(..#SET, "Prohibits", $Parameter(..#TOOL, "TOOLNAME"), ..TargetRef(), {"Roles": ["%Developer"]}.%ToJSON(), "[]", .tProhibits, .tCode)
-    Do $$$AssertStatusOK(tSC, "the set answers for an ordinary role")
-    Do $$$AssertEquals(tProhibits, 0, "and does not refuse it")
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RoleGrantsAdministrativePrivilege("%Developer"), 0, "the picker leaves an ordinary role available")
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RoleGrantsAdministrativePrivilege("%Manager"), 1, "and pre-marks one that carries an administrative resource")
-
-    ; A seeded row the shipped mint cannot produce: escalation roles, refused inside the transition.
+    ; A seeded row the shipped mint cannot produce: escalation roles, which no create reviews.
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
     Do $$$AssertStatusOK(tSC, "a probe turn is seeded")
     If $$$ISERR(tSC) Quit
@@ -246,10 +241,11 @@ Method TestAPrivilegedRoleIsRefusedOnBothCallers()
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedProposal(.tValues, .tKey, .tToken)
     Do $$$AssertStatusOK(tSC, "a create proposal carrying escalation roles is seeded")
     If $$$ISERR(tSC) Quit
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
     Do ##class(OcuPilot.Test.ProposalFixture).ArmMissing()
     Set tSC = ..Confirm(tKey, .tHttp, .tCode, .tResult, ..Secrets())
     Do $$$AssertEquals(tHttp, 403, "the seeded row is refused at 403")
-    Do $$$AssertEquals(tCode, $Parameter(..#SET, "PRIVILEGEGRANT"), "as a privilege grant")
+    Do $$$AssertEquals(tCode, $Parameter(..#SET, "UNCOVEREDFIELD"), "as a field no create reviews")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "with no write")
 }
 
@@ -425,6 +421,17 @@ ClassMethod Secrets() As %DynamicObject
     Set tSecrets = {}
     Do tSecrets.%Set("Password", ..#PROBEPASSWORD, "string")
     Quit tSecrets
+}
+
+/// <p>The stored proposal <var>pKey</var>'s destructive marking and consequence code.</p>
+ClassMethod Stored(pKey As %String, Output pDestructive As %Boolean, Output pConsequence As %String)
+{
+    Set pDestructive = ""
+    Set pConsequence = "<absent>"
+    Set tSC = $ClassMethod(..#STORE, "GuardedByKey", pKey, .tFound, .tValues)
+    If $$$ISERR(tSC) || '$Get(tFound) Quit
+    Set pDestructive = +$Get(tValues("destructive"))
+    Set pConsequence = $Get(tValues("consequence"))
 }
 
 /// <p>The canonical reference of <parameter>PROBEUSER</parameter>.</p>
