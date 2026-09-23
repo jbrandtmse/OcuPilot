@@ -875,6 +875,22 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.equal(schedule.declaration.table.emptyAgentKey, 'taskScheduleEmptyAgent', 'the empty state invites the agent');
   assert.equal(schedule.declaration.table.emptyNextKey, '', 'and names no read-only next step');
   assert.equal(schedule.declaration.entityLabelKey, 'proposalEntityTask');
+  // Story 7.8: Processes and Process details declare Suspend, Resume, Terminate and the Terminate
+  // dialog's flag, none self-protected, and invite the agent from their empty states.
+  for (const name of ['ProcessList', 'ProcessDetails']) {
+    const process = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
+    assert.deepEqual(
+      process.declaration.rowActions,
+      ['suspend', 'resume', 'terminate', 'terminate-with-error'].map((id) => ({ id, selfProtection: '' })),
+      `${name} declares the four process actions`
+    );
+    assert.equal(process.declaration.table.emptyAgentKey, 'processListEmptyAgent', `${name}'s empty state invites the agent`);
+    assert.equal(process.declaration.table.emptyNextKey, '', `and names no read-only next step`);
+  }
+  assert.equal(
+    screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.ProcessList').declaration.entityLabelKey,
+    'proposalEntityProcess'
+  );
   // Story 2.12: a descriptor that declares NO read is a supported shape, and the generator has to
   // emit it rather than refuse it -- the declared-read pipeline is admin-port-only by two
   // independent hard-codings, so the application error log could not use it whatever port it

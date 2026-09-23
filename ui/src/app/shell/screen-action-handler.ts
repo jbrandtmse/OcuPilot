@@ -27,7 +27,9 @@ export const SCREEN_ACTION_PATH_SUFFIX = '/action';
  * whose detail pages render the same `ListPage`, and the Users list (Story 7.2), and the Auditing
  * configuration form (Story 7.4), whose page selects the singleton itself, and the On-demand tasks
  * list (Story 7.5), whose Run is sent at once with no dialog, and the Task schedule (Story 7.6),
- * whose Run, Suspend and Resume are sent at once and whose Delete types the task's name.
+ * whose Run, Suspend and Resume are sent at once and whose Delete types the task's name, and
+ * Processes and Process details (Story 7.8), whose Suspend and Resume are sent at once and whose
+ * Terminate types the pid.
  */
 export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WebAppList',
@@ -37,6 +39,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.AuditingConfig',
   'OcuPilot.Screen.Descriptor.TaskOnDemandList',
   'OcuPilot.Screen.Descriptor.TaskScheduleList',
+  'OcuPilot.Screen.Descriptor.ProcessList',
+  'OcuPilot.Screen.Descriptor.ProcessDetails',
 ];
 
 /** The Users list's descriptor, whose row actions carry values (AD-56). */
@@ -44,6 +48,13 @@ const USER_LIST = 'OcuPilot.Screen.Descriptor.UserList';
 
 /** The Task schedule's descriptor, whose delete types a name that is not its row key. */
 const TASK_SCHEDULE = 'OcuPilot.Screen.Descriptor.TaskScheduleList';
+
+/** The processes list and Process details, whose Terminate carries the error-to-job flag. */
+const PROCESS_LIST = 'OcuPilot.Screen.Descriptor.ProcessList';
+const PROCESS_DETAILS = 'OcuPilot.Screen.Descriptor.ProcessDetails';
+
+/** The Terminate dialog's flagged action: declared, undrawn, sent only by the checked flag. */
+export const TERMINATE_WITH_ERROR = 'terminate-with-error';
 
 /**
  * The change-on-login flag's action (AD-56): a declared, undrawn action. It is declared so the
@@ -75,6 +86,28 @@ const VALUE_ACTIONS: Readonly<Record<string, Readonly<Record<string, 'set-passwo
 /** The declared actions no surface draws, keyed by descriptor (DW-389). */
 const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [USER_LIST]: [REQUIRE_PASSWORD_CHANGE],
+  [PROCESS_LIST]: [TERMINATE_WITH_ERROR],
+  [PROCESS_DETAILS]: [TERMINATE_WITH_ERROR],
+};
+
+/**
+ * The optional flag a typed-name dialog offers, keyed by descriptor and then by action id: the
+ * checkbox's published label and the declared action a checked box sends in place of the one the
+ * dialog was opened for. Each flagged action is its own write tool, because the flag cannot travel
+ * as a value on a bodyless write (AD-51, AD-56).
+ */
+const FLAGGED_ACTIONS: Readonly<Record<string, Readonly<Record<string, { readonly label: string; readonly action: string }>>>> = {
+  [PROCESS_LIST]: { terminate: { label: STRINGS.processTerminateErrorFlag, action: TERMINATE_WITH_ERROR } },
+  [PROCESS_DETAILS]: { terminate: { label: STRINGS.processTerminateErrorFlag, action: TERMINATE_WITH_ERROR } },
+};
+
+/**
+ * The screen whose action route a descriptor's row actions are sent to, where it is not the
+ * descriptor's own: Process details acts on the pid it shows through the processes list's write
+ * tools, which name that list (AD-53).
+ */
+const ACTION_ADDRESS: Readonly<Record<string, string>> = {
+  [PROCESS_DETAILS]: PROCESS_LIST,
 };
 
 /**
@@ -85,7 +118,7 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
  * `DESTRUCTIVE` declaration. This is EXPERIENCE.md's `confirm-dialog` rule -- a delete carries the
  * typed-name field and a `button-destructive` -- applied to the verb that deletes.
  */
-const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete'];
+const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate'];
 
 /**
  * The consequence sentence a destructive action states above its typed-name field, keyed by
@@ -102,6 +135,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.OAuthServerClientTab': { delete: STRINGS.oauthServerClientDeleteConsequence },
   [USER_LIST]: { delete: STRINGS.userDeleteConsequence },
   [TASK_SCHEDULE]: { delete: STRINGS.taskDeleteConsequence },
+  [PROCESS_LIST]: { terminate: STRINGS.processTerminateConsequence },
+  [PROCESS_DETAILS]: { terminate: STRINGS.processTerminateConsequence },
 };
 
 /**
@@ -149,7 +184,8 @@ export type PendingKind = 'typed-name' | 'warning' | 'set-password' | 'role';
  *
  * `target` is the row key the write is sent with. `name` is what the typed-name dialog titles and
  * asks for -- the row key itself unless the screen names another field (`TYPED_NAME_ROWS`) --
- * and `advisory` the dialog's second sentence, `''` when none applies.
+ * `advisory` the dialog's second sentence, `''` when none applies, and `flagLabel` the label of
+ * the dialog's optional checkbox (`FLAGGED_ACTIONS`), `''` when it offers none.
  */
 export interface PendingConfirm {
   readonly kind: PendingKind;
@@ -160,6 +196,7 @@ export interface PendingConfirm {
   readonly name: string;
   readonly consequence: string;
   readonly advisory: string;
+  readonly flagLabel: string;
   readonly options: readonly string[];
 }
 
@@ -223,12 +260,17 @@ export class ScreenActionHandler {
     return this.waiting();
   }
 
-  /** The typed name matched, or the warning was proceeded past: send the write the dialog was standing in front of. */
-  confirmPending(): void {
+  /**
+   * The typed name matched, or the warning was proceeded past: send the write the dialog was
+   * standing in front of. `flag` is the dialog's checkbox; checked, the flagged action is sent in
+   * place of the one the dialog was opened for, and nothing else about the request changes.
+   */
+  confirmPending(flag = false): void {
     const pending = this.waiting();
     this.waiting.set(null);
     if (pending === null || (pending.kind !== 'typed-name' && pending.kind !== 'warning')) return;
-    void this.send(pending.descriptor, pending.actionId, pending.target);
+    const flagged = flag ? this.flag(pending.descriptor, pending.actionId) : null;
+    void this.send(pending.descriptor, flagged?.action ?? pending.actionId, pending.target);
   }
 
   /**
@@ -332,6 +374,7 @@ export class ScreenActionHandler {
       name,
       consequence,
       advisory,
+      flagLabel: kind === 'typed-name' ? (this.flag(descriptor, actionId)?.label ?? '') : '',
       options,
     });
   }
@@ -383,17 +426,21 @@ export class ScreenActionHandler {
 
   /**
    * The one request, and what its answer publishes; `true` when the instance applied it. `values`
-   * travels only where the action's tool declares values, and is sent as given (AD-56).
+   * travels only where the action's tool declares values, and is sent as given (AD-56). It is sent
+   * to the action route of the screen `ACTION_ADDRESS` names, or the descriptor's own; a refusal is
+   * put on the descriptor's own store, which is the page the person acted on.
    */
   private async send(descriptor: string, actionId: string, target: string, values?: ActionValues): Promise<boolean> {
     const screen = SCREENS.find((entry) => entry.descriptor === descriptor);
     if (screen === undefined) return false;
+    const addressed = SCREENS.find((entry) => entry.descriptor === (ACTION_ADDRESS[descriptor] ?? descriptor));
+    if (addressed === undefined) return false;
     const store = this.store(descriptor, screen.refreshRates);
     store.setRefusal('');
     const request: { action: string; id: string; values?: ActionValues } = { action: actionId, id: target };
     if (values !== undefined) request.values = values;
     const result = await this.injector.get(ApiService).requestJson<ScreenActionAnswer>(
-      `${SCREEN_READ_PATH_PREFIX}${encodeURIComponent(screen.toolIdentifier)}${SCREEN_ACTION_PATH_SUFFIX}`,
+      `${SCREEN_READ_PATH_PREFIX}${encodeURIComponent(addressed.toolIdentifier)}${SCREEN_ACTION_PATH_SUFFIX}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -443,6 +490,12 @@ export class ScreenActionHandler {
     const own = WARNING_CONSEQUENCES[descriptor];
     if (own === undefined) return '';
     return Object.hasOwn(own, actionId) ? own[actionId] : '';
+  }
+
+  private flag(descriptor: string, actionId: string): { readonly label: string; readonly action: string } | null {
+    const own = FLAGGED_ACTIONS[descriptor];
+    if (own === undefined) return null;
+    return Object.hasOwn(own, actionId) ? own[actionId] : null;
   }
 
   private consequence(descriptor: string, actionId: string): string {

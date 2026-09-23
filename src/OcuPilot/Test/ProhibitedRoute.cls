@@ -1744,4 +1744,45 @@ Method TestAnAccountShortOfTheTaskPairIsRefusedTheSuspendScreenAction()
     Do $$$AssertEquals($ClassMethod(tFixture, "ScheduleProbeCount"), 0, "and the schedule probe task is gone")
 }
 
+/// <p>AC6, AD-8, AD-53 (Story 7.8): a principal holding every declared pair but
+/// <parameter>PROCESSPAIR</parameter> is refused Processes' Terminate 403
+/// <code>AUTH.NOPRIVILEGE</code> naming that pair, before any read, and the target -- a probe
+/// process this method starts and stops in its own frame -- is still running afterwards.</p>
+/// <p>Mutation (Rule 19): skip the pair <code>Gate</code> in
+/// <method>OcuPilot.Api.ScreenAction.Run</method> -- the code and failed-pair assertions go red,
+/// and the vendor's own gate still refuses the read, so nothing is terminated.</p>
+Method TestAnAccountShortOfTheProcessPairIsRefusedTheTerminateScreenAction()
+{
+    Set tCodeResource = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
+    If tCodeResource = "" Quit
+    Set tSC = ..EnsureLeastPrivilegedPrincipal(..#PRINCIPALPASSWORD, ..#PROCESSFLOORADMIN _ ":U,%DB_IRISSYS:R," _ tCodeResource _ ":R")
+    Do $$$AssertStatusOK(tSC, "a principal short of only the process pair is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, $Piece(..#PROCESSPAIR, ":", 1), "USE"), 0, "it holds no " _ ..#PROCESSPAIR)
+
+    Set tSC = ##class(OcuPilot.Test.ProcessControl).EnsureProbeOwner()
+    Do $$$AssertStatusOK(tSC, "the probe process's owner account exists: " _ $System.Status.GetErrorText(tSC))
+    Set tPid = ##class(OcuPilot.Test.ProcessControl).StartProbeProcess()
+    Do $$$AssertNotEquals(tPid, "", "a probe process of this suite's own is running")
+    If tPid = "" Quit
+    Try {
+        Set tSC = ..ActOn("osmgmt.processes", "terminate", tPid, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, "the screen action request completes")
+        Do $$$AssertEquals(tStatus, 403, "and is refused -- not 200, not the router's 403 with no body: " _ tBody)
+        If tStatus = 403 {
+            Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+            Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "with the screen-privilege code, not AUTH.NOADMIN")
+            Do $$$AssertEquals($Select($IsObject(tEnvelope.%Get("detail")): tEnvelope.%Get("detail").%Get("failedPair"), 1: ""), ..#PROCESSPAIR, "naming the pair that failed")
+        }
+        Do $$$AssertNotEquals(##class(OcuPilot.Test.ProcessControl).ProcessState(tPid), "", "and the probe process is still running")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the leg completes without raising")
+    }
+    ; Its own frame: this class does not own the probe process's lifetime.
+    Do ##class(OcuPilot.Test.ProcessControl).StopProbeProcess(tPid)
+    Do ##class(OcuPilot.Test.ProcessControl).RemoveProbeOwner()
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProcessControl).ProcessState(tPid), "", "and the probe process this leg started is gone")
+}
+
 }

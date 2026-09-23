@@ -397,6 +397,36 @@ describe('the list page', () => {
     expect([...select.options].map((option) => option.value)).toEqual(['', '%SQL']);
   });
 
+  it('Story 7.8: Terminate on Processes sends the flagged action when its checkbox is ticked', async () => {
+    // Through the real handler, dialog and page; only the transport is stubbed.
+    // Mutation (Rule 19): bind `(confirmed)="onConfirmDestructive()"` in `ListPage`'s template ->
+    // the checkbox's state is dropped, the plain terminate is sent and the body assertion goes red.
+    const declaration = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.ProcessList',
+      rowActions: [
+        { id: 'terminate', selfProtection: '' },
+        { id: 'terminate-with-error', selfProtection: '' },
+      ],
+    });
+    const page = await mount(declaration, named('4711'));
+    const store = page.stores.for(declaration.descriptor, declaration.refreshRates);
+    store.setSelection(['4711']);
+    expect(page.actions.run(declaration.descriptor, 'terminate')).toBe(true);
+    await settle(page.fixture);
+    const flag = page.host().querySelector('[data-slot="flag"] input') as HTMLInputElement;
+    expect(flag).not.toBeNull();
+    flag.click();
+    const field = page.host().querySelector('.ocu-typed-name-field') as HTMLInputElement;
+    field.value = '4711';
+    field.dispatchEvent(new Event('input'));
+    page.fixture.detectChanges();
+    page.setActionAnswer({ action: 'deleted', target: { type: 'process', scope: 'instance', id: '4711' } });
+    (page.host().querySelector('.ocu-button-destructive') as HTMLButtonElement).click();
+    await settle(page.fixture);
+    expect(page.host().querySelector('[role="dialog"]')).toBeNull();
+    expect(page.bodies.map((body) => JSON.parse(body))).toEqual([{ action: 'terminate-with-error', id: '4711' }]);
+  });
+
   it('a typed-name confirm left open does not outlive the list it was opened on', async () => {
     // The handler is the app's, so without the page letting go of it a Back press with the dialog
     // open would carry the pending delete onto the next list page.

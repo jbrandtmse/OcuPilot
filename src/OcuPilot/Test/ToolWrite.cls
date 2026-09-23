@@ -49,6 +49,16 @@ Parameter PROCRESUMETOOL = "osmgmt.processes.resume";
 
 Parameter PROCRESUMETOOLCLASS = "OcuPilot.Screen.Tool.ProcessResume";
 
+/// <p>Story 7.8's two terminate tools and their classes: the process list's destructive writes,
+/// fingerprinted over the pid and its start (AD-51), the second through its own port (AD-52).</p>
+Parameter TERMINATETOOL = "osmgmt.processes.terminate";
+
+Parameter TERMINATETOOLCLASS = "OcuPilot.Screen.Tool.ProcessTerminate";
+
+Parameter TERMINATEERRORTOOL = "osmgmt.processes.terminatewitherror";
+
+Parameter TERMINATEERRORTOOLCLASS = "OcuPilot.Screen.Tool.ProcessTerminateWithError";
+
 Parameter WRITEBASE = "OcuPilot.Screen.Tool.Write";
 
 /// <p>Story 7.1's delete tool and its class.</p>
@@ -775,6 +785,29 @@ Method TestTheProcessResumeToolIsAnActionWriteOverTheScreensOwnPairs()
     Do ..AssertActionWrite(..#PROCRESUMETOOL, ..#PROCRESUMETOOLCLASS, "RESUME", 0)
 }
 
+/// <p>AD-51, AD-8, Story 7.8: the process terminate is an action-style write -- <code>GET</code>
+/// fresh, <code>TERMINATE</code> written, no body, no settable field, destructive -- over its
+/// screen's own three pairs at <code>USE</code>, fingerprinted over the pid and when it started.</p>
+/// <p>Mutation (Rule 19): set
+/// <parameter>OcuPilot.Screen.Tool.ProcessTerminate.DESTRUCTIVE</parameter> to <code>0</code> -- the
+/// destructive assertion goes red.</p>
+Method TestTheProcessTerminateToolIsAnActionWriteOverTheScreensOwnPairs()
+{
+    Do ..AssertActionWrite(..#TERMINATETOOL, ..#TERMINATETOOLCLASS, "TERMINATE", 1, "Pid,StartTimeUTC", "StartTimeUTC")
+}
+
+/// <p>AD-51, AD-52, AD-8, Story 7.8: the terminate that logs a <code>&lt;RESJOB&gt;</code> error is
+/// the same write over the same pairs, reaching its target through the process port.</p>
+/// <p>Mutation (Rule 19): drop
+/// <parameter>OcuPilot.Screen.Tool.ProcessTerminateWithError.PORTCLASS</parameter> -- the port
+/// assertion goes red.</p>
+Method TestTheProcessTerminateWithErrorToolIsAnActionWriteOverTheScreensOwnPairs()
+{
+    Do ..AssertActionWrite(..#TERMINATEERRORTOOL, ..#TERMINATEERRORTOOLCLASS, "TERMINATE", 1, "Pid,StartTimeUTC", "StartTimeUTC")
+    Do $$$AssertEquals($ClassMethod(..#TERMINATEERRORTOOLCLASS, "PortClass"), "OcuPilot.Port.ProcessPort", "its target lives behind the process port")
+    Do $$$AssertTrue($ClassMethod("OcuPilot.Port.ProcessPort", "%Extends", "OcuPilot.Port.AdminPort"), "which extends the admin port, so its request types are the admin port's roster")
+}
+
 /// <p>AD-48, AD-51, AD-52: the application-error delete is an action-style write whose port is not
 /// the admin port, whose fingerprint subject is the enumerated id set, and whose pair set is the
 /// screen's own two pairs -- the per-namespace half is resolved by the port at call time and cannot
@@ -917,11 +950,14 @@ Method TestTheWebApplicationDeleteToolIsAnActionWriteOverTheScreensOwnPairs()
     }
 }
 
-/// <p>What both process tools declare, given the tool name <var>pName</var>, its class
-/// <var>pClass</var>, the vendor request type <var>pWriteType</var> it issues and whether it is
-/// <var>pDestructive</var>.</p>
-Method AssertActionWrite(pName As %String, pClass As %String, pWriteType As %String, pDestructive As %Boolean)
+/// <p>What every process tool declares, given the tool name <var>pName</var>, its class
+/// <var>pClass</var>, the vendor request type <var>pWriteType</var> it issues, whether it is
+/// <var>pDestructive</var>, and its fingerprint subject <var>pSubject</var> and precondition field
+/// <var>pPrecondition</var>, which default to suspend's and resume's.</p>
+Method AssertActionWrite(pName As %String, pClass As %String, pWriteType As %String, pDestructive As %Boolean, pSubject As %String = "", pPrecondition As %String = "")
 {
+    If pSubject = "" Set pSubject = "Pid" _ "," _ "State"
+    If pPrecondition = "" Set pPrecondition = "State"
     Set tSC = $ClassMethod(..#REGISTRY, "Resolve", pName, .tTool)
     Do $$$AssertStatusOK(tSC, "the registry resolves " _ pName _ " by name")
     Do $$$AssertTrue($IsObject(tTool), "and finds it")
@@ -938,8 +974,8 @@ Method AssertActionWrite(pName As %String, pClass As %String, pWriteType As %Str
     Do $$$AssertEquals($ClassMethod(pClass, "IdArgument"), "Pid", "identified by the list's own id property")
     Do $$$AssertEquals($ClassMethod(pClass, "IdParam"), "id", "and by the vendor's own query parameter")
     Do $$$AssertEquals($ListLength($ClassMethod(pClass, "SettableFields")), 0, "it admits no settable field at all")
-    Do $$$AssertEquals($ListToString($ClassMethod(pClass, "FingerprintSubject")), "Pid,State", "its fingerprint covers the scoped target identity and its precondition field, and nothing else")
-    Do $$$AssertEquals($ClassMethod(pClass, "PreconditionField"), "State", "which is the field its own precondition reads")
+    Do $$$AssertEquals($ListToString($ClassMethod(pClass, "FingerprintSubject")), pSubject, "its fingerprint covers the scoped target identity and its precondition field, and nothing else")
+    Do $$$AssertEquals($ClassMethod(pClass, "PreconditionField"), pPrecondition, "which is the field its own precondition reads")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).FingerprintSubjectProblem(pClass), "", "and the registration guard holds that subject adequate")
 
     Set tPairs = $ClassMethod(pClass, "PrivilegePairs", "", .tResolved)
@@ -1062,7 +1098,7 @@ Method TestAnInadequateFingerprintSubjectStopsTheToolListBuilding()
 /// <p>Mutation (Rule 19): empty <parameter>OcuPilot.Port.AdminPort.BODYLESSTYPES</parameter>, drop
 /// its <code>Process/SUSPEND</code> entry, or set
 /// <parameter>OcuPilot.Screen.Tool.TaskResume.SENDSBODY</parameter> to 1 -- the equality goes red
-/// naming the tool and its request type. Add <code>Process/TERMINATE</code> to
+/// naming the tool and its request type. Add <code>Process/DELETE</code> to
 /// <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> -- the absence leg goes red.
 /// Remove <code>Security.User/PUT</code> from it -- the roster leg goes red naming that tool, and
 /// <class>OcuPilot.Test.UserUpdate</class> reddens on its confirmed writes. Add
@@ -1094,15 +1130,14 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
         Do $$$AssertEquals($Length(tPair, "/"), 2, "'" _ tPair _ "' is an <endpoint>/<type> pair, not a bare suffix (DW-1473)")
         If '$ListFind(tMutatingSuffixes, $Piece(tPair, "/", 2)) Set tMutatingSuffixes = tMutatingSuffixes _ $ListBuild($Piece(tPair, "/", 2))
     }
-    ; AD-10, Story 5.12's AC3: terminating a process is never advertised, by either of the two
-    ; request types the vendor exposes it through -- `Process`'s own `RunDelete` is a one-line
-    ; delegate to `RunTerminate`. Asked as a PAIR since Story 7.1 shipped `WebApp.App/DELETE`: the
-    ; suffix is no longer universally absent, and the thing AD-10 forbids never was a suffix. That
-    ; is DW-1473's key doing its work -- admitting a type on one endpoint admits it on no other.
-    For tAbsent = "Process/TERMINATE", "Process/DELETE" {
-        Do $$$AssertEquals($ListFind(tMutating, tAbsent), 0, "'" _ tAbsent _ "' is a pair this port does not admit")
-        Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsMutating($Piece(tAbsent, "/", 1), $Piece(tAbsent, "/", 2)), "and the port answers so")
-    }
+    ; Story 7.8: a process is terminated through one request type, `Process/TERMINATE`, which its two
+    ; terminate tools issue; `Process`'s own `RunDelete` is a one-line delegate to the same
+    ; `RunTerminate` and no tool issues it, so that pair stays absent. Asked as a PAIR since Story
+    ; 7.1 shipped `WebApp.App/DELETE` -- DW-1473's key: admitting a type on one endpoint admits it on
+    ; no other.
+    Do $$$AssertTrue($ListFind(tMutating, "Process/TERMINATE") > 0, "'Process/TERMINATE' is a pair this port admits")
+    Do $$$AssertEquals($ListFind(tMutating, "Process/DELETE"), 0, "while 'Process/DELETE' is not")
+    Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsMutating("Process", "DELETE"), "and the port answers so")
     Do $$$AssertTrue($ListFind(tMutatingSuffixes, "DELETE") > 0, "while DELETE is admitted for the endpoint whose delete a tool does issue, which is what makes the pair key load-bearing here")
     Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("WebApp.App", "DELETE"), "namely WebApp.App")
     ; DW-1473's own condition: admitting a suffix on one endpoint must not admit it on another.
@@ -1180,20 +1215,21 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
     Do $$$AssertTrue(tActions > 0, "and at least one of them is an action-style write, so the bodyless half of the equality was exercised")
     Do $$$AssertEquals(tOtherPorts, 1, "exactly one shipped write reaches its target through another port, and it is held to that port's contract instead")
 
-    ; AD-10, Story 5.12's AC3: the vendor exposes terminating a process twice -- TYPETERMINATE and
-    ; RunDelete delegating to it -- so "never advertised" is a statement about OcuPilot. Neither
-    ; suffix is a mutating type, so the port answers 501 for it without reaching the endpoint.
-    For tAbsent = "TERMINATE", "DELETE" {
-        Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsMutating("Process", tAbsent), "'Process/" _ tAbsent _ "' is not a pair this port admits")
-        Kill tQuery
-        ; A pid no process carries. The 501 lands before the id is read, so an absent one proves the
-        ; same refusal -- and the mutation this method's doc names (admitting TERMINATE) then reaches
-        ; the vendor against nothing, rather than against the process running this test.
-        Set tQuery("id") = 999999999
-        Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Process", tAbsent, .tQuery, "", .tAnswer, .tHttp, .tFault)
-        Do $$$AssertStatusNotOK(tSC, "and the port refuses a Process " _ tAbsent _ " outright")
-        Do $$$AssertEquals(+$Get(tHttp), 501, "at 501, before the vendor endpoint is entered")
-    }
+    ; The vendor exposes terminating a process twice -- TYPETERMINATE and RunDelete delegating to it.
+    ; Story 7.8 admits the first; the second is no mutating type, so the port answers 501 for it
+    ; without reaching the endpoint. Both are sent to a pid no process carries, so the admitted one
+    ; reaches the vendor against nothing, and so does the mutation this method's doc names.
+    Kill tQuery
+    Set tQuery("id") = 999999999
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Process", "TERMINATE", .tQuery, "", .tAnswer, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "a Process TERMINATE of a pid no process carries fails")
+    Do $$$AssertEquals(+$Get(tHttp), 404, "at the vendor's own 404, so the admitted pair reaches the endpoint")
+    Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsMutating("Process", "DELETE"), "'Process/DELETE' is not a pair this port admits")
+    Kill tQuery
+    Set tQuery("id") = 999999999
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Process", "DELETE", .tQuery, "", .tAnswer, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "and the port refuses a Process DELETE outright")
+    Do $$$AssertEquals(+$Get(tHttp), 501, "at 501, before the vendor endpoint is entered")
 
     ; The pair key at the surface a caller meets it. Task.CRUD declares TYPEPUT and no tool issues
     ; it while WebApp.App's PUT is admitted, so a suffix-keyed gate admits this call and answers the

@@ -76,6 +76,14 @@ Parameter SERVICEACCOUNTREASON = "The instance's own services run as this accoun
 /// <code>userRefusalLastAllHolder</code>.</p>
 Parameter LASTALLHOLDERREASON = "This is the last account that holds %All. Disabling it, deleting it or taking the role off it would leave nobody able to administer this instance.";
 
+/// <p>The one sentence <parameter>OCUPILOTPROCESS</parameter> carries, pinned equal to
+/// <code>processRefusalOcuPilot</code>.</p>
+Parameter OCUPILOTPROCESSREASON = "OcuPilot itself is running in this process, for this request or for an agent turn. It cannot be suspended, resumed or terminated from OcuPilot.";
+
+/// <p>The one sentence <parameter>SYSTEMPROCESS</parameter> carries, pinned equal to
+/// <code>processRefusalSystem</code>.</p>
+Parameter SYSTEMPROCESSREASON = "This is an IRIS system process, and the instance relies on it. It cannot be suspended, resumed or terminated from OcuPilot.";
+
 /// <p>The write would change how the target is authenticated by anything other than clearing its
 /// unauthenticated option: it adds a bit, clears another bit, clears the mask, or carries a value
 /// that is not a non-negative whole number.</p>
@@ -255,8 +263,8 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#SERVICEACCOUNT Quit ..#SERVICEACCOUNTREASON
     If pCode = ..#CURRENTUSER Quit ..#CURRENTUSERREASON
     If pCode = ..#LASTALLHOLDER Quit ..#LASTALLHOLDERREASON
-    If pCode = ..#OCUPILOTPROCESS Quit "Suspending or resuming a process OcuPilot is itself running in -- this confirmation, or an agent turn -- is not something the agent can propose."
-    If pCode = ..#SYSTEMPROCESS Quit "Suspending or resuming an IRIS system process is not something the agent can propose."
+    If pCode = ..#OCUPILOTPROCESS Quit ..#OCUPILOTPROCESSREASON
+    If pCode = ..#SYSTEMPROCESS Quit ..#SYSTEMPROCESSREASON
     If pCode = ..#UNCOVEREDFIELD Quit "Only a few of this kind of object's settings are ones the agent may propose changing, and that is not one of them."
     If pCode = ..#UNCOVERED Quit "This release does not check writes to that kind of object against its prohibited set, so none is proposable yet."
     Quit ""

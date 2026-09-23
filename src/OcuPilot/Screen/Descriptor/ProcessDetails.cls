@@ -25,10 +25,14 @@
 /// local variable table, which GET always populates whether or not a caller asks for it),
 /// <code>CSPSessionID</code>, <code>CurrentSrcLine</code> (source text with literals),
 /// <code>LastGlobalReference</code> (subscripts can hold patient identifiers), <code>UserInfo</code>,
-/// <code>Roles</code> and <code>LicenseUserId</code>. No <code>CanBe*</code> field either -- this
-/// screen ships no process control, which Stories 7.8 and 16.6 own; the suspend and resume tools
-/// are <class>OcuPilot.Screen.Tool.ProcessSuspend</class> and
-/// <class>OcuPilot.Screen.Tool.ProcessResume</class> over the parent list's descriptor.</p>
+/// <code>Roles</code> and <code>LicenseUserId</code>. No <code>CanBe*</code> field either.</p>
+/// <p><b>Its row actions are the parent list's four</b> (Story 7.8, AD-53): Suspend, Resume,
+/// Terminate and the Terminate dialog's undrawn <code>terminate-with-error</code>. Their write tools
+/// name <class>OcuPilot.Screen.Descriptor.ProcessList</class>, so this screen's actions are sent to
+/// that list's action route and act on the pid this page shows. Declaring them here is what makes
+/// the command bar offer them; its empty state therefore invites the agent with the list's own
+/// verbs, though the page draws "This process no longer exists." for a process that has
+/// ended.</p>
 /// <p><b><code>JobType</code> is declared because a refusal rests on it.</b> It is the
 /// authoritative kind of a process -- <code>GET</code>-only, absent from the <code>CONTROLPANEL</code>
 /// row behind LIST -- and <method>OcuPilot.Kernel.Proposal.Prohibited.Process</method> refuses a
@@ -40,7 +44,6 @@
 /// three labeled value groups rather than the meter component, which Story 6.9 builds.</p>
 /// <p><b>The classic page is <code>%CSP.UI.Portal.ProcessDetails</code></b>, spelled in the class's
 /// own case (AD-44); this screen declares no exemption, so it links out to nothing.</p>
-/// <p>It declares no primary or row action.</p>
 Class OcuPilot.Screen.Descriptor.ProcessDetails Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -62,7 +65,7 @@ XData Declaration
   "parentScope": "os-management/processes",
   "id": {"kind": "composite", "parts": ["Pid"]},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "suspend", "selfProtection": ""}, {"id": "resume", "selfProtection": ""}, {"id": "terminate", "selfProtection": ""}, {"id": "terminate-with-error", "selfProtection": ""}],
   "context": {
     "fields": ["Pid", "JobType", "ParentPid", "UserName", "LoginRoles", "EscalatedRoles", "OSUserName", "NameSpace", "Priority", "StartTimeUTC", "CPUTime", "CommandsExecuted", "GlobalReferences", "PrivateGlobalReferences", "PrivateGlobalBlockCount", "MemoryAllocated", "MemoryPeak", "MemoryUsed", "CurrentDevice", "OpenDevices", "State", "InTransaction", "Routine", "CurrentLineAndRoutine", "Location", "ClientNodeName", "ClientExecutableName", "ClientIPAddress"],
     "secretFields": []
@@ -121,8 +124,8 @@ XData Declaration
       {"field": "ClientExecutableName", "labelKey": "processDetailsClientExecutable", "kind": "text"},
       {"field": "ClientIPAddress", "labelKey": "processDetailsClientIpAddress", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "processListEmptyAgent"
   },
   "toolIdentifier": "osmgmt.processdetails"
 }

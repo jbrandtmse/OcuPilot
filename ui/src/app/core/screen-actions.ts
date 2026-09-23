@@ -73,6 +73,8 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   // Story 7.6: a task's Suspend and Resume, on the Task schedule.
   suspend: STRINGS.actionSuspend,
   resume: STRINGS.actionResume,
+  // Story 7.8: a process's Terminate, on Processes and Process details.
+  terminate: STRINGS.actionTerminate,
 };
 
 /**

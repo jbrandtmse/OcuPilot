@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, input, output, signal, viewChild } from '@angular/core';
 
 import { STRINGS } from '../core/strings';
 import { Dialog } from './dialog';
@@ -26,6 +26,11 @@ let dialogCount = 0;
  * still offered but carries a consequence the first sentence does not state (a system task's).
  * It is a warning banner, `data-slot="advisory"`, never a refusal: the button's condition is
  * unchanged.
+ *
+ * **A flag is an optional checkbox, drawn only when the caller passes its label** -- Terminate's
+ * error-to-job flag, `data-slot="flag"`, unchecked when the dialog opens. It changes which write is
+ * sent, never the button's condition, and `confirmed` carries its state (`false` when none is
+ * drawn).
  *
  * Every control-flow condition is paren-free, for the reason `proposal-card.ts` records.
  *
@@ -62,6 +67,12 @@ let dialogCount = 0;
       (blur)="onBlur()"
       (keydown.enter)="onEnter($event)"
     />
+    @if (flagVisible) {
+      <label class="ocu-criteria-marker ocu-typed-name-flag" data-slot="flag">
+        <input #flagInput type="checkbox" />
+        {{ flagLabel() }}
+      </label>
+    }
     @if (mismatchVisible) {
       <p [id]="mismatchId" class="ocu-typed-name-mismatch" role="alert">
         {{ STRINGS.formTypedNameMismatch }}
@@ -91,8 +102,14 @@ export class TypedNameDialog {
   /** A second, published sentence for this target, or `''` for none. */
   readonly advisory = input('');
 
-  /** Emitted once, when the typed name matches and the destructive action is taken. */
-  readonly confirmed = output<void>();
+  /** The published label of an optional checkbox, or `''` for none. */
+  readonly flagLabel = input('');
+
+  /**
+   * Emitted once, when the typed name matches and the destructive action is taken, carrying whether
+   * the checkbox is checked (`false` when none is drawn).
+   */
+  readonly confirmed = output<boolean>();
 
   /** Emitted on every dismissal path: Escape, Cancel and the scrim. */
   readonly cancelled = output<void>();
@@ -103,6 +120,8 @@ export class TypedNameDialog {
   protected readonly bannerGlyph = '\u26A0';
 
   private readonly instance = ++dialogCount;
+
+  private readonly flagInput = viewChild<ElementRef<HTMLInputElement>>('flagInput');
 
   protected readonly fieldId = `ocu-typed-name-${this.instance}`;
 
@@ -132,6 +151,10 @@ export class TypedNameDialog {
 
   protected get advisoryVisible(): boolean {
     return this.advisory() !== '';
+  }
+
+  protected get flagVisible(): boolean {
+    return this.flagLabel() !== '';
   }
 
   protected get mismatchVisible(): boolean {
@@ -170,6 +193,6 @@ export class TypedNameDialog {
       this.blurred.set(true);
       return;
     }
-    this.confirmed.emit();
+    this.confirmed.emit(this.flagInput()?.nativeElement.checked ?? false);
   }
 }

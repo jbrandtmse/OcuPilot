@@ -9,7 +9,7 @@ import {
 import { Router } from '@angular/router';
 
 import { ConnectivityService } from '../core/connectivity';
-import { isBannerFault } from '../core/fault';
+import { isBannerFault, type Fault } from '../core/fault';
 import { NavigationService, firstAllowedScreen, withQuery } from '../core/navigation';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
@@ -20,6 +20,14 @@ import { STRINGS } from '../core/strings';
  * string typed here (AD-5).
  */
 const MESSAGES_LOG_ALIAS = 'messages.log';
+
+/**
+ * How long, in milliseconds, the strip stays mounted after its fault clears (DW-1155, DW-1189). A
+ * fault raised again inside the hold reuses the same strip and controls, with their content
+ * updated in place, so a click on Retry or Open messages.log is never lost to a remount and the
+ * strip does not flicker while a drained park re-raises.
+ */
+export const FAULT_CLEAR_HOLD_MS = 1500;
 
 /**
  * The shell's one connectivity banner: a full-width `role="alert"` strip at the top of the
@@ -45,8 +53,9 @@ const MESSAGES_LOG_ALIAS = 'messages.log';
  * file a screen shows (AD-5, AD-14), never from a route string typed here.
  *
  * **`role="alert"` is on the strip, not on the page.** The element is created when the fault
- * appears and removed when it clears, so the alert fires on the transition rather than
- * re-announcing on every change-detection pass.
+ * appears and removed once it has stayed clear for `FAULT_CLEAR_HOLD_MS`, so the alert fires on
+ * the transition rather than re-announcing on every change-detection pass. Inside the hold the strip
+ * keeps showing the fault it last showed.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
@@ -86,10 +95,15 @@ export class FaultBanner {
   /** Mirrors the framework-free connectivity service into the reactive graph (AD-19). */
   private readonly generation = signal(0);
 
-  private readonly fault = computed(() => {
-    this.generation();
-    return this.connectivity.fault();
-  });
+  /**
+   * The banner fault the strip shows: the current one, or -- for `FAULT_CLEAR_HOLD_MS` after it
+   * clears -- the one it last showed, and `null` once the hold has run out with nothing raised.
+   */
+  private readonly shown = signal<Fault | null>(null);
+
+  private holdTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private readonly fault = computed(() => this.shown());
 
   /**
    * The screen that shows `messages.log`, when one is built and this user may open it.
@@ -114,16 +128,21 @@ export class FaultBanner {
   });
 
   constructor() {
-    const stopConnectivity = this.connectivity.subscribe(() => this.bump());
+    this.follow();
+    const stopConnectivity = this.connectivity.subscribe(() => {
+      this.follow();
+      this.bump();
+    });
     const stopNavigation = this.navigation.subscribe(() => this.bump());
     inject(DestroyRef).onDestroy(() => {
       stopConnectivity();
       stopNavigation();
+      this.clearHold();
     });
   }
 
   protected get visible(): boolean {
-    return isBannerFault(this.fault());
+    return this.fault() !== null;
   }
 
   /**
@@ -181,5 +200,31 @@ export class FaultBanner {
 
   private bump(): void {
     this.generation.set(this.generation() + 1);
+  }
+
+  /**
+   * Take the connectivity service's current fault. A banner fault is shown at once and ends any
+   * hold; anything else starts the hold, unless one is already running, and the strip unmounts
+   * when it ends.
+   */
+  private follow(): void {
+    const current = this.connectivity.fault();
+    if (isBannerFault(current)) {
+      this.clearHold();
+      this.shown.set(current);
+      return;
+    }
+    if (this.shown() === null || this.holdTimer !== null) return;
+    this.holdTimer = setTimeout(() => {
+      this.holdTimer = null;
+      this.shown.set(null);
+      this.bump();
+    }, FAULT_CLEAR_HOLD_MS);
+  }
+
+  private clearHold(): void {
+    if (this.holdTimer === null) return;
+    clearTimeout(this.holdTimer);
+    this.holdTimer = null;
   }
 }

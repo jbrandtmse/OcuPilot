@@ -46,4 +46,21 @@ Method TestEachAccountRefusalIsItsParameterAndNamesNoCaller()
     }
 }
 
+/// <p>AC7, AD-53 (Story 7.8, DW-1499): each of the two process codes answers its own parameter,
+/// and neither names a caller -- the screen's Suspend, Resume and Terminate and the agent's confirm
+/// are refused by the one predicate.</p>
+/// <p>Mutation (Rule 19): restore the agent-worded literal for either code in
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.ReasonFor</method> and recompile -- that code's legs
+/// go red.</p>
+Method TestEachProcessRefusalIsItsParameterAndNamesNoCaller()
+{
+    Set tClass = "OcuPilot.Kernel.Proposal.Prohibited"
+    For tCode = "OCUPILOTPROCESS", "SYSTEMPROCESS" {
+        Set tServer = ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor($Parameter(tClass, tCode))
+        Do $$$AssertNotEquals(tServer, "", tCode _ ": the kernel answers a written sentence")
+        Do $$$AssertEquals(tServer, $Parameter(tClass, tCode _ "REASON"), tCode _ ": which is its parameter, not a literal in the lookup")
+        Do $$$AssertEquals(($ZConvert(tServer, "L") [ "the agent"), 0, tCode _ ": and it names no caller: " _ tServer)
+    }
+}
+
 }

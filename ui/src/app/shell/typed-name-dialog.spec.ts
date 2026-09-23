@@ -161,3 +161,49 @@ describe('the typed-name dialog\u2019s advisory (Story 7.6)', () => {
     TestBed.resetTestingModule();
   });
 });
+
+describe('the typed-name dialog\u2019s flag (Story 7.8)', () => {
+  function open(flagLabel: string) {
+    TestBed.configureTestingModule({ providers: [{ provide: OverlayStack, useValue: new OverlayStack() }] });
+    const fixture = TestBed.createComponent(TypedNameDialog);
+    fixture.componentRef.setInput('verb', STRINGS.actionTerminate);
+    fixture.componentRef.setInput('target', '4711');
+    fixture.componentRef.setInput('consequence', STRINGS.processTerminateConsequence);
+    fixture.componentRef.setInput('flagLabel', flagLabel);
+    const emitted: boolean[] = [];
+    fixture.componentInstance.confirmed.subscribe((value) => emitted.push(value));
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    const field = element.querySelector('.ocu-typed-name-field') as HTMLInputElement;
+    field.value = '4711';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    return { fixture, element, emitted };
+  }
+
+  it('draws an unchecked flag only with a label, and confirmed carries its state', () => {
+    // Mutation (Rule 19): emit `false` from `onConfirm` whatever the checkbox reads -> the checked
+    // leg goes red.
+    const plain = open('');
+    expect(plain.element.querySelector('[data-slot="flag"]')).toBeNull();
+    (plain.element.querySelector('.ocu-button-destructive') as HTMLButtonElement).click();
+    expect(plain.emitted).toEqual([false]);
+    TestBed.resetTestingModule();
+
+    const unchecked = open(STRINGS.processTerminateErrorFlag);
+    const flag = unchecked.element.querySelector('[data-slot="flag"]') as HTMLElement | null;
+    expect(flag).not.toBeNull();
+    expect(flag?.textContent?.trim()).toBe(STRINGS.processTerminateErrorFlag);
+    const box = flag?.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    expect(box.checked).toBe(false);
+    (unchecked.element.querySelector('.ocu-button-destructive') as HTMLButtonElement).click();
+    expect(unchecked.emitted).toEqual([false]);
+    TestBed.resetTestingModule();
+
+    const checked = open(STRINGS.processTerminateErrorFlag);
+    (checked.element.querySelector('[data-slot="flag"] input') as HTMLInputElement).click();
+    (checked.element.querySelector('.ocu-button-destructive') as HTMLButtonElement).click();
+    expect(checked.emitted).toEqual([true]);
+    TestBed.resetTestingModule();
+  });
+});

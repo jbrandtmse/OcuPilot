@@ -105,7 +105,9 @@ test("a screen's row action draws its own published words", () => {
   assert.notEqual(actionLabel(SWITCHES, 'delete'), actionLabel(DEFINITIONS, 'delete'));
   // And an id neither map carries still renders as itself, which is where every declared action
   // starts.
-  assert.equal(actionLabel(DEFINITIONS, 'terminate'), 'terminate');
+  assert.equal(actionLabel(DEFINITIONS, 'broadcast'), 'broadcast');
+  // Story 7.8: Terminate carries the published verb on the process screens.
+  assert.equal(actionLabel('OcuPilot.Screen.Descriptor.ProcessList', 'terminate'), STRINGS.actionTerminate);
 });
 
 test('an action that means the same thing everywhere falls back to the shared map', () => {

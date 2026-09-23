@@ -662,6 +662,10 @@ Method TestTheProcessesListValidatesAndNamesTheVendorsNamespaceKey()
     ; Order matters: OcuPilot.Screen.Gate.EvaluatePairs names the FIRST pair a caller does not
     ; hold, and both wire fixtures pin that name.
     Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Operate"",""permission"":""USE""},{""resource"":""%Admin_Manage"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "the endpoint's own gate first, the CONTROLPANEL query's check second, the database read third")
+    ; Story 7.8: the four row actions, none self-protected -- a process refusal reads what only the
+    ; instance knows -- so the empty state invites the agent.
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "suspend,resume,terminate,terminate-with-error", "its row actions are Suspend, Resume, Terminate and the Terminate dialog's flag")
+    Do $$$AssertEquals(tDeclaration.table.emptyAgentKey, "processListEmptyAgent", "and its empty state invites the agent")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("os-management", $ClassMethod(tClass, "PrivilegePairs")), "", "and the os-management area covers all three")
     ; DW-275, the half that stops the decision being reversed by accident: %Admin_Manage:USE is in
     ; the area's own set, and dropping it there makes this screen fail coverage at install rather

@@ -25,7 +25,7 @@ Parameter PORTPACKAGE = "OcuPilot.Port.";
 /// vendor's own resource check declares <parameter>VENDORGATE</parameter> instead.</p>
 /// <p><b>A class in the package and not on this roster fails.</b> That is the point: the roster is
 /// what a new port has to be added to, and adding it is what forces a gate to be named.</p>
-Parameter ROSTER = "OcuPilot.Port.AdminPort=<vendor>|OcuPilot.Port.LogSourcePort=MESSAGESPAIRS;ALERTSPAIRS;ERRORSINSTANCEPAIRS|OcuPilot.Port.MgmntPort=PAIRS|OcuPilot.Port.ProviderPort=INVOKEPAIRS;DRAFTPAIRS|OcuPilot.Port.TaskPort=<vendor>";
+Parameter ROSTER = "OcuPilot.Port.AdminPort=<vendor>|OcuPilot.Port.LogSourcePort=MESSAGESPAIRS;ALERTSPAIRS;ERRORSINSTANCEPAIRS|OcuPilot.Port.MgmntPort=PAIRS|OcuPilot.Port.ProviderPort=INVOKEPAIRS;DRAFTPAIRS|OcuPilot.Port.TaskPort=<vendor>|OcuPilot.Port.ProcessPort=<vendor>";
 
 /// <p>The roster value for a port whose gate is the vendor's own <code>ResourcesOR()</code> check,
 /// which AD-29 fixes as a lower bound with the remedy at the screen descriptor's declared pair

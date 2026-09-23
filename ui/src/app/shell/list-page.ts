@@ -80,7 +80,8 @@ interface ListView {
         [target]="pending.name"
         [consequence]="pending.consequence"
         [advisory]="pending.advisory"
-        (confirmed)="onConfirmDestructive()"
+        [flagLabel]="pending.flagLabel"
+        (confirmed)="onConfirmDestructive($event)"
         (cancelled)="onCancelDestructive()"
       />
     }
@@ -290,9 +291,9 @@ export class ListPage {
    * drops the row, the table's reconcile moves the active row to the one that took its place, or
    * hands focus to the empty state or the filter field when none is left (DW-18).
    */
-  protected onConfirmDestructive(): void {
+  protected onConfirmDestructive(flag = false): void {
     this.table()?.focusGrid();
-    this.screenActions.confirmPending();
+    this.screenActions.confirmPending(flag);
   }
 
   /** Escape, Cancel or the scrim: nothing was sent (EXPERIENCE.md `confirm-dialog`). */

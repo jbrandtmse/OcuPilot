@@ -2,9 +2,10 @@
 title: 'Story 7.8: Terminate, suspend and resume a process'
 type: 'feature'
 created: '2026-09-23'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '66c3dfa9fdc52349471e909404f9df9ae99108c5'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-7-context.md'
@@ -24,6 +25,9 @@ footprint_extensions: # planned; this story's own members only (roster rule, 202
   - 'src/OcuPilot/Test/ProhibitedRoute.cls'
   - 'ui/tools/screen-mirror.test.mjs'
   - 'ui/src/app/core/screens.generated.ts' # regenerated
+  - 'src/OcuPilot/Test/PortGate.cls' # roster: ProcessPort=<vendor> appended (Epic 8 edits the same line)
+  - 'ui/angular.json' # DW-1553/DW-1166 re-base, value line only
+  - 'ui/tools/angular-json.test.mjs' # its pinned literal only
 ---
 
 <intent-contract>
@@ -355,6 +359,33 @@ self-JOBbed processes only, and were all cleaned up.
 
 ## Review Triage Log
 
+### 2026-09-23 — Review pass
+
+- verdicts: 22 findings — high 0, medium 3, low 12, false 7, maybe-false 0
+- findings:
+  - `[low]` `[patch]` VG: `ProcessControl.TestARealTerminate...`'s documented mutation cannot reach the plain terminate — doc now names the PORTCLASS/PortQuery mutation; applied, red at run 8231, reverted, line recorded.
+  - `[medium]` `[patch]` VG: the checked flag through `ListPage` was never exercised — added `list-page.spec.ts` Story 7.8 case; binding mutation observed red.
+  - `[medium]` `[patch]` VG: `ProcessPort`'s own 403 gate was unpinned — `ProcessPortProbe` gained a `Deny` seam and `ProcessTerminate.TestTheProcessPortRefusesACallerShortOfItsGate`; gate-skip mutation red at run 8229.
+  - `[low]` `[patch]` VG: browser `startProbe` accepted an empty namespace, making the no-entry check vacuous — asserts the namespace; spec 3/3 green.
+  - `[low]` `[patch]` VG: no `mutation:` line for the Integration AC's first bullet or AC1's dialog — both demonstrated and recorded.
+  - `[low]` `[patch]` VG other: the 409 leg's documented mutation would send a real terminate to the test's own job — doc now names a 500-answer mutation that cannot.
+  - `[false]` `[reject]` IA: Details acts through the client `ACTION_ADDRESS` map — the spec's Tasks specify it and `ScreenAction.cls` is a Never-edit file.
+  - `[false]` `[reject]` IA: budget is 1181kB, not `1967125`'s 1185kB — the lead's Change Log ruling (DW-1553 under DW-1166) supersedes the port.
+  - `[false]` `[reject]` IA: AC8's fault-banner hold is outside the contract — it is the spec's own AC8 (DW-1155, DW-1189 inbox).
+  - `[low]` `[reject]` IA: `StateDiff` problem texts and port fault texts are not in `strings.ts` — server-side `detail.problem` sentences, as 5.12 and 7.6 ship them; not Fixed strings.
+  - `[false]` `[reject]` IA: unarmed `ProcessTerminate`/`ToolWrite` send TERMINATE requests — spec-specified legs to an absent pid or to the vendor-refused own job; they terminate nothing.
+  - `[low]` `[reject]` IA: the row-menu Terminate is never clicked in the browser — the menu and command bar run the same registered action; the Suspend leg drives the menu.
+  - `[low]` `[reject]` IA: "no `^ERRORS` entry" narrowed to the probe's own `<RESJOB>` — a whole-log check is flaky on a shared instance.
+  - `[medium]` `[patch]` IA: the Suspend/Resume no-op 400 was untested for the screen caller — added `ProcessControl.TestAScreenSuspendOrResumeThatChangesNothingIsRefused`; green at run 8232, mutation red at 8231.
+  - `[low]` `[reject]` IA: gone-mid-dialog tested at the route only, and a reused pid is not refused on the screen path — route leg added (`TestAGonePidIsTheRoutesNotFound`); the refusal render is the handler's generic path; the screen caller carries no fingerprint by AD-53 design.
+  - `[false]` `[reject]` IA: OcuPilot/system 403 not observed at the route — the Never clause pins them at the predicate; the turn-job arm is 5.12's existing `ProcessControl` coverage.
+  - `[low]` `[reject]` IA: the 409 is pinned at the port, not the route — the route's fault normalization is pre-existing shared code (AD-39).
+  - `[false]` `[reject]` IA: the card's typed pid is not exercised on the client — it is the existing generic destructive-card path.
+  - `[false]` `[reject]` IA: short-of-pair covered for Terminate only — AC6 names Terminate.
+  - `[low]` `[reject]` IA: "screen caller mints no proposal" only structural — `ScreenAction.cls` is unchanged and its existing tests pin it.
+  - `[low]` `[reject]` IA: spec text still describes the superseded budget plan — fix would edit this build's spec; Auto Run Result rewritten at finalize.
+  - `[low]` `[reject]` IA: `ProcessControl`'s new legs ran through a temporary unarmed subclass — CI's armed run settles them before the next implement spawn (Rule 28).
+
 ## Design Notes
 
 **Governing ADs:** AD-53, AD-51 (declared subject), AD-52 (`ProcessPort`), AD-56 (ii), AD-10,
@@ -470,18 +501,77 @@ per call and never re-submit. No container is stopped, removed or recreated.
 - Run `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS`.
 - Do not run the full browser suite locally (Rule 29).
 
+Recorded (implement, `ocupilot-ci`; each applied, observed red, reverted, tree byte-identical):
+
+- `mutation: ProcessPort.TerminateWithError calls Terminate(0), reloaded → red: ProcessControl.TestAFlaggedTerminateAsTheThreePairsLogsOneResjobEntry and TestTheAgentsTerminatesAreMarkedAndCarryTheStateRow through an unarmed temporary subclass, run 8217 (AC1)`
+- `mutation: dropped the IsOcuPilotProcess arm from Prohibited.Process, reloaded → red: ProcessTerminate.TestTheSetRefusesBothToolsForOurOwnJobAndASystemProcess, both tools, run 8218 (AC2)`
+- `mutation: dropped the IsActionableJobType arm from Prohibited.Process, reloaded → red: the same test's SYSTEMPROCESS legs, run 8219 (AC3)`
+- `mutation: ProcessSuspend SCREENACTIONS "", reloaded → red: process-actions.browser-spec.mjs Suspend/Resume leg (AC4)`
+- `mutation: ProcessTerminate FINGERPRINTSUBJECT and PRECONDITIONFIELD "Pid", reloaded → red: ProcessTerminate.TestAMintCoversTheStartAndAReplacedProcessIsRefused (the replaced process confirms), run 8220 (AC5)`
+- `mutation: skipped the first pair Gate refusal in ScreenAction.Run, reloaded → red: ProhibitedRoute.TestAnAccountShortOfTheProcessPairIsRefusedTheTerminateScreenAction with the four other short-of-pair legs, run 8222; the vendor gate still refused the read and the probe kept running (AC6)`
+- `mutation: ReasonFor answers the old agent-worded literal for OCUPILOTPROCESS, reloaded → red: RefusalCopy.TestEachProcessRefusalIsItsParameterAndNamesNoCaller, run 8221, and self-protection.test.mjs's process leg (AC7)`
+- `mutation: FaultBanner.follow clears shown at once → red: fault-banner.spec.ts hold and same-nodes cases, fault-banner.wire.spec.ts Retry case (AC8)`
+- `mutation: ProcessTerminate given PORTCLASS ProcessPort and a PortQuery setting sendError, reloaded → red: ProcessControl.TestARealTerminateThroughTheScreenRouteLeavesNoError (no-entry leg) through an unarmed temporary subclass, run 8231 (AC1, flag off)`
+- `mutation: DESTRUCTIVE_ACTIONS without terminate → red: screen-action-handler.spec.ts Terminate dialog and Details cases (AC1, dialog)`
+- `mutation: ListPage binds (confirmed)="onConfirmDestructive()" → red: list-page.spec.ts Story 7.8 flagged Terminate (AC1, list flag)`
+- `mutation: RefreshService.onBusEvent skips the re-read on a changed event → red: process-details.page.spec.ts gone-state case (Integration AC, first bullet)`
+- `mutation: ProcessPort.TerminateWithError skips its HoldsResource gate, reloaded → red: ProcessTerminate.TestTheProcessPortRefusesACallerShortOfItsGate, run 8229 (AD-52 gate)`
+- `mutation: ProcessResume.StateDiff accepts a running process, reloaded → red: ProcessControl.TestAScreenSuspendOrResumeThatChangesNothingIsRefused, run 8231 (matrix no-op row)`
+- `mutation: PortGate ROSTER without ProcessPort → red: PortGate.TestEveryPortDeclaresANamedGate, sweep run 8326 (the roster row)`
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only, and halted after planning as directed. This pass wrote no code.
+**Change.** Suspend, Resume and Terminate on Processes and Process details, one operation with two
+callers (AD-53): Suspend/Resume gain `SCREENACTIONS`; two new destructive tools,
+`osmgmt.processes.terminate` (vendor `TERMINATE`) and `osmgmt.processes.terminatewitherror`
+(through the new `ProcessPort`, `SYS.Process.Terminate(1)` behind the endpoint's own gate, 404
+and 409, AD-52); the typed-name dialog's optional flag picks the second through the undrawn
+`terminate-with-error`; Process details selects its pid, renders the dialog and the refusal, and
+posts to the list's route; the two process refusals are caller-neutral parameters (DW-1499); the
+fault banner holds its strip 1.5 s after a clear (DW-1155, DW-1189). Deviation: Process details
+also names `emptyAgentKey processListEmptyAgent`, which the registry requires of a screen with
+actions.
 
-- **Measured on `ocupilot-ci`** against self-JOBbed probes, all cleaned up:
-  - the vendor's `TERMINATE` has no error flag;
-  - `SYS.Process.Terminate(1)` works for a principal holding exactly the three Processes pairs;
-  - a suspended process terminates at once.
-- **For the lead at the spec gate:**
-  - AD-52's one-sentence amendment (Rule 20);
-  - publishing the copy block;
-  - the DW-1553 budget port (`1967125`) before implement.
+**Files.** Server: `Port/ProcessPort.cls` (new), `Screen/Tool/ProcessTerminate.cls`,
+`ProcessTerminateWithError.cls` (new), `ProcessSuspend.cls`, `ProcessResume.cls`,
+`Port/AdminPort.cls` (two roster entries), `Kernel/Proposal/Prohibited.cls` (two reasons),
+`Screen/Descriptor/ProcessList.cls`, `ProcessDetails.cls`. Client: `shell/screen-action-handler.ts`,
+`typed-name-dialog.ts`, `list-page.ts`, `fault-banner.ts`, `core/screen-actions.ts`,
+`screens.generated.ts`, `areas/os-management/process-details.page.ts`. Budget (DW-1553 under
+DW-1166): `ui/angular.json` `maximumWarning` 1120kB → 1181kB (initial total 1,124,199 B × 1.05,
+rounded up) and its pin in `angular-json.test.mjs`. Tests: `Test/ProcessTerminate.cls`,
+`ProcessPortProbe.cls` (new); `ProcessControl` (+4 armed legs, untrapped probe); rosters in
+`ToolWrite`, `ReadTool` (62), `ToolRoundTrip`, `PortFixture`, `SurfaceCoverage`, `Descriptor`,
+`ProcessDetails`, `ProhibitedRoute`, `RefusalCopy`, `PortGate`; client specs for the handler,
+dialog, list page, details page and fault banner; `self-protection`, `screen-mirror`,
+`screen-actions` tool pins; `browser/process-actions.browser-spec.mjs` (new),
+`processes.browser-spec.mjs`.
+
+**Review.** 22 findings (see triage log): 7 patched (3 medium, 4 low), 0 deferred, 15 rejected
+with reasons. Follow-up review recommended (3 mediums patched): `ProcessControl`'s four Story 7.8
+legs have run only through a temporary unarmed subclass (runs 8230-8232, deleted); CI's armed run
+is the one that settles them.
+
+**Verification (`ocupilot-ci`).** Full ObjectScript sweep once, per class: 184 classes, 1,668
+tests, 2 failed — `PortGate` (the new port missing from its roster; fixed, 4/0 at run 8417) and
+`WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` (the reused throwaway's
+task history holds 1,126 rows, past the 1,000 cap it asserts; environmental, not this story); the
+four armed classes refuse here by design and run in CI. Targeted: `ProcessTerminate` 8/0 (run
+8228), `ReadTool` 27/0. `smoke.sh` 49/49. `test:tools` 1,328/0, `test:components` 896/0. Browser on
+the rebuilt, redeployed bundle: `process-actions` 3/3, `processes`, `process-control` (13/13
+together); no probe process and no `<RESJOB>` entry left. `check-objectscript` and `lint-docs`
+clean. One mutation per AC recorded under `## Verification`.
+
+**Residual risks.** `AdminPort :160-172` still says TERMINATE is absent (append-only; corrected at
+the Epic 7/8 merge). Same-line conflicts with Epic 8 by construction: the two `AdminPort`
+parameter lines, `ToolWrite`'s TERMINATE leg, `ReadTool :93`, `PortFixture :21`, `PortGate`'s
+roster, `Prohibited.ReasonFor`, `ui/angular.json` and its pin.
+
+footprint_extensions: see frontmatter (planned list plus `Test/PortGate.cls`, `ui/angular.json`,
+`ui/tools/angular-json.test.mjs`).
+
+Tiers: ObjectScript 184 classes / 1,668 tests; tools 1,328; components 896; browser 13 (story
+specs); smoke 49.

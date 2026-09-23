@@ -100,6 +100,8 @@ XData Coverage
 <tool name="logs.applicationerrors.delete" class="OcuPilot.Test.ToolWrite" method="TestTheErrorDeleteToolIsAnActionWriteOverItsOwnPort"/>
 <tool name="osmgmt.processes.resume" class="OcuPilot.Test.ToolWrite" method="TestTheProcessResumeToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="osmgmt.processes.suspend" class="OcuPilot.Test.ToolWrite" method="TestTheProcessSuspendToolIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="osmgmt.processes.terminate" class="OcuPilot.Test.ToolWrite" method="TestTheProcessTerminateToolIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="osmgmt.processes.terminatewitherror" class="OcuPilot.Test.ToolWrite" method="TestTheProcessTerminateWithErrorToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="permissions.users.delete" class="OcuPilot.Test.ToolWrite" method="TestTheUserDeleteToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="permissions.users.password" class="OcuPilot.Test.ToolWrite" method="TestTheUserPasswordToolSendsOnlyItsDeclaredSecret"/>
 <tool name="permissions.users.update" class="OcuPilot.Test.ToolWrite" method="TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs"/>

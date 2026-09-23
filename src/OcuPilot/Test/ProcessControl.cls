@@ -7,12 +7,14 @@
 /// <code>1</code>. It suspends a real process and creates one principal, so
 /// <method>OnBeforeAllTests</method> refuses anywhere either does not; only
 /// <file>scripts/ci-throwaway.sh</file> sets them.</p>
-/// <p><b>It acts on one process, and that process is its own.</b>
+/// <p><b>It acts only on processes it starts.</b>
 /// <method>StartProbeProcess</method> <code>JOB</code>s <method>ProbeWait</method>, which signs in
 /// as <parameter>PRINCIPALUSER</parameter> and waits; nothing here reads or writes a daemon, the
 /// Task Manager, a Work Queue worker or <code>WRTDMN</code>. The probe is resumed and terminated in
 /// a frame of its own on every exit path, and <method>OnAfterAllTests</method> asserts that none
-/// survives.</p>
+/// survives. Story 7.8's terminate legs each start a probe of their own
+/// (<method>StartUntrappedProbeProcess</method>), terminate it, and delete the <code>&lt;RESJOB&gt;</code>
+/// entry a flagged terminate leaves.</p>
 Class OcuPilot.Test.ProcessControl Extends %UnitTest.TestCase
 {
 
@@ -27,6 +29,20 @@ Parameter PRINCIPALVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
 Parameter SUSPENDTOOL = "OcuPilot.Screen.Tool.ProcessSuspend";
 
 Parameter RESUMETOOL = "OcuPilot.Screen.Tool.ProcessResume";
+
+Parameter TERMINATETOOL = "OcuPilot.Screen.Tool.ProcessTerminate";
+
+Parameter TERMINATEERRORTOOL = "OcuPilot.Screen.Tool.ProcessTerminateWithError";
+
+/// <p>The principal Story 7.8's flagged terminate is sent as: it holds exactly the processes list's
+/// three pairs, the router's administrative floor (which <code>%Admin_Manage:USE</code>, one of the
+/// three, already clears) and the install namespace's code database read. Created and deleted by
+/// the method that uses it.</p>
+Parameter THREEPAIRSUSER = "OcuPilotProbeProcessTerminator";
+
+Parameter THREEPAIRSROLE = "OcuPilotProbeProcessTerminatorRole";
+
+Parameter THREEPAIRSPASSWORD = "OcuPilotPr0beTerminatorPass9Aa";
 
 Parameter SCREEN = "OcuPilot.Screen.Descriptor.ProcessList";
 
@@ -571,6 +587,149 @@ Method TestTheRealSuspendAndResumeAreMarkedAndAttributedToTheCaller()
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
 }
 
+/// <p>AC1, Integration AC (Story 7.8): a real terminate through the screen route with the flag
+/// off -- <code>POST /screens/osmgmt.processes/action</code> with <code>terminate</code> -- ends
+/// this method's own probe, answers the change event's triple with <code>deleted</code>, and leaves
+/// no <code>&lt;RESJOB&gt;</code> entry in the probe's namespace.</p>
+/// <p>Mutation (Rule 19): give <class>OcuPilot.Screen.Tool.ProcessTerminate</class>
+/// <parameter>PORTCLASS</parameter> <code>OcuPilot.Port.ProcessPort</code> and a
+/// <method>PortQuery</method> that sets its <parameter>SENDERRORPARAM</parameter> to 1 -- the
+/// no-entry assertion goes red.</p>
+Method TestARealTerminateThroughTheScreenRouteLeavesNoError()
+{
+    Set tPid = ..StartUntrappedProbeProcess()
+    Do $$$AssertNotEquals(tPid, "", "a probe process of this method's own is running")
+    If tPid = "" Quit
+    Try {
+        Set tNamespace = ..NamespaceOf(tPid)
+        Do $$$AssertNotEquals(tNamespace, "", "its namespace reads")
+        Do $$$AssertEquals(..ResjobCount(tNamespace, tPid), 0, "and it has logged no <RESJOB> entry yet")
+        Set tSC = ..ActOn("terminate", tPid, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tBody)
+        Do $$$AssertStatusOK(tSC, "the screen action request completes")
+        Do $$$AssertEquals(tStatus, 200, "and is answered 200: " _ tBody)
+        If tStatus = 200 {
+            Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+            Do $$$AssertEquals(tAnswer.%Get("action"), "deleted", "announcing a removal")
+            Do $$$AssertEquals(tAnswer.%Get("target").%ToJSON(), "{""type"":""process"",""scope"":""instance"",""id"":""" _ tPid _ """}", "of this process")
+        }
+        Do $$$AssertTrue(..AwaitGone(tPid), "the process has ended")
+        Hang 1
+        Do $$$AssertEquals(..ResjobCount(tNamespace, tPid), 0, "and it logged no <RESJOB> entry")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the terminate leg raised")
+    }
+    Do ..StopProbeProcess(tPid)
+    Do $$$AssertEquals(..ProcessState(tPid), "", "and the probe is gone")
+}
+
+/// <p>Story 7.8: the screen's Suspend and Resume refuse a write that would change nothing, as the
+/// agent's do -- 400 <code>TOOL.ARGUMENTS</code> naming the problem, with the process left as it
+/// was -- on this class's own probe, and each real one answers 200.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.ProcessResume.StateDiff</method> accept
+/// a process that is not suspended -- the first leg answers 200 and goes red.</p>
+Method TestAScreenSuspendOrResumeThatChangesNothingIsRefused()
+{
+    Set tPid = ..PreparedPid
+    Do $$$AssertNotEquals(tPid, "", "the probe process exists")
+    If tPid = "" Quit
+    Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
+    Set tPassword = ##class(OcuPilot.Test.Http).GetTestPassword()
+    Do $$$AssertTrue('(..ProcessState(tPid) [ "SUSP"), "the probe starts running")
+    For tStep = $ListBuild("resume", 400, "not suspended", 0), $ListBuild("suspend", 200, "", 1), $ListBuild("suspend", 400, "already suspended", 1), $ListBuild("resume", 200, "", 0) {
+        Set tAction = $List(tStep, 1)
+        Set tSC = ..ActOn(tAction, tPid, tUser, tPassword, .tStatus, .tBody)
+        Do $$$AssertStatusOK(tSC, tAction _ ": the screen action request completes")
+        Do $$$AssertEquals(tStatus, $List(tStep, 2), tAction _ " is answered " _ $List(tStep, 2) _ ": " _ tBody)
+        If $List(tStep, 2) = 400 {
+            Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+            Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, tAction _ ": with the arguments code")
+            Set tProblem = $Select($IsObject(tEnvelope.%Get("detail")): tEnvelope.%Get("detail").%Get("problem"), 1: "")
+            Do $$$AssertTrue(tProblem [ $List(tStep, 3), tAction _ ": naming the problem: " _ tProblem)
+        }
+        Do $$$AssertEquals((..ProcessState(tPid) [ "SUSP"), $List(tStep, 4), tAction _ ": and the probe reads " _ $Select($List(tStep, 4): "suspended", 1: "running"))
+    }
+}
+
+/// <p>AC1, AD-52, Integration AC (Story 7.8): the flagged terminate, sent through the screen route
+/// as <parameter>THREEPAIRSUSER</parameter>, ends the probe through
+/// <class>OcuPilot.Port.ProcessPort</class>, and the probe logs exactly one
+/// <code>&lt;RESJOB&gt;</code> entry naming its pid in its namespace, which this method deletes.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.ProcessPort.TerminateWithError</method> call
+/// <code>Terminate(0)</code> -- the one-entry assertion goes red.</p>
+Method TestAFlaggedTerminateAsTheThreePairsLogsOneResjobEntry()
+{
+    Set tSC = ..EnsureThreePairsPrincipal()
+    Do $$$AssertStatusOK(tSC, "a principal holding exactly the list's three pairs is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tPid = ..StartUntrappedProbeProcess()
+    Do $$$AssertNotEquals(tPid, "", "a probe process of this method's own is running")
+    If tPid '= "" {
+        Try {
+            Set tNamespace = ..NamespaceOf(tPid)
+            Do $$$AssertEquals(..ResjobCount(tNamespace, tPid), 0, "it has logged no <RESJOB> entry yet")
+            Set tSC = ..ActOn("terminate-with-error", tPid, ..#THREEPAIRSUSER, ..#THREEPAIRSPASSWORD, .tStatus, .tBody)
+            Do $$$AssertStatusOK(tSC, "the screen action request completes")
+            Do $$$AssertEquals(tStatus, 200, "and is answered 200: " _ tBody)
+            Do $$$AssertTrue(..AwaitGone(tPid), "the process has ended")
+            Do $$$AssertEquals(..AwaitResjob(tNamespace, tPid), 1, "and logged exactly one <RESJOB> entry naming pid " _ tPid _ " in " _ tNamespace)
+        } Catch ex {
+            Do $$$AssertStatusOK(ex.AsStatus(), "the flagged terminate leg raised")
+        }
+        Do ..StopProbeProcess(tPid)
+        Do $$$AssertStatusOK(..DeleteResjob($Get(tNamespace), tPid), "the entry is deleted")
+        Do $$$AssertEquals(..ResjobCount($Get(tNamespace), tPid), 0, "and none is left")
+    }
+    Do ..RemoveThreePairsPrincipal()
+}
+
+/// <p>AC5 (Story 7.8): the agent's caller of each terminate -- a real mint and confirm through the
+/// shipped path -- carries the <code>State</code> row, is destructive, ends the probe, and writes
+/// one marker and one marked ledger row. The flagged tool's <code>&lt;RESJOB&gt;</code> entry is
+/// deleted.</p>
+/// <p>Mutation (Rule 19): skip the marker emission in
+/// <method>OcuPilot.Kernel.Proposal.Confirm.Transition</method> -- the marker and marked-ledger
+/// assertions go red for both tools.</p>
+Method TestTheAgentsTerminatesAreMarkedAndCarryTheStateRow()
+{
+    For tTool = ..#TERMINATETOOL, ..#TERMINATEERRORTOOL {
+        Set tPid = ..StartUntrappedProbeProcess()
+        Do $$$AssertNotEquals(tPid, "", "a probe process of this leg's own is running")
+        If tPid = "" Continue
+        Set tNamespace = ..NamespaceOf(tPid)
+        Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+        Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)
+        Do $$$AssertStatusOK(tSC, "the probe turn is seeded")
+        Try {
+            If $$$ISERR(tSC) Quit
+            Set tSC = ..RealMint(tTool, tPid, tTurn, .tProposal)
+            Do $$$AssertStatusOK(tSC, tTool _ " mints against the instance: " _ $System.Status.GetErrorText(tSC))
+            If $$$ISERR(tSC) Quit
+            Set tKey = tProposal.%Get("proposalId")
+            Set tRow = tProposal.%Get("changed").%Get(0)
+            Do $$$AssertEquals(tProposal.%Get("changed").%Size(), 1, "the card carries one row")
+            Do $$$AssertEquals($Select($IsObject(tRow): tRow.%Get("field"), 1: ""), "State", "the State row")
+            Do $$$AssertEquals($Select($IsObject(tRow): tRow.%Get("after"), 1: ""), $Parameter(tTool, "STATEAFTER"), "moving to the tool's own after-value")
+            Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Destructive"), 1, "and the proposal is destructive")
+            Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tKey, "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+            Do $$$AssertStatusOK(tSC, "the confirm succeeds (HTTP " _ +$Get(tHttp) _ " " _ $Get(tCode) _ ")")
+            If $$$ISERR(tSC) Quit
+            Do $$$AssertTrue(..AwaitGone(tPid), "the process has ended")
+            Do $$$AssertEquals(tResult.%Get("auditMarked"), 1, "the answer reports the marker landed")
+            Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).LedgerColumn(tTurn, "auditMarked"), $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDYES"), "and the one ledger row reads marked")
+            Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).MarkerRows(tSince, tKey, .tData), 1, "the audit database holds one marker carrying this proposal's id")
+        } Catch ex {
+            Do $$$AssertStatusOK(ex.AsStatus(), tTool _ " raised")
+        }
+        Do ..StopProbeProcess(tPid)
+        If tTool = ..#TERMINATEERRORTOOL {
+            Do $$$AssertEquals(..AwaitResjob(tNamespace, tPid), 1, "the flagged terminate logged one <RESJOB> entry")
+            Do $$$AssertStatusOK(..DeleteResjob(tNamespace, tPid), "which is deleted")
+        }
+        Do $$$AssertEquals(..ResjobCount(tNamespace, tPid), 0, "and no <RESJOB> entry is left for pid " _ tPid)
+        If $Get(tTurn) '= "" Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+    }
+}
+
 /// <p>The verdict the shipped prohibited set reaches for the process <var>pRead</var> describes,
 /// as its <code>PROHIBITED.*</code> code or <code>""</code> -- asked of
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.Process</method>'s two predicates through the
@@ -756,6 +915,40 @@ ClassMethod OwnedProbeWait()
     Quit
 }
 
+/// <p><code>JOB</code> a probe process that sets no error trap, so a <code>&lt;RESJOB&gt;</code>
+/// sent to it reaches <code>^%ETN</code> and is logged, and answer its pid or <code>""</code>. It
+/// signs in as nobody, so it is owned by the user that started it; the caller stops it with
+/// <method>StopProbeProcess</method>.</p>
+ClassMethod StartUntrappedProbeProcess() As %String
+{
+    Set tPid = ""
+    Try {
+        Job ##class(OcuPilot.Test.ProcessControl).UntrappedProbeWait()
+        Set tPid = $ZChild
+        If 'tPid Set tPid = ""
+        If tPid = "" Quit
+        For tI = 1:1:50 {
+            If ..ProcessState(tPid) '= "" Quit
+            Hang 0.1
+        }
+        Hang 2
+        If ..ProcessState(tPid) = "" Set tPid = ""
+    } Catch ex {
+        Set tPid = ""
+    }
+    Quit tPid
+}
+
+/// <p>The untrapped probe's body: wait, with no <code>Try</code> and no <code>$ZTRAP</code>, so an
+/// error sent to the process is not caught here.</p>
+/// <p><b>Caller contract:</b> <code>JOB</code>ed by <method>StartUntrappedProbeProcess</method> and
+/// by nothing else. It ends on its own after <parameter>PROBESECONDS</parameter>.</p>
+ClassMethod UntrappedProbeWait()
+{
+    Hang ..#PROBESECONDS
+    Quit
+}
+
 /// <p>Process <var>pPid</var>'s <code>UserName</code> as <class>%SYS.ProcessQuery</class> holds
 /// it, or <code>""</code> when the instance carries no such process.</p>
 ClassMethod UserNameOf(pPid As %String) As %String
@@ -881,6 +1074,177 @@ ClassMethod StopProbeProcess(pPid As %String)
         If ..ProcessState(pPid) = "" Quit
         Hang 0.1
     }
+}
+
+/// <p>One <code>POST</code> of <var>pAction</var> against process <var>pPid</var> on the processes
+/// list's action route, as <var>pUser</var>.</p>
+ClassMethod ActOn(pAction As %String, pPid As %String, pUser As %String, pPassword As %String, Output pStatus As %Integer, Output pBody As %String) As %Status
+{
+    Set tRequest = {}
+    Do tRequest.%Set("action", pAction, "string")
+    Do tRequest.%Set("id", pPid, "string")
+    Quit ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot/screens/" _ $ClassMethod(..#SCREEN, "ToolIdentifier") _ "/action", pUser, pPassword, .pStatus, .pBody, .tHeaders, tRequest.%ToJSON(), "application/json")
+}
+
+/// <p>Whether process <var>pPid</var> is gone within five seconds.</p>
+ClassMethod AwaitGone(pPid As %String) As %Boolean
+{
+    For tI = 1:1:50 {
+        If ..ProcessState(pPid) = "" Quit
+        Hang 0.1
+    }
+    Quit (..ProcessState(pPid) = "")
+}
+
+/// <p>Process <var>pPid</var>'s namespace as its <code>GET</code> reports it, or <code>""</code>.</p>
+ClassMethod NamespaceOf(pPid As %String) As %String
+{
+    Set tFresh = ..FreshRead(pPid)
+    If '$IsObject(tFresh) Quit ""
+    Quit tFresh.%Get("NameSpace")
+}
+
+/// <p>The <code>&lt;RESJOB&gt;</code> entries naming <var>pPid</var> in <var>pNamespace</var>'s
+/// application error log, as <code>pEntries(&lt;date&gt;) = &lt;comma-separated error numbers&gt;</code>,
+/// and their count. Read through <code>SYS.ApplicationError</code> in <code>%SYS</code> (AD-48).</p>
+ClassMethod ResjobEntries(pNamespace As %String, pPid As %String, Output pEntries) As %Integer
+{
+    Kill pEntries
+    Set tCount = 0
+    If (pNamespace = "") || (pPid = "") Quit 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tDates = ##class(%ResultSet).%New("SYS.ApplicationError:DateList")
+        Set tSC = tDates.Execute(pNamespace)
+        Set tList = ""
+        While $$$ISOK(tSC) && tDates.Next() {
+            Set tList = tList _ $ListBuild(tDates.Get("Date"))
+        }
+        Do tDates.Close()
+        For tI = 1:1:$ListLength(tList) {
+            Set tDate = $List(tList, tI)
+            Set tRS = ##class(%ResultSet).%New("SYS.ApplicationError:ErrorList")
+            Set tSC = tRS.Execute(pNamespace, tDate)
+            While $$$ISOK(tSC) && tRS.Next() {
+                If (tRS.Get("Process") '= pPid) && (tRS.Get("DisplayPID") '= pPid) Continue
+                If '(tRS.Get("Error message") [ "RESJOB") Continue
+                Set tCount = tCount + 1
+                Set pEntries(tDate) = $Get(pEntries(tDate)) _ $Select($Get(pEntries(tDate)) = "": "", 1: ",") _ tRS.Get("Error #")
+            }
+            Do tRS.Close()
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCount = -1
+    }
+    Quit tCount
+}
+
+/// <p>How many <code>&lt;RESJOB&gt;</code> entries name <var>pPid</var> in <var>pNamespace</var>.</p>
+ClassMethod ResjobCount(pNamespace As %String, pPid As %String) As %Integer
+{
+    Quit ..ResjobEntries(pNamespace, pPid, .tEntries)
+}
+
+/// <p>The <code>&lt;RESJOB&gt;</code> count for <var>pPid</var>, waited for up to five seconds: the
+/// terminated job runs <code>^%ETN</code> after the terminate answers.</p>
+ClassMethod AwaitResjob(pNamespace As %String, pPid As %String) As %Integer
+{
+    For tI = 1:1:50 {
+        If ..ResjobCount(pNamespace, pPid) > 0 Quit
+        Hang 0.1
+    }
+    Hang 0.5
+    Quit ..ResjobCount(pNamespace, pPid)
+}
+
+/// <p>Delete every <code>&lt;RESJOB&gt;</code> entry naming <var>pPid</var> in <var>pNamespace</var>
+/// through <code>SYS.ApplicationError.DeleteByError</code>.</p>
+ClassMethod DeleteResjob(pNamespace As %String, pPid As %String) As %Status
+{
+    Set tSC = $$$OK
+    If ..ResjobEntries(pNamespace, pPid, .tEntries) < 1 Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tDate = ""
+        For {
+            Set tDate = $Order(tEntries(tDate))
+            If tDate = "" Quit
+            Set tSC = $$$ADDSC(tSC, ##class(SYS.ApplicationError).DeleteByError(pNamespace, tDate, tEntries(tDate)))
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Create <parameter>THREEPAIRSUSER</parameter> holding <parameter>THREEPAIRSROLE</parameter>:
+/// the processes list's three pairs and the install namespace's code database read.</p>
+ClassMethod EnsureThreePairsPrincipal() As %Status
+{
+    Set tSC = $$$OK
+    Set tCodeResource = ..CodeResource()
+    If tCodeResource = "" Quit $$$ERROR($$$GeneralError, "the install namespace's code database resource did not resolve")
+    Set tResources = "%Admin_Operate:U,%Admin_Manage:U,%DB_IRISSYS:R," _ tCodeResource _ ":R"
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Roles).Exists(..#THREEPAIRSROLE) {
+            Kill tProps
+            Set tProps("Resources") = tResources
+            Set tProps("GrantedRoles") = ""
+            Set tSC = ##class(Security.Roles).Modify(..#THREEPAIRSROLE, .tProps)
+        } Else {
+            Set tSC = ##class(Security.Roles).Create(..#THREEPAIRSROLE, "OcuPilot process terminate probe (throwaway)", tResources, "")
+        }
+        If $$$ISERR(tSC) Quit
+        If ##class(Security.Users).Exists(..#THREEPAIRSUSER) {
+            Set tSC = ##class(Security.Users).Delete(..#THREEPAIRSUSER)
+            If $$$ISERR(tSC) Quit
+        }
+        Set tSC = ##class(Security.Users).Create(..#THREEPAIRSUSER, ..#THREEPAIRSROLE, ..#THREEPAIRSPASSWORD, "OcuPilot process terminate probe (throwaway)", "", "", "", 0, 1, "Created by OcuPilot.Test.ProcessControl")
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Delete <parameter>THREEPAIRSUSER</parameter> and <parameter>THREEPAIRSROLE</parameter>.</p>
+ClassMethod RemoveThreePairsPrincipal()
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Users).Exists(..#THREEPAIRSUSER) Do ##class(Security.Users).Delete(..#THREEPAIRSUSER)
+        If ##class(Security.Roles).Exists(..#THREEPAIRSROLE) Do ##class(Security.Roles).Delete(..#THREEPAIRSROLE)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+    }
+}
+
+/// <p>The resource guarding the install namespace's code database, or <code>""</code>.</p>
+ClassMethod CodeResource() As %String
+{
+    Set tResource = ""
+    Set tNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tNsObj = ##class(Config.Namespaces).Open(tNs)
+        Set tResource = ##class(SYS.Database).%OpenId(##class(Config.Databases).Open(tNsObj.Routines).Directory).ResourceName
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tResource = ""
+    }
+    Quit tResource
 }
 
 }

@@ -122,6 +122,27 @@ test('AD-53, AD-39: each account refusal is one sentence on both surfaces', () =
   }
 });
 
+/** The two process refusals, each a `Prohibited.cls` parameter and a `strings.ts` key (Story 7.8). */
+const PROCESS_REFUSALS = [
+  ['OCUPILOTPROCESSREASON', 'processRefusalOcuPilot'],
+  ['SYSTEMPROCESSREASON', 'processRefusalSystem'],
+];
+
+test('AD-53, AD-39, DW-1499: each process refusal is one sentence on both surfaces, naming no caller', () => {
+  // Mutation (Rule 19): change one word of either *PROCESSREASON parameter -> this goes red naming both.
+  const source = readFileSync(PROHIBITED, 'utf8');
+  for (const [parameter, key] of PROCESS_REFUSALS) {
+    const kernel = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(source);
+    assert.notEqual(kernel, null, `Prohibited.cls declares ${parameter}`);
+    assert.equal(kernel[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(!kernel[1].toLowerCase().includes('the agent'), `${parameter} names no caller: ${kernel[1]}`);
+  }
+  // And the lookup answers the parameter, not a literal of its own.
+  for (const code of ['OCUPILOTPROCESS', 'SYSTEMPROCESS']) {
+    assert.ok(source.includes(`If pCode = ..#${code} Quit ..#${code}REASON`), `ReasonFor answers ${code} with its parameter`);
+  }
+});
+
 test("AD-53: the client's service accounts are the prohibited set's own", async () => {
   const { SERVICE_ACCOUNTS, SYSTEM_ACCOUNT } = await import('../src/app/core/self-protection.ts');
   const source = readFileSync(PROHIBITED, 'utf8');

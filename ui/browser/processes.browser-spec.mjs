@@ -269,8 +269,10 @@ test('AC1: the list reads once under the declared headers, filters to a proper s
       STRINGS.processColumnState,
       STRINGS.processColumnCommands,
       STRINGS.processColumnGlobals,
+      // Story 7.8: the row actions add the table's hidden Actions column.
+      STRINGS.commandBoxGroupActions,
     ]);
-    assert.deepEqual(headers, ['Process ID', 'User', 'Namespace', 'Routine', 'State', 'Commands', 'Globals']);
+    assert.deepEqual(headers, ['Process ID', 'User', 'Namespace', 'Routine', 'State', 'Commands', 'Globals', 'Actions']);
 
     // At least the cap: with fewer the "exactly five rows at maxRows=5" assertion below would
     // collapse into `min(5, total)` against a count read from an earlier fetch, which a process
@@ -340,7 +342,7 @@ test('AC2: the command bar sorts the table by a chosen field, the header announc
     const first = await describeSort(page);
     assert.deepEqual(
       first.sorts,
-      ['ascending', null, null, null, null, null, null],
+      ['ascending', null, null, null, null, null, null, null],
       'the declared default sorts on Process ID, and nothing else claims a sort'
     );
     assert.deepEqual(first.arrows.filter((arrow) => arrow !== ''), ['\u2191'], 'one up arrow, on that column');
@@ -357,7 +359,7 @@ test('AC2: the command bar sorts the table by a chosen field, the header announc
     const sorted = await describeSort(page, COMMANDS_COLUMN);
     assert.deepEqual(
       sorted.sorts,
-      [null, null, null, null, null, 'ascending', null],
+      [null, null, null, null, null, 'ascending', null, null],
       'the chosen column carries aria-sort, and the previous one has let it go'
     );
     // And the rows are in that order, which is the half of AC2 `aria-sort` cannot stand for: a
@@ -377,7 +379,7 @@ test('AC2: the command bar sorts the table by a chosen field, the header announc
     await waitForRows(page, config.navigationTimeoutMs);
     assert.deepEqual(
       (await describeSort(page)).sorts,
-      [null, null, null, null, null, 'ascending', null],
+      [null, null, null, null, null, 'ascending', null, null],
       'the chosen sort is still in force after the re-entry'
     );
 
@@ -387,7 +389,7 @@ test('AC2: the command bar sorts the table by a chosen field, the header announc
     await waitForRows(page, config.navigationTimeoutMs);
     assert.deepEqual(
       (await describeSort(page)).sorts,
-      [null, null, null, null, null, 'ascending', null],
+      [null, null, null, null, null, 'ascending', null, null],
       'and it is restored from the remembered view after a reload'
     );
 
@@ -447,7 +449,7 @@ test('AC3: an auto-refresh tick re-reads the rows in place, keeping a non-defaul
     }));
     assert.deepEqual(
       before.sorts,
-      [null, null, null, null, null, null, 'descending'],
+      [null, null, null, null, null, null, 'descending', null],
       'the sort under test is off the declared default in both field and direction'
     );
     assert.equal(before.filter, DAEMON_ROUTINE, 'and the filter under test is a real one');

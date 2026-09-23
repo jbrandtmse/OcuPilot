@@ -516,3 +516,85 @@ describe('the Task schedule\u2019s Run, Suspend, Resume and Delete (Story 7.6)',
     handler.cancelPending();
   });
 });
+
+describe('Processes and Process details: Suspend, Resume and Terminate (Story 7.8)', () => {
+  const LIST = 'OcuPilot.Screen.Descriptor.ProcessList';
+  const DETAILS = 'OcuPilot.Screen.Descriptor.ProcessDetails';
+  const target = { type: 'process', scope: 'instance', id: '4711' };
+
+  it('sends Suspend and Resume at once, from either screen, and never draws the flagged action', async () => {
+    // Mutation (Rule 19): drop Processes from `SCREEN_ACTION_DESCRIPTORS` -> nothing registers.
+    for (const descriptor of [LIST, DETAILS]) {
+      for (const actionId of ['suspend', 'resume']) {
+        const { actions, handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target } }, descriptor);
+        expect(actions.has(descriptor, actionId)).toBe(true);
+        expect(actions.has(descriptor, 'terminate')).toBe(true);
+        expect(actions.has(descriptor, 'terminate-with-error')).toBe(false);
+        store.setSelection(['4711']);
+
+        actions.run(descriptor, actionId);
+        await settle();
+        expect(handler.pending()).toBeNull();
+        expect(calls).toHaveLength(1);
+        expect(calls[0].path).toBe('/api/ocupilot/screens/osmgmt.processes/action');
+        expect(JSON.parse(calls[0].body)).toEqual({ action: actionId, id: '4711' });
+        expect(events.map((event) => `${event.type}:${event.action}:${event.id}`)).toEqual(['process:updated:4711']);
+      }
+    }
+  });
+
+  it('opens Terminate\u2019s dialog titled with the pid, and sends terminate unchecked, terminate-with-error checked', async () => {
+    // Mutation (Rule 19): drop the flag's entry from `FLAGGED_ACTIONS` -> the flag label and the
+    // checked request go red.
+    for (const flag of [false, true]) {
+      const { actions, handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'deleted', target } }, LIST);
+      store.setSelection(['4711']);
+
+      actions.run(LIST, 'terminate');
+      await settle();
+      expect(calls).toHaveLength(0);
+      const pending = handler.pending();
+      expect(pending?.kind).toBe('typed-name');
+      expect(pending?.verb).toBe(STRINGS.actionTerminate);
+      expect(pending?.name).toBe('4711');
+      expect(pending?.target).toBe('4711');
+      expect(pending?.consequence).toBe(STRINGS.processTerminateConsequence);
+      expect(pending?.flagLabel).toBe(STRINGS.processTerminateErrorFlag);
+
+      handler.confirmPending(flag);
+      await settle();
+      expect(calls).toHaveLength(1);
+      const sent = JSON.parse(calls[0].body);
+      expect(sent).toEqual({ action: flag ? 'terminate-with-error' : 'terminate', id: '4711' });
+      expect(Object.hasOwn(sent, 'values')).toBe(false);
+      expect(events.map((event) => `${event.type}:${event.action}:${event.id}`)).toEqual(['process:deleted:4711']);
+    }
+  });
+
+  it('sends Process details\u2019 Terminate to the processes list\u2019s route, and puts a refusal on the details page', async () => {
+    // Mutation (Rule 19): drop Process details from `ACTION_ADDRESS` -> the path reads
+    // osmgmt.processdetails and goes red.
+    const refused = { kind: 'error', status: 403, reason: STRINGS.processRefusalOcuPilot, code: 'PROHIBITED.OCUPILOTPROCESS' } as unknown as JsonResult<unknown>;
+    const { actions, handler, store, calls, events } = mount(refused, DETAILS);
+    store.setSelection(['4711']);
+    actions.run(DETAILS, 'terminate');
+    await settle();
+    expect(handler.pending()?.flagLabel).toBe(STRINGS.processTerminateErrorFlag);
+    handler.confirmPending(true);
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe('/api/ocupilot/screens/osmgmt.processes/action');
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'terminate-with-error', id: '4711' });
+    expect(store.refusal()).toBe(STRINGS.processRefusalOcuPilot);
+    expect(events).toEqual([]);
+  });
+
+  it('offers no flag on another screen\u2019s typed-name dialog', async () => {
+    const { actions, handler, store } = mount({ kind: 'ok', status: 200, body: {} }, 'OcuPilot.Screen.Descriptor.TaskScheduleList');
+    store.setSelection(['42']);
+    actions.run('OcuPilot.Screen.Descriptor.TaskScheduleList', 'delete');
+    await settle();
+    expect(handler.pending()?.flagLabel).toBe('');
+    handler.cancelPending();
+  });
+});

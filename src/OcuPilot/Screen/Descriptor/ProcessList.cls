@@ -16,14 +16,14 @@
 /// segment, with no second part. <code>Pid</code> is the <code>name</code> column, so it renders in
 /// the code face and as the link to <class>OcuPilot.Screen.Descriptor.ProcessDetails</class>, opened
 /// through 6.7's <code>detailScreenFor</code> chain (Story 6.8).</p>
-/// <p><b>It owns the two process write tools and still declares no control.</b>
-/// <class>OcuPilot.Screen.Tool.ProcessSuspend</class> and
-/// <class>OcuPilot.Screen.Tool.ProcessResume</class> name this descriptor and take its pair set;
-/// the row actions that would put them on the screen are Stories 7.8 and 16.6, so this descriptor
-/// declares no primary action and no row action. <b>Terminate is absent</b>: OcuPilot advertises no
-/// such tool and <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> pairs
-/// <code>Process</code> with neither <code>TERMINATE</code> nor <code>DELETE</code>, though the
-/// vendor class declares both.</p>
+/// <p><b>Its row actions are Suspend, Resume and Terminate</b> (Story 7.8, AD-53), each carried out
+/// by the write tool that names this descriptor: <class>OcuPilot.Screen.Tool.ProcessSuspend</class>,
+/// <class>OcuPilot.Screen.Tool.ProcessResume</class> and
+/// <class>OcuPilot.Screen.Tool.ProcessTerminate</class>. The fourth, <code>terminate-with-error</code>,
+/// is <class>OcuPilot.Screen.Tool.ProcessTerminateWithError</class>'s: the Terminate dialog's flag
+/// sends it, and no surface draws it. None declares a self-protection rule, because the process
+/// refusals read <code>JobType</code>, turn jobs and the request's own job, which only the instance
+/// knows; the refusal is <class>OcuPilot.Kernel.Proposal.Prohibited</class>'s, after the click.</p>
 /// <p><b>It declares none of the <code>CanBe*</code> fields.</b> The four booleans and
 /// <code>CanReceiveBroadcast</code> exist only to gate the vendor's own controls, so a read that
 /// carried them would ship the inputs to a decision nothing here makes -- and
@@ -75,8 +75,7 @@
 /// case because the custom-resource lookup does not case-fold (AD-44).
 /// <code>%CSP.UI.Portal.ProcessDetails</code> is <class>OcuPilot.Screen.Descriptor.ProcessDetails</class>'s,
 /// not this screen's. As a list archetype it links out to nothing.</p>
-/// <p>It declares no primary or row action, so its empty state names what to do next rather than
-/// inviting the agent.</p>
+/// <p>It declares row actions, so its empty state invites the agent with the list's own verbs.</p>
 Class OcuPilot.Screen.Descriptor.ProcessList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -93,12 +92,13 @@ XData Declaration
   "refreshRates": [5, 10, 30, 60],
   "privileges": [{"resource": "%Admin_Operate", "permission": "USE"}, {"resource": "%Admin_Manage", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
   "entityType": "process",
+  "entityLabelKey": "proposalEntityProcess",
   "secondaryEntityTypes": [],
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "suspend", "selfProtection": ""}, {"id": "resume", "selfProtection": ""}, {"id": "terminate", "selfProtection": ""}, {"id": "terminate-with-error", "selfProtection": ""}],
   "context": {"fields": ["Pid", "Username", "Nspace", "Routine", "State", "Commands", "Globals"], "secretFields": []},
   "emptyStateKey": "processListEmpty",
   "commandAliases": ["jobs"],
@@ -121,8 +121,8 @@ XData Declaration
       {"field": "Commands", "labelKey": "processColumnCommands", "kind": "number"},
       {"field": "Globals", "labelKey": "processColumnGlobals", "kind": "number"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "processListEmptyAgent"
   },
   "toolIdentifier": "osmgmt.processes"
 }

@@ -205,7 +205,7 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// unknown id; <code>ResourcesOR()</code> answers <code>%Admin_Task</code> for
 /// <code>SUSPEND</code> and <code>%Admin_Task</code> or <code>%Admin_Operate</code> for
 /// <code>DELETE</code>.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE";
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -221,7 +221,7 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries whose vendor body spells a key differently
 /// from the name the rest of the product carries it under, as comma-separated

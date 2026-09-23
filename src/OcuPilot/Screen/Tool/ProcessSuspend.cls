@@ -14,7 +14,11 @@
 /// <p><b>It is not destructive</b>: proposing the opposite puts the process back, which is what
 /// <class>OcuPilot.Screen.Tool.ProcessResume</class> is for. EXPERIENCE.md's
 /// <code>confirm-dialog</code> row names a suspend among the non-destructive warnings and reserves
-/// the destructive treatment for a terminate, which OcuPilot ships no tool for.</p>
+/// the destructive treatment for a terminate, which is
+/// <class>OcuPilot.Screen.Tool.ProcessTerminate</class>'s.</p>
+/// <p>Two callers reach it (AD-53): the Suspend row action on Processes and Process details
+/// through <class>OcuPilot.Api.ScreenAction</class>, sent with no dialog, and the agent's proposal
+/// and confirmation.</p>
 Class OcuPilot.Screen.Tool.ProcessSuspend Extends OcuPilot.Screen.Tool.Write
 {
 
@@ -23,6 +27,9 @@ Parameter TOOLNAME = "osmgmt.processes.suspend";
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.ProcessList";
 
 Parameter DESCRIPTION = "Propose suspending one process this instance is running. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the process by the numeric process id the processes list reports for it. A process that is already suspended, a process OcuPilot is itself running in -- this request, or an agent turn -- and an IRIS system process are all refused.";
+
+/// <p>The screen's own Suspend row action, which sends no argument (AD-51, AD-53).</p>
+Parameter SCREENACTIONS = "suspend";
 
 /// <p>The state read: <code>Process</code>'s <code>GET</code>, the endpoint's one single-object
 /// read. Its <code>LIST</code> answers an array and there is no <code>TYPEINFO</code> on the

@@ -3705,7 +3705,24 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "suspend",
+        "selfProtection": ""
+      },
+      {
+        "id": "resume",
+        "selfProtection": ""
+      },
+      {
+        "id": "terminate",
+        "selfProtection": ""
+      },
+      {
+        "id": "terminate-with-error",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Pid",
@@ -3999,8 +4016,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "processListEmptyAgent"
     },
     "toolIdentifier": "osmgmt.processdetails",
     "banner": null,
@@ -4040,6 +4057,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       }
     ],
     "entityType": "process",
+    "entityLabelKey": "proposalEntityProcess",
     "secondaryEntityTypes": [],
     "scope": "instance",
     "parentScope": "",
@@ -4051,7 +4069,24 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "suspend",
+        "selfProtection": ""
+      },
+      {
+        "id": "resume",
+        "selfProtection": ""
+      },
+      {
+        "id": "terminate",
+        "selfProtection": ""
+      },
+      {
+        "id": "terminate-with-error",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Pid",
@@ -4150,16 +4185,15 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "number"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "processListEmptyAgent"
     },
     "toolIdentifier": "osmgmt.processes",
     "banner": null,
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": [],
-    "entityLabelKey": ""
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.ResourceList",

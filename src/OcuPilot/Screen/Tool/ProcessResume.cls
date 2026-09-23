@@ -12,6 +12,9 @@
 /// admits no settable field and its field list is empty by derivation (AD-3). Its fingerprint
 /// covers the declared subject <code>Pid</code> and <code>State</code> -- the scoped target
 /// identity plus the field its own precondition reads.</p>
+/// <p>Two callers reach it (AD-53): the Resume row action on Processes and Process details through
+/// <class>OcuPilot.Api.ScreenAction</class>, sent with no dialog, and the agent's proposal and
+/// confirmation.</p>
 Class OcuPilot.Screen.Tool.ProcessResume Extends OcuPilot.Screen.Tool.Write
 {
 
@@ -20,6 +23,9 @@ Parameter TOOLNAME = "osmgmt.processes.resume";
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.ProcessList";
 
 Parameter DESCRIPTION = "Propose resuming one process this instance has suspended. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the process by the numeric process id the processes list reports for it. A process that is not suspended, a process OcuPilot is itself running in -- this request, or an agent turn -- and an IRIS system process are all refused.";
+
+/// <p>The screen's own Resume row action, which sends no argument (AD-51, AD-53).</p>
+Parameter SCREENACTIONS = "resume";
 
 /// <p>The state read: <code>Process</code>'s <code>GET</code>, the endpoint's one single-object
 /// read (AD-36, AD-51).</p>
