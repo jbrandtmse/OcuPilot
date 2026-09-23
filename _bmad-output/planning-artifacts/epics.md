@@ -3729,7 +3729,7 @@ So that a question becomes a fix without me navigating anywhere myself.
 
 - **Given** the user confirms
 - **When** the write runs
-- **Then** the task resumes as that user, the schedule list re-fetches and the row highlights within two seconds, and the agent's reply names the next run and offers the audit entry.
+- **Then** the task resumes as that user, and the schedule list re-fetches and the row highlights within two seconds. [AMENDED 2026-09-23, orchestrator ruling on DW-1463, Rule 5 tier-1: the clause ended "and the agent's reply names the next run and offers the audit entry"; a confirm is a user request outside any turn (AD-40), so no agent reply follows it and nothing could produce that sentence.]
 
 - **Given** the task's own history
 - **When** it is opened afterwards
@@ -4327,7 +4327,7 @@ So that fixing a stopped task does not need an editor.
 
 - **Given** Task details (Story 6.7) and the agent's resume proposal (Story 5.11) both exist
 - **When** the agent's navigation target for a suspended task is re-pointed from the schedule list to Task details
-- **Then** UJ-6 is replayed end to end: the agent navigates to **Task details**, the Status **field** highlights, and a toast reads the change with "Open in Task schedule" - completing the journey as the PRD writes it, with no earlier story left unverified.
+- **Then** UJ-6 is replayed end to end: the agent navigates to **Task details** and the Suspended **field** highlights - completing the journey as the PRD writes it, with no earlier story left unverified. [AMENDED 2026-09-23, Epic 7 runner, Rule 5 tier-1: "the Status field" restated as the Suspended field, the one Task details carries.] [AMENDED 2026-09-23, orchestrator: the toast is delivered after the Epic 7/8 merge — a change toast opens the entity's list at the row and is hidden only when that list is open (PRD UJ-6); DW-1546]
 
 - DW-1463: two of Story 5.11's epic clauses about what the agent's reply says are unimplemented, and the fifth clause never reached a spec (ledger; routed by merge_gate 2026-09-22)
 

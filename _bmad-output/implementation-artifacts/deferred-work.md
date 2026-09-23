@@ -5867,6 +5867,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AC7 ends 'the agent's reply names the next run': Confirm.Answer carries proposalId, state, closedReason, confirmedAt and auditMarked only, nothing supplies a next-run figure, and no mutation line covers that half. epics.md:3737-3739's fifth clause ('the error recurs on the next run -> the agent's follow-up cites that history row by name rather than claiming success') appears in no spec AC, boundary, deferral or ledger entry and carries no AMENDED marker, unlike UJ-6's retarget.
 - 2026-09-22T05:20:31Z status=decision-pending owner=burndown by=cr note=human=is the next-run half owed by Confirm.Answer or by the model re-reading, and is the fifth clause dropped or 7.6's
 - 2026-09-22T06:52:35Z status=routed owner=7-6-run-suspend-resume-and-delete-a-task by=merge_gate note=ORCHESTRATOR-DECIDED._7.6_already_owns_this_descriptors_retarget_and_its_Run/Suspend/Delete_row_actions,_so_the_unimplemented_reply_clauses_land_with_the_story_that_touches_the_same_surface._I_FIRST_WROTE_AN_INVENTED_KEY_AND_ledger.sh_REFUSED_IT,_naming_the_real_one_-_the_owner_check_doing_exactly_the_job_the_routing-to-an-unvalidated-key_anti-pattern_describes
+- 2026-09-23T13:21:13Z status=dropped by=spec_gate note=orchestrator ruling 2026-09-23 (Q5): a confirm is a user request outside any turn, so no agent reply follows it; 5.11's 'the agent's reply names the next run and offers the audit entry' and the end of UJ-6 step 5 are amended out (tier-1, markers cite the reason); the proposal-card alternative is declined because it lands in Confirm.cls
 
 ### DW-1464: AdminPort.BODYLESSTYPES exempts a request-type name globally rather than an (endpoint, type) pair
 - source: spec-5-11-tasks-resume-a-task-suspended-after-an-error.md | severity: med | fix-risk: med | footprint: in-epic
@@ -6163,3 +6164,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-5-run-an-on-demand-task.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: run 35858909423 attempt 1 red at 12:32-12:34Z on 61f9c7dc, attempt 2 green on the same sha; tests 218+ green in attempt 1; cause not established
 - 2026-09-23T12:57:02Z status=wontfix-accepted owner=7-5-run-an-on-demand-task by=lead note=reopen_if=turn.browser-spec.mjs or any sign-in navigation times out again in a CI browser job
+
+### DW-1546: UJ-6's change toast ('Open in Task schedule') cannot appear on Task details: a change toast opens the entity's details and is hidden while that screen is open, where the PRD wants it to open the list at the row and hide only while the list is open
+- source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: EXPERIENCE.md:446 hides the toast while the entity's screen is open; Epic 8 pinned screenForEntityType('task') -> tasks/schedule/details in navigation.test.mjs:963; PRD UJ-6 climax: 'a toast links to the row in the task list'
+- 2026-09-23T13:21:12Z status=routed owner=range-end-cleanup by=spec_gate note=orchestrator ruling 2026-09-23: taken by the orchestrator right after the second of the Epic 7/8 merges; the UJ-6 replay checks the toast after that fix, not in 7.6

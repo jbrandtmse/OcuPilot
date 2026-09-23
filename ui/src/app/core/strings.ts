@@ -1406,6 +1406,16 @@ export const STRINGS = {
   /** EXPERIENCE.md:415 */
   proposalEntityTask: 'Task',
 
+  // Story 7.6: the Task schedule's row actions.
+  /** EXPERIENCE.md:416 */
+  taskDeleteConsequence:
+    'Deleting this task removes it from the schedule, so it no longer runs. Its history is kept. This cannot be undone.',
+  /** EXPERIENCE.md:417 */
+  taskScheduleEmptyAgent: 'create a task that runs on a schedule',
+  /** EXPERIENCE.md:418 */
+  taskSystemDeleteConsequence:
+    'This is one of the instance\'s own system tasks, and the instance relies on it. The classic portal does not allow deleting it.',
+
 } as const;
 
 /**

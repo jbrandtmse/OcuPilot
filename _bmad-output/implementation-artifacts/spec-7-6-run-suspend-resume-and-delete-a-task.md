@@ -2,7 +2,7 @@
 title: 'Story 7.6: Run, suspend, resume and delete a task'
 type: 'feature'
 created: '2026-09-23'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -85,6 +85,29 @@ Then replay UJ-6 against Task details.
 | System task delete (Q4) | a `Type` System task | refused on the instance, whoever calls. The row action is drawn unavailable with the reason | nothing deleted |
 | Short of the pair | no `%Admin_Task:USE` | 403 `AUTH.NOPRIVILEGE`, failedPair `%Admin_Task:USE`, before any read | probe unchanged |
 
+
+**Orchestrator rulings, 2026-09-23 (binding; the six questions are closed).**
+
+1. **Q1 -- no toast in this story.** Implement AC3's Suspended-field highlight and every other
+   clause; do not change `navigation.ts` or Epic 8's pins (`navigation.test.mjs`). AC3's toast clause
+   is amended (tier-1) and delivered after the Epic 7/8 merge (DW-1546, owner `range-end-cleanup`).
+2. **Q2 -- "Status field" is the Suspended field** (tier-1, `epics.md` 7.6 AC3 and EXPERIENCE UJ-6).
+3. **Q3 -- the delete dialog types the task's Name**; the request sends the numeric id.
+4. **Q4 -- deleting a system task is allowed** behind the delete's typed-name confirmation (the
+   owner's "developer tool first"): no AD-10 bullet, no `Prohibited.cls` or `Registry.cls` edit. The
+   dialog and the agent's proposal card both carry the consequence line `taskSystemDeleteConsequence`
+   for a system task, and a test fails when that line is removed for a system task. OcuPilot's own
+   installer creates only the demo fixture task (`Install/Fixture.cls` `CreateTask`), which is
+   deletable like any other task.
+5. **Q5 -- DW-1463 is dropped**: 5.11's "the agent's reply names the next run and offers the audit
+   entry" and the end of UJ-6 step 5 are amended out (a confirm is a user request outside any turn).
+   No proposal-card next-run line (it would land in the contended `Confirm.cls`).
+6. **Q6 -- verification reads `INFO`**: the row update and every check read the task's `INFO`,
+   never the list's `Suspended`; Epic 8's post-write re-read must do the same after the merge.
+
+Copy is published at `EXPERIENCE.md:416-418` and appended to `strings.ts`
+(`taskDeleteConsequence`, `taskScheduleEmptyAgent`, `taskSystemDeleteConsequence`; `npm run
+test:tools` 1,327/0) -- consume; `taskSystemDeleteRefused` is not published and not used.
 </intent-contract>
 
 ## Code Map
@@ -295,7 +318,7 @@ Measured on `ocupilot-ci` on 2026-09-23. The probes were `OcuPilotProbe76` (id 1
   delete dialog types the task's Name while the request sends the numeric id; Q6 ratified -- the
   row update and every verification read the task's `INFO`, never the list field, and Epic 8's
   runtime re-read must do the same for a task once it merges (merge-gate note). Q1, Q4 and Q5 are
-  with the orchestrator.
+  with the orchestrator; answered the same day (rulings in the intent block); `status` reset to `draft`.
 
 ## Review Triage Log
 
