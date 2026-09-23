@@ -262,6 +262,13 @@ Before editing a ⚠ file, run `git fetch origin && git show origin/OCU-1-epic7:
   - `Test/SecurityLists.cls` :54;
   - `ui/tools/{navigation,screen-mirror}.test.mjs`, `app.routes.spec.ts`.
 
+### Rulings (lead, 2026-09-23)
+
+- The AD-27 second case is approved; the import's `Certificate`, `PrivateKey` and `PrivateKeyPassword` never touch disk (no temporary file, not even inside the port) and never reach the ledger or any log line (AD-35). Pin: a test that fails when the `%SYS.X509Credentials` completion is removed, and one that asserts no private-key bytes appear in the stored proposal record or in any log output the import path writes.
+- Optional key and password rows are an explicit per-row declaration by the tool; pin a test that fails if a row the tool marks **required** can be left empty on the card.
+- `ui/src/app/core/screen-actions.ts` is contended (Epic 7 +15): read `git show origin/OCU-1-epic7:ui/src/app/core/screen-actions.ts` immediately before editing, add the single "Import" label entry away from Epic 7's append, list it under `footprint_extensions:`.
+- The X.509-list Delete row action moved to Story 9.5 as DW-1541 (delete is in this story's title only); this story ships `security.x509.delete`.
+
 ### Acceptance Criteria
 
 - **AC1.** Given the import form, when it renders, then it takes Alias, Certificate, an **optional** Private key in a masked field (password input with a labeled show/hide toggle, never pre-filled or echoed), Private key password, Authorized users and Intended peers, in that order, and no file path.
@@ -273,6 +280,8 @@ Before editing a ⚠ file, run `git fetch origin && git show origin/OCU-1-epic7:
 - **AC7 (DW-1456).** Given a name the registry's confirm-channel validator admits as a settable secret, when a tool's descriptor declares it, then `Write.FieldRows` no longer advertises it. A spelling the consumer never produces (`OwnerList[]`) is refused by the validator.
 
 ## Spec Change Log
+
+- 2026-09-23, spec gate (orchestrator rulings): AD-27's second case approved and written (verified first on the throwaway); the X.509-list row action moved to Story 9.5 (DW-1541); `screen-actions.ts` contended for one entry; optional secret rows agreed as an explicit declaration.
 
 ## Review Triage Log
 
@@ -311,11 +320,11 @@ The vendor source was read on `ocupilot-slot-b`. The probes ran over HTTP on `oc
   - `%OnBeforeSave` writes the vendor's own `X509CredentialsChange` audit row, with the key and certificate redacted (AD-15's paired record).
 - **OcuPilot's own use.** No installer step creates or uses an X.509 credential. `OcuPilotDemoCert` is opt-in fixture data (AD-25), so no AD-10 refusal applies to this type.
 
-### SPINE DECISION NEEDED: the import's content path
+### Ruled: the import's content path (AD-27's second case)
 
 The vendor POST can carry certificate and key only as server file paths. AD-21 forbids a caller from naming one.
 
-**Recommended:** a second named AD-27 case. `Security.X509Credential` `POST` is completed through `%SYS.X509Credentials` in `%SYS`:
+**Ruled 2026-09-23 (orchestrator), written into AD-27:** a second named AD-27 case. The lead verified it first on `ocupilot-b-ci`: a certificate and key set as content through `%SYS.X509Credentials` saved, the admin API's list read it back with `HasPrivateKey` true and no key bytes, and its `DELETE` removed it. `Security.X509Credential` `POST` is completed through `%SYS.X509Credentials` in `%SYS`:
 
 - under the same `%Admin_Secure` gate;
 - from the content fields `Certificate`, `PrivateKey` and `PrivateKeyPassword`;
@@ -325,15 +334,15 @@ Nothing above the port knows. **Rejected:** staging the content in a port-owned 
 
 Wording for AD-27's last bullet: "The second case: `Security.X509Credential` `POST`, whose template names only server file paths for the certificate and key (AD-21); the port completes the import from content through `%SYS.X509Credentials`."
 
-### Needs the lead: optional secrets on the card
+### Ruled: optional secrets on the card
 
 The card requires every masked field filled (`secretsFilled`), so an agent import could not leave out the key.
 
-**Recommended:** composed secret rows marked `optional` by the tool (`Mint`, `turn.ts`, `proposal-view.ts`, `proposal-card.ts`, all small and off Epic 7's hunks).
+**Ruled (lead, orchestrator agreed):** composed secret rows marked `optional` by the tool as an explicit declaration, never a relaxed check (`Mint`, `turn.ts`, `proposal-view.ts`, `proposal-card.ts`, all small and off Epic 7's hunks).
 
 **Alternative, a narrowing:** the agent import takes the certificate only, and a key is imported from the screen.
 
-### Pending the lead: the X.509-list row action
+### Moved to Story 9.5 (DW-1541): the X.509-list row action
 
 This story ships `security.x509.delete` as the agent's confirmed tool, and no row action. Edit needs none, because the name cell opens `security/x509/edit/<alias>` once `X509Form` exists (`editorScreenFor`).
 

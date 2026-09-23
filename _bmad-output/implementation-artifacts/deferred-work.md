@@ -6182,3 +6182,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-4-the-resource-editor.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Prohibited.User now answers five codes; both files are contended with Epic 7, whose version still references FIELDESCALATIONROLES (Prohibited.cls e7 :332, :589) and edits the UserUpdate header's hunk.
 - 2026-09-23T10:37:18Z status=wontfix-accepted owner=8-4-the-resource-editor by=cr note=reopen_if=after the Epic 7 merge, FIELDESCALATIONROLES has no reference or the header still says six refusals
+
+### DW-1541: The X.509-list Delete row action (Story 8.5's screen delete): SCREENACTIONS on the delete tool, rowActions on the X.509 list, the typed-name confirmation, on AD-53's route
+- source: spec-8-5-x-509-import-edit-and-delete.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: AD-53's row-action route exists only on OCU-1-epic7 until both epics merge; 8.5 ships the agent's security.x509.delete. Delete is in 8.5's title only, not an AC.
+- 2026-09-23T11:02:04Z status=routed owner=9-5-the-ssl-tls-editor by=orchestrator note=orchestrator ruling 2026-09-23, the 8.3/8.4 precedent (DW-1513, DW-1528)
