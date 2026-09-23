@@ -4584,7 +4584,7 @@ So that the "devices" the contest names is editable, not just readable.
 
 - **Given** a device is created, edited or deleted
 - **When** the write completes
-- **Then** the list reflects it without a manual refresh, and delete confirms by name.
+- **Then** the list reflects it without a manual refresh, and delete confirms by name. [AMENDED 2026-09-23, orchestrator: the screen's Delete row action follows Epic 7's merge on AD-53's route -- DW-1562; the agent's delete ships here]
 
 ### Story 8.9: Plain IRIS Community verification
 

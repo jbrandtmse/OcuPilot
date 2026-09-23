@@ -6249,3 +6249,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-6-the-wallet-secret-form.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: EXPERIENCE.md :365 says the Secrets empty state's second line is the Web applications row's; WalletSecretList now declares emptyNextKey "" and emptyAgentKey walletSecretListEmptyAgent (row :413). Row :362 (X.509) has the same drift from 8.5. EXPERIENCE.md is shared-append for this story, so the existing rows were not edited.
 - 2026-09-23T16:30:05Z status=wontfix-accepted owner=8-6-the-wallet-secret-form by=cr note=reopen_if=a UX or strings review cites EXPERIENCE.md :362/:365 against the descriptors' empty keys
+
+### DW-1562: The Devices-list Delete row action with its typed-name confirmation (Story 8.8 AC2's screen delete)
+- source: spec-8-8-the-device-editor.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Needs AD-53's row-action route and typed-name dialog, which exist only on OCU-1-epic7 and arrive when Epic 7 merges; 8.8 ships the agent's osmgmt.devices.delete; Epic 9 has no device story
+- 2026-09-23T16:50:05Z status=routed owner=range-end-cleanup by=orchestrator note=orchestrator ruling 2026-09-23 (a); the orchestrator may re-route it to a story built after Epic 7's merge

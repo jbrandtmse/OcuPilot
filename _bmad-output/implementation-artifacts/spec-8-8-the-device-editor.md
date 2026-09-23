@@ -248,6 +248,10 @@ These files are in Epic 7's diff and not on the contended list:
   - The Needs-the-lead files.
   - `screen-mirror.test.mjs`, `app.routes.spec.ts` and `devices.browser-spec.mjs`, if they redden.
 
+### Orchestrator ruling at the spec gate, 2026-09-23
+
+- [ ] [Lead] **Screen delete, option (a).** Ship `osmgmt.devices.delete` (agent-only, destructive, verified) with a test that fails when its refusal of an unknown alias is removed. The Devices-list Delete row action is DW-1562 (range-end cleanup; it needs AD-53's route and typed-name dialog from Epic 7's merge); build no row action and no in-editor Delete here. `epics.md` 8.8 AC2 carries the `[AMENDED]` marker. The roster-rule files (`Test/Wire.cls`, `Test/WireSecurityRead.cls`, `navigation.test.mjs`, regenerated `screens.generated.ts`) are covered; the DW-1166 re-base is pre-approved if the bundle passes 1261kB.
+
 ### Acceptance Criteria
 
 - **AC1.** Given the device editor, when it renders, then it shows the classic device page's nine fields in classic order. The eight settable ones are derived from `FieldLists` `Device.Standard`, so `field-lists.mjs --check` and `DerivedFields` fail when the instance's template disagrees.
@@ -260,6 +264,8 @@ These files are in Epic 7's diff and not on the contended list:
 - **AC6.** Given the form holds a change, when any navigation leaves, the agent's included, then the shared leave question asks first.
 
 ## Spec Change Log
+
+- 2026-09-23, spec gate: the screen's device delete went to DW-1562 (orchestrator ruling (a)); the agent delete ships here.
 
 ## Review Triage Log
 

@@ -185,3 +185,8 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T16:48:42Z	Story 8.6	ci_resolved	story=8.6 run=35889513600 head=3947bc12 result=in_progress_ resolved_at=plan_return(provisional)
 2026-09-23T16:48:42Z	Story 8.8	story_created	spawn_at=2026-09-23T16:34:58Z model=opus path=_bmad-output/implementation-artifacts/spec-8-8-the-device-editor.md build_status=ready-for-dev spec_bytes=30700 warnings=oversized epic_context=reused
 2026-09-23T16:48:42Z	Story 8.8	plan_clarification_requested	items=screen_device_delete(options:a_ledger_row_action_after_Epic7_merge,b_editor_Delete_own_route+typed_name,c_wait_for_Epic7) roster_rule_covered=Wire.cls,WireSecurityRead.cls,navigation.test.mjs,screens.generated.ts budget=pre-approved
+2026-09-23T16:53:45Z	Epic 8	runner_resumed	by=orchestrator_answer ruling=8.8_option_a(agent_delete_here;row_action_DW-1562_range-end-cleanup),8.9_ci_job_guidance
+2026-09-23T16:53:45Z	Epic 8	amendment	file=epics.md story=8.8 ac=2 tier=2_authorised_by_orchestrator ledger=DW-1562
+2026-09-23T16:53:45Z	Story 8.8	spec_validated	service_introducing=true integration_ac=present(AC2_list_without_refresh) adr_constrained_acs=AD-3,AD-4,AD-10,AD-51,AD-54,AD-55 decision_dependency=none sections_created=none owned_ledger=none mutates_shared_runtime=true throwaway=ocupilot-b-ci filed=DW-1562 model=claude-opus-5-5-1m
+2026-09-23T16:53:45Z	Story 8.6	ci_resolved	story=8.6 run=35889513600 head=3947bc12 result=success resolved_at=next_implement(rule28)
+2026-09-23T16:53:45Z	Story 8.8	stage_spawned	stage=implement spawn_at=2026-09-23T16:53:45Z model=opus agent_name=8-8-device-implement-1 cycle_iteration=1
