@@ -134,3 +134,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T10:03:42Z	Story 7.4	ci_resolved	story=7.4 run=35844424602 result=failure resolved_at=cr head=d757343a job=browser tests=auditing-screen:95,oauth:268,security:227,ssl:202 attribution=this_story
 2026-09-23T10:03:42Z	Story 7.4	rework_opened	cycle_iteration=3 iteration=1 trigger=ci items=CI_side-bar_rosters_in_three_browser_specs,CI_auditing-screen_list_renders_0_rows_on_fresh_throwaway
 2026-09-23T10:04:16Z	Story 7.4	stage_spawned	stage=implement spawn_at=2026-09-23T10:04:16Z model=opus agent_name=7-4-turn-auditing-on-and-off-from-the-screen-implement-3 cycle_iteration=3
+2026-09-23T10:21:26Z	Story 7.4	dev_complete	spawn_at=2026-09-23T10:04:16Z model=opus build_sha=013e165b baseline_revision=be93a50 review_loop_iteration=0 followup_review_recommended=false deferred=0 cycle_iteration=3 tiers=browser_4_specs_13/13,tools_1327/0,components_879/0
+2026-09-23T10:21:26Z	Story 7.4	pushed	sha=013e165b ci=pending run=35848290095
+2026-09-23T10:21:26Z	Story 7.4	stage_spawned	stage=code-review spawn_at=2026-09-23T10:21:26Z model=opus agent_name=7-4-turn-auditing-on-and-off-from-the-screen-code-review-2 cycle_iteration=3
