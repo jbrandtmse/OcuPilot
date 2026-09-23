@@ -166,3 +166,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T12:57:51Z	Epic 7	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@b153eac6 merge=eb170c27 files=4_docs(epics.md_Epic15_triage) conflict=sprint-status_last_updated_resolved_ours+generate validate=true
 2026-09-23T12:59:07Z	Epic 7	epic_context_compiled	sha=e9a1172e reason=planning_artifact_newer model=opus
 2026-09-23T12:59:07Z	Story 7.6	stage_spawned	stage=plan spawn_at=2026-09-23T12:59:07Z model=opus agent_name=7-6-run-suspend-resume-and-delete-a-task-plan-1 cycle_iteration=1
+2026-09-23T13:14:24Z	Story 7.6	plan_clarification_requested	stage=plan spawn_at=2026-09-23T12:59:07Z model=opus condition=intent_gap items=Q1_toast_cross-epic,Q2_status_field(lead:tier-1),Q3_typed_name(lead:task_Name),Q4_system-task_delete_AD-10,Q5_DW-1463_agent_reply,Q6_verification_reading(lead:INFO_reads) spec_status=blocked
+2026-09-23T13:14:24Z	Epic 7	runner_clarification_raised	story=7.6 items=Q1,Q4,Q5
