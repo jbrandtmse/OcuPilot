@@ -91,6 +91,17 @@ Parameter SHELLSIDEBAROPEN As %String = "sideBarOpen";
 /// px.</p>
 Parameter SHELLPANELWIDTH As %String = "panelWidth";
 
+/// <p>The <parameter>KINDSHELL</parameter> member holding the user's theme, one of
+/// <parameter>THEMELIGHT</parameter> and <parameter>THEMEDARK</parameter> (Story 15.6). No row
+/// means light, the published default.</p>
+Parameter SHELLTHEME As %String = "theme";
+
+/// <p>The <parameter>SHELLTHEME</parameter> value for the light theme.</p>
+Parameter THEMELIGHT As %String = "light";
+
+/// <p>The <parameter>SHELLTHEME</parameter> value for the dark theme.</p>
+Parameter THEMEDARK As %String = "dark";
+
 /// <p>The longest <property>Value</property> this store holds, equal to that property's own
 /// <code>MAXLEN</code>, which a property cannot read from a parameter.
 /// <class>OcuPilot.Test.PrefState</class> asserts the two are the same number, the idiom
@@ -312,12 +323,22 @@ ClassMethod GuardedSetValue(pUserName As %String, pKind As %String, pName As %St
 }
 
 /// <p>Whether <var>pName</var> is one of the closed set of shell members
-/// <parameter>KINDSHELL</parameter> keys by. Declared here beside the two member names rather than
+/// <parameter>KINDSHELL</parameter> keys by. Declared here beside the member names rather than
 /// in the handler, so the store and the route read one vocabulary.</p>
 ClassMethod IsShellMember(pName As %String) As %Boolean
 {
     If pName = ..#SHELLSIDEBAROPEN Quit 1
     If pName = ..#SHELLPANELWIDTH Quit 1
+    If pName = ..#SHELLTHEME Quit 1
+    Quit 0
+}
+
+/// <p>Whether <var>pValue</var> is one of the two values <parameter>SHELLTHEME</parameter>
+/// holds. Declared beside the member so the store and the route read one vocabulary.</p>
+ClassMethod IsThemeValue(pValue As %String) As %Boolean
+{
+    If pValue = ..#THEMELIGHT Quit 1
+    If pValue = ..#THEMEDARK Quit 1
     Quit 0
 }
 

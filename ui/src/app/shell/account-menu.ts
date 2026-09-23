@@ -12,6 +12,7 @@ import {
 import { OverlayStack } from '../core/overlay-stack';
 import { Session } from '../core/session';
 import { STRINGS } from '../core/strings';
+import { ThemeState } from '../core/theme';
 import { AboutDialog } from './about-dialog';
 import { ChangePasswordDialog } from './change-password-dialog';
 
@@ -23,9 +24,14 @@ export const ACCOUNT_MENU_OVERLAY_ID = 'account-menu';
  * `Session.signOut()` (EXPERIENCE.md "status-bar user segment", "`{spacing.status-bar-height}` band", Session state 8).
  *
  * A trigger carrying the signed-in user's name and a down triangle, and a menu behind it holding
- * Change password and Sign out. Change password opens the shell's one dialog over two masked
- * fields (EXPERIENCE.md "Dialogs exist only for: set"); sign-out has no confirmation step, because
- * that enumeration does not list one.
+ * About, Change password, Dark theme and Sign out. Change password opens the shell's one dialog
+ * over two masked fields (EXPERIENCE.md "Dialogs exist only for: set"); sign-out has no
+ * confirmation step, because that enumeration does not list one.
+ *
+ * **Dark theme is a `menuitemcheckbox`** (Story 15.6) whose `aria-checked` mirrors `ThemeState`,
+ * so its state is the rendered theme. Activating it flips the theme and leaves the menu open with
+ * focus on the item, the way a checkbox item answers; the choice is remembered on the instance by
+ * the store, never here.
  *
  * **It is the status bar's user segment** (DESIGN.md `:1021`) and the band's only
  * interactive element. Story 1.7 mounted it directly in `app.ts` because the band did not
@@ -35,8 +41,8 @@ export const ACCOUNT_MENU_OVERLAY_ID = 'account-menu';
  * `tabindex="-1"` and the container owns the arrow model: ArrowDown and ArrowUp move with
  * wrap-around, Home and End jump to the ends, all resolved off `document.activeElement`. It is the
  * house model, copied from `data-table.ts`'s row menu, which DESIGN.md `:1023` already styles this
- * menu as; and it is **n-item**, not two-item: Story 15.3 added About as a third, and a
- * fourth would need no keyboard work either. Escape closes the
+ * menu as; and it is **n-item**, over every `menuitem` and `menuitemcheckbox` the menu holds.
+ * Escape closes the
  * menu and returns focus to the trigger. The trigger is focused *before* the items are removed
  * from the DOM, because removing a control while it holds focus is banned outright
  * (EXPERIENCE.md, Interaction Primitives) -- and it is what makes the dialog's own focus return
@@ -74,6 +80,8 @@ export const ACCOUNT_MENU_OVERLAY_ID = 'account-menu';
   selector: 'app-account-menu',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [AboutDialog, ChangePasswordDialog],
+  // The Dark theme item's check mark sits at the item's trailing edge.
+  styles: ['.ocu-account-check { margin-left: auto; padding-left: var(--ocu-space-2); }'],
   host: {
     '(document:pointerdown)': 'onOutside($event)',
     '(document:focusin)': 'onOutside($event)',
@@ -122,6 +130,19 @@ export const ACCOUNT_MENU_OVERLAY_ID = 'account-menu';
           <button
             type="button"
             class="ocu-account-item"
+            role="menuitemcheckbox"
+            tabindex="-1"
+            [attr.aria-checked]="dark"
+            (click)="toggleTheme($event)"
+          >
+            {{ STRINGS.accountDarkTheme }}
+            @if (dark) {
+              <span class="ocu-account-check" aria-hidden="true">{{ checkGlyph }}</span>
+            }
+          </button>
+          <button
+            type="button"
+            class="ocu-account-item"
             role="menuitem"
             tabindex="-1"
             (click)="chooseSignOut()"
@@ -142,6 +163,7 @@ export const ACCOUNT_MENU_OVERLAY_ID = 'account-menu';
 export class AccountMenu {
   private readonly session = inject(Session);
   private readonly overlays = inject(OverlayStack);
+  private readonly themeState = inject(ThemeState);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
   protected readonly STRINGS = STRINGS;
@@ -151,6 +173,9 @@ export class AccountMenu {
    * DESIGN.md `:1021`), written as its escape so no non-ASCII byte enters a source file.
    */
   protected readonly caretGlyph = '\u25BE';
+
+  /** The check mark the Dark theme item draws while it is checked; `aria-checked` is what is announced. */
+  protected readonly checkGlyph = '\u2713';
 
   private readonly triggerEl = viewChild.required<ElementRef<HTMLButtonElement>>('trigger');
 
@@ -169,12 +194,19 @@ export class AccountMenu {
   /** Mirrors the framework-free session's user name into the reactive graph. */
   protected readonly userName = signal(this.session.userName());
 
+  /** Mirrors the framework-free theme store, which the checkbox item's `aria-checked` reads. */
+  private readonly darkFlag = signal(this.themeState.isDark());
+
   constructor() {
     const stop = this.session.subscribe(() => {
       this.userName.set(this.session.userName());
     });
+    const stopTheme = this.themeState.subscribe(() => {
+      this.darkFlag.set(this.themeState.isDark());
+    });
     inject(DestroyRef).onDestroy(() => {
       stop();
+      stopTheme();
       this.overlays.remove(ACCOUNT_MENU_OVERLAY_ID);
     });
 
@@ -198,6 +230,11 @@ export class AccountMenu {
 
   protected get aboutOpen(): boolean {
     return this.aboutFlag();
+  }
+
+  /** Whether the dark theme is on screen: the checkbox item's state. */
+  protected get dark(): boolean {
+    return this.darkFlag();
   }
 
   /** The polite region's text: empty until a change lands, and the published sentence after. */
@@ -227,7 +264,7 @@ export class AccountMenu {
 
   /**
    * The house menu keyboard model (`data-table.ts`), resolved off `document.activeElement` and
-   * over however many items the menu holds -- three today, and n by construction.
+   * over however many items the menu holds -- four today, and n by construction.
    */
   protected onMenuKeydown(event: KeyboardEvent): void {
     const items = this.menuButtons();
@@ -285,6 +322,16 @@ export class AccountMenu {
     this.aboutFlag.set(true);
   }
 
+  /**
+   * Flip the theme and keep the menu open, with focus on the item that was activated -- a pointer
+   * press does not move focus here (`onMenuMouseDown`), so it is placed explicitly.
+   */
+  protected toggleTheme(event: Event): void {
+    this.themeState.toggle();
+    const item = event.currentTarget;
+    if (item instanceof HTMLElement) item.focus();
+  }
+
   /** Every dismissal path for About. Focus return is the dialog's. */
   protected onAboutClosed(): void {
     this.aboutFlag.set(false);
@@ -313,6 +360,8 @@ export class AccountMenu {
 
   private menuButtons(): HTMLElement[] {
     const panel = this.panelEl()?.nativeElement;
-    return panel === undefined ? [] : [...panel.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    return panel === undefined
+      ? []
+      : [...panel.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemcheckbox"]')];
   }
 }

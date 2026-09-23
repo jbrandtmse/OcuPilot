@@ -518,3 +518,30 @@ test('writes to different keys do not queue behind one another', async () => {
   void store.setValue(VIEW_KIND, 'logs/alerts', '{}');
   assert.deepEqual(sent, ['shell:sideBarOpen', 'shell:panelWidth', 'view:logs/alerts']);
 });
+
+// --- Story 15.6: the shell member roster, held equal to the store's own ------------------------
+//
+// Mutation (Rule 19): rename `SHELL_THEME`'s value, or delete `Parameter SHELLTHEME` from
+// `Kernel/State/Pref.cls` -> this goes red naming the member on the side that lacks it.
+
+test('the client names exactly the shell members and theme values Pref.cls declares, in both directions', async () => {
+  const { readFileSync } = await import('node:fs');
+  const client = await import(join(uiRoot, 'src', 'app', 'core', 'account-preferences.ts'));
+  const prefCls = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'State', 'Pref.cls'), 'utf8');
+  const server = (prefix) =>
+    Object.fromEntries(
+      [...prefCls.matchAll(new RegExp(`^Parameter (${prefix}[A-Z]+) As %String = "([^"]*)";`, 'gm'))].map((m) => [m[1], m[2]])
+    );
+  const clientSide = (prefix, skip) =>
+    Object.fromEntries(
+      Object.entries(client)
+        .filter(([name, value]) => name.startsWith(prefix) && !skip.includes(name) && typeof value === 'string')
+        .map(([name, value]) => [name.replace(/_/g, ''), value])
+    );
+  const members = server('SHELL');
+  assert.ok(Object.keys(members).length >= 3, `Pref.cls declares the shell members: ${JSON.stringify(members)}`);
+  assert.deepEqual(clientSide('SHELL_', ['SHELL_KIND']), members, 'every SHELL_* member on one side is on the other, with the same wire value');
+  const themes = server('THEME');
+  assert.deepEqual(themes, { THEMELIGHT: 'light', THEMEDARK: 'dark' }, 'Pref.cls declares the two theme values');
+  assert.deepEqual(clientSide('THEME_', []), themes, 'and the client names the same two');
+});

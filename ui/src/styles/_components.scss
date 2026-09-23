@@ -1861,7 +1861,7 @@ app-server-flag {
   min-width: 0;
   height: 18px;
   padding: 0 var(--ocu-space-2);
-  border: 1px solid transparent;
+  border: 1px solid var(--ocu-server-flag-edge);
   border-radius: var(--ocu-radius-full);
   background: var(--ocu-restrained-container);
   color: var(--ocu-restrained);
@@ -1911,13 +1911,6 @@ app-server-flag[data-unbounded] .ocu-server-flag {
 .ocu-server-flag[data-flag='development'] {
   background: var(--ocu-server-flag-development-container);
   color: var(--ocu-server-flag-development);
-}
-
-// In dark mode the pill gains a 1px `on-shell` at 20% edge: the Live container is 1.15:1 on
-// `shell-dark`, so without it the pill's outline vanishes into the band (the word inside
-// stays 6.72:1). The palette flip itself is polish week's, for every component in this file.
-:root.ocu-theme-dark .ocu-server-flag {
-  border-color: color-mix(in srgb, var(--ocu-on-shell-dark) 20%, transparent);
 }
 
 // --- Home: the area tiles and the instance line (Story 1.12) --------------------------------

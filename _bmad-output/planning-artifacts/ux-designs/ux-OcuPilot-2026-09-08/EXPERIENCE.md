@@ -421,6 +421,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "change this device" | the action slot the request-refused pattern resolves - "You need <resource> to <action>." - when the device editor's Save of an existing device is refused for privilege (Story 8.8); a create's refusal resolves "create a device" |
 | "Environment variable" · "The key is read from this variable on the instance’s host. Set it there; this form never takes the key." | the Definition form in env mode (Story 8.9, FR-26): where the namespace cannot reach the credentials rung, the environment-variable field and its caption take the API key field's place, and the form sends `credType` `env`. The operator sets the variable on the host; the form holds no key |
 | "OcuPilot needs one agent definition before the panel can help. Anthropic is selected — set the environment variable named below on the instance’s host and press Test connection. You can skip this and browse." | gate landing banner above the Definition form in env mode (Story 8.9): the gate banner's wording where the form offers the environment-variable field instead of the API key |
+| "Dark theme" | the account menu's theme toggle (Story 15.6, FR-73): a checkbox item beside Change password in the status bar's account menu (`:81`, `:438`), checked when the dark theme is on screen. The choice is remembered per user on the instance; light is the default |
 
 ## Component Patterns
 

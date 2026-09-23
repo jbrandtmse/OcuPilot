@@ -11,6 +11,7 @@ import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { Session, type SessionState } from '../core/session';
 import { STRINGS } from '../core/strings';
+import { ThemeState } from '../core/theme';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { StatusBar } from './status-bar';
 import { About } from '../core/about';
@@ -203,6 +204,7 @@ describe('the status bar', () => {
         },
         { provide: RefreshService, useValue: refresh },
         { provide: OverlayStack, useValue: new OverlayStack() },
+        { provide: ThemeState, useValue: new ThemeState({ account: stubAccountPreferences(), root: document.createElement('div') }) },
       ],
     });
     fixture = TestBed.createComponent(StatusBar);

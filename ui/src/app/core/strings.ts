@@ -1494,6 +1494,10 @@ export const STRINGS = {
   agentGateLandingBannerEnv:
     'OcuPilot needs one agent definition before the panel can help. Anthropic is selected \u2014 set the environment variable named below on the instance\u2019s host and press Test connection. You can skip this and browse.',
 
+  // Story 15.6: the account menu's theme toggle.
+  /** EXPERIENCE.md:424 */
+  accountDarkTheme: 'Dark theme',
+
 } as const;
 
 /**

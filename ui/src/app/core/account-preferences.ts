@@ -50,6 +50,15 @@ export const SHELL_SIDE_BAR_OPEN = 'sideBarOpen';
 /** The `shell` member holding the agent co-pilot panel's width in px. */
 export const SHELL_PANEL_WIDTH = 'panelWidth';
 
+/** The `shell` member holding the user's theme, `THEME_LIGHT` or `THEME_DARK` (Story 15.6). */
+export const SHELL_THEME = 'theme';
+
+/** The `SHELL_THEME` value for the light theme, the published default. */
+export const THEME_LIGHT = 'light';
+
+/** The `SHELL_THEME` value for the dark theme. */
+export const THEME_DARK = 'dark';
+
 /** The two membership lists, as the wire names them. */
 export const PREFERENCE_MEMBERSHIP_KINDS = [FAVORITE_KIND, RECENT_KIND] as const;
 

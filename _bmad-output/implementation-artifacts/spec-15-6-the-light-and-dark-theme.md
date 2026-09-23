@@ -2,14 +2,29 @@
 title: 'Story 15.6: The light and dark theme'
 type: 'feature'
 created: '2026-09-23'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '75be3d16452efc768d87c8321f2e75b6bb1d4c2c'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-15-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The structural baseline was taken on local Chrome against ocupilot-b-ci; whether its 190 keys reproduce in CI's browser job is unverified.
+    evidence: |-
+      Overflow keys trip at more than 1px and several recorded overshoots are 4-6px; fonts are vendored, which narrows the gap (inference). Settled by the first CI browser run on this commit: zero fresh and zero stale keys.
+    location: >-
+      ui/browser/structural-baseline.json
+    severity: medium (unverified)
+  - summary: >-
+      The page ground paints no surface role: the content area shows the browser canvas (#fff in light, Chrome's dark canvas in dark) rather than surface / surface-dark.
+    evidence: |-
+      No rule sets a background on html, body or the shell content (body carries only margin: 0 in _components.scss); pre-existing in light, visible in dark after the flip. Fixing it is a new component or root rule, outside 15.6's token-substitution charter.
+    location: >-
+      ui/src/styles/_components.scss:605
+    severity: low
 ---
 
 <intent-contract>
@@ -170,6 +185,35 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-23 — Review pass
+
+- verdicts: 24 findings — high 0, medium 7, low 14, false 2, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` Toast link consumer never checked, only the root token (VG) — `theme.browser-spec.mjs` AC4 reads `.ocu-toast-action`'s computed color off its own scoped rule in both themes; mutation recorded.
+  - `[medium]` `[patch]` Server-flag dark edge not verified as rendered (VG) — AC3 case reads a planted `.ocu-server-flag`'s border in both themes against `on-shell-dark` at 20%; mutation recorded.
+  - `[low]` `[patch]` Pointer activation focus assertion pre-focused (VG) — toggle case now opens with focus on About, dispatches mousedown then click; mutation recorded.
+  - `[low]` `[patch]` n-item planted-item case removed (VG) — planted fifth-item case restored; mutation recorded.
+  - `[medium]` `[patch]` Token-sized minimum widths unpinned (VG) — `structural-baseline.test.mjs` asserts `componentMinimums()` finds `ocu-panel-send` and an icon-button class; mutation recorded.
+  - `[medium]` `[patch]` Unsettled visits do not fail the gate (VG) — walked-or-skipped case asserts `unsettled` empty; mutation recorded.
+  - `[false]` `[reject]` Gate stale test asserts nothing (VG R19) — stale-never-fails is the spec's decision; `compare`/`staleInstruction` are pinned in `structural-baseline.test.mjs` and the synthetic-stale mutation was observed.
+  - `[low]` `[reject]` `theme.test.mjs` unsettled-read seed is decorative (VG R19) — the `loaded()` guard is pinned by "dark is adopted once"; a cosmetic seed.
+  - `[low]` `[reject]` "adopted once" cannot catch removal of the `adopted` guard (VG R19) — the refused-write test pins it (re-adoption would flip back to light).
+  - `[low]` `[reject]` Sign-in test's dark seed unobservable (VG R19) — the row it asserts (no class, light scene) holds; the seed only documents the case.
+  - `[low]` `[patch]` Pointer-focus assertion vacuous (VG R19) — same root cause as the pointer-focus row; fixed there.
+  - `[medium]` `[patch]` Contrast detector never observed red in dark (VG R19) — liveness case plants #222 on the dark ground, reported in dark and not in light.
+  - `[low]` `[patch]` AC6 has no mutation line (VG) — DW-1388 record mutation applied and recorded.
+  - `[low]` `[patch]` AC4 mutations missing for dark-only check, caption remedy, toast consumer (VG) — each applied and recorded.
+  - `[low]` `[patch]` AC2 menu half has no mutation line (VG) — `aria-checked` mutation applied and recorded.
+  - `[medium]` `[patch]` Baseline test forbids the `dw` the lead fills (VG other) — accepts `null` or `DW-<n>`.
+  - `[medium]` `[patch]` Dark completeness proven on source text, not rendered surfaces (IA) — same root cause as the toast-consumer and server-flag rows; the two component-level remedies are now read as rendered.
+  - `[low]` `[reject]` Structural invariants run in light only, keys carry no theme (IA) — the dark scope changes color properties and `color-scheme` only; the spec's Viewports note fixes contrast-only in dark.
+  - `[false]` `[reject]` Baseline holds no name or contrast entry, 368 unmeasurable (IA) — both arms observed red (liveness plants in both themes, the `aria-label` mutation); unmeasurable is reported as the spec requires.
+  - `[maybe-false]` `[defer]` Baseline recorded on local Chrome may not reproduce in CI's browser job (IA) — settled by the first CI `browser` run on this commit.
+  - `[low]` `[reject]` Screen list from the working tree, bundle deployed separately (IA) — CI builds and deploys from one commit; locally the redeploy is the documented step.
+  - `[low]` `[reject]` `ocu-theme-dark` literal in `structural-walk.mjs` and `design-tokens.mjs` (IA) — outside `ui/src`; a rename fails the walk loudly.
+  - `[low]` `[reject]` Theme refusal display tested only below the page (IA) — the `fault()` surfaces are 15.5's and tested there; `theme.test.mjs` pins the path into `fault()`.
+  - `[low]` `[reject]` A toggle while the sign-in read is pending can be overridden by adoption (IA, inference) — needs a toggle inside the read's latency; the fix adds a branch.
+
 ## Design Notes
 
 **Governing ADs (Rule 6).** AD-50 (one `Kind`-discriminated store; the theme is a `shell` member and never browser storage), AD-49 (self-service write; no proposal), AD-19 (framework-free `core/`), AD-28 and AD-47 (the browser holds only the per-tab token pair), AD-5 (the registry is the single source; the walk reads `builtScreens()`), AD-12 and AD-39 (a published `reason` for the new code), AD-9 (`Kernel/State/Base` guarded save). Conventions rows: *Angular naming* (design tokens only), *Client asset homes*, *Concurrent writes*, *Error shape*, *Tests*.
@@ -266,7 +310,52 @@ This removes the last component-level dark selector.
 - AC5 and the gate Integration AC: remove `aria-label` from `.ocu-command-bar-filter`'s source (a temporary, reverted mutation — the file is Epic 7's) → the gate goes red naming the new key. Delete one real baseline entry → the gate goes red naming that key as fresh (the ratchet holds). Add a synthetic baseline entry whose defect does not exist (the "underlying defect removed" case) → the gate prints it as stale with its removal instruction and stays green. (lead edit at spec gate: the stale case needs an entry with no defect behind it, not a deleted entry)
 - Server: drop the new `ReasonForViolation` arm → `PreferencesWire`'s sentence case goes red.
 
+**Recorded at implement (2026-09-23, fresh `ocupilot-b-ci`).** Baseline taken once by `--write`: 47 declared, 46 walked, 0 skipped, 1 not built (`security/auditing`), 0 id-requiring unresolved, 368 text elements unmeasurable, 0 unsettled; 190 entries (overflow 46 at 1280 and 124 at 720, min-width 10 at each width, no name and no contrast entry in either theme). Determinism: two further gate runs on the same throwaway, each 0 fresh and 0 stale. Bundle: initial total 1,256,616 B (main 1,123,760 + styles 132,856), under `maximumWarning` 1261kB, so DW-1166 was not applied.
+
+**Mutations observed (implement stage; each reverted, tree byte-identical, bundle rebuilt and redeployed after each browser one):**
+
+- mutation: deleted `--ocu-shell: var(--ocu-shell-dark)` from the dark scope → `design-tokens.test.mjs` "the dark scope re-points every role…" red ("--ocu-shell … found 0") (AC1).
+- mutation: appended a `:root.ocu-theme-dark .ocu-server-flag` rule to `_components.scss` → `design-tokens.test.mjs` "ocu-theme-dark is named under ui/src only…" red naming `styles/_components.scss` (AC1).
+- mutation: `ThemeState.adoptRemembered` always adopts light → `theme.browser-spec.mjs` "AC2 and the theme Integration AC…" red (timeout waiting for the class in the new context) (AC2, theme IA).
+- mutation: `.ocu-rail-item:focus-visible` outline reads `--ocu-focus-ring` → `theme.browser-spec.mjs` "AC3…" red in light (`focusRing` rgb(18, 69, 111) vs rgb(156, 197, 234)) (AC3).
+- mutation: `--ocu-toast-link-dark: #6fd3dc` → `theme.browser-spec.mjs` "AC4…" red (`#6fd3dc` vs `#0b7080`) and `design-tokens.test.mjs` toast-link pin red (AC4).
+- mutation: removed `[attr.aria-label]` from `command-bar.ts`'s filter (temporary) → gate "no violation outside the baseline" red naming `…|name||app-command-bar>input.ocu-command-bar-filter` on every list route (AC5, gate IA).
+- mutation: deleted the baseline entry `/|overflow|720|app-status-bar>span.ocu-status-bar-connection[role=status]` → gate red naming that key as fresh; in the same run a synthetic `system/about|min-width|1280|app-probe>button.ocu-probe-synthetic` entry was printed as stale with its removal instruction and the stale test stayed green (AC5).
+- mutation: `urlFor` resolves no parent-scoped id → gate "every built screen is walked or skipped…" red naming the six `parentScope` screens (AC5, matrix row 10).
+- mutation: dropped the `PREFERENCESCHOICE` arm from `ReasonForViolation` (loaded into `ocupilot-b-ci`) → `PreferencesWire.TestTheValueRefusalsCarryTheirPublishedSentences` red on case 5's non-empty reason (server).
+- mutation: `[attr.aria-checked]` fixed to `false` → `account-menu.spec.ts` "the Dark theme item says whether the dark theme is on screen" red (AC2, menu half).
+- mutation: deleted `item.focus()` from `toggleTheme` → `account-menu.spec.ts` "activating Dark theme … keeps the menu open on the item" red, under a pointer activation (AC2).
+- mutation: `menuButtons()` sliced to four → `account-menu.spec.ts` planted-fifth-item case red.
+- mutation: `.ocu-toast-action` back to `var(--ocu-secondary-dark)` → `theme.browser-spec.mjs` AC4 red ("dark: the toast host's action link draws it") (AC4, consumer).
+- mutation: `.ocu-server-flag` border back to `transparent` → `theme.browser-spec.mjs` AC3 red ("dark: the server-flag pill draws on-shell-dark at 20%") (AC1/AC3 edge).
+- mutation: the keyboard-active caption remedy reads `--ocu-restrained` → `theme.browser-spec.mjs` AC4 red ("the remedy for the 4.497:1 dark pair is what renders") (AC4).
+- mutation: added a `contrast|dark` baseline entry with no light twin → `structural-baseline.test.mjs` "AC4: every dark contrast entry has a light twin" red (AC4).
+- mutation: deleted the DW-1388 `ownerReported` record → `structural-baseline.test.mjs` "every owner-reported finding is recorded" red (AC6).
+- mutation: dropped `panel-send-width` from `MIN_WIDTH_SOURCES.tokens` → `structural-baseline.test.mjs` "the token-sized minimum widths are found" red (AC5).
+- mutation: `settle` reports a settled visit as unsettled → gate "every built screen is walked or skipped…" red ("every visit settled before it was measured") (AC5).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** The dark scope re-points all 64 roles plus the non-role pairs with a dark side (`elevation-1..3`, new `toast-link`, new `server-flag-edge`); the last component-level dark selector is gone. `core/theme.ts` (`ThemeState`) sets the one root class from the `shell.theme` member, wired in `main.ts`/`app.ts` and toggled by a "Dark theme" `menuitemcheckbox` in the account menu. Server: `Pref.cls` `SHELLTHEME`/`IsThemeValue`, `Preferences.cls` refuses other values with 422 `PREFERENCES.CHOICE`, `Error.cls` appends the code, sentence and `ReasonForViolation` arm. DW-1337 gate: `structural-walk.mjs`, `structural-baseline.json`, `a11y-structural-invariants.browser-spec.mjs`.
+
+**Files.** Theme: `_tokens.scss`, `_theme.scss`, `_components.scss` (token substitution at `.ocu-server-flag`, dark rule deleted), `toast-host.ts` (token substitution), `core/theme.ts` (new), `core/account-preferences.ts`, `main.ts`, `app.ts`, `shell/account-menu.ts`, `core/strings.ts`, EXPERIENCE.md row `:424`. Server: `Kernel/State/Pref.cls`, `Api/Preferences.cls`, `Api/Error.cls`, `Test/PrefState.cls`, `Test/PreferencesWire.cls`. Tests: `design-tokens.mjs`/`.test.mjs`, `build-output.test.mjs`, `account-preferences.test.mjs`, `theme.test.mjs` (new), `structural-baseline.test.mjs` (new), `browser-reset.test.mjs` (exempt list), `account-menu.spec.ts`, and one `ThemeState` provider line each in `app.spec.ts`, `app.wire.spec.ts`, `app.gate-outlet.wire.spec.ts`, `status-bar.spec.ts`; browser: `theme.browser-spec.mjs`, the gate spec, the walk helper and baseline (new).
+
+**footprint_extensions** (none on Epic 7's list at `7c2c4a04`): the spec's list, plus `app.spec.ts`, `app.wire.spec.ts`, `app.gate-outlet.wire.spec.ts`, `status-bar.spec.ts`, `browser-reset.test.mjs`.
+
+**Review.** 24 findings (verification-gap and intent-alignment; blind-hunter and edge-case-hunter are not enabled here): patched 7 medium and 7 low (toast consumer and server-flag edge read as rendered, pointer-focus and planted-fifth-item cases, token-minimum roster, unsettled visits fail the gate, dark-contrast liveness, `dw` accepts a ledger id, missing mutation lines); 2 deferred to frontmatter (CI reproducibility of the baseline, maybe-false medium; page ground paints no surface role, low, pre-existing); 8 low and 2 false rejected with reasons in the triage log. Follow-up review recommended: **true** (7 medium patched) — the named unverified risk is whether the 190 baseline keys reproduce in CI's `browser` job.
+
+**Verification.**
+
+- Baseline: 190 entries (overflow 46 at 1280 and 124 at 720, min-width 10 at each; no name or contrast entry in either theme); 47 declared, 46 walked, 0 skipped, 1 not built (`security/auditing`), 368 unmeasurable, 0 unsettled. No dark-only contrast failure, so no Rule 5 halt. Determinism: 0 fresh / 0 stale on the two runs after the take and on three later gate runs on the same throwaway.
+- Bundle: initial 1,256,616 B, under `maximumWarning` 1261kB; DW-1166 not applied.
+- `npm run test:tools` 1353/1353 after patching; `npm run test:components` 931/931; `npm run build` prebuild checkers clean; `check-objectscript.py` 0 problems; `lint-docs.sh` 0 issues.
+- Throwaway `ocupilot-b-ci`: `PrefState` 17/17, `PreferencesWire` 10/10; `theme.browser-spec.mjs` + gate spec 13/13 after patches; smoke 47/47.
+- Full ObjectScript sweep, once, on `ocupilot-slot-b` after compiling all 696 classes (`ci-runner.mjs`, one class at a time): 206 classes, 1360 tests, 1312 passed, 48 failed — SQL over `%UnitTest_Result` (latest run per class, runs ≥ 452) agrees: 1360 / 1312 / 48. Failures are environmental: `EndpointCoverage` (static 503, known), `AgentConnection`, `AgentCredential`, `AgentViolation`, `AgentWire` (slot B answers `INSTALL.UNREADABLE`) and `TaskHistory` (demo task runs absent); all five non-known classes re-run green on the freshly installed throwaway (71/71). Slot-B smoke 45/47, failing only `shell`/`deeplink` (no bundle on slot B).
+- Every mutation listed under `## Verification` was applied, observed red and reverted; tree byte-identical after each.
+
+**Throwaway.** `ocupilot-b-ci` was brought up (down, then up for the baseline take) by this stage's handoff subagent and torn down by this stage before return.
+
+**Residual risks.** 92 of the 190 baseline entries are the panel resize handle's declared 4px straddle (`left: -4px`) and 77 are status-bar segments at 720 px, so the lead's one-ledger-item-per-entry harvest carries heavy duplication. The gate now fails on an unsettled visit (20 s budget), which a slow CI instance could trip. EXPERIENCE.md `:81` still says the theme toggle arrives "in polish week".

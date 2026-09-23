@@ -379,12 +379,27 @@ Method TestAValuePreferenceRoundTripsOverTheWire()
     Do $$$AssertEquals(..ValueFor(tAnswer, "shell", "name", tMember), "432", "keyed by name rather than by route")
     Do $$$AssertEquals(tAnswer.favorites.%Size(), 0, "and no membership list moved")
     Do $$$AssertEquals(tAnswer.recents.%Size(), 0, "on either kind")
+
+    Set tTheme = ##class(OcuPilot.Kernel.State.Pref).#SHELLTHEME
+    Set tSC = ..Call("POST", ..ValuePayload(tShell, "name", tTheme, "dark"), .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the theme is remembered: " _ tBody)
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(..ValueFor(tAnswer, "shell", "name", tTheme), "dark", "as the value it was set to")
+    Do $$$AssertEquals(..ValueFor(tAnswer, "shell", "name", tMember), "432", "beside the other shell member")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", ..#PREFERENCESPATH, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the read answers: " _ tBody)
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(..ValueFor(tAnswer, "shell", "name", tTheme), "dark", "and a later read answers it")
+    Set tSC = ..Call("POST", ..ValuePayload(tShell, "name", tTheme, "light"), .tStatus, .tBody, .tHeaders)
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(..ValueFor(tAnswer, "shell", "name", tTheme), "light", "and a second set replaces it")
 }
 
 /// <p><b>The three Story 15.5 refusals each answer 422 with a published sentence</b> (AD-39): a
-/// value that is empty or over-long, a shell member outside the closed set, and a screen-scoped
-/// value naming a route no built screen declares.</p>
-/// <p>Mutation: delete either arm added to
+/// value that is empty or over-long, a shell member outside the closed set, a screen-scoped
+/// value naming a route no built screen declares, and a theme outside its fixed set (Story
+/// 15.6).</p>
+/// <p>Mutation: delete any arm added to
 /// <method>OcuPilot.Api.Error.ReasonForViolation</method> -- the <code>reason</code> serializes
 /// empty and the matching leg goes red.</p>
 Method TestTheValueRefusalsCarryTheirPublishedSentences()
@@ -400,11 +415,12 @@ Method TestTheValueRefusalsCarryTheirPublishedSentences()
         Set tLong = tLong _ "x"
     }
 
-    Set tCases = 4
+    Set tCases = 5
     Set tCases(1) = $ListBuild(..ValuePayload(tView, "route", tRoute, ""), ##class(OcuPilot.Api.Error).#PREFERENCESVALUE, "value", ##class(OcuPilot.Api.Error).#REASONPREFERENCESVALUE)
     Set tCases(2) = $ListBuild(..ValuePayload(tView, "route", tRoute, tLong), ##class(OcuPilot.Api.Error).#PREFERENCESVALUE, "value", ##class(OcuPilot.Api.Error).#REASONPREFERENCESVALUE)
     Set tCases(3) = $ListBuild(..ValuePayload(tShell, "name", "anything", "1"), ##class(OcuPilot.Api.Error).#PREFERENCESNAME, "name", ##class(OcuPilot.Api.Error).#REASONPREFERENCESNAME)
     Set tCases(4) = $ListBuild(..ValuePayload(tView, "route", "no-such-area/no-such-screen", "1"), ##class(OcuPilot.Api.Error).#PREFERENCESROUTE, "route", ##class(OcuPilot.Api.Error).#REASONPREFERENCESROUTE)
+    Set tCases(5) = $ListBuild(..ValuePayload(tShell, "name", ##class(OcuPilot.Kernel.State.Pref).#SHELLTHEME, "purple"), ##class(OcuPilot.Api.Error).#PREFERENCESCHOICE, "value", ##class(OcuPilot.Api.Error).#REASONPREFERENCESCHOICE)
 
     For tI = 1:1:tCases {
         Set tSent = $List(tCases(tI), 1)
