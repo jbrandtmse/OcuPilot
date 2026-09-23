@@ -42,6 +42,8 @@ async function mount(
     listFault?: boolean;
     faultAfterPost?: boolean;
     postRefusal?: boolean;
+    systemRows?: unknown[];
+    refuseId?: string;
   } = {}
 ) {
   TestBed.resetTestingModule();
@@ -62,6 +64,16 @@ async function mount(
           detail: { failedPair: '%Admin_Secure:USE' },
         };
       }
+      if (init.method === 'POST' && options.refuseId !== undefined && JSON.parse(init.body ?? '{}').id === options.refuseId) {
+        return { kind: 'error', status: 400, code: 'TOOL.ARGUMENTS', reason: 'The request was refused.', detail: null };
+      }
+      if (init.method === 'POST' && path.includes('security.auditsystemevents')) {
+        return {
+          kind: 'ok',
+          status: 200,
+          body: { action: 'updated', target: { type: 'audit-event', scope: 'instance', id: JSON.parse(init.body ?? '{}').id } } as T,
+        };
+      }
       if (init.method === 'POST') {
         posted = true;
         enabled = JSON.parse(init.body ?? '{}').action === 'enable';
@@ -79,7 +91,7 @@ async function mount(
         return { kind: 'error', status: 500, code: 'PORT.FAULT', reason: null, detail: null };
       }
       const rows = path.includes('security.auditsystemevents')
-        ? SYSTEM_ROWS
+        ? (options.systemRows ?? SYSTEM_ROWS)
         : path.includes('security.audituserevents')
           ? userRows
           : (options.ownRows ?? [{ Enabled: enabled }]);
@@ -275,5 +287,82 @@ describe('the Auditing configuration page', () => {
     const { host } = await mount({ ownRows: [{}] });
     expect(control(host)).toBeNull();
     expect(host.querySelector('[data-auditing-status]')).toBeNull();
+  });
+
+  it('Story 7.11: a system or user audit event change re-reads the page, and an unrelated change does not', async () => {
+    // Mutation (Rule 19): subscribe to `auditing-configuration` alone -> the event-type reads stay flat.
+    const { fixture, calls } = await mount();
+    const bus = TestBed.inject(ChangeBus);
+    const reads = () => calls.filter((call) => call.method === 'GET').length;
+    for (const type of ['audit-event', 'audit-user-event']) {
+      const before = reads();
+      bus.publish({ kind: 'changed', type, scope: 'instance', id: 'x/y/z', action: 'updated' });
+      await settle(fixture);
+      expect(reads(), type).toBeGreaterThan(before);
+    }
+    const before = reads();
+    bus.publish({ kind: 'changed', type: 'task', scope: 'instance', id: '1', action: 'updated' });
+    await settle(fixture);
+    expect(reads()).toBe(before);
+  });
+
+  describe('Selective SQL auditing (Story 7.11)', () => {
+    const DYNAMIC_QUERY = '%System/%SQL/DynamicStatementQuery';
+    const XDBC_UTILITY = '%System/%SQL/XDBCStatementUtility';
+    const SQL_ROWS = [
+      ...SYSTEM_ROWS,
+      { EventName: DYNAMIC_QUERY, Enabled: true, Total: 0, Written: 0, Lost: 0 },
+      { EventName: XDBC_UTILITY, Enabled: false, Total: 0, Written: 0, Lost: 0 },
+    ];
+    const posts = (calls: { method: string; body: string }[]) =>
+      calls.filter((call) => call.method === 'POST').map((call) => JSON.parse(call.body));
+    const box = (host: HTMLElement, id: string) => host.querySelector(`[role="dialog"] input[data-event="${id}"]`) as HTMLInputElement;
+
+    it('opens from a button under System events and sends exactly the changed box through the list\u2019s own action', async () => {
+      // Mutation (Rule 19): send every box, not only the changed ones -> the POST list goes red.
+      const { fixture, host, calls } = await mount({ systemRows: SQL_ROWS });
+      const button = host.querySelector('[data-section="security/auditing/system-events"] [data-sql-wizard]') as HTMLButtonElement;
+      expect(button.textContent?.trim()).toBe(STRINGS.auditSqlWizardAction);
+      expect(host.querySelector('[data-section="security/auditing/user-events"] [data-sql-wizard]')).toBeNull();
+      button.click();
+      await settle(fixture);
+      expect(host.querySelector('[role="dialog"] .ocu-dialog-title')?.textContent?.trim()).toBe(STRINGS.auditSqlWizardAction);
+      expect(host.querySelectorAll('[role="dialog"] input[type="checkbox"]')).toHaveLength(2);
+      box(host, XDBC_UTILITY).click();
+      (host.querySelector('[role="dialog"] .ocu-button-primary') as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(host.querySelector('[role="dialog"]')).toBeNull();
+      expect(posts(calls)).toEqual([{ action: 'enable', id: XDBC_UTILITY }]);
+      expect(calls.filter((call) => call.method === 'POST')[0].path).toBe('/api/ocupilot/screens/security.auditsystemevents/action');
+    });
+
+    it('stops at the first refusal, states its reason with auditSqlWizardStopped, and reads the lists again', async () => {
+      // Mutation (Rule 19): drop the `break` in `onApplyWizard` -> the second change is sent and the
+      // POST list goes red.
+      const { fixture, host, calls } = await mount({ systemRows: SQL_ROWS, refuseId: DYNAMIC_QUERY });
+      (host.querySelector('[data-sql-wizard]') as HTMLButtonElement).click();
+      await settle(fixture);
+      box(host, DYNAMIC_QUERY).click();
+      box(host, XDBC_UTILITY).click();
+      const readsBefore = calls.filter((call) => call.method === 'GET').length;
+      (host.querySelector('[role="dialog"] .ocu-button-primary') as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(posts(calls)).toEqual([{ action: 'disable', id: DYNAMIC_QUERY }]);
+      expect(host.querySelector('.ocu-banner-warning[role="alert"]')?.textContent?.trim()).toBe(
+        `The request was refused. ${STRINGS.auditSqlWizardStopped}`
+      );
+      expect(calls.filter((call) => call.method === 'GET').length).toBeGreaterThan(readsBefore);
+    });
+
+    it('Cancel sends nothing', async () => {
+      const { fixture, host, calls } = await mount({ systemRows: SQL_ROWS });
+      (host.querySelector('[data-sql-wizard]') as HTMLButtonElement).click();
+      await settle(fixture);
+      box(host, XDBC_UTILITY).click();
+      (host.querySelector('[role="dialog"] .ocu-button-secondary') as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(host.querySelector('[role="dialog"]')).toBeNull();
+      expect(posts(calls)).toEqual([]);
+    });
   });
 });

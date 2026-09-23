@@ -16,6 +16,7 @@ import { RoleDialog } from './role-dialog';
 import { ScreenActionHandler } from './screen-action-handler';
 import { SetPasswordDialog } from './set-password-dialog';
 import { TypedNameDialog } from './typed-name-dialog';
+import { WarningDialog } from './warning-dialog';
 
 /** The screen this page renders and the store its table reads. */
 interface ListView {
@@ -57,7 +58,7 @@ interface ListView {
 @Component({
   selector: 'app-list-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DataTable, RoleDialog, SetPasswordDialog, TypedNameDialog],
+  imports: [DataTable, RoleDialog, SetPasswordDialog, TypedNameDialog, WarningDialog],
   template: `<section class="ocu-list-page">
     @if (bannerText) {
       <p [class]="bannerClass" role="status">
@@ -99,6 +100,14 @@ interface ListView {
         [target]="pending.target"
         [options]="pending.options"
         (submitted)="onSubmitRole($event)"
+        (cancelled)="onCancelDestructive()"
+      />
+    }
+    @if (pendingWarning; as pending) {
+      <app-warning-dialog
+        [verb]="pending.verb"
+        [consequence]="pending.consequence"
+        (confirmed)="onConfirmWarning()"
         (cancelled)="onCancelDestructive()"
       />
     }
@@ -269,6 +278,18 @@ export class ListPage {
   protected get pendingRole(): ReturnType<ScreenActionHandler['pending']> {
     const pending = this.pendingConfirm;
     return pending?.kind === 'role' ? pending : null;
+  }
+
+  /** The pending action when it waits on the warning dialog, or `null` (Story 7.11). */
+  protected get pendingWarning(): ReturnType<ScreenActionHandler['pending']> {
+    const pending = this.pendingConfirm;
+    return pending?.kind === 'warning' ? pending : null;
+  }
+
+  /** The warning was proceeded past: the handler sends the write it was standing in front of. */
+  protected onConfirmWarning(): void {
+    this.table()?.focusGrid();
+    this.screenActions.confirmPending();
   }
 
   /** The set-password dialog's value goes straight to the handler and is held nowhere here. */

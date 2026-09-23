@@ -929,7 +929,14 @@ test('screenForChange resolves the screen a change opens and the route that name
 
   // A type no built screen shows is not a fault: the toast still says what changed, with nothing
   // to open. Every declared type now has a built screen, so an undeclared type stands in for one.
-  assert.equal(screenForEntityType('audit-event')?.route, 'security/auditing/system-events', 'an audit event opens the first list that shows one');
+  // DW-1529: a system event and a user event are two types, so each change opens its own list.
+  assert.equal(screenForEntityType('audit-event')?.route, 'security/auditing/system-events', 'a system audit event opens the System events list');
+  assert.equal(screenForEntityType('audit-user-event')?.route, 'security/auditing/user-events', 'a user audit event opens the User events list');
+  assert.equal(
+    screenForChange({ type: 'audit-user-event', id: 'ocupilot/security/agentwrite' })?.screen.route,
+    'security/auditing/user-events',
+    "a user event's change toast opens the User events list"
+  );
   assert.equal(screenForEntityType('not-an-entity-type'), null, 'no built screen shows an undeclared type');
   assert.equal(screenForChange({ type: 'not-an-entity-type', id: 'x' }), null);
 

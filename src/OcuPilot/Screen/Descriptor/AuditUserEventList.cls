@@ -8,8 +8,13 @@
 /// <code>Total</code>, <code>Written</code> and <code>Lost</code> counters.</p>
 /// <p><b>The privilege set is the Auditing configuration's own</b>, <code>%Admin_Secure:USE</code>
 /// (the endpoint's <code>ResourcesOR()</code>) and <code>%DB_IRISSYS:READ</code> (AD-8).</p>
-/// <p>It declares no primary or row action, so its empty state names what to do next, and it does
-/// not refresh (AD-43). As a list archetype it links out to nothing (AD-44).</p>
+/// <p><b>Its row actions are Enable, Disable, Reset counters and Delete</b> (Story 7.11, AD-53),
+/// carried out by <class>OcuPilot.Screen.Tool.AuditUserEventUpdate</class>,
+/// <class>OcuPilot.Screen.Tool.AuditUserEventReset</class> and
+/// <class>OcuPilot.Screen.Tool.AuditUserEventDelete</class>, so its empty state invites the agent.
+/// Its entity type is <code>audit-user-event</code>, so a change to one of its rows routes here
+/// rather than to the system list (DW-1529). It does not refresh (AD-43). As a list archetype it
+/// links out to nothing (AD-44).</p>
 Class OcuPilot.Screen.Descriptor.AuditUserEventList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -25,13 +30,14 @@ XData Declaration
   "refreshes": false,
   "refreshRates": [],
   "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
-  "entityType": "audit-event",
+  "entityType": "audit-user-event",
+  "entityLabelKey": "auditDialogTitle",
   "secondaryEntityTypes": [],
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "composite", "parts": ["EventName"]},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "enable", "selfProtection": ""}, {"id": "disable", "selfProtection": ""}, {"id": "reset", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}],
   "context": {"fields": ["EventName", "Enabled", "Total", "Written", "Lost"], "secretFields": []},
   "emptyStateKey": "auditUserEventListEmpty",
   "commandAliases": [],
@@ -52,8 +58,8 @@ XData Declaration
       {"field": "Written", "labelKey": "auditEventColumnWritten", "kind": "number"},
       {"field": "Lost", "labelKey": "auditEventColumnLost", "kind": "number"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "auditUserEventListEmptyAgent"
   },
   "toolIdentifier": "security.audituserevents"
 }

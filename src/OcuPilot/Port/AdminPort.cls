@@ -205,7 +205,7 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// unknown id; <code>ResourcesOR()</code> answers <code>%Admin_Task</code> for
 /// <code>SUSPEND</code> and <code>%Admin_Task</code> or <code>%Admin_Operate</code> for
 /// <code>DELETE</code>.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE";
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -221,7 +221,7 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries whose vendor body spells a key differently
 /// from the name the rest of the product carries it under, as comma-separated
@@ -248,7 +248,34 @@ Parameter RENAMEDTYPES = "Security.User/CHANGEPWD=Password:NewPassword";
 /// <p><code>Task.CRUD</code>'s <code>SUSPEND</code> reads a body too, and answers 415 without one;
 /// its <code>LeaveInQueue</code> defaults to 1 when absent, and the port sends that default
 /// explicitly so the suspend a caller gets is the one written here (measured on this build).</p>
-Parameter CONSTANTBODIES = "Task.CRUD/RUN={""RunNow"":true};Task.CRUD/SUSPEND={""LeaveInQueue"":true}";
+/// <p><code>Security.Audit.Event</code>'s <code>CLEARCOUNT</code> requires a body and reads none of
+/// it, so the port sends <code>{}</code>.</p>
+Parameter CONSTANTBODIES = "Task.CRUD/RUN={""RunNow"":true};Task.CRUD/SUSPEND={""LeaveInQueue"":true};Security.Audit.Event/CLEARCOUNT={}";
+
+/// <p>The query parameters an endpoint reads as parts of one composite key, as comma-separated
+/// <code>&lt;endpoint&gt;/&lt;key&gt;=&lt;part&gt;:&lt;part&gt;...</code> entries.
+/// <method>Invoke</method> applies it to a copy of the query before it is seeded: the named key's
+/// value is split on <code>/</code> into the named parts, and a value that is not exactly one
+/// non-empty piece per part is answered 404 <code>PORT.NOTFOUND</code> without calling the
+/// vendor.</p>
+/// <p><b>It is a vendor wire fact</b> (AD-27). An audit event's row key is its
+/// <code>EventName</code>, <code>Source/Type/Name</code>, while
+/// <code>Security.Audit.Event</code>'s <code>GET</code>, <code>PUT</code>, <code>DELETE</code> and
+/// <code>CLEARCOUNT</code> each require <code>source</code>, <code>type</code> and
+/// <code>name</code>. <class>Security.Events</class> refuses a <code>/</code> in a name, so the
+/// split is unambiguous for every event the instance can hold.</p>
+/// <p><code>Security.Audit.Event/PUT</code>, <code>/DELETE</code> and <code>/CLEARCOUNT</code> are
+/// Story 7.11's (<class>OcuPilot.Screen.Tool.AuditEventUpdate</class>,
+/// <class>OcuPilot.Screen.Tool.AuditUserEventDelete</class>,
+/// <class>OcuPilot.Screen.Tool.AuditEventReset</class>). Read on this build: the endpoint overrides
+/// <code>Run</code>, <code>ResourcesOR()</code> is <code>%Admin_Secure</code>, and every type but
+/// <code>LIST</code> requires the <code>source</code>, <code>type</code> and <code>name</code> query
+/// parameters (<parameter>SPLITQUERIES</parameter>). <code>PUT</code> is an upsert that
+/// <code>Create</code>s an absent event; <code>DELETE</code> reads no body, answers 404 for an
+/// absent event and 409 for a system-defined one; <code>TYPECLEARCOUNT</code> is 10, its
+/// <code>NeedsRequestBody()</code> is true and <code>RunClearCount</code> ignores the body, so it is
+/// listed in <parameter>CONSTANTBODIES</parameter>.</p>
+Parameter SPLITQUERIES = "Security.Audit.Event/event=source:type:name";
 
 /// <p>The pair set the <b>backing query or class</b> of an endpoint requires, beyond the
 /// endpoint's own <code>ResourcesOR()</code> gate (AD-29). Comma-separated entries of the form
@@ -480,6 +507,8 @@ ClassMethod VerifyInstance(Output pVersion As %Integer, Output pDetail As %Strin
 /// <p><b>A <parameter>CONSTANTBODIES</parameter> pair takes no caller body.</b> Given none, it is
 /// sent the port's constant; given any body, an object or JSON text, it is refused the same way and
 /// the vendor is not called (AD-27, AD-51).</p>
+/// <p><b>A <parameter>SPLITQUERIES</parameter> key is split before the query is seeded</b>, and a
+/// malformed one is 404 <code>PORT.NOTFOUND</code> with no vendor call.</p>
 /// <p>Must not be called from an escalated frame (AD-9). The caller's namespace,
 /// <code>%request</code>, <code>%response</code> and <code>%session</code> are unchanged on
 /// return.</p>
@@ -514,6 +543,13 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Quit
         }
 
+        ; SPLITQUERIES: a composite key the vendor reads as several parameters is split on a copy,
+        ; so the caller's query keeps the product's one key. A malformed key names no target.
+        If '..SplitQuery(pEndpoint, .pQuery, .tQuery) {
+            Set tSC = ..Fail(pEndpoint, 404, $$$OK, .pHttpStatus, .pFault)
+            Quit
+        }
+
         ; CONSTANTBODIES: a vendor type whose body is a fixed wire fact takes it here, so no caller
         ; above the port composes it. A caller body for such a pair is a caller bug, refused before
         ; the vendor is reached rather than merged or replaced.
@@ -544,7 +580,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         ; RENAMEDTYPES: the vendor's own spelling of a body key, applied to a copy so the caller's
         ; body -- and whatever it records from it -- keeps the product's name.
         If $IsObject(pBody) Set pBody = ..Renamed(pEndpoint, pType, pBody)
-        Set tSeqSC = ..RunSequence(pEndpoint, tClass, tType, .pQuery, pBody, .tAnswer, .tHttp, .tLocation, ..HttpMethodFor(pEndpoint, pType))
+        Set tSeqSC = ..RunSequence(pEndpoint, tClass, tType, .tQuery, pBody, .tAnswer, .tHttp, .tLocation, ..HttpMethodFor(pEndpoint, pType))
         If $$$ISOK(tSeqSC) && (tHttp = 202) && (tLocation [ ..#ASYNCLOCATION) {
             Set tAnswer = ""
             Set tGuid = $Piece($Piece(tLocation, ..#ASYNCLOCATION, 2), "&", 1)
@@ -884,6 +920,39 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
 ClassMethod IsBodyless(pEndpoint As %String, pSuffix As %String) As %Boolean
 {
     Quit ''$ListFind($ListFromString(..#BODYLESSTYPES), pEndpoint _ "/" _ pSuffix)
+}
+
+/// <p>A copy of <var>pQuery</var> in <var>pSplit</var> with every key
+/// <parameter>SPLITQUERIES</parameter> declares for <var>pEndpoint</var> replaced by its parts.
+/// Answers 0 when such a key's value is not exactly one non-empty <code>/</code>-separated piece
+/// per part, and 1 otherwise; <var>pQuery</var> is never modified.</p>
+ClassMethod SplitQuery(pEndpoint As %String, ByRef pQuery, Output pSplit) As %Boolean
+{
+    Kill pSplit
+    Merge pSplit = pQuery
+    Set tWellFormed = 1
+    For tI = 1:1:$Length(..#SPLITQUERIES, ",") {
+        Set tEntry = $ZStrip($Piece(..#SPLITQUERIES, ",", tI), "<>W")
+        If $Piece(tEntry, "/", 1) '= pEndpoint Continue
+        Set tSpec = $Piece(tEntry, "/", 2, *)
+        Set tKey = $Piece(tSpec, "=", 1)
+        Set tParts = $Piece(tSpec, "=", 2, *)
+        If (tKey = "") || (tParts = "") || '$Data(pSplit(tKey)) Continue
+        Set tValue = pSplit(tKey)
+        If $Length(tValue, "/") '= $Length(tParts, ":") {
+            Set tWellFormed = 0
+            Quit
+        }
+        For tJ = 1:1:$Length(tParts, ":") {
+            If $Piece(tValue, "/", tJ) = "" Set tWellFormed = 0
+        }
+        If 'tWellFormed Quit
+        Kill pSplit(tKey)
+        For tJ = 1:1:$Length(tParts, ":") {
+            Set pSplit($Piece(tParts, ":", tJ)) = $Piece(tValue, "/", tJ)
+        }
+    }
+    Quit tWellFormed
 }
 
 /// <p>A new <class>%DynamicObject</class> holding the body <parameter>CONSTANTBODIES</parameter>

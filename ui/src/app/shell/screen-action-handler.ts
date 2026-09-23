@@ -1,5 +1,6 @@
 import { Injectable, Injector, inject, signal } from '@angular/core';
 
+import { AGENT_WRITE_EVENT } from '../core/agent-status';
 import { ApiService } from '../core/api';
 import { ChangeBus, type ChangeAction } from '../core/change-bus';
 import { splitCompositeId } from '../core/entity-id';
@@ -31,7 +32,9 @@ export const SCREEN_ACTION_PATH_SUFFIX = '/action';
  * whose Run, Suspend and Resume are sent at once and whose Delete types the task's name, and
  * Processes and Process details (Story 7.8), whose Suspend and Resume are sent at once and whose
  * Terminate types the pid, and the application error log (Story 7.10), whose one Delete names the
- * scope its target's composite id selects.
+ * scope its target's composite id selects, and the System events and User events lists (Story 7.11),
+ * whose Enable and Reset counters are sent at once, whose marker-event Disable warns first, and
+ * whose user-event Delete types the event's name.
  */
 export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WebAppList',
@@ -44,6 +47,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.ProcessList',
   'OcuPilot.Screen.Descriptor.ProcessDetails',
   'OcuPilot.Screen.Descriptor.LogErrorList',
+  'OcuPilot.Screen.Descriptor.AuditSystemEventList',
+  'OcuPilot.Screen.Descriptor.AuditUserEventList',
 ];
 
 /** The Users list's descriptor, whose row actions carry values (AD-56). */
@@ -58,6 +63,9 @@ const PROCESS_DETAILS = 'OcuPilot.Screen.Descriptor.ProcessDetails';
 
 /** The application error log, whose delete's scope is its target's composite id (Story 7.10). */
 const LOG_ERROR_LIST = 'OcuPilot.Screen.Descriptor.LogErrorList';
+
+/** The User events list, whose delete and marker-event disable state a consequence (Story 7.11). */
+const AUDIT_USER_EVENT_LIST = 'OcuPilot.Screen.Descriptor.AuditUserEventList';
 
 /** The Terminate dialog's flagged action: declared, undrawn, sent only by the checked flag. */
 export const TERMINATE_WITH_ERROR = 'terminate-with-error';
@@ -144,6 +152,7 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [PROCESS_LIST]: { terminate: STRINGS.processTerminateConsequence },
   [PROCESS_DETAILS]: { terminate: STRINGS.processTerminateConsequence },
   [LOG_ERROR_LIST]: { delete: STRINGS.errorDeleteEveryConsequence },
+  [AUDIT_USER_EVENT_LIST]: { delete: STRINGS.auditUserEventDeleteConsequence },
 };
 
 /**
@@ -182,6 +191,8 @@ const TYPED_NAME_ROWS: Readonly<
   Record<string, { readonly name: string; readonly field: string; readonly equals: string; readonly advisory: string }>
 > = {
   [TASK_SCHEDULE]: { name: 'Name', field: 'Type', equals: 'System', advisory: STRINGS.taskSystemDeleteConsequence },
+  // Deleting OcuPilot's own marker event stops agent writes being marked (AD-15).
+  [AUDIT_USER_EVENT_LIST]: { name: 'EventName', field: 'EventName', equals: AGENT_WRITE_EVENT, advisory: STRINGS.proposalAuditWarning },
 };
 
 /**
@@ -192,6 +203,18 @@ const TYPED_NAME_ROWS: Readonly<
  */
 const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   'OcuPilot.Screen.Descriptor.AuditingConfig': { disable: STRINGS.proposalAuditWarning },
+};
+
+/**
+ * The warning a non-delete write states for one row only, keyed by descriptor and then by action id:
+ * the warning dialog opens when the selected row's `field` reads `equals`, and the action is sent at
+ * once for every other row. Consulted after `WARNING_CONSEQUENCES`.
+ */
+const WARNING_ROWS: Readonly<
+  Record<string, Readonly<Record<string, { readonly field: string; readonly equals: string; readonly consequence: string }>>>
+> = {
+  // Disabling OcuPilot's own marker event stops agent writes being marked (AD-15).
+  [AUDIT_USER_EVENT_LIST]: { disable: { field: 'EventName', equals: AGENT_WRITE_EVENT, consequence: STRINGS.proposalAuditWarning } },
 };
 
 /** What the screen-action route answers (AD-14): the verb, and the triple the write was made against. */
@@ -357,7 +380,7 @@ export class ScreenActionHandler {
       void this.openRole(screen, actionId, target);
       return;
     }
-    const warning = this.warning(screen.descriptor, actionId);
+    const warning = this.warning(screen.descriptor, actionId) || this.rowWarning(screen, actionId, target);
     if (warning !== '') {
       this.open('warning', screen.descriptor, actionId, target, warning, []);
       return;
@@ -501,6 +524,16 @@ export class ScreenActionHandler {
     return true;
   }
 
+  /**
+   * Send `actionId` for `target` on `descriptor` with no dialog, as a row action would, and answer
+   * whether the instance applied it. For a page that composes several actions itself -- the
+   * Selective SQL auditing dialog -- so each still takes the one request and change event `send`
+   * makes.
+   */
+  sendFor(descriptor: string, actionId: string, target: string): Promise<boolean> {
+    return this.send(descriptor, actionId, target);
+  }
+
   /** The key of the row the screen has selected, or `''`. */
   private selected(screen: ScreenDeclaration): string {
     return this.store(screen.descriptor, screen.refreshRates).selection()[0] ?? '';
@@ -523,6 +556,14 @@ export class ScreenActionHandler {
     const own = WARNING_CONSEQUENCES[descriptor];
     if (own === undefined) return '';
     return Object.hasOwn(own, actionId) ? own[actionId] : '';
+  }
+
+  /** The `WARNING_ROWS` consequence for `target`'s row, or `''` where its row does not match. */
+  private rowWarning(screen: ScreenDeclaration, actionId: string, target: string): string {
+    const own = WARNING_ROWS[screen.descriptor];
+    if (own === undefined || !Object.hasOwn(own, actionId)) return '';
+    const entry = own[actionId];
+    return this.row(screen, target)?.[entry.field] === entry.equals ? entry.consequence : '';
   }
 
   private flag(descriptor: string, actionId: string): { readonly label: string; readonly action: string } | null {

@@ -75,6 +75,8 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   resume: STRINGS.actionResume,
   // Story 7.8: a process's Terminate, on Processes and Process details.
   terminate: STRINGS.actionTerminate,
+  // Story 7.11: an audit event's Reset counters, on System events and User events.
+  reset: STRINGS.actionResetCounters,
 };
 
 /**

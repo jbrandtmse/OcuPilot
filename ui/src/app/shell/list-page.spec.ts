@@ -427,6 +427,58 @@ describe('the list page', () => {
     expect(page.bodies.map((body) => JSON.parse(body))).toEqual([{ action: 'terminate-with-error', id: '4711' }]);
   });
 
+  it('Story 7.11: disabling the marker event renders the warning dialog, and Proceed sends the disable', async () => {
+    // Through the real handler, dialog and page; only the transport is stubbed.
+    // Mutation (Rule 19): render no warning dialog for its pending kind -> the dialog assertions go
+    // red and nothing is sent.
+    const marker = 'OcuPilot/Security/AgentWrite';
+    const declaration = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.AuditUserEventList',
+      rowActions: [{ id: 'disable', selfProtection: '' }],
+    });
+    const page = await mount(declaration, [{ ...named(marker)[0], EventName: marker }]);
+    const store = page.stores.for(declaration.descriptor, declaration.refreshRates);
+    store.setSelection([marker]);
+    expect(page.actions.run(declaration.descriptor, 'disable')).toBe(true);
+    await settle(page.fixture);
+    expect(page.bodies).toHaveLength(0);
+    const dialog = page.host().querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog).not.toBeNull();
+    expect(dialog.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(STRINGS.agentDefinitionDisable);
+    expect(dialog.querySelector('.ocu-warning-consequence')?.textContent?.trim()).toBe(STRINGS.proposalAuditWarning);
+    expect(dialog.querySelector('.ocu-button-destructive')).toBeNull();
+    page.setActionAnswer({ action: 'updated', target: { type: 'audit-user-event', scope: 'instance', id: marker.toLowerCase() } });
+    (dialog.querySelector('.ocu-button-primary') as HTMLButtonElement).click();
+    await settle(page.fixture);
+    expect(page.host().querySelector('[role="dialog"]')).toBeNull();
+    expect(page.bodies.map((body) => JSON.parse(body))).toEqual([{ action: 'disable', id: marker }]);
+  });
+
+  it('Story 7.11: Cancel and Escape on the marker-event warning send nothing', async () => {
+    // Mutation (Rule 19): wire the warning's `(cancelled)` to `onConfirmWarning()` -> a body is sent.
+    const marker = 'OcuPilot/Security/AgentWrite';
+    const declaration = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.AuditUserEventList',
+      rowActions: [{ id: 'disable', selfProtection: '' }],
+    });
+    const page = await mount(declaration, [{ ...named(marker)[0], EventName: marker }]);
+    const store = page.stores.for(declaration.descriptor, declaration.refreshRates);
+    store.setSelection([marker]);
+    expect(page.actions.run(declaration.descriptor, 'disable')).toBe(true);
+    await settle(page.fixture);
+    (page.host().querySelector('[role="dialog"] .ocu-button-secondary') as HTMLButtonElement).click();
+    await settle(page.fixture);
+    expect(page.host().querySelector('[role="dialog"]')).toBeNull();
+
+    expect(page.actions.run(declaration.descriptor, 'disable')).toBe(true);
+    await settle(page.fixture);
+    expect(page.host().querySelector('[role="dialog"]')).not.toBeNull();
+    expect(TestBed.inject(OverlayStack).closeTop()).toBe(true);
+    await settle(page.fixture);
+    expect(page.host().querySelector('[role="dialog"]')).toBeNull();
+    expect(page.bodies).toHaveLength(0);
+  });
+
   it('a typed-name confirm left open does not outlive the list it was opened on', async () => {
     // The handler is the app's, so without the page letting go of it a Back press with the dialog
     // open would carry the pending delete onto the next list page.

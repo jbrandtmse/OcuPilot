@@ -154,7 +154,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,oauth2-client-configuration,oauth2-server-client";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -172,6 +172,12 @@ Parameter TYPEAPPLICATIONERROR = "application-error";
 Parameter TYPEOAUTHCLIENT = "oauth2-client-configuration";
 
 Parameter TYPEOAUTHSERVERCLIENT = "oauth2-server-client";
+
+/// <p>A system audit event and a user audit event (Story 7.11), which share one arm
+/// (<method>AuditEvent</method>).</p>
+Parameter TYPEAUDITEVENT = "audit-event";
+
+Parameter TYPEAUDITUSEREVENT = "audit-user-event";
 
 /// <p>The instance's own predefined account, whose disablement AD-10 forbids. Compared through
 /// <method>NormalizedUser</method>, so every spelling the instance resolves to it is refused.</p>
@@ -323,6 +329,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "Enabled", "Resource")
     If pType = ..#TYPEUSER Quit $ListBuild(..#FIELDENABLED, ..#FIELDROLES, ..#FIELDCHANGEPASSWORD)
     If pType = ..#TYPEAUDITING Quit $ListBuild(..#FIELDENABLED)
+    If (pType = ..#TYPEAUDITEVENT) || (pType = ..#TYPEAUDITUSEREVENT) Quit $ListBuild(..#FIELDENABLED)
     Quit ""
 }
 
@@ -396,7 +403,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -442,6 +449,10 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         If (tType = ..#TYPEOAUTHCLIENT) || (tType = ..#TYPEOAUTHSERVERCLIENT) {
             Set tSC = ..OAuthEntry(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If (tType = ..#TYPEAUDITEVENT) || (tType = ..#TYPEAUDITUSEREVENT) {
+            Set tSC = ..AuditEvent(tType, .tChanged, .pProhibits, .pCode)
             Quit
         }
         Set tSC = ..WebApplication(tPayloadObject, tTarget, tServes, .tChanged, .pProhibits, .pCode)
@@ -1558,6 +1569,20 @@ ClassMethod Refuse(pCode As %String, Output pProhibits As %Boolean, Output pOutC
 {
     Set pProhibits = 1
     Set pOutCode = pCode
+}
+
+/// <p>The audit event predicates, <var>pType</var> being a system or a user event: the
+/// reviewed-few sweep and nothing else, over <code>Enabled</code>.</p>
+/// <p><b>AD-10 names no audit-event effect.</b> Enabling, disabling, resetting and deleting an
+/// event are changes an operator is entitled to make; the one that stops agent writes being marked
+/// -- disabling or deleting OcuPilot's own marker event -- is warned, not refused: the card's audit
+/// warning, the screen's warning or advisory, and the banner (AD-15). Every other field is refused
+/// <parameter>UNCOVEREDFIELD</parameter>, <code>Description</code> among them. A reset's
+/// <code>Total</code> row is its declared state label and a delete's rows are its fingerprint
+/// subject, so <method>Changed</method> skips both.</p>
+ClassMethod AuditEvent(pType As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Quit ..ReviewedFewOnly(pType, .pChanged, .pProhibits, .pCode)
 }
 
 }

@@ -17,6 +17,9 @@ export const AUDITING_ENABLE_ACTION = 'enable';
 /** The row action that turns auditing off, as the descriptor declares it. */
 export const AUDITING_DISABLE_ACTION = 'disable';
 
+/** The System events list's descriptor, whose update action the Selective SQL auditing dialog sends. */
+export const AUDIT_SYSTEM_EVENT_LIST_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.AuditSystemEventList';
+
 /** The two event lists embedded beneath the form, by their declared routes. */
 export const AUDITING_EVENT_LIST_ROUTES: readonly string[] = [
   'security/auditing/system-events',

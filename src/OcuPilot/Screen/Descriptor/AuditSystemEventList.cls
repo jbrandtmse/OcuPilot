@@ -8,8 +8,11 @@
 /// <code>Total</code>, <code>Written</code> and <code>Lost</code> counters.</p>
 /// <p><b>The privilege set is the Auditing configuration's own</b>, <code>%Admin_Secure:USE</code>
 /// (the endpoint's <code>ResourcesOR()</code>) and <code>%DB_IRISSYS:READ</code> (AD-8).</p>
-/// <p>It declares no primary or row action, so its empty state names what to do next, and it does
-/// not refresh (AD-43). As a list archetype it links out to nothing (AD-44).</p>
+/// <p><b>Its row actions are Enable, Disable and Reset counters</b> (Story 7.11, AD-53), carried
+/// out by <class>OcuPilot.Screen.Tool.AuditEventUpdate</class> and
+/// <class>OcuPilot.Screen.Tool.AuditEventReset</class>, so its empty state invites the agent. It
+/// declares no delete: the vendor refuses a system-defined event 409. It does not refresh (AD-43).
+/// As a list archetype it links out to nothing (AD-44).</p>
 Class OcuPilot.Screen.Descriptor.AuditSystemEventList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -26,12 +29,13 @@ XData Declaration
   "refreshRates": [],
   "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
   "entityType": "audit-event",
+  "entityLabelKey": "auditDialogTitle",
   "secondaryEntityTypes": [],
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "composite", "parts": ["EventName"]},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "enable", "selfProtection": ""}, {"id": "disable", "selfProtection": ""}, {"id": "reset", "selfProtection": ""}],
   "context": {"fields": ["EventName", "Enabled", "Total", "Written", "Lost"], "secretFields": []},
   "emptyStateKey": "auditSystemEventListEmpty",
   "commandAliases": [],
@@ -52,8 +56,8 @@ XData Declaration
       {"field": "Written", "labelKey": "auditEventColumnWritten", "kind": "number"},
       {"field": "Lost", "labelKey": "auditEventColumnLost", "kind": "number"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "auditSystemEventListEmptyAgent"
   },
   "toolIdentifier": "security.auditsystemevents"
 }

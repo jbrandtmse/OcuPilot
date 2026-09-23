@@ -69,6 +69,14 @@ XData Tools
 "security.auditing.update": {"fieldList":"Security.Audit.Enabled","fields":[
   {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
 ]},
+"security.auditsystemevents.update": {"fieldList":"Security.Audit.Event:Security.Events","fields":[
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
+]},
+"security.audituserevents.update": {"fieldList":"Security.Audit.Event:Security.Events","fields":[
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
+]},
 "webapp.list.update": {"fieldList":"WebApp.App","fields":[
   {"path":"AutheEnabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"AutoCompile","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},

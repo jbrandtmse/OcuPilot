@@ -12,7 +12,7 @@ import {
 import { NavigationEnd, Router } from '@angular/router';
 
 import { ApiService } from '../../core/api';
-import { AUDITING_CONFIG_ENTITY } from '../../core/agent-status';
+import { AUDIT_EVENT_ENTITY, AUDIT_USER_EVENT_ENTITY, AUDITING_CONFIG_ENTITY } from '../../core/agent-status';
 import { ChangeBus } from '../../core/change-bus';
 import { screenForDescriptor, screenForRoute, withQuery } from '../../core/navigation';
 import { ScopeService } from '../../core/scope';
@@ -24,11 +24,13 @@ import { STRINGS, stringFor } from '../../core/strings';
 import { cellView, fieldOf } from '../../core/table-model';
 import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { WarningDialog } from '../../shell/warning-dialog';
+import { SqlAuditDialog, type SqlAuditChange } from './sql-audit-dialog';
 import {
   AUDIT_DATABASE_ROUTE,
   AUDITING_CONFIG_DESCRIPTOR,
   AUDITING_ENABLE_ACTION,
   AUDITING_EVENT_LIST_ROUTES,
+  AUDIT_SYSTEM_EVENT_LIST_DESCRIPTOR,
   auditingControl,
   auditingEnabled,
   auditingStatus,
@@ -60,7 +62,11 @@ interface SectionView {
   readonly hasRows: boolean;
   readonly showEmpty: boolean;
   readonly fault: boolean;
+  readonly sqlWizard: boolean;
 }
+
+/** The entity types whose change re-reads this page: the form's own and both event lists' (AD-14). */
+const RELOAD_ENTITIES: readonly string[] = [AUDITING_CONFIG_ENTITY, AUDIT_EVENT_ENTITY, AUDIT_USER_EVENT_ENTITY];
 
 /**
  * The Auditing configuration screen (Story 7.4): the instance-wide auditing flag as a status line
@@ -74,8 +80,13 @@ interface SectionView {
  *
  * **Every read is one-shot** (AD-43): the page's own declared read and the two lists' declared reads,
  * issued through the ordinary read route so each screen's own gate and cap apply (AD-5). It re-reads
- * on an `auditing-configuration` change and never patches from a write's answer (AD-14). It does not
- * bind `RefreshService`, whose reconcile would clear the singleton selection.
+ * on an `auditing-configuration`, `audit-event` or `audit-user-event` change and never patches from a
+ * write's answer (AD-14). It does not bind `RefreshService`, whose reconcile would clear the
+ * singleton selection. The embedded lists stay read-only; their row actions live at their own routes.
+ *
+ * **Selective SQL auditing** (Story 7.11) opens beneath the System events list: its Apply sends each
+ * changed event through that list's own `enable` or `disable` row action, one at a time, and stops at
+ * the first refusal.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
@@ -83,7 +94,7 @@ interface SectionView {
 @Component({
   selector: 'app-auditing-config-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [WarningDialog],
+  imports: [SqlAuditDialog, WarningDialog],
   template: `<section class="ocu-details-page ocu-auditing-page">
     @if (refusalText) {
       <p class="ocu-banner ocu-banner-warning" role="alert">
@@ -151,7 +162,15 @@ interface SectionView {
         @if (section.showEmpty) {
           <p class="ocu-data-table-empty-title">{{ section.empty }}</p>
         }
+        @if (section.sqlWizard) {
+          <button type="button" class="ocu-button-secondary" data-sql-wizard (click)="onOpenWizard()">
+            {{ STRINGS.auditSqlWizardAction }}
+          </button>
+        }
       </section>
+    }
+    @if (wizardRows; as rows) {
+      <app-sql-audit-dialog [rows]="rows" (applied)="onApplyWizard($event)" (cancelled)="onCloseWizard()" />
     }
     @if (pendingWarning; as pending) {
       <app-warning-dialog
@@ -190,6 +209,12 @@ export class AuditingConfigPage {
 
   private readonly controlButton = viewChild<ElementRef<HTMLButtonElement>>('controlButton');
 
+  /** Whether the Selective SQL auditing dialog is open. */
+  private readonly wizardOpen = signal(false);
+
+  /** The refusal that stopped the dialog's last Apply, with `auditSqlWizardStopped`, or `''`. */
+  private readonly wizardRefusal = signal('');
+
   constructor() {
     const screen = screenForDescriptor(AUDITING_CONFIG_DESCRIPTOR);
     this.form = screen === null || screen.read === null ? null : this.readView(screen);
@@ -206,7 +231,7 @@ export class AuditingConfigPage {
     }
     stops.push(
       inject(ChangeBus).subscribe((event) => {
-        if (event.kind !== 'changed' || event.type !== AUDITING_CONFIG_ENTITY) return;
+        if (event.kind !== 'changed' || !RELOAD_ENTITIES.includes(event.type)) return;
         void this.load();
       })
     );
@@ -305,7 +330,7 @@ export class AuditingConfigPage {
 
   protected get refusalText(): string {
     this.generation();
-    return this.form?.store.refusal() ?? '';
+    return this.form?.store.refusal() || this.wizardRefusal();
   }
 
   protected get formFault(): boolean {
@@ -345,6 +370,7 @@ export class AuditingConfigPage {
         hasRows: rows.length > 0,
         showEmpty: view.loaded() && !view.fault() && rows.length === 0,
         fault: view.fault(),
+        sqlWizard: view.screen.descriptor === AUDIT_SYSTEM_EVENT_LIST_DESCRIPTOR && view.loaded() && !view.fault(),
       };
     });
   }
@@ -380,5 +406,49 @@ export class AuditingConfigPage {
 
   protected onRetry(): void {
     void this.load();
+  }
+
+  /** The System events list's rows while the Selective SQL auditing dialog is open, or `null`. */
+  protected get wizardRows(): readonly unknown[] | null {
+    this.generation();
+    if (!this.wizardOpen()) return null;
+    return this.systemList()?.store.data() ?? null;
+  }
+
+  protected onOpenWizard(): void {
+    this.wizardRefusal.set('');
+    this.wizardOpen.set(true);
+    this.bump();
+  }
+
+  protected onCloseWizard(): void {
+    this.wizardOpen.set(false);
+    this.bump();
+  }
+
+  /**
+   * Send each changed box through the System events list's own row action, one at a time, and stop
+   * at the first refusal: what already applied stays applied, the page shows the refusal's reason
+   * with `auditSqlWizardStopped`, and the lists are read again.
+   */
+  protected async onApplyWizard(changes: readonly SqlAuditChange[]): Promise<void> {
+    this.wizardOpen.set(false);
+    this.wizardRefusal.set('');
+    this.bump();
+    for (const change of changes) {
+      const applied = await this.handler.sendFor(AUDIT_SYSTEM_EVENT_LIST_DESCRIPTOR, change.action, change.id);
+      if (applied) continue;
+      const store = this.systemList()?.store;
+      const reason = store?.refusal() ?? '';
+      store?.setRefusal('');
+      this.wizardRefusal.set(reason === '' ? STRINGS.auditSqlWizardStopped : `${reason} ${STRINGS.auditSqlWizardStopped}`);
+      this.bump();
+      break;
+    }
+    await this.load();
+  }
+
+  private systemList(): ReadView | undefined {
+    return this.lists.find((view) => view.screen.descriptor === AUDIT_SYSTEM_EVENT_LIST_DESCRIPTOR);
   }
 }

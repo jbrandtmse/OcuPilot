@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -405,6 +405,7 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "oauth2-server",
   "oauth2-server-client",
   "audit-event",
+  "audit-user-event",
   "auditing-configuration",
   "task",
   "task-history-entry",
@@ -440,7 +441,9 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "auditing-configuration": "singleton",
   "task": "integer",
   "process": "integer",
-  "application-error": "foldcase"
+  "application-error": "foldcase",
+  "audit-event": "foldcase",
+  "audit-user-event": "foldcase"
 };
 
 /**
@@ -1139,6 +1142,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       }
     ],
     "entityType": "audit-event",
+    "entityLabelKey": "auditDialogTitle",
     "secondaryEntityTypes": [],
     "scope": "instance",
     "parentScope": "",
@@ -1152,7 +1156,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "enable",
+        "selfProtection": ""
+      },
+      {
+        "id": "disable",
+        "selfProtection": ""
+      },
+      {
+        "id": "reset",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "EventName",
@@ -1236,16 +1253,15 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "number"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "auditSystemEventListEmptyAgent"
     },
     "toolIdentifier": "security.auditsystemevents",
     "banner": null,
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": [],
-    "entityLabelKey": ""
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.AuditUserEventList",
@@ -1267,7 +1283,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "permission": "READ"
       }
     ],
-    "entityType": "audit-event",
+    "entityType": "audit-user-event",
+    "entityLabelKey": "auditDialogTitle",
     "secondaryEntityTypes": [],
     "scope": "instance",
     "parentScope": "",
@@ -1281,7 +1298,24 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "enable",
+        "selfProtection": ""
+      },
+      {
+        "id": "disable",
+        "selfProtection": ""
+      },
+      {
+        "id": "reset",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "EventName",
@@ -1365,16 +1399,15 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "number"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "auditUserEventListEmptyAgent"
     },
     "toolIdentifier": "security.audituserevents",
     "banner": null,
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": [],
-    "entityLabelKey": ""
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.AuditingConfig",

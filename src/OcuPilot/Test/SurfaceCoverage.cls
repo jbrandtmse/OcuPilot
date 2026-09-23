@@ -106,6 +106,11 @@ XData Coverage
 <tool name="permissions.users.password" class="OcuPilot.Test.ToolWrite" method="TestTheUserPasswordToolSendsOnlyItsDeclaredSecret"/>
 <tool name="permissions.users.update" class="OcuPilot.Test.ToolWrite" method="TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs"/>
 <tool name="security.auditing.update" class="OcuPilot.Test.ToolWrite" method="TestTheAuditingWriteToolAdvertisesEnabledAloneAndDeclaresItsWriteDestructive"/>
+<tool name="security.auditsystemevents.reset" class="OcuPilot.Test.AuditEventTools" method="TestTheResetToolsAreActionWritesWithOneStateRow" corpus="the system and user tools are asserted together in one loop"/>
+<tool name="security.auditsystemevents.update" class="OcuPilot.Test.AuditEventTools" method="TestTheUpdateToolsAdmitEnabledAloneOverTheClassDerivedList" corpus="the system and user tools are asserted together in one loop"/>
+<tool name="security.audituserevents.delete" class="OcuPilot.Test.AuditEventTools" method="TestTheUserEventDeleteIsADestructiveActionWrite"/>
+<tool name="security.audituserevents.reset" class="OcuPilot.Test.AuditEventTools" method="TestTheResetToolsAreActionWritesWithOneStateRow" corpus="the system and user tools are asserted together in one loop"/>
+<tool name="security.audituserevents.update" class="OcuPilot.Test.AuditEventTools" method="TestTheUpdateToolsAdmitEnabledAloneOverTheClassDerivedList" corpus="the system and user tools are asserted together in one loop"/>
 <tool name="security.oauthclients.delete" class="OcuPilot.Test.OAuthDelete" method="TestTheClientConfigurationDeleteIsAnActionWriteOverTheTabsOwnPairs"/>
 <tool name="security.oauthserverclients.delete" class="OcuPilot.Test.OAuthDelete" method="TestTheServerClientDeleteIsAnActionWriteOverTheTabsOwnPairs"/>
 <tool name="tasks.schedule.resume" class="OcuPilot.Test.ToolWrite" method="TestTheTaskResumeToolIsAnActionWriteOverTheScreensOwnPairs"/>

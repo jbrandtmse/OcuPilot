@@ -2,7 +2,8 @@
 title: 'Story 7.11: System and user audit event configuration'
 type: 'feature'
 created: '2026-09-23'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '2081662424eef9806e6915919b3d4f08d0c7e2ae'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -30,6 +31,10 @@ footprint_extensions:
   - 'src/OcuPilot/Test/Prohibited.cls' # roster rule, 2026-09-23
   - 'src/OcuPilot/Test/EntityRef.cls' # roster rule, 2026-09-23
   - 'ui/tools/navigation.test.mjs' # roster rule, 2026-09-23
+  - 'src/OcuPilot/Test/Descriptor.cls' # roster rule; EntityType.Count pin only
+  - 'src/OcuPilot/Test/AuditingScreen.cls' # appended one method
+  - 'ui/tools/screen-mirror.test.mjs' # roster rule; Epic 8-modified; two IDRULES rows
+  - 'ui/tools/agent-status.test.mjs' # roster rule; RESTRAINT_ENTITIES pin
 ---
 
 <intent-contract>
@@ -382,6 +387,32 @@ Tests:
 
 ## Review Triage Log
 
+### 2026-09-23 — Review pass
+
+- verdicts: 21 findings — high 0, medium 3, low 15, false 3, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` No test showed an `audit-event`/`audit-user-event` bus change re-reads the Auditing configuration page (the wizard test's re-read comes from its own `load()`) — added a bus-publish spec (both types re-read, `task` does not); mutation red.
+  - `[medium]` `[patch]` No test showed Cancel or Escape on the list page's marker-event warning sends nothing — added a Cancel and Escape spec in `list-page.spec.ts`; mutation red.
+  - `[low]` `[patch]` Browser AC1's "Total reads 0" after the system reset could not fail (the XDBC event's Total was already 0) — removed it; the AC3 leg now seeds a probe record, waits for Total > 0, resets from the command bar and waits for 0.
+  - `[medium]` `[patch]` AC7's no-`OBSERVEFAILED` assertion passed when the log was never read — asserts the log resolves and opens before the tail is read.
+  - `[low]` `[patch]` The Integration AC had no `mutation:` line — MOVESMARKING 0 demonstrated red on the browser banner wait; line added.
+  - `[low]` `[patch]` `AuditingUpdate` user-event legs skipped their answer-shape assertions silently on an empty body — each now asserts a body first.
+  - `[low]` `[reject]` Nothing asserts the `PUT` body carries `Description` — the vendor modifies only the keys present, so no toggle can lose it; a body-capture test adds a port seam for no reachable failure.
+  - `[low]` `[reject]` No test sets the kill switch or read-only around the event screen actions — that is the shared `ScreenAction` route's behavior, unchanged by this diff.
+  - `[low]` `[reject]` Absent target at mint is not tested — the shared mint fresh-read branch is unchanged; the screen 404 and confirm-refused legs pin the upsert guard for both callers.
+  - `[low]` `[reject]` Reset checks only `Total` and no reset of a vanished event — one vendor `RunClearCount` clears all three; a vanished target takes the same fresh-read 404 the tested enable does.
+  - `[low]` `[patch]` `Prohibits` was never called with reset or delete diffs (the code skips their rows correctly) — `AuditEventTools` now asserts both are prohibited by nothing against a live user event.
+  - `[low]` `[reject]` System-list answer body not asserted server-side — the type comes from the descriptor; the browser leg asserts 200 and the instance flag, the handler spec the answer handling.
+  - `[low]` `[reject]` "Before any read" and the system list/agent 403 not observed — the pair gate is the shared `Screen.Gate`, unchanged; the user-list 403 leg pins this story's pairs.
+  - `[low]` `[reject]` Malformed id not sent through the screen route — the route reaches the same `AdminPort.Invoke` the port test drives.
+  - `[low]` `[reject]` Agent marker disable not driven through a tool call or rendered banner — `AuditingUpdate` now mints and confirms it through the shipped `Mint`/`Confirm` and reads the fact the banner reads.
+  - `[low]` `[reject]` Agent delete of the marker not minted — `Mint` calls the same `WarnsAuditingOff` (`Mint.cls:235`) the predicate test drives.
+  - `[low]` `[reject]` Wizard stop path only in jsdom, no browser re-read check — a real refusal needs a fault the throwaway cannot stage; the success leg asserts the instance state.
+  - `[false]` `[reject]` Embedded lists might gain row actions — the page renders its own plain tables and this diff adds only the wizard button to them.
+  - `[false]` `[reject]` The browser spec acts on a system event it did not create — system events cannot be created; the spec's own AC1/AC2 legs require one, and `after()` restores its `Enabled`.
+  - `[low]` `[reject]` Client marker comparisons are exact while the server folds — the vendor list reports the canonical spelling the constant holds.
+  - `[false]` `[reject]` `WARNING_ROWS` and `ClosesMarking` are new self-protection — the spec's tasks call for both; the `selfProtection` vocabulary is unchanged.
+
 ## Design Notes
 
 **Governing ADs:** AD-53 (and its `MOVESMARKING` amendment), AD-15, AD-3/AD-4 (derived list,
@@ -497,6 +528,17 @@ re-submitted. Each restores `AgentWrite` and auditing. Never stop, remove or rec
   - AC7: make `Kernel.Audit.Event.ObserveMarking` answer an error status after its read →
     the `ProhibitedRoute` leg is red on the `OBSERVEFAILED` line.
 
+- `mutation: AC1 -- SCREENACTIONS "" on AuditEventReset in the ocupilot-ci copy (and its subclass recompiled) -> audit-events.browser-spec.mjs AC1 red ("and each answered 200"). DEMONSTRATED 2026-09-23, re-synced from the worktree`
+- `mutation: AC2 -- drop the unchanged-box skip in sqlAuditChanges -> sql-audit-dialog.spec.ts 3 red and the page spec's exact-POST test red. DEMONSTRATED 2026-09-23, restored byte-identical`
+- `mutation: AC3 -- drop the User events list's DESTRUCTIVE_CONSEQUENCES entry -> screen-action-handler.spec.ts's typed-name test red. DEMONSTRATED 2026-09-23, restored`
+- `mutation: AC4 -- ScreenAction.Run answers a stub object when the fresh read fails (ocupilot-ci copy) -> AuditingUpdate's user-event leg red on the 404 and no-stub assertions (run through a temporary arming-free subclass on ocupilot-ci, since removed). DEMONSTRATED 2026-09-23, re-synced`
+- `mutation: AC5 -- ClosesMarking answers 0 (ocupilot-ci copy) -> AuditEventTools.TestTheCardWarnsOnTheMarkerEventAlone red (run 8659); drop WARNING_ROWS -> the handler and list-page specs red, and, rebuilt and redeployed, the browser AC5 leg red. DEMONSTRATED 2026-09-23, restored; the browser run exposed AuditingUpdate.RestoreMarker naming an OcuPilot class from %SYS, fixed`
+- `mutation: AC5 (agent banner) -- ClosesMarking answers 0 (ocupilot-ci copy, subclass recompiled) -> AuditingUpdate.TestTheAgentsMarkerDisableCarriesTheWarningAndRaisesTheBanner red on the stored-warning leg (run through a temporary arming-free subclass, since removed). DEMONSTRATED 2026-09-23, re-synced`
+- `mutation: AC6 -- AuditUserEventList back to audit-event, mirror regenerated -> navigation.test.mjs's screenForChange test red. DEMONSTRATED 2026-09-23, both files restored, mirror --check up to date`
+- `mutation: AC7 -- ObserveMarking returns an error status after its reads (ocupilot-ci copy) -> ProhibitedRoute.TestALeastPrivilegedPrincipalRunsTheUserEventActionsAndTheMarkingIsObserved red on the no-OBSERVEFAILED assertion (run 8660). DEMONSTRATED 2026-09-23, re-synced; ProhibitedRoute 26 pass, 1 skipped (run 8675)`
+- `mutation: Integration AC -- MOVESMARKING 0 on AuditEventUpdate (ocupilot-ci copy, subclass recompiled; MovesMarking read 0) -> audit-events.browser-spec.mjs AC5 red at the banner wait (TimeoutError after Proceed). DEMONSTRATED 2026-09-23, re-synced, spec green again`
+- `mutation: review patches -- page subscribed to auditing-configuration alone -> auditing-config.page.spec.ts event re-read test red; warning (cancelled) wired to onConfirmWarning -> list-page.spec.ts Cancel/Escape test red. DEMONSTRATED 2026-09-23, both restored`
+
 **Once, before `dev_complete`:** the full ObjectScript sweep on `ocupilot-ci`, per class and one
 call at a time, with totals from the numeric-run-index probe. Then `bash scripts/smoke.sh
 --container ocupilot-ci --user _SYSTEM --password SYS`, with every check executed. The full
@@ -504,12 +546,19 @@ browser suite runs in CI, not locally (Rule 29).
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap -- IG-1 (user-event create and Description edit need AD-54/AD-55,
-which exist only on Epic 8's branch; recommended: amend 7.11 AC3 and charter Story 9.10), IG-2
-(six Epic 8-modified product files listed under Design Notes; recommended: approve), IG-3 (the
-warning keys on `OcuPilot/Security/AgentWrite` alone; recommended: confirm). The spec is otherwise
-complete; on ratification set `status: ready-for-dev`.
+Status: done
+Blocking condition: none
 
-Planning note: two `Security.Events.Create` shape probes ran on slot A and were refused (#851,
-`<SUBSCRIPT>`); `Exists` read 0 for both, so nothing was created.
+footprint_extensions: the frontmatter list; `ui/src/styles/_components.scss` (Epic 8-modified) was reverted and the dialog's grid styles moved into `sql-audit-dialog.ts`.
+
+**Change.** Five `Security.Audit.Event` write tools (system/user `update`, `reset`; user `delete`) with screen and agent callers; `AdminPort` `SPLITQUERIES` splits `Source/Type/Name`; `audit-user-event` entity type with fold rules; prohibited arm (`Enabled` only); card warning via `ClosesMarking`; row actions and empty-state keys on both lists; list-page warning dialog with `WARNING_ROWS`; Selective SQL auditing dialog on the Auditing configuration page.
+
+**Files.** Server: `Port/AdminPort.cls`, `Kernel/{EntityRef,EntityType}.cls`, `Kernel/Proposal/{Mint,Prohibited}.cls`, `Screen/Descriptor/Audit{System,User}EventList.cls`, `Screen/Tool/{Classification,ToolFields}.cls`, new `Screen/Tool/Audit{Event,UserEvent}{Update,Reset}.cls`, `AuditUserEventDelete.cls`. Client: `shell/{screen-action-handler,list-page}.ts`, `core/{agent-status,screen-actions,screens.generated}.ts`, `areas/security/auditing-config.{page,store}.ts`, new `sql-audit-dialog.ts`. Tests: new `Test/AuditEventTools.cls`, `tools/audit-marker.test.mjs`, `sql-audit-dialog.spec.ts`, `browser/audit-events.browser-spec.mjs`; legs in `AuditingUpdate`, `ProhibitedRoute`, `AuditingScreen`; roster rows (standing roster rule, 2026-09-23).
+
+**Stage fixes before review.** `AdminPort`: 7.11's doc paragraph moved from above `MUTATINGTYPES` to `SPLITQUERIES`, so the contended lines take appends only; added `AuditingUpdate.TestTheAgentsMarkerDisableCarriesTheWarningAndRaisesTheBanner` (matrix row "Disable marker event (agent)").
+
+**Review.** 21 findings: 7 patched (medium 3, low 4), 14 rejected (reasons in the triage log), 0 deferred. Follow-up review: false (every patch is a test addition, each shown red under its mutation).
+
+**Verification (ocupilot-ci).** Loop classes green one per call (`AuditEventTools` 8, `ProhibitedRoute` 27 after patches); `AuditingUpdate` refuses on the reused container's arming, so its 11 methods ran green through a temporary arming-free subclass (run 8867, since deleted) and CI is authoritative. Full ObjectScript sweep, 186 classes one at a time: 1,687 methods, 1,685 passed, 1 failed (`WireSecurityRead` 1,000-row check, DW-1554), 1 skipped; `AuditingUpdate`, `ErrorDelete`, `ProcessControl`, `TaskResume` refused on arming (environment). Probe over runs 8676-8861 agrees. `smoke.sh` 49/49. `test:tools` 1331/1331; `test:components` 924/924; bundle 1.14 MB initial, under `maximumWarning`, no re-base. Browser `audit-events` 4/4, `auditing-screen` 1/1, `auditing-write` 3/3. Auditing, `AgentWrite` and `writesMarked` read 1 afterwards; probe event absent.
+
+**Residual.** An agent `update` to the current value mints an empty-diff proposal (the 400 no-op is screen-side, as for `WebAppUpdate`). `Prohibited.cls`'s header still counts eight covered types; Epic 8 edits the same line, so it is left for the merge. Merge conflicts expected on `COVEREDTYPES`, the `Prohibits` dispatch line, `IDRULES`, both `AdminPort` roster lines, the `RunSequence` call in `Invoke`, and the `ReadTool` roster.

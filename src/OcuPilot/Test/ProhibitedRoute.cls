@@ -1788,4 +1788,77 @@ Method TestAnAccountShortOfTheProcessPairIsRefusedTheTerminateScreenAction()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProcessControl).ProcessState(tPid), "", "and the probe process this leg started is gone")
 }
 
+/// <p>AC7, DW-1530 (Story 7.11): a principal holding exactly the User events list's declared
+/// pairs, and the code database read, disables and enables a probe user event 200 each, and the
+/// screen caller's post-write marking observation -- the <code>Security.Audit.Enabled</code> and
+/// marker-event reads made with that principal's own privileges -- succeeds: no
+/// <parameter>OcuPilot.Api.ScreenAction.OBSERVEFAILED</parameter> line is written and the recorded
+/// fact does not move. The probe is removed in this method's own frame.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Audit.Event.ObserveMarking</method> answer an
+/// error status after its read -- the no-line assertion goes red.</p>
+Method TestALeastPrivilegedPrincipalRunsTheUserEventActionsAndTheMarkingIsObserved()
+{
+    Set tCodeResource = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
+    If tCodeResource = "" Quit
+    Set tSC = ..EnsureLeastPrivilegedPrincipal(..#PRINCIPALPASSWORD, ..#DECLAREDPAIRSONLY _ "," _ tCodeResource _ ":R")
+    Do $$$AssertStatusOK(tSC, "a principal holding only the declared pairs is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tProbe = ##class(OcuPilot.Test.AuditingUpdate).ProbeId()
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AuditingUpdate).ProbeCreate(), "the probe user event is created")
+    Set tMarkedBefore = ##class(OcuPilot.Kernel.Audit.Event).WritesMarked()
+    Set tLog = ##class(%File).NormalizeFilename(##class(OcuPilot.Port.LogSourcePort).FileFor("messages"), ##class(OcuPilot.Port.LogSourcePort).ManagerDirectory())
+    Set tFrom = ##class(%File).GetFileSize(tLog)
+    Do $$$AssertTrue(tFrom >= 0, "the messages log resolves, so its tail can be read: " _ tLog)
+    Try {
+        For tAction = "disable", "enable" {
+            Set tSC = ..ActOn($ClassMethod("OcuPilot.Screen.Descriptor.AuditUserEventList", "ToolIdentifier"), tAction, tProbe, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+            Do $$$AssertStatusOK(tSC, tAction _ ": the request completes")
+            Do $$$AssertEquals(tStatus, 200, tAction _ ": and answers 200: " _ $Extract(tBody, 1, 300))
+        }
+        Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).ProbeEnabled(), 1, "the probe ends enabled")
+        Set tText = ""
+        Set tStream = ##class(%Stream.FileCharacter).%New()
+        Set tLinked = ''tStream.LinkToFile(tLog)
+        Do $$$AssertTrue(tLinked, "the messages log opens for reading")
+        If tLinked && (tStream.Size > tFrom) && tStream.MoveTo(tFrom + 1) Set tText = tStream.Read(1000000)
+        Set tStream = ""
+        Do $$$AssertTrue(tText '[ ##class(OcuPilot.Api.ScreenAction).#OBSERVEFAILED, "no failed marking observation was logged, so the principal's own reads answered")
+        Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Event).WritesMarked(), tMarkedBefore, "and the recorded marking fact did not move")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the leg completes without raising")
+    }
+    Do ##class(OcuPilot.Test.AuditingUpdate).ProbeDelete()
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).ProbeExists(), 0, "and the probe user event is gone")
+}
+
+/// <p>AD-8, AD-53 (Story 7.11): a principal short of <code>%Admin_Secure:USE</code> is refused the
+/// User events list's Disable 403 <code>AUTH.NOPRIVILEGE</code> naming that pair, and the probe
+/// user event stays enabled. The probe is removed in this method's own frame.</p>
+Method TestAnAccountShortOfTheUserEventPairIsRefusedTheScreenAction()
+{
+    Set tCodeResource = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
+    If tCodeResource = "" Quit
+    Set tSC = ..EnsureLeastPrivilegedPrincipal(..#PRINCIPALPASSWORD, ..#NONSECUREADMIN _ ":U,%DB_IRISSYS:R," _ tCodeResource _ ":R")
+    Do $$$AssertStatusOK(tSC, "a principal short of only the administrative pair is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AuditingUpdate).ProbeCreate(), "the probe user event is created")
+    Try {
+        Set tSC = ..ActOn($ClassMethod("OcuPilot.Screen.Descriptor.AuditUserEventList", "ToolIdentifier"), "disable", ##class(OcuPilot.Test.AuditingUpdate).ProbeId(), ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, "the screen action request completes")
+        Do $$$AssertEquals(tStatus, 403, "and is refused: " _ tBody)
+        If tStatus = 403 {
+            Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+            Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "with the screen-privilege code")
+            Do $$$AssertEquals($Select($IsObject(tEnvelope.%Get("detail")): tEnvelope.%Get("detail").%Get("failedPair"), 1: ""), "%Admin_Secure:USE", "naming the pair that failed")
+        }
+        Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).ProbeEnabled(), 1, "and the probe is still enabled")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the leg completes without raising")
+    }
+    Do ##class(OcuPilot.Test.AuditingUpdate).ProbeDelete()
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).ProbeExists(), 0, "and the probe user event is gone")
+}
+
 }

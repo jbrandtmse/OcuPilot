@@ -213,4 +213,28 @@ ClassMethod CountWithPrefix(pNames As %List, pPrefix As %String) As %Integer
     Quit tCount
 }
 
+/// <p>Story 7.11: both event lists carry their row actions and are write-capable, and each has its
+/// own entity type, so a user-event change routes to the User events list (DW-1529). Only the user
+/// list offers a delete, and each action is carried out by one registered tool.</p>
+Method TestTheEventListsCarryTheirRowActionsAndTheirOwnEntityTypes()
+{
+    Do $$$AssertEquals($ListToString($ClassMethod(..#SYSTEMLIST, "RowActionIds")), "enable,disable,reset", "the System events list offers Enable, Disable and Reset counters, and no delete")
+    Do $$$AssertEquals($ListToString($ClassMethod(..#USERLIST, "RowActionIds")), "enable,disable,reset,delete", "the User events list offers the same three and Delete last")
+    Do $$$AssertEquals($ClassMethod(..#SYSTEMLIST, "PrimaryEntityType"), "audit-event", "a system event is audit-event")
+    Do $$$AssertEquals($ClassMethod(..#USERLIST, "PrimaryEntityType"), "audit-user-event", "a user event is audit-user-event")
+    For tClass = ..#SYSTEMLIST, ..#USERLIST {
+        Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+        Do $$$AssertStatusOK(tSC, tClass _ "'s declaration parses")
+        If $$$ISERR(tSC) Continue
+        Do $$$AssertEquals(tDeclaration.entityLabelKey, "auditDialogTitle", tClass _ " names its card noun with the existing auditDialogTitle")
+        Do $$$AssertEquals(tDeclaration.table.emptyNextKey, "", tClass _ " is write-capable, so it declares no read-only next step")
+        Do $$$AssertTrue(tDeclaration.table.emptyAgentKey '= "", tClass _ " invites the agent in its empty state")
+    }
+    For tPair = $ListBuild(..#SYSTEMLIST, "enable", "OcuPilot.Screen.Tool.AuditEventUpdate"), $ListBuild(..#SYSTEMLIST, "reset", "OcuPilot.Screen.Tool.AuditEventReset"), $ListBuild(..#USERLIST, "disable", "OcuPilot.Screen.Tool.AuditUserEventUpdate"), $ListBuild(..#USERLIST, "reset", "OcuPilot.Screen.Tool.AuditUserEventReset"), $ListBuild(..#USERLIST, "delete", "OcuPilot.Screen.Tool.AuditUserEventDelete") {
+        Set tClass = $List(tPair, 3)
+        Do $$$AssertEquals($Parameter(tClass, "DESCRIPTORCLASS"), $List(tPair, 1), tClass _ " writes for " _ $List(tPair, 1))
+        Do $$$AssertTrue($ListFind($ClassMethod(tClass, "ScreenActionIds"), $List(tPair, 2)) > 0, tClass _ " carries " _ $List(tPair, 2))
+    }
+}
+
 }

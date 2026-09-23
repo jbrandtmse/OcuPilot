@@ -38,6 +38,10 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// <code>ordinary</code>. A path no entry names is emitted <code>secret</code>, and a secret row
 /// never reaches a schema (<method>OcuPilot.Screen.Tool.Write.FieldRows</method>), so without this
 /// entry the tool would advertise the id property and nothing to change.</p>
+/// <p><b><code>security.auditsystemevents.update</code></b> and
+/// <b><code>security.audituserevents.update</code></b> classify the class-derived
+/// <code>Security.Audit.Event:Security.Events</code> list's two literals <code>ordinary</code>; each
+/// tool admits <code>Enabled</code> alone (<class>OcuPilot.Screen.Tool.AuditEventUpdate</class>).</p>
 /// <p><b><code>permissions.users.update</code></b> classifies <code>Security.User</code>'s fourteen
 /// literals <code>ordinary</code> and its two arrays -- <code>Roles</code> and
 /// <code>EscalationRoles</code> -- <code>opaque</code>: the endpoint's template answers
@@ -76,6 +80,20 @@ XData Entries
       "Roles": "opaque",
       "EscalationRoles": "opaque",
       "Routine": "ordinary"
+    }
+  },
+  "security.auditsystemevents.update": {
+    "fieldList": "Security.Audit.Event:Security.Events",
+    "classification": {
+      "Description": "ordinary",
+      "Enabled": "ordinary"
+    }
+  },
+  "security.audituserevents.update": {
+    "fieldList": "Security.Audit.Event:Security.Events",
+    "classification": {
+      "Description": "ordinary",
+      "Enabled": "ordinary"
     }
   },
   "security.auditing.update": {

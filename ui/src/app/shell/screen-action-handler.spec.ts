@@ -650,3 +650,99 @@ describe('the application error log: one Delete whose target names its scope (St
     handler.cancelPending();
   });
 });
+
+describe('the System events and User events lists (Story 7.11)', () => {
+  const SYSTEM = 'OcuPilot.Screen.Descriptor.AuditSystemEventList';
+  const USER = 'OcuPilot.Screen.Descriptor.AuditUserEventList';
+  const MARKER = 'OcuPilot/Security/AgentWrite';
+  const OTHER = 'OcuPilot/Security/ConfigChange';
+  const SQL = '%System/%SQL/XDBCStatementUtility';
+
+  function rows(store: ReturnType<typeof mount>['store']): void {
+    store.applyTick(
+      [
+        { EventName: MARKER, Enabled: true, Total: 3, Written: 3, Lost: 0 },
+        { EventName: OTHER, Enabled: true, Total: 1, Written: 1, Lost: 0 },
+      ],
+      false,
+      '',
+      new Date()
+    );
+  }
+
+  it('sends reset and enable at once, with no dialog', async () => {
+    // Mutation (Rule 19): drop the lists from `SCREEN_ACTION_DESCRIPTORS` -> no handler registers
+    // and nothing is sent.
+    const { actions, handler, store, calls } = mount({ kind: 'ok', status: 200, body: {} }, SYSTEM);
+    store.setSelection([SQL]);
+    for (const action of ['reset', 'enable']) {
+      expect(actions.run(SYSTEM, action)).toBe(true);
+      await settle();
+      expect(handler.pending()).toBeNull();
+    }
+    expect(calls.map((call) => JSON.parse(call.body))).toEqual([
+      { action: 'reset', id: SQL },
+      { action: 'enable', id: SQL },
+    ]);
+    expect(calls[0].path).toBe('/api/ocupilot/screens/security.auditsystemevents/action');
+    expect(actions.has(SYSTEM, 'delete')).toBe(false);
+  });
+
+  it('warns before disabling the marker event, and disables any other row at once', async () => {
+    // Mutation (Rule 19): drop `WARNING_ROWS` -> the marker disable is sent at once and the
+    // pending assertions go red.
+    const { actions, handler, store, calls } = mount({ kind: 'ok', status: 200, body: {} }, USER);
+    rows(store);
+    store.setSelection([MARKER]);
+    actions.run(USER, 'disable');
+    await settle();
+    expect(calls).toHaveLength(0);
+    const pending = handler.pending();
+    expect(pending?.kind).toBe('warning');
+    expect(pending?.verb).toBe(STRINGS.agentDefinitionDisable);
+    expect(pending?.consequence).toBe(STRINGS.proposalAuditWarning);
+    handler.confirmPending();
+    await settle();
+    expect(calls.map((call) => JSON.parse(call.body))).toEqual([{ action: 'disable', id: MARKER }]);
+
+    store.setSelection([OTHER]);
+    actions.run(USER, 'disable');
+    await settle();
+    expect(handler.pending()).toBeNull();
+    expect(calls.map((call) => JSON.parse(call.body))).toEqual([
+      { action: 'disable', id: MARKER },
+      { action: 'disable', id: OTHER },
+    ]);
+  });
+
+  it('types the event name before a delete, with the advisory on the marker row only', async () => {
+    // Mutation (Rule 19): drop the User events list's `DESTRUCTIVE_CONSEQUENCES` entry -> no delete
+    // registers and the first assertion goes red.
+    const { actions, handler, store, calls } = mount({ kind: 'ok', status: 200, body: {} }, USER);
+    rows(store);
+    expect(actions.has(USER, 'delete')).toBe(true);
+    for (const [row, advisory] of [
+      [MARKER, STRINGS.proposalAuditWarning],
+      [OTHER, ''],
+    ]) {
+      store.setSelection([row]);
+      actions.run(USER, 'delete');
+      await settle();
+      const pending = handler.pending();
+      expect(pending?.kind).toBe('typed-name');
+      expect(pending?.name).toBe(row);
+      expect(pending?.consequence).toBe(STRINGS.auditUserEventDeleteConsequence);
+      expect(pending?.advisory).toBe(advisory);
+      handler.cancelPending();
+    }
+    expect(calls).toHaveLength(0);
+  });
+
+  it('sends one action through sendFor as a row action would, and answers whether it applied', async () => {
+    const target = { type: 'audit-event', scope: 'instance', id: SQL.toLowerCase() };
+    const { handler, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target } }, SYSTEM);
+    expect(await handler.sendFor(SYSTEM, 'enable', SQL)).toBe(true);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'enable', id: SQL });
+    expect(events.map((event) => `${event.type}:${event.action}`)).toEqual(['audit-event:updated']);
+  });
+});

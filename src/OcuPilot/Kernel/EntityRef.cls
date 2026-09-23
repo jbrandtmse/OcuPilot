@@ -56,7 +56,7 @@ Parameter TYPEWEBAPPLICATION = "web-application";
 /// <parameter>OcuPilot.Kernel.EntityType.TYPES</parameter>, or a rule the generator cannot
 /// implement, fails <code>npm run build</code> rather than reaching the client as a silent
 /// no-op. A later write-tool story adds one pair here, never a branch in two languages.</p>
-Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integer,application-error:foldcase";
+Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integer,application-error:foldcase,audit-event:foldcase,audit-user-event:foldcase";
 
 /// <p>The closed rule vocabulary <parameter>IDRULES</parameter> selects from. A rule named there
 /// and absent here is a declaration error, pinned by
