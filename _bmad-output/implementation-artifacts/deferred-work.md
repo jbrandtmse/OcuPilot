@@ -6070,3 +6070,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: AdminPort.cls:131 'The nine are the ones the registry actually reaches'; origin/OCU-1-epic8 appends Security.User/POST to MUTATINGTYPES without touching the sentence, so the merged count is ten. Reverting to seven would be false now.
 - 2026-09-23T05:12:40Z status=wontfix-accepted owner=7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de by=cr note=merge gate sets ten; reopen_if=post-merge the sentence's count differs from MUTATINGTYPES' entry count
+
+### DW-1516: The agent path can leave the change-on-login flag cleared: a flag proposal confirmed before the password proposal is undone by the vendor's password change
+- source: _bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: CHANGEPWD clears ChangePassword (measured on ocupilot-ci); the screen sends flag, password, flag, but two agent proposals are confirmed in whatever order the user chooses. AD-56 (ii) amended to require the flag after the password
+- 2026-09-23T06:45:52Z status=routed owner=burndown by=harvest note=make the password tool re-apply a flag set before it, or refuse a flag proposal while a password proposal on the same target is live
+
+### DW-1517: AC4 names %Admin_Secure as a role to add, but on this build it is a resource and no role carries that name, so the add answers 400 unknown role
+- source: _bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Security.Roles has no %Admin_Secure on ocupilot-ci; the privileged-add legs used %All and %Manager instead
+- 2026-09-23T06:45:52Z status=by-design owner=7-2-user-enable-disable-delete-password-and-roles by=harvest note=the AC's example; the owner's 2026-09-23 decision rewrote AC4 around %All and roles carrying %Admin_* anyway
+
+### DW-1518: The last-%All-holder strip is pinned in-process through the tool delta and Operation.Gate, not over the HTTP route
+- source: _bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: the census can be armed only in the test process, never in the web server serving the route; UserUpdate.TestAnAllStripOfTheLastHolderIsRefusedAtTheSharedGate
+- 2026-09-23T06:45:52Z status=wontfix-accepted owner=7-2-user-enable-disable-delete-password-and-roles by=harvest note=reopen_if=the census gains a switch the web server process can read
+
+### DW-1519: Test/Prohibited.cls took Epic 8's WithoutAuthoredSecrets byte-for-byte after the lead's port reddened TestNoWriteToolAdmitsAnAlwaysProhibitedField
+- source: _bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: the port 771b08b made UserList declare an authored secret; the helper that excludes it came from Epic 8 unchanged
+- 2026-09-23T06:45:52Z status=dropped owner=7-2-user-enable-disable-delete-password-and-roles by=harvest note=a merge note, not a defect: identical hunks on both branches

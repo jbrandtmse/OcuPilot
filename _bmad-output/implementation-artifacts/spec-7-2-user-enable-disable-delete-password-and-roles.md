@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-22'
 status: 'done'
 baseline_revision: 'c7ef11bdfb1569512f967cc056bbc06043a3a01f'
+baseline_commit: 'c7ef11bdfb1569512f967cc056bbc06043a3a01f'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -74,15 +75,17 @@ here (Story 9.1's). No agent marker on the screen's path (AD-15, AD-53).
 | Delete a protected account, agent | `permissions.users.delete` for `_system` | refused at the write inside the transition; canonical form asked | `PROHIBITED.SYSTEMACCOUNT` (AD-39) |
 | Set password, screen | new password pasted with a trailing space, flag checked | the flag write, then `CHANGEPWD` with `{NewPassword}` exactly as pasted; one `updated` event; the field empties | Flag refused: nothing else sent. Password refused (policy): the vendor's refusal as a published sentence; the flag stays set |
 | Set password, agent | `permissions.users.password` minted | card shows no diff value for the password; its masked field is filled at confirm | Confirm without it: `aria-disabled` with `proposalSecretsRequired`; channel refuses any other key |
-| Add a privileged role | `%All`, a `%Admin_*` role, or a custom role recursing to one | refused on the instance for both callers (reading per Gap 1) | 403 `PROHIBITED.PRIVILEGEGRANT` |
+| Add a privileged role | `%All`, a `%Admin_*` role, or a custom role recursing to one | offered, never hidden; this story adds no refusal and no test asserting one (owner decision 2026-09-23: permitted at typed confirmation, Epic 8's predicate change) | the instance's answer, whatever it is on the branch |
 | Remove `%All` from the last holder | row action remove-role `%All` | refused | 403 `PROHIBITED.LASTALLHOLDER` |
 | Concurrent role change | another session added role X after the list loaded; this user adds Y | the write holds X and Y | No error expected (delta over fresh read) |
 
 
 **Orchestrator rulings, 2026-09-23 (binding; the three intent gaps are closed).**
 
-1. AC4 is amended (`epics.md` Story 7.2): a grant of `%All` or any `%Admin_*` role is refused on
-   the instance whatever the caller.
+1. AC4 is amended (`epics.md` Story 7.2) by the owner, superseding the earlier ruling: a grant of
+   `%All`, a `%Admin_*` role or a role carrying them is permitted at typed confirmation. Epic 8 owns
+   the predicate, the confirmation level and `privilegedGrantEffect`; this story adds no refusal of
+   its own, hides no role, and tests Add/Remove role with a non-privileged role only.
 2. **AD-56** (spine) is the write shape: (i) an action write may send a body made only of its
    declared secret arguments (`CHANGEPWD` takes exactly `{NewPassword}`), supplied at the write,
    never stored, fingerprinted over a declared subject of the fresh read; (ii) a screen action

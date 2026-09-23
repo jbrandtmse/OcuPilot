@@ -4248,9 +4248,9 @@ So that the commonest administrative task takes one click rather than an editor.
 - **When** a disable or delete is attempted
 - **Then** it is refused with an explanation, in the UI **and** on the instance.
 
-- **Given** the change would add `%All` or any `%Admin_*` role
+- **Given** the change would add `%All`, any `%Admin_*` role, or a role that carries them
 - **When** it is attempted, from the screen or through the agent
-- **Then** it is refused on the instance whatever the caller (AD-10, AD-53) - privilege grants are prohibited in Release 1 at any confirmation level - while the screen's own role management of every other role remains available to a privileged user, and such grants stay a classic-portal action in Release 1. [AMENDED 2026-09-23, Epic 7 runner, Rule 5 tier-1 on the orchestrator's identical ruling for 8.2 AC3: the clause read "When it is attempted through the agent ... while the screen's own role management remains available", which let the screen grant what AD-10 refuses "whatever the caller"; see the story change log in spec-7-2.]
+- **Then** it is permitted: the agent's proposal takes the strongest confirmation, the typed name, and its diff names the privilege granted, and the screen's Add role dialog shows a consequence line when a privileged role is selected; the account protections (the signed-in user, `_SYSTEM`, the service account, the last `%All` holder) are unchanged. [AMENDED 2026-09-23, owner decision: privilege grants permitted at typed confirmation; was "refused whatever the caller". The earlier tier-1 amendment of the same day, on the orchestrator's 8.2 AC3 ruling, is superseded; Epic 8 implements the predicate, confirmation-level and `privilegedGrantEffect` changes, and this story consumes them.]
 
 - DW-1486: PROHIBITED.SERVICEACCOUNT is scoped to the disable verb while LASTALLHOLDER is scoped by effect, so a Roles delta stripping %All from the service account is permitted; with 7.2's delete hole, evaluate every account predicate by effect for delete, disable and a Roles delta stripping %All (AD-10 as amended 2026-09-23) (ledger; routed by spec_gate 2026-09-23)
 - DW-1499: Prohibited.ReasonFor's sentences other than SERVINGPATH say the change is not something the agent can propose, which AD-53 makes a defect once a screen caller reaches that arm (ledger; routed by cr 2026-09-23)
