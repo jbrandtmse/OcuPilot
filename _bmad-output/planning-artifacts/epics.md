@@ -832,7 +832,7 @@ An operator runs the agent on OpenAI, Google Gemini or a local model on their ow
 
 ### Epic 11: The agent explains itself, cites its work, and streams
 
-During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked after the OAuth 2.0 editors (Epic 12) by the owner's re-sequence of 2026-09-21, because these are what voters see and improvements are allowed through the voting week. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
+During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked after the OAuth 2.0 editors (Epic 12) by the owner's re-sequence of 2026-09-21, because these are what voters see and improvements are allowed through the voting week. Stories run in the order 11.7, 11.8, 11.1, 11.2, 11.3, 11.4 (owner re-order, 2026-09-22): streaming and the privilege line first, so a partial epic merged before the deadline carries the two refinements a judge can see. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
 
 **FRs covered:** FR-70, FR-71, NFR-2 (token streaming)
 
@@ -4861,9 +4861,67 @@ So that screen data and log text never leave the instance at all.
 
 ## Epic 11: The agent explains itself, cites its work, and streams
 
-During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked after the OAuth 2.0 editors (Epic 12) by the owner's re-sequence of 2026-09-21, because these are what voters see and improvements are allowed through the voting week. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
+During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked after the OAuth 2.0 editors (Epic 12) by the owner's re-sequence of 2026-09-21, because these are what voters see and improvements are allowed through the voting week. Stories run in the order 11.7, 11.8, 11.1, 11.2, 11.3, 11.4 (owner re-order, 2026-09-22): streaming and the privilege line first, so a partial epic merged before the deadline carries the two refinements a judge can see. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
 
 **Applies to every story in this epic.** All of these modify the same panel transcript render path, which is why they are one epic rather than three. Nothing here may break a Release 1 screen or a Release 1 agent write; anything that risks either waits for Stage 2. Every new tool declares `read` or `write` at definition time or the build fails, and every new write key is added to the governance baseline in Epic 14 rather than left to default.
+
+### Story 11.7: Token streaming
+
+As a developer-administrator watching a long answer,
+I want to see it arrive as it is written,
+So that a slow model reads as thinking rather than as a hang.
+
+**Acceptance Criteria:**
+
+- **Given** build step 7 finished
+- **When** this story is scheduled
+- **Then** it ships; **if step 7 did not finish, it does not** - the condition is the owner's, and it exists because streaming changes the panel's render path and must not put a Release 1 agent write at risk.
+
+- **Given** it ships
+- **When** it is ranked
+- **Then** it comes **after** the explain and transparency work in this epic, never before.
+
+- **Given** streaming is on
+- **When** a reply arrives
+- **Then** the panel appends incrementally, while the turn still runs in a background job and the panel still polls progress - **the contract of both is unchanged**, only the render path gains an append mode.
+
+- **Given** streamed text
+- **When** it renders
+- **Then** it is subject to every Release 1 rule: sanitized, markup-free by construction, no remote resource, and rendered as data rather than as OcuPilot's own voice.
+
+- **Given** reduced motion or a failure mid-stream
+- **When** either occurs
+- **Then** the reply still resolves to the same final rendering a non-streamed turn would produce.
+
+---
+
+### Story 11.8: The proposal names the privilege it needs
+
+As a developer-administrator reviewing a proposal,
+I want the card to tell me which `%Admin_*` resource the write requires and whether I hold it,
+So that a refusal is predictable before Confirm rather than discovered after it.
+
+**Acceptance Criteria:**
+
+- **Given** a proposal card for any write tool
+- **When** it renders
+- **Then** it carries one line naming the resource the endpoint declares through its `ResourcesOR()` list - the same list `AdminPort` already gates on (AD-29) - and whether the signed-in user holds it, read from the privilege map the shell already loads (Story 1.9, FR-4); no new derivation and no second source of truth.
+
+- **Given** the user lacks the resource
+- **When** the card renders
+- **Then** Confirm stays enabled - the instance is the authority and refuses as it does today - the line reads as a warning naming the missing resource, and the audit marker and the ledger are unchanged.
+
+- **Given** `ResourcesOR()` is a lower bound (AD-29: some vendor queries refuse for resources the list does not name)
+- **When** the line is worded
+- **Then** it says "requires", never "sufficient"; the instance's answer remains the verdict.
+
+- **Given** a row action or a form's Save on a screen from Epics 7 to 9 and 12
+- **When** the same two facts are at hand
+- **Then** the action's tooltip or the Save bar may carry the same line at no extra derivation; where it is not wired, that is a recorded omission rather than a defect.
+
+*Added 2026-09-20 from the contest field: one competing entry previews the required privilege per operation; OcuPilot already holds both facts.*
+
+---
 
 ### Story 11.1: "Explain this screen"
 
@@ -4957,64 +5015,6 @@ So that verifying the agent's answer costs one click rather than a search.
 - **Given** a chip's target no longer exists
 - **When** it is clicked
 - **Then** it reports that the row is no longer present rather than failing the screen - stored references are weak by contract.
-
-### Story 11.7: Token streaming
-
-As a developer-administrator watching a long answer,
-I want to see it arrive as it is written,
-So that a slow model reads as thinking rather than as a hang.
-
-**Acceptance Criteria:**
-
-- **Given** build step 7 finished
-- **When** this story is scheduled
-- **Then** it ships; **if step 7 did not finish, it does not** - the condition is the owner's, and it exists because streaming changes the panel's render path and must not put a Release 1 agent write at risk.
-
-- **Given** it ships
-- **When** it is ranked
-- **Then** it comes **after** the explain and transparency work in this epic, never before.
-
-- **Given** streaming is on
-- **When** a reply arrives
-- **Then** the panel appends incrementally, while the turn still runs in a background job and the panel still polls progress - **the contract of both is unchanged**, only the render path gains an append mode.
-
-- **Given** streamed text
-- **When** it renders
-- **Then** it is subject to every Release 1 rule: sanitized, markup-free by construction, no remote resource, and rendered as data rather than as OcuPilot's own voice.
-
-- **Given** reduced motion or a failure mid-stream
-- **When** either occurs
-- **Then** the reply still resolves to the same final rendering a non-streamed turn would produce.
-
----
-
-### Story 11.8: The proposal names the privilege it needs
-
-As a developer-administrator reviewing a proposal,
-I want the card to tell me which `%Admin_*` resource the write requires and whether I hold it,
-So that a refusal is predictable before Confirm rather than discovered after it.
-
-**Acceptance Criteria:**
-
-- **Given** a proposal card for any write tool
-- **When** it renders
-- **Then** it carries one line naming the resource the endpoint declares through its `ResourcesOR()` list - the same list `AdminPort` already gates on (AD-29) - and whether the signed-in user holds it, read from the privilege map the shell already loads (Story 1.9, FR-4); no new derivation and no second source of truth.
-
-- **Given** the user lacks the resource
-- **When** the card renders
-- **Then** Confirm stays enabled - the instance is the authority and refuses as it does today - the line reads as a warning naming the missing resource, and the audit marker and the ledger are unchanged.
-
-- **Given** `ResourcesOR()` is a lower bound (AD-29: some vendor queries refuse for resources the list does not name)
-- **When** the line is worded
-- **Then** it says "requires", never "sufficient"; the instance's answer remains the verdict.
-
-- **Given** a row action or a form's Save on a screen from Epics 7 to 9 and 12
-- **When** the same two facts are at hand
-- **Then** the action's tooltip or the Save bar may carry the same line at no extra derivation; where it is not wired, that is a recorded omission rather than a defect.
-
-*Added 2026-09-20 from the contest field: one competing entry previews the required privilege per operation; OcuPilot already holds both facts.*
-
----
 
 ## Epic 12: The OAuth 2.0 editors and the security-area tests
 
