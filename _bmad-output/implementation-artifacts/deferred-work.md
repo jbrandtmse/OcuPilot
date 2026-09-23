@@ -6134,6 +6134,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Prohibited.cls User predicate unchanged by the owner-reversal rework; Test/UserUpdate.cls (Epic 7-modified, not contended) asserts the refusal, so the fix needs that file; create path now grants the same roles
 - 2026-09-23T07:52:31Z status=escalated owner=burndown by=harvest note=for the merge gate: remove or recode the update refusal once Epic 7's UserUpdate.cls and this branch merge
 - 2026-09-23T08:46:44Z status=routed owner=8-4-the-resource-editor by=orchestrator note=floor-blocking: fix Prohibited.User update predicate to amended AD-10 inside 8.4; Test/UserUpdate.cls now contended
+- 2026-09-23T10:09:30Z status=resolved-by:8-4-the-resource-editor by=adjudication note=Prohibited.User update predicate permits privileged role deltas, destructive+named; UserUpdate tests recoded; e954e2db; remainder DW-DW-1537
 
 ### DW-1525: Doc comments in Epic 7's files still say privilege is refused through any path (WebAppUpdate.cls:26, Classification.cls:28, Test/UserUpdate.cls:23)
 - source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -6155,3 +6156,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-4-the-resource-editor.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: AD-53's row-action route and self-protection rendering exist only on OCU-1-epic7; it needs a new AD-53 self-protection word that reads the row's AllowDelete. 8.4 ships the agent's permissions.resources.delete.
 - 2026-09-23T08:46:44Z status=routed owner=9-3-the-role-editor by=orchestrator note=Rule 5 partial deferral of 8.4 AC2, orchestrator-authorised 2026-09-23; beside DW-1513
+
+### DW-1536: A user update's EscalationRoles change is refused UNCOVEREDFIELD because the Users write tool never admitted the field
+- source: spec-8-4-the-resource-editor.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Prohibited.User no longer refuses it PRIVILEGEGRANT (DW-1524); UserUpdate's admitted field list excludes EscalationRoles and ToolWrite pins the kernel's uncovered-field refusal
+- 2026-09-23T10:09:30Z status=wontfix-accepted owner=8-4-the-resource-editor by=harvest note=reopen_if=the owner asks the agent or a screen to edit a user's escalation roles (Story 9.1's editor is the natural owner)
+
+### DW-1537: The Users write tool's model-facing Roles description still says a role granting an administrative privilege is refused, steering the agent away from a write amended AD-10 permits
+- source: spec-8-4-the-resource-editor.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: src/OcuPilot/Screen/Tool/UserUpdate.cls InputSchema Roles description; the file is in Epic 7's diff and not on the contended list, so 8.4 did not edit it (DW-1524's remaining half)
+- 2026-09-23T10:09:30Z status=escalated owner=burndown by=harvest note=one-sentence description edit; needs the orchestrator to put Screen/Tool/UserUpdate.cls under the contended discipline
