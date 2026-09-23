@@ -2,8 +2,8 @@
 title: 'Story 7.2: User enable, disable, delete, password and roles'
 type: 'feature'
 created: '2026-09-22'
-status: 'in-progress'
-baseline_revision: 'c7ef11bdfb1569512f967cc056bbc06043a3a01f'
+status: 'done'
+baseline_revision: '584172aa9bf05f103bd75ce8f1adcb2cfebee556'
 baseline_commit: 'c7ef11bdfb1569512f967cc056bbc06043a3a01f'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -17,6 +17,13 @@ deferred:
   - 'AC4 names `%Admin_Secure` as a role to add; it is a resource on this build and no role carries that name, so the add is 400 (unknown role) before the prohibited set. The privileged-add legs use `%All` and `%Manager` (a role carrying `%Admin_Secure:U`).'
   - 'The armed last-holder `%All` strip is pinned through the tool delta plus `Operation.Gate` in-process (UserUpdate.TestAnAllStripOfTheLastHolderIsRefusedAtTheSharedGate): the census is armable only in the test process, never in the web server serving the route.'
   - 'Prohibited.cls-test port: `WithoutAuthoredSecrets` taken byte-for-byte from Epic 8 (its absence already reddened TestNoWriteToolAdmitsAnAlwaysProhibitedField after the lead port 771b08b); the action-write secret check was restated for AD-56 (i).' 
+  - summary: >-
+      DESIGN.md publishes the command bar at a fixed `{spacing.command-bar-height}` (50px) with no narrow-width rule; the rework makes 50px a minimum and lets the bar wrap, which DESIGN.md should state.
+    evidence: |-
+      The Users list's bar measures 898px on one line (filter, count, six row actions, sort, Refresh) against a 640px content minimum; EXPERIENCE.md keeps every row action on the bar and adds no copy, so wrap is the one treatment left. The wrap rule is borrowed from DESIGN.md's Home tiles (inference that it extends to the bar). For the lead: a Rule 5 apply-and-report restatement of DESIGN.md's `command-bar` entry.
+    location: >-
+      ui/src/styles/_components.scss (appended `.ocu-command-bar` rule); DESIGN.md `command-bar`
+    severity: medium
 ---
 
 <intent-contract>
@@ -399,7 +406,7 @@ Rejected:
 
 **Rework iteration 1 (2026-09-23, lead, CI):**
 
-- [ ] [CI] `browser`, run 35828196362 on e5b7e1b: `ui/browser/panel.browser-spec.mjs:759` `not ok 104`
+- [x] [CI] `browser`, run 35828196362 on e5b7e1b: `ui/browser/panel.browser-spec.mjs:759` `not ok 104`
   "the 640px content minimum ... on the Users list": at 1,280px with the panel at its maximum the
   content region is 640 wide but scrolls to 938 (`contentScrollWidth`; docked, 911 against 832), so
   "the content does not scroll" fails at `:776`. Before this story the Users list fit. The cause is
@@ -545,6 +552,8 @@ Review patches: mutation: `this.signedIn()` dropped at the three surfaces → th
 
 Code review patches: mutation: `If 'tHeldGrants Quit` removed from `Prohibited.RemovesAdministration` → `ProhibitedByEffect.TestEveryAccountArmRefusesEveryRemovalEffect` red on the new service-account ordinary-add control alone; mutation: the empty-value `Continue` removed from `Operation.SecretBody` → `ToolWrite.TestTheUserPasswordToolSendsOnlyItsDeclaredSecret` red on "an empty password is not sent". Each applied to the `/tmp/ocupilot-ci/src` copy only, loaded, observed red, then the copy re-synced from the worktree (`diff -r` identical) and reloaded.
 
+Rework iteration 1 (CI item): mutation: the appended `.ocu-command-bar` rule removed, bundle rebuilt and redeployed → `panel.browser-spec.mjs` "the 640px content minimum ..." red alone (10/11, "and the content does not scroll", 898 !== 640); mutation: `height: auto` removed from that rule, rebuilt and redeployed → the same leg red on "the command bar grows to hold every line its six row actions wrap onto" (bar bottom 187 against controls at 217), content scroll still 640.
+
 Every mutation was reverted and the original reloaded (or the bundle rebuilt and redeployed);
 `git diff --stat` read the same before and after.
 
@@ -553,52 +562,50 @@ Every mutation was reverted and the original reloaded (or the bundle rebuilt and
 Status: done
 Blocking condition: none
 
-**Change.** The Users list declares seven row actions (six drawn; `require-password-change` is
-undrawn). They run through `permissions.users.update` (with a server-side role delta over the
-fresh read), a new `permissions.users.delete` and a new `permissions.users.password`. The password
-tool's write is its declared secret alone (`SECRETBODY`, `Operation.SecretBody`), and
-`AdminPort.RENAMEDTYPES` renames it to `NewPassword` on the wire. The route's `values` channel is
-closed. `Prohibited.User` asks all four account arms on one effect (`RemovesAdministration`: a
-delete, a disable or a `%All` strip), and the four account refusal sentences are caller-neutral
-parameters. The client explains `protected-account` on the row menu, the command bar and the
-command box, and adds the set-password and role dialogs.
+This records rework iteration 1 only. The first pass's record is in commit f4345af.
 
-**Files.** Server: `Prohibited`, `ScreenAction`, `Operation`, `Confirm` (one line), `Write`,
-`UserUpdate`, the new `UserDelete` and `UserPassword`, `AdminPort`, `UserList`, `Registry`,
-`Classification`, and `ToolFields` (regenerated). Client: `self-protection`, `screen-action-handler`,
-`list-page`, `screen-actions`, `data-table`, `command-bar`, `command-box`, the new `set-password-dialog`
-and `role-dialog`, `screens.generated`, and `screen-mirror.mjs`. Tests: `UserUpdate`,
-`ProhibitedByEffect`, `ProhibitedRoute`, `RefusalCopy`, `SurfaceCoverage`, `ToolWrite`,
-`ToolRoundTrip`, `ReadTool`, `PortFixture`, `Prohibited` (Epic 8's `WithoutAuthoredSecrets` taken
-byte-for-byte), their specs, `self-protection.test.mjs`, and the new
-`users-actions.browser-spec.mjs`.
+**Change.** The CI item is fixed at its cause. The command bar laid its controls out on one line
+with no wrap. On the Users list that line is 898px wide: the filter, the count, the six row
+actions, Sort and Refresh. It was measured by walking the deployed page's content region at
+1,280px. The rule appended to `_components.scss` lets the bar wrap and grow (`flex-wrap: wrap`,
+`height: auto`, `min-height` at the command-bar height, block padding, `border-box`), and on one
+line the bar is still 50px. No row action is hidden and no copy is added. The Web applications
+list fits at 832 and wraps only at the 640 maximum.
 
-**Review.** 22 findings. Three medium entries were patched, all test additions (surface legs for
-the signed-in refusal, closed-channel route legs, the route-path log check), plus one low
-(password confirm without a password). One medium was deferred (the agent-path flag order,
-`deferred:` item 1). Ten lows and seven false findings were rejected, with reasons in the triage
-log. Stage self-fixes: stray blank lines in `command-box.ts` and `data-table.ts`, a merged import,
-the delta's refusals no longer echo the role, and a handler leg for a password refused by policy.
-followup_review_recommended: false (patched entries were test additions with demonstrated
-mutations; no unverified risk can be named).
+**Files.**
 
-**Verification (tiers run):** ObjectScript full sweep once on `ocupilot-ci`: 180 classes, 1,628
-tests, 0 failed. It carries four class-level refusals, `AuditingUpdate`, `ErrorDelete`,
-`ProcessControl` and `TaskResume`, because the throwaway predates their arming variables (known,
-recorded). `UserUpdate` was re-run after the patches: 22/0. `test:tools` 1,327/0 and
-`test:components` 858/0. Browser (bundle rebuilt and redeployed): `users-actions`, `users` and
-`users-write`, 9/9. Generator checks, `client-lint`, `check-objectscript` and `lint-docs` are clean.
-The full browser suite was not run (Rule 29).
+- `ui/src/styles/_components.scss`: one rule appended at the end. The original rule is not ours to edit (shared-append), so the appended rule overrides it.
+- `ui/browser/panel.browser-spec.mjs`: the 640px leg now also asserts, on the Users list at the maximum, that the bar contains every control and that the list starts below it.
 
-**footprint_extensions:** `Kernel/Proposal/Prohibited.cls`, `Kernel/Proposal/Confirm.cls`,
-`Kernel/Proposal/Operation.cls`, `Screen/Tool/Write.cls`, `Screen/Descriptor/UserList.cls`,
-`Screen/Registry.cls`, `Screen/Tool/Classification.cls` (+ `ToolFields.cls`),
-`ui/tools/screen-mirror.mjs` (+ `screens.generated.ts`), `Port/AdminPort.cls` (own entries),
-`Test/ProhibitedRoute.cls`, `Test/SurfaceCoverage.cls`, `Test/ToolRoundTrip.cls`,
-`Test/ReadTool.cls`, `Test/Prohibited.cls`, `Test/PortFixture.cls`. Expected merge contacts with
-Epic 8: the `UserList` header, `AdminPort` `MUTATINGTYPES` and the line before `RunSequence`,
-`ReasonFor` beside `PRIVILEGEGRANT`, the end of `Test/Prohibited.cls`, and the `ProhibitedRoute`
-users roster (four at merge).
+**Review.** 11 findings: high 0, medium 3, low 4, false 4.
 
-**Residual risks:** the flag-order deviation from AD-56's sentence (`deferred:` item 1, for the
-lead under Rule 20). The last-holder route legs are pinned in-process only (`deferred:` item 3).
+- Patched (medium, one root cause): nothing checked that a wrapped bar grows to hold its lines (verification-gap and intent-alignment). Fixed by the `commandBarBox` assertions, with a demonstrated mutation.
+- Deferred (medium): DESIGN.md gives the bar a fixed 50px, and the fix makes that a minimum. See `deferred:` item 5; it is for the lead to restate DESIGN.md.
+- Rejected (low):
+  - One-line 50px height unpinned: no screen in the leg stays on one line, so a pin needs a new leg on another list. The pre-existing pin was the same token check.
+  - The original rule's `height` is dead: it can only be removed by editing a shared-append entry this story does not own.
+  - The Refresh chip loses its right edge when the bar wraps (two rows): none of the bars that wrap carries the chip. The Users bar's controls were listed and it has none.
+- Rejected (false):
+  - Mutation line not written: written in `## Verification` by this stage.
+  - The fix changes a shared class: the dispatch required the fix to hold for the Web applications list if the shared component was at fault.
+  - The "34px border box" comment: `.ocu-button-text` is a 32px content box plus its 1px border on each side, which is 34px.
+  - The cause was not measured: the descendant walk found it, and with the fix the content scroll width equals the client width (832 and 640).
+
+followup_review_recommended: false. This is a follow-up pass and no `high` was patched; the patched
+entries were one medium, in the test only.
+
+**Verification (tiers run).** The bundle was rebuilt and redeployed to `ocupilot-ci`.
+
+- Browser: `panel.browser-spec.mjs` 11/11; `users-actions`, `users` and `users-write` 9/9; `web-applications-actions` 3/3.
+- `test:tools` 1,327/0 and `test:components` 858/0.
+- Rule 19: two mutations were observed red and reverted; they are recorded in `## Verification`. After each revert the tree was byte-identical and the bundle was rebuilt and redeployed.
+- No ObjectScript changed, so no ObjectScript sweep was run. The full browser suite was not run (Rule 29).
+
+**footprint_extensions:** none new. `ui/src/styles/_components.scss` is shared-append; this story's
+entry is at the end. Epic 8 also appends there (43 lines), so expect an append-append merge
+contact. Epic 8 has not modified `ui/browser/panel.browser-spec.mjs` (checked with `git diff --stat dd70e59 origin/OCU-1-epic8`).
+
+**Residual risks:**
+
+- A bar that wraps is taller, so the list gets less height. The Users list's bar is 88px at the default docked width.
+- The 640 fit on the Web applications list rests on the implementer's measurement. No assertion pins it.

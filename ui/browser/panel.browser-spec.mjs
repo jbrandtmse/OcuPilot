@@ -209,6 +209,26 @@ function geometry(page) {
 }
 
 /**
+ * The command bar's box, the lowest bottom and rightmost edge of its rendered controls, and where
+ * the routed screen's `main` starts: a bar that wraps must grow to hold every line it wraps onto.
+ */
+function commandBarBox(page) {
+  return page.evaluate(() => {
+    const bar = document.querySelector('app-command-bar .ocu-command-bar').getBoundingClientRect();
+    const items = [...document.querySelectorAll('app-command-bar .ocu-command-bar > *')]
+      .map((node) => node.getBoundingClientRect())
+      .filter((rect) => rect.width > 0 && rect.height > 0);
+    return {
+      barBottom: bar.bottom,
+      barRight: bar.right,
+      itemsBottom: Math.max(...items.map((rect) => rect.bottom)),
+      itemsRight: Math.max(...items.map((rect) => rect.right)),
+      mainTop: document.querySelector('main.ocu-content').getBoundingClientRect().top,
+    };
+  });
+}
+
+/**
  * Wait for the panel's width transition to settle at `width`. Local, not shared: the sibling
  * spec's copy settles to a different tolerance, and unifying them would change a measurement
  * (DW-1151).
@@ -767,7 +787,8 @@ test('the 640px content minimum, measured at 1,280px docked and resized to maxim
       await pressOnHandle(page, 'ArrowLeft', Math.ceil((max - 400) / 16) + 1);
       await panelSettlesAt(page, max);
       const resized = await geometry(page);
-      console.log(`MEASURE ${JSON.stringify({ url, docked, resized })}`);
+      const bar = url === USERS_URL ? await commandBarBox(page) : null;
+      console.log(`MEASURE ${JSON.stringify({ url, docked, resized, bar })}`);
 
       assert.equal(Math.round(docked.panelWidth), 400);
       assert.equal(Math.round(docked.contentWidth), 832);
@@ -775,6 +796,11 @@ test('the 640px content minimum, measured at 1,280px docked and resized to maxim
       assert.equal(Math.round(resized.contentWidth), 640, 'at the maximum the content region is exactly 640');
       assert.equal(resized.contentScrollWidth, resized.contentClientWidth, 'and the content does not scroll');
       assert.equal(resized.pageScrollWidth, resized.pageClientWidth);
+      if (bar !== null) {
+        assert.ok(bar.itemsBottom <= bar.barBottom + 0.5, 'the command bar grows to hold every line its six row actions wrap onto');
+        assert.ok(bar.itemsRight <= bar.barRight + 0.5, 'and no control sits past its right edge');
+        assert.ok(bar.mainTop >= bar.barBottom - 0.5, 'and the list starts below it');
+      }
     } finally {
       await context.close();
     }

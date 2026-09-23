@@ -5331,3 +5331,20 @@ app-data-table {
   margin: var(--ocu-space-2) 0 0;
   color: var(--ocu-error);
 }
+
+// --- The command bar at the content minimum (Story 7.2) -------------------------------------------
+//
+// Every row-overflow-menu item is also on the command bar (EXPERIENCE.md, `command-bar`), so a
+// list with several row actions -- the Users list's six -- is wider than one line of a 640px
+// content column.
+// The bar wraps onto a further line rather than force the column wider, the rule DESIGN.md gives
+// Home's tiles; no narrower treatment of this bar is published. While one line holds it the bar
+// is still `{spacing.command-bar-height}`: the padding and the 34px border box of a control fill it
+// exactly, and `border-box` keeps the padding inside that minimum.
+.ocu-command-bar {
+  box-sizing: border-box;
+  flex-wrap: wrap;
+  height: auto;
+  min-height: var(--ocu-command-bar-height);
+  padding-block: var(--ocu-space-2);
+}
