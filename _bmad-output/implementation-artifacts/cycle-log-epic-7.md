@@ -211,3 +211,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T17:03:49Z	Story 7.8	ledger_adjudicated	owned=4 resolved=4 reowned=0 terminal=0 resolved_ids=DW-1155,DW-1189,DW-1499,DW-1553 model=claude-opus-5-5
 2026-09-23T17:03:49Z	Story 7.8	smoke_complete	method=api result=pass iterations=1 defects_caught=0 evidence=probe_routine_job_1586423_on_ocupilot-ci:suspend_200,resume_200,terminate-with-error_200(process_gone);terminate_system_pid_1626_403_PROHIBITED.SYSTEMPROCESS_with_the_published_sentence;probe_routine_deleted model=claude-opus-5-5
 2026-09-23T17:04:34Z	Story 7.8	committed	sha=bd4b1759 submodules= ci=pending run=35893105905 amendments=EXPERIENCE.md:419-425,spine:AD-52_named_case,ui/angular.json_budget(DW-1166)
+2026-09-23T17:04:40Z	Epic 7	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@becb7b57 merge=914412c2 files=1_cycle-log-parallel_only conflict=none
