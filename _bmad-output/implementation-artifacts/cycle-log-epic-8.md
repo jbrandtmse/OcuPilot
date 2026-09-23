@@ -159,3 +159,7 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T14:25:27Z	Epic 8	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp merge=cb56ab14 conflicts=sprint-status.yaml(resolved_ours+SPRINT_PLAN_generate,validate_ok) changed=docs_only(epics.md_15.7/15.8/17.6,epic-dependencies.yaml,cycle-log-parallel.md) code_paths_changed=0
 2026-09-23T14:27:33Z	Epic 8	epic_context_compiled	sha=pending reason=planning_artifact_newer(AD-27_second_case;8.5_done) model=opus lines=63
 2026-09-23T14:27:33Z	Story 8.6	stage_spawned	stage=plan spawn_at=2026-09-23T14:27:33Z model=opus agent_name=8-6-wallet-plan-1 cycle_iteration=1
+2026-09-23T14:45:54Z	Story 8.5	ci_resolved	story=8.5 run=35873999815 head=f7d90c32 result=in_progress_ resolved_at=plan_return
+2026-09-23T14:45:54Z	Story 8.6	story_created	spawn_at=2026-09-23T14:27:33Z model=opus path=_bmad-output/implementation-artifacts/spec-8-6-the-wallet-secret-form.md build_status=ready-for-dev spec_bytes=33000 warnings=oversized epic_context=reused
+2026-09-23T14:45:54Z	Epic 8	spine_updated	ad=AD-4 reason=rule5 by=runner story=8-6-the-wallet-secret-form change=Wallet.Secret_keeps_omitted_fields;upsert_creates_with_value_500_without(lead_reprobed_ocupilot-b-ci) lint=ok(preexisting_low)
+2026-09-23T14:45:54Z	Story 8.6	plan_clarification_requested	items=AD-27_third_case(WalletPort_completes_missing_GET_from_LIST+%Wallet.Secret.Exists),scope_key-value_only(RSA/symmetric_read-only),delete+row_action_to_9.5,ui/browser/security.browser-spec.mjs:308(Epic7-modified;asserts_Secrets_name_cell_not_a_link)
