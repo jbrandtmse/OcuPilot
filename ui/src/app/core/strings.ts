@@ -1376,6 +1376,30 @@ export const STRINGS = {
   /** EXPERIENCE.md:408 */
   oauthServerClientsEmptyAgent: 'create a server client description',
 
+  // Story 7.4: the Auditing configuration screen and its two embedded event lists.
+  /** EXPERIENCE.md:409 */
+  auditingTurnOffAction: 'Turn auditing off',
+  /** EXPERIENCE.md:409 */
+  actionProceed: 'Proceed',
+  /** EXPERIENCE.md:410 */
+  auditingStatusOn: 'Auditing is on.',
+  /** EXPERIENCE.md:410 */
+  auditingStatusOff: 'Auditing is off.',
+  /** EXPERIENCE.md:411 */
+  auditSystemEventListLabel: 'System events',
+  /** EXPERIENCE.md:411 */
+  auditUserEventListLabel: 'User events',
+  /** EXPERIENCE.md:412 */
+  auditEventColumnTotal: 'Total',
+  /** EXPERIENCE.md:412 */
+  auditEventColumnWritten: 'Written',
+  /** EXPERIENCE.md:412 */
+  auditEventColumnLost: 'Lost',
+  /** EXPERIENCE.md:413 */
+  auditSystemEventListEmpty: 'No system events.',
+  /** EXPERIENCE.md:413 */
+  auditUserEventListEmpty: 'No user events.',
+
 } as const;
 
 /**

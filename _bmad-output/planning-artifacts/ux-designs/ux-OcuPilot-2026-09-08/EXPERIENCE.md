@@ -406,6 +406,11 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "Deleting this server client description revokes every access token issued to it, and the client can no longer obtain new ones from this authorization server. This cannot be undone." | the confirm-dialog body for Delete server client description (Story 7.3), above the typed-name field; the vendor's own delete revokes the client's tokens [ADDED 2026-09-23 - see the story change log] |
 | "create an OAuth 2.0 client configuration" | the phrase that resolves `:315`'s agent invitation on the Client configurations tab, which Story 7.3's delete makes write-capable; an empty list has no row to delete, so it names create (the orchestrator's ruling for 7.1 and 7.2) [ADDED 2026-09-23 - see the story change log] |
 | "create a server client description" | the same, for the Server client descriptions tab (Story 7.3); both supersede `:368`'s read-only second line for these two tabs [ADDED 2026-09-23 - see the story change log] |
+| "Turn auditing off" · "Proceed" | the Auditing configuration screen's action and warning title, and the `button-primary` of a warning that precedes a non-delete write (`:173`), which is not destructive because nothing is deleted (Story 7.4) [ADDED 2026-09-23 - see the story change log] |
+| "Auditing is on." · "Auditing is off." | the Auditing configuration form's state line (Story 7.4) [ADDED 2026-09-23 - see the story change log] |
+| "System events" · "User events" | the titles and section headings of the two audit event lists embedded beneath the Auditing configuration form (Story 7.4) [ADDED 2026-09-23 - see the story change log] |
+| "Total" · "Written" · "Lost" | the audit event lists' count columns (Story 7.4) [ADDED 2026-09-23 - see the story change log] |
+| "No system events." · "No user events." | the audit event lists' empty states (Story 7.4) [ADDED 2026-09-23 - see the story change log] |
 
 ## Component Patterns
 
