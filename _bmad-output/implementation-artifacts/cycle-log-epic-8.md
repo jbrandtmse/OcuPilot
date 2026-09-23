@@ -166,3 +166,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T14:47:43Z	Epic 8	runner_resumed	by=orchestrator_answer rulings=AD-27_third_case_WalletPort(+fingerprint_limit_stated),key-value_only(DW-1555_range-end-cleanup),delete_to_9.5(DW-1556),security.browser-spec.mjs:308_flip_only
 2026-09-23T14:47:43Z	Epic 8	spine_updated	ad=AD-27 reason=clarification by=runner story=8-6-the-wallet-secret-form change=third_named_case_Wallet.Secret_GET_via_WalletPort;value_never_read_fingerprint_limit lint=ok(preexisting_low)
 2026-09-23T14:47:43Z	Story 8.6	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-3,AD-4,AD-6,AD-8,AD-27,AD-35,AD-52,AD-54,AD-55 decision_dependency=none sections_created=none owned_ledger=none mutates_shared_runtime=true throwaway=ocupilot-b-ci filed=DW-1555(range-end-cleanup),DW-1556(9.5) model=claude-opus-5-5-1m
+2026-09-23T14:49:20Z	Story 8.5	ci_resolved	story=8.5 run=35873999815 head=f7d90c32 result=success resolved_at=next_implement(rule28)
+2026-09-23T14:49:20Z	Story 8.6	stage_spawned	stage=implement spawn_at=2026-09-23T14:49:20Z model=opus agent_name=8-6-wallet-implement-1 cycle_iteration=1
