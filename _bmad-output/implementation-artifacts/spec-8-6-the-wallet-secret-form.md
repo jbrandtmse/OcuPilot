@@ -175,6 +175,13 @@ Before editing a ⚠ file, run `git fetch origin && git show origin/OCU-1-epic7:
 - `ui/browser/wallet-secret.browser-spec.mjs` -- new: AC1 (masked, empty, caption after save, route replacement), AC7 (list row without refresh, name cell opens the form), AC5 (deep link without the resource), AC8 (leave question).
 - Rosters, own rows only: ⚠ `Test/{SurfaceCoverage :102/:110-112, EndpointCoverage :140-143, ReadTool :93-94, ToolRoundTrip :30, PortFixture :21, Prohibited :193}.cls`; `Test/SecurityLists.cls` (the Secrets primary action); the Needs-the-lead files; `screen-mirror.test.mjs` and `app.routes.spec.ts` if they redden.
 
+### Orchestrator rulings at the spec gate, 2026-09-23
+
+- [ ] [Lead] **`Port/WalletPort` is AD-27's third named case** (written into AD-27, with the fingerprint's limit stated there: the stored value is never read, so a value change between propose and confirm cannot be detected; only `Usage`, `RequireTLS` and `AllowedHosts` are fingerprinted). Both wallet tools declare the port (AD-52). Add a test that fails when the composed read starts returning the stored value.
+- [ ] [Lead] **Key-value secrets only** (a tier-1 reading of AC1). An RSA or symmetric-key secret opens read-only, and the read-only view says plainly that those types are edited in the classic portal -- a tier-1 Fixed-strings row (EXPERIENCE.md, append-only) if no existing string says it. Creating and editing them is DW-1555 (range-end cleanup).
+- [ ] [Lead] **Delete moves to Story 9.5** as DW-1556 (FR-46's delete: the agent tool and the Secrets-list row action). This story ships no delete.
+- [ ] [Lead] **`ui/browser/security.browser-spec.mjs:308`** (Epic 7-modified; its hunks are at 224 and 238-247): flip only that one assertion to "the Secrets name cell is a link and opens `security/wallet/secrets/edit/<name>`". Touch no other line. The form route's entries in `Test/{Wire,WireSecurityRead,WireOAuthRead}.cls` fall under the roster rule, 2026-09-23; `screens.generated.ts` is regenerate-only.
+
 ### Acceptance Criteria
 
 - **AC1.** Given the secret form, when it renders, then Value is a masked field (password input, labeled show/hide toggle, never pre-filled or echoed), and after a save by either caller it is empty and captioned "Stored. Enter a new value to replace it.".
@@ -187,6 +194,8 @@ Before editing a ⚠ file, run `git fetch origin && git show origin/OCU-1-epic7:
 - **AC8.** Given the form holds a change, when any navigation leaves, the agent's included, then the shared leave question asks first.
 
 ## Spec Change Log
+
+- 2026-09-23, spec gate (orchestrator rulings): AD-27's third case approved and written with its fingerprint limit; key-value only with a classic-portal line for the other types (DW-1555); delete to Story 9.5 (DW-1556); one assertion in `security.browser-spec.mjs` approved; AD-4 corrected for `Wallet.Secret` at its origin.
 
 ## Review Triage Log
 
@@ -216,7 +225,7 @@ The vendor source was read on `ocupilot-slot-b` with `GetTextAsString` (`%Api.Ad
 - **Names.** `Probe86A` and `probe86a` coexisted, so names are case-sensitive. The pattern is `<collection>.<part>`, 128 characters at most. A name without a `.` was refused (#7209).
 - **Class read.** `##class(%Wallet.Secret).Exists(name, .obj)` answered the class, `Usage`, `RequireTLS` and `AllowedHosts` with no value. By the source, it needs the caller's `%Admin_Wallet:USE` (`CheckPermission`) and escalates to its storage by itself; the probe ran as `_SYSTEM`.
 
-### SPINE DECISION NEEDED: AD-27's third case, the wallet secret read
+### Ruled: AD-27's third case, the wallet secret read
 
 `Wallet.Secret` has no `GET`, and its `LIST` carries no metadata. Without a read, AD-4's merge and AD-6's fingerprint have no subject.
 

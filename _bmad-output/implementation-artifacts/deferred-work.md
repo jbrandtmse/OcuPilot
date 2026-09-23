@@ -6224,3 +6224,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-5-x-509-import-edit-and-delete.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Generate calls Discard on failure (status now propagated) and OnAfterAllTests calls it on success, but no test forces a failure midway; a killed test process leaves ocupilot-x509-* under the instance temp directory (test-only throwaway keys).
 - 2026-09-23T14:22:02Z status=wontfix-accepted owner=8-5-x-509-import-edit-and-delete by=cr note=reopen_if=an ocupilot-x509-* directory is found under an instance's mgr/Temp after a test run
+
+### DW-1555: Creating and editing RSA and symmetric-key wallet secrets (the key-material design); Story 8.6 ships key-value secrets and shows the other types read-only
+- source: spec-8-6-the-wallet-secret-form.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Wallet.Secret Type accepts %Wallet.KeyValue, %Wallet.RSA, %Wallet.SymmetricKey (vendor 40303); 8.6 is key-value only by orchestrator ruling 2026-09-23 (tier-1 reading of AC1); developer tool first
+- 2026-09-23T14:47:12Z status=routed owner=range-end-cleanup by=orchestrator note=Rule 27 range-end cleanup: a real capability, not floor-blocking
+
+### DW-1556: Deleting a wallet secret (FR-46): the agent delete tool and the Secrets-list row action; FR-46's delete has no other owning story
+- source: spec-8-6-the-wallet-secret-form.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: No Epic 8 AC covers the delete; AD-53's row-action route exists only on OCU-1-epic7 until both epics merge
+- 2026-09-23T14:47:12Z status=routed owner=9-5-the-ssl-tls-editor by=orchestrator note=orchestrator ruling 2026-09-23, beside DW-1541 (FR-46)
