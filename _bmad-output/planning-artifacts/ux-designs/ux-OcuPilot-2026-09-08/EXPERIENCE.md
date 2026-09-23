@@ -84,7 +84,7 @@ Step = PRD §10.1 build step ("1/3" = the area's one step-1 list, otherwise step
 | alerts.log viewer | Logs | side-bar › alerts.log | recent entries (monitor API) merged with a bounded history tail (FR-60) | log-viewer | 3 · P0 |
 | messages.log viewer | Logs | side-bar › messages.log | bounded pages; search with highlight; jump top/bottom; Load newer; never the whole file (FR-62) | log-viewer | 1 (endpoint) / 3 · P0 |
 | Application error log | Logs | side-bar › Application errors | namespaces → dates → errors; text, time, routine, line (FR-63) | drill-down | 1 (endpoint) / 3 · P0 |
-| Delete application errors | Logs | row-overflow-menu / command-bar on any drill-down level | by namespace or one error; names the scope — the Logs area's SM-3 write | dialog | 4 · P0 |
+| Delete application errors | Logs | row-overflow-menu / command-bar on any drill-down level | by namespace, by date or one error; names the scope [AMENDED 2026-09-23, Story 7.10, Rule 5 tier-1: was "by namespace or one error"] — the Logs area's SM-3 write | dialog | 4 · P0 |
 | Audit database viewer | Logs | side-bar › Audit database · cross-link (dashed) from Auditing configuration | criteria form: time range, source, type, name, user, pid, namespace, authentication - the eight the audit API filters on, it having no free-text search; agent-marker filter (FR-61, LG-02 = SS-14) | list (server criteria) | 3 · P0 |
 | Audit event detail | Logs | row click in the Audit database viewer | full event: description and JSON payload | dialog | 3 · P0 |
 | System Monitor log · Background task error log · xDBC error log · SQL diagnostics log · Interoperability event log · Analytics log · Unified log hub | Logs | side-bar | secondary viewers and the hub with counts, last entry and explain entry points (FR-77) | log-viewer · list | **P1** |
@@ -423,6 +423,10 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "This is an IRIS system process, and the instance relies on it. It cannot be suspended, resumed or terminated from OcuPilot." | the self-protection refusal for an IRIS system process (Story 7.8, AD-10, AD-53), caller-neutral [ADDED 2026-09-23 - see the story change log] |
 | "suspend or terminate a process that has stopped responding" | the phrase that resolves `:315`'s agent invitation on Processes, which Story 7.8's row actions make write-capable; a process list has no create action, so it names the list's own verbs [ADDED 2026-09-23 - see the story change log] |
 | "Process" | the proposal card's noun for a process (Story 7.8) [ADDED 2026-09-23 - see the story change log] |
+| "Delete the errors in" · "Delete the errors of" · "Delete error" | the delete dialog's verb for each of the three application-error scopes (by namespace, by date, one error), before the scope it names (Story 7.10) [ADDED 2026-09-23 - see the story change log] |
+| "Deleting removes every application error this namespace has logged, on every date, and everything each one captured. Errors logged after you confirm are kept. This cannot be undone." | the confirm-dialog body for a by-namespace delete (Story 7.10) [ADDED 2026-09-23 - see the story change log] |
+| "Deleting removes every application error this namespace logged on this date, and everything each one captured. Errors logged after you confirm are kept. This cannot be undone." | the confirm-dialog body for a by-date delete (Story 7.10) [ADDED 2026-09-23 - see the story change log] |
+| "Deleting removes this application error and everything it captured. This cannot be undone." | the confirm-dialog body for a one-error delete (Story 7.10) [ADDED 2026-09-23 - see the story change log] |
 
 ## Component Patterns
 

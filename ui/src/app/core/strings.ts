@@ -1435,6 +1435,23 @@ export const STRINGS = {
   /** EXPERIENCE.md:425 */
   proposalEntityProcess: 'Process',
 
+  // Story 7.10: the application error log's three delete scopes.
+  /** EXPERIENCE.md:426 */
+  errorDeleteEveryVerb: 'Delete the errors in',
+  /** EXPERIENCE.md:426 */
+  errorDeleteDateVerb: 'Delete the errors of',
+  /** EXPERIENCE.md:426 */
+  errorDeleteOneVerb: 'Delete error',
+  /** EXPERIENCE.md:427 */
+  errorDeleteEveryConsequence:
+    'Deleting removes every application error this namespace has logged, on every date, and everything each one captured. Errors logged after you confirm are kept. This cannot be undone.',
+  /** EXPERIENCE.md:428 */
+  errorDeleteDateConsequence:
+    'Deleting removes every application error this namespace logged on this date, and everything each one captured. Errors logged after you confirm are kept. This cannot be undone.',
+  /** EXPERIENCE.md:429 */
+  errorDeleteOneConsequence:
+    'Deleting removes this application error and everything it captured. This cannot be undone.',
+
 } as const;
 
 /**

@@ -214,3 +214,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T17:04:40Z	Epic 7	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@becb7b57 merge=914412c2 files=1_cycle-log-parallel_only conflict=none
 2026-09-23T17:05:45Z	Epic 7	epic_context_compiled	sha=fe32f74c reason=planning_artifact_newer model=opus
 2026-09-23T17:05:45Z	Story 7.10	stage_spawned	stage=plan spawn_at=2026-09-23T17:05:45Z model=opus agent_name=7-10-the-remaining-application-error-delete-scopes-plan-1 cycle_iteration=1
+2026-09-23T17:25:14Z	Story 7.10	story_created	spawn_at=2026-09-23T17:05:45Z model=opus path=_bmad-output/implementation-artifacts/spec-7-10-the-remaining-application-error-delete-scopes.md build_status=ready-for-dev epic_context=reused cycle_iteration=1
+2026-09-23T17:25:14Z	Epic 7	spine_updated	ad=AD-48 reason=measured_vendor_behaviour by=runner story=7-10-the-remaining-application-error-delete-scopes lint=ok
+2026-09-23T17:25:14Z	Story 7.10	spec_validated	service_introducing=false integration_ac=present adr_constrained_acs=AD-48,AD-51,AD-52,AD-53,AD-56,AD-6,AD-8,AD-10,AD-13,AD-14,AD-15,AD-21,AD-29,AD-34,AD-39 owned_ledger=none mutates_shared_runtime=true throwaway=ocupilot-ci copy_published=EXPERIENCE.md:426-429 amendment=EXPERIENCE.md:87 model=claude-opus-5-5
