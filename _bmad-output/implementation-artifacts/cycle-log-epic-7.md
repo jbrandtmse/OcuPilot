@@ -123,3 +123,7 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T08:49:57Z	Epic 7	runner_clarification_raised	story=7.4 items=three_roster_test_files_epic8_modified;proposed_standing_rule_for_roster_pins
 2026-09-23T08:51:01Z	Epic 7	runner_resumed	answer=roster_files_approved;standing_roster_rule_2026-09-23_adopted;borrowed_strings_ruled_out(publish_real_copy_or_scope_the_registry_rule);WIP_committed_as_patch+tgz
 2026-09-23T08:51:01Z	Story 7.4	stage_spawned	stage=implement spawn_at=2026-09-23T08:51:01Z model=opus agent_name=7-4-turn-auditing-on-and-off-from-the-screen-implement-2 cycle_iteration=2
+2026-09-23T09:41:53Z	Story 7.4	dev_complete	spawn_at=2026-09-23T08:51:01Z model=opus build_sha=d757343a baseline_revision=6ae2918 review_loop_iteration=0 followup_review_recommended=true deferred=0 cycle_iteration=2 tiers=sweep_181cls/1637/0,smoke_49/49,tools_1327/0,components_876/0,browser_story_4/4 borrowed_strings=option2_registry_scoped(RendersNoTable)
+2026-09-23T09:41:53Z	Story 7.4	pushed	sha=d757343a ci=pending run=35844424602
+2026-09-23T09:41:53Z	Story 7.4	adr_verifications_complete	result=none_required model=claude-opus-5-5
+2026-09-23T09:41:53Z	Story 7.4	stage_spawned	stage=qa spawn_at=2026-09-23T09:41:53Z model=sonnet agent_name=7-4-turn-auditing-on-and-off-from-the-screen-qa-1 cycle_iteration=1
