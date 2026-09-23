@@ -464,6 +464,7 @@ Method TestTheUserPasswordToolSendsOnlyItsDeclaredSecret()
     Do $$$AssertEquals(tRenamed.%ToJSON(), {"NewPassword": "pw1 "}.%ToJSON(), "and renames it on the wire, untrimmed")
     Set tBody = ##class(OcuPilot.Kernel.Proposal.Operation).SecretBody(tClass, {"Password": "pw1 ", "Other": "x"}, $ListBuild("Password"))
     Do $$$AssertEquals(tBody.%ToJSON(), {"Password": "pw1 "}.%ToJSON(), "the write's body holds the declared secret and nothing else")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Operation).SecretBody(tClass, {"Password": ""}, $ListBuild("Password")).%ToJSON(), "{}", "an empty password is not sent, so the vendor's own refusal answers")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Operation).SecretBody("OcuPilot.Screen.Tool.UserDelete", {"Password": "x"}, $ListBuild("Password")), "", "while a tool declaring none sends none")
 }
 

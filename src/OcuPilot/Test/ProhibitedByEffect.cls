@@ -522,8 +522,8 @@ Method TestARowWhosePayloadItsFingerprintDoesNotCoverIsRefused()
 /// signed-in account, a service account and the last <code>%All</code> holder -- refuses each
 /// removal effect with its own code: a bodyless delete, a disable, and a <code>Roles</code> delta
 /// that strips <code>%All</code>. An ordinary account is permitted all three, and a role change on
-/// <code>_SYSTEM</code> that keeps <code>%All</code> is permitted too, so neither the predicates nor
-/// the effect terms can pass by refusing everything.</p>
+/// <code>_SYSTEM</code> that keeps <code>%All</code>, or on a service account that holds none, is
+/// permitted too, so neither the predicates nor the effect terms can pass by refusing everything.</p>
 /// <p>Every leg goes through the shipped <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method>
 /// with the target armed on <class>OcuPilot.Test.ProposalFixture</class>, so nothing reaches the
 /// instance. The census is armed: answered "last" for the last-holder legs, and deterministic
@@ -585,6 +585,10 @@ Method TestEveryAccountArmRefusesEveryRemovalEffect()
     Set tSC = $ClassMethod(tSet, "Ask", $ClassMethod(tSet, "UserObject", tSystem, 1, "%All"), $ClassMethod(tSet, "UserObject", tSystem, 1, "%All,%SQL"), $ClassMethod(tSet, "Diff", "Roles"), tSystem, "user", .tProhibits, .tCode, tUpdate)
     Do $$$AssertStatusOK(tSC, "the _SYSTEM role add is answered")
     Do $$$AssertEquals(tProhibits, 0, "a role change on _SYSTEM that keeps %All removes nothing, code was '" _ tCode _ "'")
+    ; And a role change on a protected account that never held %All strips nothing.
+    Set tSC = $ClassMethod(tSet, "Ask", $ClassMethod(tSet, "UserObject", tService, 1, "%SQL"), $ClassMethod(tSet, "UserObject", tService, 1, "%SQL,%Developer"), $ClassMethod(tSet, "Diff", "Roles"), tService, "user", .tProhibits, .tCode, tUpdate)
+    Do $$$AssertStatusOK(tSC, "the " _ tService _ " role add is answered")
+    Do $$$AssertEquals(tProhibits, 0, "an ordinary role added to " _ tService _ ", which holds no %All, is permitted, code was '" _ tCode _ "'")
 }
 
 }

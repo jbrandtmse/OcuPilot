@@ -448,8 +448,8 @@ ClassMethod ScreenActionValueNames(pActionId As %String) As %List
 /// <p><b>Caller contract:</b> <class>OcuPilot.Api.ScreenAction</class> calls it once, after the
 /// fresh read, and holds every key of <var>pArgs</var> to <method>SettableFields</method> exactly
 /// as it holds the static arguments; a non-empty <var>pProblem</var> is refused 400
-/// <code>TOOL.ARGUMENTS</code> with nothing written. It reads nothing but its arguments and writes
-/// nothing.</p>
+/// <code>TOOL.ARGUMENTS</code> with nothing written. It writes nothing; an override may read through
+/// the tool's own port to resolve a value.</p>
 /// <p>The default answers <method>ScreenActionArguments</method>, so every tool that declares no
 /// value is unchanged. A tool whose value changes a list declares the delta here -- over the fresh
 /// read, never as a list the client computed -- so a concurrent change to another member

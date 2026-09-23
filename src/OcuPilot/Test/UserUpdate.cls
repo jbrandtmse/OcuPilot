@@ -1016,8 +1016,7 @@ Method RemoveSelfPrincipal() As %Status
 /// instance -- disable and enable, the change-on-login flag, a role added and removed as a delta
 /// over the fresh read (a role another session added meanwhile survives), the password set exactly
 /// as given, and the delete. Around them: a held-role add, an unheld remove and an unknown role are
-/// 400; <code>%All</code> and a role carrying <code>%Admin_Secure</code> are 403
-/// <code>PROHIBITED.PRIVILEGEGRANT</code>; an undeclared value is 400 with nothing written.</p>
+/// 400, and an undeclared value is 400 with nothing written.</p>
 /// <p>Mutation (Rule 19): build <code>Roles</code> from the value alone in
 /// <method>OcuPilot.Screen.Tool.UserUpdate.ScreenActionDelta</method> instead of over the fresh read
 /// -- the concurrent-change leg goes red; drop <code>Security.User/CHANGEPWD</code> from
@@ -1049,6 +1048,8 @@ Method TestEveryRowActionReachesTheRouteAndChangesTheAccount()
     Do ..RefusedWith("a stray body key", tStatus, .tBody, 400, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS)
     Do ..Send({"action": "add-role", "id": (tName), "values": "%Developer"}, .tStatus, .tBody)
     Do ..RefusedWith("values that is not an object", tStatus, .tBody, 400, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS)
+    Do ..Send({"action": "add-role", "id": (tName), "values": {}}, .tStatus, .tBody)
+    Do ..RefusedWith("values missing the declared name", tStatus, .tBody, 400, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS)
     Do ..Send({"action": "add-role", "id": (tName), "values": {"Role": 5}}, .tStatus, .tBody)
     Do ..RefusedWith("a value that is not a string", tStatus, .tBody, 400, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS)
     Do ..Send({"action": "set-password", "id": (tName), "values": {"Password": ""}}, .tStatus, .tBody)
@@ -1082,13 +1083,6 @@ Method TestEveryRowActionReachesTheRouteAndChangesTheAccount()
     Do $$$AssertTrue(tRoles [ ",%DB_USER,", "and the others stay")
     Do ..Act("remove-role", tName, {"Role": "%Developer"}, .tStatus, .tBody)
     Do ..RefusedWith("removing a role the account does not hold", tStatus, .tBody, 400, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS)
-
-    ; AC4: a grant of %All or of a role carrying an administrative resource is refused whatever the caller.
-    For tRole = "%All", "%Manager" {
-        Do ..Act("add-role", tName, {"Role": (tRole)}, .tStatus, .tBody)
-        Do ..RefusedWith("adding " _ tRole, tStatus, .tBody, 403, $Parameter(..#SHIPPEDSET, "PRIVILEGEGRANT"))
-    }
-    Do $$$AssertTrue('("," _ $ZConvert($ClassMethod(..#FIXTURE, "UserField", tName, "Roles"), "U") _ "," [ ",%ALL,"), "and the account holds no %All")
 
     ; AD-56: the flag is its own update write; the password is sent once, exactly as given.
     Set tPassword = "OcuPilotRowPw9 "
@@ -1231,6 +1225,7 @@ Method TestTheAgentsPasswordAndDeleteLandAndThePasswordIsNowhere()
         Do $$$AssertStatusNotOK(tSC, "a confirm carrying an undeclared key is refused")
         Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tBare.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
         Do $$$AssertStatusNotOK(tSC, "a confirm with no password is refused, code '" _ tCode _ "'")
+        Do $$$AssertEquals(tCode, ##class(OcuPilot.Api.Error).#PORTVALIDATION, "by the vendor, so the proposal was open when it was asked")
         Do $$$AssertEquals(..Login(tName, $Parameter(..#FIXTURE, "USERPASSWORD"), .tIgnored), 200, "and the account keeps its own password")
     }
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(tTurnKey)

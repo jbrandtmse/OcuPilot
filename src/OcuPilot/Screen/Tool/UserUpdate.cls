@@ -7,7 +7,7 @@
 /// this class is the whole registration.</p>
 /// <p><b>It is also the Users list's merge write for five row actions</b> (AD-53,
 /// <parameter>SCREENACTIONS</parameter>): enable, disable, the change-on-login flag the
-/// set-password dialog sends first (AD-56), and adding or removing one role, which
+/// set-password dialog sends before and after the password (AD-56), and adding or removing one role, which
 /// <method>ScreenActionDelta</method> computes over the fresh read.</p>
 /// <p><b>It admits three of the sixteen fields its classified field list carries:</b>
 /// <code>Enabled</code> and <code>ChangePassword</code>, the derived literals
@@ -47,7 +47,7 @@ Parameter PERMITTEDFIELDS = "Enabled,ChangePassword";
 /// <p>The Users list's row actions this merge write carries out (AD-53). Enable and disable set
 /// <code>Enabled</code>; <code>require-password-change</code> sets <code>ChangePassword</code> and is
 /// declared so the route admits it, though no menu draws it -- the set-password dialog sends it
-/// first when its flag is checked (AD-56); the two role actions take their role as a declared value
+/// before and after the password when its flag is checked (AD-56); the two role actions take their role as a declared value
 /// (<parameter>SCREENVALUES</parameter>).</p>
 Parameter SCREENACTIONS = "enable=Enabled:true,disable=Enabled:false,require-password-change=ChangePassword:true,add-role,remove-role";
 

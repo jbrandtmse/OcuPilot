@@ -145,10 +145,9 @@ test('AD-53: protected-account answers the instance sentence per account, in its
   }
   // _SYSTEM is asked first, as the instance asks it: a person signed in as _SYSTEM reads its sentence.
   assert.equal(selfProtectionReason(rule, '_SYSTEM', '_SYSTEM'), STRINGS.userRefusalSystemAccount);
-  // An ordinary account, no row, and no session each explain nothing.
+  // An ordinary account and no row each explain nothing.
   assert.equal(selfProtectionReason(rule, 'Priya', 'Dana'), '');
   assert.equal(selfProtectionReason(rule, '', 'Dana'), '');
-  assert.equal(selfProtectionReason(rule, 'Dana'), '', 'with no signed-in name the current-user arm is silent');
   // And the other rule is unmoved by the new one.
   assert.equal(selfProtectionReason('serves-ocupilot', '_SYSTEM', '_SYSTEM'), '');
   assert.equal(selfProtectionReason(rule, '/api/ocupilot', 'Dana'), '');

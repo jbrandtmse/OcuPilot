@@ -6090,3 +6090,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: the port 771b08b made UserList declare an authored secret; the helper that excludes it came from Epic 8 unchanged
 - 2026-09-23T06:45:52Z status=dropped owner=7-2-user-enable-disable-delete-password-and-roles by=harvest note=a merge note, not a defect: identical hunks on both branches
+
+### DW-1520: Set password and the change-on-login flag are permitted on _SYSTEM, the signed-in account and a service account; AD-10's account arms fire only on delete, disable and a %All strip
+- source: _bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Prohibited.User asks the account arms only when RemovesAdministration holds; UserPassword changes no field and ChangePassword carries no predicate (PermittedChangeFields). (inference) a new password or a forced change on CSPSystem stops the gateway's sign-in, the harm SERVICEACCOUNT names.
+- 2026-09-23T07:03:26Z status=decision-pending owner=burndown by=cr note=recommend: add a password/flag effect term for the service-account arm only; _SYSTEM and self are admin intent
+
+### DW-1521: The _SYSTEM, signed-in and service-account refusal sentences say 'Disabling or deleting it' when the refused write is a remove-role of %All
+- source: _bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: AD-10 as amended puts all four arms in front of a %All strip; SYSTEMACCOUNTREASON, CURRENTUSERREASON and SERVICEACCOUNTREASON (EXPERIENCE.md:398-400) name only disable and delete; LASTALLHOLDERREASON alone names the role.
+- 2026-09-23T07:03:26Z status=wontfix-accepted owner=7-2-user-enable-disable-delete-password-and-roles by=cr note=reopen_if=the lead rewords EXPERIENCE.md:398-400, or a user reports a remove-role refusal naming disable

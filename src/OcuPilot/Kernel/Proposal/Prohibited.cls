@@ -617,8 +617,8 @@ ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %Dynamic
 }
 
 /// <p>Whether <var>pToolClass</var>'s write removes its target: its declared AD-14 action is
-/// <parameter>ACTIONDELETED</parameter>. A class that names none or cannot be asked reads as a
-/// removal, the fail-closed direction -- it puts the account arms in front of the write rather than
+/// <parameter>ACTIONDELETED</parameter>. An empty class name, or a class that cannot be asked, reads
+/// as a removal, the fail-closed direction -- it puts the account arms in front of the write rather than
 /// behind it.</p>
 ClassMethod RemovesOf(pToolClass As %String) As %Boolean [ Private ]
 {

@@ -363,14 +363,12 @@ ClassMethod Values(pBody As %DynamicObject, pTool As %DynamicObject, pToolClass 
         Set pSecrets = {}
         Quit "'values' may carry only " _ $Select(tDeclared = "": "nothing for this action", 1: "a non-empty string for " _ $ListToString(tDeclared, ", "))
     }
-    For tI = 1:1:$ListLength(tDeclared) {
-        If '$ListFind(tSeen, $List(tDeclared, tI)) {
-            Set pValues = {}
-            Set pSecrets = {}
-            Quit
-        }
+    ; Every seen name is declared and a key occurs once, so equal lengths mean every declared name is present.
+    If $ListLength(tSeen) '= $ListLength(tDeclared) {
+        Set pValues = {}
+        Set pSecrets = {}
+        Quit "'values' must name " _ $ListToString(tDeclared, ", ") _ " for this action"
     }
-    If $ListLength(tSeen) '= $ListLength(tDeclared) Quit "'values' must name " _ $ListToString(tDeclared, ", ") _ " for this action"
     Quit ""
 }
 

@@ -2,7 +2,7 @@
 title: 'Story 7.2: User enable, disable, delete, password and roles'
 type: 'feature'
 created: '2026-09-22'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'c7ef11bdfb1569512f967cc056bbc06043a3a01f'
 baseline_commit: 'c7ef11bdfb1569512f967cc056bbc06043a3a01f'
 review_loop_iteration: 0
@@ -324,9 +324,10 @@ Line anchors are this branch's (`OCU-1-epic7` at `220c6a3`). ⚠ = contended wit
   attempted, then both surfaces draw it refused with the published sentence and the route answers
   403 with the same sentence; the last `%All` holder is refused on the instance for delete,
   disable and a remove-role of `%All`.
-- **AC4.** Given `%All`, a `%Admin_*` role or a role reaching one, when it is added by either
-  caller, then the instance refuses it `PROHIBITED.PRIVILEGEGRANT`, while adding and removing any
-  other role works from the screen as a delta over the fresh read.
+- **AC4.** Given `%All`, a `%Admin_*` role or a role reaching one, when the person picks it in Add
+  role, then it is offered and this story adds no refusal of its own (owner decision 2026-09-23:
+  such grants are permitted at typed confirmation, which Epic 8 implements); adding and removing a
+  non-privileged role works from the screen as a delta over the fresh read.
 - **AC5 (Integration, Rule 1).** Given a probe account on the throwaway, when the Users list served
   by `ListPage` disables and re-enables it, sets its password, adds and removes an ordinary role and
   deletes it, then each change re-fetches in place and `POST /api/ocupilot/login` with the new
@@ -338,6 +339,75 @@ Line anchors are this branch's (`OCU-1-epic7` at `220c6a3`). ⚠ = contended wit
   when confirmed (the password typed on the card), then the write lands, a marker and an event are
   emitted, and the password is in no stored argument, payload, diff value or ledger field.
 
+### Review Findings
+
+Code review 2026-09-23 (first review; four layers, full-opus). Lead-directed patch applied: the
+route's `%All`/`%Manager` add legs expecting 403 `PRIVILEGEGRANT` removed from
+`Test/UserUpdate.cls` (the only such leg this story added; Story 5.9's refusal legs untouched). This
+story adds no refusal of its own for a privileged add (`UserUpdate.ScreenActionDelta` refuses only
+empty, held, unheld and unknown roles) and hides no role (`openRole` offers every read row not held;
+`screen-action-handler.spec.ts` offers `%Operator`). `privilegedGrantEffect` is not on the branch, so
+no consequence line was added. AC4's text above still reads the pre-reversal refusal; it is the
+lead's to amend.
+
+| # | Finding | Sev | Fix-risk | Footprint | Disposition |
+|---|---|---|---|---|---|
+| F1 | Set password and the change-on-login flag are permitted on `_SYSTEM`, the signed-in account and a service account (blind+edge) | med | low (one effect term) | in-story | `decision-pending` DW-1520 owner=burndown: AD-10 scope is a product call |
+| F2 | The held-`%All` term of `RemovesAdministration` is unpinned against over-refusal (verification-gap) | low | low | in-story | patched: control leg in `ProhibitedByEffect` |
+| F3 | `SecretBody`'s empty-value branch is unexercised (verification-gap) | low | low | in-story | patched: one assertion in `ToolWrite` |
+| F4 | AC4's `mutation:` line pinned the removed privileged legs (verification-gap, Rule 19) | low | low | in-story | closed in-pass: AC4 row rewritten |
+| F5 | `self-protection.test.mjs` "no signed-in name" assertion cannot fail (verification-gap) | low | low | in-story | patched: assertion removed |
+| F6 | The no-password confirm leg asserted only not-OK (blind) | low | low | in-story | patched: code asserted `PORT.VALIDATION` |
+| F7 | `ScreenAction.Values` carries a redundant loop before its length check (blind) | low | low | in-story | patched: one check; route leg for `values: {}` added |
+| F8 | Doc comments say the flag is sent first only (acceptance) | low | low | in-story | patched: `UserPassword`, `UserUpdate` |
+| F9 | `RemovesOf` doc claims a class naming no action reads as a removal (acceptance) | low | low | in-story | patched |
+| F10 | `Write.ScreenActionDelta` contract says it reads nothing; the override reads `Security.Role` (acceptance) | low | low | in-story | patched |
+| F11 | Three account refusal sentences say "Disabling or deleting" for a `%All` strip (blind+edge+acceptance) | low | low | out-of-footprint (EXPERIENCE.md copy) | `wontfix-accepted` DW-1521 |
+
+- [ ] [Review][Decision] F1 -- AD-10's account arms fire on delete, disable and a `%All` strip only; a new password or a forced change on `CSPSystem` (inference) stops the gateway's sign-in. Ledgered DW-1520 for the decision sheet; does not block `done`.
+- [x] [Review][Patch] F2 [src/OcuPilot/Test/ProhibitedByEffect.cls:591]
+- [x] [Review][Patch] F3 [src/OcuPilot/Test/ToolWrite.cls:467]
+- [x] [Review][Patch] F4 [spec `## Verification`, AC4 row]
+- [x] [Review][Patch] F5 [ui/tools/self-protection.test.mjs:148]
+- [x] [Review][Patch] F6 [src/OcuPilot/Test/UserUpdate.cls:1228]
+- [x] [Review][Patch] F7 [src/OcuPilot/Api/ScreenAction.cls:366]
+- [x] [Review][Patch] F8 [src/OcuPilot/Screen/Tool/UserPassword.cls:13]
+- [x] [Review][Patch] F9 [src/OcuPilot/Kernel/Proposal/Prohibited.cls:620]
+- [x] [Review][Patch] F10 [src/OcuPilot/Screen/Tool/Write.cls:451]
+- [x] [Review][Defer] F11 [src/OcuPilot/Kernel/Proposal/Prohibited.cls:65] -- deferred: the copy is EXPERIENCE.md:398-400's; DW-1521 `wontfix-accepted`
+
+Rejected:
+
+- `low` A self password set through the admin path: the caller holds `%Admin_Secure:USE`, which already permits it; no harm.
+- `false` Remove-role declares no `selfProtection`: only a `%All` strip is refused, so marking the action would refuse permitted removes.
+- `low` A confirm with no password burns the proposal: the card holds confirm `aria-disabled` until the secret is typed; direct API only.
+- `low` The first flag write stays set when the password is refused: specified (I/O row "the flag stays set", AD-56).
+- `low` `openRole` silent on no read, a non-`rows` answer or a truncated read: the Roles screen is built with a read; more than 1,000 roles is unlikely.
+- `low` The roles read resolving after cancel or after another dialog opened: unlikely, and the fix adds a guard.
+- `low` An added role keeps the client's spelling: already adjudicated in the triage log.
+- `low` A non-404 role lookup renders 500: the role read uses the same pairs the fresh user read just passed.
+- `low` The `Prohibited` roster checks `SecretBody` only for tools declaring none: `ToolWrite` pins the one declaring tool, extra key included.
+- `false` The route path's ledger is unchecked for the password: the route writes no ledger or proposal row; its logs are checked.
+- `low` Browser gaps (signed-in row, protected delete, the flag): the component specs and the route legs pin each.
+- `low` Enable and disable are both offered whatever the row's state: specified.
+- `false` A non-array `Roles` in the fresh read drops held roles: the vendor `GET` answers an array; a string is only the model's payload shape.
+- `low` Agent-password test cleanup skipped on an early return: failure path only.
+- `low` A numeric secret canonicalized on the confirm channel: the card sends strings, and the route refuses non-strings.
+- `low` AC7's marker not asserted for these tools: the marker is `Confirm`'s, pinned by `AuditMarker.TestAConfirmedWriteIsMarked`.
+- `low` `UserPassword`'s card row names a field no read answers: specified by AD-56 (i) and the Tasks.
+- `med` The agent path does not order the flag after the password: DW-1516, already harvested, not re-filed.
+
+**Rework iteration 1 (2026-09-23, lead, CI):**
+
+- [ ] [CI] `browser`, run 35828196362 on e5b7e1b: `ui/browser/panel.browser-spec.mjs:759` `not ok 104`
+  "the 640px content minimum ... on the Users list": at 1,280px with the panel at its maximum the
+  content region is 640 wide but scrolls to 938 (`contentScrollWidth`; docked, 911 against 832), so
+  "the content does not scroll" fails at `:776`. Before this story the Users list fit. The cause is
+  what this story added to the Users list (inference: the command bar now carries six row actions
+  and does not collapse); fix it at its cause per DESIGN.md and EXPERIENCE.md's command-bar rule,
+  never by relaxing the assertion, and run `panel.browser-spec.mjs` plus the story's own browser
+  specs against a rebuilt, redeployed bundle.
+
 ## Spec Change Log
 
 - 2026-09-23, lead spec gate: intent gap 1 ratified as recommended (b) -- `epics.md` Story 7.2 AC4
@@ -345,6 +415,9 @@ Line anchors are this branch's (`OCU-1-epic7` at `220c6a3`). ⚠ = contended wit
   refused on the instance whatever the caller. Gaps 2 and 3 answered by the orchestrator the same
   day (rulings in the intent block; AD-56 and the AD-10 amendment written to the spine; copy
   published at `EXPERIENCE.md:173,398-404`); DW-1486 re-owned here; `status` reset to `draft` to re-plan.
+
+- 2026-09-23, lead: AC4 rewritten to the owner's reversal (offered, no refusal of this story's own);
+  re-opened for one rework iteration on CI run 35828196362's `browser` failure.
 
 ## Review Triage Log
 
@@ -463,12 +536,14 @@ The full browser suite is not run locally (Rule 29).
 | AC1 | `users-actions` row-menu leg per action | drop `UserList` from `SCREEN_ACTION_DESCRIPTORS` | mutation: roster entry removed, bundle rebuilt and redeployed → both `users-actions` tests red |
 | AC2 | `users-actions` paste leg (login with `pw1 ` answers 200, `pw1` 401); `UserUpdate` no-residue leg | trim the value in `send`; store it in `Mint` stored arguments | mutation: `password.trim()` in `submitPassword`, rebuilt → paste leg red ("one request carrying the value byte for byte"); mutation: `Confirm` logs the secret body (the `Mint` variant is unreachable, the schema refuses a `Password` argument first) → `TestTheAgentsPasswordAndDeleteLandAndThePasswordIsNowhere` red on "no messages.log line holds it" |
 | AC3 | `UserUpdate` route legs; `self-protection.test.mjs` | return `''` from `protected-account`; edit one `*REASON` word | mutation: `protected-account` answers `''` → `self-protection.test.mjs` per-account test red; mutation: one word of `CURRENTUSERREASON` → the one-sentence test red (the route legs compare against the parameter, so only the pin catches a word edit) |
-| AC4 | `UserUpdate` privileged-add legs | skip `GrantsPrivilege` in `User` | mutation: grant arm gated `If 0` → `UserUpdate` 5 methods red, the route's `%All` and `%Manager` adds among them |
+| AC4 | `UserUpdate.TestEveryRowActionReachesTheRouteAndChangesTheAccount` non-privileged add/remove legs (the privileged-add legs were removed at code review, owner decision 2026-09-23) | build `Roles` from the value alone in `UserUpdate.ScreenActionDelta` | mutation: the fresh-read loop in `ScreenActionDelta` gated `If 0`, reloaded on `ocupilot-ci` → the concurrent-change leg ("the concurrently added one survived", "so did the original") and the remove legs red |
 | AC5 | `users-actions` integration leg | drop the `values` member from `send` | mutation: `values` never set on the request, rebuilt → integration leg red |
 | AC6 | `ProhibitedByEffect` arm test | remove each arm's predicate, then each effect term, in turn | mutation: each of the four arms and each of the three effect terms (`pRemoves`, `Disables`, the `%All` strip) gated off in turn, reloaded with subclasses → `TestEveryAccountArmRefusesEveryRemovalEffect` red naming exactly that arm's three legs or that effect's four |
 | AC7 | `UserUpdate` agent legs | remove `Security.User/CHANGEPWD` from `RENAMEDTYPES` | mutation: `RENAMEDTYPES` emptied → confirm answers `PORT.VALIDATION`, sign-in legs red in both the route and the agent methods |
 
 Review patches: mutation: `this.signedIn()` dropped at the three surfaces → the three new `data-table`/`command-bar`/`command-box` legs red (AC3); mutation: stray-key check opened in `ScreenAction.Handle` → the stray-key route leg red; mutation: flag re-sent after a refused password → the handler's policy leg red.
+
+Code review patches: mutation: `If 'tHeldGrants Quit` removed from `Prohibited.RemovesAdministration` → `ProhibitedByEffect.TestEveryAccountArmRefusesEveryRemovalEffect` red on the new service-account ordinary-add control alone; mutation: the empty-value `Continue` removed from `Operation.SecretBody` → `ToolWrite.TestTheUserPasswordToolSendsOnlyItsDeclaredSecret` red on "an empty password is not sent". Each applied to the `/tmp/ocupilot-ci/src` copy only, loaded, observed red, then the copy re-synced from the worktree (`diff -r` identical) and reloaded.
 
 Every mutation was reverted and the original reloaded (or the bundle rebuilt and redeployed);
 `git diff --stat` read the same before and after.

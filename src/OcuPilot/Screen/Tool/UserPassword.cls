@@ -10,7 +10,8 @@
 /// wire (<parameter>OcuPilot.Port.AdminPort.RENAMEDTYPES</parameter>). The model can never supply
 /// it: the tool admits no settable field, and the mint refuses a declared secret outright.</p>
 /// <p><b>The change-on-login flag is not this tool's</b>: the vendor type cannot carry it, so it is
-/// its own <class>OcuPilot.Screen.Tool.UserUpdate</class> write, sent first (AD-56).</p>
+/// its own <class>OcuPilot.Screen.Tool.UserUpdate</class> write, sent first and again once the
+/// password has landed, because this write clears it (AD-56).</p>
 /// <p><b>Its fingerprint covers <code>Enabled</code></b>, the state the precondition reads; the
 /// password is never part of it, and no read answers one.</p>
 /// <p>AD-49 does not apply: this is an administrator setting another account's password through the
