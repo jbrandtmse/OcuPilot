@@ -6016,3 +6016,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: bmad-code-review of spec-5-14 | severity: low | fix-risk: low | footprint: in-story
 - evidence: LastAllHolder short-circuits on HoldsAll(pId) alone and never asks CountsAsHolder about the TARGET. _Ensemble and irisowner hold %All on this build, so stripping it from one where no counting holder remains earns PROHIBITED.LASTALLHOLDER, whose reason reads that the instance would be left with no %All holder -- an account the census never counted. Conservative direction: a refusal, never a permit.
 - 2026-09-22T19:38:38Z status=wontfix-accepted owner=5-14-epic-5-burn-down by=cr note=a wrong reason on a refusal, not a permit. reopen_if=a user meets this refusal and the reason misleads them
+
+### DW-1497: A screen row action takes no per-target lock, so it and a concurrent confirm of a live proposal against the same target are ordered only by the vendor endpoint
+- source: _bmad-output/implementation-artifacts/spec-7-1-enable-disable-and-delete-a-web-application.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: OcuPilot.Api.ScreenAction gates and writes with no claim around it while AD-34's lock is the proposal store's; confirm a proposal on /csp/x while pressing its row's Disable and the later write wins. Bounded: both callers run every gate and each sends a complete body over its own fresh read
+- 2026-09-23T02:25:57Z status=routed owner=burndown by=harvest note=take AD-34's per-target lock in the screen caller too, or record why ordering by the vendor is enough
+
+### DW-1498: The client explains the serving-path refusal only for Install.Roster's three applications, while the instance also protects the applications install recorded for a probe profile
+- source: _bmad-output/implementation-artifacts/spec-7-1-enable-disable-and-delete-a-web-application.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: self-protection.ts mirrors the roster's three paths (pinned by self-protection.test.mjs); Prohibited.ServesOcuPilot also reads Kernel.State.WebApp. On a probe profile the row menu offers the action and the route refuses it after the click with the same published sentence
+- 2026-09-23T02:25:57Z status=wontfix-accepted owner=7-1-enable-disable-and-delete-a-web-application by=harvest note=reopen_if=an install path other than a test probe records a web application outside Install.Roster's three paths
