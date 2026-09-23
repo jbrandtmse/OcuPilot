@@ -20,6 +20,7 @@ import {
   NAME_FIELD,
   PUBLIC_PERMISSION_FIELD,
   ResourceEditor,
+  canonicalLetters,
 } from './resource-editor.store';
 
 /** The machine code a privilege denial carries (AD-39). Never the envelope's human reason. */
@@ -54,7 +55,7 @@ function permissionWord(letter: string): string {
  *
  * **Fields are the classic dialog's, in its order**: Name (required, read-only when editing),
  * Description, then a Public permission fieldset with one checkbox per letter the server's rule
- * admits for the name. Validation is the change-password dialog's: a refusal renders at its field
+ * admits for the name, plus any letter the resource already holds. Validation is the change-password dialog's: a refusal renders at its field
  * with `aria-invalid` and `aria-describedby`, and a refused Save focuses the summary and then the
  * first invalid field.
  *
@@ -213,7 +214,8 @@ export class ResourceEditorDialog {
   protected get letterViews(): readonly LetterView[] {
     this.generation();
     const checked = this.store.letters();
-    return [...this.store.admitted()].map((letter) => ({
+    // A held letter is drawn even where the rule would not offer it, so it can be cleared.
+    return [...canonicalLetters(this.store.admitted() + checked)].map((letter) => ({
       letter,
       id: `${this.controlId(PUBLIC_PERMISSION_FIELD)}-${letter}`,
       label: permissionWord(letter),
@@ -261,10 +263,10 @@ export class ResourceEditorDialog {
     return this.store.saved();
   }
 
-  /** Save does nothing while a Save is in flight, or over a resource the instance does not hold. */
+  /** Save does nothing while a Save is in flight, or in edit mode without a fresh read of the resource. */
   protected get saveBlocked(): boolean {
     this.generation();
-    return this.store.busy() || this.store.absent();
+    return !this.store.canSave();
   }
 
   protected get nameField(): FieldView {

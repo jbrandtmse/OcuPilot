@@ -33,6 +33,9 @@ export const PERMISSION_LETTERS = 'RWU';
 /** The machine code the blur look-up reports a taken name under -- the server's own (AD-39). */
 export const NAME_TAKEN_CODE = 'RESOURCE.NAME.TAKEN';
 
+/** The machine code of the required-name rule the form read ships, rendered on blur of an empty name. */
+export const NAME_REQUIRED_CODE = 'RESOURCE.NAME.REQUIRED';
+
 /** What the dialog is doing: nothing, creating a resource, or editing the one it names. */
 export type EditorMode = 'closed' | 'create' | 'edit';
 
@@ -129,6 +132,9 @@ export class ResourceEditor {
 
   private absentValue = false;
 
+  /** Whether an edit holds the resource's fresh read; until it does, nothing is edited or sent. */
+  private heldValue = false;
+
   private savingValue = false;
 
   private violationList: readonly Violation[] = [];
@@ -192,6 +198,15 @@ export class ResourceEditor {
   /** The letters the server's rule admits for the name on screen. */
   admitted(): string {
     return admittedLetters(this.letterRulesValue, this.values.name);
+  }
+
+  /**
+   * Whether Save may send: not while one is in flight, and in edit mode only over a fresh read of the
+   * resource, so a read that failed or has not landed never sends a change against blank values.
+   */
+  canSave(): boolean {
+    if (this.savingValue || this.absentValue || this.modeValue === 'closed') return false;
+    return this.modeValue === 'create' || this.heldValue;
   }
 
   /** Whether a public permission on the name on screen grants an administrative privilege (AD-10). */
@@ -263,6 +278,7 @@ export class ResourceEditor {
     this.privilegedValue = false;
     this.loadedValue = false;
     this.absentValue = false;
+    this.heldValue = false;
     this.savingValue = false;
     this.violationList = [];
     this.clearRefusal();
@@ -318,6 +334,7 @@ export class ResourceEditor {
       // stated rather than missed.
       const flag = resource !== null && typeof resource === 'object' ? (resource as Record<string, unknown>)['privileged'] : undefined;
       this.privilegedValue = !(flag === false || flag === 0);
+      this.heldValue = true;
     } else if (result.kind === 'error' && result.status === 404) {
       this.absentValue = true;
     }
@@ -334,7 +351,7 @@ export class ResourceEditor {
   }
 
   setDescription(value: string): void {
-    if (this.values.description === value) return;
+    if (this.values.description === value || !this.editable()) return;
     this.values = { ...this.values, description: value };
     this.clearFieldViolation(DESCRIPTION_FIELD);
     this.change();
@@ -342,6 +359,7 @@ export class ResourceEditor {
 
   /** Check or uncheck one public-permission letter. */
   setLetter(letter: string, on: boolean): void {
+    if (!this.editable()) return;
     const held = this.values.letters;
     const next = canonicalLetters(on ? held + letter : held.replace(letter, ''));
     if (next === held) return;
@@ -351,14 +369,17 @@ export class ResourceEditor {
   }
 
   /**
-   * On blur of the name in create mode: ask the instance whether it is taken and whether a public
-   * permission on it is privileged. A look-up that could not be made leaves the field unmarked and
+   * On blur of the name in create mode: an empty name shows the server's required sentence; any
+   * other asks the instance whether it is taken and whether a public permission on it is privileged. A look-up that could not be made leaves the field unmarked and
    * the consequence stated.
    */
   async onNameBlur(): Promise<void> {
     if (this.modeValue !== 'create') return;
     const name = this.values.name;
-    if (name === '') return;
+    if (name === '') {
+      this.markEmptyName();
+      return;
+    }
     const generation = this.generation;
     const result = await this.api().requestJson<unknown>(`${RESOURCES_NAME_PATH}?name=${encodeURIComponent(name)}`);
     if (generation !== this.generation || this.values.name !== name) return;
@@ -402,9 +423,17 @@ export class ResourceEditor {
    * into an edit of the new resource; a refused one keeps what was entered.
    */
   async save(): Promise<boolean> {
-    if (this.savingValue || this.absentValue || this.modeValue === 'closed') return false;
+    if (!this.canSave()) return false;
     const generation = this.generation;
     const creating = this.modeValue === 'create';
+    if (!creating && Object.keys(this.changedFields()).length === 0) {
+      // Nothing changed since the dialog opened or last saved: nothing is written or published.
+      this.clearRefusal();
+      this.savedValue = true;
+      this.formDirty.setDirty(false);
+      this.notify();
+      return true;
+    }
     this.savingValue = true;
     this.violationList = [];
     this.clearRefusal();
@@ -439,6 +468,7 @@ export class ResourceEditor {
     if (creating) {
       this.createdIdValue = id;
       this.modeValue = 'edit';
+      this.heldValue = true;
       this.values = { ...this.values, name: id };
     }
     this.opened = this.values;
@@ -458,6 +488,19 @@ export class ResourceEditor {
   private change(): void {
     this.savedValue = false;
     this.formDirty.setDirty(true);
+    this.notify();
+  }
+
+  /** Whether the fields take input: in edit mode only once the fresh read is held. */
+  private editable(): boolean {
+    return this.modeValue !== 'edit' || this.heldValue;
+  }
+
+  /** On blur of an empty name: the server's required-name sentence from the form read, at the field. */
+  private markEmptyName(): void {
+    const rule = this.rulesValue.find((entry) => entry.field === NAME_FIELD && entry.code === NAME_REQUIRED_CODE);
+    if (rule === undefined || this.violationList.some((entry) => entry.field === NAME_FIELD)) return;
+    this.violationList = [...this.violationList, { field: NAME_FIELD, code: rule.code, reason: rule.reason }];
     this.notify();
   }
 

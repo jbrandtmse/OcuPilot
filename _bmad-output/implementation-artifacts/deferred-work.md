@@ -6051,6 +6051,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-23T02:11:59Z status=escalated owner=burndown by=cr note=fix stores the typed name at mint and sends it at confirm: new proposal state plus an edit in contended Confirm.Transition
 - 2026-09-23T03:00:18Z occurrence=8-2-create-a-user
 - 2026-09-23T06:42:07Z occurrence=8-3-create-a-role-and-manage-its-resource-grants
+- 2026-09-23T10:37:18Z occurrence=8-4-the-resource-editor
 
 ### DW-1494: The screen's Save of a web-application create does not evaluate enforced read-only or the kill switch, while AD-55 says the screen inherits every gate AD-40 places at the write
 - source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: low | footprint: in-story
@@ -6166,3 +6167,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-4-the-resource-editor.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: src/OcuPilot/Screen/Tool/UserUpdate.cls InputSchema Roles description; the file is in Epic 7's diff and not on the contended list, so 8.4 did not edit it (DW-1524's remaining half)
 - 2026-09-23T10:09:30Z status=escalated owner=burndown by=harvest note=one-sentence description edit; needs the orchestrator to put Screen/Tool/UserUpdate.cls under the contended discipline
+
+### DW-1538: Story 8.4 has no real-port leg confirming an agent create or update of a resource, and no browser leg that saves an edit
+- source: spec-8-4-the-resource-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ResourceWire drives the screen routes and the agent delete only; resources-editor.browser-spec saves only a create. Each piece is pinned in-process (ResourceCreate/ResourceUpdate via ResourceFixture) and in jsdom.
+- 2026-09-23T10:37:18Z status=wontfix-accepted owner=8-4-the-resource-editor by=cr note=reopen_if=a resource agent create/update or an edit Save regresses in CI or smoke with every Resource* class green
+
+### DW-1539: EXPERIENCE.md still says the Resources list's empty-state second line is the Web applications row's, and the privilegedGrantEffect row omits the resource editor's Public permission field
+- source: spec-8-4-the-resource-editor.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Story 8.4 set ResourceList emptyNextKey to empty (agent invitation) and shows privilegedGrantEffect in the resource editor; EXPERIENCE.md rows :360 and :403 are existing rows, append-only for this story while Epic 7 is concurrent.
+- 2026-09-23T10:37:18Z status=wontfix-accepted owner=8-4-the-resource-editor by=cr note=reopen_if=after the Epic 7/8 merge, EXPERIENCE.md :360 still ends 'whose second line is the Web applications row's'
+
+### DW-1540: DW-1524's change left stale text: Test/UserUpdate.cls's header still counts six Prohibited.User refusals, and Prohibited.FIELDESCALATIONROLES is referenced by nothing on this branch
+- source: spec-8-4-the-resource-editor.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Prohibited.User now answers five codes; both files are contended with Epic 7, whose version still references FIELDESCALATIONROLES (Prohibited.cls e7 :332, :589) and edits the UserUpdate header's hunk.
+- 2026-09-23T10:37:18Z status=wontfix-accepted owner=8-4-the-resource-editor by=cr note=reopen_if=after the Epic 7 merge, FIELDESCALATIONROLES has no reference or the header still says six refusals

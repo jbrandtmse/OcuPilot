@@ -97,6 +97,16 @@ describe('the resource editor dialog', () => {
     expect(host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(STRINGS.resourceEditorEdit.replace('<name>', '%DB_Probe'));
     expect(host.querySelector<HTMLInputElement>('#ocu-resource-PublicPermission-R')!.checked).toBe(true);
     expect(host.querySelector('#ocu-resource-PublicPermission-U')).toBeNull();
+    // Mutation (Rule 19): treat every edited resource as privileged in `openEdit` -> this goes red.
+    expect(host.querySelector('#ocu-resource-effect')).toBeNull();
+  });
+
+  it('a letter the resource holds outside the rule is still drawn, so it can be cleared', async () => {
+    // Mutation (Rule 19): draw `admitted()` alone in `letterViews` -> the R checkbox is missing.
+    const { host } = await mount('edit', { name: '%Admin_Probe', Description: '', PublicPermission: 'RU', privileged: true });
+    expect(host.querySelector<HTMLInputElement>('#ocu-resource-PublicPermission-R')?.checked).toBe(true);
+    expect(host.querySelector<HTMLInputElement>('#ocu-resource-PublicPermission-U')?.checked).toBe(true);
+    expect(host.querySelector('#ocu-resource-PublicPermission-W')).toBeNull();
   });
 
   it('AC6: the consequence is stated at the fieldset while a letter is checked on a privileged name', async () => {
@@ -123,6 +133,31 @@ describe('the resource editor dialog', () => {
     use.dispatchEvent(new Event('change'));
     fixture.detectChanges();
     expect(host.querySelector('#ocu-resource-effect')).not.toBeNull();
+  });
+
+  it('Save is aria-disabled over a resource the instance does not hold', async () => {
+    const api = {
+      requestJson: async <T,>(path: string): Promise<JsonResult<T>> =>
+        (path.startsWith(`${RESOURCES_FORM_PATH}?`)
+          ? { kind: 'error', status: 404, code: 'RESOURCE.NAME.ABSENT', reason: 'This instance has no resource with that name.', detail: null }
+          : { kind: 'ok', status: 200, body: RULES }) as unknown as JsonResult<T>,
+    };
+    TestBed.configureTestingModule({
+      imports: [ResourceEditorDialog],
+      providers: [
+        { provide: OverlayStack, useValue: new OverlayStack() },
+        { provide: ApiService, useValue: api as unknown as ApiService },
+        { provide: ChangeBus, useValue: new ChangeBus() },
+        { provide: FormDirty, useValue: new FormDirty() },
+      ],
+    });
+    await TestBed.inject(ResourceEditor).openEdit('Gone');
+    const fixture = TestBed.createComponent(ResourceEditorDialog);
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    const save = [...host.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent?.trim() === STRINGS.actionSave)!;
+    // Mutation (Rule 19): make `saveBlocked` answer `busy()` alone -> this goes red.
+    expect(save.getAttribute('aria-disabled')).toBe('true');
   });
 
   it('AC7: a change marks the form dirty, and Cancel hands the close to the host, which asks first', async () => {

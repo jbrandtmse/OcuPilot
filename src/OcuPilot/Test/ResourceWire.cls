@@ -41,6 +41,10 @@ Parameter DELETEPROBE = "OcuPilotProbeResourceGone";
 /// <p>A system resource every instance holds, whose vendor <code>AllowDelete</code> is false.</p>
 Parameter SYSTEMRESOURCE = "%Admin_Secure";
 
+/// <p>A resource every instance holds on which a public permission grants no administrative
+/// privilege.</p>
+Parameter ORDINARYRESOURCE = "%DB_USER";
+
 Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
@@ -90,6 +94,10 @@ Method TestEachRouteAnswersOneJsonEnvelopeOverTheWire()
     }
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", ..#NAMEPATH _ "?name=" _ ..Query(..#SYSTEMRESOURCE), .tStatus, .tBody)
     If $IsObject($Get(tBody)) Do $$$AssertEquals(tBody.%Get("taken") _ " " _ tBody.%Get("privileged"), "1 1", "the name look-up answers a held administrative name as taken and privileged")
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", ..#FORMPATH _ "?name=" _ ..Query(..#ORDINARYRESOURCE), .tStatus, .tBody)
+    Do $$$AssertEquals($Select($IsObject($Get(tBody)): tBody.%Get("resource").%Get("privileged"), 1: "no body"), 0, "the form read marks an ordinary resource not privileged")
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", ..#NAMEPATH _ "?name=" _ ..Query(..#ORDINARYRESOURCE), .tStatus, .tBody)
+    Do $$$AssertEquals($Select($IsObject($Get(tBody)): tBody.%Get("taken") _ " " _ tBody.%Get("privileged"), 1: "no body"), "1 0", "and the name look-up answers it taken and not privileged")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", tBase _ ..#CREATEPATH, tUser, tPassword, .tStatus, .tBody, .tHeaders, "{}", "application/json")
     Do $$$AssertEquals(tStatus, 422, "a create naming nothing is refused at 422")

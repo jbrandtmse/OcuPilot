@@ -1812,7 +1812,7 @@ Parameter REASONROLERESOURCESUNKNOWN = "One of those resources does not exist on
 /// the classic grant dialog's own rule).</p>
 Parameter ROLERESOURCESPERMISSIONS = "ROLE.RESOURCES.PERMISSIONS";
 
-Parameter REASONROLERESOURCESPERMISSIONS = "Grant each resource only the permissions it offers: Read and Write for a database, Use for a service or an administrative resource, and Read, Write or Use for any other.";
+Parameter REASONROLERESOURCESPERMISSIONS = "Grant each resource only the permissions it offers: Read and Write for a database; Use alone for a service, an administrative resource or another system resource the Management Portal limits to Use, such as %Development or %System_; and Read, Write or Use for any other.";
 
 /// <p>Violation code: two grants name the same resource.</p>
 Parameter ROLERESOURCESDUPLICATE = "ROLE.RESOURCES.DUPLICATE";
@@ -1897,7 +1897,7 @@ Parameter REASONRESOURCEPUBLICPERMISSIONSHAPE = "A public permission is some of 
 /// dialog's own rule).</p>
 Parameter RESOURCEPUBLICPERMISSIONLETTERS = "RESOURCE.PUBLICPERMISSION.LETTERS";
 
-Parameter REASONRESOURCEPUBLICPERMISSIONLETTERS = "Give this resource only the public permissions it offers: Read and Write for a database, Use for a service or an administrative resource, and Read, Write or Use for any other.";
+Parameter REASONRESOURCEPUBLICPERMISSIONLETTERS = "Give this resource only the public permissions it offers: Read and Write for a database; Use alone for a service, an administrative resource or another system resource the Management Portal limits to Use, such as %Development or %System_; and Read, Write or Use for any other.";
 
 /// <p>Violation code (AD-39): the vendor refused the request because a body field it requires was
 /// absent. Produced at the port boundary by <method>ViolationsFromVendor</method>, on the field the

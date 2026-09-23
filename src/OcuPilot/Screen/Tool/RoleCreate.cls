@@ -83,7 +83,8 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Set tProperties = tSchema.%Get("properties")
     ; The emitted subset admits no keyword below a property but its type and description, so a
     ; grant's two members are described here and their shape is refused by ArgumentProblem.
-    Set tGrant = {"type": "object", "description": "One grant, an object with exactly two members: Name, the resource as this instance's own resources list reports it, and Permissions, the letters granted from R (read), W (write) and U (use) -- a database resource takes R and W, and W only with R; a service or administrative resource takes U; and any other resource takes any of the three."}
+    Set tGrantText = "One grant, an object with exactly two members: Name, the resource as this instance's own resources list reports it, and Permissions, the letters granted from R (read), W (write) and U (use) -- a database resource (%DB_) takes R and W, and W only with R; a resource beginning with one of " _ $Replace($Parameter("OcuPilot.Area.Permissions.RoleCreateRules", "USEONLYPREFIXES"), ",", ", ") _ " takes U alone; and any other resource takes any of the three."
+    Set tGrant = {"type": "object", "description": (tGrantText)}
     Set tResources = {"type": "array", "description": "The role's resource grants, one per resource. A grant of %All or of any %Admin_ resource is proposable and is confirmed as a delete is."}
     Do tResources.%Set("items", tGrant)
     Do tProperties.%Set(..#RESOURCESARGUMENT, tResources)

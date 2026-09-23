@@ -74,7 +74,8 @@ ClassMethod Described(pSchema As %DynamicObject, pRequired As %Boolean) As %Dyna
     If pSchema.%GetTypeOf("properties") '= "object" Quit pSchema
     Set tProperties = pSchema.%Get("properties")
     If tProperties.%GetTypeOf(..#PUBLICPERMISSIONARGUMENT) = "object" {
-        Do tProperties.%Get(..#PUBLICPERMISSIONARGUMENT).%Set("description", "The permission every user holds on this resource: some of the letters R (read), W (write) and U (use), in that order, or an empty string for none. A database resource takes R and W; a service or administrative resource takes U; any other resource takes any of the three. A letter on an administrative resource grants every user that privilege, and is confirmed as a delete is.", "string")
+        Set tUseOnly = $Replace($Parameter("OcuPilot.Area.Permissions.RoleCreateRules", "USEONLYPREFIXES"), ",", ", ")
+        Do tProperties.%Get(..#PUBLICPERMISSIONARGUMENT).%Set("description", "The permission every user holds on this resource: some of the letters R (read), W (write) and U (use), in that order, or an empty string for none. A database resource (%DB_) takes R and W; a resource beginning with one of " _ tUseOnly _ " takes U alone; any other resource takes any of the three. A letter on an administrative resource grants every user that privilege, and is confirmed as a delete is.", "string")
     }
     If pRequired && (pSchema.%GetTypeOf("required") = "array") {
         For tField = "Description", ..#PUBLICPERMISSIONARGUMENT {

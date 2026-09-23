@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, Injector, afterNextRender, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
 
 import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
@@ -20,9 +20,10 @@ export const RESOURCE_LIST_ROUTE = 'permissions/resources';
  *
  * **A route id opens the editor over that resource.** The list's name cell links to
  * `permissions/resources/<id>`, the list selects the row from the same id, and this page opens edit
- * mode for it; the list's Create opens create mode through `ResourceActions`. A create's Save
- * replaces the route with the new resource's, carrying the editor across the one navigation that
- * is not a departure, and an edit's confirmed close returns to the bare list route.
+ * mode for it and for each later id the route moves to; the list's Create opens create mode
+ * through `ResourceActions`. A create's Save replaces the route with the new resource's, carrying
+ * the editor across the one navigation that is not a departure, and an edit's confirmed close
+ * returns to the bare list route.
  *
  * **Dialogs never stack**: while the leave question stands the editor is hidden, and a "Stay"
  * re-shows it with the edits the store still holds. The leave guard on this screen's routes asks
@@ -81,11 +82,20 @@ export class ResourceListPage {
       this.generation.update((value) => value + 1);
     });
     const screen = screenForRoute(RESOURCE_LIST_ROUTE);
-    const id = screen === null ? '' : ownIdSegment(screen, this.router.url);
-    if (id !== '') void this.store.openEdit(id);
+    let followed = screen === null ? '' : ownIdSegment(screen, this.router.url);
+    if (followed !== '') void this.store.openEdit(followed);
+    // One id route to another reuses this page, so the editor follows the id, not the page's life.
+    const stopIdChange = this.router.events.subscribe((event) => {
+      if (!(event instanceof NavigationEnd)) return;
+      const id = screen === null ? '' : ownIdSegment(screen, this.router.url);
+      if (id === followed) return;
+      followed = id;
+      if (id !== '') void this.store.openEdit(id);
+    });
     inject(DestroyRef).onDestroy(() => {
       stopStore();
       stopDirty();
+      stopIdChange.unsubscribe();
       // Kept across a create's own route replacement, which destroys this page and builds it again
       // over the new resource; torn down on every other departure.
       if (!this.store.retaining()) this.store.reset();

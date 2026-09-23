@@ -239,6 +239,53 @@ describe('the resource editor store', () => {
     expect(store.mode()).toBe('closed');
   });
 
+  it('an edit whose read failed takes no input and sends nothing, so a held permission is never overwritten blind', async () => {
+    TestBed.resetTestingModule();
+    const calls: string[] = [];
+    const api = {
+      requestJson: async <T,>(path: string, init: ApiRequestInit = {}): Promise<JsonResult<T>> => {
+        calls.push(`${init.method ?? 'GET'} ${path}`);
+        return { kind: 'error', status: 503, code: 'PORT.UNAVAILABLE', reason: 'The instance did not answer.', detail: null } as JsonResult<T>;
+      },
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: ApiService, useValue: api as unknown as ApiService },
+        { provide: FormDirty, useValue: new FormDirty() },
+      ],
+    });
+    const store = TestBed.inject(ResourceEditor);
+    await store.openEdit('ProbeResource');
+    // Mutation (Rule 19): make `canSave()` ignore the held read -> this goes red.
+    expect(store.canSave()).toBe(false);
+    store.setLetter('R', true);
+    store.setDescription('typed');
+    expect(store.letters()).toBe('');
+    expect(await store.save()).toBe(false);
+    expect(calls.filter((call) => !call.startsWith('GET'))).toEqual([]);
+  });
+
+  it('an edit saved with nothing changed writes nothing and publishes nothing', async () => {
+    const { store, calls, events } = mount({ kind: 'ok', status: 200, body: { name: 'ProbeResource' } });
+    await store.openEdit('ProbeResource');
+    // Mutation (Rule 19): drop the unchanged-edit early return from `save()` -> a PUT {} is sent.
+    expect(await store.save()).toBe(true);
+    expect(calls.filter((call) => call.method !== 'GET')).toEqual([]);
+    expect(events).toEqual([]);
+    expect(store.saved()).toBe(true);
+  });
+
+  it('AD-39: an empty name shows the server required-name sentence on blur', async () => {
+    const { store, calls } = mount();
+    await store.openCreate();
+    store.setName('x');
+    store.setName('');
+    await store.onNameBlur();
+    // Mutation (Rule 19): drop `markEmptyName()` from `onNameBlur()` -> this goes red.
+    expect(store.violationFor('Name')).toBe('Give the resource a name.');
+    expect(calls.some((call) => call.path.startsWith(RESOURCES_NAME_PATH))).toBe(false);
+  });
+
   it('an edit of a resource the instance does not hold blocks its Save', async () => {
     TestBed.resetTestingModule();
     const api = {

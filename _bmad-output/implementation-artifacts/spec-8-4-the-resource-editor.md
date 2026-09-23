@@ -263,6 +263,41 @@ Before editing a ⚠ file, run `git fetch origin && git show origin/OCU-1-epic7:
 - **AC6.** Given a public permission that adds a letter on an administrative resource, when either caller saves it, then it is permitted at the strongest confirmation: the proposal is destructive and names `GRANT.PRIVILEGED`, and the dialog shows `privilegedGrantEffect`.
 - **AC7.** Given the dialog holds a change, when it is closed or any navigation leaves, the agent's included, then the shared leave question asks first.
 
+### Review Findings
+
+Code review 2026-09-23, `review_tier: full-opus` (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 0 decision-needed, 8 patch (applied), 4 defer (ledger), 15 rejected.
+
+- [x] [Review][Patch] (med) One id route to another (`/permissions/resources/A` to `/B`, the agent's navigation included) reuses the page, which read the id only in its constructor, so the dialog kept editing A [ui/src/app/areas/permissions/resource-list.page.ts:84] -- the page now follows `NavigationEnd`; new `resource-list.page.spec.ts`.
+- [x] [Review][Patch] (med) An edit whose form read failed (non-404) or had not landed let Save send changes against blank values, so ticking R on a resource holding RW sent `R` and dropped W [ui/src/app/areas/permissions/resource-editor.store.ts:405] -- `canSave()` requires the fresh read in edit mode, fields take no input until it lands, and the dialog's `saveBlocked` reads it.
+- [x] [Review][Patch] (med) AC6's negative half on the edit path and both form routes was unpinned: a constant `privileged` passed every test [src/OcuPilot/Test/ResourceWire.cls:92] -- dialog AC1 edit leg asserts no effect; `ResourceWire` asserts `%DB_USER` reads privileged 0 on both routes.
+- [x] [Review][Patch] (low) The letters sentence and both tool schemas said any non-database, non-service, non-admin resource takes R, W or U, but ten more prefixes are Use-only [src/OcuPilot/Api/Error.cls:1900] -- sentences corrected (resource and role grant); `ResourceUpdate`/`RoleCreate` schemas list the prefixes from `RoleCreateRules.USEONLYPREFIXES`.
+- [x] [Review][Patch] (low) An edit saved with nothing changed sent `PUT {}`, rewrote the resource and published `updated` [ui/src/app/areas/permissions/resource-editor.store.ts:404] -- it now writes and publishes nothing.
+- [x] [Review][Patch] (low) A held letter the rule does not offer had no checkbox, so it could never be cleared and any permission change was refused `LETTERS` [ui/src/app/areas/permissions/resource-editor-dialog.ts:213] -- held letters are drawn too.
+- [x] [Review][Patch] (low) Blur on an empty Name showed nothing; the form read's required-name rule was loaded and never used [ui/src/app/areas/permissions/resource-editor.store.ts:358].
+- [x] [Review][Patch] (low) Save's `aria-disabled` over an absent resource was unpinned [ui/src/app/areas/permissions/resource-editor-dialog.ts:265] -- dialog spec leg added.
+- [x] [Review][Defer] (med) The agent's confirmed create folds the name (`resource:foldcase`) while the screen keeps it as typed [src/OcuPilot/Kernel/EntityRef.cls:59] -- deferred: DW-1493 root cause, occurrence appended (escalated, owner burndown).
+- [x] [Review][Defer] (med) The Users write tool's Roles description still says a privileged role is refused [src/OcuPilot/Screen/Tool/UserUpdate.cls:99] -- deferred: confirmed present, DW-1537 (escalated).
+- [x] [Review][Defer] (low) No real-port leg for an agent create/update, no browser leg saving an edit [src/OcuPilot/Test/ResourceWire.cls] -- deferred: DW-1538 wontfix-accepted.
+- [x] [Review][Defer] (low) Stale EXPERIENCE.md rows :360 (empty-state second line) and :403 (privilegedGrantEffect sites); stale DW-1524 text in `Test/UserUpdate.cls` header and unused `Prohibited.FIELDESCALATIONROLES` [EXPERIENCE.md:360] -- deferred: existing rows and contended hunks, DW-1539 and DW-1540 wontfix-accepted.
+
+Rejected:
+
+- `low` A public W on `%DB_IRISSYS` or U on `%Development` is not marked privileged -- spec-bound: Always row 4 scopes privilege to `ResourceGrantsAdministrativePrivilege` (AD-10 as amended).
+- `low` `AdmissibleLetters` applies on create and ignores case, unlike the classic dialog -- the matrix refuses an inadmissible letter on create; case-folding is documented, for the agent's spellings.
+- `low` The `OCUPILOTRESOURCE` sentence says only the installer changes the resource while a Description edit is allowed -- the sentence is the spec's own wording.
+- `low` Edit-mode privilege denial reads "to create a resource" -- the list screen is gated on the same pair, so it appears only if the privilege is revoked mid-session; a fix needs a new string.
+- `low` The form read gives no field-level sign that OcuPilot's own resources refuse an added letter -- the 403 reason is shown; a gap, not a defect.
+- `low` `HandleForm` echoes the requested spelling in the heading -- the name cell links the instance's own spelling.
+- `low` Screen create/update race with a concurrent create or delete (upsert) -- a window between two reads of one request, 8.3's shape, rejected in the earlier pass.
+- `low` `setName` keeps the previous name's `privileged` until the blur reply -- the checkbox click blurs the name first; the window is one round trip.
+- `low` A canceled create route replacement leaves `retaining` set -- no path cancels a `replaceUrl` from a clean editor.
+- `low` The effect shows on an admin resource that already holds a letter -- settled as R5 in the earlier pass.
+- `low` `ResourceSave.PortClass` resolves the update tool's port for the create -- both tools inherit one port declaration; nothing diverges today.
+- `false` The AD-27 fallback skips `ValidateSemantics` -- `%Api.Admin.Endpoint.ValidateSemantics` returns OK and `Security.Resource` does not override it; `ValidateQueryParams` only sets `Name`, which the fallback sets (read on `ocupilot-slot-b`).
+- `false` AD-27 fallback exceeds its one named case -- `CLASSCOMPLETEDTYPES` is exactly `Security.Resource/PUT=PublicPermission`, empty string only.
+- `false` An AC lacks a `mutation:` line -- every AC, P1, P2 and DW-1524 has one.
+- `false` Rule 3 real-runtime evidence missing -- `resources-editor.browser-spec.mjs` and `ResourceWire` drive the real instance.
+
 ## Spec Change Log
 
 - 2026-09-23, spec gate (orchestrator rulings): P1 is AD-27's fallback (AD-27 amended; the lead ruled out every other encoding); P2 adds `OCUPILOTRESOURCE` to AD-10; the row action goes to Story 9.3 (DW-1528); `Classification.cls` is contended append-only; DW-1524 is routed here as floor-blocking; AD-4 was corrected for `Security.Resource`. Status set to `ready-for-dev` without a re-plan.
@@ -399,6 +434,10 @@ Observed (implement stage; each applied to the working file, loaded with `cbk` (
 - mutation (two rebuilt, redeployed bundles): Description moved after the Public permission fieldset, the page's route replacement dropped and `showEffect` false -> browser AC1 (create), AC4 and AC6 red, the edit and AC7 legs green; `[readOnly]` dropped and `requestClose()` not asking -> browser AC1 (edit), AC4 (its read-only check), AC7 and AC6 (its Escape) red; green again on the restored bundle (15/15 across `resources-editor`, `roles-create`, `users-create`)
 - roster rows: `Prohibited` (the reviewed-list sweep over a type with both a merge and an action tool, run 212), `PermissionsLists` (run 220), `EntityRef` (run 223), `entity-ref.test.mjs` and `screen-mirror.test.mjs` were observed red before this story's rows and green with them; the `SurfaceCoverage`, `EndpointCoverage`, `ReadTool`, `ToolRoundTrip`, `PortFixture` and `Prohibited` code-count rows were added before their first run and are green (runs 213-219), not observed red
 - mutation (review pass): `showsPrivilegedEffect()` answers `letters !== ''` alone -> `resource-editor.store.spec.ts` "AC6: no consequence is stated on a name the server did not mark privileged" red (AC6); a failed Save marks the editor saved -> the store's "AC5: a Save the vendor did not apply ..." red (AC5); `AdminPort.SameValue` compares `PublicPermission` verbatim -> `ResourceWire.TestARealWriteTheVendorDidNotApplyFailsNotApplied` red on its letter-order leg (run 273; green at run 272 before it) (AC5)
+- (QA) mutation: restored `Prohibited.User`'s pre-DW-1524 blocks (`EscalationRoles` changed -> `PRIVILEGEGRANT`; a `Roles` delta `GrantsPrivilege` -> `PRIVILEGEGRANT`) on the working file, loaded (`cbk-d`, compiled clean) -> `UserUpdate.TestAChangedEscalationRoleAndAnUnreviewedFieldAreRefused`, `TestAPrivilegedRoleDeltaIsMintedDestructiveAndConfirmed` and `TestARoleDeltaThatGrantsPrivilegeIsPermittedAndClassifiedPrivileged` red, 3 of 19 (run 198, `ocupilot-b-ci`); reverted to a byte-identical copy, reloaded, 19 of 19 green (run 199) (DW-1524, independently re-confirmed by QA)
+- (code review) mutation: the page's `NavigationEnd` follow dropped -> `resource-list.page.spec.ts` AC1 red (AC1); `canSave()` ignoring the held read -> the store's "an edit whose read failed ..." red; the unchanged-edit early return dropped -> "an edit saved with nothing changed ..." red; `markEmptyName()` dropped -> the empty-name blur leg red; `letterViews` drawing `admitted()` alone -> the dialog's held-letter leg red; `saveBlocked` answering `busy()` alone -> the dialog's `aria-disabled` leg red; `openEdit` marking every resource privileged -> the dialog's AC1 edit leg red (AC6); `HandleForm`/`HandleName` sending `privileged` 1 -> `ResourceWire.TestEachRouteAnswersOneJsonEnvelopeOverTheWire` red (run 201, green at 200 and 202 after restore) (AC6). Each reverted byte-identical.
+- (QA) `ui/tools/ci.test.mjs` run directly: 65 of 65 pass, including "DW-1276: each arming roster names exactly the classes that declare that variable" -- `ResourceWire`'s roster row in `scripts/ci-throwaway.sh` needs no further edit there (Rule 8; the test derives the roster from the class's own `ARMINGVARIABLE` declaration rather than a second hand-written list)
+- (QA) judged unnecessary: a `ResourceWire` leg sending a real `DELETE` for a system resource to the vendor, to exercise its 409. The mint's `AllowDelete` check refuses a system resource's delete before any `DELETE` reaches the port (I/O matrix: "Nothing is deleted"; `ResourceDelete.TestASystemResourceIsRefusedAtTheMint` and the mint half of `ResourceWire.TestAnAgentDeleteThroughTheRealPortRemovesTheResource` already pin that). 8.3's `RoleWire` carries the identical gap for a system role's delete, accepted (Review Triage Log IA R8). The generic HTTP 409 -> `PORT.CONFLICT` mapping `AdminPort.Fail` uses for any non-2xx is independently pinned in `Test/Fault.cls` and `Test/Envelope.cls`. No new test added for this.
 
 ## Auto Run Result
 
@@ -434,4 +473,4 @@ Two layers (verification-gap, intent-alignment), 23 findings: patched 3 medium (
 
 - DW-1524 is part-done: a privilege-granting role delta is permitted and marked, but an `EscalationRoles` change is still refused (`UNCOVEREDFIELD`), and `permissions.users.update`'s Roles description still tells the agent a privileged role is refused. Both need `Screen/Tool/UserUpdate.cls`, which is in Epic 7's diff and not contended (see `deferred:`).
 - Expect merge hunks next to Epic 7 in `Prohibited.cls` (`COVEREDTYPES`, type gate, the `User` block), `AdminPort.cls` type lists, `Classification.cls` tail and `Router.cls`.
-- The resource delete's vendor 409 is not exercised over the wire; the mint's `AllowDelete` check refuses first.
+- The resource delete's vendor 409 is not exercised over the wire; the mint's `AllowDelete` check refuses first. Closed by QA: judged unnecessary, see `## Verification`'s QA rows.
