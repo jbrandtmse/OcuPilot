@@ -4662,6 +4662,11 @@ So that configuring a REST service is a single task.
 - **When** a change would disable it, or set application or matching roles on it
 - **Then** it is refused on the instance - setting `MatchRoles` or `Roles` here is a privilege grant, prohibited in Release 1 through any path, and would make every later request run elevated.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1490: The web-applications/list/edit/:id route does not re-read the created application on a cold load; it draws an empty create form at an id-bearing URL (ledger; routed by merge_gate 2026-09-23)
+- DW-1493: A confirmed agent create writes the name in AD-13's canonical spelling while the screen's Save writes it as typed, so one input creates /csp/myapp or /csp/MyApp depending on the caller (ledger; routed by merge_gate 2026-09-23)
+
 ### Story 9.3: The role editor
 
 As a developer-administrator,
@@ -4677,6 +4682,11 @@ So that I can audit and adjust access from one screen.
 - **Given** a resource grant is added or edited from the editor
 - **When** the dialog opens
 - **Then** it shows the current grant and the resulting grant, as it does from the create path.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1513: The Roles-list Delete row action (Story 8.3 AC3's screen caller): SCREENACTIONS on RoleDelete, rowActions on RoleList, a holder-count read, the count in the typed-name confirmation, its Fixed-strings row (ledger; routed by merge_gate 2026-09-23)
+- DW-1528: The Resources-list Delete row action (Story 8.4 AC2's screen caller): drawn disabled with its reason when the vendor's AllowDelete is false, on AD-53's route (ledger; routed by merge_gate 2026-09-23)
 
 ### Story 9.5: The SSL/TLS editor
 
@@ -4709,6 +4719,8 @@ So that the instance's outbound and inbound TLS is manageable from the portal.
 - DW-268: The build's credential-name guard is suffix-anchored, so it misses `PrivateKeyFile`, `PrivateKeyType`, `CertificateFile`, `CAFile` and `CAPath` - the fields this editor's detail read carries (ledger; routed by adjudication 2026-09-14)
 - DW-332: the destructive-test guard does not cover `Security.SSLConfigs` create or delete, so three classes act unarmed (ledger; routed by the burn-down gate 2026-09-16)
 - DW-391: a form-page with no list has no published sentence for an absent entity (ledger; routed by the burn-down gate 2026-09-16)
+- DW-1541: The X.509-list Delete row action (Story 8.5's screen delete): SCREENACTIONS on the delete tool, rowActions on the X.509 list, the typed-name confirmation, on AD-53's route (ledger; routed by merge_gate 2026-09-23)
+- DW-1556: Deleting a wallet secret (FR-46): the agent delete tool and the Secrets-list row action; FR-46's delete has no other owning story (ledger; routed by merge_gate 2026-09-23)
 
 ### Story 9.7: The New Task wizard
 
@@ -5653,6 +5665,12 @@ So that the portal is usable in the conditions I actually use it in.
 - **Then** it meets the same floor as light, including the three pairs already flagged marginal, whose guard tests run in both modes.
 
 ---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-39: The dark class flip does not reach the 34 OcuPilot-only color roles, only the 30 with a --mat-sys-* counterpart (ledger; routed by merge_gate 2026-09-23)
+- DW-1337: Nothing in the verification strategy looks at a rendered screen as a whole, so a visual defect only fails if some story happened to pin the exact figure it broke (ledger; routed by merge_gate 2026-09-23)
+- DW-1388: Resizing a tab from 1440px to 720px leaves the document scrolling horizontally by about 22px, and the overflowing element is the agent panel rather than Home (ledger; routed by merge_gate 2026-09-23)
 
 ### Story 15.7: The rail's icons
 

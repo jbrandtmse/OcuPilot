@@ -6053,6 +6053,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-23T03:00:18Z occurrence=8-2-create-a-user
 - 2026-09-23T06:42:07Z occurrence=8-3-create-a-role-and-manage-its-resource-grants
 - 2026-09-23T10:37:18Z occurrence=8-4-the-resource-editor
+- 2026-09-23T21:41:20Z status=routed owner=9-2-the-web-application-editor by=merge_gate note=Epic 8 merge decision sheet. Fix after the Epic 7 merge: store the typed name at mint and send it at confirm (Confirm.cls). The fix is generic, covering the user create occurrence too. The runner named 9.1 as the web-app editor; that is 9.2, 9.1 is the user editor.
 
 ### DW-1494: The screen's Save of a web-application create does not evaluate enforced read-only or the kill switch, while AD-55 says the screen inherits every gate AD-40 places at the write
 - source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: low | footprint: in-story
@@ -6079,6 +6080,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Prohibited.ReasonFor(PRIVILEGEGRANT) reaches the Roles field and the picker from the server; no EXPERIENCE row quotes it and 8.2's form row says 'never one published here'. AD-53 is on origin/OCU-1-epic7 only; its pin test (RefusalCopy) and client-copy convention are Epic 7's.
 - 2026-09-23T04:51:49Z status=decision-pending owner=burndown by=cr note=reconcile at the merge: publish+pin via RefusalCopy, or amend AD-53 to exempt server-shipped sentences
 - 2026-09-23T21:14:39Z occurrence=8-9-plain-iris-community-verification
+- 2026-09-23T21:41:20Z status=routed owner=range-end-cleanup by=merge_gate note=Epic 8 merge decision sheet, recommended disposition taken: publish the PRIVILEGEGRANT and AGENT.CREDTYPE.UNAVAILABLE sentences as Fixed strings and pin them through Epic 7's RefusalCopy; AD-53 unchanged. The orchestrator takes it right after Epic 7 merges, since RefusalCopy is on that branch.
 
 ### DW-1503: A user create whose vendor Modify refuses after Create leaves an account holding only its password
 - source: spec-8-2-create-a-user.md | severity: low | fix-risk: med | footprint: in-story
@@ -6154,6 +6156,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-4-the-resource-editor.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: %Api.Admin.Endpoints.Security.Resource RunPut: If permsNormalized = 0 -> 400; null, "", "N", 0, "0" all refused on create and clear on ocupilot-b-ci 2026-09-23; Security.Resources.Create/Modify accept it. OcuPilot's AD-27 fallback covers it.
 - 2026-09-23T08:46:44Z status=decision-pending owner=burndown by=orchestrator note=human=report to the contest's feedback channel (sysadmin-api-specification) as a candidate vendor defect
+- 2026-09-23T21:41:20Z status=resolved-by:8-4-the-resource-editor by=merge_gate note=Epic 8 merge decision sheet. The product side is covered by AD-27's fallback case 1. Reporting the vendor defect to the contest feedback channel is a human action, moved to action_items for the owner.
 
 ### DW-1528: The Resources-list Delete row action (Story 8.4 AC2's screen caller): drawn disabled with its reason when the vendor's AllowDelete is false, on AD-53's route
 - source: spec-8-4-the-resource-editor.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -6169,6 +6172,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-4-the-resource-editor.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: src/OcuPilot/Screen/Tool/UserUpdate.cls InputSchema Roles description; the file is in Epic 7's diff and not on the contended list, so 8.4 did not edit it (DW-1524's remaining half)
 - 2026-09-23T10:09:30Z status=escalated owner=burndown by=harvest note=one-sentence description edit; needs the orchestrator to put Screen/Tool/UserUpdate.cls under the contended discipline
+- 2026-09-23T21:41:20Z status=routed owner=range-end-cleanup by=merge_gate note=Epic 8 merge decision sheet, recommended disposition taken: fix the model-facing Roles sentence in Screen/Tool/UserUpdate.cls. The orchestrator fixes it right after Epic 7 merges, because the file is Epic 7's.
 
 ### DW-1538: Story 8.4 has no real-port leg confirming an agent create or update of a resource, and no browser leg that saves an edit
 - source: spec-8-4-the-resource-editor.md | severity: low | fix-risk: low | footprint: in-story

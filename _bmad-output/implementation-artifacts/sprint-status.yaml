@@ -149,7 +149,7 @@ development_status:
   7-11-system-and-user-audit-event-configuration: backlog
   epic-7-retrospective: optional
 
-  epic-8: in-progress
+  epic-8: done
   8-1-create-a-web-application: done
   8-2-create-a-user: done
   8-3-create-a-role-and-manage-its-resource-grants: done
@@ -326,3 +326,12 @@ action_items:
     owner: "user"
     status: open
     ref: ""
+  - id: "epic-8-merge-gate-report-the-resource-publicpermission-vendor-defect"
+    epic: 8
+    action: "Report to the contest's feedback channel (sysadmin-api-specification): the
+      admin API's Security.Resource PUT refuses every encoding of an empty
+      PublicPermission (it maps 'none' to 0, then rejects 0), so a private resource
+      cannot be created or a public permission cleared through the API (DW-1527)"
+    owner: "user"
+    status: open
+    ref: "DW-1527"
