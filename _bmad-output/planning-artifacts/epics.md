@@ -4715,6 +4715,7 @@ So that I can audit and adjust access from one screen.
 
 - DW-1513: The Roles-list Delete row action (Story 8.3 AC3's screen caller): SCREENACTIONS on RoleDelete, rowActions on RoleList, a holder-count read, the count in the typed-name confirmation, its Fixed-strings row (ledger; routed by merge_gate 2026-09-23)
 - DW-1528: The Resources-list Delete row action (Story 8.4 AC2's screen caller): drawn disabled with its reason when the vendor's AllowDelete is false, on AD-53's route (ledger; routed by merge_gate 2026-09-23)
+- DW-1598: PROHIBITED.UNCOVEREDFIELD's reason names the agent while the screen's create and Save share the predicate (AD-53); rewrite caller-neutral, publish and pin it (ledger; routed by smoke 2026-09-24)
 
 ### Story 9.5: The SSL/TLS editor
 

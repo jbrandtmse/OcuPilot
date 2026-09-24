@@ -5511,10 +5511,10 @@ app-resource-list-page {
   overflow-wrap: anywhere;
 }
 
-// While a form-page is open its sticky bar holds Save and Cancel at the bottom right of the content
-// area, which is where the change toast stack sits. The stack is lifted above the bar, so a toast
-// never covers the form's own controls (DESIGN.md `toast`: a toast that covers the primary control
-// of the surface it reports on defeats itself).
+// While a form-page is open its bar holds Save and Cancel at the right of the form column, which the
+// change toast stack overlaps when the content area is narrow. The stack is lifted above the bar, so
+// a toast never covers Save or Cancel while the bar sits at the bottom of the content area (DESIGN.md
+// `toast`: a toast that covers the primary control of the surface it reports on defeats itself).
 .ocu-shell:has(.ocu-form-bar) > app-toast-host {
   bottom: calc(var(--ocu-form-bar-height) + var(--ocu-space-4));
 }

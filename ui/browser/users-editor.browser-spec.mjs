@@ -374,8 +374,8 @@ test('the visual gate: every control is named, none is narrower than its minimum
 
 // DESIGN.md `toast`: a toast must not cover the primary control of the surface it reports on. The
 // stack's bottom edge is measured whether or not a toast stands, since the host is placed either way.
-// Mutation (Rule 19): drop `+ var(--ocu-space-4)` from the `_components.scss` lift and redeploy ->
-// the stack sits flush on the bar and this goes red.
+// Mutation (Rule 19): drop `+ var(--ocu-space-4)` from the `_components.scss` lift, or double it, and
+// redeploy -> the stack sits flush on the bar, or too high above it, and this goes red.
 test('the change-toast stack stands clear above the form bar holding Save and Cancel', async () => {
   const { context, page } = await signedInAt(EDIT_URL);
   try {
@@ -401,7 +401,7 @@ test('the change-toast stack stands clear above the form bar holding Save and Ca
     assert.ok(geometry.space4 > 0 && geometry.barHeight > 0, `the offsets are measured, not 0 against 0: ${JSON.stringify(geometry)}`);
     assert.ok(geometry.barBottom <= geometry.shellBottom + 0.5, `the bar is measured on screen: ${JSON.stringify(geometry)}`);
     assert.ok(
-      geometry.hostBottom <= geometry.barTop - geometry.space4 + 0.5,
+      Math.abs(geometry.hostBottom - (geometry.barTop - geometry.space4)) <= 1,
       `the stack's bottom edge sits spacing.4 above the bar's top edge: ${JSON.stringify(geometry)}`
     );
   } finally {

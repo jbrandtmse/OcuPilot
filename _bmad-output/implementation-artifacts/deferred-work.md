@@ -6322,6 +6322,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: areas/permissions/ has no user form on OCU-1-epic7; 9.1 builds the editor. 7.2 ships the row-menu half, the handler and the tools (permissions.users.password and the role delta) the editor should reuse
 - 2026-09-23T03:14:55Z status=routed owner=9-1-the-user-editor by=spec_gate note=orchestrator plants the DW bullet under 9.1 at the Epic 7 merge gate
+- 2026-09-24T03:11:21Z status=resolved-by:9-1-the-user-editor by=adjudication note=editor Set password, Delete, Add/Remove role via screen-action-handler startFor on AD-53 (1984991); users-editor.browser-spec
 
 ### DW-1508: The published oauthClientDeleteConsequence omits that deleting a dynamically registered client configuration also deletes its registration at the authorization server
 - source: spec-7-3-delete-an-oauth-2-0-client-configuration-or-server-client-de.md | severity: low | fix-risk: low | footprint: in-story
@@ -6348,6 +6349,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: CHANGEPWD clears ChangePassword (measured on ocupilot-ci); the screen sends flag, password, flag, but two agent proposals are confirmed in whatever order the user chooses. AD-56 (ii) amended to require the flag after the password
 - 2026-09-23T06:45:52Z status=routed owner=burndown by=harvest note=make the password tool re-apply a flag set before it, or refuse a flag proposal while a password proposal on the same target is live
 - 2026-09-23T20:58:41Z owner=9-1-the-user-editor by=burndown note=Epic 7 burn-down overflow: the user editor owns the password and change-on-login pair and is where the agent path's ordering (flag after password, AD-56 as amended) is settled
+- 2026-09-24T03:11:21Z status=resolved-by:9-1-the-user-editor by=adjudication note=UserPassword AfterWrite re-applies a set flag (AD-56 i amended); UserSignIn.TestTheFlagEndsSetInEitherConfirmOrder
 
 ### DW-1517: AC4 names %Admin_Secure as a role to add, but on this build it is a resource and no role carries that name, so the add answers 400 unknown role
 - source: _bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: low | fix-risk: low | footprint: in-story
@@ -6369,6 +6371,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Prohibited.User asks the account arms only when RemovesAdministration holds; UserPassword changes no field and ChangePassword carries no predicate (PermittedChangeFields). (inference) a new password or a forced change on CSPSystem stops the gateway's sign-in, the harm SERVICEACCOUNT names.
 - 2026-09-23T07:03:26Z status=decision-pending owner=burndown by=cr note=recommend: add a password/flag effect term for the service-account arm only; _SYSTEM and self are admin intent
 - 2026-09-23T22:26:32Z status=routed owner=9-1-the-user-editor by=merge_gate note=Epic 7 merge decision sheet, recommended disposition taken: extend the service-account protection to password and change-on-login changes (a new password on CSPSystem stops the gateway's sign-in), an AD-10 amendment under Rule 20. _SYSTEM and the signed-in account stay permitted (developer tool first; the signed-in account's own change is AD-49's).
+- 2026-09-24T03:11:21Z status=resolved-by:9-1-the-user-editor by=adjudication note=PROHIBITED.SERVICEACCOUNTSIGNIN arm (AD-10 amended); UserSignIn; lead AD gate red run 9125 green 9126
 
 ### DW-1521: The _SYSTEM, signed-in and service-account refusal sentences say 'Disabling or deleting it' when the refused write is a remove-role of %All
 - source: _bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md | severity: low | fix-risk: low | footprint: in-story
@@ -6385,6 +6388,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: owner decision 2026-09-23: privileged grants permitted at typed confirmation, the screen shows a consequence line; Epic 8 owns the key privilegedGrantEffect; origin/OCU-1-epic8 carried none at 7.2's review
 - 2026-09-23T07:52:02Z status=routed owner=9-1-the-user-editor by=harvest note=port privilegedGrantEffect byte-for-byte and render it in the role dialog (orchestrator ruling 2026-09-23)
 - 2026-09-23T07:52:09Z note=privilegedGrantEffect appeared on origin/OCU-1-epic8 (59dced7) after 7.2's review closed; per the orchestrator's fallback it stays with 9.1 rather than re-opening 7.2
+- 2026-09-24T03:11:21Z status=resolved-by:9-1-the-user-editor by=adjudication note=role-dialog shows privilegedGrantEffect with aria-describedby; role-dialog.spec + users-actions.browser-spec
 
 ### DW-1529: Both audit event lists declare entity type audit-event, so screenForEntityType resolves every audit-event reference to the system-event list
 - source: spec-7-4-turn-auditing-on-and-off-from-the-screen.md (cr) | severity: med | fix-risk: med | footprint: in-epic
@@ -6443,6 +6447,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: EXPERIENCE.md:446 hides the toast while the entity's screen is open; Epic 8 pinned screenForEntityType('task') -> tasks/schedule/details in navigation.test.mjs:963; PRD UJ-6 climax: 'a toast links to the row in the task list'
 - 2026-09-23T13:21:12Z status=routed owner=range-end-cleanup by=spec_gate note=orchestrator ruling 2026-09-23: taken by the orchestrator right after the second of the Epic 7/8 merges; the UJ-6 replay checks the toast after that fix, not in 7.6
 - 2026-09-23T22:26:32Z status=routed owner=9-1-the-user-editor by=merge_gate note=Epic 7 merge. Plan changed from 'orchestrator after the merge': the toast rule (a change toast opens the entity's LIST at the row and is hidden only when that list is open, PRD UJ-6) changes Epic 8's pins in navigation.test.mjs (task -> details; 'the same lookup') and needs browser verification, which a runner with a throwaway does properly. Placed in 9.1 so it lands early for the UJ-6 demo.
+- 2026-09-24T03:11:22Z status=resolved-by:9-1-the-user-editor by=adjudication note=screenForEntityType answers the entity list; task-resume.browser-spec toast opens tasks/schedule row (EXPERIENCE amended)
 
 ### DW-1553: The initial bundle is 1,119,895 bytes against the 1,120 kB maximumWarning, 105 bytes of headroom, so the next story that adds client code fails the DW-371 bundle test
 - source: spec-7-6-run-suspend-resume-and-delete-a-task.md | severity: med | fix-risk: low | footprint: in-epic
@@ -6523,6 +6528,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AuditEventReset.StateDiff hardcodes before "" (spec Tasks prescribe it) because READTYPE GET answers only {Description, Enabled}; AD-51: rows are derived from the fresh read. LIST names=<EventName> answers Total.
 - 2026-09-23T20:54:31Z status=decision-pending owner=burndown by=cr note=amend AD-51 for a counter the tool's read type cannot answer, or read the counters (LIST names=)
 - 2026-09-23T22:26:32Z status=routed owner=9-1-the-user-editor by=merge_gate note=Epic 7 merge decision sheet. REGRADED HIGH under Rule 6: a card row not derived from the tool's own fresh read is a gap against AD-51's Rule, and Rule 15 bars parking a high at range-end-cleanup, which runs after Epic 12. Floor-blocking in 9.1, the earliest story in the range; unrelated to the user editor by subject, placed there for timing. Fix: the reset tools read Total through LIST names=<EventName>, or the row is dropped from the card.
+- 2026-09-24T03:11:22Z status=resolved-by:9-1-the-user-editor by=adjudication note=reset tools read LIST names= (AD-51 amended), before = fresh Total; AuditEventTools; lead AD gate red 9127 green 9128
 
 ### DW-1577: An agent update that sets Enabled to its current value mints a proposal with no changed rows instead of the 400 TOOL.ARGUMENTS no-op refusal
 - source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -6559,13 +6565,21 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-9-1-the-user-editor.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: _components.scss .ocu-shell:has(.ocu-form-bar) > app-toast-host sets bottom to form-bar height plus spacing.4 (9.1 rework 1); DESIGN.md:1210 and toast-host.ts:48-52 unamended because both were Epic 15-contended at the time
 - 2026-09-24T03:02:47Z status=routed owner=9-2-the-web-application-editor by=harvest note=amend both after the integrate-forward brings Epic 15's merge; two-way door, doc-only
+- 2026-09-24T03:10:21Z status=routed owner=9-2-the-web-application-editor by=cr note=toast-host.ts placement prose is :13-22 (not :48); :47-51 is the component-scoped paragraph
 
 ### DW-1596: A form page taller than the content area does not keep its sticky form bar on screen: Save and Cancel sit below the fold until the content scrolls
 - source: spec-9-1-the-user-editor.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: measured on the user editor at 1440x900: .ocu-form-page (Story 3.5) has overflow-y auto and flex 1 1 auto but no form-page host is in the flex host list at _components.scss:735, so main.ocu-content scrolls; bar top 1184 vs shell bottom 876
 - 2026-09-24T03:02:47Z status=routed owner=9-2-the-web-application-editor by=harvest note=every Epic 9 editor is tall; fix the host list once in 9.2 and pin it with a browser geometry check
+- 2026-09-24T03:10:21Z occurrence=9-1-the-user-editor note=the rework-1 toast lift assumes a flush bar; a mid-height bar can still sit under the stack until the host list is fixed
+- 2026-09-24T03:10:21Z status=routed owner=9-2-the-web-application-editor by=cr note=unchanged owner; 9.2 pins bar flush at content bottom, which makes the rework-1 lift exact
 
 ### DW-1597: An editor's own Save now raises a change toast ('Open in <list>') because the entity's list is not open; DESIGN.md's toast recipe says toasts are never for confirmations of what the user just did on the open screen
 - source: spec-9-1-the-user-editor.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: DW-1546's rule (hidden only while the entity's list is open, EXPERIENCE.md :494/:721 amended 2026-09-23) fires on the user editor's own Save; DESIGN.md:1210 last sentence forbids a toast confirming the user's own action
 - 2026-09-24T03:02:48Z status=decision-pending owner=burndown by=harvest note=recommend: suppress the change toast for the open screen's own Save (keep it for agent and other writes), or amend DESIGN.md
+
+### DW-1598: PROHIBITED.UNCOVEREDFIELD's reason names the agent ('settings the agent may propose changing') while the screen's create and Save share the predicate, which AD-53 calls a defect
+- source: 9.1 lead smoke | severity: low | fix-risk: low | footprint: in-epic
+- evidence: POST /users with EmailAddress on ocupilot-ci answered 403 with that sentence (Prohibited.cls:342) on the screen's own route; AD-53: a kernel reason naming the agent is a defect once a screen caller shares the predicate
+- 2026-09-24T03:12:21Z status=routed owner=9-3-the-role-editor by=smoke note=rewrite caller-neutral, publish in Fixed strings and pin via RefusalCopy; related DW-1357

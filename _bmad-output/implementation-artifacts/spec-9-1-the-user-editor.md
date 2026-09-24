@@ -307,7 +307,29 @@ Rejected:
 - low: the tests hard-code ", 1 error" — they pin the published literal.
 - rejected (edits the spec): the spec's counts, and its `status` against sprint-status.
 
+### Review Findings (rework 1)
+
+Code review 2026-09-24 of `e162c9c9..HEAD` (four layers, full-opus; 18 raw rows, 4 surviving entries: 0 high, 1 medium, 3 low). Both `[CI]` items confirmed fixed: AC7 waits for `permissions/users/edit/_SYSTEM`, the outlet's `data-id` and the editor's Name field; the device-editor diagnosis holds (`app-toast-host` is a direct child of `.ocu-shell`, `--ocu-form-bar-height` is the bar's 56px, the rule's (0,2,1) beats the host's `:host` (0,1,0), and all nine form pages draw `.ocu-form-bar`).
+
+- [x] [Review][Patch] The geometry test accepted a stack lifted too far; it is now two-sided within 1px, like `toast.browser-spec.mjs`'s placement pin [ui/browser/users-editor.browser-spec.mjs:404]
+- [x] [Review][Patch] The lift's comment said Save and Cancel sit at the content area's right and that no form control is ever covered; it now names the form column, Save and Cancel, and the flush-bar condition [ui/src/styles/_components.scss:5514]
+- [x] [Review][Patch] DW-1595 cited `toast-host.ts:48` for the placement prose, which is at `:13-22`; corrected by a ledger trailer [_bmad-output/implementation-artifacts/deferred-work.md]
+- [x] [Review][Defer] The lift assumes the bar sits flush at the content area's bottom; a form whose bar ends mid-way can still sit under the stack, as it did before the lift [ui/src/styles/_components.scss:5518] — deferred: pre-existing, same root cause as DW-1596 (`occurrence` appended, routed to 9.2)
+
+Rejected:
+
+- false: the test measures an empty host and never hit-tests Save or Cancel — `device-editor` AC2 clicks Cancel under a real toast, and the host's bottom is where the stack's bottom sits.
+- false: `switches.page.ts` draws `.ocu-form-bar` without being a form page — it is `<section class="ocu-form-page">`.
+- false: the lift treats a symptom of DW-1597 — agent writes raise toasts on form pages whatever DW-1597 decides.
+- false: the rework skipped the other name-cell specs — CI's `browser` job runs every spec file (Rule 29).
+- low: a three-toast stack on a short viewport reaches the command bar — the stack was already 216px tall before the lift; needs a viewport under about 400px.
+- low: `web-applications-create`'s header does not pin the create's toast — the toast after a form's own create is DW-1597's open question.
+- low: DW-1595's two reasons for leaving DESIGN.md and `toast-host.ts` unamended differ — no reader is sent the wrong way.
+- rejected (edits the spec): DW-1597 read as rejected in the 2026-09-24 triage row and residual risk while the ledger holds it `decision-pending`; DW-1596's `deferred:` location; the Auto Run Result's dropped earlier-pass paragraphs.
+
 ## Spec Change Log
+
+- 2026-09-24 (lead, post re-review): an editor's own Save raising a change toast is open as DW-1597 (decision-pending, for the user at the decision sheet); the rework triage row that reads it as rejected is superseded by that entry.
 
 - 2026-09-24 rework iteration 1 (lead): CI red on `19849911` (run 35945402895, browser job, two specs outside this story's own list). Re-opened with two `[CI]` items; code review round 1 closed `done` with 0 unresolved high/med (its patches are in the rework commit).
 
@@ -446,6 +468,7 @@ Rejected:
 - mutation (code review), together: the change-on-login lock keyed off the edited value; `onRemoveRole` sends no role → the service-account leg of "draws the protected account's Enabled …" and "removes a held role from the Roles tab …" red.
 - mutation (rework 1), together, rebuilt and redeployed to `ocupilot-ci`: the `UserForm` entry removed from `DESCRIPTOR_EDIT_PAGES`; the `.ocu-shell:has(.ocu-form-bar) > app-toast-host` lift removed from `_components.scss` → `users.browser-spec.mjs` "AC7: the _SYSTEM name link carries the id in one route segment" red at the editor's `_SYSTEM` name wait, and `device-editor.browser-spec.mjs` "AC2: a create and an edit reach the Devices list …" red at the list-path wait after Cancel (the create's toast covers Cancel); both green after the revert.
 - mutation (rework 1 review), rebuilt and redeployed to `ocupilot-ci`: `+ var(--ocu-space-4)` dropped from the `_components.scss` toast lift → `users-editor.browser-spec.mjs` "the change-toast stack stands clear above the form bar holding Save and Cancel" red (host bottom 820 against bar top 819.875); green after the revert, bundle hashes identical to the verified build.
+- mutation (rework 1 code review), rebuilt and redeployed to `ocupilot-ci`: the lift doubled to `+ 2 * var(--ocu-space-4)` → the same test, now two-sided, red (host bottom 788 against bar top 819.875); `users-editor` 8/8 after the revert, tree byte-identical.
 
 ## Auto Run Result
 
