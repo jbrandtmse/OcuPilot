@@ -6687,13 +6687,21 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-12-3-copy-and-purge-the-audit-database.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: %SYS.Audit refuses past-dated saves/imports in %SYS; body pinned by exact JSON; vendor Delete end read exclusive in source; Test/AuditPurge TestTheScreenRoutePurgesBeforeTodayAndKeepsToday
 - 2026-09-24T19:28:02Z status=routed owner=burndown by=harvest note=settle on ocupilot-b-ci once it has lived past midnight instance time: record the previous-day count, purge at 0 days, assert it reaches 0 and today's survive
+- 2026-09-24T19:55:21Z occurrence=12-3-copy-and-purge-the-audit-database
 
 ### DW-1633: 12.3 purge dialog counts days on the browser calendar, so a browser ahead of the instance gets 0 days refused as a future cut-off
 - source: spec-12-3-copy-and-purge-the-audit-database.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: audit-purge-dialog.ts purgeCutoff uses new Date(); CutoffProblem refuses a date after +$Horolog; the typed date is exactly what is purged
 - 2026-09-24T19:28:02Z status=wontfix-accepted owner=12-3-copy-and-purge-the-audit-database by=harvest note=reopen_if=a refused 0-day purge reported where browser and instance dates differ
+- 2026-09-24T19:55:21Z occurrence=12-3-copy-and-purge-the-audit-database
 
 ### DW-1634: 12.3 a PORT.TIMEOUT (503) from audit copy/purge may also raise the shell connectivity banner beside the page's still-running line (inference)
 - source: spec-12-3-copy-and-purge-the-audit-database.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: 503 is classified server-fault by the shell; bound not reached in measurement (30,579-record copy took 0.53 s on ocupilot-b-ci)
 - 2026-09-24T19:28:02Z status=wontfix-accepted owner=12-3-copy-and-purge-the-audit-database by=harvest note=reopen_if=an audit copy or purge answering PORT.TIMEOUT shows the connectivity banner
+
+### DW-1635: Spine AD-8 still says the full tool set is always advertised, which AD-53's 2026-09-24 unadvertised named case (security.auditing.purge) contradicts
+- source: spec-12-3-copy-and-purge-the-audit-database.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ARCHITECTURE-SPINE.md AD-8 Rule: 'The full tool set is always advertised'; AD-53 named case (Story 12.3 spec gate) lists AD-24 but does not carve AD-8; the code follows AD-53
+- 2026-09-24T19:55:21Z status=routed owner=burndown by=cr note=lead: one AD-8 clause citing AD-53's unadvertised case (Rule 20 correct-at-origin); no code change
+- 2026-09-24T19:56:44Z status=resolved-by:12-3-copy-and-purge-the-audit-database by=adjudication note=AD-8 sentence now excepts AD-53's unadvertised tools at its origin (Rule 20); no code change

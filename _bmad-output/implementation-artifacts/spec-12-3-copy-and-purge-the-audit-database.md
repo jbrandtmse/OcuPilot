@@ -87,7 +87,7 @@ footprint_extensions:
   - `%Api.Admin.Endpoints.Security.Audit.Record`: `TYPECOPY` 10 and `TYPEPURGE` 11. `ShouldRunAsync()` and `NeedsRequestBody()` are true for both. `ResourcesOR()` is `%Admin_Secure`. `ValidateRequest` uses the inline schemas quoted in the Always list, and no template method exists.
   - `%Api.Admin.Util.AsyncTask`: the states are `Queued`, `Running`, `Finished`, `Failed`, `Canceled` and `Paused`. `AddToAsyncQueue` queues on `$System.WorkMgr` and records `%session.Username`.
   - `%Api.Admin.Endpoints.AsyncResult`: `ResourcesOR()` is `%Admin_Operate`. GET answers `{State, TaskName, Console, FailureReason, Result, TimeQueued, TimeStarted, TimeFinished}` and 404 for another user's task.
-  - `irissys/%SYS/Audit.cls`: `Copy` is :557, runs in one `TSTART`, refuses `%SYS`, and writes `AuditChange`. `Delete` is :764, with `EndDateTime` "up through, but not including". `%OnBeforeSave` :3032 refuses `%SYS`, and `Import` refuses `%SYS`, so no test can create old records in `%SYS`.
+  - `irissys/%SYS/Audit.cls`: `Copy` is :557 and writes `AuditChange`. Its `Namespace="%SYS"` refusal (`$$$CanNotCopyIntoSYSNamespace`) is unreachable from this port: the same-namespace check immediately above it (`i $namespace=Namespace q $$$OK`) fires first, because the port always calls it from `%SYS`, so a copy into `%SYS` is a silent no-op unless `AuditCopy.NamespaceProblem` refuses it first (verified by mutation, QA pass 2026-09-24). `Delete` is :764, with `EndDateTime` "up through, but not including". `%OnBeforeSave` :3032 refuses `%SYS`, and `Import` refuses `%SYS`, so no test can create old records in `%SYS`.
   - `irissys/%CSP/UI/Portal/Audit/ActionTemplate.cls` :118-146 holds the classic pages' parameters.
 - **`src/OcuPilot/Port/AdminPort.cls`:**
   - `MUTATINGTYPES` :254;
@@ -209,6 +209,41 @@ footprint_extensions:
 - **AC5 (privilege).** Given a caller holding the screen's pairs but not `%Admin_Operate:USE`, when either action or the copy proposal is attempted, then it is refused 403 naming that pair before any port call, and nothing is copied or purged.
 - **AC6 (DW-1337).** Given either dialog open on Security › Auditing, when it is measured at 1280 px light, 720 px light and 1280 px dark, then no structural or contrast violation is found beyond the baseline.
 - Epic AC3 (the agent's purge carries the full model, and its card states that the purge destroys the marker's record) and epic AC5 (the purge key defaults to disabled) belong to the Epic 14 change that registers purge. This story ships no agent path for them (open question R6).
+
+### Review Findings
+
+Code review 2026-09-24 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 39 rows, 13 entries after grouping, 16 rejected.
+
+- [ ] [Review][Decision] HIGH, AD-15/AD-26/AD-7: an agent copy that outlasts `AsyncTimeout()` is unmarked and its ledger row reads `error`, while the vendor's worker completes the copy — `Confirm.cls:382-398` treats `PORT.TIMEOUT` as "the write did not happen" (`MARKEDNONE`), but AD-26's `QUEUEDWRITES` clause assumes "the request that starts the write still answers its outcome", and AD-15 names no case for it. Reachable: M3 measured ~57k records/s, so about 1.7M records exceed the 30 s bound. The spec names it only in Design Notes ("Named limitation"), which the spine does not carry. Needs a ruling: (A) a named case in AD-15 plus a corrected AD-26 sentence (a waiver of the marker for this case), or (B) a Confirm change that marks a `QUEUEDWRITES` write answered `PORT.TIMEOUT` as queued rather than failed.
+- [x] [Review][Patch] Rule 19: baselines read as `-1` passed vacuously — `tBefore > 0` asserted in `TestTheAgentsCopyIsMintedAndConfirmedMarked` and `TestAPrincipalWithoutOperateIsRefusedByName`, `tHeld > 0` in `TestAMalformedOrFutureCutoffIsRefused` [src/OcuPilot/Test/AuditCopy.cls:305, src/OcuPilot/Test/AuditPurge.cls:188]
+- [x] [Review][Patch] A lowercase `%sys` copy target was untested: added to the refusal roster [src/OcuPilot/Test/AuditCopy.cls:269]
+- [x] [Review][Patch] Rule 19: AC5's purge half had no recorded mutation — demonstrated below [src/OcuPilot/Screen/Tool/AuditPurge.cls:141]
+- [x] [Review][Patch] `AuditPort.Invoke` hardcoded COPY/PURGE while the roster tests trust `COMPOSEDTYPES`: it now routes by `COMPOSEDTYPES` [src/OcuPilot/Port/AuditPort.cls:58]
+- [x] [Review][Patch] `Base.Advertised()` doc claimed the registry calls it; the registry reads the parameter [src/OcuPilot/Screen/Tool/Base.cls:73]
+- [x] [Review][Patch] `TestAPrincipalWithoutOperateIsRefusedByName` quit with no assertion when the registry resolved nothing [src/OcuPilot/Test/AuditCopy.cls:322]
+- [x] [Review][Patch] The `OCUPILOT_ALLOW_PRINCIPALS` arming comment did not name AuditCopy's audit copy and its refused-purge leg [scripts/ci-throwaway.sh:196]
+- [x] [Review][Patch] The Copy dialog's Copy stayed enabled and did nothing when no namespace but `%SYS` was listed: now `aria-disabled` [ui/src/app/areas/security/audit-copy-dialog.ts:44]
+- [x] [Review][Patch] `security.auditing.purge`'s description lacked the write tools' "Propose ... changes nothing by itself" framing the model will read once Epic 14 advertises it [src/OcuPilot/Screen/Tool/AuditPurge.cls:25]
+- [x] [Review][Defer] Spine AD-8 still says "The full tool set is always advertised", contradicting AD-53's unadvertised case [ARCHITECTURE-SPINE.md AD-8] — deferred: DW-1635, a Rule 20 spine correction for the lead
+- [x] [Review][Defer] Purge's before-cut-off removal unobserved; its assertion cannot fail on a throwaway [src/OcuPilot/Test/AuditPurge.cls:173] — deferred: DW-1632 (occurrence); the leg now logs the pre-purge count so a qualifying run is recognisable
+- [x] [Review][Defer] Browser calendar against the instance's `+$Horolog`, also a browser-spec flake for a host east of the container [ui/browser/audit-copy-purge.browser-spec.mjs:44] — deferred: DW-1633 (occurrence)
+
+Rejected:
+
+- `false` Mint/Confirm `Resolve` without the new argument could store a purge proposal: the only agent entry is `ResolveWire`, which refuses an unadvertised tool.
+- `false` The still-running branch reads the global fault after `await sendFor` and could see another request's: `requestJson` reports synchronously before resolving, and the continuation is a microtask chain.
+- `low` The base port admits a caller body on a `QUEUEDWRITES` pair: no tool reaches those pairs except through `AuditPort`, which refuses one.
+- `low` The browser purge leg does not check `OCUPILOT_ALLOW_AUDIT_PURGE`: `assertThrowaway` is the documented gate.
+- `low` Buttons re-enable after `PORT.TIMEOUT` while the worker runs: the spec's still-running line is the chosen behavior.
+- `low` The copy dialog lists read-only namespaces: where `%SYS.Audit` globals map in a target namespace is unverified (inference), and the vendor's refusal reaches the banner.
+- `low` The card carries no disclosure line for the copy: the spec puts it in `DESCRIPTION`, and the card is derived from the merge.
+- `low` `AuditPort.Body`'s `\d` pattern and the `DATABASE` read's type hint are unreachable: the tool validates first, and the vendor always answers `Enabled`.
+- `low` Spec oversized and history appended: the fix edits the spec under review.
+- `low` Navigating away mid-operation loses the running line: a service-held state is more than a direct correction.
+- `low` A namespace deleted between mint and confirm fails in the vendor's worker: a loud refusal is correct.
+- `low` `Context.cls:187`'s parent-scope guard is unexercised: no descriptor parents to Security > Auditing.
+- `low` The AD-53 absence pin is armed by the purge variable: CI's throwaway sets it.
+- `low` The copy mint is not driven as the real principal: adjudicated as (d) in the Review Triage Log.
 
 ## Spec Change Log
 
@@ -332,8 +367,16 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. Every copy, pur
 
 Each mutation was reverted, recompiled with subclasses or rebuilt and redeployed, and `git status --short` with `git diff --stat` read identical to before it.
 
+**QA pass, 2026-09-24 -- the matrix's two argument-refusal rows had no recorded mutation (Rule 19); both are now demonstrated, on `ocupilot-b-ci`'s own compiled copy of the source (`/tmp/ocupilot-b-ci/src`, byte-identical to the worktree before and after) rather than the tracked worktree file, so `git status --short` and `git diff --stat` in the worktree never left clean:**
+
+- mutation (QA): `AuditCopy.NamespaceProblem` drops its `%SYS` arm → `AuditCopy.TestACopyIntoSysOrAnUnknownNamespaceIsRefused` red (the `%SYS` case answers 200 `updated` instead of 400 `TOOL.ARGUMENTS`) and `TestTheAgentsCopyIsMintedAndConfirmedMarked` red on "a copy into %SYS is refused at the mint" (2/6 failed, run 259); reverted and recompiled, `AuditCopy` 6/6 (run 260) (matrix row: copy into `%SYS` or an unknown namespace)
+- mutation (QA): `AuditPurge.CutoffProblem` drops its future arm → `AuditPurge.TestAMalformedOrFutureCutoffIsRefused` red (tomorrow's cut-off answers 200 `updated` and is actually purged through) (1/4 failed, run 261); reverted and recompiled, `AuditPurge` 4/4 (run 262) (matrix row: purge cut-off malformed or in the future)
+
 - mutation: the page's two `register` lines removed → `auditing-config.page.spec.ts` command-bar leg red (review patch)
 - mutation: `operation() !== null` dropped from `openDatabaseDialog` → the in-flight leg red (review patch)
+- mutation (code review): `AuditCopy.NamespaceProblem` compares `pValue` unconverted → `AuditCopy.TestACopyIntoSysOrAnUnknownNamespaceIsRefused` red on `%sys` (run 265)
+- mutation (code review): `AuditPurge.PrivilegePairs` omits `%Admin_Operate:USE` → `AuditCopy.TestAPrincipalWithoutOperateIsRefusedByName` and the declaration leg red (run 266) (AC5, purge)
+- mutation (code review): `AuditCopyDialog.confirmDisabled` answers `null` → `audit-copy-dialog.spec.ts` "Copy is aria-disabled ..." red
 
 **Stage verification (once, before dev_complete), `ocupilot-b-ci`:** whole `OcuPilot` package recompiled from the worktree source; full sweep 226 classes (runs 31-256), 2006 tests, 1 failed (`Prohibited.TestNoWriteToolAdmitsAnAlwaysProhibitedField`: a bodyless tool admitting its port-composed argument); fixed in `Test/Prohibited.cls` and rerun 12/12 (run 257); `AuditPurge` armed 4/4 (run 258). Total 227 classes, 2010 tests, 0 failed. `npm run build` initial total 1.34 MB (1,337,502 bytes as the handoff measured; budget 1378 kB unchanged); `npm test` tools 1375/1375 after adding the live-container refusal to `audit-copy-purge.browser-spec.mjs`, components 1076/1076; story browser specs 6/6 on the redeployed bundle; `smoke.sh` executed 48, passed 48; check-objectscript and lint-docs clean.
 
