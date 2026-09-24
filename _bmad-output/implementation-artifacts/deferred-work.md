@@ -6729,3 +6729,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-9-1-the-user-editor.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: toast-host.ts dismiss button inherits font (0.875rem); predates Story 9.1; the button box now meets the 24px floor
 - 2026-09-24T10:33:56Z status=wontfix-accepted owner=9-1-the-user-editor by=harvest note=reopen_if=a design review or the owner flags the close glyph size on a toast
+
+### DW-1612: The toast's 'Open in <screen>' button is under the 24px target height (padding 0, 14px font), and the DW-1337 structural walk checks width only, so no gate catches an under-height control
+- source: spec-9-1-the-user-editor.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: toast-host.ts .ocu-toast-action padding 0 (estimated from CSS, not measured); structural-walk.mjs:283-284 measures width only; EXPERIENCE.md Target sizes sets 24 x 24
+- 2026-09-24T10:38:52Z status=wontfix-accepted owner=9-1-the-user-editor by=cr note=reopen_if=the structural walk gains a height check, or a toast action measures under 24px tall in a browser run

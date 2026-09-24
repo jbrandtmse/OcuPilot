@@ -106,3 +106,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-24T10:33:56Z	Story 9.1	committed_pushed_code	sha=52eb08e ci=pending run=35987943505
 2026-09-24T10:33:56Z	Story 9.1	adr_verifications_complete	result=none_required note=css_target_floor_fix
 2026-09-24T10:33:57Z	Story 9.1	stage_spawned	stage=code-review spawn_at=2026-09-24T10:33:57Z model=opus agent_name=9-1-the-user-editor-code-review-3 cycle_iteration=3 scope=62da5af..HEAD
+2026-09-24T10:38:52Z	Story 9.1	cr_complete	spawn_at=2026-09-24T10:33:57Z model=opus resolved=0 fixed_at_source=0 dismissed=12 high=0 med=0 low=0 rows=12 unresolved_high_med=0 closing_sections_present=true final_status=done cycle_iteration=3 scope=62da5af..HEAD lead_filed=DW-1612
+2026-09-24T10:38:52Z	Story 9.1	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=slice_empty
+2026-09-24T10:38:52Z	Story 9.1	smoke_complete	method=browser result=pass iterations=2 defects_caught=0 evidence=ocupilot-ci_toast_3/3,definitions_8/8(10.5_DW-1337_leg),users-editor_8/8,a11y_10/10_per_implement;reviewer_confirmed_deployed_bundle_main-7GZCA6O2.js_carries_the_rule model=claude-opus-5-5-1m

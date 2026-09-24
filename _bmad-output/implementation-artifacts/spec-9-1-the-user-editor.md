@@ -338,6 +338,21 @@ Rejected:
 - low: DW-1595's two reasons for leaving DESIGN.md and `toast-host.ts` unamended differ — no reader is sent the wrong way.
 - rejected (edits the spec): DW-1597 read as rejected in the 2026-09-24 triage row and residual risk while the ledger holds it `decision-pending`; DW-1596's `deferred:` location; the Auto Run Result's dropped earlier-pass paragraphs.
 
+### Review Findings (rework 2)
+
+Code review 2026-09-24 of `62da5afe..HEAD` (four layers, full-opus; 12 raw rows, 0 surviving entries). Clean review. The `[CI]` item is closed. `.ocu-toast-dismiss` sets `min-width` and `min-height` to `var(--ocu-space-6)` (24px, `_metrics.scss:18`) with `flex: 0 0 auto`, so the fixed 360px toast cannot shrink it. No other rule in `ui/src` targets the class, so the floor holds on every screen that renders `app-toast-host`. The served bundle on `ocupilot-ci` (`main-7GZCA6O2.js`, named by its `index.html`) carries the rule. `toast.browser-spec.mjs` asserts both dimensions against `MIN_WIDTH_SOURCES.floor.px`, and each half has a recorded mutation. `definitions.browser-spec.mjs` is unchanged since `62da5afe`.
+
+Rejected:
+
+- false: the new 24px box contradicts DESIGN.md's icon-button pattern. The toast recipe (DESIGN.md:1210) names only "a 20px close icon" and sets no box size. The "20px close icon button" is the `banner` recipe. The glyph size is DW-1611.
+- false: the re-test was narrower than rework 1. CI's `browser` job runs every spec file, and Rule 29 keeps the full suite off the local run.
+- low: the check reads only the one-toast state. Every toast gets the same `.ocu-toast-dismiss` rule inside a fixed 360px box, and nothing makes a second toast size it differently.
+- low: the assertion sits mid-test, so a red hides the geometry checks after it. `finally` still closes the context. The only cost is on the red path.
+- low: DW-1412 also went red in the `min-height` mutation run and was not diagnosed. It was green after the revert (`toast` 3/3), and the pin is DW-1405's assertion.
+- not filed (outside the rework, not high): `.ocu-toast-action` has `padding: 0` and inherits the 14px font, so it is under 24px tall. The structural walk checks only width (`structural-walk.mjs:283-284`), so other controls' height floors are unchecked too. Both are older than this rework.
+- already ledgered: the glyph is 14px, not DESIGN.md's 20px (DW-1611).
+- rejected (edits the spec): the ticked item still says "keep its 20px glyph"; the intent contract's Never still names `toast-host.ts` (the lead's re-open item authorized the edit); two rework-2 triage rows are marked `false` where the finding was patched; the rework-2 triage row calls the 20px glyph baseless where DESIGN.md:1210 is its basis; the first `deferred:` entry is stale against DW-1595's resolution.
+
 ## Spec Change Log
 
 - 2026-09-24 rework iteration 2 (lead): CI red after the integrate-forward that brought Epic 10's 10.5; one `[CI]` item (toast dismiss button under the 24px target floor, exposed by DW-1546's toast rule).
