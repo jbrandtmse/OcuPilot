@@ -2,11 +2,11 @@
 title: 'Story 12.2: Revoke a user''s OAuth 2.0 tokens'
 type: 'feature'
 created: '2026-09-24'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '79f62a6ba4b3eb4cce4a7f2fcc55356a5540d000'
 baseline_commit: '79f62a6ba4b3eb4cce4a7f2fcc55356a5540d000'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-12-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md'
@@ -137,7 +137,7 @@ deferred: []
   - Assert one action request, then exact counts 0 / 1 / 1.
   - With the dialog open, run `detectScreen` at 1280 light (`INVARIANTS`), at 720 light (`name`, `min-width`, `overflow`) and at 1280 dark (`contrast`), each with `route: 'permissions/users'`, and assert that `compare(...).fresh` is empty.
 
-- [ ] [CI] browser: `ui/browser/users-actions.browser-spec.mjs:236` (test 274, run 36006886901) pins the Users row menu as six actions; this story adds a seventh. Add `STRINGS.userActionRevokeTokens` after `STRINGS.actionDelete` in that roster, make the message say seven, and change no other line (Epic 9 edits this file's later legs). Verify with that one browser file over a rebuilt, redeployed bundle, and record its mutation (drop the revoke row action → red).
+- [x] [CI] browser: `ui/browser/users-actions.browser-spec.mjs:236` (test 274, run 36006886901) pins the Users row menu as six actions; this story adds a seventh. Add `STRINGS.userActionRevokeTokens` after `STRINGS.actionDelete` in that roster, make the message say seven, and change no other line (Epic 9 edits this file's later legs). Verify with that one browser file over a rebuilt, redeployed bundle, and record its mutation (drop the revoke row action → red).
 
 **Acceptance Criteria:**
 
@@ -201,6 +201,11 @@ Rejected:
   - `[low]` `[patch]` No check that the screen path emits no agent marker (AD-53) — the screen leg asserts `MarkerRows(since, tool) = 0`.
   - `[false]` `[reject]` The card's `OAuthTokens` label is not a `STRINGS` key — the card draws the instance's field names for every write tool (`State`, `Total`, `NextScheduled`; AD-3, the instance owns the diff).
   - `[medium]` `[patch]` (grouped with the AC4 finding) The recorded AC4 mutation did not falsify — same patch.
+
+### 2026-09-24 — Review pass (rework 1)
+
+- verdicts: 0 findings — high 0, medium 0, low 0, false 0, maybe-false 0
+- findings: none. Reviewed diff: the rework's one test edit (`HEAD` a8b6ffaf to the working tree). Verification-gap found no gaps. Intent alignment found the diff implements the narrowed `[CI]` instruction exactly; the dialog, write and agent surfaces it does not touch are out of this pass's scope by instruction.
 
 ## Design Notes
 
@@ -279,6 +284,7 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. Stateful runs h
 - (QA) mutation: `TokenPort.Invoke`'s `REVOKE` branch also disables the resolved account after a successful revoke (a plausible "revoke also kills the caller's own session" regression), recompiled on `ocupilot-b-ci` → `TokenRevoke.TestTheScreenRouteRevokesExactlyTheAccountsTokens` red on "and the same access token still answers" (AC1, signed-in-user leg). The leg was switched from the shared `_SYSTEM` test account to a dedicated `TokenProbe.SELFCALLER` account holding all three required pairs, so the account this mutation disables is the fixture's own and safe to touch on the shared throwaway; reverted, `git diff --stat` clean, class green again (run 484).
 - (CR) mutation: `Kernel/Audit/Event.RecordAgentWrite` writes an empty `proposalId`, compiled on `ocupilot-b-ci` only → `TestTheAgentsRevokeIsMintedDestructiveAndConfirmedMarked` red on "one agent-write marker naming this proposal" alone, with the ledger's `AuditMarked` still green (run 485); reverted, green (run 486) (AC2)
 - (CR) mutation: `UserList.cls` `revoke-tokens` given `protected-account`, mirror regenerated → `screen-action-revoke.spec.ts` both tests red; reverted, mirror regenerated, tree byte-identical (matrix "Signed-in user", client)
+- (rework 1) mutation: `'revoke-tokens': STRINGS.userActionRevokeTokens` removed from `ui/src/app/core/screen-actions.ts`, rebuilt and redeployed → `users-actions.browser-spec.mjs` "AC1, AC2, AC4, AC5: every Users row action…" red on the seven-action roster (last entry `'revoke-tokens'`); reverted byte-identical, rebuilt and redeployed, green
 
 ## Auto Run Result
 
@@ -303,3 +309,12 @@ Blocking condition: none
 - **Residual risks:**
   - Merging with `origin/OCU-1-epic9` will give append-only conflicts, each resolved by keeping both sides: the single-line rosters in `ReadTool` and `ToolRoundTrip`, and the ends of `strings.ts` and EXPERIENCE.md. `UserList`, `screen-action-handler.ts`, `AdminPort` and `ci-throwaway.sh` merge clean (simulated).
   - The AC3 agent-side refusal is driven through `ToolDispatchProbe` with the pair denied, and the real principal's missing pair is checked separately.
+
+### Rework 1 (CI run 36006886901)
+
+Status: done
+Blocking condition: none
+
+- **Change:** `ui/browser/users-actions.browser-spec.mjs` Users row-menu roster now lists seven actions, `STRINGS.userActionRevokeTokens` after `STRINGS.actionDelete`, and the message says seven. No other line changed.
+- **Review:** follow-up pass, two layers, 0 findings; nothing patched or deferred. Follow-up review recommended: false (no `high` patched).
+- **Verification:** `npm run build`, bundle redeployed to `ocupilot-b-ci`, then `users-actions.browser-spec.mjs` and `token-revoke.browser-spec.mjs` 3/3 green. The rework-1 mutation line is in `## Verification`. No full browser suite and no full ObjectScript sweep in this rework (Rule 29: the sweep ran once at dev_complete; this rework changes one browser test line). `baseline_revision` kept at the story baseline.

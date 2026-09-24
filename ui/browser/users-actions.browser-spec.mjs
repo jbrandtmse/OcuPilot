@@ -242,8 +242,9 @@ test('AC1, AC2, AC4, AC5: every Users row action reaches the route and the row r
         STRINGS.userActionAddRole,
         STRINGS.userActionRemoveRole,
         STRINGS.actionDelete,
+        STRINGS.userActionRevokeTokens,
       ],
-      'the menu lists the six drawn actions in declared order, destructive last, and not the flag'
+      'the menu lists the seven drawn actions in declared order, destructive last, and not the flag'
     );
     for (const entry of entries) assert.equal(entry.ariaDisabled, null, `${entry.label} is selectable on an ordinary account`);
     await page.keyboard.press('Escape');
