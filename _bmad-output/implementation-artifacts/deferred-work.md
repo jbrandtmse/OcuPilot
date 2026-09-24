@@ -5510,6 +5510,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-5.md | severity: med | fix-risk: low | footprint: src/OcuPilot/Test/**
 - evidence: MEASURED, not inferred: tasks.browser-spec.mjs's two Story 6.6 legs fail on the reused ocupilot-ci (%SYS_Task.History holds ~46 OcuPilotDemoProbe* rows against 3 genuine ones) and PASS in CI run 35552263340's instance job, which builds its throwaway fresh.
 - 2026-09-21T03:18:33Z status=routed owner=range-end-cleanup by=lead note=A task's history outlives the task, so an uninstall that removes the task leaves its history rows behind; TaskHistoryList reads LogDatetime desc with paging cap and a DOM-only scan, so the genuine rows sort behind the residue and fall outside the virtual-scroll window. The durable fix is for the probe fixture to purge its own history as well as its tasks. Filed rather than fixed in 5.7 per the orchestrator: 5.7's diff touches no part of that read. The discriminating test is now known - a failure on a FRESH throwaway is real, on a reused one it is this.
+- 2026-09-24T16:48:12Z occurrence=9-7-the-new-task-wizard by=harvest note=TaskProbe_legs_leave_two_history_rows_per_probe_task(236_OcuP97_rows_on_ocupilot-ci)
 
 ### DW-1426: A refused confirm produces no write tool-call card at all, so AC4's 'failed - <resource>' has no producer
 - source: spec-5-8-web-applications-enable-a-disabled-application-and-grant-it.md | severity: med | fix-risk: low | footprint: ui/src/app/shell/panel.ts
@@ -5922,6 +5923,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-22T15:30:15Z status=routed owner=range-end-cleanup by=burndown note=Rule 27: real but neither floor- nor downstream-blocking, so not chartered
 - 2026-09-22T19:09:30Z occurrence=5-14-epic-5-burn-down
 - 2026-09-22T19:09:30Z note=root cause named: OcuPilotDemoProbe* history rows, purged only on a passing run's path, so one failure is self-reinforcing. Deleting 42 took the spec 12/14 to 14/14
+- 2026-09-24T16:48:12Z occurrence=9-7-the-new-task-wizard by=harvest note=sweep_run_10377_ocupilot-ci_2078_history_rows
 
 ### DW-1469: Eight of Story 5.12's acceptance criteria carry their Rule 19 mutation only in the test method's doc comment, not as a mutation line in the spec's Verification list
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: low | fix-risk: low | footprint: in-story

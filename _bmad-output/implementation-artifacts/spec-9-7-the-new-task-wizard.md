@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-24'
 status: 'done'
 baseline_revision: 'f9851990568c3c30a459502deb960612d5625086'
+baseline_commit: 'f9851990568c3c30a459502deb960612d5625086'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
@@ -475,6 +476,7 @@ Slot A. Every IRIS MCP call carries `server: "ocupilot-slot-a"`. Anything that c
 - mutation: make `TaskRules.Applied` always drop the Several fields -> `TestACreateAnswersItsIdAndReadsBackWhole` went red on its 201 (run 10135).
 - mutation: remove `Task.CRUD:7404` from `AdminPort.PROPERTYFAULTS` (TaskPort and TaskPortSkew recompiled) -> `TestTheVendorsCodesLandOnTheirFields` and `TestAVendorRefusalAnswersAsTheFormsOwn` went red (run 10136).
 - mutation: remove `EmailOutput` from `task-fields.ts` `FLAG_FIELDS` -> `tools/task-fields.test.mjs` "the output file is emailed" went red.
+- mutation (lead AD gate, AD-54): force `tPresent = 0` in `Confirm`'s create re-read (Confirm and its three fixture subclasses recompiled on `ocupilot-ci`) -> `OcuPilot.Test.TaskCreate.TestTheConfirmCreatesAndAnswersTheId` went red on "the confirm is refused" and "nothing more is written" (run 10378); reverted by sha1, green (run 10379).
 
 ## Auto Run Result
 
