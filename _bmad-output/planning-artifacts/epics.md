@@ -5015,9 +5015,9 @@ So that its first answers are quick, grounded and honest about what it can do.
 - **When** a turn is sent from it
 - **Then** its context carries the rows it shows, narrowed to its declared summary fields and capped like every other screen, and the captured variable table never goes, as Story 11.2 states.
 
-- **Given** AD-11's seeded-injection test and AD-24's bounds
+- **Given** AD-11's existing pins and AD-24's bounds
 - **When** the suite runs
-- **Then** both pass unchanged, the added members count within AD-24's bounds, and AD-24 records at origin that the kernel adds them.
+- **Then** both pass unchanged, the added members count within AD-24's bounds, and AD-24 records at origin that the kernel adds them; the seeded-injection test, when Story 14.8 writes it, runs against this prompt. [AMENDED 2026-09-24 - see the story change log: the seeded-injection test is Story 14.8's and does not exist yet]
 
 - **Given** CI calls no live model
 - **When** the suite runs
