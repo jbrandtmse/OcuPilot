@@ -2,8 +2,8 @@
 title: 'Story 9.1: The user editor'
 type: 'feature'
 created: '2026-09-23'
-status: 'in-progress'
-baseline_revision: 'e162c9c9bed739dbb70f3a55bbd2ba230ea41214'
+status: 'done'
+baseline_revision: '62da5afea4cf00b21ae3348099c0112640c0a2b4'
 baseline_commit: 'e162c9c9bed739dbb70f3a55bbd2ba230ea41214'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -25,6 +25,13 @@ deferred:
     location: >-
       ui/src/styles/_components.scss:2847
     severity: medium
+  - summary: >-
+      The toast's dismiss glyph draws at the toast's 14px body size, while DESIGN.md's toast recipe calls for a 20px close icon.
+    evidence: |-
+      `.ocu-toast-dismiss` sets `font: inherit` under `.ocu-toast`'s `font-size: 0.875rem`; the glyph measured 7.9px wide with the box's minimums removed. Pre-existing since the toast host shipped; this pass enlarged the target box only.
+    location: >-
+      ui/src/app/shell/toast-host.ts:66; _bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/DESIGN.md:1210
+    severity: low
 ---
 
 <intent-contract>
@@ -260,7 +267,7 @@ Review patches (2026-09-23 review pass; each adds or tightens a test, plus its `
 
 **Rework iteration 2 (CI red on the integrate-forward head `d317549f`, run 35983775764, job `browser`):**
 
-- [ ] [CI] browser: `ui/browser/definitions.browser-spec.mjs:631` (Story 10.5, merged from Epic 10) asserts its failure line passes every DW-1337 invariant and found `app-toast-host>button.ocu-toast-dismiss: width 15.9px under 24px (floor)` on `agent/definitions/edit` at 1280 and 720. This story's toast rule (DW-1546) now raises a change toast on an editor whose list is not open, which exposes the dismiss button's size: EXPERIENCE.md "Target sizes" sets every control at least 24 x 24 CSS px. Make the toast's dismiss button meet the 24 x 24 floor (tokens only; `ui/src/app/shell/toast-host.ts` styles, uncontended since Epic 15 merged), keep its 20px glyph, and pin it with a check a mutation can redden (e.g. in `toast.browser-spec.mjs`, or a structural-walk leg over a raised toast). Do not change `definitions.browser-spec.mjs` (Epic 10's, merged). Run `definitions`, `toast`, `users-editor` and `a11y-structural-invariants` browser spec files, one at a time, after rebuild and redeploy -- https://github.com/jbrandtmse/OcuPilot/actions/runs/35983775764
+- [x] [CI] browser: `ui/browser/definitions.browser-spec.mjs:631` (Story 10.5, merged from Epic 10) asserts its failure line passes every DW-1337 invariant and found `app-toast-host>button.ocu-toast-dismiss: width 15.9px under 24px (floor)` on `agent/definitions/edit` at 1280 and 720. This story's toast rule (DW-1546) now raises a change toast on an editor whose list is not open, which exposes the dismiss button's size: EXPERIENCE.md "Target sizes" sets every control at least 24 x 24 CSS px. Make the toast's dismiss button meet the 24 x 24 floor (tokens only; `ui/src/app/shell/toast-host.ts` styles, uncontended since Epic 15 merged), keep its 20px glyph, and pin it with a check a mutation can redden (e.g. in `toast.browser-spec.mjs`, or a structural-walk leg over a raised toast). Do not change `definitions.browser-spec.mjs` (Epic 10's, merged). Run `definitions`, `toast`, `users-editor` and `a11y-structural-invariants` browser spec files, one at a time, after rebuild and redeploy -- https://github.com/jbrandtmse/OcuPilot/actions/runs/35983775764
 
 **Acceptance Criteria:**
 
@@ -391,6 +398,21 @@ Rejected:
   - `[low]` `reject` The rework item's other browser runs are not recorded, and the Auto Run Result describes the first pass — same as the second row; rewritten at this finalize.
   - `[false]` `reject` The diff does not say whether a toast on form pages is intended — carried: the same 2026-09-23 DW-1546 row.
 
+### 2026-09-24 — Review pass (rework 2)
+
+- verdicts: 10 findings — high 0, medium 0, low 4, false 6, maybe-false 0
+- findings:
+  - `[low]` `patch` The height half of the new dismiss-size assertion had no mutation — applied `min-height` dropped, rebuilt and redeployed: DW-1405 red at 24 x 14; mutation line and test comment now name both minimums.
+  - `[false]` `reject` The four required browser runs are unrecorded — the handoff ran all four after the final redeploy and `definitions` was re-run at verify; recorded in the Auto Run Result.
+  - `[low]` `reject` The item's "keep its 20px glyph" has no basis (the glyph is 14px) — the claim is in the spec item's text; the fix edits the spec. The glyph is unchanged.
+  - `[false]` `reject` The diff edits `toast-host.ts` against the contract's Never — the lead's re-open item and dispatch authorize it (Epic 15 merged, the file is uncontended); `definitions.browser-spec.mjs` is untouched.
+  - `[false]` `reject` The new test does not exercise the definitions surface that failed — the unchanged `definitions.browser-spec.mjs` does, 8/8 on the rebuilt bundle; the rule is viewport- and screen-independent.
+  - `[false]` `reject` The required runs are not recorded (intent layer) — carried: the second row.
+  - `[low]` `patch` The mutation covers width only (intent layer) — grouped with the first row; same fix.
+  - `[false]` `reject` The assertion admits 23.5px — the structural walk's own `min-width` check uses the same `+ 0.5` (`structural-walk.mjs:284`).
+  - `[false]` `reject` "The structural walk's floor measures width alone" is unverified — `structural-walk.mjs:283-284` reads `getBoundingClientRect().width` only.
+  - `[low]` `defer` DESIGN.md's 20px close icon is unmet — pre-existing (the glyph inherits the toast's 14px body size); in `deferred`.
+
 ## Design Notes
 
 **Governing ADs:** AD-3, AD-4, AD-5, AD-6, AD-8, AD-10, AD-11, AD-13, AD-14, AD-19, AD-27, AD-35, AD-36, AD-39, AD-51, AD-53, AD-55, AD-56.
@@ -475,18 +497,19 @@ Rejected:
 - mutation (rework 1), together, rebuilt and redeployed to `ocupilot-ci`: the `UserForm` entry removed from `DESCRIPTOR_EDIT_PAGES`; the `.ocu-shell:has(.ocu-form-bar) > app-toast-host` lift removed from `_components.scss` → `users.browser-spec.mjs` "AC7: the _SYSTEM name link carries the id in one route segment" red at the editor's `_SYSTEM` name wait, and `device-editor.browser-spec.mjs` "AC2: a create and an edit reach the Devices list …" red at the list-path wait after Cancel (the create's toast covers Cancel); both green after the revert.
 - mutation (rework 1 review), rebuilt and redeployed to `ocupilot-ci`: `+ var(--ocu-space-4)` dropped from the `_components.scss` toast lift → `users-editor.browser-spec.mjs` "the change-toast stack stands clear above the form bar holding Save and Cancel" red (host bottom 820 against bar top 819.875); green after the revert, bundle hashes identical to the verified build.
 - mutation (rework 1 code review), rebuilt and redeployed to `ocupilot-ci`: the lift doubled to `+ 2 * var(--ocu-space-4)` → the same test, now two-sided, red (host bottom 788 against bar top 819.875); `users-editor` 8/8 after the revert, tree byte-identical.
+- mutation (rework 2), rebuilt and redeployed to `ocupilot-ci`: `min-width: var(--ocu-space-6)` dropped from `.ocu-toast-dismiss` in `toast-host.ts` → `toast.browser-spec.mjs` "DW-1405: the toast stack renders at the recipe geometry …" red (dismiss control 7.9 x 24); `min-height: var(--ocu-space-6)` dropped instead → the same test red (24 x 14); `toast` 3/3 after each revert, `git diff --stat` unchanged.
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**Summary (rework iteration 1).** Both `[CI]` items closed. `users.browser-spec.mjs` AC7 now follows the name cell to `permissions/users/edit/_SYSTEM`, checks the outlet's `data-id` and waits for the editor's name field to read `_SYSTEM` (the spec task that removed `UserForm` from `CREATE_ONLY_FORMS` changed the target). `device-editor` AC2 failed because DW-1546's rule now raises a toast after the device create, and the stack covered the form bar's Cancel (`elementFromPoint` at its center found the toast). The fix is product code: `_components.scss` lifts the toast stack above the form bar while one is open (DESIGN.md `toast`: a toast must not cover the surface's primary control); the pin is unchanged.
+**Summary (rework iteration 2).** The one `[CI]` item is closed. The toast's dismiss button measured 15.9px wide, under EXPERIENCE.md's 24 x 24 target floor, which `definitions.browser-spec.mjs`'s DW-1337 walk caught once DW-1546's rule raised a toast on an editor. `.ocu-toast-dismiss` in `toast-host.ts` is now an inline-flex box of at least `--ocu-space-6` (24px) in both dimensions with the glyph centred; the glyph itself is unchanged (it is 14px, not 20px as the item said; deferred low).
 
-**Files.** `ui/browser/users.browser-spec.mjs` (AC7 re-pointed); `ui/src/styles/_components.scss` (appended toast lift); `ui/browser/users-editor.browser-spec.mjs` (new geometry test for the lift); `ui/browser/web-applications-create.browser-spec.mjs` (stale "no toast is raised" sentence removed).
+**Files.** `ui/src/app/shell/toast-host.ts` (dismiss box minimums, header sentence); `ui/browser/toast.browser-spec.mjs` (DW-1405 test asserts the dismiss control is at least 24 x 24, floor read from `structural-walk.mjs`); this spec (item ticked, mutation line).
 
-**Review.** Follow-up pass, two layers: 10 findings (0 high, 2 medium, 5 low, 3 false). Patched: 1 medium entry (the lift's direct test), 1 low (stale header). Deferred: 1 low entry (published toast placement in DESIGN.md and `toast-host.ts`). Rejected: 2 low (spec-section edits), 3 false (two carried from the 2026-09-23 DW-1546 row, one refuted by the lead's boundary). A pre-existing form-bar layout defect found while measuring went to `deferred` (medium). Follow-up review recommended: false (no high patched on a follow-up pass).
+**Review.** Follow-up pass, two layers: 10 findings (0 high, 0 medium, 4 low, 6 false). Patched: 1 low entry (the height half's mutation). Deferred: 1 low (DESIGN.md's 20px close icon, pre-existing). Rejected: 1 low (spec-text claim), 6 false (see the rework-2 triage row). Follow-up review recommended: false (no high patched on a follow-up pass; patched counts high 0, medium 0, low 1).
 
-**Verification.** Every browser result read after `npm run build` and a redeploy to `ocupilot-ci`, one file per run: device-editor 4/4, users 4/4, users-editor 8/8, users-create 5/5, users-actions 2/2, users-write 3/3, task-resume 3/3, toast 3/3, roles-create 5/5, resources-editor 5/5, web-applications-create 8/8, web-applications 4/4, wallet-secret 4/4, x509-import 4/4, switches 4/4, definitions 6/6, ssl 4/4, security 4/4, navigate 6/6, change-highlight 2/2, change-highlight-noncanonical 1/1, tasks 12/14. The two `tasks` failures (Story 6.6 Task history AC1, AC3) come from 82 leftover `OcuPilotDemoProbe*` rows on this reused throwaway; `tasks` was not among CI's failures on `19849911`, and this pass touches nothing under `areas/tasks`. `npm run test:tools` 1349/1349 (after the review patch), `npm run test:components` 1045/1045, `lint-docs` clean. Initial bundle 1,350,220 bytes (main 1,217,060 + styles 133,160). Earlier passes: first build `19849911`, code-review patches `ba6f2258`.
+**Verification.** After the final `npm run build` and redeploy to `ocupilot-ci`, one file per run: toast 3/3, definitions 8/8 (re-run at verify; includes the Story 10.5 test that failed in CI), users-editor 8/8, a11y-structural-invariants 10/10. `npm run test:tools` 1384/1384, `npm run test:components` 1097/1097, `lint-docs` clean, build (client-lint) clean. Mutations: `min-width` dropped → 7.9 x 24 red; `min-height` dropped → 24 x 14 red (DW-1412 also red in that run); both reverted, tree byte-identical, bundle hash `main-7GZCA6O2.js` identical to the verified build. Initial bundle 1,430,355 bytes (main 1,292,498 + styles 137,857). Earlier passes: first build `19849911`, review patches `ba6f2258`, rework 1 `41e795e9`.
 
-**Residual risk.** A toast now appears after an editor's own Save (DW-1546 as amended); DESIGN.md's "never for confirmations of what the user just did on the open screen" reads against it, which the 2026-09-23 triage rejected on the EXPERIENCE.md amendment.
+**Residual risk.** The toast is about 4px taller (48px); the `toast` and `users-editor` geometry pins pass.
