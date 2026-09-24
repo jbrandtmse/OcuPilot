@@ -38,3 +38,5 @@
 2026-09-24T12:03:30Z	Story 12.2	plan_clarification_answered	by=orchestrator(4a8d8184,by=merge_gate) q1=AD-8_widened q2=AD-53_named_gap q3=screen-action-handler.ts_two_entries_contended_discipline q4=EXPERIENCE_148_166_168_in_place
 2026-09-24T12:03:30Z	Epic 12	spine_updated	ad=AD-8,AD-53 reason=clarification by=runner story=12-2-revoke-a-user-s-oauth-2-0-tokens lint=ok(1_preexisting_low)
 2026-09-24T12:03:30Z	Story 12.2	spec_validated	service_introducing=true integration_ac=present(TokenPort_consumed_by_this_story_tool:AC1,AC2) adr_constrained_acs=AD-6,AD-8,AD-10,AD-15,AD-27,AD-35,AD-51,AD-52,AD-53 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 mutates_shared_runtime=true(throwaway_named:ocupilot-b-ci) amendments=spine:AD-8,spine:AD-53,EXPERIENCE.md:148,EXPERIENCE.md:166,EXPERIENCE.md:168 model=claude-opus-5-5
+2026-09-24T12:10:26Z	Epic 12	ci_resolved	story=12.1 run=35994573376 result=success head=5d317b8b resolved_at=next_implement(Rule_28)
+2026-09-24T12:10:26Z	Story 12.2	stage_spawned	stage=implement spawn_at=2026-09-24T12:10:26Z model=opus agent_name=12-2-revoke-a-user-s-oauth-2-0-tokens-implement-1 cycle_iteration=1
