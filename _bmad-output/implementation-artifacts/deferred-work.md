@@ -6631,3 +6631,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: smoke 10.4 (lead live check) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: live 2026-09-24: OcuPilot test on gemini-3.8-flash answered 200 with reply empty; direct probe maxOutputTokens 32 -> finishReason MAX_TOKENS, 26 thought tokens; thinkingConfig thinkingLevel low or thinkingBudget 0 -> STOP with a full sentence; thinkingLevel minimal -> 400 not supported for this model
 - 2026-09-24T03:59:21Z status=routed owner=10-5-a-connection-test-that-answers-before-the-gateway-does by=smoke note=Test connection is 10.5's area; the fix sits in the Gemini adapter or the test budget, both Epic 10's footprint
+
+### DW-1602: Test connection's child-path max_tokens is pinned only in the JOB argument, not on the recorded wire request, because Test/TurnProvider.cls records no max_tokens
+- source: _bmad-output/implementation-artifacts/spec-10-5-a-connection-test-that-answers-before-the-gateway-does.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: a Child that dropped maxTokens alone would stay green; AgentConnection pins TESTMAXTOKENS in process only; TurnProvider.cls:115 is not Epic 10's file
+- 2026-09-24T06:04:56Z status=wontfix-accepted owner=10-5-a-connection-test-that-answers-before-the-gateway-does by=harvest note=reopen_if=a live or stub Test connection answers MAX_TOKENS or an empty reply on a thinking model after DW-1601's 1024 cap
