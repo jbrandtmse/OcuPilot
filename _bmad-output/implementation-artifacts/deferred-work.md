@@ -6674,6 +6674,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-9-3-the-role-editor.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: a request-level leg with the refusal missing would drop a vendor role on the throwaway; no held-port ScreenAction harness exists
 - 2026-09-24T08:53:06Z status=wontfix-accepted owner=9-3-the-role-editor by=harvest note=reopen_if=a held-port ScreenAction harness lands (as HeldPutPort did for Save), or ScreenAction.Run stops calling the tool's ScreenActionDelta
+- 2026-09-24T13:28:15Z occurrence=9-5-the-ssl-tls-editor
 
 ### DW-1607: The %All census reads a role set escalation-only as reaching nothing for its holders (inference); whether sign-in still grants it was not measured
 - source: spec-9-3-the-role-editor.md | severity: low | fix-risk: low | footprint: in-epic
@@ -6743,3 +6744,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-11-9-the-agent-knows-the-screen-it-is-on.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: publishRows sends drill.errors() narrowed to the 5 summary fields; panel.ts sets namespace from scope.namespace() and entity from the route :id, while the drill's namespace/date live only in ErrorLogDrill (AD-48 one namespace source); ErrorRead requires namespace and date
 - 2026-09-24T09:36:58Z status=routed owner=11-2-explain-a-log-or-audit-entry by=cr note=11.2 consumes these rows; carrying the drill scope needs a descriptor or context-contract change outside 11.9's Never list
+
+### DW-1613: Story 9.5's SSL/TLS editor took the initial bundle to 1,476,658 bytes, over the 1467kB warning (DW-371 red)
+- source: spec-9-5-the-ssl-tls-editor.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: build-output.test.mjs measured 1,476,658 bytes against 1467kB
+- 2026-09-24T13:28:15Z status=resolved-by:9-5-the-ssl-tls-editor owner=9-5-the-ssl-tls-editor by=harvest note=re-based to 1551kB under DW-1166 in 9d79d9b; 1500kB lazy-load line not crossed
+
+### DW-1614: security/ssl/edit carries the three shell-wide structural-baseline entries every form route carries (DW-1583, DW-1584)
+- source: spec-9-5-the-ssl-tls-editor.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: the shell's panel resize handle and status-bar connection findings are baselined on every form route; the screen's own controls pass with no allowance
+- 2026-09-24T13:28:15Z status=by-design owner=9-5-the-ssl-tls-editor by=harvest note=shell-wide entries owned by DW-1583/DW-1584, not this screen
+
+### DW-1615: An over-255-character private key password confirmed through the agent's security.ssl.update may be quoted into AdminPort's log line (unverified)
+- source: spec-9-5-the-ssl-tls-editor.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: confirm path skips SslRules' length rule; Security.Datatype.Password MAXLEN 255 refusal 7201 quotes the value; AdminPort.Fail logs the vendor status; shared with the X.509 password confirm
+- 2026-09-24T13:28:15Z status=open owner=9-5-the-ssl-tls-editor by=harvest note=settle in 9.5 code review: 300-char sentinel through security.ssl.update confirm on ocupilot-ci, scan messages.log; patch (length rule at confirm, or redact) if real
