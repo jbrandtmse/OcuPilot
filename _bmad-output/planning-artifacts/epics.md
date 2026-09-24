@@ -5055,9 +5055,9 @@ So that its first answers are quick, grounded and honest about what it can do.
 - **When** a turn is sent from it
 - **Then** its context carries the rows it shows, narrowed to its declared summary fields and capped like every other screen, and the captured variable table never goes, as Story 11.2 states.
 
-- **Given** AD-11's seeded-injection test and AD-24's bounds
+- **Given** AD-11's existing pins and AD-24's bounds
 - **When** the suite runs
-- **Then** both pass unchanged, the added members count within AD-24's bounds, and AD-24 records at origin that the kernel adds them.
+- **Then** both pass unchanged, the added members count within AD-24's bounds, and AD-24 records at origin that the kernel adds them; the seeded-injection test, when Story 14.8 writes it, runs against this prompt. [AMENDED 2026-09-24 - see the story change log: the seeded-injection test is Story 14.8's and does not exist yet]
 
 - **Given** CI calls no live model
 - **When** the suite runs
@@ -5171,6 +5171,8 @@ So that a log line becomes an explanation in one gesture.
 - **Given** the entry text
 - **When** it reaches the model
 - **Then** it arrives as delimited tool-result content, never as instruction.
+
+- DW-1610: The error list's context rows reach the turn labeled with the shell's namespace and no date, so the agent misattributes them and cannot scope logs.applicationerrors.read or a delete to them (ledger; routed by cr 2026-09-24)
 
 ### Story 11.3: Suggested prompts per screen
 

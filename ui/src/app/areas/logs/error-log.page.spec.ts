@@ -1007,4 +1007,61 @@ describe('ErrorLogPage', () => {
     await settle(fixture);
     expect(storeSelection()).toEqual([]);
   });
+  it('Story 11.9: the store holds the error rows at the list level and none at namespaces, dates or detail', async () => {
+    // Mutation (Rule 19): publish `errors()` at every level in `publishRows` -> the detail leg holds
+    // the list's rows and goes red.
+    const api = seeded();
+    const { fixture, drill } = mount(api);
+    const store = TestBed.inject(ScreenStores).for(LOG_ERROR_LIST, []);
+
+    await drill.openNamespaces();
+    fixture.detectChanges();
+    expect(store.data()).toEqual([]);
+
+    await drill.openDates('USER');
+    fixture.detectChanges();
+    expect(store.data()).toEqual([]);
+
+    await drill.openList('09/23/2026');
+    fixture.detectChanges();
+    expect(store.data()).toEqual(drill.errors());
+    expect(store.data().length).toBe(1);
+    expect(store.truncated()).toBe(false);
+
+    // Publishing leaves the selection as it was.
+    (row(fixture, '4').querySelectorAll('[role="gridcell"]')[2] as HTMLElement).click();
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual([`USER${SEP}09/23/2026${SEP}4`]);
+    expect(store.data()).toEqual(drill.errors());
+
+    // A same-level re-read (Refresh, or the re-read after a delete) publishes its new rows.
+    // Mutation: `publishRows` skips a same-level publish once that level holds rows -> this leg keeps one row.
+    const added = { errorNumber: 5, time: '17:02:00', errorText: '<UNDEFINED>z', routine: 'z', line: ' w q', username: 'Dana', process: '4712' };
+    api.answer('list', { namespace: 'USER', date: '09/23/2026', rows: [...drill.errors(), added], truncated: true });
+    await drill.reopen();
+    fixture.detectChanges();
+    expect(drill.errors().length).toBe(2);
+    expect(store.data()).toEqual(drill.errors());
+    expect(store.truncated()).toBe(true);
+
+    await drill.openDetail(4);
+    fixture.detectChanges();
+    expect(store.data()).toEqual([]);
+    expect(storeSelection()).toEqual([`USER${SEP}09/23/2026${SEP}4`]);
+
+    // Backing out of the list keeps its rows in the drill, so these legs hold rows to leak.
+    await drill.back();
+    fixture.detectChanges();
+    expect(store.data()).toEqual(drill.errors());
+    await drill.back();
+    fixture.detectChanges();
+    expect(drill.level()).toBe('dates');
+    expect(drill.errors().length).toBe(2);
+    expect(store.data()).toEqual([]);
+    await drill.back();
+    fixture.detectChanges();
+    expect(drill.level()).toBe('namespaces');
+    expect(drill.errors().length).toBe(2);
+    expect(store.data()).toEqual([]);
+  });
 });
