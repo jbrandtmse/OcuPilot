@@ -6843,3 +6843,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-9-8-edit-task.md | severity: high | fix-risk: low | footprint: in-epic
 - evidence: measured at the 9.8 plan on ocupilot-ci: IsCredentialName(SMTPPass)=0 and 9.7 TypeSettings draws it; the only %SYS.Task.Password property in HSCUSTOM and %SYS
 - 2026-09-24T18:50:54Z status=routed owner=9-8-edit-task by=lead note=9.8's plan adds one classifier in TaskPort (Password type, credential names, collections are classic-only) used by create and edit; its AC4 pins it
+
+### DW-1636: A vendor 409 on Task.CRUD PUT the edit rules do not pre-empt surfaces PORT.CONFLICT, whose sentence speaks of a duplicate name
+- source: spec-9-8-edit-task.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: implement pass: the past-start 7432 refusal maps to the port's generic 409; the rules refuse the reachable cases first (STARTDATE.PAST), so an unforeseen 409 would read as a name clash (unverified)
+- 2026-09-24T21:12:37Z status=open owner=9-8-edit-task by=harvest note=settle by listing the vendor's 409 causes for Task.CRUD RunPut and mapping each
