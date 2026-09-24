@@ -2,8 +2,9 @@
 title: 'Story 12.1: The security-area test and detail actions'
 type: 'feature'
 created: '2026-09-24'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
+baseline_revision: 'ffae9b98c73522e6f7ab3eec1a2a4d5d7f7c3791'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-12-context.md'
@@ -111,6 +112,22 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-24 — Review pass
+
+- verdicts: 11 findings — high 0, medium 1, low 6, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` AC3's dark contrast pass was never shown to fail, and nothing proved the class toggle took — the leg now asserts the body surface differs between the light and dark passes, and a dark-only legend contrast mutation turned it red (Verification).
+  - `[low]` `[reject]` the page-HTML key-body and `PRIVATE KEY` checks are unreachable by any recorded mutation — defense in depth; AC1's no-key half is pinned by the mutation-proven `Leak()` scan and the selector-absence checks, and the fix would be a spec note.
+  - `[low]` `[reject]` the planned AC3 mutation line named `inline-size`, which stays green — a spec edit; corrected under Rule 19's sanctioned Verification edit.
+  - `[false]` `[reject]` `X509Wire.Info()` reads `CERTINFO` through OcuPilot's own port — the browser leg compares against `%SYS.X509Credentials` directly, an independent oracle CI runs.
+  - `[false]` `[reject]` the browser leg's oracle is `GetByAlias`, not `CERTINFO` — the spec's task names `GetByAlias`, and the vendor's `RunCertInfo` answers from the same `%SYS.X509Credentials` properties.
+  - `[low]` `[reject]` the browser leg looks for no password or certificate-body text on the page — the page draws only mapped fields from a read the mutation-proven `Leak()` scan covers for all three; an encrypted-key browser import is more than a direct correction.
+  - `[false]` `[reject]` screen context is untested — the diff changes no descriptor or context field, and the form sends no screen context (`screen-context.ts` :81), unchanged.
+  - `[low]` `[patch]` `AssertEquals(HasPrivateKey, 1)` also passes for a number — `X509Wire` now asserts `%GetTypeOf` is `boolean`; class recompiled on `ocupilot-b-ci`.
+  - `[false]` `[reject]` the absent-alias row is not re-tested — 8.5's `X509Wire` :127-131 and page-spec :240 legs cover it unchanged and ran green.
+  - `[low]` `[reject]` the planned AC3 mutation did not fail (same root cause as the third row) — corrected there.
+  - `[low]` `[reject]` the leg depends on the AC3 leg's import, and `strings.test.mjs`'s bound is shared — the leg asserts its precondition as the file's AC2 leg does; the widening follows that file's own protocol.
+
 ## Design Notes
 
 **Governing ADs:** AD-2, AD-5, AD-8, AD-13, AD-19, AD-24, AD-27, AD-35, AD-36, AD-39, AD-44. AD-4 is not engaged, because no save changes.
@@ -143,10 +160,34 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. Stateful runs h
 
 - AC1, server: `X509Wire.TestTheDetailsCarryTheCertificateAndNoKey`. Mutations: drop `SerialNumber` from `HandleForm`'s loop; add the stored `PrivateKey` to `credential`.
 - AC1, client: the page-spec group leg and the browser leg, over a rebuilt, redeployed bundle. Mutations: render Serial number outside the fieldset; remove the legend; draw `#ocu-x509-PrivateKey` in edit mode.
-- AC3: the browser leg's structural assertion. Mutation: give `.ocu-x509-certificate` a fixed `inline-size` of 1400px, which overflows.
+- AC3: the browser leg's structural assertion. Mutations: give `.ocu-x509-certificate` a `min-inline-size` of 1400px, which overflows; color its legend with the surface token in the dark theme only.
 - AC2: `git diff --stat` against the story's baseline names no SSL/TLS or LDAP path.
+
+Observed (implement stage, `ocupilot-b-ci`; each applied, loaded or rebuilt and redeployed, observed red, restored byte-identical):
+
+- mutation: `SerialNumber` dropped from `X509Rules.HandleForm`'s `CERTINFO` loop → `X509Wire.TestTheDetailsCarryTheCertificateAndNoKey` red on the key set and the serial (run 2); restored green (run 4)
+- mutation: the stored `PrivateKey` added to `HandleForm`'s `credential` → `TestTheDetailsCarryTheCertificateAndNoKey` red on the key set and the secret scan, and `TestNoReadCarriesTheKeyOrItsPassword` red (run 3)
+- mutation: the store maps `serialNumber` as `''` → `x509-form.store.spec.ts` AC4 leg red
+- mutation: Serial number rendered outside the fieldset → `x509-form.page.spec.ts` edit and Story 12.1 legs red; browser Story 12.1 leg red over the rebuilt bundle
+- mutation: the legend removed → the same page-spec legs red; browser Story 12.1 leg red over the rebuilt bundle
+- mutation: `#ocu-x509-PrivateKey` drawn in edit mode → the same page-spec legs red; browser Story 12.1 and AC3 legs red over the rebuilt bundle
+- mutation: `.ocu-x509-certificate` given `min-inline-size: 1400px` → browser Story 12.1 leg red on two fresh `overflow` entries (1280 and 720). A fixed `inline-size` stays green: `.ocu-form-fields .ocu-field`'s `max-width` clamps it
+- mutation: `:root.ocu-theme-dark .ocu-x509-certificate legend { color: var(--mat-sys-surface) }` → browser Story 12.1 leg red on one fresh dark `contrast` entry (1:1), light passes unchanged (review pass)
+- AC2: `git diff --stat ffae9b98` names no `ssl*`, `SSL*` or `Ldap*` path
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+- **Change:** the X.509 form read now carries `SerialNumber` from `CERTINFO`, and the edit page groups Subject, Issuer, Serial number, Valid from, Valid until and Private key present in a `fieldset#ocu-x509-certificate` legended "Certificate details". No route, tool, descriptor or admin-API case changed.
+- **Files:** `X509Rules.cls` (serial in the form read, doc lists the ten fields); `X509Wire.cls` (details leg on its own probe); `x509-form.store.ts` / `.page.ts` (field and group); `_components.scss` (own fieldset reset); `strings.ts` plus one EXPERIENCE Fixed strings row, appended at the table's end so the other stories' `EXPERIENCE.md:n` references stay put; `strings.test.mjs` (literal bound 700 → 800, as that file's widening protocol sets out); store, page and browser specs.
+- **Review:** 11 findings. Two were patched: a dark-theme proof plus a mutation (medium), and a `boolean` type assertion (low). Five were rejected as low and four as false, reasons in the triage log. Nothing was deferred. Patched: high 0, medium 1, low 1.
+- **Verification:**
+  - `ocupilot-b-ci` first received 11.9's merged source, which the throwaway predated.
+  - The full ObjectScript sweep covered 223 classes and 1991 tests with 0 failed, run one class at a time. Its totals match `%UnitTest_Result` (runs 8-230).
+  - `x509-import.browser-spec.mjs` passed 5 of 5 over a rebuilt, redeployed bundle.
+  - `npm test` passed: 1375 tool tests and 1044 component tests.
+  - The smoke passed 49 of 49.
+  - `check-objectscript`, `lint-docs` and the secret grep (0) are clean. AC2's path check was clean too.
+- **Residual risk:** `strings.test.mjs`'s bound line may conflict with Epic 9's concurrent string additions at merge.

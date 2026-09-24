@@ -204,26 +204,33 @@ interface FieldView {
         <label class="ocu-field-label" [attr.for]="readId('Alias')">{{ STRINGS.x509ColumnAlias }}</label>
         <input class="ocu-field-input" type="text" readonly [id]="readId('Alias')" [value]="credential.alias" />
       </div>
-      <div class="ocu-field">
-        <label class="ocu-field-label" [attr.for]="readId('SubjectDN')">{{ STRINGS.x509ColumnSubject }}</label>
-        <input class="ocu-field-input" type="text" readonly [id]="readId('SubjectDN')" [value]="credential.subject" />
-      </div>
-      <div class="ocu-field">
-        <label class="ocu-field-label" [attr.for]="readId('IssuerDN')">{{ STRINGS.x509ColumnIssuer }}</label>
-        <input class="ocu-field-input" type="text" readonly [id]="readId('IssuerDN')" [value]="credential.issuer" />
-      </div>
-      <div class="ocu-field">
-        <label class="ocu-field-label" [attr.for]="readId('ValidityNotBefore')">{{ STRINGS.x509ColumnValidFrom }}</label>
-        <input class="ocu-field-input" type="text" readonly [id]="readId('ValidityNotBefore')" [value]="credential.validFrom" />
-      </div>
-      <div class="ocu-field">
-        <label class="ocu-field-label" [attr.for]="readId('ValidityNotAfter')">{{ STRINGS.x509ColumnValidUntil }}</label>
-        <input class="ocu-field-input" type="text" readonly [id]="readId('ValidityNotAfter')" [value]="credential.validUntil" />
-      </div>
-      <div class="ocu-field">
-        <label class="ocu-field-label" [attr.for]="readId('HasPrivateKey')">{{ STRINGS.x509FieldHasPrivateKey }}</label>
-        <input class="ocu-field-input" type="text" readonly [id]="readId('HasPrivateKey')" [value]="hasPrivateKeyText" />
-      </div>
+      <fieldset class="ocu-field ocu-x509-certificate" id="ocu-x509-certificate">
+        <legend class="ocu-field-label">{{ STRINGS.x509CertificateDetails }}</legend>
+        <div class="ocu-field">
+          <label class="ocu-field-label" [attr.for]="readId('SubjectDN')">{{ STRINGS.x509ColumnSubject }}</label>
+          <input class="ocu-field-input" type="text" readonly [id]="readId('SubjectDN')" [value]="credential.subject" />
+        </div>
+        <div class="ocu-field">
+          <label class="ocu-field-label" [attr.for]="readId('IssuerDN')">{{ STRINGS.x509ColumnIssuer }}</label>
+          <input class="ocu-field-input" type="text" readonly [id]="readId('IssuerDN')" [value]="credential.issuer" />
+        </div>
+        <div class="ocu-field">
+          <label class="ocu-field-label" [attr.for]="readId('SerialNumber')">{{ STRINGS.x509FieldSerialNumber }}</label>
+          <input class="ocu-field-input" type="text" readonly [id]="readId('SerialNumber')" [value]="credential.serialNumber" />
+        </div>
+        <div class="ocu-field">
+          <label class="ocu-field-label" [attr.for]="readId('ValidityNotBefore')">{{ STRINGS.x509ColumnValidFrom }}</label>
+          <input class="ocu-field-input" type="text" readonly [id]="readId('ValidityNotBefore')" [value]="credential.validFrom" />
+        </div>
+        <div class="ocu-field">
+          <label class="ocu-field-label" [attr.for]="readId('ValidityNotAfter')">{{ STRINGS.x509ColumnValidUntil }}</label>
+          <input class="ocu-field-input" type="text" readonly [id]="readId('ValidityNotAfter')" [value]="credential.validUntil" />
+        </div>
+        <div class="ocu-field">
+          <label class="ocu-field-label" [attr.for]="readId('HasPrivateKey')">{{ STRINGS.x509FieldHasPrivateKey }}</label>
+          <input class="ocu-field-input" type="text" readonly [id]="readId('HasPrivateKey')" [value]="hasPrivateKeyText" />
+        </div>
+      </fieldset>
       <div class="ocu-field">
         <label class="ocu-field-label" [attr.for]="readId('CAFile')">{{ STRINGS.x509FieldCaFile }}</label>
         <input class="ocu-field-input" type="text" readonly [id]="readId('CAFile')" [value]="credential.caFile" />

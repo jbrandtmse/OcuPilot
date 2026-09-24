@@ -29,6 +29,7 @@ const CREDENTIAL = {
   CAFile: '',
   SubjectDN: 'CN=Probe',
   IssuerDN: 'CN=Probe',
+  SerialNumber: '4F1A09C2',
   ValidityNotBefore: '2026-01-01 00:00:00',
   ValidityNotAfter: '2126-01-01 00:00:00',
   HasPrivateKey: true,
@@ -159,8 +160,10 @@ describe('the X.509 credential form', () => {
     const { host } = await mount('/security/x509/edit/ProbeCredential');
     expect(labels(host)).toEqual([
       STRINGS.x509ColumnAlias,
+      STRINGS.x509CertificateDetails,
       STRINGS.x509ColumnSubject,
       STRINGS.x509ColumnIssuer,
+      STRINGS.x509FieldSerialNumber,
       STRINGS.x509ColumnValidFrom,
       STRINGS.x509ColumnValidUntil,
       STRINGS.x509FieldHasPrivateKey,
@@ -173,6 +176,7 @@ describe('the X.509 credential form', () => {
       'ocu-x509-Alias',
       'ocu-x509-SubjectDN',
       'ocu-x509-IssuerDN',
+      'ocu-x509-SerialNumber',
       'ocu-x509-ValidityNotBefore',
       'ocu-x509-ValidityNotAfter',
       'ocu-x509-HasPrivateKey',
@@ -181,6 +185,35 @@ describe('the X.509 credential form', () => {
     expect((host.querySelector('#ocu-x509-HasPrivateKey') as HTMLInputElement).value).toBe(STRINGS.tableStatusYes);
     expect((host.querySelector('#ocu-x509-OwnerList') as HTMLInputElement).value).toBe('alice');
     expect(host.querySelector('#ocu-x509-PrivateKey, #ocu-x509-PrivateKeyPassword, #ocu-x509-Certificate')).toBeNull();
+  });
+
+  it('Story 12.1 AC1: the certificate details are one group named by its legend, holding exactly the six read-only fields, and no secret input exists', async () => {
+    const { host } = await mount('/security/x509/edit/ProbeCredential');
+    const group = host.querySelector('fieldset#ocu-x509-certificate') as HTMLFieldSetElement;
+    // Mutation (Rule 19): remove the legend -> the group's name is empty and this goes red.
+    expect(group).not.toBeNull();
+    expect(group.querySelector(':scope > legend')?.textContent?.trim()).toBe(STRINGS.x509CertificateDetails);
+    // Mutation (Rule 19): render Serial number outside the fieldset -> red.
+    const fields = [...group.querySelectorAll('input')].map((control) => [
+      control.id,
+      host.querySelector(`label[for="${control.id}"]`)?.textContent?.trim(),
+      control.value,
+      control.readOnly,
+    ]);
+    expect(fields).toEqual([
+      ['ocu-x509-SubjectDN', STRINGS.x509ColumnSubject, 'CN=Probe', true],
+      ['ocu-x509-IssuerDN', STRINGS.x509ColumnIssuer, 'CN=Probe', true],
+      ['ocu-x509-SerialNumber', STRINGS.x509FieldSerialNumber, '4F1A09C2', true],
+      ['ocu-x509-ValidityNotBefore', STRINGS.x509ColumnValidFrom, '2026-01-01 00:00:00', true],
+      ['ocu-x509-ValidityNotAfter', STRINGS.x509ColumnValidUntil, '2126-01-01 00:00:00', true],
+      ['ocu-x509-HasPrivateKey', STRINGS.x509FieldHasPrivateKey, STRINGS.tableStatusYes, true],
+    ]);
+    // Alias sits above the group and the CA file below it.
+    expect(group.previousElementSibling?.querySelector('input')?.id).toBe('ocu-x509-Alias');
+    expect(group.nextElementSibling?.querySelector('input')?.id).toBe('ocu-x509-CAFile');
+    // Mutation (Rule 19): draw `#ocu-x509-PrivateKey` in edit mode -> red.
+    expect(host.querySelector('#ocu-x509-PrivateKey, #ocu-x509-PrivateKeyPassword, #ocu-x509-Certificate')).toBeNull();
+    expect(host.querySelector('input[type="password"], textarea')).toBeNull();
   });
 
   it('AC6: a change raises the dirty flag, and leaving asks the shared question first', async () => {

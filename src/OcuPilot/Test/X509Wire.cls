@@ -3,7 +3,8 @@
 /// it did not send, an import with an encrypted key and its password, an alias compared exactly,
 /// the agent's import completed from content through the real port and its delete, and every read
 /// scanned for secret text -- the routes, the list read, the port's own reads, the stored proposal
-/// and the instance's message log.</p>
+/// and the instance's message log -- and the form read's certificate details against the vendor's
+/// own <code>CERTINFO</code>.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, an account holding
 /// the screen's own pairs, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code> --
 /// because the legs import and delete real credentials. <method>OnBeforeAllTests</method> refuses
@@ -48,6 +49,12 @@ Parameter KEYPROBE = "OcuPilotProbe85Key";
 
 Parameter AGENTPROBE = "OcuPilotProbe85Agent";
 
+/// <p>The probe the certificate-details leg imports with an encrypted key and its password.</p>
+Parameter DETAILSPROBE = "OcuPilotProbe121Details";
+
+/// <p>The names the form read's <code>credential</code> carries, exactly.</p>
+Parameter CREDENTIALFIELDS = "Alias,OwnerList,PeerNames,CAFile,SubjectDN,IssuerDN,SerialNumber,ValidityNotBefore,ValidityNotAfter,HasPrivateKey";
+
 /// <p>Where the instance's message log was when this class began, which the log scan reads
 /// from.</p>
 Property StartedAt As %Integer [ InitialExpression = 0 ];
@@ -60,7 +67,7 @@ Method OnBeforeAllTests() As %Status
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.X509Wire imports and deletes X.509 credentials on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was imported. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
-    If ..Exists(..#PROBE) || ..Exists(..#LOWERPROBE) || ..Exists(..#KEYPROBE) || ..Exists(..#AGENTPROBE) {
+    If ..Exists(..#PROBE) || ..Exists(..#LOWERPROBE) || ..Exists(..#KEYPROBE) || ..Exists(..#AGENTPROBE) || ..Exists(..#DETAILSPROBE) {
         Quit $$$ERROR($$$GeneralError, "a probe credential of OcuPilot.Test.X509Wire already exists on this instance, and this class deletes what it creates -- it will not adopt one it did not make.")
     }
     Set ..StartedAt = ##class(%File).GetFileSize(..LogPath())
@@ -78,10 +85,10 @@ Method OnAfterAllTests() As %Status
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
-    For tAlias = ..#PROBE, ..#LOWERPROBE, ..#KEYPROBE, ..#AGENTPROBE {
+    For tAlias = ..#PROBE, ..#LOWERPROBE, ..#KEYPROBE, ..#AGENTPROBE, ..#DETAILSPROBE {
         Do ..Remove(tAlias)
     }
-    Do $$$AssertEquals(..Exists(..#PROBE) + ..Exists(..#LOWERPROBE) + ..Exists(..#KEYPROBE) + ..Exists(..#AGENTPROBE), 0, "the probe credentials are gone")
+    Do $$$AssertEquals(..Exists(..#PROBE) + ..Exists(..#LOWERPROBE) + ..Exists(..#KEYPROBE) + ..Exists(..#AGENTPROBE) + ..Exists(..#DETAILSPROBE), 0, "the probe credentials are gone")
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
     Do $$$AssertStatusOK(tSC, "the probe proposals and turns are removed")
     Quit $$$OK
@@ -203,6 +210,44 @@ Method TestNoReadCarriesTheKeyOrItsPassword()
     Set tReads = tReads _ ..Info(..#KEYPROBE).%ToJSON() _ ..Read(..#KEYPROBE, "GET").%ToJSON()
     Do $$$AssertTrue(tReads [ ..#KEYPROBE, "the reads name the credential")
     Do $$$AssertEquals(..Leak(tReads, tSecrets), "", "and none carries its certificate, key or password")
+}
+
+/// <p>Story 12.1 AC1 over the wire: the form read of a credential imported with an encrypted key and
+/// its password carries exactly the ten credential fields, each certificate field equal to the
+/// vendor's own <code>CERTINFO</code> and a key reported present, and none of the certificate, the
+/// key or the password.</p>
+/// <p>Mutations: drop <code>SerialNumber</code> from
+/// <method>OcuPilot.Area.Security.X509Rules.HandleForm</method>'s loop -> the key-set and serial
+/// assertions go red; add the stored <code>PrivateKey</code> to its <code>credential</code> -> the
+/// key-set and scan assertions go red.</p>
+Method TestTheDetailsCarryTheCertificateAndNoKey()
+{
+    Set tSecrets = ..Secrets()
+    Set tRequest = {"Alias": (..#DETAILSPROBE), "OwnerList": [], "PeerNames": []}
+    Do tRequest.%Set("Certificate", tSecrets.%Get("Certificate")), tRequest.%Set("PrivateKey", tSecrets.%Get("PrivateKey")), tRequest.%Set("PrivateKeyPassword", tSecrets.%Get("PrivateKeyPassword"))
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#CREATEPATH, .tStatus, .tBody, tRequest.%ToJSON(), "application/json")
+    Do $$$AssertEquals(tStatus, 201, "the import with its encrypted key and password answers 201")
+    Set tInfo = ..Info(..#DETAILSPROBE)
+    Do $$$AssertEquals(tInfo.%Get("HasPrivateKey"), 1, "the vendor holds its key")
+    Do $$$AssertTrue(tInfo.%Get("SerialNumber") '= "", "and answers a serial number")
+
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("GET", ..#FORMPATH _ "?alias=" _ ..#DETAILSPROBE, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "the form read answers")
+    Do $$$AssertTrue($IsObject($Get(tBody)) && (tBody.%GetTypeOf("credential") = "object"), "with a credential object")
+    If '$IsObject($Get(tBody)) || (tBody.%GetTypeOf("credential") '= "object") Quit
+    Set tCredential = tBody.%Get("credential")
+    Set tNames = ""
+    Set tIterator = tCredential.%GetIterator()
+    While tIterator.%GetNext(.tName, .tValue) {
+        Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tName
+    }
+    Do $$$AssertEquals(tNames, ..#CREDENTIALFIELDS, "the credential carries exactly the ten fields, in order")
+    For tField = "SubjectDN", "IssuerDN", "SerialNumber", "ValidityNotBefore", "ValidityNotAfter" {
+        Do $$$AssertEquals(tCredential.%Get(tField), tInfo.%Get(tField), tField _ " equals the vendor's CERTINFO")
+    }
+    Do $$$AssertEquals(tCredential.%Get("HasPrivateKey"), 1, "a key is reported present")
+    Do $$$AssertEquals(tCredential.%GetTypeOf("HasPrivateKey"), "boolean", "as a JSON boolean")
+    Do $$$AssertEquals(..Leak(tBody.%ToJSON(), tSecrets), "", "and the answer carries no certificate, key or password")
 }
 
 /// <p>AD-27's second case, AC5 and AC3 through the real port: the agent's import, minted with the

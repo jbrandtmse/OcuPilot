@@ -1682,6 +1682,12 @@ export const STRINGS = {
   /** EXPERIENCE.md:464 */
   accountDarkTheme: 'Dark theme',
 
+  // Story 12.1: the X.509 credential form's certificate-details group and its serial number.
+  /** EXPERIENCE.md:467 */
+  x509CertificateDetails: 'Certificate details',
+  /** EXPERIENCE.md:467 */
+  x509FieldSerialNumber: 'Serial number',
+
 } as const;
 
 /**

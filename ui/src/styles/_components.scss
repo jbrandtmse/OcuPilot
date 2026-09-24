@@ -5322,6 +5322,22 @@ app-resource-list-page {
   font-family: var(--ocu-type-code-family);
 }
 
+// Story 12.1: the X.509 edit view's certificate-details group is a fieldset named by its legend.
+// The browser's fieldset border, padding and min-content width are reset, as `.ocu-form-authe`
+// does, and its six read-only fields keep the form's own field rhythm.
+.ocu-x509-certificate {
+  gap: var(--ocu-space-4);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ocu-x509-certificate legend {
+  margin-block-end: var(--ocu-space-2);
+  padding: 0;
+}
+
 // Story 7.1's row actions and the destructive confirm (AD-53, EXPERIENCE.md `row-overflow-menu`,
 // `confirm-dialog`, `typed-name-field`, `button-destructive`).
 //

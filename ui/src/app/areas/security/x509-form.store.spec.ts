@@ -35,6 +35,7 @@ const CREDENTIAL = {
   CAFile: '/x.cer',
   SubjectDN: 'CN=Probe',
   IssuerDN: 'CN=Probe',
+  SerialNumber: '4F1A09C2',
   ValidityNotBefore: '2026-01-01 00:00:00',
   ValidityNotAfter: '2126-01-01 00:00:00',
   HasPrivateKey: true,
@@ -189,6 +190,8 @@ describe('the X.509 credential form store', () => {
     expect(store.value('OwnerList')).toBe('alice');
     expect(store.credential().caFile).toBe('/x.cer');
     expect(store.credential().hasPrivateKey).toBe(true);
+    // Story 12.1: the certificate's serial number is mapped from the form read.
+    expect(store.credential().serialNumber).toBe('4F1A09C2');
     // An edit takes no secret: the setters refuse it.
     store.setCertificate(CERT);
     store.setPrivateKey(KEY);
