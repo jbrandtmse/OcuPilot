@@ -6682,3 +6682,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-11-10-a-judge-succeeds-the-first-time.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: panel-follow.ts settle() scrolls on any growth while following, including a tool-call or proposal card the user expands; the spec's rule covers every render that adds or grows an entry.
 - 2026-09-24T17:07:51Z status=wontfix-accepted owner=11-10-a-judge-succeeds-the-first-time by=cr note=reopen_if=the 17.7 owner check or a judge reports the transcript jumping when a card is expanded at the newest entry
+
+### DW-1632: 12.3 purge: removal of records dated before the cut-off never observed (every throwaway holds only today's audit records)
+- source: spec-12-3-copy-and-purge-the-audit-database.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: %SYS.Audit refuses past-dated saves/imports in %SYS; body pinned by exact JSON; vendor Delete end read exclusive in source; Test/AuditPurge TestTheScreenRoutePurgesBeforeTodayAndKeepsToday
+- 2026-09-24T19:28:02Z status=routed owner=burndown by=harvest note=settle on ocupilot-b-ci once it has lived past midnight instance time: record the previous-day count, purge at 0 days, assert it reaches 0 and today's survive
+
+### DW-1633: 12.3 purge dialog counts days on the browser calendar, so a browser ahead of the instance gets 0 days refused as a future cut-off
+- source: spec-12-3-copy-and-purge-the-audit-database.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: audit-purge-dialog.ts purgeCutoff uses new Date(); CutoffProblem refuses a date after +$Horolog; the typed date is exactly what is purged
+- 2026-09-24T19:28:02Z status=wontfix-accepted owner=12-3-copy-and-purge-the-audit-database by=harvest note=reopen_if=a refused 0-day purge reported where browser and instance dates differ
+
+### DW-1634: 12.3 a PORT.TIMEOUT (503) from audit copy/purge may also raise the shell connectivity banner beside the page's still-running line (inference)
+- source: spec-12-3-copy-and-purge-the-audit-database.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: 503 is classified server-fault by the shell; bound not reached in measurement (30,579-record copy took 0.53 s on ocupilot-b-ci)
+- 2026-09-24T19:28:02Z status=wontfix-accepted owner=12-3-copy-and-purge-the-audit-database by=harvest note=reopen_if=an audit copy or purge answering PORT.TIMEOUT shows the connectivity banner
