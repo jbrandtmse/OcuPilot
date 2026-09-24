@@ -399,37 +399,34 @@ function choices(values: readonly string[], labels: readonly string[]): readonly
         <div class="ocu-form-fields">
           @for (view of optionFields; track view.field) {
             <div class="ocu-field">
-              @if (view.options.length) {
-                <label class="ocu-field-label" [attr.for]="view.id">{{ view.label }}</label>
-                <div class="ocu-field-control">
-                  <select class="ocu-field-input" [id]="view.id" [attr.aria-invalid]="view.invalid" [attr.aria-describedby]="view.describedBy" (change)="onText(view.field, $event)">
-                    @for (option of view.options; track option.value) {
-                      <option [value]="option.value" [selected]="option.value === view.value">{{ option.label }}</option>
-                    }
-                  </select>
-                </div>
-              }
               @if (view.flag) {
                 <label class="ocu-field-checkbox">
                   <input type="checkbox" [id]="view.id" [checked]="view.checked" [attr.aria-describedby]="view.describedBy" (change)="onFlag(view.field, $event)" />
                   <span>{{ view.label }}</span>
                 </label>
-              }
-              @if (view.plain) {
+              } @else {
                 <label class="ocu-field-label" [attr.for]="view.id">{{ view.label }}</label>
                 <div class="ocu-field-control">
-                  <input
-                    class="ocu-field-input"
-                    type="text"
-                    autocomplete="off"
-                    [id]="view.id"
-                    [value]="view.value"
-                    [attr.maxlength]="maxLength(view.field)"
-                    [attr.aria-invalid]="view.invalid"
-                    [attr.aria-describedby]="view.describedBy"
-                    (input)="onText(view.field, $event)"
-                    (blur)="onBlur(view.field)"
-                  />
+                  @if (view.options.length) {
+                    <select class="ocu-field-input" [id]="view.id" [attr.aria-invalid]="view.invalid" [attr.aria-describedby]="view.describedBy" (change)="onText(view.field, $event)">
+                      @for (option of view.options; track option.value) {
+                        <option [value]="option.value" [selected]="option.value === view.value">{{ option.label }}</option>
+                      }
+                    </select>
+                  } @else {
+                    <input
+                      class="ocu-field-input"
+                      type="text"
+                      autocomplete="off"
+                      [id]="view.id"
+                      [value]="view.value"
+                      [attr.maxlength]="maxLength(view.field)"
+                      [attr.aria-invalid]="view.invalid"
+                      [attr.aria-describedby]="view.describedBy"
+                      (input)="onText(view.field, $event)"
+                      (blur)="onBlur(view.field)"
+                    />
+                  }
                 </div>
               }
               @if (view.caption) {

@@ -64,6 +64,7 @@ Method TestEachPeriodReadsEveryAndDayAsItsRowSays()
     Do $$$AssertEquals(..Fields(tArgs), "RunAfterGUID", "and one the instance holds")
     Set tSC = $ClassMethod(..#RULES, "RunAfter", .tRows)
     Do $$$AssertStatusOK(tSC, "the tasks to run after are read")
+    Do $$$AssertTrue($$$ISOK(tSC) && (tRows.%Size() > 0), "and there is one to follow")
     If $$$ISOK(tSC) && (tRows.%Size() > 0) {
         Do tArgs.%Set("RunAfterGUID", tRows.%Get(0).%Get("guid"), "string")
         Do $$$AssertEquals(..Fields(tArgs), "", "an existing task's JobGUID is accepted")
@@ -235,6 +236,28 @@ Method TestTheOptionsAndNotifications()
         Do tArgs.%Set($List(tCase, 1), $List(tCase, 2), "string")
         Do $$$AssertEquals(..Codes(tArgs), $List(tCase, 3), $List(tCase, 1) _ " '" _ $List(tCase, 2) _ "'")
     }
+    ; IAM is one of the instance's own accounts, disabled as installed.
+    Set tOrigNS = $NAMESPACE
+    Set $NAMESPACE = "%SYS"
+    Set tDisabled = ##class(Security.Users).Exists("IAM", .tAccount) && $IsObject($Get(tAccount)) && 'tAccount.Enabled
+    Set tAccount = ""
+    Set $NAMESPACE = tOrigNS
+    Do $$$AssertTrue(tDisabled, "the instance holds the disabled account IAM")
+    Set tArgs = ..Valid()
+    Do tArgs.%Set("RunAsUser", "IAM", "string")
+    Do $$$AssertEquals(..Codes(tArgs), "TASK.RUNASUSER.DISABLED", "a disabled account is refused")
+}
+
+/// <p>A list setting is classic-only: <code>HS.Registry.Document.Archive.Task</code>'s
+/// <code>SourceIDS</code>, a collection, is refused <code>TASK.SETTING.CLASSICONLY</code> on its
+/// field.</p>
+Method TestAListSettingIsClassicOnly()
+{
+    Set tArgs = ..Valid()
+    Do tArgs.%Set("NameSpace", ##class(OcuPilot.Install.Installer).ResolveNamespace(), "string")
+    Do tArgs.%Set("TaskClass", "HS.Registry.Document.Archive.Task", "string")
+    Do tArgs.%Set("Settings", {"SourceIDS": "1"})
+    Do $$$AssertTrue(("," _ ..Pairs(tArgs) _ ",") [ ",Settings.SourceIDS:TASK.SETTING.CLASSICONLY,", "a list setting is refused as classic-only: " _ ..Pairs(tArgs))
 }
 
 /// <p>A valid Daily create of <parameter>PURGE</parameter>, once at 02:30 from tomorrow.</p>

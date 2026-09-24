@@ -160,6 +160,67 @@ Method TestTheLeastPrivilegedPrincipalCreatesAndCannotRunAsAnother()
     Do ##class(OcuPilot.Test.TaskProbe).Remove(tLeaked)
 }
 
+/// <p>AC6's agent half: the least-privileged principal's own mint of
+/// <code>tasks.schedule.create</code> running as another account is refused on
+/// <code>RunAsUser</code> with <code>TASK.RUNASUSER.SECURE</code>, in a process logged in as that
+/// principal (<method>MintAs</method>), and no proposal's task is created.</p>
+Method TestTheAgentsMintRefusesTheLeastPrincipalRunningAsAnother()
+{
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#LEASTUSER, "completed", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "a turn is seeded for the principal")
+    If $$$ISERR(tSC) Quit
+    Set tArgs = {"Name": "OcuP97AgentOther", "TaskClass": "%SYS.Task.PurgeTaskHistory", "NameSpace": "%SYS", "TimePeriod": "On Demand", "RunAsUser": "_SYSTEM"}
+    Set tOut = {}
+    Try {
+        Do $System.Event.Clear($Job)
+        Job ##class(OcuPilot.Test.TaskWire).MintAs($Job, ..#LEASTUSER, tTurnKey, tArgs.%ToJSON())::10
+        If '$Test {
+            Do tOut.%Set("error", "the principal's process did not start")
+            Quit
+        }
+        Set tMessage = $System.Event.WaitMsg("", 120)
+        If $ListGet(tMessage, 1) '= 1 {
+            Do tOut.%Set("error", "the principal's process signalled nothing within 120 seconds")
+            Quit
+        }
+        Set tOut = ##class(%DynamicObject).%FromJSON($ListGet(tMessage, 2))
+    } Catch ex {
+        Do tOut.%Set("error", ex.DisplayString())
+    }
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+    Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
+    Do $$$AssertEquals(tOut.%Get("error"), "", "the principal's mint ran")
+    Do $$$AssertEquals(tOut.%Get("username"), ..#LEASTUSER, "as the principal")
+    Do $$$AssertEquals(tOut.%Get("http"), 400, "the mint is refused")
+    Do $$$AssertTrue(tOut.%Get("problem") [ ("'RunAsUser': " _ ##class(OcuPilot.Api.Error).#REASONTASKRUNASUSERSECURE), "on RunAsUser, needing %Admin_Secure: " _ tOut.%Get("problem"))
+    Do $$$AssertEquals(##class(OcuPilot.Test.TaskProbe).IdOf("OcuP97AgentOther"), "", "and nothing was created")
+}
+
+/// <p>Log in as <var>pUser</var>, mint the task create <var>pArgs</var> (JSON) under turn
+/// <var>pTurnKey</var>, and signal <code>{username, http, problem}</code>, or <code>{error}</code>, to
+/// process <var>pParent</var>.</p>
+ClassMethod MintAs(pParent As %Integer, pUser As %String, pTurnKey As %String, pArgs As %String)
+{
+    Set tOut = {}
+    Try {
+        If '$SYSTEM.Security.Login(pUser) {
+            Do tOut.%Set("error", "the login as " _ pUser _ " failed")
+            Quit
+        }
+        Do tOut.%Set("username", $Username, "string")
+        Set tArgs = ##class(%DynamicObject).%FromJSON(pArgs)
+        Set tTool = "OcuPilot.Screen.Tool.TaskCreate"
+        Set tSC = ##class(OcuPilot.Test.ProposalMint).Mint("OcuPilot.Screen.Descriptor.TaskScheduleList", $Parameter(tTool, "TOOLNAME"), $Username, "", pTurnKey, tArgs, "OcuPilot.Kernel.Agent.Limits", .tProposal, .tHttp, .tFault, $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), tArgs.%Get("Name"), $ClassMethod(tTool, "IdArgument"), $ClassMethod(tTool, "SettableFields"), tTool)
+        Do tOut.%Set("http", +$Get(tHttp), "number")
+        Set tProblem = ""
+        If $IsObject($Get(tFault)) Set tProblem = $Select(tFault.%GetTypeOf("detail") = "object": tFault.%Get("detail").%Get("problem"), 1: tFault.%Get("reason"))
+        Do tOut.%Set("problem", tProblem, "string")
+    } Catch ex {
+        Do tOut.%Set("error", ex.DisplayString())
+    }
+    Do $System.Event.Signal(pParent, tOut.%ToJSON())
+}
+
 /// <p>Create the three throwaway roles and the accounts that hold them, then read the grants
 /// back.</p>
 Method EnsurePrincipals() As %Status

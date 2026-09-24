@@ -67,6 +67,13 @@ Method TestTheSchemaIsDerivedAndDescribedFromTaskSuper()
     Do $$$AssertEquals(tSchema.%Get("required").%ToJSON(), "[""Name"",""TaskClass""]", "the name and the task type are required")
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(tSchema, {"Name": "x", "TaskClass": "y"}, .tProblem)
     Do $$$AssertEquals(tProblem, "", "the schema is inside the subset a provider is sent")
+    ; A whole create as a model sends it, typed as the schema says: the schema and the form's rules
+    ; both accept it.
+    Set tWhole = {"Name": "OcuP97Whole", "Description": "OcuPilot task create probe", "NameSpace": "%SYS", "TaskClass": "%SYS.Task.PurgeTaskHistory", "Settings": {"KeepDays": "30"}, "TimePeriod": "Weekly", "TimePeriodEvery": 1, "TimePeriodDay": "24", "DailyFrequency": "Several", "DailyFrequencyTime": "Minutes", "DailyIncrement": 30, "DailyStartTime": "01:00", "DailyEndTime": "05:00", "StartDate": ($ZDate(+$Horolog + 1, 3)), "Expires": true, "ExpiresDays": 0, "ExpiresHours": 1, "ExpiresMinutes": 30, "Priority": "Low", "IsBatch": false, "MirrorStatus": "Any", "OpenOutputFile": true, "OutputFilename": "ocup97whole.txt", "OutputFileIsBinary": false, "EmailOutput": true, "SuspendOnError": true, "SuspendTerminated": false, "RescheduleOnStart": true, "EmailOnCompletion": ["ops@example.com"], "EmailOnError": ["ops@example.com", "dev@example.com"], "EmailOnExpiration": []}
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(tSchema, tWhole, .tProblem)
+    Do $$$AssertEquals(tProblem, "", "a whole create, typed as the schema says, is inside it")
+    Set tSC = ##class(OcuPilot.Area.Task.TaskRules).Validate("create", tWhole, .tViolations)
+    Do $$$AssertEquals(+$Get(tViolations), 0, "and the form's rules accept it: " _ ##class(OcuPilot.Area.Task.TaskRules).Problem(.tViolations))
     Set tTemplate = ..TemplateKeys()
     Do $$$AssertTrue($ListLength(tTemplate) = 35, "the derived template has its 35 keys (" _ $ListLength(tTemplate) _ ")")
     Set tPermitted = $ClassMethod(..#SET, "PermittedCreateFields", "task")
@@ -118,6 +125,7 @@ Method TestTheCreateIsMintedOverTheNamesAbsence()
     Do $$$AssertEquals(..Count(tPayload), 34, "the stored body is complete: thirty-three keys and the settings")
 
     Set tVendor = ##class(OcuPilot.Test.TaskProbe).VendorName()
+    Do $$$AssertNotEquals(tVendor, "", "the instance holds a task to collide with")
     Set tSC = ..Mint(..OnDemand($ZConvert(tVendor, "L")), .tProposal, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp, 400, "a name another task holds, in another case, refuses the mint")
 }
@@ -137,6 +145,7 @@ Method TestTheConfirmCreatesAndAnswersTheId()
     Do $$$AssertEquals(tHttp, 200, "the confirm answers 200 (" _ $Get(tCode) _ ")")
     Set tId = ##class(OcuPilot.Test.TaskProbe).IdOf("OcuP97Agent")
     Do $$$AssertNotEquals(tId, "", "the task is created")
+    Do $$$AssertTrue($IsObject($Get(tResult)), "and the confirm answers")
     If $IsObject($Get(tResult)) {
         Do $$$AssertEquals(tResult.%Get("createdId"), tId, "and the answer carries its id")
         Do $$$AssertEquals(tResult.%Get("action"), "created", "with the created action")
@@ -183,6 +192,7 @@ Method TestARunAsAnotherAccountIsMintedDestructive()
     Set tSC = $ClassMethod(..#CONFIRM, "Confirm", tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
     Do $$$AssertEquals(tHttp, 200, "and the confirm creates it (" _ $Get(tCode) _ ")")
     Set tId = ##class(OcuPilot.Test.TaskProbe).IdOf("OcuP97RunAs")
+    Do $$$AssertNotEquals(tId, "", "the task is created")
     Set tStored = ##class(OcuPilot.Test.TaskProbe).Stored(tId)
     If $IsObject(tStored) Do $$$AssertEquals(tStored.%Get("RunAsUser"), tOther, "running as that account")
     Do ##class(OcuPilot.Test.TaskProbe).Remove(tId)
@@ -194,6 +204,45 @@ Method TestARunAsAnotherAccountIsMintedDestructive()
     If $$$ISERR(tSC) Quit
     Do ..Stored(tProposal.%Get("proposalId"), .tDestructive, .tConsequence)
     Do $$$AssertEquals(tDestructive _ " " _ tConsequence, "0 ", "and is neither destructive nor marked")
+}
+
+/// <p>AD-55: the agent's mint applies the form's own rules (<method>OcuPilot.Screen.Tool.TaskCreate.ArgumentProblem</method>),
+/// so a create the wizard refuses is refused at the mint, naming the field and its sentence, and no
+/// proposal or task exists.</p>
+/// <p>Mutation (Rule 19): drop the <code>Validate</code> call from
+/// <method>OcuPilot.Screen.Tool.TaskCreate.ArgumentProblem</method> -- both refusals mint and this
+/// goes red.</p>
+Method TestTheMintAppliesTheFormsRules()
+{
+    Set tSeveral = ..OnDemand("OcuP97MintRules")
+    Do tSeveral.%Set("TimePeriod", "Daily", "string")
+    Do tSeveral.%Set("DailyFrequency", "Several", "string")
+    Do tSeveral.%Set("DailyFrequencyTime", "Minutes", "string")
+    Do tSeveral.%Set("DailyEndTime", "05:00", "string")
+    Do tSeveral.%Set("DailyStartTime", "01:00", "string")
+    Do tSeveral.%Set("StartDate", $ZDate(+$Horolog + 1, 3), "string")
+    Set tSC = ..Mint(tSeveral, .tProposal, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp, 400, "Several without an increment refuses the mint")
+    Do $$$AssertTrue(..Problem(.tFault) [ "'DailyIncrement': " _ ##class(OcuPilot.Api.Error).#REASONTASKDAILYINCREMENTREQUIRED, "naming the field and its sentence: " _ ..Problem(.tFault))
+    Set tStranger = ..OnDemand("OcuP97MintStranger")
+    Do tStranger.%Set("RunAsUser", "OcuP97NoSuchAccount", "string")
+    Set tSC = ..Mint(tStranger, .tProposal, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp, 400, "an account the instance does not hold refuses the mint")
+    Do $$$AssertTrue(..Problem(.tFault) [ "'RunAsUser': ", "on RunAsUser: " _ ..Problem(.tFault))
+    Do $$$AssertEquals(##class(OcuPilot.Test.TaskProbe).IdOf("OcuP97MintRules") _ ##class(OcuPilot.Test.TaskProbe).IdOf("OcuP97MintStranger"), "", "and nothing was created")
+}
+
+/// <p>AC6's effect arm, judged on the payload alone: a blank <code>RunAsUser</code> and the caller's
+/// own name in any case grant nothing, and any other account grants its privileges.</p>
+Method TestRunningAsAnotherAccountIsJudgedByEffect()
+{
+    For tCase = $ListBuild("", 0), $ListBuild($ZConvert($Username, "L"), 0), $ListBuild($ZConvert($Username, "U"), 0), $ListBuild("OcuP97Other", 1) {
+        Set tPayload = {"Name": "OcuP97Effect"}
+        If $List(tCase, 1) '= "" Do tPayload.%Set("RunAsUser", $List(tCase, 1), "string")
+        Set tSC = $ClassMethod(..#SET, "GrantsPrivilegeByEffect", "task", tPayload, "", .tGrants)
+        Do $$$AssertStatusOK(tSC, "the effect is judged")
+        Do $$$AssertEquals(+$Get(tGrants), $List(tCase, 2), "RunAsUser '" _ $List(tCase, 1) _ "'")
+    }
 }
 
 /// <p>The wizard's descriptor: built and unlisted at the list's route with the editor suffix, a form

@@ -257,12 +257,16 @@ describe('TaskDetailsPage', () => {
     expect(edit).toBeUndefined();
   });
 
-  it('given a roster with a built tasks/schedule/edit, shows the Edit task link to its route with this id', async () => {
-    // `editorScreenFor` reads the shipped `SCREENS` array directly (Story 3.5), and Epic 9 has not
-    // built Task schedule's editor yet -- so this test hands the same array one more entry for the
-    // one assertion, without a mocking framework this codebase does not otherwise use, and removes
-    // it in `finally` whatever the assertions do.
+  it('given a roster whose tasks/schedule/edit reads its id, shows the Edit task link to its route with this id', async () => {
+    // `editorScreenFor` reads the shipped `SCREENS` array directly (Story 3.5), and the shipped
+    // `tasks/schedule/edit` is Story 9.7's New Task wizard, which is create-only until Story 9.8 --
+    // so this test swaps that one entry for an editor that reads its id, without a mocking framework
+    // this codebase does not otherwise use, and puts the shipped entry back in `finally` whatever
+    // the assertions do.
     const mutable = SCREENS as ScreenDeclaration[];
+    const at = mutable.findIndex((screen) => screen.route === 'tasks/schedule/edit');
+    expect(at).toBeGreaterThanOrEqual(0);
+    const shipped = mutable[at];
     const editScreen: ScreenDeclaration = {
       ...(SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.TaskScheduleList') as ScreenDeclaration),
       descriptor: 'OcuPilot.Test.Fixture.TaskEditFixture',
@@ -273,7 +277,7 @@ describe('TaskDetailsPage', () => {
       parentScope: '',
       id: { kind: 'composite', parts: ['Id'] },
     };
-    mutable.push(editScreen);
+    mutable[at] = editScreen;
     try {
       const { host } = await mount();
       const links = Array.from(host.querySelectorAll('.ocu-details-link'));
@@ -281,7 +285,7 @@ describe('TaskDetailsPage', () => {
       expect(edit).toBeDefined();
       expect(edit?.getAttribute('href')).toContain('/tasks/schedule/edit/1002');
     } finally {
-      mutable.pop();
+      mutable[at] = shipped;
     }
   });
 

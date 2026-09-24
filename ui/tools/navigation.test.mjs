@@ -37,6 +37,7 @@ const {
   detailScreenFor,
   documentScreenFor,
   createFormFor,
+  CREATE_ONLY_FORMS,
   DIALOG_EDITORS,
   editorScreenFor,
   isListedScreen,
@@ -148,6 +149,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/databases',
       'os-management/devices',
       'tasks/schedule/details',
+      // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
+      'tasks/schedule/edit',
       'tasks/schedule/history',
       'tasks/schedule',
       'tasks/on-demand',
@@ -185,7 +188,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/definitions',
       'agent/switches',
     ],
-    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files and device editor, process details, processes, Locks, System usage, Databases, the unlisted task details and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, the unlisted user form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, the four unlisted OAuth 2.0 tabs, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files and device editor, process details, processes, Locks, System usage, Databases, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, the unlisted user form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, the four unlisted OAuth 2.0 tabs, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
   );
 });
 
@@ -245,6 +248,16 @@ test('editorScreenFor resolves a list to its unlisted, id-keyed editor and to no
   assert.equal(createFormFor(ssl)?.route, 'security/ssl/edit', 'the SSL/TLS list\'s Create opens its own form');
   assert.equal(isListedScreen(screenForRoute('security/ssl/edit')), false, 'which takes no side-bar position');
   assert.equal(editorScreenFor(ssl)?.route, 'security/ssl/edit', 'and a row name opens the SSL/TLS editor at its id route');
+  // Story 9.7: the Task schedule's Create opens the New Task wizard -- built, unlisted and keyed by
+  // an id -- which creates only until Story 9.8's Edit task reads the id, so a row's name keeps
+  // opening the task's details rather than the wizard.
+  // Mutation (Rule 19): drop TaskForm from `CREATE_ONLY_FORMS` -> the editor assertion below goes red.
+  const schedule = screenForRoute('tasks/schedule');
+  assert.equal(createFormFor(schedule)?.route, 'tasks/schedule/edit', 'the Task schedule\'s Create opens the New Task wizard');
+  assert.equal(isListedScreen(screenForRoute('tasks/schedule/edit')), false, 'which takes no side-bar position');
+  assert.deepEqual([...CREATE_ONLY_FORMS], ['OcuPilot.Screen.Descriptor.TaskForm'], 'the wizard is the one create-only form');
+  assert.equal(editorScreenFor(schedule), null, 'so a row name opens no editor');
+  assert.equal(detailScreenFor(schedule)?.route, 'tasks/schedule/details', 'and keeps opening the task\'s details');
   assert.equal(
     editorScreenFor(screenForRoute('security/ldap')),
     null,

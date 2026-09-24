@@ -2,15 +2,22 @@
 title: 'Story 9.7: The New Task wizard'
 type: 'feature'
 created: '2026-09-24'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'f9851990568c3c30a459502deb960612d5625086'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-9-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-9-5-the-ssl-tls-editor.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Each task-creating test leaves two vendor-written Task history rows per probe task (create and delete), which accumulate on a reused instance.
+    evidence: |-
+      ocupilot-ci's %SYS_Task.History holds 236 rows named OcuP97*, two per probe create (e.g. OCUP97MONTHLY 8 rows over 4 runs); the tests delete the tasks by id, not their history.
+    location: >-
+      src/OcuPilot/Test/TaskProbe.cls
+    severity: low
 ---
 
 <intent-contract>
@@ -312,9 +319,40 @@ Client:
 
 - 2026-09-24 spec gate (lead): orchestrator rulings (a) on AD-21 (third named exception; location-type task settings permitted, named on the card) and (a) eager bundle (1580kB stop line); recorded in Tasks & Acceptance; spine AD-21 amended.
 
+- 2026-09-24 implement (re-spawn): implementation resumed from an inherited, unverified partial tree (commit `9f44b36f`, from a stage lost to quota); `baseline_revision` kept at `f9851990`, so the story's diff includes it.
+
 - 2026-09-24 spec gate (lead): applied ruling 2 (AD-3 and epics.md count: 49 documented, 47 on `%SYS.TaskSuper` plus `%%OID` and `%Concurrency`) and ruling 3 (EXPERIENCE.md stepper row reworded). Rulings 1 (AD-21 output file and task settings) and 4 (the owner's 1500kB bundle line) are asked of the orchestrator before the implement spawn.
 
 ## Review Triage Log
+
+### 2026-09-24 — Review pass
+
+- verdicts: 24 findings — high 0, medium 6, low 8, false 10, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` A vendor refusal mapped by `PROPERTYFAULTS` was never observed through `TaskSave.Create` — added `TaskSaveSkew`/`TaskPortSkew` fixtures and `TaskSave.TestAVendorRefusalAnswersAsTheFormsOwn`; red when `PortViolations` is removed.
+  - `[medium]` `[patch]` No test created a Monthly, Monthly Special or Run After task — added `TaskSave.TestEachPeriodCreatesAsItsRowReads` (stored period fields read back); red when Compose's Run After values are removed.
+  - `[medium]` `[patch]` AC7's `EmailOutput` was never set or read back — set and asserted in `TestACreateAnswersItsIdAndReadsBackWhole` and `task-fields.test.mjs`; red when dropped from `FLAG_FIELDS`.
+  - `[medium]` `[patch]` AC7's mutation reached only the client body builder, and the details screen was checked for the name only — server mutation (`Priority` out of `FIELDS`) recorded; the browser leg now asserts the details screen's schedule line (interval, 01:00, 05:00).
+  - `[medium]` `[patch]` AC6's agent half had no least-privileged test — added `TaskWire.TestTheAgentsMintRefusesTheLeastPrincipalRunningAsAnother` (mint in a process logged in as the principal); red when the `%Admin_Secure` check is removed.
+  - `[medium]` `[patch]` The schema was validated against a two-key body only — `TestTheSchemaIsDerivedAndDescribedFromTaskSuper` now validates a whole typed create against the schema and the rules.
+  - `[low]` `[patch]` `VendorName()` could be empty and pass the taken-name mint leg vacuously — asserted non-empty in `TaskCreate` and `TaskSave`.
+  - `[low]` `[patch]` The Matrix "nothing was created" count could not see a task under the vendor's upper-cased name — added `TaskProbe.Holders` and a count-unchanged assertion.
+  - `[low]` `[patch]` Guarded assertions could skip silently (`tId`, `tResult`, the Run After rows) — each guard now has its assertion.
+  - `[false]` `[reject]` AC sub-parts (AC1 Back, AC4 Once, AC5 parts, AC6 parts) have no mutation line — Rule 19 asks one demonstrated mutation per AC; each AC has one, and AC7's is now on the server path.
+  - `[low]` `[patch]` `TASK.RUNASUSER.DISABLED`, `.SETTING.CLASSICONLY`, `.SETTING.SECRET` produced by no test — DISABLED pinned on the installed disabled account IAM, CLASSICONLY on `HS.Registry.Document.Archive.Task`'s `SourceIDS`; SECRET closed wontfix-theoretical: no task type on the measured instances has a credential-named setting (real once one does).
+  - `[low]` `[patch]` Test doc comments named mutations the spec did not record — the Applied, Gate and 7404 mutations were applied and observed red (runs 10134-10136) and recorded under Verification.
+  - `[false]` `[reject]` Ignored fields sent as `""` or fixed values rather than `%New()` defaults — the vendor's own utility writes exactly these (`TASKMGR.int` :182-205), and the contract's period table says so.
+  - `[false]` `[reject]` Wire body is 35 keys, 33 without Settings — 33 plus optional Settings is the composed body; `OutputDirectory` is the AD-21 derived field.
+  - `[low]` `[reject]` Input `maxlength` can truncate a paste silently — the form read's `maxLengths` drives `maxlength` in every editor (SSL, role, user); the rule refuses over-length on both API callers; diverging here alone buys nothing.
+  - `[false]` `[reject]` A taken name is caught at Next rather than at Create's 422 — both are pinned (HTTP 422 in `TaskSave`, the raced browser leg).
+  - `[low]` `[reject]` No HTTP confirm crosses into `TurnStore`; the allowed run-as-other runs as `%All` — each half is pinned (Confirm's `createdId`, `turn.test.mjs`), and `%All` holds `%Admin_Secure:USE`, the row's condition.
+  - `[false]` `[reject]` Summary-then-field focus unpinned — `task-wizard.page.spec.ts` "Integration" pins the order.
+  - `[false]` `[reject]` Three structural-baseline allowances for the route — the shell-wide DW-1583/1584 entries every form route carries; the wizard's own gate asserts no overflow.
+  - `[low]` `[reject]` Arms and one method inserted mid-file rather than at the tail — no existing line is edited, and no concurrent epic touches these files (Design Notes, Contention).
+  - `[false]` `[reject]` Location-type settings accepted as values — the AD-21 amendment permits them and the card naming the location is pinned.
+  - `[false]` `[reject]` A second `# classes:` line in the task block — `ci.test.mjs` DW-1276 reads every classes line; its mutation is recorded.
+  - `[false]` `[reject]` `classicOnly`, `options` and a repeated-digit refusal are beyond the stated shape — additive, and a set of digits has no repeats.
+  - `[false]` `[reject]` Bundle and `classicPage` not evidenced — initial total measured 1,522,260 B; `NormalizePage("/csp/sys/op/UtilSysTaskBuilder.csp")` answers `%cspapp.op.utilsystaskbuilder` on slot A.
 
 ## Design Notes
 
@@ -408,9 +446,58 @@ Slot A. Every IRIS MCP call carries `server: "ocupilot-slot-a"`. Anything that c
 - Integration: skip `tabToOpen` in `afterRefusal`.
 - Identity: set `CREATES` 0; answer `""` from `CreatedId`.
 
+**Mutations observed (implement pass; each reverted, file byte-identical by sha1; ObjectScript runs on `ocupilot-ci`):**
+
+- mutation: replace `TaskWizard.next()`'s check call with an empty answer -> `task-wizard.store.spec.ts` "AC1, Matrix Next on empty Basics" and the later-step leg went red.
+- mutation: drop the step error line from `form-stepper.ts`'s template -> `form-stepper.spec.ts` AC1 step-in-error leg went red.
+- mutation: remove `TimePeriod`'s entry from `TaskCreate.Described` -> `OcuPilot.Test.TaskCreate.TestTheSchemaIsDerivedAndDescribedFromTaskSuper` went red (run 10116).
+- mutation: widen Weekly's `TimePeriodEvery` to 1-7 in `TaskRules.Validate` -> `OcuPilot.Test.TaskRules.TestEachPeriodReadsEveryAndDayAsItsRowSays` went red (run 10111).
+- mutation: drop the `TASK.DAILYINCREMENT.REQUIRED` rule from `TaskRules.DailyViolations` -> `OcuPilot.Test.TaskRules.TestTheDailyQuadruple` went red (run 10112).
+- mutation: drop the On Demand `Expires` 0 from `TaskRules.Compose` -> `OcuPilot.Test.TaskRules.TestTheExpiryFactsTheInstanceStores` went red (run 10113).
+- mutation: drop the `%Admin_Secure` pre-check from `TaskRules.RunAsViolations` -> `OcuPilot.Test.TaskWire.TestTheLeastPrivilegedPrincipalCreatesAndCannotRunAsAnother` went red (run 10114); drop the task arm of `Prohibited.GrantsPrivilegeByEffect` (with `ProhibitedFixture` recompiled) -> `OcuPilot.Test.TaskCreate.TestARunAsAnotherAccountIsMintedDestructive` and `TestRunningAsAnotherAccountIsJudgedByEffect` went red (run 10115).
+- mutation: drop `OutputFileIsBinary` from `task-fields.ts` `createBody` -> `tools/task-fields.test.mjs` body leg went red.
+- mutation: skip `tabToOpen` in `TaskWizardPage.afterRefusal` -> `task-wizard.page.spec.ts` Integration went red; rebuilt and redeployed, `task-wizard.browser-spec.mjs` "Name taken, Integration" went red.
+- mutation: set `TaskCreate.CREATES` 0 -> four `OcuPilot.Test.TaskCreate` methods went red (run 10117); answer `""` from `TaskCreate.CreatedId` -> `TestTheConfirmCreatesAndAnswersTheId` went red (run 10118).
+- mutation: drop the `Validate` call from `TaskCreate.ArgumentProblem` -> `OcuPilot.Test.TaskCreate.TestTheMintAppliesTheFormsRules` went red (run 10119).
+- mutation: drop the `OUTPUTFILEPATTERN` match from `TaskRules.Validate` -> `OcuPilot.Test.TaskRules.TestTheOutputFileIsOneNameNeverAPath` went red (run 10120).
+- mutation: add `Settings.Directory` to the Task schedule's `secretArguments` in the mirror -> `tools/proposal-view.test.mjs` location-row leg went red.
+- mutation: publish `target.id` in `TurnStore.confirmProposal` -> `tools/turn.test.mjs` createdId leg went red.
+- mutation: drop TaskForm from `CREATE_ONLY_FORMS` -> `tools/navigation.test.mjs` editorScreenFor leg went red.
+- mutation: drop `TaskCreate` from the `OCUPILOT_ALLOW_TASK_CONTROL` roster in `ci-throwaway.sh` -> `tools/ci.test.mjs` DW-1276 went red.
+
+**Mutations observed (review pass; same discipline; batches read by assertion message):**
+
+- mutation (AC7, server): remove `Priority` from `TaskRules.FIELDS` -> `OcuPilot.Test.TaskSave.TestACreateAnswersItsIdAndReadsBackWhole` went red on the priority read-back (run 10133).
+- mutation: delete the `PortViolations` call from `TaskSave.Create` -> `TestAVendorRefusalAnswersAsTheFormsOwn` went red (run 10133).
+- mutation: delete the Run After fixed values from `TaskRules.Compose` -> `TestEachPeriodCreatesAsItsRowReads` went red on OcuP97After (run 10133).
+- mutation (AC6, agent half): make `TaskRules.RunAsViolations`' `%Admin_Secure` check never fire -> `OcuPilot.Test.TaskWire.TestTheAgentsMintRefusesTheLeastPrincipalRunningAsAnother` went red (run 10134).
+- mutation: replace the `Gate` call in `TaskRules.HandleCheck` with a pass -> `TaskWire.TestACallerLackingAPairIsRefusedOnEveryRoute` went red on `/tasks/check` (run 10134).
+- mutation: make `TaskRules.Applied` always drop the Several fields -> `TestACreateAnswersItsIdAndReadsBackWhole` went red on its 201 (run 10135).
+- mutation: remove `Task.CRUD:7404` from `AdminPort.PROPERTYFAULTS` (TaskPort and TaskPortSkew recompiled) -> `TestTheVendorsCodesLandOnTheirFields` and `TestAVendorRefusalAnswersAsTheFormsOwn` went red (run 10136).
+- mutation: remove `EmailOutput` from `task-fields.ts` `FLAG_FIELDS` -> `tools/task-fields.test.mjs` "the output file is emailed" went red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only. Four lead rulings are requested under Design Notes: AD-21's output file and task settings, the AC2/AD-3 count, EXPERIENCE :533's stepper, and the owner's 1500kB bundle line. Plan-time probes ran on `ocupilot-ci` and were cleaned up: 16 `OcuP97*` tasks, the users `OcuP97User` and `OcuP97Other`, and the role `OcuP97Role`, all deleted.
+**Change.** The New Task wizard: a create-only four-step `form-page` at `tasks/schedule/edit` (OcuPilot's own `form-stepper`), the `/tasks` form, check and create routes, the `tasks.schedule.create` tool for both callers (AD-54, AD-55), `TaskRules` as the one rule set, `TaskPort`'s created id from `Location`, `createdId` on the confirm answer and in `turn.ts` (AD-14), the `TYPETASK` prohibited-set arms, and the Task schedule list's Create. Resumed from the inherited tree `9f44b36f`, whose server side and client model were kept; this pass completed the component specs, the browser spec, the regenerated screen mirror and the roster updates, fixed the Options step's duplicated Priority and MirrorStatus inputs, and added the review's test legs.
+
+**Files (beyond the inherited commit):** `ui/src/app/areas/tasks/task-wizard.page.ts` (duplicate inputs, `client-lint`); `screens.generated.ts` (regenerated); `strings.ts` (`taskCreate` reference); specs `form-stepper.spec.ts`, `task-wizard.store.spec.ts`, `task-wizard.page.spec.ts`, `task-actions.spec.ts`; `ui/browser/task-wizard.browser-spec.mjs` (new) and the `tasks.browser-spec.mjs` Create leg; `Test/TaskSave`, `TaskCreate`, `TaskRules`, `TaskWire`, `TaskProbe` (review legs); `Test/TaskSaveSkew`, `Test/TaskPortSkew` (new fixtures); `Test/Wire`, `Test/WireSecurityRead` (the wizard added to the tasks-area rosters, which the sweep reddened).
+
+**Review:** 24 findings (two layers): 12 patched (6 medium, 6 low), 12 rejected with reasons in the triage log, 0 deferred from review. One stage finding deferred (below). `followup_review_recommended: true`: six medium patches added test legs and two fixtures after the review layers ran; each was reddened by this stage's own mutation, but no independent layer has read them.
+
+**Verification (this stage's own runs, all on `ocupilot-ci`):**
+
+- Inherited tree loaded and compiled whole before anything was trusted: 792 classes, status OK; recompiled whole (`CompilePackage`) before the sweep.
+- Full ObjectScript sweep, once: `ci-runner --package OcuPilot.Test`, 239 classes, 2,097 tests, 3 failed, runs 10137-10375, no overlaps or foreign runs. `Wire` (1) and `WireSecurityRead` (1 of 2) were this story's roster trip (the wizard is a seventh tasks screen); rows added, `Wire` green (run 10376), `WireSecurityRead` 21/22 (run 10377). The remaining `TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` fails on "nothing is cut at 1,000": this reused throwaway holds 2,078 task-history rows, 1,842 of them from other tasks (MIRROR OAUTH2 CONFIG SYNC TASK alone 674); no code of this story reads history. CI's fresh throwaway is the authority.
+- The throwaway predates four arming blocks (`OCUPILOT_ALLOW_TASK_CONTROL`, `_AUDIT_TOGGLE`, `_ERROR_DELETE`, `_PROCESS_CONTROL`); runs added them to `docker exec` on `ocupilot-ci` only, as `ci-throwaway.sh` sets them on a fresh one.
+- Story classes, after the review patches: `TaskSave` 8/8 (10129), `TaskCreate` 7/7 (10130), `TaskRules` 9/9 (10131), `TaskWire` 3/3 (10132).
+- Client: `npm run test:tools` 1,396/1,396; `npm run test:components` 1,152/1,152; `check-objectscript` (794 files) and its harness, `lint-docs`, and `npm run build`'s prebuild checkers clean.
+- Browser, bundle rebuilt and copied into `ocupilot-ci` first, one file at a time: `task-wizard` 5/5, `task-schedule-actions` 4/4, `task-resume` 3/3, `task-run` 2/2, `a11y-structural-invariants` 10/10, `tasks` 13/15. The two `tasks` failures are Story 6.6 AC1 and AC3 (Task history's demo-task row), over the same 2,078-row history; not this story's files.
+- Bundle initial total: **1,522,260 bytes** (`main` 1,381,460 + `styles` 140,800), under the 1551kB warning; `angular.json` unchanged, no `@defer`.
+- `classicPage`: `NormalizePage("/csp/sys/op/UtilSysTaskBuilder.csp")` answers `%cspapp.op.utilsystaskbuilder` on slot A (read-only).
+
+**Residual risks:** the details screen shows only the schedule of AC7's values (priority, output file and addresses are pinned at the instance read-back); `TASK.SETTING.SECRET` is unreachable on the measured type population; each probe task leaves two vendor-written task-history rows (deferred).
+
+footprint_extensions: `ui/src/app/core/proposal-view.ts`, `ui/src/app/areas/tasks/details.page.spec.ts`, `ui/src/app/shell/screen-outlet.spec.ts`, `ui/browser/structural-baseline.json`, `ui/tools/proposal-view.test.mjs`, `ui/tools/turn.test.mjs`, `ui/tools/navigation.test.mjs`, `src/OcuPilot/Test/Wire.cls`, `src/OcuPilot/Test/WireSecurityRead.cls`, plus the Design Notes list (`turn.ts`, `navigation.ts`, `app.ts`, `scripts/ci-throwaway.sh`, `Kernel/Proposal/{Mint,Confirm,Prohibited}.cls`). No 11.10 file or browser spec touched.

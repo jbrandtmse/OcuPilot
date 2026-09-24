@@ -25,6 +25,9 @@
  * words and locator name (AC1, AC2) -- whose own History link is what now reaches the per-task
  * history Story 6.6 exercised directly.
  *
+ * **Story 9.7** adds the list's Create, which opens the New Task wizard; the wizard itself is
+ * `task-wizard.browser-spec.mjs`'s.
+ *
  * Run: `npm run test:browser` (after `npm run build` and `sh scripts/ci-throwaway.sh up`).
  */
 
@@ -1111,5 +1114,23 @@ test('Story 6.5 AC4: a principal holding install-database read and %Admin_Task:U
     } finally {
       await context.close();
     }
+  }
+});
+
+// Story 9.7: the list's declared primary action opens the wizard.
+test('Story 9.7: the schedule list draws Create, and Create opens the New Task wizard on its first step', async () => {
+  const { context, page } = await signedInAtList(config.username, config.password);
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    const create = await page.waitForSelector('.ocu-command-bar button.ocu-button-primary', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await create.evaluate((node) => node.textContent.trim()), STRINGS.actionCreate, 'the list offers Create');
+    await create.click();
+    await page.waitForFunction(() => new URL(window.location.href).pathname.endsWith('/tasks/schedule/edit'), { timeout: config.navigationTimeoutMs });
+    assert.equal(new URL(page.url()).searchParams.get('ns'), 'HSCUSTOM', 'carrying the namespace');
+    await page.waitForSelector('app-task-wizard-page .ocu-form-step-head[aria-current="step"]', { visible: true, timeout: config.navigationTimeoutMs });
+    const current = await page.$eval('app-task-wizard-page .ocu-form-step-head[aria-current="step"] .ocu-form-step-label', (node) => node.textContent.trim());
+    assert.equal(current, STRINGS.taskStepBasics, 'the wizard opens on Basics');
+  } finally {
+    await context.close();
   }
 });

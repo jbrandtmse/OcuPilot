@@ -92,8 +92,8 @@ Method TestTheCheckAnswersTheViolationsSoFar()
 /// setting, priority, output file under the manager directory, suspend-on-error, reschedule after a
 /// restart and the addresses -- and the schedule list's read answers it.</p>
 /// <p>Mutation (Rule 19): drop the <code>Several</code> fields from
-/// <method>OcuPilot.Area.Task.TaskRules.Applied</method>'s kept set -- the stored quadruple goes
-/// red.</p>
+/// <method>OcuPilot.Area.Task.TaskRules.Applied</method>'s kept set -- the create is refused and
+/// this goes red.</p>
 Method TestACreateAnswersItsIdAndReadsBackWhole()
 {
     Set tBody = ..Weekly("OcuP97W")
@@ -101,6 +101,7 @@ Method TestACreateAnswersItsIdAndReadsBackWhole()
     Do tBody.%Set("OpenOutputFile", 1, "boolean")
     Do tBody.%Set("OutputFilename", "ocup97w.txt", "string")
     Do tBody.%Set("OutputFileIsBinary", 0, "boolean")
+    Do tBody.%Set("EmailOutput", 1, "boolean")
     Do tBody.%Set("SuspendOnError", 1, "boolean")
     Do tBody.%Set("RescheduleOnStart", 1, "boolean")
     Do tBody.%Set("EmailOnCompletion", ["ops@example.com"])
@@ -120,7 +121,7 @@ Method TestACreateAnswersItsIdAndReadsBackWhole()
         Do $$$AssertEquals(tStored.%Get("DailyFrequency") _ "|" _ tStored.%Get("DailyFrequencyTime") _ "|" _ tStored.%Get("DailyIncrement") _ "|" _ tStored.%Get("DailyStartTime") _ "|" _ tStored.%Get("DailyEndTime"), "1|0|30|3600|18000", "several times, every 30 minutes, 01:00 to 05:00")
         Do $$$AssertEquals(tStored.%Get("StartDate"), (+$Horolog + 1) _ "", "from tomorrow")
         Do $$$AssertEquals(tStored.%Get("Priority") _ "|" _ tStored.%Get("SuspendOnError") _ "|" _ tStored.%Get("RescheduleOnStart"), "1|1|1", "low priority, suspended on an error, rescheduled after a restart")
-        Do $$$AssertEquals(tStored.%Get("OpenOutputFile") _ "|" _ tStored.%Get("OutputDirectory") _ "|" _ tStored.%Get("OutputFilename") _ "|" _ tStored.%Get("OutputFileIsBinary"), "1|" _ $System.Util.ManagerDirectory() _ "|ocup97w.txt|0", "its output file, in the manager directory")
+        Do $$$AssertEquals(tStored.%Get("OpenOutputFile") _ "|" _ tStored.%Get("OutputDirectory") _ "|" _ tStored.%Get("OutputFilename") _ "|" _ tStored.%Get("OutputFileIsBinary") _ "|" _ tStored.%Get("EmailOutput"), "1|" _ $System.Util.ManagerDirectory() _ "|ocup97w.txt|0|1", "its output file, in the manager directory, emailed as text")
         Do $$$AssertEquals(tStored.%Get("EmailOnCompletion") _ "|" _ tStored.%Get("EmailOnError") _ "|" _ tStored.%Get("EmailOnExpiration"), "ops@example.com|ops@example.com,dev@example.com|dev@example.com", "and its three address lists")
         Do $$$AssertEquals(tStored.%Get("RunAsUser"), ##class(OcuPilot.Test.Http).GetTestUsername(), "running as the caller")
     }
@@ -146,6 +147,8 @@ Method TestTheMatrixRefusalsSendNothing()
 {
     Set tBefore = $ListLength(##class(OcuPilot.Test.TaskProbe).Probes())
     Set tVendor = ##class(OcuPilot.Test.TaskProbe).VendorName()
+    Do $$$AssertNotEquals(tVendor, "", "the instance holds a task to collide with")
+    Set tHolders = ##class(OcuPilot.Test.TaskProbe).Holders(tVendor)
     Set tTaken = ..Weekly($ZConvert(tVendor, "U"))
     Set tSeveral = ..Weekly("OcuP97Several")
     Do tSeveral.%Remove("DailyIncrement")
@@ -170,6 +173,57 @@ Method TestTheMatrixRefusalsSendNothing()
         If $IsObject($Get(tAnswer)) Do $$$AssertEquals(..FirstPair(tAnswer), $List(tCase, 3), tLabel _ " on " _ $List(tCase, 3))
     }
     Do $$$AssertEquals($ListLength(##class(OcuPilot.Test.TaskProbe).Probes()), tBefore, "and nothing was created")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TaskProbe).Holders(tVendor), tHolders, "not even under the taken name")
+}
+
+/// <p>Monthly, Monthly Special and Run After each create through <code>POST /tasks</code> and store
+/// their period's own reading of <code>TimePeriodEvery</code> and <code>TimePeriodDay</code> (AC3), a
+/// Run After task naming the task it follows by its <code>JobGUID</code>.</p>
+Method TestEachPeriodCreatesAsItsRowReads()
+{
+    Set tSC = ##class(OcuPilot.Area.Task.TaskRules).RunAfter(.tRows)
+    Do $$$AssertStatusOK(tSC, "the tasks to run after are read")
+    Do $$$AssertTrue($IsObject($Get(tRows)) && (tRows.%Size() > 0), "and there is one to follow")
+    If '$IsObject($Get(tRows)) || (tRows.%Size() = 0) Quit
+    Set tGuid = tRows.%Get(0).%Get("guid")
+    Set tMonthly = ..Weekly("OcuP97Monthly")
+    Do tMonthly.%Set("TimePeriod", "Monthly", "string")
+    Do tMonthly.%Set("TimePeriodEvery", "2", "string")
+    Do tMonthly.%Set("TimePeriodDay", "31", "string")
+    Set tSpecial = ..Weekly("OcuP97Special")
+    Do tSpecial.%Set("TimePeriod", "Monthly Special", "string")
+    Do tSpecial.%Set("TimePeriodDay", "5^2", "string")
+    Set tAfter = ..Weekly("OcuP97After")
+    Do tAfter.%Set("TimePeriod", "Run After", "string")
+    Do tAfter.%Set("RunAfterGUID", tGuid, "string")
+    Set tBodies(1) = tMonthly, tBodies(2) = tSpecial, tBodies(3) = tAfter
+    Set tExpected = $ListBuild("2|2|31|", "3|1|5^2|", "4||0|" _ tGuid)
+    For tC = 1:1:3 {
+        Set tBody = tBodies(tC)
+        Set tName = tBody.%Get("Name")
+        Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", "/tasks", .tStatus, .tAnswer, tBody.%ToJSON(), "application/json")
+        Do $$$AssertEquals(tStatus, 201, tName _ " is created: " _ $Select($IsObject($Get(tAnswer)): tAnswer.%ToJSON(), 1: ""))
+        Set tId = ##class(OcuPilot.Test.TaskProbe).IdOf(tName)
+        Do $$$AssertNotEquals(tId, "", tName _ " is stored")
+        Set tStored = ##class(OcuPilot.Test.TaskProbe).Stored(tId)
+        Set tSeen = $Select($IsObject(tStored): tStored.%Get("TimePeriod") _ "|" _ tStored.%Get("TimePeriodEvery") _ "|" _ tStored.%Get("TimePeriodDay") _ "|" _ tStored.%Get("RunAfterGUID"), 1: "absent")
+        Do $$$AssertEquals(tSeen, $List(tExpected, tC), tName _ " stores its period's reading")
+        Do ##class(OcuPilot.Test.TaskProbe).Remove(tId)
+    }
+}
+
+/// <p>A vendor refusal of a body the rules accepted answers through the Save as the form's own
+/// violation on its field (<method>OcuPilot.Area.Task.TaskSave.Create</method>): over a port that
+/// zeroes the increment, the create lands on <code>DailyIncrement</code>, nothing is created and no
+/// id is answered.</p>
+Method TestAVendorRefusalAnswersAsTheFormsOwn()
+{
+    Set tSC = ##class(OcuPilot.Test.TaskSaveSkew).Create(..Weekly("OcuP97Skew"), .tHttp, .tFault, .tViolations, .tId)
+    Do $$$AssertStatusNotOK(tSC, "the vendor refuses the save")
+    Set tPairs = ""
+    For tI = 1:1:+$Get(tViolations) Set tPairs = tPairs _ $Select(tPairs = "": "", 1: ",") _ $ListToString(tViolations(tI), ":")
+    Do $$$AssertEquals(tPairs, "DailyIncrement:TASK.DAILYINCREMENT.REFUSED", "as a violation on the field, which HandleCreate renders as the 422")
+    Do $$$AssertEquals($Get(tId) _ ##class(OcuPilot.Test.TaskProbe).IdOf("OcuP97Skew"), "", "and nothing was created")
 }
 
 /// <p>A vendor refusal the rules cannot see lands on its field (AD-39,

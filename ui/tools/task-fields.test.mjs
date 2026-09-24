@@ -118,6 +118,7 @@ test('a create sends every field the period reads, typed as the server takes it'
   assert.deepEqual(body.EmailOnError, []);
   assert.equal(body.OutputFileIsBinary, false, 'every flag travels, off ones included');
   assert.equal(body.OpenOutputFile, true);
+  assert.equal(body.EmailOutput, true, 'the output file is emailed');
   assert.equal(body.SuspendOnError, true);
   assert.equal(body.RescheduleOnStart, true);
   assert.equal(body.Priority, 'Low');

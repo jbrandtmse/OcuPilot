@@ -110,6 +110,23 @@ ClassMethod Stored(pId As %String) As %DynamicObject
     Quit tStored
 }
 
+/// <p>How many tasks the instance holds named <var>pName</var>, compared without regard to case.</p>
+ClassMethod Holders(pName As %String) As %Integer
+{
+    Set tCount = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %SYS.Task WHERE %SQLUPPER(Name) = %SQLUPPER(?)", pName)
+        If tRS.%Next() Set tCount = +tRS.%GetData(1)
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tCount = -1
+    }
+    Quit tCount
+}
+
 /// <p>The name of a task the instance holds that is not a probe -- the first the list answers -- for
 /// a taken-name case, or <code>""</code>.</p>
 ClassMethod VendorName() As %String
