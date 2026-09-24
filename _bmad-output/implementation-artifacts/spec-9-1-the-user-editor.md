@@ -2,15 +2,29 @@
 title: 'Story 9.1: The user editor'
 type: 'feature'
 created: '2026-09-23'
-status: 'in-progress'
-baseline_revision: '1d0ad5eb590985d347fb6e29e4ef13594891dffc'
+status: 'done'
+baseline_revision: 'e162c9c9bed739dbb70f3a55bbd2ba230ea41214'
 baseline_commit: '1d0ad5eb590985d347fb6e29e4ef13594891dffc'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-9-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The toast stack's published placement (DESIGN.md toast recipe, `toast-host.ts` header) says `spacing.4` above the status bar and component-scoped rules, while on a form page `_components.scss` now lifts it above the form bar.
+    evidence: |-
+      `ui/src/styles/_components.scss` `.ocu-shell:has(.ocu-form-bar) > app-toast-host` sets `bottom` to form-bar height plus spacing.4; DESIGN.md:1210 and `toast-host.ts`:48-52 were not amended (the one is the lead's, the other out of bounds).
+    location: >-
+      _bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/DESIGN.md:1210; ui/src/app/shell/toast-host.ts:48
+    severity: low
+  - summary: >-
+      A form page taller than the content area does not keep its sticky form bar on screen: Save and Cancel sit below the fold until the content is scrolled (measured on the user editor at 1440x900).
+    evidence: |-
+      `.ocu-form-page` has `overflow-y: auto` and `flex: 1 1 auto` (Story 3.5), but no form-page host (`app-user-editor-page`, `app-device-form-page`, ...) is in the flex host list at `_components.scss:735`, so the section grows to its content (1069px) and `main.ocu-content` scrolls instead; the bar measured top 1184 against a shell bottom of 876. Pre-existing; the 14-field editor is the first form tall enough to show it.
+    location: >-
+      ui/src/styles/_components.scss:2847
+    severity: medium
 ---
 
 <intent-contract>
@@ -241,8 +255,8 @@ Review patches (2026-09-23 review pass; each adds or tightens a test, plus its `
 
 **Rework iteration 1 (CI red on build commit `19849911`, run 35945402895, job `browser`, 2 of the full suite):**
 
-- [ ] [CI] browser: `ui/browser/users.browser-spec.mjs:225` "AC7: the _SYSTEM name link carries the id in one route segment" timed out waiting for `/permissions/users/_SYSTEM` -- this story moved the Users name cell to the editor (`UserForm` left `CREATE_ONLY_FORMS`), so the pin names the old target. Re-point it to `permissions/users/edit/_SYSTEM` (the editor, id in one segment, `data-id="_SYSTEM"` or the editor's own equivalent), keeping its AD-13 intent; confirm the editor opens over `_SYSTEM` -- https://github.com/jbrandtmse/OcuPilot/actions/runs/35945402895
-- [ ] [CI] browser: `ui/browser/device-editor.browser-spec.mjs:206` "AC2: a create and an edit reach the Devices list without a refresh, and its name cell opens the editor" timed out (30 s wait) -- a Story 8.8 test this story's shared changes broke (candidates: `screen-outlet.ts` `DESCRIPTOR_EDIT_PAGES`, `navigation.ts` `screenForEntityType`/`CREATE_ONLY_FORMS`, the toast rule, `list-page.ts`'s dialog move). Reproduce it against the rebuilt, redeployed bundle on `ocupilot-ci`, find which wait fails and why, and fix the product code (not the pin) unless the pin names behavior this story's spec deliberately changed. Also run every other browser spec file that exercises a form-page editor or a list name-cell link (`device-editor`, `users`, `users-create`, `users-actions`, `users-editor`, `task-resume`, and any `*-create`/`*-editor` spec touching `screen-outlet` or `navigation.ts`) one file at a time -- https://github.com/jbrandtmse/OcuPilot/actions/runs/35945402895
+- [x] [CI] browser: `ui/browser/users.browser-spec.mjs:225` "AC7: the _SYSTEM name link carries the id in one route segment" timed out waiting for `/permissions/users/_SYSTEM` -- this story moved the Users name cell to the editor (`UserForm` left `CREATE_ONLY_FORMS`), so the pin names the old target. Re-point it to `permissions/users/edit/_SYSTEM` (the editor, id in one segment, `data-id="_SYSTEM"` or the editor's own equivalent), keeping its AD-13 intent; confirm the editor opens over `_SYSTEM` -- https://github.com/jbrandtmse/OcuPilot/actions/runs/35945402895
+- [x] [CI] browser: `ui/browser/device-editor.browser-spec.mjs:206` "AC2: a create and an edit reach the Devices list without a refresh, and its name cell opens the editor" timed out (30 s wait) -- a Story 8.8 test this story's shared changes broke (candidates: `screen-outlet.ts` `DESCRIPTOR_EDIT_PAGES`, `navigation.ts` `screenForEntityType`/`CREATE_ONLY_FORMS`, the toast rule, `list-page.ts`'s dialog move). Reproduce it against the rebuilt, redeployed bundle on `ocupilot-ci`, find which wait fails and why, and fix the product code (not the pin) unless the pin names behavior this story's spec deliberately changed. Also run every other browser spec file that exercises a form-page editor or a list name-cell link (`device-editor`, `users`, `users-create`, `users-actions`, `users-editor`, `task-resume`, and any `*-create`/`*-editor` spec touching `screen-outlet` or `navigation.ts`) one file at a time -- https://github.com/jbrandtmse/OcuPilot/actions/runs/35945402895
 
 **Acceptance Criteria:**
 
@@ -334,6 +348,21 @@ Rejected:
   - `[false]` `reject` The 8.2 browser test lost its after-save password-caption leg — the spec's browser task re-points post-create assertions to the editor, which carries no password field.
   - `[medium]` `patch` No test had a mint refuse an update-mode rule — grouped with the first finding; P1.
 
+### 2026-09-24 — Review pass
+
+- verdicts: 10 findings — high 0, medium 2, low 5, false 3, maybe-false 0
+- findings:
+  - `[medium]` `patch` The toast lift above the form bar is pinned only through `device-editor` AC2's Cancel click, so a partial lift passes — added `users-editor` "the change-toast stack stands clear above the form bar holding Save and Cancel", measuring the host's bottom against the bar's top with the bar scrolled into view; mutation line in `## Verification`.
+  - `[low]` `reject` The `## Verification` loop command does not list `users`/`device-editor`, and the related runs are not recorded — the fix edits the spec's Verification section; this pass's per-file runs are recorded in the Auto Run Result.
+  - `[low]` `patch` `web-applications-create.browser-spec.mjs`'s header says the create's route replacement raises no toast, which DW-1546's rule made untrue — the sentence is removed.
+  - `[low]` `defer` `toast-host.ts`'s header says the host's rules are component-scoped, while its bottom offset is now also set in `_components.scss` — `toast-host.ts` is out of bounds (Epic 15 contended); grouped with the DESIGN.md placement row, in `deferred`.
+  - `[false]` `reject` An editor's own Save raises a toast, against DESIGN.md's "never for confirmations of what the user just did on the open screen" — carried: the 2026-09-23 row on DW-1546 (the rule as amended in EXPERIENCE.md at the spec gate); `toasts.ts` is unchanged by this pass.
+  - `[false]` `reject` The `_components.scss` lift is the banned `toast-host.ts` edit made from another file — the lead's boundary names `_components.scss` shared-append and bans only `toast-host.ts`; the rule is appended and `toast-host.ts` is untouched.
+  - `[low]` `defer` DESIGN.md `:1210` and `toast-host.ts` publish the stack's bottom as `spacing.4` above the status bar, while on a form page it is now the bar's height plus `spacing.4` — the fix amends DESIGN.md (the lead's) and `toast-host.ts` (out of bounds); in `deferred`.
+  - `[medium]` `patch` The lift has no direct geometry test — grouped with the first row.
+  - `[low]` `reject` The rework item's other browser runs are not recorded, and the Auto Run Result describes the first pass — same as the second row; rewritten at this finalize.
+  - `[false]` `reject` The diff does not say whether a toast on form pages is intended — carried: the same 2026-09-23 DW-1546 row.
+
 ## Design Notes
 
 **Governing ADs:** AD-3, AD-4, AD-5, AD-6, AD-8, AD-10, AD-11, AD-13, AD-14, AD-19, AD-27, AD-35, AD-36, AD-39, AD-51, AD-53, AD-55, AD-56.
@@ -415,20 +444,20 @@ Rejected:
 - mutation (code review): the confirm's error arm emits no marker whatever `ApplyAt` applied → `UserSignIn` `TestAConfirmedPasswordWhoseReapplyFailsIsStillMarked` red, run 9132.
 - mutation (code review), together: the Enabled lock keyed off the edited value; the display-QR field's `@if` false; the `NavigationEnd` follow disabled; the store taking the buffer as stored when a Save lands → `user-editor.page.spec.ts` "draws the protected account's Enabled …" (the tick-stays-undoable leg), "offers the display-QR option …", "follows the route to another account …", and `user-editor.store.spec.ts` "keeps what was typed while a Save was in flight …" red.
 - mutation (code review), together: the change-on-login lock keyed off the edited value; `onRemoveRole` sends no role → the service-account leg of "draws the protected account's Enabled …" and "removes a held role from the Roles tab …" red.
+- mutation (rework 1), together, rebuilt and redeployed to `ocupilot-ci`: the `UserForm` entry removed from `DESCRIPTOR_EDIT_PAGES`; the `.ocu-shell:has(.ocu-form-bar) > app-toast-host` lift removed from `_components.scss` → `users.browser-spec.mjs` "AC7: the _SYSTEM name link carries the id in one route segment" red at the editor's `_SYSTEM` name wait, and `device-editor.browser-spec.mjs` "AC2: a create and an edit reach the Devices list …" red at the list-path wait after Cancel (the create's toast covers Cancel); both green after the revert.
+- mutation (rework 1 review), rebuilt and redeployed to `ocupilot-ci`: `+ var(--ocu-space-4)` dropped from the `_components.scss` toast lift → `users-editor.browser-spec.mjs` "the change-toast stack stands clear above the form bar holding Save and Cancel" red (host bottom 820 against bar top 819.875); green after the revert, bundle hashes identical to the verified build.
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**Summary.** The user editor ships at `permissions/users/edit/<id>` (General and Roles tabs). Its Save is `PUT /users/:id` (`Area/Permissions/UserSave.cls`) through `UserUpdate`, now admitting the classic General tab's fourteen settings under one update-mode rule set (`UserCreateRules`). Its actions are the Users list's own, through `ScreenActionHandler.startFor` and the shared `app-screen-action-dialogs`; `app-form-tabs`/`core/form-tabs.ts` carry the error dot and count. DW-1520 (`PROHIBITED.SERVICEACCOUNTSIGNIN`), DW-1516 (`Write.AfterWrite`, `UserPassword` re-applies the flag), DW-1576 (`READIDPARAM`/`READROWKEY`, `Operation.ReadTarget`), DW-1523 (role dialog states `privilegedGrantEffect`), DW-1546 (a toast opens the entity's list and hides only there) and DW-1501 are closed. `suggestedPrompts` is a validated descriptor key on both engines; `UserForm` declares three.
+**Summary (rework iteration 1).** Both `[CI]` items closed. `users.browser-spec.mjs` AC7 now follows the name cell to `permissions/users/edit/_SYSTEM`, checks the outlet's `data-id` and waits for the editor's name field to read `_SYSTEM` (the spec task that removed `UserForm` from `CREATE_ONLY_FORMS` changed the target). `device-editor` AC2 failed because DW-1546's rule now raises a toast after the device create, and the stack covered the form bar's Cancel (`elementFromPoint` at its center found the toast). The fix is product code: `_components.scss` lifts the toast stack above the form bar while one is open (DESIGN.md `toast`: a toast must not cover the surface's primary control); the pin is unchanged.
 
-**Deviation from the Tasks (not the intent).** The tab strip is Material's tab nav bar over one panel, not `mat-tab-group` with `preserveContent`: the tab group put the initial bundle at 1,388,465 bytes; the nav bar keeps every body in the DOM itself. Bundle now 1,349,991 bytes initial (main 1,216,937 + styles 133,054), under the 1378kB warning.
+**Files.** `ui/browser/users.browser-spec.mjs` (AC7 re-pointed); `ui/src/styles/_components.scss` (appended toast lift); `ui/browser/users-editor.browser-spec.mjs` (new geometry test for the lift); `ui/browser/web-applications-create.browser-spec.mjs` (stale "no toast is raised" sentence removed).
 
-**Files.** Server: `Area/Permissions/UserSave.cls` (new), `UserCreateRules.cls`, `Api/Router.cls`, `Api/Error.cls`, `Api/ScreenAction.cls`, `Kernel/Proposal/{Prohibited,Operation,Mint,Confirm}.cls`, `Screen/Tool/{UserUpdate,UserPassword,Write,AuditEventReset}.cls`, `Screen/Descriptor/{UserForm,UserList}.cls`, `Screen/Registry.cls`. Tests: new `Test/{UserSave,UserSignIn,PromptCorpus,UserSaveFixture,UserSaveHeldFixture,HeldPutPort}.cls`; updated `AuditEventTools`, `AuditingUpdate`, `DeclarationCorpus`, `Descriptor`, `EndpointCoverage`, `Prohibited`, `RefusalCopy`, `ToolWrite`, `UserUpdate`, `Wire`, `WireSecurityRead`. Client: new `user-editor.{page,store}.ts` (+specs), `core/form-tabs.ts`, `shell/form-tabs.ts`, `shell/screen-action-dialogs.ts`; updated `screen-action-handler.ts`, `list-page.ts`, `role-dialog.ts`, `screen-outlet.ts`, `navigation.ts`, `toasts.ts`, `self-protection.ts`, `strings.ts`, `_components.scss`, `screen-mirror.mjs` (+ generated `screens.generated.ts`). Browser: new `users-editor.browser-spec.mjs`; updated `users-actions`, `users-create`, `task-resume`. EXPERIENCE.md: four Fixed-strings rows appended. `scripts/ci-throwaway.sh`: arming roster comment.
+**Review.** Follow-up pass, two layers: 10 findings (0 high, 2 medium, 5 low, 3 false). Patched: 1 medium entry (the lift's direct test), 1 low (stale header). Deferred: 1 low entry (published toast placement in DESIGN.md and `toast-host.ts`). Rejected: 2 low (spec-section edits), 3 false (two carried from the 2026-09-23 DW-1546 row, one refuted by the lead's boundary). A pre-existing form-bar layout defect found while measuring went to `deferred` (medium). Follow-up review recommended: false (no high patched on a follow-up pass).
 
-**Review.** 28 findings (0 high, 9 medium, 16 low, 3 false); all patches applied as P1-P10 above (six medium entries, ten low), 8 low rejected with reasons, 3 false; nothing deferred. Follow-up review recommended: true (six medium entries patched): the review-pass patches -- six new test legs, the `Test.HeldPutPort` fixture and the Enabled-field lock change in `user-editor.page.ts` -- were verified by mutation and re-run but not seen by a review layer.
+**Verification.** Every browser result read after `npm run build` and a redeploy to `ocupilot-ci`, one file per run: device-editor 4/4, users 4/4, users-editor 8/8, users-create 5/5, users-actions 2/2, users-write 3/3, task-resume 3/3, toast 3/3, roles-create 5/5, resources-editor 5/5, web-applications-create 8/8, web-applications 4/4, wallet-secret 4/4, x509-import 4/4, switches 4/4, definitions 6/6, ssl 4/4, security 4/4, navigate 6/6, change-highlight 2/2, change-highlight-noncanonical 1/1, tasks 12/14. The two `tasks` failures (Story 6.6 Task history AC1, AC3) come from 82 leftover `OcuPilotDemoProbe*` rows on this reused throwaway; `tasks` was not among CI's failures on `19849911`, and this pass touches nothing under `areas/tasks`. `npm run test:tools` 1349/1349 (after the review patch), `npm run test:components` 1045/1045, `lint-docs` clean. Initial bundle 1,350,220 bytes (main 1,217,060 + styles 133,160). Earlier passes: first build `19849911`, code-review patches `ba6f2258`.
 
-**Verification.** Loop commands green after patching: node tool tests 1349/1349; `npm run test:components` 1041/1041; `check-objectscript` 0 problems (739 files); `lint-docs` clean; build + redeploy to `ocupilot-ci`, then `users-editor`, `users-actions`, `users-create`, `task-resume` 17/17; classes `UserSave` 6/6, `UserSignIn` 4/4, `AuditEventTools` 10/10, `UserUpdate` 23/23, `RefusalCopy` 3/3, `Descriptor` 51/51, `ToolWrite` 29/29. Full sweep once (tree recompiled into `ocupilot-ci`, runs 8910-9120): 216 classes, 1889 tests, 1 failed; four classes refused on their arming variables (`AuditingUpdate`, `ErrorDelete`, `ProcessControl`, `TaskResume`) as this throwaway predates them. The one failure, `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` ("nothing is cut at 1,000"), has failed on this throwaway since run 8192, before this story's first run (8887); its task history holds 1,383 rows (environmental, inference: CI's fresh throwaway holds fewer than 1,000).
-
-**Residual risk.** The failed-re-apply path (DW-1516 error column) is pinned only through a held-PUT fixture port, not a real vendor fault.
+**Residual risk.** A toast now appears after an editor's own Save (DW-1546 as amended); DESIGN.md's "never for confirmations of what the user just did on the open screen" reads against it, which the 2026-09-23 triage rejected on the EXPERIENCE.md amendment.

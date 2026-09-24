@@ -222,6 +222,9 @@ test('AC2: a disabled account reads No after an outline disc, an expired one rea
   }
 });
 
+// AC7. The name cell opens the user editor (Story 9.1), whose route carries the id as its last
+// segment. Mutation (Rule 19): drop the UserForm entry from `DESCRIPTOR_EDIT_PAGES` and redeploy ->
+// the editor's name field never reads _SYSTEM and this goes red.
 test('AC7: the _SYSTEM name link carries the id in one route segment', async () => {
   const { context, page } = await signedInAtList(config.username, config.password);
   try {
@@ -235,11 +238,14 @@ test('AC7: the _SYSTEM name link carries the id in one route segment', async () 
     // A real hit-tested pointer click at the name link's own centre (DW-273), which is what a user
     // does; `clickRowCentre` refuses first if that point resolves outside the row.
     await clickRowCentre(page, { text: '_SYSTEM', link: true });
-    await page.waitForFunction(() => window.location.pathname.endsWith('/permissions/users/_SYSTEM'), {
+    await page.waitForFunction(() => window.location.pathname.endsWith('/permissions/users/edit/_SYSTEM'), {
       timeout: config.navigationTimeoutMs,
     });
     await page.waitForSelector('.ocu-screen-outlet[data-id="_SYSTEM"]', { timeout: config.navigationTimeoutMs });
     assert.equal(await page.$eval('.ocu-screen-outlet', (outlet) => outlet.getAttribute('data-id')), '_SYSTEM');
+    await page.waitForFunction(() => document.querySelector('#ocu-user-edit-Name')?.value === '_SYSTEM', {
+      timeout: config.navigationTimeoutMs,
+    });
   } finally {
     await context.close();
   }

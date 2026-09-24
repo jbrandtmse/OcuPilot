@@ -9,10 +9,8 @@
  * 2. **A valid Save creates the application**, replaces the route with the new application's
  *    editor and reads the saved sentence in the sticky bar (AC2) -- and the row then appears in
  *    the list, which is this story's Integration AC. **The change event itself is pinned where it
- *    is falsifiable**, in `create-form.store.spec.ts`: the form replaces its own route with the
- *    new application's editor, which declares the same entity type as the list, so no toast is
- *    raised and the list this leg then navigates to re-reads the instance on open whether or not
- *    anything was published.
+ *    is falsifiable**, in `create-form.store.spec.ts`: the list this leg navigates to re-reads the
+ *    instance on open whether or not anything was published.
  * 3. **The list's command bar offers Create**, runs it exactly once per click, survives navigating
  *    away and back, and raises no `ExpressionChangedAfterItHasBeenCheckedError` (AC3, DW-246).
  * 4. **A server refusal lands on the field it names** (DW-376): the namespace is cleared and the

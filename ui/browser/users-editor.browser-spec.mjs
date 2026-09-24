@@ -15,6 +15,8 @@
  * 6. **Delete** returns to the list, and the account is gone.
  * 7. **The visual gate** (DW-1337): every control on the editor has an accessible name, none is
  *    narrower than its declared minimum, and nothing overflows its container.
+ * 8. **The change-toast stack stands clear above the form bar**, so a toast never covers Save or
+ *    Cancel.
  *
  * **It creates and deletes a user account**, so it refuses the live container. `before` makes the
  * probe account by exact name and `after` removes it whether or not a test failed.
@@ -365,6 +367,43 @@ test('the visual gate: every control is named, none is narrower than its minimum
       assert.deepEqual(report.overflowing, [], `${label}: nothing overflows its container`);
       assert.equal(report.pageOverflow, false, `${label}: and the page does not scroll sideways`);
     }
+  } finally {
+    await context.close();
+  }
+});
+
+// DESIGN.md `toast`: a toast must not cover the primary control of the surface it reports on. The
+// stack's bottom edge is measured whether or not a toast stands, since the host is placed either way.
+// Mutation (Rule 19): drop `+ var(--ocu-space-4)` from the `_components.scss` lift and redeploy ->
+// the stack sits flush on the bar and this goes red.
+test('the change-toast stack stands clear above the form bar holding Save and Cancel', async () => {
+  const { context, page } = await signedInAt(EDIT_URL);
+  try {
+    await editorReady(page);
+    const geometry = await page.evaluate(() => {
+      const host = document.querySelector('app-toast-host');
+      const bar = document.querySelector('.ocu-form-bar');
+      // The editor is taller than the content area, so the bar is brought into view where a user
+      // reaches it before anything is measured.
+      bar?.scrollIntoView({ block: 'end' });
+      const space4 = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ocu-space-4'));
+      const shell = document.querySelector('.ocu-shell');
+      return {
+        hostBottom: host === null ? null : host.getBoundingClientRect().bottom,
+        barTop: bar === null ? null : bar.getBoundingClientRect().top,
+        barBottom: bar === null ? null : bar.getBoundingClientRect().bottom,
+        barHeight: bar === null ? 0 : bar.getBoundingClientRect().height,
+        shellBottom: shell === null ? null : shell.getBoundingClientRect().bottom,
+        space4,
+      };
+    });
+    assert.ok(geometry.hostBottom !== null && geometry.barTop !== null, `the toast host and the form bar are both drawn: ${JSON.stringify(geometry)}`);
+    assert.ok(geometry.space4 > 0 && geometry.barHeight > 0, `the offsets are measured, not 0 against 0: ${JSON.stringify(geometry)}`);
+    assert.ok(geometry.barBottom <= geometry.shellBottom + 0.5, `the bar is measured on screen: ${JSON.stringify(geometry)}`);
+    assert.ok(
+      geometry.hostBottom <= geometry.barTop - geometry.space4 + 0.5,
+      `the stack's bottom edge sits spacing.4 above the bar's top edge: ${JSON.stringify(geometry)}`
+    );
   } finally {
     await context.close();
   }
