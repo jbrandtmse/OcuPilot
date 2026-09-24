@@ -223,12 +223,14 @@ Client:
   - a refused Save opens the refused field's tab, with its marker and ", N errors".
 - **AC2.** Given a Save or a confirmed agent edit that changes two fields, when it is sent, then the body is the fresh read merged with the change. The port omits only the unchanged keys listed in Boundaries, and every field the caller did not change reads back as it was.
 - **AC3.** Given a proposal minted before the task runs, when the run moves `NextScheduled`, then the confirm writes. The tool's fresh read does not carry that field (measured), so the fingerprint cannot cover it, and `TaskScheduleList` declares no exclusion.
-- **AC4.** Given a task whose type holds a secret setting, when it is read, edited or proposed, then the setting's value appears in no answer, payload, diff or ledger row, and an edit keeps the stored value.
+- **AC4.** Given a task whose type holds a secret setting, when it is read, edited or proposed, then the setting's value appears in no answer, payload, diff or ledger row, and an edit keeps the stored value. A `Settings` change on such a type, from either caller, is refused `TASK.SETTING.SECRET` by name before any port call, so a replacing `Settings` that drops the secret is never sent (AD-4 as amended, ruling c006bcb3). Pinned on a `%SYS.Task.DiagnosticReport` probe on `ocupilot-ci`: an edit changing another setting without the secret is refused and the stored `SMTPPass` is unchanged; an edit that leaves `Settings` unchanged writes, and `SMTPPass` survives it (compared in process, never printed). Each leg has its own `mutation:` line.
 - **AC5.** Given a principal without `%Admin_Secure:USE`, when it edits a task that runs as another account and leaves RunAsUser unchanged, then the save succeeds and the proposal is not destructive. When it changes RunAsUser, both callers refuse on RunAsUser.
 - **DW-1624.** Given a task created by the wizard with the AC7 values, when its edit form opens, then every value is drawn from the instance. The browser spec asserts each one.
 - **Integration.** Given `TaskEditorPage`, which consumes `GET /tasks/form?id=`, `PUT /tasks/:id` and `ChangeBus`, when a Save succeeds, then Task details and Task schedule re-fetch and show the new value. The browser spec observes this.
 
 ## Spec Change Log
+
+- 2026-09-24 spec gate (lead): ruling 2 approved by the orchestrator (c006bcb3) with a condition: a changed `Settings` on a secret-bearing type must carry the secret or be refused by name; AD-4 amended with it; AC4 extended to pin both legs.
 
 - 2026-09-24 spec gate (lead): ruling 1 applied as recommended (epics.md 9.8 AC3 amended, Rule 5 tier 1); ruling 2 (AD-4) asked of the orchestrator before the implement spawn; DW-1631 filed and routed here.
 

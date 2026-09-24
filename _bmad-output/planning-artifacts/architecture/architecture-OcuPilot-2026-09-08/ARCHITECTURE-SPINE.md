@@ -132,6 +132,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   Two further behaviors are the endpoint's, not OcuPilot's, and are covered by the fresh read plus AD-6's fingerprint: `ValidateRequest` enforces required fields even on an update, and `Wallet.Secret` and `Security.Audit.Event` PUTs are **upserts**, so a body sent against a target deleted since the read would silently create it rather than fail (measured for `Wallet.Secret` 2026-09-23: a body carrying a value answered 201 and created the secret; one without a value answered 500).
 
+  **`Task.CRUD` is a named exception to the complete body.** `Task.CRUD`'s port omits a re-sent `DailyStartTime` or `DailyEndTime` equal to the stored one, because the vendor re-checks the start against the clock and refuses 7432 on a past-started task. It omits an unchanged `Settings`, because a sent `Settings` replaces every setting and a secret-typed setting is never read (AD-35). It omits its own `Type`. The vendor keeps an omitted key (measured). A `Settings` that does change, on a task type holding a secret-typed setting (a `%SYS.Task.Password`, such as Diagnostic Report's `SMTPPass`), must carry that secret: the edit either requires it re-entered as a write-only field, never read back (AD-35), or is refused by name before any port call; a replacing `Settings` that silently drops the secret is never sent. [AMENDED 2026-09-24, Story 9.8 plan, orchestrator ruling c006bcb3, Rule 20.]
+
 ### AD-5 — One screen descriptor is the source of everything about a screen
 
 - **Binds:** all 60 screens across 5.5–5.10; FR-4, FR-11, FR-14, FR-16
