@@ -97,6 +97,12 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// <p><b><code>permissions.users.password</code></b> classifies the same list again and authors
 /// <code>Password</code> as <code>secret</code>: its write sends that declared secret and nothing
 /// else (AD-56), under the vendor's <code>CHANGEPWD</code> key the port renames it to.</p>
+/// <p><b><code>tasks.schedule.create</code></b> (Story 9.7) classifies <code>Task.CRUD</code>'s
+/// every literal row <code>ordinary</code> and its member-less <code>Settings</code> object
+/// <code>opaque</code>, which the tool adds back as an object of the chosen type's own values
+/// (<class>OcuPilot.Screen.Tool.TaskCreate</class>). <code>OutputDirectory</code> is
+/// <code>ordinary</code> here and absent from the tool's positive list, so no caller names it
+/// (AD-21).</p>
 XData Entries
 {
 {
@@ -473,6 +479,46 @@ XData Entries
     },
     "authored": {
       "Password": "secret"
+    }
+  },
+  "tasks.schedule.create": {
+    "fieldList": "Task.CRUD",
+    "classification": {
+      "Name": "ordinary",
+      "RunAsUser": "ordinary",
+      "EmailOnCompletion[]": "ordinary",
+      "EmailOnError[]": "ordinary",
+      "EmailOnExpiration[]": "ordinary",
+      "EmailOutput": "ordinary",
+      "Expires": "ordinary",
+      "ExpiresDays": "ordinary",
+      "ExpiresHours": "ordinary",
+      "ExpiresMinutes": "ordinary",
+      "OpenOutputFile": "ordinary",
+      "OutputDirectory": "ordinary",
+      "OutputFilename": "ordinary",
+      "OutputFileIsBinary": "ordinary",
+      "SuspendOnError": "ordinary",
+      "SuspendTerminated": "ordinary",
+      "Priority": "ordinary",
+      "TaskClass": "ordinary",
+      "IsBatch": "ordinary",
+      "NameSpace": "ordinary",
+      "TimePeriod": "ordinary",
+      "TimePeriodEvery": "ordinary",
+      "TimePeriodDay": "ordinary",
+      "DailyFrequency": "ordinary",
+      "DailyFrequencyTime": "ordinary",
+      "DailyIncrement": "ordinary",
+      "DailyStartTime": "ordinary",
+      "DailyEndTime": "ordinary",
+      "StartDate": "ordinary",
+      "EndDate": "ordinary",
+      "RunAfterGUID": "ordinary",
+      "MirrorStatus": "ordinary",
+      "RescheduleOnStart": "ordinary",
+      "Description": "ordinary",
+      "Settings": "opaque"
     }
   }
 }

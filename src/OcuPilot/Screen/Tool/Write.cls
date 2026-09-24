@@ -292,6 +292,30 @@ ClassMethod DerivedFields(pPayload As %DynamicObject)
 {
 }
 
+/// <p>The composed payload and diff of a <b>create</b> (AD-54) from the caller's arguments
+/// <var>pArgs</var>, in <method>OcuPilot.Kernel.Proposal.Mint.Compose</method>'s contract: one
+/// payload property per supplied settable field, one diff row per supplied field, and
+/// <var>pUnchanged</var> the payload properties no diff row names.</p>
+/// <p><b>Caller contract:</b> the mint calls it once for a tool that declares
+/// <parameter>CREATES</parameter>, after the absence read and before the tool's own field rules.
+/// The kernel's <method>OcuPilot.Kernel.Proposal.Mint.Compose</method> here, so every create that
+/// shipped before Story 9.7 composes exactly as it did; a create whose endpoint requires a complete
+/// body, or whose arguments include an object, composes its own.</p>
+ClassMethod ComposeCreate(pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
+{
+    Quit ##class(OcuPilot.Kernel.Proposal.Mint).Compose(pArgs, pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
+}
+
+/// <p>The id the instance allocated for the target this tool's confirmed write <var>pWritten</var>
+/// created, or <code>""</code> (AD-14). The confirm's answer carries it as <code>createdId</code>,
+/// and the client publishes it as the change event's id in place of the proposal's target id.</p>
+/// <p><code>""</code> here: every create before Story 9.7 names its target by the id the caller
+/// chose, so the target's own id is the created one.</p>
+ClassMethod CreatedId(pWritten) As %String
+{
+    Quit ""
+}
+
 /// <p>The row-action ids <parameter>SCREENACTIONS</parameter> names, as a <class>%List</class>.</p>
 ClassMethod ScreenActionIds() As %List
 {

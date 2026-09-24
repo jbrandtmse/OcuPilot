@@ -183,7 +183,13 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         }
 
         If tCreates {
-            Set tSC = ..Compose(pArgs, pIdArgument, pSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
+            ; A tool may compose its own create (a complete body, an object argument); the kernel's
+            ; Compose is the default every earlier create resolves to.
+            If pToolClass '= "" {
+                Set tSC = $ClassMethod(pToolClass, "ComposeCreate", pArgs, pIdArgument, pSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
+            } Else {
+                Set tSC = ..Compose(pArgs, pIdArgument, pSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
+            }
             ; AD-6, AD-35: a create whose body carries a secret the user supplies at confirm shows
             ; one row per such name, empty on both sides, so the card asks for it beside the diff.
             ; The payload does not carry it and unchangedCount stays 0.

@@ -192,13 +192,14 @@ export function createFormFor(screen: ScreenDeclaration): ScreenDeclaration | nu
 }
 
 /**
- * Paired forms that create and never open an existing entity: their `:id` route exists so a Save
- * can replace the URL with the new entity's, but the page reads no id, so neither a row's name cell
- * nor a change toast may open one. Empty since Story 9.3: Epic 9's editors read the id, and their
- * stories removed the entries -- the User form's with Story 9.1, the Web application form's with
- * Story 9.2 and the Role form's with Story 9.3.
+ * Paired forms that create and never open an existing entity: their `:id` route exists, but the page
+ * reads no id, so neither a row's name cell nor a change toast may open one. Epic 9's editors read
+ * the id, and their stories removed the entries -- the User form's with Story 9.1, the Web
+ * application form's with Story 9.2 and the Role form's with Story 9.3. The New Task wizard (Story
+ * 9.7) is here until Story 9.8's Edit task reads the id, so a task's name cell keeps opening its
+ * details, where the wizard's own create lands.
  */
-export const CREATE_ONLY_FORMS: ReadonlySet<string> = new Set<string>([]);
+export const CREATE_ONLY_FORMS: ReadonlySet<string> = new Set<string>(['OcuPilot.Screen.Descriptor.TaskForm']);
 
 /**
  * Screens whose editor is a dialog over the screen itself rather than a paired `form-page`: the

@@ -424,7 +424,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         ; per-write failure belongs.
         If $Get(tEmitted, 0) Do $ClassMethod(..EventClass(), "RecordMarking", tMarked)
 
-        Set tSC = ..Answer(pProposalId, .pResult, .pHttpStatus, .pCode, $Select(tMarked: 1, 1: 0), ..ToolChangeAction(tToolClass))
+        Set tSC = ..Answer(pProposalId, .pResult, .pHttpStatus, .pCode, $Select(tMarked: 1, 1: 0), ..ToolChangeAction(tToolClass), ..ToolCreatedId(tToolClass, $Get(tWritten)))
     } Catch ex {
         Set pResult = ""
         Set tSC = ..Internal("the confirm transition failed: " _ ex.DisplayString(), .pHttpStatus, .pCode)
@@ -693,6 +693,20 @@ ClassMethod ToolDerivedFields(pToolClass As %String, pBody As %DynamicObject) [ 
         ; body it then receives on its own terms rather than the confirm inventing a refusal here.
     }
 }
+/// <p>The id <var>pToolClass</var>'s confirmed write created
+/// (<method>OcuPilot.Screen.Tool.Write.CreatedId</method>) from the port's answer
+/// <var>pWritten</var>, or <code>""</code> for a class that answers none or cannot be asked.</p>
+ClassMethod ToolCreatedId(pToolClass As %String, pWritten) As %String [ Private ]
+{
+    Set tId = ""
+    Try {
+        If pToolClass '= "" Set tId = $ClassMethod(pToolClass, "CreatedId", pWritten)
+    } Catch {
+        Set tId = ""
+    }
+    Quit tId
+}
+
 /// <p>The AD-14 action <var>pToolClass</var>'s confirmed write performs
 /// (<method>OcuPilot.Screen.Tool.Write.ChangeAction</method>), or <code>""</code> for a class that
 /// cannot be asked -- which leaves the answer carrying no action and the client publishing its own
@@ -727,7 +741,7 @@ ClassMethod HoldsPair(pUser As %String, pResource As %String, pPermission As %St
 /// <code>{proposalId, state, closedReason, confirmedAt}</code>, plus <code>auditMarked</code> where
 /// a write was made, read back from the row so the answer and the wire cannot disagree. A row that is no longer there is answered as an internal
 /// failure, never as a 200 carrying empty fields.</p>
-ClassMethod Answer(pProposalId As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String, pAuditMarked As %String = "", pAction As %String = "") As %Status [ Private ]
+ClassMethod Answer(pProposalId As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String, pAuditMarked As %String = "", pAction As %String = "", pCreatedId As %String = "") As %Status [ Private ]
 {
     Set pResult = ""
     Set tSC = $ClassMethod(..StoreClass(), "GuardedByKey", pProposalId, .tFound, .tValues)
@@ -747,6 +761,9 @@ ClassMethod Answer(pProposalId As %String, Output pResult As %DynamicObject, Out
     ; publishes what the instance says rather than inferring it from the shape of the diff: the
     ; vocabulary is the kernel's closed set, and a screen routes on it.
     If pAction '= "" Do pResult.%Set("action", pAction, "string")
+    ; AD-14: the id the instance allocated for a created target whose proposal names it by another
+    ; key, present only where the tool answers one; the client publishes it as the event's id.
+    If pCreatedId '= "" Do pResult.%Set("createdId", pCreatedId, "string")
     Set pHttpStatus = 200
     Quit $$$OK
 }

@@ -33,6 +33,7 @@ import { ResourceListPage } from '../areas/permissions/resource-list.page';
 import { WalletSecretFormPage } from '../areas/security/wallet-secret-form.page';
 import { X509FormPage } from '../areas/security/x509-form.page';
 import { SslFormPage } from '../areas/security/ssl-form.page';
+import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
 import { DeviceFormPage } from '../areas/os-management/device-form.page';
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
 import { WebAppEditorPage } from '../areas/web-applications/web-app-editor.page';
@@ -113,6 +114,7 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.WalletSecretForm': WalletSecretFormPage,
   'OcuPilot.Screen.Descriptor.DeviceForm': DeviceFormPage,
   'OcuPilot.Screen.Descriptor.SslForm': SslFormPage,
+  'OcuPilot.Screen.Descriptor.TaskForm': TaskWizardPage,
 };
 
 /**

@@ -21,6 +21,7 @@ import { ResourceEditor } from './areas/permissions/resource-editor.store';
 import { WalletActions } from './areas/security/wallet-actions';
 import { WalletSecretForm } from './areas/security/wallet-secret-form.store';
 import { SslActions } from './areas/security/ssl-actions';
+import { TaskActions } from './areas/tasks/task-actions';
 import { SslForm } from './areas/security/ssl-form.store';
 import { X509Actions } from './areas/security/x509-actions';
 import { X509Form } from './areas/security/x509-form.store';
@@ -264,6 +265,9 @@ export class App {
   // The SSL/TLS list's declared Create, the same way (`areas/security/ssl-actions.ts`).
   private readonly sslActions = inject(SslActions);
   private readonly sslForm = inject(SslForm);
+  // The Task schedule's declared Create, which opens the New Task wizard, the same way
+  // (`areas/tasks/task-actions.ts`). The wizard's store resets when its page is left.
+  private readonly taskActions = inject(TaskActions);
   // Constructed for its own sake, the same way: there is no component whose job it is to act on
   // the agent's navigation directive, so injecting it here is what brings it into existence for
   // the life of the tab (`shell/agent-navigator.ts`).

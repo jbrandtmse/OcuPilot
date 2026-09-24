@@ -1210,6 +1210,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#PORTFIELDSHAPE Quit ..#REASONPORTFIELDSHAPE
     If pCode = ..#ROLEESCALATIONONLYSHAPE Quit ..#REASONROLEESCALATIONONLYSHAPE
     If $Extract(pCode, 1, 4) = "SSL." Quit ..ReasonForSsl(pCode)
+    If $Extract(pCode, 1, 5) = "TASK." Quit ..ReasonForTask(pCode)
     Quit ""
 }
 
@@ -2612,6 +2613,293 @@ ClassMethod ReasonForSsl(pCode As %String) As %String
 ClassMethod SslViolationCodes() As %List
 {
     Quit $ListBuild(..#SSLNAMEREQUIRED, ..#SSLNAMESHAPE, ..#SSLNAMETAKEN, ..#SSLNAMEABSENT, ..#SSLFIELDREQUIRED, ..#SSLDESCRIPTIONLENGTH, ..#SSLENABLEDSHAPE, ..#SSLTYPEVALUE, ..#SSLTYPESERVERFILES, ..#SSLVERIFYPEERVALUE, ..#SSLVERIFYPEERCAREQUIRED, ..#SSLVERIFYDEPTHSHAPE, ..#SSLCAFILEPATH, ..#SSLTLSMINVERSIONVALUE, ..#SSLTLSMAXVERSIONVALUE, ..#SSLTLSMAXVERSIONORDER, ..#SSLDIFFIEHELLMANBITSVALUE, ..#SSLCIPHERLISTSHAPE, ..#SSLCIPHERLISTLENGTH, ..#SSLCIPHERLISTEXPANDSEMPTY, ..#SSLCIPHERSUITESSHAPE, ..#SSLCIPHERSUITESLENGTH, ..#SSLCIPHERSUITESUNKNOWN, ..#SSLOCSPVALUE, ..#SSLOCSPTIMEOUTSHAPE, ..#SSLPRIVATEKEYPASSWORDKEYFILE, ..#SSLPRIVATEKEYPASSWORDLENGTH, ..#SSLPRIVATEKEYPASSWORDWRONG, ..#SSLTESTHOST, ..#SSLTESTPORT)
+}
+
+/// <p>Envelope code (AD-39): a task create broke one or more of the rules
+/// <class>OcuPilot.Area.Task.TaskRules</class> applies before the port is touched, or the vendor
+/// refused a value on a field. <code>detail.violations</code> carries each.</p>
+Parameter TASKVALIDATION = "TASK.VALIDATION";
+
+Parameter REASONTASKVALIDATION = "The task was refused.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKNAMEREQUIRED = "TASK.NAME.REQUIRED";
+
+Parameter REASONTASKNAMEREQUIRED = "Give the task a name.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKNAMESHAPE = "TASK.NAME.SHAPE";
+
+Parameter REASONTASKNAMESHAPE = "A task name is at most 50 characters and starts with a letter.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKNAMETAKEN = "TASK.NAME.TAKEN";
+
+Parameter REASONTASKNAMETAKEN = "This instance already has a task with that name. Choose a different one.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDESCRIPTIONLENGTH = "TASK.DESCRIPTION.LENGTH";
+
+Parameter REASONTASKDESCRIPTIONLENGTH = "A description is at most 100 characters.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKNAMESPACEUNKNOWN = "TASK.NAMESPACE.UNKNOWN";
+
+Parameter REASONTASKNAMESPACEUNKNOWN = "Choose a namespace you can read on this instance.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKTASKCLASSREQUIRED = "TASK.TASKCLASS.REQUIRED";
+
+Parameter REASONTASKTASKCLASSREQUIRED = "Choose a task type.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKTASKCLASSUNKNOWN = "TASK.TASKCLASS.UNKNOWN";
+
+Parameter REASONTASKTASKCLASSUNKNOWN = "That task type is not available in the chosen namespace.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKTASKCLASSPERMISSION = "TASK.TASKCLASS.PERMISSION";
+
+Parameter REASONTASKTASKCLASSPERMISSION = "This task type needs a privilege you do not hold.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKSETTINGUNKNOWN = "TASK.SETTING.UNKNOWN";
+
+Parameter REASONTASKSETTINGUNKNOWN = "The chosen task type has no such setting.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKSETTINGINVALID = "TASK.SETTING.INVALID";
+
+Parameter REASONTASKSETTINGINVALID = "The task type does not accept this value.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKSETTINGREQUIRED = "TASK.SETTING.REQUIRED";
+
+Parameter REASONTASKSETTINGREQUIRED = "The task type needs this setting.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKSETTINGSECRET = "TASK.SETTING.SECRET";
+
+Parameter REASONTASKSETTINGSECRET = "This setting holds a credential, and only the classic portal's Task Scheduler Wizard sets it.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKSETTINGCLASSICONLY = "TASK.SETTING.CLASSICONLY";
+
+Parameter REASONTASKSETTINGCLASSICONLY = "This setting is a list, and only the classic portal's Task Scheduler Wizard sets it.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKTIMEPERIODVALUE = "TASK.TIMEPERIOD.VALUE";
+
+Parameter REASONTASKTIMEPERIODVALUE = "Choose how often the task runs.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKTIMEPERIODEVERYRANGE = "TASK.TIMEPERIODEVERY.RANGE";
+
+Parameter REASONTASKTIMEPERIODEVERYRANGE = "The interval is 1 to 7 days, 1 to 5 weeks, or 1 to 12 months, as the schedule reads it.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKTIMEPERIODDAYVALUE = "TASK.TIMEPERIODDAY.VALUE";
+
+Parameter REASONTASKTIMEPERIODDAYVALUE = "Choose the day or days this schedule runs on.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKRUNAFTERGUIDUNKNOWN = "TASK.RUNAFTERGUID.UNKNOWN";
+
+Parameter REASONTASKRUNAFTERGUIDUNKNOWN = "Choose a task on this instance to run after.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDAILYFREQUENCYVALUE = "TASK.DAILYFREQUENCY.VALUE";
+
+Parameter REASONTASKDAILYFREQUENCYVALUE = "Choose whether the task runs once or several times a day.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDAILYFREQUENCYTIMEREQUIRED = "TASK.DAILYFREQUENCYTIME.REQUIRED";
+
+Parameter REASONTASKDAILYFREQUENCYTIMEREQUIRED = "Choose whether the interval is in minutes or hours.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDAILYINCREMENTREQUIRED = "TASK.DAILYINCREMENT.REQUIRED";
+
+Parameter REASONTASKDAILYINCREMENTREQUIRED = "Give how long to wait between runs.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDAILYINCREMENTRANGE = "TASK.DAILYINCREMENT.RANGE";
+
+Parameter REASONTASKDAILYINCREMENTRANGE = "The interval is 1 to 1440 minutes, or 1 to 24 hours.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDAILYSTARTTIMESHAPE = "TASK.DAILYSTARTTIME.SHAPE";
+
+Parameter REASONTASKDAILYSTARTTIMESHAPE = "Give a time as HH:MM, from 00:00 to 23:59.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDAILYENDTIMESHAPE = "TASK.DAILYENDTIME.SHAPE";
+
+Parameter REASONTASKDAILYENDTIMESHAPE = "Give the last run's time as HH:MM, from 00:00 to 23:59.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDAILYENDTIMEORDER = "TASK.DAILYENDTIME.ORDER";
+
+Parameter REASONTASKDAILYENDTIMEORDER = "The last run's time must be later than the first.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKSTARTDATEREQUIRED = "TASK.STARTDATE.REQUIRED";
+
+Parameter REASONTASKSTARTDATEREQUIRED = "Give the date of the first run.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKSTARTDATESHAPE = "TASK.STARTDATE.SHAPE";
+
+Parameter REASONTASKSTARTDATESHAPE = "Give a date as YYYY-MM-DD.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKSTARTDATEPAST = "TASK.STARTDATE.PAST";
+
+Parameter REASONTASKSTARTDATEPAST = "The first run must be later than now on this instance's clock.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKENDDATESHAPE = "TASK.ENDDATE.SHAPE";
+
+Parameter REASONTASKENDDATESHAPE = "Give the end date as YYYY-MM-DD, or leave it empty.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKENDDATEORDER = "TASK.ENDDATE.ORDER";
+
+Parameter REASONTASKENDDATEORDER = "The end date must be later than the start date.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKEXPIRESDAYSRANGE = "TASK.EXPIRESDAYS.RANGE";
+
+Parameter REASONTASKEXPIRESDAYSRANGE = "Days is a whole number from 0 to 999.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKEXPIRESHOURSRANGE = "TASK.EXPIRESHOURS.RANGE";
+
+Parameter REASONTASKEXPIRESHOURSRANGE = "Hours is a whole number from 0 to 24.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKEXPIRESMINUTESRANGE = "TASK.EXPIRESMINUTES.RANGE";
+
+Parameter REASONTASKEXPIRESMINUTESRANGE = "Minutes is a whole number from 0 to 60.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKRUNASUSERSECURE = "TASK.RUNASUSER.SECURE";
+
+Parameter REASONTASKRUNASUSERSECURE = "Running a task as another account needs %Admin_Secure:USE, which you do not hold.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKRUNASUSERUNKNOWN = "TASK.RUNASUSER.UNKNOWN";
+
+Parameter REASONTASKRUNASUSERUNKNOWN = "This instance has no account with that name.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKRUNASUSERDISABLED = "TASK.RUNASUSER.DISABLED";
+
+Parameter REASONTASKRUNASUSERDISABLED = "That account is disabled, so a task cannot run as it.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKPRIORITYVALUE = "TASK.PRIORITY.VALUE";
+
+Parameter REASONTASKPRIORITYVALUE = "Choose Normal, Low or High.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKMIRRORSTATUSVALUE = "TASK.MIRRORSTATUS.VALUE";
+
+Parameter REASONTASKMIRRORSTATUSVALUE = "Choose Primary, Non-Primary or Any.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKOUTPUTFILENAMESHAPE = "TASK.OUTPUTFILENAME.SHAPE";
+
+Parameter REASONTASKOUTPUTFILENAMESHAPE = "Give one file name ending in .txt, of letters, digits, dots, dashes and underscores, with no folder.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKEMAILONCOMPLETIONSHAPE = "TASK.EMAILONCOMPLETION.SHAPE";
+
+Parameter REASONTASKEMAILONCOMPLETIONSHAPE = "Give email addresses separated by commas, each like name@example.com.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKEMAILONERRORSHAPE = "TASK.EMAILONERROR.SHAPE";
+
+Parameter REASONTASKEMAILONERRORSHAPE = "Give email addresses separated by commas, each like name@example.com.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKEMAILONEXPIRATIONSHAPE = "TASK.EMAILONEXPIRATION.SHAPE";
+
+Parameter REASONTASKEMAILONEXPIRATIONSHAPE = "Give email addresses separated by commas, each like name@example.com.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKFIELDSHAPE = "TASK.FIELD.SHAPE";
+
+Parameter REASONTASKFIELDSHAPE = "This value is not the kind this field takes.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKRUNASUSERREFUSED = "TASK.RUNASUSER.REFUSED";
+
+Parameter REASONTASKRUNASUSERREFUSED = "The instance refused to run the task as this account.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDAILYINCREMENTREFUSED = "TASK.DAILYINCREMENT.REFUSED";
+
+Parameter REASONTASKDAILYINCREMENTREFUSED = "The instance refused this interval.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDAILYENDTIMEREFUSED = "TASK.DAILYENDTIME.REFUSED";
+
+Parameter REASONTASKDAILYENDTIMEREFUSED = "The instance refused this last run's time.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKENDDATEREFUSED = "TASK.ENDDATE.REFUSED";
+
+Parameter REASONTASKENDDATEREFUSED = "The instance refused this end date.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKTIMEPERIODDAYREFUSED = "TASK.TIMEPERIODDAY.REFUSED";
+
+Parameter REASONTASKTIMEPERIODDAYREFUSED = "The instance refused these run days.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKOUTPUTFILENAMEREFUSED = "TASK.OUTPUTFILENAME.REFUSED";
+
+Parameter REASONTASKOUTPUTFILENAMEREFUSED = "The instance refused this output file.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKTASKCLASSREFUSED = "TASK.TASKCLASS.REFUSED";
+
+Parameter REASONTASKTASKCLASSREFUSED = "The instance refused this task type, or a privilege it needs is missing.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKTIMEPERIODEVERYREFUSED = "TASK.TIMEPERIODEVERY.REFUSED";
+
+Parameter REASONTASKTIMEPERIODEVERYREFUSED = "The instance refused this interval between runs.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDAILYFREQUENCYTIMEREFUSED = "TASK.DAILYFREQUENCYTIME.REFUSED";
+
+Parameter REASONTASKDAILYFREQUENCYTIMEREFUSED = "The instance refused this interval's unit.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKRUNAFTERGUIDREFUSED = "TASK.RUNAFTERGUID.REFUSED";
+
+Parameter REASONTASKRUNAFTERGUIDREFUSED = "The instance refused the task to run after.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKSTARTDATEREFUSED = "TASK.STARTDATE.REFUSED";
+
+Parameter REASONTASKSTARTDATEREFUSED = "The instance refused this start, which must be later than now.";
+
+/// <p>The sentence a <code>TASK.*</code> violation code carries, or <code>""</code> for any other
+/// code; <method>ReasonForViolation</method> delegates the family here.</p>
+ClassMethod ReasonForTask(pCode As %String) As %String
+{
+    If '$ListFind(..TaskViolationCodes(), pCode) Quit ""
+    Quit $Parameter($ClassName(), "REASON" _ $Translate(pCode, "."))
+}
+
+/// <p>Every <code>TASK.*</code> field-level violation code, as a <class>%List</class>, for the reason
+/// <method>UserViolationCodes</method> exists.</p>
+ClassMethod TaskViolationCodes() As %List
+{
+    Quit $ListBuild(..#TASKNAMEREQUIRED, ..#TASKNAMESHAPE, ..#TASKNAMETAKEN, ..#TASKDESCRIPTIONLENGTH, ..#TASKNAMESPACEUNKNOWN, ..#TASKTASKCLASSREQUIRED, ..#TASKTASKCLASSUNKNOWN, ..#TASKTASKCLASSPERMISSION, ..#TASKSETTINGUNKNOWN, ..#TASKSETTINGINVALID, ..#TASKSETTINGREQUIRED, ..#TASKSETTINGSECRET, ..#TASKSETTINGCLASSICONLY, ..#TASKTIMEPERIODVALUE, ..#TASKTIMEPERIODEVERYRANGE, ..#TASKTIMEPERIODDAYVALUE, ..#TASKRUNAFTERGUIDUNKNOWN, ..#TASKDAILYFREQUENCYVALUE, ..#TASKDAILYFREQUENCYTIMEREQUIRED, ..#TASKDAILYINCREMENTREQUIRED, ..#TASKDAILYINCREMENTRANGE, ..#TASKDAILYSTARTTIMESHAPE, ..#TASKDAILYENDTIMESHAPE, ..#TASKDAILYENDTIMEORDER, ..#TASKSTARTDATEREQUIRED, ..#TASKSTARTDATESHAPE, ..#TASKSTARTDATEPAST, ..#TASKENDDATESHAPE, ..#TASKENDDATEORDER, ..#TASKEXPIRESDAYSRANGE, ..#TASKEXPIRESHOURSRANGE, ..#TASKEXPIRESMINUTESRANGE, ..#TASKRUNASUSERSECURE, ..#TASKRUNASUSERUNKNOWN, ..#TASKRUNASUSERDISABLED, ..#TASKPRIORITYVALUE, ..#TASKMIRRORSTATUSVALUE, ..#TASKOUTPUTFILENAMESHAPE, ..#TASKEMAILONCOMPLETIONSHAPE, ..#TASKEMAILONERRORSHAPE, ..#TASKEMAILONEXPIRATIONSHAPE, ..#TASKFIELDSHAPE, ..#TASKRUNASUSERREFUSED, ..#TASKDAILYINCREMENTREFUSED, ..#TASKDAILYENDTIMEREFUSED, ..#TASKENDDATEREFUSED, ..#TASKTIMEPERIODDAYREFUSED, ..#TASKOUTPUTFILENAMEREFUSED, ..#TASKTASKCLASSREFUSED, ..#TASKTIMEPERIODEVERYREFUSED, ..#TASKDAILYFREQUENCYTIMEREFUSED, ..#TASKRUNAFTERGUIDREFUSED, ..#TASKSTARTDATEREFUSED)
 }
 
 }

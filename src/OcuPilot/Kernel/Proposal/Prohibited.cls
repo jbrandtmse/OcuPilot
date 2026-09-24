@@ -576,6 +576,7 @@ ClassMethod AlwaysProhibitedFields(pType As %String) As %List
 /// <p>A device's eight are the same as a change's (<method>DeviceFields</method>).</p>
 /// <p>An SSL/TLS configuration's thirteen are a change's less the private key password
 /// (<method>SslFields</method>): a create names no private key file, so it can set no password.</p>
+/// <p>A task's thirty-four are <method>TaskCreateFields</method>'s.</p>
 ClassMethod PermittedCreateFields(pType As %String) As %List
 {
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "DispatchClass", "Enabled", "MatchRoles", "NameSpace", "Recurse", "Resource", "WSGIAppLocation", "WSGIAppName", "WSGICallable", "WSGIType")
@@ -586,7 +587,18 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPEWALLETSECRET Quit $ListBuild("Usage", "RequireTLS", "AllowedHosts", "Secret")
     If pType = ..#TYPEDEVICE Quit ..DeviceFields()
     If pType = ..#TYPESSL Quit ..SslFields()
+    If pType = ..#TYPETASK Quit ..TaskCreateFields()
     Quit ""
+}
+
+/// <p>The thirty-four fields a task create may set (Story 9.7): every key of
+/// <code>Task.CRUD</code>'s template but <code>OutputDirectory</code>, which no caller names and the
+/// tool derives from the manager directory (AD-21), with <code>Settings</code>, the chosen type's own
+/// values. The create sends a complete body, so every one of them is in its payload. Running as
+/// another account is permitted and marked (<method>GrantsPrivilegeByEffect</method>).</p>
+ClassMethod TaskCreateFields() As %List
+{
+    Quit $ListBuild("Name", "RunAsUser", "EmailOnCompletion", "EmailOnError", "EmailOnExpiration", "EmailOutput", "Expires", "ExpiresDays", "ExpiresHours", "ExpiresMinutes", "OpenOutputFile", "OutputFilename", "OutputFileIsBinary", "SuspendOnError", "SuspendTerminated", "Priority", "TaskClass", "IsBatch", "NameSpace", "TimePeriod", "TimePeriodEvery", "TimePeriodDay", "DailyFrequency", "DailyFrequencyTime", "DailyIncrement", "DailyStartTime", "DailyEndTime", "StartDate", "EndDate", "RunAfterGUID", "MirrorStatus", "RescheduleOnStart", "Description", "Settings")
 }
 
 /// <p>The payload field names of entity type <var>pType</var> whose presence in a <b>create</b> is
@@ -1776,7 +1788,9 @@ ClassMethod ResourceNames(pObject As %DynamicObject, Output pNames) [ Private ]
 /// resource's <parameter>FIELDPUBLICPERMISSION</parameter>, which grants privilege when it adds a
 /// letter (<method>AddsPublicLetter</method>) on a resource
 /// <method>ResourceGrantsAdministrativePrivilege</method> names -- <var>pId</var>, the target's id,
-/// is what names it. Any other type grants nothing here.</p>
+/// is what names it. A task's <code>RunAsUser</code> naming an account other than the caller's,
+/// compared without regard to case, grants that account's privileges to the task. Any other type
+/// grants nothing here.</p>
 ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean, pId As %String = "") As %Status
 {
     Set pGrants = 0
@@ -1798,6 +1812,13 @@ ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject
                 Quit
             }
             Set tSC = ..GrantsPrivilege(pPayload, tTarget, .pGrants, ..#FIELDGRANTEDROLES)
+            Quit
+        }
+        If pType = ..#TYPETASK {
+            ; A task that runs as another account runs with that account's privileges (Story 9.7).
+            Set tRunAs = ""
+            If pPayload.%GetTypeOf("RunAsUser") = "string" Set tRunAs = pPayload.%Get("RunAsUser")
+            Set pGrants = ((tRunAs '= "") && ($ZConvert(tRunAs, "U") '= $ZConvert($Username, "U")))
             Quit
         }
         If pType = ..#TYPEWEBAPPLICATION {

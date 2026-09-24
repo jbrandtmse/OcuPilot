@@ -207,6 +207,7 @@ services:
       # classes: TurnWireFixture, UnexpireScope, UserUpdate, Version, Wire, WireOAuthRead, WireSecurityRead
       # classes: RoleSave, RoleUpdate
       # classes: SslWire
+      # classes: TaskWire
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -265,8 +266,10 @@ services:
       # Creates a task in this instance's Task Manager and resumes it. Same reasoning as the
       # block above, one degree narrower: the effect is a task that runs where nobody scheduled
       # one. OcuPilot.Test.TaskResume shipped in Story 5.11 without a guard (DW-1458); this is
-      # that guard's home.
+      # that guard's home. The New Task wizard's classes create probe tasks and delete each by
+      # id once its exact name reads back.
       # classes: TaskResume
+      # classes: TaskCreate, TaskRules, TaskSave, TaskWire
       OCUPILOT_ALLOW_TASK_CONTROL: "1"
       # Deletes REAL application errors from a namespace's own ^ERRORS through the shipped confirm
       # path. One degree worse than OCUPILOT_ALLOW_ERROR_SEED above, which can only add: a deleted

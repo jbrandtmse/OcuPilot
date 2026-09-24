@@ -254,12 +254,19 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWN
 /// <code>RunDelete</code> answers 404 for an absent configuration. Every class-level refusal of a
 /// value answers 500, which <parameter>PROPERTYFAULTS</parameter> maps where the value cannot be
 /// checked beforehand.</p>
+/// <p><code>Task.CRUD/POST</code> is Story 9.7's task create. Read on this build: its
+/// <code>RunPost</code> saves a new <code>%SYS.Task</code> from the body (every key but
+/// <code>Settings</code> is required) and answers 201 with the new id only in its
+/// <code>Location</code> header, which <method>InvokeLocated</method> keeps for the caller
+/// (<class>OcuPilot.Port.TaskPort</class>). A save-time refusal answers 500 carrying the vendor code,
+/// which <parameter>PROPERTYFAULTS</parameter> maps to its field. It accepts a duplicate name, so the
+/// create's absence read is OcuPilot's (AD-54).</p>
 /// <p><code>Wallet.Secret/DELETE</code> is Story 9.5's wallet secret delete. Read on this build: the
 /// endpoint does not override <code>Run</code>, its <code>NeedsRequestBody()</code> is
 /// <code>..IsTypePut()</code>, and its <code>RunDelete</code> answers 404 for a name
 /// <code>%Wallet.Secret.Exists</code> denies -- an absent or wrong-case one -- and otherwise deletes
 /// it (measured on <code>ocupilot-ci</code>: 200).</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE";
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -694,8 +701,18 @@ ClassMethod VerifyInstance(Output pVersion As %Integer, Output pDetail As %Strin
 /// return.</p>
 ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
+    Quit ..InvokeLocated(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault, .tLocation)
+}
+
+/// <p><method>Invoke</method>, with the <code>Location</code> header of a 2xx answer in
+/// <var>pLocation</var>, or <code>""</code>. A create whose new id the vendor answers only in that
+/// header (<code>Task.CRUD/POST</code>) is read through this by its port; every other caller uses
+/// <method>Invoke</method>.</p>
+ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pLocation As %String) As %Status
+{
     Set tSC = $$$OK
     Set pResult = ""
+    Set pLocation = ""
     Set pHttpStatus = 0
     Set pFault = ""
     Try {
@@ -813,6 +830,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             }
             Set pResult = tAnswer
             Set pHttpStatus = tHttp
+            Set pLocation = $Get(tLocation)
             Quit
         }
         ; DW-274. A backing query that refuses on its own privilege check reaches this port as an
@@ -2219,7 +2237,14 @@ ClassMethod Denied(pEndpoint As %String, pFailedPair As %String, pVendorSC As %S
 /// <code>Security.SSLConfig</code> entries (Story 9.5, measured on <code>ocupilot-ci</code>). Error
 /// 726 carries no parameter; 746's names the unknown cipher suite; 732's names the private key
 /// file's path, which is logged and never carried.</p>
-Parameter PROPERTYFAULTS = "Device.Standard:644:OpenParameters=DEVICE.OPENPARAMETERS.SHAPE,Security.SSLConfig:726:@CipherList=SSL.CIPHERLIST.EXPANDSEMPTY,Security.SSLConfig:746:@Ciphersuites=SSL.CIPHERSUITES.UNKNOWN,Security.SSLConfig:732:@PrivateKeyPassword=SSL.PRIVATEKEYPASSWORD.WRONG";
+/// <p>The <code>Task.CRUD</code> entries (Story 9.7) are the task save's own refusals, each an
+/// <code>@</code> entry because the vendor names no property: 7402, 7405 and 7406 on
+/// <code>RunAsUser</code>, 7404 on <code>DailyIncrement</code>, 7408 on <code>DailyEndTime</code>,
+/// 7409 on <code>EndDate</code>, 7410, 7426 and 7428 on <code>TimePeriodDay</code>, 7411 and 7412 on
+/// <code>OutputFilename</code>, 7413, 7414, 7433 and 7434 on <code>TaskClass</code>, 7427 and 7429 on
+/// <code>TimePeriodEvery</code>, 7430 on <code>DailyFrequencyTime</code>, 7431 on
+/// <code>RunAfterGUID</code> and 7432 on <code>StartDate</code>.</p>
+Parameter PROPERTYFAULTS = "Device.Standard:644:OpenParameters=DEVICE.OPENPARAMETERS.SHAPE,Security.SSLConfig:726:@CipherList=SSL.CIPHERLIST.EXPANDSEMPTY,Security.SSLConfig:746:@Ciphersuites=SSL.CIPHERSUITES.UNKNOWN,Security.SSLConfig:732:@PrivateKeyPassword=SSL.PRIVATEKEYPASSWORD.WRONG,Task.CRUD:7402:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7405:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7406:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7404:@DailyIncrement=TASK.DAILYINCREMENT.REFUSED,Task.CRUD:7408:@DailyEndTime=TASK.DAILYENDTIME.REFUSED,Task.CRUD:7409:@EndDate=TASK.ENDDATE.REFUSED,Task.CRUD:7410:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7426:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7428:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7411:@OutputFilename=TASK.OUTPUTFILENAME.REFUSED,Task.CRUD:7412:@OutputFilename=TASK.OUTPUTFILENAME.REFUSED,Task.CRUD:7413:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7414:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7433:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7434:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7427:@TimePeriodEvery=TASK.TIMEPERIODEVERY.REFUSED,Task.CRUD:7429:@TimePeriodEvery=TASK.TIMEPERIODEVERY.REFUSED,Task.CRUD:7430:@DailyFrequencyTime=TASK.DAILYFREQUENCYTIME.REFUSED,Task.CRUD:7431:@RunAfterGUID=TASK.RUNAFTERGUID.REFUSED,Task.CRUD:7432:@StartDate=TASK.STARTDATE.REFUSED";
 
 /// <p>Append to <var>pRows</var> one <code>{field, code, reason}</code> row per error in
 /// <var>pVendorSC</var> that <parameter>PROPERTYFAULTS</parameter> names for <var>pEndpoint</var>. The

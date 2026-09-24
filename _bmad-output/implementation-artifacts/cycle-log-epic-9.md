@@ -139,3 +139,7 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-24T14:27:19Z	Epic 9	spine_updated	ad=AD-21 reason=clarification by=runner story=9-7-the-new-task-wizard what=third_named_exception_task_output_file lint=ok_preexisting_low_placeholder_line167
 2026-09-24T14:27:19Z	Story 9.7	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-3,AD-5,AD-6,AD-8,AD-10,AD-13,AD-14,AD-21,AD-27,AD-29,AD-34,AD-35,AD-39,AD-44,AD-52,AD-54,AD-55 decision_dependency=none sections_created=none owned_ledger=none mutates_shared_runtime=true throwaway=ocupilot-ci bundle_stop=1580kB model=claude-opus-5-5-1m
 2026-09-24T14:27:19Z	Story 9.7	stage_spawned	stage=implement spawn_at=2026-09-24T14:27:19Z model=opus agent_name=9-7-the-new-task-wizard-implement-1 cycle_iteration=1 note=ci_prev_story_resolved_36009216113
+2026-09-24T15:19:18Z	Epic 9	lead_model_gate	model=claude-opus-5-5-1m action=proceed note=replacement_runner_after_quota_loss
+2026-09-24T15:19:18Z	Epic 9	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=gh
+2026-09-24T15:19:18Z	Epic 9	telemetry_gate	pending=0 action=none note=epic4_offers_pre_answered_decline
+2026-09-24T15:19:18Z	Story 9.7	stage_lost	stage=implement agent_name=9-7-the-new-task-wizard-implement-1 reason=account_quota_exhausted partial_tree=26M+14new(unverified) backup=scratchpad/recovery-2026-09-24

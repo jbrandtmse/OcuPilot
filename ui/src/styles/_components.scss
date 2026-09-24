@@ -5632,3 +5632,118 @@ app-ssl-form-page .ocu-field-checkbox input[type='checkbox'] {
   block-size: var(--ocu-space-6);
   margin: 0;
 }
+
+// The New Task wizard's vertical stepper (Story 9.7): an ordered list of steps, each a heading
+// button over its body. The current step's marker is filled; a step holding refusals carries the
+// destructive marker and names its first refusal in text under its label.
+.ocu-form-stepper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ocu-form-step {
+  min-width: 0;
+  padding-left: var(--ocu-space-2);
+  border-left: 1px solid var(--ocu-outline-variant);
+}
+
+.ocu-form-step-head {
+  @include typo.ocu-type('body');
+
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-3);
+  min-block-size: var(--ocu-space-6);
+  max-width: 100%;
+  padding: var(--ocu-space-1) 0;
+  border: 0;
+  background: none;
+  color: var(--ocu-on-surface-variant);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+
+  &:disabled {
+    color: var(--ocu-restrained);
+    cursor: default;
+  }
+}
+
+.ocu-form-step-current .ocu-form-step-head {
+  color: var(--ocu-secondary);
+}
+
+.ocu-form-step-marker {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--ocu-space-6);
+  block-size: var(--ocu-space-6);
+  border: 1px solid var(--ocu-outline);
+  border-radius: 50%;
+}
+
+.ocu-form-step-current .ocu-form-step-marker {
+  border-color: var(--ocu-secondary);
+  background: var(--ocu-secondary);
+  color: var(--ocu-on-secondary);
+}
+
+.ocu-form-step-invalid .ocu-form-step-marker {
+  border-color: var(--ocu-destructive);
+  background: var(--ocu-destructive);
+  color: var(--ocu-on-destructive);
+}
+
+.ocu-form-step-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ocu-form-step-error {
+  @include typo.ocu-type('caption');
+
+  margin: 0 0 var(--ocu-space-2);
+  color: var(--ocu-destructive);
+  overflow-wrap: anywhere;
+}
+
+.ocu-form-step-body {
+  min-width: 0;
+  padding: var(--ocu-space-3) 0 var(--ocu-space-4);
+}
+
+.ocu-form-step-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ocu-space-2);
+  margin-top: var(--ocu-space-4);
+}
+
+.ocu-task-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ocu-space-2) var(--ocu-space-4);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+// The wizard's flags and day boxes are 24px targets (DW-1337): the checkbox itself and the label
+// that wraps it.
+app-task-wizard-page .ocu-field-checkbox {
+  min-block-size: var(--ocu-space-6);
+}
+
+app-task-wizard-page .ocu-field-checkbox input[type='checkbox'] {
+  inline-size: var(--ocu-space-6);
+  block-size: var(--ocu-space-6);
+  margin: 0;
+}

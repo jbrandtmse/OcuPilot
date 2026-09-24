@@ -1944,6 +1944,134 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
+  /** EXPERIENCE.md:493 */
+  taskCreate: 'Create task',
+  /** EXPERIENCE.md:493 */
+  taskFormLabel: 'New task',
+  /** EXPERIENCE.md:493 */
+  taskStepBasics: 'Basics',
+  /** EXPERIENCE.md:493 */
+  taskStepType: 'Task type and settings',
+  /** EXPERIENCE.md:493 */
+  taskStepOptions: 'Options and notifications',
+  /** EXPERIENCE.md:493 */
+  actionNext: 'Next',
+  /** EXPERIENCE.md:493 */
+  taskFieldTaskClass: 'Task type',
+  /** EXPERIENCE.md:493 */
+  taskChooseType: 'Choose a task type',
+  /** EXPERIENCE.md:493 */
+  taskNoSettings: 'This task type has no settings.',
+  /** EXPERIENCE.md:494 */
+  taskPeriodDaily: 'Daily',
+  /** EXPERIENCE.md:494 */
+  taskPeriodWeekly: 'Weekly',
+  /** EXPERIENCE.md:494 */
+  taskPeriodMonthly: 'Monthly',
+  /** EXPERIENCE.md:494 */
+  taskPeriodMonthlySpecial: 'Monthly, on a weekday',
+  /** EXPERIENCE.md:494 */
+  taskEveryDays: 'Days between runs',
+  /** EXPERIENCE.md:494 */
+  taskEveryWeeks: 'Weeks between runs',
+  /** EXPERIENCE.md:494 */
+  taskEveryMonths: 'Months between runs',
+  /** EXPERIENCE.md:494 */
+  taskRunDays: 'Days to run on',
+  /** EXPERIENCE.md:494 */
+  taskDayOfMonth: 'Day of the month',
+  /** EXPERIENCE.md:494 */
+  taskDayOfMonthCaption: '31 runs on the last day of the month.',
+  /** EXPERIENCE.md:494 */
+  taskWeekOfMonth: 'Week of the month',
+  /** EXPERIENCE.md:494 */
+  taskDayOfWeek: 'Day of the week',
+  /** EXPERIENCE.md:494 */
+  ordinalLast: 'last',
+  /** EXPERIENCE.md:494 */
+  taskRunAfterField: 'Task to run after',
+  /** EXPERIENCE.md:494 */
+  taskRunsPerDay: 'Runs per day',
+  /** EXPERIENCE.md:494 */
+  taskFrequencyOnce: 'Once',
+  /** EXPERIENCE.md:494 */
+  taskFrequencySeveral: 'Several times',
+  /** EXPERIENCE.md:494 */
+  taskIntervalUnit: 'Interval unit',
+  /** EXPERIENCE.md:494 */
+  taskUnitMinutes: 'Minutes',
+  /** EXPERIENCE.md:494 */
+  taskUnitHours: 'Hours',
+  /** EXPERIENCE.md:494 */
+  taskUnitDays: 'Days',
+  /** EXPERIENCE.md:494 */
+  taskInterval: 'Interval',
+  /** EXPERIENCE.md:494 */
+  taskStartTime: 'Start time',
+  /** EXPERIENCE.md:494 */
+  taskEndTime: 'End time',
+  /** EXPERIENCE.md:494 */
+  taskStartDate: 'Start date',
+  /** EXPERIENCE.md:494 */
+  taskEndDate: 'End date',
+  /** EXPERIENCE.md:494 */
+  taskExpires: 'A run expires if it has not started in time',
+  /** EXPERIENCE.md:495 */
+  taskRunAsCaption: 'Leave empty to run as you.',
+  /** EXPERIENCE.md:495 */
+  taskPriorityNormal: 'Normal',
+  /** EXPERIENCE.md:495 */
+  taskPriorityLow: 'Low',
+  /** EXPERIENCE.md:495 */
+  taskPriorityHigh: 'High',
+  /** EXPERIENCE.md:495 */
+  taskIsBatch: 'Run in batch mode',
+  /** EXPERIENCE.md:495 */
+  taskMirrorStatus: 'Mirror members that run it',
+  /** EXPERIENCE.md:495 */
+  taskMirrorPrimary: 'Primary',
+  /** EXPERIENCE.md:495 */
+  taskMirrorNonPrimary: 'Non-primary',
+  /** EXPERIENCE.md:495 */
+  taskOpenOutputFile: 'Write the output to a file',
+  /** EXPERIENCE.md:495 */
+  taskOutputFilename: 'Output file name',
+  /** EXPERIENCE.md:495 */
+  taskOutputFileCaption: 'One file name ending in .txt, written to the instance\'s manager directory.',
+  /** EXPERIENCE.md:495 */
+  taskOutputFileIsBinary: 'Email the output file as binary',
+  /** EXPERIENCE.md:495 */
+  taskEmailOutput: 'Email the output file on completion',
+  /** EXPERIENCE.md:495 */
+  taskSuspendOnError: 'Suspend the task if a run fails',
+  /** EXPERIENCE.md:495 */
+  taskSuspendTerminated: 'Suspend the task if a shutdown ends a run',
+  /** EXPERIENCE.md:495 */
+  taskRescheduleOnStart: 'Reschedule a pending run after a restart',
+  /** EXPERIENCE.md:495 */
+  taskEmailOnCompletion: 'Email on completion',
+  /** EXPERIENCE.md:495 */
+  taskEmailOnError: 'Email on error',
+  /** EXPERIENCE.md:495 */
+  taskEmailOnExpiration: 'Email on expiry',
+  /** EXPERIENCE.md:495 */
+  taskEmailCaption: 'Addresses separated by commas.',
+  /** EXPERIENCE.md:496 */
+  taskStepError: 'This step needs attention: <reason>',
+  /** EXPERIENCE.md:497 */
+  taskRunAsOtherEffect: 'The task will run as this account, with its privileges, not yours.',
+  /** EXPERIENCE.md:498 */
+  taskSettingClassicOnly:
+    'Only the classic portal\'s Task Scheduler Wizard sets these settings of this type: <settings>.',
+  /** EXPERIENCE.md:499 */
+  taskPromptGroupSchedule: 'Scheduling',
+  /** EXPERIENCE.md:499 */
+  taskPromptNightly: 'Create a task that purges task history every night.',
+  /** EXPERIENCE.md:499 */
+  taskPromptWeekly: 'How do I run a task on weekdays only?',
+  /** EXPERIENCE.md:499 */
+  taskPromptWhichType: 'Which task type checks database integrity?',
+
 } as const;
 
 /**

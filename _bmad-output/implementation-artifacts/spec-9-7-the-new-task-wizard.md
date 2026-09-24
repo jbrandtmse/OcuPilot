@@ -2,7 +2,8 @@
 title: 'Story 9.7: The New Task wizard'
 type: 'feature'
 created: '2026-09-24'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: 'f9851990568c3c30a459502deb960612d5625086'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:

@@ -104,6 +104,7 @@ XData Coverage
 <screen name="X509Form" class="OcuPilot.Test.X509Import" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="X509CredentialList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="DeviceForm" class="OcuPilot.Test.DeviceCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
+<screen name="TaskForm" class="OcuPilot.Test.TaskCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
@@ -145,6 +146,7 @@ XData Coverage
 <tool name="tasks.schedule.run" class="OcuPilot.Test.ToolWrite" method="TestTheScheduleRunToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="tasks.schedule.suspend" class="OcuPilot.Test.ToolWrite" method="TestTheTaskSuspendToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="tasks.schedule.delete" class="OcuPilot.Test.ToolWrite" method="TestTheTaskDeleteToolIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="tasks.schedule.create" class="OcuPilot.Test.TaskCreate" method="TestTheSchemaIsDerivedAndDescribedFromTaskSuper"/>
 <tool name="webapp.list.delete" class="OcuPilot.Test.ToolWrite" method="TestTheWebApplicationDeleteToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="webapp.list.update" class="OcuPilot.Test.ToolWrite" method="TestTheRegistryAdvertisesItAsAWriteToolFulfilledOnTheInstance"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>

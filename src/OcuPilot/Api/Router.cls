@@ -151,6 +151,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/ssl/:id/test" Method="POST" Call="SslTest"/>
   <Route Url="/ssl/:id" Method="PUT" Call="SslUpdate"/>
   <Route Url="/ssl" Method="POST" Call="SslCreate"/>
+  <Route Url="/tasks/form" Method="GET" Call="TaskFormRead"/>
+  <Route Url="/tasks/check" Method="POST" Call="TaskCheck"/>
+  <Route Url="/tasks" Method="POST" Call="TaskCreate"/>
 </Routes>
 }
 
@@ -1031,6 +1034,29 @@ ClassMethod SslUpdate(pId As %String) As %Status
 ClassMethod SslCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Security.SslSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /tasks/form</code>: the New Task wizard's form
+/// read, delegating to <class>OcuPilot.Area.Task.TaskRules</class>. The <code>/tasks</code> block
+/// shares no prefix with any other route, so it sits at the tail; within it the sub-resources precede
+/// <code>/tasks</code>.</p>
+ClassMethod TaskFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Task.TaskRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /tasks/check</code>: the wizard's Next, which
+/// validates the values so far through the one rule set (AD-39).</p>
+ClassMethod TaskCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Task.TaskRules).HandleCheck()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /tasks</code>: the wizard's Create task, resolved
+/// through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod TaskCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Task.TaskSave).HandleCreate()
 }
 
 }
