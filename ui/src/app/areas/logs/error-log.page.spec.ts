@@ -1007,4 +1007,51 @@ describe('ErrorLogPage', () => {
     await settle(fixture);
     expect(storeSelection()).toEqual([]);
   });
+  it('Story 11.9: the store holds the error rows at the list level and none at namespaces, dates or detail', async () => {
+    // Mutation (Rule 19): publish `errors()` at every level in `publishRows` -> the detail leg holds
+    // the list's rows and goes red.
+    const api = seeded();
+    const { fixture, drill } = mount(api);
+    const store = TestBed.inject(ScreenStores).for(LOG_ERROR_LIST, []);
+
+    await drill.openNamespaces();
+    fixture.detectChanges();
+    expect(store.data()).toEqual([]);
+
+    await drill.openDates('USER');
+    fixture.detectChanges();
+    expect(store.data()).toEqual([]);
+
+    await drill.openList('09/23/2026');
+    fixture.detectChanges();
+    expect(store.data()).toEqual(drill.errors());
+    expect(store.data().length).toBe(1);
+    expect(store.truncated()).toBe(false);
+
+    // Publishing leaves the selection as it was.
+    (row(fixture, '4').querySelectorAll('[role="gridcell"]')[2] as HTMLElement).click();
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual([`USER${SEP}09/23/2026${SEP}4`]);
+    expect(store.data()).toEqual(drill.errors());
+
+    await drill.openDetail(4);
+    fixture.detectChanges();
+    expect(store.data()).toEqual([]);
+    expect(storeSelection()).toEqual([`USER${SEP}09/23/2026${SEP}4`]);
+
+    // Backing out of the list keeps its rows in the drill, so these legs hold rows to leak.
+    await drill.back();
+    fixture.detectChanges();
+    expect(store.data()).toEqual(drill.errors());
+    await drill.back();
+    fixture.detectChanges();
+    expect(drill.level()).toBe('dates');
+    expect(drill.errors().length).toBe(1);
+    expect(store.data()).toEqual([]);
+    await drill.back();
+    fixture.detectChanges();
+    expect(drill.level()).toBe('namespaces');
+    expect(drill.errors().length).toBe(1);
+    expect(store.data()).toEqual([]);
+  });
 });

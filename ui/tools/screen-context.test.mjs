@@ -12,6 +12,7 @@ import { dirname, join } from 'node:path';
 // - drop the secret-fields guard from `computeView` -> the secret-screen case goes red, and a
 //   `view` (with no rows key at all server-side) would be posted for a secret-typed screen.
 // - slice AFTER narrowing rather than before -> the cap-below-view case's `rowsAvailable` goes red.
+// - keep requiring a declared read in `computeView` -> the no-read case goes red (Story 11.9).
 // - return `false` for a `sk-` prefix -> the prefix cases redden; return `true` for
 //   `%Api.Mgmnt.v2` -> the non-trigger cases redden.
 
@@ -139,7 +140,8 @@ test('sort, direction and filter are carried through verbatim as the caller supp
 test('contextViewDeclared agrees with assembleScreenContext about whether a view would post', () => {
   assert.equal(contextViewDeclared(screen()), true);
   assert.equal(contextViewDeclared(null), false);
-  assert.equal(contextViewDeclared(screen({ read: null })), false);
+  assert.equal(contextViewDeclared(screen({ read: null })), true, 'declared fields send a view with no read');
+  assert.equal(contextViewDeclared(screen({ read: null, context: { fields: [], secretFields: [] } })), false);
   assert.equal(contextViewDeclared(screen({ context: { fields: [], secretFields: [] } })), false);
   assert.equal(contextViewDeclared(screen({ context: { fields: ['Name'], secretFields: ['apiKey'] } })), false);
 });
@@ -153,12 +155,76 @@ test('contextRowsSent agrees with the payload it would produce', () => {
 });
 
 test('contextRowsSent is 0 exactly when the row segment would be omitted', () => {
-  assert.equal(contextRowsSent(baseInputs({ descriptor: screen({ read: null }) })), 0);
+  assert.equal(contextRowsSent(baseInputs({ descriptor: screen({ read: null, context: { fields: [], secretFields: [] } }) })), 0);
   assert.equal(contextRowsSent(baseInputs({ descriptor: screen({ context: { fields: [], secretFields: [] } }) })), 0);
   assert.equal(
     contextRowsSent(baseInputs({ descriptor: screen({ context: { fields: ['Name'], secretFields: ['apiKey'] } }) })),
     0
   );
+});
+
+// --- a screen with no declared read (Story 11.9) --------------------------------------------
+
+const ERROR_FIELDS = ['errorNumber', 'time', 'errorText', 'routine', 'line'];
+
+function errorScreen() {
+  return screen({ route: 'logs/errors', read: null, context: { fields: ERROR_FIELDS, secretFields: [] } });
+}
+
+function errorRows(...numbers) {
+  return numbers.map((errorNumber) => ({
+    errorNumber,
+    time: '17:01:38',
+    errorText: '<DIVIDE>x^y',
+    routine: 'y',
+    line: ' s x=1/0',
+    username: 'Dana',
+    process: '4711',
+  }));
+}
+
+test('a screen with no declared read sends the rows it was given, in order, narrowed and capped', () => {
+  const inputs = baseInputs({
+    descriptor: errorScreen(),
+    rows: errorRows(3, 1, 2),
+    filter: 'Dana',
+    sort: 'time',
+    direction: 'desc',
+    rowCap: 2,
+  });
+  const payload = assembleScreenContext(inputs);
+  assert.equal(payload.route, 'logs/errors');
+  assert.deepEqual(
+    payload.view.rows.map((row) => row.errorNumber),
+    [3, 1],
+    'the supplied order, cut at the row cap -- no filter or sort is applied'
+  );
+  for (const row of payload.view.rows) {
+    assert.deepEqual(Object.keys(row), ERROR_FIELDS, 'the declared summary fields alone');
+    assert.equal('username' in row, false, 'the user name never goes');
+    assert.equal('process' in row, false, 'nor the process');
+  }
+  assert.equal(payload.view.rowsAvailable, 3, 'rowsAvailable is the supplied count');
+  assert.equal(payload.view.sort, '');
+  assert.equal(payload.view.direction, '');
+  assert.equal(payload.view.filter, '');
+});
+
+test('the chip agrees with a no-read screen: its row segment shows, counting what the payload sends', () => {
+  const inputs = baseInputs({ descriptor: errorScreen(), rows: errorRows(1, 2, 3), rowCap: 2 });
+  assert.equal(contextViewDeclared(errorScreen()), true);
+  assert.equal(contextRowsSent(inputs), assembleScreenContext(inputs).view.rows.length);
+  assert.equal(contextRowsSent(inputs), 2);
+  assert.equal(contextRowsSent(baseInputs({ descriptor: errorScreen(), rows: [] })), 0, 'a level with no rows sends none');
+});
+
+test('a form page (no read, no context fields) posts identity only: no view, no rows, no row segment', () => {
+  const form = screen({ route: 'os-management/devices/edit', read: null, context: { fields: [], secretFields: [] } });
+  const inputs = baseInputs({ descriptor: form, rows: [{ Name: 'typed', Description: 'unsaved' }] });
+  const payload = assembleScreenContext(inputs);
+  assert.deepEqual(payload, { route: 'os-management/devices/edit', namespace: 'HSCUSTOM' });
+  assert.equal(contextViewDeclared(form), false);
+  assert.equal(contextRowsSent(inputs), 0);
 });
 
 // --- looksLikeSecret -------------------------------------------------------------------------

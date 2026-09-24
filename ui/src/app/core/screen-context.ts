@@ -73,31 +73,39 @@ function narrowRow(row: unknown, fields: readonly string[]): Record<string, unkn
 /**
  * Whether `descriptor` would post a `view` at all -- shared by `computeView` and the chip's own
  * row-segment visibility (Boundaries & Constraints), so the two cannot disagree about when a
- * screen has one: a declared read, at least one declared `context.fields`, and no declared
- * `context.secretFields`.
+ * screen has one: at least one declared `context.fields`, and no declared `context.secretFields`.
+ * A declared read is not required: a screen that loads through its own endpoint (the application
+ * error list) publishes the rows it shows into its store, and those are what it sends.
  */
 export function contextViewDeclared(descriptor: Pick<ScreenDeclaration, 'read' | 'context'> | null): boolean {
-  if (descriptor === null || descriptor.read === null) return false;
+  if (descriptor === null) return false;
   return descriptor.context.fields.length > 0 && descriptor.context.secretFields.length === 0;
 }
 
 /**
  * The `view` a turn would post for `inputs`, or `null` exactly when the row segment is omitted
- * (Boundaries & Constraints): no read declared, no declared `context.fields`, or any declared
- * `context.secretFields`.
+ * (Boundaries & Constraints): no declared `context.fields`, or any declared
+ * `context.secretFields`. A screen with a declared read sends its filtered and sorted view; one
+ * with none sends the rows it supplied in the order given, with empty `sort`, `direction` and
+ * `filter` and `rowsAvailable` the supplied count. Either way each row is narrowed to the declared
+ * fields and the rows are capped at `rowCap`.
  */
 function computeView(inputs: ScreenContextViewInputs): ScreenContextView | null {
   const descriptor = inputs.descriptor;
-  if (descriptor === null || descriptor.read === null || !contextViewDeclared(descriptor)) return null;
-  const read = descriptor.read;
+  if (descriptor === null || !contextViewDeclared(descriptor)) return null;
   const fields = descriptor.context.fields;
+  const cap = Number.isSafeInteger(inputs.rowCap) && inputs.rowCap > 0 ? inputs.rowCap : 0;
+  const read = descriptor.read;
+  if (read === null) {
+    const rows = inputs.rows.slice(0, cap).map((row) => narrowRow(row, fields));
+    return { rows, rowsAvailable: inputs.rows.length, sort: '', direction: '', filter: '' };
+  }
   const filteredSorted = applyView(inputs.rows, read, {
     filter: inputs.filter,
     sort: inputs.sort,
     direction: inputs.direction,
   });
   const rowsAvailable = filteredSorted.length;
-  const cap = Number.isSafeInteger(inputs.rowCap) && inputs.rowCap > 0 ? inputs.rowCap : 0;
   const rows = filteredSorted.slice(0, cap).map((row) => narrowRow(row, fields));
   return { rows, rowsAvailable, sort: inputs.sort, direction: inputs.direction, filter: inputs.filter };
 }

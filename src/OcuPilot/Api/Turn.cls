@@ -112,29 +112,10 @@ ClassMethod HandleStart() As %Status
 
         Set tContextJson = ""
         If tShareEffective && tBody.%IsDefined(..#CONTEXTFIELD) && $IsObject(tBody.%Get(..#CONTEXTFIELD)) {
-            Set tContextBuildSC = ##class(OcuPilot.Screen.Context).Build(tBody.%Get(..#CONTEXTFIELD), .tContextBuilt, .tContextPayload, .tFieldMaxLengths, .tDroppedFields)
-            If $$$ISERR(tContextBuildSC) {
-                Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tContextBuildSC))
+            Set tContextSC = ..BoundedContext(tBody.%Get(..#CONTEXTFIELD), ''tVerdict("blocked"), tRowCap, tLimits, .tContextJson)
+            If $$$ISERR(tContextSC) {
+                Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tContextSC))
                 Quit
-            }
-            If tContextBuilt && 'tContextPayload.%IsDefined("rows") {
-                ; A descriptor declaring context.secretFields (AD-24): identity only, and the
-                ; kernel cutter never runs over it -- there are no rows to bound. rowsSent is still
-                ; reported, 0, so a consumer reading it need not special-case "no rows key at all".
-                Do tContextPayload.%Set("rowsSent", 0, "number")
-                Set tContextJson = tContextPayload.%ToJSON()
-            } ElseIf tContextBuilt {
-                Set tDefaultFieldMax = +$Parameter(tLimits, "FIELDMAXLENGTH")
-                Set tTotalMax = +$Parameter(tLimits, "TOOLRESULTMAXLENGTH")
-                ; A non-scalar value Build dropped is reported before the cutter runs, so the
-                ; size cut counts it and Apply ORs it into truncatedFields.
-                If $ListLength(tDroppedFields) > 0 {
-                    Set tDropped = []
-                    For tI = 1:1:$ListLength(tDroppedFields) Do tDropped.%Push($List(tDroppedFields, tI))
-                    Do tContextPayload.%Set("truncatedFields", tDropped)
-                    Do tContextPayload.%Set("truncated", 1, "boolean")
-                }
-                Do ##class(OcuPilot.Kernel.Agent.Bound).Apply(tContextPayload, tRowCap, .tFieldMaxLengths, tDefaultFieldMax, tTotalMax, .tContextJson)
             }
         }
 
@@ -455,12 +436,15 @@ ClassMethod ConversationViolation(pBody As %DynamicObject) As %String
 /// values and never the payload's top-level strings, so each is refused above
 /// <var>pLimitsClass</var>'s <code>FIELDMAXLENGTH</code>; with them bounded, a rowless payload
 /// always fits the total budget. <code>rowsAvailable</code> is a whole number.</p>
+/// <p><code>tools</code> and <code>readOnly</code> are refused whatever their type: the instance
+/// derives both (<method>BoundedContext</method>), and a request never supplies either.</p>
 ClassMethod ContextViolation(pBody As %DynamicObject, pLimitsClass As %String) As %String
 {
     If 'pBody.%IsDefined(..#CONTEXTFIELD) Quit ""
     Set tCode = ##class(OcuPilot.Api.Error).#TURNCONTEXTINVALID
     Set tContext = pBody.%Get(..#CONTEXTFIELD)
     If '$IsObject(tContext) || 'tContext.%IsA("%Library.DynamicObject") Quit tCode
+    If (tContext.%GetTypeOf("tools") '= "unassigned") || (tContext.%GetTypeOf("readOnly") '= "unassigned") Quit tCode
     If (tContext.%GetTypeOf("route") '= "string") || (tContext.%Get("route") = "") Quit tCode
     If tContext.%GetTypeOf("namespace") '= "string" Quit tCode
     If tContext.%Get("namespace") '= ##class(OcuPilot.Kernel.Scope).Current() Quit tCode
@@ -495,6 +479,54 @@ ClassMethod ContextViolation(pBody As %DynamicObject, pLimitsClass As %String) A
         If (tRowsAvailable < 0) || (tRowsAvailable '= (tRowsAvailable \ 1)) || (tRowsAvailable < tRows.%Size()) Quit tCode
     }
     Quit ""
+}
+
+/// <p>The bounded <code>screen_context</code> payload for <var>pContext</var>, as JSON text in
+/// <var>pJson</var> (AD-24), or <code>""</code> when its route names no screen or the payload
+/// cannot fit <var>pLimits</var>'s <code>TOOLRESULTMAXLENGTH</code>.</p>
+/// <p>It projects the context (<method>OcuPilot.Screen.Context.Build</method>), then adds the two
+/// members the instance derives: <code>tools</code>, the screen's tool wire names
+/// (<method>OcuPilot.Screen.Context.ScreenTools</method>), and <code>readOnly</code>,
+/// <var>pReadOnly</var> as a boolean. Both are added before any bound applies, so they count within
+/// it. A payload with no rows (a screen declaring <code>context.secretFields</code>) reports
+/// <code>rowsSent</code> 0 and is measured whole; one with rows reports each non-scalar value
+/// <method>OcuPilot.Screen.Context.Build</method> dropped in <code>truncatedFields</code> and is
+/// cut by <method>OcuPilot.Kernel.Agent.Bound.Apply</method> under <var>pRowCap</var>.</p>
+/// <p><b>Caller contract:</b> <var>pContext</var> has passed <method>ContextViolation</method>, and
+/// <var>pReadOnly</var> is the <code>blocked</code> answer of the verdict dispatch enforces
+/// (<method>OcuPilot.Kernel.Restraint.Resolved</method>, AD-30), never a switch read on its
+/// own.</p>
+ClassMethod BoundedContext(pContext As %DynamicObject, pReadOnly As %Boolean, pRowCap As %Integer, pLimits As %String, Output pJson As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set pJson = ""
+    Try {
+        Set tSC = ##class(OcuPilot.Screen.Context).Build(pContext, .tBuilt, .tPayload, .tFieldMaxLengths, .tDroppedFields)
+        If $$$ISERR(tSC) || 'tBuilt Quit
+        Set tDescriptor = $ClassMethod(##class(OcuPilot.Screen.Context).RegistryClass(), "DescriptorForRoute", pContext.%Get("route"))
+        Set tSC = ##class(OcuPilot.Screen.Context).ScreenTools(tDescriptor, .tTools)
+        If $$$ISERR(tSC) Quit
+        Do tPayload.%Set("tools", tTools)
+        Do tPayload.%Set("readOnly", ''pReadOnly, "boolean")
+        Set tTotalMax = +$Parameter(pLimits, "TOOLRESULTMAXLENGTH")
+        If 'tPayload.%IsDefined("rows") {
+            Do tPayload.%Set("rowsSent", 0, "number")
+            Set tJson = tPayload.%ToJSON()
+            If $Length(tJson) <= tTotalMax Set pJson = tJson
+            Quit
+        }
+        If $ListLength(tDroppedFields) > 0 {
+            Set tDropped = []
+            For tI = 1:1:$ListLength(tDroppedFields) Do tDropped.%Push($List(tDroppedFields, tI))
+            Do tPayload.%Set("truncatedFields", tDropped)
+            Do tPayload.%Set("truncated", 1, "boolean")
+        }
+        Do ##class(OcuPilot.Kernel.Agent.Bound).Apply(tPayload, pRowCap, .tFieldMaxLengths, +$Parameter(pLimits, "FIELDMAXLENGTH"), tTotalMax, .pJson)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pJson = ""
+    Quit tSC
 }
 
 /// <p>Refuse with 422: the violation's code on the envelope, and the same code with its sentence on

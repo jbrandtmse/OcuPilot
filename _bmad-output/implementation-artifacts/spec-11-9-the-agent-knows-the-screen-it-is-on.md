@@ -2,14 +2,22 @@
 title: 'Story 11.9: The agent knows the screen it is on'
 type: 'feature'
 created: '2026-09-24'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'baa571531068d028f1d42127a15aecc4b2079a2a'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-11-context.md'
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The panel never reads a screen store's truncated flag, so a list the source endpoint itself cut (the error list's drill.truncated) reaches the turn with rowsAvailable equal to the rows on screen and truncated false.
+    evidence: |-
+      panel.ts has no read of store.truncated(); the payload's truncated reflects only the row-cap and size cuts. Pre-existing for every screen; this story's publishRows passes drill.truncated() into the store, where nothing consumes it for context.
+    location: >-
+      ui/src/app/shell/panel.ts (assembleContext)
+    severity: low
 ---
 
 <intent-contract>
@@ -100,6 +108,25 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-24 — Review pass
+
+- verdicts: 14 findings — high 0, medium 2, low 3, false 9, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` verification-gap: the refusal test's "no turn was reserved" assertion could not fail, because its bodies carried no `conversationId` and `ConversationViolation` stops them before `GuardedReserve` — both bodies now carry a conversation from `StartConversation`; the member-check mutation now reddens the Keys assertion too (run 19), green on revert (run 20).
+  - `[medium]` `[patch]` verification-gap: the error-log page case's namespaces and dates legs ran before any error rows existed, so publishing `errors()` at those levels stayed green — added `back()` legs from the list to dates and namespaces with rows still held by the drill; the `level === 'detail'` mutation reddens the dates leg.
+  - `[low]` `[patch]` verification-gap: AC4 had no `mutation:` line — dropped `contextViewDeclared`'s fields guard, the form-page case went red, reverted, line recorded.
+  - `[false]` `[reject]` intent-alignment: two existing `screen-context.test.mjs` assertions were edited — they pinned the read requirement the intent's Approach removes; the AD pins the spec names (`ContextBound`, `TurnContext`, AD-11 classes) are unedited.
+  - `[false]` `[reject]` intent-alignment: the turn record's `readOnly` value (`enforcedReadOnly`) differs from the payload member — the Code Map says `tValues("readOnly")` is not the member's source; the member follows the verdict as the Always rule requires.
+  - `[false]` `[reject]` intent-alignment: a size check was added on the identity-only branch — Tasks specify it (`TOOLRESULTMAXLENGTH`, over it yields "").
+  - `[false]` `[reject]` intent-alignment: a primary action admits any bound write tool whose `Creates()` is true rather than matching `PrimaryActionId` — the Always rule words it as `Creates()`; the devices leg pins update and delete absent.
+  - `[false]` `[reject]` intent-alignment: `parentScope` resolves only unreached row actions, not the parent's read — that is the Always rule's literal wording.
+  - `[false]` `[reject]` intent-alignment: the devices, detail and form rows are pinned in process, not over the wire — the wire path is the same `BoundedContext`, and `TurnGrounding` pins its forwarding (the Integration AC).
+  - `[false]` `[reject]` intent-alignment: the error list's other levels are pinned only at the store — `contextRowsSent` over no rows is 0 in `screen-context.test.mjs`, and the page case now covers every non-list level.
+  - `[low]` `[reject]` intent-alignment: "payload that cannot fit" is not exercised, including the new identity-only over-budget branch — an identity-only payload is bounded field by field far below 65,536 characters, so the branch is unreachable in use; a test would need a synthetic limits class.
+  - `[false]` `[reject]` intent-alignment: the chip's row segment changes without editing `context-chip.ts` — intended; the browser spec pins the chip count against `rowsSent`.
+  - `[false]` `[reject]` intent-alignment: the offered tool set is not narrowed per screen — the Approach adds naming members and does not narrow the set (AD-8).
+  - `[low]` `[defer]` intent-alignment: the panel never reads `store.truncated()`, so an endpoint-side cut of the error list is not reported in context — pre-existing for every screen; recorded in `deferred:`.
+
 ## Design Notes
 
 **Governing ADs:** AD-11 (rule 1: prompt constant, context as a synthetic tool result), AD-24 (bounds; amended below), AD-30 (the one verdict), AD-5 (derivation through the descriptor), AD-36, AD-48 (summary fields only; the variable table never goes), AD-53 and AD-55 (actions and Save are the tools' callers), AD-9 (no escalated frame is added; the verdict is read before the spawn), AD-19 (`core/` stays framework-free), AD-39 (`TURN.CONTEXT.INVALID` reused).
@@ -143,13 +170,51 @@ You are OcuPilot, an assistant inside the InterSystems IRIS management portal. Y
 **Pinning mutations (Rule 19).** Apply each, recompile the package, observe red, revert, and confirm `git status --short` is unchanged. Record `mutation: ... -> ...` under each item.
 
 - Prompt: delete the read-only sentence, and only that statement's assertion goes red.
+  - mutation: read-only sentence deleted from `BUILTIN` -> `ScreenGrounding.TestThePromptCarriesTheFiveStatements` red on "the read-only statement" alone (1 of 9 methods, 1 assertion)
 - `ScreenTools`: drop the `parentScope` arm (details leg red), drop the primary-action arm (devices leg red), and admit every bound tool (devices leg red).
+  - mutation: `parentScope` arm disabled -> `ScreenGrounding.TestADetailScreenReachesItsActionsThroughItsParent` red alone
+  - mutation: primary-action arm dropped -> `ScreenGrounding.TestAPrimaryActionNamesItsCreateToolOnly` red alone
+  - mutation: every bound write tool admitted -> `ScreenGrounding.TestAPrimaryActionNamesItsCreateToolOnly` red alone (update and delete named)
 - `readOnly`: read `enforcedReadOnly` instead of `blocked`, and `TurnGrounding`'s read-only-definition leg goes red.
+  - mutation: `HandleStart` passes `tVerdict("enforcedReadOnly")` -> `TurnGrounding.TestAReadOnlyDefinitionReadsTrue` red alone (1 of 5)
 - Refusal: remove the member check in `ContextViolation`, and both refusal legs go red.
+  - mutation: member check removed -> `TurnGrounding.TestARequestSupplyingAMemberIsRefusedAndNothingIsReserved` red on both the `tools` and `readOnly` legs and on the no-reservation assertion (run 19; the bodies carry a real `conversationId`), and `ScreenGrounding.TestARequestSupplyingADerivedMemberIsRefused` red on all 12 member/type legs
 - Bounds: add the members after `Bound.Apply`, and the budget leg goes red. Size its rows so the slack is smaller than the members.
+  - mutation: members set after `Bound.Apply` and the JSON re-serialized -> `ScreenGrounding.TestTheMembersCountWithinTheTotalBound` red (65,660 characters), and `TestBothMembersRideBothBranches` red (the identity-only branch lost its members)
 - Client: keep requiring a read in `computeView` (no-read case red), publish `errors()` on every level (page spec red), and stop publishing (browser spec red).
+  - mutation: `computeView` requires a read -> `screen-context.test.mjs` no-read case and chip-agreement case red (2 of 24)
+  - mutation: `publishRows` publishes `errors()` at every level -> `error-log.page.spec.ts` Story 11.9 case red on the detail leg (1 of 22)
+  - mutation: `publishRows` publishes `errors()` at every level but `detail` -> the same case red on the `dates` leg reached by `back()` from the list (1 of 22)
+  - mutation (AC4): `contextViewDeclared` drops its `fields.length > 0` guard -> `screen-context.test.mjs` form-page case red (with 4 older no-view cases, 5 of 24)
+  - mutation: `publishRows` returns at once, bundle rebuilt and redeployed -> `screen-grounding.browser-spec.mjs` red (the chip never counts the errors on screen)
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** `BUILTIN` now carries the five screen-context statements. `Screen.Context.ScreenTools` derives a screen's tool wire names from the registries. `Api.Turn.BoundedContext` adds `tools` and `readOnly` (the verdict's `blocked`) before either bound, on both branches. `ContextViolation` refuses a request that supplies either member. On the client, a screen with no read and declared fields sends its supplied rows, and the error list publishes its `list`-level rows into its store.
+
+**Files.**
+
+- `src/OcuPilot/Kernel/Agent/Prompt.cls`: the rewritten prompt constant.
+- `src/OcuPilot/Screen/Context.cls`: `ScreenTools` and its helpers.
+- `src/OcuPilot/Api/Turn.cls`: `BoundedContext`, the member refusal, and `HandleStart`'s call.
+- `ui/src/app/core/screen-context.ts`: the no-read view rule.
+- `ui/src/app/areas/logs/error-log.page.ts`: `publishRows`.
+- Tests: new `src/OcuPilot/Test/ScreenGrounding.cls`, `src/OcuPilot/Test/TurnGrounding.cls` and `ui/browser/screen-grounding.browser-spec.mjs`; extended `ui/tools/screen-context.test.mjs` and `ui/src/app/areas/logs/error-log.page.spec.ts`.
+- `scripts/ci-throwaway.sh`: two `# classes: TurnGrounding` lines, placed off Epic 9's hunk.
+- Footprint extensions: `Screen/Context.cls` and `scripts/ci-throwaway.sh`, as the spec planned.
+
+**Review.** 14 findings. Three patched (2 medium, 1 low): the refusal test now carries a real conversation, the page case gains `back()` legs, and AC4 has its mutation line. One low deferred (`deferred:`, the panel ignores `store.truncated()`, pre-existing). Ten rejected: nine false and one low; the reasons are in the triage log. Follow-up review: false, because every patch is test-only and its mutation was observed red.
+
+**Verification** (all on `ocupilot-b-ci`).
+
+- Full ObjectScript sweep: 223 classes, 1,987 tests, 0 failed, runs 21-243.
+- `smoke.sh`: 49 of 49 passed.
+- `test:tools`: 1,375 of 1,375. `test:components`: 1,043 of 1,043.
+- The story's three browser spec files: 14 of 14, against the redeployed bundle (initial total 1.32 MB, under budget).
+- `check-objectscript` and `lint-docs`: clean.
+- Every `mutation:` line was applied, observed red and reverted.
+
+**Residual risk.** The `turnprobe` definition defaults to read-only, so existing armed turns now carry `readOnly` true. No existing test asserts the member.
