@@ -107,6 +107,8 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-09-24, spec gate (runner): the Design Notes' AD-4 recommendation is applied. AD-4 now lists `Security.X509Credential` beside `Security.Resource` and `Wallet.Secret`, measured on `ocupilot-b-ci` (an `OwnerList`-only PUT kept `PeerNames` and `CAFile`). No task changes.
+
 ## Review Triage Log
 
 ## Design Notes
