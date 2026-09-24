@@ -176,10 +176,13 @@ Method TestTheTwoFactorRules()
     Set tSms = $Parameter(..#RULES, "TWOFACTORSMSBIT")
     Set tTotp = $Parameter(..#RULES, "TWOFACTORTOTPBIT")
     Set tBase = $ZBoolean(tStored, tSms + tTotp, 2)
-    For tCase = $ListBuild(tBase + tSms + tTotp, "USERTWOFACTORBOTH"), $ListBuild($ZBoolean(tBase, 64, 6), "USERAUTHEENABLEDSCOPE"), $ListBuild("fast", "USERAUTHEENABLEDSCOPE"), $ListBuild(tBase + tSms, ""), $ListBuild(tBase + tTotp, ""), $ListBuild(tBase, "") {
+    ; The rules compare against a stored mask with neither bit on, so each bit turned on alone is a change.
+    Set tStoredOff = ##class(%DynamicObject).%FromJSON(tFresh.%ToJSON())
+    Do tStoredOff.%Set("AutheEnabled", tBase, "number")
+    For tCase = $ListBuild(tBase + tSms + tTotp, "USERTWOFACTORBOTH"), $ListBuild($ZBoolean(tBase, 64, 6), "USERAUTHEENABLEDSCOPE"), $ListBuild("fast", "USERAUTHEENABLEDSCOPE"), $ListBuild("99999999999999999999", "USERAUTHEENABLEDSCOPE"), $ListBuild(tBase + tSms, ""), $ListBuild(tBase + tTotp, ""), $ListBuild(tBase, "") {
         Set tArgs = {}
         Do tArgs.%Set("AutheEnabled", $List(tCase, 1), $Select($IsValidNum($List(tCase, 1)): "number", 1: "string"))
-        Set tSC = $ClassMethod(..#RULES, "Validate", ..#PROBEUSER, $ClassMethod(..#RULES, "Changed", tArgs, tFresh), .tViolations, 0, 0, "update", tFresh)
+        Set tSC = $ClassMethod(..#RULES, "Validate", ..#PROBEUSER, $ClassMethod(..#RULES, "Changed", tArgs, tStoredOff), .tViolations, 0, 0, "update", tStoredOff)
         Do $$$AssertStatusOK(tSC, "the rules answer for " _ $List(tCase, 1))
         Set tCode = $Select(+$Get(tViolations) > 0: $List(tViolations(1), 2), 1: "")
         Set tExpected = $Select($List(tCase, 2) = "": "", 1: $Parameter("OcuPilot.Api.Error", $List(tCase, 2)))
@@ -194,6 +197,43 @@ Method TestTheTwoFactorRules()
     Do $$$AssertEquals(tStatus, 422, "over the wire at 422")
     Set tRow = $Select($IsObject($Get(tBody)) && (tBody.%GetTypeOf("detail") = "object"): tBody.detail.violations.%Get(0), 1: "")
     Do $$$AssertEquals($Select($IsObject(tRow): tRow.field _ " " _ tRow.code, 1: ""), "AutheEnabled " _ ##class(OcuPilot.Api.Error).#USERTWOFACTORBOTH, "with the violation on AutheEnabled")
+}
+
+/// <p>AD-39: the edit's own field rules -- each text setting held to the length the instance
+/// stores, a flag to true/false/0/1, the expiry to a real date, a routine to a namespace the edit
+/// leaves, and no setting an object -- each refuse on the field with its own code, and a refused
+/// Save sends nothing.</p>
+/// <p>Mutation (Rule 19): delete the length loop from
+/// <method>OcuPilot.Area.Permissions.UserCreateRules.UpdateViolations</method> -- the length legs
+/// and the Save leg go red.</p>
+Method TestTheEditsFieldRulesRefuseEachFieldWithItsCode()
+{
+    Do $$$AssertStatusOK(..Fresh(..#PROBEUSER, .tFresh), "the account reads fresh")
+    If '$IsObject($Get(tFresh)) Quit
+    Set tMax = $ClassMethod(..#RULES, "Lengths")
+    Set tCases = []
+    For tPair = $ListBuild("FullName", "USERFULLNAMELENGTH"), $ListBuild("Comment", "USERCOMMENTLENGTH"), $ListBuild("EmailAddress", "USEREMAILADDRESSLENGTH"), $ListBuild("PhoneNumber", "USERPHONENUMBERLENGTH"), $ListBuild("PhoneProvider", "USERPHONEPROVIDERLENGTH") {
+        Set tBound = +tMax.%Get($List(tPair, 1))
+        Do $$$AssertTrue(tBound > 0, $List(tPair, 1) _ " has a stored length")
+        Set tArgs = {}
+        Do tArgs.%Set($List(tPair, 1), $Translate($Justify("", tBound + 1), " ", "x"), "string")
+        Do tCases.%Push({"args": (tArgs), "field": ($List(tPair, 1)), "code": ($Parameter("OcuPilot.Api.Error", $List(tPair, 2)))})
+    }
+    Do tCases.%Push({"args": {"Enabled": "yes"}, "field": "Enabled", "code": (##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)})
+    Do tCases.%Push({"args": {"Comment": {"a": 1}}, "field": "Comment", "code": (##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)})
+    Do tCases.%Push({"args": {"ExpirationDate": "2027-02-30"}, "field": "ExpirationDate", "code": (##class(OcuPilot.Api.Error).#USEREXPIRATIONDATESHAPE)})
+    Do tCases.%Push({"args": {"NameSpace": ""}, "field": "Routine", "code": (##class(OcuPilot.Api.Error).#USERROUTINENAMESPACE)})
+    Set tIterator = tCases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCase) {
+        Set tSC = $ClassMethod(..#RULES, "Validate", ..#PROBEUSER, $ClassMethod(..#RULES, "Changed", tCase.args, tFresh), .tViolations, 0, 0, "update", tFresh)
+        Do $$$AssertStatusOK(tSC, "the rules answer for " _ tCase.args.%ToJSON())
+        Set tGot = $Select(+$Get(tViolations) > 0: $List(tViolations(1), 1) _ " " _ $List(tViolations(1), 2), 1: "")
+        Do $$$AssertEquals(tGot, tCase.field _ " " _ tCase.code, tCase.args.%ToJSON() _ " is refused on its field")
+    }
+    Do $ClassMethod(..#PORT, "Clear")
+    Set tSC = $ClassMethod(..#SAVE, "Update", ..#PROBEUSER, {"Comment": ($Translate($Justify("", +tMax.%Get("Comment") + 1), " ", "x"))}, .tHttp, .tFault, .tViolations)
+    Do $$$AssertEquals(+$Get(tViolations), 1, "a Save with an over-long comment carries one violation")
+    Do $$$AssertEquals($ClassMethod(..#PORT, "WriteCount"), 0, "and sends nothing")
 }
 
 /// <p>AD-39 on the agent's caller: a <code>permissions.users.update</code> proposal turning both
@@ -225,17 +265,22 @@ Method TestTheAgentsUpdateKeepsTheTwoFactorRules()
 }
 
 /// <p>AD-10 (the matrix's protected-account and DW-1520 rows): a Save that disables
-/// <code>_SYSTEM</code> is refused 403 <code>PROHIBITED.SYSTEMACCOUNT</code>, and one that turns
-/// <code>ChangePassword</code> on for <code>CSPSystem</code> 403
-/// <code>PROHIBITED.SERVICEACCOUNTSIGNIN</code>, each before the port, and nothing is sent.</p>
+/// <code>_SYSTEM</code>, or sets it to expire on a past date, is refused 403
+/// <code>PROHIBITED.SYSTEMACCOUNT</code>, and one that turns <code>ChangePassword</code> on for
+/// <code>CSPSystem</code> 403 <code>PROHIBITED.SERVICEACCOUNTSIGNIN</code>, each before the port,
+/// and nothing is sent. A future expiration date passes the set and reaches the held port.</p>
 /// <p>Mutation (Rule 19): remove the <method>Prohibited</method> call from
-/// <method>OcuPilot.Area.Permissions.UserSave.Update</method> -- both legs go red, and the held
-/// port keeps either account as it was.</p>
+/// <method>OcuPilot.Area.Permissions.UserSave.Update</method> -- every refused leg goes red, and the
+/// held port keeps each account as it was. Drop the expiration term from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.Disables</method> -- the past-date leg goes red.</p>
 Method TestDisablingTheSystemAccountIsRefusedBeforeThePort()
 {
     Do $$$AssertStatusOK(..Fresh("CSPSystem", .tService), "CSPSystem reads fresh")
     Do $$$AssertTrue($IsObject($Get(tService)) && (tService.%Get("ChangePassword") = 0), "and is not required to change its password")
-    For tCase = $ListBuild("_SYSTEM", "{""Enabled"":false}", "SYSTEMACCOUNT"), $ListBuild("CSPSystem", "{""ChangePassword"":true}", "SERVICEACCOUNTSIGNIN") {
+    Do $ClassMethod(..#PORT, "Clear")
+    Set tSC = $ClassMethod(..#HELDSAVE, "Update", "_SYSTEM", {"AccountNeverExpires": false, "ExpirationDate": "2099-12-31"}, .tHttp, .tFault, .tViolations)
+    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), $Parameter("OcuPilot.Test.HeldPutPort", "HELDSTATUS") _ " " _ ##class(OcuPilot.Api.Error).#PORTUNAVAILABLE, "_SYSTEM: a future expiration date is not refused and reaches the held port")
+    For tCase = $ListBuild("_SYSTEM", "{""Enabled"":false}", "SYSTEMACCOUNT"), $ListBuild("_SYSTEM", "{""AccountNeverExpires"":false,""ExpirationDate"":""2020-01-01""}", "SYSTEMACCOUNT"), $ListBuild("CSPSystem", "{""ChangePassword"":true}", "SERVICEACCOUNTSIGNIN") {
         Set tName = $List(tCase, 1)
         Set tCode = $List(tCase, 3)
         Do $ClassMethod(..#PORT, "Clear")

@@ -241,7 +241,7 @@ ClassMethod ReadRowKeyOf(pToolClass As %String) As %String
     Quit tKey
 }
 
-/// <p>The one fresh read every caller of a write makes -- the mint, the confirm's re-read, the
+/// <p>The one fresh read the operation's callers make -- the mint, the confirm's re-read, the
 /// prohibited set and a screen action (AD-51, AD-52): <var>pToolClass</var>'s read type against
 /// <var>pEndpoint</var> through <var>pPort</var> with the query <var>pQuery</var>, answering the
 /// target in <var>pFresh</var>.</p>
@@ -377,15 +377,19 @@ ClassMethod Apply(pToolClass As %String, pDefaultPort As %String, pEndpoint As %
 /// <p><var>pFresh</var> is the target as this operation's fresh read answered it before the write.
 /// Once the write reads OK the tool's own <method>OcuPilot.Screen.Tool.Write.AfterWrite</method> is
 /// run with it, through the same port; its failure is this call's failure, with its own
-/// <var>pHttpStatus</var> and <var>pFault</var>, though the write has been applied.</p>
-ClassMethod ApplyAt(pToolClass As %String, pPort As %String, pEndpoint As %String, pIdParam As %String, pIdValue As %String, pPayloadJson As %String, pBody As %DynamicObject, Output pWritten As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pFresh As %DynamicObject = "") As %Status
+/// <var>pHttpStatus</var> and <var>pFault</var>, though the write has been applied.
+/// <var>pApplied</var> is 1 once the write itself has read OK, whatever <code>AfterWrite</code>
+/// answers, so a caller that marks applied writes (AD-15) marks this one too.</p>
+ClassMethod ApplyAt(pToolClass As %String, pPort As %String, pEndpoint As %String, pIdParam As %String, pIdValue As %String, pPayloadJson As %String, pBody As %DynamicObject, Output pWritten As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pFresh As %DynamicObject = "", Output pApplied As %Boolean) As %Status
 {
     Set pWritten = ""
     Set pHttpStatus = 0
     Set pFault = ""
+    Set pApplied = 0
     Do ..Query(pToolClass, pIdParam, pIdValue, pPayloadJson, .tQuery)
     Set tSC = $ClassMethod(pPort, "Invoke", pEndpoint, ..WriteType(pToolClass), .tQuery, pBody, .pWritten, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
+    Set pApplied = 1
     If (pToolClass = "") || '##class(%Dictionary.CompiledMethod).%ExistsId(pToolClass _ "||AfterWrite") Quit tSC
     Set tAfterSC = $ClassMethod(pToolClass, "AfterWrite", pPort, pEndpoint, pIdParam, pIdValue, pFresh, .tAfterHttp, .tAfterFault)
     If $$$ISOK(tAfterSC) Quit tSC

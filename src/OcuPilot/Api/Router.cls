@@ -320,8 +320,9 @@ ClassMethod UserNameCheck() As %Status
 }
 
 /// <p>Thin <code>Call=</code> target for <code>PUT /users/:id</code> (Story 9.1): the user editor's
-/// Save, resolved through the one tool the agent's confirm uses (AD-55). It follows the two
-/// sub-resources, so neither is read as an id.</p>
+/// Save, resolved through the one tool the agent's confirm uses (AD-55). The two sub-resources are
+/// <code>GET</code> routes, so a <code>PUT</code> to either path is this route's, for the account
+/// of that name.</p>
 ClassMethod UserUpdate(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Area.Permissions.UserSave).HandleUpdate(pId)

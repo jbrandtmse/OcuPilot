@@ -612,12 +612,12 @@ export class UserEditorPage {
   }
 
   /**
-   * The protected-account sentence the Enabled field is drawn refused with while it is on, or `''`
-   * (AD-10): turning a protected account off is refused, turning it on never is.
+   * The protected-account sentence the Enabled field is drawn refused with while the account reads
+   * enabled, or `''` (AD-10): turning a protected account off is refused, turning it on never is.
    */
   protected get enabledRefusal(): string {
     this.generation();
-    if (!this.store.flag('Enabled')) return '';
+    if (!this.store.storedFlag('Enabled')) return '';
     return this.ruleReason(DELETE_ACTION);
   }
 
@@ -630,12 +630,12 @@ export class UserEditorPage {
   }
 
   /**
-   * The sign-in sentence the change-on-login field is drawn refused with while it is off, or `''`
-   * (DW-1520): turning it on for a service account is refused, turning it off never is.
+   * The sign-in sentence the change-on-login field is drawn refused with while the account reads it
+   * off, or `''` (DW-1520): turning it on for a service account is refused, turning it off never is.
    */
   protected get changePasswordRefusal(): string {
     this.generation();
-    if (this.store.flag('ChangePassword')) return '';
+    if (this.store.storedFlag('ChangePassword')) return '';
     return this.ruleReason(SET_PASSWORD);
   }
 

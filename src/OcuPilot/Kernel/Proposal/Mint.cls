@@ -661,22 +661,6 @@ ClassMethod DefinitionInForce(Output pId As %String, Output pVersion As %String)
     Quit ##class(OcuPilot.Kernel.State.Agent).GuardedVersion(pId, .pVersion)
 }
 
-/// <p>The admin request type <var>pToolClass</var>'s fresh read is made with (AD-51), or
-/// <parameter>READTYPE</parameter> when the call named no tool class. A class that answers an
-/// empty type is read with the parameter too, so an unreadable declaration is a merge write's
-/// read rather than a call with no type at all.</p>
-ClassMethod ReadTypeOf(pToolClass As %String) As %String
-{
-    Set tType = ""
-    Try {
-        If pToolClass '= "" Set tType = $ClassMethod(pToolClass, "ReadType")
-    } Catch {
-        Set tType = ""
-    }
-    If tType = "" Quit ..#READTYPE
-    Quit tType
-}
-
 /// <p>The fingerprint subject <var>pToolClass</var> declares (AD-51), or <code>""</code> when the
 /// call named no tool class or the class declares none -- which is the descriptor's exclusions
 /// over the whole payload, every merge write's own behavior.</p>

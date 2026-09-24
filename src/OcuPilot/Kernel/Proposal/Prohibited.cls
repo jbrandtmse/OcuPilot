@@ -276,6 +276,13 @@ Parameter APPLICATIONROLEFIELDS = "MatchRoles";
 
 Parameter FIELDCHANGEPASSWORD = "ChangePassword";
 
+/// <p>The account's last usable date. The vendor refuses a sign-in after it and disables the account
+/// at that refusal (measured on this build), so a date before today is a disable by effect.</p>
+Parameter FIELDEXPIRATIONDATE = "ExpirationDate";
+
+/// <p>Whether the account ignores its expiration date; the vendor clears the date when it is set.</p>
+Parameter FIELDACCOUNTNEVEREXPIRES = "AccountNeverExpires";
+
 /// <p>The vendor's own password-change request type, which the sign-in arm reads as a new
 /// password.</p>
 Parameter PASSWORDWRITETYPE = "CHANGEPWD";
@@ -415,8 +422,9 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
 }
 
 /// <p>The account settings of the classic General tab beyond <code>Enabled</code> and
-/// <code>ChangePassword</code>, each a change AD-10 forbids none of: none removes the account or
-/// its administration. <code>AutheEnabled</code>'s two-factor bits are the only ones a change may
+/// <code>ChangePassword</code>. None removes the account or its administration but an expiration
+/// date before today, which is a disable by effect and refused as one (<method>Disables</method>).
+/// <code>AutheEnabled</code>'s two-factor bits are the only ones a change may
 /// move, which the edit's own field rules hold, and turning change-password-on-login on for a service account is the sign-in arm's
 /// (<method>User</method>).</p>
 ClassMethod UserSettingFields() As %List [ Private ]
@@ -1709,12 +1717,18 @@ ClassMethod IsPrivilegedRole(pRole As %String) As %Boolean [ Private ]
     Quit $Extract(tName, 1, $Length(..#ADMINROLEPREFIX)) = $ZConvert(..#ADMINROLEPREFIX, "U")
 }
 
-/// <p>Whether this proposal turns the target's <code>Enabled</code> off: the diff names that field
-/// and the payload's value reads as off (<method>IsOff</method>).</p>
+/// <p>Whether this proposal disables the target by effect: the diff names <code>Enabled</code> and
+/// the payload's value reads as off (<method>IsOff</method>), or the diff names
+/// <parameter>FIELDEXPIRATIONDATE</parameter> or <parameter>FIELDACCOUNTNEVEREXPIRES</parameter> and
+/// the payload leaves the account expiring on a date before today.</p>
 ClassMethod Disables(pPayload As %DynamicObject, ByRef pChanged) As %Boolean [ Private ]
 {
-    If '$Data(pChanged(..#FIELDENABLED)) Quit 0
-    Quit ..IsOff(..Rendered(pPayload, ..#FIELDENABLED))
+    If $Data(pChanged(..#FIELDENABLED)) && ..IsOff(..Rendered(pPayload, ..#FIELDENABLED)) Quit 1
+    If '$Data(pChanged(..#FIELDEXPIRATIONDATE)) && '$Data(pChanged(..#FIELDACCOUNTNEVEREXPIRES)) Quit 0
+    If '..IsOff(..Rendered(pPayload, ..#FIELDACCOUNTNEVEREXPIRES)) Quit 0
+    Set tDay = $ZDateH(..Rendered(pPayload, ..#FIELDEXPIRATIONDATE), 3, , , , , , , "")
+    If tDay = "" Quit 0
+    Quit tDay < +$Horolog
 }
 
 /// <p>Whether this write changes how a service account signs in (AD-10 as amended 2026-09-23,
@@ -2171,20 +2185,6 @@ ClassMethod Target(pToolName As %String, pId As %String, Output pTarget As %Dyna
         Set tSC = ex.AsStatus()
     }
     Quit tSC
-}
-
-/// <p>The admin request type <var>pToolClass</var>'s target is read with (AD-51), or
-/// <parameter>READTYPE</parameter> when the class declares none or cannot be asked.</p>
-ClassMethod ReadTypeOf(pToolClass As %String) As %String [ Private ]
-{
-    Set tType = ""
-    Try {
-        If pToolClass '= "" Set tType = $ClassMethod(pToolClass, "ReadType")
-    } Catch {
-        Set tType = ""
-    }
-    If tType = "" Quit ..#READTYPE
-    Quit tType
 }
 
 /// <p>The state-row label <var>pToolClass</var> declares (AD-51), or <code>""</code> for a merge

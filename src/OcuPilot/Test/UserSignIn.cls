@@ -144,6 +144,38 @@ Method TestAFailedFlagReapplyIsTheWritesFailureAndThePasswordStands()
     Do $$$AssertTrue($ClassMethod(..#FIXTURE, "UserField", tName, "Salt") '= tSalt, "and the password was set")
 }
 
+/// <p>DW-1516's failure path on the agent's caller (AD-15): a confirmed password write that landed
+/// before its flag re-apply failed answers the re-apply's fault, and its ledger row is an error that
+/// was marked, because the write it records happened.</p>
+/// <p>Mutation (Rule 19): emit no marker on the error arm of
+/// <method>OcuPilot.Kernel.Proposal.Confirm.Confirm</method> whatever <code>ApplyAt</code> applied --
+/// the marking assertion goes red.</p>
+Method TestAConfirmedPasswordWhoseReapplyFailsIsStillMarked()
+{
+    Set tName = ..#PROBEUSER
+    Set tSC = $ClassMethod(..#FIXTURE, "EnsureUser", tName, "%Developer", 1, .tCreated)
+    Do $$$AssertStatusOK(tSC, "the probe account is created")
+    If $$$ISERR(tSC) Quit
+    Do ..SetFlag(tName)
+    Set tSalt = $ClassMethod(..#FIXTURE, "UserField", tName, "Salt")
+    Set tSC = $ClassMethod(..#FIXTURE, "SeedTurn", $Username, "completed", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "a completed probe turn is seeded")
+    If $$$ISERR(tSC) Quit
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(tTurnKey)
+    Set tSC = ##class(OcuPilot.Screen.Tool.UserPassword).View("", {"Name": (tName)}, 0, .tProposal, .tHttp, .tFault)
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    Do $$$AssertStatusOK(tSC, "the password write is proposed")
+    If $$$ISERR(tSC) Quit
+    Do $ClassMethod("OcuPilot.Test.HeldPutPort", "Clear")
+    Set tSC = ##class(OcuPilot.Test.HeldPutConfirm).Confirm(tProposal.%Get("proposalId"), {"Password": ("OcuPilotSignInPw" _ $Job _ "m")}, $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertStatusNotOK(tSC, "the confirm answers the re-apply's failure")
+    Do $$$AssertEquals(tHttp _ " " _ tCode, $Parameter("OcuPilot.Test.HeldPutPort", "HELDSTATUS") _ " " _ ##class(OcuPilot.Api.Error).#PORTUNAVAILABLE, "with the held port's status and code")
+    Do $$$AssertTrue($ClassMethod(..#FIXTURE, "UserField", tName, "Salt") '= tSalt, "the password was set")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).WriteRow(tTurnKey, .tRow), 1, "one write-kind ledger row")
+    Do $$$AssertEquals($Get(tRow("AuditMarked")), $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDYES"), "and the write it records is marked")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurnKey), "this class removes the ledger rows it wrote")
+}
+
 /// <p>The shared gate's verdict on a password write to <var>pName</var>, as
 /// <code>&lt;refused&gt;|&lt;code&gt;</code>, against an armed target.</p>
 Method Password(pName As %String) As %String

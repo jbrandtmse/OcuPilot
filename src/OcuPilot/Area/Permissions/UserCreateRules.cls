@@ -198,7 +198,7 @@ ClassMethod UpdateViolations(pArgs As %DynamicObject, pFresh As %DynamicObject, 
 }
 
 /// <p>Add <code>AutheEnabled</code>'s violation to <var>pViolations</var>, or none. A value that is
-/// not a whole number, or that differs from <var>pFresh</var>'s stored mask in any bit but
+/// not a whole number of at most fifteen digits, or that differs from <var>pFresh</var>'s stored mask in any bit but
 /// <parameter>TWOFACTORSMSBIT</parameter> and <parameter>TWOFACTORTOTPBIT</parameter>, is
 /// <code>USER.AUTHEENABLED.SCOPE</code>; one with both of those on is
 /// <code>USER.TWOFACTOR.BOTH</code>. An absent member changes nothing.</p>
@@ -207,7 +207,7 @@ ClassMethod AutheViolation(pArgs As %DynamicObject, pFresh As %DynamicObject, By
     If '$IsObject(pArgs) || (pArgs.%GetTypeOf(..#FIELDAUTHE) = "unassigned") Quit
     If '..IsScalar(pArgs, ..#FIELDAUTHE) Quit
     Set tWanted = ..Text(pArgs, ..#FIELDAUTHE)
-    If '$Match(tWanted, "^[0-9]+$") {
+    If '$Match(tWanted, "^[0-9]{1,15}$") {
         Do ..Add(.pViolations, ..#FIELDAUTHE, ##class(OcuPilot.Api.Error).#USERAUTHEENABLEDSCOPE)
         Quit
     }

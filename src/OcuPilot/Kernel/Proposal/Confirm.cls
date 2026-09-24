@@ -378,7 +378,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         ; screen action's are one call site. AD-52's port declaration, AD-51's request type and the
         ; tool's own port query (read off the STORED payload the fingerprint just compared) all
         ; resolve inside it.
-        Set tWriteSC = ##class(OcuPilot.Kernel.Proposal.Operation).ApplyAt(tToolClass, ..PortClassOf(tToolClass), tEndpoint, tIdParam, tIdValue, $Get(pRow("payload")), tBody, .tWritten, .tWriteHttp, .tWriteFault, $Get(tFresh))
+        Set tWriteSC = ##class(OcuPilot.Kernel.Proposal.Operation).ApplyAt(tToolClass, ..PortClassOf(tToolClass), tEndpoint, tIdParam, tIdValue, $Get(pRow("payload")), tBody, .tWritten, .tWriteHttp, .tWriteFault, $Get(tFresh), .tApplied)
         If $$$ISERR(tWriteSC) {
             ; The claim has committed and the token is spent: the proposal stays confirmed and the
             ; port's own normalized envelope is what the caller is answered with. There is no
@@ -391,16 +391,23 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
             ; the same detail the other two closing refusals carry. Without it a card would fall
             ; back to the state its last poll saw and offer Confirm again on a spent token.
             Do ..ClosedDetail(pProposalId, .pDetail)
-            ; The write did not happen, so no marker is emitted and the row makes no claim about
-            ; marking. The row stops being `pending`, which is what separates "it failed" from
-            ; "nobody can account for it".
-            Do $ClassMethod(..LedgerClass(), "FinalizeConfirmedWrite", tLedgerKey, "error", pCode, $Get(pRow("targetRef")), tFieldNames, tPairs, $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDNONE"))
+            ; The row stops being `pending`, which is what separates "it failed" from "nobody can
+            ; account for it". A write that did not happen emits no marker and the row makes no
+            ; claim about marking. A write that landed before its follow-up failed (AD-56 (i)'s
+            ; flag re-apply) is still an agent write, so it is marked (AD-15).
+            Set tMarking = $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDNONE")
+            If $Get(tApplied) {
+                Set tMarkSC = $ClassMethod(..EventClass(), "RecordAgentWrite", pProposalId, $Get(pRow("toolName")), $Get(pRow("targetRef")), pUser, tWrittenAt, tFieldNames, .tEmitted)
+                Set tMarking = $Parameter("OcuPilot.Kernel.State.Ledger", $Select($$$ISOK(tMarkSC): "MARKEDYES", 1: "MARKEDNO"))
+                If $Get(tEmitted, 0) Do $ClassMethod(..EventClass(), "RecordMarking", $$$ISOK(tMarkSC))
+            }
+            Do $ClassMethod(..LedgerClass(), "FinalizeConfirmedWrite", tLedgerKey, "error", pCode, $Get(pRow("targetRef")), tFieldNames, tPairs, tMarking)
             Set tSC = tWriteSC
             Quit
         }
 
-        ; AD-15. The write has succeeded; this is the one place a marker is emitted, so a write
-        ; made any other way emits none. The return value is checked here because
+        ; AD-15. The write has succeeded; a marker is emitted here and on the applied arm above,
+        ; so a write made any other way emits none. The return value is checked here because
         ; $System.Security.Audit answers 0 and drops the event when its triple is unregistered,
         ; with no error and no log line -- and the marker never fails the write and never
         ; propagates: tSC is untouched on either arm.

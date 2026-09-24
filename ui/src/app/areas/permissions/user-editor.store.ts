@@ -224,6 +224,11 @@ export class UserEditor {
     return this.buffer.flags[field] ?? false;
   }
 
+  /** `field` as the last read or accepted Save left it, which a protection rule is drawn against. */
+  storedFlag(field: string): boolean {
+    return this.opened.flags[field] ?? false;
+  }
+
   /** Whether two-factor sign-in by SMS text is on. */
   sms(): boolean {
     return (this.buffer.authe & TWO_FACTOR_SMS_BIT) !== 0;
@@ -420,6 +425,7 @@ export class UserEditor {
     this.savedValue = false;
     this.notify();
     const sent = this.snapshot();
+    const sentBuffer = this.buffer;
     const result = await this.api().requestJson<unknown>(`${USERS_PATH}/${encodeEntityId(this.accountName)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -434,9 +440,11 @@ export class UserEditor {
       this.notify();
       return false;
     }
-    this.opened = this.buffer;
-    this.savedValue = true;
-    this.formDirty.setDirty(false);
+    // What was sent is now stored; anything typed while the Save was in flight stays unsaved work.
+    this.opened = sentBuffer;
+    const unsaved = Object.keys(this.changedFields()).length > 0;
+    this.savedValue = !unsaved;
+    this.formDirty.setDirty(unsaved);
     this.injector.get(ChangeBus).publish({ kind: 'changed', type: USER_ENTITY, scope: USER_SCOPE, id: this.accountName, action: 'updated' });
     this.notify();
     return true;

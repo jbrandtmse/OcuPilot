@@ -29,12 +29,17 @@ function user(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function mount(answers: Record<string, unknown>[]) {
+function mount(answers: Record<string, unknown>[], hold: { release?: () => void } = {}) {
   TestBed.resetTestingModule();
   const queue = [...answers];
   const api = {
-    requestJson: async <T,>(): Promise<JsonResult<T>> =>
-      ({ kind: 'ok', status: 200, body: { requiredFields: [], maxLengths: {}, rules: [], roles: [], user: queue.shift() ?? user() } }) as JsonResult<T>,
+    requestJson: async <T,>(_path?: string, init: { method?: string } = {}): Promise<JsonResult<T>> => {
+      if (init.method === 'PUT') {
+        await new Promise<void>((resolve) => (hold.release = resolve));
+        return { kind: 'ok', status: 200, body: {} } as JsonResult<T>;
+      }
+      return { kind: 'ok', status: 200, body: { requiredFields: [], maxLengths: {}, rules: [], roles: [], user: queue.shift() ?? user() } } as JsonResult<T>;
+    },
   };
   const formDirty = new FormDirty();
   TestBed.configureTestingModule({
@@ -77,5 +82,20 @@ describe('the user editor store (Story 9.1)', () => {
     expect(store.text('Comment')).toBe('typed');
     expect(store.text('FullName')).toBe('Probe');
     expect(store.roles()).toEqual(['%SQL', '%Developer']);
+  });
+
+  it('keeps what was typed while a Save was in flight as unsaved work', async () => {
+    // Mutation (Rule 19): take the buffer as stored when the Save lands -> the kept-edit assertion goes red.
+    const hold: { release?: () => void } = {};
+    const { store, formDirty } = mount([user()], hold);
+    await store.open('probe');
+    store.setText('Comment', 'sent');
+    const saving = store.save();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    store.setText('FullName', 'typed during the save');
+    hold.release?.();
+    await saving;
+    expect(store.changedFields()).toEqual({ FullName: 'typed during the save' });
+    expect(formDirty.dirty()).toBe(true);
   });
 });

@@ -12,7 +12,7 @@ import { Session } from '../../core/session';
 import { STRINGS } from '../../core/strings';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import { UserEditorPage } from './user-editor.page';
-import { TWO_FACTOR_SMS_BIT, USERS_FORM_PATH, USERS_PATH } from './user-editor.store';
+import { TWO_FACTOR_SMS_BIT, TWO_FACTOR_TOTP_BIT, USERS_FORM_PATH, USERS_PATH } from './user-editor.store';
 
 /**
  * The user editor over stubs of what an instance supplies -- the URL and the HTTP answers. The real
@@ -236,6 +236,12 @@ describe('the user editor (Story 9.1)', () => {
     expect(off.checked).toBe(false);
     expect(off.disabled).toBe(false);
     expect(disabled.host.querySelector('#ocu-user-edit-Enabled-refusal')).toBeNull();
+    // Ticking it stays undoable: the lock is drawn against the account as read, not the edit.
+    // Mutation (Rule 19): key the Enabled lock off the edited value -> the still-enabled assertion goes red.
+    off.click();
+    await settle(disabled.fixture);
+    expect(off.checked).toBe(true);
+    expect(off.disabled).toBe(false);
 
     const service = await mount('CSPSystem');
     const setPassword = service.host.querySelector('[data-action="set-password"]') as HTMLButtonElement;
@@ -243,5 +249,49 @@ describe('the user editor (Story 9.1)', () => {
     const reasonId = setPassword.getAttribute('aria-describedby') ?? '';
     expect(service.host.querySelector(`#${reasonId}`)?.textContent?.trim()).toBe(STRINGS.userRefusalServiceAccountSignIn);
     expect((service.host.querySelector('#ocu-user-edit-ChangePassword') as HTMLInputElement).disabled).toBe(true);
+
+    // A service account already required to change its password may have the flag turned off, and back.
+    // Mutation (Rule 19): drop the stored-flag exemption from `changePasswordRefusal` -> this leg goes red.
+    const flagged = await mount('CSPSystem', undefined, { ChangePassword: true });
+    const change = flagged.host.querySelector('#ocu-user-edit-ChangePassword') as HTMLInputElement;
+    expect(change.disabled).toBe(false);
+    change.click();
+    await settle(flagged.fixture);
+    expect(change.checked).toBe(false);
+    expect(change.disabled).toBe(false);
+  });
+
+  it('offers the display-QR option while the one-time password is on', async () => {
+    // Mutation (Rule 19): delete the HOTPKeyDisplay field from the template -> this test goes red.
+    const { host } = await mount('Dana', undefined, { AutheEnabled: 32 + TWO_FACTOR_TOTP_BIT });
+    expect(host.querySelector('#ocu-user-edit-HOTPKeyDisplay')).not.toBeNull();
+  });
+
+  it('follows the route to another account when one editor route leads to the next', async () => {
+    // Mutation (Rule 19): drop the NavigationEnd subscription -> the Name and PUT-path assertions go red.
+    const { fixture, host, calls } = await mount('Dana');
+    await TestBed.inject(Router).navigateByUrl('/permissions/users/edit/Lee');
+    await settle(fixture);
+    expect(calls.some((call) => call.path === `${USERS_FORM_PATH}?name=Lee`)).toBe(true);
+    expect((host.querySelector('#ocu-user-edit-Name') as HTMLInputElement).value).toBe('Lee');
+    const comment = host.querySelector('#ocu-user-edit-Comment') as HTMLInputElement;
+    comment.value = 'changed';
+    comment.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (host.querySelector('.ocu-form-bar .ocu-button-primary') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(calls.find((call) => call.method === 'PUT')?.path).toBe(`${USERS_PATH}/Lee`);
+  });
+
+  it('removes a held role from the Roles tab at once, as the list\u2019s own remove-role action', async () => {
+    // Mutation (Rule 19): send the Remove without its role -> the body assertion goes red.
+    const { fixture, host, calls } = await mount('Dana');
+    tabs(host)[1].click();
+    await settle(fixture);
+    (host.querySelector('.ocu-form-role .ocu-button-text') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(host.querySelector('app-screen-action-dialogs app-role-dialog')).toBeNull();
+    const post = calls.find((call) => call.method === 'POST');
+    expect(JSON.parse(post?.body ?? '{}')).toEqual({ action: 'remove-role', id: 'Dana', values: { Role: '%SQL' } });
   });
 });

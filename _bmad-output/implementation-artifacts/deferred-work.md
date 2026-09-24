@@ -6539,3 +6539,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: low | fix-risk: med | footprint: in-story
 - evidence: 7.11 changed .pQuery to .tQuery so SPLITQUERIES reaches the vendor; Epic 8 changed pBody to tBody on that line. It is inside a conflict hunk that already exists without 7.11 (merge-tree: 6 AdminPort conflicts before and after).
 - 2026-09-23T20:54:37Z status=wontfix-accepted owner=7-11-system-and-user-audit-event-configuration by=cr note=reopen_if=merged Invoke passes .pQuery to RunSequence (AuditEventTools split GET goes red)
+
+### DW-1592: The user editor shows the account name as the route spells it, since the form read answers no Name
+- source: spec-9-1-the-user-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: UserEditor.accountName is the route id and GET /users/form?name= returns no Name, so /edit/dana shows dana for Dana (list links carry the stored spelling)
+- 2026-09-24T02:30:11Z status=wontfix-accepted owner=9-1-the-user-editor by=cr note=reopen_if=a list link, a create or agent navigation lands on an editor whose Name field differs in case from the stored name
+
+### DW-1593: The service-account sign-in arm exempts the signed-in account but not a service account that is the last %All holder, which AD-10's DW-1520 sentence lists beside it
+- source: spec-9-1-the-user-editor.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Prohibited.ChangesServiceSignIn exempts only NormalizedUser($Username); AD-10 (Story 9.1 spec gate) says _SYSTEM, signed-in and last %All holder stay permitted; the matrix row lists _SYSTEM and signed-in
+- 2026-09-24T02:30:11Z status=wontfix-theoretical owner=9-1-the-user-editor by=cr note=real only when irisowner/CSPSystem/_Ensemble is the only %All holder; refusal errs safe; AD-10 wording is the lead's to clarify
+
+### DW-1594: Turning on two-factor, or PasswordNeverExpires off, for a service account is permitted though either could stop its sign-in later
+- source: spec-9-1-the-user-editor.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Prohibited.ChangesServiceSignIn covers CHANGEPWD and ChangePassword on only; AutheEnabled bits and PasswordNeverExpires pass for CSPSystem/_Ensemble/irisowner (inference: effect not measured)
+- 2026-09-24T02:30:11Z status=wontfix-theoretical owner=9-1-the-user-editor by=cr note=real if a throwaway with system two-factor on shows CSPSystem's gateway sign-in failing after its TOTP bit is set

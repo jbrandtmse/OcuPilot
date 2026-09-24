@@ -531,7 +531,7 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // take the table past 600.
   //
   // Story 9.1 moves the bound to 800 under the same protocol: its four rows publish nineteen
-  // literals -- the sign-in refusal, the user editor's eleven labels and empty state, the tab
+  // literals -- the sign-in refusal, the user editor's ten labels and empty state, the tab
   // error names and five suggested-prompt literals -- and take the table past 700, with the rest of
   // Epic 9's editors still to land.
   assert.ok(

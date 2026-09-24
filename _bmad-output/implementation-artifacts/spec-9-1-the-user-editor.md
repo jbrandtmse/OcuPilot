@@ -2,7 +2,7 @@
 title: 'Story 9.1: The user editor'
 type: 'feature'
 created: '2026-09-23'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '1d0ad5eb590985d347fb6e29e4ef13594891dffc'
 baseline_commit: '1d0ad5eb590985d347fb6e29e4ef13594891dffc'
 review_loop_iteration: 0
@@ -239,6 +239,11 @@ Review patches (2026-09-23 review pass; each adds or tightens a test, plus its `
 - P9 `Test/AuditEventTools.cls`: `TestAResetsBeforeIsTheListsOwnTotal` asserts the LIST read succeeded and answered one row, rather than skipping.
 - P10 `## Verification`: mutation lines for AC1 (`DESCRIPTOR_EDIT_PAGES` entry removed), AC3 (the `Password`/`NewPassword`/`EscalationRoles` legs), and DW-1520's client half (the editor's change-password lock).
 
+**Rework iteration 1 (CI red on build commit `19849911`, run 35945402895, job `browser`, 2 of the full suite):**
+
+- [ ] [CI] browser: `ui/browser/users.browser-spec.mjs:225` "AC7: the _SYSTEM name link carries the id in one route segment" timed out waiting for `/permissions/users/_SYSTEM` -- this story moved the Users name cell to the editor (`UserForm` left `CREATE_ONLY_FORMS`), so the pin names the old target. Re-point it to `permissions/users/edit/_SYSTEM` (the editor, id in one segment, `data-id="_SYSTEM"` or the editor's own equivalent), keeping its AD-13 intent; confirm the editor opens over `_SYSTEM` -- https://github.com/jbrandtmse/OcuPilot/actions/runs/35945402895
+- [ ] [CI] browser: `ui/browser/device-editor.browser-spec.mjs:206` "AC2: a create and an edit reach the Devices list without a refresh, and its name cell opens the editor" timed out (30 s wait) -- a Story 8.8 test this story's shared changes broke (candidates: `screen-outlet.ts` `DESCRIPTOR_EDIT_PAGES`, `navigation.ts` `screenForEntityType`/`CREATE_ONLY_FORMS`, the toast rule, `list-page.ts`'s dialog move). Reproduce it against the rebuilt, redeployed bundle on `ocupilot-ci`, find which wait fails and why, and fix the product code (not the pin) unless the pin names behavior this story's spec deliberately changed. Also run every other browser spec file that exercises a form-page editor or a list name-cell link (`device-editor`, `users`, `users-create`, `users-actions`, `users-editor`, `task-resume`, and any `*-create`/`*-editor` spec touching `screen-outlet` or `navigation.ts`) one file at a time -- https://github.com/jbrandtmse/OcuPilot/actions/runs/35945402895
+
 **Acceptance Criteria:**
 
 - **Given** a user row, **when** its name is opened, **then** `permissions/users/edit/<id>` shows the tabs General (account settings, comment, expiry, enabled, change-password-on-login, startup namespace and routine, email, mobile, two-factor) and Roles.
@@ -246,7 +251,51 @@ Review patches (2026-09-23 review pass; each adds or tightens a test, plus its `
 - **Given** the user tools, **when** their schemas are read, **then** `Password` is secret on create and password and is absent from update and from Save. `NewPassword` is never a model argument or a Save key. The stored proposal, the ledger and screen context carry neither (the existing `UserUpdate.cls:1247` pin plus the `UserSave` key refusal).
 - Integration: **given** `form-tabs` and `screen-action-dialogs`, **when** `UserEditorPage` renders an error on a tab that is not selected and an Add role dialog, **then** the tab opens with its dot and ", 1 error", and the dialog is the list's own. The browser spec observes both.
 
+### Review Findings
+
+Code review 2026-09-23 (four layers, full-opus; 40 raw rows, 17 surviving entries: 2 high, 5 medium, 10 low). Every patch was applied and verified by mutation on `ocupilot-ci`.
+
+- [x] [Review][Patch] HIGH: a past `ExpirationDate` on `_SYSTEM`, the signed-in account, a service account or the last `%All` holder passed AD-10 (the vendor refuses the sign-in and sets `Enabled` 0, measured on `ocupilot-ci`). `Disables` now counts it as a disable [src/OcuPilot/Kernel/Proposal/Prohibited.cls:1724]
+- [x] [Review][Patch] HIGH: when a password write landed and its flag re-apply then failed, the confirm emitted no AD-15 marker and its comment said the write had not happened. `ApplyAt` now answers `pApplied`, and the confirm marks that write [src/OcuPilot/Kernel/Proposal/Confirm.cls:399]
+- [x] [Review][Patch] The Enabled and change-on-login locks read the edited value, so a tick on a disabled `_SYSTEM`, or an untick on a flagged service account, could not be undone. Both locks now read the stored value (`storedFlag`) [ui/src/app/areas/permissions/user-editor.page.ts:618]
+- [x] [Review][Patch] The update-mode field rules (lengths, flag shape, expiry, routine without a namespace, an object value) had no test [src/OcuPilot/Test/UserSave.cls]
+- [x] [Review][Patch] Nothing tested the editor following one editor route to the next, so a Save could reach the previous account [ui/src/app/areas/permissions/user-editor.page.spec.ts]
+- [x] [Review][Patch] Edits typed while a Save was in flight were marked saved and then dropped [ui/src/app/areas/permissions/user-editor.store.ts:444]
+- [x] [Review][Patch] A 20-digit `AutheEnabled` threw `<FUNCTION>` and answered 500. It is now held to 15 digits, which is `USER.AUTHEENABLED.SCOPE` [src/OcuPilot/Area/Permissions/UserCreateRules.cls:210]
+- [x] [Review][Patch] The "SMS on alone" leg never ran its rule, because it equalled the probe's stored mask [src/OcuPilot/Test/UserSave.cls]
+- [x] [Review][Patch] Nothing tested the Roles tab's Remove, or the display-QR option appearing while TOTP is on [ui/src/app/areas/permissions/user-editor.page.spec.ts]
+- [x] [Review][Patch] `Mint.ReadTypeOf` and `Prohibited.ReadTypeOf` were dead after `ReadTarget`, and `TaskResume`'s mutation note named one of them. The note now names `Operation.ReadType`. It was not re-observed: this throwaway refuses `TaskResume` on its arming variable [src/OcuPilot/Test/TaskResume.cls:113]
+- [x] [Review][Patch] Three comments were wrong: the `Router` note about the `PUT` sub-resources, `ReadTarget`'s "every caller", and the `strings.test.mjs` label count [src/OcuPilot/Api/Router.cls:323]
+- [x] [Review][Defer] DW-1592: the editor shows the name as the route spells it (low) — wontfix-accepted, with a `reopen_if` in the ledger
+- [x] [Review][Defer] DW-1593: the sign-in arm does not exempt a service account that is the last `%All` holder, which AD-10's sentence lists — wontfix-theoretical. The code follows the matrix row, and the AD-10 wording is the lead's to settle
+- [x] [Review][Defer] DW-1594: two-factor on, or `PasswordNeverExpires` off, for a service account passes — wontfix-theoretical (unmeasured)
+
+Rejected:
+
+- false: the Save's agent test is only refusals — `UserSignIn` confirms a `permissions.users.update` proposal that succeeds.
+- false: `enabledRefusal` borrows the wrong rule — no disable action exists, and `protected-account` is the right rule.
+- false: suggested prompts show on the create route — nothing renders the descriptor key yet (Story 11.3).
+- low: refused fields use `disabled`, not `aria-disabled` — the caption stays readable, and the fix needs click guards.
+- low: `AfterWrite`'s re-read is a separate `GET`/`PUT` pair — the race window is the same as every AD-4 merge write.
+- low (by-design): the classic page's gating of two-factor, its provider picker and HOTP regenerate are outside the spec's 14 fields and its Never list.
+- low (by-design): tab and title keys are reused, as the spec directs.
+- low: a delete from another session is ignored until Save answers 404.
+- low: the editor re-reads twice after an action.
+- low: a no-op `PUT` would write, but the client never sends one.
+- low: a stale refresh or a late sink could land after a Save or teardown — needs a sub-second race.
+- low: a non-404 form-read fault or a merge problem answers 500 — unreachable once the gate and rules pass.
+- low: a `1`/`true` flag mismatch on the agent path — it errs toward refusing.
+- low: `UserSave` bypasses `ApplyAt`/`ReadTarget` — `UserUpdate` declares no hook or row key.
+- low: the `AuditChange` Total could move between two reads — nothing in the run audits a config change.
+- low: `USER.NAME.ABSENT` is not in the violation roster — it is only ever an envelope code.
+- low: tab selection is a component signal — it is view state, not screen state (AD-19).
+- low: the EXPERIENCE.md row names one surface of the sign-in sentence — shared-append file.
+- low: the tests hard-code ", 1 error" — they pin the published literal.
+- rejected (edits the spec): the spec's counts, and its `status` against sprint-status.
+
 ## Spec Change Log
+
+- 2026-09-24 rework iteration 1 (lead): CI red on `19849911` (run 35945402895, browser job, two specs outside this story's own list). Re-opened with two `[CI]` items; code review round 1 closed `done` with 0 unresolved high/med (its patches are in the rework commit).
 
 - 2026-09-23 spec gate (lead): applied the recommended amendments - AD-10 (service-account sign-in arm, DW-1520), AD-56 (i) (password write re-applies the flag, DW-1516), AD-51 (a list-type fresh read filtered to one row, DW-1576) in the spine; EXPERIENCE.md toast row and Off-screen toast bullet (DW-1546). The new Fixed-strings row and `strings.ts` key for `PROHIBITED.SERVICEACCOUNTSIGNIN` stay with the implement stage. Added the `toast-host.ts` boundary (Epic 15 contended).
 
@@ -362,6 +411,10 @@ Review patches (2026-09-23 review pass; each adds or tightens a test, plus its `
 - mutation: `UserEditorPage.changePasswordRefusal` answers `''` → `user-editor.page.spec.ts` "draws the protected account's Enabled and Delete refused, ..." red on the `CSPSystem` change-password lock (DW-1520, client half).
 - mutation, rebuilt and redeployed to `ocupilot-ci`: the `arriveSaved` call dropped from `UserCreateFormPage.onSave` → `users-create.browser-spec.mjs` AC2 and AC4 red at `waitForSaved`'s Saved wait, which comes before AC4's new assertion on the editor's own form bar.
 - mutation, rebuilt and redeployed to `ocupilot-ci`: the `UserForm` entry removed from `DESCRIPTOR_EDIT_PAGES` → all seven `users-editor.browser-spec.mjs` tests red (AC1).
+- mutation (code review): the expiration term dropped from `Prohibited.Disables`, the length loop disabled in `UserCreateRules.UpdateViolations`, and `AutheViolation`'s digit bound removed → `UserSave` `TestDisablingTheSystemAccountIsRefusedBeforeThePort` (the past-date leg), `TestTheEditsFieldRulesRefuseEachFieldWithItsCode` and `TestTheTwoFactorRules` (`<FUNCTION>`) red, run 9131; green again after the restore.
+- mutation (code review): the confirm's error arm emits no marker whatever `ApplyAt` applied → `UserSignIn` `TestAConfirmedPasswordWhoseReapplyFailsIsStillMarked` red, run 9132.
+- mutation (code review), together: the Enabled lock keyed off the edited value; the display-QR field's `@if` false; the `NavigationEnd` follow disabled; the store taking the buffer as stored when a Save lands → `user-editor.page.spec.ts` "draws the protected account's Enabled …" (the tick-stays-undoable leg), "offers the display-QR option …", "follows the route to another account …", and `user-editor.store.spec.ts` "keeps what was typed while a Save was in flight …" red.
+- mutation (code review), together: the change-on-login lock keyed off the edited value; `onRemoveRole` sends no role → the service-account leg of "draws the protected account's Enabled …" and "removes a held role from the Roles tab …" red.
 
 ## Auto Run Result
 

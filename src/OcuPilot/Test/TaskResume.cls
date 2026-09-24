@@ -110,7 +110,7 @@ Method OnAfterOneTest() As %Status
 /// and discloses nothing as unchanged, because nothing will be sent (AD-51).</p>
 /// <p>Mutation (Rule 19): drop the <code>StateDiff</code> push in
 /// <class>OcuPilot.Screen.Tool.TaskResume</class> -- the one-row assertion goes red; make
-/// <method>OcuPilot.Kernel.Proposal.Mint.ReadTypeOf</method> answer its own parameter -- the
+/// <method>OcuPilot.Kernel.Proposal.Operation.ReadType</method> answer its own parameter -- the
 /// <code>INFO</code> assertion goes red and the mint reads a GET that carries no state at all.</p>
 Method TestTheMintAnswersOneStateRowFromTheInfoRead()
 {
