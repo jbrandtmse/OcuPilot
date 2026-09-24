@@ -2,12 +2,20 @@
 title: 'Story 10.4: Sampling parameters left to the provider'
 type: 'bugfix'
 created: '2026-09-23'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '0b4fe3390ad15528ab8505488fbc679a3a916242'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      AgentViolation's providers-route assertion message still says "the twelve cascade columns" and names only adapterClass and authVersion as absent.
+    evidence: |-
+      The expected column string is exact and green; only the message is stale (thirteen columns now, and reasoningEffort is also deliberately absent). Task 15 limits this story to one literal edit in a file outside Epic 10's footprint.
+    location: >-
+      src/OcuPilot/Test/AgentViolation.cls:215
+    severity: low
 ---
 
 <intent-contract>
@@ -116,6 +124,29 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-23 — Review pass
+
+- verdicts: 18 findings — high 0, medium 1, low 5, false 12, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The form's Temperature tests never let the provider name and `acceptsTemperature` disagree, so a name branch (AD-5) would pass — added the page-spec case `the field follows the acceptsTemperature column, never the provider name` with the columns inverted; the name-keyed `temperatureApplies()` mutation reddens it alone (recorded in Verification).
+  - `[low]` `[patch]` The browser case's two DW-1337 `freshViolations` assertions had no recorded mutation, and `unmeasurable` is not asserted — recorded the caption contrast mutation (`#eeeeee`, rebuilt and redeployed; red at 1.12:1), which also shows the caption is measured; no `unmeasurable === 0` assertion added, because the form route carries 4 unmeasurable text elements before this story in every state.
+  - `[low]` `[reject]` AC5 has no pinning mutation for the stub-adapter guards — the spec records AC5 as a tier property with no pinning test by construction; the only mutation that exercises a guard points a test at a shipped adapter, which risks the live call AC5 forbids, and the guard is a plain prefix test plus `Quit` read at `AdapterSampling.BodyFor`.
+  - `[low]` `[patch]` `AnthropicThinking` asserted that its own `SIGNATURE` constant contains `+`, `/` and `=`, which no code change can fail — deleted the assertion; the parameter's doc comment carries the fact. Class re-run on the throwaway: 4 tests, 0 failed (run 247).
+  - `[low]` `[defer]` `AgentViolation.cls:215`'s message still says "the twelve cascade columns" and names only two absent columns — the expected value is exact; correcting the message is a second literal edit, which task 15 forbids on a file outside Epic 10's footprint.
+  - `[false]` `[reject]` The reasoning echo runs on the `probe-local` row through `ProviderStub`, not the shipped `anthropic` row — `ProviderStub` overrides neither `CallMessages` nor `MapResponse`, so the shipped `Anthropic.MapResponse` and `Loop.AnswerTools` run; the row differs only in `adapterClass`.
+  - `[false]` `[reject]` Block equality compares re-serialized objects, not raw request text — the Design Notes define the check this way ("Byte-for-byte, as tested"): every value and the order are asserted, which is what the provider validates.
+  - `[false]` `[reject]` `SetTyped`'s empty-number-to-`null` rule reaches other number fields — no other number field can be empty: `maxTokens`, `maxIterationsPerTurn` and `retentionDays` carry InitialExpressions and rules that refuse empty, and every catalog number column is set.
+  - `[false]` `[reject]` Removing the `Temperature` InitialExpression changes definitions created outside `POST` — task 2 specifies it; the only non-test readers are `ProviderPort.ValuesFor` and the projection, both of which handle unset.
+  - `[false]` `[reject]` DW-1590 and DW-1591 exceed the intent contract — tasks 22-23 and their ACs were added at the spec gate by the lead.
+  - `[false]` `[reject]` The `Run` call site is a second loop edit — task 9 names it (`:239 passes tResponse.ContentJson`).
+  - `[false]` `[reject]` The three keys are not at the end of `strings.ts` — task 17 says "beside `:521`. Append only".
+  - `[low]` `[reject]` The EXPERIENCE.md row sits at the end of the Fixed-strings table (line 465), not below `:336` as task 16 says — `ui/tools/strings.test.mjs` pins every `EXPERIENCE.md:n` reference in `strings.ts` to its line, so inserting at 337 would re-point every reference below it, against task 17's append-only keys; the end of the table is the only consistent place.
+  - `[false]` `[reject]` Neither tier calls the Test-connection route — no AC requires it; `HandleTest` calls `ProviderPort.Invoke`, the body path `AdapterSampling` drives.
+  - `[false]` `[reject]` "Anthropic takes no temperature" is spelled in both the adapter and the column — the Design Notes choose this deliberately, and `AdapterSampling.TestEachRowsColumnAgreesWithWhatItsAdapterSends` pins the two equal.
+  - `[false]` `[reject]` `AdapterSampling` needs a resolver for the shipped hosts — that is the port's egress gate, which the Story 10.2/10.3 shipped-row tests already use; no provider connection is opened.
+  - `[false]` `[reject]` Explicit values run on openai and anthropic only, and `.7` travels as a JSON string — the matrix names no provider set, and a bare `.7` is not valid JSON.
+  - `[false]` `[reject]` The pre-story row is written through today's object layer — storage is unchanged by this story, so a 0 written now is stored the same as one written before it.
+
 ## Design Notes
 
 **Governing ADs.** **AD-42** is the fixed provider contract. One base serves four adapters, Anthropic's shape is canonical, and the canonical assistant turn is the reply's own content, which is why reasoning blocks travel verbatim. **AD-39** is the envelope: rule 4's refusal keeps `{field, code, reason}`, and no new code is added. **AD-5** makes the catalog the one source, so the form reads `acceptsTemperature` rather than a provider name. **AD-9** covers the stored row: object `%Save` through `State/Base`, and no hand-written Storage. **AD-12**: no handler writes the response. **AD-11**: reasoning blocks are model output held only in the in-memory turn messages, and are never rendered, persisted or placed in a system prompt. **AD-24** is unchanged: earlier turns replay only the user message and the final reply, so no reasoning crosses a turn. **AD-35**: no key is involved. **AD-19**: the store stays framework-free and the page mirrors it. Conventions: **When `SCHEMAVERSION` moves**, **Concurrent writes** (unchanged: temperature is written through the guarded save), and **Theme/tokens** (the caption reuses `ocu-field-caption`).
@@ -186,19 +217,40 @@ This is the Conventions row's "a property every pre-existing row reads as a safe
 
 **Pinning tests and mutations** (Rule 19). Apply each mutation, recompile the package, observe red, revert, and confirm `git status --short` and `git diff --stat` are unchanged. The implement stage fills in the observed run for each line below.
 
-- AC1, server: `ProviderSampling.TestACreateWithNoTemperatureStoresItUnset`. `mutation:` restore `canonicalTemperature` 0 on the openai row, then expect red on the `null` projection.
-- AC1, rule: `AgentRules.TestAnUnsetTemperatureIsAccepted`. `mutation:` drop rule 4's empty arm, then expect red.
-- AC1, client: the page-spec cascade case. `mutation:` `String(row.canonicalTemperature)` with no null check, then expect red (`'null'`).
-- AC1, browser: the new definitions case. `mutation:` remove the placeholder binding, rebuild and redeploy, then expect red.
-- AC2: `AdapterSampling.TestAnUnsetTemperatureIsNotSentToTheOtherFamilies`. `mutation:` `OpenAI.CallMessages` writes `temperature` unconditionally, then expect red on the openai and compatible legs only. `mutation:` the same in `Gemini`, then expect red on the gemini leg only.
-- AC3: `AdapterSampling.TestAnthropicIsSentNoSamplingParameterWhateverTheDefinitionHolds`. `mutation:` restore `Anthropic.cls:51`, then expect red. Column pin: `mutation:` set anthropic `acceptsTemperature` true, then expect red on the agreement test. Form: `mutation:` drop the not-applicable branch in the page, then expect red on the page-spec Anthropic case.
-- AC4: `AnthropicThinking.TestReasoningBlocksReturnUnchangedInTheNextRequest`. `mutation:` delete the `pContentJson` branch in `AnswerTools`, then expect red. `mutation:` `MapResponse` never sets `ContentJson`, then expect red on the same test and on the `Adapter` leg.
+- AC1, server: `ProviderSampling.TestACreateWithNoTemperatureStoresItUnset`. `mutation:` restore `canonicalTemperature` 0 on the openai row, then expect red on the `null` projection. Observed (run 15): red on the openai legs (null projection, stored unset, read-back null); `TestTheProvidersRouteServesBothTemperatureColumns` also red.
+- AC1, rule: `AgentRules.TestAnUnsetTemperatureIsAccepted`. `mutation:` drop rule 4's empty arm, then expect red. Observed (run 16): red, both legs refused `AGENT.TEMPERATURE.RANGE`; no other method.
+- AC1, client: the page-spec cascade case. `mutation:` `String(row.canonicalTemperature)` with no null check, then expect red (`'null'`). Observed: red, `expected 'null' to be ''`; 47 other cases green.
+- AC1, browser: the new definitions case. `mutation:` remove the placeholder binding, rebuild and redeploy, then expect red. Observed: red on the "Not applicable" assertion (placeholder `null`); the six other cases green.
+- AC form invariants (DW-1337): the two `freshViolations` assertions in the new definitions case. `mutation:` a stylesheet rule giving `#ocu-definition-temperature-caption` `color: #eeeeee`, rebuilt and redeployed. Observed (review pass): red on the not-applicable state's assertion, `contrast|light|app-definition-form-page>p.ocu-field-caption: 1.12:1 under 4.5:1`; the six other cases green.
+- AC2: `AdapterSampling.TestAnUnsetTemperatureIsNotSentToTheOtherFamilies`. `mutation:` `OpenAI.CallMessages` writes `temperature` unconditionally, then expect red on the openai and compatible legs only. Observed (run 17): red on those two legs only. `mutation:` the same in `Gemini`, then expect red on the gemini leg only. Observed (run 18): red on the gemini leg only.
+- AC3: `AdapterSampling.TestAnthropicIsSentNoSamplingParameterWhateverTheDefinitionHolds`. `mutation:` restore `Anthropic.cls:51`, then expect red. Observed (run 19): red on all three held values; the agreement test also red on anthropic. Column pin: `mutation:` set anthropic `acceptsTemperature` true, then expect red on the agreement test. Observed (run 20): red on that test alone. Form: `mutation:` drop the not-applicable branch in the page, then expect red on the page-spec Anthropic case. Observed: red on it and on the held-value case (readonly); 46 green. Column, not name (AD-5): page-spec case `the field follows the acceptsTemperature column, never the provider name`. `mutation:` `temperatureApplies()` returns `this.value('provider') !== 'anthropic'`. Observed (review pass): red on that case alone, 48 green.
+- AC4: `AnthropicThinking.TestReasoningBlocksReturnUnchangedInTheNextRequest`. `mutation:` delete the `pContentJson` branch in `AnswerTools`, then expect red. Observed (run 21): red, the echo two blocks where four were served. `mutation:` `MapResponse` never sets `ContentJson`, then expect red on the same test and on the `Adapter` leg. Observed: red on both (runs 22, 23).
 - AC5: no pinning test by construction. It is a property of the tiers (stubs, no socket), confirmed by the diff and by `ProviderStub`'s transport seam.
-- AC6: `ProviderSampling.TestAStoredTemperatureIsKeptThroughAnUpdateAndSent`. `mutation:` `SetTyped` writes `null` for 0 as well as for `""`, then expect red on the projection leg. `mutation:` `ValuesFor` maps 0 to `""`, then expect red on the recorded body leg.
-- DW-1590: the `AdapterSampling` openai tools leg. `mutation:` the openai row's `reasoningEffort` emptied, then expect red on that leg only. `mutation:` `OpenAI.CallMessages` writes `reasoning_effort` unconditionally, then expect red on the compatible leg only.
-- DW-1591: the Gemini signature leg. `mutation:` `CanonicalToGemini` omits `thoughtSignature`, then expect red. `mutation:` `GeminiToCanonical` drops it, then expect red on the same leg.
+- AC6: `ProviderSampling.TestAStoredTemperatureIsKeptThroughAnUpdateAndSent`. `mutation:` `SetTyped` writes `null` for 0 as well as for `""`, then expect red on the projection leg. Observed (run 24): red there, and on the explicit-0 legs. `mutation:` `ValuesFor` maps 0 to `""`, then expect red on the recorded body leg. Observed (run 25): red on that leg alone.
+- DW-1590: the `AdapterSampling` openai tools leg. `mutation:` the openai row's `reasoningEffort` emptied, then expect red on that leg only. Observed (run 26): red on the openai leg only. `mutation:` `OpenAI.CallMessages` writes `reasoning_effort` unconditionally, then expect red on the compatible leg only. Observed (run 27): red on the compatible leg only.
+- DW-1591: the Gemini signature leg. `mutation:` `CanonicalToGemini` omits `thoughtSignature`, then expect red. Observed (run 28): red, and the round-trip leg too. `mutation:` `GeminiToCanonical` drops it, then expect red on the same leg. Observed (run 29): red on the same leg and the round-trip leg.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** Temperature is optional end to end: catalog rows declare `canonicalTemperature` `null` and a new `acceptsTemperature` column; `State/Agent.Temperature` has no InitialExpression; rule 4 accepts empty; OpenAI, Gemini and compatible send `temperature` only when set; Anthropic sends no sampling parameter. `Anthropic.MapResponse` keeps a reasoning reply's content in `Response.ContentJson`, and `Loop.AnswerTools` echoes it verbatim. DW-1590: a `reasoningEffort` row column (`none` on openai) sent as `reasoning_effort`. DW-1591: a Gemini `thoughtSignature` rides the canonical `tool_use` block and is written back beside the replayed call. The Definition form shows "Provider default" where the row takes a temperature, and a readonly, `aria-disabled`, captioned "Not applicable" field where it does not.
+
+**Files.**
+
+- `src/OcuPilot/Kernel/Provider/{Catalog,Anthropic,OpenAI,Gemini,MessageAdapter,Response,Base}.cls` -- the two columns, the conditional sends, the reasoning content, the signature round trip, docs.
+- `src/OcuPilot/Kernel/State/Agent.cls`, `Kernel/AgentRules.cls`, `Port/ProviderPort.cls`, `Api/Definitions.cls` -- unset stored, accepted, passed through, projected `null`; `acceptsTemperature` served.
+- `src/OcuPilot/Kernel/Agent/Loop.cls` -- the `AnswerTools` echo branch and its call site (footprint extension).
+- `src/OcuPilot/Test/{AdapterSampling,AnthropicThinking,ProviderSampling}.cls` -- new; `Test/{Adapter,AgentRules,Provider,OpenAIAdapter,GeminiAdapter,CompatibleAdapter}.cls` -- pins updated; `Test/AgentViolation.cls:214`, `Test/AuditRecord.cls:198` -- one literal each.
+- `ui/src/app/areas/agent/definition-form.{store,page,page.spec}.ts`, `ui/browser/definitions.browser-spec.mjs`, `ui/src/app/core/strings.ts` (three keys), `EXPERIENCE.md` (one row).
+
+**Review.** Two layers (verification-gap, intent-alignment), 18 findings: 3 patched (1 medium: a column-versus-name page-spec case; 2 low: the DW-1337 caption mutation recorded, a self-referential assertion deleted), 1 deferred (stale `AgentViolation` message), 14 rejected with reasons in the Review Triage Log. Follow-up review: not recommended (one medium patched, no high).
+
+**Verification.** On `ocupilot-b-ci`: the full sweep once before review, 217 classes, 1948 tests, 0 failed (runs 30-246, confirmed by the `%UnitTest_Result` probe); after the review patch, `AnthropicThinking` 4/0 (run 247); smoke 49/49. `check-objectscript.py` 0 problems, its harness 128 OK, `lint-docs.sh` clean. `test:tools` 1370/1370, `test:components` 1040/1040. `definitions.browser-spec.mjs` 7/7 on a rebuilt, redeployed bundle. Every AC mutation observed red and reverted (see Verification).
+
+**Deviations and residual risks.**
+
+- The EXPERIENCE.md row is at the end of the Fixed-strings table (line 465), not below `:336` (task 16): `strings.test.mjs` pins every `EXPERIENCE.md:n` reference, so an insertion at 337 would re-point every reference below it. The in-document `` `:n` `` references to lines past 464 are now one line off; nothing checks them.
+- A definition saved with 0 before this story keeps sending 0 to OpenAI until an operator empties the field (AC6, accepted in Design Notes).
+- The live proof on each catalog default model stays the owner's Story 17.7 check.

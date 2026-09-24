@@ -381,12 +381,18 @@ interface FieldView {
                   inputmode="decimal"
                   [id]="temperatureField.id"
                   [value]="temperatureValue"
+                  [attr.placeholder]="temperaturePlaceholder"
+                  [attr.readonly]="temperatureApplies ? null : ''"
+                  [attr.aria-disabled]="temperatureApplies ? null : 'true'"
                   [attr.aria-invalid]="temperatureField.invalid"
                   [attr.aria-describedby]="temperatureField.describedBy"
                   (input)="onText('temperature', $event)"
                   (blur)="onFieldBlur('temperature')"
                 />
               </div>
+              @if (!temperatureApplies) {
+                <p class="ocu-field-caption" [id]="temperatureField.id + '-caption'">{{ STRINGS.agentDefinitionTemperatureNotApplicableCaption }}</p>
+              }
               @if (temperatureField.invalid) {
                 <p class="ocu-form-error" [id]="temperatureField.id + '-reason'">{{ temperatureField.reason }}</p>
               }
@@ -795,6 +801,22 @@ export class DefinitionFormPage {
     return this.store.value('temperature');
   }
 
+  /**
+   * Whether the chosen provider's catalog row takes a temperature (Story 10.4, AD-5). Where it does
+   * not, the field is readonly and `aria-disabled` under its caption -- the retention field's
+   * precedent -- and a value it holds is shown as held: the form never clears one.
+   */
+  protected get temperatureApplies(): boolean {
+    this.generation();
+    return this.store.temperatureApplies();
+  }
+
+  protected get temperaturePlaceholder(): string {
+    return this.temperatureApplies
+      ? STRINGS.agentDefinitionTemperatureProviderDefault
+      : STRINGS.agentDefinitionTemperatureNotApplicable;
+  }
+
   protected get iterationsValue(): string {
     this.generation();
     return this.store.value('maxIterationsPerTurn');
@@ -1122,6 +1144,7 @@ export class DefinitionFormPage {
     const described: string[] = [];
     if (field === 'apiKey' && this.showStoredCaption) described.push(`${id}-caption`);
     if (field === 'envVarName') described.push(`${id}-caption`);
+    if (field === 'temperature' && !this.store.temperatureApplies()) described.push(`${id}-caption`);
     if (invalid) described.push(`${id}-reason`);
     return {
       id,

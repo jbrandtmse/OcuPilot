@@ -808,10 +808,34 @@ Method TestTheCanonicalFamilyIsAByteIdenticalPassthrough()
     }
 }
 
+/// <p>Story 10.4 -- the Anthropic reply mapping keeps a reply's whole <code>content</code> array in
+/// <property>OcuPilot.Kernel.Provider.Response.ContentJson</property> when it carries a
+/// <code>thinking</code> or <code>redacted_thinking</code> block, and leaves it <code>""</code>
+/// otherwise; <property>Text</property> and <property>ToolCallsJson</property> read the same
+/// either way.</p>
+Method TestAnthropicKeepsAReasoningReplysContentVerbatim()
+{
+    Set tTail = ",{""type"":""text"",""text"":""looking""},{""type"":""tool_use"",""id"":""toolu_1"",""name"":""" _ ..#TOOLNAME _ """,""input"":{""maxRows"":5}}]"
+    Set tAdapter = ##class(OcuPilot.Kernel.Provider.Anthropic).%New()
+    For tLead = "{""type"":""thinking"",""thinking"":"""",""signature"":""Eq+ab/cd==""}", "{""type"":""redacted_thinking"",""data"":""Rm9v+YmFy/==""}" {
+        Set tContent = "[" _ tLead _ tTail
+        Set tResponse = ##class(OcuPilot.Kernel.Provider.Response).%New()
+        Do $$$AssertStatusOK(tAdapter.MapResponse("{""content"":" _ tContent _ ",""stop_reason"":""tool_use""}", tResponse), "the reasoning reply reads")
+        Do $$$AssertEquals(tResponse.ContentJson, ##class(%DynamicAbstractObject).%FromJSON(tContent).%ToJSON(), "its whole content array is kept: " _ tLead)
+        Do $$$AssertEquals(tResponse.Text, "looking", "the text is read as before")
+        Do $$$AssertEquals(##class(%DynamicAbstractObject).%FromJSON(tResponse.ToolCallsJson).%Size(), 1, "and the tool calls hold the one tool-use block alone")
+    }
+    Set tResponse = ##class(OcuPilot.Kernel.Provider.Response).%New()
+    Do $$$AssertStatusOK(tAdapter.MapResponse("{""content"":[" _ $Extract(tTail, 2, *) _ ",""stop_reason"":""tool_use""}", tResponse), "a reply without reasoning reads")
+    Do $$$AssertEquals(tResponse.ContentJson, "", "and keeps no content array")
+    Do $$$AssertEquals(tResponse.Text, "looking", "its text is read")
+    Do $$$AssertTrue(tResponse.ToolCallsJson [ """toolu_1""", "and its tool call")
+}
+
 /// <p>The canonical outbound body <method>TestTheCanonicalFamilyIsAByteIdenticalPassthrough</method>
 /// pins, read from the request the shipped Anthropic adapter actually built on the development
 /// instance for <method>Canonical</method>'s history and <method>Tools</method>'s array.</p>
-Parameter CANONICALBODY = "{""model"":""probe-model-1"",""max_tokens"":4000,""temperature"":0,""system"":""you are a probe"",""messages"":[{""role"":""user"",""content"":""what is on this screen""},{""role"":""assistant"",""content"":[{""type"":""text"",""text"":""checking""},{""type"":""tool_use"",""id"":""call1"",""name"":""logs_errors_read"",""input"":{""maxRows"":5}},{""type"":""tool_use"",""id"":""call2"",""name"":""logs_errors_read"",""input"":{""maxRows"":9}}]},{""role"":""user"",""content"":[{""type"":""tool_result"",""tool_use_id"":""call1"",""content"":""first""},{""type"":""tool_result"",""tool_use_id"":""call2"",""content"":""second""},{""type"":""text"",""text"":""and now""}]}],""tools"":[{""name"":""logs_errors_read"",""description"":""read the error log"",""input_schema"":{""type"":""object"",""properties"":{""name"":{""type"":""string"",""description"":""the name"",""enum"":[""a"",""b""]},""count"":{""type"":""integer"",""description"":""how many"",""minimum"":1,""maximum"":10},""tags"":{""type"":""array"",""description"":""labels"",""items"":{""type"":""string"",""description"":""one label""},""minItems"":1,""maxItems"":5}},""required"":[""name""],""additionalProperties"":false}}]}";
+Parameter CANONICALBODY = "{""model"":""probe-model-1"",""max_tokens"":4000,""system"":""you are a probe"",""messages"":[{""role"":""user"",""content"":""what is on this screen""},{""role"":""assistant"",""content"":[{""type"":""text"",""text"":""checking""},{""type"":""tool_use"",""id"":""call1"",""name"":""logs_errors_read"",""input"":{""maxRows"":5}},{""type"":""tool_use"",""id"":""call2"",""name"":""logs_errors_read"",""input"":{""maxRows"":9}}]},{""role"":""user"",""content"":[{""type"":""tool_result"",""tool_use_id"":""call1"",""content"":""first""},{""type"":""tool_result"",""tool_use_id"":""call2"",""content"":""second""},{""type"":""text"",""text"":""and now""}]}],""tools"":[{""name"":""logs_errors_read"",""description"":""read the error log"",""input_schema"":{""type"":""object"",""properties"":{""name"":{""type"":""string"",""description"":""the name"",""enum"":[""a"",""b""]},""count"":{""type"":""integer"",""description"":""how many"",""minimum"":1,""maximum"":10},""tags"":{""type"":""array"",""description"":""labels"",""items"":{""type"":""string"",""description"":""one label""},""minItems"":1,""maxItems"":5}},""required"":[""name""],""additionalProperties"":false}}]}";
 
 /// <p>AC2 -- a family that exists only as a probe catalog row plus one adapter class: a caller
 /// drives <method>OcuPilot.Port.ProviderPort.Invoke</method> through it, the call completes, and

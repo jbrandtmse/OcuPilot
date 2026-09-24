@@ -107,8 +107,9 @@ Method ResolvedSecretClass() As %String [ Private ]
 /// <p><var>pValues</var> is the definition as a ByRef array subscripted by wire field name --
 /// <code>provider</code>, <code>model</code>, <code>endpointUrl</code>, <code>credType</code>,
 /// <code>envVarName</code>, <code>credentialName</code>, <code>maxTokens</code>,
-/// <code>temperature</code> -- plus the two the caller took from the provider's catalog row,
-/// <code>keyPrefix</code> and <code>authVersion</code>.</p>
+/// <code>temperature</code>, which is optional (<code>""</code> leaves the provider's default in
+/// force) -- plus the three the caller took from the provider's catalog row,
+/// <code>keyPrefix</code>, <code>authVersion</code> and <code>reasoningEffort</code>.</p>
 /// <p><b><code>keySource</code> says where the key comes from</b>:
 /// <parameter>KEYSOURCESTORED</parameter> (also the answer when it is absent) resolves the
 /// definition's reference, and a reference whose store could not be read faults

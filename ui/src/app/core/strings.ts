@@ -519,6 +519,15 @@ export const STRINGS = {
   agentDefinitionFieldMaxTokens: 'Maximum tokens',
   /** EXPERIENCE.md:335 */
   agentDefinitionFieldTemperature: 'Temperature',
+  // Story 10.4: the Temperature field's placeholder where the provider takes one, and its
+  // placeholder and caption where it does not.
+  /** EXPERIENCE.md:465 */
+  agentDefinitionTemperatureProviderDefault: 'Provider default',
+  /** EXPERIENCE.md:465 */
+  agentDefinitionTemperatureNotApplicable: 'Not applicable',
+  /** EXPERIENCE.md:465 */
+  agentDefinitionTemperatureNotApplicableCaption:
+    'This provider\'s current models refuse sampling settings, so OcuPilot sends none and the model uses its own.',
   /** EXPERIENCE.md:335 */
   agentDefinitionFieldMaxIterations: 'Maximum iterations',
   /** EXPERIENCE.md:335 */

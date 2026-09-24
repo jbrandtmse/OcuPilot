@@ -236,7 +236,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
                 Set pOutcome("reply") = tResponse.Text
                 Quit
             }
-            Set tSC = ..AnswerTools(pKey, pUser, pDefinitionId, tResponse.Text, tToolUses, tLimits, .tMessages, tToolLog, .tLastSeq, pReadOnly, pResources, pStartedSeconds, tInput + tOutput, .tState, .tCode, pContextRowCap, tContextRoute)
+            Set tSC = ..AnswerTools(pKey, pUser, pDefinitionId, tResponse.Text, tToolUses, tLimits, .tMessages, tToolLog, .tLastSeq, pReadOnly, pResources, pStartedSeconds, tInput + tOutput, .tState, .tCode, pContextRowCap, tContextRoute, tResponse.ContentJson)
             If $$$ISERR(tSC) Quit
             If tState '= "" {
                 Set pOutcome("state") = tState
@@ -400,20 +400,35 @@ ClassMethod ToolUses(pJson As %String) As %DynamicArray
 /// error step. <var>pContextRowCap</var> is the row cap every dispatched call in this turn is
 /// answered under (<code>0</code> falls back to <var>pLimitsClass</var>'s own
 /// <code>TOOLROWS</code>).</p>
-ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %String, pText As %String, pToolUses As %DynamicArray, pLimitsClass As %String, ByRef pMessages, pToolLog As %DynamicArray, ByRef pLastSeq As %Integer, pReadOnly As %Boolean, pResources As %String, pStartedSeconds As %Integer, pTokens As %Integer, Output pState As %String, Output pCode As %String, pContextRowCap As %Integer = 0, pRoute As %String = "") As %Status
+/// <p><var>pContentJson</var> is <property>OcuPilot.Kernel.Provider.Response.ContentJson</property>:
+/// when it parses to a non-empty array, that array is the echo, unchanged and in order, because a
+/// reply's reasoning blocks must go back to the provider as it sent them. Otherwise the echo is
+/// rebuilt from <var>pText</var> and <var>pToolUses</var>.</p>
+ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %String, pText As %String, pToolUses As %DynamicArray, pLimitsClass As %String, ByRef pMessages, pToolLog As %DynamicArray, ByRef pLastSeq As %Integer, pReadOnly As %Boolean, pResources As %String, pStartedSeconds As %Integer, pTokens As %Integer, Output pState As %String, Output pCode As %String, pContextRowCap As %Integer = 0, pRoute As %String = "", pContentJson As %String = "") As %Status
 {
     Set pState = ""
     Set pCode = ""
-    Set tAssistant = []
-    If $ZStrip(pText, "<>WC") '= "" {
-        Set tTextBlock = {}
-        Do tTextBlock.%Set("type", "text", "string")
-        Do tTextBlock.%Set("text", pText, "string")
-        Do tAssistant.%Push(tTextBlock)
+    Set tAssistant = ""
+    If pContentJson '= "" {
+        Try {
+            Set tEcho = ##class(%DynamicAbstractObject).%FromJSON(pContentJson)
+            If $IsObject(tEcho) && tEcho.%IsA("%Library.DynamicArray") && (tEcho.%Size() > 0) Set tAssistant = tEcho
+        } Catch ex {
+            Set tAssistant = ""
+        }
     }
-    Set tIterator = pToolUses.%GetIterator()
-    While tIterator.%GetNext(.tIndex, .tBlock) {
-        Do tAssistant.%Push(tBlock)
+    If '$IsObject(tAssistant) {
+        Set tAssistant = []
+        If $ZStrip(pText, "<>WC") '= "" {
+            Set tTextBlock = {}
+            Do tTextBlock.%Set("type", "text", "string")
+            Do tTextBlock.%Set("text", pText, "string")
+            Do tAssistant.%Push(tTextBlock)
+        }
+        Set tIterator = pToolUses.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tBlock) {
+            Do tAssistant.%Push(tBlock)
+        }
     }
     Set pMessages = pMessages + 1
     Set pMessages(pMessages, "role") = "assistant"

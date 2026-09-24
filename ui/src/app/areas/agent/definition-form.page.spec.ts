@@ -1603,4 +1603,116 @@ describe('the Definition form', () => {
       expect(lastBody(calls, 'POST')['credType']).toBe('creds');
     }
   });
+
+  /** Story 10.4's catalog shape: no row declares a canonical temperature, and the first takes none. */
+  const SAMPLING_PROVIDERS = {
+    providers: [
+      { ...PROVIDERS_BODY.providers[0], canonicalTemperature: null, acceptsTemperature: false },
+      { ...TWO_PROVIDERS.providers[1], canonicalTemperature: null, acceptsTemperature: true },
+    ],
+  };
+
+  const samplingAnswer =
+    (stored: Record<string, unknown> = {}): Answer =>
+    (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(SAMPLING_PROVIDERS);
+      if (init.method === 'POST') return created(definition({ ...JSON.parse(init.body ?? '{}'), id: '9' }));
+      if (init.method === 'PUT') return ok(definition({ ...stored, ...JSON.parse(init.body ?? '{}') }));
+      return path.endsWith('/definitions') ? ok({ definitions: [] }) : ok(definition(stored));
+    };
+
+  const openAdvanced = async (fixture: ComponentFixture<unknown>, host: HTMLElement) => {
+    (host.querySelector('.ocu-form-disclosure') as HTMLButtonElement).click();
+    await settle(fixture);
+  };
+
+  const chooseProvider = async (fixture: ComponentFixture<unknown>, host: HTMLElement, key: string) => {
+    const provider = host.querySelector('#ocu-definition-provider') as HTMLSelectElement;
+    provider.value = key;
+    provider.dispatchEvent(new Event('change'));
+    await settle(fixture);
+  };
+
+  const temperatureInput = (host: HTMLElement) => host.querySelector('#ocu-definition-temperature') as HTMLInputElement;
+
+  it('Story 10.4 AC1: a row that declares no canonical temperature cascades an empty field, and it saves unset', async () => {
+    // Mutation (Rule 19): cascade `String(row.canonicalTemperature)` with no null check -> this goes
+    // red, the field reading 'null'.
+    const { fixture, host, calls } = await mount(samplingAnswer());
+    await chooseProvider(fixture, host, 'openai');
+    await openAdvanced(fixture, host);
+    expect(temperatureInput(host).value).toBe('');
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'GPT';
+    name.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    saveButton(host).click();
+    await settle(fixture);
+    expect(lastBody(calls, 'POST')['temperature']).toBe('');
+  });
+
+  it('Story 10.4 AC1: on a row that takes a temperature the empty field reads Provider default and stays editable', async () => {
+    const { fixture, host } = await mount(samplingAnswer());
+    await chooseProvider(fixture, host, 'openai');
+    await openAdvanced(fixture, host);
+    const input = temperatureInput(host);
+    expect(input.getAttribute('placeholder')).toBe(STRINGS.agentDefinitionTemperatureProviderDefault);
+    expect(input.hasAttribute('readonly')).toBe(false);
+    expect(input.hasAttribute('aria-disabled')).toBe(false);
+    expect(host.querySelector('#ocu-definition-temperature-caption')).toBeNull();
+    expect(input.getAttribute('aria-describedby')).toBeNull();
+  });
+
+  it('Story 10.4 AC3: on a row that takes no temperature the field is readonly, aria-disabled and captioned', async () => {
+    // Mutation (Rule 19): drop the not-applicable branch -- render the field as the applicable
+    // one whatever the row says -> this goes red on every assertion below.
+    const { fixture, host } = await mount(samplingAnswer());
+    await openAdvanced(fixture, host);
+    const input = temperatureInput(host);
+    expect(input.getAttribute('placeholder')).toBe(STRINGS.agentDefinitionTemperatureNotApplicable);
+    expect(input.hasAttribute('readonly')).toBe(true);
+    expect(input.getAttribute('aria-disabled')).toBe('true');
+    expect(input.hasAttribute('disabled')).toBe(false);
+    expect(host.querySelector('#ocu-definition-temperature-caption')?.textContent?.trim()).toBe(
+      STRINGS.agentDefinitionTemperatureNotApplicableCaption
+    );
+    expect(input.getAttribute('aria-describedby')).toBe('ocu-definition-temperature-caption');
+  });
+
+  it('Story 10.4 AD-5: the field follows the acceptsTemperature column, never the provider name', async () => {
+    // Mutation (Rule 19): `temperatureApplies()` keyed on the name
+    // (`this.value('provider') !== 'anthropic'`) -> this goes red on both rows.
+    const inverted = {
+      providers: [
+        { ...SAMPLING_PROVIDERS.providers[0], acceptsTemperature: true },
+        { ...SAMPLING_PROVIDERS.providers[1], acceptsTemperature: false },
+      ],
+    };
+    const base = samplingAnswer();
+    const { fixture, host } = await mount((path, init) =>
+      path.endsWith('/agent/providers') ? ok(inverted) : base(path, init)
+    );
+    await openAdvanced(fixture, host);
+    expect(temperatureInput(host).hasAttribute('readonly')).toBe(false);
+    expect(temperatureInput(host).getAttribute('placeholder')).toBe(STRINGS.agentDefinitionTemperatureProviderDefault);
+    await chooseProvider(fixture, host, 'openai');
+    const input = temperatureInput(host);
+    expect(input.hasAttribute('readonly')).toBe(true);
+    expect(input.getAttribute('aria-disabled')).toBe('true');
+    expect(host.querySelector('#ocu-definition-temperature-caption')?.textContent?.trim()).toBe(
+      STRINGS.agentDefinitionTemperatureNotApplicableCaption
+    );
+  });
+
+  it('Story 10.4: a value stored on a row that takes no temperature is shown as held and survives a save', async () => {
+    const { fixture, host, calls } = await mount(samplingAnswer({ temperature: 0.7 }), '/agent/definitions/edit/7');
+    await openAdvanced(fixture, host);
+    const input = temperatureInput(host);
+    expect(input.value).toBe('0.7');
+    expect(input.hasAttribute('readonly')).toBe(true);
+    saveButton(host).click();
+    await settle(fixture);
+    expect(lastBody(calls, 'PUT')['temperature']).toBe(0.7);
+    expect(temperatureInput(host).value).toBe('0.7');
+  });
 });

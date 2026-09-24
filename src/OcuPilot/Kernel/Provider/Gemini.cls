@@ -16,7 +16,8 @@
 /// reference (<code>ai.google.dev/api/generate-content</code>, 2026-09-18): <code>POST</code> to
 /// the resolved endpoint with headers <code>x-goog-api-key</code> and <code>content-type</code>;
 /// body
-/// <code>{contents, systemInstruction?, tools?, generationConfig{maxOutputTokens, temperature}}</code>;
+/// <code>{contents, systemInstruction?, tools?, generationConfig{maxOutputTokens, temperature?}}</code>,
+/// <code>temperature</code> only when the definition holds one;
 /// reply <code>{candidates, usageMetadata}</code>; error body <code>{error: {message}}</code>.
 /// <b>The credential goes in the header, never in the <code>?key=</code> query parameter</b> the
 /// wider Google API surface also accepts: a credential in a URL is refused by AD-35. The API
@@ -101,7 +102,7 @@ Method CallMessages(pRequest As %Net.HttpRequest, ByRef pValues, ByRef pMessages
         }
         Set tGeneration = {}
         Do tGeneration.%Set("maxOutputTokens", +$Get(pValues("maxTokens")), "number")
-        Do tGeneration.%Set("temperature", +$Get(pValues("temperature")), "number")
+        If $Get(pValues("temperature")) '= "" Do tGeneration.%Set("temperature", +pValues("temperature"), "number")
         Do tBody.%Set("generationConfig", tGeneration)
         Do pRequest.EntityBody.Clear()
         Do pRequest.EntityBody.Write($ZConvert(tBody.%ToJSON(), "O", "UTF8"))

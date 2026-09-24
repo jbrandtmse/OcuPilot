@@ -196,7 +196,8 @@ ClassMethod FlagUnresolvedCredential(pId As %String, ByRef pValues, ByRef pFault
 /// to name an address the rules refuse. The definition's <code>Enabled</code> flag is not
 /// consulted: testing a definition the write path disabled is how an operator re-enables it.</p>
 /// <p><b><var>pValues</var> is normalized and added to in place.</b> The caller's array comes back
-/// carrying the catalog row's <code>keyPrefix</code> and <code>authVersion</code>, and its
+/// carrying the catalog row's <code>keyPrefix</code>, <code>authVersion</code> and
+/// <code>reasoningEffort</code>, and its
 /// <code>endpointUrl</code> filled in from the row when it was empty. A caller that keeps the
 /// array -- an operator's edited form, say -- sees those keys afterwards.</p>
 /// <p><b><code>maxAttempts</code> is the one key a caller may set to change how the call is
@@ -258,6 +259,7 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
     }
     Set pValues("keyPrefix") = tRow.keyPrefix
     Set pValues("authVersion") = tRow.authVersion
+    Set pValues("reasoningEffort") = tRow.reasoningEffort
     Set tAllowsLocal = ''+tRow.allowsLocal
     Set tMarkedLocal = ''+$Get(pValues("markedLocal"))
 
@@ -441,7 +443,9 @@ ClassMethod ValuesFor(pId As %String, Output pValues, Output pFound As %Boolean)
         Set pValues("keySource") = ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCENONE
     }
     Set pValues("maxTokens") = +tRow.MaxTokens
-    Set pValues("temperature") = +tRow.Temperature
+    ; Unset stays unset, so the adapter sends none and the provider's default applies; a stored
+    ; number is passed as that number.
+    Set pValues("temperature") = $Select(tRow.Temperature = "": "", 1: +tRow.Temperature)
     Set pValues("systemPromptOverride") = tRow.SystemPromptOverride
     Set tRow = ""
     Set pFound = 1

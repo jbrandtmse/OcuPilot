@@ -8,7 +8,7 @@
 /// <code>PROVIDER.*</code> code.</p>
 /// <p>No property here can hold a credential (AD-35): the key travels on the adapter instance and
 /// onto the request's headers, and nothing on the way back carries it.</p>
-/// <p>The two text-bearing properties are unbounded <class>%String</class>s rather than streams.
+/// <p>The text-bearing properties are unbounded <class>%String</class>s rather than streams.
 /// A reply is bounded by the definition's own <code>maxTokens</code>, whose ceiling is 32000, and
 /// the text that many tokens render to is two orders of magnitude inside ObjectScript's long-string
 /// limit. This class holds no storage, so nothing about that choice reaches a global.</p>
@@ -27,6 +27,12 @@ Property Text As %String(MAXLEN = "");
 /// <code>""</code> when there were none. Epic 4's turn is what reads them; nothing here
 /// interprets one.</p>
 Property ToolCallsJson As %String(MAXLEN = "");
+
+/// <p>The reply's <code>content</code> array verbatim, as JSON, when it carries reasoning blocks
+/// that must go back to the provider unchanged and in order, and <code>""</code> otherwise.
+/// <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> echoes it whole as the assistant turn in
+/// place of the text and tool-use blocks it would otherwise rebuild.</p>
+Property ContentJson As %String(MAXLEN = "");
 
 /// <p>How many tokens the request consumed, from the body's own usage figures; <code>0</code> when
 /// the provider reported none.</p>

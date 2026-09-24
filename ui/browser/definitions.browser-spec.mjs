@@ -16,6 +16,10 @@
  *    OpenAI-compatible provider offers the local-model declaration and the no-API-key choice, and
  *    a plain-`http://` loopback endpoint saved with neither a key nor a credential name is
  *    accepted with no violation on the endpoint field.
+ * 5. **The Temperature field follows the catalog's `acceptsTemperature` column** (Story 10.4):
+ *    readonly and captioned on the Anthropic row, empty under "Provider default" on OpenAI, each
+ *    state passing every DW-1337 invariant, and a definition saved from the second stores no
+ *    temperature.
  *
  * **It refuses the live container**, for the reason its siblings do: the throwaway is the instance
  * a browser run drives, and this spec creates a definition. It **creates the rows it filters and
@@ -38,6 +42,15 @@ import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '..
 import { filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
+import {
+  INVARIANTS,
+  VIEWPORTS,
+  compare,
+  componentMinimums,
+  detectScreen,
+  readBaseline,
+  toggleThemeThroughMenu,
+} from './structural-walk.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -50,7 +63,10 @@ const DEFINITIONS_PATH = '/api/ocupilot/agent/definitions';
 /** Every definition this spec creates is named with this prefix and removed in `after`. */
 const PREFIX = 'OcuPilotBrowserProbe';
 
-const NAMES = [`${PREFIX}Alpha`, `${PREFIX}Beta`, `${PREFIX}Local`];
+const NAMES = [`${PREFIX}Alpha`, `${PREFIX}Beta`, `${PREFIX}Local`, `${PREFIX}Sampling`];
+
+/** The form's key route in the structural baseline. */
+const FORM_ROUTE = 'agent/definitions/edit';
 
 /** The loopback endpoint the local-model leg stores. Nothing here connects to it. */
 const LOCAL_ENDPOINT = 'http://127.0.0.1:11434/v1';
@@ -490,6 +506,118 @@ test('Story 10.3 AC1/AC3: the OpenAI-compatible provider offers the local-model 
     assert.equal(stored.markedLocal, true, 'declared local');
     assert.equal(stored.credType, 'none', 'and naming no credential at all');
     assert.equal(stored.httpAcknowledged, false, 'with no acknowledgment asked for, there being no key to expose');
+  } finally {
+    await context.close();
+  }
+});
+
+/** The Temperature field's rendered state: value, placeholder, the two inert attributes, and its caption. */
+function temperatureState(page) {
+  return page.$eval('#ocu-definition-temperature', (input) => {
+    const described = input.getAttribute('aria-describedby');
+    return {
+      value: input.value,
+      placeholder: input.getAttribute('placeholder'),
+      readonly: input.hasAttribute('readonly'),
+      ariaDisabled: input.getAttribute('aria-disabled'),
+      describedBy: described,
+      caption: document.querySelector('#ocu-definition-temperature-caption')?.textContent?.trim() ?? null,
+    };
+  });
+}
+
+/** Two rendered frames, so a resize or a theme flip has landed before anything is measured. */
+function frames(page) {
+  return page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+}
+
+/**
+ * Every DW-1337 invariant over the form as it stands, at 1280 and 720 px in light and at 1280 px in
+ * dark, answered as the entries the committed baseline does not already hold for this route. The
+ * theme is flipped through the account menu and flipped back before returning.
+ */
+async function freshViolations(page) {
+  const minimums = componentMinimums();
+  const baseline = (readBaseline()?.entries ?? []).filter((entry) => entry.route === FORM_ROUTE);
+  const requests = { inflight: new Set(), last: 0 };
+  const found = [];
+  for (const { viewport, theme } of [
+    { viewport: VIEWPORTS.wide, theme: 'light' },
+    { viewport: VIEWPORTS.narrow, theme: 'light' },
+    { viewport: VIEWPORTS.wide, theme: 'dark' },
+  ]) {
+    await page.setViewport(viewport);
+    if (theme === 'dark') await toggleThemeThroughMenu(page, requests, config.navigationTimeoutMs);
+    try {
+      await frames(page);
+      const { entries } = await detectScreen(page, { route: FORM_ROUTE, checks: INVARIANTS, viewport: viewport.width, theme, minimums });
+      found.push(...entries);
+    } finally {
+      if (theme === 'dark') await toggleThemeThroughMenu(page, requests, config.navigationTimeoutMs);
+    }
+  }
+  await page.setViewport(VIEWPORTS.wide);
+  return compare(found, baseline).fresh.map((entry) => `${entry.key}: ${entry.measured}`);
+}
+
+test('Story 10.4: the Temperature field follows the catalog column, passes every invariant, and saves unset', async () => {
+  const { context, page } = await signedInAt(FORM_URL);
+  try {
+    await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+    await page.setViewport(VIEWPORTS.wide);
+    await page.waitForSelector('#ocu-definition-name', { visible: true, timeout: config.navigationTimeoutMs });
+    await fill(page, 'ocu-definition-name', NAMES[3]);
+    assert.equal(
+      await page.$eval('#ocu-definition-provider', (select) => select.value),
+      'anthropic',
+      'the form opens on the first row, which takes no temperature'
+    );
+    await page.click('.ocu-form-disclosure');
+    await page.waitForSelector('#ocu-definition-temperature', { visible: true, timeout: config.navigationTimeoutMs });
+
+    // The column, served by GET /agent/providers, is what shuts the field -- never a provider name.
+    const inert = await temperatureState(page);
+    assert.equal(inert.placeholder, STRINGS.agentDefinitionTemperatureNotApplicable, `"Not applicable": ${JSON.stringify(inert)}`);
+    assert.equal(inert.readonly, true, 'readonly');
+    assert.equal(inert.ariaDisabled, 'true', 'and aria-disabled');
+    assert.equal(inert.caption, STRINGS.agentDefinitionTemperatureNotApplicableCaption, 'under the caption that gives the reason');
+    assert.equal(inert.describedBy, 'ocu-definition-temperature-caption', 'which describes the field');
+    assert.deepEqual(await freshViolations(page), [], 'the not-applicable state passes every DW-1337 invariant');
+
+    await page.select('#ocu-definition-provider', 'openai');
+    await page.waitForFunction(
+      (placeholder) => document.querySelector('#ocu-definition-temperature')?.getAttribute('placeholder') === placeholder,
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.agentDefinitionTemperatureProviderDefault
+    );
+    const open = await temperatureState(page);
+    assert.equal(open.value, '', `the cascade leaves the field empty: ${JSON.stringify(open)}`);
+    assert.equal(open.readonly, false, 'and editable');
+    assert.equal(open.ariaDisabled, null, 'with no aria-disabled');
+    assert.equal(open.caption, null, 'and no caption');
+    assert.deepEqual(await freshViolations(page), [], 'the provider-default state passes every DW-1337 invariant');
+
+    const save = (await page.$$('.ocu-form-bar-actions button')).at(-1);
+    assert.ok(save, 'the sticky bar carries a primary action');
+    await save.click();
+    await page.waitForFunction(
+      (sentence) => document.querySelector('.ocu-form-bar-status')?.textContent?.includes(sentence) === true,
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.formSavedPendingTest
+    );
+
+    const answer = await fetch(`${config.origin}${DEFINITIONS_PATH}`, { headers: { Authorization: authHeader() } });
+    assert.ok(answer.ok, 'the definitions route answers');
+    const body = await answer.json();
+    const listed = (Array.isArray(body.definitions) ? body.definitions : []).find((row) => row?.name === NAMES[3]);
+    assert.ok(listed, `the definition was stored: ${JSON.stringify(body.definitions)}`);
+    assert.equal(listed.provider, 'openai', 'on the OpenAI row');
+    const one = await fetch(`${config.origin}${DEFINITIONS_PATH}/${encodeURIComponent(listed.id)}`, {
+      headers: { Authorization: authHeader() },
+    });
+    assert.ok(one.ok, 'the single-definition route answers');
+    const stored = await one.json();
+    assert.equal(stored.temperature, null, `and it stores no temperature: ${JSON.stringify(stored)}`);
   } finally {
     await context.close();
   }

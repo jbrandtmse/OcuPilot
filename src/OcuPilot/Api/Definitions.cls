@@ -17,7 +17,9 @@
 /// <p><b>A create takes the class's own defaults, and then the provider row's canonical values
 /// for the four columns the catalog declares them for</b> -- model, endpoint, maximum tokens and
 /// temperature -- but only for keys the body did not carry. A key sent as <code>""</code> is an
-/// explicit empty value and is taken verbatim. An <b>update merges</b>: a key the body omits
+/// explicit empty value and is taken verbatim. A shipped row declares no canonical temperature,
+/// so a create that omits one stores it unset and the provider's own default applies; the
+/// projection answers an unset number as JSON <code>null</code>. An <b>update merges</b>: a key the body omits
 /// keeps its stored value, so editing one field is a one-key body and cannot silently wipe the
 /// rest.</p>
 /// <p><b>Every accepted write is audited.</b> It computes the changed-field set, hands it to
@@ -192,13 +194,16 @@ ClassMethod HandleList() As %Status
 /// <p>The catalog columns <code>GET /agent/providers</code> serves, as
 /// <code>$ListBuild(column, kind)</code> -- every column a form needs to cascade a provider
 /// choice, and no more.</p>
-/// <p><code>adapterClass</code> and <code>authVersion</code> are deliberately absent: the first is
-/// the table's own dispatch and names a class on this instance, the second is a wire detail of the
-/// call OcuPilot makes. Neither is anything a form does with a provider, and neither is anything a
-/// browser is told about the instance (AD-21, AD-47).</p>
+/// <p><code>acceptsTemperature</code> tells the form whether the Temperature field applies to the
+/// chosen family, so the form never branches on a provider name (AD-5).</p>
+/// <p><code>adapterClass</code>, <code>authVersion</code> and <code>reasoningEffort</code> are
+/// deliberately absent: the first is the table's own dispatch and names a class on this
+/// instance, the other two are wire details of the call OcuPilot makes. None is anything a form
+/// does with a provider, and none is anything a browser is told about the instance (AD-21,
+/// AD-47).</p>
 ClassMethod ProviderColumns() As %List
 {
-    Quit $ListBuild($ListBuild("key", "string"), $ListBuild("label", "string"), $ListBuild("defaultModel", "string"), $ListBuild("modelSuggestions", "array"), $ListBuild("defaultEndpoint", "string"), $ListBuild("endpointRequired", "boolean"), $ListBuild("canonicalMaxTokens", "number"), $ListBuild("canonicalTemperature", "number"), $ListBuild("defaultEnvVarName", "string"), $ListBuild("defaultCredentialName", "string"), $ListBuild("keyPrefix", "string"), $ListBuild("allowsLocal", "boolean"))
+    Quit $ListBuild($ListBuild("key", "string"), $ListBuild("label", "string"), $ListBuild("defaultModel", "string"), $ListBuild("modelSuggestions", "array"), $ListBuild("defaultEndpoint", "string"), $ListBuild("endpointRequired", "boolean"), $ListBuild("canonicalMaxTokens", "number"), $ListBuild("canonicalTemperature", "number"), $ListBuild("defaultEnvVarName", "string"), $ListBuild("defaultCredentialName", "string"), $ListBuild("keyPrefix", "string"), $ListBuild("allowsLocal", "boolean"), $ListBuild("acceptsTemperature", "boolean"))
 }
 
 /// <p>Answer <code>GET /agent/providers</code>: every row
@@ -1459,10 +1464,13 @@ ClassMethod SelectionProjection(pObject As OcuPilot.Kernel.State.Agent) As %Dyna
 }
 
 /// <p>Set one key on <var>pOut</var> with the JSON type its field declares, so a number arrives
-/// as a number and a flag as a boolean rather than as text a client has to coerce.</p>
+/// as a number and a flag as a boolean rather than as text a client has to coerce. An empty number
+/// is unset, and arrives as JSON <code>null</code> rather than as 0.</p>
 ClassMethod SetTyped(pOut As %DynamicObject, pKey As %String, pValue As %String, pKind As %String) [ Private ]
 {
-    If pKind = "number" {
+    If (pKind = "number") && (pValue = "") {
+        Do pOut.%Set(pKey, "", "null")
+    } ElseIf pKind = "number" {
         Do pOut.%Set(pKey, +pValue, "number")
     } ElseIf pKind = "boolean" {
         Do pOut.%Set(pKey, $Select(+pValue: 1, 1: 0), "boolean")

@@ -291,7 +291,9 @@ ClassMethod OpenAiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Pro
 /// (DW-1180): where the provider issued one, the replayed <code>functionCall</code> and the
 /// <code>functionResponse</code> answering it both carry it; where it did not, neither does, and
 /// the name and the order the results appear in are the whole correlation, which keeps two calls
-/// to one tool apart.</p>
+/// to one tool apart. A tool-use block's <code>thoughtSignature</code> member is written back
+/// verbatim as the replayed part's sibling <code>thoughtSignature</code>, and a block with none
+/// writes none.</p>
 /// <p>Answers an error <class>%Status</class>, with both outputs blank, for a
 /// <code>tool_result</code> whose id no preceding <code>tool_use</code> carried.</p>
 ClassMethod CanonicalToGemini(ByRef pMessages, pSystemPrompt As %String = "", Output pContents As %DynamicArray, Output pSystemInstruction As %DynamicObject) As %Status
@@ -337,6 +339,9 @@ ClassMethod CanonicalToGemini(ByRef pMessages, pSystemPrompt As %String = "", Ou
                         If (tUseId '= "") && '..IsSynthesizedCallId(tUseId) Do tCall.%Set("id", tUseId, "string")
                         Set tPart = {}
                         Do tPart.%Set("functionCall", tCall)
+                        ; The part's sibling signature goes back verbatim, or the provider refuses
+                        ; the replayed call; a block that carried none writes none.
+                        If tBlock.%GetTypeOf("thoughtSignature") = "string" Do tPart.%Set("thoughtSignature", tBlock.%Get("thoughtSignature"), "string")
                         Do tParts.%Push(tPart)
                         Continue
                     }
@@ -381,7 +386,9 @@ ClassMethod CanonicalToGemini(ByRef pMessages, pSystemPrompt As %String = "", Ou
 /// and a synthesized one where it did not (DW-1180), the <code>finishReason</code> mapped
 /// into the canonical vocabulary, and
 /// <code>usageMetadata.promptTokenCount</code> / <code>candidatesTokenCount</code> into the two
-/// token counts.</p>
+/// token counts. A <code>functionCall</code> part's sibling <code>thoughtSignature</code> is kept
+/// verbatim as the canonical block's own <code>thoughtSignature</code> member, which
+/// <method>CanonicalToGemini</method> writes back beside the replayed call.</p>
 /// <p>Answers an error <class>%Status</class> for a body that is not a JSON object, for one with no
 /// <code>candidates</code> array, and for a <code>functionCall</code> part naming no function,
 /// which no later request could answer. A candidate that carried no parts is an empty reply and
@@ -435,6 +442,7 @@ ClassMethod GeminiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Pro
                 Do tUse.%Set("id", $Select(tVendorId '= "": tVendorId, 1: ..#GEMINICALLIDPREFIX _ (tToolCalls.%Size() + 1) _ "_" _ tPart.functionCall.name), "string")
                 Do tUse.%Set("name", tPart.functionCall.name, "string")
                 Do tUse.%Set("input", ..ArgumentsOf(tPart.functionCall.args))
+                If tPart.%GetTypeOf("thoughtSignature") = "string" Do tUse.%Set("thoughtSignature", tPart.%Get("thoughtSignature"), "string")
                 Do tToolCalls.%Push(tUse)
             }
             If $$$ISERR(tSC) Quit

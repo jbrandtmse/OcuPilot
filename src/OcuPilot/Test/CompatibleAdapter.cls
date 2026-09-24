@@ -109,7 +109,7 @@ Method StoredDefinition(pRow As %DynamicObject, pEndpoint As %String, pCredType 
         Set tRow.EnvVarName = $Select(pCredType = "env": pRow.defaultEnvVarName, 1: "")
         Set tRow.CredentialName = ""
         Set tRow.MaxTokens = +pRow.canonicalMaxTokens
-        Set tRow.Temperature = +pRow.canonicalTemperature
+        Set tRow.Temperature = pRow.canonicalTemperature
         Set tRow.Enabled = 1
         Set tRow.ConnectionVerified = 1
         Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tRow)
@@ -137,7 +137,7 @@ ClassMethod DirectValues(pRow As %DynamicObject, pEndpoint As %String, Output pV
     Set pValues("envVarName") = pRow.defaultEnvVarName
     Set pValues("credentialName") = ""
     Set pValues("maxTokens") = +pRow.canonicalMaxTokens
-    Set pValues("temperature") = +pRow.canonicalTemperature
+    Set pValues("temperature") = pRow.canonicalTemperature
     Set pValues("keyPrefix") = pRow.keyPrefix
     Set pValues("authVersion") = pRow.authVersion
 }
@@ -288,7 +288,7 @@ Method TestAKeylessRowWithALeftoverReferenceAndAResolvableSecretStillSendsNoHead
         Set tDef.EnvVarName = tRow.defaultEnvVarName
         Set tDef.CredentialName = tRow.defaultCredentialName
         Set tDef.MaxTokens = +tRow.canonicalMaxTokens
-        Set tDef.Temperature = +tRow.canonicalTemperature
+        Set tDef.Temperature = tRow.canonicalTemperature
         Set tDef.Enabled = 1
         Set tDef.ConnectionVerified = 1
         Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tDef)
