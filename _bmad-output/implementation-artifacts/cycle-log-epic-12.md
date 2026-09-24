@@ -68,3 +68,5 @@
 2026-09-24T17:45:10Z	Epic 12	epic_runner_resumed	from=fae0e54f stories_done=12.1,12.2 epic_start_gates=not_rerun
 2026-09-24T17:45:10Z	Epic 12	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@968875cb conflicts=EXPERIENCE.md_fixed_strings_tail(both_rows_kept;11.10_row_first),strings.test.mjs_bound(800_kept;both_paragraphs),sprint-status.yaml(theirs+regenerate+set_12.1/12.2_done,epic-12_in-progress) citations_recomputed=strings.ts_x509(467->468),revoke(468->469) local=node_--test_tools_1375/1375 ci=pending_on_merge_head
 2026-09-24T17:45:10Z	Epic 12	spine_updated	ad=AD-15 reason=decision_sheet(DW-1616,by=merge_gate,orchestrator-relayed) by=runner story=12-2-revoke-a-user-s-oauth-2-0-tokens lint=ok(1_preexisting_low) ledger=DW-1616_by-design
+2026-09-24T17:47:46Z	Epic 12	epic_context_compiled	reason=planning_artifact_newer(spine_AD-15,EXPERIENCE_merge) model=opus
+2026-09-24T17:47:46Z	Story 12.3	stage_spawned	stage=plan spawn_at=2026-09-24T17:47:46Z model=opus agent_name=12-3-copy-and-purge-the-audit-database-plan-1 cycle_iteration=1

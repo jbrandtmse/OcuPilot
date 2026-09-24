@@ -4,7 +4,7 @@
 
 ## Goal
 
-Finish the area the contest's task statement names most directly: OAuth setup. Today the OAuth 2.0 screen has five read-only tabs, two deletes, and name cells that link out to the classic portal. This epic replaces the link-outs with five OcuPilot editors that each round-trip create, edit and delete. It also adds the security-area actions: X.509 details, OAuth token revoke, and audit-database copy and purge. The owner's re-sequence of 2026-09-21 ranked this epic first in polish week. It closes the accepted Release 1 risk that "OAuth is lists, views and deletes", and it brings the classic link-out count back to zero.
+Finish the area the contest's task statement names most directly: OAuth setup. Today the OAuth 2.0 screen has five read-only tabs, two deletes, and name cells that link out to the classic portal. This epic replaces the link-outs with five OcuPilot editors that each round-trip create, edit and delete. It also adds the security-area actions: X.509 details, OAuth token revoke, and audit-database copy and purge. The owner's re-sequence of 2026-09-21 ranked this epic first in polish week. It closes the accepted Release 1 risk that "OAuth is lists, views and deletes", and it brings the classic link-out count (SM-C1) back to zero.
 
 ## Stories
 
@@ -21,48 +21,51 @@ Finish the area the contest's task statement names most directly: OAuth setup. T
 ## Requirements & Constraints
 
 - **Every editor** is a full-page route on the `form-page` contract, with tabs that mirror the classic editor. It round-trips create, edit and delete, ships with its agent write tool over the derived field list, publishes to the change-event bus, and declares its suggested prompts in its descriptor.
-- **Secrets are write-only end to end.** A client secret, a private key or an initial access token is masked, never pre-filled, and never returned by any read, ledger row, diff, screen context or log line. Exclusion is by schema declaration; the name-pattern matcher is only a backstop.
-- **12.1:** X.509 details render the certificate and never the private key. The SSL/TLS test (Story 9.5) and the LDAP test (Story 16.14) are **not** built here.
-- **12.2 revoke:** runs as the administrator; an agent proposal goes through confirmation and the audit database carries the marked event. The confirmation names the user. The route is `/v2/security/oauth2/server/revoke` with `user` as a required query parameter (the instance's UrlMap); the published spec's `/v2/security/oauth2/revoke` answers 404 on 2026.2.
+- **Secrets are write-only end to end.** A client secret, a private key or an initial access token is masked, never pre-filled, and never returned by any read, ledger row, diff, screen context or log line.
+- **12.1 (done):** X.509 details show the certificate and never the private key. The SSL/TLS test (Story 9.5) and the LDAP test (Story 16.14) are built elsewhere, not here.
+- **12.2 (done):** revoke is a Users row action. It runs as the administrator, and an agent proposal needs confirmation and carries the audit marker. The dialog names the user. The route is `/v2/security/oauth2/server/revoke` with a required `user` query parameter; the published spec's `/v2/security/oauth2/revoke` answers 404 on 2026.2.
 - **12.3 copy and purge:**
   - Copy runs in the background to a chosen namespace and reports progress.
-  - Purge removes records older than N days; its confirmation names the scope and the cut-off. An agent-proposed purge carries the full write model, and its card states that it destroys the record the agent marker lives in.
-  - **Purge is screen-only** until Epic 14's governance ships. It is registered as an agent write tool in the same change that adds the policy, and then defaults to disabled as a post-freeze destructive key.
+  - Purge removes records older than N days, and its confirmation names the scope and the cut-off.
+  - An agent-proposed purge carries the full write model, and its card says that the purge destroys the record the agent's marker lives in.
+  - Purge is available **from the screen only** until Epic 14's governance ships. It becomes an agent write tool in the same change that adds the policy, where it defaults to disabled as a destructive key added after the freeze.
 - **12.4:** Discover and Save fetches the issuer's metadata into the form for review before saving. Update JWKS reports its result.
 - **12.5 and 12.7:** Rotate Keys reports its result.
 - **12.7:** An agent-proposed change to the authorization server's own configuration carries the full write model, and its card states which clients the change affects.
-- **12.9:** Each tab's name cell opens OcuPilot's editor and the classic links come off all five tabs. Record SM-C1 back at zero and record the Release 1 risk as closed.
-- **New screens pass the structural gate** (accessible names, minimum control widths, no overflow, no page-level horizontal scroll), use design tokens only, and render correctly in the dark theme.
+- **12.9:** Each tab's name cell opens OcuPilot's editor, and the classic links come off all five tabs. Record SM-C1 back at zero, and record the Release 1 risk as closed.
+- **New screens pass the structural gate:** accessible names, minimum control widths, no overflow and no page-level horizontal scroll. They use design tokens only and render correctly in the dark theme.
 
 ## Technical Decisions
 
-- **Merge: read fresh, apply the diff, send the complete property set (AD-4).** This rule is uniform, whatever an endpoint does with omitted keys.
+- **Merge: read fresh, apply the diff, send the complete property set (AD-4).** The rule applies to every save in this epic, whatever an endpoint does with omitted keys.
   - All four `Security.OAuth2.*` endpoints call no merge helper and are presumed to erase omitted fields. Each OAuth story measures its own endpoint's `RunPut` on a throwaway and records the result in AD-4.
-  - `Security.X509Credential` also calls no merge helper, but a measurement on 2026-09-24 showed it keeps omitted fields: its `RunPut` sets each field only when the body defines it. AD-4 now records this. It still gets the complete set.
-- **Field lists (AD-3).** Derived lists are the wire contract and carry `Metadata` as one opaque object. The published spec (`mainspec_v2.json`) supplies only the `Metadata.*` member sets, 30 to 70 members per editor. `ClientId`, `JWTInterval` and `ServerDefinition` keep the template names. The spec's PUT says `OAuth2ServerDefinition`, but the endpoint rejects unknown keys (verified 2026-09-16). Every derived field is classified `ordinary`, `secret` or `opaque`. An unclassified field is emitted secret, and a credential-named string field that is not classified secret fails the build.
-- **Two write mechanisms, no third.**
-  - **Editor Save** resolves through the write tool (AD-55). Creates use AD-54's create kind: the target must be absent, and the fingerprint covers that absence. Save mints no proposal but inherits the prohibited set and the write's validation and fingerprint gates. Read-only mode and the kill switch do not gate a person's Save.
-  - **Row and page actions** use AD-53: `POST /screens/:screen/action`, with `screen-action-handler.ts` on the client. The screen's action and the agent's write are one operation. A screen action accepts only the values its tool declares, and a secret travels only under the descriptor's `secretArguments` (AD-56).
-  - **Bodyless writes** (revoke, Rotate Keys, Update JWKS) are action-style (AD-51). Each declares its request type and a fingerprint subject covering every precondition field its read answers.
-  - (inference) Which mechanism carries each editor-level action button is the story's to settle.
-- **Proposals (AD-6, AD-34, AD-40).** Proposals are server-minted, single-use and fingerprinted, and expire after 10 minutes. The confirm channel admits only declared secret fields. Confirm re-checks privileges and the prohibited set in one atomic transition. Agent writes emit the audit marker (AD-15); screen writes do not.
-- **Privileges (AD-8).** A tool's pair set is its screen's. Administrative resources are gated at `USE`. The prohibited set refuses only self-protection (AD-10).
-- **Descriptors (AD-5, AD-13, AD-14).** The OAuth 2.0 screen is one descriptor per tab (`Screen/Descriptor/OAuth*Tab.cls`), and a tab may declare several entity types. An editor takes side-bar position 0 and is reached from its tab. Ids are percent-encoded in one segment by the shared encoder. Tool names follow `<area>.<screen>.<verb>`, and a tool's identity comes from a stable descriptor identifier.
-- **Screen context (AD-24, amended by Story 11.9).** The kernel adds `tools` and `readOnly` to every screen-context payload, derived on the instance. A request that carries either is refused. A form page declares neither a read tool nor row actions, so an editor's `tools` list is empty. Tabs with row actions list their read tool and write tools.
-- **Admin API confinement (AD-27).** Only `Port/AdminPort` names `%Api.Admin.*`. A call completed through a vendor class needs a new named AD-27 case.
-- **Secrets (AD-35).** A secret never enters a status, an exception, a log line or a temporary file.
+  - `Security.X509Credential` was measured to keep omitted fields. It still receives the complete set.
+- **Field lists (AD-3).** The derived list is the wire contract and carries `Metadata` as one opaque object. The published `mainspec_v2.json` supplies only the `Metadata.*` member sets, 30 to 70 per editor.
+  - `ClientId`, `JWTInterval` and `ServerDefinition` keep their template names. The spec calls the last one `OAuth2ServerDefinition`, but the endpoint rejects unknown keys.
+  - Every field is classified `ordinary`, `secret` or `opaque`. An unclassified field is emitted as secret. A string field with a credential-like name that is not classified secret fails the build.
+- **Two write mechanisms, and no third.**
+  - **Editor Save** resolves through the write tool (AD-55). A create uses AD-54: the target must be absent, and the fingerprint covers that absence. Save mints no proposal, but it inherits the prohibited set and the validation and fingerprint gates. Read-only mode and the kill switch do not gate a person's Save.
+  - **Row and page actions** use AD-53's `POST /screens/:screen/action`. A screen action accepts only the values its tool declares, and secrets travel only under `secretArguments` (AD-56).
+  - **Bodyless writes** (revoke, Rotate Keys, Update JWKS) are action-style (AD-51). Each declares its request type and a fingerprint subject that covers every precondition field its read answers. (inference) Each story decides which mechanism carries its editor-level buttons.
+- **Privileges (AD-8).** A tool's pair set is its screen's. Administrative resources are gated at `USE`. A tool may also declare a pair its screen lacks when the vendor endpoint's `ResourcesOR()` names it for that request type, measured on the instance. The mint then refuses a caller without it, by name. The one case today is revoke's `%Admin_OAuth2_Registration:USE`.
+- **Audit gaps (AD-15, AD-53).** IRIS records no audit event for a token revoke. For an agent revoke, OcuPilot's marker is the only record. A revoke from the screen leaves no audit row, which AD-53 records as a named gap. Any further operation of this kind must be named in both ADs.
+- **Proposals (AD-6, AD-34, AD-40).** A proposal is minted on the server, used once, fingerprinted, and expires after 10 minutes. The confirm channel admits only declared secret fields. Confirm re-checks privileges and the prohibited set in one atomic transition. Agent writes emit the marker; screen writes do not.
+- **Descriptors (AD-5, AD-13, AD-14).** Each OAuth tab has its own descriptor (`Screen/Descriptor/OAuth*Tab.cls`), and a tab may declare several entity types. An editor declares side-bar position 0 and is opened from its tab. Ids are percent-encoded in one path segment by the shared encoder. Tool names follow `<area>.<screen>.<verb>` and come from a stable descriptor identifier.
+- **Classic link-outs (AD-44).** The OAuth tabs hold Release 1's only `classicLinkExemption`, declared by all five tab descriptors and counted once. Story 12.9 removes all five declarations.
+- **Screen context (AD-24).** The kernel derives `tools` and `readOnly` for every payload, and a request that carries either key is refused. A form page declares neither a read nor row actions, so an editor's `tools` list is empty.
+- **Admin API containment (AD-27).** Only `Port/AdminPort` names `%Api.Admin.*`. Completing a call through a vendor class requires a new named AD-27 case. A secret never enters a status, an exception, a log line or a temporary file (AD-35).
 
 ## UX & Interaction Patterns
 
-- **Form page:** single column, at most 720px wide, fields at most 480px wide and in classic order. Validation is inline, server-authored and lands on the named field. A failed Save moves focus to the error-summary banner. The sticky 56px action bar has Save as its only primary. Create opens the new entity; edit shows "Saved". The unsaved-changes guard also holds an agent navigation.
-- **Tabs:** one form spans all tabs and Save applies everything. A validation error switches to the tab that holds it. An errored tab shows a destructive dot and adds ", N errors" to its accessible name.
+- **Form page:** a single column at most 720px wide, with fields at most 480px wide, in the classic order. Validation is inline, written by the server, and lands on the named field. A failed Save moves focus to the error-summary banner. The sticky 56px action bar has Save as its only primary button. After Save, a create opens the new entity and an edit shows "Saved". The unsaved-changes guard also holds an agent navigation.
+- **Tabs:** one form spans all tabs, and Save applies everything. A validation error switches to the tab that holds it. A tab with errors shows a destructive dot and adds ", N errors" to its accessible name.
 - **Deletes and revoke** use a dialog that names the entry and requires the typed name. Dialogs never stack.
-- **Existing OAuth labels and empty states** are fixed strings. Reuse them and do not reword them.
+- **Existing OAuth labels, empty states and delete consequences** are fixed strings. Reuse them without rewording.
 
 ## Cross-Story Dependencies
 
-- **Shared tabbed-form component:** `ui/src/app/shell/form-tabs.ts` exists only on `origin/OCU-1-epic9`, not on this branch. Whichever of 9.1 and 12.4 lands first sets it, and the other adopts it at its merge.
+- **Shared tabbed form:** `ui/src/app/shell/form-tabs.ts` exists only on `OCU-1-epic9`, not on this branch. Whichever of Stories 9.1 and 12.4 lands first sets it, and the other adopts it at its merge.
 - **This epic depends on Epics 6, 7 and 8** (all merged) and runs beside Epic 9.
 - **12.9 depends on 12.4 through 12.8.** 12.5 configures a client against a server description from 12.4. 12.7's affected-clients line names the server client descriptions that 12.8 edits.
-- **Suggested prompts:** Story 11.3 owns the descriptor contract and is still backlog on this branch, so an editor's prompts wait for that contract.
+- **Suggested prompts:** Story 11.3 owns the descriptor contract and is still in the backlog, so each editor's prompts wait for it.
 - **Epic 14** registers purge as a governed agent tool.
