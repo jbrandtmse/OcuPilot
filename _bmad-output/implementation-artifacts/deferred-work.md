@@ -6663,3 +6663,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-9-2-the-web-application-editor.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: OcuPilot.Test.ProposalMint does not extend %UnitTest.TestCase
 - 2026-09-24T06:11:20Z status=dropped owner=9-2-the-web-application-editor by=harvest note=spec wording only; the implement stage ran OcuPilot.Test.Proposal; no code or test gap
+
+### DW-1606: A forced screen Delete of a predefined % role is pinned at RoleDelete.ScreenActionDelta, not over POST /screens/permissions.roles/action
+- source: spec-9-3-the-role-editor.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: a request-level leg with the refusal missing would drop a vendor role on the throwaway; no held-port ScreenAction harness exists
+- 2026-09-24T08:53:06Z status=wontfix-accepted owner=9-3-the-role-editor by=harvest note=reopen_if=a held-port ScreenAction harness lands (as HeldPutPort did for Save), or ScreenAction.Run stops calling the tool's ScreenActionDelta
+
+### DW-1607: The %All census reads a role set escalation-only as reaching nothing for its holders (inference); whether sign-in still grants it was not measured
+- source: spec-9-3-the-role-editor.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: holders keep the role in Roles after EscalationOnly=1 (measured on ocupilot-ci); the census errs toward refusing, the safe side
+- 2026-09-24T08:53:06Z status=wontfix-accepted owner=9-3-the-role-editor by=harvest note=reopen_if=a sign-in by a holder of an escalation-only role carrying %All shows %All in $ROLES on a throwaway
