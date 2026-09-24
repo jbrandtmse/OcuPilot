@@ -28,7 +28,7 @@ const CREDENTIAL = {
   PeerNames: [],
   CAFile: '',
   SubjectDN: 'CN=Probe',
-  IssuerDN: 'CN=Probe',
+  IssuerDN: 'CN=Probe CA',
   SerialNumber: '4F1A09C2',
   ValidityNotBefore: '2026-01-01 00:00:00',
   ValidityNotAfter: '2126-01-01 00:00:00',
@@ -193,7 +193,8 @@ describe('the X.509 credential form', () => {
     // Mutation (Rule 19): remove the legend -> the group's name is empty and this goes red.
     expect(group).not.toBeNull();
     expect(group.querySelector(':scope > legend')?.textContent?.trim()).toBe(STRINGS.x509CertificateDetails);
-    // Mutation (Rule 19): render Serial number outside the fieldset -> red.
+    // Mutation (Rule 19): render Serial number outside the fieldset, or swap the Subject and Issuer
+    // bindings (the fixture's two DNs differ) -> red.
     const fields = [...group.querySelectorAll('input')].map((control) => [
       control.id,
       host.querySelector(`label[for="${control.id}"]`)?.textContent?.trim(),
@@ -202,7 +203,7 @@ describe('the X.509 credential form', () => {
     ]);
     expect(fields).toEqual([
       ['ocu-x509-SubjectDN', STRINGS.x509ColumnSubject, 'CN=Probe', true],
-      ['ocu-x509-IssuerDN', STRINGS.x509ColumnIssuer, 'CN=Probe', true],
+      ['ocu-x509-IssuerDN', STRINGS.x509ColumnIssuer, 'CN=Probe CA', true],
       ['ocu-x509-SerialNumber', STRINGS.x509FieldSerialNumber, '4F1A09C2', true],
       ['ocu-x509-ValidityNotBefore', STRINGS.x509ColumnValidFrom, '2026-01-01 00:00:00', true],
       ['ocu-x509-ValidityNotAfter', STRINGS.x509ColumnValidUntil, '2126-01-01 00:00:00', true],

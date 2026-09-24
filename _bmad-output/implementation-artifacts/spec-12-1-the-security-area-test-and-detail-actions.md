@@ -107,6 +107,31 @@ deferred: []
 - **AC2 (non-build).** Given this story's diff, when it is assessed, then it builds no SSL/TLS test and no LDAP test, and it touches no `ssl*`, `SSL*`, `Ldap*` or `ui/src/app/areas/security/ssl*` path (`git diff --stat` against the baseline).
 - **AC3 (DW-1337).** Given the details view, when it is measured at 1280 px light, 720 px light and 1280 px dark, then no structural or contrast violation is found beyond the shell-chrome entries the baseline already holds for `security/x509/edit`.
 
+### Review Findings
+
+Code review 2026-09-24 (four layers, full-opus). Each finding: severity · fix-risk · footprint · spec-status.
+
+- [x] [Review][Patch] Subject and Issuer hold the same DN in every fixture, so a swap of the two stays green in the page, store and browser legs (medium · low, fixture values only · in-story · clear; Rule 19 unfalsifiable half of AC1) [ui/src/app/areas/security/x509-form.page.spec.ts:30]
+- [x] [Review][Patch] `TestTheDetailsCarryTheCertificateAndNoKey` asserts only `SerialNumber` non-empty on the `CERTINFO` side, so a `CERTINFO` that lost SubjectDN, IssuerDN or a validity date passes on `"" = ""` (low · low, one assertion · in-story · clear) [src/OcuPilot/Test/X509Wire.cls:199]
+- [x] [Review][Patch] The EXPERIENCE.md row says the six fields are drawn "as the classic page's X.509 Certificate Data draws them", but `DrawCerData` draws only serial, issuer, subject and Not Valid After (low · low, wording · in-story · clear) [_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md:467]
+
+Rejected:
+
+- `low` the server leg's oracle `Info()` reads `CERTINFO` through the same port `HandleForm` uses (also the commit message's "against CERTINFO" claim) -- the port is AD-2's defined path, and the browser leg compares against `%SYS.X509Credentials` independently; a separate oracle is a redesign.
+- `low` the Review Triage Log tags the port-oracle row `[false]` -- fix is an edit of the spec under review.
+- `low` triage rows 3 and 10 are one finding, both tagged `[reject]` though the Verification line was edited -- fix is an edit of the spec under review.
+- `low` Code Map and Tasks still say "after :410" while the row sits at the table's end -- fix is an edit of the spec under review; the end-of-table append is correct (inserting at :410 would shift 82 `EXPERIENCE.md:4xx` citations).
+- `false` spec-8-5 :199 "`SerialNumber` is not projected" is a superseded claim -- it records 8.5's delivered read, which was accurate; the live doc in `X509Rules.cls` states the ten fields.
+- `low` Epic 9 appends at the same table end, `strings.ts` tail and `strings.test.mjs` bound, so the merge conflicts and the `EXPERIENCE.md:467` citations will move -- resolved at Rule 22's integrate-forward, not in this story's code; 800 still holds 772 after the merge.
+- `low` the legend reads like one more field label -- spec-bound: the task prescribes `<legend class="ocu-field-label">`.
+- `low` the browser leg toggles `ocu-theme-dark` directly rather than through `toggleThemeThroughMenu`, with a hard-coded class name -- spec-bound ("`ocu-theme-dark` set on `<html>`"), and the dark-only contrast mutation proved the dark pass is measured; a renamed class fails loudly on the surface check.
+- `low` the server leg compares the key list in order where the spec asks for an exact set -- stricter, and a reorder fails loudly.
+- `low` both `MakeRequest` statuses go unchecked -- the class's convention; a transport failure fails loudly on the HTTP status assertion.
+- `low` `detectScreen`'s `unmeasurable` count is dropped on the dark pass -- the walk and `definitions.browser-spec.mjs` do the same; the legend was shown measured by the contrast mutation.
+- `false` the 720 px resize settles on two frames only -- the same `setViewport` + `frames` sequence as `definitions.browser-spec.mjs` :554-558, and the leg passed 5 of 5 with both structural mutations red.
+- `low` the page is not scanned for certificate-body lines or the password -- the page draws only mapped read fields, and `Leak()` over the whole read (encrypted key and password) is mutation-proven.
+- AC and AD audit: no violation of AC1-AC3 or of AD-2, AD-5, AD-8, AD-13, AD-19, AD-24, AD-27, AD-35, AD-36, AD-39, AD-44; Rule 3 met by the browser leg; Rule 14 clean; secret scan 0.
+
 ## Spec Change Log
 
 - 2026-09-24, spec gate (runner): the Design Notes' AD-4 recommendation is applied. AD-4 now lists `Security.X509Credential` beside `Security.Resource` and `Wallet.Secret`, measured on `ocupilot-b-ci` (an `OwnerList`-only PUT kept `PeerNames` and `CAFile`). No task changes.
@@ -175,6 +200,8 @@ Observed (implement stage, `ocupilot-b-ci`; each applied, loaded or rebuilt and 
 - mutation: `.ocu-x509-certificate` given `min-inline-size: 1400px` → browser Story 12.1 leg red on two fresh `overflow` entries (1280 and 720). A fixed `inline-size` stays green: `.ocu-form-fields .ocu-field`'s `max-width` clamps it
 - mutation: `:root.ocu-theme-dark .ocu-x509-certificate legend { color: var(--mat-sys-surface) }` → browser Story 12.1 leg red on one fresh dark `contrast` entry (1:1), light passes unchanged (review pass)
 - AC2: `git diff --stat ffae9b98` names no `ssl*`, `SSL*` or `Ldap*` path
+- mutation: the page template's Subject and Issuer `[value]` bindings swapped → `x509-form.page.spec.ts` Story 12.1 leg red (code review; fixtures now carry `IssuerDN: 'CN=Probe CA'`)
+- mutation: the store maps `subject` from `IssuerDN` and `issuer` from `SubjectDN` → `x509-form.store.spec.ts` AC4 leg and the page-spec Story 12.1 leg red (code review)
 
 ## Auto Run Result
 

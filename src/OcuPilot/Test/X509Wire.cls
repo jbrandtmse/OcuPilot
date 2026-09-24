@@ -243,6 +243,7 @@ Method TestTheDetailsCarryTheCertificateAndNoKey()
     }
     Do $$$AssertEquals(tNames, ..#CREDENTIALFIELDS, "the credential carries exactly the ten fields, in order")
     For tField = "SubjectDN", "IssuerDN", "SerialNumber", "ValidityNotBefore", "ValidityNotAfter" {
+        Do $$$AssertTrue(tInfo.%Get(tField) '= "", tField _ " is answered by the vendor's CERTINFO")
         Do $$$AssertEquals(tCredential.%Get(tField), tInfo.%Get(tField), tField _ " equals the vendor's CERTINFO")
     }
     Do $$$AssertEquals(tCredential.%Get("HasPrivateKey"), 1, "a key is reported present")
