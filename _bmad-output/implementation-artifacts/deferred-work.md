@@ -6656,3 +6656,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-11-9-the-agent-knows-the-screen-it-is-on.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: publishRows sends drill.errors() narrowed to the 5 summary fields; panel.ts sets namespace from scope.namespace() and entity from the route :id, while the drill's namespace/date live only in ErrorLogDrill (AD-48 one namespace source); ErrorRead requires namespace and date
 - 2026-09-24T09:36:58Z status=routed owner=11-2-explain-a-log-or-audit-entry by=cr note=11.2 consumes these rows; carrying the drill scope needs a descriptor or context-contract change outside 11.9's Never list
+
+### DW-1620: Api/Definitions.cls MergeBody doc comment still says readOnly's default is 1 after 11.10 moved it to 0
+- source: spec-11-10-a-judge-succeeds-the-first-time.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: src/OcuPilot/Api/Definitions.cls:1438 reads 'on readOnly, whose default is 1'; Agent.ReadOnly InitialExpression is now 0
+- 2026-09-24T16:28:20Z status=open owner=11-10-a-judge-succeeds-the-first-time by=harvest note=comment-only two-way door; Api/Definitions.cls is in Epic 11's footprint, so the lead authorizes the one-line comment fix at code review despite the spec's no-edit line (which guards behavior)
