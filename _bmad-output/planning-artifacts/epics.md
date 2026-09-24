@@ -4961,7 +4961,7 @@ So that a slow first answer does not read as a broken portal.
 **Acceptance Criteria:**
 
 - **Given** a provider that has not answered
-- **When** Test connection has waited a bound safely below the Web Gateway's 60-second response timeout
+- **When** Test connection has waited a bound safely below the Web Gateway's configured response timeout - the `Server_Response_Timeout` the installer already reads, 60 seconds when unread - so raising that setting lengthens the test
 - **Then** it returns OcuPilot's own reason instead of the gateway's empty 504: for a definition marked local, that the model may still be loading and to test again in a minute; for any other, the provider and how long it waited.
 
 - **Given** a test that timed out
@@ -6359,7 +6359,8 @@ So that the entry's central claim is legible to me even though I will not run it
 - **Given** each provider OcuPilot ships
 - **When** the README describes getting started
 - **Then** it carries a "get a key in two minutes" section for that provider
-- **And** the Anthropic section says to create a key scoped to one workspace, because a key for all workspaces is refused without an `anthropic-workspace-id` header, which OcuPilot does not send.
+- **And** the Anthropic section says to create a key scoped to one workspace, because a key for all workspaces is refused without an `anthropic-workspace-id` header, which OcuPilot does not send
+- **And** the local-model section says that a slow model's first answer can outlast the Web Gateway's response timeout during Test connection, so an operator may need to raise the gateway's `Server_Response_Timeout`; agent turns do not depend on it (AD-7), and OcuPilot never changes the setting itself.
 
 - **Given** no hosted demo instance ships, at any point
 - **When** the judge-without-a-key path is assessed
