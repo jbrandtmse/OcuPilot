@@ -52,6 +52,7 @@ import {
   moveActive,
   parseMaxRows,
   reconcile,
+  rowFor,
   rowKey,
 } from '../core/table-model';
 
@@ -662,11 +663,12 @@ export class DataTable implements OnInit {
     this.generation();
     const screen = this.screen();
     const selected = this.store().selection()[0] ?? '';
+    const row = rowFor(this.store().data(), screen, selected);
     return screen.rowActions
       .filter((action) => action.id !== '')
       .filter((action) => this.actions.has(screen.descriptor, action.id))
       .map((action) => {
-        const reason = selfProtectionReason(action.selfProtection, selected, this.signedIn());
+        const reason = selfProtectionReason(action.selfProtection, selected, this.signedIn(), row);
         const label = actionLabel(screen.descriptor, action.id);
         return {
           id: action.id,

@@ -12,15 +12,23 @@ import { stubAccountPreferences } from '../testing/account-preferences';
 import { Session } from '../core/session';
 import {
   ADD_APPLICATION_ROLE,
+  ADD_GRANTED_ROLE,
   ADD_MATCHING_ROLE,
   ADD_ROLE,
   REMOVE_APPLICATION_ROLE,
+  REMOVE_GRANTED_ROLE,
   REMOVE_MATCHING_ROLE,
+  REMOVE_RESOURCE_GRANT,
   REMOVE_ROLE,
   REQUIRE_PASSWORD_CHANGE,
+  RESOURCE_LIST,
+  ROLE_FORM_READ_PATH,
+  ROLE_LIST,
   SCREEN_ACTION_DESCRIPTORS,
   SET_PASSWORD,
+  SET_RESOURCE_GRANT,
   ScreenActionHandler,
+  roleHoldersLine,
 } from './screen-action-handler';
 
 /** The screen this handler serves first, read from the mirror rather than restated here. */
@@ -844,5 +852,70 @@ describe('startFor with values, the web application editor half of the role acti
     await settle();
     expect(seen.refusals).toEqual([STRINGS.webAppPrivilegeGrantRefusal]);
     expect(calls).toHaveLength(0);
+  });
+});
+
+/**
+ * Story 9.3: the Roles and Resources lists' Delete (DW-1513, DW-1528) and the role editor's value
+ * actions, through the one route.
+ */
+describe('the Roles and Resources lists\u2019 Delete (Story 9.3)', () => {
+  const ROLES_LIST = SCREENS.find((screen) => screen.descriptor === ROLE_LIST)!;
+  const RESOURCES_LIST = SCREENS.find((screen) => screen.descriptor === RESOURCE_LIST)!;
+
+  function mountWith(answers: readonly JsonResult<unknown>[], descriptor: string) {
+    const mounted = mount(undefined, descriptor);
+    const queue = [...answers];
+    const api = TestBed.inject(ApiService) as unknown as { requestJson: (path: string, init?: ApiRequestInit) => Promise<JsonResult<unknown>> };
+    api.requestJson = async (path: string, init: ApiRequestInit = {}) => {
+      mounted.calls.push({ path, method: init.method ?? 'GET', body: init.body ?? '' });
+      return (queue.shift() ?? { kind: 'ok', status: 200, body: {} }) as JsonResult<unknown>;
+    };
+    return mounted;
+  }
+
+  it('registers Delete on both lists and none of the role editor\u2019s value actions', () => {
+    // Mutation (Rule 19): drop the Roles list from `SCREEN_ACTION_DESCRIPTORS` -> the delete leg goes red.
+    const { actions } = mount(undefined, ROLE_LIST);
+    expect(actions.has(ROLE_LIST, 'delete')).toBe(true);
+    expect(actions.has(RESOURCE_LIST, 'delete')).toBe(true);
+    for (const id of [ADD_GRANTED_ROLE, REMOVE_GRANTED_ROLE, SET_RESOURCE_GRANT, REMOVE_RESOURCE_GRANT]) {
+      expect(actions.has(ROLE_LIST, id)).toBe(false);
+    }
+  });
+
+  it('states how many accounts hold the role, and opens without the line when the count cannot be read', async () => {
+    // Mutation (Rule 19): open the role delete without its holder read -> the advisory assertion goes red.
+    const { handler, calls, store } = mountWith([{ kind: 'ok', status: 200, body: { holders: 2 } }], ROLE_LIST);
+    handler.startFor(ROLE_LIST, 'delete', 'Probe', { Name: 'Probe' }, store);
+    await settle();
+    expect(calls[0].path).toBe(`${ROLE_FORM_READ_PATH}?name=Probe`);
+    expect(handler.pending()?.consequence).toBe(STRINGS.roleDeleteConsequence);
+    expect(handler.pending()?.advisory).toBe('2 users hold this role.');
+    handler.cancelPending();
+    expect(roleHoldersLine(1)).toBe(STRINGS.roleDeleteHoldersOne);
+    expect(roleHoldersLine(0)).toBe(STRINGS.roleDeleteHoldersNone);
+
+    const failed = mountWith([{ kind: 'error', status: 403, code: 'AUTH.NOPRIVILEGE', reason: 'no', detail: null } as JsonResult<unknown>], ROLE_LIST);
+    failed.handler.startFor(ROLE_LIST, 'delete', 'Probe', { Name: 'Probe' }, failed.store);
+    await settle();
+    expect(failed.handler.pending()?.kind).toBe('typed-name');
+    expect(failed.handler.pending()?.advisory).toBe('');
+    expect(ROLES_LIST.rowActions.find((action) => action.id === 'delete')?.selfProtection).toBe('system-role');
+  });
+
+  it('draws a predefined role and a system resource refused before anything is sent', async () => {
+    // Mutation (Rule 19): pass no row to `selfProtectionReason` in `startFor` -> the resource leg goes red.
+    const roles = mount(undefined, ROLE_LIST);
+    roles.handler.startFor(ROLE_LIST, 'delete', '%Developer', { Name: '%Developer' }, roles.store);
+    expect(roles.store.refusal()).toBe(STRINGS.roleRefusalSystem);
+    expect(roles.handler.pending()).toBeNull();
+    const resources = mount(undefined, RESOURCE_LIST);
+    resources.handler.startFor(RESOURCE_LIST, 'delete', '%DB_IRISSYS', { Name: '%DB_IRISSYS', AllowDelete: false }, resources.store);
+    expect(resources.store.refusal()).toBe(STRINGS.resourceRefusalSystem);
+    resources.handler.startFor(RESOURCE_LIST, 'delete', 'Probe', { Name: 'Probe', AllowDelete: true }, resources.store);
+    expect(resources.handler.pending()?.consequence).toBe(STRINGS.resourceDeleteConsequence);
+    expect(resources.calls).toHaveLength(0);
+    expect(RESOURCES_LIST.rowActions.find((action) => action.id === 'delete')?.selfProtection).toBe('system-resource');
   });
 });

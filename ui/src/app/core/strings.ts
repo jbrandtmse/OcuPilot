@@ -1773,6 +1773,48 @@ export const STRINGS = {
   /** EXPERIENCE.md:475 */
   webAppPromptCode: 'Which code answers at this web application\'s address?',
 
+  // Story 9.3: the role editor, the role and resource deletes, and their refusals.
+  /** EXPERIENCE.md:476 */
+  roleEditorTabMembers: 'Members',
+  /** EXPERIENCE.md:476 */
+  roleEditorTabAssignedTo: 'Assigned to',
+  /** EXPERIENCE.md:476 */
+  roleMemberTypeUser: 'Account',
+  /** EXPERIENCE.md:476 */
+  roleMemberTypeEscalation: 'Account (escalation)',
+  /** EXPERIENCE.md:476 */
+  roleMembersEmpty: 'No account or role holds this role.',
+  /** EXPERIENCE.md:476 */
+  roleAssignedToEmpty: 'This role carries no other role.',
+  /** EXPERIENCE.md:477 */
+  roleDeleteConsequence: 'Deleting this role takes it from every account and role that holds it. This cannot be undone.',
+  /** EXPERIENCE.md:477 */
+  roleDeleteHolders: '<n> users hold this role.',
+  /** EXPERIENCE.md:477 */
+  roleDeleteHoldersOne: '1 user holds this role.',
+  /** EXPERIENCE.md:477 */
+  roleDeleteHoldersNone: 'No user holds this role.',
+  /** EXPERIENCE.md:477 */
+  resourceDeleteConsequence: 'Every role that grants this resource loses it. This cannot be undone.',
+  /** EXPERIENCE.md:478 */
+  roleRefusalSystem: 'A name beginning with % belongs to one of the instance\'s own roles.',
+  /** EXPERIENCE.md:478 */
+  resourceRefusalSystem: 'This is a system resource. IRIS does not allow it to be deleted.',
+  /** EXPERIENCE.md:479 */
+  uncoveredFieldRefusal: 'Only some of this kind of object\'s settings can be changed here, and that is not one of them.',
+  /** EXPERIENCE.md:479 */
+  roleRefusalOcuPilot:
+    'This role belongs to OcuPilot, which stops working without what it grants. Only OcuPilot\'s installer changes or removes it.',
+  /** EXPERIENCE.md:479 */
+  resourceRefusalOcuPilot:
+    'This resource guards OcuPilot\'s own data or administration. It cannot be deleted or opened to every user; only OcuPilot\'s installer changes it.',
+  /** EXPERIENCE.md:480 */
+  rolePromptHolders: 'Who holds this role, and what does it grant them?',
+  /** EXPERIENCE.md:480 */
+  rolePromptPrivilege: 'Does this role grant any administrative privilege?',
+  /** EXPERIENCE.md:480 */
+  rolePromptGrantedRoles: 'Which other roles does this role carry?',
+
 } as const;
 
 /**

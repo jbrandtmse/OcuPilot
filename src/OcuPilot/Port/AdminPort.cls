@@ -115,7 +115,11 @@ Parameter ASYNCLOCATION = "async-result?id=";
 /// the vendor publishes it <code>TYPE</code>-prefixed (<code>TYPEVOLUMELIST</code>), so it
 /// resolves here rather than through <parameter>BARETYPES</parameter>, and it is synchronous --
 /// only that endpoint's <code>TYPEINFO</code> answers <code>ShouldRunAsync()</code> true.</p>
-Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
+/// <p><code>OWNERLIST</code> is <code>Security.Role</code>'s holder list (Story 9.3): the accounts and
+/// roles that hold one role, as <code>[{Name, Type, AdminOption}]</code>, 404 for an absent role. It is
+/// synchronous: that endpoint's <code>ShouldRunAsync()</code> answers 0 for it (measured on this
+/// build).</p>
+Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWNERLIST";
 
 /// <p>The <b>mutating</b> <code>&lt;endpoint&gt;/&lt;type&gt;</code> pairs <method>Invoke</method>
 /// accepts, each type resolved through that endpoint's own <code>TYPE&lt;suffix&gt;</code>

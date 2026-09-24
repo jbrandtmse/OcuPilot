@@ -102,6 +102,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/users" Method="POST" Call="UserCreate"/>
   <Route Url="/roles/form" Method="GET" Call="RoleFormRules"/>
   <Route Url="/roles/name" Method="GET" Call="RoleNameCheck"/>
+  <Route Url="/roles/:id" Method="PUT" Call="RoleUpdate"/>
   <Route Url="/roles" Method="POST" Call="RoleCreate"/>
   <Route Url="/resources/form" Method="GET" Call="ResourceFormRules"/>
   <Route Url="/resources/name" Method="GET" Call="ResourceNameCheck"/>
@@ -347,7 +348,7 @@ ClassMethod UserCreate() As %Status
 
 /// <p>Thin <code>Call=</code> target for <code>GET /roles/form</code> (Story 8.3): delegates to
 /// <class>OcuPilot.Area.Permissions.RoleCreateRules</class> and carries no logic of its own. The two
-/// sub-resources precede <code>POST /roles</code>.</p>
+/// sub-resources precede <code>/roles/:id</code>.</p>
 ClassMethod RoleFormRules() As %Status
 {
     Quit ##class(OcuPilot.Area.Permissions.RoleCreateRules).HandleForm()
@@ -358,6 +359,13 @@ ClassMethod RoleFormRules() As %Status
 ClassMethod RoleNameCheck() As %Status
 {
     Quit ##class(OcuPilot.Area.Permissions.RoleCreateRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /roles/:id</code> (Story 9.3): the role editor's
+/// Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod RoleUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.RoleSave).HandleUpdate(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /roles</code>: the Role form's Save, which

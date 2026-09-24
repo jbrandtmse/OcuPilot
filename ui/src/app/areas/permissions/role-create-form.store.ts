@@ -155,8 +155,6 @@ export class RoleCreateForm {
 
   private createdIdValue = '';
 
-  private retainingValue = false;
-
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => {
@@ -248,16 +246,6 @@ export class RoleCreateForm {
     return this.formDirty.dirty();
   }
 
-  /** Whether this store is being carried across the create's own route replacement. */
-  retaining(): boolean {
-    return this.retainingValue;
-  }
-
-  /** Keep this form's state across the one navigation that is not a departure. */
-  retainAcrossRouteReplacement(): void {
-    this.retainingValue = true;
-  }
-
   /** Whether `field` is one a Save must carry. */
   required(field: string): boolean {
     return this.rulesValue.requiredFields.includes(field);
@@ -283,19 +271,12 @@ export class RoleCreateForm {
     this.clearRefusal();
     this.savedValue = false;
     this.createdIdValue = '';
-    this.retainingValue = false;
     this.formDirty.reset();
     this.notify();
   }
 
   /** Open the form: read the rules, roles and resources the server applies, on every open. */
   async open(): Promise<void> {
-    // A create that has replaced its own route with the new role's URL is not an arrival at
-    // another form: the state on screen is that role's.
-    if (this.retainingValue) {
-      this.retainingValue = false;
-      return;
-    }
     this.reset();
     const generation = this.generation;
     const result = await this.api().requestJson<unknown>(ROLES_FORM_PATH);

@@ -48,6 +48,18 @@ export const OCUPILOT_APPLICATION_PATHS: readonly string[] = [
  */
 export const OCUPILOT_APPLICATION_ROLES_RULE = 'ocupilot-application-roles';
 
+/**
+ * The rule that explains the instance's own predefined roles, whose names begin `%` (Story 9.3):
+ * the role delete tool refuses them with this rule's sentence.
+ */
+export const SYSTEM_ROLE_RULE = 'system-role';
+
+/**
+ * The rule that explains a system resource, whose row reads `AllowDelete` false (Story 9.3): the
+ * resource delete tool refuses it with this rule's sentence.
+ */
+export const SYSTEM_RESOURCE_RULE = 'system-resource';
+
 /** The rule that protects the accounts whose removal the instance refuses (Story 7.2). */
 export const PROTECTED_ACCOUNT_RULE = 'protected-account';
 
@@ -85,9 +97,23 @@ export const SERVICE_ACCOUNTS: readonly string[] = ['CSPSystem', '_Ensemble', 'i
  * refusal is the instance's alone. `service-account-sign-in` answers for a service account other
  * than the signed-in one. `ocupilot-application-roles` answers for the applications
  * `serves-ocupilot` does, with the privilege-grant sentence.
+ *
+ * `row` is the row's own fields where the caller holds them. `system-role` reads the key alone;
+ * `system-resource` reads the row's `AllowDelete` and answers `''` with no row, where the instance
+ * still refuses the write.
  */
-export function selfProtectionReason(rule: string, rowKey: string, signedIn = ''): string {
+export function selfProtectionReason(
+  rule: string,
+  rowKey: string,
+  signedIn = '',
+  row: Readonly<Record<string, unknown>> | null = null
+): string {
   if (rowKey === '') return '';
+  if (rule === SYSTEM_ROLE_RULE) return rowKey.trimStart().startsWith('%') ? STRINGS.roleRefusalSystem : '';
+  if (rule === SYSTEM_RESOURCE_RULE) {
+    const allow = row?.['AllowDelete'];
+    return allow === false || allow === 'false' || allow === 0 || allow === '0' ? STRINGS.resourceRefusalSystem : '';
+  }
   if (rule === PROTECTED_ACCOUNT_RULE) {
     const account = normalizeEntityId(USER, rowKey);
     if (account === normalizeEntityId(USER, SYSTEM_ACCOUNT)) return STRINGS.userRefusalSystemAccount;

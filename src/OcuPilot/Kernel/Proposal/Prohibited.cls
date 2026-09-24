@@ -43,8 +43,9 @@
 /// write-tool story adds its own type here, and a type listed with no branch is refused
 /// <parameter>UNCOVERED</parameter> at every write.</p>
 /// <p>Seams a subclass overrides: <method>PortClass</method>, <method>RegistryClass</method>,
-/// <method>DeletingLeavesNoAllHolder</method>, <method>LastAllHolder</method> and
-/// <method>HoldsAll</method>. Production overrides none of them.
+/// <method>DeletingLeavesNoAllHolder</method>, <method>ChangingLeavesNoAllHolder</method>,
+/// <method>ChangeStripsAll</method>, <method>LastAllHolder</method>, <method>HoldsAll</method> and
+/// <method>DirectRoles</method>. Production overrides none of them.
 /// The last two are the account census, and the difference between them matters to a reader auditing it:
 /// replacing <method>LastAllHolder</method> replaces the census, while replacing
 /// <method>HoldsAll</method> only makes its input deterministic and leaves the census body
@@ -187,8 +188,10 @@ Parameter OCUPILOTPROCESS = "PROHIBITED.OCUPILOTPROCESS";
 /// outside <method>ProcessJobTypes</method>'s allow-list, an unnamed value included.</p>
 Parameter SYSTEMPROCESS = "PROHIBITED.SYSTEMPROCESS";
 
-/// <p>The write would delete one of OcuPilot's own roles (<method>OcuPilotRoles</method>), without
-/// which OcuPilot stops working (AD-10). Only uninstall removes them.</p>
+/// <p>The write would delete one of OcuPilot's own roles (<method>OcuPilotRoles</method>), or change
+/// what one grants -- its granted roles, its resource grants or whether it is escalation-only --
+/// without which OcuPilot stops working (AD-10 as amended 2026-09-24). Its description may change.
+/// Only OcuPilot's installer changes or removes them.</p>
 Parameter OCUPILOTROLE = "PROHIBITED.OCUPILOTROLE";
 
 /// <p>The write would delete one of OcuPilot's own resources (<method>OcuPilotResources</method>),
@@ -200,6 +203,19 @@ Parameter OCUPILOTRESOURCE = "PROHIBITED.OCUPILOTRESOURCE";
 /// the shape that covers a vendor property nobody has classified yet, rather than the names that
 /// happen to exist on this build.</p>
 Parameter UNCOVEREDFIELD = "PROHIBITED.UNCOVEREDFIELD";
+
+/// <p>The one sentence <parameter>UNCOVEREDFIELD</parameter> carries, caller-neutral: a screen's Save
+/// reaches it as well as the agent's confirm (AD-53). Published in EXPERIENCE.md's Fixed strings
+/// table and pinned there by <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter UNCOVEREDFIELDREASON = "Only some of this kind of object's settings can be changed here, and that is not one of them.";
+
+/// <p>The one sentence <parameter>OCUPILOTROLE</parameter> carries, caller-neutral, published and
+/// pinned as <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
+Parameter OCUPILOTROLEREASON = "This role belongs to OcuPilot, which stops working without what it grants. Only OcuPilot's installer changes or removes it.";
+
+/// <p>The one sentence <parameter>OCUPILOTRESOURCE</parameter> carries, caller-neutral, published
+/// and pinned as <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
+Parameter OCUPILOTRESOURCEREASON = "This resource guards OcuPilot's own data or administration. It cannot be deleted or opened to every user; only OcuPilot's installer changes it.";
 
 /// <p>The target's entity type is one this release evaluates no predicates for, or its reference
 /// could not be read at all. Refusing wholesale is strictly stronger than the enumerated effects,
@@ -295,6 +311,9 @@ Parameter FIELDGRANTEDROLES = "GrantedRoles";
 
 Parameter FIELDRESOURCES = "Resources";
 
+/// <p>Whether a role is granted only by escalation, never at sign-in.</p>
+Parameter FIELDESCALATIONONLY = "EscalationOnly";
+
 /// <p>The <code>Security.Resource</code> payload field the resource predicates read: the permission
 /// letters every user holds on the resource.</p>
 Parameter FIELDPUBLICPERMISSION = "PublicPermission";
@@ -369,10 +388,10 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#LASTALLHOLDER Quit ..#LASTALLHOLDERREASON
     If pCode = ..#OCUPILOTPROCESS Quit ..#OCUPILOTPROCESSREASON
     If pCode = ..#SYSTEMPROCESS Quit ..#SYSTEMPROCESSREASON
-    If pCode = ..#UNCOVEREDFIELD Quit "Only a few of this kind of object's settings are ones the agent may propose changing, and that is not one of them."
+    If pCode = ..#UNCOVEREDFIELD Quit ..#UNCOVEREDFIELDREASON
     If pCode = ..#UNCOVERED Quit "This release does not check writes to that kind of object against its prohibited set, so none is proposable yet."
-    If pCode = ..#OCUPILOTROLE Quit "This role belongs to OcuPilot, which stops working without it. It is removed only when OcuPilot is uninstalled."
-    If pCode = ..#OCUPILOTRESOURCE Quit "This resource guards OcuPilot's own data or administration. It cannot be deleted or opened to every user; only OcuPilot's installer changes it."
+    If pCode = ..#OCUPILOTROLE Quit ..#OCUPILOTROLEREASON
+    If pCode = ..#OCUPILOTRESOURCE Quit ..#OCUPILOTRESOURCEREASON
     Quit ""
 }
 
@@ -419,6 +438,11 @@ ClassMethod CoveredTypes() As %List
 /// reviewed. AD-10's Release 1 set names no task effect, and this story invents none.</p>
 /// <p>An application error's is <b>none</b>, for the same reason: its one write is the bodyless
 /// by-namespace delete (AD-48), whose card rows are removals rather than field changes.</p>
+/// <p>A role's four are <code>Description</code>, <code>EscalationOnly</code>,
+/// <code>GrantedRoles</code> and <code>Resources</code>. A change to any but the description of one
+/// of OcuPilot's own roles is refused, and a change that strips <code>%All</code> from a protected
+/// account through the role is refused by that account's arm (<method>Role</method>); any other
+/// change is permitted, and a privileged grant is marked (<method>GrantsPrivilegeByEffect</method>).</p>
 /// <p>A resource's two are <code>Description</code> and <code>PublicPermission</code>. A letter
 /// added to the public permission of one of OcuPilot's own resources is refused
 /// (<method>Resource</method>); on any other resource it is permitted, and marked where the resource
@@ -448,6 +472,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEAUDITING Quit $ListBuild(..#FIELDENABLED)
 
     If pType = ..#TYPERESOURCE Quit $ListBuild("Description", ..#FIELDPUBLICPERMISSION)
+    If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDESCALATIONONLY, ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
     If pType = ..#TYPEX509 Quit $ListBuild("OwnerList", "PeerNames")
     If pType = ..#TYPEWALLETSECRET Quit $ListBuild("Usage", "RequireTLS", "AllowedHosts", "Secret")
     If pType = ..#TYPEDEVICE Quit ..DeviceFields()
@@ -642,7 +667,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Quit
         }
         If tType = ..#TYPEROLE {
-            Set tSC = ..Role(tId, $Get(tToolClass), .tChanged, .pProhibits, .pCode)
+            Set tSC = ..Role(tId, $Get(tToolClass), tPayloadObject, .tChanged, .pProhibits, .pCode)
             Quit
         }
         If tType = ..#TYPERESOURCE {
@@ -1014,31 +1039,51 @@ ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %Dynamic
 }
 
 /// <p>The role predicates, in declared order, first hit wins. For a tool whose write is a
-/// <code>DELETE</code>: one of OcuPilot's own roles (<method>OcuPilotRoles</method>), then a role
-/// whose removal leaves no counted <code>%All</code> holder
-/// (<method>DeletingLeavesNoAllHolder</method>). Then, for every role write, the reviewed-few sweep
-/// over an empty permitted list, so a change nobody has reviewed is refused
-/// <parameter>UNCOVEREDFIELD</parameter>.</p>
-/// <p><var>pId</var> is the target's id as the reference carries it. <var>pChanged</var> is
-/// <method>Changed</method>'s answer; a delete's card rows are its declared fingerprint subject,
-/// which <method>Changed</method> skips, so a delete reaches the sweep with nothing changed.</p>
-ClassMethod Role(pId As %String, pToolClass As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+/// <code>DELETE</code>: one of OcuPilot's own roles (<method>OcuPilotRoles</method>), then the
+/// census (<method>ChangeStripsAll</method>, with nothing after the delete). For a change: one of
+/// OcuPilot's own roles when the change moves <code>GrantedRoles</code>, <code>Resources</code> or
+/// <code>EscalationOnly</code> (AD-10 as amended 2026-09-24; its description may change), then the
+/// census when it moves <code>GrantedRoles</code> or <code>EscalationOnly</code>, with the payload's
+/// as the after-state. Then, for every role write, the reviewed-few sweep.</p>
+/// <p><var>pId</var> is the target's id as the reference carries it; <var>pPayload</var> the stored
+/// payload. <var>pChanged</var> is <method>Changed</method>'s answer; a delete's card rows are its
+/// declared fingerprint subject, which <method>Changed</method> skips, so a delete reaches the sweep
+/// with nothing changed.</p>
+ClassMethod Role(pId As %String, pToolClass As %String, pPayload As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
 {
     Set pProhibits = 0
     Set pCode = ""
     Set tSC = $$$OK
     Try {
-        If ..WriteTypeOf(pToolClass) = "DELETE" {
+        Set tDelete = (..WriteTypeOf(pToolClass) = "DELETE")
+        Set tMovesGrants = ($Data(pChanged(..#FIELDGRANTEDROLES)) || $Data(pChanged(..#FIELDESCALATIONONLY)))
+        Set tMovesAny = (tMovesGrants || $Data(pChanged(..#FIELDRESOURCES)))
+        If tDelete || tMovesAny {
             Set tSC = ..OcuPilotRoles(.tOwn)
             If $$$ISERR(tSC) Quit
             If $ListFind(tOwn, ..NormalizedRole(pId)) {
                 Do ..Refuse(..#OCUPILOTROLE, .pProhibits, .pCode)
                 Quit
             }
-            Set tSC = ..DeletingLeavesNoAllHolder(pId, .tLeaves)
+        }
+        If tDelete || tMovesGrants {
+            Set tAfter = ""
+            Set tAfterEscalation = 1
+            If 'tDelete {
+                Kill tNames
+                Do ..RoleNames(pPayload, .tNames, ..#FIELDGRANTEDROLES)
+                Set tKey = ""
+                For {
+                    Set tKey = $Order(tNames(tKey))
+                    If tKey = "" Quit
+                    Set tAfter = tAfter _ $ListBuild(tNames(tKey))
+                }
+                Set tAfterEscalation = ..Rendered(pPayload, ..#FIELDESCALATIONONLY) = "true"
+            }
+            Set tSC = ..ChangeStripsAll(pId, tAfter, tAfterEscalation, .tStrips, tDelete)
             If $$$ISERR(tSC) Quit
-            If tLeaves {
-                Do ..Refuse(..#LASTALLHOLDER, .pProhibits, .pCode)
+            If tStrips '= "" {
+                Do ..Refuse(tStrips, .pProhibits, .pCode)
                 Quit
             }
         }
@@ -1962,17 +2007,96 @@ ClassMethod LastAllHolder(pId As %String, Output pLast As %Boolean) As %Status
     Quit tSC
 }
 
+/// <p>Whether a write that leaves role <var>pRole</var> granting the roles <var>pAfterGranted</var>
+/// (a <class>%List</class>) and escalation-only when <var>pAfterEscalation</var> strips
+/// <code>%All</code> from an account through that role (AD-10 as amended 2026-09-24), in
+/// <var>pCode</var>: the first account code, checked in the order <code>_SYSTEM</code>
+/// (<parameter>SYSTEMACCOUNT</parameter>), the signed-in account (<parameter>CURRENTUSER</parameter>)
+/// and a service account (<parameter>SERVICEACCOUNT</parameter>), else
+/// <parameter>LASTALLHOLDER</parameter> when no counted holder keeps <code>%All</code>, else
+/// <code>""</code>.</p>
+/// <p>An account arm fires only when the role reaches <code>%All</code> now and does not after, and
+/// the account holds <code>%All</code> now (<method>HoldsAll</method>) and reaches it no longer
+/// (<method>ReachesAllAfter</method>). A delete passes no granted roles and
+/// <var>pAfterEscalation</var> 1, with <var>pDelete</var> 1 so the last-holder question is asked of
+/// <method>DeletingLeavesNoAllHolder</method>; a change asks
+/// <method>ChangingLeavesNoAllHolder</method>. An escalation-only role counts as reaching nothing for
+/// a holder at sign-in (inference: holders keep it in <code>Roles</code>; whether a login still
+/// grants it was not measured, so this is the conservative reading).</p>
+/// <p><b>Overridable seam.</b> Production never overrides it.</p>
+ClassMethod ChangeStripsAll(pRole As %String, pAfterGranted As %List, pAfterEscalation As %Boolean, Output pCode As %String, pDelete As %Boolean = 0) As %Status
+{
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        If $ZStrip(pRole, "<>W") = "" Quit
+        Kill tNames
+        Set tNames($ZConvert(pRole, "U")) = pRole
+        Set tSC = ..RolesGrantAll(.tNames, .tBefore)
+        If $$$ISERR(tSC) Quit
+        If tBefore {
+            Set tSC = ..Walk($ListBuild(pRole), pRole, pAfterGranted, pAfterEscalation, .tAfter)
+            If $$$ISERR(tSC) Quit
+            If 'tAfter {
+                Set tAccounts = $ListBuild($ListBuild(..#SYSTEMACCOUNTNAME, ..#SYSTEMACCOUNT), $ListBuild($Username, ..#CURRENTUSER))
+                Set tServices = ..ServiceAccounts()
+                For tI = 1:1:$ListLength(tServices) {
+                    Set tAccounts = tAccounts _ $ListBuild($ListBuild($List(tServices, tI), ..#SERVICEACCOUNT))
+                }
+                For tI = 1:1:$ListLength(tAccounts) {
+                    Set tAccount = $List($List(tAccounts, tI), 1)
+                    If tAccount = "" Continue
+                    Set tSC = ..HoldsAll(tAccount, .tHolds)
+                    If $$$ISERR(tSC) Quit
+                    If 'tHolds Continue
+                    Set tSC = ..ReachesAllAfter(tAccount, pRole, pAfterGranted, pAfterEscalation, .tStill)
+                    If $$$ISERR(tSC) Quit
+                    If 'tStill {
+                        Set pCode = $List($List(tAccounts, tI), 2)
+                        Quit
+                    }
+                }
+                If $$$ISERR(tSC) Quit
+            }
+        }
+        If pCode '= "" Quit
+        If pDelete {
+            Set tSC = ..DeletingLeavesNoAllHolder(pRole, .tLeaves)
+        } Else {
+            Set tSC = ..ChangingLeavesNoAllHolder(pRole, pAfterGranted, pAfterEscalation, .tLeaves)
+        }
+        If $$$ISERR(tSC) Quit
+        If tLeaves Set pCode = ..#LASTALLHOLDER
+    } Catch ex {
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pCode = ""
+    Quit tSC
+}
+
 /// <p>Whether deleting role <var>pRole</var> would leave the instance with no counted account
-/// holding <code>%All</code>, in <var>pLeaves</var> (AD-10).</p>
-/// <p>It answers 0 unless the role itself reaches <code>%All</code>
-/// (<method>RolesGrantAll</method>): a role that does not cannot change who holds it. Otherwise it
-/// is 1 when at least one counted account (<method>CountsAsHolder</method>) holds <code>%All</code>
-/// now (<method>HoldsAll</method>) and none of them still reaches it once the role is gone
-/// (<method>ReachesAllWithout</method>). Every account the instance holds is asked, so a holder
-/// that reaches <code>%All</code> only through a custom role is counted.</p>
+/// holding <code>%All</code>, in <var>pLeaves</var> (AD-10): <method>ChangingLeavesNoAllHolder</method>
+/// with nothing after the delete.</p>
 /// <p><b>Overridable seam</b>, for the reason <method>LastAllHolder</method> is. Production never
 /// overrides it.</p>
 ClassMethod DeletingLeavesNoAllHolder(pRole As %String, Output pLeaves As %Boolean) As %Status
+{
+    Quit ..ChangingLeavesNoAllHolder(pRole, "", 1, .pLeaves)
+}
+
+/// <p>Whether leaving role <var>pRole</var> granting <var>pAfterGranted</var> and escalation-only when
+/// <var>pAfterEscalation</var> would leave the instance with no counted account holding
+/// <code>%All</code>, in <var>pLeaves</var> (AD-10).</p>
+/// <p>It answers 0 unless the role reaches <code>%All</code> now (<method>RolesGrantAll</method>) and
+/// not after (<method>Walk</method>): otherwise the write cannot change who holds it. Then it is 1
+/// when at least one counted account (<method>CountsAsHolder</method>) holds <code>%All</code> now
+/// (<method>HoldsAll</method>) and none of them reaches it after the write
+/// (<method>ReachesAllAfter</method>). Every account the instance holds is asked, so a holder that
+/// reaches <code>%All</code> only through a custom role is counted.</p>
+/// <p><b>Overridable seam</b>, for the reason <method>LastAllHolder</method> is. Production never
+/// overrides it.</p>
+ClassMethod ChangingLeavesNoAllHolder(pRole As %String, pAfterGranted As %List, pAfterEscalation As %Boolean, Output pLeaves As %Boolean) As %Status
 {
     Set pLeaves = 0
     Set tSC = $$$OK
@@ -1984,6 +2108,9 @@ ClassMethod DeletingLeavesNoAllHolder(pRole As %String, Output pLeaves As %Boole
         Set tSC = ..RolesGrantAll(.tNames, .tReaches)
         If $$$ISERR(tSC) Quit
         If 'tReaches Quit
+        Set tSC = ..Walk($ListBuild(pRole), pRole, pAfterGranted, pAfterEscalation, .tAfter)
+        If $$$ISERR(tSC) Quit
+        If tAfter Quit
         ; The population is read in %SYS and judged after the restore, as LastAllHolder does.
         Set tRows = ""
         Set $NAMESPACE = "%SYS"
@@ -2007,7 +2134,7 @@ ClassMethod DeletingLeavesNoAllHolder(pRole As %String, Output pLeaves As %Boole
             If $$$ISERR(tSC) Quit
             If 'tHolds Continue
             Set tHolders = tHolders + 1
-            Set tSC = ..ReachesAllWithout($List(tRow, 1), pRole, .tStill)
+            Set tSC = ..ReachesAllAfter($List(tRow, 1), pRole, pAfterGranted, pAfterEscalation, .tStill)
             If $$$ISERR(tSC) Quit
             If tStill {
                 Set tKept = 1
@@ -2025,40 +2152,89 @@ ClassMethod DeletingLeavesNoAllHolder(pRole As %String, Output pLeaves As %Boole
 }
 
 /// <p>Whether account <var>pUser</var> still reaches <code>%All</code> once role <var>pSkip</var>
-/// is gone, in <var>pReaches</var>: one of its own roles, walked through each role's
-/// <code>GrantedRoles</code> with <var>pSkip</var> left out wherever it appears, arrives at
-/// <code>%All</code>. Names compare case-insensitively. The walk reads
-/// <class>Security.Users</class> and <class>Security.Roles</class> in <code>%SYS</code> and calls
-/// nothing of OcuPilot's while there (AD-16).</p>
+/// is gone, in <var>pReaches</var>: <method>ReachesAllAfter</method> with nothing after the
+/// role.</p>
 ClassMethod ReachesAllWithout(pUser As %String, pSkip As %String, Output pReaches As %Boolean) As %Status
+{
+    Quit ..ReachesAllAfter(pUser, pSkip, "", 1, .pReaches)
+}
+
+/// <p>Whether account <var>pUser</var> reaches <code>%All</code> once role <var>pRole</var> grants
+/// <var>pAfterGranted</var> and is escalation-only when <var>pAfterEscalation</var>, in
+/// <var>pReaches</var>: its own roles (<method>DirectRoles</method>) walked through each role's
+/// <code>GrantedRoles</code>, with <var>pRole</var> answering its after-state
+/// (<method>Walk</method>).</p>
+ClassMethod ReachesAllAfter(pUser As %String, pRole As %String, pAfterGranted As %List, pAfterEscalation As %Boolean, Output pReaches As %Boolean) As %Status
+{
+    Set pReaches = 0
+    Set tSC = ..DirectRoles(pUser, .tDirect)
+    If $$$ISERR(tSC) Quit tSC
+    Quit ..Walk(tDirect, pRole, pAfterGranted, pAfterEscalation, .pReaches)
+}
+
+/// <p>The roles account <var>pUser</var> holds directly, as a <class>%List</class> in
+/// <var>pRoles</var>, read from <class>Security.Users</class> in <code>%SYS</code> (AD-16). An
+/// account the instance does not hold is an error status.</p>
+/// <p><b>Overridable seam</b>: it arms the census's input, as <method>HoldsAll</method> does, and
+/// leaves the walk running. Production never overrides it.</p>
+ClassMethod DirectRoles(pUser As %String, Output pRoles As %List) As %Status
+{
+    Set pRoles = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill tProps
+        Set tSC = ##class(Security.Users).Get(pUser, .tProps)
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) Quit
+        Set tDirect = $Get(tProps("Roles"))
+        For tI = 1:1:$Length(tDirect, ",") {
+            Set tOne = $ZStrip($Piece(tDirect, ",", tI), "<>W")
+            If tOne '= "" Set pRoles = pRoles _ $ListBuild(tOne)
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pRoles = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether the roles <var>pStart</var> reach <code>%All</code>, in <var>pReaches</var>, walked
+/// through each role's <code>GrantedRoles</code> as <class>Security.Roles</class> holds them, except
+/// that role <var>pRole</var> answers its after-state: nothing when <var>pAfterEscalation</var>,
+/// otherwise itself when it is <code>%All</code> and the roles <var>pAfterGranted</var>. Names
+/// compare case-insensitively. The walk reads <code>%SYS</code> and calls nothing of OcuPilot's while
+/// there (AD-16).</p>
+ClassMethod Walk(pStart As %List, pRole As %String, pAfterGranted As %List, pAfterEscalation As %Boolean, Output pReaches As %Boolean) As %Status [ Private ]
 {
     Set pReaches = 0
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
         Set tAll = $ZConvert(..#ALLROLE, "U")
-        Set tSkip = $ZConvert($ZStrip(pSkip, "<>W"), "U")
+        Set tRole = $ZConvert($ZStrip(pRole, "<>W"), "U")
         Set $NAMESPACE = "%SYS"
-        Kill tProps
-        Set tSC = ##class(Security.Users).Get(pUser, .tProps)
-        If $$$ISERR(tSC) {
-            Set $NAMESPACE = tOrigNS
-            Quit
-        }
         Kill tSeen
-        Set tQueue = ""
-        Set tDirect = $Get(tProps("Roles"))
-        For tI = 1:1:$Length(tDirect, ",") {
-            Set tOne = $ZStrip($Piece(tDirect, ",", tI), "<>W")
-            If tOne '= "" Set tQueue = tQueue _ $ListBuild(tOne)
-        }
+        Set tQueue = pStart
         Set tAt = 0
         While (tAt < $ListLength(tQueue)) && 'pReaches {
             Set tAt = tAt + 1
-            Set tName = $List(tQueue, tAt)
+            Set tName = $ZStrip($ListGet(tQueue, tAt), "<>W")
+            If tName = "" Continue
             Set tKey = $ZConvert(tName, "U")
-            If (tKey = tSkip) || $Data(tSeen(tKey)) Continue
+            If $Data(tSeen(tKey)) Continue
             Set tSeen(tKey) = ""
+            If tKey = tRole {
+                If pAfterEscalation Continue
+                If tKey = tAll {
+                    Set pReaches = 1
+                    Quit
+                }
+                Set tQueue = tQueue _ pAfterGranted
+                Continue
+            }
             If tKey = tAll {
                 Set pReaches = 1
                 Quit

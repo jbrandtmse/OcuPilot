@@ -106,6 +106,7 @@ XData Coverage
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="permissions.roles.update" class="OcuPilot.Test.RoleUpdate" method="TestTheToolAdmitsTheReviewedFourAndDeclaresItsActions"/>
 <tool name="permissions.resources.create" class="OcuPilot.Test.ResourceCreate" method="TestTheSchemaAndTheSettableSetAreTheSets"/>
 <tool name="permissions.resources.update" class="OcuPilot.Test.ResourceUpdate" method="TestTheUpdateIsAMergeWriteOverTheScreensOwnPairs"/>
 <tool name="permissions.resources.delete" class="OcuPilot.Test.ResourceDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>

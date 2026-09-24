@@ -5568,3 +5568,13 @@ app-screen-outlet .ocu-form-page {
   flex-direction: column;
   gap: var(--ocu-space-4);
 }
+
+// The role editor (Story 9.3): a member row's type word sits between its name and its Remove, in
+// the caption voice, so the name keeps the row's weight.
+.ocu-role-member-type {
+  @include typo.ocu-type('caption');
+
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--ocu-restrained);
+}

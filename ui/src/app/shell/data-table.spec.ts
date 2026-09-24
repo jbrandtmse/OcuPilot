@@ -610,6 +610,32 @@ describe('the data table', () => {
     expect(runs).toBe(0);
   });
 
+  it("Story 9.3: a system-resource entry reads the selected row's own AllowDelete", async () => {
+    // Mutation (Rule 19): drop the row from `menuItems`' call -> the not-deletable entry is offered, red.
+    const base = tableDeclaration();
+    const declaration = tableDeclaration({
+      rowActions: [{ id: 'delete', selfProtection: 'system-resource' }],
+      read: base.read === null ? null : { ...base.read, fields: [...base.read.fields, 'AllowDelete'] },
+    });
+    const listed = [
+      { Name: 'alpha', NameSpace: 'USER', Count: 0, Enabled: true, Note: 'n', AllowDelete: false },
+      { Name: 'beta', NameSpace: 'USER', Count: 1, Enabled: true, Note: 'n', AllowDelete: true },
+    ];
+    const wired = await wire(declaration, ok(listed), ['delete']);
+    wired.actions.register(declaration.descriptor, 'delete', () => undefined);
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    (wired.host().querySelector('[aria-rowindex="2"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const refused = wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    expect(refused.querySelector('.ocu-data-table-menu-reason')?.textContent?.trim()).toBe(STRINGS.resourceRefusalSystem);
+    expect(refused.getAttribute('aria-disabled')).toBe('true');
+    (wired.host().querySelector('[aria-rowindex="3"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const offered = wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    expect(offered.hasAttribute('aria-disabled')).toBe(false);
+  });
+
   it('a click selects its row and clears its changed mark; a click on the name link navigates and selects nothing', async () => {
     // Mutation (Rule 19): make `onRowClick` a no-op -> the selection assertion goes red.
     const wired = await wire(tableDeclaration(), ok(rows(3)));

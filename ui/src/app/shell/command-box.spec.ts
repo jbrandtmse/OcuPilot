@@ -11,6 +11,7 @@ import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { screenDeclaration } from '../testing/screen-declaration';
+import { tableDeclaration } from '../testing/table-declaration';
 import { COMMAND_BOX_OVERLAY_ID, CommandBox } from './command-box';
 import { AccountPreferences } from '../core/account-preferences';
 import {
@@ -431,6 +432,34 @@ describe('the command box', () => {
         STRINGS.actionDelete
     ) as HTMLElement | undefined;
     expect(entry?.textContent).toContain(STRINGS.userRefusalCurrentUser);
+    expect(entry?.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it("Story 9.3: with a not-deletable row selected, the box lists its system-resource action with the published sentence", () => {
+    // Mutation (Rule 19): drop `row` from `actionCandidates`' call -> no reason, red.
+    const base = tableDeclaration();
+    navigation.current = tableDeclaration({
+      route: 'permissions/resources',
+      labelKey: 'navAreaPermissions',
+      area: 'permissions',
+      descriptor: 'OcuPilot.Screen.Descriptor.ResourceList',
+      primaryAction: { id: '', selfProtection: '' },
+      rowActions: [{ id: 'delete', selfProtection: 'system-resource' }],
+      read: base.read === null ? null : { ...base.read, fields: [...base.read.fields, 'AllowDelete'] },
+    });
+    TestBed.inject(ScreenActions).register('OcuPilot.Screen.Descriptor.ResourceList', 'delete', () => {});
+    const store = TestBed.inject(ScreenStores).for('OcuPilot.Screen.Descriptor.ResourceList', navigation.current.refreshRates);
+    store.applyTick([{ Name: 'alpha', NameSpace: 'USER', Count: 0, Enabled: true, Note: 'n', AllowDelete: false }], false, '', new Date());
+    store.setSelection(['alpha']);
+    chord();
+    const entry = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
+    ).find(
+      (option) =>
+        (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim() ===
+        STRINGS.actionDelete
+    ) as HTMLElement | undefined;
+    expect(entry?.textContent).toContain(STRINGS.resourceRefusalSystem);
     expect(entry?.getAttribute('aria-disabled')).toBe('true');
   });
 

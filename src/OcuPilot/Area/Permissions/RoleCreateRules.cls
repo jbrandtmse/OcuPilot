@@ -1,7 +1,8 @@
 /// <p>The Role form's rules (AD-39, AD-55): the one rule set both callers of
-/// <class>OcuPilot.Screen.Tool.RoleCreate</class> apply (<method>Validate</method>), the resource
-/// grant's admissible permissions (<method>AdmissiblePermissions</method>), the form's bootstrap
-/// read (<method>HandleForm</method>), and the name look-up (<method>HandleName</method>,
+/// <class>OcuPilot.Screen.Tool.RoleCreate</class> and <class>OcuPilot.Screen.Tool.RoleUpdate</class>
+/// apply (<method>Validate</method>, in create or update mode), the resource grant's admissible
+/// permissions (<method>AdmissiblePermissions</method>), the form's bootstrap read
+/// (<method>HandleForm</method>), and the name look-up (<method>HandleName</method>,
 /// <method>Taken</method>).</p>
 /// <p><b>Every sentence is <method>OcuPilot.Api.Error.ReasonForViolation</method>'s</b>, and the
 /// bootstrap read serves the same sentences, so an inline blur refusal and a failed Save are one
@@ -19,6 +20,30 @@ Parameter TOOLCLASS = "OcuPilot.Screen.Tool.RoleCreate";
 
 /// <p>The form screen whose declared pairs gate these routes (AD-8).</p>
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.RoleForm";
+
+/// <p>The edit tool whose fresh read the form read answers with a name
+/// (<method>HandleForm</method>).</p>
+Parameter UPDATETOOL = "OcuPilot.Screen.Tool.RoleUpdate";
+
+/// <p>The role settings an edit may carry, comma-separated: the fields
+/// <parameter>UPDATETOOL</parameter> admits.</p>
+Parameter SETTINGFIELDS = "Description,EscalationOnly,GrantedRoles,Resources";
+
+/// <p>The request type the editor's members are read with through <parameter>UPDATETOOL</parameter>'s
+/// port: <code>Security.Role</code>'s holder list, <code>[{Name, Type, AdminOption}]</code>.</p>
+Parameter OWNERTYPE = "OWNERLIST";
+
+/// <p>The holder-list types that are accounts, comma-separated: an account holding the role and an
+/// account holding it as an escalation role. The form read's <code>holders</code> counts the
+/// distinct names of these rows.</p>
+Parameter HOLDERTYPES = "User,User (escalation)";
+
+/// <p>The members of the form read's answer with a name.</p>
+Parameter FORMROLEKEY = "role";
+
+Parameter FORMMEMBERSKEY = "members";
+
+Parameter FORMHOLDERSKEY = "holders";
 
 /// <p>The fields a create must carry, comma-separated.</p>
 Parameter REQUIREDFIELDS = "Name";
@@ -63,20 +88,27 @@ Parameter FIELDRESOURCES = "Resources";
 
 Parameter FIELDGRANTEDROLES = "GrantedRoles";
 
+Parameter FIELDESCALATIONONLY = "EscalationOnly";
+
 /// <p>Every rule a create applies, in <var>pViolations</var> as
 /// <code>pViolations(n) = $ListBuild(field, code)</code> with the count in
 /// <code>pViolations</code>.</p>
 /// <p><var>pCheckName</var> 0 skips the name's own rules, for a caller that has already applied
 /// them; <var>pCheckTaken</var> 0 skips the name look-up, for the agent's mint, which has read the
 /// target's absence (<method>OcuPilot.Screen.Tool.RoleCreate.ArgumentProblem</method>).</p>
-ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolations, pCheckName As %Boolean = 1, pCheckTaken As %Boolean = 1) As %Status
+/// <p><var>pMode</var> <code>update</code> is an edit of the existing role whose fresh read is
+/// <var>pFresh</var>, over the fields <var>pArgs</var> changes (<method>Changed</method>): the name
+/// rules and the look-up are skipped, and <code>EscalationOnly</code> must be a boolean. The
+/// description, grant and granted-role rules are the create's.</p>
+ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolations, pCheckName As %Boolean = 1, pCheckTaken As %Boolean = 1, pMode As %String = "create", pFresh As %DynamicObject = "") As %Status
 {
     Kill pViolations
     Set pViolations = 0
     Set tSC = $$$OK
     Try {
-        If pCheckName Do ..NameViolation(pName, .pViolations)
-        If (pViolations = 0) && pCheckTaken {
+        Set tUpdate = (pMode = "update")
+        If pCheckName && 'tUpdate Do ..NameViolation(pName, .pViolations)
+        If (pViolations = 0) && pCheckTaken && 'tUpdate {
             Set tTakenSC = ..Taken(pName, .tTaken)
             If $$$ISERR(tTakenSC) {
                 Set tSC = tTakenSC
@@ -92,6 +124,12 @@ ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolatio
             } ElseIf (tType '= "unassigned") && (tType '= "null") && ($Length(pArgs.%Get(..#FIELDDESCRIPTION)) > ..#DESCRIPTIONMAXLENGTH) {
                 Do ..Add(.pViolations, ..#FIELDDESCRIPTION, ##class(OcuPilot.Api.Error).#ROLEDESCRIPTIONLENGTH)
             }
+            Set tFlagType = pArgs.%GetTypeOf(..#FIELDESCALATIONONLY)
+            If (tFlagType '= "unassigned") && (tFlagType '= "boolean") {
+                If (tFlagType '= "number") || ((pArgs.%Get(..#FIELDESCALATIONONLY) '= 0) && (pArgs.%Get(..#FIELDESCALATIONONLY) '= 1)) {
+                    Do ..Add(.pViolations, ..#FIELDESCALATIONONLY, ##class(OcuPilot.Api.Error).#ROLEESCALATIONONLYSHAPE)
+                }
+            }
         }
 
         Set tSC = ..ResourceViolation(pArgs, .pViolations)
@@ -101,6 +139,33 @@ ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolatio
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The members of <var>pArgs</var> an edit changes: each of <parameter>SETTINGFIELDS</parameter>
+/// it carries whose value differs from <var>pFresh</var>'s, compared as the diff renders them, as a
+/// new <class>%DynamicObject</class>. With no fresh read every one <var>pArgs</var> carries is
+/// changed.</p>
+ClassMethod Changed(pArgs As %DynamicObject, pFresh As %DynamicObject = "") As %DynamicObject
+{
+    Set tChanged = {}
+    If '$IsObject(pArgs) Quit tChanged
+    Set tFields = $ListFromString(..#SETTINGFIELDS)
+    For tI = 1:1:$ListLength(tFields) {
+        Set tField = $List(tFields, tI)
+        Set tType = pArgs.%GetTypeOf(tField)
+        If tType = "unassigned" Continue
+        If $IsObject(pFresh) && (pFresh.%GetTypeOf(tField) '= "unassigned") {
+            Set tBefore = ##class(OcuPilot.Kernel.Proposal.Mint).Display(pFresh.%Get(tField), pFresh.%GetTypeOf(tField))
+            Set tAfter = ##class(OcuPilot.Kernel.Proposal.Mint).Display(pArgs.%Get(tField), tType)
+            If tAfter = tBefore Continue
+        }
+        If (tType = "object") || (tType = "array") {
+            Do tChanged.%Set(tField, pArgs.%Get(tField))
+        } Else {
+            Do tChanged.%Set(tField, pArgs.%Get(tField), tType)
+        }
+    }
+    Quit tChanged
 }
 
 /// <p>Add the name's own violation to <var>pViolations</var>, or none: an absent name, one longer
@@ -283,8 +348,12 @@ ClassMethod GrantedRoleViolation(pArgs As %DynamicObject, Output pViolations) As
     Quit tSC
 }
 
-/// <p>Answer <code>GET /roles/form</code>: everything the create form needs before it can draw a
-/// field (AD-39): <code>{requiredFields, maxLengths, rules, roles, resources}</code>.</p>
+/// <p>Answer <code>GET /roles/form[?name=&lt;n&gt;]</code>: everything the create form and the
+/// editor need before they can draw a field (AD-39): <code>{requiredFields, maxLengths, rules, roles,
+/// resources}</code>, and with a name the role (<method>Role</method>) as <code>role</code>, its
+/// holders as <code>members</code> <code>[{Name, Type}]</code>, and <code>holders</code>, the
+/// number of distinct accounts among them (<parameter>HOLDERTYPES</parameter>). A name this instance
+/// does not hold is 404 <parameter>OcuPilot.Api.Error.ROLENAMEABSENT</parameter>.</p>
 /// <p><code>roles</code> is <method>OcuPilot.Area.Permissions.UserCreateRules.Roles</method>'s
 /// <code>[{name, privileged}]</code>. <code>resources</code> is
 /// <code>[{name, permissions, privileged}]</code>, listed through the tool's own port:
@@ -316,6 +385,22 @@ ClassMethod HandleForm() As %Status
         Do tBody.%Set("rules", ..Rules())
         Do tBody.%Set("roles", tRoles)
         Do tBody.%Set("resources", tResources)
+        Set tName = $Get(%request.Data("name", 1))
+        If tName '= "" {
+            Set tReadSC = ..Role(tName, .tRole, .tHttp, .tFault)
+            If $$$ISOK(tReadSC) Set tReadSC = ..Members(tName, .tMembers, .tHolders, .tHttp, .tFault)
+            If $$$ISERR(tReadSC) && (+$Get(tHttp) = 404) {
+                Set tSC = ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#REASONROLENAMEABSENT, ##class(OcuPilot.Api.Error).#ROLENAMEABSENT)
+                Quit
+            }
+            If $$$ISERR(tReadSC) {
+                Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tReadSC))
+                Quit
+            }
+            Do tBody.%Set(..#FORMROLEKEY, tRole)
+            Do tBody.%Set(..#FORMMEMBERSKEY, tMembers)
+            Do tBody.%Set(..#FORMHOLDERSKEY, tHolders, "number")
+        }
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tBody)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -383,6 +468,71 @@ ClassMethod Taken(pName As %String, Output pTaken As %Boolean) As %Status
     Quit tSC
 }
 
+/// <p>The role <var>pName</var> as <parameter>UPDATETOOL</parameter>'s own read answers it, through
+/// its own port (AD-52), with its name, in <var>pRole</var>: <code>{Name, Description,
+/// EscalationOnly, GrantedRoles, Resources}</code>. An absent role is an error status with
+/// <var>pHttpStatus</var> 404.</p>
+ClassMethod Role(pName As %String, Output pRole As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pRole = ""
+    Set tClass = ..#UPDATETOOL
+    Kill tQuery
+    Set tQuery($ClassMethod(tClass, "IdParam")) = pName
+    Set tSC = $ClassMethod($ClassMethod(tClass, "PortClass"), "Invoke", $ClassMethod(tClass, "Endpoint"), $ClassMethod(tClass, "ReadType"), .tQuery, "", .tFresh, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject($Get(tFresh)) || 'tFresh.%IsA("%Library.DynamicObject") {
+        Set pHttpStatus = 404
+        Quit $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#ROLENAMEABSENT)
+    }
+    Set pRole = {}
+    Do pRole.%Set(..#FIELDNAME, pName, "string")
+    For tField = ..#FIELDDESCRIPTION, ..#FIELDESCALATIONONLY, ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES {
+        Set tType = tFresh.%GetTypeOf(tField)
+        If tType = "unassigned" Continue
+        If (tType = "object") || (tType = "array") {
+            Do pRole.%Set(tField, tFresh.%Get(tField))
+        } Else {
+            Do pRole.%Set(tField, tFresh.%Get(tField), tType)
+        }
+    }
+    Quit $$$OK
+}
+
+/// <p>The holders of role <var>pName</var>, read with <parameter>OWNERTYPE</parameter> through
+/// <parameter>UPDATETOOL</parameter>'s own port (AD-52): <var>pMembers</var>
+/// <code>[{Name, Type}]</code> in the vendor's order, and <var>pHolders</var> the number of
+/// distinct names whose type is one of <parameter>HOLDERTYPES</parameter>. An absent role is an
+/// error status with <var>pHttpStatus</var> 404.</p>
+ClassMethod Members(pName As %String, Output pMembers As %DynamicArray, Output pHolders As %Integer, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pMembers = []
+    Set pHolders = 0
+    Set tClass = ..#UPDATETOOL
+    Kill tQuery
+    Set tQuery($ClassMethod(tClass, "IdParam")) = pName
+    Set tSC = $ClassMethod($ClassMethod(tClass, "PortClass"), "Invoke", $ClassMethod(tClass, "Endpoint"), ..#OWNERTYPE, .tQuery, "", .tList, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject($Get(tList)) || 'tList.%IsA("%Library.DynamicArray") Quit $$$OK
+    Set tAccountTypes = $ListFromString(..#HOLDERTYPES)
+    Kill tSeen
+    Set tIterator = tList.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If '$IsObject(tRow) Continue
+        Set tMember = tRow.%Get("Name")
+        If tMember = "" Continue
+        Set tEntry = {}
+        Do tEntry.%Set("Name", tMember, "string")
+        Do tEntry.%Set("Type", tRow.%Get("Type"), "string")
+        Do pMembers.%Push(tEntry)
+        If '$ListFind(tAccountTypes, tRow.%Get("Type")) Continue
+        Set tKey = ##class(OcuPilot.Kernel.EntityRef).NormalizedId("user", tMember)
+        If $Data(tSeen(tKey)) Continue
+        Set tSeen(tKey) = ""
+        Set pHolders = pHolders + 1
+    }
+    Quit $$$OK
+}
+
 /// <p>The resources this instance holds, as <code>[{name, permissions, privileged}]</code> in the
 /// order the vendor lists them, read through the create tool's own port (AD-52).</p>
 ClassMethod Resources(Output pResources As %DynamicArray) As %Status
@@ -441,6 +591,7 @@ ClassMethod FieldOf(pCode As %String) As %String [ Private ]
     If tPart = "DESCRIPTION" Quit ..#FIELDDESCRIPTION
     If tPart = "RESOURCES" Quit ..#FIELDRESOURCES
     If tPart = "GRANTEDROLES" Quit ..#FIELDGRANTEDROLES
+    If tPart = "ESCALATIONONLY" Quit ..#FIELDESCALATIONONLY
     Quit ""
 }
 

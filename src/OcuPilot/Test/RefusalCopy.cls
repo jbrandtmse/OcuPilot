@@ -95,4 +95,35 @@ Method TestTheCredentialTypeRefusalIsItsParameter()
     Do $$$AssertEquals(tServer, ##class(OcuPilot.Api.Error).#REASONAGENTCREDTYPEUNAVAILABLE, "which is the parameter the client's copy is pinned to")
 }
 
+/// <p>DW-1598, AD-53 (Story 9.3): the unreviewed-field, own-role and own-resource codes each answer
+/// their own parameter, published in EXPERIENCE.md's Fixed strings, and none names a caller -- a
+/// screen's Save reaches all three as well as the agent's confirm.</p>
+/// <p>Mutation (Rule 19): restore the literal for <code>UNCOVEREDFIELD</code> in
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.ReasonFor</method> and recompile -- that code's legs go
+/// red.</p>
+Method TestEachKernelRefusalIsItsParameterAndNamesNoCaller()
+{
+    Set tClass = "OcuPilot.Kernel.Proposal.Prohibited"
+    For tCode = "UNCOVEREDFIELD", "OCUPILOTROLE", "OCUPILOTRESOURCE" {
+        Set tServer = ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor($Parameter(tClass, tCode))
+        Do $$$AssertNotEquals(tServer, "", tCode _ ": the kernel answers a written sentence")
+        Do $$$AssertEquals(tServer, $Parameter(tClass, tCode _ "REASON"), tCode _ ": which is its parameter, not a literal in the lookup")
+        Do $$$AssertEquals(($ZConvert(tServer, "L") [ "agent"), 0, tCode _ ": and it names no caller: " _ tServer)
+    }
+}
+
+/// <p>AD-53 (Story 9.3, DW-1513, DW-1528): the predefined-role and system-resource delete refusals
+/// are the violation lookup's own parameters, which <file>ui/tools/self-protection.test.mjs</file>
+/// pins equal to the client's copy the row draws before a click.</p>
+/// <p>Mutation (Rule 19): answer a literal for <code>RESOURCE.NAME.SYSTEM</code> in
+/// <method>OcuPilot.Api.Error.ReasonForViolation</method> and recompile -- its leg goes red.</p>
+Method TestTheDeleteRefusalsAreTheirParameters()
+{
+    For tCase = $ListBuild("ROLENAMESYSTEM", "REASONROLENAMESYSTEM"), $ListBuild("RESOURCENAMESYSTEM", "REASONRESOURCENAMESYSTEM") {
+        Set tServer = ##class(OcuPilot.Api.Error).ReasonForViolation($Parameter("OcuPilot.Api.Error", $List(tCase, 1)))
+        Do $$$AssertNotEquals(tServer, "", $List(tCase, 1) _ ": the violation lookup answers a written sentence")
+        Do $$$AssertEquals(tServer, $Parameter("OcuPilot.Api.Error", $List(tCase, 2)), $List(tCase, 1) _ ": which is the parameter the client's copy is pinned to")
+    }
+}
+
 }

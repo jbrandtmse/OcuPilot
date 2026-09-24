@@ -26,6 +26,7 @@ import { AuditPage } from '../areas/logs/audit.page';
 import { ErrorLogPage } from '../areas/logs/error-log.page';
 import { LogViewerPage } from '../areas/logs/log-viewer.page';
 import { UserCreateFormPage } from '../areas/permissions/user-create-form.page';
+import { RoleEditorPage } from '../areas/permissions/role-editor.page';
 import { UserEditorPage } from '../areas/permissions/user-editor.page';
 import { RoleCreateFormPage } from '../areas/permissions/role-create-form.page';
 import { ResourceListPage } from '../areas/permissions/resource-list.page';
@@ -118,12 +119,14 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
  *
  * A paired form's `<route>` creates and its `<route>/<id>` edits. Where the two are one page (the
  * device editor) `DESCRIPTOR_PAGES` serves both; where the edit is a page of its own -- the user
- * editor beside the create form Story 8.2 shipped, and the web application editor beside Story 8.1's
- * -- it is registered here, and the bare route keeps the create page.
+ * editor beside the create form Story 8.2 shipped, the web application editor beside Story 8.1's,
+ * and the role editor beside Story 8.3's -- it is registered here, and the bare route keeps the
+ * create page.
  */
 export const DESCRIPTOR_EDIT_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.UserForm': UserEditorPage,
   'OcuPilot.Screen.Descriptor.WebAppForm': WebAppEditorPage,
+  'OcuPilot.Screen.Descriptor.RoleForm': RoleEditorPage,
 };
 
 /**

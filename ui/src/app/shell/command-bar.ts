@@ -20,7 +20,7 @@ import { ScreenStores, type SortDirection } from '../core/screen-store';
 import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
 import { STRINGS, stringFor } from '../core/strings';
-import { formatRowCount } from '../core/table-model';
+import { formatRowCount, rowFor } from '../core/table-model';
 import { ViewOptions } from '../core/view-options';
 
 /**
@@ -384,6 +384,7 @@ export class CommandBar {
     const selected = screen.rowActions.length === 0
       ? ''
       : this.stores.for(screen.descriptor, screen.refreshRates).selection()[0] ?? '';
+    const row = selected === '' ? null : rowFor(this.stores.for(screen.descriptor, screen.refreshRates).data(), screen, selected);
     return screen.rowActions
       .filter((action) => action.id !== '')
       // DW-389: a declared action with no registered handler is a control nothing can act on, so
@@ -396,7 +397,7 @@ export class CommandBar {
         // pressed anyway.
         const reason = selected === ''
           ? STRINGS.privilegeSelectRowFirst
-          : selfProtectionReason(action.selfProtection, selected, this.signedIn());
+          : selfProtectionReason(action.selfProtection, selected, this.signedIn(), row);
         return {
           id: action.id,
           // Resolved through the one label map, as the command box already does (Story 3.5), and

@@ -45,7 +45,9 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "create", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [
+    {"id": "delete", "selfProtection": "system-resource"}
+  ],
   "context": {"fields": ["Name", "Description", "PublicPermission", "ResourceType", "AllowDelete"], "secretFields": []},
   "emptyStateKey": "resourceListEmpty",
   "commandAliases": ["security resources"],

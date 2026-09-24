@@ -2,13 +2,16 @@
 title: 'Story 9.3: The role editor'
 type: 'feature'
 created: '2026-09-24'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'd6e6e8eb9ed93e8082bda1ecdd7ef75cf5e9d5ee'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-9-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - 'A forced Delete of a predefined role is pinned below the route (RoleDelete.ScreenActionDelta), not over POST /screens/permissions.roles/action: with the refusal missing the vendor drops the role, so a request-level leg would delete a vendor role on the throwaway. A held-port ScreenAction harness would let it be pinned over the route.'
+  - 'The census reads a role set escalation-only as reaching nothing for its holders (inference): holders keep the role in Roles, measured on ocupilot-ci; whether a sign-in still grants it was not measured.'
 ---
 
 <intent-contract>
@@ -269,6 +272,40 @@ Client:
 
 ## Review Triage Log
 
+### 2026-09-24 — Review pass
+
+- verdicts: 29 findings — high 0, medium 4, low 10, false 15, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The editor's own Delete → `onApplied` return path had no test (AC3 "or the editor") — added a page-spec leg that confirms the typed name and asserts the list route and a clean form; mutation recorded.
+  - `[medium]` `[patch]` The editor's change-bus re-read, route following and clean refresh were unpinned — added the user editor's two legs to `role-editor.page.spec.ts`; mutations recorded.
+  - `[low]` `[patch]` The Members tab's privileged caption and `privileged()`'s false branch were unverified — added a marked and an unmarked leg; mutation recorded.
+  - `[medium]` `[patch]` The command bar's and command box's new `row` argument had no test — added a `system-resource` leg to each spec; mutations recorded.
+  - `[medium]` `[patch]` The holder count's distinct-name and escalation counting were unpinned — `RoleSave` now makes an escalation-only holder and gives the member account the role both ways, and asserts `holders` 2; mutation recorded.
+  - `[low]` `[patch]` The unknown-role refusal of `add-granted-role` (and the restated-grant refusal) had no leg — both added to `RoleSave`'s refusal loop.
+  - `[low]` `[patch]` The page spec's AC3 GET assertion could not fail (the open already reads the same path) — it now counts the form reads before and after the click.
+  - `[low]` `[patch]` `TestOcuPilotsOwnRoleIsRefusedAGrantChangeButNotItsDescription` could pass on an empty own-role list — it now asserts the list is non-empty before quitting.
+  - `[false]` `[reject]` The census's signed-in and service-account legs run only for some runners — `ci-runner` sessions run as `irisowner` on `ocupilot-ci` (measured), so both legs run.
+  - `[low]` `[reject]` `RefusalCopy`'s "not a literal" message cannot tell for `OCUPILOTRESOURCE`, whose old literal equalled the parameter — cosmetic; `self-protection.test.mjs` pins the `ReasonFor` source line.
+  - `[low]` `[reject]` Several matrix rows (Undeclared key, Absent server half, Grant, Agent privileged, Resource delete, the pair denial) carry no `mutation:` line — Rule 19 scopes one line per AC and every AC has one; each test's doc comment names its mutation.
+  - `[low]` `[patch]` The three kernel sentences have `strings.ts` keys although the new Fixed-strings row said "no client copy" — the keys are required by `strings.test.mjs` (every Fixed-strings literal must be a value; 9.2's own-app sentence is the precedent), so the row now reads "no control draws them before a click".
+  - `[false]` `[reject]` The task list's `roleMemberUser`, `roleMemberType`, `roleMemberTypeRole` were not added — `strings.test.mjs` refuses duplicate values, so the existing `processColumnUser`, `tableColumnType`, `userRoleField` are reused; the fix would edit the spec.
+  - `[false]` `[reject]` Grant row: an unknown resource answers 400, not 404 — the Boundaries bind the delta to "what `UserUpdate` refuses … unknown (404 through the port)", and `UserUpdate` turns the port's 404 into a `TOOL.ARGUMENTS` problem; a 404 answer would need a second refusal channel in `ScreenAction.Run`.
+  - `[false]` `[reject]` Grant row: bad letters carry the `ROLE.RESOURCES.PERMISSIONS` sentence, not its code — the delta's only channel is the problem sentence, which is that code's published reason.
+  - `[low]` `[defer]` A forced `%Developer` delete is pinned at `RoleDelete.ScreenActionDelta`, not over the route — already the spec's first `deferred:` item; a route leg would drop a vendor role if the refusal regressed.
+  - `[false]` `[reject]` The census is pinned through fixture seams, not a route — the matrix row names those seams.
+  - `[false]` `[reject]` DW-1598 is pinned only at `ReasonFor` for one type — `ReasonFor(UNCOVEREDFIELD)` is type-independent and is the envelope reason on both callers.
+  - `[low]` `[patch]` The Save's event was asserted as "at least one" — the store spec now asserts exactly one.
+  - `[false]` `[reject]` The own-role test uses the last of `OcuPilotRoles`, not `OcuPilotShell` — the arm is a `$ListFind` over that list, so any member takes the same path.
+  - `[false]` `[reject]` `ScreenAction.Run` adds the id argument to every tool's delta values — values are validated before `Run` (`Values`, :131) and not read after; the method already adds the id to `tArgs` the same way, and the add is skipped when a value of that name exists.
+  - `[false]` `[reject]` `Error.cls` edits inside `ReasonForViolation` and `RoleViolationCodes` break append-only — the spec's task requires the new code in both; each is one element appended at the end, and the feature branch touches neither.
+  - `[false]` `[reject]` The Role form's label changes to `userRoleField` — a spec task.
+  - `[false]` `[reject]` The create form drops its retain hand-off — a spec task.
+  - `[false]` `[reject]` `OWNERLIST` is added to `TYPESUFFIXES` — a spec task.
+  - `[false]` `[reject]` The editor has its own Delete button — a spec task ("A header Delete").
+  - `[false]` `[reject]` A Save of `{}` answers 200 and writes the unchanged set — `UserSave` and `WebAppSave` pin the same; the client never sends `{}`.
+  - `[low]` `[reject]` `error-log.page.ts` calls `selfProtectionReason` without a row — its screen declares no row-reading rule, so the argument changes nothing there.
+  - `[false]` `[reject]` Intent-alignment's summary that the census is never exercised by a route — same root as the fixture-seam row above; the matrix names the seams.
+
 ## Design Notes
 
 **Governing ADs:** AD-2, AD-3, AD-4, AD-5, AD-6, AD-8, AD-10, AD-13, AD-14, AD-19, AD-27 (a new read suffix inside the port, not a fallback), AD-39, AD-51, AD-53, AD-54, AD-55 and AD-56 (ii).
@@ -325,7 +362,56 @@ If the lead declines the first sentence, drop the own-role change arm. Such chan
 - Save order: merge over `{Name}`.
 - Integration: skip `tabToOpen`.
 
+**Mutations observed (implement pass; each reverted, file byte-identical by md5):**
+
+- mutation: drop the Members tab from `RoleEditorPage.tabs` → `role-editor.page.spec.ts` AC1 (and three dependent legs) went red.
+- mutation: pass `[]` as the grant dialog's `granted` → `role-editor.page.spec.ts` AC2 went red.
+- mutation: drop the holder advisory from `ScreenActionHandler.openRoleDelete` → `role-editor.page.spec.ts` AC3 and `screen-action-handler.spec.ts` "states how many accounts hold the role" went red.
+- mutation: make `system-role` answer `''` in `selfProtectionReason` → `self-protection.test.mjs` "system-role answers a name beginning %" went red.
+- mutation: drop the delete refusal from `RoleDelete.ScreenActionDelta` → `OcuPilot.Test.RoleDelete.TestTheScreenDeleteRefusesAPredefinedRoleWithThePublishedSentence` went red.
+- mutation: make `system-resource` ignore the row → `self-protection.test.mjs` "system-resource" leg and `data-table.spec.ts` "system-resource entry" went red.
+- mutation: drop the delete refusal from `ResourceDelete.ScreenActionDelta` → `OcuPilot.Test.ResourceDelete.TestTheScreenDeleteRefusesASystemResourceWithThePublishedSentence` went red.
+- mutation: restore the agent-worded literal for `UNCOVEREDFIELD` in `Prohibited.ReasonFor` → `OcuPilot.Test.RefusalCopy.TestEachKernelRefusalIsItsParameterAndNamesNoCaller` and `self-protection.test.mjs` "DW-1598" went red.
+- mutation: have `ChangeStripsAll` answer `""` for a change (`If 'pDelete Quit`) → `OcuPilot.Test.RoleSave.TestTheCensusRefusesAChangeOrDeleteThatStripsAll` went red.
+- mutation: delete the own-role arm for a change in `Prohibited.Role` (`If tDelete {`) → `OcuPilot.Test.RoleSave.TestOcuPilotsOwnRoleIsRefusedAGrantChangeButNotItsDescription` went red.
+- mutation: merge over `{Name}` instead of the fresh read in `RoleSave.Update` → `OcuPilot.Test.RoleSave.TestATwoFieldSaveSendsTheCompleteSetAndTheGrantsSurvive` (and three other legs) went red.
+- mutation: skip `tabToOpen` in `RoleEditorPage.afterRefusal` → `role-editor.page.spec.ts` Integration went red.
+- mutation: drop the 404 branch from `RoleEditor.absorb` → `role-editor.store.spec.ts` "reads a role the instance does not hold as absent" went red (matrix row Absent, client half).
+- mutation: never take the delete branch in `RoleEditorPage.onApplied` → `role-editor.page.spec.ts` "AC3: a Delete confirmed from the editor…" went red (AC3, editor half).
+- mutation: have `RoleEditor.refresh` always absorb the lists alone → `role-editor.page.spec.ts` "re-reads the role in place…" went red.
+- mutation: return before the `NavigationEnd` check in the page's route subscription → `role-editor.page.spec.ts` "follows the route to another role…" went red.
+- mutation: have `RoleEditor.privileged` answer true → `role-editor.page.spec.ts` "states the privilege consequence under Members' Assign…" went red.
+- mutation: drop `row` from `command-bar.ts`'s `selfProtectionReason` call → `command-bar.spec.ts` "Story 9.3: a system-resource action…" went red; the same in `command-box.ts` → `command-box.spec.ts` "Story 9.3: with a not-deletable row selected…" went red (AC4, the other two surfaces).
+- mutation: drop the distinct-name check from `RoleCreateRules.Members` (throwaway copy, recompiled) → `OcuPilot.Test.RoleSave.TestTheSaveAndTheFormReadAnswerOneEnvelopeOverTheWire` went red on `holders` 3 (AC3's count).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** The role editor at `permissions/roles/edit/<id>` (General, Members, Assigned to) over `GET /roles/form?name=` and `PUT /roles/:id`; the new `permissions.roles.update` tool, whose four screen actions are the editor's grant and granted-role deltas; Delete on the Roles and Resources lists, refused before and after a click for a `%` role and a not-deletable resource, with the role's holder count in its dialog; the role change fields, own-role arm and change census in `Prohibited.cls`; the three kernel sentences as parameters (DW-1598).
+
+**Files.**
+
+- Server: `Screen/Tool/RoleUpdate.cls` (new tool); `Area/Permissions/RoleSave.cls` (new Save); `RoleCreateRules.cls` (update mode, `Changed`, form read `role`/`members`/`holders`); `Kernel/Proposal/Prohibited.cls` (role fields, own-role arm, `ChangeStripsAll`, reason parameters); `RoleDelete.cls`/`ResourceDelete.cls` (screen Delete and its refusal); `Api/ScreenAction.cls` (target passed to the delta); `Api/Router.cls`, `Api/Error.cls` (appends), `Port/AdminPort.cls` (`OWNERLIST`); `RoleList`/`ResourceList`/`RoleForm` descriptors; `Screen/Registry.cls` (two rules); `Classification.cls`/`ToolFields.cls`.
+- Server tests: new `RoleSave`, `RoleUpdate` (+ two fixtures); legs in `RoleDelete`, `ResourceDelete`, `RefusalCopy`, `Prohibited`, `WireSecurityRead`; roster rows in `SurfaceCoverage`, `EndpointCoverage`, `PermissionsLists`, `ReadTool`, `ToolRoundTrip`, `Wire`, `WireSecurityRead`, `ProhibitedFixture`, `scripts/ci-throwaway.sh`.
+- Client: `role-editor.page.ts`/`.store.ts` (+ specs); `role-create-form.*` (`arriveSaved` hand-off); `screen-action-handler.ts`, `self-protection.ts`, `table-model.ts` (`rowFor`), `data-table.ts`, `command-bar.ts`, `command-box.ts`, `screen-outlet.ts`, `navigation.ts`, `strings.ts`, `_components.scss`, `screens.generated.ts`; specs for handler, data table, command bar, command box; `navigation.test.mjs`, `self-protection.test.mjs`, `screen-mirror.mjs`.
+- Browser: new `roles-editor.browser-spec.mjs`; legs in `roles-create`, `resources-editor`, `permissions`. EXPERIENCE.md Fixed strings rows 476-480.
+
+**Review (one pass, two layers).** 29 findings: 10 patched (medium 4, low 6), 1 deferred (already recorded), 18 rejected with reasons in the Review Triage Log. The patches add tests only (editor Delete return, bus re-read, route following, privileged caption, command bar and box row rule, holder counting, unknown-role and restated-grant refusals, one vacuous and one silently-skippable assertion) and correct the new Fixed-strings row's wording. The full sweep then tripped three rosters the new tool and row actions change (`PermissionsLists`, `ReadTool`, `ToolRoundTrip`), updated in the same pass. Follow-up review: `false`. Four medium entries were patched, but each patch is a test whose mutation was observed red, so no unverified risk remains to name.
+
+**Verification.** All on `ocupilot-ci`, one run at a time.
+
+- Tool tier: 1,382/1,382. Component tier: 80 files, 1,089 tests.
+- `check-objectscript` and `lint-docs` are clean.
+- Build: initial total 1,428,112 bytes, under the 1467kB warning. The same bundle (`main-PFNB5AEU.js`) was deployed for every browser run.
+- Browser spec files, each run alone, all green: roles-editor 8, roles-create 5, resources-editor 6, permissions 5, users-editor 8, web-applications-editor 7, users-actions 2, web-applications-actions 3, oauth-delete 2, task-schedule-actions 4, task-run 2, process-actions 3, error-log-actions 3, audit-events 4, auditing-write 3, a11y-structural-invariants 10.
+- Full ObjectScript sweep: 220 classes, 1,928 tests. It showed 4 failed tests and the 4 class-level arming refusals (`AuditingUpdate`, `ErrorDelete`, `ProcessControl`, `TaskResume`). Three of the four were the rosters above, now green on re-run (`PermissionsLists` 7, `ReadTool` 27, `ToolRoundTrip` 2). The fourth is the known `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal`.
+- Every mutation under `## Verification` was observed red and reverted byte-identical.
+
+**Residual risks.**
+
+- The census reads an escalation-only role as granting nothing at sign-in (inference; see `deferred:`).
+- A forced `%Developer` delete is pinned below the route.
+- `EXPERIENCE.md:476-480` references will need renumbering if Epic 10 appends Fixed-strings rows first.
+- `Test/Wire.cls` carries the Role form's new label, which Epic 10's copy does not.

@@ -2240,8 +2240,11 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
 /// <code>SERVICEACCOUNTREASON</code>. The last <code>%All</code> holder is a census no client can
 /// read, so it is refused at the write alone. <code>service-account-sign-in</code> is the sign-in
 /// one (AD-10 as amended 2026-09-23): the target is a service account other than the signed-in one,
-/// and its sentence is <code>SERVICEACCOUNTSIGNINREASON</code>.</p>
-Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles";
+/// and its sentence is <code>SERVICEACCOUNTSIGNINREASON</code>. <code>system-role</code> and
+/// <code>system-resource</code> are the delete ones (Story 9.3): a role whose name begins
+/// <code>%</code>, and a resource whose row reads <code>AllowDelete</code> false, each explained by
+/// its <class>OcuPilot.Api.Error</class> reason and refused by its delete tool.</p>
+Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource";
 
 /// <p>The fewest suggested prompts a declaration that declares any may carry (Story 11.3).</p>
 Parameter SUGGESTEDPROMPTSMIN As INTEGER = 3;

@@ -4331,7 +4331,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "create",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": "system-resource"
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -4550,7 +4555,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "descriptor": "OcuPilot.Screen.Descriptor.RoleForm",
     "route": "permissions/roles/edit",
     "area": "permissions",
-    "labelKey": "roleFormLabel",
+    "labelKey": "userRoleField",
     "sideBarPosition": 0,
     "archetype": "form-page",
     "built": true,
@@ -4587,6 +4592,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "fingerprintExcludes": [],
     "emptyStateKey": "",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "rolePromptHolders"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "rolePromptPrivilege"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "rolePromptGrantedRoles"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.Role",
     "classicLinkExemption": {
       "exempt": false,
@@ -4634,7 +4653,28 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "create",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": "system-role"
+      },
+      {
+        "id": "add-granted-role",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove-granted-role",
+        "selfProtection": ""
+      },
+      {
+        "id": "set-resource-grant",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove-resource-grant",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",

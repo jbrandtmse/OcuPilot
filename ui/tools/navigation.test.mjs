@@ -271,9 +271,9 @@ test('documentScreenFor resolves the REST API explorer to its unlisted, id-keyed
   assert.equal(createFormFor(users).route, 'permissions/users/edit', 'the Users list\'s Create opens its own form');
   assert.equal(isListedScreen(screenForRoute('permissions/users/edit')), false, 'which takes no side-bar position');
   assert.equal(editorScreenFor(users)?.route, 'permissions/users/edit', 'and a row name opens the user editor at its id route');
-  // Story 8.3: the Roles list pairs with its create form the same way.
-  // Mutation (Rule 19): drop RoleForm from `CREATE_ONLY_FORMS` -> the editor assertion below and
-  // the role leg of the screenForChange test go red.
+  // Story 8.3: the Roles list pairs with its create form the same way; Story 9.3's role editor reads
+  // the id, so a row's name opens it.
+  // Mutation (Rule 19): put RoleForm back in `CREATE_ONLY_FORMS` -> the editor assertion below goes red.
   // Story 8.4: the Resources list's editor is a dialog over the list, not a paired form, so it
   // resolves no form and no editor screen, and it is the one dialog-editor screen, id-keyed so a
   // row's name cell opens its own id route.
@@ -286,7 +286,7 @@ test('documentScreenFor resolves the REST API explorer to its unlisted, id-keyed
   const roles = screenForRoute('permissions/roles');
   assert.equal(createFormFor(roles).route, 'permissions/roles/edit', 'the Roles list\'s Create opens its own form');
   assert.equal(isListedScreen(screenForRoute('permissions/roles/edit')), false, 'which takes no side-bar position');
-  assert.equal(editorScreenFor(roles), null, 'and a row name does not open it, because it reads no id');
+  assert.equal(editorScreenFor(roles)?.route, 'permissions/roles/edit', 'and a row name opens the role editor at its id route');
   assert.deepEqual(
     listedScreensForArea('web-applications').map((screen) => screen.route),
     ['web-applications/list', 'web-applications/rest-apis'],
@@ -972,7 +972,7 @@ test('screenForChange resolves the screen a change opens and the route that name
   assert.equal(screenForChange({ type: 'task', id: '12' })?.route, 'tasks/schedule/12', 'with the task as the route id');
   assert.equal(screenForEntityType('agent-definition').route, 'agent/definitions', 'a definition change opens the Definitions list');
   assert.equal(screenForEntityType('user').route, 'permissions/users', 'a user change opens the Users list, not its editor');
-  assert.equal(screenForEntityType('role').route, 'permissions/roles', 'a role change opens the Roles list, not the create form');
+  assert.equal(screenForEntityType('role').route, 'permissions/roles', 'a role change opens the Roles list, not its editor');
   assert.equal(screenForEntityType('database').route, 'os-management/databases', 'and of two database lists, the listed one');
   assert.ok(!target.route.includes('/csp/myapp'), 'the id is one encoded segment, never raw path (AD-13)');
 

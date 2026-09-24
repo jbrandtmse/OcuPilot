@@ -34,7 +34,9 @@ export const SCREEN_ACTION_PATH_SUFFIX = '/action';
  * Terminate types the pid, and the application error log (Story 7.10), whose one Delete names the
  * scope its target's composite id selects, and the System events and User events lists (Story 7.11),
  * whose Enable and Reset counters are sent at once, whose marker-event Disable warns first, and
- * whose user-event Delete types the event's name.
+ * whose user-event Delete types the event's name, and the Roles and Resources lists (Story 9.3),
+ * whose Delete types the name -- a role's stating how many accounts hold it -- and whose role value
+ * actions the role editor sends.
  */
 export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WebAppList',
@@ -49,6 +51,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.LogErrorList',
   'OcuPilot.Screen.Descriptor.AuditSystemEventList',
   'OcuPilot.Screen.Descriptor.AuditUserEventList',
+  'OcuPilot.Screen.Descriptor.RoleList',
+  'OcuPilot.Screen.Descriptor.ResourceList',
 ];
 
 /** The Users list's descriptor, whose row actions carry values (AD-56). */
@@ -62,6 +66,24 @@ export const ADD_APPLICATION_ROLE = 'add-application-role';
 export const REMOVE_APPLICATION_ROLE = 'remove-application-role';
 export const ADD_MATCHING_ROLE = 'add-matching-role';
 export const REMOVE_MATCHING_ROLE = 'remove-matching-role';
+
+/** The Roles list's descriptor, whose four value actions the role editor sends (Story 9.3). */
+export const ROLE_LIST = 'OcuPilot.Screen.Descriptor.RoleList';
+
+/** The Resources list's descriptor, whose Delete is drawn refused for a system resource (Story 9.3). */
+export const RESOURCE_LIST = 'OcuPilot.Screen.Descriptor.ResourceList';
+
+/** The role value actions, and the values each sends (AD-56 (ii)). */
+export const ADD_GRANTED_ROLE = 'add-granted-role';
+export const REMOVE_GRANTED_ROLE = 'remove-granted-role';
+export const SET_RESOURCE_GRANT = 'set-resource-grant';
+export const REMOVE_RESOURCE_GRANT = 'remove-resource-grant';
+
+/**
+ * The role form read whose `holders` a role Delete states (Story 9.3, DW-1513): the number of
+ * accounts that hold the role, as the instance's own holder list reports it.
+ */
+export const ROLE_FORM_READ_PATH = '/api/ocupilot/roles/form';
 
 /** The Task schedule's descriptor, whose delete types a name that is not its row key. */
 const TASK_SCHEDULE = 'OcuPilot.Screen.Descriptor.TaskScheduleList';
@@ -116,6 +138,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [WEB_APP_LIST]: [ADD_APPLICATION_ROLE, REMOVE_APPLICATION_ROLE, ADD_MATCHING_ROLE, REMOVE_MATCHING_ROLE],
   [PROCESS_LIST]: [TERMINATE_WITH_ERROR],
   [PROCESS_DETAILS]: [TERMINATE_WITH_ERROR],
+  // The role editor draws these beside its grants, members and assigned roles, which supply the values.
+  [ROLE_LIST]: [ADD_GRANTED_ROLE, REMOVE_GRANTED_ROLE, SET_RESOURCE_GRANT, REMOVE_RESOURCE_GRANT],
 };
 
 /**
@@ -148,6 +172,9 @@ const ACTION_ADDRESS: Readonly<Record<string, string>> = {
  */
 const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate'];
 
+/** The Roles list's destructive action, whose dialog states how many accounts hold the role. */
+const ROLE_DELETE = 'delete';
+
 /**
  * The consequence sentence a destructive action states above its typed-name field, keyed by
  * descriptor and then by action id -- the shape `DESCRIPTOR_ACTION_LABELS` already uses, and for
@@ -167,6 +194,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [PROCESS_DETAILS]: { terminate: STRINGS.processTerminateConsequence },
   [LOG_ERROR_LIST]: { delete: STRINGS.errorDeleteEveryConsequence },
   [AUDIT_USER_EVENT_LIST]: { delete: STRINGS.auditUserEventDeleteConsequence },
+  [ROLE_LIST]: { delete: STRINGS.roleDeleteConsequence },
+  [RESOURCE_LIST]: { delete: STRINGS.resourceDeleteConsequence },
 };
 
 /**
@@ -420,7 +449,7 @@ export class ScreenActionHandler {
     // is the second half of the same explanation and not a second predicate: the instance refuses
     // it either way, with this same sentence (AD-10, AD-53).
     const rule = screen.rowActions.find((action) => action.id === actionId)?.selfProtection ?? '';
-    const refusal = selfProtectionReason(rule, target, this.session?.userName() ?? '');
+    const refusal = selfProtectionReason(rule, target, this.session?.userName() ?? '', rowFields);
     if (refusal !== '') {
       sink.setRefusal(refusal);
       return;
@@ -454,6 +483,10 @@ export class ScreenActionHandler {
     const scoped = this.scoped(descriptor, actionId, target);
     if (scoped !== null) {
       this.open('typed-name', descriptor, actionId, target, scoped.consequence, [], sink, scoped.name, '', scoped.verb);
+      return;
+    }
+    if (descriptor === ROLE_LIST && actionId === ROLE_DELETE) {
+      void this.openRoleDelete(descriptor, actionId, target, sink);
       return;
     }
     // The row's own name and advisory, where the screen declares them; the row key otherwise.
@@ -548,6 +581,30 @@ export class ScreenActionHandler {
       if (!(flag === false || flag === 0)) privileged.push(name);
     }
     this.open('role', descriptor, actionId, target, '', offered, sink, target, '', actionLabel(descriptor, actionId), privileged);
+  }
+
+  /**
+   * Open a role Delete's typed-name dialog with the number of accounts that hold the role, read
+   * from `GET /roles/form?name=` -- the form read's own gate applies -- as its advisory line
+   * (DW-1513). A read that fails opens the dialog without the line; whether the role may be deleted
+   * is the instance's answer at the write.
+   */
+  private async openRoleDelete(descriptor: string, actionId: string, target: string, sink: ActionSink): Promise<void> {
+    const result = await this.injector
+      .get(ApiService)
+      .requestJson<{ readonly holders?: unknown }>(`${ROLE_FORM_READ_PATH}?name=${encodeURIComponent(target)}`);
+    const holders = result.kind === 'ok' ? result.body?.holders : undefined;
+    this.open(
+      'typed-name',
+      descriptor,
+      actionId,
+      target,
+      this.consequence(descriptor, actionId),
+      [],
+      sink,
+      target,
+      typeof holders === 'number' ? roleHoldersLine(holders) : ''
+    );
   }
 
   /** The row keyed `target` on the screen's last read, or `null`. */
@@ -680,6 +737,13 @@ export class ScreenActionHandler {
     if (own === undefined) return '';
     return Object.hasOwn(own, actionId) ? own[actionId] : '';
   }
+}
+
+/** The advisory line a role Delete states for `count` accounts holding the role. */
+export function roleHoldersLine(count: number): string {
+  if (count === 0) return STRINGS.roleDeleteHoldersNone;
+  if (count === 1) return STRINGS.roleDeleteHoldersOne;
+  return STRINGS.roleDeleteHolders.replace('<n>', String(count));
 }
 
 /** The roles `rowFields` holds, as the instance spells them. */

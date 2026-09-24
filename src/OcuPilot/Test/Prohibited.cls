@@ -622,6 +622,25 @@ Method TestGovernanceCannotEnableAProhibitedWrite()
     Do $$$AssertTrue(tAsked < tRestrained, "with the set asked first")
 }
 
+/// <p>Story 9.3 (AD-10, DW-1598): a role change may touch exactly its description, its escalation
+/// flag, its granted roles and its resource grants; any other changed field is refused
+/// <code>PROHIBITED.UNCOVEREDFIELD</code> with the caller-neutral sentence, and a description change
+/// on a role that is not OcuPilot's own passes the set.</p>
+/// <p>Mutation (Rule 19): drop <code>EscalationOnly</code> from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedChangeFields</method>'s role list -- the list
+/// leg and the flag leg go red.</p>
+Method TestARoleChangeTouchesItsReviewedFourAndNothingElse()
+{
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("role")), "Description,EscalationOnly,GrantedRoles,Resources", "a role change may touch its reviewed four")
+    Set tFresh = "{""Description"":""before"",""GrantedRoles"":[],""EscalationOnly"":false,""Resources"":[]}"
+    Set tSC = ##class(OcuPilot.Test.ProhibitedFixture).Ask(tFresh, "{""Description"":""after"",""GrantedRoles"":[],""EscalationOnly"":true,""Resources"":[]}", ##class(OcuPilot.Test.ProhibitedFixture).Diff("Description,EscalationOnly"), "OcuPilotProbeRoleSet", "role", .tProhibits, .tCode, "permissions.roles.update")
+    Do $$$AssertStatusOK(tSC, "the set answers a reviewed change")
+    Do $$$AssertEquals(tProhibits _ " " _ tCode, "0 ", "the description and the flag of a role not OcuPilot's own may change")
+    Set tSC = ##class(OcuPilot.Test.ProhibitedFixture).Ask(tFresh, "{""Description"":""before"",""GrantedRoles"":[],""EscalationOnly"":false,""Resources"":[],""Foo"":""x""}", ##class(OcuPilot.Test.ProhibitedFixture).Diff("Foo"), "OcuPilotProbeRoleSet", "role", .tProhibits, .tCode, "permissions.roles.update")
+    Do $$$AssertEquals(tCode, ##class(OcuPilot.Kernel.Proposal.Prohibited).#UNCOVEREDFIELD, "an unreviewed field is refused")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tCode), ##class(OcuPilot.Kernel.Proposal.Prohibited).#UNCOVEREDFIELDREASON, "with the caller-neutral sentence")
+}
+
 /// <p>AC2 and AC6: the set is the only class that spells a <code>PROHIBITED.</code> code or writes
 /// one of its sentences, every code is well formed, and the resolver the confirm handler asks
 /// first answers each of them.</p>

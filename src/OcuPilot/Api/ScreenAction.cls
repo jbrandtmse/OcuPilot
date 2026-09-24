@@ -211,8 +211,12 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
 
         ; AD-56 (ii): a declared value becomes the tool's own arguments over the fresh read -- a
         ; role add or remove is a delta, never a list the client computed -- and those arguments
-        ; are held to the tool's settable fields exactly as the static ones were.
-        Set tDeltaSC = $ClassMethod(pToolClass, "ScreenActionDelta", pActionId, pValues, tFresh, .tDelta, .tProblem)
+        ; are held to the tool's settable fields exactly as the static ones were. The target
+        ; travels beside the values as the tool's own id argument, so a delta that refuses by the
+        ; target's name reads it as the mint's ArgumentProblem does.
+        Set tDeltaValues = $Select($IsObject(pValues): pValues, 1: {})
+        If tDeltaValues.%GetTypeOf($ClassMethod(pToolClass, "IdArgument")) = "unassigned" Do tDeltaValues.%Set($ClassMethod(pToolClass, "IdArgument"), pId, "string")
+        Set tDeltaSC = $ClassMethod(pToolClass, "ScreenActionDelta", pActionId, tDeltaValues, tFresh, .tDelta, .tProblem)
         If $$$ISERR(tDeltaSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tDeltaSC))
             Quit

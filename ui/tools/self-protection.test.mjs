@@ -229,3 +229,56 @@ test('DW-1520: the sign-in rule explains a service account other than the signed
   assert.equal(selfProtectionReason(SERVICE_ACCOUNT_SIGN_IN_RULE, 'admin', 'admin'), '', 'and so is the signed-in account');
   assert.equal(selfProtectionReason(SERVICE_ACCOUNT_SIGN_IN_RULE, 'someone', 'admin'), '', 'and any other account');
 });
+
+const EXPERIENCE = join(REPO_ROOT, '_bmad-output', 'planning-artifacts', 'ux-designs', 'ux-OcuPilot-2026-09-08', 'EXPERIENCE.md');
+
+/** The two delete refusals (Story 9.3), each an `Error.cls` reason and a `strings.ts` key. */
+const DELETE_REFUSALS = [
+  ['REASONROLENAMESYSTEM', 'roleRefusalSystem'],
+  ['REASONRESOURCENAMESYSTEM', 'resourceRefusalSystem'],
+];
+
+test('AD-53, DW-1513, DW-1528: each delete refusal is one sentence on both surfaces', () => {
+  // Mutation (Rule 19): change one word of either reason in Error.cls -> this goes red naming both.
+  const source = readFileSync(ERROR, 'utf8');
+  for (const [parameter, key] of DELETE_REFUSALS) {
+    const server = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(source);
+    assert.notEqual(server, null, `Error.cls declares ${parameter}`);
+    assert.equal(server[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(!server[1].toLowerCase().includes('the agent'), `${parameter} names no caller: ${server[1]}`);
+  }
+});
+
+/** The three kernel refusals Story 9.3 publishes (DW-1598), each a `Prohibited.cls` parameter and a `strings.ts` key. */
+const KERNEL_REFUSALS = [
+  ['UNCOVEREDFIELD', 'uncoveredFieldRefusal'],
+  ['OCUPILOTROLE', 'roleRefusalOcuPilot'],
+  ['OCUPILOTRESOURCE', 'resourceRefusalOcuPilot'],
+];
+
+test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
+  // Mutation (Rule 19): answer a literal for any of the three codes in `Prohibited.ReasonFor`, or
+  // change one word of its parameter -> that code's legs go red.
+  const prohibited = readFileSync(PROHIBITED, 'utf8');
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [code, key] of KERNEL_REFUSALS) {
+    const kernel = new RegExp(`Parameter ${code}REASON = "([^"]+)";`).exec(prohibited);
+    assert.notEqual(kernel, null, `Prohibited.cls declares ${code}REASON`);
+    assert.ok(experience.includes(`"${kernel[1]}"`), `${code}REASON is published in EXPERIENCE.md's Fixed strings table`);
+    assert.equal(kernel[1], stringValue(key), `${code}REASON and ${key} are one published sentence`);
+    assert.ok(prohibited.includes(`If pCode = ..#${code} Quit ..#${code}REASON`), `ReasonFor answers ${code} with its parameter`);
+    assert.ok(!kernel[1].toLowerCase().includes('agent'), `${code}REASON names no caller: ${kernel[1]}`);
+  }
+});
+
+test('Story 9.3: system-role answers a name beginning % and system-resource a row reading AllowDelete false', async () => {
+  // Mutation (Rule 19): make `system-resource` ignore the row -> the AllowDelete false leg goes red;
+  // answer '' for `system-role` -> the %Developer leg goes red.
+  const { selfProtectionReason, SYSTEM_ROLE_RULE, SYSTEM_RESOURCE_RULE } = await import('../src/app/core/self-protection.ts');
+  const { STRINGS } = await import('../src/app/core/strings.ts');
+  assert.equal(selfProtectionReason(SYSTEM_ROLE_RULE, '%Developer'), STRINGS.roleRefusalSystem, 'a predefined role is refused');
+  assert.equal(selfProtectionReason(SYSTEM_ROLE_RULE, 'ProbeRole'), '', 'any other role is not');
+  assert.equal(selfProtectionReason(SYSTEM_RESOURCE_RULE, '%DB_IRISSYS', '', { Name: '%DB_IRISSYS', AllowDelete: false }), STRINGS.resourceRefusalSystem, 'a system resource is refused');
+  assert.equal(selfProtectionReason(SYSTEM_RESOURCE_RULE, 'ProbeResource', '', { Name: 'ProbeResource', AllowDelete: true }), '', 'a deletable one is not');
+  assert.equal(selfProtectionReason(SYSTEM_RESOURCE_RULE, '%DB_IRISSYS'), '', 'and with no row the instance alone refuses');
+});

@@ -67,6 +67,10 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// as an authored argument of its own (<class>OcuPilot.Screen.Tool.RoleCreate</class>).
 /// <code>EscalationOnly</code> is <code>ordinary</code> here and absent from the tool's positive
 /// list, so it is never advertised.</p>
+/// <p><b><code>permissions.roles.update</code></b> classifies the same rows the same way. Its
+/// positive list admits <code>Description</code> and <code>EscalationOnly</code>, and it carries
+/// <code>GrantedRoles</code> and <code>Resources</code> as authored arguments of its own
+/// (<class>OcuPilot.Screen.Tool.RoleUpdate</class>).</p>
 /// <p><b><code>security.x509.import</code></b> and <b><code>security.x509.update</code></b> classify
 /// <code>Security.X509Credential</code>'s alias, two lists, CA file and certificate file
 /// <code>ordinary</code> and its key password and key file <code>secret</code>. Each tool's positive
@@ -256,6 +260,16 @@ XData Entries
     }
   },
   "permissions.roles.create": {
+    "fieldList": "Security.Role",
+    "classification": {
+      "Description": "ordinary",
+      "GrantedRoles[]": "ordinary",
+      "EscalationOnly": "ordinary",
+      "Resources[].Name": "ordinary",
+      "Resources[].Permissions": "ordinary"
+    }
+  },
+  "permissions.roles.update": {
     "fieldList": "Security.Role",
     "classification": {
       "Description": "ordinary",
