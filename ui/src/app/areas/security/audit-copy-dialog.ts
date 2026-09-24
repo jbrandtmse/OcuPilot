@@ -26,9 +26,9 @@ let dialogCount = 0;
 
 /**
  * Copy the audit database (Story 12.3): a labeled native select of the namespaces the scope lists,
- * `%SYS` left out, the consequence line, and a primary Copy. Copy emits the chosen namespace; Cancel,
- * Escape and the scrim emit `cancelled` and nothing else. The copy deletes nothing, so the dialog
- * asks for no typed confirmation.
+ * `%SYS` left out, the consequence line, and a primary Copy, `aria-disabled` while no namespace is
+ * listed. Copy emits the chosen namespace; Cancel, Escape and the scrim emit `cancelled` and nothing
+ * else. The copy deletes nothing, so the dialog asks for no typed confirmation.
  */
 @Component({
   selector: 'app-audit-copy-dialog',
@@ -44,7 +44,14 @@ let dialogCount = 0;
       </select>
     </div>
     <p class="ocu-typed-name-consequence" data-audit-copy-consequence>{{ STRINGS.auditDatabaseCopyConsequence }}</p>
-    <button dialogAction type="button" class="ocu-button-primary" data-audit-copy-confirm (click)="onConfirm()">
+    <button
+      dialogAction
+      type="button"
+      class="ocu-button-primary"
+      data-audit-copy-confirm
+      [attr.aria-disabled]="confirmDisabled"
+      (click)="onConfirm()"
+    >
       {{ STRINGS.auditDatabaseCopyConfirm }}
     </button>
   </app-dialog>`,
@@ -76,6 +83,11 @@ export class AuditCopyDialog {
 
   protected get targetList(): readonly string[] {
     return this.targets();
+  }
+
+  /** Copy is drawn unavailable while there is no namespace to copy into. */
+  protected get confirmDisabled(): string | null {
+    return this.chosen() === '' ? 'true' : null;
   }
 
   protected onChoose(event: Event): void {

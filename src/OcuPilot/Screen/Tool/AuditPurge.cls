@@ -22,7 +22,7 @@ Parameter TOOLNAME = "security.auditing.purge";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.AuditingConfig";
 
-Parameter DESCRIPTION = "Remove every audit record on this instance dated before a cut-off day, including the agent's own audit markers from that period. It cannot be undone. The target is the instance's auditing configuration, which has exactly one instance.";
+Parameter DESCRIPTION = "Propose removing every audit record on this instance dated before a cut-off day, including the agent's own audit markers from that period. It changes nothing by itself: it answers a proposal the user reviews and confirms. Once confirmed it cannot be undone. The target is the instance's auditing configuration, which has exactly one instance.";
 
 /// <p>Unadvertised (AD-53): the screen's caller alone reaches it.</p>
 Parameter ADVERTISED As BOOLEAN = 0;

@@ -70,8 +70,8 @@ ClassMethod Description(pDescriptor As %String = "") As %String
     Quit ..#DESCRIPTION
 }
 
-/// <p><parameter>ADVERTISED</parameter> as a boolean, for the registry, which holds only the
-/// tool's class.</p>
+/// <p><parameter>ADVERTISED</parameter> as a boolean. The registry reads the parameter itself when
+/// it lists the tool, so the parameter, not an override of this method, is the declaration.</p>
 ClassMethod Advertised() As %Boolean
 {
     Quit ''..#ADVERTISED

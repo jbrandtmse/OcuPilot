@@ -47,8 +47,8 @@ Parameter CUTOFFQUERY = "PurgeBefore";
 Parameter COMPOSEDTYPES = "Security.Audit.Record/COPY,Security.Audit.Record/PURGE";
 
 /// <p>The admin port's call, with <parameter>RECORDENDPOINT</parameter>'s
-/// <parameter>DATABASETYPE</parameter>, <parameter>COPYTYPE</parameter> and
-/// <parameter>PURGETYPE</parameter> resolved here.</p>
+/// <parameter>DATABASETYPE</parameter> and every <parameter>COMPOSEDTYPES</parameter> pair resolved
+/// here; a listed pair <method>Body</method> cannot compose is refused, never sent.</p>
 /// <p><b>Caller contract:</b> the arguments and outputs are
 /// <method>OcuPilot.Port.AdminPort.Invoke</method>'s. <parameter>DATABASETYPE</parameter> answers
 /// <code>{Enabled, CopyNamespace: "", PurgeBefore: ""}</code>. A copy or a purge sends
@@ -57,7 +57,7 @@ Parameter COMPOSEDTYPES = "Security.Audit.Record/COPY,Security.Audit.Record/PURG
 /// as the admin port refuses one for a constant-body pair.</p>
 ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
-    If (pEndpoint '= ..#RECORDENDPOINT) || ((pType '= ..#DATABASETYPE) && (pType '= ..#COPYTYPE) && (pType '= ..#PURGETYPE)) Quit ##super(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+    If (pEndpoint '= ..#RECORDENDPOINT) || ((pType '= ..#DATABASETYPE) && '$ListFind($ListFromString(..#COMPOSEDTYPES), pEndpoint _ "/" _ pType)) Quit ##super(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
     Set pResult = ""
     Set pHttpStatus = 0
     Set pFault = ""

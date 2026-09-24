@@ -65,6 +65,17 @@ describe('the audit database Copy dialog', () => {
     expect(fixture.componentInstance.confirmed).toEqual(['HSCUSTOM', 'USER']);
   });
 
+  it('Copy is aria-disabled and emits nothing while no namespace but %SYS is listed', async () => {
+    const { fixture, host } = await mount();
+    const confirm = host.querySelector('[data-audit-copy-confirm]') as HTMLButtonElement;
+    expect(confirm.getAttribute('aria-disabled')).toBeNull();
+    fixture.componentInstance.names.set(['%SYS']);
+    fixture.detectChanges();
+    expect(confirm.getAttribute('aria-disabled')).toBe('true');
+    confirm.click();
+    expect(fixture.componentInstance.confirmed).toEqual([]);
+  });
+
   it('Cancel emits cancelled and copies nothing', async () => {
     const { fixture, host } = await mount();
     (host.querySelector('.ocu-dialog-actions .ocu-button-secondary') as HTMLButtonElement).click();

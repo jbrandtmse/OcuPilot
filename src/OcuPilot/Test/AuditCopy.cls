@@ -254,15 +254,19 @@ Method TestTheScreenRouteCopiesEveryRecordAndDeletesNone()
     Do $$$LogMessage("copy of " _ tBefore _ " records answered in " _ $FNumber(tSeconds, "", 3) _ " s")
 }
 
-/// <p>The matrix's refusals: <code>%SYS</code>, a namespace this instance does not have, a path and
-/// an empty value are each 400 <code>TOOL.ARGUMENTS</code>, and nothing is copied or queued.</p>
+/// <p>The matrix's refusals: <code>%SYS</code> in either case, a namespace this instance does not
+/// have, a path and an empty value are each 400 <code>TOOL.ARGUMENTS</code>, and nothing is copied or
+/// queued.</p>
 /// <p>Mutation (Rule 19): drop the <code>%SYS</code> arm of
-/// <method>OcuPilot.Screen.Tool.AuditCopy.NamespaceProblem</method> -> the vendor refuses instead,
-/// with another code, and this goes red.</p>
+/// <method>OcuPilot.Screen.Tool.AuditCopy.NamespaceProblem</method> -> the vendor's own
+/// <code>Namespace="%SYS"</code> refusal never fires (the same-namespace check just above it in
+/// <code>%SYS.Audit.Copy</code> answers <code>$$$OK</code> first, since the port always calls it
+/// from <code>%SYS</code>), so the call silently answers 200 with nothing copied, and this goes
+/// red.</p>
 Method TestACopyIntoSysOrAnUnknownNamespaceIsRefused()
 {
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
-    For tCase = $ListBuild("%SYS", "%SYS"), $ListBuild("NOSUCHNS", "no namespace 'NOSUCHNS'"), $ListBuild("^^/tmp/", "not a path"), $ListBuild("", "non-empty") {
+    For tCase = $ListBuild("%SYS", "%SYS"), $ListBuild("%sys", "%SYS"), $ListBuild("NOSUCHNS", "no namespace 'NOSUCHNS'"), $ListBuild("^^/tmp/", "not a path"), $ListBuild("", "non-empty") {
         Do ..Act("copy", {"CopyNamespace": ($List(tCase, 1))}, .tStatus, .tBody)
         Do $$$AssertEquals(tStatus _ " " _ $Piece(..Envelope(tBody), "|", 1), "400 " _ ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "'" _ $List(tCase, 1) _ "' is refused: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: $Get(tBody)))
         Do $$$AssertTrue($Piece(..Envelope(tBody), "|", 2) [ $List(tCase, 2), "naming the problem: " _ ..Envelope(tBody))
@@ -300,6 +304,7 @@ Method TestTheAgentsCopyIsMintedAndConfirmedMarked()
 
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tBefore = ..Count("%SYS")
+    Do $$$AssertTrue(tBefore > 0, "the instance's audit database holds records to copy (" _ tBefore _ ")")
     Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
     Do $$$AssertStatusOK(tSC, "the copy is confirmed: " _ $Get(tCode))
     Do $$$AssertTrue(..Count(..#TARGETNS) >= tBefore, "the records are copied: " _ ..Count(..#TARGETNS) _ " against " _ tBefore)
@@ -317,6 +322,7 @@ Method TestTheAgentsCopyIsMintedAndConfirmedMarked()
 Method TestAPrincipalWithoutOperateIsRefusedByName()
 {
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve(..#TOOL, .tTool)
+    Do $$$AssertTrue($$$ISOK(tSC) && $IsObject($Get(tTool)), "the registry resolves the copy by name")
     If '$IsObject($Get(tTool)) Quit
     Set tMissing = ""
     Set tPairs = ##class(OcuPilot.Screen.Tool.Registry).RequiredPairs(tTool, .tResolved)
@@ -329,6 +335,7 @@ Method TestAPrincipalWithoutOperateIsRefusedByName()
     Do $$$AssertEquals(..DispatchRefusal(), "1|" _ ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE _ "|" _ ..#OPERATEPAIR, "the shipped dispatch chain, with that pair not held, refuses the copy naming it")
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tBefore = ..Count("%SYS")
+    Do $$$AssertTrue(tBefore > 0, "the instance's audit database holds records (" _ tBefore _ ")")
     For tCase = $ListBuild("copy", "CopyNamespace", ..#TARGETNS), $ListBuild("purge", "PurgeBefore", $ZDate(+$Horolog, 3)) {
         Set tValues = {}
         Do tValues.%Set($List(tCase, 2), $List(tCase, 3), "string")
