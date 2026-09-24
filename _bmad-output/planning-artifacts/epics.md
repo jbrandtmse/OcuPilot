@@ -4692,6 +4692,8 @@ So that configuring a REST service is a single task.
 - DW-1493: A confirmed agent create writes the name in AD-13's canonical spelling while the screen's Save writes it as typed, so one input creates /csp/myapp or /csp/MyApp depending on the caller (ledger; routed by merge_gate 2026-09-23)
 - DW-1577: An agent update that sets Enabled to its current value mints a proposal with no changed rows instead of the 400 TOOL.ARGUMENTS no-op refusal (ledger; routed by merge_gate 2026-09-23)
 - DW-1502: PROHIBITED.PRIVILEGEGRANT's caller-neutral sentence is server-shipped only; AD-53 (Epic 7) publishes a refusal sentence in EXPERIENCE.md Fixed strings with a pin test (ledger; routed by merge_gate 2026-09-23)
+- DW-1595: The toast stack's published placement (DESIGN.md toast recipe :1210, toast-host.ts header :48) still says spacing.4 above the status bar, while on a form page the stack is lifted above the form bar (ledger; routed by harvest 2026-09-24)
+- DW-1596: A form page taller than the content area does not keep its sticky form bar on screen: Save and Cancel sit below the fold until the content scrolls (ledger; routed by harvest 2026-09-24)
 
 ### Story 9.3: The role editor
 

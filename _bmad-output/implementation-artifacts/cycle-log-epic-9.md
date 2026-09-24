@@ -32,3 +32,8 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-24T02:32:46Z	Story 9.1	ci_resolved	story=9.1 run=35945402895 head=1984991 result=failure job=browser tests=users.browser-spec.mjs:225(AC7_name_link),device-editor.browser-spec.mjs:206(AC2) first_red=1984991 resolved_at=post_cr disposition=high_rework_story_9.1
 2026-09-24T02:32:46Z	Story 9.1	rework_opened	cycle_iteration=2 iteration=1 trigger=ci items=CI-users-AC7-name-link,CI-device-editor-AC2 scope_baseline=pending_rework_commit
 2026-09-24T02:33:19Z	Story 9.1	stage_spawned	stage=implement spawn_at=2026-09-24T02:33:19Z model=opus agent_name=9-1-the-user-editor-implement-2 cycle_iteration=2 note=rework_iteration_1_ci
+2026-09-24T03:03:07Z	Story 9.1	dev_complete	spawn_at=2026-09-24T02:33:19Z model=opus build_sha=41e795e baseline_revision=e162c9c review_loop_iteration=0 followup_review_recommended=false deferred=2 harvested=DW-1595(low,routed_9.2),DW-1596(med,routed_9.2) filed_decision=DW-1597(decision-pending_toast_after_own_save) files=5 browser_per_file=22_files_green_except_tasks_12/14_throwaway_leftovers bundle_initial=1350220 cycle_iteration=2
+2026-09-24T03:03:07Z	Story 9.1	committed_pushed_code	sha=41e795e ci=pending run=35949767740
+2026-09-24T03:03:07Z	Epic 9	ledger_routed_planned	story=9-2-the-web-application-editor entries=2 excess=0 by=harvest ids=DW-1595,DW-1596 total_on_story=6
+2026-09-24T03:03:07Z	Story 9.1	adr_verifications_complete	result=none_required note=rework_touched_no_AD-constrained_code(css_lift+browser_pins)
+2026-09-24T03:03:08Z	Story 9.1	stage_spawned	stage=code-review spawn_at=2026-09-24T03:03:08Z model=opus agent_name=9-1-the-user-editor-code-review-2 cycle_iteration=2 scope=e162c9c..HEAD

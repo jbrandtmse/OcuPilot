@@ -6554,3 +6554,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-9-1-the-user-editor.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Prohibited.ChangesServiceSignIn covers CHANGEPWD and ChangePassword on only; AutheEnabled bits and PasswordNeverExpires pass for CSPSystem/_Ensemble/irisowner (inference: effect not measured)
 - 2026-09-24T02:30:11Z status=wontfix-theoretical owner=9-1-the-user-editor by=cr note=real if a throwaway with system two-factor on shows CSPSystem's gateway sign-in failing after its TOTP bit is set
+
+### DW-1595: The toast stack's published placement (DESIGN.md toast recipe :1210, toast-host.ts header :48) still says spacing.4 above the status bar; on a form page _components.scss now lifts it above the form bar
+- source: spec-9-1-the-user-editor.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: _components.scss .ocu-shell:has(.ocu-form-bar) > app-toast-host sets bottom to form-bar height plus spacing.4 (9.1 rework 1); DESIGN.md:1210 and toast-host.ts:48-52 unamended because both were Epic 15-contended at the time
+- 2026-09-24T03:02:47Z status=routed owner=9-2-the-web-application-editor by=harvest note=amend both after the integrate-forward brings Epic 15's merge; two-way door, doc-only
+
+### DW-1596: A form page taller than the content area does not keep its sticky form bar on screen: Save and Cancel sit below the fold until the content scrolls
+- source: spec-9-1-the-user-editor.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: measured on the user editor at 1440x900: .ocu-form-page (Story 3.5) has overflow-y auto and flex 1 1 auto but no form-page host is in the flex host list at _components.scss:735, so main.ocu-content scrolls; bar top 1184 vs shell bottom 876
+- 2026-09-24T03:02:47Z status=routed owner=9-2-the-web-application-editor by=harvest note=every Epic 9 editor is tall; fix the host list once in 9.2 and pin it with a browser geometry check
+
+### DW-1597: An editor's own Save now raises a change toast ('Open in <list>') because the entity's list is not open; DESIGN.md's toast recipe says toasts are never for confirmations of what the user just did on the open screen
+- source: spec-9-1-the-user-editor.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: DW-1546's rule (hidden only while the entity's list is open, EXPERIENCE.md :494/:721 amended 2026-09-23) fires on the user editor's own Save; DESIGN.md:1210 last sentence forbids a toast confirming the user's own action
+- 2026-09-24T03:02:48Z status=decision-pending owner=burndown by=harvest note=recommend: suppress the change toast for the open screen's own Save (keep it for agent and other writes), or amend DESIGN.md
