@@ -6613,3 +6613,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec_gate 10.4 (lead live probe; the plan stage raised it as an inference) | severity: high | fix-risk: low | footprint: in-epic
 - evidence: live 2026-09-24 gemini-3.8-flash: replayed functionCall without thoughtSignature -> 400 'Function call is missing a thought_signature in functionCall parts'; same request with the signature kept -> 200
 - 2026-09-24T02:25:07Z status=routed owner=10-4-sampling-parameters-left-to-the-provider by=spec_gate note=same intent as 10.4; the canonical tool_use block already carries the vendor id (DW-1180), and Loop.AnswerTools echoes tool_use blocks verbatim
+
+### DW-1599: AgentViolation's providers-route assertion message still says the twelve cascade columns and names only adapterClass and authVersion as absent, after Story 10.4 added acceptsTemperature (served) and reasoningEffort (not served)
+- source: _bmad-output/implementation-artifacts/spec-10-4-sampling-parameters-left-to-the-provider.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: the expected column string at src/OcuPilot/Test/AgentViolation.cls:214 is exact and green; only the message at :215 is stale
+- 2026-09-24T03:32:14Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: non-blocking; one-line message fix in an Epic 5 test file this story could touch only by one literal
