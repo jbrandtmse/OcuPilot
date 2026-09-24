@@ -396,6 +396,32 @@ describe('the Definition form', () => {
     expect(host.querySelector('.ocu-form-bar-status')?.textContent?.trim()).toContain(STRINGS.formSavedPendingTest);
   });
 
+  it('Story 11.10: a create posts readOnly false, and an edit of a read-only definition sends it back true', async () => {
+    const createAnswer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'POST') return created(definition({ readOnly: false }));
+      return ok({ definitions: [] });
+    };
+    const create = await mount(createAnswer);
+    ([...create.host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(create.fixture);
+    const posted = create.calls.find((call) => call.method === 'POST');
+    expect(posted).toBeDefined();
+    expect(JSON.parse(posted!.body).readOnly).toBe(false);
+
+    const editAnswer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'PUT') return ok(definition({ readOnly: true }));
+      return ok(definition({ readOnly: true }));
+    };
+    const edit = await mount(editAnswer, '/agent/definitions/edit/7');
+    ([...edit.host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(edit.fixture);
+    const put = edit.calls.find((call) => call.method === 'PUT');
+    expect(put).toBeDefined();
+    expect(JSON.parse(put!.body).readOnly).toBe(true);
+  });
+
   it('DW-1404: a create publishes `created`, an edit publishes `updated`, and the gate path publishes `created`', async () => {
     // AD-14's action is a closed vocabulary that carries meaning: `created` is the only action
     // that asks the list to put the caret on the new row (`RefreshService.onBusEvent`), and it is
@@ -823,7 +849,7 @@ describe('the Definition form', () => {
 
   it('a definition that could not be read draws its refusal, and no editable form over it', async () => {
     // Before the read resolves, and after it fails, the buffer holds the class's own defaults --
-    // an empty name, no provider, credType `creds`, readOnly true. Drawing the fields over them
+    // an empty name, no provider, credType `creds`, readOnly false. Drawing the fields over them
     // offers an editable form for a definition nobody has seen, under the id in the URL, and its
     // Save sends those defaults to the instance.
     const answer: Answer = (path) =>

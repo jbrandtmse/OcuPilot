@@ -6818,3 +6818,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: CI run 36029831321 browser job: .ocu-panel-message-agent-text not found at proposal-demo.browser-spec.mjs:505; passed on 36009216113; locally 14 green runs
 - 2026-09-24T17:39:14Z status=open owner=9-7-the-new-task-wizard by=harvest note=lead added a waitForFunction on the reply's published tail before the read (footprint extension)
 - 2026-09-24T17:49:38Z status=resolved-by:9-7-the-new-task-wizard by=adjudication note=proposal-demo waits on the reply tail (app-reply selector) before reading; CR rework-1 mutation: 8s delayed reply without the wait red, with it green; CI on the story commit confirms
+### DW-1620: Api/Definitions.cls MergeBody doc comment still says readOnly's default is 1 after 11.10 moved it to 0
+- source: spec-11-10-a-judge-succeeds-the-first-time.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: src/OcuPilot/Api/Definitions.cls:1438 reads 'on readOnly, whose default is 1'; Agent.ReadOnly InitialExpression is now 0
+- 2026-09-24T16:28:20Z status=open owner=11-10-a-judge-succeeds-the-first-time by=harvest note=comment-only two-way door; Api/Definitions.cls is in Epic 11's footprint, so the lead authorizes the one-line comment fix at code review despite the spec's no-edit line (which guards behavior)
+- 2026-09-24T17:09:16Z status=resolved-by:11-10-a-judge-succeeds-the-first-time by=adjudication note=Api/Definitions.cls:1438-1440 MergeBody comment corrected at cr (comment-only diff; now names the class default of 0)
+
+### DW-1621: The Definition form draws no read-only control, so with the read/write default a per-definition read-only agent can be made only through the API
+- source: spec-11-10-a-judge-succeeds-the-first-time.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: FR-24 and EXPERIENCE.md's Definition form row list a read-only flag; definition-form.page.ts renders none (only the store carries readOnly). Pre-existing; 11.10's flip to read/write makes the API the only way to a read-only definition.
+- 2026-09-24T17:07:50Z status=decision-pending owner=burndown by=cr note=product call: add the control (new string, row, tests) or accept Switches' enforced read-only as the UI path
+
+### DW-1622: A create whose body sends readOnly as a quoted string stores the read/write default without telling the caller
+- source: spec-11-10-a-judge-succeeds-the-first-time.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: Api/Definitions.cls MergeBody ignores a non-boolean flag; with InitialExpression 0 a POST {"readOnly":"true"} returns 201 and stores 0. The only in-product caller (the form) sends a JSON boolean.
+- 2026-09-24T17:07:51Z status=wontfix-accepted owner=11-10-a-judge-succeeds-the-first-time by=cr note=reopen_if=a caller other than the SPA form creates definitions through POST /agent/definitions
+
+### DW-1623: While following, opening a card's disclosure grows the transcript and the panel scrolls to the newest entry, moving the opened card up
+- source: spec-11-10-a-judge-succeeds-the-first-time.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: panel-follow.ts settle() scrolls on any growth while following, including a tool-call or proposal card the user expands; the spec's rule covers every render that adds or grows an entry.
+- 2026-09-24T17:07:51Z status=wontfix-accepted owner=11-10-a-judge-succeeds-the-first-time by=cr note=reopen_if=the 17.7 owner check or a judge reports the transcript jumping when a card is expanded at the newest entry

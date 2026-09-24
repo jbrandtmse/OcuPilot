@@ -539,6 +539,9 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // literals -- the SSL/TLS editor's title, tabs, labels and select words, its captions, effect,
   // refusal, Test connection panel and prompts, three delete consequences and the list-less absent
   // sentence -- and take the table past 800.
+  //
+  // Story 11.10 moves the bound to 750 under the same protocol: its one row publishes one literal,
+  // "Jump to latest", and takes the table to 701.
   assert.ok(
     expectedLiterals.length >= 150 && expectedLiterals.length <= 900,
     `expected between 150 and 900 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`

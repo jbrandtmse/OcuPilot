@@ -1435,9 +1435,9 @@ ClassMethod ValuesFromRow(pObject As OcuPilot.Kernel.State.Agent, Output pValues
 /// (<method>BodyIsReadable</method>).</p>
 /// <p><b>So is a flag sent as anything but a JSON boolean.</b> <code>+"true"</code> and
 /// <code>+"false"</code> are both 0 in ObjectScript, so a quoted flag would arrive as 0 whatever
-/// the caller meant -- and on <code>readOnly</code>, whose default is 1 and whose enforcement is
-/// Story 3.7's, 0 is the permissive answer. Ignoring the key leaves the stored value standing
-/// instead of quietly clearing it.</p>
+/// the caller meant -- and on <code>readOnly</code>, whose enforcement is Story 3.7's, 0 is the
+/// permissive answer. Ignoring the key leaves the stored value, or on a create the class default
+/// of 0, standing instead of quietly clearing it.</p>
 ClassMethod MergeBody(pBody As %DynamicObject, ByRef pValues, Output pPresent)
 {
     Kill pPresent

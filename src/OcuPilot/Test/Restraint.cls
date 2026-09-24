@@ -89,7 +89,10 @@ Method TestADefinitionMarkedReadOnlyBlocksWithItsOwnCodeAndFooterKey()
     Do $$$AssertStatusOK(tSC, "a probe definition exists")
     If $$$ISERR(tSC) Quit
     Set tId = tRow.%Id()
-    Do $$$AssertEquals(''tRow.ReadOnly, 1, "and is read-only, which is the class's own default")
+    Set tRow = ""
+    Do $$$AssertStatusOK(..SetDefinitionReadOnly(tId, 1), "the definition is made read-only")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tId, .tRow), "and reads back")
+    Do $$$AssertEquals(''tRow.ReadOnly, 1, "and is read-only, set read-only for this test")
     Set tRow = ""
 
     Set tSC = ##class(OcuPilot.Kernel.Restraint).Verdict(..#PROBEUSER, tId, .tVerdict)
@@ -115,10 +118,11 @@ Method TestADefinitionMarkedReadOnlyBlocksWithItsOwnCodeAndFooterKey()
 Method TestEnforcedReadOnlyWinsOverTheDefinitionsOwnFlag()
 {
     Set tSC = ##class(OcuPilot.Test.AgentFixture).CreateDefinition(..#PROBEPREFIX _ "Both", 0, 0, .tRow)
-    Do $$$AssertStatusOK(tSC, "a read-only probe definition exists")
+    Do $$$AssertStatusOK(tSC, "a probe definition exists")
     If $$$ISERR(tSC) Quit
     Set tId = tRow.%Id()
     Set tRow = ""
+    Do $$$AssertStatusOK(..SetDefinitionReadOnly(tId, 1), "and is made read-only")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.SwitchFixture).SetSwitches(0, "", 1), "and enforced read-only is on as well")
 
     Set tSC = ##class(OcuPilot.Kernel.Restraint).Verdict(..#PROBEUSER, tId, .tVerdict)
@@ -210,10 +214,11 @@ Method TestTheKillSwitchOutranksReadOnly()
 Method TestAPerUserHoldOutranksTheDefinitionsReadOnlyFlag()
 {
     Set tSC = ##class(OcuPilot.Test.AgentFixture).CreateDefinition(..#PROBEPREFIX _ "HoldVsDef", 0, 0, .tRow)
-    Do $$$AssertStatusOK(tSC, "a read-only probe definition exists")
+    Do $$$AssertStatusOK(tSC, "a probe definition exists")
     If $$$ISERR(tSC) Quit
     Set tId = tRow.%Id()
     Set tRow = ""
+    Do $$$AssertStatusOK(..SetDefinitionReadOnly(tId, 1), "and is made read-only")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.SwitchFixture).Hold(..#PROBEUSER, "held while the definition is also read-only", .tHoldId), "the probe user is held, with enforced read-only left off")
 
     Set tSC = ##class(OcuPilot.Kernel.Restraint).Verdict(..#PROBEUSER, tId, .tHeldVerdict)
@@ -259,10 +264,11 @@ Method TestTheVerdictIsNeverCachedWithinOneProcess()
 Method TestTheDefinitionsFlagIsReReadWithinOneProcess()
 {
     Set tSC = ##class(OcuPilot.Test.AgentFixture).CreateDefinition(..#PROBEPREFIX _ "Flip", 0, 0, .tRow)
-    Do $$$AssertStatusOK(tSC, "a read-only probe definition exists")
+    Do $$$AssertStatusOK(tSC, "a probe definition exists")
     If $$$ISERR(tSC) Quit
     Set tId = tRow.%Id()
     Set tRow = ""
+    Do $$$AssertStatusOK(..SetDefinitionReadOnly(tId, 1), "and is made read-only")
 
     Set tSC = ##class(OcuPilot.Kernel.Restraint).Verdict(..#PROBEUSER, tId, .tFirst)
     Do $$$AssertStatusOK(tSC, "the first verdict is readable")
@@ -298,6 +304,7 @@ Method TestResolvedAnswersTheVerdictForTheDefinitionInForce()
     If $$$ISERR(tSC) Quit
     Set tId = tRow.%Id()
     Set tRow = ""
+    Do $$$AssertStatusOK(..SetDefinitionReadOnly(tId, 1), "and is made read-only")
     Set tSC = ##class(OcuPilot.Kernel.State.Agent).ResolveDefault(.tDefault)
     Do $$$AssertStatusOK(tSC, "the default resolves")
     Do $$$AssertEquals(tDefault, tId, "to the definition just created, which is the only one")
@@ -309,7 +316,7 @@ Method TestResolvedAnswersTheVerdictForTheDefinitionInForce()
     For tKey = "blocked", "code", "footerKey", "killSwitch", "enforcedReadOnly" {
         Do $$$AssertEquals(tResolved(tKey), tDirect(tKey), tKey _ " agrees between Resolved and Verdict")
     }
-    Do $$$AssertEquals(tResolved("code"), ##class(OcuPilot.Api.Error).#AGENTREADONLYDEFINITION, "and the definition in force is read-only, which is the class's own default")
+    Do $$$AssertEquals(tResolved("code"), ##class(OcuPilot.Api.Error).#AGENTREADONLYDEFINITION, "and the definition in force is read-only, set read-only for this test")
 }
 
 /// <p><b>Every restraint code carries a written sentence</b>, and an undeclared one carries none --

@@ -3552,6 +3552,33 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     expect(host.querySelectorAll('.ocu-proposal-card-confirm').length).toBe(0);
   });
 
+  it('Story 11.10: an accepted Re-propose scrolls a scrolled-up transcript to its newest entry', async () => {
+    // Mutation (Rule 19): drop `followNewest()` from `onCardRepropose` -> the transcript stays at
+    // 100 and this goes red.
+    const { host, fixture } = await mountDecidable(
+      {
+        [TURN_PATH]: [
+          { kind: 'ok', status: 202, body: { turnId: 'turn-1' } },
+          { kind: 'ok', status: 202, body: { turnId: 'turn-2' } },
+        ],
+      },
+      [wireProposal({ state: 'canceled', closedReason: 'target-changed' })]
+    );
+    const geometry = { scrollHeight: 1000, clientHeight: 200, scrollTop: 800 };
+    const transcript = fakeTranscriptGeometry(host, geometry);
+    // The geometry is faked after the first turn, so one scroll event at the newest entry first
+    // lets the follow state read the faked position.
+    await userScroll(transcript, fixture, 800);
+    await userScroll(transcript, fixture, 100);
+    expect(jumpControl(host)).not.toBeNull();
+
+    (host.querySelector('.ocu-proposal-card-repropose') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(geometry.scrollTop).toBe(800);
+    expect(jumpControl(host)).toBeNull();
+  });
+
   it('DW-1231: a send the instance refused leaves the cards live', async () => {
     const { schedule, scheduled } = fakeTurnSchedule();
     const api = fakeTurnApi({
@@ -3578,5 +3605,246 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     fixture.detectChanges();
     expect(host.querySelector('.ocu-proposal-card-status')).toBeNull();
     expect(host.querySelector('.ocu-proposal-card-confirm')).not.toBeNull();
+  });
+});
+
+// --- Story 11.10: the transcript follows the conversation ------------------------------------
+
+/**
+ * Fake layout on the transcript: jsdom computes none, so the three members the follow rule reads
+ * are backed by `geometry`. A write to `scrollTop` -- the panel's or the user's -- lands there at
+ * once and fires a scroll event a microtask later, as an instant scroll does in a browser.
+ */
+function fakeTranscriptGeometry(host: HTMLElement, geometry: { scrollHeight: number; clientHeight: number; scrollTop: number }) {
+  const transcript = host.querySelector('.ocu-panel-transcript') as HTMLElement;
+  Object.defineProperty(transcript, 'scrollHeight', { configurable: true, get: () => geometry.scrollHeight });
+  Object.defineProperty(transcript, 'clientHeight', { configurable: true, get: () => geometry.clientHeight });
+  Object.defineProperty(transcript, 'scrollTop', {
+    configurable: true,
+    get: () => geometry.scrollTop,
+    set: (value: number) => {
+      geometry.scrollTop = value;
+      queueMicrotask(() => transcript.dispatchEvent(new Event('scroll')));
+    },
+  });
+  return transcript;
+}
+
+/** The user scrolls the transcript to `top`. */
+async function userScroll(transcript: HTMLElement, fixture: ComponentFixture<Panel>, top: number): Promise<void> {
+  transcript.scrollTop = top;
+  await turnSettle();
+  fixture.detectChanges();
+}
+
+const jumpControl = (host: HTMLElement) => host.querySelector('.ocu-panel-jump') as HTMLButtonElement | null;
+
+/** A panel whose first turn has been sent and answered, standing at the newest entry of a 1000 px transcript. */
+async function mountAnswered(progress: unknown[] = []) {
+  const { schedule, scheduled } = fakeTurnSchedule();
+  const api = fakeTurnApi({
+    [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+    [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
+    [turnProgressPath('turn-1')]: progress,
+  });
+  const turn = stubTurnStore({ api: api as never, schedule });
+  const mounted = await mount({ rows: [{ enabled: true }], turn });
+  const geometry = { scrollHeight: 1000, clientHeight: 200, scrollTop: 800 };
+  const transcript = fakeTranscriptGeometry(mounted.host, geometry);
+  await typeDraft(mounted.host, mounted.fixture, 'list namespaces');
+  (mounted.host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+  await turnSettle();
+  mounted.fixture.detectChanges();
+  return { ...mounted, api, scheduled, geometry, transcript };
+}
+
+describe('Story 11.10: the transcript follows the conversation', () => {
+  it('an accepted send scrolls to the newest entry from a scrolled-up transcript, and a refused one does not', async () => {
+    // Mutation (Rule 19): drop `followNewest()` from `sendCurrentDraft` -> the accepted leg stays
+    // at 100 and goes red.
+    const running = { kind: 'ok', status: 200, body: { turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null } };
+    const { host, fixture, api, scheduled, geometry, transcript } = await mountAnswered([running]);
+    scheduled.shift()?.run();
+    await turnSettle();
+    fixture.detectChanges();
+
+    await userScroll(transcript, fixture, 100);
+    expect(jumpControl(host)).not.toBeNull();
+    api.calls.length = 0;
+    await typeDraft(host, fixture, 'and the databases');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(geometry.scrollTop).toBe(800);
+    expect(jumpControl(host)).toBeNull();
+
+    const otherSchedule = fakeTurnSchedule();
+    const refusing = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [
+        { kind: 'ok', status: 202, body: { turnId: 'turn-1' } },
+        { kind: 'error', status: 503, code: 'TURN.UNAVAILABLE', reason: 'no job slot', detail: null },
+      ],
+      [turnProgressPath('turn-1')]: [running],
+    });
+    const other = await mount({ rows: [{ enabled: true }], turn: stubTurnStore({ api: refusing as never, schedule: otherSchedule.schedule }) });
+    const otherGeometry = { scrollHeight: 1000, clientHeight: 200, scrollTop: 800 };
+    const otherTranscript = fakeTranscriptGeometry(other.host, otherGeometry);
+    await typeDraft(other.host, other.fixture, 'first');
+    (other.host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    otherSchedule.scheduled.shift()?.run();
+    await turnSettle();
+    other.fixture.detectChanges();
+    await userScroll(otherTranscript, other.fixture, 100);
+    await typeDraft(other.host, other.fixture, 'refused');
+    (other.host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    other.fixture.detectChanges();
+    expect(otherGeometry.scrollTop).toBe(100);
+    expect(jumpControl(other.host)).not.toBeNull();
+  });
+
+  it('an arrival while following scrolls to the newest entry; one while scrolled up leaves the position and shows Jump to latest', async () => {
+    const step = (seq: number, reply: string | null, state: string) => ({
+      kind: 'ok',
+      status: 200,
+      body: { turnId: 'turn-1', state, steps: [turnStep({ seq })], stepsDropped: 0, reply, error: null },
+    });
+    const { host, fixture, scheduled, geometry, transcript } = await mountAnswered([
+      step(1, null, 'running'),
+      step(2, null, 'running'),
+      step(3, 'done', 'completed'),
+    ]);
+
+    geometry.scrollHeight = 1300;
+    scheduled.shift()?.run();
+    await turnSettle();
+    fixture.detectChanges();
+    await turnSettle();
+    expect(geometry.scrollTop).toBe(1100);
+    expect(jumpControl(host)).toBeNull();
+
+    await userScroll(transcript, fixture, 1095);
+    expect(jumpControl(host)).not.toBeNull();
+    geometry.scrollHeight = 1600;
+    scheduled.shift()?.run();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(geometry.scrollTop).toBe(1095);
+    expect(jumpControl(host)).not.toBeNull();
+  });
+
+  it('Jump to latest reads the key, sits outside the log between the transcript and the footer', async () => {
+    const { host, fixture, transcript } = await mountAnswered();
+    expect(jumpControl(host)).toBeNull();
+    await userScroll(transcript, fixture, 0);
+    const jump = jumpControl(host) as HTMLButtonElement;
+    expect(jump.textContent?.trim()).toBe(STRINGS.agentJumpToLatest);
+    expect(jump.closest('[role="log"]')).toBeNull();
+    const footer = host.querySelector('.ocu-panel-footer') as HTMLElement;
+    expect(transcript.compareDocumentPosition(jump) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(jump.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('pressing Jump to latest scrolls to the newest entry, hides the control and focuses the transcript', async () => {
+    // Mutation (Rule 19): drop the `focus` call from `onJumpToLatest` -> this goes red on the
+    // active element.
+    const { host, fixture, geometry, transcript } = await mountAnswered();
+    await userScroll(transcript, fixture, 0);
+    const jump = jumpControl(host) as HTMLButtonElement;
+    jump.focus();
+    jump.click();
+    fixture.detectChanges();
+    expect(geometry.scrollTop).toBe(800);
+    expect(jumpControl(host)).toBeNull();
+    expect(document.activeElement).toBe(transcript);
+  });
+
+  it('a wheel turned up while the own scroll is on its way stops it there and shows Jump to latest', async () => {
+    // Mutation (Rule 19): drop the passive wheel listener -> the own scroll is never stopped (no
+    // write of its current position) and the control stays hidden, so this goes red.
+    const { host, fixture, geometry, transcript } = await mountAnswered();
+    await userScroll(transcript, fixture, 0);
+    // From here a write to `scrollTop` animates, as a smooth scroll does: it is recorded, and the
+    // position moves only when the test reports the next frame.
+    const writes: number[] = [];
+    Object.defineProperty(transcript, 'scrollTop', {
+      configurable: true,
+      get: () => geometry.scrollTop,
+      set: (value: number) => writes.push(value),
+    });
+    (jumpControl(host) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(writes).toEqual([800]);
+    geometry.scrollTop = 300;
+    transcript.dispatchEvent(new Event('scroll'));
+    fixture.detectChanges();
+    expect(jumpControl(host)).toBeNull();
+
+    transcript.dispatchEvent(new WheelEvent('wheel', { deltaY: -100 }));
+    await turnSettle();
+    fixture.detectChanges();
+    expect(writes).toEqual([800, 300]);
+    expect(jumpControl(host)).not.toBeNull();
+  });
+
+  it('New conversation follows again and hides the control', async () => {
+    const done = { kind: 'ok', status: 200, body: { turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null } };
+    const { host, fixture, scheduled, geometry, transcript } = await mountAnswered([done]);
+    scheduled.shift()?.run();
+    await turnSettle();
+    fixture.detectChanges();
+    await userScroll(transcript, fixture, 0);
+    expect(jumpControl(host)).not.toBeNull();
+
+    (host.querySelector('.ocu-panel-new-conversation') as HTMLButtonElement).click();
+    expect(geometry.scrollTop).toBe(800);
+    await turnSettle();
+    fixture.detectChanges();
+    expect(jumpControl(host)).toBeNull();
+  });
+
+  it('a transcript restored on reload opens at its newest entry', async () => {
+    // Mutation (Rule 19): make `settle`'s growth check ignore the very first non-zero measurement
+    // (`newest > this.lastNewest && this.lastNewest > 0`) -> the transcript stays at 0 and this
+    // goes red, alongside `panel-follow.spec.ts`'s pure-unit pin of the same rule.
+    const storage = new Map<string, string>([['ocupilot.conversation', 'convo-1']]);
+    const memory = {
+      getItem: (key: string) => (storage.has(key) ? (storage.get(key) as string) : null),
+      setItem: (key: string, value: string) => storage.set(key, value),
+      removeItem: (key: string) => storage.delete(key),
+    };
+    const api = fakeTurnApi({
+      [conversationReadPathFor('convo-1')]: [
+        {
+          kind: 'ok',
+          status: 200,
+          body: {
+            conversationId: 'convo-1',
+            turns: [
+              { seq: 1, message: 'first', state: 'completed', reply: 'one', error: null, steps: [], stepsDropped: 0 },
+              { seq: 2, message: 'second', state: 'completed', reply: 'two', error: null, steps: [], stepsDropped: 0 },
+              { seq: 3, message: 'third', state: 'completed', reply: 'three', error: null, steps: [], stepsDropped: 0 },
+            ],
+          },
+        },
+      ],
+    });
+    const turn = stubTurnStore({ api: api as never, storage: memory, navigationType: () => 'reload' });
+    await turn.restore();
+    const { host, fixture, navigation } = await mount({ rows: [{ enabled: true }], turn });
+
+    // jsdom lays out nothing, so the mount's own first render settles a 0 x 0 box and records no
+    // growth. The fake geometry stands in for the real, taller-than-viewport layout a browser
+    // would have already computed by the time `afterEveryRender` runs; a navigation notification
+    // -- unrelated to the follow state -- is the trigger for the next real render, the same way an
+    // unrelated store notification does for `mountAnswered`'s later cases.
+    const geometry = { scrollHeight: 1000, clientHeight: 200, scrollTop: 0 };
+    fakeTranscriptGeometry(host, geometry);
+    navigation.notify();
+    fixture.detectChanges();
+    expect(geometry.scrollTop).toBe(800);
+    expect(jumpControl(host)).toBeNull();
   });
 });
