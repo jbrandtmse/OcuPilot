@@ -70,6 +70,18 @@ async function preferences() {
   return JSON.parse(text);
 }
 
+/** The account's `shell.theme` row, read until it holds `wanted`: the write is fire and forget. */
+async function rememberedTheme(wanted) {
+  const deadline = Date.now() + config.navigationTimeoutMs;
+  let held = null;
+  while (Date.now() < deadline) {
+    held = (await preferences()).shell.find((row) => row.name === SHELL_THEME)?.value ?? null;
+    if (held === wanted) break;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  return held;
+}
+
 /** Forget every kind the account remembers, the theme among them. */
 async function clearPreferences() {
   for (const kind of PREFERENCE_KINDS) {
@@ -162,15 +174,7 @@ test('AC2: Dark theme sits beside Change password, and activating it flips the r
       focused: document.activeElement?.getAttribute('role') ?? null,
     }));
     assert.deepEqual(after, { open: true, checked: 'true', focused: 'menuitemcheckbox' }, 'the menu stays open, checked, with focus on the item');
-    // The write is fire and forget, so the row is read until it lands.
-    const deadline = Date.now() + config.navigationTimeoutMs;
-    let held = null;
-    while (Date.now() < deadline) {
-      held = (await preferences()).shell.find((row) => row.name === SHELL_THEME)?.value ?? null;
-      if (held === THEME_DARK) break;
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    }
-    assert.equal(held, THEME_DARK, 'the choice is the instance\'s shell.theme row');
+    assert.equal(await rememberedTheme(THEME_DARK), THEME_DARK, 'the choice is the instance\'s shell.theme row');
   } finally {
     await context.close();
   }
@@ -188,6 +192,7 @@ test('AC2 and the theme Integration AC: dark returns after a real sign-out, in a
     const wrote = await storageKeys(first.page);
     assert.deepEqual(wrote.local, [], `nothing is in localStorage: ${JSON.stringify(wrote.local)}`);
     assert.deepEqual(wrote.session.filter((key) => !ALLOWED_SESSION_KEYS.includes(key)), [], `sessionStorage holds only the token pair: ${JSON.stringify(wrote.session)}`);
+    assert.equal(await rememberedTheme(THEME_DARK), THEME_DARK, 'the choice has landed on the instance before the sign-out');
 
     // Sign out for real, through the menu.
     await openMenu(first.page);
@@ -248,6 +253,7 @@ async function chromeFigures(page) {
       focusVisible: item.matches(':focus-visible'),
       focusRing: getComputedStyle(item).outlineColor,
       indicator: active === null ? null : getComputedStyle(active, '::before').backgroundColor,
+      ground: getComputedStyle(document.body).backgroundColor,
     };
   });
 }
@@ -285,8 +291,9 @@ test('AC3: the chrome stays navy and deepens in dark, and draws its dark variant
         focusVisible: true,
         focusRing: rgb(tokens.dark['focus-ring']),
         indicator: rgb(tokens.dark.secondary),
+        ground: rgb(tokens.light.surface),
       },
-      'light: shell grounds, focus-ring-dark and secondary-dark on the chrome'
+      'light: shell grounds, focus-ring-dark and secondary-dark on the chrome, and the page ground is surface'
     );
     const lightEdge = await serverFlagEdge(page, tokens.dark['on-shell']);
     assert.equal(lightEdge.edge, 'rgba(0, 0, 0, 0)', 'light: the server-flag pill draws no edge');
@@ -300,8 +307,9 @@ test('AC3: the chrome stays navy and deepens in dark, and draws its dark variant
         focusVisible: true,
         focusRing: rgb(tokens.dark['focus-ring']),
         indicator: rgb(tokens.dark.secondary),
+        ground: rgb(tokens.dark.surface),
       },
-      'dark: shell-dark grounds, and the same variants on the chrome'
+      'dark: shell-dark grounds, the same variants on the chrome, and the page ground is surface-dark'
     );
     const darkEdge = await serverFlagEdge(page, tokens.dark['on-shell']);
     assert.equal(darkEdge.edge, darkEdge.darkEdge, 'dark: the server-flag pill draws on-shell-dark at 20%');

@@ -7,8 +7,9 @@
  * Named so it sorts first under `npm run test:browser`, so CI walks the same fresh throwaway state
  * the baseline was taken on. Discovered by that script's glob; no roster names it.
  *
- * The four liveness tests plant one violation of each invariant in a walked page and assert the
- * walk's own detector reports it, so a detector that stopped detecting cannot hold the gate green.
+ * The liveness tests plant a violation of each invariant, and of each branch a detector takes, in a
+ * walked page and assert the walk's own detector reports it, so a detector that stopped detecting
+ * cannot hold the gate green.
  *
  * Run: `npm run build`, redeploy the bundle, then
  * `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> \
@@ -23,6 +24,7 @@ import { browserConfig, launchOptions } from '../browser.config.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import {
   INVARIANTS,
+  MIN_WIDTH_SOURCES,
   VIEWPORTS,
   assertThrowaway,
   compare,
@@ -63,7 +65,10 @@ test('AC5: every built screen is walked or skipped, and no id-requiring screen i
     `these screens need an id the walk could not resolve and are not in SKIP: ${[...report.unresolved].join(', ')}`
   );
   assert.equal(report.walked.size + report.skipped.size, built.length, 'every built screen is walked or skipped');
-  assert.equal(report.notBuilt.length, notBuilt.length, 'and every declared screen that is not built is counted');
+  assert.ok(
+    reportLines(report)[0].includes(`${report.walked.size} walked, ${report.skipped.size} skipped, ${notBuilt.length} not built`),
+    `the report counts walked, skipped and not built: ${reportLines(report)[0]}`
+  );
   assert.ok(report.walked.size > 0, 'the walk reached at least one screen');
   assert.deepEqual([...report.unsettled], [], 'every visit settled before it was measured');
 });
@@ -95,11 +100,11 @@ test('AC5: stale baseline entries are reported by key and do not fail the gate',
  * A context at 1280 on Home, switched to `theme` through the account menu, with `plant` run in the
  * page, answering what the walk's detector finds there.
  */
-async function detectPlanted(plant, theme = 'light') {
+async function detectPlanted(plant, theme = 'light', plantArgument = null) {
   const { context, page } = await signedInAt(browser, config, '/ocupilot/', VIEWPORTS.wide);
   try {
     if (theme === 'dark') await toggleThemeThroughMenu(page, { inflight: new Set(), last: 0 }, config.navigationTimeoutMs);
-    await page.evaluate(plant);
+    await page.evaluate(plant, plantArgument);
     const found = await detectScreen(page, {
       route: '/',
       checks: INVARIANTS,
@@ -127,15 +132,45 @@ test('detector liveness: an unlabelled input is reported under name', async () =
   assert.ok(reported(entries, 'name', 'input.ocu-probe-unlabelled'), `reported: ${JSON.stringify(entries)}`);
 });
 
-test('detector liveness: a 10px button is reported under min-width', async () => {
+test('detector liveness: a field left out of the accessibility tree is reported under name', async () => {
   const entries = await detectPlanted(() => {
-    const button = document.createElement('button');
-    button.className = 'ocu-probe-narrow';
-    button.setAttribute('aria-label', 'probe');
-    button.style.cssText = 'width: 10px; min-width: 0; height: 24px; padding: 0; border: 0;';
-    document.querySelector('main').appendChild(button);
+    const wrapper = document.createElement('div');
+    wrapper.setAttribute('aria-hidden', 'true');
+    const field = document.createElement('input');
+    field.className = 'ocu-probe-hidden-field';
+    field.setAttribute('aria-label', 'probe');
+    wrapper.appendChild(field);
+    document.querySelector('main').appendChild(wrapper);
   });
-  assert.ok(reported(entries, 'min-width', 'button.ocu-probe-narrow'), `reported: ${JSON.stringify(entries)}`);
+  assert.ok(reported(entries, 'name', 'input.ocu-probe-hidden-field'), `reported: ${JSON.stringify(entries)}`);
+});
+
+test('detector liveness: a control under the floor, a class minimum and a token minimum is reported under min-width', async () => {
+  const [classMinimum] = MIN_WIDTH_SOURCES.classes;
+  const [tokenMinimum] = componentMinimums();
+  const entries = await detectPlanted(
+    (classes) => {
+      for (const [className, width] of classes) {
+        const button = document.createElement('button');
+        button.className = `${className} ocu-probe-narrow`;
+        button.setAttribute('aria-label', 'probe');
+        button.style.cssText = `width: ${width}px; min-width: 0; max-width: none; height: 24px; padding: 0; border: 0;`;
+        document.querySelector('main').appendChild(button);
+      }
+    },
+    'light',
+    [
+      ['ocu-probe-floor', 10],
+      [classMinimum.className, classMinimum.px - 10],
+      [tokenMinimum.className, 20],
+    ]
+  );
+  for (const className of ['ocu-probe-floor', classMinimum.className, tokenMinimum.className]) {
+    assert.ok(
+      entries.some((entry) => entry.invariant === 'min-width' && entry.element.includes(`.${className}`) && entry.element.includes('.ocu-probe-narrow')),
+      `${className} is reported: ${JSON.stringify(entries)}`
+    );
+  }
 });
 
 test('detector liveness: a child 50px wider than its non-clipping parent is reported under overflow', async () => {
@@ -150,6 +185,19 @@ test('detector liveness: a child 50px wider than its non-clipping parent is repo
     document.querySelector('main').appendChild(parent);
   });
   assert.ok(reported(entries, 'overflow', 'div.ocu-probe-child'), `reported: ${JSON.stringify(entries)}`);
+});
+
+test('detector liveness: a document that scrolls horizontally is reported under overflow on the page', async () => {
+  const entries = await detectPlanted(() => {
+    const wide = document.createElement('div');
+    wide.className = 'ocu-probe-page-wide';
+    wide.style.cssText = 'width: 3000px; height: 4px;';
+    document.body.appendChild(wide);
+  });
+  assert.ok(
+    entries.some((entry) => entry.invariant === 'overflow' && entry.element.startsWith('page>') && entry.element.endsWith('div.ocu-probe-page-wide')),
+    `reported: ${JSON.stringify(entries)}`
+  );
 });
 
 test('detector liveness: #777 text on #888 is reported under contrast', async () => {

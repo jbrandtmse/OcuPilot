@@ -195,7 +195,7 @@ async function submit(page, current, next) {
   await page.click('.ocu-dialog-actions .ocu-button-primary');
 }
 
-test('AC7, DW-115: the arrow model moves real focus between the three items, with wrap-around and Home/End', async () => {
+test('AC7, DW-115: the arrow model moves real focus between the four items, with wrap-around and Home/End', async () => {
   // Mutation (Rule 19): drop the `% items.length` wrap from `onMenuKeydown` in `account-menu.ts`
   // -> the two wrap assertions go red. jsdom moves focus on `.focus()` but never through a real
   // key press, so the whole path from keydown to `document.activeElement` is only observable here.
@@ -214,6 +214,9 @@ test('AC7, DW-115: the arrow model moves real focus between the three items, wit
 
     await page.keyboard.press('ArrowDown');
     assert.equal(await focusedItemText(page), STRINGS.accountChangePassword);
+    // Story 15.6's Dark theme checkbox item sits between Change password and Sign out.
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedItemText(page), STRINGS.accountDarkTheme);
     await page.keyboard.press('ArrowDown');
     assert.equal(await focusedItemText(page), STRINGS.actionSignOut);
     await page.keyboard.press('ArrowDown');

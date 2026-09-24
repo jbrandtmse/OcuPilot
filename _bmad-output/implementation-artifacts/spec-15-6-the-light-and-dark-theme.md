@@ -180,6 +180,50 @@ deferred:
 - **Integration AC (Rule 1): gate.** Given the CI `browser` job, when `npm run test:browser` runs, then the gate is discovered with no roster edit. A planted violation outside the baseline turns it red (a mutation is recorded under Verification).
 - **AC6 (DW-1388).** Given the walk at 720px, when the baseline is taken, then the agent panel's overflow is an entry tagged `DW-1388` with the recorded diagnosis (agent panel, not Home). If the walk does not find it, `ownerReported` says so and gives the walk's measurement. The overflow is fixed here only if the cause is a value in 15.6's token files that differs from DESIGN.md.
 
+### Review Findings
+
+Code review 2026-09-23 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 56 rows, 17 entries after grouping: high 2, med 1, low 14.
+
+- [x] [Review][Patch] HIGH: the Dark theme item broke 15.1's arrow-model test (CI 35934116068 red) [ui/browser/change-password.browser-spec.mjs:198] — fix-risk low; the test walks four items.
+- [x] [Review][Patch] HIGH: CI's gate found one key the local baseline lacks, `agent/definitions|overflow|720|app-command-bar>span.ocu-command-bar-sort` [ui/browser/structural-baseline.json:102] — fix-risk low; the CI-printed entry was appended (the spec's merge path). CI reproduced the other 190 keys. DW-1580 trailer records it.
+- [x] [Review][Patch] MED: the name check passed a field Chrome leaves out of the accessibility tree, or answers nothing for [ui/browser/structural-walk.mjs:497] — fix-risk low; both are reported, with an `aria-hidden` liveness case.
+- [x] [Review][Patch] DW-1581: the page ground painted no surface role [ui/src/styles/_components.scss] — fix-risk low; this story's own `body` block, pinned in `theme.browser-spec.mjs` AC3 in both themes.
+- [x] [Review][Patch] Liveness gaps: the page-level overflow branch, class minimums and token minimums (a NaN token passed silently) [ui/browser/a11y-structural-invariants.browser-spec.mjs] — fix-risk low.
+- [x] [Review][Patch] `--write` overwrote an existing baseline [ui/browser/structural-walk.mjs:699] — it now refuses.
+- [x] [Review][Patch] Inaccurate claims: "instance data cannot move a key", "four liveness tests" [structural-walk.mjs:23, a11y spec:10].
+- [x] [Review][Patch] The walk's toggle retyped the theme class and clicked any checkbox item [structural-walk.mjs:575] — it now imports `THEME_DARK_CLASS` and scopes to `.ocu-account-panel`.
+- [x] [Review][Patch] Tautological not-built count assertion [a11y spec:66] — it now asserts the report line.
+- [x] [Review][Patch] The sign-out test could race the fire-and-forget write [theme.browser-spec.mjs:190] — it now waits for the row.
+- [x] [Review][Patch] `PreferencesWire`: the stale "three refusals" doc and an unasserted status [src/OcuPilot/Test/PreferencesWire.cls:393,398].
+- [x] [Review][Patch] EXPERIENCE.md: `:438` should be `:439`, and `:81` and `:439` still said "polish week" [EXPERIENCE.md:81,424,439].
+- [x] [Review][Defer] Refuses only the live container [structural-walk.mjs:680] — DW-1015 occurrence.
+- [x] [Review][Defer] No bound on the unmeasurable contrast count [structural-walk.mjs:420] — DW-1582 wontfix-accepted, with `reopen_if`.
+- wontfix-theoretical: the walk does not confirm the rendered screen after `pushState`; routes are eager and `_SYSTEM` passes every gate. Real if a CI log shows a key filed under a route that did not render.
+- wontfix-theoretical: the dark liveness case uses a stand-in tracker. Real if the light pass renders dark in CI.
+- wontfix-theoretical: `visible()` skips controls of 1px or less. Real if a visible control renders at 1px or less.
+
+Rejected:
+
+- by-design (the spec's own definitions):
+  - form-field text is not contrast-measured;
+  - large text is weight 600;
+  - overflow is horizontal only;
+  - the resize handle and chrome recur per route;
+  - `MARGINAL_GUARDED[2]`;
+  - `needsId`;
+  - `compare` ignores `count`;
+  - the content pane scrolls by design (DESIGN.md's content floor);
+  - `Error.cls` is shared-append at its tail.
+- false: CI reproduced `-at-stop` and the two data-table link keys.
+- low:
+  - the `goInApp` throw fails loudly;
+  - a toggle before the read settles (earlier triage);
+  - the `EXPERIENCE.md:424` citation moves at the Epic 7 merge and `strings.test` catches it;
+  - `sessionStorage` is checked as a subset, which matches "nothing but the pair", and importing the constant would run another spec;
+  - the Rule 19 cases the earlier triage already covered;
+  - mutation lines per assertion (Rule 19 asks for one per AC).
+- not code: the lead files one ledger item per baseline entry (owner's ruling). All 191 have `dw: null`.
+
 ## Spec Change Log
 
 - 2026-09-23, lead spec gate: (1) the merge path appends printed entries and never re-runs `--write`; (2) a dark-only contrast failure whose fix is not a footprint token substitution HALTs as an intent gap; (3) the AC5 stale-report mutation corrected to a synthetic entry with no defect behind it; (4) a determinism check added before the baseline is committed. No intent change.
@@ -334,6 +378,9 @@ This removes the last component-level dark selector.
 - mutation: deleted the DW-1388 `ownerReported` record → `structural-baseline.test.mjs` "every owner-reported finding is recorded" red (AC6).
 - mutation: dropped `panel-send-width` from `MIN_WIDTH_SOURCES.tokens` → `structural-baseline.test.mjs` "the token-sized minimum widths are found" red (AC5).
 - mutation: `settle` reports a settled visit as unsettled → gate "every built screen is walked or skipped…" red ("every visit settled before it was measured") (AC5).
+- mutation: `menuButtons()` kept, test reverted to the three-item walk → `change-password.browser-spec.mjs` AC7 red ('Dark theme' vs 'Sign out'), as in CI 35934116068 (review).
+- mutation: the Story 15.6 `body` ground rule emptied → `theme.browser-spec.mjs` AC3 red (`ground` rgba(0, 0, 0, 0) vs rgb(250, 251, 252)) (DW-1581, review).
+- mutation (four applied together, each reddening only its own test): the name check reads only `''` → "a field left out of the accessibility tree" red; the page branch compares `<` → "a document that scrolls horizontally" red; `tokenPx` reads `--ocu-x-<token>` → the min-width liveness red on `ocu-reveal-toggle`; `reportLines` prints 0 not built → "every built screen is walked or skipped" red (AC5, review).
 
 ## Auto Run Result
 

@@ -5320,3 +5320,13 @@ app-resource-list-page {
 .ocu-x509-pem {
   font-family: var(--ocu-type-code-family);
 }
+
+// --- The page ground (Story 15.6) -----------------------------------------------------------
+//
+// DESIGN.md's depth table: "The ground is `{colors.surface}`". Without it the content column shows
+// the browser canvas, which the dark scope's `color-scheme` turns into the browser's own dark grey
+// rather than `surface-dark`. The body's ground propagates to the canvas, so every region that
+// paints nothing of its own takes the role, in both themes.
+body {
+  background-color: var(--ocu-surface);
+}

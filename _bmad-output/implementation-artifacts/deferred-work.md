@@ -273,6 +273,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Parsed the emitted styles-<hash>.css: the :root.ocu-theme-dark block re-points 30 --mat-sys-* variables and redefines 0 --ocu-* roles. --ocu-shell: #0f3a5f is the only declaration of that name anywhere and nothing under the dark scope changes it, so var(--ocu-shell) is light in both modes. Story 1.10 is named in Design Notes as the first surface drawing shell / on-shell / shell-edge and would have to hand-pick var(--ocu-<role>-dark) per call site, which is not the story's stated 'the flip is a class flip'. The spec's own mechanism sketch shows only --mat-sys-* re-points, so the two readings conflict.
 - 2026-09-09T20:39:47Z status=escalated owner=burndown by=cr note=not patched: completing it is a design decision the spec sketch does not show, serving a toggle the spine defers to FR-73; color-scheme half fixed in-story
 - 2026-09-13T14:46:52Z status=routed owner=15-6-the-light-and-dark-theme by=decision-sheet note=the 34 --ocu-* dark values are 15.6's, alongside DW-118 which is the same defect from the other side. FR-73 defers the toggle, and designing 34 dark values now means checking them against no dark surface
+- 2026-09-24T00:06:35Z status=resolved-by:15-6-the-light-and-dark-theme by=adjudication note=_theme.scss dark scope re-points all 64 --ocu-* roles; design-tokens.test.mjs scope-completeness test, mutation recorded
 
 ### DW-40: client-lint reports a hex-shaped URL fragment or SVG sprite id as a hardcoded color
 - source: spec-1-2-the-design-system-tokens-type-and-the-string-table.md | severity: low | fix-risk: low | footprint: in-story
@@ -797,6 +798,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T16:21:41Z occurrence=1-10-header-status-bar-and-page-chrome
 - 2026-09-12T16:21:41Z status=routed owner=15-6-the-light-and-dark-theme by=cr note=1.10s :root.ocu-theme-dark .ocu-server-flag reads --ocu-on-shell-dark, the one component rule naming a -dark token; the pairing it computes never occurs
 - 2026-09-12T23:55:35Z occurrence=1-13-uniform-error-handling-and-the-connectivity-probe
+- 2026-09-24T00:06:35Z status=resolved-by:15-6-the-light-and-dark-theme by=adjudication note=same fix as DW-39; the last component dark selector (.ocu-server-flag) became a token pair; single-home test pins it
 
 ### DW-119: An identity call that fails in a way that is neither AUTH.NOADMIN nor INSTALL.* leaves the shell on 'checking' with nothing scheduled to ask again, so a signed-in tab can sit on a blank content area
 - source: spec-1-8-instance-identity-and-the-api-version-guard.md | severity: med | fix-risk: med | footprint: in-story
@@ -3827,6 +3829,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-17T17:05:54Z occurrence=6-9-system-usage-and-the-dashboard-meters note=system-usage.browser-spec.mjs:80 creates a principal and refuses only LIVE_CONTAINER
 - 2026-09-18T19:44:55Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=merge_gate note=extend the browser-spec container refusal to ocupilot-slot-* as well as the live name
 - 2026-09-20T00:48:34Z status=routed owner=range-end-cleanup by=merge_gate note=RE-ROUTED off story 13.2. Epic 13 declined it correctly: all three need edits in ui/browser/*.browser-spec.mjs, which is Epic 5's footprint, and Epic 13 has no browser-spec footprint at all. That was an orchestrator error - epic-dependencies.yaml gave Epic 13 the glob ui/src/**/*.browser.spec.ts, which is the wrong directory, extension and separator and matched nothing; the real specs are the 34 ui/browser/*.browser-spec.mjs files. Glob dropped from the graph with the reason recorded inline. Non-blocking under Rule 27: none of the three blocks the 2026-09-27 floor or a downstream-epic story, and DW-1223's five error-log timeouts have already failed to reproduce twice
+- 2026-09-24T00:04:16Z occurrence=15-6-the-light-and-dark-theme note=structural-walk.mjs assertThrowaway and theme.browser-spec.mjs write the account's prefs and refuse only ocupilot
 
 ### DW-1016: A proposal diff-row has no empty-cell word, so a service-editor proposal restricting AllowedConnections would read (none) -> 10.0.0.1
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -5296,6 +5299,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T11:47:39Z status=routed owner=range-end-cleanup by=burndown note=HIGH and out-of-footprint; Epic 13's charter is the suite IN CI, not client geometry; routed only so no entry is left owned by burndown -- the orchestrator should route this deliberately, see decisions_for_user
 - 2026-09-20T13:18:06Z status=decision-pending owner=burndown by=merge_gate note=TAKEN OFF range-end-cleanup, and Epic 13 was right to refuse to grade it down. Three reasons it cannot sit there: Rule 15 says a HIGH is not a deferral candidate; range-end-cleanup is chartered AFTER Epic 12 merges and runs before the demo freeze or in the voting week, i.e. AFTER the 2026-09-27 floor this defect class is visible at; and Epic 13's charter is the suite IN CI, not client geometry, so it was never its to own. AWAITING THE OWNER on scope, asked 2026-09-20 and not yet answered: whether to add a structural-invariants gate over every screen the registry declares (every input/select/textarea has an accessible name; no interactive control narrower than its declared minimum; no element overflowing its container) and if so whether it lands in Epic 13's suite story, at the range end, or sooner as floor-blocking. The orchestrator's recommendation stands: structural invariants, not golden-image diffing, which across 40 screens is brittle and fails on every legitimate change so it gets disabled within a week. Do not re-own this to a story without that answer - the entry's whole point is that no story pinned the figures these defects broke
 - 2026-09-21T14:58:13Z status=routed owner=15-6-the-light-and-dark-theme by=owner note=OWNER ANSWERED 2026-09-21, after five days decision-pending. ADD THE GATE: registry-driven over every screen the registry declares, asserting the three invariants named in this entry's evidence -- an accessible name on every input/select/textarea, no interactive control narrower than its declared minimum, no element overflowing its container. Routed into Story 15.6, on the SHARED WALK with the contrast guard, which is what makes it cheap: one traversal of every declared screen serves both. BOUND, and it is what stops this becoming an unbounded cleanup on the critical path: the gate runs in BASELINE form. The baseline is taken ONCE from the current tree; each baseline entry becomes its own ledger item routed to the epic that owns that screen or to range-end-cleanup; and the gate fails CI on any violation OUTSIDE the baseline. So it is a ratchet -- it cannot regress, and it does not demand the backlog be cleared first. 15.6 FIXES NOTHING THE GATE FINDS unless the fix is a token in its own footprint. If 15.6 overruns its dispatch window, Epic 12 waits for it and that delay is accepted by the owner. The orchestrator's two footprint rulings stand (15.6 owns the token definitions; a token-file edit by a concurrent epic is a Clarification).
+- 2026-09-24T00:06:35Z status=resolved-by:15-6-the-light-and-dark-theme by=adjudication note=gate shipped: a11y-structural-invariants over builtScreens(), 191-key baseline, 5 root-cause items DW-1583..1587; CI 35934116068 reproduced 190/190
 
 ### DW-1366: A confirm that cannot take the target lock answers 500 INTERNAL, the status a genuine internal fault takes, where AD-34 says the loser is refused with the proposal's terminal state
 - source: code review, spec-5-5-prohibited-actions-are-absent-from-the-tool-set.md | severity: med | fix-risk: med | footprint: in-story
@@ -5606,6 +5610,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured during Story 15.4's AC2 browser work: Home's own block row wraps correctly (.ocu-home-remembered is flex-wrap:wrap with min-width:0 per block), and the element that overflows is app-panel / .ocu-panel, which is Epic 5's carve
 - 2026-09-20T21:07:26Z status=escalated owner=range-end-cleanup by=harvest note=for the user at the decision sheet: a user-visible horizontal scroll at the 720px 200%-zoom floor, on a file Epic 15 is forbidden to touch, so it needs an owner outside this epic rather than a silent re-own
 - 2026-09-22T13:40:06Z status=routed owner=15-6-the-light-and-dark-theme by=merge_gate note=Decided earlier and applied here; the entry still read escalated. It is a MEASURED instance of the exact invariant DW-1337's owner-approved gate asserts -- no element overflowing its container -- on the agent panel, the demo's centrepiece. Enters 15.6's baseline as an already-diagnosed entry rather than being rediscovered by the walk, and its fix may fall inside 15.6's token bound. See [[DW-1337]] and [[DW-1336]].
+- 2026-09-24T00:06:35Z status=dropped by=adjudication note=not reproduced: at 720, direct and after 1440->720, scrollWidth==clientWidth (walk, fresh throwaway); the gate now fails any page scroll
 
 ### DW-1389: ci-throwaway.sh writes its compose file from an unquoted heredoc whose body contains a backticked word, so the shell command-substitutes it away
 - source: spec-15-4-home-s-system-information-panel.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -6279,8 +6284,41 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-6-the-light-and-dark-theme.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Overflow keys trip at more than 1px and several recorded overshoots are 4-6px; two min-width keys depend on a data-table link's text width (7.2px, 21.6px). Settled by the first CI browser run on 6878250a: zero fresh and zero stale keys
 - 2026-09-23T23:33:35Z status=open owner=15-6-the-light-and-dark-theme by=harvest note=adjudicated against CI run 35934116068
+- 2026-09-24T00:04:16Z status=open owner=15-6-the-light-and-dark-theme by=cr note=CI 35934116068: 190/190 keys reproduced plus 1 CI-only key (agent/definitions sort, 720) appended by cr; local reads it stale
+- 2026-09-24T00:06:35Z status=resolved-by:15-6-the-light-and-dark-theme by=adjudication note=CI 35934116068 reproduced 190/190 keys; the one CI-only key was appended from the gate's print; stale never fails
 
 ### DW-1581: The page ground paints no surface role: the content area shows the browser canvas rather than surface / surface-dark, visible in dark after the flip
 - source: spec-15-6-the-light-and-dark-theme.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: No rule sets a background on html, body or the shell content (body carries only margin: 0 in _components.scss:605); pre-existing in light, visible in dark. The fix is one appended root rule in 15.6's own block
 - 2026-09-23T23:33:35Z status=open owner=15-6-the-light-and-dark-theme by=harvest note=in-footprint as an appended own block; for the reviewer
+- 2026-09-24T00:06:35Z status=resolved-by:15-6-the-light-and-dark-theme by=adjudication note=cr appended body{background-color:var(--ocu-surface)}; theme.browser-spec asserts surface / surface-dark, mutation recorded
+
+### DW-1582: The structural walk counts text it cannot measure for contrast (a gradient or image behind it) but no gate bounds that count
+- source: spec-15-6-the-light-and-dark-theme.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: structural-walk.mjs backgroundOf returns null under any background-image and parse() reads only rgb/color(srgb); the gate prints the total (368, about 4 per contrast visit, the header gradient (inference)) and asserts nothing on it.
+- 2026-09-24T00:04:16Z status=wontfix-accepted owner=15-6-the-light-and-dark-theme by=cr note=reopen_if=the walk's printed unmeasurable count moves off 368 at 46 walked screens, or DESIGN.md adds a text-bearing gradient
+
+### DW-1583: Structural gate baseline: the panel resize handle overflows the agent panel by 4px on every screen at 1280 and 720 (92 baseline keys)
+- source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Walk measures app-panel-resize-handle>div.ocu-panel-resize-handle 4px past aside.ocu-panel: its declared hit area is left:-4px width:8px (_components.scss:3203-3212, DESIGN.md:1140), so this is the designed straddle, not a layout bug. Epic 5's panel files
+- 2026-09-24T00:06:23Z status=routed owner=range-end-cleanup by=burndown note=resolve by letting the gate honour a declared overflow exemption or by moving the hit area inside the panel; baseline keys carry this id
+
+### DW-1584: Structural gate baseline: the status bar's connection and stamp segments overflow their group at 720px on every screen (77 baseline keys)
+- source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Walk at 720: span.ocu-status-bar-connection 28px and span.ocu-status-bar-segment.ocu-status-bar-stamp 6px past app-status-bar>div.ocu-status-bar-group; DESIGN.md's yield order is not applied at the 200%-zoom floor. Status bar is Epic 1's (merged)
+- 2026-09-24T00:06:23Z status=routed owner=range-end-cleanup by=burndown note=baseline keys carry this id
+
+### DW-1585: Structural gate baseline: command-bar controls overflow the command bar at 720px (refresh action 80px on agent/definitions; sort 30px in CI only)
+- source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Walk at 720 on agent/definitions: button.ocu-command-bar-refresh-action 80px and span.ocu-command-bar-sort 30px past div.ocu-command-bar; the sort key reproduces in CI's walk and reads stale locally. Command bar is Epic 7's; its merged .ocu-command-bar wrapping rule may clear both (inference)
+- 2026-09-24T00:06:23Z status=routed owner=range-end-cleanup by=burndown note=baseline keys carry this id; re-check after the Epic 7 integrate-forward
+
+### DW-1586: Structural gate baseline: a data-table name link can render narrower than the 24px control floor (devices 7.2px, users 21.6px, at both widths)
+- source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Walk: app-data-table>a.ocu-data-table-link width tracks the row's text, so a short entity name yields a sub-24px target (EXPERIENCE.md:713 floor). Data-dependent key. 15.8 owns data-table column widths
+- 2026-09-24T00:06:23Z status=routed owner=15-8-columns-you-can-read by=burndown note=baseline keys carry this id; 15.8 changes app-data-table
+
+### DW-1587: Structural gate baseline: native checkbox inputs render 13px wide on eight form and filter screens, under the 24px control floor (16 baseline keys)
+- source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Walk: app-{switches,audit,device-form,role-create-form,user-create-form,wallet-secret-form,task-history,web-app-create-form}-page>input 13px under the 24px floor (EXPERIENCE.md:713) at 1280 and 720; one shared checkbox sizing rule would clear all. Screens of merged Epics 3-8
+- 2026-09-24T00:06:23Z status=routed owner=range-end-cleanup by=burndown note=baseline keys carry this id

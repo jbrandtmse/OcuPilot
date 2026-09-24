@@ -24,8 +24,9 @@
  * `/:id` appended where the screen takes one); `context` the viewport for `min-width` and
  * `overflow`, the theme for `contrast`, and empty for `name`; `element` the nearest `app-*`
  * ancestor, the element's tag, its sorted `ocu-*` classes and its role. It carries no index and no
- * text, so row counts and instance data cannot move a key, and equal keys on one screen collapse
- * into one entry with a `count`.
+ * text, so row counts cannot multiply keys and equal keys on one screen collapse into one entry with
+ * a `count`. Whether a key exists can still depend on what the instance renders -- a row link's
+ * text width decides whether it falls under the floor.
  *
  * Named without the `.browser-spec` suffix, so `npm run test:browser` does not collect it as a spec.
  * Every context it opens comes from `signedInAt`, which forgets the account's remembered state
@@ -44,6 +45,10 @@ const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { builtScreens } = await import(join(uiRoot, 'src', 'app', 'core', 'navigation.ts'));
 const { SCREENS } = await import(join(uiRoot, 'src', 'app', 'core', 'screens.generated.ts'));
 const { encodeEntityId } = await import(join(uiRoot, 'src', 'app', 'core', 'entity-id.ts'));
+const { THEME_DARK_CLASS } = await import(join(uiRoot, 'src', 'app', 'core', 'theme.ts'));
+
+/** The account menu's Dark theme item, and never a checkbox item some screen draws. */
+const THEME_ITEM = '.ocu-account-panel [role="menuitemcheckbox"]';
 
 /** Where the baseline lives. */
 export const BASELINE_PATH = join(uiRoot, 'browser', 'structural-baseline.json');
@@ -490,8 +495,12 @@ export async function detectScreen(page, { route, checks, viewport, theme, minim
   if (checks.includes('name') && found.fields.length > 0) {
     const names = await fieldNames(page);
     for (const field of found.fields) {
+      // A field Chrome leaves out of the accessibility tree, or one it answers nothing for, has no
+      // name a reader can reach: a failed lookup is reported, never read as a pass.
       const name = names.get(field.index);
-      if (name === '') entries.push({ route, invariant: 'name', context: '', element: field.element, measured: 'no accessible name' });
+      const measured =
+        name === '' ? 'no accessible name' : name === null ? 'left out of the accessibility tree' : name === undefined ? 'no accessibility node found' : null;
+      if (measured !== null) entries.push({ route, invariant: 'name', context: '', element: field.element, measured });
     }
   }
   for (const entry of entries) entry.key = entryKey(entry);
@@ -566,13 +575,14 @@ async function firstRowSegment(page, route) {
 
 /** Flip the theme through the account menu's own item, and close the menu. */
 export async function toggleThemeThroughMenu(page, requests, timeoutMs) {
-  const wasDark = await page.evaluate(() => document.documentElement.classList.contains('ocu-theme-dark'));
+  const wasDark = await page.evaluate((name) => document.documentElement.classList.contains(name), THEME_DARK_CLASS);
   await page.click('#ocu-account-trigger');
-  await page.waitForSelector('[role="menuitemcheckbox"]', { visible: true, timeout: timeoutMs });
-  await page.click('[role="menuitemcheckbox"]');
+  await page.waitForSelector(THEME_ITEM, { visible: true, timeout: timeoutMs });
+  await page.click(THEME_ITEM);
   await page.waitForFunction(
-    (dark) => document.documentElement.classList.contains('ocu-theme-dark') === dark,
+    (name, dark) => document.documentElement.classList.contains(name) === dark,
     { timeout: timeoutMs },
+    THEME_DARK_CLASS,
     !wasDark
   );
   await page.keyboard.press('Escape');
@@ -682,8 +692,15 @@ export async function assertThrowaway(config) {
   assert.equal(ready.state, 'installed', `the throwaway must be installed, not ${JSON.stringify(ready)}`);
 }
 
-/** `--write`: walk once and write the baseline, keeping any `ownerReported` already recorded. */
+/**
+ * `--write`: walk once and write the baseline. Refuses when a baseline already exists: it is taken
+ * once, and a regenerate would absorb every regression since the take and drop every `dw` filed.
+ */
 async function writeBaseline() {
+  if (readBaseline() !== null) {
+    console.error(`structural walk: ${BASELINE_PATH} exists; the baseline is taken once and never regenerated -- append the gate's printed entries instead`);
+    process.exit(2);
+  }
   const config = browserConfig();
   await assertThrowaway(config);
   const { default: puppeteer } = await import('puppeteer');
@@ -691,12 +708,11 @@ async function writeBaseline() {
   try {
     const { entries, report } = await walk(browser, config);
     for (const line of reportLines(report)) console.log(line);
-    const held = readBaseline();
     const baseline = {
       generated: new Date().toISOString(),
       viewports: VIEWPORTS,
       entries,
-      ownerReported: held === null ? [] : held.ownerReported,
+      ownerReported: [],
     };
     writeFileSync(BASELINE_PATH, JSON.stringify(baseline, null, 2) + '\n');
     console.log(`structural walk: wrote ${entries.length} entr(ies) to ${BASELINE_PATH}`);

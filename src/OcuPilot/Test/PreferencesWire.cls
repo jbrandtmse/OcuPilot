@@ -391,11 +391,12 @@ Method TestAValuePreferenceRoundTripsOverTheWire()
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
     Do $$$AssertEquals(..ValueFor(tAnswer, "shell", "name", tTheme), "dark", "and a later read answers it")
     Set tSC = ..Call("POST", ..ValuePayload(tShell, "name", tTheme, "light"), .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the theme is set back: " _ tBody)
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
     Do $$$AssertEquals(..ValueFor(tAnswer, "shell", "name", tTheme), "light", "and a second set replaces it")
 }
 
-/// <p><b>The three Story 15.5 refusals each answer 422 with a published sentence</b> (AD-39): a
+/// <p><b>The value refusals each answer 422 with a published sentence</b> (AD-39): a
 /// value that is empty or over-long, a shell member outside the closed set, a screen-scoped
 /// value naming a route no built screen declares, and a theme outside its fixed set (Story
 /// 15.6).</p>

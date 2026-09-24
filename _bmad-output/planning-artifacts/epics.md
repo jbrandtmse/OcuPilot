@@ -5739,6 +5739,10 @@ So that a long path or class name never hides behind an ellipsis.
 - **When** columns resize or the table scrolls
 - **Then** row and header heights do not change, and the browser specs that pin them stay green.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1586: Structural gate baseline: a data-table name link can render narrower than the 24px control floor (devices 7.2px, users 21.6px, at both widths) (ledger; routed by adjudication 2026-09-24)
+
 ---
 
 ## Epic 16: The remaining polish-week extras
