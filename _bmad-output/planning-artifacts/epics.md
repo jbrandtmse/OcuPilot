@@ -644,7 +644,7 @@ The epic-level map above says *which epic* owns each requirement and why it is s
 | FR-13 | 4.6 | FR-53 | 9.8 |
 | FR-14 | 5.7 | FR-54 | 2.9, 6.8 |
 | FR-15 | 4.7 | FR-55 | 5.12, 7.8 |
-| FR-16 | 2.3, 4.2, 6.1-6.14 | FR-56 | 6.9 |
+| FR-16 | 2.3, 4.2, 6.1-6.14, 11.10 | FR-56 | 6.9 |
 | FR-17 | 5.1, 5.2, 5.3, 7.10, 14.7 | FR-57 | 6.10, 16.12 |
 | FR-18 | 5.4, 5.5 | FR-58 | 6.11 |
 | FR-19 | 3.7, 14.5, 14.6 | FR-59 | 6.12, 8.8 |
@@ -652,7 +652,7 @@ The epic-level map above says *which epic* owns each requirement and why it is s
 | FR-21 | 4.9 | FR-61 | 2.10 |
 | FR-22 | 5.6 | FR-62 | 2.11, 6.14 |
 | FR-23 | 4.8 | FR-63 | 2.12, 5.13, 7.10 |
-| FR-24 | 3.1, 3.5 | FR-64 | 1.16 |
+| FR-24 | 3.1, 3.5, 11.10 | FR-64 | 1.16 |
 | FR-25 | 3.2, 10.1-10.3 | FR-65 | 1.4, 1.5 |
 | FR-26 | 3.3 | FR-66 | 1.3, 1.4, 1.17 |
 | FR-27 | 3.4 | FR-67 | 1.4 |
@@ -741,6 +741,8 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 **Owner triage, 2026-09-23 (providers), high priority.** Two findings from connecting live keys on slot C. OcuPilot's canonical temperature of 0 is refused by the default model of Anthropic, whose current models reject sampling parameters, and of OpenAI, whose default model accepts only 1: Story 10.4 sends none unless the operator sets one, and never to Anthropic. A connection test against a local model that is still loading is cut off by the Web Gateway's 60-second timeout with an empty 504: Story 10.5 answers first with OcuPilot's own reason. Both run in one runner on the first slot to free, ahead of Epic 12, Story 15.8 and Epic 11; Epic 12 starts that much later.
 
 **Owner request, 2026-09-24 (agent grounding), high priority.** The screen context already carries the rows on screen, but the system prompt never mentions it, every tool is offered on every screen with nothing saying which act on the one in view, and the model is not told when it is read-only. Story 11.9 fixes all three before submission: it runs first and alone on slot B, with Epic 12 handed back at its first boundary and resumed after 11.9 merges. Screen data stays out of the system prompt (AD-11).
+
+**Owner request, 2026-09-24 (first-time success), high priority.** A judge should succeed the first time. New definitions start read-only, so a first request for a change is declined, and the agent did not open the web applications screen when asked to create a web app until told to navigate. Story 11.10 makes new definitions read/write - every write still needs the user's confirmation - and tells the agent to open the screen under discussion, as EXPERIENCE.md's "Primary navigation is the agent" already intends; the owner also found that the panel's transcript never scrolls to a new message, so a sent message and its answer can land out of sight, and 11.10 makes it follow. It runs alone on slot B at Epic 12's next story boundary.
 
 **Orchestrator amendment, 2026-09-19.** Two consequences of the amendment above, settled on the owner's
 instruction. Story 13.3's acceptance criteria are rewritten so none of them can be closed by publishing:
@@ -838,7 +840,7 @@ An operator runs the agent on OpenAI, Google Gemini or a local model on their ow
 
 ### Epic 11: The agent explains itself, cites its work, and streams
 
-During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked after the OAuth 2.0 editors (Epic 12) by the owner's re-sequence of 2026-09-21, because these are what voters see and improvements are allowed through the voting week. Story 11.9 runs first and alone, before Epic 12 resumes (owner, 2026-09-24); the rest run in the order 11.7, 11.8, 11.1, 11.2, 11.3, 11.4 (owner re-order, 2026-09-22): streaming and the privilege line first, so a partial epic merged before the deadline carries the two refinements a judge can see. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
+During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked after the OAuth 2.0 editors (Epic 12) by the owner's re-sequence of 2026-09-21, because these are what voters see and improvements are allowed through the voting week. Stories 11.9 and 11.10 run first, each alone on slot B ahead of Epic 12 (owner, 2026-09-24); the rest run in the order 11.7, 11.8, 11.1, 11.2, 11.3, 11.4 (owner re-order, 2026-09-22): streaming and the privilege line first, so a partial epic merged before the deadline carries the two refinements a judge can see. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
 
 **FRs covered:** FR-70, FR-71, NFR-2 (token streaming)
 
@@ -5021,7 +5023,7 @@ So that a slow first answer does not read as a broken portal.
 
 ## Epic 11: The agent explains itself, cites its work, and streams
 
-During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked after the OAuth 2.0 editors (Epic 12) by the owner's re-sequence of 2026-09-21, because these are what voters see and improvements are allowed through the voting week. Story 11.9 runs first and alone, before Epic 12 resumes (owner, 2026-09-24); the rest run in the order 11.7, 11.8, 11.1, 11.2, 11.3, 11.4 (owner re-order, 2026-09-22): streaming and the privilege line first, so a partial epic merged before the deadline carries the two refinements a judge can see. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
+During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked after the OAuth 2.0 editors (Epic 12) by the owner's re-sequence of 2026-09-21, because these are what voters see and improvements are allowed through the voting week. Stories 11.9 and 11.10 run first, each alone on slot B ahead of Epic 12 (owner, 2026-09-24); the rest run in the order 11.7, 11.8, 11.1, 11.2, 11.3, 11.4 (owner re-order, 2026-09-22): streaming and the privilege line first, so a partial epic merged before the deadline carries the two refinements a judge can see. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
 
 **Applies to every story in this epic.** All of these modify the same panel transcript render path, which is why they are one epic rather than three. Nothing here may break a Release 1 screen or a Release 1 agent write; anything that risks either waits for Stage 2. Every new tool declares `read` or `write` at definition time or the build fails, and every new write key is added to the governance baseline in Epic 14 rather than left to default.
 
@@ -5059,6 +5061,60 @@ So that its first answers are quick, grounded and honest about what it can do.
 - **Given** the form pages and Home
 - **When** this story completes
 - **Then** they still send no field values or rows; a form page's context gains only the two derived members.
+
+---
+
+### Story 11.10: A judge succeeds the first time
+
+**High priority (owner, 2026-09-24).** Runs alone on slot B at Epic 12's next story boundary; Epic 12 resumes after this story merges.
+
+As a judge configuring the agent for the first time,
+I want a new definition to be able to propose changes, the agent to take me to the screen we are talking about, and the panel to show its answer as it arrives,
+So that my first request for a change ends in a proposal I can confirm, on the screen that will show it.
+
+**Acceptance Criteria:**
+
+- **Given** a new definition, created through the form or the API
+- **When** it is saved without the read-only flag being touched
+- **Then** it is read/write - the flag starts off both in the stored default and in the form's initial values - while every write still needs the user's confirmation, and the prohibited set and enforced read-only are unchanged.
+
+- **Given** a definition saved before this story
+- **When** it is read
+- **Then** its stored read-only value is kept; nothing rewrites it.
+
+- **Given** the tests that pin a created definition's defaults
+- **When** this story completes
+- **Then** they pin read/write, and a mutation back to read-only reddens them.
+
+- **Given** the built-in system prompt
+- **When** this story completes
+- **Then** it is still one build-time constant (AD-11 rule 1), and it also says, in substance: when the user asks about, or asks to change, something a screen shows and they are not on that screen, open it with the navigation tool first, before answering or proposing, so they see what is being discussed and the change when it lands; do not navigate when they are already there
+- **And** the move stays announced and reversible with Back, as AD-11 rule 3 and Story 4.7 require.
+
+- **Given** CI calls no live model
+- **When** the suite runs
+- **Then** tests pin the new defaults and the prompt statement; the navigation behavior is proven live in the owner's check in Story 17.7, where "Can you create a web app for me?" asked from Home opens the web applications list before the proposal appears.
+
+- **Given** the user presses Send
+- **When** the message is accepted
+- **Then** the transcript scrolls so that the message and its progress card are in view.
+
+- **Given** the transcript is scrolled to its newest entry
+- **When** progress, a reply or a proposal card arrives
+- **Then** the transcript follows it, so the newest entry stays in view.
+
+- **Given** the user has scrolled up to read an earlier entry
+- **When** a new entry arrives
+- **Then** the transcript does not move; a "Jump to latest" control appears, returns to the newest entry, and goes away once the newest entry is in view
+- **And** its text is a row in EXPERIENCE.md's fixed-string table and a key in the string table.
+
+- **Given** reduced motion is requested
+- **When** the transcript scrolls
+- **Then** it moves instantly, with no animation.
+
+- **Given** EXPERIENCE.md says only that the transcript keeps "newest at the bottom, scrolls independently"
+- **When** this story completes
+- **Then** the panel's Body paragraph states the follow rule at origin, and a browser spec pins it: a long conversation shows a sent message in view, a scrolled-up transcript stays put and offers Jump to latest.
 
 ---
 
