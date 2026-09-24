@@ -2,7 +2,7 @@
 title: 'Story 9.1: The user editor'
 type: 'feature'
 created: '2026-09-23'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'e162c9c9bed739dbb70f3a55bbd2ba230ea41214'
 baseline_commit: 'e162c9c9bed739dbb70f3a55bbd2ba230ea41214'
 review_loop_iteration: 0
@@ -258,6 +258,10 @@ Review patches (2026-09-23 review pass; each adds or tightens a test, plus its `
 - [x] [CI] browser: `ui/browser/users.browser-spec.mjs:225` "AC7: the _SYSTEM name link carries the id in one route segment" timed out waiting for `/permissions/users/_SYSTEM` -- this story moved the Users name cell to the editor (`UserForm` left `CREATE_ONLY_FORMS`), so the pin names the old target. Re-point it to `permissions/users/edit/_SYSTEM` (the editor, id in one segment, `data-id="_SYSTEM"` or the editor's own equivalent), keeping its AD-13 intent; confirm the editor opens over `_SYSTEM` -- https://github.com/jbrandtmse/OcuPilot/actions/runs/35945402895
 - [x] [CI] browser: `ui/browser/device-editor.browser-spec.mjs:206` "AC2: a create and an edit reach the Devices list without a refresh, and its name cell opens the editor" timed out (30 s wait) -- a Story 8.8 test this story's shared changes broke (candidates: `screen-outlet.ts` `DESCRIPTOR_EDIT_PAGES`, `navigation.ts` `screenForEntityType`/`CREATE_ONLY_FORMS`, the toast rule, `list-page.ts`'s dialog move). Reproduce it against the rebuilt, redeployed bundle on `ocupilot-ci`, find which wait fails and why, and fix the product code (not the pin) unless the pin names behavior this story's spec deliberately changed. Also run every other browser spec file that exercises a form-page editor or a list name-cell link (`device-editor`, `users`, `users-create`, `users-actions`, `users-editor`, `task-resume`, and any `*-create`/`*-editor` spec touching `screen-outlet` or `navigation.ts`) one file at a time -- https://github.com/jbrandtmse/OcuPilot/actions/runs/35945402895
 
+**Rework iteration 2 (CI red on the integrate-forward head `d317549f`, run 35983775764, job `browser`):**
+
+- [ ] [CI] browser: `ui/browser/definitions.browser-spec.mjs:631` (Story 10.5, merged from Epic 10) asserts its failure line passes every DW-1337 invariant and found `app-toast-host>button.ocu-toast-dismiss: width 15.9px under 24px (floor)` on `agent/definitions/edit` at 1280 and 720. This story's toast rule (DW-1546) now raises a change toast on an editor whose list is not open, which exposes the dismiss button's size: EXPERIENCE.md "Target sizes" sets every control at least 24 x 24 CSS px. Make the toast's dismiss button meet the 24 x 24 floor (tokens only; `ui/src/app/shell/toast-host.ts` styles, uncontended since Epic 15 merged), keep its 20px glyph, and pin it with a check a mutation can redden (e.g. in `toast.browser-spec.mjs`, or a structural-walk leg over a raised toast). Do not change `definitions.browser-spec.mjs` (Epic 10's, merged). Run `definitions`, `toast`, `users-editor` and `a11y-structural-invariants` browser spec files, one at a time, after rebuild and redeploy -- https://github.com/jbrandtmse/OcuPilot/actions/runs/35983775764
+
 **Acceptance Criteria:**
 
 - **Given** a user row, **when** its name is opened, **then** `permissions/users/edit/<id>` shows the tabs General (account settings, comment, expiry, enabled, change-password-on-login, startup namespace and routine, email, mobile, two-factor) and Roles.
@@ -328,6 +332,8 @@ Rejected:
 - rejected (edits the spec): DW-1597 read as rejected in the 2026-09-24 triage row and residual risk while the ledger holds it `decision-pending`; DW-1596's `deferred:` location; the Auto Run Result's dropped earlier-pass paragraphs.
 
 ## Spec Change Log
+
+- 2026-09-24 rework iteration 2 (lead): CI red after the integrate-forward that brought Epic 10's 10.5; one `[CI]` item (toast dismiss button under the 24px target floor, exposed by DW-1546's toast rule).
 
 - 2026-09-24 (lead, post re-review): an editor's own Save raising a change toast is open as DW-1597 (decision-pending, for the user at the decision sheet); the rework triage row that reads it as rejected is superseded by that entry.
 
