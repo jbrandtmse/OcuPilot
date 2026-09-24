@@ -4838,6 +4838,39 @@ So that a gap reads as a decision rather than a defect.
 
 ---
 
+### Story 9.10: The user audit event editor
+
+**Chartered by the owner, 2026-09-24**, from DW-1573: Story 7.11 shipped enable, disable, reset and delete on the user events list, and left create and configure for after the Epic 7/8 merge, because they need AD-54's create write kind and AD-55's screen Save. Runs last in Epic 9's order.
+
+As a developer-administrator,
+I want to create a user audit event and edit its description from OcuPilot,
+So that I can define the events my own code emits without going back to the classic portal.
+
+**Acceptance Criteria:**
+
+- **Given** the user events list
+- **When** the user chooses Create
+- **Then** a dialog editor takes the event's Source, Type and Name, its Description and whether it is enabled, and Save creates it through the write tool (AD-55); the agent proposes the same create through the same tool, with AD-54's absence fingerprint, so a name taken since the proposal was minted is refused rather than overwritten - `Security.Audit.Event`'s PUT is an upsert.
+
+- **Given** an existing user event
+- **When** the user edits its description
+- **Then** the edit reads fresh, changes only what the user changed, and saves through the same tool; the event's own identity - Source, Type and Name - is read-only once created.
+
+- **Given** the vendor's own rules for a user event's Source, Type and Name
+- **When** they are enforced
+- **Then** they are measured on the instance and checked before the call, so a refusal reads as OcuPilot's own sentence on the field rather than a vendor error; a system event cannot be created or edited through the user event tools.
+
+- **Given** the new labels and refusal sentences
+- **When** they render
+- **Then** they are rows in EXPERIENCE.md's fixed-string table and keys in the string table, like every other published sentence.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1573: User audit events cannot be created or configured (Description edited) from OcuPilot: 7.11 ships enable, disable, reset and delete, and create and configure need AD-54's create kind and AD-55's screen Save (ledger; routed by owner charter 2026-09-24)
+- DW-1575: Each audit event tool accepts the other list's events, so a user event changed through a system tool publishes audit-event (and the reverse) (ledger; routed by owner charter 2026-09-24)
+
+---
+
 ## Epic 10: Run on any model, and harden the write path
 
 An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Two live-key fixes found on 2026-09-23 make every shipped provider's default model connect: sampling parameters left to the provider (10.4), and a connection test that answers before the Web Gateway's timeout (10.5). Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).

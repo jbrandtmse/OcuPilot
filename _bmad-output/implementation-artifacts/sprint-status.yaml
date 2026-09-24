@@ -168,6 +168,7 @@ development_status:
   9-7-the-new-task-wizard: backlog
   9-8-edit-task: backlog
   9-9-a-cut-editor-ships-reduced-never-half-working: backlog
+  9-10-the-user-audit-event-editor: backlog
   epic-9-retrospective: optional
 
   epic-10: done
