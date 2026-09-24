@@ -6151,6 +6151,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: AD-53's row-action route and handler exist only on OCU-1-epic7; screen-action-handler.ts's confirmation text is fixed, so the 'N users hold this role' count needs a count slot added there. 8.3 ships the agent's permissions.roles.delete.
 - 2026-09-23T05:17:18Z status=routed owner=9-3-the-role-editor by=orchestrator note=Rule 5 partial deferral of 8.3 AC3, orchestrator-authorised 2026-09-23; 9.3 plans the handler's count slot
+- 2026-09-24T09:14:13Z status=resolved-by:9-3-the-role-editor by=adjudication note=Roles-list Delete on AD-53 with OWNERLIST holder count in the typed-name dialog; roles-editor.browser-spec AC3 (6eeb6b7)
 
 ### DW-1514: The role grant dialog offers Read and Write on a database resource as independent boxes, so a Write-only grant reaches the vendor; the classic dialog ticks and locks Read when Write is ticked
 - source: spec-8-3-create-a-role-and-manage-its-resource-grants.md | severity: low | fix-risk: low | footprint: in-story
@@ -6191,6 +6192,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-4-the-resource-editor.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: AD-53's row-action route and self-protection rendering exist only on OCU-1-epic7; it needs a new AD-53 self-protection word that reads the row's AllowDelete. 8.4 ships the agent's permissions.resources.delete.
 - 2026-09-23T08:46:44Z status=routed owner=9-3-the-role-editor by=orchestrator note=Rule 5 partial deferral of 8.4 AC2, orchestrator-authorised 2026-09-23; beside DW-1513
+- 2026-09-24T09:14:13Z status=resolved-by:9-3-the-role-editor by=adjudication note=Resources-list Delete drawn disabled on AllowDelete false (row-aware self-protection); resources-editor.browser-spec
 
 ### DW-1536: A user update's EscalationRoles change is refused UNCOVEREDFIELD because the Users write tool never admitted the field
 - source: spec-8-4-the-resource-editor.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -6642,6 +6644,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: 9.1 lead smoke | severity: low | fix-risk: low | footprint: in-epic
 - evidence: POST /users with EmailAddress on ocupilot-ci answered 403 with that sentence (Prohibited.cls:342) on the screen's own route; AD-53: a kernel reason naming the agent is a defect once a screen caller shares the predicate
 - 2026-09-24T03:12:21Z status=routed owner=9-3-the-role-editor by=smoke note=rewrite caller-neutral, publish in Fixed strings and pin via RefusalCopy; related DW-1357
+- 2026-09-24T09:14:13Z status=resolved-by:9-3-the-role-editor by=adjudication note=UNCOVEREDFIELD reason caller-neutral as a REASON param, published and pinned in RefusalCopy
 ### DW-1588: The DW-1337 structural gate walks HTMLElements only, so an overflow, name or contrast defect inside an SVG is invisible to it
 - source: spec-15-7-the-rail-s-icons.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: structural-walk.mjs:247 filters querySelectorAll('*') by instanceof HTMLElement; 15.7's tile-svg width:40px mutation left the gate green while rail-icons.browser-spec (a) went red, so icon containment rests on that spec
@@ -6673,3 +6676,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-9-3-the-role-editor.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: holders keep the role in Roles after EscalationOnly=1 (measured on ocupilot-ci); the census errs toward refusing, the safe side
 - 2026-09-24T08:53:06Z status=wontfix-accepted owner=9-3-the-role-editor by=harvest note=reopen_if=a sign-in by a holder of an escalation-only role carrying %All shows %All in $ROLES on a throwaway
+
+### DW-1609: A role delete or change refused by the %All census shows the account-worded sentence (SYSTEMACCOUNT/CURRENTUSER/SERVICEACCOUNT/LASTALLHOLDER) although the target is a role
+- source: spec-9-3-the-role-editor.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Prohibited.Role -> ChangeStripsAll returns the account codes for a role write; RoleSave/ScreenAction render ReasonFor(code), e.g. LASTALLHOLDERREASON 'This is the last account that holds %All...' on a role Delete. New copy needs type-aware reasons over spec-bound codes.
+- 2026-09-24T09:12:35Z status=wontfix-accepted owner=9-3-the-role-editor by=cr note=refusal is correct, copy names the account; reopen_if=an operator reports a role-census refusal naming an account they did not touch

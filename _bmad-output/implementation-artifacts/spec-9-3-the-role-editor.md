@@ -267,6 +267,39 @@ Client:
 - **Given** any covered type, **when** a change names an unreviewed field, **then** the refusal is the caller-neutral `UNCOVEREDFIELDREASON`, published and pinned (DW-1598).
 - **Integration:** `RoleEditorPage` consumes `form-tabs`, `startFor(…, values)`, `RoleGrantDialog` and `DESCRIPTOR_EDIT_PAGES`. A refusal on an unselected tab opens it with its dot, and a grant reaches the instance through the Roles list's AD-53 route. The browser spec observes both.
 
+### Review Findings
+
+Code review 2026-09-24 (full-opus: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 31 raw findings; 7 entries survived (medium 3, low 4: 6 patched, 1 ledgered), 18 rejected, the rest merged as duplicates.
+
+- [x] [Review][Patch] `[medium]` The census asked `HoldsAll` of every `SERVICEACCOUNTS` name, and `GetUserRecursedRoleSet` errors (#838) for an account the instance lacks, so every role delete or change reaching `%All` failed there. `HoldsAll` now answers "holds nothing" for an absent account [`Kernel/Proposal/Prohibited.cls` `HoldsAll`; test `RoleDelete.TestAnAccountTheInstanceDoesNotHoldHoldsNothing`]
+- [x] [Review][Patch] `[medium]` A grant Remove from the editor (`applyGrant`'s empty-letters branch) had no test [`role-editor.page.spec.ts` "AC2: a grant removed through the dialog…"]
+- [x] [Review][Patch] `[medium]` A role member's Remove (`remove-granted-role` on the member) had no test [`role-editor.page.spec.ts` "assigns and removes members…"]
+- [x] [Review][Patch] `[low]` Member rows were keyed by index, so a Remove after a re-read could act on another member; now keyed by type and name [`role-editor.page.ts` `memberKey`]
+- [x] [Review][Patch] `[low]` `RoleSave.OnAfterOneTest` left `ProposalFixture`'s armed read set in the process; it now clears it [`Test/RoleSave.cls`]
+- [x] [Review][Patch] `[low]` `Prohibited.cls`'s class doc called `HoldsAll`/`DirectRoles` "the last two" census seams after the list grew [`Kernel/Proposal/Prohibited.cls` header]
+- [x] [Review][Defer] `[low]` A role write refused by the census shows the account-worded sentence — DW-1609, wontfix-accepted
+
+Rejected:
+
+- `low` Census before-state (`RolesGrantAll`) ignores an already escalation-only role while the after-walk honors it: errs refusing, needs such a role reaching `%All` plus a grant change.
+- `low` `Validate`'s `pFresh` is unused: the signature is the rules family's (`UserCreateRules` uses it).
+- `low` Self-grant or a cycle through `add-granted-role`: the client pickers exclude the role; no vendor harm measured.
+- `low` `EscalationOnly` 0/1 counted as a change against a stored boolean: the schema says boolean; the merge keeps the instance's type.
+- `low` Name shown in the route's spelling: the name cell links the instance's spelling.
+- `low` A delete elsewhere leaves the editor open until the next Save's 404: the 9.1/9.2 editors' shared behavior.
+- `false` Leaving the editor does not cancel Users-list actions: those are sent at once with no pending dialog.
+- `low` `openRoleDelete` has no staleness guard: the same shape as the shipped `openRole`; one dialog signal.
+- `low` The holder count costs a full form read: efficiency only.
+- `low` A non-array `OWNERLIST` reads as no holders: not observed for an existing role.
+- `low` `%All`/`%DB_*` read-only roles are not drawn read-only: the vendor answers after the click; not in the ACs.
+- `low` `RoleSave` is 564 lines: a split is larger than the finding.
+- `low` The agent tool's confirm path and the row menu's hidden value actions: the shared confirm kernel and `UNDRAWN_ACTIONS` are pinned elsewhere.
+- `low` Client/server `AllowDelete` predicates differ for a missing flag: the vendor LIST answers it on every row.
+- `low` The Edit label reuses `agentPanelSecretWarningEdit`: `strings.test.mjs` refuses a duplicate value.
+- `false` Spec growth under `oversized`: a spec edit.
+- `false` A concurrent change between Save's read and `PUT` is reverted: AD-55's Save carries no fingerprint by design, as `UserSave`.
+- `false` `{}` Save sends a PUT: already closed in the Review Triage Log.
+
 ## Spec Change Log
 
 - 2026-09-24 spec gate (lead): accepted the recommended AD-10 amendment (own-role grant changes refused `PROHIBITED.OCUPILOTROLE`, required by AD-21's privilege floor; account arms fire through a role delete or change) and applied it to the spine.
@@ -384,6 +417,9 @@ If the lead declines the first sentence, drop the own-role change arm. Such chan
 - mutation: have `RoleEditor.privileged` answer true → `role-editor.page.spec.ts` "states the privilege consequence under Members' Assign…" went red.
 - mutation: drop `row` from `command-bar.ts`'s `selfProtectionReason` call → `command-bar.spec.ts` "Story 9.3: a system-resource action…" went red; the same in `command-box.ts` → `command-box.spec.ts` "Story 9.3: with a not-deletable row selected…" went red (AC4, the other two surfaces).
 - mutation: drop the distinct-name check from `RoleCreateRules.Members` (throwaway copy, recompiled) → `OcuPilot.Test.RoleSave.TestTheSaveAndTheFormReadAnswerOneEnvelopeOverTheWire` went red on `holders` 3 (AC3's count).
+- mutation (review): drop the existence check from `Prohibited.HoldsAll` (ocupilot-ci copy, recompiled with `ProhibitedFixture`) → `OcuPilot.Test.RoleDelete.TestAnAccountTheInstanceDoesNotHoldHoldsNothing` went red (run 9684).
+- mutation (review): drop the empty-letters branch from `RoleEditorPage.applyGrant` → `role-editor.page.spec.ts` "AC2: a grant removed through the dialog…" went red.
+- mutation (review): send the role member's Remove on this role with the member as its value → `role-editor.page.spec.ts` "assigns and removes members…" went red.
 
 ## Auto Run Result
 

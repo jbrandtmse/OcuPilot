@@ -46,10 +46,11 @@
 /// <method>DeletingLeavesNoAllHolder</method>, <method>ChangingLeavesNoAllHolder</method>,
 /// <method>ChangeStripsAll</method>, <method>LastAllHolder</method>, <method>HoldsAll</method> and
 /// <method>DirectRoles</method>. Production overrides none of them.
-/// The last two are the account census, and the difference between them matters to a reader auditing it:
-/// replacing <method>LastAllHolder</method> replaces the census, while replacing
-/// <method>HoldsAll</method> only makes its input deterministic and leaves the census body
-/// running.</p>
+/// The difference between them matters to a reader auditing the account census: replacing
+/// <method>LastAllHolder</method>, <method>DeletingLeavesNoAllHolder</method>,
+/// <method>ChangingLeavesNoAllHolder</method> or <method>ChangeStripsAll</method> replaces a census,
+/// while replacing <method>HoldsAll</method> or <method>DirectRoles</method> only makes its input
+/// deterministic and leaves the census body running.</p>
 Class OcuPilot.Kernel.Proposal.Prohibited Extends %RegisteredObject
 {
 
@@ -2315,12 +2316,19 @@ ClassMethod ServiceAccounts() As %List
 /// a login would grant -- roles a role grants included -- so a custom role that grants
 /// <code>%All</code> counts. That method needs <code>%Admin_Secure:USE</code> for an account other
 /// than the caller's own, which is a pair every write reaching this class already holds (AD-8).</p>
+/// <p>An account the instance does not hold holds nothing, so the role census's service-account arm
+/// passes over a name this instance lacks rather than failing the write.</p>
 ClassMethod HoldsAll(pUser As %String, Output pHolds As %Boolean) As %Status
 {
     Set pHolds = 0
     Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
     Try {
         If pUser = "" Quit
+        Set $NAMESPACE = "%SYS"
+        Set tExists = ##class(Security.Users).Exists(pUser)
+        Set $NAMESPACE = tOrigNS
+        If 'tExists Quit
         Set tRoles = ""
         Set tSC = $SYSTEM.Security.GetUserRecursedRoleSet(pUser, .tRoles)
         If $$$ISERR(tSC) Quit
@@ -2328,6 +2336,7 @@ ClassMethod HoldsAll(pUser As %String, Output pHolds As %Boolean) As %Status
             If $ZConvert($ZStrip($Piece(tRoles, ",", tI), "<>W"), "U") = $ZConvert(..#ALLROLE, "U") Set pHolds = 1
         }
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set pHolds = 0
         Set tSC = ex.AsStatus()
     }

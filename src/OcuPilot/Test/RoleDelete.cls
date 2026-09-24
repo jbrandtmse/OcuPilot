@@ -233,6 +233,23 @@ Method TestTheDeleteCensusChecksTheAccountArmsInOrder()
     Do $ClassMethod(..#SETFIXTURE, "ArmDirectRoles", "")
 }
 
+/// <p>AD-10: the census asks every account <parameter>OcuPilot.Kernel.Proposal.Prohibited.SERVICEACCOUNTS</parameter>
+/// names, and an instance need not hold all of them, so an account the instance does not hold
+/// answers "holds nothing" rather than an error that would fail every role write reaching
+/// <code>%All</code>. <code>_SYSTEM</code> still answers that it holds it.</p>
+/// <p>Mutation (Rule 19): drop the existence check from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.HoldsAll</method> -- the absent-account status goes
+/// red.</p>
+Method TestAnAccountTheInstanceDoesNotHoldHoldsNothing()
+{
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).HoldsAll("OcuPilotNoSuchServiceAccount", .tHolds)
+    Do $$$AssertStatusOK(tSC, "an account the instance does not hold is answered, not an error")
+    Do $$$AssertEquals(tHolds, 0, "and it holds nothing")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).HoldsAll("_SYSTEM", .tHolds)
+    Do $$$AssertStatusOK(tSC, "_SYSTEM is answered")
+    Do $$$AssertEquals(tHolds, 1, "and still holds %All")
+}
+
 /// <p>AD-51: the card's rows are one removal row per subject field, carrying the value the instance
 /// holds, and a confirm after the grants moved is refused <code>PROPOSAL.TARGETCHANGED</code> with
 /// nothing written.</p>

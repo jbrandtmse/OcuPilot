@@ -93,6 +93,7 @@ Method OnBeforeOneTest() As %Status
 
 Method OnAfterOneTest() As %Status
 {
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
     Do ##class(OcuPilot.Test.ProposalFixture).ArmAllHolders("")
     Do ##class(OcuPilot.Test.ProposalFixture).ArmLastAllHolder("")
     Do $ClassMethod(..#SETFIXTURE, "ArmDirectRoles", "")

@@ -81,6 +81,11 @@ interface FieldView {
 }
 
 /** One member row, resolved for drawing. */
+/** A member row's key: its type and name, so a Remove acts on the member drawn even after a re-read. */
+function memberKey(member: Member): string {
+  return `${member.type}\n${member.name}`;
+}
+
 interface MemberView {
   readonly key: string;
   readonly name: string;
@@ -597,8 +602,8 @@ export class RoleEditorPage {
 
   protected get memberRows(): readonly MemberView[] {
     this.generation();
-    return this.store.members().map((member: Member, index: number) => ({
-      key: `${index}`,
+    return this.store.members().map((member: Member) => ({
+      key: memberKey(member),
       name: member.name,
       type: memberTypeWord(member.type),
       removable: member.type === MEMBER_TYPE_USER || member.type === MEMBER_TYPE_ROLE,
@@ -810,7 +815,7 @@ export class RoleEditorPage {
 
   /** Remove this role from one member: an account through the Users list, a role through its own grants. */
   protected onRemoveMember(key: string): void {
-    const member = this.store.members()[Number(key)];
+    const member = this.store.members().find((entry: Member) => memberKey(entry) === key);
     if (member === undefined || !this.store.editable()) return;
     this.store.setActionRefusal('');
     if (member.type === MEMBER_TYPE_USER) {

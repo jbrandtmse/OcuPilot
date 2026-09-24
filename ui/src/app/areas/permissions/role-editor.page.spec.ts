@@ -175,6 +175,21 @@ describe('the role editor (Story 9.3)', () => {
     ]);
   });
 
+  it('AC2: a grant removed through the dialog is applied as the list\u2019s remove delta', async () => {
+    // Mutation (Rule 19): drop the empty-letters branch from the page's `applyGrant` -> the body goes
+    // red, the removal sent as a set with no letters.
+    const { fixture, host, calls } = await mount();
+    (host.querySelectorAll('.ocu-role-grant button')[1] as HTMLButtonElement).click();
+    await settle(fixture);
+    const dialog = host.querySelector('app-role-grant-dialog') as HTMLElement;
+    expect(dialog.querySelector('#ocu-role-grant-resulting')?.textContent?.trim()).toBe(STRINGS.roleGrantNone);
+    (dialog.querySelector('.ocu-button-primary') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(posts(calls)).toEqual([
+      { path: '/api/ocupilot/screens/permissions.roles/action', action: 'remove-resource-grant', id: 'Probe', values: { Resource: '%DB_USER' } },
+    ]);
+  });
+
   it('sends only the changed settings to PUT /roles/<id> and shows Saved', async () => {
     const { fixture, host, calls } = await mount();
     const flag = host.querySelector('#ocu-role-edit-EscalationOnly') as HTMLInputElement;
@@ -231,7 +246,12 @@ describe('the role editor (Story 9.3)', () => {
     const { fixture, host, calls } = await mount();
     tabs(host)[1].click();
     await settle(fixture);
-    (host.querySelector(`[aria-label="${STRINGS.roleEditorTabMembers}"] .ocu-form-role button`) as HTMLButtonElement).click();
+    // Mutation (Rule 19): send the role member's Remove on this role with the member as its value --
+    // the second body goes red.
+    const removes = (): HTMLButtonElement[] => [...host.querySelectorAll(`[aria-label="${STRINGS.roleEditorTabMembers}"] .ocu-form-role button`)] as HTMLButtonElement[];
+    removes()[0].click();
+    await settle(fixture);
+    removes()[1].click();
     await settle(fixture);
     const user = host.querySelector('#ocu-role-edit-member-user') as HTMLInputElement;
     user.value = 'Lee';
@@ -248,6 +268,7 @@ describe('the role editor (Story 9.3)', () => {
     await settle(fixture);
     expect(posts(calls)).toEqual([
       { path: '/api/ocupilot/screens/permissions.users/action', action: 'remove-role', id: 'Dana', values: { Role: 'Probe' } },
+      { path: '/api/ocupilot/screens/permissions.roles/action', action: 'remove-granted-role', id: 'Outer', values: { Role: 'Probe' } },
       { path: '/api/ocupilot/screens/permissions.users/action', action: 'add-role', id: 'Lee', values: { Role: 'Probe' } },
       { path: '/api/ocupilot/screens/permissions.roles/action', action: 'add-granted-role', id: '%Manager', values: { Role: 'Probe' } },
     ]);
