@@ -2169,6 +2169,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-15T15:13:40Z status=routed owner=burndown by=spec_gate note=same family as DW-289: widen the rule's pattern and arm the three classes; it reddens three classes outside Story 3.2's footprint, so it is burn-down work
 - 2026-09-16T10:21:58Z status=routed owner=9-5-the-ssl-tls-editor by=burndown_gate note=the SSL/TLS editor is the story that next creates and deletes SSL configurations, so it is where an unarmed destructive test costs most
 - 2026-09-17T02:48:30Z occurrence=6-4-the-oauth-2-0-screen note=OAuthTabs arms on OCUPILOT_ALLOW_PRINCIPALS but its OAuthProbe.Create call matches no rule pattern, so its guard is unenforced
+- 2026-09-24T13:53:16Z status=resolved-by:9-5-the-ssl-tls-editor by=adjudication note=check-objectscript destructive guard covers SSLConfigs and fixture helpers; Demo and DemoFaults armed and rostered (AC7)
 
 ### DW-333: ProviderPort reads a stored definition's systemPromptOverride into the call values and nothing reads it back, so a definition's own system prompt is silently dropped on the Invoke path
 - source: spec-3-2-the-provider-contract-and-the-anthropic-adapter.md | severity: med | fix-risk: low | footprint: in-epic
@@ -2585,6 +2586,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: faultAbsentEntity is the one published sentence for AD-37 and ends 'Return to the list to see what is there now'; Switches is a form-page with no list, and an inline marker would be unpublished copy the strings gate refuses
 - 2026-09-16T05:46:35Z status=routed owner=burndown by=harvest note=needs one published sentence for an absent entity on a screen with no list; the copy call is the owner's
 - 2026-09-16T10:21:59Z status=routed owner=9-5-the-ssl-tls-editor by=burndown_gate note=the next form-page editor, which needs the same absent-entity sentence
+- 2026-09-24T13:53:16Z status=resolved-by:9-5-the-ssl-tls-editor by=adjudication note=faultAbsentEntityNoList published and rendered on Switches (AC8)
 
 ### DW-392: CLAUDE.md says check-objectscript.py carries 17 rules where it now carries 18
 - source: spec-3-7 | severity: low | fix-risk: low | footprint: cross-epic
@@ -6226,6 +6228,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-5-x-509-import-edit-and-delete.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: AD-53's row-action route exists only on OCU-1-epic7 until both epics merge; 8.5 ships the agent's security.x509.delete. Delete is in 8.5's title only, not an AC.
 - 2026-09-23T11:02:04Z status=routed owner=9-5-the-ssl-tls-editor by=orchestrator note=orchestrator ruling 2026-09-23, the 8.3/8.4 precedent (DW-1513, DW-1528)
+- 2026-09-24T13:53:17Z status=resolved-by:9-5-the-ssl-tls-editor by=adjudication note=X.509-list Delete on AD-53 with typed-name dialog; security-deletes.browser-spec (AC6)
 
 ### DW-1544: The demo fixture in Install/Fixture.cls carries a PEM private key literal, already in the public repository's history since b366e45f
 - source: orchestrator ruling on 8.5 test keys | severity: med | fix-risk: med | footprint: in-epic
@@ -6272,6 +6275,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-8-6-the-wallet-secret-form.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: No Epic 8 AC covers the delete; AD-53's row-action route exists only on OCU-1-epic7 until both epics merge
 - 2026-09-23T14:47:12Z status=routed owner=9-5-the-ssl-tls-editor by=orchestrator note=orchestrator ruling 2026-09-23, beside DW-1541 (FR-46)
+- 2026-09-24T13:53:17Z status=resolved-by:9-5-the-ssl-tls-editor by=adjudication note=security.secrets.delete (destructive) + Secrets-list Delete row action via admin API; security-deletes.browser-spec (AC6)
 
 ### DW-1559: AD-27's third case described the composed wallet read as carrying Name and fingerprinting three settings; the port answers {Type, Usage, RequireTLS, AllowedHosts} and the fingerprint also covers Type
 - source: spec-8-6-the-wallet-secret-form.md | severity: med | fix-risk: low | footprint: in-epic
@@ -6759,3 +6763,20 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-9-5-the-ssl-tls-editor.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: confirm path skips SslRules' length rule; Security.Datatype.Password MAXLEN 255 refusal 7201 quotes the value; AdminPort.Fail logs the vendor status; shared with the X.509 password confirm
 - 2026-09-24T13:28:15Z status=open owner=9-5-the-ssl-tls-editor by=harvest note=settle in 9.5 code review: 300-char sentinel through security.ssl.update confirm on ocupilot-ci, scan messages.log; patch (length rule at confirm, or redact) if real
+- 2026-09-24T13:51:24Z status=resolved-by:9-5-the-ssl-tls-editor by=cr note=real: run 10046 logged it twice (7201+5802); AdminPort.LoggedStatus masks body secrets; SslSecret pins it
+
+### DW-1617: AD-10's spine text names the four own-provider SSL fields but not the delete of OcuPilotProvider, which the code refuses as AD-10 as amended
+- source: spec-9-5-the-ssl-tls-editor.md (cr) | severity: low | fix-risk: low | footprint: in-story
+- evidence: ARCHITECTURE-SPINE.md:203 amends AD-10 for VerifyPeer/CAFile/Type/Enabled only; the gate ruling (spec Tasks, SSL delete) says the own-SSL arm covers delete; Prohibited.Ssl refuses DELETE citing AD-10 as amended
+- 2026-09-24T13:51:24Z status=open owner=9-5-the-ssl-tls-editor by=cr note=lead: Rule 20 one-clause AD-10 amendment naming the delete; adjudicate at ledger_adjudicated
+- 2026-09-24T13:53:16Z status=resolved-by:9-5-the-ssl-tls-editor by=adjudication note=AD-10's OCUPILOTSSL clause now names the delete (lead, Rule 20)
+
+### DW-1618: security.ssl.delete mints a destructive card for OcuPilotProvider that only the confirm refuses; no ArgumentProblem or ScreenActionDelta refusal as RoleDelete has
+- source: spec-9-5-the-ssl-tls-editor.md (cr) | severity: low | fix-risk: med | footprint: in-story
+- evidence: SslDelete.cls overrides neither hook; SslSave.TestOcuPilotsOwnConfigurationsDeleteIsRefusedOnBothCallers asserts the proposal is minted and 403 at confirm; AC9 holds (refused on both callers)
+- 2026-09-24T13:51:24Z status=wontfix-accepted owner=9-5-the-ssl-tls-editor by=cr note=reopen_if=a real session shows the agent proposing an OcuPilotProvider delete card
+
+### DW-1619: The SSL editor draws the private key password field on configurations with no private key file, where any typed value is refused SSL.PRIVATEKEYPASSWORD.KEYFILE
+- source: spec-9-5-the-ssl-tls-editor.md (cr) | severity: low | fix-risk: low | footprint: in-story
+- evidence: ssl-form.page.ts draws the field in every edit; SslRules.Validate refuses it without a key file; the agent card offers the row only with one (SslUpdate.StateDiff)
+- 2026-09-24T13:51:24Z status=wontfix-accepted owner=9-5-the-ssl-tls-editor by=cr note=reopen_if=a user reports the refused password field on a client configuration

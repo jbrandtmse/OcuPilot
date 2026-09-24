@@ -823,10 +823,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         ; the question itself, on the error path only: no cost on the happy path, and no false 403
         ; for a caller who does hold the set. An endpoint with no declared set keeps the 500.
         If $$$ISERR(tSeqSC) && (tHttp = 500) && ..QueryPairRefused(pEndpoint, pType, .tFailedPair) {
-            Set tSC = ..Denied(pEndpoint, tFailedPair, tSeqSC, .pHttpStatus, .pFault)
+            Set tSC = ..Denied(pEndpoint, tFailedPair, tSeqSC, .pHttpStatus, .pFault, pBody)
             Quit
         }
-        Set tSC = ..Fail(pEndpoint, tHttp, tSeqSC, .pHttpStatus, .pFault, ..WrapperKey(pEndpoint, pType))
+        Set tSC = ..Fail(pEndpoint, tHttp, tSeqSC, .pHttpStatus, .pFault, ..WrapperKey(pEndpoint, pType), pBody)
     } Catch ex {
         Set pResult = ""
         Set pHttpStatus = 500
@@ -2107,8 +2107,10 @@ ClassMethod AwaitTask(pEndpoint As %String, pGuid As %String, Output pResult, Ou
 /// <p>A failed vendor outcome: the fault from <method>OcuPilot.Kernel.Fault.Outcome</method>,
 /// the vendor status to the log, and an error status carrying only the fault's own text.
 /// <var>pWrapper</var> is the request's <parameter>WRAPPEDTYPES</parameter> wrapper key, or
-/// <code>""</code>; a violation field that begins with it and a dot loses that segment.</p>
-ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pWrapper As %String = "") As %Status [ Private ]
+/// <code>""</code>; a violation field that begins with it and a dot loses that segment.
+/// <var>pBody</var> is the body the request sent, whose secrets the logged status never carries
+/// (<method>LoggedStatus</method>).</p>
+ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pWrapper As %String = "", pBody As %DynamicAbstractObject = "") As %Status [ Private ]
 {
     Set pHttpStatus = $Select(+pHttp: +pHttp, 1: 500)
     Set tOutcomeSC = ##class(OcuPilot.Kernel.Fault).Outcome(pHttpStatus, pVendorSC, .pFault, .tDetail)
@@ -2132,8 +2134,48 @@ ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, 
         Do tFieldDetail.%Set("violations", tViolations)
         Do pFault.%Set("detail", tFieldDetail)
     }
-    If $$$ISERR(pVendorSC) Do ..LogFault(pEndpoint _ " failed with HTTP " _ pHttpStatus, pVendorSC, pFault.code)
+    If $$$ISERR(pVendorSC) Do ..LogFault(pEndpoint _ " failed with HTTP " _ pHttpStatus, ..LoggedStatus(pVendorSC, pBody), pFault.code)
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
+}
+
+/// <p><var>pStatus</var> as the log may carry it (AD-35): every non-empty string <var>pBody</var>
+/// holds under a credential name (<method>OcuPilot.Kernel.Audit.Log.IsCredentialName</method>), at
+/// any depth, replaced by the log's own mask, because a vendor refusal can quote a value it was
+/// sent -- a private key password over its <code>MAXLEN</code> is quoted by errors 7201 and 5802.
+/// A status quoting none is answered unchanged; one that cannot be screened is replaced by a
+/// sentence carrying no vendor text.</p>
+ClassMethod LoggedStatus(pStatus As %Status, pBody As %DynamicAbstractObject = "") As %Status [ Private ]
+{
+    Set tLogged = pStatus
+    Try {
+        If $$$ISOK(pStatus) || '$IsObject(pBody) Quit
+        Set tSecrets = ..SecretValues(pBody)
+        If tSecrets = "" Quit
+        Set tText = $System.Status.GetErrorText(pStatus)
+        Set tMasked = tText
+        For tI = 1:1:$ListLength(tSecrets) Set tMasked = $Replace(tMasked, $List(tSecrets, tI), $Parameter("OcuPilot.Kernel.Audit.Log", "REDACTED"))
+        If tMasked '= tText Set tLogged = $$$ERROR($$$GeneralError, tMasked)
+    } Catch {
+        Set tLogged = $$$ERROR($$$GeneralError, "the vendor's status could not be screened for the secrets its request sent, so its text is not logged")
+    }
+    Quit tLogged
+}
+
+/// <p>Every non-empty string <var>pData</var> holds under a credential name, at any depth, as a
+/// list.</p>
+ClassMethod SecretValues(pData As %DynamicAbstractObject) As %List [ Private ]
+{
+    Set tValues = ""
+    Set tInArray = ($ClassName(pData) = "%Library.DynamicArray")
+    Set tIterator = pData.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        If $IsObject(tValue) {
+            Set tValues = tValues _ ..SecretValues(tValue)
+        } ElseIf 'tInArray && (pData.%GetTypeOf(tKey) = "string") && (tValue '= "") && ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(tKey) {
+            Set tValues = tValues _ $ListBuild(tValue)
+        }
+    }
+    Quit tValues
 }
 
 /// <p>A refusal the port decided itself, with no vendor status behind it. <var>pDetail</var>,
@@ -2154,14 +2196,14 @@ ClassMethod Refuse(pHttp As %Integer, pSlug As %String, pCode As %String, pReaso
 /// <p>The slug, the code and the sentence are <class>OcuPilot.Kernel.Fault</class>'s own, read
 /// from its mapping of HTTP 403 rather than written a second time here -- which is what keeps one
 /// code from being worded two ways.</p>
-ClassMethod Denied(pEndpoint As %String, pFailedPair As %String, pVendorSC As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+ClassMethod Denied(pEndpoint As %String, pFailedPair As %String, pVendorSC As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pBody As %DynamicAbstractObject = "") As %Status [ Private ]
 {
     Set tDetail = {}
     Do tDetail.%Set("failedPair", pFailedPair)
     Set tMapSC = ##class(OcuPilot.Kernel.Fault).Outcome(403, pVendorSC, .tMapped, .tVendorText)
     If $$$ISERR(tMapSC) Do ..LogFault(pEndpoint _ " fault mapping failed", tMapSC)
     Set tSC = ..Refuse(403, tMapped.error, tMapped.code, tMapped.reason, .pHttpStatus, .pFault, tDetail)
-    Do ..LogFault(pEndpoint _ "'s backing query refused a caller holding no pair of the set naming " _ pFailedPair, pVendorSC, pFault.code)
+    Do ..LogFault(pEndpoint _ "'s backing query refused a caller holding no pair of the set naming " _ pFailedPair, ..LoggedStatus(pVendorSC, pBody), pFault.code)
     Quit tSC
 }
 

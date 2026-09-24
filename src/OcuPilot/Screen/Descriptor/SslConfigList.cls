@@ -11,7 +11,7 @@
 /// vendor builds that row by excluding two columns from <code>Security.SSLConfigs</code>' own
 /// <code>List</code> query, so no key material is in it by construction.
 /// <class>OcuPilot.Test.ScreenRead</class> holds every declared field to the live first row.</p>
-/// <p><b>It declares no <code>rowGet</code>.</b> The endpoint's GET carries seventeen further fields
+/// <p><b>It declares no <code>rowGet</code>.</b> The endpoint's GET carries eighteen further fields
 /// the list does not show -- file locations among them, which are locations and not key material --
 /// and never the private key password, so <code>context.secretFields</code> is empty because the
 /// read carries no secret to strip (AD-35, Conventions, Secrets).</p>

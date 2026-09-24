@@ -71,7 +71,8 @@ ClassMethod AuditMark() As %String
 
 /// <p>Every audit row stamped at or after <var>pMark</var>, its description and its data, joined.
 /// The audit database is read in <code>%SYS</code> (AD-16) with the mark bound, never
-/// concatenated.</p>
+/// concatenated. A read that fails throws, so a caller's "no row holds it" is never scored on a
+/// scan that did not run.</p>
 ClassMethod AuditSince(pMark As %String) As %String
 {
     Set tText = ""
@@ -79,26 +80,14 @@ ClassMethod AuditSince(pMark As %String) As %String
     Try {
         Set $NAMESPACE = "%SYS"
         Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT Description, EventData FROM %SYS.Audit WHERE UTCTimeStamp >= ?", pMark)
+        If tResult.%SQLCODE < 0 Throw ##class(%Exception.SQL).CreateFromSQLCODE(tResult.%SQLCODE, tResult.%Message)
         While tResult.%Next() {
             Set tText = tText _ tResult.%Get("Description") _ "|" _ tResult.%Get("EventData") _ $Char(10)
         }
         Set $NAMESPACE = tOrigNS
-    } Catch {
+    } Catch ex {
         Set $NAMESPACE = tOrigNS
-    }
-    Quit tText
-}
-
-/// <p>Every member of the ledger row <var>pRow</var> (as <method>OcuPilot.Test.AuditMarker.WriteRow</method>
-/// answers it), joined.</p>
-ClassMethod Joined(ByRef pRow) As %String
-{
-    Set tText = ""
-    Set tName = ""
-    For {
-        Set tName = $Order(pRow(tName))
-        If tName = "" Quit
-        Set tText = tText _ pRow(tName) _ "|"
+        Throw ex
     }
     Quit tText
 }

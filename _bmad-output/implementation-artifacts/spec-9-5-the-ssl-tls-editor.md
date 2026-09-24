@@ -336,6 +336,24 @@ Client:
 - **AC9 (SSL delete).** Given the SSL list, when Delete is chosen and the name typed, then the configuration is deleted through AD-53's route and the list re-reads; `OcuPilotProvider` is refused on both callers under AD-10; the agent's `security.ssl.delete` is destructive.
 - **Integration.** `SslFormPage` consumes `form-tabs`, the Save routes and the test route. A refused Save on an unselected tab opens it with its dot, and a created configuration is reached through the list's name cell. The browser spec observes both.
 
+### Review Findings
+
+Code review 2026-09-24 (full-opus: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor; all four ran). 0 high, 3 medium, 6 low patched; 3 ledgered; the rest rejected.
+
+- [x] [Review][Patch] (med) The agent's VerifyPeer description swapped a server's levels (1 "require", 3 "request"; the vendor has 1 request, 3 require), and the create schema offered 3 and a held CA file a create never has [`Screen/Tool/SslCreate.cls` `Described`]
+- [x] [Review][Patch] (med) DW-1615, confirmed on `ocupilot-ci` (run 10046): a 300-character password confirmed through `security.ssl.update` was quoted twice into `messages.log` by vendor errors 7201 and 5802, through `AdminPort.Fail`. `AdminPort.LoggedStatus` now masks the body's credential-named values before the vendor status is logged, in `Fail` and `Denied`; the X.509 password confirm shares the fix [`Port/AdminPort.cls`; `Test/SslSecret.cls` `TestAnOverlongPasswordOnTheConfirmReachesNoSink`]
+- [x] [Review][Patch] (med) AD-21 on the agent path: no test pinned `SslUpdate.ArgumentProblem`'s rules call, so a caller-named CAFile could be proposed with every test green [`Test/SslUpdate.cls` `TestTheChangesRulesRefuseACallerNamedLocation`]
+- [x] [Review][Patch] (low) `SslSinks.AuditSince` returned `""` on a failed read, so every "no audit row holds it" leg passed on a scan that never ran; it now throws [`Test/SslSinks.cls`]
+- [x] [Review][Patch] (low) Seven `SslRules` refusals had no case, and the form read's `requiredFields` and `rules` were never asserted [`Test/SslSave.cls`]
+- [x] [Review][Patch] (low) `SslSecret`'s tests depended on the last one restoring the probe; each now starts from a fresh probe [`Test/SslSecret.cls` `OnBeforeOneTest`]
+- [x] [Review][Patch] (low) Dead `SslSinks.Joined`; `SslConfigList`'s doc said seventeen further GET fields, not eighteen
+- [x] [Review][Defer] DW-1617 (low, open, lead): AD-10's spine text does not name the delete of `OcuPilotProvider` that the gate ruling and `Prohibited.Ssl` refuse -- a Rule 20 one-clause amendment
+- [x] [Review][Defer] DW-1618 (low, wontfix-accepted): `security.ssl.delete` has no mint or `ScreenActionDelta` refusal for `OcuPilotProvider`, so the agent can show a card only the confirm refuses; AC9 holds on both callers
+- [x] [Review][Defer] DW-1619 (low, wontfix-accepted): the password field is drawn on configurations with no private key file, where any value is refused on its field
+- Decided: the matrix's 400 for rule refusals is superseded by the Boundaries' `UserSave` order, which answers 422 `SSL.VALIDATION` on the screen and 400 `TOOL.ARGUMENTS` for the agent, as `UserSave` and 9.1 do; the implementation stands.
+- Rejected, by design (the spec fixes the behavior): a server create offered and refused on Type; `sslEffectNoPeerCheck`'s wording and the to-0-only weakening on a server; Test connection testing the saved configuration while the form is dirty; the delete refusal reusing `OCUPILOTSSLREASON`.
+- Rejected, low or false: an edit-mode denial reading "create" (the X.509 and wallet forms share it; list and form share their pairs); the two callers' codes for an own-field change the page draws disabled; a non-string password dropped (the client sends a string); `Defaults` swallowing a failure; `SSL.NAME.ABSENT` in `rules` (the client takes the first Name rule, `SSL.NAME.REQUIRED`); set/unset password assertions; `SecurityDeleteProbe` unarmed (its browser callers refuse the live container); whitespace names, numeric `Enabled`, huge `VerifyDepth`, empty cipher arrays and a malformed name look-up (no everyday reach); no browser leg for an empty SSL list (`OcuPilotProvider` is always present); "the instance refuses" wording (the project's convention); stale spec notes on the bundle and matrix (a spec edit; the re-base is the lead's).
+
 ## Spec Change Log
 
 - 2026-09-24 spec gate (lead): orchestrator rulings (a) on all three questions - AD-39 gains the Test-connection named exception (spine amended); AC1's CRL is a caption (epics.md amended); SSL delete added to this story (epics.md amended; Tasks, AC9). AD-10's `PROHIBITED.OCUPILOTSSL` and AD-21's SSL file-field clause were accepted as applied.
@@ -497,6 +515,9 @@ Slot A. Every IRIS MCP call carries `server: "ocupilot-slot-a"`. Anything that c
 - mutation: keep the empty password in `SslUpdate.DerivedFields` (no `%Remove`) → `OcuPilot.Test.SslSecret.TestAnEmptyOptionalPasswordLeavesTheStoredOneSet` went red on the agent's leg; send the password whenever the body carries it in `SslSave.Update` → the same test went red on the screen's leg.
 - mutation: delete the `Gate` call from `SslRules.HandleTest` → `OcuPilot.Test.SslWire.TestACallerLackingAPairIsRefusedOnEveryRoute` went red on the Test route for both principals.
 - mutation: answer `taken` 0 in `SslRules.HandleName` → `OcuPilot.Test.SslSave.TestEachRouteAnswersOneJsonEnvelopeOverTheWire` went red on the taken leg.
+- mutation (CR): log `pVendorSC` unscreened in `AdminPort.Fail` (the code before the review) → `OcuPilot.Test.SslSecret.TestAnOverlongPasswordOnTheConfirmReachesNoSink` went red on its `messages.log` leg (run 10046); with `LoggedStatus` green.
+- mutation (CR): describe a server's level 3 as "request" in `SslCreate.Described` → `OcuPilot.Test.SslUpdate.TestTheToolsDeclareTheirFieldsAndShapes` went red; drop the `Validate` call from `SslUpdate.ArgumentProblem` → `TestTheChangesRulesRefuseACallerNamedLocation` went red (run 10052); reverted, source copy identical, green.
+- mutation (QA): point `TestOcuPilotsOwnConfigurationIsRefusedAtTheMint`'s `tOwn` at a name the instance does not hold (`OcuPilotQaMutationProbeAbsent`) → the new `AssertStatusOK`/`AssertTrue` precondition assertions went red on `ocupilot-ci` (run 10044; PORT.NOTFOUND); reverted, byte-identical (sha256 `318c7190…`), green again (run 10045). Before this pass the method's `If '$IsObject($Get(tHeld)) Quit` on the same failure asserted nothing and passed, which is what a lead's AD gate flagged.
 
 ## Auto Run Result
 

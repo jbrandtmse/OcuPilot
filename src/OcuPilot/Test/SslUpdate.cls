@@ -52,6 +52,8 @@ Method OnAfterOneTest() As %Status
 /// schema offers; neither advertises a file location. Each tool's positive list is the prohibited
 /// set's. The delete is an action write over the vendor's bodyless <code>DELETE</code>, fingerprinted
 /// over the four settings anything connecting through the configuration relies on.</p>
+/// <p>Mutation (Rule 19): describe a server's peer level 3 as "request" in
+/// <method>OcuPilot.Screen.Tool.SslCreate.Described</method> -- the server-levels leg goes red.</p>
 Method TestTheToolsDeclareTheirFieldsAndShapes()
 {
     Set tCreate = $ClassMethod(..#CREATE, "InputSchema")
@@ -69,6 +71,8 @@ Method TestTheToolsDeclareTheirFieldsAndShapes()
         Do $$$AssertEquals(..Sorted(tNames), tThirteen, "a schema advertises the thirteen settings and nothing else")
         Do $$$AssertEquals(tSchema.%Get("properties").%Get("VerifyPeer").%Get("type"), "integer", "typed as the vendor's read answers them")
     }
+    Do $$$AssertEquals(tCreate.%Get("properties").%Get("VerifyPeer").%Get("enum").%ToJSON(), "[0,1]", "a create, always a client, offers a client's two peer levels")
+    Do $$$AssertTrue(tUpdate.%Get("properties").%Get("VerifyPeer").%Get("description") [ "A server: 0 none, 1 request the client's certificate, 3 require it", "and a change names a server's levels as the vendor does, 3 the stricter")
     Do $$$AssertEquals(..Sorted($ClassMethod(..#CREATE, "SettableFields")), tThirteen, "the create sets the thirteen")
     Do $$$AssertEquals(..Sorted($ClassMethod(..#SET, "PermittedCreateFields", "ssl-configuration")), tThirteen, "which the prohibited set permits a create")
     Do $$$AssertEquals(..Sorted($ClassMethod(..#UPDATE, "SettableFields")), ..Sorted($ClassMethod(..#SET, "PermittedChangeFields", "ssl-configuration")), "the change sets what the set permits a change, the password among them")
@@ -153,12 +157,17 @@ Method TestANoOpIsRefusedAtTheMint()
 /// <p>Mutation (Rule 19): drop the own-configuration check from
 /// <method>OcuPilot.Screen.Tool.SslUpdate.ArgumentProblem</method> -- the four fields are minted and
 /// this goes red.</p>
+/// <p>Mutation (Rule 19, QA): the fresh read's precondition is itself asserted, not a silent
+/// <code>Quit</code> -- point <var>tOwn</var> at a name the instance does not hold and the read's
+/// 404 now fails this test loudly instead of a false pass with no assertions run.</p>
 Method TestOcuPilotsOwnConfigurationIsRefusedAtTheMint()
 {
     Set tOwn = ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG
     Kill tQuery
     Set tQuery("name") = tOwn
     Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Security.SSLConfig", "GET", .tQuery, "", .tHeld, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "OcuPilot's own configuration (" _ tOwn _ ") reads")
+    Do $$$AssertTrue($IsObject($Get(tHeld)), "and the read answers an object -- OcuPilotProvider must exist on this instance for this test to prove anything")
     If '$IsObject($Get(tHeld)) Quit
     Do ##class(OcuPilot.Test.ProposalFixture).Arm(tHeld.%ToJSON())
     For tArgs = {"VerifyPeer": 0}, {"Enabled": false}, {"CAFile": ""}, {"Type": 1} {
@@ -170,6 +179,19 @@ Method TestOcuPilotsOwnConfigurationIsRefusedAtTheMint()
     Set tSC = ..Mint(..#UPDATE, {"Name": (tOwn), "Description": "probe"}, .tProposal, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "its description is proposed: " _ ..Problem(.tFault))
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "and nothing is written")
+}
+
+/// <p>AD-21, AD-55: the change tool's own rules refuse what the form refuses, a caller-named trusted
+/// certificates location first among them, before any proposal exists. Read against a name the
+/// instance does not hold, so the rules see an empty fresh read and nothing is written.</p>
+/// <p>Mutation (Rule 19): drop the <code>Validate</code> call from
+/// <method>OcuPilot.Screen.Tool.SslUpdate.ArgumentProblem</method> -- the path is proposed and this
+/// goes red.</p>
+Method TestTheChangesRulesRefuseACallerNamedLocation()
+{
+    Set tSC = $ClassMethod(..#UPDATE, "ArgumentProblem", ..#PROBE, {"Name": (..#PROBE), "CAFile": "/tmp/x.pem"}, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the rules run")
+    Do $$$AssertEquals(tProblem, "'CAFile': " _ ##class(OcuPilot.Api.Error).ReasonForViolation(##class(OcuPilot.Api.Error).#SSLCAFILEPATH), "a location is refused on CAFile with the published sentence")
 }
 
 /// <p>AD-5, AD-39: the form is built, unlisted and at the list's own route with the editor suffix,

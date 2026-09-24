@@ -62,11 +62,12 @@ Method OnAfterAllTests() As %Status
     Quit $$$ADDSC(tSC, tDiscardSC)
 }
 
+/// <p>Each test starts from the probe created afresh, with no password stored.</p>
 Method OnBeforeOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.ProposalFixture).Clear()
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
-    Quit $$$OK
+    Quit ..EnsureProbe()
 }
 
 Method OnAfterOneTest() As %Status
@@ -172,8 +173,7 @@ Method TestTheAgentsConfirmCarriesThePasswordToTheWriteAndNowhereElse()
 /// <p>An empty optional password is not a change: with the right password stored, the agent's
 /// confirm of a Description-only change with the card's password row supplied as <code>""</code>,
 /// and the screen's Save of <code>{Description, PrivateKeyPassword: ""}</code>, each change the
-/// description through the real port and leave the password stored. The probe is created afresh
-/// afterwards, with no password stored, so the other tests' starting state holds in any order.</p>
+/// description through the real port and leave the password stored.</p>
 /// <p>Mutation (Rule 19): drop the <code>%Remove</code> from
 /// <method>OcuPilot.Screen.Tool.SslUpdate.DerivedFields</method> -> the agent's leg goes red; send the
 /// password whenever the body carries it in <method>OcuPilot.Area.Security.SslSave.Update</method>
@@ -205,8 +205,37 @@ Method TestAnEmptyOptionalPasswordLeavesTheStoredOneSet()
     Set tSC = ..Fresh(.tFresh)
     Do $$$AssertEquals($Select($IsObject($Get(tFresh)): tFresh.%Get("Description"), 1: ""), tScreen, "the Save reached the instance")
     Do $$$AssertEquals(..PasswordSet(), 1, "and the password stays stored")
+}
 
-    Do $$$AssertStatusOK(..EnsureProbe(), "the probe is created afresh, with no password stored")
+/// <p>AC2, AD-35: a private key password longer than the vendor stores, typed on the agent's
+/// confirm, is refused, is not stored, and reaches no answer, ledger row, <code>messages.log</code>
+/// line or audit row. The confirm path runs no form rule on a secret, and the vendor's length
+/// refusal (errors 7201 and 5802) quotes the value it was sent.</p>
+/// <p>Mutation (Rule 19): log <var>pVendorSC</var> unscreened in
+/// <method>OcuPilot.Port.AdminPort.Fail</method> -- the <code>messages.log</code> leg goes red.</p>
+Method TestAnOverlongPasswordOnTheConfirmReachesNoSink()
+{
+    Set tLong = ..Sentinel _ "Overlong"
+    Set tLong = tLong _ $Translate($Justify("", 300 - $Length(tLong)), " ", "x")
+    Set tOffset = ##class(OcuPilot.Test.SslSinks).LogOffset()
+    Set tMark = ##class(OcuPilot.Test.SslSinks).AuditMark()
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "a turn is seeded")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint(..#LIST, $Parameter(..#TOOL, "TOOLNAME"), $Username, "", tTurnKey, {"Name": (..#PROBE), "Description": (..#PROBEMARKER _ " overlong")}, ..#LIMITS, .tProposal, .tHttp, .tFault, $ClassMethod(..#TOOL, "Endpoint"), $ClassMethod(..#TOOL, "IdParam"), ..#PROBE, $ClassMethod(..#TOOL, "IdArgument"), $ClassMethod(..#TOOL, "SettableFields"), ..#TOOL)
+    Do $$$AssertStatusOK(tSC, "the agent's Description change is minted: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tSecrets = {}
+    Do tSecrets.%Set("PrivateKeyPassword", tLong, "string")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), tSecrets, $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertTrue($$$ISERR(tSC), "the confirm with a " _ $Length(tLong) _ "-character password is refused: " _ $Get(tHttp) _ " " _ $Get(tCode))
+    Do $$$AssertEquals(..PasswordSet(), 0, "nothing is stored")
+    Do $$$AssertEquals(..Carries($System.Status.GetErrorText(tSC) _ $Select($IsObject($Get(tResult)): tResult.%ToJSON(), 1: "") _ $Select($IsObject($Get(tDetail)): tDetail.%ToJSON(), 1: "")), 0, "the refusal does not carry it")
+    Do $$$AssertEquals(..Carries(##class(OcuPilot.Test.SslSinks).LedgerText(tTurnKey)), 0, "no ledger row holds it")
+    Do $$$AssertTrue(##class(OcuPilot.Test.SslSinks).Flush(tOffset), "messages.log is written up to a line logged after the confirm")
+    Set tLog = ##class(OcuPilot.Test.SslSinks).LogSince(tOffset)
+    Do $$$AssertTrue(tLog [ "Security.SSLConfig failed", "the scan covers the refused write: it holds the port's failure line")
+    Do $$$AssertEquals(..Carries(tLog), 0, "no messages.log line written meanwhile holds it")
+    Do $$$AssertEquals(..Carries(##class(OcuPilot.Test.SslSinks).AuditSince(tMark)), 0, "and no audit row does")
 }
 
 /// <p>Whether <var>pText</var> carries this run's password.</p>
