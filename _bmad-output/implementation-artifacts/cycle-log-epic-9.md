@@ -143,3 +143,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-24T15:19:18Z	Epic 9	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=gh
 2026-09-24T15:19:18Z	Epic 9	telemetry_gate	pending=0 action=none note=epic4_offers_pre_answered_decline
 2026-09-24T15:19:18Z	Story 9.7	stage_lost	stage=implement agent_name=9-7-the-new-task-wizard-implement-1 reason=account_quota_exhausted partial_tree=26M+14new(unverified) backup=scratchpad/recovery-2026-09-24
+2026-09-24T15:21:16Z	Story 9.7	wip_preserved	sha=9f44b36f pushed=yes ci=pending run=36019495363 note=inherited_partial_tree_unverified,hook_bypassed(screen-mirror_stale),baseline_revision_kept_f9851990
+2026-09-24T15:21:16Z	Story 9.7	stage_spawned	stage=implement spawn_at=2026-09-24T15:21:16Z model=opus agent_name=9-7-the-new-task-wizard-implement-1r cycle_iteration=1 note=replaces_lost_implement-1
