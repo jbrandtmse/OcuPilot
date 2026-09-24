@@ -94,3 +94,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-24T09:51:14Z	Story 9.5	story_created	spawn_at=2026-09-24T09:35:23Z model=opus path=_bmad-output/implementation-artifacts/spec-9-5-the-ssl-tls-editor.md build_status=ready-for-dev spec_bytes=34514 warnings=oversized,multiple-goals epic_context=reused note=plan_ran_survey_subagents_in_background(self-reported_all_returned)
 2026-09-24T09:51:14Z	Epic 9	spine_updated	ad=AD-10,AD-21 reason=clarification by=runner story=9-5-the-ssl-tls-editor what=OCUPILOTSSL_own_provider_config_arm;SSL_file_fields_caller-unnameable lint=ok_preexisting_low_placeholder_line167
 2026-09-24T09:51:14Z	Story 9.5	plan_clarification_requested	questions=AD-39_named_exception_for_test_connection_text(AC4),AC1_CRL_restated_to_caption(Rule5_narrowing),SSL_delete_owner(FR-42_unowned) to=orchestrator
+2026-09-24T09:51:20Z	Story 9.3	ci_resolved	story=9.3 run=35980678479 head=43d9fe3 result=success resolved_at=plan_gate
