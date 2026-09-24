@@ -4,171 +4,119 @@
 
 ## Goal
 
-Polish week. A user makes the portal their own: they change their own password without leaving for
-the classic portal, keep favorites and recent items, find any screen through the one finder the
-shell already has, open About, per-screen help, the fixed shortcuts menu and the links panel, see
-the instance's state on Home, and come back the next morning to the sort, filter, panel width and
-side-bar state they left behind. It is the last of FR-73's shell conveniences, and its unifying
-constraint is that per-user state lives on the instance rather than in the browser, because the
-browser deliberately holds nothing persistent but a per-tab token pair. The epic depends on Epic 1's
-shell alone and adds no new screen area. **Stories 15.1, 15.2, 15.3 and 15.4 are done** and their
-landed decisions are recorded below as constraints, not choices; **15.6 is deferred by owner
-decision**, so the in-scope range is **15.5 alone**.
+Polish week: the user makes the portal their own. Stories 15.1 to 15.6 are done: own password,
+favorites and recents, About/help/shortcuts/links, Home's System Information, UI state kept on the
+instance, and the light and dark theme. Their results are now constraints, not choices. **15.7** is
+next. It replaces the rail's letters with the area icons drawn in the Home mockup, and Home's tiles
+get the same icons, so a screenshot reads as a finished product rather than a wireframe. **15.8**
+(columns you can read) is not in this run. Epic 7 has merged, so it is released, but it runs later
+on its own, ranked after Epic 12.
 
 ## Stories
 
-- Story 15.1: Change your own password — **done**
-- Story 15.2: Favorites, recent items and menu search — **done**
-- Story 15.3: About, help, shortcuts and the links panel — **done**
-- Story 15.4: Home's System Information panel — **done**
-- Story 15.5: UI state that survives a sign-out — **the only story in scope**
-- Story 15.6: The light and dark theme — **DEFERRED, out of scope for this epic.** Owner decision:
-  sequenced after Epic 5 merges, because it edits the `ui/src/styles/**` token files Epic 5 is
-  concurrently editing and its contrast guards run in both modes. It stays in `backlog`, the
-  orchestrator dispatches it later, and an Epic 15 run that reports done without it is correct. Do
-  not build it, and do not pre-build a theme toggle for it. DW-39 and DW-118 stay attributed to it.
+- Story 15.1: Change your own password (done)
+- Story 15.2: Favorites, recent items and menu search (done)
+- Story 15.3: About, help, shortcuts and the links panel (done)
+- Story 15.4: Home's System Information panel (done)
+- Story 15.5: UI state that survives a sign-out (done)
+- Story 15.6: The light and dark theme (done)
+- Story 15.7: The rail's icons
+- Story 15.8: Columns you can read (not in this run; separate later dispatch)
 
 ## Requirements & Constraints
 
-- **15.5's whole subject is six remembered things**: per-screen sort, filter, max rows and
-  auto-refresh rate; the side bar's open state; the panel's width. Each must return as it was after
-  a sign-out and sign-in.
-- **Per-user state lives on the instance, not in browser storage.** That is 15.5's second acceptance
-  criterion and AD-50 says so in terms: a preference kept only in `localStorage` **fails** the
-  criterion rather than satisfying it cheaply. The UX documents describe all six as "remembered per
-  browser"; 15.5 is the story that supersedes that wording, and those same sentences are what the
-  client's single `localStorage` carve-out cites as its own justification today.
-- **Everything new is filtered by what the user may reach**, and a gated entry stays listed and
-  focusable naming the resource it needs — never removed, never natively disabled.
-- **Home never scrolls horizontally at a supported width.** 15.2, 15.3 and 15.4 landed **five**
-  blocks above the auto-fit area-tile grid — Favorites, Recent items, Shortcuts, Links, System
-  Information. The block row wraps by construction; nothing is hidden by viewport width.
-- **No inert control.** Every item added to a menu, panel or dialog ships with its handler.
-- **Strings.** Every new user-facing string is published in the canonical UX string table **before**
-  it exists as a client key, appended strictly after the current last row — the client's string
-  source carries hard line-number comments back into that table, so an insertion above the tail
-  breaks hundreds of them. The test demands exact set equality and globally unique values, so reuse
-  an existing row rather than repeating a value; the literal-count band is widened with a comment
-  naming the story only when a story overruns it.
+- **15.7 icons.** Each of the eight rail items takes the icon drawn for its area in the rail of
+  `ux-designs/ux-OcuPilot-2026-09-08/mockups/key-home.html`. The items are Home, Logs, OS
+  management, Tasks, Permissions, Web applications and REST API explorer, Security and secrets, and
+  Agent co-pilot. Each icon is inline SVG on a 20×20 view box with a 1.5 stroke in `currentColor`,
+  and no letter remains. Home's six area tiles take the 24px version of the same icon. Nothing
+  loads from outside the bundle.
+- **State colors come only through `currentColor`, in both themes.** The contrast figures are
+  DESIGN.md's `rail-item` rows, light / dark on `shell`:
+  - rest: `on-shell` at 72%, 6.15:1 / 7.31:1
+  - hover and active: `on-shell` at 100%
+  - gated: `on-shell` at 45%
+  - tile icon: `primary`; gated tile icon: `restrained`
+
+  The attention dot sits at the icon's top-right, drawn in `agent-accent-dark` with a 1.5px `shell`
+  ring and offset 2px. The contrast floor is 3:1 for non-text and 4.5:1 for text, the same in both
+  modes.
+- **The icons are decorative.** A screen reader hears only the area name, which is the
+  `aria-label` on a rail item and the visible name on a tile. Nothing is announced from the SVG.
+- **Correct the docs at origin when 15.7 completes.** DESIGN.md's `rail` paragraph must name the
+  mockup's icons in place of the interim Material Symbols set (UX-DR15, amended 2026-09-23).
+  EXPERIENCE.md's rail row still reads "Placeholder icons until the owner's icon work lands"
+  (inference: the same correction belongs there). The other interim-glyph slots (empty states,
+  inline notices, sign-in) are out of scope and keep the vendored Material Symbols placeholder.
+  Never draw an initial in a circle.
+- **The DW-1337 structural gate now covers every change.**
+  `ui/browser/a11y-structural-invariants.browser-spec.mjs`, using `structural-walk.mjs`, walks every
+  built screen from the registry in both themes. It checks accessible names, control minimum
+  widths, overflow and text contrast against `ui/browser/structural-baseline.json`, which holds 190
+  entries. CI's `browser` job fails only on a violation outside the baseline. If a change removes a
+  baseline violation, the gate prints that entry as stale and stays green, and the entry should be
+  deleted. The gate fails on a visit that does not settle within 20s.
+- **Strings.** A new user-facing string is appended to EXPERIENCE.md's Fixed strings table before it
+  exists as a `strings.ts` key. The test requires exact set equality with globally unique values.
+  15.7 should need none, because the area names and the "<Area> · Ctrl+B toggles the side bar"
+  tooltip already exist.
 
 ## Technical Decisions
 
-- **15.5 is AD-50's second case and extends it rather than re-answering it.** Landed by 15.2:
-  `OcuPilot.Kernel.State.Pref` in the protected database, unique on `(UserName, Kind, Name)`, on
-  `Kernel/State/Base` so every write inherits the version-conditional guarded save, read and written
-  through the caller-own route `GET`/`POST /api/ocupilot/account/preferences`
-  (`OcuPilot.Api.Preferences`) — **not** through AD-36's declared read. 15.5 **adds `Kind` values**,
-  and a value property where one is needed, and **never adds another `State` subclass** (the
-  29-character cap leaves 7 characters after `OcuPilot.Kernel.State.`) and **never invents a second
-  per-user endpoint family** — it adds members to that envelope, or a sibling route. A preference is
-  never screen context and never a tool's view.
-- **What the landed store does and does not do.** `Pref` holds **set membership, not values**: there
-  is no value column, `Kind` is `MAXLEN 16`, `Name` is the route at `ROUTEMAXLENGTH` (512), and
-  `UpdatedAt` is the only moving column. Its header says in terms that a later `Kind` needing a value
-  adds one. Four of 15.5's six preferences are values, not memberships, and the fifth and sixth
-  (side-bar open, panel width) are single scalars — so the value property is this story's first real
-  schema move. The POST grammar is `{kind, action, route}` over closed enums that **refuses an extra
-  member** 422 before writing anything, so a value-bearing write changes that grammar deliberately
-  rather than by accident. **An empty `%String` is stored as SQL `NULL`** and then never matched
-  again by the key lookup — the reason an empty route is refused, and a trap any value column
-  inherits.
-- **Footprint fact 15.5 must confront.** Its first AC names "the panel width", and Epic 5 owns
-  `ui/src/app/shell/panel*` as a decision. Measured on this branch today, panel width lives in
-  `ui/src/app/core/panel-layout.ts`, `ui/src/app/core/preferences.ts`, `ui/src/app/app.ts`,
-  `ui/src/styles/{_metrics,_components}.scss` and `ui/src/app/shell/panel-resize-handle.ts`. **Only
-  `shell/panel-resize-handle.ts` is inside Epic 5's carve**, and Epic 5 has **not** modified
-  `core/panel-layout.ts`. Plan the persistence through `core/` rather than through Epic 5's
-  component wherever it can be done there.
-- **The browser-storage store is a distinct module from the instance-backed one.**
-  `ui/src/app/core/preferences.ts` is the one module permitted to touch `localStorage` and today
-  holds exactly 15.5's six items under four declared keys (side-bar open; one descriptor-to-seconds
-  refresh-rate map; one descriptor-to-view map of sort, direction, filter and max rows; panel width
-  in px). `ui/src/app/core/account-preferences.ts` is 15.2's separate instance-backed store. The
-  `localStorage` ban is a source scan with an **exact path exemption, never a pattern**, plus a
-  closed key allow-list, no `storage` listener and no `BroadcastChannel`; those four parts are
-  load-bearing and none may be widened.
-- **15.5 owns three escalated ledger entries**, kept on this story under the standing AD-invariant
-  ruling rather than re-owned: **DW-1326** — a refused preference write is never surfaced (the client
-  parks every non-`ok` result, no component reads a fault, the test stub has no refusal path, and the
-  announcement guards in the locator bar and Home are where a reason would go); **DW-1327** — the
-  store's add and touch paths are check-then-insert, so two concurrent adds of the same
-  `(user, kind, route)` trip the unique index and answer 500 instead of the documented no-op, and the
-  read-then-write cap check can store 21; **DW-1328** — when every stored row in a Home block names
-  no built screen (now including an unlisted screen at `sideBarPosition` 0), the block shows its
-  empty state with no Clear, so rows the instance still holds are invisible and unclearable.
-- **A self-service account action is the user's own write, outside the agent write path (AD-49,
-  written by 15.1).** It mints no proposal, takes no confirm token, emits no agent marker and is
-  never a tool.
-- **Shell chrome is caller-own, and 15.3 set the shape 15.4 copied.** Landed: `GET /ui/about`,
-  `GET /ui/help`, `GET /ui/system` as a `Kernel/Shell/*` payload class plus a thin `Api/Ui*` handler,
-  with a per-field `Try` so one refused source degrades that field to `""` and logs, never a 500, and
-  `%SYS` entered only by explicit save/restore with the restore as the first line of the `Catch`.
-  **15.4 landed uptime, mirror state, the four dashboard alerts and production status**, each
-  rendered as the vendor reports it and never translated, scoped to the request's validated `?ns=`;
-  About will never show uptime or mirror state, and cluster support is not resurrected. One caveat
-  worth carrying: some vendor accessors catch their own errors and answer a plausible value instead
-  of throwing, so a per-field `Try` does not see them.
-- **One error envelope** with a stable dotted code; a refusal, denial or fault is never a 500 and
-  never an empty state. **A new violation code needs its arm in `Api/Error.cls`'s
-  `ReasonForViolation` or its `reason` serializes empty**, and a field-level code outside the
-  `AGENT.*` family is pinned over the wire. Adding a property that every pre-existing row reads as a
-  safe default does **not** move `SCHEMAVERSION` — record the reasoning where the change is made.
-- **New REST routes are appended at the tail** of the router's `<Routes>` with a thin `Call=`
-  wrapper; the ordering checker constrains only a prefix family. Every new route needs a wire test
-  carrying the four required markers, **and a matching probe row in
-  `src/OcuPilot/Test/EndpointCoverage.cls` or CI's `instance` job reddens** — that has bitten this
-  branch three times: the Epic 13 merge, 15.3's review and 15.4's implement pass.
-- **Client shape:** Angular standalone, zoneless, `OnPush`. `ui/src/app/core/` imports no
-  `@angular/core`, so a store there is a plain subscribable that components mirror into signals and
-  release on destroy. The house instance-backed store shape — request-counted so a late answer cannot
-  overwrite a newer one, a generation counter so an answer resolved for a departed principal cannot
-  land on the next, never cleared on a transport failure, `reset()` on sign-out — is landed four
-  times over (`core/account-preferences.ts`, `core/about.ts`, `core/help.ts`, `core/system-info.ts`);
-  copy it, do not re-derive it.
-- **Auto-refresh is one framework and its roster is closed at seven screens.** Home is not among
-  them; 15.5 changes which rate a screen remembers, never which screens may refresh.
-- **Stored references to IRIS objects and screens are weak**: recorded as data, bound as SQL
-  parameters, never a foreign key; a reference that no longer resolves degrades rather than failing
-  the screen.
+- **The theme is one root class (Conventions › Theme).** `ocu-theme-dark` on `<html>` is the whole
+  theme. `core/theme.ts` sets it and `_theme.scss` selects it, re-pointing every bare `--ocu-<role>`
+  and `--mat-sys-*` variable to its `-dark` twin. A component draws bare roles and never selects on
+  the theme. Where a surface's variant is reversed between modes, the fix is a non-role token pair
+  in `_tokens.scss`, never a component rule. Chrome rules that name `-dark` tokens
+  (`secondary-dark`, `focus-ring-dark`, `agent-accent-dark`) keep doing so in both modes.
+- **The theme choice is stored on the instance.** It is the `shell` kind's `theme` member
+  (`light`/`dark`) in AD-50's single per-user store, `OcuPilot.Kernel.State.Pref`. Any other value
+  gets a 422 `PREFERENCES.CHOICE`. It is a self-service account action (AD-49): no proposal, no
+  marker, no tool. Light is the default until the read settles. Never use browser storage.
+- **Assets are vendored and lint-checked (AD-47, NFR-10).** client-lint's `no-hardcoded-color` hex
+  regex flags `#` followed by 3, 4, 6 or 8 hex characters, so no SVG id or fragment may look like a
+  hex color (DW-40). `no-off-origin-url` allowlists the `w3.org` SVG, XHTML and XLink namespace
+  URIs and nothing else.
+- **Client shape (AD-19).** The client is Angular standalone, zoneless and `OnPush`.
+  `ui/src/app/core/` imports no `@angular/core`: stores are plain subscribables that components
+  mirror into signals.
+- **Design tokens only.** No literal color appears outside `_tokens.scss`.
+- **Browser specs run against the deployed bundle.** Rebuild and redeploy before reading any
+  geometry or contrast result. Each context resets remembered state once with
+  `resetRememberedState()` from `ui/browser/preferences-reset.mjs`, which also clears `theme`.
+- **AD-53 and AD-56 (Epic 7) do not touch this story.** They govern the paths through which a
+  screen action and an agent write reach an instance object. The rail and Home do not write.
 
 ## UX & Interaction Patterns
 
-- **Where the six preferences surface.** The data table's footer carries the row count and the
-  editable max-rows field; sort and filter are the table's own controls; the auto-refresh chip is a
-  command-bar control on the seven roster screens with the last-update stamp in the status bar; the
-  side bar opens on its rail item, collapses on the same click, on Ctrl/Cmd+B or through the yield
-  order — **and the yield order's auto-collapse keeps the remembered state rather than overwriting
-  it**; the panel is the shell's only resizable edge, 400 px default and 320 px minimum, widening on
-  Home and restoring the remembered width on leaving Home.
-- **Announcements.** Polite `role="status"` for saves, counts and transitions; `role="alert"` (or
-  moved focus) for save failures and 403s — the shape a surfaced preference refusal would take.
-- **Dialogs** are one level deep and never stack; Escape and Cancel close without effect; focus
-  returns to the opener. A server rejection sets `aria-invalid` with the message in
-  `aria-describedby`.
-- **Command box.** **It is the one finder** — adding a second search surface, or a second roster that
-  behaves like one, is a defect. Gated results render as non-selectable rows with the reason inline.
+- **Rail.** The rail is 48px wide on `shell` in both modes, and the chrome only deepens in dark
+  mode (`shell-dark`). Each item has a 48×48 hit area with a 20px icon centered in it. The rail is
+  one Tab stop: Up and Down move between items, and Enter or Space activates. The active item
+  carries `aria-current="page"`. Its tooltip, shown on hover after 300ms and on focus, reads
+  "<Area> · Ctrl+B toggles the side bar". The active indicator is a solid 3px `secondary-dark` bar,
+  inset 8px top and bottom, never a gradient. Hover adds an `on-shell` background at 8%. A gated
+  item stays focusable with `aria-disabled="true"`, has no hover state, and shows a "Requires
+  <resource>" tooltip. Focus is drawn with `focus-ring.on-chrome`. The rail never shows counts.
+- **Area tiles.** The tiles sit in an auto-fit grid that wraps, and Home never scrolls
+  horizontally. Each tile has a 24px `primary` icon above the area name, in caption weight 500,
+  with its screens beneath. On hover the border turns `secondary`. A gated tile draws its text and
+  icon in `restrained`, has no hover state, and shows the resource tooltip.
 
 ## Cross-Story Dependencies
 
-- **Upstream: Epic 1 alone.** The shell this epic extends is already built. Epic 2's declared read,
-  table, sort, filter and max-rows machinery is what 15.5's per-screen preferences attach to; 15.2's
-  `Pref` store and `/account/preferences` envelope are what 15.5 extends.
-- **Range-end cleanup** carries 15.1's DW-1289 (a password refused by a configured policy routine
-  answers 500, to be fixed **site-scoped** inside the change-password handler) and DW-1290, plus
-  15.3's DW-1377 (`HELP.ROUTE` is a third field-level code family outside the gate that checks such a
-  code has a published sentence) and the low residuals of 15.3 and 15.4. None blocks 15.5.
-- **Parallel runners and contended paths.** Epic 13 is merged onto this branch. Epic 5 is still in
-  flight and owns `ui/src/app/shell/panel*`, `proposal-card`, `reply`, `tool-call-card`,
-  `context-chip`, `core/proposal-view.ts` and `core/turn.ts`; Epic 15 works outside them and treats
-  the `core/` files Epic 5 has modified — `agent-status.ts`, `navigation.ts`, `proposal-view.ts`,
-  `screens.generated.ts`, `suggested-view.ts`, `turn.ts` — as **read only**; never regenerate the
-  screen mirror, and `screen-mirror.mjs --check` must stay green with no regeneration. Epic 15's own
-  shell surfaces are `header*`, `account-menu*`, `side-bar*`, `command-box*`, `locator-bar`,
-  `recents-recorder`, `about-dialog`, `stale-bundle-notice` and Home. `src/OcuPilot/Api/Router.cls`,
-  `src/OcuPilot/Api/Error.cls`, the UX string table, `ui/src/app/core/strings.ts` and
-  `ui/src/styles/_components.scss` are under an epic-wide **shared-append** grant: append at the tail
-  only, never reorder, never insert, never touch a line another epic added, and run
-  `uv run scripts/check-objectscript.py` before every commit touching the router. `ui/browser/**` is
-  **shared-create** (orchestrator ruling 2026-09-20) — a new uniquely-named spec file there is this
-  epic's and is reported under `footprint_extensions:`, while modifying an existing file there stays
-  a Clarification. Never touch `ui/src/styles/_tokens.scss`, which 15.6 owns.
+- **15.7 builds on 15.6.** Its state colors must hold in both themes, and the structural gate from
+  15.6 walks the rail and Home on every run.
+- **Paths.** 15.7 edits `ui/src/app/shell/rail*` and `ui/src/app/areas/home/**`. Neither Epic 7
+  nor Epic 8 touches them (measured 2026-09-23). Epic 9 is running on slot A in parallel. Never
+  regenerate `screens.generated.ts`.
+- **Shared-append files** are edited at the tail only, never reordered or inserted into:
+  - `src/OcuPilot/Api/Router.cls`
+  - `src/OcuPilot/Api/Error.cls`
+  - the EXPERIENCE.md strings table
+  - `ui/src/app/core/strings.ts`
+  - `_components.scss`, where a token substitution is also permitted
+- **Shared-create:** `ui/browser/**`. A new, uniquely named spec there is reported under
+  `footprint_extensions:`.
+- **15.8 is out of this run.** It depends on 15.5's store for per-screen widths. It must also
+  address DW-1586: data-table name links render narrower than the 24px floor, which is already in
+  the structural baseline.

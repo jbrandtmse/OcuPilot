@@ -8,16 +8,15 @@
 // value sits on the bare `--ocu-<role>` custom property; the dark value sits on
 // `--ocu-<role>-dark`. Both are declared unconditionally here, on the bare `:root`
 // (Design Notes' "the mechanism, in short"), which is what lets the dark *scope*
-// (applied in _theme.scss) be a plain class flip once the polish-week theme toggle
-// lands (spine `## Deferred` -> "Theme toggle wiring -> Polish week, FR-73").
+// in _theme.scss be a plain class flip (spine Conventions > Theme).
 //
 // 64 color roles, each declared twice, for 128 custom properties: 30 Material 3
 // roles (DESIGN.md "Material 3 roles" table) plus 34 OcuPilot roles (DESIGN.md
 // "OcuPilot roles" table). ui/tools/design-tokens.mjs's COLOR_ROLES is the
 // machine-checked roster this file must equal exactly.
 //
-// Two more literal colors live here because they are colors, not because they are
-// roles -- DESIGN.md rule 2 and 8 (Design Notes #8) are explicit that neither is a
+// Four more families live here because they are colors, not because they are
+// roles -- DESIGN.md rule 2 and 8 (Design Notes #8) are explicit that none is a
 // color role:
 //   - `--ocu-logo-gradient-stop`: the logo's vivid teal #2090A0, the header
 //     gradient's far stop and the two hairlines' far stop. Kept out of the 64-role
@@ -27,8 +26,13 @@
 //   - `--ocu-elevation-{1,2,3}` (and their `-dark` sides): the shadow values
 //     DESIGN.md's Elevation & Depth table states. Level 0 is `none` and carries no
 //     color, so it is not declared here.
-// ui/tools/design-tokens.mjs's NON_ROLE_TOKENS names both and excludes them from the
-// 64-role count.
+//   - `--ocu-toast-link` (and `-dark`): DESIGN.md's `toast.link-color` pair, the one
+//     surface whose variant is reversed between modes -- `secondary-dark` in light,
+//     plain `secondary` in dark -- so the dark scope's re-point flips it like a role.
+//   - `--ocu-server-flag-edge` (and `-dark`): DESIGN.md's `server-flag-badge.edge-dark`,
+//     a 1px `on-shell` at 20% edge drawn in dark mode only.
+// ui/tools/design-tokens.mjs's NON_ROLE_TOKENS names all four and excludes them from
+// the 64-role count. The dark scope in _theme.scss re-points every one with a dark side.
 
 :root {
   // --- Material 3 roles (30) --------------------------------------------------
@@ -197,4 +201,14 @@
   --ocu-elevation-2-dark: 0 3px 10px rgba(0, 0, 0, 0.6);
   --ocu-elevation-3: 0 12px 40px rgba(15, 58, 95, 0.25);
   --ocu-elevation-3-dark: 0 12px 40px rgba(0, 0, 0, 0.7);
+
+  // The toast's action link (DESIGN.md `toast.link-color` / `link-color-dark`): the
+  // hexes of `secondary-dark` and `secondary`, in that order.
+  --ocu-toast-link: #6fd3dc;
+  --ocu-toast-link-dark: #0b7080;
+
+  // The server-flag pill's edge (DESIGN.md `server-flag-badge.edge-dark`): none in light,
+  // `on-shell` at 20% in dark, where the Live container is 1.15:1 on `shell-dark`.
+  --ocu-server-flag-edge: transparent;
+  --ocu-server-flag-edge-dark: color-mix(in srgb, var(--ocu-on-shell) 20%, transparent);
 }

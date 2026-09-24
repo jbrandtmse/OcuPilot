@@ -62,7 +62,7 @@ import { ToastStore, type ToastEntry, changeSentenceTemplate, formatChangeSenten
     '.ocu-toast-region { display: flex; flex-direction: column; gap: var(--ocu-space-2); align-items: flex-end; pointer-events: auto; }',
     '.ocu-toast { display: flex; align-items: center; gap: var(--ocu-space-3); box-sizing: border-box; width: 360px; padding: var(--ocu-space-3); border-radius: var(--ocu-radius-md); background: var(--ocu-inverse-surface); color: var(--ocu-inverse-on-surface); box-shadow: var(--ocu-elevation-3); font-size: 0.875rem; }',
     '.ocu-toast-message { flex: 1 1 auto; }',
-    '.ocu-toast-action { flex: 0 0 auto; background: none; border: 0; padding: 0; font: inherit; color: var(--ocu-secondary-dark); cursor: pointer; text-decoration: underline; }',
+    '.ocu-toast-action { flex: 0 0 auto; background: none; border: 0; padding: 0; font: inherit; color: var(--ocu-toast-link); cursor: pointer; text-decoration: underline; }',
     '.ocu-toast-dismiss { flex: 0 0 auto; background: none; border: 0; padding: 0 var(--ocu-space-1); font: inherit; line-height: 1; color: inherit; cursor: pointer; }',
   ],
   template: `@if (visible) {

@@ -1091,6 +1091,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#HELPROUTE Quit ..#REASONHELPROUTE
     If pCode = ..#PREFERENCESVALUE Quit ..#REASONPREFERENCESVALUE
     If pCode = ..#PREFERENCESNAME Quit ..#REASONPREFERENCESNAME
+    If pCode = ..#PREFERENCESCHOICE Quit ..#REASONPREFERENCESCHOICE
     If pCode = ..#WEBAPPNAMEREQUIRED Quit ..#REASONWEBAPPNAMEREQUIRED
     If pCode = ..#WEBAPPNAMESHAPE Quit ..#REASONWEBAPPNAMESHAPE
     If pCode = ..#WEBAPPNAMETAKEN Quit ..#REASONWEBAPPNAMETAKEN
@@ -2380,5 +2381,16 @@ ClassMethod IsKnownSlug(pSlug As %String) As %Boolean [ Private ]
 {
     Quit $ListFind($ListBuild(..#BADREQUEST, ..#UNAUTHORIZED, ..#FORBIDDEN, ..#NOTFOUND, ..#METHODNOTALLOWED, ..#CONFLICT, ..#PRECONDITIONFAILED, ..#BADCONTENTTYPE, ..#VALIDATIONFAILED, ..#SERVERERROR, ..#NOTIMPLEMENTED, ..#UNAVAILABLE), pSlug) > 0
 }
+
+/// <p>Machine code (Story 15.6, AD-50): a shell preference write carried a <code>value</code>
+/// outside the fixed set its member takes -- for <code>theme</code>, anything but
+/// <code>light</code> or <code>dark</code>
+/// (<method>OcuPilot.Kernel.State.Pref.IsThemeValue</method>). Rendered on the
+/// <parameter>VALIDATIONFAILED</parameter> slug with one violation on <code>value</code>.</p>
+Parameter PREFERENCESCHOICE = "PREFERENCES.CHOICE";
+
+/// <p>Refusal sentence for <parameter>PREFERENCESCHOICE</parameter>. It names no value the
+/// caller sent.</p>
+Parameter REASONPREFERENCESCHOICE = "That preference takes one of a fixed set of values.";
 
 }

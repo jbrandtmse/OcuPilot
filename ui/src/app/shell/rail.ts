@@ -14,12 +14,12 @@ import { NavigationService, formatArea, formatRequires, withQuery } from '../cor
 import { PanelState } from '../core/panel-layout';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
+import { AreaIcon } from './rail-icon';
 
 /** One rail item, resolved for rendering. */
 interface RailItem {
   readonly key: string;
   readonly label: string;
-  readonly initial: string;
   readonly tooltip: string;
   readonly domId: string;
   readonly tipId: string;
@@ -80,10 +80,10 @@ export function railItemDomId(areaKey: string): string {
  * a reader who never lands on the dot would otherwise miss. The dot keeps its own copy, because a
  * reader who does land on it hears the reason as that element's name.
  *
- * The glyph is the area name's first letter, produced in TypeScript and `aria-hidden`, standing
- * in for the owner's icon set: DESIGN.md's interim set is one Material Symbols glyph per area,
- * and nothing here may reach an external host for one (NFR-10, AD-47). The accessible name is
- * the area name, so nothing about the placeholder is announced.
+ * The glyph is the area's icon from `rail-icons.ts` (DESIGN.md's `mockups/key-home.html`), an
+ * inline SVG inside the `aria-hidden` glyph span, stroked in the span's `currentColor` so each
+ * state's color is the span's. The accessible name is the area name, so nothing about the icon
+ * is announced.
  *
  * Every control-flow condition and every `@for` header is paren-free, for the reason
  * `sign-in.ts` records: `ui/tools/client-lint.mjs`'s blanker matches one parenthesised group,
@@ -92,6 +92,7 @@ export function railItemDomId(areaKey: string): string {
 @Component({
   selector: 'app-rail',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [AreaIcon],
   template: `<nav class="ocu-rail" [attr.aria-label]="railLandmark">
     @for (item of items; track item.key) {
       <span class="ocu-rail-slot" [class.ocu-rail-slot-bottom]="item.pinBottom">
@@ -109,7 +110,7 @@ export function railItemDomId(areaKey: string): string {
           (click)="activate(item)"
           (keydown)="onKeydown($event)"
         >
-          <span class="ocu-rail-glyph" aria-hidden="true">{{ item.initial }}</span>
+          <span class="ocu-rail-glyph" aria-hidden="true"><svg [ocuAreaIcon]="item.key" [size]="20"></svg></span>
         </button>
         @if (item.attention) {
           <span class="ocu-rail-dot" role="img" [attr.aria-label]="item.attention"></span>
@@ -152,7 +153,6 @@ export class Rail {
       return {
         key: area.key,
         label,
-        initial: label.slice(0, 1).toUpperCase(),
         tooltip: verdict.allowed
           ? formatArea(STRINGS.navRailItemTooltip, label)
           : formatRequires(STRINGS.privilegeRequiresResource, verdict.failedPair),

@@ -736,7 +736,9 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 
 **Owner re-sequence, 2026-09-21.** Epic 12 is ranked ahead of Epic 11 in the polish week. At the pace measured through Story 5.8, two of Epics 9, 11 and 12 finish before the submission deadline, not three, and the OAuth 2.0 editors are what the task statement names; Epic 11's refinements can land in the voting week, where improvements are allowed. Dispatch after the floor follows the dependency graph: Epics 9 and 12 become eligible together once both Epics 7 and 8 have merged, and Epic 11 is dispatched only after both of them; the slot the first of Epics 7 and 8 frees takes Story 15.6, and waits if that finishes first. Epic 14 stays out of the run.
 
-**Owner triage, 2026-09-23.** Three findings from browsing the Epic 5 build. The rail shows letters where UX-DR15 requires icons: Story 15.7 ships the eight drawn in the Home mockup and runs with Story 15.6 in the window after Epic 8 merges. Truncated cells cannot be read: Story 15.8 adds content-sized defaults, resizable columns, horizontal scrolling inside the table and a full-value tooltip; it changes the shared data table Epic 7 is editing, so it is dispatched once Epic 7 merges, ranked after Epic 12 and before Epic 11. Story 17.6's Anthropic key section says to scope the key to one workspace. If Stories 15.6 and 15.7 overrun the window, Epic 12 waits; that delay is accepted.
+**Owner triage, 2026-09-23.** Three findings from browsing the Epic 5 build. The rail shows letters where UX-DR15 requires icons: Story 15.7 ships the eight drawn in the Home mockup and runs with Story 15.6 in the window after the first of Epics 7 and 8 merges. Truncated cells cannot be read: Story 15.8 adds content-sized defaults, resizable columns, horizontal scrolling inside the table and a full-value tooltip; it changes the shared data table Epic 7 is editing, so it is dispatched once Epic 7 merges, ranked after Epic 12 and before Epic 11. Story 17.6's Anthropic key section says to scope the key to one workspace. If Stories 15.6 and 15.7 overrun the window, Epic 12 waits; that delay is accepted.
+
+**Owner triage, 2026-09-23 (providers), high priority.** Two findings from connecting live keys on slot C. OcuPilot's canonical temperature of 0 is refused by the default model of Anthropic, whose current models reject sampling parameters, and of OpenAI, whose default model accepts only 1: Story 10.4 sends none unless the operator sets one, and never to Anthropic. A connection test against a local model that is still loading is cut off by the Web Gateway's 60-second timeout with an empty 504: Story 10.5 answers first with OcuPilot's own reason. Both run in one runner on the first slot to free, ahead of Epic 12, Story 15.8 and Epic 11; Epic 12 starts that much later.
 
 **Orchestrator amendment, 2026-09-19.** Two consequences of the amendment above, settled on the owner's
 instruction. Story 13.3's acceptance criteria are rewritten so none of them can be closed by publishing:
@@ -826,7 +828,7 @@ A user opens the editors that carry the classic portal's whole field set - user,
 
 ### Epic 10: Run on any model, and harden the write path
 
-An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
+An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Two live-key fixes found on 2026-09-23 make every shipped provider's default model connect: sampling parameters left to the provider (10.4), and a connection test that answers before the Web Gateway's timeout (10.5). Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
 
 **FRs covered:** FR-25 (the three remaining families)
 
@@ -4839,7 +4841,7 @@ So that a gap reads as a decision rather than a defect.
 
 ## Epic 10: Run on any model, and harden the write path
 
-An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
+An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Two live-key fixes found on 2026-09-23 make every shipped provider's default model connect: sampling parameters left to the provider (10.4), and a connection test that answers before the Web Gateway's timeout (10.5). Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
 
 ### Story 10.1: The message and tool-definition adapters
 
@@ -4914,6 +4916,70 @@ So that screen data and log text never leave the instance at all.
 ---
 
 - DW-441: a configured proxy is applied even to a marked-local plain-`http` endpoint, which is then requested through the proxy in cleartext; decided at the Epic 4 merge gate: bypass the proxy for a marked-local endpoint (ledger; routed by merge_gate 2026-09-18)
+
+### Story 10.4: Sampling parameters left to the provider
+
+**High priority (owner triage, 2026-09-23).** Dispatched with Story 10.5 on the first slot to free, ahead of Epic 12.
+
+As an operator who accepts OcuPilot's defaults,
+I want a new definition to reach its provider's default model,
+So that the connection test passes on the first try instead of being refused by the provider.
+
+**Acceptance Criteria:**
+
+- **Given** a new definition for any provider
+- **When** the Definition form opens
+- **Then** its temperature reads "Provider default" and is stored unset; validation accepts unset, and an explicit value from 0 to 2 stays possible where the provider takes one.
+
+- **Given** a definition whose temperature is unset
+- **When** OcuPilot calls OpenAI, Google Gemini or an OpenAI-compatible endpoint
+- **Then** the request carries no temperature, and the provider's default applies.
+
+- **Given** any Anthropic definition
+- **When** OcuPilot calls the Messages API
+- **Then** the request carries no `temperature`, `top_p` or `top_k` whatever the definition holds, because the current Claude models in the catalog refuse them, and the form shows the field as not applicable for Anthropic with that reason.
+
+- **Given** Claude Opus 5, which thinks by default, and a turn that calls a tool and then answers
+- **When** the adapter builds the next request of that turn
+- **Then** it sends the assistant turn's thinking blocks back unchanged, pinned by a stub that returns a thinking block beside a tool call and asserts it returns byte for byte.
+
+- **Given** CI calls no live provider
+- **When** the suite runs
+- **Then** stub assertions pin every request body - no sampling parameter to Anthropic ever, no temperature to the others when unset - and the live proof on each catalog default model is the owner's check in Story 17.7.
+
+- **Given** a definition saved before this story
+- **When** it is read
+- **Then** a stored temperature is kept as an explicit value; nothing rewrites it.
+
+---
+
+### Story 10.5: A connection test that answers before the gateway does
+
+**High priority (owner triage, 2026-09-23).** Runs after Story 10.4 in the same runner.
+
+As an operator testing a local model that has been idle,
+I want the test to tell me the model is still loading,
+So that a slow first answer does not read as a broken portal.
+
+**Acceptance Criteria:**
+
+- **Given** a provider that has not answered
+- **When** Test connection has waited a bound safely below the Web Gateway's configured response timeout - the `Server_Response_Timeout` the installer already reads, 60 seconds when unread - so raising that setting lengthens the test
+- **Then** it returns OcuPilot's own reason instead of the gateway's empty 504: for a definition marked local, that the model may still be loading and to test again in a minute; for any other, the provider and how long it waited.
+
+- **Given** a test that timed out
+- **When** its result is stored
+- **Then** the definition is not marked verified, and a later passing test enables it as usual.
+
+- **Given** an agent turn whose first provider call takes longer than the gateway's timeout
+- **When** it runs
+- **Then** it completes, because the turn runs in a background job (AD-7), pinned by a stub that delays past the gateway's bound.
+
+- **Given** the new reasons
+- **When** they render
+- **Then** they are rows in EXPERIENCE.md's fixed-string table and keys in the string table, like every other published sentence.
+
+---
 
 ## Epic 11: The agent explains itself, cites its work, and streams
 
@@ -5703,7 +5769,7 @@ So that the portal is usable in the conditions I actually use it in.
 
 ### Story 15.7: The rail's icons
 
-**Dispatched with Story 15.6** in the window after Epic 8 merges (owner triage, 2026-09-23).
+**Dispatched with Story 15.6** in the window after the first of Epics 7 and 8 merges (owner triage, 2026-09-23).
 
 As a developer-administrator,
 I want each area on the rail to carry its own icon,
@@ -5767,6 +5833,10 @@ So that a long path or class name never hides behind an ellipsis.
 - **Given** the virtualized list's fixed row height
 - **When** columns resize or the table scrolls
 - **Then** row and header heights do not change, and the browser specs that pin them stay green.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1586: Structural gate baseline: a data-table name link can render narrower than the 24px control floor (devices 7.2px, users 21.6px, at both widths) (ledger; routed by adjudication 2026-09-24)
 
 ---
 
@@ -6296,7 +6366,8 @@ So that the entry's central claim is legible to me even though I will not run it
 - **Given** each provider OcuPilot ships
 - **When** the README describes getting started
 - **Then** it carries a "get a key in two minutes" section for that provider
-- **And** the Anthropic section says to create a key scoped to one workspace, because a key for all workspaces is refused without an `anthropic-workspace-id` header, which OcuPilot does not send.
+- **And** the Anthropic section says to create a key scoped to one workspace, because a key for all workspaces is refused without an `anthropic-workspace-id` header, which OcuPilot does not send
+- **And** the local-model section says that a slow model's first answer can outlast the Web Gateway's response timeout during Test connection, so an operator may need to raise the gateway's `Server_Response_Timeout`; agent turns do not depend on it (AD-7), and OcuPilot never changes the setting itself.
 
 - **Given** no hosted demo instance ships, at any point
 - **When** the judge-without-a-key path is assessed

@@ -1660,45 +1660,49 @@ export const STRINGS = {
   actionApply: 'Apply',
   /** EXPERIENCE.md:463 */
   auditSqlWizardStopped: 'Not every change was applied. The list shows each event as it is now.',
-  /** EXPERIENCE.md:464 */
+  /** EXPERIENCE.md:465 */
   userRefusalServiceAccountSignIn:
     'The instance\'s own services sign in as this account. A new password or a required password change would stop them, OcuPilot included.',
-  /** EXPERIENCE.md:465 */
+  /** EXPERIENCE.md:466 */
   userFieldComment: 'Comment',
-  /** EXPERIENCE.md:465 */
+  /** EXPERIENCE.md:466 */
   userFieldPasswordNeverExpires: 'Password never expires',
-  /** EXPERIENCE.md:465 */
+  /** EXPERIENCE.md:466 */
   userFieldAccountNeverExpires: 'Account never expires',
-  /** EXPERIENCE.md:465 */
+  /** EXPERIENCE.md:466 */
   userFieldEmail: 'Email address',
-  /** EXPERIENCE.md:465 */
+  /** EXPERIENCE.md:466 */
   userFieldPhoneProvider: 'Mobile phone service provider',
-  /** EXPERIENCE.md:465 */
+  /** EXPERIENCE.md:466 */
   userFieldPhoneNumber: 'Mobile phone number',
-  /** EXPERIENCE.md:465 */
+  /** EXPERIENCE.md:466 */
   userFieldTwoFactor: 'Two-factor authentication',
-  /** EXPERIENCE.md:465 */
+  /** EXPERIENCE.md:466 */
   userFieldTwoFactorSms: 'SMS text',
-  /** EXPERIENCE.md:465 */
+  /** EXPERIENCE.md:466 */
   userFieldTwoFactorTotp: 'Time-based one-time password',
-  /** EXPERIENCE.md:465 */
+  /** EXPERIENCE.md:466 */
   userFieldShowQrCode: 'Show the QR code at next sign-in',
-  /** EXPERIENCE.md:465 */
+  /** EXPERIENCE.md:466 */
   userRolesEmpty: 'This account holds no roles.',
-  /** EXPERIENCE.md:466 */
+  /** EXPERIENCE.md:467 */
   formTabErrorOne: '<tab>, 1 error',
-  /** EXPERIENCE.md:466 */
+  /** EXPERIENCE.md:467 */
   formTabErrorMany: '<tab>, <n> errors',
-  /** EXPERIENCE.md:467 */
+  /** EXPERIENCE.md:468 */
   userPromptGroupSignIn: 'Sign-in',
-  /** EXPERIENCE.md:467 */
+  /** EXPERIENCE.md:468 */
   userPromptGroupAccess: 'Access',
-  /** EXPERIENCE.md:467 */
+  /** EXPERIENCE.md:468 */
   userPromptSignIn: 'Why can this user not sign in?',
-  /** EXPERIENCE.md:467 */
+  /** EXPERIENCE.md:468 */
   userPromptPrivilege: 'Which of this user\'s roles grant %All or an administrative privilege?',
-  /** EXPERIENCE.md:467 */
+  /** EXPERIENCE.md:468 */
   userPromptTwoFactor: 'Turn on two-factor sign-in for this user.',
+
+  // Story 15.6: the account menu's theme toggle.
+  /** EXPERIENCE.md:464 */
+  accountDarkTheme: 'Dark theme',
 
 } as const;
 

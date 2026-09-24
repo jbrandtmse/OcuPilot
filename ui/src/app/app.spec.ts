@@ -39,6 +39,7 @@ import { Session, type SessionState } from './core/session';
 import { PanelState } from './core/panel-layout';
 import { TurnStore } from './core/turn';
 import { ShellState } from './core/shell-state';
+import { ThemeState } from './core/theme';
 import { STRINGS } from './core/strings';
 import { SuggestedView } from './core/suggested-view';
 import { stubAgentContext } from './testing/agent-context';
@@ -457,6 +458,7 @@ describe('the shell frame', () => {
         { provide: AgentContext, useValue: agentContext },
         { provide: SuggestedView, useValue: suggested },
         { provide: ShellState, useValue: shellState },
+        { provide: ThemeState, useValue: new ThemeState({ account: shellPreferences, root: document.createElement('div') }) },
         { provide: PanelState, useValue: panelState },
         { provide: TurnStore, useValue: turn },
         { provide: ScopeService, useValue: scope as unknown as ScopeService },

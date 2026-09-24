@@ -90,6 +90,8 @@ ClassMethod HandleRead() As %Status
 /// member outside the closed set is 422
 /// <parameter>OcuPilot.Api.Error.PREFERENCESNAME</parameter> on <code>name</code>; an absent,
 /// empty or over-long value is 422 <parameter>OcuPilot.Api.Error.PREFERENCESVALUE</parameter> on
+/// <code>value</code>; a <code>theme</code> value other than <code>light</code> or
+/// <code>dark</code> is 422 <parameter>OcuPilot.Api.Error.PREFERENCESCHOICE</parameter> on
 /// <code>value</code>; and a twenty-first favorite is 422
 /// <parameter>OcuPilot.Api.Error.PREFERENCESLIMIT</parameter> on <code>route</code>.</p>
 /// <p><b>Only an <parameter>ACTIONADD</parameter> requires a built screen's route.</b> A
@@ -202,6 +204,11 @@ ClassMethod HandleUpdate() As %Status
         }
         If (tAction = ..#ACTIONSET) && ((tValue = "") || ($Length(tValue) > ##class(OcuPilot.Kernel.State.Pref).#VALUEMAXLENGTH)) {
             Set tSC = ..RenderViolation(##class(OcuPilot.Api.Error).#PREFERENCESVALUE, ..#VALUEMEMBER)
+            Quit
+        }
+        ; The theme member takes one of a fixed set of values, refused before any write.
+        If (tAction = ..#ACTIONSET) && (tKeyMember = ..#NAMEMEMBER) && (tKey = ##class(OcuPilot.Kernel.State.Pref).#SHELLTHEME) && '##class(OcuPilot.Kernel.State.Pref).IsThemeValue(tValue) {
+            Set tSC = ..RenderViolation(##class(OcuPilot.Api.Error).#PREFERENCESCHOICE, ..#VALUEMEMBER)
             Quit
         }
 

@@ -7,7 +7,14 @@ import { Session } from '../core/session';
 import { STRINGS } from '../core/strings';
 import { ACCOUNT_MENU_OVERLAY_ID, AccountMenu } from './account-menu';
 import { About } from '../core/about';
+import { SHELL_THEME, THEME_DARK } from '../core/account-preferences';
+import { THEME_DARK_CLASS, ThemeState } from '../core/theme';
 import { stubAbout, type StubbedAbout } from '../testing/about';
+import {
+  lastRemembered,
+  settledAccountPreferences,
+  type StubbedAccountPreferences,
+} from '../testing/account-preferences';
 
 /**
  * The account menu's rendered contract (EXPERIENCE.md "Opens on click or Ctrl/Cmd+K; typing", "toggle the side-bar; with focus"; DESIGN.md `:1021`), and
@@ -24,8 +31,8 @@ import { stubAbout, type StubbedAbout } from '../testing/about';
  *
  * **DW-115** is Story 15.1's: the second `role="menuitem"` arrives, and with it the roving
  * tabindex and the arrow model the menu shipped without. The model is asserted **n-item** -- one
- * case plants a third item and expects the same wrap -- because Story 15.6 adds a theme toggle
- * beside these two and must inherit it rather than re-derive it.
+ * case plants a third item and expects the same wrap -- and Story 15.6's theme toggle is the
+ * fourth, a `menuitemcheckbox` the same model reaches.
  */
 
 class StubSession {
@@ -59,13 +66,28 @@ describe('the account menu', () => {
   let requests: { path: string; body: unknown }[];
   let answer: JsonResult<unknown>;
   let about: StubbedAbout;
+  let preferences: StubbedAccountPreferences;
+  let theme: ThemeState;
+  let themeRoot: HTMLElement;
   const planted: HTMLElement[] = [];
 
   const trigger = (): HTMLButtonElement =>
     fixture.nativeElement.querySelector('.ocu-account-trigger');
   const items = (): HTMLButtonElement[] => [
-    ...fixture.nativeElement.querySelectorAll('.ocu-account-panel [role="menuitem"]'),
+    ...fixture.nativeElement.querySelectorAll(
+      '.ocu-account-panel [role="menuitem"], .ocu-account-panel [role="menuitemcheckbox"]'
+    ),
   ];
+  /** The one checkbox item, Dark theme (Story 15.6). */
+  const themeItem = (): HTMLButtonElement | null =>
+    fixture.nativeElement.querySelector('.ocu-account-panel [role="menuitemcheckbox"]');
+  /** An item's label, without the check mark the Dark theme item draws while checked. */
+  const labelOf = (entry: HTMLElement): string =>
+    [...entry.childNodes]
+      .filter((node) => node.nodeType === Node.TEXT_NODE)
+      .map((node) => node.textContent ?? '')
+      .join('')
+      .trim();
   /**
    * The first item, which Story 15.3 made About. Kept for the rows that are about "the item focus
    * lands on" rather than about a particular action; every row that activates one names it.
@@ -85,7 +107,10 @@ describe('the account menu', () => {
     fixture.detectChanges();
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    preferences = await settledAccountPreferences();
+    themeRoot = document.createElement('div');
+    theme = new ThemeState({ account: preferences, root: themeRoot });
     session = new StubSession();
     overlays = new OverlayStack();
     requests = [];
@@ -103,6 +128,7 @@ describe('the account menu', () => {
         { provide: Session, useValue: session as unknown as Session },
         { provide: OverlayStack, useValue: overlays },
         { provide: ApiService, useValue: api as unknown as ApiService },
+        { provide: ThemeState, useValue: theme },
       ],
     });
     fixture = TestBed.createComponent(AccountMenu);
@@ -133,17 +159,24 @@ describe('the account menu', () => {
     expect(document.activeElement).toBe(item());
   });
 
-  it('AC1, DW-115; Story 15.3: it lists About, Change password and Sign out, each a menuitem with tabindex="-1"', () => {
+  it('AC1, DW-115; Stories 15.3 and 15.6: it lists About, Change password, Dark theme and Sign out, each with tabindex="-1"', () => {
     trigger().click();
     fixture.detectChanges();
 
-    expect(items().map((entry) => entry.textContent?.trim())).toEqual([
+    expect(items().map(labelOf)).toEqual([
       STRINGS.aboutTitle,
       STRINGS.accountChangePassword,
+      STRINGS.accountDarkTheme,
       STRINGS.actionSignOut,
     ]);
+    // Dark theme sits beside Change password as the one checkbox item.
+    expect(items().map((entry) => entry.getAttribute('role'))).toEqual([
+      'menuitem',
+      'menuitem',
+      'menuitemcheckbox',
+      'menuitem',
+    ]);
     for (const entry of items()) {
-      expect(entry.getAttribute('role')).toBe('menuitem');
       // The roving model: every item is out of the Tab order and the container moves focus.
       expect(entry.getAttribute('tabindex')).toBe('-1');
     }
@@ -152,12 +185,14 @@ describe('the account menu', () => {
   it('AC7, DW-115: ArrowDown and ArrowUp wrap, and Home and End jump to the ends', () => {
     trigger().click();
     fixture.detectChanges();
-    const [first, middle, last] = items();
-    expect(items()).toHaveLength(3);
+    const [first, middle, checkbox, last] = items();
+    expect(items()).toHaveLength(4);
     expect(document.activeElement).toBe(first);
 
     press('ArrowDown');
     expect(document.activeElement).toBe(middle);
+    press('ArrowDown');
+    expect(document.activeElement).toBe(checkbox);
     press('ArrowDown');
     expect(document.activeElement).toBe(last);
     press('ArrowDown');
@@ -170,32 +205,93 @@ describe('the account menu', () => {
     expect(document.activeElement).toBe(first);
   });
 
-  it('AC7, DW-115: the same code path behaves identically with a fourth item', () => {
-    // Story 15.6 adds a theme toggle beside these three. Planting a fourth `role="menuitem"` is
-    // what makes "n-item" falsifiable here: a model that indexed the shipped count would wrap to
-    // the wrong element the moment another existed, and nothing else in this file would see it.
+  it('AC7, DW-115; Story 15.6: the same code path reaches the fourth item, the Dark theme checkbox', () => {
+    // The arrow model resolves over `menuitem` and `menuitemcheckbox` alike: a model that read
+    // only `menuitem` would step from Change password straight to Sign out and never reach it.
     trigger().click();
     fixture.detectChanges();
-    const panel: HTMLElement = fixture.nativeElement.querySelector('.ocu-account-panel');
-    const planted4 = document.createElement('button');
-    planted4.setAttribute('role', 'menuitem');
-    planted4.setAttribute('tabindex', '-1');
-    planted4.className = 'ocu-account-item';
-    panel.appendChild(planted4);
+    const checkbox = themeItem();
+    expect(checkbox).not.toBeNull();
 
     const [first, second] = items();
     expect(items()).toHaveLength(4);
+    second.focus();
+    press('ArrowDown');
+    expect(document.activeElement).toBe(checkbox);
+    press('ArrowUp');
+    expect(document.activeElement).toBe(second);
+    press('End');
+    press('ArrowUp');
+    expect(document.activeElement).toBe(checkbox);
+    press('Home');
+    expect(document.activeElement).toBe(first);
+  });
+
+  it('AC7, DW-115: the model is n-item -- a planted fifth item is reached by wrap and End like the shipped four', () => {
+    // A model that indexed the shipped count would wrap to the wrong element the moment another
+    // existed, and nothing else in this file would see it.
+    trigger().click();
+    fixture.detectChanges();
+    const panel: HTMLElement = fixture.nativeElement.querySelector('.ocu-account-panel');
+    const planted5 = document.createElement('button');
+    planted5.setAttribute('role', 'menuitem');
+    planted5.setAttribute('tabindex', '-1');
+    planted5.className = 'ocu-account-item';
+    panel.appendChild(planted5);
+
+    const [first] = items();
+    expect(items()).toHaveLength(5);
     first.focus();
     press('ArrowUp');
-    expect(document.activeElement).toBe(planted4);
+    expect(document.activeElement).toBe(planted5);
     press('ArrowDown');
     expect(document.activeElement).toBe(first);
     press('End');
-    expect(document.activeElement).toBe(planted4);
-    press('Home');
-    expect(document.activeElement).toBe(first);
-    press('ArrowDown');
-    expect(document.activeElement).toBe(second);
+    expect(document.activeElement).toBe(planted5);
+  });
+
+  it('Story 15.6 AC2: the Dark theme item says whether the dark theme is on screen', () => {
+    trigger().click();
+    fixture.detectChanges();
+    expect(themeItem()?.getAttribute('aria-checked')).toBe('false');
+    expect(themeItem()?.querySelector('.ocu-account-check')).toBeNull();
+
+    // Set from outside the menu -- the remembered choice adopted after sign-in -- and mirrored.
+    theme.setTheme(THEME_DARK);
+    fixture.detectChanges();
+    expect(themeItem()?.getAttribute('aria-checked')).toBe('true');
+    expect(themeItem()?.querySelector('.ocu-account-check')?.getAttribute('aria-hidden')).toBe('true');
+    expect(labelOf(themeItem() as HTMLElement)).toBe(STRINGS.accountDarkTheme);
+  });
+
+  it('Story 15.6 AC2: activating Dark theme flips the theme, writes the choice, and keeps the menu open on the item', () => {
+    trigger().click();
+    fixture.detectChanges();
+    const checkbox = themeItem() as HTMLButtonElement;
+    // A pointer activation: opening left focus on the first item, and the press itself does not
+    // move it (`onMenuMouseDown`), so landing on the item is the toggle's own doing.
+    expect(document.activeElement).toBe(item());
+    checkbox.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    checkbox.click();
+    fixture.detectChanges();
+
+    expect(theme.isDark()).toBe(true);
+    expect(themeRoot.classList.contains(THEME_DARK_CLASS)).toBe(true);
+    expect(lastRemembered(preferences.calls, SHELL_THEME)).toBe(THEME_DARK);
+    expect(trigger().getAttribute('aria-expanded')).toBe('true');
+    expect(overlays.ids()).toEqual([ACCOUNT_MENU_OVERLAY_ID]);
+    expect(themeItem()).toBe(checkbox);
+    expect(checkbox.getAttribute('aria-checked')).toBe('true');
+    expect(document.activeElement).toBe(checkbox);
+
+    // A second activation turns it back off, from the same open menu.
+    checkbox.click();
+    fixture.detectChanges();
+    expect(theme.isDark()).toBe(false);
+    expect(checkbox.getAttribute('aria-checked')).toBe('false');
+    expect(themeRoot.classList.contains(THEME_DARK_CLASS)).toBe(false);
+    // Nothing on the password route: the theme is a preference write, never an account change.
+    expect(requests).toEqual([]);
   });
 
   it('opening registers with the overlay stack, and closing unregisters', () => {

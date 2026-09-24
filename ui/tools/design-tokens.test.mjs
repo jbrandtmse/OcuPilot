@@ -14,7 +14,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
@@ -25,6 +25,7 @@ import {
   contrastRatio,
   round2,
   resolveHex,
+  darkScopeRepoints,
   LOAD_BEARING,
   MARGINAL_GUARDED,
   REJECTED,
@@ -156,6 +157,58 @@ test('the three elevation shadow levels are present in both modes and are not co
     assert.match(tokens.dark[name], /rgba\(/, `${name} (dark) should carry an rgba() shadow value`);
     assert.ok(!COLOR_ROLES.includes(name), `${name} must be excluded from COLOR_ROLES`);
   }
+});
+
+// --- Story 15.6: the non-role pairs and the complete dark scope -------------------------
+//
+// Mutations (Rule 19): delete one role's re-point from `:root.ocu-theme-dark` in _theme.scss
+// -> the scope-completeness test goes red naming that role. Re-add a component rule that
+// selects `:root.ocu-theme-dark` in _components.scss -> the single-home test goes red naming
+// the file. Set `--ocu-toast-link-dark` to `secondary-dark`'s hex -> the toast-link pin goes red.
+
+test('the toast link pair is the hexes of secondary-dark and secondary, and is the pair the toast-link guard measures', () => {
+  assert.equal(tokens.light['toast-link'].toLowerCase(), tokens.dark.secondary.toLowerCase(), 'light: DESIGN.md toast.link-color is secondary-dark');
+  assert.equal(tokens.dark['toast-link'].toLowerCase(), tokens.light.secondary.toLowerCase(), 'dark: DESIGN.md toast.link-color-dark is plain secondary');
+  const guard = MARGINAL_GUARDED.find((entry) => entry.token === 'toast-link');
+  assert.equal(guard, MARGINAL_GUARDED[2], 'the third marginal guard is the toast link');
+  assert.equal(resolveHex(tokens, guard.light.fg).toLowerCase(), tokens.light['toast-link'].toLowerCase(), "the guard's light foreground is the token's light side");
+  assert.equal(resolveHex(tokens, guard.dark.fg).toLowerCase(), tokens.dark['toast-link'].toLowerCase(), "and its dark foreground the token's dark side");
+});
+
+test('the server-flag edge is transparent in light and on-shell at 20% in dark', () => {
+  assert.equal(tokens.light['server-flag-edge'], 'transparent');
+  assert.equal(tokens.dark['server-flag-edge'], 'color-mix(in srgb, var(--ocu-on-shell) 20%, transparent)', 'DESIGN.md server-flag-badge.edge-dark');
+});
+
+test('the dark scope re-points every role and every non-role token with a dark side at its -dark twin, once each', () => {
+  const themeRaw = readFileSync(join(here, '..', 'src', 'styles', '_theme.scss'), 'utf8');
+  const repoints = darkScopeRepoints(themeRaw);
+  assert.ok(repoints !== null, 'expected a :root.ocu-theme-dark block in _theme.scss');
+  const expected = [
+    ...COLOR_ROLES,
+    ...Object.entries(NON_ROLE_TOKENS).filter(([, meta]) => meta.hasDark).map(([name]) => name),
+  ];
+  for (const name of expected) {
+    const found = repoints.filter((entry) => entry.name === name);
+    assert.equal(found.length, 1, `--ocu-${name} is re-pointed exactly once in the dark scope (found ${found.length})`);
+    assert.equal(found[0].target, `${name}-dark`, `--ocu-${name} reads var(--ocu-${name}-dark) in the dark scope`);
+  }
+  const extras = repoints.filter((entry) => !expected.includes(entry.name)).map((entry) => entry.name);
+  assert.deepEqual(extras, [], 'the dark scope re-points nothing that is not a role or a non-role token with a dark side');
+});
+
+test('ocu-theme-dark is named under ui/src only by _theme.scss and core/theme.ts', () => {
+  const srcRoot = join(here, '..', 'src');
+  const naming = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else if (readFileSync(path, 'utf8').includes('ocu-theme-dark')) naming.push(path.slice(srcRoot.length + 1).split('\\').join('/'));
+    }
+  };
+  walk(srcRoot);
+  assert.deepEqual(naming.sort(), ['app/core/theme.ts', 'styles/_theme.scss'], 'the class has one scope and one setter; no component rule selects on the theme');
 });
 
 // --- Contrast: load-bearing set --------------------------------------------------

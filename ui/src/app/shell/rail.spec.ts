@@ -1,3 +1,4 @@
+import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -10,6 +11,8 @@ import { STRINGS } from '../core/strings';
 import type { AreaDeclaration, ScreenDeclaration } from '../core/screens.generated';
 import { stubAgentStatus } from '../testing/agent-status';
 import { Rail } from './rail';
+import { AREA_ICON_STROKE_WIDTH, areaIcon } from './rail-icons';
+import { AreaIcon } from './rail-icon';
 import {
   SHELL_SIDE_BAR_OPEN,
   type StubbedAccountPreferences,
@@ -28,6 +31,41 @@ import {
  */
 
 const ALLOWED: Verdict = { allowed: true, failedPair: '' };
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/** An icon's children as `{tag, attrs}` with attributes in DOM order, framework attributes aside. */
+function renderedShapes(svg: Element) {
+  return Array.from(svg.children).map((child) => {
+    expect(child.namespaceURI, `<${child.localName}> is an SVG element, not an HTML one`).toBe(SVG_NS);
+    return {
+      tag: child.localName,
+      attrs: Array.from(child.attributes)
+        .filter((attr) => !attr.name.startsWith('_ng') && !attr.name.startsWith('ng-'))
+        .map((attr) => [attr.name, attr.value]),
+    };
+  });
+}
+
+/** The module's shapes for `key` at `size`, in the same form, or `[]` where it has none. */
+function expectedShapes(key: string, size: 20 | 24) {
+  return (areaIcon(key, size) ?? []).map((shape) => ({ tag: shape.tag, attrs: Object.entries(shape.attrs) }));
+}
+
+/** The icon root: an SVG element, decorative, sized and stroked as the module publishes. */
+function expectIconRoot(svg: Element, size: 20 | 24): void {
+  expect(svg.namespaceURI).toBe(SVG_NS);
+  expect(svg.localName).toBe('svg');
+  expect(svg.getAttribute('viewBox')).toBe(`0 0 ${size} ${size}`);
+  expect(svg.getAttribute('width')).toBe(String(size));
+  expect(svg.getAttribute('height')).toBe(String(size));
+  expect(svg.getAttribute('fill')).toBe('none');
+  expect(svg.getAttribute('stroke')).toBe('currentColor');
+  expect(svg.getAttribute('stroke-width')).toBe(AREA_ICON_STROKE_WIDTH);
+  expect(svg.getAttribute('aria-hidden')).toBe('true');
+  expect(svg.getAttribute('focusable')).toBe('false');
+  expect(svg.querySelector('title, desc'), 'no title or desc to announce').toBeNull();
+}
 
 function area(key: string, labelKey: string, position: number, extra: Partial<AreaDeclaration> = {}) {
   return {
@@ -168,6 +206,25 @@ describe('the activity rail', () => {
     expect(bottom[0].querySelector('.ocu-rail-item').getAttribute('aria-label')).toBe(
       STRINGS.navAreaAgent
     );
+  });
+
+  it('draws each area icon as one decorative 20x20 svg holding the module shapes, and no letter (Story 15.7)', () => {
+    const rendered = items();
+    expect(rendered).toHaveLength(AREAS.length);
+    for (const [index, item] of rendered.entries()) {
+      const key = AREAS[index].key;
+      const glyph = item.children[0];
+      expect(glyph.classList.contains('ocu-rail-glyph')).toBe(true);
+      expect(glyph.getAttribute('aria-hidden')).toBe('true');
+      expect(glyph.textContent, `${key}: the glyph holds no text`).toBe('');
+      expect(glyph.children).toHaveLength(1);
+      const svg = glyph.children[0];
+      expectIconRoot(svg, 20);
+      expect(renderedShapes(svg), `${key}: the rendered shapes are the module's`).toEqual(
+        expectedShapes(key, 20)
+      );
+      expect(renderedShapes(svg).length, `${key}: every rail area has a drawing`).toBeGreaterThan(0);
+    }
   });
 
   it('is one Tab stop, with Up and Down moving between items', () => {
@@ -443,5 +500,34 @@ describe('the activity rail', () => {
     fixture.detectChanges();
     expect(shell.visibleArea()).toBe('');
     expect(shell.open()).toBe(true);
+  });
+});
+
+@Component({
+  imports: [AreaIcon],
+  template: `<svg [ocuAreaIcon]="key" [size]="size"></svg>`,
+})
+class IconHost {
+  key = 'home';
+  size: 20 | 24 = 20;
+}
+
+describe('the area icon', () => {
+  it('draws nothing -- never a letter -- for an area with no drawing at that size', () => {
+    const fixture = TestBed.createComponent(IconHost);
+    fixture.componentInstance.key = 'no-such-area';
+    fixture.detectChanges();
+    const svg: Element = fixture.nativeElement.querySelector('svg');
+    expectIconRoot(svg, 20);
+    expect(svg.children).toHaveLength(0);
+    expect(svg.textContent).toBe('');
+
+    // Home has a rail drawing and no tile.
+    const tile = TestBed.createComponent(IconHost);
+    tile.componentInstance.size = 24;
+    tile.detectChanges();
+    const tileSvg: Element = tile.nativeElement.querySelector('svg');
+    expectIconRoot(tileSvg, 24);
+    expect(tileSvg.children).toHaveLength(0);
   });
 });

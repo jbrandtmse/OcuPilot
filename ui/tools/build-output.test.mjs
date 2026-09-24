@@ -385,6 +385,15 @@ test('the emitted CSS carries the Material bridge in both scopes, one re-point p
   assert.match(cssText, /--mat-sys-primary:\s*var\(--ocu-primary\)/, 'expected the light --mat-sys-primary re-point in the emitted CSS');
   assert.match(cssText, /\.ocu-theme-dark\s*\{[^}]*--mat-sys-primary:\s*var\(--ocu-primary-dark\)/, 'expected the dark scope to re-point --mat-sys-primary at the dark token');
 
+  // Story 15.6: the scope re-points the bare roles the component layer reads, not only the
+  // Material bridge -- and every authored re-point reaches the bundle.
+  const bareAuthored = [...themeScss.matchAll(/--ocu-([\w-]+):\s*var\(--ocu-\1-dark\)/g)].length;
+  const bareEmitted = [...cssText.matchAll(/--ocu-([\w-]+):\s*var\(--ocu-\1-dark\)/g)].length;
+  assert.ok(bareAuthored > 0, 'expected _theme.scss to re-point the bare --ocu-* roles in its dark scope');
+  assert.equal(bareEmitted, bareAuthored, `expected every authored --ocu-* re-point to reach the bundle (${bareAuthored} authored, ${bareEmitted} emitted)`);
+  assert.match(cssText, /\.ocu-theme-dark\s*\{[^}]*--ocu-shell:\s*var\(--ocu-shell-dark\)/, 'expected the dark scope to re-point --ocu-shell');
+  assert.match(cssText, /\.ocu-theme-dark\s*\{[^}]*--ocu-on-surface:\s*var\(--ocu-on-surface-dark\)/, 'expected the dark scope to re-point --ocu-on-surface');
+
   // Every role Lantern does not value ships as `light-dark(<light>, <dark>)`
   // (mat.theme's `color-scheme` default). Without a declared color-scheme in each
   // scope those resolve to their light half in both modes, so the class flip
