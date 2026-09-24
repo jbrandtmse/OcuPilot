@@ -59,3 +59,7 @@
 2026-09-24T14:16:58Z	Story 12.2	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 cycle_iteration=2 model=claude-opus-5-5
 2026-09-24T14:16:58Z	Story 12.2	smoke_complete	method=browser result=pass iterations=2 defects_caught=0 evidence=users-actions+token-revoke_browser_3/3_on_redeployed_bundle(ocupilot-b-ci);server_code_unchanged_since_smoke_1(49/49) model=claude-opus-5-5
 2026-09-24T14:16:58Z	Story 12.2	committed	sha=ff3686c4 submodules= ci=pending run=36010950149 note=rework_code_commit_pushed_before_bookkeeping(DW-1434)
+2026-09-24T14:39:32Z	Epic 12	throwaway_recompiled	reason=orchestrator_heads-up(Epic_9_loader_reached_ocupilot-b-ci) source_parity=diff-rq_clean LoadDir_sc=1_errs=0 after:smoke_49/49,TokenRevoke_6/6,users-actions+token-revoke_browser_3/3
+2026-09-24T14:39:32Z	Epic 12	ci_resolved	story=12.2 run=36010950149 result=success head=ff3686c4 resolved_at=handback_gate
+2026-09-24T14:39:32Z	Epic 12	throwaway_down	by=runner(epic-runner-12,the_session_that_ran_its_up) container=ocupilot-b-ci project=ocupilot-b-ci dir=/tmp/ocupilot-b-ci result=removed reason=owner_ordered_hand_back_for_Story_11.10(1fbf9f0a)
+2026-09-24T14:39:32Z	Epic 12	epic_runner_paused	stories_done=12.1,12.2 story_12.3=not_started(no_stage_spawned) next=integrate_forward_then_pre-warm_then_12.3_plan reason=owner_ordered_hand_back_at_boundary(1fbf9f0a) decisions_pending=DW-1616(escalated)
