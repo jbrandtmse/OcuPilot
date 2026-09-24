@@ -168,6 +168,7 @@ development_status:
   9-7-the-new-task-wizard: backlog
   9-8-edit-task: backlog
   9-9-a-cut-editor-ships-reduced-never-half-working: backlog
+  9-10-the-user-audit-event-editor: backlog
   epic-9-retrospective: optional
 
   epic-10: done
@@ -178,7 +179,8 @@ development_status:
   10-5-a-connection-test-that-answers-before-the-gateway-does: done
   epic-10-retrospective: optional
 
-  epic-11: backlog
+  epic-11: in-progress
+  11-9-the-agent-knows-the-screen-it-is-on: done
   11-7-token-streaming: backlog
   11-8-the-proposal-names-the-privilege-it-needs: backlog
   11-1-explain-this-screen: backlog

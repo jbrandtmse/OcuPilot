@@ -6563,12 +6563,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-11-system-and-user-audit-event-configuration.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: AD-54 and AD-55 exist only on OCU-1-epic8 (Write.cls, Mint.cls, Router.cls); building a second create path here duplicates them; orchestrator ruling 2026-09-23 amended 7.11 AC3
 - 2026-09-23T19:25:32Z status=routed owner=range-end-cleanup by=spec_gate note=a dialog editor over an AD-54 create and an AD-55 Save, following Story 8.4's resource editor; the orchestrator has offered the owner a Story 9.10 charter for it
+- 2026-09-24T08:07:32Z status=routed owner=9-10-the-user-audit-event-editor by=owner note=Owner answered 2026-09-24: yes, charter Story 9.10 'The user audit event editor'. Chartered at the end of Epic 9's order.
 
 ### DW-1575: Each audit event tool accepts the other list's events, so a user event changed through a system tool publishes audit-event (and the reverse)
 - source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: med | fix-risk: med | footprint: in-story
 - evidence: AuditEvent*/AuditUserEvent* tools read Security.Audit.Event GET by source/type/name with no owner check; the target type is the tool descriptor's (Mint.cls:135). Vendor: a system event is exactly one whose Source starts with % (Security.Events.cls:24; ListByFilter on slot A: 75 system, 4 user, 0 mismatches).
 - 2026-09-23T20:54:31Z status=escalated owner=burndown by=cr note=no id-aware hook shared by mint and screen read inside the approved footprint; fix via port owner rule or kernel seam
 - 2026-09-23T22:26:32Z status=routed owner=range-end-cleanup by=merge_gate note=Epic 7 merge decision sheet, recommended disposition taken: one owner check both callers pass through (a Source starting with % is a system event).
+- 2026-09-24T08:07:32Z status=routed owner=9-10-the-user-audit-event-editor by=orchestrator note=Moved from range-end-cleanup into 9.10, whose tools are the ones that must refuse the other list's events.
 
 ### DW-1576: The reset tools' card row reads Total before "" after 0: its before is not derived from the fresh read, which AD-51 requires
 - source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: med | fix-risk: med | footprint: in-story
@@ -6644,3 +6646,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-10-5-a-connection-test-that-answers-before-the-gateway-does.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: scripts/test_check_objectscript.py:964 docstring reads 'the one spawn in shipped code is the job's own'; no case shows a JOB in Kernel/Provider/TestCall.cls passes while one in another Kernel/Provider file is refused, so a prefix-widened allow-list stays green
 - 2026-09-24T06:42:06Z status=wontfix-accepted owner=10-5-a-connection-test-that-answers-before-the-gateway-does by=cr note=reopen_if=JOB_ALLOWED changes shape (prefix, glob) or a third spawn site is added; the harness file is outside this story's footprint
+
+### DW-1608: The panel never reads a screen store's truncated flag, so a list its own endpoint cut (the error list's drill.truncated) reaches the turn with truncated false and rowsAvailable equal to the rows shown
+- source: spec-11-9-the-agent-knows-the-screen-it-is-on.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ui/src/app/shell/panel.ts assembleContext never reads store.truncated(); payload truncated reflects only the kernel row-cap and size cuts; pre-existing for every screen
+- 2026-09-24T09:12:19Z status=wontfix-accepted owner=11-9-the-agent-knows-the-screen-it-is-on by=harvest note=reopen_if=a source-cut list (error list at its endpoint cap) shows truncated=false in a recorded screen_context
+
+### DW-1610: The error list's context rows reach the turn labelled with the shell's namespace and no date, so the agent misattributes them and cannot scope logs.applicationerrors.read or a delete to them
+- source: spec-11-9-the-agent-knows-the-screen-it-is-on.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: publishRows sends drill.errors() narrowed to the 5 summary fields; panel.ts sets namespace from scope.namespace() and entity from the route :id, while the drill's namespace/date live only in ErrorLogDrill (AD-48 one namespace source); ErrorRead requires namespace and date
+- 2026-09-24T09:36:58Z status=routed owner=11-2-explain-a-log-or-audit-entry by=cr note=11.2 consumes these rows; carrying the drill scope needs a descriptor or context-contract change outside 11.9's Never list

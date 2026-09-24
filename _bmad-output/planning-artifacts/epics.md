@@ -517,7 +517,7 @@ Where an FR is split, the epic that first delivers user-visible value from it is
 #### Agent
 
 - FR-10: Epic 4 - the docked panel, resizable, remembered, never closed by navigation.
-- FR-11: Epic 4 - screen context per turn with its toggle, secret exclusion and the context chip.
+- FR-11: Epic 4 - screen context per turn with its toggle, secret exclusion and the context chip; Story 11.9 adds the screen's tools and the read-only verdict and teaches the prompt to use them.
 - FR-12: Epic 4 - turn execution, progress cards and the conversation lock.
 - FR-13: Epic 4 - sanitized Markdown from a vendored pipeline with no remote resource.
 - FR-14: Epic 5 - the change event, in-place re-fetch, highlight and off-screen toast.
@@ -639,7 +639,7 @@ The epic-level map above says *which epic* owns each requirement and why it is s
 | FR-8 | 1.13 | FR-48 | 2.8, 6.5, 7.5 |
 | FR-9 | 1.15, 9.9 | FR-49 | 6.6 |
 | FR-10 | 4.3 | FR-50 | 6.7 |
-| FR-11 | 4.4, 4.11 | FR-51 | 5.11, 7.6, 16.11 |
+| FR-11 | 4.4, 4.11, 11.9 | FR-51 | 5.11, 7.6, 16.11 |
 | FR-12 | 4.5 | FR-52 | 9.7 |
 | FR-13 | 4.6 | FR-53 | 9.8 |
 | FR-14 | 5.7 | FR-54 | 2.9, 6.8 |
@@ -740,6 +740,8 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 
 **Owner triage, 2026-09-23 (providers), high priority.** Two findings from connecting live keys on slot C. OcuPilot's canonical temperature of 0 is refused by the default model of Anthropic, whose current models reject sampling parameters, and of OpenAI, whose default model accepts only 1: Story 10.4 sends none unless the operator sets one, and never to Anthropic. A connection test against a local model that is still loading is cut off by the Web Gateway's 60-second timeout with an empty 504: Story 10.5 answers first with OcuPilot's own reason. Both run in one runner on the first slot to free, ahead of Epic 12, Story 15.8 and Epic 11; Epic 12 starts that much later.
 
+**Owner request, 2026-09-24 (agent grounding), high priority.** The screen context already carries the rows on screen, but the system prompt never mentions it, every tool is offered on every screen with nothing saying which act on the one in view, and the model is not told when it is read-only. Story 11.9 fixes all three before submission: it runs first and alone on slot B, with Epic 12 handed back at its first boundary and resumed after 11.9 merges. Screen data stays out of the system prompt (AD-11).
+
 **Orchestrator amendment, 2026-09-19.** Two consequences of the amendment above, settled on the owner's
 instruction. Story 13.3's acceptance criteria are rewritten so none of them can be closed by publishing:
 the archive is proven by a dry-run build and a local install, and a third criterion forbids touching the
@@ -836,7 +838,7 @@ An operator runs the agent on OpenAI, Google Gemini or a local model on their ow
 
 ### Epic 11: The agent explains itself, cites its work, and streams
 
-During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked after the OAuth 2.0 editors (Epic 12) by the owner's re-sequence of 2026-09-21, because these are what voters see and improvements are allowed through the voting week. Stories run in the order 11.7, 11.8, 11.1, 11.2, 11.3, 11.4 (owner re-order, 2026-09-22): streaming and the privilege line first, so a partial epic merged before the deadline carries the two refinements a judge can see. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
+During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked after the OAuth 2.0 editors (Epic 12) by the owner's re-sequence of 2026-09-21, because these are what voters see and improvements are allowed through the voting week. Story 11.9 runs first and alone, before Epic 12 resumes (owner, 2026-09-24); the rest run in the order 11.7, 11.8, 11.1, 11.2, 11.3, 11.4 (owner re-order, 2026-09-22): streaming and the privilege line first, so a partial epic merged before the deadline carries the two refinements a judge can see. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
 
 **FRs covered:** FR-70, FR-71, NFR-2 (token streaming)
 
@@ -4836,6 +4838,39 @@ So that a gap reads as a decision rather than a defect.
 
 ---
 
+### Story 9.10: The user audit event editor
+
+**Chartered by the owner, 2026-09-24**, from DW-1573: Story 7.11 shipped enable, disable, reset and delete on the user events list, and left create and configure for after the Epic 7/8 merge, because they need AD-54's create write kind and AD-55's screen Save. Runs last in Epic 9's order.
+
+As a developer-administrator,
+I want to create a user audit event and edit its description from OcuPilot,
+So that I can define the events my own code emits without going back to the classic portal.
+
+**Acceptance Criteria:**
+
+- **Given** the user events list
+- **When** the user chooses Create
+- **Then** a dialog editor takes the event's Source, Type and Name, its Description and whether it is enabled, and Save creates it through the write tool (AD-55); the agent proposes the same create through the same tool, with AD-54's absence fingerprint, so a name taken since the proposal was minted is refused rather than overwritten - `Security.Audit.Event`'s PUT is an upsert.
+
+- **Given** an existing user event
+- **When** the user edits its description
+- **Then** the edit reads fresh, changes only what the user changed, and saves through the same tool; the event's own identity - Source, Type and Name - is read-only once created.
+
+- **Given** the vendor's own rules for a user event's Source, Type and Name
+- **When** they are enforced
+- **Then** they are measured on the instance and checked before the call, so a refusal reads as OcuPilot's own sentence on the field rather than a vendor error; a system event cannot be created or edited through the user event tools.
+
+- **Given** the new labels and refusal sentences
+- **When** they render
+- **Then** they are rows in EXPERIENCE.md's fixed-string table and keys in the string table, like every other published sentence.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1573: User audit events cannot be created or configured (Description edited) from OcuPilot: 7.11 ships enable, disable, reset and delete, and create and configure need AD-54's create kind and AD-55's screen Save (ledger; routed by owner charter 2026-09-24)
+- DW-1575: Each audit event tool accepts the other list's events, so a user event changed through a system tool publishes audit-event (and the reverse) (ledger; routed by owner charter 2026-09-24)
+
+---
+
 ## Epic 10: Run on any model, and harden the write path
 
 An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Two live-key fixes found on 2026-09-23 make every shipped provider's default model connect: sampling parameters left to the provider (10.4), and a connection test that answers before the Web Gateway's timeout (10.5). Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
@@ -4986,9 +5021,46 @@ So that a slow first answer does not read as a broken portal.
 
 ## Epic 11: The agent explains itself, cites its work, and streams
 
-During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked after the OAuth 2.0 editors (Epic 12) by the owner's re-sequence of 2026-09-21, because these are what voters see and improvements are allowed through the voting week. Stories run in the order 11.7, 11.8, 11.1, 11.2, 11.3, 11.4 (owner re-order, 2026-09-22): streaming and the privilege line first, so a partial epic merged before the deadline carries the two refinements a judge can see. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
+During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked after the OAuth 2.0 editors (Epic 12) by the owner's re-sequence of 2026-09-21, because these are what voters see and improvements are allowed through the voting week. Story 11.9 runs first and alone, before Epic 12 resumes (owner, 2026-09-24); the rest run in the order 11.7, 11.8, 11.1, 11.2, 11.3, 11.4 (owner re-order, 2026-09-22): streaming and the privilege line first, so a partial epic merged before the deadline carries the two refinements a judge can see. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
 
 **Applies to every story in this epic.** All of these modify the same panel transcript render path, which is why they are one epic rather than three. Nothing here may break a Release 1 screen or a Release 1 agent write; anything that risks either waits for Stage 2. Every new tool declares `read` or `write` at definition time or the build fails, and every new write key is added to the governance baseline in Epic 14 rather than left to default.
+
+### Story 11.9: The agent knows the screen it is on
+
+**High priority (owner, 2026-09-24).** Runs first and alone on slot B; Epic 12 hands back at its first boundary and resumes after this story merges.
+
+As a judge trying the agent for the first time,
+I want it to answer about the screen in front of me without fetching what I can already see, and to know which of its tools act on that screen,
+So that its first answers are quick, grounded and honest about what it can do.
+
+**Acceptance Criteria:**
+
+- **Given** the built-in system prompt
+- **When** this story completes
+- **Then** it is still one build-time constant with nothing read at runtime joined to it (AD-11 rule 1), and it also says, in substance: a turn may open with the screen the user is viewing - its route, namespace and selected row, the rows as shown with how many were available, the tools that act on that screen, and whether the agent is read-only; answer from it when it holds what was asked, and call a read tool when it does not or when its rows were cut; a change confirmed through one of the screen's tools refreshes that screen and marks the changed row; when read-only, say so and describe the change instead of proposing it; use only the tools offered, and when none can do what was asked, say so rather than describe a capability it lacks.
+
+- **Given** a turn that carries screen context
+- **When** the kernel forwards it to the model
+- **Then** it adds two members derived on the instance, never taken from the request: the wire names of the screen's read tool and of the write tools behind its row actions and primary action, from the descriptor registry; and the turn's read-only verdict, the same one dispatch enforces (AD-30)
+- **And** a request that carries either member itself is refused as an invalid context.
+
+- **Given** the application-error list, which loads through its own endpoint
+- **When** a turn is sent from it
+- **Then** its context carries the rows it shows, narrowed to its declared summary fields and capped like every other screen, and the captured variable table never goes, as Story 11.2 states.
+
+- **Given** AD-11's existing pins and AD-24's bounds
+- **When** the suite runs
+- **Then** both pass unchanged, the added members count within AD-24's bounds, and AD-24 records at origin that the kernel adds them; the seeded-injection test, when Story 14.8 writes it, runs against this prompt. [AMENDED 2026-09-24 - see the story change log: the seeded-injection test is Story 14.8's and does not exist yet]
+
+- **Given** CI calls no live model
+- **When** the suite runs
+- **Then** tests pin the prompt's required statements, the derived members for a list screen with row actions, a detail screen and a form page, and the refusal of a request that sends them; the behavior itself - answering from the context without a read, naming the screen's actions, declining to propose while read-only - is proven live in the owner's check in Story 17.7 on a list and a detail screen.
+
+- **Given** the form pages and Home
+- **When** this story completes
+- **Then** they still send no field values or rows; a form page's context gains only the two derived members.
+
+---
 
 ### Story 11.7: Token streaming
 
@@ -5092,6 +5164,8 @@ So that a log line becomes an explanation in one gesture.
 - **Given** the entry text
 - **When** it reaches the model
 - **Then** it arrives as delimited tool-result content, never as instruction.
+
+- DW-1610: The error list's context rows reach the turn labeled with the shell's namespace and no date, so the agent misattributes them and cannot scope logs.applicationerrors.read or a delete to them (ledger; routed by cr 2026-09-24)
 
 ### Story 11.3: Suggested prompts per screen
 
