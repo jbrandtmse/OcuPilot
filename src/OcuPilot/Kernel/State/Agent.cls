@@ -110,8 +110,13 @@ Property MaxIterationsPerTurn As %Integer [ InitialExpression = 10 ];
 Property SystemPromptOverride As %String(MAXLEN = 8192);
 
 /// <p>Whether this definition may only run read tools. <b>Stored here and enforced in Story
-/// 3.7</b>, which is the single enforcement point; nothing here reads it as a gate.</p>
-Property ReadOnly As %Boolean [ InitialExpression = 1 ];
+/// 3.7</b>, which is the single enforcement point; nothing here reads it as a gate. A new
+/// definition is read/write (developer tool first): every write it proposes still needs the
+/// user's confirmation.</p>
+/// <p><b><code>SCHEMAVERSION</code> does not move for the read/write default.</b> A stored row
+/// keeps the value it holds, read-only included, and nothing rewrites it; a default decides only
+/// what a new row starts with, not what a stored value means.</p>
+Property ReadOnly As %Boolean [ InitialExpression = 0 ];
 
 /// <p>How many days of this definition's conversation history are kept, 1-365. Inert until
 /// Story 14.4 enables the field and ships the purge task.</p>

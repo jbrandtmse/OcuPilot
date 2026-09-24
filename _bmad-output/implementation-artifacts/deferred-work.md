@@ -6661,3 +6661,24 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-12-2-revoke-a-user-s-oauth-2-0-tokens.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Spec Design Notes measured 'Audit after a revoke: no vendor event recorded (auditing on)'; AD-15 Rule requires the marker alongside the vendor's own change event; AD-53's 2026-09-24 amendment covers the screen caller only and says the agent keeps its marker
 - 2026-09-24T13:34:45Z status=escalated owner=burndown by=cr note=lead: add a one-line named case to AD-15 (Rule 20); code already emits the marker, no code change
+- 2026-09-24T17:45:01Z status=by-design owner=12-2-revoke-a-user-s-oauth-2-0-tokens by=merge_gate note=ruling(orchestrator): AD-15 gains a one-line named case at its origin (IRIS audits no token revoke; the marker is the only record); no code change
+### DW-1620: Api/Definitions.cls MergeBody doc comment still says readOnly's default is 1 after 11.10 moved it to 0
+- source: spec-11-10-a-judge-succeeds-the-first-time.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: src/OcuPilot/Api/Definitions.cls:1438 reads 'on readOnly, whose default is 1'; Agent.ReadOnly InitialExpression is now 0
+- 2026-09-24T16:28:20Z status=open owner=11-10-a-judge-succeeds-the-first-time by=harvest note=comment-only two-way door; Api/Definitions.cls is in Epic 11's footprint, so the lead authorizes the one-line comment fix at code review despite the spec's no-edit line (which guards behavior)
+- 2026-09-24T17:09:16Z status=resolved-by:11-10-a-judge-succeeds-the-first-time by=adjudication note=Api/Definitions.cls:1438-1440 MergeBody comment corrected at cr (comment-only diff; now names the class default of 0)
+
+### DW-1621: The Definition form draws no read-only control, so with the read/write default a per-definition read-only agent can be made only through the API
+- source: spec-11-10-a-judge-succeeds-the-first-time.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: FR-24 and EXPERIENCE.md's Definition form row list a read-only flag; definition-form.page.ts renders none (only the store carries readOnly). Pre-existing; 11.10's flip to read/write makes the API the only way to a read-only definition.
+- 2026-09-24T17:07:50Z status=decision-pending owner=burndown by=cr note=product call: add the control (new string, row, tests) or accept Switches' enforced read-only as the UI path
+
+### DW-1622: A create whose body sends readOnly as a quoted string stores the read/write default without telling the caller
+- source: spec-11-10-a-judge-succeeds-the-first-time.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: Api/Definitions.cls MergeBody ignores a non-boolean flag; with InitialExpression 0 a POST {"readOnly":"true"} returns 201 and stores 0. The only in-product caller (the form) sends a JSON boolean.
+- 2026-09-24T17:07:51Z status=wontfix-accepted owner=11-10-a-judge-succeeds-the-first-time by=cr note=reopen_if=a caller other than the SPA form creates definitions through POST /agent/definitions
+
+### DW-1623: While following, opening a card's disclosure grows the transcript and the panel scrolls to the newest entry, moving the opened card up
+- source: spec-11-10-a-judge-succeeds-the-first-time.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: panel-follow.ts settle() scrolls on any growth while following, including a tool-call or proposal card the user expands; the spec's rule covers every render that adds or grows an entry.
+- 2026-09-24T17:07:51Z status=wontfix-accepted owner=11-10-a-judge-succeeds-the-first-time by=cr note=reopen_if=the 17.7 owner check or a judge reports the transcript jumping when a card is expanded at the newest entry

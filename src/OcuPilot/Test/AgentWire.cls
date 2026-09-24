@@ -107,7 +107,7 @@ Method TestASoundCreateIsReturnedByTheListImmediately()
     Do $$$AssertEquals(tCreated.model, "claude-opus-5", "the omitted model takes the provider row's canonical value")
     Do $$$AssertEquals(tCreated.endpointUrl, "https://api.anthropic.com/v1/messages", "and so does the omitted endpoint")
     Do $$$AssertEquals(tCreated.credentialName, "", "the unselected credential reference is stored empty")
-    Do $$$AssertEquals(tCreated.readOnly, 1, "a definition is created read-only, which is the safe default Story 3.7 enforces")
+    Do $$$AssertEquals(tCreated.readOnly, 0, "a definition is created read/write, so a first request for a change ends in a proposal")
     Do $$$AssertEquals(tCreated.retentionDays, 30, "with the settled retention default")
     Do $$$AssertEquals(tCreated.maxIterationsPerTurn, 10, "and the settled per-turn iteration ceiling")
     ; Story 10.3 appended httpAcknowledged to OcuPilot.Api.Definitions.Fields(); the key list is
@@ -517,11 +517,13 @@ Method TestAFractionalTemperatureRoundTrips()
 /// <code>&lt;n&gt;@%Library.DynamicObject</code> -- twenty-seven characters that pass the name
 /// rule; and a <b>flag sent as a quoted string</b> is not a JSON boolean, so it is ignored rather
 /// than coerced -- <code>+"true"</code> and <code>+"false"</code> are both 0, and 0 on
-/// <code>readOnly</code> is the permissive answer.</p>
+/// <code>readOnly</code> is the permissive answer. That leg creates the definition read-only with
+/// a JSON <code>true</code> and then sends the quoted flag on an update, because only a stored 1
+/// tells an ignored value from a coerced one.</p>
 /// <p>Mutation: make <method>OcuPilot.Api.Definitions.BodyIsReadable</method> answer 1
 /// unconditionally, and the array leg answers 201; drop the object/array skip in
 /// <method>OcuPilot.Api.Definitions.MergeBody</method>, and the object leg answers 201 with an
-/// OREF for a name.</p>
+/// OREF for a name; drop the boolean type guard, and the quoted-flag update stores 0.</p>
 Method TestABodyThatIsNotAMapOfScalarsIsRefused()
 {
     Set tSC = ..Call("POST", "", "[""x"",""y""]", .tStatus, .tBody, .tHeaders)
@@ -536,11 +538,17 @@ Method TestABodyThatIsNotAMapOfScalarsIsRefused()
     Do $$$AssertEquals(..ViolationsOf(tBody), ..ViolationsText($ListBuild($ListBuild("name", "AGENT.NAME.REQUIRED"))), "with one violation on the name field")
     Do $$$AssertEquals(##class(OcuPilot.Test.AgentFixture).ProbeCount(), 0, "and neither body wrote a definition")
 
-    Set tSC = ..Call("POST", "", "{""name"":""" _ ..#PROBEPREFIX _ "Quoted"",""provider"":""anthropic"",""credType"":""env"",""envVarName"":""ANTHROPIC_API_KEY"",""readOnly"":""false""}", .tStatus, .tBody, .tHeaders)
-    Do $$$AssertStatusOK(tSC, "the quoted-flag create completes")
+    Set tSC = ..Call("POST", "", "{""name"":""" _ ..#PROBEPREFIX _ "Quoted"",""provider"":""anthropic"",""credType"":""env"",""envVarName"":""ANTHROPIC_API_KEY"",""readOnly"":true}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the read-only create completes")
     Do $$$AssertEquals(tStatus, 201, "and is accepted: " _ tBody)
     If tStatus '= 201 Quit
-    Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tBody).readOnly, 1, "with the flag left at its safe default, because a quoted flag is not a JSON boolean and +""false"" is 0 whatever the caller meant")
+    Set tCreated = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tCreated.readOnly, 1, "a JSON true still stores the flag, so read-only stays settable")
+    Set tSC = ..Call("PUT", "/" _ tCreated.id, "{""readOnly"":""false""}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the quoted-flag update completes")
+    Do $$$AssertEquals(tStatus, 200, "and is accepted: " _ tBody)
+    If tStatus '= 200 Quit
+    Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tBody).readOnly, 1, "with the stored flag kept, because a quoted flag is not a JSON boolean and +""false"" is 0 whatever the caller meant")
 }
 
 /// <p>The unverified risk the follow-up review named: <method>OcuPilot.Api.Definitions.BodyIsReadable</method>

@@ -177,6 +177,8 @@ export const STRINGS = {
   agentTurnStoppedNoStepBanner: 'The turn stopped: <reason>.',
   /** EXPERIENCE.md:281 */
   agentTurnLockBanner: 'A turn is in progress. Wait for it to finish before sending another message.',
+  /** EXPERIENCE.md:467 */
+  agentJumpToLatest: 'Jump to latest',
   // Story 4.5's four: from the tool-call-card Component Patterns row (:378) and the panel's
   // Busy and header rows (:424, :511), each authorized by its own targeted extractor in
   // `ui/tools/strings.test.mjs` rather than by being added to REQUIRED_ALONGSIDE_TABLE.
@@ -1683,15 +1685,15 @@ export const STRINGS = {
   accountDarkTheme: 'Dark theme',
 
   // Story 12.1: the X.509 credential form's certificate-details group and its serial number.
-  /** EXPERIENCE.md:467 */
+  /** EXPERIENCE.md:468 */
   x509CertificateDetails: 'Certificate details',
-  /** EXPERIENCE.md:467 */
+  /** EXPERIENCE.md:468 */
   x509FieldSerialNumber: 'Serial number',
 
   // Story 12.2: the Users list's token revoke row action and its typed-name dialog's consequence.
-  /** EXPERIENCE.md:468 */
+  /** EXPERIENCE.md:469 */
   userActionRevokeTokens: 'Revoke OAuth 2.0 tokens',
-  /** EXPERIENCE.md:468 */
+  /** EXPERIENCE.md:469 */
   userRevokeTokensConsequence:
     'Revoking deletes every OAuth 2.0 access token this instance issued under this user name, and applications holding one must sign the user in again. This cannot be undone.',
 

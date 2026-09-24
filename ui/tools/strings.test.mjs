@@ -530,6 +530,9 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // labels, its Load from file button and two helpers, and the proposal card's optional mark -- and
   // take the table past 600.
   //
+  // Story 11.10 moves the bound to 750 under the same protocol: its one row publishes one literal,
+  // "Jump to latest", and takes the table to 701.
+  //
   // Story 12.1 moves the bound to 800 under the same protocol: its one row's two literals take the
   // table past 700, with Epic 12's OAuth editors still to publish theirs.
   assert.ok(

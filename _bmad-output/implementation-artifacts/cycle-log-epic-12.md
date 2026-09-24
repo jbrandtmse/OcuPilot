@@ -63,3 +63,8 @@
 2026-09-24T14:39:32Z	Epic 12	ci_resolved	story=12.2 run=36010950149 result=success head=ff3686c4 resolved_at=handback_gate
 2026-09-24T14:39:32Z	Epic 12	throwaway_down	by=runner(epic-runner-12,the_session_that_ran_its_up) container=ocupilot-b-ci project=ocupilot-b-ci dir=/tmp/ocupilot-b-ci result=removed reason=owner_ordered_hand_back_for_Story_11.10(1fbf9f0a)
 2026-09-24T14:39:32Z	Epic 12	epic_runner_paused	stories_done=12.1,12.2 story_12.3=not_started(no_stage_spawned) next=integrate_forward_then_pre-warm_then_12.3_plan reason=owner_ordered_hand_back_at_boundary(1fbf9f0a) decisions_pending=DW-1616(escalated)
+2026-09-24T17:45:10Z	Epic 12	lead_model_gate	model=claude-opus-5-5 action=proceed note=resume_2
+2026-09-24T17:45:10Z	Epic 12	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=gh rule25=ok(node_modules,irislib)
+2026-09-24T17:45:10Z	Epic 12	epic_runner_resumed	from=fae0e54f stories_done=12.1,12.2 epic_start_gates=not_rerun
+2026-09-24T17:45:10Z	Epic 12	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@968875cb conflicts=EXPERIENCE.md_fixed_strings_tail(both_rows_kept;11.10_row_first),strings.test.mjs_bound(800_kept;both_paragraphs),sprint-status.yaml(theirs+regenerate+set_12.1/12.2_done,epic-12_in-progress) citations_recomputed=strings.ts_x509(467->468),revoke(468->469) local=node_--test_tools_1375/1375 ci=pending_on_merge_head
+2026-09-24T17:45:10Z	Epic 12	spine_updated	ad=AD-15 reason=decision_sheet(DW-1616,by=merge_gate,orchestrator-relayed) by=runner story=12-2-revoke-a-user-s-oauth-2-0-tokens lint=ok(1_preexisting_low) ledger=DW-1616_by-design

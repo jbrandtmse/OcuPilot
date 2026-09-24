@@ -5462,3 +5462,26 @@ body {
 .ocu-rail-item-gated:hover .ocu-rail-glyph {
   color: color-mix(in srgb, var(--ocu-on-shell) 45%, transparent);
 }
+
+// --- The transcript follows the conversation (Story 11.10) -------------------------------------
+//
+// The panel's own scrolls set `scrollTop` and name no behavior, so whether they animate is decided
+// here, by the reduced-motion idiom every other motion in this file uses.
+.ocu-panel-transcript {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ocu-panel-transcript {
+    scroll-behavior: auto;
+  }
+}
+
+// Jump to latest (EXPERIENCE.md panel Body): outside the log, between the transcript and the
+// footer, so it takes its own row and never overlays the composer.
+.ocu-panel-jump-slot {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: center;
+  padding: var(--ocu-space-2) var(--ocu-panel-gutter) 0 var(--ocu-space-4);
+}

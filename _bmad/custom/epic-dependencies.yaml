@@ -3,7 +3,7 @@
 # edges the orchestrator's analysis added, per the owner's standing instruction (2026-09-16):
 # "If your analysis adds an edge, take the more conservative graph and note the difference in the
 # parallel log; if it would remove one of these, keep mine."
-epics_md_hash: "73365b84b5d0565db0bdc61ad479d57f9da1cbd74e703ce619f3ef1684ecc20b"
+epics_md_hash: "d40b04545452500d6a46a974805608354a5ef91aadfb346d13526d77843e346a"
 analyzed_by: claude-opus-5
 analyzed_at: "2026-09-16T15:02:34Z"
 approved: true
@@ -134,7 +134,12 @@ epics:
         reason: >-
           The prompt never mentions the screen context, every tool is offered on every screen, and the model is not
           told it is read-only. Screen/Registry.cls is shared with Epic 9 (read the other branch first, append only).
-    paths_hint: ["ui/src/app/shell/**", "ui/src/app/core/**", "ui/src/app/areas/logs/**", "src/OcuPilot/Screen/Descriptor/**", "src/OcuPilot/Screen/Registry.cls", "ui/tools/**", "src/OcuPilot/Api/**", "src/OcuPilot/Kernel/Audit/**", "src/OcuPilot/Kernel/Agent/**", "src/OcuPilot/Kernel/Provider/**", "src/OcuPilot/Port/ProviderPort.cls", "src/OcuPilot/Kernel/Egress.cls", "src/OcuPilot/Install/Smoke.cls", "src/OcuPilot/Test/**", "ui/src/styles/**", "ui/browser/**"]
+      - story: "11-10-a-judge-succeeds-the-first-time"
+        after: epic-10       # released now; runs ALONE on slot B at epic-12's next story boundary, then epic-12 resumes
+        reason: >-
+          New definitions start read-only, so a judge's first change request is declined; and the agent does not open
+          the screen under discussion. Read/write default (Kernel/State/Agent.cls, definition-form store) + a prompt statement.
+    paths_hint: ["ui/src/app/shell/**", "ui/src/app/core/**", "ui/src/app/areas/logs/**", "src/OcuPilot/Kernel/State/Agent.cls", "ui/src/app/areas/agent/definition-form.*", "src/OcuPilot/Screen/Descriptor/**", "src/OcuPilot/Screen/Registry.cls", "ui/tools/**", "src/OcuPilot/Api/**", "src/OcuPilot/Kernel/Audit/**", "src/OcuPilot/Kernel/Agent/**", "src/OcuPilot/Kernel/Provider/**", "src/OcuPilot/Port/ProviderPort.cls", "src/OcuPilot/Kernel/Egress.cls", "src/OcuPilot/Install/Smoke.cls", "src/OcuPilot/Test/**", "ui/src/styles/**", "ui/browser/**"]
   epic-12:
     depends_on: [epic-6, epic-7, epic-8]
     submodules: []
