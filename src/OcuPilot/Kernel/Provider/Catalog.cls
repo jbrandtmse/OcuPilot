@@ -30,8 +30,10 @@ Class OcuPilot.Kernel.Provider.Catalog Extends %RegisteredObject
 /// <li><code>endpointRequired</code> -- whether a definition on this provider must carry an
 /// endpoint. Rule 8 reads this column rather than a provider name, so a family that needs one is
 /// a row rather than a branch.</li>
-/// <li><code>canonicalMaxTokens</code> / <code>canonicalTemperature</code> -- the tuning applied
-/// when a create omits them.</li>
+/// <li><code>canonicalMaxTokens</code> -- the maximum tokens applied when a create omits
+/// them.</li>
+/// <li><code>canonicalTemperature</code> -- applied when a create omits it; <code>null</code>
+/// leaves it unset so the provider default applies.</li>
 /// <li><code>defaultEnvVarName</code> / <code>defaultCredentialName</code> -- the two credential
 /// references a form offers. The credential name is OcuPilot's own, never the harvested one.</li>
 /// <li><code>keyPrefix</code> -- the shape a key for this provider starts with, or <code>""</code>
@@ -49,14 +51,22 @@ Class OcuPilot.Kernel.Provider.Catalog Extends %RegisteredObject
 /// <li><code>authVersion</code> -- the API version this family's adapter sends on every request.
 /// Here rather than in the adapter for the reason every other value is: the table is where a
 /// provider fact is spelled.</li>
+/// <li><code>acceptsTemperature</code> -- whether this family's request may carry a temperature;
+/// the Definition form reads it. The Anthropic adapter sends no sampling parameter whatever this
+/// says, and <class>OcuPilot.Test.AdapterSampling</class> keeps the two facts equal.</li>
+/// <li><code>reasoningEffort</code> -- the <code>reasoning_effort</code> value this family's
+/// adapter sends, or <code>""</code> to send none. Only the <code>openai</code> row sets it: its
+/// default model refuses function tools on Chat Completions unless it is <code>none</code> (DW-1590,
+/// a live probe of that model), and an OpenAI-compatible server may refuse a key it does not
+/// know.</li>
 /// </ul>
 XData Providers
 {
 {"providers":[
-  {"key":"anthropic","label":"Anthropic","defaultModel":"claude-opus-5","modelSuggestions":["claude-opus-5","claude-sonnet-5","claude-haiku-4-5","claude-fable-5-1"],"defaultEndpoint":"https://api.anthropic.com/v1/messages","endpointRequired":false,"canonicalMaxTokens":32000,"canonicalTemperature":0,"defaultEnvVarName":"ANTHROPIC_API_KEY","defaultCredentialName":"OcuPilotAnthropic","keyPrefix":"sk-ant-","adapterClass":"OcuPilot.Kernel.Provider.Anthropic","allowsLocal":false,"authVersion":"2023-06-01"},
-  {"key":"openai","label":"OpenAI","defaultModel":"gpt-5.6-terra","modelSuggestions":["gpt-5.6-terra","gpt-5.6-sol","gpt-5.6-luna"],"defaultEndpoint":"https://api.openai.com/v1/chat/completions","endpointRequired":false,"canonicalMaxTokens":32000,"canonicalTemperature":0,"defaultEnvVarName":"OPENAI_API_KEY","defaultCredentialName":"OcuPilotOpenAI","keyPrefix":"","adapterClass":"OcuPilot.Kernel.Provider.OpenAI","allowsLocal":false,"authVersion":""},
-  {"key":"gemini","label":"Google Gemini","defaultModel":"gemini-3.8-flash","modelSuggestions":["gemini-3.8-flash","gemini-3.5-flash","gemini-2.5-pro"],"defaultEndpoint":"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent","endpointRequired":false,"canonicalMaxTokens":32000,"canonicalTemperature":0,"defaultEnvVarName":"GEMINI_API_KEY","defaultCredentialName":"OcuPilotGemini","keyPrefix":"","adapterClass":"OcuPilot.Kernel.Provider.Gemini","allowsLocal":false,"authVersion":""},
-  {"key":"compatible","label":"OpenAI-compatible","defaultModel":"","modelSuggestions":[],"defaultEndpoint":"","endpointRequired":true,"canonicalMaxTokens":32000,"canonicalTemperature":0,"defaultEnvVarName":"OPENAI_COMPATIBLE_API_KEY","defaultCredentialName":"OcuPilotCompatible","keyPrefix":"","adapterClass":"OcuPilot.Kernel.Provider.Compatible","allowsLocal":true,"authVersion":""}
+  {"key":"anthropic","label":"Anthropic","defaultModel":"claude-opus-5","modelSuggestions":["claude-opus-5","claude-sonnet-5","claude-haiku-4-5","claude-fable-5-1"],"defaultEndpoint":"https://api.anthropic.com/v1/messages","endpointRequired":false,"canonicalMaxTokens":32000,"canonicalTemperature":null,"defaultEnvVarName":"ANTHROPIC_API_KEY","defaultCredentialName":"OcuPilotAnthropic","keyPrefix":"sk-ant-","adapterClass":"OcuPilot.Kernel.Provider.Anthropic","allowsLocal":false,"acceptsTemperature":false,"authVersion":"2023-06-01","reasoningEffort":""},
+  {"key":"openai","label":"OpenAI","defaultModel":"gpt-5.6-terra","modelSuggestions":["gpt-5.6-terra","gpt-5.6-sol","gpt-5.6-luna"],"defaultEndpoint":"https://api.openai.com/v1/chat/completions","endpointRequired":false,"canonicalMaxTokens":32000,"canonicalTemperature":null,"defaultEnvVarName":"OPENAI_API_KEY","defaultCredentialName":"OcuPilotOpenAI","keyPrefix":"","adapterClass":"OcuPilot.Kernel.Provider.OpenAI","allowsLocal":false,"acceptsTemperature":true,"authVersion":"","reasoningEffort":"none"},
+  {"key":"gemini","label":"Google Gemini","defaultModel":"gemini-3.8-flash","modelSuggestions":["gemini-3.8-flash","gemini-3.5-flash","gemini-2.5-pro"],"defaultEndpoint":"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent","endpointRequired":false,"canonicalMaxTokens":32000,"canonicalTemperature":null,"defaultEnvVarName":"GEMINI_API_KEY","defaultCredentialName":"OcuPilotGemini","keyPrefix":"","adapterClass":"OcuPilot.Kernel.Provider.Gemini","allowsLocal":false,"acceptsTemperature":true,"authVersion":"","reasoningEffort":""},
+  {"key":"compatible","label":"OpenAI-compatible","defaultModel":"","modelSuggestions":[],"defaultEndpoint":"","endpointRequired":true,"canonicalMaxTokens":32000,"canonicalTemperature":null,"defaultEnvVarName":"OPENAI_COMPATIBLE_API_KEY","defaultCredentialName":"OcuPilotCompatible","keyPrefix":"","adapterClass":"OcuPilot.Kernel.Provider.Compatible","allowsLocal":true,"acceptsTemperature":true,"authVersion":"","reasoningEffort":""}
 ]}
 }
 
@@ -73,7 +83,7 @@ Parameter TESTPROVIDERVARIABLE = "OCUPILOT_ALLOW_TEST_PROVIDER";
 XData ArmedProviders
 {
 {"providers":[
-  {"key":"turnprobe","label":"Turn probe","defaultModel":"turnprobe","modelSuggestions":[],"defaultEndpoint":"https://192.0.2.10/v1/messages","endpointRequired":false,"canonicalMaxTokens":1024,"canonicalTemperature":0,"defaultEnvVarName":"","defaultCredentialName":"","keyPrefix":"sk-ant-","adapterClass":"OcuPilot.Test.TurnProvider","allowsLocal":false,"authVersion":"2023-06-01"}
+  {"key":"turnprobe","label":"Turn probe","defaultModel":"turnprobe","modelSuggestions":[],"defaultEndpoint":"https://192.0.2.10/v1/messages","endpointRequired":false,"canonicalMaxTokens":1024,"canonicalTemperature":null,"defaultEnvVarName":"","defaultCredentialName":"","keyPrefix":"sk-ant-","adapterClass":"OcuPilot.Test.TurnProvider","allowsLocal":false,"acceptsTemperature":false,"authVersion":"2023-06-01","reasoningEffort":""}
 ]}
 }
 

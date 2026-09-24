@@ -381,12 +381,18 @@ interface FieldView {
                   inputmode="decimal"
                   [id]="temperatureField.id"
                   [value]="temperatureValue"
+                  [attr.placeholder]="temperaturePlaceholder"
+                  [attr.readonly]="temperatureApplies ? null : ''"
+                  [attr.aria-disabled]="temperatureApplies ? null : 'true'"
                   [attr.aria-invalid]="temperatureField.invalid"
                   [attr.aria-describedby]="temperatureField.describedBy"
                   (input)="onText('temperature', $event)"
                   (blur)="onFieldBlur('temperature')"
                 />
               </div>
+              @if (!temperatureApplies) {
+                <p class="ocu-field-caption" [id]="temperatureField.id + '-caption'">{{ STRINGS.agentDefinitionTemperatureNotApplicableCaption }}</p>
+              }
               @if (temperatureField.invalid) {
                 <p class="ocu-form-error" [id]="temperatureField.id + '-reason'">{{ temperatureField.reason }}</p>
               }
@@ -655,8 +661,11 @@ export class DefinitionFormPage {
    *
    * `PROVIDER.REFUSED` carrying the provider's own words is the one code the published failure
    * sentence is written around -- it ends "Provider said: <text>" and reads broken without one --
-   * so that sentence is used with `<text>` resolved. Every other code, the eight other
-   * `PROVIDER.*` among them, renders the envelope's own `reason` verbatim.
+   * so that sentence is used with `<text>` resolved. Every other code renders the text the store
+   * already resolved: for `PROVIDER.TESTTIMEOUT` and `PROVIDER.TESTTIMEOUTLOCAL`, their published
+   * sentence with `<n>` and `<provider>` taken from the detail (`testTimeoutText`), or the
+   * envelope's `reason` when the detail lacks them; for `STATE.CONFLICT`, the stale-save sentence;
+   * for any other code, the envelope's own `reason` verbatim.
    */
   protected get failureText(): string {
     this.generation();
@@ -793,6 +802,23 @@ export class DefinitionFormPage {
   protected get temperatureValue(): string {
     this.generation();
     return this.store.value('temperature');
+  }
+
+  /**
+   * Whether the chosen provider's catalog row takes a temperature (Story 10.4). Where it does not,
+   * the field is readonly and `aria-disabled` under its caption -- the retention field's precedent
+   * -- and a value loaded with the definition is shown as held. Only a provider switch replaces it,
+   * with the new row's canonical value, as it replaces the model and endpoint.
+   */
+  protected get temperatureApplies(): boolean {
+    this.generation();
+    return this.store.temperatureApplies();
+  }
+
+  protected get temperaturePlaceholder(): string {
+    return this.temperatureApplies
+      ? STRINGS.agentDefinitionTemperatureProviderDefault
+      : STRINGS.agentDefinitionTemperatureNotApplicable;
   }
 
   protected get iterationsValue(): string {
@@ -1122,6 +1148,7 @@ export class DefinitionFormPage {
     const described: string[] = [];
     if (field === 'apiKey' && this.showStoredCaption) described.push(`${id}-caption`);
     if (field === 'envVarName') described.push(`${id}-caption`);
+    if (field === 'temperature' && !this.store.temperatureApplies()) described.push(`${id}-caption`);
     if (invalid) described.push(`${id}-reason`);
     return {
       id,

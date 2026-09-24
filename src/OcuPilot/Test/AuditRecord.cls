@@ -193,9 +193,10 @@ Method TestACreateRecordsTheFieldsItCreatedAtTheirDefaults()
     Do $$$AssertTrue(tData [ """type"":""agent-definition""", "and the target's entity type")
     Do $$$AssertTrue(tData [ ("""scope"":""" _ ##class(OcuPilot.Kernel.Scope).#SCOPEINSTANCE _ """"), "and the instance scope")
 
-    ; The five fields the body never named and the class's own InitialExpressions supplied. Each
+    ; The four fields the body never named and the class's own InitialExpressions supplied. Each
     ; carries an empty "old", which is what "a create has no before-state" looks like in the record.
-    For tField = "markedLocal", "temperature", "maxIterationsPerTurn", "readOnly", "retentionDays" {
+    ; Story 10.4 creates temperature unset, so it matches the empty before-state and records no change.
+    For tField = "markedLocal", "maxIterationsPerTurn", "readOnly", "retentionDays" {
         Do $$$AssertTrue(tData [ ("""" _ tField _ """:{""old"":"""","), "the record carries " _ tField _ ", created at its default, with an empty old value: " _ tData)
     }
     Do $$$AssertTrue(tData [ """maxTokens"":{""old"":"""",""new"":""32000""}", "and maxTokens in clear, not redacted (DW-329): " _ tData)

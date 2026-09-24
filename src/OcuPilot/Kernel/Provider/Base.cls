@@ -66,6 +66,16 @@ Parameter REASONPROXYEGRESS = "The proxy this instance's provider calls go throu
 /// part of either URL.</p>
 Parameter REASONBUILTURLEGRESS = "The request URL this provider's adapter built from this definition is not the endpoint OcuPilot judged";
 
+/// <p>The reason <code>PROVIDER.TESTTIMEOUT</code> carries, with its two placeholders unresolved:
+/// <code>&lt;provider&gt;</code> is the catalog row's label and <code>&lt;n&gt;</code> the whole
+/// seconds Test connection waited. Published once, as EXPERIENCE.md's Fixed strings row
+/// <file>ui/tools/connection-timeout.test.mjs</file> pins it to (AD-53's idiom).</p>
+Parameter REASONTESTTIMEOUT = "The provider (<provider>) did not answer within <n> seconds. Check the endpoint and the provider's status, then test again.";
+
+/// <p>The reason <code>PROVIDER.TESTTIMEOUTLOCAL</code> carries, <code>&lt;n&gt;</code> unresolved,
+/// pinned the same way as <parameter>REASONTESTTIMEOUT</parameter>.</p>
+Parameter REASONTESTTIMEOUTLOCAL = "The model did not answer within <n> seconds. A local model may still be loading; test again in a minute.";
+
 /// <p>The resolved credential, for the life of one <method>Invoke</method> and no longer.</p>
 /// <p><code>Internal</code> keeps it out of the published class reference; what actually keeps it
 /// off a log screen is that it is a <b>property</b> rather than a local, because
@@ -107,8 +117,9 @@ Method ResolvedSecretClass() As %String [ Private ]
 /// <p><var>pValues</var> is the definition as a ByRef array subscripted by wire field name --
 /// <code>provider</code>, <code>model</code>, <code>endpointUrl</code>, <code>credType</code>,
 /// <code>envVarName</code>, <code>credentialName</code>, <code>maxTokens</code>,
-/// <code>temperature</code> -- plus the two the caller took from the provider's catalog row,
-/// <code>keyPrefix</code> and <code>authVersion</code>.</p>
+/// <code>temperature</code>, which is optional (<code>""</code> leaves the provider's default in
+/// force) -- plus the three the caller took from the provider's catalog row,
+/// <code>keyPrefix</code>, <code>authVersion</code> and <code>reasoningEffort</code>.</p>
 /// <p><b><code>keySource</code> says where the key comes from</b>:
 /// <parameter>KEYSOURCESTORED</parameter> (also the answer when it is absent) resolves the
 /// definition's reference, and a reference whose store could not be read faults
@@ -579,10 +590,13 @@ ClassMethod Fault(pCode As %String, pReason As %String = "", pProviderText As %S
 
 /// <p>The numeric status a route answers <var>pCode</var> with. A failure of the upstream provider
 /// is a gateway failure (502); a failure of this instance's own configuration is 503; a provider
-/// that did not answer in time is 504.</p>
+/// that did not answer in time -- within its per-call timeout, or within Test connection's
+/// wall-clock bound -- is 504.</p>
 ClassMethod HttpFor(pCode As %String) As %Integer
 {
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTIMEOUT Quit 504
+    If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTESTTIMEOUT Quit 504
+    If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTESTTIMEOUTLOCAL Quit 504
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERUNCONFIGURED Quit 503
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL Quit 503
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIALSTORE Quit 503
@@ -594,7 +608,9 @@ ClassMethod HttpFor(pCode As %String) As %Integer
 /// <p>OcuPilot's own written reason for <var>pCode</var> -- the one home of these sentences, so
 /// the port and the base cannot word the same code two ways.</p>
 /// <p>None of them names a credential value, an endpoint the caller did not supply, or any part of
-/// a vendor message (AD-35, AD-39).</p>
+/// a vendor message (AD-35, AD-39). The two Test connection timeout codes answer their templates
+/// with the placeholders unresolved; <method>OcuPilot.Kernel.Provider.TestCall.TimeoutFault</method>
+/// resolves them.</p>
 ClassMethod ReasonFor(pCode As %String) As %String
 {
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERUNCONFIGURED Quit "OcuPilot has no usable agent definition for this call"
@@ -606,6 +622,8 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERUNAVAILABLE Quit "The provider did not serve this request on any attempt"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTIMEOUT Quit "The provider did not answer within the time this instance allows"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTLS Quit "The TLS configuration this instance's provider calls are made through is not present"
+    If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTESTTIMEOUT Quit ..#REASONTESTTIMEOUT
+    If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTESTTIMEOUTLOCAL Quit ..#REASONTESTTIMEOUTLOCAL
     Quit "The provider call did not complete"
 }
 

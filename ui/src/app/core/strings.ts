@@ -519,6 +519,23 @@ export const STRINGS = {
   agentDefinitionFieldMaxTokens: 'Maximum tokens',
   /** EXPERIENCE.md:335 */
   agentDefinitionFieldTemperature: 'Temperature',
+  // Story 10.4: the Temperature field's placeholder where the provider takes one, and its
+  // placeholder and caption where it does not.
+  /** EXPERIENCE.md:465 */
+  agentDefinitionTemperatureProviderDefault: 'Provider default',
+  /** EXPERIENCE.md:465 */
+  agentDefinitionTemperatureNotApplicable: 'Not applicable',
+  /** EXPERIENCE.md:465 */
+  agentDefinitionTemperatureNotApplicableCaption:
+    'This provider\'s current models refuse sampling settings, so OcuPilot sends none and the model uses its own.',
+  // Story 10.5: the Test connection failure line when the test waited its bound with no answer,
+  // for a definition marked local and otherwise. The server's reasons are pinned equal to these.
+  /** EXPERIENCE.md:466 */
+  agentDefinitionTestTimeoutLocal:
+    'The model did not answer within <n> seconds. A local model may still be loading; test again in a minute.',
+  /** EXPERIENCE.md:466 */
+  agentDefinitionTestTimeout:
+    'The provider (<provider>) did not answer within <n> seconds. Check the endpoint and the provider\'s status, then test again.',
   /** EXPERIENCE.md:335 */
   agentDefinitionFieldMaxIterations: 'Maximum iterations',
   /** EXPERIENCE.md:335 */

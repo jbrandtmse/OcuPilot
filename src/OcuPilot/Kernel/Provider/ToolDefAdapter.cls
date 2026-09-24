@@ -32,6 +32,15 @@
 /// <method>OcuPilot.Screen.Tool.Registry.WireName</method> can produce satisfies both grammars,
 /// because <parameter>OcuPilot.Screen.Tool.Registry.TOOLNAMEPATTERN</parameter> starts every
 /// segment with a lowercase letter.</p>
+/// <p><b>Gemini respells exactly one value: an empty <code>enum</code> member</b>, which its
+/// function-declaration validation refuses, becomes <parameter>GEMINIEMPTYENUM</parameter>. The
+/// member is not dropped, because an empty value can be a real choice (Home's route is
+/// <code>""</code>) and dropping it would make what the model can do depend on its family. The
+/// respelling is reversible and scoped: <method>GeminiEmptyEnumArgs</method> names each
+/// (tool, argument) pair a request respelled, and
+/// <class>OcuPilot.Kernel.Provider.MessageAdapter</class> decodes the value back to
+/// <code>""</code> on exactly those pairs in a reply, and encodes it again in replayed history --
+/// the same idea as the reversible dot-to-underscore name mapping.</p>
 Class OcuPilot.Kernel.Provider.ToolDefAdapter Extends %RegisteredObject
 {
 
@@ -46,6 +55,11 @@ Parameter GEMINITYPES = "string:STRING,integer:INTEGER,number:NUMBER,boolean:BOO
 /// rewrite, so AC1's "the only keyword any family may lose is one its own grammar refuses" is a
 /// list a test can read.</p>
 Parameter GEMINIDROPPED = "additionalProperties";
+
+/// <p>The spelling an empty <code>enum</code> member takes in a Gemini declaration. No registered
+/// tool's enum holds it as a value of its own, which <class>OcuPilot.Test.GeminiEmptyEnum</class>
+/// asserts, so decoding it back is unambiguous.</p>
+Parameter GEMINIEMPTYENUM = "(empty)";
 
 /// <p>Translate the canonical tool array <var>pTools</var> --
 /// <code>pTools(n, "name")</code> / <code>("description")</code> / <code>("inputSchema")</code>
@@ -130,13 +144,15 @@ ClassMethod SchemaOf(pSchema As %String) As %DynamicAbstractObject
 /// <p><var>pSchema</var> as a copy in Gemini's <code>Schema</code> grammar: every
 /// <parameter>GEMINIDROPPED</parameter> keyword removed, every <code>type</code> value translated
 /// through <parameter>GEMINITYPES</parameter>, <code>properties</code> and <code>items</code>
-/// rewritten the same way at every depth, and every other keyword copied verbatim -- so no keyword
-/// inside the emitted subset leaves except the dropped one. Keeping a keyword <b>outside</b> that
-/// subset out is <method>OcuPilot.Screen.Tool.Registry.EmitSchema</method>'s job and not this
-/// method's: an unrecognized keyword is copied through, never refused.</p>
-/// <p>A value this method does not rewrite -- an <code>enum</code> or a <code>required</code> list
-/// -- is set on the copy by reference, so the two schemas share it. Neither is mutated after this
-/// returns.</p>
+/// rewritten the same way at every depth, every <code>enum</code> written as a copy whose
+/// <code>""</code> members read <parameter>GEMINIEMPTYENUM</parameter>, and every other keyword
+/// copied verbatim -- so no keyword inside the emitted subset leaves except the dropped one.
+/// Keeping a keyword <b>outside</b> that subset out is
+/// <method>OcuPilot.Screen.Tool.Registry.EmitSchema</method>'s job and not this method's: an
+/// unrecognized keyword is copied through, never refused.</p>
+/// <p>A value this method does not rewrite -- a <code>required</code> list -- is set on the copy
+/// by reference, so the two schemas share it. Neither is mutated after this returns; the canonical
+/// <code>enum</code> is never mutated at all.</p>
 ClassMethod GeminiSchema(pSchema As %DynamicAbstractObject) As %DynamicAbstractObject [ Private ]
 {
     Set tOut = {}
@@ -154,6 +170,10 @@ ClassMethod GeminiSchema(pSchema As %DynamicAbstractObject) As %DynamicAbstractO
             Do tOut.%Set("items", ..GeminiSchema(tValue))
             Continue
         }
+        If (tKey = "enum") && $IsObject(tValue) && tValue.%IsA("%Library.DynamicArray") {
+            Do tOut.%Set("enum", ..GeminiEnum(tValue))
+            Continue
+        }
         If tKey = "properties" {
             Set tProperties = {}
             If $IsObject(tValue) {
@@ -168,6 +188,73 @@ ClassMethod GeminiSchema(pSchema As %DynamicAbstractObject) As %DynamicAbstractO
         Do tOut.%Set(tKey, tValue)
     }
     Quit tOut
+}
+
+/// <p>A copy of the enum array <var>pEnum</var> with every <code>""</code> string member written as
+/// <parameter>GEMINIEMPTYENUM</parameter>, in the same order and at the same count.</p>
+ClassMethod GeminiEnum(pEnum As %DynamicArray) As %DynamicArray [ Private ]
+{
+    Set tOut = []
+    Set tIterator = pEnum.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tMember, .tType) {
+        If (tType = "string") && (tMember = "") {
+            Do tOut.%Push(..#GEMINIEMPTYENUM, "string")
+            Continue
+        }
+        If $ListFind($ListBuild("string", "number", "boolean", "null"), tType) {
+            Do tOut.%Push(tMember, tType)
+            Continue
+        }
+        Do tOut.%Push(tMember)
+    }
+    Quit tOut
+}
+
+/// <p>The (tool, argument) pairs in the canonical tool array <var>pTools</var> whose declaration
+/// <method>ToGemini</method> respells: <code>{&lt;wire name&gt;: {&lt;argument&gt;: kind}}</code>,
+/// for each top-level property whose <code>enum</code> holds <code>""</code> (kind
+/// <code>value</code>) or whose <code>items.enum</code> does (kind <code>items</code>). An empty
+/// object when no pair is respelled.</p>
+ClassMethod GeminiEmptyEnumArgs(ByRef pTools) As %DynamicObject
+{
+    Set tMap = {}
+    Try {
+        For tI = 1:1:+$Get(pTools) {
+            Set tSchema = ..SchemaOf($Get(pTools(tI, "inputSchema")))
+            Set tProperties = tSchema.%Get("properties")
+            If '$IsObject(tProperties) || 'tProperties.%IsA("%Library.DynamicObject") Continue
+            Set tArgs = {}
+            Set tIterator = tProperties.%GetIterator()
+            While tIterator.%GetNext(.tName, .tProperty) {
+                If '$IsObject(tProperty) || 'tProperty.%IsA("%Library.DynamicObject") Continue
+                If ..HoldsEmptyMember(tProperty.%Get("enum")) {
+                    Do tArgs.%Set(tName, "value", "string")
+                    Continue
+                }
+                Set tItems = tProperty.%Get("items")
+                If $IsObject(tItems) && tItems.%IsA("%Library.DynamicObject") && ..HoldsEmptyMember(tItems.%Get("enum")) {
+                    Do tArgs.%Set(tName, "items", "string")
+                }
+            }
+            If tArgs.%Size() > 0 Do tMap.%Set($Get(pTools(tI, "name")), tArgs)
+        }
+    } Catch ex {
+        Set tMap = {}
+    }
+    Quit tMap
+}
+
+/// <p>Whether <var>pEnum</var> is an array holding a <code>""</code> string member.</p>
+ClassMethod HoldsEmptyMember(pEnum As %RawString = "") As %Boolean [ Private ]
+{
+    If '$IsObject(pEnum) Quit 0
+    If 'pEnum.%IsA("%Library.DynamicArray") Quit 0
+    Set tHolds = 0
+    Set tIterator = pEnum.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tMember, .tType) {
+        If (tType = "string") && (tMember = "") Set tHolds = 1
+    }
+    Quit tHolds
 }
 
 /// <p>The Gemini <code>Schema.Type</code> literal for the canonical type <var>pType</var>, or

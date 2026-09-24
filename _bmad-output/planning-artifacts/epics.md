@@ -4948,6 +4948,9 @@ So that the connection test passes on the first try instead of being refused by 
 - **When** it is read
 - **Then** a stored temperature is kept as an explicit value; nothing rewrites it.
 
+- DW-1590: The OpenAI adapter sends tools on chat/completions without reasoning_effort, and the catalog default gpt-5.6-terra refuses function tools there unless reasoning_effort is none, so every tool-bearing turn on OpenAI's default model fails with a 400 (ledger; routed by spec_gate 2026-09-24)
+- DW-1591: Gemini 3 function calls carry a thoughtSignature that GeminiToCanonical drops, and the catalog default gemini-3.8-flash refuses the next request of a tool-calling turn without it (ledger; routed by spec_gate 2026-09-24)
+
 ---
 
 ### Story 10.5: A connection test that answers before the gateway does
@@ -4975,6 +4978,9 @@ So that a slow first answer does not read as a broken portal.
 - **Given** the new reasons
 - **When** they render
 - **Then** they are rows in EXPERIENCE.md's fixed-string table and keys in the string table, like every other published sentence.
+
+- DW-1600: Every Gemini turn is refused on its first provider call because the navigate tool's route enum carries Home's empty route and Gemini refuses an empty enum value (ledger; routed by smoke 2026-09-24)
+- DW-1601: Test connection on Gemini's default model answers an empty or cut-off reply because the 32-token test budget is spent on Gemini 3's default thinking (ledger; routed by smoke 2026-09-24)
 
 ---
 

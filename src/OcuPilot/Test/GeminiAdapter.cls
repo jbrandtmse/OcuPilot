@@ -95,7 +95,7 @@ Method StoredDefinition(pRow As %DynamicObject, pModel As %String = "", pSuffix 
         Set tRow.EnvVarName = pRow.defaultEnvVarName
         Set tRow.CredentialName = ""
         Set tRow.MaxTokens = +pRow.canonicalMaxTokens
-        Set tRow.Temperature = +pRow.canonicalTemperature
+        Set tRow.Temperature = pRow.canonicalTemperature
         Set tRow.Enabled = 1
         Set tRow.ConnectionVerified = 1
         Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tRow)
@@ -158,8 +158,8 @@ ClassMethod Adapter() As OcuPilot.Kernel.Provider.Base
 }
 
 /// <p>The value array a direct call reads, taking every provider fact from <var>pRow</var> --
-/// including the two columns the port would otherwise copy in, <code>keyPrefix</code> and
-/// <code>authVersion</code>.</p>
+/// including the three columns the port would otherwise copy in, <code>keyPrefix</code>,
+/// <code>authVersion</code> and <code>reasoningEffort</code>.</p>
 ClassMethod DirectValues(pRow As %DynamicObject, Output pValues)
 {
     Kill pValues
@@ -171,9 +171,10 @@ ClassMethod DirectValues(pRow As %DynamicObject, Output pValues)
     Set pValues("envVarName") = pRow.defaultEnvVarName
     Set pValues("credentialName") = ""
     Set pValues("maxTokens") = +pRow.canonicalMaxTokens
-    Set pValues("temperature") = +pRow.canonicalTemperature
+    Set pValues("temperature") = pRow.canonicalTemperature
     Set pValues("keyPrefix") = pRow.keyPrefix
     Set pValues("authVersion") = pRow.authVersion
+    Set pValues("reasoningEffort") = pRow.reasoningEffort
 }
 
 /// <p><var>pFault</var>'s machine code, or <code>""</code> when the call produced no fault. Read
@@ -227,7 +228,7 @@ Method TestAShippedGeminiRowIsCalledInItsOwnDialect()
     Do $$$AssertEquals(##class(OcuPilot.Test.Adapter).Path(tBody, "systemInstruction.parts.0.text"), ..#SYSTEMPROMPT, "the prompt travels as a system instruction rather than as a message")
     Do $$$AssertEquals(##class(OcuPilot.Test.Adapter).Path(tBody, "tools.0.functionDeclarations.0.name"), ..#TOOLNAME, "the tools are declared where this dialect declares them")
     Do $$$AssertEquals(+##class(OcuPilot.Test.Adapter).Path(tBody, "generationConfig.maxOutputTokens"), +tRow.canonicalMaxTokens, "the tuning is this dialect's generationConfig, carrying the row's own canonical maximum")
-    Do $$$AssertEquals(+##class(OcuPilot.Test.Adapter).Path(tBody, "generationConfig.temperature"), +tRow.canonicalTemperature, "and its canonical temperature")
+    Do $$$AssertEquals(tBody.generationConfig.%GetTypeOf("temperature"), "unassigned", "and no temperature, since the row declares no canonical one")
     Do $$$AssertEquals(tBody.%GetTypeOf("model"), "unassigned", "the model is not in the body: this family carries it in the URL")
     Do $$$AssertEquals(tBody.%GetTypeOf("messages"), "unassigned", "and no field of another dialect appears")
 

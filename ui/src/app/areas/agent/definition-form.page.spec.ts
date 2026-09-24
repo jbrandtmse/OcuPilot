@@ -601,6 +601,48 @@ describe('the Definition form', () => {
     );
   });
 
+  it('Story 10.5: a test that waited its bound reads the published sentence, resolved from the detail', async () => {
+    const timedOut =
+      (code: string, detail: Record<string, unknown> | null): Answer =>
+      (path) => {
+        if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+        if (path.endsWith('/test')) {
+          return { kind: 'error', status: 504, code, reason: 'the envelope reason, not the published sentence', detail };
+        }
+        return ok(definition());
+      };
+    const failureAfterPress = async (answer: Answer): Promise<string | undefined> => {
+      const mounted = await mount(answer, '/agent/definitions/edit/7');
+      (mounted.host.querySelector('.ocu-form-test button') as HTMLButtonElement).click();
+      await settle(mounted.fixture);
+      return mounted.host.querySelector('.ocu-form-test .ocu-form-error')?.textContent?.trim();
+    };
+
+    // Mutation (Rule 19): render `reason` for PROVIDER.TESTTIMEOUTLOCAL in `absorbTestRefusal` ->
+    // this goes red on the envelope's reason.
+    expect(
+      await failureAfterPress(
+        timedOut('PROVIDER.TESTTIMEOUTLOCAL', { waitedSeconds: 50, providerLabel: 'OpenAI-compatible' })
+      )
+    ).toBe(STRINGS.agentDefinitionTestTimeoutLocal.replace('<n>', '50'));
+
+    expect(
+      await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUT', { waitedSeconds: 50, providerLabel: 'Google Gemini' }))
+    ).toBe(STRINGS.agentDefinitionTestTimeout.replace('<provider>', 'Google Gemini').replace('<n>', '50'));
+
+    // Without the detail the sentence cannot be resolved, so the envelope's own reason renders.
+    expect(await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUT', null))).toBe(
+      'the envelope reason, not the published sentence'
+    );
+    expect(await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUTLOCAL', { providerLabel: 'x' }))).toBe(
+      'the envelope reason, not the published sentence'
+    );
+    // Mutation (Rule 19): have `testTimeoutText` stringify the label unchecked -> this reads "(undefined)".
+    expect(await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUT', { waitedSeconds: 50 }))).toBe(
+      'the envelope reason, not the published sentence'
+    );
+  });
+
   it('AC2: typing raises the dirty flag, and the leave confirmation renders with both actions', async () => {
     const { fixture, host, formDirty } = await mount(catalogOnly);
     expect(formDirty.dirty()).toBe(false);
@@ -1602,5 +1644,137 @@ describe('the Definition form', () => {
       await settle(fixture);
       expect(lastBody(calls, 'POST')['credType']).toBe('creds');
     }
+  });
+
+  /** Story 10.4's catalog shape: no row declares a canonical temperature, and the first takes none. */
+  const SAMPLING_PROVIDERS = {
+    providers: [
+      { ...PROVIDERS_BODY.providers[0], canonicalTemperature: null, acceptsTemperature: false },
+      { ...TWO_PROVIDERS.providers[1], canonicalTemperature: null, acceptsTemperature: true },
+    ],
+  };
+
+  const samplingAnswer =
+    (stored: Record<string, unknown> = {}): Answer =>
+    (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(SAMPLING_PROVIDERS);
+      if (init.method === 'POST') return created(definition({ ...JSON.parse(init.body ?? '{}'), id: '9' }));
+      if (init.method === 'PUT') return ok(definition({ ...stored, ...JSON.parse(init.body ?? '{}') }));
+      return path.endsWith('/definitions') ? ok({ definitions: [] }) : ok(definition(stored));
+    };
+
+  const openAdvanced = async (fixture: ComponentFixture<unknown>, host: HTMLElement) => {
+    (host.querySelector('.ocu-form-disclosure') as HTMLButtonElement).click();
+    await settle(fixture);
+  };
+
+  const chooseProvider = async (fixture: ComponentFixture<unknown>, host: HTMLElement, key: string) => {
+    const provider = host.querySelector('#ocu-definition-provider') as HTMLSelectElement;
+    provider.value = key;
+    provider.dispatchEvent(new Event('change'));
+    await settle(fixture);
+  };
+
+  const temperatureInput = (host: HTMLElement) => host.querySelector('#ocu-definition-temperature') as HTMLInputElement;
+
+  it('Story 10.4 AC1: a row that declares no canonical temperature cascades an empty field, and it saves unset', async () => {
+    // Mutation (Rule 19): cascade `String(row.canonicalTemperature)` with no null check -> this goes
+    // red, the field reading 'null'.
+    const { fixture, host, calls } = await mount(samplingAnswer());
+    await chooseProvider(fixture, host, 'openai');
+    await openAdvanced(fixture, host);
+    expect(temperatureInput(host).value).toBe('');
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'GPT';
+    name.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    saveButton(host).click();
+    await settle(fixture);
+    expect(lastBody(calls, 'POST')['temperature']).toBe('');
+  });
+
+  it('Story 10.4 AC1: on a row that takes a temperature the empty field reads Provider default and stays editable', async () => {
+    const { fixture, host } = await mount(samplingAnswer());
+    await chooseProvider(fixture, host, 'openai');
+    await openAdvanced(fixture, host);
+    const input = temperatureInput(host);
+    expect(input.getAttribute('placeholder')).toBe(STRINGS.agentDefinitionTemperatureProviderDefault);
+    expect(input.hasAttribute('readonly')).toBe(false);
+    expect(input.hasAttribute('aria-disabled')).toBe(false);
+    expect(host.querySelector('#ocu-definition-temperature-caption')).toBeNull();
+    expect(input.getAttribute('aria-describedby')).toBeNull();
+  });
+
+  it('Story 10.4 AC3: on a row that takes no temperature the field is readonly, aria-disabled and captioned', async () => {
+    // Mutation (Rule 19): drop the not-applicable branch -- render the field as the applicable
+    // one whatever the row says -> this goes red on every assertion below.
+    const { fixture, host } = await mount(samplingAnswer());
+    await openAdvanced(fixture, host);
+    const input = temperatureInput(host);
+    expect(input.getAttribute('placeholder')).toBe(STRINGS.agentDefinitionTemperatureNotApplicable);
+    expect(input.hasAttribute('readonly')).toBe(true);
+    expect(input.getAttribute('aria-disabled')).toBe('true');
+    expect(input.hasAttribute('disabled')).toBe(false);
+    expect(host.querySelector('#ocu-definition-temperature-caption')?.textContent?.trim()).toBe(
+      STRINGS.agentDefinitionTemperatureNotApplicableCaption
+    );
+    expect(input.getAttribute('aria-describedby')).toBe('ocu-definition-temperature-caption');
+  });
+
+  it('Story 10.4: the field follows the acceptsTemperature column, never the provider name', async () => {
+    // Mutation (Rule 19): `temperatureApplies()` keyed on the name
+    // (`this.value('provider') !== 'anthropic'`) -> this goes red on both rows.
+    const inverted = {
+      providers: [
+        { ...SAMPLING_PROVIDERS.providers[0], acceptsTemperature: true },
+        { ...SAMPLING_PROVIDERS.providers[1], acceptsTemperature: false },
+      ],
+    };
+    const base = samplingAnswer();
+    const { fixture, host } = await mount((path, init) =>
+      path.endsWith('/agent/providers') ? ok(inverted) : base(path, init)
+    );
+    await openAdvanced(fixture, host);
+    expect(temperatureInput(host).hasAttribute('readonly')).toBe(false);
+    expect(temperatureInput(host).getAttribute('placeholder')).toBe(STRINGS.agentDefinitionTemperatureProviderDefault);
+    await chooseProvider(fixture, host, 'openai');
+    const input = temperatureInput(host);
+    expect(input.hasAttribute('readonly')).toBe(true);
+    expect(input.getAttribute('aria-disabled')).toBe('true');
+    expect(host.querySelector('#ocu-definition-temperature-caption')?.textContent?.trim()).toBe(
+      STRINGS.agentDefinitionTemperatureNotApplicableCaption
+    );
+  });
+
+  it('Story 10.4: a value stored on a row that takes no temperature is shown as held and survives a save', async () => {
+    const { fixture, host, calls } = await mount(samplingAnswer({ temperature: 0.7 }), '/agent/definitions/edit/7');
+    await openAdvanced(fixture, host);
+    const input = temperatureInput(host);
+    expect(input.value).toBe('0.7');
+    expect(input.hasAttribute('readonly')).toBe(true);
+    saveButton(host).click();
+    await settle(fixture);
+    expect(lastBody(calls, 'PUT')['temperature']).toBe(0.7);
+    expect(temperatureInput(host).value).toBe('0.7');
+  });
+
+  it('Story 10.4: a definition stored unset loads its JSON null as an empty field and saves it unset', async () => {
+    // Mutation (Rule 19): `absorb` reads the temperature through `numberAt` -> this goes red, the
+    // field reading '0' and the next save storing 0.
+    const { fixture, host, calls } = await mount(
+      samplingAnswer({ provider: 'openai', temperature: null }),
+      '/agent/definitions/edit/7'
+    );
+    await openAdvanced(fixture, host);
+    const input = temperatureInput(host);
+    expect(input.value).toBe('');
+    expect(input.getAttribute('placeholder')).toBe(STRINGS.agentDefinitionTemperatureProviderDefault);
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'Renamed';
+    name.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    saveButton(host).click();
+    await settle(fixture);
+    expect(lastBody(calls, 'PUT')['temperature']).toBe('');
   });
 });

@@ -10,11 +10,15 @@
 /// function-calling guide (<code>platform.openai.com/docs/guides/function-calling</code>,
 /// 2026-09-18): <code>POST</code> to the row's endpoint with headers
 /// <code>Authorization: Bearer &lt;key&gt;</code> and <code>content-type</code>; body
-/// <code>{model, max_completion_tokens, temperature, messages, tools?}</code>; reply
+/// <code>{model, max_completion_tokens, temperature?, reasoning_effort?, messages, tools?}</code>;
+/// reply
 /// <code>{choices, usage}</code>; error body <code>{error: {message}}</code>. The token cap is
 /// <code>max_completion_tokens</code> and not <code>max_tokens</code>, which the vendor's schema
-/// marks deprecated and refuses on its reasoning models. No API-version header exists for this
-/// family, so the row's <code>authVersion</code> is empty and nothing sends one.</p>
+/// marks deprecated and refuses on its reasoning models. <code>temperature</code> is sent only
+/// when the definition holds one, so an unset value leaves the provider's default in force;
+/// <code>reasoning_effort</code> only when the catalog row's <code>reasoningEffort</code> names
+/// one. No API-version header exists for this family, so the row's <code>authVersion</code> is
+/// empty and nothing sends one.</p>
 Class OcuPilot.Kernel.Provider.OpenAI Extends OcuPilot.Kernel.Provider.Base
 {
 
@@ -51,7 +55,8 @@ Method CallMessages(pRequest As %Net.HttpRequest, ByRef pValues, ByRef pMessages
         Set tBody = {}
         Do tBody.%Set("model", $Get(pValues("model")), "string")
         Do tBody.%Set("max_completion_tokens", +$Get(pValues("maxTokens")), "number")
-        Do tBody.%Set("temperature", +$Get(pValues("temperature")), "number")
+        If $Get(pValues("temperature")) '= "" Do tBody.%Set("temperature", +pValues("temperature"), "number")
+        If $Get(pValues("reasoningEffort")) '= "" Do tBody.%Set("reasoning_effort", pValues("reasoningEffort"), "string")
         Do tBody.%Set("messages", tMessageArray)
         If +$Get(pTools) > 0 {
             Set tSC = ##class(OcuPilot.Kernel.Provider.ToolDefAdapter).ToOpenAi(.pTools, .tToolArray)

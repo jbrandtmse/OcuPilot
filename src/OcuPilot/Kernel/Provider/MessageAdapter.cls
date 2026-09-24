@@ -291,15 +291,23 @@ ClassMethod OpenAiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Pro
 /// (DW-1180): where the provider issued one, the replayed <code>functionCall</code> and the
 /// <code>functionResponse</code> answering it both carry it; where it did not, neither does, and
 /// the name and the order the results appear in are the whole correlation, which keeps two calls
-/// to one tool apart.</p>
+/// to one tool apart. A tool-use block's <code>thoughtSignature</code> member is written back
+/// verbatim as the replayed part's sibling <code>thoughtSignature</code>, and a block with none
+/// writes none.</p>
+/// <p><var>pEmptyEnums</var> is <method>OcuPilot.Kernel.Provider.ToolDefAdapter.GeminiEmptyEnumArgs</method>'s
+/// map as JSON text, or <code>""</code>. On a (tool, argument) pair it names, and on no other, a
+/// replayed <code>functionCall</code>'s <code>""</code> is written as
+/// <parameter>OcuPilot.Kernel.Provider.ToolDefAdapter.GEMINIEMPTYENUM</parameter>, per element for
+/// an <code>items</code> argument, so the history says what the declaration said.</p>
 /// <p>Answers an error <class>%Status</class>, with both outputs blank, for a
 /// <code>tool_result</code> whose id no preceding <code>tool_use</code> carried.</p>
-ClassMethod CanonicalToGemini(ByRef pMessages, pSystemPrompt As %String = "", Output pContents As %DynamicArray, Output pSystemInstruction As %DynamicObject) As %Status
+ClassMethod CanonicalToGemini(ByRef pMessages, pSystemPrompt As %String = "", Output pContents As %DynamicArray, Output pSystemInstruction As %DynamicObject, pEmptyEnums As %String = "") As %Status
 {
     Set tSC = $$$OK
     Set pContents = []
     Set pSystemInstruction = ""
     Try {
+        Set tEmptyEnums = ..EmptyEnumMap(pEmptyEnums)
         If pSystemPrompt '= "" {
             Set tSystemParts = []
             Set tSystemPart = {}
@@ -331,12 +339,15 @@ ClassMethod CanonicalToGemini(ByRef pMessages, pSystemPrompt As %String = "", Ou
                         If tUseId '= "" Set tCalled(tUseId) = tBlock.name
                         Set tCall = {}
                         Do tCall.%Set("name", tBlock.name, "string")
-                        Do tCall.%Set("args", ..ArgumentsOf(tBlock.%Get("input")))
+                        Do tCall.%Set("args", ..RespellEmpty(..ArgumentsOf(tBlock.%Get("input")), tEmptyEnums.%Get(tBlock.name), "", ##class(OcuPilot.Kernel.Provider.ToolDefAdapter).#GEMINIEMPTYENUM))
                         ; DW-1180: a call whose answer carries an id must carry the same id here,
                         ; or the functionResponse names a call this request does not identify.
                         If (tUseId '= "") && '..IsSynthesizedCallId(tUseId) Do tCall.%Set("id", tUseId, "string")
                         Set tPart = {}
                         Do tPart.%Set("functionCall", tCall)
+                        ; The part's sibling signature goes back verbatim, or the provider refuses
+                        ; the replayed call; a block that carried none writes none.
+                        If tBlock.%GetTypeOf("thoughtSignature") = "string" Do tPart.%Set("thoughtSignature", tBlock.%Get("thoughtSignature"), "string")
                         Do tParts.%Push(tPart)
                         Continue
                     }
@@ -381,15 +392,23 @@ ClassMethod CanonicalToGemini(ByRef pMessages, pSystemPrompt As %String = "", Ou
 /// and a synthesized one where it did not (DW-1180), the <code>finishReason</code> mapped
 /// into the canonical vocabulary, and
 /// <code>usageMetadata.promptTokenCount</code> / <code>candidatesTokenCount</code> into the two
-/// token counts.</p>
+/// token counts. A <code>functionCall</code> part's sibling <code>thoughtSignature</code> is kept
+/// verbatim as the canonical block's own <code>thoughtSignature</code> member, which
+/// <method>CanonicalToGemini</method> writes back beside the replayed call.</p>
+/// <p><var>pEmptyEnums</var> is the same map <method>CanonicalToGemini</method> takes. On a
+/// (tool, argument) pair it names, and on no other, a <code>functionCall</code> argument reading
+/// <parameter>OcuPilot.Kernel.Provider.ToolDefAdapter.GEMINIEMPTYENUM</parameter> reaches the
+/// canonical <code>input</code> as <code>""</code>, per element for an <code>items</code>
+/// argument.</p>
 /// <p>Answers an error <class>%Status</class> for a body that is not a JSON object, for one with no
 /// <code>candidates</code> array, and for a <code>functionCall</code> part naming no function,
 /// which no later request could answer. A candidate that carried no parts is an empty reply and
 /// not an error: the model answered, with nothing in it.</p>
-ClassMethod GeminiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Response) As %Status
+ClassMethod GeminiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Response, pEmptyEnums As %String = "") As %Status
 {
     Set tSC = $$$OK
     Try {
+        Set tEmptyEnums = ..EmptyEnumMap(pEmptyEnums)
         Set tParsed = ..BodyOf(pBody, .tSC)
         If $$$ISERR(tSC) Quit
         If '$IsObject(tParsed.candidates) || 'tParsed.candidates.%IsA("%Library.DynamicArray") || (tParsed.candidates.%Size() = 0) {
@@ -434,7 +453,8 @@ ClassMethod GeminiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Pro
                 Do tUse.%Set("type", "tool_use", "string")
                 Do tUse.%Set("id", $Select(tVendorId '= "": tVendorId, 1: ..#GEMINICALLIDPREFIX _ (tToolCalls.%Size() + 1) _ "_" _ tPart.functionCall.name), "string")
                 Do tUse.%Set("name", tPart.functionCall.name, "string")
-                Do tUse.%Set("input", ..ArgumentsOf(tPart.functionCall.args))
+                Do tUse.%Set("input", ..RespellEmpty(..ArgumentsOf(tPart.functionCall.args), tEmptyEnums.%Get(tPart.functionCall.name), ##class(OcuPilot.Kernel.Provider.ToolDefAdapter).#GEMINIEMPTYENUM, ""))
+                If tPart.%GetTypeOf("thoughtSignature") = "string" Do tUse.%Set("thoughtSignature", tPart.%Get("thoughtSignature"), "string")
                 Do tToolCalls.%Push(tUse)
             }
             If $$$ISERR(tSC) Quit
@@ -537,6 +557,48 @@ ClassMethod ArgumentsOf(pInput As %RawString = "") As %DynamicObject [ Private ]
     Set tArgs = {}
     If ..IsJsonObject(pInput) Set tArgs = pInput
     Quit tArgs
+}
+
+/// <p><var>pMap</var> -- <method>OcuPilot.Kernel.Provider.ToolDefAdapter.GeminiEmptyEnumArgs</method>'s
+/// map as JSON text -- as the object it holds, or an empty object when it is empty or not a JSON
+/// object.</p>
+ClassMethod EmptyEnumMap(pMap As %String = "") As %DynamicObject [ Private ]
+{
+    Set tMap = {}
+    Try {
+        If pMap = "" Quit
+        Set tParsed = ##class(%DynamicAbstractObject).%FromJSON(pMap)
+        If ..IsJsonObject(tParsed) Set tMap = tParsed
+    } Catch ex {
+        Set tMap = {}
+    }
+    Quit tMap
+}
+
+/// <p>A copy of the arguments object <var>pArgs</var> with, on each argument <var>pArgKinds</var>
+/// names, a string equal to <var>pFrom</var> written as <var>pTo</var>: the argument itself for
+/// kind <code>value</code>, each element of its array for kind <code>items</code>. Every other
+/// argument is copied as it is. <var>pArgs</var> itself when <var>pArgKinds</var> names
+/// nothing.</p>
+ClassMethod RespellEmpty(pArgs As %DynamicObject, pArgKinds As %RawString, pFrom As %String, pTo As %String) As %DynamicObject [ Private ]
+{
+    If '..IsJsonObject(pArgKinds) Quit pArgs
+    If pArgKinds.%Size() = 0 Quit pArgs
+    Set tOut = ##class(%DynamicAbstractObject).%FromJSON(pArgs.%ToJSON())
+    Set tIterator = pArgKinds.%GetIterator()
+    While tIterator.%GetNext(.tArg, .tKind) {
+        If tKind = "value" {
+            If (tOut.%GetTypeOf(tArg) = "string") && (tOut.%Get(tArg) = pFrom) Do tOut.%Set(tArg, pTo, "string")
+            Continue
+        }
+        If tKind '= "items" Continue
+        Set tList = tOut.%Get(tArg)
+        If '$IsObject(tList) || 'tList.%IsA("%Library.DynamicArray") Continue
+        For tI = 0:1:(tList.%Size() - 1) {
+            If (tList.%GetTypeOf(tI) = "string") && (tList.%Get(tI) = pFrom) Do tList.%Set(tI, pTo, "string")
+        }
+    }
+    Quit tOut
 }
 
 /// <p>Whether <var>pValue</var> is a JSON <b>object</b> -- the check

@@ -194,7 +194,7 @@ services:
       # by package, so a runner pointed at an instance someone cares about would otherwise create
       # principals on it. scripts/check-objectscript.py's destructive-test-guard rule holds the
       # population.
-      # classes: AccountPasswordWire, AgentWireSecurity, AuditMarker, ConfigGate, CredentialPrivilege, DenialParity
+      # classes: AccountPasswordWire, AgentConnectionRoles, AgentWireSecurity, AuditMarker, ConfigGate, CredentialPrivilege, DenialParity
       # classes: Disabled, ErrorDelete, ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial
       # classes: OAuthTabs
       # classes: ProcessControl, ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token
@@ -269,11 +269,12 @@ services:
       # classes: ErrorDelete
       OCUPILOT_ALLOW_ERROR_DELETE: "1"
       # Arms the turnprobe provider row OcuPilot.Kernel.Provider.Catalog resolves only under it,
-      # and with it the classes that spawn turn jobs against that row's scripted adapter. A turn
-      # job is a separate process no in-process stub reaches, so the row is armed by the
-      # environment, and only here.
-      # classes: LedgerWire, ToolWire, TurnChain, TurnContext, TurnConversation
-      # classes: TurnLong, TurnProviderFault, TurnStore, TurnWire, TurnWireFixture
+      # and with it the classes that spawn turn jobs or Test connection children against that row's
+      # scripted adapter. Either is a separate process no in-process stub reaches, so the row is
+      # armed by the environment, and only here.
+      # classes: AgentConnectionBound, AgentConnectionRoles, AgentConnectionWire, LedgerWire, ToolWire, TurnChain
+      # classes: TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnStore
+      # classes: TurnWire, TurnWireFixture
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
     volumes:
       - $DIR/data:/durable
