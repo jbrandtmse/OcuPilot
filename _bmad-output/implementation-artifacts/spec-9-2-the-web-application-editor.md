@@ -2,7 +2,7 @@
 title: 'Story 9.2: The web application editor'
 type: 'feature'
 created: '2026-09-24'
-status: 'ready-for-dev'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -25,6 +25,15 @@ deferred: []
 - **Routed entries:** DW-1490, DW-1493, DW-1502, DW-1577, DW-1595 and DW-1596 are fixed as the tasks list.
 
 ## Boundaries & Constraints
+
+**Orchestrator ruling 2026-09-24 (binding; supersedes every line below that keeps DW-1207's refusals on other applications):** option (b). AD-10 is amended (see its "Weakening or repointing one of OcuPilot's own web applications" bullet) and DW-1207 is closed by-design.
+
+- **Drop the `UNAUTHENTICATED`, `AUTHORIZATION` and `DISPATCH` arms for applications that are not OcuPilot's own.** `AutheEnabled` (all bits), `Resource`, `DispatchClass`, `NameSpace`, the Python application and callable (`WSGIAppName`, `WSGICallable`), `Package` and `SuperClass` are editable on the screen and settable by the agent, beside the 19.
+- **Each such change is minted destructive with its effect named** - "reachable without signing in", "no authorization resource", "a different class now answers this address" - shows a consequence line at the field on the screen, and takes the typed-name confirmation on the card. Reuse the existing unauthenticated consequence (`WEBAPP.UNAUTHENTICATED`, `privilegedGrantEffectUnauthenticated`); add a Fixed-strings row (tier-1) only for a sentence that does not exist yet.
+- **They stay refused on OcuPilot's own applications** (its API, static application and every application the installer creates), on the agent path and the screen alike - AD-10's serving-path self-protection.
+- **`Path` and the Python location (`WSGIAppLocation`) stay read-only** (AD-21; WSGI locations stay contained under the fixed root, DW-1495).
+- **Tests that fail when the ruling is wrong:** for a non-OcuPilot application, each of the three changes is proposable, destructive, and applies on the throwaway once confirmed; for an OcuPilot application, each is still refused on both callers; removing the destructive marking reddens a test.
+- DW-1597 (an editor's own Save raising a toast) stays on the merge-gate sheet - not decided here.
 
 **Always:**
 
@@ -251,6 +260,8 @@ Browser tasks:
 - **Integration:** **given** `form-tabs`, `startFor` and `DESCRIPTOR_EDIT_PAGES`, **when** `WebAppEditorPage` shows a refusal on an unselected tab and assigns an application role, **then** the tab opens with its dot and ", 1 error", and the role reaches the instance through the list's own AD-53 action route. The browser spec observes both.
 
 ## Spec Change Log
+
+- 2026-09-24 spec gate (lead): orchestrator ruling (b) on DW-1207 recorded in the intent contract; AD-10 amended; DW-1207 closed by-design by=orchestrator; AD-27 fifth named case (WebApp.App PUT `Type` restore) applied as recommended. Status reset to `draft` for a re-plan around the ruling.
 
 ## Review Triage Log
 

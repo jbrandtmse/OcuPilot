@@ -50,3 +50,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-24T03:48:11Z	Epic 9	spine_updated	ad=AD-27 reason=clarification by=runner story=9-2-the-web-application-editor what=fifth_named_case_WebApp.App_PUT_Type_restore lint=ok_preexisting_low_placeholder_line167
 2026-09-24T03:48:11Z	Story 9.2	plan_clarification_requested	question=DW-1207_refusals(unauthenticated_add,resource_clear,dispatch/namespace/python_repoint)_vs_owner_developer_tool_first_2026-09-23 plan_default=keep_recorded_DW-1207 to=orchestrator
 2026-09-24T03:57:18Z	Story 9.1	ci_resolved	story=9.1 run=35951713049 head=66a48be result=success jobs=8/8 resolved_at=next_implement note=covers_9.1_final_2f0b1a8_and_integrate_forward(DW-1435_verified)
+2026-09-24T03:58:57Z	Epic 9	spine_updated	ad=AD-10 reason=clarification by=runner story=9-2-the-web-application-editor dw=DW-1207 what=unauthenticated_authorization_dispatch_arms_narrowed_to_OcuPilot_own_apps ruling=orchestrator_b_2026-09-24 lint=ok_preexisting_low_placeholder_line167
+2026-09-24T03:58:57Z	Epic 9	ledger_closed	dw=DW-1207 status=by-design by=orchestrator
+2026-09-24T03:58:57Z	Story 9.2	stage_spawned	stage=plan spawn_at=2026-09-24T03:58:57Z model=opus agent_name=9-2-the-web-application-editor-plan-2 cycle_iteration=2 note=re-plan_after_ruling_b
