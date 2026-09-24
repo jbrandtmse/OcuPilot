@@ -109,7 +109,7 @@ Method StoredDefinition(pRow As %DynamicObject, pEndpoint As %String, pCredType 
         Set tRow.EnvVarName = $Select(pCredType = "env": pRow.defaultEnvVarName, 1: "")
         Set tRow.CredentialName = ""
         Set tRow.MaxTokens = +pRow.canonicalMaxTokens
-        Set tRow.Temperature = +pRow.canonicalTemperature
+        Set tRow.Temperature = pRow.canonicalTemperature
         Set tRow.Enabled = 1
         Set tRow.ConnectionVerified = 1
         Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tRow)
@@ -124,8 +124,8 @@ Method StoredDefinition(pRow As %DynamicObject, pEndpoint As %String, pCredType 
 }
 
 /// <p>The value array a direct call reads, taking every provider fact from <var>pRow</var> --
-/// including the two columns the port would otherwise copy in, <code>keyPrefix</code> and
-/// <code>authVersion</code> -- and <var>pEndpoint</var> as the stored endpoint.</p>
+/// including the three columns the port would otherwise copy in, <code>keyPrefix</code>,
+/// <code>authVersion</code> and <code>reasoningEffort</code> -- and <var>pEndpoint</var> as the stored endpoint.</p>
 ClassMethod DirectValues(pRow As %DynamicObject, pEndpoint As %String, Output pValues)
 {
     Kill pValues
@@ -137,9 +137,10 @@ ClassMethod DirectValues(pRow As %DynamicObject, pEndpoint As %String, Output pV
     Set pValues("envVarName") = pRow.defaultEnvVarName
     Set pValues("credentialName") = ""
     Set pValues("maxTokens") = +pRow.canonicalMaxTokens
-    Set pValues("temperature") = +pRow.canonicalTemperature
+    Set pValues("temperature") = pRow.canonicalTemperature
     Set pValues("keyPrefix") = pRow.keyPrefix
     Set pValues("authVersion") = pRow.authVersion
+    Set pValues("reasoningEffort") = pRow.reasoningEffort
 }
 
 /// <p>The body the stub recorded on call <var>pCall</var>, parsed.</p>
@@ -288,7 +289,7 @@ Method TestAKeylessRowWithALeftoverReferenceAndAResolvableSecretStillSendsNoHead
         Set tDef.EnvVarName = tRow.defaultEnvVarName
         Set tDef.CredentialName = tRow.defaultCredentialName
         Set tDef.MaxTokens = +tRow.canonicalMaxTokens
-        Set tDef.Temperature = +tRow.canonicalTemperature
+        Set tDef.Temperature = tRow.canonicalTemperature
         Set tDef.Enabled = 1
         Set tDef.ConnectionVerified = 1
         Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tDef)

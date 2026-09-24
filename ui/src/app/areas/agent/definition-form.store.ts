@@ -33,11 +33,17 @@ export interface ProviderRow {
   readonly defaultEndpoint: string;
   readonly endpointRequired: boolean;
   readonly canonicalMaxTokens: number;
-  readonly canonicalTemperature: number;
+  /** `null` when the row declares none, so a new definition leaves the provider's default in force. */
+  readonly canonicalTemperature: number | null;
   readonly defaultEnvVarName: string;
   readonly defaultCredentialName: string;
   readonly keyPrefix: string;
   readonly allowsLocal: boolean;
+  /**
+   * Whether this family's request may carry a temperature (Story 10.4). The form reads the column
+   * rather than a provider name; an answer that omits it keeps the field applicable.
+   */
+  readonly acceptsTemperature: boolean;
   /**
    * The sentence an inline key-shape check renders, written on the server beside the refusal it
    * mirrors and served as data (DW-339, AD-39). The client publishes no per-code copy.
@@ -141,6 +147,19 @@ function numberAt(source: unknown, key: string): number {
   if (source === null || typeof source !== 'object') return 0;
   const value = (source as Record<string, unknown>)[key];
   return typeof value === 'number' ? value : 0;
+}
+
+/** True unless the member is an explicit `false`, so a column an older answer omits reads as set. */
+function notFalseAt(source: unknown, key: string): boolean {
+  if (source === null || typeof source !== 'object') return true;
+  return (source as Record<string, unknown>)[key] !== false;
+}
+
+/** A number, or `null` for anything else -- JSON `null` included, which is how "unset" arrives. */
+function optionalNumberAt(source: unknown, key: string): number | null {
+  if (source === null || typeof source !== 'object') return null;
+  const value = (source as Record<string, unknown>)[key];
+  return typeof value === 'number' ? value : null;
 }
 
 /**
@@ -322,6 +341,14 @@ export class DefinitionForm {
   /** The catalog row for the provider now selected, or `null`. */
   provider(): ProviderRow | null {
     return this.providerRows.find((row) => row.key === this.value('provider')) ?? null;
+  }
+
+  /**
+   * Whether the selected provider's row takes a temperature (Story 10.4). No row selected yet
+   * reads as applicable, so the field is never shut before the catalog has answered.
+   */
+  temperatureApplies(): boolean {
+    return this.provider()?.acceptsTemperature ?? true;
   }
 
   violations(): readonly Violation[] {
@@ -804,11 +831,12 @@ export class DefinitionForm {
       defaultEndpoint: textAt(row, 'defaultEndpoint'),
       endpointRequired: flagAt(row, 'endpointRequired'),
       canonicalMaxTokens: numberAt(row, 'canonicalMaxTokens'),
-      canonicalTemperature: numberAt(row, 'canonicalTemperature'),
+      canonicalTemperature: optionalNumberAt(row, 'canonicalTemperature'),
       defaultEnvVarName: textAt(row, 'defaultEnvVarName'),
       defaultCredentialName: textAt(row, 'defaultCredentialName'),
       keyPrefix: textAt(row, 'keyPrefix'),
       allowsLocal: flagAt(row, 'allowsLocal'),
+      acceptsTemperature: notFalseAt(row, 'acceptsTemperature'),
       keyShapeReason: textAt(row, 'keyShapeReason'),
     }));
   }
@@ -821,7 +849,8 @@ export class DefinitionForm {
       next['model'] = row.defaultModel;
       next['endpointUrl'] = row.defaultEndpoint;
       next['maxTokens'] = String(row.canonicalMaxTokens);
-      next['temperature'] = String(row.canonicalTemperature);
+      // A row that declares no canonical temperature leaves the field empty, which saves unset.
+      next['temperature'] = row.canonicalTemperature === null ? '' : String(row.canonicalTemperature);
       next['credentialName'] = row.defaultCredentialName;
       next['envVarName'] = row.defaultEnvVarName;
       // The three local-model fields are licensed by the row's own `allowsLocal`, and the form
@@ -946,14 +975,21 @@ export class DefinitionForm {
 
   /**
    * A refused Test connection. `PROVIDER.REFUSED` with the provider's own words is the one case
-   * the published failure sentence is written around; every other code renders the envelope's own
-   * `reason`, verbatim (DW-355).
+   * the published failure sentence is written around (DW-355); the two test-timeout codes render
+   * their published sentence with the detail's seconds and label resolved (Story 10.5); every
+   * other code renders the envelope's own `reason`, verbatim.
    */
   private absorbTestRefusal(result: JsonResult<unknown>, sent: Record<string, string>): void {
     this.violationList = violationsOf(result);
     this.rememberRefusedValues(result, sent);
     if (this.violationList.length > 0) return;
     if (result.kind !== 'error') return;
+    const timedOut = testTimeoutText(result.code, result.detail);
+    if (timedOut !== null) {
+      this.testFailure = timedOut;
+      this.failureFromProvider = false;
+      return;
+    }
     const text = result.detail === null ? undefined : result.detail['providerText'];
     if (result.code === 'PROVIDER.REFUSED' && typeof text === 'string' && text !== '') {
       this.testFailure = text;
@@ -1002,6 +1038,31 @@ export class DefinitionForm {
  * beside it is the catalog row's `keyShapeReason`, written on the server.
  */
 export const KEY_SHAPE_CODE = 'AGENT.KEY.SHAPE';
+
+/** The code a Test connection earns when it waited its bound with no answer (Story 10.5). */
+export const TEST_TIMEOUT_CODE = 'PROVIDER.TESTTIMEOUT';
+
+/** Its twin for a definition marked local. */
+export const TEST_TIMEOUT_LOCAL_CODE = 'PROVIDER.TESTTIMEOUTLOCAL';
+
+/**
+ * The published failure sentence for a test-timeout `code`, with `<n>` resolved from
+ * `detail.waitedSeconds` and `<provider>` from `detail.providerLabel` -- or `null` when the code
+ * is another one, or the detail lacks a value the sentence needs, in which case the envelope's own
+ * `reason` is what renders.
+ */
+export function testTimeoutText(code: string | null, detail: Record<string, unknown> | null): string | null {
+  if (code !== TEST_TIMEOUT_CODE && code !== TEST_TIMEOUT_LOCAL_CODE) return null;
+  if (detail === null) return null;
+  const waited = detail['waitedSeconds'];
+  if (typeof waited !== 'number' || !Number.isFinite(waited)) return null;
+  if (code === TEST_TIMEOUT_LOCAL_CODE) {
+    return STRINGS.agentDefinitionTestTimeoutLocal.split('<n>').join(String(waited));
+  }
+  const label = detail['providerLabel'];
+  if (typeof label !== 'string' || label === '') return null;
+  return STRINGS.agentDefinitionTestTimeout.split('<provider>').join(label).split('<n>').join(String(waited));
+}
 
 function emptyBuffer(): EditBuffer {
   const out: EditBuffer = {};

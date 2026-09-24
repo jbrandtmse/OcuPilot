@@ -102,7 +102,9 @@ ClassMethod Normalize(ByRef pValues)
 /// <li><b>Rule 2</b> -- <code>provider</code> a key
 /// <class>OcuPilot.Kernel.Provider.Catalog</class> declares.</li>
 /// <li><b>Rule 3</b> -- <code>maxTokens</code> a whole number 1-32000.</li>
-/// <li><b>Rule 4</b> -- <code>temperature</code> a number 0-2.</li>
+/// <li><b>Rule 4</b> -- <code>temperature</code> empty, which leaves it to the provider, or a
+/// number 0-2. Family-blind: a stored value on a family that takes none is kept, never
+/// refused.</li>
 /// <li><b>Rule 5</b> -- <code>credType</code> one of the two declared rungs, or
 /// <code>none</code> on a provider whose catalog row allows local.</li>
 /// <li><b>Rule 6</b> -- <code>env</code> implies a non-empty <code>envVarName</code>, after
@@ -154,7 +156,7 @@ ClassMethod Validate(ByRef pValues, pExistingId As %String = "", Output pViolati
         Do ..Add(.pViolations, "maxTokens", ##class(OcuPilot.Api.Error).#AGENTMAXTOKENSRANGE)
     }
 
-    If '..IsNumberInRange($Get(pValues("temperature")), 0, 2) {
+    If ($Get(pValues("temperature")) '= "") && '..IsNumberInRange($Get(pValues("temperature")), 0, 2) {
         Do ..Add(.pViolations, "temperature", ##class(OcuPilot.Api.Error).#AGENTTEMPERATURERANGE)
     }
 

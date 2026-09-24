@@ -1,4 +1,5 @@
-/// <p>The turn job (AD-7, AD-9): the one place in shipped code that spawns a process.
+/// <p>The turn job (AD-7, AD-9): one of the two places in shipped code that spawn a process; the
+/// other is <class>OcuPilot.Kernel.Provider.TestCall</class>, Test connection's child.
 /// <method>Start</method> is called by the turn handler, from a frame no escalation is in effect in,
 /// after every escalated read has returned; everything the job starts from travels as a
 /// <code>JOB</code> argument. The child inherits the caller's <code>$USERNAME</code> and

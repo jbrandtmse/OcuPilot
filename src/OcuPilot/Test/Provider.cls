@@ -124,8 +124,8 @@ Method TestAnAnsweredCallReportsTheReply()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "one transport call, and only one")
 }
 
-/// <p>AC2 -- the canonical body: the model, the two tuning values, the system prompt when there is
-/// one, the messages, and the tools with their schemas.</p>
+/// <p>AC2 -- the canonical body: the model, the maximum tokens and no sampling parameter, the
+/// system prompt when there is one, the messages, and the tools with their schemas.</p>
 /// <p>Mutation: send <code>max_tokens</code> under any other key -- this goes red, and nothing
 /// else does.</p>
 Method TestTheBodyIsTheCanonicalShape()
@@ -144,7 +144,7 @@ Method TestTheBodyIsTheCanonicalShape()
     If '$IsObject(tBody) Quit
     Do $$$AssertEquals(tBody.model, "probe-local-model-1", "the model is the definition's")
     Do $$$AssertEquals(+tBody."max_tokens", 4000, "the maximum tokens ride under the provider's own key")
-    Do $$$AssertEquals(+tBody.temperature, 0, "and the temperature")
+    Do $$$AssertEquals(tBody.%GetTypeOf("temperature"), "unassigned", "and no temperature: this family is sent no sampling parameter")
     Do $$$AssertEquals(tBody.system, "you are a probe", "the system prompt is sent when there is one")
     Do $$$AssertEquals(tBody.messages.%Size(), 1, "one message")
     Do $$$AssertEquals(tBody.messages.%Get(0).role, "user", "with its role")

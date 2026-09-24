@@ -519,6 +519,23 @@ export const STRINGS = {
   agentDefinitionFieldMaxTokens: 'Maximum tokens',
   /** EXPERIENCE.md:335 */
   agentDefinitionFieldTemperature: 'Temperature',
+  // Story 10.4: the Temperature field's placeholder where the provider takes one, and its
+  // placeholder and caption where it does not.
+  /** EXPERIENCE.md:465 */
+  agentDefinitionTemperatureProviderDefault: 'Provider default',
+  /** EXPERIENCE.md:465 */
+  agentDefinitionTemperatureNotApplicable: 'Not applicable',
+  /** EXPERIENCE.md:465 */
+  agentDefinitionTemperatureNotApplicableCaption:
+    'This provider\'s current models refuse sampling settings, so OcuPilot sends none and the model uses its own.',
+  // Story 10.5: the Test connection failure line when the test waited its bound with no answer,
+  // for a definition marked local and otherwise. The server's reasons are pinned equal to these.
+  /** EXPERIENCE.md:466 */
+  agentDefinitionTestTimeoutLocal:
+    'The model did not answer within <n> seconds. A local model may still be loading; test again in a minute.',
+  /** EXPERIENCE.md:466 */
+  agentDefinitionTestTimeout:
+    'The provider (<provider>) did not answer within <n> seconds. Check the endpoint and the provider\'s status, then test again.',
   /** EXPERIENCE.md:335 */
   agentDefinitionFieldMaxIterations: 'Maximum iterations',
   /** EXPERIENCE.md:335 */
@@ -1660,44 +1677,44 @@ export const STRINGS = {
   actionApply: 'Apply',
   /** EXPERIENCE.md:463 */
   auditSqlWizardStopped: 'Not every change was applied. The list shows each event as it is now.',
-  /** EXPERIENCE.md:465 */
+  /** EXPERIENCE.md:467 */
   userRefusalServiceAccountSignIn:
     'The instance\'s own services sign in as this account. A new password or a required password change would stop them, OcuPilot included.',
-  /** EXPERIENCE.md:466 */
+  /** EXPERIENCE.md:468 */
   userFieldComment: 'Comment',
-  /** EXPERIENCE.md:466 */
+  /** EXPERIENCE.md:468 */
   userFieldPasswordNeverExpires: 'Password never expires',
-  /** EXPERIENCE.md:466 */
+  /** EXPERIENCE.md:468 */
   userFieldAccountNeverExpires: 'Account never expires',
-  /** EXPERIENCE.md:466 */
+  /** EXPERIENCE.md:468 */
   userFieldEmail: 'Email address',
-  /** EXPERIENCE.md:466 */
+  /** EXPERIENCE.md:468 */
   userFieldPhoneProvider: 'Mobile phone service provider',
-  /** EXPERIENCE.md:466 */
+  /** EXPERIENCE.md:468 */
   userFieldPhoneNumber: 'Mobile phone number',
-  /** EXPERIENCE.md:466 */
+  /** EXPERIENCE.md:468 */
   userFieldTwoFactor: 'Two-factor authentication',
-  /** EXPERIENCE.md:466 */
+  /** EXPERIENCE.md:468 */
   userFieldTwoFactorSms: 'SMS text',
-  /** EXPERIENCE.md:466 */
+  /** EXPERIENCE.md:468 */
   userFieldTwoFactorTotp: 'Time-based one-time password',
-  /** EXPERIENCE.md:466 */
+  /** EXPERIENCE.md:468 */
   userFieldShowQrCode: 'Show the QR code at next sign-in',
-  /** EXPERIENCE.md:466 */
+  /** EXPERIENCE.md:468 */
   userRolesEmpty: 'This account holds no roles.',
-  /** EXPERIENCE.md:467 */
+  /** EXPERIENCE.md:469 */
   formTabErrorOne: '<tab>, 1 error',
-  /** EXPERIENCE.md:467 */
+  /** EXPERIENCE.md:469 */
   formTabErrorMany: '<tab>, <n> errors',
-  /** EXPERIENCE.md:468 */
+  /** EXPERIENCE.md:470 */
   userPromptGroupSignIn: 'Sign-in',
-  /** EXPERIENCE.md:468 */
+  /** EXPERIENCE.md:470 */
   userPromptGroupAccess: 'Access',
-  /** EXPERIENCE.md:468 */
+  /** EXPERIENCE.md:470 */
   userPromptSignIn: 'Why can this user not sign in?',
-  /** EXPERIENCE.md:468 */
+  /** EXPERIENCE.md:470 */
   userPromptPrivilege: 'Which of this user\'s roles grant %All or an administrative privilege?',
-  /** EXPERIENCE.md:468 */
+  /** EXPERIENCE.md:470 */
   userPromptTwoFactor: 'Turn on two-factor sign-in for this user.',
 
   // Story 15.6: the account menu's theme toggle.
@@ -1706,113 +1723,113 @@ export const STRINGS = {
 
   // Story 9.2: the web application editor. Its title, General and Application roles tabs, and every
   // other label it draws reuse keys that already exist.
-  /** EXPERIENCE.md:469 */
-  webAppFieldDefaultApplication: 'Namespace default application',
-  /** EXPERIENCE.md:469 */
-  webAppFieldPackage: 'Package name',
-  /** EXPERIENCE.md:469 */
-  webAppFieldSuperClass: 'Default superclass',
-  /** EXPERIENCE.md:469 */
-  webAppFieldGroupById: 'Group by ID',
-  /** EXPERIENCE.md:469 */
-  webAppFieldTimeout: 'Session timeout (seconds)',
-  /** EXPERIENCE.md:469 */
-  webAppFieldJwt: 'JWT authentication',
-  /** EXPERIENCE.md:469 */
-  webAppFieldJwtAccessTimeout: 'JWT access token timeout (seconds)',
-  /** EXPERIENCE.md:469 */
-  webAppFieldJwtRefreshTimeout: 'JWT refresh token timeout (seconds)',
-  /** EXPERIENCE.md:469 */
-  webAppFieldLockCspName: 'Lock CSP name',
-  /** EXPERIENCE.md:469 */
-  webAppFieldAutoCompile: 'Automatic compilation',
-  /** EXPERIENCE.md:469 */
-  webAppFieldServeFiles: 'Serve files',
-  /** EXPERIENCE.md:469 */
-  webAppFieldServeFilesTimeout: 'Serve files timeout (seconds)',
-  /** EXPERIENCE.md:469 */
-  webAppFieldPath: 'Physical path',
-  /** EXPERIENCE.md:469 */
-  webAppTabMatchingRoles: 'Matching roles',
-  /** EXPERIENCE.md:469 */
-  webAppTabCors: 'Cross-origin settings',
-  /** EXPERIENCE.md:469 */
-  webAppFieldCorsAllowlist: 'Allowed origins',
-  /** EXPERIENCE.md:469 */
-  webAppFieldCorsCredentials: 'Allow credentials',
-  /** EXPERIENCE.md:469 */
-  webAppFieldCorsHeaders: 'Allowed headers',
-  /** EXPERIENCE.md:469 */
-  webAppCorsListCaption: 'One entry per line.',
-  /** EXPERIENCE.md:469 */
-  webAppFieldMatchRole: 'Matching role',
-  /** EXPERIENCE.md:469 */
-  webAppRoleAssign: 'Assign',
-  /** EXPERIENCE.md:469 */
-  webAppApplicationRolesEmpty: 'This application grants no application roles.',
-  /** EXPERIENCE.md:469 */
-  webAppMatchingRolesEmpty: 'This application grants no matching roles.',
-  /** EXPERIENCE.md:470 */
-  webAppEditorFixedFields: 'Where this application\'s files live is set when it is created.',
   /** EXPERIENCE.md:471 */
-  webAppNoResourceEffect: 'No resource guards this application now, so anyone who can sign in can use it.',
+  webAppFieldDefaultApplication: 'Namespace default application',
+  /** EXPERIENCE.md:471 */
+  webAppFieldPackage: 'Package name',
+  /** EXPERIENCE.md:471 */
+  webAppFieldSuperClass: 'Default superclass',
+  /** EXPERIENCE.md:471 */
+  webAppFieldGroupById: 'Group by ID',
+  /** EXPERIENCE.md:471 */
+  webAppFieldTimeout: 'Session timeout (seconds)',
+  /** EXPERIENCE.md:471 */
+  webAppFieldJwt: 'JWT authentication',
+  /** EXPERIENCE.md:471 */
+  webAppFieldJwtAccessTimeout: 'JWT access token timeout (seconds)',
+  /** EXPERIENCE.md:471 */
+  webAppFieldJwtRefreshTimeout: 'JWT refresh token timeout (seconds)',
+  /** EXPERIENCE.md:471 */
+  webAppFieldLockCspName: 'Lock CSP name',
+  /** EXPERIENCE.md:471 */
+  webAppFieldAutoCompile: 'Automatic compilation',
+  /** EXPERIENCE.md:471 */
+  webAppFieldServeFiles: 'Serve files',
+  /** EXPERIENCE.md:471 */
+  webAppFieldServeFilesTimeout: 'Serve files timeout (seconds)',
+  /** EXPERIENCE.md:471 */
+  webAppFieldPath: 'Physical path',
+  /** EXPERIENCE.md:471 */
+  webAppTabMatchingRoles: 'Matching roles',
+  /** EXPERIENCE.md:471 */
+  webAppTabCors: 'Cross-origin settings',
+  /** EXPERIENCE.md:471 */
+  webAppFieldCorsAllowlist: 'Allowed origins',
+  /** EXPERIENCE.md:471 */
+  webAppFieldCorsCredentials: 'Allow credentials',
+  /** EXPERIENCE.md:471 */
+  webAppFieldCorsHeaders: 'Allowed headers',
+  /** EXPERIENCE.md:471 */
+  webAppCorsListCaption: 'One entry per line.',
+  /** EXPERIENCE.md:471 */
+  webAppFieldMatchRole: 'Matching role',
+  /** EXPERIENCE.md:471 */
+  webAppRoleAssign: 'Assign',
+  /** EXPERIENCE.md:471 */
+  webAppApplicationRolesEmpty: 'This application grants no application roles.',
+  /** EXPERIENCE.md:471 */
+  webAppMatchingRolesEmpty: 'This application grants no matching roles.',
   /** EXPERIENCE.md:472 */
-  webAppRepointedEffect: 'A different class now answers this address.',
+  webAppEditorFixedFields: 'Where this application\'s files live is set when it is created.',
   /** EXPERIENCE.md:473 */
+  webAppNoResourceEffect: 'No resource guards this application now, so anyone who can sign in can use it.',
+  /** EXPERIENCE.md:474 */
+  webAppRepointedEffect: 'A different class now answers this address.',
+  /** EXPERIENCE.md:475 */
   webAppPrivilegeGrantRefusal:
     'OcuPilot\'s own web applications carry only the roles its installer gives them. A role set there would run every OcuPilot request with it.',
-  /** EXPERIENCE.md:474 */
+  /** EXPERIENCE.md:476 */
   agentCredTypeUnavailable:
     'The credential store is not available in this namespace. Read the key from an environment variable instead.',
-  /** EXPERIENCE.md:475 */
+  /** EXPERIENCE.md:477 */
   webAppPromptGroupCode: 'Code',
-  /** EXPERIENCE.md:475 */
+  /** EXPERIENCE.md:477 */
   webAppPromptAccess: 'Who can use this web application, and what does it grant them?',
-  /** EXPERIENCE.md:475 */
+  /** EXPERIENCE.md:477 */
   webAppPromptUnauthenticated: 'Is this web application reachable without signing in?',
-  /** EXPERIENCE.md:475 */
+  /** EXPERIENCE.md:477 */
   webAppPromptCode: 'Which code answers at this web application\'s address?',
 
   // Story 9.3: the role editor, the role and resource deletes, and their refusals.
-  /** EXPERIENCE.md:476 */
+  /** EXPERIENCE.md:478 */
   roleEditorTabMembers: 'Members',
-  /** EXPERIENCE.md:476 */
+  /** EXPERIENCE.md:478 */
   roleEditorTabAssignedTo: 'Assigned to',
-  /** EXPERIENCE.md:476 */
+  /** EXPERIENCE.md:478 */
   roleMemberTypeUser: 'Account',
-  /** EXPERIENCE.md:476 */
+  /** EXPERIENCE.md:478 */
   roleMemberTypeEscalation: 'Account (escalation)',
-  /** EXPERIENCE.md:476 */
+  /** EXPERIENCE.md:478 */
   roleMembersEmpty: 'No account or role holds this role.',
-  /** EXPERIENCE.md:476 */
+  /** EXPERIENCE.md:478 */
   roleAssignedToEmpty: 'This role carries no other role.',
-  /** EXPERIENCE.md:477 */
+  /** EXPERIENCE.md:479 */
   roleDeleteConsequence: 'Deleting this role takes it from every account and role that holds it. This cannot be undone.',
-  /** EXPERIENCE.md:477 */
+  /** EXPERIENCE.md:479 */
   roleDeleteHolders: '<n> users hold this role.',
-  /** EXPERIENCE.md:477 */
+  /** EXPERIENCE.md:479 */
   roleDeleteHoldersOne: '1 user holds this role.',
-  /** EXPERIENCE.md:477 */
+  /** EXPERIENCE.md:479 */
   roleDeleteHoldersNone: 'No user holds this role.',
-  /** EXPERIENCE.md:477 */
+  /** EXPERIENCE.md:479 */
   resourceDeleteConsequence: 'Every role that grants this resource loses it. This cannot be undone.',
-  /** EXPERIENCE.md:478 */
+  /** EXPERIENCE.md:480 */
   roleRefusalSystem: 'A name beginning with % belongs to one of the instance\'s own roles.',
-  /** EXPERIENCE.md:478 */
+  /** EXPERIENCE.md:480 */
   resourceRefusalSystem: 'This is a system resource. IRIS does not allow it to be deleted.',
-  /** EXPERIENCE.md:479 */
+  /** EXPERIENCE.md:481 */
   uncoveredFieldRefusal: 'Only some of this kind of object\'s settings can be changed here, and that is not one of them.',
-  /** EXPERIENCE.md:479 */
+  /** EXPERIENCE.md:481 */
   roleRefusalOcuPilot:
     'This role belongs to OcuPilot, which stops working without what it grants. Only OcuPilot\'s installer changes or removes it.',
-  /** EXPERIENCE.md:479 */
+  /** EXPERIENCE.md:481 */
   resourceRefusalOcuPilot:
     'This resource guards OcuPilot\'s own data or administration. It cannot be deleted or opened to every user; only OcuPilot\'s installer changes it.',
-  /** EXPERIENCE.md:480 */
+  /** EXPERIENCE.md:482 */
   rolePromptHolders: 'Who holds this role, and what does it grant them?',
-  /** EXPERIENCE.md:480 */
+  /** EXPERIENCE.md:482 */
   rolePromptPrivilege: 'Does this role grant any administrative privilege?',
-  /** EXPERIENCE.md:480 */
+  /** EXPERIENCE.md:482 */
   rolePromptGrantedRoles: 'Which other roles does this role carry?',
 
 } as const;

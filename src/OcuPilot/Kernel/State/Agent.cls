@@ -94,8 +94,13 @@ Property CredentialCreated As %Boolean [ InitialExpression = 0 ];
 /// <p>Maximum tokens per provider call, 1-32000.</p>
 Property MaxTokens As %Integer [ InitialExpression = 32000 ];
 
-/// <p>Sampling temperature, 0-2.</p>
-Property Temperature As %Numeric(SCALE = 2) [ InitialExpression = 0 ];
+/// <p>Sampling temperature: <code>""</code> is unset and the provider's default applies; 0-2 is an
+/// explicit value, kept and sent to the families that take one.</p>
+/// <p><b><code>SCHEMAVERSION</code> does not move for the unset value.</b> A row stored before it
+/// holds an explicit number and still reads as that number, and an older build reading an unset
+/// row computes <code>+""</code>, which is 0 -- the value it would have written itself
+/// (inference).</p>
+Property Temperature As %Numeric(SCALE = 2);
 
 /// <p>Maximum tool-calling iterations within one turn, 1-100.</p>
 Property MaxIterationsPerTurn As %Integer [ InitialExpression = 10 ];

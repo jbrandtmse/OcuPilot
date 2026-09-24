@@ -8,9 +8,12 @@
 /// class.</p>
 /// <p>Wire contract: <code>POST</code> to the definition's endpoint with headers
 /// <code>x-api-key</code>, <code>anthropic-version</code> and <code>content-type</code>; body
-/// <code>{model, max_tokens, temperature, system?, messages, tools?}</code>; reply
+/// <code>{model, max_tokens, system?, messages, tools?}</code>; reply
 /// <code>{content, stop_reason, usage}</code>; error body
-/// <code>{type, error: {type, message}}</code>.</p>
+/// <code>{type, error: {type, message}}</code>. <b>No sampling parameter is ever sent</b> --
+/// <code>temperature</code>, <code>top_p</code> and <code>top_k</code> are absent whatever the
+/// definition holds, because this family's current models refuse them; the catalog row's
+/// <code>acceptsTemperature</code> says the same to the form.</p>
 Class OcuPilot.Kernel.Provider.Anthropic Extends OcuPilot.Kernel.Provider.Base
 {
 
@@ -48,7 +51,6 @@ Method CallMessages(pRequest As %Net.HttpRequest, ByRef pValues, ByRef pMessages
         Set tBody = {}
         Do tBody.%Set("model", $Get(pValues("model")))
         Do tBody.%Set("max_tokens", +$Get(pValues("maxTokens")), "number")
-        Do tBody.%Set("temperature", +$Get(pValues("temperature")), "number")
         If pSystemPrompt '= "" Do tBody.%Set("system", pSystemPrompt)
         Set tMessageArray = []
         For tI = 1:1:+$Get(pMessages) {
@@ -115,6 +117,12 @@ Method IsApiKeyShapeValid() As %Boolean
 /// <p>Read a successful reply into <var>pResponse</var>: the text blocks concatenated in order,
 /// every tool-use block kept verbatim as a JSON array, the stop reason, and the two usage
 /// figures.</p>
+/// <p><b>A reply carrying a <code>thinking</code> or <code>redacted_thinking</code> block also
+/// sets <property>OcuPilot.Kernel.Provider.Response.ContentJson</property></b> to its whole
+/// <code>content</code> array, verbatim: the provider requires those blocks back unchanged and in
+/// order when the turn answers a tool call, and <property>Text</property> and
+/// <property>ToolCallsJson</property> cannot carry them. A reply without one leaves it
+/// <code>""</code>.</p>
 /// <p>A body that is not a JSON object, or that carries no <code>content</code> array, is an error:
 /// a 200 whose body this adapter cannot read is not a reply, and reporting it as an empty one would
 /// hand the turn a silent blank.</p>
@@ -136,9 +144,11 @@ Method MapResponse(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Respo
         }
         Set tText = ""
         Set tToolCalls = []
+        Set tReasoning = 0
         Set tIterator = tParsed.content.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tBlock) {
             If '$IsObject(tBlock) Continue
+            If (tBlock.type = "thinking") || (tBlock.type = "redacted_thinking") Set tReasoning = 1
             If tBlock.type = "text" {
                 Set tText = tText _ tBlock.text
                 Continue
@@ -147,6 +157,7 @@ Method MapResponse(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Respo
         }
         Set pResponse.Text = tText
         If tToolCalls.%Size() > 0 Set pResponse.ToolCallsJson = tToolCalls.%ToJSON()
+        If tReasoning Set pResponse.ContentJson = tParsed.content.%ToJSON()
         Set pResponse.StopReason = $Select(tParsed."stop_reason" = "": "end_turn", 1: tParsed."stop_reason")
         If $IsObject(tParsed.usage) {
             Set pResponse.RequestTokens = +tParsed.usage."input_tokens"

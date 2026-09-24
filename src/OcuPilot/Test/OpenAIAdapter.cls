@@ -107,7 +107,7 @@ Method StoredDefinition(pRow As %DynamicObject, pModel As %String = "") As %Stri
         Set tRow.EnvVarName = pRow.defaultEnvVarName
         Set tRow.CredentialName = ""
         Set tRow.MaxTokens = +pRow.canonicalMaxTokens
-        Set tRow.Temperature = +pRow.canonicalTemperature
+        Set tRow.Temperature = pRow.canonicalTemperature
         Set tRow.Enabled = 1
         Set tRow.ConnectionVerified = 1
         Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tRow)
@@ -170,8 +170,8 @@ ClassMethod Adapter() As OcuPilot.Kernel.Provider.Base
 }
 
 /// <p>The value array a direct call reads, taking every provider fact from <var>pRow</var> --
-/// including the two columns the port would otherwise copy in, <code>keyPrefix</code> and
-/// <code>authVersion</code>.</p>
+/// including the three columns the port would otherwise copy in, <code>keyPrefix</code>,
+/// <code>authVersion</code> and <code>reasoningEffort</code>.</p>
 ClassMethod DirectValues(pRow As %DynamicObject, Output pValues)
 {
     Kill pValues
@@ -183,9 +183,10 @@ ClassMethod DirectValues(pRow As %DynamicObject, Output pValues)
     Set pValues("envVarName") = pRow.defaultEnvVarName
     Set pValues("credentialName") = ""
     Set pValues("maxTokens") = +pRow.canonicalMaxTokens
-    Set pValues("temperature") = +pRow.canonicalTemperature
+    Set pValues("temperature") = pRow.canonicalTemperature
     Set pValues("keyPrefix") = pRow.keyPrefix
     Set pValues("authVersion") = pRow.authVersion
+    Set pValues("reasoningEffort") = pRow.reasoningEffort
 }
 
 /// <p><var>pFault</var>'s machine code, or <code>""</code> when the call produced no fault. Read
@@ -239,7 +240,7 @@ Method TestAShippedOpenAiRowIsCalledInItsOwnDialect()
     Do $$$AssertEquals(tBody.%GetTypeOf("max_completion_tokens"), "number", "the token cap is a JSON number")
     Do $$$AssertEquals(+tBody."max_completion_tokens", +tRow.canonicalMaxTokens, "carrying the row's own canonical maximum")
     Do $$$AssertEquals(tBody.%GetTypeOf("max_tokens"), "unassigned", "and the deprecated spelling is not sent at all")
-    Do $$$AssertEquals(+tBody.temperature, +tRow.canonicalTemperature, "the tuning is the row's own canonical temperature")
+    Do $$$AssertEquals(tBody.%GetTypeOf("temperature"), "unassigned", "the row declares no canonical temperature, so none is sent and the provider's default applies")
     Do $$$AssertEquals(##class(OcuPilot.Test.Adapter).Path(tBody, "messages.0.role"), "system", "the messages are this dialect's own, led by a system message")
     Do $$$AssertEquals(##class(OcuPilot.Test.Adapter).Path(tBody, "messages.2.tool_calls.0.id"), "call1", "with the assistant echo's tool calls under this dialect's key")
     Do $$$AssertEquals(##class(OcuPilot.Test.Adapter).Path(tBody, "messages.3.tool_call_id"), "call1", "and each result as its own tool message")

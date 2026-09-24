@@ -211,7 +211,8 @@ Method TestTheProviderCatalogRouteServesTheCascadeColumns()
     While tIterator.%GetNext(.tKey, .tValue) {
         Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
     }
-    Do $$$AssertEquals(tKeys, "key,label,defaultModel,modelSuggestions,defaultEndpoint,endpointRequired,canonicalMaxTokens,canonicalTemperature,defaultEnvVarName,defaultCredentialName,keyPrefix,allowsLocal,keyShapeReason", "the twelve cascade columns and the derived sentence, and neither adapterClass nor authVersion")
+    ; acceptsTemperature is Story 10.4's column, shipped for the Definition form's Temperature field.
+    Do $$$AssertEquals(tKeys, "key,label,defaultModel,modelSuggestions,defaultEndpoint,endpointRequired,canonicalMaxTokens,canonicalTemperature,defaultEnvVarName,defaultCredentialName,keyPrefix,allowsLocal,acceptsTemperature,keyShapeReason", "the twelve cascade columns and the derived sentence, and neither adapterClass nor authVersion")
     Do $$$AssertEquals(tRow.key, "anthropic", "the shipped row")
     Do $$$AssertEquals(tRow.%GetTypeOf("endpointRequired"), "boolean", "a flag arrives as a JSON boolean")
     Do $$$AssertEquals(tRow.%GetTypeOf("canonicalMaxTokens"), "number", "and a count as a JSON number")
