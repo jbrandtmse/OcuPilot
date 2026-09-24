@@ -975,14 +975,21 @@ export class DefinitionForm {
 
   /**
    * A refused Test connection. `PROVIDER.REFUSED` with the provider's own words is the one case
-   * the published failure sentence is written around; every other code renders the envelope's own
-   * `reason`, verbatim (DW-355).
+   * the published failure sentence is written around (DW-355); the two test-timeout codes render
+   * their published sentence with the detail's seconds and label resolved (Story 10.5); every
+   * other code renders the envelope's own `reason`, verbatim.
    */
   private absorbTestRefusal(result: JsonResult<unknown>, sent: Record<string, string>): void {
     this.violationList = violationsOf(result);
     this.rememberRefusedValues(result, sent);
     if (this.violationList.length > 0) return;
     if (result.kind !== 'error') return;
+    const timedOut = testTimeoutText(result.code, result.detail);
+    if (timedOut !== null) {
+      this.testFailure = timedOut;
+      this.failureFromProvider = false;
+      return;
+    }
     const text = result.detail === null ? undefined : result.detail['providerText'];
     if (result.code === 'PROVIDER.REFUSED' && typeof text === 'string' && text !== '') {
       this.testFailure = text;
@@ -1031,6 +1038,31 @@ export class DefinitionForm {
  * beside it is the catalog row's `keyShapeReason`, written on the server.
  */
 export const KEY_SHAPE_CODE = 'AGENT.KEY.SHAPE';
+
+/** The code a Test connection earns when it waited its bound with no answer (Story 10.5). */
+export const TEST_TIMEOUT_CODE = 'PROVIDER.TESTTIMEOUT';
+
+/** Its twin for a definition marked local. */
+export const TEST_TIMEOUT_LOCAL_CODE = 'PROVIDER.TESTTIMEOUTLOCAL';
+
+/**
+ * The published failure sentence for a test-timeout `code`, with `<n>` resolved from
+ * `detail.waitedSeconds` and `<provider>` from `detail.providerLabel` -- or `null` when the code
+ * is another one, or the detail lacks a value the sentence needs, in which case the envelope's own
+ * `reason` is what renders.
+ */
+export function testTimeoutText(code: string | null, detail: Record<string, unknown> | null): string | null {
+  if (code !== TEST_TIMEOUT_CODE && code !== TEST_TIMEOUT_LOCAL_CODE) return null;
+  if (detail === null) return null;
+  const waited = detail['waitedSeconds'];
+  if (typeof waited !== 'number' || !Number.isFinite(waited)) return null;
+  if (code === TEST_TIMEOUT_LOCAL_CODE) {
+    return STRINGS.agentDefinitionTestTimeoutLocal.split('<n>').join(String(waited));
+  }
+  const label = detail['providerLabel'];
+  if (typeof label !== 'string' || label === '') return null;
+  return STRINGS.agentDefinitionTestTimeout.split('<provider>').join(label).split('<n>').join(String(waited));
+}
 
 function emptyBuffer(): EditBuffer {
   const out: EditBuffer = {};

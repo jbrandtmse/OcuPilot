@@ -824,4 +824,13 @@ ClassMethod KeysOf(pObject As %DynamicObject) As %String
     Quit tKeys
 }
 
+/// <p>DW-1601: Test connection's token cap leaves room for a model that thinks before it answers.
+/// A cap of 32 was spent whole on 26 thinking tokens by <code>gemini-3.8-flash</code>, which then
+/// answered an empty reply.</p>
+/// <p>Mutation: <parameter>OcuPilot.Api.Definitions.TESTMAXTOKENS</parameter> 32 -- red.</p>
+Method TestTheTestCapLeavesRoomToThink()
+{
+    Do $$$AssertTrue(##class(OcuPilot.Api.Definitions).#TESTMAXTOKENS >= 256, "the Test connection cap is at least 256 tokens, not 32 -- one model spent 26 thinking tokens against a cap of 32 and answered nothing: " _ ##class(OcuPilot.Api.Definitions).#TESTMAXTOKENS)
+}
+
 }

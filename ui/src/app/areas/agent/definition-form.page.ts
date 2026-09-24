@@ -661,8 +661,11 @@ export class DefinitionFormPage {
    *
    * `PROVIDER.REFUSED` carrying the provider's own words is the one code the published failure
    * sentence is written around -- it ends "Provider said: <text>" and reads broken without one --
-   * so that sentence is used with `<text>` resolved. Every other code, the eight other
-   * `PROVIDER.*` among them, renders the envelope's own `reason` verbatim.
+   * so that sentence is used with `<text>` resolved. Every other code renders the text the store
+   * already resolved: for `PROVIDER.TESTTIMEOUT` and `PROVIDER.TESTTIMEOUTLOCAL`, their published
+   * sentence with `<n>` and `<provider>` taken from the detail (`testTimeoutText`), or the
+   * envelope's `reason` when the detail lacks them; for `STATE.CONFLICT`, the stale-save sentence;
+   * for any other code, the envelope's own `reason` verbatim.
    */
   protected get failureText(): string {
     this.generation();

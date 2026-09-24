@@ -77,12 +77,17 @@ Parameter ENTRYNOTOWNED = "notOwned";
 /// <p>The port <method>HandleTest</method> makes its one provider call through.</p>
 Parameter PORTCLASS = "OcuPilot.Port.ProviderPort";
 
-/// <p>The maximum tokens one Test connection call asks for: enough for the single short sentence
-/// <parameter>TESTPROMPT</parameter> asks back, and three orders of magnitude below the
-/// definition's own ceiling of 32000. The definition's <code>maxTokens</code> is deliberately not
-/// sent -- a connection check that spent a turn's budget would cost an operator a turn's money for
-/// a yes or no.</p>
-Parameter TESTMAXTOKENS As %Integer = 32;
+/// <p>The class <method>ConnectionOutcome</method> makes that call through, in a child job the
+/// request waits for.</p>
+Parameter TESTCALLCLASS = "OcuPilot.Kernel.Provider.TestCall";
+
+/// <p>The maximum tokens one Test connection call allows. <b>A cap, not a spend</b>: a model that
+/// stops after the one short sentence <parameter>TESTPROMPT</parameter> asks for costs the same
+/// under it, and a model that thinks before it answers still has room to answer after its
+/// thinking. It is about 3% of the definition's own ceiling of 32000, which is deliberately not
+/// sent -- a connection check that could spend a turn's budget would cost an operator a turn's
+/// money for a yes or no.</p>
+Parameter TESTMAXTOKENS As %Integer = 1024;
 
 /// <p>How many characters of the provider's reply leave this instance. The cut is made here, so no
 /// client can render more: the reply is model output, which is untrusted content shown as evidence
@@ -745,8 +750,14 @@ ClassMethod HandleStoreCredential(pId As %String) As %Status
 /// an endpoint the write gate would refuse is refused here too, on its own field, before any call
 /// (AD-42). The call itself goes through <method>OcuPilot.Port.ProviderPort.InvokeDraft</method> --
 /// the path a turn takes, with the same TLS configuration, the same address judgement and the
-/// adapter the catalog row names -- differing only in its budget: one short prompt, thirty-two
-/// tokens, and a single attempt, because an operator is holding focus on a button while it runs.</p>
+/// adapter the catalog row names -- differing only in its budget: one short prompt, a cap of
+/// <parameter>TESTMAXTOKENS</parameter> tokens, and a single attempt, because an operator is holding
+/// focus on a button while it runs.</p>
+/// <p><b>It answers before the Web Gateway does</b> (AD-42). The call runs in a child job
+/// (<class>OcuPilot.Kernel.Provider.TestCall</class>) this request waits for against the wall-clock
+/// bound <method>TestBoundSeconds</method> answers; a provider that has not answered by then is
+/// answered <code>PROVIDER.TESTTIMEOUT</code>, or <code>PROVIDER.TESTTIMEOUTLOCAL</code> for a
+/// definition marked local, and nothing is recorded verified.</p>
 /// <p><b>The stored key goes only to the stored endpoint</b> (AD-42). A body may name another
 /// endpoint, and may carry an <code>apiKey</code> of its own; which key the call carries is
 /// <method>ConnectionOutcome</method>'s decision, and the answer says which. No key is ever bound
@@ -823,6 +834,11 @@ ClassMethod HandleTest(pId As %String) As %Status
 /// <p><b>Exactly one of <var>pAnswer</var> and <var>pFault</var> comes back set.</b> Its own
 /// method rather than inline in the handler so the provider legs can be driven in process, where
 /// there is no response device to render to.</p>
+/// <p><b>The call is <method>TestCallClass</method>'s</b>, bounded by
+/// <method>TestBoundSeconds</method>. A call that waited its bound, and a port fault coded
+/// <code>PROVIDER.TIMEOUT</code>, both become
+/// <method>OcuPilot.Kernel.Provider.TestCall.TimeoutFault</method>'s fault, naming the catalog
+/// row's label and the seconds waited; from there it is recorded as any other fault.</p>
 /// <p><b>Which key the call carries</b> is <method>KeySourceFor</method>'s answer from
 /// <var>pBody</var>: the body's own <code>apiKey</code>, otherwise the stored credential only when
 /// the call goes to the stored effective endpoint under the stored credential reference, otherwise
@@ -884,8 +900,12 @@ ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Outp
     Set tMessages(1, "role") = "user"
     Set tMessages(1, "content") = ..#TESTPROMPT
     ; No tools and no system prompt: this asks whether the endpoint answers, not what it can do.
-    Do $ClassMethod(..PortClass(), "InvokeDraft", .pValues, .tMessages, .tTools, "", .tResponse, .pHttpStatus, .pFault)
+    Set tTestCall = ..TestCallClass()
+    Do $ClassMethod(tTestCall, "Call", ..PortClass(), .pValues, .tMessages, ..TestBoundSeconds(), .tResponse, .pHttpStatus, .pFault, .tWaited, .tTimedOut)
     Kill pValues("keyBody")
+    If +$Get(tTimedOut) || ($IsObject(pFault) && (pFault.code = ##class(OcuPilot.Api.Error).#PROVIDERTIMEOUT)) {
+        Do $ClassMethod(tTestCall, "TimeoutFault", ''$Get(pValues("markedLocal")), ..ProviderLabel($Get(pValues("provider"))), +$Get(tWaited), .pFault, .pHttpStatus)
+    }
     If $IsObject(pFault) {
         Do ..AnnotateCallFault(pFault, tKeySource, tTestedAsStored)
         If 'tTestedAsStored {
@@ -1042,6 +1062,40 @@ ClassMethod MatchesStoredSecurityFields(ByRef pValues, ByRef pStored) As %Boolea
         If $Get(pValues(tField)) '= $Get(pStored(tField)) Set tMatches = 0
     }
     Quit tMatches
+}
+
+/// <p>The class <method>ConnectionOutcome</method> makes its one provider call through, in the
+/// shape <method>PortClass</method> uses. Production never overrides it;
+/// <class>OcuPilot.Test.DefinitionsProbe</class> answers one that calls in process.</p>
+ClassMethod TestCallClass() As %String
+{
+    Quit ..#TESTCALLCLASS
+}
+
+/// <p>The wall-clock bound, in seconds, Test connection waits for its call:
+/// <method>OcuPilot.Kernel.Provider.TestCall.BoundSeconds</method> of the gateway timeout
+/// <method>OcuPilot.Kernel.Provider.TestCall.GatewaySeconds</method> reads, so raising the Web
+/// Gateway's <code>Server_Response_Timeout</code> raises it. A seam; production never overrides
+/// it.</p>
+ClassMethod TestBoundSeconds() As %Integer
+{
+    Set tTestCall = ..TestCallClass()
+    Quit $ClassMethod(tTestCall, "BoundSeconds", $ClassMethod(tTestCall, "GatewaySeconds"))
+}
+
+/// <p>The label a timeout reason names <var>pProvider</var> by: its <method>CatalogClass</method>
+/// row's <code>label</code>, or the provider key itself when the row cannot be read or has
+/// none.</p>
+ClassMethod ProviderLabel(pProvider As %String) As %String
+{
+    Set tLabel = ""
+    Try {
+        If $ClassMethod(..CatalogClass(), "Row", pProvider, .tRow) && $IsObject(tRow) Set tLabel = tRow.%Get("label")
+    } Catch ex {
+        Set tLabel = ""
+    }
+    If tLabel = "" Set tLabel = pProvider
+    Quit tLabel
 }
 
 /// <p>The port <method>ConnectionOutcome</method> calls through, in the shape

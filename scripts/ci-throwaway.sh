@@ -272,8 +272,9 @@ services:
       # and with it the classes that spawn turn jobs against that row's scripted adapter. A turn
       # job is a separate process no in-process stub reaches, so the row is armed by the
       # environment, and only here.
-      # classes: LedgerWire, ToolWire, TurnChain, TurnContext, TurnConversation
-      # classes: TurnLong, TurnProviderFault, TurnStore, TurnWire, TurnWireFixture
+      # classes: AgentConnectionBound, AgentConnectionWire, LedgerWire, ToolWire, TurnChain
+      # classes: TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnStore
+      # classes: TurnWire, TurnWireFixture
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
     volumes:
       - $DIR/data:/durable

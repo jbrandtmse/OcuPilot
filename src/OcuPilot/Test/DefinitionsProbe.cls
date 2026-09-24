@@ -103,4 +103,10 @@ ClassMethod PortClass() As %String
     Quit "OcuPilot.Test.ProviderPortProbe"
 }
 
+/// <p>The in-process call, so the port probe's process-private stubs answer it.</p>
+ClassMethod TestCallClass() As %String
+{
+    Quit "OcuPilot.Test.AgentConnectionInline"
+}
+
 }

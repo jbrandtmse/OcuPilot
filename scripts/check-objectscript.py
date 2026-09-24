@@ -153,8 +153,9 @@ prose into one checker.
     no `OcuPilot.Port.*` class but `OcuPilot.Port.ProviderPort`, no `OcuPilot.Area.*` class, no
     `OcuPilot.Screen.*` class but `OcuPilot.Screen.Tool.Registry`, and no `OcuPilot.Api.*` class
     but the vocabulary class `OcuPilot.Api.Error`; and a `JOB` command -- outside a string literal
-    -- appears in shipped code only in `OcuPilot/Kernel/Agent/Job.cls`. Test classes under `Test/`
-    may spawn their own helpers.
+    -- appears in shipped code only in `OcuPilot/Kernel/Agent/Job.cls` and in
+    `OcuPilot/Kernel/Provider/TestCall.cls`, Test connection's child job (AD-42, Story 10.5). Test
+    classes under `Test/` may spawn their own helpers.
 
 20. **Tool dispatch (AD-1, AD-22, Story 4.2).** Outside `Test/`, `InvokeTool` is named only in
     `Screen/Tool/Registry.cls`, which defines it, and `Kernel/Agent/Dispatch.cls`, its one caller;
@@ -853,7 +854,7 @@ def check_state_package_isolation(problems: list[str]) -> None:
 # frame nobody checked for escalation. Test classes spawn their own helpers and are outside it.
 
 AGENT_PACKAGE_PREFIX = "src/OcuPilot/Kernel/Agent/"
-JOB_ALLOWED = frozenset({"src/OcuPilot/Kernel/Agent/Job.cls"})
+JOB_ALLOWED = frozenset({"src/OcuPilot/Kernel/Agent/Job.cls", "src/OcuPilot/Kernel/Provider/TestCall.cls"})
 AGENT_REACH_RE = re.compile(
     r"OcuPilot\.Port\.(?!ProviderPort\b)\w+(?:\.\w+)*"
     r"|OcuPilot\.Area\.\w+(?:\.\w+)*"
@@ -883,7 +884,7 @@ def check_agent_job_reach(problems: list[str]) -> None:
             if rel not in JOB_ALLOWED and JOB_RE.search(STRING_LITERAL_RE.sub('""', raw)):
                 problems.append(
                     f"{rel}:{i}: 'JOB' command outside {', '.join(sorted(JOB_ALLOWED))} -- the turn "
-                    f"job is the one spawn in shipped code (AD-9)"
+                    f"job and Test connection's child are the only spawns in shipped code (AD-9, AD-42)"
                 )
 
 

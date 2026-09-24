@@ -2,13 +2,20 @@
 title: 'Story 10.5: A connection test that answers before the gateway does'
 type: 'bugfix'
 created: '2026-09-23'
-status: 'in-progress'
-baseline_revision: 'bc2900b31ff9b88e2ce3451156ce271782735472'
+status: 'done'
+baseline_revision: 'b11c1e5e6fc9de9767a9bb1ab19c25cccfe7ceb5'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Test connection's child-path max_tokens is pinned in the JOB argument, not on the recorded wire request.
+    evidence: |-
+      Test/TurnProvider.cls (not Epic 10's file) records no max_tokens, so a Child that dropped maxTokens alone would stay green; AgentConnection pins it in process only.
+    location: >-
+      src/OcuPilot/Test/TurnProvider.cls:115
+    severity: low
 ---
 
 <intent-contract>
@@ -116,8 +123,8 @@ deferred: []
 20. `ui/browser/definitions.browser-spec.mjs` -- One case that intercepts `POST …/test` and answers each code's 504 envelope. It asserts the failure line equals the resolved template, and runs `detectScreen` with every `INVARIANT` at 1280 and 720 px light and 1280 px dark, with no violations. Correct the header's "never pressed" sentence to say the press is intercepted.
 
 - [x] 21. `scripts/check-objectscript.py` -- (lead, at the implement halt) `JOB_ALLOWED` gains `src/OcuPilot/Kernel/Provider/TestCall.cls` and rule 19's prose names it beside `Job.cls` (AD-42 as amended 2026-09-24). `scripts/` is not a contended path, so this is an Epic 10 footprint extension. Verified: `check-objectscript.py` 0 problems over 741 files; `test_check_objectscript.py` 128/128.
-- [ ] 22. `ui/src/app/areas/agent/definition-form.page.ts` -- correct `failureText`'s doc comment for the two new codes.
-- [ ] 23. AC3's mutation: apply `TurnLong`'s documented mutation (run `Job.Run` inline in `Api.Turn.HandleStart`) to observe red, then revert byte-identical. Applying and reverting a mutation is not an edit of `Api/Turn.cls`; the file must be byte-identical afterwards (`git diff --stat` unchanged). Record the observed run under Verification.
+- [x] 22. `ui/src/app/areas/agent/definition-form.page.ts` -- correct `failureText`'s doc comment for the two new codes.
+- [x] 23. AC3's mutation: apply `TurnLong`'s documented mutation (run `Job.Run` inline in `Api.Turn.HandleStart`) to observe red, then revert byte-identical. Applying and reverting a mutation is not an edit of `Api/Turn.cls`; the file must be byte-identical afterwards (`git diff --stat` unchanged). Record the observed run under Verification.
 
 **Acceptance Criteria:**
 
@@ -134,6 +141,33 @@ deferred: []
 - 2026-09-24, implement halt (lead): the halt's intent gap is answered by task 21 (the lead edited the checker's `JOB_ALLOWED`; `scripts/` is outside every other open epic's footprint). Tasks 22-23 carry the two items the halt left open. Status reset to `in-progress`; tasks 1-20 are in the working tree, uncommitted, and are this pass's to review and finalize.
 
 ## Review Triage Log
+
+### 2026-09-24 — Review pass
+
+- verdicts: 22 findings — high 0, medium 10, low 8, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` (verification-gap) the shipped bound path `TestBoundSeconds` → `GatewaySeconds` → `GatewayClass` is never run — added `TestTheShippedBoundFollowsTheGatewayRead` (20 → 10, 300 → 290 through the handler's own call class; the shipped read equals the installer's, source named); mutation run 306.
+  - `[medium]` `[patch]` (verification-gap) the child's rebuilt request (budget, prompt, single attempt) is pinned only in process — added `TestTheChildSendsTheTestRequestAsItsCaller` (one message, the prompt, no tools, no system) and `TestTheChildMakesOneAttempt` (429 asked once), and the spawn leg asserts `maxTokens` / `maxAttempts` in the `JOB` argument; runs 303, 306. `max_tokens` on the wire stays unrecorded (`Test/TurnProvider.cls` is not Epic 10's file); deferred.
+  - `[medium]` `[patch]` (verification-gap) `Gemini.CallMessages`' map to the history encode is never exercised — added `TestTheGeminiAdapterReplaysTheRespelling`; mutation run 308.
+  - `[medium]` `[patch]` (verification-gap) `GeminiEmptyEnumArgs` checked for navigate only — the registry sweep now asserts every respelled enum is a mapped pair, and `TestTheMapNamesAnArrayArgument` pins the `items` kind; mutation run 308.
+  - `[medium]` `[patch]` (verification-gap) nothing checks the child's user and roles — `TestTheChildSendsTheTestRequestAsItsCaller` asserts the recorded user and `$Roles` equal the caller's; a child that adds a role reddens it, run 306.
+  - `[low]` `[patch]` (verification-gap) a non-local timeout with no label has no client case — one `expect` added; mutation (label stringified unchecked) red.
+  - `[medium]` `[patch]` (verification-gap) `tJson [ BODYKEY` on a hand-built array cannot fail — removed; the spawn leg now reads the `JOB` argument `ConnectionOutcome` really handed (`AgentConnectionUnspawned.Handed`), with a body key sent; mutation run 306.
+  - `[low]` `[patch]` (verification-gap) AC2's later-passing leg has no recorded mutation — observed, run 307.
+  - `[medium]` `[patch]` (verification-gap) the Integration AC's stored key through the child is not pinned (`TurnChain` reads the turn's call) — `AgentConnectionWire` asserts both test calls' `keySha`; mutation run 310.
+  - `[low]` `[patch]` (verification-gap) the per-read-timeout leg has no recorded mutation — observed, run 307.
+  - `[low]` `[patch]` (verification-gap) the history encode was never observed red — observed, run 309.
+  - `[low]` `[reject]` (intent-alignment) a child that throws is reported as a timeout after the full bound — `InvokeDraft` answers faults rather than throwing (AD-42), so only an internal defect reaches the child's `Catch`; guarding it adds a branch for a path no user meets.
+  - `[false]` `[reject]` (intent-alignment) the child logs, against "writes nothing" — task 3 requires the child to log through `Kernel.Fault.LogRaw`; no state is written.
+  - `[medium]` `[patch]` (intent-alignment) `$ROLES` is not compared in the child — same root cause and fix as the user/roles row above.
+  - `[false]` `[reject]` (intent-alignment) the `strings.ts` keys sit mid-object — task 17 places them after 10.4's keys at `:530`.
+  - `[false]` `[reject]` (intent-alignment) `Kernel/Agent/Job.cls` edited and `Api/Turn.cls` mutated — tasks 8 and 23 require both; `Api/Turn.cls` is byte-identical to HEAD.
+  - `[medium]` `[patch]` (intent-alignment) respelling covers every depth, the map only top-level and `items` — same fix as the map row above: an unmapped respelled path now fails the sweep.
+  - `[low]` `[reject]` (intent-alignment) the spawn-fail path is tested through an override, not a real `JOB` refusal — a refusal cannot be produced deterministically; `Spawn` is four lines.
+  - `[low]` `[reject]` (intent-alignment) DW-1600/1601 are not driven through a live Gemini turn — the spec puts the live proof in Story 17.7's owner check; the adapter legs pin the canonical `input` dispatch reads.
+  - `[low]` `[patch]` (intent-alignment) the client specs use mocked envelopes — `AgentConnectionWire` now also pins `detail.waitedSeconds` of the real envelope the client reads.
+  - `[false]` `[reject]` (intent-alignment) AD-42's amendment is dated a day ahead — the system clock reads 2026-09-24 UTC.
+  - `[medium]` `[patch]` (intent-alignment) the key-not-in-`JOB` claim is tested on a hand-built array — same fix as the unfalsifiable-assertion row above.
 
 ## Design Notes
 
@@ -215,31 +249,74 @@ The ready handshake exists so the key is sent only to a child that has already c
   - mutation: `MARGINSECONDS` 0 → `TestTheBoundArithmetic` red (9 asserts), run 273.
 - AC1, the source: the seam-20 leg. Mutation: `GatewaySeconds` answers 60 always.
   - mutation: `GatewaySeconds` keeps 60 whatever the read answers → `TestTheGatewayReadSetsTheBound` red on the 20 leg, run 274.
+  - mutation: `Definitions.TestBoundSeconds` answers `BoundSeconds("")` → `TestTheShippedBoundFollowsTheGatewayRead` red on 10 and 290, run 306.
 - AC1, the wording: the local leg. Mutation: select the non-local code for `markedLocal` 1.
   - mutation: `TimeoutFault` never selects the local code → `TestALocalDefinitionGetsTheLocalReason` red on code and reason, run 275.
 - AC2: the late-answer leg. Mutation: record verification on `pTimedOut`. The stale-message leg: mutation: drop the nonce comparison.
   - mutation: `ConnectionOutcome` calls `GuardedSetVerification` when timed out → `TestAnUnansweredTestAnswersAtItsBound` red on the flags after the child returned, run 276.
   - mutation: `Await` drops the nonce comparison → `TestALateAnswerNeverReachesTheNextTest` red, reply-a read by the second test, run 277.
+  - mutation: `ConnectionOutcome`'s verification write answers `$$$OK` unwritten → `TestALaterPassingTestVerifies` red on `connectionVerified` and the stored flags, run 307.
+- Matrix "Per-read timeout first": `TestAPerReadTimeoutIsTheTestTimeout`.
+  - mutation: the `PROVIDER.TIMEOUT` arm of `ConnectionOutcome`'s mapping dropped → red on the code and the seconds waited, run 307.
 - AC3: `TurnLong.TestATurnOutlivesTheGatewayResponseTimeout`. Mutation: its documented one (run `Job.Run` inline in `Api.Turn.HandleStart`).
+  - mutation: `HandleStart` calls `Job.Run` inline in place of `Job.Start` → `TestATurnOutlivesTheGatewayResponseTimeout` red (no 202, the start answered at 60.05 s) and `TestALapsedLeaseAbandonsTheTurn` red, run 297; reverted, `Api/Turn.cls` byte-identical to HEAD, package recompiled, green, run 298.
 - AC4: `connection-timeout.test.mjs`. Mutation: change one word of `REASONTESTTIMEOUT`. Also `strings.test.mjs`: mutation: change one word of the EXPERIENCE row.
   - mutation: "endpoint" → "address" in `REASONTESTTIMEOUT` → the non-local byte-for-byte test red.
   - mutation: "loading" → "warming" in the EXPERIENCE row → `strings.test.mjs` red on three tests (table literal, authorization, line reference).
 - Key handoff: the body-key leg. Mutation: the child skips the `%Set`.
   - mutation: `Child` skips the key's `%Set` → `TestABodyKeyCrossesByMessage` red, run 278.
+  - mutation: `ValuesJson` writes `keyBody` as its JSON → `TestASpawnThatFailsIsATransportFault` red on the key and the body in the `JOB` argument `ConnectionOutcome` handed the spawn, run 306.
+- Integration AC, stored key through the child: `AgentConnectionWire`'s `keySha` assertions on both test calls.
+  - mutation: `ValuesJson` leaves out `credentialName` → red, `PROVIDER.CREDENTIAL` and both `keySha` assertions, run 310.
+- The child's request, as its caller (AD-9, one attempt): `TestTheChildSendsTheTestRequestAsItsCaller`, `TestTheChildMakesOneAttempt`.
+  - mutation: `Child` drops `maxAttempts` and adds `%Manager` to `$Roles` → red on the call count and on the roles, run 306.
+- Matrix "Spawn fails": `AgentConnectionBound.TestASpawnThatFailsIsATransportFault`, through `Test/AgentConnectionUnspawned` (its `Spawn` answers 0) behind the probe's call switch.
+  - mutation: `Call` carries on when `Spawn` answers 0 → red on the code, the 502 and the elapsed time (answered at the 3 s bound), run 300.
+- Matrix "Not answered", not-as-stored record: `AgentConnectionBound.TestAnUnansweredTestOfUnstoredValuesIsRecorded`.
+  - mutation: `ConnectionOutcome` maps the timeout after the fault branch → red, the record naming no `faultCode`, run 301; reverted byte-identical, green, run 302.
 - Client: the page-spec case for the local code. Mutation: render `reason` for it. The browser case: mutation: the store ignores `detail`; rebuild and redeploy.
   - mutation: `testTimeoutText` returns null for the local code → the page-spec Story 10.5 case red (envelope reason received).
   - mutation: `testTimeoutText` reads `detail['ignored']`, rebuilt and redeployed → the browser Story 10.5 case red (30 s wait for the sentence).
+  - mutation: `testTimeoutText` stringifies the label unchecked → the page-spec Story 10.5 case red on "The provider (undefined) ...".
 - DW-1600: `GeminiEmptyEnum`'s whole-registry leg. Mutation: remove the respelling. Its decode leg: mutation: skip the decode.
   - mutation: `GeminiSchema`'s `enum` branch disabled → `TestNoGeminiDeclarationCarriesAnEmptyMember` and `TestTheGeminiAdapterSendsNoEmptyMember` red, run 279.
   - mutation: `GeminiToCanonical` skips `RespellEmpty` → `TestTheRespellingDecodesOnItsOwnPairsOnly`, `TestReplayedHistoryRespellsTheSamePairs` and the adapter leg red, run 280.
+  - mutation: `CanonicalToGemini` skips `RespellEmpty` → `TestReplayedHistoryRespellsTheSamePairs` (encode assertions) and `TestTheGeminiAdapterReplaysTheRespelling` red, run 309.
+  - mutation: `Gemini.CallMessages` passes no map and `GeminiEmptyEnumArgs` loses its `items` branch → `TestTheGeminiAdapterReplaysTheRespelling` and `TestTheMapNamesAnArrayArgument` red, run 308.
 - DW-1601: the `AgentConnection` floor leg. Mutation: `TESTMAXTOKENS` 32.
   - mutation: `TESTMAXTOKENS` 32 → `TestTheTestCapLeavesRoomToThink` red alone, run 281.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap: `scripts/check-objectscript.py` (contended: Epic 9's footprint; outside Epic 10's list and the spec's Design Notes) must allow the `JOB` in `src/OcuPilot/Kernel/Provider/TestCall.cls`, which AD-42 (amended 2026-09-24) names as the second spawn site
+Status: done
+Blocking condition: none
 
-Planned and halted after planning, as the dispatch asked. Ledger inbox addressed: DW-1600 (tasks 5-7, 13) and DW-1601 (tasks 4, 14). Oversized: the spec carries a new process boundary, two Gemini fixes and a client copy change.
+**Change.** Test connection's one provider call runs in a child job (`Kernel/Provider/TestCall.cls`) that the request waits for against a wall-clock bound of `g - min(10, g\2)`, where `g` is the gateway timeout the installer reads, or 60 when unread. An unanswered test, or a `PROVIDER.TIMEOUT`, answers 504 `PROVIDER.TESTTIMEOUT` / `...LOCAL` with the resolved reason and `detail{waitedSeconds, providerLabel}`, and nothing is verified. Gemini respells an empty `enum` member as `"(empty)"`, reversibly, per (tool, argument) (DW-1600). `TESTMAXTOKENS` is 1024 (DW-1601). Copy: one EXPERIENCE row, two `strings.ts` keys and two `Base` parameters, pinned equal. The client resolves the sentence from `detail`.
 
-Implement pass 1 (halted before review). Tasks 1-20 are implemented and uncommitted in the tree; the handoff reported every targeted class, `test:tools` (1372), `test:components` (1042), `definitions.browser-spec.mjs` (8/8) and `lint-docs.sh` green on `ocupilot-b-ci`, with mutation lines recorded in Verification. Rule 19 of `scripts/check-objectscript.py` allows `JOB` only in `Kernel/Agent/Job.cls`, so the checker (and the pre-commit hook) reports `TestCall.cls:123`, and `test_check_objectscript.py`'s shipped-tree test fails. Recommended amendment: add `"src/OcuPilot/Kernel/Provider/TestCall.cls"` to `JOB_ALLOWED` (line 856) and name it beside `Job.cls` in rule 19's prose (line ~154); verified on a scratch copy: 0 problems over 741 files. Epic 9's branch has not modified either checker file. Open for the re-dispatch: the AC3 mutation (`Api/Turn.cls` is off-limits to this story, so it was not observed), and `definition-form.page.ts` `failureText`'s doc comment, which no longer holds for the two new codes.
+**This pass.**
+
+- Verified tasks 1-21 in the tree.
+- Did tasks 22 (`failureText` doc) and 23 (AC3 mutation, runs 297/298; `Api/Turn.cls` byte-identical).
+- Closed the Matrix audit's two uncovered rows:
+  - `TestCall.Spawn` is extracted as the one `JOB`, and `Test/AgentConnectionUnspawned` makes the spawn-fail leg reachable.
+  - Added the not-as-stored timeout record leg.
+- Patched 15 review findings, all of them tests: the shipped bound composition, the child's request shape, user/roles and single attempt, the real `JOB` argument, the Gemini adapter's history encode, map coverage of every respelled enum, `keySha` through the child over the wire, and one client case.
+
+**Files.** Shipped: `Api/Definitions.cls`, `Api/Error.cls`, `Kernel/Provider/{TestCall,Base,Gemini,MessageAdapter,ToolDefAdapter}.cls`, `Kernel/Agent/Job.cls` (doc), `definition-form.{store,page}.ts`, `strings.ts`, EXPERIENCE.md, `scripts/check-objectscript.py` (task 21), `scripts/ci-throwaway.sh` (roster comment). Tests: `Test/AgentConnection{Bound,Wire,Inline,Probe,Unspawned}.cls`, `Test/GeminiEmptyEnum.cls`, `Test/AgentConnection.cls`, `Test/DefinitionsProbe.cls`, `definition-form.page.spec.ts`, `definitions.browser-spec.mjs`, `ui/tools/connection-timeout.test.mjs`.
+
+**Review.** 22 findings from 2 layers: 10 medium, 8 low, 4 false. 15 were patched, 7 rejected, and none deferred from triage. One residual, `max_tokens` not recorded on the wire, is in `deferred:`. Rejected, each with its reason in the triage log: a child throw read as a timeout, the child's log writes, the key order in `strings.ts`, the Job/Turn edits, the spawn-fail override, no live Gemini turn, and the amendment date. `followup_review_recommended: true` because 7 medium entries were patched. The named unverified risk is that the child's `max_tokens` is pinned only in the `JOB` argument, and AD-9 is checked only with a `%All` caller, not with a least-privilege principal over the wire.
+
+**Verification** (on `ocupilot-b-ci`):
+
+| Check | Result |
+|---|---|
+| Full ObjectScript sweep | 220 classes, 1970 tests, 0 failed (runs 311-530, confirmed by the `%UnitTest_Result` probe) |
+| `smoke.sh` | 49/49 |
+| `test:tools` | 1372/1372 |
+| `test:components` | 1042/1042 |
+| `definitions.browser-spec.mjs` (rebuilt and redeployed) | 8/8 |
+| `check-objectscript.py` | 0 problems over 742 files |
+| `test_check_objectscript.py` | OK |
+| `lint-docs.sh` | 0 problems |
+
+Every new pin's mutation was observed red (runs 300-310 and the client case) and reverted byte-identical.

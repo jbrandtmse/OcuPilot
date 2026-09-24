@@ -43,6 +43,12 @@ Parameter MODELPLACEHOLDER = "{model}";
 /// <code>models/</code> segment.</p>
 Parameter MODELPATTERN = "^[A-Za-z0-9._-]+$";
 
+/// <p>The (tool, argument) pairs this call's declarations respelled an empty <code>enum</code>
+/// member on, as <method>OcuPilot.Kernel.Provider.ToolDefAdapter.GeminiEmptyEnumArgs</method>'s
+/// map in JSON text. Set by <method>CallMessages</method> and read by <method>MapResponse</method>
+/// on the same instance, which lives for one call.</p>
+Property EmptyEnumArgs As %String(MAXLEN = "");
+
 /// <p>The provider key whose catalog row points at this class.</p>
 Method ProviderName() As %String
 {
@@ -90,7 +96,8 @@ Method CallMessages(pRequest As %Net.HttpRequest, ByRef pValues, ByRef pMessages
 {
     Set tSC = $$$OK
     Try {
-        Set tSC = ##class(OcuPilot.Kernel.Provider.MessageAdapter).CanonicalToGemini(.pMessages, pSystemPrompt, .tContents, .tSystemInstruction)
+        Set ..EmptyEnumArgs = ##class(OcuPilot.Kernel.Provider.ToolDefAdapter).GeminiEmptyEnumArgs(.pTools).%ToJSON()
+        Set tSC = ##class(OcuPilot.Kernel.Provider.MessageAdapter).CanonicalToGemini(.pMessages, pSystemPrompt, .tContents, .tSystemInstruction, ..EmptyEnumArgs)
         If $$$ISERR(tSC) Quit
         Set tBody = {}
         Do tBody.%Set("contents", tContents)
@@ -137,10 +144,11 @@ Method IsApiKeyShapeValid() As %Boolean
 
 /// <p>Read a successful reply into <var>pResponse</var> through the message translator, which is
 /// where this dialect's <code>candidates</code>, <code>functionCall</code>,
-/// <code>finishReason</code> and usage field names are read.</p>
+/// <code>finishReason</code> and usage field names are read, and where an argument this call's
+/// declarations respelled (<property>EmptyEnumArgs</property>) is read back as <code>""</code>.</p>
 Method MapResponse(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Response) As %Status
 {
-    Quit ##class(OcuPilot.Kernel.Provider.MessageAdapter).GeminiToCanonical(pBody, pResponse)
+    Quit ##class(OcuPilot.Kernel.Provider.MessageAdapter).GeminiToCanonical(pBody, pResponse, ..EmptyEnumArgs)
 }
 
 }

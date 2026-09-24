@@ -601,6 +601,48 @@ describe('the Definition form', () => {
     );
   });
 
+  it('Story 10.5: a test that waited its bound reads the published sentence, resolved from the detail', async () => {
+    const timedOut =
+      (code: string, detail: Record<string, unknown> | null): Answer =>
+      (path) => {
+        if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+        if (path.endsWith('/test')) {
+          return { kind: 'error', status: 504, code, reason: 'the envelope reason, not the published sentence', detail };
+        }
+        return ok(definition());
+      };
+    const failureAfterPress = async (answer: Answer): Promise<string | undefined> => {
+      const mounted = await mount(answer, '/agent/definitions/edit/7');
+      (mounted.host.querySelector('.ocu-form-test button') as HTMLButtonElement).click();
+      await settle(mounted.fixture);
+      return mounted.host.querySelector('.ocu-form-test .ocu-form-error')?.textContent?.trim();
+    };
+
+    // Mutation (Rule 19): render `reason` for PROVIDER.TESTTIMEOUTLOCAL in `absorbTestRefusal` ->
+    // this goes red on the envelope's reason.
+    expect(
+      await failureAfterPress(
+        timedOut('PROVIDER.TESTTIMEOUTLOCAL', { waitedSeconds: 50, providerLabel: 'OpenAI-compatible' })
+      )
+    ).toBe(STRINGS.agentDefinitionTestTimeoutLocal.replace('<n>', '50'));
+
+    expect(
+      await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUT', { waitedSeconds: 50, providerLabel: 'Google Gemini' }))
+    ).toBe(STRINGS.agentDefinitionTestTimeout.replace('<provider>', 'Google Gemini').replace('<n>', '50'));
+
+    // Without the detail the sentence cannot be resolved, so the envelope's own reason renders.
+    expect(await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUT', null))).toBe(
+      'the envelope reason, not the published sentence'
+    );
+    expect(await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUTLOCAL', { providerLabel: 'x' }))).toBe(
+      'the envelope reason, not the published sentence'
+    );
+    // Mutation (Rule 19): have `testTimeoutText` stringify the label unchecked -> this reads "(undefined)".
+    expect(await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUT', { waitedSeconds: 50 }))).toBe(
+      'the envelope reason, not the published sentence'
+    );
+  });
+
   it('AC2: typing raises the dirty flag, and the leave confirmation renders with both actions', async () => {
     const { fixture, host, formDirty } = await mount(catalogOnly);
     expect(formDirty.dirty()).toBe(false);

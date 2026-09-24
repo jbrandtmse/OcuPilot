@@ -20,14 +20,19 @@
  *    readonly and captioned on the Anthropic row, empty under "Provider default" on OpenAI, each
  *    state passing every DW-1337 invariant, and a definition saved from the second stores no
  *    temperature.
+ * 6. **A test that waited its bound reads the published sentence** (Story 10.5): each timeout
+ *    code's 504 envelope renders its Fixed strings sentence, resolved from the detail, on the
+ *    failure line, which passes every DW-1337 invariant.
  *
  * **It refuses the live container**, for the reason its siblings do: the throwaway is the instance
  * a browser run drives, and this spec creates a definition. It **creates the rows it filters and
  * tears them down** (DW-368): the throwaway starts with none, so every row on screen is this
  * spec's own and a filter leg has a whole list to be measured against.
  *
- * **No provider call is made, planned or otherwise.** Test connection is never pressed here; the
- * definition is created and saved disabled, which is what the routes do without a key.
+ * **No provider call is made, planned or otherwise.** Test connection is pressed only in claim 6,
+ * where its `POST .../test` is intercepted in the browser and answered there, so it never reaches
+ * the instance; every definition is created and saved disabled, which is what the routes do
+ * without a key.
  *
  * Run: `npm run test:browser` (after `npm run build` and `sh scripts/ci-throwaway.sh up`).
  */
@@ -63,7 +68,7 @@ const DEFINITIONS_PATH = '/api/ocupilot/agent/definitions';
 /** Every definition this spec creates is named with this prefix and removed in `after`. */
 const PREFIX = 'OcuPilotBrowserProbe';
 
-const NAMES = [`${PREFIX}Alpha`, `${PREFIX}Beta`, `${PREFIX}Local`, `${PREFIX}Sampling`];
+const NAMES = [`${PREFIX}Alpha`, `${PREFIX}Beta`, `${PREFIX}Local`, `${PREFIX}Sampling`, `${PREFIX}Timeout`];
 
 /** The form's key route in the structural baseline. */
 const FORM_ROUTE = 'agent/definitions/edit';
@@ -618,6 +623,63 @@ test('Story 10.4: the Temperature field follows the catalog column, passes every
     assert.ok(one.ok, 'the single-definition route answers');
     const stored = await one.json();
     assert.equal(stored.temperature, null, `and it stores no temperature: ${JSON.stringify(stored)}`);
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 10.5: a test that waited its bound reads the published sentence, and the failure line passes every invariant', async () => {
+  const { context, page } = await signedInAt(FORM_URL);
+  try {
+    await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+    await page.setViewport(VIEWPORTS.wide);
+    // The test route is answered here, in the browser, with the envelope the instance answers after
+    // its bound -- so the press reaches no provider and takes no fifty seconds. Every other request
+    // goes through, the create included.
+    let envelope = null;
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      if (envelope !== null && request.method() === 'POST' && /\/agent\/definitions\/[^/]+\/test$/.test(new URL(request.url()).pathname)) {
+        request.respond({ status: 504, contentType: 'application/json', body: JSON.stringify(envelope) });
+        return;
+      }
+      request.continue();
+    });
+    await page.waitForSelector('#ocu-definition-name', { visible: true, timeout: config.navigationTimeoutMs });
+    await fill(page, 'ocu-definition-name', NAMES[4]);
+
+    const cases = [
+      {
+        envelope: {
+          error: 'unavailable',
+          code: 'PROVIDER.TESTTIMEOUTLOCAL',
+          reason: 'the envelope reason',
+          detail: { waitedSeconds: 50, providerLabel: 'Anthropic', keySource: 'none', testedAsStored: false },
+        },
+        expected: STRINGS.agentDefinitionTestTimeoutLocal.replace('<n>', '50'),
+      },
+      {
+        envelope: {
+          error: 'unavailable',
+          code: 'PROVIDER.TESTTIMEOUT',
+          reason: 'the envelope reason',
+          detail: { waitedSeconds: 50, providerLabel: 'Anthropic', keySource: 'none', testedAsStored: false },
+        },
+        expected: STRINGS.agentDefinitionTestTimeout.replace('<provider>', 'Anthropic').replace('<n>', '50'),
+      },
+    ];
+    for (const { envelope: answer, expected } of cases) {
+      envelope = answer;
+      await page.click('.ocu-form-test button');
+      // Mutation (Rule 19): have the store ignore `detail` for the two codes -> this waits out on
+      // the envelope's own reason.
+      await page.waitForFunction(
+        (sentence) => document.querySelector('.ocu-form-test .ocu-form-error')?.textContent?.trim() === sentence,
+        { timeout: config.navigationTimeoutMs },
+        expected
+      );
+      assert.deepEqual(await freshViolations(page), [], `the ${answer.code} failure line passes every DW-1337 invariant`);
+    }
   } finally {
     await context.close();
   }
