@@ -742,7 +742,7 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 
 **Owner request, 2026-09-24 (agent grounding), high priority.** The screen context already carries the rows on screen, but the system prompt never mentions it, every tool is offered on every screen with nothing saying which act on the one in view, and the model is not told when it is read-only. Story 11.9 fixes all three before submission: it runs first and alone on slot B, with Epic 12 handed back at its first boundary and resumed after 11.9 merges. Screen data stays out of the system prompt (AD-11).
 
-**Owner request, 2026-09-24 (first-time success), high priority.** A judge should succeed the first time. New definitions start read-only, so a first request for a change is declined, and the agent did not open the web applications screen when asked to create a web app until told to navigate. Story 11.10 makes new definitions read/write - every write still needs the user's confirmation - and tells the agent to open the screen under discussion, as EXPERIENCE.md's "Primary navigation is the agent" already intends. It runs alone on slot B at Epic 12's next story boundary.
+**Owner request, 2026-09-24 (first-time success), high priority.** A judge should succeed the first time. New definitions start read-only, so a first request for a change is declined, and the agent did not open the web applications screen when asked to create a web app until told to navigate. Story 11.10 makes new definitions read/write - every write still needs the user's confirmation - and tells the agent to open the screen under discussion, as EXPERIENCE.md's "Primary navigation is the agent" already intends; the owner also found that the panel's transcript never scrolls to a new message, so a sent message and its answer can land out of sight, and 11.10 makes it follow. It runs alone on slot B at Epic 12's next story boundary.
 
 **Orchestrator amendment, 2026-09-19.** Two consequences of the amendment above, settled on the owner's
 instruction. Story 13.3's acceptance criteria are rewritten so none of them can be closed by publishing:
@@ -5069,7 +5069,7 @@ So that its first answers are quick, grounded and honest about what it can do.
 **High priority (owner, 2026-09-24).** Runs alone on slot B at Epic 12's next story boundary; Epic 12 resumes after this story merges.
 
 As a judge configuring the agent for the first time,
-I want a new definition to be able to propose changes, and the agent to take me to the screen we are talking about,
+I want a new definition to be able to propose changes, the agent to take me to the screen we are talking about, and the panel to show its answer as it arrives,
 So that my first request for a change ends in a proposal I can confirm, on the screen that will show it.
 
 **Acceptance Criteria:**
@@ -5094,6 +5094,27 @@ So that my first request for a change ends in a proposal I can confirm, on the s
 - **Given** CI calls no live model
 - **When** the suite runs
 - **Then** tests pin the new defaults and the prompt statement; the navigation behavior is proven live in the owner's check in Story 17.7, where "Can you create a web app for me?" asked from Home opens the web applications list before the proposal appears.
+
+- **Given** the user presses Send
+- **When** the message is accepted
+- **Then** the transcript scrolls so that the message and its progress card are in view.
+
+- **Given** the transcript is scrolled to its newest entry
+- **When** progress, a reply or a proposal card arrives
+- **Then** the transcript follows it, so the newest entry stays in view.
+
+- **Given** the user has scrolled up to read an earlier entry
+- **When** a new entry arrives
+- **Then** the transcript does not move; a "Jump to latest" control appears, returns to the newest entry, and goes away once the newest entry is in view
+- **And** its text is a row in EXPERIENCE.md's fixed-string table and a key in the string table.
+
+- **Given** reduced motion is requested
+- **When** the transcript scrolls
+- **Then** it moves instantly, with no animation.
+
+- **Given** EXPERIENCE.md says only that the transcript keeps "newest at the bottom, scrolls independently"
+- **When** this story completes
+- **Then** the panel's Body paragraph states the follow rule at origin, and a browser spec pins it: a long conversation shows a sent message in view, a scrolled-up transcript stays put and offers Jump to latest.
 
 ---
 
