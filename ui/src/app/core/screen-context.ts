@@ -77,7 +77,7 @@ function narrowRow(row: unknown, fields: readonly string[]): Record<string, unkn
  * A declared read is not required: a screen that loads through its own endpoint (the application
  * error list) publishes the rows it shows into its store, and those are what it sends.
  */
-export function contextViewDeclared(descriptor: Pick<ScreenDeclaration, 'read' | 'context'> | null): boolean {
+export function contextViewDeclared(descriptor: Pick<ScreenDeclaration, 'context'> | null): boolean {
   if (descriptor === null) return false;
   return descriptor.context.fields.length > 0 && descriptor.context.secretFields.length === 0;
 }

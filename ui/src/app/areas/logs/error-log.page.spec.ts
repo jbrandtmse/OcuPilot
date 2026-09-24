@@ -1034,6 +1034,16 @@ describe('ErrorLogPage', () => {
     expect(storeSelection()).toEqual([`USER${SEP}09/23/2026${SEP}4`]);
     expect(store.data()).toEqual(drill.errors());
 
+    // A same-level re-read (Refresh, or the re-read after a delete) publishes its new rows.
+    // Mutation: `publishRows` skips a same-level publish once that level holds rows -> this leg keeps one row.
+    const added = { errorNumber: 5, time: '17:02:00', errorText: '<UNDEFINED>z', routine: 'z', line: ' w q', username: 'Dana', process: '4712' };
+    api.answer('list', { namespace: 'USER', date: '09/23/2026', rows: [...drill.errors(), added], truncated: true });
+    await drill.reopen();
+    fixture.detectChanges();
+    expect(drill.errors().length).toBe(2);
+    expect(store.data()).toEqual(drill.errors());
+    expect(store.truncated()).toBe(true);
+
     await drill.openDetail(4);
     fixture.detectChanges();
     expect(store.data()).toEqual([]);
@@ -1046,12 +1056,12 @@ describe('ErrorLogPage', () => {
     await drill.back();
     fixture.detectChanges();
     expect(drill.level()).toBe('dates');
-    expect(drill.errors().length).toBe(1);
+    expect(drill.errors().length).toBe(2);
     expect(store.data()).toEqual([]);
     await drill.back();
     fixture.detectChanges();
     expect(drill.level()).toBe('namespaces');
-    expect(drill.errors().length).toBe(1);
+    expect(drill.errors().length).toBe(2);
     expect(store.data()).toEqual([]);
   });
 });

@@ -93,6 +93,17 @@ Method TestTheErrorListNamesItsClassReadAndDelete()
     Do $$$AssertEquals(..ToolsFor("logs/errors"), "[""logs_applicationerrors_read"",""logs_applicationerrors_delete""]", "the error list's read and delete")
 }
 
+/// <p>A tool list that cannot be built fails <method>OcuPilot.Screen.Context.ScreenTools</method>
+/// with that error and an empty list, never a silent <code>[]</code>.</p>
+Method TestAToolListFailureReturnsItsError()
+{
+    Set tDescriptor = ##class(OcuPilot.Screen.Registry).DescriptorForRoute("os-management/processes")
+    Set tSC = ##class(OcuPilot.Test.ScreenToolsFault).ScreenTools(tDescriptor, .tTools)
+    Do $$$AssertStatusNotOK(tSC, "the registry's failure is returned")
+    Do $$$AssertTrue($System.Status.GetErrorText(tSC) [ "ScreenToolsFault", "and it is that failure: " _ $System.Status.GetErrorText(tSC))
+    Do $$$AssertEquals(tTools.%ToJSON(), "[]", "with no tool named")
+}
+
 /// <p>A request that supplies <code>tools</code> or <code>readOnly</code>, of any type, is refused
 /// <code>TURN.CONTEXT.INVALID</code>; the same context without them is accepted.</p>
 Method TestARequestSupplyingADerivedMemberIsRefused()

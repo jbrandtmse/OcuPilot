@@ -174,7 +174,7 @@ function errorScreen() {
 function errorRows(...numbers) {
   return numbers.map((errorNumber) => ({
     errorNumber,
-    time: '17:01:38',
+    time: `17:0${errorNumber}:38`,
     errorText: '<DIVIDE>x^y',
     routine: 'y',
     line: ' s x=1/0',
@@ -187,7 +187,7 @@ test('a screen with no declared read sends the rows it was given, in order, narr
   const inputs = baseInputs({
     descriptor: errorScreen(),
     rows: errorRows(3, 1, 2),
-    filter: 'Dana',
+    filter: '17:02:38',
     sort: 'time',
     direction: 'desc',
     rowCap: 2,
@@ -197,7 +197,7 @@ test('a screen with no declared read sends the rows it was given, in order, narr
   assert.deepEqual(
     payload.view.rows.map((row) => row.errorNumber),
     [3, 1],
-    'the supplied order, cut at the row cap -- no filter or sort is applied'
+    'the supplied order, cut at the row cap -- a time sort in either direction, or the filter matching row 2 alone, would differ'
   );
   for (const row of payload.view.rows) {
     assert.deepEqual(Object.keys(row), ERROR_FIELDS, 'the declared summary fields alone');

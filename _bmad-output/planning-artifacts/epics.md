@@ -5132,6 +5132,8 @@ So that a log line becomes an explanation in one gesture.
 - **When** it reaches the model
 - **Then** it arrives as delimited tool-result content, never as instruction.
 
+- DW-1610: The error list's context rows reach the turn labeled with the shell's namespace and no date, so the agent misattributes them and cannot scope logs.applicationerrors.read or a delete to them (ledger; routed by cr 2026-09-24)
+
 ### Story 11.3: Suggested prompts per screen
 
 As a developer-administrator who does not yet know what to ask,

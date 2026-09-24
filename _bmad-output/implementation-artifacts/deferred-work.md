@@ -6649,3 +6649,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-11-9-the-agent-knows-the-screen-it-is-on.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: ui/src/app/shell/panel.ts assembleContext never reads store.truncated(); payload truncated reflects only the kernel row-cap and size cuts; pre-existing for every screen
 - 2026-09-24T09:12:19Z status=wontfix-accepted owner=11-9-the-agent-knows-the-screen-it-is-on by=harvest note=reopen_if=a source-cut list (error list at its endpoint cap) shows truncated=false in a recorded screen_context
+
+### DW-1610: The error list's context rows reach the turn labelled with the shell's namespace and no date, so the agent misattributes them and cannot scope logs.applicationerrors.read or a delete to them
+- source: spec-11-9-the-agent-knows-the-screen-it-is-on.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: publishRows sends drill.errors() narrowed to the 5 summary fields; panel.ts sets namespace from scope.namespace() and entity from the route :id, while the drill's namespace/date live only in ErrorLogDrill (AD-48 one namespace source); ErrorRead requires namespace and date
+- 2026-09-24T09:36:58Z status=routed owner=11-2-explain-a-log-or-audit-entry by=cr note=11.2 consumes these rows; carrying the drill scope needs a descriptor or context-contract change outside 11.9's Never list

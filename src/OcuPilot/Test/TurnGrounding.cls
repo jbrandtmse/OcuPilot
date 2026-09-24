@@ -175,6 +175,35 @@ Method TestARequestSupplyingAMemberIsRefusedAndNothingIsReserved()
     Do $$$AssertEquals(+tKeys, 0, "no turn was reserved by either refusal")
 }
 
+/// <p>A detail screen's <code>tools</code> resolve through its <code>parentScope</code> over the
+/// wire, not only through the direct <code>ScreenTools</code> and <code>BoundedContext</code>
+/// calls <code>ScreenGrounding</code> pins in process: the detail's own read, then the parent
+/// list's four action tools.</p>
+Method TestADetailScreenNamesItsParentsToolsOverTheWire()
+{
+    Set tContext = {"route": "os-management/processes/details", "namespace": "HSCUSTOM", "entity": "11", "view": {"rows": [{"Pid": "11", "JobType": "GET"}], "rowsAvailable": 1}}
+    Set tPayload = ..RecordedContext("what is this process", tContext)
+    If '$IsObject(tPayload) Quit
+    Do $$$AssertEquals(tPayload.screen, "osmgmt.processdetails", "the detail's own identity")
+    Do $$$AssertEquals(tPayload.tools.%ToJSON(), "[""osmgmt_processdetails_read"",""osmgmt_processes_resume"",""osmgmt_processes_suspend"",""osmgmt_processes_terminate"",""osmgmt_processes_terminatewitherror""]", "the detail's own read, then the parent list's four action tools, resolved through parentScope over the wire")
+}
+
+/// <p>The identity-only branch -- a descriptor declaring <code>context.secretFields</code> --
+/// carries both members with no <code>rows</code> key at all, over the wire, not only through the
+/// direct <code>BoundedContext</code> call <code>ScreenGrounding.TestBothMembersRideBothBranches</code>
+/// pins in process.</p>
+Method TestTheIdentityOnlyBranchCarriesBothMembersOverTheWire()
+{
+    Set tContext = {"route": "security/wallet/secrets/edit", "namespace": "HSCUSTOM", "entity": "probe"}
+    Set tPayload = ..RecordedContext("what secret is this", tContext)
+    If '$IsObject(tPayload) Quit
+    Do $$$AssertEquals(tPayload.screen, "security.secretform", "identity is still projected")
+    Do $$$AssertEquals(tPayload.%GetTypeOf("rows"), "unassigned", "no rows key at all")
+    Do $$$AssertEquals(tPayload.rowsSent, 0, "rowsSent is still reported, at 0")
+    Do $$$AssertEquals(tPayload.tools.%ToJSON(), "[]", "the form names no tool")
+    Do $$$AssertEquals(tPayload.%GetTypeOf("readOnly"), "boolean", "and readOnly rides the identity-only branch too")
+}
+
 /// <p>The error list's rows reach the turn narrowed to the five summary fields and capped at the
 /// row cap, with its read and delete tools named.</p>
 Method TestTheErrorListsRowsAreNarrowedAndCapped()

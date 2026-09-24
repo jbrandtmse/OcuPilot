@@ -102,6 +102,18 @@ deferred:
 - Given the suite, when it runs, then `ContextBound` and `TurnContext` pass unedited, and the budget leg shows the members inside 65,536 characters.
 - Given a form page or Home, when a turn is sent, then no field value or row is posted. Home posts no context at all.
 
+### Review Findings
+
+Code review 2026-09-24 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). No AD violation found (AD-11, AD-24 amended, AD-30, AD-48, AD-5, AD-53, AD-55 checked).
+
+- [x] [Review][Defer] The error list's context rows carry the shell's namespace and no date, so the agent misattributes them and cannot scope the error read or delete tools to them [ui/src/app/areas/logs/error-log.page.ts:839] — deferred: DW-1610 routed owner=11-2-explain-a-log-or-audit-entry (med, fix-risk med; the fix needs a descriptor or context-contract change this spec's Never list forbids)
+- [x] [Review][Patch] A same-level re-read of the error list (Refresh, or the re-read after a delete) had no test that it re-publishes [ui/src/app/areas/logs/error-log.page.spec.ts:1036]
+- [x] [Review][Patch] The no-read ordering assertion could not fail for a sort or filter, since every row had the same `time` and user [ui/tools/screen-context.test.mjs:177]
+- [x] [Review][Patch] `ScreenTools`' `ListTools`-failure contract was untested and its `ToolRegistryClass` seam unused; new `OcuPilot.Test.ScreenToolsFault` pins it [src/OcuPilot/Test/ScreenGrounding.cls]
+- [x] [Review][Patch] `contextViewDeclared` still typed `read` in its parameter after dropping the check [ui/src/app/core/screen-context.ts:80]
+
+Rejected (23): spec-bound — non-list error levels send `rows: []` (matrix row), bound write tools behind no declared action are omitted (Always rule), no `readOnly` without context (Design Notes), a `ListTools` failure answers 500 (Tasks; `ScreenTools` measured at 26 ms), and the golden prompt's wording of `entity` and `truncated` (pinned verbatim); false — the refresh sentence (AD-14 makes it an invariant), the hard-coded 65,536 (AD-24's number, named by AC3), the literal `HSCUSTOM` (same as `TurnContext`; the throwaway's namespace), spec `status` (build-auto's machine state); duplicate — the endpoint-side `truncated` (DW-1608), the `ToolRegistryClass` seam (x2, folded into the patch above); theoretical — a second `DescriptorForRoute` answering `""`, the definition read twice in `HandleStart`, an over-budget identity-only payload; low — browser helpers copied from sibling specs, `dates[0]` and virtual-scroll row counts on an accumulating `USER`, `putShare(true)` not restoring a prior value, the duplicated `PROCESSTOOLS` roster, no log line for a dropped payload; fix edits the spec — its `oversized` growth.
+
 ## Spec Change Log
 
 - 2026-09-24 spec gate (lead): AD-24 amended at origin with the Design Notes wording (Rule 20; memlog entry 162). Story 11.9's fourth AC amended in `epics.md` (Rule 5 tier-1): was "Given AD-11's seeded-injection test and AD-24's bounds ... both pass unchanged"; now "Given AD-11's existing pins and AD-24's bounds ... the seeded-injection test, when Story 14.8 writes it, runs against this prompt." Rationale: the seeded-injection test is Story 14.8's (backlog) and does not exist on this branch; intent (the prompt change weakens no AD-11 defense) is unchanged.
@@ -188,6 +200,42 @@ You are OcuPilot, an assistant inside the InterSystems IRIS management portal. Y
   - mutation: `publishRows` publishes `errors()` at every level but `detail` -> the same case red on the `dates` leg reached by `back()` from the list (1 of 22)
   - mutation (AC4): `contextViewDeclared` drops its `fields.length > 0` guard -> `screen-context.test.mjs` form-page case red (with 4 older no-view cases, 5 of 24)
   - mutation: `publishRows` returns at once, bundle rebuilt and redeployed -> `screen-grounding.browser-spec.mjs` red (the chip never counts the errors on screen)
+  - mutation (code review): `publishRows` skips a same-level publish once that level holds rows -> `error-log.page.spec.ts` Story 11.9 case red on the `reopen()` leg (1 of 22)
+  - mutation (code review): the no-read branch sorts the supplied rows by `inputs.sort` descending -> `screen-context.test.mjs` no-read case red (1 of 24)
+  - mutation (code review): `ScreenTools` answers `$$$OK` on a `ListTools` error, `Screen.Context` and `ScreenToolsFault` recompiled -> `ScreenGrounding.TestAToolListFailureReturnsItsError` red alone (run 253; reverted, green at run 254)
+
+**QA gap coverage (Rule 19, `bmad-qa-generate-e2e-tests`).** Every other AC and matrix row already had a
+demonstrated pinning test (in process via `ScreenGrounding`, or client-side via `screen-context.test.mjs`
+and `error-log.page.spec.ts`). Two rows had no test that exercised the wire path
+(`Api.Turn.HandleStart` -> `BoundedContext`, the same call `Kernel.Agent.Loop` forwards), only the direct,
+in-process `BoundedContext`/`ScreenTools` calls `ScreenGrounding` makes. Both are now covered by two new
+methods on the already-armed `OcuPilot.Test.TurnGrounding` (QA), run on `ocupilot-b-ci`
+(runs 246, 249, 250):
+
+- `TestADetailScreenNamesItsParentsToolsOverTheWire` -- a `os-management/processes/details` context,
+  posted as a real turn, records `tools` resolved through `parentScope` (the detail's own read, then the
+  parent list's four action tools) in the provider's `screen_context` result.
+  - mutation: the `parentScope` arm in `Screen.Context.ScreenTools` disabled (`If 0` in place of the
+    unreached-action/parentScope guard) -> `TurnGrounding.TestADetailScreenNamesItsParentsToolsOverTheWire`
+    red alone (run 247; reverted, confirmed green at run 250, `git diff` byte-identical).
+- `TestTheIdentityOnlyBranchCarriesBothMembersOverTheWire` -- a `security/wallet/secrets/edit` context,
+  posted as a real turn, records `tools` (`[]`) and `readOnly` (a boolean) on the identity-only branch,
+  which carries no `rows` key at all.
+  - mutation: `BoundedContext` reordered so the identity-only early return precedes the `tools`/`readOnly`
+    assignment (the exact risk the Always rule calls out: "They are added on the identity-only branch
+    too.") -> `TurnGrounding.TestTheIdentityOnlyBranchCarriesBothMembersOverTheWire` red alone (run 249;
+    reverted, confirmed green at run 250, `git diff` byte-identical).
+
+A third candidate -- a plain form page (`os-management/devices/edit`) posting no row and `tools: []` over
+the wire -- was assessed and not added: it exercises the same rows-defined-as-`[]` branch in
+`BoundedContext` that the list and error-list wire tests already drive through `Bound.Apply`, and its
+`tools: []` and no-row shape is already pinned directly against `BoundedContext`
+(`ScreenGrounding.TestBothMembersRideBothBranches`) and against the pure client function
+(`screen-context.test.mjs`, "a form page ... posts identity only"). "Home posts no context at all" (AC4)
+is likewise already pinned at the pure-function level (`screen-context.test.mjs`, "a descriptor whose
+route is the empty string (Home) posts no context at all"), and `readOnly` under enforced read-only is
+already pinned over the wire (`TurnGrounding.TestEnforcedReadOnlyReadsTrue`), so neither needed a new
+test.
 
 ## Auto Run Result
 
