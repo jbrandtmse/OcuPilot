@@ -13,3 +13,9 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-23T23:50:55Z	Epic 9	retro_review_skipped	reason=rule27_gating_epic_no_x0 note=epic11_waits_on_9_and_12;orchestrator_instruction_no_9.0;ledger_entries_already_routed_to_9.1_9.2_9.3_9.5_with_epics.md_bullets
 2026-09-23T23:52:55Z	Epic 9	epic_context_compiled	sha=pending reason=initial model=opus lines=117
 2026-09-23T23:53:31Z	Story 9.1	stage_spawned	stage=plan spawn_at=2026-09-23T23:53:31Z model=opus agent_name=9-1-the-user-editor-plan-1 cycle_iteration=1
+2026-09-24T00:10:11Z	Story 9.1	story_created	spawn_at=2026-09-23T23:53:31Z model=opus path=_bmad-output/implementation-artifacts/spec-9-1-the-user-editor.md build_status=ready-for-dev spec_bytes=23471 warnings=oversized epic_context=reused
+2026-09-24T00:10:11Z	Epic 9	spine_updated	ad=AD-10 reason=clarification by=runner story=9-1-the-user-editor dw=DW-1520 lint=ok_preexisting_low_placeholder_line167
+2026-09-24T00:10:11Z	Epic 9	spine_updated	ad=AD-56 reason=clarification by=runner story=9-1-the-user-editor dw=DW-1516 lint=ok_preexisting_low_placeholder_line167
+2026-09-24T00:10:11Z	Epic 9	spine_updated	ad=AD-51 reason=clarification by=runner story=9-1-the-user-editor dw=DW-1576 lint=ok_preexisting_low_placeholder_line167
+2026-09-24T00:10:11Z	Epic 9	amendment	file=EXPERIENCE.md:494,721 what=toast_opens_entity_list_hidden_only_while_list_open dw=DW-1546 tier=1_rule5 by=runner
+2026-09-24T00:10:11Z	Story 9.1	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-3,AD-4,AD-5,AD-6,AD-8,AD-10,AD-11,AD-13,AD-14,AD-19,AD-27,AD-35,AD-36,AD-39,AD-51,AD-53,AD-55,AD-56 decision_dependency=none sections_created=none owned_ledger=DW-1501,DW-1516,DW-1520,DW-1523,DW-1546,DW-1576 addressed=6 declined=0 mutates_shared_runtime=true throwaway=ocupilot-ci gate_edits=toast-host_boundary,spec_change_log model=claude-opus-5-5-1m
