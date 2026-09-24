@@ -206,6 +206,7 @@ services:
       # classes: UserSave, UserSignIn, WebAppSave, WebAppWeakening
       # classes: TurnWireFixture, UnexpireScope, UserUpdate, Version, Wire, WireOAuthRead, WireSecurityRead
       # classes: RoleSave, RoleUpdate
+      # classes: SslWire
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -237,8 +238,12 @@ services:
       # Runs the installer's EnsureSslConfiguration step under the probe profile and so creates
       # -- and leaves -- a TLS configuration in the instance's own security database. Same
       # reasoning as the blocks above: a runner pointed at an instance someone cares about would
-      # otherwise add a security object to it.
+      # otherwise add a security object to it. The demo fixture's classes create and remove its
+      # TLS configuration, X.509 credential and wallet collection, and the SSL/TLS editor's
+      # classes create and delete probe configurations by exact name, for the same reason.
       # classes: ProviderSsl
+      # classes: Demo, DemoFaults, FixtureNamespace, SslSave, SslSecret, SslTest
+      # classes: SslWire
       OCUPILOT_ALLOW_SSL_CONFIG: "1"
       # Turns the instance's own auditing OFF and back on through the shipped confirm path, which
       # is the widest effect any class here has: while it is off nothing on this instance is

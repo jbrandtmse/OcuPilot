@@ -132,6 +132,9 @@ export const CONSEQUENCE_NORESOURCE = 'WEBAPP.NORESOURCE';
 /** The consequence the kernel marks a change repointing a web application's code with (AD-10). */
 export const CONSEQUENCE_REPOINTED = 'WEBAPP.REPOINTED';
 
+/** The consequence the kernel marks a change turning an SSL/TLS configuration's peer verification off with (AD-10). */
+export const CONSEQUENCE_NOPEERCHECK = 'SSL.NOPEERCHECK';
+
 /**
  * The published sentence for a proposal's `consequence` code, or `''` for no code or one this
  * client publishes nothing for. The sentence is `STRINGS`'; the code is the kernel's (AD-39).
@@ -142,6 +145,7 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED) return STRINGS.privilegedGrantEffectUnauthenticated;
   if (code === CONSEQUENCE_NORESOURCE) return STRINGS.webAppNoResourceEffect;
   if (code === CONSEQUENCE_REPOINTED) return STRINGS.webAppRepointedEffect;
+  if (code === CONSEQUENCE_NOPEERCHECK) return STRINGS.sslEffectNoPeerCheck;
   return '';
 }
 

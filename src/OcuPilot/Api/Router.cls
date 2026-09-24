@@ -146,6 +146,11 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/ui/about" Method="GET" Call="UiAbout"/>
   <Route Url="/ui/help" Method="GET" Call="UiHelp"/>
   <Route Url="/ui/system" Method="GET" Call="UiSystem"/>
+  <Route Url="/ssl/form" Method="GET" Call="SslFormRead"/>
+  <Route Url="/ssl/name" Method="GET" Call="SslNameCheck"/>
+  <Route Url="/ssl/:id/test" Method="POST" Call="SslTest"/>
+  <Route Url="/ssl/:id" Method="PUT" Call="SslUpdate"/>
+  <Route Url="/ssl" Method="POST" Call="SslCreate"/>
 </Routes>
 }
 
@@ -989,6 +994,43 @@ ClassMethod Http405(pSupportedVerbs As %String = "") As %Status
 {
     Do ##class(OcuPilot.Api.Error).Render405(pSupportedVerbs)
     Quit $$$OK
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ssl/form</code> (Story 9.5): the SSL/TLS form's
+/// read, delegating to <class>OcuPilot.Area.Security.SslRules</class>. The SSL block shares no prefix
+/// with any other route, so it sits at the tail; within it the sub-resources precede
+/// <code>/ssl/:id</code>, and <code>/ssl/:id/test</code> precedes it too.</p>
+ClassMethod SslFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SslRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ssl/name</code>: the SSL/TLS form's blur check
+/// of whether a name is taken.</p>
+ClassMethod SslNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SslRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /ssl/:id/test</code>: the SSL/TLS form's Test
+/// connection, screen-only (AD-39's named exception).</p>
+ClassMethod SslTest(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SslRules).HandleTest(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /ssl/:id</code>: the SSL/TLS form's edit Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod SslUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SslSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /ssl</code>: the SSL/TLS form's create Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod SslCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SslSave).HandleCreate()
 }
 
 }

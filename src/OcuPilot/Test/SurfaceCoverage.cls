@@ -93,6 +93,7 @@ XData Coverage
 <screen name="TaskScheduleList" class="OcuPilot.Test.Descriptor" method="TestTheTaskScheduleListValidatesAndNamesItsClassicPageInItsOwnCase"/>
 <screen name="TaskUpcomingList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="RoleForm" class="OcuPilot.Test.RoleCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
+<screen name="SslForm" class="OcuPilot.Test.SslUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="UserForm" class="OcuPilot.Test.UserCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="UserList" class="OcuPilot.Test.Descriptor" method="TestTheUsersListValidatesAndNamesItsClassicPageInItsOwnCase"/>
 <screen name="WalletCollectionList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
@@ -115,6 +116,10 @@ XData Coverage
 <tool name="security.x509.delete" class="OcuPilot.Test.X509Delete" method="TestTheDeleteIsAnActionWriteOverTheCertificate"/>
 <tool name="security.secrets.create" class="OcuPilot.Test.WalletSecretCreate" method="TestTheSchemaAdvertisesNoValue"/>
 <tool name="security.secrets.update" class="OcuPilot.Test.WalletSecretUpdate" method="TestTheEditIsAMergeWriteOverTheThreeSettings"/>
+<tool name="security.secrets.delete" class="OcuPilot.Test.WalletSecretDelete" method="TestTheDeleteIsAnActionWriteOverTheSecret"/>
+<tool name="security.ssl.create" class="OcuPilot.Test.SslUpdate" method="TestTheToolsDeclareTheirFieldsAndShapes" corpus="the create, the change and the delete are asserted together"/>
+<tool name="security.ssl.update" class="OcuPilot.Test.SslUpdate" method="TestTheToolsDeclareTheirFieldsAndShapes" corpus="the create, the change and the delete are asserted together"/>
+<tool name="security.ssl.delete" class="OcuPilot.Test.SslUpdate" method="TestTheToolsDeclareTheirFieldsAndShapes" corpus="the create, the change and the delete are asserted together"/>
 <tool name="osmgmt.devices.create" class="OcuPilot.Test.DeviceCreate" method="TestTheSchemaAndTheSettableSetAreTheSets"/>
 <tool name="osmgmt.devices.update" class="OcuPilot.Test.DeviceUpdate" method="TestTheEditIsAMergeWriteOverTheEightFields"/>
 <tool name="osmgmt.devices.delete" class="OcuPilot.Test.DeviceDelete" method="TestTheDeleteIsAnActionWriteOverTheWholeRead"/>

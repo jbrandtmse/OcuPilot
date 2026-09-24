@@ -460,12 +460,12 @@ export class SwitchesPage {
   }
 
   /**
-   * The published absent-entity sentence resolved to the name the hold stored -- the one sentence
-   * the product publishes for a reference that no longer resolves (AD-37). The client composes
-   * nothing of its own for this row.
+   * The published absent-entity sentence for a page with no list to return to, resolved to the name
+   * the hold stored (AD-37, DW-391): Switches is not a list of users, so the list-returning sentence
+   * would send the reader nowhere. The client composes nothing of its own for this row.
    */
   protected absentSentence(hold: HoldRow): string {
-    return STRINGS.faultAbsentEntity.split(NAME_PLACEHOLDER).join(hold.userName);
+    return STRINGS.faultAbsentEntityNoList.split(NAME_PLACEHOLDER).join(hold.userName);
   }
 
   // --- intents ---------------------------------------------------------------------------------

@@ -1325,6 +1325,12 @@ def check_test_class_properties(problems: list[str]) -> None:
 # matched too -- `pProfile` defaults to `""`, so the bare call is the production install under
 # another spelling, and anchoring only on the literal `""` read it as a probe install.
 #
+# **An SSL/TLS configuration is a security object too** (DW-332). `Security.SSLConfigs` Create,
+# Delete and Modify write the instance's own security database, and the demo fixture
+# (`OcuPilot.Install.Fixture` Create and Remove, `OcuPilot.Test.FixtureFault`'s seeding and removal)
+# creates and removes a TLS configuration, an X.509 credential and a wallet collection while naming
+# no security class in the test that calls it.
+#
 # A probe database, a namespace mapping and a web application created under the probe profile stay
 # outside the rule: they are the test's own objects, and the guard exists for effects on the
 # instance an operator cares about.
@@ -1342,6 +1348,10 @@ DESTRUCTIVE_TEST_RE = re.compile(
     r"|##class\(\s*OcuPilot\.Test\.Version\s*\)\s*\.\s*(?:CreateThrowawayExpiredAccount|DeleteThrowawayAccount)\b"
     r"|##class\(\s*OcuPilot\.Test\.TurnWireFixture\s*\)\s*\.\s*"
     r"(?:EnsurePrincipal|DeletePrincipal|RemovePrincipals|SetRoleResources|RemoveSecondRole)\b"
+    r"|##class\(\s*Security\.SSLConfigs\s*\)\s*\.\s*(?:Create|Delete|Modify)\b"
+    r"|##class\(\s*OcuPilot\.Install\.Fixture\s*\)\s*\.\s*(?:Create|Remove)\b"
+    r"|##class\(\s*OcuPilot\.Test\.FixtureFault\s*\)\s*\.\s*"
+    r"(?:SeedRemovableObjects|RemoveSeededObjects|Remove)\b"
 )
 
 ARMING_GUARD_RE = re.compile(r"\$System\.Util\.GetEnviron\(\s*\.\.#ARMINGVARIABLE\s*\)\s*'=\s*1")

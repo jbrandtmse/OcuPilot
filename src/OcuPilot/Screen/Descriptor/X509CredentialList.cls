@@ -26,8 +26,9 @@
 /// <p><b>Its primary action is Create, labelled Import</b>: it opens
 /// <class>OcuPilot.Screen.Descriptor.X509Form</class> at <code>security/x509/edit</code>, and a row's
 /// name cell opens the same form for that credential. Both save through the X.509 tools (AD-55).
-/// It declares no row action, and its empty state invites the agent. It does not refresh
-/// (AD-43).</p>
+/// Its row action is Delete (AD-53), through <class>OcuPilot.Screen.Tool.X509Delete</class>, with no
+/// self-protection rule: OcuPilot creates and relies on no X.509 credential. Its empty state invites
+/// the agent. It does not refresh (AD-43).</p>
 /// <p><b><code>Certificate</code>, <code>PrivateKey</code> and <code>PrivateKeyPassword</code> are its
 /// <code>secretArguments</code></b> (AD-3, AD-6): the import's authored secrets, supplied only at
 /// confirm and never read back by any read.</p>
@@ -52,7 +53,7 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "create", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "delete", "selfProtection": ""}],
   "context": {"fields": ["Alias", "OwnerList", "PeerNames", "CAFile", "SubjectDN", "IssuerDN", "ValidityNotBefore", "ValidityNotAfter"], "secretFields": []},
   "secretArguments": ["Certificate", "PrivateKey", "PrivateKeyPassword"],
   "emptyStateKey": "x509ListEmpty",

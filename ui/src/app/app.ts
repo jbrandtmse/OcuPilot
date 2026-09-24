@@ -20,6 +20,8 @@ import { ResourceActions } from './areas/permissions/resource-actions';
 import { ResourceEditor } from './areas/permissions/resource-editor.store';
 import { WalletActions } from './areas/security/wallet-actions';
 import { WalletSecretForm } from './areas/security/wallet-secret-form.store';
+import { SslActions } from './areas/security/ssl-actions';
+import { SslForm } from './areas/security/ssl-form.store';
 import { X509Actions } from './areas/security/x509-actions';
 import { X509Form } from './areas/security/x509-form.store';
 import { DeviceActions } from './areas/os-management/device-actions';
@@ -259,6 +261,9 @@ export class App {
   // The Devices list's declared Create, the same way (`areas/os-management/device-actions.ts`).
   private readonly deviceActions = inject(DeviceActions);
   private readonly deviceForm = inject(DeviceForm);
+  // The SSL/TLS list's declared Create, the same way (`areas/security/ssl-actions.ts`).
+  private readonly sslActions = inject(SslActions);
+  private readonly sslForm = inject(SslForm);
   // Constructed for its own sake, the same way: there is no component whose job it is to act on
   // the agent's navigation directive, so injecting it here is what brings it into existence for
   // the life of the tab (`shell/agent-navigator.ts`).
@@ -536,6 +541,8 @@ export class App {
       this.walletSecretForm.reset();
       // The device editor holds a device THIS principal was creating or editing and has not saved.
       this.deviceForm.reset();
+      // The SSL/TLS form holds a private key password THIS principal typed and has not saved (AD-35).
+      this.sslForm.reset();
       this.formDirty.reset();
       // The ninth: whether the instance holds an enabled definition is a read THIS principal
       // made, and the panel and the rail's dot pick an audience from it beside the navigation

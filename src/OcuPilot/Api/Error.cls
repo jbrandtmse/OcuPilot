@@ -1209,6 +1209,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#PORTFIELDUNEXPECTED Quit ..#REASONPORTFIELDUNEXPECTED
     If pCode = ..#PORTFIELDSHAPE Quit ..#REASONPORTFIELDSHAPE
     If pCode = ..#ROLEESCALATIONONLYSHAPE Quit ..#REASONROLEESCALATIONONLYSHAPE
+    If $Extract(pCode, 1, 4) = "SSL." Quit ..ReasonForSsl(pCode)
     Quit ""
 }
 
@@ -2422,5 +2423,195 @@ Parameter REASONROLENAMEABSENT = "This instance has no role with that name.";
 Parameter ROLEESCALATIONONLYSHAPE = "ROLE.ESCALATIONONLY.SHAPE";
 
 Parameter REASONROLEESCALATIONONLYSHAPE = "Escalation only is either on or off.";
+
+/// <p>Envelope code (AD-39): an SSL/TLS configuration's create or edit broke one or more of the
+/// rules <class>OcuPilot.Area.Security.SslRules</class> applies before the port is touched, or the
+/// vendor refused a value the port maps to a field
+/// (<parameter>OcuPilot.Port.AdminPort.PROPERTYFAULTS</parameter>). Rendered on the
+/// <parameter>VALIDATIONFAILED</parameter> slug with every violation in
+/// <code>detail.violations</code>. No sentence in this block names a file path or quotes a private
+/// key password (AD-21, AD-35).</p>
+Parameter SSLVALIDATION = "SSL.VALIDATION";
+
+Parameter REASONSSLVALIDATION = "The SSL/TLS configuration was refused.";
+
+/// <p>Violation code: a create supplied no name.</p>
+Parameter SSLNAMEREQUIRED = "SSL.NAME.REQUIRED";
+
+Parameter REASONSSLNAMEREQUIRED = "Give the configuration a name.";
+
+/// <p>Violation code: the name is longer than <class>Security.SSLConfigs</class> stores, or carries
+/// a control character, a slash or a backslash.</p>
+Parameter SSLNAMESHAPE = "SSL.NAME.SHAPE";
+
+Parameter REASONSSLNAMESHAPE = "A name is at most 64 characters, with no control character, slash or backslash.";
+
+/// <p>Violation code: a create names a configuration this instance already holds.</p>
+Parameter SSLNAMETAKEN = "SSL.NAME.TAKEN";
+
+Parameter REASONSSLNAMETAKEN = "This instance already has an SSL/TLS configuration with that name. Choose a different one.";
+
+/// <p>Machine code (AD-12, AD-39): the configuration a form read, an edit or a Test connection names
+/// is not one this instance holds. Rendered on the <parameter>NOTFOUND</parameter> slug.</p>
+Parameter SSLNAMEABSENT = "SSL.NAME.ABSENT";
+
+Parameter REASONSSLNAMEABSENT = "This instance has no SSL/TLS configuration with that name.";
+
+/// <p>Violation code: a create omits its type, its peer verification or whether it is enabled,
+/// which the vendor requires of a new configuration.</p>
+Parameter SSLFIELDREQUIRED = "SSL.FIELD.REQUIRED";
+
+Parameter REASONSSLFIELDREQUIRED = "A new configuration needs its type, its peer verification and whether it is enabled.";
+
+/// <p>Violation code: the description is not text, or is longer than the vendor stores.</p>
+Parameter SSLDESCRIPTIONLENGTH = "SSL.DESCRIPTION.LENGTH";
+
+Parameter REASONSSLDESCRIPTIONLENGTH = "A description is at most 256 characters.";
+
+/// <p>Violation code: <code>Enabled</code> is not a boolean.</p>
+Parameter SSLENABLEDSHAPE = "SSL.ENABLED.SHAPE";
+
+Parameter REASONSSLENABLEDSHAPE = "Enabled is either on or off.";
+
+/// <p>Violation code: the type is neither client (0) nor server (1).</p>
+Parameter SSLTYPEVALUE = "SSL.TYPE.VALUE";
+
+Parameter REASONSSLTYPEVALUE = "The type is client or server.";
+
+/// <p>Violation code: the type is server while the configuration names no certificate file or no
+/// private key file (vendor error 982). A create names neither, so a create is always a client.</p>
+Parameter SSLTYPESERVERFILES = "SSL.TYPE.SERVERFILES";
+
+Parameter REASONSSLTYPESERVERFILES = "A server configuration needs a certificate file and a private key file, and only the classic portal's SSL/TLS Configuration page sets them.";
+
+/// <p>Violation code: the peer verification level is not one this type offers -- none or require
+/// for a client; none, request or require for a server (vendor error 725).</p>
+Parameter SSLVERIFYPEERVALUE = "SSL.VERIFYPEER.VALUE";
+
+Parameter REASONSSLVERIFYPEERVALUE = "Choose one of the peer verification levels this type offers.";
+
+/// <p>Violation code: peer verification is on and the configuration names no trusted certificates
+/// (vendor error 986).</p>
+Parameter SSLVERIFYPEERCAREQUIRED = "SSL.VERIFYPEER.CAREQUIRED";
+
+Parameter REASONSSLVERIFYPEERCAREQUIRED = "Verifying the peer needs trusted certificates: choose the operating system's store, or keep the file this configuration names.";
+
+/// <p>Violation code: the verification depth is not a whole number of 0 or more.</p>
+Parameter SSLVERIFYDEPTHSHAPE = "SSL.VERIFYDEPTH.SHAPE";
+
+Parameter REASONSSLVERIFYDEPTHSHAPE = "The verification depth is a whole number, 0 or more.";
+
+/// <p>Violation code: the trusted certificates name a location other than the operating system's
+/// store or the file the configuration already names. No caller names a path (AD-21).</p>
+Parameter SSLCAFILEPATH = "SSL.CAFILE.PATH";
+
+Parameter REASONSSLCAFILEPATH = "Trusted certificates are none, the operating system's store, or the file this configuration already names. Another file is set on the classic portal.";
+
+/// <p>Violation code: the minimum TLS version is not one the vendor offers (vendor error 899).</p>
+Parameter SSLTLSMINVERSIONVALUE = "SSL.TLSMINVERSION.VALUE";
+
+Parameter REASONSSLTLSMINVERSIONVALUE = "Choose one of the listed minimum TLS versions.";
+
+/// <p>Violation code: the maximum TLS version is not one the vendor offers (vendor error 899).</p>
+Parameter SSLTLSMAXVERSIONVALUE = "SSL.TLSMAXVERSION.VALUE";
+
+Parameter REASONSSLTLSMAXVERSIONVALUE = "Choose one of the listed maximum TLS versions.";
+
+/// <p>Violation code: the maximum TLS version is lower than the minimum (vendor error 899).</p>
+Parameter SSLTLSMAXVERSIONORDER = "SSL.TLSMAXVERSION.ORDER";
+
+Parameter REASONSSLTLSMAXVERSIONORDER = "The maximum TLS version cannot be lower than the minimum.";
+
+/// <p>Violation code: the Diffie-Hellman key size is not one the vendor offers.</p>
+Parameter SSLDIFFIEHELLMANBITSVALUE = "SSL.DIFFIEHELLMANBITS.VALUE";
+
+Parameter REASONSSLDIFFIEHELLMANBITSVALUE = "Choose one of the listed Diffie-Hellman key sizes.";
+
+/// <p>Violation code: an entry of the TLS 1.2 cipher list is empty or carries a colon or a space.</p>
+Parameter SSLCIPHERLISTSHAPE = "SSL.CIPHERLIST.SHAPE";
+
+Parameter REASONSSLCIPHERLISTSHAPE = "Each TLS 1.2 cipher entry is one name, with no colon and no space.";
+
+/// <p>Violation code: the TLS 1.2 cipher list is longer than the vendor stores once joined.</p>
+Parameter SSLCIPHERLISTLENGTH = "SSL.CIPHERLIST.LENGTH";
+
+Parameter REASONSSLCIPHERLISTLENGTH = "The TLS 1.2 cipher list is at most 4096 characters once joined.";
+
+/// <p>Violation code: the TLS 1.2 cipher list selects no cipher (vendor error 726, mapped by the
+/// port).</p>
+Parameter SSLCIPHERLISTEXPANDSEMPTY = "SSL.CIPHERLIST.EXPANDSEMPTY";
+
+Parameter REASONSSLCIPHERLISTEXPANDSEMPTY = "This cipher list selects no cipher. Add an entry that names at least one.";
+
+/// <p>Violation code: an entry of the TLS 1.3 cipher suites is empty or carries a colon or a
+/// space.</p>
+Parameter SSLCIPHERSUITESSHAPE = "SSL.CIPHERSUITES.SHAPE";
+
+Parameter REASONSSLCIPHERSUITESSHAPE = "Each TLS 1.3 cipher suite is one name, with no colon and no space.";
+
+/// <p>Violation code: the TLS 1.3 cipher suites are longer than the vendor stores once joined.</p>
+Parameter SSLCIPHERSUITESLENGTH = "SSL.CIPHERSUITES.LENGTH";
+
+Parameter REASONSSLCIPHERSUITESLENGTH = "The TLS 1.3 cipher suites are at most 128 characters once joined.";
+
+/// <p>Violation code: a TLS 1.3 cipher suite is not one this instance knows (vendor error 746,
+/// mapped by the port).</p>
+Parameter SSLCIPHERSUITESUNKNOWN = "SSL.CIPHERSUITES.UNKNOWN";
+
+Parameter REASONSSLCIPHERSUITESUNKNOWN = "This instance does not know one of these TLS 1.3 cipher suites.";
+
+/// <p>Violation code: OCSP is neither off (0) nor on (1).</p>
+Parameter SSLOCSPVALUE = "SSL.OCSP.VALUE";
+
+Parameter REASONSSLOCSPVALUE = "OCSP is either on or off.";
+
+/// <p>Violation code: the OCSP timeout is not a whole number of 0 or more.</p>
+Parameter SSLOCSPTIMEOUTSHAPE = "SSL.OCSPTIMEOUT.SHAPE";
+
+Parameter REASONSSLOCSPTIMEOUTSHAPE = "The OCSP timeout is a whole number of seconds, 0 or more.";
+
+/// <p>Violation code: a private key password was given for a configuration that names no private
+/// key file (vendor error 985).</p>
+Parameter SSLPRIVATEKEYPASSWORDKEYFILE = "SSL.PRIVATEKEYPASSWORD.KEYFILE";
+
+Parameter REASONSSLPRIVATEKEYPASSWORDKEYFILE = "A private key password needs a private key file, and only the classic portal sets one.";
+
+/// <p>Violation code: the private key password is longer than the vendor stores. Refused before the
+/// save, whose datatype refusal would quote the value.</p>
+Parameter SSLPRIVATEKEYPASSWORDLENGTH = "SSL.PRIVATEKEYPASSWORD.LENGTH";
+
+Parameter REASONSSLPRIVATEKEYPASSWORDLENGTH = "A private key password is at most 255 characters.";
+
+/// <p>Violation code: the private key password does not decrypt the configuration's private key file
+/// (vendor error 732, mapped by the port, whose own text names the file and is logged alone).</p>
+Parameter SSLPRIVATEKEYPASSWORDWRONG = "SSL.PRIVATEKEYPASSWORD.WRONG";
+
+Parameter REASONSSLPRIVATEKEYPASSWORDWRONG = "This password does not decrypt the configuration's private key.";
+
+/// <p>Violation code: a Test connection host is empty, longer than 255 characters, or carries a
+/// space or a scheme.</p>
+Parameter SSLTESTHOST = "SSL.TEST.HOST";
+
+Parameter REASONSSLTESTHOST = "Give a host name or address of at most 255 characters, with no space and no scheme.";
+
+/// <p>Violation code: a Test connection port is not a whole number from 1 to 65535.</p>
+Parameter SSLTESTPORT = "SSL.TEST.PORT";
+
+Parameter REASONSSLTESTPORT = "The port is a whole number from 1 to 65535.";
+
+/// <p>The sentence an <code>SSL.*</code> violation code carries, or <code>""</code> for any other
+/// code; <method>ReasonForViolation</method> delegates the family here.</p>
+ClassMethod ReasonForSsl(pCode As %String) As %String
+{
+    If '$ListFind(..SslViolationCodes(), pCode) Quit ""
+    Quit $Parameter($ClassName(), "REASON" _ $Translate(pCode, "."))
+}
+
+/// <p>Every <code>SSL.*</code> field-level violation code, as a <class>%List</class>, for the reason
+/// <method>UserViolationCodes</method> exists.</p>
+ClassMethod SslViolationCodes() As %List
+{
+    Quit $ListBuild(..#SSLNAMEREQUIRED, ..#SSLNAMESHAPE, ..#SSLNAMETAKEN, ..#SSLNAMEABSENT, ..#SSLFIELDREQUIRED, ..#SSLDESCRIPTIONLENGTH, ..#SSLENABLEDSHAPE, ..#SSLTYPEVALUE, ..#SSLTYPESERVERFILES, ..#SSLVERIFYPEERVALUE, ..#SSLVERIFYPEERCAREQUIRED, ..#SSLVERIFYDEPTHSHAPE, ..#SSLCAFILEPATH, ..#SSLTLSMINVERSIONVALUE, ..#SSLTLSMAXVERSIONVALUE, ..#SSLTLSMAXVERSIONORDER, ..#SSLDIFFIEHELLMANBITSVALUE, ..#SSLCIPHERLISTSHAPE, ..#SSLCIPHERLISTLENGTH, ..#SSLCIPHERLISTEXPANDSEMPTY, ..#SSLCIPHERSUITESSHAPE, ..#SSLCIPHERSUITESLENGTH, ..#SSLCIPHERSUITESUNKNOWN, ..#SSLOCSPVALUE, ..#SSLOCSPTIMEOUTSHAPE, ..#SSLPRIVATEKEYPASSWORDKEYFILE, ..#SSLPRIVATEKEYPASSWORDLENGTH, ..#SSLPRIVATEKEYPASSWORDWRONG, ..#SSLTESTHOST, ..#SSLTESTPORT)
+}
 
 }

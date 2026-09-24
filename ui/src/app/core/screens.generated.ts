@@ -4915,10 +4915,15 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "parts": []
     },
     "primaryAction": {
-      "id": "",
+      "id": "create",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": "ocupilot-ssl"
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -4928,6 +4933,9 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ],
       "secretFields": []
     },
+    "secretArguments": [
+      "PrivateKeyPassword"
+    ],
     "emptyStateKey": "sslListEmpty",
     "commandAliases": [
       "certificates"
@@ -4990,15 +4998,86 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "sslListEmptyAgent"
     },
     "toolIdentifier": "security.ssl",
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.SslForm",
+    "route": "security/ssl/edit",
+    "area": "security",
+    "labelKey": "sslFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "ssl-configuration",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": [
+        "PrivateKeyPassword"
+      ]
+    },
     "secretArguments": [],
     "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "sslPromptVerifies"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "sslPromptProtocols"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "sslPromptOutbound"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SSL",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "security.sslform",
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
     "entityLabelKey": ""
   },
   {
@@ -6805,7 +6884,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "create",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -7146,7 +7230,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "create",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Alias",

@@ -2,14 +2,25 @@
 title: 'Story 9.5: The SSL/TLS editor'
 type: 'feature'
 created: '2026-09-24'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '10dff8cb931d69c47c151ed1c7839324a4f0916f'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-9-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-9-3-the-role-editor.md'
 warnings: ['oversized', 'multiple-goals']
-deferred: []
+deferred:
+  - 'The initial bundle is 1,476,658 bytes (JS + CSS, measured by ui/tools/build-output.test.mjs), over angular.json''s 1467kB maximumWarning and under the 1500kB stop line, so the DW-371 build-output test is red until the budget is re-based (angular.json and angular-json.test.mjs, outside this story''s files).'
+  - 'security/ssl/edit carries the three shell-wide structural-baseline entries every form route carries (DW-1583 panel resize handle, DW-1584 status bar connection); the screen''s own checkbox min-width finding was fixed rather than baselined.'
+  - 'The browser leg for OcuPilot''s own configuration aborts any write in the browser and never sends a change to it; the server refusal of such a change is pinned by OcuPilot.Test.SslSave over a port that holds the write. A held-port route harness would let the refusal be pinned over the wire.'
+  - summary: >-
+      An over-255-character private key password confirmed through the agent's security.ssl.update may be quoted into the admin port's log line.
+    evidence: |-
+      Unverified. The confirm path never runs SslRules' length rule; Security.SSLConfigs.PrivateKeyPassword is Security.Datatype.Password (%Binary, MAXLEN 255), whose 7201 refusal quotes the value, and AdminPort.Fail logs the vendor status. Settle by confirming security.ssl.update on SslSecret's key-file probe with a 300-character sentinel and scanning messages.log. The same confirm path carries security.x509.* passwords, so the root cause predates this story.
+    location: >-
+      src/OcuPilot/Port/AdminPort.cls Fail; src/OcuPilot/Kernel/Proposal/Confirm.cls Transition
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -330,6 +341,38 @@ Client:
 
 ## Review Triage Log
 
+### 2026-09-24 — Review pass
+
+- verdicts: 27 findings — high 0, medium 5, low 16, false 5, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` VG1: `app.spec.ts`'s user-change teardown list has no `SslForm` leg, so dropping `this.sslForm.reset()` from `app.ts` leaves a typed private key password to the next user with every test green — add the leg with its mutation line. Patched: `app.spec.ts` SslForm teardown leg (mutation recorded).
+  - `[medium]` `[patch]` VG2: the page's re-read on an `ssl-configuration` change event (`ssl-form.page.ts` subscription, `store.refresh()`) has no test; sibling stores test `refresh()` — add a store `refresh` block (clean form re-reads; dirty form keeps typed values and updates read-only fields). Patched: two `refresh` tests in the store spec and a ChangeBus re-read test in the page spec (mutations recorded).
+  - `[medium]` `[patch]` VG3: `SslUpdate.DerivedFields` (drop an empty optional password at confirm, which would otherwise clear the stored one) and the screen's `If tPassword '= ""` guard have no test — add an `SslSecret` leg confirming and saving with `PrivateKeyPassword: ""` and asserting the password stays set. Patched: `SslSecret.TestAnEmptyOptionalPasswordLeavesTheStoredOneSet`, agent and screen legs (mutations recorded).
+  - `[medium]` `[patch]` VG4: no test calls the five `/ssl` routes as a real principal lacking `%Admin_Secure:USE` or `%DB_IRISSYS:READ`; deleting the `Gate` call from `HandleTest` reddens nothing — add `OcuPilot.Test.SslWire` on `WalletWire`'s pattern. Patched: new `OcuPilot.Test.SslWire`, armed on `OCUPILOT_ALLOW_PRINCIPALS` and `OCUPILOT_ALLOW_SSL_CONFIG`, rostered in both `ci-throwaway.sh` blocks (mutation recorded).
+  - `[low]` `[patch]` VG5: `GET /ssl/name`'s `taken` answer is never asserted — assert `taken` true with the `SSL.NAME.TAKEN` sentence for a held name and false for an absent one in `SslSave`'s wire test. Patched: `SslSave`'s wire test asserts `taken` both ways (mutation recorded).
+  - `[medium]` `[patch]` VG6: the CAFile select's third option (the file the configuration already names) is untested; dropping the `options.push` shows "None" for a configuration trusting a file (AC1) — add a page-spec case. Patched: page-spec case for a held CA file (mutation recorded).
+  - `[low]` `[patch]` VG7 (Rule 19): `ssl-form.store.spec.ts` AC3 sets `Type` to its held value `'0'`, which `setText` ignores, so the lock leg cannot fail — set `'1'`. Patched: each locked field is set to a value it does not hold (mutation recorded).
+  - `[low]` `[reject]` VG8 (Rule 19): the X.509 `TYPED_NAME_ROWS` entry is behaviourally equal to the row-key fallback, so its leg cannot fail on its removal — the entry is a spec Task and harmless; pinning an equivalence adds nothing a user meets.
+  - `[low]` `[reject]` VG9 (Rule 19): `ssl-editor.browser-spec.mjs` AC1's VerifyPeer, TLSMinVersion and OCSP values equal the defaults — the Description assertion discriminates in the browser and the component spec pins the configuration read through `CertificateFile` and `PrivateKeyType`.
+  - `[low]` `[reject]` VG10: two client mutations are recorded as spec-file comments rather than `## Verification` lines — every AC already carries at least one `mutation:` line there.
+  - `[low]` `[reject]` VG11: `AdminPort.TestOutcome` renders any vendor 500 on TEST as `passed: false`, ahead of the DW-274 denial mapping — unreachable behind `SslRules.Gate`, whose pairs the vendor was measured to accept; an internal failure's text on screen is AD-39's named exception.
+  - `[maybe-false]` `[defer]` VG12: an over-255-character private key password confirmed through the agent skips `SslRules`' length rule, and the vendor's `%Binary` MAXLEN refusal (7201) may quote it into `AdminPort.Fail`'s log line — settle by confirming `security.ssl.update` on `SslSecret`'s key-file probe with a 300-character sentinel and scanning `messages.log`; the same confirm path serves `security.x509.*`'s password, so the root cause predates this story.
+  - `[low]` `[reject]` VG13: the CAFile rule's "fresh read's own value, unchanged" arm is unreachable through `Changed()` — it is the spec's third value, harmless, and reachable to any future caller of `Validate`.
+  - `[low]` `[reject]` IA1: rule refusals answer 422 `SSL.VALIDATION` on the screen and 400 `TOOL.ARGUMENTS` for the agent, where the matrix writes 400 `SSL.*` — the Boundaries bind `UserSave`'s order, which renders 422, as `X509Save`, `WalletSave` and `ResourceSave` do; the only fix is to edit this spec's matrix.
+  - `[low]` `[reject]` IA2: the own-configuration 403 is asserted over a held port, and its 200 benign edit never over the wire — already in `deferred:`; the prohibition on changing `OcuPilotProvider` forbids a wire test whose mutation would write it.
+  - `[low]` `[reject]` IA3: a passing Test is pinned only in the browser, with `lines.some(...)` rather than `lines[0]` — the browser leg is the real-runtime pin and still requires the instance's own success line.
+  - `[low]` `[reject]` IA4: the browser Create leaves VerifyPeer at its default — VerifyPeer 1 with the OS store is created over `POST /ssl` in `SslSave` and the select is pinned in the component spec.
+  - `[false]` `[reject]` IA5: the one `updated` event is client-side — AD-14 publishes it from the client, and `ssl-form.store.spec.ts` asserts exactly one.
+  - `[low]` `[reject]` IA6: `SslSave.Create` checks the name's shape before its fresh read — a malformed name cannot be read, and the rules still run after the undeclared-key check; `Update`'s rules over the changed fields read against the fresh read, which is the merge's input.
+  - `[false]` `[reject]` IA7: mid-file insertions in `Error.cls`, `Router.cls`, `Classification.cls` and `screen-outlet.ts` — each is an addition at the tail of its own block (the dispatch list, the UrlMap, the entries, the imports) and deletes no line, as 9.3 did.
+  - `[low]` `[reject]` IA8: DW-391's row is appended at the table's end, not beside :265 — the spec also orders every new row appended, and appending keeps the pinned `EXPERIENCE.md:<n>` references stable.
+  - `[false]` `[reject]` IA9: a second `# classes:` line in `ci-throwaway.sh` — the stage's binding is "append your roster lines only", and `ci.test.mjs` reads both lines.
+  - `[low]` `[reject]` IA10: three shell-wide overflow rows (DW-1583, DW-1584) for `security/ssl/edit` in `structural-baseline.json` — every form route at HEAD carries the same three, including 9.3's; the screen's own controls pass the gate unbaselined. Flagged to the lead.
+  - `[low]` `[reject]` IA11: an absent wallet secret is refused 400 at the agent's mint rather than 404 — the mint reads first and reports the absent target as its problem, as every Epic 8/9 delete tool does.
+  - `[false]` `[reject]` IA12: failed-test lines come from `DecomposeStatus` — it yields each error's `GetErrorText`, the same text.
+  - `[false]` `[reject]` IA13: the leak scans read `messages.log` rather than a `^OcuPilot` global — `Kernel.Audit.Log` writes OcuPilot's log lines there.
+  - `[low]` `[reject]` IA14: the bundle is over the 1467kB warning — outside the intent and already in `deferred:` for the lead (DW-1166).
+
 ## Design Notes
 
 **Governing ADs:**
@@ -421,7 +464,52 @@ Slot A. Every IRIS MCP call carries `server: "ocupilot-slot-a"`. Anything that c
 - AC8: revert `switches.page.ts` to `faultAbsentEntity`.
 - Integration: skip `tabToOpen`.
 
+**Mutations observed (implement pass; each reverted, file byte-identical by sha256):**
+
+- mutation: drop the Credentials tab from `SslFormPage`'s tab list → `ssl-form.page.spec.ts` AC1 (and two dependent legs) went red; in the browser, `ssl-editor.browser-spec.mjs` AC1 went red.
+- mutation: build the form read's `configuration` from `Security.SSLConfigs.Get` in `SslRules.Configuration` → `OcuPilot.Test.SslSave.TestTheCreateAndTheFormReadAnswerOverTheWire` went red.
+- mutation: skip the `Ssl()` arm in `Prohibited.Prohibits` → `OcuPilot.Test.SslSave` own-configuration change and delete legs (and the two-field Save) went red; every write went to a held or fixture port and OcuPilotProvider read back unchanged.
+- mutation: drop the delete from `Prohibited.Ssl` (`Set tMoves = 0`) → `OcuPilot.Test.SslSave.TestOcuPilotsOwnConfigurationsDeleteIsRefusedOnBothCallers` went red on both callers' legs.
+- mutation: drop the `[disabled]` binding on the peer verification select → `ssl-form.page.spec.ts` AC3 went red; in the browser, `ssl-editor.browser-spec.mjs` AC3 went red.
+- mutation: answer the `Fail` envelope for a failed TEST in `AdminPort.TestOutcome` → `OcuPilot.Test.SslTest.TestAFailedTestAnswersTheInstancesOwnLines` went red.
+- mutation: log the vendor status in `AdminPort.TestOutcome`'s failure branch → `OcuPilot.Test.SslTest.TestAAFailuresTextReachesNoToolLogAuditOrLedger` went red on its `messages.log` leg (observed twice).
+- mutation: merge over `{Name}` in `SslSave.Update` → `OcuPilot.Test.SslSave.TestATwoFieldSaveSendsTheCompleteSetAndTheRestSurvives` went red.
+- mutation: drop `SCREENACTIONS` from `X509Delete` → `OcuPilot.Test.X509Delete.TestTheListsDeleteReachesTheSameWrite` went red; from `WalletSecretDelete` → `OcuPilot.Test.WalletSecretDelete` declaration and screen legs went red; from `SslDelete` → `OcuPilot.Test.SslSave.TestOcuPilotsOwnConfigurationsDeleteIsRefusedOnBothCallers` (the probe's Delete) went red.
+- mutation: remove the `Security.SSLConfigs` alternative from `DESTRUCTIVE_TEST_RE` → `test_check_objectscript.py` "the SSL configuration calls and fixture helpers are in the population" went red on Create, Delete and Modify.
+- mutation: remove `SslTest` from the `OCUPILOT_ALLOW_SSL_CONFIG` roster in `ci-throwaway.sh` → `ci.test.mjs` DW-1276 went red.
+- mutation: revert `switches.page.ts` to `faultAbsentEntity` → `switches.page.spec.ts` AD-37 absent-user leg went red.
+- mutation: never select the tab `tabToOpen` answers in `SslFormPage.afterRefusal` → `ssl-form.page.spec.ts` Integration went red; in the browser, `ssl-editor.browser-spec.mjs`'s refusal-on-General leg went red.
+- mutation: drop the `SslActions` injection from `app.ts` → `ssl.browser-spec.mjs` Story 9.5 and `ssl-editor.browser-spec.mjs` AC5 Create went red.
+- mutation: set `SslCreate.CREATES` to 0 → `OcuPilot.Test.SslUpdate.TestTheCreateFingerprintsTheNamesAbsence` went red.
+- mutation: drop the SSL branch of `Prohibited.WeakensByEffect` → `OcuPilot.Test.SslUpdate.TestTurningPeerVerificationOffIsMintedDestructive` went red.
+- mutation: drop the no-op refusal from `SslUpdate.ArgumentProblem` → `OcuPilot.Test.SslUpdate.TestANoOpIsRefusedAtTheMint` went red.
+- mutation: drop the own-configuration check from `SslUpdate.ArgumentProblem` → `OcuPilot.Test.SslUpdate.TestOcuPilotsOwnConfigurationIsRefusedAtTheMint` went red.
+- mutation: set `WalletSecretDelete.DESTRUCTIVE` to 0 → `OcuPilot.Test.WalletSecretDelete` stored-destructive and declaration legs went red.
+- mutation: drop the `CAFile` location rule from `SslRules.Validate` → `OcuPilot.Test.SslSave.TestTheRulesRefuseBeforeAnythingIsSent` went red.
+- mutation: drop the `746` entry from `AdminPort.PROPERTYFAULTS` → `OcuPilot.Test.SslSave.TestAVendorRefusalLandsOnItsFieldAndChangesNothing` went red; the `732` entry → `OcuPilot.Test.SslSecret.TestTheScreenStoresTheRightPasswordRefusesAWrongOneAndLeaksNeither` went red.
+- mutation: drop `PrivateKeyPassword` from `SslConfigList`'s `secretArguments` → `OcuPilot.Test.SslSecret.TestTheAgentsConfirmCarriesThePasswordToTheWriteAndNowhereElse` went red.
+- mutation: delete `this.sslForm.reset()` from `App.verifyWhenSignedIn` → `app.spec.ts` "AD-8: leaving the signed-in state drops this principal's namespace list" went red on the SSL/TLS password leg.
+- mutation: absorb a refresh's read with `replaceBuffer` false in `SslForm.refresh` → `ssl-form.store.spec.ts` "AD-14: a refresh of a clean form re-reads the configuration in place" went red; with `replaceBuffer` true → "AD-14: a refresh of a dirty form keeps what was typed …" went red.
+- mutation: drop `void this.store.refresh()` from `SslFormPage`'s ChangeBus subscription → `ssl-form.page.spec.ts` "AD-14: an ssl-configuration change to the configuration on screen re-reads it" went red.
+- mutation: drop the held file's `options.push` from `SslFormPage.caFileField` → `ssl-form.page.spec.ts` "AC1, AD-21: an edit of a configuration trusting a file offers that file as the third choice, selected" went red.
+- mutation: drop `'Type'` from `OWN_FIELDS` → `ssl-form.store.spec.ts` "AC3, AD-10: OcuPilot's own configuration refuses input …" went red (green before its Type value was changed to `'1'`).
+- mutation: keep the empty password in `SslUpdate.DerivedFields` (no `%Remove`) → `OcuPilot.Test.SslSecret.TestAnEmptyOptionalPasswordLeavesTheStoredOneSet` went red on the agent's leg; send the password whenever the body carries it in `SslSave.Update` → the same test went red on the screen's leg.
+- mutation: delete the `Gate` call from `SslRules.HandleTest` → `OcuPilot.Test.SslWire.TestACallerLackingAPairIsRefusedOnEveryRoute` went red on the Test route for both principals.
+- mutation: answer `taken` 0 in `SslRules.HandleName` → `OcuPilot.Test.SslSave.TestEachRouteAnswersOneJsonEnvelopeOverTheWire` went red on the taken leg.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** The SSL/TLS editor (`security/ssl/edit[/<name>]`, five tabs, create and edit) saves through the new `security.ssl.create` and `security.ssl.update` tools (AD-54, AD-55); Test connection answers `{passed, lines}` to the screen only (AD-39's exception); OcuPilot's own provider configuration is captioned, its four installer-owned fields drawn disabled and refused `PROHIBITED.OCUPILOTSSL` with its delete (AD-10); turning peer verification off is minted destructive (`SSL.NOPEERCHECK`). Delete row actions on the X.509, Secrets and SSL/TLS lists (DW-1541, DW-1556, AC9) with `security.secrets.delete` and `security.ssl.delete`; DW-332's checker patterns with Demo, DemoFaults and FixtureNamespace armed; DW-391's `faultAbsentEntityNoList`.
+
+**Files.** Server: `Area/Security/SslRules.cls`, `SslSave.cls` (new: rules, form read, name check, test, Save); `Screen/Tool/SslCreate.cls`, `SslUpdate.cls`, `SslDelete.cls`, `WalletSecretDelete.cls` (new tools); `X509Delete.cls` (`SCREENACTIONS`); `Screen/Descriptor/SslForm.cls` (new), `SslConfigList.cls`, `X509CredentialList.cls`, `WalletSecretList.cls` (actions); `Port/AdminPort.cls` (mutating types, `CONNECTIONTESTTYPES`, `@field` property faults); `Kernel/Proposal/Prohibited.cls` (SSL arm, weakening, wallet DELETE clearing); `Api/Error.cls`, `Api/Router.cls`, `Screen/Registry.cls`, `Classification.cls`, regenerated `ToolFields.cls`. Tests: `SslSave`, `SslSecret`, `SslTest`, `SslUpdate`, `SslWire`, `WalletSecretDelete` and fixtures (new); roster updates in `AuditingUpdate`, `Descriptor`, `EndpointCoverage`, `Prohibited`, `ReadTool`, `RefusalCopy`, `SecurityLists`, `SurfaceCoverage`, `ToolRoundTrip`, `Wire`, `WireOAuthRead`, `WireSecurityRead`, `X509Delete`; `Demo`, `DemoFaults`, `FixtureNamespace` armed. Client: `areas/security/ssl-form.page.ts`, `ssl-form.store.ts`, `ssl-actions.ts` with specs (new); `app.ts`, `screen-outlet.ts`, `screen-action-handler.ts`, `self-protection.ts`, `proposal-view.ts`, `switches.page.ts`, `strings.ts`, `_components.scss`, `screens.generated.ts`; browser `ssl-editor`, `security-deletes` (new), `ssl`, `security`, `structural-baseline.json`. Scripts: `check-objectscript.py` and its harness, `ci-throwaway.sh` (appended rosters). EXPERIENCE.md: ten Fixed-strings rows appended.
+
+**Review.** 27 findings (high 0, medium 5, low 16, false 5, maybe-false 1). Patched 7: VG1-VG4 and VG6 (medium), VG5 and VG7 (low), all test additions with mutation lines. Deferred 1: VG12 (unverified medium, a pre-existing confirm-path root cause). Rejected 19, each with its reason in the triage log; IA1 (422 on the screen versus the matrix's 400, following `UserSave`'s order) and IA10 (the three shell-wide baseline rows) are flagged for the lead.
+
+**Follow-up review: recommended** (5 medium entries patched). Unverified by any layer after patching: `SslWire`'s principals (the no-`%Admin_Secure` one holds `%Admin_Operate:U` to pass the router's admin floor) and the new `refresh` tests' dirty-form semantics.
+
+**Verification.** Client tool tests 1387/1388 (the one red is DW-371, the bundle budget, in `deferred:`); component tests 1126/1126; `check-objectscript` 0 problems, its harness OK, `lint-docs` and `client-lint` clean. ObjectScript, one class at a time on `ocupilot-ci`: the story's 22 listed classes plus `SslWire` green but for the known `WireSecurityRead` task-history failure (`AdminInventory` is not a test class). Full sweep once: 235 classes, 2013 tests, 1 failed (`WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal`, pre-existing) and 4 refused on arming (`AuditingUpdate`, `ErrorDelete`, `ProcessControl`, `TaskResume`, pre-existing). Browser, rebuilt and redeployed, one file at a time: ssl-editor 7/7, security-deletes 4/4, ssl 5/5, wallet-secret 4/4, security 4/4, switches 4/4, users-actions 2/2, roles-editor 8/8, resources-editor 6/6, oauth-delete 2/2, audit-events 4/4, a11y-structural-invariants 10/10. Initial bundle 1,476,658 bytes (over the 1467kB warning, under 1500kB). Probe configurations removed; `OcuPilotProvider` reads back unchanged; no private key line in the diff.
+
+**Residual risks.** The bundle budget (DW-371 red until re-based); VG12; the own-configuration 200 path is pinned only over a held port (`deferred:`).

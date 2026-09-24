@@ -455,7 +455,8 @@ Method TestTheUsersListValidatesAndNamesItsClassicPageInItsOwnCase()
 
 /// <p>Story 2.7 -- the SSL/TLS configurations list's declaration passes the read grammar and the
 /// classic link rule; its route and tool identifier resolve to it; its four read fields are the ones
-/// the vendor LIST answers and none of them is key material; and its classic page is a class
+/// the vendor LIST answers and none of them is key material; the private key password is named only
+/// as its secret argument (Story 9.5); and its classic page is a class
 /// compiled on this instance under the declaration's own case (AD-44).</p>
 /// <p>Mutations: lower-case <code>classicPage</code> in
 /// <class>OcuPilot.Screen.Descriptor.SslConfigList</class> -> the compiled-class assertion goes
@@ -475,8 +476,11 @@ Method TestTheSslConfigurationsListValidatesAndNamesItsClassicPageInItsOwnCase()
     Do $$$AssertEquals(tDeclaration.read.filter.%ToJSON(), "[""Name"",""Description"",""Type""]", "the filter matches on every field but the boolean")
     Do $$$AssertEquals(tDeclaration.read.sort.%ToJSON(), "{""fields"":[""Name"",""Description"",""Type""],""default"":""Name"",""direction"":""asc""}", "and the list sorts by name ascending")
     Do $$$AssertEquals(tDeclaration.context.secretFields.%Size(), 0, "and the read carries no secret to strip")
+    Do $$$AssertEquals(tDeclaration.%Get("secretArguments").%ToJSON(), "[""PrivateKeyPassword""]", "its one secret argument is the private key password the change carries")
+    Set tRest = {}.%FromJSON(tDeclaration.%ToJSON())
+    Do tRest.%Remove("secretArguments")
     For tForbidden = "PrivateKeyPassword", "PrivateKeyFile", "PrivateKeyType", "CertificateFile", "CAFile", "CAPath" {
-        Do $$$AssertEquals((tDeclaration.%ToJSON() [ tForbidden), 0, "no part of the declaration names " _ tForbidden)
+        Do $$$AssertEquals((tRest.%ToJSON() [ tForbidden), 0, "no other part of the declaration names " _ tForbidden)
     }
 
     Set tPage = $ClassMethod(tClass, "ClassicPage")

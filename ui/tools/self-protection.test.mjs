@@ -254,6 +254,9 @@ const KERNEL_REFUSALS = [
   ['UNCOVEREDFIELD', 'uncoveredFieldRefusal'],
   ['OCUPILOTROLE', 'roleRefusalOcuPilot'],
   ['OCUPILOTRESOURCE', 'resourceRefusalOcuPilot'],
+  // Story 9.5: OcuPilot's own provider SSL/TLS configuration, whose four fields and whose Delete the
+  // editor and the list draw refused before a click with this same sentence.
+  ['OCUPILOTSSL', 'sslRefusalOcuPilot'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -281,4 +284,18 @@ test('Story 9.3: system-role answers a name beginning % and system-resource a ro
   assert.equal(selfProtectionReason(SYSTEM_RESOURCE_RULE, '%DB_IRISSYS', '', { Name: '%DB_IRISSYS', AllowDelete: false }), STRINGS.resourceRefusalSystem, 'a system resource is refused');
   assert.equal(selfProtectionReason(SYSTEM_RESOURCE_RULE, 'ProbeResource', '', { Name: 'ProbeResource', AllowDelete: true }), '', 'a deletable one is not');
   assert.equal(selfProtectionReason(SYSTEM_RESOURCE_RULE, '%DB_IRISSYS'), '', 'and with no row the instance alone refuses');
+});
+
+test("Story 9.5: ocupilot-ssl answers OcuPilot's own provider configuration alone, named as the installer names it", async () => {
+  // Mutation (Rule 19): answer '' for `ocupilot-ssl` -> the own-configuration leg goes red; rename
+  // `OCUPILOT_SSL_CONFIGURATION` -> the Base.cls leg goes red.
+  const { selfProtectionReason, OCUPILOT_SSL_RULE, OCUPILOT_SSL_CONFIGURATION } = await import('../src/app/core/self-protection.ts');
+  const { STRINGS } = await import('../src/app/core/strings.ts');
+  const base = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'State', 'Base.cls'), 'utf8');
+  const declared = /Parameter SSLCONFIG As %String = "([^"]+)";/.exec(base);
+  assert.notEqual(declared, null, 'Base.cls declares SSLCONFIG');
+  assert.equal(OCUPILOT_SSL_CONFIGURATION, declared[1], 'one name, read by both sides');
+  assert.equal(selfProtectionReason(OCUPILOT_SSL_RULE, OCUPILOT_SSL_CONFIGURATION), STRINGS.sslRefusalOcuPilot, 'its own configuration is refused');
+  assert.equal(selfProtectionReason(OCUPILOT_SSL_RULE, OCUPILOT_SSL_CONFIGURATION.toLowerCase()), '', 'compared exactly, as the instance resolves a name');
+  assert.equal(selfProtectionReason(OCUPILOT_SSL_RULE, 'ISC.FeatureTracker.SSL.Config'), '', 'and any other configuration is not');
 });

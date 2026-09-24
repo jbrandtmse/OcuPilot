@@ -1831,6 +1831,118 @@ export const STRINGS = {
   rolePromptPrivilege: 'Does this role grant any administrative privilege?',
   /** EXPERIENCE.md:482 */
   rolePromptGrantedRoles: 'Which other roles does this role carry?',
+  /** EXPERIENCE.md:483 */
+  sslFormLabel: 'SSL/TLS configuration',
+  /** EXPERIENCE.md:483 */
+  sslTabVerification: 'Verification',
+  /** EXPERIENCE.md:483 */
+  sslTabCredentials: 'Credentials',
+  /** EXPERIENCE.md:483 */
+  sslTabCryptography: 'Cryptographic settings',
+  /** EXPERIENCE.md:483 */
+  sslTabOcsp: 'OCSP settings',
+  /** EXPERIENCE.md:483 */
+  sslTypeClient: 'Client',
+  /** EXPERIENCE.md:483 */
+  sslFieldVerifyPeer: 'Peer certificate verification',
+  /** EXPERIENCE.md:483 */
+  sslVerifyPeerNone: 'None',
+  /** EXPERIENCE.md:483 */
+  sslVerifyPeerRequest: 'Request',
+  /** EXPERIENCE.md:483 */
+  sslVerifyPeerRequire: 'Require',
+  /** EXPERIENCE.md:483 */
+  sslFieldVerifyDepth: 'Verification depth',
+  /** EXPERIENCE.md:483 */
+  sslCaFileOsStore: 'The operating system\'s certificate store',
+  /** EXPERIENCE.md:483 */
+  sslFieldCaPath: 'Trusted CA directory',
+  /** EXPERIENCE.md:483 */
+  sslFieldAuthorizeCn: 'Pre-authorize the mirror backup member',
+  /** EXPERIENCE.md:483 */
+  sslFieldCertificateFile: 'Certificate file',
+  /** EXPERIENCE.md:483 */
+  sslFieldPrivateKeyFile: 'Private key file',
+  /** EXPERIENCE.md:483 */
+  sslFieldPrivateKeyType: 'Private key type',
+  /** EXPERIENCE.md:483 */
+  sslKeyTypeRsa: 'RSA',
+  /** EXPERIENCE.md:483 */
+  sslKeyTypeEcdsa: 'ECDSA',
+  /** EXPERIENCE.md:483 */
+  sslKeyTypeDsa: 'DSA',
+  /** EXPERIENCE.md:483 */
+  sslFieldTlsMin: 'Minimum TLS version',
+  /** EXPERIENCE.md:483 */
+  sslFieldTlsMax: 'Maximum TLS version',
+  /** EXPERIENCE.md:483 */
+  sslTls10: 'TLS 1.0',
+  /** EXPERIENCE.md:483 */
+  sslTls11: 'TLS 1.1',
+  /** EXPERIENCE.md:483 */
+  sslTls12: 'TLS 1.2',
+  /** EXPERIENCE.md:483 */
+  sslTls13: 'TLS 1.3',
+  /** EXPERIENCE.md:483 */
+  sslFieldCipherList: 'TLS 1.2 cipher list',
+  /** EXPERIENCE.md:483 */
+  sslFieldCiphersuites: 'TLS 1.3 cipher suites',
+  /** EXPERIENCE.md:483 */
+  sslFieldDiffieHellmanBits: 'Diffie-Hellman bits',
+  /** EXPERIENCE.md:483 */
+  sslFieldOcsp: 'OCSP stapling',
+  /** EXPERIENCE.md:483 */
+  sslFieldOcspIssuerCert: 'OCSP issuer certificate file',
+  /** EXPERIENCE.md:483 */
+  sslFieldOcspResponseFile: 'OCSP response file',
+  /** EXPERIENCE.md:483 */
+  sslFieldOcspTimeout: 'OCSP update timeout (seconds)',
+  /** EXPERIENCE.md:483 */
+  sslFieldOcspUrl: 'OCSP responder URL',
+  /** EXPERIENCE.md:484 */
+  sslOwnRole:
+    'OcuPilot\'s agent makes every call to its model provider through this configuration. OcuPilot\'s installer sets its type, peer verification, trusted certificates and whether it is enabled, and restores them at every start.',
+  /** EXPERIENCE.md:485 */
+  sslRefusalOcuPilot:
+    'OcuPilot\'s installer sets this setting of its own provider configuration and restores it at every start, so it cannot be changed here.',
+  /** EXPERIENCE.md:486 */
+  sslFileClassicOnly:
+    'File locations are set on the classic portal\'s SSL/TLS Configuration page.',
+  /** EXPERIENCE.md:486 */
+  sslCrlDeprecated:
+    'Certificate revocation lists are deprecated on this instance and are not set on a configuration.',
+  /** EXPERIENCE.md:487 */
+  sslEffectNoPeerCheck:
+    'The server\'s certificate will no longer be checked, so a connection can reach an impostor.',
+  /** EXPERIENCE.md:488 */
+  sslTestHost: 'Host',
+  /** EXPERIENCE.md:488 */
+  sslTestPort: 'Port',
+  /** EXPERIENCE.md:488 */
+  sslTestPassed: 'The instance connected.',
+  /** EXPERIENCE.md:488 */
+  sslTestFailed: 'The instance could not connect.',
+  /** EXPERIENCE.md:489 */
+  sslListEmptyAgent: 'create an SSL/TLS configuration for outbound HTTPS',
+  /** EXPERIENCE.md:490 */
+  x509DeleteConsequence:
+    'Anything that names this credential can no longer use it. This cannot be undone.',
+  /** EXPERIENCE.md:490 */
+  walletSecretDeleteConsequence:
+    'Anything that reads this secret by name can no longer find it. This cannot be undone.',
+  /** EXPERIENCE.md:490 */
+  sslDeleteConsequence:
+    'Anything that connects through this configuration can no longer use it. This cannot be undone.',
+  /** EXPERIENCE.md:491 */
+  faultAbsentEntityNoList: '<name> is no longer present on this instance.',
+  /** EXPERIENCE.md:492 */
+  sslPromptGroupConnections: 'Connections',
+  /** EXPERIENCE.md:492 */
+  sslPromptVerifies: 'Does this configuration check the certificate of the server it connects to?',
+  /** EXPERIENCE.md:492 */
+  sslPromptProtocols: 'Which TLS versions and ciphers does this configuration allow?',
+  /** EXPERIENCE.md:492 */
+  sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
 } as const;
 

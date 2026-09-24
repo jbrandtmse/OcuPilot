@@ -1927,6 +1927,50 @@ class TestDestructiveTestGuardRule(FixtureTreeCase):
                     f"expected {helper} to count, got {problems}",
                 )
 
+    def test_the_ssl_configuration_calls_and_fixture_helpers_are_in_the_population(self):
+        """DW-332: `Security.SSLConfigs` Create, Delete and Modify change the instance's own security
+        database, and the demo fixture and its fault seam create and remove a TLS configuration, an
+        X.509 credential and a wallet collection, naming no security class of their own."""
+        calls = (
+            ("Security.SSLConfigs).Create", '    Set tSC = ##class(Security.SSLConfigs).Create("Probe", .tProps)'),
+            ("Security.SSLConfigs).Delete", '    Set tSC = ##class(Security.SSLConfigs).Delete("Probe")'),
+            ("Security.SSLConfigs).Modify", '    Set tSC = ##class(Security.SSLConfigs).Modify("Probe", .tProps)'),
+            ("Fixture).Create", '    Set tSC = ##class(OcuPilot.Install.Fixture).Create("probe", .tReports)'),
+            ("Fixture).Remove", '    Set tSC = ##class(OcuPilot.Install.Fixture).Remove("probe", .tReports)'),
+            ("FixtureFault).SeedRemovableObjects", '    Set tSC = ##class(OcuPilot.Test.FixtureFault).SeedRemovableObjects("/a", "b", "c")'),
+            ("FixtureFault).RemoveSeededObjects", '    Set tSC = ##class(OcuPilot.Test.FixtureFault).RemoveSeededObjects("/a", "b", "c")'),
+            ("FixtureFault).Remove", '    Set tSC = ##class(OcuPilot.Test.FixtureFault).Remove("p", .tReports)'),
+        )
+        for label, line in calls:
+            with self.subTest(call=label):
+                self.write_test_class("SslMaker", line)
+                problems: list[str] = []
+                co.check_destructive_test_guard(problems)
+                self.assertTrue(
+                    any("SslMaker.cls" in p and label in p for p in problems),
+                    f"expected {label} to count, got {problems}",
+                )
+                self.write_test_class("SslMaker", line, self.GUARDED_BODY)
+                problems = []
+                co.check_destructive_test_guard(problems)
+                self.assertEqual(problems, [], f"{label}: the arming refusal clears it")
+
+    def test_the_fixture_reads_stay_outside_the_population(self):
+        """The fixture's own lookups -- `Remaining`, `ResolvedPrefix`, `SeededObjectsExist` -- change
+        nothing, and a `Create` prefix of a longer name is not `Create`."""
+        for line in (
+            '    Set tSC = ##class(OcuPilot.Install.Fixture).Remaining("probe", .tLeft)',
+            '    Set tPrefix = ##class(OcuPilot.Install.Fixture).ResolvedPrefix("probe")',
+            '    Set tSC = ##class(OcuPilot.Test.FixtureFault).SeededObjectsExist("/a", "b", "c", .a, .b, .c)',
+            '    Set tSC = ##class(OcuPilot.Install.Fixture).CreateWebApp("probe", "USER", 1, .r, .w)',
+            '    Set tOk = ##class(Security.SSLConfigs).Exists("Probe")',
+        ):
+            with self.subTest(line=line):
+                self.write_test_class("SslReader", line)
+                problems: list[str] = []
+                co.check_destructive_test_guard(problems)
+                self.assertEqual(problems, [])
+
     def test_deleting_a_role_is_in_the_population(self):
         """Outside the rule until DW-396, on the ground that it is the tail of an install probe.
         The classes that delete a role are the same ones that run the install, so the exemption

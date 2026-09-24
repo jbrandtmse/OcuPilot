@@ -78,6 +78,12 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// <code>Certificate</code> and <code>PrivateKey</code> as <code>secret</code>: the port completes
 /// the import from that content (AD-27), and the template, which names only file paths, never
 /// shows it.</p>
+/// <p><b><code>security.ssl.create</code></b> and <b><code>security.ssl.update</code></b> (Story
+/// 9.5) classify <code>Security.SSLConfig</code>'s every classifiable row <code>ordinary</code> but
+/// <code>PrivateKeyPassword</code>, the template's one credential field, which is
+/// <code>secret</code>. The file locations are locations, not key material, and each tool's positive
+/// list admits none of them, so no path is ever advertised (AD-21); the update carries the password
+/// as a declared secret of its own (<class>OcuPilot.Screen.Tool.SslUpdate</class>).</p>
 /// <p><b><code>security.secrets.create</code></b> and <b><code>security.secrets.update</code></b>
 /// classify <code>%Wallet.KeyValue</code>'s class-derived list (AD-3): <code>Usage</code> and
 /// <code>RequireTLS</code> <code>ordinary</code>, the member-less <code>AllowedHosts</code> array
@@ -319,6 +325,60 @@ XData Entries
       "CertificateFile": "ordinary",
       "PrivateKeyPassword": "secret",
       "PrivateKeyFile": "secret"
+    }
+  },
+  "security.ssl.create": {
+    "fieldList": "Security.SSLConfig",
+    "classification": {
+      "AuthorizeCN": "ordinary",
+      "CAFile": "ordinary",
+      "CAPath": "ordinary",
+      "CertificateFile": "ordinary",
+      "CipherList[]": "ordinary",
+      "Ciphersuites[]": "ordinary",
+      "Description": "ordinary",
+      "DiffieHellmanBits": "ordinary",
+      "Enabled": "ordinary",
+      "OCSP": "ordinary",
+      "OCSPIssuerCert": "ordinary",
+      "OCSPResponseFile": "ordinary",
+      "OCSPTimeout": "ordinary",
+      "OCSPURL": "ordinary",
+      "PrivateKeyFile": "ordinary",
+      "PrivateKeyType": "ordinary",
+      "TLSMaxVersion": "ordinary",
+      "TLSMinVersion": "ordinary",
+      "Type": "ordinary",
+      "VerifyDepth": "ordinary",
+      "VerifyPeer": "ordinary",
+      "PrivateKeyPassword": "secret"
+    }
+  },
+  "security.ssl.update": {
+    "fieldList": "Security.SSLConfig",
+    "classification": {
+      "AuthorizeCN": "ordinary",
+      "CAFile": "ordinary",
+      "CAPath": "ordinary",
+      "CertificateFile": "ordinary",
+      "CipherList[]": "ordinary",
+      "Ciphersuites[]": "ordinary",
+      "Description": "ordinary",
+      "DiffieHellmanBits": "ordinary",
+      "Enabled": "ordinary",
+      "OCSP": "ordinary",
+      "OCSPIssuerCert": "ordinary",
+      "OCSPResponseFile": "ordinary",
+      "OCSPTimeout": "ordinary",
+      "OCSPURL": "ordinary",
+      "PrivateKeyFile": "ordinary",
+      "PrivateKeyType": "ordinary",
+      "TLSMaxVersion": "ordinary",
+      "TLSMinVersion": "ordinary",
+      "Type": "ordinary",
+      "VerifyDepth": "ordinary",
+      "VerifyPeer": "ordinary",
+      "PrivateKeyPassword": "secret"
     }
   },
   "security.secrets.create": {

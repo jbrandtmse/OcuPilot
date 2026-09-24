@@ -60,6 +60,20 @@ export const SYSTEM_ROLE_RULE = 'system-role';
  */
 export const SYSTEM_RESOURCE_RULE = 'system-resource';
 
+/**
+ * The rule that protects OcuPilot's own provider SSL/TLS configuration (Story 9.5, AD-10): the
+ * instance refuses its delete, and a change to its type, peer verification, trusted certificates
+ * or enablement, whoever asks.
+ */
+export const OCUPILOT_SSL_RULE = 'ocupilot-ssl';
+
+/**
+ * OcuPilot's own provider SSL/TLS configuration, as `OcuPilot.Kernel.State.Base`'s `SSLCONFIG`
+ * declares it -- mirrored, and pinned equal to it by `ui/tools/self-protection.test.mjs`. A
+ * configuration's name is compared exactly, as the instance resolves it.
+ */
+export const OCUPILOT_SSL_CONFIGURATION = 'OcuPilotProvider';
+
 /** The rule that protects the accounts whose removal the instance refuses (Story 7.2). */
 export const PROTECTED_ACCOUNT_RULE = 'protected-account';
 
@@ -98,6 +112,8 @@ export const SERVICE_ACCOUNTS: readonly string[] = ['CSPSystem', '_Ensemble', 'i
  * than the signed-in one. `ocupilot-application-roles` answers for the applications
  * `serves-ocupilot` does, with the privilege-grant sentence.
  *
+ * `ocupilot-ssl` answers for OcuPilot's own provider SSL/TLS configuration, compared exactly.
+ *
  * `row` is the row's own fields where the caller holds them. `system-role` reads the key alone;
  * `system-resource` reads the row's `AllowDelete` and answers `''` with no row, where the instance
  * still refuses the write.
@@ -109,6 +125,7 @@ export function selfProtectionReason(
   row: Readonly<Record<string, unknown>> | null = null
 ): string {
   if (rowKey === '') return '';
+  if (rule === OCUPILOT_SSL_RULE) return rowKey === OCUPILOT_SSL_CONFIGURATION ? STRINGS.sslRefusalOcuPilot : '';
   if (rule === SYSTEM_ROLE_RULE) return rowKey.trimStart().startsWith('%') ? STRINGS.roleRefusalSystem : '';
   if (rule === SYSTEM_RESOURCE_RULE) {
     const allow = row?.['AllowDelete'];

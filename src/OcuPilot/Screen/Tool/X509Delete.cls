@@ -1,7 +1,8 @@
-/// <p>The X.509 credentials list's delete tool (AD-6, AD-51): propose removing one X.509
+/// <p>The X.509 credentials list's delete tool (AD-6, AD-51, AD-53): propose removing one X.509
 /// credential. It reads the credential's certificate fresh through the vendor's own
 /// <code>Security.X509Credential</code> <code>CERTINFO</code> and mints a proposal whose card lists
-/// what would go. It writes nothing.</p>
+/// what would go. It writes nothing; the list's Delete reaches the same write through the
+/// screen-action route.</p>
 /// <p><b>It is action-style</b> (AD-51): the vendor's <code>NeedsRequestBody()</code> is
 /// <code>PUT</code> or <code>POST</code>, so <code>DELETE</code> reads no body, the tool admits no
 /// settable field, and its field list is empty by derivation (AD-3).</p>
@@ -31,6 +32,9 @@ Parameter CHANGEACTION = "deleted";
 
 /// <p>Declared: a deleted credential is gone with its private key, which OcuPilot cannot restore.</p>
 Parameter DESTRUCTIVE As BOOLEAN = 1;
+
+/// <p>The X.509 credentials list's row action this write carries out (AD-53): Delete, bodyless.</p>
+Parameter SCREENACTIONS = "delete";
 
 /// <p>The top-level names <parameter>READTYPE</parameter> answers, read off the vendor's
 /// <code>RunCertInfo</code> on this build.</p>

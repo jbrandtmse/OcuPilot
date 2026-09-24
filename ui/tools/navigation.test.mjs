@@ -170,6 +170,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'security/oauth/resource-servers',
       'security/oauth/server-clients',
       'security/oauth/server',
+      // Story 9.5: the unlisted SSL/TLS configuration form, reached from the SSL/TLS list.
+      'security/ssl/edit',
       'security/wallet/secrets/edit',
       'security/wallet/secrets',
       'security/x509/edit',
@@ -183,7 +185,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/definitions',
       'agent/switches',
     ],
-    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files and device editor, process details, processes, Locks, System usage, Databases, the unlisted task details and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, the unlisted user form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, the four unlisted OAuth 2.0 tabs, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files and device editor, process details, processes, Locks, System usage, Databases, the unlisted task details and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, the unlisted user form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, the four unlisted OAuth 2.0 tabs, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
   );
 });
 
@@ -235,10 +237,18 @@ test('editorScreenFor resolves a list to its unlisted, id-keyed editor and to no
   const home = screenForRoute('');
   assert.ok(home, 'Home is declared');
   assert.equal(editorScreenFor(home), null, 'a screen with no paired editor resolves none');
+  // Story 9.5: the SSL/TLS list pairs with its one form -- built, unlisted and keyed by an id -- so
+  // its Create opens the form and a row's name opens the same form at its id route.
+  // Mutation (Rule 19): give SslForm a side-bar position -> the unlisted assertion goes red; drop its
+  // descriptor -> every assertion below goes red.
+  const ssl = screenForRoute('security/ssl');
+  assert.equal(createFormFor(ssl)?.route, 'security/ssl/edit', 'the SSL/TLS list\'s Create opens its own form');
+  assert.equal(isListedScreen(screenForRoute('security/ssl/edit')), false, 'which takes no side-bar position');
+  assert.equal(editorScreenFor(ssl)?.route, 'security/ssl/edit', 'and a row name opens the SSL/TLS editor at its id route');
   assert.equal(
-    editorScreenFor(screenForRoute('security/ssl')),
+    editorScreenFor(screenForRoute('security/ldap')),
     null,
-    'and neither does a list whose editor is not built yet'
+    'and a list whose editor is not built yet resolves none'
   );
 });
 

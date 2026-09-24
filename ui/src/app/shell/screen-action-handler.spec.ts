@@ -919,3 +919,50 @@ describe('the Roles and Resources lists\u2019 Delete (Story 9.3)', () => {
     expect(RESOURCES_LIST.rowActions.find((action) => action.id === 'delete')?.selfProtection).toBe('system-resource');
   });
 });
+
+/**
+ * Story 9.5 (DW-1541, DW-1556, FR-42): the X.509 credentials, Secrets and SSL/TLS configurations
+ * lists' Delete, each typed by its name, each with its own consequence, and OcuPilot's own provider
+ * configuration drawn refused before anything is sent.
+ */
+describe('the X.509, Secrets and SSL/TLS lists\u2019 Delete (Story 9.5)', () => {
+  const X509_LIST = 'OcuPilot.Screen.Descriptor.X509CredentialList';
+  const WALLET_LIST = 'OcuPilot.Screen.Descriptor.WalletSecretList';
+  const SSL_LIST = 'OcuPilot.Screen.Descriptor.SslConfigList';
+
+  it('registers Delete on the three lists, each opening the typed-name dialog with its own consequence', () => {
+    // Mutation (Rule 19): drop a list's entry from `DESTRUCTIVE_CONSEQUENCES` -> its consequence assertion goes red.
+    for (const [descriptor, target, consequence] of [
+      [X509_LIST, 'ProbeCredential', STRINGS.x509DeleteConsequence],
+      [WALLET_LIST, 'Probe.Secret', STRINGS.walletSecretDeleteConsequence],
+      [SSL_LIST, 'ProbeSsl', STRINGS.sslDeleteConsequence],
+    ] as const) {
+      const { actions, handler, store, calls } = mount(undefined, descriptor);
+      expect(actions.has(descriptor, 'delete')).toBe(true);
+      handler.startFor(descriptor, 'delete', target, descriptor === X509_LIST ? { Alias: target } : { Name: target }, store);
+      expect(handler.pending()?.kind).toBe('typed-name');
+      expect(handler.pending()?.name).toBe(target);
+      expect(handler.pending()?.consequence).toBe(consequence);
+      expect(calls).toHaveLength(0);
+    }
+  });
+
+  it('sends a confirmed Delete through the screen-action route, keyed by the name', async () => {
+    const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'deleted', target: { type: 'ssl-configuration', scope: 'instance', id: 'ProbeSsl' } } }, SSL_LIST);
+    handler.startFor(SSL_LIST, 'delete', 'ProbeSsl', { Name: 'ProbeSsl' }, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe('/api/ocupilot/screens/security.ssl/action');
+    expect(JSON.parse(calls[0].body)).toMatchObject({ action: 'delete', id: 'ProbeSsl' });
+  });
+
+  it("draws OcuPilot's own provider configuration refused before anything is sent", () => {
+    // Mutation (Rule 19): declare no rule on the SSL list's delete -> the refusal assertion goes red.
+    const { handler, store, calls } = mount(undefined, SSL_LIST);
+    handler.startFor(SSL_LIST, 'delete', 'OcuPilotProvider', { Name: 'OcuPilotProvider' }, store);
+    expect(store.refusal()).toBe(STRINGS.sslRefusalOcuPilot);
+    expect(handler.pending()).toBeNull();
+    expect(calls).toHaveLength(0);
+  });
+});

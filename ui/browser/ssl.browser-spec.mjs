@@ -1,7 +1,9 @@
 /**
  * The SSL/TLS configurations list in a real browser, against the throwaway instance: the declared
  * read, table and filter end to end (AC1), the demo fixture's row (AC2), the response body carrying
- * no key material (AC3) and the Security and secrets side bar (AC4).
+ * no key material (AC3), the Security and secrets side bar (AC4), and the list's Create and row Delete
+ * (Story 9.5). The empty state is never reached here -- every instance holds the vendor's own
+ * configurations -- so its lines are pinned by `OcuPilot.Test.SslUpdate` on the declaration.
  *
  * **It needs the demo fixture** (`OCUPILOT_DEMO=1`, AD-25), because `OcuPilotDemoTLS` is the row
  * AC2 is asserted on and the one whose Description is non-empty, **and it refuses the live
@@ -114,13 +116,15 @@ test('AC1: the list reads once under the declared headers, renders its rows, and
   try {
     await waitForRows(page, config.navigationTimeoutMs);
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
+    // Story 9.5: the list declares Delete, so its table carries the row-actions column.
     assert.deepEqual(headers, [
       STRINGS.tableColumnName,
       STRINGS.tableColumnDescription,
       STRINGS.tableColumnEnabled,
       STRINGS.tableColumnType,
+      STRINGS.commandBoxGroupActions,
     ]);
-    assert.deepEqual(headers, ['Name', 'Description', 'Enabled', 'Type']);
+    assert.deepEqual(headers, ['Name', 'Description', 'Enabled', 'Type', 'Actions']);
     const total = await viewCount(page);
     assert.ok(total >= 2, `the instance lists at least two configurations: ${total}`);
 
@@ -225,6 +229,33 @@ test('AC4: the Security and secrets side bar lists SSL/TLS first among its entri
       'SSL/TLS, then X.509, LDAP / Kerberos, Wallet (Story 6.3), OAuth 2.0 (Story 6.4) and Auditing configuration (Story 7.4), and no dead entry beside them'
     );
     assert.equal(sideBar.current, STRINGS.sslListLabel, 'which is the current item');
+  } finally {
+    await context.close();
+  }
+});
+
+// Story 9.5. Mutation (Rule 19): drop the `SslActions` injection from `app.ts` and redeploy -> the
+// command bar offers no Create and this goes red.
+test('Story 9.5: the list offers Create, which opens the editor at its bare route, and the demo row offers Delete', async () => {
+  const { context, page } = await signedInAtList(config.username, config.password);
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    await filterToSubset(page, { text: DEMO_CONFIG, expectRow: DEMO_CONFIG, total: await viewCount(page), timeoutMs: config.navigationTimeoutMs });
+    await page.evaluate((name) => {
+      const rows = Array.from(document.querySelectorAll('[role="grid"] .ocu-data-table-body [role="row"]'));
+      rows.find((row) => row.querySelector('[role="gridcell"]').textContent.trim() === name).querySelector('[role="gridcell"]:nth-child(2)').click();
+    }, DEMO_CONFIG);
+    await (await page.waitForSelector('[role="row"][aria-selected="true"] .ocu-data-table-trigger', { visible: true, timeout: config.navigationTimeoutMs })).click();
+    await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: config.navigationTimeoutMs });
+    const entries = await page.$$eval('[role="menu"] [role="menuitem"]', (items) => items.map((item) => ({ label: item.querySelector('.ocu-data-table-menu-label')?.textContent.trim() ?? '', disabled: item.getAttribute('aria-disabled') })));
+    assert.deepEqual(entries, [{ label: STRINGS.actionDelete, disabled: null }], 'the demo row offers Delete');
+    await page.keyboard.press('Escape');
+
+    const create = await page.waitForSelector('.ocu-command-bar button.ocu-button-primary', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await create.evaluate((node) => node.textContent.trim()), STRINGS.actionCreate, 'the command bar offers the declared primary action');
+    await create.click();
+    await page.waitForFunction(() => new URL(window.location.href).pathname.endsWith('/security/ssl/edit'), { timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('#ocu-ssl-Name', { visible: true, timeout: config.navigationTimeoutMs });
   } finally {
     await context.close();
   }

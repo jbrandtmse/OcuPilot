@@ -218,6 +218,23 @@ Parameter OCUPILOTROLEREASON = "This role belongs to OcuPilot, which stops worki
 /// and pinned as <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
 Parameter OCUPILOTRESOURCEREASON = "This resource guards OcuPilot's own data or administration. It cannot be deleted or opened to every user; only OcuPilot's installer changes it.";
 
+/// <p>The write would delete OcuPilot's own provider SSL/TLS configuration
+/// (<parameter>OcuPilot.Kernel.State.Base.SSLCONFIG</parameter>), or change its type, its peer
+/// verification, its trusted certificates or whether it is enabled
+/// (<method>OcuPilotSslFields</method>): the installer sets those for AD-32 and restores them at
+/// every start, and peer verification off would send the provider key over unverified TLS (AD-10 as
+/// amended 2026-09-24). Every other field of it may change.</p>
+Parameter OCUPILOTSSL = "PROHIBITED.OCUPILOTSSL";
+
+/// <p>The one sentence <parameter>OCUPILOTSSL</parameter> carries, caller-neutral, published and
+/// pinned as <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
+Parameter OCUPILOTSSLREASON = "OcuPilot's installer sets this setting of its own provider configuration and restores it at every start, so it cannot be changed here.";
+
+/// <p>The effect <method>WeakensByEffect</method> answers for an SSL/TLS configuration that is not
+/// OcuPilot's own whose peer verification a write turns off: the server's certificate is no longer
+/// checked. It is also the proposal's consequence code.</p>
+Parameter EFFECTNOPEERCHECK = "SSL.NOPEERCHECK";
+
 /// <p>The target's entity type is one this release evaluates no predicates for, or its reference
 /// could not be read at all. Refusing wholesale is strictly stronger than the enumerated effects,
 /// and it is what keeps a later story's write tool from shipping without its predicates.</p>
@@ -230,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -264,6 +281,9 @@ Parameter TYPEOAUTHSERVERCLIENT = "oauth2-server-client";
 Parameter TYPEAUDITEVENT = "audit-event";
 
 Parameter TYPEAUDITUSEREVENT = "audit-user-event";
+
+/// <p>An SSL/TLS configuration (Story 9.5, <method>Ssl</method>).</p>
+Parameter TYPESSL = "ssl-configuration";
 
 /// <p>The instance's own predefined account, whose disablement AD-10 forbids. Compared through
 /// <method>NormalizedUser</method>, so every spelling the instance resolves to it is refused.</p>
@@ -361,11 +381,11 @@ Parameter READTYPE = "GET";
 /// then the four <method>User</method> adds, then <parameter>PRIVILEGEGRANT</parameter>, which
 /// only a web application reaches, then the two <method>Process</method> adds, then the one every
 /// covered type shares, with the wholesale refusal last, and then the one <method>Role</method> adds and
-/// the one <method>Resource</method> adds, and the sign-in arm <method>User</method> adds last --
-/// sixteen in all.</p>
+/// the one <method>Resource</method> adds, the sign-in arm <method>User</method> adds, and the one
+/// <method>Ssl</method> adds last -- seventeen in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -393,6 +413,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#UNCOVERED Quit "This release does not check writes to that kind of object against its prohibited set, so none is proposable yet."
     If pCode = ..#OCUPILOTROLE Quit ..#OCUPILOTROLEREASON
     If pCode = ..#OCUPILOTRESOURCE Quit ..#OCUPILOTRESOURCEREASON
+    If pCode = ..#OCUPILOTSSL Quit ..#OCUPILOTSSLREASON
     Quit ""
 }
 
@@ -457,6 +478,11 @@ ClassMethod CoveredTypes() As %List
 /// <code>Type</code> is the fresh read's and no caller changes it.</p>
 /// <p>A device's eight are every field of its classic page but its name (<method>DeviceFields</method>);
 /// the name is its id and never changes.</p>
+/// <p>An SSL/TLS configuration's are the thirteen settings its editor sets
+/// (<method>SslFields</method>) and its private key password, a template field the edit declares
+/// secret. Its file locations are not among them: no caller names a path (AD-21). A change to
+/// OcuPilot's own provider configuration's type, peer verification, trusted certificates or
+/// enablement is refused (<method>Ssl</method>).</p>
 /// <p>The auditing configuration's one is <code>Enabled</code>, and it carries <b>no</b> asymmetric
 /// predicate: AD-10 does not forbid turning auditing off, and the product's answer to it is the
 /// card's warning, the recorded drop and the banner rather than a refusal (AD-15 as amended
@@ -477,6 +503,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEX509 Quit $ListBuild("OwnerList", "PeerNames")
     If pType = ..#TYPEWALLETSECRET Quit $ListBuild("Usage", "RequireTLS", "AllowedHosts", "Secret")
     If pType = ..#TYPEDEVICE Quit ..DeviceFields()
+    If pType = ..#TYPESSL Quit ..SslFields() _ $ListBuild("PrivateKeyPassword")
     Quit ""
 }
 
@@ -547,6 +574,8 @@ ClassMethod AlwaysProhibitedFields(pType As %String) As %List
 /// and the stored payload never carries it. Its <code>Type</code> is derived by the tool after this
 /// set has answered.</p>
 /// <p>A device's eight are the same as a change's (<method>DeviceFields</method>).</p>
+/// <p>An SSL/TLS configuration's thirteen are a change's less the private key password
+/// (<method>SslFields</method>): a create names no private key file, so it can set no password.</p>
 ClassMethod PermittedCreateFields(pType As %String) As %List
 {
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "DispatchClass", "Enabled", "MatchRoles", "NameSpace", "Recurse", "Resource", "WSGIAppLocation", "WSGIAppName", "WSGICallable", "WSGIType")
@@ -556,6 +585,7 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPEX509 Quit $ListBuild("OwnerList", "PeerNames", "PrivateKeyPassword")
     If pType = ..#TYPEWALLETSECRET Quit $ListBuild("Usage", "RequireTLS", "AllowedHosts", "Secret")
     If pType = ..#TYPEDEVICE Quit ..DeviceFields()
+    If pType = ..#TYPESSL Quit ..SslFields()
     Quit ""
 }
 
@@ -626,7 +656,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -680,7 +710,14 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Quit
         }
         If tType = ..#TYPEWALLETSECRET {
+            ; A DELETE sends no body and its card rows are the fingerprint subject, so it reaches
+            ; the sweep with nothing changed, as X509() reasons.
+            If ..WriteTypeOf($Get(tToolClass)) = "DELETE" Kill tChanged
             Set tSC = ..ReviewedFewOnly(..#TYPEWALLETSECRET, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPESSL {
+            Set tSC = ..Ssl(tId, $Get(tToolClass), .tChanged, .pProhibits, .pCode)
             Quit
         }
         If tType = ..#TYPEDEVICE {
@@ -932,7 +969,9 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
 /// unauthenticated bit, <method>AddsUnauthenticated</method>), <parameter>EFFECTNORESOURCE</parameter>
 /// (it drops a resource the target holds, <method>ClearsResource</method>) and
 /// <parameter>EFFECTREPOINTED</parameter> (it changes a field of <parameter>CODEFIELDS</parameter>);
-/// <code>""</code> for none and for every other type.</p>
+/// <code>""</code> for none and for every other type but one: for an SSL/TLS configuration,
+/// <parameter>EFFECTNOPEERCHECK</parameter> when the payload turns peer verification off
+/// (<method>SslWeakening</method>).</p>
 /// <p><b>It is the one answer to "does this write weaken the application?"</b>, as
 /// <method>GrantsPrivilegeByEffect</method> is for privilege. The mint marks the proposal
 /// destructive on it and names the effect as the proposal's consequence. It refuses nothing: on
@@ -944,6 +983,10 @@ ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarge
     Set pEffect = ""
     Set tSC = $$$OK
     Try {
+        If pType = ..#TYPESSL {
+            Set pEffect = ..SslWeakening(pPayload, pTarget)
+            Quit
+        }
         If pType '= ..#TYPEWEBAPPLICATION Quit
         If '$IsObject(pPayload) Quit
         Set tTarget = $Select($IsObject(pTarget): pTarget, 1: {})
@@ -2645,6 +2688,73 @@ ClassMethod Refuse(pCode As %String, Output pProhibits As %Boolean, Output pOutC
 ClassMethod AuditEvent(pType As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
 {
     Quit ..ReviewedFewOnly(pType, .pChanged, .pProhibits, .pCode)
+}
+
+/// <p>The SSL/TLS configuration predicates, in declared order, first hit wins: for OcuPilot's own
+/// provider configuration (<parameter>OcuPilot.Kernel.State.Base.SSLCONFIG</parameter>), a
+/// <code>DELETE</code> and a change to any of <method>OcuPilotSslFields</method> are refused
+/// <parameter>OCUPILOTSSL</parameter>; then, for every write, the reviewed-few sweep.</p>
+/// <p><var>pId</var> is the target's id as the reference carries it, compared exactly because the
+/// instance resolves a configuration's name exactly; <var>pToolClass</var> the proposal's tool. A
+/// delete's card rows are its declared fingerprint subject, so it reaches the sweep with nothing
+/// changed.</p>
+ClassMethod Ssl(pId As %String, pToolClass As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        Set tDelete = (..WriteTypeOf(pToolClass) = "DELETE")
+        If tDelete Kill pChanged
+        If pId = ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG {
+            Set tMoves = tDelete
+            Set tOwn = ..OcuPilotSslFields()
+            For tI = 1:1:$ListLength(tOwn) {
+                If $Data(pChanged($List(tOwn, tI))) Set tMoves = 1
+            }
+            If tMoves {
+                Do ..Refuse(..#OCUPILOTSSL, .pProhibits, .pCode)
+                Quit
+            }
+        }
+        Set tSC = ..ReviewedFewOnly(..#TYPESSL, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The four settings of OcuPilot's own provider configuration the installer sets and restores at
+/// every start (<method>OcuPilot.Install.Installer.EnsureSslConfiguration</method>), which no caller
+/// changes.</p>
+ClassMethod OcuPilotSslFields() As %List
+{
+    Quit $ListBuild("Type", "VerifyPeer", "CAFile", "Enabled")
+}
+
+/// <p>An SSL/TLS configuration's settable fields, create and change alike: the thirteen settings of
+/// its editor's General, Verification, Cryptographic settings and OCSP settings tabs. The file
+/// locations, the private key type, the OCSP responder URL and <code>AuthorizeCN</code> are shown
+/// and kept, never set (AD-21).</p>
+ClassMethod SslFields() As %List
+{
+    Quit $ListBuild("Description", "Enabled", "Type", "VerifyPeer", "VerifyDepth", "CAFile", "TLSMinVersion", "TLSMaxVersion", "CipherList", "Ciphersuites", "DiffieHellmanBits", "OCSP", "OCSPTimeout")
+}
+
+/// <p><parameter>EFFECTNOPEERCHECK</parameter> when <var>pPayload</var> carries a
+/// <code>VerifyPeer</code> of 0 while <var>pTarget</var>'s is above 0, else <code>""</code>. A
+/// payload that carries no <code>VerifyPeer</code> weakens nothing.</p>
+ClassMethod SslWeakening(pPayload As %DynamicObject, pTarget As %DynamicObject) As %String [ Private ]
+{
+    If '$IsObject(pPayload) Quit ""
+    If pPayload.%GetTypeOf("VerifyPeer") = "unassigned" Quit ""
+    Set tAfter = ..Rendered(pPayload, "VerifyPeer")
+    Set tBefore = ..Rendered(pTarget, "VerifyPeer")
+    If '$IsValidNum(tAfter) || (+tAfter '= 0) Quit ""
+    If '$IsValidNum(tBefore) || (+tBefore <= 0) Quit ""
+    Quit ..#EFFECTNOPEERCHECK
 }
 
 }

@@ -36,7 +36,8 @@ export const SCREEN_ACTION_PATH_SUFFIX = '/action';
  * whose Enable and Reset counters are sent at once, whose marker-event Disable warns first, and
  * whose user-event Delete types the event's name, and the Roles and Resources lists (Story 9.3),
  * whose Delete types the name -- a role's stating how many accounts hold it -- and whose role value
- * actions the role editor sends.
+ * actions the role editor sends, and the X.509 credentials, Secrets and SSL/TLS configurations lists
+ * (Story 9.5), whose Delete types the name.
  */
 export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WebAppList',
@@ -53,6 +54,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.AuditUserEventList',
   'OcuPilot.Screen.Descriptor.RoleList',
   'OcuPilot.Screen.Descriptor.ResourceList',
+  'OcuPilot.Screen.Descriptor.X509CredentialList',
+  'OcuPilot.Screen.Descriptor.WalletSecretList',
+  'OcuPilot.Screen.Descriptor.SslConfigList',
 ];
 
 /** The Users list's descriptor, whose row actions carry values (AD-56). */
@@ -196,6 +200,9 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [AUDIT_USER_EVENT_LIST]: { delete: STRINGS.auditUserEventDeleteConsequence },
   [ROLE_LIST]: { delete: STRINGS.roleDeleteConsequence },
   [RESOURCE_LIST]: { delete: STRINGS.resourceDeleteConsequence },
+  'OcuPilot.Screen.Descriptor.X509CredentialList': { delete: STRINGS.x509DeleteConsequence },
+  'OcuPilot.Screen.Descriptor.WalletSecretList': { delete: STRINGS.walletSecretDeleteConsequence },
+  'OcuPilot.Screen.Descriptor.SslConfigList': { delete: STRINGS.sslDeleteConsequence },
 };
 
 /**
@@ -236,6 +243,8 @@ const TYPED_NAME_ROWS: Readonly<
   [TASK_SCHEDULE]: { name: 'Name', field: 'Type', equals: 'System', advisory: STRINGS.taskSystemDeleteConsequence },
   // Deleting OcuPilot's own marker event stops agent writes being marked (AD-15).
   [AUDIT_USER_EVENT_LIST]: { name: 'EventName', field: 'EventName', equals: AGENT_WRITE_EVENT, advisory: STRINGS.proposalAuditWarning },
+  // An X.509 credential is typed by its alias, which is also its row key; it carries no advisory.
+  'OcuPilot.Screen.Descriptor.X509CredentialList': { name: 'Alias', field: '', equals: '', advisory: '' },
 };
 
 /**

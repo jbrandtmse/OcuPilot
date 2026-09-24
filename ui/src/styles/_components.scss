@@ -5578,3 +5578,57 @@ app-screen-outlet .ocu-form-page {
   margin-left: auto;
   color: var(--ocu-restrained);
 }
+
+// The SSL/TLS editor (Story 9.5): its Test connection panel is a group -- two fields, the button
+// and the instance's own result lines -- reset like the authentication group so it draws as a
+// `form-page` field, with the fields wrapping rather than overflowing and each result line breaking
+// anywhere, since the instance's lines carry long unbroken error codes. The cipher textareas read in
+// the monospace face their entries are written in.
+.ocu-ssl-test {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ocu-space-2);
+  min-inline-size: 0;
+  margin: var(--ocu-space-4) 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.ocu-ssl-test legend {
+  padding: 0;
+}
+
+.ocu-ssl-test-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ocu-space-4);
+  max-width: 100%;
+}
+
+.ocu-ssl-test-result {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.ocu-ssl-test-lines {
+  margin: 0;
+  padding-left: var(--ocu-space-4);
+  font-family: var(--ocu-type-code-family);
+  overflow-wrap: anywhere;
+}
+
+.ocu-ssl-ciphers {
+  font-family: var(--ocu-type-code-family);
+}
+
+// The editor's flags are 24px targets (DW-1337): the checkbox itself and the label that wraps it.
+app-ssl-form-page .ocu-field-checkbox {
+  min-block-size: var(--ocu-space-6);
+}
+
+app-ssl-form-page .ocu-field-checkbox input[type='checkbox'] {
+  inline-size: var(--ocu-space-6);
+  block-size: var(--ocu-space-6);
+  margin: 0;
+}

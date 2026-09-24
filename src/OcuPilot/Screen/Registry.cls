@@ -2243,8 +2243,11 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
 /// and its sentence is <code>SERVICEACCOUNTSIGNINREASON</code>. <code>system-role</code> and
 /// <code>system-resource</code> are the delete ones (Story 9.3): a role whose name begins
 /// <code>%</code>, and a resource whose row reads <code>AllowDelete</code> false, each explained by
-/// its <class>OcuPilot.Api.Error</class> reason and refused by its delete tool.</p>
-Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource";
+/// its <class>OcuPilot.Api.Error</class> reason and refused by its delete tool.
+/// <code>ocupilot-ssl</code> is OcuPilot's own provider SSL/TLS configuration (Story 9.5), explained
+/// by <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTSSLREASON</parameter> and refused by
+/// the kernel whatever the caller.</p>
+Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl";
 
 /// <p>The fewest suggested prompts a declaration that declares any may carry (Story 11.3).</p>
 Parameter SUGGESTEDPROMPTSMIN As INTEGER = 3;
