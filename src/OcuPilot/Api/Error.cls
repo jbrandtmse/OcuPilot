@@ -1118,6 +1118,12 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#USERROUTINELENGTH Quit ..#REASONUSERROUTINELENGTH
     If pCode = ..#USERROLESUNKNOWN Quit ..#REASONUSERROLESUNKNOWN
     If pCode = ..#USERROLESSHAPE Quit ..#REASONUSERROLESSHAPE
+    If pCode = ..#USERCOMMENTLENGTH Quit ..#REASONUSERCOMMENTLENGTH
+    If pCode = ..#USEREMAILADDRESSLENGTH Quit ..#REASONUSEREMAILADDRESSLENGTH
+    If pCode = ..#USERPHONENUMBERLENGTH Quit ..#REASONUSERPHONENUMBERLENGTH
+    If pCode = ..#USERPHONEPROVIDERLENGTH Quit ..#REASONUSERPHONEPROVIDERLENGTH
+    If pCode = ..#USERTWOFACTORBOTH Quit ..#REASONUSERTWOFACTORBOTH
+    If pCode = ..#USERAUTHEENABLEDSCOPE Quit ..#REASONUSERAUTHEENABLEDSCOPE
     If pCode = ..#ROLENAMEREQUIRED Quit ..#REASONROLENAMEREQUIRED
     If pCode = ..#ROLENAMELENGTH Quit ..#REASONROLENAMELENGTH
     If pCode = ..#ROLENAMESHAPE Quit ..#REASONROLENAMESHAPE
@@ -1207,7 +1213,7 @@ ClassMethod WebAppViolationCodes() As %List
 /// it reddens.</p>
 ClassMethod UserViolationCodes() As %List
 {
-    Quit $ListBuild(..#USERNAMEREQUIRED, ..#USERNAMESHAPE, ..#USERNAMETAKEN, ..#USERPASSWORDREQUIRED, ..#USERPASSWORDPOLICY, ..#USERFULLNAMELENGTH, ..#USEREXPIRATIONDATESHAPE, ..#USERNAMESPACEUNKNOWN, ..#USERROUTINENAMESPACE, ..#USERROUTINELENGTH, ..#USERROLESUNKNOWN, ..#USERROLESSHAPE)
+    Quit $ListBuild(..#USERNAMEREQUIRED, ..#USERNAMESHAPE, ..#USERNAMETAKEN, ..#USERPASSWORDREQUIRED, ..#USERPASSWORDPOLICY, ..#USERFULLNAMELENGTH, ..#USEREXPIRATIONDATESHAPE, ..#USERNAMESPACEUNKNOWN, ..#USERROUTINENAMESPACE, ..#USERROUTINELENGTH, ..#USERROLESUNKNOWN, ..#USERROLESSHAPE, ..#USERCOMMENTLENGTH, ..#USEREMAILADDRESSLENGTH, ..#USERPHONENUMBERLENGTH, ..#USERPHONEPROVIDERLENGTH, ..#USERTWOFACTORBOTH, ..#USERAUTHEENABLEDSCOPE)
 }
 
 /// <p>Every <code>ROLE.*</code> field-level violation code, as a <class>%List</class>, for the
@@ -1825,6 +1831,48 @@ Parameter REASONUSERROLESUNKNOWN = "One of those roles does not exist on this in
 Parameter USERROLESSHAPE = "USER.ROLES.SHAPE";
 
 Parameter REASONUSERROLESSHAPE = "Roles are a list of role names.";
+
+/// <p>Violation code: the comment is longer than <property>Security.Users.Comment</property>
+/// stores.</p>
+Parameter USERCOMMENTLENGTH = "USER.COMMENT.LENGTH";
+
+Parameter REASONUSERCOMMENTLENGTH = "That comment is longer than this instance stores.";
+
+/// <p>Violation code: the email address is longer than
+/// <property>Security.Users.EmailAddress</property> stores.</p>
+Parameter USEREMAILADDRESSLENGTH = "USER.EMAILADDRESS.LENGTH";
+
+Parameter REASONUSEREMAILADDRESSLENGTH = "That email address is longer than this instance stores.";
+
+/// <p>Violation code: the mobile phone number is longer than
+/// <property>Security.Users.PhoneNumber</property> stores.</p>
+Parameter USERPHONENUMBERLENGTH = "USER.PHONENUMBER.LENGTH";
+
+Parameter REASONUSERPHONENUMBERLENGTH = "That phone number is longer than this instance stores.";
+
+/// <p>Violation code: the mobile phone service provider is longer than
+/// <property>Security.Users.PhoneProvider</property> stores.</p>
+Parameter USERPHONEPROVIDERLENGTH = "USER.PHONEPROVIDER.LENGTH";
+
+Parameter REASONUSERPHONEPROVIDERLENGTH = "That service provider name is longer than this instance stores.";
+
+/// <p>Violation code: both two-factor methods are on, SMS text and a time-based one-time
+/// password.</p>
+Parameter USERTWOFACTORBOTH = "USER.TWOFACTOR.BOTH";
+
+Parameter REASONUSERTWOFACTORBOTH = "Choose SMS text or a time-based one-time password for two-factor sign-in, not both.";
+
+/// <p>Violation code: the change to <code>AutheEnabled</code> moves a bit other than the two
+/// two-factor ones, or is not a whole number.</p>
+Parameter USERAUTHEENABLEDSCOPE = "USER.AUTHEENABLED.SCOPE";
+
+Parameter REASONUSERAUTHEENABLEDSCOPE = "Only the two-factor settings of how this account signs in can be changed here.";
+
+/// <p>Machine code (AD-12, AD-39): the user an edit or its form read names is not one this
+/// instance holds. Rendered on the <parameter>NOTFOUND</parameter> slug.</p>
+Parameter USERNAMEABSENT = "USER.NAME.ABSENT";
+
+Parameter REASONUSERNAMEABSENT = "This instance has no user with that name.";
 
 /// <p>Machine code (AD-12, AD-39): the request to create a role broke one or more of the rules
 /// <class>OcuPilot.Area.Permissions.RoleCreateRules</class> applies before the port is touched.

@@ -5426,3 +5426,87 @@ app-resource-list-page {
   flex: 999 1 0;
   max-width: max-content;
 }
+
+// The tabbed form-page (Story 9.1, Epic 9's editors): Material's tab nav bar over one form, drawn
+// with the detail page's tabs tokens. A tab whose fields hold refusals carries a `destructive` dot
+// after its label; its count is in its accessible name, so the dot is decoration.
+.ocu-form-tabs {
+  --mat-tab-container-height: 40px;
+  --mat-tab-label-text-font: var(--ocu-type-body-family);
+  --mat-tab-label-text-size: var(--ocu-type-body-size);
+  --mat-tab-label-text-line-height: var(--ocu-type-body-line-height);
+  --mat-tab-label-text-tracking: var(--ocu-type-body-tracking);
+  --mat-tab-label-text-weight: 600;
+  --mat-tab-inactive-label-text-color: var(--ocu-on-surface-variant);
+  --mat-tab-inactive-hover-label-text-color: var(--ocu-on-surface-variant);
+  --mat-tab-inactive-focus-label-text-color: var(--ocu-on-surface-variant);
+  --mat-tab-active-label-text-color: var(--ocu-secondary);
+  --mat-tab-active-hover-label-text-color: var(--ocu-secondary);
+  --mat-tab-active-focus-label-text-color: var(--ocu-secondary);
+  --mat-tab-active-indicator-color: var(--ocu-secondary);
+  --mat-tab-active-hover-indicator-color: var(--ocu-secondary);
+  --mat-tab-active-focus-indicator-color: var(--ocu-secondary);
+  --mat-tab-active-indicator-height: 2px;
+  --mat-tab-divider-color: var(--ocu-outline-variant);
+  --mat-tab-divider-height: 1px;
+
+  display: block;
+  min-width: 0;
+}
+
+.ocu-form-tab-label {
+  white-space: nowrap;
+}
+
+.ocu-form-tab-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  margin-left: var(--ocu-space-2);
+  border-radius: 50%;
+  background: var(--ocu-destructive);
+}
+
+.ocu-form-tab-body {
+  padding-top: var(--ocu-space-4);
+}
+
+// The user editor (Story 9.1): its header actions sit above the tabs, and the Roles tab lists the
+// roles the account holds, each with its Remove.
+.ocu-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ocu-space-2);
+  margin: 0 0 var(--ocu-space-3);
+}
+
+.ocu-form-action-reason {
+  @include typo.ocu-type('caption');
+
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--ocu-restrained);
+}
+
+.ocu-form-roles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  max-width: 480px;
+  margin: 0 0 var(--ocu-space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.ocu-form-role {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ocu-space-2);
+  min-width: 0;
+}
+
+.ocu-form-role-name {
+  overflow-wrap: anywhere;
+}

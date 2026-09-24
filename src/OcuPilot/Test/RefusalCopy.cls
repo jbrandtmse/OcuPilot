@@ -31,14 +31,14 @@ Method TestTheServingPathRefusalIsOneSentenceOnBothSurfaces()
 
 /// <p>AD-10 as amended, AD-53 (Story 7.2): each of the four account codes answers its own
 /// parameter, and none names a caller -- the screen's row action and the agent's confirm are refused
-/// by the one predicate.</p>
+/// by the one predicate. Story 9.1's service-account sign-in code (DW-1520) is the fifth.</p>
 /// <p>Mutation (Rule 19): answer a literal for any one of the four codes in
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.ReasonFor</method>, or restore its agent-worded
 /// sentence, and recompile -- that code's legs go red.</p>
 Method TestEachAccountRefusalIsItsParameterAndNamesNoCaller()
 {
     Set tClass = "OcuPilot.Kernel.Proposal.Prohibited"
-    For tCode = "SYSTEMACCOUNT", "CURRENTUSER", "SERVICEACCOUNT", "LASTALLHOLDER" {
+    For tCode = "SYSTEMACCOUNT", "CURRENTUSER", "SERVICEACCOUNT", "LASTALLHOLDER", "SERVICEACCOUNTSIGNIN" {
         Set tServer = ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor($Parameter(tClass, tCode))
         Do $$$AssertNotEquals(tServer, "", tCode _ ": the kernel answers a written sentence")
         Do $$$AssertEquals(tServer, $Parameter(tClass, tCode _ "REASON"), tCode _ ": which is its parameter, not a literal in the lookup")

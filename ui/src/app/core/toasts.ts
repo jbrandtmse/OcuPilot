@@ -1,20 +1,21 @@
 /**
  * The off-screen change toast (AD-14, AD-11, AD-39).
  *
- * A confirmed write publishes one `changed` event on the one bus. When the screen the user is
- * looking at shows that entity, the row highlight is the confirmation and nothing else is raised.
- * When it does not, the change would otherwise be invisible -- so this store raises a toast
- * naming it, with "Open in <screen>" where a built screen shows that entity type.
+ * A confirmed write publishes one `changed` event on the one bus. When the user is looking at the
+ * entity's own list, the row highlight is the confirmation and nothing else is raised. Anywhere
+ * else -- a details or an editor screen of that entity included -- this store raises a toast naming
+ * it, with "Open in <list>", which opens the list with the entity selected (DW-1546, PRD UJ-6).
  *
  * **It never renders a fault.** A read fault, a 403 and a refused confirm are banners
  * (AD-12/AD-39, DESIGN.md's toast recipe says so in as many words), and this store subscribes to
  * the bus alone, which carries no fault -- so there is no branch that could raise one.
  *
- * **"Does the open screen show this entity" is asked once.** `screenShowsEntity` is the same
- * predicate `RefreshService` filters on, so a change either highlights a row there or raises a
- * toast here. The open screen is resolved from the router URL rather than from the refresh
- * service's bound screen: a screen that declares no auto-refresh still shows entities, and
- * `RefreshService` does not expose what it is bound to.
+ * **The toast is hidden only while its own target is open.** The target is `screenForChange`'s --
+ * the entity's list -- and the scope half is `screenShowsEntity`'s, the predicate `RefreshService`
+ * filters on, so the list that re-fetches and highlights the row is the one screen that raises
+ * nothing. The open screen is resolved from the router URL rather than from the refresh service's
+ * bound screen: a screen that declares no auto-refresh still shows entities, and `RefreshService`
+ * does not expose what it is bound to.
  *
  * **The timers pause together.** Hovering or focusing anywhere in the stack holds every
  * countdown, because a toast being read must not expire under the reader (EXPERIENCE.md's
@@ -35,6 +36,7 @@ import {
   screenShowsEntity,
 } from './navigation.ts';
 import { displayEntityId } from './entity-id.ts';
+import type { ScreenDeclaration } from './screens.generated.ts';
 import { STRINGS, stringFor } from './strings.ts';
 
 /**
@@ -191,9 +193,9 @@ export class ToastStore {
   publish(event: ChangeEvent): boolean {
     if (event.kind !== 'changed') return false;
     if (event.action === '') return false;
-    if (this.openScreenShows(event)) return false;
-
     const target = screenForChange(event);
+    if (target !== null && this.targetIsOpen(target.screen, event)) return false;
+
     const lifetime = target === null ? TOAST_LIFETIME_MS : TOAST_LIFETIME_WITH_ACTION_MS;
     this.minted += 1;
     const entry: ToastEntry = {
@@ -275,16 +277,18 @@ export class ToastStore {
   }
 
   /**
-   * Whether the screen the shell is standing on already shows the entity `event` names.
+   * Whether the screen the shell is standing on is `target`, the screen this change's toast would
+   * open, showing the entity in `event`'s scope.
    *
-   * Resolved with `screenForUrl`, which is the repository's answer to "what is open": a detail
-   * route is `<list route>/<encoded id>` and declares no route of its own, so an exact route-table
-   * match answers `null` on every id route and the suppression would fail exactly where the toast's
-   * own action lands the user. It resolves built screens only, so there is no second gate here.
+   * Resolved with `screenForUrl`, which is the repository's answer to "what is open": a list opened
+   * on an entity is `<list route>/<encoded id>` and declares no route of its own, so an exact
+   * route-table match answers `null` on every id route and the suppression would fail exactly where
+   * the toast's own action lands the user. It resolves built screens only, so there is no second
+   * gate here.
    */
-  private openScreenShows(event: ChangeEvent): boolean {
+  private targetIsOpen(target: ScreenDeclaration, event: ChangeEvent): boolean {
     const screen = screenForUrl(this.currentUrl());
-    if (screen === null) return false;
+    if (screen === null || screen.descriptor !== target.descriptor) return false;
     return screenShowsEntity(screen, event, this.namespace());
   }
 

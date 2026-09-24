@@ -264,13 +264,13 @@ test('documentScreenFor resolves the REST API explorer to its unlisted, id-keyed
   assert.equal(isListedScreen(screenForRoute('web-applications/list/edit')), false, 'which takes no side-bar position');
   assert.equal(editorScreenFor(webApps), null, 'but a row name opens the list\'s own id route');
   assert.equal(createFormFor(screenForRoute('agent/definitions')).route, 'agent/definitions/edit', 'and a form that reads its id is both');
-  // Story 8.2: the Users list pairs with its create form the same way.
-  // Mutation (Rule 19): drop UserForm from `CREATE_ONLY_FORMS` -> the editor assertion below and
-  // the user leg of the screenForChange test go red.
+  // Story 8.2: the Users list pairs with its create form the same way; Story 9.1's user editor reads
+  // the id, so a row's name opens it.
+  // Mutation (Rule 19): put UserForm back in `CREATE_ONLY_FORMS` -> the editor assertion below goes red.
   const users = screenForRoute('permissions/users');
   assert.equal(createFormFor(users).route, 'permissions/users/edit', 'the Users list\'s Create opens its own form');
   assert.equal(isListedScreen(screenForRoute('permissions/users/edit')), false, 'which takes no side-bar position');
-  assert.equal(editorScreenFor(users), null, 'and a row name does not open it, because it reads no id');
+  assert.equal(editorScreenFor(users)?.route, 'permissions/users/edit', 'and a row name opens the user editor at its id route');
   // Story 8.3: the Roles list pairs with its create form the same way.
   // Mutation (Rule 19): drop RoleForm from `CREATE_ONLY_FORMS` -> the editor assertion below and
   // the role leg of the screenForChange test go red.
@@ -965,12 +965,15 @@ test('screenForChange resolves the screen a change opens and the route that name
   assert.equal(target.screen.route, 'web-applications/list');
   assert.equal(target.screen, screenForEntityType('web-application'), 'the same lookup, not a second one');
   assert.equal(target.route, `web-applications/list/${encodeEntityId('/csp/myapp')}`);
-  // A create-only form is skipped, and nothing else changes: the first built screen of a type
-  // still wins, so a task's toast opens the task's own details rather than a list.
-  assert.equal(screenForEntityType('task').route, 'tasks/schedule/details', 'a task change opens its details');
-  assert.equal(screenForEntityType('agent-definition').route, 'agent/definitions/edit', 'a definition change opens its form');
-  assert.equal(screenForEntityType('user').route, 'permissions/users', 'a user change opens the Users list, not the create form');
+  // DW-1546, PRD UJ-6: a change opens the entity's list with the entity selected -- the listed list
+  // earliest in its side bar -- so a task's toast opens the Task schedule, not the task's details.
+  // Mutation (Rule 19): answer the first built screen of the type -> the task and definition legs go red.
+  assert.equal(screenForEntityType('task').route, 'tasks/schedule', 'a task change opens the Task schedule');
+  assert.equal(screenForChange({ type: 'task', id: '12' })?.route, 'tasks/schedule/12', 'with the task as the route id');
+  assert.equal(screenForEntityType('agent-definition').route, 'agent/definitions', 'a definition change opens the Definitions list');
+  assert.equal(screenForEntityType('user').route, 'permissions/users', 'a user change opens the Users list, not its editor');
   assert.equal(screenForEntityType('role').route, 'permissions/roles', 'a role change opens the Roles list, not the create form');
+  assert.equal(screenForEntityType('database').route, 'os-management/databases', 'and of two database lists, the listed one');
   assert.ok(!target.route.includes('/csp/myapp'), 'the id is one encoded segment, never raw path (AD-13)');
 
   // A type no built screen shows is not a fault: the toast still says what changed, with nothing

@@ -10,8 +10,8 @@
 /// wire (<parameter>OcuPilot.Port.AdminPort.RENAMEDTYPES</parameter>). The model can never supply
 /// it: the tool admits no settable field, and the mint refuses a declared secret outright.</p>
 /// <p><b>The change-on-login flag is not this tool's</b>: the vendor type cannot carry it, so it is
-/// its own <class>OcuPilot.Screen.Tool.UserUpdate</class> write, sent first and again once the
-/// password has landed, because this write clears it (AD-56).</p>
+/// its own <class>OcuPilot.Screen.Tool.UserUpdate</class> write, sent first. This write clears it,
+/// so <method>AfterWrite</method> sets it again when the fresh read found it set (AD-56).</p>
 /// <p><b>Its fingerprint covers <code>Enabled</code></b>, the state the precondition reads; the
 /// password is never part of it, and no read answers one.</p>
 /// <p>AD-49 does not apply: this is an administrator setting another account's password through the
@@ -47,6 +47,12 @@ Parameter STATEFIELD = "Password";
 Parameter PRECONDITIONFIELD = "Enabled";
 
 Parameter FINGERPRINTSUBJECT = "Enabled";
+
+/// <p>The flag the vendor's password change clears, and the merge request type that sets it again
+/// (<method>AfterWrite</method>).</p>
+Parameter CHANGEPASSWORDFIELD = "ChangePassword";
+
+Parameter FLAGWRITETYPE = "PUT";
 
 Parameter WRITERESOURCE = "%Admin_Secure";
 
@@ -84,6 +90,32 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
     Set tOwn = $ListBuild(..#WRITERESOURCE, ..#WRITEPERMISSION)
     If $ListFind(tPairs, tOwn) Quit tPairs
     Quit tPairs _ $ListBuild(tOwn)
+}
+
+/// <p>Re-apply the change-on-login flag the vendor's password change clears (AD-56 (i) as amended
+/// 2026-09-23): when the fresh read taken before the write, <var>pFresh</var>, had
+/// <code>ChangePassword</code> set, re-read the account through the same port and <code>PUT</code>
+/// its complete property set with the flag set. A flag that was not set is left alone.</p>
+/// <p>Both callers reach it through <method>OcuPilot.Kernel.Proposal.Operation.ApplyAt</method>, so
+/// a flag proposal confirmed before this write ends set either way. A failed re-read or re-apply is
+/// an error status with the port's own fault; the password has been set.</p>
+ClassMethod AfterWrite(pPort As %String, pEndpoint As %String, pIdParam As %String, pIdValue As %String, pFresh As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    If '$IsObject(pFresh) || (pFresh.%GetTypeOf(..#CHANGEPASSWORDFIELD) '= "boolean") Quit $$$OK
+    If 'pFresh.%Get(..#CHANGEPASSWORDFIELD) Quit $$$OK
+    Kill tQuery
+    Set tQuery(pIdParam) = pIdValue
+    Set tSC = $ClassMethod(pPort, "Invoke", pEndpoint, "GET", .tQuery, "", .tNow, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject($Get(tNow)) || 'tNow.%IsA("%Library.DynamicObject") {
+        Set pHttpStatus = 404
+        Quit $$$ERROR($$$GeneralError, "the account could not be re-read to restore its change-on-login flag")
+    }
+    If tNow.%Get(..#CHANGEPASSWORDFIELD) Quit $$$OK
+    Do tNow.%Set(..#CHANGEPASSWORDFIELD, 1, "boolean")
+    Quit $ClassMethod(pPort, "Invoke", pEndpoint, ..#FLAGWRITETYPE, .tQuery, tNow, .tWritten, .pHttpStatus, .pFault)
 }
 
 /// <p>The card's one row, from the fresh read <var>pFresh</var>: <code>{field: "Password",

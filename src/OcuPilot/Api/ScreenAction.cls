@@ -258,7 +258,7 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
         ; from this request's own local; every other action-style write sends none.
         Set tSendBody = tPayload
         If 'tSendsBody Set tSendBody = ##class(OcuPilot.Kernel.Proposal.Operation).SecretBody(pToolClass, pSecrets, ##class(OcuPilot.Screen.Tool.Registry).SecretArguments(pTool, .tSecretsDeclared))
-        Set tWriteSC = ##class(OcuPilot.Kernel.Proposal.Operation).Apply(pToolClass, ..PortClass(), tEndpoint, tIdParam, pId, tPayloadJson, tSendBody, .tWritten, .tWriteHttp, .tWriteFault)
+        Set tWriteSC = ##class(OcuPilot.Kernel.Proposal.Operation).Apply(pToolClass, ..PortClass(), tEndpoint, tIdParam, pId, tPayloadJson, tSendBody, .tWritten, .tWriteHttp, .tWriteFault, tFresh)
         Set tSendBody = ""
         If $$$ISERR(tWriteSC) {
             Set tSC = ..Fault(tWriteSC, tWriteHttp, .tWriteFault)

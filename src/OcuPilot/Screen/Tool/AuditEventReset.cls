@@ -1,16 +1,17 @@
 /// <p>The System events list's reset tool (AD-51, AD-53, FR-47): set one audit event's counters back
 /// to zero. Two callers reach it: the list's Reset counters row action through
 /// <class>OcuPilot.Api.ScreenAction</class>, and the agent's proposal and confirmation. Both read
-/// the event fresh through <code>Security.Audit.Event</code>'s <code>GET</code> and issue the
-/// vendor's <code>CLEARCOUNT</code>.</p>
+/// the event fresh through <code>Security.Audit.Event</code>'s <code>LIST</code>, filtered to the
+/// one row whose <code>EventName</code> is the id, and issue the vendor's <code>CLEARCOUNT</code>
+/// (AD-51 as amended 2026-09-23): the <code>GET</code> answers only <code>Description</code> and
+/// <code>Enabled</code>, and the counter the card shows is the list row's.</p>
 /// <p><b>It is an action-style write whose vendor type needs a body it ignores.</b>
 /// <code>CLEARCOUNT</code>'s <code>NeedsRequestBody()</code> is true and its
 /// <code>RunClearCount</code> reads nothing from the body, so the port sends <code>{}</code>
 /// (<parameter>OcuPilot.Port.AdminPort.CONSTANTBODIES</parameter>) and the tool sends none.</p>
-/// <p><b>Its diff comes from the read</b>: one <code>Total</code> row moving to <code>0</code>. The
-/// <code>GET</code> answers no counter, so the row's before-state is empty; the counters move with
-/// every audited event, so they are no part of the fingerprint subject, which is the event's
-/// <code>Enabled</code> flag.</p>
+/// <p><b>Its diff comes from the read</b>: one <code>Total</code> row moving from the read's own
+/// <code>Total</code> to <code>0</code>. The counters move with every audited event, so they are no
+/// part of the fingerprint subject, which is the event's <code>Enabled</code> flag.</p>
 /// <p><class>OcuPilot.Screen.Tool.AuditUserEventReset</class> is the same tool for the User events
 /// list.</p>
 Class OcuPilot.Screen.Tool.AuditEventReset Extends OcuPilot.Screen.Tool.Write
@@ -41,8 +42,16 @@ Parameter PRECONDITIONFIELD = "Enabled";
 /// <p>What the user reviewed: this event, in this enabled state.</p>
 Parameter FINGERPRINTSUBJECT = "Enabled";
 
-/// <p>What this tool's own <code>GET</code> answers.</p>
-Parameter READANSWERS = "Description,Enabled";
+/// <p>The fresh read: the vendor's event list, sent the id as <code>names</code> and filtered to the
+/// row whose <code>EventName</code> it is.</p>
+Parameter READTYPE = "LIST";
+
+Parameter READIDPARAM = "names";
+
+Parameter READROWKEY = "EventName";
+
+/// <p>What this tool's own list row answers.</p>
+Parameter READANSWERS = "EventName,Enabled,Total,Written,Lost";
 
 /// <p>The state row's label: the counter the list shows first.</p>
 Parameter STATEFIELD = "Total";
@@ -103,8 +112,8 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
     Quit tPairs _ $ListBuild(tOwn)
 }
 
-/// <p>The one row this proposal's card shows, from the fresh <code>GET</code> <var>pFresh</var>:
-/// <code>Total</code> moving to <code>0</code>. A read that did not answer
+/// <p>The one row this proposal's card shows, from the fresh list row <var>pFresh</var>:
+/// <code>Total</code> moving from its read value to <code>0</code>. A read that did not answer
 /// <parameter>PRECONDITIONFIELD</parameter> as a boolean is <var>pProblem</var>.</p>
 ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, Output pProblem As %String) As %Status
 {
@@ -118,7 +127,7 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
         }
         Set tRow = {}
         Do tRow.%Set("field", ..#STATEFIELD, "string")
-        Do tRow.%Set("before", "", "string")
+        Do tRow.%Set("before", ##class(OcuPilot.Kernel.Proposal.Mint).Display(pFresh.%Get(..#STATEFIELD), pFresh.%GetTypeOf(..#STATEFIELD)), "string")
         Do tRow.%Set("after", ..#STATEAFTER, "string")
         Do pRows.%Push(tRow)
     } Catch ex {

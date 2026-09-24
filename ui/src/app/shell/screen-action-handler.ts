@@ -5,8 +5,8 @@ import { ApiService } from '../core/api';
 import { ChangeBus, type ChangeAction } from '../core/change-bus';
 import { splitCompositeId } from '../core/entity-id';
 import { ScreenActions, actionLabel } from '../core/screen-actions';
-import { SCREEN_READ_PATH_PREFIX, screenReadPath } from '../core/screen-read';
-import { DEFAULT_MAX_ROWS, ScreenStores } from '../core/screen-store';
+import { SCREEN_READ_PATH_PREFIX } from '../core/screen-read';
+import { ScreenStores } from '../core/screen-store';
 import { SCREENS, type ScreenDeclaration } from '../core/screens.generated';
 import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
@@ -86,8 +86,11 @@ export const ADD_ROLE = 'add-role';
 export const REMOVE_ROLE = 'remove-role';
 const ROLE_VALUE = 'Role';
 
-/** The screen whose declared read lists the roles an add may offer (AD-5). */
-const ROLES_TOOL_IDENTIFIER = 'permissions.roles';
+/**
+ * The form read whose `roles` an add offers, each marked `privileged` by the server's own
+ * classifier (AD-10): the Add role dialog states the grant's consequence from it (DW-1523).
+ */
+export const USER_FORM_READ_PATH = '/api/ocupilot/users/form';
 
 /**
  * The row actions that open a dialog asking for a value, keyed by descriptor and then by action id.
@@ -248,7 +251,22 @@ export interface PendingConfirm {
   readonly advisory: string;
   readonly flagLabel: string;
   readonly options: readonly string[];
+  /** The role dialog's choices that grant %All or an administrative privilege (AD-10, DW-1523). */
+  readonly privileged: readonly string[];
 }
+
+/**
+ * Where an action started with `startFor` reports back: the refusal sentence to show (AD-39), and,
+ * optionally, that the instance applied the action. A list page's sink is its screen store; an
+ * editor supplies its own.
+ */
+export interface ActionSink {
+  setRefusal(reason: string): void;
+  applied?(actionId: string): void;
+}
+
+/** The fields of the row an action is about, where the caller holds them. */
+export type RowFields = Readonly<Record<string, unknown>> | null;
 
 /** The values a row action sends beside its id, keyed by the names its tool declares (AD-56). */
 export type ActionValues = Readonly<Record<string, string>>;
@@ -265,16 +283,19 @@ export type ActionValues = Readonly<Record<string, string>>;
  *
  * **The target is the selected row's key**, which is what the row menu selects on open and what
  * the command bar acts on. A run with no selection does nothing: both surfaces already draw the
- * action `aria-disabled` with "Select a row first" in that state.
+ * action `aria-disabled` with "Select a row first" in that state. An editor names its own entity
+ * instead, through `startFor` (DW-1501).
  *
  * **A destructive action opens the typed-name dialog first** and sends nothing until it is
- * confirmed. `ListPage` renders the dialog from `pending()`, because the list is the surface the
- * action belongs to and the shell has one modal surface (`dialog.ts`).
+ * confirmed. `app-screen-action-dialogs` renders the dialog from `pending()` on the page the
+ * action was started from -- the list, or the user editor -- over the shell's one modal surface
+ * (`dialog.ts`).
  *
  * **Nothing is patched from the write's own answer** (AD-14). A confirmed write publishes the
  * triple and verb the instance answered on the change bus; the refresh framework re-fetches the
  * screen in place and marks the row. A refusal publishes nothing and puts the envelope's own
- * sentence on the screen's store, which `ListPage` renders (AD-39).
+ * sentence on the caller's sink -- a list's store, which `ListPage` renders, or an editor's own
+ * (AD-39).
  */
 @Injectable({ providedIn: 'root' })
 export class ScreenActionHandler {
@@ -287,6 +308,9 @@ export class ScreenActionHandler {
   private readonly session = inject(Session, { optional: true });
 
   private readonly waiting = signal<PendingConfirm | null>(null);
+
+  /** The sink of the action `waiting` holds, which its dialog's answer reports to. */
+  private waitingSink: ActionSink | null = null;
 
   constructor() {
     for (const screen of SCREENS) {
@@ -317,10 +341,10 @@ export class ScreenActionHandler {
    */
   confirmPending(flag = false): void {
     const pending = this.waiting();
-    this.waiting.set(null);
+    const sink = this.takeSink();
     if (pending === null || (pending.kind !== 'typed-name' && pending.kind !== 'warning')) return;
     const flagged = flag ? this.flag(pending.descriptor, pending.actionId) : null;
-    void this.send(pending.descriptor, flagged?.action ?? pending.actionId, pending.target);
+    void this.send(pending.descriptor, flagged?.action ?? pending.actionId, pending.target, undefined, sink);
   }
 
   /**
@@ -335,79 +359,100 @@ export class ScreenActionHandler {
    */
   async submitPassword(password: string, changeOnLogin: boolean): Promise<void> {
     const pending = this.waiting();
-    this.waiting.set(null);
+    const sink = this.takeSink();
     if (pending === null || pending.kind !== 'set-password' || password === '') return;
     if (changeOnLogin) {
-      const flagged = await this.send(pending.descriptor, REQUIRE_PASSWORD_CHANGE, pending.target);
+      const flagged = await this.send(pending.descriptor, REQUIRE_PASSWORD_CHANGE, pending.target, undefined, sink);
       if (!flagged) return;
     }
-    const set = await this.send(pending.descriptor, pending.actionId, pending.target, { [PASSWORD_VALUE]: password });
-    if (set && changeOnLogin) await this.send(pending.descriptor, REQUIRE_PASSWORD_CHANGE, pending.target);
+    const set = await this.send(pending.descriptor, pending.actionId, pending.target, { [PASSWORD_VALUE]: password }, sink);
+    if (set && changeOnLogin) await this.send(pending.descriptor, REQUIRE_PASSWORD_CHANGE, pending.target, undefined, sink);
   }
 
   /** The role dialog was submitted: one role, applied on the instance as a delta (AD-56 (ii)). */
   submitRole(role: string): void {
     const pending = this.waiting();
-    this.waiting.set(null);
+    const sink = this.takeSink();
     if (pending === null || pending.kind !== 'role' || role === '') return;
-    void this.send(pending.descriptor, pending.actionId, pending.target, { [ROLE_VALUE]: role });
+    void this.send(pending.descriptor, pending.actionId, pending.target, { [ROLE_VALUE]: role }, sink);
   }
 
   /** Escape, Cancel or the scrim: nothing was sent and nothing is. */
   cancelPending(): void {
-    this.waiting.set(null);
+    this.takeSink();
   }
 
-  /** Open the dialog, or send at once where the action is not destructive. */
-  private start(screen: ScreenDeclaration, actionId: string): void {
-    const target = this.selected(screen);
-    if (target === '') return;
+  /**
+   * Start declared action `actionId` of `descriptor` on the row keyed `target`, as a row menu does:
+   * open its dialog, or send it at once where it has none (AD-53). `rowFields` is that row's own
+   * fields where the caller holds them -- a Remove role reads its `Roles` -- and `sink` is where a
+   * refusal, and optionally the applied write, is reported. A list page passes its selected row and
+   * its store; an editor passes the entity it shows and its own sink (DW-1501).
+   *
+   * `role`, for a role action, is the one role the caller has already chosen, which is sent with no
+   * dialog -- the Remove beside one role of an editor's list.
+   */
+  startFor(descriptor: string, actionId: string, target: string, rowFields: RowFields, sink: ActionSink, role = ''): void {
+    const screen = SCREENS.find((entry) => entry.descriptor === descriptor);
+    if (screen === undefined || target === '') return;
     // The surfaces already list a self-protected action as refused rather than selectable, so this
     // is the second half of the same explanation and not a second predicate: the instance refuses
     // it either way, with this same sentence (AD-10, AD-53).
     const rule = screen.rowActions.find((action) => action.id === actionId)?.selfProtection ?? '';
     const refusal = selfProtectionReason(rule, target, this.session?.userName() ?? '');
     if (refusal !== '') {
-      this.store(screen.descriptor, screen.refreshRates).setRefusal(refusal);
+      sink.setRefusal(refusal);
       return;
     }
-    const dialog = VALUE_ACTIONS[screen.descriptor]?.[actionId];
+    const dialog = VALUE_ACTIONS[descriptor]?.[actionId];
     if (dialog === 'set-password') {
-      this.open('set-password', screen.descriptor, actionId, target, '', []);
+      this.open('set-password', descriptor, actionId, target, '', [], sink);
       return;
     }
     if (dialog === 'role') {
-      void this.openRole(screen, actionId, target);
+      if (role !== '') {
+        void this.send(descriptor, actionId, target, { [ROLE_VALUE]: role }, sink);
+        return;
+      }
+      void this.openRole(descriptor, actionId, target, rowFields, sink);
       return;
     }
-    const warning = this.warning(screen.descriptor, actionId) || this.rowWarning(screen, actionId, target);
+    const warning = this.warning(descriptor, actionId) || this.rowWarning(descriptor, actionId, rowFields);
     if (warning !== '') {
-      this.open('warning', screen.descriptor, actionId, target, warning, []);
+      this.open('warning', descriptor, actionId, target, warning, [], sink);
       return;
     }
     if (!this.isDestructive(actionId)) {
-      void this.send(screen.descriptor, actionId, target);
+      void this.send(descriptor, actionId, target, undefined, sink);
       return;
     }
-    const scoped = this.scoped(screen.descriptor, actionId, target);
+    const scoped = this.scoped(descriptor, actionId, target);
     if (scoped !== null) {
-      this.open('typed-name', screen.descriptor, actionId, target, scoped.consequence, [], scoped.name, '', scoped.verb);
+      this.open('typed-name', descriptor, actionId, target, scoped.consequence, [], sink, scoped.name, '', scoped.verb);
       return;
     }
     // The row's own name and advisory, where the screen declares them; the row key otherwise.
-    const read = TYPED_NAME_ROWS[screen.descriptor];
-    const row = read === undefined ? null : this.row(screen, target);
+    const read = TYPED_NAME_ROWS[descriptor];
+    const row = read === undefined ? null : rowFields;
     const name = row?.[read?.name ?? ''];
     this.open(
       'typed-name',
-      screen.descriptor,
+      descriptor,
       actionId,
       target,
-      this.consequence(screen.descriptor, actionId),
+      this.consequence(descriptor, actionId),
       [],
+      sink,
       typeof name === 'string' && name !== '' ? name : target,
       row !== null && row[read?.field ?? ''] === read?.equals ? (read?.advisory ?? '') : ''
     );
+  }
+
+  /** A row menu's action: `startFor` on the list's selected row, reporting to the list's store. */
+  private start(screen: ScreenDeclaration, actionId: string): void {
+    const target = this.selected(screen);
+    if (target === '') return;
+    this.startFor(screen.descriptor, actionId, target, this.row(screen, target), this.store(screen.descriptor, screen.refreshRates));
   }
 
   private open(
@@ -417,10 +462,13 @@ export class ScreenActionHandler {
     target: string,
     consequence: string,
     options: readonly string[],
+    sink: ActionSink,
     name: string = target,
     advisory = '',
-    verb: string = actionLabel(descriptor, actionId)
+    verb: string = actionLabel(descriptor, actionId),
+    privileged: readonly string[] = []
   ): void {
+    this.waitingSink = sink;
     this.waiting.set({
       kind,
       descriptor,
@@ -432,43 +480,49 @@ export class ScreenActionHandler {
       advisory,
       flagLabel: kind === 'typed-name' ? (this.flag(descriptor, actionId)?.label ?? '') : '',
       options,
+      privileged,
     });
   }
 
+  /** Clear the pending dialog and answer the sink it was opened with. */
+  private takeSink(): ActionSink | null {
+    const sink = this.waitingSink;
+    this.waitingSink = null;
+    this.waiting.set(null);
+    return sink;
+  }
+
   /**
-   * Open the role dialog. A remove offers the row's own roles; an add offers the Roles list's
-   * declared read -- issued through the ordinary read route, so that screen's own gate and cap
-   * apply (AD-5) -- minus the roles the row holds. No choice is pre-marked: whether a role may be
-   * granted is the instance's answer at the write (AD-10).
+   * Open the role dialog. A remove offers the row's own roles; an add offers the roles
+   * `GET /users/form` lists -- the form read's own gate applies -- minus the roles the row holds,
+   * with the server's `privileged` mark on each, so the dialog states the grant's consequence
+   * (AD-10, DW-1523). Whether a role may be granted is the instance's answer at the write.
    */
-  private async openRole(screen: ScreenDeclaration, actionId: string, target: string): Promise<void> {
-    const held = this.rowRoles(screen, target);
+  private async openRole(descriptor: string, actionId: string, target: string, rowFields: RowFields, sink: ActionSink): Promise<void> {
+    const held = rowRoles(rowFields);
     if (actionId === REMOVE_ROLE) {
-      this.open('role', screen.descriptor, actionId, target, '', held);
+      this.open('role', descriptor, actionId, target, '', held, sink);
       return;
     }
-    const roles = SCREENS.find((entry) => entry.toolIdentifier === ROLES_TOOL_IDENTIFIER);
-    if (roles === undefined || roles.read === null) return;
-    const result = await this.injector
-      .get(ApiService)
-      .requestJson<{ readonly rows?: unknown }>(screenReadPath(roles, DEFAULT_MAX_ROWS));
-    if (result.kind !== 'ok' || !Array.isArray(result.body?.rows)) {
-      this.store(screen.descriptor, screen.refreshRates).setRefusal(result.kind === 'error' ? (result.reason ?? '') : '');
+    const result = await this.injector.get(ApiService).requestJson<{ readonly roles?: unknown }>(USER_FORM_READ_PATH);
+    if (result.kind !== 'ok' || !Array.isArray(result.body?.roles)) {
+      sink.setRefusal(result.kind === 'error' ? (result.reason ?? '') : '');
       return;
     }
     const heldKeys = new Set(held.map((name) => name.toLowerCase()));
-    const offered = (result.body.rows as readonly unknown[])
-      .map((row) => rowKey(row, roles))
-      .filter((name) => name !== '' && !heldKeys.has(name.toLowerCase()));
-    this.open('role', screen.descriptor, actionId, target, '', offered);
-  }
-
-  /** The roles the row `target` holds on the screen's last read, as the instance spells them. */
-  private rowRoles(screen: ScreenDeclaration, target: string): readonly string[] {
-    const row = this.row(screen, target);
-    if (row === null) return [];
-    const roles = row['Roles'];
-    return Array.isArray(roles) ? roles.filter((name): name is string => typeof name === 'string' && name !== '') : [];
+    const offered: string[] = [];
+    const privileged: string[] = [];
+    for (const entry of result.body.roles as readonly unknown[]) {
+      if (entry === null || typeof entry !== 'object') continue;
+      const name = (entry as Record<string, unknown>)['name'];
+      if (typeof name !== 'string' || name === '' || heldKeys.has(name.toLowerCase())) continue;
+      offered.push(name);
+      // A role whose flag the server did not send as false is marked, so the consequence is
+      // stated rather than missed.
+      const flag = (entry as Record<string, unknown>)['privileged'];
+      if (!(flag === false || flag === 0)) privileged.push(name);
+    }
+    this.open('role', descriptor, actionId, target, '', offered, sink, target, '', actionLabel(descriptor, actionId), privileged);
   }
 
   /** The row keyed `target` on the screen's last read, or `null`. */
@@ -486,12 +540,18 @@ export class ScreenActionHandler {
    * to the action route of the screen `ACTION_ADDRESS` names, or the descriptor's own; a refusal is
    * put on the descriptor's own store, which is the page the person acted on.
    */
-  private async send(descriptor: string, actionId: string, target: string, values?: ActionValues): Promise<boolean> {
+  private async send(
+    descriptor: string,
+    actionId: string,
+    target: string,
+    values?: ActionValues,
+    sink: ActionSink | null = null
+  ): Promise<boolean> {
     const screen = SCREENS.find((entry) => entry.descriptor === descriptor);
     if (screen === undefined) return false;
     const addressed = SCREENS.find((entry) => entry.descriptor === (ACTION_ADDRESS[descriptor] ?? descriptor));
     if (addressed === undefined) return false;
-    const store = this.store(descriptor, screen.refreshRates);
+    const store = sink ?? this.store(descriptor, screen.refreshRates);
     store.setRefusal('');
     const request: { action: string; id: string; values?: ActionValues } = { action: actionId, id: target };
     if (values !== undefined) request.values = values;
@@ -511,6 +571,7 @@ export class ScreenActionHandler {
     }
     const answer = result.body;
     const targetRef = answer?.target;
+    sink?.applied?.(actionId);
     if (targetRef === undefined) return true;
     this.injector.get(ChangeBus).publish({
       kind: 'changed',
@@ -558,12 +619,12 @@ export class ScreenActionHandler {
     return Object.hasOwn(own, actionId) ? own[actionId] : '';
   }
 
-  /** The `WARNING_ROWS` consequence for `target`'s row, or `''` where its row does not match. */
-  private rowWarning(screen: ScreenDeclaration, actionId: string, target: string): string {
-    const own = WARNING_ROWS[screen.descriptor];
+  /** The `WARNING_ROWS` consequence for the row `rowFields`, or `''` where it does not match. */
+  private rowWarning(descriptor: string, actionId: string, rowFields: RowFields): string {
+    const own = WARNING_ROWS[descriptor];
     if (own === undefined || !Object.hasOwn(own, actionId)) return '';
     const entry = own[actionId];
-    return this.row(screen, target)?.[entry.field] === entry.equals ? entry.consequence : '';
+    return rowFields?.[entry.field] === entry.equals ? entry.consequence : '';
   }
 
   private flag(descriptor: string, actionId: string): { readonly label: string; readonly action: string } | null {
@@ -594,4 +655,10 @@ export class ScreenActionHandler {
     if (own === undefined) return '';
     return Object.hasOwn(own, actionId) ? own[actionId] : '';
   }
+}
+
+/** The roles `rowFields` holds, as the instance spells them. */
+function rowRoles(rowFields: RowFields): readonly string[] {
+  const roles = rowFields?.['Roles'];
+  return Array.isArray(roles) ? roles.filter((name): name is string => typeof name === 'string' && name !== '') : [];
 }

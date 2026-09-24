@@ -1237,6 +1237,32 @@ Method TestEveryClassicLinkCorpusCaseGetsItsSentence()
     Do $$$AssertStatusOK(tGoodSC, "and passes")
 }
 
+/// <p>Story 11.3's contract (Story 9.1): every case in <class>OcuPilot.Test.PromptCorpus</class> gets
+/// its exact sentence, or none, from <method>OcuPilot.Screen.Registry.SuggestedPromptsProblem</method>,
+/// the same corpus <file>ui/tools/screen-mirror.test.mjs</file> runs through
+/// <code>suggestedPromptsProblem</code>; and the User form's own three prompts pass.</p>
+/// <p>Mutation: lower <parameter>OcuPilot.Screen.Registry.SUGGESTEDPROMPTSMIN</parameter> to 2 -&gt;
+/// the two-prompt case goes red.</p>
+Method TestEveryPromptCorpusCaseGetsItsSentence()
+{
+    Set tSC = ##class(OcuPilot.Test.PromptCorpus).Corpus(.tCorpus)
+    Do $$$AssertStatusOK(tSC, "the corpus reads")
+    If '$IsObject(tCorpus) Quit
+    Set tRefusals = 0
+    Set tIterator = tCorpus.cases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCase) {
+        Set tExpected = $Select(tCase.%GetTypeOf("expected") = "null": "", 1: tCase.expected)
+        If tExpected '= "" Set tRefusals = tRefusals + 1
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).SuggestedPromptsProblem(tCase.declaration), tExpected, tCase.name)
+    }
+    Do $$$AssertTrue(tRefusals > 0, "the corpus carries at least one refusing case: " _ tRefusals)
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Descriptor.UserForm).DeclarationJson(.tDeclaration), "the User form's declaration reads")
+    Do $$$AssertTrue($IsObject($Get(tDeclaration)), "as an object")
+    If '$IsObject(tDeclaration) Quit
+    Do $$$AssertEquals(tDeclaration.%Get("suggestedPrompts").%Size(), 3, "the User form declares three prompts")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).SuggestedPromptsProblem(tDeclaration), "", "and they pass")
+}
+
 /// <p>Story 6.4 (AD-5) -- every case in <class>OcuPilot.Test.TabCorpus</class> gets its exact sentence,
 /// or none, from <method>OcuPilot.Screen.Registry.TabProblem</method>, and every roster there from
 /// <method>OcuPilot.Screen.Registry.TabGroupProblem</method>, the same corpus

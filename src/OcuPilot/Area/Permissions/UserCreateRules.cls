@@ -1,7 +1,8 @@
 /// <p>The User form's rules (AD-39, AD-55): the one rule set both callers of
-/// <class>OcuPilot.Screen.Tool.UserCreate</class> apply (<method>Validate</method>), the form's
-/// bootstrap read (<method>HandleForm</method>), and the name look-up
-/// (<method>HandleName</method>, <method>Taken</method>).</p>
+/// <class>OcuPilot.Screen.Tool.UserCreate</class> and <class>OcuPilot.Screen.Tool.UserUpdate</class>
+/// apply (<method>Validate</method>, in create or update mode), the form's bootstrap read
+/// (<method>HandleForm</method>), and the name look-up (<method>HandleName</method>,
+/// <method>Taken</method>).</p>
 /// <p><b>Everything the vendor's post-create <code>Modify</code> reads is validated first.</b>
 /// <code>%Api.Admin.Endpoints.Security.User:RunPost</code> calls <method>Security.Users.Create</method>
 /// with the password and only then <code>Modify</code> with the other fields, so a field
@@ -25,7 +26,29 @@ Parameter REQUIREDFIELDS = "Name,Password";
 Parameter SECURITYCLASS = "Security.Users";
 
 /// <p>The properties whose <code>MAXLEN</code> the form renders, comma-separated.</p>
-Parameter LENGTHFIELDS = "Name,FullName,NameSpace,Routine";
+Parameter LENGTHFIELDS = "Name,FullName,NameSpace,Routine,Comment,EmailAddress,PhoneNumber,PhoneProvider";
+
+/// <p>The edit tool whose fresh read the form read answers with a name
+/// (<method>HandleForm</method>).</p>
+Parameter UPDATETOOL = "OcuPilot.Screen.Tool.UserUpdate";
+
+/// <p>The account settings an edit may carry, comma-separated: the classic General tab.</p>
+Parameter SETTINGFIELDS = "AccountNeverExpires,AutheEnabled,ChangePassword,Comment,EmailAddress,Enabled,ExpirationDate,FullName,HOTPKeyDisplay,NameSpace,PasswordNeverExpires,PhoneNumber,PhoneProvider,Routine";
+
+/// <p>The settings among <parameter>SETTINGFIELDS</parameter> whose value is a boolean.</p>
+Parameter BOOLEANFIELDS = "AccountNeverExpires,ChangePassword,Enabled,HOTPKeyDisplay,PasswordNeverExpires";
+
+/// <p>The <code>AutheEnabled</code> bits an edit may move: SMS text (<code>2**20</code>) and a
+/// time-based one-time password (<code>2**21</code>), <file>%sySecurityMacros.inc</file>'s
+/// <code>AutheTwoFactorSMS</code> and <code>AutheTwoFactorPW</code>.</p>
+Parameter TWOFACTORSMSBIT As INTEGER = 1048576;
+
+Parameter TWOFACTORTOTPBIT As INTEGER = 2097152;
+
+/// <p>The field the edit form read carries the account in, and the member it never answers.</p>
+Parameter FORMUSERKEY = "user";
+
+Parameter FIELDESCALATIONROLES = "EscalationRoles";
 
 /// <p>The longest a user name may be: <class>%Library.Username</class>'s own <code>MAXLEN</code>,
 /// the type <property>Security.Users.Name</property> is declared with.</p>
@@ -55,18 +78,37 @@ Parameter FIELDROUTINE = "Routine";
 
 Parameter FIELDROLES = "Roles";
 
+Parameter FIELDCOMMENT = "Comment";
+
+Parameter FIELDEMAIL = "EmailAddress";
+
+Parameter FIELDPHONENUMBER = "PhoneNumber";
+
+Parameter FIELDPHONEPROVIDER = "PhoneProvider";
+
+Parameter FIELDAUTHE = "AutheEnabled";
+
 /// <p>Every rule a create applies, in <var>pViolations</var> as
 /// <code>pViolations(n) = $ListBuild(field, code)</code> with the count in
 /// <code>pViolations</code>.</p>
 /// <p><var>pCheckTaken</var> 0 skips the name look-up and <var>pCheckPassword</var> 0 skips the
 /// password rules, for the agent's mint, which has read the target's absence and never holds a
 /// password (<method>OcuPilot.Screen.Tool.UserCreate.ArgumentProblem</method>).</p>
-ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolations, pCheckTaken As %Boolean = 1, pCheckPassword As %Boolean = 1) As %Status
+/// <p><var>pMode</var> <code>update</code> is an edit of the existing account whose fresh read is
+/// <var>pFresh</var>, over the fields <var>pArgs</var> changes (<method>Changed</method>): the name
+/// and password rules are skipped, each setting is held to its shape and stored length, a routine
+/// needs the namespace the edit leaves, and <code>AutheEnabled</code> may move only its two
+/// two-factor bits, with at most one of them on (<method>AutheViolation</method>).</p>
+ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolations, pCheckTaken As %Boolean = 1, pCheckPassword As %Boolean = 1, pMode As %String = "create", pFresh As %DynamicObject = "") As %Status
 {
     Kill pViolations
     Set pViolations = 0
     Set tSC = $$$OK
     Try {
+        If pMode = "update" {
+            Set tSC = ..UpdateViolations(pArgs, pFresh, .pViolations)
+            Quit
+        }
         Do ..NameViolation(pName, .pViolations)
         If (pViolations = 0) && pCheckTaken {
             Set tTakenSC = ..Taken(pName, .tTaken)
@@ -115,6 +157,95 @@ ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolatio
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The update-mode rules of <method>Validate</method> over the changed fields <var>pArgs</var>,
+/// against the fresh read <var>pFresh</var>.</p>
+ClassMethod UpdateViolations(pArgs As %DynamicObject, pFresh As %DynamicObject, ByRef pViolations) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    For tI = 1:1:$Length(..#SETTINGFIELDS, ",") {
+        Set tField = $Piece(..#SETTINGFIELDS, ",", tI)
+        If '..IsScalar(pArgs, tField) {
+            Do ..Add(.pViolations, tField, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+            Continue
+        }
+        If '$ListFind($ListFromString(..#BOOLEANFIELDS), tField) Continue
+        If '$IsObject(pArgs) || (pArgs.%GetTypeOf(tField) = "unassigned") Continue
+        Set tValue = ..Text(pArgs, tField)
+        If '((tValue = "true") || (tValue = "false") || (tValue = "0") || (tValue = "1")) Do ..Add(.pViolations, tField, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+    }
+    Set tMax = ..Lengths()
+    For tPair = $ListBuild(..#FIELDFULLNAME, ##class(OcuPilot.Api.Error).#USERFULLNAMELENGTH), $ListBuild(..#FIELDCOMMENT, ##class(OcuPilot.Api.Error).#USERCOMMENTLENGTH), $ListBuild(..#FIELDEMAIL, ##class(OcuPilot.Api.Error).#USEREMAILADDRESSLENGTH), $ListBuild(..#FIELDPHONENUMBER, ##class(OcuPilot.Api.Error).#USERPHONENUMBERLENGTH), $ListBuild(..#FIELDPHONEPROVIDER, ##class(OcuPilot.Api.Error).#USERPHONEPROVIDERLENGTH) {
+        Set tField = $List(tPair, 1)
+        Set tBound = +tMax.%Get(tField)
+        If (tBound > 0) && ($Length(..Text(pArgs, tField)) > tBound) Do ..Add(.pViolations, tField, $List(tPair, 2))
+    }
+    Set tExpiry = ..Text(pArgs, ..#FIELDEXPIRY)
+    If (tExpiry '= "") && '..IsDate(tExpiry) Do ..Add(.pViolations, ..#FIELDEXPIRY, ##class(OcuPilot.Api.Error).#USEREXPIRATIONDATESHAPE)
+    Set tNamespace = ..Text(pArgs, ..#FIELDNAMESPACE)
+    If (tNamespace '= "") && '..NamespaceExists(tNamespace) Do ..Add(.pViolations, ..#FIELDNAMESPACE, ##class(OcuPilot.Api.Error).#USERNAMESPACEUNKNOWN)
+    Set tRoutine = ..Held(pArgs, pFresh, ..#FIELDROUTINE)
+    If ($IsObject(pArgs) && ((pArgs.%GetTypeOf(..#FIELDROUTINE) '= "unassigned") || (pArgs.%GetTypeOf(..#FIELDNAMESPACE) '= "unassigned"))) && (tRoutine '= "") {
+        If ..Held(pArgs, pFresh, ..#FIELDNAMESPACE) = "" Do ..Add(.pViolations, ..#FIELDROUTINE, ##class(OcuPilot.Api.Error).#USERROUTINENAMESPACE)
+        Set tRoutineMax = +tMax.%Get(..#FIELDROUTINE)
+        If (tRoutineMax > 0) && ($Length(tRoutine) > tRoutineMax) Do ..Add(.pViolations, ..#FIELDROUTINE, ##class(OcuPilot.Api.Error).#USERROUTINELENGTH)
+    }
+    Do ..AutheViolation(pArgs, pFresh, .pViolations)
+    Set tRolesSC = ..RoleViolation(pArgs, .pViolations)
+    If $$$ISERR(tRolesSC) Set tSC = tRolesSC
+    Quit tSC
+}
+
+/// <p>Add <code>AutheEnabled</code>'s violation to <var>pViolations</var>, or none. A value that is
+/// not a whole number, or that differs from <var>pFresh</var>'s stored mask in any bit but
+/// <parameter>TWOFACTORSMSBIT</parameter> and <parameter>TWOFACTORTOTPBIT</parameter>, is
+/// <code>USER.AUTHEENABLED.SCOPE</code>; one with both of those on is
+/// <code>USER.TWOFACTOR.BOTH</code>. An absent member changes nothing.</p>
+ClassMethod AutheViolation(pArgs As %DynamicObject, pFresh As %DynamicObject, ByRef pViolations) [ Private ]
+{
+    If '$IsObject(pArgs) || (pArgs.%GetTypeOf(..#FIELDAUTHE) = "unassigned") Quit
+    If '..IsScalar(pArgs, ..#FIELDAUTHE) Quit
+    Set tWanted = ..Text(pArgs, ..#FIELDAUTHE)
+    If '$Match(tWanted, "^[0-9]+$") {
+        Do ..Add(.pViolations, ..#FIELDAUTHE, ##class(OcuPilot.Api.Error).#USERAUTHEENABLEDSCOPE)
+        Quit
+    }
+    Set tStored = +..Text(pFresh, ..#FIELDAUTHE)
+    Set tTwoFactor = ..#TWOFACTORSMSBIT + ..#TWOFACTORTOTPBIT
+    Set tMoved = $ZBoolean(+tWanted, tStored, 6)
+    If $ZBoolean(tMoved, tTwoFactor, 2) '= 0 {
+        Do ..Add(.pViolations, ..#FIELDAUTHE, ##class(OcuPilot.Api.Error).#USERAUTHEENABLEDSCOPE)
+        Quit
+    }
+    If $ZBoolean(+tWanted, tTwoFactor, 1) = tTwoFactor Do ..Add(.pViolations, ..#FIELDAUTHE, ##class(OcuPilot.Api.Error).#USERTWOFACTORBOTH)
+}
+
+/// <p>The members of <var>pArgs</var> an edit changes: each of <parameter>SETTINGFIELDS</parameter>
+/// and <parameter>FIELDROLES</parameter> it carries whose value differs from <var>pFresh</var>'s,
+/// compared as the diff renders them, as a new <class>%DynamicObject</class>. With no fresh read
+/// every one <var>pArgs</var> carries is changed.</p>
+ClassMethod Changed(pArgs As %DynamicObject, pFresh As %DynamicObject = "") As %DynamicObject
+{
+    Set tChanged = {}
+    If '$IsObject(pArgs) Quit tChanged
+    Set tFields = $ListFromString(..#SETTINGFIELDS) _ $ListBuild(..#FIELDROLES)
+    For tI = 1:1:$ListLength(tFields) {
+        Set tField = $List(tFields, tI)
+        Set tType = pArgs.%GetTypeOf(tField)
+        If tType = "unassigned" Continue
+        If $IsObject(pFresh) && (pFresh.%GetTypeOf(tField) '= "unassigned") {
+            Set tBefore = ##class(OcuPilot.Kernel.Proposal.Mint).Display(pFresh.%Get(tField), pFresh.%GetTypeOf(tField))
+            Set tAfter = ##class(OcuPilot.Kernel.Proposal.Mint).Display(pArgs.%Get(tField), tType)
+            If tAfter = tBefore Continue
+        }
+        If (tType = "object") || (tType = "array") {
+            Do tChanged.%Set(tField, pArgs.%Get(tField))
+        } Else {
+            Do tChanged.%Set(tField, pArgs.%Get(tField), tType)
+        }
+    }
+    Quit tChanged
 }
 
 /// <p>Add the name's own shape violation to <var>pViolations</var>, or none: an absent name, and
@@ -237,8 +368,11 @@ ClassMethod RoleViolation(pArgs As %DynamicObject, Output pViolations) As %Statu
     Quit tSC
 }
 
-/// <p>Answer <code>GET /users/form</code>: everything the create form needs before it can draw a
-/// field (AD-39): <code>{requiredFields, maxLengths, rules, roles}</code>. <code>rules</code> is
+/// <p>Answer <code>GET /users/form[?name=&lt;n&gt;]</code>: everything the create form and the
+/// editor need before they can draw a field (AD-39): <code>{requiredFields, maxLengths, rules,
+/// roles}</code>, and with a name <code>user</code>, the edit tool's own fresh read of that account
+/// less its escalation roles (<method>Account</method>); a name this instance does not hold is 404
+/// <parameter>OcuPilot.Api.Error.USERNAMEABSENT</parameter>. <code>rules</code> is
 /// one <code>{field, code, reason}</code> per rule, each field's required rule first;
 /// <code>roles</code> is <code>[{name, privileged}]</code>, listed through the tool's own port and
 /// each marked by <method>OcuPilot.Kernel.Proposal.Prohibited.RoleGrantsAdministrativePrivilege</method>,
@@ -263,6 +397,19 @@ ClassMethod HandleForm() As %Status
         Do tBody.%Set("maxLengths", ..Lengths())
         Do tBody.%Set("rules", ..Rules())
         Do tBody.%Set("roles", tRoles)
+        Set tName = $Get(%request.Data("name", 1))
+        If tName '= "" {
+            Set tReadSC = ..Account(tName, .tUser, .tHttp, .tFault)
+            If $$$ISERR(tReadSC) && (+$Get(tHttp) = 404) {
+                Set tSC = ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#REASONUSERNAMEABSENT, ##class(OcuPilot.Api.Error).#USERNAMEABSENT)
+                Quit
+            }
+            If $$$ISERR(tReadSC) {
+                Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tReadSC))
+                Quit
+            }
+            Do tBody.%Set(..#FORMUSERKEY, tUser)
+        }
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tBody)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -328,6 +475,26 @@ ClassMethod Taken(pName As %String, Output pTaken As %Boolean) As %Status
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The account <var>pName</var> as <parameter>UPDATETOOL</parameter>'s own read answers it,
+/// through its own port (AD-52), without <parameter>FIELDESCALATIONROLES</parameter>, in
+/// <var>pUser</var>. An absent account is an error status with <var>pHttpStatus</var> 404.</p>
+ClassMethod Account(pName As %String, Output pUser As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pUser = ""
+    Set tClass = ..#UPDATETOOL
+    Kill tQuery
+    Set tQuery($ClassMethod(tClass, "IdParam")) = pName
+    Set tSC = $ClassMethod($ClassMethod(tClass, "PortClass"), "Invoke", $ClassMethod(tClass, "Endpoint"), $ClassMethod(tClass, "ReadType"), .tQuery, "", .tFresh, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject($Get(tFresh)) || 'tFresh.%IsA("%Library.DynamicObject") {
+        Set pHttpStatus = 404
+        Quit $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#USERNAMEABSENT)
+    }
+    Do tFresh.%Remove(..#FIELDESCALATIONROLES)
+    Set pUser = tFresh
+    Quit $$$OK
 }
 
 /// <p>The roles this instance holds, as <code>[{name, privileged}]</code> in the order the vendor
@@ -407,6 +574,12 @@ ClassMethod Rules() As %DynamicArray
     Set tSpec = tSpec _ $ListBuild($ListBuild(..#FIELDROUTINE, ##class(OcuPilot.Api.Error).#USERROUTINELENGTH))
     Set tSpec = tSpec _ $ListBuild($ListBuild(..#FIELDROLES, ##class(OcuPilot.Api.Error).#USERROLESUNKNOWN))
     Set tSpec = tSpec _ $ListBuild($ListBuild(..#FIELDROLES, ##class(OcuPilot.Api.Error).#USERROLESSHAPE))
+    Set tSpec = tSpec _ $ListBuild($ListBuild(..#FIELDCOMMENT, ##class(OcuPilot.Api.Error).#USERCOMMENTLENGTH))
+    Set tSpec = tSpec _ $ListBuild($ListBuild(..#FIELDEMAIL, ##class(OcuPilot.Api.Error).#USEREMAILADDRESSLENGTH))
+    Set tSpec = tSpec _ $ListBuild($ListBuild(..#FIELDPHONENUMBER, ##class(OcuPilot.Api.Error).#USERPHONENUMBERLENGTH))
+    Set tSpec = tSpec _ $ListBuild($ListBuild(..#FIELDPHONEPROVIDER, ##class(OcuPilot.Api.Error).#USERPHONEPROVIDERLENGTH))
+    Set tSpec = tSpec _ $ListBuild($ListBuild(..#FIELDAUTHE, ##class(OcuPilot.Api.Error).#USERTWOFACTORBOTH))
+    Set tSpec = tSpec _ $ListBuild($ListBuild(..#FIELDAUTHE, ##class(OcuPilot.Api.Error).#USERAUTHEENABLEDSCOPE))
     For tI = 1:1:$ListLength(tSpec) {
         Set tPair = $List(tSpec, tI)
         Set tCode = $List(tPair, 2)
@@ -449,6 +622,14 @@ ClassMethod Text(pArgs As %DynamicObject, pName As %String) As %String [ Private
     Set tType = pArgs.%GetTypeOf(pName)
     If (tType = "unassigned") || (tType = "null") || (tType = "object") || (tType = "array") Quit ""
     Quit ##class(OcuPilot.Kernel.Proposal.Mint).Display(pArgs.%Get(pName), tType)
+}
+
+/// <p><var>pArgs</var>'s member <var>pField</var> as the rules read it where it carries one, else
+/// <var>pFresh</var>'s.</p>
+ClassMethod Held(pArgs As %DynamicObject, pFresh As %DynamicObject, pField As %String) As %String [ Private ]
+{
+    If $IsObject(pArgs) && (pArgs.%GetTypeOf(pField) '= "unassigned") Quit ..Text(pArgs, pField)
+    Quit ..Text(pFresh, pField)
 }
 
 /// <p>A comma-separated list as a <class>%DynamicArray</class> of strings.</p>

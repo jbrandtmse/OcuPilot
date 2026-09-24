@@ -351,6 +351,8 @@ export interface ScreenDeclaration {
   readonly rowActions: readonly ActionDeclaration[];
   readonly emptyStateKey: string;
   readonly commandAliases: readonly string[];
+  /** The prompts the panel suggests on this screen, grouped by task, where it declares any (Story 11.3). */
+  readonly suggestedPrompts?: readonly SuggestedPrompt[];
   readonly classicPage: string;
   readonly classicLinkExemption: ClassicLinkExemption;
   /** The screen's one declared read, or `null` for a screen with none (AD-36). */
@@ -364,6 +366,12 @@ export interface ScreenDeclaration {
   readonly toolIdentifier: string;
   /** This list's one declared cross-screen row target, or `null` for a screen with none (AD-5, Story 6.10). */
   readonly rowTarget: ScreenRowTarget | null;
+}
+
+/** One suggested prompt: the string key of the task group it sits under, and of its own text. */
+export interface SuggestedPrompt {
+  readonly groupKey: string;
+  readonly textKey: string;
 }
 
 /**
@@ -6312,7 +6320,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "descriptor": "OcuPilot.Screen.Descriptor.UserForm",
     "route": "permissions/users/edit",
     "area": "permissions",
-    "labelKey": "userFormLabel",
+    "labelKey": "processColumnUser",
     "sideBarPosition": 0,
     "archetype": "form-page",
     "built": true,
@@ -6351,6 +6359,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "fingerprintExcludes": [],
     "emptyStateKey": "",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "userPromptSignIn"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "userPromptPrivilege"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "userPromptTwoFactor"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.User",
     "classicLinkExemption": {
       "exempt": false,
@@ -6409,7 +6431,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       },
       {
         "id": "set-password",
-        "selfProtection": ""
+        "selfProtection": "service-account-sign-in"
       },
       {
         "id": "add-role",
@@ -6421,7 +6443,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       },
       {
         "id": "require-password-change",
-        "selfProtection": ""
+        "selfProtection": "service-account-sign-in"
       },
       {
         "id": "delete",

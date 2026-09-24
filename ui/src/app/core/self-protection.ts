@@ -45,6 +45,13 @@ export const OCUPILOT_APPLICATION_PATHS: readonly string[] = [
 /** The rule that protects the accounts whose removal the instance refuses (Story 7.2). */
 export const PROTECTED_ACCOUNT_RULE = 'protected-account';
 
+/**
+ * The rule that protects how a service account signs in (Story 9.1, AD-10 as amended by DW-1520):
+ * a new password, or a required password change, on an account the instance's own services run
+ * as, unless it is the signed-in account.
+ */
+export const SERVICE_ACCOUNT_SIGN_IN_RULE = 'service-account-sign-in';
+
 /** The entity type `PROTECTED_ACCOUNT_RULE` canonicalizes an id under (AD-13). */
 const USER = 'user';
 
@@ -69,7 +76,8 @@ export const SERVICE_ACCOUNTS: readonly string[] = ['CSPSystem', '_Ensemble', 'i
  * `signedIn` is the account this tab is signed in as, which `protected-account` compares against.
  * Its three answers are the instance's own, in the instance's order -- `_SYSTEM`, the signed-in
  * account, a service account. The last `%All` holder is a census the client cannot read, so that
- * refusal is the instance's alone.
+ * refusal is the instance's alone. `service-account-sign-in` answers for a service account other
+ * than the signed-in one.
  */
 export function selfProtectionReason(rule: string, rowKey: string, signedIn = ''): string {
   if (rowKey === '') return '';
@@ -81,6 +89,12 @@ export function selfProtectionReason(rule: string, rowKey: string, signedIn = ''
     }
     const service = SERVICE_ACCOUNTS.some((name) => normalizeEntityId(USER, name) === account);
     return service ? STRINGS.userRefusalServiceAccount : '';
+  }
+  if (rule === SERVICE_ACCOUNT_SIGN_IN_RULE) {
+    const account = normalizeEntityId(USER, rowKey);
+    if (signedIn !== '' && account === normalizeEntityId(USER, signedIn)) return '';
+    const service = SERVICE_ACCOUNTS.some((name) => normalizeEntityId(USER, name) === account);
+    return service ? STRINGS.userRefusalServiceAccountSignIn : '';
   }
   if (rule !== SERVES_OCUPILOT_RULE) return '';
   const canonical = normalizeEntityId(WEB_APPLICATION, rowKey);

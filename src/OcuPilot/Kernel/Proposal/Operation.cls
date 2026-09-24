@@ -205,7 +205,76 @@ ClassMethod ReadAt(pToolClass As %String, pPort As %String, pEndpoint As %String
     Set pHttpStatus = 0
     Set pFault = ""
     Do ..Query(pToolClass, pIdParam, pIdValue, pPayloadJson, .tQuery)
-    Quit $ClassMethod(pPort, "Invoke", pEndpoint, ..ReadType(pToolClass), .tQuery, "", .pFresh, .pHttpStatus, .pFault)
+    Set tReadParam = ..ReadIdParamOf(pToolClass, pIdParam)
+    If tReadParam '= pIdParam {
+        Kill tQuery(pIdParam)
+        Set tQuery(tReadParam) = pIdValue
+    }
+    Quit ..ReadTarget(pToolClass, pPort, pEndpoint, .tQuery, pIdValue, .pFresh, .pHttpStatus, .pFault)
+}
+
+/// <p>The query parameter <var>pToolClass</var>'s fresh read sends the id under
+/// (<method>OcuPilot.Screen.Tool.Write.ReadIdParam</method>), or <var>pIdParam</var> for a class
+/// that declares none or cannot be asked.</p>
+ClassMethod ReadIdParamOf(pToolClass As %String, pIdParam As %String) As %String
+{
+    Set tParam = ""
+    Try {
+        If (pToolClass '= "") && ##class(%Dictionary.CompiledMethod).%ExistsId(pToolClass _ "||ReadIdParam") Set tParam = $ClassMethod(pToolClass, "ReadIdParam")
+    } Catch {
+        Set tParam = ""
+    }
+    If tParam = "" Quit pIdParam
+    Quit tParam
+}
+
+/// <p>The row key <var>pToolClass</var>'s list-type fresh read is filtered by, or <code>""</code>
+/// for a one-object read and for a class that cannot be asked.</p>
+ClassMethod ReadRowKeyOf(pToolClass As %String) As %String
+{
+    Set tKey = ""
+    Try {
+        If (pToolClass '= "") && ##class(%Dictionary.CompiledMethod).%ExistsId(pToolClass _ "||ReadRowKey") Set tKey = $ClassMethod(pToolClass, "ReadRowKey")
+    } Catch {
+        Set tKey = ""
+    }
+    Quit tKey
+}
+
+/// <p>The one fresh read every caller of a write makes -- the mint, the confirm's re-read, the
+/// prohibited set and a screen action (AD-51, AD-52): <var>pToolClass</var>'s read type against
+/// <var>pEndpoint</var> through <var>pPort</var> with the query <var>pQuery</var>, answering the
+/// target in <var>pFresh</var>.</p>
+/// <p>For a tool that declares a row key the read answers an array, and <var>pFresh</var> is the
+/// one row whose key equals <var>pIdValue</var> without regard to case; an array holding no such
+/// row, and an answer that is not an array, are 404 <code>PORT.NOTFOUND</code>, so every caller
+/// reads absence exactly as a one-object read's 404.</p>
+ClassMethod ReadTarget(pToolClass As %String, pPort As %String, pEndpoint As %String, ByRef pQuery, pIdValue As %String, Output pFresh As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pFresh = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tSC = $ClassMethod(pPort, "Invoke", pEndpoint, ..ReadType(pToolClass), .pQuery, "", .tAnswer, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tRowKey = ..ReadRowKeyOf(pToolClass)
+    If tRowKey = "" {
+        Set pFresh = $Get(tAnswer)
+        Quit tSC
+    }
+    Set tWanted = $ZConvert(pIdValue, "U")
+    If $IsObject($Get(tAnswer)) && tAnswer.%IsA("%Library.DynamicArray") {
+        Set tIterator = tAnswer.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            If '$IsObject(tRow) || 'tRow.%IsA("%Library.DynamicObject") Continue
+            If $ZConvert(tRow.%Get(tRowKey), "U") '= tWanted Continue
+            Set pFresh = tRow
+            Quit
+        }
+    }
+    If $IsObject(pFresh) Quit $$$OK
+    Set pHttpStatus = 404
+    Do ##class(OcuPilot.Kernel.Fault).Outcome(pHttpStatus, $$$OK, .pFault, .tDetail)
+    Quit $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#PORTNOTFOUND)
 }
 
 /// <p>Whether the write <var>pTool</var> would make against <var>pTargetRef</var> may happen, for
@@ -295,9 +364,9 @@ ClassMethod Gate(pTool As %DynamicObject, pTargetRef As %String, pPayloadJson As
 /// <p><b>Caller contract:</b> every gate has already answered. There is no automatic re-attempt
 /// here and none anywhere else: for the agent caller the claim has committed and the token is
 /// spent by the time this runs (AD-34).</p>
-ClassMethod Apply(pToolClass As %String, pDefaultPort As %String, pEndpoint As %String, pIdParam As %String, pIdValue As %String, pPayloadJson As %String, pBody As %DynamicObject, Output pWritten As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+ClassMethod Apply(pToolClass As %String, pDefaultPort As %String, pEndpoint As %String, pIdParam As %String, pIdValue As %String, pPayloadJson As %String, pBody As %DynamicObject, Output pWritten As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pFresh As %DynamicObject = "") As %Status
 {
-    Quit ..ApplyAt(pToolClass, ..PortClassOf(pToolClass, pDefaultPort), pEndpoint, pIdParam, pIdValue, pPayloadJson, pBody, .pWritten, .pHttpStatus, .pFault)
+    Quit ..ApplyAt(pToolClass, ..PortClassOf(pToolClass, pDefaultPort), pEndpoint, pIdParam, pIdValue, pPayloadJson, pBody, .pWritten, .pHttpStatus, .pFault, pFresh)
 }
 
 /// <p>Apply through <var>pPort</var>, a port the caller has already resolved. A caller that
@@ -305,13 +374,24 @@ ClassMethod Apply(pToolClass As %String, pDefaultPort As %String, pEndpoint As %
 /// a test overrides to record what reaches the port -- calls this form, so the read and the write
 /// both reach the port it resolved; <method>Apply</method> resolves the tool's declared port and
 /// calls this.</p>
-ClassMethod ApplyAt(pToolClass As %String, pPort As %String, pEndpoint As %String, pIdParam As %String, pIdValue As %String, pPayloadJson As %String, pBody As %DynamicObject, Output pWritten As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+/// <p><var>pFresh</var> is the target as this operation's fresh read answered it before the write.
+/// Once the write reads OK the tool's own <method>OcuPilot.Screen.Tool.Write.AfterWrite</method> is
+/// run with it, through the same port; its failure is this call's failure, with its own
+/// <var>pHttpStatus</var> and <var>pFault</var>, though the write has been applied.</p>
+ClassMethod ApplyAt(pToolClass As %String, pPort As %String, pEndpoint As %String, pIdParam As %String, pIdValue As %String, pPayloadJson As %String, pBody As %DynamicObject, Output pWritten As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pFresh As %DynamicObject = "") As %Status
 {
     Set pWritten = ""
     Set pHttpStatus = 0
     Set pFault = ""
     Do ..Query(pToolClass, pIdParam, pIdValue, pPayloadJson, .tQuery)
-    Quit $ClassMethod(pPort, "Invoke", pEndpoint, ..WriteType(pToolClass), .tQuery, pBody, .pWritten, .pHttpStatus, .pFault)
+    Set tSC = $ClassMethod(pPort, "Invoke", pEndpoint, ..WriteType(pToolClass), .tQuery, pBody, .pWritten, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If (pToolClass = "") || '##class(%Dictionary.CompiledMethod).%ExistsId(pToolClass _ "||AfterWrite") Quit tSC
+    Set tAfterSC = $ClassMethod(pToolClass, "AfterWrite", pPort, pEndpoint, pIdParam, pIdValue, pFresh, .tAfterHttp, .tAfterFault)
+    If $$$ISOK(tAfterSC) Quit tSC
+    Set pHttpStatus = $Select(+$Get(tAfterHttp): +tAfterHttp, 1: 500)
+    Set pFault = $Get(tAfterFault)
+    Quit tAfterSC
 }
 
 /// <p>The first pair of <var>pPairs</var> that <var>pUser</var> does not hold, as

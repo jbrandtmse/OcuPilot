@@ -1660,6 +1660,45 @@ export const STRINGS = {
   actionApply: 'Apply',
   /** EXPERIENCE.md:463 */
   auditSqlWizardStopped: 'Not every change was applied. The list shows each event as it is now.',
+  /** EXPERIENCE.md:464 */
+  userRefusalServiceAccountSignIn:
+    'The instance\'s own services sign in as this account. A new password or a required password change would stop them, OcuPilot included.',
+  /** EXPERIENCE.md:465 */
+  userFieldComment: 'Comment',
+  /** EXPERIENCE.md:465 */
+  userFieldPasswordNeverExpires: 'Password never expires',
+  /** EXPERIENCE.md:465 */
+  userFieldAccountNeverExpires: 'Account never expires',
+  /** EXPERIENCE.md:465 */
+  userFieldEmail: 'Email address',
+  /** EXPERIENCE.md:465 */
+  userFieldPhoneProvider: 'Mobile phone service provider',
+  /** EXPERIENCE.md:465 */
+  userFieldPhoneNumber: 'Mobile phone number',
+  /** EXPERIENCE.md:465 */
+  userFieldTwoFactor: 'Two-factor authentication',
+  /** EXPERIENCE.md:465 */
+  userFieldTwoFactorSms: 'SMS text',
+  /** EXPERIENCE.md:465 */
+  userFieldTwoFactorTotp: 'Time-based one-time password',
+  /** EXPERIENCE.md:465 */
+  userFieldShowQrCode: 'Show the QR code at next sign-in',
+  /** EXPERIENCE.md:465 */
+  userRolesEmpty: 'This account holds no roles.',
+  /** EXPERIENCE.md:466 */
+  formTabErrorOne: '<tab>, 1 error',
+  /** EXPERIENCE.md:466 */
+  formTabErrorMany: '<tab>, <n> errors',
+  /** EXPERIENCE.md:467 */
+  userPromptGroupSignIn: 'Sign-in',
+  /** EXPERIENCE.md:467 */
+  userPromptGroupAccess: 'Access',
+  /** EXPERIENCE.md:467 */
+  userPromptSignIn: 'Why can this user not sign in?',
+  /** EXPERIENCE.md:467 */
+  userPromptPrivilege: 'Which of this user\'s roles grant %All or an administrative privilege?',
+  /** EXPERIENCE.md:467 */
+  userPromptTwoFactor: 'Turn on two-factor sign-in for this user.',
 
 } as const;
 

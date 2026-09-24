@@ -97,6 +97,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/web-applications" Method="POST" Call="WebAppCreate"/>
   <Route Url="/users/form" Method="GET" Call="UserFormRules"/>
   <Route Url="/users/name" Method="GET" Call="UserNameCheck"/>
+  <Route Url="/users/:id" Method="PUT" Call="UserUpdate"/>
   <Route Url="/users" Method="POST" Call="UserCreate"/>
   <Route Url="/roles/form" Method="GET" Call="RoleFormRules"/>
   <Route Url="/roles/name" Method="GET" Call="RoleNameCheck"/>
@@ -316,6 +317,14 @@ ClassMethod UserFormRules() As %Status
 ClassMethod UserNameCheck() As %Status
 {
     Quit ##class(OcuPilot.Area.Permissions.UserCreateRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /users/:id</code> (Story 9.1): the user editor's
+/// Save, resolved through the one tool the agent's confirm uses (AD-55). It follows the two
+/// sub-resources, so neither is read as an id.</p>
+ClassMethod UserUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.UserSave).HandleUpdate(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /users</code>: the User form's Save, which

@@ -169,6 +169,17 @@ Parameter SCREENACTIONS = "";
 /// <code>fingerprintExcludes</code> with.</p>
 Parameter READANSWERS = "";
 
+/// <p>The query parameter this tool's fresh read sends the target's id under, or <code>""</code>
+/// for <method>IdParam</method>, which is every tool whose read and write identify a target the
+/// same way (AD-51).</p>
+Parameter READIDPARAM = "";
+
+/// <p>The row key a <b>list-type</b> fresh read is filtered by, or <code>""</code> for a read that
+/// answers one object (AD-51 as amended 2026-09-23). When set, the read answers an array and the
+/// target is the one row whose member of this name equals the id, compared without regard to case;
+/// no such row reads as absent (404).</p>
+Parameter READROWKEY = "";
+
 /// <p>The declared secret arguments an action-style write sends as its <b>only</b> body,
 /// comma-separated, or <code>""</code> for a write whose body is a merge or nothing (AD-56 (i)).
 /// <code>""</code> here, which is every write but a password change.</p>
@@ -207,6 +218,34 @@ ClassMethod ToolClass() As %String
 ClassMethod ReadType() As %String
 {
     Quit ..#READTYPE
+}
+
+/// <p>The query parameter the fresh read sends the id under: <parameter>READIDPARAM</parameter>,
+/// or <method>IdParam</method> where it declares none.</p>
+ClassMethod ReadIdParam() As %String
+{
+    If ..#READIDPARAM '= "" Quit ..#READIDPARAM
+    Quit ..IdParam()
+}
+
+/// <p><parameter>READROWKEY</parameter>, for the one helper every fresh read goes through
+/// (<method>OcuPilot.Kernel.Proposal.Operation.ReadTarget</method>).</p>
+ClassMethod ReadRowKey() As %String
+{
+    Quit ..#READROWKEY
+}
+
+/// <p>What happens once this tool's write has read OK, through the same port, for the target
+/// <var>pIdValue</var> whose fresh read before the write was <var>pFresh</var>. An error status
+/// carries <var>pHttpStatus</var> and <var>pFault</var>, which the caller answers with; the write
+/// itself has already been applied.</p>
+/// <p><b>Caller contract:</b> called by <method>OcuPilot.Kernel.Proposal.Operation.ApplyAt</method>
+/// alone, for both callers of the operation (AD-53). Nothing here by default.</p>
+ClassMethod AfterWrite(pPort As %String, pEndpoint As %String, pIdParam As %String, pIdValue As %String, pFresh As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Quit $$$OK
 }
 
 /// <p><parameter>WRITETYPE</parameter>, read at the one site that issues the write.</p>

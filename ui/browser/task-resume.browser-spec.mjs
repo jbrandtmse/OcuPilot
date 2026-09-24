@@ -502,6 +502,28 @@ test('AC4, AC7, Story 7.6 AC3: on Task details the card carries one state row, a
 
     // The instance itself: the bodyless RESUME landed.
     assert.equal(infoSuspended(taskId), 'false', "the endpoint's own INFO answers Suspended false");
+
+    // DW-1546, PRD UJ-6: Task details is not the task's list, so the change toast is raised here,
+    // and its action opens the Task schedule with the task selected.
+    // Mutation (Rule 19): hide the toast whenever the open screen shows a task (the rule DW-1546
+    // replaced) -> the toast wait goes red.
+    const link = STRINGS.tableChangeToastLink.replace('<screen>', STRINGS.taskListLabel);
+    await page.waitForFunction(
+      (text) => Array.from(document.querySelectorAll('.ocu-toast-action')).some((action) => action.textContent.trim() === text),
+      { timeout: config.navigationTimeoutMs },
+      link
+    );
+    await page.evaluate((text) => {
+      Array.from(document.querySelectorAll('.ocu-toast-action')).find((action) => action.textContent.trim() === text).click();
+    }, link);
+    await page.waitForFunction(
+      (id) => new URL(window.location.href).pathname.endsWith(`/tasks/schedule/${id}`),
+      { timeout: config.navigationTimeoutMs },
+      taskId
+    );
+    await page.waitForSelector('[role="grid"] [role="row"][aria-selected="true"]', { timeout: config.navigationTimeoutMs });
+    const selected = await page.$$eval('[role="grid"] [role="row"][aria-selected="true"]', (rows) => rows.length);
+    assert.equal(selected, 1, 'the Task schedule opens with one row, the task, selected');
   } finally {
     await context.close();
     forgetTag(tag);

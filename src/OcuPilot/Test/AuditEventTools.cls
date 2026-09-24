@@ -1,7 +1,8 @@
 /// <p>Story 7.11's server half, short of a write: the five audit event tools' declarations, the
 /// port's split of an event's row key, the prohibited set's arm for both event types, their fold
 /// rules, and the card's audit warning on OcuPilot's own marker event.</p>
-/// <p>Nothing here writes the instance. The port and prohibited-set legs read
+/// <p>Nothing here writes the instance; the mint leg stores one proposal on a seeded turn and
+/// removes both. The port and prohibited-set legs read
 /// <code>%System/%Security/AuditChange</code> and <code>OcuPilot/Security/ConfigChange</code>
 /// through the real <class>OcuPilot.Port.AdminPort</class>, so they need
 /// <code>%Admin_Secure:USE</code> and OcuPilot's audit events registered, which install does.</p>
@@ -77,10 +78,11 @@ Method TestTheResetToolsAreActionWritesWithOneStateRow()
         Do $$$AssertEquals($ListToString($ClassMethod(tClass, "FingerprintSubject")), "Enabled", "fingerprinting whether the event is enabled")
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).FingerprintSubjectProblem(tClass), "", "which registration holds adequate")
         Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Operation).MovesMarking(tClass), 0, "a reset moves no marking")
-        Set tSC = $ClassMethod(tClass, "StateDiff", {"Description": "d", "Enabled": true}, .tRows, .tProblem)
+        Set tSC = $ClassMethod(tClass, "StateDiff", {"EventName": "S/T/N", "Enabled": true, "Total": 25184, "Written": 0, "Lost": 0}, .tRows, .tProblem)
         Do $$$AssertStatusOK(tSC, "the state diff answers")
         Do $$$AssertEquals(tProblem, "", "for an event the read reported")
-        Do $$$AssertEquals(tRows.%ToJSON(), "[{""field"":""Total"",""before"":"""",""after"":""0""}]", "one Total row moving to 0")
+        Do $$$AssertEquals(tRows.%ToJSON(), "[{""field"":""Total"",""before"":""25184"",""after"":""0""}]", "one Total row moving from the read's own Total to 0")
+        Do $$$AssertEquals($ClassMethod(tClass, "ReadType") _ "|" _ $ClassMethod(tClass, "ReadIdParam") _ "|" _ $ClassMethod(tClass, "ReadRowKey") _ "|" _ $ClassMethod(tClass, "IdParam"), "LIST|names|EventName|event", "read from the event list filtered to its row, written by the event key")
         Set tSC = $ClassMethod(tClass, "StateDiff", {}, .tRows, .tProblem)
         Do $$$AssertTrue(tProblem '= "", "and an unreported event is a problem")
     }
@@ -88,6 +90,81 @@ Method TestTheResetToolsAreActionWritesWithOneStateRow()
     Do $$$AssertTrue($IsObject(tConstant), "the port holds CLEARCOUNT's constant body")
     If $IsObject(tConstant) Do $$$AssertEquals(tConstant.%ToJSON(), "{}", "which is {}")
     Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating(..#ENDPOINT, "CLEARCOUNT"), "and admits the type")
+}
+
+/// <p>DW-1576, AD-51 as amended: a reset's fresh read is the vendor's event list filtered to the one
+/// row whose <code>EventName</code> is the id, in any case, so the card's <code>Total</code> row
+/// starts at the list's own count; an event the list does not hold reads as absent.</p>
+/// <p>Mutation (Rule 19): hardcode the row's before to <code>""</code> in
+/// <method>OcuPilot.Screen.Tool.AuditEventReset.StateDiff</method> -- the before leg goes red.
+/// Clear <parameter>OcuPilot.Screen.Tool.AuditEventReset.READROWKEY</parameter> -- the read legs go
+/// red.</p>
+Method TestAResetsBeforeIsTheListsOwnTotal()
+{
+    Set tClass = ..#SYSTEMRESET
+    For tId = ..#SYSTEMEVENT, $ZConvert(..#SYSTEMEVENT, "L") {
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Operation).Read(tClass, "OcuPilot.Port.AdminPort", $ClassMethod(tClass, "Endpoint"), $ClassMethod(tClass, "IdParam"), tId, "", .tFresh, .tHttp, .tFault)
+        Do $$$AssertStatusOK(tSC, "'" _ tId _ "' reads through the filtered list")
+        Do $$$AssertTrue($IsObject(tFresh) && tFresh.%IsA("%Library.DynamicObject"), "as one row")
+        If '$IsObject(tFresh) Continue
+        Do $$$AssertEquals($ZConvert(tFresh.EventName, "L"), $ZConvert(..#SYSTEMEVENT, "L"), "the row the id names")
+        Do $$$AssertEquals(tFresh.%GetTypeOf("Total"), "number", "carrying its Total")
+        Set tListed = ..ListedTotal(.tListSC, .tListSize)
+        Do $$$AssertStatusOK(tListSC, "the event list reads")
+        Do $$$AssertEquals(tListSize, 1, "answering one row for the event")
+        Set tSC = $ClassMethod(tClass, "StateDiff", tFresh, .tRows, .tProblem)
+        Do $$$AssertEquals(tProblem, "", "the state diff answers")
+        Do $$$AssertEquals($Select($IsObject($Get(tRows)): tRows.%Size(), 1: 0), 1, "with one row")
+        If '$IsObject($Get(tRows)) || (tRows.%Size() '= 1) Continue
+        Do $$$AssertTrue((tRows.%Get(0).before = tFresh.Total) && (tListed '= "") && (tListed >= tFresh.Total), "before is the list's own Total, " _ tFresh.Total _ " of " _ tListed)
+    }
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Operation).Read(tClass, "OcuPilot.Port.AdminPort", $ClassMethod(tClass, "Endpoint"), $ClassMethod(tClass, "IdParam"), "OcuPilot/NoSuch/Event", "", .tFresh, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "an event the list does not hold is refused")
+    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "404 PORT.NOTFOUND", "as absent")
+}
+
+/// <p>DW-1576 on the agent's caller: a minted <code>security.auditsystemevents.reset</code>
+/// proposal's one state row moves <code>Total</code> from the event list's own count to
+/// <code>0</code>.</p>
+/// <p>Mutation (Rule 19): make the mint's fresh read in
+/// <method>OcuPilot.Kernel.Proposal.Mint.Mint</method> send the id under the tool's own
+/// <code>IdParam</code> through a direct port call -- the event reads as absent and the mint leg goes
+/// red.</p>
+Method TestAMintedResetStartsAtTheListsOwnTotal()
+{
+    Set tClass = ..#SYSTEMRESET
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "a completed probe turn is seeded")
+    If $$$ISERR(tSC) Quit
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(tTurnKey)
+    Set tSC = $ClassMethod(tClass, "View", "", {"EventName": (..#SYSTEMEVENT)}, 0, .tProposal, .tHttp, .tFault)
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    Do $$$AssertStatusOK(tSC, "the reset is proposed: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: $System.Status.GetErrorText(tSC)))
+    Set tListed = ..ListedTotal(.tListSC, .tListSize)
+    Do $$$AssertStatusOK(tListSC, "the event list reads")
+    Do $$$AssertEquals(tListSize, 1, "answering one row for the event")
+    Set tRows = $Select($IsObject($Get(tProposal)): tProposal.%Get("changed"), 1: "")
+    Do $$$AssertEquals($Select($IsObject(tRows): tRows.%Size(), 1: 0), 1, "the proposal carries one row")
+    If $IsObject(tRows) && (tRows.%Size() = 1) {
+        Set tRow = tRows.%Get(0)
+        Do $$$AssertEquals(tRow.field _ "|" _ tRow.before _ "|" _ tRow.after, "Total|" _ tListed _ "|0", "Total moving from the list's own count to 0")
+    }
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining), "the probe turn and its proposal are removed")
+}
+
+/// <p><parameter>SYSTEMEVENT</parameter>'s <code>Total</code> as the vendor's event list filtered by
+/// name answers it now, with the read's status in <var>pSC</var> and the number of rows it answered
+/// in <var>pSize</var>.</p>
+ClassMethod ListedTotal(Output pSC As %Status, Output pSize As %Integer) As %String
+{
+    Set pSize = 0
+    Kill tQuery
+    Set tQuery("names") = ..#SYSTEMEVENT
+    Set pSC = ##class(OcuPilot.Port.AdminPort).Invoke(..#ENDPOINT, "LIST", .tQuery, "", .tList, .tHttp, .tFault)
+    If '$IsObject($Get(tList)) || 'tList.%IsA("%Library.DynamicArray") Quit ""
+    Set pSize = tList.%Size()
+    If pSize = 0 Quit ""
+    Quit tList.%Get(0).Total
 }
 
 /// <p>The user event delete is a destructive, bodyless <code>DELETE</code> that moves the marking,

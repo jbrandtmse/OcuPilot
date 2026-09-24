@@ -26,6 +26,7 @@ import { AuditPage } from '../areas/logs/audit.page';
 import { ErrorLogPage } from '../areas/logs/error-log.page';
 import { LogViewerPage } from '../areas/logs/log-viewer.page';
 import { UserCreateFormPage } from '../areas/permissions/user-create-form.page';
+import { UserEditorPage } from '../areas/permissions/user-editor.page';
 import { RoleCreateFormPage } from '../areas/permissions/role-create-form.page';
 import { ResourceListPage } from '../areas/permissions/resource-list.page';
 import { WalletSecretFormPage } from '../areas/security/wallet-secret-form.page';
@@ -108,6 +109,19 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.X509Form': X509FormPage,
   'OcuPilot.Screen.Descriptor.WalletSecretForm': WalletSecretFormPage,
   'OcuPilot.Screen.Descriptor.DeviceForm': DeviceFormPage,
+};
+
+/**
+ * Pages keyed by the descriptor that declares them, for that descriptor's **id route** alone, and
+ * resolved before `DESCRIPTOR_PAGES` there (Story 9.1).
+ *
+ * A paired form's `<route>` creates and its `<route>/<id>` edits. Where the two are one page (the
+ * device editor) `DESCRIPTOR_PAGES` serves both; where the edit is a page of its own -- the user
+ * editor, beside the create form Story 8.2 shipped -- it is registered here, and the bare route keeps
+ * the create page.
+ */
+export const DESCRIPTOR_EDIT_PAGES: Readonly<Record<string, Type<unknown>>> = {
+  'OcuPilot.Screen.Descriptor.UserForm': UserEditorPage,
 };
 
 /**
@@ -300,6 +314,10 @@ export class ScreenOutlet {
     const screen = this.screen();
     if (screen === null || this.shell.screenHeld()) return null;
     if (!this.navigation.answered() || !this.allowed()) return null;
+    if (this.entityId() !== '') {
+      const editor = resolveArchetypePage(DESCRIPTOR_EDIT_PAGES, screen.descriptor);
+      if (editor !== null) return editor;
+    }
     return resolveScreenPage(DESCRIPTOR_PAGES, ARCHETYPE_PAGES, screen.descriptor, screen.archetype);
   }
 }

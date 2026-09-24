@@ -292,7 +292,17 @@ test('AC1, AC2, AC4, AC5: every Users row action reaches the route and the row r
     await chooseFromMenu(page, STRINGS.userActionAddRole);
     await page.waitForSelector('[role="dialog"] select', { timeout: config.navigationTimeoutMs });
     assert.equal(await page.$eval('[role="dialog"] label', (label) => label.textContent.trim()), STRINGS.userRoleField);
+    // DW-1523: a privileged choice states the grant's consequence under the select, read with it.
+    const effectOf = () =>
+      page.evaluate(() => {
+        const select = document.querySelector('[role="dialog"] select');
+        const id = select.getAttribute('aria-describedby');
+        return id === null ? null : (document.getElementById(id)?.textContent.trim() ?? '');
+      });
+    await page.select('[role="dialog"] select', '%Manager');
+    assert.equal(await effectOf(), STRINGS.privilegedGrantEffect, 'a privileged role states its consequence');
     await page.select('[role="dialog"] select', '%Developer');
+    assert.equal(await effectOf(), null, 'and an ordinary one states none');
     await page.click('[role="dialog"] .ocu-button-primary');
     await waitForCell(page, PROBE, ROLES_CELL, '%Developer');
     assert.ok(probeField('Roles').includes('%Developer'), 'the instance holds the added role');
@@ -331,18 +341,21 @@ test('AC1, AC2, AC4, AC5: every Users row action reaches the route and the row r
 });
 
 test('AC3: a protected account lists disable and delete refused with its published sentence and sends nothing', async () => {
+  // DW-1520 (Story 9.1): a service account's Set password is refused too, with the sign-in
+  // sentence; _SYSTEM's is offered.
   const { context, page, writes } = await signedInAtList();
   try {
-    for (const [account, sentence] of [
-      ['_SYSTEM', STRINGS.userRefusalSystemAccount],
-      ['CSPSystem', STRINGS.userRefusalServiceAccount],
+    for (const [account, sentence, signIn] of [
+      ['_SYSTEM', STRINGS.userRefusalSystemAccount, ''],
+      ['CSPSystem', STRINGS.userRefusalServiceAccount, STRINGS.userRefusalServiceAccountSignIn],
     ]) {
       await selectOnly(page, account);
       const entries = await openRowMenu(page);
       for (const entry of entries) {
         const protectedAction = entry.label === STRINGS.agentDefinitionDisable || entry.label === STRINGS.actionDelete;
-        assert.equal(entry.reason, protectedAction ? sentence : '', `${account} ${entry.label}: ${protectedAction ? 'explained' : 'offered'}`);
-        assert.equal(entry.ariaDisabled, protectedAction ? 'true' : null, `${account} ${entry.label}: aria-disabled only where refused`);
+        const expected = protectedAction ? sentence : entry.label === STRINGS.userActionSetPassword ? signIn : '';
+        assert.equal(entry.reason, expected, `${account} ${entry.label}: ${expected === '' ? 'offered' : 'explained'}`);
+        assert.equal(entry.ariaDisabled, expected === '' ? null : 'true', `${account} ${entry.label}: aria-disabled only where refused`);
         assert.equal(entry.disabled, false, 'never the disabled attribute');
       }
       await page.evaluate((label) => {

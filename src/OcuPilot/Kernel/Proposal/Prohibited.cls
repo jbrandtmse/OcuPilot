@@ -78,6 +78,10 @@ Parameter CURRENTUSERREASON = "This is the account you are signed in as. Disabli
 /// <code>userRefusalServiceAccount</code>.</p>
 Parameter SERVICEACCOUNTREASON = "The instance's own services run as this account. Disabling or deleting it would stop them, OcuPilot included.";
 
+/// <p>The one sentence <parameter>SERVICEACCOUNTSIGNIN</parameter> carries, pinned equal to
+/// <code>userRefusalServiceAccountSignIn</code>.</p>
+Parameter SERVICEACCOUNTSIGNINREASON = "The instance's own services sign in as this account. A new password or a required password change would stop them, OcuPilot included.";
+
 /// <p>The one sentence <parameter>LASTALLHOLDER</parameter> carries, pinned equal to
 /// <code>userRefusalLastAllHolder</code>.</p>
 Parameter LASTALLHOLDERREASON = "This is the last account that holds %All. Disabling it, deleting it or taking the role off it would leave nobody able to administer this instance.";
@@ -129,6 +133,13 @@ Parameter SYSTEMACCOUNT = "PROHIBITED.SYSTEMACCOUNT";
 /// ends every CSP request on the instance, OcuPilot's own among them, so AD-38 makes it the same
 /// harm as disabling the application that serves OcuPilot.</p>
 Parameter SERVICEACCOUNT = "PROHIBITED.SERVICEACCOUNT";
+
+/// <p>The write would change how one of the accounts the instance's own services run as
+/// (<parameter>SERVICEACCOUNTS</parameter>) signs in: a new password, or turning on
+/// change-password-on-login (AD-10 as amended 2026-09-23). Either stops those services signing in
+/// exactly as a disable would. The signed-in account is exempt, and turning the flag off is
+/// permitted for every account.</p>
+Parameter SERVICEACCOUNTSIGNIN = "PROHIBITED.SERVICEACCOUNTSIGNIN";
 
 /// <p>The write would suspend or resume a process OcuPilot is itself running in: the job serving
 /// this confirmation, or any job running an agent turn (AD-7). Both harms are irrecoverable from
@@ -265,6 +276,10 @@ Parameter APPLICATIONROLEFIELDS = "MatchRoles";
 
 Parameter FIELDCHANGEPASSWORD = "ChangePassword";
 
+/// <p>The vendor's own password-change request type, which the sign-in arm reads as a new
+/// password.</p>
+Parameter PASSWORDWRITETYPE = "CHANGEPWD";
+
 /// <p>The AD-14 action a write tool declares when its write removes its target
 /// (<method>RemovesOf</method>).</p>
 Parameter ACTIONDELETED = "deleted";
@@ -289,10 +304,11 @@ Parameter READTYPE = "GET";
 /// then the four <method>User</method> adds, then <parameter>PRIVILEGEGRANT</parameter>, which
 /// only a web application reaches, then the two <method>Process</method> adds, then the one every
 /// covered type shares, with the wholesale refusal last, and then the one <method>Role</method> adds and
-/// the one <method>Resource</method> adds -- fifteen in all.</p>
+/// the one <method>Resource</method> adds, and the sign-in arm <method>User</method> adds last --
+/// sixteen in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -311,6 +327,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     ; The four account sentences, likewise shared with the screen's pre-click refusal.
     If pCode = ..#SYSTEMACCOUNT Quit ..#SYSTEMACCOUNTREASON
     If pCode = ..#SERVICEACCOUNT Quit ..#SERVICEACCOUNTREASON
+    If pCode = ..#SERVICEACCOUNTSIGNIN Quit ..#SERVICEACCOUNTSIGNINREASON
     If pCode = ..#CURRENTUSER Quit ..#CURRENTUSERREASON
     If pCode = ..#LASTALLHOLDER Quit ..#LASTALLHOLDERREASON
     If pCode = ..#OCUPILOTPROCESS Quit ..#OCUPILOTPROCESSREASON
@@ -346,8 +363,8 @@ ClassMethod CoveredTypes() As %List
 /// already-declared configuration on and off rather than changing any of it, and the applications
 /// AD-38 protects are refused every change by the serving-path predicate; <code>Description</code>
 /// because it is display text no request is routed or authorized by.</p>
-/// <p>An account's three are <code>Enabled</code>, <code>Roles</code> and
-/// <code>ChangePassword</code>. <code>Enabled</code> carries the asymmetric predicate: enabling an
+/// <p>An account's are <code>Enabled</code>, <code>Roles</code>, <code>ChangePassword</code> and the
+/// rest of the classic General tab (<method>UserSettingFields</method>). <code>Enabled</code> carries the asymmetric predicate: enabling an
 /// account is a change AD-10 does not forbid, while disabling one is refused for the four protected
 /// accounts (<method>User</method>). <code>Roles</code> is permitted except where the delta grants
 /// privilege or strips <code>%All</code> from a protected account, which is the same asymmetry read
@@ -387,7 +404,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
 {
     If (pType = ..#TYPEAUDITEVENT) || (pType = ..#TYPEAUDITUSEREVENT) Quit $ListBuild(..#FIELDENABLED)
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "Enabled", "Resource")
-    If pType = ..#TYPEUSER Quit $ListBuild(..#FIELDENABLED, ..#FIELDROLES, ..#FIELDCHANGEPASSWORD)
+    If pType = ..#TYPEUSER Quit $ListBuild(..#FIELDENABLED, ..#FIELDROLES, ..#FIELDCHANGEPASSWORD) _ ..UserSettingFields()
     If pType = ..#TYPEAUDITING Quit $ListBuild(..#FIELDENABLED)
 
     If pType = ..#TYPERESOURCE Quit $ListBuild("Description", ..#FIELDPUBLICPERMISSION)
@@ -395,6 +412,16 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEWALLETSECRET Quit $ListBuild("Usage", "RequireTLS", "AllowedHosts", "Secret")
     If pType = ..#TYPEDEVICE Quit ..DeviceFields()
     Quit ""
+}
+
+/// <p>The account settings of the classic General tab beyond <code>Enabled</code> and
+/// <code>ChangePassword</code>, each a change AD-10 forbids none of: none removes the account or
+/// its administration. <code>AutheEnabled</code>'s two-factor bits are the only ones a change may
+/// move, which the edit's own field rules hold, and turning change-password-on-login on for a service account is the sign-in arm's
+/// (<method>User</method>).</p>
+ClassMethod UserSettingFields() As %List [ Private ]
+{
+    Quit $ListBuild("AccountNeverExpires", "AutheEnabled", "Comment", "EmailAddress", "ExpirationDate", "FullName", "HOTPKeyDisplay", "NameSpace", "PasswordNeverExpires", "PhoneNumber", "PhoneProvider", "Routine")
 }
 
 /// <p>The payload field names of entity type <var>pType</var> whose <b>every</b> change is
@@ -572,7 +599,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         If $$$ISERR(tSC) Quit
 
         If tType = ..#TYPEUSER {
-            Set tSC = ..User(tId, tPayloadObject, tTarget, .tChanged, ..RemovesOf($Get(tToolClass)), .pProhibits, .pCode)
+            Set tSC = ..User(tId, tPayloadObject, tTarget, .tChanged, ..RemovesOf($Get(tToolClass)), .pProhibits, .pCode, ..WriteTypeOf($Get(tToolClass)))
             Quit
         }
         If tType = ..#TYPEROLE {
@@ -840,8 +867,9 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
 
 /// <p>The user predicates, in declared order, first hit wins: the four account arms --
 /// <parameter>SYSTEMACCOUNTNAME</parameter>, the signed-in account, a service account and the last
-/// <code>%All</code> holder -- when the write removes the account or its administration; then any
-/// changed field the release has not reviewed. A role delta that grants <code>%All</code> or an
+/// <code>%All</code> holder -- when the write removes the account or its administration; then the
+/// service-account sign-in arm (<method>ChangesServiceSignIn</method>); then any changed field the
+/// release has not reviewed. <var>pWriteType</var> is the tool's own request type. A role delta that grants <code>%All</code> or an
 /// administrative privilege is permitted (AD-10): the mint marks the proposal destructive and names
 /// the privilege (<method>GrantsPrivilegeByEffect</method>).</p>
 /// <p><var>pId</var> is the target's id as the reference carries it -- already canonical, and
@@ -857,7 +885,7 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
 /// stored row</b>, and it is the right source: both callers of the write run as the person the
 /// refusal protects from signing themselves out -- a confirm is confirmable only by the user who
 /// minted it (AD-6), and a screen action is that user's own request (AD-53).</p>
-ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, pRemoves As %Boolean, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, pRemoves As %Boolean, Output pProhibits As %Boolean, Output pCode As %String, pWriteType As %String = "") As %Status [ Private ]
 {
     Set pProhibits = 0
     Set pCode = ""
@@ -885,6 +913,10 @@ ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %Dynamic
                 Do ..Refuse(..#LASTALLHOLDER, .pProhibits, .pCode)
                 Quit
             }
+        }
+        If ..ChangesServiceSignIn(pId, pPayload, .pChanged, pWriteType) {
+            Do ..Refuse(..#SERVICEACCOUNTSIGNIN, .pProhibits, .pCode)
+            Quit
         }
         Set tPermitted = ..PermittedChangeFields(..#TYPEUSER)
         Set tField = ""
@@ -1685,6 +1717,20 @@ ClassMethod Disables(pPayload As %DynamicObject, ByRef pChanged) As %Boolean [ P
     Quit ..IsOff(..Rendered(pPayload, ..#FIELDENABLED))
 }
 
+/// <p>Whether this write changes how a service account signs in (AD-10 as amended 2026-09-23,
+/// DW-1520): the target is one of <parameter>SERVICEACCOUNTS</parameter> and not the signed-in
+/// account, and the write is the vendor's password change (<var>pWriteType</var>
+/// <code>CHANGEPWD</code>) or its diff turns <code>ChangePassword</code> on. Turning the flag off
+/// changes nothing about how the account signs in and is not this predicate's.</p>
+ClassMethod ChangesServiceSignIn(pId As %String, pPayload As %DynamicObject, ByRef pChanged, pWriteType As %String) As %Boolean [ Private ]
+{
+    If '..IsServiceAccount(pId) Quit 0
+    If ..NormalizedUser(pId) = ..NormalizedUser($Username) Quit 0
+    If pWriteType = ..#PASSWORDWRITETYPE Quit 1
+    If '$Data(pChanged(..#FIELDCHANGEPASSWORD)) Quit 0
+    Quit '..IsOff(..Rendered(pPayload, ..#FIELDCHANGEPASSWORD))
+}
+
 /// <p>Whether this write removes the target account or its administration, in <var>pRemoval</var>
 /// (AD-10 as amended 2026-09-23): the tool's write deletes the account (<var>pRemoves</var>), it
 /// disables it (<method>Disables</method>), or it changes <code>Roles</code> so that the target's
@@ -2105,8 +2151,8 @@ ClassMethod Target(pToolName As %String, pId As %String, Output pTarget As %Dyna
             Quit
         }
         Kill tQuery
-        Set tQuery(tIdParam) = pId
-        Set tReadSC = $ClassMethod(..PortClassOf(tClass), "Invoke", tEndpoint, ..ReadTypeOf(tClass), .tQuery, "", .tFresh, .tHttp, .tFault)
+        Set tQuery(##class(OcuPilot.Kernel.Proposal.Operation).ReadIdParamOf(tClass, tIdParam)) = pId
+        Set tReadSC = ##class(OcuPilot.Kernel.Proposal.Operation).ReadTarget(tClass, ..PortClassOf(tClass), tEndpoint, .tQuery, pId, .tFresh, .tHttp, .tFault)
         If $$$ISERR(tReadSC) {
             If +$Get(tHttp) = 404 Quit
             Set tSC = tReadSC

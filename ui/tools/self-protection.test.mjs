@@ -103,12 +103,16 @@ test("AD-53: the client's OcuPilot application paths are the install roster's ow
   );
 });
 
-/** The four account refusals, each a `Prohibited.cls` parameter and a `strings.ts` key (Story 7.2). */
+/**
+ * The account refusals, each a `Prohibited.cls` parameter and a `strings.ts` key: Story 7.2's four,
+ * and Story 9.1's service-account sign-in refusal (DW-1520).
+ */
 const ACCOUNT_REFUSALS = [
   ['SYSTEMACCOUNTREASON', 'userRefusalSystemAccount'],
   ['CURRENTUSERREASON', 'userRefusalCurrentUser'],
   ['SERVICEACCOUNTREASON', 'userRefusalServiceAccount'],
   ['LASTALLHOLDERREASON', 'userRefusalLastAllHolder'],
+  ['SERVICEACCOUNTSIGNINREASON', 'userRefusalServiceAccountSignIn'],
 ];
 
 test('AD-53, AD-39: each account refusal is one sentence on both surfaces', () => {
@@ -172,4 +176,19 @@ test('AD-53: protected-account answers the instance sentence per account, in its
   // And the other rule is unmoved by the new one.
   assert.equal(selfProtectionReason('serves-ocupilot', '_SYSTEM', '_SYSTEM'), '');
   assert.equal(selfProtectionReason(rule, '/api/ocupilot', 'Dana'), '');
+});
+
+test('DW-1520: the sign-in rule explains a service account other than the signed-in one, and nothing else', async () => {
+  // Mutation (Rule 19): drop the signed-in exemption from `selfProtectionReason`'s sign-in branch ->
+  // the irisowner-signed-in leg goes red; answer '' for the rule -> every service-account leg does.
+  const { selfProtectionReason, SERVICE_ACCOUNTS, SERVICE_ACCOUNT_SIGN_IN_RULE } = await import('../src/app/core/self-protection.ts');
+  const sentence = stringValue('userRefusalServiceAccountSignIn');
+  for (const account of SERVICE_ACCOUNTS) {
+    assert.equal(selfProtectionReason(SERVICE_ACCOUNT_SIGN_IN_RULE, account, '_SYSTEM'), sentence, `${account} is refused`);
+    assert.equal(selfProtectionReason(SERVICE_ACCOUNT_SIGN_IN_RULE, account.toUpperCase(), '_SYSTEM'), sentence, `${account} in another case too`);
+  }
+  assert.equal(selfProtectionReason(SERVICE_ACCOUNT_SIGN_IN_RULE, 'irisowner', 'IRISOwner'), '', 'the signed-in account is exempt');
+  assert.equal(selfProtectionReason(SERVICE_ACCOUNT_SIGN_IN_RULE, '_SYSTEM', 'admin'), '', '_SYSTEM is permitted');
+  assert.equal(selfProtectionReason(SERVICE_ACCOUNT_SIGN_IN_RULE, 'admin', 'admin'), '', 'and so is the signed-in account');
+  assert.equal(selfProtectionReason(SERVICE_ACCOUNT_SIGN_IN_RULE, 'someone', 'admin'), '', 'and any other account');
 });

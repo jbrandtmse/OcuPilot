@@ -311,7 +311,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         ; AD-6: the target is read fresh, the stored arguments are merged over it again, and the
         ; digest is re-taken. A mismatch is terminal -- the row closes and Re-propose is the
         ; accommodation.
-        Set tPrintSC = ..FingerprintMatches(tTool, .pRow, .tMatches, .tEndpoint, .tIdParam, .tIdValue)
+        Set tPrintSC = ..FingerprintMatches(tTool, .pRow, .tMatches, .tEndpoint, .tIdParam, .tIdValue, .tFresh)
         If $$$ISERR(tPrintSC) {
             Set tSC = ..Internal("the proposal's target could not be re-read: " _ $System.Status.GetErrorText(tPrintSC), .pHttpStatus, .pCode)
             Quit
@@ -378,7 +378,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         ; screen action's are one call site. AD-52's port declaration, AD-51's request type and the
         ; tool's own port query (read off the STORED payload the fingerprint just compared) all
         ; resolve inside it.
-        Set tWriteSC = ##class(OcuPilot.Kernel.Proposal.Operation).ApplyAt(tToolClass, ..PortClassOf(tToolClass), tEndpoint, tIdParam, tIdValue, $Get(pRow("payload")), tBody, .tWritten, .tWriteHttp, .tWriteFault)
+        Set tWriteSC = ##class(OcuPilot.Kernel.Proposal.Operation).ApplyAt(tToolClass, ..PortClassOf(tToolClass), tEndpoint, tIdParam, tIdValue, $Get(pRow("payload")), tBody, .tWritten, .tWriteHttp, .tWriteFault, $Get(tFresh))
         If $$$ISERR(tWriteSC) {
             ; The claim has committed and the token is spent: the proposal stays confirmed and the
             ; port's own normalized envelope is what the caller is answered with. There is no
@@ -560,9 +560,10 @@ ClassMethod DefinitionMoved(pDefinitionId As %String, pStoredVersion As %String,
 /// <method>OcuPilot.Test.Prohibited.TestNoWriteToolAdmitsAnAlwaysProhibitedField</method> asserts
 /// that no tool excludes a field it can set and declares no secret outside the prohibited set's
 /// reviewed few -- and that assertion is what holds it, not this comparison.</p>
-ClassMethod FingerprintMatches(pTool As %DynamicObject, ByRef pRow, Output pMatches As %Boolean, Output pEndpoint As %String, Output pIdParam As %String, Output pIdValue As %String) As %Status [ Private ]
+ClassMethod FingerprintMatches(pTool As %DynamicObject, ByRef pRow, Output pMatches As %Boolean, Output pEndpoint As %String, Output pIdParam As %String, Output pIdValue As %String, Output pFresh As %DynamicObject) As %Status [ Private ]
 {
     Set pMatches = 0
+    Set pFresh = ""
     Set pEndpoint = ""
     Set pIdParam = ""
     Set pIdValue = ""
@@ -606,6 +607,7 @@ ClassMethod FingerprintMatches(pTool As %DynamicObject, ByRef pRow, Output pMatc
             Quit
         }
         If '$IsObject(tFresh) || 'tFresh.%IsA("%Library.DynamicObject") Quit
+        Set pFresh = tFresh
         Set tArgs = ..ParsedObject($Get(pRow("arguments")))
         Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Merge(tFresh, tArgs, tIdArgument, tSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
         If $$$ISERR(tSC) Quit

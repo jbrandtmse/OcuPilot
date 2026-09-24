@@ -202,6 +202,7 @@ services:
       # classes: ToolWire, TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire
       # classes: WebAppWire
       # classes: UserCreateWire, RoleWire, ResourceWire, X509Wire, WalletWire, DeviceWire, DeviceWriteGate
+      # classes: UserSave, UserSignIn
       # classes: TurnWireFixture, UnexpireScope, UserUpdate, Version, Wire, WireOAuthRead, WireSecurityRead
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one

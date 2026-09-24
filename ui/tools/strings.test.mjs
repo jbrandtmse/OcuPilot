@@ -529,9 +529,14 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // literals -- the X.509 list's Import and agent invitation, the credential form's title, seven
   // labels, its Load from file button and two helpers, and the proposal card's optional mark -- and
   // take the table past 600.
+  //
+  // Story 9.1 moves the bound to 800 under the same protocol: its four rows publish nineteen
+  // literals -- the sign-in refusal, the user editor's eleven labels and empty state, the tab
+  // error names and five suggested-prompt literals -- and take the table past 700, with the rest of
+  // Epic 9's editors still to land.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 700,
-    `expected between 150 and 700 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 800,
+    `expected between 150 and 800 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

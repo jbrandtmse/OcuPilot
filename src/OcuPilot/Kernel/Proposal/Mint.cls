@@ -163,8 +163,8 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         ; as "the target is not there".
         Set tCreates = ..CreatesOf(pToolClass)
         Kill tQuery
-        Set tQuery(pIdParam) = pIdValue
-        Set tReadSC = $ClassMethod(..PortClassOf(pToolClass), "Invoke", tEndpoint, ..ReadTypeOf(pToolClass), .tQuery, "", .tFresh, .tReadHttp, .tReadFault)
+        Set tQuery(##class(OcuPilot.Kernel.Proposal.Operation).ReadIdParamOf(pToolClass, pIdParam)) = pIdValue
+        Set tReadSC = ##class(OcuPilot.Kernel.Proposal.Operation).ReadTarget(pToolClass, ..PortClassOf(pToolClass), tEndpoint, .tQuery, pIdValue, .tFresh, .tReadHttp, .tReadFault)
         If $$$ISERR(tReadSC) && (+$Get(tReadHttp) '= 404) {
             Set pHttpStatus = +$Get(tReadHttp)
             Set pFault = $Get(tReadFault)

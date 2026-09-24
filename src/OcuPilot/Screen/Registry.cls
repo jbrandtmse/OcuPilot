@@ -288,6 +288,13 @@ ClassMethod Validate(Output pProblem As %String) As %Status
                 Set pProblem = tClass _ ": " _ tTabProblem
                 Quit
             }
+            ; Story 11.3's contract: a screen's suggested prompts are declared beside its command
+            ; box aliases, validated here as the mirror validates them.
+            Set tPromptsProblem = ..SuggestedPromptsProblem(tObject)
+            If tPromptsProblem '= "" {
+                Set pProblem = tClass _ ": " _ tPromptsProblem
+                Quit
+            }
             ; AD-5, Story 6.10: a list's one declared cross-screen row target. The roster-wide
             ; half (whether the named route resolves) runs later, once every entry's own shape is
             ; known sound.
@@ -373,7 +380,7 @@ ClassMethod EntityLabelProblem(pDeclaration As %DynamicObject) As %String
 /// <code>rowTarget</code>, <code>secretArguments</code>, <code>fingerprintExcludes</code>,
 /// <code>entityLabelKey</code> -- is sound, and a declaration missing a required one is already
 /// refused by the rule that reads it, with a sentence naming what it was for.</p>
-Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,context,secretArguments,fingerprintExcludes,primaryAction,rowActions,emptyStateKey,commandAliases,classicPage,classicLinkExemption,read,table,banner,tab,toolIdentifier,rowTarget";
+Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,context,secretArguments,fingerprintExcludes,primaryAction,rowActions,emptyStateKey,commandAliases,suggestedPrompts,classicPage,classicLinkExemption,read,table,banner,tab,toolIdentifier,rowTarget";
 
 /// <p>What is wrong with <var>pDeclaration</var>'s own top-level keys, or <code>""</code> when
 /// nothing is (DW-271). Every key must be one of <parameter>DECLARATIONKEYS</parameter>.</p>
@@ -550,6 +557,55 @@ ClassMethod TabProblem(pDeclaration As %DynamicObject) As %String
         }
     } Catch ex {
         Set tProblem = "the tab declaration could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>What is wrong with <var>pDeclaration</var>'s <code>suggestedPrompts</code>, or
+/// <code>""</code> (Story 11.3). Absent or <code>null</code> declares none. Otherwise it is an array
+/// of at least <parameter>SUGGESTEDPROMPTSMIN</parameter> objects, each carrying only
+/// <code>groupKey</code> and <code>textKey</code>, both non-empty string keys. That each key
+/// resolves is the build's check, over the string source this class cannot read.
+/// <file>ui/tools/screen-mirror.mjs</file>'s <code>suggestedPromptsProblem</code> returns the same
+/// sentence for every case.</p>
+ClassMethod SuggestedPromptsProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        If '$IsObject(pDeclaration) {
+            Set tProblem = "the declaration is not an object"
+            Quit
+        }
+        Set tType = pDeclaration.%GetTypeOf("suggestedPrompts")
+        If (tType = "unassigned") || (tType = "null") Quit
+        If tType '= "array" {
+            Set tProblem = "suggestedPrompts is not an array of prompts"
+            Quit
+        }
+        Set tPrompts = pDeclaration.%Get("suggestedPrompts")
+        If tPrompts.%Size() < ..#SUGGESTEDPROMPTSMIN {
+            Set tProblem = "suggestedPrompts declares " _ tPrompts.%Size() _ ", and a screen that declares prompts declares at least " _ ..#SUGGESTEDPROMPTSMIN
+            Quit
+        }
+        Set tIterator = tPrompts.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tPrompt) {
+            Set tWhere = "suggestedPrompts[" _ tIndex _ "]"
+            If '$IsObject(tPrompt) || 'tPrompt.%IsA("%Library.DynamicObject") {
+                Set tProblem = tWhere _ " is not an object declaring its groupKey and textKey"
+                Quit
+            }
+            Set tProblem = ..UnknownKeyProblem(tPrompt, tWhere, $ListBuild("groupKey", "textKey"))
+            If tProblem '= "" Quit
+            For tKey = "groupKey", "textKey" {
+                If (tPrompt.%GetTypeOf(tKey) '= "string") || (tPrompt.%Get(tKey) = "") {
+                    Set tProblem = tWhere _ "." _ tKey _ " is empty, and a prompt names the string key it reads"
+                    Quit
+                }
+            }
+            If tProblem '= "" Quit
+        }
+    } Catch ex {
+        Set tProblem = "the suggested prompts could not be read: " _ ex.DisplayString()
     }
     Quit tProblem
 }
@@ -2182,8 +2238,13 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
 /// signed-in account or a service account, and its sentences are that class's
 /// <code>SYSTEMACCOUNTREASON</code>, <code>CURRENTUSERREASON</code> and
 /// <code>SERVICEACCOUNTREASON</code>. The last <code>%All</code> holder is a census no client can
-/// read, so it is refused at the write alone.</p>
-Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account";
+/// read, so it is refused at the write alone. <code>service-account-sign-in</code> is the sign-in
+/// one (AD-10 as amended 2026-09-23): the target is a service account other than the signed-in one,
+/// and its sentence is <code>SERVICEACCOUNTSIGNINREASON</code>.</p>
+Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in";
+
+/// <p>The fewest suggested prompts a declaration that declares any may carry (Story 11.3).</p>
+Parameter SUGGESTEDPROMPTSMIN As INTEGER = 3;
 
 /// <p>The projections <method>DeclaredNames</method> fills, comma-separated. Declared as data
 /// because a generator reads it: <file>ui/tools/screen-mirror.mjs</file> parses this parameter and

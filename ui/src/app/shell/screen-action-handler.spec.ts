@@ -351,9 +351,23 @@ describe('the Users list row actions (Story 7.2)', () => {
     ]);
   });
 
-  it('offers a remove of the row\u2019s own roles and an add of the Roles list\u2019s others, sending one role', async () => {
+  it('offers a remove of the row\u2019s own roles and an add of the form read\u2019s others, sending one role', async () => {
+    // Story 9.1 (DW-1523): the add's choices come from `GET /users/form`, each with the server's own
+    // privilege mark, which the dialog states the grant's consequence from.
+    // Mutation (Rule 19): drop the privileged marks from `openRole` -> the privileged assertion goes red.
     const { actions, handler, calls } = mountUsers([
-      { kind: 'ok', status: 200, body: { rows: [{ Name: '%SQL' }, { Name: '%Operator' }, { Name: '%developer' }, { Name: 'Probe' }] } },
+      {
+        kind: 'ok',
+        status: 200,
+        body: {
+          roles: [
+            { name: '%SQL', privileged: false },
+            { name: '%Operator', privileged: true },
+            { name: '%developer', privileged: false },
+            { name: 'Probe', privileged: false },
+          ],
+        },
+      },
       UPDATED,
     ]);
     actions.run(USERS.descriptor, REMOVE_ROLE);
@@ -364,9 +378,10 @@ describe('the Users list row actions (Story 7.2)', () => {
 
     actions.run(USERS.descriptor, ADD_ROLE);
     await settle();
-    expect(calls[0].path).toBe('/api/ocupilot/screens/permissions.roles/read?maxRows=1000');
+    expect(calls[0].path).toBe('/api/ocupilot/users/form');
     // Held roles are left out, case-insensitively; a privileged role is offered and the instance decides.
     expect(handler.pending()?.options).toEqual(['%Operator', 'Probe']);
+    expect(handler.pending()?.privileged).toEqual(['%Operator']);
     handler.submitRole('Probe');
     await settle();
     expect(JSON.parse(calls[1].body)).toEqual({ action: ADD_ROLE, id: 'probe', values: { Role: 'Probe' } });
@@ -744,5 +759,55 @@ describe('the System events and User events lists (Story 7.11)', () => {
     expect(await handler.sendFor(SYSTEM, 'enable', SQL)).toBe(true);
     expect(JSON.parse(calls[0].body)).toEqual({ action: 'enable', id: SQL });
     expect(events.map((event) => `${event.type}:${event.action}`)).toEqual(['audit-event:updated']);
+  });
+});
+
+/**
+ * Story 9.1 (DW-1501): an editor starts the Users list's own actions on the account it shows,
+ * through the one handler and the one route, with a sink of its own for the refusal and the applied
+ * write -- the list's store is not touched.
+ */
+describe('startFor, the editor half of the Users list actions', () => {
+  function sink() {
+    const seen = { refusals: [] as string[], applied: [] as string[] };
+    return {
+      seen,
+      sink: { setRefusal: (reason: string) => seen.refusals.push(reason), applied: (actionId: string) => seen.applied.push(actionId) },
+    };
+  }
+
+  it('sends a role an editor has already chosen at once, reporting to the editor rather than the list', async () => {
+    const { handler, calls, store } = mountUsers([UPDATED]);
+    const { seen, sink: editorSink } = sink();
+    handler.startFor(USERS.descriptor, REMOVE_ROLE, 'probe', { Roles: ['%SQL'] }, editorSink, '%SQL');
+    await settle();
+    expect(handler.pending()).toBeNull();
+    expect(JSON.parse(calls[0].body)).toEqual({ action: REMOVE_ROLE, id: 'probe', values: { Role: '%SQL' } });
+    expect(seen.applied).toEqual([REMOVE_ROLE]);
+    expect(store.refusal()).toBe('');
+  });
+
+  it('opens the list\u2019s own dialogs for the editor, and a refusal reaches the editor\u2019s sink', async () => {
+    // Mutation (Rule 19): report to the list store in `send` whatever the sink -> the sink's
+    // refusal assertion goes red.
+    const refused = { kind: 'error', status: 403, code: 'PROHIBITED.SERVICEACCOUNTSIGNIN', reason: 'no sign-in change', detail: null } as JsonResult<unknown>;
+    const { handler } = mountUsers([refused]);
+    const { seen, sink: editorSink } = sink();
+    handler.startFor(USERS.descriptor, SET_PASSWORD, 'probe', { Roles: [] }, editorSink);
+    expect(handler.pending()?.kind).toBe('set-password');
+    expect(handler.pending()?.descriptor).toBe(USERS.descriptor);
+    await handler.submitPassword('Probe-password-1', false);
+    expect(seen.refusals).toEqual(['', 'no sign-in change']);
+    expect(seen.applied).toEqual([]);
+  });
+
+  it('draws a service account\u2019s Set password refused with the sign-in sentence before anything is sent', async () => {
+    // Mutation (Rule 19): drop the rule from UserList's set-password declaration -> the dialog opens.
+    const { handler, calls } = mountUsers([UPDATED]);
+    const { seen, sink: editorSink } = sink();
+    handler.startFor(USERS.descriptor, SET_PASSWORD, 'CSPSystem', null, editorSink);
+    expect(handler.pending()).toBeNull();
+    expect(seen.refusals).toEqual([STRINGS.userRefusalServiceAccountSignIn]);
+    expect(calls).toHaveLength(0);
   });
 });

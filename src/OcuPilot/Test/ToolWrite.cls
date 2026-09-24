@@ -364,9 +364,10 @@ Method TestWithNothingRestrainingItTheCallMintsAProposal()
 }
 
 /// <p>Story 5.9, AD-3, AD-8, AD-10: the Users write tool. Its resolved set is the Users screen's
-/// own two pairs, each once; it advertises <code>Enabled</code> and the one authored
-/// <code>Roles</code> argument and nothing else; and every other key -- <code>EscalationRoles</code>
-/// among them -- is refused under <code>additionalProperties: false</code>.</p>
+/// own two pairs, each once; it advertises the classic General tab's fourteen settings (Story 9.1)
+/// and the one authored <code>Roles</code> argument and nothing else; and every other key --
+/// <code>EscalationRoles</code> among them -- is refused under
+/// <code>additionalProperties: false</code>.</p>
 /// <p>Mutations: set <parameter>OcuPilot.Screen.Tool.UserUpdate.WRITEPERMISSION</parameter> back to
 /// <code>"WRITE"</code> (the pair assertions redden), drop the <code>Roles</code> property from
 /// <method>OcuPilot.Screen.Tool.UserUpdate.InputSchema</method> (the advertised-fields assertions
@@ -406,7 +407,7 @@ Method TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs()
     Do $$$AssertEquals(tPairs, tDeclared, "and the write's set is that set, not a superset of it")
 
     Set tFields = $ClassMethod(..#USERTOOLCLASS, "SettableFields")
-    Do $$$AssertEquals($ListToString(tFields), "ChangePassword,Enabled,Roles", "the settable fields are the two derived literals and the one authored array")
+    Do $$$AssertEquals($ListToString(tFields), "AccountNeverExpires,AutheEnabled,ChangePassword,Comment,EmailAddress,Enabled,ExpirationDate,FullName,HOTPKeyDisplay,NameSpace,PasswordNeverExpires,PhoneNumber,PhoneProvider,Routine,Roles", "the settable fields are the fourteen derived literals and the one authored array")
     Set tPermittedByTheSet = ##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("user")
     Do $$$AssertEquals($ListLength(tPermittedByTheSet), $ListLength(tFields), "and the kernel has reviewed exactly as many fields as the tool advertises")
     For tI = 1:1:$ListLength(tFields) {
@@ -419,18 +420,23 @@ Method TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs()
     Do $$$AssertEquals(tProperties.%Get("Roles").%Get("items").%Get("type"), "string", "of role names")
     Do $$$AssertNotEquals(tProperties.%Get("Roles").%Get("description"), "", "carrying the reviewed description AD-3 requires")
     Do $$$AssertEquals(tProperties.%GetTypeOf("EscalationRoles"), "unassigned", "EscalationRoles is not advertised")
-    Do $$$AssertEquals(tProperties.%GetTypeOf("FullName"), "unassigned", "and neither is an ordinary literal the set has not reviewed")
+    Do $$$AssertEquals(tProperties.%Get("FullName").%Get("type"), "string", "FullName is advertised (Story 9.1)")
+    Do $$$AssertEquals(tProperties.%Get("AutheEnabled").%Get("type"), "integer", "and AutheEnabled as the whole number the instance stores")
+    Set tIterator = tProperties.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tProperty) {
+        Do $$$AssertNotEquals(tProperty.%Get("description"), "", tKey _ " carries a description")
+    }
     Do $$$AssertTrue($ListFind($ClassMethod(..#USERTOOLCLASS, "ExcludedFields"), "EscalationRoles") > 0, "the tool excludes the escalation subtree by name as well")
 
     Set tSchema = $ClassMethod(..#USERTOOLCLASS, "InputSchema")
     Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "OcuPilotProbeSchema", "EscalationRoles": ["%All"]}, .tProblem)
     Do $$$AssertStatusNotOK(tSC, "a call carrying EscalationRoles is refused")
     Do $$$AssertTrue(tProblem [ "EscalationRoles", "naming the argument: " _ tProblem)
-    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "OcuPilotProbeSchema", "FullName": "renamed"}, .tProblem)
-    Do $$$AssertStatusNotOK(tSC, "and so is an unreviewed ordinary literal")
-    Do $$$AssertTrue(tProblem [ "FullName", "naming that argument too: " _ tProblem)
-    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "OcuPilotProbeSchema", "Roles": ["%Developer"], "Enabled": true, "ChangePassword": true}, .tProblem)
-    Do $$$AssertStatusOK(tSC, "while the three advertised fields together validate: " _ tProblem)
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "OcuPilotProbeSchema", "Password": "x"}, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "and so is a password")
+    Do $$$AssertTrue(tProblem [ "Password", "naming that argument too: " _ tProblem)
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "OcuPilotProbeSchema", "Roles": ["%Developer"], "Enabled": true, "ChangePassword": true, "FullName": "renamed", "AutheEnabled": 32}, .tProblem)
+    Do $$$AssertStatusOK(tSC, "while the advertised fields together validate: " _ tProblem)
     Do $$$AssertEquals(tProperties.%Get("ChangePassword").%Get("type"), "boolean", "ChangePassword is advertised with its derived JSON type (Story 7.2)")
     Do $$$AssertEquals($ListToString($ClassMethod(..#USERTOOLCLASS, "ScreenActionIds")), "enable,disable,require-password-change,add-role,remove-role", "it carries the Users list's five merge row actions")
     Do $$$AssertEquals($ListToString($ClassMethod(..#USERTOOLCLASS, "ScreenActionValueNames", "add-role")), "Role", "and each role action admits one value, the role")

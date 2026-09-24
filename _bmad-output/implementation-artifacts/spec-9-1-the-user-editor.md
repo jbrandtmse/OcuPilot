@@ -2,9 +2,10 @@
 title: 'Story 9.1: The user editor'
 type: 'feature'
 created: '2026-09-23'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '1d0ad5eb590985d347fb6e29e4ef13594891dffc'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-9-context.md'
 warnings: ['oversized']
@@ -224,6 +225,19 @@ Browser tasks:
 - `task-resume.browser-spec.mjs`: after the AC4 confirm, the toast "Open in Task schedule" appears on Task details, and clicking it lands on `tasks/schedule/<id>` with the row selected (DW-1546).
 - `users-create.browser-spec.mjs`: re-point any post-create assertion to the editor that the create now opens.
 
+Review patches (2026-09-23 review pass; each adds or tightens a test, plus its `mutation:` line):
+
+- P1 `Test/UserSave.cls` (or `UserSignIn`): mint `permissions.users.update` through the agent path (`View` under a seeded turn, as `UserSignIn.Confirm` does) with `AutheEnabled` both-on, and with a non-two-factor bit moved; each is refused with a problem naming `'AutheEnabled'`. Mutation: `UserUpdate.ArgumentProblem` answers `""`.
+- P2 `Test/AuditEventTools.cls`: mint `security.auditsystemevents.reset` for the system event; the proposal's state row `before` equals the LIST row's `Total`, `after` `0`. Mutation: revert the mint's read in `Mint.cls` to `tQuery(pIdParam)` plus a direct `Invoke`.
+- P3 `Test/WireSecurityRead.cls`: `PUT /api/ocupilot/users/<name>` by `SYSREADUSER` is 403 `AUTH.NOPRIVILEGE` naming `%Admin_Secure:USE`, and by `SECUREUSER` naming `%DB_IRISSYS:READ`; nothing is written. Mutation: drop the `..Gate` call from `UserSave.HandleUpdate`.
+- P4 `user-editor.page.spec.ts`: an external `user` change event while the form is clean re-reads the account and the field shows the new `FullName`; the Save test also asserts the event's `action` is `updated`. Mutation: `absorb(result, false)` unconditionally in `refresh`.
+- P5 `Test/UserSignIn.cls`: `Operation.ApplyAt` for `UserPassword` with a test port that forwards the password write and fails the flag re-apply `PUT`: the call is an error carrying that port's status and fault, and the password was set. Mutation: `ApplyAt` quits `tSC` whatever `AfterWrite` answers.
+- P6 `users-create.browser-spec.mjs`: after the editor's `FullName` wait, the editor's own form bar reads "Saved". Mutation: drop the `arriveSaved` call.
+- P7 `user-editor.page.ts`: the Enabled field is drawn refused for `protected-account` only while it is on (turning it on stays possible), as the change-password field is; the page spec pins a disabled `_SYSTEM` read as enable-able. Mutation: lock whatever the flag.
+- P8 `Test/UserSave.cls`: the refused legs (`_SYSTEM` disable; new: `CSPSystem` `ChangePassword` on, 403 `PROHIBITED.SERVICEACCOUNTSIGNIN`) run through a fixture port that records and never forwards a write, so a regression cannot change a protected account; the `%All` leg asserts the read succeeded before checking roles. Mutation: remove `..Prohibited` from `UserSave.Update`.
+- P9 `Test/AuditEventTools.cls`: `TestAResetsBeforeIsTheListsOwnTotal` asserts the LIST read succeeded and answered one row, rather than skipping.
+- P10 `## Verification`: mutation lines for AC1 (`DESCRIPTOR_EDIT_PAGES` entry removed), AC3 (the `Password`/`NewPassword`/`EscalationRoles` legs), and DW-1520's client half (the editor's change-password lock).
+
 **Acceptance Criteria:**
 
 - **Given** a user row, **when** its name is opened, **then** `permissions/users/edit/<id>` shows the tabs General (account settings, comment, expiry, enabled, change-password-on-login, startup namespace and routine, email, mobile, two-factor) and Roles.
@@ -236,6 +250,39 @@ Browser tasks:
 - 2026-09-23 spec gate (lead): applied the recommended amendments - AD-10 (service-account sign-in arm, DW-1520), AD-56 (i) (password write re-applies the flag, DW-1516), AD-51 (a list-type fresh read filtered to one row, DW-1576) in the spine; EXPERIENCE.md toast row and Off-screen toast bullet (DW-1546). The new Fixed-strings row and `strings.ts` key for `PROHIBITED.SERVICEACCOUNTSIGNIN` stay with the implement stage. Added the `toast-host.ts` boundary (Epic 15 contended).
 
 ## Review Triage Log
+
+### 2026-09-23 — Review pass
+
+- verdicts: 28 findings — high 0, medium 9, low 16, false 3, maybe-false 0
+- findings:
+  - `[medium]` `patch` The agent's update-mode rules (`UserUpdate.ArgumentProblem`) had no mint test — P1: `UserSave.TestTheAgentsUpdateKeepsTheTwoFactorRules`, run 8902.
+  - `[medium]` `patch` The mint's list-type fresh read for the reset tools was untested — P2: `AuditEventTools.TestAMintedResetStartsAtTheListsOwnTotal`, run 8906.
+  - `[medium]` `patch` The pair gate on `PUT /users/:id` was unpinned — P3: `WireSecurityRead.TestTheUserSaveRefusesACallerWithoutItsPairs`, run 8908.
+  - `[medium]` `patch` The editor's clean re-read on a change event was unobserved — P4: page-spec test for an external change while clean.
+  - `[medium]` `patch` A failed flag re-apply after a password write was untested (layer filed defer; a held-PUT port made it cheap) — P5: `UserSignIn.TestAFailedFlagReapplyIsTheWritesFailureAndThePasswordStands`, run 8904.
+  - `[low]` `patch` "Saved" on arrival from a create was not pinned to the editor — P6: `users-create` AC4 asserts the editor's own form bar.
+  - `[low]` `patch` AC1 had no mutation line — P10: `DESCRIPTOR_EDIT_PAGES` entry removed, seven editor browser tests red.
+  - `[low]` `patch` AC3's `Password`/`NewPassword`/`EscalationRoles` legs had no mutation — P10, run 8902.
+  - `[low]` `patch` The protected-account refusal on Save had no mutation removing it — P8/P10, run 8902.
+  - `[low]` `patch` DW-1520's client half (the editor's change-password lock) had no mutation line — P10.
+  - `[low]` `patch` The `%All` absence check passed vacuously on a failed read — P8: the leg first requires the read to show `%Developer`.
+  - `[low]` `patch` `TestAResetsBeforeIsTheListsOwnTotal` skipped its comparison on a failed LIST — P9.
+  - `[medium]` `patch` The Enabled field was locked for a protected account even while off, so a disabled `_SYSTEM` could not be re-enabled from the editor (AD-10 permits enabling) — P7: locked only while on; page spec pins a disabled `_SYSTEM` as enable-able.
+  - `[low]` `patch` A regression of the Save's prohibited check would have disabled `_SYSTEM` on the throwaway, because the recording port forwards writes — P8: refused legs run through `Test.HeldPutPort`, which never sends a `PUT`.
+  - `[low]` `patch` The two-field Save's change event was not asserted to carry `action: 'updated'` — P4 asserts it; the sixteen-field check stays on `UserSave.Update`, which `HandleUpdate` calls directly.
+  - `[low]` `reject` Undeclared keys are exercised over HTTP for `Roles` alone — the other three run through the same `Update` behind a two-line handler; a wider HTTP loop adds nothing the class-method legs miss.
+  - `[low]` `reject` The "other bit moved" case is rules-level only — the Save and the mint call that same `Validate`, pinned by P1 on the agent path.
+  - `[low]` `reject` Nothing observes the error summary taking focus before the field — transient focus; pinning it needs a focus spy for no user-visible gain.
+  - `[low]` `reject` The signed-in and last-`%All` arms are not exercised through the Save — the Save calls the same `Prohibits` whose arms `Test.Prohibited` and `Test.UserUpdate` pin.
+  - `[medium]` `patch` Enabled drawn disabled whatever its state (reading R4a) — grouped with the Enabled-lock finding; P7.
+  - `[low]` `patch` Turning `ChangePassword` on for a service account through `PUT` was untested — P8: `CSPSystem` leg, 403 `PROHIBITED.SERVICEACCOUNTSIGNIN`, nothing sent.
+  - `[low]` `reject` The list's set-password dialog still re-sends require-password-change after the password — harmless and idempotent now that `AfterWrite` re-applies; removing it changes 7.2's shipped flow.
+  - `[medium]` `patch` DW-1576's agent card was not exercised end to end — grouped with the mint-read finding; P2.
+  - `[false]` `reject` Add role's choices now come from `GET /users/form` — the spec's Tasks specify exactly that.
+  - `[false]` `reject` DW-1546 changes the toast rule for every type, and a Save on the editor raises a Users toast — the rule as amended in EXPERIENCE.md at the spec gate ("Open in <list>", hidden only while that list is open).
+  - `[low]` `reject` `UserForm.labelKey` now reads "User" on the create route too, leaving `userFormLabel` unreferenced — spec-bound ("UserForm's label reads as an editor").
+  - `[false]` `reject` The 8.2 browser test lost its after-save password-caption leg — the spec's browser task re-points post-create assertions to the editor, which carries no password field.
+  - `[medium]` `patch` No test had a mint refuse an update-mode rule — grouped with the first finding; P1.
 
 ## Design Notes
 
@@ -286,7 +333,48 @@ Browser tasks:
 - `uv run scripts/check-objectscript.py`, `bash scripts/lint-docs.sh` (loop). Expected: clean.
 - `node ui/tools/ci-runner.mjs --container ocupilot-ci --package OcuPilot.Test` (once, before dev_complete). Expected: 0 failures, excluding only the four arming-variable classes this throwaway refuses.
 
+**Implement-stage note:** `OcuPilot.Test.ScreenRegistry` is a registry fixture, not a test class; the prompt-corpus leg it stood for runs in `OcuPilot.Test.Descriptor` (`TestEveryPromptCorpusCaseGetsItsSentence`).
+
+**Mutations (Rule 19)** -- each applied, compiled or run as named, observed red, reverted; `git status --short` unchanged after each batch. Mutations listed together ran in one run.
+
+- mutation: `UserSave.Update` merges over `{}` instead of the fresh read → `OcuPilot.Test.UserSave` `TestATwoFieldSaveSendsEverySixteenAndTheOthersSurvive` and `TestDisablingTheSystemAccountIsRefusedBeforeThePort` red, run 8887 (matrix: Two-field save; AC2).
+- mutation, together: `UserSave.Update` admits `SettableFields` instead of `PermittedFields`; the both-on leg dropped from `UserCreateRules.AutheViolation`; the `user` member dropped from `UserCreateRules.HandleForm` → `UserSave` `TestTheFourUndeclaredKeysAreRefusedAndNothingIsSent`, `TestTheTwoFactorRules` and `TestTheSaveAndTheFormReadAnswerOneEnvelopeOverTheWire` red, run 8888 (matrix: Undeclared key, Two-factor; AC3).
+- mutation, together: `If 0 &&` before `ChangesServiceSignIn` in `Prohibited.User`; `UserPassword.AfterWrite` answers at once → `OcuPilot.Test.UserSignIn` `TestAServiceAccountsSignInCannotBeChangedAndOtherAccountsCan`, `TestTheFlagEndsSetInEitherConfirmOrder` and `TestTheScreensSetPasswordKeepsASetFlag` red, run 8889 (matrix: DW-1520, DW-1516).
+- mutation: `AuditEventReset.StateDiff` before set to `""` → `AuditEventTools` `TestAResetsBeforeIsTheListsOwnTotal` and `TestTheResetToolsAreActionWritesWithOneStateRow` red, run 8890; `READROWKEY` set to `""` → those two plus `TestTheProhibitedSetPermitsEnabledAloneForBothTypes` red, run 8891 (matrix: DW-1576).
+- mutation: `Registry.SUGGESTEDPROMPTSMIN` 3 → 2 → `Descriptor` `TestEveryPromptCorpusCaseGetsItsSentence` red, run 8892; `Prohibited.ReasonFor` answers a shorter literal for `SERVICEACCOUNTSIGNIN` → `RefusalCopy` `TestEachAccountRefusalIsItsParameterAndNamesNoCaller` red, run 8893.
+- mutation: `SUGGESTED_PROMPTS_MIN` 3 → 2 in `screen-mirror.mjs` → `screen-mirror.test.mjs` "suggestedPromptsProblem returns every sentence OcuPilot.Test.PromptCorpus declares" red.
+- mutation: one word of `SERVICEACCOUNTSIGNINREASON` changed → `self-protection.test.mjs` "AD-53, AD-39: each account refusal is one sentence on both surfaces" red.
+- mutation: signed-in exemption dropped from the sign-in branch of `core/self-protection.ts` → `self-protection.test.mjs` "DW-1520: the sign-in rule explains a service account other than the signed-in one, and nothing else" red.
+- mutation: singular branch of `tabAccessibleName` dropped → `form-tabs.test.mjs` "a tab with refusals names their count, singular and plural, and one without is its label" red.
+- mutation: `screenForEntityType` answers the first built screen of the type → `navigation.test.mjs` "screenForChange resolves the screen a change opens and the route that names the entity" red; UserForm put back in `CREATE_ONLY_FORMS` → "documentScreenFor resolves the REST API explorer ..." red at its user-editor assertion (matrix: DW-1546; AC1).
+- mutation: `targetIsOpen` in `core/toasts.ts` drops the descriptor comparison → `toasts.test.mjs` "a change raises its toast on the entity's details screen, and only the entity's own list hides it" red (matrix: DW-1546).
+- mutation, together, rebuilt and redeployed to `ocupilot-ci`: the same `targetIsOpen` change; `[privileged]` dropped from `app-screen-action-dialogs` → `task-resume.browser-spec.mjs` "AC4, AC7, Story 7.6 AC3" red and `users-editor.browser-spec.mjs` "the editor's Set password and Add role are the list's own actions, a privileged role stating its consequence" red; the other six editor tests stayed green (matrix: DW-1546, DW-1523).
+- mutation: the select's `aria-describedby` dropped in `role-dialog.ts` → `role-dialog.spec.ts` "states the privilege-grant consequence while a privileged role is chosen, and only then" red (DW-1523).
+- mutation: the privileged marks dropped in the handler's add-role options → `screen-action-handler.spec.ts` "offers a remove of the row's own roles and an add of the form read's others, sending one role" red; the handler reports to the list store whatever the sink → "opens the list's own dialogs for the editor, and a refusal reaches the editor's sink" red.
+- mutation: `UserEditorPage` does not select the tab `tabToOpen` answers → `user-editor.page.spec.ts` "Integration: a refusal on General while Roles is open ..." red (matrix: Error on another tab; Integration AC).
+- mutation: `authe &= ~other` dropped in `UserEditor.setTwoFactor` → `user-editor.store.spec.ts` "moves only the two two-factor bits ..." red; a dirty refresh absorbs every field → "sends only what changed, and re-reads only the roles while the form holds unsaved work" red.
+- mutation, together: `UserUpdate.ArgumentProblem` answers no problem; `UserSave.Update` admits `Password`, `NewPassword` and `EscalationRoles` beside `PermittedFields`; the `..Prohibited` call removed from `UserSave.Update` → `UserSave` `TestTheAgentsUpdateKeepsTheTwoFactorRules` (both legs), `TestTheFourUndeclaredKeysAreRefusedAndNothingIsSent` (the `Password`, `NewPassword` and `EscalationRoles` legs; `Roles` stayed green) and `TestDisablingTheSystemAccountIsRefusedBeforeThePort` (the `_SYSTEM` and `CSPSystem` legs) red, run 8902; afterwards `_SYSTEM` read enabled and `CSPSystem`'s `ChangePassword` 0 (matrix: Two-factor, Protected account, DW-1520; AC3).
+- mutation: `Operation.ApplyAt` answers the write's status whatever `AfterWrite` answers → `UserSignIn` `TestAFailedFlagReapplyIsTheWritesFailureAndThePasswordStands` red, run 8904 (matrix: DW-1516).
+- mutation: the mint's fresh read in `Mint.Mint` reverted to `tQuery(pIdParam)` and a direct port `Invoke` → `AuditEventTools` `TestAMintedResetStartsAtTheListsOwnTotal` red ("not present on this instance"), run 8906 (matrix: DW-1576).
+- mutation: the `..Gate` call dropped from `UserSave.HandleUpdate` → `WireSecurityRead` `TestTheUserSaveRefusesACallerWithoutItsPairs` red, run 8908. `TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` was red in that run and in the unmutated run 8907 ("nothing is cut at 1,000" on `OcuPilotWireTaskBoth`), which this story does not touch.
+- mutation, together: `UserEditor.refresh` absorbs the roles alone whatever the form holds; the Enabled field refused whatever its value in `UserEditorPage` → `user-editor.page.spec.ts` "re-reads the account in place when another caller changes it while the form is clean" and "draws the protected account's Enabled and Delete refused, ..." red.
+- mutation: `UserEditorPage.changePasswordRefusal` answers `''` → `user-editor.page.spec.ts` "draws the protected account's Enabled and Delete refused, ..." red on the `CSPSystem` change-password lock (DW-1520, client half).
+- mutation, rebuilt and redeployed to `ocupilot-ci`: the `arriveSaved` call dropped from `UserCreateFormPage.onSave` → `users-create.browser-spec.mjs` AC2 and AC4 red at `waitForSaved`'s Saved wait, which comes before AC4's new assertion on the editor's own form bar.
+- mutation, rebuilt and redeployed to `ocupilot-ci`: the `UserForm` entry removed from `DESCRIPTOR_EDIT_PAGES` → all seven `users-editor.browser-spec.mjs` tests red (AC1).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** The user editor ships at `permissions/users/edit/<id>` (General and Roles tabs). Its Save is `PUT /users/:id` (`Area/Permissions/UserSave.cls`) through `UserUpdate`, now admitting the classic General tab's fourteen settings under one update-mode rule set (`UserCreateRules`). Its actions are the Users list's own, through `ScreenActionHandler.startFor` and the shared `app-screen-action-dialogs`; `app-form-tabs`/`core/form-tabs.ts` carry the error dot and count. DW-1520 (`PROHIBITED.SERVICEACCOUNTSIGNIN`), DW-1516 (`Write.AfterWrite`, `UserPassword` re-applies the flag), DW-1576 (`READIDPARAM`/`READROWKEY`, `Operation.ReadTarget`), DW-1523 (role dialog states `privilegedGrantEffect`), DW-1546 (a toast opens the entity's list and hides only there) and DW-1501 are closed. `suggestedPrompts` is a validated descriptor key on both engines; `UserForm` declares three.
+
+**Deviation from the Tasks (not the intent).** The tab strip is Material's tab nav bar over one panel, not `mat-tab-group` with `preserveContent`: the tab group put the initial bundle at 1,388,465 bytes; the nav bar keeps every body in the DOM itself. Bundle now 1,349,991 bytes initial (main 1,216,937 + styles 133,054), under the 1378kB warning.
+
+**Files.** Server: `Area/Permissions/UserSave.cls` (new), `UserCreateRules.cls`, `Api/Router.cls`, `Api/Error.cls`, `Api/ScreenAction.cls`, `Kernel/Proposal/{Prohibited,Operation,Mint,Confirm}.cls`, `Screen/Tool/{UserUpdate,UserPassword,Write,AuditEventReset}.cls`, `Screen/Descriptor/{UserForm,UserList}.cls`, `Screen/Registry.cls`. Tests: new `Test/{UserSave,UserSignIn,PromptCorpus,UserSaveFixture,UserSaveHeldFixture,HeldPutPort}.cls`; updated `AuditEventTools`, `AuditingUpdate`, `DeclarationCorpus`, `Descriptor`, `EndpointCoverage`, `Prohibited`, `RefusalCopy`, `ToolWrite`, `UserUpdate`, `Wire`, `WireSecurityRead`. Client: new `user-editor.{page,store}.ts` (+specs), `core/form-tabs.ts`, `shell/form-tabs.ts`, `shell/screen-action-dialogs.ts`; updated `screen-action-handler.ts`, `list-page.ts`, `role-dialog.ts`, `screen-outlet.ts`, `navigation.ts`, `toasts.ts`, `self-protection.ts`, `strings.ts`, `_components.scss`, `screen-mirror.mjs` (+ generated `screens.generated.ts`). Browser: new `users-editor.browser-spec.mjs`; updated `users-actions`, `users-create`, `task-resume`. EXPERIENCE.md: four Fixed-strings rows appended. `scripts/ci-throwaway.sh`: arming roster comment.
+
+**Review.** 28 findings (0 high, 9 medium, 16 low, 3 false); all patches applied as P1-P10 above (six medium entries, ten low), 8 low rejected with reasons, 3 false; nothing deferred. Follow-up review recommended: true (six medium entries patched): the review-pass patches -- six new test legs, the `Test.HeldPutPort` fixture and the Enabled-field lock change in `user-editor.page.ts` -- were verified by mutation and re-run but not seen by a review layer.
+
+**Verification.** Loop commands green after patching: node tool tests 1349/1349; `npm run test:components` 1041/1041; `check-objectscript` 0 problems (739 files); `lint-docs` clean; build + redeploy to `ocupilot-ci`, then `users-editor`, `users-actions`, `users-create`, `task-resume` 17/17; classes `UserSave` 6/6, `UserSignIn` 4/4, `AuditEventTools` 10/10, `UserUpdate` 23/23, `RefusalCopy` 3/3, `Descriptor` 51/51, `ToolWrite` 29/29. Full sweep once (tree recompiled into `ocupilot-ci`, runs 8910-9120): 216 classes, 1889 tests, 1 failed; four classes refused on their arming variables (`AuditingUpdate`, `ErrorDelete`, `ProcessControl`, `TaskResume`) as this throwaway predates them. The one failure, `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` ("nothing is cut at 1,000"), has failed on this throwaway since run 8192, before this story's first run (8887); its task history holds 1,383 rows (environmental, inference: CI's fresh throwaway holds fewer than 1,000).
+
+**Residual risk.** The failed-re-apply path (DW-1516 error column) is pinned only through a held-PUT fixture port, not a real vendor fault.
