@@ -24,11 +24,7 @@ Finish the area the contest's task statement names most directly: OAuth setup. T
 - **Secrets are write-only end to end.** A client secret, a private key or an initial access token is masked, never pre-filled, and never returned by any read, ledger row, diff, screen context or log line.
 - **12.1 (done):** X.509 details show the certificate and never the private key. The SSL/TLS test (Story 9.5) and the LDAP test (Story 16.14) are built elsewhere, not here.
 - **12.2 (done):** revoke is a Users row action. It runs as the administrator, and an agent proposal needs confirmation and carries the audit marker. The dialog names the user. The route is `/v2/security/oauth2/server/revoke` with a required `user` query parameter; the published spec's `/v2/security/oauth2/revoke` answers 404 on 2026.2.
-- **12.3 copy and purge:**
-  - Copy runs in the background to a chosen namespace and reports progress.
-  - Purge removes records older than N days, and its confirmation names the scope and the cut-off.
-  - An agent-proposed purge carries the full write model, and its card says that the purge destroys the record the agent's marker lives in.
-  - Purge is available **from the screen only** until Epic 14's governance ships. It becomes an agent write tool in the same change that adds the policy, where it defaults to disabled as a destructive key added after the freeze.
+- **12.3 (done):** copy to a namespace and purge by cut-off date run on the instance in the background, from the Auditing screen's Audit database group. Purge stays unadvertised to the agent; Story 14.2 advertises it with its disabled-by-default policy key and the full write model, whose card says the purge destroys the record the agent's marker lives in.
 - **12.4:** Discover and Save fetches the issuer's metadata into the form for review before saving. Update JWKS reports its result.
 - **12.5 and 12.7:** Rotate Keys reports its result.
 - **12.7:** An agent-proposed change to the authorization server's own configuration carries the full write model, and its card states which clients the change affects.
@@ -46,9 +42,11 @@ Finish the area the contest's task statement names most directly: OAuth setup. T
 - **Two write mechanisms, and no third.**
   - **Editor Save** resolves through the write tool (AD-55). A create uses AD-54: the target must be absent, and the fingerprint covers that absence. Save mints no proposal, but it inherits the prohibited set and the validation and fingerprint gates. Read-only mode and the kill switch do not gate a person's Save.
   - **Row and page actions** use AD-53's `POST /screens/:screen/action`. A screen action accepts only the values its tool declares, and secrets travel only under `secretArguments` (AD-56).
-  - **Bodyless writes** (revoke, Rotate Keys, Update JWKS) are action-style (AD-51). Each declares its request type and a fingerprint subject that covers every precondition field its read answers. (inference) Each story decides which mechanism carries its editor-level buttons.
-- **Privileges (AD-8).** A tool's pair set is its screen's. Administrative resources are gated at `USE`. A tool may also declare a pair its screen lacks when the vendor endpoint's `ResourcesOR()` names it for that request type, measured on the instance. The mint then refuses a caller without it, by name. The one case today is revoke's `%Admin_OAuth2_Registration:USE`.
+  - **Bodyless writes** (revoke, Rotate Keys, Update JWKS) are action-style (AD-51). Each declares its request type and a fingerprint subject that covers every precondition field its read answers. When a vendor body carries a caller's choice, the tool's port builds it from the tool's declared non-secret arguments, and the tool itself still sends no body. `AuditPort` is the one case today. (inference) Each story decides which mechanism carries its editor-level buttons.
+- **Privileges (AD-8).** A tool's pair set is its screen's. Administrative resources are gated at `USE`. A tool may also declare a pair its screen lacks when the vendor endpoint's `ResourcesOR()` names it for that request type, measured on the instance. The mint then refuses a caller without it, by name. This also covers an endpoint the call must go through, such as the poll of its own async result. The cases today are revoke's `%Admin_OAuth2_Registration:USE` and audit copy and purge's `%Admin_Operate:USE`.
 - **Audit gaps (AD-15, AD-53).** IRIS records no audit event for a token revoke. For an agent revoke, OcuPilot's marker is the only record. A revoke from the screen leaves no audit row, which AD-53 records as a named gap. Any further operation of this kind must be named in both ADs.
+- **Queued writes (AD-26).** The port refuses any mutating request the vendor would queue, except the ones on its `QUEUEDWRITES` list. Today that list holds only the audit `COPY` and `PURGE`. Such a write is awaited within the normal bound. If it runs past the bound, the port answers **started** and never `PORT.TIMEOUT`, so the write is recorded as applied, and both the agent and the screen say it is still running. A test pins that every other queuing type is refused.
+- **Unadvertised tools (AD-53).** A tool with `ADVERTISED = 0` is reachable only by its screen's caller. It never appears in the provider tool list, the dispatch lookup or the screen context's `tools`, and a test pins its absence from all three. `security.auditing.purge` is the only such tool.
 - **Proposals (AD-6, AD-34, AD-40).** A proposal is minted on the server, used once, fingerprinted, and expires after 10 minutes. The confirm channel admits only declared secret fields. Confirm re-checks privileges and the prohibited set in one atomic transition. Agent writes emit the marker; screen writes do not.
 - **Descriptors (AD-5, AD-13, AD-14).** Each OAuth tab has its own descriptor (`Screen/Descriptor/OAuth*Tab.cls`), and a tab may declare several entity types. An editor declares side-bar position 0 and is opened from its tab. Ids are percent-encoded in one path segment by the shared encoder. Tool names follow `<area>.<screen>.<verb>` and come from a stable descriptor identifier.
 - **Classic link-outs (AD-44).** The OAuth tabs hold Release 1's only `classicLinkExemption`, declared by all five tab descriptors and counted once. Story 12.9 removes all five declarations.
@@ -60,7 +58,7 @@ Finish the area the contest's task statement names most directly: OAuth setup. T
 - **Form page:** a single column at most 720px wide, with fields at most 480px wide, in the classic order. Validation is inline, written by the server, and lands on the named field. A failed Save moves focus to the error-summary banner. The sticky 56px action bar has Save as its only primary button. After Save, a create opens the new entity and an edit shows "Saved". The unsaved-changes guard also holds an agent navigation.
 - **Tabs:** one form spans all tabs, and Save applies everything. A validation error switches to the tab that holds it. A tab with errors shows a destructive dot and adds ", N errors" to its accessible name.
 - **Deletes and revoke** use a dialog that names the entry and requires the typed name. Dialogs never stack.
-- **Existing OAuth labels, empty states and delete consequences** are fixed strings. Reuse them without rewording.
+- **Existing OAuth labels, empty states and delete consequences** are fixed strings, as are the X.509 details, revoke and audit copy and purge copy. Reuse them without rewording.
 
 ## Cross-Story Dependencies
 
@@ -68,4 +66,4 @@ Finish the area the contest's task statement names most directly: OAuth setup. T
 - **This epic depends on Epics 6, 7 and 8** (all merged) and runs beside Epic 9.
 - **12.9 depends on 12.4 through 12.8.** 12.5 configures a client against a server description from 12.4. 12.7's affected-clients line names the server client descriptions that 12.8 edits.
 - **Suggested prompts:** Story 11.3 owns the descriptor contract and is still in the backlog, so each editor's prompts wait for it.
-- **Epic 14** registers purge as a governed agent tool.
+- **Story 14.2** advertises `security.auditing.purge` by removing its `ADVERTISED = 0`. It also delivers purge's disabled-by-default policy key and the agent purge card.
