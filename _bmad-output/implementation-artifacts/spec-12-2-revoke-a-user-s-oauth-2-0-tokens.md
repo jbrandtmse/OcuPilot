@@ -176,6 +176,18 @@ Rejected:
 - `UserList`'s leading comma: false. It is deliberate, so Epic 9's `delete` line stays byte-identical.
 - `ci-throwaway.sh`'s roster line position: low and cosmetic, since the roster check sorts.
 
+Code review round 2, 2026-09-24 (rework 1, diff `a8b6ffaf..` working tree; four layers, `full-opus`). The `[CI]` item is closed: the roster lists `STRINGS.userActionRevokeTokens` after `STRINGS.actionDelete`, it is the only line of the file that changed, and it merges cleanly with `origin/OCU-1-epic9`, whose edits start at line 292. CR re-ran the rework-1 mutation: red on `'revoke-tokens'`, reverted byte-identical, rebuilt and redeployed, `users-actions.browser-spec.mjs` 2/2 green. AC3 holds for the revoke entry because `revoke-tokens` declares `selfProtection: ""`, so the entry is offered with reason `''` and no `aria-disabled`. No findings survived.
+
+Rejected (round 2):
+
+- The recorded mutation drops the label rather than the row action the `[CI]` item names: low. Both redden the same assertion. The label mutation is the stricter of the two, and CR reproduced it.
+- The test title "every Users row action reaches the route" and the file header still describe only Story 7.2's actions: low. The `[CI]` item forbids editing any other line of the file.
+- `panel.browser-spec.mjs:801` says "six row actions" in an assertion message: low, and a message only. It is outside the rework's range.
+- `UserList.cls` still says "It declares seven row actions": low, and outside the rework's range.
+- `review_loop_iteration` reads 0 in the spec but 1 in the cycle log: low. Fixing it means editing the spec's frontmatter, and the two fields count different loops.
+- `baseline_commit` moved while `baseline_revision` kept its value: false. The rework protocol sets `baseline_commit` to the rework baseline on purpose.
+- The AC3 loop does not assert that the revoke entry is listed: low. `screen-action-revoke.spec.ts` pins revoke-on-protected, and adding the assertion would edit the AC3 loop that Epic 9 rewrites.
+
 ## Spec Change Log
 
 - 2026-09-24, rework 1 (runner): CI run 36006886901 failed in `browser` on `users-actions.browser-spec.mjs`, the Users menu roster. The spec is re-opened with one `[CI]` task.
