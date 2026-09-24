@@ -4817,6 +4817,8 @@ So that fixing a schedule does not mean deleting and recreating it.
 - **When** the proposal's fingerprint is computed
 - **Then** that field is **excluded** by the descriptor's declared exclusions, so a legitimate write is not refused as "target changed".
 
+- DW-1624: Task details shows a wizard-created task's schedule and Priority, not its output file, suspend, reschedule or email values; the edit tabs show every field of a wizard-created task (ledger; routed by cr 2026-09-24)
+
 ### Story 9.9: A cut editor ships reduced, never half-working
 
 As a judge,

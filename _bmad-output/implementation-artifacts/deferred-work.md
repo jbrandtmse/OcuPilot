@@ -6812,3 +6812,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-9-7-the-new-task-wizard.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Spec Boundaries require the 34-key body with non-supplied keys counted unchanged (vendor 400 #40301 measured); AD-54's Rule sentence was not amended at the spec gate (acceptance-auditor).
 - 2026-09-24T17:16:12Z status=by-design owner=9-7-the-new-task-wizard by=cr note=code follows the spec; lead to amend AD-54 per Rule 20: a create whose endpoint requires a complete body counts the rest unchanged
+
+### DW-1630: proposal-demo AC1 reads the agent's closing reply with a bare $eval and no wait, so it goes red when the reply lands a poll after the card
+- source: spec-9-7-the-new-task-wizard.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: CI run 36029831321 browser job: .ocu-panel-message-agent-text not found at proposal-demo.browser-spec.mjs:505; passed on 36009216113; locally 14 green runs
+- 2026-09-24T17:39:14Z status=open owner=9-7-the-new-task-wizard by=harvest note=lead added a waitForFunction on the reply's published tail before the read (footprint extension)
+- 2026-09-24T17:49:38Z status=resolved-by:9-7-the-new-task-wizard by=adjudication note=proposal-demo waits on the reply tail (app-reply selector) before reading; CR rework-1 mutation: 8s delayed reply without the wait red, with it green; CI on the story commit confirms

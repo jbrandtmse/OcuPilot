@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-09-24'
 status: 'done'
 baseline_revision: '0743a1a3675b232bc6e9103f38b9431c8dfa7047'
-baseline_commit: 'f9851990568c3c30a459502deb960612d5625086'
+baseline_commit: '0743a1a3675b232bc6e9103f38b9431c8dfa7047'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -381,6 +381,25 @@ Rejected:
 - [x] [CI] browser: `task-wizard.browser-spec.mjs` "Matrix \"Create weekly\", AC7" failed on CI (run 36029831321, head `26284da8`) at its first assertion: `stepState(page)` read `[]` right after the URL reached `/tasks/schedule/edit`, before the stepper rendered -- `ui/browser/task-wizard.browser-spec.mjs:227` -- wait for the stepper's steps to render before reading them, and check every other leg of the file for the same read-before-render race; the file passed 5/5 locally, so reproduce the cold-start timing (e.g. run it first in a fresh browser) before claiming the fix.
 - [x] [CI] browser: `proposal-demo.browser-spec.mjs` "AC1: UJ-3's own journey, as a non-%All holder of the screen's two pairs, inside NFR-1's budget" failed on the same run: `failed to find element matching selector ".ocu-panel-message-agent-text"` at `ui/browser/proposal-demo.browser-spec.mjs:505`. It passed on the previous head's CI (run 36009216113, `71aadf62`). Establish whether this story's diff (`turn.ts` createdId, `proposal-view.ts`, `screen-outlet.ts`, `app.ts`, `entity-ref.ts`, the kernel edits) causes it -- run the spec against a rebuilt, redeployed bundle -- and fix the cause if it is this story's; if it is not reproducible and not this story's, say so with the evidence (runs, bundle build) in `## Auto Run Result`. Do not edit the spec file itself if the cause is elsewhere: `proposal-demo` is not one of 11.10's seven specs, but check `git show origin/OCU-1-epic11:ui/browser/proposal-demo.browser-spec.mjs` before editing it.
 
+### Review Findings (rework 1)
+
+Code review 2026-09-24 of `0743a1a3..` plus the lead's uncommitted `proposal-demo` patch (DW-1630). Four layers ran on `full-opus`. Result: no high or medium findings, 3 low findings patched, 1 deferred, the rest rejected. CI item 1 is confirmed fixed: `wizardReady` precedes `stepState`, every other leg already waits, and the file passed 5/5. CI item 2 is confirmed fixed as below. The Auto Run Result's "not edited" and `footprint_extensions: none` lines, and the frontmatter `deferred:` entry, predate the lead's patch. That patch is the cycle log's `lead_patch` row and DW-1630.
+
+- [x] [Review][Patch] **LOW, Rule 19.** The reply wait had no `mutation:` line and had never been reddened. Both runs are now recorded under Verification. [ui/browser/proposal-demo.browser-spec.mjs:508]
+- [x] [Review][Patch] **LOW.** When the wait timed out, `.catch` fell through to a bare `$eval`, which repeated CI's selector miss and said nothing more. The read is now a `page.evaluate` of the reply and the error banner, and the assertion names both. [ui/browser/proposal-demo.browser-spec.mjs:515]
+- [x] [Review][Patch] **LOW.** The wait and the read took the first `.ocu-panel-message-agent-text`, a class that the announce `<p>` shares (`panel.ts:382`). They now select `app-reply.ocu-panel-message-agent-text`. [ui/browser/proposal-demo.browser-spec.mjs:510]
+- [x] [Review][Defer] **maybe-false, med if true.** CI's own failure may have come from a turn that never completed rather than a late one; if so, the wait does not fix it. [ui/browser/proposal-demo.browser-spec.mjs:508] — deferred: the next CI browser job settles it, and a red run re-opens the story and now names both the reply and the banner. This is DW-1630's residual, so there is no new entry.
+
+Rejected:
+
+- **False:**
+  - The comment "lands a poll after the card settles" is not an inference. `turn.ts:1296` polls until the turn is terminal, and the live view nulls the reply until then. The 8 s hang demonstrates it.
+  - `severity: medium (unverified)` is the skill's own grammar for a maybe-false defer.
+  - The stale `followup_review_recommended` is moot: this review is that follow-up.
+- **Spec or ledger-body edits** (not in a review's remit; spec `oversized`):
+  - The rework Auto Run Result, the Spec Change Log, the triage-log counts and the frontmatter `deferred:` wording.
+  - DW-1630's body and its footprint field. That entry is for the lead to adjudicate.
+
 ## Spec Change Log
 
 - 2026-09-24 rework 1 (implement): item 1 fixed by a `wizardReady` wait in `task-wizard.browser-spec.mjs`; item 2 found not this story's and not reproducible, its race deferred (`deferred:`).
@@ -569,6 +588,7 @@ Slot A. Every IRIS MCP call carries `server: "ocupilot-slot-a"`. Anything that c
 **Mutations observed (rework 1):**
 
 - mutation (CI item 1, timing): remove the `wizardReady` wait before `stepState` and add 1,500 ms request latency before the list's Create -> `task-wizard.browser-spec.mjs` "Matrix \"Create weekly\", AC7" went red with `actual []`, the CI failure; the fixed leg under the same latency went green; restored, sha1 `f2d6e6fc` matches.
+- mutation (CI item 2 / DW-1630, timing): script the closing `Done.` reply with an 8 s hang and remove the reply wait -> `proposal-demo.browser-spec.mjs` "AC1: UJ-3's own journey" went red with `{"reply":"","banner":""}`, CI's signature. With the wait and the same hang it went green. Restored, sha1 `98cb4a53` matches. The whole file then passed 3/3 and `task-wizard.browser-spec.mjs` 5/5 on `ocupilot-ci`.
 
 ## Auto Run Result
 
