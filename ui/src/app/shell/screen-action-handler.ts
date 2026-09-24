@@ -132,7 +132,7 @@ const ACTION_ADDRESS: Readonly<Record<string, string>> = {
  * `DESTRUCTIVE` declaration. This is EXPERIENCE.md's `confirm-dialog` rule -- a delete carries the
  * typed-name field and a `button-destructive` -- applied to the verb that deletes.
  */
-const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate'];
+const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens'];
 
 /**
  * The consequence sentence a destructive action states above its typed-name field, keyed by
@@ -147,7 +147,7 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.WebAppList': { delete: STRINGS.webAppDeleteConsequence },
   'OcuPilot.Screen.Descriptor.OAuthClientTab': { delete: STRINGS.oauthClientDeleteConsequence },
   'OcuPilot.Screen.Descriptor.OAuthServerClientTab': { delete: STRINGS.oauthServerClientDeleteConsequence },
-  [USER_LIST]: { delete: STRINGS.userDeleteConsequence },
+  [USER_LIST]: { delete: STRINGS.userDeleteConsequence, 'revoke-tokens': STRINGS.userRevokeTokensConsequence },
   [TASK_SCHEDULE]: { delete: STRINGS.taskDeleteConsequence },
   [PROCESS_LIST]: { terminate: STRINGS.processTerminateConsequence },
   [PROCESS_DETAILS]: { terminate: STRINGS.processTerminateConsequence },

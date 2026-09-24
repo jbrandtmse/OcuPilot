@@ -1688,6 +1688,13 @@ export const STRINGS = {
   /** EXPERIENCE.md:467 */
   x509FieldSerialNumber: 'Serial number',
 
+  // Story 12.2: the Users list's token revoke row action and its typed-name dialog's consequence.
+  /** EXPERIENCE.md:468 */
+  userActionRevokeTokens: 'Revoke OAuth 2.0 tokens',
+  /** EXPERIENCE.md:468 */
+  userRevokeTokensConsequence:
+    'Revoking deletes every OAuth 2.0 access token this instance issued under this user name, and applications holding one must sign the user in again. This cannot be undone.',
+
 } as const;
 
 /**

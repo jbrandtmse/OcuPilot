@@ -99,6 +99,7 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     'set-password': STRINGS.userActionSetPassword,
     'add-role': STRINGS.userActionAddRole,
     'remove-role': STRINGS.userActionRemoveRole,
+    'revoke-tokens': STRINGS.userActionRevokeTokens,
   },
   // Story 7.4: the Auditing configuration form's two actions, and the warning dialog's title.
   'OcuPilot.Screen.Descriptor.AuditingConfig': {

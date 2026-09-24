@@ -124,6 +124,7 @@ XData Coverage
 <tool name="osmgmt.processes.terminatewitherror" class="OcuPilot.Test.ToolWrite" method="TestTheProcessTerminateWithErrorToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="permissions.users.delete" class="OcuPilot.Test.ToolWrite" method="TestTheUserDeleteToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="permissions.users.password" class="OcuPilot.Test.ToolWrite" method="TestTheUserPasswordToolSendsOnlyItsDeclaredSecret"/>
+<tool name="permissions.users.revoketokens" class="OcuPilot.Test.TokenRevoke" method="TestTheToolIsADestructiveActionWriteOverTheListsPairsAndTheRegistrationPair"/>
 <tool name="permissions.users.update" class="OcuPilot.Test.ToolWrite" method="TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs"/>
 <tool name="security.auditing.update" class="OcuPilot.Test.ToolWrite" method="TestTheAuditingWriteToolAdvertisesEnabledAloneAndDeclaresItsWriteDestructive"/>
 <tool name="security.auditsystemevents.reset" class="OcuPilot.Test.AuditEventTools" method="TestTheResetToolsAreActionWritesWithOneStateRow" corpus="the system and user tools are asserted together in one loop"/>

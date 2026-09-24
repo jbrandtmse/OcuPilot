@@ -241,7 +241,17 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// AD-4, AD-54), setting only the keys the body carries; its <code>NeedsRequestBody()</code> is
 /// <code>..IsTypePut()</code>, so <code>DELETE</code> reads no body; and its <code>RunDelete</code>
 /// answers 404 for an absent device (<parameter>VERIFIEDDELETES</parameter>).</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT";
+/// <p><code>Security.OAuth2.Server/REVOKE</code> is Story 12.2's token revoke
+/// (<class>OcuPilot.Screen.Tool.UserTokenRevoke</class>, through <class>OcuPilot.Port.TokenPort</class>,
+/// AD-51, AD-52). Read on this build: <code>TYPEREVOKE</code> is 10, the endpoint overrides
+/// <code>Run</code>, its <code>NeedsRequestBody()</code> is a put or <code>CHANGEPWD</code> so the type
+/// reads no body, and its <code>RunRevoke</code> calls <code>OAuth2.Server.AccessToken.RevokeUser</code>
+/// with the required <code>user</code> query parameter and answers <code>{}</code>, discarding the
+/// count. <code>ResourcesOR()</code> answers <code>%Admin_OAuth2_Registration</code> for it, and the
+/// vendor's delete also requires <code>%Admin_Secure:USE</code>. Measured on a throwaway: it answers
+/// 200 for a user holding no token, matches the tokens' user name exactly, and records no audit
+/// event.</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.OAuth2.Server/REVOKE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -257,7 +267,7 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.OAuth2.Server/REVOKE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> deletes whose vendor answer does not say whether the
 /// object went, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries. After a 2xx

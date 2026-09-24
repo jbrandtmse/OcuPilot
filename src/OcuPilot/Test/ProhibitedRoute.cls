@@ -1522,14 +1522,15 @@ Method TestAnAccountWithoutTheCodeDatabaseReadIsRefusedABareForbidden()
     Do $$$AssertEquals(tLoginStatus, 200, "200 for the same principal, because the token endpoints are the framework's own and reach no OcuPilot class")
 }
 
-/// <p>Stories 5.9 and 7.2, AD-10: <b>the registry advertises exactly four write verbs for a user
-/// account</b> -- the reviewed update, Story 8.2's create, the delete and the password change -- and a real disable
+/// <p>Stories 5.9 and 7.2, AD-10: <b>the registry advertises exactly five write verbs for a user
+/// account</b> -- the reviewed update, Story 8.2's create, the delete, the password change and Story
+/// 12.2's token revoke -- and a real disable
 /// and a real bodyless delete of <code>_SYSTEM</code> are each refused through the real port and
 /// the real set.</p>
 /// <p>The refusal target is <code>_SYSTEM</code>, which this suite only ever reads: the set is
 /// asked directly, so nothing is minted and no write is issued, and the account's own enabled flag
 /// is read back afterwards to show it.</p>
-/// <p>Mutations (Rule 19): add a fifth <code>write</code> tool under the
+/// <p>Mutations (Rule 19): add a sixth <code>write</code> tool under the
 /// <code>permissions.users</code> identifier and recompile the package (the roster assertion goes
 /// red naming it), or return <code>pProhibits = 0</code> from
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.User</method> (both live refusals go red).</p>
@@ -1539,7 +1540,7 @@ Method TestTheUserWriteVerbsAreRosteredAndALiveSystemDisableOrDeleteIsRefused()
     Do $$$AssertStatusOK(tSC, "the tool registry lists its tools")
     Set tIdentifier = $ClassMethod(..#USERSCREEN, "ToolIdentifier")
     Do $$$AssertNotEquals(tIdentifier, "", "the users screen declares a tool identifier")
-    Set tRoster = $ListBuild(..#USERTOOL, $Parameter("OcuPilot.Screen.Tool.UserCreate", "TOOLNAME"), "permissions.users.delete", "permissions.users.password")
+    Set tRoster = $ListBuild(..#USERTOOL, $Parameter("OcuPilot.Screen.Tool.UserCreate", "TOOLNAME"), "permissions.users.delete", "permissions.users.password", "permissions.users.revoketokens")
     Set tSeen = 0
     Set tWrites = 0
     Set tIterator = tTools.%GetIterator()
@@ -1551,7 +1552,7 @@ Method TestTheUserWriteVerbsAreRosteredAndALiveSystemDisableOrDeleteIsRefused()
         Do $$$AssertTrue($ListFind(tRoster, tTool.%Get("name")) > 0, "every write verb on " _ tIdentifier _ " is a rostered one, not '" _ tTool.%Get("name") _ "'")
     }
     Do $$$AssertTrue(tSeen > 0, "the registry carries tools on " _ tIdentifier _ " at all, so this assertion ran over something")
-    Do $$$AssertEquals(tWrites, $ListLength(tRoster), "and exactly the rostered four are write-kind")
+    Do $$$AssertEquals(tWrites, $ListLength(tRoster), "and exactly the rostered five are write-kind")
 
     Kill tQuery
     Set tQuery("name") = ..#SYSTEMACCOUNT

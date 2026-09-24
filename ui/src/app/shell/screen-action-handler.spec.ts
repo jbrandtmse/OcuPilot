@@ -294,7 +294,7 @@ describe('the Users list row actions (Story 7.2)', () => {
     // and this goes red on every id, so no surface draws a Users row action (AC1).
     const { actions } = mountUsers([]);
     const drawn = USERS.rowActions.map((action) => action.id).filter((id) => id !== REQUIRE_PASSWORD_CHANGE);
-    expect(drawn).toEqual(['enable', 'disable', SET_PASSWORD, ADD_ROLE, REMOVE_ROLE, 'delete']);
+    expect(drawn).toEqual(['enable', 'disable', SET_PASSWORD, ADD_ROLE, REMOVE_ROLE, 'delete', 'revoke-tokens']);
     for (const id of drawn) expect(actions.has(USERS.descriptor, id)).toBe(true);
     expect(actions.has(USERS.descriptor, REQUIRE_PASSWORD_CHANGE)).toBe(false);
   });

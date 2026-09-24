@@ -34,6 +34,10 @@
 /// authored wrapper field, supplied on the screen once and at confirm on the card, and never
 /// accepted from the model. The declaration opens the update tool's confirm channel to the same
 /// name, which that tool's card never asks for because no update diff names it.</p>
+/// <p><b>Its eighth row action is <code>revoke-tokens</code></b>, carried out by
+/// <class>OcuPilot.Screen.Tool.UserTokenRevoke</class>: every OAuth 2.0 access token this instance
+/// issued to the account is revoked, behind the typed-name dialog. It declares no self-protection
+/// rule, because the prohibited set refuses none of it (AD-10).</p>
 Class OcuPilot.Screen.Descriptor.UserList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -63,6 +67,7 @@ XData Declaration
     {"id": "remove-role", "selfProtection": ""},
     {"id": "require-password-change", "selfProtection": ""},
     {"id": "delete", "selfProtection": "protected-account"}
+    , {"id": "revoke-tokens", "selfProtection": ""}
   ],
   "context": {"fields": ["Name", "FullName", "Enabled", "Type", "Roles", "ExpirationDate", "Expired"], "secretFields": []},
   "secretArguments": ["Password"],

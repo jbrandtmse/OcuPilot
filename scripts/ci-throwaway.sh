@@ -198,6 +198,7 @@ services:
       # classes: AccountPasswordWire, AgentConnectionRoles, AgentWireSecurity, AuditMarker, ConfigGate, CredentialPrivilege, DenialParity
       # classes: Disabled, ErrorDelete, ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial
       # classes: OAuthTabs
+      # classes: TokenProbe, TokenRevoke
       # classes: ProcessControl, ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token
       # classes: ToolSetFull
       # classes: ToolWire, TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire

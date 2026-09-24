@@ -2,9 +2,10 @@
 title: 'Story 12.2: Revoke a user''s OAuth 2.0 tokens'
 type: 'feature'
 created: '2026-09-24'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '79f62a6ba4b3eb4cce4a7f2fcc55356a5540d000'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-12-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md'
@@ -148,6 +149,24 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-24 — Review pass
+
+- verdicts: 13 findings — high 0, medium 6, low 5, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Self-revoke "session keeps answering" leg used fresh Basic auth, so it could not fail — the leg now signs in via `/login`, revokes the caller's own tokens with that bearer, and asserts the same bearer still answers `/navigation`.
+  - `[medium]` `[patch]` AC4 overflow cannot see inside the scroll-container dialog body; the named 1400px mutation stayed green — the browser spec asserts `.ocu-dialog-body` `scrollWidth <= clientWidth` on every pass; the named mutation now reddens it.
+  - `[low]` `[patch]` Browser leg named as an AC1 pin had no AC1 mutation — `WRITETYPE` `DELETE` recompiled on the throwaway reddens it; line recorded.
+  - `[medium]` `[patch]` AC3 agent side re-ran `HoldsPair` rather than observing a dispatch refusal — `DispatchRefusal` drives the shipped chain through `ToolDispatchProbe` over the shipped registry and asserts `1|AUTH.NOPRIVILEGE|%Admin_OAuth2_Registration:USE` with counts intact; the `WRITERESOURCE` mutation reddens it.
+  - `[low]` `[patch]` AC2 read the ledger's `AuditMarked` rather than the audit row — the leg now asserts one `AuditMarker.MarkerRows` row naming the proposal id.
+  - `[low]` `[reject]` "No tokens" is exercised as a second revoke of the drained holder, not a never-held account — the state is the same (a user holding none) and the vendor path is identical; no realistic difference.
+  - `[medium]` `[patch]` (grouped with the session finding) Signed-in reading C1 not observed — same patch.
+  - `[medium]` `[patch]` (grouped with the AC3 finding) Missing-pair "from the mint" was a declared-pairs check — same patch.
+  - `[low]` `[reject]` Agent path is pinned by in-process kernel calls, not the chat wire or the card UI — the spec's task names the mint → confirm tier (the `UserUpdate` precedent), and the dispatch refusal is now driven; the generic wire is pinned elsewhere.
+  - `[false]` `[reject]` No test checks that a proposal, response or context carries no token count — nothing can: the port reads only `Security.User`, and no admin endpoint answers token state.
+  - `[low]` `[patch]` No check that the screen path emits no agent marker (AD-53) — the screen leg asserts `MarkerRows(since, tool) = 0`.
+  - `[false]` `[reject]` The card's `OAuthTokens` label is not a `STRINGS` key — the card draws the instance's field names for every write tool (`State`, `Total`, `NextScheduled`; AD-3, the instance owns the diff).
+  - `[medium]` `[patch]` (grouped with the AC4 finding) The recorded AC4 mutation did not falsify — same patch.
+
 ## Design Notes
 
 **Governing ADs:** AD-2, AD-3, AD-6, AD-8, AD-10, AD-13, AD-14, AD-15, AD-24, AD-27, AD-29, AD-34, AD-35, AD-40, AD-51, AD-52, AD-53, AD-56. The DW-1337 gate applies. AD-4 is not engaged, because nothing is sent.
@@ -210,7 +229,39 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. Stateful runs h
 - AC3: the least-privilege leg. Mutation: drop `WRITERESOURCE` from `PrivilegePairs`.
 - AC4: the browser structural assertion. Mutation: give the consequence text a 1400px `min-inline-size` in the dialog.
 
+- mutation: `TokenPort.Invoke` sends `user` as given, reloaded on `ocupilot-b-ci` → `TokenRevoke.TestTheScreenRouteRevokesExactlyTheAccountsTokens` and `TestTheAgentsRevokeIsMintedDestructiveAndConfirmedMarked` red (AC1)
+- mutation: `UserTokenRevoke.WRITETYPE` `DELETE` → the screen-route, agent and declaration legs red, 501 `PORT.NOTIMPLEMENTED` (AC1)
+- mutation: `UserTokenRevoke.DESTRUCTIVE` 0 → `TestTheAgentsRevokeIsMintedDestructiveAndConfirmedMarked` red on "and is destructive" (AC2)
+- mutation: `UserTokenRevoke.StateDiff` pushes no row → `TestTheAgentsRevokeIsMintedDestructiveAndConfirmedMarked` red on "one removal row naming the account" (AC2)
+- mutation: `WRITERESOURCE` dropped from `UserTokenRevoke.PrivilegePairs` → `TestAPrincipalWithoutTheRegistrationPairIsRefusedByName` red on the principal pair check, the shipped dispatch chain's refusal and the screen route (403 `PORT.ACCESSDENIED`, no `failedPair`), and the declaration leg red (AC3)
+- mutation: `.ocu-typed-name-consequence` `min-inline-size: 1400px`, rebuilt and redeployed → `token-revoke.browser-spec.mjs` red on the dialog-body overflow assertion (`scroll` 1400 > `client` 390) (AC4)
+- mutation: the dialog's `.ocu-button-destructive` drawn 12px wide (border-box), rebuilt and redeployed → `token-revoke.browser-spec.mjs` red on `min-width` at 1280 and 720 (AC4)
+- mutation: `.ocu-theme-dark .ocu-typed-name-consequence` colored `--ocu-surface-container-lowest`, rebuilt and redeployed → `token-revoke.browser-spec.mjs` red on dark `contrast` 1:1 (AC4)
+- mutation: `'revoke-tokens'` dropped from `DESTRUCTIVE_ACTIONS` → `screen-action-revoke.spec.ts` both tests red
+- mutation: `UserTokenRevoke.CHANGEACTION` `deleted` → `TestTheProhibitedSetPermitsTheCallerAndTheSystemAccount` red for the caller and `_SYSTEM`
+- mutation: `TokenPort.Holder` compares `Name` exactly → the port, screen-route and agent legs red
+- mutation: `UserTokenRevoke.WRITETYPE` `DELETE`, recompiled on `ocupilot-b-ci` → `token-revoke.browser-spec.mjs` red: the list never marks the row (AC1, browser)
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+- **Change:** the Users list's destructive `revoke-tokens` row action and the agent tool `permissions.users.revoketokens` (`Security.OAuth2.Server` `REVOKE`, bodyless), through the new `Port/TokenPort` (`HOLDER` from the `Security.User` `LIST`; revoke under the stored `Name`; 404 for an absent id or a wildcard). Pairs: the list's two plus `%Admin_OAuth2_Registration:USE`.
+- **Files:**
+  - new: `Port/TokenPort.cls`, `Screen/Tool/UserTokenRevoke.cls`, `Test/TokenProbe.cls` (fixture), `Test/TokenRevoke.cls` (6 legs), `ui/browser/token-revoke.browser-spec.mjs`, `ui/src/app/shell/screen-action-revoke.spec.ts`;
+  - appended: `AdminPort.cls` (roster entries and doc), `UserList.cls` (row action and doc), `screen-action-handler.ts` (two map entries), `screen-actions.ts`, `strings.ts`, EXPERIENCE.md :468, `screens.generated.ts` (regenerated);
+  - rosters: `OAuthDelete`, `ReadTool`, `ToolRoundTrip`, `SurfaceCoverage`, the `ci-throwaway.sh` arming roster;
+  - outside the spec's list, each required by an existing test: `PortFixture.cls` `MUTATINGTYPES`, `ProhibitedRoute.cls` (users write verbs four to five), `PortGate.cls` `ROSTER` (the sweep reddened without the `TokenPort` row), and one line in `screen-action-handler.spec.ts`.
+- **Review:** 13 findings. 6 medium and 5 low were patched (tests only), and the review pass records every finding with its reason. Rejected: 2 low (the "no tokens" state is the same; the agent tier is the one the spec names) and 2 false (no token state is readable; the card draws the instance's field names). Nothing deferred.
+- **Follow-up review recommended: true.** First pass, and three medium entries were patched. The named unverified risk: the new bearer-held self-revoke leg has no demonstrated red, because making OcuPilot's session revocable is not a mutation this story can apply.
+- **Verification:**
+  - Throwaway `ocupilot-b-ci` holds this tree (`src` identical).
+  - Full ObjectScript sweep: 224 classes, 1997 tests, 0 failed after the `PortGate` roster fix and its re-run (checked against `%UnitTest_Result`).
+  - Client: `npm run build` at 1.32 MB initial (no budget warning); `npm test` 1375 tools and 1046 components green.
+  - `token-revoke.browser-spec.mjs` green on a redeployed bundle.
+  - `smoke.sh`: 49/49.
+  - `check-objectscript`, `lint-docs` and `screen-mirror --check` clean. The secrets scan printed 0.
+- **Residual risks:**
+  - Merging with `origin/OCU-1-epic9` will give append-only conflicts, each resolved by keeping both sides: the single-line rosters in `ReadTool` and `ToolRoundTrip`, and the ends of `strings.ts` and EXPERIENCE.md. `UserList`, `screen-action-handler.ts`, `AdminPort` and `ci-throwaway.sh` merge clean (simulated).
+  - The AC3 agent-side refusal is driven through `ToolDispatchProbe` with the pair denied, and the real principal's missing pair is checked separately.

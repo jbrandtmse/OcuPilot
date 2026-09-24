@@ -6426,6 +6426,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "delete",
         "selfProtection": "protected-account"
+      },
+      {
+        "id": "revoke-tokens",
+        "selfProtection": ""
       }
     ],
     "context": {

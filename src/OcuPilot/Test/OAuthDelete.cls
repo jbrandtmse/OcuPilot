@@ -185,7 +185,7 @@ Method TestAReadWithoutTheClientTypeIsAPreconditionProblem()
 /// <code>&lt;endpoint&gt;/&lt;type&gt;</code> in the port's <code>BODYLESSTYPES</code> -- or a
 /// <code>PUT</code> merge write whose body is <method>OcuPilot.Kernel.Proposal.Mint.Merge</method>'s
 /// complete property set over a fresh read. The bodyless half is exactly this story's two
-/// deletes.</p>
+/// deletes and Story 12.2's token revoke.</p>
 /// <p><b>The empty merge half is a temporary tripwire.</b> No OAuth 2.0 editor ships before Epic 12,
 /// whose <code>PUT</code>s make that half non-empty; the story that lands the first one replaces the
 /// zero with a non-empty assertion naming its tools, in the same pass that adds them.</p>
@@ -224,7 +224,7 @@ Method TestEveryOAuthWriteToolIsBodylessOrAMerge()
         Set tBodyless = tBodyless _ $ListBuild(tName)
     }
     Do $$$AssertEquals($ListToString(tNeither), "", "every OAuth 2.0 write tool is bodyless or a merge")
-    Do $$$AssertEquals($ListToString(tBodyless), ..#CLIENTTOOL _ "," _ ..#SERVERCLIENTTOOL, "the bodyless half is exactly the two deletes")
+    Do $$$AssertEquals($ListToString(tBodyless), "permissions.users.revoketokens," _ ..#CLIENTTOOL _ "," _ ..#SERVERCLIENTTOOL, "the bodyless half is exactly the two deletes and Story 12.2's token revoke")
     ; Temporary (see the doc comment): Epic 12's editors replace this with the non-empty roster.
     Do $$$AssertEquals($ListLength(tMerge), 0, "no OAuth 2.0 merge write is registered before Epic 12, which is asserted rather than assumed")
 }
