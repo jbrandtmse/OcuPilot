@@ -11,7 +11,7 @@
  * did not move the position up -- a smooth scroll's intermediate positions among them -- leaves
  * following on. Once no own scroll is in flight, any scroll event that does not end at the newest
  * entry is the user's. Content growing under a scrolled-up transcript fires no scroll event and
- * moves nothing.
+ * moves nothing. A wheel turned up while the own scroll is in flight stops it (`onWheelUp`).
  *
  * The panel's own scroll sets `scrollTop` and passes no `behavior`: whether it animates is the
  * transcript's CSS `scroll-behavior`, which reduced motion sets to `auto`.
@@ -73,6 +73,23 @@ export class TranscriptFollow {
       this.inFlight = false;
     }
     return before !== this.followingNow;
+  }
+
+  /**
+   * The user turns the wheel up over the transcript. A browser can carry the panel's own smooth
+   * scroll on over the wheel, to the newest entry, so while it is in flight it is stopped where it
+   * stands, and following turns off unless that is the newest entry. Answers whether `following`
+   * changed.
+   */
+  onWheelUp(box: ScrollBox): boolean {
+    if (!this.inFlight) return false;
+    this.inFlight = false;
+    const top = box.scrollTop;
+    this.lastTop = top;
+    box.scrollTop = top;
+    if (atNewest(box)) return false;
+    this.followingNow = false;
+    return true;
   }
 
   /**

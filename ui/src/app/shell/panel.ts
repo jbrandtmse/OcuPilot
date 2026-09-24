@@ -4,6 +4,7 @@ import {
   DestroyRef,
   ElementRef,
   afterEveryRender,
+  afterNextRender,
   inject,
   signal,
   viewChild,
@@ -646,8 +647,20 @@ export class Panel {
       const box = this.transcriptBox();
       if (box !== null) this.follow.settle(box);
     });
+    // A wheel turned up stops the panel's own smooth scroll, which a browser can otherwise carry on
+    // over it to the newest entry. Passive, so the wheel's own scroll never waits on it.
+    const destroyRef = inject(DestroyRef);
+    afterNextRender(() => {
+      const box = this.transcriptBox();
+      if (box === null) return;
+      const onWheel = (event: WheelEvent): void => {
+        if (event.deltaY < 0 && this.follow.onWheelUp(box)) this.bump();
+      };
+      box.addEventListener('wheel', onWheel, { passive: true });
+      destroyRef.onDestroy(() => box.removeEventListener('wheel', onWheel));
+    });
     const routed = this.router.events.subscribe(() => this.bump());
-    inject(DestroyRef).onDestroy(() => {
+    destroyRef.onDestroy(() => {
       for (const stop of stops) stop();
       routed.unsubscribe();
       if (this.ticker !== null) clearInterval(this.ticker);

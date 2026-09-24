@@ -278,6 +278,36 @@ test('(b) an arrival while scrolled up leaves the position, Jump to latest passe
   }
 });
 
+test('(d) a wheel turned up while the panel\'s own smooth scroll is on its way stops it there, and Jump to latest shows again', async () => {
+  // Mutation (Rule 19): drop the panel's passive wheel listener -> the browser carries its own
+  // scroll on over the wheel to the newest entry, the control goes away, and this goes red.
+  const tags = [];
+  const { context, page } = await openPanel();
+  try {
+    tags.push(nextReply('Interrupted', 0, 48));
+    await send(page, 'a long answer please');
+    await waitForReplies(page, 1);
+    await waitAtNewest(page, 'after the reply');
+    await wheelUp(page, -4000);
+    await page.waitForSelector('.ocu-panel-jump', { timeout: 5000 });
+    assert.ok((await distance(page)) > 600, `the user has scrolled far from the newest entry: ${await geometry(page)}`);
+    const centre = await page.evaluate(() => {
+      const rect = document.querySelector('.ocu-panel-transcript').getBoundingClientRect();
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    });
+
+    await page.click('.ocu-panel-jump');
+    await page.mouse.move(centre.x, centre.y);
+    await page.mouse.wheel({ deltaY: -100 });
+    await settledTop(page);
+    assert.ok((await distance(page)) > TOLERANCE_PX, `the own scroll stopped short of the newest entry: ${await geometry(page)}`);
+    assert.equal(await jumpVisible(page), true, 'and Jump to latest is shown again');
+  } finally {
+    await context.close();
+    for (const tag of tags) forgetTag(probe, tag);
+  }
+});
+
 test('(c) under reduced motion the transcript scrolls instantly: a jump lands at the newest entry in the same frame', async () => {
   // Mutation (Rule 19): drop the reduced-motion override -> `scroll-behavior` computes `smooth` and
   // the same-evaluate distance is still the scrolled-up one.

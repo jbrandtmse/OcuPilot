@@ -3761,6 +3761,34 @@ describe('Story 11.10: the transcript follows the conversation', () => {
     expect(document.activeElement).toBe(transcript);
   });
 
+  it('a wheel turned up while the own scroll is on its way stops it there and shows Jump to latest', async () => {
+    // Mutation (Rule 19): drop the passive wheel listener -> the own scroll is never stopped (no
+    // write of its current position) and the control stays hidden, so this goes red.
+    const { host, fixture, geometry, transcript } = await mountAnswered();
+    await userScroll(transcript, fixture, 0);
+    // From here a write to `scrollTop` animates, as a smooth scroll does: it is recorded, and the
+    // position moves only when the test reports the next frame.
+    const writes: number[] = [];
+    Object.defineProperty(transcript, 'scrollTop', {
+      configurable: true,
+      get: () => geometry.scrollTop,
+      set: (value: number) => writes.push(value),
+    });
+    (jumpControl(host) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(writes).toEqual([800]);
+    geometry.scrollTop = 300;
+    transcript.dispatchEvent(new Event('scroll'));
+    fixture.detectChanges();
+    expect(jumpControl(host)).toBeNull();
+
+    transcript.dispatchEvent(new WheelEvent('wheel', { deltaY: -100 }));
+    await turnSettle();
+    fixture.detectChanges();
+    expect(writes).toEqual([800, 300]);
+    expect(jumpControl(host)).not.toBeNull();
+  });
+
   it('New conversation follows again and hides the control', async () => {
     const done = { kind: 'ok', status: 200, body: { turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null } };
     const { host, fixture, scheduled, geometry, transcript } = await mountAnswered([done]);
@@ -3774,6 +3802,49 @@ describe('Story 11.10: the transcript follows the conversation', () => {
     expect(geometry.scrollTop).toBe(800);
     await turnSettle();
     fixture.detectChanges();
+    expect(jumpControl(host)).toBeNull();
+  });
+
+  it('a transcript restored on reload opens at its newest entry', async () => {
+    // Mutation (Rule 19): make `settle`'s growth check ignore the very first non-zero measurement
+    // (`newest > this.lastNewest && this.lastNewest > 0`) -> the transcript stays at 0 and this
+    // goes red, alongside `panel-follow.spec.ts`'s pure-unit pin of the same rule.
+    const storage = new Map<string, string>([['ocupilot.conversation', 'convo-1']]);
+    const memory = {
+      getItem: (key: string) => (storage.has(key) ? (storage.get(key) as string) : null),
+      setItem: (key: string, value: string) => storage.set(key, value),
+      removeItem: (key: string) => storage.delete(key),
+    };
+    const api = fakeTurnApi({
+      [conversationReadPathFor('convo-1')]: [
+        {
+          kind: 'ok',
+          status: 200,
+          body: {
+            conversationId: 'convo-1',
+            turns: [
+              { seq: 1, message: 'first', state: 'completed', reply: 'one', error: null, steps: [], stepsDropped: 0 },
+              { seq: 2, message: 'second', state: 'completed', reply: 'two', error: null, steps: [], stepsDropped: 0 },
+              { seq: 3, message: 'third', state: 'completed', reply: 'three', error: null, steps: [], stepsDropped: 0 },
+            ],
+          },
+        },
+      ],
+    });
+    const turn = stubTurnStore({ api: api as never, storage: memory, navigationType: () => 'reload' });
+    await turn.restore();
+    const { host, fixture, navigation } = await mount({ rows: [{ enabled: true }], turn });
+
+    // jsdom lays out nothing, so the mount's own first render settles a 0 x 0 box and records no
+    // growth. The fake geometry stands in for the real, taller-than-viewport layout a browser
+    // would have already computed by the time `afterEveryRender` runs; a navigation notification
+    // -- unrelated to the follow state -- is the trigger for the next real render, the same way an
+    // unrelated store notification does for `mountAnswered`'s later cases.
+    const geometry = { scrollHeight: 1000, clientHeight: 200, scrollTop: 0 };
+    fakeTranscriptGeometry(host, geometry);
+    navigation.notify();
+    fixture.detectChanges();
+    expect(geometry.scrollTop).toBe(800);
     expect(jumpControl(host)).toBeNull();
   });
 });

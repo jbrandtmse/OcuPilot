@@ -105,6 +105,36 @@ describe('the transcript follow rule', () => {
     expect(atNewest(b)).toBe(true);
   });
 
+  it('a wheel turned up during the own smooth scroll stops it where it stands and stops following', () => {
+    // Mutation (Rule 19): make `onWheelUp` answer false and change nothing -> the scroll event the
+    // stop delivers below the newest entry still reads as the own scroll's progress and this goes red.
+    const follow = new TranscriptFollow();
+    const b = box();
+    follow.settle(b);
+    b.scrollHeight = 3200;
+    expect(follow.settle(b)).toBe(true);
+    expect(b.scrollTop).toBe(3000);
+    // The browser animates: the element reports a position on the way, the wheel turns up there,
+    // and the stop lands a little further on, where the animation had already reached.
+    b.scrollTop = 1178;
+    follow.onScroll(b);
+    expect(follow.following).toBe(true);
+    expect(follow.onWheelUp(b)).toBe(true);
+    expect(b.scrollTop).toBe(1178);
+    expect(follow.following).toBe(false);
+    scrollTo(follow, b, 1474);
+    expect(follow.following).toBe(false);
+    b.scrollHeight = 3400;
+    expect(follow.settle(b)).toBe(false);
+    expect(b.scrollTop).toBe(1474);
+
+    const idle = new TranscriptFollow();
+    const c = box();
+    idle.settle(c);
+    expect(idle.onWheelUp(c)).toBe(false);
+    expect(idle.following).toBe(true);
+  });
+
   it('an arrival while 4 px from the bottom scrolls to the newest entry', () => {
     const follow = new TranscriptFollow();
     const b = box();

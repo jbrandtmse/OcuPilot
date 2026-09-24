@@ -83,8 +83,8 @@ Method TestANewDefinitionIsReadWrite()
     Do $$$AssertEquals(tVerdict("footerKey"), "statusReadOnlyOff", "with the off footer key")
 }
 
-/// <p>A stored 1 and a stored 0 each survive a production install: nothing in the install path
-/// rewrites the flag.</p>
+/// <p>A stored 1 and a stored 0 each survive a production install and every registered migration
+/// step, run from schema version 0: nothing in the install or upgrade path rewrites the flag.</p>
 Method TestAStoredFlagSurvivesAnInstall()
 {
     Set tSC = ##class(OcuPilot.Test.AgentFixture).CreateDefinition(..#PROBEPREFIX _ "KeptOn", 0, 0, .tRow)
@@ -105,6 +105,10 @@ Method TestAStoredFlagSurvivesAnInstall()
 
     Do $$$AssertEquals(..StoredReadOnly(tOnId), 1, "the stored read-only flag is still 1")
     Do $$$AssertEquals(..StoredReadOnly(tOffId), 0, "and the stored read/write flag is still 0")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).RunMigrations("", 0, .tReports), "every migration step runs from schema version 0")
+    Do $$$AssertEquals(..StoredReadOnly(tOnId), 1, "the stored read-only flag is still 1 after the migrations")
+    Do $$$AssertEquals(..StoredReadOnly(tOffId), 0, "and the stored read/write flag is still 0 after them")
 }
 
 }

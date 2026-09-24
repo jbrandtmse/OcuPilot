@@ -129,6 +129,20 @@ deferred:
 - Given the transcript rules, when the story's browser spec runs against the redeployed bundle, then every matrix row from "Send while scrolled up" onward holds in real layout, and the control shows no structural violation.
 - Given EXPERIENCE.md, when `strings.test.mjs` runs, then the new row and the new key are equal, every line citation resolves, and the Body line still yields "Conversation".
 
+### Review Findings
+
+Code review 2026-09-24 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 41 rows, 7 entries (med 3, low 4), 18 rejected.
+
+- [x] [Review][Patch] [med] A wheel turned up during the panel's own smooth scroll was swallowed and the transcript carried on to the newest entry, still following (reproduced in headless Chrome, and in the app by `transcript-follow` (d) with the fix removed) -- `onWheelUp` stops the own scroll where it stands and turns following off; a passive native wheel listener calls it [ui/src/app/shell/panel-follow.ts:84, ui/src/app/shell/panel.ts:653]
+- [x] [Review][Patch] [med] The install-survival pin never ran a migration step, so a later step rewriting `ReadOnly` would pass it -- the test now also runs `RunMigrations("", 0)` and re-reads both flags [src/OcuPilot/Test/DefinitionDefaults.cls:109]
+- [x] [Review][Patch] [low] DW-1620: the `MergeBody` doc comment's "whose default is 1" replaced with the create behavior [src/OcuPilot/Api/Definitions.cls:1438]
+- [x] [Review][Patch] [low] `DefinitionDefaults` placed alphabetically in the arming roster [scripts/ci-throwaway.sh:231]
+- [x] [Review][Defer] [med] The Definition form has no read-only control (FR-24) -- deferred: DW-1621 decision-pending, owner burndown
+- [x] [Review][Defer] [low] A quoted `readOnly` on create stores the read/write default -- deferred: DW-1622 wontfix-accepted
+- [x] [Review][Defer] [low] Expanding a card while following scrolls the opened card up -- deferred: DW-1623 wontfix-accepted
+
+Rejected: the form's default duplicating `InitialExpression` (the AC requires both); growth outside a render (resize, zoom) not followed (self-heals at the next render; a `ResizeObserver` for no demonstrated harm); a reload animates to the newest entry (Always: scripts pass no behavior); Jump removed under focus when the user wheels to the bottom (Never: no scroll moves focus, Always: it goes away at the newest entry); change detection per scroll event (no measured cost); the statement's refusal and trigger wording (golden text); `DefinitionDefaults` armed and the footprint list (recorded under Departures; a spec edit); the cross-class `SetDefinitionReadOnly` helper (no harm named); no mutation note in the class header (false: mutations live here); the page spec's `.at(-1)` Save pick (discriminates, mutation recorded); sub-pixel retarget and a stuck `inFlight` (only while following; an upward scroll clears it); scroll anchoring turning following off (false: collapse plus append in one frame ends clamped at the newest entry in Chrome); the geometry fake's unconditional scroll event (test fidelity only); AC6's structural clause without its own mutation (AC6 has recorded mutations, and the filter matches `ocu-*` classes); 4 px / 5 px and a refused send outside real layout (layout-independent arithmetic, pinned by mutation in the unit); the EXPERIENCE.md row's change-log pointer (a spec edit).
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -225,6 +239,12 @@ Home sends no context, so from Home the statement opens the target screen. That 
   - mutation: the `afterEveryRender` settle made a no-op -> `panel.spec.ts` "an arrival while following scrolls ..." red (1 of 1057)
   - mutation: `Loop.cls` sends `Builtin()` cut before the new statement, package recompiled -> `TurnWire.TestAStartRunsAsTheCallerAndThePollAnswersItsShape` red on "under the built-in system prompt" (1 of 13)
   - mutation: `agentJumpToLatest` set to 'Jump to newest' -> `strings.test.mjs` table-equals-source tests red (3 of 25); its citation set to `:465` -> "every EXPERIENCE.md line reference resolves" red alone
+- (QA) restore-on-reload was pinned only in the pure follow unit -- added `panel.spec.ts` "a transcript restored on reload opens at its newest entry" (Story 11.10 block), mounting a three-turn restored conversation and faking post-mount geometry the way `mountAnswered` does, triggered by an unrelated `navigation.notify()` render.
+  - mutation: `settle`'s `grew` changed to `newest > this.lastNewest && this.lastNewest > 0` -> both this test and `panel-follow.spec.ts`'s existing restore case go red (2 of 1058 and 1 of 7); reverted, `panel-follow.ts` byte-identical to before
+- (CR) A wheel turned up during the own smooth scroll stops it and stops following.
+  - mutation: `onWheelUp` made to return false and change nothing -> `panel-follow.spec.ts` "a wheel turned up during the own smooth scroll ..." red (1 of 8); the passive wheel listener dropped from `panel.ts` -> `panel.spec.ts` "a wheel turned up while the own scroll is on its way ..." red (1 of 126) and, rebuilt and redeployed, `transcript-follow` (d) red on "the own scroll stopped short of the newest entry" (carried to the newest entry)
+- (CR) Stored flags survive the migration steps.
+  - mutation: `UPDATE OcuPilot_Kernel_State.Agent SET ReadOnly = 0` added to `Installer.MigrateToVersion1`, package recompiled on `ocupilot-b-ci` -> `DefinitionDefaults.TestAStoredFlagSurvivesAnInstall` red on "the stored read-only flag is still 1 after the migrations" alone (run 245); reverted and recompiled, green
 
 ## Auto Run Result
 
