@@ -2,7 +2,7 @@
 title: 'Story 9.2: The web application editor'
 type: 'feature'
 created: '2026-09-24'
-status: 'draft'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -39,22 +39,22 @@ deferred: []
 
 - Save follows `UserSave.Update`'s order. The tool's pair set first. Then a fresh read, where an absent application is a 404 and nothing is sent. Any body key outside `PERMITTEDFIELDS` is 400 `PORT.FIELD.UNEXPECTED`. Then the rules, the merge (the complete set, AD-4), the prohibited set (before any port call), and the send.
 - One rule copy serves both callers. `WebAppUpdate.ArgumentProblem` and the Save call the same update-mode `Create.Validate`.
-- The editable settings are exactly these 19: AutheEnabled, AutoCompile, CorsAllowlist, CorsCredentialsAllowed, CorsHeadersList, Description, Enabled, GroupById, IsNameSpaceDefault, JWTAccessTokenTimeout, JWTAuthEnabled, JWTRefreshTokenTimeout, LockCSPName, Recurse, Resource, ServeFiles, ServeFilesTimeout, Timeout and WSGIType.
-  - `PermittedChangeFields("web-application")` holds those 19 plus `MatchRoles`.
-- The General tab also shows, read-only: Name, the derived type, NameSpace, DispatchClass, WSGIAppName, WSGICallable, WSGIAppLocation, Path, Package and SuperClass.
-  - They choose which code answers at the address, or where it runs from (DW-1207, AD-21), so no caller changes them here.
-  - They carry the one caption `webAppEditorFixedFields`.
-- The shipped asymmetric predicates stay:
-  - Of all AutheEnabled changes, only clearing Unauthenticated passes (`UNAUTHENTICATED`).
-  - Clearing Resource is refused (`AUTHORIZATION`).
-  - Both sentences become caller-neutral `…REASON` parameters, published and pinned (AD-53).
+- The editable settings are exactly these 25: AutheEnabled, AutoCompile, CorsAllowlist, CorsCredentialsAllowed, CorsHeadersList, Description, DispatchClass, Enabled, GroupById, IsNameSpaceDefault, JWTAccessTokenTimeout, JWTAuthEnabled, JWTRefreshTokenTimeout, LockCSPName, NameSpace, Package, Recurse, Resource, ServeFiles, ServeFilesTimeout, SuperClass, Timeout, WSGIAppName, WSGICallable and WSGIType.
+  - `PermittedChangeFields("web-application")` holds those 25 plus `MatchRoles`.
+- The General tab shows Name, the derived type, `WSGIAppLocation` and `Path` read-only, under the one caption `webAppEditorFixedFields`.
+- On any other application, three effects are permitted and marked, never refused. Adding the Unauthenticated bit is `WEBAPP.UNAUTHENTICATED`. Clearing a resource the application held is `WEBAPP.NORESOURCE`. Changing any of DispatchClass, NameSpace, WSGIAppName, WSGICallable, Package or SuperClass is `WEBAPP.REPOINTED`.
+  - An agent proposal carrying one is minted destructive. The card states one consequence sentence; the precedence is in Design Notes.
+  - The editor states each effect's line once, at its own field.
 - Application roles on any other application are permitted, `%All` included.
   - The agent's proposal is minted destructive and names the privilege (`GrantsPrivilegeByEffect`, unchanged).
-  - The editor shows `privilegedGrantEffect` under a privileged choice. When an application role is added to an application whose AutheEnabled holds the Unauthenticated bit, it shows `privilegedGrantEffectUnauthenticated` instead: one line, never two.
-- On OcuPilot's own applications, the order of refusal is unchanged:
-  - A roles change is `PROHIBITED.PRIVILEGEGRANT`.
-  - Every other change, disable included, is `PROHIBITED.SERVINGPATH`.
-  - The editor draws both refused beforehand.
+  - The editor shows `privilegedGrantEffect` under a privileged choice. It shows `privilegedGrantEffectUnauthenticated` instead when the application is unauthenticated, as read or as the unsaved form stands: one line, never two.
+- On OcuPilot's own applications, the first predicate that matches decides, in this order:
+  - a roles change is `PROHIBITED.PRIVILEGEGRANT`;
+  - adding Unauthenticated is `PROHIBITED.UNAUTHENTICATED`;
+  - clearing its resource is `PROHIBITED.AUTHORIZATION`;
+  - changing any of the six code fields is `PROHIBITED.DISPATCH`;
+  - every other change, disable included, is `PROHIBITED.SERVINGPATH`.
+  - The editor draws the whole form refused beforehand, with the serving-path sentence, and draws the role controls refused with the privilege-grant sentence.
 - Save publishes one `web-application`/`updated` change event. The list re-fetches; it is never patched.
 - New strings are appended to `strings.ts` and to EXPERIENCE.md's Fixed-strings rows. Tokens only; non-ASCII as `\uXXXX`. Every input is named; nothing overflows.
 
@@ -69,6 +69,7 @@ deferred: []
   - `areas/agent/definition-form.*`, `shell/context-chip.ts`, `browser/definitions.browser-spec.mjs`, `README.md`
 - Shared-append files take appends only: `Api/Error.cls`, `strings.ts`, `_components.scss`, the Fixed-strings rows, and `DW-n:` bullets. `Screen/Tool/Registry.cls` and `ui/tools/strings.test.mjs` are contended: read `origin/OCU-1-epic10`'s copy first and change only your own members.
 - No change to `UNCOVEREDFIELD`'s sentence (DW-1598 is 9.3's) and no DW-1597 work.
+- No card-side typed-name field here: Story 14.7 draws it for every destructive proposal, and this story sets `destructive` (see Design Notes).
 - No private keys in any file, and no full browser suite locally.
 
 ## I/O & Edge-Case Matrix
@@ -76,11 +77,13 @@ deferred: []
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 |---|---|---|---|
 | Two-field save | `PUT /web-applications/<id>` `{Description, Timeout}` on a probe application with CORS, JWT and ServeFiles set | 200. The vendor receives the complete set, and every other read field reads back unchanged. One `updated` event. | — |
-| Undeclared key | body carries `MatchRoles`, `DispatchClass`, `NameSpace` or `Path` | 400 `PORT.FIELD.UNEXPECTED` naming each key; nothing sent | — |
+| Undeclared key | body carries `MatchRoles`, `Path` or `WSGIAppLocation` | 400 `PORT.FIELD.UNEXPECTED` naming each key; nothing sent | — |
 | System application | Save on a probe created with `Type` 3 | `Type` still reads 3 afterwards. Measured on `ocupilot-ci`: the vendor PUT forces `Type` 2 (`WebApp.App.MergeJsonAndProperties:153`) and `Modify` clears the system bit. | a failed restore answers the port's fault |
-| Own app, AC3 | Save `{Enabled:false}` on `/api/ocupilot`; the add-application-role action with `%All` on `/ocupilot` | 403 `PROHIBITED.SERVINGPATH`; 403 `PROHIBITED.PRIVILEGEGRANT`; nothing sent | each sentence is its published `…REASON` |
-| Auth weakening | Save adds Unauthenticated, or clears Resource, on a probe | 403 `PROHIBITED.UNAUTHENTICATED` / `PROHIBITED.AUTHORIZATION`, with the new caller-neutral sentences | — |
-| Privileged role | editor adds application role `%All` to an unauthenticated probe; the agent proposes `MatchRoles` with `%All` | the editor shows `privilegedGrantEffectUnauthenticated` only; the proposal is destructive and names `%All` | — |
+| Own app, AC3 | Save `{Enabled:false}` on `/api/ocupilot`; the add-application-role action with `%All` on `/ocupilot` | 403 `PROHIBITED.SERVINGPATH`; 403 `PROHIBITED.PRIVILEGEGRANT`; nothing sent | each reason is its `…REASON` parameter |
+| Weakening elsewhere | agent proposes adding 64 to AutheEnabled, `Resource:""`, and a new `DispatchClass`, each on a probe; then confirms; the same three as Saves | each proposal is destructive with consequence `WEBAPP.UNAUTHENTICATED` / `WEBAPP.NORESOURCE` / `WEBAPP.REPOINTED`; each confirm and each Save is 200 and reads back | — |
+| Weakening own | the same three changes on a recorded own path, by confirm and by Save | 403 `PROHIBITED.UNAUTHENTICATED` / `AUTHORIZATION` / `DISPATCH`; nothing sent | — |
+| Several effects | one proposal adds 64, clears Resource and changes DispatchClass; the editor makes the same three changes | the proposal is destructive with the one consequence `WEBAPP.UNAUTHENTICATED` and three diff rows; the editor shows three lines, one at each field | — |
+| Privileged role | editor adds application role `%All` to an unauthenticated probe; the agent proposes `MatchRoles` with `%All` on it | the editor shows `privilegedGrantEffectUnauthenticated` only; the proposal is destructive with `WEBAPP.UNAUTHENTICATEDPRIVILEGED` | — |
 | DW-1490 | hard reload of `web-applications/list/edit/<id>` | the editor reads the application and shows its values | absent id → the editor's absent state (404 `WEBAPP.NAME.ABSENT`) |
 | DW-1493 | agent create of `/csp/CaseProbe92/` confirmed; agent create of user `CaseProbe92` confirmed | the vendor stores `/csp/CaseProbe92` and `CaseProbe92` as typed. `TargetRef` stays canonical. | — |
 | DW-1577 | agent `webapp.list.update` `{Enabled:<current>}`; any merge tool with no changed row | 400 `TOOL.ARGUMENTS`, no proposal row | — |
@@ -94,71 +97,38 @@ S = `src/OcuPilot/`, U = `ui/src/app/`.
 
 Server:
 
-- `S/Screen/Tool/WebAppUpdate.cls`:
-  - `PERMITTEDFIELDS` at :51 and `EXCLUDEDFIELD MatchRoles` at :41.
-  - `SCREENACTIONS` at :57 is `enable`/`disable`.
-  - It inherits `ArgumentProblem` and `ScreenActionDelta` from `Write.cls` (:739, :537).
-  - `ScreenActionValueNames` (`Write.cls:509`) already parses `a=X:Y`.
-- `S/Screen/Tool/WebAppCreate.cls`:
-  - `MATCHROLESARGUMENT` at :64, the `SettableFields` append at :110-113, the array-of-object `InputSchema` at :171-184, and `ArgumentProblem` → `Create.Validate(...,0)` at :191.
-  - `UserUpdate.cls` is the precedent for an authored list argument plus role actions: `ROLESARGUMENT` at :69, `SCREENVALUES` at :59, `ScreenActionDelta` at :213-260.
-- `S/Area/WebApp/`:
-  - `FormRules.HandleForm` (:90-127) does not read `?name=`.
-  - `Create.Validate` (:227-295) and `MatchRolesViolation` (:297).
-  - Precedent for a form read with a name: `Area/Permissions/UserCreateRules.HandleForm` (:370-427) and `Account()` (:480-495).
-  - Precedent for the Save: `Area/Permissions/UserSave.cls` (`HandleUpdate`, `Update`, `Gate`).
-- `S/Api/Router.cls`: web-app routes at :95-97; the precedent `PUT /users/:id` at :100 with its handler at :322-329.
 - `S/Kernel/Proposal/Prohibited.cls`:
-  - Parameters: `SERVINGPATH` and the `…REASON` parameters at :59-176.
-  - `ReasonFor` at :324-347. `PRIVILEGEGRANT`, `UNAUTHENTICATED` and `AUTHORIZATION` are inline literals (:326-329).
-  - `PermittedChangeFields` at :410-424 (web app at :413), `WebApplication()` at :817-871, `ServesOcuPilot` at :2241, `GrantsPrivilegeByEffect` at :1622.
+  - Codes and docs `UNAUTHENTICATED`/`AUTHORIZATION`/`DISPATCH`/`PRIVILEGEGRANT` at :96-113; `SERVINGPATHREASON` style at :65; `ReasonFor` at :324-347 (four inline literals at :326-329).
+  - `PermittedChangeFields` at :410-424 (web app at :413); `AlwaysProhibitedFields` at :447-451 (answers `DispatchClass`).
+  - `Prohibits` at :561-660; `Created` at :721; `WebApplication()` at :817-894 (own-app arms at :824-842, the three shipped arms at :846-857, unreviewed loop at :858-866).
+  - `GrantsPrivilegeByEffect` at :1622, `Changed` at :2112, `ServesOcuPilot` at :2241, `Rendered` at :2301, `ClearsUnauthenticatedOnly` at :2320 (retired by this story).
 - `S/Kernel/Proposal/Mint.cls`:
-  - Create vs merge is decided at :183-193, `Merge` at :433-501 (rows only when a value differs, :460), and `StateDiff` rows at :221-241.
-  - Nothing checks for an empty diff after :241.
-  - `Refuse` (400 `TOOL.ARGUMENTS`) is at :791-799.
-- `S/Kernel/Proposal/Confirm.cls`:
-  - `FingerprintMatches` (:570) sets the id from `EntityRef.Parse(targetRef)` (:585-587), which is canonical, and returns in the create branch at :598-606.
-  - The stored arguments (`pRow("arguments")`, parsed at :615) carry the typed name under the tool's `IdArgument()`.
-  - Creates affected: WebApp, User, Role and Resource (`EntityRef.cls` `IDRULES` :59).
-- `S/Port/AdminPort.cls`: the one place `WebApp.App` PUTs pass through (AD-2, AD-27).
-- `S/Api/Error.cls`: `REASONAGENTCREDTYPEUNAVAILABLE` at :1285 (code at :421, mapped at :1061).
-- `S/Test/RefusalCopy.cls` (66 lines; legs at :24-64), `Test/ToolWrite.cls:150` (asserts no `CorsAllowlist`; update it), and `Test/Prohibited.cls:355` (schema equals `PermittedChangeFields`).
-- `S/Screen/Descriptor/`:
-  - `WebAppForm.cls` has no `suggestedPrompts`; `UserForm.cls:45` is the precedent.
-  - `WebAppList.cls` rowActions: enable, disable and delete, all `serves-ocupilot`.
-  - `Screen/Registry.cls:2244` is `SELFPROTECTIONRULES`.
+  - `CONSEQUENCEPRIVILEGED` at :63. Consequence and destructive at :300-306; `DestructiveTool` at :407; `ConsequenceOf` at :640-648.
+  - Create vs merge at :183-193, `Merge` at :433-501, `StateDiff` rows at :221-241 (nothing checks an empty diff after them). `Refuse` (400 `TOOL.ARGUMENTS`) at :791-799.
+- `S/Screen/Tool/WebAppUpdate.cls` (115 lines): `EXCLUDEDFIELD MatchRoles` :41, `EXCLUDEDDISPATCH` :45, `PERMITTEDFIELDS` :51, `SCREENACTIONS` :57, `ExcludedFields` :83. `ArgumentProblem`/`ScreenActionDelta` inherited from `Write.cls` (:739, :537); `ScreenActionValueNames` (`Write.cls:509`) parses `a=X:Y`.
+- `S/Screen/Tool/WebAppCreate.cls`: `MATCHROLESARGUMENT` :64, consequence codes :87-92, `Consequence` :155, `InputSchema` :171-184, `ArgumentProblem` :191. `UserUpdate.cls` is the precedent for an authored list argument plus role actions (`ROLESARGUMENT` :69, `SCREENVALUES` :59, `ScreenActionDelta` :213-260).
+- `S/Screen/Tool/Classification.cls:25-35,45-50`: doc prose that names the four reviewed fields and an unadvertised `DispatchClass`. `ToolFields.cls:198` confirms all 25 are ordinary top-level literals.
+- `S/Area/WebApp/`: `FormRules` (`LENGTHFIELDS` :68, `HandleForm` :90-127 does not read `?name=`), `Create.Validate` :227-295 (type-shape rules :250-275), `MatchRolesViolation` :297. Precedents: `Area/Permissions/UserCreateRules.HandleForm` :370-427 with `Account()` :480-495, and `Area/Permissions/UserSave.cls` (`HandleUpdate`, `Update`, `Gate`).
+- `S/Api/Router.cls`: web-app routes at :95-97; precedent `PUT /users/:id` at :100, handler :322-329.
+- `S/Kernel/Proposal/Confirm.cls`: `FingerprintMatches` :570 sets the id from `EntityRef.Parse(targetRef)` :585-587 and returns in the create branch :598-606. The stored arguments (parsed :615) carry the typed name under `IdArgument()`. Creates: WebApp, User, Role, Resource (`EntityRef.cls` `IDRULES` :59).
+- `S/Port/AdminPort.cls`: the one place `WebApp.App` PUTs pass (AD-2, AD-27).
+- `S/Api/Error.cls`: `REASONAGENTCREDTYPEUNAVAILABLE` :1285 (code :421, mapped :1061).
+- Tests the ruling inverts: `Test/Prohibited.cls:136-150` (three refusal legs on a probe), `:427`, `:435`, `:442` (the `View` leg asks for a `DispatchClass` change); `Test/ProhibitedByEffect.cls:128-170` (field sweep), `:200` (CorsAllowlist leg), `:210-240` (`TestOnlyClearingUnauthenticatedAccessIsProposable`), `:489` (own `NameSpace` case); `Test/ProhibitedRoute.cls:502-522` (`Weakened`), `:975`, `:1022-1045`. Also `Test/ToolWrite.cls:150`, `Test/Prohibited.cls:355`, `Test/RefusalCopy.cls` (legs :24-64), `Test/WebAppLocation.cls:151-164` (create consequence).
+- `S/Screen/Descriptor/`: `WebAppForm.cls` has no `suggestedPrompts` (`UserForm.cls:45` is the precedent); `WebAppList.cls` rowActions enable, disable, delete, all `serves-ocupilot`; `Screen/Registry.cls:2244` `SELFPROTECTIONRULES`.
 
 Client:
 
-- `U/areas/web-applications/create-form.page.ts` (792 lines) and `create-form.store.ts` (730 lines):
-  - The field template and the order of the classic page.
-  - `absorbRules` at :673-730 (reuse it; export it rather than copy it).
-  - `privilegeEffect` at :545.
-  - The retain handoff at :708-723 and :787, which DW-1490 replaces.
-- `U/areas/permissions/user-editor.page.ts` (923 lines) and `user-editor.store.ts` (563 lines): the pattern to mirror.
-  - Tabs at :145-446 and the form bar at :448-460.
-  - `routeId`/`NavigationEnd` at :516-523; change bus at :525-528.
-  - Actions: `startFor` at :845, `onApplied` at :852; `afterRefusal` at :883.
-  - `changedFields` at :296, `arriveSaved`/`open` at :332-351, `refresh` at :355, `save` at :410-451.
-- `U/shell/screen-action-handler.ts`:
-  - `startFor(descriptor, actionId, target, rowFields, sink, role='')` at :395.
-  - `VALUE_ACTIONS` at :99, `UNDRAWN_ACTIONS` at :104, `send` at :533.
-- `U/shell/screen-outlet.ts:123-125` (`DESCRIPTOR_EDIT_PAGES`) and `U/core/navigation.ts:202-205` (`CREATE_ONLY_FORMS` = WebAppForm, RoleForm).
-- `U/core/self-protection.ts:23,99-105` (`SERVES_OCUPILOT_RULE`, `OCUPILOT_APPLICATION_PATHS`). `ui/tools/screen-mirror.mjs:313` is `IMPLEMENTED_SELF_PROTECTION_RULES`.
-- `ui/tools/self-protection.test.mjs`: `stringValue` at :55-60 and the parameter/key pairs at :110-147.
-- `ui/src/styles/_components.scss`:
-  - The flex host list at :734-747.
-  - `.ocu-form-page` at :2841 (`overflow-y:auto`).
-  - `.ocu-form-bar` at :2962 (sticky).
-  - The toast lift at :5512-5514.
-- DW-1595 prose:
-  - `U/shell/toast-host.ts:12-22` and `:48-52`: the "component-scoped" paragraph, now stale.
-  - `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/DESIGN.md:1210`.
-- EXPERIENCE.md Fixed strings at :254-468; the row format is :467. `privilegedGrantEffect*` rows are :403-404. The IA row is :129.
-- Browser specs:
-  - `ui/browser/users-editor.browser-spec.mjs`: helpers at :141-183, visual gate at :323-374, and the geometry test at :379-410, whose `scrollIntoView` at :392 is DW-1596's workaround.
-  - `web-applications.browser-spec.mjs:231` (AC5 name link).
-  - `web-applications-create.browser-spec.mjs:250-295` (AC2 post-create URL and Saved).
+- `U/areas/web-applications/create-form.page.ts` (792 lines) and `create-form.store.ts` (730 lines): field template and classic order; `absorbRules` :673-730 (export it); consequence precedence :325-366 and :525-547 (`unauthenticatedEffect`, `privilegeEffect`); the retain handoff :708-723 and :787, which DW-1490 replaces.
+- `U/areas/permissions/user-editor.page.ts` (923 lines) and `user-editor.store.ts` (563 lines), the pattern: tabs :145-446, form bar :448-460, `routeId`/`NavigationEnd` :516-523, change bus :525-528, `startFor` :845, `onApplied` :852, `afterRefusal` :883; store `changedFields` :296, `arriveSaved`/`open` :332-351, `refresh` :355, `save` :410-451.
+- `U/core/proposal-view.ts:120-138`: consequence codes and `consequenceSentence`; `U/shell/proposal-card.ts:633`.
+- `U/shell/screen-action-handler.ts`: `startFor(descriptor, actionId, target, rowFields, sink, role='')` :395, `VALUE_ACTIONS` :99, `UNDRAWN_ACTIONS` :104, `send` :533.
+- `U/shell/screen-outlet.ts:123-125` (`DESCRIPTOR_EDIT_PAGES`), `U/core/navigation.ts:202-205` (`CREATE_ONLY_FORMS`).
+- `U/core/self-protection.ts:23,99-105`; `ui/tools/screen-mirror.mjs:313` (`IMPLEMENTED_SELF_PROTECTION_RULES`); `ui/tools/self-protection.test.mjs` (`stringValue` :55-60, pairs :110-147).
+- `U/core/strings.ts:1368` `webAppUnauthenticatedEffect`, :1408-1412 `privilegedGrantEffect*`.
+- `ui/src/styles/_components.scss`: flex host list :734-747, `.ocu-form-page` :2841, `.ocu-form-bar` :2962, toast lift :5512-5514.
+- DW-1595 prose: `U/shell/toast-host.ts:12-22,48-52`; `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/DESIGN.md:1210`.
+- EXPERIENCE.md Fixed strings :254-468 (row format :467; `webAppUnauthenticatedEffect` :400, `privilegedGrantEffect*` :403-404; IA row :129).
+- Browser specs: `users-editor.browser-spec.mjs` (helpers :141-183, visual gate :323-374, geometry :379-410 with DW-1596's `scrollIntoView` at :392); `web-applications.browser-spec.mjs:231` (AC5 name link); `web-applications-create.browser-spec.mjs:250-295` (AC2).
 
 ## Tasks & Acceptance
 
@@ -167,96 +137,115 @@ Client:
 Server tasks:
 
 - `S/Kernel/Proposal/Prohibited.cls`:
-  - `PermittedChangeFields("web-application")` becomes the 19 settings plus `MatchRoles`. Its doc names the fixed-field rationale.
-  - Add `PRIVILEGEGRANTREASON` (the existing sentence), `UNAUTHENTICATEDREASON` ("The only change OcuPilot makes to how a web application signs people in is removing the option of reaching it without signing in.") and `AUTHORIZATIONREASON` ("OcuPilot does not remove the resource that guards a web application."). `ReasonFor` returns each `..#XREASON`.
+  - `PermittedChangeFields("web-application")` becomes the 25 settings plus `MatchRoles`. `AlwaysProhibitedFields("web-application")` answers `""`.
+  - Add `Parameter CODEFIELDS = "DispatchClass,NameSpace,WSGIAppName,WSGICallable,Package,SuperClass"`, and replace `ClearsUnauthenticatedOnly` with `AddsUnauthenticated(pPayload, pTarget)`. It is true when the payload's mask has bit 64 and the target's does not. A payload value that is not a whole number counts as adding the bit.
+  - `WebApplication()`: on an own application, evaluate the five predicates in the intent's order. On any other application, only the unreviewed-field loop runs.
+  - Add public `WeakensByEffect(pType, pPayload, pTarget, Output pEffect) As %Status`. For a web application, `pEffect` is the first of `EFFECTUNAUTHENTICATED` ("WEBAPP.UNAUTHENTICATED", when `AddsUnauthenticated`), `EFFECTNORESOURCE` ("WEBAPP.NORESOURCE", when the target's `Resource` is set and the payload's is empty) and `EFFECTREPOINTED` ("WEBAPP.REPOINTED", when any `CODEFIELDS` value differs). Otherwise `pEffect` is `""`.
+  - Reasons: add `PRIVILEGEGRANTREASON` (the existing sentence) and these three:
+    - `UNAUTHENTICATEDREASON`: "OcuPilot serves itself through this web application. Making it reachable without signing in is not available here."
+    - `AUTHORIZATIONREASON`: "OcuPilot serves itself through this web application. Removing the resource that guards it is not available here."
+    - `DISPATCHREASON`: "OcuPilot serves itself through this web application. Changing which code answers at its address is not available here."
+    - `ReasonFor` answers `..#XREASON` for all four. Rescope the three codes' docs to OcuPilot's own applications.
+- `S/Kernel/Proposal/Mint.cls`:
+  - After `GrantsPrivilegeByEffect`, a non-create call asks `WeakensByEffect(tType, tPayload, tFresh, .tEffect)`.
+  - `destructive` becomes `DestructiveTool || tPrivileged || (tEffect '= "")`.
+  - `ConsequenceOf` gains `pEffect`. It passes `pEffect` to the tool's `Consequence`, and when that answers `""` it falls back to `CONSEQUENCEPRIVILEGED` if privileged, else to `pEffect`.
+  - DW-1577: after the `StateDiff` rows, a non-create tool that sends a body and has zero diff rows is refused through `Refuse` with 400 `TOOL.ARGUMENTS` ("nothing would change"). No row is written.
+- `S/Screen/Tool/WebAppCreate.cls`: `Consequence` gains an ignored `pEffect As %String = ""`.
 - `S/Screen/Tool/WebAppUpdate.cls`:
-  - `PERMITTEDFIELDS` becomes the 19 settings. Author descriptions for each. The enums are `ServeFiles` {`No`, `Always`, `Always and cached`, `Use CSP security`} (the display list measured on the instance) and `WSGIType` {`WSGI`, `ASGI`}.
-  - Add `MATCHROLESARGUMENT` and its schema, as in `WebAppCreate`.
+  - `PERMITTEDFIELDS` becomes the 25. Delete `EXCLUDEDDISPATCH`; `ExcludedFields` answers `MatchRoles` alone.
+  - Author descriptions for each field. The enums are `ServeFiles` {`No`, `Always`, `Always and cached`, `Use CSP security`} (the display list measured on the instance) and `WSGIType` {`WSGI`, `ASGI`}.
+  - The three effect fields' descriptions say the change is confirmed as a delete is, and is refused on OcuPilot's own applications.
+  - Add `MATCHROLESARGUMENT` and its schema, as `WebAppCreate` has them.
   - `SCREENACTIONS` adds `add-application-role`, `remove-application-role`, `add-matching-role` and `remove-matching-role`. `SCREENVALUES` is `…-application-role=Role` and `…-matching-role=MatchRole:Role`.
-  - `ScreenActionDelta` builds the complete `MatchRoles` from the fresh read, plus or minus one target role in the entry whose `MatchRole` is `""` (application) or the named one (matching). It creates or drops an entry as needed.
-    - Refused: an empty value, an add already held, a remove not held, and an unknown role (404 through the port), as `UserUpdate` refuses.
-  - `ArgumentProblem` → `Create.Validate` update mode.
-  - Update the `DESCRIPTION`.
-- `S/Area/WebApp/Create.cls`:
-  - `Validate` gains an update mode over the 19 plus MatchRoles.
-  - Rules: lengths from `FormRules` `LENGTHFIELDS`, integer timeouts ≥ 0, the enums, a known AutheEnabled mask, strings in the CORS arrays, a GroupById length, and `MatchRolesViolation`.
-- `S/Area/WebApp/FormRules.cls`:
-  - `HandleForm` with `?name=` also answers `application`, which is `WebAppUpdate`'s fresh read through its own port and `ReadType`.
-  - A missing application is 404 `WEBAPP.NAME.ABSENT`, appended to `Api/Error.cls`.
-- `S/Area/WebApp/WebAppSave.cls` (new), plus `S/Api/Router.cls`:
-  - Add `PUT /web-applications/:id` → `HandleUpdate`/`Update`, in `UserSave`'s order through `WebAppUpdate`.
-  - The route goes after `/web-applications/form` and `/name` and before `POST`.
-- `S/Port/AdminPort.cls`:
-  - For a `WebApp.App` `PUT` against an existing application, read `Security.Applications` `Type` in `%SYS` before the vendor call.
-  - When the call leaves `Type` different from that value, re-apply it with `Security.Applications.Modify`, under the same `%Admin_Secure` gate.
-  - This is AD-27's fifth named case (see Design Notes).
-- `S/Kernel/Proposal/Mint.cls` (DW-1577): after the `StateDiff` rows, a non-create tool that sends a body and has zero diff rows is refused through `Refuse` with 400 `TOOL.ARGUMENTS` ("nothing would change"), and no proposal row is written.
-- `S/Kernel/Proposal/Confirm.cls` (DW-1493):
-  - For a create tool, the id value sent to `ReadAt`/`ApplyAt` is the stored argument under the tool's `IdArgument()`.
-  - The canonical id stays the fallback when that argument is absent.
-  - `TargetRef`, the lock and the sibling cancel stay canonical.
-- Descriptors, registry and mirror: `S/Screen/Descriptor/WebAppList.cls`, `WebAppForm.cls`, `S/Screen/Registry.cls`, `ui/tools/screen-mirror.mjs`.
-  - WebAppList declares the four role actions with the new rule `ocupilot-application-roles`, appended to `SELFPROTECTIONRULES` and to `IMPLEMENTED_SELF_PROTECTION_RULES`.
+  - `ScreenActionDelta` builds the complete `MatchRoles` from the fresh read, adding or removing one target role in the right entry: `MatchRole` `""` for application roles, the named match role for matching roles. It creates or drops the entry as needed. It refuses what `UserUpdate` refuses: an empty value, an add already held, a remove not held, and an unknown role (404 through the port).
+  - `Consequence(pPayload, pPrivileged, pEffect)` answers `WebAppCreate.Consequence(pPayload, 1)` when privileged, and `""` otherwise. The mint then falls back to `GRANT.PRIVILEGED` or to `pEffect`, whose own order `WeakensByEffect` sets.
+  - `ArgumentProblem` calls `Create.Validate` in update mode. Rewrite the class doc and `DESCRIPTION` to the 25; no DW-1207 narration.
+- `S/Screen/Tool/Classification.cls`: doc only. The two sentences naming "four of these rows" and an unadvertised `DispatchClass` state the 25 instead.
+- `S/Area/WebApp/Create.cls` and `FormRules.cls`:
+  - `Validate` gains an update mode over the 25 plus MatchRoles. Its type-shape rules read the merged body (the fresh read with the changes applied), so a Python application still needs its name, its fresh location and its type, and REST with Python is a conflict.
+  - The other rules: NameSpace non-empty; lengths from `LENGTHFIELDS`, which appends `Package` and `SuperClass`; integer timeouts ≥ 0; the enums; a known AutheEnabled mask; strings in the CORS arrays; a GroupById length; and `MatchRolesViolation`.
+  - `HandleForm` with `?name=` also answers `application`: `WebAppUpdate`'s fresh read, through its own port and `ReadType`. A missing application is 404 `WEBAPP.NAME.ABSENT`, appended to `Api/Error.cls`.
+- `S/Area/WebApp/WebAppSave.cls` (new), plus `S/Api/Router.cls`: `PUT /web-applications/:id` goes to `HandleUpdate`/`Update`, in `UserSave`'s order, through `WebAppUpdate`. The route sits after `/web-applications/form` and `/name`, and before `POST`.
+- `S/Port/AdminPort.cls`: for a `WebApp.App` `PUT` on an existing application, read `Security.Applications` `Type` in `%SYS` before the vendor call. When the call changes it, re-apply it with `Security.Applications.Modify` under the same `%Admin_Secure` gate. This is AD-27's fifth case.
+- `S/Kernel/Proposal/Confirm.cls` (DW-1493): for a create tool, the id sent to `ReadAt`/`ApplyAt` is the stored argument under the tool's `IdArgument()`, with the canonical id as the fallback. `TargetRef`, the lock and the sibling cancel stay canonical.
+- `S/Screen/Descriptor/WebAppList.cls`, `WebAppForm.cls`, `S/Screen/Registry.cls` and `ui/tools/screen-mirror.mjs`:
+  - WebAppList declares the four role actions with the new rule `ocupilot-application-roles`. The rule is appended to `SELFPROTECTIONRULES` and to `IMPLEMENTED_SELF_PROTECTION_RULES`.
   - WebAppForm declares 3 `suggestedPrompts` and an editor label.
   - Regenerate the mirror.
 - Tests:
-  - `S/Test/WebAppSave.cls` (new): each matrix row from "Two-field save" to "Privileged role", covering both the Save and the screen actions, plus the form read's `application` and 404. The refused legs run through `Test.HeldPutPort`.
-  - `Test/ProposalMint.cls`: DW-1577 for `webapp.list.update` and one other merge tool.
-  - `Test/ProposalCreate.cls`: DW-1493 for the web-app and user creates.
-  - `Test/RefusalCopy.cls`: the three new `…REASON` legs, plus a leg equating `Error.ReasonForViolation(AGENTCREDTYPEUNAVAILABLE)` with `#REASONAGENTCREDTYPEUNAVAILABLE`.
-  - Update `ToolWrite.cls:150` and `Prohibited.cls:355` to the widened set.
+  - `S/Test/WebAppSave.cls` (new): the Save and the screen actions over the matrix rows "Two-field save" through "Own app, AC3", plus the form read's `application` and its 404. The refused legs run through `Test.HeldPutPort`.
+  - `S/Test/WebAppWeakening.cls` (new): the ruling's tests, run on a probe and on a probe path recorded as OcuPilot's own (`Kernel.State.WebApp.GuardedRecord`, as `ProhibitedRoute:664` does).
+    - On the probe, for each of the three changes: the mint's row is destructive and carries its effect code. The confirm over the wire is 200 and the change reads back. The same change as a `PUT` Save is 200.
+    - On the own path, the confirm and the Save are each 403 with their own code, and nothing is sent.
+    - Legs for the "Several effects" and "Privileged role" rows.
+  - Rewrite the inverted legs listed in the Code Map:
+    - `Prohibited.cls:136-150`: permitted on a probe, and the own code on the recorded path.
+    - `:427` and `:435`: an empty always-list, and DispatchClass among the change fields.
+    - `:442`: ask for `Path` instead.
+    - `ProhibitedByEffect`: the sweep keeps only fields outside the 26; the CorsAllowlist leg is permitted; the AutheEnabled cases assert `WeakensByEffect` (only an added 64 is marked); the `:489` own-NameSpace case expects `DISPATCH`.
+    - `ProhibitedRoute`: delete `Weakened` and its three legs (superseded by `WebAppWeakening`), and fix the `:975` mutation text.
+    - Also `ToolWrite.cls:150` and `Prohibited.cls:355`.
+  - `Test/RefusalCopy.cls`: one leg per new `…REASON` (four), each its parameter and caller-neutral. Plus a leg equating `Error.ReasonForViolation(AGENTCREDTYPEUNAVAILABLE)` with `#REASONAGENTCREDTYPEUNAVAILABLE`.
+  - `Test/ProposalMint.cls`: DW-1577, for `webapp.list.update` and one other merge tool. `Test/ProposalCreate.cls`: DW-1493, for the web-app and user creates.
 
 Client tasks:
 
 - `U/areas/web-applications/web-app-editor.page.ts` and `web-app-editor.store.ts` (new), each with a `.spec.ts`:
-  - Mirror `UserEditorPage` and `UserEditor`: load `GET /web-applications/form?name=`, follow `NavigationEnd`, save changed fields to `PUT`, then the summary, opening the tab, "Saved", the `FormDirty` guard, a clean re-read on an event, and roles-only while dirty.
+  - Mirror `UserEditorPage` and `UserEditor`. Load `GET /web-applications/form?name=` and follow `NavigationEnd`. Save the changed fields to `PUT`. Keep the summary, opening the tab, "Saved", the `FormDirty` guard, a clean re-read on an event, and roles-only refresh while dirty.
   - Tabs:
-    - General: the 19 settings minus CORS, plus the fixed fields read-only with `webAppEditorFixedFields`. The type is derived as the create page derives it: REST if DispatchClass, Python if WSGIAppName, else CSP.
+    - General: the 25 minus CORS, plus the fixed fields read-only under `webAppEditorFixedFields`. The type is derived live: REST if DispatchClass, Python if WSGIAppName, else CSP.
     - Application Roles: held roles with Remove, and a role select with Assign.
     - Matching Roles: each entry's targets with Remove, and match-role and target selects with Assign.
     - Cross-Origin Settings.
-  - The auth fieldset is captioned with the `UNAUTHENTICATED` sentence.
-  - On an application `serves-ocupilot` names, fields and Save are drawn refused with `webAppServesOcuPilotRefusal`, and role controls with the `ocupilot-application-roles` sentence.
+  - Consequence lines, one per effect, at its own field:
+    - `webAppUnauthenticatedEffect` on the authentication fieldset when the form adds Unauthenticated.
+    - `webAppNoResourceEffect` on Resource when the form clears a resource the read held.
+    - `webAppRepointedEffect` once, at the first of the six code fields (in template order) that the form changes.
+    - On the roles tabs, a privileged choice shows `privilegedGrantEffect`, or `privilegedGrantEffectUnauthenticated` when the read or the form holds Unauthenticated.
+  - On an application `serves-ocupilot` names, fields and Save are drawn refused with `webAppServesOcuPilotRefusal`, and the role controls with `webAppPrivilegeGrantRefusal`.
   - Import `absorbRules` from `create-form.store.ts`; do not copy it.
+- `U/core/proposal-view.ts`: add `CONSEQUENCE_NORESOURCE` and `CONSEQUENCE_REPOINTED`, mapped to their sentences. Add one `proposal-card.spec.ts` leg per code.
 - `U/shell/screen-action-handler.ts`:
-  - `startFor` takes an optional trailing `values: ActionValues`, sent as the action's declared values (the `role` argument stays for 9.1).
+  - `startFor` takes an optional trailing `values: ActionValues`, sent as the action's declared values. The `role` argument stays for 9.1.
   - The four role actions go under WebAppList in `UNDRAWN_ACTIONS`.
 - `U/core/self-protection.ts` plus `ui/tools/self-protection.test.mjs`:
   - The `ocupilot-application-roles` rule has the `serves-ocupilot` predicate and answers `webAppPrivilegeGrantRefusal`.
-  - Add pairs for PRIVILEGEGRANT, UNAUTHENTICATED and AUTHORIZATION, and for the Error.cls credtype reason (its `Parameter REASON… =` line).
+  - Add pairs `PRIVILEGEGRANTREASON`↔`webAppPrivilegeGrantRefusal`, and the `Error.cls` credtype `Parameter REASON… =` line ↔ `agentCredTypeUnavailable`.
 - `U/shell/screen-outlet.ts` and `U/core/navigation.ts`: `DESCRIPTOR_EDIT_PAGES` gains `WebAppForm: WebAppEditorPage`, and WebAppForm leaves `CREATE_ONLY_FORMS`.
-- `U/areas/web-applications/create-form.page.ts` and `.store.ts`: replace the retain handoff with the editor's `arriveSaved(id)` before `navigateByUrl`, as `user-create-form.page.ts:488` does (DW-1490).
-- `ui/src/styles/_components.scss` (appended rule, DW-1596):
-  - Every element whose direct child is `.ocu-form-page`, reached under `app-screen-outlet`, is a column flex host with `flex: 1 1 auto` and `min-height: 0`.
-  - First verify the outlet's DOM chain. Do not edit the existing list.
-- `U/core/strings.ts` and the EXPERIENCE.md Fixed-strings rows (appended, `[ADDED 2026-09-24 - see the story change log]`):
-  - the tab labels (reuse keys where they exist) and the new field labels;
-  - `webAppEditorFixedFields` ("Which code answers at this address, and where it runs from, are set when the application is created.");
-  - `webAppPrivilegeGrantRefusal` and the `UNAUTHENTICATED`/`AUTHORIZATION` sentences;
-  - the credtype sentence (`agentCredTypeUnavailable`);
+- `U/areas/web-applications/create-form.page.ts` and `.store.ts` (DW-1490): replace the retain handoff with the editor's `arriveSaved(id)` before `navigateByUrl`, as `user-create-form.page.ts:488` does.
+- `ui/src/styles/_components.scss` (appended rule, DW-1596): every element whose direct child is `.ocu-form-page`, reached under `app-screen-outlet`, becomes a column flex host with `flex: 1 1 auto` and `min-height: 0`. Verify the outlet's DOM chain first, and do not edit the existing list.
+- `U/core/strings.ts` and the EXPERIENCE.md Fixed-strings rows (appended, marked `[ADDED 2026-09-24 - see the story change log]`):
+  - the tab labels (reuse keys where they exist) and the new field labels, `Package` and `SuperClass` among them;
+  - `webAppEditorFixedFields`: "Where this application's files live is set when it is created.";
+  - `webAppNoResourceEffect`: "No resource guards this application now, so anyone who can sign in can use it.";
+  - `webAppRepointedEffect`: "A different class now answers this address.";
+  - `webAppPrivilegeGrantRefusal` (the `PRIVILEGEGRANTREASON` sentence) and `agentCredTypeUnavailable`;
   - the 3 prompts.
 - DW-1595, both documentation-only:
   - `U/shell/toast-host.ts:12-22,48-52`: the prose names the form-bar lift in `_components.scss` and drops the contention paragraph.
-  - DESIGN.md:1210, applying the Design Notes wording with an `[AMENDED 2026-09-24 - Story 9.2, DW-1595]` marker. It is a Rule 5 tier-1 amendment; the lead reports it.
+  - DESIGN.md:1210 gets the Design Notes wording and an `[AMENDED 2026-09-24 - Story 9.2, DW-1595]` marker. This is a Rule 5 tier-1 amendment, which the lead reports.
 
 Browser tasks:
 
 - `ui/browser/web-applications-editor.browser-spec.mjs` (new):
   - The name cell opens the editor with its 4 tabs.
-  - A two-field Save reads back through `docker exec`, and the toast "Open in Web applications" lands on the list, where the row shows the new Resource without a reload (AC2).
+  - A two-field Save reads back through `docker exec`. The toast "Open in Web applications" lands on the list, where the row shows the new Resource without a reload (AC2).
+  - On a probe, ticking Unauthenticated, clearing Resource and changing DispatchClass each show their own line, the repointed line once. The Save applies all three, read back through `docker exec`.
   - A tab error shows its dot and name. The leave guard holds.
-  - Assigning `%All` shows only the unauthenticated line.
+  - Assigning `%All` on an unauthenticated probe shows only the combined line.
   - `/api/ocupilot` is drawn refused.
   - The visual gate, and the bar flush at 1440x900 with no scrolling.
 - `users-editor.browser-spec.mjs`: drop the `scrollIntoView` workaround at :392 and assert the bar is flush without scrolling (DW-1596).
 - `web-applications.browser-spec.mjs` AC5: re-point the name link to `…/list/edit/<id>`.
-- `web-applications-create.browser-spec.mjs` AC2: after the create, the editor's own bar reads "Saved". A hard reload of that URL shows the created values (DW-1490).
+- `web-applications-create.browser-spec.mjs` AC2: after the create, the editor's own bar reads "Saved", and a hard reload of that URL shows the created values (DW-1490).
 
 **Acceptance Criteria:**
 
 - **Given** a web application row, **when** its name is opened, **then** `web-applications/list/edit/<id>` shows the tabs General, Application Roles, Matching Roles and Cross-Origin Settings. Together they cover type, enabled, namespace, default application, dispatch class, resource, group by id, authentication methods, session timeout, JWT, CORS, CSP file settings, serve files, Python protocol, and application and matching roles.
 - **Given** a Save, **when** it completes, **then** the Web applications list reflects it without a manual refresh, through the change-event bus.
 - **Given** one of OcuPilot's own applications, **when** a Save disables it or a role action sets application or matching roles on it, **then** the instance refuses with `PROHIBITED.SERVINGPATH` or `PROHIBITED.PRIVILEGEGRANT`, each sentence pinned by `RefusalCopy` and `self-protection.test.mjs` (DW-1502).
+- **Given** an application that is not OcuPilot's own, **when** the agent proposes, or a person saves, making it unauthenticated, clearing its resource or changing its dispatch class, **then** the proposal is destructive and names the effect, the editor states it at the field, and the change applies once confirmed or saved. **Given** OcuPilot's own, **then** each is refused with its own code on both callers.
 - **Integration:** **given** `form-tabs`, `startFor` and `DESCRIPTOR_EDIT_PAGES`, **when** `WebAppEditorPage` shows a refusal on an unselected tab and assigns an application role, **then** the tab opens with its dot and ", 1 error", and the role reaches the instance through the list's own AD-53 action route. The browser spec observes both.
 
 ## Spec Change Log
@@ -267,12 +256,12 @@ Browser tasks:
 
 ## Design Notes
 
-**Governing ADs:** AD-3, AD-4, AD-5, AD-6, AD-8, AD-10, AD-13, AD-14, AD-19, AD-21, AD-27, AD-36, AD-39, AD-51, AD-53, AD-54, AD-55 and AD-56.
+**Governing ADs:** AD-3, AD-4, AD-5, AD-6, AD-8, AD-10 (as amended 2026-09-24), AD-13, AD-14, AD-19, AD-21, AD-27 (fifth case), AD-36, AD-39, AD-51, AD-53, AD-54, AD-55 and AD-56. AD-54 says "a field prohibited because it repoints a serving object is prohibited on a change". After AD-10's amendment, that serving object is one of OcuPilot's own applications, which is where `DISPATCH` still applies.
 
 **Consumes:**
 
 - 9.1's `form-tabs`, `screen-action-dialogs`/`startFor`, `DESCRIPTOR_EDIT_PAGES`, the `suggestedPrompts` key, the toast lift and the `UserSave` order.
-- 8.1's `/web-applications/form` rules and create page.
+- 8.1's `/web-applications/form` rules, create page and consequence codes.
 - 7.1's web-app row actions and self-protection.
 - 5.5's reviewed-few predicates.
 
@@ -280,56 +269,54 @@ Browser tasks:
 
 - 9.3 reuses the generalized `startFor(…, values)`.
 - 9.3, 9.5 and 9.8 inherit the form-page flex rule (DW-1596).
+- 14.7 draws the typed-name field on every destructive card, these included.
 
-**Why these fields are read-only.** `WebApplication()`'s asymmetric arms implement DW-1207, the owner's floor-blocking decision of 2026-09-19: no confirmation repoints the code that answers at an address. AD-10's 2026-09-23 amendment reverses privilege grants only.
+**One home for the effect.** `Prohibited.WeakensByEffect` is the one classifier, as `GrantsPrivilegeByEffect` is for privilege. The mint ORs its verdict into `destructive`, and the tool maps it to the card's code. The editor's lines mirror it client-side, as the create page's consequence lines already do. The typed-name field on a destructive card is Story 14.7's (backlog). This story sets `destructive`, which is what 14.7 reads, as the shipped privileged grants already do.
 
-- The editor therefore shows DispatchClass, the WSGI app and callable, NameSpace, Package and SuperClass read-only.
-- Path and WSGIAppLocation are read-only because they name server paths (AD-21 permits a directory only on a create).
-- Of all authentication changes, only clearing Unauthenticated passes, as shipped.
+**Precedence.** The card carries one consequence code, stored in a 64-character column, so a proposal with several effects names the first of these:
 
-**Owner call available at the spec gate:** if "developer tool first" is meant to cover DW-1207's predicates too, the delta is:
+1. `WEBAPP.UNAUTHENTICATEDPRIVILEGED`: a privileged role on an application that is, or is being made, unauthenticated.
+2. `WEBAPP.UNAUTHENTICATED`.
+3. `GRANT.PRIVILEGED`.
+4. `WEBAPP.NORESOURCE`.
+5. `WEBAPP.REPOINTED`.
 
-- drop the `UNAUTHENTICATED`, `AUTHORIZATION` and `DISPATCH` arms and add those fields to the 19;
-- drop `webAppEditorFixedFields` for them;
-- amend AD-10.
+Its diff still lists every field, and one effect is enough to make it destructive. The editor has one line per effect, each at its own field. The one merge is the privilege line, which becomes the combined line when the application is unauthenticated, as read or as the unsaved form stands. The authentication line stays where it is, because roles apply through their own action and not through the Save.
 
-This plan takes the recorded decision.
+**Own-app sentences.** `PRIVILEGEGRANTREASON` is drawn before a click, by `ocupilot-application-roles`, and returned after one. So it gets the full AD-53 treatment: a Fixed-strings row, a `strings.ts` key, and pins in both `self-protection.test.mjs` and `RefusalCopy`. No client surface draws the other three before a click, because the own-app form is refused as a whole under the serving-path sentence. They reach a person only as the server's own reason on a 403 or a refused card. So each is a caller-neutral `…REASON` parameter pinned in `RefusalCopy`, with no client copy to drift from.
 
-**Recommended amendments (the lead's at the spec gate):**
+**DESIGN.md:1210** (DW-1595) becomes:
 
-- **AD-27, a fifth named case after the fourth:**
+> …at the bottom-right of the content area — `{spacing.4}` above the status bar, or above the form bar on a form page so no toast covers Save or Cancel — and offset from the right edge by the panel's live width…
 
-  > The fifth case [AMENDED 2026-09-24, Story 9.2 spec gate]: `WebApp.App` `PUT` on an existing application — the admin API cannot keep an application's `Type`: `MergeJsonAndProperties` sets `Type` to CSP on every PUT, and `Security.Applications.Modify` then clears a system application's bit 0 (measured on `ocupilot-ci` 2026-09-24: 3 became 2). `AdminPort` reads `Security.Applications` `Type` before the vendor call and re-applies it after, under the same `%Admin_Secure` gate; nothing above the port knows.
-
-- **DESIGN.md:1210** (DW-1595) becomes:
-
-  > …at the bottom-right of the content area — `{spacing.4}` above the status bar, or above the form bar on a form page so no toast covers Save or Cancel — and offset from the right edge by the panel's live width…
-
-- **New Fixed-strings rows** for the five published refusal sentences, `webAppEditorFixedFields`, the tab labels and the prompts.
-
-**Ledger inbox:**
-
-- Addressed: DW-1490, DW-1493, DW-1502, DW-1577, DW-1595 and DW-1596.
-- Declined: none.
-- DW-1502's credtype half pins the existing `Error.cls` parameter and edits no Epic 10 file.
+**Ledger inbox:** DW-1490, DW-1493, DW-1502, DW-1577, DW-1595 and DW-1596 are addressed, and none is declined. DW-1502's credtype half pins the existing `Error.cls` parameter and edits no Epic 10 file. DW-1207 is closed by-design and is not owned here. Epic 10's branch touches only `strings.ts` and EXPERIENCE.md among this story's files, and only as appends.
 
 ## Verification
 
 **Commands:**
 
 - `(loop)` `cd ui && node --test tools/self-protection.test.mjs tools/navigation.test.mjs tools/strings.test.mjs tools/screen-mirror.test.mjs tools/field-lists.test.mjs`. Expected: green.
-- `(loop)` `cd ui && npm run test:components`. Expected: green, including the `web-app-editor.*.spec.ts` specs and `screen-action-handler.spec.ts`.
-- `(loop)` `node ui/tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<X>`, one run at a time, for X = `WebAppSave`, `ProposalMint`, `ProposalCreate`, `RefusalCopy`, `ToolWrite`, `Prohibited`, `ProhibitedByEffect`, `ProhibitedRoute`, `WebAppCreate`, `WebAppWire` and `Descriptor`. Expected: 0 failures.
-- `(loop)` `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`, then with `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`, `node --test --test-concurrency=1` one file at a time over these specs. Expected: green.
+- `(loop)` `cd ui && npm run test:components`. Expected: green, including the `web-app-editor.*.spec.ts` specs, `proposal-card.spec.ts` and `screen-action-handler.spec.ts`.
+- `(loop)` `node ui/tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<X>`, one run at a time, for X in: `WebAppSave`, `WebAppWeakening`, `ProposalMint`, `ProposalCreate`, `RefusalCopy`, `ToolWrite`, `Prohibited`, `ProhibitedByEffect`, `ProhibitedRoute`, `WebAppCreate`, `WebAppLocation`, `WebAppWire` and `Descriptor`. Expected: 0 failures.
+- `(loop)` `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`. Then, with `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`, run `node --test --test-concurrency=1` one file at a time over these specs. Expected: green.
   - web-applications-editor, web-applications, web-applications-create, web-applications-actions
   - users-editor, users, users-create, users-actions
   - device-editor, roles-create, wallet-secret, x509-import, switches, definitions, toast
-- `(loop)` `uv run scripts/check-objectscript.py` and `bash scripts/lint-docs.sh`. Expected: clean. The initial bundle stays under 1378kB.
+  - a11y-structural-invariants (DW-1337's gate on the new editor), proposal-card (the new consequence codes), screen-height (the outlet chain DW-1596 changes)
+- `(loop)` `uv run scripts/check-objectscript.py` and `bash scripts/lint-docs.sh`. Expected: clean, and the initial bundle stays under 1378kB.
 - `(once, before dev_complete)` `node ui/tools/ci-runner.mjs --container ocupilot-ci --package OcuPilot.Test`. Expected: 0 failures, excluding only the four arming-variable classes this throwaway refuses.
 
-**Mutations (Rule 19):** each AC and matrix row gets one `mutation:` line here, written by the pass that adds its pinning test.
+**Mutations (Rule 19):** each AC and matrix row gets one `mutation:` line here, written by the pass that adds its pinning test. The ruling's pinning tests, each ready for its line:
+
+- Destructive marking: `WebAppWeakening`'s destructive-row assertion. Mutation: drop `|| (tEffect '= "")` from `Mint`'s `destructive`.
+- Permitted elsewhere: `WebAppWeakening`'s probe confirm and Save legs. Mutation: restore the three arms for every application in `WebApplication()`.
+- Refused on own: `WebAppWeakening`'s recorded-path legs, one per code. Mutation: delete the three own-app arms, so `SERVINGPATH` answers instead.
+- Precedence: the "Several effects" leg. Mutation: in `WeakensByEffect`, test the cleared resource before the added Unauthenticated bit.
+- One line: the combined-line test in `web-app-editor.page.spec.ts`. Mutation: render `privilegedGrantEffect` whatever the authentication state.
 
 ## Auto Run Result
 
 Status: ready-for-dev
 Blocking condition: none
+
+Re-plan 2026-09-24 around the orchestrator ruling: the three arms scoped to OcuPilot's own applications with their own codes, `WeakensByEffect` marking the three effects destructive elsewhere, one-code card precedence, and the inverted tests listed. Anchors checked against the tree; lint-docs clean.
