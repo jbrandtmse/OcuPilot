@@ -6647,3 +6647,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Local and CI (run 35938906300 on the merged head b005869d) both print 200 found, 202 in the baseline, 2 stale; Epic 7's command-bar wrap rule cleared both; --write refuses an existing baseline, so removal is a hand edit of the two keys
 - 2026-09-24T01:08:26Z status=open owner=15-7-the-rail-s-icons by=harvest note=two-way door for the reviewer; resolves DW-1585 with it
 - 2026-09-24T01:23:21Z status=resolved-by:15-7-the-rail-s-icons by=adjudication note=cr removed both keys by hand; gate reads 200 found, 200 in the baseline, 0 stale on the throwaway
+
+### DW-1603: Story 9.2's web application editor took the initial bundle to 1,397,013 bytes, over the 1378kB warning budget (DW-371 red)
+- source: spec-9-2-the-web-application-editor.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: npm run build: bundle initial exceeded maximum budget by 19.01 kB; baseline 1,360,009 bytes
+- 2026-09-24T06:11:20Z status=resolved-by:9-2-the-web-application-editor owner=9-2-the-web-application-editor by=harvest note=re-based to 1467kB under DW-1166 in 6efb28d (5% above measured); lazy-load trigger remains the owner's call near 1500kB
+
+### DW-1604: Story 9.2 spec's Verification loop names OcuPilot.Test.ProposalMint, a fixture, where the DW-1577 legs live in OcuPilot.Test.Proposal
+- source: spec-9-2-the-web-application-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: OcuPilot.Test.ProposalMint does not extend %UnitTest.TestCase
+- 2026-09-24T06:11:20Z status=dropped owner=9-2-the-web-application-editor by=harvest note=spec wording only; the implement stage ran OcuPilot.Test.Proposal; no code or test gap
