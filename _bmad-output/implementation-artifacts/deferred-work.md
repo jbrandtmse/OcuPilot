@@ -6699,6 +6699,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-12-3-copy-and-purge-the-audit-database.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: 503 is classified server-fault by the shell; bound not reached in measurement (30,579-record copy took 0.53 s on ocupilot-b-ci)
 - 2026-09-24T19:28:02Z status=wontfix-accepted owner=12-3-copy-and-purge-the-audit-database by=harvest note=reopen_if=an audit copy or purge answering PORT.TIMEOUT shows the connectivity banner
+- 2026-09-24T21:15:45Z status=dropped by=adjudication note=superseded by 12.3 rework 1 (47d05d19): a queued write past the wait answers started (202), never PORT.TIMEOUT, so the banner case no longer exists
 
 ### DW-1635: Spine AD-8 still says the full tool set is always advertised, which AD-53's 2026-09-24 unadvertised named case (security.auditing.purge) contradicts
 - source: spec-12-3-copy-and-purge-the-audit-database.md | severity: med | fix-risk: low | footprint: out-of-footprint

@@ -92,3 +92,6 @@
 2026-09-24T19:59:22Z	Story 12.3	rework_opened	cycle_iteration=2 iteration=1 trigger=high items=Review:HIGH_AD-15/AD-26_queued_write_past_wait scope_baseline=bff188c1
 2026-09-24T20:26:10Z	Epic 12	ci_resolved	story=12.3(qa+cr_patches) run=36051626990 result=success head=ba8fa7ac resolved_at=next_implement(Rule_28)
 2026-09-24T20:26:10Z	Story 12.3	stage_spawned	stage=implement spawn_at=2026-09-24T20:26:10Z model=opus agent_name=12-3-copy-and-purge-the-audit-database-implement-2 cycle_iteration=2
+2026-09-24T21:15:53Z	Story 12.3	dev_complete	spawn_at=2026-09-24T20:26:10Z model=opus build_sha=47d05d19 baseline_revision=c131a2b2 review_loop_iteration=0 followup_review_recommended=false deferred=0(new) files=18 loc_added=451 loc_removed=48 cycle_iteration=2 confirm_cls_changed=one_hunk(continues_on_202) sweep=228_classes/2012_tests/0_failed(ocupilot-b-ci,runs_275-503) pin=AuditStarted(started_branch_removed_red_run271) browser=audit-copy-purge_2/2_redeployed smoke=49/49 code_pushed=ci_run_36060280693 ledger=DW-1634_dropped(superseded)
+2026-09-24T21:15:53Z	Story 12.3	adr_verifications_complete	tool=none acs=none result=none_required evidence=none mutations=none cycle_iteration=2
+2026-09-24T21:15:53Z	Story 12.3	stage_spawned	stage=code-review spawn_at=2026-09-24T21:15:53Z model=opus agent_name=12-3-copy-and-purge-the-audit-database-code-review-2 cycle_iteration=2
