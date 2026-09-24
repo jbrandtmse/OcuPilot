@@ -120,3 +120,4 @@ TAB-separated, append-only: `<UTC> TAB <Story <id> | Epic 10> TAB <stage> TAB <m
 2026-09-24T02:25:52Z	Epic 10	ledger_routed_planned	story=10-4-sampling-parameters-left-to-the-provider entries=2 excess=0 by=spec_gate
 2026-09-24T02:26:01Z	Epic 10	epic_reopened	epic-10=done->in-progress reason=SC-5_reopen_for_10.4_and_10.5(orchestrator-directed) note=the_one_sanctioned_downgrade_of_the_epic_key
 2026-09-24T02:26:07Z	Story 10.4	stage_spawned	stage=implement spawn_at=2026-09-24T02:26:07Z model=opus(overrides.implement) agent_name=10-4-sampling-parameters-left-to-the-provider-implement-1 cycle_iteration=1
+2026-09-24T02:26:48Z	Epic 10	throwaway_up	by=runner(epic-runner-10,this_session) container=ocupilot-b-ci project=ocupilot-b-ci dir=/tmp/ocupilot-b-ci web=52777 super=1976 status=healthy
