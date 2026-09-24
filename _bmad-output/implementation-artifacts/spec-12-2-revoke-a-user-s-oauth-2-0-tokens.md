@@ -2,7 +2,7 @@
 title: 'Story 12.2: Revoke a user''s OAuth 2.0 tokens'
 type: 'feature'
 created: '2026-09-24'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '79f62a6ba4b3eb4cce4a7f2fcc55356a5540d000'
 baseline_commit: '79f62a6ba4b3eb4cce4a7f2fcc55356a5540d000'
 review_loop_iteration: 0
@@ -137,6 +137,8 @@ deferred: []
   - Assert one action request, then exact counts 0 / 1 / 1.
   - With the dialog open, run `detectScreen` at 1280 light (`INVARIANTS`), at 720 light (`name`, `min-width`, `overflow`) and at 1280 dark (`contrast`), each with `route: 'permissions/users'`, and assert that `compare(...).fresh` is empty.
 
+- [ ] [CI] browser: `ui/browser/users-actions.browser-spec.mjs:236` (test 274, run 36006886901) pins the Users row menu as six actions; this story adds a seventh. Add `STRINGS.userActionRevokeTokens` after `STRINGS.actionDelete` in that roster, make the message say seven, and change no other line (Epic 9 edits this file's later legs). Verify with that one browser file over a rebuilt, redeployed bundle, and record its mutation (drop the revoke row action → red).
+
 **Acceptance Criteria:**
 
 - **AC1.** Given a user with issued tokens, when an administrator revokes them from the Users list's row action and types the user's name, then every token stored under that account's name is deleted, other users' tokens remain, and the write ran with the caller's own privileges.
@@ -175,6 +177,8 @@ Rejected:
 - `ci-throwaway.sh`'s roster line position: low and cosmetic, since the roster check sorts.
 
 ## Spec Change Log
+
+- 2026-09-24, rework 1 (runner): CI run 36006886901 failed in `browser` on `users-actions.browser-spec.mjs`, the Users menu roster. The spec is re-opened with one `[CI]` task.
 
 - 2026-09-24, spec gate (runner): the orchestrator took all four recommendations. AD-8 is widened, with this tool as its named case. AD-53 carries the named gap. EXPERIENCE.md rows :148, :166 and :168 were amended in place, with no line-count change. `screen-action-handler.ts` is allowed two appended map entries, read from `origin/OCU-1-epic9` immediately before editing. AC3's pinning test must redden when the declared pair is removed (already the planned mutation). No task changes.
 
