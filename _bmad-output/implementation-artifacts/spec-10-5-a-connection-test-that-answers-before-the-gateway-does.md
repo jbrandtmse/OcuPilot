@@ -137,6 +137,41 @@ deferred:
 - **DW-1600.** Given a Gemini definition, when a turn's request is built, then no function declaration carries an empty `enum` member, and a model's `"(empty)"` on navigate's `route` reaches dispatch as `""`.
 - **DW-1601.** Given any definition, when Test connection calls it, then the request's cap is `TESTMAXTOKENS` (1024), so a model that thinks before it answers has room to answer. The live proof on `gemini-3.8-flash` is Story 17.7's owner check.
 
+### Review Findings
+
+Code review 2026-09-24 (four layers, full-opus): 27 raised, 1 medium and 6 low patched, 1 low deferred, 20 rejected.
+
+- [x] [Review][Patch] The child path's `replyTruncated` and `latencyMs` were pinned only in process; added `AgentConnectionBound.TestTheChildCarriesTheLongReplyAndItsLatency` [src/OcuPilot/Test/AgentConnectionBound.cls:469]
+- [x] [Review][Patch] A child that failed was reported as a provider timeout after the full bound; `Child` now signals `failed` and `Call` answers 502 `PROVIDER.TRANSPORT` at once, pinned by `TestAChildThatFailsIsATransportFault` [src/OcuPilot/Kernel/Provider/TestCall.cls:285]
+- [x] [Review][Patch] `AgentConnectionRoles`' doc named the rejected `Spawn` mutation; it now names the `GuardedExistsId` one observed in run 536 [src/OcuPilot/Test/AgentConnectionRoles.cls:207]
+- [x] [Review][Patch] `TestTheBoundArithmetic`'s doc said a zero margin reddens every row; `1:1` stays green [src/OcuPilot/Test/AgentConnectionBound.cls:188]
+- [x] [Review][Patch] The checker's section comment still named one spawn site [scripts/check-objectscript.py:852]
+- [x] [Review][Patch] The `OCUPILOT_ALLOW_TEST_PROVIDER` roster comment named only turn jobs [scripts/ci-throwaway.sh:272]
+- [x] [Review][Patch] Rule 19: `TestTheGeminiAdapterSendsNoEmptyMember`'s `MapResponse` mutation had no observed run; observed, run 540 [src/OcuPilot/Test/GeminiEmptyEnum.cls:244]
+- [x] [Review][Defer] The checker harness has no case for `JOB_ALLOWED`'s `TestCall` entry, and its docstring names one spawn site [scripts/test_check_objectscript.py:964] — deferred: DW-1605, wontfix-accepted, out of footprint
+
+**Rejected:**
+
+- by-design: a drip-feeding provider keeps its child alive, one per press (Design Notes accept it).
+- by-design: the `$Username` refusal cannot fire under `JOB` (task 3 specifies it; AD-9 is pinned by `AgentConnectionRoles`).
+- by-design: a caller without `%Admin_Manage` reads `CSP.ini`, and a remote gateway or per-application override is not read (Code Map and Design Notes, owner decision).
+- by-design: the client resolves the template from `detail` (task 19).
+- by-design: navigate's description does not explain `"(empty)"`; `Navigate.cls` is on the Never list, and the live check is Story 17.7's.
+- rejected, spec edit: `Child` carries `pMessagesJson` beyond task 3's signature; the stale-message leg's timings differ from task 11's (the code's timings are the ones that work).
+- wontfix-theoretical: the bound's clock starts after the gateway read; real only if that read took seconds (measured 3 ms).
+- wontfix-theoretical: `SPAWNTIMEOUT` is not drawn from the deadline; real only with a gateway timeout of 9 s or less.
+- wontfix-theoretical: the key `Signal` to an exited child is unchecked; real only if the PID were reused in the milliseconds after `ready`.
+- wontfix-theoretical: an abandoned child whose key wait lapses still calls, with no key; real only if `ready` lands after the bound.
+- low: a nested `enum` is respelled but not mapped; the registry sweep reddens when such a tool is registered.
+- low: `GeminiEmptyEnumArgs`' `Catch` is silent; `ToGemini` parses the same schema first.
+- low: the tool schemas are parsed twice per Gemini request.
+- low: a label containing `<n>` would be garbled; catalog labels are fixed strings.
+- low: `Call` does not guard `pBound`; its only caller passes at least 1.
+- low: the checker's reach rule does not cover the child.
+- low: in-process `pWaited` is 0; no test depends on it.
+- low: the stock-gateway assertion in `TestTheShippedBoundFollowsTheGatewayRead` equals the unread value; the 20 and 300 legs carry the property.
+- low: a halted child sends no signal; the request answers at its bound.
+
 ## Spec Change Log
 
 - 2026-09-24, implement halt (lead): the halt's intent gap is answered by task 21 (the lead edited the checker's `JOB_ALLOWED`; `scripts/` is outside every other open epic's footprint). Tasks 22-23 carry the two items the halt left open. Status reset to `in-progress`; tasks 1-20 are in the working tree, uncommitted, and are this pass's to review and finalize.
@@ -286,6 +321,10 @@ The ready handshake exists so the key is sent only to a child that has already c
   - mutation: `Gemini.CallMessages` passes no map and `GeminiEmptyEnumArgs` loses its `items` branch → `TestTheGeminiAdapterReplaysTheRespelling` and `TestTheMapNamesAnArrayArgument` red, run 308.
 - DW-1601: the `AgentConnection` floor leg. Mutation: `TESTMAXTOKENS` 32.
   - mutation: `TESTMAXTOKENS` 32 → `TestTheTestCapLeavesRoomToThink` red alone, run 281.
+- Code review additions (2026-09-24). Each mutation was applied to the throwaway's source copy only, the package recompiled, and then reverted; afterwards the class was green again (runs 541, 542).
+  - mutation: `Child` cuts the text at `TESTREPLYMAX` and drops `latencyMs`, and its `Catch` signals nothing → `TestTheChildCarriesTheLongReplyAndItsLatency` red on `replyTruncated` and latency, and `TestAChildThatFailsIsATransportFault` red on the code, 502, the timeout flag and elapsed (5.0 s), run 539.
+  - mutation: `Gemini.MapResponse` passes no map → `TestTheGeminiAdapterSendsNoEmptyMember` red on Home's empty route, run 540.
+  - AD-9 with a least-privileged caller, `AgentConnectionRoles.TestTheChildRunsAsALeastPrivilegedCallerOverHttp`: mutation: `GuardedExistsId` drops its `New $ROLES` → red on the recorded roles carrying `%DB_OCUPILOT`, run 536 (QA).
 
 ## Auto Run Result
 
@@ -321,3 +360,34 @@ Blocking condition: none
 | `lint-docs.sh` | 0 problems |
 
 Every new pin's mutation was observed red (runs 300-310 and the client case) and reverted byte-identical.
+
+**(QA)** Gap-finding pass over the diff since `b11c1e5e`. The named unverified risk (2) -- AD-9
+checked only with a `%All` caller, never with a least-privilege principal over HTTP -- was
+closable in an Epic 10 file and is now closed: `src/OcuPilot/Test/AgentConnectionRoles.cls`
+(new), armed by `OCUPILOT_ALLOW_PRINCIPALS` and `OCUPILOT_ALLOW_TEST_PROVIDER` (both already set
+on `ocupilot-b-ci`), added to both rosters in `scripts/ci-throwaway.sh`. Its principal holds one
+role -- read on the routine database, `%Admin_Operate:USE`, `OcuPilotAdmin:USE` and
+`%Ens_Credentials:WRITE` plus write on the credential store's database -- and creates, stores a
+key on, and tests a `turnprobe` definition over HTTP; the recorded call's `user` and `roles`
+(`OcuPilot.Test.TurnProvider.Recorded`) must equal the caller's own and never carry `%All` or
+`OcuPilotAdmin`'s database role. Risk (1), DW-1602, was left as-is per the ledger (wontfix-accepted,
+`Test/TurnProvider.cls` out of footprint).
+
+mutation: `OcuPilot.Kernel.State.Base.GuardedExistsId` drops its `New $ROLES` frame (so
+`$SYSTEM.Security.AddRoles(..#APPLICATION)`'s escalation, taken via `GuardedVersion` before
+`Api.Definitions.ConnectionOutcome`'s provider call, is never unwound and reaches
+`TestCall.Spawn`'s `JOB`) → `AgentConnectionRoles.TestTheChildRunsAsALeastPrivilegedCallerOverHttp`
+red on the recorded roles carrying `%DB_OCUPILOT` (run 536); reverted, `Base.cls` byte-identical
+to HEAD, package recompiled, green (run 537). An earlier, naive mutation attempt --
+`TestCall.Spawn` self-assigning `%All` via a bare `Set $Roles` -- was rejected as a false lead: IRIS
+itself refuses that assignment for a non-privileged process (`<PROTECT>`), caught by `Call`'s own
+Try/Catch as a `PROVIDER.TRANSPORT` fault before the roles assertion is ever reached, so it does
+not exercise the property AD-9 actually protects (an escalation legitimately taken earlier in the
+stack and left standing).
+
+mutations_demonstrated=1
+
+Full class run: `AgentConnectionRoles` 1/1 (run 532 baseline, 537 post-revert), 0 probe leftovers
+(`OcuPilotConnectionRolesUser`/`Role` and the probe definition removed by its own teardown).
+`check-objectscript.py`: 0 problems over 743 files. `test_check_objectscript.py`: 128/128.
+`node --test tools/ci.test.mjs`: 70/70, including DW-1276's roster-equality test.

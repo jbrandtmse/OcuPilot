@@ -849,9 +849,10 @@ def check_state_package_isolation(problems: list[str]) -> None:
 #
 # A turn job runs for minutes as the user, outside any request. What it may reach is the provider
 # port and OcuPilot's own state, and nothing that acts on the instance: no other port, no slice, no
-# screen, and no handler -- `OcuPilot.Api.Error` is the vocabulary, not a handler. And the one
-# spawn in shipped code is the job's own, so a second `JOB` cannot quietly start a process from a
-# frame nobody checked for escalation. Test classes spawn their own helpers and are outside it.
+# screen, and no handler -- `OcuPilot.Api.Error` is the vocabulary, not a handler. And the two
+# spawns in shipped code are the job's own and Test connection's child (`Kernel.Provider.TestCall`,
+# AD-42), so a third `JOB` cannot quietly start a process from a frame nobody checked for
+# escalation. Test classes spawn their own helpers and are outside it.
 
 AGENT_PACKAGE_PREFIX = "src/OcuPilot/Kernel/Agent/"
 JOB_ALLOWED = frozenset({"src/OcuPilot/Kernel/Agent/Job.cls", "src/OcuPilot/Kernel/Provider/TestCall.cls"})

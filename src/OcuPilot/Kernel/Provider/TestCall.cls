@@ -102,7 +102,8 @@ ClassMethod BoundSeconds(pGateway As %String = "") As %Integer
 /// <p>On an answer, <var>pResponse</var> carries the reply's text, stop reason, HTTP status and
 /// latency, and <var>pHttpStatus</var> / <var>pFault</var> are the port's own. At the deadline,
 /// <var>pFault</var> is <code>""</code> and <var>pTimedOut</var> is 1. A spawn that is not accepted
-/// answers 502 <code>PROVIDER.TRANSPORT</code>, logged, with no call made. <var>pWaited</var> is the
+/// answers 502 <code>PROVIDER.TRANSPORT</code>, logged, with no call made, and so does a child that
+/// signals it failed, as soon as it does. <var>pWaited</var> is the
 /// whole seconds waited, rounded, on every path.</p>
 /// <p><var>pValues</var> is not added to: the port fills its keys in the child's copy.</p>
 ClassMethod Call(pPortClass As %String, ByRef pValues, ByRef pMessages, pBound As %Numeric, Output pResponse As OcuPilot.Kernel.Provider.Response, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pWaited As %Integer, Output pTimedOut As %Boolean)
@@ -129,6 +130,10 @@ ClassMethod Call(pPortClass As %String, ByRef pValues, ByRef pMessages, pBound A
             Do ..Transport("the Test connection child did not run as its caller", $$$ERROR($$$GeneralError, "the child refused to run as another user"), .pHttpStatus, .pFault)
             Quit
         }
+        If tReady = "failed" {
+            Do ##class(OcuPilot.Kernel.Provider.Base).Fault(##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT, "", "", .pFault, .pHttpStatus)
+            Quit
+        }
         If tReady '= "ready" {
             Set pTimedOut = 1
             Quit
@@ -145,6 +150,10 @@ ClassMethod Call(pPortClass As %String, ByRef pValues, ByRef pMessages, pBound A
             Set tKeyBody = ""
         }
         Set tKind = ..Await(tNonce, "result", tDeadline, .tPayload)
+        If tKind = "failed" {
+            Do ##class(OcuPilot.Kernel.Provider.Base).Fault(##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT, "", "", .pFault, .pHttpStatus)
+            Quit
+        }
         If tKind '= "result" {
             Set pTimedOut = 1
             Quit
@@ -173,7 +182,7 @@ ClassMethod Spawn(pNonce As %String, pPortClass As %String, pValuesJson As %Stri
 
 /// <p>Wait until <var>pDeadline</var> (<code>$ZHorolog</code> seconds) for a message on this
 /// process's queue carrying <var>pNonce</var> and the kind <var>pWanted</var>, or the kind
-/// <code>refused</code>; answer the kind received, or <code>""</code> at the deadline.
+/// <code>refused</code> or <code>failed</code>; answer the kind received, or <code>""</code> at the deadline.
 /// <var>pPayload</var> is the message's third element. A message with any other nonce, or one that
 /// is not a list, is discarded.</p>
 ClassMethod Await(pNonce As %String, pWanted As %String, pDeadline As %Numeric, Output pPayload As %String) As %String [ Private ]
@@ -189,7 +198,7 @@ ClassMethod Await(pNonce As %String, pWanted As %String, pDeadline As %Numeric, 
         If '$ListValid(tBody) Continue
         If $ListGet(tBody, 1) '= pNonce Continue
         Set tReceived = $ListGet(tBody, 2)
-        If (tReceived '= pWanted) && (tReceived '= "refused") Continue
+        If (tReceived '= pWanted) && (tReceived '= "refused") && (tReceived '= "failed") Continue
         Set tKind = tReceived
         Set pPayload = $ListGet(tBody, 3)
         Quit
@@ -220,7 +229,8 @@ ClassMethod Rebuild(pPayload As %String, Output pResponse As OcuPilot.Kernel.Pro
 /// <p>It refuses, signalling <code>refused</code>, when <code>$Username</code> is not
 /// <var>pUser</var>. Otherwise it clears its own queue, signals <code>ready</code>, takes the key
 /// when one is due, calls <code>InvokeDraft</code> and signals <code>result</code>. It never
-/// throws; a failure is logged through <method>OcuPilot.Kernel.Fault.LogRaw</method>.</p>
+/// throws; a failure signals <code>failed</code>, so the request answers at once rather than at its
+/// bound, and is logged through <method>OcuPilot.Kernel.Fault.LogRaw</method>.</p>
 ClassMethod Child(pParent As %Integer, pNonce As %String, pUser As %String, pPortClass As %String, pValuesJson As %String, pNeedsKey As %Boolean = 0, pMessagesJson As %String = "")
 {
     Set tKeyBody = ""
@@ -272,6 +282,7 @@ ClassMethod Child(pParent As %Integer, pNonce As %String, pUser As %String, pPor
     } Catch ex {
         Set tKeyBody = ""
         Kill tValues
+        Do $System.Event.Signal(pParent, $ListBuild(pNonce, "failed"))
         Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, "the Test connection child failed", ex.AsStatus(), ##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT)
     }
 }

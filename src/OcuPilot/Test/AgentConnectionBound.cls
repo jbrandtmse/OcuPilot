@@ -29,7 +29,7 @@ Parameter STOREDKEY = "sk-ant-ocupilotboundprobe0000000000";
 Parameter BODYKEY = "sk-ant-ocupilotboundprobebody000000";
 
 /// <p>Every stub script tag a method here names.</p>
-Parameter TAGS = "acb-hang,acb-local,acb-status,acb-body,acb-stale-a,acb-stale-b,acb-later,acb-unspawned,acb-unstored,acb-shape,acb-limited";
+Parameter TAGS = "acb-hang,acb-local,acb-status,acb-body,acb-stale-a,acb-stale-b,acb-later,acb-unspawned,acb-unstored,acb-shape,acb-limited,acb-long";
 
 /// <p>The label the <code>turnprobe</code> row carries, which a timeout reason names.</p>
 Parameter LABEL = "Turn probe";
@@ -186,7 +186,7 @@ ClassMethod BodyFor(pTag As %String) As %DynamicObject
 /// <p>The bound is the gateway's timeout less <code>min(10, g\2)</code>, at least 1, and an
 /// unusable value is read as the stock 60.</p>
 /// <p>Mutation: <parameter>OcuPilot.Kernel.Provider.TestCall.MARGINSECONDS</parameter> 0 -- red on
-/// every row.</p>
+/// every row but <code>1:1</code>.</p>
 Method TestTheBoundArithmetic()
 {
     Set tClass = "OcuPilot.Kernel.Provider.TestCall"
@@ -459,6 +459,42 @@ Method TestTheChildMakesOneAttempt()
     Do $$$AssertTrue(..AwaitReturned(tTag, 15), "the child's calls returned")
     Hang 1.5
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Calls(tTag), 1, "after exactly one provider call")
+}
+
+/// <p>The child's answer carries the reply past what Test connection shows and the call's latency,
+/// so the answer still says the reply was cut and how long the provider took.</p>
+/// <p>Mutation: have <method>OcuPilot.Kernel.Provider.TestCall.Child</method> cut the text at
+/// <parameter>OcuPilot.Api.Definitions.TESTREPLYMAX</parameter> and drop <code>latencyMs</code> --
+/// red on <code>replyTruncated</code> and on the latency.</p>
+Method TestTheChildCarriesTheLongReplyAndItsLatency()
+{
+    Set tTag = "acb-long"
+    Set tMax = ##class(OcuPilot.Api.Definitions).#TESTREPLYMAX
+    Set tLong = $Translate($Justify("", tMax * 2), " ", "x")
+    Do $ClassMethod(..#PROBE, "SetBound", 10)
+    Do ##class(OcuPilot.Test.TurnProvider).Script(tTag, 1, ##class(OcuPilot.Test.TurnProvider).TextReply(tLong))
+    Do $$$AssertStatusOK(..Outcome(..PreparedDefinitionId, ..BodyFor(tTag), .tAnswer, .tHttpStatus, .tFault, .tElapsed), "the test runs")
+    Do $$$AssertEquals(..FaultAt(tFault, "code"), "", "and answers")
+    If '$IsObject($Get(tAnswer)) Quit
+    Do $$$AssertEquals($Length(tAnswer.reply), tMax, "the reply is cut to the declared bound: " _ $Length(tAnswer.reply))
+    Do $$$AssertEquals(tAnswer.replyTruncated, 1, "and the answer says it was cut")
+    Do $$$AssertTrue(tAnswer.latencyMs >= 1000, "the latency is the child's call, the provider's second included: " _ tAnswer.latencyMs)
+}
+
+/// <p>A child that fails signals it, and the request answers 502 <code>PROVIDER.TRANSPORT</code> at
+/// once rather than waiting its bound and blaming the provider.</p>
+/// <p>Mutation: have <method>OcuPilot.Kernel.Provider.TestCall.Child</method>'s <code>Catch</code>
+/// signal nothing -- red, the call waiting out its bound as a timeout.</p>
+Method TestAChildThatFailsIsATransportFault()
+{
+    Kill tValues, tMessages
+    Set tBegan = $ZHorolog
+    Do ##class(OcuPilot.Kernel.Provider.TestCall).Call("OcuPilot.Test.AgentConnectionNoSuchPort", .tValues, .tMessages, 5, .tResponse, .tHttpStatus, .tFault, .tWaited, .tTimedOut)
+    Set tElapsed = $ZHorolog - tBegan
+    Do $$$AssertEquals(..FaultAt(tFault, "code"), "PROVIDER.TRANSPORT", "a child whose call throws is a transport fault")
+    Do $$$AssertEquals(tHttpStatus, 502, "as 502")
+    Do $$$AssertEquals(tTimedOut, 0, "not a timeout")
+    Do $$$AssertTrue(tElapsed < 3, "answered once the child failed, not at the bound: " _ tElapsed)
 }
 
 }

@@ -6615,6 +6615,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: live 2026-09-24 gemini-3.8-flash: replayed functionCall without thoughtSignature -> 400 'Function call is missing a thought_signature in functionCall parts'; same request with the signature kept -> 200
 - 2026-09-24T02:25:07Z status=routed owner=10-4-sampling-parameters-left-to-the-provider by=spec_gate note=same intent as 10.4; the canonical tool_use block already carries the vendor id (DW-1180), and Loop.AnswerTools echoes tool_use blocks verbatim
 - 2026-09-24T03:59:26Z status=resolved-by:10-4-sampling-parameters-left-to-the-provider by=adjudication note=0b863c39 GeminiToCanonical keeps thoughtSignature on the tool_use block, CanonicalToGemini writes it back; stub leg in AnthropicThinking with two mutations; live proof of the replay waits on DW-1600 (Gemini turns are refused on the first call for an unrelated enum defect)
+- 2026-09-24T06:45:55Z occurrence=10-5-a-connection-test-that-answers-before-the-gateway-does note=live proof landed at 10.5's live check once DW-1600 unblocked Gemini turns: a gemini-3.8-flash tool turn completed
 
 ### DW-1599: AgentViolation's providers-route assertion message still says the twelve cascade columns and names only adapterClass and authVersion as absent, after Story 10.4 added acceptsTemperature (served) and reasoningEffort (not served)
 - source: _bmad-output/implementation-artifacts/spec-10-4-sampling-parameters-left-to-the-provider.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -6626,13 +6627,20 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: smoke 10.4 (lead live check) | severity: high | fix-risk: low | footprint: in-epic
 - evidence: live 2026-09-24 on ocupilot-b-ci at 0b863c39: gemini-3.8-flash turn failed PROVIDER.REFUSED; messages.log shows HTTP 400 naming enum[13]; Navigate.InputSchema enum[13] is OcuPilot.Screen.Descriptor.Home's Route, which is empty by design
 - 2026-09-24T03:59:21Z status=routed owner=10-5-a-connection-test-that-answers-before-the-gateway-does by=smoke note=Rule 27: floor-blocking (Gemini turns cannot run at all); fix belongs in Kernel/Provider/ToolDefAdapter's Gemini translation, Epic 10's footprint; not caused by 10.4
+- 2026-09-24T06:45:55Z status=resolved-by:10-5-a-connection-test-that-answers-before-the-gateway-does by=adjudication note=beb1dbae ToolDefAdapter respells an empty enum member to (empty) for Gemini and MessageAdapter reverses it on the respelled tool and argument; GeminiEmptyEnum pins it with mutations; live 2026-09-24 on ocupilot-b-ci: gemini-3.8-flash tool turn (webapp.list.read) completed, which also proves DW-1591's thoughtSignature replay live
 
 ### DW-1601: Test connection on Gemini's default model answers an empty or cut-off reply, because its 32-token budget (Definitions TESTMAXTOKENS) is spent on Gemini 3's default thinking before any text
 - source: smoke 10.4 (lead live check) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: live 2026-09-24: OcuPilot test on gemini-3.8-flash answered 200 with reply empty; direct probe maxOutputTokens 32 -> finishReason MAX_TOKENS, 26 thought tokens; thinkingConfig thinkingLevel low or thinkingBudget 0 -> STOP with a full sentence; thinkingLevel minimal -> 400 not supported for this model
 - 2026-09-24T03:59:21Z status=routed owner=10-5-a-connection-test-that-answers-before-the-gateway-does by=smoke note=Test connection is 10.5's area; the fix sits in the Gemini adapter or the test budget, both Epic 10's footprint
+- 2026-09-24T06:45:55Z status=resolved-by:10-5-a-connection-test-that-answers-before-the-gateway-does by=adjudication note=beb1dbae TESTMAXTOKENS 32 to 1024 with the AgentConnection floor leg; live 2026-09-24: gemini-3.8-flash Test connection answered a full sentence in 2.0 s
 
 ### DW-1602: Test connection's child-path max_tokens is pinned only in the JOB argument, not on the recorded wire request, because Test/TurnProvider.cls records no max_tokens
 - source: _bmad-output/implementation-artifacts/spec-10-5-a-connection-test-that-answers-before-the-gateway-does.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: a Child that dropped maxTokens alone would stay green; AgentConnection pins TESTMAXTOKENS in process only; TurnProvider.cls:115 is not Epic 10's file
 - 2026-09-24T06:04:56Z status=wontfix-accepted owner=10-5-a-connection-test-that-answers-before-the-gateway-does by=harvest note=reopen_if=a live or stub Test connection answers MAX_TOKENS or an empty reply on a thinking model after DW-1601's 1024 cap
+
+### DW-1605: The checker harness has no case for JOB_ALLOWED's TestCall entry and its TestAgentJobReachRule docstring still says one spawn site
+- source: spec-10-5-a-connection-test-that-answers-before-the-gateway-does.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: scripts/test_check_objectscript.py:964 docstring reads 'the one spawn in shipped code is the job's own'; no case shows a JOB in Kernel/Provider/TestCall.cls passes while one in another Kernel/Provider file is refused, so a prefix-widened allow-list stays green
+- 2026-09-24T06:42:06Z status=wontfix-accepted owner=10-5-a-connection-test-that-answers-before-the-gateway-does by=cr note=reopen_if=JOB_ALLOWED changes shape (prefix, glob) or a third spawn site is added; the harness file is outside this story's footprint
