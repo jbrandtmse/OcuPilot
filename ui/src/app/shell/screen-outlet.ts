@@ -33,6 +33,7 @@ import { ResourceListPage } from '../areas/permissions/resource-list.page';
 import { WalletSecretFormPage } from '../areas/security/wallet-secret-form.page';
 import { X509FormPage } from '../areas/security/x509-form.page';
 import { SslFormPage } from '../areas/security/ssl-form.page';
+import { TaskEditorPage } from '../areas/tasks/task-editor.page';
 import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
 import { DeviceFormPage } from '../areas/os-management/device-form.page';
 import { WebAppCreateFormPage } from '../areas/web-applications/create-form.page';
@@ -124,13 +125,14 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
  * A paired form's `<route>` creates and its `<route>/<id>` edits. Where the two are one page (the
  * device editor) `DESCRIPTOR_PAGES` serves both; where the edit is a page of its own -- the user
  * editor beside the create form Story 8.2 shipped, the web application editor beside Story 8.1's,
- * and the role editor beside Story 8.3's -- it is registered here, and the bare route keeps the
- * create page.
+ * the role editor beside Story 8.3's, and Edit task beside the New Task wizard (Story 9.8) -- it is
+ * registered here, and the bare route keeps the create page.
  */
 export const DESCRIPTOR_EDIT_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.UserForm': UserEditorPage,
   'OcuPilot.Screen.Descriptor.WebAppForm': WebAppEditorPage,
   'OcuPilot.Screen.Descriptor.RoleForm': RoleEditorPage,
+  'OcuPilot.Screen.Descriptor.TaskForm': TaskEditorPage,
 };
 
 /**

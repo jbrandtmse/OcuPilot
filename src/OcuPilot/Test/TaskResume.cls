@@ -242,9 +242,9 @@ Method TestTwoSpellingsOfOneTaskIdAreOneTarget()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tFirst.%Get("proposalId"), "State"), $Parameter("OcuPilot.Kernel.State.Propose", "STATECANCELED"), "and its sibling on the same target is cancelled in the same transition")
 }
 
-/// <p>The <code>task</code> branch of AD-10's set: no field of a task is one this release has
-/// reviewed, so a proposal carrying any changed field is refused, while the resume's own state row
-/// -- which changes no field of the payload -- is not.</p>
+/// <p>The <code>task</code> branch of AD-10's set: a task's reviewed fields are Story 9.8's edit's
+/// thirty-two, and <code>Type</code> is not among them, so a proposal changing it is refused, while
+/// the resume's own state row -- which changes no field of the payload -- is not.</p>
 /// <p><b>The refusing arm is reached by arming the predicate's input</b>, not by replacing the
 /// method: the resume tool admits no field, so no call through it can carry one (Stories 5.9 and
 /// 5.10's lesson about a safety predicate whose refusing branch never runs).</p>
@@ -259,7 +259,8 @@ Method TestAChangedFieldOnATaskProposalIsRefused()
     Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key("task", ##class(OcuPilot.Kernel.Scope).#SCOPEINSTANCE, tId, .tRef)
     Do $$$AssertStatusOK(tSC, "the task reference builds")
     If $$$ISERR(tSC) Quit
-    Do $$$AssertEquals($ListLength($ClassMethod(..#SET, "PermittedChangeFields", "task")), 0, "no field of a task is one this release has reviewed")
+    Set tReviewed = $ClassMethod(..#SET, "PermittedChangeFields", "task")
+    Do $$$AssertEquals($ListLength(tReviewed) _ " " _ $ListFind(tReviewed, "Type"), "32 0", "a task's reviewed fields are the edit's thirty-two (Story 9.8), Type not among them")
     Do $$$AssertTrue($ListFind($ClassMethod(..#SET, "CoveredTypes"), "task") > 0, "and the type is covered, so a task write is not refused wholesale")
 
     ; The set reads its target through the shipped port with the tool's own request type, so both

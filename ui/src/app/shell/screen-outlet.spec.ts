@@ -15,10 +15,12 @@ import { STRINGS } from '../core/strings';
 import type { AreaDeclaration, BuiltArchetypeKey, ScreenDeclaration } from '../core/screens.generated';
 import { HomePage } from '../areas/home/home.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
+import { TaskEditorPage } from '../areas/tasks/task-editor.page';
 import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
 import { ListPage } from './list-page';
 import {
   ARCHETYPE_PAGES,
+  DESCRIPTOR_EDIT_PAGES,
   DESCRIPTOR_PAGES,
   ScreenOutlet,
   resolveArchetypePage,
@@ -393,6 +395,16 @@ describe('the descriptor map (DW-369)', () => {
     const wizard = resolveScreenPage(descriptorPages, archetypePages, 'OcuPilot.Screen.Descriptor.TaskForm', 'form-page');
     expect(wizard).toBe(TaskWizardPage);
     expect(wizard).not.toBe(ARCHETYPE_PAGES['form-page']);
+  });
+
+  it('Story 9.8: the task form\'s id route resolves to Edit task, while its bare route keeps the wizard', () => {
+    // Mutation (Rule 19): drop TaskForm from `DESCRIPTOR_EDIT_PAGES` -> the id route falls to the
+    // wizard and this goes red.
+    const editPages = DESCRIPTOR_EDIT_PAGES as Readonly<Record<string, Type<unknown>>>;
+    const descriptorPages = DESCRIPTOR_PAGES as Readonly<Record<string, Type<unknown>>>;
+    const archetypePages = ARCHETYPE_PAGES as Readonly<Record<string, Type<unknown>>>;
+    expect(resolveScreenPage(editPages, descriptorPages, 'OcuPilot.Screen.Descriptor.TaskForm', 'form-page')).toBe(TaskEditorPage);
+    expect(resolveScreenPage(descriptorPages, archetypePages, 'OcuPilot.Screen.Descriptor.TaskForm', 'form-page')).toBe(TaskWizardPage);
   });
 
   it('the two form-page screens resolve to two different pages, which is what DW-369 asked for', () => {

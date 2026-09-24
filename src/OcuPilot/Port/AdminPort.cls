@@ -261,12 +261,18 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWN
 /// (<class>OcuPilot.Port.TaskPort</class>). A save-time refusal answers 500 carrying the vendor code,
 /// which <parameter>PROPERTYFAULTS</parameter> maps to its field. It accepts a duplicate name, so the
 /// create's absence read is OcuPilot's (AD-54).</p>
+/// <p><code>Task.CRUD/PUT</code> is Story 9.8's task edit. Read on this build: its <code>RunPut</code>
+/// is <code>%OpenId</code>, <code>MergeJsonAndObj</code> and <code>%Save</code>, setting only the keys
+/// the body defines, and a body carrying <code>Settings</code> replaces every setting.
+/// <class>OcuPilot.Port.TaskPort</class> trims the body the vendor refuses or would misread (AD-4's
+/// named exception), and the save-time refusals map through the same
+/// <parameter>PROPERTYFAULTS</parameter> rows as the create's.</p>
 /// <p><code>Wallet.Secret/DELETE</code> is Story 9.5's wallet secret delete. Read on this build: the
 /// endpoint does not override <code>Run</code>, its <code>NeedsRequestBody()</code> is
 /// <code>..IsTypePut()</code>, and its <code>RunDelete</code> answers 404 for a name
 /// <code>%Wallet.Secret.Exists</code> denies -- an absent or wrong-case one -- and otherwise deletes
 /// it (measured on <code>ocupilot-ci</code>: 200).</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST";
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated

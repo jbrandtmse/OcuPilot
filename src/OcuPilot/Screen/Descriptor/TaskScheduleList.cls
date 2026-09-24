@@ -69,6 +69,11 @@
 /// <p><b>Its primary action is Create</b> (Story 9.7), which opens the New Task wizard
 /// (<class>OcuPilot.Screen.Descriptor.TaskForm</class>); the agent's twin is
 /// <class>OcuPilot.Screen.Tool.TaskCreate</class>.</p>
+/// <p><b>A task is edited from Task details' Edit</b> (Story 9.8), on the same form's id route; the
+/// agent's twin is <class>OcuPilot.Screen.Tool.TaskUpdate</class>, whose fresh read is the task's
+/// <code>GET</code>. It declares no <code>fingerprintExcludes</code>: that read does not carry the
+/// next-scheduled time a run moves (measured), and <class>OcuPilot.Screen.Tool.TaskScheduleRun</class>'s
+/// subject names it, so an exclusion would be refused at registration.</p>
 Class OcuPilot.Screen.Descriptor.TaskScheduleList Extends OcuPilot.Screen.Descriptor.Base
 {
 

@@ -2,14 +2,22 @@
 title: 'Story 9.8: Edit task'
 type: 'feature'
 created: '2026-09-24'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'f60ec57f88dcdab640612c3a50fb3b058e79ca67'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-9-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-9-7-the-new-task-wizard.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A vendor 409 on Task.CRUD PUT that the edit rules do not pre-empt surfaces PORT.CONFLICT, whose sentence speaks of a duplicate name.
+    evidence: |-
+      Implement pass: the past-start 7432 refusal maps to the port's generic 409 conflict; the rules refuse the reachable cases first (STARTDATE.PAST), so an unforeseen 409 would read as a name clash. Settle by listing the vendor's 409 causes for RunPut and mapping each.
+    location: >-
+      src/OcuPilot/Port/TaskPort.cls
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -236,6 +244,31 @@ Client:
 
 ## Review Triage Log
 
+### 2026-09-24 — Review pass
+
+- verdicts: 20 findings — high 0, medium 6, low 7, false 7, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` (verification-gap) a changed output file on a task writing to the manager directory is never saved in a test — `TaskEdit.TestTheEditsOwnRefusals` now saves `other.txt` there and reads name and directory back; mutation line added.
+  - `[low]` `[patch]` (verification-gap) the mint's "held time in the other spelling" leg sent the instance's own spelling — `TaskUpdate.TestTheMintAnswersOneRowPerChange` now sends `01:00` against a held `01:00:00`; mutation line added.
+  - `[medium]` `[patch]` (verification-gap) DW-1631's wizard side (`SMTPPass` classic-only through `TypeSettings`) had no test — `TaskRules.TestASecretTypedSettingIsClassicOnly` pins the type read, the create's refusal by name and the edit's code; mutation line added.
+  - `[medium]` `[patch]` (verification-gap) edit-mode setting refusals (invalid, unknown) unexercised — `TaskEdit` Save legs for `KeepDays abc` (INVALID) and `Nope` (UNKNOWN), and a `TaskUpdate` mint leg for UNKNOWN.
+  - `[low]` `[patch]` (verification-gap) `WithheldSettingsCode`'s `TASK.SETTING.CLASSICONLY` branch untested — a leg on `HS.Registry.Document.Archive.Task` in `TaskRules.TestAListSettingIsClassicOnly`.
+  - `[medium]` `[patch]` (verification-gap) the AC3 test confirmed before the task had run — `TestAConfirmAfterTheTaskRanWrites` now waits, bounded at 150 s, for INFO's `LastFinished` to move before confirming (run 10441 green).
+  - `[low]` `[patch]` (verification-gap) read-back assertions skipped silently when the task is missing — `$$$AssertTrue($IsObject(...))` added before each in `TaskEdit`, `TaskWire` and `TaskUpdate`.
+  - `[low]` `[patch]` (verification-gap, other) a case-only retype of the stored run-as account was a change, so a principal without `%Admin_Secure` was refused — `TaskRules.SameValue` compares `RunAsUser` without case; `TaskRules.TestAnEditComparesTheAccountWithoutCase`; mutation line added.
+  - `[false]` `[reject]` (intent-alignment R1) the start rule also reads `TimePeriod` — measured on `ocupilot-ci`: a period change on a past-started task is refused by the vendor (7432, `TASK.STARTDATE.REFUSED`), so judging it first is the one sensible reading; `TaskEdit.TestAStartAlreadyPastIsSentBackAsHeld` now pins the period leg at 422 `TASK.STARTDATE.PAST`.
+  - `[false]` `[reject]` (intent-alignment R2) the change event's id is a string — every `ChangeBus` id is a string; the value is the task's numeric id, as AD-14 asks.
+  - `[medium]` `[patch]` (intent-alignment R3) AC3 pinned "scheduled to run", not "ran" — same root cause and fix as the AC3 row above.
+  - `[false]` `[reject]` (intent-alignment R4) a changed file on a task holding `OutputDirectory ""` keeps `""` — measured vendor fact: `""` writes to the manager directory, which is what AD-21 asks.
+  - `[low]` `[patch]` (intent-alignment R5) run-as account case — same root cause and fix as the case-only retype row above.
+  - `[low]` `[reject]` (intent-alignment R6) shared-file edits beyond appends — `Prohibited.cls` is not a shared-append file and the spec directs its arms; the one rewritten line in `strings.ts` is `taskCreate`'s `EXPERIENCE.md:541` reference moved to `:543`, forced by the two appended Fixed-strings rows and pinned by the strings roster test.
+  - `[medium]` `[patch]` (intent-alignment R7) no create-side test of `SMTPPass` classic-only — same root cause and fix as the DW-1631 row above.
+  - `[false]` `[reject]` (intent-alignment R8) body parsed before the id check — `SslSave.HandleUpdate`, the named template, parses the body before decoding the id too.
+  - `[false]` `[reject]` (intent-alignment table) past start probed on a once-a-day task, not the AC7 weekly one — the Matrix fixes no shape, and once-a-day is the shape the vendor re-checks (measured), so it is the one that makes the omission load-bearing.
+  - `[false]` `[reject]` (intent-alignment table) the summary's focus step is not in the browser spec — `task-editor.page.spec.ts` pins the focus order at the component tier.
+  - `[low]` `[reject]` (intent-alignment table) DW-1624's probe is created through `TaskSave.Create`, not the wizard's UI — the same server Save the wizard posts to, with the AC7 values; the UI create is pinned by `task-wizard.browser-spec.mjs`.
+  - `[false]` `[reject]` (intent-alignment table) other reads may carry a classic-only value — probed on `ocupilot-ci`: `Task.CRUD` `LIST` and `INFO` carry no `Settings`, and Task details names no `Settings` field.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -298,9 +331,45 @@ Slot A. Every IRIS MCP call carries `server: "ocupilot-slot-a"`. Anything that c
 - DW-1624: drop `OutputFileIsBinary` from `valuesFromTask`.
 - Integration: skip the `updated` publish.
 
+**Mutations observed (implement pass; each reverted and the file byte-identical by sha1; ObjectScript recompiled with its descendants on `ocupilot-ci`; client rebuilt and redeployed before a browser result counted):**
+
+- mutation (AC1): skip `tabToOpen` in `TaskEditorPage.afterRefusal` -> `task-editor.page.spec.ts` "AC1: a refused Save opens..." went red, and `task-editor.browser-spec.mjs` "AC1: a refused Save..." went red.
+- mutation (AC2, port): disable `TaskPort.Trimmed`'s time omission -> `OcuPilot.Test.TaskEdit.TestAStartAlreadyPastIsSentBackAsHeld` (the vendor's 409) and `TestThePortOmitsWhatTheVendorKeeps` went red (run 10420).
+- mutation (AC2, settings): merge a supplied `Settings` wholesale in `TaskUpdate.MergeSettings` -> `TaskEdit.TestATwoFieldSaveKeepsEveryOtherField` went red (run 10422); send an unchanged `Settings` as `{}` from `TaskPort.Trimmed` -> `OcuPilot.Test.TaskUpdate.TestAConfirmedTwoFieldEditKeepsEveryOtherField` went red (run 10435).
+- mutation (AC3): set `INFO`'s `NextScheduled` on `TaskPort`'s `GET` answer -> `TaskUpdate.TestAConfirmAfterTheTaskRanWrites` went red (run 10424).
+- mutation (AC4, refused leg): drop the `%SYS.Task.Password` arm of `TaskPort.ClassicOnlySettings` -> `TaskUpdate.TestASecretSettingIsNeverReadAndAChangeIsRefused` went red (run 10425).
+- mutation (AC4, unchanged-Settings-survives leg): make `TaskPort.WithholdSettings` set `Settings` to `{}` instead of removing it -> `TaskUpdate.TestAnEditLeavingTheSettingsKeepsTheSecret` went red on "the stored secret survives it" (run 10426).
+- mutation (AC5): make the task arm of `Prohibited.GrantsPrivilegeByEffect` ignore the live target -> `TaskUpdate.TestRunningAsAnotherAccountIsJudgedOnAChange` went red (run 10427); disable `TaskRules.ValidateUpdate`'s `Judged` filter -> `OcuPilot.Test.TaskWire.TestTheLeastPrincipalEditsButCannotMoveRunAs` went red (run 10429).
+- mutation (DW-1624): force `OutputFileIsBinary` false in `valuesFromTask` -> `tools/task-fields.test.mjs` and `task-editor.page.spec.ts` "DW-1624" went red.
+- mutation (Integration): skip the `updated` publish in `TaskWizard.save` -> `task-wizard.store.spec.ts` "Integration, AD-14" went red; the browser rename leg stayed green, since both screens read again on return, and its comment says so.
+- mutation: drop the edit route's `Gate` call -> `TaskWire.TestTheEditRoutesRefuseACallerLackingAPair` went red (run 10431); drop `NameTaken`'s own-id exclusion -> `TaskEdit.TestARenameToATakenNameIsRefused` went red (run 10433); set a supplied `Settings` wholesale in `TaskUpdate.MergeUpdate` -> `TaskUpdate.TestTheMintAnswersOneRowPerChange` went red (run 10434).
+- mutation (review pass, DW-1631 create side): make `TaskPort.ClassicOnlyKind`'s `%SYS.Task.Password` arm `If 0` -> `OcuPilot.Test.TaskRules.TestASecretTypedSettingIsClassicOnly` went red (run 10443), and `TaskEdit.TestTheFormReadAnswersOneTask`'s secret leg (run 10444).
+- mutation (review pass, output file): replace `'..IsManagerDirectory(tDirectory)` with `1` in `TaskRules.ValidateUpdate` -> `TaskEdit.TestTheEditsOwnRefusals`'s manager-directory leg went red (run 10444).
+- mutation (review pass, account case): make `TaskRules.SameValue`'s `RunAsUser` line `If 0` -> `TaskRules.TestAnEditComparesTheAccountWithoutCase` went red (run 10443).
+- mutation (review pass, time spelling): make `TaskUpdate.MergeUpdate`'s time loop run zero times -> `TaskUpdate.TestTheMintAnswersOneRowPerChange` went red on a phantom `DailyStartTime` row (run 10445).
+- mutation (entry points): put TaskForm back in `CREATE_ONLY_FORMS` -> `tools/navigation.test.mjs` and `details.page.spec.ts` Edit legs went red; drop the detail-first term in `data-table.ts` -> `data-table.spec.ts` "Story 9.8" went red; drop TaskForm from `DESCRIPTOR_EDIT_PAGES` -> `screen-outlet.spec.ts` "Story 9.8" went red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only; nothing implemented. The vendor facts in the Code Map were measured on `ocupilot-ci` on 2026-09-24. The two probe tasks and the probe principal and role were removed, and so was the probe output file. The spec implements the recommended answers to the two lead rulings under Design Notes: the AC3 wording, and AD-4's `Task.CRUD` omissions.
+**Change.** Edit task: `tasks.schedule.update` (`Screen/Tool/TaskUpdate.cls`) with the `Write.MergeUpdate` hook called by Mint, Confirm's fingerprint re-merge and the screen Save; `TaskPort`'s one classic-only classifier (password-typed, credential-named, collection), GET/PUT/POST answers withholding such a type's `Settings`, and the PUT trim (AD-4's named exception); `TaskRules` update mode, `PUT /tasks/:id` (`TaskSave.HandleUpdate`), `GET /tasks/form?id=`, `TASK.ABSENT` and `TASK.OUTPUTFILENAME.CLASSICONLY`; the prohibited set's task change list and live-target run-as arm. Client: the wizard's step templates moved into `task-field-group.ts`, rendered by the stepper and by the new tabbed `task-editor.page.ts`; the store's edit mode; `CREATE_ONLY_FORMS` emptied; detail-first name cells.
+
+**Files.** Server: `Port/{AdminPort,TaskPort}`, `Screen/Tool/{Write,TaskUpdate,Classification,ToolFields}`, `Kernel/Proposal/{Mint,Confirm,Prohibited}`, `Area/Task/{TaskRules,TaskSave}`, `Api/{Router,Error}`, `Screen/Descriptor/{TaskForm,TaskScheduleList}`. Tests: new `Test/{TaskUpdate,TaskEdit,TaskEditProbe}`; `Test/{TaskWire,TaskRules,TaskResume,ToolWrite,PortFixture,SurfaceCoverage,EndpointCoverage,ToolRoundTrip,ReadTool,Wire,WireSecurityRead}`. Client: `areas/tasks/{task-fields,task-field-group,task-editor.page,task-wizard.page,task-wizard.store}.ts` and specs, `core/{navigation,strings,screens.generated}.ts`, `shell/{data-table,screen-outlet}.ts` and specs, `_components.scss`, `browser/{task-editor,tasks}.browser-spec.mjs`, `tools/{task-fields,navigation}.test.mjs`. Docs: EXPERIENCE.md (two Fixed-strings rows), `scripts/ci-throwaway.sh` (`# classes: TaskUpdate, TaskEdit`).
+
+**Review.** Two layers (verification-gap, intent-alignment), 20 findings: 8 entries patched (6 medium members, 7 low members across them), 0 deferred from the layers, 7 false and 3 low rejected with reasons in the triage log. Patched: test legs for the manager-directory output file, the other time spelling, DW-1631's create side, edit-mode setting refusals, the withheld-read `CLASSICONLY` code, a bounded wait for the task to finish before AC3's confirm, read-back existence asserts; one code fix (`TaskRules.SameValue` compares `RunAsUser` without case). The review's R1 probe measured that the vendor refuses a period change on a past-started task (7432), so the start rule keeps reading the period; a test leg pins it. The full sweep then tripped `TaskResume`'s empty-task-list tripwire; it now asserts the edit's thirty-two with `Type` absent.
+
+**Verification.**
+
+- Sweep (once, `ocupilot-ci`, `ci-runner --package OcuPilot.Test`, one class per call): 242 classes, 2117 tests, 2 failed (runs 10446-10687): `TaskResume.TestAChangedFieldOnATaskProposalIsRefused` (the tripwire above; fixed, re-run 10688 green, 14/14) and `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` (the known ~2,000-row history residue, DW-1425/DW-1468). `%UnitTest_Result` SQL probe agrees; its other failing rows are `TmpProcessControlLocal`/`TmpTaskResume76`, stale classes on the instance that are not in this tree.
+- Story classes after patches: TaskRules 11/11 (10438), TaskEdit 7/7 (10440), TaskUpdate 7/7 (10441), TaskWire 5/5 (10442).
+- Browser (bundle rebuilt and redeployed, each file alone): task-editor 6/6 (visual gate on all four tabs) and task-wizard 5/5 after the review patches; the implement pass had task-editor 6/6, task-wizard 5/5, a11y-structural-invariants 10/10, tasks 13/15 (the two Story 6.6 residue legs).
+- Client: targeted tools 213/213; components 1189/1189; `check-objectscript`, its harness and `lint-docs` clean.
+- Bundle initial total: 1,537,954 B (main 1,396,777 + styles 141,177), under the 1551kB warning and the 1580kB stop line; `maximumWarning` unchanged.
+
+**Follow-up review recommended:** true -- four medium entries were patched. Unverified risk: a vendor 409 on `Task.CRUD` PUT that the rules do not pre-empt surfaces `PORT.CONFLICT`, whose sentence speaks of a duplicate name.
+
+**Residual risks.** `unchangedCount` counts the port-added `Type`, which the PUT never sends (off by one on the card). The browser Integration leg stays green without the `updated` publish (both screens re-read on return); the publish is pinned by `task-wizard.store.spec.ts`. A caller who cannot read the task's namespace gets no types, so no settings are drawn (inference). `strings.ts`'s `taskCreate` reference moved `EXPERIENCE.md:541` to `:543`; Epic 12's appended rows will shift it again at merge.
+
+footprint_extensions: src/OcuPilot/Test/ReadTool.cls, src/OcuPilot/Test/TaskEditProbe.cls, src/OcuPilot/Test/TaskResume.cls, src/OcuPilot/Test/TaskRules.cls, ui/src/app/core/screens.generated.ts, ui/src/app/shell/data-table.spec.ts, ui/src/app/shell/screen-outlet.spec.ts, ui/src/app/areas/tasks/task-field-group.spec.ts, ui/src/styles/_components.scss (append-only)

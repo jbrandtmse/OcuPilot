@@ -1,7 +1,8 @@
 /**
  * The scheduled task's field model (Story 9.7, FR-52): the fields a create sets, in the wizard's
  * order; which step each is drawn on; which the chosen period and frequency read; and the body a
- * create sends. Story 9.8's Edit task reads the same model, the step map as its tab map.
+ * create sends. Story 9.8's Edit task reads the same model, the step map as its tab map, with the
+ * values a task's read answers and the body of the fields an edit changes.
  *
  * **The vocabulary is `%SYS.TaskSuper`'s** (AD-3): `TimePeriod` fixes how `TimePeriodEvery` and
  * `TimePeriodDay` are read, and `DailyFrequency` governs the quadruple `DailyFrequencyTime`,
@@ -229,4 +230,101 @@ export function createBody(values: TaskValues): Record<string, unknown> {
 /** The fields one step draws, in the wizard's order: `FIELD_ORDER` narrowed to `step`. */
 export function fieldsOfStep(step: string): readonly string[] {
   return FIELD_ORDER.filter((field) => STEP_OF[field] === step);
+}
+
+/**
+ * The two fields Edit task draws read-only (Story 9.8): a task's type and namespace. Changing the
+ * type replaces every setting, so it stays a delete and a create, and the edit sends neither.
+ */
+export const EDIT_FIXED_FIELDS: readonly string[] = ['TaskClass', 'NameSpace'];
+
+/** Edit task's tabs: the wizard's steps, in order, so the tab map is the step map. */
+export const TABS: readonly string[] = STEPS;
+
+/** The field-to-tab map Edit task's `core/form-tabs.ts` reads: the wizard's field-to-step map. */
+export function fieldTabs(settingNames: readonly string[]): Readonly<Record<string, string>> {
+  return fieldSteps(settingNames);
+}
+
+function textOf(source: Readonly<Record<string, unknown>> | null, key: string): string {
+  const value = source === null ? undefined : source[key];
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  return '';
+}
+
+function flagOf(source: Readonly<Record<string, unknown>> | null, key: string): boolean {
+  const value = source === null ? undefined : source[key];
+  return value === true || value === 1 || value === '1';
+}
+
+/** A time the vendor spells `HH:MM:SS`, as the time input's `HH:MM`. */
+export function clockOf(value: string): string {
+  return /^\d{2}:\d{2}/.test(value) ? value.slice(0, 5) : value;
+}
+
+/**
+ * The values a record answers, as the form holds them: the form read's `defaults` for the wizard,
+ * and a task's own fresh read for Edit task. A time the vendor spells `HH:MM:SS` is held as
+ * `HH:MM`, an address list as comma-separated text, and the settings -- the task's own `Settings`
+ * object, when the record carries one -- as text.
+ */
+export function valuesFromTask(record: Readonly<Record<string, unknown>> | null): TaskValues {
+  const text: Record<string, string> = {};
+  const flags: Record<string, boolean> = {};
+  for (const field of FIELD_ORDER) {
+    if (field === SETTINGS_FIELD) continue;
+    if (FLAG_FIELDS.includes(field)) {
+      flags[field] = flagOf(record, field);
+      continue;
+    }
+    if (EMAIL_FIELDS.includes(field)) {
+      const held = record === null ? undefined : record[field];
+      text[field] = (Array.isArray(held) ? held : []).filter((entry): entry is string => typeof entry === 'string').join(', ');
+      continue;
+    }
+    const value = textOf(record, field);
+    text[field] = field === 'DailyStartTime' || field === 'DailyEndTime' ? clockOf(value) : value;
+  }
+  const settings: Record<string, string> = {};
+  const held = record === null ? undefined : record[SETTINGS_FIELD];
+  if (held !== null && typeof held === 'object' && !Array.isArray(held)) {
+    for (const [name, value] of Object.entries(held as Record<string, unknown>)) {
+      if (typeof value === 'string') settings[name] = value;
+      else if (typeof value === 'number') settings[name] = String(value);
+      else if (typeof value === 'boolean') settings[name] = value ? '1' : '0';
+    }
+  }
+  return { text, flags, settings };
+}
+
+/**
+ * An edit's body (Story 9.8): every field whose value differs from `opened`, the task's fresh read,
+ * typed as `createBody` types it -- and `Settings` whole when any setting changed. The type and the
+ * namespace are never sent (`EDIT_FIXED_FIELDS`), and an address list is compared entry by entry.
+ */
+export function changedBody(opened: TaskValues, values: TaskValues): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  for (const field of FIELD_ORDER) {
+    if (EDIT_FIXED_FIELDS.includes(field)) continue;
+    if (field === SETTINGS_FIELD) {
+      const names = new Set([...Object.keys(opened.settings), ...Object.keys(values.settings)]);
+      const moved = [...names].some((name) => (values.settings[name] ?? '') !== (opened.settings[name] ?? ''));
+      if (moved) body[field] = { ...values.settings };
+      continue;
+    }
+    if (FLAG_FIELDS.includes(field)) {
+      const on = values.flags[field] ?? false;
+      if (on !== (opened.flags[field] ?? false)) body[field] = on;
+      continue;
+    }
+    if (EMAIL_FIELDS.includes(field)) {
+      const list = addressList(values.text[field] ?? '');
+      if (list.join('\n') !== addressList(opened.text[field] ?? '').join('\n')) body[field] = list;
+      continue;
+    }
+    const value = values.text[field] ?? '';
+    if (value !== (opened.text[field] ?? '')) body[field] = value;
+  }
+  return body;
 }

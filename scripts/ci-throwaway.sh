@@ -267,9 +267,11 @@ services:
       # block above, one degree narrower: the effect is a task that runs where nobody scheduled
       # one. OcuPilot.Test.TaskResume shipped in Story 5.11 without a guard (DW-1458); this is
       # that guard's home. The New Task wizard's classes create probe tasks and delete each by
-      # id once its exact name reads back.
+      # id once its exact name reads back. Edit task's classes edit and run their own probe tasks,
+      # never a vendor task.
       # classes: TaskResume
       # classes: TaskCreate, TaskRules, TaskSave, TaskWire
+      # classes: TaskUpdate, TaskEdit
       OCUPILOT_ALLOW_TASK_CONTROL: "1"
       # Deletes REAL application errors from a namespace's own ^ERRORS through the shipped confirm
       # path. One degree worse than OCUPILOT_ALLOW_ERROR_SEED above, which can only add: a deleted

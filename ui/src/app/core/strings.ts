@@ -1946,7 +1946,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:541 */
+  /** EXPERIENCE.md:543 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2073,6 +2073,11 @@ export const STRINGS = {
   taskPromptWeekly: 'How do I run a task on weekdays only?',
   /** EXPERIENCE.md:499 */
   taskPromptWhichType: 'Which task type checks database integrity?',
+  /** EXPERIENCE.md:501 */
+  taskEditFixed: 'A task\'s type and namespace are fixed once it is created. To change them, create a new task.',
+  /** EXPERIENCE.md:502 */
+  taskOutputFileClassicOnly:
+    'This task writes its output to a folder only the classic portal\'s Task Scheduler Wizard sets, so change its output file there.',
 
 } as const;
 

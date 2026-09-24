@@ -9,17 +9,22 @@ import { test } from 'node:test';
 
 import {
   BASICS_STEP,
+  EDIT_FIXED_FIELDS,
   FIELD_ORDER,
   OPTIONS_STEP,
   SCHEDULE_STEP,
   STEPS,
+  TABS,
   TYPE_STEP,
   applies,
+  changedBody,
   createBody,
   fieldOrder,
   fieldSteps,
+  fieldTabs,
   fieldsOfStep,
   stepOfField,
+  valuesFromTask,
 } from '../src/app/areas/tasks/task-fields.ts';
 import { tabErrorCounts, tabToOpen } from '../src/app/core/form-tabs.ts';
 
@@ -128,4 +133,70 @@ test('a create sends every field the period reads, typed as the server takes it'
   const demand = createBody(values({ ...WEEKLY.text, TimePeriod: 'On Demand' }, WEEKLY.flags, {}));
   assert.equal(demand.Expires, undefined, 'an On Demand body sends no expiry');
   assert.equal(demand.TimePeriodEvery, undefined);
+});
+
+// Story 9.8: Edit task reads the same model.
+
+/** A task's fresh read, as `GET /tasks/form?id=` answers it (the vendor's own spellings). */
+const TASK_READ = {
+  Id: 1597,
+  Name: 'OcuP98Edit',
+  Description: 'probe',
+  NameSpace: '%SYS',
+  TaskClass: '%SYS.Task.PurgeTaskHistory',
+  TimePeriod: 'Weekly',
+  TimePeriodEvery: '1',
+  TimePeriodDay: '24',
+  DailyFrequency: 'Several',
+  DailyFrequencyTime: 'Minutes',
+  DailyIncrement: 30,
+  DailyStartTime: '01:00:00',
+  DailyEndTime: '05:00:00',
+  StartDate: '2026-09-25',
+  Priority: 'Low',
+  OutputFilename: 'ocup98edit.txt',
+  OutputFileIsBinary: true,
+  IsBatch: false,
+  EmailOnCompletion: ['ops@example.com', 'dev@example.com'],
+  EmailOnError: [],
+  Settings: { KeepDays: '30' },
+  Type: 'User',
+};
+
+test('Story 9.8: the edit\'s tabs are the wizard\'s steps, and its tab map is the step map', () => {
+  assert.deepEqual(TABS, STEPS, 'the four tabs are the four steps, in order');
+  assert.deepEqual(fieldTabs(['KeepDays']), fieldSteps(['KeepDays']), 'every field, a setting included, is on the tab of its step');
+  assert.deepEqual(EDIT_FIXED_FIELDS, ['TaskClass', 'NameSpace'], 'the type and the namespace are the two fields an edit never changes');
+});
+
+test('Story 9.8: a task\'s read is held as the form holds it, a time as HH:MM', () => {
+  // Mutation (Rule 19): drop `OutputFileIsBinary` from `valuesFromTask`'s flags -> the binary leg goes red.
+  const held = valuesFromTask(TASK_READ);
+  assert.equal(held.text.DailyStartTime, '01:00', 'HH:MM:SS is read as HH:MM');
+  assert.equal(held.text.DailyEndTime, '05:00', 'for both times');
+  assert.equal(held.text.DailyIncrement, '30', 'a number is held as text');
+  assert.equal(held.text.EmailOnCompletion, 'ops@example.com, dev@example.com', 'an address list as comma-separated text');
+  assert.equal(held.flags.OutputFileIsBinary, true, 'a flag as a flag');
+  assert.equal(held.flags.IsBatch, false, 'an unset flag as false');
+  assert.deepEqual(held.settings, { KeepDays: '30' }, 'the task\'s own settings as text');
+  assert.deepEqual(valuesFromTask(null).settings, {}, 'and a record with none holds none');
+});
+
+test('Story 9.8: an edit sends the fields it changes, Settings whole, and never the type or namespace', () => {
+  const opened = valuesFromTask(TASK_READ);
+  assert.deepEqual(changedBody(opened, opened), {}, 'nothing changed sends nothing');
+  const edited = {
+    text: { ...opened.text, Description: 'edited', DailyIncrement: '15', TaskClass: '%SYS.Task.IntegrityCheck', NameSpace: 'USER', EmailOnCompletion: 'ops@example.com,  dev@example.com' },
+    flags: { ...opened.flags, IsBatch: true },
+    settings: opened.settings,
+  };
+  assert.deepEqual(
+    changedBody(opened, edited),
+    { Description: 'edited', DailyIncrement: '15', IsBatch: true },
+    'the two texts and the flag, typed as a create types them; an address list spelled differently is unchanged; the fixed fields are never sent'
+  );
+  const settings = { ...opened, settings: { KeepDays: '45' } };
+  assert.deepEqual(changedBody(opened, settings), { Settings: { KeepDays: '45' } }, 'a changed setting sends the settings whole');
+  const addresses = { ...opened, text: { ...opened.text, EmailOnError: 'late@example.com' } };
+  assert.deepEqual(changedBody(opened, addresses), { EmailOnError: ['late@example.com'] }, 'a changed address list is sent as the array');
 });

@@ -5612,7 +5612,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "descriptor": "OcuPilot.Screen.Descriptor.TaskForm",
     "route": "tasks/schedule/edit",
     "area": "tasks",
-    "labelKey": "taskFormLabel",
+    "labelKey": "proposalEntityTask",
     "sideBarPosition": 0,
     "archetype": "form-page",
     "built": true,

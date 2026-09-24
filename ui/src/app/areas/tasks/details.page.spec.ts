@@ -11,7 +11,7 @@ import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
-import { SCREENS, type ScreenDeclaration } from '../../core/screens.generated';
+import { SCREENS } from '../../core/screens.generated';
 import { STRINGS, stringFor } from '../../core/strings';
 import { TaskDetailsPage } from './details.page';
 import { stubAccountPreferences } from '../../testing/account-preferences';
@@ -247,46 +247,17 @@ describe('TaskDetailsPage', () => {
     expect(host.textContent).toContain(STRINGS.taskDetailsGone);
   });
 
-  it('the History link opens the per-task history for this task, and no Edit task control exists yet', async () => {
+  it('the History link opens the per-task history for this task, and Edit task opens its editor (Story 9.8)', async () => {
+    // Mutation (Rule 19): put TaskForm back in `CREATE_ONLY_FORMS` (`core/navigation.ts`) -> the
+    // Edit leg goes red, the link gone.
     const { host } = await mount();
     const links = Array.from(host.querySelectorAll('.ocu-details-link'));
     const history = links.find((link) => link.textContent?.trim() === STRINGS.taskRunsLabel);
     expect(history).toBeDefined();
     expect(history?.getAttribute('href')).toContain('/tasks/schedule/history/1002');
     const edit = links.find((link) => link.textContent?.trim() === STRINGS.taskDetailsEdit);
-    expect(edit).toBeUndefined();
-  });
-
-  it('given a roster whose tasks/schedule/edit reads its id, shows the Edit task link to its route with this id', async () => {
-    // `editorScreenFor` reads the shipped `SCREENS` array directly (Story 3.5), and the shipped
-    // `tasks/schedule/edit` is Story 9.7's New Task wizard, which is create-only until Story 9.8 --
-    // so this test swaps that one entry for an editor that reads its id, without a mocking framework
-    // this codebase does not otherwise use, and puts the shipped entry back in `finally` whatever
-    // the assertions do.
-    const mutable = SCREENS as ScreenDeclaration[];
-    const at = mutable.findIndex((screen) => screen.route === 'tasks/schedule/edit');
-    expect(at).toBeGreaterThanOrEqual(0);
-    const shipped = mutable[at];
-    const editScreen: ScreenDeclaration = {
-      ...(SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.TaskScheduleList') as ScreenDeclaration),
-      descriptor: 'OcuPilot.Test.Fixture.TaskEditFixture',
-      route: 'tasks/schedule/edit',
-      archetype: 'form-page',
-      built: true,
-      sideBarPosition: 0,
-      parentScope: '',
-      id: { kind: 'composite', parts: ['Id'] },
-    };
-    mutable[at] = editScreen;
-    try {
-      const { host } = await mount();
-      const links = Array.from(host.querySelectorAll('.ocu-details-link'));
-      const edit = links.find((link) => link.textContent?.trim() === STRINGS.taskDetailsEdit);
-      expect(edit).toBeDefined();
-      expect(edit?.getAttribute('href')).toContain('/tasks/schedule/edit/1002');
-    } finally {
-      mutable[at] = shipped;
-    }
+    expect(edit).toBeDefined();
+    expect(edit?.getAttribute('href')).toContain('/tasks/schedule/edit/1002');
   });
 
   it('offers Refresh and no other action (AD-10)', async () => {

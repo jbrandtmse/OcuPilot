@@ -498,6 +498,8 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "Only the classic portal's Task Scheduler Wizard sets these settings of this type: <settings>." | the wizard's type step, naming a type's list and credential settings, which only the classic wizard sets (Story 9.7, AD-21) [ADDED 2026-09-24 - see the story change log] |
 | "Scheduling" · "Create a task that purges task history every night." · "How do I run a task on weekdays only?" · "Which task type checks database integrity?" | the New Task wizard's suggested prompts (Story 9.7, Story 11.3's contract): a task group and three prompts, declared on its descriptor [ADDED 2026-09-24 - see the story change log] |
 | "Jump to latest" | the panel transcript's return to its newest entry, shown while the user has scrolled away from it (Story 11.10) [ADDED 2026-09-24 - see the story change log] |
+| "A task's type and namespace are fixed once it is created. To change them, create a new task." | Edit task (Story 9.8): the caption under its read-only task type and namespace, because a new type replaces every setting and stays a delete and a create [ADDED 2026-09-24 - see the story change log] |
+| "This task writes its output to a folder only the classic portal's Task Scheduler Wizard sets, so change its output file there." | Edit task's refusal of a changed output file on a task writing outside the manager directory (Story 9.8, AD-21, `TASK.OUTPUTFILENAME.CLASSICONLY`); a task the edit names that is gone is refused with Task details' "This task no longer exists." (`TASK.ABSENT`) [ADDED 2026-09-24 - see the story change log] |
 
 ## Component Patterns
 

@@ -103,6 +103,9 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// (<class>OcuPilot.Screen.Tool.TaskCreate</class>). <code>OutputDirectory</code> is
 /// <code>ordinary</code> here and absent from the tool's positive list, so no caller names it
 /// (AD-21).</p>
+/// <p><b><code>tasks.schedule.update</code></b> (Story 9.8) classifies the same list the same way;
+/// its tool's positive list also leaves out <code>TaskClass</code> and <code>NameSpace</code>, which
+/// an edit never changes (<class>OcuPilot.Screen.Tool.TaskUpdate</class>).</p>
 XData Entries
 {
 {
@@ -482,6 +485,46 @@ XData Entries
     }
   },
   "tasks.schedule.create": {
+    "fieldList": "Task.CRUD",
+    "classification": {
+      "Name": "ordinary",
+      "RunAsUser": "ordinary",
+      "EmailOnCompletion[]": "ordinary",
+      "EmailOnError[]": "ordinary",
+      "EmailOnExpiration[]": "ordinary",
+      "EmailOutput": "ordinary",
+      "Expires": "ordinary",
+      "ExpiresDays": "ordinary",
+      "ExpiresHours": "ordinary",
+      "ExpiresMinutes": "ordinary",
+      "OpenOutputFile": "ordinary",
+      "OutputDirectory": "ordinary",
+      "OutputFilename": "ordinary",
+      "OutputFileIsBinary": "ordinary",
+      "SuspendOnError": "ordinary",
+      "SuspendTerminated": "ordinary",
+      "Priority": "ordinary",
+      "TaskClass": "ordinary",
+      "IsBatch": "ordinary",
+      "NameSpace": "ordinary",
+      "TimePeriod": "ordinary",
+      "TimePeriodEvery": "ordinary",
+      "TimePeriodDay": "ordinary",
+      "DailyFrequency": "ordinary",
+      "DailyFrequencyTime": "ordinary",
+      "DailyIncrement": "ordinary",
+      "DailyStartTime": "ordinary",
+      "DailyEndTime": "ordinary",
+      "StartDate": "ordinary",
+      "EndDate": "ordinary",
+      "RunAfterGUID": "ordinary",
+      "MirrorStatus": "ordinary",
+      "RescheduleOnStart": "ordinary",
+      "Description": "ordinary",
+      "Settings": "opaque"
+    }
+  },
+  "tasks.schedule.update": {
     "fieldList": "Task.CRUD",
     "classification": {
       "Name": "ordinary",

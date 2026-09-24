@@ -258,6 +258,36 @@ Method TestAListSettingIsClassicOnly()
     Do tArgs.%Set("TaskClass", "HS.Registry.Document.Archive.Task", "string")
     Do tArgs.%Set("Settings", {"SourceIDS": "1"})
     Do $$$AssertTrue(("," _ ..Pairs(tArgs) _ ",") [ ",Settings.SourceIDS:TASK.SETTING.CLASSICONLY,", "a list setting is refused as classic-only: " _ ..Pairs(tArgs))
+    Set tSC = $ClassMethod(..#RULES, "WithheldSettingsCode", {"TaskClass": "HS.Registry.Document.Archive.Task", "NameSpace": (##class(OcuPilot.Install.Installer).ResolveNamespace())}, .tCode)
+    Do $$$AssertEquals(tCode, "TASK.SETTING.CLASSICONLY", "and a settings change on such a task, whose read carries none, is refused as classic-only")
+}
+
+/// <p>DW-1631, the New Task wizard's side of the one classifier: a setting typed
+/// <code>%SYS.Task.Password</code> (Diagnostic Report's <code>SMTPPass</code>) is classic-only and
+/// secret, so the form read never draws it, the create refuses it by name, and an edit's settings
+/// change on such a task is refused <code>TASK.SETTING.SECRET</code>.</p>
+/// <p>Mutation (Rule 19): drop the <code>%SYS.Task.Password</code> arm of
+/// <method>OcuPilot.Port.TaskPort.ClassicOnlyKind</method> -- <code>SMTPPass</code> is ordinary again
+/// and this goes red.</p>
+Method TestASecretTypedSettingIsClassicOnly()
+{
+    Set tSC = $ClassMethod(..#RULES, "TypeSettings", "%SYS.Task.DiagnosticReport", "%SYS", .tSettings, .tClassicOnly, .tKnown)
+    Do $$$AssertStatusOK(tSC, "the type's settings are read")
+    Do $$$AssertEquals($Get(tClassicOnly("SMTPPass")) _ " " _ $Data(tSettings("SMTPPass")), "secret 0", "SMTPPass is classic-only and secret, never an ordinary setting")
+    Set tArgs = ..Valid()
+    Do tArgs.%Set("TaskClass", "%SYS.Task.DiagnosticReport", "string")
+    Do tArgs.%Set("Settings", {"SMTPPass": "x"})
+    Do $$$AssertTrue(("," _ ..Pairs(tArgs) _ ",") [ ",Settings.SMTPPass:TASK.SETTING.SECRET,", "a create sending it is refused by name: " _ ..Pairs(tArgs))
+    Set tSC = $ClassMethod(..#RULES, "WithheldSettingsCode", {"TaskClass": "%SYS.Task.DiagnosticReport", "NameSpace": "%SYS"}, .tCode)
+    Do $$$AssertEquals(tCode, "TASK.SETTING.SECRET", "and an edit's settings change on such a task is refused as secret")
+}
+
+/// <p>Story 9.8: an edit compares a field as the instance holds it -- an account name without
+/// regard to case -- so re-sending the account a task runs as in another case changes nothing.</p>
+Method TestAnEditComparesTheAccountWithoutCase()
+{
+    Set tChanged = $ClassMethod(..#RULES, "Changed", {"RunAsUser": "_system", "Description": "x"}, {"RunAsUser": "_SYSTEM", "Description": "y"})
+    Do $$$AssertEquals(tChanged.%ToJSON(), "{""Description"":""x""}", "the account in another case is no change")
 }
 
 /// <p>A valid Daily create of <parameter>PURGE</parameter>, once at 02:30 from tomorrow.</p>

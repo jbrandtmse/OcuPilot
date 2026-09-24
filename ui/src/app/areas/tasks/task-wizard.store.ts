@@ -2,18 +2,21 @@ import { Injectable, Injector, inject } from '@angular/core';
 
 import { ApiService, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
+import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
 import { reasonForField, type Violation, violationsOf } from '../../core/violations';
 import {
-  EMAIL_FIELDS,
+  EDIT_FIXED_FIELDS,
   FIELD_ORDER,
   FLAG_FIELDS,
   SETTINGS_FIELD,
   SETTING_PREFIX,
   STEPS,
   type TaskValues,
+  changedBody,
   createBody,
   stepOfField,
+  valuesFromTask,
 } from './task-fields';
 
 /** The routes the wizard reads and saves through. */
@@ -90,11 +93,6 @@ function flagAt(source: unknown, key: string): boolean {
   return value === true || value === 1 || value === '1';
 }
 
-/** A time the vendor spells `HH:MM:SS`, as the time input's `HH:MM`. */
-function clockOf(value: string): string {
-  return /^\d{2}:\d{2}/.test(value) ? value.slice(0, 5) : value;
-}
-
 /**
  * `TimePeriodDay` once the period changes to `period`: that period's own starting value -- no day
  * for Weekly, the 1st for Monthly, the first Sunday for Monthly Special, none otherwise. A held day
@@ -107,26 +105,9 @@ function dayFor(period: string): string {
   return '';
 }
 
-/** The values the form read's `defaults` start the wizard on. */
+/** The values the form read's `defaults` start the wizard on: no settings until a type is chosen. */
 function valuesFrom(defaults: Record<string, unknown> | null): TaskValues {
-  const text: Record<string, string> = {};
-  const flags: Record<string, boolean> = {};
-  for (const field of FIELD_ORDER) {
-    if (field === SETTINGS_FIELD) continue;
-    if (FLAG_FIELDS.includes(field)) {
-      flags[field] = flagAt(defaults, field);
-      continue;
-    }
-    if (EMAIL_FIELDS.includes(field)) {
-      text[field] = arrayAt(defaults, field)
-        .filter((entry): entry is string => typeof entry === 'string')
-        .join(', ');
-      continue;
-    }
-    const value = textAt(defaults, field);
-    text[field] = field === 'DailyStartTime' || field === 'DailyEndTime' ? clockOf(value) : value;
-  }
-  return { text, flags, settings: {} };
+  return { ...valuesFromTask(defaults), settings: {} };
 }
 
 function typesFrom(body: unknown): TaskType[] {
@@ -178,6 +159,12 @@ function runAfterFrom(body: unknown): RunAfterTask[] {
  *
  * **A type's settings follow the type**: choosing a type loads its settings at its own defaults,
  * and the previous type's settings are gone; choosing a namespace reads that namespace's types.
+ *
+ * **Edit task is its edit mode** (Story 9.8), in `SslForm`'s pattern: `open(id)` reads one task
+ * (`GET /tasks/form?id=`) and keeps the `opened` snapshot; Save puts the fields changed since then
+ * (`PUT /tasks/:id`) and publishes `task` `updated` with the numeric id; `refresh` re-reads after a
+ * change event while the form is clean; a task the instance no longer holds is `absent`. The type
+ * and the namespace are fixed, and a type holding a classic-only setting draws no setting.
  */
 @Injectable({ providedIn: 'root' })
 export class TaskWizard {
@@ -220,6 +207,21 @@ export class TaskWizard {
   private refusalPairValue = '';
 
   private createdIdValue = '';
+
+  /** Whether the store is the wizard's create or Edit task's edit. */
+  private modeValue: 'create' | 'edit' = 'create';
+
+  /** The task an edit is of, as the route names it. */
+  private idValue = '';
+
+  /** An edit's values as the fresh read answered them, which Save's body is the difference from. */
+  private opened: TaskValues = EMPTY_VALUES;
+
+  private savedValue = false;
+
+  private absentValue = false;
+
+  private settingsClassicOnlyValue = false;
 
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
@@ -324,10 +326,54 @@ export class TaskWizard {
     return this.formDirty.dirty();
   }
 
-  /** Whether the task would run as an account other than `user` (AD-10), compared without regard to case. */
+  /**
+   * Whether the task would run as an account other than `user` (AD-10), compared without regard to
+   * case. An edit that keeps the account the task already runs as does not (Story 9.8).
+   */
   runsAsOther(user: string): boolean {
     const runAs = this.text('RunAsUser').trim();
+    if (this.modeValue === 'edit' && runAs.toUpperCase() === (this.opened.text['RunAsUser'] ?? '').trim().toUpperCase()) return false;
     return runAs !== '' && runAs.toUpperCase() !== user.toUpperCase();
+  }
+
+  /** `create` for the wizard, `edit` for Edit task. */
+  mode(): 'create' | 'edit' {
+    return this.modeValue;
+  }
+
+  /** The task an edit is of, or `''`. */
+  id(): string {
+    return this.idValue;
+  }
+
+  /** Whether `id` names the task this edit is of. */
+  is(id: string): boolean {
+    return this.modeValue === 'edit' && this.idValue !== '' && id === this.idValue;
+  }
+
+  /** Whether the last Save of an edit was accepted and nothing has changed since. */
+  saved(): boolean {
+    return this.savedValue;
+  }
+
+  /** Whether the task an edit names is not on the instance. */
+  absent(): boolean {
+    return this.absentValue;
+  }
+
+  /** Whether the task's type holds a classic-only setting, so its settings are not drawn (AD-35). */
+  settingsClassicOnly(): boolean {
+    return this.settingsClassicOnlyValue;
+  }
+
+  /** Whether `field` is one an edit draws read-only. */
+  fixed(field: string): boolean {
+    return this.modeValue === 'edit' && EDIT_FIXED_FIELDS.includes(field);
+  }
+
+  /** An edit's body: the fields changed since the fresh read. */
+  changedBody(): Record<string, unknown> {
+    return changedBody(this.opened, this.valuesValue);
   }
 
   // --- writes ----------------------------------------------------------------------------------
@@ -349,45 +395,106 @@ export class TaskWizard {
     this.violationList = [];
     this.clearRefusal();
     this.createdIdValue = '';
+    this.modeValue = 'create';
+    this.idValue = '';
+    this.opened = EMPTY_VALUES;
+    this.savedValue = false;
+    this.absentValue = false;
+    this.settingsClassicOnlyValue = false;
     this.formDirty.reset();
     this.notify();
   }
 
-  /** Open the wizard on its first step, from the form read made fresh on every open. */
-  async open(): Promise<void> {
+  /**
+   * Open the wizard on its first step, from the form read made fresh on every open -- or, given a
+   * task's `id`, Edit task over that task's own fresh read.
+   */
+  async open(id = ''): Promise<void> {
     this.reset();
+    if (id !== '') {
+      this.modeValue = 'edit';
+      this.idValue = id;
+      this.furthestValue = STEPS.length - 1;
+    }
     const generation = this.generation;
-    const result = await this.api().requestJson<unknown>(TASK_FORM_PATH);
+    const result = await this.api().requestJson<unknown>(id === '' ? TASK_FORM_PATH : `${TASK_FORM_PATH}?id=${encodeURIComponent(id)}`);
     if (generation !== this.generation) return;
     if (result.kind !== 'ok') {
       this.envelopeReason = result.kind === 'error' ? (result.reason ?? '') : '';
       this.rememberRefusal(result);
+      if (id !== '' && result.kind === 'error' && result.status === 404) this.absentValue = true;
       this.loadedValue = true;
       this.notify();
       return;
     }
-    const body = result.body;
-    const rules: FieldRule[] = [];
-    for (const entry of arrayAt(body, 'rules')) {
-      const field = textAt(entry, 'field');
-      const code = textAt(entry, 'code');
-      const reason = textAt(entry, 'reason');
-      if (field !== '' && code !== '' && reason !== '') rules.push({ field, code, reason });
-    }
-    this.rulesValue = rules;
-    this.requiredValue = arrayAt(body, 'requiredFields').filter((entry): entry is string => typeof entry === 'string');
-    const lengths: Record<string, number> = {};
-    for (const [field, value] of Object.entries(objectAt(body, 'maxLengths') ?? {})) {
-      if (typeof value === 'number') lengths[field] = value;
-    }
-    this.maxLengths = lengths;
-    const values = valuesFrom(objectAt(body, 'defaults'));
-    const namespace = textAt(body, 'namespace');
-    this.valuesValue = namespace === '' ? values : { ...values, text: { ...values.text, NameSpace: namespace } };
-    this.typesValue = typesFrom(body);
-    this.runAfterValue = runAfterFrom(body);
+    this.absorb(result.body, true);
     this.loadedValue = true;
     this.notify();
+  }
+
+  /**
+   * Read the task again after a change event (AD-14), in place while the form is clean; while it
+   * holds unsaved work nothing typed is overwritten.
+   */
+  async refresh(): Promise<void> {
+    if (this.modeValue !== 'edit' || !this.loadedValue || this.absentValue || this.formDirty.dirty()) return;
+    const generation = this.generation;
+    const result = await this.api().requestJson<unknown>(`${TASK_FORM_PATH}?id=${encodeURIComponent(this.idValue)}`);
+    if (generation !== this.generation || this.formDirty.dirty()) return;
+    if (result.kind !== 'ok') {
+      if (result.kind === 'error' && result.status === 404) {
+        this.absentValue = true;
+        this.notify();
+      }
+      return;
+    }
+    this.absorb(result.body, false);
+    this.notify();
+  }
+
+  /**
+   * Save an edit: put the fields changed since the fresh read. A Save that changes nothing sends
+   * nothing. An accepted one keeps the values as the new snapshot, shows "Saved", marks the form
+   * clean and publishes one `task` `updated` change event with the numeric id (AD-14); a refused one
+   * keeps every value.
+   */
+  async save(): Promise<boolean> {
+    if (this.modeValue !== 'edit' || this.busy() || !this.loadedValue || this.absentValue) return false;
+    const body = this.changedBody();
+    if (Object.keys(body).length === 0) {
+      this.clearRefusal();
+      this.savedValue = true;
+      this.formDirty.setDirty(false);
+      this.notify();
+      return true;
+    }
+    const generation = this.generation;
+    this.savingValue = true;
+    this.violationList = [];
+    this.clearRefusal();
+    this.savedValue = false;
+    this.notify();
+    const result = await this.api().requestJson<unknown>(`${TASKS_PATH}/${encodeEntityId(this.idValue)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (generation !== this.generation) return false;
+    this.savingValue = false;
+    if (result.kind !== 'ok') {
+      this.violationList = violationsOf(result);
+      this.envelopeReason = this.violationList.length === 0 && result.kind === 'error' ? (result.reason ?? '') : '';
+      this.rememberRefusal(result);
+      if (result.kind === 'error' && result.status === 404) this.absentValue = true;
+      this.notify();
+      return false;
+    }
+    this.opened = this.valuesValue;
+    this.savedValue = true;
+    this.formDirty.setDirty(false);
+    this.injector.get(ChangeBus).publish({ kind: 'changed', type: TASK_ENTITY, scope: TASK_SCOPE, id: this.idValue, action: 'updated' });
+    this.notify();
+    return true;
   }
 
   /**
@@ -395,7 +502,7 @@ export class TaskWizard {
    * own settings at their defaults, dropping the previous type's.
    */
   setText(field: string, value: string): void {
-    if (field === SETTINGS_FIELD || FLAG_FIELDS.includes(field) || !FIELD_ORDER.includes(field)) return;
+    if (field === SETTINGS_FIELD || FLAG_FIELDS.includes(field) || !FIELD_ORDER.includes(field) || this.fixed(field)) return;
     if (this.text(field) === value) return;
     let settings = this.valuesValue.settings;
     if (field === 'TaskClass') {
@@ -418,7 +525,7 @@ export class TaskWizard {
   }
 
   setSetting(name: string, value: string): void {
-    if (this.type()?.settings.some((setting) => setting.name === name) !== true) return;
+    if (this.settingsClassicOnlyValue || this.type()?.settings.some((setting) => setting.name === name) !== true) return;
     if (this.setting(name) === value) return;
     this.valuesValue = { ...this.valuesValue, settings: { ...this.valuesValue.settings, [name]: value } };
     this.change(`${SETTING_PREFIX}${name}`);
@@ -545,6 +652,45 @@ export class TaskWizard {
 
   // --- internals ------------------------------------------------------------------------------
 
+  /** Take in a form read's body: the rules, the types, the tasks to run after and -- for an edit -- the task. */
+  private absorb(body: unknown, replaceRules: boolean): void {
+    if (replaceRules) this.absorbRules(body);
+    this.typesValue = typesFrom(body);
+    this.runAfterValue = runAfterFrom(body);
+    if (this.modeValue === 'edit') {
+      const task = objectAt(body, 'task');
+      if (task === null) {
+        this.absentValue = true;
+        return;
+      }
+      const values = valuesFromTask(task);
+      this.valuesValue = values;
+      this.opened = values;
+      this.settingsClassicOnlyValue = flagAt(body, 'settingsClassicOnly');
+      return;
+    }
+    const values = valuesFrom(objectAt(body, 'defaults'));
+    const namespace = textAt(body, 'namespace');
+    this.valuesValue = namespace === '' ? values : { ...values, text: { ...values.text, NameSpace: namespace } };
+  }
+
+  private absorbRules(body: unknown): void {
+    const rules: FieldRule[] = [];
+    for (const entry of arrayAt(body, 'rules')) {
+      const field = textAt(entry, 'field');
+      const code = textAt(entry, 'code');
+      const reason = textAt(entry, 'reason');
+      if (field !== '' && code !== '' && reason !== '') rules.push({ field, code, reason });
+    }
+    this.rulesValue = rules;
+    this.requiredValue = arrayAt(body, 'requiredFields').filter((entry): entry is string => typeof entry === 'string');
+    const lengths: Record<string, number> = {};
+    for (const [field, value] of Object.entries(objectAt(body, 'maxLengths') ?? {})) {
+      if (typeof value === 'number') lengths[field] = value;
+    }
+    this.maxLengths = lengths;
+  }
+
   private api(): ApiService {
     return this.injector.get(ApiService);
   }
@@ -569,6 +715,7 @@ export class TaskWizard {
     if (this.violationList.some((entry) => entry.field === field)) {
       this.violationList = this.violationList.filter((entry) => entry.field !== field);
     }
+    this.savedValue = false;
     this.formDirty.setDirty(true);
     this.notify();
   }

@@ -306,6 +306,19 @@ ClassMethod ComposeCreate(pArgs As %DynamicObject, pIdArgument As %String, pSett
     Quit ##class(OcuPilot.Kernel.Proposal.Mint).Compose(pArgs, pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
 }
 
+/// <p>The merged payload and diff of a <b>change</b> (AD-4) from the fresh read <var>pFresh</var> and
+/// the caller's arguments <var>pArgs</var>, in <method>OcuPilot.Kernel.Proposal.Mint.Merge</method>'s
+/// contract.</p>
+/// <p><b>Caller contract:</b> called by the mint, by the confirm's fingerprint re-merge and by a
+/// screen's Save, so the three take one payload and one digest. The kernel's
+/// <method>OcuPilot.Kernel.Proposal.Mint.Merge</method> here, so every change that shipped before
+/// Story 9.8 merges exactly as it did; a tool whose object argument merges member by member merges its
+/// own.</p>
+ClassMethod MergeUpdate(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
+{
+    Quit ##class(OcuPilot.Kernel.Proposal.Mint).Merge(pFresh, pArgs, pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
+}
+
 /// <p>The id the instance allocated for the target this tool's confirmed write <var>pWritten</var>
 /// created, or <code>""</code> (AD-14). The confirm's answer carries it as <code>createdId</code>,
 /// and the client publishes it as the change event's id in place of the proposal's target id.</p>

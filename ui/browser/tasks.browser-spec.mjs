@@ -523,9 +523,11 @@ test('Story 6.7 AC1/AC2/AC4: activating the demo task\'s name cell opens Task de
     assert.ok(schedule.includes(STRINGS.taskScheduleEveryDay), `How often reads "Every day": ${schedule}`);
     assert.ok(schedule.includes('Once at 03:00:00'), `Time of day reads the fixture's own start time: ${schedule}`);
 
-    // No Edit task control until Epic 9 builds Task schedule's editor (Design Notes).
-    const linkLabels = await page.$$eval('.ocu-details-link', (links) => links.map((link) => link.textContent.trim()));
-    assert.ok(!linkLabels.includes(STRINGS.taskDetailsEdit), `no Edit task control exists yet: ${JSON.stringify(linkLabels)}`);
+    // Story 9.8: Edit task is reached from here, at the task form's id route.
+    const links = await page.$$eval('.ocu-details-link', (nodes) => nodes.map((link) => ({ label: link.textContent.trim(), href: link.getAttribute('href') })));
+    const edit = links.find((link) => link.label === STRINGS.taskDetailsEdit);
+    assert.ok(edit !== undefined, `Task details shows Edit task: ${JSON.stringify(links)}`);
+    assert.ok(new URL(edit.href, page.url()).pathname.endsWith(`/tasks/schedule/edit/${routeId}`), `which opens Edit task for this task: ${edit.href}`);
 
     // The locator bar names the task by its own name, not its id (Story 6.7), and its screen
     // segment is a link back to Task schedule, labelled with Task details' own title -- the same

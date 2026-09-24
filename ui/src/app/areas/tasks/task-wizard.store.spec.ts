@@ -315,3 +315,150 @@ describe('TaskWizard', () => {
     expect(store.reachable(TYPE_STEP)).toBe(false);
   });
 });
+
+/** A task's fresh read, as `GET /tasks/form?id=` answers it (Story 9.8). */
+const TASK = {
+  ...DEFAULTS,
+  Id: 1597,
+  Name: 'OcuP98Edit',
+  Description: 'probe',
+  TaskClass: '%SYS.Task.PurgeTaskHistory',
+  TimePeriod: 'Weekly',
+  TimePeriodDay: '24',
+  DailyFrequency: 'Several',
+  DailyIncrement: '30',
+  DailyStartTime: '01:00:00',
+  DailyEndTime: '05:00:00',
+  RunAsUser: '_SYSTEM',
+  Priority: 'Low',
+  OutputFileIsBinary: true,
+  EmailOnCompletion: ['ops@example.com'],
+  Settings: { KeepDays: '30' },
+  Type: 'User',
+};
+
+function mountEdit(options: { form?: JsonResult<unknown>; save?: JsonResult<unknown>; classicOnly?: boolean } = {}) {
+  TestBed.resetTestingModule();
+  const calls: Call[] = [];
+  let reads = 0;
+  const api = {
+    requestJson: async <T,>(path: string, init: ApiRequestInit = {}): Promise<JsonResult<T>> => {
+      const method = init.method ?? 'GET';
+      calls.push({ path, method, body: init.body ?? '' });
+      if (path.startsWith(`${TASK_FORM_PATH}?id=`)) {
+        reads += 1;
+        if (options.form !== undefined) return options.form as JsonResult<T>;
+        const task = options.classicOnly === true ? { ...TASK, Settings: undefined } : { ...TASK, Description: reads > 1 ? 'read again' : 'probe' };
+        return { kind: 'ok', status: 200, body: { ...FORM, types: TYPES, task, settingsClassicOnly: options.classicOnly === true } } as unknown as JsonResult<T>;
+      }
+      return (options.save ?? { kind: 'ok', status: 200, body: { id: 1597, name: 'OcuP98Edit' } }) as JsonResult<T>;
+    },
+  };
+  const bus = new ChangeBus();
+  const events: ChangeEvent[] = [];
+  bus.subscribe((event) => events.push(event));
+  const formDirty = new FormDirty();
+  TestBed.configureTestingModule({
+    providers: [
+      { provide: ApiService, useValue: api as unknown as ApiService },
+      { provide: ChangeBus, useValue: bus },
+      { provide: FormDirty, useValue: formDirty },
+    ],
+  });
+  return { store: TestBed.inject(TaskWizard), calls, events, formDirty };
+}
+
+describe('TaskWizard, edit mode (Story 9.8)', () => {
+  it('open(id) reads the task and holds its values, a time as HH:MM, with every tab reachable', async () => {
+    const { store, calls } = mountEdit();
+    await store.open('1597');
+    expect(calls[0]).toEqual({ path: `${TASK_FORM_PATH}?id=1597`, method: 'GET', body: '' });
+    expect(store.mode()).toBe('edit');
+    expect(store.id()).toBe('1597');
+    expect(store.text('Name')).toBe('OcuP98Edit');
+    expect(store.text('DailyStartTime')).toBe('01:00');
+    expect(store.flag('OutputFileIsBinary')).toBe(true);
+    expect(store.text('EmailOnCompletion')).toBe('ops@example.com');
+    expect(store.values().settings).toEqual({ KeepDays: '30' });
+    expect(store.type()?.className).toBe('%SYS.Task.PurgeTaskHistory');
+    expect(store.reachable(OPTIONS_STEP)).toBe(true);
+    expect(store.changedBody()).toEqual({});
+  });
+
+  it('the type and the namespace are fixed on an edit, and a type holding a classic-only setting draws and takes no setting', async () => {
+    const { store } = mountEdit({ classicOnly: true });
+    await store.open('1597');
+    expect(store.fixed('TaskClass') && store.fixed('NameSpace')).toBe(true);
+    store.setText('TaskClass', '%SYS.Task.IntegrityCheck');
+    store.setText('NameSpace', 'USER');
+    expect(store.text('TaskClass')).toBe('%SYS.Task.PurgeTaskHistory');
+    expect(store.text('NameSpace')).toBe('%SYS');
+    expect(store.settingsClassicOnly()).toBe(true);
+    store.setSetting('KeepDays', '45');
+    expect(store.changedBody()).toEqual({});
+  });
+
+  it('Integration, AD-14: Save puts the changed fields only, shows Saved, publishes task updated with the id, and leaves the form clean', async () => {
+    // Mutation (Rule 19): skip the `updated` publish in `TaskWizard.save` -> the event leg goes red.
+    const { store, calls, events, formDirty } = mountEdit();
+    await store.open('1597');
+    store.setText('Description', 'edited');
+    store.setText('DailyIncrement', '15');
+    store.setSetting('KeepDays', '45');
+    expect(formDirty.dirty()).toBe(true);
+    expect(await store.save()).toBe(true);
+    const put = calls.find((call) => call.method === 'PUT');
+    expect(put?.path).toBe(`${TASKS_PATH}/1597`);
+    expect(JSON.parse(put?.body ?? '{}')).toEqual({ Description: 'edited', DailyIncrement: '15', Settings: { KeepDays: '45' } });
+    expect(store.saved()).toBe(true);
+    expect(formDirty.dirty()).toBe(false);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ kind: 'changed', type: 'task', scope: 'instance', id: '1597', action: 'updated' });
+    const before = calls.length;
+    expect(await store.save()).toBe(true);
+    expect(calls.length, 'a Save that changes nothing sends nothing').toBe(before);
+  });
+
+  it('a refused Save keeps every value and holds the refusal on its field', async () => {
+    const refusal = { kind: 'error', status: 422, error: 'validation_failed', reason: 'The task was refused.', code: 'TASK.VALIDATION', detail: { violations: [{ field: 'StartDate', code: 'TASK.STARTDATE.PAST', reason: 'The first run must be later than now on this instance\'s clock.' }] } };
+    const { store, events } = mountEdit({ save: refusal as unknown as JsonResult<unknown> });
+    await store.open('1597');
+    store.setText('DailyStartTime', '02:00');
+    expect(await store.save()).toBe(false);
+    expect(store.violationFor('StartDate')).toContain('later than now');
+    expect(store.text('DailyStartTime')).toBe('02:00');
+    expect(store.saved()).toBe(false);
+    expect(events).toEqual([]);
+  });
+
+  it('Matrix "Absent": a task the instance no longer holds is absent', async () => {
+    const gone = { kind: 'error', status: 404, error: 'not_found', reason: 'This task no longer exists.', code: 'TASK.ABSENT', detail: null };
+    const { store } = mountEdit({ form: gone as unknown as JsonResult<unknown> });
+    await store.open('1597');
+    expect(store.loaded()).toBe(true);
+    expect(store.absent()).toBe(true);
+    expect(store.reason()).toBe('This task no longer exists.');
+  });
+
+  it('refresh re-reads the task while the form is clean, and leaves unsaved work alone', async () => {
+    const { store, calls } = mountEdit();
+    await store.open('1597');
+    await store.refresh();
+    expect(store.text('Description')).toBe('read again');
+    store.setText('Description', 'mine');
+    const before = calls.length;
+    await store.refresh();
+    expect(calls.length).toBe(before);
+    expect(store.text('Description')).toBe('mine');
+  });
+
+  it('AD-10 on an edit: keeping the account the task runs as is not running as another; moving it is', async () => {
+    const { store } = mountEdit();
+    await store.open('1597');
+    expect(store.runsAsOther('Least')).toBe(false);
+    store.setText('RunAsUser', 'Admin');
+    expect(store.runsAsOther('Least')).toBe(true);
+    store.setText('RunAsUser', 'least');
+    expect(store.runsAsOther('Least')).toBe(false);
+  });
+});

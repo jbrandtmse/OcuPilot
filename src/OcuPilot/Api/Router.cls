@@ -153,6 +153,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/ssl" Method="POST" Call="SslCreate"/>
   <Route Url="/tasks/form" Method="GET" Call="TaskFormRead"/>
   <Route Url="/tasks/check" Method="POST" Call="TaskCheck"/>
+  <Route Url="/tasks/:id" Method="PUT" Call="TaskUpdate"/>
   <Route Url="/tasks" Method="POST" Call="TaskCreate"/>
 </Routes>
 }
@@ -1050,6 +1051,13 @@ ClassMethod TaskFormRead() As %Status
 ClassMethod TaskCheck() As %Status
 {
     Quit ##class(OcuPilot.Area.Task.TaskRules).HandleCheck()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /tasks/:id</code>: Edit task's Save, resolved
+/// through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod TaskUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Task.TaskSave).HandleUpdate(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /tasks</code>: the wizard's Create task, resolved

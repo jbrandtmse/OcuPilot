@@ -8,6 +8,9 @@
 /// only the tool's settable keys, the rules, the tool's complete body, AD-10's prohibited set, the
 /// tool's derived output directory, and only then the port. A vendor refusal the port maps to a
 /// field answers as the form's own 422.</p>
+/// <p><b>Edit task's Save</b> (Story 9.8): <code>PUT /tasks/:id</code> changes one task through
+/// <class>OcuPilot.Screen.Tool.TaskUpdate</class>, in <method>Update</method>'s order, and answers
+/// <code>{id, name}</code> with 200.</p>
 /// <p>Seams a subclass may override: <method>PortClass</method> and
 /// <method>ProhibitedClass</method>. Production overrides neither.</p>
 Class OcuPilot.Area.Task.TaskSave Extends %RegisteredObject
@@ -15,6 +18,9 @@ Class OcuPilot.Area.Task.TaskSave Extends %RegisteredObject
 
 /// <p>The tool the create resolves through (AD-55).</p>
 Parameter CREATETOOL = "OcuPilot.Screen.Tool.TaskCreate";
+
+/// <p>The tool the edit resolves through (AD-55).</p>
+Parameter UPDATETOOL = "OcuPilot.Screen.Tool.TaskUpdate";
 
 /// <p>The screen whose declared pairs gate the route, and whose entity type and scope the prohibited
 /// set's reference carries (AD-8, AD-13).</p>
@@ -152,6 +158,129 @@ ClassMethod Create(pArgs As %DynamicObject, Output pHttpStatus As %Integer, Outp
     Quit tSC
 }
 
+/// <p>Answer <code>PUT /tasks/:id</code>: change task <var>pId</var> -- one path segment, decoded once
+/// here (AD-13) -- from the body, and answer <code>{id, name}</code> with 200. A task the instance does
+/// not hold is 404 <parameter>OcuPilot.Api.Error.TASKABSENT</parameter>; a key outside the tool's
+/// settable fields is 400 <parameter>OcuPilot.Api.Error.PORTFIELDUNEXPECTED</parameter>; a broken
+/// rule is one 422 envelope carrying every violation.</p>
+ClassMethod HandleUpdate(pId As %String) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tGateSC = ..Gate(.tRefused, ..#UPDATETOOL)
+        If tRefused || $$$ISERR(tGateSC) {
+            Set tSC = tGateSC
+            Quit
+        }
+        Set tBody = ""
+        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage)
+        If $$$ISERR(tReadSC) || '$IsObject(tBody) || 'tBody.%IsA("%Library.DynamicObject") {
+            Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
+            Quit
+        }
+        Set tId = ##class(OcuPilot.Kernel.EntityId).Decode(pId)
+        Set tPerformSC = ..Update(tId, tBody, .tHttp, .tFault, .tViolations, .tName)
+        If $Get(tViolations) > 0 {
+            Set tSC = ..RenderViolations(.tViolations)
+            Quit
+        }
+        If $$$ISERR(tPerformSC) && (+$Get(tHttp) = 404) {
+            Set tSC = ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#REASONTASKABSENT, ##class(OcuPilot.Api.Error).#TASKABSENT)
+            Quit
+        }
+        If $$$ISERR(tPerformSC) {
+            If '$IsObject($Get(tFault)) || (tFault.code = ##class(OcuPilot.Api.Error).#INTERNAL) {
+                Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tPerformSC))
+                Quit
+            }
+            Set tSC = ##class(OcuPilot.Api.Error).Render($Select(+$Get(tHttp): +tHttp, 1: 500), tFault.error, tFault.reason, tFault.code, tFault.%Get("detail"))
+            Quit
+        }
+        Set tAnswer = {}
+        Do tAnswer.%Set("id", +tId, "number")
+        Do tAnswer.%Set("name", tName, "string")
+        Set tSC = ##class(OcuPilot.Api.Response).JSONStatus(200, tAnswer)
+    } Catch ex {
+        Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
+    }
+    Quit tSC
+}
+
+/// <p>Change task <var>pId</var> by the fields <var>pArgs</var> sends, in <class>OcuPilot.Area.Security.SslSave</class>'s
+/// order: an integer id; the edit tool's fresh read; the keys the tool admits; the fields that change;
+/// the rules over them (<code>update</code> mode); the tool's own merge over the fresh read (AD-4);
+/// AD-10's set; and only then the port, whose <code>PUT</code> omits what the vendor keeps. A body
+/// that changes nothing sends nothing. <var>pName</var> is the task's name after the edit.</p>
+/// <p><b>Caller contract:</b> as <method>Create</method>'s, with <var>pHttpStatus</var> 404 for a task
+/// the instance does not hold.</p>
+ClassMethod Update(pId As %String, pArgs As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pViolations, Output pName As %String) As %Status
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set pName = ""
+    Kill pViolations
+    Set pViolations = 0
+    Set tSC = $$$OK
+    Try {
+        Set tClass = ..#UPDATETOOL
+        If '$Match(pId, "^[0-9]{1,18}$") {
+            Set pHttpStatus = 404
+            Set tSC = $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#TASKABSENT)
+            Quit
+        }
+        Kill tQuery
+        Set tQuery($ClassMethod(tClass, "ReadIdParam")) = pId
+        Set tSC = $ClassMethod(..UpdatePortClass(), "Invoke", $ClassMethod(tClass, "Endpoint"), $ClassMethod(tClass, "ReadType"), .tQuery, "", .tFresh, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject($Get(tFresh)) || 'tFresh.%IsA("%Library.DynamicObject") {
+            Set pHttpStatus = 404
+            Set tSC = $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#TASKABSENT)
+            Quit
+        }
+        Set pHttpStatus = 0
+        Set pFault = ""
+        Set pName = tFresh.%Get("Name")
+
+        Set tSettable = $ClassMethod(tClass, "SettableFields")
+        Set tSC = ..Undeclared(pArgs, tSettable, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+
+        Set tChanged = $ClassMethod(..#RULES, "Changed", pArgs, tFresh)
+        Set tSC = $ClassMethod(..#RULES, "Validate", "update", tChanged, .pViolations, 1, tFresh, pId)
+        If $$$ISERR(tSC) || (pViolations > 0) Quit
+        If tChanged.%Size() = 0 Quit
+
+        Set tSC = $ClassMethod(tClass, "MergeUpdate", tFresh, tChanged, $ClassMethod(tClass, "IdArgument"), tSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
+        If $$$ISERR(tSC) Quit
+        If tProblem '= "" {
+            Set tSC = $$$ERROR($$$GeneralError, "the edit's payload could not be merged after its rules passed: " _ tProblem)
+            Quit
+        }
+        If tDiff.%Size() = 0 Quit
+        Set tSC = ..Prohibited(tClass, pId, tPayload, tDiff, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit
+        Do $ClassMethod(tClass, "DerivedFields", tPayload)
+        Kill tQuery
+        Set tQuery($ClassMethod(tClass, "IdParam")) = pId
+        Set tSC = $ClassMethod(..UpdatePortClass(), "Invoke", $ClassMethod(tClass, "Endpoint"), $ClassMethod(tClass, "WriteType"), .tQuery, tPayload, .tWritten, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) {
+            Do ..PortViolations(pFault, .pViolations)
+            Quit
+        }
+        Set pName = tPayload.%Get("Name")
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The port the edit's read and write go through: the edit tool's own declaration (AD-52).
+/// Overridable for the reason <method>PortClass</method> is; production never overrides it.</p>
+ClassMethod UpdatePortClass() As %String
+{
+    Quit $ClassMethod(..#UPDATETOOL, "PortClass")
+}
+
 /// <p>Refuse every key of <var>pArgs</var> outside <var>pAllowed</var>: an error status with a 400
 /// <parameter>OcuPilot.Api.Error.PORTFIELDUNEXPECTED</parameter> fault naming each key in
 /// <code>detail.violations</code>, or <code>$$$OK</code>.</p>
@@ -224,16 +353,18 @@ ClassMethod RenderViolations(ByRef pViolations) As %Status
 }
 
 /// <p>Refuse a caller who does not hold <parameter>DESCRIPTORCLASS</parameter>'s declared pairs, or
-/// the pair the tool's write declares beyond them (AD-8), before anything is read or sent.</p>
-ClassMethod Gate(Output pRefused As %Boolean) As %Status
+/// the pair the tool's write declares beyond them (AD-8), before anything is read or sent.
+/// <var>pToolClass</var> is the write's tool, the create's when it names none.</p>
+ClassMethod Gate(Output pRefused As %Boolean, pToolClass As %String = "") As %Status
 {
     Set pRefused = 0
     Set tFailedPair = ""
+    Set tTool = $Select(pToolClass '= "": pToolClass, 1: ..#CREATETOOL)
     If '##class(OcuPilot.Screen.Gate).Evaluate(..#DESCRIPTORCLASS, .tFailedPair) {
         Set pRefused = 1
         Quit ##class(OcuPilot.Kernel.Denial).Envelope(tFailedPair)
     }
-    Set tPair = $ListBuild($Parameter(..#CREATETOOL, "WRITERESOURCE"), $Parameter(..#CREATETOOL, "WRITEPERMISSION"))
+    Set tPair = $ListBuild($Parameter(tTool, "WRITERESOURCE"), $Parameter(tTool, "WRITEPERMISSION"))
     If ##class(OcuPilot.Screen.Gate).EvaluatePairs($ListBuild(tPair), .tFailedPair) Quit $$$OK
     Set pRefused = 1
     Quit ##class(OcuPilot.Kernel.Denial).Envelope(tFailedPair)

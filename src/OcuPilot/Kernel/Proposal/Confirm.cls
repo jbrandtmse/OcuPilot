@@ -622,7 +622,8 @@ ClassMethod FingerprintMatches(pTool As %DynamicObject, ByRef pRow, Output pMatc
         If '$IsObject(tFresh) || 'tFresh.%IsA("%Library.DynamicObject") Quit
         Set pFresh = tFresh
         Set tArgs = ..ParsedObject($Get(pRow("arguments")))
-        Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Merge(tFresh, tArgs, tIdArgument, tSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
+        ; The tool's own merge, the one the mint took the stored digest over.
+        Set tSC = $ClassMethod(tClass, "MergeUpdate", tFresh, tArgs, tIdArgument, tSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
         If $$$ISERR(tSC) Quit
         If tProblem '= "" Quit
         Set tExcludes = ""

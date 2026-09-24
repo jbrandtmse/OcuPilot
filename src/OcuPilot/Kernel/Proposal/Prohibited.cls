@@ -347,6 +347,10 @@ Parameter APPLICATIONROLEFIELDS = "MatchRoles";
 
 Parameter FIELDCHANGEPASSWORD = "ChangePassword";
 
+/// <p>The object a task type's own settings travel under, whose <code>Settings.&lt;key&gt;</code> diff
+/// rows are judged as it (Story 9.8).</p>
+Parameter SETTINGSFIELD = "Settings";
+
 /// <p>The account's last usable date. The vendor refuses a sign-in after it and disables the account
 /// at that refusal (measured on this build), so a date before today is a disable by effect.</p>
 Parameter FIELDEXPIRATIONDATE = "ExpirationDate";
@@ -488,6 +492,7 @@ ClassMethod CoveredTypes() As %List
 /// card's warning, the recorded drop and the banner rather than a refusal (AD-15 as amended
 /// 2026-09-21). Every other property of that object -- the audit-database location, encryption --
 /// is refused by the reviewed-few rule.</p>
+/// <p>A task's thirty-two are <method>TaskChangeFields</method>'s.</p>
 /// <p>A write tool advertises no field outside this list, which is the other half of AD-10; the
 /// tool states its own admitted names and a test asserts the two agree, so the tool layer never
 /// reads the kernel.</p>
@@ -504,7 +509,24 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEWALLETSECRET Quit $ListBuild("Usage", "RequireTLS", "AllowedHosts", "Secret")
     If pType = ..#TYPEDEVICE Quit ..DeviceFields()
     If pType = ..#TYPESSL Quit ..SslFields() _ $ListBuild("PrivateKeyPassword")
+    If pType = ..#TYPETASK Quit ..TaskChangeFields()
     Quit ""
+}
+
+/// <p>The thirty-two fields a task edit may set (Story 9.8): a create's
+/// (<method>TaskCreateFields</method>) less <code>TaskClass</code> and <code>NameSpace</code>, because
+/// changing a task's type replaces every setting and stays a delete and a create. A change to one of
+/// the type's settings is judged as <code>Settings</code> (<method>Changed</method>). Running as
+/// another account is permitted and marked (<method>GrantsPrivilegeByEffect</method>).</p>
+ClassMethod TaskChangeFields() As %List
+{
+    Set tFields = ""
+    Set tCreate = ..TaskCreateFields()
+    For tI = 1:1:$ListLength(tCreate) {
+        If $ListFind($ListBuild("TaskClass", "NameSpace"), $List(tCreate, tI)) Continue
+        Set tFields = tFields _ $ListBuild($List(tCreate, tI))
+    }
+    Quit tFields
 }
 
 /// <p>The twenty-five web-application settings a change may set: every field of the classic
@@ -1307,11 +1329,12 @@ ClassMethod Auditing(ByRef pChanged, Output pProhibits As %Boolean, Output pCode
     Quit ..ReviewedFewOnly(..#TYPEAUDITING, .pChanged, .pProhibits, .pCode)
 }
 
-/// <p>The task predicate: the reviewed-few sweep and nothing else, over an empty permitted list.</p>
-/// <p><var>pChanged</var> is <method>Changed</method>'s answer. A task's one write sends no body
-/// (AD-51), so a proposal against a task changes no field and this refuses nothing; a proposal
-/// that does carry one is refused <parameter>UNCOVEREDFIELD</parameter>, because
-/// <method>PermittedChangeFields</method> names no task field anybody has reviewed.</p>
+/// <p>The task predicate: the reviewed-few sweep and nothing else, over
+/// <method>TaskChangeFields</method>.</p>
+/// <p><var>pChanged</var> is <method>Changed</method>'s answer. A task's action writes send no body
+/// (AD-51), so a proposal of one changes no field and this refuses nothing; an edit's fields are the
+/// reviewed thirty-two, and any other field is refused <parameter>UNCOVEREDFIELD</parameter> --
+/// the task's type and namespace among them.</p>
 /// <p><b>The state row the card shows is not a changed field.</b> An action-style write's diff
 /// names the state its action moves -- a resume's is labelled <code>Status</code> -- and
 /// <method>Changed</method> skips the row naming the tool's declared
@@ -1816,8 +1839,13 @@ ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject
         }
         If pType = ..#TYPETASK {
             ; A task that runs as another account runs with that account's privileges (Story 9.7).
+            ; An edit that keeps the account the live target already runs as grants nothing new
+            ; (Story 9.8); a create's target holds none.
             Set tRunAs = ""
             If pPayload.%GetTypeOf("RunAsUser") = "string" Set tRunAs = pPayload.%Get("RunAsUser")
+            Set tHeld = ""
+            If tTarget.%GetTypeOf("RunAsUser") = "string" Set tHeld = tTarget.%Get("RunAsUser")
+            If (tHeld '= "") && ($ZConvert(tRunAs, "U") = $ZConvert(tHeld, "U")) Quit
             Set pGrants = ((tRunAs '= "") && ($ZConvert(tRunAs, "U") '= $ZConvert($Username, "U")))
             Quit
         }
@@ -2440,6 +2468,17 @@ ClassMethod Changed(pDiff As %String, pPayload As %DynamicObject, pTarget As %Dy
             Set tField = tRow.%Get("field")
             If tField = "" Continue
             If $ListFind(pSkipped, tField) Continue
+            ; A task setting's row (Settings.<key>) is judged as the settings object it changes
+            ; (Story 9.8): its member is compared, and the change is recorded under the object.
+            If $Piece(tField, ".", 1) = ..#SETTINGSFIELD, $Length(tField, ".") > 1 {
+                Set tMember = $Piece(tField, ".", 2, *)
+                Set tField = ..#SETTINGSFIELD
+                If $Data(pChanged(tField)) Continue
+                If ..Rendered(..Member(pPayload, tField), tMember) = ..Rendered(..Member(pTarget, tField), tMember) Continue
+                Set pChanged(tField) = ""
+                Set pChanged = pChanged + 1
+                Continue
+            }
             If $Data(pChanged(tField)) Continue
             If ..Rendered(pPayload, tField) = ..Rendered(pTarget, tField) Continue
             Set pChanged(tField) = ""
@@ -2655,6 +2694,14 @@ ClassMethod ClearsResource(pPayload As %DynamicObject, pTarget As %DynamicObject
     If pPayload.%GetTypeOf("Resource") = "unassigned" Quit 0
     If ..Rendered(pPayload, "Resource") '= "" Quit 0
     Quit (..Rendered(pTarget, "Resource") '= "")
+}
+
+/// <p><var>pObject</var>'s object member <var>pName</var>, or <code>""</code> when it holds none.</p>
+ClassMethod Member(pObject As %DynamicObject, pName As %String) As %DynamicObject [ Private ]
+{
+    If '$IsObject(pObject) Quit ""
+    If pObject.%GetTypeOf(pName) '= "object" Quit ""
+    Quit pObject.%Get(pName)
 }
 
 /// <p><var>pText</var> parsed as a JSON object, or <code>{}</code> when it is empty or

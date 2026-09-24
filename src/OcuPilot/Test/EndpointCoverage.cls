@@ -160,6 +160,7 @@ XData Probes
 <probe class="Api.Router" method="POST" url="/ssl" path="/api/ocupilot/ssl" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/tasks/form" path="/api/ocupilot/tasks/form" disposition="envelope"/>
 <probe class="Api.Router" method="POST" url="/tasks/check" path="/api/ocupilot/tasks/check" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="PUT" url="/tasks/:id" path="/api/ocupilot/tasks/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/tasks" path="/api/ocupilot/tasks" disposition="envelope" refusal="1"/>
 <probe class="Api.Readiness" method="GET" url="/" path="/api/ocupilot/readiness/" disposition="envelope"/>
 <probe class="Api.StaticHandler" method="GET" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>

@@ -1,6 +1,6 @@
-/// <p>The New Task wizard's rules (AD-39, AD-55): the one rule set every caller of
-/// <class>OcuPilot.Screen.Tool.TaskCreate</class> applies (<method>Validate</method>), the complete
-/// body both callers send (<method>Compose</method>), the form's read (<method>HandleForm</method>)
+/// <p>The New Task wizard's and Edit task's rules (AD-39, AD-55): the one rule set every caller of
+/// <class>OcuPilot.Screen.Tool.TaskCreate</class> and <class>OcuPilot.Screen.Tool.TaskUpdate</class>
+/// applies (<method>Validate</method>), the complete body both callers send (<method>Compose</method>), the form's read (<method>HandleForm</method>)
 /// and the step check (<method>HandleCheck</method>).</p>
 /// <p><b>The field model is <code>%SYS.TaskSuper</code>'s</b> (AD-3): <code>TimePeriod</code> fixes
 /// how <code>TimePeriodEvery</code> and <code>TimePeriodDay</code> are read, and
@@ -10,7 +10,10 @@
 /// ignored and sent as the vendor's initial value (<method>Applied</method>).</p>
 /// <p><b>A task type's settings are that type's own values</b> (AD-21 as amended): each is checked by
 /// the type's own <code>&lt;setting&gt;IsValid</code>, in the task's namespace, as the vendor's task
-/// utility does. A credential-named setting and a collection setting are classic-only.</p>
+/// utility does. A secret-typed or credential-named setting and a collection setting are classic-only
+/// (<method>OcuPilot.Port.TaskPort.ClassicOnlySettings</method>).</p>
+/// <p><b>Story 9.8's edit uses the same rules</b> in <code>update</code> mode, over the task's fresh
+/// read (<method>ValidateUpdate</method>), and <method>HandleForm</method> reads a task by id.</p>
 /// <p><b>The output file is one name, never a path</b> (AD-21): it matches
 /// <parameter>OUTPUTFILEPATTERN</parameter>, a literal <code>..</code> is refused, and the tool
 /// writes it to the manager directory computed at call time.</p>
@@ -19,6 +22,16 @@ Class OcuPilot.Area.Task.TaskRules Extends %RegisteredObject
 
 /// <p>The tool both callers resolve the write through (AD-55).</p>
 Parameter CREATETOOL = "OcuPilot.Screen.Tool.TaskCreate";
+
+/// <p>The edit's tool, whose fresh read an edit's rules are judged over (Story 9.8).</p>
+Parameter UPDATETOOL = "OcuPilot.Screen.Tool.TaskUpdate";
+
+/// <p>The two fields an edit never changes: a new type replaces every setting, so it stays a delete
+/// and a create.</p>
+Parameter FIXEDFIELDS = "NameSpace,TaskClass";
+
+/// <p>The times the vendor compares by value.</p>
+Parameter TIMEFIELDS = "DailyStartTime,DailyEndTime";
 
 /// <p>The screen whose declared pairs gate these routes (AD-8).</p>
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.TaskForm";
@@ -75,12 +88,16 @@ Parameter SECURERESOURCE = "%Admin_Secure";
 /// <p>The settings field and the prefix a setting's violation lands under.</p>
 Parameter SETTINGS = "Settings";
 
-/// <p>Every rule over <var>pArgs</var> for <var>pMode</var> (<code>create</code>), each broken rule
-/// in <var>pViolations</var> (<code>pViolations(n) = $ListBuild(field, code)</code>, count in
-/// <code>pViolations</code>). A field the chosen period does not read is not judged.
-/// <var>pCheckTaken</var> 0 skips the name look-up, for a caller that has just made it.</p>
-ClassMethod Validate(pMode As %String, pArgs As %DynamicObject, Output pViolations, pCheckTaken As %Boolean = 1) As %Status
+/// <p>Every rule over <var>pArgs</var> for <var>pMode</var> (<code>create</code> or
+/// <code>update</code>), each broken rule in <var>pViolations</var>
+/// (<code>pViolations(n) = $ListBuild(field, code)</code>, count in <code>pViolations</code>). A field
+/// the chosen period does not read is not judged. <var>pCheckTaken</var> 0 skips the name look-up, for
+/// a caller that has just made it.</p>
+/// <p><b>An edit</b> (<code>update</code>) is judged over <var>pFresh</var>, the task's fresh read, and
+/// <var>pId</var>, its id (<method>ValidateUpdate</method>).</p>
+ClassMethod Validate(pMode As %String, pArgs As %DynamicObject, Output pViolations, pCheckTaken As %Boolean = 1, pFresh As %DynamicObject = "", pId As %String = "") As %Status
 {
+    If pMode = "update" Quit ..ValidateUpdate(pArgs, .pViolations, pCheckTaken, pFresh, pId)
     Kill pViolations
     Set pViolations = 0
     Set tSC = $$$OK
@@ -190,6 +207,249 @@ ClassMethod Validate(pMode As %String, pArgs As %DynamicObject, Output pViolatio
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>An edit's rules (Story 9.8): <var>pArgs</var> over the task's fresh read <var>pFresh</var>, a
+/// rule judged only when a field it reads changed (<method>Changed</method>, <method>Judged</method>),
+/// so a value the instance holds is sent back as it holds it -- a start already past among them.</p>
+/// <ul>
+/// <li>A rename another task's id already uses, compared without regard to case, is
+/// <code>TASK.NAME.TAKEN</code>; the task's own name is not a conflict.</li>
+/// <li>A changed output file is one name (AD-21), and is refused
+/// <code>TASK.OUTPUTFILENAME.CLASSICONLY</code> where the task writes to a directory that is neither
+/// empty nor the manager directory.</li>
+/// <li>A settings argument on a task whose read carries none is refused on <code>Settings</code>:
+/// <code>TASK.SETTING.SECRET</code> for a type holding a secret setting,
+/// <code>TASK.SETTING.CLASSICONLY</code> otherwise (AD-4 as amended); each changed setting is
+/// otherwise the type's own to accept.</li>
+/// </ul>
+/// <p>A task the read did not find is judged by no rule: the caller refuses its absence.</p>
+ClassMethod ValidateUpdate(pArgs As %DynamicObject, Output pViolations, pCheckTaken As %Boolean, pFresh As %DynamicObject, pId As %String) As %Status [ Private ]
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tSC = $$$OK
+    Try {
+        If '$IsObject(pFresh) || '$IsObject(pArgs) Quit
+        Set tChanged = ..Changed(pArgs, pFresh)
+        Set tMerged = ..Overlaid(pFresh, tChanged)
+        Set tSC = ..Validate("create", tMerged, .tAll, 0)
+        If $$$ISERR(tSC) Quit
+        For tI = 1:1:$Get(tAll) {
+            Set tField = $List(tAll(tI), 1)
+            If $ListFind($ListFromString(..#FIXEDFIELDS), tField) || ($Piece(tField, ".", 1) = ..#SETTINGS) Continue
+            If '..Judged(tField, tChanged) Continue
+            Do ..Add(.pViolations, tField, $List(tAll(tI), 2))
+        }
+        If pCheckTaken && (tChanged.%GetTypeOf("Name") '= "unassigned") && '..Refused(.pViolations, "Name") {
+            Set tSC = ..NameTaken(..Text(tChanged, "Name"), .tTaken, pId)
+            If $$$ISERR(tSC) Quit
+            If tTaken Do ..Add(.pViolations, "Name", ##class(OcuPilot.Api.Error).#TASKNAMETAKEN)
+        }
+        If (tChanged.%GetTypeOf("OutputFilename") '= "unassigned") && '..Refused(.pViolations, "OutputFilename") {
+            Set tDirectory = ..Text(pFresh, "OutputDirectory")
+            If (tDirectory '= "") && '..IsManagerDirectory(tDirectory) Do ..Add(.pViolations, "OutputFilename", ##class(OcuPilot.Api.Error).#TASKOUTPUTFILENAMECLASSICONLY)
+        }
+        If tChanged.%GetTypeOf(..#SETTINGS) '= "unassigned" {
+            Set tSC = ..ChangedSettingViolations(pFresh, tChanged.%Get(..#SETTINGS), .pViolations)
+            If $$$ISERR(tSC) Quit
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The fields of <var>pArgs</var> an edit changes against the fresh read <var>pFresh</var>, as an
+/// object holding each in the caller's own value: every field the edit's tool may set whose value
+/// differs, as <method>OcuPilot.Kernel.Proposal.Mint.Display</method> renders it. A time is compared
+/// by its value, a flag as a flag and an address list entry by entry. <code>Settings</code> carries
+/// only the settings whose text differs; against a read that carries no settings it is the argument
+/// whole, which the rules refuse.</p>
+ClassMethod Changed(pArgs As %DynamicObject, pFresh As %DynamicObject) As %DynamicObject
+{
+    Set tChanged = {}
+    If '$IsObject(pArgs) || 'pArgs.%IsA("%Library.DynamicObject") Quit tChanged
+    Set tFresh = $Select($IsObject(pFresh): pFresh, 1: {})
+    Set tFields = $ListFromString($Parameter(..#UPDATETOOL, "PERMITTEDFIELDS"))
+    For tI = 1:1:$ListLength(tFields) {
+        Set tField = $List(tFields, tI)
+        Set tType = pArgs.%GetTypeOf(tField)
+        If tType = "unassigned" Continue
+        If tField = ..#SETTINGS {
+            If (tType '= "object") || (tFresh.%GetTypeOf(tField) '= "object") {
+                Do tChanged.%Set(tField, pArgs.%Get(tField))
+                Continue
+            }
+            Set tHeld = tFresh.%Get(tField)
+            Set tSettings = {}
+            Set tIterator = pArgs.%Get(tField).%GetIterator()
+            While tIterator.%GetNext(.tKey, .tValue, .tValueType) {
+                If (tValueType '= "object") && (tValueType '= "array") && (tHeld.%GetTypeOf(tKey) '= "unassigned") {
+                    If ..SettingText(pArgs.%Get(tField), tKey) = ..SettingText(tHeld, tKey) Continue
+                }
+                If (tValueType = "object") || (tValueType = "array") {
+                    Do tSettings.%Set(tKey, tValue)
+                } Else {
+                    Do tSettings.%Set(tKey, tValue, tValueType)
+                }
+            }
+            If tSettings.%Size() > 0 Do tChanged.%Set(tField, tSettings)
+            Continue
+        }
+        If ..SameValue(tField, pArgs, tFresh) Continue
+        If (tType = "object") || (tType = "array") {
+            Do tChanged.%Set(tField, pArgs.%Get(tField))
+        } Else {
+            Do tChanged.%Set(tField, pArgs.%Get(tField), tType)
+        }
+    }
+    Quit tChanged
+}
+
+/// <p>Whether <var>pArgs</var>' <var>pField</var> holds what <var>pFresh</var> holds.</p>
+ClassMethod SameValue(pField As %String, pArgs As %DynamicObject, pFresh As %DynamicObject) As %Boolean [ Private ]
+{
+    If pFresh.%GetTypeOf(pField) = "unassigned" Quit 0
+    If $ListFind($ListFromString(..#TIMEFIELDS), pField) {
+        Set tSent = ..Seconds(..Text(pArgs, pField, .tOk))
+        If 'tOk || (tSent = "") Quit (..Text(pArgs, pField) = ..Text(pFresh, pField)) && tOk
+        Quit (tSent = ..Seconds(..Text(pFresh, pField)))
+    }
+    If $ListFind($ListFromString(..#FLAGS), pField) {
+        Set tFlag = ..Flag(pArgs, pField)
+        If tFlag = "" Quit 0
+        Quit (tFlag = ..Flag(pFresh, pField))
+    }
+    If $ListFind($ListFromString(..#EMAILFIELDS), pField) {
+        Set tSent = ..Addresses(pArgs, pField, .tOk)
+        If 'tOk Quit 0
+        Quit (..Joined(tSent) = ..Joined(..Addresses(pFresh, pField)))
+    }
+    Set tSentType = pArgs.%GetTypeOf(pField)
+    If (tSentType = "object") || (tSentType = "array") Quit 0
+    ; An account name is one account whatever its case.
+    If pField = "RunAsUser" Quit ($ZConvert(..Text(pArgs, pField), "U") = $ZConvert(..Text(pFresh, pField), "U"))
+    Quit (##class(OcuPilot.Kernel.Proposal.Mint).Display(pArgs.%Get(pField), tSentType) = ##class(OcuPilot.Kernel.Proposal.Mint).Display(pFresh.%Get(pField), pFresh.%GetTypeOf(pField)))
+}
+
+/// <p>A copy of <var>pFresh</var> with every field of <var>pChanged</var> but <code>Settings</code> set
+/// over it, in the caller's own value: the task as the edit would leave it.</p>
+ClassMethod Overlaid(pFresh As %DynamicObject, pChanged As %DynamicObject) As %DynamicObject [ Private ]
+{
+    Set tMerged = ##class(%DynamicAbstractObject).%FromJSON(pFresh.%ToJSON())
+    Set tIterator = pChanged.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue, .tType) {
+        If tKey = ..#SETTINGS Continue
+        If (tType = "object") || (tType = "array") {
+            Do tMerged.%Set(tKey, tValue)
+        } Else {
+            Do tMerged.%Set(tKey, tValue, tType)
+        }
+    }
+    Quit tMerged
+}
+
+/// <p>Whether an edit judges the rule that refused <var>pField</var>: whether a field that rule reads
+/// is one <var>pChanged</var> names. A schedule field is read with its period, the daily quadruple
+/// with one another, the start with its day's times and the end date with the start.</p>
+ClassMethod Judged(pField As %String, pChanged As %DynamicObject) As %Boolean [ Private ]
+{
+    Set tReads = $ListBuild(pField)
+    If $ListFind($ListBuild("TimePeriodEvery", "TimePeriodDay", "RunAfterGUID", "DailyStartTime", "Expires", "ExpiresDays", "ExpiresHours", "ExpiresMinutes"), pField) Set tReads = tReads _ $ListBuild("TimePeriod")
+    If $ListFind($ListBuild("DailyFrequency", "DailyFrequencyTime", "DailyIncrement", "DailyEndTime"), pField) Set tReads = tReads _ $ListBuild("TimePeriod", "DailyFrequency", "DailyFrequencyTime", "DailyIncrement", "DailyStartTime", "DailyEndTime")
+    If pField = "StartDate" Set tReads = tReads _ $ListBuild("TimePeriod", "DailyStartTime", "DailyEndTime")
+    If pField = "EndDate" Set tReads = tReads _ $ListBuild("TimePeriod", "StartDate")
+    Set tJudged = 0
+    For tI = 1:1:$ListLength(tReads) {
+        If pChanged.%GetTypeOf($List(tReads, tI)) '= "unassigned" Set tJudged = 1
+    }
+    Quit tJudged
+}
+
+/// <p>Whether <var>pViolations</var> already refuses <var>pField</var>.</p>
+ClassMethod Refused(ByRef pViolations, pField As %String) As %Boolean [ Private ]
+{
+    Set tRefused = 0
+    For tI = 1:1:$Get(pViolations) {
+        If $List(pViolations(tI), 1) = pField Set tRefused = 1
+    }
+    Quit tRefused
+}
+
+/// <p>Whether <var>pDirectory</var> is the instance's manager directory, computed now, a trailing
+/// separator ignored.</p>
+ClassMethod IsManagerDirectory(pDirectory As %String) As %Boolean [ Private ]
+{
+    Set tManager = $System.Util.ManagerDirectory()
+    Quit ($ZStrip(pDirectory, ">", "/\") = $ZStrip(tManager, ">", "/\"))
+}
+
+/// <p>The rules over an edit's changed settings <var>pSupplied</var> for the task read
+/// <var>pFresh</var> (AD-4 as amended, AD-35). A read that carries no settings is a type holding a
+/// classic-only setting, and any settings argument is refused on <code>Settings</code> before any port
+/// call. Otherwise each changed setting is one the type declares and no classic-only one, a scalar its
+/// own <code>&lt;setting&gt;IsValid</code> accepts, and non-empty where the type requires it.</p>
+ClassMethod ChangedSettingViolations(pFresh As %DynamicObject, pSupplied, ByRef pViolations) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set tClass = ..Text(pFresh, "TaskClass")
+    Set tNamespace = ..Text(pFresh, "NameSpace")
+    If pFresh.%GetTypeOf(..#SETTINGS) '= "object" {
+        Set tSC = ..WithheldSettingsCode(pFresh, .tCode)
+        If $$$ISERR(tSC) Quit tSC
+        Do ..Add(.pViolations, ..#SETTINGS, tCode)
+        Quit tSC
+    }
+    If '$IsObject(pSupplied) || 'pSupplied.%IsA("%Library.DynamicObject") {
+        Do ..Add(.pViolations, ..#SETTINGS, ##class(OcuPilot.Api.Error).#TASKFIELDSHAPE)
+        Quit tSC
+    }
+    Set tSC = ..TypeSettings(tClass, tNamespace, .tSettings, .tClassicOnly, .tKnown)
+    If $$$ISERR(tSC) Quit tSC
+    Set tIterator = pSupplied.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        Set tField = ..#SETTINGS _ "." _ tKey
+        If $Data(tClassicOnly(tKey)) {
+            Do ..Add(.pViolations, tField, $Select(tClassicOnly(tKey) = "secret": ##class(OcuPilot.Api.Error).#TASKSETTINGSECRET, 1: ##class(OcuPilot.Api.Error).#TASKSETTINGCLASSICONLY))
+            Continue
+        }
+        If '$Data(tSettings(tKey)) {
+            Do ..Add(.pViolations, tField, ##class(OcuPilot.Api.Error).#TASKSETTINGUNKNOWN)
+            Continue
+        }
+        Set tText = ..SettingText(pSupplied, tKey, .tOk)
+        If 'tOk {
+            Do ..Add(.pViolations, tField, ##class(OcuPilot.Api.Error).#TASKSETTINGINVALID)
+            Continue
+        }
+        If tText = "" {
+            If $ListGet(tSettings(tKey), 2) Do ..Add(.pViolations, tField, ##class(OcuPilot.Api.Error).#TASKSETTINGREQUIRED)
+            Continue
+        }
+        If '..SettingValid(tClass, tNamespace, tKey, tText) Do ..Add(.pViolations, tField, ##class(OcuPilot.Api.Error).#TASKSETTINGINVALID)
+    }
+    Quit tSC
+}
+
+/// <p>The code a settings argument on the task read <var>pFresh</var>, which carries no settings, is
+/// refused with: <code>TASK.SETTING.SECRET</code> when its type holds a secret setting, and
+/// <code>TASK.SETTING.CLASSICONLY</code> otherwise.</p>
+ClassMethod WithheldSettingsCode(pFresh As %DynamicObject, Output pCode As %String) As %Status
+{
+    Set pCode = ##class(OcuPilot.Api.Error).#TASKSETTINGCLASSICONLY
+    Set tSC = ##class(OcuPilot.Port.TaskPort).ClassicOnlySettings(..Text(pFresh, "TaskClass"), ..Text(pFresh, "NameSpace"), .tKinds)
+    If $$$ISERR(tSC) {
+        Set pCode = ##class(OcuPilot.Api.Error).#TASKSETTINGSECRET
+        Quit tSC
+    }
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tKinds(tKey))
+        If tKey = "" Quit
+        If tKinds(tKey) = "secret" Set pCode = ##class(OcuPilot.Api.Error).#TASKSETTINGSECRET
     }
     Quit tSC
 }
@@ -617,8 +877,9 @@ ClassMethod TypeEntry(pClass As %String, pNamespace As %String, Output pEntry As
 
 /// <p>Task type <var>pClass</var>'s settings in <var>pNamespace</var>:
 /// <code>pSettings(name) = $ListBuild(kind, required, default, label, options)</code>, and
-/// <code>pClassicOnly(name) = "secret"|"collection"</code>, with <var>pKnown</var> 0 when the class is
-/// not a compiled, non-abstract task type there. A setting is every property that is neither private
+/// <code>pClassicOnly(name) = "secret"|"collection"</code> as
+/// <method>OcuPilot.Port.TaskPort.ClassicOnlySettings</method> classifies them, with <var>pKnown</var>
+/// 0 when the class is not a compiled, non-abstract task type there. A setting is every property that is neither private
 /// nor <code>%</code>-named, which is what the vendor's <code>GetSettings</code> serializes.</p>
 ClassMethod TypeSettings(pClass As %String, pNamespace As %String, Output pSettings, Output pClassicOnly, Output pKnown As %Boolean, Output pName As %String, Output pOrder As %List) As %Status
 {
@@ -687,16 +948,15 @@ ClassMethod TypeSettings(pClass As %String, pNamespace As %String, Output pSetti
         }
         Set tObject = ""
         Set $NAMESPACE = tOrigNS
-        ; Back in the caller's namespace, where OcuPilot's own classes are.
+        ; Back in the caller's namespace, where OcuPilot's own classes are. The port's one
+        ; classifier says which settings are classic-only (Story 9.8).
+        Set tSC = ##class(OcuPilot.Port.TaskPort).ClassicOnlySettings(pClass, pNamespace, .tKinds)
+        If $$$ISERR(tSC) Quit
         For tI = 1:1:$Get(tRaw) {
             Set tName = $List(tRaw(tI), 1)
             Set pOrder = pOrder _ $ListBuild(tName)
-            If $List(tRaw(tI), 4) '= "" {
-                Set pClassicOnly(tName) = "collection"
-                Continue
-            }
-            If ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(tName) {
-                Set pClassicOnly(tName) = "secret"
+            If $Data(tKinds(tName)) {
+                Set pClassicOnly(tName) = tKinds(tName)
                 Continue
             }
             Set tType = $List(tRaw(tI), 2)
@@ -775,11 +1035,27 @@ ClassMethod RunAfter(Output pRows As %DynamicArray) As %Status
 
 /// <p>Whether a task named <var>pName</var> exists, compared without regard to case, through the
 /// same read the create's absence check makes (AD-54): the tool's list read filtered to that
-/// name.</p>
-ClassMethod NameTaken(pName As %String, Output pTaken As %Boolean) As %Status
+/// name. With <var>pExceptId</var>, an edit's rename, the task of that id is not a conflict and every
+/// other row holding the name is.</p>
+ClassMethod NameTaken(pName As %String, Output pTaken As %Boolean, pExceptId As %String = "") As %Status
 {
     Set pTaken = 0
     Set tTool = ..#CREATETOOL
+    If pExceptId '= "" {
+        Kill tQuery
+        Set tQuery($ClassMethod(tTool, "ReadIdParam")) = pName
+        Set tSC = $ClassMethod($ClassMethod(tTool, "PortClass"), "Invoke", $ClassMethod(tTool, "Endpoint"), "LIST", .tQuery, "", .tList, .tHttp, .tFault)
+        If $$$ISERR(tSC) Quit tSC
+        If '$IsObject($Get(tList)) Quit $$$OK
+        Set tIterator = tList.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            If '$IsObject(tRow) Continue
+            If $ZConvert(tRow.%Get("Name"), "U") '= $ZConvert(pName, "U") Continue
+            If ("" _ tRow.%Get("Id")) = ("" _ pExceptId) Continue
+            Set pTaken = 1
+        }
+        Quit $$$OK
+    }
     Kill tQuery
     Set tQuery($ClassMethod(tTool, "ReadIdParam")) = pName
     Set tSC = ##class(OcuPilot.Kernel.Proposal.Operation).ReadTarget(tTool, $ClassMethod(tTool, "PortClass"), $ClassMethod(tTool, "Endpoint"), .tQuery, pName, .tFresh, .tHttp, .tFault)
@@ -810,6 +1086,12 @@ ClassMethod IsReadable(pNamespace As %String) As %Boolean
 /// <code>{requiredFields, maxLengths, rules, defaults, namespace, types, runAfter}</code>. The
 /// namespace is the query's, or the default's when it names none; one the caller cannot read is a
 /// 422 on <code>NameSpace</code>.</p>
+/// <p><b><code>?id=&lt;n&gt;</code> reads a task for Edit task</b> (Story 9.8): the answer adds
+/// <code>task</code>, the edit tool's own fresh read with <code>Id</code>, and
+/// <code>settingsClassicOnly</code>, true when that read carries no settings because the type holds a
+/// classic-only one (AD-35); the namespace is the task's, and its types are answered only where the
+/// caller can read it. A task the instance does not hold is 404
+/// <parameter>OcuPilot.Api.Error.TASKABSENT</parameter>.</p>
 ClassMethod HandleForm() As %Status
 {
     Set tSC = $$$OK
@@ -820,6 +1102,36 @@ ClassMethod HandleForm() As %Status
             Quit
         }
         Set tDefaults = ..Defaults()
+        Set tId = $Get(%request.Data("id", 1))
+        Set tTask = ""
+        If tId '= "" {
+            Set tReadSC = ..ReadTask(tId, .tTask, .tHttp, .tFault)
+            If +$Get(tHttp) = 404 {
+                Set tSC = ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#REASONTASKABSENT, ##class(OcuPilot.Api.Error).#TASKABSENT)
+                Quit
+            }
+            If $$$ISERR(tReadSC) {
+                If '$IsObject($Get(tFault)) || (tFault.code = ##class(OcuPilot.Api.Error).#INTERNAL) {
+                    Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tReadSC))
+                    Quit
+                }
+                Set tSC = ##class(OcuPilot.Api.Error).Render($Select(+$Get(tHttp): +tHttp, 1: 500), tFault.error, tFault.reason, tFault.code, tFault.%Get("detail"))
+                Quit
+            }
+        }
+        If $IsObject(tTask) {
+            Set tNamespace = ..Text(tTask, "NameSpace")
+            Set tTypes = []
+            If ..IsReadable(tNamespace) {
+                Set tTypesSC = ..Types(tNamespace, .tTypes)
+                If $$$ISERR(tTypesSC) {
+                    Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tTypesSC))
+                    Quit
+                }
+            }
+            Set tSC = ..AnswerForm(tDefaults, tNamespace, tTypes, tTask)
+            Quit
+        }
         Set tNamespace = $Get(%request.Data("namespace", 1))
         If tNamespace = "" Set tNamespace = tDefaults.%Get("NameSpace")
         If '..IsReadable(tNamespace) {
@@ -831,6 +1143,48 @@ ClassMethod HandleForm() As %Status
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tTypesSC))
             Quit
         }
+        Set tSC = ..AnswerForm(tDefaults, tNamespace, tTypes, "")
+    } Catch ex {
+        Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
+    }
+    Quit tSC
+}
+
+/// <p>Task <var>pId</var> as the edit tool's own fresh read answers it, with <code>Id</code> set, in
+/// <var>pTask</var>. A 404, and an id that is not a whole number, answer <var>pHttpStatus</var> 404;
+/// any other refusal is the port's own.</p>
+ClassMethod ReadTask(pId As %String, Output pTask As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pTask = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    If '$Match(pId, "^[0-9]{1,18}$") {
+        Set pHttpStatus = 404
+        Quit $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#TASKABSENT)
+    }
+    Set tTool = ..#UPDATETOOL
+    Kill tQuery
+    Set tQuery($ClassMethod(tTool, "ReadIdParam")) = pId
+    Set tSC = $ClassMethod($ClassMethod(tTool, "PortClass"), "Invoke", $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "ReadType"), .tQuery, "", .tFresh, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject($Get(tFresh)) || 'tFresh.%IsA("%Library.DynamicObject") {
+        Set pHttpStatus = 404
+        Quit $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#TASKABSENT)
+    }
+    Do tFresh.%Set("Id", +pId, "number")
+    Set pTask = tFresh
+    Quit $$$OK
+}
+
+/// <p>Write the form read's answer: the rules, the defaults, <var>pNamespace</var> and its
+/// <var>pTypes</var>, the tasks to run after, and -- for an edit -- the task <var>pTask</var>.</p>
+ClassMethod AnswerForm(pDefaults As %DynamicObject, pNamespace As %String, pTypes As %DynamicArray, pTask As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Try {
+        Set tDefaults = pDefaults
+        Set tNamespace = pNamespace
+        Set tTypes = pTypes
         Set tRunAfterSC = ..RunAfter(.tRunAfter)
         If $$$ISERR(tRunAfterSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tRunAfterSC))
@@ -850,6 +1204,10 @@ ClassMethod HandleForm() As %Status
         Do tBody.%Set("namespace", tNamespace, "string")
         Do tBody.%Set("types", tTypes)
         Do tBody.%Set("runAfter", tRunAfter)
+        If $IsObject(pTask) {
+            Do tBody.%Set("task", pTask)
+            Do tBody.%Set("settingsClassicOnly", (pTask.%GetTypeOf(..#SETTINGS) = "unassigned"), "boolean")
+        }
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tBody)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)

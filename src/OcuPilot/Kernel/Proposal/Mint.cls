@@ -194,6 +194,10 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             ; one row per such name, empty on both sides, so the card asks for it beside the diff.
             ; The payload does not carry it and unchangedCount stays 0.
             If $$$ISOK(tSC) && (tProblem = "") Do ..AppendComposedSecrets(pToolClass, tDiff)
+        } ElseIf pToolClass '= "" {
+            ; A tool may merge an object argument member by member; the kernel's Merge is the
+            ; default every earlier change resolves to.
+            Set tSC = $ClassMethod(pToolClass, "MergeUpdate", tFresh, pArgs, pIdArgument, pSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
         } Else {
             Set tSC = ..Merge(tFresh, pArgs, pIdArgument, pSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
         }

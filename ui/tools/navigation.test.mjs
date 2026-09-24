@@ -249,15 +249,16 @@ test('editorScreenFor resolves a list to its unlisted, id-keyed editor and to no
   assert.equal(isListedScreen(screenForRoute('security/ssl/edit')), false, 'which takes no side-bar position');
   assert.equal(editorScreenFor(ssl)?.route, 'security/ssl/edit', 'and a row name opens the SSL/TLS editor at its id route');
   // Story 9.7: the Task schedule's Create opens the New Task wizard -- built, unlisted and keyed by
-  // an id -- which creates only until Story 9.8's Edit task reads the id, so a row's name keeps
-  // opening the task's details rather than the wizard.
-  // Mutation (Rule 19): drop TaskForm from `CREATE_ONLY_FORMS` -> the editor assertion below goes red.
+  // an id. Story 9.8's Edit task reads the id at the same form's id route, so the form is no longer
+  // create-only and the list pairs an editor as well as its detail screen; the name cell still opens
+  // the details (`data-table.ts`), where Edit is.
+  // Mutation (Rule 19): put TaskForm back in `CREATE_ONLY_FORMS` -> the editor assertion goes red.
   const schedule = screenForRoute('tasks/schedule');
   assert.equal(createFormFor(schedule)?.route, 'tasks/schedule/edit', 'the Task schedule\'s Create opens the New Task wizard');
   assert.equal(isListedScreen(screenForRoute('tasks/schedule/edit')), false, 'which takes no side-bar position');
-  assert.deepEqual([...CREATE_ONLY_FORMS], ['OcuPilot.Screen.Descriptor.TaskForm'], 'the wizard is the one create-only form');
-  assert.equal(editorScreenFor(schedule), null, 'so a row name opens no editor');
-  assert.equal(detailScreenFor(schedule)?.route, 'tasks/schedule/details', 'and keeps opening the task\'s details');
+  assert.deepEqual([...CREATE_ONLY_FORMS], [], 'no form is create-only');
+  assert.equal(editorScreenFor(schedule)?.route, 'tasks/schedule/edit', 'so a task opens Edit task at the form\'s id route');
+  assert.equal(detailScreenFor(schedule)?.route, 'tasks/schedule/details', 'beside the task\'s details');
   assert.equal(
     editorScreenFor(screenForRoute('security/ldap')),
     null,

@@ -147,6 +147,7 @@ XData Coverage
 <tool name="tasks.schedule.suspend" class="OcuPilot.Test.ToolWrite" method="TestTheTaskSuspendToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="tasks.schedule.delete" class="OcuPilot.Test.ToolWrite" method="TestTheTaskDeleteToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="tasks.schedule.create" class="OcuPilot.Test.TaskCreate" method="TestTheSchemaIsDerivedAndDescribedFromTaskSuper"/>
+<tool name="tasks.schedule.update" class="OcuPilot.Test.TaskUpdate" method="TestTheSchemaIsDerivedAndDescribed"/>
 <tool name="webapp.list.delete" class="OcuPilot.Test.ToolWrite" method="TestTheWebApplicationDeleteToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="webapp.list.update" class="OcuPilot.Test.ToolWrite" method="TestTheRegistryAdvertisesItAsAWriteToolFulfilledOnTheInstance"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>

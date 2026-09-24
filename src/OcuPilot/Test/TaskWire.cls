@@ -3,11 +3,14 @@
 /// 403 on every <code>/tasks</code> route, naming the pair, and nothing is created; the
 /// least-privileged principal the form declares creates a task; and running a task as another
 /// account without <code>%Admin_Secure:USE</code> is refused on <code>RunAsUser</code> before any write,
-/// which the instance itself also enforces (AC6).</p>
+/// which the instance itself also enforces (AC6). Edit task's two routes (Story 9.8) refuse the same
+/// callers, and the least-privileged principal edits a task that runs as another account while it
+/// leaves the account alone and is refused on <code>RunAsUser</code> when it moves it, on both
+/// callers (AC5).</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, and both
 /// <parameter>ARMINGVARIABLE</parameter> and <parameter>TASKVARIABLE</parameter> reading
 /// <code>1</code>, because it creates and deletes three users, three roles and probe tasks
-/// (<class>OcuPilot.Test.TaskProbe</class>). <method>OnBeforeAllTests</method> refuses anywhere
+/// (<class>OcuPilot.Test.TaskProbe</class>, <class>OcuPilot.Test.TaskEditProbe</class>). <method>OnBeforeAllTests</method> refuses anywhere
 /// either does not; every probe is removed by exact name.</p>
 Class OcuPilot.Test.TaskWire Extends %UnitTest.TestCase
 {
@@ -59,6 +62,8 @@ Method OnBeforeAllTests() As %Status
     Set ..PreparedPassword = "OcuPilotTask" _ $Translate($System.Encryption.Base64Encode($System.Encryption.GenCryptRand(18), 1), "+/=", "") _ "!Aa9"
     Set tSC = ##class(OcuPilot.Test.TaskProbe).RemoveAll()
     If $$$ISERR(tSC) Quit tSC
+    Set tSC = ##class(OcuPilot.Test.TaskEditProbe).RemoveAll()
+    If $$$ISERR(tSC) Quit tSC
     Quit ..EnsurePrincipals()
 }
 
@@ -67,6 +72,7 @@ Method OnBeforeAllTests() As %Status
 Method OnAfterAllTests() As %Status
 {
     Set tSC = ##class(OcuPilot.Test.TaskProbe).RemoveAll()
+    Set tSC = $$$ADDSC(tSC, ##class(OcuPilot.Test.TaskEditProbe).RemoveAll())
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
@@ -197,10 +203,112 @@ Method TestTheAgentsMintRefusesTheLeastPrincipalRunningAsAnother()
     Do $$$AssertEquals(##class(OcuPilot.Test.TaskProbe).IdOf("OcuP97AgentOther"), "", "and nothing was created")
 }
 
-/// <p>Log in as <var>pUser</var>, mint the task create <var>pArgs</var> (JSON) under turn
-/// <var>pTurnKey</var>, and signal <code>{username, http, problem}</code>, or <code>{error}</code>, to
-/// process <var>pParent</var>.</p>
-ClassMethod MintAs(pParent As %Integer, pUser As %String, pTurnKey As %String, pArgs As %String)
+/// <p>Story 9.8, AD-8: each caller lacking one declared pair is refused 403
+/// <code>AUTH.NOPRIVILEGE</code> on Edit task's form read and Save, naming that pair, and the task is
+/// unchanged.</p>
+/// <p>Mutation (Rule 19): delete the <code>Gate</code> call from
+/// <method>OcuPilot.Area.Task.TaskSave.HandleUpdate</method> -- the Save is refused by the instance
+/// instead, naming no pair, and this goes red.</p>
+Method TestTheEditRoutesRefuseACallerLackingAPair()
+{
+    Set tSC = ##class(OcuPilot.Test.TaskEditProbe).Create(##class(OcuPilot.Test.TaskEditProbe).Ac7("OcuP98Wire"), .tId)
+    Do $$$AssertStatusOK(tSC, "the probe task is created")
+    If $$$ISERR(tSC) Quit
+    Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")
+    Set tRoutes = $ListBuild($ListBuild("GET", "/tasks/form?id=" _ tId, ""), $ListBuild("PUT", "/tasks/" _ tId, "{""Description"":""refused""}"))
+    For tCaller = $ListBuild(..#NOTASKUSER, "%Admin_Task:USE"), $ListBuild(..#NOSYSREADUSER, "%DB_IRISSYS:READ") {
+        Set tUser = $List(tCaller, 1)
+        For tI = 1:1:$ListLength(tRoutes) {
+            Set tMethod = $List($List(tRoutes, tI), 1)
+            Set tPath = tBase _ $List($List(tRoutes, tI), 2)
+            Set tBody = $List($List(tRoutes, tI), 3)
+            Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest(tMethod, tPath, tUser, ..PreparedPassword, .tStatus, .tAnswer, .tHeaders, tBody, $Select(tBody = "": "", 1: "application/json"))
+            Set tRefusal = ""
+            Try { Set tRefusal = ##class(%DynamicObject).%FromJSON(tAnswer) } Catch {}
+            Set tSeen = $Select($IsObject(tRefusal): tRefusal.%Get("code") _ " " _ $Select($IsObject(tRefusal.%Get("detail")): tRefusal.%Get("detail").%Get("failedPair"), 1: ""), 1: "")
+            Do $$$AssertEquals(tStatus _ " " _ tSeen, "403 AUTH.NOPRIVILEGE " _ $List(tCaller, 2), tUser _ " " _ tMethod _ " " _ tPath _ ": is refused naming the pair")
+        }
+    }
+    Set tStored = ##class(OcuPilot.Test.TaskEditProbe).Stored(tId)
+    Do $$$AssertTrue($IsObject(tStored), "the task reads back")
+    If $IsObject(tStored) Do $$$AssertEquals(tStored.%Get("Description"), "OcuPilot edit probe", "and the task is unchanged")
+    Do ##class(OcuPilot.Test.TaskEditProbe).Remove(tId)
+}
+
+/// <p>AC5 with a real principal lacking <code>%Admin_Secure:USE</code>: it edits the Description of a
+/// task that runs as <code>_SYSTEM</code> over the wire, and its agent proposal of the same edit is not
+/// destructive; moving a task it runs as itself to <code>_SYSTEM</code> is refused on
+/// <code>RunAsUser</code> with <code>TASK.RUNASUSER.SECURE</code> by the Save and by the agent's mint,
+/// and nothing is sent.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Area.Task.TaskRules.ValidateUpdate</method> judge every
+/// rule whatever changed -- the Description edit is refused on RunAsUser and this goes red.</p>
+Method TestTheLeastPrincipalEditsButCannotMoveRunAs()
+{
+    Set tArgs = ##class(OcuPilot.Test.TaskEditProbe).Ac7("OcuP98AsSystem")
+    Do tArgs.%Set("RunAsUser", "_SYSTEM", "string")
+    Set tSC = ##class(OcuPilot.Test.TaskEditProbe).Create(tArgs, .tSystemId)
+    Do $$$AssertStatusOK(tSC, "a probe task running as _SYSTEM is created")
+    If $$$ISERR(tSC) Quit
+    Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("PUT", tBase _ "/tasks/" _ tSystemId, ..#LEASTUSER, ..PreparedPassword, .tStatus, .tAnswer, .tHeaders, "{""Description"":""least edit""}", "application/json")
+    Do $$$AssertEquals(tStatus, 200, "the least-privileged principal edits it: " _ $Extract($Get(tAnswer), 1, 300))
+    Set tStored = ##class(OcuPilot.Test.TaskEditProbe).Stored(tSystemId)
+    Do $$$AssertTrue($IsObject(tStored), "the task reads back")
+    If $IsObject(tStored) Do $$$AssertEquals(tStored.%Get("Description") _ " " _ tStored.%Get("RunAsUser"), "least edit _SYSTEM", "and the task still runs as _SYSTEM")
+    Set tOut = ..AgentMint({"Id": (tSystemId), "Description": "least agent edit"})
+    Do $$$AssertEquals(tOut.%Get("error") _ tOut.%Get("username") _ " " _ tOut.%Get("http") _ " " _ tOut.%Get("destructive"), ..#LEASTUSER _ " 200 0", "its agent's proposal of the edit is minted, and not destructive: " _ tOut.%Get("problem"))
+
+    Set tBody = ##class(OcuPilot.Test.TaskEditProbe).Ac7("OcuP98AsLeast")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", tBase _ "/tasks", ..#LEASTUSER, ..PreparedPassword, .tStatus, .tAnswer, .tHeaders, tBody.%ToJSON(), "application/json")
+    Do $$$AssertEquals(tStatus, 201, "the principal creates a task running as itself: " _ $Extract($Get(tAnswer), 1, 300))
+    Set tOwnId = ##class(OcuPilot.Test.TaskEditProbe).IdOf("OcuP98AsLeast")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("PUT", tBase _ "/tasks/" _ tOwnId, ..#LEASTUSER, ..PreparedPassword, .tStatus, .tAnswer, .tHeaders, "{""RunAsUser"":""_SYSTEM""}", "application/json")
+    Set tPair = ""
+    Try { Set tPair = ##class(OcuPilot.Test.TaskSave).FirstPair(##class(%DynamicObject).%FromJSON(tAnswer)) } Catch {}
+    Do $$$AssertEquals(tStatus _ " " _ tPair, "422 RunAsUser:TASK.RUNASUSER.SECURE", "moving it to _SYSTEM is refused on the field")
+    Set tStored = ##class(OcuPilot.Test.TaskEditProbe).Stored(tOwnId)
+    Do $$$AssertTrue($IsObject(tStored), "the task reads back")
+    If $IsObject(tStored) Do $$$AssertEquals(tStored.%Get("RunAsUser"), ..#LEASTUSER, "and nothing is sent")
+    Set tOut = ..AgentMint({"Id": (tOwnId), "RunAsUser": "_SYSTEM"})
+    Do $$$AssertEquals(tOut.%Get("http"), 400, "the agent's mint is refused too")
+    Do $$$AssertTrue(tOut.%Get("problem") [ ("'RunAsUser': " _ ##class(OcuPilot.Api.Error).#REASONTASKRUNASUSERSECURE), "on RunAsUser: " _ tOut.%Get("problem"))
+    Do ##class(OcuPilot.Test.TaskEditProbe).Remove(tSystemId)
+    Do ##class(OcuPilot.Test.TaskEditProbe).Remove(tOwnId)
+}
+
+/// <p>The least-privileged principal's own mint of the edit <var>pArgs</var>, in a process logged in
+/// as it (<method>MintAs</method>), as <code>{username, http, problem, destructive}</code> or
+/// <code>{error}</code>.</p>
+Method AgentMint(pArgs As %DynamicObject) As %DynamicObject
+{
+    Set tOut = {}
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#LEASTUSER, "completed", .tTurnKey)
+    If $$$ISERR(tSC) Quit {"error": "no turn was seeded"}
+    Try {
+        Do $System.Event.Clear($Job)
+        Job ##class(OcuPilot.Test.TaskWire).MintAs($Job, ..#LEASTUSER, tTurnKey, pArgs.%ToJSON(), "OcuPilot.Screen.Tool.TaskUpdate")::10
+        If '$Test {
+            Do tOut.%Set("error", "the principal's process did not start")
+            Quit
+        }
+        Set tMessage = $System.Event.WaitMsg("", 120)
+        If $ListGet(tMessage, 1) '= 1 {
+            Do tOut.%Set("error", "the principal's process signalled nothing within 120 seconds")
+            Quit
+        }
+        Set tOut = ##class(%DynamicObject).%FromJSON($ListGet(tMessage, 2))
+    } Catch ex {
+        Do tOut.%Set("error", ex.DisplayString())
+    }
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+    Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
+    Quit tOut
+}
+
+/// <p>Log in as <var>pUser</var>, mint <var>pTool</var>'s proposal of <var>pArgs</var> (JSON) under
+/// turn <var>pTurnKey</var>, and signal <code>{username, http, problem, destructive}</code>, or
+/// <code>{error}</code>, to process <var>pParent</var>.</p>
+ClassMethod MintAs(pParent As %Integer, pUser As %String, pTurnKey As %String, pArgs As %String, pTool As %String = "OcuPilot.Screen.Tool.TaskCreate")
 {
     Set tOut = {}
     Try {
@@ -210,9 +318,13 @@ ClassMethod MintAs(pParent As %Integer, pUser As %String, pTurnKey As %String, p
         }
         Do tOut.%Set("username", $Username, "string")
         Set tArgs = ##class(%DynamicObject).%FromJSON(pArgs)
-        Set tTool = "OcuPilot.Screen.Tool.TaskCreate"
-        Set tSC = ##class(OcuPilot.Test.ProposalMint).Mint("OcuPilot.Screen.Descriptor.TaskScheduleList", $Parameter(tTool, "TOOLNAME"), $Username, "", pTurnKey, tArgs, "OcuPilot.Kernel.Agent.Limits", .tProposal, .tHttp, .tFault, $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), tArgs.%Get("Name"), $ClassMethod(tTool, "IdArgument"), $ClassMethod(tTool, "SettableFields"), tTool)
+        Set tTool = pTool
+        Set tSC = ##class(OcuPilot.Test.ProposalMint).Mint("OcuPilot.Screen.Descriptor.TaskScheduleList", $Parameter(tTool, "TOOLNAME"), $Username, "", pTurnKey, tArgs, "OcuPilot.Kernel.Agent.Limits", .tProposal, .tHttp, .tFault, $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), "" _ tArgs.%Get($ClassMethod(tTool, "IdArgument")), $ClassMethod(tTool, "IdArgument"), $ClassMethod(tTool, "SettableFields"), tTool)
         Do tOut.%Set("http", +$Get(tHttp), "number")
+        If $IsObject($Get(tProposal)) {
+            Set tStoredSC = ##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tProposal.%Get("proposalId"), .tFound, .tValues)
+            Do tOut.%Set("destructive", +$Get(tValues("destructive")), "number")
+        }
         Set tProblem = ""
         If $IsObject($Get(tFault)) Set tProblem = $Select(tFault.%GetTypeOf("detail") = "object": tFault.%Get("detail").%Get("problem"), 1: tFault.%Get("reason"))
         Do tOut.%Set("problem", tProblem, "string")

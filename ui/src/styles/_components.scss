@@ -5763,3 +5763,15 @@ app-task-wizard-page .ocu-field-checkbox input[type='checkbox'] {
   justify-content: center;
   padding: var(--ocu-space-2) var(--ocu-panel-gutter) 0 var(--ocu-space-4);
 }
+
+// Edit task's flags and day boxes are 24px targets (DW-1337), as the New Task wizard's are: the
+// checkbox itself and the label that wraps it (Story 9.8).
+app-task-editor-page .ocu-field-checkbox {
+  min-block-size: var(--ocu-space-6);
+}
+
+app-task-editor-page .ocu-field-checkbox input[type='checkbox'] {
+  inline-size: var(--ocu-space-6);
+  block-size: var(--ocu-space-6);
+  margin: 0;
+}
