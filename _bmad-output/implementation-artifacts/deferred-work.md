@@ -1772,6 +1772,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: field-lists.mjs CREDENTIAL_RE anchors at the end of a name; widening it re-classifies across 47 generated field lists
 - 2026-09-14T20:00:36Z status=wontfix-accepted owner=2-7-the-ssl-tls-configurations-list by=harvest note=reopen_if=a descriptor or tool schema emits a key-material field the guard did not catch
 - 2026-09-14T20:24:50Z status=routed owner=9-5-the-ssl-tls-editor by=adjudication note=reopened on the reviewer's evidence: the SSL/TLS editor's detail read carries PrivateKeyFile, PrivateKeyType, CertificateFile, CAFile and CAPath, five of the six names the suffix-anchored guard misses, so the hole is reachable there; widen CREDENTIAL_RE (or add an exact-name set) and re-check field-lists classification in that story
+- 2026-09-24T09:53:33Z status=by-design by=spec_gate note=SSL GET carries no key material (measured); flagged names are paths/algorithm; PrivateKeyPassword already matches; widening moves the pinned 3-way list
 
 ### DW-269: The vendor tasks LIST coerces every task's Suspended to false, so a suspended task cannot be told from a running one in a list read - Story 4.10's Home line 'tasks suspended after an error' has no source
 - source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: low | footprint: in-epic

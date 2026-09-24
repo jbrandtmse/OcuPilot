@@ -305,6 +305,12 @@ Client:
   - `ui/browser/security-deletes.browser-spec.mjs` (new): the X.509 and wallet row deletes through the typed-name dialog.
   - `ssl.browser-spec.mjs`: the list's Create and empty-state lines.
 
+- SSL delete (orchestrator ruling 2026-09-24, FR-42's delete had no owner; epics.md 9.5 amended):
+  - `security.ssl.delete` (new, destructive action write on `Security.SSLConfig` DELETE, measured on `ocupilot-ci` first), with its refusal inside `ScreenActionDelta` as 9.3's delete tools do; `rowActions` Delete on the SSL list through AD-53's route and the typed-name dialog.
+  - Deleting `OcuPilotProvider` is refused `PROHIBITED.OCUPILOTSSL` on both callers (AD-10's own-SSL arm covers delete as well as the four fields); a test reddens when that refusal is removed.
+  - Browser: the SSL list's Delete leg in `security-deletes.browser-spec.mjs` (a probe config deleted through the typed-name dialog; `OcuPilotProvider`'s Delete drawn refused).
+- Test connection (AD-39's named exception, spine amended 2026-09-24): the result lines reach the screen only. Add a test that fails if a failure's `%Status` text reaches a tool result, the model, a ledger row, an audit payload or a log line (there is no agent tool for Test; assert the route's text is absent from every server-side sink it could reach).
+
 **Acceptance Criteria:**
 
 - **AC1.** Given the editor, when it opens, then its tabs cover certificates and key (Credentials), CA and peer verification (Verification), protocol minimum and maximum, ciphers and DH bits (Cryptographic settings), and OCSP (OCSP settings). Each value is read from the instance. A file location is shown and never settable, and the Verification tab states that a CRL is not set on a configuration.
@@ -315,9 +321,12 @@ Client:
 - **AC6 (DW-1541, DW-1556).** Given the X.509 list or the Secrets list, when Delete is chosen and the name typed, then the object is deleted through AD-53's route and the list re-reads. The agent's `security.secrets.delete` is destructive.
 - **AC7 (DW-332).** Given a test class calling `Security.SSLConfigs` Create or Delete, or the fixture helpers, with no arming refusal, when `check-objectscript.py` runs, then it fails naming the class. `Demo` and `DemoFaults` are armed and rostered.
 - **AC8 (DW-391).** Given a Switches hold whose user no longer resolves, when it renders, then it reads `faultAbsentEntityNoList`, which is published.
+- **AC9 (SSL delete).** Given the SSL list, when Delete is chosen and the name typed, then the configuration is deleted through AD-53's route and the list re-reads; `OcuPilotProvider` is refused on both callers under AD-10; the agent's `security.ssl.delete` is destructive.
 - **Integration.** `SslFormPage` consumes `form-tabs`, the Save routes and the test route. A refused Save on an unselected tab opens it with its dot, and a created configuration is reached through the list's name cell. The browser spec observes both.
 
 ## Spec Change Log
+
+- 2026-09-24 spec gate (lead): orchestrator rulings (a) on all three questions - AD-39 gains the Test-connection named exception (spine amended); AC1's CRL is a caption (epics.md amended); SSL delete added to this story (epics.md amended; Tasks, AC9). AD-10's `PROHIBITED.OCUPILOTSSL` and AD-21's SSL file-field clause were accepted as applied.
 
 ## Review Triage Log
 

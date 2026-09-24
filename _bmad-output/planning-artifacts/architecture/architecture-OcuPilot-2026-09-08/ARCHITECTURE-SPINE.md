@@ -448,6 +448,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Vendor error text is normalized before it reaches either.** A `%Status` from an `%Api.Admin.*` class is written for a portal developer: it names internal classes, ids and occasionally paths. It is mapped to OcuPilot's slug and a written reason at the port boundary, with the raw text kept for the log and the ledger only. Untrusted or vendor-authored text that does reach the model arrives as delimited tool-result content (AD-11), never as an instruction and never as OcuPilot's own voice.
 
+  **One named exception: an SSL/TLS configuration's Test connection answers the instance's own result lines** - the vendor's `Info` on success, each `%Status` error text on failure - because that text is the result the operator asked for (Story 9.5, AC4). It reaches the screen only, as text, and never the model, a tool result, a ledger row, an audit payload or a log line [AMENDED 2026-09-24, Story 9.5 spec gate, orchestrator ruling, Rule 20].
+
 ### AD-40 — Confirm is reachable only from the browser, and the write gate is on the write
 
 - **Binds:** AD-1, AD-6, AD-7, FR-17, FR-18

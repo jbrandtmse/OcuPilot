@@ -4731,7 +4731,7 @@ So that the instance's outbound and inbound TLS is manageable from the portal.
 
 - **Given** the editor
 - **When** it opens
-- **Then** its tabs cover certificates, key, CA, CRL, protocol minimum and maximum, ciphers, DH bits, OCSP and peer verification.
+- **Then** its tabs cover certificates, key, CA, protocol minimum and maximum, ciphers, DH bits, OCSP and peer verification, and the CRL slot is a caption saying the setting is deprecated and not exposed [AMENDED 2026-09-24 - see the story change log: `CRLFile` is `[Deprecated, Internal]`, absent from the endpoint's template and from its GET, so no reachable outcome shows or sets it; orchestrator ruling at the 9.5 spec gate].
 
 - **Given** private key material entered in the form
 - **When** any read is made afterwards
@@ -4744,6 +4744,10 @@ So that the instance's outbound and inbound TLS is manageable from the portal.
 - **Given** an SSL/TLS configuration
 - **When** the user runs its test connection
 - **Then** the instance's own result text is reported, success or failure (moved from Story 12.1 by the 2026-09-17 amendment).
+
+- **Given** an SSL/TLS configuration on its list
+- **When** the user deletes it, or the agent proposes deleting it
+- **Then** it is deleted through the one delete tool on AD-53's route after the typed-name confirmation, and deleting OcuPilot's own provider configuration is refused on both callers under AD-10 [ADDED 2026-09-24 - see the story change log: FR-42's delete had no owning story; orchestrator ruling at the 9.5 spec gate].
 
 ---
 
