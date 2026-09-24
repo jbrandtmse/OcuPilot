@@ -79,10 +79,11 @@ const ID_RULES: Readonly<Record<string, (id: string) => string>> = {
   // surrounding space or tab dropped, a leading `+` dropped, leading zeros dropped, a negative
   // zero answered as `0` -- because `OcuPilot.Kernel.EntityRef.PlainInteger` answers it the same
   // way, and two languages agreeing about numeric precision is not something a key builder may
-  // depend on. A value that is not an optionally-signed run of digits is answered verbatim.
+  // depend on. A value that is not an optionally-signed run of digits is folded to lower case: a
+  // task create's target is the new task's name, compared without regard to case (AD-13, AD-54).
   integer: (id) => {
     const match = /^[ \t]*([+-]?)0*([0-9]+)[ \t]*$/.exec(id);
-    if (match === null) return id;
+    if (match === null) return id.toLowerCase();
     const digits = match[2];
     return (match[1] === '-' && digits !== '0' ? '-' : '') + digits;
   },

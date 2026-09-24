@@ -333,7 +333,7 @@ function choices(values: readonly string[], labels: readonly string[]): readonly
                   <div class="ocu-field">
                     <label class="ocu-field-label ocu-field-label-required" [attr.for]="weekdayId">{{ STRINGS.taskDayOfWeek }}</label>
                     <div class="ocu-field-control">
-                      <select class="ocu-field-input" [id]="weekdayId" aria-required="true" (change)="onWeekday($event)">
+                      <select class="ocu-field-input" [id]="weekdayId" aria-required="true" [attr.aria-invalid]="view.invalid" [attr.aria-describedby]="view.describedBy" (change)="onWeekday($event)">
                         @for (option of weekdayChoices; track option.value) {
                           <option [value]="option.value" [selected]="option.value === specialWeekday">{{ option.label }}</option>
                         }
@@ -913,13 +913,16 @@ export class TaskWizardPage {
     const reason = this.store.violationFor(field);
     const invalid = reason !== '';
     const value = this.store.setting(setting.name);
+    const options: Choice[] = setting.options.map((option) => ({ value: option.value, label: option.label }));
     return {
       field: setting.name,
       id,
       label: setting.label,
       value,
       checked: value === '1' || value === 'true',
-      options: setting.options.map((option) => ({ value: option.value, label: option.label })),
+      // A held value no option names -- a type's empty default -- is drawn as its own first option,
+      // as `view` does, so the select shows what will be sent.
+      options: options.length === 0 || options.some((option) => option.value === value) ? options : [{ value, label: value }, ...options],
       required: setting.required,
       reason,
       invalid,

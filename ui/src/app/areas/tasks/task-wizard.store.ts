@@ -96,15 +96,15 @@ function clockOf(value: string): string {
 }
 
 /**
- * `TimePeriodDay` once the period is `period`: the held value where that period reads it as it
- * stands, else the period's own starting value -- no day for Weekly, the 1st for Monthly, and the
- * first Sunday for Monthly Special.
+ * `TimePeriodDay` once the period changes to `period`: that period's own starting value -- no day
+ * for Weekly, the 1st for Monthly, the first Sunday for Monthly Special, none otherwise. A held day
+ * is never carried over, because each period reads it differently: Weekly's `24` is Monday and
+ * Wednesday, Monthly's is the 24th.
  */
-function dayFor(period: string, held: string): string {
-  if (period === 'Weekly') return /^[1-7]+$/.test(held) ? held : '';
-  if (period === 'Monthly') return /^\d{1,2}$/.test(held) ? held : '1';
-  if (period === 'Monthly Special') return /^[1-5]\^[1-7]$/.test(held) ? held : '1^1';
-  return held;
+function dayFor(period: string): string {
+  if (period === 'Monthly') return '1';
+  if (period === 'Monthly Special') return '1^1';
+  return '';
 }
 
 /** The values the form read's `defaults` start the wizard on. */
@@ -405,7 +405,7 @@ export class TaskWizard {
       this.violationList = this.violationList.filter((entry) => !entry.field.startsWith(SETTING_PREFIX));
     }
     let text = { ...this.valuesValue.text, [field]: value };
-    if (field === 'TimePeriod') text = { ...text, TimePeriodDay: dayFor(value, this.text('TimePeriodDay')) };
+    if (field === 'TimePeriod') text = { ...text, TimePeriodDay: dayFor(value) };
     this.valuesValue = { ...this.valuesValue, text, settings };
     this.change(field);
     if (field === 'NameSpace') void this.loadTypes(value);

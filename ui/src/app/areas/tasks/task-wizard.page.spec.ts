@@ -73,6 +73,12 @@ const FORM = {
       settings: [{ name: 'KeepDays', label: 'KeepDays', kind: 'number', required: true, default: '7' }],
       classicOnly: [],
     },
+    {
+      class: 'OcuPilot.Test.SelectTask',
+      name: 'SelectTask',
+      settings: [{ name: 'Mode', label: 'Mode', kind: 'select', required: false, default: '', options: [{ value: 'A', label: 'A' }, { value: 'B', label: 'B' }] }],
+      classicOnly: [],
+    },
   ],
   runAfter: [{ guid: 'G-1', id: 7, name: 'Purge Tasks' }],
 };
@@ -210,6 +216,16 @@ describe('TaskWizardPage', () => {
     expect((host.querySelector('#ocu-task-Settings-KeepDays') as HTMLInputElement).value).toBe('7');
   });
 
+  // Mutation (Rule 19): drop the held-value option from `settingView` -> the select shows 'A' and this goes red.
+  it('a select setting whose default no option names shows that default, not the first option', async () => {
+    const { fixture, host } = await mount();
+    type(host, 'ocu-task-Name', 'OcuP97W');
+    await next(fixture, host);
+    type(host, 'ocu-task-TaskClass', 'OcuPilot.Test.SelectTask');
+    await settle(fixture);
+    expect((host.querySelector('#ocu-task-Settings-Mode') as HTMLSelectElement).value).toBe('');
+  });
+
   it('the Schedule step draws only what the period reads: On Demand draws no frequency, date or expiry', async () => {
     const { fixture, host } = await mount();
     type(host, 'ocu-task-Name', 'OcuP97W');
@@ -274,6 +290,7 @@ describe('TaskWizardPage', () => {
     await next(fixture, host);
     await next(fixture, host);
     (host.querySelector('#ocu-task-OutputFileIsBinary') as HTMLInputElement).click();
+    (host.querySelector('#ocu-task-EmailOutput') as HTMLInputElement).click();
     for (const field of ['Priority', 'MirrorStatus', 'RunAsUser', 'OutputFilename']) {
       expect(host.querySelectorAll(`#ocu-task-${field}`), `one control for ${field}`).toHaveLength(1);
     }
@@ -283,7 +300,7 @@ describe('TaskWizardPage', () => {
     primary(host).click();
     await settle(fixture);
     const create = calls.find((call) => call.path === TASKS_PATH);
-    expect(JSON.parse(create?.body ?? '{}')).toMatchObject({ Name: 'OcuP97W', Priority: 'Low', OutputFileIsBinary: true, Settings: { KeepDays: '7' } });
+    expect(JSON.parse(create?.body ?? '{}')).toMatchObject({ Name: 'OcuP97W', Priority: 'Low', OutputFileIsBinary: true, EmailOutput: true, Settings: { KeepDays: '7' } });
     expect(navigate).toHaveBeenCalledWith('/tasks/schedule/details/1391?ns=HSCUSTOM', { replaceUrl: true });
   });
 });

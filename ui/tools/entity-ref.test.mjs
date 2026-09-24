@@ -255,8 +255,8 @@ test('AD-13: the singleton rule answers one id for every spelling, from the mirr
 // because a key builder cannot depend on two languages agreeing about numeric precision.
 //
 // Mutation (Rule 19): implement `integer` as `(id) => id` in `entity-ref.ts` -> every folding row
-// below goes red; drop the verbatim arm -> the non-integer rows go red.
-test('AD-13: the integer rule folds a task id to its plain decimal spelling, and leaves anything else', () => {
+// below goes red; answer a non-integer verbatim -> the task-name row goes red.
+test('AD-13: the integer rule folds a task id to its plain decimal spelling, and any other value to lower case', () => {
   const type = 'task';
   assert.equal(ENTITY_ID_RULES[type], 'integer', 'the mirrored table declares the rule');
   for (const spelling of ['7', '007', '+7', ' 7 ', '\t7', '0000007']) {
@@ -266,8 +266,11 @@ test('AD-13: the integer rule folds a task id to its plain decimal spelling, and
   assert.equal(normalizeEntityId(type, '-007'), '-7', 'and a negative id keeps its sign');
   assert.equal(normalizeEntityId(type, '0'), '0');
   for (const verbatim of ['7.0', 'abc', '', '7a', '1 2', '0x7']) {
-    assert.equal(normalizeEntityId(type, verbatim), verbatim, `'${verbatim}' is not an integer and is answered verbatim`);
+    assert.equal(normalizeEntityId(type, verbatim), verbatim, `'${verbatim}' is not an integer and keeps its spelling`);
   }
+  // Story 9.7: a task create's target is the name, compared without regard to case by both callers.
+  assert.equal(normalizeEntityId(type, 'OcuP97Nightly'), 'ocup97nightly', 'a task name folds to lower case');
+  assert.equal(entityRefKey(type, 'instance', 'NIGHTLY'), entityRefKey(type, 'instance', 'Nightly'), 'so two spellings of one name build one key');
   assert.equal(
     entityRefKey(type, 'instance', '007'),
     entityRefKey(type, 'instance', '7'),

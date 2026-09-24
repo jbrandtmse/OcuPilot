@@ -92,7 +92,9 @@ Parameter RULESINGLETON = "singleton";
 /// <code>" 7 "</code> are spellings of one target and would otherwise be three keys. Measured on
 /// this build against <code>Process</code>'s own <code>GET</code>, <code>"837"</code>,
 /// <code>"0837"</code>, <code>"+837"</code> and <code>"837 "</code> all answer pid 837. A value
-/// this rule cannot read as an integer is answered verbatim, as a type with no rule is.</p>
+/// this rule cannot read as an integer is folded to lower case: a task create's target is the new
+/// task's name, which both create callers compare without regard to case, so two spellings of one
+/// name are one key and AD-34's per-target lock covers both (AD-13, AD-54).</p>
 Parameter RULEINTEGER = "integer";
 
 /// <p>The one id a <parameter>RULESINGLETON</parameter> type's reference carries.
@@ -254,8 +256,8 @@ ClassMethod NormalizedId(pType As %String, pId As %String) As %String
 
 /// <p><var>pId</var>'s plain decimal spelling: surrounding whitespace dropped, a leading
 /// <code>+</code> dropped, leading zeros dropped, and a negative zero answered as
-/// <code>0</code>. A value that is not an optionally-signed run of digits is answered
-/// verbatim.</p>
+/// <code>0</code>. A value that is not an optionally-signed run of digits is answered folded
+/// to lower case (<parameter>RULEINTEGER</parameter>).</p>
 /// <p><b>It normalizes the string rather than arithmetic on it</b>, so
 /// <file>ui/src/app/core/entity-ref.ts</file> can answer the same thing without depending on two
 /// languages agreeing about numeric precision -- the divergence a key builder cannot afford
@@ -263,7 +265,7 @@ ClassMethod NormalizedId(pType As %String, pId As %String) As %String
 ClassMethod PlainInteger(pId As %String) As %String [ Private ]
 {
     Set tId = $ZStrip(pId, "<>W")
-    If '$Match(tId, "^[+-]?[0-9]+$") Quit pId
+    If '$Match(tId, "^[+-]?[0-9]+$") Quit $ZConvert(pId, "L")
     Set tSign = ""
     If $Extract(tId) = "+" Set tId = $Extract(tId, 2, *)
     If $Extract(tId) = "-" Set tSign = "-", tId = $Extract(tId, 2, *)

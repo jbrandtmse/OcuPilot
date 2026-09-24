@@ -253,6 +253,19 @@ describe('TaskWizard', () => {
     expect(formDirty.dirty()).toBe(false);
   });
 
+  // Mutation (Rule 19): carry the held day into the new period in `dayFor` -> this goes red on 24.
+  it('a period change starts the day over, so Weekly\'s days never become a day of the month', async () => {
+    const { store } = mount();
+    await store.open();
+    store.setText('TimePeriod', 'Weekly');
+    store.setText('TimePeriodDay', '24');
+    store.setText('TimePeriod', 'Monthly');
+    expect(store.text('TimePeriodDay')).toBe('1');
+    store.setText('TimePeriodDay', '5');
+    store.setText('TimePeriod', 'Weekly');
+    expect(store.text('TimePeriodDay'), 'nor the 5th a Thursday').toBe('');
+  });
+
   it('a refused create keeps every value, publishes nothing, and opens every step to the person', async () => {
     const refused: JsonResult<unknown> = {
       kind: 'error',

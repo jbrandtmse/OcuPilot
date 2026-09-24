@@ -92,6 +92,13 @@ Method TestTheSchemaIsDerivedAndDescribedFromTaskSuper()
     Do $$$AssertEquals($ListFind(tNames, "OutputDirectory"), 0, "and the directory is not")
     Do $$$AssertEquals(..Sorted(tNames), ..Sorted(tPermitted), "exactly the permitted set")
     Do $$$AssertEquals(..Sorted($ListFromString($Parameter(..#TOOL, "PERMITTEDFIELDS"))), ..Sorted(tPermitted), "which is the tool's own positive list")
+    ; AD-3: the rules' own field list and the composed body's keys are the same set, so no settable
+    ; field is validated and then dropped from the body, or sent without being settable.
+    Do $$$AssertEquals(..Sorted($ListFromString($Parameter("OcuPilot.Area.Task.TaskRules", "FIELDS"))), ..Sorted(tPermitted), "the rules compose exactly the permitted set")
+    Set tKeys = $ListBuild("Settings")
+    Set tIterator = ##class(OcuPilot.Area.Task.TaskRules).Defaults().%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) { Set tKeys = tKeys _ $ListBuild(tKey) }
+    Do $$$AssertEquals(..Sorted(tKeys), ..Sorted(tPermitted), "and a new task's own values cover every other key")
     For tField = "TimePeriod", "DailyFrequency", "DailyFrequencyTime", "Priority", "MirrorStatus" {
         Set tEnum = tSchema.%Get("properties").%Get(tField).%Get("enum")
         Do $$$AssertEquals($Select($IsObject(tEnum): ..Joined(tEnum), 1: ""), ..DisplayList(tField), tField _ "'s legal values are TaskSuper's display list")
@@ -111,7 +118,7 @@ Method TestTheCreateIsMintedOverTheNamesAbsence()
     Do $$$AssertStatusOK(tSC, "the create is minted: " _ ..Problem(.tFault))
     If $$$ISERR(tSC) Quit
     Set tTarget = tProposal.%Get("target")
-    Do $$$AssertEquals(tTarget.%Get("type") _ ":" _ tTarget.%Get("scope") _ ":" _ tTarget.%Get("id"), "task:instance:OcuP97Mint", "the target is the name")
+    Do $$$AssertEquals(tTarget.%Get("type") _ ":" _ tTarget.%Get("scope") _ ":" _ tTarget.%Get("id"), "task:instance:ocup97mint", "the target is the name in its canonical spelling (AD-13)")
     Set tFields = ""
     Set tIterator = tProposal.%Get("changed").%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
@@ -119,7 +126,7 @@ Method TestTheCreateIsMintedOverTheNamesAbsence()
     }
     Do $$$AssertEquals($ListToString(tFields), "Name,TaskClass,Settings.Directory,TimePeriod", "one row per supplied field, the setting named, the location it names on the card")
     Do $$$AssertEquals(tProposal.%Get("changed").%Get(2).%Get("after"), "/tmp/", "the setting's row shows the location")
-    Do $$$AssertEquals(tProposal.%Get("unchangedCount"), 31, "the body's other keys are sent unchanged")
+    Do $$$AssertEquals(tProposal.%Get("unchangedCount"), 30, "the body's other keys are sent unchanged, the supplied Settings not among them")
     Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tProposal.%Get("proposalId"), .tFound, .tValues)
     Set tPayload = ##class(%DynamicAbstractObject).%FromJSON($Get(tValues("payload"), "{}"))
     Do $$$AssertEquals(..Count(tPayload), 34, "the stored body is complete: thirty-three keys and the settings")
@@ -128,6 +135,7 @@ Method TestTheCreateIsMintedOverTheNamesAbsence()
     Do $$$AssertNotEquals(tVendor, "", "the instance holds a task to collide with")
     Set tSC = ..Mint(..OnDemand($ZConvert(tVendor, "L")), .tProposal, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp, 400, "a name another task holds, in another case, refuses the mint")
+    Do $$$AssertTrue(..Problem(.tFault) [ "already present", "refused as present, not for another reason: " _ ..Problem(.tFault))
 }
 
 /// <p>AD-14, AD-54: the confirm creates the task from the stored complete body and answers the

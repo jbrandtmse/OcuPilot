@@ -342,7 +342,8 @@ ClassMethod SettingValid(pClass As %String, pNamespace As %String, pSetting As %
 /// (<method>Applied</method>), typed as the vendor reads it. <var>pDiff</var> is one
 /// <code>{field, before, after}</code> per supplied field, and one per supplied setting as
 /// <code>Settings.&lt;key&gt;</code>, with <code>before</code> empty (AD-54); <var>pUnchanged</var>
-/// is the payload properties no diff row names. <code>OutputDirectory</code> is not composed: the
+/// is the payload properties no diff row names, a <code>Settings.&lt;key&gt;</code> row naming
+/// <code>Settings</code>. <code>OutputDirectory</code> is not composed: the
 /// tool derives it at the write (<method>OcuPilot.Screen.Tool.TaskCreate.DerivedFields</method>).</p>
 ClassMethod Compose(pArgs As %DynamicObject, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
 {
@@ -439,7 +440,7 @@ ClassMethod Compose(pArgs As %DynamicObject, Output pPayload As %DynamicObject, 
         Kill tNamed
         Set tIterator = pDiff.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tRow) {
-            Set tNamed(tRow.%Get("field")) = 1
+            Set tNamed($Piece(tRow.%Get("field"), ".", 1)) = 1
         }
         Set tIterator = tPayload.%GetIterator()
         While tIterator.%GetNext(.tKey, .tValue) {

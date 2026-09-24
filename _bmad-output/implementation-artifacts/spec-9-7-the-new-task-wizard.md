@@ -2,7 +2,7 @@
 title: 'Story 9.7: The New Task wizard'
 type: 'feature'
 created: '2026-09-24'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'f9851990568c3c30a459502deb960612d5625086'
 baseline_commit: 'f9851990568c3c30a459502deb960612d5625086'
 review_loop_iteration: 0
@@ -316,7 +316,66 @@ Client:
 - **AC7.** Given priority, output file, suspend-on-error, reschedule-after-restart and the four email settings in the wizard, when Create task succeeds, then the task appears in the schedule list and its details screen with those values, read back from the instance.
 - **Integration.** `TaskWizardPage` consumes `core/form-tabs.ts` through `FormStepper`, the `/tasks` routes and `ChangeBus`. A refused Create on step 1 opens it with its marker, and the created task's details open. The browser spec observes both.
 
+### Review Findings
+
+Code review 2026-09-24. Four layers ran on `full-opus`: blind, edge-case, verification-gap and acceptance. They produced 45 rows, grouped into 1 high, 5 medium and 12 low entries. Another 24 rows were rejected.
+
+- [x] [Review][Patch] **HIGH, AD-13/AD-54.** Two spellings of a task name built two proposal targets. The rule was `task:integer`, which answered a letter-first name verbatim, so AD-34's lock did not cover `Nightly` against `NIGHTLY`. Fix-risk med: kernel identity, in two languages. Now the `integer` rule folds any non-integer to lower case. [src/OcuPilot/Kernel/EntityRef.cls:268, ui/src/app/core/entity-ref.ts:84]
+- [x] [Review][Patch] **MED, AD-3.** `TaskRules.FIELDS` and `Defaults()` keys were hand lists that no test pinned to the permitted set, so a field could be validated and then dropped from the body. Fix-risk low. Both are now asserted equal to `PermittedCreateFields("task")`. [src/OcuPilot/Test/TaskCreate.cls:94]
+- [x] [Review][Patch] **MED.** A period change carried `TimePeriodDay` over with a new meaning: Weekly `24` became the 24th of the month. Fix-risk low. `dayFor` now starts the period's own value. [ui/src/app/areas/tasks/task-wizard.store.ts:103]
+- [x] [Review][Defer] **MED, AC7.** The details screen draws the schedule and Priority, not the output file, suspend, reschedule or email values. All of them are read back from the instance. Fix-risk low. Routed as DW-1624 to 9-8-edit-task, whose edit tabs draw every field.
+- [x] [Review][Defer] **MED.** Two concurrent Saves can create one name twice, because the vendor accepts duplicates. Closed as DW-1625, wontfix-theoretical. The agent path is covered by the HIGH fix.
+- [x] [Review][Defer] **MED, AD-54.** The Rule's "unchanged count is zero" does not hold for this create, because the vendor needs the complete body. Closed as DW-1629, by-design: the code follows the spec. The lead amends AD-54 under Rule 20.
+- [x] [Review][Patch] **LOW.** A supplied `Settings` was counted as unchanged. It is now named by its `Settings.<key>` rows, so the count is 30. [src/OcuPilot/Area/Task/TaskRules.cls:442]
+- [x] [Review][Patch] **LOW.** The taken-name mint leg asserted only 400. It now asserts the "already present" refusal. [src/OcuPilot/Test/TaskCreate.cls:131]
+- [x] [Review][Patch] **LOW.** `TaskWire`'s run-as-self read-back guard skipped silently. It now asserts the task reads back. [src/OcuPilot/Test/TaskWire.cls:138]
+- [x] [Review][Patch] **LOW.** No page leg drove AC7's EmailOutput control. It is now clicked and asserted in the body. [ui/src/app/areas/tasks/task-wizard.page.spec.ts:290]
+- [x] [Review][Patch] **LOW.** A select setting whose default no option names showed its first option while sending `""`. It now draws the held value, as `view` does. [ui/src/app/areas/tasks/task-wizard.page.ts:922]
+- [x] [Review][Patch] **LOW.** The Monthly Special weekday select lacked `aria-invalid` and `aria-describedby`. [ui/src/app/areas/tasks/task-wizard.page.ts:336]
+- [x] [Review][Patch] **LOW.** Confirm's answer doc omitted `createdId`, and a blank line was missing before `ToolCreatedId`. [src/OcuPilot/Kernel/Proposal/Confirm.cls:696]
+- [x] [Review][Patch] **LOW.** Removed the unused `.ocu-form-step-nav` rule. [ui/src/styles/_components.scss:5722]
+- [x] [Review][Defer] **LOW.** A 201 with no `Location` id answers 500 after the write. Closed as DW-1626, wontfix-theoretical.
+- [x] [Review][Defer] **LOW.** `RunAfter` reads JobGUID from `%SYS.Task` outside the port. Closed as DW-1627, wontfix-accepted.
+- [x] [Review][Defer] **LOW.** `HandleCreate`'s vendor-refusal 422 rendering is unpinned. Closed as DW-1628, wontfix-accepted.
+- [x] [Review][Defer] **LOW.** Each probe task leaves task-history rows. This is DW-1425, which already carries the 9.7 occurrence.
+
+Rejected:
+
+- **By-design:**
+  - Agent Run After needs a user-supplied GUID (Design Notes).
+  - `POST /tasks` stops at the first Name problem (the spec's Save order).
+  - AC6 "before any port call" versus the absence read (the spec's Save order).
+  - Output-file overwrite (the AD-21 ruling).
+- **False:**
+  - The `v1` Location path (measured).
+  - Spec `status: done` versus tracker `review` (build-auto state).
+  - Object-typed settings (the only one measured, `SMTPPass`, is classic-only).
+  - Mixed TASK and non-TASK port rows (every `Task.CRUD` mapping is `TASK.*`).
+- **Low, not worth the added complexity:**
+  - Numeric Name gets REQUIRED from Save but SHAPE from check.
+  - An empty end time answers SHAPE, not REQUIRED.
+  - Weekly checkbox `aria-invalid`: the fieldset carries the description.
+  - Expiry offset labels.
+  - The hard-coded `Purge Tasks` in the browser spec.
+  - Discarded browser cleanup result.
+  - Endpoint-keyed `PROPERTYFAULTS` rows on task actions.
+  - Trailing whitespace in a name.
+  - No message when the types reload fails.
+  - `/tasks/check` answers 400 for a non-object body.
+  - Non-append edits in `Error.cls` and `Prohibited.cls`: no concurrent epic touches those hunks.
+  - Fixture `OutputFileIsBinary` defaults.
+  - The "exact name" wording against `TaskProbe`'s prefix check.
+  - `Non-Primary` spelling.
+- **Spec edits** (not in a review's remit): the triage counts and the change-log order.
+
+### CI Rework (iteration 1)
+
+- [ ] [CI] browser: `task-wizard.browser-spec.mjs` "Matrix \"Create weekly\", AC7" failed on CI (run 36029831321, head `26284da8`) at its first assertion: `stepState(page)` read `[]` right after the URL reached `/tasks/schedule/edit`, before the stepper rendered -- `ui/browser/task-wizard.browser-spec.mjs:227` -- wait for the stepper's steps to render before reading them, and check every other leg of the file for the same read-before-render race; the file passed 5/5 locally, so reproduce the cold-start timing (e.g. run it first in a fresh browser) before claiming the fix.
+- [ ] [CI] browser: `proposal-demo.browser-spec.mjs` "AC1: UJ-3's own journey, as a non-%All holder of the screen's two pairs, inside NFR-1's budget" failed on the same run: `failed to find element matching selector ".ocu-panel-message-agent-text"` at `ui/browser/proposal-demo.browser-spec.mjs:505`. It passed on the previous head's CI (run 36009216113, `71aadf62`). Establish whether this story's diff (`turn.ts` createdId, `proposal-view.ts`, `screen-outlet.ts`, `app.ts`, `entity-ref.ts`, the kernel edits) causes it -- run the spec against a rebuilt, redeployed bundle -- and fix the cause if it is this story's; if it is not reproducible and not this story's, say so with the evidence (runs, bundle build) in `## Auto Run Result`. Do not edit the spec file itself if the cause is elsewhere: `proposal-demo` is not one of 11.10's seven specs, but check `git show origin/OCU-1-epic11:ui/browser/proposal-demo.browser-spec.mjs` before editing it.
+
 ## Spec Change Log
+
+- 2026-09-24 rework 1 (lead): CI run 36029831321 red on the browser job (two legs); re-opened with two `[CI]` items. Code review's patches (task-name case fold in `EntityRef`, period-day reset, field-list pins) are committed as the rework baseline.
 
 - 2026-09-24 spec gate (lead): orchestrator rulings (a) on AD-21 (third named exception; location-type task settings permitted, named on the card) and (a) eager bundle (1580kB stop line); recorded in Tasks & Acceptance; spine AD-21 amended.
 
@@ -477,6 +536,14 @@ Slot A. Every IRIS MCP call carries `server: "ocupilot-slot-a"`. Anything that c
 - mutation: remove `Task.CRUD:7404` from `AdminPort.PROPERTYFAULTS` (TaskPort and TaskPortSkew recompiled) -> `TestTheVendorsCodesLandOnTheirFields` and `TestAVendorRefusalAnswersAsTheFormsOwn` went red (run 10136).
 - mutation: remove `EmailOutput` from `task-fields.ts` `FLAG_FIELDS` -> `tools/task-fields.test.mjs` "the output file is emailed" went red.
 - mutation (lead AD gate, AD-54): force `tPresent = 0` in `Confirm`'s create re-read (Confirm and its three fixture subclasses recompiled on `ocupilot-ci`) -> `OcuPilot.Test.TaskCreate.TestTheConfirmCreatesAndAnswersTheId` went red on "the confirm is refused" and "nothing more is written" (run 10378); reverted by sha1, green (run 10379).
+
+**Mutations observed (code review; each reverted, files byte-identical by sha1; ObjectScript on `ocupilot-ci`):**
+
+- mutation (AD-13, AD-54): answer a non-integer verbatim in `EntityRef.PlainInteger` -> `OcuPilot.Test.EntityRef.TestTheIdRuleTableIsDeclaredAndIsWhatNormalizationApplies` ("a task name folds to lower case", run 10385) and `TaskCreate.TestTheCreateIsMintedOverTheNamesAbsence` ("the target is the name in its canonical spelling", run 10386) went red; the same in `entity-ref.ts` -> `tools/entity-ref.test.mjs` AD-13 integer leg went red.
+- mutation (AD-3): drop `MirrorStatus` from `TaskRules.FIELDS` -> `TaskCreate.TestTheSchemaIsDerivedAndDescribedFromTaskSuper` "the rules compose exactly the permitted set" went red (run 10386).
+- mutation: carry the held day over in `TaskWizard.setText` -> `task-wizard.store.spec.ts` "a period change starts the day over" went red.
+- mutation: drop the held-value option from `TaskWizardPage.settingView` -> `task-wizard.page.spec.ts` "a select setting whose default no option names" went red.
+- Green after the revert: `EntityRef` 9/9 (10387), `TaskCreate` 7/7 (10388), `TaskWire` 3/3 (10382), `TaskSave` 8/8 (10383), `TaskRules` 9/9 (10384); `npm run test:tools` 1,396/1,396; `ng test` 1,154/1,154; `check-objectscript` clean; build initial total 1,522,189 B; bundle redeployed to `ocupilot-ci`, `task-wizard.browser-spec.mjs` 5/5.
 
 ## Auto Run Result
 

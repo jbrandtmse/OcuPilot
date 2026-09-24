@@ -6782,3 +6782,33 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-9-5-the-ssl-tls-editor.md (cr) | severity: low | fix-risk: low | footprint: in-story
 - evidence: ssl-form.page.ts draws the field in every edit; SslRules.Validate refuses it without a key file; the agent card offers the row only with one (SslUpdate.StateDiff)
 - 2026-09-24T13:51:24Z status=wontfix-accepted owner=9-5-the-ssl-tls-editor by=cr note=reopen_if=a user reports the refused password field on a client configuration
+
+### DW-1624: Task details shows a wizard-created task's schedule and Priority, not its output file, suspend, reschedule or email values (spec AC7 'details screen with those values')
+- source: spec-9-7-the-new-task-wizard.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: TaskDetails' declared read carries Name..Priority, RunAsUser and the two schedule lines only; every AC7 value is read back from the instance (TaskSave, browser docker exec) but not drawn on a screen (acceptance-auditor, verified 9.7 CR).
+- 2026-09-24T17:16:12Z status=routed owner=9-8-edit-task by=cr note=9.8's edit tabs draw every AC7 value of a wizard-created task read from the instance; its browser leg asserts them
+
+### DW-1625: Two concurrent Saves (or a Save and an agent confirm) of one new task name can both pass the absence read and create duplicate names
+- source: spec-9-7-the-new-task-wizard.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: TaskSave.Create reads NameTaken then POSTs with no lock, and the vendor accepts duplicate names (measured); the agent path is covered by AD-34's lock once the name folds (patched 9.7 CR).
+- 2026-09-24T17:16:12Z status=wontfix-theoretical owner=9-7-the-new-task-wizard by=cr note=real if a scripted POST /tasks caller or two people create one name within the read-to-POST window
+
+### DW-1626: A 201 whose Location carries no numeric id answers 500 after the task was written, and the agent's event falls back to the name
+- source: spec-9-7-the-new-task-wizard.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: TaskPort.Create sets Id only from Location id=; TaskSave answers 500 and turn.ts publishes target.id when createdId is absent (edge-case-hunter).
+- 2026-09-24T17:16:12Z status=wontfix-theoretical owner=9-7-the-new-task-wizard by=cr note=real if Task.CRUD POST's 201 stops carrying Location ?id= (AD-27's inventory would flag a v2 change)
+
+### DW-1627: TaskRules.RunAfter reads JobGUID from %SYS.Task directly in %SYS rather than through TaskPort
+- source: spec-9-7-the-new-task-wizard.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: The admin API answers no JobGUID; TaskRules opens %SYS.Task per listed task (acceptance-auditor, AD-27/paradigm); Security.Users reads in *Rules classes are the precedent.
+- 2026-09-24T17:16:12Z status=wontfix-accepted owner=9-7-the-new-task-wizard by=cr note=reopen_if=a spine ruling puts vendor-class reads that complete a port answer behind the port, or 9.8 needs JobGUID too
+
+### DW-1628: No test renders a vendor refusal through HandleCreate's HTTP 422 path
+- source: spec-9-7-the-new-task-wizard.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: TestAVendorRefusalAnswersAsTheFormsOwn calls TaskSaveSkew.Create in process; HandleCreate's violations-before-ISERR order is unpinned (verification-gap).
+- 2026-09-24T17:16:12Z status=wontfix-accepted owner=9-7-the-new-task-wizard by=cr note=reopen_if=HandleCreate's rendering order is edited, or a real body reaches a mapped vendor code over HTTP
+
+### DW-1629: AD-54's 'unchanged count is zero' does not hold for the task create, whose vendor POST needs the complete body
+- source: spec-9-7-the-new-task-wizard.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Spec Boundaries require the 34-key body with non-supplied keys counted unchanged (vendor 400 #40301 measured); AD-54's Rule sentence was not amended at the spec gate (acceptance-auditor).
+- 2026-09-24T17:16:12Z status=by-design owner=9-7-the-new-task-wizard by=cr note=code follows the spec; lead to amend AD-54 per Rule 20: a create whose endpoint requires a complete body counts the rest unchanged

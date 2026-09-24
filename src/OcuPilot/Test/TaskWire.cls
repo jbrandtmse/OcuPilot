@@ -135,6 +135,7 @@ Method TestTheLeastPrivilegedPrincipalCreatesAndCannotRunAsAnother()
     Do $$$AssertEquals(tStatus, 201, "the least-privileged principal creates a task: " _ $Extract($Get(tAnswer), 1, 300))
     Set tId = ##class(OcuPilot.Test.TaskProbe).IdOf("OcuP97Least")
     Set tStored = ##class(OcuPilot.Test.TaskProbe).Stored(tId)
+    Do $$$AssertTrue($IsObject(tStored), "the created task reads back")
     If $IsObject(tStored) Do $$$AssertEquals(tStored.%Get("RunAsUser"), ..#LEASTUSER, "running as itself")
     Do ##class(OcuPilot.Test.TaskProbe).Remove(tId)
 

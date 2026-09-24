@@ -693,6 +693,7 @@ ClassMethod ToolDerivedFields(pToolClass As %String, pBody As %DynamicObject) [ 
         ; body it then receives on its own terms rather than the confirm inventing a refusal here.
     }
 }
+
 /// <p>The id <var>pToolClass</var>'s confirmed write created
 /// (<method>OcuPilot.Screen.Tool.Write.CreatedId</method>) from the port's answer
 /// <var>pWritten</var>, or <code>""</code> for a class that answers none or cannot be asked.</p>
@@ -739,7 +740,7 @@ ClassMethod HoldsPair(pUser As %String, pResource As %String, pPermission As %St
 
 /// <p>The proposal's closed state as the caller is answered it:
 /// <code>{proposalId, state, closedReason, confirmedAt}</code>, plus <code>auditMarked</code> where
-/// a write was made, read back from the row so the answer and the wire cannot disagree. A row that is no longer there is answered as an internal
+/// a write was made, <code>action</code> and <code>createdId</code> where the tool answers them, read back from the row so the answer and the wire cannot disagree. A row that is no longer there is answered as an internal
 /// failure, never as a 200 carrying empty fields.</p>
 ClassMethod Answer(pProposalId As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String, pAuditMarked As %String = "", pAction As %String = "", pCreatedId As %String = "") As %Status [ Private ]
 {
