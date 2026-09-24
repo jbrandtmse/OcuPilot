@@ -90,3 +90,5 @@
 2026-09-24T19:59:22Z	Story 12.3	cr_clarification_answered	by=orchestrator(66aa49ec,by=merge_gate) ruling=C(fix:QUEUEDWRITES_past_wait_answers_started,marked,row_applied;B_fallback_one_minimal_Confirm_hunk)
 2026-09-24T19:59:22Z	Epic 12	spine_updated	ad=AD-26 reason=clarification(cr_high) by=runner story=12-3-copy-and-purge-the-audit-database lint=ok(1_preexisting_low)
 2026-09-24T19:59:22Z	Story 12.3	rework_opened	cycle_iteration=2 iteration=1 trigger=high items=Review:HIGH_AD-15/AD-26_queued_write_past_wait scope_baseline=bff188c1
+2026-09-24T20:26:10Z	Epic 12	ci_resolved	story=12.3(qa+cr_patches) run=36051626990 result=success head=ba8fa7ac resolved_at=next_implement(Rule_28)
+2026-09-24T20:26:10Z	Story 12.3	stage_spawned	stage=implement spawn_at=2026-09-24T20:26:10Z model=opus agent_name=12-3-copy-and-purge-the-audit-database-implement-2 cycle_iteration=2
