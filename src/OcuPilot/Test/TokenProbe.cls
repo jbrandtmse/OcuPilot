@@ -1,8 +1,13 @@
 /// <p>The fixture <class>OcuPilot.Test.TokenRevoke</class> and <file>ui/browser/token-revoke.browser-spec.mjs</file>
-/// revoke against: two probe accounts, a least-privileged principal and four
-/// <code>OAuth2.Server.AccessToken</code> rows in <code>%SYS</code> -- two issued to
-/// <parameter>HOLDER</parameter>, one to its lower-cased spelling <parameter>RECASED</parameter> and
-/// one to <parameter>OTHER</parameter>.</p>
+/// revoke against: two probe accounts, a least-privileged principal, a self-caller holding every
+/// pair the tool requires, and four <code>OAuth2.Server.AccessToken</code> rows in
+/// <code>%SYS</code> -- two issued to <parameter>HOLDER</parameter>, one to its lower-cased
+/// spelling <parameter>RECASED</parameter> and one to <parameter>OTHER</parameter>.</p>
+/// <p><b><parameter>SELFCALLER</parameter></b> is the account the "signed-in user keeps working"
+/// leg signs in as and revokes its own tokens under: unlike <parameter>PRINCIPAL</parameter> it
+/// holds <code>%Admin_OAuth2_Registration:USE</code> too, so it can complete the call itself, and
+/// unlike the shared test-harness account it is this fixture's own, so a mutation that disables an
+/// account as a side effect of revoking it can be demonstrated against it safely.</p>
 /// <p><b>The token rows stand in for issuance.</b> A throwaway runs no authorization server, so the
 /// rows are saved directly, each keyed by an authorization code under <parameter>PREFIX</parameter>.
 /// No row carries an access token, a hash or a refresh token.</p>
@@ -34,6 +39,13 @@ Parameter PRINCIPAL = "OcuPilotTestRevokePrincipal";
 
 Parameter PRINCIPALROLE = "OcuPilotTestRevokePrincipalRole";
 
+/// <p>The account that signs in and revokes its own tokens: it holds the list's two pairs and
+/// <code>%Admin_OAuth2_Registration:USE</code>, so the call it makes on itself succeeds; and its
+/// role.</p>
+Parameter SELFCALLER = "OcuPilotTestRevokeSelf";
+
+Parameter SELFCALLERROLE = "OcuPilotTestRevokeSelfRole";
+
 /// <p>The comment and description every probe account and role carries, which
 /// <method>Remove</method> requires before it deletes one.</p>
 Parameter MARKER = "OcuPilot token revoke probe";
@@ -42,15 +54,16 @@ Parameter MARKER = "OcuPilot token revoke probe";
 /// entries.</p>
 Parameter TOKENS = "OcuPilotTestRevoke1:OcuPilotTestRevoke,OcuPilotTestRevoke2:OcuPilotTestRevoke,OcuPilotTestRevoke3:ocupilottestrevoke,OcuPilotTestRevoke4:OcuPilotTestRevokeOther";
 
-/// <p>Create the accounts, the principal and the token rows after removing any left from an earlier
-/// run, and answer the principal's password, generated for this run, in <var>pPassword</var>. The
-/// principal's grants are read back: it must hold <code>%Admin_Secure:USE</code> and
-/// <code>%DB_IRISSYS:READ</code> and must not hold <code>%Admin_OAuth2_Registration:USE</code>.</p>
+/// <p>Create the accounts, the principal, the self-caller and the token rows after removing any left
+/// from an earlier run, and answer the password the four accounts share, generated for this run, in
+/// <var>pPassword</var>. The principal's and the self-caller's grants are read back: both must hold
+/// <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code>, and only the self-caller may hold
+/// <code>%Admin_OAuth2_Registration:USE</code>.</p>
 ClassMethod Create(Output pPassword As %String) As %Status
 {
     Set pPassword = ""
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
-        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.TokenProbe creates users, a role and OAuth 2.0 token rows and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.TokenProbe creates users, two roles and OAuth 2.0 token rows and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
     Set tSC = ..Remove()
     If $$$ISERR(tSC) Quit tSC
@@ -62,13 +75,19 @@ ClassMethod Create(Output pPassword As %String) As %Status
         Set $NAMESPACE = "%SYS"
         Set tSC = ##class(Security.Roles).Create(..#PRINCIPALROLE, ..#MARKER, tCode _ ":R,%Admin_Secure:U,%DB_IRISSYS:R", "")
         If $$$ISERR(tSC) Quit
-        For tCase = $ListBuild(..#HOLDER, ""), $ListBuild(..#OTHER, ""), $ListBuild(..#PRINCIPAL, ..#PRINCIPALROLE) {
+        Set tSC = ##class(Security.Roles).Create(..#SELFCALLERROLE, ..#MARKER, tCode _ ":R,%Admin_Secure:U,%DB_IRISSYS:R,%Admin_OAuth2_Registration:U", "")
+        If $$$ISERR(tSC) Quit
+        For tCase = $ListBuild(..#HOLDER, ""), $ListBuild(..#OTHER, ""), $ListBuild(..#PRINCIPAL, ..#PRINCIPALROLE), $ListBuild(..#SELFCALLER, ..#SELFCALLERROLE) {
             Set tSC = ##class(Security.Users).Create($List(tCase, 1), $List(tCase, 2), tPassword, $List(tCase, 1) _ " probe", "", "", "", 0, 1, ..#MARKER)
             If $$$ISERR(tSC) Quit
         }
         If $$$ISERR(tSC) Quit
         If ($SYSTEM.Security.CheckUserPermission(..#PRINCIPAL, "%Admin_Secure", "USE") '= 1) || ($SYSTEM.Security.CheckUserPermission(..#PRINCIPAL, "%DB_IRISSYS", "READ") '= 1) || ($SYSTEM.Security.CheckUserPermission(..#PRINCIPAL, "%Admin_OAuth2_Registration", "USE") = 1) {
             Set tSC = $$$ERROR($$$GeneralError, "the probe principal " _ ..#PRINCIPAL _ "'s grants did not read back as declared")
+            Quit
+        }
+        If ($SYSTEM.Security.CheckUserPermission(..#SELFCALLER, "%Admin_Secure", "USE") '= 1) || ($SYSTEM.Security.CheckUserPermission(..#SELFCALLER, "%DB_IRISSYS", "READ") '= 1) || ($SYSTEM.Security.CheckUserPermission(..#SELFCALLER, "%Admin_OAuth2_Registration", "USE") '= 1) {
+            Set tSC = $$$ERROR($$$GeneralError, "the probe self-caller " _ ..#SELFCALLER _ "'s grants did not read back as declared")
             Quit
         }
         Set tExpires = $ZDateTime($ZTimeStamp, -2) + 86400
@@ -116,7 +135,7 @@ ClassMethod Count(pName As %String) As %Integer
 }
 
 /// <p>Delete every token row <parameter>TOKENS</parameter> names by its exact authorization code,
-/// then the three accounts and the role by exact name, each only where it carries
+/// then the four accounts and the two roles by exact name, each only where it carries
 /// <parameter>MARKER</parameter>. An object already gone is not an error.</p>
 ClassMethod Remove() As %Status
 {
@@ -135,7 +154,7 @@ ClassMethod Remove() As %Status
             Set tSC = $$$ADDSC(tSC, tToken.Delete())
             Set tToken = ""
         }
-        For tName = ..#HOLDER, ..#OTHER, ..#PRINCIPAL {
+        For tName = ..#HOLDER, ..#OTHER, ..#PRINCIPAL, ..#SELFCALLER {
             If '##class(Security.Users).Exists(tName) Continue
             Kill tProps
             If $$$ISOK(##class(Security.Users).Get(tName, .tProps)) && ($Get(tProps("Comment")) = ..#MARKER) {
@@ -144,12 +163,13 @@ ClassMethod Remove() As %Status
                 Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "the account " _ tName _ " is not this fixture's own, so it was left alone"))
             }
         }
-        If ##class(Security.Roles).Exists(..#PRINCIPALROLE) {
+        For tRole = ..#PRINCIPALROLE, ..#SELFCALLERROLE {
+            If '##class(Security.Roles).Exists(tRole) Continue
             Kill tProps
-            If $$$ISOK(##class(Security.Roles).Get(..#PRINCIPALROLE, .tProps)) && ($Get(tProps("Description")) = ..#MARKER) {
-                Set tSC = $$$ADDSC(tSC, ##class(Security.Roles).Delete(..#PRINCIPALROLE))
+            If $$$ISOK(##class(Security.Roles).Get(tRole, .tProps)) && ($Get(tProps("Description")) = ..#MARKER) {
+                Set tSC = $$$ADDSC(tSC, ##class(Security.Roles).Delete(tRole))
             } Else {
-                Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "the role " _ ..#PRINCIPALROLE _ " is not this fixture's own, so it was left alone"))
+                Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "the role " _ tRole _ " is not this fixture's own, so it was left alone"))
             }
         }
         Set $NAMESPACE = tOrigNS

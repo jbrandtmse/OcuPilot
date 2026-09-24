@@ -144,6 +144,36 @@ deferred: []
 - **AC3.** Given a caller without `%Admin_OAuth2_Registration:USE`, when either caller attempts the revoke, then it is refused 403 naming that pair before any port call, and no token is touched.
 - **AC4 (DW-1337).** Given the revoke dialog open on the Users list, when it is measured at 1280 px light, 720 px light and 1280 px dark, then no structural or contrast violation is found beyond the baseline's existing entries for `permissions/users`.
 
+### Review Findings
+
+Code review 2026-09-24 (four layers, `full-opus`). Fields: severity · fix-risk · footprint · spec-status.
+
+- [x] [Review][Patch] The tool's `DESCRIPTION`, schema description, class doc and the `UserList` paragraph said every token issued to the account is revoked; only tokens under the stored-name spelling are (the matrix's "Other capitalization" row). Now worded "under the account's stored name", naming the other-capitalization case [`Screen/Tool/UserTokenRevoke.cls`, `Screen/Descriptor/UserList.cls`] · med · low (text only) · in-story · clear
+- [x] [Review][Patch] `TokenProbe` and `TokenRevoke` docs and refusal texts counted three accounts and one role after QA added the self-caller [`Test/TokenProbe.cls`, `Test/TokenRevoke.cls`] · low · low · in-story · clear
+- [x] [Review][Patch] The screen-route leg's doc cited `<parameter>SELFCALLER</parameter>`, a `TokenProbe` parameter, and argued its own case [`Test/TokenRevoke.cls`] · low · low · in-story · clear
+- [x] [Review][Patch] The self-caller's signed-in session was never signed out before `Remove()`; the leg now calls `OcuPilot.Test.Token.Logout` [`Test/TokenRevoke.cls`] · low · low · in-story · clear
+- [x] [Review][Patch] AC3's count assertion was labeled "before any port call", which counts cannot show because the vendor also refuses this principal; relabeled, and the doc names the gate order as the kernel's [`Test/TokenRevoke.cls`] · low · low · in-story · clear
+- [x] [Review][Patch] The `UserList` label block's comment still read "three value-carrying row actions" [`ui/src/app/core/screen-actions.ts`] · low · low · in-story · clear
+- [x] [Review][Patch] The browser leg's "re-cased name sends nothing" check read `writes` before a frame had passed [`ui/browser/token-revoke.browser-spec.mjs`] · low · low · in-story · clear
+- [x] [Review][Patch] `TokenPort.Invoke` set `pHttpStatus` to 0 just before `Fail`, which sets it [`Port/TokenPort.cls`] · low · low · in-story · clear
+- [x] [Review][Patch] AC2's marker assertion had no demonstrated red (Rule 19); mutation applied, observed and recorded under Verification · low · low · in-story · clear
+- [x] [Review][Patch] The component spec's "no self-protection" test had no mutation of its own (Rule 19); applied, observed and recorded under Verification · low · low · in-story · clear
+- [x] [Review][Defer] AD-15's "either record locates the other" cannot hold for the agent's revoke, since the vendor records no event, and only AD-53 (screen path) names that gap [spine AD-15] — deferred: DW-1616 `escalated owner=burndown`; a one-line AD-15 named case for the lead (Rule 20), with no code change · med · low · out-of-footprint · clear
+
+Rejected:
+
+- The Auto Run Result's review tally and its "no demonstrated red" residual risk are stale: the fix edits the spec under review. The QA `mutation:` line supersedes the residual-risk claim.
+- The self-revoke leg "cannot see" the session property: false. The same bearer answering `/navigation` after the revoke is the matrix outcome, and a revocable session would make it fail.
+- QA's changes are uncommitted and earlier verification predates them: not a code defect. This pass re-ran `TokenRevoke` (run 486), `ToolWrite` (run 487) and the browser spec on the current tree.
+- The prohibited-set loop's caller case may duplicate `_SYSTEM`: low. The self-caller leg exercises caller-equals-target through the real route.
+- The dialog title reads "Revoke OAuth 2.0 tokens <name>": by-design. The verb string and the title's shape are the spec's and EXPERIENCE.md :468.
+- Tokens of a deleted account or of a non-IRIS holder are unreachable (404): by-design (Design Notes trade-off; the "Absent account" row).
+- Tokens under another capitalization survive the revoke: by-design (the "Other capitalization" row). Only the wording was patched.
+- `Holder` skips a `Name` the `LIST` answers as a JSON number: wontfix-theoretical, real only for an account named only in digits and serialized as a number.
+- The agent-side AC3 refusal uses `DenyPair` rather than the principal: false. It matches the spec's task, and the principal's missing pair is checked on the route and through `HoldsPair`.
+- `UserList`'s leading comma: false. It is deliberate, so Epic 9's `delete` line stays byte-identical.
+- `ci-throwaway.sh`'s roster line position: low and cosmetic, since the roster check sorts.
+
 ## Spec Change Log
 
 - 2026-09-24, spec gate (runner): the orchestrator took all four recommendations. AD-8 is widened, with this tool as its named case. AD-53 carries the named gap. EXPERIENCE.md rows :148, :166 and :168 were amended in place, with no line-count change. `screen-action-handler.ts` is allowed two appended map entries, read from `origin/OCU-1-epic9` immediately before editing. AC3's pinning test must redden when the declared pair is removed (already the planned mutation). No task changes.
@@ -242,6 +272,9 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. Stateful runs h
 - mutation: `UserTokenRevoke.CHANGEACTION` `deleted` → `TestTheProhibitedSetPermitsTheCallerAndTheSystemAccount` red for the caller and `_SYSTEM`
 - mutation: `TokenPort.Holder` compares `Name` exactly → the port, screen-route and agent legs red
 - mutation: `UserTokenRevoke.WRITETYPE` `DELETE`, recompiled on `ocupilot-b-ci` → `token-revoke.browser-spec.mjs` red: the list never marks the row (AC1, browser)
+- (QA) mutation: `TokenPort.Invoke`'s `REVOKE` branch also disables the resolved account after a successful revoke (a plausible "revoke also kills the caller's own session" regression), recompiled on `ocupilot-b-ci` → `TokenRevoke.TestTheScreenRouteRevokesExactlyTheAccountsTokens` red on "and the same access token still answers" (AC1, signed-in-user leg). The leg was switched from the shared `_SYSTEM` test account to a dedicated `TokenProbe.SELFCALLER` account holding all three required pairs, so the account this mutation disables is the fixture's own and safe to touch on the shared throwaway; reverted, `git diff --stat` clean, class green again (run 484).
+- (CR) mutation: `Kernel/Audit/Event.RecordAgentWrite` writes an empty `proposalId`, compiled on `ocupilot-b-ci` only → `TestTheAgentsRevokeIsMintedDestructiveAndConfirmedMarked` red on "one agent-write marker naming this proposal" alone, with the ledger's `AuditMarked` still green (run 485); reverted, green (run 486) (AC2)
+- (CR) mutation: `UserList.cls` `revoke-tokens` given `protected-account`, mirror regenerated → `screen-action-revoke.spec.ts` both tests red; reverted, mirror regenerated, tree byte-identical (matrix "Signed-in user", client)
 
 ## Auto Run Result
 

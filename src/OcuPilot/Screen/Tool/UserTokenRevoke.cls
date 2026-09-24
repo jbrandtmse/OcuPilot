@@ -1,5 +1,6 @@
 /// <p>The Users list's token revoke tool (AD-51, AD-52, FR-75): propose revoking every OAuth 2.0
-/// access token this instance's authorization server issued to one account. It reads the account
+/// access token this instance's authorization server issued under one account's stored name. A token
+/// issued under another capitalization of that name is not revoked. It reads the account
 /// fresh through <class>OcuPilot.Port.TokenPort</class> and mints a proposal whose card names the
 /// account. It writes nothing.</p>
 /// <p><b>It is action-style</b> (AD-51): the vendor's <code>Security.OAuth2.Server</code>
@@ -23,7 +24,7 @@ Parameter TOOLNAME = "permissions.users.revoketokens";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.UserList";
 
-Parameter DESCRIPTION = "Propose revoking every OAuth 2.0 access token this instance's authorization server issued to one user account; applications holding one must sign the user in again. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the account exactly as the users list reports it.";
+Parameter DESCRIPTION = "Propose revoking every OAuth 2.0 access token this instance's authorization server issued under one user account's name, matched exactly as this instance stores it; a token issued under another capitalization of that name is not revoked. Applications holding a revoked token must sign the user in again. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the account exactly as the users list reports it.";
 
 /// <p>The row action this tool carries out from the Users list (AD-5, AD-53). It sends no
 /// argument, because it sends no body.</p>
@@ -91,7 +92,7 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     If tSchema.%GetTypeOf("properties") '= "object" Quit tSchema
     Set tProperties = tSchema.%Get("properties")
     If tProperties.%GetTypeOf(..IdArgument()) '= "object" Quit tSchema
-    Do tProperties.%Get(..IdArgument()).%Set("description", "The user account whose OAuth 2.0 access tokens are all revoked, exactly as this instance's own users list reports it. Every token this instance issued to it is revoked, and nothing changes until the user confirms.", "string")
+    Do tProperties.%Get(..IdArgument()).%Set("description", "The user account whose OAuth 2.0 access tokens are revoked, exactly as this instance's own users list reports it. Every token this instance issued under that stored name is revoked, a token issued under another capitalization of it is not, and nothing changes until the user confirms.", "string")
     Quit tSchema
 }
 

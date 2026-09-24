@@ -65,10 +65,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Set tSC = ##super(..#USERENDPOINT, ..#USERLISTTYPE, .tList, "", .tRows, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     Set tHolder = ..Holder(tId, $Get(tRows))
-    If '$IsObject(tHolder) {
-        Set pHttpStatus = 0
-        Quit ..Fail(..#USERENDPOINT, 404, $$$OK, .pHttpStatus, .pFault)
-    }
+    If '$IsObject(tHolder) Quit ..Fail(..#USERENDPOINT, 404, $$$OK, .pHttpStatus, .pFault)
     If pType = ..#HOLDERTYPE {
         Set pResult = tHolder
         Set pHttpStatus = 200

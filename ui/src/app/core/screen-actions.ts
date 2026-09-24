@@ -94,7 +94,7 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     create: STRINGS.agentSwitchesHoldAdd,
     delete: STRINGS.agentSwitchesHoldRemove,
   },
-  // Story 7.2: the Users list's three value-carrying row actions.
+  // Story 7.2: the Users list's three value-carrying row actions; Story 12.2: its token revoke.
   'OcuPilot.Screen.Descriptor.UserList': {
     'set-password': STRINGS.userActionSetPassword,
     'add-role': STRINGS.userActionAddRole,

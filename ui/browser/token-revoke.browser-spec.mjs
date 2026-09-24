@@ -202,6 +202,7 @@ test('AC1, AC4: the row action revokes exactly the account\'s tokens behind the 
     await page.focus('.ocu-typed-name-field');
     await page.type('.ocu-typed-name-field', RECASED);
     await page.keyboard.press('Enter');
+    await frames(page);
     assert.equal(writes.length, 0, 'a re-cased name sends nothing');
     await page.click('.ocu-typed-name-field', { clickCount: 3 });
     await page.keyboard.press('Backspace');

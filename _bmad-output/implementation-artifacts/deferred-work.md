@@ -6656,3 +6656,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-11-9-the-agent-knows-the-screen-it-is-on.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: publishRows sends drill.errors() narrowed to the 5 summary fields; panel.ts sets namespace from scope.namespace() and entity from the route :id, while the drill's namespace/date live only in ErrorLogDrill (AD-48 one namespace source); ErrorRead requires namespace and date
 - 2026-09-24T09:36:58Z status=routed owner=11-2-explain-a-log-or-audit-entry by=cr note=11.2 consumes these rows; carrying the drill scope needs a descriptor or context-contract change outside 11.9's Never list
+
+### DW-1616: AD-15's 'either record locates the other' cannot hold for the agent's token revoke: the vendor's REVOKE records no audit event, and only AD-53 (screen path) names that gap
+- source: spec-12-2-revoke-a-user-s-oauth-2-0-tokens.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Spec Design Notes measured 'Audit after a revoke: no vendor event recorded (auditing on)'; AD-15 Rule requires the marker alongside the vendor's own change event; AD-53's 2026-09-24 amendment covers the screen caller only and says the agent keeps its marker
+- 2026-09-24T13:34:45Z status=escalated owner=burndown by=cr note=lead: add a one-line named case to AD-15 (Rule 20); code already emits the marker, no code change

@@ -36,7 +36,7 @@
 /// name, which that tool's card never asks for because no update diff names it.</p>
 /// <p><b>Its eighth row action is <code>revoke-tokens</code></b>, carried out by
 /// <class>OcuPilot.Screen.Tool.UserTokenRevoke</class>: every OAuth 2.0 access token this instance
-/// issued to the account is revoked, behind the typed-name dialog. It declares no self-protection
+/// issued under the account's stored name is revoked, behind the typed-name dialog. It declares no self-protection
 /// rule, because the prohibited set refuses none of it (AD-10).</p>
 Class OcuPilot.Screen.Descriptor.UserList Extends OcuPilot.Screen.Descriptor.Base
 {
