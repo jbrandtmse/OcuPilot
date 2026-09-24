@@ -34,9 +34,9 @@ Finish the area the contest's task statement names most directly: OAuth setup. T
 ## Technical Decisions
 
 - **Merge: read fresh, apply the diff, send the complete property set (AD-4).** The rule applies to every save in this epic, whatever an endpoint does with omitted keys.
-  - All four `Security.OAuth2.*` endpoints call no merge helper and are presumed to erase omitted fields. Each OAuth story measures its own endpoint's `RunPut` on a throwaway and records the result in AD-4.
+  - All four `Security.OAuth2.*` endpoints call no merge helper. `Security.OAuth2.Client.ServerDefinition` was measured to keep omitted fields, merging `Metadata` member by member (AD-4, Story 12.4); the other three are measured by their own stories on a throwaway and recorded in AD-4.
   - `Security.X509Credential` was measured to keep omitted fields. It still receives the complete set.
-- **Field lists (AD-3).** The derived list is the wire contract and carries `Metadata` as one opaque object. The published `mainspec_v2.json` supplies only the `Metadata.*` member sets, 30 to 70 per editor.
+- **Field lists (AD-3).** The derived list is the wire contract and carries `Metadata` as one opaque object. The `Metadata.*` member sets are derived from the vendor's `OAuth2.Server.Metadata` class (its generated `ImportJSON` is the endpoint's wire contract), not from `mainspec_v2.json`, which is not vendored.
   - `ClientId`, `JWTInterval` and `ServerDefinition` keep their template names. The spec calls the last one `OAuth2ServerDefinition`, but the endpoint rejects unknown keys.
   - Every field is classified `ordinary`, `secret` or `opaque`. An unclassified field is emitted as secret. A string field with a credential-like name that is not classified secret fails the build.
 - **Two write mechanisms, and no third.**
