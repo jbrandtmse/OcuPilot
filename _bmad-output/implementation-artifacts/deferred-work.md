@@ -6563,12 +6563,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-11-system-and-user-audit-event-configuration.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: AD-54 and AD-55 exist only on OCU-1-epic8 (Write.cls, Mint.cls, Router.cls); building a second create path here duplicates them; orchestrator ruling 2026-09-23 amended 7.11 AC3
 - 2026-09-23T19:25:32Z status=routed owner=range-end-cleanup by=spec_gate note=a dialog editor over an AD-54 create and an AD-55 Save, following Story 8.4's resource editor; the orchestrator has offered the owner a Story 9.10 charter for it
+- 2026-09-24T08:07:32Z status=routed owner=9-10-the-user-audit-event-editor by=owner note=Owner answered 2026-09-24: yes, charter Story 9.10 'The user audit event editor'. Chartered at the end of Epic 9's order.
 
 ### DW-1575: Each audit event tool accepts the other list's events, so a user event changed through a system tool publishes audit-event (and the reverse)
 - source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: med | fix-risk: med | footprint: in-story
 - evidence: AuditEvent*/AuditUserEvent* tools read Security.Audit.Event GET by source/type/name with no owner check; the target type is the tool descriptor's (Mint.cls:135). Vendor: a system event is exactly one whose Source starts with % (Security.Events.cls:24; ListByFilter on slot A: 75 system, 4 user, 0 mismatches).
 - 2026-09-23T20:54:31Z status=escalated owner=burndown by=cr note=no id-aware hook shared by mint and screen read inside the approved footprint; fix via port owner rule or kernel seam
 - 2026-09-23T22:26:32Z status=routed owner=range-end-cleanup by=merge_gate note=Epic 7 merge decision sheet, recommended disposition taken: one owner check both callers pass through (a Source starting with % is a system event).
+- 2026-09-24T08:07:32Z status=routed owner=9-10-the-user-audit-event-editor by=orchestrator note=Moved from range-end-cleanup into 9.10, whose tools are the ones that must refuse the other list's events.
 
 ### DW-1576: The reset tools' card row reads Total before "" after 0: its before is not derived from the fresh read, which AD-51 requires
 - source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: med | fix-risk: med | footprint: in-story
