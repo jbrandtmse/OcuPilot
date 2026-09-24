@@ -102,3 +102,7 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-24T10:19:09Z	Story 9.1	ci_resolved	story=integrate_forward_d317549 run=35983775764 head=d317549 result=failure job=browser test=definitions.browser-spec.mjs:631(10.5_DW-1337_toast_dismiss_15.9px) first_red=d317549(merge_of_9.1_toast_rule_with_10.5) disposition=high_rework_story_9.1
 2026-09-24T10:19:09Z	Story 9.1	rework_opened	cycle_iteration=3 iteration=2 trigger=ci items=CI-toast-dismiss-24px-floor scope_baseline=pending_rework_commit
 2026-09-24T10:19:10Z	Story 9.1	stage_spawned	stage=implement spawn_at=2026-09-24T10:19:10Z model=opus agent_name=9-1-the-user-editor-implement-3 cycle_iteration=3 note=rework_iteration_2_ci
+2026-09-24T10:33:56Z	Story 9.1	dev_complete	spawn_at=2026-09-24T10:19:10Z model=opus build_sha=52eb08e baseline_revision=62da5af review_loop_iteration=0 followup_review_recommended=false deferred=1 harvested=DW-1611(low_wontfix-accepted) browser_per_file=toast_3/3,definitions_8/8,users-editor_8/8,a11y-structural-invariants_10/10 bundle_initial=1430355 cycle_iteration=3
+2026-09-24T10:33:56Z	Story 9.1	committed_pushed_code	sha=52eb08e ci=pending run=35987943505
+2026-09-24T10:33:56Z	Story 9.1	adr_verifications_complete	result=none_required note=css_target_floor_fix
+2026-09-24T10:33:57Z	Story 9.1	stage_spawned	stage=code-review spawn_at=2026-09-24T10:33:57Z model=opus agent_name=9-1-the-user-editor-code-review-3 cycle_iteration=3 scope=62da5af..HEAD

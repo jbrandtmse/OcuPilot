@@ -6724,3 +6724,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-10-5-a-connection-test-that-answers-before-the-gateway-does.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: scripts/test_check_objectscript.py:964 docstring reads 'the one spawn in shipped code is the job's own'; no case shows a JOB in Kernel/Provider/TestCall.cls passes while one in another Kernel/Provider file is refused, so a prefix-widened allow-list stays green
 - 2026-09-24T06:42:06Z status=wontfix-accepted owner=10-5-a-connection-test-that-answers-before-the-gateway-does by=cr note=reopen_if=JOB_ALLOWED changes shape (prefix, glob) or a third spawn site is added; the harness file is outside this story's footprint
+
+### DW-1611: The toast's close glyph renders at the toast's 14px font, while DESIGN.md:1210 asks for a 20px close icon
+- source: spec-9-1-the-user-editor.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: toast-host.ts dismiss button inherits font (0.875rem); predates Story 9.1; the button box now meets the 24px floor
+- 2026-09-24T10:33:56Z status=wontfix-accepted owner=9-1-the-user-editor by=harvest note=reopen_if=a design review or the owner flags the close glyph size on a toast
