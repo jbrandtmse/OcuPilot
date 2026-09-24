@@ -6590,3 +6590,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: low | fix-risk: med | footprint: in-story
 - evidence: 7.11 changed .pQuery to .tQuery so SPLITQUERIES reaches the vendor; Epic 8 changed pBody to tBody on that line. It is inside a conflict hunk that already exists without 7.11 (merge-tree: 6 AdminPort conflicts before and after).
 - 2026-09-23T20:54:37Z status=wontfix-accepted owner=7-11-system-and-user-audit-event-configuration by=cr note=reopen_if=merged Invoke passes .pQuery to RunSequence (AuditEventTools split GET goes red)
+
+### DW-1588: The DW-1337 structural gate walks HTMLElements only, so an overflow, name or contrast defect inside an SVG is invisible to it
+- source: spec-15-7-the-rail-s-icons.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: structural-walk.mjs:247 filters querySelectorAll('*') by instanceof HTMLElement; 15.7's tile-svg width:40px mutation left the gate green while rail-icons.browser-spec (a) went red, so icon containment rests on that spec
+- 2026-09-24T01:08:26Z status=routed owner=burndown by=harvest note=in-epic: 15.6 owns the walk and has passed cr_complete
+
+### DW-1589: Two stale DW-1337 baseline entries on agent/definitions at 720 (command-bar refresh action and sort span) are reported on every gate run
+- source: spec-15-7-the-rail-s-icons.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Local and CI (run 35938906300 on the merged head b005869d) both print 200 found, 202 in the baseline, 2 stale; Epic 7's command-bar wrap rule cleared both; --write refuses an existing baseline, so removal is a hand edit of the two keys
+- 2026-09-24T01:08:26Z status=open owner=15-7-the-rail-s-icons by=harvest note=two-way door for the reviewer; resolves DW-1585 with it
