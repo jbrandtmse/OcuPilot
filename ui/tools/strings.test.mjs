@@ -529,9 +529,12 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // literals -- the X.509 list's Import and agent invitation, the credential form's title, seven
   // labels, its Load from file button and two helpers, and the proposal card's optional mark -- and
   // take the table past 600.
+  //
+  // Story 11.10 moves the bound to 750 under the same protocol: its one row publishes one literal,
+  // "Jump to latest", and takes the table to 701.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 700,
-    `expected between 150 and 700 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 750,
+    `expected between 150 and 750 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

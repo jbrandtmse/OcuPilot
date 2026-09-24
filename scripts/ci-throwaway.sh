@@ -231,6 +231,7 @@ services:
       # classes: AuditRecord, AuditVerbs, DemoOptIn, GatewayGapIpmPath, GrantReadBack
       # classes: IdentityInstall, InstallNamespaceSource, Installer, Manifest, Provenance, Static
       # classes: UninstallGuard, UninstallResidue, UninstallSurvival, WebApp
+      # classes: DefinitionDefaults
       OCUPILOT_ALLOW_PRODUCTION_INSTALL: "1"
       # Runs the installer's EnsureSslConfiguration step under the probe profile and so creates
       # -- and leaves -- a TLS configuration in the instance's own security database. Same

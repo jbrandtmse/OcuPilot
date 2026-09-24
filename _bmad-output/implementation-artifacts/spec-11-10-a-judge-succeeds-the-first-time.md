@@ -2,14 +2,22 @@
 title: 'Story 11.10: A judge succeeds the first time'
 type: 'feature'
 created: '2026-09-24'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'd0ea94cce5ce589264db29df45da6e5e2f5e7c50'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-11-context.md'
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Api/Definitions.cls MergeBody doc comment still says readOnly's default is 1 after the default moved to 0.
+    evidence: |-
+      Story 11.10 set Kernel.State.Agent.ReadOnly InitialExpression to 0; the comment at Api/Definitions.cls:1438 reads "on readOnly, whose default is 1". The story's Never list forbids editing Api/Definitions.cls, so the prose was left stale.
+    location: >-
+      src/OcuPilot/Api/Definitions.cls:1438
+    severity: low
 ---
 
 <intent-contract>
@@ -124,6 +132,29 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-24 — Review pass
+
+- verdicts: 18 findings — high 0, medium 3, low 11, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Re-propose's `followNewest()` had no test — added the Story 11.10 Re-propose case to `panel.spec.ts`; mutation recorded.
+  - `[medium]` `[patch]` "restored on reload opens at its newest entry" was unpinned — added the fresh-`settle` case to `panel-follow.spec.ts`; mutation recorded.
+  - `[low]` `[patch]` the fits-its-viewport case never reached `atNewest` — it now asserts `atNewest` and a scroll event leaving following on.
+  - `[low]` `[reject]` `panel.spec` New conversation's null-control assertion cannot tell a reset from an empty transcript — the same test's `scrollTop` 800 assertion pins the reset.
+  - `[low]` `[patch]` AC5, AC7 and the arrival-while-following row had no `mutation:` line — demonstrated and recorded under Review pass additions (AC1 and AC4 already carry one per AC).
+  - `[low]` `[patch]` browser (b) did not prove the reply arrived after the scroll-up — hang raised to 12 s and a one-reply precondition asserted before the arrival.
+  - `[false]` `[reject]` the default is tested at storage, not at a turn — the verdict is the single gate (AD-30) and is pinned not blocked for a default row; an API create stores the same flag (`AgentWire:110`).
+  - `[low]` `[defer]` `Api/Definitions.cls:1438` doc comment still says `readOnly`'s default is 1 — the file is on this story's Never list.
+  - `[low]` `[reject]` the prompt statement's effect on a model is untested — excluded by the intent (no live model); Story 17.7's owner check consumes it.
+  - `[false]` `[reject]` the statement adds "do not navigate" and narrows its trigger — it is the Design Notes golden text verbatim.
+  - `[low]` `[reject]` the control's visibility is state, not geometry, so a viewport change with no scroll event can leave it shown at the newest entry — rare, harmless, and the fix adds a branch.
+  - `[low]` `[patch]` no test combined a 4 px distance with an arrival — added to `panel-follow.spec.ts`.
+  - `[low]` `[patch]` accepted-send variants untested — grouped with the Re-propose patch; Enter and Send anyway share `sendCurrentDraft`'s pinned path, a locked send the refused one.
+  - `[false]` `[reject]` proposal-card and error-banner arrivals untested — `settle` reacts to any transcript growth, so every entry kind takes the pinned path.
+  - `[medium]` `[patch]` restore on reload untested, and it animates under smooth scroll — grouped with the restore patch; the animation follows the spec's "scripts never pass a behavior".
+  - `[low]` `[reject]` "goes away by the user's own scroll" tested only in the unit spec — the panel wiring is the same `onTranscriptScroll` handler the `userScroll` cases pin.
+  - `[low]` `[reject]` no test that a send leaves focus alone — only `onJumpToLatest` calls `focus`; a test would guard no demonstrated state.
+  - `[false]` `[reject]` stateful checks on `ocupilot-b-ci` cannot be verified from the diff — every run of this pass was on `ocupilot-b-ci`.
+
 ## Design Notes
 
 **Governing ADs:** AD-11 (rule 1: the prompt is a constant; rule 3: navigation is announced, refusable and reversible, through the `client`-fulfilled tool), AD-30 (the read-only verdict and gate are unchanged, and only the stored default moves), AD-10 (untouched), AD-24 (as amended by 11.9: `readOnly` in context is the verdict, which now defaults to false for a new definition), AD-19 (the follow state is outside `core/`, in the shell), AD-53/AD-55 (unchanged; the switches still gate only the agent), and the Conventions: Angular naming, Client asset homes (`strings.ts`, `\uXXXX`), Theme (tokens only), and "When `SCHEMAVERSION` moves" (it does not).
@@ -166,18 +197,47 @@ Home sends no context, so from Home the statement opens the target screen. That 
 **Pinning mutations (Rule 19).** Recompile the package or rebuild and redeploy the bundle before reading each result. Revert, confirm `git status --short` is unchanged, and record `mutation: … -> …` under each item.
 
 - `InitialExpression = 1` -> `DefinitionDefaults` new-definition leg and `AgentWire:110` red.
+  - mutation: `ReadOnly` `InitialExpression = 1`, package recompiled -> `DefinitionDefaults.TestANewDefinitionIsReadWrite` red (4 assertions) and `AgentWire.TestASoundCreateIsReturnedByTheListImmediately` red on "created read/write" alone
 - `emptyBuffer` `readOnly = true` -> the form page spec's create-body case red.
+  - mutation: `emptyBuffer` `out['readOnly'] = true` -> `definition-form.page.spec.ts` "Story 11.10: a create posts readOnly false" red (1 of 52)
 - An installer step that sets every definition's `ReadOnly` to 0 -> `DefinitionDefaults` install-survival leg red.
+  - mutation: `UPDATE ... SET ReadOnly = 0` at the top of `Installer.Install` for the production profile -> `DefinitionDefaults.TestAStoredFlagSurvivesAnInstall` red on "the stored read-only flag is still 1" alone
 - Drop `MergeBody`'s boolean type guard -> `AgentWire`'s re-seated quoted-flag leg red.
+  - mutation: `MergeBody`'s boolean `%GetTypeOf` guard line deleted -> `AgentWire.TestABodyThatIsNotAMapOfScalarsIsRefused` red on "with the stored flag kept" alone (1 of 17)
 - Delete the new prompt statement -> `ScreenGrounding` red on "the open-the-screen-first statement" alone.
+  - mutation: statement deleted from `BUILTIN` -> `ScreenGrounding.TestThePromptCarriesTheScreenStatements` red on "the open-the-screen-first statement" alone (1 of 10 methods, 1 assertion)
 - `FOLLOW_TOLERANCE_PX = 5` -> `panel-follow.spec.ts` 5 px case red. `= 3` -> 4 px case red.
+  - mutation: `= 5` -> "a user scroll to 4 px ... and to 5 px does not" red on its 5 px leg; `= 3` -> the same test red on its 4 px leg (1 of 5 each)
 - Let the panel's own scroll events clear following -> `panel-follow.spec.ts` intermediate-positions case red.
+  - mutation: `onScroll`'s `!this.inFlight || top < previous` arm made unconditional -> "a smooth scroll on its way there keeps following on" red (1 of 5)
 - Scroll on every arrival regardless of following -> the browser spec's scrolled-up leg red (`scrollTop` moved).
+  - mutation: `settle` scrolls on `scrollHeight` growth whatever `following` reads, rebuilt and redeployed -> `transcript-follow` (b) red on "the reply arrived without moving the scrolled-up transcript"; dropping only the `following` check (growth still read off `scrollHeight - clientHeight`) reddens (a), (b) and (c) at their scrolled-away precondition, since the control's own row counts as growth
 - No scroll on send -> the browser spec's long-conversation leg red.
+  - mutation: `followNewest()` dropped from `sendCurrentDraft`, rebuilt and redeployed -> `transcript-follow` (a) red at "turn 2, after Send" (962 px away), (b) and (c) green; `panel.spec.ts` "an accepted send scrolls" red as well
 - Drop the reduced-motion override -> the browser spec's reduced-motion leg red.
+  - mutation: the `prefers-reduced-motion` `scroll-behavior: auto` block deleted, rebuilt and redeployed -> `transcript-follow` (c) red on "reduced motion computes scroll-behavior auto"
 - Remove focus to the transcript on jump -> `panel.spec.ts` jump case and the browser jump leg red.
+  - mutation: the `focus` call dropped from `onJumpToLatest` -> `panel.spec.ts` "pressing Jump to latest ... focuses the transcript" red (1 of 123) and, rebuilt and redeployed, `transcript-follow` (b) red on "focus is on the transcript"
+- Review pass additions:
+  - mutation: `followNewest()` dropped from `onCardRepropose` -> `panel.spec.ts` "Story 11.10: an accepted Re-propose scrolls ..." red (1 of 1057)
+  - mutation: the first `settle` records `lastNewest` without scrolling -> `panel-follow.spec.ts` "a transcript restored on reload opens at its newest entry" red (1 of 1057)
+  - mutation: the `afterEveryRender` settle made a no-op -> `panel.spec.ts` "an arrival while following scrolls ..." red (1 of 1057)
+  - mutation: `Loop.cls` sends `Builtin()` cut before the new statement, package recompiled -> `TurnWire.TestAStartRunsAsTheCallerAndThePollAnswersItsShape` red on "under the built-in system prompt" (1 of 13)
+  - mutation: `agentJumpToLatest` set to 'Jump to newest' -> `strings.test.mjs` table-equals-source tests red (3 of 25); its citation set to `:465` -> "every EXPERIENCE.md line reference resolves" red alone
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** A new definition is read/write (`Agent.ReadOnly` `InitialExpression` 0, the form's `emptyBuffer` `readOnly` false); stored values are untouched and `SCHEMAVERSION` does not move. `Prompt.BUILTIN` ends with the golden statement. The panel transcript follows the conversation through `shell/panel-follow.ts`, with Jump to latest outside the log and scroll animation in CSS.
+
+**Files.** `Kernel/State/Agent.cls` (default), `Kernel/Agent/Prompt.cls` (statement), `Test/DefinitionDefaults.cls` (new: default and install survival), `Test/Restraint.cls`, `Test/AgentWire.cls`, `Test/ScreenGrounding.cls` (re-seated pins), `definition-form.store.ts` and its page spec, `shell/panel-follow.ts` and spec (new), `shell/panel.ts` and spec, `_components.scss`, `strings.ts`, `strings.test.mjs` (literal bound 700 to 750), EXPERIENCE.md (row `:467`, Body line), `browser/transcript-follow.browser-spec.mjs` (new), seven browser-spec comment lines, `scripts/ci-throwaway.sh` (arming roster).
+
+**Departures (footprint_extensions).** `DefinitionDefaults` is armed by `OCUPILOT_ALLOW_PRODUCTION_INSTALL`, not unarmed: it calls `Installer.Install("")`, which the checker refuses in an unarmed class, so `scripts/ci-throwaway.sh` gained `# classes: DefinitionDefaults`. `strings.test.mjs`'s bound conflicts with Epic 9's 900 at merge: keep 900 and both comment paragraphs.
+
+**Review.** 18 findings: 7 patched (2 medium, 5 low; the Re-propose and restore groups, the fits-viewport case, the 4 px arrival case, browser (b)'s arrival precondition, five mutation lines), 1 deferred (stale `Api/Definitions.cls:1438` comment, Never-listed file), 10 rejected as logged. Follow-up review recommended: true (2 medium patched) -- restore-on-reload opening at the newest entry is pinned in the pure follow unit only; no panel or browser test reloads a long transcript.
+
+**Verification.** `check-objectscript.py` 0 problems; `lint-docs.sh` clean; `test:tools` 1375/1375; `test:components` 1057/1057; browser `transcript-follow`, `reply`, `panel` 20/20 against the rebuilt, redeployed bundle (1,326,022 bytes, under the 1378 kB warning; DW-1166 not applied). Full ObjectScript sweep on `ocupilot-b-ci`, one `ci-runner` call per class: 224 classes, runs 18-241 consecutive, 1992 methods, 1992 passed, 0 failed (`%UnitTest_Result`, 16:06:20-16:25:54 instance time). `smoke.sh --container ocupilot-b-ci`: executed=49 passed=49 failed=0. Mutations recorded under `## Verification`.
+
+**Residual risk.** A wheel scroll made while the panel's own smooth scroll is still running can be overridden by it (observed in headless Chrome; the browser spec lets the own scroll finish first) (inference).

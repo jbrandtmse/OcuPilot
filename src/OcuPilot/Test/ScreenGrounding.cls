@@ -1,4 +1,4 @@
-/// <p>Story 11.9 in process: the built-in prompt's five screen-context statements, the tools each
+/// <p>Stories 11.9 and 11.10 in process: the built-in prompt's six screen statements, the tools each
 /// kind of screen names (<method>OcuPilot.Screen.Context.ScreenTools</method>), the refusal of a
 /// request that supplies a derived member (<method>OcuPilot.Api.Turn.ContextViolation</method>),
 /// and the two members <method>OcuPilot.Api.Turn.BoundedContext</method> adds on both payload
@@ -15,7 +15,7 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 /// behind its four row actions, in name order.</p>
 Parameter PROCESSTOOLS = "[""osmgmt_processes_read"",""osmgmt_processes_resume"",""osmgmt_processes_suspend"",""osmgmt_processes_terminate"",""osmgmt_processes_terminatewitherror""]";
 
-/// <p>The prompt's statement at <var>pIndex</var> (1 to 5), verbatim.</p>
+/// <p>The prompt's statement at <var>pIndex</var> (1 to 6), verbatim.</p>
 ClassMethod Statement(pIndex As %Integer) As %String
 {
     Quit $Case(pIndex,
@@ -24,6 +24,7 @@ ClassMethod Statement(pIndex As %Integer) As %String
         3: "A change confirmed through one of the screen's tools refreshes that screen and marks the changed row.",
         4: "When you are read-only, say so, and describe the change you would make instead of proposing it.",
         5: "Use only the tools you are offered, and when none of them can do what was asked, say so rather than describe a capability you lack.",
+        6: "When the user asks about something a screen shows, or asks to change it, and the screen_context does not show them on that screen, open that screen with the navigation tool first, before you answer or propose the change, so they see what you are discussing and the change when it lands; when they are already on it, do not navigate.",
         : "")
 }
 
@@ -38,9 +39,9 @@ Method ToolsFor(pRoute As %String) As %String
     Quit tTools.%ToJSON()
 }
 
-/// <p>The prompt is the class parameter, whole, and carries each of the five screen-context
-/// statements verbatim, one assertion each.</p>
-Method TestThePromptCarriesTheFiveStatements()
+/// <p>The prompt is the class parameter, whole, and carries each of the six screen statements
+/// verbatim, one assertion each.</p>
+Method TestThePromptCarriesTheScreenStatements()
 {
     Set tPrompt = ##class(OcuPilot.Kernel.Agent.Prompt).Builtin()
     Do $$$AssertEquals(tPrompt, $Parameter("OcuPilot.Kernel.Agent.Prompt", "BUILTIN"), "Builtin() is the build-time constant, whole")
@@ -49,6 +50,7 @@ Method TestThePromptCarriesTheFiveStatements()
     Do $$$AssertTrue(tPrompt [ ..Statement(3), "the refresh-and-mark statement")
     Do $$$AssertTrue(tPrompt [ ..Statement(4), "the read-only statement")
     Do $$$AssertTrue(tPrompt [ ..Statement(5), "the only-the-tools-offered statement")
+    Do $$$AssertTrue(tPrompt [ ..Statement(6), "the open-the-screen-first statement")
     Set tOutside = 0
     For tI = 1:1:$Length(tPrompt) If ($Ascii(tPrompt, tI) < 32) || ($Ascii(tPrompt, tI) > 126) Set tOutside = tOutside + 1
     Do $$$AssertEquals(tOutside, 0, "the prompt is printable ASCII throughout")
