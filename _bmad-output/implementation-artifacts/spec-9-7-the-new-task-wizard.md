@@ -288,6 +288,11 @@ Client:
 - `ui/browser/task-wizard.browser-spec.mjs` (new) -- the Matrix's Create, Next-on-empty, Back, type-loads-settings and Name-taken rows; the details page and the schedule list after the create; the visual gate at 1440x900; probe tasks deleted by exact name.
 - `tasks.browser-spec.mjs` -- the schedule list's Create is drawn and opens the wizard.
 
+**Orchestrator rulings 2026-09-24 (binding; spine AD-21 amended):**
+
+- AD-21 third named exception applied as planned: the output file is one name matching `^[A-Za-z0-9][A-Za-z0-9._-]{0,99}\.txt$` (a literal `..` refused), written under the manager directory computed at call time, sent as `OutputDirectory` and `OutputFilename`. Pin the refusal with a test that reddens when the pattern check is removed. Task-type settings are that type's own vendor-validated values (`<setting>IsValid`); the location-type settings are permitted as values, and **the proposal card names the location** so the user sees where the task will read or write (a test pins the named location on the card). AC7 stays whole.
+- Bundle: build the wizard EAGER. Do NOT build a `@defer`/lazy pattern (the lazy-load move is the owner's, and would arrive as its own unit). The lead re-bases the warning under DW-1166 if crossed; if a measured initial total crosses 1580kB, HALT `intent gap` and report the figure.
+
 **Acceptance Criteria:**
 
 - **AC1.** Given the wizard, when it renders, then it is a linear vertical stepper of the four named steps. Next validates the current step through the server's rules. Back keeps values. The type step loads the chosen type's settings. The last primary reads "Create task". A step with an error names it in text as well as by its marker.
@@ -303,6 +308,8 @@ Client:
 - **Integration.** `TaskWizardPage` consumes `core/form-tabs.ts` through `FormStepper`, the `/tasks` routes and `ChangeBus`. A refused Create on step 1 opens it with its marker, and the created task's details open. The browser spec observes both.
 
 ## Spec Change Log
+
+- 2026-09-24 spec gate (lead): orchestrator rulings (a) on AD-21 (third named exception; location-type task settings permitted, named on the card) and (a) eager bundle (1580kB stop line); recorded in Tasks & Acceptance; spine AD-21 amended.
 
 - 2026-09-24 spec gate (lead): applied ruling 2 (AD-3 and epics.md count: 49 documented, 47 on `%SYS.TaskSuper` plus `%%OID` and `%Concurrency`) and ruling 3 (EXPERIENCE.md stepper row reworded). Rulings 1 (AD-21 output file and task settings) and 4 (the owner's 1500kB bundle line) are asked of the orchestrator before the implement spawn.
 
