@@ -2,7 +2,7 @@
 title: 'Story 12.3: Copy and purge the audit database'
 type: 'feature'
 created: '2026-09-24'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'e693249be3bd6ae29b81c796860b9b3f3ba7b121'
 baseline_commit: 'e693249be3bd6ae29b81c796860b9b3f3ba7b121'
 review_loop_iteration: 0
@@ -74,7 +74,7 @@ footprint_extensions:
 | Copy into `%SYS`, or an unknown namespace | `%SYS` / `NOSUCHNS` | 400 `TOOL.ARGUMENTS` naming the namespace problem | Nothing is queued |
 | Purge (screen) | 0 days, so the cut-off is today | 200 `updated`. Every record dated today survives, and the vendor records its own purge event | None |
 | Purge cut-off malformed or in the future | `2026-13-01` or tomorrow | 400 `TOOL.ARGUMENTS` | Nothing is queued |
-| Still running at the bound | The vendor task is not terminal after `AsyncTimeout()` (30 s) | 503 `PORT.TIMEOUT`. The page's status line says the operation is still running on the instance and finishes in the background | The worker keeps running |
+| Still running at the bound | The vendor task is not terminal after `AsyncTimeout()` (30 s) | The port answers **started**, never `PORT.TIMEOUT`: the write is applied with the outcome "continues in the background". The agent's confirm emits the AD-15 marker and records the row as applied, not `error`, and the agent's reply and the page both say it is still running on the instance | The worker keeps running |
 | Vendor failure | Task `Failed` | The envelope's sentence appears in the page's refusal banner | Nothing is published |
 | Missing pair | A caller holding the screen's pairs but not `%Admin_Operate:USE` | 403 naming `%Admin_Operate:USE`, from the screen route (both tools) and from the mint (copy) | Nothing is queued |
 | Agent purge | A model calls `security_auditing_purge` | Refused as an unknown tool. It is not in the advertised list | No proposal is minted |
@@ -212,6 +212,8 @@ footprint_extensions:
 
 ### Review Findings
 
+- [ ] [Review] HIGH, AD-15/AD-26 (orchestrator ruling 66aa49ec, by=merge_gate: fix, not waive) -- `src/OcuPilot/Port/AuditPort.cls` (and `Kernel/Proposal/Confirm.cls:382-398` only if unavoidable) -- past `AsyncTimeout()`, answer a `QUEUEDWRITES` request as **started**, not `PORT.TIMEOUT`: a started/pending success the confirm path takes as success, so it emits the AD-15 marker and records the row as applied with the outcome "continues in the background"; the agent's reply and the screen both say it is still running. Do it within `AuditPort` and its answer shape if Confirm's success path can carry it -- first check whether that path does a post-read that would fail on an in-flight copy. If `Confirm.cls` must change, one minimal hunk under contended-edit discipline (`git show origin/OCU-1-epic9:src/OcuPilot/Kernel/Proposal/Confirm.cls` first, stay off its hunks, list it under `footprint_extensions:`). The screen path: the page shows the still-running sentence on the started answer. Pin it with a **stubbed long-running queued job** (no large audit database; e.g. a port subclass or a tiny bound so the vendor task is not terminal): confirm emits the marker and the row is not `error`; record the `mutation:` line -- removing the started branch reddens it. Update the page/component tests for the started answer.
+
 Code review 2026-09-24 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 39 rows, 13 entries after grouping, 16 rejected.
 
 - [ ] [Review][Decision] HIGH, AD-15/AD-26/AD-7: an agent copy that outlasts `AsyncTimeout()` is unmarked and its ledger row reads `error`, while the vendor's worker completes the copy — `Confirm.cls:382-398` treats `PORT.TIMEOUT` as "the write did not happen" (`MARKEDNONE`), but AD-26's `QUEUEDWRITES` clause assumes "the request that starts the write still answers its outcome", and AD-15 names no case for it. Reachable: M3 measured ~57k records/s, so about 1.7M records exceed the 30 s bound. The spec names it only in Design Notes ("Named limitation"), which the spine does not carry. Needs a ruling: (A) a named case in AD-15 plus a corrected AD-26 sentence (a waiver of the marker for this case), or (B) a Confirm change that marks a `QUEUEDWRITES` write answered `PORT.TIMEOUT` as queued rather than failed.
@@ -247,6 +249,8 @@ Rejected:
 
 ## Spec Change Log
 
+- 2026-09-24, code review rework 1 (lead). Orchestrator ruling 66aa49ec (by=merge_gate) on the review HIGH: fix, do not waive. A queued write past the wait answers started, is marked and recorded applied; AD-26 corrected at its origin. The matrix row "Still running at the bound" and the Design Notes background bullet are replaced to match.
+
 - 2026-09-24, spec gate (lead). The orchestrator answered R1-R6 (logged 12e290dc, by=merge_gate), each as recommended, and the spine carries them: AD-53 names the unadvertised tool, AD-26 names `QUEUEDWRITES`, AD-51 names the port-built body, AD-8's clause covers an endpoint the call must reach, with `%Admin_Operate:USE` its second case. Two pins are required: purge absent from the provider tool list, the dispatch lookup and the screen context's `tools` (`Test/AuditPurge.cls`), and a mutating queued type off `QUEUEDWRITES` still refused (`Test/AdminPortAsync.cls`). R5 stands. Epic AC3 and AC5 now sit in Story 14.2's block, and 12.3's block marks them delivered there. AC1's "reporting progress" is the running line, then the outcome, because the vendor exposes no count (inference, accepted).
 
 ## Review Triage Log
@@ -281,8 +285,7 @@ Rejected:
 - **Why a port.** One `Endpoint` must answer the mint's read and carry the write. `Security.Audit.Record` `GET` needs a record key, so `AuditPort` answers `DATABASE` from `Security.Audit.Enabled` (the vendor gate still applies, AD-29) with the two argument fields empty. Merge can then set them, and they become the card's row and the fingerprint subject. The subject is the argument itself: nothing in the audit database is a precondition of copying or purging it (AD-51 adequacy).
 - **Background and progress.** The vendor runs both types in a Work Queue worker. The port waits up to `AsyncTimeout()` and returns the terminal state (AD-26), and the page shows the live running state meanwhile.
   - The vendor exposes no count or percentage: `RunCopy` and `RunPurge` discard it.
-  - Past 30 s, the answer is `PORT.TIMEOUT`, and the page says the work continues on the instance.
-  - Named limitation: an agent copy past the bound confirms as failed while the vendor completes it. The vendor's `AuditChange` rows record the truth (inference: rare, and measured below).
+  - Past 30 s, the port answers that the write has started (AD-26, amended at code review): the confirm marks it and records it applied, and the agent and the page both say it continues on the instance.
 - **Copy is the agent's tool, and delete-after-copy is not offered.** This follows the owner's "developer tool first". Copy destroys nothing, and the vendor audits it. With delete-after-copy it would be a purge through a side door.
 - **Strings** (`auditDatabase*`):
   - "Audit database"; "Copy to namespace"; "Purge old records";
