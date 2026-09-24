@@ -155,3 +155,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-24T17:18:53Z	Epic 9	spine_updated	ad=AD-54 reason=cr_finding by=runner story=9-7-the-new-task-wizard dw=DW-1629 what=complete_body_create_counts_unsupplied_keys_unchanged lint=ok_preexisting_low_placeholder_line167
 2026-09-24T17:18:53Z	Story 9.7	ci_resolved	story=9.7 run=36029831321 head=26284da8 result=failure jobs=7/8 failed=browser(task-wizard_AC7_stepper_read_before_render,proposal-demo_AC1_ocu-panel-message-agent-text) resolved_at=pre_smoke
 2026-09-24T17:18:53Z	Story 9.7	rework_opened	cycle_iteration=2 iteration=1 trigger=ci items=CI:task-wizard_AC7_race,CI:proposal-demo_AC1 scope_baseline=pending_rework_commit
+2026-09-24T17:19:35Z	Story 9.7	bookkeeping_committed	sha=088ba901 kind=rework_commit pushed=yes note=carries_cr_patches
+2026-09-24T17:19:35Z	Story 9.7	stage_spawned	stage=implement spawn_at=2026-09-24T17:19:35Z model=opus agent_name=9-7-the-new-task-wizard-implement-2 cycle_iteration=2
