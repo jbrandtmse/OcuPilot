@@ -4815,9 +4815,10 @@ So that fixing a schedule does not mean deleting and recreating it.
 
 - **Given** a task's next-scheduled time changes as a side effect of the write
 - **When** the proposal's fingerprint is computed
-- **Then** that field is **excluded** by the descriptor's declared exclusions, so a legitimate write is not refused as "target changed".
+- **Then** that field is outside the fingerprint - the tool's fresh read does not carry it (measured) - and a test pins that a proposal whose task ran before confirm still writes, so a legitimate write is not refused as "target changed" [AMENDED 2026-09-24 - see the story change log: measured at the 9.8 plan, the task's fresh read carries no next-scheduled time, and a descriptor exclusion would break the run tool's fingerprint subject].
 
 - DW-1624: Task details shows a wizard-created task's schedule and Priority, not its output file, suspend, reschedule or email values; the edit tabs show every field of a wizard-created task (ledger; routed by cr 2026-09-24)
+- DW-1631: The 9.7 wizard draws a `%SYS.Task.Password`-typed setting (DiagnosticReport's SMTPPass) as an ordinary setting; one classifier makes it classic-only for create and edit (ledger; routed by spec_gate 2026-09-24)
 
 ### Story 9.9: A cut editor ships reduced, never half-working
 

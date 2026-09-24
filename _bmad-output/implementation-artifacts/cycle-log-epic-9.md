@@ -170,3 +170,7 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-24T18:25:03Z	Epic 9	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp feature_head=12e290dc merge=0c2eac8e brings=Story_11.10 conflicts=4_resolved(union:_components.scss+EXPERIENCE.md+strings.test.mjs_bound;sprint-status_regenerated+11.10_done;strings.ts_2_line_refs) verification=build_ok_1.52MB,tools_1396/1396,components_1171/1171,ci=pending_run_36041043146
 2026-09-24T18:26:37Z	Epic 9	epic_context_compiled	sha=pending reason=planning_artifact_newer model=opus lines=70
 2026-09-24T18:26:37Z	Story 9.8	stage_spawned	stage=plan spawn_at=2026-09-24T18:26:37Z model=opus agent_name=9-8-edit-task-plan-1 cycle_iteration=1
+2026-09-24T18:51:05Z	Story 9.8	story_created	spawn_at=2026-09-24T18:26:37Z model=opus path=_bmad-output/implementation-artifacts/spec-9-8-edit-task.md build_status=ready-for-dev epic_context=reused
+2026-09-24T18:51:05Z	Epic 9	amendment	file=epics.md:4818(9.8_AC3_fingerprint_wording) tier=1_rule5 by=runner
+2026-09-24T18:51:05Z	Story 9.8	ledger_routed_planned	story=9-8-edit-task entries=1(DW-1631) excess=0 by=spec_gate
+2026-09-24T18:51:05Z	Story 9.8	plan_clarification_requested	questions=AD-4_Task.CRUD_port_omissions(DailyStart/EndTime_unchanged,Settings_unchanged,Type) to=orchestrator

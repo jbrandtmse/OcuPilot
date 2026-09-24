@@ -6838,3 +6838,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-11-10-a-judge-succeeds-the-first-time.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: panel-follow.ts settle() scrolls on any growth while following, including a tool-call or proposal card the user expands; the spec's rule covers every render that adds or grows an entry.
 - 2026-09-24T17:07:51Z status=wontfix-accepted owner=11-10-a-judge-succeeds-the-first-time by=cr note=reopen_if=the 17.7 owner check or a judge reports the transcript jumping when a card is expanded at the newest entry
+
+### DW-1631: The 9.7 wizard draws %SYS.Task.DiagnosticReport's SMTPPass (typed %SYS.Task.Password, not credential-named) as an ordinary setting, so a create's value can reach the proposal card's diff (AD-35)
+- source: spec-9-8-edit-task.md | severity: high | fix-risk: low | footprint: in-epic
+- evidence: measured at the 9.8 plan on ocupilot-ci: IsCredentialName(SMTPPass)=0 and 9.7 TypeSettings draws it; the only %SYS.Task.Password property in HSCUSTOM and %SYS
+- 2026-09-24T18:50:54Z status=routed owner=9-8-edit-task by=lead note=9.8's plan adds one classifier in TaskPort (Password type, credential names, collections are classic-only) used by create and edit; its AC4 pins it
