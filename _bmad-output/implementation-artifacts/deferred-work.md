@@ -6644,3 +6644,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-10-5-a-connection-test-that-answers-before-the-gateway-does.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: scripts/test_check_objectscript.py:964 docstring reads 'the one spawn in shipped code is the job's own'; no case shows a JOB in Kernel/Provider/TestCall.cls passes while one in another Kernel/Provider file is refused, so a prefix-widened allow-list stays green
 - 2026-09-24T06:42:06Z status=wontfix-accepted owner=10-5-a-connection-test-that-answers-before-the-gateway-does by=cr note=reopen_if=JOB_ALLOWED changes shape (prefix, glob) or a third spawn site is added; the harness file is outside this story's footprint
+
+### DW-1608: The panel never reads a screen store's truncated flag, so a list its own endpoint cut (the error list's drill.truncated) reaches the turn with truncated false and rowsAvailable equal to the rows shown
+- source: spec-11-9-the-agent-knows-the-screen-it-is-on.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ui/src/app/shell/panel.ts assembleContext never reads store.truncated(); payload truncated reflects only the kernel row-cap and size cuts; pre-existing for every screen
+- 2026-09-24T09:12:19Z status=wontfix-accepted owner=11-9-the-agent-knows-the-screen-it-is-on by=harvest note=reopen_if=a source-cut list (error list at its endpoint cap) shows truncated=false in a recorded screen_context
