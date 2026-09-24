@@ -47,3 +47,5 @@ TAB-separated, append-only: `<UTC> TAB <Story <id> | Epic 11> TAB <stage> TAB <m
 2026-09-24T15:06:28Z	Epic 11	throwaway_up	container=ocupilot-b-ci dir=/tmp/ocupilot-b-ci web=52777 super=1976 by=runner(this_session) status=healthy
 2026-09-24T15:19:34Z	Epic 11	lead_model_gate	model=claude-opus-5-5[1m] action=proceed scope=story_11.10_only note=resumed_runner_after_quota_loss_1510Z
 2026-09-24T15:19:34Z	Epic 11	runner_resumed	pushed=fbe772fe,f5144943 throwaway=ocupilot-b-ci_inherited(healthy) next=implement
+2026-09-24T15:20:07Z	Story 11.10	ci_resolved	story=11.9(integrate_forward_head_1af7bf51) run=36014580530 result=success resolved_at=next_implement(Rule_28)
+2026-09-24T15:20:07Z	Story 11.10	stage_spawned	stage=implement spawn_at=2026-09-24T15:20:07Z model=opus agent_name=11-10-a-judge-succeeds-the-first-time-implement-1 cycle_iteration=1
