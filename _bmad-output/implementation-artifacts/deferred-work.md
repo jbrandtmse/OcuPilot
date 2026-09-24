@@ -6603,3 +6603,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Local and CI (run 35938906300 on the merged head b005869d) both print 200 found, 202 in the baseline, 2 stale; Epic 7's command-bar wrap rule cleared both; --write refuses an existing baseline, so removal is a hand edit of the two keys
 - 2026-09-24T01:08:26Z status=open owner=15-7-the-rail-s-icons by=harvest note=two-way door for the reviewer; resolves DW-1585 with it
 - 2026-09-24T01:23:21Z status=resolved-by:15-7-the-rail-s-icons by=adjudication note=cr removed both keys by hand; gate reads 200 found, 200 in the baseline, 0 stale on the throwaway
+
+### DW-1590: The OpenAI adapter sends tools on chat/completions without reasoning_effort, and the catalog default gpt-5.6-terra refuses function tools there unless reasoning_effort is none, so every tool-bearing turn on OpenAI's default model fails with a 400
+- source: spec_gate 10.4 (lead live probe) | severity: high | fix-risk: low | footprint: in-epic
+- evidence: live 2026-09-24 gpt-5.6-terra chat/completions: tools without reasoning_effort -> 400 'Function tools with reasoning_effort are not supported ... set reasoning_effort to none'; with reasoning_effort none -> 200, tool round trip 200
+- 2026-09-24T02:25:07Z status=routed owner=10-4-sampling-parameters-left-to-the-provider by=spec_gate note=same intent as 10.4: a definition built from OcuPilot defaults must reach its default model
+
+### DW-1591: Gemini 3 function calls carry a thoughtSignature that GeminiToCanonical drops, and the catalog default gemini-3.8-flash refuses the next request of a tool-calling turn without it, so every tool-using turn on Gemini's default model fails with a 400
+- source: spec_gate 10.4 (lead live probe; the plan stage raised it as an inference) | severity: high | fix-risk: low | footprint: in-epic
+- evidence: live 2026-09-24 gemini-3.8-flash: replayed functionCall without thoughtSignature -> 400 'Function call is missing a thought_signature in functionCall parts'; same request with the signature kept -> 200
+- 2026-09-24T02:25:07Z status=routed owner=10-4-sampling-parameters-left-to-the-provider by=spec_gate note=same intent as 10.4; the canonical tool_use block already carries the vendor id (DW-1180), and Loop.AnswerTools echoes tool_use blocks verbatim
