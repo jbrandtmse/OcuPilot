@@ -5485,3 +5485,17 @@ body {
   justify-content: center;
   padding: var(--ocu-space-2) var(--ocu-panel-gutter) 0 var(--ocu-space-4);
 }
+
+// --- The Auditing screen's audit database group (Story 12.3) -----------------------------------
+//
+// Copy to namespace and Purge old records sit on one row that wraps at the content minimum; each
+// dialog's field keeps the space above the consequence line that follows it.
+.ocu-audit-database-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ocu-space-2);
+}
+
+.ocu-audit-database-field {
+  margin-bottom: var(--ocu-space-4);
+}

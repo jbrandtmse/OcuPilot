@@ -364,8 +364,13 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         ; asserted of an action write is its own emptiness; the reviewed-few equality below is the
         ; body-sending tools' own.
         Set tSendsBody = ''$ClassMethod(tClass, "SendsBody")
+        ; AD-51 as amended by Story 12.3: a write whose body its declared port composes admits the
+        ; arguments the port composes it from, which travel in the port query and are no field of
+        ; the type (the reviewed-few loop below still holds them outside the type's fields).
+        Set tComposed = 'tSendsBody && ($ListFind($ListFromString($Parameter($ClassMethod(tClass, "PortClass"), "COMPOSEDTYPES")), $ClassMethod(tClass, "Endpoint") _ "/" _ $ClassMethod(tClass, "WriteType")) > 0)
         If 'tSendsBody {
-            Do $$$AssertEquals($ListLength(tSettable), 0, tEntry.%Get("name") _ " sends no body, so it admits no field")
+            If 'tComposed Do $$$AssertEquals($ListLength(tSettable), 0, tEntry.%Get("name") _ " sends no body, so it admits no field")
+            If tComposed Do $$$AssertEquals($ListLength(tSettable), 1, tEntry.%Get("name") _ " sends no body and its port composes one from its one argument")
             For tI = 1:1:$ListLength(tPermitted) {
                 Do $$$AssertEquals(tSchema.%Get("properties").%GetTypeOf($List(tPermitted, tI)), "unassigned", tEntry.%Get("name") _ " advertises none of its type's reviewed few either, and not '" _ $List(tPermitted, tI) _ "'")
             }

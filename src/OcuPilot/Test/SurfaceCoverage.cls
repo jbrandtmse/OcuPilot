@@ -127,6 +127,8 @@ XData Coverage
 <tool name="permissions.users.revoketokens" class="OcuPilot.Test.TokenRevoke" method="TestTheToolIsADestructiveActionWriteOverTheListsPairsAndTheRegistrationPair"/>
 <tool name="permissions.users.update" class="OcuPilot.Test.ToolWrite" method="TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs"/>
 <tool name="security.auditing.update" class="OcuPilot.Test.ToolWrite" method="TestTheAuditingWriteToolAdvertisesEnabledAloneAndDeclaresItsWriteDestructive"/>
+<tool name="security.auditing.copy" class="OcuPilot.Test.AuditCopy" method="TestTheToolsAreQueuedActionWritesOverTheScreensPairsAndOperate"/>
+<tool name="security.auditing.purge" class="OcuPilot.Test.AuditPurge" method="TestThePurgeIsAnUnadvertisedDestructiveActionWrite"/>
 <tool name="security.auditsystemevents.reset" class="OcuPilot.Test.AuditEventTools" method="TestTheResetToolsAreActionWritesWithOneStateRow" corpus="the system and user tools are asserted together in one loop"/>
 <tool name="security.auditsystemevents.update" class="OcuPilot.Test.AuditEventTools" method="TestTheUpdateToolsAdmitEnabledAloneOverTheClassDerivedList" corpus="the system and user tools are asserted together in one loop"/>
 <tool name="security.audituserevents.delete" class="OcuPilot.Test.AuditEventTools" method="TestTheUserEventDeleteIsADestructiveActionWrite"/>

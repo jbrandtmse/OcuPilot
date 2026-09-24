@@ -1205,9 +1205,11 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
         Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating(tEndpoint, tType), tName _ " writes '" _ tEndpoint _ "/" _ tType _ "', which the port declares a mutating pair")
         If '$ListFind(tReached, tEndpoint _ "/" _ tType) Set tReached = tReached _ $ListBuild(tEndpoint _ "/" _ tType)
         ; AD-51 as amended by Story 7.5: a type whose body is a vendor constant the port supplies
-        ; is exempt too, through CONSTANTBODIES rather than BODYLESSTYPES.
-        Set tExempt = ''##class(OcuPilot.Port.AdminPort).IsBodyless(tEndpoint, tType) || $IsObject(##class(OcuPilot.Port.AdminPort).ConstantBody(tEndpoint, tType))
-        Do $$$AssertEquals(tExempt, 'tSends, tName _ " sends " _ $Select(tSends: "a body", 1: "none") _ ", so '" _ tType _ "' is " _ $Select(tSends: "absent from", 1: "in") _ " the port's bodyless or constant-body roster")
+        ; is exempt too, through CONSTANTBODIES rather than BODYLESSTYPES; and, as amended by Story
+        ; 12.3, one whose body the tool's declared port composes (COMPOSEDTYPES).
+        Set tComposed = $ListFind($ListFromString($Parameter($ClassMethod(tClass, "PortClass"), "COMPOSEDTYPES")), tEndpoint _ "/" _ tType) > 0
+        Set tExempt = ''##class(OcuPilot.Port.AdminPort).IsBodyless(tEndpoint, tType) || $IsObject(##class(OcuPilot.Port.AdminPort).ConstantBody(tEndpoint, tType)) || tComposed
+        Do $$$AssertEquals(tExempt, 'tSends, tName _ " sends " _ $Select(tSends: "a body", 1: "none") _ ", so '" _ tType _ "' is " _ $Select(tSends: "absent from", 1: "in") _ " the port's bodyless, constant-body or composed roster")
         If 'tSends Set tActions = tActions + 1
     }
     Do $$$AssertTrue(tWrites > 0, "the registry enumerated admin-port write tools at all")

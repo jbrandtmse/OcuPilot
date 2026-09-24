@@ -2082,7 +2082,8 @@ ClassMethod Changed(pDiff As %String, pPayload As %DynamicObject, pTarget As %Dy
 /// the registry, so this class names no endpoint of its own. A 404 is absence; any other refusal,
 /// and a success that carried no object, are error statuses, because a target that could not be
 /// read is not a target that was checked. <var>pToolClass</var> is answered from the same single
-/// resolve, so the caller reads the tool's declarations without a second registry lookup.</p>
+/// resolve, so the caller reads the tool's declarations without a second registry lookup. An
+/// unadvertised tool resolves here, because the screen's action route asks this set too (AD-53).</p>
 ClassMethod Target(pToolName As %String, pId As %String, Output pTarget As %DynamicObject, Output pPresent As %Boolean, Output pToolClass As %String) As %Status [ Private ]
 {
     Set pTarget = ""
@@ -2090,7 +2091,7 @@ ClassMethod Target(pToolName As %String, pId As %String, Output pTarget As %Dyna
     Set pToolClass = ""
     Set tSC = $$$OK
     Try {
-        Set tSC = $ClassMethod(..RegistryClass(), "Resolve", pToolName, .tTool)
+        Set tSC = $ClassMethod(..RegistryClass(), "Resolve", pToolName, .tTool, 1)
         If $$$ISERR(tSC) Quit
         If '$IsObject(tTool) {
             Set tSC = $$$ERROR($$$GeneralError, "the prohibited set was asked about a tool this instance does not carry: '" _ pToolName _ "'")

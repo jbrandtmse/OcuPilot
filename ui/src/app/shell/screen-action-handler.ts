@@ -530,8 +530,8 @@ export class ScreenActionHandler {
    * Selective SQL auditing dialog -- so each still takes the one request and change event `send`
    * makes.
    */
-  sendFor(descriptor: string, actionId: string, target: string): Promise<boolean> {
-    return this.send(descriptor, actionId, target);
+  sendFor(descriptor: string, actionId: string, target: string, values?: ActionValues): Promise<boolean> {
+    return this.send(descriptor, actionId, target, values);
   }
 
   /** The key of the row the screen has selected, or `''`. */

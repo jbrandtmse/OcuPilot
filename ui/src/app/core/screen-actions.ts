@@ -101,10 +101,13 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     'remove-role': STRINGS.userActionRemoveRole,
     'revoke-tokens': STRINGS.userActionRevokeTokens,
   },
-  // Story 7.4: the Auditing configuration form's two actions, and the warning dialog's title.
+  // Story 7.4: the Auditing configuration form's two actions, and the warning dialog's title;
+  // Story 12.3: its audit database copy and purge.
   'OcuPilot.Screen.Descriptor.AuditingConfig': {
     enable: STRINGS.auditingTurnOnAction,
     disable: STRINGS.auditingTurnOffAction,
+    copy: STRINGS.auditDatabaseCopyAction,
+    purge: STRINGS.auditDatabasePurgeAction,
   },
 };
 

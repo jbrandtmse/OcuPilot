@@ -1697,6 +1697,39 @@ export const STRINGS = {
   userRevokeTokensConsequence:
     'Revoking deletes every OAuth 2.0 access token this instance issued under this user name, and applications holding one must sign the user in again. This cannot be undone.',
 
+  // Story 12.3: the Auditing screen's audit database group, its copy and purge dialogs, and the
+  // status line while either runs on the instance.
+  /** EXPERIENCE.md:470 */
+  auditDatabaseCopyAction: 'Copy to namespace',
+  /** EXPERIENCE.md:470 */
+  auditDatabasePurgeAction: 'Purge old records',
+  /** EXPERIENCE.md:470 */
+  auditDatabaseCopyTitle: 'Copy audit records',
+  /** EXPERIENCE.md:470 */
+  auditDatabaseCopyConsequence:
+    'Copies every record in the audit database into this namespace. Anyone who can read that namespace\'s database can read the copy. The originals stay where they are.',
+  /** EXPERIENCE.md:470 */
+  auditDatabaseCopyConfirm: 'Copy',
+  /** EXPERIENCE.md:470 */
+  auditDatabasePurgeTitle: 'Purge audit records',
+  /** EXPERIENCE.md:470 */
+  auditDatabasePurgeDays: 'Older than (days)',
+  /** EXPERIENCE.md:470 */
+  auditDatabasePurgeConsequence:
+    'Removes every audit record on this instance dated before <date> 00:00, instance time, including the agent\'s audit markers from that period. This cannot be undone.',
+  /** EXPERIENCE.md:470 */
+  auditDatabasePurgeConfirm: 'Purge',
+  /** EXPERIENCE.md:470 */
+  auditDatabaseCopyRunning: 'Copying to <namespace> on the instance since <time>',
+  /** EXPERIENCE.md:470 */
+  auditDatabasePurgeRunning: 'Purging records dated before <date> on the instance since <time>',
+  /** EXPERIENCE.md:470 */
+  auditDatabaseCopyDone: 'Copied the audit database to <namespace>.',
+  /** EXPERIENCE.md:470 */
+  auditDatabasePurgeDone: 'Purged audit records dated before <date>.',
+  /** EXPERIENCE.md:470 */
+  auditDatabaseStillRunning: 'Still running on the instance. It finishes in the background.',
+
 } as const;
 
 /**

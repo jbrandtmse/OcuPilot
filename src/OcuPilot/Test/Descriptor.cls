@@ -374,7 +374,7 @@ Method TestTheAuditingConfigurationDescriptorIsBuiltWithItsReadAndOwnsTheWriteTo
     Set tRead = $ClassMethod(tClass, "Read")
     Do $$$AssertTrue($IsObject(tRead), "the accessor answers its read")
     If $IsObject(tRead) Do $$$AssertEquals(tRead.source.%ToJSON(), "{""port"":""admin"",""endpoint"":""Security.Audit.Enabled"",""type"":""GET""}", "the single-object Security.Audit.Enabled GET")
-    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "enable,disable", "its two row actions")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "enable,disable,copy,purge", "its four row actions")
     Do $$$AssertEquals($ListToString($ClassMethod(tClass, "CommandAliases")), "auditing", "and its command alias")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("security/auditing"), tClass, "the route resolves to it")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("security.auditing"), tClass, "and so does the tool identifier its write tool's name opens with")

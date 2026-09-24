@@ -2,14 +2,30 @@
 title: 'Story 12.3: Copy and purge the audit database'
 type: 'feature'
 created: '2026-09-24'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'e693249be3bd6ae29b81c796860b9b3f3ba7b121'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-12-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-12-2-revoke-a-user-s-oauth-2-0-tokens.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - 'A PORT.TIMEOUT answer (503) is classified server-fault, so the shell connectivity banner may show beside the page still-running line (inference; the bound was not reached, a 30,579-record copy took 0.53 s)'
+  - summary: >-
+      The purge's removal of records dated before the cut-off has not been observed: every throwaway holds only today's records, so the before-cut-off count is 0 before the purge as well as after it.
+    evidence: |-
+      %SYS.Audit refuses saves and imports into %SYS, so no test can create a past-dated record; the port's body is pinned by exact JSON and the vendor's Delete end time is read as exclusive in its source. Settle by running AuditPurge's today leg on an instance holding a previous day's records.
+    location: >-
+      src/OcuPilot/Test/AuditPurge.cls TestTheScreenRoutePurgesBeforeTodayAndKeepsToday
+    severity: medium (unverified)
+  - summary: >-
+      The purge dialog counts days back on the browser's calendar, so a browser whose date is ahead of the instance's gets 0 days refused as a future cut-off, and one behind names a cut-off a day earlier than the instance's today minus N.
+    evidence: |-
+      purgeCutoff takes the page's new Date(); CutoffProblem refuses a date after +$Horolog. The dialog names and the person types the exact date sent, so nothing is purged that was not confirmed. The client has no instance clock, so aligning it adds a read surface; the spec's task chose the local calendar.
+    location: >-
+      ui/src/app/areas/security/audit-purge-dialog.ts purgeCutoff
+    severity: low
 footprint_extensions:
   - 'ui/src/app/areas/security/** (auditing-config.page.ts and its spec, two new dialogs): the actions attach to Security > Auditing, not to the Logs area'
   - 'src/OcuPilot/Screen/Descriptor/AuditingConfig.cls (two appended row actions)'
@@ -17,6 +33,11 @@ footprint_extensions:
   - 'src/OcuPilot/Port/AdminPort.cls (contended: two MUTATINGTYPES entries, one new parameter, one guard condition)'
   - 'ui/src/app/shell/screen-action-handler.ts (contended: sendFor gains an optional values parameter; see Open questions)'
   - 'ui/src/app/core/screen-actions.ts (two labels)'
+  - 'src/OcuPilot/Kernel/Proposal/Prohibited.cls (contended: Target passes Resolve its new unadvertised argument, one line outside Epic 9 hunks; the screen route asks this set)'
+  - 'src/OcuPilot/Test/X509SecretProbe.cls, src/OcuPilot/Test/SecretSpelling.cls (fixture method Advertised renamed AdmittedNames: it clashed with Base.Advertised)'
+  - 'src/OcuPilot/Test/ToolSetFull.cls, src/OcuPilot/Test/ToolEmit.cls (advertised roster compared against the advertised half of ListTools)'
+  - 'src/OcuPilot/Test/AuditingScreen.cls, src/OcuPilot/Test/Descriptor.cls (Auditing action roster)'
+  - 'src/OcuPilot/Test/Prohibited.cls (Epic 9 edits the same method at :424+; this story adds the port-composed branch at :366, outside those hunks)'
 ---
 
 <intent-contract>
@@ -194,6 +215,25 @@ footprint_extensions:
 
 ## Review Triage Log
 
+### 2026-09-24 — Review pass
+
+- verdicts: 14 findings — high 0, medium 1, low 5, false 5, maybe-false 3
+- findings:
+  - `[medium]` `[patch]` Page spec's "registers both for the command bar" used `has()`, which the handler's own registration already satisfies — rewritten to run each action through `ScreenActions` and assert its dialog opens with no POST; mutation (drop the page's two `register` lines) → red.
+  - `[maybe-false]` `[defer]` Purge's removal of pre-cut-off records never observed (fresh throwaways hold only today's rows) — deferred, medium (unverified); settle on an instance with a previous day's records.
+  - `[low]` `[patch]` "Both buttons refuse" in flight was pinned only by `aria-disabled` — added a click during the held copy asserting no purge dialog opens; mutation (drop `operation() !== null` from the guard) → red.
+  - `[low]` `[defer]` Purge cut-off on the browser calendar against the instance's `+$Horolog` (VG other finding) — the confirmed date is exactly what is purged; the fix needs an instance-clock surface; deferred.
+  - `[low]` `[reject]` Page spec computes the PORT.TIMEOUT cut-off at assertion time and could drift across local midnight — a sub-second window; not worth a change.
+  - `[false]` `[reject]` `AdminPortAsync` probe-not-admitted assertion adds no cover — redundant with the exact-roster equality above it, which is itself the pin; no bad outcome.
+  - `[low]` `[defer]` Intent (a): the calendar reading diverges (R1a/R1b) — same root cause as the browser-calendar row; shares its deferred item.
+  - `[maybe-false]` `[defer]` Intent (b): PORT.TIMEOUT tested only at the component with a stub; the shell banner may also show — already in `deferred:` (first item); settle by driving a >30 s copy.
+  - `[maybe-false]` `[reject]` Intent (c): a `Failed` vendor task for these two types is not driven end to end — the task-to-envelope mapping is the shared `AdminPort` async path; if real it would be low.
+  - `[false]` `[reject]` Intent (d): the agent-side refusal is tested with a denied pair, not a real principal — the same test proves the real principal lacks exactly that pair (`HoldsPair`), and the dispatch gate is where the agent's call stops before the mint.
+  - `[low]` `[reject]` Intent (e): copy completeness checked by count (`>=`) — a record-for-record diff of ~30k rows buys little; unlikely to be met.
+  - `[false]` `[reject]` Intent (f): `Prohibited.Target` resolves unadvertised tools — every agent-path caller reaches it only after `ResolveWire`, which refuses an unadvertised tool.
+  - `[false]` `[reject]` Intent (g): the queued-write guard changed in the shared base port — the change is AD-26 as amended and is pinned by the exact `QUEUEDWRITES` roster and the refusal leg.
+  - `[false]` `[reject]` Intent (h): the group heading reuses `auditListLabel` — it is a `STRINGS` key with its own Fixed strings row.
+
 ## Design Notes
 
 **Governing ADs:** AD-2, AD-3, AD-5, AD-6, AD-7, AD-8, AD-10, AD-13, AD-14, AD-15, AD-16, AD-22, AD-24, AD-26, AD-27, AD-29, AD-35, AD-51, AD-52, AD-53, AD-56. The DW-1337 gate applies. AD-4 is not engaged, because no merge body is sent.
@@ -263,7 +303,52 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. Every copy, pur
 - AC5: the least-privilege leg. Mutation: drop `%Admin_Operate:USE` from `PrivilegePairs`.
 - AC6: the browser structural assertion. Mutation: give the cut-off line a 1400px `min-inline-size`.
 
+**Measured on `ocupilot-b-ci`, 2026-09-24:**
+
+- M1: copy and purge each write `%System/%Security/AuditChange` as the caller: copy two rows ("Copy audit data", then "Copied N audit records", both carrying the target namespace), purge a "Delete audit records" row carrying `End Date: <cut-off> 00:00:00`.
+- M2: a principal holding exactly the screen's pairs, the install code read and `%Admin_Operate:USE` copies through the route (200), and the vendor rows name that principal, so the Work Queue worker runs as the caller (`AuditCopy.TestAPrincipalHoldingExactlyThePairSetCopiesAsItself`).
+- M3: 30,452 records copied through the port in 0.531 s; 30,579 through the route in 0.530 s (bound 30 s).
+- M4: `Prohibited.Prohibits` permits both tools (`0`, no code): `SkippedFields` skips the subject. `PermittedChangeFields` is unchanged.
+- `Prohibited.Target` resolves tools for the screen route too, so `Registry.Resolve` takes `pUnadvertised` (default 0); the proposal-path callers keep the default.
+- `AuditPurge` ran with `docker exec -e OCUPILOT_ALLOW_AUDIT_PURGE=1`: the running throwaway predates the variable.
+- Bundle initial total 1,337,502 bytes (below 1378 kB; no DW-1166 change).
+
+**Runs:** `AuditCopy` 6/6 (run 27), `AuditPurge` 4/4 (run 24), `AdminPortAsync` 4/4 (run 30), `ToolWrite` 29, `ToolRoundTrip` 2, `ReadTool` 27, `SurfaceCoverage` 4, `PortGate` 4, `AuditingScreen` 9, `AuditingUpdate` 11, `Descriptor` 50, `ToolSetFull` 2, `ToolEmit` 11, `SecretSpelling` 2, `ScreenGrounding` 10, 0 failed each; `test:tools` 1375/1375, `test:components` 1076/1076; `audit-copy-purge`, `auditing-screen`, `auditing-write` browser specs green over the redeployed bundle.
+
+- mutation: `AuditPort.Body` sends `DeleteAfterCopy: true` → `AuditCopy` red on the Body assertion and on the screen-route leg (the earlier copy emptied the instance's audit database); `audit-copy-purge` copy leg red on "the instance keeps its own: 0 against 272" (AC1)
+- mutation: `AuditPort.Body` sends `EndDateTime` `""` for a purge → `AuditPurge.TestTheScreenRoutePurgesBeforeTodayAndKeepsToday` red on "every record dated today remains: 1 against 98" (AC2)
+- mutation: `audit-purge-dialog.ts` `matches` ignores the typed date → `audit-purge-dialog.spec.ts` "keeps Purge aria-disabled until the cut-off is typed exactly" red (AC2)
+- mutation: `Registry.ProviderTools` ignores `advertised` → `AuditPurge.TestThePurgeIsAbsentFromEveryRosterTheAgentSees` red on the provider list (AC3)
+- mutation: `Registry.ResolveWire` ignores `advertised` → same leg red on the dispatch lookup, the unknown-tool refusal and "no proposal is written" (AC3)
+- mutation: `Context.ScreenTools` ignores `advertised` → same leg red: the context carried `security_auditing_purge` (AC3)
+- mutation: `AuditCopy.PortQuery` adds nothing → `AuditCopy` agent, screen-route and exact-pair legs red, 400 `PORT.VALIDATION` (AC4)
+- mutation: `AuditCopy.PrivilegePairs` drops `%Admin_Operate:USE` → `AuditCopy.TestAPrincipalWithoutOperateIsRefusedByName` red (dispatch and route; the copy then ran before the poll was refused) and the declaration leg red (AC5)
+- mutation: `[data-audit-purge-consequence] { min-inline-size: 1400px }` appended to `_components.scss`, rebuilt and redeployed → `audit-copy-purge` purge leg red on the dialog-body overflow (`scroll` 1400 > `client` 390) (AC6)
+- mutation: `OcuPilotProbeAsyncWrite/PUT` added to `QUEUEDWRITES` → `AdminPortAsync` refusal leg and `TestOnlyTheNamedQueuedWritesAreAdmitted` red (DW-1279)
+- mutation: the `Sequence` guard reads `IsMutating(...) && 0` → `AdminPortAsync.TestAMutatingRequestThatWouldQueueIsRefusedBeforeTheTaskRowIsWritten` red (DW-1279)
+- mutation: `sendFor` forwards no `values` → `auditing-config.page.spec.ts` copy and purge legs red
+- mutation: `STILL_RUNNING_CODE` misspelt → `auditing-config.page.spec.ts` PORT.TIMEOUT leg red
+
+Each mutation was reverted, recompiled with subclasses or rebuilt and redeployed, and `git status --short` with `git diff --stat` read identical to before it.
+
+- mutation: the page's two `register` lines removed → `auditing-config.page.spec.ts` command-bar leg red (review patch)
+- mutation: `operation() !== null` dropped from `openDatabaseDialog` → the in-flight leg red (review patch)
+
+**Stage verification (once, before dev_complete), `ocupilot-b-ci`:** whole `OcuPilot` package recompiled from the worktree source; full sweep 226 classes (runs 31-256), 2006 tests, 1 failed (`Prohibited.TestNoWriteToolAdmitsAnAlwaysProhibitedField`: a bodyless tool admitting its port-composed argument); fixed in `Test/Prohibited.cls` and rerun 12/12 (run 257); `AuditPurge` armed 4/4 (run 258). Total 227 classes, 2010 tests, 0 failed. `npm run build` initial total 1.34 MB (1,337,502 bytes as the handoff measured; budget 1378 kB unchanged); `npm test` tools 1375/1375 after adding the live-container refusal to `audit-copy-purge.browser-spec.mjs`, components 1076/1076; story browser specs 6/6 on the redeployed bundle; `smoke.sh` executed 48, passed 48; check-objectscript and lint-docs clean.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** Security > Auditing gains an Audit database group: Copy to namespace (`security.auditing.copy`, advertised) and Purge old records (`security.auditing.purge`, unadvertised), each an AD-53 row action through a dialog. `Port/AuditPort` composes the vendor `Security.Audit.Record` COPY/PURGE bodies from the tool argument and answers a `DATABASE` read from `Security.Audit.Enabled`; `AdminPort` admits exactly `QUEUEDWRITES` to the vendor queue. `Base.ADVERTISED` keeps purge out of `ProviderTools`, `ResolveWire`, default `Resolve` and `ScreenTools`, while the screen route and the prohibited set reach it.
+
+**Files.** New: `Port/AuditPort.cls`, `Screen/Tool/AuditCopy.cls`, `Screen/Tool/AuditPurge.cls`, `Test/AuditCopy.cls`, `Test/AuditPurge.cls`, `audit-copy-dialog.ts`, `audit-purge-dialog.ts` and their specs, `browser/audit-copy-purge.browser-spec.mjs`. Changed: `AdminPort.cls` (roster, `QUEUEDWRITES`, guard), `Tool/Base.cls`, `Tool/Registry.cls`, `Screen/Context.cls`, `Kernel/Proposal/Prohibited.cls` (one `Resolve` argument), `Descriptor/AuditingConfig.cls`, `auditing-config.page.ts`, `screen-action-handler.ts` (`sendFor` values only), `screen-actions.ts`, `screens.generated.ts`, `strings.ts`, `_components.scss`, EXPERIENCE.md :470, `ci-throwaway.sh` (arming), and the test rosters listed under `footprint_extensions`.
+
+**Review.** 14 findings: 2 patched (1 medium, 1 low, both in `auditing-config.page.spec.ts`, each falsified by a mutation), 4 deferred (2 new `deferred:` items; 2 rows share existing items), 8 rejected with reasons in the Review Triage Log. Stage verification also fixed `Test/Prohibited.cls` (red in the full sweep) and the browser spec's missing live-container refusal (red in `angular-json.test.mjs`).
+
+**Follow-up review:** false (no high patched, one medium patched).
+
+**Verification.** See `## Verification`: full ObjectScript sweep 227 classes, 2010 tests, 0 failed on `ocupilot-b-ci`; client 1375 + 1076 green; story browser specs 6/6; smoke 48/48; bundle 1.34 MB under 1378 kB.
+
+**Residual risks.** A purge's removal of past-dated records is unobserved (deferred); the purge cut-off uses the browser calendar (deferred); a PORT.TIMEOUT may also raise the shell's connectivity banner (deferred). `ocupilot-b-ci` predates `OCUPILOT_ALLOW_AUDIT_PURGE`, so `AuditPurge` ran with the variable passed to `docker exec`; a throwaway brought up from this tree sets it.

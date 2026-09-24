@@ -84,9 +84,13 @@ Method TestTwoToolsSharingANameRefuseTheWholeListing()
 Method TestEveryLiveToolIsAdvertisedInTheSubset()
 {
     Do $$$AssertStatusOK($ClassMethod(..#REGISTRY, "ProviderTools", .tAdvertised), "the tools are advertised")
-    Do $$$AssertStatusOK($ClassMethod(..#REGISTRY, "ListTools", .tTools), "the live tools list")
-    If '$IsObject(tTools) Quit
-    Do $$$AssertEquals(+$Get(tAdvertised), tTools.%Size(), "one advertised tool per live tool")
+    Do $$$AssertStatusOK($ClassMethod(..#REGISTRY, "ListTools", .tListed), "the live tools list")
+    If '$IsObject(tListed) Quit
+    ; AD-53: an unadvertised tool is listed and never advertised.
+    Set tTools = []
+    Set tListIterator = tListed.%GetIterator()
+    While tListIterator.%GetNext(.tListIndex, .tListedTool) { If $ClassMethod(..#REGISTRY, "IsAdvertised", tListedTool) Do tTools.%Push(tListedTool) }
+    Do $$$AssertEquals(+$Get(tAdvertised), tTools.%Size(), "one advertised tool per advertised live tool")
     Set tWithBound = 0
     For tI = 1:1:+$Get(tAdvertised) {
         Set tTool = tTools.%Get(tI - 1)

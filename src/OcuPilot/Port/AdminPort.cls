@@ -142,12 +142,12 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// <class>OcuPilot.Kernel.Proposal.Confirm</class> after its claim has committed (AD-34, AD-40);
 /// no tool, no screen read and no turn reaches one, and the port itself decides nothing about
 /// whether the write may happen.</p>
-/// <p><b>Synchronous on the endpoints that ship today.</b> The vendor's base
-/// <code>ShouldRunAsync()</code> answers false and neither <code>Security.Applications</code>'s
-/// endpoint nor <code>Task.CRUD</code> overrides it, so a mutating call runs in the caller's job
-/// and its answer is the endpoint's own. An endpoint that <i>did</i> queue a mutating request is
-/// refused by <method>Sequence</method> before the vendor's task row is written, because that row
-/// would carry a supplied secret from the body (AD-35, DW-1279). <method>Sequence</method> reads
+/// <p><b>Synchronous except for <parameter>QUEUEDWRITES</parameter>.</b> Every other pair's
+/// <code>ShouldRunAsync()</code> answers false, so the call runs in the caller's job and its answer
+/// is the endpoint's own. A mutating request that would queue is refused by <method>Sequence</method>
+/// before the vendor's task row is written, because that row would carry a supplied secret from the
+/// body (AD-35, DW-1279), unless its pair is in <parameter>QUEUEDWRITES</parameter>, whose bodies
+/// carry none and which take AD-26's async path. <method>Sequence</method> reads
 /// <code>%request.Method</code>, which <method>HttpMethodFor</method> has already set to the
 /// mutating suffix itself -- for <code>RESUME</code> that value is the vendor's request-type
 /// suffix rather than an HTTP verb, since the vendor exposes the operation only as a request
@@ -251,7 +251,14 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// vendor's delete also requires <code>%Admin_Secure:USE</code>. Measured on a throwaway: it answers
 /// 200 for a user holding no token, matches the tokens' user name exactly, and records no audit
 /// event.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.OAuth2.Server/REVOKE";
+/// <p><code>Security.Audit.Record/COPY</code> and <code>/PURGE</code> are Story 12.3's
+/// (<class>OcuPilot.Screen.Tool.AuditCopy</class>, <class>OcuPilot.Screen.Tool.AuditPurge</class>,
+/// through <class>OcuPilot.Port.AuditPort</class>). Read on this build: <code>TYPECOPY</code> is 10
+/// and <code>TYPEPURGE</code> 11, both read a body and both answer <code>ShouldRunAsync()</code>
+/// true, so each is queued (<parameter>QUEUEDWRITES</parameter>); <code>RunCopy</code> calls
+/// <code>%SYS.Audit.Copy</code> and <code>RunPurge</code> <code>%SYS.Audit.Delete</code>, each
+/// discarding its count; <code>ResourcesOR()</code> is <code>%Admin_Secure</code>.</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -391,6 +398,14 @@ Parameter RENAMEDTYPES = "Security.User/CHANGEPWD=Password:NewPassword";
 /// <p><code>Security.Audit.Event</code>'s <code>CLEARCOUNT</code> requires a body and reads none of
 /// it, so the port sends <code>{}</code>.</p>
 Parameter CONSTANTBODIES = "Task.CRUD/RUN={""RunNow"":true};Task.CRUD/SUSPEND={""LeaveInQueue"":true};Security.Audit.Event/CLEARCOUNT={}";
+
+/// <p>The <parameter>MUTATINGTYPES</parameter> pairs the vendor always queues and
+/// <method>Sequence</method> hands to its Work Queue rather than refusing, as comma-separated
+/// <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries; the port awaits each within
+/// <method>AsyncTimeout</method> (AD-26). Their bodies carry no secret field -- a namespace name, two
+/// empty dates, a cut-off and a false flag -- so the vendor's task row holds nothing AD-35 protects.
+/// Every other mutating pair that would queue is still refused.</p>
+Parameter QUEUEDWRITES = "Security.Audit.Record/COPY,Security.Audit.Record/PURGE";
 
 /// <p>The query parameters an endpoint reads as parts of one composite key, as comma-separated
 /// <code>&lt;endpoint&gt;/&lt;key&gt;=&lt;part&gt;:&lt;part&gt;...</code> entries.
@@ -1676,6 +1691,13 @@ ClassMethod IsMutating(pEndpoint As %String, pSuffix As %String) As %Boolean
     Quit ''$ListFind($ListFromString(..#MUTATINGTYPES), pEndpoint _ "/" _ pSuffix)
 }
 
+/// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is a
+/// <parameter>QUEUEDWRITES</parameter> pair, which <method>Sequence</method> lets the vendor queue.</p>
+ClassMethod IsQueuedWrite(pEndpoint As %String, pSuffix As %String) As %Boolean
+{
+    Quit ''$ListFind($ListFromString(..#QUEUEDWRITES), pEndpoint _ "/" _ pSuffix)
+}
+
 /// <p>The HTTP method the request stub carries for <var>pEndpoint</var>'s request type
 /// <var>pSuffix</var>: the suffix itself for a <parameter>MUTATINGTYPES</parameter> pair,
 /// <code>GET</code> for everything else.</p>
@@ -1844,14 +1866,14 @@ ClassMethod Sequence(pName As %String, pEndpoint As %RegisteredObject, pBody As 
             ; AD-35, DW-1279: a mutating request's body can carry a supplied secret, and
             ; SaveRequestBody writes it into the vendor's own task row
             ; (^|"^^:ds:IRISLOCALDATA"|Api.Admin.Util.AsyncTaskD), which is a surface OcuPilot
-            ; neither owns nor purges. Neither Release 1 async entry is mutating, so this refuses a
-            ; combination no shipped path reaches -- before the row is written rather than after,
-            ; because a secret written there cannot be taken back.
+            ; neither owns nor purges. So a mutating request is refused here -- before the row is
+            ; written, because a secret written there cannot be taken back -- unless its pair is a
+            ; QUEUEDWRITES entry, whose body carries none (AD-26).
             ; The endpoint name is threaded in rather than re-derived, so this asks the same
             ; (endpoint, type) question the admission gate asked. %request.Method carries the
             ; request-type suffix for a mutating call (HttpMethodFor) and GET otherwise.
             Set tMethod = %request.Method
-            If ..IsMutating(pName, tMethod) {
+            If ..IsMutating(pName, tMethod) && '..IsQueuedWrite(pName, tMethod) {
                 Set tSC = $$$ERROR($$$GeneralError, "the admin API would queue this " _ tMethod _ " request, and a mutating request's body is never written to the vendor's task row (AD-35)")
                 Quit
             }

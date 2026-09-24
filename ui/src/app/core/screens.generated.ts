@@ -1452,6 +1452,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "disable",
         "selfProtection": ""
+      },
+      {
+        "id": "copy",
+        "selfProtection": ""
+      },
+      {
+        "id": "purge",
+        "selfProtection": ""
       }
     ],
     "context": {

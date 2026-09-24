@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
+import { ConnectivityService } from '../../core/connectivity';
+import type { Fault } from '../../core/fault';
 import { OverlayStack } from '../../core/overlay-stack';
 import { ScopeService } from '../../core/scope';
 import { ScreenActions } from '../../core/screen-actions';
@@ -11,6 +13,7 @@ import { ScreenStores } from '../../core/screen-store';
 import { STRINGS } from '../../core/strings';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import { AUDITING_FOCUS_ENABLE, AuditingConfigPage } from './auditing-config.page';
+import { purgeCutoff } from './audit-purge-dialog';
 
 /**
  * The Auditing configuration page (Story 7.4) over a stub of the HTTP answer, with the real
@@ -44,6 +47,9 @@ async function mount(
     postRefusal?: boolean;
     systemRows?: unknown[];
     refuseId?: string;
+    /** Story 12.3: answers a copy or purge POST in place of the default. */
+    databaseAction?: (body: Record<string, unknown>) => Promise<JsonResult<unknown>>;
+    fault?: () => Fault | null;
   } = {}
 ) {
   TestBed.resetTestingModule();
@@ -55,6 +61,10 @@ async function mount(
   const api = {
     requestJson: async <T,>(path: string, init: ApiRequestInit = {}): Promise<JsonResult<T>> => {
       calls.push({ path, method: init.method ?? 'GET', body: init.body ?? '' });
+      if (init.method === 'POST' && options.databaseAction !== undefined) {
+        const request = JSON.parse(init.body ?? '{}') as Record<string, unknown>;
+        if (request['action'] === 'copy' || request['action'] === 'purge') return (await options.databaseAction(request)) as JsonResult<T>;
+      }
       if (init.method === 'POST' && options.postRefusal === true) {
         return {
           kind: 'error',
@@ -108,8 +118,14 @@ async function mount(
       { provide: OverlayStack, useValue: new OverlayStack() },
       {
         provide: ScopeService,
-        useValue: { loaded: () => true, namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService,
+        useValue: {
+          loaded: () => true,
+          namespace: () => 'HSCUSTOM',
+          namespaces: () => ['%SYS', 'HSCUSTOM', 'USER'].map((name) => ({ name, writable: true, failedPair: '' })),
+          subscribe: () => () => {},
+        } as unknown as ScopeService,
       },
+      { provide: ConnectivityService, useValue: { fault: options.fault ?? (() => null) } as unknown as ConnectivityService },
     ],
   });
   await TestBed.inject(Router).navigateByUrl('/security/auditing?ns=HSCUSTOM', { state: options.state ?? {} });
@@ -363,6 +379,102 @@ describe('the Auditing configuration page', () => {
       await settle(fixture);
       expect(host.querySelector('[role="dialog"]')).toBeNull();
       expect(posts(calls)).toEqual([]);
+    });
+  });
+  describe('Story 12.3: the audit database group', () => {
+    const updated = { kind: 'ok', status: 200, body: { action: 'updated', target: { type: 'auditing-configuration', scope: 'instance', id: 'SYSTEM' } } } as const;
+
+    async function openCopy(host: HTMLElement, fixture: ComponentFixture<unknown>): Promise<void> {
+      (host.querySelector('[data-audit-action="copy"]') as HTMLButtonElement).click();
+      await settle(fixture);
+    }
+
+    it('offers Copy to namespace and Purge old records, and the command bar opens their dialogs rather than sending', async () => {
+      const { fixture, host, calls } = await mount();
+      const buttons = Array.from(host.querySelectorAll('[data-audit-database] [data-audit-action]')).map((button) => button.textContent?.trim());
+      expect(buttons).toEqual([STRINGS.auditDatabaseCopyAction, STRINGS.auditDatabasePurgeAction]);
+      const actions = TestBed.inject(ScreenActions);
+      actions.run('OcuPilot.Screen.Descriptor.AuditingConfig', 'copy');
+      await settle(fixture);
+      expect(host.querySelector('select[data-audit-copy-namespace]')).not.toBeNull();
+      (host.querySelector('.ocu-dialog-actions .ocu-button-secondary') as HTMLButtonElement).click();
+      await settle(fixture);
+      actions.run('OcuPilot.Screen.Descriptor.AuditingConfig', 'purge');
+      await settle(fixture);
+      expect(host.querySelector('[data-audit-purge-days]')).not.toBeNull();
+      expect(calls.filter((call) => call.method === 'POST')).toEqual([]);
+    });
+
+    it('sends the chosen namespace through sendFor, shows the running line while it is in flight, then the finished sentence', async () => {
+      let release: (answer: JsonResult<unknown>) => void = () => {};
+      const bodies: Record<string, unknown>[] = [];
+      const { fixture, host, calls } = await mount({
+        databaseAction: (body) => {
+          bodies.push(body);
+          return new Promise((resolve) => (release = resolve));
+        },
+      });
+      await openCopy(host, fixture);
+      const select = host.querySelector('select[data-audit-copy-namespace]') as HTMLSelectElement;
+      select.value = 'USER';
+      select.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      (host.querySelector('[data-audit-copy-confirm]') as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(bodies).toEqual([{ action: 'copy', id: 'SYSTEM', values: { CopyNamespace: 'USER' } }]);
+      expect(calls.filter((call) => call.method === 'POST').map((call) => call.path)).toEqual(['/api/ocupilot/screens/security.auditing/action']);
+      const line = host.querySelector('[data-audit-operation]')?.textContent?.trim() ?? '';
+      expect(line.startsWith(STRINGS.auditDatabaseCopyRunning.split('<namespace>').join('USER').split('<time>')[0])).toBe(true);
+      expect(line).toMatch(/\d{2}:\d{2}:\d{2}$/);
+      expect(host.querySelector('[data-audit-action="copy"]')?.getAttribute('aria-disabled')).toBe('true');
+      expect(host.querySelector('[data-audit-action="purge"]')?.getAttribute('aria-disabled')).toBe('true');
+      (host.querySelector('[data-audit-action="purge"]') as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(host.querySelector('app-audit-purge-dialog')).toBeNull();
+      release(updated);
+      await settle(fixture);
+      expect(host.querySelector('[data-audit-operation]')?.textContent?.trim()).toBe(STRINGS.auditDatabaseCopyDone.split('<namespace>').join('USER'));
+      expect(host.querySelector('[data-audit-action="copy"]')?.getAttribute('aria-disabled')).toBeNull();
+    });
+
+    it('sends the typed cut-off from the purge dialog, and reads a PORT.TIMEOUT as still running rather than refused', async () => {
+      const bodies: Record<string, unknown>[] = [];
+      let fault: Fault | null = null;
+      const { fixture, host } = await mount({
+        databaseAction: async (body) => {
+          bodies.push(body);
+          fault = { kind: 'server-fault', status: 503, code: 'PORT.TIMEOUT', path: '/api/ocupilot/screens/security.auditing/action' };
+          return { kind: 'error', status: 503, code: 'PORT.TIMEOUT', reason: 'The instance did not finish that operation in time', detail: null };
+        },
+        fault: () => fault,
+      });
+      (host.querySelector('[data-audit-action="purge"]') as HTMLButtonElement).click();
+      await settle(fixture);
+      const days = host.querySelector('[data-audit-purge-days]') as HTMLInputElement;
+      days.value = '0';
+      days.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      const cutoff = purgeCutoff(0, new Date());
+      const typed = host.querySelector('[data-audit-purge-typed]') as HTMLInputElement;
+      typed.value = cutoff;
+      typed.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      (host.querySelector('[data-audit-purge-confirm]') as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(bodies).toEqual([{ action: 'purge', id: 'SYSTEM', values: { PurgeBefore: cutoff } }]);
+      expect(host.querySelector('[data-audit-operation]')?.textContent?.trim()).toBe(STRINGS.auditDatabaseStillRunning);
+      expect(host.querySelector('.ocu-banner-warning')).toBeNull();
+    });
+
+    it('draws a refusal in the page banner and leaves no finished sentence', async () => {
+      const { fixture, host } = await mount({
+        databaseAction: async () => ({ kind: 'error', status: 400, code: 'TOOL.ARGUMENTS', reason: 'The request was refused.', detail: null }),
+      });
+      await openCopy(host, fixture);
+      (host.querySelector('[data-audit-copy-confirm]') as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(host.querySelector('.ocu-banner-warning .ocu-banner-message')?.textContent?.trim()).toBe('The request was refused.');
+      expect(host.querySelector('[data-audit-operation]')?.textContent?.trim()).toBe('');
     });
   });
 });

@@ -199,6 +199,7 @@ services:
       # classes: Disabled, ErrorDelete, ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial
       # classes: OAuthTabs
       # classes: TokenProbe, TokenRevoke
+      # classes: AuditCopy
       # classes: ProcessControl, ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token
       # classes: ToolSetFull
       # classes: ToolWire, TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire
@@ -279,6 +280,13 @@ services:
       # classes: TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnStore
       # classes: TurnWire, TurnWireFixture
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
+      # Purges the instance's own audit database through the shipped screen route: every record
+      # dated before today is removed, the agent's audit markers among them, and nothing puts one
+      # back. Its own variable because no narrower one names that effect. The purge leg of
+      # ui/browser/audit-copy-purge.browser-spec.mjs has the same effect and runs only against this
+      # container, which its own assertThrowaway checks.
+      # classes: AuditPurge
+      OCUPILOT_ALLOW_AUDIT_PURGE: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

@@ -139,7 +139,7 @@ ClassMethod Build(pContext As %DynamicObject, Output pBuilt As %Boolean, Output 
 /// creates its target (<code>Creates()</code>). A declared row action no tool bound to
 /// <var>pDescriptor</var> carries is resolved against the descriptor its <code>parentScope</code>
 /// route names. A screen that declares no read, no action and no parent -- a form page -- answers
-/// <code>[]</code>.</p>
+/// <code>[]</code>. An unadvertised tool is never listed (AD-53).</p>
 /// <p>A tool list that cannot be built returns its error, with <var>pTools</var> empty.</p>
 ClassMethod ScreenTools(pDescriptor As %String, Output pTools As %DynamicArray) As %Status
 {
@@ -154,6 +154,7 @@ ClassMethod ScreenTools(pDescriptor As %String, Output pTools As %DynamicArray) 
         Set tCarried = ""
         Set tIterator = tList.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tEntry) {
+            If '##class(OcuPilot.Screen.Tool.Registry).IsAdvertised(tEntry) Continue
             If '..BoundTo(tEntry, pDescriptor) Continue
             Set tName = tEntry.%Get("name")
             If tEntry.%Get("kind") = "read" {
@@ -183,6 +184,7 @@ ClassMethod ScreenTools(pDescriptor As %String, Output pTools As %DynamicArray) 
             Set tIterator = tList.%GetIterator()
             While tIterator.%GetNext(.tIndex, .tEntry) {
                 If tEntry.%Get("kind") '= "write" Continue
+                If '##class(OcuPilot.Screen.Tool.Registry).IsAdvertised(tEntry) Continue
                 If '..BoundTo(tEntry, tParent) Continue
                 Set tActionIds = ..ActionIds(tEntry)
                 For tI = 1:1:$ListLength(tUnreached) {

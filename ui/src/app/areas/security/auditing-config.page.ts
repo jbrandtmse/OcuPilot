@@ -14,6 +14,7 @@ import { NavigationEnd, Router } from '@angular/router';
 import { ApiService } from '../../core/api';
 import { AUDIT_EVENT_ENTITY, AUDIT_USER_EVENT_ENTITY, AUDITING_CONFIG_ENTITY } from '../../core/agent-status';
 import { ChangeBus } from '../../core/change-bus';
+import { ConnectivityService } from '../../core/connectivity';
 import { screenForDescriptor, screenForRoute, withQuery } from '../../core/navigation';
 import { ScopeService } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
@@ -24,6 +25,8 @@ import { STRINGS, stringFor } from '../../core/strings';
 import { cellView, fieldOf } from '../../core/table-model';
 import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { WarningDialog } from '../../shell/warning-dialog';
+import { AuditCopyDialog } from './audit-copy-dialog';
+import { AuditPurgeDialog } from './audit-purge-dialog';
 import { SqlAuditDialog, type SqlAuditChange } from './sql-audit-dialog';
 import {
   AUDIT_DATABASE_ROUTE,
@@ -65,6 +68,25 @@ interface SectionView {
   readonly sqlWizard: boolean;
 }
 
+/** The audit database's two row actions (Story 12.3), each run by this page through its own dialog. */
+export const AUDIT_COPY_ACTION = 'copy';
+export const AUDIT_PURGE_ACTION = 'purge';
+
+/** The code the port answers when the vendor's queued operation outlasts its wait (AD-26). */
+export const STILL_RUNNING_CODE = 'PORT.TIMEOUT';
+
+/** One copy or purge in flight: which, its namespace or cut-off, and when it was sent. */
+interface AuditOperation {
+  readonly action: typeof AUDIT_COPY_ACTION | typeof AUDIT_PURGE_ACTION;
+  readonly subject: string;
+  readonly started: Date;
+}
+
+/** `date`'s local wall-clock time, `HH:MM:SS`. */
+function clockTime(date: Date): string {
+  return date.toTimeString().slice(0, 8);
+}
+
 /** The entity types whose change re-reads this page: the form's own and both event lists' (AD-14). */
 const RELOAD_ENTITIES: readonly string[] = [AUDITING_CONFIG_ENTITY, AUDIT_EVENT_ENTITY, AUDIT_USER_EVENT_ENTITY];
 
@@ -88,13 +110,20 @@ const RELOAD_ENTITIES: readonly string[] = [AUDITING_CONFIG_ENTITY, AUDIT_EVENT_
  * changed event through that list's own `enable` or `disable` row action, one at a time, and stops at
  * the first refusal.
  *
+ * **The audit database group** (Story 12.3) offers Copy to namespace and Purge old records. The page
+ * registers both actions itself, replacing the handler's, so the command bar and the group's buttons
+ * open the same dialog; each confirm is one `sendFor` carrying its one value. While it is in flight the
+ * status line says it is running on the instance and since when, and both buttons refuse; then it says
+ * the operation finished, or the refusal banner carries the envelope's sentence. A `PORT.TIMEOUT` reads
+ * as still running, because the vendor's worker carries on after the port stops waiting (AD-26).
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
  */
 @Component({
   selector: 'app-auditing-config-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [SqlAuditDialog, WarningDialog],
+  imports: [AuditCopyDialog, AuditPurgeDialog, SqlAuditDialog, WarningDialog],
   template: `<section class="ocu-details-page ocu-auditing-page">
     @if (refusalText) {
       <p class="ocu-banner ocu-banner-warning" role="alert">
@@ -119,6 +148,32 @@ const RELOAD_ENTITIES: readonly string[] = [AUDITING_CONFIG_ENTITY, AUDIT_EVENT_
         >
           {{ action.label }}
         </button>
+      </section>
+    }
+    @if (databaseVisible) {
+      <section class="ocu-details-group" data-audit-database>
+        <h2 class="ocu-details-heading">{{ STRINGS.auditListLabel }}</h2>
+        <div class="ocu-audit-database-actions">
+          <button
+            type="button"
+            class="ocu-button-secondary"
+            data-audit-action="copy"
+            [attr.aria-disabled]="operationBusy"
+            (click)="onOpenCopy()"
+          >
+            {{ STRINGS.auditDatabaseCopyAction }}
+          </button>
+          <button
+            type="button"
+            class="ocu-button-secondary"
+            data-audit-action="purge"
+            [attr.aria-disabled]="operationBusy"
+            (click)="onOpenPurge()"
+          >
+            {{ STRINGS.auditDatabasePurgeAction }}
+          </button>
+        </div>
+        <p class="ocu-auditing-status" role="status" data-audit-operation>{{ operationLine }}</p>
       </section>
     }
     <nav class="ocu-details-links">
@@ -172,6 +227,12 @@ const RELOAD_ENTITIES: readonly string[] = [AUDITING_CONFIG_ENTITY, AUDIT_EVENT_
     @if (wizardRows; as rows) {
       <app-sql-audit-dialog [rows]="rows" (applied)="onApplyWizard($event)" (cancelled)="onCloseWizard()" />
     }
+    @if (copyOpen) {
+      <app-audit-copy-dialog [namespaces]="namespaceNames" (confirmed)="onCopy($event)" (cancelled)="onCloseDatabaseDialog()" />
+    }
+    @if (purgeOpen) {
+      <app-audit-purge-dialog [today]="purgeToday" (confirmed)="onPurge($event)" (cancelled)="onCloseDatabaseDialog()" />
+    }
     @if (pendingWarning; as pending) {
       <app-warning-dialog
         [verb]="pending.verb"
@@ -188,6 +249,9 @@ export class AuditingConfigPage {
   private readonly scope = inject(ScopeService);
   private readonly stores = inject(ScreenStores);
   private readonly actions = inject(ScreenActions);
+
+  /** The verdict on the last call, read for the code of a refused copy or purge (AD-39). */
+  private readonly connectivity = inject(ConnectivityService, { optional: true });
 
   /**
    * Constructed for its own sake, as `ListPage` does: its constructor registers the declared row
@@ -215,6 +279,17 @@ export class AuditingConfigPage {
   /** The refusal that stopped the dialog's last Apply, with `auditSqlWizardStopped`, or `''`. */
   private readonly wizardRefusal = signal('');
 
+  /** Which audit database dialog is open, and the moment the purge dialog opened. */
+  private readonly databaseDialog = signal<typeof AUDIT_COPY_ACTION | typeof AUDIT_PURGE_ACTION | null>(null);
+
+  private readonly databaseDialogOpenedAt = signal(new Date());
+
+  /** The copy or purge in flight, or `null`. */
+  private readonly operation = signal<AuditOperation | null>(null);
+
+  /** The line the last copy or purge left behind once it answered, or `''`. */
+  private readonly operationOutcome = signal('');
+
   constructor() {
     const screen = screenForDescriptor(AUDITING_CONFIG_DESCRIPTOR);
     this.form = screen === null || screen.read === null ? null : this.readView(screen);
@@ -237,6 +312,9 @@ export class AuditingConfigPage {
     );
     if (this.form !== null) {
       stops.push(this.actions.register(this.form.screen.descriptor, REFRESH_ACTION_ID, () => void this.load()));
+      // Story 12.3: replaces the handler's own registrations, so every surface opens this page's dialogs.
+      stops.push(this.actions.register(this.form.screen.descriptor, AUDIT_COPY_ACTION, () => this.onOpenCopy()));
+      stops.push(this.actions.register(this.form.screen.descriptor, AUDIT_PURGE_ACTION, () => this.onOpenPurge()));
     }
     const routed = this.router.events.subscribe((event) => {
       if (!(event instanceof NavigationEnd)) return;
@@ -446,6 +524,107 @@ export class AuditingConfigPage {
       break;
     }
     await this.load();
+  }
+
+  /** The audit database group is drawn once the form's own read has answered. */
+  protected get databaseVisible(): boolean {
+    return this.control !== null;
+  }
+
+  protected get operationBusy(): string | null {
+    this.generation();
+    return this.operation() === null ? null : 'true';
+  }
+
+  /** The running line while a copy or purge is in flight, else what the last one left behind. */
+  protected get operationLine(): string {
+    this.generation();
+    const running = this.operation();
+    if (running === null) return this.operationOutcome();
+    const time = clockTime(running.started);
+    return running.action === AUDIT_COPY_ACTION
+      ? STRINGS.auditDatabaseCopyRunning.split('<namespace>').join(running.subject).split('<time>').join(time)
+      : STRINGS.auditDatabasePurgeRunning.split('<date>').join(running.subject).split('<time>').join(time);
+  }
+
+  protected get copyOpen(): boolean {
+    this.generation();
+    return this.databaseDialog() === AUDIT_COPY_ACTION;
+  }
+
+  protected get purgeOpen(): boolean {
+    this.generation();
+    return this.databaseDialog() === AUDIT_PURGE_ACTION;
+  }
+
+  protected get purgeToday(): Date {
+    return this.databaseDialogOpenedAt();
+  }
+
+  /** The namespaces the scope lists; the copy dialog leaves `%SYS` out. */
+  protected get namespaceNames(): readonly string[] {
+    return this.scope.namespaces().map((entry) => entry.name);
+  }
+
+  protected onOpenCopy(): void {
+    this.openDatabaseDialog(AUDIT_COPY_ACTION);
+  }
+
+  protected onOpenPurge(): void {
+    this.openDatabaseDialog(AUDIT_PURGE_ACTION);
+  }
+
+  /** Opens one dialog, never over another, and never while an operation is in flight. */
+  private openDatabaseDialog(action: typeof AUDIT_COPY_ACTION | typeof AUDIT_PURGE_ACTION): void {
+    if (this.operation() !== null || this.databaseDialog() !== null || this.handler.pending() !== null || this.wizardOpen()) return;
+    this.databaseDialogOpenedAt.set(new Date());
+    this.databaseDialog.set(action);
+    this.bump();
+  }
+
+  protected onCloseDatabaseDialog(): void {
+    this.databaseDialog.set(null);
+    this.bump();
+  }
+
+  protected onCopy(namespace: string): Promise<void> {
+    return this.runDatabaseAction(AUDIT_COPY_ACTION, namespace, { CopyNamespace: namespace });
+  }
+
+  protected onPurge(cutoff: string): Promise<void> {
+    return this.runDatabaseAction(AUDIT_PURGE_ACTION, cutoff, { PurgeBefore: cutoff });
+  }
+
+  /**
+   * One copy or purge through the handler's `sendFor`, with the running line up while it is in
+   * flight. A refusal is the store's sentence, drawn by the refusal banner; a `PORT.TIMEOUT` is not a
+   * refusal, so its sentence is cleared and the line says the work carries on.
+   */
+  private async runDatabaseAction(
+    action: typeof AUDIT_COPY_ACTION | typeof AUDIT_PURGE_ACTION,
+    subject: string,
+    values: Readonly<Record<string, string>>
+  ): Promise<void> {
+    this.databaseDialog.set(null);
+    if (this.operation() !== null) return;
+    this.operationOutcome.set('');
+    this.operation.set({ action, subject, started: new Date() });
+    this.bump();
+    this.selectSingleton();
+    const applied = await this.handler.sendFor(AUDITING_CONFIG_DESCRIPTOR, action, ENTITY_SINGLETON_ID, values);
+    let outcome = '';
+    if (applied) {
+      outcome =
+        action === AUDIT_COPY_ACTION
+          ? STRINGS.auditDatabaseCopyDone.split('<namespace>').join(subject)
+          : STRINGS.auditDatabasePurgeDone.split('<date>').join(subject);
+    } else if (this.connectivity?.fault()?.code === STILL_RUNNING_CODE) {
+      this.form?.store.setRefusal('');
+      outcome = STRINGS.auditDatabaseStillRunning;
+    }
+    this.operation.set(null);
+    this.operationOutcome.set(outcome);
+    this.bump();
   }
 
   private systemList(): ReadView | undefined {
