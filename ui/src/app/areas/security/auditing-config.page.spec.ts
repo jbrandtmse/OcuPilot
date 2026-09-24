@@ -4,8 +4,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
-import { ConnectivityService } from '../../core/connectivity';
-import type { Fault } from '../../core/fault';
 import { OverlayStack } from '../../core/overlay-stack';
 import { ScopeService } from '../../core/scope';
 import { ScreenActions } from '../../core/screen-actions';
@@ -49,7 +47,6 @@ async function mount(
     refuseId?: string;
     /** Story 12.3: answers a copy or purge POST in place of the default. */
     databaseAction?: (body: Record<string, unknown>) => Promise<JsonResult<unknown>>;
-    fault?: () => Fault | null;
   } = {}
 ) {
   TestBed.resetTestingModule();
@@ -125,7 +122,6 @@ async function mount(
           subscribe: () => () => {},
         } as unknown as ScopeService,
       },
-      { provide: ConnectivityService, useValue: { fault: options.fault ?? (() => null) } as unknown as ConnectivityService },
     ],
   });
   await TestBed.inject(Router).navigateByUrl('/security/auditing?ns=HSCUSTOM', { state: options.state ?? {} });
@@ -437,16 +433,14 @@ describe('the Auditing configuration page', () => {
       expect(host.querySelector('[data-audit-action="copy"]')?.getAttribute('aria-disabled')).toBeNull();
     });
 
-    it('sends the typed cut-off from the purge dialog, and reads a PORT.TIMEOUT as still running rather than refused', async () => {
+    // mutation: the page ignores `handler.continued()` -> the finished sentence is drawn and this goes red.
+    it('sends the typed cut-off from the purge dialog, and reads an answer that continues as still running rather than finished', async () => {
       const bodies: Record<string, unknown>[] = [];
-      let fault: Fault | null = null;
       const { fixture, host } = await mount({
         databaseAction: async (body) => {
           bodies.push(body);
-          fault = { kind: 'server-fault', status: 503, code: 'PORT.TIMEOUT', path: '/api/ocupilot/screens/security.auditing/action' };
-          return { kind: 'error', status: 503, code: 'PORT.TIMEOUT', reason: 'The instance did not finish that operation in time', detail: null };
+          return { kind: 'ok', status: 200, body: { ...updated.body, continues: true } };
         },
-        fault: () => fault,
       });
       (host.querySelector('[data-audit-action="purge"]') as HTMLButtonElement).click();
       await settle(fixture);

@@ -2,8 +2,8 @@
 title: 'Story 12.3: Copy and purge the audit database'
 type: 'feature'
 created: '2026-09-24'
-status: 'in-progress'
-baseline_revision: 'e693249be3bd6ae29b81c796860b9b3f3ba7b121'
+status: 'done'
+baseline_revision: 'c131a2b2c5fedf66fcc4db49cdee08a7b93820bb'
 baseline_commit: 'e693249be3bd6ae29b81c796860b9b3f3ba7b121'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -12,7 +12,6 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-12-2-revoke-a-user-s-oauth-2-0-tokens.md'
 warnings: ['oversized']
 deferred:
-  - 'A PORT.TIMEOUT answer (503) is classified server-fault, so the shell connectivity banner may show beside the page still-running line (inference; the bound was not reached, a 30,579-record copy took 0.53 s)'
   - summary: >-
       The purge's removal of records dated before the cut-off has not been observed: every throwaway holds only today's records, so the before-cut-off count is 0 before the purge as well as after it.
     evidence: |-
@@ -32,7 +31,11 @@ footprint_extensions:
   - 'src/OcuPilot/Screen/Descriptor/AuditingConfig.cls (two appended row actions)'
   - 'src/OcuPilot/Screen/Tool/Base.cls, src/OcuPilot/Screen/Tool/Registry.cls, src/OcuPilot/Screen/Context.cls (the unadvertised-tool declaration)'
   - 'src/OcuPilot/Port/AdminPort.cls (contended: two MUTATINGTYPES entries, one new parameter, one guard condition)'
-  - 'ui/src/app/shell/screen-action-handler.ts (contended: sendFor gains an optional values parameter; see Open questions)'
+  - 'ui/src/app/shell/screen-action-handler.ts (contended: sendFor gains an optional values parameter; see Open questions; the answer type gains continues, one line in send records it and continued() reads it, outside Epic 9 hunks)'
+  - 'src/OcuPilot/Kernel/Proposal/Confirm.cls (contended: one hunk before Transition''s final Quit adds continues to a 202 answer, outside Epic 9 hunks)'
+  - 'src/OcuPilot/Api/ScreenAction.cls (contended: Run adds continues to a 202 answer, and the Handle doc names it, outside Epic 9 hunks)'
+  - 'ui/src/app/core/turn.ts (contended: ProposalOutcome.continues, outside Epic 9 hunks), ui/src/app/shell/panel.ts and its spec (the still-running reply sentence)'
+  - 'src/OcuPilot/Test/AuditStarted*.cls (the started pin and its port, confirm, tool and route seams); scripts/ci-throwaway.sh (AuditStarted on the PRINCIPALS roster)'
   - 'ui/src/app/core/screen-actions.ts (two labels)'
   - 'src/OcuPilot/Kernel/Proposal/Prohibited.cls (contended: Target passes Resolve its new unadvertised argument, one line outside Epic 9 hunks; the screen route asks this set)'
   - 'src/OcuPilot/Test/X509SecretProbe.cls, src/OcuPilot/Test/SecretSpelling.cls (fixture method Advertised renamed AdmittedNames: it clashed with Base.Advertised)'
@@ -212,11 +215,11 @@ footprint_extensions:
 
 ### Review Findings
 
-- [ ] [Review] HIGH, AD-15/AD-26 (orchestrator ruling 66aa49ec, by=merge_gate: fix, not waive) -- `src/OcuPilot/Port/AuditPort.cls` (and `Kernel/Proposal/Confirm.cls:382-398` only if unavoidable) -- past `AsyncTimeout()`, answer a `QUEUEDWRITES` request as **started**, not `PORT.TIMEOUT`: a started/pending success the confirm path takes as success, so it emits the AD-15 marker and records the row as applied with the outcome "continues in the background"; the agent's reply and the screen both say it is still running. Do it within `AuditPort` and its answer shape if Confirm's success path can carry it -- first check whether that path does a post-read that would fail on an in-flight copy. If `Confirm.cls` must change, one minimal hunk under contended-edit discipline (`git show origin/OCU-1-epic9:src/OcuPilot/Kernel/Proposal/Confirm.cls` first, stay off its hunks, list it under `footprint_extensions:`). The screen path: the page shows the still-running sentence on the started answer. Pin it with a **stubbed long-running queued job** (no large audit database; e.g. a port subclass or a tiny bound so the vendor task is not terminal): confirm emits the marker and the row is not `error`; record the `mutation:` line -- removing the started branch reddens it. Update the page/component tests for the started answer.
+- [x] [Review] HIGH, AD-15/AD-26 (orchestrator ruling 66aa49ec, by=merge_gate: fix, not waive) -- `src/OcuPilot/Port/AuditPort.cls` (and `Kernel/Proposal/Confirm.cls:382-398` only if unavoidable) -- past `AsyncTimeout()`, answer a `QUEUEDWRITES` request as **started**, not `PORT.TIMEOUT`: a started/pending success the confirm path takes as success, so it emits the AD-15 marker and records the row as applied with the outcome "continues in the background"; the agent's reply and the screen both say it is still running. Do it within `AuditPort` and its answer shape if Confirm's success path can carry it -- first check whether that path does a post-read that would fail on an in-flight copy. If `Confirm.cls` must change, one minimal hunk under contended-edit discipline (`git show origin/OCU-1-epic9:src/OcuPilot/Kernel/Proposal/Confirm.cls` first, stay off its hunks, list it under `footprint_extensions:`). The screen path: the page shows the still-running sentence on the started answer. Pin it with a **stubbed long-running queued job** (no large audit database; e.g. a port subclass or a tiny bound so the vendor task is not terminal): confirm emits the marker and the row is not `error`; record the `mutation:` line -- removing the started branch reddens it. Update the page/component tests for the started answer.
 
 Code review 2026-09-24 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 39 rows, 13 entries after grouping, 16 rejected.
 
-- [ ] [Review][Decision] HIGH, AD-15/AD-26/AD-7: an agent copy that outlasts `AsyncTimeout()` is unmarked and its ledger row reads `error`, while the vendor's worker completes the copy — `Confirm.cls:382-398` treats `PORT.TIMEOUT` as "the write did not happen" (`MARKEDNONE`), but AD-26's `QUEUEDWRITES` clause assumes "the request that starts the write still answers its outcome", and AD-15 names no case for it. Reachable: M3 measured ~57k records/s, so about 1.7M records exceed the 30 s bound. The spec names it only in Design Notes ("Named limitation"), which the spine does not carry. Needs a ruling: (A) a named case in AD-15 plus a corrected AD-26 sentence (a waiver of the marker for this case), or (B) a Confirm change that marks a `QUEUEDWRITES` write answered `PORT.TIMEOUT` as queued rather than failed.
+- [x] [Review][Decision] HIGH, AD-15/AD-26/AD-7: an agent copy that outlasts `AsyncTimeout()` is unmarked and its ledger row reads `error`, while the vendor's worker completes the copy — `Confirm.cls:382-398` treats `PORT.TIMEOUT` as "the write did not happen" (`MARKEDNONE`), but AD-26's `QUEUEDWRITES` clause assumes "the request that starts the write still answers its outcome", and AD-15 names no case for it. Reachable: M3 measured ~57k records/s, so about 1.7M records exceed the 30 s bound. The spec names it only in Design Notes ("Named limitation"), which the spine does not carry. Needs a ruling: (A) a named case in AD-15 plus a corrected AD-26 sentence (a waiver of the marker for this case), or (B) a Confirm change that marks a `QUEUEDWRITES` write answered `PORT.TIMEOUT` as queued rather than failed.
 - [x] [Review][Patch] Rule 19: baselines read as `-1` passed vacuously — `tBefore > 0` asserted in `TestTheAgentsCopyIsMintedAndConfirmedMarked` and `TestAPrincipalWithoutOperateIsRefusedByName`, `tHeld > 0` in `TestAMalformedOrFutureCutoffIsRefused` [src/OcuPilot/Test/AuditCopy.cls:305, src/OcuPilot/Test/AuditPurge.cls:188]
 - [x] [Review][Patch] A lowercase `%sys` copy target was untested: added to the refusal roster [src/OcuPilot/Test/AuditCopy.cls:269]
 - [x] [Review][Patch] Rule 19: AC5's purge half had no recorded mutation — demonstrated below [src/OcuPilot/Screen/Tool/AuditPurge.cls:141]
@@ -273,6 +276,24 @@ Rejected:
   - `[false]` `[reject]` Intent (f): `Prohibited.Target` resolves unadvertised tools — every agent-path caller reaches it only after `ResolveWire`, which refuses an unadvertised tool.
   - `[false]` `[reject]` Intent (g): the queued-write guard changed in the shared base port — the change is AD-26 as amended and is pinned by the exact `QUEUEDWRITES` roster and the refusal leg.
   - `[false]` `[reject]` Intent (h): the group heading reuses `auditListLabel` — it is a `STRINGS` key with its own Fixed strings row.
+
+### 2026-09-24 — Review pass (rework 1)
+
+- verdicts: 13 findings — high 0, medium 2, low 5, false 4, maybe-false 2
+- findings:
+  - `[medium]` `[patch]` No server test asserted `continues` absent on a copy finished within the wait — `AuditCopy`'s screen-route and agent legs now assert it; mutation (any 2xx) → both red.
+  - `[medium]` `[patch]` Nothing pinned that only the bound, not a vendor failure, becomes started — `AuditStarted.TestAQueuedWriteTheVendorFailsKeepsItsError` sends a copy into `NOSUCHNS` to the shipped port (the vendor's worker fails it, `<NAMESPACE>`); mutation (drop the `PORT.TIMEOUT` test) → red.
+  - `[low]` `[reject]` A started write still logs `AwaitTask`'s "left Running at the bound" `PORT.TIMEOUT` line — met only past 30 s (about 1.7M records), and the fix is a branch in the contended `AdminPort.AwaitTask`.
+  - `[maybe-false]` `[reject]` A vendor write answering a bare 202 synchronously would read as `continues` — `AdminPort` polls a 202 carrying `async-result`; settle by finding a vendor write that answers 202 without it; if true only low.
+  - `[false]` `[reject]` The ledger keeps no durable "continues" outcome — AD-26 as amended requires the write recorded applied and marked; the row reads `ok` and `MARKEDYES` (`AuditStarted` asserts it).
+  - `[low]` `[patch]` EXPERIENCE.md :470 said the still-running sentence "ends" the reply; the panel places it before the audit-entry offer — reworded to "is also appended to".
+  - `[false]` `[reject]` Intent B2 (durable outcome) — the same claim as the ledger row above, same refutation.
+  - `[false]` `[reject]` Intent C2 (the model is not told) — the model never sees a confirm's answer; the marker and change sentences are appended by the panel the same way, and the matrix's reply is the one the user reads.
+  - `[false]` `[reject]` Intent: server tests use replaced seams — each seam substitutes an `AuditPort` subclass, so the started branch run is the shipped code, and `AuditCopy`'s legs already pin that the shipped tools reach `AuditPort`.
+  - `[low]` `[reject]` Intent E2: purge's started path is not driven server-side — the branch is pair-generic through `IsQueuedWrite`, whose roster `AdminPortAsync` pins exactly.
+  - `[low]` `[reject]` Intent: no end-to-end leg joins the server's `continues` to the client (page and panel legs use stubbed bodies) — the key matches on both sides; a live leg needs a stubbed port on the route or a >30 s copy.
+  - `[maybe-false]` `[reject]` Intent: `Confirm` and `ScreenAction` test the literal 202 rather than `STARTEDHTTP` — the same root as the bare-202 row above.
+  - `[low]` `[reject]` Intent: the appended sentence lives in session state and does not survive a reload (inference) — the marker and change sentences beside it behave the same; not introduced here.
 
 ## Design Notes
 
@@ -366,7 +387,7 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. Every copy, pur
 - mutation: `OcuPilotProbeAsyncWrite/PUT` added to `QUEUEDWRITES` → `AdminPortAsync` refusal leg and `TestOnlyTheNamedQueuedWritesAreAdmitted` red (DW-1279)
 - mutation: the `Sequence` guard reads `IsMutating(...) && 0` → `AdminPortAsync.TestAMutatingRequestThatWouldQueueIsRefusedBeforeTheTaskRowIsWritten` red (DW-1279)
 - mutation: `sendFor` forwards no `values` → `auditing-config.page.spec.ts` copy and purge legs red
-- mutation: `STILL_RUNNING_CODE` misspelt → `auditing-config.page.spec.ts` PORT.TIMEOUT leg red
+- mutation: the page ignores `handler.continued()` → `auditing-config.page.spec.ts` still-running leg red (rework 1)
 
 Each mutation was reverted, recompiled with subclasses or rebuilt and redeployed, and `git status --short` with `git diff --stat` read identical to before it.
 
@@ -381,6 +402,16 @@ Each mutation was reverted, recompiled with subclasses or rebuilt and redeployed
 - mutation (code review): `AuditPurge.PrivilegePairs` omits `%Admin_Operate:USE` → `AuditCopy.TestAPrincipalWithoutOperateIsRefusedByName` and the declaration leg red (run 266) (AC5, purge)
 - mutation (code review): `AuditCopyDialog.confirmDisabled` answers `null` → `audit-copy-dialog.spec.ts` "Copy is aria-disabled ..." red
 
+**Rework 1, 2026-09-24, `ocupilot-b-ci`:** `AuditPort` answers a `QUEUEDWRITES` write still running at the bound 202 started; the confirm and the screen route answer `continues`, the page and the agent's reply say it is still running. `AuditStarted` 2/2 (runs 270, 274) over `Test/AuditStartedPort` (bound 0, every poll reports `Running`; the vendor's worker then finishes the real copy); `test:components` 1078/1078, `test:tools` 1375/1375; `audit-copy-purge` 2/2 on the redeployed bundle. Full sweep after the `Confirm.cls` change: 228 classes, 2012 tests, 0 failed (runs 275-503, read from `%UnitTest_Result`; `AuditPurge` armed through `docker exec -e`, run 503). Each server mutation ran on the throwaway's source copy, recompiled with `ckb` (subclasses included), then reverted and recompiled.
+
+- mutation: `AuditPort.Invoke`'s started branch disabled → `AuditStarted` 2/2 red (run 271): the confirm answers `PORT.TIMEOUT`, no marker, the ledger row not `ok`
+- mutation: `Confirm.Transition`'s `continues` line removed → `AuditStarted` agent leg red (run 272)
+- mutation: `ScreenAction.Run`'s `continues` line removed → `AuditStarted` screen-route leg red (run 273)
+- mutation: the handler's `lastContinues` never set → `auditing-config.page.spec.ts` still-running leg red
+- mutation: `Panel.recordWriteCard` records `continues: false`, or `TurnStore` drops it → `panel.spec.ts` still-running reply leg red
+- mutation (rework review): `AuditPort.Invoke`'s started branch drops its `PORT.TIMEOUT` test → `AuditStarted.TestAQueuedWriteTheVendorFailsKeepsItsError` red (run 507); reverted, 3/3 (run 510)
+- mutation (rework review): `Confirm.Transition` and `ScreenAction.Run` add `continues` on any 2xx → `AuditCopy` agent and screen-route legs red on "does not answer that it continues" (run 508); reverted with subclasses, 6/6 (run 509)
+
 **Stage verification (once, before dev_complete), `ocupilot-b-ci`:** whole `OcuPilot` package recompiled from the worktree source; full sweep 226 classes (runs 31-256), 2006 tests, 1 failed (`Prohibited.TestNoWriteToolAdmitsAnAlwaysProhibitedField`: a bodyless tool admitting its port-composed argument); fixed in `Test/Prohibited.cls` and rerun 12/12 (run 257); `AuditPurge` armed 4/4 (run 258). Total 227 classes, 2010 tests, 0 failed. `npm run build` initial total 1.34 MB (1,337,502 bytes as the handoff measured; budget 1378 kB unchanged); `npm test` tools 1375/1375 after adding the live-container refusal to `audit-copy-purge.browser-spec.mjs`, components 1076/1076; story browser specs 6/6 on the redeployed bundle; `smoke.sh` executed 48, passed 48; check-objectscript and lint-docs clean.
 
 ## Auto Run Result
@@ -388,14 +419,14 @@ Each mutation was reverted, recompiled with subclasses or rebuilt and redeployed
 Status: done
 Blocking condition: none
 
-**Change.** Security > Auditing gains an Audit database group: Copy to namespace (`security.auditing.copy`, advertised) and Purge old records (`security.auditing.purge`, unadvertised), each an AD-53 row action through a dialog. `Port/AuditPort` composes the vendor `Security.Audit.Record` COPY/PURGE bodies from the tool argument and answers a `DATABASE` read from `Security.Audit.Enabled`; `AdminPort` admits exactly `QUEUEDWRITES` to the vendor queue. `Base.ADVERTISED` keeps purge out of `ProviderTools`, `ResolveWire`, default `Resolve` and `ScreenTools`, while the screen route and the prohibited set reach it.
+**Change (rework 1).** The HIGH on AD-15/AD-26 is fixed as ruled. `AuditPort.Invoke` answers a `QUEUEDWRITES` copy or purge that `AdminPort` would answer `PORT.TIMEOUT` as OK with HTTP 202 (`STARTEDHTTP`); a vendor failure keeps its error. Neither `Operation.ApplyAt` nor `Confirm.Answer` re-reads after the write, so the confirm's success path marks it (AD-15) and finalizes the row `ok`. One `Confirm.cls` hunk (before `Transition`'s final `Quit`) and one `ScreenAction.Run` line add `continues: true` to a 202 answer. The page shows the still-running sentence on an applied answer that continues; the panel appends it to the agent's reply.
 
-**Files.** New: `Port/AuditPort.cls`, `Screen/Tool/AuditCopy.cls`, `Screen/Tool/AuditPurge.cls`, `Test/AuditCopy.cls`, `Test/AuditPurge.cls`, `audit-copy-dialog.ts`, `audit-purge-dialog.ts` and their specs, `browser/audit-copy-purge.browser-spec.mjs`. Changed: `AdminPort.cls` (roster, `QUEUEDWRITES`, guard), `Tool/Base.cls`, `Tool/Registry.cls`, `Screen/Context.cls`, `Kernel/Proposal/Prohibited.cls` (one `Resolve` argument), `Descriptor/AuditingConfig.cls`, `auditing-config.page.ts`, `screen-action-handler.ts` (`sendFor` values only), `screen-actions.ts`, `screens.generated.ts`, `strings.ts`, `_components.scss`, EXPERIENCE.md :470, `ci-throwaway.sh` (arming), and the test rosters listed under `footprint_extensions`.
+**Files.** `Port/AuditPort.cls` (started branch, `STARTEDHTTP`); `Kernel/Proposal/Confirm.cls`, `Api/ScreenAction.cls` (`continues`, contended, off Epic 9's hunks); `screen-action-handler.ts` (`continued()`), `auditing-config.page.ts` (the `PORT.TIMEOUT`/`ConnectivityService` path removed), `turn.ts`, `panel.ts` (the reply sentence) and their specs; new `Test/AuditStarted.cls` with seams `AuditStartedPort` (bound 0, polls read `Running`), `AuditStartedConfirm`, `AuditStartedCopy`, `AuditStartedAction`; `Test/AuditCopy.cls` (`continues` absent when finished); `ci-throwaway.sh` (roster); EXPERIENCE.md :470 (the reply use). The deferred `PORT.TIMEOUT` connectivity-banner item is removed: that answer no longer occurs.
 
-**Review.** 14 findings: 2 patched (1 medium, 1 low, both in `auditing-config.page.spec.ts`, each falsified by a mutation), 4 deferred (2 new `deferred:` items; 2 rows share existing items), 8 rejected with reasons in the Review Triage Log. Stage verification also fixed `Test/Prohibited.cls` (red in the full sweep) and the browser spec's missing live-container refusal (red in `angular-json.test.mjs`).
+**Review.** 13 findings: 3 patched (2 medium: the `continues`-absent assertions and the vendor-failure leg; 1 low: the EXPERIENCE.md wording), 0 deferred, 10 rejected with reasons in the Review Triage Log.
 
-**Follow-up review:** false (no high patched, one medium patched).
+**Follow-up review:** false (follow-up pass; no high patched; 2 medium and 1 low patched).
 
-**Verification.** See `## Verification`: full ObjectScript sweep 227 classes, 2010 tests, 0 failed on `ocupilot-b-ci`; client 1375 + 1076 green; story browser specs 6/6; smoke 48/48; bundle 1.34 MB under 1378 kB.
+**Verification (`ocupilot-b-ci`).** `AuditStarted` 3/3 (run 510), `AuditCopy` 6/6 (run 509), each after its mutation went red (runs 507, 508, 271-273). Full ObjectScript sweep after the `Confirm.cls` change: 228 classes, 2012 tests, 0 failed (runs 275-503, read from `%UnitTest_Result`). `test:components` 1078/1078, `test:tools` 1375/1375; `audit-copy-purge` 2/2 on the redeployed bundle; `smoke.sh` 49/49; check-objectscript and lint-docs clean; `/tmp/ocupilot-b-ci/src` identical to `src/`.
 
-**Residual risks.** A purge's removal of past-dated records is unobserved (deferred); the purge cut-off uses the browser calendar (deferred); a PORT.TIMEOUT may also raise the shell's connectivity banner (deferred). `ocupilot-b-ci` predates `OCUPILOT_ALLOW_AUDIT_PURGE`, so `AuditPurge` ran with the variable passed to `docker exec`; a throwaway brought up from this tree sets it.
+**Residual risks.** A started write still logs a `PORT.TIMEOUT` line from `AdminPort.AwaitTask`; the ledger row of a write still running reads `ok` like a finished one; the started path is driven server-side for copy only (purge shares the pair-generic branch). Earlier deferred items stand.

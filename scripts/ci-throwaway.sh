@@ -193,14 +193,14 @@ services:
       # objects handled the same way. Same reasoning, same single home: test classes are selected
       # by package, so a runner pointed at an instance someone cares about would otherwise create
       # principals on it. scripts/check-objectscript.py's destructive-test-guard rule holds the
-      # population. AuditCopy also copies the instance's audit database into USER and empties USER's
-      # audit globals, and its least-privilege leg sends a purge the route must refuse.
+      # population. AuditCopy and AuditStarted also copy the instance's audit database into USER and empty USER's
+      # audit globals, and AuditCopy's least-privilege leg sends a purge the route must refuse.
       # classes: TurnGrounding
       # classes: AccountPasswordWire, AgentConnectionRoles, AgentWireSecurity, AuditMarker, ConfigGate, CredentialPrivilege, DenialParity
       # classes: Disabled, ErrorDelete, ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial
       # classes: OAuthTabs
       # classes: TokenProbe, TokenRevoke
-      # classes: AuditCopy
+      # classes: AuditCopy, AuditStarted
       # classes: ProcessControl, ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token
       # classes: ToolSetFull
       # classes: ToolWire, TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire

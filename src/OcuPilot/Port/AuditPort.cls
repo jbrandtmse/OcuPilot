@@ -13,6 +13,10 @@
 /// namespace a copy targets and the date a purge cuts off at travel in the port query, and only
 /// here do they become the vendor's wire shape. A copy never deletes what it copied, and a purge
 /// always sends a cut-off, so neither can become a purge of everything.</p>
+/// <p><b>A copy or a purge still running at the bound has started.</b> The vendor's worker carries
+/// it on after the admin port stops waiting, so that answer is a success with HTTP
+/// <parameter>STARTEDHTTP</parameter>, never <code>PORT.TIMEOUT</code>: the write was made and
+/// continues on the instance (AD-26).</p>
 /// <p><b>It names no administration API class.</b> Both calls go through
 /// <method>OcuPilot.Port.AdminPort.Invoke</method>, so the gate, the stubs, the namespace switch,
 /// the queued-write await and the fault mapping are the admin port's (AD-27).</p>
@@ -35,6 +39,10 @@ Parameter ENABLEDENDPOINT = "Security.Audit.Enabled";
 
 Parameter ENABLEDTYPE = "GET";
 
+/// <p>The HTTP status of a copy or a purge the vendor's worker is still running when
+/// <method>AsyncTimeout</method> passes: accepted, and continuing on the instance.</p>
+Parameter STARTEDHTTP = 202;
+
 /// <p>The query keys the tools' arguments travel under, which are also the fields the read adds
 /// empty.</p>
 Parameter NAMESPACEQUERY = "CopyNamespace";
@@ -54,7 +62,10 @@ Parameter COMPOSEDTYPES = "Security.Audit.Record/COPY,Security.Audit.Record/PURG
 /// <code>{Enabled, CopyNamespace: "", PurgeBefore: ""}</code>. A copy or a purge sends
 /// <method>Body</method>'s answer with an empty query; a query <method>Body</method> cannot compose
 /// from is 400 <code>PORT.VALIDATION</code> and nothing is sent. A caller body for either is refused
-/// as the admin port refuses one for a constant-body pair.</p>
+/// as the admin port refuses one for a constant-body pair. A <parameter>QUEUEDWRITES</parameter>
+/// pair the vendor has not finished within <method>AsyncTimeout</method> returns OK with
+/// <var>pHttpStatus</var> <parameter>STARTEDHTTP</parameter>, <var>pResult</var> and
+/// <var>pFault</var> empty.</p>
 ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     If (pEndpoint '= ..#RECORDENDPOINT) || ((pType '= ..#DATABASETYPE) && '$ListFind($ListFromString(..#COMPOSEDTYPES), pEndpoint _ "/" _ pType)) Quit ##super(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
@@ -81,7 +92,15 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Set tBody = ..Body(pType, .pQuery)
     If '$IsObject(tBody) Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, "The audit database operation was not given a namespace or a cut-off date it can use", .pHttpStatus, .pFault)
     Kill tNone
-    Quit ##super(pEndpoint, pType, .tNone, tBody, .pResult, .pHttpStatus, .pFault)
+    Set tSC = ##super(pEndpoint, pType, .tNone, tBody, .pResult, .pHttpStatus, .pFault)
+    ; AD-26: past the bound the queued write has started, and the vendor's worker finishes it.
+    If $$$ISERR(tSC) && ..IsQueuedWrite(pEndpoint, pType) && $IsObject(pFault) && (pFault.%Get("code") = ##class(OcuPilot.Api.Error).#PORTTIMEOUT) {
+        Set pResult = ""
+        Set pHttpStatus = ..#STARTEDHTTP
+        Set pFault = ""
+        Quit $$$OK
+    }
+    Quit tSC
 }
 
 /// <p>The vendor body for <var>pType</var>, composed from <var>pQuery</var>, or <code>""</code> when

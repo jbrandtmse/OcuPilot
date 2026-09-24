@@ -64,7 +64,8 @@ ClassMethod CallerUsername() As %String
 /// (<parameter>OcuPilot.Screen.Tool.Write.SCREENVALUES</parameter>) -- an object of strings keyed
 /// by exactly those names. On success, one envelope carrying
 /// <code>{action, target: {type, scope, id}}</code> -- the AD-14 change event's own triple and
-/// verb, which the client publishes rather than inferring.</p>
+/// verb, which the client publishes rather than inferring -- plus <code>continues: true</code> where
+/// the port answered that a queued write is still running on the instance (AD-26).</p>
 /// <p><b>The value channel is closed, as the confirm channel is</b> (AD-6, AD-56 (ii)). A body key
 /// other than those three, a value name the action does not declare, a declared name left out, and
 /// a value that is not a non-empty string are each 400 <code>TOOL.ARGUMENTS</code> before anything
@@ -278,6 +279,8 @@ ClassMethod Run(pTool As %DynamicObject, pToolClass As %String, pActionId As %St
         ; a diff, and the triple is the canonical one the write was made against.
         Do tResult.%Set("action", ##class(OcuPilot.Kernel.Proposal.Operation).ChangeAction(pToolClass), "string")
         Do tResult.%Set("target", tTarget)
+        ; AD-26: a queued write the port answered 202 was made and continues on the instance.
+        If +$Get(tWriteHttp) = 202 Do tResult.%Set("continues", 1, "boolean")
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tResult)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)

@@ -147,6 +147,7 @@ function clockOf(stamp: string): string {
 interface PanelWriteCard {
   readonly ok: boolean;
   readonly auditMarked: boolean;
+  readonly continues: boolean;
   readonly reason: string;
   readonly failedPair: string;
 }
@@ -866,15 +867,18 @@ export class Panel {
         // Each appender asks whether its own sentence is ALREADY PRESENT, not whether the reply
         // ends with it: an appender nested outside another receives text that inner one has
         // already extended, so an `endsWith` test there is false for a model reply that carried
-        // the sentence itself and the sentence is published twice. Containment makes the four
+        // the sentence itself and the sentence is published twice. Containment makes the five
         // idempotent whatever order they compose in, which is the property the nesting below
         // otherwise has to be read to establish.
         reply:
           errorBanner === null
             ? this.replyWithAuditOfferSentence(
                 this.replyWithMarkerSentence(
-                  this.replyWithChangeSentence(
-                    this.replyWithConfirmSentence(entry.reply, proposals),
+                  this.replyWithStillRunningSentence(
+                    this.replyWithChangeSentence(
+                      this.replyWithConfirmSentence(entry.reply, proposals),
+                      entry.proposals
+                    ),
                     entry.proposals
                   ),
                   entry.proposals
@@ -1010,6 +1014,27 @@ export class Panel {
   }
 
   /**
+   * `reply` with the published still-running sentence at its end when a confirmed write of this
+   * turn was applied and answered that it continues on the instance, else `reply` unchanged
+   * (AD-26). Published copy for the reason the change sentence is: the model never sees the
+   * confirm's answer, so its reply cannot say so itself.
+   */
+  private replyWithStillRunningSentence(
+    reply: string | null,
+    proposals: readonly TurnProposal[]
+  ): string | null {
+    if (reply === null) return null;
+    const cards = this.writeCards();
+    const continuing = (proposal: TurnProposal): boolean => {
+      const card = cards.get(proposal.proposalId);
+      return card !== undefined && card.ok && card.continues;
+    };
+    if (!proposals.some(continuing)) return reply;
+    if (reply.includes(STRINGS.auditDatabaseStillRunning)) return reply;
+    return reply + '\n\n' + STRINGS.auditDatabaseStillRunning;
+  }
+
+  /**
    * `reply` with the published marker sentence at its end when a confirmed write of this turn was
    * applied and not marked, else `reply` unchanged (AD-15, FR-22).
    *
@@ -1037,7 +1062,7 @@ export class Panel {
    * `reply` with the published audit-entry offer at its end when a confirmed write of this turn was
    * applied, else `reply` unchanged (AD-15, AD-46, FR-22).
    *
-   * Appended for the reason the other three sentences are: "the agent states what it verified and
+   * Appended for the reason the other four sentences are: "the agent states what it verified and
    * ends with the offer" is not assertable against model-authored prose, so the offer is the
    * panel's own published copy and is there whatever the model wrote. Answering it is the user's
    * next message, and the navigation that follows is the model choosing to call
@@ -1155,6 +1180,7 @@ export class Panel {
     next.set(proposalId, {
       ok: outcome.ok,
       auditMarked: outcome.auditMarked,
+      continues: outcome.continues,
       reason: outcome.reason,
       failedPair: outcome.failedPair,
     });

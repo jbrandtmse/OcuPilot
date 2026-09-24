@@ -221,6 +221,8 @@ const WARNING_ROWS: Readonly<
 interface ScreenActionAnswer {
   readonly action?: string;
   readonly target?: { readonly type?: string; readonly scope?: string; readonly id?: string };
+  /** `true` where the write was made and is still running on the instance (AD-26). */
+  readonly continues?: boolean;
 }
 
 /** Which dialog a pending row action is waiting on. */
@@ -503,6 +505,7 @@ export class ScreenActionHandler {
         body: JSON.stringify(request),
       }
     );
+    this.lastContinues = result.kind === 'ok' && result.body?.continues === true;
     if (result.kind !== 'ok') {
       // The envelope's own sentence (AD-39). A refused write changed nothing, so nothing is
       // published and no row is marked.
@@ -532,6 +535,16 @@ export class ScreenActionHandler {
    */
   sendFor(descriptor: string, actionId: string, target: string, values?: ActionValues): Promise<boolean> {
     return this.send(descriptor, actionId, target, values);
+  }
+
+  private lastContinues = false;
+
+  /**
+   * Whether the last action this handler sent was applied and answered that it is still running on
+   * the instance (AD-26). Read right after the `sendFor` that sent it.
+   */
+  continued(): boolean {
+    return this.lastContinues;
   }
 
   /** The key of the row the screen has selected, or `''`. */

@@ -422,6 +422,9 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         Set pResult = ""
         Set tSC = ..Internal("the confirm transition failed: " _ ex.DisplayString(), .pHttpStatus, .pCode)
     }
+    ; AD-26: a queued write the port answered 202 was made and marked above, and continues on the
+    ; instance; the answer says so.
+    If $$$ISOK(tSC) && (+$Get(tWriteHttp) = 202) && $IsObject(pResult) Do pResult.%Set("continues", 1, "boolean")
     Quit tSC
 }
 

@@ -14,7 +14,6 @@ import { NavigationEnd, Router } from '@angular/router';
 import { ApiService } from '../../core/api';
 import { AUDIT_EVENT_ENTITY, AUDIT_USER_EVENT_ENTITY, AUDITING_CONFIG_ENTITY } from '../../core/agent-status';
 import { ChangeBus } from '../../core/change-bus';
-import { ConnectivityService } from '../../core/connectivity';
 import { screenForDescriptor, screenForRoute, withQuery } from '../../core/navigation';
 import { ScopeService } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
@@ -72,9 +71,6 @@ interface SectionView {
 export const AUDIT_COPY_ACTION = 'copy';
 export const AUDIT_PURGE_ACTION = 'purge';
 
-/** The code the port answers when the vendor's queued operation outlasts its wait (AD-26). */
-export const STILL_RUNNING_CODE = 'PORT.TIMEOUT';
-
 /** One copy or purge in flight: which, its namespace or cut-off, and when it was sent. */
 interface AuditOperation {
   readonly action: typeof AUDIT_COPY_ACTION | typeof AUDIT_PURGE_ACTION;
@@ -114,8 +110,8 @@ const RELOAD_ENTITIES: readonly string[] = [AUDITING_CONFIG_ENTITY, AUDIT_EVENT_
  * registers both actions itself, replacing the handler's, so the command bar and the group's buttons
  * open the same dialog; each confirm is one `sendFor` carrying its one value. While it is in flight the
  * status line says it is running on the instance and since when, and both buttons refuse; then it says
- * the operation finished, or the refusal banner carries the envelope's sentence. A `PORT.TIMEOUT` reads
- * as still running, because the vendor's worker carries on after the port stops waiting (AD-26).
+ * the operation finished, or that it is still running on the instance where the answer says it
+ * continues (AD-26), or the refusal banner carries the envelope's sentence.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
@@ -249,9 +245,6 @@ export class AuditingConfigPage {
   private readonly scope = inject(ScopeService);
   private readonly stores = inject(ScreenStores);
   private readonly actions = inject(ScreenActions);
-
-  /** The verdict on the last call, read for the code of a refused copy or purge (AD-39). */
-  private readonly connectivity = inject(ConnectivityService, { optional: true });
 
   /**
    * Constructed for its own sake, as `ListPage` does: its constructor registers the declared row
@@ -597,8 +590,8 @@ export class AuditingConfigPage {
 
   /**
    * One copy or purge through the handler's `sendFor`, with the running line up while it is in
-   * flight. A refusal is the store's sentence, drawn by the refusal banner; a `PORT.TIMEOUT` is not a
-   * refusal, so its sentence is cleared and the line says the work carries on.
+   * flight. A refusal is the store's sentence, drawn by the refusal banner; an applied answer that
+   * continues on the instance reads as still running rather than finished (AD-26).
    */
   private async runDatabaseAction(
     action: typeof AUDIT_COPY_ACTION | typeof AUDIT_PURGE_ACTION,
@@ -613,14 +606,13 @@ export class AuditingConfigPage {
     this.selectSingleton();
     const applied = await this.handler.sendFor(AUDITING_CONFIG_DESCRIPTOR, action, ENTITY_SINGLETON_ID, values);
     let outcome = '';
-    if (applied) {
+    if (applied && this.handler.continued()) {
+      outcome = STRINGS.auditDatabaseStillRunning;
+    } else if (applied) {
       outcome =
         action === AUDIT_COPY_ACTION
           ? STRINGS.auditDatabaseCopyDone.split('<namespace>').join(subject)
           : STRINGS.auditDatabasePurgeDone.split('<date>').join(subject);
-    } else if (this.connectivity?.fault()?.code === STILL_RUNNING_CODE) {
-      this.form?.store.setRefusal('');
-      outcome = STRINGS.auditDatabaseStillRunning;
     }
     this.operation.set(null);
     this.operationOutcome.set(outcome);
