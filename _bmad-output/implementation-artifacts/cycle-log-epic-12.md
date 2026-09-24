@@ -53,3 +53,5 @@
 2026-09-24T14:05:51Z	Story 12.2	ci_resolved	story=12.2 run=36006886901 result=failure job=browser test=users-actions.browser-spec.mjs:236(menu_roster_six_vs_seven) first_red=a8647280(this_story) resolved_at=handback_gate
 2026-09-24T14:05:51Z	Story 12.2	rework_opened	cycle_iteration=2 iteration=1 trigger=ci items=CI:users-actions.browser-spec.mjs:236 scope_baseline=a8647280
 2026-09-24T14:05:51Z	Story 12.2	stage_spawned	stage=implement spawn_at=2026-09-24T14:05:51Z model=opus agent_name=12-2-revoke-a-user-s-oauth-2-0-tokens-implement-2 cycle_iteration=2
+2026-09-24T14:11:19Z	Story 12.2	dev_complete	spawn_at=2026-09-24T14:05:51Z model=opus build_sha=ff3686c4 baseline_revision=a8b6ffaf(rework;spec_keeps_79f62a6b) review_loop_iteration=1 followup_review_recommended=false deferred=0 files=2 cycle_iteration=2 verify=users-actions+token-revoke_browser_3/3_redeployed
+2026-09-24T14:11:19Z	Story 12.2	stage_spawned	stage=code-review spawn_at=2026-09-24T14:11:19Z model=opus agent_name=12-2-revoke-a-user-s-oauth-2-0-tokens-code-review-2 cycle_iteration=2
