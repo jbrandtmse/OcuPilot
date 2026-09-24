@@ -25,7 +25,7 @@ XData Declaration
   "id": {"kind": "single", "parts": []},
   "context": {"fields": ["name", "enabled"], "secretFields": ["password"]},
   "primaryAction": {"id": "create", "selfProtection": ""},
-  "rowActions": [{"id": "delete", "selfProtection": "never the current user"}],
+  "rowActions": [{"id": "delete", "selfProtection": ""}],
   "emptyStateKey": "",
   "commandAliases": ["users"],
   "classicPage": "OcuPilotTestClassicPageGated",

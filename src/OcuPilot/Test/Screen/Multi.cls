@@ -30,7 +30,7 @@ XData Declaration
   "id": {"kind": "single", "parts": []},
   "context": {"fields": ["name", "enabled"], "secretFields": ["clientSecret"]},
   "primaryAction": {"id": "create", "selfProtection": ""},
-  "rowActions": [{"id": "edit", "selfProtection": ""}, {"id": "delete", "selfProtection": "never OcuPilot's own registration"}],
+  "rowActions": [{"id": "edit", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}],
   "emptyStateKey": "",
   "commandAliases": ["oauth", "oauth2"],
   "classicPage": "OcuPilotTestClassicPageMulti",

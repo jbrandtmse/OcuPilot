@@ -240,6 +240,7 @@ ClassMethod Run(pUsername As %String = "", pPassword As %String = "", pDemo As %
         Do ..CheckDatabaseDetails(.tChecks, tAccessToken)
         Do ..CheckMessagesLog(.tChecks, tAccessToken)
         Do ..CheckApplicationErrors(.tChecks, tAccessToken)
+        Do ..CheckScreenAction(.tChecks, tAccessToken, pDemo)
     } Catch ex {
         Do ..Note(.tChecks, "smoke", "fail", "the smoke run raised " _ ex.DisplayString())
     }
@@ -254,6 +255,7 @@ ClassMethod Run(pUsername As %String = "", pPassword As %String = "", pDemo As %
         Do ..CheckAgentSwitches(.tChecks)
         Do ..CheckDemoFixture(.tChecks, pDemo)
         Do ..CheckAgentWrite(.tChecks, pDemo)
+        Do ..CheckAgentDelete(.tChecks, pDemo)
     } Catch ex {
         Do ..Note(.tChecks, "smoke", "fail", "the smoke run raised " _ ex.DisplayString())
     }
@@ -1182,6 +1184,135 @@ ClassMethod CheckDemoFixture(ByRef pChecks, pDemo As %String = "") [ Private ]
     Do ..Note(.pChecks, "demofixture", "pass")
 }
 
+/// <p>The other caller of the same operation (AD-53): a person's own row action on the demo
+/// fixture, over the real <code>POST /screens/:screen/action</code> route as the browser makes it,
+/// with the bearer token this run already signed in for.</p>
+/// <p>It asserts the consumer's own tier rather than the operation's internal state: the route
+/// answers the AD-14 verb, and the instance's own record of the application moves. Enable then
+/// disable, so the fixture ends in the disabled, no-resource state its install creates -- which is
+/// the state <method>CheckAgentWrite</method> asserts against later in the same run. A run that
+/// stops after the enable landed puts the fixture back disabled before it returns.</p>
+/// <p>Skipped, not failed, where the demo fixture was never created or is not this install's
+/// (AD-25 forbids modifying an application OcuPilot did not make), and where this run minted no
+/// token.</p>
+ClassMethod CheckScreenAction(ByRef pChecks, pAccessToken As %String, pDemo As %String = "") [ Private ]
+{
+    Set tSkip = ""
+    Try {
+        Set tWanted = $Select(pDemo '= "": pDemo, 1: $System.Util.GetEnviron("OCUPILOT_DEMO"))
+        If tWanted '= "1" {
+            Set tSkip = "the demo opt-in flag is not set for this instance, so the " _ ..WriteTarget() _ " fixture a row action needs was never created (AD-25)"
+            Quit
+        }
+        If '..WriteTargetOwned() {
+            Set tSkip = ..WriteTarget() _ " is absent, or carries an application this install did not create, which AD-25 forbids modifying"
+            Quit
+        }
+        Set tSpelling = ..ApplicationName(..WriteTarget())
+        If tSpelling = "" {
+            Set tSkip = "this instance's own record of " _ ..WriteTarget() _ " could not be read, so there is no application to act on"
+            Quit
+        }
+        Set tBase = ..RosterPath("api")
+        If tBase = "" {
+            Set tSkip = "the install roster declares no API application path"
+            Quit
+        }
+        If pAccessToken = "" {
+            Set tSkip = "no token pair was minted by this run, so the authenticated row action was not attempted"
+            Quit
+        }
+        Set tPath = tBase _ "/screens/" _ ..#WEBAPPLISTTOOL _ "/action"
+
+        Set tEnableSC = ..ScreenAction(tPath, pAccessToken, "enable", tSpelling, .tEnableStatus, .tEnableText)
+        If $$$ISERR(tEnableSC) || (tEnableStatus '= 200) {
+            Do ..Note(.pChecks, "screenaction", "fail", "the row's enable answered HTTP " _ +$Get(tEnableStatus) _ ": " _ $Extract($Get(tEnableText), 1, 200))
+            Quit
+        }
+        Set tAnswer = ##class(%DynamicAbstractObject).%FromJSON(tEnableText)
+        If '$IsObject(tAnswer) || (tAnswer.%Get("action") '= "updated") {
+            Do ..Note(.pChecks, "screenaction", "fail", "the row's enable answered no 'updated' action: " _ $Extract($Get(tEnableText), 1, 200))
+            Quit
+        }
+        Set tEnabled = 1
+        If ..ApplicationEnabled(..WriteTarget()) '= 1 {
+            Do ..Note(.pChecks, "screenaction", "fail", "the route answered 200 and this instance still reports " _ ..WriteTarget() _ " disabled")
+            Quit
+        }
+
+        Set tDisableSC = ..ScreenAction(tPath, pAccessToken, "disable", tSpelling, .tDisableStatus, .tDisableText)
+        If $$$ISERR(tDisableSC) || (tDisableStatus '= 200) {
+            Do ..Note(.pChecks, "screenaction", "fail", "the row's disable answered HTTP " _ +$Get(tDisableStatus) _ ": " _ $Extract($Get(tDisableText), 1, 200))
+            Quit
+        }
+        Set tDisabled = ##class(%DynamicAbstractObject).%FromJSON(tDisableText)
+        If '$IsObject(tDisabled) || (tDisabled.%Get("action") '= "updated") {
+            Do ..Note(.pChecks, "screenaction", "fail", "the row's disable answered no 'updated' action: " _ $Extract($Get(tDisableText), 1, 200))
+            Quit
+        }
+        If ..ApplicationEnabled(..WriteTarget()) '= 0 {
+            Do ..Note(.pChecks, "screenaction", "fail", "the fixture was left enabled, which is not the state its install creates")
+            Quit
+        }
+        Set tEnabled = 0
+        Do ..Note(.pChecks, "screenaction", "pass", "the row's enable and disable ran over " _ tPath _ " and this instance's own record moved both ways")
+    } Catch ex {
+        Set tSkip = ""
+        Do ..Note(.pChecks, "screenaction", "fail", "the row-action check raised " _ ex.DisplayString())
+    }
+    If $Get(tEnabled) Do ..DisableWriteTarget()
+    If tSkip '= "" Do ..Note(.pChecks, "screenaction", "skipped", tSkip)
+}
+
+/// <p>Put the demo fixture back disabled, the state its install creates, after a
+/// <method>CheckScreenAction</method> that stopped with it enabled. Only ever called for
+/// <method>WriteTarget</method> once that check has established the fixture is this install's.
+/// <b>Best effort, and silent</b>, for the reason <method>RestoreWriteTarget</method> gives.
+/// Switches to <code>%SYS</code> and restores, restoring first on the error path (AD-16).</p>
+ClassMethod DisableWriteTarget() [ Private ]
+{
+    Set tPath = ..WriteTarget()
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill tProps
+        Set tProps("Enabled") = 0
+        Do ##class(Security.Applications).Modify(tPath, .tProps)
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+}
+
+/// <p>One row action over the wire: <code>POST</code> <var>pPath</var> carrying
+/// <code>{action, id}</code>, as the browser sends it.</p>
+ClassMethod ScreenAction(pPath As %String, pAccessToken As %String, pAction As %String, pId As %String, Output pStatus As %Integer, Output pText As %String) As %Status [ Private ]
+{
+    Set tBody = {}
+    Do tBody.%Set("action", pAction, "string")
+    Do tBody.%Set("id", pId, "string")
+    Quit ..Request("POST", pPath, "Bearer " _ pAccessToken, tBody.%ToJSON(), .pStatus, .pText)
+}
+
+/// <p>Whether this instance reports the web application at <var>pPath</var> enabled, or
+/// <code>""</code> when it holds none. Switches to <code>%SYS</code> and restores, restoring first
+/// on the error path (AD-16).</p>
+ClassMethod ApplicationEnabled(pPath As %String) As %String [ Private ]
+{
+    Set tEnabled = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Applications).Exists(pPath, .tApp, .tSC), $IsObject(tApp) Set tEnabled = ''tApp.Enabled
+        Set tApp = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tEnabled = ""
+    }
+    Quit tEnabled
+}
+
 /// <p>AD-45's two remaining checks, driven as one sequence because they are one event: a proposal
 /// minted and confirmed through the shipped path against AD-25's demo fixture
 /// (<code>agentwrite</code>), and the <code>AgentWrite</code> row that write leaves in the audit
@@ -1341,6 +1472,140 @@ ClassMethod CheckAgentWrite(ByRef pChecks, pDemo As %String = "") [ Private ]
     If tSkip '= "" {
         Do ..Note(.pChecks, "agentwrite", "skipped", tSkip)
         Do ..Note(.pChecks, "auditmarker", "skipped", tSkip)
+    }
+}
+
+/// <p>Story 7.1's integration check (<code>agentdelete</code>): the agent's own delete tool,
+/// <class>OcuPilot.Screen.Tool.WebAppDelete</class>, mints a proposal against AD-25's demo fixture
+/// through its tool entry point on a completed turn, the card's own row for it reads destructive,
+/// the user's confirm runs through the shipped transition, and this instance's own record no
+/// longer holds the application.</p>
+/// <p><b>It puts the fixture back as install creates it</b>, through
+/// <method>OcuPilot.Install.Fixture.Create</method> -- install's own creator, which recreates an
+/// absent fixture disabled with no resource and keeps the inventory row that already records it, so
+/// <method>WriteTargetOwned</method> still answers yes and the next run finds what this one found.
+/// That call does to the other demo fixtures what every container start does: each one present is
+/// left as it is, and one application-error entry is seeded. A fixture that did not come back in
+/// that state is a <code>fail</code>.</p>
+/// <p>Runs after every other check that reads the fixture. <code>skipped</code>, never
+/// <code>fail</code>, where <method>CheckAgentWrite</method> skips, and where
+/// <method>WriteTarget</method> is not the path that creator makes: an application it did not make
+/// is one this check could not put back.</p>
+ClassMethod CheckAgentDelete(ByRef pChecks, pDemo As %String = "") [ Private ]
+{
+    Set tSkip = ""
+    Set tProblem = ""
+    Set tTurnKey = ""
+    Set tNamespace = ""
+    Set tAttempted = 0
+    Try {
+        Set tWanted = $Select(pDemo '= "": pDemo, 1: $System.Util.GetEnviron("OCUPILOT_DEMO"))
+        If tWanted '= "1" {
+            Set tSkip = "the demo opt-in flag is not set for this instance, so the " _ ..WriteTarget() _ " fixture a confirmed delete needs was never created (AD-25)"
+            Quit
+        }
+        If ..WriteTarget() '= ##class(OcuPilot.Install.Fixture).#APPPATH {
+            Set tSkip = ..WriteTarget() _ " is not the application install's own fixture creator makes, so a delete of it could not be put back"
+            Quit
+        }
+        If '..WriteTargetOwned() {
+            Set tSkip = ..WriteTarget() _ " is absent, or carries an application this install did not create, which AD-25 forbids modifying"
+            Quit
+        }
+        Set tSpelling = ..ApplicationName(..WriteTarget())
+        If tSpelling = "" {
+            Set tSkip = "this instance's own record of " _ ..WriteTarget() _ " could not be read, so there is no application to delete"
+            Quit
+        }
+
+        ; The namespace install bound the fixture to, which is the one the restore binds it to again.
+        Kill tQuery
+        Set tQuery(##class(OcuPilot.Screen.Tool.WebAppDelete).IdParam()) = tSpelling
+        Set tReadSC = ##class(OcuPilot.Port.AdminPort).Invoke("WebApp.App", "GET", .tQuery, "", .tBefore, .tReadHttp, .tReadFault)
+        If $$$ISOK(tReadSC) && $IsObject($Get(tBefore)) Set tNamespace = tBefore.%Get("NameSpace")
+        If tNamespace = "" {
+            Set tProblem = "the fixture's namespace could not be read before the delete (HTTP " _ +$Get(tReadHttp) _ "), so it could not be put back afterwards"
+            Quit
+        }
+
+        Set tReserveSC = ##class(OcuPilot.Kernel.State.Turn).GuardedReserve($Username, "", ##class(OcuPilot.Api.Error).#TURNABANDONEDJOBLOST, ..#LIMITS, .tTurnKey, .tBusy, .tSweepSC)
+        If $$$ISERR(tReserveSC) || tBusy || (tTurnKey = "") {
+            Set tSkip = $Select($$$ISERR(tReserveSC): "a turn row could not be reserved for this check: " _ $System.Status.GetErrorText(tReserveSC), 1: "a turn of " _ $Username _ " is already running on this instance, so this check would race it for the one turn slot")
+            Set tTurnKey = ""
+            Quit
+        }
+        Do ##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tTurnKey, $Username, ..#LIMITS, .tBegun, .tStarted)
+        Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tTurnKey, $Username, "completed", "", "", "", 0, ..#LIMITS)
+
+        ; The tool's own entry point, acting for that turn as the turn job does; the stash is
+        ; cleared before the confirm, which refuses a call made on a turn's behalf (AD-40).
+        Set tArgs = {}
+        Do tArgs.%Set(##class(OcuPilot.Screen.Tool.WebAppDelete).IdArgument(), tSpelling, "string")
+        Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(tTurnKey)
+        Set tMintSC = ##class(OcuPilot.Screen.Tool.WebAppDelete).View("", tArgs, 0, .tProposal, .tMintHttp, .tMintFault)
+        Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+        If $$$ISERR(tMintSC) || '$IsObject($Get(tProposal)) {
+            Set tProblem = "the delete proposal could not be minted (HTTP " _ +$Get(tMintHttp) _ "): " _ $System.Status.GetErrorText(tMintSC)
+            Quit
+        }
+        Set tProposalId = tProposal.%Get("proposalId")
+
+        ; Asserted on the row the card itself is drawn from, not on the tool's declaration.
+        Set tDestructive = ""
+        Set tRowsSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForTurn(tTurnKey, $Username, .tRows)
+        If $$$ISOK(tRowsSC) && $IsObject($Get(tRows)) {
+            Set tRowIterator = tRows.%GetIterator()
+            While tRowIterator.%GetNext(.tRowIndex, .tRow) {
+                If $IsObject(tRow) && (tRow.%Get("proposalId") = tProposalId) Set tDestructive = tRow.%Get("destructive")
+            }
+        }
+        If tDestructive '= 1 {
+            Set tProblem = "the minted delete proposal's card row does not read destructive"
+            Quit
+        }
+
+        Set tAttempted = 1
+        Set tConfirmSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposalId, "", $Username, .tResult, .tConfirmHttp, .tConfirmCode, .tConfirmDetail)
+        If $$$ISERR(tConfirmSC) {
+            Set tProblem = "the confirm was refused at HTTP " _ +$Get(tConfirmHttp) _ " with " _ $Get(tConfirmCode)
+            Quit
+        }
+        If ..ApplicationName(..WriteTarget()) '= "" {
+            Set tProblem = "the confirm answered and this instance still holds " _ ..WriteTarget()
+            Quit
+        }
+    } Catch ex {
+        Set tSkip = ""
+        Set tProblem = "the agent-delete check raised " _ ex.DisplayString()
+    }
+    ; Its own frame: whatever the checks above decided, a fixture this check may have removed is
+    ; put back, and the turn row and its proposal are removed.
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    Try {
+        If tAttempted && (tNamespace '= "") && (..ApplicationName(..WriteTarget()) = "") {
+            Kill tReports
+            Do ##class(OcuPilot.Install.Fixture).Create("", .tReports, , tNamespace)
+        }
+        If tAttempted {
+            Kill tQuery
+            Set tQuery(##class(OcuPilot.Screen.Tool.WebAppDelete).IdParam()) = ..WriteTarget()
+            Set tBackSC = ##class(OcuPilot.Port.AdminPort).Invoke("WebApp.App", "GET", .tQuery, "", .tAfter, .tBackHttp, .tBackFault)
+            If $$$ISERR(tBackSC) || '$IsObject($Get(tAfter)) {
+                Set tProblem = tProblem _ $Select(tProblem = "": "", 1: "; ") _ ..WriteTarget() _ " was not put back (HTTP " _ +$Get(tBackHttp) _ ")"
+            } ElseIf ('..WriteTargetOwned()) || (''tAfter.%Get("Enabled") '= 0) || (tAfter.%Get("Resource") '= "") {
+                Set tProblem = tProblem _ $Select(tProblem = "": "", 1: "; ") _ ..WriteTarget() _ " was put back, but not disabled, with no resource and recorded as this install's own"
+            }
+        }
+    } Catch exRestore {
+        Set tProblem = tProblem _ $Select(tProblem = "": "", 1: "; ") _ "putting " _ ..WriteTarget() _ " back raised " _ exRestore.DisplayString()
+    }
+    Do ..RestoreWriteTarget("", "", tTurnKey)
+    If tSkip '= "" {
+        Do ..Note(.pChecks, "agentdelete", "skipped", tSkip)
+    } ElseIf tProblem '= "" {
+        Do ..Note(.pChecks, "agentdelete", "fail", tProblem)
+    } Else {
+        Do ..Note(.pChecks, "agentdelete", "pass", "a destructive webapp.list.delete proposal was minted and confirmed, " _ ..WriteTarget() _ " was gone, and install's own creator put it back")
     }
 }
 

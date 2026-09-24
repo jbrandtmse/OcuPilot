@@ -57,7 +57,14 @@ const TABS = [
     route: 'security/oauth/clients',
     read: `${READ_PREFIX}security.oauthclients/read`,
     label: STRINGS.oauthTabClients,
-    headers: [STRINGS.tableColumnName, STRINGS.x509ColumnIssuer, STRINGS.oauthColumnClientType, STRINGS.oauthColumnDefaultScope],
+    // Story 7.3: the tab declares a row action, so the table carries the actions column's header.
+    headers: [
+      STRINGS.tableColumnName,
+      STRINGS.x509ColumnIssuer,
+      STRINGS.oauthColumnClientType,
+      STRINGS.oauthColumnDefaultScope,
+      STRINGS.commandBoxGroupActions,
+    ],
   },
   {
     route: 'security/oauth/resource-servers',
@@ -83,7 +90,15 @@ const TABS = [
     route: 'security/oauth/server-clients',
     read: `${READ_PREFIX}security.oauthserverclients/read`,
     label: STRINGS.oauthTabServerClients,
-    headers: [STRINGS.tableColumnName, STRINGS.oauthColumnClientId, STRINGS.oauthColumnClientType, STRINGS.oauthColumnRedirectUrls, STRINGS.tableColumnDescription],
+    // Story 7.3: as the Client configurations tab.
+    headers: [
+      STRINGS.tableColumnName,
+      STRINGS.oauthColumnClientId,
+      STRINGS.oauthColumnClientType,
+      STRINGS.oauthColumnRedirectUrls,
+      STRINGS.tableColumnDescription,
+      STRINGS.commandBoxGroupActions,
+    ],
   },
 ];
 
@@ -258,8 +273,8 @@ test('AC1: the side bar lists OAuth 2.0 fifth; its strip reads the five tabs, an
     assert.deepEqual(reads, [TABS[0].read], 'the OAuth 2.0 screen issued exactly one read, its first tab\'s');
 
     const sideBar = await sideBarOf(page);
-    assert.deepEqual(sideBar.entries, [STRINGS.sslListLabel, STRINGS.x509ListLabel, STRINGS.ldapListLabel, STRINGS.walletListLabel, STRINGS.oauthLabel]);
-    assert.deepEqual(sideBar.entries, ['SSL/TLS', 'X.509', 'LDAP / Kerberos', 'Wallet', 'OAuth 2.0'], 'in the published words');
+    assert.deepEqual(sideBar.entries, [STRINGS.sslListLabel, STRINGS.x509ListLabel, STRINGS.ldapListLabel, STRINGS.walletListLabel, STRINGS.oauthLabel, STRINGS.auditingConfigurationLink]);
+    assert.deepEqual(sideBar.entries, ['SSL/TLS', 'X.509', 'LDAP / Kerberos', 'Wallet', 'OAuth 2.0', 'Auditing configuration'], 'in the published words');
     assert.equal(sideBar.current, STRINGS.oauthLabel, 'and OAuth 2.0 is the current entry');
 
     const strip = await stripOf(page);

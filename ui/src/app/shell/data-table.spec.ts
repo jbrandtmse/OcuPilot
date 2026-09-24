@@ -10,6 +10,7 @@ import { RefreshService, type RefreshReadResult } from '../core/refresh';
 import { ScopeService } from '../core/scope';
 import { ScreenActions } from '../core/screen-actions';
 import { ScreenStores, type ScreenStore } from '../core/screen-store';
+import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS, stringFor } from '../core/strings';
 import { tableDeclaration } from '../testing/table-declaration';
@@ -76,7 +77,11 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
 
 const planted: HTMLElement[] = [];
 
-async function wire(declaration: ScreenDeclaration, first: () => RefreshReadResult): Promise<Wired> {
+async function wire(
+  declaration: ScreenDeclaration,
+  first: () => RefreshReadResult,
+  unregistered: readonly string[] = []
+): Promise<Wired> {
   TestBed.resetTestingModule();
   const stores = new ScreenStores({ account: stubAccountPreferences() });
   const refresh = new RefreshService({
@@ -94,6 +99,12 @@ async function wire(declaration: ScreenDeclaration, first: () => RefreshReadResu
   });
   const store = stores.for(declaration.descriptor, declaration.refreshRates);
   const actions = new ScreenActions();
+  // DW-389: the menu lists a declared row action only while a handler is registered for it, so a
+  // harness that declares one registers it too -- a menu drawn over an action nothing can run is
+  // the control this rule exists to remove. `unregistered` names the ones a case leaves without.
+  for (const action of declaration.rowActions) {
+    if (action.id !== '' && !unregistered.includes(action.id)) actions.register(declaration.descriptor, action.id, () => {});
+  }
   const overlays = new OverlayStack();
   TestBed.configureTestingModule({
     providers: [
@@ -101,6 +112,7 @@ async function wire(declaration: ScreenDeclaration, first: () => RefreshReadResu
       { provide: RefreshService, useValue: refresh },
       { provide: ScreenActions, useValue: actions },
       { provide: OverlayStack, useValue: overlays },
+      { provide: Session, useValue: { userName: () => 'Dana' } as unknown as Session },
       { provide: ScopeService, useValue: { namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService },
       { provide: TABLE_STRING_LOOKUP, useValue: (key: string) => (key === 'commandBoxNoMatch' ? EMPTY_TITLE : stringFor(key)) },
     ],
@@ -482,7 +494,12 @@ describe('the data table', () => {
     await settle(wired.fixture);
     const menu = wired.host().querySelector('[role="menu"]') as HTMLElement;
     expect(menu).not.toBeNull();
-    expect(Array.from(menu.querySelectorAll('[role="menuitem"]')).map((item) => item.textContent?.trim())).toEqual(['disable']);
+    // The published label, resolved through the one label map the command bar and the command box
+    // resolve theirs through (DW-370): a menu naming the bare id would name the same action
+    // differently on the three surfaces.
+    expect(Array.from(menu.querySelectorAll('[role="menuitem"]')).map((item) => item.textContent?.trim())).toEqual([
+      STRINGS.agentDefinitionDisable,
+    ]);
     expect(wired.overlays.top()).not.toBe('');
 
     expect(wired.overlays.closeTop()).toBe(true);
@@ -506,6 +523,91 @@ describe('the data table', () => {
     expect(runs).toBe(1);
     expect(wired.host().querySelector('[role="menu"]')).toBeNull();
     expect(wired.store.selection()).toEqual(['/csp/app00']);
+  });
+
+  it('DW-389: a declared row action with no registered handler is not in the row menu, beside one that is', async () => {
+    // Per action, not all-or-nothing: the same screen declares two and registers one.
+    //
+    // Mutation (Rule 19): drop the `.filter((action) => this.actions.has(screen.descriptor,
+    // action.id))` line from `DataTable.menuItems` -> `enable` is listed beside `disable`, red.
+    const declaration = tableDeclaration({
+      rowActions: [
+        { id: 'enable', selfProtection: '' },
+        { id: 'disable', selfProtection: '' },
+      ],
+    });
+    const wired = await wire(declaration, ok(rows(2)), ['enable']);
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    (wired.host().querySelector('.ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const items = Array.from(wired.host().querySelectorAll('[role="menu"] [role="menuitem"]')).map((item) =>
+      item.querySelector('.ocu-data-table-menu-label')?.textContent?.trim()
+    );
+    expect(items).toEqual([STRINGS.agentDefinitionDisable]);
+  });
+
+  it("AD-53: a self-protected row's menu entry stays listed, aria-disabled with the reason inline, and runs nothing", async () => {
+    // The row menu's half of the refusal the command bar and the command box also draw: a
+    // non-selectable entry a key manager still reaches, never the `disabled` attribute, with the
+    // published sentence after the label and in its accessible name. An ordinary row's entry is
+    // an ordinary one.
+    //
+    // Mutation (Rule 19): make `DataTable.menuItems` compute `const reason = ''` -> the protected
+    // row's entry is drawn selectable with no reason and its click runs the handler, red.
+    const declaration = tableDeclaration({ rowActions: [{ id: 'delete', selfProtection: 'serves-ocupilot' }] });
+    const listed = [
+      { Name: '/api/ocupilot', NameSpace: 'USER', Count: 0, Enabled: true, Note: 'n' },
+      { Name: '/csp/myapp', NameSpace: 'USER', Count: 1, Enabled: true, Note: 'n' },
+    ];
+    const wired = await wire(declaration, ok(listed), ['delete']);
+    let runs = 0;
+    wired.actions.register(declaration.descriptor, 'delete', () => (runs += 1));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    (wired.host().querySelector('[aria-rowindex="2"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const refused = wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    expect(refused.querySelector('.ocu-data-table-menu-label')?.textContent?.trim()).toBe(STRINGS.actionDelete);
+    expect(refused.querySelector('.ocu-data-table-menu-reason')?.textContent?.trim()).toBe(
+      STRINGS.webAppServesOcuPilotRefusal
+    );
+    expect(refused.getAttribute('aria-label')).toBe(`${STRINGS.actionDelete} ${STRINGS.webAppServesOcuPilotRefusal}`);
+    expect(refused.getAttribute('aria-disabled')).toBe('true');
+    expect(refused.hasAttribute('disabled')).toBe(false);
+    expect(refused.getAttribute('tabindex')).toBe('-1');
+    refused.click();
+    await settle(wired.fixture);
+    expect(runs).toBe(0);
+
+    (wired.host().querySelector('[aria-rowindex="3"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const offered = wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    expect(offered.querySelector('.ocu-data-table-menu-reason')).toBeNull();
+    expect(offered.hasAttribute('aria-disabled')).toBe(false);
+    offered.click();
+    await settle(wired.fixture);
+    expect(runs).toBe(1);
+  });
+
+  it("Story 7.2: the signed-in account's protected-account entry carries its published sentence and runs nothing", async () => {
+    // Mutation (Rule 19): drop `this.signedIn()` from `menuItems`' call -> the entry is offered, red.
+    const declaration = tableDeclaration({ rowActions: [{ id: 'delete', selfProtection: 'protected-account' }] });
+    const wired = await wire(declaration, ok([{ Name: 'dana', NameSpace: 'USER', Count: 0, Enabled: true, Note: 'n' }]), ['delete']);
+    let runs = 0;
+    wired.actions.register(declaration.descriptor, 'delete', () => (runs += 1));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    (wired.host().querySelector('[aria-rowindex="2"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const entry = wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    expect(entry.querySelector('.ocu-data-table-menu-reason')?.textContent?.trim()).toBe(STRINGS.userRefusalCurrentUser);
+    expect(entry.getAttribute('aria-disabled')).toBe('true');
+    entry.click();
+    await settle(wired.fixture);
+    expect(runs).toBe(0);
   });
 
   it('a click selects its row and clears its changed mark; a click on the name link navigates and selects nothing', async () => {

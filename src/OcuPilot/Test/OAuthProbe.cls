@@ -2,7 +2,10 @@
 /// instance: server descriptions <parameter>ISSUERA</parameter> and <parameter>ISSUERB</parameter>,
 /// client configurations <parameter>CLIENTA</parameter> on A and <parameter>CLIENTB</parameter> on B,
 /// resource server <parameter>RESOURCE</parameter> on A, an authorization server configuration when
-/// none exists, and the <code>resource</code> server client <parameter>REGISTRATION</parameter>.</p>
+/// none exists, and the <code>resource</code> server client <parameter>REGISTRATION</parameter>.
+/// <method>CreateDisposable</method> adds the objects a delete test removes: client configuration
+/// <parameter>CLIENTDELETE</parameter> on A and two server clients sharing the name
+/// <parameter>REGISTRATIONDELETE</parameter>.</p>
 /// <p><b>A pre-existing authorization server configuration is used as it is</b>, never modified and
 /// never deleted: <method>Remove</method> deletes the configuration only when
 /// <method>Create</method> recorded making it, and every other object only by its probe name.
@@ -33,6 +36,13 @@ Parameter RESOURCE = "OcuPilotTestResource";
 
 /// <p>The server client's name.</p>
 Parameter REGISTRATION = "OcuPilotTestRegistration";
+
+/// <p>The disposable client configuration on A, which a delete test removes.</p>
+Parameter CLIENTDELETE = "OcuPilotTestDelete";
+
+/// <p>The name the two disposable server clients share: the vendor keys a server client by its
+/// client id, and a name is not unique.</p>
+Parameter REGISTRATIONDELETE = "OcuPilotTestDeleteRegistration";
 
 /// <p>The demo fixture's SSL/TLS configuration the client configurations and descriptions name.</p>
 Parameter SSLCONFIG = "OcuPilotDemoTLS";
@@ -91,15 +101,16 @@ ClassMethod Create() As %Status
     Quit tSC
 }
 
-/// <p>Delete every probe object that exists, and the authorization server configuration only when
+/// <p>Delete every probe object that exists, the disposable ones
+/// (<method>RemoveDisposable</method>) first, and the authorization server configuration only when
 /// <method>Create</method> recorded making it. Every vendor failure is carried in the status; one
 /// failure does not stop the others.</p>
 ClassMethod Remove() As %Status
 {
-    Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Set tRemoveServer = ''$Get(^OcuPilotTest("OAuthProbe", "server"))
     Set tServerGone = 0
+    Set tSC = ..RemoveDisposable()
     Try {
         Set $NAMESPACE = "%SYS"
         Set tRegistrationId = ..RegistrationId()
@@ -131,6 +142,110 @@ ClassMethod Remove() As %Status
     Quit tSC
 }
 
+/// <p>Make the disposable objects a delete test removes, each only if absent: client configuration
+/// <parameter>CLIENTDELETE</parameter> on server description A, and server clients until two share
+/// the name <parameter>REGISTRATIONDELETE</parameter>. <b>Caller contract:</b> <method>Create</method>
+/// has made description A. <method>Remove</method> deletes whatever of them survives.</p>
+ClassMethod CreateDisposable() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tDefA = ##class(OAuth2.ServerDefinition).OpenByIssuer(..#ISSUERA, .tOpenSC)
+        If '$IsObject(tDefA) {
+            Set tSC = $$$ERROR($$$GeneralError, "server description " _ ..#ISSUERA _ " does not exist, so the disposable client configuration has nothing to be made on")
+            Quit
+        }
+        Set tSC = ..EnsureClient(..#CLIENTDELETE, tDefA)
+        If $$$ISERR(tSC) Quit
+        For tI = ($ListLength(..IdsNamed(..#REGISTRATIONDELETE)) + 1):1:2 {
+            Set tRegistration = ##class(OAuth2.Server.Client).%New()
+            Set tRegistration.Name = ..#REGISTRATIONDELETE
+            Set tRegistration.ClientType = "resource"
+            Set tSC = tRegistration.%Save()
+            If $$$ISERR(tSC) Quit
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Delete whichever of <method>CreateDisposable</method>'s objects still exist. Every vendor
+/// failure is carried in the status; one failure does not stop the others.</p>
+ClassMethod RemoveDisposable() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tIds = ..IdsNamed(..#REGISTRATIONDELETE)
+        For tI = 1:1:$ListLength(tIds) Set tSC = $$$ADDSC(tSC, ##class(OAuth2.Server.Client).DeleteId($List(tIds, tI)))
+        If ##class(OAuth2.Client).%ExistsId(..#CLIENTDELETE) Set tSC = $$$ADDSC(tSC, ##class(OAuth2.Client).DeleteId(..#CLIENTDELETE))
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = $$$ADDSC(tSC, ex.AsStatus())
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>The client ids of the server clients named <parameter>REGISTRATIONDELETE</parameter>, as a
+/// <class>%List</class> in id order.</p>
+ClassMethod DisposableRegistrationIds() As %List
+{
+    Set tOrigNS = $NAMESPACE
+    Set tIds = ""
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tIds = ..IdsNamed(..#REGISTRATIONDELETE)
+    } Catch {
+        Set tIds = ""
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tIds
+}
+
+/// <p>Whether client configuration <parameter>CLIENTDELETE</parameter> exists.</p>
+ClassMethod DisposableClientExists() As %Boolean
+{
+    Set tOrigNS = $NAMESPACE
+    Set tExists = 0
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tExists = ##class(OAuth2.Client).%ExistsId(..#CLIENTDELETE)
+    } Catch {
+        Set tExists = 0
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tExists
+}
+
+/// <p>Set client configuration <parameter>CLIENTDELETE</parameter>'s <code>DefaultScope</code> to
+/// <var>pScope</var>, as a change made out of band.</p>
+ClassMethod ChangeDisposableClientScope(pScope As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tClient = ##class(OAuth2.Client).%OpenId(..#CLIENTDELETE, , .tSC)
+        If '$IsObject(tClient) Quit
+        Set tClient.DefaultScope = pScope
+        Set tSC = tClient.%Save()
+        Set tClient = ""
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
 /// <p>Whether <method>Create</method> made the authorization server configuration, as recorded in the
 /// caller's namespace.</p>
 ClassMethod MadeServer() As %Boolean
@@ -146,6 +261,19 @@ ClassMethod RegistrationId() As %String [ Private ]
     Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT TOP 1 ID FROM OAuth2_Server.Client WHERE %EXACT(Name) = ?", ..#REGISTRATION)
     If (tResult.%SQLCODE = 0) && tResult.%Next() Set tId = tResult.%GetData(1)
     Quit tId
+}
+
+/// <p>The client ids of the server clients named <var>pName</var>, in id order.
+/// <b>Caller contract:</b> <code>$NAMESPACE</code> is <code>%SYS</code>.</p>
+ClassMethod IdsNamed(pName As %String) As %List [ Private ]
+{
+    Set tIds = ""
+    Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT ID FROM OAuth2_Server.Client WHERE %EXACT(Name) = ? ORDER BY ID", pName)
+    If tResult.%SQLCODE '= 0 Quit ""
+    While tResult.%Next() {
+        Set tIds = tIds _ $ListBuild(tResult.%GetData(1))
+    }
+    Quit tIds
 }
 
 /// <p>The server description at <var>pIssuer</var>, made when it does not exist, with the

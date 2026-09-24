@@ -24,6 +24,9 @@ Parameter USERTOOL = "permissions.users.update";
 
 Parameter USERTOOLCLASS = "OcuPilot.Screen.Tool.UserUpdate";
 
+/// <p>The Users list, whose declared secrets the password tool's body is drawn from.</p>
+Parameter SCREEN = "OcuPilot.Screen.Descriptor.UserList";
+
 /// <p>Story 5.10's write tool and its class: the first destructive one, and the first whose screen
 /// is not built.</p>
 Parameter AUDITTOOL = "security.auditing.update";
@@ -46,13 +49,32 @@ Parameter PROCRESUMETOOL = "osmgmt.processes.resume";
 
 Parameter PROCRESUMETOOLCLASS = "OcuPilot.Screen.Tool.ProcessResume";
 
+/// <p>Story 7.8's two terminate tools and their classes: the process list's destructive writes,
+/// fingerprinted over the pid and its start (AD-51), the second through its own port (AD-52).</p>
+Parameter TERMINATETOOL = "osmgmt.processes.terminate";
+
+Parameter TERMINATETOOLCLASS = "OcuPilot.Screen.Tool.ProcessTerminate";
+
+Parameter TERMINATEERRORTOOL = "osmgmt.processes.terminatewitherror";
+
+Parameter TERMINATEERRORTOOLCLASS = "OcuPilot.Screen.Tool.ProcessTerminateWithError";
+
 Parameter WRITEBASE = "OcuPilot.Screen.Tool.Write";
+
+/// <p>Story 7.1's delete tool and its class.</p>
+Parameter WEBAPPDELETETOOL = "webapp.list.delete";
+
+Parameter WEBAPPDELETETOOLCLASS = "OcuPilot.Screen.Tool.WebAppDelete";
 
 Parameter ERRORDELETETOOL = "logs.applicationerrors.delete";
 
 Parameter ERRORDELETETOOLCLASS = "OcuPilot.Screen.Tool.ErrorDelete";
 
 Parameter REGISTRY = "OcuPilot.Screen.Tool.Registry";
+
+/// <p>An application every instance OcuPilot is installed on carries, read for its keys alone and
+/// never written -- what the delete tool's declared read set is measured against.</p>
+Parameter APIAPPLICATION = "/api/ocupilot";
 
 Parameter PROBE = "OcuPilot.Test.ToolDispatchProbe";
 
@@ -384,7 +406,7 @@ Method TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs()
     Do $$$AssertEquals(tPairs, tDeclared, "and the write's set is that set, not a superset of it")
 
     Set tFields = $ClassMethod(..#USERTOOLCLASS, "SettableFields")
-    Do $$$AssertEquals($ListToString(tFields), "Enabled,Roles", "the settable fields are the one derived literal and the one authored array")
+    Do $$$AssertEquals($ListToString(tFields), "ChangePassword,Enabled,Roles", "the settable fields are the two derived literals and the one authored array")
     Set tPermittedByTheSet = ##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("user")
     Do $$$AssertEquals($ListLength(tPermittedByTheSet), $ListLength(tFields), "and the kernel has reviewed exactly as many fields as the tool advertises")
     For tI = 1:1:$ListLength(tFields) {
@@ -407,16 +429,84 @@ Method TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs()
     Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "OcuPilotProbeSchema", "FullName": "renamed"}, .tProblem)
     Do $$$AssertStatusNotOK(tSC, "and so is an unreviewed ordinary literal")
     Do $$$AssertTrue(tProblem [ "FullName", "naming that argument too: " _ tProblem)
-    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "OcuPilotProbeSchema", "Roles": ["%Developer"], "Enabled": true}, .tProblem)
-    Do $$$AssertStatusOK(tSC, "while the two advertised fields together validate: " _ tProblem)
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "OcuPilotProbeSchema", "Roles": ["%Developer"], "Enabled": true, "ChangePassword": true}, .tProblem)
+    Do $$$AssertStatusOK(tSC, "while the three advertised fields together validate: " _ tProblem)
+    Do $$$AssertEquals(tProperties.%Get("ChangePassword").%Get("type"), "boolean", "ChangePassword is advertised with its derived JSON type (Story 7.2)")
+    Do $$$AssertEquals($ListToString($ClassMethod(..#USERTOOLCLASS, "ScreenActionIds")), "enable,disable,require-password-change,add-role,remove-role", "it carries the Users list's five merge row actions")
+    Do $$$AssertEquals($ListToString($ClassMethod(..#USERTOOLCLASS, "ScreenActionValueNames", "add-role")), "Role", "and each role action admits one value, the role")
+}
+
+/// <p>Story 7.2, AD-51: the users delete tool is an action write over the vendor's own
+/// <code>Security.User</code> <code>DELETE</code>, destructive, publishing <code>deleted</code>,
+/// fingerprinted over what the list shows, and required at the screen's own pairs.</p>
+/// <p>Mutation (Rule 19): set <parameter>OcuPilot.Screen.Tool.UserDelete.CHANGEACTION</parameter>
+/// to <code>updated</code> -- the action assertion goes red here, and the account arms stop reaching
+/// a delete (<class>OcuPilot.Test.ProhibitedByEffect</class>).</p>
+Method TestTheUserDeleteToolIsAnActionWriteOverTheScreensOwnPairs()
+{
+    Set tClass = "OcuPilot.Screen.Tool.UserDelete"
+    Do ..AssertUserActionWrite("permissions.users.delete", tClass, "DELETE")
+    Do $$$AssertEquals($ClassMethod(tClass, "ChangeAction"), "deleted", "it publishes the deleted action, which is also what the account arms key on")
+    Do $$$AssertEquals($ClassMethod(tClass, "Destructive"), 1, "it is destructive")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "FingerprintSubject")), "Enabled,FullName,Roles", "its fingerprint covers what the list shows beside the name")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "ScreenActionIds")), "delete", "it carries the screen's delete row action")
+    Do $$$AssertTrue($ListFind($ListFromString($Parameter("OcuPilot.Port.AdminPort", "BODYLESSTYPES")), "Security.User/DELETE") > 0, "and the port knows the vendor reads no body for it")
+}
+
+/// <p>Story 7.2, AD-56 (i): the users password tool is an action write over the vendor's own
+/// <code>CHANGEPWD</code>, whose only body is its declared secret, which the model can never
+/// supply -- its schema advertises none, and the port renames it to the vendor's key on the
+/// wire.</p>
+/// <p>Mutation (Rule 19): empty <parameter>OcuPilot.Screen.Tool.UserPassword.SECRETBODY</parameter>
+/// -- the secret-body assertion goes red, and the confirm sends an empty body.</p>
+Method TestTheUserPasswordToolSendsOnlyItsDeclaredSecret()
+{
+    Set tClass = "OcuPilot.Screen.Tool.UserPassword"
+    Do ..AssertUserActionWrite("permissions.users.password", tClass, "CHANGEPWD")
+    Do $$$AssertEquals($ClassMethod(tClass, "ChangeAction"), "updated", "it publishes the updated action")
+    Do $$$AssertEquals($ClassMethod(tClass, "Destructive"), 0, "and is not destructive")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "SecretBodyNames")), "Password", "its body is its one declared secret")
+    Do $$$AssertTrue($ListFind($ClassMethod(..#SCREEN, "SecretArguments"), "Password") > 0, "which the screen declares secret")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "ScreenActionValueNames", "set-password")), "Password", "and its row action admits that one value")
+    Do $$$AssertEquals($ClassMethod(tClass, "StateField"), "Password", "its card's row names the secret it asks for")
+    Do $$$AssertEquals($ClassMethod(tClass, "InputSchema").%Get("properties").%GetTypeOf("Password"), "unassigned", "and the model is never offered it")
+    Do $$$AssertTrue($ListFind($ListFromString($Parameter("OcuPilot.Port.AdminPort", "BODYLESSTYPES")), "Security.User/CHANGEPWD") = 0, "the port requires its body")
+    Set tRenamed = ##class(OcuPilot.Port.AdminPort).Renamed("Security.User", "CHANGEPWD", {"Password": "pw1 "})
+    Do $$$AssertEquals(tRenamed.%ToJSON(), {"NewPassword": "pw1 "}.%ToJSON(), "and renames it on the wire, untrimmed")
+    Set tBody = ##class(OcuPilot.Kernel.Proposal.Operation).SecretBody(tClass, {"Password": "pw1 ", "Other": "x"}, $ListBuild("Password"))
+    Do $$$AssertEquals(tBody.%ToJSON(), {"Password": "pw1 "}.%ToJSON(), "the write's body holds the declared secret and nothing else")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Operation).SecretBody(tClass, {"Password": ""}, $ListBuild("Password")).%ToJSON(), "{}", "an empty password is not sent, so the vendor's own refusal answers")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Operation).SecretBody("OcuPilot.Screen.Tool.UserDelete", {"Password": "x"}, $ListBuild("Password")), "", "while a tool declaring none sends none")
+}
+
+/// <p>What the two users action tools declare, given the tool name <var>pName</var>, its class
+/// <var>pClass</var> and the vendor request type <var>pWriteType</var> it issues.</p>
+Method AssertUserActionWrite(pName As %String, pClass As %String, pWriteType As %String)
+{
+    Set tSC = $ClassMethod(..#REGISTRY, "Resolve", pName, .tTool)
+    Do $$$AssertStatusOK(tSC, pName _ ": the registry resolves it by name")
+    Do $$$AssertTrue($IsObject(tTool), pName _ ": and finds it")
+    If '$IsObject(tTool) Quit
+    Do $$$AssertEquals(tTool.%Get("kind"), "write", pName _ ": it is a write tool")
+    Do $$$AssertEquals(tTool.%Get("class"), pClass, pName _ ": answered by its own class")
+    Do $$$AssertEquals($ClassMethod(pClass, "Endpoint"), "Security.User", pName _ ": over the vendor's own user endpoint")
+    Do $$$AssertEquals($ClassMethod(pClass, "ReadType"), "GET", pName _ ": its fresh read is the single-object read")
+    Do $$$AssertEquals($ClassMethod(pClass, "WriteType"), pWriteType, pName _ ": and its write is the vendor's " _ pWriteType)
+    Do $$$AssertEquals($ClassMethod(pClass, "SendsBody"), 0, pName _ ": it sends no merge body")
+    Do $$$AssertEquals($ListLength($ClassMethod(pClass, "SettableFields")), 0, pName _ ": and admits no settable field")
+    Do $$$AssertEquals($ClassMethod(pClass, "PreconditionField"), "Enabled", pName _ ": its precondition reads Enabled")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).FingerprintSubjectProblem(pClass), "", pName _ ": and the registration guard holds its subject adequate")
+    Do $$$AssertTrue($ListFind($ListFromString($Parameter("OcuPilot.Port.AdminPort", "MUTATINGTYPES")), "Security.User/" _ pWriteType) > 0, pName _ ": the port admits the mutating pair")
+    Set tPairs = $ClassMethod(pClass, "PrivilegePairs", "", .tResolved)
+    Set tDeclared = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(pClass, "DESCRIPTORCLASS"), .tDeclaredResolved)
+    Do $$$AssertEquals(tResolved && tDeclaredResolved, 1, pName _ ": its pairs and the screen's resolve")
+    Do $$$AssertEquals(tPairs, tDeclared, pName _ ": and the write's set is the screen's own")
 }
 
 /// <p>AC1, AC4 (Story 5.10): the auditing write tool advertises its one derived field, requires its
 /// screen's own pairs at <code>USE</code>, and declares its write destructive -- from the tool
 /// rather than from a kernel list naming tools.</p>
-/// <p>It is also the first registered write tool whose descriptor is <code>built: false</code>, so
-/// the registry is asserted to list it: a tool is registered by being compiled, and a screen that
-/// is not built yet is no reason for its operation to be absent.</p>
+/// <p>Its descriptor is built (Story 7.4), and the tool carries that screen's two row actions.</p>
 /// <p>Mutation (Rule 19): set <parameter>OcuPilot.Screen.Tool.AuditingUpdate.WRITEPERMISSION</parameter>
 /// back to <code>"WRITE"</code> -- the administrative-permission assertion goes red; answer 0 from
 /// <method>OcuPilot.Screen.Tool.Write.Destructive</method> -- the destructive assertion goes red.</p>
@@ -424,12 +514,13 @@ Method TestTheAuditingWriteToolAdvertisesEnabledAloneAndDeclaresItsWriteDestruct
 {
     Set tSC = $ClassMethod(..#REGISTRY, "Resolve", ..#AUDITTOOL, .tTool)
     Do $$$AssertStatusOK(tSC, "the registry resolves the auditing write tool by name")
-    Do $$$AssertTrue($IsObject(tTool), "and finds it, though its screen is not built")
+    Do $$$AssertTrue($IsObject(tTool), "and finds it")
     If '$IsObject(tTool) Quit
     Do $$$AssertEquals(tTool.%Get("kind"), "write", "it is a write tool")
     Do $$$AssertEquals(tTool.%Get("class"), ..#AUDITTOOLCLASS, "answered by its own class")
     Do $$$AssertEquals($ClassMethod(..#REGISTRY, "FulfilmentOf", tTool), "instance", "fulfilled on the instance, never in the browser")
-    Do $$$AssertEquals($ClassMethod($Parameter(..#AUDITTOOLCLASS, "DESCRIPTORCLASS"), "IsBuilt"), 0, "its descriptor is declared built: false")
+    Do $$$AssertEquals($ClassMethod($Parameter(..#AUDITTOOLCLASS, "DESCRIPTORCLASS"), "IsBuilt"), 1, "its descriptor is built")
+    Do $$$AssertEquals($ListToString($ClassMethod(..#AUDITTOOLCLASS, "ScreenActionIds")), "enable,disable", "and it carries that screen's two row actions")
 
     Set tPairs = $ClassMethod(..#AUDITTOOLCLASS, "PrivilegePairs", "", .tResolved)
     Do $$$AssertEquals(tResolved, 1, "its pairs resolve")
@@ -539,6 +630,138 @@ Method TestTheTaskResumeToolIsAnActionWriteOverTheScreensOwnPairs()
     Do $$$AssertTrue(tProblem [ "Suspended", "naming the argument: " _ tProblem)
 }
 
+/// <p>AD-51, AD-53, AD-8 (Story 7.5): the on-demand run tool is an action-style write --
+/// <code>INFO</code> read fresh, <code>RUN</code> written, no body of its own, no settable field, not
+/// destructive -- over its screen's own two pairs at <code>USE</code>, carrying the list's
+/// <code>run</code> row action, and the port supplies <code>RUN</code>'s constant body.</p>
+/// <p>Mutation (Rule 19): set <parameter>OcuPilot.Screen.Tool.TaskRun.SENDSBODY</parameter> to
+/// <code>1</code> -- the bodyless assertion goes red.</p>
+Method TestTheTaskRunToolIsAnActionWriteOverTheScreensOwnPairs()
+{
+    Set tClass = "OcuPilot.Screen.Tool.TaskRun"
+    Set tSC = $ClassMethod(..#REGISTRY, "Resolve", "tasks.ondemand.run", .tTool)
+    Do $$$AssertStatusOK(tSC, "the registry resolves the run tool by name")
+    Do $$$AssertTrue($IsObject(tTool), "and finds it")
+    If '$IsObject(tTool) Quit
+    Do $$$AssertEquals(tTool.%Get("kind"), "write", "it is a write tool")
+    Do $$$AssertEquals(tTool.%Get("class"), tClass, "answered by its own class")
+    Do $$$AssertEquals($ClassMethod(..#REGISTRY, "FulfilmentOf", tTool), "instance", "fulfilled on the instance, never in the browser")
+
+    Do $$$AssertEquals($ClassMethod(tClass, "PortClass"), "OcuPilot.Port.AdminPort", "its target lives behind the admin port")
+    Do $$$AssertEquals($ClassMethod(tClass, "ReadType"), "INFO", "its fresh read is INFO")
+    Do $$$AssertEquals($ClassMethod(tClass, "WriteType"), "RUN", "its write is the vendor's own RUN")
+    Do $$$AssertEquals($ClassMethod(tClass, "SendsBody"), 0, "and it sends no body of its own")
+    Do $$$AssertEquals($ClassMethod(tClass, "Destructive"), 0, "a run is not destructive")
+    Do $$$AssertEquals($ClassMethod(tClass, "Endpoint"), "Task.CRUD", "over the task endpoint")
+    Do $$$AssertEquals($ClassMethod(tClass, "IdArgument"), "Id", "identified by the list's own id property")
+    Do $$$AssertEquals($ClassMethod(tClass, "IdParam"), "id", "and by the vendor's own query parameter")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "SettableFields")), 0, "it admits no settable field at all")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "FingerprintSubject")), "NextScheduled,Suspended", "its fingerprint covers what the run moves")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).FingerprintSubjectProblem(tClass), "", "and the registration guard holds that subject adequate")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "ScreenActionIds")), "run", "it carries the screen's own run row action")
+    Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("Task.CRUD", "RUN"), "the port admits the mutating pair")
+    Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsBodyless("Task.CRUD", "RUN"), "not as a bodyless type, since the vendor reads a body")
+    Do $$$AssertTrue($IsObject(##class(OcuPilot.Port.AdminPort).ConstantBody("Task.CRUD", "RUN")), "but as one whose body is the port's constant")
+
+    Set tPairs = $ClassMethod(tClass, "PrivilegePairs", "", .tResolved)
+    Do $$$AssertEquals(tResolved, 1, "its pairs resolve")
+    Set tDeclared = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tClass, "DESCRIPTORCLASS"), .tDeclaredResolved)
+    Do $$$AssertEquals(tDeclaredResolved, 1, "the screen's own declared set resolves")
+    Do $$$AssertEquals(tPairs, tDeclared, "and the write's set is that set, not a superset of it")
+    Do $$$AssertTrue($ListFind(tPairs, $ListBuild("%Admin_Task", "USE")) > 0, "which holds %Admin_Task:USE")
+    Do $$$AssertEquals($ListFind(tPairs, $ListBuild("%Admin_Task", "WRITE")), 0, "and never a WRITE permission on an administrative resource")
+
+    Set tSchema = $ClassMethod(tClass, "InputSchema")
+    Set tProperties = tSchema.%Get("properties")
+    Do $$$AssertEquals(tProperties.%Get("Id").%Get("type"), "string", "the identifying property is advertised")
+    Do $$$AssertEquals(tProperties.%GetTypeOf("NextScheduled"), "unassigned", "and no field of the endpoint's own read is advertised")
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Id": "7"}, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the id alone validates: " _ tProblem)
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Id": "7", "RunNow": true}, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "while a field on a bodyless write is refused")
+    Do $$$AssertTrue(tProblem [ "RunNow", "naming the argument: " _ tProblem)
+}
+
+/// <p>AD-51, AD-53, AD-8 (Story 7.6): the Task schedule's run tool is the on-demand run on the
+/// schedule list -- <code>INFO</code> read, <code>RUN</code> written with the port's constant body,
+/// carrying the list's <code>run</code> action over the screen's own pairs.</p>
+/// <p>Mutation (Rule 19): set <parameter>OcuPilot.Screen.Tool.TaskScheduleRun.DESCRIPTORCLASS</parameter>
+/// back to the On-demand list -- the screen-action assertion goes red.</p>
+Method TestTheScheduleRunToolIsAnActionWriteOverTheScreensOwnPairs()
+{
+    Do ..AssertTaskActionWrite("tasks.schedule.run", "OcuPilot.Screen.Tool.TaskScheduleRun", "INFO", "RUN", 0, "NextScheduled,Suspended", "run", "OcuPilot.Port.AdminPort")
+}
+
+/// <p>AD-51, AD-53, AD-8 (Story 7.6): the Task schedule's suspend tool -- <code>INFO</code> read,
+/// <code>SUSPEND</code> written with the port's constant body, not destructive, carrying the list's
+/// <code>suspend</code> action over the screen's own pairs.</p>
+/// <p>Mutation (Rule 19): drop <code>Task.CRUD/SUSPEND</code> from
+/// <parameter>OcuPilot.Port.AdminPort.CONSTANTBODIES</parameter> -- the constant-body assertion
+/// goes red.</p>
+Method TestTheTaskSuspendToolIsAnActionWriteOverTheScreensOwnPairs()
+{
+    Do ..AssertTaskActionWrite("tasks.schedule.suspend", "OcuPilot.Screen.Tool.TaskSuspend", "INFO", "SUSPEND", 0, "Suspended", "suspend", "OcuPilot.Port.AdminPort")
+}
+
+/// <p>AD-51, AD-52, AD-53, AD-8 (Story 7.6): the Task schedule's delete tool -- a
+/// <code>GET</code> through <class>OcuPilot.Port.TaskPort</class>, a bodyless <code>DELETE</code>,
+/// destructive, carrying the list's <code>delete</code> action over the screen's own pairs.</p>
+/// <p>Mutation (Rule 19): set <parameter>OcuPilot.Screen.Tool.TaskDelete.PORTCLASS</parameter> to
+/// the admin port -- the port assertion goes red, and the card could no longer read the type.</p>
+Method TestTheTaskDeleteToolIsAnActionWriteOverTheScreensOwnPairs()
+{
+    Do ..AssertTaskActionWrite("tasks.schedule.delete", "OcuPilot.Screen.Tool.TaskDelete", "GET", "DELETE", 1, "Name,TaskClass,NameSpace,Type", "delete", "OcuPilot.Port.TaskPort")
+}
+
+/// <p>The declarations every task action write shares: registered as an instance-fulfilled write,
+/// over <code>Task.CRUD</code> by the list's <code>Id</code>, no settable field and no body of its
+/// own, the port exempting its type, the given subject held adequate, the given screen action,
+/// and the screen's own two pairs at <code>USE</code>.</p>
+Method AssertTaskActionWrite(pName As %String, pClass As %String, pReadType As %String, pWriteType As %String, pDestructive As %Boolean, pSubject As %String, pAction As %String, pPort As %String)
+{
+    Set tSC = $ClassMethod(..#REGISTRY, "Resolve", pName, .tTool)
+    Do $$$AssertStatusOK(tSC, "the registry resolves " _ pName _ " by name")
+    Do $$$AssertTrue($IsObject(tTool), "and finds it")
+    If '$IsObject(tTool) Quit
+    Do $$$AssertEquals(tTool.%Get("kind"), "write", pName _ " is a write tool")
+    Do $$$AssertEquals(tTool.%Get("class"), pClass, "answered by its own class")
+    Do $$$AssertEquals($ClassMethod(..#REGISTRY, "FulfilmentOf", tTool), "instance", "fulfilled on the instance, never in the browser")
+
+    Do $$$AssertEquals($ClassMethod(pClass, "PortClass"), pPort, pName _ " reaches its target through " _ pPort)
+    Do $$$AssertEquals($ClassMethod(pClass, "ReadType"), pReadType, "its fresh read is " _ pReadType)
+    Do $$$AssertEquals($ClassMethod(pClass, "WriteType"), pWriteType, "its write is the vendor's own " _ pWriteType)
+    Do $$$AssertEquals($ClassMethod(pClass, "SendsBody"), 0, "and it sends no body of its own")
+    Do $$$AssertEquals($ClassMethod(pClass, "Destructive"), pDestructive, "its destructive declaration is the effect it has")
+    Do $$$AssertEquals($ClassMethod(pClass, "Endpoint"), "Task.CRUD", "over the task endpoint")
+    Do $$$AssertEquals($ClassMethod(pClass, "IdArgument"), "Id", "identified by the list's own id property")
+    Do $$$AssertEquals($ClassMethod(pClass, "IdParam"), "id", "and by the vendor's own query parameter")
+    Do $$$AssertEquals($ListLength($ClassMethod(pClass, "SettableFields")), 0, "it admits no settable field at all")
+    Do $$$AssertEquals($ListToString($ClassMethod(pClass, "FingerprintSubject")), pSubject, "its fingerprint covers " _ pSubject)
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).FingerprintSubjectProblem(pClass), "", "and the registration guard holds that subject adequate")
+    Do $$$AssertEquals($ListToString($ClassMethod(pClass, "ScreenActionIds")), pAction, "it carries the schedule's own " _ pAction _ " row action")
+    Do $$$AssertEquals($Parameter(pClass, "DESCRIPTORCLASS"), "OcuPilot.Screen.Descriptor.TaskScheduleList", "on the Task schedule")
+    Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("Task.CRUD", pWriteType), "the port admits the mutating pair")
+    Set tExempt = ##class(OcuPilot.Port.AdminPort).IsBodyless("Task.CRUD", pWriteType) || $IsObject(##class(OcuPilot.Port.AdminPort).ConstantBody("Task.CRUD", pWriteType))
+    Do $$$AssertTrue(tExempt, "and exempts it from a caller body, as bodyless or as the port's constant")
+
+    Set tPairs = $ClassMethod(pClass, "PrivilegePairs", "", .tResolved)
+    Do $$$AssertEquals(tResolved, 1, "its pairs resolve")
+    Set tDeclared = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(pClass, "DESCRIPTORCLASS"), .tDeclaredResolved)
+    Do $$$AssertEquals(tDeclaredResolved, 1, "the screen's own declared set resolves")
+    Do $$$AssertEquals(tPairs, tDeclared, "and the write's set is that set, not a superset of it")
+    Do $$$AssertTrue($ListFind(tPairs, $ListBuild("%Admin_Task", "USE")) > 0, "which holds %Admin_Task:USE")
+    Do $$$AssertEquals($ListFind(tPairs, $ListBuild("%Admin_Task", "WRITE")), 0, "and never a WRITE permission on an administrative resource")
+
+    Set tSchema = $ClassMethod(pClass, "InputSchema")
+    Set tProperties = tSchema.%Get("properties")
+    Do $$$AssertEquals(tProperties.%Get("Id").%Get("type"), "string", "the identifying property is advertised")
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Id": "7"}, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the id alone validates: " _ tProblem)
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Id": "7", "Suspended": false}, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "while a field on a bodyless write is refused")
+    Do $$$AssertTrue(tProblem [ "Suspended", "naming the argument: " _ tProblem)
+}
+
 /// <p>AD-51, AD-8: the process suspend tool is an action-style write -- <code>GET</code> fresh,
 /// <code>SUSPEND</code> written, no body, no settable field, not destructive -- over its screen's
 /// own three pairs at <code>USE</code>, with the fingerprint subject the amended AD-51 requires.</p>
@@ -561,6 +784,29 @@ Method TestTheProcessSuspendToolIsAnActionWriteOverTheScreensOwnPairs()
 Method TestTheProcessResumeToolIsAnActionWriteOverTheScreensOwnPairs()
 {
     Do ..AssertActionWrite(..#PROCRESUMETOOL, ..#PROCRESUMETOOLCLASS, "RESUME", 0)
+}
+
+/// <p>AD-51, AD-8, Story 7.8: the process terminate is an action-style write -- <code>GET</code>
+/// fresh, <code>TERMINATE</code> written, no body, no settable field, destructive -- over its
+/// screen's own three pairs at <code>USE</code>, fingerprinted over the pid and when it started.</p>
+/// <p>Mutation (Rule 19): set
+/// <parameter>OcuPilot.Screen.Tool.ProcessTerminate.DESTRUCTIVE</parameter> to <code>0</code> -- the
+/// destructive assertion goes red.</p>
+Method TestTheProcessTerminateToolIsAnActionWriteOverTheScreensOwnPairs()
+{
+    Do ..AssertActionWrite(..#TERMINATETOOL, ..#TERMINATETOOLCLASS, "TERMINATE", 1, "Pid,StartTimeUTC", "StartTimeUTC")
+}
+
+/// <p>AD-51, AD-52, AD-8, Story 7.8: the terminate that logs a <code>&lt;RESJOB&gt;</code> error is
+/// the same write over the same pairs, reaching its target through the process port.</p>
+/// <p>Mutation (Rule 19): drop
+/// <parameter>OcuPilot.Screen.Tool.ProcessTerminateWithError.PORTCLASS</parameter> -- the port
+/// assertion goes red.</p>
+Method TestTheProcessTerminateWithErrorToolIsAnActionWriteOverTheScreensOwnPairs()
+{
+    Do ..AssertActionWrite(..#TERMINATEERRORTOOL, ..#TERMINATEERRORTOOLCLASS, "TERMINATE", 1, "Pid,StartTimeUTC", "StartTimeUTC")
+    Do $$$AssertEquals($ClassMethod(..#TERMINATEERRORTOOLCLASS, "PortClass"), "OcuPilot.Port.ProcessPort", "its target lives behind the process port")
+    Do $$$AssertTrue($ClassMethod("OcuPilot.Port.ProcessPort", "%Extends", "OcuPilot.Port.AdminPort"), "which extends the admin port, so its request types are the admin port's roster")
 }
 
 /// <p>AD-48, AD-51, AD-52: the application-error delete is an action-style write whose port is not
@@ -627,16 +873,94 @@ Method TestTheErrorDeleteToolIsAnActionWriteOverItsOwnPort()
     Do $$$AssertEquals(tProperties.%GetTypeOf("entries"), "unassigned", "and no field of the tool's own read is advertised")
     Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"namespace": "HSCUSTOM"}, .tProblem)
     Do $$$AssertStatusOK(tSC, "the namespace alone validates: " _ tProblem)
-    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"namespace": "HSCUSTOM", "date": "09/11/2026"}, .tProblem)
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"namespace": "HSCUSTOM", "date": "09/11/2026", "errorNumber": 4}, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the two scope arguments validate beside it (Story 7.10): " _ tProblem)
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"namespace": "HSCUSTOM", "count": 1}, .tProblem)
     Do $$$AssertStatusNotOK(tSC, "while a field on a bodyless write is refused")
-    Do $$$AssertTrue(tProblem [ "date", "naming the argument: " _ tProblem)
+    Do $$$AssertTrue(tProblem [ "count", "naming the argument: " _ tProblem)
 }
 
-/// <p>What both process tools declare, given the tool name <var>pName</var>, its class
-/// <var>pClass</var>, the vendor request type <var>pWriteType</var> it issues and whether it is
-/// <var>pDestructive</var>.</p>
-Method AssertActionWrite(pName As %String, pClass As %String, pWriteType As %String, pDestructive As %Boolean)
+/// <p>AD-51, AD-52, AD-53: the web-application delete is an action-style write over the admin
+/// port, whose fingerprint subject is what the list shows about the application beside its name,
+/// whose precondition field it carries, and whose pair set is the screen's own -- never
+/// <code>%Admin_Secure:WRITE</code>, which no shipped role grants (DW-1208).</p>
+/// <p>It also pins the two halves that make the screen's own caller reach it: the row action it
+/// declares it carries out, and the <code>deleted</code> change action the answer publishes.</p>
+/// <p><b>Its declared read set is measured, not recalled.</b> The subject names
+/// <code>NameSpace</code>, which the screen's list spells <code>Namespace</code> -- so the guard
+/// validates it against this tool's own <parameter>READANSWERS</parameter>, and this test holds
+/// that declaration to the live <code>GET</code> for one real application (DW-1475).</p>
+/// <p>Mutation (Rule 19): drop <code>NameSpace</code> from
+/// <parameter>OcuPilot.Screen.Tool.WebAppDelete.READANSWERS</parameter> and recompile the package
+/// -- the registration guard refuses the tool, the registry stops listing it, and the resolve at
+/// the head of this method goes red.</p>
+Method TestTheWebApplicationDeleteToolIsAnActionWriteOverTheScreensOwnPairs()
 {
+    Set tClass = ..#WEBAPPDELETETOOLCLASS
+    Set tSC = $ClassMethod(..#REGISTRY, "Resolve", ..#WEBAPPDELETETOOL, .tTool)
+    Do $$$AssertStatusOK(tSC, "the registry resolves the delete tool by name")
+    Do $$$AssertTrue($IsObject(tTool), "and finds it")
+    If '$IsObject(tTool) Quit
+    Do $$$AssertEquals(tTool.%Get("kind"), "write", "it is a write tool")
+    Do $$$AssertEquals(tTool.%Get("class"), tClass, "answered by its own class")
+    Do $$$AssertEquals($ClassMethod(..#REGISTRY, "FulfilmentOf", tTool), "instance", "fulfilled on the instance, never in the browser")
+
+    Do $$$AssertEquals($ClassMethod(tClass, "PortClass"), "OcuPilot.Port.AdminPort", "its target lives behind the admin port")
+    Do $$$AssertEquals($ClassMethod(tClass, "Endpoint"), "WebApp.App", "over the vendor's own web-application endpoint")
+    Do $$$AssertEquals($ClassMethod(tClass, "ReadType"), "GET", "its fresh read is the endpoint's single-object read")
+    Do $$$AssertEquals($ClassMethod(tClass, "WriteType"), "DELETE", "and its write is the vendor's own delete")
+    Do $$$AssertEquals($ClassMethod(tClass, "SendsBody"), 0, "it sends no body")
+    Do $$$AssertEquals($ClassMethod(tClass, "ChangeAction"), "deleted", "and publishes the deleted action, so a list drops the row")
+    Do $$$AssertEquals($ClassMethod(tClass, "Destructive"), 1, "it is destructive: nothing proposes a deleted application back")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "SettableFields")), 0, "it admits no settable field at all")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "FingerprintSubject")), "NameSpace,DispatchClass,Resource,Enabled", "its fingerprint covers what the list shows beside the name")
+    Do $$$AssertEquals($ClassMethod(tClass, "PreconditionField"), "NameSpace", "which carries the field its own precondition reads")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).FingerprintSubjectProblem(tClass), "", "and the registration guard holds that subject adequate")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "ScreenActionIds")), "delete", "it carries the screen's own delete row action")
+
+    ; The port admits the pair, under its own endpoint, and as one that reads no body.
+    Do $$$AssertTrue($ListFind($ListFromString($Parameter("OcuPilot.Port.AdminPort", "MUTATINGTYPES")), "WebApp.App/DELETE") > 0, "the port admits the mutating pair")
+    Do $$$AssertTrue($ListFind($ListFromString($Parameter("OcuPilot.Port.AdminPort", "BODYLESSTYPES")), "WebApp.App/DELETE") > 0, "and knows the vendor reads no body for it")
+
+    Set tPairs = $ClassMethod(tClass, "PrivilegePairs", "", .tResolved)
+    Do $$$AssertEquals(tResolved, 1, "its pairs resolve")
+    Set tDeclared = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tClass, "DESCRIPTORCLASS"), .tDeclaredResolved)
+    Do $$$AssertEquals(tDeclaredResolved, 1, "the screen's own declared set resolves")
+    Do $$$AssertEquals(tPairs, tDeclared, "and the write's set is that set, not a superset of it")
+    Do $$$AssertEquals($ListFind(tPairs, $ListBuild("%Admin_Secure", "WRITE")), 0, "never the WRITE permission no shipped role grants")
+
+    ; DW-1475, measured: every name the subject carries is one this endpoint's own GET answers,
+    ; and the list's own spelling of the namespace is not.
+    Kill tQuery
+    Set tQuery("name") = ..#APIAPPLICATION
+    Set tReadSC = ##class(OcuPilot.Port.AdminPort).Invoke("WebApp.App", "GET", .tQuery, "", .tFresh, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tReadSC, "the endpoint answers for " _ ..#APIAPPLICATION)
+    If $IsObject(tFresh) {
+        Set tSubject = $ClassMethod(tClass, "FingerprintSubject")
+        Set tMissing = ""
+        For tI = 1:1:$ListLength(tSubject) {
+            If tFresh.%GetTypeOf($List(tSubject, tI)) = "unassigned" Set tMissing = tMissing _ " " _ $List(tSubject, tI)
+        }
+        Do $$$AssertEquals(tMissing, "", "every subject name is one the live GET answers")
+        Do $$$AssertEquals(tFresh.%GetTypeOf("Namespace"), "unassigned", "while the list's own spelling is not, which is why READANSWERS exists")
+        Set tDeclaredNames = $ClassMethod(tClass, "ReadAnswers")
+        Set tUnclaimed = ""
+        Set tIterator = tFresh.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tValue) {
+            If '$ListFind(tDeclaredNames, tKey) Set tUnclaimed = tUnclaimed _ " " _ tKey
+        }
+        Do $$$AssertEquals(tUnclaimed, "", "and READANSWERS names every key that read actually answers")
+    }
+}
+
+/// <p>What every process tool declares, given the tool name <var>pName</var>, its class
+/// <var>pClass</var>, the vendor request type <var>pWriteType</var> it issues, whether it is
+/// <var>pDestructive</var>, and its fingerprint subject <var>pSubject</var> and precondition field
+/// <var>pPrecondition</var>, which default to suspend's and resume's.</p>
+Method AssertActionWrite(pName As %String, pClass As %String, pWriteType As %String, pDestructive As %Boolean, pSubject As %String = "", pPrecondition As %String = "")
+{
+    If pSubject = "" Set pSubject = "Pid" _ "," _ "State"
+    If pPrecondition = "" Set pPrecondition = "State"
     Set tSC = $ClassMethod(..#REGISTRY, "Resolve", pName, .tTool)
     Do $$$AssertStatusOK(tSC, "the registry resolves " _ pName _ " by name")
     Do $$$AssertTrue($IsObject(tTool), "and finds it")
@@ -653,8 +977,8 @@ Method AssertActionWrite(pName As %String, pClass As %String, pWriteType As %Str
     Do $$$AssertEquals($ClassMethod(pClass, "IdArgument"), "Pid", "identified by the list's own id property")
     Do $$$AssertEquals($ClassMethod(pClass, "IdParam"), "id", "and by the vendor's own query parameter")
     Do $$$AssertEquals($ListLength($ClassMethod(pClass, "SettableFields")), 0, "it admits no settable field at all")
-    Do $$$AssertEquals($ListToString($ClassMethod(pClass, "FingerprintSubject")), "Pid,State", "its fingerprint covers the scoped target identity and its precondition field, and nothing else")
-    Do $$$AssertEquals($ClassMethod(pClass, "PreconditionField"), "State", "which is the field its own precondition reads")
+    Do $$$AssertEquals($ListToString($ClassMethod(pClass, "FingerprintSubject")), pSubject, "its fingerprint covers the scoped target identity and its precondition field, and nothing else")
+    Do $$$AssertEquals($ClassMethod(pClass, "PreconditionField"), pPrecondition, "which is the field its own precondition reads")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).FingerprintSubjectProblem(pClass), "", "and the registration guard holds that subject adequate")
 
     Set tPairs = $ClassMethod(pClass, "PrivilegePairs", "", .tResolved)
@@ -763,7 +1087,8 @@ Method TestAnInadequateFingerprintSubjectStopsTheToolListBuilding()
 /// <p>AD-51: every registered write tool's
 /// <code>(endpoint, <method>OcuPilot.Screen.Tool.Write.WriteType</method>)</code> pair is a
 /// <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> member, and it is a
-/// <parameter>OcuPilot.Port.AdminPort.BODYLESSTYPES</parameter> member exactly when the tool
+/// <parameter>OcuPilot.Port.AdminPort.BODYLESSTYPES</parameter> or
+/// <parameter>OcuPilot.Port.AdminPort.CONSTANTBODIES</parameter> member exactly when the tool
 /// answers <method>OcuPilot.Screen.Tool.Write.SendsBody</method> 0.</p>
 /// <p><b>Why the equality is pinned rather than derived.</b> "This write sends no body" is
 /// declared twice -- once by the tool, once by the port, which learns it from the vendor's own
@@ -776,13 +1101,17 @@ Method TestAnInadequateFingerprintSubjectStopsTheToolListBuilding()
 /// <p>Mutation (Rule 19): empty <parameter>OcuPilot.Port.AdminPort.BODYLESSTYPES</parameter>, drop
 /// its <code>Process/SUSPEND</code> entry, or set
 /// <parameter>OcuPilot.Screen.Tool.TaskResume.SENDSBODY</parameter> to 1 -- the equality goes red
-/// naming the tool and its request type. Add <code>Process/TERMINATE</code> to
+/// naming the tool and its request type. Add <code>Process/DELETE</code> to
 /// <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> -- the absence leg goes red.
 /// Remove <code>Security.User/PUT</code> from it -- the roster leg goes red naming that tool, and
 /// <class>OcuPilot.Test.UserUpdate</class> reddens on its confirmed writes. Add
-/// <code>Task.CRUD/SUSPEND</code> to it -- the refusal leg goes red, because the port then admits
+/// <code>Task.CRUD/PUT</code> to it -- the refusal leg goes red, because the port then admits
 /// the call instead of answering 501, and so does the width leg, because that pair is one no
 /// registered tool reaches.</p>
+/// <p><b>The <code>Task.CRUD/PUT</code> legs are temporary.</b> They hold until the task editor
+/// (FR-53) ships a tool that issues <code>Task.CRUD/PUT</code>; that story re-points them, in the
+/// same pass, to another pair whose endpoint declares the type while a different endpoint's tool
+/// issues the suffix.</p>
 /// <p><b>The roster is held from both sides.</b> The per-tool leg holds the registry within the
 /// roster and is satisfied by a roster of any width; the width leg holds the roster to exactly the
 /// distinct pairs the registry reaches, which is the direction the parameter's own doc claims and
@@ -791,9 +1120,8 @@ Method TestAnInadequateFingerprintSubjectStopsTheToolListBuilding()
 /// any check: it reconstructs the entry it was given and looks it up in the list it came from
 /// (Rule 19).</p>
 /// <p><b>It compares pairs, not suffixes</b> (DW-1473). A bare-suffix roster reads "PUT is
-/// admitted" as "PUT is admitted on every endpoint", which is the widening that admitted
-/// <code>Task.CRUD/SUSPEND</code> -- a pair no tool issues and AD-10 evaluates no predicate
-/// for.</p>
+/// admitted" as "PUT is admitted on every endpoint", which is the widening that once admitted
+/// <code>Task.CRUD/SUSPEND</code> before any tool issued it.</p>
 Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
 {
     Set tMutating = $ListFromString($Parameter("OcuPilot.Port.AdminPort", "MUTATINGTYPES"))
@@ -805,21 +1133,22 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
         Do $$$AssertEquals($Length(tPair, "/"), 2, "'" _ tPair _ "' is an <endpoint>/<type> pair, not a bare suffix (DW-1473)")
         If '$ListFind(tMutatingSuffixes, $Piece(tPair, "/", 2)) Set tMutatingSuffixes = tMutatingSuffixes _ $ListBuild($Piece(tPair, "/", 2))
     }
-    ; AD-10, Story 5.12's AC3: terminating a process is never advertised, by either of the two
-    ; request types the vendor exposes it through -- `Process`'s own `RunDelete` is a one-line
-    ; delegate to `RunTerminate`. Asked as a PAIR since Story 8.3 shipped `Security.Role/DELETE`:
-    ; the suffix is no longer universally absent, and the thing AD-10 forbids never was a suffix.
-    For tAbsent = "Process/TERMINATE", "Process/DELETE" {
-        Do $$$AssertEquals($ListFind(tMutating, tAbsent), 0, "'" _ tAbsent _ "' is a pair this port does not admit")
-        Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsMutating($Piece(tAbsent, "/", 1), $Piece(tAbsent, "/", 2)), "and the port answers so")
-    }
-    Do $$$AssertTrue($ListFind(tMutatingSuffixes, "DELETE") > 0, "while DELETE is admitted for the endpoint whose delete a tool does issue, which is what makes the pair key load-bearing here")
-    Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("Security.Role", "DELETE"), "namely Security.Role")
+    ; Story 7.8: a process is terminated through one request type, `Process/TERMINATE`, which its two
+    ; terminate tools issue; `Process`'s own `RunDelete` is a one-line delegate to the same
+    ; `RunTerminate` and no tool issues it, so that pair stays absent. Asked as a PAIR since Stories
+    ; 7.1 and 8.3 shipped `WebApp.App/DELETE` and `Security.Role/DELETE` -- DW-1473's key: admitting a
+    ; type on one endpoint admits it on no other.
+    Do $$$AssertTrue($ListFind(tMutating, "Process/TERMINATE") > 0, "'Process/TERMINATE' is a pair this port admits")
+    Do $$$AssertEquals($ListFind(tMutating, "Process/DELETE"), 0, "while 'Process/DELETE' is not")
+    Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsMutating("Process", "DELETE"), "and the port answers so")
+    Do $$$AssertTrue($ListFind(tMutatingSuffixes, "DELETE") > 0, "while DELETE is admitted for the endpoints whose delete a tool does issue, which is what makes the pair key load-bearing here")
+    Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("WebApp.App", "DELETE"), "namely WebApp.App")
+    Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("Security.Role", "DELETE"), "and Security.Role")
     ; DW-1473's own condition: admitting a suffix on one endpoint must not admit it on another.
-    ; Task.CRUD declares TYPESUSPEND, Process is the endpoint whose SUSPEND a tool issues.
-    Do $$$AssertTrue($ListFind(tMutatingSuffixes, "SUSPEND") > 0, "SUSPEND is admitted somewhere, which is what makes the pair key load-bearing")
-    Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsMutating("Task.CRUD", "SUSPEND"), "and Task.CRUD/SUSPEND is not admitted, though Task.CRUD declares TYPESUSPEND and the suffix is admitted for Process")
-    Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("Process", "SUSPEND"), "while Process/SUSPEND is")
+    ; Task.CRUD declares TYPEPUT, and WebApp.App is an endpoint whose PUT a tool issues.
+    Do $$$AssertTrue($ListFind(tMutatingSuffixes, "PUT") > 0, "PUT is admitted somewhere, which is what makes the pair key load-bearing")
+    Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsMutating("Task.CRUD", "PUT"), "and Task.CRUD/PUT is not admitted, though Task.CRUD declares TYPEPUT and the suffix is admitted for WebApp.App")
+    Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("WebApp.App", "PUT"), "while WebApp.App/PUT is")
 
     ; The fixture every port test drives through overrides this parameter to add its probe pair.
     ; It may add; it may never omit, because a shipped pair missing from the override sends a
@@ -843,7 +1172,7 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
     ; NeedsRequestBody() answer onto the other's.
     Do $$$AssertTrue($ListLength(tEndpoints) > 1, "more than one endpoint declares a bodyless request type, which is what makes the pair key load-bearing: " _ $ListToString(tEndpoints))
     Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsBodyless("Process", "RESUME"), "Process/RESUME is exempt")
-    Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsBodyless("Task.CRUD", "SUSPEND"), "while Task.CRUD/SUSPEND, which no endpoint pairs, is not")
+    Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsBodyless("Task.CRUD", "SUSPEND"), "while Task.CRUD/SUSPEND, whose body is the port's constant, is not")
 
     Set tSC = $ClassMethod(..#REGISTRY, "ListTools", .tTools)
     Do $$$AssertStatusOK(tSC, "the tool registry lists: " _ $System.Status.GetErrorText(tSC))
@@ -871,45 +1200,49 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
         Set tClass = tEntry.%Get("class")
         Set tType = $ClassMethod(tClass, "WriteType")
         Set tEndpoint = $ClassMethod(tClass, "Endpoint")
-        Set tSends = ''$ClassMethod(tClass, "SendsBody")
+        ; AD-56 (i): a write whose body is its declared secrets sends one, though it sends no merge body.
+        Set tSends = ''$ClassMethod(tClass, "SendsBody") || ($ClassMethod(tClass, "SecretBodyNames") '= "")
         Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating(tEndpoint, tType), tName _ " writes '" _ tEndpoint _ "/" _ tType _ "', which the port declares a mutating pair")
         If '$ListFind(tReached, tEndpoint _ "/" _ tType) Set tReached = tReached _ $ListBuild(tEndpoint _ "/" _ tType)
-        Set tExempt = ''##class(OcuPilot.Port.AdminPort).IsBodyless(tEndpoint, tType)
-        Do $$$AssertEquals(tExempt, 'tSends, tName _ " sends " _ $Select(tSends: "a body", 1: "none") _ ", so '" _ tType _ "' is " _ $Select(tSends: "absent from", 1: "in") _ " the port's bodyless roster")
+        ; AD-51 as amended by Story 7.5: a type whose body is a vendor constant the port supplies
+        ; is exempt too, through CONSTANTBODIES rather than BODYLESSTYPES.
+        Set tExempt = ''##class(OcuPilot.Port.AdminPort).IsBodyless(tEndpoint, tType) || $IsObject(##class(OcuPilot.Port.AdminPort).ConstantBody(tEndpoint, tType))
+        Do $$$AssertEquals(tExempt, 'tSends, tName _ " sends " _ $Select(tSends: "a body", 1: "none") _ ", so '" _ tType _ "' is " _ $Select(tSends: "absent from", 1: "in") _ " the port's bodyless or constant-body roster")
         If 'tSends Set tActions = tActions + 1
     }
     Do $$$AssertTrue(tWrites > 0, "the registry enumerated admin-port write tools at all")
     ; The roster's other direction. The loop above holds registry within roster, one tool at a time,
     ; which is satisfied by a roster of any width; the parameter's own claim is that it is EXACTLY
-    ; the pairs the registry reaches, and nothing said so. An admitted pair no tool issues is the
-    ; state Task.CRUD/SUSPEND was in before DW-1473, one entry away.
+    ; the pairs the registry reaches, and nothing said so. An admitted pair no tool issues is one
+    ; entry away.
     Do $$$AssertEquals($ListLength(tMutating), $ListLength(tReached), "the port admits no pair beyond the ones the registry reaches -- roster '" _ $ListToString(tMutating) _ "' against reached '" _ $ListToString(tReached) _ "'")
     Do $$$AssertTrue(tActions > 0, "and at least one of them is an action-style write, so the bodyless half of the equality was exercised")
     Do $$$AssertEquals(tOtherPorts, 1, "exactly one shipped write reaches its target through another port, and it is held to that port's contract instead")
 
-    ; AD-10, Story 5.12's AC3: the vendor exposes terminating a process twice -- TYPETERMINATE and
-    ; RunDelete delegating to it -- so "never advertised" is a statement about OcuPilot. Neither
-    ; suffix is a mutating type, so the port answers 501 for it without reaching the endpoint.
-    For tAbsent = "TERMINATE", "DELETE" {
-        Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsMutating("Process", tAbsent), "'Process/" _ tAbsent _ "' is not a pair this port admits")
-        Kill tQuery
-        ; A pid no process carries. The 501 lands before the id is read, so an absent one proves the
-        ; same refusal -- and the mutation this method's doc names (admitting TERMINATE) then reaches
-        ; the vendor against nothing, rather than against the process running this test.
-        Set tQuery("id") = 999999999
-        Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Process", tAbsent, .tQuery, "", .tAnswer, .tHttp, .tFault)
-        Do $$$AssertStatusNotOK(tSC, "and the port refuses a Process " _ tAbsent _ " outright")
-        Do $$$AssertEquals(+$Get(tHttp), 501, "at 501, before the vendor endpoint is entered")
-    }
-
-    ; The pair key at the surface a caller meets it. Task.CRUD declares TYPESUSPEND, so a bare
-    ; suffix roster admitted this call once SUSPEND was admitted for Process; asking IsMutating
-    ; alone would pin the predicate rather than the refusal. A task id no task carries, so a
-    ; mutation that re-admits the pair reaches the vendor against nothing.
+    ; The vendor exposes terminating a process twice -- TYPETERMINATE and RunDelete delegating to it.
+    ; Story 7.8 admits the first; the second is no mutating type, so the port answers 501 for it
+    ; without reaching the endpoint. Both are sent to a pid no process carries, so the admitted one
+    ; reaches the vendor against nothing, and so does the mutation this method's doc names.
     Kill tQuery
     Set tQuery("id") = 999999999
-    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Task.CRUD", "SUSPEND", .tQuery, "", .tAnswer, .tHttp, .tFault)
-    Do $$$AssertStatusNotOK(tSC, "the port refuses a Task.CRUD SUSPEND outright")
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Process", "TERMINATE", .tQuery, "", .tAnswer, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "a Process TERMINATE of a pid no process carries fails")
+    Do $$$AssertEquals(+$Get(tHttp), 404, "at the vendor's own 404, so the admitted pair reaches the endpoint")
+    Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsMutating("Process", "DELETE"), "'Process/DELETE' is not a pair this port admits")
+    Kill tQuery
+    Set tQuery("id") = 999999999
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Process", "DELETE", .tQuery, "", .tAnswer, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "and the port refuses a Process DELETE outright")
+    Do $$$AssertEquals(+$Get(tHttp), 501, "at 501, before the vendor endpoint is entered")
+
+    ; The pair key at the surface a caller meets it. Task.CRUD declares TYPEPUT and no tool issues
+    ; it while WebApp.App's PUT is admitted, so a suffix-keyed gate admits this call and answers the
+    ; body refusal instead of 501; asking IsMutating alone would pin the predicate rather than the
+    ; refusal. A task id no task carries, so a mutation that admits the pair reaches nothing.
+    Kill tQuery
+    Set tQuery("id") = 999999999
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Task.CRUD", "PUT", .tQuery, "", .tAnswer, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "the port refuses a Task.CRUD PUT outright")
     Do $$$AssertEquals(+$Get(tHttp), 501, "at 501, before the vendor endpoint is entered")
     Do $$$AssertTrue($IsObject(tFault), "with a fault object")
     If $IsObject(tFault) {

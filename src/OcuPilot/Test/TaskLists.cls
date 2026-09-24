@@ -125,8 +125,8 @@ ClassMethod Joined(ByRef pSet) As %String
 /// <p>Each descriptor passes the read, criteria and classic-link grammar and the whole registry
 /// validates; its route and tool identifier resolve to it; its classic page is a class compiled on
 /// this instance; it is the declared Tasks entry at its side-bar position, on <code>task</code> at
-/// instance scope, with no action and no refresh; its pair set is the task schedule's; and the Tasks
-/// area covers it.</p>
+/// instance scope, with no refresh; On-demand declares the one row action Run (Story 7.5) and Upcoming
+/// none; its pair set is the task schedule's; and the Tasks area covers it.</p>
 /// <p>Mutation: drop <code>%DB_IRISSYS:READ</code> from
 /// <class>OcuPilot.Screen.Descriptor.TaskUpcomingList</class> -&gt; its read-grammar and pair-set
 /// assertions go red.</p>
@@ -135,7 +135,7 @@ Method TestBothDescriptorsValidateAsTheTasksEntriesTheyReplace()
     Set tSC = ##class(OcuPilot.Screen.Registry).Validate(.tProblem)
     Do $$$AssertStatusOK(tSC, "the registry validates")
     Do $$$AssertEquals($Get(tProblem), "", "with no problem")
-    For tCase = $ListBuild(..#ONDEMAND, "tasks/on-demand", "tasks.ondemand", 2, "%CSP.UI.Portal.TasksOnDemand"), $ListBuild(..#UPCOMING, "tasks/upcoming", "tasks.upcoming", 3, "%CSP.UI.Portal.TasksUpcoming") {
+    For tCase = $ListBuild(..#ONDEMAND, "tasks/on-demand", "tasks.ondemand", 2, "%CSP.UI.Portal.TasksOnDemand", "run"), $ListBuild(..#UPCOMING, "tasks/upcoming", "tasks.upcoming", 3, "%CSP.UI.Portal.TasksUpcoming", "") {
         Set tClass = $List(tCase, 1)
         Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
         Do $$$AssertStatusOK(tSC, tClass _ ": the declaration parses")
@@ -152,13 +152,14 @@ Method TestBothDescriptorsValidateAsTheTasksEntriesTheyReplace()
         Do $$$AssertEquals($ListToString($ClassMethod(tClass, "EntityTypes")), "task", tClass _ ": on the task entity type")
         Do $$$AssertEquals($ClassMethod(tClass, "Scope"), "instance", tClass _ ": at instance scope")
         Do $$$AssertEquals($ClassMethod(tClass, "Refreshes"), 0, tClass _ ": and it does not refresh")
-        Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")) + ($ClassMethod(tClass, "PrimaryActionId") '= ""), 0, tClass _ ": it declares no action, Run included")
+        Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), $List(tCase, 6), tClass _ ": its row actions are exactly '" _ $List(tCase, 6) _ "'")
+        Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", tClass _ ": and it declares no primary action")
         Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Task"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", tClass _ ": its pair set is the task schedule's")
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("tasks", $ClassMethod(tClass, "PrivilegePairs")), "", tClass _ ": and the Tasks area covers it")
     }
 }
 
-/// <p>Matrix "On-demand" -- the read answers its six declared fields, and its rows are, by
+/// <p>Matrix "On-demand" -- the read answers its seven declared fields, and its rows are, by
 /// <code>Id</code>, exactly the tasks <code>%SYS.Task:OnDemandTasksFilter("")</code> answers, the demo
 /// task among them.</p>
 /// <p>On this build the vendor's on-demand set is every task, so the fixed parameter itself is pinned
@@ -169,7 +170,7 @@ Method TestOnDemandReadsTheVendorsOnDemandTasks()
     Do $$$AssertStatusOK(tSC, "the request completes")
     Do $$$AssertEquals(tStatus, 200, "the read answers")
     If (tStatus '= 200) || '$IsObject(tAnswer) Quit
-    Do $$$AssertEquals(tAnswer.fields.%ToJSON(), "[""Name"",""Namespace"",""Type"",""Description"",""Id"",""LastFinished""]", "with its six declared fields")
+    Do $$$AssertEquals(tAnswer.fields.%ToJSON(), "[""Name"",""Namespace"",""Type"",""Description"",""Id"",""LastFinished"",""NextScheduled""]", "with its seven declared fields")
     Kill tIds
     Set tDemo = 0
     Set tIterator = tAnswer.rows.%GetIterator()

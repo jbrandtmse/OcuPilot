@@ -10,6 +10,7 @@ import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
+import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
@@ -133,6 +134,7 @@ describe('the command bar', () => {
         { provide: ScreenActions, useValue: actions },
         { provide: OverlayStack, useValue: overlays },
         { provide: ViewOptions, useValue: viewOptionsSvc },
+        { provide: Session, useValue: { userName: () => 'Dana' } as unknown as Session },
         { provide: ShellState, useValue: new ShellState({ account: stubAccountPreferences() }) },
         { provide: ScopeService, useValue: { loaded: () => true, namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService },
       ],
@@ -203,17 +205,20 @@ describe('the command bar', () => {
     //
     // Mutation (Rule 19): change `actionLabel(screen.descriptor, action.id)` in `command-bar.ts`
     // to `actionLabel('', action.id)` -> this goes red, the button drawing the bare id.
-    build(
-      screenDeclaration({
-        descriptor: 'OcuPilot.Screen.Descriptor.AgentSwitches',
-        rowActions: [{ id: 'delete', selfProtection: '' }],
-      })
-    );
+    const declared = screenDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.AgentSwitches',
+      rowActions: [{ id: 'delete', selfProtection: '' }],
+    });
+    build(declared);
+    // DW-389: a declared action with no registered handler is not drawn at all, so the surface
+    // this test is about only exists once something can act on it.
+    actions.register(declared.descriptor, 'delete', () => {});
+    fixture.detectChanges();
 
-    const actions: HTMLButtonElement[] = Array.from(
+    const drawn: HTMLButtonElement[] = Array.from(
       fixture.nativeElement.querySelectorAll('.ocu-command-bar-action')
     );
-    expect(actions.map((action) => action.textContent?.trim())).toEqual([
+    expect(drawn.map((action) => action.textContent?.trim())).toEqual([
       STRINGS.agentSwitchesHoldRemove,
     ]);
     // And the same id on a screen that publishes nothing for it still draws the bare id, so the
@@ -222,24 +227,26 @@ describe('the command bar', () => {
   });
 
   it('row actions are aria-disabled with "Select a row first" on hover and focus', () => {
-    build(
-      screenDeclaration({
-        rowActions: [
-          { id: 'delete', selfProtection: 'current-user' },
-          { id: 'disable', selfProtection: '' },
-        ],
-      })
-    );
+    const declared = screenDeclaration({
+      rowActions: [
+        { id: 'delete', selfProtection: 'current-user' },
+        { id: 'disable', selfProtection: '' },
+      ],
+    });
+    build(declared);
+    actions.register(declared.descriptor, 'delete', () => {});
+    actions.register(declared.descriptor, 'disable', () => {});
+    fixture.detectChanges();
 
-    const actions: HTMLButtonElement[] = Array.from(
+    const drawn: HTMLButtonElement[] = Array.from(
       fixture.nativeElement.querySelectorAll('.ocu-command-bar-action')
     );
-    expect(actions.map((action) => action.textContent?.trim())).toEqual([
-      'delete',
+    expect(drawn.map((action) => action.textContent?.trim())).toEqual([
+      STRINGS.actionDelete,
       STRINGS.agentDefinitionDisable,
     ]);
 
-    for (const action of actions) {
+    for (const action of drawn) {
       expect(action.getAttribute('aria-disabled')).toBe('true');
       // Never the attribute: a control that cannot act keeps its place in the Tab order.
       expect(action.hasAttribute('disabled')).toBe(false);
@@ -251,6 +258,113 @@ describe('the command bar', () => {
       expect(reason.getAttribute('role')).toBe('tooltip');
     }
     expect(fixture.nativeElement.querySelectorAll('[disabled]')).toHaveLength(0);
+  });
+
+  it('Story 7.10: on a screen with row actions and no declared read, the bar follows the selection the page writes', () => {
+    // The application error log's drill-down declares no read and writes its own selection into
+    // its store; the bar has to see it move.
+    //
+    // Mutation (Rule 19): restore `bindStore`'s early return for every screen with no read -> the
+    // action stays "Select a row first" after the selection lands, red.
+    const declared = screenDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.LogErrorList',
+      entityType: 'application-error',
+      rowActions: [{ id: 'delete', selfProtection: '' }],
+    });
+    build(declared);
+    let runs = 0;
+    actions.register(declared.descriptor, 'delete', () => (runs += 1));
+    fixture.detectChanges();
+    const button = (): HTMLButtonElement => fixture.nativeElement.querySelector('.ocu-command-bar-action');
+    expect(declared.read).toBeNull();
+    expect(button().getAttribute('aria-disabled')).toBe('true');
+
+    stores.for(declared.descriptor, declared.refreshRates).setSelection(['USER\u000109/23/2026']);
+    fixture.detectChanges();
+    expect(button().hasAttribute('aria-disabled')).toBe(false);
+    button().click();
+    fixture.detectChanges();
+    expect(runs).toBe(1);
+  });
+
+  it('DW-389: a declared row action with no registered handler draws no button, beside one that is registered', () => {
+    // Per action, not all-or-nothing: the same screen declares two and registers one.
+    //
+    // Mutation (Rule 19): drop the `.filter((action) => this.actions.has(screen.descriptor,
+    // action.id))` line from `command-bar.ts` -> `enable` is drawn beside `disable`, red.
+    const declared = screenDeclaration({
+      rowActions: [
+        { id: 'enable', selfProtection: '' },
+        { id: 'disable', selfProtection: '' },
+      ],
+    });
+    build(declared);
+    actions.register(declared.descriptor, 'disable', () => {});
+    fixture.detectChanges();
+
+    const drawn = Array.from(fixture.nativeElement.querySelectorAll('.ocu-command-bar-action')).map((action) =>
+      (action as HTMLElement).textContent?.trim()
+    );
+    expect(drawn).toEqual([STRINGS.agentDefinitionDisable]);
+    expect(fixture.nativeElement.textContent).not.toContain(STRINGS.agentDefinitionEnable);
+  });
+
+  it("AD-53: with a self-protected row selected, the bar's action carries the instance's own sentence and runs nothing", () => {
+    // The bar says what the command box and the row menu say about the same action on the same row:
+    // `aria-disabled`, never `disabled`, with the published reason as its tooltip. An ordinary row
+    // selected afterwards gets an ordinary control that runs its handler.
+    //
+    // Mutation (Rule 19): make the bar's `selfProtectionReason(...)` call answer `''` -> the
+    // protected row's button is drawn as an ordinary control and its click runs the handler, red.
+    const declared = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.WebAppList',
+      rowActions: [{ id: 'delete', selfProtection: 'serves-ocupilot' }],
+    });
+    build(declared);
+    let runs = 0;
+    actions.register(declared.descriptor, 'delete', () => (runs += 1));
+    const store = stores.for(declared.descriptor, declared.refreshRates);
+    store.setSelection(['/api/ocupilot']);
+    fixture.detectChanges();
+
+    const button = (): HTMLButtonElement => fixture.nativeElement.querySelector('.ocu-command-bar-action');
+    expect(button().textContent?.trim()).toBe(STRINGS.actionDelete);
+    expect(button().getAttribute('aria-disabled')).toBe('true');
+    expect(button().hasAttribute('disabled')).toBe(false);
+    const reason = fixture.nativeElement.querySelector(`#${button().getAttribute('aria-describedby')}`);
+    expect(reason?.textContent?.trim()).toBe(STRINGS.webAppServesOcuPilotRefusal);
+    expect(reason?.getAttribute('role')).toBe('tooltip');
+    button().click();
+    fixture.detectChanges();
+    expect(runs).toBe(0);
+
+    store.setSelection(['/csp/myapp']);
+    fixture.detectChanges();
+    expect(button().hasAttribute('aria-disabled')).toBe(false);
+    expect(button().hasAttribute('aria-describedby')).toBe(false);
+    button().click();
+    fixture.detectChanges();
+    expect(runs).toBe(1);
+  });
+
+  it("Story 7.2: with the signed-in account selected, the bar's protected-account action carries its sentence and runs nothing", () => {
+    // Mutation (Rule 19): drop `this.signedIn()` from the bar's call -> the button runs, red.
+    const declared = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.UserList',
+      rowActions: [{ id: 'disable', selfProtection: 'protected-account' }],
+    });
+    build(declared);
+    let runs = 0;
+    actions.register(declared.descriptor, 'disable', () => (runs += 1));
+    stores.for(declared.descriptor, declared.refreshRates).setSelection(['dana']);
+    fixture.detectChanges();
+    const button: HTMLButtonElement = fixture.nativeElement.querySelector('.ocu-command-bar-action');
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    const reason = fixture.nativeElement.querySelector(`#${button.getAttribute('aria-describedby')}`);
+    expect(reason?.textContent?.trim()).toBe(STRINGS.userRefusalCurrentUser);
+    button.click();
+    fixture.detectChanges();
+    expect(runs).toBe(0);
   });
 
   it('no chip renders for a screen the framework has not bound, or one that does not refresh', () => {
@@ -988,6 +1102,9 @@ describe('the command bar', () => {
     // Refresh is a command-bar action too (DW-260), so the reachability invariant covers it: a
     // control the bar draws and the box does not offer is a surface a keyboard user cannot reach.
     actions.register(declared.descriptor, REFRESH_ACTION_ID, () => {});
+    // DW-389: and the row actions, which neither surface draws without one.
+    actions.register(declared.descriptor, 'delete', () => {});
+    actions.register(declared.descriptor, 'disable', () => {});
     fixture.detectChanges();
     const barActions = Array.from(
       fixture.nativeElement.querySelectorAll('.ocu-command-bar-primary, .ocu-command-bar-action')
@@ -1012,7 +1129,7 @@ describe('the command bar', () => {
 
     expect(barActions).toEqual([
       STRINGS.actionCreate,
-      'delete',
+      STRINGS.actionDelete,
       STRINGS.agentDefinitionDisable,
       STRINGS.actionRefresh,
     ]);
@@ -1028,7 +1145,7 @@ describe('the command bar', () => {
     );
     expect(byLabel.get(STRINGS.actionCreate)?.getAttribute('aria-disabled')).toBeNull();
     expect(byLabel.get(STRINGS.actionRefresh)?.getAttribute('aria-disabled')).toBeNull();
-    for (const rowAction of ['delete', STRINGS.agentDefinitionDisable]) {
+    for (const rowAction of [STRINGS.actionDelete, STRINGS.agentDefinitionDisable]) {
       const option = byLabel.get(rowAction);
       expect(option?.getAttribute('aria-disabled')).toBe('true');
       expect(option?.textContent).toContain(STRINGS.privilegeSelectRowFirst);

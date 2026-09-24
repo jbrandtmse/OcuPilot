@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -405,6 +405,7 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "oauth2-server",
   "oauth2-server-client",
   "audit-event",
+  "audit-user-event",
   "auditing-configuration",
   "task",
   "task-history-entry",
@@ -442,7 +443,9 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "process": "integer",
   "application-error": "foldcase",
   "role": "foldcase",
-  "resource": "foldcase"
+  "resource": "foldcase",
+  "audit-event": "foldcase",
+  "audit-user-event": "foldcase"
 };
 
 /**
@@ -1121,13 +1124,301 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.AuditSystemEventList",
+    "route": "security/auditing/system-events",
+    "area": "security",
+    "labelKey": "auditSystemEventListLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "audit-event",
+    "entityLabelKey": "auditDialogTitle",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "EventName"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "enable",
+        "selfProtection": ""
+      },
+      {
+        "id": "disable",
+        "selfProtection": ""
+      },
+      {
+        "id": "reset",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "EventName",
+        "Enabled",
+        "Total",
+        "Written",
+        "Lost"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "auditSystemEventListEmpty",
+    "commandAliases": [],
+    "classicPage": "%CSP.UI.Portal.Audit.SystemEvents",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.Audit.Event",
+        "type": "LIST",
+        "query": {
+          "eventOwner": "1"
+        }
+      },
+      "fields": [
+        "EventName",
+        "Enabled",
+        "Total",
+        "Written",
+        "Lost"
+      ],
+      "filter": [
+        "EventName",
+        "Enabled",
+        "Total",
+        "Written",
+        "Lost"
+      ],
+      "sort": {
+        "fields": [
+          "EventName",
+          "Enabled",
+          "Total",
+          "Written",
+          "Lost"
+        ],
+        "default": "EventName",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "EventName",
+          "labelKey": "auditColumnEventName",
+          "kind": "name"
+        },
+        {
+          "field": "Enabled",
+          "labelKey": "tableColumnEnabled",
+          "kind": "status"
+        },
+        {
+          "field": "Total",
+          "labelKey": "auditEventColumnTotal",
+          "kind": "number"
+        },
+        {
+          "field": "Written",
+          "labelKey": "auditEventColumnWritten",
+          "kind": "number"
+        },
+        {
+          "field": "Lost",
+          "labelKey": "auditEventColumnLost",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "auditSystemEventListEmptyAgent"
+    },
+    "toolIdentifier": "security.auditsystemevents",
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AuditUserEventList",
+    "route": "security/auditing/user-events",
+    "area": "security",
+    "labelKey": "auditUserEventListLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "audit-user-event",
+    "entityLabelKey": "auditDialogTitle",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "EventName"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "enable",
+        "selfProtection": ""
+      },
+      {
+        "id": "disable",
+        "selfProtection": ""
+      },
+      {
+        "id": "reset",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "EventName",
+        "Enabled",
+        "Total",
+        "Written",
+        "Lost"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "auditUserEventListEmpty",
+    "commandAliases": [],
+    "classicPage": "%CSP.UI.Portal.Audit.UserEvents",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.Audit.Event",
+        "type": "LIST",
+        "query": {
+          "eventOwner": "0"
+        }
+      },
+      "fields": [
+        "EventName",
+        "Enabled",
+        "Total",
+        "Written",
+        "Lost"
+      ],
+      "filter": [
+        "EventName",
+        "Enabled",
+        "Total",
+        "Written",
+        "Lost"
+      ],
+      "sort": {
+        "fields": [
+          "EventName",
+          "Enabled",
+          "Total",
+          "Written",
+          "Lost"
+        ],
+        "default": "EventName",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "EventName",
+          "labelKey": "auditColumnEventName",
+          "kind": "name"
+        },
+        {
+          "field": "Enabled",
+          "labelKey": "tableColumnEnabled",
+          "kind": "status"
+        },
+        {
+          "field": "Total",
+          "labelKey": "auditEventColumnTotal",
+          "kind": "number"
+        },
+        {
+          "field": "Written",
+          "labelKey": "auditEventColumnWritten",
+          "kind": "number"
+        },
+        {
+          "field": "Lost",
+          "labelKey": "auditEventColumnLost",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "auditUserEventListEmptyAgent"
+    },
+    "toolIdentifier": "security.audituserevents",
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.AuditingConfig",
     "route": "security/auditing",
     "area": "security",
     "labelKey": "auditingConfigurationLink",
-    "sideBarPosition": 0,
+    "sideBarPosition": 6,
     "archetype": "form-page",
-    "built": false,
+    "built": true,
     "refreshes": false,
     "refreshRates": [],
     "privileges": [
@@ -1153,13 +1444,26 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "enable",
+        "selfProtection": ""
+      },
+      {
+        "id": "disable",
+        "selfProtection": ""
+      }
+    ],
     "context": {
-      "fields": [],
+      "fields": [
+        "Enabled"
+      ],
       "secretFields": []
     },
     "emptyStateKey": "",
-    "commandAliases": [],
+    "commandAliases": [
+      "auditing"
+    ],
     "classicPage": "%CSP.UI.Portal.Audit.SystemEvents",
     "classicLinkExemption": {
       "exempt": false,
@@ -1167,8 +1471,28 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "label": "",
       "href": ""
     },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.Audit.Enabled",
+        "type": "GET"
+      },
+      "fields": [
+        "Enabled"
+      ],
+      "filter": [
+        "Enabled"
+      ],
+      "sort": {
+        "fields": [
+          "Enabled"
+        ],
+        "default": "Enabled",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
     "toolIdentifier": "security.auditing",
-    "read": null,
     "table": null,
     "banner": null,
     "tab": null,
@@ -2470,6 +2794,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       }
     ],
     "entityType": "application-error",
+    "entityLabelKey": "errorLogListLabel",
     "secondaryEntityTypes": [],
     "scope": "instance",
     "parentScope": "",
@@ -2485,7 +2810,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "errorNumber",
@@ -2514,8 +2844,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": [],
-    "entityLabelKey": ""
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.LogMessageViewer",
@@ -2655,7 +2984,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "ApplicationName",
@@ -2760,8 +3094,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "oauthClientsEmptyAgent"
     },
     "tab": {
       "group": "security/oauth",
@@ -2913,14 +3247,21 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "scope": "instance",
     "parentScope": "",
     "id": {
-      "kind": "single",
-      "parts": []
+      "kind": "composite",
+      "parts": [
+        "ClientId"
+      ]
     },
     "primaryAction": {
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -3009,8 +3350,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "oauthServerClientsEmptyAgent"
     },
     "tab": {
       "group": "security/oauth",
@@ -3460,7 +3801,24 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "suspend",
+        "selfProtection": ""
+      },
+      {
+        "id": "resume",
+        "selfProtection": ""
+      },
+      {
+        "id": "terminate",
+        "selfProtection": ""
+      },
+      {
+        "id": "terminate-with-error",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Pid",
@@ -3754,8 +4112,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "processListEmptyAgent"
     },
     "toolIdentifier": "osmgmt.processdetails",
     "banner": null,
@@ -3795,6 +4153,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       }
     ],
     "entityType": "process",
+    "entityLabelKey": "proposalEntityProcess",
     "secondaryEntityTypes": [],
     "scope": "instance",
     "parentScope": "",
@@ -3806,7 +4165,24 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "suspend",
+        "selfProtection": ""
+      },
+      {
+        "id": "resume",
+        "selfProtection": ""
+      },
+      {
+        "id": "terminate",
+        "selfProtection": ""
+      },
+      {
+        "id": "terminate-with-error",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Pid",
@@ -3905,16 +4281,15 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "number"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "processListEmptyAgent"
     },
     "toolIdentifier": "osmgmt.processes",
     "banner": null,
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": [],
-    "entityLabelKey": ""
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.ResourceList",
@@ -5308,18 +5683,26 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       }
     ],
     "entityType": "task",
+    "entityLabelKey": "proposalEntityTask",
     "secondaryEntityTypes": [],
     "scope": "instance",
     "parentScope": "",
     "id": {
-      "kind": "single",
-      "parts": []
+      "kind": "composite",
+      "parts": [
+        "Id"
+      ]
     },
     "primaryAction": {
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "run",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -5327,7 +5710,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Type",
         "Description",
         "Id",
-        "LastFinished"
+        "LastFinished",
+        "NextScheduled"
       ],
       "secretFields": []
     },
@@ -5358,7 +5742,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Type",
         "Description",
         "Id",
-        "LastFinished"
+        "LastFinished",
+        "NextScheduled"
       ],
       "filter": [
         "Name",
@@ -5371,7 +5756,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "Name",
           "Namespace",
           "Type",
-          "LastFinished"
+          "LastFinished",
+          "NextScheduled"
         ],
         "default": "Name",
         "direction": "asc"
@@ -5404,18 +5790,22 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "field": "LastFinished",
           "labelKey": "taskColumnLastRun",
           "kind": "text"
+        },
+        {
+          "field": "NextScheduled",
+          "labelKey": "taskColumnNextRun",
+          "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "taskOnDemandEmptyAgent"
     },
     "toolIdentifier": "tasks.ondemand",
     "banner": null,
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": [],
-    "entityLabelKey": ""
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskRunList",
@@ -5611,6 +6001,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       }
     ],
     "entityType": "task",
+    "entityLabelKey": "proposalEntityTask",
     "secondaryEntityTypes": [],
     "scope": "instance",
     "parentScope": "",
@@ -5624,7 +6015,24 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "run",
+        "selfProtection": ""
+      },
+      {
+        "id": "suspend",
+        "selfProtection": ""
+      },
+      {
+        "id": "resume",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -5712,6 +6120,11 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         },
         {
+          "field": "Suspended",
+          "labelKey": "taskColumnSuspended",
+          "kind": "status"
+        },
+        {
           "field": "LastFinished",
           "labelKey": "taskColumnLastRun",
           "kind": "text"
@@ -5722,8 +6135,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "taskScheduleEmptyAgent"
     },
     "banner": {
       "source": {
@@ -5749,8 +6162,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": [],
-    "entityLabelKey": ""
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskUpcomingList",
@@ -5986,7 +6398,36 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "create",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "enable",
+        "selfProtection": ""
+      },
+      {
+        "id": "disable",
+        "selfProtection": "protected-account"
+      },
+      {
+        "id": "set-password",
+        "selfProtection": ""
+      },
+      {
+        "id": "add-role",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove-role",
+        "selfProtection": ""
+      },
+      {
+        "id": "require-password-change",
+        "selfProtection": ""
+      },
+      {
+        "id": "delete",
+        "selfProtection": "protected-account"
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -6468,7 +6909,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "create",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "enable",
+        "selfProtection": "serves-ocupilot"
+      },
+      {
+        "id": "disable",
+        "selfProtection": "serves-ocupilot"
+      },
+      {
+        "id": "delete",
+        "selfProtection": "serves-ocupilot"
+      }
+    ],
     "context": {
       "fields": [
         "Name",

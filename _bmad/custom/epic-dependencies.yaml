@@ -3,7 +3,7 @@
 # edges the orchestrator's analysis added, per the owner's standing instruction (2026-09-16):
 # "If your analysis adds an edge, take the more conservative graph and note the difference in the
 # parallel log; if it would remove one of these, keep mine."
-epics_md_hash: "f69c5adbca26857c249e0b7e66221ebe4eecd888d04427d4df2ae38ed8e1b594"
+epics_md_hash: "a6fdc077567260359f33a04bb340f141cca3412f56c95bcf4f874fe81cfcd891"
 analyzed_by: claude-opus-5
 analyzed_at: "2026-09-16T15:02:34Z"
 approved: true

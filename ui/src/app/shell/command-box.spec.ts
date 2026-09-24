@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { ScreenActions } from '../core/screen-actions';
+import { ScreenStores } from '../core/screen-store';
+import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
@@ -125,9 +127,16 @@ describe('the command box', () => {
     actions = new ScreenActions();
     creates = 0;
     unregisterCreate = actions.register(USERS.descriptor, 'create', () => (creates += 1));
+    // DW-389: a declared row action with no registered handler is offered on no surface, so the
+    // stub screen's own `delete` needs one for the box to list it at all.
+    actions.register(USERS.descriptor, 'delete', () => {});
+    actions.register('OcuPilot.Screen.Descriptor.AgentSwitches', 'delete', () => {});
     TestBed.configureTestingModule({
       providers: [
         { provide: AccountPreferences, useValue: accountPreferences },
+        // The box reads the current screen's selection to decide whether a row action is offered
+        // or explained (AD-53), so the stores are real here as they are on the command bar.
+        { provide: ScreenStores, useValue: new ScreenStores({ account: accountPreferences }) },
         provideRouter([
           { path: '', children: [] },
           { path: 'permissions/users', children: [] },
@@ -137,6 +146,7 @@ describe('the command box', () => {
         { provide: OverlayStack, useValue: overlays },
         { provide: ScreenActions, useValue: actions },
         { provide: ShellState, useValue: shell },
+        { provide: Session, useValue: { userName: () => 'Dana' } as unknown as Session },
       ],
     });
     fixture = TestBed.createComponent(CommandBox);
@@ -360,7 +370,7 @@ describe('the command box', () => {
     // `create` carries published copy in `ACTION_LABELS`, so both surfaces draw it as "Create"
     // -- the same resolution `disable` already goes through.
     const primary = actions.find((option) => label(option) === STRINGS.actionCreate);
-    const rowAction = actions.find((option) => label(option) === 'delete');
+    const rowAction = actions.find((option) => label(option) === STRINGS.actionDelete);
     expect(primary?.getAttribute('aria-disabled')).toBeNull();
     expect(rowAction?.getAttribute('aria-disabled')).toBe('true');
     expect(rowAction?.textContent).toContain(STRINGS.privilegeSelectRowFirst);
@@ -370,6 +380,79 @@ describe('the command box', () => {
     rowAction?.click();
     fixture.detectChanges();
     expect(field().getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it("AD-53: with a row selected, a self-protected action is listed with the instance's own sentence", () => {
+    // The box says what the bar and the row menu say about the same action on the same row: the
+    // reason is the published one, inline after the label, and the entry stays `aria-disabled`
+    // rather than `disabled`.
+    //
+    // Mutation (Rule 19): drop the `selected` lookup from `actionCandidates` -> the box falls back
+    // to "Select a row first" while a row is selected, and this goes red.
+    navigation.current = screen('web-applications/list', 'navAreaWebApps', 'web-applications', {
+      descriptor: 'OcuPilot.Screen.Descriptor.WebAppList',
+      primaryAction: { id: '', selfProtection: '' },
+      rowActions: [{ id: 'delete', selfProtection: 'serves-ocupilot' }],
+    });
+    TestBed.inject(ScreenActions).register('OcuPilot.Screen.Descriptor.WebAppList', 'delete', () => {});
+    TestBed.inject(ScreenStores)
+      .for('OcuPilot.Screen.Descriptor.WebAppList', [])
+      .setSelection(['/api/ocupilot']);
+    chord();
+
+    const entry = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
+    ).find(
+      (option) =>
+        (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim() ===
+        STRINGS.actionDelete
+    ) as HTMLElement | undefined;
+    expect(entry).toBeDefined();
+    expect(entry?.textContent).toContain(STRINGS.webAppServesOcuPilotRefusal);
+    expect(entry?.getAttribute('aria-disabled')).toBe('true');
+    expect(entry?.hasAttribute('disabled')).toBe(false);
+  });
+
+  it("Story 7.2: with the signed-in account selected, the box lists its protected-account action with the published sentence", () => {
+    // Mutation (Rule 19): drop `this.signedIn()` from `actionCandidates`' call -> no reason, red.
+    navigation.current = screen('permissions/users', 'navAreaPermissions', 'permissions', {
+      descriptor: 'OcuPilot.Screen.Descriptor.UserList',
+      primaryAction: { id: '', selfProtection: '' },
+      rowActions: [{ id: 'delete', selfProtection: 'protected-account' }],
+    });
+    TestBed.inject(ScreenActions).register('OcuPilot.Screen.Descriptor.UserList', 'delete', () => {});
+    TestBed.inject(ScreenStores).for('OcuPilot.Screen.Descriptor.UserList', []).setSelection(['dana']);
+    chord();
+    const entry = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
+    ).find(
+      (option) =>
+        (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim() ===
+        STRINGS.actionDelete
+    ) as HTMLElement | undefined;
+    expect(entry?.textContent).toContain(STRINGS.userRefusalCurrentUser);
+    expect(entry?.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('DW-389: a declared row action with no registered handler is not listed, beside one that is registered', () => {
+    // Per action, not all-or-nothing: the stub screen registers `delete` (beforeEach) and nothing
+    // for `enable`, which it declares beside it.
+    //
+    // Mutation (Rule 19): drop `&& this.actions.has(screen.descriptor, action.id)` from the row-action
+    // loop in `command-box.ts` -> `enable` is listed beside `delete`, red.
+    navigation.current = screen('permissions/users', 'navAreaPermissions', 'permissions', {
+      primaryAction: { id: '', selfProtection: '' },
+      rowActions: [
+        { id: 'enable', selfProtection: '' },
+        { id: 'delete', selfProtection: 'current-user' },
+      ],
+    });
+    chord();
+    const labels = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
+    ).map((option) => (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim());
+    expect(labels).toEqual([STRINGS.actionDelete]);
+    expect(count()).toBe('2 screens, 1 actions');
   });
 
   it("DW-370: a screen's own published words for an action reach the box's option, not only the bar's button", () => {
@@ -403,7 +486,7 @@ describe('the command box', () => {
     const labels = Array.from(
       fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
     ).map((option) => (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim());
-    expect(labels).toEqual(['delete']);
+    expect(labels).toEqual([STRINGS.actionDelete]);
     expect(count()).toBe('2 screens, 1 actions');
   });
 

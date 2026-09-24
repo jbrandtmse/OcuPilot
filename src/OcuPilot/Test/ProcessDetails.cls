@@ -97,7 +97,8 @@ Method TestTheDeclarationValidatesAndIsDeclaredAsProcessDetails()
     Do $$$AssertEquals($ClassMethod(tClass, "Refreshes"), 1, "and it refreshes")
     Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RefreshRates")), "5,10,30,60", "at the AD-43 roster")
     Do $$$AssertEquals(tDeclaration.context.secretFields.%Size(), 0, "with no secret field")
-    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")) + ($ClassMethod(tClass, "PrimaryActionId") '= ""), 0, "because it declares no action")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "suspend,resume,terminate,terminate-with-error", "its row actions are the parent list's four (Story 7.8)")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "and it declares no primary action")
 
     ; AD-24/AD-35/AD-48: the never-named fields, checked over the read fields and the context. Each
     ; needle is the exact quoted JSON key, never the bare word -- "Roles" is a bare substring of the

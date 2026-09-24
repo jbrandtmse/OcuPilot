@@ -56,6 +56,13 @@ export interface ProposalUnchangedRow {
 export interface ProposalCardView {
   /** The kind of thing the write is about, as the instance names it ("Web application"). */
   readonly entityType: string;
+  /**
+   * The write's own entity type as the wire spells it (`application-error`), which is what the
+   * residue sentence is gated on (DW-1480). `entityType` above is the published noun the title
+   * reads and is a different fact: two screens can spell one type's noun two ways, and the card
+   * routes on the type rather than on the word.
+   */
+  readonly targetType?: string;
   /** The target's own name, as the instance stores it ("/csp/myapp"). */
   readonly name: string;
   /** The changed fields, first in the card and one `diff-row` each. */
@@ -337,6 +344,7 @@ export function toCardView(
   return {
     proposalId: proposal.proposalId,
     entityType: entityLabel,
+    targetType: proposal.target.type,
     name: proposal.target.id,
     changed: proposal.changed.map((row) => (secrets.has(row.field) ? maskedRow(row) : row)),
     unchangedCount: proposal.unchangedCount,

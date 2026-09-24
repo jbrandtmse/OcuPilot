@@ -18,9 +18,9 @@
 /// <code>'Suspend Reschedule'</code>, none of which contains "YES". The declared <code>rowGet</code>
 /// issues <code>INFO</code> once per surviving row, keyed by the row's own <code>Id</code>, and
 /// merges the truthful value into the row -- so the screen and the read tool see one answer
-/// (AD-36). It stays out of the table, the filter and the sort: <file>EXPERIENCE.md</file>
-/// declares this screen's columns as "name, namespace, type, last run, next run" and this story
-/// adds none.</p>
+/// (AD-36). It is the Suspended column, which is what makes a suspend or a resume visible in the
+/// row: after either, the LIST's field still reads the old value while <code>INFO</code> reads the
+/// new one. It stays out of the filter and the sort.</p>
 /// <p>The read declares no <code>fingerprintExcludes</code>. Measured on <code>ocupilot-ci</code>,
 /// 2026-09-21 over a 20-second window: none of the eight fields <code>INFO</code> answers moved
 /// while a task was suspended. The reason it generalizes past that window <b>(inference)</b> is
@@ -59,11 +59,13 @@
 /// <p><b>The classic page is <code>%CSP.UI.Portal.TaskSchedule</code></b>, spelled in the class's own
 /// case because the custom-resource lookup does not case-fold (AD-44). As a list archetype it links
 /// out to nothing.</p>
-/// <p><b>It declares no primary or row action</b>, so its empty state names what to do next rather
-/// than inviting the agent. Its one write tool, <class>OcuPilot.Screen.Tool.TaskResume</class>, is
-/// the agent's (AD-51); the Run, Suspend, Resume and Delete row actions and their handlers are
-/// Story 7.6's, together, because an inert control shipping ahead of its handler is forbidden
-/// (<file>epics.md</file>:3935).</p>
+/// <p><b>It declares four row actions</b>, each carried out for both callers by one write tool
+/// (AD-51, AD-53): Run (<class>OcuPilot.Screen.Tool.TaskScheduleRun</class>), Suspend
+/// (<class>OcuPilot.Screen.Tool.TaskSuspend</class>), Resume
+/// (<class>OcuPilot.Screen.Tool.TaskResume</class>) and Delete
+/// (<class>OcuPilot.Screen.Tool.TaskDelete</class>). Only Delete opens a dialog. None carries a
+/// self-protection rule: a system task is deletable behind the typed name. Because the list is
+/// write-capable, its empty state invites the agent.</p>
 Class OcuPilot.Screen.Descriptor.TaskScheduleList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -80,12 +82,13 @@ XData Declaration
   "refreshRates": [5, 10, 30, 60],
   "privileges": [{"resource": "%Admin_Task", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
   "entityType": "task",
+  "entityLabelKey": "proposalEntityTask",
   "secondaryEntityTypes": [],
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "composite", "parts": ["Id"]},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "run", "selfProtection": ""}, {"id": "suspend", "selfProtection": ""}, {"id": "resume", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}],
   "context": {"fields": ["Name", "Type", "Namespace", "Description", "Id", "LastFinished", "NextScheduled", "Suspended"], "secretFields": []},
   "emptyStateKey": "taskListEmpty",
   "commandAliases": ["task manager"],
@@ -108,11 +111,12 @@ XData Declaration
       {"field": "Name", "labelKey": "tableColumnName", "kind": "name"},
       {"field": "Namespace", "labelKey": "headerNamespaceLabel", "kind": "text"},
       {"field": "Type", "labelKey": "tableColumnType", "kind": "text"},
+      {"field": "Suspended", "labelKey": "taskColumnSuspended", "kind": "status"},
       {"field": "LastFinished", "labelKey": "taskColumnLastRun", "kind": "text"},
       {"field": "NextScheduled", "labelKey": "taskColumnNextRun", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "taskScheduleEmptyAgent"
   },
   "banner": {
     "source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"},

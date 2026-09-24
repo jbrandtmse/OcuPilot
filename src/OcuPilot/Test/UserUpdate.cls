@@ -3,7 +3,10 @@
 /// survives the round trip except the ones the diff names, the fingerprint refuses a target that
 /// moved, a pair the caller has lost refuses naming it, and each of the six refusals
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.User</method> can answer is reachable on its
-/// own.</p>
+/// own. And the Users list's row actions and the agent's delete and password tools (Story 7.2,
+/// AD-53, AD-56): every action over <code>POST /screens/permissions.users/action</code>, the
+/// protected accounts refused there with their published sentences, the closed value channel, and
+/// the password in nothing the write path stores.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, an account holding
 /// <code>%All</code>, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code> --
 /// <method>OnBeforeAllTests</method> refuses anywhere it does not, because this class creates and
@@ -65,6 +68,22 @@ Parameter DENIEDPAIR = "%Admin_Secure:USE";
 /// <code>%All</code> on the instance.</p>
 Parameter DECLAREDSERVICEACCOUNTS = "CSPSystem,_Ensemble,irisowner";
 
+/// <p>The probe account the row actions are driven against over the route (Story 7.2), and the one
+/// the agent's password and delete tools are confirmed against. Both are
+/// <class>OcuPilot.Test.ProposalFixture</class>'s, created in the method that uses them.</p>
+Parameter ROUTEUSER = "OcuPilotProbeUserRowActions";
+
+Parameter AGENTUSER = "OcuPilotProbeUserAgentWrites";
+
+/// <p>A principal holding the screen's two pairs and code read, which signs in to refuse its own
+/// removal (<code>PROHIBITED.CURRENTUSER</code>), and its role.</p>
+Parameter SELFUSER = "OcuPilotProbeUserSelf";
+
+Parameter SELFROLE = "OcuPilotProbeUserSelfRole";
+
+/// <p>The route every row action is sent to, under the test helper's base path.</p>
+Parameter ACTIONPATH = "/screens/permissions.users/action";
+
 /// <p>Assert that <var>pAccounts</var> -- the shipped service-account set -- names every member
 /// <parameter>DECLAREDSERVICEACCOUNTS</parameter> declares.</p>
 Method RosterByName(pAccounts As %List)
@@ -107,6 +126,9 @@ Method OnBeforeAllTests() As %Status
 
 Method OnAfterAllTests() As %Status
 {
+    Do $ClassMethod(..#FIXTURE, "RemoveUser", ..#ROUTEUSER)
+    Do $ClassMethod(..#FIXTURE, "RemoveUser", ..#AGENTUSER)
+    Do ..RemoveSelfPrincipal()
     Do $ClassMethod(..#FIXTURE, "RemoveUser", $Parameter(..#FIXTURE, "USERALLHOLDER"))
     Do $ClassMethod(..#FIXTURE, "RemoveUser", $Parameter(..#FIXTURE, "USERALLHOLDERDISABLED"))
     Do $ClassMethod(..#FIXTURE, "RemoveUser", $Parameter(..#FIXTURE, "USERALLHOLDERSECOND"))
@@ -399,7 +421,7 @@ Method TestATargetThatMovedAfterTheMintIsRefused()
 /// pair. Driven through <class>OcuPilot.Test.ConfirmFixture</class>, so no grant on the instance
 /// changes and no write leaves.</p>
 /// <p>Mutation: delete the <method>MissingPair</method> branch from
-/// <method>OcuPilot.Kernel.Proposal.Confirm.Transition</method> -- this goes red.</p>
+/// <method>OcuPilot.Kernel.Proposal.Operation.Gate</method> -- this goes red.</p>
 Method TestAPairTheCallerHasLostRefusesNamingIt()
 {
     Set tFresh = $ClassMethod(..#SET, "UserObject", ..Target(), 1, $Parameter(..#FIXTURE, "USERINITIALROLE"))
@@ -567,7 +589,7 @@ Method TestTheCensusDoesNotCountAServiceAccountAsAHolder()
 /// <p><b>The armed-census legs are what make this about the role path.</b> With the census answering
 /// "yes" unconditionally, a payload that still grants <code>%All</code> is permitted and one that
 /// does not is refused -- so what is measured is
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.DePrivilegesLastAllHolder</method>'s own decision to
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.RemovesAdministration</method>'s own decision to
 /// consult the census, not the census's answer. The probe account holds <code>%All</code> through a
 /// custom role, so the payload side is read through the instance's recursion rather than by
 /// matching the literal name.</p>
@@ -924,6 +946,422 @@ Method TestTheUserRuleFoldsCaseTheWayTheInstanceResolvesIt()
     Set tSC = ..Fresh(tName _ " ", .tObject)
     Do $$$AssertStatusNotOK(tSC, "a trailing space resolves to no account")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("user", tName _ " "), tLower _ " ", "and the rule leaves it in place rather than inventing a resolution")
+}
+
+/// <p>One row action over the route as the test helper's own account, answering the HTTP status and
+/// the parsed envelope.</p>
+Method Act(pAction As %String, pId As %String, pValues As %DynamicObject = "", Output pStatus As %Integer, Output pBody) As %Status
+{
+    Set tRequest = {}
+    Do tRequest.%Set("action", pAction, "string")
+    Do tRequest.%Set("id", pId, "string")
+    If $IsObject(pValues) Do tRequest.%Set("values", pValues)
+    Quit ..Send(tRequest, .pStatus, .pBody)
+}
+
+/// <p>Send <var>pRequest</var> to the route as it stands, answering the HTTP status and the parsed
+/// envelope.</p>
+Method Send(pRequest As %DynamicObject, Output pStatus As %Integer, Output pBody) As %Status
+{
+    Quit ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#ACTIONPATH, .pStatus, .pBody, pRequest.%ToJSON())
+}
+
+/// <p>Assert <var>pBody</var> is the one envelope a refusal with <var>pCode</var> renders, at
+/// <var>pStatus</var>, with <var>pReason</var> where it is not <code>""</code>.</p>
+Method RefusedWith(pWhat As %String, pStatus As %Integer, pBody, pExpectedStatus As %Integer, pCode As %String, pReason As %String = "")
+{
+    Do $$$AssertEquals(pStatus, pExpectedStatus, pWhat _ ": answered " _ pExpectedStatus)
+    If '$IsObject(pBody) {
+        Do $$$AssertTrue(0, pWhat _ ": with an envelope, not '" _ $Get(pBody) _ "'")
+        Quit
+    }
+    Do $$$AssertEquals(pBody.%Get("code"), pCode, pWhat _ ": with " _ pCode)
+    If pReason '= "" Do $$$AssertEquals(pBody.%Get("reason"), pReason, pWhat _ ": and the published sentence")
+}
+
+/// <p>The login route's answer for <var>pUser</var> with <var>pPassword</var>, and the access token
+/// it minted in <var>pToken</var> when it answered 200.</p>
+Method Login(pUser As %String, pPassword As %String, Output pToken As %String) As %Integer
+{
+    Set pToken = ""
+    Set tBody = {}
+    Do tBody.%Set("user", pUser, "string")
+    Do tBody.%Set("password", pPassword, "string")
+    Kill tExtra
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot/login", "", "", .tStatus, .tRaw, .tHeaders, tBody.%ToJSON(), "application/json", .tExtra)
+    If $$$ISERR(tSC) Quit 0
+    If tStatus = 200 {
+        Try {
+            Set pToken = ##class(%DynamicObject).%FromJSON(tRaw).%Get("access_token")
+        } Catch {
+            Set pToken = ""
+        }
+    }
+    Quit tStatus
+}
+
+/// <p>Create <parameter>SELFUSER</parameter> with <parameter>SELFROLE</parameter>: the Users
+/// screen's two pairs and read on the install namespace's code database, and nothing else.</p>
+Method EnsureSelfPrincipal() As %Status
+{
+    Set tSC = ..RemoveSelfPrincipal()
+    If $$$ISERR(tSC) Quit tSC
+    Set tCode = ..CodeDatabaseResource()
+    If tCode = "" Quit $$$ERROR($$$GeneralError, "the install namespace's code database resource could not be resolved")
+    Set tMarker = $Parameter(..#FIXTURE, "USERMARKER")
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ##class(Security.Roles).Create(..#SELFROLE, tMarker, "%Admin_Secure:U,%DB_IRISSYS:R," _ tCode _ ":R", "")
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Quit tSC
+    Quit $ClassMethod(..#FIXTURE, "EnsureUser", ..#SELFUSER, ..#SELFROLE, 1, .tCreated)
+}
+
+/// <p>The resource guarding the install namespace's code database, whose read a principal needs to
+/// reach OcuPilot's dispatch class at all (AD-9, AD-21).</p>
+Method CodeDatabaseResource() As %String
+{
+    Set tResource = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
+        Set $NAMESPACE = "%SYS"
+        Set tNsObj = ##class(Config.Namespaces).Open(tNs)
+        Set tResource = ##class(SYS.Database).%OpenId(##class(Config.Databases).Open(tNsObj.Routines).Directory).ResourceName
+    } Catch ex {
+        Set tResource = ""
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tResource
+}
+
+/// <p>Remove <parameter>SELFUSER</parameter> and <parameter>SELFROLE</parameter>, each only where
+/// it carries the fixture's marker.</p>
+Method RemoveSelfPrincipal() As %Status
+{
+    Set tSC = $ClassMethod(..#FIXTURE, "RemoveUser", ..#SELFUSER)
+    Set tMarker = $Parameter(..#FIXTURE, "USERMARKER")
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Roles).Exists(..#SELFROLE) {
+            Kill tProps
+            If $$$ISOK(##class(Security.Roles).Get(..#SELFROLE, .tProps)) && ($Get(tProps("Description")) = tMarker) {
+                Set tSC = ##class(Security.Roles).Delete(..#SELFROLE)
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>AC1, AC2, AC4, AC5's instance half (Story 7.2, AD-53, AD-56): every Users row action reaches
+/// <code>POST /screens/permissions.users/action</code> and changes the probe account on the
+/// instance -- disable and enable, the change-on-login flag, a role added and removed as a delta
+/// over the fresh read (a role another session added meanwhile survives), the password set exactly
+/// as given, and the delete. Around them: a held-role add, an unheld remove and an unknown role are
+/// 400, and an undeclared value is 400 with nothing written.</p>
+/// <p>Mutation (Rule 19): build <code>Roles</code> from the value alone in
+/// <method>OcuPilot.Screen.Tool.UserUpdate.ScreenActionDelta</method> instead of over the fresh read
+/// -- the concurrent-change leg goes red; drop <code>Security.User/CHANGEPWD</code> from
+/// <parameter>OcuPilot.Port.AdminPort.RENAMEDTYPES</parameter> -- the password legs go red.</p>
+Method TestEveryRowActionReachesTheRouteAndChangesTheAccount()
+{
+    Set tName = ..#ROUTEUSER
+    Do $ClassMethod(..#FIXTURE, "RemoveUser", tName)
+    Set tSC = $ClassMethod(..#FIXTURE, "EnsureUser", tName, $Parameter(..#FIXTURE, "USERINITIALROLE"), 1, .tCreated)
+    Do $$$AssertStatusOK(tSC, "the probe account is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+
+    Do ..Act("disable", tName, "", .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "disable answers 200")
+    If $IsObject(tBody) Do $$$AssertEquals(tBody.%Get("action"), "updated", "publishing the updated action")
+    Do $$$AssertEquals(+$ClassMethod(..#FIXTURE, "UserField", tName, "Enabled"), 0, "and the account is disabled")
+    Do ..Act("enable", tName, "", .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "enable answers 200")
+    Do $$$AssertEquals(+$ClassMethod(..#FIXTURE, "UserField", tName, "Enabled"), 1, "and the account is enabled again")
+
+    ; AD-56 (ii): a value the action does not declare is refused before anything is read.
+    Do ..Act("enable", tName, {"Role": "%Developer"}, .tStatus, .tBody)
+    Do ..RefusedWith("an undeclared value", tStatus, .tBody, 400, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS)
+    Do ..Act("add-role", tName, {"Role": "%Developer", "Password": "x"}, .tStatus, .tBody)
+    Do ..RefusedWith("a value name the action does not declare", tStatus, .tBody, 400, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS)
+    ; The body and each value are closed shapes too: a stray body key, a values that is not an
+    ; object, a value that is not a string and an empty value are each refused before any read.
+    Do ..Send({"action": "enable", "id": (tName), "extra": 1}, .tStatus, .tBody)
+    Do ..RefusedWith("a stray body key", tStatus, .tBody, 400, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS)
+    Do ..Send({"action": "add-role", "id": (tName), "values": "%Developer"}, .tStatus, .tBody)
+    Do ..RefusedWith("values that is not an object", tStatus, .tBody, 400, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS)
+    Do ..Send({"action": "add-role", "id": (tName), "values": {}}, .tStatus, .tBody)
+    Do ..RefusedWith("values missing the declared name", tStatus, .tBody, 400, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS)
+    Do ..Send({"action": "add-role", "id": (tName), "values": {"Role": 5}}, .tStatus, .tBody)
+    Do ..RefusedWith("a value that is not a string", tStatus, .tBody, 400, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS)
+    Do ..Send({"action": "set-password", "id": (tName), "values": {"Password": ""}}, .tStatus, .tBody)
+    Do ..RefusedWith("an empty password", tStatus, .tBody, 400, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS)
+    Do $$$AssertEquals(..Login(tName, $Parameter(..#FIXTURE, "USERPASSWORD"), .tIgnored), 200, "the account still signs in with its own password")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "UserField", tName, "Roles"), $Parameter(..#FIXTURE, "USERINITIALROLE"), "and nothing was written")
+
+    ; A role another session adds after the list loaded survives this one's add (delta over the fresh read).
+    Set tMoved = $Parameter(..#FIXTURE, "USERINITIALROLE") _ ",%DB_USER"
+    Set tOrigNS = $NAMESPACE
+    Set $NAMESPACE = "%SYS"
+    Kill tProps
+    Set tProps("Roles") = tMoved
+    Set tMoveSC = ##class(Security.Users).Modify(tName, .tProps)
+    Set $NAMESPACE = tOrigNS
+    Do $$$AssertStatusOK(tMoveSC, "another session adds %DB_USER")
+    Do ..Act("add-role", tName, {"Role": ($Parameter(..#FIXTURE, "USERORDINARYROLE"))}, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "add-role answers 200")
+    Set tRoles = "," _ $ZConvert($ClassMethod(..#FIXTURE, "UserField", tName, "Roles"), "U") _ ","
+    Do $$$AssertTrue(tRoles [ ",%DEVELOPER,", "the added role is held: " _ tRoles)
+    Do $$$AssertTrue(tRoles [ ",%DB_USER,", "and the concurrently added one survived")
+    Do $$$AssertTrue(tRoles [ ",%SQL,", "and so did the original")
+    Do ..Act("add-role", tName, {"Role": "%developer"}, .tStatus, .tBody)
+    Do ..RefusedWith("adding a held role in another case", tStatus, .tBody, 400, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS)
+    Do ..Act("add-role", tName, {"Role": "OcuPilotProbeNoSuchRole"}, .tStatus, .tBody)
+    Do ..RefusedWith("adding a role the instance does not hold", tStatus, .tBody, 400, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS)
+    Do ..Act("remove-role", tName, {"Role": "%Developer"}, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "remove-role answers 200")
+    Set tRoles = "," _ $ZConvert($ClassMethod(..#FIXTURE, "UserField", tName, "Roles"), "U") _ ","
+    Do $$$AssertTrue('(tRoles [ ",%DEVELOPER,"), "the removed role is gone: " _ tRoles)
+    Do $$$AssertTrue(tRoles [ ",%DB_USER,", "and the others stay")
+    Do ..Act("remove-role", tName, {"Role": "%Developer"}, .tStatus, .tBody)
+    Do ..RefusedWith("removing a role the account does not hold", tStatus, .tBody, 400, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS)
+
+    ; AD-56: the flag is its own update write; the password is sent once, exactly as given.
+    Set tPassword = "OcuPilotRowPw9 "
+    Do ..Act("require-password-change", tName, "", .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "the change-on-login flag answers 200")
+    Do $$$AssertEquals(+$ClassMethod(..#FIXTURE, "UserField", tName, "ChangePassword"), 1, "and is set on the account")
+    Do ..Act("set-password", tName, "", .tStatus, .tBody)
+    Do ..RefusedWith("a set-password with no value", tStatus, .tBody, 400, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS)
+    Do ..Act("set-password", tName, {"Password": (tPassword)}, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "set-password answers 200")
+    If $IsObject(tBody) Do $$$AssertEquals((tBody.%ToJSON() [ tPassword), 0, "and its answer does not echo the password")
+    Do ..AssertNotLogged(tPassword)
+    ; Measured: the vendor's password change clears ChangePassword, so the flag written first is
+    ; gone after it -- which is why the client re-asserts it once the password has landed.
+    Do $$$AssertEquals(+$ClassMethod(..#FIXTURE, "UserField", tName, "ChangePassword"), 0, "the vendor's password change clears the flag")
+    Do $$$AssertEquals(..Login(tName, tPassword, .tToken), 200, "the account signs in with the password exactly as sent")
+    Do $$$AssertEquals(..Login(tName, $ZStrip(tPassword, ">W"), .tIgnored), 401, "and not with it trimmed")
+    Do ..Act("require-password-change", tName, "", .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "so the flag is written again after it")
+    Do $$$AssertEquals(+$ClassMethod(..#FIXTURE, "UserField", tName, "ChangePassword"), 1, "and the account must change its password at next sign-in")
+
+    Do ..Act("delete", tName, "", .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "delete answers 200")
+    If $IsObject(tBody) Do $$$AssertEquals(tBody.%Get("action"), "deleted", "publishing the deleted action")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "UserField", tName, "Name"), "", "and the account is gone")
+}
+
+/// <p>AC3 (Story 7.2, AD-10 as amended, AD-53): over the route, deleting or disabling
+/// <code>_SYSTEM</code>, a service account and the caller's own account are each refused 403 with
+/// their code and the published sentence, and nothing changes. The caller leg signs in as a
+/// principal holding the screen's own pairs and nothing more.</p>
+/// <p>Mutation (Rule 19): restore <method>OcuPilot.Kernel.Proposal.Prohibited.User</method>'s gate to
+/// a disable alone -- every delete leg goes red and the disables stay green.</p>
+Method TestAProtectedAccountIsRefusedOnTheRouteWithItsSentence()
+{
+    Set tService = $List($ClassMethod(..#SHIPPEDSET, "ServiceAccounts"), 1)
+    For tAction = "delete", "disable" {
+        Do ..Act(tAction, "_SYSTEM", "", .tStatus, .tBody)
+        Do ..RefusedWith(tAction _ " _SYSTEM", tStatus, .tBody, 403, $Parameter(..#SHIPPEDSET, "SYSTEMACCOUNT"), $Parameter(..#SHIPPEDSET, "SYSTEMACCOUNTREASON"))
+        Do ..Act(tAction, tService, "", .tStatus, .tBody)
+        Do ..RefusedWith(tAction _ " " _ tService, tStatus, .tBody, 403, $Parameter(..#SHIPPEDSET, "SERVICEACCOUNT"), $Parameter(..#SHIPPEDSET, "SERVICEACCOUNTREASON"))
+    }
+    Do $$$AssertEquals(+$ClassMethod(..#FIXTURE, "UserField", "_SYSTEM", "Enabled"), 1, "_SYSTEM is still enabled")
+    Do $$$AssertEquals(+$ClassMethod(..#FIXTURE, "UserField", tService, "Enabled"), 1, tService _ " is still enabled")
+
+    Set tSC = ..EnsureSelfPrincipal()
+    Do $$$AssertStatusOK(tSC, "the self principal is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    For tAction = "delete", "disable" {
+        Set tRequest = {}
+        Do tRequest.%Set("action", tAction, "string")
+        Do tRequest.%Set("id", $ZConvert(..#SELFUSER, "L"), "string")
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot" _ ..#ACTIONPATH, ..#SELFUSER, $Parameter(..#FIXTURE, "USERPASSWORD"), .tStatus, .tRaw, .tHeaders, tRequest.%ToJSON(), "application/json")
+        Do $$$AssertStatusOK(tSC, tAction _ " of the caller's own account completes")
+        Set tBody = ""
+        Try {
+            Set tBody = ##class(%DynamicObject).%FromJSON(tRaw)
+        } Catch {
+            Set tBody = tRaw
+        }
+        Do ..RefusedWith(tAction _ " of the caller's own account, in another case", tStatus, .tBody, 403, $Parameter(..#SHIPPEDSET, "CURRENTUSER"), $Parameter(..#SHIPPEDSET, "CURRENTUSERREASON"))
+    }
+    Do $$$AssertEquals(+$ClassMethod(..#FIXTURE, "UserField", ..#SELFUSER, "Enabled"), 1, "and the caller's account is still there and enabled")
+    Do ..RemoveSelfPrincipal()
+}
+
+/// <p>AC3 (Story 7.2): a <code>remove-role</code> of <code>%All</code> from the last holder is
+/// refused <code>PROHIBITED.LASTALLHOLDER</code>. The census can be armed only in this process, so
+/// the leg drives the two halves the route runs -- the tool's own delta over the account's real
+/// fresh read, then the shared gate (<method>OcuPilot.Kernel.Proposal.Operation.Gate</method>) with
+/// the armed set -- rather than the route itself. Disarmed, the same strip is permitted, because
+/// this instance has other holders.</p>
+Method TestAnAllStripOfTheLastHolderIsRefusedAtTheSharedGate()
+{
+    Set tName = $Parameter(..#FIXTURE, "USERALLHOLDER")
+    Set tAllRole = $Parameter(..#FIXTURE, "USERALLROLE")
+    Do $$$AssertStatusOK(..Fresh(tName, .tFresh), "the holder reads fresh")
+    If '$IsObject(tFresh) Quit
+    Set tSC = ##class(OcuPilot.Screen.Tool.UserUpdate).ScreenActionDelta("remove-role", {"Role": (tAllRole)}, tFresh, .tArgs, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the delta is computed")
+    Do $$$AssertEquals(tProblem, "", "over a role the account holds")
+    Do tArgs.%Set("Name", tName, "string")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Merge(tFresh, tArgs, "Name", ##class(OcuPilot.Screen.Tool.UserUpdate).SettableFields(), .tPayload, .tDiff, .tUnchanged, .tProblem)
+    Do $$$AssertStatusOK(tSC, "and merged over the fresh read")
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve(..#TOOL, .tTool)
+    Set tRef = $ClassMethod(..#SET, "Reference", tName, "user")
+    Do $ClassMethod(..#FIXTURE, "Arm", tFresh.%ToJSON())
+    For tArmed = 0, 1 {
+        Do $ClassMethod(..#FIXTURE, "ArmLastAllHolder", $Select(tArmed: 1, 1: ""))
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Operation).Gate(tTool, tRef, tPayload.%ToJSON(), tDiff.%ToJSON(), tArgs.%ToJSON(), $Username, ..#SET, "", .tPairs, .tRefused, .tHttp, .tCode, .tDetail)
+        Do $$$AssertStatusOK(tSC, "the gate answers")
+        If tArmed {
+            Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "LASTALLHOLDER"), "armed as the last holder, the strip is refused")
+            Do $$$AssertEquals(tHttp, 403, "at 403")
+        } Else {
+            Do $$$AssertEquals(tRefused, 0, "disarmed, this instance's other holders permit it, code was '" _ tCode _ "'")
+        }
+    }
+}
+
+/// <p>AC2, AC7 (Story 7.2, AD-6, AD-35, AD-56): the agent cannot supply a password -- the mint
+/// refuses one; a password proposal stores none; confirmed with the password typed on the card, the
+/// write lands and the account signs in with it; the delete proposal's confirm removes the account
+/// and the token minted before it is refused after it; and no ledger row, proposal row,
+/// <code>^ERRORS</code> entry or <file>messages.log</file> line holds the password.</p>
+/// <p>Mutation (Rule 19): store the arguments' <code>Password</code> in
+/// <method>OcuPilot.Kernel.Proposal.Mint.Mint</method>, or drop <code>Security.User/CHANGEPWD</code>
+/// from <parameter>OcuPilot.Port.AdminPort.RENAMEDTYPES</parameter> -- the residue or the sign-in
+/// leg goes red.</p>
+Method TestTheAgentsPasswordAndDeleteLandAndThePasswordIsNowhere()
+{
+    Set tName = ..#AGENTUSER
+    Set tPassword = "OcuPilotAgentPw" _ $Job _ "a "
+    Do $ClassMethod(..#FIXTURE, "RemoveUser", tName)
+    ; The screen's own pairs and code read, so the token it signs in with is served before the
+    ; delete -- which is what makes the refusal after it a measurement rather than a principal that
+    ; never had access.
+    Set tSC = ..EnsureSelfPrincipal()
+    Do $$$AssertStatusOK(tSC, "the probe role is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tSC = $ClassMethod(..#FIXTURE, "EnsureUser", tName, ..#SELFROLE, 1, .tCreated)
+    Do $$$AssertStatusOK(tSC, "the probe account is created")
+    If $$$ISERR(tSC) Quit
+    Set tSC = $ClassMethod(..#FIXTURE, "SeedTurn", $Username, "completed", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "a completed probe turn is seeded")
+    If $$$ISERR(tSC) Quit
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(tTurnKey)
+
+    Set tSC = ##class(OcuPilot.Screen.Tool.UserPassword).View("", {"Name": (tName), "Password": (tPassword)}, 0, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "a password argument from the agent is refused")
+    Do $$$AssertEquals(tHttp, 400, "at 400")
+
+    ; A confirm carrying a key the screen does not declare is refused by the channel, and one that
+    ; supplies no password by the vendor (measured 400): neither sets anything.
+    Set tSC = ##class(OcuPilot.Screen.Tool.UserPassword).View("", {"Name": (tName)}, 0, .tBare, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "a first password proposal mints: " _ $System.Status.GetErrorText(tSC))
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    If $IsObject($Get(tBare)) {
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tBare.%Get("proposalId"), {"Password": (tPassword), "Other": "x"}, $Username, .tResult, .tHttp, .tCode, .tDetail)
+        Do $$$AssertStatusNotOK(tSC, "a confirm carrying an undeclared key is refused")
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tBare.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+        Do $$$AssertStatusNotOK(tSC, "a confirm with no password is refused, code '" _ tCode _ "'")
+        Do $$$AssertEquals(tCode, ##class(OcuPilot.Api.Error).#PORTVALIDATION, "by the vendor, so the proposal was open when it was asked")
+        Do $$$AssertEquals(..Login(tName, $Parameter(..#FIXTURE, "USERPASSWORD"), .tIgnored), 200, "and the account keeps its own password")
+    }
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(tTurnKey)
+
+    Set tSC = ##class(OcuPilot.Screen.Tool.UserPassword).View("", {"Name": (tName)}, 0, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the password proposal mints: " _ $System.Status.GetErrorText(tSC))
+    ; AD-40: confirm is user-originated, never from inside a turn.
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    If '$IsObject($Get(tProposal)) Quit
+    Set tKey = tProposal.%Get("proposalId")
+    Do $$$AssertEquals(tProposal.%Get("changed").%Get(0).%Get("field"), "Password", "its one row names the secret the card asks for")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tKey, {"Password": (tPassword)}, $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertStatusOK(tSC, "the confirm with the password succeeds: " _ tCode)
+    Do $$$AssertEquals(..Login(tName, tPassword, .tToken), 200, "the account signs in with the password exactly as typed")
+    Do $$$AssertEquals(..Login(tName, $ZStrip(tPassword, ">W"), .tIgnored), 401, "and not with it trimmed")
+    Do ..AssertNowhere(tPassword, tTurnKey, tKey)
+    If tToken '= "" {
+        Set tAnswer = ##class(OcuPilot.Test.Disabled).GetAs("/navigation", tToken)
+        Do $$$AssertEquals($Piece(tAnswer, "|", 1), 200, "the token the account signed in with is served before the delete: " _ tAnswer)
+    }
+
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(tTurnKey)
+    Set tSC = ##class(OcuPilot.Screen.Tool.UserDelete).View("", {"Name": (tName)}, 0, .tProposal, .tHttp, .tFault)
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    Do $$$AssertStatusOK(tSC, "the delete proposal mints")
+    If $IsObject($Get(tProposal)) {
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+        Do $$$AssertStatusOK(tSC, "the delete confirm succeeds: " _ tCode)
+        Do $$$AssertEquals($ClassMethod(..#FIXTURE, "UserField", tName, "Name"), "", "and the account is gone")
+    }
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    If tToken '= "" {
+        Set tAnswer = ##class(OcuPilot.Test.Disabled).GetAs("/navigation", tToken)
+        Do $$$AssertEquals($Piece(tAnswer, "|", 1), 401, "the token minted before the delete is refused after it: " _ tAnswer)
+    }
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurnKey), "this class removes the ledger rows it wrote")
+    Do $ClassMethod(..#FIXTURE, "RemoveUser", tName)
+    Do ..RemoveSelfPrincipal()
+}
+
+/// <p>Assert <var>pSecret</var> is in no ledger row of turn <var>pTurnKey</var>, in no field of
+/// proposal <var>pKey</var>, and nowhere <method>AssertNotLogged</method> looks.</p>
+Method AssertNowhere(pSecret As %String, pTurnKey As %String, pKey As %String)
+{
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Arguments, Fields, Target, Name FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(TurnKey) = ?", pTurnKey)
+    Set tRows = 0
+    While tRS.%Next() {
+        Set tRows = tRows + 1
+        Do $$$AssertEquals((tRS.%Get("Arguments") _ tRS.%Get("Fields") _ tRS.%Get("Target") _ tRS.%Get("Name")) [ pSecret, 0, "ledger row " _ tRows _ " holds no password")
+    }
+    Do $$$AssertTrue(tRows > 0, "the confirmed write left a ledger row to look in")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedByKey(pKey, .tFound, .tValues), "the proposal row reads back")
+    Set tField = ""
+    For {
+        Set tField = $Order(tValues(tField))
+        If tField = "" Quit
+        Do $$$AssertEquals($Get(tValues(tField)) [ pSecret, 0, "the proposal's " _ tField _ " holds no password")
+    }
+    Do ..AssertNotLogged(pSecret)
+}
+
+/// <p>Assert <var>pSecret</var> is in no <code>^ERRORS</code> entry of today in this namespace and
+/// on no line of <file>messages.log</file>.</p>
+Method AssertNotLogged(pSecret As %String)
+{
+    Set tHit = 0
+    Set tNode = $Name(^ERRORS(+$Horolog))
+    For {
+        Set tNode = $Query(@tNode)
+        If (tNode = "") || ($QSubscript(tNode, 1) '= +$Horolog) Quit
+        If $Get(@tNode) [ pSecret Set tHit = 1
+    }
+    Do $$$AssertEquals(tHit, 0, "no ^ERRORS entry of today holds it")
+    Set tHit = 0
+    Set tStream = ##class(%Stream.FileCharacter).%New()
+    Set tOpen = tStream.LinkToFile($System.Util.ManagerDirectory() _ "messages.log")
+    Do $$$AssertStatusOK(tOpen, "messages.log opens, so the search below reads something")
+    If $$$ISOK(tOpen) {
+        While 'tStream.AtEnd {
+            If tStream.ReadLine() [ pSecret Set tHit = 1
+        }
+    }
+    Set tStream = ""
+    Do $$$AssertEquals(tHit, 0, "and no messages.log line holds it")
 }
 
 }

@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { describe, expect, it } from 'vitest';
 
+import { AUDITING_FOCUS_ENABLE } from '../areas/security/auditing-config.page';
 import { AGENT_CONTEXT_PATH, AgentContext, NO_CONTEXT_INFO, type AgentContextInfo } from '../core/agent-context';
 import { AgentStatus, type Restraint, formatKillSwitch } from '../core/agent-status';
 import { NavigationService, UNGATED, type Verdict } from '../core/navigation';
@@ -263,17 +264,23 @@ describe('the agent co-pilot panel', () => {
   /**
    * Integration AC (Rule 1), Story 5.6 / AD-15 / FR-22: the panel is the consumer of
    * `GET /agent/restraint`'s `writesMarked`, and what it produces is the reserved slot filled with
-   * the published sentence and nothing beside it.
+   * the published sentence, its link and -- for an OcuPilot administrator -- its action (Story 7.4).
    *
    * mutation: render the banner outside `data-slot="not-marked"` (as a sibling of the slot div)
    * -> the slot-order assertion below goes red, because `.ocu-panel-banners > *` gains a member.
    * Second mutation: make `writesNotMarked` read `restraint().writesMarked` -> the banner is
-   * absent and the first assertions go red.
+   * absent and the first assertions go red. Third (Rule 19, AC3): drop the banner anchor -> the
+   * link assertions go red.
    */
-  it('AC: writesMarked false fills the reserved not-marked slot with the banner sentence alone', async () => {
-    // One enabled definition, so the reminder banner is not in the way and the slot list below is
-    // this story's banner beside the one slot Story 4.5 already reserved.
-    const { host } = await mount({ rows: [{ enabled: true }], restraint: { writesMarked: false } });
+  it('AC: writesMarked false fills the reserved not-marked slot with the sentence and, for every user, its link', async () => {
+    // One enabled definition, so the reminder banner is not in the way; a caller the map refuses
+    // the Definitions list, so this is a user who is not an OcuPilot administrator.
+    const { host, fixture } = await mount({
+      rows: [{ enabled: true }],
+      restraint: { writesMarked: false },
+      verdict: DENIED,
+      url: '/?ns=USER',
+    });
     const body = host.querySelector('.ocu-panel-body') as HTMLElement;
 
     const slot = body.querySelector('[data-slot="not-marked"]') as HTMLElement;
@@ -283,10 +290,12 @@ describe('the agent co-pilot panel', () => {
     expect(banner.querySelector('.ocu-banner-message')?.textContent?.trim()).toBe(
       STRINGS.auditingOffBanner
     );
-    // The sentence alone: the published link and action stay unrendered until Story 7.4.
-    expect(slot.querySelector('a')).toBeNull();
+    const link = slot.querySelector('a.ocu-panel-banner-link') as HTMLAnchorElement;
+    expect(link).not.toBeNull();
+    expect(link.textContent?.trim()).toBe(STRINGS.auditingConfigurationLink);
+    expect(link.getAttribute('href')).toBe('security/auditing?ns=USER');
+    // The action is an administrator's alone.
     expect(slot.querySelector('button')).toBeNull();
-    expect(slot.textContent).not.toContain(STRINGS.auditingConfigurationLink);
     expect(slot.textContent).not.toContain(STRINGS.auditingTurnOnAction);
     // Nothing anywhere says marking IS working, which is what makes a stale fact acceptable.
     expect(body.textContent).not.toContain('are being marked');
@@ -296,6 +305,30 @@ describe('the agent co-pilot panel', () => {
       (node) => node.id || node.getAttribute('data-slot')
     );
     expect(slots).toEqual(['not-marked', 'lock']);
+
+    link.click();
+    await fixture.whenStable();
+    expect(TestBed.inject(Router).url).toBe('/security/auditing?ns=USER');
+  });
+
+  it('AC3: an administrator also gets "Turn auditing on", which opens the screen asking it to focus that control', async () => {
+    const { host, fixture } = await mount({
+      rows: [{ enabled: true }],
+      restraint: { writesMarked: false },
+      url: '/?ns=USER',
+    });
+    const slot = host.querySelector('[data-slot="not-marked"]') as HTMLElement;
+    expect(slot.querySelector('a.ocu-panel-banner-link')?.textContent?.trim()).toBe(STRINGS.auditingConfigurationLink);
+    const action = slot.querySelector('button[data-auditing-turn-on]') as HTMLButtonElement;
+    expect(action).not.toBeNull();
+    expect(action.classList.contains('ocu-button-text')).toBe(true);
+    expect(action.textContent?.trim()).toBe(STRINGS.auditingTurnOnAction);
+
+    action.click();
+    await fixture.whenStable();
+    const router = TestBed.inject(Router);
+    expect(router.url).toBe('/security/auditing?ns=USER');
+    expect(router.lastSuccessfulNavigation()?.extras.state).toEqual({ [AUDITING_FOCUS_ENABLE]: true });
   });
 
   it('AC: an answered instance that is marking shows no banner in that slot', async () => {

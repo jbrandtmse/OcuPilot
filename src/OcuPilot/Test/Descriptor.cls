@@ -53,6 +53,182 @@ Method TestTheProductionRosterValidates()
     Do $$$AssertStatusOK(tSC, "and the refusal travels in the status too")
 }
 
+/// <p>DW-1099: the shape of every shipped read, pinned against a committed table.</p>
+/// <p>Each <code>&lt;screen/&gt;</code> row names a descriptor without its package and carries
+/// that screen's <code>read.filter</code>, its <code>read.sort.fields</code> and its per-column
+/// <code>field:kind</code>, comma-separated in declaration order. Only screens that declare a
+/// <code>read</code> have a row; a screen with none has no table to describe.</p>
+/// <p><b>Equality with <code>read.fields</code> is not the invariant.</b> Measured on this build:
+/// <code>DatabaseVolumeList</code> filters on two of its six fields and sorts on all six,
+/// <code>LogMessageViewer</code> sorts on two of the three it filters on, and
+/// <code>ServiceList</code> filters on four while sorting on two -- so a sweep asserting the three
+/// sets equal would refuse declarations that are deliberate. The table records what each screen
+/// declares, and the sweep asserts the two agree in both directions.</p>
+XData ReadShapes
+{
+<shapes>
+<screen name="AgentDefinitionList" filter="name,provider,model" sort="name,provider,model" kinds="name:name,provider:text,model:text,enabled:status,default:status"/>
+<screen name="AuditList" filter="TimeStamp,EventSource,EventType,Event,Username,Pid,Namespace,Description" sort="TimeStamp,EventSource,EventType,Event,Username,Pid,Namespace,Description" kinds="TimeStamp:text,EventSource:text,EventType:text,Event:name,Username:text,Pid:identifier,Namespace:text,Description:text"/>
+<screen name="AuditSystemEventList" filter="EventName,Enabled,Total,Written,Lost" sort="EventName,Enabled,Total,Written,Lost" kinds="EventName:name,Enabled:status,Total:number,Written:number,Lost:number"/>
+<screen name="AuditUserEventList" filter="EventName,Enabled,Total,Written,Lost" sort="EventName,Enabled,Total,Written,Lost" kinds="EventName:name,Enabled:status,Total:number,Written:number,Lost:number"/>
+<screen name="AuditingConfig" filter="Enabled" sort="Enabled" kinds=""/>
+<screen name="DatabaseDetails" filter="Directory,MaxSize,ExpansionSize,NewVolumeThreshold,NewVolumeDirectory,ResourceName,NewGlobalIsKeep,NewGlobalCollation,ClusterMountMode,ReadOnly,GlobalJournalState,Size,AvailableSpace,DiskFree,Mounted" sort="Directory,MaxSize,ExpansionSize,NewVolumeThreshold,NewVolumeDirectory,ResourceName,NewGlobalIsKeep,NewGlobalCollation,ClusterMountMode,ReadOnly,GlobalJournalState,Size,AvailableSpace,DiskFree,Mounted" kinds="Directory:name,Size:number,MaxSize:number,AvailableSpace:number,DiskFree:text,Mounted:status,ExpansionSize:number,NewVolumeThreshold:number,NewVolumeDirectory:identifier,ResourceName:identifier,NewGlobalIsKeep:status,NewGlobalCollation:number,ClusterMountMode:status,ReadOnly:status,GlobalJournalState:status"/>
+<screen name="DatabaseFreeSpace" filter="Directory,Size,AvailableSpace,DiskFree,Mounted" sort="Directory,Size,AvailableSpace,DiskFree" kinds="Directory:name,Size:number,AvailableSpace:number,DiskFree:text,Mounted:text"/>
+<screen name="DatabaseList" filter="Directory,Size,MaxSize,Status,Resource" sort="Directory,Size,MaxSize,Status,Resource" kinds="Directory:name,Size:number,MaxSize:text,Status:text,Resource:identifier"/>
+<screen name="DatabaseVolumeList" filter="VolumeDirectory,File" sort="VolumeNumber,File,VolumeDirectory,Size,VolumeDirectoryTotalSize,DiskFree" kinds="File:name,VolumeNumber:number,VolumeDirectory:identifier,Size:number,VolumeDirectoryTotalSize:number,DiskFree:number"/>
+<screen name="DeviceList" filter="Name,PhysicalDevice,Type,SubType,Description,Alias" sort="Name,PhysicalDevice,Type,SubType,Description,Alias" kinds="Name:name,PhysicalDevice:identifier,Type:text,SubType:text,Description:text,Alias:number"/>
+<screen name="LdapConfigList" filter="Name,Description" sort="Name,Description" kinds="Name:name,Enabled:status,Description:text"/>
+<screen name="LockList" filter="Pid,OSUserName,RoutineInfo,ModeCount,Reference,Directory,System" sort="Pid,OSUserName,RoutineInfo,ModeCount,Reference,Directory,System" kinds="Pid:name,OSUserName:text,RoutineInfo:identifier,ModeCount:text,Reference:identifier,Directory:identifier,System:text"/>
+<screen name="LogAlertViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
+<screen name="LogMessageViewer" filter="time,severity,text" sort="time,severity" kinds="time:name,severity:status,text:text"/>
+<screen name="OAuthClientTab" filter="ApplicationName,IssuerEndpoint,ClientType,DefaultScope" sort="ApplicationName,IssuerEndpoint,ClientType,DefaultScope" kinds="ApplicationName:name,IssuerEndpoint:text,ClientType:text,DefaultScope:text"/>
+<screen name="OAuthResourceServerTab" filter="Name,ServerDefinition" sort="Name,ServerDefinition" kinds="Name:name,ServerDefinition:text"/>
+<screen name="OAuthServerClientTab" filter="Name,ClientId,ClientType,RedirectURL,Description" sort="Name,ClientId,ClientType,RedirectURL,Description" kinds="Name:name,ClientId:identifier,ClientType:text,RedirectURL:text,Description:text"/>
+<screen name="OAuthServerDescriptionTab" filter="IssuerEndpoint" sort="IssuerEndpoint,ClientCount,ResourceCount" kinds="IssuerEndpoint:name,ClientCount:number,ResourceCount:number"/>
+<screen name="OAuthServerTab" filter="IssuerEndpoint,Metadata.scopes_supported,Metadata.grant_types_supported,SigningAlgorithm,EncryptionAlgorithm,KeyAlgorithm,ServerCredentials" sort="IssuerEndpoint,Metadata.scopes_supported,Metadata.grant_types_supported,SigningAlgorithm,EncryptionAlgorithm,KeyAlgorithm,ServerCredentials" kinds="IssuerEndpoint:name,Metadata.scopes_supported:text,Metadata.grant_types_supported:text,SigningAlgorithm:text,EncryptionAlgorithm:text,KeyAlgorithm:text,ServerCredentials:text"/>
+<screen name="OpenApiViewer" filter="Path,Verb,Summary" sort="Order,Path,Verb" kinds="Path:name,Verb:text,Summary:text"/>
+<screen name="ProcessDetails" filter="Pid,ParentPid,UserName,LoginRoles,EscalatedRoles,OSUserName,NameSpace,Priority,StartTimeUTC,CPUTime,CommandsExecuted,GlobalReferences,PrivateGlobalReferences,PrivateGlobalBlockCount,MemoryAllocated,MemoryPeak,MemoryUsed,CurrentDevice,OpenDevices,State,InTransaction,Routine,CurrentLineAndRoutine,Location,ClientNodeName,ClientExecutableName,ClientIPAddress" sort="Pid,ParentPid,UserName,LoginRoles,EscalatedRoles,OSUserName,NameSpace,Priority,StartTimeUTC,CPUTime,CommandsExecuted,GlobalReferences,PrivateGlobalReferences,PrivateGlobalBlockCount,MemoryAllocated,MemoryPeak,MemoryUsed,CurrentDevice,OpenDevices,State,InTransaction,Routine,CurrentLineAndRoutine,Location,ClientNodeName,ClientExecutableName,ClientIPAddress" kinds="Pid:name,ParentPid:text,UserName:text,LoginRoles:text,EscalatedRoles:text,OSUserName:text,NameSpace:text,Priority:number,StartTimeUTC:text,CPUTime:number,CommandsExecuted:number,GlobalReferences:number,PrivateGlobalReferences:number,PrivateGlobalBlockCount:number,MemoryAllocated:number,MemoryPeak:number,MemoryUsed:number,CurrentDevice:text,OpenDevices:text,State:text,InTransaction:text,Routine:identifier,CurrentLineAndRoutine:identifier,Location:text,ClientNodeName:text,ClientExecutableName:text,ClientIPAddress:text"/>
+<screen name="ProcessList" filter="Pid,Username,Nspace,Routine,State" sort="Pid,Username,Nspace,Routine,State,Commands,Globals" kinds="Pid:name,Username:text,Nspace:text,Routine:identifier,State:text,Commands:number,Globals:number"/>
+<screen name="ResourceList" filter="Name,Description,PublicPermission,ResourceType" sort="Name,Description,PublicPermission,ResourceType" kinds="Name:name,Description:text,PublicPermission:text,ResourceType:text,AllowDelete:text"/>
+<screen name="RestApiList" filter="Name,Namespace,DispatchClass" sort="Name,Namespace,DispatchClass" kinds="Name:name,Namespace:identifier,DispatchClass:identifier,SpecBased:status,Enabled:status"/>
+<screen name="RoleList" filter="Name,Description,CreatedBy" sort="Name,Description,CreatedBy" kinds="Name:name,Description:text,CreatedBy:text,EscalationOnly:text"/>
+<screen name="ServiceList" filter="Name,Description,AuthenticationMethods,AllowedConnections" sort="Name,Description" kinds="Name:name,Enabled:status,AuthenticationMethods:text,AllowedConnections:identifier,Description:text"/>
+<screen name="SslConfigList" filter="Name,Description,Type" sort="Name,Description,Type" kinds="Name:name,Description:text,Enabled:status,Type:text"/>
+<screen name="SystemUsage" filter="Usage.AllGlobalReferences,Usage.GlobalUpdateReferences,Usage.RoutineCalls,Usage.LogicalBlockRequests,Usage.BlockReads,Usage.BlockWrites,Usage.JournalEntries,Usage.JournalBlockWrites,Usage.LastUpdate,SharedMemory.SMHAllocated,SharedMemory.SMHUsed,SharedMemory.SMHAvailable,Dashboard.Performance.GlobalRefsPerSecond,Dashboard.Performance.CacheEfficiency,Dashboard.SystemUsage.DatabaseSpace,Dashboard.SystemUsage.JournalSpace,Dashboard.SystemUsage.LockTable,Dashboard.SystemUsage.WriteDaemon" sort="Usage.AllGlobalReferences,Usage.GlobalUpdateReferences,Usage.RoutineCalls,Usage.LogicalBlockRequests,Usage.BlockReads,Usage.BlockWrites,Usage.JournalEntries,Usage.JournalBlockWrites,Usage.LastUpdate,SharedMemory.SMHAllocated,SharedMemory.SMHUsed,SharedMemory.SMHAvailable,Dashboard.Performance.GlobalRefsPerSecond,Dashboard.Performance.CacheEfficiency,Dashboard.SystemUsage.DatabaseSpace,Dashboard.SystemUsage.JournalSpace,Dashboard.SystemUsage.LockTable,Dashboard.SystemUsage.WriteDaemon" kinds="Usage.AllGlobalReferences:number,Usage.GlobalUpdateReferences:number,Usage.RoutineCalls:number,Usage.LogicalBlockRequests:number,Usage.BlockReads:number,Usage.BlockWrites:number,Usage.JournalEntries:number,Usage.JournalBlockWrites:number,Usage.LastUpdate:name,SharedMemory.SMHAllocated:number,SharedMemory.SMHUsed:number,SharedMemory.SMHAvailable:number,Dashboard.Performance.GlobalRefsPerSecond:number,Dashboard.Performance.CacheEfficiency:number,Dashboard.SystemUsage.DatabaseSpace:text,Dashboard.SystemUsage.JournalSpace:text,Dashboard.SystemUsage.LockTable:text,Dashboard.SystemUsage.WriteDaemon:text"/>
+<screen name="TaskDetails" filter="Name,Description,NameSpace,TaskClass,Priority,RunAsUser,TimePeriod,TimePeriodEvery,TimePeriodDay,DailyFrequency,DailyFrequencyTime,DailyIncrement,DailyStartTime,DailyEndTime,StartDate,EndDate,Type,Suspended,Error,LastStarted,LastFinished,NextScheduled" sort="Name,Description,NameSpace,TaskClass,Priority,RunAsUser,TimePeriod,TimePeriodEvery,TimePeriodDay,DailyFrequency,DailyFrequencyTime,DailyIncrement,DailyStartTime,DailyEndTime,StartDate,EndDate,Type,Suspended,Error,LastStarted,LastFinished,NextScheduled" kinds="Name:name,Description:text,NameSpace:text,Type:text,Suspended:status,TaskClass:text,Priority:text,RunAsUser:text,LastStarted:text,LastFinished:text,NextScheduled:text,Error:text"/>
+<screen name="TaskHistoryList" filter="Name,Namespace,Status,Result,Username,Routine" sort="LastStart,Completed,Name,Namespace,Status,Result,Username,LogDatetime" kinds="LastStart:text,Completed:text,Name:name,Status:text,Result:text,Username:text,Namespace:text"/>
+<screen name="TaskOnDemandList" filter="Name,Namespace,Type,Description" sort="Name,Namespace,Type,LastFinished,NextScheduled" kinds="Name:name,Namespace:text,Type:text,Description:text,LastFinished:text,NextScheduled:text"/>
+<screen name="TaskRunList" filter="Name,Namespace,Status,Result,Username,Routine" sort="LastStart,Completed,Name,Namespace,Status,Result,Username,LogDatetime" kinds="LastStart:text,Completed:text,Name:name,Status:text,Result:text,Username:text,Namespace:text"/>
+<screen name="TaskScheduleList" filter="Name,Namespace,Type,Description" sort="Name,Namespace,Type,Description,LastFinished,NextScheduled" kinds="Name:name,Namespace:text,Type:text,Suspended:status,LastFinished:text,NextScheduled:text"/>
+<screen name="TaskUpcomingList" filter="Name,Namespace" sort="Datetime,Name,Namespace" kinds="Datetime:text,Name:name,Namespace:text,Suspended:status"/>
+<screen name="UserList" filter="Name,FullName,Type,Roles" sort="Name,FullName,Type,Roles" kinds="Name:name,FullName:text,Enabled:status,Expired:text,Type:text,Roles:identifier"/>
+<screen name="WalletCollectionList" filter="Name,UseResource,EditResource" sort="Name,UseResource,EditResource" kinds="Name:name,UseResource:text,EditResource:text"/>
+<screen name="WalletSecretList" filter="Name,Type" sort="Name,Type" kinds="Name:name,Type:text"/>
+<screen name="WebAppList" filter="Name,Namespace,Type,DispatchClass,Resource" sort="Name,Namespace,Type,DispatchClass,Resource" kinds="Name:name,Namespace:identifier,Type:text,Enabled:status,DispatchClass:identifier,Resource:identifier"/>
+<screen name="X509CredentialList" filter="Alias,SubjectDN,IssuerDN" sort="Alias,SubjectDN,IssuerDN,ValidityNotAfter" kinds="Alias:name,SubjectDN:text,IssuerDN:text,ValidityNotBefore:text,ValidityNotAfter:text"/>
+</shapes>
+}
+
+/// <p>DW-1099 -- every shipped descriptor's declared read shape is the one the committed table
+/// records, and the table names every screen that declares a read.</p>
+/// <p><b>Both directions.</b> A screen the table does not name is a read nobody reviewed; a row
+/// naming a screen the registry does not carry is a row that pins nothing. The comparison is over
+/// the registry's own enumeration, so a descriptor added without a row reddens here rather than
+/// shipping a filter, a sort order or a column kind nobody looked at.</p>
+/// <p>Mutation (Rule 19): change one column's <code>kind</code> in any shipped descriptor, or drop
+/// one name from a <code>read.filter</code> -- this goes red naming the screen and both
+/// spellings.</p>
+Method TestEveryShippedReadShapeMatchesTheCommittedTable()
+{
+    Set tSC = ..StoredShapes(.tStored)
+    Do $$$AssertStatusOK(tSC, "the committed read-shape table parses")
+    Set tSC = ..DerivedShapes(.tDerived)
+    Do $$$AssertStatusOK(tSC, "the registry enumerates the shipped reads")
+
+    Set tDerivedCount = 0
+    Set tName = ""
+    For {
+        Set tName = $Order(tDerived(tName))
+        If tName = "" Quit
+        Set tDerivedCount = tDerivedCount + 1
+        If '$Data(tStored(tName)) {
+            Do $$$AssertTrue(0, tName _ " declares a read and the committed table names it")
+            Continue
+        }
+        Do $$$AssertEquals($List(tDerived(tName), 1), $List(tStored(tName), 1), tName _ ": read.filter is the table's")
+        Do $$$AssertEquals($List(tDerived(tName), 2), $List(tStored(tName), 2), tName _ ": read.sort.fields is the table's")
+        Do $$$AssertEquals($List(tDerived(tName), 3), $List(tStored(tName), 3), tName _ ": the column kinds are the table's")
+    }
+    Do $$$AssertTrue(tDerivedCount > 0, "the registry enumerated read-declaring screens at all (" _ tDerivedCount _ ")")
+
+    Set tStoredCount = 0
+    Set tName = ""
+    For {
+        Set tName = $Order(tStored(tName))
+        If tName = "" Quit
+        Set tStoredCount = tStoredCount + 1
+        Do $$$AssertTrue($Data(tDerived(tName)), tName _ " is a screen this instance carries")
+    }
+    Do $$$AssertEquals(tStoredCount, tDerivedCount, "and the two sides are the same size")
+}
+
+/// <p>The committed table as <var>pShapes</var>(name) =
+/// <code>$ListBuild(filter, sort, kinds)</code>.</p>
+ClassMethod StoredShapes(Output pShapes) As %Status
+{
+    Kill pShapes
+    Set tSC = $$$OK
+    Try {
+        Set tXData = ##class(%Dictionary.XDataDefinition).IDKEYOpen($ClassName(), "ReadShapes", , .tOpenSC)
+        If '$IsObject(tXData) {
+            Set tSC = $$$ERROR($$$GeneralError, "the committed read-shape table is missing")
+            Quit
+        }
+        Do tXData.Data.Rewind()
+        Set tSC = ##class(%XML.TextReader).ParseStream(tXData.Data, .tReader)
+        If $$$ISERR(tSC) Quit
+        While tReader.Read() {
+            If tReader.NodeType '= "element" Continue
+            If tReader.Name '= "screen" Continue
+            ; An absent attribute reads as "", never as the value of the one read before it.
+            Set tName = $Select(tReader.MoveToAttributeName("name"): tReader.Value, 1: "")
+            Set tFilter = $Select(tReader.MoveToAttributeName("filter"): tReader.Value, 1: "")
+            Set tSort = $Select(tReader.MoveToAttributeName("sort"): tReader.Value, 1: "")
+            Set tKinds = $Select(tReader.MoveToAttributeName("kinds"): tReader.Value, 1: "")
+            If tName = "" Continue
+            Set pShapes(tName) = $ListBuild(tFilter, tSort, tKinds)
+        }
+    } Catch ex {
+        Kill pShapes
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Every shipped descriptor that declares a read, as <var>pShapes</var>(name) =
+/// <code>$ListBuild(filter, sort, kinds)</code>, read from the registry's own enumeration.</p>
+ClassMethod DerivedShapes(Output pShapes) As %Status
+{
+    Kill pShapes
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tList)
+    If $$$ISERR(tSC) Quit tSC
+    Try {
+        For tI = 1:1:$ListLength(tList) {
+            Set tClass = $List(tList, tI)
+            Set tRead = $ClassMethod(tClass, "Read")
+            If '$IsObject(tRead) Continue
+            Set tSC = $ClassMethod(tClass, "DeclarationJson", .tObject)
+            If $$$ISERR(tSC) Quit
+            Set tSort = ""
+            If tRead.%GetTypeOf("sort") = "object" Set tSort = ..Joined(tRead.%Get("sort").%Get("fields"))
+            Set tKinds = ""
+            If tObject.%GetTypeOf("table") = "object" {
+                Set tIterator = tObject.%Get("table").%Get("columns").%GetIterator()
+                While tIterator.%GetNext(.tKey, .tColumn) {
+                    Set tKinds = tKinds _ $Select(tKinds = "": "", 1: ",") _ tColumn.%Get("field") _ ":" _ tColumn.%Get("kind")
+                }
+            }
+            Set pShapes($Piece(tClass, ".", 4, *)) = $ListBuild(..Joined(tRead.%Get("filter")), tSort, tKinds)
+        }
+    } Catch ex {
+        Kill pShapes
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p><var>pArray</var>'s members joined by commas, or <code>""</code>.</p>
+ClassMethod Joined(pArray As %DynamicArray) As %String [ Private ]
+{
+    Set tOut = ""
+    If '$IsObject(pArray) Quit tOut
+    Set tIterator = pArray.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ tValue
+    }
+    Quit tOut
+}
+
 /// <p>AC7 -- the web applications list's declaration passes the read grammar on its own, and its
 /// classic page names a class compiled on this instance, spelled in that class's own case: the
 /// custom-resource lookup does not case-fold, so a mis-cased name would silently union no
@@ -173,15 +349,10 @@ Method TestTheConfirmChannelRefusesACredentialNamedFieldItDoesNotDeclare()
     }
 }
 
-/// <p>Story 5.10's descriptor: the first <code>built: false</code> screen in this tree. It
-/// validates, its route and its tool identifier resolve to it, it declares the security area's own
-/// pairs, and it is absent from every surface a <b>built</b> screen appears on -- which is what lets
-/// the agent's write tool ship before Story 7.4 builds the screen.</p>
-/// <p>Mutation (Rule 19): flip its <code>"built"</code> key to true and recompile -- the mirror's
-/// own <code>BuiltArchetypeKey</code> gate would then require an Angular page for
-/// <code>form-page</code> (it has one, Story 4.2's), so what reddens here is the unbuilt
-/// assertions below and <class>OcuPilot.Test.SurfaceCoverage</class>'s screen roster.</p>
-Method TestTheAuditingConfigurationDescriptorIsDeclaredUnbuiltAndOwnsTheWriteTool()
+/// <p>Story 5.10's descriptor as Story 7.4 built it out: a built, listed <code>form-page</code> with
+/// a single-object read and the two row actions its write tool carries. It validates, its route and
+/// its tool identifier resolve to it, and it declares the security area's own pairs.</p>
+Method TestTheAuditingConfigurationDescriptorIsBuiltWithItsReadAndOwnsTheWriteTool()
 {
     Set tClass = "OcuPilot.Screen.Descriptor.AuditingConfig"
     Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
@@ -193,13 +364,18 @@ Method TestTheAuditingConfigurationDescriptorIsDeclaredUnbuiltAndOwnsTheWriteToo
     While tIterator.%GetNext(.tKey, .tValue) {
         Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
     }
-    Do $$$AssertEquals(tKeys, "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,primaryAction,rowActions,context,emptyStateKey,commandAliases,classicPage,classicLinkExemption,toolIdentifier", "the declared keys, with no read, table, banner or criteria among them: " _ tKeys)
+    Do $$$AssertEquals(tKeys, "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,primaryAction,rowActions,context,emptyStateKey,commandAliases,classicPage,classicLinkExemption,read,toolIdentifier", "the declared keys, a read among them, and no table or banner, since a form renders no grid: " _ tKeys)
 
-    Do $$$AssertEquals($ClassMethod(tClass, "IsBuilt"), 0, "it is declared unbuilt")
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).SideBarPositionProblem(tDeclaration), "", "so its side-bar position says nothing yet")
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "a declaration with no read is a supported shape")
+    Do $$$AssertEquals($ClassMethod(tClass, "IsBuilt"), 1, "it is built")
+    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 6, "and listed sixth in the Security side bar")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).SideBarPositionProblem(tDeclaration), "", "which the side-bar rule accepts")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "its read is sound")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tDeclaration), "", "and it declares no secret and no exclusion")
-    Do $$$AssertEquals($IsObject($ClassMethod(tClass, "Read")), 0, "the accessor answers no read at all")
+    Set tRead = $ClassMethod(tClass, "Read")
+    Do $$$AssertTrue($IsObject(tRead), "the accessor answers its read")
+    If $IsObject(tRead) Do $$$AssertEquals(tRead.source.%ToJSON(), "{""port"":""admin"",""endpoint"":""Security.Audit.Enabled"",""type"":""GET""}", "the single-object Security.Audit.Enabled GET")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "enable,disable", "its two row actions")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "CommandAliases")), "auditing", "and its command alias")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("security/auditing"), tClass, "the route resolves to it")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("security.auditing"), tClass, "and so does the tool identifier its write tool's name opens with")
     Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType"), "auditing-configuration", "its entity type is the instance's auditing configuration")
@@ -340,15 +516,15 @@ Method TestABannerOutsideTheGrammarIsRefused()
 
 /// <p>Story 2.8, widened by Story 5.11 -- the task schedule list's declaration passes the read,
 /// banner and classic link rules; its route and tool identifier resolve to it; it declares the
-/// four auto-refresh rates; <code>Suspended</code> reaches the read and the agent's context
-/// through the <code>INFO</code> detail call and reaches no table column, filter or sort, because
-/// the vendor LIST coerces it to false for every task (DW-269); and its classic page is a class
-/// compiled on this instance under the declaration's own case (AD-44).</p>
+/// four auto-refresh rates; <code>Suspended</code> reaches the read, the agent's context and the
+/// Suspended column through the <code>INFO</code> detail call and reaches no filter or sort,
+/// because the vendor LIST coerces it to false for every task (DW-269, Story 7.6); and its classic
+/// page is a class compiled on this instance under the declaration's own case (AD-44).</p>
 /// <p>Mutations: lower-case <code>classicPage</code> in
 /// <class>OcuPilot.Screen.Descriptor.TaskScheduleList</class> -> the compiled-class assertion goes
 /// red; drop <code>Namespace</code> from its <code>read.filter</code> -> the filter pin goes red;
 /// drop the <code>rowGet</code>, or its <code>type</code>, -> the detail-call assertions go red;
-/// declare <code>Suspended</code> as a table column -> the column-absence assertion goes red.
+/// drop the Suspended column -> the column assertion goes red.
 /// DW-304: change one declared banner case's <code>equals</code> value to a word the vendor's
 /// <code>RunGet</code> does not spell -> the vendor-source assertion goes red naming it, together
 /// with the typed-copy comparison above it. The two are not independent, and the vendor pin is not
@@ -375,14 +551,18 @@ Method TestTheTaskScheduleListValidatesAndNamesItsClassicPageInItsOwnCase()
     Do $$$AssertEquals(tDeclaration.read.sort.%ToJSON(), "{""fields"":[""Name"",""Namespace"",""Type"",""Description"",""LastFinished"",""NextScheduled""],""default"":""Name"",""direction"":""asc""}", "and the list sorts by name ascending")
     Do $$$AssertEquals(tDeclaration.context.secretFields.%Size(), 0, "and the read carries no secret to strip")
     ; The vendor LIST answers "Suspended":false for every task on this build, suspended ones
-    ; included, so the value the screen shows comes from the detail call above and nowhere else.
-    ; The table, the filter and the sort stay as EXPERIENCE.md's own "name, namespace, type, last
-    ; run, next run" declares them -- the banner's own
-    ; `equals` is the word "Suspended" as the Task Manager's Status reads it, which is a different
-    ; value on a different endpoint.
+    ; included, so the value the screen shows comes from the detail call above and nowhere else --
+    ; the Suspended column Story 7.6 adds is that value. The banner's own `equals` is the word
+    ; "Suspended" as the Task Manager's Status reads it, which is a different value on a different
+    ; endpoint.
     Do $$$AssertEquals((tDeclaration.read.filter.%ToJSON() [ "Suspended"), 0, "the read filters on no Suspended field")
     Do $$$AssertEquals((tDeclaration.read.sort.%ToJSON() [ "Suspended"), 0, "and sorts by none")
-    Do $$$AssertEquals((tDeclaration.table.%ToJSON() [ "Suspended"), 0, "and the table declares no Suspended column")
+    Set tSuspendedColumn = ""
+    Set tColumnIterator = tDeclaration.table.columns.%GetIterator()
+    While tColumnIterator.%GetNext(.tColumnIndex, .tColumn) {
+        If tColumn.field = "Suspended" Set tSuspendedColumn = tColumn.%ToJSON()
+    }
+    Do $$$AssertEquals(tSuspendedColumn, "{""field"":""Suspended"",""labelKey"":""taskColumnSuspended"",""kind"":""status""}", "while the table shows it as a status column, fed by that detail call")
     Do $$$AssertTrue($ListFind($ClassMethod(tClass, "ContextFields"), "Suspended") > 0, "while the agent's context carries it, so the read tool's view answers it too")
     Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 1, "it is one of the auto-refresh screens")
     Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RefreshRates")), "5,10,30,60", "at the four declared rates")
@@ -482,6 +662,10 @@ Method TestTheProcessesListValidatesAndNamesTheVendorsNamespaceKey()
     ; Order matters: OcuPilot.Screen.Gate.EvaluatePairs names the FIRST pair a caller does not
     ; hold, and both wire fixtures pin that name.
     Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Operate"",""permission"":""USE""},{""resource"":""%Admin_Manage"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "the endpoint's own gate first, the CONTROLPANEL query's check second, the database read third")
+    ; Story 7.8: the four row actions, none self-protected -- a process refusal reads what only the
+    ; instance knows -- so the empty state invites the agent.
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "suspend,resume,terminate,terminate-with-error", "its row actions are Suspend, Resume, Terminate and the Terminate dialog's flag")
+    Do $$$AssertEquals(tDeclaration.table.emptyAgentKey, "processListEmptyAgent", "and its empty state invites the agent")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("os-management", $ClassMethod(tClass, "PrivilegePairs")), "", "and the os-management area covers all three")
     ; DW-275, the half that stops the decision being reversed by accident: %Admin_Manage:USE is in
     ; the area's own set, and dropping it there makes this screen fail coverage at install rather
@@ -709,7 +893,7 @@ Method TestTheApplicationErrorLogDeclaresNoReadAndGatesOnItsNamespaceFreePairs()
     While tIterator.%GetNext(.tKey, .tValue) {
         Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
     }
-    Do $$$AssertEquals(tKeys, "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,secondaryEntityTypes,scope,parentScope,id,primaryAction,rowActions,context,emptyStateKey,commandAliases,classicPage,classicLinkExemption,toolIdentifier", "the twenty-two declared keys, and no read, table, banner or criteria among them: " _ tKeys)
+    Do $$$AssertEquals(tKeys, "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,primaryAction,rowActions,context,emptyStateKey,commandAliases,classicPage,classicLinkExemption,toolIdentifier", "the twenty-three declared keys, and no read, table, banner or criteria among them: " _ tKeys)
 
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "a declaration with no read is a supported shape")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).CriteriaProblem(tDeclaration), "", "and it declares no criteria")
@@ -735,7 +919,7 @@ Method TestTheApplicationErrorLogDeclaresNoReadAndGatesOnItsNamespaceFreePairs()
 
     Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "it never auto-refreshes: EXPERIENCE.md's roster does not name it (AD-43)")
     Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RefreshRates")), 0, "and declares no rate")
-    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "and no row action: the three delete scopes are Epic 5's")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "delete", "and one row action, delete, whose scope is the drill level's own id prefix (Story 7.10)")
     Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "and no primary action")
 
     ; The classic page, checked through the portal's OWN resolver rather than through
@@ -1284,7 +1468,7 @@ Method TestTheEntityTypeVocabularyIsClosed()
     Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown(""), "and neither is the empty string")
     ; Pinned to a literal. Comparing Count() with $ListLength(List()) restates Count()'s own
     ; definition and cannot fail, so a value dropped from TYPES would go unnoticed.
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 29, "the closed vocabulary holds twenty-nine values; adding one is a deliberate edit here and in Kernel.EntityType")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 30, "the closed vocabulary holds thirty values -- audit-user-event joined in Story 7.11; adding one is a deliberate edit here and in Kernel.EntityType")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Descriptor.Home", "PrimaryEntityType"), "", "Home administers nothing and says so")
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.Home", "EntityTypes")), 0, "so it contributes no key to validate")
 }
@@ -1806,6 +1990,33 @@ Method TestTheDevicesListDeclaresExactlyItsSixFieldsAndSixColumns()
     Set tPage = $ClassMethod(tClass, "ClassicPage")
     Do $$$AssertEquals(tPage, "%CSP.UI.Portal.Config.Devices", "the Config.Devices classic key -- %CSP.UI.Portal.Devices does not exist on this build")
     Do $$$AssertTrue($IsObject(##class(%Dictionary.CompiledClass).%OpenId(tPage)), "which is a compiled class on this instance, found under the declaration's own case")
+}
+
+/// <p>AD-5, AD-53: the instance's own validator of a descriptor's declared actions,
+/// <method>OcuPilot.Screen.Registry.ActionProblem</method>, refuses a free-text
+/// <code>selfProtection</code>, a row-action id declared twice and an empty row-action id, each
+/// naming its fault, and accepts a declaration whose actions carry a declared rule or
+/// <code>""</code>. Every shipped and fixture descriptor conforms, so nothing else reaches the
+/// refusing arms.</p>
+/// <p>Mutation (Rule 19): delete the <code>$ListFind(tSeen, tId)</code> refusal from
+/// <method>OcuPilot.Screen.Registry.ActionProblem</method> and recompile it with its subclasses --
+/// the duplicate-id leg goes red.</p>
+Method TestTheActionValidatorRefusesWhatNoSurfaceCanRun()
+{
+    Set tRule = $Piece(##class(OcuPilot.Screen.Registry).#SELFPROTECTIONRULES, ",", 1)
+    Do $$$AssertNotEquals(tRule, "", "the registry declares a self-protection rule to name")
+
+    Set tProblem = ##class(OcuPilot.Screen.Registry).ActionProblem({"primaryAction": {"id": "", "selfProtection": ""}, "rowActions": [{"id": "delete", "selfProtection": "never the last one"}]})
+    Do $$$AssertTrue(tProblem [ "never the last one", "a free-text selfProtection is refused naming the value: " _ tProblem)
+
+    Set tProblem = ##class(OcuPilot.Screen.Registry).ActionProblem({"primaryAction": {"id": "", "selfProtection": ""}, "rowActions": [{"id": "enable", "selfProtection": ""}, {"id": "enable", "selfProtection": ""}]})
+    Do $$$AssertTrue((tProblem [ "'enable'") && (tProblem [ "twice"), "a row-action id declared twice is refused naming the id: " _ tProblem)
+
+    Set tProblem = ##class(OcuPilot.Screen.Registry).ActionProblem({"primaryAction": {"id": "", "selfProtection": ""}, "rowActions": [{"id": "", "selfProtection": ""}]})
+    Do $$$AssertTrue(tProblem [ "empty id", "an empty row-action id is refused naming the fault: " _ tProblem)
+
+    Set tProblem = ##class(OcuPilot.Screen.Registry).ActionProblem({"primaryAction": {"id": "", "selfProtection": ""}, "rowActions": [{"id": "disable", "selfProtection": (tRule)}, {"id": "delete", "selfProtection": ""}]})
+    Do $$$AssertEquals(tProblem, "", "a declared rule and an empty one are both accepted")
 }
 
 /// <p>Area <var>pKey</var>'s declared privilege pairs as <code>resource:permission</code> joined

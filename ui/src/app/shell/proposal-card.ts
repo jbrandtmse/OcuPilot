@@ -32,6 +32,24 @@ import {
 } from './example-proposal';
 
 /**
+ * The entity type whose delete carries the residue sentence (AD-48, DW-1480).
+ *
+ * `proposalResidue` resolves its `<n>` to a count of *errors*, so it is published for exactly one
+ * write: the application-error delete, whose card lists the enumerated id set the confirm removes.
+ * Every other delete's card lists removals too and says nothing about residue.
+ */
+const RESIDUE_ENTITY_TYPE = 'application-error';
+
+/**
+ * The removal row that marks one of the instance's own system tasks (Story 7.6): a `task` card's
+ * `Type` row reading `System`. The delete tool's read carries the task's type into its rows, which
+ * is where the card learns it.
+ */
+const SYSTEM_TASK_ENTITY_TYPE = 'task';
+const SYSTEM_TASK_FIELD = 'Type';
+const SYSTEM_TASK_VALUE = 'System';
+
+/**
  * One Confirm press: the proposal's id and the values typed into its masked fields.
  *
  * The values are the card's own and reach the confirm body through this one channel (AD-6's
@@ -140,6 +158,16 @@ export interface ProposalConfirmRequest {
       }
       @if (residueVisible) {
         <p class="ocu-proposal-card-residue">{{ residueCaption }}</p>
+      }
+      @if (systemTaskVisible) {
+        <p
+          class="ocu-banner ocu-banner-warning ocu-proposal-card-warning"
+          role="status"
+          data-slot="system-task"
+        >
+          <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+          <span class="ocu-banner-message">{{ STRINGS.taskSystemDeleteConsequence }}</span>
+        </p>
       }
       @if (discloses) {
       @if (disclosable) {
@@ -520,19 +548,34 @@ export class ProposalCard {
   }
 
   /**
-   * Whether the card carries the residue sentence: exactly when it lists removal rows.
+   * Whether the card carries the residue sentence: a card of removal rows **about an application
+   * error** (DW-1480).
    *
-   * AD-48 requires a delete proposal's card to say that errors logged after the proposal are not
-   * removed, and the sentence is only true of a card whose rows are the enumerated set. A write
-   * with an after-state has no residue to describe.
+   * AD-48 requires that delete's card to say that errors logged after the proposal are not
+   * removed, and the sentence is only true of the enumerated-id-set write it was published for --
+   * its `<n>` resolves to a count of errors. Gating it on removal rows alone made it a property of
+   * the row shape, and Story 7.1's web-application delete has removal rows too: that card would
+   * have read "Removes exactly the 4 errors listed here" about a web application. The gate is
+   * therefore the write's own entity type, which the proposal's target carries (AD-13).
    */
   protected get residueVisible(): boolean {
-    return this.removedCount > 0;
+    return this.removedCount > 0 && this.view().targetType === RESIDUE_ENTITY_TYPE;
   }
 
   /** The published residue sentence with its count resolved from the rows the card lists. */
   protected get residueCaption(): string {
     return formatRemovalResidue(STRINGS.proposalResidue, this.removedCount);
+  }
+
+  /**
+   * Whether the card states a system task's delete consequence: a `task` card with a removal row
+   * whose `Type` was `System`. The delete is still offered; the line says what it costs.
+   */
+  protected get systemTaskVisible(): boolean {
+    if (this.view().targetType !== SYSTEM_TASK_ENTITY_TYPE) return false;
+    return this.changedRows.some(
+      (row) => row.removed === true && row.field === SYSTEM_TASK_FIELD && row.before === SYSTEM_TASK_VALUE
+    );
   }
 
   protected get maskedFields(): readonly string[] {

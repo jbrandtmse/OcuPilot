@@ -432,8 +432,12 @@ test('nothing shipped in the client authors a proposal value, and nothing posts 
   // boolean spellings for the same reason.
   // `consequence` is the kernel's code for what a write does beyond its diff, and the card states
   // its sentence as a warning -- a shipped literal there would author or suppress that warning.
+  // A key is never preceded by a `.`, and a member access always is: `(?<!\.)` keeps the
+  // ternary `row.x ? entry.consequence : ''` -- a READ of the field -- from reading as an authored
+  // `consequence: ''`. That collision appeared at the Epic 7/8 merge, where Epic 8 added
+  // `consequence` to the alternation and Epic 7's screen-action handler reads one in a ternary.
   const authoring =
-    /\b(before|after|unchanged|unchangedCount|rationale|expectedImpact|reverse|fingerprint|auditWarning|destructive|consequence)\s*:\s*('|"|\d|`|true\b|false\b)/;
+    /(?<!\.)\b(before|after|unchanged|unchangedCount|rationale|expectedImpact|reverse|fingerprint|auditWarning|destructive|consequence)\s*:\s*('|"|\d|`|true\b|false\b)/;
   // Since Story 5.3 the client does POST to a proposal route -- the id in the path and, in the
   // body, only the fields the target screen declares secret-typed. What it still may not do is
   // post a proposal's own content, so the scan is for a request body that names one.

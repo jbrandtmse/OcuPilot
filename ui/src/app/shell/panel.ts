@@ -9,6 +9,7 @@ import {
   readOnlyFooterLine,
   restraintSentence,
 } from '../core/agent-status';
+import { AUDITING_FOCUS_ENABLE } from '../areas/security/auditing-config.page';
 import { decodeEntityId } from '../core/entity-id';
 import { classifyFault } from '../core/fault';
 import {
@@ -69,6 +70,9 @@ const KILL_SWITCH_ID = 'ocu-panel-kill-switch';
 
 /** The not-marked banner's id, in the slot EXPERIENCE.md's banner order already reserves for it. */
 const NOT_MARKED_ID = 'ocu-panel-not-marked';
+
+/** The Auditing configuration screen the not-marked banner links to (Story 7.4). */
+const AUDITING_ROUTE = 'security/auditing';
 
 /**
  * The sequence the first confirmed-write card takes, above every sequence a turn can record
@@ -255,6 +259,14 @@ interface PanelTurnView {
             <p class="ocu-banner ocu-banner-warning ocu-panel-banner" role="status" [id]="notMarkedId">
               <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
               <span class="ocu-banner-message">{{ STRINGS.auditingOffBanner }}</span>
+              <a class="ocu-button-text ocu-panel-banner-link" [href]="auditingHref" (click)="openAuditing($event)">{{
+                STRINGS.auditingConfigurationLink
+              }}</a>
+              @if (administrator) {
+                <button type="button" class="ocu-button-text" data-auditing-turn-on (click)="turnAuditingOn()">
+                  {{ STRINGS.auditingTurnOnAction }}
+                </button>
+              }
             </p>
           }
         </div>
@@ -619,7 +631,7 @@ export class Panel {
   }
 
   /** Whether this caller may enable a definition, and therefore which sentence they are shown. */
-  private get administrator(): boolean {
+  protected get administrator(): boolean {
     this.generation();
     return this.navigation.screenVerdict(DEFINITIONS_ROUTE).allowed;
   }
@@ -658,14 +670,15 @@ export class Panel {
    * Whether the not-marked banner shows: the instance answered, and what it answered is that agent
    * writes are not being marked (AD-15, FR-22).
    *
-   * **Its sentence and nothing else.** EXPERIENCE.md publishes a link and an action beside it and
-   * both stay unrendered until Story 7.4 builds the screen they open; a link to nothing is worse
-   * than no link. It is shown to every user, because every user's writes are the ones not being
-   * marked.
+   * **Its sentence, its link and, for an OcuPilot administrator, its action** (EXPERIENCE.md).
+   * Every user gets the "Auditing configuration" link, because every user's writes are the ones not
+   * being marked; "Turn auditing on" opens that screen with its enable button focused, and only an
+   * administrator sees it. Whether the write is allowed is still the instance's answer at the write.
    *
-   * **Its absence says nothing.** The fact behind it is recorded by install and by the confirm
-   * executor rather than read live, so it can be one window stale -- which is acceptable only
-   * because nothing in this panel, a reply or a card ever states that marking IS working.
+   * **Its absence says nothing.** The fact behind it is recorded by install, the confirm executor
+   * and the screen's own auditing action rather than read live, so it can be one window stale --
+   * which is acceptable only because nothing in this panel, a reply or a card ever states that
+   * marking IS working.
    */
   protected get writesNotMarked(): boolean {
     return this.answered && !this.agentStatus.restraint().writesMarked;
@@ -1420,6 +1433,35 @@ export class Panel {
   protected get definitionsHref(): string {
     // Relative, so it resolves under the document's base href; the router takes the rooted form.
     return this.definitionsUrl.replace(/^\//, '');
+  }
+
+  /** The Auditing configuration screen, resolved from the screen registry with the current query. */
+  protected get auditingHref(): string {
+    return this.auditingUrl.replace(/^\//, '');
+  }
+
+  protected openAuditing(event: MouseEvent): void {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    const url = this.auditingUrl;
+    if (url !== '') void this.router.navigateByUrl(url);
+  }
+
+  /**
+   * Open the Auditing configuration screen asking it to focus "Turn auditing on" (epics 5.x). A
+   * same-URL navigation is reloaded rather than ignored, so the request reaches a screen that is
+   * already open.
+   */
+  protected turnAuditingOn(): void {
+    const url = this.auditingUrl;
+    if (url === '') return;
+    void this.router.navigateByUrl(url, { state: { [AUDITING_FOCUS_ENABLE]: true }, onSameUrlNavigation: 'reload' });
+  }
+
+  private get auditingUrl(): string {
+    this.generation();
+    const screen = screenForRoute(AUDITING_ROUTE);
+    return screen === null ? '' : withQuery(screen.route, this.router.url);
   }
 
   protected openDefinitions(event: MouseEvent): void {

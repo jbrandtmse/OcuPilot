@@ -15,6 +15,7 @@ import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
 import { tableDeclaration } from '../testing/table-declaration';
 import { ListPage } from './list-page';
+import { ScreenActionHandler } from './screen-action-handler';
 import { stubAccountPreferences } from '../testing/account-preferences';
 
 /**
@@ -57,10 +58,15 @@ async function mount(
   TestBed.resetTestingModule();
   let answerRows = initialRows;
   let answerBanner = '';
+  let actionAnswer: unknown = {};
   const paths: string[] = [];
+  const bodies: string[] = [];
   const api = {
-    requestJson: async <T,>(path: string): Promise<JsonResult<T>> => {
+    requestJson: async <T,>(path: string, init: { body?: string } = {}): Promise<JsonResult<T>> => {
       paths.push(path);
+      if (path.endsWith('/action')) bodies.push(init.body ?? '');
+      // A row action's POST answers the verb and the triple (AD-14); every other path is a read.
+      if (path.endsWith('/action')) return { kind: 'ok', status: 200, body: actionAnswer as T };
       return { kind: 'ok', status: 200, body: { fields: [], rows: answerRows, truncated: false, banner: answerBanner } as T };
     },
   };
@@ -79,6 +85,7 @@ async function mount(
       provideRouter([{ path: '**', children: [] }]),
       { provide: NavigationService, useValue: { screenForUrl: () => declaration } as unknown as NavigationService },
       { provide: ApiService, useValue: api as unknown as ApiService },
+      { provide: ChangeBus, useValue: bus },
       { provide: RefreshService, useValue: refresh },
       { provide: ScreenStores, useValue: stores },
       { provide: ScreenActions, useValue: new ScreenActions() },
@@ -101,10 +108,12 @@ async function mount(
     stores,
     bus,
     paths,
+    bodies,
     actions: TestBed.inject(ScreenActions),
     declaration,
     setRows: (next: unknown[]) => (answerRows = next),
     setBanner: (next: string) => (answerBanner = next),
+    setActionAnswer: (next: unknown) => (actionAnswer = next),
     fireTick: async () => {
       scheduled[scheduled.length - 1]();
       await settle(fixture);
@@ -290,6 +299,207 @@ describe('the list page', () => {
 
     expect(rowNames(page.host())).toEqual(['A']);
     expect(store.selection()).toEqual([]);
+  });
+
+  it('a confirmed delete leaves focus on the row that took its place; a cancel returns it to the opener', async () => {
+    // The opener stands for a command-bar button, which outlives the row it acted on: focus must
+    // not go back there once the write has removed the row. Through the real handler, dialog,
+    // store and table -- only the transport is stubbed.
+    //
+    // Mutation (Rule 19): drop the `focusGrid()` call from `ListPage.onConfirmDestructive` -> the
+    // dialog returns focus to the opener and the first `activeElement` assertion goes red.
+    const declaration = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.WebAppList',
+      rowActions: [{ id: 'delete', selfProtection: 'serves-ocupilot' }],
+    });
+    const page = await mount(declaration, named('A', 'B', 'C'));
+    const store = page.stores.for(declaration.descriptor, declaration.refreshRates);
+    const opener = document.createElement('button');
+    document.body.appendChild(opener);
+    planted.push(opener);
+    const field = () => page.host().querySelector('.ocu-typed-name-field') as HTMLInputElement;
+    const openDelete = async (key: string) => {
+      store.setActive(key);
+      store.setSelection([key]);
+      opener.focus();
+      expect(page.actions.run(declaration.descriptor, 'delete')).toBe(true);
+      await settle(page.fixture);
+      expect(page.host().querySelector('[role="dialog"]')).not.toBeNull();
+    };
+
+    await openDelete('B');
+    field().value = 'B';
+    field().dispatchEvent(new Event('input'));
+    page.fixture.detectChanges();
+    page.setRows(named('A', 'C'));
+    page.setActionAnswer({ action: 'deleted', target: { type: 'web-application', scope: 'HSCUSTOM', id: 'B' } });
+    (page.host().querySelector('.ocu-button-destructive') as HTMLButtonElement).click();
+    await settle(page.fixture);
+
+    expect(page.host().querySelector('[role="dialog"]')).toBeNull();
+    expect(rowNames(page.host())).toEqual(['A', 'C']);
+    const grid = page.host().querySelector('[role="grid"]') as HTMLElement;
+    expect(document.activeElement).toBe(grid);
+    expect(store.active()).toBe('C');
+    const active = page.host().querySelector('.ocu-data-table-row-active') as HTMLElement;
+    expect(active.querySelector('.ocu-data-table-link')?.textContent?.trim()).toBe('C');
+    expect(grid.getAttribute('aria-activedescendant')).toBe(active.id);
+
+    const posts = page.paths.filter((path) => path.endsWith('/action')).length;
+    await openDelete('C');
+    (page.host().querySelector('.ocu-dialog .ocu-button-secondary') as HTMLButtonElement).click();
+    await settle(page.fixture);
+    expect(page.host().querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(opener);
+    expect(page.paths.filter((path) => path.endsWith('/action')).length).toBe(posts);
+    expect(rowNames(page.host())).toEqual(['A', 'C']);
+  });
+
+  it('Story 7.2: set password opens its own dialog and sends the typed value once, untrimmed', async () => {
+    // Through the real handler, dialog and page; only the transport is stubbed.
+    // Mutation (Rule 19): render no set-password dialog for its pending kind -> the dialog
+    // assertion goes red and nothing is sent.
+    const declaration = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.UserList',
+      rowActions: [{ id: 'set-password', selfProtection: '' }],
+    });
+    const page = await mount(declaration, named('probe'));
+    const store = page.stores.for(declaration.descriptor, declaration.refreshRates);
+    store.setSelection(['probe']);
+    expect(page.actions.run(declaration.descriptor, 'set-password')).toBe(true);
+    await settle(page.fixture);
+    const field = page.host().querySelector('input[autocomplete="new-password"]') as HTMLInputElement;
+    expect(field).not.toBeNull();
+    expect(page.host().querySelector('.ocu-typed-name-field')).toBeNull();
+    field.value = 'pw1 ';
+    field.dispatchEvent(new Event('input'));
+    page.fixture.detectChanges();
+    page.setActionAnswer({ action: 'updated', target: { type: 'user', scope: 'instance', id: 'probe' } });
+    (page.host().querySelector('.ocu-dialog .ocu-button-primary') as HTMLButtonElement).click();
+    await settle(page.fixture);
+    expect(page.host().querySelector('[role="dialog"]')).toBeNull();
+    expect(page.bodies.map((body) => JSON.parse(body))).toEqual([
+      { action: 'set-password', id: 'probe', values: { Password: 'pw1 ' } },
+    ]);
+  });
+
+  it('Story 7.2: remove role opens the role dialog over the row\u2019s own roles', async () => {
+    const declaration = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.UserList',
+      rowActions: [{ id: 'remove-role', selfProtection: '' }],
+    });
+    const page = await mount(declaration, [{ ...named('probe')[0], Roles: ['%SQL'] }]);
+    const store = page.stores.for(declaration.descriptor, declaration.refreshRates);
+    store.setSelection(['probe']);
+    expect(page.actions.run(declaration.descriptor, 'remove-role')).toBe(true);
+    await settle(page.fixture);
+    const select = page.host().querySelector('.ocu-dialog select') as HTMLSelectElement;
+    expect([...select.options].map((option) => option.value)).toEqual(['', '%SQL']);
+  });
+
+  it('Story 7.8: Terminate on Processes sends the flagged action when its checkbox is ticked', async () => {
+    // Through the real handler, dialog and page; only the transport is stubbed.
+    // Mutation (Rule 19): bind `(confirmed)="onConfirmDestructive()"` in `ListPage`'s template ->
+    // the checkbox's state is dropped, the plain terminate is sent and the body assertion goes red.
+    const declaration = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.ProcessList',
+      rowActions: [
+        { id: 'terminate', selfProtection: '' },
+        { id: 'terminate-with-error', selfProtection: '' },
+      ],
+    });
+    const page = await mount(declaration, named('4711'));
+    const store = page.stores.for(declaration.descriptor, declaration.refreshRates);
+    store.setSelection(['4711']);
+    expect(page.actions.run(declaration.descriptor, 'terminate')).toBe(true);
+    await settle(page.fixture);
+    const flag = page.host().querySelector('[data-slot="flag"] input') as HTMLInputElement;
+    expect(flag).not.toBeNull();
+    flag.click();
+    const field = page.host().querySelector('.ocu-typed-name-field') as HTMLInputElement;
+    field.value = '4711';
+    field.dispatchEvent(new Event('input'));
+    page.fixture.detectChanges();
+    page.setActionAnswer({ action: 'deleted', target: { type: 'process', scope: 'instance', id: '4711' } });
+    (page.host().querySelector('.ocu-button-destructive') as HTMLButtonElement).click();
+    await settle(page.fixture);
+    expect(page.host().querySelector('[role="dialog"]')).toBeNull();
+    expect(page.bodies.map((body) => JSON.parse(body))).toEqual([{ action: 'terminate-with-error', id: '4711' }]);
+  });
+
+  it('Story 7.11: disabling the marker event renders the warning dialog, and Proceed sends the disable', async () => {
+    // Through the real handler, dialog and page; only the transport is stubbed.
+    // Mutation (Rule 19): render no warning dialog for its pending kind -> the dialog assertions go
+    // red and nothing is sent.
+    const marker = 'OcuPilot/Security/AgentWrite';
+    const declaration = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.AuditUserEventList',
+      rowActions: [{ id: 'disable', selfProtection: '' }],
+    });
+    const page = await mount(declaration, [{ ...named(marker)[0], EventName: marker }]);
+    const store = page.stores.for(declaration.descriptor, declaration.refreshRates);
+    store.setSelection([marker]);
+    expect(page.actions.run(declaration.descriptor, 'disable')).toBe(true);
+    await settle(page.fixture);
+    expect(page.bodies).toHaveLength(0);
+    const dialog = page.host().querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog).not.toBeNull();
+    expect(dialog.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(STRINGS.agentDefinitionDisable);
+    expect(dialog.querySelector('.ocu-warning-consequence')?.textContent?.trim()).toBe(STRINGS.proposalAuditWarning);
+    expect(dialog.querySelector('.ocu-button-destructive')).toBeNull();
+    page.setActionAnswer({ action: 'updated', target: { type: 'audit-user-event', scope: 'instance', id: marker.toLowerCase() } });
+    (dialog.querySelector('.ocu-button-primary') as HTMLButtonElement).click();
+    await settle(page.fixture);
+    expect(page.host().querySelector('[role="dialog"]')).toBeNull();
+    expect(page.bodies.map((body) => JSON.parse(body))).toEqual([{ action: 'disable', id: marker }]);
+  });
+
+  it('Story 7.11: Cancel and Escape on the marker-event warning send nothing', async () => {
+    // Mutation (Rule 19): wire the warning's `(cancelled)` to `onConfirmWarning()` -> a body is sent.
+    const marker = 'OcuPilot/Security/AgentWrite';
+    const declaration = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.AuditUserEventList',
+      rowActions: [{ id: 'disable', selfProtection: '' }],
+    });
+    const page = await mount(declaration, [{ ...named(marker)[0], EventName: marker }]);
+    const store = page.stores.for(declaration.descriptor, declaration.refreshRates);
+    store.setSelection([marker]);
+    expect(page.actions.run(declaration.descriptor, 'disable')).toBe(true);
+    await settle(page.fixture);
+    (page.host().querySelector('[role="dialog"] .ocu-button-secondary') as HTMLButtonElement).click();
+    await settle(page.fixture);
+    expect(page.host().querySelector('[role="dialog"]')).toBeNull();
+
+    expect(page.actions.run(declaration.descriptor, 'disable')).toBe(true);
+    await settle(page.fixture);
+    expect(page.host().querySelector('[role="dialog"]')).not.toBeNull();
+    expect(TestBed.inject(OverlayStack).closeTop()).toBe(true);
+    await settle(page.fixture);
+    expect(page.host().querySelector('[role="dialog"]')).toBeNull();
+    expect(page.bodies).toHaveLength(0);
+  });
+
+  it('a typed-name confirm left open does not outlive the list it was opened on', async () => {
+    // The handler is the app's, so without the page letting go of it a Back press with the dialog
+    // open would carry the pending delete onto the next list page.
+    //
+    // Mutation (Rule 19): drop the `cancelPending()` call from `ListPage`'s destroy hook -> the
+    // pending confirm survives the page and this goes red.
+    const declaration = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.WebAppList',
+      rowActions: [{ id: 'delete', selfProtection: 'serves-ocupilot' }],
+    });
+    const page = await mount(declaration, named('A', 'B'));
+    const store = page.stores.for(declaration.descriptor, declaration.refreshRates);
+    const handler = TestBed.inject(ScreenActionHandler);
+    store.setSelection(['B']);
+    expect(page.actions.run(declaration.descriptor, 'delete')).toBe(true);
+    await settle(page.fixture);
+    expect(handler.pending()?.target).toBe('B');
+
+    page.fixture.destroy();
+    expect(handler.pending()).toBeNull();
+    expect(page.paths.filter((path) => path.endsWith('/action'))).toHaveLength(0);
   });
 
   it('before the namespace list arrives the page reads nothing, and the scope resolving reads once', async () => {

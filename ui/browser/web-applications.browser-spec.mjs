@@ -160,6 +160,9 @@ test('AC1: the list reads once over the real AdminPort and renders the declared 
   try {
     await waitForRows(page, config.navigationTimeoutMs);
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
+    // The six declared columns, plus the row-actions column the table adds for itself since the
+    // screen declared row actions (Story 7.1): the descriptor declares columns, never that last
+    // one, which is the overflow menu's own header.
     assert.deepEqual(headers, [
       STRINGS.tableColumnName,
       STRINGS.headerNamespaceLabel,
@@ -167,8 +170,9 @@ test('AC1: the list reads once over the real AdminPort and renders the declared 
       STRINGS.tableColumnEnabled,
       STRINGS.webAppColumnDispatchClass,
       STRINGS.webAppColumnResource,
+      STRINGS.commandBoxGroupActions,
     ]);
-    assert.deepEqual(headers, ['Name', 'Namespace', 'Type', 'Enabled', 'Dispatch class', 'Resource']);
+    assert.deepEqual(headers, ['Name', 'Namespace', 'Type', 'Enabled', 'Dispatch class', 'Resource', 'Actions']);
 
     // Each leg below narrows through a different declared filter field: Type, Resource, Dispatch
     // class, Namespace, then Name. Each runs from the whole list and must leave a proper,

@@ -1,15 +1,19 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 
-import { ApiService, type JsonResult } from '../../core/api';
+import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
 import { NavigationService } from '../../core/navigation';
+import { OverlayStack } from '../../core/overlay-stack';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
+import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
-import { ErrorLogPage } from './error-log.page';
+import { ScreenActionHandler } from '../../shell/screen-action-handler';
+import { stubAccountPreferences } from '../../testing/account-preferences';
+import { ErrorLogPage, LOG_ERROR_LIST } from './error-log.page';
 import { ErrorLogDrill } from './error-log.store';
 
 /** The screen this page renders, resolved from the mirror as the shell's outlet resolves it. */
@@ -53,6 +57,12 @@ class StubApi {
   /** Every request's `init`, so the scope the store asked for is readable. */
   readonly inits: unknown[] = [];
 
+  /** Every screen-action POST's parsed body, in order (Story 7.10). */
+  readonly actions: unknown[] = [];
+
+  /** What the screen-action route answers: the deleted target, or a refusal envelope. */
+  actionAnswer: JsonResult<unknown> | null = null;
+
   answer(level: string, body: unknown): void {
     this.bodies[level] = body;
     delete this.installs[level];
@@ -89,6 +99,16 @@ class StubApi {
   }
 
   async requestJson<T>(path: string, init: unknown): Promise<JsonResult<T>> {
+    if (path.startsWith('/api/ocupilot/screens/')) {
+      const body = JSON.parse((init as ApiRequestInit).body ?? '{}') as { id?: string };
+      this.actions.push(body);
+      const answer = this.actionAnswer ?? {
+        kind: 'ok',
+        status: 200,
+        body: { action: 'deleted', target: { type: 'application-error', scope: 'instance', id: (body.id ?? '').toLowerCase() } },
+      };
+      return answer as JsonResult<T>;
+    }
     this.paths.push(path);
     this.inits.push(init);
     const level = path.replace('/api/ocupilot/logs/errors/', '').split('?')[0];
@@ -127,6 +147,8 @@ describe('ErrorLogPage', () => {
         },
         { provide: ScreenActions, useValue: new ScreenActions() },
         { provide: ChangeBus, useValue: new ChangeBus() },
+        { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
+        { provide: OverlayStack, useValue: new OverlayStack() },
       ],
     });
     const fixture = TestBed.createComponent(ErrorLogPage);
@@ -154,10 +176,10 @@ describe('ErrorLogPage', () => {
     return node === null ? '' : (node.textContent ?? '').trim();
   }
 
-  /** The rendered rows, each as its cells' text. */
+  /** The rendered rows, each as its data cells' text; the row menu's trigger cell is not data. */
   function rowCells(fixture: ComponentFixture<ErrorLogPage>): string[][] {
     return Array.from(fixture.nativeElement.querySelectorAll('[role="row"][data-ocu-row]')).map((row) =>
-      Array.from((row as HTMLElement).querySelectorAll('[role="gridcell"]')).map((cell) =>
+      Array.from((row as HTMLElement).querySelectorAll('[role="gridcell"]:not(.ocu-data-table-cell-trigger)')).map((cell) =>
         ((cell as HTMLElement).textContent ?? '').trim()
       )
     );
@@ -186,7 +208,7 @@ describe('ErrorLogPage', () => {
     expect(emptyTitle(fixture)).toContain('HSCUSTOM');
     expect(emptyTitle(fixture)).toContain('09/14/2026');
 
-    // The second line is the shared read-only one: this screen declares no action to invite.
+    // The second line is the shared read-only one: an empty level has nothing to act on.
     const next = fixture.nativeElement.querySelector('.ocu-data-table-empty-next') as HTMLElement;
     expect(next.textContent?.trim()).toBe(STRINGS.tableReadOnlyEmptyNext);
 
@@ -260,7 +282,7 @@ describe('ErrorLogPage', () => {
     await drill.openList('09/14/2026');
     fixture.detectChanges();
     const cells = Array.from(
-      fixture.nativeElement.querySelectorAll('[role="row"][data-ocu-row] [role="gridcell"]')
+      fixture.nativeElement.querySelectorAll('[role="row"][data-ocu-row] [role="gridcell"]:not(.ocu-data-table-cell-trigger)')
     ).map((cell) => ((cell as HTMLElement).textContent ?? '').trim());
     expect(cells).toEqual([
       '25',
@@ -710,5 +732,279 @@ describe('ErrorLogPage', () => {
     fixture.detectChanges();
     expect(drill.level()).toBe('namespaces');
     expect(scopeText(fixture)).toBe('');
+  });
+
+  // --- Story 7.10: one Delete on every drill level ------------------------------------------------
+
+  const SEP = '\u0001';
+
+  async function settle(fixture: ComponentFixture<ErrorLogPage>): Promise<void> {
+    for (let pass = 0; pass < 6; pass += 1) await new Promise((resolve) => setTimeout(resolve, 2));
+    fixture.detectChanges();
+  }
+
+  /** The selection the command bar and the handler read: this screen's own store. */
+  function storeSelection(): readonly string[] {
+    return TestBed.inject(ScreenStores).for(LOG_ERROR_LIST, []).selection();
+  }
+
+  function row(fixture: ComponentFixture<ErrorLogPage>, key: string): HTMLElement {
+    const found = Array.from(fixture.nativeElement.querySelectorAll('[role="row"][data-ocu-row]')).find(
+      (element) => (element as HTMLElement).getAttribute('data-ocu-row') === key
+    );
+    return found as HTMLElement;
+  }
+
+  /** Open `key`'s row menu and press its Delete, as a person would. */
+  async function deleteFromMenu(fixture: ComponentFixture<ErrorLogPage>, key: string): Promise<void> {
+    (row(fixture, key).querySelector('[data-ocu-drill="trigger"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const item = fixture.nativeElement.querySelector('.ocu-data-table-menu-item') as HTMLButtonElement;
+    expect(item.textContent?.trim()).toBe(STRINGS.actionDelete);
+    item.click();
+    await settle(fixture);
+  }
+
+  function dialog(fixture: ComponentFixture<ErrorLogPage>): HTMLElement | null {
+    return fixture.nativeElement.querySelector('app-typed-name-dialog') as HTMLElement | null;
+  }
+
+  function typeAndConfirm(fixture: ComponentFixture<ErrorLogPage>, typed: string): void {
+    const field = dialog(fixture)?.querySelector('.ocu-typed-name-field') as HTMLInputElement;
+    field.value = typed;
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (dialog(fixture)?.querySelector('.ocu-button-destructive') as HTMLButtonElement).click();
+    fixture.detectChanges();
+  }
+
+  function seeded(): StubApi {
+    const api = new StubApi();
+    api.answer('namespaces', { rows: [{ namespace: 'USER' }], truncated: false });
+    api.answer('dates', { namespace: 'USER', rows: [{ date: '09/23/2026', count: 2 }], truncated: false });
+    api.answer('list', {
+      namespace: 'USER',
+      date: '09/23/2026',
+      rows: [
+        { errorNumber: 4, time: '17:01:38', errorText: '<DIVIDE>x^y', routine: 'y', line: ' s x=1/0', username: 'Dana', process: '4711' },
+      ],
+      truncated: false,
+    });
+    api.answer('detail', { expressions: [], stack: [], variables: [], truncated: false });
+    return api;
+  }
+
+  it('Story 7.10: the row menu selects each level\u2019s own composite id, and a level change clears it', async () => {
+    // Mutation (Rule 19): key the dates level by the row's date alone in `selectionKey` -> the
+    // date leg reads '09/23/2026' and goes red.
+    const api = seeded();
+    const { fixture, drill } = mount(api);
+    await drill.openNamespaces();
+    fixture.detectChanges();
+
+    const headers = Array.from(fixture.nativeElement.querySelectorAll('[role="columnheader"]')).map((cell) =>
+      ((cell as HTMLElement).textContent ?? '').trim()
+    );
+    expect(headers).toEqual([STRINGS.headerNamespaceLabel, STRINGS.commandBoxGroupActions]);
+
+    (row(fixture, 'USER').querySelector('[data-ocu-drill="trigger"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual(['USER']);
+    expect(row(fixture, 'USER').getAttribute('aria-selected')).toBe('true');
+    expect(fixture.nativeElement.querySelector('[role="menu"]')).not.toBeNull();
+
+    await drill.openDates('USER');
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual([]);
+    expect(fixture.nativeElement.querySelector('[role="menu"]')).toBeNull();
+    (row(fixture, '09/23/2026').querySelector('[data-ocu-drill="trigger"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual([`USER${SEP}09/23/2026`]);
+
+    await drill.openList('09/23/2026');
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual([]);
+    // A click on the row outside its link selects it too.
+    (row(fixture, '4').querySelectorAll('[role="gridcell"]')[2] as HTMLElement).click();
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual([`USER${SEP}09/23/2026${SEP}4`]);
+    expect(row(fixture, '4').getAttribute('aria-selected')).toBe('true');
+
+    // The detail level selects the error it shows, once it has loaded.
+    await drill.openDetail(4);
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual([`USER${SEP}09/23/2026${SEP}4`]);
+  });
+
+  it('Story 7.10: the dialog names each scope, types its last part, and releases only on it', async () => {
+    // Mutation (Rule 19): drop the page's typed-name dialog block -> no dialog is found, red.
+    const api = seeded();
+    const { fixture, drill } = mount(api);
+    await drill.openNamespaces();
+    fixture.detectChanges();
+
+    await deleteFromMenu(fixture, 'USER');
+    expect(dialog(fixture)?.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(`${STRINGS.errorDeleteEveryVerb} USER`);
+    expect(dialog(fixture)?.querySelector('.ocu-typed-name-consequence')?.textContent?.trim()).toBe(
+      STRINGS.errorDeleteEveryConsequence
+    );
+    // A mismatch sends nothing.
+    typeAndConfirm(fixture, 'user');
+    await settle(fixture);
+    expect(api.actions).toEqual([]);
+    expect(dialog(fixture)).not.toBeNull();
+    (dialog(fixture)?.querySelector('.ocu-dialog-actions .ocu-button-secondary') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(dialog(fixture)).toBeNull();
+    expect(api.actions).toEqual([]);
+
+    await drill.openDates('USER');
+    fixture.detectChanges();
+    await deleteFromMenu(fixture, '09/23/2026');
+    expect(dialog(fixture)?.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(
+      `${STRINGS.errorDeleteDateVerb} 09/23/2026`
+    );
+    expect(dialog(fixture)?.querySelector('.ocu-typed-name-consequence')?.textContent?.trim()).toBe(
+      STRINGS.errorDeleteDateConsequence
+    );
+
+    await drill.openList('09/23/2026');
+    await settle(fixture);
+    await deleteFromMenu(fixture, '4');
+    expect(dialog(fixture)?.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(`${STRINGS.errorDeleteOneVerb} 4`);
+    expect(dialog(fixture)?.querySelector('.ocu-typed-name-consequence')?.textContent?.trim()).toBe(
+      STRINGS.errorDeleteOneConsequence
+    );
+    typeAndConfirm(fixture, '4');
+    await settle(fixture);
+    expect(api.actions).toEqual([{ action: 'delete', id: `USER${SEP}09/23/2026${SEP}4` }]);
+    expect(dialog(fixture)).toBeNull();
+  });
+
+  it('Story 7.10 AC3: the posted id\u2019s namespace is the drilled one, whatever the route\u2019s ?ns= says', async () => {
+    // Mutation (Rule 19): build `selectionKey`'s namespace from the route's `ns` parameter -> the
+    // posted id names OTHER and this goes red.
+    const api = seeded();
+    const { fixture, drill } = mount(api);
+    await TestBed.inject(Router).navigateByUrl('/logs/errors?ns=OTHER');
+    await drill.openDates('USER');
+    fixture.detectChanges();
+    await deleteFromMenu(fixture, '09/23/2026');
+    typeAndConfirm(fixture, '09/23/2026');
+    await settle(fixture);
+    expect(api.actions).toEqual([{ action: 'delete', id: `USER${SEP}09/23/2026` }]);
+  });
+
+  it('Story 7.10: a refused delete shows the envelope\u2019s own sentence as an alert, and nothing re-reads', async () => {
+    const api = seeded();
+    api.actionAnswer = {
+      kind: 'error',
+      status: 403,
+      code: 'AUTH.NOPRIVILEGE',
+      reason: 'You need %DB_USER:WRITE to delete these errors.',
+      detail: { failedPair: '%DB_USER:WRITE' },
+    } as unknown as JsonResult<unknown>;
+    const { fixture, drill } = mount(api);
+    await drill.openDates('USER');
+    fixture.detectChanges();
+    const before = api.paths.length;
+    await deleteFromMenu(fixture, '09/23/2026');
+    typeAndConfirm(fixture, '09/23/2026');
+    await settle(fixture);
+    const alert = fixture.nativeElement.querySelector('[data-ocu-drill="action-refusal"]') as HTMLElement | null;
+    expect(alert?.getAttribute('role')).toBe('alert');
+    expect(alert?.textContent).toContain('You need %DB_USER:WRITE to delete these errors.');
+    expect(api.paths.length).toBe(before);
+
+    // Mutation (Rule 19): drop the page's refusal reset on a drill move -> the alert survives the
+    // step to the namespaces level and this goes red.
+    await drill.openNamespaces();
+    await settle(fixture);
+    expect(fixture.nativeElement.querySelector('[data-ocu-drill="action-refusal"]')).toBeNull();
+  });
+
+  it('Story 7.10: a dialog left open does not outlive the page it was opened on', async () => {
+    // Mutation (Rule 19): drop the page's `cancelPending()` on destroy -> the handler still holds
+    // the namespace delete after the page is gone, and this goes red.
+    const api = seeded();
+    const { fixture, drill } = mount(api);
+    await drill.openNamespaces();
+    fixture.detectChanges();
+    await deleteFromMenu(fixture, 'USER');
+    const handler = TestBed.inject(ScreenActionHandler);
+    expect(handler.pending()?.descriptor).toBe(LOG_ERROR_LIST);
+
+    fixture.destroy();
+    expect(handler.pending()).toBeNull();
+    expect(api.actions).toEqual([]);
+  });
+
+  it('Story 7.10: a composite deleted event re-reads its namespace, steps up when the level has gone, and clears the selection', async () => {
+    // Mutation (Rule 19): compare the whole id in `applyDeleted` -> a date-scoped event names no
+    // namespace the drill holds, nothing re-reads, and this goes red.
+    const api = seeded();
+    const { fixture, drill } = mount(api);
+    await drill.openDates('USER');
+    await drill.openList('09/23/2026');
+    fixture.detectChanges();
+    (row(fixture, '4').querySelectorAll('[role="gridcell"]')[1] as HTMLElement).click();
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual([`USER${SEP}09/23/2026${SEP}4`]);
+
+    api.refuse('list', 404, 'LOG.DATE');
+    api.answer('dates', { namespace: 'USER', rows: [{ date: '09/22/2026', count: 1 }], truncated: false });
+    await deleteFromMenu(fixture, '4');
+    typeAndConfirm(fixture, '4');
+    for (let tick = 0; tick < 4; tick += 1) await settle(fixture);
+    expect(api.actions).toEqual([{ action: 'delete', id: `USER${SEP}09/23/2026${SEP}4` }]);
+    expect(drill.level()).toBe('dates');
+    expect(storeSelection()).toEqual([]);
+    expect(rowCells(fixture)[0]?.[0]).toBe('09/22/2026');
+  });
+
+  it('Story 7.10: Delete on the detail level names that error, and the drill steps up to the list', async () => {
+    // Mutation (Rule 19): drop the detail branch from `syncSelection` -> nothing is selected on the
+    // detail level, the action has no target, no dialog opens, and this goes red.
+    const api = seeded();
+    const { fixture, drill, actions } = mount(api);
+    await drill.openDates('USER');
+    await drill.openList('09/23/2026');
+    await drill.openDetail(4);
+    await settle(fixture);
+    expect(actions.run(LOG_ERROR_LIST, 'delete')).toBe(true);
+    await settle(fixture);
+    expect(dialog(fixture)?.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(`${STRINGS.errorDeleteOneVerb} 4`);
+
+    api.refuse('detail', 404, 'LOG.ENTRY');
+    api.answer('list', { namespace: 'USER', date: '09/23/2026', rows: [], truncated: false });
+    typeAndConfirm(fixture, '4');
+    for (let tick = 0; tick < 4; tick += 1) await settle(fixture);
+    expect(api.actions).toEqual([{ action: 'delete', id: `USER${SEP}09/23/2026${SEP}4` }]);
+    expect(drill.level()).toBe('list');
+  });
+
+  it('Story 7.10: a re-read the selected row is no longer in clears the selection', async () => {
+    const api = seeded();
+    const { fixture, drill, actions } = mount(api);
+    await drill.openNamespaces();
+    fixture.detectChanges();
+    (row(fixture, 'USER').querySelector('[data-ocu-drill="trigger"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual(['USER']);
+
+    api.answer('namespaces', { rows: [{ namespace: 'HSCUSTOM' }], truncated: false });
+    expect(actions.run(ERROR_LOG_SCREEN.descriptor, REFRESH_ACTION_ID)).toBe(true);
+    await settle(fixture);
+    expect(storeSelection()).toEqual([]);
+
+    // A re-read the instance refuses shows no rows, so it clears the selection too.
+    // Mutation (Rule 19): drop the reset from the store's fault branch -> 'HSCUSTOM' stays selected.
+    (row(fixture, 'HSCUSTOM').querySelector('[data-ocu-drill="trigger"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(storeSelection()).toEqual(['HSCUSTOM']);
+    api.refuse('namespaces', 500, null);
+    expect(actions.run(ERROR_LOG_SCREEN.descriptor, REFRESH_ACTION_ID)).toBe(true);
+    await settle(fixture);
+    expect(storeSelection()).toEqual([]);
   });
 });

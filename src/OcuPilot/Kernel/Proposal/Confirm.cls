@@ -10,11 +10,16 @@
 /// and the digest all come from the row; the request carries the proposal id in its route and, in
 /// its body, only the fields the descriptor declared secret-typed for that tool. Any other key is
 /// rejected outright rather than ignored, and the identifying key is never accepted at all.</p>
-/// <p><b>Every gate is evaluated here, at the write, never at the mint</b> (AD-40): the AD-10
-/// prohibited-set seam, the restraint verdict, the declared
-/// <code>(resource, permission)</code> pairs, the conversation, the agent definition's version and
-/// the fingerprint re-read. All six run before the claim commits, against state that may have moved
-/// since the proposal was minted.</p>
+/// <p><b>Every gate is evaluated here, at the write, never at the mint</b> (AD-40): the declared
+/// <code>(resource, permission)</code> pairs and the AD-10 prohibited set -- which are
+/// <class>OcuPilot.Kernel.Proposal.Operation</class>'s, shared with the screen's own caller
+/// (AD-53) -- then the restraint verdict, the conversation, the agent definition's version and the
+/// fingerprint re-read, which are this caller's alone. All six run before the claim commits,
+/// against state that may have moved since the proposal was minted.</p>
+/// <p><b>This class is the agent's caller of one operation, not the operation</b> (AD-53). The
+/// fresh read, the two shared gates and the port call are
+/// <class>OcuPilot.Kernel.Proposal.Operation</class>'s; what this class adds is the proposal --
+/// the closed channel, the claim, the fingerprint, the ledger row and the agent marker.</p>
 /// <p><b>The marker and the ledger row are the executor's, and neither can fail the write</b>
 /// (AD-15, AD-41). The ledger row opens before the port call and is finalized after it with what
 /// was actually executed; the audit marker is emitted once, here, after the write reads OK, and its
@@ -37,23 +42,6 @@
 Class OcuPilot.Kernel.Proposal.Confirm Extends %RegisteredObject
 {
 
-/// <p>The admin request type the target's fresh re-read is made with when the proposal's tool
-/// declares none (AD-36's single-object <code>GET</code>). The tool's own
-/// <method>OcuPilot.Screen.Tool.Write.ReadType</method> is what the re-read uses, so the digest
-/// compared here covers the same read the mint digested (AD-51).</p>
-Parameter READTYPE = "GET";
-
-/// <p>The admin request type the confirmed write is issued with when the proposal's tool declares
-/// none. It resolves through the vendor endpoint's own <code>TYPE&lt;suffix&gt;</code> parameter,
-/// exactly as the read does (<parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter>); an
-/// action-style tool declares the vendor's own request type through
-/// <method>OcuPilot.Screen.Tool.Write.WriteType</method> and sends no body (AD-51).</p>
-Parameter WRITETYPE = "PUT";
-
-/// <p>The class a write tool's port declaration lives on, whose own value is the default every
-/// shipped tool carries (AD-52).</p>
-Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
-
 /// <p>The port the fresh re-read and the write go through when the proposal's tool declares the
 /// base's own default (AD-52). Overridable so a fixture can answer a known object and record what
 /// was sent; production never overrides it.</p>
@@ -69,14 +57,7 @@ ClassMethod PortClass() As %String
 /// confirm can never compare a digest taken from one port against a write issued at another.</p>
 ClassMethod PortClassOf(pToolClass As %String) As %String
 {
-    Set tPort = ""
-    Try {
-        If pToolClass '= "" Set tPort = $ClassMethod(pToolClass, "PortClass")
-    } Catch {
-        Set tPort = ""
-    }
-    If (tPort = "") || (tPort = $Parameter(..#WRITETOOLBASE, "PORTCLASS")) Quit ..PortClass()
-    Quit tPort
+    Quit ##class(OcuPilot.Kernel.Proposal.Operation).PortClassOf(pToolClass, ..PortClass())
 }
 
 /// <p>The proposal store. Overridable for the same reason; production never overrides it.</p>
@@ -255,66 +236,33 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
             Quit
         }
 
-        ; AD-8: the declared pairs, re-checked at the moment of the call rather than at the mint.
+        ; AD-53's first half: the two gates both callers of this operation share, in the order
+        ; that is load-bearing -- the declared pair set (AD-8), then AD-10's prohibited set against
+        ; the resolved target, asked here inside the transition and before the port call.
         ;
-        ; **First of the three gates, and that order is load-bearing.** The prohibited set below
-        ; reads live state through the port (AD-10), and the port's own gate requires the very pair
-        ; this check names -- so a caller who has lost it reached that read first and was answered
-        ; a generic internal failure, which is the one thing AD-8 forbids: "a denial names the pair
-        ; that failed, so the UX can say which privilege is missing". Asked here, the caller is
-        ; told which privilege it needs, and the instance spends no live read deciding whether a
-        ; change it may not make at all is also prohibited (DW-1208, Story 5.8).
-        ;
-        ; It is therefore also above the restraint verdict below, which is a deliberate consequence
-        ; and not an accident of the move: AD-30 requires a confirm to re-evaluate read-only and
-        ; refuse, which it does either way, while AD-8 requires a denial to name the pair that
-        ; failed. So a caller who is both under read-only and short of a pair is told about the
-        ; pair. Both orders refuse and neither reaches the port; the order is pinned in both
+        ; **Why the pair check is above the prohibited set, and so above the restraint verdict
+        ; below.** The set reads live state through the port, whose own gate requires the very pair
+        ; that check names, so a caller who has lost it would reach that read and be answered a
+        ; generic internal failure -- the one thing AD-8 forbids, since "a denial names the pair
+        ; that failed". A caller who is both under read-only and short of a pair is therefore told
+        ; about the pair; both orders refuse and neither reaches the port. Pinned in both
         ; directions by ProposalConfirm's TestThePrivilegeGateAnswersBeforeTheProhibitedSet and
-        ; TestThePrivilegeGateAnswersBeforeTheRestraintVerdict, so it cannot drift back silently.
-        Set tPairs = ##class(OcuPilot.Screen.Tool.Registry).RequiredPairs(tTool, .tPairsResolved)
-        If 'tPairsResolved {
-            Set tSC = ..Internal("the privilege pairs of " _ $Get(pRow("toolName")) _ " could not be read", .pHttpStatus, .pCode)
+        ; TestThePrivilegeGateAnswersBeforeTheRestraintVerdict (DW-1208, Story 5.8).
+        ;
+        ; $ClassName() rather than this class's name: HoldsPair is an overridable seam, and a
+        ; fixture that drives a revoked pair overrides it on its own subclass.
+        Set tGateSC = ##class(OcuPilot.Kernel.Proposal.Operation).Gate(tTool, $Get(pRow("targetRef")), $Get(pRow("payload")), $Get(pRow("diff")), $Get(pRow("arguments")), pUser, ..ProhibitedClassName(), $ClassName(), .tPairs, .tRefused, .tGateHttp, .tGateCode, .tGateDetail)
+        If $$$ISERR(tGateSC) {
+            ; Internal() renders a generic reason to the caller and logs the detail (AD-12), which
+            ; is what keeps the prohibited set's own live-state failure text out of the client and
+            ; in the log, where it is the only thing a reader can act on.
+            Set tSC = ..Internal($System.Status.GetErrorText(tGateSC), .pHttpStatus, .pCode)
             Quit
         }
-        ; AD-8, AD-48. A tool whose requirement depends on its own argument -- the namespace this
-        ; delete names -- declares that half through ArgumentPairs, and the confirm resolves it
-        ; from the STORED arguments so it re-checks the set the dispatcher checked at the call.
-        ; Empty for every tool whose requirement is its screen's alone, so their check is
-        ; unchanged. Without it such a caller passes this gate short of a pair the port's own gate
-        ; requires, reaches the prohibited set's live read, and is answered the generic internal
-        ; failure AD-8 exists to prevent.
-        Set tArgumentPairs = ##class(OcuPilot.Screen.Tool.Registry).ArgumentPairs(tTool, ..ParsedObject($Get(pRow("arguments"))), .tArgumentsResolved)
-        If 'tArgumentsResolved {
-            Set tSC = ..Internal("the argument privilege pairs of " _ $Get(pRow("toolName")) _ " could not be read", .pHttpStatus, .pCode)
+        If tRefused {
+            Set tSC = ..Refuse(tGateHttp, tGateCode, .pHttpStatus, .pCode)
+            Set pDetail = tGateDetail
             Quit
-        }
-        Set tPairs = tPairs _ tArgumentPairs
-        Set tFailedPair = ..MissingPair(pUser, tPairs)
-        If tFailedPair '= "" {
-            Set tSC = ..Refuse(403, ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, .pHttpStatus, .pCode)
-            Set pDetail = {}
-            Do pDetail.%Set("failedPair", tFailedPair, "string")
-            Quit
-        }
-
-        ; AD-10's single call site: asked inside the transition and before the port call. The set
-        ; is handed the stored row's tool, target, payload and diff, and nothing of the request's.
-        Set tProhibited = ..ProhibitedClassName()
-        If tProhibited '= "" {
-            Set tProhibitSC = $ClassMethod(tProhibited, "Prohibits", $Get(pRow("toolName")), $Get(pRow("targetRef")), $Get(pRow("payload")), $Get(pRow("diff")), .tProhibits, .tProhibitCode)
-            If $$$ISERR(tProhibitSC) {
-                ; The underlying text, not just "could not be read": the set reads live state, so
-                ; the cause is a property of the instance at this moment and is the only thing a
-                ; reader of the log can act on. Internal() renders a generic reason to the caller
-                ; and logs the detail (AD-12), so this reaches the log and never the client.
-                Set tSC = ..Internal("the prohibited set could not be read: " _ $System.Status.GetErrorText(tProhibitSC), .pHttpStatus, .pCode)
-                Quit
-            }
-            If tProhibits {
-                Set tSC = ..Refuse(403, tProhibitCode, .pHttpStatus, .pCode)
-                Quit
-            }
         }
 
         ; AD-30. The kill switch, enforced read-only and the definition's own read-only flag, in
@@ -406,20 +354,13 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         ; (OcuPilot.Port.AdminPort.BODYLESSTYPES), and a body sent anyway would be a payload the
         ; user never reviewed.
         Set tSendsBody = ..ToolSendsBody(tToolClass)
-        Set tBody = ""
+        Set tBody = ##class(OcuPilot.Kernel.Proposal.Operation).SecretBody(tToolClass, pSuppliedSecrets, tSecretNames)
         If tSendsBody Set tBody = ..WithSecrets($Get(pRow("payload")), pSuppliedSecrets, tSecretNames)
         ; AD-55. The one place a tool's server-derived fields reach the body, and it is after the
         ; prohibited verdict above: a derived field is one no caller may set, so it is outside the
         ; diff the user reviewed and outside the set those predicates sweep. Empty for every tool
         ; that shipped before Epic 8, so their body is byte-identical to the stored payload.
         If tSendsBody Do ..ToolDerivedFields(tToolClass, tBody)
-        Kill tQuery
-        Set tQuery(tIdParam) = tIdValue
-        ; AD-52. A port that addresses a set rather than an object needs more than the identifying
-        ; parameter, and what it needs is the tool's own declaration read off the STORED payload --
-        ; the one the fingerprint just compared. Empty for every tool that ships against an admin
-        ; endpoint, so their query is byte-identical.
-        Do ..ToolPortQuery(tToolClass, $Get(pRow("payload")), .tQuery)
 
         ; AD-41: the row is opened BEFORE the port call and finalized after it. A row that only
         ; ever appeared on success could not record a write that raised mid-flight; the `pending`
@@ -433,7 +374,11 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         ; target and this user at or after it.
         Set tWrittenAt = ##class(OcuPilot.Kernel.State.Turn).Timestamp()
 
-        Set tWriteSC = $ClassMethod(..PortClassOf(tToolClass), "Invoke", tEndpoint, ..ToolWriteType(tToolClass), .tQuery, tBody, .tWritten, .tWriteHttp, .tWriteFault)
+        ; AD-53's second half: the port call is the shared operation's, so the agent's write and a
+        ; screen action's are one call site. AD-52's port declaration, AD-51's request type and the
+        ; tool's own port query (read off the STORED payload the fingerprint just compared) all
+        ; resolve inside it.
+        Set tWriteSC = ##class(OcuPilot.Kernel.Proposal.Operation).ApplyAt(tToolClass, ..PortClassOf(tToolClass), tEndpoint, tIdParam, tIdValue, $Get(pRow("payload")), tBody, .tWritten, .tWriteHttp, .tWriteFault)
         If $$$ISERR(tWriteSC) {
             ; The claim has committed and the token is spent: the proposal stays confirmed and the
             ; port's own normalized envelope is what the caller is answered with. There is no
@@ -636,14 +581,12 @@ ClassMethod FingerprintMatches(pTool As %DynamicObject, ByRef pRow, Output pMatc
             Set tSC = $$$ERROR($$$GeneralError, "the proposal's target could not be addressed")
             Quit
         }
-        Kill tQuery
-        Set tQuery(pIdParam) = pIdValue
-        ; AD-52. The re-read asks the port the tool's own question about the reviewed target, which
-        ; for a set-addressing port is "which of these ids still exist". Empty for every shipped
-        ; tool, so their re-read is byte-identical to the mint's.
-        Do ..ToolPortQuery(tClass, $Get(pRow("payload")), .tQuery)
+        ; AD-52, AD-53. The re-read is the shared operation's fresh read, which asks the port the
+        ; tool's own question about the reviewed target -- for a set-addressing port, "which of
+        ; these ids still exist". Empty for every shipped tool against an admin endpoint, so their
+        ; re-read is byte-identical to the mint's.
+        Set tReadSC = ##class(OcuPilot.Kernel.Proposal.Operation).ReadAt(tClass, ..PortClassOf(tClass), pEndpoint, pIdParam, pIdValue, $Get(pRow("payload")), .tFresh, .tReadHttp, .tReadFault)
         Set tCreates = ##class(OcuPilot.Kernel.Proposal.Mint).CreatesOf(tClass)
-        Set tReadSC = $ClassMethod(..PortClassOf(tClass), "Invoke", pEndpoint, ..ToolReadType(tClass), .tQuery, "", .tFresh, .tReadHttp, .tReadFault)
         If tCreates {
             ; AD-54. The re-read asks the create's own question -- is this name still free -- and
             ; its outcome is digested through the mint's single producer of that shape, so a name
@@ -721,53 +664,6 @@ ClassMethod ParsedObject(pText As %String) As %DynamicObject [ Private ]
     Quit tObject
 }
 
-/// <p>The admin request type <var>pToolClass</var>'s fresh re-read is made with (AD-51), or
-/// <parameter>READTYPE</parameter> when the class declares none or cannot be asked.</p>
-ClassMethod ToolReadType(pToolClass As %String) As %String [ Private ]
-{
-    Set tType = ""
-    Try {
-        If pToolClass '= "" Set tType = $ClassMethod(pToolClass, "ReadType")
-    } Catch {
-        Set tType = ""
-    }
-    If tType = "" Quit ..#READTYPE
-    Quit tType
-}
-
-/// <p>The admin request type <var>pToolClass</var>'s confirmed write is issued with (AD-51), or
-/// <parameter>WRITETYPE</parameter> when the class declares none or cannot be asked.</p>
-ClassMethod ToolWriteType(pToolClass As %String) As %String [ Private ]
-{
-    Set tType = ""
-    Try {
-        If pToolClass '= "" Set tType = $ClassMethod(pToolClass, "WriteType")
-    } Catch {
-        Set tType = ""
-    }
-    If tType = "" Quit ..#WRITETYPE
-    Quit tType
-}
-
-/// <p>Add <var>pToolClass</var>'s own port query parameters, read off the stored payload
-/// <var>pPayloadJson</var>, to <var>pQuery</var> (AD-52,
-/// <method>OcuPilot.Screen.Tool.Write.PortQuery</method>). Called before the fingerprint re-read
-/// and again before the write, so both reach the port with the same question about the same
-/// reviewed set.</p>
-/// <p>A class that cannot be asked adds nothing, which is the answer every shipped tool's own
-/// declaration gives: the vendor identifies a target by the one identifying parameter already
-/// set.</p>
-ClassMethod ToolPortQuery(pToolClass As %String, pPayloadJson As %String, ByRef pQuery) [ Private ]
-{
-    Try {
-        If pToolClass = "" Quit
-        Do $ClassMethod(pToolClass, "PortQuery", ..ParsedObject(pPayloadJson), .pQuery)
-    } Catch {
-        ; Deliberately empty: a tool that cannot answer adds no parameter, and the port refuses the
-        ; call it then receives rather than issuing a delete with no subject.
-    }
-}
-
 /// <p>Apply <var>pToolClass</var>'s own server-derived fields to <var>pBody</var>
 /// (<method>OcuPilot.Screen.Tool.Write.DerivedFields</method>, AD-55). A class that cannot be
 /// asked derives nothing, which is what every write that shipped before Epic 8 does.</p>
@@ -782,48 +678,20 @@ ClassMethod ToolDerivedFields(pToolClass As %String, pBody As %DynamicObject) [ 
         ; body it then receives on its own terms rather than the confirm inventing a refusal here.
     }
 }
-
 /// <p>The AD-14 action <var>pToolClass</var>'s confirmed write performs
 /// (<method>OcuPilot.Screen.Tool.Write.ChangeAction</method>), or <code>""</code> for a class that
 /// cannot be asked -- which leaves the answer carrying no action and the client publishing its own
 /// default, the behaviour every write had before this seam existed.</p>
 ClassMethod ToolChangeAction(pToolClass As %String) As %String [ Private ]
 {
-    Set tAction = ""
-    Try {
-        If pToolClass '= "" Set tAction = $ClassMethod(pToolClass, "ChangeAction")
-    } Catch {
-        Set tAction = ""
-    }
-    Quit tAction
+    Quit ##class(OcuPilot.Kernel.Proposal.Operation).ChangeAction(pToolClass)
 }
 
 /// <p>Whether <var>pToolClass</var>'s confirmed write carries a body (AD-51). A class that cannot
 /// be asked sends one, which is every write that shipped before this seam existed.</p>
 ClassMethod ToolSendsBody(pToolClass As %String) As %Boolean [ Private ]
 {
-    Set tSends = 1
-    Try {
-        If pToolClass '= "" Set tSends = ''$ClassMethod(pToolClass, "SendsBody")
-    } Catch {
-        Set tSends = 1
-    }
-    Quit tSends
-}
-
-/// <p>The first pair of <var>pPairs</var> that <var>pUser</var> does not hold, as
-/// <code>resource:permission</code>, or <code>""</code> (AD-8).</p>
-ClassMethod MissingPair(pUser As %String, pPairs As %List) As %String [ Private ]
-{
-    Set tFailed = ""
-    For tI = 1:1:$ListLength(pPairs) {
-        Set tPair = $List(pPairs, tI)
-        If '..HoldsPair(pUser, $List(tPair, 1), $List(tPair, 2)) {
-            Set tFailed = $List(tPair, 1) _ ":" _ $List(tPair, 2)
-            Quit
-        }
-    }
-    Quit tFailed
+    Quit ##class(OcuPilot.Kernel.Proposal.Operation).SendsBody(pToolClass)
 }
 
 /// <p>Whether <var>pUser</var> holds <var>pPermission</var> on <var>pResource</var> right now.

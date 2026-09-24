@@ -34,9 +34,16 @@
 /// (<class>OcuPilot.Screen.Descriptor.WebAppForm</class>) resolved by convention rather than by a
 /// declaration, and the empty state invites the agent instead of naming a next step --
 /// <method>OcuPilot.Screen.Registry.TableProblem</method> holds those two keys as a pair. It does
-/// not refresh (AD-43). Its two write tools, <class>OcuPilot.Screen.Tool.WebAppUpdate</class> and
-/// <class>OcuPilot.Screen.Tool.WebAppCreate</class>, register by class scan and need no declared
-/// action of their own.</p>
+/// not refresh (AD-43). Its write tools, <class>OcuPilot.Screen.Tool.WebAppUpdate</class>,
+/// <class>OcuPilot.Screen.Tool.WebAppCreate</class> and <class>OcuPilot.Screen.Tool.WebAppDelete</class>,
+/// register by class scan.</p>
+/// <p><b>It declares three row actions</b> (AD-5, AD-53), in command-bar order with the
+/// destructive one last: <code>enable</code> and <code>disable</code>, both carried out by
+/// <class>OcuPilot.Screen.Tool.WebAppUpdate</class> over its one <code>Enabled</code> field, and
+/// <code>delete</code>, carried out by <class>OcuPilot.Screen.Tool.WebAppDelete</class>. Each
+/// declares the self-protection rule that <i>explains</i> its refusal on OcuPilot's own
+/// applications; the refusal itself is AD-10's, evaluated at the write whatever the caller, and no
+/// predicate here decides what may be deleted.</p>
 Class OcuPilot.Screen.Descriptor.WebAppList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -59,7 +66,11 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "create", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [
+    {"id": "enable", "selfProtection": "serves-ocupilot"},
+    {"id": "disable", "selfProtection": "serves-ocupilot"},
+    {"id": "delete", "selfProtection": "serves-ocupilot"}
+  ],
   "context": {"fields": ["Name", "Namespace", "Type", "Enabled", "DispatchClass", "Resource"], "secretFields": []},
   "secretArguments": [],
   "fingerprintExcludes": [],

@@ -1,20 +1,17 @@
 /// <p>The instance's auditing configuration: one <code>form-page</code> over the vendor's
 /// <code>Security.Audit.Enabled</code> endpoint, declared so the agent's write tool and the screen
 /// Story 7.4 builds are two callers of one operation (AD-5, FR-47).</p>
-/// <p><b>It is declared <code>built: false</code>, which is a first in this tree.</b> A
-/// <code>built: true</code> descriptor's archetype is emitted as a
-/// <code>BuiltArchetypeKey</code> that <file>ui/src/app/shell/screen-outlet.ts</file> requires a
-/// page for, so declaring it built with no Angular page would fail <code>ng build</code>. Unbuilt
-/// means nothing lists it, nothing routes it and no page is required, while
-/// <class>OcuPilot.Screen.Tool.AuditingUpdate</class> still resolves its entity type, its scope
-/// and its privilege set through it -- which is the whole reason the descriptor exists now rather
-/// than with the screen. <code>sideBarPosition</code> is declared 0 and is exempt from the
-/// side-bar rule while the screen is unbuilt
-/// (<method>OcuPilot.Screen.Registry.SideBarPositionProblem</method>).</p>
-/// <p><b>It declares no <code>read</code> and no <code>table</code></b> (AD-36), the shape
-/// <class>OcuPilot.Screen.Descriptor.AgentDefinitionForm</class> already uses: the endpoint answers
-/// one object, not rows, and the write tool names its own endpoint rather than falling back to a
-/// declared read's.</p>
+/// <p><b>It is a built <code>form-page</code> with a single-object read</b> (AD-36): the
+/// <code>Security.Audit.Enabled</code> <code>GET</code>, whose one row is the instance-wide
+/// <code>Enabled</code> flag. The page renders that flag as a status line and one action, and
+/// embeds <class>OcuPilot.Screen.Descriptor.AuditSystemEventList</class> and
+/// <class>OcuPilot.Screen.Descriptor.AuditUserEventList</class> beneath it by issuing their own
+/// declared reads (AD-5). A form renders no grid, so it declares no <code>table</code> and no
+/// empty-state sentence (<class>OcuPilot.Screen.Registry</class>'s <code>RendersNoTable</code>).</p>
+/// <p><b>Its two row actions are the screen's caller of
+/// <class>OcuPilot.Screen.Tool.AuditingUpdate</class></b> (AD-53): <code>enable</code> and
+/// <code>disable</code> reach the same tool the agent's proposal does, through
+/// <code>POST /screens/security.auditing/action</code> with the singleton id.</p>
 /// <p><b>Its entity type is the instance's auditing configuration, not an audit event.</b>
 /// <code>audit-event</code> is one row of the event roster and its identity is a three-part query
 /// key; this type names the single configuration object whose <code>Enabled</code> flag turns
@@ -42,9 +39,9 @@ XData Declaration
   "route": "security/auditing",
   "area": "security",
   "labelKey": "auditingConfigurationLink",
-  "sideBarPosition": 0,
+  "sideBarPosition": 6,
   "archetype": "form-page",
-  "built": false,
+  "built": true,
   "refreshes": false,
   "refreshRates": [],
   "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
@@ -55,12 +52,19 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
-  "context": {"fields": [], "secretFields": []},
+  "rowActions": [{"id": "enable", "selfProtection": ""}, {"id": "disable", "selfProtection": ""}],
+  "context": {"fields": ["Enabled"], "secretFields": []},
   "emptyStateKey": "",
-  "commandAliases": [],
+  "commandAliases": ["auditing"],
   "classicPage": "%CSP.UI.Portal.Audit.SystemEvents",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
+  "read": {
+    "source": {"port": "admin", "endpoint": "Security.Audit.Enabled", "type": "GET"},
+    "fields": ["Enabled"],
+    "filter": ["Enabled"],
+    "sort": {"fields": ["Enabled"], "default": "Enabled", "direction": "asc"},
+    "paging": "cap"
+  },
   "toolIdentifier": "security.auditing"
 }
 }

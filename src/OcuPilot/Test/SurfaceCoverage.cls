@@ -3,10 +3,8 @@
 /// that pins it -- and every coverage row names a member that still exists.</p>
 /// <p><b>The roster covers unbuilt descriptors too</b> (DW-1453, Story 5.11). A descriptor that
 /// declares <code>"built": false</code> is still a declaration the registry validates, still the
-/// owner of its screen's privileges, entity type and write tool
-/// (<class>OcuPilot.Screen.Descriptor.AuditingConfig</class> owns
-/// <code>security.auditing.update</code>), and still something a later story turns on -- so
-/// leaving it off the roster meant the next one sat on no roster silently.</p>
+/// owner of its screen's privileges, entity type and write tool, and still something a later story
+/// turns on -- so leaving it off the roster meant the next one sat on no roster silently.</p>
 /// <p><b>Both sets are derived from the registries themselves</b>
 /// (<method>OcuPilot.Screen.Registry.Descriptors</method> and
 /// <method>OcuPilot.Screen.Tool.Registry.ListTools</method>), never from a list beside them. Those
@@ -60,7 +58,9 @@ XData Coverage
 <screen name="AgentDefinitionList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="AgentSwitches" class="OcuPilot.Test.Wire" method="TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource"/>
 <screen name="AuditList" class="OcuPilot.Test.Descriptor" method="TestTheAuditListValidatesAndDeclaresItsServerCriteria"/>
-<screen name="AuditingConfig" class="OcuPilot.Test.Descriptor" method="TestTheAuditingConfigurationDescriptorIsDeclaredUnbuiltAndOwnsTheWriteTool"/>
+<screen name="AuditingConfig" class="OcuPilot.Test.Descriptor" method="TestTheAuditingConfigurationDescriptorIsBuiltWithItsReadAndOwnsTheWriteTool"/>
+<screen name="AuditSystemEventList" class="OcuPilot.Test.AuditingScreen" method="TestTheSystemEventListReadsSystemEvents"/>
+<screen name="AuditUserEventList" class="OcuPilot.Test.AuditingScreen" method="TestTheUserEventListReadsUserEvents"/>
 <screen name="DatabaseDetails" class="OcuPilot.Test.Descriptor" method="TestDatabaseDetailsDeclaresExactlyFifteenFieldsAndOperateAlone"/>
 <screen name="DatabaseFreeSpace" class="OcuPilot.Test.Descriptor" method="TestTheFreeSpaceViewMergesInfoFiguresAndDeclaresNoMaxSize"/>
 <screen name="DatabaseList" class="OcuPilot.Test.Descriptor" method="TestTheDatabasesGeneralViewDeclaresExactlyItsFiveFieldsAndFiveColumns"/>
@@ -120,10 +120,26 @@ XData Coverage
 <tool name="logs.applicationerrors.delete" class="OcuPilot.Test.ToolWrite" method="TestTheErrorDeleteToolIsAnActionWriteOverItsOwnPort"/>
 <tool name="osmgmt.processes.resume" class="OcuPilot.Test.ToolWrite" method="TestTheProcessResumeToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="osmgmt.processes.suspend" class="OcuPilot.Test.ToolWrite" method="TestTheProcessSuspendToolIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="osmgmt.processes.terminate" class="OcuPilot.Test.ToolWrite" method="TestTheProcessTerminateToolIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="osmgmt.processes.terminatewitherror" class="OcuPilot.Test.ToolWrite" method="TestTheProcessTerminateWithErrorToolIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="permissions.users.delete" class="OcuPilot.Test.ToolWrite" method="TestTheUserDeleteToolIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="permissions.users.password" class="OcuPilot.Test.ToolWrite" method="TestTheUserPasswordToolSendsOnlyItsDeclaredSecret"/>
 <tool name="permissions.users.update" class="OcuPilot.Test.ToolWrite" method="TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs"/>
 <tool name="security.auditing.update" class="OcuPilot.Test.ToolWrite" method="TestTheAuditingWriteToolAdvertisesEnabledAloneAndDeclaresItsWriteDestructive"/>
+<tool name="security.auditsystemevents.reset" class="OcuPilot.Test.AuditEventTools" method="TestTheResetToolsAreActionWritesWithOneStateRow" corpus="the system and user tools are asserted together in one loop"/>
+<tool name="security.auditsystemevents.update" class="OcuPilot.Test.AuditEventTools" method="TestTheUpdateToolsAdmitEnabledAloneOverTheClassDerivedList" corpus="the system and user tools are asserted together in one loop"/>
+<tool name="security.audituserevents.delete" class="OcuPilot.Test.AuditEventTools" method="TestTheUserEventDeleteIsADestructiveActionWrite"/>
+<tool name="security.audituserevents.reset" class="OcuPilot.Test.AuditEventTools" method="TestTheResetToolsAreActionWritesWithOneStateRow" corpus="the system and user tools are asserted together in one loop"/>
+<tool name="security.audituserevents.update" class="OcuPilot.Test.AuditEventTools" method="TestTheUpdateToolsAdmitEnabledAloneOverTheClassDerivedList" corpus="the system and user tools are asserted together in one loop"/>
+<tool name="security.oauthclients.delete" class="OcuPilot.Test.OAuthDelete" method="TestTheClientConfigurationDeleteIsAnActionWriteOverTheTabsOwnPairs"/>
+<tool name="security.oauthserverclients.delete" class="OcuPilot.Test.OAuthDelete" method="TestTheServerClientDeleteIsAnActionWriteOverTheTabsOwnPairs"/>
 <tool name="tasks.schedule.resume" class="OcuPilot.Test.ToolWrite" method="TestTheTaskResumeToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="webapp.list.create" class="OcuPilot.Test.WebAppCreate" method="TestTheToolAdvertisesTheReviewedCreateFieldsAndApplicationRoles"/>
+<tool name="tasks.ondemand.run" class="OcuPilot.Test.ToolWrite" method="TestTheTaskRunToolIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="tasks.schedule.run" class="OcuPilot.Test.ToolWrite" method="TestTheScheduleRunToolIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="tasks.schedule.suspend" class="OcuPilot.Test.ToolWrite" method="TestTheTaskSuspendToolIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="tasks.schedule.delete" class="OcuPilot.Test.ToolWrite" method="TestTheTaskDeleteToolIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="webapp.list.delete" class="OcuPilot.Test.ToolWrite" method="TestTheWebApplicationDeleteToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="webapp.list.update" class="OcuPilot.Test.ToolWrite" method="TestTheRegistryAdvertisesItAsAWriteToolFulfilledOnTheInstance"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
@@ -278,8 +294,7 @@ ClassMethod Drift(ByRef pDerived, ByRef pRows, pKind As %String, pDerivedNoun As
 /// descriptor with no row, and a row naming a descriptor that no longer exists, each fail naming
 /// the member.</p>
 /// <p>Mutation: delete one <code>&lt;screen/&gt;</code> row -> red naming the uncovered
-/// descriptor; restore <method>DeriveScreens</method>' <code>built</code> filter -> the
-/// <code>AuditingConfig</code> row reads as an orphan and this goes red (DW-1453).</p>
+/// descriptor.</p>
 Method TestEveryDeclaredScreenHasACoverageRowAndBack()
 {
     Set tSC = ..DeriveScreens(.tScreens)

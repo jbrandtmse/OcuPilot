@@ -450,10 +450,12 @@ Method TestTheProhibitedSeamIsCalledOnceBeforeThePortCall()
     Set tBody = $Piece(tBody, "ClassMethod ChannelProblem", 1)
     Set tCalls = $Length(tBody, "..ProhibitedClassName()") - 1
     Do $$$AssertEquals(tCalls, 1, "the transition names it exactly once")
-    ; The write's request type is the tool's since AD-51, so the port call is found by the
-    ; resolver's name rather than by the parameter it falls back to.
-    Do $$$AssertTrue($Find(tBody, "..ToolWriteType(") > 0, "the transition issues the write with the tool's own request type")
-    Do $$$AssertTrue($Find(tBody, "..ProhibitedClassName()") < $Find(tBody, "..ToolWriteType("), "and names the set before the write goes out")
+    ; The write itself is the shared operation's since AD-53, and it resolves the tool's own
+    ; request type inside itself -- so the port call is found by the name of the call that issues
+    ; it rather than by the resolver it used to name here. The confirm calls the form that takes
+    ; the port it resolved through its own PortClassOf seam (ApplyAt), since the Epic 7/8 merge.
+    Do $$$AssertTrue($Find(tBody, ").ApplyAt(") > 0, "the transition issues the write through the shared operation")
+    Do $$$AssertTrue($Find(tBody, "..ProhibitedClassName()") < $Find(tBody, ").ApplyAt("), "and names the set before the write goes out")
 }
 
 /// <p>AC7, AD-10: what the seam does when it answers a set -- the confirm is refused with that

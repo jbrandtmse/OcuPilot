@@ -128,7 +128,7 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// <code>SUSPEND</code> was admitted for <code>Task.CRUD</code>, whose
 /// <code>TYPESUSPEND</code> exists, although no shipped tool issues it and AD-10 has no predicate
 /// for it. The pair is the widening removed.</p>
-/// <p><b>The six are the ones the registry actually reaches</b>, established three ways: the
+/// <p><b>The nine are the ones the registry actually reaches</b>, established three ways: the
 /// registry's own discovery rule, a whole-tree sweep of
 /// <code>Extends OcuPilot.Screen.Tool.Write</code> including transitive subclasses, and
 /// <class>OcuPilot.Test.SurfaceCoverage</class>'s both-directions assertion.
@@ -152,18 +152,61 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// mutating suffix itself -- for <code>RESUME</code> that value is the vendor's request-type
 /// suffix rather than an HTTP verb, since the vendor exposes the operation only as a request
 /// type -- and asks it of the endpoint name threaded in beside it, never of the suffix alone.</p>
+/// <p><code>WebApp.App/DELETE</code> is <class>OcuPilot.Screen.Tool.WebAppDelete</class>'s
+/// (Story 7.1, AD-51). Measured on this build: the endpoint's <code>TYPEDELETE</code> is 3, its
+/// <code>NeedsRequestBody()</code> is <code>..IsTypePut()</code> so the type reads no body, and its
+/// <code>ValidateQueryParams</code> requires the <code>name</code> query parameter -- so it is
+/// listed in <parameter>BODYLESSTYPES</parameter> under its own endpoint too. The
+/// <code>:159-163</code> note that <code>DELETE</code> is deliberately absent is scoped to
+/// <code>Process</code>, whose delete is its terminate.</p>
 /// <p><code>RESUME</code> is <code>Task.CRUD</code>'s bodyless resume and <code>Process</code>'s
 /// own (AD-51, Stories 5.11 and 5.12), and <code>SUSPEND</code> is <code>Process</code>'s
 /// suspend. Each vendor <code>NeedsRequestBody()</code> excludes them, each
 /// <code>ValidateQueryParams</code> requires the <code>id</code> query parameter, and each is
 /// listed in <parameter>BODYLESSTYPES</parameter> under its own endpoint, which is what exempts
 /// it from the object-body refusal below.</p>
-/// <p><code>TERMINATE</code> and <code>DELETE</code> are deliberately absent for
-/// <code>Process</code>. The vendor exposes terminating a process through both --
-/// <code>Process</code>'s <code>RunDelete</code> is a one-line delegate to <code>RunTerminate</code>
-/// -- and AD-10 names terminating an IRIS system process in the Release 1 prohibited set, so neither
-/// pairs with <code>Process</code> here and <method>EndpointType</method> answers <code>""</code>
-/// for either.</p>
+/// <p><code>Process/DELETE</code> is deliberately absent. The vendor exposes terminating a process
+/// through both <code>TERMINATE</code> and <code>DELETE</code> -- <code>Process</code>'s
+/// <code>RunDelete</code> is a one-line delegate to <code>RunTerminate</code> -- and Story 7.8's
+/// terminate tools issue <code>TERMINATE</code> alone, through <class>OcuPilot.Port.ProcessPort</class>
+/// (AD-52), with AD-10's refusal of IRIS system processes evaluated at the write. So
+/// <code>DELETE</code> does not pair with <code>Process</code>, and <method>EndpointType</method>
+/// answers <code>""</code> for it.</p>
+/// <p><code>Security.OAuth2.Client.ClientConfiguration/DELETE</code> and
+/// <code>Security.OAuth2.ServerClients/DELETE</code> are Story 7.3's
+/// (<class>OcuPilot.Screen.Tool.OAuthClientDelete</class>,
+/// <class>OcuPilot.Screen.Tool.OAuthServerClientDelete</class>, AD-51). Measured on this build: each
+/// endpoint's <code>RunDelete</code> answers 404 when the object does not exist and otherwise calls
+/// its class's <code>DeleteId</code>; the first's <code>NeedsRequestBody()</code> is a put or the
+/// change-secret type and the second's a put, a post or the secret type, so neither reads a body
+/// for <code>DELETE</code>; and they require <code>applicationName</code> and <code>clientId</code>
+/// respectively. Both are listed in <parameter>BODYLESSTYPES</parameter> under their own
+/// endpoints.</p>
+/// <p><code>Security.User/DELETE</code> and <code>Security.User/CHANGEPWD</code> are Story 7.2's
+/// (<class>OcuPilot.Screen.Tool.UserDelete</class>, <class>OcuPilot.Screen.Tool.UserPassword</class>,
+/// AD-51, AD-56). Read on this build: the endpoint's <code>RunDelete</code> answers 404 for an
+/// account <code>Security.Users.Exists</code> denies and otherwise calls
+/// <code>Security.Users.Delete</code>; <code>TYPECHANGEPWD</code> is 10, its
+/// <code>RunChangePassword</code> sets only the password from the body's <code>NewPassword</code>,
+/// and <code>NeedsRequestBody()</code> is a put, a post or that type -- so <code>DELETE</code> is
+/// listed in <parameter>BODYLESSTYPES</parameter> and <code>CHANGEPWD</code> is not.</p>
+/// <p><code>Task.CRUD/RUN</code> is Story 7.5's (<class>OcuPilot.Screen.Tool.TaskRun</class>,
+/// AD-51). Measured on this build: <code>TYPERUN</code> is 12, <code>NeedsRequestBody()</code>
+/// includes it, <code>ValidateRequest</code> requires <code>RunNow</code>, and
+/// <code>ResourcesOR()</code> answers <code>%Admin_Task</code> for it. Its body is a vendor
+/// constant no caller supplies, so it is listed in <parameter>CONSTANTBODIES</parameter> rather
+/// than in <parameter>BODYLESSTYPES</parameter>.</p>
+/// <p><code>Task.CRUD/SUSPEND</code> and <code>Task.CRUD/DELETE</code> are Story 7.6's
+/// (<class>OcuPilot.Screen.Tool.TaskSuspend</class>, <class>OcuPilot.Screen.Tool.TaskDelete</class>,
+/// AD-51). Measured on this build: <code>SUSPEND</code> reads a body, answers 415 without one and
+/// 400 for a key it does not know, and its <code>RunSuspend</code> reads
+/// <code>LeaveInQueue</code> (default 1, "Suspend Leave"), so it is listed in
+/// <parameter>CONSTANTBODIES</parameter>; <code>DELETE</code> reads no body and its
+/// <code>RunDelete</code> is <code>%DeleteId</code>, which removes a system task as readily as a
+/// user one, so it is listed in <parameter>BODYLESSTYPES</parameter>. Both answer 404 for an
+/// unknown id; <code>ResourcesOR()</code> answers <code>%Admin_Task</code> for
+/// <code>SUSPEND</code> and <code>%Admin_Task</code> or <code>%Admin_Operate</code> for
+/// <code>DELETE</code>.</p>
 /// <p><code>Security.Role/PUT</code> and <code>Security.Role/DELETE</code> are Story 8.3's role
 /// create and delete. Read on this build: the endpoint overrides <code>Run</code>, its
 /// <code>RunPut</code> modifies a role that exists and otherwise creates it (an upsert, which the
@@ -198,7 +241,7 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// AD-4, AD-54), setting only the keys the body carries; its <code>NeedsRequestBody()</code> is
 /// <code>..IsTypePut()</code>, so <code>DELETE</code> reads no body; and its <code>RunDelete</code>
 /// answers 404 for an absent device (<parameter>VERIFIEDDELETES</parameter>).</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE";
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -214,7 +257,7 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> deletes whose vendor answer does not say whether the
 /// object went, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries. After a 2xx
@@ -309,6 +352,60 @@ Parameter IMPORTSAVECODES = "728=X509.CERTIFICATE.EXPIRED,732=X509.PRIVATEKEYPAS
 /// <code>Modify</code>. The rest of the product reads the flat <code>%Wallet.KeyValue</code> field
 /// list with <code>Type</code> beside it.</p>
 Parameter WRAPPEDTYPES = "Security.User/POST=User:Password,Wallet.Secret/PUT=WalletSecretConfig:Type";
+
+/// <p>The <parameter>MUTATINGTYPES</parameter> entries whose vendor body spells a key differently
+/// from the name the rest of the product carries it under, as comma-separated
+/// <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;ours&gt;:&lt;vendor's&gt;[:&lt;ours&gt;:&lt;vendor's&gt;...]</code>
+/// entries. <method>Invoke</method> applies it to a copy of the body before the vendor's
+/// <code>ValidateRequest</code> reads it; the caller's body is not modified.</p>
+/// <p><code>Security.User/CHANGEPWD</code> reads its password as <code>NewPassword</code>, while
+/// the descriptor declares the secret once as <code>Password</code> (AD-3, AD-56). The vendor's key
+/// is a wire fact, so it lives in the port (AD-27): renaming in the tool would put
+/// <code>NewPassword</code> in the body the ledger's field names are taken from, outside the
+/// declared-secret exclusion.</p>
+Parameter RENAMEDTYPES = "Security.User/CHANGEPWD=Password:NewPassword";
+
+/// <p>The <parameter>MUTATINGTYPES</parameter> entries whose vendor type requires a fixed body no
+/// caller supplies, as <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;JSON object&gt;</code> entries
+/// separated by <code>;</code>, because a body's JSON may carry commas. <method>Invoke</method>
+/// sends the entry's body in place of an absent caller body, and refuses a caller body for such a
+/// pair as a port fault without calling the vendor.</p>
+/// <p><b>It is a vendor wire fact</b> (AD-27, AD-51), kept here as
+/// <parameter>RENAMEDTYPES</parameter> keeps a vendor key: <code>Task.CRUD</code>'s
+/// <code>RUN</code> reads a body and <code>ValidateRequest</code> requires
+/// <code>{"RunNow":true}</code>, measured on this build. The tool declares no body and the kernel
+/// and the ledger see none; the constant exists only between this port and the vendor.</p>
+/// <p><code>Task.CRUD</code>'s <code>SUSPEND</code> reads a body too, and answers 415 without one;
+/// its <code>LeaveInQueue</code> defaults to 1 when absent, and the port sends that default
+/// explicitly so the suspend a caller gets is the one written here (measured on this build).</p>
+/// <p><code>Security.Audit.Event</code>'s <code>CLEARCOUNT</code> requires a body and reads none of
+/// it, so the port sends <code>{}</code>.</p>
+Parameter CONSTANTBODIES = "Task.CRUD/RUN={""RunNow"":true};Task.CRUD/SUSPEND={""LeaveInQueue"":true};Security.Audit.Event/CLEARCOUNT={}";
+
+/// <p>The query parameters an endpoint reads as parts of one composite key, as comma-separated
+/// <code>&lt;endpoint&gt;/&lt;key&gt;=&lt;part&gt;:&lt;part&gt;...</code> entries.
+/// <method>Invoke</method> applies it to a copy of the query before it is seeded: the named key's
+/// value is split on <code>/</code> into the named parts, and a value that is not exactly one
+/// non-empty piece per part is answered 404 <code>PORT.NOTFOUND</code> without calling the
+/// vendor.</p>
+/// <p><b>It is a vendor wire fact</b> (AD-27). An audit event's row key is its
+/// <code>EventName</code>, <code>Source/Type/Name</code>, while
+/// <code>Security.Audit.Event</code>'s <code>GET</code>, <code>PUT</code>, <code>DELETE</code> and
+/// <code>CLEARCOUNT</code> each require <code>source</code>, <code>type</code> and
+/// <code>name</code>. <class>Security.Events</class> refuses a <code>/</code> in a name, so the
+/// split is unambiguous for every event the instance can hold.</p>
+/// <p><code>Security.Audit.Event/PUT</code>, <code>/DELETE</code> and <code>/CLEARCOUNT</code> are
+/// Story 7.11's (<class>OcuPilot.Screen.Tool.AuditEventUpdate</class>,
+/// <class>OcuPilot.Screen.Tool.AuditUserEventDelete</class>,
+/// <class>OcuPilot.Screen.Tool.AuditEventReset</class>). Read on this build: the endpoint overrides
+/// <code>Run</code>, <code>ResourcesOR()</code> is <code>%Admin_Secure</code>, and every type but
+/// <code>LIST</code> requires the <code>source</code>, <code>type</code> and <code>name</code> query
+/// parameters (<parameter>SPLITQUERIES</parameter>). <code>PUT</code> is an upsert that
+/// <code>Create</code>s an absent event; <code>DELETE</code> reads no body, answers 404 for an
+/// absent event and 409 for a system-defined one; <code>TYPECLEARCOUNT</code> is 10, its
+/// <code>NeedsRequestBody()</code> is true and <code>RunClearCount</code> ignores the body, so it is
+/// listed in <parameter>CONSTANTBODIES</parameter>.</p>
+Parameter SPLITQUERIES = "Security.Audit.Event/event=source:type:name";
 
 /// <p>The pair set the <b>backing query or class</b> of an endpoint requires, beyond the
 /// endpoint's own <code>ResourcesOR()</code> gate (AD-29). Comma-separated entries of the form
@@ -537,6 +634,11 @@ ClassMethod VerifyInstance(Output pVersion As %Integer, Output pDetail As %Strin
 /// JSON <i>text</i> answers 2xx with the target unchanged and writes nothing, and the caller cannot
 /// tell that from a write. It is refused here instead, as an internal failure with the generic
 /// reason (AD-12) and the cause in the log (DW-1427).</p>
+/// <p><b>A <parameter>CONSTANTBODIES</parameter> pair takes no caller body.</b> Given none, it is
+/// sent the port's constant; given any body, an object or JSON text, it is refused the same way and
+/// the vendor is not called (AD-27, AD-51).</p>
+/// <p><b>A <parameter>SPLITQUERIES</parameter> key is split before the query is seeded</b>, and a
+/// malformed one is 404 <code>PORT.NOTFOUND</code> with no vendor call.</p>
 /// <p>Must not be called from an escalated frame (AD-9). The caller's namespace,
 /// <code>%request</code>, <code>%response</code> and <code>%session</code> are unchanged on
 /// return.</p>
@@ -571,6 +673,26 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Quit
         }
 
+        ; SPLITQUERIES: a composite key the vendor reads as several parameters is split on a copy,
+        ; so the caller's query keeps the product's one key. A malformed key names no target.
+        If '..SplitQuery(pEndpoint, .pQuery, .tQuery) {
+            Set tSC = ..Fail(pEndpoint, 404, $$$OK, .pHttpStatus, .pFault)
+            Quit
+        }
+
+        ; CONSTANTBODIES: a vendor type whose body is a fixed wire fact takes it here, so no caller
+        ; above the port composes it. A caller body for such a pair is a caller bug, refused before
+        ; the vendor is reached rather than merged or replaced.
+        Set tConstant = ..ConstantBody(pEndpoint, pType)
+        If $IsObject(tConstant) {
+            If $IsObject(pBody) || (pBody '= "") {
+                Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, .pHttpStatus, .pFault)
+                Do ..LogFault(pEndpoint _ " " _ pType _ " was given a caller body, and its body is the port's constant", $$$ERROR($$$GeneralError, "a CONSTANTBODIES pair takes no caller body"), pFault.code)
+                Quit
+            }
+            Set pBody = tConstant
+        }
+
         ; DW-1427. A mutating call with a non-object body is refused rather than run: RunSequence
         ; substitutes {} for it, the vendor reads that as no properties, and the endpoint answers
         ; 2xx having written nothing. A write that reports success and changed nothing is the one
@@ -585,11 +707,15 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Quit
         }
 
+        ; RENAMEDTYPES: the vendor's own spelling of a body key, applied to a copy so the caller's
+        ; body -- and whatever it records from it -- keeps the product's name. It runs before the
+        ; wrapper, because it renames keys of the flat body.
+        If $IsObject(pBody) Set pBody = ..Renamed(pEndpoint, pType, pBody)
         ; WRAPPEDTYPES: a flat body becomes the vendor's wrapper here, before ValidateRequest reads
         ; it, so no caller above the port composes the wire shape.
         Set tBody = pBody
         If $IsObject(pBody) Set tBody = ..Wrapped(pEndpoint, pType, pBody)
-        Set tSeqSC = ..RunSequence(pEndpoint, tClass, tType, .pQuery, tBody, .tAnswer, .tHttp, .tLocation, ..HttpMethodFor(pEndpoint, pType))
+        Set tSeqSC = ..RunSequence(pEndpoint, tClass, tType, .tQuery, tBody, .tAnswer, .tHttp, .tLocation, ..HttpMethodFor(pEndpoint, pType))
         If $$$ISOK(tSeqSC) && (tHttp = 202) && (tLocation [ ..#ASYNCLOCATION) {
             Set tAnswer = ""
             Set tGuid = $Piece($Piece(tLocation, ..#ASYNCLOCATION, 2), "&", 1)
@@ -1442,6 +1568,96 @@ ClassMethod Wrapped(pEndpoint As %String, pSuffix As %String, pBody As %DynamicO
     Quit tOut
 }
 
+/// <p>A copy of <var>pQuery</var> in <var>pSplit</var> with every key
+/// <parameter>SPLITQUERIES</parameter> declares for <var>pEndpoint</var> replaced by its parts.
+/// Answers 0 when such a key's value is not exactly one non-empty <code>/</code>-separated piece
+/// per part, and 1 otherwise; <var>pQuery</var> is never modified.</p>
+ClassMethod SplitQuery(pEndpoint As %String, ByRef pQuery, Output pSplit) As %Boolean
+{
+    Kill pSplit
+    Merge pSplit = pQuery
+    Set tWellFormed = 1
+    For tI = 1:1:$Length(..#SPLITQUERIES, ",") {
+        Set tEntry = $ZStrip($Piece(..#SPLITQUERIES, ",", tI), "<>W")
+        If $Piece(tEntry, "/", 1) '= pEndpoint Continue
+        Set tSpec = $Piece(tEntry, "/", 2, *)
+        Set tKey = $Piece(tSpec, "=", 1)
+        Set tParts = $Piece(tSpec, "=", 2, *)
+        If (tKey = "") || (tParts = "") || '$Data(pSplit(tKey)) Continue
+        Set tValue = pSplit(tKey)
+        If $Length(tValue, "/") '= $Length(tParts, ":") {
+            Set tWellFormed = 0
+            Quit
+        }
+        For tJ = 1:1:$Length(tParts, ":") {
+            If $Piece(tValue, "/", tJ) = "" Set tWellFormed = 0
+        }
+        If 'tWellFormed Quit
+        Kill pSplit(tKey)
+        For tJ = 1:1:$Length(tParts, ":") {
+            Set pSplit($Piece(tParts, ":", tJ)) = $Piece(tValue, "/", tJ)
+        }
+    }
+    Quit tWellFormed
+}
+
+/// <p>A new <class>%DynamicObject</class> holding the body <parameter>CONSTANTBODIES</parameter>
+/// declares for <var>pEndpoint</var>/<var>pType</var>, or <code>""</code> for a pair it does not
+/// name. Each call answers a fresh object, so nothing a caller does to it reaches the next call.</p>
+ClassMethod ConstantBody(pEndpoint As %String, pType As %String) As %DynamicObject
+{
+    Set tBody = ""
+    Try {
+        Set tKey = pEndpoint _ "/" _ pType _ "="
+        For tI = 1:1:$Length(..#CONSTANTBODIES, ";") {
+            Set tEntry = $ZStrip($Piece(..#CONSTANTBODIES, ";", tI), "<>W")
+            If $Extract(tEntry, 1, $Length(tKey)) '= tKey Continue
+            Set tParsed = ##class(%DynamicAbstractObject).%FromJSON($Extract(tEntry, $Length(tKey) + 1, *))
+            If $IsObject(tParsed) && tParsed.%IsA("%Library.DynamicObject") Set tBody = tParsed
+            Quit
+        }
+    } Catch {
+        Set tBody = ""
+    }
+    Quit tBody
+}
+
+/// <p><var>pBody</var> with every key <parameter>RENAMEDTYPES</parameter> declares for
+/// <var>pEndpoint</var>'s request type <var>pSuffix</var> carried under the vendor's own name, each
+/// keeping its JSON type; <var>pBody</var> itself where the type declares none. A copy is answered,
+/// so <var>pBody</var> is never modified.</p>
+ClassMethod Renamed(pEndpoint As %String, pSuffix As %String, pBody As %DynamicObject) As %DynamicObject
+{
+    Set tSpec = ""
+    Set tEntries = $ListFromString(..#RENAMEDTYPES)
+    For tI = 1:1:$ListLength(tEntries) {
+        Set tEntry = $List(tEntries, tI)
+        If $Piece(tEntry, "=", 1) '= (pEndpoint _ "/" _ pSuffix) Continue
+        Set tSpec = $Piece(tEntry, "=", 2)
+        Quit
+    }
+    If tSpec = "" Quit pBody
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit pBody
+    Kill tRename
+    For tJ = 1:2:$Length(tSpec, ":") {
+        Set tOurs = $Piece(tSpec, ":", tJ)
+        Set tTheirs = $Piece(tSpec, ":", tJ + 1)
+        If (tOurs '= "") && (tTheirs '= "") Set tRename(tOurs) = tTheirs
+    }
+    Set tOut = {}
+    Set tIterator = pBody.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        Set tType = pBody.%GetTypeOf(tKey)
+        Set tName = $Get(tRename(tKey), tKey)
+        If (tType = "object") || (tType = "array") {
+            Do tOut.%Set(tName, tValue)
+        } Else {
+            Do tOut.%Set(tName, tValue, tType)
+        }
+    }
+    Quit tOut
+}
+
 /// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
 /// <parameter>MUTATINGTYPES</parameter> admits (DW-1473). Every read of that parameter is this
 /// method, so admitting a type on one endpoint can never be read as admitting it on another.</p>
@@ -1502,6 +1718,7 @@ ClassMethod ImplementsRead(pClass As %String, pSuffix As %String) As %Boolean [ 
     Set tRunner = $Case(pSuffix, "GET": "RunGet", "LIST": "RunList", "PUT": "RunPut", : "")
     If pSuffix = "DELETE" Set tRunner = "RunDelete"
     If pSuffix = "POST" Set tRunner = "RunPost"
+    If pSuffix = "DELETE" Set tRunner = "RunDelete"
     If tRunner = "" Quit 0
     Quit ..MethodOrigin(pClass, tRunner) '= ..#ENDPOINTBASECLASS
 }

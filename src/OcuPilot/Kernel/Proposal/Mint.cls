@@ -349,10 +349,10 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
 /// through none of them and decides nothing about whether the write may happen -- a refusal is
 /// <method>OcuPilot.Kernel.Proposal.Write.Claim</method>'s, inside the atomic transition (AD-34,
 /// AD-40).</p>
-/// <p>It answers true for one shape: the auditing write, against an <code>instance</code>-scoped
-/// target, whose <parameter>AUDITINGFIELD</parameter> argument does not leave auditing on.
-/// <class>OcuPilot.Screen.Tool.AuditingUpdate</class> is the only tool that can trip it; every
-/// other tool that ships answers false on its name alone.</p>
+/// <p>It answers true for two shapes: the auditing write, against an <code>instance</code>-scoped
+/// target, whose <parameter>AUDITINGFIELD</parameter> argument does not leave auditing on; and a
+/// write whose tool declares <code>ClosesMarking</code> and answers true for the canonical target id
+/// and <var>pArgs</var> (the audit event tools, Story 7.11). Every other tool answers false.</p>
 /// <p><b>It reads the argument through the two methods the payload reads it through</b> --
 /// <method>Representable</method> then <method>Coerced</method>, in <method>Merge</method>'s own
 /// order -- so the warning and the body cannot answer different questions about one value. A
@@ -366,7 +366,19 @@ ClassMethod WarnsAuditingOff(pToolName As %String, pTargetType As %String, pTarg
 {
     Set tWarns = 0
     Try {
-        If pToolName '= ..#AUDITINGTOOL Quit
+        If pToolName '= ..#AUDITINGTOOL {
+            ; Story 7.11: a tool whose write can close the marking channel answers for its own
+            ; target, keyed by the canonical id (AD-13). A tool that declares no such answer, or
+            ; cannot be resolved, does not warn.
+            If '$IsObject(pArgs) Quit
+            If $$$ISERR($ClassMethod(..RegistryClass(), "Resolve", pToolName, .tTool)) Quit
+            If '$IsObject(tTool) Quit
+            Set tClass = tTool.%Get("class")
+            If (tClass = "") || '##class(%Dictionary.CompiledMethod).%ExistsId(tClass _ "||ClosesMarking") Quit
+            Set tId = ##class(OcuPilot.Kernel.EntityRef).NormalizedId(pTargetType, pArgs.%Get($ClassMethod(tClass, "IdArgument")))
+            Set tWarns = ''$ClassMethod(tClass, "ClosesMarking", tId, pArgs)
+            Quit
+        }
         If pTargetScope '= ##class(OcuPilot.Kernel.Scope).#SCOPEINSTANCE Quit
         If pTargetType = "" Quit
         If '$IsObject(pArgs) Quit

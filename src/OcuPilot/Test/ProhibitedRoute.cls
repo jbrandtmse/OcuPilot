@@ -5,6 +5,11 @@
 /// <p>It also pins the set's idea of which spellings of a path name one application against the
 /// instance's own resolution (DW-1352), which is the one claim in that predicate that no fixture
 /// can answer.</p>
+/// <p><b>Since Story 7.1 it carries the other caller of that same set</b> (AD-53): the screen's own
+/// row actions over <code>POST /screens/:screen/action</code>, against this class's own probe
+/// application. They live here rather than in a class of their own because they create and delete a
+/// web application, which is what <parameter>ARMINGVARIABLE</parameter> arms and what this class is
+/// already rostered for in <file>scripts/ci-throwaway.sh</file>.</p>
 /// <p>It is also where AD-29's second half is measured -- a <b>real least-privileged principal</b>
 /// rather than the <code>%All</code> account every other run uses -- for the write tools whose pair
 /// sets an <code>%All</code> run cannot establish: Story 5.9's user write, Story 5.10's auditing
@@ -17,7 +22,7 @@
 /// class where it does not. Per method: <parameter>AUDITVARIABLE</parameter> reading <code>1</code>,
 /// required by <parameter>AUDITINGMETHOD</parameter> alone, which turns this instance's auditing
 /// off. <method>OnBeforeOneTest</method> skips that one method where it does not read 1, so a
-/// container that predates the variable still runs the other thirteen rather than none
+/// container that predates the variable still runs the other nineteen rather than none
 /// (DW-1452). Only <file>scripts/ci-throwaway.sh</file> sets either.</p>
 /// <p><b>It writes nothing it did not create.</b> The probe application is
 /// <method>OcuPilot.Test.ProposalFixture.EnsureWriteTarget</method>'s, which refuses to adopt one
@@ -53,23 +58,10 @@ Parameter APIBASE = "/api/ocupilot";
 
 Parameter TOOL = "webapp.list.update";
 
-/// <p>Every <code>write</code>-kind tool this release has reviewed on the <code>webapp.list</code>
-/// identifier, comma-separated: Story 5.5's update and Story 8.1's create. A verb outside it --
-/// a delete above all -- is what
-/// <method>TestNoDeleteVerbIsAdvertisedForAWebApplication</method> refuses (AD-10).</p>
-Parameter REVIEWEDWRITES = "webapp.list.update,webapp.list.create";
-
 /// <p>Story 5.9's write tool and the screen that owns it, for the user legs below.</p>
 Parameter USERTOOL = "permissions.users.update";
 
 Parameter USERSCREEN = "OcuPilot.Screen.Descriptor.UserList";
-
-/// <p>Every <code>write</code>-kind tool this release has reviewed on the
-/// <code>permissions.users</code> identifier, comma-separated: Story 5.9's update and Story 8.2's
-/// create. A verb outside it -- a delete or a disable above all -- is what
-/// <method>TestNoDeleteVerbIsAdvertisedForAUserAccountAndALiveSystemDisableIsRefused</method>
-/// refuses (AD-10).</p>
-Parameter USERREVIEWEDWRITES = "permissions.users.update,permissions.users.create";
 
 /// <p>Story 5.10's write tool and the screen that owns it, for the auditing legs below. The tool's
 /// name, its one settable field and the screen's entity type are all read off these classes rather
@@ -128,6 +120,13 @@ Parameter USERACCOUNT = "OcuPilotProbeRouteUserTarget";
 /// <p>The probe application's path, <class>OcuPilot.Test.ProposalFixture</class>'s own.</p>
 Parameter TARGET = "/csp/ocupilotprobeconfirm";
 
+/// <p>Story 7.1's screen-action route, as <class>OcuPilot.Api.Router</class>'s own
+/// <code>UrlMap</code> declares it, with a concrete screen in the parameter's place.</p>
+Parameter ACTIONROUTE = "/screens/:screen/action";
+
+/// <p>The screen every row action below addresses, by its own <code>toolIdentifier</code>.</p>
+Parameter ACTIONSCREEN = "webapp.list";
+
 /// <p>The resource the probe application is guarded by while this class runs, so the dropped-
 /// authorization predicate has something to drop. A standard IRIS resource, never a new one.</p>
 Parameter GUARDRESOURCE = "%Development";
@@ -166,7 +165,7 @@ Method OnBeforeAllTests() As %Status
 /// <code>OnBeforeOneTest</code> alone, and its own doc says a <code>$$$AssertSkipped</code> in
 /// <code>OnBeforeAllTests</code> "may result in tests appearing to pass rather than being
 /// skipped". A class-wide refusal on this variable was the alternative, and it removed AD-29's
-/// least-privileged coverage for thirteen methods that never turn auditing off whenever the
+/// least-privileged coverage for nineteen methods that never turn auditing off whenever the
 /// container predated the variable (DW-1452).</p>
 /// <p>A skipped method records <code>Status=2</code> and the manager runs neither the method nor
 /// <method>OnAfterOneTest</method> for it, so nothing this class creates is left behind by a
@@ -531,45 +530,417 @@ Method Weakened(pField As %String, pValue As %RawString, pType As %String, pExpe
 /// either mutation carries it past the fingerprint gate and into the vendor write: the 403, the
 /// code, the row's live state, the unspent token <b>and</b> the untouched-application clause all
 /// redden together.</p>
-/// <p>AC5 (Story 5.8), AD-10: <b>the registry advertises no delete verb for a web application at
-/// all.</b> A prohibited action is absent from the tool set, not gated within it, so the question
-/// is what is registered -- deleting a web application is never proposable because there is
-/// nothing to propose it with.</p>
-/// <p>Asked of every registered tool rather than of one name: a delete could arrive under any
-/// verb, and the shape that would make it reachable is a <code>write</code>-kind tool on this
-/// screen's identifier outside <parameter>REVIEWEDWRITES</parameter> -- the reviewed set, which
-/// Story 8.1's create joined and which holds no verb that removes anything.</p>
+/// <p>AD-10, Story 7.1: <b>the registry advertises exactly the three write verbs this screen has
+/// reviewed.</b> Story 5.8 asserted that no delete verb existed at all -- a tripwire aimed at the
+/// story that would ship one -- and this is the positive roster that replaces it in the same pass
+/// that shipped the tool.</p>
+/// <p>Asked of every registered tool rather than of three names: a third verb could arrive under any
+/// name, and the shape that would make it reachable is a <code>write</code>-kind tool on this
+/// screen's identifier that is none of the three -- Story 5.5's update, Story 8.1's create and Story 7.1's delete.</p>
+/// <p>All three names are read from the instance's own classes rather than recalled, so a rename that
+/// left this roster behind reddens here rather than passing against a literal nobody updated.</p>
 /// <p>Mutation (Rule 19): add a third <code>write</code> tool under the <code>webapp.list</code>
-/// identifier and recompile the package -- this goes red naming it. Removing a name from
-/// <parameter>REVIEWEDWRITES</parameter> reddens it the same way, which is what keeps the roster
-/// a decision rather than a running total.</p>
-Method TestNoDeleteVerbIsAdvertisedForAWebApplication()
+/// identifier and recompile the package -- this goes red naming it. Removing any roster row
+/// reddens this method alone.</p>
+Method TestTheWebApplicationWriteVerbsAreTheThreeThisScreenDeclares()
 {
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
     Do $$$AssertStatusOK(tSC, "the tool registry lists its tools")
     Set tIdentifier = $ClassMethod("OcuPilot.Screen.Descriptor.WebAppList", "ToolIdentifier")
     Do $$$AssertNotEquals(tIdentifier, "", "the web applications screen declares a tool identifier")
-    Set tReviewed = $ListFromString(..#REVIEWEDWRITES)
+
+    ; The canonical names, read from the classes that declare them.
+    Set tUpdate = $Parameter("OcuPilot.Screen.Tool.WebAppUpdate", "TOOLNAME")
+    Set tDelete = $Parameter("OcuPilot.Screen.Tool.WebAppDelete", "TOOLNAME")
+    Do $$$AssertEquals(tUpdate, ..#TOOL, "the update tool's own name is the one this class drives")
+    Do $$$AssertNotEquals(tDelete, "", "and the delete tool declares one")
+    Set tCreate = $Parameter("OcuPilot.Screen.Tool.WebAppCreate", "TOOLNAME")
+    Do $$$AssertNotEquals(tCreate, "", "and the create tool declares one")
+    Set tRoster = $ListBuild(tUpdate, tCreate, tDelete)
+
     Set tSeen = 0
     Set tWrites = 0
+    Kill tFound
     Set tIterator = tTools.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tTool) {
         If $Piece(tTool.%Get("name"), ".", 1, 2) '= tIdentifier Continue
         Set tSeen = tSeen + 1
         If tTool.%Get("kind") '= "write" Continue
         Set tWrites = tWrites + 1
-        Do $$$AssertTrue($ListFind(tReviewed, tTool.%Get("name")) > 0, "every write verb on " _ tIdentifier _ " is one this release reviewed, and '" _ tTool.%Get("name") _ "' is not")
+        Set tFound(tTool.%Get("name")) = ""
+        Do $$$AssertTrue($ListFind(tRoster, tTool.%Get("name")) > 0, "every write verb on " _ tIdentifier _ " is one of the three this screen declares, not '" _ tTool.%Get("name") _ "'")
     }
     Do $$$AssertTrue(tSeen > 0, "the registry carries tools on " _ tIdentifier _ " at all, so this assertion ran over something")
-    ; The write-kind count, not only the tool count: the read tool alone satisfies tSeen, so a
-    ; registry that advertised no write verb at all would pass the loop above having never entered
-    ; the branch that carries the claim. Held equal to the reviewed roster's own length, so a tool
-    ; added to one and not the other reddens whichever way round it happened.
-    Do $$$AssertEquals(tWrites, $ListLength(tReviewed), "and there are exactly as many write verbs as the roster reviewed")
-    ; The claim in the method's own name, asserted rather than left to the roster's spelling.
-    For tI = 1:1:$ListLength(tReviewed) {
-        Do $$$AssertEquals($Piece($List(tReviewed, tI), ".", 3) [ "delete", 0, "no reviewed write verb removes a web application: " _ $List(tReviewed, tI))
+    Do $$$AssertEquals(tWrites, $ListLength(tRoster), "and exactly the rostered three are write-kind")
+    ; Both directions: a roster row naming a tool the registry does not carry is a row that names
+    ; nothing, which is what makes removing one redden this method.
+    For tI = 1:1:$ListLength(tRoster) {
+        Do $$$AssertTrue($Data(tFound($List(tRoster, tI))), $List(tRoster, tI) _ " is registered under " _ tIdentifier)
     }
+}
+
+/// <p>Story 7.1, AD-53: the <b>screen's</b> caller of the same operation, over the same route the
+/// browser uses -- <code>POST /screens/:screen/action</code>, named here verbatim as
+/// <class>OcuPilot.Api.Router</class>'s own <code>UrlMap</code> declares it.</p>
+/// <p>Three legs against this class's own probe application: the row's disable and enable run the
+/// shipped merge write and the instance's own record moves both ways; the row's delete removes the
+/// application and answers the <code>deleted</code> action; and an action the screen does not
+/// declare is a 404 that writes nothing. The application is put back afterwards, guarded as
+/// <method>OnBeforeAllTests</method> guarded it, so the later methods in this class see what they
+/// expect.</p>
+/// <p><b>It lives here rather than in a class of its own</b> because it creates and deletes a web
+/// application, which is what <parameter>ARMINGVARIABLE</parameter> arms and what this class is
+/// already rostered for in <file>scripts/ci-throwaway.sh</file>.</p>
+/// <p>AD-53's two differences from the agent's caller are asserted on the same legs: the disable
+/// runs with the kill switch and enforced read-only both on, because those switches are the
+/// agent's; and no OcuPilot <code>AgentWrite</code> marker names the probe after either write,
+/// because a person's row action is the human write that marker is distinguished from.</p>
+/// <p>Mutation (Rule 19): remove <code>enable=Enabled:true</code> from
+/// <parameter>OcuPilot.Screen.Tool.WebAppUpdate.SCREENACTIONS</parameter> and recompile -- the
+/// enable leg answers 404 and its read-back goes red.</p>
+Method TestTheScreensOwnRowActionsRunOverTheWire()
+{
+    Set tMap = ..RouterMap()
+    Do $$$AssertTrue(tMap [ ("<Route Url=""" _ ..#ACTIONROUTE _ """ Method=""POST"""), "the router declares POST " _ ..#ACTIONROUTE)
+
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteTargetField("Enabled"), 1, "the probe application starts enabled")
+
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.SwitchFixture).SetSwitches(1, "OcuPilot probe: the agent is off", 1), "the kill switch and enforced read-only are both on")
+    Set tSC = ..Act("disable", ..#TARGET, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.SwitchFixture).Reset(.tHolds), "and both are off again")
+    Do $$$AssertStatusOK(tSC, "the disable request completes")
+    Do $$$AssertEquals(tStatus, 200, "and is accepted: " _ tBody)
+    Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", "as application/json")
+    Do $$$AssertEquals((tBody [ "}{"), 0, "in exactly one envelope")
+    If tStatus = 200 {
+        Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tAnswer.%Get("action"), "updated", "the answer carries the tool's own AD-14 action")
+        Do $$$AssertEquals(tAnswer.%Get("target").%Get("type"), "web-application", "and the screen's entity type")
+        Do $$$AssertEquals(tAnswer.%Get("target").%Get("id"), ..#TARGET, "and the canonical target id")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteTargetField("Enabled"), 0, "the instance's own record reads disabled")
+
+    Set tSC = ..Act("enable", ..#TARGET, .tStatus2, .tBody2, .tHeaders2)
+    Do $$$AssertStatusOK(tSC, "the enable request completes")
+    Do $$$AssertEquals(tStatus2, 200, "and is accepted: " _ tBody2)
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteTargetField("Enabled"), 1, "and the record reads enabled again")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, $Parameter("OcuPilot.Kernel.Audit.Event", "EVENTAGENTWRITE"), $Piece(..#TARGET, "/", *), .tMarkerData), 0, "and neither write left an agent marker naming the probe")
+
+    ; An action the screen does not declare has no operation at that address, and writes nothing.
+    Set tSC = ..Act("terminate", ..#TARGET, .tStatus3, .tBody3, .tHeaders3)
+    Do $$$AssertStatusOK(tSC, "the undeclared-action request completes")
+    Do $$$AssertEquals(tStatus3, 404, "and is not found: " _ tBody3)
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteTargetField("Enabled"), 1, "and nothing was written")
+
+    ; The destructive one, last: it removes the application this class works on, so the method
+    ; puts it back before it returns.
+    Set tSC = ..Act("delete", ..#TARGET, .tStatus4, .tBody4, .tHeaders4)
+    Do $$$AssertStatusOK(tSC, "the delete request completes")
+    Do $$$AssertEquals(tStatus4, 200, "and is accepted: " _ tBody4)
+    If tStatus4 = 200 {
+        Set tAnswer4 = ##class(%DynamicObject).%FromJSON(tBody4)
+        Do $$$AssertEquals(tAnswer4.%Get("action"), "deleted", "the answer carries the delete tool's own AD-14 action")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteTargetField("Enabled"), "", "and the application is gone from the instance")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).EnsureWriteTarget($Namespace), "the probe application is put back for the rest of this class")
+    Do $$$AssertStatusOK(..Guard(..#GUARDRESOURCE), "and guarded as OnBeforeAllTests guarded it")
+}
+
+/// <p>Story 7.1, AD-10, AD-13, AD-53: the screen's own caller reaches the same prohibited set the
+/// agent's does. A row action against an application OcuPilot is served through is refused
+/// <code>PROHIBITED.SERVINGPATH</code> with the set's own published sentence, whichever spelling
+/// the instance resolves to it, and the application is left as it was.</p>
+/// <p>Driven against this class's own probe application, marked as OcuPilot's own through
+/// install's record for the span of this method, so no write reaches a real serving
+/// application.</p>
+/// <p>Mutation (Rule 19): restore <code>pServes &amp;&amp; +$Get(pChanged)</code> in
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.WebApplication</method> -- the delete legs carry no
+/// changed field at all, so they pass the arm, answer 200, and the survival assertions go red.</p>
+Method TestTheScreensOwnRowActionIsRefusedForOcuPilotsOwnApplication()
+{
+    Do ##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#TARGET)
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.WebApp).GuardedRecord("probe", ..#TARGET, "created"), "the probe application is recorded as OcuPilot's own for this leg")
+    Set tExpected = $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "SERVINGPATH")
+    Set tReason = ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tExpected)
+
+    Set tSpellings = $ListBuild(..#TARGET, $ZConvert(..#TARGET, "U"), ..#TARGET _ "/")
+    For tI = 1:1:$ListLength(tSpellings) {
+        Set tSpelling = $List(tSpellings, tI)
+        Set tSC = ..Act("delete", tSpelling, .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, "the delete of " _ tSpelling _ " completes")
+        Do $$$AssertEquals(tStatus, 403, "and is refused: " _ tBody)
+        Do $$$AssertTrue($Get(tHeaders("CONTENT-TYPE")) [ "application/json", "as application/json")
+        Do $$$AssertEquals((tBody [ "}{"), 0, "in exactly one envelope")
+        If tStatus = 403 {
+            Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+            Do $$$AssertEquals(tEnvelope.%Get("code"), tExpected, "with the serving-path code")
+            Do $$$AssertEquals(tEnvelope.%Get("error"), ##class(OcuPilot.Api.Error).#FORBIDDEN, "under the forbidden slug")
+            Do $$$AssertEquals(tEnvelope.%Get("reason"), tReason, "and the set's own published sentence")
+        }
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteTargetField("Enabled"), 1, "the application is still there, still enabled, after " _ tSpelling)
+    }
+
+    Set tSC = ..Act("disable", ..#TARGET, .tStatus2, .tBody2, .tHeaders2)
+    Do $$$AssertStatusOK(tSC, "the disable request completes")
+    Do $$$AssertEquals(tStatus2, 403, "and is refused too: " _ tBody2)
+    If tStatus2 = 403 {
+        Set tEnvelope2 = ##class(%DynamicObject).%FromJSON(tBody2)
+        Do $$$AssertEquals(tEnvelope2.%Get("code"), tExpected, "with the serving-path code")
+        Do $$$AssertEquals(tEnvelope2.%Get("error"), ##class(OcuPilot.Api.Error).#FORBIDDEN, "under the forbidden slug")
+        Do $$$AssertEquals(tEnvelope2.%Get("reason"), tReason, "and the set's own published sentence")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteTargetField("Enabled"), 1, "and the application is untouched")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#TARGET), "the temporary record is removed")
+}
+
+/// <p>One <code>POST</code> of <var>pAction</var> against <var>pId</var> on the web applications
+/// screen, as the test account.</p>
+Method Act(pAction As %String, pId As %String, Output pStatus As %Integer, Output pBody As %String, Output pHeaders) As %Status
+{
+    Set tRequest = {}
+    Do tRequest.%Set("action", pAction, "string")
+    Do tRequest.%Set("id", pId, "string")
+    Quit ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", ..#APIBASE _ "/screens/" _ ..#ACTIONSCREEN _ "/action", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .pStatus, .pBody, .pHeaders, tRequest.%ToJSON(), "application/json")
+}
+
+/// <p>The shipped router's <code>UrlMap</code> as one string, read to the end: one
+/// 32,000-character bite would silently truncate a map that outgrew it.</p>
+Method RouterMap() As %String
+{
+    Set tXData = ##class(%Dictionary.XDataDefinition).IDKEYOpen("OcuPilot.Api.Router", "UrlMap", , .tOpenSC)
+    Do $$$AssertTrue($IsObject(tXData), "the router's UrlMap is readable")
+    If '$IsObject(tXData) Quit ""
+    Do tXData.Data.Rewind()
+    Set tMap = ""
+    While 'tXData.Data.AtEnd {
+        Set tMap = tMap _ tXData.Data.Read(32000)
+    }
+    Quit tMap
+}
+
+/// <p>AD-13, AD-10: the agent's own delete of one of OcuPilot's applications is refused
+/// <code>PROHIBITED.SERVINGPATH</code> over the wire, and a non-canonical spelling of the same
+/// path earns the same verdict -- the canonical form is what
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.ServesOcuPilot</method> is asked about.</p>
+/// <p>Driven against this class's own probe application, marked as OcuPilot's own through
+/// install's record for the span of this method, so no write reaches a real serving
+/// application.</p>
+/// <p><b>This is the arm AD-53 opened.</b> A delete carries no changed field, so the serving-path
+/// predicate cannot rest on the diff.</p>
+/// <p>Mutation (Rule 19): restore <code>pServes &amp;&amp; +$Get(pChanged)</code> in
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.WebApplication</method> -- both legs pass the arm,
+/// the confirm reaches the vendor delete, and the survival assertion goes red.</p>
+Method TestTheAgentsDeleteOfOcuPilotsOwnApplicationIsRefusedOverTheWire()
+{
+    Do ##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#TARGET)
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.WebApp).GuardedRecord("probe", ..#TARGET, "created"), "the probe application is recorded as OcuPilot's own for this leg")
+    Set tExpected = $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "SERVINGPATH")
+
+    Set tBefore = ..Snapshot(.tFresh)
+    Do $$$AssertNotEquals(tBefore, "", "the probe application is there to begin with")
+    If tBefore '= "" {
+        Set tSpellings = $ListBuild(..#TARGET, $ZConvert(..#TARGET, "U") _ "/")
+        For tI = 1:1:$ListLength(tSpellings) {
+            Set tKey = ..SeedDelete($List(tSpellings, tI), tFresh)
+            Do $$$AssertNotEquals(tKey, "", "a delete proposal named " _ $List(tSpellings, tI) _ " was seeded, so this leg measures something")
+            If tKey = "" Continue
+            Set tSC = ..Call(tKey, .tStatus, .tBody, .tHeaders)
+            Do $$$AssertStatusOK(tSC, "the confirm of a delete named " _ $List(tSpellings, tI) _ " completes")
+            Do $$$AssertEquals(tStatus, 403, "and is refused: " _ tBody)
+            If tStatus = 403 {
+                Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+                Do $$$AssertEquals(tEnvelope.%Get("code"), tExpected, "with the serving-path code")
+                Do $$$AssertEquals(tEnvelope.%Get("reason"), ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(tExpected), "and the set's own published sentence")
+            }
+            Do $$$AssertEquals(..Snapshot(.tAfter), tBefore, "and the application is still there, byte for byte")
+        }
+    }
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#TARGET), "the temporary record is removed")
+}
+
+/// <p>One stored <code>webapp.list.delete</code> proposal against <var>pPath</var>, minted the way
+/// the delete tool mints one: the fresh read projected to the declared fingerprint subject, the
+/// tool's own removal rows as the diff, and the digest over that projection.</p>
+ClassMethod SeedDelete(pPath As %String, pFresh As %DynamicObject) As %String
+{
+    Set tKey = ""
+    Try {
+        Set tClass = "OcuPilot.Screen.Tool.WebAppDelete"
+        Set tSubject = $ClassMethod(tClass, "FingerprintSubject")
+        If $$$ISERR(##class(OcuPilot.Kernel.Proposal.Fingerprint).Projection(pFresh, tSubject, .tPayload)) Quit
+        If $$$ISERR($ClassMethod(tClass, "StateDiff", pFresh, .tRows, .tProblem)) Quit
+        If tProblem '= "" Quit
+        If $$$ISERR(##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(tPayload, "", .tPrint, tSubject)) Quit
+        If $$$ISERR(##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", pPath, .tRef)) Quit
+        Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
+        ; A proposal is confirmable only from a turn that finished normally, so the row carries one
+        ; -- the same completed probe turn every seeded row in this class carries.
+        If $$$ISERR(##class(OcuPilot.Test.ProposalFixture).SeedTurn(tUser, "completed", .tTurnKey)) Quit
+        Kill tValues
+        Set tValues("user") = tUser
+        Set tValues("turnKey") = tTurnKey
+        Set tValues("toolName") = $Parameter(tClass, "TOOLNAME")
+        Set tValues("targetRef") = tRef
+        Set tValues("fingerprint") = tPrint
+        Set tValues("arguments") = {"Name": (pPath)}.%ToJSON()
+        Set tValues("payload") = tPayload.%ToJSON()
+        Set tValues("diff") = tRows.%ToJSON()
+        Set tValues("unchangedCount") = 0
+        Set tValues("destructive") = 1
+        If $$$ISERR(##class(OcuPilot.Test.ProposalFixture).SeedProposal(.tValues, .tKey)) Set tKey = ""
+    } Catch {
+        Set tKey = ""
+    }
+    Quit tKey
+}
+
+/// <p>One <code>POST</code> of <var>pAction</var> against <var>pId</var> on the web applications
+/// screen, as <var>pUser</var> -- the least-privileged leg's own call, never the test account.</p>
+Method ActAs(pAction As %String, pId As %String, pUser As %String, pPassword As %String, Output pStatus As %Integer, Output pBody As %String, Output pHeaders) As %Status
+{
+    Set tRequest = {}
+    Do tRequest.%Set("action", pAction, "string")
+    Do tRequest.%Set("id", pId, "string")
+    Quit ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", ..#APIBASE _ "/screens/" _ ..#ACTIONSCREEN _ "/action", pUser, pPassword, .pStatus, .pBody, .pHeaders, tRequest.%ToJSON(), "application/json")
+}
+
+/// <p>AD-8, AD-29, AD-53: a <b>real least-privileged principal</b> holding an administrative
+/// resource but not <code>%Admin_Secure:USE</code> is refused the screen's own row action over
+/// <code>POST /screens/:screen/action</code> 403 <code>AUTH.NOPRIVILEGE</code> naming that pair,
+/// and this class's probe application does not move.</p>
+/// <p>The principal holds <parameter>NONSECUREADMIN</parameter> at <code>USE</code> and the two
+/// database reads, so the pair the refusal names is the only one it is short of: without the
+/// first, the router's floor would refuse it <code>AUTH.NOADMIN</code> before the route ran.</p>
+/// <p>Mutation (Rule 19): delete the pair check ahead of the fresh read in
+/// <method>OcuPilot.Api.ScreenAction.Run</method> and recompile -- the port's own gate refuses the
+/// read <code>PORT.ACCESSDENIED</code> naming no pair, and the code and failed-pair assertions go
+/// red.</p>
+Method TestAnAccountShortOfTheScreenPairIsRefusedTheRowActionNamingIt()
+{
+    Set tCodeResource = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
+    If tCodeResource = "" Quit
+    Set tSC = ..EnsureLeastPrivilegedPrincipal(..#PRINCIPALPASSWORD, ..#NONSECUREADMIN _ ":U,%DB_IRISSYS:R," _ tCodeResource _ ":R")
+    Do $$$AssertStatusOK(tSC, "a principal short of only the screen's administrative pair is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%Admin_Secure", "USE"), 0, "it holds no %Admin_Secure:USE, which is the pair a row action requires")
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, ..#NONSECUREADMIN, "USE"), 1, "it does hold an administrative resource, so the router's own floor is cleared")
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%DB_IRISSYS", "READ"), 1, "and the security database read, so the administrative pair is the only one it is short of")
+
+    Set tBefore = ..Snapshot(.tFresh)
+    Do $$$AssertNotEquals(tBefore, "", "the probe application is there to act on")
+    If tBefore = "" Quit
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteTargetField("Enabled"), 1, "and starts enabled, so a permitted disable would have something to change")
+
+    Set tSC = ..ActAs("disable", ..#TARGET, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the row action request completes")
+    Do $$$AssertEquals(tStatus, 403, "and is refused -- not 200, not the router's 403 with no body: " _ tBody)
+    Do $$$AssertEquals((tBody [ "}{"), 0, "in exactly one envelope")
+    If tStatus = 403 {
+        Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "with the screen-privilege code, not AUTH.NOADMIN")
+        Do $$$AssertEquals(tEnvelope.%Get("error"), ##class(OcuPilot.Api.Error).#FORBIDDEN, "under the forbidden slug")
+        Do $$$AssertEquals($Select($IsObject(tEnvelope.%Get("detail")): tEnvelope.%Get("detail").%Get("failedPair"), 1: ""), "%Admin_Secure:USE", "naming the pair that failed")
+    }
+    Do $$$AssertEquals(..Snapshot(.tAfter), tBefore, "and the probe application's properties on the instance are what they were")
+}
+
+/// <p>AD-6, AD-34: a delete proposal whose target was removed after it was made is refused 409
+/// <code>PROPOSAL.TARGETCHANGED</code> at the confirm. The row closes with the target-changed
+/// reason and its token is never spent, and the write comes only after that claim, so nothing
+/// reaches the port.</p>
+/// <p>Against this class's own probe application, removed out of band between the proposal and
+/// the confirm, and put back afterwards, guarded as <method>OnBeforeAllTests</method> guarded it, so
+/// the later methods in this class see what they expect.</p>
+/// <p>Mutation (Rule 19): set <code>pMatches = 1</code> where the re-read fails in
+/// <method>OcuPilot.Kernel.Proposal.Confirm.FingerprintMatches</method> and recompile it with its
+/// subclasses -- the confirm claims the row and reaches the vendor delete, and the 409, the code,
+/// the closed row and the unspent token go red.</p>
+Method TestADeleteWhoseTargetWasRemovedIsRefusedAndWritesNothing()
+{
+    Set tBefore = ..Snapshot(.tFresh)
+    Do $$$AssertNotEquals(tBefore, "", "the probe application is there when the proposal is made")
+    If tBefore '= "" {
+        Set tKey = ..SeedDelete(..#TARGET, tFresh)
+        Do $$$AssertNotEquals(tKey, "", "a delete proposal was seeded against it, so this leg measures something")
+        If tKey '= "" {
+            Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveWriteTarget(), "the application is removed out of band after the proposal")
+            Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteTargetField("Enabled"), "", "and the instance no longer holds it")
+
+            Set tSC = ..Call(tKey, .tStatus, .tBody, .tHeaders)
+            Do $$$AssertStatusOK(tSC, "the confirm request completes")
+            Do $$$AssertEquals(tStatus, 409, "and is refused: " _ tBody)
+            Do $$$AssertEquals((tBody [ "}{"), 0, "in exactly one envelope")
+            If tStatus = 409 {
+                Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+                Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Kernel.Proposal.Write).#TARGETCHANGED, "with the target-changed code")
+            }
+            Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), ##class(OcuPilot.Kernel.State.Propose).#STATECANCELED, "the row is closed")
+            Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "ClosedReason"), ##class(OcuPilot.Kernel.State.Propose).#REASONTARGETCHANGED, "for the target-changed reason")
+            Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Burned"), 0, "and its token was never spent, so the write that follows the claim never ran")
+        }
+    }
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).EnsureWriteTarget($Namespace), "the probe application is put back for the rest of this class")
+    Do $$$AssertStatusOK(..Guard(..#GUARDRESOURCE), "and guarded as OnBeforeAllTests guarded it")
+}
+
+/// <p>AC4, AD-13: a delete the agent's own tool mints against a re-cased, slash-suffixed spelling
+/// of an application OcuPilot is served through is stored under the canonical reference, and its
+/// confirm is refused <code>PROHIBITED.SERVINGPATH</code> with the application untouched.</p>
+/// <p>Minted through <method>OcuPilot.Screen.Tool.WebAppDelete.View</method>, the entry point the
+/// model reaches, on a completed probe turn, and confirmed through the shipped transition in this
+/// process as the user the tool minted it for: a tool runs as its caller, and only the minting
+/// user may confirm. This class's probe application is recorded as OcuPilot's own for the span of
+/// this method, so no write reaches a real serving application.</p>
+/// <p>Mutations (Rule 19): build the target reference in
+/// <method>OcuPilot.Kernel.Proposal.Mint.Mint</method> from the id as supplied rather than
+/// through <method>OcuPilot.Kernel.EntityRef.Key</method> -- the canonical-reference assertions go
+/// red; or restore <code>pServes &amp;&amp; +$Get(pChanged)</code> in
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.WebApplication</method> -- the refusal and the
+/// survival assertions go red.</p>
+Method TestTheAgentsDeleteMintedUnderAnotherSpellingIsStoredCanonicalAndRefused()
+{
+    Do ##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#TARGET)
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.WebApp).GuardedRecord("probe", ..#TARGET, "created"), "the probe application is recorded as OcuPilot's own for this leg")
+    Set tExpected = $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "SERVINGPATH")
+    Set tSpelling = $ZConvert(..#TARGET, "U") _ "/"
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", ..#TARGET, .tCanonical), "the canonical reference is built from the path as the instance stores it")
+
+    Set tBefore = ..Snapshot(.tFresh)
+    Do $$$AssertNotEquals(tBefore, "", "the probe application is there to begin with")
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "a completed probe turn is seeded for the minting user")
+    If (tBefore '= "") && $$$ISOK(tSC) {
+        Set tArgs = {}
+        Do tArgs.%Set(##class(OcuPilot.Screen.Tool.WebAppDelete).IdArgument(), tSpelling, "string")
+        Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(tTurnKey)
+        Set tMintSC = ##class(OcuPilot.Screen.Tool.WebAppDelete).View("", tArgs, 0, .tProposal, .tMintHttp, .tMintFault)
+        Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+        Do $$$AssertStatusOK(tMintSC, "the tool mints a proposal for " _ tSpelling _ " (HTTP " _ +$Get(tMintHttp) _ ")")
+        Do $$$AssertTrue($IsObject($Get(tProposal)), "and answers it")
+        If $IsObject($Get(tProposal)) {
+            Set tKey = tProposal.%Get("proposalId")
+            Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "TargetRef"), tCanonical, "the stored target reference is the canonical one, not the spelling the tool was handed")
+            Do $$$AssertEquals(tProposal.%Get("target").%Get("id"), ..#TARGET, "and so is the target the card is drawn with")
+
+            Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tKey, "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+            Do $$$AssertStatusNotOK(tSC, "the confirm is refused")
+            Do $$$AssertEquals(tHttp, 403, "with 403")
+            Do $$$AssertEquals(tCode, tExpected, "and the serving-path code")
+            Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "live", "the row was not claimed")
+            Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Burned"), 0, "and the token is unspent")
+            Do $$$AssertEquals(..Snapshot(.tAfter), tBefore, "and the application is still there, byte for byte")
+        }
+    }
+
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#TARGET), "the temporary record is removed")
 }
 
 /// <p>Story 5.8's residual: the pairs-before-prohibited reorder that fixed DW-1208 (a caller short
@@ -1151,22 +1522,24 @@ Method TestAnAccountWithoutTheCodeDatabaseReadIsRefusedABareForbidden()
     Do $$$AssertEquals(tLoginStatus, 200, "200 for the same principal, because the token endpoints are the framework's own and reach no OcuPilot class")
 }
 
-/// <p>Story 5.9, AD-10: <b>the registry advertises no delete or disable verb for a user account at
-/// all</b> -- only the reviewed writes in <parameter>USERREVIEWEDWRITES</parameter> -- and the update
-/// refuses a real disable of a real account through the real port and the real set.</p>
+/// <p>Stories 5.9 and 7.2, AD-10: <b>the registry advertises exactly four write verbs for a user
+/// account</b> -- the reviewed update, Story 8.2's create, the delete and the password change -- and a real disable
+/// and a real bodyless delete of <code>_SYSTEM</code> are each refused through the real port and
+/// the real set.</p>
 /// <p>The refusal target is <code>_SYSTEM</code>, which this suite only ever reads: the set is
-/// asked directly, so nothing is minted and no <code>PUT</code> is issued, and the account's own
-/// enabled flag is read back afterwards to show it.</p>
-/// <p>Mutations (Rule 19): add a third <code>write</code> tool under the
+/// asked directly, so nothing is minted and no write is issued, and the account's own enabled flag
+/// is read back afterwards to show it.</p>
+/// <p>Mutations (Rule 19): add a fifth <code>write</code> tool under the
 /// <code>permissions.users</code> identifier and recompile the package (the roster assertion goes
 /// red naming it), or return <code>pProhibits = 0</code> from
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.User</method> (the live refusal goes red).</p>
-Method TestNoDeleteVerbIsAdvertisedForAUserAccountAndALiveSystemDisableIsRefused()
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.User</method> (both live refusals go red).</p>
+Method TestTheUserWriteVerbsAreRosteredAndALiveSystemDisableOrDeleteIsRefused()
 {
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
     Do $$$AssertStatusOK(tSC, "the tool registry lists its tools")
     Set tIdentifier = $ClassMethod(..#USERSCREEN, "ToolIdentifier")
     Do $$$AssertNotEquals(tIdentifier, "", "the users screen declares a tool identifier")
+    Set tRoster = $ListBuild(..#USERTOOL, $Parameter("OcuPilot.Screen.Tool.UserCreate", "TOOLNAME"), "permissions.users.delete", "permissions.users.password")
     Set tSeen = 0
     Set tWrites = 0
     Set tIterator = tTools.%GetIterator()
@@ -1175,10 +1548,10 @@ Method TestNoDeleteVerbIsAdvertisedForAUserAccountAndALiveSystemDisableIsRefused
         Set tSeen = tSeen + 1
         If tTool.%Get("kind") '= "write" Continue
         Set tWrites = tWrites + 1
-        Do $$$AssertTrue($ListFind($ListFromString(..#USERREVIEWEDWRITES), tTool.%Get("name")) > 0, "the write verbs on " _ tIdentifier _ " are the reviewed update and create, not '" _ tTool.%Get("name") _ "'")
+        Do $$$AssertTrue($ListFind(tRoster, tTool.%Get("name")) > 0, "every write verb on " _ tIdentifier _ " is a rostered one, not '" _ tTool.%Get("name") _ "'")
     }
     Do $$$AssertTrue(tSeen > 0, "the registry carries tools on " _ tIdentifier _ " at all, so this assertion ran over something")
-    Do $$$AssertEquals(tWrites, $Length(..#USERREVIEWEDWRITES, ","), "and exactly the reviewed ones are write-kind, so the assertion inside that branch ran")
+    Do $$$AssertEquals(tWrites, $ListLength(tRoster), "and exactly the rostered four are write-kind")
 
     Kill tQuery
     Set tQuery("name") = ..#SYSTEMACCOUNT
@@ -1195,6 +1568,12 @@ Method TestNoDeleteVerbIsAdvertisedForAUserAccountAndALiveSystemDisableIsRefused
     Do $$$AssertStatusOK(tSC, "the shipped set answers over the shipped port: " _ $System.Status.GetErrorText(tSC))
     Do $$$AssertEquals(tProhibits, 1, "disabling the predefined account is refused")
     Do $$$AssertEquals(tCode, $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "SYSTEMACCOUNT"), "with the code that names the cause")
+
+    ; AD-10 as amended: the bodyless delete changes no field, and is refused all the same.
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).Prohibits("permissions.users.delete", tRef, tFresh.%ToJSON(), ##class(OcuPilot.Test.ProhibitedFixture).Diff("Enabled,FullName,Roles"), .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the shipped set answers the delete over the shipped port: " _ $System.Status.GetErrorText(tSC))
+    Do $$$AssertEquals(tProhibits, 1, "deleting the predefined account is refused")
+    Do $$$AssertEquals(tCode, $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "SYSTEMACCOUNT"), "with the same code")
 
     Kill tQuery
     Set tQuery("name") = ..#SYSTEMACCOUNT
@@ -1213,6 +1592,275 @@ Method Read(pPath As %String) As %String
     Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("WebApp.App", "GET", .tQuery, "", .tFresh, .tHttp, .tFault)
     If $$$ISERR(tSC) || '$IsObject(tFresh) Quit ""
     Quit tFresh.%ToJSON()
+}
+
+/// <p>One <code>POST</code> of <var>pAction</var> against <var>pId</var> on the screen whose tool
+/// identifier is <var>pScreen</var>, as <var>pUser</var>.</p>
+Method ActOn(pScreen As %String, pAction As %String, pId As %String, pUser As %String, pPassword As %String, Output pStatus As %Integer, Output pBody As %String, Output pHeaders) As %Status
+{
+    Set tRequest = {}
+    Do tRequest.%Set("action", pAction, "string")
+    Do tRequest.%Set("id", pId, "string")
+    Quit ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", ..#APIBASE _ "/screens/" _ pScreen _ "/action", pUser, pPassword, .pStatus, .pBody, .pHeaders, tRequest.%ToJSON(), "application/json")
+}
+
+/// <p>AC5, AD-8, AD-53 (Story 7.4): a principal short of <code>%Admin_Secure:USE</code> is refused
+/// the Auditing configuration screen's own action 403 <code>AUTH.NOPRIVILEGE</code> naming that
+/// pair, before any read, and this instance's auditing does not move. It sends <code>enable</code>
+/// to an audited instance, so a refusal that regressed into a write still leaves auditing on.</p>
+/// <p>The principal holds <parameter>NONSECUREADMIN</parameter> at <code>USE</code> and the two
+/// database reads, so the pair the refusal names is the only one it is short of.</p>
+Method TestAnAccountShortOfTheAuditingPairIsRefusedTheScreenAction()
+{
+    Set tCodeResource = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
+    If tCodeResource = "" Quit
+    Set tSC = ..EnsureLeastPrivilegedPrincipal(..#PRINCIPALPASSWORD, ..#NONSECUREADMIN _ ":U,%DB_IRISSYS:R," _ tCodeResource _ ":R")
+    Do $$$AssertStatusOK(tSC, "a principal short of only the administrative pair is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%Admin_Secure", "USE"), 0, "it holds no %Admin_Secure:USE")
+
+    Set tBefore = ##class(OcuPilot.Test.AuditingUpdate).AuditEnabled()
+    Do $$$AssertEquals(tBefore, 1, "this instance is audited before the refusal")
+    Set tSC = ..ActOn($ClassMethod(..#AUDITINGSCREEN, "ToolIdentifier"), "enable", ##class(OcuPilot.Kernel.EntityRef).#RULESINGLETONID, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the screen action request completes")
+    Do $$$AssertEquals(tStatus, 403, "and is refused -- not 200, not the router's 403 with no body: " _ tBody)
+    If tStatus = 403 {
+        Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "with the screen-privilege code, not AUTH.NOADMIN")
+        Do $$$AssertEquals($Select($IsObject(tEnvelope.%Get("detail")): tEnvelope.%Get("detail").%Get("failedPair"), 1: ""), "%Admin_Secure:USE", "naming the pair that failed")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).AuditEnabled(), tBefore, "and this instance's auditing did not move")
+}
+
+/// <p>AD-29 (Story 7.4): a principal holding exactly the Auditing configuration screen's declared
+/// pairs reads that screen and both embedded event lists 200 over their own read routes. Nothing
+/// is written.</p>
+Method TestALeastPrivilegedPrincipalReadsTheThreeAuditingScreens()
+{
+    Set tCodeResource = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
+    If tCodeResource = "" Quit
+    Set tSC = ..EnsureLeastPrivilegedPrincipal(..#PRINCIPALPASSWORD, ..#DECLAREDPAIRSONLY _ "," _ tCodeResource _ ":R")
+    Do $$$AssertStatusOK(tSC, "a principal holding only the declared pairs is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    For tScreen = "OcuPilot.Screen.Descriptor.AuditingConfig", "OcuPilot.Screen.Descriptor.AuditSystemEventList", "OcuPilot.Screen.Descriptor.AuditUserEventList" {
+        Set tPath = ..#APIBASE _ "/screens/" _ $ClassMethod(tScreen, "ToolIdentifier") _ "/read?maxRows=5"
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tPath, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, tScreen _ ": the read request completes")
+        Do $$$AssertEquals(tStatus, 200, tScreen _ ": and answers 200: " _ $Extract(tBody, 1, 300))
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).AuditEnabled(), 1, "and this instance's auditing did not move")
+}
+
+/// <p>AC3, AD-8, AD-53 (Story 7.5): a principal holding <code>%DB_IRISSYS:READ</code> and not
+/// <code>%Admin_Task:USE</code> is refused the On-demand tasks list's Run 403
+/// <code>AUTH.NOPRIVILEGE</code> naming that pair, before any read, and the probe task's
+/// <code>INFO</code> <code>NextScheduled</code> does not move. Nothing is run: the refusal lands
+/// before the port is called. The probe is deleted in this method's own frame.</p>
+/// <p><b>"Before any read" is observable here</b>: the principal clears the router's floor with
+/// <parameter>PROCESSFLOORADMIN</parameter> and holds neither resource <code>INFO</code>'s vendor
+/// gate admits, so a read issued ahead of the pair check would be refused by the port with an
+/// envelope naming no <code>failedPair</code>.</p>
+/// <p>Mutation (Rule 19): skip the pair <code>Gate</code> in
+/// <method>OcuPilot.Api.ScreenAction.Run</method> -- the code and failed-pair assertions go red.</p>
+Method TestAnAccountShortOfTheTaskPairIsRefusedTheRunScreenAction()
+{
+    Set tCodeResource = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
+    If tCodeResource = "" Quit
+    Set tSC = ..EnsureLeastPrivilegedPrincipal(..#PRINCIPALPASSWORD, ..#PROCESSFLOORADMIN _ ":U,%DB_IRISSYS:R," _ tCodeResource _ ":R")
+    Do $$$AssertStatusOK(tSC, "a principal short of only the task pair is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%Admin_Task", "USE"), 0, "it holds no %Admin_Task:USE")
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%Admin_Operate", "USE"), 0, "nor %Admin_Operate:USE, so INFO's own vendor gate would refuse a read")
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%DB_IRISSYS", "READ"), 1, "and does hold the security database read")
+
+    Set tFixture = "OcuPilot.Test.TaskRunFixture"
+    Set tTaskSC = $ClassMethod(tFixture, "EnsureRunProbeTask", .tTaskId)
+    Do $$$AssertStatusOK(tTaskSC, "the run probe task exists: " _ $System.Status.GetErrorText(tTaskSC))
+    If $$$ISERR(tTaskSC) Quit
+    Try {
+        Set tBefore = $ClassMethod(tFixture, "InfoField", tTaskId, "NextScheduled", .tRead)
+        Do $$$AssertEquals(tRead, 1, "the probe's INFO answers before the request")
+        Do $$$AssertEquals(tBefore, "", "an on-demand task has no next run before anything is requested")
+        Set tSC = ..ActOn("tasks.ondemand", "run", tTaskId, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, "the screen action request completes")
+        Do $$$AssertEquals(tStatus, 403, "and is refused -- not 200, not the router's 403 with no body: " _ tBody)
+        If tStatus = 403 {
+            Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+            Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "with the screen-privilege code, not AUTH.NOADMIN")
+            Do $$$AssertEquals($Select($IsObject(tEnvelope.%Get("detail")): tEnvelope.%Get("detail").%Get("failedPair"), 1: ""), "%Admin_Task:USE", "naming the pair that failed")
+        }
+        Set tAfter = $ClassMethod(tFixture, "InfoField", tTaskId, "NextScheduled", .tRead)
+        Do $$$AssertEquals(tRead, 1, "and after it")
+        Do $$$AssertEquals(tAfter, tBefore, "and no run was requested")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the leg completes without raising")
+    }
+    Do $ClassMethod(tFixture, "DeleteRunProbeTask")
+    Do $$$AssertEquals($ClassMethod(tFixture, "ProbeCount"), 0, "and the run probe task is gone")
+}
+
+/// <p>AC6, AD-8, AD-53 (Story 7.6): a principal holding <code>%DB_IRISSYS:READ</code> and not
+/// <code>%Admin_Task:USE</code> is refused the Task schedule's Suspend 403
+/// <code>AUTH.NOPRIVILEGE</code> naming that pair, before any read, and the probe's
+/// <code>INFO</code> still reads it not suspended. The probe is deleted in this method's own
+/// frame.</p>
+/// <p>Mutation (Rule 19): skip the pair <code>Gate</code> in
+/// <method>OcuPilot.Api.ScreenAction.Run</method> -- the code and failed-pair assertions go red.</p>
+Method TestAnAccountShortOfTheTaskPairIsRefusedTheSuspendScreenAction()
+{
+    Set tCodeResource = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
+    If tCodeResource = "" Quit
+    Set tSC = ..EnsureLeastPrivilegedPrincipal(..#PRINCIPALPASSWORD, ..#PROCESSFLOORADMIN _ ":U,%DB_IRISSYS:R," _ tCodeResource _ ":R")
+    Do $$$AssertStatusOK(tSC, "a principal short of only the task pair is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%Admin_Task", "USE"), 0, "it holds no %Admin_Task:USE")
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%DB_IRISSYS", "READ"), 1, "and does hold the security database read")
+
+    Set tFixture = "OcuPilot.Test.TaskRunFixture"
+    Set tTaskSC = $ClassMethod(tFixture, "EnsureScheduleProbeTask", .tTaskId)
+    Do $$$AssertStatusOK(tTaskSC, "the schedule probe task exists: " _ $System.Status.GetErrorText(tTaskSC))
+    If $$$ISERR(tTaskSC) Quit
+    Try {
+        Set tBefore = $ClassMethod(tFixture, "InfoField", tTaskId, "Suspended", .tRead)
+        Do $$$AssertEquals(tRead, 1, "the probe's INFO answers before the request")
+        Do $$$AssertEquals(tBefore, "false", "and reads it not suspended")
+        Set tSC = ..ActOn("tasks.schedule", "suspend", tTaskId, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, "the screen action request completes")
+        Do $$$AssertEquals(tStatus, 403, "and is refused -- not 200, not the router's 403 with no body: " _ tBody)
+        If tStatus = 403 {
+            Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+            Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "with the screen-privilege code, not AUTH.NOADMIN")
+            Do $$$AssertEquals($Select($IsObject(tEnvelope.%Get("detail")): tEnvelope.%Get("detail").%Get("failedPair"), 1: ""), "%Admin_Task:USE", "naming the pair that failed")
+        }
+        Set tAfter = $ClassMethod(tFixture, "InfoField", tTaskId, "Suspended", .tRead)
+        Do $$$AssertEquals(tRead, 1, "and after it")
+        Do $$$AssertEquals(tAfter, "false", "and the probe is still not suspended")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the leg completes without raising")
+    }
+    Do $ClassMethod(tFixture, "DeleteScheduleProbeTask")
+    Do $$$AssertEquals($ClassMethod(tFixture, "ScheduleProbeCount"), 0, "and the schedule probe task is gone")
+}
+
+/// <p>AC6, AD-8, AD-53 (Story 7.8): a principal holding every declared pair but
+/// <parameter>PROCESSPAIR</parameter> is refused Processes' Terminate 403
+/// <code>AUTH.NOPRIVILEGE</code> naming that pair, before any read, and the target -- a probe
+/// process this method starts and stops in its own frame -- is still running afterwards.</p>
+/// <p>Mutation (Rule 19): skip the pair <code>Gate</code> in
+/// <method>OcuPilot.Api.ScreenAction.Run</method> -- the code and failed-pair assertions go red,
+/// and the vendor's own gate still refuses the read, so nothing is terminated.</p>
+Method TestAnAccountShortOfTheProcessPairIsRefusedTheTerminateScreenAction()
+{
+    Set tCodeResource = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
+    If tCodeResource = "" Quit
+    Set tSC = ..EnsureLeastPrivilegedPrincipal(..#PRINCIPALPASSWORD, ..#PROCESSFLOORADMIN _ ":U,%DB_IRISSYS:R," _ tCodeResource _ ":R")
+    Do $$$AssertStatusOK(tSC, "a principal short of only the process pair is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, $Piece(..#PROCESSPAIR, ":", 1), "USE"), 0, "it holds no " _ ..#PROCESSPAIR)
+
+    Set tSC = ##class(OcuPilot.Test.ProcessControl).EnsureProbeOwner()
+    Do $$$AssertStatusOK(tSC, "the probe process's owner account exists: " _ $System.Status.GetErrorText(tSC))
+    Set tPid = ##class(OcuPilot.Test.ProcessControl).StartProbeProcess()
+    Do $$$AssertNotEquals(tPid, "", "a probe process of this suite's own is running")
+    If tPid = "" {
+        Do ##class(OcuPilot.Test.ProcessControl).RemoveProbeOwner()
+        Quit
+    }
+    Try {
+        Set tSC = ..ActOn("osmgmt.processes", "terminate", tPid, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, "the screen action request completes")
+        Do $$$AssertEquals(tStatus, 403, "and is refused -- not 200, not the router's 403 with no body: " _ tBody)
+        If tStatus = 403 {
+            Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+            Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "with the screen-privilege code, not AUTH.NOADMIN")
+            Do $$$AssertEquals($Select($IsObject(tEnvelope.%Get("detail")): tEnvelope.%Get("detail").%Get("failedPair"), 1: ""), ..#PROCESSPAIR, "naming the pair that failed")
+        }
+        Do $$$AssertNotEquals(##class(OcuPilot.Test.ProcessControl).ProcessState(tPid), "", "and the probe process is still running")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the leg completes without raising")
+    }
+    ; Its own frame: this class does not own the probe process's lifetime.
+    Do ##class(OcuPilot.Test.ProcessControl).StopProbeProcess(tPid)
+    Do ##class(OcuPilot.Test.ProcessControl).RemoveProbeOwner()
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProcessControl).ProcessState(tPid), "", "and the probe process this leg started is gone")
+}
+
+/// <p>AC7, DW-1530 (Story 7.11): a principal holding exactly the User events list's declared
+/// pairs, and the code database read, disables and enables a probe user event 200 each, and the
+/// screen caller's post-write marking observation -- the <code>Security.Audit.Enabled</code> and
+/// marker-event reads made with that principal's own privileges -- succeeds: no
+/// <parameter>OcuPilot.Api.ScreenAction.OBSERVEFAILED</parameter> line is written and the recorded
+/// fact does not move. The probe is removed in this method's own frame.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Audit.Event.ObserveMarking</method> answer an
+/// error status after its read -- the no-line assertion goes red.</p>
+Method TestALeastPrivilegedPrincipalRunsTheUserEventActionsAndTheMarkingIsObserved()
+{
+    Set tCodeResource = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
+    If tCodeResource = "" Quit
+    Set tSC = ..EnsureLeastPrivilegedPrincipal(..#PRINCIPALPASSWORD, ..#DECLAREDPAIRSONLY _ "," _ tCodeResource _ ":R")
+    Do $$$AssertStatusOK(tSC, "a principal holding only the declared pairs is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tProbe = ##class(OcuPilot.Test.AuditingUpdate).ProbeId()
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AuditingUpdate).ProbeCreate(), "the probe user event is created")
+    Set tMarkedBefore = ##class(OcuPilot.Kernel.Audit.Event).WritesMarked()
+    Set tLog = ##class(%File).NormalizeFilename(##class(OcuPilot.Port.LogSourcePort).FileFor("messages"), ##class(OcuPilot.Port.LogSourcePort).ManagerDirectory())
+    Set tFrom = ##class(%File).GetFileSize(tLog)
+    Do $$$AssertTrue(tFrom >= 0, "the messages log resolves, so its tail can be read: " _ tLog)
+    Try {
+        For tAction = "disable", "enable" {
+            Set tSC = ..ActOn($ClassMethod("OcuPilot.Screen.Descriptor.AuditUserEventList", "ToolIdentifier"), tAction, tProbe, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+            Do $$$AssertStatusOK(tSC, tAction _ ": the request completes")
+            Do $$$AssertEquals(tStatus, 200, tAction _ ": and answers 200: " _ $Extract(tBody, 1, 300))
+        }
+        Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).ProbeEnabled(), 1, "the probe ends enabled")
+        Set tText = ""
+        Set tStream = ##class(%Stream.FileCharacter).%New()
+        Set tLinked = ''tStream.LinkToFile(tLog)
+        Do $$$AssertTrue(tLinked, "the messages log opens for reading")
+        If tLinked && (tStream.Size > tFrom) && tStream.MoveTo(tFrom + 1) Set tText = tStream.Read(1000000)
+        Set tStream = ""
+        Do $$$AssertTrue(tText '[ ##class(OcuPilot.Api.ScreenAction).#OBSERVEFAILED, "no failed marking observation was logged, so the principal's own reads answered")
+        Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Event).WritesMarked(), tMarkedBefore, "and the recorded marking fact did not move")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the leg completes without raising")
+    }
+    Do ##class(OcuPilot.Test.AuditingUpdate).ProbeDelete()
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).ProbeExists(), 0, "and the probe user event is gone")
+}
+
+/// <p>AD-8, AD-53 (Story 7.11): a principal short of <code>%Admin_Secure:USE</code> is refused the
+/// User events list's Disable 403 <code>AUTH.NOPRIVILEGE</code> naming that pair, and the probe
+/// user event stays enabled. The probe is removed in this method's own frame.</p>
+Method TestAnAccountShortOfTheUserEventPairIsRefusedTheScreenAction()
+{
+    Set tCodeResource = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
+    If tCodeResource = "" Quit
+    Set tSC = ..EnsureLeastPrivilegedPrincipal(..#PRINCIPALPASSWORD, ..#NONSECUREADMIN _ ":U,%DB_IRISSYS:R," _ tCodeResource _ ":R")
+    Do $$$AssertStatusOK(tSC, "a principal short of only the administrative pair is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AuditingUpdate).ProbeCreate(), "the probe user event is created")
+    Try {
+        Set tSC = ..ActOn($ClassMethod("OcuPilot.Screen.Descriptor.AuditUserEventList", "ToolIdentifier"), "disable", ##class(OcuPilot.Test.AuditingUpdate).ProbeId(), ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, "the screen action request completes")
+        Do $$$AssertEquals(tStatus, 403, "and is refused: " _ tBody)
+        If tStatus = 403 {
+            Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+            Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "with the screen-privilege code")
+            Do $$$AssertEquals($Select($IsObject(tEnvelope.%Get("detail")): tEnvelope.%Get("detail").%Get("failedPair"), 1: ""), "%Admin_Secure:USE", "naming the pair that failed")
+        }
+        Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).ProbeEnabled(), 1, "and the probe is still enabled")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the leg completes without raising")
+    }
+    Do ##class(OcuPilot.Test.AuditingUpdate).ProbeDelete()
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).ProbeExists(), 0, "and the probe user event is gone")
 }
 
 }

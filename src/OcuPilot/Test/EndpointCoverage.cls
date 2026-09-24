@@ -99,6 +99,7 @@ XData Probes
      this class asserts; the route's own answers are OcuPilot.Test.WebAppWire's. -->
 <probe class="Api.Router" method="GET" url="/web-applications/name" path="/api/ocupilot/web-applications/name" disposition="envelope"/>
 <probe class="Api.Router" method="POST" url="/web-applications" path="/api/ocupilot/web-applications" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/screens/:screen/action" path="/api/ocupilot/screens/osmgmt.locks/action" disposition="envelope" refusal="1" substitute="osmgmt.locks" substitutewhy="a screen identifier that resolves to nothing answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this route probes a real screen; the body is the unreadable one every write-verb probe sends, and the screen declares no row action, so the handler refuses before any write"/>
 <probe class="Api.Router" method="GET" url="/screens/:screen/read" path="/api/ocupilot/screens/osmgmt.locks/read" disposition="envelope" substitute="osmgmt.locks" substitutewhy="a screen identifier that resolves to nothing answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this one route probes a real screen"/>
 <probe class="Api.Router" method="GET" url="/logs/errors/namespaces" path="/api/ocupilot/logs/errors/namespaces" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/logs/errors/dates" path="/api/ocupilot/logs/errors/dates" disposition="envelope"/>

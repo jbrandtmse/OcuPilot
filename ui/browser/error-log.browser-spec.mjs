@@ -358,7 +358,12 @@ test('AC3: the drill walks namespaces to dates to errors, each level a table wit
   const { context, page, reads } = await signedInAtScreen();
   try {
     assert.equal(await levelOf(page), 'namespaces', 'the screen opens on the namespaces level');
-    assert.deepEqual(await headersOf(page), [STRINGS.headerNamespaceLabel], 'whose one column is the namespace');
+    // Story 7.10: each table level ends in the row menu's column, whose header is visually hidden.
+    assert.deepEqual(
+      await headersOf(page),
+      [STRINGS.headerNamespaceLabel, STRINGS.commandBoxGroupActions],
+      'whose one data column is the namespace'
+    );
     const namespaces = await firstCells(page);
     assert.ok(namespaces.length > 0, `the instance records errors for at least one namespace: ${JSON.stringify(namespaces)}`);
     assert.ok(
@@ -371,7 +376,7 @@ test('AC3: the drill walks namespaces to dates to errors, each level a table wit
     await drillInto(page, namespaces[0], 'dates');
     assert.deepEqual(
       await headersOf(page),
-      [STRINGS.errorLogColumnDate, STRINGS.errorLogColumnCount],
+      [STRINGS.errorLogColumnDate, STRINGS.errorLogColumnCount, STRINGS.commandBoxGroupActions],
       'the dates level renders the date and its count'
     );
     assert.equal(
@@ -393,6 +398,7 @@ test('AC3: the drill walks namespaces to dates to errors, each level a table wit
         STRINGS.errorLogColumnLine,
         STRINGS.processColumnUser,
         STRINGS.processColumnPid,
+        STRINGS.commandBoxGroupActions,
       ],
       'the errors level renders the summary projection'
     );

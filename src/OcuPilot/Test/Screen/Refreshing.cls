@@ -34,7 +34,7 @@ XData Declaration
   "id": {"kind": "single", "parts": []},
   "context": {"fields": ["pid", "user", "routine"], "secretFields": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [{"id": "terminate", "selfProtection": "never an IRIS system process"}],
+  "rowActions": [{"id": "terminate", "selfProtection": ""}],
   "emptyStateKey": "",
   "commandAliases": ["processes"],
   "classicPage": "OcuPilotTestClassicPageRefreshing",

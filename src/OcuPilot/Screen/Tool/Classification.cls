@@ -33,6 +33,10 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// path may be carried; which paths a write tool advertises is that tool's own positive list
 /// (<parameter>OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS</parameter>, four of these rows),
 /// and <code>DispatchClass</code> and the rest stay <code>ordinary</code> and unadvertised.</p>
+/// <p><b><code>security.auditsystemevents.update</code></b> and
+/// <b><code>security.audituserevents.update</code></b> classify the class-derived
+/// <code>Security.Audit.Event:Security.Events</code> list's two literals <code>ordinary</code>; each
+/// tool admits <code>Enabled</code> alone (<class>OcuPilot.Screen.Tool.AuditEventUpdate</class>).</p>
 /// <p><b><code>security.auditing.update</code></b> classifies the one row of
 /// <code>Security.Audit.Enabled</code> -- the derived <code>Enabled</code> boolean --
 /// <code>ordinary</code>. A path no entry names is emitted <code>secret</code>, and a secret row
@@ -76,6 +80,14 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// <code>RequireTLS</code> <code>ordinary</code>, the member-less <code>AllowedHosts</code> array
 /// <code>opaque</code>, which each tool adds back as a string array of its own, and the value,
 /// <code>Secret</code> and <code>Secret64</code>, <code>secret</code>.</p>
+/// <p><b><code>permissions.users.create</code></b> classifies the same <code>Security.User</code>
+/// list as the update entry does, and authors <code>Password</code> as <code>secret</code>: the
+/// vendor's POST body is <code>{User, Password}</code>, whose outer <code>Password</code> the
+/// template never shows, so AD-3's "the write tool authors [wrapper fields] as secret fields of its
+/// own" is stated here, where the generator can check it.</p>
+/// <p><b><code>permissions.users.password</code></b> classifies the same list again and authors
+/// <code>Password</code> as <code>secret</code>: its write sends that declared secret and nothing
+/// else (AD-56), under the vendor's <code>CHANGEPWD</code> key the port renames it to.</p>
 XData Entries
 {
 {
@@ -98,6 +110,20 @@ XData Entries
       "Roles": "opaque",
       "EscalationRoles": "opaque",
       "Routine": "ordinary"
+    }
+  },
+  "security.auditsystemevents.update": {
+    "fieldList": "Security.Audit.Event:Security.Events",
+    "classification": {
+      "Description": "ordinary",
+      "Enabled": "ordinary"
+    }
+  },
+  "security.audituserevents.update": {
+    "fieldList": "Security.Audit.Event:Security.Events",
+    "classification": {
+      "Description": "ordinary",
+      "Enabled": "ordinary"
     }
   },
   "security.auditing.update": {
@@ -326,6 +352,54 @@ XData Entries
       "Prompt": "ordinary",
       "SubType": "ordinary",
       "Type": "ordinary"
+    }
+  },
+  "permissions.users.create": {
+    "fieldList": "Security.User",
+    "classification": {
+      "AccountNeverExpires": "ordinary",
+      "AutheEnabled": "ordinary",
+      "ChangePassword": "ordinary",
+      "Comment": "ordinary",
+      "EmailAddress": "ordinary",
+      "Enabled": "ordinary",
+      "ExpirationDate": "ordinary",
+      "FullName": "ordinary",
+      "HOTPKeyDisplay": "ordinary",
+      "NameSpace": "ordinary",
+      "PasswordNeverExpires": "ordinary",
+      "PhoneNumber": "ordinary",
+      "PhoneProvider": "ordinary",
+      "Roles": "opaque",
+      "EscalationRoles": "opaque",
+      "Routine": "ordinary"
+    },
+    "authored": {
+      "Password": "secret"
+    }
+  },
+  "permissions.users.password": {
+    "fieldList": "Security.User",
+    "classification": {
+      "AccountNeverExpires": "ordinary",
+      "AutheEnabled": "ordinary",
+      "ChangePassword": "ordinary",
+      "Comment": "ordinary",
+      "EmailAddress": "ordinary",
+      "Enabled": "ordinary",
+      "ExpirationDate": "ordinary",
+      "FullName": "ordinary",
+      "HOTPKeyDisplay": "ordinary",
+      "NameSpace": "ordinary",
+      "PasswordNeverExpires": "ordinary",
+      "PhoneNumber": "ordinary",
+      "PhoneProvider": "ordinary",
+      "Roles": "opaque",
+      "EscalationRoles": "opaque",
+      "Routine": "ordinary"
+    },
+    "authored": {
+      "Password": "secret"
     }
   }
 }

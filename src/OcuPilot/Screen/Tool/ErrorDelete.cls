@@ -1,7 +1,13 @@
-/// <p>The application error log's delete tool (AD-48, AD-51, AD-52, FR-63): propose clearing the
-/// application errors one namespace holds. It enumerates, at proposal time, the specific
-/// <code>(date, errorNumber)</code> pairs it will remove, and mints a proposal whose card lists
-/// them. It writes nothing.</p>
+/// <p>The application error log's delete tool (AD-48, AD-51, AD-52, AD-53, FR-63): delete the
+/// application errors one scope holds -- a namespace, one date in it, or one error. It enumerates
+/// the specific <code>(date, errorNumber, time)</code> entries it will remove and removes exactly
+/// those. The agent reaches it through a proposal whose card lists them; the error log screen
+/// reaches it through its <code>delete</code> row action on every drill level.</p>
+/// <p><b>The scope is the target id</b>, a prefix of the error's composite id (AD-13): the
+/// namespace; the namespace and a date; the namespace, a date and an error number. The screen sends
+/// the prefix for the level it is on. The agent sends <code>namespace</code> and optionally
+/// <code>date</code> and <code>errorNumber</code>, which
+/// <class>OcuPilot.Screen.Tool.ErrorDeleteMint</class> joins into that id before the mint.</p>
 /// <p><b>Its port is not the admin port</b> (AD-52). The administration API backs no application
 /// error route at all, so this tool declares <class>OcuPilot.Port.LogSourcePort</class> and the
 /// mint's fresh read, the confirm's re-read, the prohibited set's live read and the write itself
@@ -16,9 +22,9 @@
 /// the proposal leaves the subject alone and survives the confirm. That residue is correct, and the
 /// card says so.</p>
 /// <p><b>It is destructive</b>: a deleted application error cannot be proposed back.</p>
-/// <p><b>The namespace has exactly one source</b>, the level the user drilled to, which the agent
-/// sends as this tool's own argument. The route's <code>?ns=</code> (AD-44) reaches no layer of
-/// this path.</p>
+/// <p><b>The namespace has exactly one source</b>, the id's first part: the level the user drilled
+/// to, or the agent's own argument. The route's <code>?ns=</code> (AD-44) reaches no layer of this
+/// path.</p>
 Class OcuPilot.Screen.Tool.ErrorDelete Extends OcuPilot.Screen.Tool.Write
 {
 
@@ -26,7 +32,7 @@ Parameter TOOLNAME = "logs.applicationerrors.delete";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.LogErrorList";
 
-Parameter DESCRIPTION = "Propose deleting the application errors one namespace holds. It changes nothing by itself: it answers a proposal listing every error it would remove, which the user reviews and confirms. Name the namespace exactly as this instance's own application error log reports it. A namespace the log does not report, and one that records no errors, are both refused. Errors logged after the proposal are not removed.";
+Parameter DESCRIPTION = "Propose deleting application errors: every error one namespace holds, every error it logged on one date, or one error. It changes nothing by itself: it answers a proposal listing every error it would remove, which the user reviews and confirms. Name the namespace, and the date and error number where given, exactly as this instance's own application error log reports them. A scope the log does not report, and one that records no errors, are both refused. Errors logged after the proposal are not removed.";
 
 /// <p>The port this tool's target lives behind (AD-48, AD-52).</p>
 Parameter PORTCLASS = "OcuPilot.Port.LogSourcePort";
@@ -42,6 +48,10 @@ Parameter WRITETYPE = "DELETE";
 /// <p>No body. Nothing is sent, so nothing is disclosed as unchanged and the ledger names no
 /// field (AD-51).</p>
 Parameter SENDSBODY As BOOLEAN = 0;
+
+/// <p>The screen row action this tool carries out on every drill level of the error log (AD-53).
+/// The target id the screen sends is the scope.</p>
+Parameter SCREENACTIONS = "delete";
 
 /// <p>The AD-14 action this write performs: its targets are removed, so a screen showing them
 /// drops the rows that left rather than re-reading a row that moved. It is the first shipped
@@ -81,8 +91,8 @@ ClassMethod IdArgument() As %String
     Quit ##class(OcuPilot.Port.LogSourcePort).#NAMESPACEPARAM
 }
 
-/// <p>The query parameter the port identifies the target namespace by, for both the enumeration
-/// and the delete.</p>
+/// <p>The query parameter the port identifies the target scope by, for both the enumeration and
+/// the delete.</p>
 ClassMethod IdParam() As %String
 {
     Quit ##class(OcuPilot.Port.LogSourcePort).#NAMESPACEPARAM
@@ -95,8 +105,14 @@ ClassMethod SettableFields() As %List
     Quit ..AdmittedFields()
 }
 
-/// <p>The derived schema with the identifying property's description replaced: the target is one
-/// namespace, named as the instance's own application error log reports it.</p>
+/// <p>The optional argument that narrows the scope to one date.</p>
+Parameter DATEARGUMENT = "date";
+
+/// <p>The optional argument that narrows a date's scope to one error.</p>
+Parameter ERRORNUMBERARGUMENT = "errorNumber";
+
+/// <p>The derived schema with the identifying property's description replaced, and the two
+/// optional arguments that narrow the scope. It stays closed: any other key is refused.</p>
 ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Set tSchema = ##super(pDescriptor)
@@ -104,8 +120,17 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     If tSchema.%GetTypeOf("properties") '= "object" Quit tSchema
     Set tProperties = tSchema.%Get("properties")
     If tProperties.%GetTypeOf(..IdArgument()) '= "object" Quit tSchema
-    Do tProperties.%Get(..IdArgument()).%Set("description", "The namespace whose application errors to delete, exactly as this instance's own application error log reports it. It is the namespace the user has drilled to. A namespace the log does not report, and one that records no errors, are both refused.", "string")
+    Do tProperties.%Get(..IdArgument()).%Set("description", "The namespace whose application errors to delete, exactly as this instance's own application error log reports it. It is the namespace the user has drilled to. Alone it deletes every error the namespace holds; with date, every error of that date; with date and errorNumber, that one error. A namespace the log does not report, and one that records no errors, are both refused.", "string")
+    Do tProperties.%Set(..#DATEARGUMENT, {"type": "string", "description": "Optional. One date whose errors to delete, exactly as the log lists it, MM/DD/YYYY. A date the log does not list for that namespace is refused."})
+    Do tProperties.%Set(..#ERRORNUMBERARGUMENT, {"type": "integer", "minimum": 1, "description": "Optional, and only together with date. The number of the one error to delete, as the log lists it for that date. A number the log does not hold on that date is refused."})
     Quit tSchema
+}
+
+/// <p>The class the agent's proposal is minted by: the kernel's own mint, after the scope
+/// arguments are joined into the target id (AD-13).</p>
+ClassMethod MintClass() As %String
+{
+    Quit "OcuPilot.Screen.Tool.ErrorDeleteMint"
 }
 
 /// <p>What the caller must hold: this screen's own two pairs, together with the pairs
@@ -127,18 +152,21 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
 /// <p>What a call naming <var>pArgs</var>'s namespace requires beyond
 /// <method>PrivilegePairs</method>: the per-namespace pairs the port resolves for it, so the
 /// dispatcher checks them against the caller's current grants before the mint runs (AD-8, AD-31)
-/// and the confirm re-checks them, against the stored arguments, before any live read.</p>
+/// and the confirm and the screen route re-check them before any live read.</p>
+/// <p>The namespace is the first part of the identifying argument, which is the bare namespace
+/// the agent sends or the composite scope id the screen sends.</p>
 ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, Output pResolved As %Boolean) As %List
 {
     Set pResolved = 1
     If '$IsObject(pArgs) Quit ""
-    Quit ##class(OcuPilot.Port.LogSourcePort).PairsFor(##class(OcuPilot.Port.LogSourcePort).#ERRORSKEY, pArgs.%Get(..IdArgument()))
+    Set tNamespace = $ListGet(##class(OcuPilot.Kernel.EntityId).SplitComposite(pArgs.%Get(..IdArgument())), 1)
+    Quit ##class(OcuPilot.Port.LogSourcePort).PairsFor(##class(OcuPilot.Port.LogSourcePort).#ERRORSKEY, tNamespace)
 }
 
 /// <p>The removal rows this proposal's card shows, from the fresh enumeration <var>pFresh</var>:
 /// one per enumerated error, carrying its identifying pair -- the date as the field and the error
 /// number as the value -- with no after-state.</p>
-/// <p>A namespace the enumeration found no errors in is <var>pProblem</var>, so the mint refuses
+/// <p>A scope the enumeration found no errors in is <var>pProblem</var>, so the mint refuses
 /// rather than proposing a delete that would remove nothing. <b>A truncated enumeration is
 /// <var>pProblem</var> too</b>: a cut set cannot support "the confirm removes exactly these", and a
 /// silent partial delete is what AD-48's enumerated-id-set rule exists to prevent.</p>
@@ -153,7 +181,7 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
             Quit
         }
         If ''pFresh.%Get("truncated") {
-            Set pProblem = "this namespace holds more application errors than one proposal can list, so no proposal can promise to remove exactly the ones shown"
+            Set pProblem = "this scope holds more application errors than one delete can list, so no delete can promise to remove exactly the ones shown"
             Quit
         }
         If pFresh.%GetTypeOf(..#PRECONDITIONFIELD) '= "array" {
@@ -162,7 +190,7 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
         }
         Set tEntries = pFresh.%Get(..#PRECONDITIONFIELD)
         If tEntries.%Size() = 0 {
-            Set pProblem = "this instance records no application errors for that namespace"
+            Set pProblem = "this instance records no application errors in that scope"
             Quit
         }
         Set tIterator = tEntries.%GetIterator()

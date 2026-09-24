@@ -52,6 +52,8 @@ Method OnBeforeOneTest() As %Status
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.ProposalFixture).ArmProhibited("")
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmLastAllHolder("")
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmAllHolders("")
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#RECORDEDPATH), "install's record of the probe path is removed")
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
@@ -465,9 +467,14 @@ Method TestAMintChecksEachStreamWriteOrStoresNoRow()
 /// sent. A row whose stored payload weakens the live target while its diff names nothing -- or
 /// cannot be read at all -- is refused 409 <code>PROPOSAL.TARGETCHANGED</code> and closed, so no
 /// route reaches the port with a payload its own fingerprint does not cover.</p>
+/// <p><b>One case is refused earlier, and by a stronger rule</b> (AD-53, Story 7.1): a row against
+/// one of OcuPilot's own applications is refused 403 <code>PROHIBITED.SERVINGPATH</code> whatever
+/// its diff says, because that predicate is over the target rather than over the payload's shape.
+/// It is kept here as the case that says so: the set is silent on a row that proposes nothing
+/// <b>except</b> on the applications AD-38 protects.</p>
 /// <p>Mutation: drop the stored-payload comparison from
-/// <method>OcuPilot.Kernel.Proposal.Confirm.FingerprintMatches</method> -- this goes red and each
-/// confirm succeeds and writes.</p>
+/// <method>OcuPilot.Kernel.Proposal.Confirm.FingerprintMatches</method> -- the three 409 legs go
+/// red and each of those confirms succeeds and writes.</p>
 Method TestARowWhosePayloadItsFingerprintDoesNotCoverIsRefused()
 {
     Set tServing = "/api/ocupilot"
@@ -476,11 +483,14 @@ Method TestARowWhosePayloadItsFingerprintDoesNotCoverIsRefused()
     Set tHere("NameSpace") = $ListBuild("HSCUSTOM", "string")
     Set tElsewhere("NameSpace") = $ListBuild("USER", "string")
     Set tServingLive = ##class(OcuPilot.Test.ProhibitedFixture).App(tServing, 32, "", "OcuPilot.Api.Router", "", 1, "before", .tHere)
-    ; the live target, the payload the row stores against it, the row's diff, its path, and what it is.
-    Set tCases = $ListBuild($ListBuild(tLive, ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Other", "", 1), "[]", ..#TARGET, "a repointed dispatch class behind an empty diff"))
-    Set tCases = tCases _ $ListBuild($ListBuild(tLive, ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 96, "%Development", "Probe.Dispatch", "", 1), "[]", ..#TARGET, "unauthenticated access behind an empty diff"))
-    Set tCases = tCases _ $ListBuild($ListBuild(tServingLive, ##class(OcuPilot.Test.ProhibitedFixture).App(tServing, 32, "", "OcuPilot.Api.Router", "", 1, "before", .tElsewhere), "[]", tServing, "OcuPilot's own namespace repointed behind an empty diff"))
-    Set tCases = tCases _ $ListBuild($ListBuild(tLive, ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Other", "", 1), "not json", ..#TARGET, "a repointed dispatch class behind a diff nobody can read"))
+    ; the live target, the payload the row stores against it, the row's diff, its path, what it is,
+    ; the HTTP status it earns and the code with it.
+    Set tChanged = ##class(OcuPilot.Kernel.Proposal.Write).#TARGETCHANGED
+    Set tServingCode = $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "SERVINGPATH")
+    Set tCases = $ListBuild($ListBuild(tLive, ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Other", "", 1), "[]", ..#TARGET, "a repointed dispatch class behind an empty diff", 409, tChanged))
+    Set tCases = tCases _ $ListBuild($ListBuild(tLive, ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 96, "%Development", "Probe.Dispatch", "", 1), "[]", ..#TARGET, "unauthenticated access behind an empty diff", 409, tChanged))
+    Set tCases = tCases _ $ListBuild($ListBuild(tServingLive, ##class(OcuPilot.Test.ProhibitedFixture).App(tServing, 32, "", "OcuPilot.Api.Router", "", 1, "before", .tElsewhere), "[]", tServing, "OcuPilot's own namespace repointed behind an empty diff", 403, tServingCode))
+    Set tCases = tCases _ $ListBuild($ListBuild(tLive, ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Other", "", 1), "not json", ..#TARGET, "a repointed dispatch class behind a diff nobody can read", 409, tChanged))
     For tI = 1:1:$ListLength(tCases) {
         Set tCase = $List(tCases, tI)
         Set tLabel = $List(tCase, 5)
@@ -492,13 +502,93 @@ Method TestARowWhosePayloadItsFingerprintDoesNotCoverIsRefused()
         Do ##class(OcuPilot.Test.ProposalFixture).Arm($List(tCase, 1))
         Set tSC = ..Confirm(tKey, .tHttp, .tCode)
         Do $$$AssertStatusNotOK(tSC, "the confirm of " _ tLabel _ " is refused")
-        ; 409 rather than 403 is the point: the set is silent on a row that proposes nothing, and
-        ; the fingerprint gate is what refuses the payload behind it.
-        Do $$$AssertEquals(tHttp, 409, "at 409, code was '" _ tCode _ "'")
-        Do $$$AssertEquals(tCode, ##class(OcuPilot.Kernel.Proposal.Write).#TARGETCHANGED, "with the target-changed code")
-        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "ClosedReason"), "target-changed", "and the row closes rather than staying live")
+        ; 409 rather than 403 is the point on three of the four: the set is silent on a row that
+        ; proposes nothing, and the fingerprint gate is what refuses the payload behind it. The
+        ; fourth is OcuPilot's own application, which the set refuses over the target itself.
+        Do $$$AssertEquals(tHttp, $List(tCase, 6), "at " _ $List(tCase, 6) _ ", code was '" _ tCode _ "'")
+        Do $$$AssertEquals(tCode, $List(tCase, 7), "with the code that refusal carries")
+        If $List(tCase, 6) = 409 {
+            Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "ClosedReason"), "target-changed", "and the row closes rather than staying live")
+        } Else {
+            ; A prohibited refusal leaves the row live: nothing about the target moved, so there is
+            ; nothing to close it over (AD-10, AD-6).
+            Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "live", "and a prohibited row is left live rather than closed")
+        }
         Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "with nothing at the port")
     }
+}
+
+/// <p>AD-10 as amended 2026-09-23 (DW-1486): each account predicate -- <code>_SYSTEM</code>, the
+/// signed-in account, a service account and the last <code>%All</code> holder -- refuses each
+/// removal effect with its own code: a bodyless delete, a disable, and a <code>Roles</code> delta
+/// that strips <code>%All</code>. An ordinary account is permitted all three, and a role change on
+/// <code>_SYSTEM</code> that keeps <code>%All</code>, or on a service account that holds none, is
+/// permitted too, so neither the predicates nor the effect terms can pass by refusing everything.</p>
+/// <p>Every leg goes through the shipped <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method>
+/// with the target armed on <class>OcuPilot.Test.ProposalFixture</class>, so nothing reaches the
+/// instance. The census is armed: answered "last" for the last-holder legs, and deterministic
+/// otherwise.</p>
+/// <p>Mutations (Rule 19): remove any one arm from <method>OcuPilot.Kernel.Proposal.Prohibited.User</method>,
+/// or any one term from <method>OcuPilot.Kernel.Proposal.Prohibited.RemovesAdministration</method>
+/// -- the legs of that arm, or of that effect, go red.</p>
+Method TestEveryAccountArmRefusesEveryRemovalEffect()
+{
+    Set tSet = "OcuPilot.Test.ProhibitedFixture"
+    Set tUpdate = "permissions.users.update"
+    Set tDelete = "permissions.users.delete"
+    Set tFixture = "OcuPilot.Test.ProposalFixture"
+    Set tSystem = $Parameter(..#SHIPPEDSET, "SYSTEMACCOUNTNAME")
+    Set tService = $List($ClassMethod(..#SHIPPEDSET, "ServiceAccounts"), 1)
+    Set tHolder = "OcuPilotProbeByEffectLastHolder"
+    Set tOrdinary = "OcuPilotProbeByEffectOrdinary"
+    ; The signed-in account must not be _SYSTEM or the service account the leg names, or the
+    ; first-hit-wins order would answer its code for the wrong row.
+    Do $$$AssertNotEquals($ZConvert($Username, "L"), $ZConvert(tSystem, "L"), "the runner is not _SYSTEM, so the two arms are separable")
+    Do $$$AssertNotEquals($ZConvert($Username, "L"), $ZConvert(tService, "L"), "and not " _ tService)
+    Set tLegs = $ListBuild($ListBuild(tSystem, "SYSTEMACCOUNT", 0), $ListBuild($Username, "CURRENTUSER", 0), $ListBuild(tService, "SERVICEACCOUNT", 0), $ListBuild(tHolder, "LASTALLHOLDER", 1))
+    Set tRefused = 0
+    For tI = 1:1:$ListLength(tLegs) {
+        Set tLeg = $List(tLegs, tI)
+        Set tName = $List(tLeg, 1)
+        Set tExpected = $Parameter(..#SHIPPEDSET, $List(tLeg, 2))
+        Do $ClassMethod(tFixture, "ArmLastAllHolder", $Select($List(tLeg, 3): 1, 1: ""))
+        Set tFresh = $ClassMethod(tSet, "UserObject", tName, 1, "%All")
+        For tEffect = "delete", "disable", "strip" {
+            If tEffect = "delete" {
+                Set tSC = $ClassMethod(tSet, "Ask", tFresh, tFresh, $ClassMethod(tSet, "Diff", "Enabled,FullName,Roles"), tName, "user", .tProhibits, .tCode, tDelete)
+            } ElseIf tEffect = "disable" {
+                Set tSC = $ClassMethod(tSet, "Ask", tFresh, $ClassMethod(tSet, "UserObject", tName, 0, "%All"), $ClassMethod(tSet, "Diff", "Enabled"), tName, "user", .tProhibits, .tCode, tUpdate)
+            } Else {
+                Set tSC = $ClassMethod(tSet, "Ask", tFresh, $ClassMethod(tSet, "UserObject", tName, 1, "%SQL"), $ClassMethod(tSet, "Diff", "Roles"), tName, "user", .tProhibits, .tCode, tUpdate)
+            }
+            Do $$$AssertStatusOK(tSC, tName _ " / " _ tEffect _ ": the set answers: " _ $System.Status.GetErrorText(tSC))
+            Do $$$AssertEquals(tCode, tExpected, tName _ " / " _ tEffect _ ": refused with " _ tExpected)
+            If tProhibits && (tCode = tExpected) Set tRefused = tRefused + 1
+        }
+    }
+    Do $$$AssertEquals(tRefused, 12, "all twelve legs were refused with their own code")
+
+    ; The controls: an ordinary account holding %All, with the census answering that another holder
+    ; exists, is permitted every effect; and _SYSTEM may gain an ordinary role that keeps %All.
+    Do $ClassMethod(tFixture, "ArmLastAllHolder", "")
+    ; The other holder is a real, enabled, signable account the census lists: _SYSTEM.
+    Do $ClassMethod(tFixture, "ArmAllHolders", tOrdinary _ "," _ tSystem)
+    Set tFresh = $ClassMethod(tSet, "UserObject", tOrdinary, 1, "%All")
+    Set tSC = $ClassMethod(tSet, "Ask", tFresh, tFresh, $ClassMethod(tSet, "Diff", "Enabled,FullName,Roles"), tOrdinary, "user", .tProhibits, .tCode, tDelete)
+    Do $$$AssertStatusOK(tSC, "the ordinary delete is answered")
+    Do $$$AssertEquals(tProhibits, 0, "an ordinary account's delete is permitted, code was '" _ tCode _ "'")
+    Set tSC = $ClassMethod(tSet, "Ask", tFresh, $ClassMethod(tSet, "UserObject", tOrdinary, 0, "%All"), $ClassMethod(tSet, "Diff", "Enabled"), tOrdinary, "user", .tProhibits, .tCode, tUpdate)
+    Do $$$AssertEquals(tProhibits, 0, "and its disable, code was '" _ tCode _ "'")
+    Set tSC = $ClassMethod(tSet, "Ask", tFresh, $ClassMethod(tSet, "UserObject", tOrdinary, 1, "%SQL"), $ClassMethod(tSet, "Diff", "Roles"), tOrdinary, "user", .tProhibits, .tCode, tUpdate)
+    Do $$$AssertEquals(tProhibits, 0, "and its %All strip, code was '" _ tCode _ "'")
+    Do $ClassMethod(tFixture, "ArmAllHolders", "")
+    Set tSC = $ClassMethod(tSet, "Ask", $ClassMethod(tSet, "UserObject", tSystem, 1, "%All"), $ClassMethod(tSet, "UserObject", tSystem, 1, "%All,%SQL"), $ClassMethod(tSet, "Diff", "Roles"), tSystem, "user", .tProhibits, .tCode, tUpdate)
+    Do $$$AssertStatusOK(tSC, "the _SYSTEM role add is answered")
+    Do $$$AssertEquals(tProhibits, 0, "a role change on _SYSTEM that keeps %All removes nothing, code was '" _ tCode _ "'")
+    ; And a role change on a protected account that never held %All strips nothing.
+    Set tSC = $ClassMethod(tSet, "Ask", $ClassMethod(tSet, "UserObject", tService, 1, "%SQL"), $ClassMethod(tSet, "UserObject", tService, 1, "%SQL,%Developer"), $ClassMethod(tSet, "Diff", "Roles"), tService, "user", .tProhibits, .tCode, tUpdate)
+    Do $$$AssertStatusOK(tSC, "the " _ tService _ " role add is answered")
+    Do $$$AssertEquals(tProhibits, 0, "an ordinary role added to " _ tService _ ", which holds no %All, is permitted, code was '" _ tCode _ "'")
 }
 
 }
