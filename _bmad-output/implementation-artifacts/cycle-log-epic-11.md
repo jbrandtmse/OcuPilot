@@ -33,3 +33,12 @@ TAB-separated, append-only: `<UTC> TAB <Story <id> | Epic 11> TAB <stage> TAB <m
 2026-09-24T09:44:07Z	Epic 11	ledger_burndown_skipped	reason=empty scope=entries_owned_by_11-9_or_burndown open_before=0 resolved=0 terminal=0 chartered=0 chartered_size=0 overflow=0 reowned=0 to_decision_sheet=0 open_after=0 filed_this_epic=2(DW-1608_terminal,DW-1610_routed_11-2) closed_this_epic=1 drain_ratio=0.50 note=rest_of_Epic_11_stays_backlog;DW-1610_is_11-2s_inbox_with_its_epics.md_bullet
 2026-09-24T09:45:05Z	Epic 11	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@32030aed merge_sha=5619fd2d conflicts=none files=5(planning/bookkeeping_only) src_diff_vs_f74dc9c3=empty tracker=valid note=merged_tree_source_identical_to_the_smoked_tree(smoke.sh_49/49,TurnGrounding_7/7,ScreenGrounding_10/10,story_browser_specs_14/14);full_suites_rerun_by_CI_on_the_final_head
 2026-09-24T09:45:05Z	Epic 11	epic_runner_complete	stories_completed=1(11.9) remaining_backlog=11-7,11-8,11-1,11-2,11-3,11-4 ready_for_merge=true_pending_final_head_CI throwaway=ocupilot-b-ci_torn_down_by_runner model_tier_checkpoint=not_run(epic_not_done)
+2026-09-24T14:42:06Z	Epic 11	lead_model_gate	model=claude-opus-5-5[1m] action=proceed scope=story_11.10_only
+2026-09-24T14:42:06Z	Epic 11	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=gh
+2026-09-24T14:42:06Z	Epic 11	telemetry_gate	pending=0 action=none
+2026-09-24T14:42:06Z	Epic 11	epic_branch_checked_out	repos=. head=58ee39a2 mode=runner_kept_worktree branch=OCU-1-epic11 slot=b bootstrap=node_modules_ok,irislib_ok
+2026-09-24T14:42:06Z	Epic 11	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@7ad104ed merge_sha=1af7bf51 conflicts=none files=4(planning/bookkeeping_only) src_diff_vs_58ee39a2=empty ci=pending run=36014580530 tracker=valid
+2026-09-24T14:42:06Z	Epic 11	ledger_load	total=1059 open=3 routed=245 escalated=0 decision_pending=0 terminal=811 owner_unknown=0 owner_11-10=0
+2026-09-24T14:42:06Z	Epic 11	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=56 status=final read=full(Rule_26)
+2026-09-24T14:43:30Z	Epic 11	epic_context_compiled	reason=planning_artifact_newer(epics.md_gained_11.10) model=opus words=1968 header=ok agent_name=epic-11-context-prewarm-2
+2026-09-24T14:43:30Z	Story 11.10	stage_spawned	stage=plan spawn_at=2026-09-24T14:43:30Z model=opus agent_name=11-10-a-judge-succeeds-the-first-time-plan-1 cycle_iteration=1
