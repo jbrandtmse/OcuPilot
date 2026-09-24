@@ -226,6 +226,7 @@ Rejected:
 
 ## Spec Change Log
 
+- 2026-09-24, integrate forward (lead): one-time baseline extension forced by the merge order (orchestrator ruling). Epic 7 merged after this baseline was taken, so its three security/auditing screens' 11 violations were appended from the gate's own print (6 on DW-1583, 5 on DW-1584); 202 entries. The ratchet runs from here.
 - 2026-09-23, lead spec gate: (1) the merge path appends printed entries and never re-runs `--write`; (2) a dark-only contrast failure whose fix is not a footprint token substitution HALTs as an intent gap; (3) the AC5 stale-report mutation corrected to a synthetic entry with no defect behind it; (4) a determinism check added before the baseline is committed. No intent change.
 
 ## Review Triage Log

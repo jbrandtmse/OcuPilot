@@ -6323,16 +6323,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Walk measures app-panel-resize-handle>div.ocu-panel-resize-handle 4px past aside.ocu-panel: its declared hit area is left:-4px width:8px (_components.scss:3203-3212, DESIGN.md:1140), so this is the designed straddle, not a layout bug. Epic 5's panel files
 - 2026-09-24T00:06:23Z status=routed owner=range-end-cleanup by=burndown note=resolve by letting the gate honour a declared overflow exemption or by moving the hit area inside the panel; baseline keys carry this id
+- 2026-09-24T00:20:24Z by=integrate_forward note=Epic 7 merge adds 6 keys (security/auditing, /system-events, /user-events; 1280+720); one-time extension, same root cause
 
 ### DW-1584: Structural gate baseline: the status bar's connection and stamp segments overflow their group at 720px on every screen (77 baseline keys)
 - source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Walk at 720: span.ocu-status-bar-connection 28px and span.ocu-status-bar-segment.ocu-status-bar-stamp 6px past app-status-bar>div.ocu-status-bar-group; DESIGN.md's yield order is not applied at the 200%-zoom floor. Status bar is Epic 1's (merged)
 - 2026-09-24T00:06:23Z status=routed owner=range-end-cleanup by=burndown note=baseline keys carry this id
+- 2026-09-24T00:20:24Z by=integrate_forward note=Epic 7 merge adds 5 keys on the three security/auditing screens at 720; one-time extension, same root cause
 
 ### DW-1585: Structural gate baseline: command-bar controls overflow the command bar at 720px (refresh action 80px on agent/definitions; sort 30px in CI only)
 - source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Walk at 720 on agent/definitions: button.ocu-command-bar-refresh-action 80px and span.ocu-command-bar-sort 30px past div.ocu-command-bar; the sort key reproduces in CI's walk and reads stale locally. Command bar is Epic 7's; its merged .ocu-command-bar wrapping rule may clear both (inference)
 - 2026-09-24T00:06:23Z status=routed owner=range-end-cleanup by=burndown note=baseline keys carry this id; re-check after the Epic 7 integrate-forward
+- 2026-09-24T00:20:24Z by=integrate_forward note=both keys read stale on the merged tree: Epic 7's .ocu-command-bar wrap rule clears them locally; remove and resolve once CI confirms
 
 ### DW-1586: Structural gate baseline: a data-table name link can render narrower than the 24px control floor (devices 7.2px, users 21.6px, at both widths)
 - source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: low | fix-risk: low | footprint: in-epic
