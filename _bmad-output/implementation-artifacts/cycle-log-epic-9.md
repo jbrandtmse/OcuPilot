@@ -31,3 +31,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-24T02:32:46Z	Epic 9	spine_updated	ad=AD-10 reason=cr_finding by=runner story=9-1-the-user-editor dw=DW-1593 what=last_%All_holder_not_exempt_from_sign-in_arm lint=ok_preexisting_low_placeholder_line167
 2026-09-24T02:32:46Z	Story 9.1	ci_resolved	story=9.1 run=35945402895 head=1984991 result=failure job=browser tests=users.browser-spec.mjs:225(AC7_name_link),device-editor.browser-spec.mjs:206(AC2) first_red=1984991 resolved_at=post_cr disposition=high_rework_story_9.1
 2026-09-24T02:32:46Z	Story 9.1	rework_opened	cycle_iteration=2 iteration=1 trigger=ci items=CI-users-AC7-name-link,CI-device-editor-AC2 scope_baseline=pending_rework_commit
+2026-09-24T02:33:19Z	Story 9.1	stage_spawned	stage=implement spawn_at=2026-09-24T02:33:19Z model=opus agent_name=9-1-the-user-editor-implement-2 cycle_iteration=2 note=rework_iteration_1_ci
