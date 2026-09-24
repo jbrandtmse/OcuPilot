@@ -1,4 +1,14 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  afterEveryRender,
+  afterNextRender,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { Router } from '@angular/router';
 
 import { AgentContext } from '../core/agent-context';
@@ -54,6 +64,7 @@ import {
 import { isApplePlatform } from './command-box';
 import { ContextChip } from './context-chip';
 import { EXAMPLE_PROPOSAL } from './example-proposal';
+import { TranscriptFollow } from './panel-follow';
 import { PanelResizeHandle } from './panel-resize-handle';
 import { ProposalCard, type ProposalConfirmRequest } from './proposal-card';
 import { Reply } from './reply';
@@ -341,7 +352,15 @@ interface PanelTurnView {
         }
       </section>
 
-      <div class="ocu-panel-transcript" role="log" aria-live="polite" tabindex="0" [attr.aria-label]="STRINGS.agentConversationLabel">
+      <div
+        #transcript
+        class="ocu-panel-transcript"
+        role="log"
+        aria-live="polite"
+        tabindex="0"
+        [attr.aria-label]="STRINGS.agentConversationLabel"
+        (scroll)="onTranscriptScroll()"
+      >
         @if (unconfigured) {
           @if (emptySentence) {
             <p class="ocu-panel-empty" [id]="reasonId">{{ STRINGS.agentGateEmptyState }}</p>
@@ -414,6 +433,13 @@ interface PanelTurnView {
           }
         }
       </div>
+      @if (jumpVisible) {
+        <div class="ocu-panel-jump-slot">
+          <button type="button" class="ocu-button-secondary ocu-panel-jump" (click)="onJumpToLatest()">{{
+            STRINGS.agentJumpToLatest
+          }}</button>
+        </div>
+      }
     </div>
 
     <div class="ocu-panel-footer">
@@ -480,6 +506,11 @@ export class Panel {
   private readonly suggested = inject(SuggestedView);
 
   private readonly composerEl = viewChild<ElementRef<HTMLTextAreaElement>>('composer');
+
+  private readonly transcriptEl = viewChild<ElementRef<HTMLElement>>('transcript');
+
+  /** Whether the transcript follows the conversation, and the scrolls that keep it there (Story 11.10). */
+  private readonly follow = new TranscriptFollow();
 
   protected readonly STRINGS = STRINGS;
 
@@ -611,8 +642,25 @@ export class Panel {
       }),
     ];
     this.syncSuggested();
+    // Every render that grows the transcript while it follows scrolls it to the newest entry.
+    afterEveryRender(() => {
+      const box = this.transcriptBox();
+      if (box !== null) this.follow.settle(box);
+    });
+    // A wheel turned up stops the panel's own smooth scroll, which a browser can otherwise carry on
+    // over it to the newest entry. Passive, so the wheel's own scroll never waits on it.
+    const destroyRef = inject(DestroyRef);
+    afterNextRender(() => {
+      const box = this.transcriptBox();
+      if (box === null) return;
+      const onWheel = (event: WheelEvent): void => {
+        if (event.deltaY < 0 && this.follow.onWheelUp(box)) this.bump();
+      };
+      box.addEventListener('wheel', onWheel, { passive: true });
+      destroyRef.onDestroy(() => box.removeEventListener('wheel', onWheel));
+    });
     const routed = this.router.events.subscribe(() => this.bump());
-    inject(DestroyRef).onDestroy(() => {
+    destroyRef.onDestroy(() => {
       for (const stop of stops) stop();
       routed.unsubscribe();
       if (this.ticker !== null) clearInterval(this.ticker);
@@ -1143,6 +1191,7 @@ export class Panel {
     if (message === '') return;
     const outcome = await this.turn.send(message, this.assembleContext());
     if (outcome === 'sent') {
+      this.followNewest();
       // A Re-propose is a message like any other, and the instance closes the conversation's live
       // proposals as it accepts the turn. Drawing the same transition here keeps the other cards
       // from offering Confirm on rows that are already canceled (DW-1231).
@@ -1577,6 +1626,7 @@ export class Panel {
       this.cancelLiveCards('canceled-by-message');
       this.panel.setDraft('');
       this.acknowledgedSecretText.set(null);
+      this.followNewest();
     }
   }
 
@@ -1641,7 +1691,39 @@ export class Panel {
     // "New conversation cancels every live proposal exactly as a new turn would" -- and, unlike a
     // new turn, it also clears the transcript, so the cards go with it.
     this.cancelLiveCards('canceled-by-you');
+    this.followNewest();
     void this.turn.newConversation();
+  }
+
+  /**
+   * Jump to latest shows while the transcript holds a turn and the user has scrolled away from its
+   * newest entry; it sits outside the log, between the transcript and the footer.
+   */
+  protected get jumpVisible(): boolean {
+    this.generation();
+    return this.turn.entries().length > 0 && !this.follow.following;
+  }
+
+  /** A scroll on the transcript: the user's own scroll away turns following off, and back on at the newest entry. */
+  protected onTranscriptScroll(): void {
+    const box = this.transcriptBox();
+    if (box !== null && this.follow.onScroll(box)) this.bump();
+  }
+
+  /** Jump to latest: scroll to the newest entry, follow again, and hand focus to the transcript. */
+  protected onJumpToLatest(): void {
+    this.followNewest();
+    this.transcriptBox()?.focus({ preventScroll: true });
+  }
+
+  /** Turn following on and scroll to the newest entry; the render that follows scrolls again if it grew. */
+  private followNewest(): void {
+    this.follow.follow(this.transcriptBox());
+    this.bump();
+  }
+
+  private transcriptBox(): HTMLElement | null {
+    return this.transcriptEl()?.nativeElement ?? null;
   }
 
   protected toggleFullScreen(): void {

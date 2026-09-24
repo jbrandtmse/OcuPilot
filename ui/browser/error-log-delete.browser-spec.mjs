@@ -78,7 +78,7 @@ before(async () => {
   const armed = armProbeDefinition(probe);
   priorDefault = armed.prior;
   preparedId = armed.preparedId;
-  // The definition ships read-only, and under read-only no proposal is minted at all (AD-30).
+  // Cleared here rather than relying on the definition default; under read-only no proposal is minted (AD-30).
   allowWrites();
   dropProposals();
 });

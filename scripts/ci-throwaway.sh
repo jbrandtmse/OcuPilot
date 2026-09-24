@@ -228,7 +228,7 @@ services:
       # OCUPILOT_ALLOW_AUDIT_EVENTS instead, under a variable named for a narrower effect than
       # the one they have. Consequence, stated plainly: the classes below run here and on CI,
       # never on a development container someone cares about.
-      # classes: AuditRecord, AuditVerbs, DemoOptIn, GatewayGapIpmPath, GrantReadBack
+      # classes: AuditRecord, AuditVerbs, DefinitionDefaults, DemoOptIn, GatewayGapIpmPath, GrantReadBack
       # classes: IdentityInstall, InstallNamespaceSource, Installer, Manifest, Provenance, Static
       # classes: UninstallGuard, UninstallResidue, UninstallSurvival, WebApp
       OCUPILOT_ALLOW_PRODUCTION_INSTALL: "1"

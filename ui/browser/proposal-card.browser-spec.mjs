@@ -74,10 +74,7 @@ before(async () => {
   const armed = armProbeDefinition(probe);
   priorDefault = armed.prior;
   preparedId = armed.preparedId;
-  // The definition ships read-only (`Kernel.State.Agent.ReadOnly` defaults to 1), and under
-  // read-only no proposal is minted at all (AD-30): the write tool answers "blocked by read-only
-  // mode" instead. This spec is about the card, so the flag is cleared on the probe definition
-  // alone, through the production update path.
+  // Cleared here rather than relying on the definition default; under read-only no proposal is minted (AD-30).
   allowWrites();
   dropProposals();
 });

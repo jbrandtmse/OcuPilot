@@ -1070,7 +1070,7 @@ function emptyBuffer(): EditBuffer {
   // The class's own defaults, so a create starts on values the rules accept rather than on
   // empties the first Save would refuse.
   out['credType'] = CRED_TYPE_CREDS;
-  out['readOnly'] = true;
+  out['readOnly'] = false;
   out['retentionDays'] = '30';
   out['maxIterationsPerTurn'] = '10';
   return out;
