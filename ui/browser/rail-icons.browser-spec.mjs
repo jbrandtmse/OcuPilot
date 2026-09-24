@@ -6,7 +6,8 @@
  * principal whose gated items stay at 45% under the pointer.
  *
  * Expected colors are read from `_tokens.scss` through `design-tokens.mjs`, never retyped; the
- * contrast figures are DESIGN.md's `rail-item`, `attention-dot` and `area-tile` rows. A ratio is
+ * contrast figures are DESIGN.md's contrast table (`:786`, `:813-825`), except hover, which DESIGN.md
+ * does not record and which was measured over the 8% hover background at plan time. A ratio is
  * measured on the computed colors, compositing the element's background stack and its stroke with
  * each channel rounded to 8 bits per layer, as DESIGN.md's figures are.
  *
@@ -47,7 +48,7 @@ const HOME_URL = '/ocupilot/?ns=HSCUSTOM';
 const WIDE = { width: 1280, height: 900 };
 const TOLERANCE = 0.05;
 
-/** DESIGN.md's recorded figures, light / dark, on the element's own ground. */
+/** The figures, light / dark, on the element's own ground (see the header for their source). */
 const FIGURES = {
   rest: { light: 6.15, dark: 7.31 },
   hover: { light: 8.32, dark: 10.44 },
@@ -289,7 +290,7 @@ function parseColor(text) {
 }
 
 /**
- * `layers` painted bottom-up from the first opaque one, each channel rounded to 8 bits after each
+ * `layers` painted bottom-up from the topmost opaque one, each channel rounded to 8 bits after each
  * layer -- the compositing DESIGN.md's figures are measured with.
  */
 function composite(layers) {
@@ -360,6 +361,7 @@ function rgb(hex) {
 
 function assertFigure(t, measured, figure, theme, what) {
   t.diagnostic(`${theme}: ${what} ${measured.ratio.toFixed(2)}:1 (recorded ${figure[theme]}:1)`);
+  assert.ok(measured.ratio >= 3, `${theme}: ${what} is ${measured.ratio.toFixed(3)}:1, below the 3:1 floor`);
   assert.ok(
     Math.abs(measured.ratio - figure[theme]) <= TOLERANCE,
     `${theme}: ${what} is ${measured.ratio.toFixed(3)}:1, recorded ${figure[theme]}:1 (${measured.fg} over ${JSON.stringify(measured.ground)})`
@@ -416,7 +418,6 @@ test('(b) rail states: the stroke is the glyph color at the recorded contrast in
       const current = await measure(page, active, 'stroke');
       assert.equal(current.stroke, current.glyphColor, `${theme}: active, the stroke is the glyph's color`);
       assertFigure(t, current, FIGURES.active, theme, 'active');
-      assert.ok(current.ratio >= 3, `${theme}: active is at least 3:1`);
 
       const indicator = await measure(page, active, 'before');
       assertFigure(t, indicator, FIGURES.indicator, theme, 'the active indicator');
@@ -433,7 +434,6 @@ test('(b) rail states: the stroke is the glyph color at the recorded contrast in
       assert.equal(hovered.stroke, hovered.glyphColor, `${theme}: under the pointer the stroke is the glyph's color`);
       assert.ok(hovered.ownAlpha > 0, `${theme}: the hover background is drawn`);
       assertFigure(t, hovered, FIGURES.hover, theme, 'hover');
-      assert.ok(hovered.ratio >= 3, `${theme}: hover is at least 3:1`);
       await pointerAway(page);
 
       const tile = await measure(page, '.ocu-area-tile:not([aria-disabled="true"]) .ocu-area-tile-icon', 'stroke');

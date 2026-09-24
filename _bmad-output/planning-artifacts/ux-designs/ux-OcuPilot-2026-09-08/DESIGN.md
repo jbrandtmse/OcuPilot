@@ -972,7 +972,7 @@ The frame that is on screen at every route: the activity rail and its items, the
 
 #### `rail`
 
-The 48px activity bar on `{colors.shell}` (both modes), flush with the header — no divider between them, no border on its right edge; the side bar or content simply begins. Eight `rail-item`s: Home · Logs · OS management · Tasks · Permissions · Web applications and REST API explorer · Security and secrets stacked from the top; Agent co-pilot pinned at the bottom with `{spacing.2}` beneath it. The icons are the eight drawn in `mockups/key-home.html` (Home's `area-tile`s carry the same six at 24px): inline SVG, 1.5 stroke in `currentColor`, decorative. [AMENDED 2026-09-24, Story 15.7, UX-DR15: was "the interim set is one Material Symbols glyph per area"]
+The 48px activity bar on `{colors.shell}` (both modes), flush with the header — no divider between them, no border on its right edge; the side bar or content simply begins. Eight `rail-item`s: Home · Logs · OS management · Tasks · Permissions · Web applications and REST API explorer · Security and secrets stacked from the top; Agent co-pilot pinned at the bottom with `{spacing.2}` beneath it. The icons are the eight drawn in `mockups/key-home.html` (Home's `area-tile`s carry the mockup's separate 24px drawings of the same six areas): inline SVG, 1.5 stroke in `currentColor`, decorative. [AMENDED 2026-09-24, Story 15.7, UX-DR15: was "the interim set is one Material Symbols glyph per area"]
 
 #### `rail-item`
 

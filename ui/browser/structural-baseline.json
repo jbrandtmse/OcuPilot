@@ -89,28 +89,6 @@
       "dw": "DW-1583"
     },
     {
-      "key": "agent/definitions|overflow|720|app-command-bar>button.ocu-button-text.ocu-command-bar-action.ocu-command-bar-refresh-action",
-      "route": "agent/definitions",
-      "invariant": "overflow",
-      "context": "720",
-      "element": "app-command-bar>button.ocu-button-text.ocu-command-bar-action.ocu-command-bar-refresh-action",
-      "count": 1,
-      "measured": "80px past its containing block (app-command-bar>div.ocu-command-bar)",
-      "tag": null,
-      "dw": "DW-1585"
-    },
-    {
-      "key": "agent/definitions|overflow|720|app-command-bar>span.ocu-command-bar-sort",
-      "route": "agent/definitions",
-      "invariant": "overflow",
-      "context": "720",
-      "element": "app-command-bar>span.ocu-command-bar-sort",
-      "count": 1,
-      "measured": "30px past its containing block (app-command-bar>div.ocu-command-bar)",
-      "tag": null,
-      "dw": "DW-1585"
-    },
-    {
       "key": "agent/definitions|overflow|720|app-panel-resize-handle>div.ocu-panel-resize-handle.ocu-panel-resize-handle-at-stop[role=separator]",
       "route": "agent/definitions",
       "invariant": "overflow",

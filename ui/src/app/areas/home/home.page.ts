@@ -175,10 +175,10 @@ interface LineSegment {
  * create a second source for every screen name beside its descriptor's `labelKey`, which is
  * the drift AD-5 exists to prevent.
  *
- * **The icon is the area's 24px drawing in an `aria-hidden` slot.** It is the rail's icon at tile
- * size, from `shell/rail-icons.ts` (DESIGN.md's `mockups/key-home.html`), stroked in the slot's
- * `currentColor`, so DESIGN.md `:1102`'s `primary` and a gated tile's `restrained` are the slot's
- * own rules. It contributes nothing to the tile's accessible name. That name is the button's own
+ * **The icon is the area's 24px drawing in an `aria-hidden` slot.** The mockup draws it separately
+ * from the rail's 20px icon; both come from `shell/rail-icons.ts` (DESIGN.md's
+ * `mockups/key-home.html`). It strokes in the slot's `currentColor`, so DESIGN.md `area-tile`'s
+ * `primary` and a gated tile's `restrained` are the slot's own rules. It contributes nothing to the tile's accessible name. That name is the button's own
  * text: the area name, followed by its caption once an area has built screens to caption with.
  *
  * **A gated tile stays listed, focusable and `aria-disabled="true"`** -- never the `disabled`

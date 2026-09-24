@@ -6336,6 +6336,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Walk at 720 on agent/definitions: button.ocu-command-bar-refresh-action 80px and span.ocu-command-bar-sort 30px past div.ocu-command-bar; the sort key reproduces in CI's walk and reads stale locally. Command bar is Epic 7's; its merged .ocu-command-bar wrapping rule may clear both (inference)
 - 2026-09-24T00:06:23Z status=routed owner=range-end-cleanup by=burndown note=baseline keys carry this id; re-check after the Epic 7 integrate-forward
 - 2026-09-24T00:20:24Z by=integrate_forward note=both keys read stale on the merged tree: Epic 7's .ocu-command-bar wrap rule clears them locally; remove and resolve once CI confirms
+- 2026-09-24T01:23:21Z status=resolved-by:15-7-the-rail-s-icons by=adjudication note=cleared by Epic 7's command-bar wrap rule (stale in CI 35938906300); both keys removed from the baseline in 15.7
 
 ### DW-1586: Structural gate baseline: a data-table name link can render narrower than the 24px control floor (devices 7.2px, users 21.6px, at both widths)
 - source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: low | fix-risk: low | footprint: in-epic
@@ -6600,3 +6601,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-7-the-rail-s-icons.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Local and CI (run 35938906300 on the merged head b005869d) both print 200 found, 202 in the baseline, 2 stale; Epic 7's command-bar wrap rule cleared both; --write refuses an existing baseline, so removal is a hand edit of the two keys
 - 2026-09-24T01:08:26Z status=open owner=15-7-the-rail-s-icons by=harvest note=two-way door for the reviewer; resolves DW-1585 with it
+- 2026-09-24T01:23:21Z status=resolved-by:15-7-the-rail-s-icons by=adjudication note=cr removed both keys by hand; gate reads 200 found, 200 in the baseline, 0 stale on the throwaway

@@ -162,6 +162,38 @@ deferred:
 - **AC6 (gate).** Given `a11y-structural-invariants.browser-spec.mjs`, when it walks the rail and Home in both themes, then it reports zero fresh and zero stale keys. `structural-baseline.json` is not edited.
 - **Integration AC (Rule 1).** Given the deployed bundle, when `_SYSTEM` opens Home, then the rail and the tiles, which are both consumers of `rail-icons.ts`, draw the module's shapes for each area key. Each rail item's accessible name is its area name, and each tile's is its visible text.
 
+### Review Findings
+
+Code review 2026-09-24 (`review_tier: full-opus`; layers blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 0 decision-needed, 5 patch, 0 defer, 19 rejected.
+
+- [x] [Review][Patch] AC6 read 2 stale gate keys (DW-1589): removed the two `agent/definitions|overflow|720|app-command-bar>...` entries by hand; the gate on the rebuilt, redeployed throwaway reads 200 found, 200 in the baseline, 0 stale. Also clears DW-1585's keys [ui/browser/structural-baseline.json:91]
+- [x] [Review][Patch] The two `>= 3` floor asserts ran after the tighter figure check, so they could never fail; the floor now runs first inside `assertFigure` for every state [ui/browser/rail-icons.browser-spec.mjs:403]
+- [x] [Review][Patch] The header and `FIGURES` said every figure is recorded in DESIGN.md; hover 8.32/10.44 is not, so the header now names the contrast-table lines and says hover was measured [ui/browser/rail-icons.browser-spec.mjs:49]
+- [x] [Review][Patch] `composite()` said painting starts at the first opaque layer; the code starts at the topmost one [ui/browser/rail-icons.browser-spec.mjs:334]
+- [x] [Review][Patch] The tile comment called the 24px icon "the rail's icon at tile size" and cited DESIGN.md `:1102`, a blank line; DESIGN.md's "the same six at 24px" read the same way. Both now say the mockup draws the 24px icons separately [ui/src/app/areas/home/home.page.ts:178]
+
+**Rejected:**
+
+- `false` The renderer drops attributes outside its per-tag list unnoticed. Refuted: the unit specs deep-equal every rendered attribute against the module's, so a module attribute the template does not bind turns them red.
+- `false` The mockup parser misses shapes. Refuted: every shape in `key-home.html` is self-closing and double-quoted (the verification-gap layer read `:283-327`), and the test passes 5/5.
+- `low` The parser would skip a future non-self-closing element. Not fixed: the mockup is a read-only source, and the fix adds a guard.
+- `low` EXPERIENCE.md's marker has no `was` clause, its sentence has no verb, and it says "DESIGN.md's `mockups/key-home.html`". Not fixed: the spec's Tasks prescribe that text and marker word for word.
+- `low` EXPERIENCE.md's `area-tile` row, DESIGN.md's `area-tile` paragraph and the frontmatter do not mention the icon source or the 1.5 stroke. Not fixed: the spec does not ask for these, and what those entries say (a 24px `primary` icon) is still true.
+- `low` The gated-hover rule sits at the file's tail and repeats the 45% `color-mix`. Not fixed: the spec prescribes a tail-only append and that exact rule.
+- `low` `.ocu-rail-glyph` keeps its `label` typography and centering. Not fixed: they do nothing with no text inside, and the spec forbids editing existing rules.
+- `low` The names `rail-icon.ts` and `rail-icons.ts` differ by one letter and say "rail" though the tiles use them too. Not fixed: the spec prescribes both names.
+- `low` The component has no spec of its own and no test of an input change after first render. Not fixed: rail and tile items are tracked by key, so the inputs never change under a rendered icon.
+- `low` The test helpers are duplicated across the two unit specs and the node and browser tests. Not fixed: sharing them means a new module, and the harm is edit-twice.
+- `low` The `irisSession` plumbing is a sixteenth copy. Not fixed: it follows the existing pattern, and consolidating it is out of footprint.
+- `low` Test (b) times out, with no named message, when the attention dot is not lit. Not fixed: `waitForSelector` fails loudly and names `.ocu-rail-dot`, and the header states the precondition.
+- `low` `resetRememberedState` clears `_SYSTEM`'s preferences, not the principal's, before (c). Not fixed: if the principal's leftover state made its gated item active, (c) would fail loudly rather than pass falsely.
+- `low` "Least-privileged" overstates `Resources(1)`, which includes `%Admin_Operate:U`. Not fixed: the term is the spec matrix's, and (c) asserts that items are gated.
+- `low` The dark pass of `assertShapes` repeats theme-independent checks. Not fixed: only runtime is wasted, and its `outside`/`spill` checks can differ by theme.
+- `low` AC5's "other slots unchanged" and the EXPERIENCE.md edit have no mutation line. Not fixed: the earlier triage log closed this, and the prose amendments have no runtime surface.
+- `low` The tile unit test compares text with text instead of the accessible name. Not fixed: jsdom has no AX tree, and browser (a) compares the CDP names with the visible text.
+- `false` AC6 is vacuous because the gate cannot see inside an SVG. Refuted as a new finding: this is DW-1588, already routed to `burndown`. Containment is pinned by browser (a).
+- `false` AC6 is unmet (2 stale). Refuted after the patch: the gate reads 0 stale.
+
 ## Spec Change Log
 
 - 2026-09-24, lead spec gate: smoke runs on the throwaway, not slot B's bundle-less dev instance. No intent change.
@@ -250,6 +282,7 @@ No ObjectScript changes, so there is no class run and no full ObjectScript sweep
 - AC2 mutation: tiles pass `[size]="20"` → `home.page.spec.ts` tile test red (viewBox `0 0 20 20` vs `0 0 24 24`).
 - AC3 mutation: bind the host `stroke` to `var(--ocu-on-shell)` → browser (b) red on rest `stroke == color`.
 - AC3 mutation: remove the gated-hover rule → browser (c) red (gated under the pointer 10.35 vs 3.38).
+- AC3 floor mutation (code review, 2026-09-24): set the gated-hover rule's 45% to 20% → browser (c) red on "light: gated under the pointer is 1.742:1, below the 3:1 floor". Reverted; the rebuild gave the same bundle hashes.
 - AC4 mutation: add `<svg:title>` holding the area name → the unit no-title and no-text checks red in `rail.spec.ts` and `home.page.spec.ts`. The browser name checks are non-regression checks, not pins: `aria-label` and the `aria-hidden` slot keep both names unchanged under this mutation.
 - AC4 mutation: remove `aria-hidden` from the icon host and both slots, with (a)'s root-attribute asserts disabled → browser (a) red on "no icon svg has an accessibility node".
 - AC4 mutation: add `<svg:use href="https://example.invalid/i.svg#x">` → client-lint `no-off-origin-url` fails the build.
