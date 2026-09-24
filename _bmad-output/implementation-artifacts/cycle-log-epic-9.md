@@ -193,3 +193,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-24T21:52:43Z	Epic 9	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp feature_head=66aa49ec merge=4f5437c2 brings=parallel_bookkeeping_only(cycle-log-parallel.md) conflicts=0 verification=no_code;rides_on_next_code_push
 2026-09-24T21:52:43Z	Epic 9	epic_context_compiled	sha=pending reason=planning_artifact_newer model=opus
 2026-09-24T21:52:43Z	Story 9.9	stage_spawned	stage=plan spawn_at=2026-09-24T21:52:43Z model=opus agent_name=9-9-a-cut-editor-ships-reduced-never-half-working-plan-1 cycle_iteration=1
+2026-09-24T22:06:14Z	Story 9.9	story_created	spawn_at=2026-09-24T21:52:43Z model=opus path=_bmad-output/implementation-artifacts/spec-9-9-a-cut-editor-ships-reduced-never-half-working.md build_status=ready-for-dev epic_context=reused
+2026-09-24T22:06:14Z	Story 9.9	plan_clarification_requested	questions=AD-44_exemption_count_1->3,AD-10_serving_service_name(%Service_WebGateway)+PROHIBITED.SERVINGSERVICE,9.9_AC4_Logs_floor,16.13_AC2+EXPERIENCE:126_vs_AD-10 answered_by_runner=Q5_bundle_rebase_below_1580_allowed(DW-1166) to=orchestrator
