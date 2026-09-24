@@ -123,7 +123,7 @@ Step = PRD §10.1 build step ("1/3" = the area's one step-1 list, otherwise step
 | Resources list | Permissions | side-bar › Resources | search; system resources shown, not deletable (FR-40) | list | 3 · P0 |
 | Resource editor | Permissions | Resources name cell · command-bar › Create | name, description, public permission `[ASSUMPTION: a small three-field form, so a dialog rather than a route]` | dialog | 5 · P0 |
 | Services list | Permissions | side-bar › Services | enabled, allowed IPs, auth methods (FR-41) | list | 3 · P0 |
-| Service editor | Permissions | Services name cell | tabs; disabling OcuPilot's own web service warns that it locks the user out | form-page (tabs) | 6 · P0 |
+| Service editor | Permissions | Services name cell | tabs; the control that would disable OcuPilot's own web service (`%Service_WebGateway`) is drawn disabled with the published sentence (AD-10) [AMENDED 2026-09-24, Story 9.9 spec gate, ruling 2dca0322] | form-page (tabs) | 6 · P0 |
 | Effective privileges · Permission check | Permissions | User editor · command-bar | FR-74 | detail · dialog | **P1** |
 | Web applications list | Web applications and REST API explorer | side-bar › Web applications | name, namespace, type, enabled, dispatch class, resource; filter (FR-30) | list | 1/3 · P0 |
 | Web application editor | Web applications and REST API explorer | name cell · Create success | tabs mirroring the classic editor (FR-30) | form-page (tabs) | 6 · P0 |

@@ -70,7 +70,7 @@ deferred: []
   - `LDAP.DESCRIPTION.LENGTH`: longer than 128.
 - **Prohibited set** (`Prohibited.cls`, arms appended):
   - `COVEREDTYPES` and the dispatch gain `service` and `ldap-configuration`, and `PermittedChangeFields` gains an arm for each.
-  - A `Service` arm (first hit wins): on `%Service_WebGateway`, compared without case, a change that turns `Enabled` off or changes `ClientSystems` or `AutheEnabled` is refused `PROHIBITED.SERVINGSERVICE` (AD-10). Then the reviewed-few sweep runs.
+  - A `Service` arm (first hit wins): on `%Service_WebGateway`, compared without case, a change that turns `Enabled` off is refused `PROHIBITED.SERVINGSERVICE` (AD-10). A change to its `ClientSystems` or `AutheEnabled` is permitted and marked destructive, with a consequence line saying OcuPilot itself is served through this service (AD-10 as amended, ruling 2dca0322). Then the reviewed-few sweep runs.
   - `WeakensByEffect`: a service whose `AutheEnabled` gains bit 64 is marked `SERVICE.UNAUTHENTICATED`.
   - `GrantsPrivilegeByEffect`: a `ClientSystems` entry that adds a privileged role (`IsPrivilegedRole`) is marked. A marked proposal is destructive, as for web applications.
   - LDAP gets the reviewed-few sweep only.
@@ -78,7 +78,7 @@ deferred: []
   - `GET /services/form?name=` answers `{service, servesOcuPilot}`, and `PUT /services/:id` goes to `ServiceSave`.
   - `GET /ldap/form?name=` answers `{ldap}`, and `PUT /ldap/:id` goes to `LdapSave`.
   - An absent name answers 404 `SERVICE.ABSENT` or `LDAP.ABSENT`.
-  - On `%Service_WebGateway` the service form draws Enabled and the connection controls `aria-disabled`, with the published sentence as the reason.
+  - On `%Service_WebGateway` the service form draws Enabled `aria-disabled`, with the published sentence as the reason; its connection controls stay editable, and a change to them shows the consequence line at the field before Save.
 - **Copy:** every new word goes in `strings.ts` and in EXPERIENCE.md's Fixed strings. Rows are marked `[ADDED 2026-09-24 - see the story change log]`. Use tokens and `\uXXXX` escapes only.
 - **Probes.** They run on `ocupilot-ci` only, and each armed class goes on a new `OCUPILOT_ALLOW_SERVICE_CONFIG` block (`# classes:` in `ci-throwaway.sh` and `ci.test.mjs`):
   - Service tests change only `%Service_CallIn` (disabled). They snapshot its GET before the test and restore it after.
@@ -101,7 +101,8 @@ deferred: []
 | Add an address | `%Service_CallIn`; add `10.0.0.1`; Save | 200 and "Saved". The list's Allowed IP addresses shows it. `AutheEnabled` and `Enabled` read back unchanged | — |
 | Entry with `;` | Agent sends `ClientSystems:["a;b"]` | Nothing is sent | `SERVICE.ADDRESS.SHAPE` |
 | Unsupported method | Agent sends `AutheEnabled` with bit 262144 | Nothing is sent | `SERVICE.AUTHE.UNSUPPORTED` |
-| Serving service | Enabled off, or any address change, on `%Service_WebGateway`, from either caller | The screen's controls are aria-disabled. Nothing is sent | `PROHIBITED.SERVINGSERVICE` |
+| Serving service | Enabled off on `%Service_WebGateway`, from either caller | The screen's Enabled control is aria-disabled. Nothing is sent | `PROHIBITED.SERVINGSERVICE` |
+| Serving-service address | Agent adds an address to `%Service_WebGateway` (mint only; a Save leg only against the recording `PortFixture`) | The proposal is minted destructive and carries the consequence line; the form shows the line at the field | — |
 | Privileged address role | Agent adds `10.0.0.9\|%All` on `%Service_CallIn` | The proposal is destructive and names the privilege | — |
 | LDAP two-field save | `OcuP99Ldap`; change Description and host names | 200. The other 28 GET keys read back unchanged | — |
 | LDAP enable | Tick LDAP enabled | `LDAPFlags` gains 64 and every other bit is kept | — |
@@ -213,10 +214,12 @@ Client:
   - each of Web applications, Permissions, Security and secrets, Tasks and OS management has at least one built `form-page`;
   - Logs is asserted to have none, as a tripwire: the catalog has no Logs editor at any tier;
   - no `list`-class archetype declares an exemption.
-- **AC5.** Given `%Service_WebGateway`, when either caller turns it off or changes its addresses or methods, then it is refused `PROHIBITED.SERVINGSERVICE` before any port write, and the form shows those controls disabled with the published sentence.
+- **AC5.** Given `%Service_WebGateway`, when either caller turns it off, then it is refused `PROHIBITED.SERVINGSERVICE` before any port write, and the form draws Enabled disabled with the published sentence; when either caller changes its addresses or authentication methods, then the change is permitted, the agent's proposal is minted destructive, and both surfaces carry a consequence line saying OcuPilot itself is served through this service (AD-10 as amended, ruling 2dca0322). Pinned: the disable is refused by name, and an address change mints destructive with the line - each with its own `mutation:` line. The consequence line is a new Fixed-strings row and string key.
 - **Integration.** Given `ReducedFormPage`, which consumes `/services/*`, `/ldap/*` and `ChangeBus`, when a Save succeeds, then the list it came from shows the new value. The browser spec observes this.
 
 ## Spec Change Log
+
+- 2026-09-24 spec gate (lead): orchestrator ruling 2dca0322 on the five questions: AD-44 amended to three exemptions; AD-10 names `%Service_WebGateway`, but only its disable is refused - an address or method change is permitted, destructive, with a consequence line (AC5, the matrix and the Prohibited arm narrowed here); 9.9 AC4 restated for the five administering areas; 16.13 AC2 and EXPERIENCE.md :126 amended; bundle re-base below 1580kB allowed.
 
 ## Review Triage Log
 

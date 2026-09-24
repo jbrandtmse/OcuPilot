@@ -4842,7 +4842,7 @@ So that a gap reads as a decision rather than a defect.
 
 - **Given** the 2026-09-27 floor
 - **When** it is assessed
-- **Then** **at least one create or edit form per area** exists, and **no list screen in the six areas links out** - a link-out on a list counts against the counter-metric, and one on an editor is a recorded cost.
+- **Then** **at least one create or edit form exists in each of the five areas that administers an object** - Logs administers none and has no editor to build, and a test pins it at zero forms - and **no list screen in the six areas links out** - a link-out on a list counts against the counter-metric, and one on an editor is a recorded cost [AMENDED 2026-09-24 - see the story change log: Story 9.9 spec gate, orchestrator ruling 2dca0322; was at least one form per area, which Logs cannot meet].
 
 - **Given** the service editor and the LDAP and Kerberos editor, deferred to Stories 16.13 and 16.14 by the 2026-09-17 amendment
 - **When** this story ships
@@ -6250,7 +6250,7 @@ So that service administration is complete here.
 
 - **Given** the user disables the web service OcuPilot itself depends on
 - **When** they attempt it from the screen
-- **Then** a warning dialog states that it will lock them out of OcuPilot, before proceeding.
+- **Then** the control is drawn disabled with the published sentence, because AD-10 refuses disabling the service that serves OcuPilot (`%Service_WebGateway`) whoever the caller is [AMENDED 2026-09-24 - see the story change log: Story 9.9 spec gate, orchestrator ruling 2dca0322; was a warning dialog before proceeding, which AD-10 and AD-55 refuse].
 
 - **Given** the same disable is proposed **by the agent**
 - **When** it reaches the write path
