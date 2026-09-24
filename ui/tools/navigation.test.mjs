@@ -256,13 +256,13 @@ test('documentScreenFor resolves the REST API explorer to its unlisted, id-keyed
   assert.equal(documentScreenFor(screenForRoute('')), null, 'Home resolves no viewer');
   assert.equal(documentScreenFor(screenForRoute('web-applications/list')), null, 'and neither does a list with none');
   // Story 8.1: the Web applications list's Create opens its own form -- built, unlisted and keyed
-  // by an id -- but a row's name cell does not, because that form reads no id.
-  // Mutation (Rule 19): drop WebAppForm from `CREATE_ONLY_FORMS` -> the editor assertion below and
-  // the toast leg of the screenForChange test go red.
+  // by an id -- and Story 9.2's editor reads the id, so a row's name opens it.
+  // Mutation (Rule 19): put WebAppForm back in `CREATE_ONLY_FORMS` -> the editor assertion below
+  // goes red.
   const webApps = screenForRoute('web-applications/list');
   assert.equal(createFormFor(webApps).route, 'web-applications/list/edit', 'the Web applications list\'s Create opens its own form');
   assert.equal(isListedScreen(screenForRoute('web-applications/list/edit')), false, 'which takes no side-bar position');
-  assert.equal(editorScreenFor(webApps), null, 'but a row name opens the list\'s own id route');
+  assert.equal(editorScreenFor(webApps)?.route, 'web-applications/list/edit', 'and a row name opens the web application editor at its id route');
   assert.equal(createFormFor(screenForRoute('agent/definitions')).route, 'agent/definitions/edit', 'and a form that reads its id is both');
   // Story 8.2: the Users list pairs with its create form the same way; Story 9.1's user editor reads
   // the id, so a row's name opens it.

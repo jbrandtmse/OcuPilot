@@ -11,7 +11,11 @@ import { rowKey } from '../core/table-model';
 import { stubAccountPreferences } from '../testing/account-preferences';
 import { Session } from '../core/session';
 import {
+  ADD_APPLICATION_ROLE,
+  ADD_MATCHING_ROLE,
   ADD_ROLE,
+  REMOVE_APPLICATION_ROLE,
+  REMOVE_MATCHING_ROLE,
   REMOVE_ROLE,
   REQUIRE_PASSWORD_CHANGE,
   SCREEN_ACTION_DESCRIPTORS,
@@ -73,8 +77,11 @@ describe('the generic screen-action handler', () => {
     // red on every id; with it, no surface would draw a row action at all (DW-389).
     const { actions } = mount();
     expect(WEB_APPS.rowActions.length).toBeGreaterThan(0);
+    // The four role actions are the web application editor's, whose pickers supply their values,
+    // so no list surface draws them (DW-389).
+    const undrawn = [ADD_APPLICATION_ROLE, REMOVE_APPLICATION_ROLE, ADD_MATCHING_ROLE, REMOVE_MATCHING_ROLE];
     for (const action of WEB_APPS.rowActions) {
-      expect(actions.has(WEB_APPS.descriptor, action.id)).toBe(true);
+      expect(actions.has(WEB_APPS.descriptor, action.id)).toBe(!undrawn.includes(action.id));
     }
     expect(actions.has(WEB_APPS.descriptor, 'terminate')).toBe(false);
   });
@@ -808,6 +815,34 @@ describe('startFor, the editor half of the Users list actions', () => {
     handler.startFor(USERS.descriptor, SET_PASSWORD, 'CSPSystem', null, editorSink);
     expect(handler.pending()).toBeNull();
     expect(seen.refusals).toEqual([STRINGS.userRefusalServiceAccountSignIn]);
+    expect(calls).toHaveLength(0);
+  });
+});
+
+/**
+ * Story 9.2: the web application editor starts the Web applications list's role actions with the
+ * values its pickers chose, sent at once through the one route; on OcuPilot's own applications the
+ * privilege-grant sentence is drawn and nothing is sent (AD-53, AD-56 (ii)).
+ */
+describe('startFor with values, the web application editor half of the role actions', () => {
+  it('sends the chosen values at once, reporting to the editor', async () => {
+    // Mutation (Rule 19): drop the `values` short-circuit from `startFor` -> nothing is sent.
+    const { handler, calls } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: { type: 'web-application', scope: 'instance', id: ORDINARY_ROW } } });
+    const seen = { refusals: [] as string[], applied: [] as string[] };
+    const editorSink = { setRefusal: (reason: string) => seen.refusals.push(reason), applied: (actionId: string) => seen.applied.push(actionId) };
+    handler.startFor(WEB_APPS.descriptor, ADD_MATCHING_ROLE, ORDINARY_ROW, null, editorSink, '', { MatchRole: '%Operator', Role: '%SQL' });
+    await settle();
+    expect(handler.pending()).toBeNull();
+    expect(JSON.parse(calls[0].body)).toEqual({ action: ADD_MATCHING_ROLE, id: ORDINARY_ROW, values: { MatchRole: '%Operator', Role: '%SQL' } });
+    expect(seen.applied).toEqual([ADD_MATCHING_ROLE]);
+  });
+
+  it('draws OcuPilot\u2019s own application refused with the privilege-grant sentence and sends nothing', async () => {
+    const { handler, calls } = mount();
+    const seen = { refusals: [] as string[] };
+    handler.startFor(WEB_APPS.descriptor, ADD_APPLICATION_ROLE, OWN_ROW, null, { setRefusal: (reason: string) => seen.refusals.push(reason) }, '', { Role: '%All' });
+    await settle();
+    expect(seen.refusals).toEqual([STRINGS.webAppPrivilegeGrantRefusal]);
     expect(calls).toHaveLength(0);
   });
 });

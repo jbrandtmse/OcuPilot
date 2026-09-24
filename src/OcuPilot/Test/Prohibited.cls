@@ -127,43 +127,67 @@ Method Refused(pFresh As %String, pPayload As %String, pFields As %String, pExpe
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Burned"), 0, "and the token is unspent")
 }
 
-/// <p>Matrix row 1, DW-1207: a payload that lets the target be reached without signing in is
-/// refused at the write.</p>
-/// <p>Mutation: make <method>OcuPilot.Kernel.Proposal.Prohibited.WebApplication</method> answer
-/// <code>pProhibits = 0</code> for the <code>AutheEnabled</code> predicate -- this goes red.</p>
-Method TestAWeakenedAuthenticationIsRefused()
+/// <p>OcuPilot's own API path from the install roster, which the set treats as serving OcuPilot
+/// with no install record. The port is the fixture, so nothing is written to it.</p>
+Parameter OWNPATH = "/api/ocupilot";
+
+/// <p>The target every predicate is driven against, at <parameter>OWNPATH</parameter>.</p>
+Method OwnTarget() As %String
 {
-    Do ..Refused(..Target(), ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 96, "%Development", "Probe.Dispatch", "", 1, "after"), "AutheEnabled", $Parameter(..#SHIPPEDSET, "UNAUTHENTICATED"))
+    Quit ##class(OcuPilot.Test.ProhibitedFixture).App(..#OWNPATH, 32, "%Development", "Probe.Dispatch", "", 1)
 }
 
-/// <p>Matrix row 2, DW-1207: a payload that clears a resource the target holds is refused.</p>
-Method TestADroppedAuthorizationResourceIsRefused()
+/// <p>A payload weakening one field is permitted on an application that is not OcuPilot's own
+/// (AD-10 as amended 2026-09-24) and refused with <var>pExpected</var> on OcuPilot's own.
+/// <var>pAuthe</var>, <var>pResource</var> and <var>pDispatch</var> are the payload's values.</p>
+Method Weakening(pAuthe As %Integer, pResource As %String, pDispatch As %String, pField As %String, pExpected As %String)
 {
-    Do ..Refused(..Target(), ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "", "Probe.Dispatch", "", 1, "after"), "Resource", $Parameter(..#SHIPPEDSET, "AUTHORIZATION"))
+    Set tSC = ..Ask(..Target(), ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, pAuthe, pResource, pDispatch, "", 1, "after"), pField, .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the set answers the change on another application")
+    Do $$$AssertEquals(tProhibits, 0, pField _ ": permitted on an application that is not OcuPilot's own, code was '" _ tCode _ "'")
+    Do ..Refused(..OwnTarget(), ##class(OcuPilot.Test.ProhibitedFixture).App(..#OWNPATH, pAuthe, pResource, pDispatch, "", 1, "after"), pField, pExpected, ..#OWNPATH)
 }
 
-/// <p>Matrix row 3, DW-1207: a payload naming a different dispatch class is refused at the write,
-/// whichever route minted it -- the tool's own exclusion is the other half.</p>
-Method TestARepointedDispatchClassIsRefused()
+/// <p>Adding the unauthenticated bit: permitted elsewhere, <code>UNAUTHENTICATED</code> on
+/// OcuPilot's own.</p>
+/// <p>Mutation: delete the unauthenticated arm from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.WebApplication</method> -- the own leg answers
+/// <code>SERVINGPATH</code> and goes red.</p>
+Method TestAWeakenedAuthenticationIsRefusedOnlyOnOcuPilotsOwn()
 {
-    Do ..Refused(..Target(), ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Other", "", 1, "after"), "DispatchClass", $Parameter(..#SHIPPEDSET, "DISPATCH"))
+    Do ..Weakening(96, "%Development", "Probe.Dispatch", "AutheEnabled", $Parameter(..#SHIPPEDSET, "UNAUTHENTICATED"))
+}
+
+/// <p>Clearing a resource the target holds: permitted elsewhere, <code>AUTHORIZATION</code> on
+/// OcuPilot's own.</p>
+Method TestADroppedAuthorizationResourceIsRefusedOnlyOnOcuPilotsOwn()
+{
+    Do ..Weakening(32, "", "Probe.Dispatch", "Resource", $Parameter(..#SHIPPEDSET, "AUTHORIZATION"))
+}
+
+/// <p>Naming a different dispatch class: permitted elsewhere, <code>DISPATCH</code> on OcuPilot's
+/// own.</p>
+Method TestARepointedDispatchClassIsRefusedOnlyOnOcuPilotsOwn()
+{
+    Do ..Weakening(32, "%Development", "Probe.Other", "DispatchClass", $Parameter(..#SHIPPEDSET, "DISPATCH"))
 }
 
 /// <p>Matrix row 4, AD-10: a payload changing an application's roles is refused
 /// <code>PRIVILEGEGRANT</code> on one of OcuPilot's own applications, ahead of the serving-path
-/// refusal every other change to one earns, and on any other application as a field the change
-/// tool has not reviewed.</p>
+/// refusal every other change to one earns, and permitted on any other application.</p>
 /// <p>Mutation: drop the application-roles leg from
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.WebApplication</method> -- the own-application half
 /// goes red, answered <code>SERVINGPATH</code> instead.</p>
 Method TestAChangedRoleGrantIsRefusedOnOcuPilotsOwnApplication()
 {
-    Set tServing = "/api/ocupilot"
+    Set tServing = ..#OWNPATH
     Set tSC = ..Ask(##class(OcuPilot.Test.ProhibitedFixture).App(tServing, 32, "%Development", "Probe.Dispatch", "", 1), ##class(OcuPilot.Test.ProhibitedFixture).App(tServing, 32, "%Development", "Probe.Dispatch", ":%All", 1), "MatchRoles", .tProhibits, .tCode, tServing)
     Do $$$AssertStatusOK(tSC, "the set answers a role change on OcuPilot's own application")
     Do $$$AssertEquals(tProhibits, 1, "which is prohibited")
     Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "PRIVILEGEGRANT"), "as a privilege grant on OcuPilot's own application")
-    Do ..Refused(..Target(), ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Dispatch", ":%All", 1, "after"), "MatchRoles", $Parameter(..#SHIPPEDSET, "UNCOVEREDFIELD"))
+    Set tSC = ..Ask(..Target(), ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Dispatch", ":%All", 1, "after"), "MatchRoles", .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the set answers a role change on another application")
+    Do $$$AssertEquals(tProhibits, 0, "which is permitted, code was '" _ tCode _ "'")
 }
 
 /// <p>Matrix row 6: an entity type the set evaluates no predicates for is refused wholesale, and so
@@ -287,22 +311,19 @@ Method TestAnUnreadableTargetFailsClosedAndAMissingOneDoesNot()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tThird, "State"), "live", "the row stays live")
 }
 
-/// <p>AC3 and AC4's first half, DW-1207: every field the set calls always-prohibited for a tool's
-/// entity type is absent from that tool's advertised schema and settable list, nothing the tool
-/// does admit is outside the set's reviewed few, and the model asking for an excluded one is
-/// refused before any proposal exists.</p>
+/// <p>AC3 and AC4's first half: every field the set calls always-prohibited for a tool's entity type
+/// is absent from that tool's advertised schema and settable list, nothing the tool does admit is
+/// outside the set's reviewed few, and the model asking for an unadvertised field -- a web
+/// application's <code>Path</code> -- is refused before any proposal exists.</p>
+/// <p>No entity type declares an always-prohibited field since AD-10's 2026-09-24 amendment, so the
+/// per-tool legs over that list run for no tool; the web-application emptiness is asserted below
+/// rather than assumed, and the legs run again for the first type that declares one.</p>
 /// <p>Mutations: add a field to
 /// <parameter>OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS</parameter> that
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedChangeFields</method> does not name, add
-/// <code>MatchRoles</code> to
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedCreateFields</method>, add
-/// one to <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedChangeFields</method> alone, make
-/// the tool declare <code>DispatchClass</code> a secret argument, declare an unreviewed field such
-/// as <code>EventClass</code> a secret argument, or put a settable field in the descriptor's
-/// <method>FingerprintExcludes</method> -- each goes red. Dropping
-/// <code>DispatchClass</code> from
-/// <method>OcuPilot.Screen.Tool.WebAppUpdate.ExcludedFields</method> does not: the positive list is
-/// what admits a field now, and the exclusions are belt and braces over it.</p>
+/// one to <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedChangeFields</method> alone, declare
+/// an unreviewed field such as <code>EventClass</code> a secret argument, or put a settable field in
+/// the descriptor's <method>FingerprintExcludes</method> -- each goes red.</p>
 Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
 {
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
@@ -424,26 +445,24 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         }
     }
     Do $$$AssertTrue(tWrites > 0, "there is at least one registered write tool to check")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).AlwaysProhibitedFields("web-application")), "DispatchClass", "one web-application field carries an always-prohibited predicate of its own")
-    ; AD-54's asymmetry, asserted rather than implied: DispatchClass is prohibited on a change (it
-    ; repoints a serving application) and permitted on a create (which repoints nothing, and which is
-    ; what makes a REST application a REST application). AD-10 refuses application roles by target
-    ; -- OcuPilot's own applications -- so no create field is prohibited by name, and a create may
-    ; set them.
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).AlwaysProhibitedCreateFields("web-application"), "", "no web-application field is prohibited on a create by name")
+    ; AD-10 as amended 2026-09-24: every web-application refusal is a predicate over the target --
+    ; OcuPilot's own applications -- so no web-application field is prohibited by name on either
+    ; kind of write, and a change may repoint any other application.
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).AlwaysProhibitedFields("web-application")), "", "no web-application field is prohibited on a change by name")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).AlwaysProhibitedCreateFields("web-application"), "", "nor on a create")
     Do $$$AssertTrue($ListFind(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedCreateFields("web-application"), "MatchRoles") > 0, "a create may set application roles")
-    Do $$$AssertEquals($ListFind(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("web-application"), "DispatchClass"), 0, "a change may not repoint a serving application's dispatch class")
-    Do $$$AssertTrue($ListFind(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedCreateFields("web-application"), "DispatchClass") > 0, "and a create may set it, because a create repoints nothing")
+    Do $$$AssertTrue($ListFind(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("web-application"), "DispatchClass") > 0, "a change may set the dispatch class")
+    Do $$$AssertEquals($ListFind(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("web-application"), "Path"), 0, "and no change names a path (AD-21)")
 
     ; A real application, so "and mints nothing" is an observation: a tool that admitted the field
     ; would read this target through the shipped port and mint a row for the running account.
     Set tBefore = ##class(OcuPilot.Test.ProposalFixture).ProposalCount($Username)
     Do $$$AssertTrue(tBefore > -1, "the running account's proposal rows are counted")
-    Set tSC = $ClassMethod(..#TOOLCLASS, "View", "", {"Name": "/csp/sys", "DispatchClass": "Some.Other.Class"}, 200, .tResult, .tHttp, .tFault)
+    Set tSC = $ClassMethod(..#TOOLCLASS, "View", "", {"Name": "/csp/sys", "Path": "/tmp/elsewhere/"}, 200, .tResult, .tHttp, .tFault)
     ; Read before anything is asserted, so a call that was not refused is still counted rather
     ; than raising on the absent fault and leaving this unanswered.
     Set tAfter = ##class(OcuPilot.Test.ProposalFixture).ProposalCount($Username)
-    Do $$$AssertStatusNotOK(tSC, "a call asking for a dispatch change is refused")
+    Do $$$AssertStatusNotOK(tSC, "a call asking for a path change is refused")
     Do $$$AssertEquals(tAfter, tBefore, "and no proposal was minted for this account")
     Do $$$AssertEquals(tHttp, 400, "at 400")
     Do $$$AssertEquals($Select($IsObject(tFault): tFault.%Get("code"), 1: ""), ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "with the arguments code")
@@ -581,7 +600,7 @@ Method TestGovernanceCannotEnableAProhibitedWrite()
     Do $$$AssertStatusOK(tSC, "the governance gate answers")
     Do $$$AssertEquals($Get(tDecision("allowed")), 1, "and allows this tool")
 
-    Do ..Refused(..Target(), ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "", "Probe.Dispatch", "", 1, "after"), "Resource", $Parameter(..#SHIPPEDSET, "AUTHORIZATION"))
+    Do ..Refused(..OwnTarget(), ##class(OcuPilot.Test.ProhibitedFixture).App(..#OWNPATH, 32, "", "Probe.Dispatch", "", 1, "after"), "Resource", $Parameter(..#SHIPPEDSET, "AUTHORIZATION"), ..#OWNPATH)
 
     Set tSource = ""
     Set tSC = ##class(%Compiler.UDL.TextServices).GetTextAsString($Namespace, ..#SHIPPEDSET, .tSource)

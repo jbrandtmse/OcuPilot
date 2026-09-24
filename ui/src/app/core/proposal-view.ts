@@ -126,6 +126,12 @@ export const CONSEQUENCE_PRIVILEGED = 'GRANT.PRIVILEGED';
 /** The one consequence a web-application create carries when it is both unauthenticated and privileged. */
 export const CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED = 'WEBAPP.UNAUTHENTICATEDPRIVILEGED';
 
+/** The consequence the kernel marks a change clearing a web application's resource with (AD-10). */
+export const CONSEQUENCE_NORESOURCE = 'WEBAPP.NORESOURCE';
+
+/** The consequence the kernel marks a change repointing a web application's code with (AD-10). */
+export const CONSEQUENCE_REPOINTED = 'WEBAPP.REPOINTED';
+
 /**
  * The published sentence for a proposal's `consequence` code, or `''` for no code or one this
  * client publishes nothing for. The sentence is `STRINGS`'; the code is the kernel's (AD-39).
@@ -134,6 +140,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_UNAUTHENTICATED) return STRINGS.webAppUnauthenticatedEffect;
   if (code === CONSEQUENCE_PRIVILEGED) return STRINGS.privilegedGrantEffect;
   if (code === CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED) return STRINGS.privilegedGrantEffectUnauthenticated;
+  if (code === CONSEQUENCE_NORESOURCE) return STRINGS.webAppNoResourceEffect;
+  if (code === CONSEQUENCE_REPOINTED) return STRINGS.webAppRepointedEffect;
   return '';
 }
 

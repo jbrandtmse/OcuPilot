@@ -6846,7 +6846,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "descriptor": "OcuPilot.Screen.Descriptor.WebAppForm",
     "route": "web-applications/list/edit",
     "area": "web-applications",
-    "labelKey": "webAppFormLabel",
+    "labelKey": "proposalEntityWebApplication",
     "sideBarPosition": 0,
     "archetype": "form-page",
     "built": true,
@@ -6883,6 +6883,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "fingerprintExcludes": [],
     "emptyStateKey": "",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "webAppPromptAccess"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "webAppPromptUnauthenticated"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "webAppPromptCode"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.Applications.Web",
     "classicLinkExemption": {
       "exempt": false,
@@ -6939,6 +6953,22 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "disable",
         "selfProtection": "serves-ocupilot"
+      },
+      {
+        "id": "add-application-role",
+        "selfProtection": "ocupilot-application-roles"
+      },
+      {
+        "id": "remove-application-role",
+        "selfProtection": "ocupilot-application-roles"
+      },
+      {
+        "id": "add-matching-role",
+        "selfProtection": "ocupilot-application-roles"
+      },
+      {
+        "id": "remove-matching-role",
+        "selfProtection": "ocupilot-application-roles"
       },
       {
         "id": "delete",

@@ -585,6 +585,12 @@ ClassMethod FingerprintMatches(pTool As %DynamicObject, ByRef pRow, Output pMatc
         Set tSC = ##class(OcuPilot.Kernel.EntityRef).Parse($Get(pRow("targetRef")), .tType, .tScope, .tId)
         If $$$ISERR(tSC) Quit
         Set pIdValue = tId
+        ; AD-54: a create names its target as the caller typed it, so the vendor stores that
+        ; spelling. The reference, the lock and the sibling cancel stay canonical (AD-13).
+        If ##class(OcuPilot.Kernel.Proposal.Mint).CreatesOf(tClass) {
+            Set tTyped = ..ParsedObject($Get(pRow("arguments"))).%Get(tIdArgument)
+            If (tTyped '= "") && '$IsObject(tTyped) && (##class(OcuPilot.Kernel.EntityRef).NormalizedId(tType, tTyped) = ##class(OcuPilot.Kernel.EntityRef).NormalizedId(tType, tId)) Set pIdValue = tTyped
+        }
         If (pEndpoint = "") || (pIdParam = "") || (pIdValue = "") {
             Set tSC = $$$ERROR($$$GeneralError, "the proposal's target could not be addressed")
             Quit

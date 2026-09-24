@@ -267,6 +267,23 @@ test('AC2: a valid Save creates the application, replaces the route and reads th
 
     assert.ok(applicationExists(NAMES[0]), 'the instance holds the application the form created');
 
+    // DW-1490, Story 9.2: the replaced route is the web application editor, whose own bar reads
+    // Saved, and a hard reload of that URL reads the created application back.
+    // Mutation (Rule 19): drop the `arriveSaved` call from the create page's `onSave` and redeploy
+    // -> the editor's Saved assertion goes red.
+    await page.waitForFunction(
+      (sentence) => document.querySelector('app-web-app-editor-page .ocu-form-bar-status')?.textContent?.includes(sentence) === true,
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.formSaved
+    );
+    const editorUrl = new URL(page.url());
+    await page.reload({ waitUntil: 'networkidle2' });
+    await leaveFirstLoginGate(page, config.navigationTimeoutMs, `${editorUrl.pathname}${editorUrl.search}`);
+    await page.waitForFunction(
+      (name) => document.querySelector('#ocu-web-app-edit-Name')?.value === name && document.querySelector('#ocu-web-app-edit-NameSpace')?.value === 'HSCUSTOM',
+      { timeout: config.navigationTimeoutMs },
+      NAMES[0]
+    );
 
     await page.goto(`${config.origin}${LIST_URL}`, { waitUntil: 'networkidle2' });
     await leaveFirstLoginGate(page, config.navigationTimeoutMs, LIST_URL);

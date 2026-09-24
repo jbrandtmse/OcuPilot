@@ -312,6 +312,22 @@ Parameter CLASSCOMPLETEDTYPES = "Security.Resource/PUT=PublicPermission";
 /// and no status, fault or log line this path writes carries their text (AD-35).</p>
 Parameter CONTENTCOMPLETEDTYPES = "Security.X509Credential/POST";
 
+/// <p>AD-27's fifth named case: the <parameter>MUTATINGTYPES</parameter> writes after which the
+/// port re-applies the application <code>Type</code> the target held before the vendor call, as
+/// comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries.</p>
+/// <p><code>WebApp.App/PUT</code> is the one entry (AD-27 as amended 2026-09-24).
+/// <code>MergeJsonAndProperties</code> sets <code>Type</code> to CSP on every PUT and
+/// <method>Security.Applications.Modify</method> then clears a system application's bit, so an edit
+/// of a system application would demote it (measured on this build: 3 became 2).
+/// <method>KeptType</method> reads the type in <code>%SYS</code> before the call and
+/// <method>RestoreType</method> re-applies it after, behind the same <code>%Admin_Secure</code>
+/// gate; nothing above the port knows.</p>
+Parameter TYPEKEPTTYPES = "WebApp.App/PUT";
+
+/// <p>The resource the <parameter>TYPEKEPTTYPES</parameter> read and restore are gated on: the
+/// endpoint's own <code>ResourcesOR()</code>.</p>
+Parameter TYPEKEPTRESOURCE = "%Admin_Secure";
+
 /// <p>The keys a content-completed import body may carry: the credential's two lists and the three
 /// secrets. Every other key -- <code>CAFile</code>, <code>CertificateFile</code>,
 /// <code>PrivateKeyFile</code> among them -- is refused (AD-21).</p>
@@ -715,6 +731,16 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         ; it, so no caller above the port composes the wire shape.
         Set tBody = pBody
         If $IsObject(pBody) Set tBody = ..Wrapped(pEndpoint, pType, pBody)
+        ; TYPEKEPTTYPES: the application type an edit must not change, read before the vendor call.
+        Set tKept = ""
+        If ..IsTypeKept(pEndpoint, pType) {
+            Set tKeptSC = ..KeptType($Get(pQuery("name")), .tKept)
+            If $$$ISERR(tKeptSC) {
+                Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, .pHttpStatus, .pFault)
+                Do ..LogFault(pEndpoint _ " " _ pType _ " could not read the application type it keeps", tKeptSC, pFault.code)
+                Quit
+            }
+        }
         Set tSeqSC = ..RunSequence(pEndpoint, tClass, tType, .tQuery, tBody, .tAnswer, .tHttp, .tLocation, ..HttpMethodFor(pEndpoint, pType))
         If $$$ISOK(tSeqSC) && (tHttp = 202) && (tLocation [ ..#ASYNCLOCATION) {
             Set tAnswer = ""
@@ -728,6 +754,16 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             If ..IsVerifiedDelete(pEndpoint, pType) {
                 Set tSC = ..VerifyGone(pEndpoint, .pQuery, .pHttpStatus, .pFault)
                 If $$$ISERR(tSC) Quit
+            }
+            ; TYPEKEPTTYPES: the vendor call reset the application type, so the one it held is put
+            ; back before the write is reported as made.
+            If tKept '= "" {
+                Set tRestoreSC = ..RestoreType($Get(pQuery("name")), tKept)
+                If $$$ISERR(tRestoreSC) {
+                    Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#PORTNOTAPPLIED, ##class(OcuPilot.Api.Error).#REASONPORTNOTAPPLIED, .pHttpStatus, .pFault)
+                    Do ..LogFault(pEndpoint _ " " _ pType _ " was applied and the application type could not be restored", tRestoreSC, pFault.code)
+                    Quit
+                }
             }
             ; VERIFIEDWRITES: a write the vendor reports as made is believed only once a re-read
             ; answers every sent value.
@@ -1079,6 +1115,71 @@ ClassMethod VerifyGone(pEndpoint As %String, ByRef pQuery, Output pHttpStatus As
     If $$$ISERR(tReadSC) && (+$Get(tReadHttp) = 404) Quit $$$OK
     Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#PORTNOTAPPLIED, ##class(OcuPilot.Api.Error).#REASONPORTNOTAPPLIED, .pHttpStatus, .pFault)
     Do ..LogFault(pEndpoint _ " answered a delete as made and a re-read answered HTTP " _ +$Get(tReadHttp), $Select($$$ISERR(tReadSC): tReadSC, 1: $$$ERROR($$$GeneralError, "the object is still present")), pFault.code)
+    Quit tSC
+}
+
+/// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
+/// <parameter>TYPEKEPTTYPES</parameter> lists.</p>
+ClassMethod IsTypeKept(pEndpoint As %String, pSuffix As %String) As %Boolean
+{
+    Quit ''$ListFind($ListFromString(..#TYPEKEPTTYPES), pEndpoint _ "/" _ pSuffix)
+}
+
+/// <p>The <code>Type</code> the web application <var>pName</var> holds now, read from
+/// <class>Security.Applications</class> in <code>%SYS</code> (AD-16), in <var>pType</var>; <code>""</code>
+/// for an application the instance does not hold (a create), for an empty name, and for a caller
+/// short of <parameter>TYPEKEPTRESOURCE</parameter>, whom the vendor call refuses on its own gate.</p>
+ClassMethod KeptType(pName As %String, Output pType As %String) As %Status [ Private ]
+{
+    Set pType = ""
+    Set tSC = $$$OK
+    If pName = "" Quit tSC
+    If '..HoldsResource(..#TYPEKEPTRESOURCE) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Applications).Exists(pName) {
+            Kill tProps
+            Set tSC = ##class(Security.Applications).Get(pName, .tProps)
+            If $$$ISOK(tSC) Set pType = $Get(tProps("Type"))
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pType = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Re-apply <var>pType</var> to the web application <var>pName</var> when the vendor call left it
+/// holding another, through <method>Security.Applications.Modify</method> in <code>%SYS</code>
+/// (AD-16), behind <parameter>TYPEKEPTRESOURCE</parameter>. The type is read back afterwards, and a
+/// type that still differs is an error.</p>
+ClassMethod RestoreType(pName As %String, pType As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    If '..HoldsResource(..#TYPEKEPTRESOURCE) Quit $$$ERROR($$$GeneralError, "the caller does not hold " _ ..#TYPEKEPTRESOURCE)
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill tProps
+        Set tSC = ##class(Security.Applications).Get(pName, .tProps)
+        If $$$ISOK(tSC) && ($Get(tProps("Type")) '= pType) {
+            Kill tProps
+            Set tProps("Type") = pType
+            Set tSC = ##class(Security.Applications).Modify(pName, .tProps)
+            If $$$ISOK(tSC) {
+                Kill tProps
+                Set tSC = ##class(Security.Applications).Get(pName, .tProps)
+                If $$$ISOK(tSC) && ($Get(tProps("Type")) '= pType) Set tSC = $$$ERROR($$$GeneralError, "the application type reads " _ $Get(tProps("Type")) _ " after the restore")
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
     Quit tSC
 }
 

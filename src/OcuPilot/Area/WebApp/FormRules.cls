@@ -60,12 +60,23 @@ Parameter REQUIREDFIELDS = "Name,NameSpace,AutheEnabled";
 /// runs <code>WSGITypeDisplayToLogical</code> over the body's value.</p>
 Parameter WSGITYPES = "WSGI,ASGI";
 
+/// <p>The four ways <property>Security.Applications.ServeFiles</property> serves static files, as
+/// its own <code>DISPLAYLIST</code> publishes them, in that order (measured on this build). They
+/// travel as display strings, as the vendor's own <code>GET</code> answers them.</p>
+Parameter SERVEFILESCHOICES = "No,Always,Always and cached,Use CSP security";
+
+/// <p>The key the form read answers an edited application under.</p>
+Parameter FORMAPPLICATIONKEY = "application";
+
 /// <p>The vendor class whose property definitions the length bounds are read from, so a bound the
 /// instance changes is a bound the form changes.</p>
 Parameter SECURITYCLASS = "Security.Applications";
 
 /// <p>The properties whose <code>MAXLEN</code> the form renders, comma-separated.</p>
-Parameter LENGTHFIELDS = "Name,Description,NameSpace,Resource,DispatchClass,WSGIAppName,WSGICallable,WSGIAppLocation";
+Parameter LENGTHFIELDS = "Name,Description,NameSpace,Resource,DispatchClass,WSGIAppName,WSGICallable,WSGIAppLocation,Package,SuperClass,GroupById";
+
+/// <p>The edit tool whose fresh read the form read answers an edited application with.</p>
+Parameter UPDATETOOL = "OcuPilot.Screen.Tool.WebAppUpdate";
 
 /// <p>The endpoint and request type the application-roles picker lists roles through, on the
 /// create tool's own port (AD-52).</p>
@@ -78,10 +89,13 @@ Parameter ROLELISTTYPE = "LIST";
 /// it is the one <method>OcuPilot.Area.WebApp.Create</method> refuses at.</p>
 Parameter NAMEMAXLENGTH As INTEGER = 64;
 
-/// <p>Answer <code>GET /web-applications/form</code>: everything the create form needs before it
-/// can draw a field (AD-39, DW-376).</p>
+/// <p>Answer <code>GET /web-applications/form[?name=&lt;n&gt;]</code>: everything the create form
+/// and the editor need before they can draw a field (AD-39, DW-376).</p>
 /// <p>The body is
-/// <code>{authenticationMethods, defaultMethod, requiredFields, conditionalFields, wsgiTypes, maxLengths, rules, wsgiRoot, roles}</code>.
+/// <code>{authenticationMethods, defaultMethod, requiredFields, conditionalFields, wsgiTypes, serveFilesChoices, maxLengths, rules, wsgiRoot, roles}</code>,
+/// and with a name <parameter>FORMAPPLICATIONKEY</parameter>, the edit tool's own fresh read of that
+/// application (<method>Application</method>); a name this instance does not hold is 404
+/// <parameter>OcuPilot.Api.Error.WEBAPPNAMEABSENT</parameter>.
 /// <code>rules</code> is one <code>{field, code, reason}</code> per rule the server applies, in the
 /// same shape a refusal's own <code>detail.violations</code> row takes -- so the client renders an
 /// inline blur refusal and a failed Save through one path and holds no copy of its own.
@@ -113,11 +127,44 @@ ClassMethod HandleForm() As %Status
         ; the form can show the resolved path read-only. The server resolves again at the write.
         Do tBody.%Set("wsgiRoot", ##class(OcuPilot.Area.WebApp.Location).Root(), "string")
         Do tBody.%Set("roles", tRoles)
+        Do tBody.%Set("serveFilesChoices", ..Names(..#SERVEFILESCHOICES))
+        Set tName = $Get(%request.Data("name", 1))
+        If tName '= "" {
+            Set tReadSC = ..Application(tName, .tApplication, .tHttp, .tFault)
+            If $$$ISERR(tReadSC) && (+$Get(tHttp) = 404) {
+                Set tSC = ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#REASONWEBAPPNAMEABSENT, ##class(OcuPilot.Api.Error).#WEBAPPNAMEABSENT)
+                Quit
+            }
+            If $$$ISERR(tReadSC) {
+                Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tReadSC))
+                Quit
+            }
+            Do tBody.%Set(..#FORMAPPLICATIONKEY, tApplication)
+        }
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tBody)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
     Quit tSC
+}
+
+/// <p>The application <var>pName</var> as <parameter>UPDATETOOL</parameter>'s own read answers it,
+/// through its own port and read type (AD-52), in <var>pApplication</var>. An absent application is
+/// an error status with <var>pHttpStatus</var> 404.</p>
+ClassMethod Application(pName As %String, Output pApplication As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pApplication = ""
+    Set tClass = ..#UPDATETOOL
+    Kill tQuery
+    Set tQuery($ClassMethod(tClass, "IdParam")) = pName
+    Set tSC = $ClassMethod($ClassMethod(tClass, "PortClass"), "Invoke", $ClassMethod(tClass, "Endpoint"), $ClassMethod(tClass, "ReadType"), .tQuery, "", .tFresh, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If '$IsObject($Get(tFresh)) || 'tFresh.%IsA("%Library.DynamicObject") {
+        Set pHttpStatus = 404
+        Quit $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#WEBAPPNAMEABSENT)
+    }
+    Set pApplication = tFresh
+    Quit $$$OK
 }
 
 /// <p>Answer <code>GET /web-applications/name?name=&lt;n&gt;</code>: whether that name is free,

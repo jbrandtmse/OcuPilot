@@ -54,6 +54,15 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
 /** The Users list's descriptor, whose row actions carry values (AD-56). */
 const USER_LIST = 'OcuPilot.Screen.Descriptor.UserList';
 
+/** The Web applications list's descriptor, whose four role actions the web application editor sends (Story 9.2). */
+const WEB_APP_LIST = 'OcuPilot.Screen.Descriptor.WebAppList';
+
+/** The web application role actions, and the values each sends (AD-56 (ii)). */
+export const ADD_APPLICATION_ROLE = 'add-application-role';
+export const REMOVE_APPLICATION_ROLE = 'remove-application-role';
+export const ADD_MATCHING_ROLE = 'add-matching-role';
+export const REMOVE_MATCHING_ROLE = 'remove-matching-role';
+
 /** The Task schedule's descriptor, whose delete types a name that is not its row key. */
 const TASK_SCHEDULE = 'OcuPilot.Screen.Descriptor.TaskScheduleList';
 
@@ -103,6 +112,8 @@ const VALUE_ACTIONS: Readonly<Record<string, Readonly<Record<string, 'set-passwo
 /** The declared actions no surface draws, keyed by descriptor (DW-389). */
 const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [USER_LIST]: [REQUIRE_PASSWORD_CHANGE],
+  // The web application editor draws these beside each roles tab's pickers, which supply the values.
+  [WEB_APP_LIST]: [ADD_APPLICATION_ROLE, REMOVE_APPLICATION_ROLE, ADD_MATCHING_ROLE, REMOVE_MATCHING_ROLE],
   [PROCESS_LIST]: [TERMINATE_WITH_ERROR],
   [PROCESS_DETAILS]: [TERMINATE_WITH_ERROR],
 };
@@ -390,9 +401,19 @@ export class ScreenActionHandler {
    * its store; an editor passes the entity it shows and its own sink (DW-1501).
    *
    * `role`, for a role action, is the one role the caller has already chosen, which is sent with no
-   * dialog -- the Remove beside one role of an editor's list.
+   * dialog -- the Remove beside one role of an editor's list. `values`, where given, are the
+   * action's declared values the caller has already chosen, sent at once with no dialog -- the web
+   * application editor's role pickers (AD-56 (ii)).
    */
-  startFor(descriptor: string, actionId: string, target: string, rowFields: RowFields, sink: ActionSink, role = ''): void {
+  startFor(
+    descriptor: string,
+    actionId: string,
+    target: string,
+    rowFields: RowFields,
+    sink: ActionSink,
+    role = '',
+    values?: ActionValues
+  ): void {
     const screen = SCREENS.find((entry) => entry.descriptor === descriptor);
     if (screen === undefined || target === '') return;
     // The surfaces already list a self-protected action as refused rather than selectable, so this
@@ -402,6 +423,10 @@ export class ScreenActionHandler {
     const refusal = selfProtectionReason(rule, target, this.session?.userName() ?? '');
     if (refusal !== '') {
       sink.setRefusal(refusal);
+      return;
+    }
+    if (values !== undefined) {
+      void this.send(descriptor, actionId, target, values, sink);
       return;
     }
     const dialog = VALUE_ACTIONS[descriptor]?.[actionId];

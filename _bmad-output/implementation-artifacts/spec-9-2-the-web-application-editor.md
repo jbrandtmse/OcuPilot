@@ -2,13 +2,20 @@
 title: 'Story 9.2: The web application editor'
 type: 'feature'
 created: '2026-09-24'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '1bcbfb7f1c7edd67e72f82d396736631f7fa25ed'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-9-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: 'The initial bundle is 1,397,013 bytes against the 1378kB warning budget, so `build-output.test.mjs` DW-371 is red; the editor adds about 37 kB and is under the 1500kB stop. Raising the budget or lazy-loading the editor is the lead''s call; angular.json is out of this story''s footprint.'
+    evidence: 'npm run build: "bundle initial exceeded maximum budget ... by 19.01 kB"; HEAD baseline 1,360,009 bytes.'
+    location: 'ui/angular.json'
+  - summary: 'The Verification loop names `OcuPilot.Test.ProposalMint`, which is a fixture rather than a TestCase; the DW-1577 legs live in `OcuPilot.Test.Proposal`.'
+    evidence: 'OcuPilot.Test.ProposalMint does not extend %UnitTest.TestCase.'
+    location: 'src/OcuPilot/Test/Proposal.cls'
 ---
 
 <intent-contract>
@@ -254,6 +261,35 @@ Browser tasks:
 
 ## Review Triage Log
 
+### 2026-09-24 — Review pass
+
+Layers run: verification-gap, intent-alignment (edge-case-hunter not active in this build).
+
+- verdicts: 22 findings — high 0, medium 7, low 7, false 8, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Four of the six `CODEFIELDS` never tested as a weakening change — added `ProhibitedByEffect.TestEveryCodeFieldIsMarkedElsewhereAndRefusedOnOcuPilotsOwn` over all six (REPOINTED elsewhere, DISPATCH on own); mutation line written.
+  - `[medium]` `[patch]` Client `CODE_FIELDS` not pinned to server `CODEFIELDS` — parity test added to `ui/tools/self-protection.test.mjs`; mutation line written.
+  - `[medium]` `[patch]` No denial test for `PUT /web-applications/:id`'s pair gate — added `WireSecurityRead.TestTheWebApplicationSaveRefusesACallerWithoutItsPairs`; mutation (bypass `Gate`) observed red, `/csp/user` unchanged.
+  - `[medium]` `[patch]` Edit rules AUTHEUNKNOWN, TYPECONFLICT, text-field shape, MatchRoles shape and `Package` length unexercised — five rows added to `WebAppSave.TestTheEditsRulesRefuseEachFieldWithItsCode` (Package MAXLEN 64 measured on `ocupilot-ci`); mutation line written.
+  - `[medium]` `[patch]` Editor's change-bus re-read unpinned — page-spec leg added publishing an odd spelling; mutation line written.
+  - `[low]` `[reject]` Port type-restore failure paths untested — the paths are two guarded status checks; testing them needs a new fault-injecting port seam, and the success path is pinned. reopen_if: a WebApp.App PUT reported applied while `Security.Applications` reads a changed `Type`.
+  - `[low]` `[patch]` `TestNoWriteToolAdmitsAnAlwaysProhibitedField`'s per-tool loops now run for no tool — doc comment states it; the emptiness itself is asserted.
+  - `[low]` `[reject]` `TestASystemApplicationKeepsItsType` depends on the vendor demoting `Type` — the emptied-`TYPEKEPTTYPES` mutation was observed red on this build; a bypass precondition leg needs a new port seam.
+  - `[low]` `[patch]` ACs 1-3, the Integration AC and six matrix rows had no `mutation:` line — each mutation applied, observed red, reverted; lines written under `## Verification`.
+  - `[medium]` `[patch]` `toast.browser-spec.mjs` Integration leg depended on the previous test leaving the app disabled (DW-1577 refuses a no-op) — it now proposes the opposite of the value read from the instance; ran alone and in file order, green.
+  - `[low]` `[reject]` The Verification loop names `OcuPilot.Test.ProposalMint`, a fixture — the fix edits this build's spec; recorded in `deferred:`.
+  - `[false]` `[reject]` DW-1597 built into the editor's AC2 browser test — the spec's own browser task requires the toast leg; the diff changes no toast behavior.
+  - `[medium]` `[patch]` DW-1493 tested at the port call, not the instance — measured that `Security.Applications` keeps the typed case; added `WebAppWeakening.TestAConfirmedCreateIsStoredAsTyped` (typed `/csp/OcuPilotProbeWeakeningCase/`, stored without the slash and in its case); mutation line written.
+  - `[false]` `[reject]` Own-application detection differs client vs server — `self-protection.test.mjs` pins `OCUPILOT_APPLICATION_PATHS` equal to the install roster.
+  - `[false]` `[reject]` The three new own-app `…REASON` sentences lack Fixed-strings rows — Design Notes settle it (no client surface draws them); the sentences they replaced were not published either.
+  - `[false]` `[reject]` `agentCredTypeUnavailable` has no consumer — the spec task adds the key and pins it; its surface is Epic 10's.
+  - `[low]` `[patch]` Agent-path weakening tests start at the kernel mint — `Mint` calls `ArgumentProblem`, so only schema validation was skipped; added `ToolWrite.TestARepointingCallMintsADestructiveProposal` through the dispatcher.
+  - `[false]` `[reject]` Save gates on WebAppForm's pairs rather than the tool's — the same pattern as `UserSave` (UserForm), which the intent names; the Wire rosters show equal pairs.
+  - `[low]` `[patch]` "One updated event" asserted as `some` — the page spec now asserts exactly one.
+  - `[false]` `[reject]` E1 reading of "as read or as the unsaved form stands" — the intent's words are a disjunction.
+  - `[false]` `[reject]` Label, prompts, deleted `ProhibitedRoute` legs outside the contract — each is a Tasks item; the label follows 9.1's UserForm precedent.
+  - `[false]` `[reject]` Contended paths partly unverified — no Epic 10 exclusive path or `Test/{OpenAI,…,AgentConnection}*` class is in the diff (checked by name).
+
 ## Design Notes
 
 **Governing ADs:** AD-3, AD-4, AD-5, AD-6, AD-8, AD-10 (as amended 2026-09-24), AD-13, AD-14, AD-19, AD-21, AD-27 (fifth case), AD-36, AD-39, AD-51, AD-53, AD-54, AD-55 and AD-56. AD-54 says "a field prohibited because it repoints a serving object is prohibited on a change". After AD-10's amendment, that serving object is one of OcuPilot's own applications, which is where `DISPATCH` still applies.
@@ -314,9 +350,52 @@ Its diff still lists every field, and one effect is enough to make it destructiv
 - Precedence: the "Several effects" leg. Mutation: in `WeakensByEffect`, test the cleared resource before the added Unauthenticated bit.
 - One line: the combined-line test in `web-app-editor.page.spec.ts`. Mutation: render `privilegedGrantEffect` whatever the authentication state.
 
+- mutation: drop `|| (tEffect '= "")` from `Mint`'s `destructive` → `WebAppWeakening.TestEachWeakeningIsMintedDestructiveAndAppliesOnceConfirmed` (three "marked destructive" asserts) and `TestSeveralEffectsNameTheFirstInPrecedence` go red.
+- mutation: restore the three arms for every application in `WebApplication()` → `WebAppWeakening`'s confirm, Save and privileged-unauthenticated legs go red, the confirm refused `PROHIBITED.UNAUTHENTICATED`/`AUTHORIZATION`/`DISPATCH` on the probe.
+- mutation: delete the three own-app arms (`tEffect` forced to `""`) → `WebAppWeakening.TestEachWeakeningIsRefusedWithItsOwnCodeOnOcuPilotsOwn` goes red on all three codes, for both callers.
+- mutation: in `WeakensByEffect`, test the cleared resource before the added Unauthenticated bit → `WebAppWeakening.TestSeveralEffectsNameTheFirstInPrecedence` goes red ("naming the first effect in precedence").
+- mutation: render `privilegedGrantEffect` whatever the authentication state → `web-app-editor.page.spec.ts` "states one privilege line ... the combined one where the application is unauthenticated" goes red.
+- mutation: skip `Mint`'s empty-diff refusal (DW-1577) → `Proposal.TestAMergeThatChangesNothingIsRefusedAndStoresNothing` goes red for both `webapp.list.update` and `permissions.users.update`.
+- mutation: skip `Confirm.FingerprintMatches`'s typed-name branch for a create (DW-1493) → `ProposalCreate.TestAConfirmedCreateNamesItsTargetAsTyped` goes red for the application and the account.
+- mutation: empty `AdminPort`'s `TYPEKEPTTYPES` (AD-27's fifth case) → `WebAppSave.TestASystemApplicationKeepsItsType` goes red ("still reads Type 3").
+- mutation: compare `Resource` against the form rather than the read in the store's `clearsResource` → `web-app-editor.store.spec.ts` "names each weakening effect against the read" goes red.
+- mutation: stop the form-page host rule from matching (DW-1596), rebuilt and redeployed → `users-editor.browser-spec` "the form bar is flush ..." and `web-applications-editor.browser-spec` "the visual gate on every tab, and the form bar flush ..." go red.
+- mutation: drop the 404 branch from the store's `absorb` (DW-1490's absent state) → `web-app-editor.store.spec.ts` "holds an application the instance does not have as absent ..." goes red.
+- mutation (AC1): drop the Matching roles tab from the page's `tabs` → `web-app-editor.page.spec.ts` "opens an application on its four tabs ..." goes red.
+- mutation (AC2): make the store's Save publish to no bus → `web-app-editor.page.spec.ts` "sends only the changed fields ... and publishes the change" (exactly one `updated` event) goes red.
+- mutation (AC3, matrix "Own app, AC3"): remove the `Prohibited` call from `WebAppSave.Update` → `WebAppSave.TestOcuPilotsOwnApplicationIsRefusedOnBothCallers` goes red.
+- mutation (Integration AC): skip `tabToOpen` in the page's `afterRefusal` → the page spec's "Integration: a refusal on Cross-origin settings ..." goes red.
+- mutation (matrix "Two-field save"): merge over `{Name}` instead of the fresh read in `WebAppSave.Update` → `WebAppSave.TestATwoFieldSaveSendsTheCompleteSetAndTheOthersSurvive` goes red.
+- mutation (matrix "Undeclared key"): admit `SettableFields` instead of `PermittedFields` in `WebAppSave.Update` → `WebAppSave.TestTheUndeclaredKeysAreRefusedAndNothingIsSent` goes red.
+- mutation (matrix "DW-1490", hard reload): remove WebAppForm from `DESCRIPTOR_EDIT_PAGES`, rebuilt and redeployed → `web-applications-create.browser-spec` AC2 (and AC7) go red.
+- mutation (matrix "Privileged role", proposal half): make `WebAppUpdate.Consequence` answer `""` → `WebAppWeakening.TestAPrivilegedRoleOnAnUnauthenticatedApplicationIsOneLine` goes red.
+- mutation (matrix "Several effects", editor half): drop the unauthenticated line from the page's `generalFields` → the page spec's "states each weakening effect once, at its own field ..." goes red.
+- mutation (matrix "DW-1493", instance half): drop `Confirm.FingerprintMatches`'s typed-name branch → `WebAppWeakening.TestAConfirmedCreateIsStoredAsTyped` goes red.
+- mutation: cut `Prohibited.CODEFIELDS` to `DispatchClass,NameSpace` → `ProhibitedByEffect.TestEveryCodeFieldIsMarkedElsewhereAndRefusedOnOcuPilotsOwn` goes red.
+- mutation: drop `'SuperClass'` from the store's `CODE_FIELDS` → `self-protection.test.mjs` "the editor's repointed fields are the prohibited set's CODEFIELDS" goes red.
+- mutation: bypass `WebAppSave.Gate` in `HandleUpdate` → `WireSecurityRead.TestTheWebApplicationSaveRefusesACallerWithoutItsPairs` goes red.
+- mutation: drop the added-unknown-bit rule from `Create.UpdateViolations` → `WebAppSave.TestTheEditsRulesRefuseEachFieldWithItsCode` goes red.
+- mutation: drop the page's ChangeBus re-read → the page spec's "re-reads the application in place when another caller changes it ..." goes red.
+- mutation: drop `|| (tEffect '= "")` from `Mint`'s `destructive` → `ToolWrite.TestARepointingCallMintsADestructiveProposal` (the dispatched model-facing path) goes red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Re-plan 2026-09-24 around the orchestrator ruling: the three arms scoped to OcuPilot's own applications with their own codes, `WeakensByEffect` marking the three effects destructive elsewhere, one-code card precedence, and the inverted tests listed. Anchors checked against the tree; lint-docs clean.
+**Change.** The web application editor at `web-applications/list/edit/<id>` (four tabs, the 25 settings, the fixed fields, both roles tabs through the list's AD-53 role actions), `PUT /web-applications/:id` through `WebAppUpdate` in `UserSave`'s order, and AD-10 as ruled: the three weakening effects permitted and marked destructive (`WeakensByEffect`) on other applications, refused with their own codes on OcuPilot's own. Also DW-1490 (the editor reads its id; the create hands off with `arriveSaved`), DW-1493 (a create confirm names the typed spelling), DW-1502 (`PRIVILEGEGRANTREASON` and credtype pins), DW-1577 (a no-op merge is 400), DW-1595 (DESIGN.md and `toast-host.ts` prose) and DW-1596 (form-page flex host rule), plus AD-27's fifth case (`AdminPort` keeps a system application's `Type`).
+
+**Files.** Server: `Prohibited`, `Mint`, `Confirm`, `AdminPort`, `WebAppUpdate` (rewritten), `WebAppCreate`, `Classification`, `Area/WebApp/{Create,FormRules,WebAppSave (new)}`, `Router`, `Error` (append), `WebAppForm`/`WebAppList` descriptors, `Screen/Registry`. Tests: new `WebAppSave`, `WebAppWeakening`, two Save fixtures; edited `Prohibited`, `ProhibitedByEffect`, `ProhibitedRoute`, `ToolWrite`, `RefusalCopy`, `Proposal`, `ProposalCreate`, `WebAppCreate`, `EndpointCoverage`, `Wire`, `WireSecurityRead`; `scripts/ci-throwaway.sh` arming roster. Client: new `web-app-editor.{page,store}.ts` and specs; `create-form.{page,store}.ts`, `navigation.ts`, `screen-outlet.ts`, `screen-action-handler.ts`, `self-protection.ts`, `proposal-view.ts`, `strings.ts` (append), `_components.scss` (append), `toast-host.ts` (doc), regenerated `screens.generated.ts`, `screen-mirror.mjs`, tool tests; browser specs: new `web-applications-editor`, edited `users-editor`, `web-applications`, `web-applications-create`, `device-editor`, `toast`. Docs: EXPERIENCE.md rows 469-475, DESIGN.md:1210 `[AMENDED 2026-09-24 - Story 9.2, DW-1595]`.
+
+**Review.** 22 findings: 12 patched (7 medium, 5 low; all test or doc patches, each new pinning test observed red under its mutation), 0 deferred from review, 10 rejected (8 false, 2 low; reasons in the triage log). One environment incident, repaired in-pass: a shared scratchpad backup name (`store.bak`) collided with another session's file and briefly replaced `web-app-editor.store.ts`; it was restored byte-for-byte from the review diff, backups moved to a private folder, and Epic 10's `definition-form.store.ts` was checked unchanged.
+
+**Follow-up review:** `false` — patched counts: high 0, medium 7, low 5; every patch is a test or doc change verified green and red under its named mutation, so no unverified risk remains to name.
+
+**Verification.**
+
+- ObjectScript: full sweep `--package OcuPilot.Test` on `ocupilot-ci` once, 218 classes, 1,909 tests, 1 failed: `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal`, which was already failing on this throwaway. `AuditingUpdate`, `ErrorDelete`, `ProcessControl` and `TaskResume` refused (the environment's arming variables), and 0 probe leftovers. Before it, one class at a time: `ProhibitedByEffect` 8/8, `WebAppSave` 7/7, `WebAppWeakening` 6/6, `ToolWrite` 30/30, `Prohibited` 12/12, and `WireSecurityRead` 20/21 (the same pre-existing failure).
+- Client: tools 1378 of 1379 pass. The one failure is `build-output.test.mjs` DW-371: the initial bundle is 1,397,013 bytes against the 1378kB warning (in `deferred:`, `angular.json` not touched). Components: 78 files, 1,067 tests, all green.
+- Browser, after rebuild and redeploy: the handoff ran each listed spec file green on this bundle (web-applications-editor 7, web-applications 4, web-applications-create 8, web-applications-actions 3, users-editor 8, users 4, users-create 5, users-actions 2, device-editor 4, roles-create 5, wallet-secret 4, x509-import 4, switches 4, definitions 6, toast 3, a11y-structural-invariants 10, proposal-card 3, screen-height 15). This pass re-ran toast 3/3 (and its Integration leg alone), web-applications-editor 7/7, web-applications-create 8/8 and a11y-structural-invariants 10/10.
+- `check-objectscript` 0 problems; `lint-docs` 0; no private-key material.
+
+**Residual risks.** DW-371 reads red until the lead re-bases the budget or lazy-loads the editor. The WebAppForm label is now `proposalEntityWebApplication` (9.1's UserForm precedent), so `webAppFormLabel` is unused.

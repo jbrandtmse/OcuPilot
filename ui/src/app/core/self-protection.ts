@@ -42,6 +42,12 @@ export const OCUPILOT_APPLICATION_PATHS: readonly string[] = [
   '/api/ocupilot/readiness',
 ];
 
+/**
+ * The rule that protects the application and matching roles of the web applications OcuPilot is
+ * served through (Story 9.2, AD-10): the instance refuses setting either there, whoever asks.
+ */
+export const OCUPILOT_APPLICATION_ROLES_RULE = 'ocupilot-application-roles';
+
 /** The rule that protects the accounts whose removal the instance refuses (Story 7.2). */
 export const PROTECTED_ACCOUNT_RULE = 'protected-account';
 
@@ -77,7 +83,8 @@ export const SERVICE_ACCOUNTS: readonly string[] = ['CSPSystem', '_Ensemble', 'i
  * Its three answers are the instance's own, in the instance's order -- `_SYSTEM`, the signed-in
  * account, a service account. The last `%All` holder is a census the client cannot read, so that
  * refusal is the instance's alone. `service-account-sign-in` answers for a service account other
- * than the signed-in one.
+ * than the signed-in one. `ocupilot-application-roles` answers for the applications
+ * `serves-ocupilot` does, with the privilege-grant sentence.
  */
 export function selfProtectionReason(rule: string, rowKey: string, signedIn = ''): string {
   if (rowKey === '') return '';
@@ -96,10 +103,11 @@ export function selfProtectionReason(rule: string, rowKey: string, signedIn = ''
     const service = SERVICE_ACCOUNTS.some((name) => normalizeEntityId(USER, name) === account);
     return service ? STRINGS.userRefusalServiceAccountSignIn : '';
   }
-  if (rule !== SERVES_OCUPILOT_RULE) return '';
+  if (rule !== SERVES_OCUPILOT_RULE && rule !== OCUPILOT_APPLICATION_ROLES_RULE) return '';
   const canonical = normalizeEntityId(WEB_APPLICATION, rowKey);
   const own = OCUPILOT_APPLICATION_PATHS.some(
     (path) => normalizeEntityId(WEB_APPLICATION, path) === canonical
   );
-  return own ? STRINGS.webAppServesOcuPilotRefusal : '';
+  if (!own) return '';
+  return rule === OCUPILOT_APPLICATION_ROLES_RULE ? STRINGS.webAppPrivilegeGrantRefusal : STRINGS.webAppServesOcuPilotRefusal;
 }

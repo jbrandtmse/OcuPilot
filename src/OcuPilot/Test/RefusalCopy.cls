@@ -63,4 +63,36 @@ Method TestEachProcessRefusalIsItsParameterAndNamesNoCaller()
     }
 }
 
+/// <p>AD-10 as amended 2026-09-24, AD-53 (Story 9.2, DW-1502): each of the four codes refused on
+/// OcuPilot's own web applications answers its own parameter, and none names a caller -- the
+/// editor's Save and role actions and the agent's confirm are refused by the one predicate.
+/// <code>PRIVILEGEGRANTREASON</code> is also pinned equal to the client's copy by
+/// <file>ui/tools/self-protection.test.mjs</file>, because a role control draws it before a
+/// click.</p>
+/// <p>Mutation (Rule 19): answer a literal for any one of the four codes in
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.ReasonFor</method>, or restore its agent-worded
+/// sentence, and recompile -- that code's legs go red.</p>
+Method TestEachOwnApplicationRefusalIsItsParameterAndNamesNoCaller()
+{
+    Set tClass = "OcuPilot.Kernel.Proposal.Prohibited"
+    For tCode = "PRIVILEGEGRANT", "UNAUTHENTICATED", "AUTHORIZATION", "DISPATCH" {
+        Set tServer = ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor($Parameter(tClass, tCode))
+        Do $$$AssertNotEquals(tServer, "", tCode _ ": the kernel answers a written sentence")
+        Do $$$AssertEquals(tServer, $Parameter(tClass, tCode _ "REASON"), tCode _ ": which is its parameter, not a literal in the lookup")
+        Do $$$AssertEquals(($ZConvert(tServer, "L") [ "the agent"), 0, tCode _ ": and it names no caller: " _ tServer)
+    }
+}
+
+/// <p>DW-1502: the credential-type refusal the agent definition form draws is the parameter
+/// <file>ui/tools/self-protection.test.mjs</file> pins equal to the client's copy, so the violation
+/// lookup answers that parameter rather than a literal of its own.</p>
+/// <p>Mutation (Rule 19): answer a literal for the code in
+/// <method>OcuPilot.Api.Error.ReasonForViolation</method> and recompile -- this goes red.</p>
+Method TestTheCredentialTypeRefusalIsItsParameter()
+{
+    Set tServer = ##class(OcuPilot.Api.Error).ReasonForViolation(##class(OcuPilot.Api.Error).#AGENTCREDTYPEUNAVAILABLE)
+    Do $$$AssertNotEquals(tServer, "", "the violation lookup answers a written sentence")
+    Do $$$AssertEquals(tServer, ##class(OcuPilot.Api.Error).#REASONAGENTCREDTYPEUNAVAILABLE, "which is the parameter the client's copy is pinned to")
+}
+
 }

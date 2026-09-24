@@ -14,12 +14,12 @@
 /// <p><b>It permits, rather than forbids, by name.</b> AD-4 makes the payload the complete property
 /// set, and a vendor web application carries 45 settable properties of which a great many decide
 /// which compiled code answers at the URL or how a caller gets in. Enumerating those would leave
-/// the next vendor property unrefused, so the set names the few whose change it has reviewed
+/// the next vendor property unrefused, so the set names the fields whose change it has reviewed
 /// (<method>PermittedChangeFields</method>) and refuses every other changed field
-/// (<parameter>UNCOVEREDFIELD</parameter>) whatever it is called. The reviewed few carry their own
-/// asymmetric predicates, which is where the one reviewed change to a field stays available and
-/// every other one does not: the only authentication change it permits is clearing the
-/// unauthenticated option, and clearing a resource is refused while setting one is not.</p>
+/// (<parameter>UNCOVEREDFIELD</parameter>) whatever it is called. On one of OcuPilot's own web
+/// applications every change is refused (<method>WebApplication</method>); on any other, a change
+/// that weakens or repoints the application is permitted and marked
+/// (<method>WeakensByEffect</method>).</p>
 /// <p><b>Refused whatever the caller.</b> This class reads no governance state, no policy and no
 /// switch, so governance can disable a permitted tool and can never enable a prohibited one. It is
 /// asked inside the confirm transition, before the port call (AD-34, AD-40).</p>
@@ -94,23 +94,54 @@ Parameter OCUPILOTPROCESSREASON = "OcuPilot itself is running in this process, f
 /// <code>processRefusalSystem</code>.</p>
 Parameter SYSTEMPROCESSREASON = "This is an IRIS system process, and the instance relies on it. It cannot be suspended, resumed or terminated from OcuPilot.";
 
-/// <p>The write would change how the target is authenticated by anything other than clearing its
-/// unauthenticated option: it adds a bit, clears another bit, clears the mask, or carries a value
-/// that is not a non-negative whole number.</p>
+/// <p>The write would make one of OcuPilot's own web applications reachable without signing in
+/// (<method>AddsUnauthenticated</method>). On any other application the same change is permitted and
+/// marked <parameter>EFFECTUNAUTHENTICATED</parameter>.</p>
 Parameter UNAUTHENTICATED = "PROHIBITED.UNAUTHENTICATED";
 
-/// <p>The write would drop the target's authorization resource: the target names one and the
-/// payload names none.</p>
+/// <p>The write would drop the authorization resource of one of OcuPilot's own web applications: the
+/// target names one and the payload names none. On any other application the same change is
+/// permitted and marked <parameter>EFFECTNORESOURCE</parameter>.</p>
 Parameter AUTHORIZATION = "PROHIBITED.AUTHORIZATION";
 
-/// <p>The write would change which compiled code answers at the target's URL.</p>
+/// <p>The write would change which code answers at the address of one of OcuPilot's own web
+/// applications: any of <parameter>CODEFIELDS</parameter>. On any other application the same change
+/// is permitted and marked <parameter>EFFECTREPOINTED</parameter>.</p>
 Parameter DISPATCH = "PROHIBITED.DISPATCH";
+
+/// <p>The one sentence <parameter>UNAUTHENTICATED</parameter> carries, caller-neutral (AD-39).</p>
+Parameter UNAUTHENTICATEDREASON = "OcuPilot serves itself through this web application. Making it reachable without signing in is not available here.";
+
+/// <p>The one sentence <parameter>AUTHORIZATION</parameter> carries, caller-neutral.</p>
+Parameter AUTHORIZATIONREASON = "OcuPilot serves itself through this web application. Removing the resource that guards it is not available here.";
+
+/// <p>The one sentence <parameter>DISPATCH</parameter> carries, caller-neutral.</p>
+Parameter DISPATCHREASON = "OcuPilot serves itself through this web application. Changing which code answers at its address is not available here.";
+
+/// <p>The web-application fields that decide which code answers at the application's address,
+/// comma-separated: the REST dispatch class, the namespace, the Python application and callable, and
+/// the CSP package and superclass.</p>
+Parameter CODEFIELDS = "DispatchClass,NameSpace,WSGIAppName,WSGICallable,Package,SuperClass";
+
+/// <p>The effect codes <method>WeakensByEffect</method> answers, one per weakening change a write may
+/// make to a web application that is not OcuPilot's own. Each is also the proposal's consequence
+/// code, and the card states its sentence.</p>
+Parameter EFFECTUNAUTHENTICATED = "WEBAPP.UNAUTHENTICATED";
+
+Parameter EFFECTNORESOURCE = "WEBAPP.NORESOURCE";
+
+Parameter EFFECTREPOINTED = "WEBAPP.REPOINTED";
 
 /// <p>The write would set application roles on a web application OcuPilot is served by
 /// (<parameter>APPLICATIONROLEFIELDS</parameter>): a role granted there would run every later
 /// OcuPilot request with it, turn jobs included, which would quietly falsify AD-8 (AD-10). Every
 /// other privilege grant is permitted and marked (<method>GrantsPrivilegeByEffect</method>).</p>
 Parameter PRIVILEGEGRANT = "PROHIBITED.PRIVILEGEGRANT";
+
+/// <p>The one sentence <parameter>PRIVILEGEGRANT</parameter> carries, published once in
+/// EXPERIENCE.md's Fixed strings table and pinned equal to <file>strings.ts</file>'s
+/// <code>webAppPrivilegeGrantRefusal</code> (AD-53).</p>
+Parameter PRIVILEGEGRANTREASON = "OcuPilot's own web applications carry only the roles its installer gives them. A role set there would run every OcuPilot request with it.";
 
 /// <p>The write would remove the account the caller is signed in as, or its administration
 /// (<method>RemovesAdministration</method>).</p>
@@ -291,10 +322,9 @@ Parameter PASSWORDWRITETYPE = "CHANGEPWD";
 /// (<method>RemovesOf</method>).</p>
 Parameter ACTIONDELETED = "deleted";
 
-/// <p>The <code>AutheEnabled</code> bit that lets an application be reached without signing in, and
-/// the only bit <method>ClearsUnauthenticatedOnly</method> permits a payload to change
+/// <p>The <code>AutheEnabled</code> bit that lets an application be reached without signing in
 /// (<file>irissys/%sySecurityMacros.inc</file>:19-20 gives AuthePassword 32 and
-/// AutheUnauthenticated 64).</p>
+/// AutheUnauthenticated 64), which <method>AddsUnauthenticated</method> reads.</p>
 Parameter UNAUTHENTICATEDBIT As %Integer = 64;
 
 /// <p>The admin request type the target is re-read with when the proposal's tool declares none
@@ -323,10 +353,10 @@ ClassMethod Codes() As %List
 /// family here, so the set still has one home.</p>
 ClassMethod ReasonFor(pCode As %String) As %String
 {
-    If pCode = ..#UNAUTHENTICATED Quit "The only change to how a web application is authenticated that the agent can propose is removing the option of reaching it without signing in."
-    If pCode = ..#AUTHORIZATION Quit "Removing the resource that guards a web application is not something the agent can propose."
-    If pCode = ..#DISPATCH Quit "Changing which code answers at a web application's address is not something the agent can propose."
-    If pCode = ..#PRIVILEGEGRANT Quit "OcuPilot's own web applications carry only the roles its installer gives them. A role set there would run every OcuPilot request with it."
+    If pCode = ..#UNAUTHENTICATED Quit ..#UNAUTHENTICATEDREASON
+    If pCode = ..#AUTHORIZATION Quit ..#AUTHORIZATIONREASON
+    If pCode = ..#DISPATCH Quit ..#DISPATCHREASON
+    If pCode = ..#PRIVILEGEGRANT Quit ..#PRIVILEGEGRANTREASON
     ; AD-53: the sentence two surfaces share -- the reason a row action is drawn refused before a
     ; click and the envelope reason returned after one -- so it names no caller.
     ; OcuPilot.Test.RefusalCopy pins it equal to the client's own copy.
@@ -364,12 +394,15 @@ ClassMethod CoveredTypes() As %List
 /// refused without the set knowing what the field does, so a vendor property added by a later IRIS
 /// build is refused until somebody reviews it -- which is the opposite failure mode from a
 /// forbidden-name list, where the new property is settable until somebody notices. It grows one
-/// reviewed field at a time. Two of the four carry an asymmetric predicate of their own
-/// (<method>WebApplication</method>); the other two carry a reviewed argument that no change to
-/// them is an effect this AD forbids -- <code>Enabled</code> because it turns an application's
-/// already-declared configuration on and off rather than changing any of it, and the applications
-/// AD-38 protects are refused every change by the serving-path predicate; <code>Description</code>
-/// because it is display text no request is routed or authorized by.</p>
+/// reviewed field at a time.</p>
+/// <p>A web application's are the twenty-five settings its editor carries
+/// (<method>WebApplicationSettingFields</method>) and its application roles
+/// (<parameter>APPLICATIONROLEFIELDS</parameter>). Every change to one of OcuPilot's own applications
+/// is refused (<method>WebApplication</method>); on any other application a change that makes it
+/// reachable without signing in, drops its resource or repoints its code is permitted and marked
+/// destructive (<method>WeakensByEffect</method>), and a privileged application role likewise
+/// (<method>GrantsPrivilegeByEffect</method>). <code>Path</code> and <code>WSGIAppLocation</code>
+/// are not among them: no caller names a filesystem path (AD-21).</p>
 /// <p>An account's are <code>Enabled</code>, <code>Roles</code>, <code>ChangePassword</code> and the
 /// rest of the classic General tab (<method>UserSettingFields</method>). <code>Enabled</code> carries the asymmetric predicate: enabling an
 /// account is a change AD-10 does not forbid, while disabling one is refused for the four protected
@@ -410,7 +443,7 @@ ClassMethod CoveredTypes() As %List
 ClassMethod PermittedChangeFields(pType As %String) As %List
 {
     If (pType = ..#TYPEAUDITEVENT) || (pType = ..#TYPEAUDITUSEREVENT) Quit $ListBuild(..#FIELDENABLED)
-    If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "Enabled", "Resource")
+    If pType = ..#TYPEWEBAPPLICATION Quit ..WebApplicationSettingFields() _ $ListFromString(..#APPLICATIONROLEFIELDS)
     If pType = ..#TYPEUSER Quit $ListBuild(..#FIELDENABLED, ..#FIELDROLES, ..#FIELDCHANGEPASSWORD) _ ..UserSettingFields()
     If pType = ..#TYPEAUDITING Quit $ListBuild(..#FIELDENABLED)
 
@@ -419,6 +452,14 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEWALLETSECRET Quit $ListBuild("Usage", "RequireTLS", "AllowedHosts", "Secret")
     If pType = ..#TYPEDEVICE Quit ..DeviceFields()
     Quit ""
+}
+
+/// <p>The twenty-five web-application settings a change may set: every field of the classic
+/// editor's General and Cross-Origin Settings tabs that decides how the application is reached,
+/// who may use it and which code answers, except its name and its two filesystem locations.</p>
+ClassMethod WebApplicationSettingFields() As %List
+{
+    Quit $ListBuild("AutheEnabled", "AutoCompile", "CorsAllowlist", "CorsCredentialsAllowed", "CorsHeadersList", "Description", "DispatchClass", "Enabled", "GroupById", "IsNameSpaceDefault", "JWTAccessTokenTimeout", "JWTAuthEnabled", "JWTRefreshTokenTimeout", "LockCSPName", "NameSpace", "Package", "Recurse", "Resource", "ServeFiles", "ServeFilesTimeout", "SuperClass", "Timeout", "WSGIAppName", "WSGICallable", "WSGIType")
 }
 
 /// <p>The account settings of the classic General tab beyond <code>Enabled</code> and
@@ -435,18 +476,11 @@ ClassMethod UserSettingFields() As %List [ Private ]
 /// <p>The payload field names of entity type <var>pType</var> whose <b>every</b> change is
 /// prohibited by a named predicate, as a <class>%List</class>; <code>""</code> for a type with
 /// none.</p>
-/// <p>They are a subset of the fields outside <method>PermittedChangeFields</method> -- the names
-/// whose refusal carries a sentence of its own rather than the reviewed-few one, so the user is
-/// told which effect was refused. A web application's dispatch class is the one. An account's
-/// escalation roles are not here: AD-10 permits a privilege grant, and no tool admits the field, so
-/// a change to it is refused as an unreviewed field. A web application's application roles are not
-/// here either: AD-10
-/// refuses them on OcuPilot's own applications only, which is a predicate over the target
-/// (<method>WebApplication</method>), and on any other application a change to them is refused as
-/// an unreviewed field.</p>
+/// <p>No type has one. AD-10's web-application refusals are predicates over the target -- one of
+/// OcuPilot's own applications (<method>WebApplication</method>) -- which a per-type name list
+/// cannot express, and an account's escalation roles are refused as an unreviewed field.</p>
 ClassMethod AlwaysProhibitedFields(pType As %String) As %List
 {
-    If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("DispatchClass")
     Quit ""
 }
 
@@ -455,11 +489,8 @@ ClassMethod AlwaysProhibitedFields(pType As %String) As %List
 /// refused <parameter>UNCOVERED</parameter> wholesale (AD-54).</p>
 /// <p><b>"What may a change to a live target touch" and "what may a create set" are different
 /// questions</b>, so a create carries its own reviewed list rather than reusing
-/// <method>PermittedChangeFields</method>. The difference is not a relaxation: a field prohibited
-/// because it repoints a <b>serving</b> object is prohibited on a change and permitted on a create,
-/// which repoints nothing. <code>DispatchClass</code> is that kind -- DW-1207's owner decision is
-/// about pointing a running application at arbitrary compiled code, and it is also what makes a
-/// REST application a REST application.</p>
+/// <method>PermittedChangeFields</method>. A create at one of OcuPilot's own paths is refused
+/// whatever it sets (<method>Created</method>).</p>
 /// <p>A web application's twelve are the settings the create form captures: the namespace it runs
 /// in, its description, whether it is enabled, its authentication methods, its application roles,
 /// its guarding resource, whether it recurses into subdirectories, the dispatch class that makes it
@@ -805,54 +836,50 @@ ClassMethod CreatesOf(pToolClass As %String) As %Boolean [ Private ]
     Quit tCreates
 }
 
-/// <p>The web-application predicates, in declared order, first hit wins: changed application roles
-/// on one of OcuPilot's own applications, OcuPilot's own serving path, an authentication change
-/// other than clearing the unauthenticated option, a dropped resource, a repointed dispatch, and
-/// any other changed field the release has not reviewed -- application roles on any other
-/// application among them.</p>
-/// <p><var>pChanged</var> is <method>Changed</method>'s answer -- the fields this proposal changes,
-/// and the only fields any predicate here looks at. <var>pServes</var> is whether the target is one
-/// of OcuPilot's own applications, already resolved by <method>ServesOcuPilot</method> so no
-/// escalated read happens here.</p>
+/// <p>The web-application predicates. On one of OcuPilot's own applications (<var>pServes</var>)
+/// the first that matches decides: a changed application role (<parameter>PRIVILEGEGRANT</parameter>),
+/// then the payload's effect on the target (<method>WeakensByEffect</method>) -- an added
+/// unauthenticated bit (<parameter>UNAUTHENTICATED</parameter>), a dropped resource
+/// (<parameter>AUTHORIZATION</parameter>), a changed field of <parameter>CODEFIELDS</parameter>
+/// (<parameter>DISPATCH</parameter>) -- and then every other write, a bodyless delete and a disable
+/// included (<parameter>SERVINGPATH</parameter>). On any other application only the reviewed-field
+/// sweep runs: a weakening change is permitted there and marked by the mint
+/// (<method>WeakensByEffect</method>).</p>
+/// <p><var>pChanged</var> is <method>Changed</method>'s answer -- the fields this proposal changes.
+/// <var>pServes</var> is already resolved by <method>ServesOcuPilot</method>, so no escalated read
+/// happens here.</p>
 ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject, pServes As %Boolean, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
 {
     Set pProhibits = 0
     Set pCode = ""
     Set tSC = $$$OK
     Try {
-        ; AD-10: application roles on an application OcuPilot is served by are refused on their own
-        ; code, ahead of the serving-path refusal every other change to one earns.
         If pServes {
             Set tRoleFields = $ListFromString(..#APPLICATIONROLEFIELDS)
             For tI = 1:1:$ListLength(tRoleFields) {
                 If $Data(pChanged($List(tRoleFields, tI))) Do ..Refuse(..#PRIVILEGEGRANT, .pProhibits, .pCode)
             }
             If pProhibits Quit
-        }
-
-        ; OcuPilot's own applications are the installer's. Every property of one decides whether
-        ; OcuPilot answers at that address -- the namespace and the path as completely as the
-        ; enabled flag -- so the predicate is over the application, not over a list of properties.
-        ;
-        ; AD-53: and not over the payload's shape either. Gating this on a non-empty changed set
-        ; made it unreachable for a write that carries no diff, which a bodyless delete is -- the
-        ; one write whose effect on this target the predicate most has to refuse. The effect is
-        ; "this write reaches an application OcuPilot is served by", and that is the whole
-        ; condition.
-        If pServes {
+            ; The three weakening effects, judged by the one classifier over the payload against
+            ; the target rather than over the diff, so each is refused under its own code.
+            Set tSC = ..WeakensByEffect(..#TYPEWEBAPPLICATION, pPayload, pTarget, .tEffect)
+            If $$$ISERR(tSC) Quit
+            If tEffect = ..#EFFECTUNAUTHENTICATED {
+                Do ..Refuse(..#UNAUTHENTICATED, .pProhibits, .pCode)
+                Quit
+            }
+            If tEffect = ..#EFFECTNORESOURCE {
+                Do ..Refuse(..#AUTHORIZATION, .pProhibits, .pCode)
+                Quit
+            }
+            If tEffect = ..#EFFECTREPOINTED {
+                Do ..Refuse(..#DISPATCH, .pProhibits, .pCode)
+                Quit
+            }
+            ; Every property of an application OcuPilot is served by decides whether OcuPilot answers
+            ; at that address, so the last arm is over the application, not over a changed field: a
+            ; bodyless delete carries no diff and is refused here all the same (AD-53).
             Do ..Refuse(..#SERVINGPATH, .pProhibits, .pCode)
-            Quit
-        }
-        If $Data(pChanged("AutheEnabled")) && '..ClearsUnauthenticatedOnly(..Rendered(pPayload, "AutheEnabled"), ..Rendered(pTarget, "AutheEnabled")) {
-            Do ..Refuse(..#UNAUTHENTICATED, .pProhibits, .pCode)
-            Quit
-        }
-        If $Data(pChanged("Resource")) && (..Rendered(pPayload, "Resource") = "") {
-            Do ..Refuse(..#AUTHORIZATION, .pProhibits, .pCode)
-            Quit
-        }
-        If $Data(pChanged("DispatchClass")) {
-            Do ..Refuse(..#DISPATCH, .pProhibits, .pCode)
             Quit
         }
         Set tPermitted = ..PermittedChangeFields(..#TYPEWEBAPPLICATION)
@@ -868,6 +895,48 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
     } Catch ex {
         Set pProhibits = 0
         Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether a write of entity type <var>pType</var> carrying payload <var>pPayload</var> weakens
+/// or repoints the target <var>pTarget</var> holds now, in <var>pEffect</var>: for a web
+/// application, the first of <parameter>EFFECTUNAUTHENTICATED</parameter> (it adds the
+/// unauthenticated bit, <method>AddsUnauthenticated</method>), <parameter>EFFECTNORESOURCE</parameter>
+/// (it drops a resource the target holds, <method>ClearsResource</method>) and
+/// <parameter>EFFECTREPOINTED</parameter> (it changes a field of <parameter>CODEFIELDS</parameter>);
+/// <code>""</code> for none and for every other type.</p>
+/// <p><b>It is the one answer to "does this write weaken the application?"</b>, as
+/// <method>GrantsPrivilegeByEffect</method> is for privilege. The mint marks the proposal
+/// destructive on it and names the effect as the proposal's consequence. It refuses nothing: on
+/// OcuPilot's own applications the same three changes are <method>WebApplication</method>'s
+/// refusals. Only fields the payload carries are compared, so a bodyless write's narrowed payload
+/// answers <code>""</code>.</p>
+ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pEffect As %String) As %Status
+{
+    Set pEffect = ""
+    Set tSC = $$$OK
+    Try {
+        If pType '= ..#TYPEWEBAPPLICATION Quit
+        If '$IsObject(pPayload) Quit
+        Set tTarget = $Select($IsObject(pTarget): pTarget, 1: {})
+        If ..AddsUnauthenticated(pPayload, tTarget) {
+            Set pEffect = ..#EFFECTUNAUTHENTICATED
+            Quit
+        }
+        If ..ClearsResource(pPayload, tTarget) {
+            Set pEffect = ..#EFFECTNORESOURCE
+            Quit
+        }
+        Set tCodeFields = $ListFromString(..#CODEFIELDS)
+        For tI = 1:1:$ListLength(tCodeFields) {
+            Set tField = $List(tCodeFields, tI)
+            If pPayload.%GetTypeOf(tField) = "unassigned" Continue
+            If ..Rendered(pPayload, tField) '= ..Rendered(tTarget, tField) Set pEffect = ..#EFFECTREPOINTED Quit
+        }
+    } Catch ex {
+        Set pEffect = ""
         Set tSC = ex.AsStatus()
     }
     Quit tSC
@@ -2304,27 +2373,39 @@ ClassMethod Rendered(pObject As %DynamicObject, pName As %String) As %String [ P
     Quit ##class(OcuPilot.Kernel.Proposal.Mint).Display(pObject.%Get(pName), pObject.%GetTypeOf(pName))
 }
 
-/// <p>Whether a payload's rendered <code>AutheEnabled</code> is the target's own mask with the
-/// unauthenticated bit cleared and nothing else changed, which is the one authentication change
-/// this release permits.</p>
-/// <p>The property is not a set of ways in: the same mask carries strength modifiers
-/// (<file>irissys/%sySecurityMacros.inc</file>:15-40 -- AutheTwoFactorPW 2097152, AutheTwoFactorSMS
-/// 1048576, AutheLDAPCache 4096, AutheKBEncryption 256, AutheKBIntegrity 512,
-/// AutheAlwaysTryDelegated 16777216, AutheMutualTLS 33554432), so a subset test reads clearing
-/// two-factor as a narrowing and requiring it as a widening -- both backwards. Permitting exactly
-/// one transition instead is a rule a later build's new bit cannot outgrow, whether that bit is a
-/// mechanism or a modifier: adding any bit, clearing any other bit and clearing the mask entirely
-/// are all refused, and so is a value either side cannot read as a non-negative whole number,
-/// because the set does not clear a payload it cannot judge. A target mask of 0 therefore permits
-/// no change at all -- <code>0 -&gt; 32</code> is refused with the rest.</p>
-ClassMethod ClearsUnauthenticatedOnly(pPayload As %String, pTarget As %String) As %Boolean [ Private ]
+/// <p>Whether <var>pPayload</var>'s <code>AutheEnabled</code> carries
+/// <parameter>UNAUTHENTICATEDBIT</parameter> and <var>pTarget</var>'s does not. A payload value
+/// that is not a non-negative whole number counts as adding the bit, because the set does not clear
+/// a mask it cannot judge; a payload that carries no <code>AutheEnabled</code> adds nothing. A
+/// target value that is not a whole number reads as not holding the bit.</p>
+ClassMethod AddsUnauthenticated(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean
 {
-    If '$IsValidNum(pPayload) || '$IsValidNum(pTarget) Quit 0
-    If (+pPayload '= (pPayload \ 1)) || (+pTarget '= (pTarget \ 1)) Quit 0
-    If (+pPayload < 0) || (+pTarget < 0) Quit 0
-    Set tTarget = pTarget \ 1
-    Set tPermitted = tTarget - (((tTarget \ ..#UNAUTHENTICATEDBIT) # 2) * ..#UNAUTHENTICATEDBIT)
-    Quit (pPayload \ 1) = tPermitted
+    If '$IsObject(pPayload) Quit 0
+    If pPayload.%GetTypeOf("AutheEnabled") = "unassigned" Quit 0
+    Set tPayload = ..Rendered(pPayload, "AutheEnabled")
+    If '..IsMaskValue(tPayload) Quit 1
+    If '(((tPayload \ 1) \ ..#UNAUTHENTICATEDBIT) # 2) Quit 0
+    Set tTarget = ..Rendered(pTarget, "AutheEnabled")
+    If '..IsMaskValue(tTarget) Quit 1
+    Quit '(((tTarget \ 1) \ ..#UNAUTHENTICATEDBIT) # 2)
+}
+
+/// <p>Whether <var>pValue</var> reads as a non-negative whole number.</p>
+ClassMethod IsMaskValue(pValue As %String) As %Boolean [ Private ]
+{
+    If '$IsValidNum(pValue) Quit 0
+    If +pValue '= (pValue \ 1) Quit 0
+    Quit (+pValue >= 0)
+}
+
+/// <p>Whether <var>pPayload</var> carries an empty <code>Resource</code> while <var>pTarget</var>
+/// holds one. A payload that carries no <code>Resource</code> clears nothing.</p>
+ClassMethod ClearsResource(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean
+{
+    If '$IsObject(pPayload) Quit 0
+    If pPayload.%GetTypeOf("Resource") = "unassigned" Quit 0
+    If ..Rendered(pPayload, "Resource") '= "" Quit 0
+    Quit (..Rendered(pTarget, "Resource") '= "")
 }
 
 /// <p><var>pText</var> parsed as a JSON object, or <code>{}</code> when it is empty or

@@ -35,6 +35,8 @@ const PROHIBITED = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Pro
 
 const STRINGS_SOURCE = join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'strings.ts');
 
+const ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'Error.cls');
+
 /** The literals `OCUPILOT_APPLICATION_PATHS` holds, in declaration order. */
 function clientPaths() {
   const source = readFileSync(SOURCE, 'utf8');
@@ -145,6 +147,41 @@ test('AD-53, AD-39, DW-1499: each process refusal is one sentence on both surfac
   for (const code of ['OCUPILOTPROCESS', 'SYSTEMPROCESS']) {
     assert.ok(source.includes(`If pCode = ..#${code} Quit ..#${code}REASON`), `ReasonFor answers ${code} with its parameter`);
   }
+});
+
+test('AD-53, AD-39, DW-1502: the privilege-grant refusal and the credential-type refusal are each one sentence on both surfaces', () => {
+  // Mutation (Rule 19): change one word of PRIVILEGEGRANTREASON, or of Error.cls's
+  // REASONAGENTCREDTYPEUNAVAILABLE -> this goes red naming both.
+  const prohibited = readFileSync(PROHIBITED, 'utf8');
+  const grant = /Parameter PRIVILEGEGRANTREASON = "([^"]+)";/.exec(prohibited);
+  assert.notEqual(grant, null, 'Prohibited.cls declares PRIVILEGEGRANTREASON');
+  assert.equal(grant[1], stringValue('webAppPrivilegeGrantRefusal'), 'PRIVILEGEGRANTREASON and webAppPrivilegeGrantRefusal are one published sentence');
+  assert.ok(!grant[1].toLowerCase().includes('the agent'), `it names no caller: ${grant[1]}`);
+  assert.ok(prohibited.includes('If pCode = ..#PRIVILEGEGRANT Quit ..#PRIVILEGEGRANTREASON'), 'ReasonFor answers PRIVILEGEGRANT with its parameter');
+  const credType = /Parameter REASONAGENTCREDTYPEUNAVAILABLE = "([^"]+)";/.exec(readFileSync(ERROR, 'utf8'));
+  assert.notEqual(credType, null, 'Error.cls declares REASONAGENTCREDTYPEUNAVAILABLE');
+  assert.equal(credType[1], stringValue('agentCredTypeUnavailable'), 'REASONAGENTCREDTYPEUNAVAILABLE and agentCredTypeUnavailable are one published sentence');
+});
+
+test("AD-53: ocupilot-application-roles answers the privilege-grant sentence on OcuPilot's own applications alone", async () => {
+  const { selfProtectionReason, OCUPILOT_APPLICATION_ROLES_RULE, OCUPILOT_APPLICATION_PATHS } = await import('../src/app/core/self-protection.ts');
+  const { STRINGS } = await import('../src/app/core/strings.ts');
+  for (const path of OCUPILOT_APPLICATION_PATHS) {
+    assert.equal(selfProtectionReason(OCUPILOT_APPLICATION_ROLES_RULE, path), STRINGS.webAppPrivilegeGrantRefusal, `${path} is refused`);
+    assert.equal(selfProtectionReason(OCUPILOT_APPLICATION_ROLES_RULE, `${path.toUpperCase()}/`), STRINGS.webAppPrivilegeGrantRefusal, `${path} is refused in any spelling`);
+  }
+  assert.equal(selfProtectionReason(OCUPILOT_APPLICATION_ROLES_RULE, '/csp/user'), '', 'and any other application is not');
+});
+
+test("AD-10: the editor's repointed fields are the prohibited set's CODEFIELDS", () => {
+  // Mutation (Rule 19): drop 'SuperClass' from the store's CODE_FIELDS -> this goes red.
+  const server = /Parameter CODEFIELDS = "([^"]+)";/.exec(readFileSync(PROHIBITED, 'utf8'));
+  assert.notEqual(server, null, 'Prohibited.cls declares CODEFIELDS');
+  const store = readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'areas', 'web-applications', 'web-app-editor.store.ts'), 'utf8');
+  const client = /export const CODE_FIELDS: readonly string\[\] = \[([^\]]*)\]/.exec(store);
+  assert.notEqual(client, null, 'web-app-editor.store.ts declares CODE_FIELDS');
+  const clientFields = [...client[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+  assert.deepEqual([...clientFields].sort(), server[1].split(',').sort(), 'the editor states the repointed line for exactly the fields the kernel marks');
 });
 
 test("AD-53: the client's service accounts are the prohibited set's own", async () => {

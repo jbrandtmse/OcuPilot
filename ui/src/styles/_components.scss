@@ -5538,3 +5538,33 @@ body {
 .ocu-rail-item-gated:hover .ocu-rail-glyph {
   color: color-mix(in srgb, var(--ocu-on-shell) 45%, transparent);
 }
+
+// --- Form-page hosts (Story 9.2, DW-1596) -----------------------------------------------------
+//
+// A form page's own host element -- the component `ngComponentOutlet` renders inside
+// `div.ocu-screen-outlet` -- is the one element between that flex column and `.ocu-form-page`.
+// Unstyled it is `display: inline`, so the chain of definite heights ended at the outlet, the form
+// grew to its content, and the sticky bar sat at the bottom of the content rather than of the
+// content area. Every such host becomes a column flex item that fills the outlet, so the page
+// scrolls inside itself and the bar stays at the bottom of the content area. Matched by what it
+// holds rather than listed, so every later editor's host is covered without an edit here.
+app-screen-outlet :has(> .ocu-form-page) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+// The page is now the scroll container its sticky bar sits in, so a control scrolled into view --
+// by focus, or by a pointer reaching it -- stops above the bar rather than behind it.
+app-screen-outlet .ocu-form-page {
+  scroll-padding-bottom: calc(var(--ocu-form-bar-height) + var(--ocu-space-4));
+}
+
+// The web application editor's settings no edit changes: its name, type, Python directory and
+// physical path, under one caption (AD-21).
+.ocu-form-fixed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-4);
+}

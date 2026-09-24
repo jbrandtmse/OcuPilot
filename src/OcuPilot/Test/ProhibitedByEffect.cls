@@ -114,8 +114,9 @@ Method Confirm(pKey As %String, Output pHttp As %Integer, Output pCode As %Strin
 }
 
 /// <p>DW-1345 and DW-1346: a changed field the release has not reviewed is refused whatever it is
-/// called -- every member of the two families the review named, two properties this build's own
-/// endpoint does not carry at all, and one whose value is an array.</p>
+/// called -- every member of the two families the review named that is outside the editor's
+/// twenty-five settings, and two properties this build's own endpoint does not carry at all. An
+/// array-valued setting the release has reviewed, <code>CorsAllowlist</code>, is permitted.</p>
 /// <p>Mutation: make <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedChangeFields</method>
 /// answer the whole admitted field list, or delete the reviewed-few loop from
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.WebApplication</method> -- this goes red on every
@@ -125,26 +126,17 @@ Method TestAFieldTheReleaseHasNotReviewedIsRefused()
     ; What answers at the URL, then how a caller gets in, then two invented properties with each of
     ; those effects. The last two are the load-bearing legs: they are refused by the rule's shape
     ; rather than by having been listed anywhere.
-    Set tFields = $ListBuild($ListBuild("DispatchClass", "string", "Probe.Dispatch", "Probe.Other"))
-    Set tFields = tFields _ $ListBuild($ListBuild("EventClass", "string", "", "Probe.Event"))
-    Set tFields = tFields _ $ListBuild($ListBuild("SuperClass", "string", "", "Probe.Super"))
-    Set tFields = tFields _ $ListBuild($ListBuild("Package", "string", "", "Probe"))
+    Set tFields = $ListBuild($ListBuild("EventClass", "string", "", "Probe.Event"))
     Set tFields = tFields _ $ListBuild($ListBuild("Path", "string", "/usr/probe/", "/usr/other/"))
-    Set tFields = tFields _ $ListBuild($ListBuild("NameSpace", "string", "HSCUSTOM", "USER"))
+    Set tFields = tFields _ $ListBuild($ListBuild("WSGIAppLocation", "string", "/usr/probe/", "/usr/other/"))
     Set tFields = tFields _ $ListBuild($ListBuild("LoginPage", "string", "", "/csp/probe/login.csp"))
     Set tFields = tFields _ $ListBuild($ListBuild("ErrorPage", "string", "", "/csp/probe/error.csp"))
     Set tFields = tFields _ $ListBuild($ListBuild("ChangePasswordPage", "string", "", "/csp/probe/pw.csp"))
     Set tFields = tFields _ $ListBuild($ListBuild("PermittedClasses", "string", "", "Probe.*"))
-    Set tFields = tFields _ $ListBuild($ListBuild("ServeFiles", "string", 0, 1))
-    Set tFields = tFields _ $ListBuild($ListBuild("WSGIAppName", "string", "", "probe"))
     Set tFields = tFields _ $ListBuild($ListBuild("TwoFactorEnabled", "boolean", 1, 0))
     Set tFields = tFields _ $ListBuild($ListBuild("CSRFToken", "boolean", 1, 0))
-    Set tFields = tFields _ $ListBuild($ListBuild("JWTAuthEnabled", "boolean", 0, 1))
     Set tFields = tFields _ $ListBuild($ListBuild("UseCookies", "string", 2, 0))
     Set tFields = tFields _ $ListBuild($ListBuild("SessionScope", "string", 0, 1))
-    Set tFields = tFields _ $ListBuild($ListBuild("CorsCredentialsAllowed", "boolean", 0, 1))
-    Set tFields = tFields _ $ListBuild($ListBuild("GroupById", "string", "", "%ISCMgtPortal"))
-    Set tFields = tFields _ $ListBuild($ListBuild("Timeout", "string", 900, 86400))
     Set tFields = tFields _ $ListBuild($ListBuild("HandlerClass", "string", "Probe.Handler", "Probe.OtherHandler"))
     Set tFields = tFields _ $ListBuild($ListBuild("PasswordlessEnabled", "boolean", 0, 1))
 
@@ -160,13 +152,7 @@ Method TestAFieldTheReleaseHasNotReviewedIsRefused()
         Set tSC = ..Ask(..Target(..#TARGET, .tBefore), ..Target(..#TARGET, .tAfter), tName, .tProhibits, .tCode)
         Do $$$AssertStatusOK(tSC, "the set answers for " _ tName)
         Do $$$AssertEquals(tProhibits, 1, "changing " _ tName _ " is refused")
-        ; DispatchClass and MatchRoles carry a sentence of their own; everything else here is
-        ; refused for not being one of the few the release reviewed.
-        If tName '= "DispatchClass" {
-            Do $$$AssertEquals(tCode, tExpected, "as a setting the release has not reviewed")
-        } Else {
-            Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "DISPATCH"), "with the dispatch code")
-        }
+        Do $$$AssertEquals(tCode, tExpected, "as a setting the release has not reviewed")
         Do $$$AssertEquals($ListFind(tSettable, tName), 0, "and the shipped tool admits no " _ tName)
     }
 
@@ -180,9 +166,9 @@ Method TestAFieldTheReleaseHasNotReviewedIsRefused()
 
     ; And it reaches a caller as the ordinary 403 the other codes do.
     Kill tBefore, tAfter
-    Set tBefore("NameSpace") = $ListBuild("HSCUSTOM", "string")
-    Set tAfter("NameSpace") = $ListBuild("USER", "string")
-    Set tKey = ..Seed(..Target(..#TARGET, .tAfter), "NameSpace")
+    Set tBefore("EventClass") = $ListBuild("", "string")
+    Set tAfter("EventClass") = $ListBuild("Probe.Event", "string")
+    Set tKey = ..Seed(..Target(..#TARGET, .tAfter), "EventClass")
     If tKey = "" Quit
     Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Target(..#TARGET, .tBefore))
     Set tSC = ..Confirm(tKey, .tHttp, .tCode)
@@ -192,50 +178,50 @@ Method TestAFieldTheReleaseHasNotReviewedIsRefused()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "and nothing reached the port")
     Do $$$AssertNotEquals(##class(OcuPilot.Kernel.Proposal.Write).ReasonFor(tCode), "", "carrying a written sentence")
 
-    ; An array-valued property, which is the shape the rendered comparison handles least obviously
-    ; and what MatchRoles and CorsAllowlist are on the real endpoint.
+    ; An array-valued setting the release has reviewed, which is the shape the rendered comparison
+    ; handles least obviously.
     Set tLive = ##class(%DynamicAbstractObject).%FromJSON(..Target())
     Do tLive.%Set("CorsAllowlist", ["https://one.example"])
     Set tProposed = ##class(%DynamicAbstractObject).%FromJSON(..Target())
     Do tProposed.%Set("CorsAllowlist", ["https://one.example", "https://two.example"])
     Set tSC = ..Ask(tLive.%ToJSON(), tProposed.%ToJSON(), "CorsAllowlist", .tProhibits, .tCode)
     Do $$$AssertStatusOK(tSC, "the set answers an array-valued property")
-    Do $$$AssertEquals(tProhibits, 1, "extending CorsAllowlist is refused")
-    Do $$$AssertEquals(tCode, tExpected, "as a setting the release has not reviewed")
+    Do $$$AssertEquals(tProhibits, 0, "extending CorsAllowlist is permitted, code was '" _ tCode _ "'")
 }
 
-/// <p>DW-1346: <code>AutheEnabled</code> carries strength modifiers as well as mechanisms, so the
-/// only change to it the release permits is clearing the unauthenticated bit and nothing else --
-/// adding a bit, clearing another bit, clearing the mask, and a value that is not a non-negative
-/// whole number are all refused, whichever bit it is and whichever direction a subset test would
-/// have called it.</p>
-/// <p>Mutation: make <method>OcuPilot.Kernel.Proposal.Prohibited.ClearsUnauthenticatedOnly</method>
-/// answer the subset reading it replaced -- permitted iff the payload sets no bit the target does
-/// not -- and two legs go red, because that reading permits both turning two-factor password
-/// authentication off and leaving no way in at all.</p>
-Method TestOnlyClearingUnauthenticatedAccessIsProposable()
+/// <p>AD-10 as amended 2026-09-24: on an application that is not OcuPilot's own no change to
+/// <code>AutheEnabled</code> is refused, and exactly one is marked
+/// (<method>OcuPilot.Kernel.Proposal.Prohibited.WeakensByEffect</method>): adding the
+/// unauthenticated bit, which a payload value the set cannot read as a whole number counts as.
+/// Swapping, clearing or strengthening a mechanism is neither refused nor marked.</p>
+/// <p>Mutation: make <method>OcuPilot.Kernel.Proposal.Prohibited.AddsUnauthenticated</method> ignore
+/// the target's own bit -- the leg adding password authentication to an application that is
+/// already unauthenticated goes red.</p>
+Method TestOnlyAddingUnauthenticatedAccessIsMarked()
 {
-    Set tExpected = $Parameter(..#SHIPPEDSET, "UNAUTHENTICATED")
-    ; before, after, whether it is refused, and what it is.
+    Set tMarked = $Parameter(..#SHIPPEDSET, "EFFECTUNAUTHENTICATED")
+    ; before, after, whether it is marked, and what it is.
     Set tCases = $ListBuild($ListBuild(32, 96, 1, "adding unauthenticated access to a password application"))
-    Set tCases = tCases _ $ListBuild($ListBuild(32, 8192, 1, "swapping password for delegated authentication"))
-    Set tCases = tCases _ $ListBuild($ListBuild(32, 16384, 1, "swapping password for a login token"))
-    Set tCases = tCases _ $ListBuild($ListBuild(32, 1056, 1, "adding a bit this build does not define"))
-    Set tCases = tCases _ $ListBuild($ListBuild(32, 0, 1, "leaving no way in at all"))
-    Set tCases = tCases _ $ListBuild($ListBuild(64, 96, 1, "adding password authentication to an unauthenticated application"))
-    Set tCases = tCases _ $ListBuild($ListBuild(2097184, 32, 1, "turning two-factor password authentication off"))
-    Set tCases = tCases _ $ListBuild($ListBuild(32, 2097184, 1, "turning two-factor password authentication on"))
+    Set tCases = tCases _ $ListBuild($ListBuild(32, 8192, 0, "swapping password for delegated authentication"))
+    Set tCases = tCases _ $ListBuild($ListBuild(32, 16384, 0, "swapping password for a login token"))
+    Set tCases = tCases _ $ListBuild($ListBuild(32, 1056, 0, "adding a bit this build does not define"))
+    Set tCases = tCases _ $ListBuild($ListBuild(32, 0, 0, "leaving no way in at all"))
+    Set tCases = tCases _ $ListBuild($ListBuild(64, 96, 0, "adding password authentication to an unauthenticated application"))
+    Set tCases = tCases _ $ListBuild($ListBuild(2097184, 32, 0, "turning two-factor password authentication off"))
+    Set tCases = tCases _ $ListBuild($ListBuild(32, 2097184, 0, "turning two-factor password authentication on"))
     Set tCases = tCases _ $ListBuild($ListBuild(32, 32.5, 1, "a value with a fractional part"))
     Set tCases = tCases _ $ListBuild($ListBuild(32, "public", 1, "a payload value that is not a number"))
-    Set tCases = tCases _ $ListBuild($ListBuild("public", 32, 1, "a target value that is not a number"))
+    Set tCases = tCases _ $ListBuild($ListBuild("public", 32, 0, "a target value that is not a number"))
     Set tCases = tCases _ $ListBuild($ListBuild(96, 32, 0, "requiring a password where none was required"))
     Set tCases = tCases _ $ListBuild($ListBuild(2097248, 2097184, 0, "requiring a password while keeping two-factor"))
     For tI = 1:1:$ListLength(tCases) {
         Set tCase = $List(tCases, tI)
         Set tSC = ..Ask(..Masked($List(tCase, 1)), ..Masked($List(tCase, 2)), "AutheEnabled", .tProhibits, .tCode)
         Do $$$AssertStatusOK(tSC, "the set answers " _ $List(tCase, 4))
-        Do $$$AssertEquals(tProhibits, $List(tCase, 3), $List(tCase, 4) _ ": code was '" _ tCode _ "'")
-        If $List(tCase, 3) Do $$$AssertEquals(tCode, tExpected, "with the authentication code")
+        Do $$$AssertEquals(tProhibits, 0, $List(tCase, 4) _ " is not refused: code was '" _ tCode _ "'")
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).WeakensByEffect("web-application", ##class(%DynamicAbstractObject).%FromJSON(..Masked($List(tCase, 2))), ##class(%DynamicAbstractObject).%FromJSON(..Masked($List(tCase, 1))), .tEffect)
+        Do $$$AssertStatusOK(tSC, "the classifier answers " _ $List(tCase, 4))
+        Do $$$AssertEquals(tEffect, $Select($List(tCase, 3): tMarked, 1: ""), $List(tCase, 4) _ " is " _ $Select($List(tCase, 3): "", 1: "not ") _ "marked")
     }
 }
 
@@ -248,6 +234,32 @@ Method Masked(pValue As %RawString) As %String
     Kill tExtra
     Set tExtra("AutheEnabled") = $ListBuild(pValue, $Select($IsValidNum(pValue): "number", 1: "string"))
     Quit ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Dispatch", "", 1, "before", .tExtra)
+}
+
+/// <p>AD-10 as amended 2026-09-24: a change to any of the six fields that decide which code answers
+/// at an application's address is permitted and marked <code>WEBAPP.REPOINTED</code> on an
+/// application that is not OcuPilot's own, and refused <code>PROHIBITED.DISPATCH</code> on OcuPilot's
+/// own. The six are listed here rather than read from the set, so a field the set drops reddens.</p>
+/// <p>Mutation (Rule 19): cut <parameter>OcuPilot.Kernel.Proposal.Prohibited.CODEFIELDS</parameter> to
+/// <code>DispatchClass,NameSpace</code> -- the other four fields' legs go red.</p>
+Method TestEveryCodeFieldIsMarkedElsewhereAndRefusedOnOcuPilotsOwn()
+{
+    Set tOwn = "/api/ocupilot"
+    Set tOwnFresh = ##class(OcuPilot.Test.ProhibitedFixture).App(tOwn, 32, "", "OcuPilot.Api.Router", "", 1)
+    For tField = "DispatchClass", "NameSpace", "WSGIAppName", "WSGICallable", "Package", "SuperClass" {
+        Kill tChanged
+        Set tChanged(tField) = $ListBuild("OcuPilotProbeChanged", "string")
+        Set tPayload = ..Target(..#TARGET, .tChanged)
+        Set tSC = ..Ask(..Target(), tPayload, tField, .tProhibits, .tCode)
+        Do $$$AssertStatusOK(tSC, tField _ ": the set answers on another application")
+        Do $$$AssertEquals(tProhibits, 0, tField _ ": permitted there, code was '" _ tCode _ "'")
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).WeakensByEffect("web-application", ##class(%DynamicAbstractObject).%FromJSON(tPayload), ##class(%DynamicAbstractObject).%FromJSON(..Target()), .tEffect)
+        Do $$$AssertStatusOK(tSC, tField _ ": the classifier answers")
+        Do $$$AssertEquals(tEffect, $Parameter(..#SHIPPEDSET, "EFFECTREPOINTED"), tField _ ": and marks it repointed")
+        Set tSC = ..Ask(tOwnFresh, ##class(OcuPilot.Test.ProhibitedFixture).App(tOwn, 32, "", "OcuPilot.Api.Router", "", 1, "before", .tChanged), tField, .tProhibits, .tCode, tOwn)
+        Do $$$AssertStatusOK(tSC, tField _ ": the set answers on OcuPilot's own")
+        Do $$$AssertEquals(tProhibits _ " " _ tCode, "1 " _ $Parameter(..#SHIPPEDSET, "DISPATCH"), tField _ ": refused there with the dispatch code")
+    }
 }
 
 /// <p>DW-1347: a web application OcuPilot itself is served by is not the agent's to change at all
@@ -313,24 +325,24 @@ Method TestAChangeToOcuPilotsOwnApplicationIsRefused()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "and nothing reached the port")
 }
 
-/// <p>Four changes to the application at <var>pPath</var>, one of them a field the set would
-/// otherwise permit, each refused <var>pExpected</var>.</p>
+/// <p>Five changes to the application at <var>pPath</var>, each refused: a disable, a description and
+/// a path change <var>pExpected</var>, a cleared resource <code>AUTHORIZATION</code> and a changed
+/// namespace <code>DISPATCH</code>, the codes AD-10 gives those effects on OcuPilot's own
+/// applications.</p>
 Method OwnPath(pPath As %String, pExpected As %String)
 {
     Set tFresh = ##class(OcuPilot.Test.ProhibitedFixture).App(pPath, 32, "", "OcuPilot.Api.Router", "", 1)
     Set tCases = $ListBuild($ListBuild("Enabled", ##class(OcuPilot.Test.ProhibitedFixture).App(pPath, 32, "", "OcuPilot.Api.Router", "", 0)))
     Set tCases = tCases _ $ListBuild($ListBuild("Description", ##class(OcuPilot.Test.ProhibitedFixture).App(pPath, 32, "", "OcuPilot.Api.Router", "", 1, "after")))
-    ; AC5 (Story 5.8): clearing the resource of a serving path is refused for the same reason
-    ; disabling it is, and under the same code -- the serving-path predicate runs before the
-    ; resource one, so the refusal names what is actually wrong with the proposal. It needs its own
-    ; fresh read, because the one above already carries no resource and clearing it would be no
-    ; change at all.
+    ; Clearing the resource of a serving path is refused under its own code. It needs its own fresh
+    ; read, because the one above already carries no resource and clearing it would be no change at
+    ; all.
     Set tResourced = ##class(OcuPilot.Test.ProhibitedFixture).App(pPath, 32, "%Development", "OcuPilot.Api.Router", "", 1)
     Set tCleared = ##class(OcuPilot.Test.ProhibitedFixture).App(pPath, 32, "", "OcuPilot.Api.Router", "", 1)
     Set tSC = ..Ask(tResourced, tCleared, "Resource", .tProhibits, .tCode, pPath)
     Do $$$AssertStatusOK(tSC, "the set answers Resource on " _ pPath)
     Do $$$AssertEquals(tProhibits, 1, pPath _ " is one of OcuPilot's own, so clearing its resource is not proposable")
-    Do $$$AssertEquals(tCode, pExpected, "with the serving-path code, not the resource one")
+    Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "AUTHORIZATION"), "with the authorization code")
 
     Kill tNamespace, tPath
     Set tNamespace("NameSpace") = $ListBuild("USER", "string")
@@ -342,7 +354,8 @@ Method OwnPath(pPath As %String, pExpected As %String)
         Set tSC = ..Ask(tFresh, $List(tCase, 2), $List(tCase, 1), .tProhibits, .tCode, pPath)
         Do $$$AssertStatusOK(tSC, "the set answers " _ $List(tCase, 1) _ " on " _ pPath)
         Do $$$AssertEquals(tProhibits, 1, pPath _ " is one of OcuPilot's own, so its " _ $List(tCase, 1) _ " is not proposable")
-        Do $$$AssertEquals(tCode, pExpected, "with the serving-path code")
+        Set tWanted = $Select($List(tCase, 1) = "NameSpace": $Parameter(..#SHIPPEDSET, "DISPATCH"), 1: pExpected)
+        Do $$$AssertEquals(tCode, tWanted, "with the code for that effect")
     }
 }
 
@@ -367,14 +380,17 @@ Method OwnSpelling(pPath As %String, pExpected As %String)
 /// and compare every member of the payload against the target -- this goes red.</p>
 Method TestAProposalIsJudgedOnWhatItChanges()
 {
-    ; The mint read a target with no resource and proposed a description; an operator has given it
-    ; %Development since. The stored payload still carries "", which would drop it -- and that is
-    ; the fingerprint gate's refusal, not the prohibited set's.
-    Set tMinted = ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "", "Probe.Dispatch", "", 1, "after")
-    Set tLive = ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Dispatch", "", 1)
+    ; The mint read a target with no event class and proposed a description; an operator has set
+    ; one since. The stored payload still carries "", which would clear it -- and that is the
+    ; fingerprint gate's refusal, not the prohibited set's.
+    Kill tWas, tNow
+    Set tWas("EventClass") = $ListBuild("", "string")
+    Set tNow("EventClass") = $ListBuild("Probe.Event", "string")
+    Set tMinted = ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Dispatch", "", 1, "after", .tWas)
+    Set tLive = ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Dispatch", "", 1, "before", .tNow)
     Set tSC = ..Ask(tLive, tMinted, "Description", .tProhibits, .tCode)
     Do $$$AssertStatusOK(tSC, "the set answers")
-    Do $$$AssertEquals(tProhibits, 0, "a resource the proposal never touched is not the agent's change, code was '" _ tCode _ "'")
+    Do $$$AssertEquals(tProhibits, 0, "an event class the proposal never touched is not the agent's change, code was '" _ tCode _ "'")
 
     Set tKey = ..Seed(tMinted, "Description")
     If tKey = "" Quit
@@ -386,12 +402,12 @@ Method TestAProposalIsJudgedOnWhatItChanges()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "and nothing reached the port")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "ClosedReason"), "target-changed", "and the row closes with the reason the card renders, rather than staying live")
 
-    ; The same payload against the same live target, minted from a diff that does name the resource:
-    ; now it is the agent's change, and the set refuses it.
-    Set tSC = ..Ask(tLive, tMinted, "Description,Resource", .tProhibits, .tCode)
+    ; The same payload against the same live target, minted from a diff that does name the event
+    ; class: now it is the agent's change, and the set refuses it.
+    Set tSC = ..Ask(tLive, tMinted, "Description,EventClass", .tProhibits, .tCode)
     Do $$$AssertStatusOK(tSC, "the set answers the proposal that did ask for it")
     Do $$$AssertEquals(tProhibits, 1, "which is refused")
-    Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "AUTHORIZATION"), "as a dropped resource")
+    Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "UNCOVEREDFIELD"), "as a setting the release has not reviewed")
 
     ; A field the diff names whose value the instance already holds changes nothing.
     Set tSC = ..Ask(tMinted, tMinted, "Resource,DispatchClass", .tProhibits, .tCode)
@@ -467,11 +483,12 @@ Method TestAMintChecksEachStreamWriteOrStoresNoRow()
 /// sent. A row whose stored payload weakens the live target while its diff names nothing -- or
 /// cannot be read at all -- is refused 409 <code>PROPOSAL.TARGETCHANGED</code> and closed, so no
 /// route reaches the port with a payload its own fingerprint does not cover.</p>
-/// <p><b>One case is refused earlier, and by a stronger rule</b> (AD-53, Story 7.1): a row against
-/// one of OcuPilot's own applications is refused 403 <code>PROHIBITED.SERVINGPATH</code> whatever
-/// its diff says, because that predicate is over the target rather than over the payload's shape.
-/// It is kept here as the case that says so: the set is silent on a row that proposes nothing
-/// <b>except</b> on the applications AD-38 protects.</p>
+/// <p><b>One case is refused earlier, and by a stronger rule</b> (AD-10, AD-53): a row against one
+/// of OcuPilot's own applications is refused 403 whatever its diff says, because those predicates
+/// are over the target and the payload's effect on it rather than over the diff -- here
+/// <code>PROHIBITED.DISPATCH</code>, for a repointed namespace. It is kept here as the case that
+/// says so: the set is silent on a row that proposes nothing <b>except</b> on the applications
+/// AD-38 protects.</p>
 /// <p>Mutation: drop the stored-payload comparison from
 /// <method>OcuPilot.Kernel.Proposal.Confirm.FingerprintMatches</method> -- the three 409 legs go
 /// red and each of those confirms succeeds and writes.</p>
@@ -486,10 +503,9 @@ Method TestARowWhosePayloadItsFingerprintDoesNotCoverIsRefused()
     ; the live target, the payload the row stores against it, the row's diff, its path, what it is,
     ; the HTTP status it earns and the code with it.
     Set tChanged = ##class(OcuPilot.Kernel.Proposal.Write).#TARGETCHANGED
-    Set tServingCode = $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "SERVINGPATH")
     Set tCases = $ListBuild($ListBuild(tLive, ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Other", "", 1), "[]", ..#TARGET, "a repointed dispatch class behind an empty diff", 409, tChanged))
     Set tCases = tCases _ $ListBuild($ListBuild(tLive, ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 96, "%Development", "Probe.Dispatch", "", 1), "[]", ..#TARGET, "unauthenticated access behind an empty diff", 409, tChanged))
-    Set tCases = tCases _ $ListBuild($ListBuild(tServingLive, ##class(OcuPilot.Test.ProhibitedFixture).App(tServing, 32, "", "OcuPilot.Api.Router", "", 1, "before", .tElsewhere), "[]", tServing, "OcuPilot's own namespace repointed behind an empty diff", 403, tServingCode))
+    Set tCases = tCases _ $ListBuild($ListBuild(tServingLive, ##class(OcuPilot.Test.ProhibitedFixture).App(tServing, 32, "", "OcuPilot.Api.Router", "", 1, "before", .tElsewhere), "[]", tServing, "OcuPilot's own namespace repointed behind an empty diff", 403, $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "DISPATCH")))
     Set tCases = tCases _ $ListBuild($ListBuild(tLive, ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Other", "", 1), "not json", ..#TARGET, "a repointed dispatch class behind a diff nobody can read", 409, tChanged))
     For tI = 1:1:$ListLength(tCases) {
         Set tCase = $List(tCases, tI)

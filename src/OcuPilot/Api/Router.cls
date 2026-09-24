@@ -94,6 +94,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/agent/providers" Method="GET" Call="AgentProviders"/>
   <Route Url="/web-applications/form" Method="GET" Call="WebAppFormRules"/>
   <Route Url="/web-applications/name" Method="GET" Call="WebAppNameCheck"/>
+  <Route Url="/web-applications/:id" Method="PUT" Call="WebAppUpdate"/>
   <Route Url="/web-applications" Method="POST" Call="WebAppCreate"/>
   <Route Url="/users/form" Method="GET" Call="UserFormRules"/>
   <Route Url="/users/name" Method="GET" Call="UserNameCheck"/>
@@ -302,6 +303,15 @@ ClassMethod WebAppNameCheck() As %Status
 ClassMethod WebAppCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.WebApp.Create).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /web-applications/:id</code> (Story 9.2): the web
+/// application editor's Save, resolved through the one tool the agent's confirm uses (AD-55). The
+/// two sub-resources are <code>GET</code> routes, so a <code>PUT</code> to either path is this
+/// route's, for the application of that name.</p>
+ClassMethod WebAppUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.WebAppSave).HandleUpdate(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /users/form</code> (Story 8.2): delegates to

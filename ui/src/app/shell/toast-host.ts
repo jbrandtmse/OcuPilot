@@ -11,13 +11,15 @@ import { ToastStore, type ToastEntry, changeSentenceTemplate, formatChangeSenten
 
 /**
  * The off-screen change toast stack (AD-14): bottom right of the **content area**, `spacing.4`
- * above the status bar and offset from the right edge by the panel's live width, at most three,
- * newest on top.
+ * above the status bar -- or above the form bar while a form page is open -- and offset from the
+ * right edge by the panel's live width, at most three, newest on top.
  *
  * **The offset is the panel's own width, read live** (DW-1412). This host is a child of
  * `.ocu-shell`, which is `position: relative` and ends at the top of the status bar, so
  * `position: absolute` with `bottom: {spacing.4}` is the published bottom and
- * `right: calc(var(--ocu-panel-live-width) + {spacing.4})` is the published right edge. `app.ts`
+ * `right: calc(var(--ocu-panel-live-width) + {spacing.4})` is the published right edge. While a
+ * form page's bar is on screen, `_components.scss` lifts the stack above it, so no toast covers
+ * Save or Cancel. `app.ts`
  * publishes that custom property from the one getter that already binds the panel's width, because
  * the width is resolved in a framework-free store and a fixed token would not track a drag.
  *
@@ -44,12 +46,6 @@ import { ToastStore, type ToastEntry, changeSentenceTemplate, formatChangeSenten
  * **It sits below a modal and above the shell's menus** -- `z-index` 5, under the dialog's scrim
  * (6) and surface (7) and over the account, namespace and sort menus (3 and 4). A toast reporting
  * a change elsewhere must never float over the decision surface the user is on.
- *
- * **Its rules are component-scoped, and that is a deliberate deviation** from the Consistency
- * Conventions' "global stylesheets live under `ui/src/styles/`" row: `ui/src/styles/**` is a
- * contended path while Epic 15 is live on it, and every value DESIGN.md's toast recipe names is
- * already a token, so nothing here invents one. Folding these rules into `_components.scss` is a
- * one-commit move once Epic 15 merges.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.

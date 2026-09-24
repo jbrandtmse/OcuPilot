@@ -2393,4 +2393,10 @@ Parameter PREFERENCESCHOICE = "PREFERENCES.CHOICE";
 /// caller sent.</p>
 Parameter REASONPREFERENCESCHOICE = "That preference takes one of a fixed set of values.";
 
+/// <p>Machine code (AD-12, AD-39): the web application an edit or its form read names is not one
+/// this instance holds. Rendered on the <parameter>NOTFOUND</parameter> slug.</p>
+Parameter WEBAPPNAMEABSENT = "WEBAPP.NAME.ABSENT";
+
+Parameter REASONWEBAPPNAMEABSENT = "This instance has no web application with that name.";
+
 }

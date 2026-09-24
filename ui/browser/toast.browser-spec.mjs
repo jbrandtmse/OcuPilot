@@ -128,6 +128,16 @@ function removeTarget() {
   assert.equal(markerValue(output, 'TOASTDEL'), '1', `the probe application is removed: ${output}`);
 }
 
+/** Whether the probe application is enabled on the instance now. */
+function targetEnabled() {
+  const output = runIris([
+    `Set tNS=$Namespace ZN "%SYS" Kill tP Set sc=##class(Security.Applications).Get("${escapeOs(TARGET)}",.tP) ZN tNS Write "OCU-TOASTEN-START:"_$System.Status.IsOK(sc)_+$Get(tP("Enabled"))_":OCU-TOASTEN-END",!`,
+  ]);
+  const value = markerValue(output, 'TOASTEN');
+  assert.ok(value === '10' || value === '11', `the probe application reads: ${output}`);
+  return value === '11';
+}
+
 function dropProposals() {
   const output = runIris([
     `Set sc=##class(OcuPilot.Kernel.State.Propose).GuardedDeleteForUser("${escapeOs(config.username)}")`,
@@ -491,7 +501,9 @@ test('Integration AC: the toast\'s "Open in <screen>" action opens the real rout
   const tag = nextTag();
   setTag(tag);
   try {
-    await sendAndConfirm(page, tag, false, 'navigate-test', 'toolu_toast_3');
+    // A merge that changes nothing is refused before it mints (DW-1577), so this turn proposes the
+    // value the application does not hold now, whichever test ran before it.
+    await sendAndConfirm(page, tag, !targetEnabled(), 'navigate-test', 'toolu_toast_3');
     await page.waitForSelector('.ocu-toast-action', { timeout: config.navigationTimeoutMs });
     const linkText = await page.evaluate(() => document.querySelector('.ocu-toast-action').textContent.trim());
     assert.equal(linkText, 'Open in Web applications', `the published link names the built screen: ${linkText}`);

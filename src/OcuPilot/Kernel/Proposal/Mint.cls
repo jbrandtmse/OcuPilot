@@ -238,6 +238,12 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             ; Nothing is sent, so nothing is sent unchanged: the caption and the rows behind it are
             ; one population (OcuPilot.Kernel.Proposal.Disclosure), and that population is empty.
             If '$ClassMethod(pToolClass, "SendsBody") Set tUnchanged = 0
+            ; A write that sends a body and changes nothing is not a proposal: the arguments
+            ; restate what the target already holds.
+            If $ClassMethod(pToolClass, "SendsBody") && (tDiff.%Size() = 0) {
+                Set tSC = ..Refuse("nothing would change: every value named is the one the target already holds", .pHttpStatus, .pFault)
+                Quit
+            }
         }
 
         If tCreates {
@@ -302,8 +308,18 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             Set tSC = ..Internal("whether the proposal grants privilege could not be read: " _ $System.Status.GetErrorText(tGrantSC), .pHttpStatus, .pFault)
             Quit
         }
-        Set tValues("consequence") = ..ConsequenceOf(pToolClass, tPayload, tPrivileged)
-        Set tValues("destructive") = (..DestructiveTool(pToolName) || tPrivileged)
+        ; AD-10: a change that weakens or repoints a web application that is not OcuPilot's own is
+        ; permitted and confirmed as a delete is; the one classifier names the effect.
+        Set tEffect = ""
+        If 'tCreates {
+            Set tWeakSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).WeakensByEffect(tType, tPayload, tFresh, .tEffect)
+            If $$$ISERR(tWeakSC) {
+                Set tSC = ..Internal("whether the proposal weakens its target could not be read: " _ $System.Status.GetErrorText(tWeakSC), .pHttpStatus, .pFault)
+                Quit
+            }
+        }
+        Set tValues("consequence") = ..ConsequenceOf(pToolClass, tPayload, tPrivileged, tEffect)
+        Set tValues("destructive") = (..DestructiveTool(pToolName) || tPrivileged || (tEffect '= ""))
         ; FR-17's definition condition is answered at confirm against the definition that was in
         ; force here. Read, never written: the definition store is Epic 10's.
         Set tDefinitionSC = ..DefinitionInForce(.tDefinitionId, .tDefinitionVersion)
@@ -630,21 +646,24 @@ ClassMethod AppendComposedSecrets(pToolClass As %String, pDiff As %DynamicArray)
 }
 
 /// <p>The kernel-owned consequence code for the payload <var>pPayload</var>: the one
-/// <var>pToolClass</var> answers (<code>Consequence(payload, privileged)</code>), which is told
-/// whether the write grants privilege (<var>pPrivileged</var>) so it can name one combined effect
-/// rather than two; otherwise <parameter>CONSEQUENCEPRIVILEGED</parameter> for a privileged grant,
-/// and <code>""</code> for none. A class that compiles no <code>Consequence</code> answers none of
-/// its own; one that does is asked unguarded, so a declaration that cannot take both arguments
+/// <var>pToolClass</var> answers (<code>Consequence(payload, privileged, effect)</code>), which is
+/// told whether the write grants privilege (<var>pPrivileged</var>) and which weakening effect it
+/// has (<var>pEffect</var>, <method>OcuPilot.Kernel.Proposal.Prohibited.WeakensByEffect</method>) so
+/// it can name one combined effect rather than two; otherwise
+/// <parameter>CONSEQUENCEPRIVILEGED</parameter> for a privileged grant, then <var>pEffect</var>, and
+/// <code>""</code> for none. A class that compiles no <code>Consequence</code> answers none of its
+/// own; one that does is asked unguarded, so a declaration that cannot take all three arguments
 /// fails the mint rather than silently dropping its consequence. The card renders the code's
 /// sentence; it decides nothing about whether the write may happen.</p>
-ClassMethod ConsequenceOf(pToolClass As %String, pPayload As %DynamicObject, pPrivileged As %Boolean = 0) As %String [ Private ]
+ClassMethod ConsequenceOf(pToolClass As %String, pPayload As %DynamicObject, pPrivileged As %Boolean = 0, pEffect As %String = "") As %String [ Private ]
 {
     Set tCode = ""
     If (pToolClass '= "") && ##class(%Dictionary.CompiledMethod).%ExistsId(pToolClass _ "||Consequence") {
-        Set tCode = $ClassMethod(pToolClass, "Consequence", pPayload, ''pPrivileged)
+        Set tCode = $ClassMethod(pToolClass, "Consequence", pPayload, ''pPrivileged, pEffect)
     }
-    If (tCode = "") && pPrivileged Set tCode = ..#CONSEQUENCEPRIVILEGED
-    Quit tCode
+    If tCode '= "" Quit tCode
+    If pPrivileged Quit ..#CONSEQUENCEPRIVILEGED
+    Quit pEffect
 }
 
 /// <p>The agent definition in force and the version it carries, for the proposal's row.</p>

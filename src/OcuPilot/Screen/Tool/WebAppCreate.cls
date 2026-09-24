@@ -151,8 +151,9 @@ ClassMethod DerivedFields(pPayload As %DynamicObject)
 /// create granting privilege (<var>pPrivileged</var>,
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.GrantsPrivilegeByEffect</method>). A privileged
 /// grant alone answers <code>""</code>, and the mint names it with its own code. The mint stores the
-/// code on the proposal and the card states its sentence; the create is not refused.</p>
-ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean = 0) As %String
+/// code on the proposal and the card states its sentence; the create is not refused.
+/// <var>pEffect</var> is ignored: a create weakens nothing that exists.</p>
+ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean = 0, pEffect As %String = "") As %String
 {
     If '$IsObject(pPayload) Quit ""
     Set tType = pPayload.%GetTypeOf(..#AUTHEFIELD)

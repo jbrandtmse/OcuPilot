@@ -24,15 +24,14 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// <p>The reviewed entries, one per write tool.</p>
 /// <p><b><code>webapp.list.update</code></b> classifies every classifiable row of
 /// <code>WebApp.App</code> as <code>ordinary</code> except the <code>MatchRoles</code> subtree,
-/// which is left unnamed and so emitted <code>secret</code> by the generator's fail-closed default.
-/// That subtree sets a web application's roles, which AD-10 forbids granting through any path, so
-/// no write tool may carry it into a payload, a diff or the ledger.
-/// <class>OcuPilot.Screen.Tool.WebAppUpdate</class> also excludes it by name, so the exclusion is
-/// stated where a reader of the tool looks for it as well as here.</p>
+/// which is left unnamed and so emitted <code>secret</code> by the generator's fail-closed default:
+/// the schema subset a provider is sent describes no member below a property, so the tools that
+/// set application roles author that argument themselves
+/// (<parameter>OcuPilot.Screen.Tool.WebAppUpdate.MATCHROLESARGUMENT</parameter>).</p>
 /// <p><b><code>ordinary</code> here is not "the tool admits it".</b> Classification decides how a
 /// path may be carried; which paths a write tool advertises is that tool's own positive list
-/// (<parameter>OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS</parameter>, four of these rows),
-/// and <code>DispatchClass</code> and the rest stay <code>ordinary</code> and unadvertised.</p>
+/// (<parameter>OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS</parameter>, twenty-five of these
+/// rows), and the rest stay <code>ordinary</code> and unadvertised.</p>
 /// <p><b><code>security.auditsystemevents.update</code></b> and
 /// <b><code>security.audituserevents.update</code></b> classify the class-derived
 /// <code>Security.Audit.Event:Security.Events</code> list's two literals <code>ordinary</code>; each
@@ -45,8 +44,8 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// <p><b><code>webapp.list.create</code></b> classifies the same <code>WebApp.App</code> list the
 /// same way, and for the same reason: classification decides how a path may be carried, not which
 /// paths a tool advertises. The two tools' <b>advertised</b> sets differ -- a create admits
-/// <code>DispatchClass</code> and a change does not (AD-54) -- and that difference lives in each
-/// tool's own positive list, never here.</p>
+/// <code>WSGIAppLocation</code> as one directory name and a change admits no location (AD-21) --
+/// and that difference lives in each tool's own positive list, never here.</p>
 /// <p><b><code>permissions.users.update</code></b> classifies <code>Security.User</code>'s fourteen
 /// literals <code>ordinary</code> and its two arrays -- <code>Roles</code> and
 /// <code>EscalationRoles</code> -- <code>opaque</code>: the endpoint's template answers

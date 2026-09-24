@@ -376,19 +376,25 @@ test('the visual gate: every control is named, none is narrower than its minimum
 // stack's bottom edge is measured whether or not a toast stands, since the host is placed either way.
 // Mutation (Rule 19): drop `+ var(--ocu-space-4)` from the `_components.scss` lift, or double it, and
 // redeploy -> the stack sits flush on the bar, or too high above it, and this goes red.
-test('the change-toast stack stands clear above the form bar holding Save and Cancel', async () => {
+// DW-1596: the bar sits flush at the bottom of the content area with nothing scrolled, because the
+// form page scrolls inside itself.
+// Mutation (Rule 19): drop the form-page host rule from `_components.scss` and redeploy -> the bar
+// falls below the content area and the flush assertion goes red.
+test('the form bar is flush at the bottom of the content area, and the change-toast stack stands clear above it', async () => {
   const { context, page } = await signedInAt(EDIT_URL);
   try {
     await editorReady(page);
     const geometry = await page.evaluate(() => {
       const host = document.querySelector('app-toast-host');
       const bar = document.querySelector('.ocu-form-bar');
-      // The editor is taller than the content area, so the bar is brought into view where a user
-      // reaches it before anything is measured.
-      bar?.scrollIntoView({ block: 'end' });
       const space4 = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ocu-space-4'));
       const shell = document.querySelector('.ocu-shell');
+      const content = document.querySelector('.ocu-content');
+      const form = document.querySelector('.ocu-form-page');
       return {
+        contentBottom: content === null ? null : content.getBoundingClientRect().bottom,
+        contentScrolled: content === null ? null : content.scrollTop,
+        formScrolls: form === null ? false : form.scrollHeight > form.clientHeight,
         hostBottom: host === null ? null : host.getBoundingClientRect().bottom,
         barTop: bar === null ? null : bar.getBoundingClientRect().top,
         barBottom: bar === null ? null : bar.getBoundingClientRect().bottom,
@@ -400,6 +406,9 @@ test('the change-toast stack stands clear above the form bar holding Save and Ca
     assert.ok(geometry.hostBottom !== null && geometry.barTop !== null, `the toast host and the form bar are both drawn: ${JSON.stringify(geometry)}`);
     assert.ok(geometry.space4 > 0 && geometry.barHeight > 0, `the offsets are measured, not 0 against 0: ${JSON.stringify(geometry)}`);
     assert.ok(geometry.barBottom <= geometry.shellBottom + 0.5, `the bar is measured on screen: ${JSON.stringify(geometry)}`);
+    assert.equal(geometry.contentScrolled, 0, `nothing was scrolled to reach it: ${JSON.stringify(geometry)}`);
+    assert.ok(Math.abs(geometry.barBottom - geometry.contentBottom) <= 1, `the bar is flush at the bottom of the content area: ${JSON.stringify(geometry)}`);
+    assert.equal(geometry.formScrolls, true, `and the form page scrolls inside itself: ${JSON.stringify(geometry)}`);
     assert.ok(
       Math.abs(geometry.hostBottom - (geometry.barTop - geometry.space4)) <= 1,
       `the stack's bottom edge sits spacing.4 above the bar's top edge: ${JSON.stringify(geometry)}`

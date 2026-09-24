@@ -1704,6 +1704,75 @@ export const STRINGS = {
   /** EXPERIENCE.md:464 */
   accountDarkTheme: 'Dark theme',
 
+  // Story 9.2: the web application editor. Its title, General and Application roles tabs, and every
+  // other label it draws reuse keys that already exist.
+  /** EXPERIENCE.md:469 */
+  webAppFieldDefaultApplication: 'Namespace default application',
+  /** EXPERIENCE.md:469 */
+  webAppFieldPackage: 'Package name',
+  /** EXPERIENCE.md:469 */
+  webAppFieldSuperClass: 'Default superclass',
+  /** EXPERIENCE.md:469 */
+  webAppFieldGroupById: 'Group by ID',
+  /** EXPERIENCE.md:469 */
+  webAppFieldTimeout: 'Session timeout (seconds)',
+  /** EXPERIENCE.md:469 */
+  webAppFieldJwt: 'JWT authentication',
+  /** EXPERIENCE.md:469 */
+  webAppFieldJwtAccessTimeout: 'JWT access token timeout (seconds)',
+  /** EXPERIENCE.md:469 */
+  webAppFieldJwtRefreshTimeout: 'JWT refresh token timeout (seconds)',
+  /** EXPERIENCE.md:469 */
+  webAppFieldLockCspName: 'Lock CSP name',
+  /** EXPERIENCE.md:469 */
+  webAppFieldAutoCompile: 'Automatic compilation',
+  /** EXPERIENCE.md:469 */
+  webAppFieldServeFiles: 'Serve files',
+  /** EXPERIENCE.md:469 */
+  webAppFieldServeFilesTimeout: 'Serve files timeout (seconds)',
+  /** EXPERIENCE.md:469 */
+  webAppFieldPath: 'Physical path',
+  /** EXPERIENCE.md:469 */
+  webAppTabMatchingRoles: 'Matching roles',
+  /** EXPERIENCE.md:469 */
+  webAppTabCors: 'Cross-origin settings',
+  /** EXPERIENCE.md:469 */
+  webAppFieldCorsAllowlist: 'Allowed origins',
+  /** EXPERIENCE.md:469 */
+  webAppFieldCorsCredentials: 'Allow credentials',
+  /** EXPERIENCE.md:469 */
+  webAppFieldCorsHeaders: 'Allowed headers',
+  /** EXPERIENCE.md:469 */
+  webAppCorsListCaption: 'One entry per line.',
+  /** EXPERIENCE.md:469 */
+  webAppFieldMatchRole: 'Matching role',
+  /** EXPERIENCE.md:469 */
+  webAppRoleAssign: 'Assign',
+  /** EXPERIENCE.md:469 */
+  webAppApplicationRolesEmpty: 'This application grants no application roles.',
+  /** EXPERIENCE.md:469 */
+  webAppMatchingRolesEmpty: 'This application grants no matching roles.',
+  /** EXPERIENCE.md:470 */
+  webAppEditorFixedFields: 'Where this application\'s files live is set when it is created.',
+  /** EXPERIENCE.md:471 */
+  webAppNoResourceEffect: 'No resource guards this application now, so anyone who can sign in can use it.',
+  /** EXPERIENCE.md:472 */
+  webAppRepointedEffect: 'A different class now answers this address.',
+  /** EXPERIENCE.md:473 */
+  webAppPrivilegeGrantRefusal:
+    'OcuPilot\'s own web applications carry only the roles its installer gives them. A role set there would run every OcuPilot request with it.',
+  /** EXPERIENCE.md:474 */
+  agentCredTypeUnavailable:
+    'The credential store is not available in this namespace. Read the key from an environment variable instead.',
+  /** EXPERIENCE.md:475 */
+  webAppPromptGroupCode: 'Code',
+  /** EXPERIENCE.md:475 */
+  webAppPromptAccess: 'Who can use this web application, and what does it grant them?',
+  /** EXPERIENCE.md:475 */
+  webAppPromptUnauthenticated: 'Is this web application reachable without signing in?',
+  /** EXPERIENCE.md:475 */
+  webAppPromptCode: 'Which code answers at this web application\'s address?',
+
 } as const;
 
 /**
