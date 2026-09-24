@@ -460,6 +460,22 @@ describe('the Auditing configuration page', () => {
       expect(host.querySelector('.ocu-banner-warning')).toBeNull();
     });
 
+    // mutation: the handler sets `lastContinues` only when an answer continues, never back to false -> this goes red.
+    it('reads a copy that finishes after one that continued as finished, not still running', async () => {
+      const answers: JsonResult<unknown>[] = [{ kind: 'ok', status: 200, body: { ...updated.body, continues: true } }, updated];
+      const { fixture, host } = await mount({ databaseAction: async () => answers.shift() ?? updated });
+      for (const expected of [STRINGS.auditDatabaseStillRunning, STRINGS.auditDatabaseCopyDone.split('<namespace>').join('USER')]) {
+        await openCopy(host, fixture);
+        const select = host.querySelector('select[data-audit-copy-namespace]') as HTMLSelectElement;
+        select.value = 'USER';
+        select.dispatchEvent(new Event('change'));
+        fixture.detectChanges();
+        (host.querySelector('[data-audit-copy-confirm]') as HTMLButtonElement).click();
+        await settle(fixture);
+        expect(host.querySelector('[data-audit-operation]')?.textContent?.trim()).toBe(expected);
+      }
+    });
+
     it('draws a refusal in the page banner and leaves no finished sentence', async () => {
       const { fixture, host } = await mount({
         databaseAction: async () => ({ kind: 'error', status: 400, code: 'TOOL.ARGUMENTS', reason: 'The request was refused.', detail: null }),

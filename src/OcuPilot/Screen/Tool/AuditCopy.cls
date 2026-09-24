@@ -7,8 +7,8 @@
 /// <code>Security.Audit.Record</code> <code>COPY</code> body from <code>CopyNamespace</code>, which
 /// travels in the port query (<method>PortQuery</method>). The copy deletes nothing, and no caller
 /// can ask it to. The vendor runs it in a Work Queue worker and the port awaits it within its bound
-/// (AD-26); past the bound the caller is answered <code>PORT.TIMEOUT</code> while the worker
-/// finishes.</p>
+/// (AD-26); past the bound the port answers that the copy has started, and the worker finishes
+/// it.</p>
 /// <p><b>The fingerprint subject is the argument itself</b> (AD-51 adequacy): nothing in the audit
 /// database is a precondition of copying it, so what the user reviewed is this namespace. The card's
 /// one row is the merge's <code>CopyNamespace</code> row.</p>

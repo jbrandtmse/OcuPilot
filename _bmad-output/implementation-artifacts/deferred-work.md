@@ -6706,3 +6706,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ARCHITECTURE-SPINE.md AD-8 Rule: 'The full tool set is always advertised'; AD-53 named case (Story 12.3 spec gate) lists AD-24 but does not carve AD-8; the code follows AD-53
 - 2026-09-24T19:55:21Z status=routed owner=burndown by=cr note=lead: one AD-8 clause citing AD-53's unadvertised case (Rule 20 correct-at-origin); no code change
 - 2026-09-24T19:56:44Z status=resolved-by:12-3-copy-and-purge-the-audit-database by=adjudication note=AD-8 sentence now excepts AD-53's unadvertised tools at its origin (Rule 20); no code change
+
+### DW-1637: An agent audit copy still running past AsyncTimeout is finalized ok in the ledger exactly like a finished one; the started outcome and any later worker failure are not recorded
+- source: spec-12-3-copy-and-purge-the-audit-database.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Confirm.cls:409 finalizes a 202-started write with status ok and code empty; only the transient continues answer says it runs on, and the port never re-polls, so a worker that later fails leaves an ok row. Cheapest carry: Code = a new PORT.STARTED on that ok path (one expression, one Api.Error parameter + roster row).
+- 2026-09-24T21:26:58Z status=routed owner=burndown by=cr note=12.3 re-review: AD-26 as amended is met (applied+marked); the durable started outcome is the ruling item's unmet 'with the outcome' clause

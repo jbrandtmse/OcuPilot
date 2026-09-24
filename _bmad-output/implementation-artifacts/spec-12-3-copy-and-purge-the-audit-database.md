@@ -174,7 +174,7 @@ footprint_extensions:
   - The page registers `copy` and `purge` itself through `ScreenActions.register`, replacing the handler's registrations. Each opens its dialog.
   - Confirm calls `handler.sendFor(AuditingConfig, action, 'SYSTEM', values)`.
   - While the request is in flight, a `data-audit-operation` status line reads running on the instance, with the start time. Both buttons are disabled.
-  - Then it reads the finished sentence, or the refusal banner. `PORT.TIMEOUT` reads the still-running sentence.
+  - Then it reads the finished sentence, or the refusal banner. A started answer (202 with `continues`) reads the still-running sentence.
 - `ui/src/app/core/strings.ts`, EXPERIENCE.md (append after :469, Story 12.3, FR-75), and `_components.scss` (own classes only, tokens only) -- the strings listed in Design Notes.
 - `src/OcuPilot/Test/AuditCopy.cls` (new, <500 lines, arms `OCUPILOT_ALLOW_PRINCIPALS`, cleans USER with `%SYS.Audit.Delete` run in USER):
   - the declarations and the resolved pair set;
@@ -249,6 +249,37 @@ Rejected:
 - `low` `Context.cls:187`'s parent-scope guard is unexercised: no descriptor parents to Security > Auditing.
 - `low` The AD-53 absence pin is armed by the purge variable: CI's throwaway sets it.
 - `low` The copy mint is not driven as the real principal: adjudicated as (d) in the Review Triage Log.
+
+### Review Findings (rework 1)
+
+Code re-review 2026-09-24 (full-opus; four layers) of `c131a2b2..47d05d19`: 35 rows, 6 entries, 26 rejected, no HIGH. The ruled HIGH is fixed: AD-26 as amended ("records the write as applied and marks it") is met, and `Confirm.cls`'s one hunk sits three unchanged lines past Epic 9's `Answer` hunk (a trial merge adds no conflict). The 202 test cannot fire for another write today: `AuditPort`'s started branch is the only shipped 202 on success.
+
+- [x] [Review][Defer] MED: a started agent copy is finalized `ok` exactly like a finished one, so the ruling item's "with the outcome 'continues in the background'" and a later worker failure are not recorded durably [src/OcuPilot/Kernel/Proposal/Confirm.cls:411] — deferred: DW-1637, routed to burndown (cheapest fix: a started code in the row's `Code`)
+- [x] [Review][Patch] MED, Rule 19: nothing pinned `continues` as JSON `true`, the only form the client reads; `AuditStarted` asserts its type on both legs [src/OcuPilot/Test/AuditStarted.cls:90]
+- [x] [Review][Patch] Nothing pinned that `continued()` resets: a page leg runs a copy that continues and then one that finishes [ui/src/app/areas/security/auditing-config.page.spec.ts:464]
+- [x] [Review][Patch] `AuditCopy`'s class doc still said the caller is answered `PORT.TIMEOUT` past the bound [src/OcuPilot/Screen/Tool/AuditCopy.cls:10]
+- [x] [Review][Patch] `Confirm.Transition`'s comment said a started write was "marked", but the marker can fail [src/OcuPilot/Kernel/Proposal/Confirm.cls:427]
+- [x] [Review][Patch] `Confirm.Confirm`'s documented answer shape left out `continues` [src/OcuPilot/Kernel/Proposal/Confirm.cls:118]
+
+Rejected:
+
+- `low` No production path ever calls `ForgetTask` for a started task's row: this is reachable only past 30 s (about 1.7M records), and a cleanup needs a new mechanism (DW-1101 tracks the related leftover rows).
+- `low` A task still `Queued`, or `Canceled` or `Paused`, at the bound also reads as started. A queued Work Queue task still runs. A cancel would have to happen inside the 30 s, and the fix would need the contended `AwaitTask` to expose the task's last state.
+- `maybe-false` A synchronous vendor 202 on some other write would read as `continues`. `AdminPort` turns a 202 with an async location into a 200 when it polls, and no other port answers 202. If this is ever true, it is only a low.
+- `low` A started write still logs `AwaitTask`'s `PORT.TIMEOUT` line: it only adds log noise, and the fix would sit in the contended `AdminPort`.
+- `low` `lastContinues` is state shared on the handler. A refused early return answers `false`, so `applied &&` guards it. Reaching it would take two resolutions in the same tick, and the fix changes the contended signature of `sendFor`.
+- `low` The page's buttons re-enable while the worker runs: the still-running line is the chosen behavior.
+- `low` The started semantics live only in `AuditPort`: no tool reaches a `QUEUEDWRITES` pair through any other port.
+- `low` `AuditStarted`'s cleanup could race a worker that is still running: this happens only on a run that is already red.
+- `low` `AuditStartedPort` repeats the vendor's state names: a rename makes `Settle` time out, and the test goes red.
+- `low` `auditDatabaseStillRunning` is used by a general appender: `AuditPort` is the only source of `continues`.
+- `low` The appended sentence does not survive a reload: the marker and change sentences behave the same way.
+- `low` The panel's duplicate guard for the still-running sentence has no leg: a leg would need the model to write the exact published sentence.
+- `maybe-false` Copying into `NOSUCHNS` may be refused synchronously instead of by the worker. The leg still pins that an error which is not the bound stays an error (run 507 red). If this is true, it is only a low.
+- `false` Spine :347 was left unqualified: `AdminPort` still answers `PORT.TIMEOUT` at the bound, and the amended paragraph names the exception.
+- `false` The spec reads `done` while sprint-status reads `review`: `bmad-build-auto` sets `done` at `dev_complete`.
+- The findings on the page's still-running leg driving only a purge are rejected: the new reset leg drives a continuing copy.
+- Four spec-only findings are rejected because each fix edits the spec under review: the Tasks line at :177 that still names `PORT.TIMEOUT`, the sweep figure that predates the rework-review patches, the ruled items that give no closure pointer, and the residual-risk list against the triage.
 
 ## Spec Change Log
 
@@ -411,6 +442,8 @@ Each mutation was reverted, recompiled with subclasses or rebuilt and redeployed
 - mutation: `Panel.recordWriteCard` records `continues: false`, or `TurnStore` drops it → `panel.spec.ts` still-running reply leg red
 - mutation (rework review): `AuditPort.Invoke`'s started branch drops its `PORT.TIMEOUT` test → `AuditStarted.TestAQueuedWriteTheVendorFailsKeepsItsError` red (run 507); reverted, 3/3 (run 510)
 - mutation (rework review): `Confirm.Transition` and `ScreenAction.Run` add `continues` on any 2xx → `AuditCopy` agent and screen-route legs red on "does not answer that it continues" (run 508); reverted with subclasses, 6/6 (run 509)
+- mutation (code re-review): `Confirm.Transition` and `ScreenAction.Run` drop the `"boolean"` hint on `continues` → `AuditStarted` 2/3 red, on "continues reaches the wire as JSON true" (run 512); reverted and recompiled, `AuditStarted` 3/3 (run 513), `AuditCopy` 6/6 (run 514)
+- mutation (code re-review): the handler sets `lastContinues` only to `true` → `auditing-config.page.spec.ts` "reads a copy that finishes after one that continued as finished" red; reverted, 22/22
 
 **Stage verification (once, before dev_complete), `ocupilot-b-ci`:** whole `OcuPilot` package recompiled from the worktree source; full sweep 226 classes (runs 31-256), 2006 tests, 1 failed (`Prohibited.TestNoWriteToolAdmitsAnAlwaysProhibitedField`: a bodyless tool admitting its port-composed argument); fixed in `Test/Prohibited.cls` and rerun 12/12 (run 257); `AuditPurge` armed 4/4 (run 258). Total 227 classes, 2010 tests, 0 failed. `npm run build` initial total 1.34 MB (1,337,502 bytes as the handoff measured; budget 1378 kB unchanged); `npm test` tools 1375/1375 after adding the live-container refusal to `audit-copy-purge.browser-spec.mjs`, components 1076/1076; story browser specs 6/6 on the redeployed bundle; `smoke.sh` executed 48, passed 48; check-objectscript and lint-docs clean.
 
