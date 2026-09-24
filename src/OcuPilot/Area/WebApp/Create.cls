@@ -384,10 +384,15 @@ ClassMethod UpdateViolations(pChanged As %DynamicObject, pFresh As %DynamicObjec
             If ((tType = "number") || (tType = "string")) && $IsValidNum(tValue) && (+tValue = (tValue \ 1)) && (+tValue >= 0) Continue
             Do ..Add(.pViolations, tField, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
         }
-        If (pChanged.%GetTypeOf("ServeFiles") = "string") && '$ListFind($ListFromString(##class(OcuPilot.Area.WebApp.FormRules).#SERVEFILESCHOICES), pChanged.%Get("ServeFiles")) {
+        ; A choice-valued setting is one of its display strings; any other scalar -- a number, a
+        ; boolean, null -- is refused here rather than coerced by the merge. Objects and arrays were
+        ; refused above.
+        Set tType = pChanged.%GetTypeOf("ServeFiles")
+        If '$ListFind($ListBuild("unassigned", "object", "array"), tType) && ((tType '= "string") || '$ListFind($ListFromString(##class(OcuPilot.Area.WebApp.FormRules).#SERVEFILESCHOICES), pChanged.%Get("ServeFiles"))) {
             Do ..Add(.pViolations, "ServeFiles", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
         }
-        If (pChanged.%GetTypeOf(..#FIELDWSGITYPE) = "string") && '..IsWsgiType(pChanged.%Get(..#FIELDWSGITYPE)) {
+        Set tType = pChanged.%GetTypeOf(..#FIELDWSGITYPE)
+        If '$ListFind($ListBuild("unassigned", "object", "array"), tType) && ((tType '= "string") || '..IsWsgiType(pChanged.%Get(..#FIELDWSGITYPE))) {
             Do ..Add(.pViolations, ..#FIELDWSGITYPE, ##class(OcuPilot.Api.Error).#WEBAPPWSGITYPE)
         }
         For tField = "CorsAllowlist", "CorsHeadersList" {

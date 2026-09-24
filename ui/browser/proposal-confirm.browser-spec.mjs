@@ -154,8 +154,9 @@ function dropProposals() {
  *
  * `Enabled` is the field under test because it is one the web-applications list actually draws, so
  * AC10's read-back is off the screen a user would look at rather than off a column nobody sees.
- * `Resource`, `DispatchClass` and `AutheEnabled` are deliberately never proposed here: they are the
- * three a confirmed write could use to weaken an application (DW-1207, open).
+ * `Resource`, `DispatchClass` and `AutheEnabled` are deliberately never proposed here: a change that
+ * clears the resource, repoints the code or admits unauthenticated callers is minted destructive
+ * (AD-10), which is not the flow this spec confirms.
  */
 function proposeReply(enabled) {
   const input = {

@@ -6060,6 +6060,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: create-form.page.ts:604 injects no ActivatedRoute and reads no :id. In-session the buffer carries across the route replacement so the values shown are the created ones; on reload retaining() is false and open() fetches only /web-applications/form. Probe: create an application, then hard-reload the /edit/:id URL and look for an empty form.
 - 2026-09-23T00:32:09Z status=routed owner=9-2-the-web-application-editor by=harvest note=AC 'opens the new application editor' holds on the session path and not on a reload. Epic 9's editor is the story that reads the id, so it closes there rather than being retrofitted here.
 - 2026-09-23T02:11:59Z occurrence=8-1-create-a-web-application
+- 2026-09-24T06:36:30Z status=resolved-by:9-2-the-web-application-editor by=adjudication note=editor reads its id via DESCRIPTOR_EDIT_PAGES; create hands off; web-applications-create.browser-spec AC2 cold reload (8fb2e34)
 
 ### DW-1491: A create's confirm compares one digest, not two, so the stored-payload backstop DW-1353 added does not cover a create
 - source: spec-8-1-create-a-web-application.md | severity: low | fix-risk: low | footprint: in-story
@@ -6079,6 +6080,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-23T06:42:07Z occurrence=8-3-create-a-role-and-manage-its-resource-grants
 - 2026-09-23T10:37:18Z occurrence=8-4-the-resource-editor
 - 2026-09-23T21:41:20Z status=routed owner=9-2-the-web-application-editor by=merge_gate note=Epic 8 merge decision sheet. Fix after the Epic 7 merge: store the typed name at mint and send it at confirm (Confirm.cls). The fix is generic, covering the user create occurrence too. The runner named 9.1 as the web-app editor; that is 9.2, 9.1 is the user editor.
+- 2026-09-24T06:36:30Z status=resolved-by:9-2-the-web-application-editor by=adjudication note=Confirm sends the typed name stored at mint for create tools (web app and user); WebAppWeakening/ProposalCreate typed-case legs
 
 ### DW-1494: The screen's Save of a web-application create does not evaluate enforced read-only or the kill switch, while AD-55 says the screen inherits every gate AD-40 places at the write
 - source: spec-8-1-create-a-web-application.md | severity: med | fix-risk: low | footprint: in-story
@@ -6107,6 +6109,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-23T21:14:39Z occurrence=8-9-plain-iris-community-verification
 - 2026-09-23T21:41:20Z status=routed owner=range-end-cleanup by=merge_gate note=Epic 8 merge decision sheet, recommended disposition taken: publish the PRIVILEGEGRANT and AGENT.CREDTYPE.UNAVAILABLE sentences as Fixed strings and pin them through Epic 7's RefusalCopy; AD-53 unchanged. The orchestrator takes it right after Epic 7 merges, since RefusalCopy is on that branch.
 - 2026-09-23T23:44:11Z status=routed owner=9-2-the-web-application-editor by=merge_gate note=Re-routed from 'orchestrator after the Epic 7 merge': publishing PRIVILEGEGRANT and AGENT.CREDTYPE.UNAVAILABLE as Fixed strings touches Prohibited.cls (a REASON parameter), RefusalCopy, strings.ts, EXPERIENCE.md and self-protection.test.mjs, and PRIVILEGEGRANT's sentence is exactly what 9.2's editor shows for roles on OcuPilot's own applications -- a runner with a throwaway does this properly.
+- 2026-09-24T06:36:30Z status=resolved-by:9-2-the-web-application-editor by=adjudication note=PRIVILEGEGRANTREASON param, RefusalCopy leg, strings.ts key, self-protection pair; credtype REASON pinned too
 
 ### DW-1503: A user create whose vendor Modify refuses after Create leaves an account holding only its password
 - source: spec-8-2-create-a-user.md | severity: low | fix-risk: med | footprint: in-story
@@ -6588,6 +6591,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: epic-7-context.md:41 says both callers refuse a no-op with 400 TOOL.ARGUMENTS; Mint.Merge skips an unchanged field (Mint.cls:388) and mints changed=[]; the refusal exists only in each tool's ScreenActionDelta. Same for WebAppUpdate.
 - 2026-09-23T20:54:31Z status=escalated owner=burndown by=cr note=kernel-wide for merge tools; the fix is in Mint.cls, which Epic 8 rewrites in that region
 - 2026-09-23T22:26:32Z status=routed owner=9-2-the-web-application-editor by=merge_gate note=Epic 7 merge decision sheet: refuse a no-op update in Mint.cls (400 TOOL.ARGUMENTS) for every merge tool. Placed in 9.2 because the web-application update shares the path and 9.2's editor exercises it.
+- 2026-09-24T06:36:30Z status=resolved-by:9-2-the-web-application-editor by=adjudication note=Mint refuses a merge with no changed rows 400 TOOL.ARGUMENTS; Test.Proposal legs
 
 ### DW-1578: Prohibited.cls's header still says eight types are covered; COVEREDTYPES now lists ten
 - source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: low | fix-risk: low | footprint: in-epic
@@ -6619,6 +6623,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: _components.scss .ocu-shell:has(.ocu-form-bar) > app-toast-host sets bottom to form-bar height plus spacing.4 (9.1 rework 1); DESIGN.md:1210 and toast-host.ts:48-52 unamended because both were Epic 15-contended at the time
 - 2026-09-24T03:02:47Z status=routed owner=9-2-the-web-application-editor by=harvest note=amend both after the integrate-forward brings Epic 15's merge; two-way door, doc-only
 - 2026-09-24T03:10:21Z status=routed owner=9-2-the-web-application-editor by=cr note=toast-host.ts placement prose is :13-22 (not :48); :47-51 is the component-scoped paragraph
+- 2026-09-24T06:36:31Z status=resolved-by:9-2-the-web-application-editor by=adjudication note=DESIGN.md:1210 amended [AMENDED 2026-09-24] and toast-host.ts header corrected
 
 ### DW-1596: A form page taller than the content area does not keep its sticky form bar on screen: Save and Cancel sit below the fold until the content scrolls
 - source: spec-9-1-the-user-editor.md | severity: med | fix-risk: low | footprint: in-epic
@@ -6626,6 +6631,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-24T03:02:47Z status=routed owner=9-2-the-web-application-editor by=harvest note=every Epic 9 editor is tall; fix the host list once in 9.2 and pin it with a browser geometry check
 - 2026-09-24T03:10:21Z occurrence=9-1-the-user-editor note=the rework-1 toast lift assumes a flush bar; a mid-height bar can still sit under the stack until the host list is fixed
 - 2026-09-24T03:10:21Z status=routed owner=9-2-the-web-application-editor by=cr note=unchanged owner; 9.2 pins bar flush at content bottom, which makes the rework-1 lift exact
+- 2026-09-24T06:36:31Z status=resolved-by:9-2-the-web-application-editor by=adjudication note=form-page hosts join the flex chain in _components.scss; users-editor/web-applications-editor geometry flush without scrolling
 
 ### DW-1597: An editor's own Save now raises a change toast ('Open in <list>') because the entity's list is not open; DESIGN.md's toast recipe says toasts are never for confirmations of what the user just did on the open screen
 - source: spec-9-1-the-user-editor.md | severity: med | fix-risk: low | footprint: in-epic

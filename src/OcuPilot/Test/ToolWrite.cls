@@ -215,6 +215,35 @@ Method TestARepointingCallMintsADestructiveProposal()
     Do $$$AssertEquals($Get(tValues("consequence")), $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "EFFECTREPOINTED"), "naming the repointed effect")
 }
 
+/// <p>AD-3: the semantic half <method>OcuPilot.Screen.Tool.WebAppUpdate.Described</method> authors
+/// reaches the model-facing schema and the dispatcher enforces it -- the mask and the four timeouts
+/// are integers, the two choice-valued settings carry their enums, and every advertised property
+/// carries a description.</p>
+/// <p>Mutation: delete the enum loop from
+/// <method>OcuPilot.Screen.Tool.WebAppUpdate.Described</method> -- the enum and refusal legs go
+/// red.</p>
+Method TestTheWebApplicationSchemaCarriesItsAuthoredHalf()
+{
+    Set tSchema = $ClassMethod(..#TOOLCLASS, "InputSchema")
+    Set tProperties = tSchema.%Get("properties")
+    For tField = "AutheEnabled", "Timeout", "ServeFilesTimeout", "JWTAccessTokenTimeout", "JWTRefreshTokenTimeout" {
+        Do $$$AssertEquals(tProperties.%Get(tField).%Get("type"), "integer", tField _ " is advertised as the whole number the instance stores")
+    }
+    Do $$$AssertEquals(tProperties.%Get("ServeFiles").%Get("enum").%ToJSON(), "[""No"",""Always"",""Always and cached"",""Use CSP security""]", "ServeFiles carries its four choices")
+    Do $$$AssertEquals(tProperties.%Get("WSGIType").%Get("enum").%ToJSON(), "[""WSGI"",""ASGI""]", "and WSGIType its two protocols")
+    Set tIterator = tProperties.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tProperty) {
+        Do $$$AssertNotEquals(tProperty.%Get("description"), "", tKey _ " carries a description")
+    }
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "/csp/probe", "AutheEnabled": 96, "ServeFiles": "Always"}, .tProblem)
+    Do $$$AssertStatusOK(tSC, "a call within the schema is admitted: " _ $Get(tProblem))
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "/csp/probe", "ServeFiles": "Sometimes"}, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "a file-serving setting outside its choices is refused")
+    Do $$$AssertTrue($Get(tProblem) [ "ServeFiles", "naming the argument: " _ $Get(tProblem))
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "/csp/probe", "Timeout": "long"}, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "and a timeout that is not a number")
+}
+
 /// <p>QA (Story 5.5): a field AD-10's set has never reviewed (<code>EventClass</code> -- classified
 /// <code>ordinary</code> in <class>OcuPilot.Screen.Tool.Classification</class>, but outside
 /// <parameter>OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS</parameter>) is refused by the

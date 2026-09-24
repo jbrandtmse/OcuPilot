@@ -256,6 +256,39 @@ Browser tasks:
 - **Given** an application that is not OcuPilot's own, **when** the agent proposes, or a person saves, making it unauthenticated, clearing its resource or changing its dispatch class, **then** the proposal is destructive and names the effect, the editor states it at the field, and the change applies once confirmed or saved. **Given** OcuPilot's own, **then** each is refused with its own code on both callers.
 - **Integration:** **given** `form-tabs`, `startFor` and `DESCRIPTOR_EDIT_PAGES`, **when** `WebAppEditorPage` shows a refusal on an unselected tab and assigns an application role, **then** the tab opens with its dot and ", 1 error", and the role reaches the instance through the list's own AD-53 action route. The browser spec observes both.
 
+### Review Findings
+
+Code review 2026-09-24 (`full-opus`: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor, each on the session model). 0 decision-needed, 7 patch (all applied), 0 defer, 18 rejected.
+
+- [x] [Review][Patch] (med) A role added to an entry the application already holds, and a remove that leaves others, were never exercised: the second-role and partial-remove legs [src/OcuPilot/Test/WebAppSave.cls:227]
+- [x] [Review][Patch] (med) The editor's matching-role assign and both removes were unpinned: a page-spec leg asserts each action's body [ui/src/app/areas/web-applications/web-app-editor.page.spec.ts:264]
+- [x] [Review][Patch] (med) `WebAppUpdate.Described`'s integer types, enums and descriptions were unpinned: `ToolWrite.TestTheWebApplicationSchemaCarriesItsAuthoredHalf` [src/OcuPilot/Test/ToolWrite.cls:225]
+- [x] [Review][Patch] (low) A numeric, boolean or null `ServeFiles` or `WSGIType` passed the edit's enum rules: any non-string scalar is refused; two rows added [src/OcuPilot/Area/WebApp/Create.cls:390]
+- [x] [Review][Patch] (low) The form read rendered a port refusal other than 404 as a 500: it renders the port's own fault, as the Save does [src/OcuPilot/Area/WebApp/FormRules.cls:139]
+- [x] [Review][Patch] (low) `Described` hand-wrote `minimum`, a keyword AD-3 does not author; removed (the edit's rules still refuse a negative) [src/OcuPilot/Screen/Tool/WebAppUpdate.cls:172]
+- [x] [Review][Patch] (low) AC3's privilege-grant half and the Integration AC's instance half had no `mutation:` line; both observed red and written under Verification; a stale "DW-1207, open" comment corrected at its origin [ui/browser/proposal-confirm.browser-spec.mjs:157]
+
+Rejected:
+
+- false: `WebAppUpdate.Consequence` drops the weakening effect under a privileged grant. The Design Notes precedence puts `GRANT.PRIVILEGED` above `NORESOURCE` and `REPOINTED`.
+- false: the own-app remove controls carry the grant sentence. The intent draws every role control refused with it.
+- false: the `WSGIType` select shows WSGI while the store holds `""`. `Security.Applications.WSGIType` has InitialExpression 1, so every read answers `WSGI` (probed: `/csp/user` stores 1).
+- spec-bound: clearing two-factor bits, CORS `*` and `GroupById` are not marked. The ruling names three effects; changing that is a spec amendment.
+- spec-bound: `toast-host.ts` dropped the component-scoped deviation paragraph. The spec task drops it.
+- low: `RestoreType` failing after the vendor PUT answers `PORT.NOTAPPLIED`. It needs `Modify` to fail for a caller already past `%Admin_Secure`, and the fix is a new code.
+- low: a Save that restates current values still sends the PUT. The client short-circuits an empty change set; the fix adds a branch.
+- low: `Enabled: 1` against a read `true` counts as a change. Only a non-client REST caller sends it, and the schema types the agent's booleans.
+- low: `ArgumentProblem` reads the application a second time. The race window is one mint; the fix adds a parameter.
+- low: `WSGICallable` alone on a CSP application is not a type-shape violation. It is marked `REPOINTED` and harmless to serving.
+- low: the `AutheEnabled` description omits the two-factor bits. The model has no two-factor request path in the ACs.
+- low: a case-only `NameSpace` change is marked repointed. A person typed the change deliberately.
+- low: `ScreenActionDelta` drops a `MatchRoles` entry that is not an object. The vendor's read always answers objects.
+- low: `refresh` ignores a 404. This is the 9.1 editor's pattern, and the next Save answers 404.
+- low: an own-app proposal is minted with its effect and refused at confirm. The prohibited set is asked at confirm for every code.
+- low: the own-app role leg in `WebAppSave` could grant `%All` on a regression. Only on a throwaway, and the leg asserts the roles unchanged.
+- low (maybe-false): `device-editor` added a `scrollIntoView`. The pointer path under a sticky bar; `scroll-padding-bottom` covers focus.
+- known: `TestNoWriteToolAdmitsAnAlwaysProhibitedField`'s per-tool loops are empty. The previous pass recorded it; the emptiness is asserted.
+
 ## Spec Change Log
 
 - 2026-09-24 spec gate (lead): orchestrator ruling (b) on DW-1207 recorded in the intent contract; AD-10 amended; DW-1207 closed by-design by=orchestrator; AD-27 fifth named case (WebApp.App PUT `Type` restore) applied as recommended. Status reset to `draft` for a re-plan around the ruling.
@@ -378,6 +411,12 @@ Its diff still lists every field, and one effect is enough to make it destructiv
 - mutation: drop the added-unknown-bit rule from `Create.UpdateViolations` → `WebAppSave.TestTheEditsRulesRefuseEachFieldWithItsCode` goes red.
 - mutation: drop the page's ChangeBus re-read → the page spec's "re-reads the application in place when another caller changes it ..." goes red.
 - mutation: drop `|| (tEffect '= "")` from `Mint`'s `destructive` → `ToolWrite.TestARepointingCallMintsADestructiveProposal` (the dispatched model-facing path) goes red.
+- mutation (AC3, privilege-grant half): drop the own-app `PRIVILEGEGRANT` arm from `Prohibited.WebApplication` → `WebAppSave.TestOcuPilotsOwnApplicationIsRefusedOnBothCallers` goes red, the role action reading `SERVINGPATH` (run 9421).
+- mutation (Integration AC, instance half): drop the new-entry push from `WebAppUpdate.ScreenActionDelta` → `web-applications-editor.browser-spec` "Integration: %All ... the role reaches the instance" goes red (the read-back wait times out).
+- mutation: drop the push that adds a role to an entry already held in `ScreenActionDelta` → `WebAppSave.TestTheRoleActionsApplyADeltaOverTheWire` goes red (run 9418).
+- mutation: swap `MatchRole` and `Role` in the page's `onAssignMatchingRole` → the page spec's "sends each role control's own action and values" goes red.
+- mutation: delete the enum set from `WebAppUpdate.Described` → `ToolWrite.TestTheWebApplicationSchemaCarriesItsAuthoredHalf` goes red (run 9419).
+- mutation: restore `Create.UpdateViolations`'s string-only enum checks → `WebAppSave.TestTheEditsRulesRefuseEachFieldWithItsCode` goes red on the numeric rows (run 9420).
 
 ## Auto Run Result
 

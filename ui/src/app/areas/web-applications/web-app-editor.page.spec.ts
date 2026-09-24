@@ -261,6 +261,35 @@ describe('the web application editor (Story 9.2)', () => {
     expect(calls.some((call) => call.method === 'POST')).toBe(false);
   });
 
+  it('sends each role control\u2019s own action and values: a matching-role assign and both removes', async () => {
+    // Mutation (Rule 19): swap `MatchRole` and `Role` in the page's `onAssignMatchingRole` -> the
+    // assign body assertion goes red.
+    const served = { MatchRoles: [{ MatchRole: '', TargetRoles: ['%SQL'] }, { MatchRole: '%Manager', TargetRoles: ['%Developer'] }] };
+    const { fixture, host, calls } = await mount('/csp/probe', undefined, served);
+    const posted = () => calls.filter((call) => call.method === 'POST').map((call) => JSON.parse(call.body));
+    tabs(host)[1].click();
+    await settle(fixture);
+    (host.querySelector(`[aria-label="${STRINGS.webAppFormApplicationRoles}"] .ocu-button-text`) as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(posted().at(-1)).toEqual({ action: 'remove-application-role', id: '/csp/probe', values: { Role: '%SQL' } });
+
+    tabs(host)[2].click();
+    await settle(fixture);
+    for (const [id, value] of [['ocu-web-app-edit-match-role', '%Developer'], ['ocu-web-app-edit-match-target', '%SQL']] as const) {
+      const select = host.querySelector(`#${id}`) as HTMLSelectElement;
+      select.value = value;
+      select.dispatchEvent(new Event('change'));
+      await settle(fixture);
+    }
+    (host.querySelector('[data-action="add-matching-role"]') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(posted().at(-1)).toEqual({ action: 'add-matching-role', id: '/csp/probe', values: { MatchRole: '%Developer', Role: '%SQL' } });
+    (host.querySelector(`[aria-label="${STRINGS.webAppTabMatchingRoles}"] .ocu-button-text`) as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(posted().at(-1)).toEqual({ action: 'remove-matching-role', id: '/csp/probe', values: { MatchRole: '%Manager', Role: '%Developer' } });
+    expect(posted()).toHaveLength(3);
+  });
+
   it('Integration: a refusal on Cross-origin settings while General is open opens it with its dot and count, and an application role reaches the list\u2019s own action route', async () => {
     // Mutation (Rule 19): skip `tabToOpen` in the page's `afterRefusal` -> the selected-tab
     // assertion goes red; drop the `values` short-circuit from `startFor` -> nothing is posted.

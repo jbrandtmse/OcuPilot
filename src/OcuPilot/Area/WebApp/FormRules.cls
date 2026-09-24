@@ -136,7 +136,13 @@ ClassMethod HandleForm() As %Status
                 Quit
             }
             If $$$ISERR(tReadSC) {
-                Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tReadSC))
+                ; The port's own refusal reaches the editor as the Save's does; only a fault with no
+                ; envelope of its own is internal.
+                If '$IsObject($Get(tFault)) || (tFault.code = ##class(OcuPilot.Api.Error).#INTERNAL) {
+                    Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tReadSC))
+                    Quit
+                }
+                Set tSC = ##class(OcuPilot.Api.Error).Render($Select(+$Get(tHttp): +tHttp, 1: 500), tFault.error, tFault.reason, tFault.code, tFault.%Get("detail"))
                 Quit
             }
             Do tBody.%Set(..#FORMAPPLICATIONKEY, tApplication)

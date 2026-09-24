@@ -172,6 +172,8 @@ Method TestTheEditsRulesRefuseEachFieldWithItsCode()
     Do tCases.%Push({"args": {"GroupById": ($Translate($Justify("", 65), " ", "g"))}, "field": "GroupById", "code": (##class(OcuPilot.Api.Error).#WEBAPPFIELDLENGTH)})
     Do tCases.%Push({"args": {"WSGIAppName": "probe"}, "field": "WSGIAppLocation", "code": (##class(OcuPilot.Api.Error).#WEBAPPWSGILOCATION)})
     Do tCases.%Push({"args": {"WSGIType": "CGI"}, "field": "WSGIType", "code": (##class(OcuPilot.Api.Error).#WEBAPPWSGITYPE)})
+    Do tCases.%Push({"args": {"WSGIType": 2}, "field": "WSGIType", "code": (##class(OcuPilot.Api.Error).#WEBAPPWSGITYPE)})
+    Do tCases.%Push({"args": {"ServeFiles": 3}, "field": "ServeFiles", "code": (##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)})
     Do tCases.%Push({"args": {"AutheEnabled": (tFresh.%Get("AutheEnabled") + 1024)}, "field": "AutheEnabled", "code": (##class(OcuPilot.Api.Error).#WEBAPPAUTHEUNKNOWN)})
     Do tCases.%Push({"args": {"WSGIAppName": "probe", "DispatchClass": "OcuPilot.Api.Router"}, "field": "DispatchClass", "code": (##class(OcuPilot.Api.Error).#WEBAPPTYPECONFLICT)})
     Do tCases.%Push({"args": {"Description": {}}, "field": "Description", "code": (##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)})
@@ -216,11 +218,16 @@ Method TestASystemApplicationKeepsItsType()
 /// each 400 with nothing written.</p>
 /// <p>Mutation (Rule 19): build the list from an empty array instead of the fresh read in
 /// <method>OcuPilot.Screen.Tool.WebAppUpdate.ScreenActionDelta</method> -- the leg keeping the
-/// application role across the matching-role add goes red.</p>
+/// application role across the matching-role add goes red; drop the push that adds a role to an
+/// entry already held -- the second-application-role leg goes red.</p>
 Method TestTheRoleActionsApplyADeltaOverTheWire()
 {
     Do $$$AssertEquals(..Act("add-application-role", ..#PROBEAPP, {"Role": "%Developer"}), 200, "an application role is added")
     Do $$$AssertEquals(##class(OcuPilot.Test.WebAppWire).MatchRoles(..#PROBEAPP), ":%Developer", "and the application grants it to every request")
+    Do $$$AssertEquals(..Act("add-application-role", ..#PROBEAPP, {"Role": "%SQL"}), 200, "a second application role is added")
+    Do $$$AssertEquals(..Targets(..#PROBEAPP, ""), "%Developer,%SQL", "into the entry the application already holds, beside the first")
+    Do $$$AssertEquals(..Act("remove-application-role", ..#PROBEAPP, {"Role": "%SQL"}), 200, "the second is removed")
+    Do $$$AssertEquals(..Targets(..#PROBEAPP, ""), "%Developer", "and the entry keeps the first")
     Do $$$AssertEquals(..Act("add-matching-role", ..#PROBEAPP, {"MatchRole": "%Operator", "Role": "%SQL"}), 200, "a matching role is added")
     Set tRoles = ##class(OcuPilot.Test.WebAppWire).MatchRoles(..#PROBEAPP)
     Do $$$AssertTrue((tRoles [ ":%Developer") && (tRoles [ "%Operator:%SQL"), "and the application keeps the first beside it: " _ tRoles)
@@ -267,6 +274,31 @@ ClassMethod Act(pAction As %String, pId As %String, pValues As %DynamicObject, O
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("POST", ..#ACTIONPATH, .tStatus, .pBody, tRequest.%ToJSON(), "application/json")
     If $$$ISERR(tSC) Quit 0
     Quit tStatus
+}
+
+/// <p>The target roles <var>pName</var>'s <code>MatchRoles</code> entry for <var>pMatch</var> holds, as
+/// the vendor's own read answers them, sorted and comma-separated.</p>
+ClassMethod Targets(pName As %String, pMatch As %String) As %String
+{
+    Set tSC = ..Fresh(pName, .tFresh)
+    If $$$ISERR(tSC) || '$IsObject($Get(tFresh)) || (tFresh.%GetTypeOf("MatchRoles") '= "array") Quit ""
+    Kill tSorted
+    Set tEntries = tFresh.%Get("MatchRoles").%GetIterator()
+    While tEntries.%GetNext(.tIndex, .tEntry) {
+        If '$IsObject(tEntry) || (tEntry.%Get("MatchRole") '= pMatch) || (tEntry.%GetTypeOf("TargetRoles") '= "array") Continue
+        Set tTargets = tEntry.%Get("TargetRoles").%GetIterator()
+        While tTargets.%GetNext(.tTargetIndex, .tTarget) {
+            Set tSorted(tTarget) = ""
+        }
+    }
+    Set tOut = ""
+    Set tRole = ""
+    For {
+        Set tRole = $Order(tSorted(tRole))
+        Quit:tRole=""
+        Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ tRole
+    }
+    Quit tOut
 }
 
 /// <p>The edit route for <var>pName</var>, one encoded segment (AD-13).</p>

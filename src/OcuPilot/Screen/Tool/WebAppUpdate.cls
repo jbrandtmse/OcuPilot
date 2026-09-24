@@ -170,7 +170,6 @@ ClassMethod Described(pSchema As %DynamicObject) As %DynamicObject
     For tField = "AutheEnabled", "Timeout", "ServeFilesTimeout", "JWTAccessTokenTimeout", "JWTRefreshTokenTimeout" {
         If tProperties.%GetTypeOf(tField) '= "object" Continue
         Do tProperties.%Get(tField).%Set("type", "integer", "string")
-        Do tProperties.%Get(tField).%Set("minimum", 0, "number")
     }
     For tPair = $ListBuild("ServeFiles", ##class(OcuPilot.Area.WebApp.FormRules).#SERVEFILESCHOICES), $ListBuild("WSGIType", ##class(OcuPilot.Area.WebApp.FormRules).#WSGITYPES) {
         Set tField = $List(tPair, 1)
