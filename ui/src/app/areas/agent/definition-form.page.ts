@@ -802,9 +802,10 @@ export class DefinitionFormPage {
   }
 
   /**
-   * Whether the chosen provider's catalog row takes a temperature (Story 10.4, AD-5). Where it does
-   * not, the field is readonly and `aria-disabled` under its caption -- the retention field's
-   * precedent -- and a value it holds is shown as held: the form never clears one.
+   * Whether the chosen provider's catalog row takes a temperature (Story 10.4). Where it does not,
+   * the field is readonly and `aria-disabled` under its caption -- the retention field's precedent
+   * -- and a value loaded with the definition is shown as held. Only a provider switch replaces it,
+   * with the new row's canonical value, as it replaces the model and endpoint.
    */
   protected get temperatureApplies(): boolean {
     this.generation();

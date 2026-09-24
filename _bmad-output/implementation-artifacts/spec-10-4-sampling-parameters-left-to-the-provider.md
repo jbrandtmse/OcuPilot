@@ -119,6 +119,43 @@ deferred:
 - **DW-1591.** Given a Gemini reply whose `functionCall` part carries a `thoughtSignature`, when the loop answers the call and makes its next provider call, then the replayed `functionCall` part carries that signature unchanged. (The catalog default `gemini-3.8-flash` answers 400 without it -- lead live probe 2026-09-24.)
 - Given the diff, when it is reviewed, then it touches no tool registry, proposal code or screen other than the Definition form, and the only loop change is the `AnswerTools` echo branch.
 
+
+### Review Findings
+
+Code review 2026-09-23: four layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor), `full-opus` tier. 39 raw findings became 28 entries: 10 patched, 1 deferred, 17 closed. No high findings. No AD violation was found; AD-5 was only mis-cited.
+
+- [x] [Review][Patch] (med, fix-risk low) No client test loaded a stored unset temperature, which the server now serves as JSON `null`. Added a page-spec case: it loads `null` as `''` and a save sends `''`. [ui/src/app/areas/agent/definition-form.page.spec.ts]
+- [x] [Review][Patch] (low) The EXPERIENCE row and the page doc said a held value is "never cleared", but a provider switch's cascade (Task 18) replaces it. Both now say "a value loaded with the definition is shown as held". [EXPERIENCE.md:465, definition-form.page.ts]
+- [x] [Review][Patch] (low) The opening sentence of `AnswerTools`' doc now names the reasoning-content echo. [src/OcuPilot/Kernel/Agent/Loop.cls]
+- [x] [Review][Patch] (low) `AssertRowPinned` now pins `reasoningEffort`, so every column is pinned. [src/OcuPilot/Test/AgentRules.cls]
+- [x] [Review][Patch] (low) The three `DirectValues` helpers now carry `reasoningEffort` as `ProviderPort.Dispatch` does. [src/OcuPilot/Test/{OpenAI,Gemini,Compatible}Adapter.cls]
+- [x] [Review][Patch] (low) The `reasoningEffort` column doc cites DW-1590. [src/OcuPilot/Kernel/Provider/Catalog.cls]
+- [x] [Review][Patch] (low) In `ProviderSampling`, the QA method's doc comment now states what the test pins instead of the review's reasoning. The class header now lists the update case, and a JSON `null` update leg was added. [src/OcuPilot/Test/ProviderSampling.cls]
+- [x] [Review][Patch] (low) AD-5 binds screen descriptors, not the provider catalog. Its citation is dropped from the three new comments and one test title. [Api/Definitions.cls, definition-form.{store,page,page.spec}.ts]
+- [x] [Review][Patch] (low, Rule 19) Recorded the missing mutation lines for AC1's explicit-value clause and for the Integration AC's column crossing the wire (see Verification).
+- [x] [Review][Patch] (low, Rule 19) Recorded mutation lines for the two tests this review added (see Verification).
+- [x] [Review][Defer] (low) The `AgentViolation` message is stale [src/OcuPilot/Test/AgentViolation.cls:215]. Deferred: already filed as DW-1599 (owner `range-end-cleanup`); this review appended an occurrence.
+
+**Rejected / closed:**
+
+- `reasoning_effort` is set per catalog row rather than per model. **By design**: Task 22 specifies a row column, and the per-model live proof is Story 17.7.
+- `acceptsTemperature` does not gate the adapters. **By design**: see Design Notes "Why a column". `AdapterSampling` pins the two facts equal.
+- A rollback to an older build would refuse edits. **By design**: downgrade is unsupported (Operational Envelope), and the doc claims only reads.
+- The `AnswerTools` fallback branches have no test. **Wontfix-theoretical**: `ContentJson` comes only from `MapResponse`, which serializes a parsed non-empty array. This becomes real only if a second producer sets it.
+- The create audit record no longer lists `temperature`. **By design**: Task 15.
+- `freshViolations` passes an unwired request tracker to the theme toggle. **Low, not worth fixing now**: `detectScreen` runs between the two writes, and the test keeps running long after the revert. Fixing it means adding a tracker. `reopen_if`: a later browser spec starts in dark after this one.
+- A Gemini thought signature on a text part is dropped. **Wontfix-accepted**: Task 23 is scoped to `functionCall` parts. `reopen_if`: Gemini answers 400 naming a text part's `thought_signature`.
+- The `strings.ts` comment narrates the story. **False**: 29 sibling `// Story` group comments do the same.
+- `AnthropicThinking` holds the Gemini tests. **Low, not worth fixing now**: the class header names both.
+- The EXPERIENCE row has no `[ADDED]` marker. **Low, not worth fixing now**: the convention is mixed (the Dark theme row has none), and this spec's change log carries no entry for the marker to point to.
+- A catalog row with no `acceptsTemperature` is served as `false`, while the client's fallback treats it as `true`. **Wontfix-theoretical**: every shipped and armed row declares the column, and the pins hold it. This becomes real if a row omits it.
+- The verbatim echo keeps an empty text block. **False**: the spec requires the provider's content back unchanged.
+- A test hits `<INVALID OREF>` when a row is unreadable. **False**: a loud failure is correct.
+- The DW-1337 check compares against the baseline. **False**: the route's three baseline entries are shell overflow, not on the field.
+- The QA test is uncommitted. **Not a defect**: the lead commits it.
+- The EXPERIENCE row sits at the table end. **Already accepted** in the Review Triage Log.
+- AC5 has no mutation line. **By design**: no pinning test by construction.
+
 ## Spec Change Log
 
 - 2026-09-24, spec gate (lead): added tasks 22-23 and their two acceptance criteria for DW-1590 (OpenAI `reasoning_effort`) and DW-1591 (Gemini `thoughtSignature`), both found by the lead's live probe of the catalog default models; the Observation paragraph in Design Notes is replaced by the decision.
@@ -230,6 +267,11 @@ This is the Conventions row's "a property every pre-existing row reads as a safe
 - AC6: `ProviderSampling.TestAStoredTemperatureIsKeptThroughAnUpdateAndSent`. `mutation:` `SetTyped` writes `null` for 0 as well as for `""`, then expect red on the projection leg. Observed (run 24): red there, and on the explicit-0 legs. `mutation:` `ValuesFor` maps 0 to `""`, then expect red on the recorded body leg. Observed (run 25): red on that leg alone.
 - DW-1590: the `AdapterSampling` openai tools leg. `mutation:` the openai row's `reasoningEffort` emptied, then expect red on that leg only. Observed (run 26): red on the openai leg only. `mutation:` `OpenAI.CallMessages` writes `reasoning_effort` unconditionally, then expect red on the compatible leg only. Observed (run 27): red on the compatible leg only.
 - DW-1591: the Gemini signature leg. `mutation:` `CanonicalToGemini` omits `thoughtSignature`, then expect red. Observed (run 28): red, and the round-trip leg too. `mutation:` `GeminiToCanonical` drops it, then expect red on the same leg. Observed (run 29): red on the same leg and the round-trip leg.
+- **(QA)** The "Explicit empty" matrix row was pinned only on create, where every case starts from a row with no prior value, so a `MergeBody` bug that reads an explicit empty as absent on update -- and lets the row's prior value survive -- would pass every existing test. New: `ProviderSampling.TestAnExplicitEmptyTemperatureClearsAStoredValueOnUpdate`. `mutation:` `Definitions.MergeBody` skips `temperature` when the body's value is the JSON string `""` (treating an explicit empty as absent on update), then expect red on the projection and stored-value assertions. Observed (run 249, `ocupilot-b-ci`): red on both, and on no other method; reverted, recompiled, and confirmed green again (run 250, 7/7); `git status --short`/`git diff --stat` unchanged apart from this test's addition.
+- **(CR)** AC1, explicit value sent: `AdapterSampling.TestASetTemperatureIsSentToTheOtherFamilies`. `mutation:` `OpenAI.CallMessages` never writes `temperature`. Observed (run 258): red on the openai and compatible legs, and on those two rows of `TestEachRowsColumnAgreesWithWhatItsAdapterSends`; gemini green.
+- **(CR)** Integration AC, the column over the wire: the Story 10.4 browser case. `mutation:` drop `acceptsTemperature` from `ProviderColumns`, recompiled on `ocupilot-b-ci`. Observed: red on the "Not applicable" assertion (placeholder `Provider default`, field editable). Reverted and recompiled; the spec then passed 7/7.
+- **(CR)** Unset load: page-spec case `a definition stored unset loads its JSON null as an empty field and saves it unset`. `mutation:` `absorb` reads `temperature` through `numberAt`. Observed: red on that case alone (`expected '0' to be ''`), 49 green.
+- **(CR)** Row pin: `AgentRules.TestTheShippedProviderRowsArePinned`, `reasoningEffort` leg. `mutation:` gemini row `reasoningEffort` `"low"`. Observed (run 257): red on that assertion alone.
 
 ## Auto Run Result
 

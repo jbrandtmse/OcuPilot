@@ -158,8 +158,8 @@ ClassMethod Adapter() As OcuPilot.Kernel.Provider.Base
 }
 
 /// <p>The value array a direct call reads, taking every provider fact from <var>pRow</var> --
-/// including the two columns the port would otherwise copy in, <code>keyPrefix</code> and
-/// <code>authVersion</code>.</p>
+/// including the three columns the port would otherwise copy in, <code>keyPrefix</code>,
+/// <code>authVersion</code> and <code>reasoningEffort</code>.</p>
 ClassMethod DirectValues(pRow As %DynamicObject, Output pValues)
 {
     Kill pValues
@@ -174,6 +174,7 @@ ClassMethod DirectValues(pRow As %DynamicObject, Output pValues)
     Set pValues("temperature") = pRow.canonicalTemperature
     Set pValues("keyPrefix") = pRow.keyPrefix
     Set pValues("authVersion") = pRow.authVersion
+    Set pValues("reasoningEffort") = pRow.reasoningEffort
 }
 
 /// <p><var>pFault</var>'s machine code, or <code>""</code> when the call produced no fault. Read

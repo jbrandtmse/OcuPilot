@@ -195,7 +195,7 @@ ClassMethod HandleList() As %Status
 /// <code>$ListBuild(column, kind)</code> -- every column a form needs to cascade a provider
 /// choice, and no more.</p>
 /// <p><code>acceptsTemperature</code> tells the form whether the Temperature field applies to the
-/// chosen family, so the form never branches on a provider name (AD-5).</p>
+/// chosen family, so the form never branches on a provider name.</p>
 /// <p><code>adapterClass</code>, <code>authVersion</code> and <code>reasoningEffort</code> are
 /// deliberately absent: the first is the table's own dispatch and names a class on this
 /// instance, the other two are wire details of the call OcuPilot makes. None is anything a form

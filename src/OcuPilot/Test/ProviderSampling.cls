@@ -1,6 +1,7 @@
 /// <p>Story 10.4's stored half, over HTTP against the shipped router: a create that omits the
 /// temperature stores it unset and projects JSON <code>null</code>, an explicit empty value is
-/// accepted unset, an explicit value is stored and projected as given, an out-of-range one is
+/// accepted unset (on an update too, where it clears a held value, as JSON <code>null</code> does),
+/// an explicit value is stored and projected as given, an out-of-range one is
 /// refused with the one rule 4 violation, <code>GET /agent/providers</code> serves
 /// <code>canonicalTemperature</code> <code>null</code> and <code>acceptsTemperature</code> per row,
 /// and a row stored before this story keeps its 0 through an unrelated update and still sends
@@ -116,6 +117,32 @@ Method TestAnExplicitEmptyTemperatureIsStoredUnset()
     If '$IsObject(tCreated) Quit
     Do $$$AssertEquals(tCreated.%GetTypeOf("temperature"), "null", "an empty temperature projects as null")
     Do $$$AssertEquals(..StoredTemperature(tCreated.id), "", "and is stored unset")
+}
+
+/// <p>An explicit empty temperature on an <b>update</b> clears a value the row already held: PUT
+/// <code>{"temperature":""}</code> over a stored 0.7 leaves it unset and projects <code>null</code>,
+/// and so does JSON <code>null</code>, the value the projection itself answers.</p>
+Method TestAnExplicitEmptyTemperatureClearsAStoredValueOnUpdate()
+{
+    Set tCreated = ..Create(..CreateBody("openai", "ClearOnUpdate", "0.7"), "the setup create")
+    If '$IsObject(tCreated) Quit
+    Do $$$AssertEquals(..StoredTemperature(tCreated.id), 0.7, "0.7 is stored to start")
+
+    Set tSC = ..Call("PUT", "/agent/definitions/" _ tCreated.id, "{""temperature"":""""}", .tStatus, .tText, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the clearing update completes")
+    Do $$$AssertEquals(tStatus, 200, "and is accepted (" _ tText _ ")")
+    If tStatus '= 200 Quit
+    Set tUpdated = ##class(%DynamicObject).%FromJSON(tText)
+    Do $$$AssertEquals(tUpdated.%GetTypeOf("temperature"), "null", "the update projects the cleared temperature as null")
+    Do $$$AssertEquals(..StoredTemperature(tCreated.id), "", "and the row now holds it unset, not the value it had before")
+
+    Set tSC = ..Call("PUT", "/agent/definitions/" _ tCreated.id, "{""temperature"":0.7}", .tStatus, .tText, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "0.7 is stored again (" _ tText _ ")")
+    Set tSC = ..Call("PUT", "/agent/definitions/" _ tCreated.id, "{""temperature"":null}", .tStatus, .tText, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "a JSON null temperature is accepted (" _ tText _ ")")
+    If tStatus '= 200 Quit
+    Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tText).%GetTypeOf("temperature"), "null", "and projected null")
+    Do $$$AssertEquals(..StoredTemperature(tCreated.id), "", "and stored unset, as an empty string is")
 }
 
 /// <p>An explicit value -- 0, <code>.7</code>, 0.7, 2 -- is stored and projected as given, on a

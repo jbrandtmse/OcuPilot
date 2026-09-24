@@ -147,20 +147,21 @@ Method TestTheShippedProviderRowsArePinned()
     ; Four keys since Story 10.3's Tasks appended the compatible row; the same AC pins its position.
     Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Provider.Catalog).Keys()), "anthropic,openai,gemini,compatible", "the shipped rows, in the order they are declared")
 
-    Do ..AssertRowPinned("anthropic", "Anthropic", "claude-opus-5", "[""claude-opus-5"",""claude-sonnet-5"",""claude-haiku-4-5"",""claude-fable-5-1""]", "https://api.anthropic.com/v1/messages", 0, 32000, 0, "ANTHROPIC_API_KEY", "OcuPilotAnthropic", "sk-ant-", "OcuPilot.Kernel.Provider.Anthropic", 0, "2023-06-01")
-    Do ..AssertRowPinned("openai", "OpenAI", "gpt-5.6-terra", "[""gpt-5.6-terra"",""gpt-5.6-sol"",""gpt-5.6-luna""]", "https://api.openai.com/v1/chat/completions", 0, 32000, 1, "OPENAI_API_KEY", "OcuPilotOpenAI", "", "OcuPilot.Kernel.Provider.OpenAI", 0, "")
-    Do ..AssertRowPinned("gemini", "Google Gemini", "gemini-3.8-flash", "[""gemini-3.8-flash"",""gemini-3.5-flash"",""gemini-2.5-pro""]", "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", 0, 32000, 1, "GEMINI_API_KEY", "OcuPilotGemini", "", "OcuPilot.Kernel.Provider.Gemini", 0, "")
+    Do ..AssertRowPinned("anthropic", "Anthropic", "claude-opus-5", "[""claude-opus-5"",""claude-sonnet-5"",""claude-haiku-4-5"",""claude-fable-5-1""]", "https://api.anthropic.com/v1/messages", 0, 32000, 0, "ANTHROPIC_API_KEY", "OcuPilotAnthropic", "sk-ant-", "OcuPilot.Kernel.Provider.Anthropic", 0, "2023-06-01", "")
+    Do ..AssertRowPinned("openai", "OpenAI", "gpt-5.6-terra", "[""gpt-5.6-terra"",""gpt-5.6-sol"",""gpt-5.6-luna""]", "https://api.openai.com/v1/chat/completions", 0, 32000, 1, "OPENAI_API_KEY", "OcuPilotOpenAI", "", "OcuPilot.Kernel.Provider.OpenAI", 0, "", "none")
+    Do ..AssertRowPinned("gemini", "Google Gemini", "gemini-3.8-flash", "[""gemini-3.8-flash"",""gemini-3.5-flash"",""gemini-2.5-pro""]", "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", 0, 32000, 1, "GEMINI_API_KEY", "OcuPilotGemini", "", "OcuPilot.Kernel.Provider.Gemini", 0, "", "")
     ; The one shipped row that exercises endpointRequired and allowsLocal, and the only one whose
     ; model and endpoint are the operator's: no vendor publishes either for this family.
-    Do ..AssertRowPinned("compatible", "OpenAI-compatible", "", "[]", "", 1, 32000, 1, "OPENAI_COMPATIBLE_API_KEY", "OcuPilotCompatible", "", "OcuPilot.Kernel.Provider.Compatible", 1, "")
+    Do ..AssertRowPinned("compatible", "OpenAI-compatible", "", "[]", "", 1, 32000, 1, "OPENAI_COMPATIBLE_API_KEY", "OcuPilotCompatible", "", "OcuPilot.Kernel.Provider.Compatible", 1, "", "")
 }
 
 /// <p>Assert that the shipped row <var>pKey</var> holds exactly the values named, column by
 /// column -- <code>endpointRequired</code> and <code>allowsLocal</code> included, because Story
 /// 10.3's Tasks append the <code>compatible</code> row, which sets both where the three vendor rows
 /// set neither. No shipped row declares a canonical temperature (Story 10.4), so each is pinned
-/// <code>null</code>, and <var>pAcceptsTemperature</var> is whether the family takes one.</p>
-Method AssertRowPinned(pKey As %String, pLabel As %String, pModel As %String, pSuggestions As %String, pEndpoint As %String, pEndpointRequired As %Boolean, pMaxTokens As %Integer, pAcceptsTemperature As %Boolean, pEnvVar As %String, pCredential As %String, pKeyPrefix As %String, pAdapter As %String, pAllowsLocal As %Boolean, pAuthVersion As %String)
+/// <code>null</code>, and <var>pAcceptsTemperature</var> is whether the family takes one;
+/// <var>pReasoningEffort</var> is the <code>reasoning_effort</code> its adapter is handed.</p>
+Method AssertRowPinned(pKey As %String, pLabel As %String, pModel As %String, pSuggestions As %String, pEndpoint As %String, pEndpointRequired As %Boolean, pMaxTokens As %Integer, pAcceptsTemperature As %Boolean, pEnvVar As %String, pCredential As %String, pKeyPrefix As %String, pAdapter As %String, pAllowsLocal As %Boolean, pAuthVersion As %String, pReasoningEffort As %String)
 {
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Catalog).Row(pKey, .tRow), 1, pKey _ ": the shipped row is readable")
     If '$IsObject(tRow) Quit
@@ -178,6 +179,7 @@ Method AssertRowPinned(pKey As %String, pLabel As %String, pModel As %String, pS
     Do $$$AssertEquals(tRow.adapterClass, pAdapter, pKey _ ": the adapter class the port dispatches through, which is the column rather than a branch")
     Do $$$AssertEquals(+tRow.allowsLocal, +pAllowsLocal, pKey _ ": whether this family licenses a local address and a keyless credential type")
     Do $$$AssertEquals(tRow.authVersion, pAuthVersion, pKey _ ": the API version its adapter sends, empty where the family sends none")
+    Do $$$AssertEquals(tRow.%GetTypeOf("reasoningEffort") _ ":" _ tRow.reasoningEffort, "string:" _ pReasoningEffort, pKey _ ": the reasoning_effort its adapter sends, empty where it sends none")
 }
 
 /// <p>Rule 3 -- the maximum token count is a whole number from 1 to 32000. Digits alone: without

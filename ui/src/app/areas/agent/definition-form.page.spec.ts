@@ -1679,7 +1679,7 @@ describe('the Definition form', () => {
     expect(input.getAttribute('aria-describedby')).toBe('ocu-definition-temperature-caption');
   });
 
-  it('Story 10.4 AD-5: the field follows the acceptsTemperature column, never the provider name', async () => {
+  it('Story 10.4: the field follows the acceptsTemperature column, never the provider name', async () => {
     // Mutation (Rule 19): `temperatureApplies()` keyed on the name
     // (`this.value('provider') !== 'anthropic'`) -> this goes red on both rows.
     const inverted = {
@@ -1714,5 +1714,25 @@ describe('the Definition form', () => {
     await settle(fixture);
     expect(lastBody(calls, 'PUT')['temperature']).toBe(0.7);
     expect(temperatureInput(host).value).toBe('0.7');
+  });
+
+  it('Story 10.4: a definition stored unset loads its JSON null as an empty field and saves it unset', async () => {
+    // Mutation (Rule 19): `absorb` reads the temperature through `numberAt` -> this goes red, the
+    // field reading '0' and the next save storing 0.
+    const { fixture, host, calls } = await mount(
+      samplingAnswer({ provider: 'openai', temperature: null }),
+      '/agent/definitions/edit/7'
+    );
+    await openAdvanced(fixture, host);
+    const input = temperatureInput(host);
+    expect(input.value).toBe('');
+    expect(input.getAttribute('placeholder')).toBe(STRINGS.agentDefinitionTemperatureProviderDefault);
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'Renamed';
+    name.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    saveButton(host).click();
+    await settle(fixture);
+    expect(lastBody(calls, 'PUT')['temperature']).toBe('');
   });
 });

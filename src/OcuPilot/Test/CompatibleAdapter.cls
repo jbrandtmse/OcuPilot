@@ -124,8 +124,8 @@ Method StoredDefinition(pRow As %DynamicObject, pEndpoint As %String, pCredType 
 }
 
 /// <p>The value array a direct call reads, taking every provider fact from <var>pRow</var> --
-/// including the two columns the port would otherwise copy in, <code>keyPrefix</code> and
-/// <code>authVersion</code> -- and <var>pEndpoint</var> as the stored endpoint.</p>
+/// including the three columns the port would otherwise copy in, <code>keyPrefix</code>,
+/// <code>authVersion</code> and <code>reasoningEffort</code> -- and <var>pEndpoint</var> as the stored endpoint.</p>
 ClassMethod DirectValues(pRow As %DynamicObject, pEndpoint As %String, Output pValues)
 {
     Kill pValues
@@ -140,6 +140,7 @@ ClassMethod DirectValues(pRow As %DynamicObject, pEndpoint As %String, Output pV
     Set pValues("temperature") = pRow.canonicalTemperature
     Set pValues("keyPrefix") = pRow.keyPrefix
     Set pValues("authVersion") = pRow.authVersion
+    Set pValues("reasoningEffort") = pRow.reasoningEffort
 }
 
 /// <p>The body the stub recorded on call <var>pCall</var>, parsed.</p>

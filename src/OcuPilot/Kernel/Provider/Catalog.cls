@@ -56,8 +56,9 @@ Class OcuPilot.Kernel.Provider.Catalog Extends %RegisteredObject
 /// says, and <class>OcuPilot.Test.AdapterSampling</class> keeps the two facts equal.</li>
 /// <li><code>reasoningEffort</code> -- the <code>reasoning_effort</code> value this family's
 /// adapter sends, or <code>""</code> to send none. Only the <code>openai</code> row sets it: its
-/// default model refuses function tools on Chat Completions unless it is <code>none</code>, and an
-/// OpenAI-compatible server may refuse a key it does not know.</li>
+/// default model refuses function tools on Chat Completions unless it is <code>none</code> (DW-1590,
+/// a live probe of that model), and an OpenAI-compatible server may refuse a key it does not
+/// know.</li>
 /// </ul>
 XData Providers
 {

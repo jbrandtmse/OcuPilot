@@ -382,7 +382,8 @@ ClassMethod ToolUses(pJson As %String) As %DynamicArray
 }
 
 /// <p>Echo the model's reply back as an assistant message of blocks -- its text, then its
-/// <code>tool_use</code> blocks verbatim -- answer the calls one at a time through
+/// <code>tool_use</code> blocks verbatim, or the reply's own content where it carries reasoning
+/// blocks (<var>pContentJson</var>, below) -- answer the calls one at a time through
 /// <method>DispatchTools</method> as one user message of <code>tool_result</code> blocks and nothing
 /// else, and record one <code>tool</code> step per call under the tool's canonical name: appended
 /// <code>running</code> before the call is dispatched, then set to its outcome.

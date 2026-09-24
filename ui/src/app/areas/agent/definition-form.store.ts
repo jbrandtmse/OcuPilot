@@ -41,7 +41,7 @@ export interface ProviderRow {
   readonly allowsLocal: boolean;
   /**
    * Whether this family's request may carry a temperature (Story 10.4). The form reads the column
-   * rather than a provider name (AD-5); an answer that omits it keeps the field applicable.
+   * rather than a provider name; an answer that omits it keeps the field applicable.
    */
   readonly acceptsTemperature: boolean;
   /**

@@ -6608,13 +6608,26 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec_gate 10.4 (lead live probe) | severity: high | fix-risk: low | footprint: in-epic
 - evidence: live 2026-09-24 gpt-5.6-terra chat/completions: tools without reasoning_effort -> 400 'Function tools with reasoning_effort are not supported ... set reasoning_effort to none'; with reasoning_effort none -> 200, tool round trip 200
 - 2026-09-24T02:25:07Z status=routed owner=10-4-sampling-parameters-left-to-the-provider by=spec_gate note=same intent as 10.4: a definition built from OcuPilot defaults must reach its default model
+- 2026-09-24T03:59:26Z status=resolved-by:10-4-sampling-parameters-left-to-the-provider by=adjudication note=0b863c39 catalog reasoningEffort none on the openai row, OpenAI.CallMessages writes it when set; AdapterSampling openai and compatible legs with mutations; live 2026-09-24 on ocupilot-b-ci: gpt-5.6-terra Test connection 200 and a tool turn (webapp.list.read) completed
 
 ### DW-1591: Gemini 3 function calls carry a thoughtSignature that GeminiToCanonical drops, and the catalog default gemini-3.8-flash refuses the next request of a tool-calling turn without it, so every tool-using turn on Gemini's default model fails with a 400
 - source: spec_gate 10.4 (lead live probe; the plan stage raised it as an inference) | severity: high | fix-risk: low | footprint: in-epic
 - evidence: live 2026-09-24 gemini-3.8-flash: replayed functionCall without thoughtSignature -> 400 'Function call is missing a thought_signature in functionCall parts'; same request with the signature kept -> 200
 - 2026-09-24T02:25:07Z status=routed owner=10-4-sampling-parameters-left-to-the-provider by=spec_gate note=same intent as 10.4; the canonical tool_use block already carries the vendor id (DW-1180), and Loop.AnswerTools echoes tool_use blocks verbatim
+- 2026-09-24T03:59:26Z status=resolved-by:10-4-sampling-parameters-left-to-the-provider by=adjudication note=0b863c39 GeminiToCanonical keeps thoughtSignature on the tool_use block, CanonicalToGemini writes it back; stub leg in AnthropicThinking with two mutations; live proof of the replay waits on DW-1600 (Gemini turns are refused on the first call for an unrelated enum defect)
 
 ### DW-1599: AgentViolation's providers-route assertion message still says the twelve cascade columns and names only adapterClass and authVersion as absent, after Story 10.4 added acceptsTemperature (served) and reasoningEffort (not served)
 - source: _bmad-output/implementation-artifacts/spec-10-4-sampling-parameters-left-to-the-provider.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: the expected column string at src/OcuPilot/Test/AgentViolation.cls:214 is exact and green; only the message at :215 is stale
 - 2026-09-24T03:32:14Z status=routed owner=range-end-cleanup by=harvest note=Rule 27: non-blocking; one-line message fix in an Epic 5 test file this story could touch only by one literal
+- 2026-09-24T03:55:30Z occurrence=10-4-sampling-parameters-left-to-the-provider
+
+### DW-1600: Every Gemini turn is refused on its first provider call: the navigate tool's route enum carries Home's empty route, and Gemini refuses an empty enum value (tools[0].function_declarations[64].parameters.properties[route].enum[13]: cannot be empty), so no Gemini definition can run a turn
+- source: smoke 10.4 (lead live check) | severity: high | fix-risk: low | footprint: in-epic
+- evidence: live 2026-09-24 on ocupilot-b-ci at 0b863c39: gemini-3.8-flash turn failed PROVIDER.REFUSED; messages.log shows HTTP 400 naming enum[13]; Navigate.InputSchema enum[13] is OcuPilot.Screen.Descriptor.Home's Route, which is empty by design
+- 2026-09-24T03:59:21Z status=routed owner=10-5-a-connection-test-that-answers-before-the-gateway-does by=smoke note=Rule 27: floor-blocking (Gemini turns cannot run at all); fix belongs in Kernel/Provider/ToolDefAdapter's Gemini translation, Epic 10's footprint; not caused by 10.4
+
+### DW-1601: Test connection on Gemini's default model answers an empty or cut-off reply, because its 32-token budget (Definitions TESTMAXTOKENS) is spent on Gemini 3's default thinking before any text
+- source: smoke 10.4 (lead live check) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: live 2026-09-24: OcuPilot test on gemini-3.8-flash answered 200 with reply empty; direct probe maxOutputTokens 32 -> finishReason MAX_TOKENS, 26 thought tokens; thinkingConfig thinkingLevel low or thinkingBudget 0 -> STOP with a full sentence; thinkingLevel minimal -> 400 not supported for this model
+- 2026-09-24T03:59:21Z status=routed owner=10-5-a-connection-test-that-answers-before-the-gateway-does by=smoke note=Test connection is 10.5's area; the fix sits in the Gemini adapter or the test budget, both Epic 10's footprint

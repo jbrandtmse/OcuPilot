@@ -4979,6 +4979,9 @@ So that a slow first answer does not read as a broken portal.
 - **When** they render
 - **Then** they are rows in EXPERIENCE.md's fixed-string table and keys in the string table, like every other published sentence.
 
+- DW-1600: Every Gemini turn is refused on its first provider call because the navigate tool's route enum carries Home's empty route and Gemini refuses an empty enum value (ledger; routed by smoke 2026-09-24)
+- DW-1601: Test connection on Gemini's default model answers an empty or cut-off reply because the 32-token test budget is spent on Gemini 3's default thinking (ledger; routed by smoke 2026-09-24)
+
 ---
 
 ## Epic 11: The agent explains itself, cites its work, and streams
