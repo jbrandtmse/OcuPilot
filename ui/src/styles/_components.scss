@@ -1861,7 +1861,7 @@ app-server-flag {
   min-width: 0;
   height: 18px;
   padding: 0 var(--ocu-space-2);
-  border: 1px solid transparent;
+  border: 1px solid var(--ocu-server-flag-edge);
   border-radius: var(--ocu-radius-full);
   background: var(--ocu-restrained-container);
   color: var(--ocu-restrained);
@@ -1911,13 +1911,6 @@ app-server-flag[data-unbounded] .ocu-server-flag {
 .ocu-server-flag[data-flag='development'] {
   background: var(--ocu-server-flag-development-container);
   color: var(--ocu-server-flag-development);
-}
-
-// In dark mode the pill gains a 1px `on-shell` at 20% edge: the Live container is 1.15:1 on
-// `shell-dark`, so without it the pill's outline vanishes into the band (the word inside
-// stays 6.72:1). The palette flip itself is polish week's, for every component in this file.
-:root.ocu-theme-dark .ocu-server-flag {
-  border-color: color-mix(in srgb, var(--ocu-on-shell-dark) 20%, transparent);
 }
 
 // --- Home: the area tiles and the instance line (Story 1.12) --------------------------------
@@ -1972,9 +1965,10 @@ app-server-flag[data-unbounded] .ocu-server-flag {
   cursor: pointer;
 }
 
-// A 24px slot, `aria-hidden` in the template: DESIGN.md publishes the size and the colour, the
-// glyphs are the owner's and unpublished, and nothing here may fetch one (NFR-10, AD-47). The
-// rail's own glyph reserves its geometry the same way -- including its `display`, which a
+// A 24px slot, `aria-hidden` in the template, holding the area's inline SVG icon, which strokes
+// in this rule's colour: DESIGN.md publishes the size and the colour, and nothing here may fetch
+// an icon (NFR-10, AD-47).
+// The rail's own glyph reserves its geometry the same way -- including its `display`, which a
 // `<span>` needs before `width` and `height` apply to it at all. The tile happens to be a flex
 // container today, which would blockify the slot anyway; stating it keeps the 24px a property
 // of this rule rather than of the parent.
@@ -5425,4 +5419,30 @@ app-resource-list-page {
 .ocu-command-bar > .ocu-command-bar-refresh {
   flex: 999 1 0;
   max-width: max-content;
+}
+
+// --- The page ground (Story 15.6) -----------------------------------------------------------
+//
+// DESIGN.md's depth table: "The ground is `{colors.surface}`". Without it the content column shows
+// the browser canvas, which the dark scope's `color-scheme` turns into the browser's own dark grey
+// rather than `surface-dark`. The body's ground propagates to the canvas, so every region that
+// paints nothing of its own takes the role, in both themes.
+body {
+  background-color: var(--ocu-surface);
+}
+
+// --- Area icons (Story 15.7) ------------------------------------------------------------------
+//
+// The rail's and Home's tiles' inline SVG icons (`shell/rail-icon.ts`) stroke in `currentColor`,
+// so the glyph and tile-icon rules above color them. `display: block` takes each icon out of
+// inline layout, so no line box or baseline gap sits around it inside its slot.
+.ocu-rail-glyph > svg,
+.ocu-area-tile-icon > svg {
+  display: block;
+}
+
+// A gated item has no hover state, so its icon stays at 45% under the pointer: the general hover
+// rule above is as specific as this one and would otherwise raise it to 100%.
+.ocu-rail-item-gated:hover .ocu-rail-glyph {
+  color: color-mix(in srgb, var(--ocu-on-shell) 45%, transparent);
 }

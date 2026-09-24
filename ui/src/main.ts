@@ -26,6 +26,7 @@ import { Session } from './app/core/session';
 import { ShellState } from './app/core/shell-state';
 import { SuggestedView } from './app/core/suggested-view';
 import { SystemInfo } from './app/core/system-info';
+import { ThemeState } from './app/core/theme';
 import { TokenStore, readNavigationKind, readSessionStorage } from './app/core/token-store';
 import { TurnStore } from './app/core/turn';
 import { ViewOptions } from './app/core/view-options';
@@ -140,6 +141,11 @@ onScopeChange(scope, () => {
 const accountPreferences = new AccountPreferences({ api });
 const shell = new ShellState({ account: accountPreferences });
 
+// The light and dark theme (Story 15.6): the one class on the document root, set from the same
+// account store's `shell.theme` member, so the account menu's toggle and the remembered choice
+// read one answer and nothing of it is in browser storage (AD-50).
+const theme = new ThemeState({ account: accountPreferences, root: document.documentElement });
+
 // The row's width budget and the panel's own state (Story 4.3): the remembered width, the draft,
 // full screen and the yield order, over the same account store and the same shell. `App` feeds it
 // the viewport width; the side bar, the rail and the panel read the layout it resolves.
@@ -234,6 +240,7 @@ bootstrapApplication(App, {
     { provide: NavigationService, useValue: navigation },
     { provide: ScopeService, useValue: scope },
     { provide: ShellState, useValue: shell },
+    { provide: ThemeState, useValue: theme },
     { provide: PanelState, useValue: panel },
     { provide: TurnStore, useValue: turn },
     { provide: OverlayStack, useValue: overlays },

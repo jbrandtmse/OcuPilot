@@ -409,8 +409,23 @@ Method TestTheShellMemberSetIsClosed()
 {
     Do $$$AssertTrue(##class(OcuPilot.Kernel.State.Pref).IsShellMember(##class(OcuPilot.Kernel.State.Pref).#SHELLSIDEBAROPEN), "the side bar's open state is a member")
     Do $$$AssertTrue(##class(OcuPilot.Kernel.State.Pref).IsShellMember(##class(OcuPilot.Kernel.State.Pref).#SHELLPANELWIDTH), "so is the panel's width")
+    Do $$$AssertTrue(##class(OcuPilot.Kernel.State.Pref).IsShellMember(##class(OcuPilot.Kernel.State.Pref).#SHELLTHEME), "so is the theme")
     Do $$$AssertTrue('##class(OcuPilot.Kernel.State.Pref).IsShellMember("anything"), "and nothing else is")
     Do $$$AssertTrue('##class(OcuPilot.Kernel.State.Pref).IsShellMember(""), "including the empty name")
+}
+
+/// <p><b>The theme takes one of two values.</b> The store owns that vocabulary beside the member,
+/// so the handler refuses anything else before a write.</p>
+Method TestTheThemeValueSetIsClosed()
+{
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.State.Pref).#SHELLTHEME, "theme", "the member is named theme on the wire")
+    Do $$$AssertTrue(##class(OcuPilot.Kernel.State.Pref).IsThemeValue(##class(OcuPilot.Kernel.State.Pref).#THEMELIGHT), "light is a theme")
+    Do $$$AssertTrue(##class(OcuPilot.Kernel.State.Pref).IsThemeValue(##class(OcuPilot.Kernel.State.Pref).#THEMEDARK), "so is dark")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.State.Pref).#THEMELIGHT, "light", "spelled as the client sends it")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.State.Pref).#THEMEDARK, "dark", "both of them")
+    Do $$$AssertTrue('##class(OcuPilot.Kernel.State.Pref).IsThemeValue("purple"), "and nothing else is")
+    Do $$$AssertTrue('##class(OcuPilot.Kernel.State.Pref).IsThemeValue("Dark"), "matched exactly, not by case")
+    Do $$$AssertTrue('##class(OcuPilot.Kernel.State.Pref).IsThemeValue(""), "including the empty value")
 }
 
 }

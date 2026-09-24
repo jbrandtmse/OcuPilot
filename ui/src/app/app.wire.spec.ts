@@ -22,6 +22,7 @@ import { Session, type SessionState } from './core/session';
 import { PanelState } from './core/panel-layout';
 import { TurnStore } from './core/turn';
 import { ShellState } from './core/shell-state';
+import { ThemeState } from './core/theme';
 import { STRINGS } from './core/strings';
 import { SuggestedView } from './core/suggested-view';
 import { stubAgentContext } from './testing/agent-context';
@@ -278,6 +279,7 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
         { provide: ChangeBus, useValue: bus },
         { provide: ScreenStores, useValue: screenStores },
         { provide: ShellState, useValue: shellState },
+        { provide: ThemeState, useValue: new ThemeState({ account: shellPreferences, root: document.createElement('div') }) },
         { provide: PanelState, useValue: new PanelState({ account: shellPreferences, shell: shellState }) },
         { provide: TurnStore, useValue: stubTurnStore() },
         { provide: OverlayStack, useValue: new OverlayStack() },

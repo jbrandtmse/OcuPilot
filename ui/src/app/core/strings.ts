@@ -1661,6 +1661,10 @@ export const STRINGS = {
   /** EXPERIENCE.md:463 */
   auditSqlWizardStopped: 'Not every change was applied. The list shows each event as it is now.',
 
+  // Story 15.6: the account menu's theme toggle.
+  /** EXPERIENCE.md:464 */
+  accountDarkTheme: 'Dark theme',
+
 } as const;
 
 /**

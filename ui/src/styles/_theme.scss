@@ -101,9 +101,14 @@ html {
   --mat-sys-inverse-on-surface: var(--ocu-inverse-on-surface);
 }
 
-// Dark -- the scope is a root class, not a media query, so the polish-week theme
-// toggle (spine `## Deferred`, FR-73) is a class flip. Ship the scope; the control
-// is not this story's to build.
+// Dark -- the whole theme is this one root class (spine Conventions > Theme), set by
+// `core/theme.ts` and selected nowhere else. The scope is complete: every one of the 64
+// bare `--ocu-<role>` variables and every non-role token with a dark side is re-pointed
+// at its `-dark` twin, and so is each Lantern-valued `--mat-sys-*` role. A component
+// draws bare roles and never selects on the theme, so the toggle is a flag flip. There is
+// no cycle: `--ocu-X` reads `--ocu-X-dark`, and `--ocu-X-dark` is declared in
+// _tokens.scss without reading `--ocu-X` (the server-flag edge's dark side reads
+// `--ocu-on-shell`, whose own dark side is a literal).
 :root.ocu-theme-dark {
   color-scheme: dark;
 
@@ -143,4 +148,79 @@ html {
 
   --mat-sys-inverse-surface: var(--ocu-inverse-surface-dark);
   --mat-sys-inverse-on-surface: var(--ocu-inverse-on-surface-dark);
+
+  // The 30 Material 3 roles, as the component layer reads them.
+  --ocu-primary: var(--ocu-primary-dark);
+  --ocu-on-primary: var(--ocu-on-primary-dark);
+  --ocu-primary-container: var(--ocu-primary-container-dark);
+  --ocu-on-primary-container: var(--ocu-on-primary-container-dark);
+  --ocu-secondary: var(--ocu-secondary-dark);
+  --ocu-on-secondary: var(--ocu-on-secondary-dark);
+  --ocu-secondary-container: var(--ocu-secondary-container-dark);
+  --ocu-on-secondary-container: var(--ocu-on-secondary-container-dark);
+  --ocu-tertiary: var(--ocu-tertiary-dark);
+  --ocu-on-tertiary: var(--ocu-on-tertiary-dark);
+  --ocu-tertiary-container: var(--ocu-tertiary-container-dark);
+  --ocu-on-tertiary-container: var(--ocu-on-tertiary-container-dark);
+  --ocu-error: var(--ocu-error-dark);
+  --ocu-on-error: var(--ocu-on-error-dark);
+  --ocu-error-container: var(--ocu-error-container-dark);
+  --ocu-on-error-container: var(--ocu-on-error-container-dark);
+  --ocu-surface: var(--ocu-surface-dark);
+  --ocu-surface-dim: var(--ocu-surface-dim-dark);
+  --ocu-surface-bright: var(--ocu-surface-bright-dark);
+  --ocu-surface-container-lowest: var(--ocu-surface-container-lowest-dark);
+  --ocu-surface-container-low: var(--ocu-surface-container-low-dark);
+  --ocu-surface-container: var(--ocu-surface-container-dark);
+  --ocu-surface-container-high: var(--ocu-surface-container-high-dark);
+  --ocu-surface-container-highest: var(--ocu-surface-container-highest-dark);
+  --ocu-on-surface: var(--ocu-on-surface-dark);
+  --ocu-on-surface-variant: var(--ocu-on-surface-variant-dark);
+  --ocu-outline: var(--ocu-outline-dark);
+  --ocu-outline-variant: var(--ocu-outline-variant-dark);
+  --ocu-inverse-surface: var(--ocu-inverse-surface-dark);
+  --ocu-inverse-on-surface: var(--ocu-inverse-on-surface-dark);
+
+  // The 34 OcuPilot roles.
+  --ocu-shell: var(--ocu-shell-dark);
+  --ocu-on-shell: var(--ocu-on-shell-dark);
+  --ocu-shell-edge: var(--ocu-shell-edge-dark);
+  --ocu-agent-accent: var(--ocu-agent-accent-dark);
+  --ocu-on-agent-accent: var(--ocu-on-agent-accent-dark);
+  --ocu-agent-container: var(--ocu-agent-container-dark);
+  --ocu-on-agent-container: var(--ocu-on-agent-container-dark);
+  --ocu-change-highlight: var(--ocu-change-highlight-dark);
+  --ocu-egress-warning: var(--ocu-egress-warning-dark);
+  --ocu-egress-warning-container: var(--ocu-egress-warning-container-dark);
+  --ocu-restrained: var(--ocu-restrained-dark);
+  --ocu-restrained-container: var(--ocu-restrained-container-dark);
+  --ocu-destructive: var(--ocu-destructive-dark);
+  --ocu-on-destructive: var(--ocu-on-destructive-dark);
+  --ocu-destructive-container: var(--ocu-destructive-container-dark);
+  --ocu-on-destructive-container: var(--ocu-on-destructive-container-dark);
+  --ocu-success: var(--ocu-success-dark);
+  --ocu-success-container: var(--ocu-success-container-dark);
+  --ocu-warning: var(--ocu-warning-dark);
+  --ocu-warning-container: var(--ocu-warning-container-dark);
+  --ocu-info: var(--ocu-info-dark);
+  --ocu-info-container: var(--ocu-info-container-dark);
+  --ocu-code-surface: var(--ocu-code-surface-dark);
+  --ocu-on-code-surface: var(--ocu-on-code-surface-dark);
+  --ocu-focus-ring: var(--ocu-focus-ring-dark);
+  --ocu-focus-ring-inner: var(--ocu-focus-ring-inner-dark);
+  --ocu-server-flag-live: var(--ocu-server-flag-live-dark);
+  --ocu-server-flag-live-container: var(--ocu-server-flag-live-container-dark);
+  --ocu-server-flag-test: var(--ocu-server-flag-test-dark);
+  --ocu-server-flag-test-container: var(--ocu-server-flag-test-container-dark);
+  --ocu-server-flag-failover: var(--ocu-server-flag-failover-dark);
+  --ocu-server-flag-failover-container: var(--ocu-server-flag-failover-container-dark);
+  --ocu-server-flag-development: var(--ocu-server-flag-development-dark);
+  --ocu-server-flag-development-container: var(--ocu-server-flag-development-container-dark);
+
+  // The non-role tokens with a dark side (design-tokens.mjs NON_ROLE_TOKENS).
+  --ocu-elevation-1: var(--ocu-elevation-1-dark);
+  --ocu-elevation-2: var(--ocu-elevation-2-dark);
+  --ocu-elevation-3: var(--ocu-elevation-3-dark);
+  --ocu-toast-link: var(--ocu-toast-link-dark);
+  --ocu-server-flag-edge: var(--ocu-server-flag-edge-dark);
 }

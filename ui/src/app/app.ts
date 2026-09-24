@@ -46,6 +46,7 @@ import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
 import { SuggestedView } from './core/suggested-view';
 import { SystemInfo } from './core/system-info';
+import { ThemeState } from './core/theme';
 import { AgentNavigator } from './shell/agent-navigator';
 import { RecentsRecorder } from './shell/recents-recorder';
 import { CommandBar } from './shell/command-bar';
@@ -222,6 +223,7 @@ export class App {
   private readonly connectivity = inject(ConnectivityService);
   private readonly refresh = inject(RefreshService);
   private readonly shell = inject(ShellState);
+  private readonly theme = inject(ThemeState);
 
   private readonly auditSearch = inject(AuditSearch);
   private readonly errorLogDrill = inject(ErrorLogDrill);
@@ -545,6 +547,9 @@ export class App {
       // bar's open state, which is the same row family.
       this.panel.endSession();
       this.shell.endSession();
+      // The theme is the same row family (Story 15.6): back to light before the next principal's
+      // read, rather than rendering the departed principal's choice until it settles.
+      this.theme.endSession();
       // The tenth: the conversation id and transcript are this principal's own (Story 4.5); the
       // next sign-in in this tab must start fresh rather than adopting a departed principal's
       // conversation (AD-8), and any poll this principal's turn left running must stop.

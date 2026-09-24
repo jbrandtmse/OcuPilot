@@ -11,6 +11,7 @@ import { ShellState } from '../../core/shell-state';
 import { STRINGS } from '../../core/strings';
 import { screenDeclaration } from '../../testing/screen-declaration';
 import { HomePage } from './home.page';
+import { AREA_ICON_STROKE_WIDTH, areaIcon } from '../../shell/rail-icons';
 import { AccountPreferences } from '../../core/account-preferences';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import { About } from '../../core/about';
@@ -32,6 +33,41 @@ import type { StubbedAbout } from '../../testing/about';
  */
 
 const ALLOWED: Verdict = { allowed: true, failedPair: '' };
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/** An icon's children as `{tag, attrs}` with attributes in DOM order, framework attributes aside. */
+function renderedShapes(svg: Element) {
+  return Array.from(svg.children).map((child) => {
+    expect(child.namespaceURI, `<${child.localName}> is an SVG element, not an HTML one`).toBe(SVG_NS);
+    return {
+      tag: child.localName,
+      attrs: Array.from(child.attributes)
+        .filter((attr) => !attr.name.startsWith('_ng') && !attr.name.startsWith('ng-'))
+        .map((attr) => [attr.name, attr.value]),
+    };
+  });
+}
+
+/** The module's shapes for `key` at `size`, in the same form, or `[]` where it has none. */
+function expectedShapes(key: string, size: 20 | 24) {
+  return (areaIcon(key, size) ?? []).map((shape) => ({ tag: shape.tag, attrs: Object.entries(shape.attrs) }));
+}
+
+/** The icon root: an SVG element, decorative, sized and stroked as the module publishes. */
+function expectIconRoot(svg: Element, size: 20 | 24): void {
+  expect(svg.namespaceURI).toBe(SVG_NS);
+  expect(svg.localName).toBe('svg');
+  expect(svg.getAttribute('viewBox')).toBe(`0 0 ${size} ${size}`);
+  expect(svg.getAttribute('width')).toBe(String(size));
+  expect(svg.getAttribute('height')).toBe(String(size));
+  expect(svg.getAttribute('fill')).toBe('none');
+  expect(svg.getAttribute('stroke')).toBe('currentColor');
+  expect(svg.getAttribute('stroke-width')).toBe(AREA_ICON_STROKE_WIDTH);
+  expect(svg.getAttribute('aria-hidden')).toBe('true');
+  expect(svg.getAttribute('focusable')).toBe('false');
+  expect(svg.querySelector('title, desc'), 'no title or desc to announce').toBeNull();
+}
 
 function memoryStorage(seed: Record<string, string> = {}) {
   const map = new Map<string, string>(Object.entries(seed));
@@ -325,13 +361,28 @@ describe('Home', () => {
     expect(grid.querySelectorAll('[role="listitem"]')).toHaveLength(6);
   });
 
-  it('each tile carries an icon slot that is aria-hidden and contributes nothing to its name', () => {
-    for (const tile of tiles()) {
+  it("each tile's aria-hidden icon slot holds its area's 24x24 drawing and adds nothing to its name (Story 15.7)", () => {
+    const tileAreas = REAL_AREAS.filter((area) => !area.navigates && !area.pinBottom);
+    expect(tiles()).toHaveLength(tileAreas.length);
+    for (const [index, tile] of tiles().entries()) {
+      const key = tileAreas[index].key;
       const icon = tile.querySelector('.ocu-area-tile-icon');
       expect(icon).not.toBeNull();
       expect(icon?.getAttribute('aria-hidden')).toBe('true');
-      // The placeholder says nothing: no glyph, no letter, nothing announced.
-      expect(icon?.textContent?.trim()).toBe('');
+      // The icon says nothing: no glyph, no letter, nothing announced.
+      expect(icon?.textContent, `${key}: the icon holds no text`).toBe('');
+      expect(icon?.children).toHaveLength(1);
+      const svg = icon!.children[0];
+      expectIconRoot(svg, 24);
+      expect(renderedShapes(svg), `${key}: the rendered shapes are the module's`).toEqual(
+        expectedShapes(key, 24)
+      );
+      expect(renderedShapes(svg).length, `${key}: a tile area has a drawing`).toBeGreaterThan(0);
+      // The accessible name is the tile's text content, which the icon leaves unchanged: the
+      // area name (no area has built screens in this roster, so no caption).
+      expect(tile.textContent?.trim()).toBe(
+        tile.querySelector('.ocu-area-tile-name')?.textContent?.trim()
+      );
     }
     expect(tiles()[0].textContent?.trim()).toBe(STRINGS.navAreaLogs);
   });

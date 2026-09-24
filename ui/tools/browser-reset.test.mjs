@@ -81,6 +81,7 @@ const SCRIPT = join(here, 'browser-reset.mjs');
  */
 const EXEMPT_SPECS = [
   'preferences-integration.browser-spec.mjs',
+  'theme.browser-spec.mjs',
   'ui-state-survives-sign-out.browser-spec.mjs',
 ];
 

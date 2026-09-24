@@ -21,6 +21,7 @@ import { Session, type SessionState } from './core/session';
 import { PanelState } from './core/panel-layout';
 import { TurnStore } from './core/turn';
 import { ShellState } from './core/shell-state';
+import { ThemeState } from './core/theme';
 import { SuggestedView } from './core/suggested-view';
 import { stubSuggestedView } from './testing/suggested-view';
 import { stubTurnStore } from './testing/turn';
@@ -322,6 +323,7 @@ describe('the first-login gate and the requested screen it may move off', () => 
         { provide: ChangeBus, useValue: changeBus },
         { provide: ScreenStores, useValue: screenStores },
         { provide: ShellState, useValue: shellState },
+        { provide: ThemeState, useValue: new ThemeState({ account: preferences, root: document.createElement('div') }) },
         { provide: PanelState, useValue: new PanelState({ account: preferences, shell: shellState }) },
         { provide: TurnStore, useValue: stubTurnStore() },
         { provide: OverlayStack, useValue: new OverlayStack() },
