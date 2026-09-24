@@ -134,3 +134,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-24T14:18:57Z	Epic 9	spine_updated	ad=AD-3 reason=rule5 by=runner story=9-7-the-new-task-wizard what=task_documented_property_count_corrected_47+2 lint=ok_preexisting_low_placeholder_line167
 2026-09-24T14:18:57Z	Epic 9	amendment	file=epics.md:4778(9.7_AC2_count),epics.md:831(Epic9_notes_count),EXPERIENCE.md:533(stepper_row) tier=1_rule5 by=runner
 2026-09-24T14:18:57Z	Story 9.7	plan_clarification_requested	questions=AD-21_task_output_file_and_type_settings(third_named_exception),owner_1500kB_bundle_line(eager_1.53MB_vs_lazy_wizard_1.49MB_vs_defer_all_editors_1.36MB) to=orchestrator
+2026-09-24T14:25:54Z	Story 9.5	ci_resolved	story=9.5 run=36009216113 head=71aadf6 result=success jobs=8/8 resolved_at=plan_gate_9.7
