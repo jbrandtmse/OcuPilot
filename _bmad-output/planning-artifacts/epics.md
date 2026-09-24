@@ -828,7 +828,7 @@ A user opens the editors that carry the classic portal's whole field set - user,
 
 **FRs covered:** FR-30 (editor), FR-35 (editor), FR-38 (editor), FR-41 (editor), FR-42 (editor), FR-45 (editor), FR-52, FR-53, FR-9 (per cut editor)
 
-**Implementation notes:** This is where the cut line is most likely to bite, and FR-9 is the designed response: a cut editor ships as a reduced form of the fields daily administration uses plus a `classic-link-card`, **never a half-working full form**, and its write tool ships regardless so the agent stays a conduit for that edit. FR-52 and FR-53's field lists and legal-value semantics come from the 49 documented properties on `%SYS.TaskSuper` - including `DailyFrequency`'s quadruple with `DailyFrequencyTime`, a 120-fold ambiguity if dropped - with two gaps to fill by testing rather than citation: the three `Expires*` offsets carry no descriptions, and `RunAsUser`'s documented `%Admin_Secure:Use` requirement is not verifiable from the shipped code. Four of AD-4's non-merging endpoints are here.
+**Implementation notes:** This is where the cut line is most likely to bite, and FR-9 is the designed response: a cut editor ships as a reduced form of the fields daily administration uses plus a `classic-link-card`, **never a half-working full form**, and its write tool ships regardless so the agent stays a conduit for that edit. FR-52 and FR-53's field lists and legal-value semantics come from the 47 documented properties declared on `%SYS.TaskSuper` (49 with `%%OID` and `%Concurrency`) - including `DailyFrequency`'s quadruple with `DailyFrequencyTime`, a 120-fold ambiguity if dropped - with two gaps to fill by testing rather than citation: the three `Expires*` offsets carry no descriptions, and `RunAsUser`'s documented `%Admin_Secure:Use` requirement is not verifiable from the shipped code. Four of AD-4's non-merging endpoints are here.
 
 ### Epic 10: Run on any model, and harden the write path
 
@@ -4775,7 +4775,7 @@ So that I never have to leave for the one screen that defines the instance's hou
 
 - **Given** the field list and its legal values
 - **When** they are authored
-- **Then** they come from the task class's inherited property set - **49 of its 66 compiled properties carry documentation, all declared on `%SYS.TaskSuper` rather than `%SYS.Task`** - not from the classic page, whose source is unrecoverable and not needed.
+- **Then** they come from the task class's inherited property set - **49 of its 66 compiled properties carry documentation: 47 declared on `%SYS.TaskSuper` rather than `%SYS.Task`, plus `%%OID` and `%Concurrency`** [AMENDED 2026-09-24 - see the story change log: the count was measured on the instance at the 9.7 plan] - not from the classic page, whose source is unrecoverable and not needed.
 
 - **Given** the schedule vocabulary
 - **When** it is implemented

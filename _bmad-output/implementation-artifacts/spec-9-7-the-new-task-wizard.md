@@ -1,0 +1,408 @@
+---
+title: 'Story 9.7: The New Task wizard'
+type: 'feature'
+created: '2026-09-24'
+status: 'ready-for-dev'
+review_loop_iteration: 0
+followup_review_recommended: false
+context:
+  - '{project-root}/_bmad-output/implementation-artifacts/epic-9-context.md'
+  - '{project-root}/_bmad-output/implementation-artifacts/spec-9-5-the-ssl-tls-editor.md'
+warnings: ['oversized']
+deferred: []
+---
+
+<intent-contract>
+
+## Intent
+
+**Problem:** A scheduled task can be listed, run, suspended, resumed and deleted from OcuPilot, but it cannot be created. Creating the instance's housekeeping still means leaving for the classic Task Scheduler Wizard.
+
+**Approach:** Add one create-only `form-page` at `tasks/schedule/edit`, reached from the Task schedule list's Create. It is a linear vertical stepper with four steps: Basics; Task type and settings; Schedule; Options and notifications. It saves through a new write tool, `tasks.schedule.create`. The screen's Save uses it under AD-55, and the agent's create uses it under AD-54. The field model is built once in `task-fields.ts` and `TaskRules`, so Story 9.8's edit tabs use it too.
+
+## Boundaries & Constraints
+
+**Always:**
+
+- **Steps and fields.** Every value except `TaskClass` and `Settings` comes from `Task.CRUD`'s derived 35-key template. `TaskClass` and `Settings` are the task type and that type's own settings.
+  - **Basics:** Name, Description, NameSpace.
+  - **Task type and settings:** TaskClass, then one input per non-collection setting of the chosen type, loaded when the type changes.
+  - **Schedule:**
+    - TimePeriod (Daily, Weekly, Monthly, Monthly Special, Run After, On Demand), then TimePeriodEvery, TimePeriodDay and RunAfterGUID as that period reads them.
+    - DailyFrequency (Once, Several). The quadruple DailyFrequencyTime (Minutes, Hourly), DailyIncrement, DailyStartTime and DailyEndTime; Once shows only DailyStartTime.
+    - StartDate and EndDate.
+    - Expires and ExpiresDays, ExpiresHours and ExpiresMinutes.
+    - The frequency, date and expiry fields are drawn only for periods 0–3.
+  - **Options and notifications:**
+    - RunAsUser, Priority (Normal, Low, High), IsBatch, MirrorStatus (Primary, Non-Primary, Any).
+    - OpenOutputFile, OutputFilename, OutputFileIsBinary, EmailOutput.
+    - SuspendOnError, SuspendTerminated, RescheduleOnStart.
+    - EmailOnCompletion, EmailOnError and EmailOnExpiration, each a comma-separated list of addresses.
+- **Stepper behavior.**
+  - Next sends the values so far to `POST /tasks/check` and advances only if the current step has no violation. Back keeps every value.
+  - The last step's primary reads "Create task". Cancel returns to Task schedule.
+  - A step in error shows a `destructive` marker, and its heading names the step's first refusal in text (`taskStepError`). Its accessible name gains ", N errors" through `tabAccessibleName`.
+  - Create task sends everything. A refusal opens the step holding the first refused field, through `tabToOpen` over the field→step map, and focuses the error summary and then the field.
+  - After a successful create, the page is replaced (`replaceUrl`) by the new task's details, `tasks/schedule/details/<id>`, and one `task` `created` change event is published with the numeric id.
+- **Rules.** `TaskRules.Validate(mode, args, .violations)` holds every rule, for both callers and for the check route. Each refusal is `{field, code, reason}` (AD-39). A field that does not apply to the chosen period is ignored and sent as the vendor default.
+  - **Name:**
+    - required, 1–50 characters, first character a letter (`%SYS.TaskSuper` doc);
+    - not already the name of a task, compared case-insensitively (`TASK.NAME.TAKEN`, see Design Notes).
+  - **Description:** at most 100 characters. It is refused rather than silently truncated.
+  - **NameSpace:** one of the caller's readable namespaces, the list the shell's `/namespaces` answers.
+  - **TaskClass:**
+    - a non-abstract subclass of `%SYS.Task.Definition` compiled in NameSpace;
+    - each setting key must be one of that type's settings;
+    - each setting value must pass the type's own `<setting>IsValid`, called in NameSpace as the vendor's task utility does (`TASKMGR.int` :97-112), and a `Required` setting must be non-empty. A refusal lands on `Settings.<key>`.
+    - A setting whose name matches the credential pattern is refused (`TASK.SETTING.SECRET`), and the form draws it as classic-only. The measured `HSCUSTOM` population has none.
+  - **TimePeriod** fixes how TimePeriodEvery and TimePeriodDay are read (TaskSuper doc; ranges from `TASKMGR.int` :131-197):
+
+    | Period | TimePeriodEvery | TimePeriodDay | Also |
+    | --- | --- | --- | --- |
+    | Daily | 1–7 days | `""` | |
+    | Weekly | 1–5 weeks | a set of digits 1–7 (Sunday = 1), at least one | |
+    | Monthly | 1–12 months | 1–31 (31 = last day) | |
+    | Monthly Special | 1–12 | `week^day` (week 1–5, 5 = last; day 1–7) | |
+    | Run After | `""` | `0` | RunAfterGUID must be an existing task's JobGUID |
+    | On Demand | `""` | `""` | |
+
+  - **DailyFrequency:**
+    - Once needs DailyStartTime `HH:MM`.
+    - Several needs DailyFrequencyTime, DailyIncrement (1–1440 for Minutes, 1–24 for Hourly), DailyStartTime, and a DailyEndTime later than DailyStartTime.
+  - **Dates:** StartDate is required for periods 0–3 and is `YYYY-MM-DD`. StartDate plus DailyStartTime must be later than now (instance clock); the form defaults to tomorrow. EndDate, if present, is later than StartDate.
+  - **Expires:** each offset is a whole number (days 0–999, hours 0–24, minutes 0–60), blank meaning 0. Expires and the offsets apply to periods 0–3 only. See Design Notes for the measured facts.
+  - **RunAsUser:**
+    - Blank means the caller.
+    - It must name an existing, enabled user (vendor 7406 and 7402).
+    - A name other than `$Username` needs `%Admin_Secure:USE`. Without it the rules refuse on the field (`TASK.RUNASUSER.SECURE`) before any port call.
+  - **Emails** must match `^[^@\s,]+@[^@\s,]+$`. OutputFilename follows the AD-21 ruling below.
+- **Tool `tasks.schedule.create`** (`Screen/Tool/TaskCreate.cls`):
+  - Declarations: `CREATES 1`, `WRITETYPE POST`, `PORTCLASS` TaskPort, `DESCRIPTORCLASS` TaskScheduleList, `CHANGEACTION created`, and the list's pairs.
+  - Its absence read is the list type filtered to the one row whose `Name` equals the argument: `READTYPE LIST`, `READIDPARAM filter`, `READROWKEY Name`, as `AuditEventReset` does.
+  - Compose sends the **complete** 34-key body, because the vendor's POST requires every key except `Settings` (measured 400 #40301). Supplied fields become diff rows, with each setting a `Settings.<key>` row. Every other key takes the vendor's initial value from the form read's `defaults` and is counted as unchanged, as FR-17's collapse shows it.
+  - `ArgumentProblem` calls `TaskRules.Validate("create")`.
+- **Port.** In `AdminPort`:
+  - Add `Task.CRUD/POST` to `MUTATINGTYPES`.
+  - Map vendor codes to field violations in `PROPERTYFAULTS`; the vendor text is never carried:
+
+    | Field | Vendor codes |
+    | --- | --- |
+    | RunAsUser | 7402, 7405, 7406 |
+    | DailyIncrement | 7404 |
+    | DailyEndTime | 7408 |
+    | EndDate | 7409 |
+    | TimePeriodDay | 7410, 7426, 7428 |
+    | OutputFilename | 7411, 7412 |
+    | TaskClass | 7413, 7414, 7433, 7434 |
+    | TimePeriodEvery | 7427, 7429 |
+    | DailyFrequencyTime | 7430 |
+    | RunAfterGUID | 7431 |
+    | StartDate | 7432 |
+
+  - Keep a 201's `Location` for the caller.
+
+  `TaskPort` sets `Id` (an integer) on a `Task.CRUD/POST` answer from that `Location`'s `id=`. The vendor body carries no id; it is only in `Location: /api/admin/v1/task?id=<n>` (measured).
+- **Screen Save.** `Area/Task/TaskSave.cls` `HandleCreate` follows `SslSave.Create`'s order:
+  1. pairs;
+  2. name shape;
+  3. absence read (a taken name answers 422 on Name);
+  4. undeclared keys (400 `PORT.FIELD.UNEXPECTED`);
+  5. rules;
+  6. the tool's compose;
+  7. the prohibited set;
+  8. send;
+  9. port violations.
+
+  It answers 201 `{id, name}`. `Area/Task/TaskRules.cls` also serves `HandleForm` and `HandleCheck`.
+- **Routes** are appended to `Api/Router.cls`'s tail as a new `/tasks` prefix family, in this order:
+  - `GET /tasks/form?namespace=` answers `{requiredFields, maxLengths, rules, defaults, namespace, types, runAfter}`:
+    - `types` is `[{class, name, settings:[{name, label, kind, required, default}]}]`, with collections excluded;
+    - `runAfter` is `[{guid, id, name}]`;
+    - `defaults` are a `%SYS.Task` `%New()`'s own values with StartDate tomorrow.
+  - `POST /tasks/check` answers `{violations}`, 200 always unless the caller is refused.
+  - `POST /tasks`.
+- **Prohibited set** (`Kernel/Proposal/Prohibited.cls`, appended arms only):
+  - `PermittedCreateFields` gains a `TYPETASK` arm listing every settable field.
+  - `GrantsPrivilegeByEffect` gains a `TYPETASK` arm: true when the payload's RunAsUser is non-blank and names an account other than `$Username`, ignoring case. The agent's proposal is then minted destructive, with the consequence `TASK.RUNSASOTHER` naming the user (the DW-1207 pattern).
+  - The page shows `taskRunAsOtherEffect` under RunAsUser before Save.
+- **Agent's created event (AD-14).** Confirm's answer carries `createdId` when the tool's `CreatedId(written)` (new on `Write.cls`, default `""`) answers one. `core/turn.ts` publishes that id in place of the target's. The write stays keyed by `task:instance:<Name>` (AD-13).
+- **Descriptors:**
+  - `Screen/Descriptor/TaskForm.cls` (new): `tasks/schedule/edit`, `form-page`, `sideBarPosition` 0, the list's pairs, `entityType task`, `classicPage` `%cspapp.op.utilsystaskbuilder` (the class the classic `UtilSysTaskBuilder.csp` compiles to; confirm with `%SYS.Portal.Resources.NormalizePage`, AD-44), three `suggestedPrompts`, `toolIdentifier tasks.scheduleform`.
+  - `TaskScheduleList` gains `primaryAction {"id":"create"}`. Regenerate `screens.generated.ts`.
+  - The form is added to `CREATE_ONLY_FORMS` until 9.8, so the row name cell keeps opening details.
+- **Copy and style.**
+  - Every new word is a `strings.ts` key plus a Fixed-strings row, appended with `[ADDED 2026-09-24 - see the story change log]`. `taskCreate` "Create task" references EXPERIENCE.md :533.
+  - Use tokens only and `\uXXXX` escapes, name every input, and allow no overflow. There is no DW-1337 allowance.
+  - The stepper is OcuPilot's own `shell/form-stepper.ts` (`FormStepper`, `FormStepBody`), the vertical twin of `FormTabs` over `core/form-tabs.ts`. No `@angular/material/stepper`, `@angular/cdk/stepper` or `@angular/forms`.
+- **Probes and tests** create only tasks named `OcuP97*` on `ocupilot-ci`, delete them by id after checking the exact name, and never touch a vendor task. Every task-creating test class is armed on `OCUPILOT_ALLOW_TASK_CONTROL` and added to that block's `# classes:` line.
+
+**Never:**
+
+- An edit or update tool, or a PUT route. Those are Story 9.8.
+- A caller-supplied OutputDirectory, or any path beyond the AD-21 ruling.
+- A secret-valued setting, or a collection setting (classic-only).
+- A `@angular/material/stepper` import. Raising the bundle budget, or lazy loading, without the owner's answer (Design Notes).
+- Anything but appends in `Api/Error.cls`, `Api/Router.cls`, `screen-outlet.ts`, `strings.ts`, `_components.scss`, Fixed strings, `Classification.cls` and `Prohibited.cls`. No write to Epic 12's or 11.10's files.
+- A full browser-suite run locally. A private key in any file.
+
+## I/O & Edge-Case Matrix
+
+| Scenario | Input / State | Expected | Error |
+|---|---|---|---|
+| Create weekly | Name `OcuP97W`, type `%SYS.Task.PurgeTaskHistory` KeepDays 30, Weekly every 1 on Mon+Wed (`"24"`), Several every 30 Minutes 01:00–05:00, StartDate tomorrow | 201 `{id}`; the page is `tasks/schedule/details/<id>` showing the task; the schedule list shows it; `docker exec` reads the stored schedule back | — |
+| Next on empty Basics | Next with Name blank | Stays on Basics; its heading names the refusal in text | `TASK.NAME.REQUIRED` on Name |
+| Back keeps values | Fill Basics and type, Next, Back | Every value is still there | — |
+| Type loads settings | Choose `%SYS.Task.IntegrityCheck`, then `PurgeTaskHistory` | Its settings appear, with their defaults; the previous type's settings are gone | — |
+| Name taken | Name `Purge Tasks` (vendor task, any case) | Nothing is sent | 422 `TASK.NAME.TAKEN` on Name |
+| Several without increment | Several, DailyIncrement blank | Nothing is sent | `TASK.DAILYINCREMENT.REQUIRED` |
+| Past start | StartDate today, 00:00 | Nothing is sent | `TASK.STARTDATE.PAST` |
+| Bad setting | PurgeTaskHistory KeepDays `0` (MINVAL 1) | Nothing is sent | a violation on `Settings.KeepDays` |
+| Run as other | A `%Admin_Task`-only principal sets RunAsUser `_SYSTEM` | Nothing is sent | `TASK.RUNASUSER.SECURE` on RunAsUser |
+| Run as other, allowed | Holder of `%Admin_Secure:USE`; agent create with RunAsUser `_SYSTEM` | The proposal is destructive and names the user; confirm creates it | — |
+| Agent create | Agent `tasks.schedule.create` On Demand | The proposal's target is `task:instance:<Name>`; confirm answers `createdId`; the event carries the id | A name taken since mint refuses the confirm |
+| On Demand expiry | On Demand with Expires true | The instance stores Expires 0; the form draws no expiry for On Demand | — |
+
+</intent-contract>
+
+## Code Map
+
+S = `src/OcuPilot/`, U = `ui/src/app/`. Anchors are at HEAD `0531828660a625c45e2eab879561e0ffb000d505`.
+
+**Vendor (measured on `ocupilot-ci` 2026-09-24 over `/api/admin/v2/task`, which is the same endpoint class; probe tasks and principals removed):**
+
+- `%Api.Admin.Endpoints.Task.CRUD` (Hidden; read with `GetTextAsString` on slot A):
+  - `PutAndPostSchema` L108-147 (35 keys).
+  - `ValidateRequest` L510-537: every key is required on POST except `Settings`.
+  - `RunPost` L324-336: `%New` → `MergeJsonAndObj` → `%Save`, then 201 with `Location` only.
+  - `MergeJsonAndObj` L57-106 converts DISPLAYLIST strings and `YYYY-MM-DD` dates, and applies `Settings` through `SetSettings` without checking the result.
+  - `ResourcesOR` L149-155: POST accepts `%Admin_Task` or `%Admin_Operate`.
+- **Measured behavior:**
+  - Create allocates a new id each time: 1385, then 1386 for the same name. It is not an upsert, and **duplicate names are accepted**.
+  - A blank RunAsUser is stored as the caller.
+  - A principal with only `%Admin_Task:U` and `%DB_IRISSYS:R` creates a task, so no extra write pair is needed.
+  - A save-time refusal answers 500 carrying the vendor code (7432, 7404, 7426, 7205, 7207 were observed).
+  - `%SYS.Task.RunLegacyTask`'s `ExecuteCode` needs `%Admin_Manage:USE` (7434).
+- **RunAsUser:** `%Admin_Task:U` alone was refused 7405 for another user and for `_SYSTEM`. After `%Admin_Secure:U` was added, both saved with 201.
+- **Expires:**
+  - An On Demand task stores Expires 0 whatever is sent.
+  - A Daily task keeps `Expires: true` and `ExpiresMinutes: 30`.
+  - The save accepts -1, 1000, 25 and 61, stores 1.5 as 1, and refuses `abc` (7207).
+  - `%SYS.TaskSuper.Expired()` answered 1 for every in-memory variation tried, so the runtime expiry was not measurable in process.
+  - The vendor's own task utility asks "Task Expires", then "Expires in how many days / hours / mins", with bounds 0–999, 0–24 and 0–60, and stores 0 as `""`. It asks only for periods 0–3 (`irissys/TASKMGR.int` :225-235).
+- **Properties:** `%SYS.TaskSuper` is Deployed. Its properties are listed from `%Dictionary.CompiledProperty` on slot A:
+  - 66 compiled properties;
+  - 49 documented, of which 47 are on TaskSuper and 2 are `%%OID` and `%Concurrency`;
+  - undocumented: ExpiresDays, ExpiresHours, ExpiresMinutes, SkipAuditOnReschedule and the 13 `Display*` properties.
+- **Task types:** there is no admin route that lists them. `HSCUSTOM` holds 48 subclasses of `%SYS.Task.Definition` with 88 settings, none credential-named. `irissys/%SYS/Task/Definition.cls` has `GetTaskName` :137, `GetSettings` :47, `SetSettings` :73 (drops errors) and `CheckPermission` :217.
+- **Classic pages:**
+  - New Task is `/csp/sys/op/UtilSysTaskBuilder.csp` (`%cspapp.op.utilsystaskbuilder`; tile at `irissys/%CSP/UI/Portal/Application.cls` :445).
+  - Edit is `UtilSysTaskOption.csp`.
+
+**Server:**
+
+- `S/Port/AdminPort.cls`:
+  - `MUTATINGTYPES` :262. Epic 12 appends `Security.OAuth2.Server/REVOKE` to the same line, so expect a textual merge.
+  - `BODYLESSTYPES` :278, `CONSTANTBODIES` :433, `PROPERTYFAULTS` :2222.
+  - `Invoke` reads `Location` only for a 202 (:774-779) and returns the body (:798).
+  - `HttpMethodFor` :1866, `EndpointType` :1878.
+- `S/Port/TaskPort.cls` :41-60 is the GET completion. Add the POST id.
+- `S/Screen/Tool/`:
+  - `SslCreate.cls` is the create template (`PrivilegePairs` :143).
+  - `AuditEventReset.cls` :49-51 is the `READTYPE LIST`/`READROWKEY` template.
+  - `TaskDelete.cls` :19-64 has the task tool shape (`IdArgument` `Id`).
+  - `Write.cls`: parameters :30-201, `DerivedFields` :291, `IdArgument` :453.
+  - `Classification.cls`: append after the SSL entries (:330-356). `Settings` is `opaque`, added back by the tool as a string-valued object (the `AllowedHosts` precedent, doc :87-91). OutputDirectory is left out of the positive list (AD-21).
+  - Then run `cd ui && node tools/field-lists.mjs`. `FieldLists.cls` :426-465 already holds `Task.CRUD`.
+- `S/Kernel/Proposal/`:
+  - `Mint.cls`: create path :140-186. `Compose` :532 refuses an object argument, so give tools a `ComposeCreate` hook with the kernel's `Compose` as the default. `GrantsPrivilegeByEffect` call :306, consequences :64 and :658.
+  - `Confirm.cls` :381 (`ApplyAt`) is where the answer gains `createdId`.
+  - `Operation.cls` :252-282 (`ReadTarget` row key) and :383-400.
+  - `Prohibited.cls`: `TYPETASK` :269, `Task()` :1311, `PermittedCreateFields` :579, `Created` :815-850, `GrantsPrivilegeByEffect` :1780.
+- `S/Kernel/EntityRef.cls` :59 `task:integer`. A letter-first name never folds onto an id.
+- `S/Area/Security/SslSave.cls` (`Create` :121-170, `Gate` :341, `Answer` :297) and `SslRules.cls` (`HandleForm` :275) are the templates for the new `S/Area/Task/` classes.
+- `S/Api/Router.cls`: append after :153, handlers before :1036.
+- `S/Screen/Descriptor/`:
+  - `TaskScheduleList.cls` `primaryAction` :90.
+  - `SslForm.cls` is the form descriptor template.
+  - `Registry` checks suggested prompts at :571.
+- `scripts/ci-throwaway.sh` :265-270 (`# classes: TaskResume`). `ui/tools/ci.test.mjs` :1769.
+
+**Rosters a new tool, route or screen trips:**
+
+- `Test/SurfaceCoverage.cls`: screen rows :90-96, tool rows :142/:147.
+- `Test/EndpointCoverage.cls` :156-160 (probe count).
+- `Test/Prohibited.cls` :376 (`PermittedCreateFields` sweep).
+- `Test/ProhibitedByEffect.cls`.
+- `Test/Descriptor.cls` :102/:537 and `Test/TaskLists.cls` (the list's primary action).
+- `Test/AdminInventory.cls` :104 and `Test/PortFixture.cls` :21 (`MUTATINGTYPES` mirror).
+- `Test/DerivedFields.cls`.
+- `Test/ToolRoundTrip.cls` :35.
+- `Test/ReadTool.cls` :93 is unchanged, because the form adds no read tool; confirm it stays green.
+
+**Client:**
+
+- `U/core/form-tabs.ts`: `tabErrorCounts` :30, `tabToOpen` :45, `tabAccessibleName` :60.
+- `U/shell/form-tabs.ts` :27-120 is the pattern for `form-stepper.ts`.
+- `U/areas/security/ssl-form.store.ts` / `.page.ts` are the store and page template: `open` :438, `save` :538, `absorb` :714, summary :134-146, form bar :561-573, `afterRefusal` :1065.
+- `U/areas/permissions/user-create-form.page.ts` is the create-only analogue (`replaceUrl` :489).
+- `ssl-actions.ts` is the Create registration template. It is injected at `U/app.ts` :265; `TaskActions` goes beside it. No store is injected.
+- `U/shell/screen-outlet.ts` `DESCRIPTOR_PAGES` :99-116 (append) and `U/core/navigation.ts` `CREATE_ONLY_FORMS` :201 (entry plus doc).
+- `U/areas/tasks/details.store.ts` `scheduleWords` :147 can serve the Schedule step's summary line.
+- `U/core/turn.ts` :1086 (the `createdId` publish).
+- `U/core/strings.ts` `} as const;` :1947. `ui/tools/strings.test.mjs` :686 requires unique values and :736-790 checks the references.
+- EXPERIENCE.md :108 (screen row), :533 (stepper), :777 (the a11y rule).
+- Browser: `tasks.browser-spec.mjs`, `task-schedule-actions.browser-spec.mjs`, `task-resume`, `task-run`, `a11y-structural-invariants`. `structural-walk.mjs` walks `TaskForm` at its bare route.
+
+## Tasks & Acceptance
+
+**Execution:**
+
+Server:
+
+- `S/Port/AdminPort.cls` and `S/Port/TaskPort.cls` -- add `Task.CRUD/POST`, the task `PROPERTYFAULTS`, and the 201 `Location` pass-through with the `Id` set -- so the create is reachable and the created id reaches both callers.
+- `S/Screen/Tool/TaskCreate.cls` (new) -- the tool as in Boundaries. Its `ComposeCreate` builds the complete body, `CreatedId` answers `Id`, the `Described` semantic half is authored from `%SYS.TaskSuper`'s docs (AD-3), and the RunAsUser consequence is included -- so there is one tool for both callers.
+- `S/Screen/Tool/Write.cls` -- add default `ComposeCreate` and `CreatedId` -- so these are hooks with no behavior change for existing tools.
+- `S/Kernel/Proposal/Mint.cls` and `Confirm.cls` -- call the tool's `ComposeCreate`; add `createdId` to the answer -- AD-54 composition and AD-14's id.
+- `S/Kernel/Proposal/Prohibited.cls` -- the `TYPETASK` create list and the RunAsUser effect arm -- AD-10 and DW-1207.
+- `S/Screen/Tool/Classification.cls` -- the task entry. Then regenerate `ToolFields.cls`.
+- `S/Area/Task/TaskRules.cls`, `TaskSave.cls` (new) -- the rules, form read, check and Save -- one rule set for three callers.
+- `S/Api/Router.cls`, `S/Api/Error.cls` -- the `/tasks` routes and wrappers; the `TASK.*` codes and reasons -- AD-12 and AD-39.
+- `S/Screen/Descriptor/TaskForm.cls` (new) and `TaskScheduleList.cls` -- the form descriptor and the list's `create` primary action.
+- `scripts/ci-throwaway.sh` -- add the new task test classes to `# classes:`.
+
+Server tests (armed on `OCUPILOT_ALLOW_TASK_CONTROL`; `OcuP97*` names only):
+
+- `Test/TaskRules.cls` (new) -- one leg per TimePeriod 0–5 (Every/Day accepted and refused), the DailyFrequency quadruple, dates and past start, names and taken names, settings through `IsValid`, the Expires facts, and RunAsUser.
+- `Test/TaskSave.cls` (new) -- the form-read shape (types and settings, defaults, runAfter), the check route, create 201 `{id}` with the whole stored task read back, the Matrix refusals, and the vendor-code mappings.
+- `Test/TaskCreate.cls` (new) -- the schema and descriptions, the absence fingerprint by name, a name taken since mint refused at confirm, the complete body, `createdId`, and RunAsUser-other minted destructive with `%Admin_Secure` enforced for a least-privileged principal.
+- `Test/TaskWire.cls` (new) -- every route refuses a principal missing a pair, and answers one envelope.
+- The rosters in the Code Map, with names read from the instance.
+
+Client:
+
+- `U/areas/tasks/task-fields.ts` (new, framework-free) plus `tools/task-fields.test.mjs` -- the field order, the field→step map, kinds, per-period applicability and the complete-body builder -- the model 9.8 reuses.
+- `U/shell/form-stepper.ts` (new) plus spec -- the vertical linear stepper: `ol`, `aria-current="step"`, error marker and text, and named step buttons ≥ 24x24.
+- `U/areas/tasks/task-wizard.store.ts`, `task-wizard.page.ts`, `task-actions.ts` (new) plus specs -- the load, per-namespace types, Next check, Back, create, refusal routing, the dirty guard (`FormDirty`), the RunAsUser consequence line, and navigation to details.
+- `U/shell/screen-outlet.ts`, `U/core/navigation.ts`, `U/app.ts`, `U/core/turn.ts` -- the map entry, `CREATE_ONLY_FORMS`, `TaskActions`, `createdId`.
+- `U/core/strings.ts` plus EXPERIENCE.md Fixed strings -- step labels, "Next", `taskCreate`, `taskStepError`, field labels, the three prompts, `taskRunAsOtherEffect`, `taskSettingClassicOnly`, and `taskListEmptyAgent` if the list's empty state needs it.
+- `ui/browser/task-wizard.browser-spec.mjs` (new) -- the Matrix's Create, Next-on-empty, Back, type-loads-settings and Name-taken rows; the details page and the schedule list after the create; the visual gate at 1440x900; probe tasks deleted by exact name.
+- `tasks.browser-spec.mjs` -- the schedule list's Create is drawn and opens the wizard.
+
+**Acceptance Criteria:**
+
+- **AC1.** Given the wizard, when it renders, then it is a linear vertical stepper of the four named steps. Next validates the current step through the server's rules. Back keeps values. The type step loads the chosen type's settings. The last primary reads "Create task". A step with an error names it in text as well as by its marker.
+- **AC2.** Given the tool's schema and the form read, when they are compared with `%SYS.TaskSuper`, then every settable field is a derived template key, and each carries the authored description and legal values of its TaskSuper property.
+- **AC3.** Given each TimePeriod 0–5, when TimePeriodEvery and TimePeriodDay are validated, then they are read as that period's table row says, and a value outside it is refused on its field.
+- **AC4.** Given DailyFrequency Several, when DailyFrequencyTime or DailyIncrement is missing, then the create is refused on that field and nothing is sent. Once sends only DailyStartTime.
+- **AC5.** Given Expires and its offsets, when a task is created, then `Test/TaskRules` pins what the instance stores:
+  - On Demand stores Expires 0;
+  - a Daily task keeps its offsets;
+  - a non-number is refused before the call.
+- **AC6.** Given a principal without `%Admin_Secure:USE`, when it sets RunAsUser to another user, then both callers refuse on RunAsUser before any port call. For a holder, the agent's proposal is destructive and names the user. The instance's own enforcement is pinned by test.
+- **AC7.** Given priority, output file, suspend-on-error, reschedule-after-restart and the four email settings in the wizard, when Create task succeeds, then the task appears in the schedule list and its details screen with those values, read back from the instance.
+- **Integration.** `TaskWizardPage` consumes `core/form-tabs.ts` through `FormStepper`, the `/tasks` routes and `ChangeBus`. A refused Create on step 1 opens it with its marker, and the created task's details open. The browser spec observes both.
+
+## Spec Change Log
+
+- 2026-09-24 spec gate (lead): applied ruling 2 (AD-3 and epics.md count: 49 documented, 47 on `%SYS.TaskSuper` plus `%%OID` and `%Concurrency`) and ruling 3 (EXPERIENCE.md stepper row reworded). Rulings 1 (AD-21 output file and task settings) and 4 (the owner's 1500kB bundle line) are asked of the orchestrator before the implement spawn.
+
+## Review Triage Log
+
+## Design Notes
+
+**Governing ADs:**
+
+- AD-3 (the task paragraph; semantic half from TaskSuper), AD-4 (no subject for a create), AD-5, AD-6, AD-8 (the RunAsUser pair at call time), AD-10;
+- AD-12, AD-13 (`task:integer`; name-keyed create), AD-14 (`createdId`), AD-16 (namespace switch for types and `IsValid`), AD-19;
+- AD-21 (ruling below), AD-27 (in the port, not a fallback), AD-29 (least-privileged principal measured), AD-34, AD-35, AD-39;
+- AD-44 (`classicPage`), AD-52 (TaskPort), AD-54, AD-55.
+
+**Choices stated:**
+
+- **The create's identity.** The vendor allocates a numeric id, accepts duplicate names, and returns the id only in `Location`, so an absence under the id means nothing. The create targets `task:instance:<Name>` and AD-54's fingerprint covers "no task has this name". Both callers refuse a taken name.
+  - This is the one narrowing of the vendor, chosen so AD-54 has a subject and a name picks out one task in the list and to the agent.
+  - The alternative permits a duplicate with a consequence line. It needs AD-54's absence inverted to "the holders of this name", a kernel change. It is not recommended.
+- **The stepper is OcuPilot's own.** Measured: `MatStepper` in an eager component adds 83,411 B to the initial bundle before any wizard code. It also imports `MatIcon`, `@angular/common/http`, and `@angular/forms` via `ControlContainer`, which the app avoids.
+- **Next validates on the server** (`POST /tasks/check`), so the schedule rules are written once (AD-39). Checks that need no server, such as required fields and length, also run on blur.
+- **Running as another user is permitted and confirmed** (owner, 2026-09-23). The instance enforces `%Admin_Secure:USE` (measured), OcuPilot refuses first on the field, and a holder's agent proposal is destructive and names the account.
+- **Run After on the agent path.** No read tool answers a task's JobGUID, so the agent can name a predecessor only by a GUID the user supplies. The wizard picks it from `runAfter`.
+- **Expiry.** The measured facts are the storage semantics AC5 pins. The runtime meaning is the vendor doc on `Expires`: the run expires once the next submit time or the offset passes, whichever comes first. That meaning (inference) is labeled so, not guessed further. `Expired()` did not respond to any in-process variation tried.
+
+**Requested lead rulings (Rule 5 / Rule 20):**
+
+1. **AD-21 (required by AC7's "output file" and AC1's type settings).** Append:
+
+   > "The third is a scheduled task's output file: the caller names one file, never a path -- a single segment matching `^[A-Za-z0-9][A-Za-z0-9._-]{0,99}\.txt$`, a literal `..` refused -- written to `<ManagerDirectory>` computed at call time and sent as `OutputDirectory` and `OutputFilename`. A task type's settings are values that type defines and validates (`<setting>IsValid`, as the vendor's own task utility does); a setting the type uses as a location is its value, confirmed like any other. [AMENDED 2026-09-24, Story 9.7 spec gate]"
+
+   If this is declined, the output file becomes classic-only (OpenOutputFile, binary and EmailOutput stay), AC7 narrows, and path-named settings (4 of 88 measured) are drawn classic-only.
+2. **AC2 count (Rule 5, apply and report).** The measured count is 49 documented out of 66 compiled, but only 47 are declared on `%SYS.TaskSuper`: the other two are `%%OID` and `%Concurrency`. Amend epics.md 9.7 AC2 and AD-3's sentence to:
+
+   > "66 compiled properties, 49 documented: 47 declared on `%SYS.TaskSuper` rather than `%SYS.Task`, plus `%%OID` and `%Concurrency`"
+3. **EXPERIENCE.md :533.** Change "Vertical Material stepper" to "Vertical stepper (`form-stepper`, Material 3 tokens)", and "(Material's `errorMessage`)" to "(the step's own error line)". The reason is the measured +83 kB above.
+4. **Bundle: the owner's 1500kB line (asked before the implement spawn).**
+   - **(a) Eager, as planned.** The wizard page, store, `task-fields` and `form-stepper` come to about 95–105 KB of source. At the measured 0.55 bundle-to-source ratio (X.509: 46,995 → 26,053) that is about +50–58 KB. The initial bundle goes from 1,476,787 B (measured today) to **about 1.53 MB** (inference). That crosses 1500kB and stays under the 1551kB warning.
+   - **(b) Lazy wizard.** `screen-outlet.ts` maps `TaskForm` to a thin eager `TaskWizardShellPage`, whose template is `@defer (on immediate) { <app-task-wizard/> } @placeholder { skeleton }`. No store is injected in `app.ts`, and `TaskActions` stays eager.
+     - Measured cost of `@defer` itself: +9,596 B initial for a trivial component.
+     - Initial becomes **about 1.49 MB**, with about 50–58 KB in a lazy chunk.
+     - It touches `ui/tools/build-output.test.mjs` (DW-371 fails on any extra `.js`; it would count a declared lazy chunk separately), one shell spec, and the browser spec's wait.
+     - About 1–2 hours.
+   - **(c) Also defer the other editors' pages** (SSL, web-app, user, role, X.509 and the three create forms, about 130 KB of pages).
+     - The stores that `app.ts` injects for sign-out reset stay eager, or their reset moves to page destroy, which changes `app.spec.ts`'s reset legs.
+     - The `users.browser-spec.mjs` mutation line on `DESCRIPTOR_EDIT_PAGES` needs re-pointing.
+     - Initial becomes **about 1.36 MB** (inference).
+     - About half a day.
+
+**Ledger inbox:** none. `ledger.sh slice 9-7-the-new-task-wizard` is empty.
+
+**Contention:**
+
+- `origin/OCU-1-epic12` has no diff in `Registry`, `Kernel/Proposal`, `Router`, `Classification`, `screen-outlet` or `screen-mirror`.
+- It edits the same one-line rosters: `AdminPort` `MUTATINGTYPES`/`BODYLESSTYPES`, `PortFixture`, `ReadTool`, `SurfaceCoverage`, `ToolRoundTrip`, and `strings.ts`/`screens.generated.ts`/`screen-action-handler.ts`. Expect hand merges, not design clashes.
+- `footprint_extensions`: `ui/src/app/core/turn.ts`, `ui/src/app/core/navigation.ts`, `ui/src/app/app.ts`, `scripts/ci-throwaway.sh`, `Kernel/Proposal/{Mint,Confirm,Prohibited}.cls` (contended; appended arms and one hook each).
+
+**Integration ACs:**
+
+- **Consumes:**
+  - 9.1–9.5: `core/form-tabs.ts`, the Save order, `FormDirty` and the summary.
+  - 8.x: `CREATES`, `READROWKEY` and `PROPERTYFAULTS`.
+  - 5.11 / 7.x: TaskPort.
+  - The shell's `/namespaces`.
+- **Consumed-by:** Story 9.8 (Edit task).
+  - It reuses `task-fields.ts` (the field→step map read as field→tab), `TaskRules` (`Validate("update")`, `HandleForm` with `?id=`), `TaskPort`, `TaskForm` (it removes the `CREATE_ONLY_FORMS` entry and adds a `DESCRIPTOR_EDIT_PAGES` entry) and the `PROPERTYFAULTS`.
+  - It adds `tasks.schedule.update` with `fingerprintExcludes` for the next-scheduled time.
+
+## Verification
+
+Slot A. Every IRIS MCP call carries `server: "ocupilot-slot-a"`. Anything that creates a task or user runs on `ocupilot-ci` only. Run one test class per call.
+
+**Commands:**
+
+- `(loop)` `cd ui && node --test tools/task-fields.test.mjs tools/navigation.test.mjs tools/strings.test.mjs tools/screen-mirror.test.mjs tools/field-lists.test.mjs tools/ci.test.mjs tools/form-tabs.test.mjs` -- expected: green.
+- `(loop)` `cd ui && npm run test:components` -- expected: green, including `task-wizard.*`, `form-stepper`, `screen-outlet` and `turn`.
+- `(loop)` `uv run scripts/test_check_objectscript.py && uv run scripts/check-objectscript.py && bash scripts/lint-docs.sh` -- expected: clean.
+- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<X>`, one at a time -- expected: 0 failures each. X is:
+  - TaskRules, TaskSave, TaskCreate, TaskWire;
+  - TaskLists, TaskDetails, TaskScheduleActions, TaskResume, TaskRun;
+  - Prohibited, ProhibitedByEffect, SurfaceCoverage, EndpointCoverage, ReadTool, ToolRoundTrip;
+  - Descriptor, DerivedFields, AdminInventory, ScreenReadWire, RefusalCopy.
+- `(loop)` `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`. Then run each spec file alone with `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci node --test --test-concurrency=1 browser/<f>` -- expected: green. The files are task-wizard, tasks, task-schedule-actions, task-resume, task-run and a11y-structural-invariants. Report the build's "Initial total" bytes.
+- `(once, before dev_complete)` `node ui/tools/ci-runner.mjs --container ocupilot-ci --package OcuPilot.Test` -- expected: 0 new failures. The full browser suite is CI's.
+
+**Mutations (Rule 19; the pass that adds each pinning test writes its line):**
+
+- AC1: drop the Next check call, and separately drop the step's error text.
+- AC2: remove a description from `TaskCreate.Described`.
+- AC3: widen Weekly's TimePeriodEvery to 1–7.
+- AC4: drop the DailyIncrement-required rule.
+- AC5: skip the On Demand Expires-0 alignment in the rules.
+- AC6: drop the `%Admin_Secure` pre-check, and separately the `GrantsPrivilegeByEffect` task arm.
+- AC7: drop OutputFileIsBinary from `task-fields`' body builder.
+- Integration: skip `tabToOpen` in `afterRefusal`.
+- Identity: set `CREATES` 0; answer `""` from `CreatedId`.
+
+## Auto Run Result
+
+Status: ready-for-dev
+Blocking condition: none
+
+Planned only. Four lead rulings are requested under Design Notes: AD-21's output file and task settings, the AC2/AD-3 count, EXPERIENCE :533's stepper, and the owner's 1500kB bundle line. Plan-time probes ran on `ocupilot-ci` and were cleaned up: 16 `OcuP97*` tasks, the users `OcuP97User` and `OcuP97Other`, and the role `OcuP97Role`, all deleted.
