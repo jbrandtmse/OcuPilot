@@ -4,7 +4,8 @@
 /// through <class>OcuPilot.Kernel.Agent.Bound</class> and hands the result on as a plain
 /// <code>JOB</code> value to <class>OcuPilot.Kernel.Agent.Job</class>. <b>This class names no
 /// <code>Kernel/Agent</code> class</b>: it projects identity, rows, sort and filter, and returns
-/// the field-maximum map; the row cap and the size cut are the caller's, through
+/// the field-maximum map, and names the tools that act on a screen (<method>ScreenTools</method>);
+/// the row cap and the size cut are the caller's, through
 /// <method>OcuPilot.Kernel.Agent.Bound.Apply</method>.</p>
 Class OcuPilot.Screen.Context Extends %RegisteredObject
 {
@@ -14,6 +15,13 @@ Class OcuPilot.Screen.Context Extends %RegisteredObject
 ClassMethod RegistryClass() As %String
 {
     Quit "OcuPilot.Screen.Registry"
+}
+
+/// <p>The tool registry <method>ScreenTools</method> lists. Overridable for a test fixture;
+/// production never overrides it.</p>
+ClassMethod ToolRegistryClass() As %String
+{
+    Quit "OcuPilot.Screen.Tool.Registry"
 }
 
 /// <p>Build the payload for a validated <var>pContext</var> (the wire object
@@ -119,6 +127,112 @@ ClassMethod Build(pContext As %DynamicObject, Output pBuilt As %Boolean, Output 
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The wire names of the tools that act on the screen <var>pDescriptor</var>, as
+/// <var>pTools</var> (AD-5, AD-24, AD-53): its read tools first, then its write tools, each group in
+/// <method>OcuPilot.Screen.Tool.Registry.ListTools</method> name order, with no duplicates.</p>
+/// <p>A tool is bound to a descriptor when its list entry's <code>descriptor</code> or its class's
+/// <code>DESCRIPTORCLASS</code> is that descriptor. The read group is every read tool bound to
+/// <var>pDescriptor</var>. The write group is every write tool bound to it that carries one of its
+/// declared row actions (<code>ScreenActionIds</code>) or, when it declares a primary action,
+/// creates its target (<code>Creates()</code>). A declared row action no tool bound to
+/// <var>pDescriptor</var> carries is resolved against the descriptor its <code>parentScope</code>
+/// route names. A screen that declares no read, no action and no parent -- a form page -- answers
+/// <code>[]</code>.</p>
+/// <p>A tool list that cannot be built returns its error, with <var>pTools</var> empty.</p>
+ClassMethod ScreenTools(pDescriptor As %String, Output pTools As %DynamicArray) As %Status
+{
+    Set tSC = $$$OK
+    Set pTools = []
+    Try {
+        Set tSC = $ClassMethod(..ToolRegistryClass(), "ListTools", .tList)
+        If $$$ISERR(tSC) Quit
+        Set tRowActions = $ClassMethod(pDescriptor, "RowActionIds")
+        Set tHasPrimary = ($ClassMethod(pDescriptor, "PrimaryActionId") '= "")
+        Kill tRead, tWrite
+        Set tCarried = ""
+        Set tIterator = tList.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tEntry) {
+            If '..BoundTo(tEntry, pDescriptor) Continue
+            Set tName = tEntry.%Get("name")
+            If tEntry.%Get("kind") = "read" {
+                Set tRead(tName) = ""
+                Continue
+            }
+            If tEntry.%Get("kind") '= "write" Continue
+            Set tActionIds = ..ActionIds(tEntry)
+            Set tCarries = 0
+            For tI = 1:1:$ListLength(tRowActions) {
+                Set tAction = $List(tRowActions, tI)
+                If '$ListFind(tActionIds, tAction) Continue
+                Set tCarries = 1
+                If '$ListFind(tCarried, tAction) Set tCarried = tCarried _ $ListBuild(tAction)
+            }
+            If tCarries || (tHasPrimary && ..CreatesTarget(tEntry)) Set tWrite(tName) = ""
+        }
+
+        Set tUnreached = ""
+        For tI = 1:1:$ListLength(tRowActions) {
+            If '$ListFind(tCarried, $List(tRowActions, tI)) Set tUnreached = tUnreached _ $ListBuild($List(tRowActions, tI))
+        }
+        Set tParentScope = $ClassMethod(pDescriptor, "ParentScope")
+        Set tParent = ""
+        If (tUnreached '= "") && (tParentScope '= "") Set tParent = $ClassMethod(..RegistryClass(), "DescriptorForRoute", tParentScope)
+        If tParent '= "" {
+            Set tIterator = tList.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tEntry) {
+                If tEntry.%Get("kind") '= "write" Continue
+                If '..BoundTo(tEntry, tParent) Continue
+                Set tActionIds = ..ActionIds(tEntry)
+                For tI = 1:1:$ListLength(tUnreached) {
+                    If $ListFind(tActionIds, $List(tUnreached, tI)) Set tWrite(tEntry.%Get("name")) = ""
+                }
+            }
+        }
+
+        For tKind = "read", "write" {
+            Set tIterator = tList.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tEntry) {
+                Set tName = tEntry.%Get("name")
+                If (tKind = "read") && '$Data(tRead(tName)) Continue
+                If (tKind = "write") && '$Data(tWrite(tName)) Continue
+                Do pTools.%Push($ClassMethod(..ToolRegistryClass(), "WireName", tName))
+            }
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pTools = []
+    Quit tSC
+}
+
+/// <p>Whether the tool list entry <var>pEntry</var> is bound to <var>pDescriptor</var>: its own
+/// <code>descriptor</code>, or its class's <code>DESCRIPTORCLASS</code>, is that descriptor.</p>
+ClassMethod BoundTo(pEntry As %DynamicObject, pDescriptor As %String) As %Boolean [ Private ]
+{
+    If pDescriptor = "" Quit 0
+    If pEntry.%Get("descriptor") = pDescriptor Quit 1
+    Set tClass = pEntry.%Get("class")
+    If tClass = "" Quit 0
+    Quit ($Parameter(tClass, "DESCRIPTORCLASS") = pDescriptor)
+}
+
+/// <p>The row-action ids the write tool <var>pEntry</var> carries, or <code>""</code> for a tool
+/// class that declares none.</p>
+ClassMethod ActionIds(pEntry As %DynamicObject) As %List [ Private ]
+{
+    Set tClass = pEntry.%Get("class")
+    If (tClass = "") || '##class(%Dictionary.CompiledMethod).%ExistsId(tClass _ "||ScreenActionIds") Quit ""
+    Quit $ClassMethod(tClass, "ScreenActionIds")
+}
+
+/// <p>Whether the write tool <var>pEntry</var> creates its target (AD-54).</p>
+ClassMethod CreatesTarget(pEntry As %DynamicObject) As %Boolean [ Private ]
+{
+    Set tClass = pEntry.%Get("class")
+    If (tClass = "") || '##class(%Dictionary.CompiledMethod).%ExistsId(tClass _ "||Creates") Quit 0
+    Quit ''$ClassMethod(tClass, "Creates")
 }
 
 }

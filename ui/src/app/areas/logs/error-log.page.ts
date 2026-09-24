@@ -25,6 +25,9 @@ import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { TypedNameDialog } from '../../shell/typed-name-dialog';
 import { ERROR_LOG_ENTITY_TYPE, ErrorLogDrill, type ErrorLogLevel } from './error-log.store';
 
+/** What every level but `list` publishes into the store: no rows, one array so a re-publish is skipped. */
+const NO_CONTEXT_ROWS: readonly unknown[] = [];
+
 /** The descriptor this page renders, whose store the command bar and the row-action handler read. */
 export const LOG_ERROR_LIST = 'OcuPilot.Screen.Descriptor.LogErrorList';
 
@@ -370,6 +373,11 @@ export class ErrorLogPage {
 
   private readonly menuTop = signal(0);
 
+  /** The level and the rows `publishRows` last wrote into the store. */
+  private publishedLevel: ErrorLogLevel | null = null;
+
+  private publishedRows: readonly unknown[] | null = null;
+
   /** Bumped by the store, so the tables re-render under `OnPush`. */
   private readonly generation = signal(0);
 
@@ -388,10 +396,12 @@ export class ErrorLogPage {
         this.store.setRefusal('');
       }
       this.syncSelection();
+      this.publishRows();
       this.generation.update((value) => value + 1);
     });
     const stopStore = this.store.subscribe(() => this.generation.update((value) => value + 1));
     this.syncSelection();
+    this.publishRows();
     // Manual Refresh (DW-260). This screen binds no `RefreshService` -- three levels with three
     // column sets cannot be one declared read -- so Refresh re-issues the level the user is on
     // through `reopen()`, which sends the read directly and NOT through `open*`: those drop the
@@ -818,6 +828,21 @@ export class ErrorLogPage {
     }
     if (held.length === 1 && held[0] === key) return;
     this.store.setSelection([key]);
+  }
+
+  /**
+   * Publish the rows on screen into this screen's store, which is what a turn's screen context and
+   * the context chip read (AD-24): the errors at the `list` level, and none at any other level --
+   * a namespace, a date and a captured detail are never context. It publishes only when the level
+   * or its rows changed, and `applyTick` leaves the selection as it is.
+   */
+  private publishRows(): void {
+    const level = this.drill.level();
+    const rows = level === 'list' ? this.drill.errors() : NO_CONTEXT_ROWS;
+    if (level === this.publishedLevel && rows === this.publishedRows) return;
+    this.publishedLevel = level;
+    this.publishedRows = rows;
+    this.store.applyTick(rows, this.drill.truncated(), this.store.banner(), new Date());
   }
 
   /** Where the drill stands: its level and the scope that level is of. */
