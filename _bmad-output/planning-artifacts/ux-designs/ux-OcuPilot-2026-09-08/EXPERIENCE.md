@@ -145,7 +145,7 @@ Step = PRD §10.1 build step ("1/3" = the area's one step-1 list, otherwise step
 | Delete OAuth client configuration / server client description | Security and secrets | row-overflow-menu | names the entry | dialog | 4 · P0 |
 | Classic OAuth editor | external (new tab) | OAuth 2.0 row name cell | each entry links to the classic editor until the P1 editors exist | external | — |
 | Auditing configuration | Security and secrets | side-bar › Auditing | enable/disable auditing (warns that agent writes will no longer be marked); system events; user events; selective SQL auditing wizard; cross-link to the Audit database viewer in Logs (FR-47) | form-page | 4 / 5 · P0 |
-| SSL test · X.509 details · LDAP test · OAuth token revoke · Audit copy / purge · OAuth 2.0 editors (five) | Security and secrets | editors · row-overflow-menu | FR-75 | dialog · form-page | **P1** |
+| SSL test · X.509 details · LDAP test · Audit copy / purge · OAuth 2.0 editors (five) · OAuth token revoke (Permissions › Users row action) | Security and secrets · Permissions | editors · row-overflow-menu | FR-75 | dialog · form-page | **P1** |
 | Definitions list | Agent co-pilot | rail › Agent co-pilot › Definitions · First-login gate | name, provider, model, enabled, default (FR-24) | list | 2 · P0 |
 | Definition form | Agent co-pilot | Definitions name cell · command-bar › Create · gate | provider cascade, suggested models, write-once key, Test connection, read-only flag, retention (FR-24..27); name, provider, model, endpoint, key and Test connection sit above the fold, and max tokens, temperature, max iterations, the system-prompt override and retention collapse under "Advanced", closed by default | form-page | 2 · P0 (other providers 7) |
 | Switches | Agent co-pilot | side-bar › Switches | kill switch (global / per user) · enforced read-only · context-sharing default · per-user turn limits (step 7); every change audited; never depends on the agent (FR-19, FR-20, FR-29) | form-page | 2 · P0 |
@@ -163,9 +163,9 @@ Entries in daily-use order. A screen that is not yet built does not appear in th
 | Logs | alerts.log · messages.log · Application errors · Audit database | System Monitor log · Background task error log · xDBC error log · SQL diagnostics log · Interoperability event log · Analytics log · Unified log hub |
 | OS management | Processes · Locks · System usage · Databases · Devices | License usage · Dashboard · External language servers |
 | Tasks | Task schedule · On-demand tasks · Upcoming tasks · Task history | Background tasks |
-| Permissions | Users · Roles · Resources · Services | — (Effective privileges is a User editor view; Permission check is a command-bar action) |
+| Permissions | Users · Roles · Resources · Services | — (Effective privileges is a User editor view; Permission check is a command-bar action; OAuth token revoke is a Users row action) |
 | Web applications and REST API explorer | Web applications · REST API explorer | Web sessions |
-| Security and secrets | SSL/TLS · X.509 · LDAP / Kerberos · Wallet · OAuth 2.0 · Auditing | — (tests, details, revoke, copy/purge and the OAuth editors attach to existing screens) |
+| Security and secrets | SSL/TLS · X.509 · LDAP / Kerberos · Wallet · OAuth 2.0 · Auditing | — (tests, details, copy/purge and the OAuth editors attach to existing screens) |
 | Agent co-pilot | Definitions · Switches | Governance policy · Agent audit ledger · Transcripts |
 
 ### Dialogs

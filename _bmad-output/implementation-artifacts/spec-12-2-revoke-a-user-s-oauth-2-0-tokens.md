@@ -144,6 +144,8 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-09-24, spec gate (runner): the orchestrator took all four recommendations. AD-8 is widened, with this tool as its named case. AD-53 carries the named gap. EXPERIENCE.md rows :148, :166 and :168 were amended in place, with no line-count change. `screen-action-handler.ts` is allowed two appended map entries, read from `origin/OCU-1-epic9` immediately before editing. AC3's pinning test must redden when the declared pair is removed (already the planned mutation). No task changes.
+
 ## Review Triage Log
 
 ## Design Notes
@@ -184,10 +186,7 @@ deferred: []
   - The bundle grows by two strings and two map entries, far below 1378 kB.
 - **Integration ACs.** `TokenPort` is introduced, and its one consumer is this story's tool through the mint, the confirm and the screen route (AC1, AC2). Consumes: Story 7.2's Users row actions, AD-53's route and the typed-name dialog. Consumed-by: none.
 - **Ledger inbox:** empty.
-- **Rule 20 / Rule 5 for the runner (one bullet):**
-  - (a) AD-8: record a second named pair exception. The revoke declares `%Admin_OAuth2_Registration:USE` beyond the Users list's set because the vendor endpoint's gate names it (measured 403). This is not a database the read does not write.
-  - (b) AD-53: the vendor records no audit event for a token revoke (measured), so a person's revoke leaves no audit row. Record this as a named gap, or decide on a marker.
-  - (c) EXPERIENCE.md :148 and :168 place "OAuth token revoke" under Security and secrets. Amend them in place to Permissions › Users (apply-and-report).
+- **Rulings applied at the spec gate (orchestrator, 2026-09-24):** AD-8 now names this tool's `%Admin_OAuth2_Registration:USE` as its second pair exception (vendor `ResourcesOR()`, measured). AD-53 records the no-audit-row gap for the screen path. EXPERIENCE.md :148, :166 and :168 were amended in place. `screen-action-handler.ts` takes the two map entries only, under the contended-edit discipline.
 
 ## Verification
 
