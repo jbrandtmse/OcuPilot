@@ -36,6 +36,7 @@ import { shortcutScreens } from '../../core/shortcuts';
 import { Session } from '../../core/session';
 import { ShellState } from '../../core/shell-state';
 import { STRINGS, stringFor } from '../../core/strings';
+import { AreaIcon } from '../../shell/rail-icon';
 import { ServerFlag } from '../../shell/server-flag';
 
 /** One screen name inside a tile's caption; every part but the first carries a separator. */
@@ -174,12 +175,11 @@ interface LineSegment {
  * create a second source for every screen name beside its descriptor's `labelKey`, which is
  * the drift AD-5 exists to prevent.
  *
- * **The icon is a 24px `aria-hidden` slot.** DESIGN.md `:1102` publishes the size and the
- * colour; the glyphs themselves are the owner's and unpublished, and nothing here may reach a
- * CDN for one (NFR-10, AD-47). The slot reserves the published geometry, as the rail's glyph
- * does, and contributes nothing to the tile's accessible name. That name is the button's own
- * text: the area name today, and the area name followed by its caption once an area has built
- * screens to caption with.
+ * **The icon is the area's 24px drawing in an `aria-hidden` slot.** It is the rail's icon at tile
+ * size, from `shell/rail-icons.ts` (DESIGN.md's `mockups/key-home.html`), stroked in the slot's
+ * `currentColor`, so DESIGN.md `:1102`'s `primary` and a gated tile's `restrained` are the slot's
+ * own rules. It contributes nothing to the tile's accessible name. That name is the button's own
+ * text: the area name, followed by its caption once an area has built screens to caption with.
  *
  * **A gated tile stays listed, focusable and `aria-disabled="true"`** -- never the `disabled`
  * attribute, never hidden -- with the failed `(resource, permission)` pair as its reason on
@@ -252,7 +252,7 @@ interface LineSegment {
 @Component({
   selector: 'app-home-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ServerFlag],
+  imports: [AreaIcon, ServerFlag],
   template: `<section class="ocu-home">
     <div class="ocu-home-remembered">
       @for (block of blocks; track block.key) {
@@ -367,7 +367,7 @@ interface LineSegment {
             [attr.aria-describedby]="tile.describedBy"
             (click)="activate(tile)"
           >
-            <span class="ocu-area-tile-icon" aria-hidden="true"></span>
+            <span class="ocu-area-tile-icon" aria-hidden="true"><svg [ocuAreaIcon]="tile.key" [size]="24"></svg></span>
             <span class="ocu-area-tile-name">{{ tile.label }}</span>
             <span class="ocu-area-tile-caption">
               @for (part of tile.caption; track part.key) {

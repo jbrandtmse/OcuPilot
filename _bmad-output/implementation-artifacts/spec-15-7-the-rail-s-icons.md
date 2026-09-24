@@ -2,14 +2,29 @@
 title: "Story 15.7: The rail's icons"
 type: 'feature'
 created: '2026-09-23'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
+baseline_revision: '0ba72a3a9855c45813e051af1e635352adcb87df'
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-15-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The DW-1337 structural gate walks HTMLElements only, so an overflow, name or contrast defect inside an SVG is invisible to it.
+    evidence: |-
+      ui/browser/structural-walk.mjs filters document.body.querySelectorAll('*') by `el instanceof HTMLElement`; Story 15.7's tile svg `width: 40px` mutation left the gate green while rail-icons.browser-spec (a) went red.
+    location: >-
+      ui/browser/structural-walk.mjs:247
+    severity: medium
+  - summary: >-
+      Two stale DW-1337 baseline entries on agent/definitions at 720 (app-command-bar refresh action and sort span) are reported on every gate run.
+    evidence: |-
+      a11y-structural-invariants.browser-spec reports "200 found, 202 in the baseline, 2 stale"; the Story 15.7 handoff reproduced both on the untouched HEAD bundle, so they predate 15.7. structural-walk --write refuses an existing baseline, so removal is a hand edit of the two keys.
+    location: >-
+      ui/browser/structural-baseline.json
+    severity: low
 ---
 
 <intent-contract>
@@ -152,6 +167,25 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-24 — Review pass
+
+- verdicts: 14 findings — high 0, medium 1, low 6, false 7, maybe-false 0
+- findings:
+  - `[low]` `[patch]` Browser (a)'s name checks cannot redden from the icon, and the AC4 line predicted a tile AX-name red that did not occur — AC4 lines rewritten; the `exposedIcons` check was shown red with `aria-hidden` removed.
+  - `[medium]` `[defer]` The DW-1337 gate walks `HTMLElement`s only, so it cannot see an SVG defect — pre-existing in `structural-walk.mjs`; AC6 line rewritten to the observed result; containment pinned by browser (a).
+  - `[low]` `[patch]` The `display: block` rule had no pin — added (a)'s slot-spill check; `display: inline` turns it red (3px).
+  - `[low]` `[patch]` The AC4 and AC6 `mutation:` lines were predictions, not observations — replaced with the observed results.
+  - `[low]` `[patch]` `rail.spec.ts` had no non-empty-drawing check of its own — added `toBeGreaterThan(0)` per item.
+  - `[false]` `[reject]` The rendered DOM is compared to the module, not the mockup, and root values are hard-coded — the module is pinned to the mockup by `rail-icons.test.mjs`; the root values are the intent's own literals.
+  - `[false]` `[reject]` Dot and indicator figures measure surfaces this story did not change — the matrix row asks for exactly those figures.
+  - `[false]` `[reject]` Gated-under-pointer is tested only in the browser — jsdom computes no styles; the browser is the intent's surface.
+  - `[false]` `[reject]` The tile caption case is covered only in the browser — browser (a) compares each CDP name with the visible text over the real `AREAS`.
+  - `[low]` `[patch]` A same-origin `.svg` request would pass the origin filter — (a) now asserts no `.svg` path is requested.
+  - `[false]` `[reject]` `rail.spec.ts` iterates a typed area list — the AD-5 roster test is `rail-icons.test.mjs`, which derives from `AREAS`; the typed list predates this story.
+  - `[low]` `[reject]` The DESIGN intro and EXPERIENCE edits have no test — prose amendments with no user-facing failure; AC5 pins the rail paragraph, and a per-sentence doc test is more surface than the harm.
+  - `[false]` `[reject]` Markers are dated 2026-09-24 against a 2026-09-23 intent — the dispatch and the spec's Tasks prescribe 2026-09-24 (the UTC date of the run).
+  - `[false]` `[reject]` No record that the browser spec ran — recorded under Auto Run Result.
+
 ## Design Notes
 
 **Governing ADs (Rule 6):**
@@ -207,17 +241,37 @@ No ObjectScript changes, so there is no class run and no full ObjectScript sweep
 - `(loop)` `bash scripts/lint-docs.sh` — green over DESIGN.md and EXPERIENCE.md.
 - `(once, before dev_complete)` `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS` on the throwaway (slot B's dev instance serves no bundle, so its `shell` and `deeplink` checks fail there by environment) — more than 0 checks, all pass. (lead edit at spec gate) The full browser suite is not run locally (Rule 29); CI discovers the new spec by glob.
 
-**Mutations (Rule 19).** Apply each one, observe red, revert, and confirm the tree is byte-identical. Rebuild and redeploy before any browser read.
+**Mutations (Rule 19).** Apply each one, observe red, revert, and confirm the tree is byte-identical. Rebuild and redeploy before any browser read. Each line below was observed on 2026-09-24; every revert rebuilt to the same bundle hashes (`main-VABZ7YFE`, `styles-YW6GTQZ5`).
 
-- AC1: change one coordinate in `AREA_ICONS.logs.rail` → the `rail-icons.test.mjs` fidelity check goes red. Restore the letter span in `rail.ts` → the `rail.spec.ts` no-text check goes red.
-- AC1/AC2 render: drop the `circle` case from `rail-icon.ts` → the `rail.spec.ts` Tasks/Agent shape check goes red. Tiles pass `[size]="20"` → the `home.page.spec.ts` viewBox check goes red.
-- AC3: bind the host `stroke` to `var(--ocu-on-shell)` instead of `currentColor` → the browser spec's rest-state `stroke == color` and 6.15 checks go red. Remove the gated-hover rule (if added) → the gated-under-pointer case goes red.
-- AC4: add `<svg:title>` holding the area name → the tile AX-name check and the unit no-title check go red. Add `<svg:use href="https://example.invalid/i.svg#x">` → client-lint `no-off-origin-url` fails the build.
-- AC5: restore the "Material Symbols" sentence → the `rail-icons.test.mjs` DESIGN check goes red.
-- AC6: set the tile svg to `width: 40px` → the gate goes red with a fresh `overflow` key on `/`.
-- Integration AC: look up icons by label instead of key → the browser spec's shape check goes red for every item.
+- AC1 mutation: change one coordinate in `AREA_ICONS.logs.rail` → `rail-icons.test.mjs` "each rail icon in the module equals the mockup" red.
+- AC1 mutation: restore the letter span in `rail.ts` → `rail.spec.ts` "draws each area icon..." red (`expected 'H' to be ''`).
+- AC1/AC2 render mutation: drop the `circle` case from `rail-icon.ts` → `rail.spec.ts` red on the `tasks` shapes.
+- AC2 mutation: tiles pass `[size]="20"` → `home.page.spec.ts` tile test red (viewBox `0 0 20 20` vs `0 0 24 24`).
+- AC3 mutation: bind the host `stroke` to `var(--ocu-on-shell)` → browser (b) red on rest `stroke == color`.
+- AC3 mutation: remove the gated-hover rule → browser (c) red (gated under the pointer 10.35 vs 3.38).
+- AC4 mutation: add `<svg:title>` holding the area name → the unit no-title and no-text checks red in `rail.spec.ts` and `home.page.spec.ts`. The browser name checks are non-regression checks, not pins: `aria-label` and the `aria-hidden` slot keep both names unchanged under this mutation.
+- AC4 mutation: remove `aria-hidden` from the icon host and both slots, with (a)'s root-attribute asserts disabled → browser (a) red on "no icon svg has an accessibility node".
+- AC4 mutation: add `<svg:use href="https://example.invalid/i.svg#x">` → client-lint `no-off-origin-url` fails the build.
+- AC5 mutation: restore the "Material Symbols" sentence → `rail-icons.test.mjs` DESIGN check red.
+- AC6 mutation: set the tile svg to `width: 40px` → the structural gate stays green, because `structural-walk.mjs` walks `HTMLElement`s only; browser (a)'s containment check goes red instead (`logs`'s tile icon 16px past its slot). AC6 holds as "the story adds no fresh or stale gate key"; icon containment is pinned by (a).
+- `display: block` mutation: set it to `display: inline` → browser (a) red (`logs`'s tile slot spills 3px).
+- Integration AC mutation: look up icons by label instead of key → browser (a) red at the first item (`home`).
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** `shell/rail-icons.ts` (new, framework-free) holds the mockup's 8 rail and 6 tile drawings keyed by area key; `shell/rail-icon.ts` (new, `svg[ocuAreaIcon]`, `OnPush`) binds them attribute by attribute in `currentColor`, `aria-hidden`, `focusable="false"`. `rail.ts` drops `initial` for the 20px icon; `home.page.ts` fills the tile slot with the 24px icon. `_components.scss`: a comment-only correction plus a tail block (`display: block` on both icon roots, and the gated-hover rule). DESIGN.md intro and `rail` paragraph and EXPERIENCE.md's rail row carry `[AMENDED 2026-09-24, Story 15.7...]`. Tests: `rail.spec.ts`, `home.page.spec.ts`, new `ui/tools/rail-icons.test.mjs`, new `ui/browser/rail-icons.browser-spec.mjs`.
+
+**Review.** 14 findings; 5 patched (all low), 1 deferred (medium, pre-existing), 8 rejected with reasons in the triage log. Follow-up review: `false` (no high, no medium patched).
+
+**Verification (final tree).** `npm run test:tools` 1370/1370; `npm run test:components` 1035/1035; `npm run build` with all seven prebuild checkers green; `bash scripts/lint-docs.sh` 0 issues; browser by file on the redeployed bundle: `rail-icons` 3/3, `a11y-structural-invariants` 10/10, `theme` 5/5, `rail` 2/2; `smoke.sh --container ocupilot-b-ci` executed 49, passed 49. Every mutation under `## Verification` was observed red and reverted.
+
+- **DW-1337 gate:** 200 found, 202 in the baseline, 0 fresh, 2 stale. Both stale keys are `agent/definitions|overflow|720|app-command-bar>...`, reproduced on the untouched HEAD bundle, so they predate this story (deferred). The baseline is unedited.
+- **Contrast, light / dark:** rest 6.15 / 7.31; hover 8.32 / 10.44; active 10.35 / 12.85; indicator 6.72 / 8.97; dot 8.09 / 10.81; Agent icon beside the dot 6.15 / 7.31; gated at rest 3.38 / 3.70; gated under the pointer 3.38 / 3.70; tile `primary` 9.97 / 10.69; gated tile `restrained` 6.55 / 9.64.
+- **Gated-hover rule:** needed. Without it a gated icon under the pointer measured 10.35:1 in light (100%).
+- **Bundle:** initial total 1,321,344 B (main 1,186,156 + styles 135,188), under 1378kB; budget untouched.
+- **Throwaway:** `ocupilot-b-ci` (52777/1976) brought up by this stage with `ci-throwaway.sh up --dir /tmp/ocupilot-b-ci --project ocupilot-b-ci --web 52777 --super 1976`, and torn down by the matching `down` before return.
+
+**Residual risk.** The structural gate cannot see SVG content (deferred), so icon containment rests on browser (a).

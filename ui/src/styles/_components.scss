@@ -1965,9 +1965,10 @@ app-server-flag[data-unbounded] .ocu-server-flag {
   cursor: pointer;
 }
 
-// A 24px slot, `aria-hidden` in the template: DESIGN.md publishes the size and the colour, the
-// glyphs are the owner's and unpublished, and nothing here may fetch one (NFR-10, AD-47). The
-// rail's own glyph reserves its geometry the same way -- including its `display`, which a
+// A 24px slot, `aria-hidden` in the template, holding the area's inline SVG icon, which strokes
+// in this rule's colour: DESIGN.md publishes the size and the colour, and nothing here may fetch
+// an icon (NFR-10, AD-47).
+// The rail's own glyph reserves its geometry the same way -- including its `display`, which a
 // `<span>` needs before `width` and `height` apply to it at all. The tile happens to be a flex
 // container today, which would blockify the slot anyway; stating it keeps the 24px a property
 // of this rule rather than of the parent.
@@ -5428,4 +5429,20 @@ app-resource-list-page {
 // paints nothing of its own takes the role, in both themes.
 body {
   background-color: var(--ocu-surface);
+}
+
+// --- Area icons (Story 15.7) ------------------------------------------------------------------
+//
+// The rail's and Home's tiles' inline SVG icons (`shell/rail-icon.ts`) stroke in `currentColor`,
+// so the glyph and tile-icon rules above color them. `display: block` takes each icon out of
+// inline layout, so no line box or baseline gap sits around it inside its slot.
+.ocu-rail-glyph > svg,
+.ocu-area-tile-icon > svg {
+  display: block;
+}
+
+// A gated item has no hover state, so its icon stays at 45% under the pointer: the general hover
+// rule above is as specific as this one and would otherwise raise it to 100%.
+.ocu-rail-item-gated:hover .ocu-rail-glyph {
+  color: color-mix(in srgb, var(--ocu-on-shell) 45%, transparent);
 }
