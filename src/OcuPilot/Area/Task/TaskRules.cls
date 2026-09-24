@@ -215,6 +215,9 @@ ClassMethod Validate(pMode As %String, pArgs As %DynamicObject, Output pViolatio
 /// rule judged only when a field it reads changed (<method>Changed</method>, <method>Judged</method>),
 /// so a value the instance holds is sent back as it holds it -- a start already past among them.</p>
 /// <ul>
+/// <li>Any change to a task whose type declares a privilege the caller does not hold
+/// (<code>%SYS.Task.Definition.CheckPermission</code>) is <code>TASK.TASKCLASS.PERMISSION</code>, as
+/// the create is and as the classic portal's task editor is.</li>
 /// <li>A rename another task's id already uses, compared without regard to case, is
 /// <code>TASK.NAME.TAKEN</code>; the task's own name is not a conflict.</li>
 /// <li>A changed output file is one name (AD-21), and is refused
@@ -243,6 +246,8 @@ ClassMethod ValidateUpdate(pArgs As %DynamicObject, Output pViolations, pCheckTa
             If '..Judged(tField, tChanged) Continue
             Do ..Add(.pViolations, tField, $List(tAll(tI), 2))
         }
+        ; The privilege the task's type declares holds for any change to it, as for its create.
+        If (tChanged.%Size() > 0) && '..Permitted(..Text(pFresh, "TaskClass"), ..Text(pFresh, "NameSpace")) Do ..Add(.pViolations, "TaskClass", ##class(OcuPilot.Api.Error).#TASKTASKCLASSPERMISSION)
         If pCheckTaken && (tChanged.%GetTypeOf("Name") '= "unassigned") && '..Refused(.pViolations, "Name") {
             Set tSC = ..NameTaken(..Text(tChanged, "Name"), .tTaken, pId)
             If $$$ISERR(tSC) Quit
@@ -436,14 +441,15 @@ ClassMethod ChangedSettingViolations(pFresh As %DynamicObject, pSupplied, ByRef 
 
 /// <p>The code a settings argument on the task read <var>pFresh</var>, which carries no settings, is
 /// refused with: <code>TASK.SETTING.SECRET</code> when its type holds a secret setting, and
-/// <code>TASK.SETTING.CLASSICONLY</code> otherwise.</p>
+/// <code>TASK.SETTING.CLASSICONLY</code> otherwise. A type that cannot be classified is answered
+/// <code>TASK.SETTING.SECRET</code>, so the caller refuses it by name.</p>
 ClassMethod WithheldSettingsCode(pFresh As %DynamicObject, Output pCode As %String) As %Status
 {
     Set pCode = ##class(OcuPilot.Api.Error).#TASKSETTINGCLASSICONLY
     Set tSC = ##class(OcuPilot.Port.TaskPort).ClassicOnlySettings(..Text(pFresh, "TaskClass"), ..Text(pFresh, "NameSpace"), .tKinds)
     If $$$ISERR(tSC) {
         Set pCode = ##class(OcuPilot.Api.Error).#TASKSETTINGSECRET
-        Quit tSC
+        Quit $$$OK
     }
     Set tKey = ""
     For {

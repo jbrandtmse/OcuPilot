@@ -169,13 +169,14 @@ ClassMethod Seconds(pTime As %String) As %String [ Private ]
 }
 
 /// <p>Remove <var>pTask</var>'s <parameter>SETTINGSFIELD</parameter> when its type declares a
-/// classic-only setting (<method>ClassicOnlySettings</method>). A type that cannot be read is treated
-/// as one that does, so a setting that cannot be classified is never answered.</p>
+/// classic-only setting (<method>ClassicOnlySettings</method>). A type that cannot be read -- one not
+/// compiled in the task's namespace among them -- is treated as one that does, so a setting that
+/// cannot be classified is never answered.</p>
 ClassMethod WithholdSettings(pTask As %DynamicObject)
 {
     If pTask.%GetTypeOf(..#SETTINGSFIELD) = "unassigned" Quit
-    Set tSC = ..ClassicOnlySettings(pTask.%Get("TaskClass"), pTask.%Get("NameSpace"), .tKinds)
-    If $$$ISERR(tSC) || ($Data(tKinds) > 1) Do pTask.%Remove(..#SETTINGSFIELD)
+    Set tSC = ..ClassicOnlySettings(pTask.%Get("TaskClass"), pTask.%Get("NameSpace"), .tKinds, .tRead)
+    If $$$ISERR(tSC) || '$Get(tRead) || ($Data(tKinds) > 1) Do pTask.%Remove(..#SETTINGSFIELD)
 }
 
 /// <p>The classic-only settings of task type <var>pClass</var> in <var>pNamespace</var>, as
@@ -184,12 +185,14 @@ ClassMethod WithholdSettings(pTask As %DynamicObject)
 /// <code>GetSettings</code> serializes; it is <code>secret</code> when it is typed
 /// <parameter>PASSWORDTYPE</parameter> or a subclass or its name is a credential's
 /// (<method>OcuPilot.Kernel.Audit.Log.IsCredentialName</method>), and <code>collection</code> when it
-/// is a list or array. A class that is not compiled there answers none.</p>
+/// is a list or array. A class that is not compiled there answers none, and <var>pRead</var> 0.</p>
 /// <p><b>Caller contract:</b> the dictionary is read in <var>pNamespace</var> by explicit save and
-/// restore (AD-16); the classification is made back in the caller's namespace.</p>
-ClassMethod ClassicOnlySettings(pClass As %String, pNamespace As %String, Output pKinds) As %Status
+/// restore (AD-16); the classification is made back in the caller's namespace. <var>pRead</var> is
+/// whether the class was found and read.</p>
+ClassMethod ClassicOnlySettings(pClass As %String, pNamespace As %String, Output pKinds, Output pRead As %Boolean) As %Status
 {
     Kill pKinds
+    Set pRead = 0
     Set tSC = $$$OK
     If '$Match(pClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") || (pNamespace = "") Quit tSC
     Set tPasswordType = ..#PASSWORDTYPE
@@ -199,6 +202,7 @@ ClassMethod ClassicOnlySettings(pClass As %String, pNamespace As %String, Output
         Set $NAMESPACE = pNamespace
         Set tCompiled = ##class(%Dictionary.CompiledClass).%OpenId(pClass, 0)
         If $IsObject(tCompiled) {
+            Set pRead = 1
             Set tProperties = tCompiled.Properties
             For tP = 1:1:tProperties.Count() {
                 Set tProperty = tProperties.GetAt(tP)

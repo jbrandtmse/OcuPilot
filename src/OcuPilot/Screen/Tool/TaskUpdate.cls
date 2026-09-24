@@ -123,7 +123,8 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 /// <p>The merge over the fresh read <var>pFresh</var> (<method>OcuPilot.Kernel.Proposal.Mint.Merge</method>),
 /// with <code>Settings</code> merged member by member over the task's own and one
 /// <code>Settings.&lt;key&gt;</code> row per setting that changes, and a time the task already holds,
-/// in either spelling, left as it holds it.</p>
+/// in either spelling, left as it holds it. <var>pUnchanged</var> counts the unchanged keys the port's
+/// <code>PUT</code> still sends (<method>OcuPilot.Port.TaskPort.Trimmed</method>).</p>
 /// <p>A settings argument on a task whose read carries no settings -- its type holds a classic-only
 /// setting -- and a setting the type does not declare are <var>pProblem</var>, in the rules' own
 /// sentence, so a replacing <code>Settings</code> that would drop a secret is never composed (AD-4
@@ -151,11 +152,21 @@ ClassMethod MergeUpdate(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdAr
         }
         Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Merge(pFresh, tArgs, pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
         If $$$ISERR(tSC) || (pProblem '= "") Quit
-        If tSettingsArg = "" Quit
-        If '$ListFind(pSettable, ..#SETTINGSFIELD) Quit
-        Set tSC = ..MergeSettings(pFresh, tSettingsArg, pPayload, pDiff, .tChanged, .pProblem)
-        If $$$ISERR(tSC) || (pProblem '= "") Quit
-        If tChanged Set pUnchanged = pUnchanged - 1
+        If (tSettingsArg '= "") && $ListFind(pSettable, ..#SETTINGSFIELD) {
+            Set tSC = ..MergeSettings(pFresh, tSettingsArg, pPayload, pDiff, .tChanged, .pProblem)
+            If $$$ISERR(tSC) || (pProblem '= "") Quit
+        }
+        ; The card's unchanged count is of the keys the port's PUT still sends (AD-4's exception).
+        Kill tSeen
+        Set tRows = pDiff.%GetIterator()
+        While tRows.%GetNext(.tIndex, .tRow) {
+            Set tSeen($Piece(tRow.%Get("field"), ".", 1)) = ""
+        }
+        Set pUnchanged = 0
+        Set tKeys = $ClassMethod(..PortClass(), "Trimmed", pPayload, pFresh).%GetIterator()
+        While tKeys.%GetNext(.tKey, .tValue) {
+            If '$Data(tSeen(tKey)) Set pUnchanged = pUnchanged + 1
+        }
     } Catch ex {
         Set tSC = ex.AsStatus()
     }

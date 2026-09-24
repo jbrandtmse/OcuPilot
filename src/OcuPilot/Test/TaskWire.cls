@@ -6,7 +6,7 @@
 /// which the instance itself also enforces (AC6). Edit task's two routes (Story 9.8) refuse the same
 /// callers, and the least-privileged principal edits a task that runs as another account while it
 /// leaves the account alone and is refused on <code>RunAsUser</code> when it moves it, on both
-/// callers (AC5).</p>
+/// callers (AC5), and is refused editing a task whose type declares a privilege it does not hold.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, and both
 /// <parameter>ARMINGVARIABLE</parameter> and <parameter>TASKVARIABLE</parameter> reading
 /// <code>1</code>, because it creates and deletes three users, three roles and probe tasks
@@ -274,6 +274,36 @@ Method TestTheLeastPrincipalEditsButCannotMoveRunAs()
     Do $$$AssertTrue(tOut.%Get("problem") [ ("'RunAsUser': " _ ##class(OcuPilot.Api.Error).#REASONTASKRUNASUSERSECURE), "on RunAsUser: " _ tOut.%Get("problem"))
     Do ##class(OcuPilot.Test.TaskEditProbe).Remove(tSystemId)
     Do ##class(OcuPilot.Test.TaskEditProbe).Remove(tOwnId)
+}
+
+/// <p>A task type's declared privilege holds on an edit as on a create: the least-privileged
+/// principal, who does not hold <code>%Ens_PurgeSchedule:USE</code>, is refused
+/// <code>TASK.TASKCLASS.PERMISSION</code> on <code>TaskClass</code> when it edits an
+/// <code>Ens.Util.Tasks.Purge</code> task, by the Save and by the agent's mint, and nothing is
+/// sent.</p>
+/// <p>Mutation (Rule 19): delete the <code>Permitted</code> line of
+/// <method>OcuPilot.Area.Task.TaskRules.ValidateUpdate</method> -- the Save answers 200 and this goes
+/// red.</p>
+Method TestTheLeastPrincipalCannotEditATypeItsPrivilegeGuards()
+{
+    Set tArgs = ##class(OcuPilot.Test.TaskEditProbe).Ac7("OcuP98EnsPurge")
+    Do tArgs.%Set("TaskClass", "Ens.Util.Tasks.Purge", "string")
+    Do tArgs.%Set("NameSpace", "HSCUSTOM", "string")
+    Do tArgs.%Set("Settings", {"TypesToPurge": "events"})
+    Set tSC = ##class(OcuPilot.Test.TaskEditProbe).Create(tArgs, .tId)
+    Do $$$AssertStatusOK(tSC, "a probe purge task is created")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("PUT", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/tasks/" _ tId, ..#LEASTUSER, ..PreparedPassword, .tStatus, .tAnswer, .tHeaders, "{""Description"":""least edit""}", "application/json")
+    Set tPair = ""
+    Try { Set tPair = ##class(OcuPilot.Test.TaskSave).FirstPair(##class(%DynamicObject).%FromJSON(tAnswer)) } Catch {}
+    Do $$$AssertEquals(tStatus _ " " _ tPair, "422 TaskClass:TASK.TASKCLASS.PERMISSION", "the Save is refused on the type: " _ $Extract($Get(tAnswer), 1, 300))
+    Set tStored = ##class(OcuPilot.Test.TaskEditProbe).Stored(tId)
+    Do $$$AssertTrue($IsObject(tStored), "the task reads back")
+    If $IsObject(tStored) Do $$$AssertEquals(tStored.%Get("Description"), "OcuPilot edit probe", "and nothing is sent")
+    Set tOut = ..AgentMint({"Id": (tId), "Description": "least agent edit"})
+    Do $$$AssertEquals(tOut.%Get("http"), 400, "the agent's mint is refused too")
+    Do $$$AssertTrue(tOut.%Get("problem") [ ("'TaskClass': " _ ##class(OcuPilot.Api.Error).#REASONTASKTASKCLASSPERMISSION), "on TaskClass: " _ tOut.%Get("problem"))
+    Do ##class(OcuPilot.Test.TaskEditProbe).Remove(tId)
 }
 
 /// <p>The least-privileged principal's own mint of the edit <var>pArgs</var>, in a process logged in

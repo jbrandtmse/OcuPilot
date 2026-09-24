@@ -79,6 +79,31 @@ Method TestTheFormReadAnswersOneTask()
     Do $ClassMethod(..#PROBE, "Remove", tId)
 }
 
+/// <p>Matrix "Secret-bearing type", AC4's refused leg on the Save itself: a <code>Settings</code>
+/// change sent to <code>PUT /tasks/:id</code> for a <code>%SYS.Task.DiagnosticReport</code> probe
+/// is refused <code>422 Settings:TASK.SETTING.SECRET</code> by the wire route -- Gate, body read, id
+/// decode and the JSON envelope included, not only the rule call a direct class-method test can
+/// reach -- before any port call; the refusal never carries the secret and the stored secret is
+/// unchanged (compared in process). A Save of another field on the same task still writes, and the
+/// secret still survives it.</p>
+/// <p>Mutation (Rule 19): in <method>OcuPilot.Area.Task.TaskRules.WithheldSettingsCode</method>,
+/// make the <code>secret</code> arm of the kind loop <code>If 0</code> -- the code answered over the
+/// wire drops to <code>TASK.SETTING.CLASSICONLY</code> and this goes red.</p>
+Method TestASecretBearingTypesSettingsChangeIsRefusedBySaveOverTheWire()
+{
+    Set tSC = $ClassMethod(..#PROBE, "CreateSecret", "OcuP98SaveSecret", ..#PROBESECRET, .tId)
+    Do $$$AssertStatusOK(tSC, "the secret-bearing probe is created")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", "/tasks/" _ tId, .tStatus, .tAnswer, "{""Settings"":{""SMTPUser"":""ocup98other""}}", "application/json")
+    Do $$$AssertEquals(tStatus _ " " _ ##class(OcuPilot.Test.TaskSave).FirstPair($Get(tAnswer)), "422 Settings:TASK.SETTING.SECRET", "the Save refuses the settings change by name, over the wire, before any port call")
+    Do $$$AssertTrue($Select($IsObject($Get(tAnswer)): (tAnswer.%ToJSON() '[ ..#PROBESECRET), 1: 0), "and the refusal never carries the secret")
+    Do $$$AssertTrue($ClassMethod(..#PROBE, "SecretHeld", tId, ..#PROBESECRET), "the stored secret is unchanged")
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", "/tasks/" _ tId, .tStatus, .tAnswer, "{""Description"":""save still writes""}", "application/json")
+    Do $$$AssertEquals(tStatus, 200, "a Save of another field still writes: " _ $Select($IsObject($Get(tAnswer)): tAnswer.%ToJSON(), 1: ""))
+    Do $$$AssertTrue($ClassMethod(..#PROBE, "SecretHeld", tId, ..#PROBESECRET), "and the stored secret survives it")
+    Do $ClassMethod(..#PROBE, "Remove", tId)
+}
+
 /// <p>Matrix "Two-field save" and AC2 on the screen's path: a Save of Description and
 /// DailyIncrement answers 200 <code>{id, name}</code>, those two change, and every other field --
 /// the settings among them -- reads back from the instance as it was; a Save of one setting keeps

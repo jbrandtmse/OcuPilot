@@ -6787,6 +6787,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-9-7-the-new-task-wizard.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: TaskDetails' declared read carries Name..Priority, RunAsUser and the two schedule lines only; every AC7 value is read back from the instance (TaskSave, browser docker exec) but not drawn on a screen (acceptance-auditor, verified 9.7 CR).
 - 2026-09-24T17:16:12Z status=routed owner=9-8-edit-task by=cr note=9.8's edit tabs draw every AC7 value of a wizard-created task read from the instance; its browser leg asserts them
+- 2026-09-24T21:50:38Z status=resolved-by:9-8-edit-task by=adjudication note=edit tabs draw every value of a wizard-created task (task-editor.browser-spec DW-1624 leg; mutation drop OutputFileIsBinary from valuesFromTask red)
 
 ### DW-1625: Two concurrent Saves (or a Save and an agent confirm) of one new task name can both pass the absence read and create duplicate names
 - source: spec-9-7-the-new-task-wizard.md | severity: med | fix-risk: med | footprint: in-story
@@ -6843,8 +6844,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-9-8-edit-task.md | severity: high | fix-risk: low | footprint: in-epic
 - evidence: measured at the 9.8 plan on ocupilot-ci: IsCredentialName(SMTPPass)=0 and 9.7 TypeSettings draws it; the only %SYS.Task.Password property in HSCUSTOM and %SYS
 - 2026-09-24T18:50:54Z status=routed owner=9-8-edit-task by=lead note=9.8's plan adds one classifier in TaskPort (Password type, credential names, collections are classic-only) used by create and edit; its AC4 pins it
+- 2026-09-24T21:50:38Z status=resolved-by:9-8-edit-task by=adjudication note=one TaskPort classifier makes SMTPPass classic-only for create and edit; TaskRules.TestASecretTypedSettingIsClassicOnly run 10443; lead smoke PUT Settings 422 TASK.SETTING.SECRET, secret held
 
 ### DW-1636: A vendor 409 on Task.CRUD PUT the edit rules do not pre-empt surfaces PORT.CONFLICT, whose sentence speaks of a duplicate name
 - source: spec-9-8-edit-task.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: implement pass: the past-start 7432 refusal maps to the port's generic 409; the rules refuse the reachable cases first (STARTDATE.PAST), so an unforeseen 409 would read as a name clash (unverified)
 - 2026-09-24T21:12:37Z status=open owner=9-8-edit-task by=harvest note=settle by listing the vendor's 409 causes for Task.CRUD RunPut and mapping each
+- 2026-09-24T21:48:21Z status=wontfix-accepted owner=9-8-edit-task by=cr note=Save maps 7432 to StartDate 422; only a start passing in the confirm window reads PORT.CONFLICT; reopen_if=a task card shows that name sentence
+
+### DW-1638: Task delete, suspend, resume and run skip the task type's declared privilege (%SYS.Task.Definition RESOURCE) that the create, the edit and the classic portal enforce
+- source: spec-9-8-edit-task.md code review | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: 9.8 review: TaskDelete/Suspend/Resume/Run/ScheduleRun call no CheckPermission; classic TaskInfo.cls disables Edit, Suspend and Delete when it fails; Ens.Util.Tasks.Purge declares %Ens_PurgeSchedule:USE (read on ocupilot-ci)
+- 2026-09-24T21:48:21Z status=routed owner=burndown by=cr note=judge TaskRules.Permitted in each tool's ArgumentProblem, as the 9.8 edit now does

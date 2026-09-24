@@ -119,7 +119,15 @@ ClassMethod RunNow(pId As %String) As %Status
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        Set tSC = ##class(%SYS.Task).RunNow(pId)
+        Set tName = ""
+        Set tTask = ##class(%SYS.Task).%OpenId(pId, 0)
+        If $IsObject(tTask) Set tName = tTask.Name
+        Set tTask = ""
+        If $Extract(tName, 1, $Length(..#PREFIX)) = ..#PREFIX {
+            Set tSC = ##class(%SYS.Task).RunNow(pId)
+        } Else {
+            Set tSC = $$$ERROR($$$GeneralError, "not a probe task")
+        }
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS

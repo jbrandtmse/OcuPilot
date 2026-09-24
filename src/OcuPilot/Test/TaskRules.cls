@@ -282,6 +282,23 @@ Method TestASecretTypedSettingIsClassicOnly()
     Do $$$AssertEquals(tCode, "TASK.SETTING.SECRET", "and an edit's settings change on such a task is refused as secret")
 }
 
+/// <p>Story 9.8, AD-35: a task whose type cannot be classified is read without its settings, and a
+/// settings change on one is refused by name as secret rather than failing.</p>
+/// <p>Mutation (Rule 19): drop <code>'$Get(tRead)</code> from
+/// <method>OcuPilot.Port.TaskPort.WithholdSettings</method> -- the first leg goes red.</p>
+Method TestAnUnclassifiableTypeIsWithheld()
+{
+    Set tTask = {"TaskClass": "OcuP98.No.Such.Type", "NameSpace": "HSCUSTOM", "Settings": {"SMTPPass": "x"}}
+    Do ##class(OcuPilot.Port.TaskPort).WithholdSettings(tTask)
+    Do $$$AssertEquals(tTask.%GetTypeOf("Settings"), "unassigned", "a type not compiled in the task's namespace is read without its settings")
+    Set tKept = {"TaskClass": (..#PURGE), "NameSpace": "%SYS", "Settings": {"KeepDays": "30"}}
+    Do ##class(OcuPilot.Port.TaskPort).WithholdSettings(tKept)
+    Do $$$AssertEquals(tKept.%GetTypeOf("Settings"), "object", "a type read with no classic-only setting keeps them")
+    Set tSC = $ClassMethod(..#RULES, "WithheldSettingsCode", {"TaskClass": "%SYS.Task.DiagnosticReport", "NameSpace": "OCUP98NOSUCHNAMESPACE"}, .tCode)
+    Do $$$AssertStatusOK(tSC, "a type that cannot be classified is no error")
+    Do $$$AssertEquals($Get(tCode), "TASK.SETTING.SECRET", "and a settings change on it is refused as secret")
+}
+
 /// <p>Story 9.8: an edit compares a field as the instance holds it -- an account name without
 /// regard to case -- so re-sending the account a task runs as in another case changes nothing.</p>
 Method TestAnEditComparesTheAccountWithoutCase()
