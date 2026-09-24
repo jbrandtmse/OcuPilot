@@ -190,6 +190,8 @@ footprint_extensions:
 
 ## Spec Change Log
 
+- 2026-09-24, spec gate (lead). The orchestrator answered R1-R6 (logged 12e290dc, by=merge_gate), each as recommended, and the spine carries them: AD-53 names the unadvertised tool, AD-26 names `QUEUEDWRITES`, AD-51 names the port-built body, AD-8's clause covers an endpoint the call must reach, with `%Admin_Operate:USE` its second case. Two pins are required: purge absent from the provider tool list, the dispatch lookup and the screen context's `tools` (`Test/AuditPurge.cls`), and a mutating queued type off `QUEUEDWRITES` still refused (`Test/AdminPortAsync.cls`). R5 stands. Epic AC3 and AC5 now sit in Story 14.2's block, and 12.3's block marks them delivered there. AC1's "reporting progress" is the running line, then the outcome, because the vendor exposes no count (inference, accepted).
+
 ## Review Triage Log
 
 ## Design Notes

@@ -5328,7 +5328,7 @@ So that auditing can stay on without growing without bound.
 
 - **Given** a purge proposed by the agent
 - **When** it reaches the write path
-- **Then** it carries the full model - proposal, instance-computed diff, explicit confirmation, the agent marker - and, because it destroys the record the marker lives in, the card states that consequence.
+- **Then** it carries the full model - proposal, instance-computed diff, explicit confirmation, the agent marker - and, because it destroys the record the marker lives in, the card states that consequence. [AMENDED 2026-09-24, Story 12.3 spec gate: delivered by Story 14.2, which advertises the purge; this story pins its absence from every agent-visible roster]
 
 - **Given** the governance policy has **not** yet shipped, Epic 14 being ranked after this one
 - **When** purge is exposed
@@ -5336,7 +5336,7 @@ So that auditing can stay on without growing without bound.
 
 - **Given** the governance policy from Epic 14
 - **When** its baseline is computed
-- **Then** purge is among the destructive keys that default to disabled for any key added after the Release 1 freeze.
+- **Then** purge is among the destructive keys that default to disabled for any key added after the Release 1 freeze. [AMENDED 2026-09-24, Story 12.3 spec gate: delivered by Story 14.2, which advertises the purge; this story pins its absence from every agent-visible roster]
 
 ### Story 12.4: The OAuth 2.0 client server-description editor
 
@@ -5615,6 +5615,8 @@ So that I can adopt the parts of it my organization is ready for.
 - **Given** a **prohibited** action
 - **When** any policy is written
 - **Then** it can never be enabled - governance disables permitted tools and has no power over the prohibited set.
+
+- Routed from Story 12.3 (its epic AC3 and AC5; orchestrator ruling 2026-09-24, by=merge_gate): the policy advertises `security.auditing.purge` (flips its `ADVERTISED = 0`, AD-53), its key is among the destructive keys that default to disabled after the Release 1 freeze, and an agent-proposed purge carries the full model - proposal, instance-computed diff, explicit confirmation, the agent marker - with the card stating that it destroys the record the marker lives in. [AMENDED 2026-09-24, Story 12.3 spec gate, Rule 5]
 
 ### Story 14.3: Tool and log content is defanged before it reaches the model
 
