@@ -31,3 +31,5 @@
 2026-09-24T11:41:48Z	Story 12.1	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 model=claude-opus-5-5
 2026-09-24T11:41:48Z	Story 12.1	smoke_complete	method=browser+api result=pass iterations=1 defects_caught=0 evidence=x509-import.browser-spec.mjs_5/5_over_rebuilt_redeployed_bundle_on_ocupilot-b-ci;smoke.sh_ocupilot-b-ci_executed=49_passed=49 model=claude-opus-5-5
 2026-09-24T11:42:34Z	Story 12.1	committed	sha=5d317b8b submodules= ci=pending run=35994573376 amendments=spine:AD-4:129,epics.md:236,epics.md:851,epics.md:5148 footprint_extensions=ui/tools/strings.test.mjs,epics.md:236
+2026-09-24T11:42:58Z	Epic 12	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@013386b4 merge=05acaf5e conflicts=none diff=cycle-log-parallel.md_only(bookkeeping,no_code) ci=not_required(no_code_change)
+2026-09-24T11:42:58Z	Story 12.2	stage_spawned	stage=plan spawn_at=2026-09-24T11:42:58Z model=opus agent_name=12-2-revoke-a-user-s-oauth-2-0-tokens-plan-1 cycle_iteration=1
