@@ -81,3 +81,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-24T08:53:06Z	Story 9.3	committed_pushed_code	sha=6eeb6b7 ci=pending run=35977789736
 2026-09-24T08:53:06Z	Story 9.3	adr_verifications_complete	tool=ocupilot-ci+ci-runner acs=AD-10(own-role_grant_change_refused) result=pass mutations=AD-10:Prohibited.Role_refuse_own_role_on_delete_only->RoleSave.TestOcuPilotsOwnRoleIsRefusedAGrantChangeButNotItsDescription_red_run9681_green_after_revert mutated=throwaway_src_copy_only model=claude-opus-5-5-1m
 2026-09-24T08:53:07Z	Story 9.3	stage_spawned	stage=qa spawn_at=2026-09-24T08:53:07Z model=sonnet agent_name=9-3-the-role-editor-qa-1 cycle_iteration=1
+2026-09-24T08:56:26Z	Story 9.3	qa_complete	spawn_at=2026-09-24T08:53:07Z model=sonnet tests_added=0 mutations_demonstrated=0 first_run_failures=0 clarifications=0 closing_sections_present=true note=no_gaps
+2026-09-24T08:56:26Z	Story 9.3	stage_spawned	stage=code-review spawn_at=2026-09-24T08:56:26Z model=opus agent_name=9-3-the-role-editor-code-review-1 cycle_iteration=1
