@@ -33,3 +33,5 @@
 2026-09-24T11:42:34Z	Story 12.1	committed	sha=5d317b8b submodules= ci=pending run=35994573376 amendments=spine:AD-4:129,epics.md:236,epics.md:851,epics.md:5148 footprint_extensions=ui/tools/strings.test.mjs,epics.md:236
 2026-09-24T11:42:58Z	Epic 12	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@013386b4 merge=05acaf5e conflicts=none diff=cycle-log-parallel.md_only(bookkeeping,no_code) ci=not_required(no_code_change)
 2026-09-24T11:42:58Z	Story 12.2	stage_spawned	stage=plan spawn_at=2026-09-24T11:42:58Z model=opus agent_name=12-2-revoke-a-user-s-oauth-2-0-tokens-plan-1 cycle_iteration=1
+2026-09-24T12:01:41Z	Story 12.2	story_created	spawn_at=2026-09-24T11:42:58Z model=opus path=_bmad-output/implementation-artifacts/spec-12-2-revoke-a-user-s-oauth-2-0-tokens.md build_status=ready-for-dev warnings=oversized epic_context=reused
+2026-09-24T12:01:41Z	Story 12.2	plan_clarification_pending	questions=AD-8_pair_beyond_screen_set(new_category),AD-53_screen_path_no_vendor_audit_event,screen-action-handler.ts_Epic9-modified_not_in_carve,EXPERIENCE_148_168_placement note=spec_gate_held;spec_ready-for-dev_unchanged

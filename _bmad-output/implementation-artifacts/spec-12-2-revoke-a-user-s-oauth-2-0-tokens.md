@@ -1,0 +1,217 @@
+---
+title: 'Story 12.2: Revoke a user''s OAuth 2.0 tokens'
+type: 'feature'
+created: '2026-09-24'
+status: 'ready-for-dev'
+review_loop_iteration: 0
+followup_review_recommended: false
+context:
+  - '{project-root}/_bmad-output/implementation-artifacts/epic-12-context.md'
+  - '{project-root}/_bmad-output/implementation-artifacts/spec-7-2-user-enable-disable-delete-password-and-roles.md'
+warnings: ['oversized']
+deferred: []
+---
+
+<intent-contract>
+
+## Intent
+
+**Problem:** An administrator cannot revoke the OAuth 2.0 access tokens this instance's authorization server issued to a user without the classic "OAuth 2.0 Administration" page. The agent cannot propose it either. An access decision therefore waits for token expiry.
+
+**Approach:** Add one destructive row action, **Revoke OAuth 2.0 tokens**, on Permissions › Users. Its write tool, `permissions.users.revoketokens`, is also the agent's tool. The row action runs through AD-53's typed-name dialog. The agent's call mints a proposal that the user confirms (AD-6). The write is the admin API's `Security.OAuth2.Server` `REVOKE`, which is `POST /v2/security/oauth2/server/revoke?user=`. The tool reaches it through a new `Port/TokenPort` that extends `AdminPort` (AD-52), because the target's own record is the user's `Security.User` row.
+
+## Boundaries & Constraints
+
+**Always:**
+
+- The tool declares `WRITETYPE` `REVOKE`, `SENDSBODY` 0, `IdParam` `user` and `Endpoint` `Security.OAuth2.Server`. It never uses the published `/v2/security/oauth2/revoke`, which answers 404.
+- The revoke is sent under the account's **stored** `Name`, which the port reads from the `Security.User` `LIST` (`names=<id>`), keeping the row whose `Name` equals the id without regard to case. The kernel folds a user id to lower case (AD-13), while the vendor matches the token's `Username` exactly (measured).
+- Both callers run as the caller. The pair set is the Users list's (`%Admin_Secure:USE`, `%DB_IRISSYS:READ`) plus `%Admin_OAuth2_Registration:USE`. A caller missing a pair is refused by name before any port call (AD-8).
+- No token, hash or token count is read, stored, shown, logged or put in screen context (AD-3, AD-35).
+- Every visible word is a `STRINGS.<key>` with a Fixed strings row, appended at the table's end. Styling uses tokens only.
+
+**Never:**
+
+- Edit any file under `Kernel/Proposal/**`, `Screen/Registry.cls`, `Api/Router.cls`, `ui/tools/screen-mirror.mjs`, `ui/src/app/shell/screen-outlet.ts`, `Screen/Tool/Classification.cls` or `ToolFields.cls`. This story adds no kernel mechanism and no AD-10 arm.
+- Change anything of Epic 9's in `UserList.cls`. Add a self-protection rule, a free-text user dialog, revoke-by-client, or any action on the OAuth 2.0 tabs.
+- Emit an OcuPilot audit event on the screen path (AD-53: the marker is the agent's).
+- Name an `%Api.Admin.*` class outside `AdminPort` (AD-27).
+
+## I/O & Edge-Case Matrix
+
+| Scenario | Input / State | Expected Output / Behavior | Error Handling |
+|----------|--------------|---------------------------|----------------|
+| Screen revoke | Probe user `OcuPilotTestRevoke` holds 2 tokens; `OcuPilotTestRevokeOther` holds 1 | Row menu → typed-name dialog titled "Revoke OAuth 2.0 tokens", naming the user and stating the consequence; the exact name sends `{action: "revoke-tokens", id}` → 200 `updated`; the user's 2 tokens are gone and the other's 1 remains; the row is highlighted | Mismatch keeps the button `aria-disabled`; nothing is sent |
+| Other capitalization | A token stored under `ocupilottestrevoke` | Survives: the revoke matches the stored `Name` exactly (vendor behavior, measured) | None |
+| No tokens | A user holding none | 200; nothing is deleted | None |
+| Absent account | Id no `Security.User` row matches | 404 on the screen; the mint refuses "not present" | Nothing is sent |
+| Signed-in user | Revoke the caller's own tokens | Permitted; OcuPilot's session keeps answering | None |
+| Missing pair | Caller without `%Admin_OAuth2_Registration:USE` | 403 naming that pair, from the screen and from the mint | Tokens intact |
+| Wildcard id | Id `OcuPilot*` | 404: no row's `Name` equals it | Nothing revoked |
+
+</intent-contract>
+
+## Code Map
+
+- Vendor `%Api.Admin.Endpoints.Security.OAuth2.Server` (read on `ocupilot-slot-b`, `%SYS`):
+  - `ResourcesOR()` answers `%Admin_OAuth2_Registration` for `TYPEREVOKE` (10) and `%Admin_OAuth2_Server` otherwise.
+  - `NeedsRequestBody()` is a put or `CHANGEPWD`.
+  - `RunRevoke` is `OAuth2.Server.AccessToken.RevokeUser(GetRequiredQueryParam("user"))` and returns `{}`. The method's count output is discarded.
+  - `RevokeByProperty` refuses without `%Admin_Secure:USE` and deletes `WHERE Username = ?`.
+- `src/OcuPilot/Port/TaskPort.cls` is the model for an `Invoke` override that extends `AdminPort` (61 lines). `WalletPort.cls` is the model for a port-decided 404 (`Absent`).
+- `src/OcuPilot/Screen/Tool/UserPassword.cls` is the model tool: a Users-list action write with a `STATEFIELD` label row. `OAuthClientDelete.cls` is the model for `PrivilegePairs`, which appends `WRITERESOURCE`, and for the destructive removal row.
+- `src/OcuPilot/Port/AdminPort.cls`:
+  - `MUTATINGTYPES` :244 and `BODYLESSTYPES` :260;
+  - the doc paragraphs above :244;
+  - `IsMutating` :1664 and `EndpointType` :1690. `Run` is overridden, so `ImplementsRead` admits `REVOKE`.
+- `src/OcuPilot/Kernel/Proposal/Prohibited.cls` (read only):
+  - `User` :860 with `RemovesOf` = 0 for `CHANGEACTION` `updated`;
+  - `SkippedFields` :2163 skips `STATEFIELD` and the subject.
+
+  So the arm permits revoke for any account, the caller and `_SYSTEM` included.
+- `src/OcuPilot/Kernel/EntityRef.cls` :59: `user:foldcase`. Confirm's write id is the canonical id (`Confirm.cls` :579), which is why the port resolves the stored name.
+- `UserList.cls`: plan against `git show origin/OCU-1-epic9:src/OcuPilot/Screen/Descriptor/UserList.cls`, whose `rowActions` end with `delete`.
+- `ui/src/app/core/screen-actions.ts`: the UserList labels are at :98. Epic 9 does not touch this file.
+- `ui/src/app/shell/screen-action-handler.ts`:
+  - `DESTRUCTIVE_ACTIONS` :135 and `DESTRUCTIVE_CONSEQUENCES` :145 on this branch;
+  - :173 and :187 on `origin/OCU-1-epic9`, which rewrites 290 lines of this file.
+- `ui/src/app/core/strings.ts`: the Users strings are at :1545. Append before `} as const;` :1691. EXPERIENCE.md's Fixed strings table ends at :467.
+- Test precedents:
+  - `Test/UserUpdate.cls` :292 is a mint → confirm with ledger `AuditMarked` (AD-15), and :425 is a lost pair refused by name.
+  - `Test/OAuthDelete.cls` :197-229: the OAuth family's bodyless roster is "exactly the two deletes" at :226.
+  - `Test/ToolWrite.cls` :1126 holds `MUTATINGTYPES` equal to the reached pairs.
+  - The tool rosters are `ReadTool.cls` :94, `ToolRoundTrip.cls` `REFUSEEMPTY` :35 and `SurfaceCoverage.cls` :125-127.
+  - `ui/browser/oauth-delete.browser-spec.mjs` is the model for a typed-name row-action leg (`irisSession`, `clickRowCentre`). `structural-walk.mjs` exports `detectScreen`, `collapse`, `compare`, `readBaseline` and `INVARIANTS`.
+
+## Tasks & Acceptance
+
+**Execution:**
+
+- `src/OcuPilot/Port/TokenPort.cls` (new, extends `AdminPort`) -- override `Invoke` for endpoint `Security.OAuth2.Server` only:
+  - `HOLDER`: call `##super("Security.User", "LIST", names=<pQuery("user")>)` and answer the one row whose `Name` equals the id without regard to case. With no such row, answer 404 on the `not_found` slug.
+  - `REVOKE`: run the same lookup. On a 404 nothing is sent. Otherwise set `pQuery("user")` to the row's stored `Name` and call `##super`.
+  - Every other call is `##super` unchanged. The class names no `%Api.Admin` class.
+- `src/OcuPilot/Screen/Tool/UserTokenRevoke.cls` (new) -- the tool:
+  - `TOOLNAME` `permissions.users.revoketokens`, `DESCRIPTORCLASS` UserList, `SCREENACTIONS` `revoke-tokens`;
+  - `PORTCLASS` TokenPort, `READTYPE` `HOLDER`, `WRITETYPE` `REVOKE`, `SENDSBODY` 0;
+  - `CHANGEACTION` `updated`, `DESTRUCTIVE` 1;
+  - `READANSWERS` `Name,FullName,Namespace,Routine,Type,Enabled`, `PRECONDITIONFIELD` and `FINGERPRINTSUBJECT` `Name`, `STATEFIELD` `OAuthTokens`;
+  - `WRITERESOURCE` `%Admin_OAuth2_Registration`:`USE` through `PrivilegePairs`, as in `OAuthClientDelete`;
+  - `Endpoint` `Security.OAuth2.Server`, `IdArgument` `Name`, `IdParam` `user`.
+
+  Its `StateDiff` answers one row, `{field: "OAuthTokens", before: <Name>, after: "", removed: 1}`. A read with no `Name` is a problem. Its `DESCRIPTION` and the id's schema description say that the call revokes every token this instance issued to the account, that it takes the account's name exactly as the users list reports it, and that it changes nothing until the user confirms.
+- `src/OcuPilot/Screen/Descriptor/UserList.cls` -- re-read the Epic 9 version immediately before editing:
+  - append `{"id": "revoke-tokens", "selfProtection": ""}` after `delete`;
+  - append one doc `<p>` naming the eighth row action and its tool.
+
+  Change nothing else.
+- `src/OcuPilot/Port/AdminPort.cls` -- append `Security.OAuth2.Server/REVOKE` to `MUTATINGTYPES` and to `BODYLESSTYPES`, with one doc paragraph of the measured facts (this spec's Design Notes). Read the Epic 9 version first and add only this entry.
+- `ui/src/app/core/screen-actions.ts` -- add `'revoke-tokens': STRINGS.userActionRevokeTokens` under UserList.
+- `ui/src/app/shell/screen-action-handler.ts` -- re-read `origin/OCU-1-epic9`'s version first. Add `'revoke-tokens'` to `DESTRUCTIVE_ACTIONS` and `'revoke-tokens': STRINGS.userRevokeTokensConsequence` under `USER_LIST`. Change no other line.
+- `ui/src/app/core/strings.ts` and EXPERIENCE.md:
+  - append `userActionRevokeTokens: 'Revoke OAuth 2.0 tokens'`;
+  - append `userRevokeTokensConsequence: 'Revoking deletes every OAuth 2.0 access token this instance issued under this user name, and applications holding one must sign the user in again. This cannot be undone.'`;
+  - append one Fixed strings row at the table's end (Story 12.2, FR-75).
+- `ui/src/app/core/screens.generated.ts` -- regenerate with `node tools/screen-mirror.mjs`. Never hand-edit it.
+- `src/OcuPilot/Test/TokenProbe.cls` (new) -- the fixture `Create()`, `Count(pName)` (exact) and `Remove()`. It creates the probe users and `OAuth2.Server.AccessToken` rows in `%SYS` under the `OcuPilotTestRevoke` code prefix: 2 for `OcuPilotTestRevoke`, 1 for `ocupilottestrevoke` and 1 for `OcuPilotTestRevokeOther`. It uses AD-16's save and restore. Rows are created directly because the throwaway has no authorization server (a stand-in for issuance). Remove objects by exact name only.
+- `src/OcuPilot/Test/TokenRevoke.cls` (new, <500 lines) -- legs:
+  - the declarations and the resolved pair set;
+  - the port's `HOLDER` for a re-cased id, an absent id and `OcuPilot*`;
+  - the screen route over the matrix, with exact counts;
+  - mint → confirm, with the tokens gone and the ledger `AuditMarked` yes;
+  - the prohibited set permitting the caller and `_SYSTEM`;
+  - a principal holding the list's pairs only, refused 403 naming `%Admin_OAuth2_Registration`. `TokenProbe` creates this principal as `OcuPilotTestRevokePrincipal`, and the leg's request is made as that principal.
+
+  The class creates principals, so it arms `OCUPILOT_ALLOW_PRINCIPALS`. Add it to that block's `# classes:` roster in `scripts/ci-throwaway.sh` and wherever `ui/tools/ci.test.mjs` pins that roster.
+- Rosters, this story's member only:
+  - `OAuthDelete.cls` :226 gains `permissions.users.revoketokens`;
+  - `ReadTool.cls` :94 gets the name and the counts;
+  - `ToolRoundTrip.cls` `REFUSEEMPTY` gets `permissions.users.revoketokens:TOOL.ARGUMENTS`;
+  - `SurfaceCoverage.cls` gets a row pointing at `TokenRevoke`.
+- `ui/src/app/shell/screen-action-revoke.spec.ts` (new file; the handler spec is Epic 9's hot spot) -- `revoke-tokens` opens the typed-name dialog with the verb, the row name and the consequence, and it sends only after the exact name.
+- `ui/browser/token-revoke.browser-spec.mjs` (new) -- modeled on `oauth-delete`:
+  - `before` refuses the live container and calls `TokenProbe.Create()`; `after` calls `Remove()`.
+  - Filter to the probe row and run Revoke from the row menu. Assert the dialog title, the consequence and the disabled button. Type the name and confirm.
+  - Assert one action request, then exact counts 0 / 1 / 1.
+  - With the dialog open, run `detectScreen` at 1280 light (`INVARIANTS`), at 720 light (`name`, `min-width`, `overflow`) and at 1280 dark (`contrast`), each with `route: 'permissions/users'`, and assert that `compare(...).fresh` is empty.
+
+**Acceptance Criteria:**
+
+- **AC1.** Given a user with issued tokens, when an administrator revokes them from the Users list's row action and types the user's name, then every token stored under that account's name is deleted, other users' tokens remain, and the write ran with the caller's own privileges.
+- **AC2.** Given the agent proposes `permissions.users.revoketokens` for a user, when the proposal is minted, then it is destructive and names the user (its target and its `OAuthTokens` row), and nothing is revoked. When the user confirms it, the tokens are deleted and the audit database carries OcuPilot's marked event for that proposal (AD-15).
+- **AC3.** Given a caller without `%Admin_OAuth2_Registration:USE`, when either caller attempts the revoke, then it is refused 403 naming that pair before any port call, and no token is touched.
+- **AC4 (DW-1337).** Given the revoke dialog open on the Users list, when it is measured at 1280 px light, 720 px light and 1280 px dark, then no structural or contrast violation is found beyond the baseline's existing entries for `permissions/users`.
+
+## Spec Change Log
+
+## Review Triage Log
+
+## Design Notes
+
+**Governing ADs:** AD-2, AD-3, AD-6, AD-8, AD-10, AD-13, AD-14, AD-15, AD-24, AD-27, AD-29, AD-34, AD-35, AD-40, AD-51, AD-52, AD-53, AD-56. The DW-1337 gate applies. AD-4 is not engaged, because nothing is sent.
+
+- **Why the Users list, not an OAuth 2.0 tab.**
+  - The action's subject is a user, and AD-13 makes the proposal's target the entity the id names. On the Authorization server tab the id would have to be the configuration, and the user would become a query argument that the write path cannot carry.
+  - Such a tab action would also need a new value-dialog kind, an AD-10 arm for `oauth2-server` (in `Prohibited.cls`, which is contended), a fresh read gated on `%Admin_OAuth2_Server`, and a third privilege pair. It would disappear whenever no server is configured.
+  - The Users row already has the typed-name dialog, and the list already holds the `%Admin_Secure:USE` that the vendor class checks.
+  - The trade-off: token holders that are not IRIS accounts, which a custom `ValidateUserClass` can mint, are not reachable (inference: rare). The classic page takes free text.
+- **Why a port.** One `Endpoint` serves both the read and the write. `TokenPort` answers the tool's read type `HOLDER` from `Security.User` `LIST` and routes `REVOKE` to the vendor under the stored name, so the mint, the confirm's re-read, the prohibited set and the screen route all read the user (the TaskPort and WalletPort precedent, AD-52). The `GET` does not answer `Name` (measured), hence the `LIST`.
+- **The fingerprint subject is `Name`** (AD-51 adequacy). It is the one field the write's precondition reads: the port addresses the revoke by it. No token state is readable through any admin endpoint.
+- **No self-protection.** OcuPilot's JWT pair is not an `OAuth2.Server.AccessToken` row. After a login the table held 0 rows, and after revoking `_SYSTEM`'s tokens that same bearer still answered 200. Revoking touches no AD-10 effect, so the action stays permitted behind the typed confirmation (owner, 2026-09-23).
+- **No new AD-27 case.** The admin API carries the whole call. It drops only the vendor's revoked count, which no AC asks for.
+- **Measured on `ocupilot-b-ci`, 2026-09-24.** Probe users, roles and tokens were removed by exact name. Afterwards the throwaway held 0 tokens and none of the probe principals.
+
+  | Probe | Answer |
+  | --- | --- |
+  | `POST …/server/revoke?user=<unknown>` | 200 `{}` |
+  | Same call for a user holding 2 tokens | 200 `{}`; both deleted, and a token under the lower-cased spelling survived |
+  | No `user` | 400 `#40300` |
+  | `user=` | 200 `{}` |
+  | `POST …/oauth2/revoke` | 404, empty body |
+  | `GET …/oauth2/server` | 404 `#8864` (no server configured) |
+  | Principal with `%Admin_OAuth2_Registration:U` only | 500 `#921` "requires %Admin_Secure:USE" |
+  | Principal with `%Admin_Secure:U` only | 403 |
+  | Principal with both | 200 |
+  | Audit after a revoke | no vendor event recorded (auditing on) |
+  | `users?names=_system` | row `Name` `_SYSTEM` |
+  | `names=_S*` | wildcard match |
+  | `GET user?name=_system` | no `Name` key |
+
+- **Contention.**
+  - `UserList.cls` is append-only.
+  - `screen-action-handler.ts` and `AdminPort.cls` take own entries only; read the Epic 9 versions first.
+  - `strings.ts`, EXPERIENCE.md and the rosters are shared-append.
+  - The bundle grows by two strings and two map entries, far below 1378 kB.
+- **Integration ACs.** `TokenPort` is introduced, and its one consumer is this story's tool through the mint, the confirm and the screen route (AC1, AC2). Consumes: Story 7.2's Users row actions, AD-53's route and the typed-name dialog. Consumed-by: none.
+- **Ledger inbox:** empty.
+- **Rule 20 / Rule 5 for the runner (one bullet):**
+  - (a) AD-8: record a second named pair exception. The revoke declares `%Admin_OAuth2_Registration:USE` beyond the Users list's set because the vendor endpoint's gate names it (measured 403). This is not a database the read does not write.
+  - (b) AD-53: the vendor records no audit event for a token revoke (measured), so a person's revoke leaves no audit row. Record this as a named gap, or decide on a marker.
+  - (c) EXPERIENCE.md :148 and :168 place "OAuth token revoke" under Security and secrets. Amend them in place to Permissions › Users (apply-and-report).
+
+## Verification
+
+Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. Stateful runs happen on `ocupilot-b-ci` only (web 52777, super 1976). Run one test class per call, and wait until it lands in `%UnitTest_Result` before sending the next.
+
+**Commands:**
+
+- `cd ui && npm run build && docker cp dist/ocupilot-ui/browser/. ocupilot-b-ci:/durable/iris/csp/ocupilot/` (loop) -- expected: the bundle under test is the one just built.
+- `cd ui && OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci node --test --test-concurrency=1 browser/token-revoke.browser-spec.mjs` (loop) -- expected: every leg passes.
+- `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class <C>`, one call each for `TokenRevoke`, `OAuthDelete`, `ToolWrite`, `ToolRoundTrip`, `ReadTool` and `SurfaceCoverage` (loop) -- expected: 0 failures each.
+- `cd ui && npm run test:components && npm run test:tools && node tools/screen-mirror.mjs --check` (loop) -- expected: 0 failures, no drift.
+- `uv run scripts/check-objectscript.py <changed .cls> && bash scripts/lint-docs.sh` (loop) -- expected: clean.
+- The full ObjectScript sweep on `ocupilot-b-ci`, one class per call, with totals checked against `%UnitTest_Result` (once, before dev_complete) -- expected: 0 failed and a non-zero count.
+- `cd ui && npm run build && npm test`, then `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS` (once, before dev_complete) -- expected: green, and a non-zero smoke count.
+- The full browser suite is not run locally. CI's `browser` job runs it (Rule 29).
+
+**Pinning tests and mutations (Rule 19; the implementer records each as `mutation: … → …`):**
+
+- AC1: the `TokenRevoke` screen leg and the browser leg. Mutations: the port sends the id as given rather than the stored `Name` (the re-cased leg goes red); `WRITETYPE` `DELETE`.
+- AC2: the `TokenRevoke` mint and confirm leg. Mutations: `DESTRUCTIVE` 0; drop `STATEFIELD`'s row.
+- AC3: the least-privilege leg. Mutation: drop `WRITERESOURCE` from `PrivilegePairs`.
+- AC4: the browser structural assertion. Mutation: give the consequence text a 1400px `min-inline-size` in the dialog.
+
+## Auto Run Result
+
+Status: ready-for-dev
+Blocking condition: none
