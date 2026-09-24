@@ -6596,6 +6596,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-7-the-rail-s-icons.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: structural-walk.mjs:247 filters querySelectorAll('*') by instanceof HTMLElement; 15.7's tile-svg width:40px mutation left the gate green while rail-icons.browser-spec (a) went red, so icon containment rests on that spec
 - 2026-09-24T01:08:26Z status=routed owner=burndown by=harvest note=in-epic: 15.6 owns the walk and has passed cr_complete
+- 2026-09-24T01:36:33Z status=routed owner=range-end-cleanup by=burndown note=Rule 27: not floor-blocking (rail-icons.browser-spec pins icon containment meanwhile); the walk should also visit SVG geometry
 
 ### DW-1589: Two stale DW-1337 baseline entries on agent/definitions at 720 (command-bar refresh action and sort span) are reported on every gate run
 - source: spec-15-7-the-rail-s-icons.md | severity: low | fix-risk: low | footprint: in-epic
