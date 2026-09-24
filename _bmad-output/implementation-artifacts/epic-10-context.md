@@ -4,64 +4,62 @@
 
 ## Goal
 
-An operator runs the agent on the vendor they already pay for (OpenAI, Google Gemini) or on a model hosted on their own network through any OpenAI-compatible endpoint, so adopting OcuPilot needs no new vendor relationship and a change-controlled site can keep screen data inside the instance. Stories 10.1-10.3 delivered the translators and the three extra adapters behind the fixed provider contract. The epic was reopened on 2026-09-23 for two high-priority live-key fixes that make every shipped provider's catalog default model connect on the first try. 10.4 leaves sampling parameters to the provider. 10.5 makes Test connection answer with OcuPilot's own reason before the Web Gateway's timeout produces an empty 504.
+An operator runs the agent on the vendor they already pay for (OpenAI, Google Gemini) or on a model hosted on their own network through any OpenAI-compatible endpoint, so adopting OcuPilot needs no new vendor relationship and a change-controlled site can keep screen data inside the instance. Stories 10.1-10.3 delivered the translators and the three extra adapters behind the fixed provider contract. The epic was reopened on 2026-09-23 for two high-priority live-key fixes that make every shipped provider's catalog default model connect on the first try. 10.4 (done) left sampling parameters to the provider. 10.5 makes Test connection answer with OcuPilot's own reason before the Web Gateway's timeout produces an empty 504, and carries two Gemini defects the smoke found.
 
 ## Stories
 
 - Story 10.1: The message and tool-definition adapters (done)
 - Story 10.2: The OpenAI and Google Gemini adapters (done)
 - Story 10.3: The OpenAI-compatible adapter, and local models (done)
-- Story 10.4: Sampling parameters left to the provider
+- Story 10.4: Sampling parameters left to the provider (done)
 - Story 10.5: A connection test that answers before the gateway does
 
 ## Requirements & Constraints
 
 - **Adding or changing provider behaviour is adapter work plus a form entry.** No change to the agent loop, the tool registry, the proposal lifecycle or any screen other than the Definition form. The agent's observable behaviour must not depend on which of the four families is chosen.
-- **Temperature is optional.** A new definition stores temperature unset, and validation accepts unset. An explicit value from 0 to 2 remains possible where the provider takes one. A definition saved before 10.4 keeps its stored temperature as an explicit value, and nothing migrates or rewrites it. Adding an optional property that old rows read safely does not move `SCHEMAVERSION`; record that reasoning at the change.
-- **Request bodies:** with temperature unset, OpenAI, Gemini and OpenAI-compatible requests carry no temperature, so the provider default applies. An Anthropic request never carries `temperature`, `top_p` or `top_k`, whatever the definition holds, because the current Claude models in the catalog refuse them.
-- **Thinking blocks round-trip.** Claude Opus 5 thinks by default. When a turn calls a tool and then continues, the next request sends that assistant turn's thinking blocks back byte for byte.
-- **CI never calls a live provider.** Stubs pin every request body: no sampling parameter to Anthropic, ever, and no temperature to the other families when it is unset. A stub returns a thinking block beside a tool call and asserts the block comes back unchanged. The live proof on each catalog default model is the owner's check at the demo freeze, not this epic's.
-- **Test connection must answer before the Web Gateway does.** Its wait is bounded safely below the gateway's configured `Server_Response_Timeout`, which the installer already reads, or 60 s when the value cannot be read. Raising that setting therefore lengthens the test.
+- **Test connection must answer before the Web Gateway does.** Its wait is bounded safely below the gateway's configured `Server_Response_Timeout`, or 60 s when the value cannot be read. Raising that setting therefore lengthens the test. The installer already reads the value (`OcuPilot.Install.Installer.GatewayResponseTimeout`, registry first, then the gateway config file). It only reports the value and never changes it, and there is no Web Gateway prerequisite.
   - On timeout, a definition marked local gets a reason saying the model may still be loading and to test again in a minute.
   - Any other definition gets a reason naming the provider and how long the test waited.
   - A timed-out test never marks the definition verified. A later passing test enables it as usual.
 - **Agent turns have no gateway limit.** A turn whose first provider call outlasts the gateway timeout must still complete, because the turn runs in a background job. Pin this with a stub that delays past the gateway's bound.
-- There is no Web Gateway prerequisite. The installer only reports the timeout value and never changes it.
+- **DW-1600 (routed to 10.5).** Every Gemini turn is refused on its first provider call. The navigate tool's route `enum` is built from every built screen's route, Home's route is the empty string, and Gemini refuses an empty enum value. Any fix must keep one tool array serving all four families, and the cross-vendor JSON-Schema subset must not be relaxed for one vendor.
+- **DW-1601 (routed to 10.5).** Test connection on Gemini's default model (`gemini-3.8-flash`) returns an empty or cut-off reply. Gemini 3 thinks by default, and thinking consumes the fixed 32-token test budget (`TESTMAXTOKENS`). That budget is small on purpose: a yes-or-no check must not cost a turn's money. The planning docs do not decide the fix.
+- **CI never calls a live provider.** Stubs pin every request body, and a stub's delay stands in for a slow provider. The live proof on each catalog default model is the owner's check in Story 17.7.
 
 ## Technical Decisions
 
-- **One provider base with four adapters behind `ProviderPort`.** Anthropic's message shape is canonical. The other families translate both ways through the message and tool-definition adapters, and nothing outside the port speaks a vendor dialect. The cross-vendor JSON-Schema subset is locked and must not be relaxed for one vendor.
+- **One provider base with four adapters behind `ProviderPort` (AD-42).** Anthropic's message shape is canonical. The other families translate both ways through the message and tool-definition adapters, and nothing outside the port speaks a vendor dialect. The catalog is the one source for per-family facts (AD-5). The form and the adapters read catalog columns, never a provider name.
+- **Delivered by 10.4, and 10.5 builds on it:**
+  - Temperature is optional. The catalog declares `canonicalTemperature` `null`, and the `acceptsTemperature` column tells the form which families take a temperature. Anthropic requests never carry sampling parameters.
+  - The catalog's `reasoningEffort` column is `"none"` on openai and empty elsewhere. It is not served to the form. OpenAI writes `reasoning_effort` only when the value is non-empty.
+  - Anthropic reasoning blocks travel verbatim. `Response.ContentJson` holds the reply's content array when it has thinking blocks, and `Loop.AnswerTools` echoes that array unchanged.
+  - A Gemini `functionCall`'s `thoughtSignature` is kept on the canonical `tool_use` block and written back byte for byte.
+  - Reasoning never crosses a turn, and it is never rendered or persisted.
 - **Retry and timeout rules are shared across adapters.**
-  - Retry only on a retryable status. The delay is the greater of the provider's hint and exponential backoff with jitter.
-  - A call that threw mid-flight is never retried.
-  - Stored per-call timeouts and attempt counts are clamped at the point of use, never refused, so that attempts plus backoff fit the 300 s attempt budget.
-  - `%Net.HttpRequest.Timeout` re-arms on each socket read, so a slowly dripping provider is bounded by the turn limits, not by the call timeout. The Test-connection bound in 10.5 therefore cannot rely on the per-call timeout alone to beat the gateway (inference).
-- **Never throw from a provider call.** A provider failure becomes a turn error or a Test-connection result in the single error envelope: `{error, reason, code, detail}` with a stable dotted-uppercase `code`. Vendor text is normalized at the port boundary. The raw text goes only to the log and the ledger.
-- **Background turns (AD-7).** `POST /turn` starts a job and returns a turn id at once, and the panel polls progress. No request is held open for a turn. Test connection, by contrast, is a foreground request, which is why only it needs the gateway-aware bound.
-- **Egress is an allow-list (AD-42).** Test connection exercises the configured endpoint with a minimal budget and reports what it reached.
-  - Marked-local definitions may name loopback or private addresses and bypass any proxy. A cloud metadata endpoint is refused in every address family.
-  - A stored credential goes only to the stored endpoint. A body-supplied endpoint tested before save carries the body's own key or none.
+  - Retry only on a retryable status. The delay is the greater of the provider's hint and exponential backoff with jitter. A call that threw mid-flight is never retried.
+  - Stored per-call timeouts and attempt counts are clamped at the point of use so that they fit the 300 s attempt budget.
+  - One call's worst case is the attempt budget plus the per-call timeout, because the deadline only gates when an attempt may start (DW-1104).
+  - `%Net.HttpRequest.Timeout` re-arms on each socket read. So the 10.5 bound cannot rely on the per-call timeout alone to beat the gateway (inference).
+- **Never throw from a provider call.** A failure becomes a turn error or a Test-connection result in the single error envelope `{error, reason, code, detail}`, with a stable dotted-uppercase `code` (AD-39). Vendor text is normalized at the port boundary. Raw text goes only to the log and the ledger.
+- **Background turns (AD-7).** `POST /turn` starts a job and returns a turn id at once, and the panel polls. No request is held open for a turn. Test connection is a foreground request, which is why only it needs the gateway-aware bound.
+- **Egress is an allow-list (AD-42).** Test connection exercises the configured endpoint with a minimal budget and takes the same TLS path as a real turn (AD-32).
+  - A marked-local definition may name a loopback or private address and bypasses any proxy. A cloud metadata endpoint is refused in every address family.
+  - A stored credential goes only to the stored endpoint.
   - Changing provider, endpoint or credential disables the definition until a test passes.
-- **Outbound TLS (AD-32).** Calls use the installer-created named SSL configuration. Test connection takes the same path as a real turn.
-- **Secrets never surface (AD-35).** A key is fetched at the point of use and cleared before return. It never appears in a status, log line, trap or URL, and that holds on the new timeout path too.
-- **Definitions live in protected OcuPilot state.** Writes are conditional on `RowVersion` (a 409 `STATE.CONFLICT` on mismatch). Normalize `$Char(0)` on `%String` reads whose write path includes SQL `UPDATE`.
+- **Secrets never surface (AD-35).** A key is fetched at the point of use and cleared before return. It never appears in a status, log line, trap or URL, and that holds on the new timeout path.
+- **Definitions live in protected OcuPilot state.** Writes are conditional on `RowVersion` and fail with a 409 `STATE.CONFLICT` on mismatch. Normalize `$Char(0)` on `%String` reads whose write path includes SQL `UPDATE`.
 
 ## UX & Interaction Patterns
 
-- **Definition form:**
-  - Name, provider, model, endpoint, key and Test connection sit above the fold. Maximum tokens, Temperature, Maximum iterations, System prompt override and Retention are collapsed under "Advanced", closed by default.
-  - Choosing a provider cascades its defaults and suggested models, preserving values the user changed.
-  - 10.4 makes Temperature read "Provider default" when unset. For Anthropic it shows the field as not applicable, with the reason.
 - **Test connection result:**
   - The button shows inline progress while running. Success reads "Connected. Reply: <the model's first words>" in `role="status"`.
-  - The provider-refusal sentence is "The provider refused the request. Check the key and try again. Provider said: <text>". Saving before a passing test shows "Saved — disabled until Test connection passes."
+  - A provider refusal reads "The provider refused the request. Check the key and try again. Provider said: <text>".
   - Nothing about a failure is stored: no failed-test state and no rail badge.
-- **Fixed strings are canonical and verbatim.** Every new published sentence becomes a row in EXPERIENCE.md's Fixed strings table and a key in `ui/src/app/core/strings.ts`, with non-ASCII authored as `\uXXXX`. 10.5 requires this for its two timeout reasons. "Provider default" and the Anthropic not-applicable reason are new published sentences too, so they need rows as well (inference). The copy is second person, says what happened and what to do next, and never shows the provider's raw JSON alone.
-- The context chip is computed from the same configuration as the request. A local provider shows its host with no "leaves the instance" pill.
+- **Fixed strings are canonical and verbatim.** 10.5's two timeout reasons each become a row in EXPERIENCE.md's Fixed strings table and a key in `ui/src/app/core/strings.ts`, with non-ASCII written as `\uXXXX`. Copy is in the second person, says what happened and what to do next, and never shows raw provider JSON alone.
+- The Temperature field shows "Provider default" when unset. Where `acceptsTemperature` is false it is readonly, reads "Not applicable" and carries a caption (delivered in 10.4).
 
 ## Cross-Story Dependencies
 
-- 10.5 runs after 10.4 in the same runner, and both were dispatched ahead of Epic 12.
-- Both build on the delivered 10.1-10.3 adapters, the provider base, the Definition form and Test connection from the agent-configuration epic. They must not modify the agent loop, the tool registry or the proposal lifecycle.
-- The per-provider live check on catalog default models, including the demo prompts on every shipped provider, belongs to Story 17.7, which the owner runs.
+- 10.5 runs after 10.4 in the same runner, and both were dispatched ahead of Epic 12. 10.5 builds on 10.4's catalog columns and echo path, and on Test connection and the Definition form from the agent-configuration epic.
+- The README's note on the Web Gateway response timeout for slow models belongs to Story 17.6. The per-provider live check on catalog default models belongs to Story 17.7, which the owner runs.
 - Token streaming in the polish-week epic depends on this epic and must not put the write path at risk.
