@@ -224,6 +224,8 @@ test('Matrix "Create weekly", AC7: the four steps from the list\u2019s Create cr
     await waitForRows(page, config.navigationTimeoutMs);
     await (await page.waitForSelector('.ocu-command-bar button.ocu-button-primary', { visible: true, timeout: config.navigationTimeoutMs })).click();
     await page.waitForFunction(() => new URL(window.location.href).pathname.endsWith('/tasks/schedule/edit'), { timeout: config.navigationTimeoutMs });
+    // The URL moves before the form read answers, and the stepper is drawn only once it has.
+    await wizardReady(page);
     assert.deepEqual((await stepState(page)).map((step) => step.label), STEP_LABELS, 'a stepper of the four named steps');
     await passBasics(page, WEEKLY);
     await passType(page, '30');

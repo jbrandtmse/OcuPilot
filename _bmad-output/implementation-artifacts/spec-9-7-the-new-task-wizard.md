@@ -2,11 +2,11 @@
 title: 'Story 9.7: The New Task wizard'
 type: 'feature'
 created: '2026-09-24'
-status: 'in-progress'
-baseline_revision: 'f9851990568c3c30a459502deb960612d5625086'
+status: 'done'
+baseline_revision: '0743a1a3675b232bc6e9103f38b9431c8dfa7047'
 baseline_commit: 'f9851990568c3c30a459502deb960612d5625086'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-9-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-9-5-the-ssl-tls-editor.md'
@@ -19,6 +19,14 @@ deferred:
     location: >-
       src/OcuPilot/Test/TaskProbe.cls
     severity: low
+  - summary: >-
+      proposal-demo's AC1 leg reads the agent's closing reply with no wait, so it goes red when the reply lands one panel poll after the proposal card (CI run 36029831321).
+    evidence: |-
+      The selector appears once in the file (a bare page.$eval at :505) and nothing waits on it; locally the card and reply render together about 1.2 s after send, 3 full-file runs 3/3 plus 11 single-leg runs green.
+      Timing on CI not observed (inference). The file is unchanged by this story and identical on origin/OCU-1-epic11.
+    location: >-
+      ui/browser/proposal-demo.browser-spec.mjs:505
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -370,10 +378,12 @@ Rejected:
 
 ### CI Rework (iteration 1)
 
-- [ ] [CI] browser: `task-wizard.browser-spec.mjs` "Matrix \"Create weekly\", AC7" failed on CI (run 36029831321, head `26284da8`) at its first assertion: `stepState(page)` read `[]` right after the URL reached `/tasks/schedule/edit`, before the stepper rendered -- `ui/browser/task-wizard.browser-spec.mjs:227` -- wait for the stepper's steps to render before reading them, and check every other leg of the file for the same read-before-render race; the file passed 5/5 locally, so reproduce the cold-start timing (e.g. run it first in a fresh browser) before claiming the fix.
-- [ ] [CI] browser: `proposal-demo.browser-spec.mjs` "AC1: UJ-3's own journey, as a non-%All holder of the screen's two pairs, inside NFR-1's budget" failed on the same run: `failed to find element matching selector ".ocu-panel-message-agent-text"` at `ui/browser/proposal-demo.browser-spec.mjs:505`. It passed on the previous head's CI (run 36009216113, `71aadf62`). Establish whether this story's diff (`turn.ts` createdId, `proposal-view.ts`, `screen-outlet.ts`, `app.ts`, `entity-ref.ts`, the kernel edits) causes it -- run the spec against a rebuilt, redeployed bundle -- and fix the cause if it is this story's; if it is not reproducible and not this story's, say so with the evidence (runs, bundle build) in `## Auto Run Result`. Do not edit the spec file itself if the cause is elsewhere: `proposal-demo` is not one of 11.10's seven specs, but check `git show origin/OCU-1-epic11:ui/browser/proposal-demo.browser-spec.mjs` before editing it.
+- [x] [CI] browser: `task-wizard.browser-spec.mjs` "Matrix \"Create weekly\", AC7" failed on CI (run 36029831321, head `26284da8`) at its first assertion: `stepState(page)` read `[]` right after the URL reached `/tasks/schedule/edit`, before the stepper rendered -- `ui/browser/task-wizard.browser-spec.mjs:227` -- wait for the stepper's steps to render before reading them, and check every other leg of the file for the same read-before-render race; the file passed 5/5 locally, so reproduce the cold-start timing (e.g. run it first in a fresh browser) before claiming the fix.
+- [x] [CI] browser: `proposal-demo.browser-spec.mjs` "AC1: UJ-3's own journey, as a non-%All holder of the screen's two pairs, inside NFR-1's budget" failed on the same run: `failed to find element matching selector ".ocu-panel-message-agent-text"` at `ui/browser/proposal-demo.browser-spec.mjs:505`. It passed on the previous head's CI (run 36009216113, `71aadf62`). Establish whether this story's diff (`turn.ts` createdId, `proposal-view.ts`, `screen-outlet.ts`, `app.ts`, `entity-ref.ts`, the kernel edits) causes it -- run the spec against a rebuilt, redeployed bundle -- and fix the cause if it is this story's; if it is not reproducible and not this story's, say so with the evidence (runs, bundle build) in `## Auto Run Result`. Do not edit the spec file itself if the cause is elsewhere: `proposal-demo` is not one of 11.10's seven specs, but check `git show origin/OCU-1-epic11:ui/browser/proposal-demo.browser-spec.mjs` before editing it.
 
 ## Spec Change Log
+
+- 2026-09-24 rework 1 (implement): item 1 fixed by a `wizardReady` wait in `task-wizard.browser-spec.mjs`; item 2 found not this story's and not reproducible, its race deferred (`deferred:`).
 
 - 2026-09-24 rework 1 (lead): CI run 36029831321 red on the browser job (two legs); re-opened with two `[CI]` items. Code review's patches (task-name case fold in `EntityRef`, period-day reset, field-list pins) are committed as the rework baseline.
 
@@ -413,6 +423,17 @@ Rejected:
   - `[false]` `[reject]` A second `# classes:` line in the task block — `ci.test.mjs` DW-1276 reads every classes line; its mutation is recorded.
   - `[false]` `[reject]` `classicOnly`, `options` and a repeated-digit refusal are beyond the stated shape — additive, and a set of digits has no repeats.
   - `[false]` `[reject]` Bundle and `classicPage` not evidenced — initial total measured 1,522,260 B; `NormalizePage("/csp/sys/op/UtilSysTaskBuilder.csp")` answers `%cspapp.op.utilsystaskbuilder` on slot A.
+
+### 2026-09-24 — Review pass (rework 1)
+
+- verdicts: 6 findings — high 0, medium 0, low 0, false 6, maybe-false 0
+- findings:
+  - `[false]` `[reject]` (verification-gap) Item 1's cold-start reproduction is not recorded — reproduced under 1,500 ms latency (red `actual []` without the wait, green with it); recorded under Verification, rework 1.
+  - `[false]` `[reject]` (verification-gap) Item 2 is not addressed — investigated: 3 full-file runs 3/3 and 11 single-leg runs green on the rebuilt bundle, the file is unchanged by this story; its own race is deferred.
+  - `[false]` `[reject]` (verification-gap) The spec claims more than the diff delivers — the items, Verification and Auto Run Result are written at finalize, after the review layers.
+  - `[false]` `[reject]` (intent-alignment) CI-2 is not addressed — the same claim as the second row; refuted there.
+  - `[false]` `[reject]` (intent-alignment) The CI-1 reproduction is not recorded — the same claim as the first row; refuted there.
+  - `[false]` `[reject]` (intent-alignment) The diff changes only test synchronization, not the product — the auditor finds it sound under the rework reading; the stepper is drawn under `@if (loadedFlag)` by design.
 
 ## Design Notes
 
@@ -545,6 +566,10 @@ Slot A. Every IRIS MCP call carries `server: "ocupilot-slot-a"`. Anything that c
 - mutation: drop the held-value option from `TaskWizardPage.settingView` -> `task-wizard.page.spec.ts` "a select setting whose default no option names" went red.
 - Green after the revert: `EntityRef` 9/9 (10387), `TaskCreate` 7/7 (10388), `TaskWire` 3/3 (10382), `TaskSave` 8/8 (10383), `TaskRules` 9/9 (10384); `npm run test:tools` 1,396/1,396; `ng test` 1,154/1,154; `check-objectscript` clean; build initial total 1,522,189 B; bundle redeployed to `ocupilot-ci`, `task-wizard.browser-spec.mjs` 5/5.
 
+**Mutations observed (rework 1):**
+
+- mutation (CI item 1, timing): remove the `wizardReady` wait before `stepState` and add 1,500 ms request latency before the list's Create -> `task-wizard.browser-spec.mjs` "Matrix \"Create weekly\", AC7" went red with `actual []`, the CI failure; the fixed leg under the same latency went green; restored, sha1 `f2d6e6fc` matches.
+
 ## Auto Run Result
 
 Status: done
@@ -570,3 +595,20 @@ Blocking condition: none
 **Residual risks:** the details screen shows only the schedule of AC7's values (priority, output file and addresses are pinned at the instance read-back); `TASK.SETTING.SECRET` is unreachable on the measured type population; each probe task leaves two vendor-written task-history rows (deferred).
 
 footprint_extensions: `ui/src/app/core/proposal-view.ts`, `ui/src/app/areas/tasks/details.page.spec.ts`, `ui/src/app/shell/screen-outlet.spec.ts`, `ui/browser/structural-baseline.json`, `ui/tools/proposal-view.test.mjs`, `ui/tools/turn.test.mjs`, `ui/tools/navigation.test.mjs`, `src/OcuPilot/Test/Wire.cls`, `src/OcuPilot/Test/WireSecurityRead.cls`, plus the Design Notes list (`turn.ts`, `navigation.ts`, `app.ts`, `scripts/ci-throwaway.sh`, `Kernel/Proposal/{Mint,Confirm,Prohibited}.cls`). No 11.10 file or browser spec touched.
+
+### Rework iteration 1 (CI)
+
+Status: done
+Blocking condition: none
+
+- **Item 1 (fixed).** The wizard draws its stepper only once `GET /tasks/form` answers, and the URL moves before that. The Create weekly leg now calls the file's `wizardReady` before `stepState` (`ui/browser/task-wizard.browser-spec.mjs`, +2 lines). The other four legs already wait. Reproduced under 1,500 ms latency: red `actual []` without the wait, green with it. The whole file passed 5/5 under 1,000 ms latency on every request, and 5/5 four times without.
+- **Item 2 (not this story's, not reproduced).** On the rebuilt, redeployed bundle with the server tree reloaded (`load-ci.sh` OK), `proposal-demo.browser-spec.mjs` passed 3/3 in three full-file runs and in 11 single-leg runs. The story does not touch that path:
+  - `EntityRef`'s change is the `integer` rule, used by task and process. Web applications use `foldcase-striptrailingslash`.
+  - The `Mint` hook covers creates only, and this journey is an update.
+  - `createdId` is empty for web applications.
+  - The spec file is unchanged since `f9851990` and identical on `origin/OCU-1-epic11`.
+
+  The likely cause is in that file (inference): a bare read of the reply at :505. It is deferred in frontmatter, not edited.
+- **Targeted runs on `ocupilot-ci`, one class per call:** `EntityRef` 9/9 (10389), `TaskRules` 9/9 (10390), `TaskSave` 8/8 (10391), `TaskCreate` 7/7 (10392), `TaskWire` 3/3 (10393), `Wire` 20/20 (10394), `ToolRoundTrip` 2/2 (10395), `SurfaceCoverage` 4/4 (10396). Counts were read back from `%UnitTest_Result`. `npm run test:tools` 1,396/1,396; `npm run test:components` 1,154/1,154. Build initial total 1,522,189 B.
+- **Review:** 2 layers ran (verification-gap, intent-alignment) and filed 6 findings. All 6 were false and none were patched, so `followup_review_recommended: false`.
+- footprint_extensions: none.
