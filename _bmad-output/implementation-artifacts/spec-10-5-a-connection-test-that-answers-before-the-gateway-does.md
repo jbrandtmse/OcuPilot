@@ -2,7 +2,8 @@
 title: 'Story 10.5: A connection test that answers before the gateway does'
 type: 'bugfix'
 created: '2026-09-23'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_revision: 'bc2900b31ff9b88e2ce3451156ce271782735472'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -114,6 +115,10 @@ deferred: []
 19. `ui/src/app/areas/agent/definition-form.store.ts` -- In `absorbTestRefusal`, for the two codes with a numeric `detail.waitedSeconds`, `testFailure` is the `STRINGS` template with `<n>` and `<provider>` (from `detail.providerLabel`) resolved. Without the detail it falls back to `reason`. `definition-form.page.spec.ts` gets cases for both codes and for the fallback.
 20. `ui/browser/definitions.browser-spec.mjs` -- One case that intercepts `POST …/test` and answers each code's 504 envelope. It asserts the failure line equals the resolved template, and runs `detectScreen` with every `INVARIANT` at 1280 and 720 px light and 1280 px dark, with no violations. Correct the header's "never pressed" sentence to say the press is intercepted.
 
+- [x] 21. `scripts/check-objectscript.py` -- (lead, at the implement halt) `JOB_ALLOWED` gains `src/OcuPilot/Kernel/Provider/TestCall.cls` and rule 19's prose names it beside `Job.cls` (AD-42 as amended 2026-09-24). `scripts/` is not a contended path, so this is an Epic 10 footprint extension. Verified: `check-objectscript.py` 0 problems over 741 files; `test_check_objectscript.py` 128/128.
+- [ ] 22. `ui/src/app/areas/agent/definition-form.page.ts` -- correct `failureText`'s doc comment for the two new codes.
+- [ ] 23. AC3's mutation: apply `TurnLong`'s documented mutation (run `Job.Run` inline in `Api.Turn.HandleStart`) to observe red, then revert byte-identical. Applying and reverting a mutation is not an edit of `Api/Turn.cls`; the file must be byte-identical afterwards (`git diff --stat` unchanged). Record the observed run under Verification.
+
 **Acceptance Criteria:**
 
 - **AC1.** Given a provider that has not answered, when Test connection has waited its bound (the gateway's `Server_Response_Timeout` as `Installer.GatewayResponseTimeout` reads it, minus the margin, or 50 s when unread), then the request answers OcuPilot's envelope before the gateway would: the local reason for a definition marked local, and otherwise the provider's label and the seconds waited. Raising the gateway setting raises the bound.
@@ -125,6 +130,8 @@ deferred: []
 - **DW-1601.** Given any definition, when Test connection calls it, then the request's cap is `TESTMAXTOKENS` (1024), so a model that thinks before it answers has room to answer. The live proof on `gemini-3.8-flash` is Story 17.7's owner check.
 
 ## Spec Change Log
+
+- 2026-09-24, implement halt (lead): the halt's intent gap is answered by task 21 (the lead edited the checker's `JOB_ALLOWED`; `scripts/` is outside every other open epic's footprint). Tasks 22-23 carry the two items the halt left open. Status reset to `in-progress`; tasks 1-20 are in the working tree, uncommitted, and are this pass's to review and finalize.
 
 ## Review Triage Log
 
@@ -201,21 +208,38 @@ The ready handshake exists so the key is sent only to a child that has already c
 **Pinning tests and mutations** (Rule 19). Apply each mutation, recompile the package, observe red, revert, and confirm `git status --short` and `git diff --stat` are unchanged. The implement stage records each observed run.
 
 - AC1, wall clock: `AgentConnectionBound`'s bound-2 leg. Mutation: `TestCall.Call` waits for the result with no deadline. Expect red on elapsed.
+  - mutation: `Call`'s result `Await` deadline + 3600 s → `TestAnUnansweredTestAnswersAtItsBound` red (10 asserts, elapsed 6.5 s), run 271.
 - AC1, wire: `AgentConnectionWire`. Same mutation. Expect red (the gateway's empty 504 at 60).
+  - mutation: same → `TestATestAnswersBeforeTheGatewayDoes` red: 504 with no JSON body at 60.07 s, run 272.
 - AC1, the margin: the arithmetic leg. Mutation: `MARGINSECONDS` 0.
+  - mutation: `MARGINSECONDS` 0 → `TestTheBoundArithmetic` red (9 asserts), run 273.
 - AC1, the source: the seam-20 leg. Mutation: `GatewaySeconds` answers 60 always.
+  - mutation: `GatewaySeconds` keeps 60 whatever the read answers → `TestTheGatewayReadSetsTheBound` red on the 20 leg, run 274.
 - AC1, the wording: the local leg. Mutation: select the non-local code for `markedLocal` 1.
+  - mutation: `TimeoutFault` never selects the local code → `TestALocalDefinitionGetsTheLocalReason` red on code and reason, run 275.
 - AC2: the late-answer leg. Mutation: record verification on `pTimedOut`. The stale-message leg: mutation: drop the nonce comparison.
+  - mutation: `ConnectionOutcome` calls `GuardedSetVerification` when timed out → `TestAnUnansweredTestAnswersAtItsBound` red on the flags after the child returned, run 276.
+  - mutation: `Await` drops the nonce comparison → `TestALateAnswerNeverReachesTheNextTest` red, reply-a read by the second test, run 277.
 - AC3: `TurnLong.TestATurnOutlivesTheGatewayResponseTimeout`. Mutation: its documented one (run `Job.Run` inline in `Api.Turn.HandleStart`).
 - AC4: `connection-timeout.test.mjs`. Mutation: change one word of `REASONTESTTIMEOUT`. Also `strings.test.mjs`: mutation: change one word of the EXPERIENCE row.
+  - mutation: "endpoint" → "address" in `REASONTESTTIMEOUT` → the non-local byte-for-byte test red.
+  - mutation: "loading" → "warming" in the EXPERIENCE row → `strings.test.mjs` red on three tests (table literal, authorization, line reference).
 - Key handoff: the body-key leg. Mutation: the child skips the `%Set`.
+  - mutation: `Child` skips the key's `%Set` → `TestABodyKeyCrossesByMessage` red, run 278.
 - Client: the page-spec case for the local code. Mutation: render `reason` for it. The browser case: mutation: the store ignores `detail`; rebuild and redeploy.
+  - mutation: `testTimeoutText` returns null for the local code → the page-spec Story 10.5 case red (envelope reason received).
+  - mutation: `testTimeoutText` reads `detail['ignored']`, rebuilt and redeployed → the browser Story 10.5 case red (30 s wait for the sentence).
 - DW-1600: `GeminiEmptyEnum`'s whole-registry leg. Mutation: remove the respelling. Its decode leg: mutation: skip the decode.
+  - mutation: `GeminiSchema`'s `enum` branch disabled → `TestNoGeminiDeclarationCarriesAnEmptyMember` and `TestTheGeminiAdapterSendsNoEmptyMember` red, run 279.
+  - mutation: `GeminiToCanonical` skips `RespellEmpty` → `TestTheRespellingDecodesOnItsOwnPairsOnly`, `TestReplayedHistoryRespellsTheSamePairs` and the adapter leg red, run 280.
 - DW-1601: the `AgentConnection` floor leg. Mutation: `TESTMAXTOKENS` 32.
+  - mutation: `TESTMAXTOKENS` 32 → `TestTheTestCapLeavesRoomToThink` red alone, run 281.
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap: `scripts/check-objectscript.py` (contended: Epic 9's footprint; outside Epic 10's list and the spec's Design Notes) must allow the `JOB` in `src/OcuPilot/Kernel/Provider/TestCall.cls`, which AD-42 (amended 2026-09-24) names as the second spawn site
 
 Planned and halted after planning, as the dispatch asked. Ledger inbox addressed: DW-1600 (tasks 5-7, 13) and DW-1601 (tasks 4, 14). Oversized: the spec carries a new process boundary, two Gemini fixes and a client copy change.
+
+Implement pass 1 (halted before review). Tasks 1-20 are implemented and uncommitted in the tree; the handoff reported every targeted class, `test:tools` (1372), `test:components` (1042), `definitions.browser-spec.mjs` (8/8) and `lint-docs.sh` green on `ocupilot-b-ci`, with mutation lines recorded in Verification. Rule 19 of `scripts/check-objectscript.py` allows `JOB` only in `Kernel/Agent/Job.cls`, so the checker (and the pre-commit hook) reports `TestCall.cls:123`, and `test_check_objectscript.py`'s shipped-tree test fails. Recommended amendment: add `"src/OcuPilot/Kernel/Provider/TestCall.cls"` to `JOB_ALLOWED` (line 856) and name it beside `Job.cls` in rule 19's prose (line ~154); verified on a scratch copy: 0 problems over 741 files. Epic 9's branch has not modified either checker file. Open for the re-dispatch: the AC3 mutation (`Api/Turn.cls` is off-limits to this story, so it was not observed), and `definition-form.page.ts` `failureText`'s doc comment, which no longer holds for the two new codes.
