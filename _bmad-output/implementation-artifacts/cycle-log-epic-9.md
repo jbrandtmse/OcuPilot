@@ -112,3 +112,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-24T11:00:24Z	Story 9.1	ci_resolved	story=9.1 run=35987943505 head=52eb08e result=success jobs=8/8 resolved_at=next_implement note=covers_integrate_forward_5eba56a_and_d317549
 2026-09-24T11:00:24Z	Story 9.1	committed	sha=52eb08e submodules= ci=success run=35987943505 note=rework_2_toast_dismiss_floor
 2026-09-24T11:00:24Z	Story 9.5	stage_spawned	stage=implement spawn_at=2026-09-24T11:00:24Z model=opus agent_name=9-5-the-ssl-tls-editor-implement-1 cycle_iteration=1
+2026-09-24T11:01:34Z	Epic 9	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp feature_head=013386b merge=45b76b36 brings=Story_11.9 conflicts=1_resolved(sprint-status_regenerated+11.9_done) verification=build_ok,strings+ci_tests_green,throwaway_resynced,ci_on_9.5_push
