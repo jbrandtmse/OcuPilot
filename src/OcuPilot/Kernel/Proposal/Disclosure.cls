@@ -78,7 +78,8 @@ ClassMethod Rows(pToolName As %String, pPayload As %String, pDiff As %String) As
 
 /// <p>The proposal card's privilege line (AD-8, Story 11.8): <code>{requires, missing}</code> for
 /// the pair specification <var>pRequired</var> a mint recorded, or <code>""</code> when it parses
-/// to no pair -- nothing recorded, or a malformed specification.</p>
+/// to no pair -- nothing recorded, or a malformed specification -- or cannot be evaluated, which
+/// logs a fault.</p>
 /// <p><code>requires</code> is every pair spelled <code>resource:permission</code>, in recorded
 /// order. <code>missing</code> is <method>OcuPilot.Kernel.Proposal.Operation.MissingPair</method>'s
 /// answer for <var>pUser</var>, the check Confirm's gate makes, asked at this call and never
@@ -99,8 +100,9 @@ ClassMethod Privilege(pRequired As %String, pUser As %String, pHolderClass As %S
         Set tPrivilege = {}
         Do tPrivilege.%Set("requires", tRequires)
         Do tPrivilege.%Set("missing", ##class(OcuPilot.Kernel.Proposal.Operation).MissingPair(pUser, tPairs, pHolderClass), "string")
-    } Catch {
+    } Catch ex {
         Set tPrivilege = ""
+        Do ##class(OcuPilot.Kernel.Fault).LogRaw("proposal", "the proposal's privilege line could not be evaluated", ex.AsStatus(), "")
     }
     Quit tPrivilege
 }

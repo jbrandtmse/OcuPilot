@@ -1789,3 +1789,25 @@ test('parseProposal reads an absent, null or malformed privilege as null', () =>
   assert.equal(parsedPrivilege({ requires: ['%Admin_Secure:USE'], missing: null }), null, 'missing not a string');
   assert.equal(parsedPrivilege({ requires: ['%Admin_Secure:USE'] }), null, 'missing absent');
 });
+
+test("a confirm refused for a pair records that pair as the line's missing one", async () => {
+  // mutation: drop the `recordProposalMissingPair` call from `decideProposal`'s refusal branch ->
+  // the line keeps saying the set is held and this goes red.
+  const held = { requires: ['%Admin_Secure:USE', '%DB_IRISSYS:READ'], missing: '' };
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal({ privilege: held })] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      err(403, 'AUTH.NOPRIVILEGE', 'A privilege this action requires is missing.', { failedPair: '%Admin_Secure:USE' }),
+    ],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+  assert.deepEqual(turn.entries()[0].proposals[0].privilege, held);
+
+  const outcome = await turn.confirmProposal('p1');
+  assert.equal(outcome.failedPair, '%Admin_Secure:USE');
+  assert.deepEqual(turn.entries()[0].proposals[0].privilege, { requires: held.requires, missing: '%Admin_Secure:USE' });
+});

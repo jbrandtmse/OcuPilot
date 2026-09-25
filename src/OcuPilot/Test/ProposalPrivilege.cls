@@ -2,8 +2,8 @@
 /// records is the one the write's own gate resolves, the wire row carries it with the first pair the
 /// owner lacks, and a row with no readable set carries <code>null</code>.</p>
 /// <p><b>What it needs from the environment:</b> an account holding <code>%All</code>, OcuPilot's
-/// protected state, and the demo application <parameter>DEMOAPP</parameter> the container's opt-in
-/// fixture creates. It writes to the instance only its own proposal rows and the fault lines an
+/// protected state, the demo application <parameter>DEMOAPP</parameter> the container's opt-in
+/// fixture creates, and at least one application error in some namespace. It writes to the instance only its own proposal rows and the fault lines an
 /// unrecorded set logs; it arms nothing and creates no principal.</p>
 Class OcuPilot.Test.ProposalPrivilege Extends %UnitTest.TestCase
 {
@@ -17,6 +17,12 @@ Parameter PROBEUSER = "OcuPilotProbeProposalPrivilege";
 Parameter HOLDER = "OcuPilot.Test.PrivilegeHolderProbe";
 
 Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
+
+Parameter ERRORTOOL = "OcuPilot.Screen.Tool.ErrorDelete";
+
+Parameter ERRORTOOLNAME = "logs.applicationerrors.delete";
+
+Parameter ERRORSCREEN = "OcuPilot.Screen.Descriptor.LogErrorList";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -132,7 +138,7 @@ Method TestMissingNamesTheFirstPairNotHeld()
 /// <code>privilege</code> as <code>null</code>.</p>
 Method TestARowWithNoReadableSetCarriesNull()
 {
-    Do ##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", "/csp/ocupilotprobeprivilege", .tTarget)
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", "/csp/ocupilotprobeprivilege", .tTarget), "the probe target's key is built")
     For tCase = 1, 2 {
         Kill tValues
         Set tValues("user") = ..#PROBEUSER
@@ -156,8 +162,8 @@ Method TestARowWithNoReadableSetCarriesNull()
     }
 }
 
-/// <p>(e) A mint records a resolved tool's set with its argument pairs, and records none for a tool
-/// that does not resolve or a set longer than the store's column.</p>
+/// <p>(e) A mint records a resolved tool's set with its argument pairs, each pair once, and records
+/// none for a tool that does not resolve or a set longer than the store's column.</p>
 Method TestAnUnresolvedOrOverlongSetRecordsNone()
 {
     Set tResolved = ##class(OcuPilot.Kernel.Proposal.Mint).RecordedPairs($Parameter(..#WEBAPPTOOL, "TOOLNAME"), "{}")
@@ -174,6 +180,53 @@ Method TestAnUnresolvedOrOverlongSetRecordsNone()
         Set tSpelled = $List($List(tAdded, tI), 1) _ ":" _ $List($List(tAdded, tI), 2)
         Do $$$AssertTrue($ListFind(tRecorded, tSpelled) > 0, "the recorded set carries the argument pair " _ tSpelled)
     }
+
+    Set tArgs = {}
+    Do tArgs.%Set("namespace", "%SYS", "string")
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).Resolve(..#ERRORTOOLNAME, .tTool), "the error delete resolves")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Proposal.Operation).RequiredPairsOf(tTool, tArgs.%ToJSON(), .tPairs), "its pairs resolve for %SYS")
+    Set tDistinct = ..Spelled(tPairs)
+    Do $$$AssertTrue($ListLength(tPairs) > $ListLength($ListFromString(tDistinct)), "the gate's set for %SYS names a pair twice, so the recording is asked to de-duplicate")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Mint).RecordedPairs(..#ERRORTOOLNAME, tArgs.%ToJSON()), tDistinct, "and records each pair once, in order")
+}
+
+/// <p>(f) A mint of a tool whose pairs depend on its argument records the set its gate resolves
+/// over the arguments the proposal stored.</p>
+Method TestAMintRecordsItsArgumentPairs()
+{
+    Set tNamespace = ##class(OcuPilot.Test.ErrorDeleteScope).HeldNamespace(.tDate)
+    Do $$$AssertNotEquals(tNamespace, "", "the instance's application error log holds errors in some namespace")
+    If tNamespace = "" Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn), "a turn is seeded")
+    Set tToolClass = ..#ERRORTOOL
+    Set tArgs = {}
+    Do tArgs.%Set($ClassMethod(tToolClass, "IdArgument"), tNamespace, "string")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint(..#ERRORSCREEN, ..#ERRORTOOLNAME, $Username, "", tTurn, tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, $ClassMethod(tToolClass, "Endpoint"), $ClassMethod(tToolClass, "IdParam"), tNamespace, $ClassMethod(tToolClass, "IdArgument"), $ClassMethod(tToolClass, "SettableFields"), tToolClass)
+    Do $$$AssertStatusOK(tSC, "the delete of " _ tNamespace _ "'s errors is minted")
+    If '$IsObject($Get(tProposal)) Quit
+    Set tKey = tProposal.%Get("proposalId")
+    Set tRow = ##class(OcuPilot.Kernel.State.Propose).ProposalKeyIdxOpen(tKey)
+    Do $$$AssertTrue($IsObject(tRow), "the minted row is opened")
+    If '$IsObject(tRow) Quit
+    Set tArguments = tRow.Arguments.Read()
+    Set tRow = ""
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).Resolve(..#ERRORTOOLNAME, .tTool), "the error delete resolves")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Proposal.Operation).RequiredPairsOf(tTool, tArguments, .tPairs), "its gate's pairs resolve over the stored arguments")
+    Set tAdded = ##class(OcuPilot.Port.LogSourcePort).PairsFor(##class(OcuPilot.Port.LogSourcePort).#ERRORSKEY, tNamespace)
+    Do $$$AssertTrue($ListLength(tAdded) > 0, "the port resolves pairs for " _ tNamespace)
+    Do $$$AssertTrue($ListFind(tPairs, $List(tAdded, 1)) > 0, "the gate's set carries the argument pairs")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "RequiredPairs"), ..Spelled(tPairs), "the stored set is the gate's own over the stored arguments")
+}
+
+/// <p><var>pPairs</var> spelled <code>resource:permission</code>, each once, in order, comma-joined.</p>
+ClassMethod Spelled(pPairs As %List) As %String
+{
+    Set tSpelled = ""
+    For tI = 1:1:$ListLength(pPairs) {
+        Set tPair = $List($List(pPairs, tI), 1) _ ":" _ $List($List(pPairs, tI), 2)
+        If '$ListFind($ListFromString(tSpelled), tPair) Set tSpelled = tSpelled _ $Select(tSpelled = "": "", 1: ",") _ tPair
+    }
+    Quit tSpelled
 }
 
 }

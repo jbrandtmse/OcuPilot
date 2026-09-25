@@ -56,6 +56,7 @@ describe('the proposal card privilege line', () => {
     expect(line.querySelector('.ocu-banner-message')?.textContent?.trim()).toBe(
       'Requires %Admin_Secure:USE, %DB_IRISSYS:READ. You don\'t hold %Admin_Secure:USE.'
     );
+    expect(line.nextElementSibling?.classList.contains('ocu-proposal-card-runs-as')).toBe(true);
   });
 
   it('leaves Confirm enabled when a pair is missing', () => {
@@ -71,8 +72,8 @@ describe('the proposal card privilege line', () => {
     expect(card.querySelector('[data-slot="privilege"]')).toBeNull();
   });
 
-  it('renders no line on a confirmed or expired card', () => {
-    for (const phase of ['confirmed', 'expired'] as const) {
+  it('renders no line on a confirmed, canceled or expired card', () => {
+    for (const phase of ['confirmed', 'canceled-by-you', 'canceled-by-message', 'canceled-sibling', 'expired'] as const) {
       const card = mount(liveView({ privilege: MISSING }), phase);
       expect(card.querySelector('[data-slot="privilege"]')).toBeNull();
     }

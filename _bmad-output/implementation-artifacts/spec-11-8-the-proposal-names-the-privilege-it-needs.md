@@ -210,6 +210,43 @@ deferred:
 - Given a row action or a form Save, when it renders, then it carries no privilege line: a recorded omission (Design Notes).
 - Given the prompt pins, `TurnWire` and `stream-reply` (e), when they run, then they are green and unedited.
 
+### Review Findings
+
+Code review 2026-09-25 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 29 findings: 8 patched, 1 escalated, 20 rejected.
+
+- [x] [Review][Patch] (med) A refused Confirm left the line saying "which you hold" beside the refusal naming the pair, once the turn had stopped polling -- `decideProposal` now records the refusal's `failedPair` as the line's `missing` (Confirm's own answer, AD-8) [ui/src/app/core/turn.ts:1194]
+- [x] [Review][Patch] (low) Mint's call into `RecordedPairs` was unpinned for an argument-pair tool -- leg (f) mints `logs.applicationerrors.delete` and compares the stored set with the gate's over the stored arguments [src/OcuPilot/Test/ProposalPrivilege.cls]
+- [x] [Review][Patch] (low) De-duplication was unpinned though reachable (the error delete's set for `%SYS` repeats pairs) -- leg (e) asserts the repeat and the once-each spelling [src/OcuPilot/Test/ProposalPrivilege.cls]
+- [x] [Review][Patch] (low) The warning's place above the runs-as caption was asserted only for the held line [ui/src/app/shell/proposal-card-privilege.spec.ts]
+- [x] [Review][Patch] (low) Leg (d) discarded `EntityRef.Key`'s status [src/OcuPilot/Test/ProposalPrivilege.cls]
+- [x] [Review][Patch] (low) `Disclosure.Privilege` swallowed an evaluation failure with no fault [src/OcuPilot/Kernel/Proposal/Disclosure.cls:105]
+- [x] [Review][Patch] (low) The footer sentence said "Above the caption" where the bullet names two captions, and its marker was in backticks [EXPERIENCE.md:602]
+- [x] [Review][Patch] (low) `epic-11-context.md` still described the pre-amendment mechanism (the bare `ResourcesOR()` resource, the shell's privilege map) [_bmad-output/implementation-artifacts/epic-11-context.md:35]
+- [x] [Review][Defer] (med) DW-1669: after the turn ends the line is never re-read, so a revocation shows no warning before Confirm; a restore shows no line at all (restored live rows render expired). AC2's predictive half is effectively unmet in the common case; the fix is a post-terminal re-read loop in `turn.ts`, against the documented "polling simply stops" contract -- `escalated`, fix-risk high [ui/src/app/core/turn.ts:1386] -- deferred: decision sheet
+
+Rejected:
+
+- false: browser (b) checks the refusal on the tool-call card -- the card's refusal slot renders the envelope's generic reason by design (AD-39); the tool-call card is where the instance names `failedPair`. The task's wording is the inaccuracy.
+- low: `TOOL_GRANTS` is hand-written -- a change to the tool's declared set fails loudly at (b)'s first assertion.
+- low: bare `.ocu-proposal-card-warning` selectors in other specs now match the privilege warning -- each signs in as a `%All` holder or uses fixtures with no privilege, so the warning cannot render there.
+- low: the warning banner is a content-width flex item in the footer -- cosmetic, and the class list and "no new style rule" are specified.
+- low: `WireRow` evaluates rows that never show the line -- a few `CheckUserPermission` calls per row; the specified wire shape carries `privilege` on every recorded row.
+- low: the recorded set can drift from Confirm's re-resolution within a proposal's life -- by design (AD-8 records at mint; Confirm is the verdict).
+- false: `RecordedPairs` reads MAXLEN 0 when the property cannot be opened -- the store class is compiled with the mint.
+- low: a third registry `Resolve` per mint -- negligible, and removing it adds a parameter.
+- low: leg (e)'s `$Length > 8` is weak -- it is the over-long leg's precondition; the spelling is pinned by (a), (e) and (f).
+- false: `GuardedMint` stores `RequiredPairs` uncut -- only the length-checked mint and a test fixture write it, and a cut would weaken the set.
+- maybe-false: the AD-9 rationale in `Privilege`'s caller contract -- would need `CheckUserPermission`'s behavior under an escalated frame measured; the AD-9 contract itself holds.
+- low: the Accessibility Floor's status list omits the line -- the card's existing `role="status"` banners are not listed either; the card lives in the transcript's `role="log"`.
+- false: a `role="status"` node inserted with its text may go unannounced -- it is inserted inside the transcript's `role="log"`, whose additions are announced.
+- low: test fixture duplication in `turn.test.mjs` and `proposal-privilege.test.mjs` -- cosmetic.
+- false: AC4 and AC5 lack mutation lines -- already triaged (omission; pre-existing unedited pins).
+- low: AC2's "no code on those paths changes" is inexact (`Gate` was refactored) -- the refactor's outcomes are pinned by `UserUpdate`, `ProhibitedRoute` and `ErrorDeleteScope`; a spec-wording fix.
+- false: the reviewed diff includes QA's uncommitted spec change -- the lead commits it.
+- low: DW-1669's "until a conversation restore" is wrong -- corrected on its trailer.
+- low: `RecordedPairs` re-implements `Ledger.PairsToString` without its separator guard -- a separator in a resource name yields a spec `ParsePairSpec` voids, which fails safe to no line.
+- low: "the endpoint's `ResourcesOR()` resource among them" is shown for one tool -- follows from AD-8's 2026-09-21 amendment (a tool's set is its screen's); per-tool pairs are `ToolEmit`'s pins.
+
 ## Spec Change Log
 
 - 2026-09-25, lead spec gate: the proposed AC1 wording is applied to `epics.md` (Rule 5 tier-1, `[AMENDED]` marker) and the proposed AD-8 sentence is written into the spine (Rule 20). The plan's two departures from the dispatch prompt (the pair set rather than the bare `ResourcesOR()` resource; live Confirm-gate check rather than the shell's privilege map) are accepted as intent-preserving.
@@ -336,6 +373,11 @@ AC4 names this as an omission, not a defect.
 - mutation: the held sentence gains "sufficient" → `proposal-privilege.test.mjs` wording case red (with the held-line and `toCardView` cases).
 - mutation: `RecordedPairs`' length check never fires → `ProposalPrivilege.TestAnUnresolvedOrOverlongSetRecordsNone` red ("a set longer than the column records none"; run 12399).
 - mutation: `RecordedPairs` passes `"{}"` instead of the stored arguments → the same test red on `%DB_HSCUSTOM:READ` and `:WRITE` (run 12400).
+- (QA) mutation: the privilege `@if` block moved out from under `@if (buttonsVisible)` in `proposal-card.ts`'s template → `proposal-card-privilege.spec.ts` "renders no line on a confirmed, canceled or expired card" red (fails on the `confirmed` phase); reverted, `git status --short` unchanged.
+- (CR) mutation: `decideProposal` drops the `recordProposalMissingPair` call → `turn.test.mjs` "a confirm refused for a pair records that pair as the line's missing one" red.
+- (CR) mutation: `Mint.Mint` passes `"{}"` to `RecordedPairs` instead of the stored arguments → `ProposalPrivilege.TestAMintRecordsItsArgumentPairs` red (run 12405).
+- (CR) mutation: `RecordedPairs` drops its `tSeen` check → `TestAnUnresolvedOrOverlongSetRecordsNone` and `TestAMintRecordsItsArgumentPairs` red (run 12406).
+- (CR) mutation: an element inserted after the warning `<p>` in `proposal-card.ts` → `proposal-card-privilege.spec.ts` "renders a missing pair as a status warning that names it" red.
 
 ## Auto Run Result
 

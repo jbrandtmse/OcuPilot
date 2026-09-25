@@ -1191,6 +1191,7 @@ export class TurnStore {
       code: outcome.code === '' ? null : outcome.code,
       reason: outcome.reason === '' ? null : outcome.reason,
     });
+    if (outcome.failedPair !== '') this.recordProposalMissingPair(id, outcome.failedPair);
     return outcome;
   }
 
@@ -1224,6 +1225,33 @@ export class TurnStore {
     }
     this.notify();
     this.publishProposals(this.everyProposal());
+  }
+
+  /**
+   * Record on proposal `id`'s privilege line the pair Confirm's own gate refused it for (AD-8), so
+   * a card whose turn no longer polls stops saying the set is held. A proposal with no line is left
+   * alone.
+   */
+  private recordProposalMissingPair(id: string, failedPair: string): void {
+    const apply = (proposals: readonly TurnProposal[]): readonly TurnProposal[] =>
+      proposals.some((proposal) => proposal.proposalId === id && proposal.privilege)
+        ? proposals.map((proposal) =>
+            proposal.proposalId === id && proposal.privilege
+              ? { ...proposal, privilege: { ...proposal.privilege, missing: failedPair } }
+              : proposal
+          )
+        : proposals;
+    this.entriesValue = this.entriesValue.map((entry) => {
+      const proposals = apply(entry.proposals);
+      return proposals === entry.proposals ? entry : { ...entry, proposals };
+    });
+    if (this.liveEntryValue !== null) {
+      const proposals = apply(this.liveEntryValue.proposals);
+      if (proposals !== this.liveEntryValue.proposals) {
+        this.liveEntryValue = { ...this.liveEntryValue, proposals };
+      }
+    }
+    this.notify();
   }
 
   /**
