@@ -6878,6 +6878,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-8-columns-you-can-read.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Summed COLUMN_DEFAULT_PX floors plus the 52px trigger over the 38 declared tables: about 24 exceed ~800px (1280, panel open, side bar yielded), e.g. Users 1124, Processes 1236; AC1 fixes the floors.
 - 2026-09-25T06:21:23Z status=decision-pending owner=burndown by=cr note=AC1 wording forces it; owner call: keep, floor number/status/text at label, or pin the trigger column
+- 2026-09-25T07:11:16Z status=routed owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=merge_gate note=orchestrator_decision_(b):pin_the_row-action_column_to_the_frame_right_edge_so_the_row_menu_is_always_visible_without_horizontal_scroll;widths_stay_as_15.8_set_them;not_(c);update_Trigger_reach_two_starts-past-the-frame_assertions;DW-1337_gate_no_overlap_or_overflow_both_themes
 
 ### DW-1649: clickRowCentre never checks where its click lands: a render between its measuring evaluate and page.mouse.click still misclicks, and the caller times out on the trigger instead of the helper naming the miss
 - source: spec-15-8-columns-you-can-read.md (code review, rework 1) | severity: med | fix-risk: med | footprint: in-story
