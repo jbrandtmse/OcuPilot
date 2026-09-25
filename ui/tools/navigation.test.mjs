@@ -169,6 +169,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'security/oauth/clients',
       'security/oauth/resource-servers',
       'security/oauth/server-clients',
+      'security/oauth/edit',
       'security/oauth/server',
       'security/wallet/secrets/edit',
       'security/wallet/secrets',

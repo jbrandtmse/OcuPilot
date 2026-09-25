@@ -510,9 +510,11 @@ ClassMethod Merge(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdArgument
 /// is <b>0</b>, and that is a statement rather than a default -- a create sends no property the
 /// caller did not name, so there is no unchanged population for AD-4's "N unchanged fields"
 /// caption to count.</p>
-/// <p><var>pProblem</var> is a refusal the caller renders 400 <code>TOOL.ARGUMENTS</code>; it names
-/// a supplied argument whose value is a structure where the endpoint's derived field list carries a
-/// literal, which is the one shape a composed payload cannot carry safely.</p>
+/// <p>An object or array argument is carried whole, as <method>Merge</method> carries one: the
+/// tool's input schema and its field rules hold its shape before this runs. A server description's
+/// <code>Metadata</code> is the object one (Story 12.4).</p>
+/// <p><var>pProblem</var> is a refusal the caller renders 400 <code>TOOL.ARGUMENTS</code>; no
+/// supplied argument earns one here today, and the output is kept for the callers' contract.</p>
 ClassMethod Compose(pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
 {
     Set pPayload = ""
@@ -527,12 +529,8 @@ ClassMethod Compose(pArgs As %DynamicObject, pIdArgument As %String, pSettable A
             If tField = pIdArgument Continue
             Set tArgType = pArgs.%GetTypeOf(tField)
             If tArgType = "unassigned" Continue
-            If tArgType = "object" {
-                Set pProblem = "'" _ tField _ "' was supplied as an object, and this create sets it from a single value"
-                Quit
-            }
-            If tArgType = "array" {
-                Do tPayload.%Set(tField, pArgs.%Get(tField))
+            If (tArgType = "array") || (tArgType = "object") {
+                Do tPayload.%Set(tField, ##class(%DynamicAbstractObject).%FromJSON(pArgs.%Get(tField).%ToJSON()))
             } Else {
                 Do tPayload.%Set(tField, pArgs.%Get(tField), tArgType)
             }

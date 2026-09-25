@@ -112,6 +112,25 @@ XData Tools
   {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
 ]},
+"security.oauthserverdescriptions.create": {"fieldList":"Security.OAuth2.Client.ServerDefinition","fields":[
+  {"path":"IssuerEndpoint","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SSLConfiguration","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ServerCredentials","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Metadata","shape":"object","templateType":"object","itemType":"","class":"opaque"}
+]},
+"security.oauthserverdescriptions.settoken": {"fieldList":"Security.OAuth2.Client.ServerDefinition","fields":[
+  {"path":"IssuerEndpoint","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SSLConfiguration","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ServerCredentials","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Metadata","shape":"object","templateType":"object","itemType":"","class":"opaque"},
+  {"path":"InitialAccessToken","shape":"literal","templateType":"string","class":"secret","authored":true}
+]},
+"security.oauthserverdescriptions.update": {"fieldList":"Security.OAuth2.Client.ServerDefinition","fields":[
+  {"path":"IssuerEndpoint","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"SSLConfiguration","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ServerCredentials","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Metadata","shape":"object","templateType":"object","itemType":"","class":"opaque"}
+]},
 "security.secrets.create": {"fieldList":"Wallet.Secret:%Wallet.KeyValue","fields":[
   {"path":"AllowedHosts","shape":"array","templateType":"array","itemType":"","class":"opaque"},
   {"path":"RequireTLS","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},

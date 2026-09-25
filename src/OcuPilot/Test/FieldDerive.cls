@@ -10,8 +10,10 @@
 /// keyed by the endpoint name). The two field-bearing template-less endpoints are derived from
 /// their underlying classes (<code>source</code> <code>class</code>, keyed
 /// <code>&lt;endpoint&gt;:&lt;class&gt;</code>): one list per wallet secret <code>Type</code>, and
-/// one for the audit event. The action-style endpoints in <parameter>NOTEMPLATE</parameter> are
-/// recorded with <code>source</code> <code>none</code> and no rows.</p>
+/// one for the audit event. The server description's <code>Metadata</code> members are derived from
+/// <parameter>SERVERMETADATACLASS</parameter> the same way, beside that endpoint's template list. The
+/// action-style endpoints in <parameter>NOTEMPLATE</parameter> are recorded with <code>source</code>
+/// <code>none</code> and no rows.</p>
 /// <p><b>Rows.</b> Each row is <code>path|shape|templateType|itemType</code>. Every node of a
 /// template is a row, in the template's own order: a literal is <code>literal</code> with its
 /// placeholder's JSON type; an object is <code>object</code> and its members follow as
@@ -60,6 +62,17 @@ Parameter AUDITEVENTIDENTIFYING = "Source,Type,Name";
 
 /// <p>The mutating endpoints whose bodies are trivial or empty and need no field list.</p>
 Parameter NOTEMPLATE = "Lock,Process,Task.Manager";
+
+/// <p>The OAuth 2.0 server description endpoint, whose template carries <code>Metadata</code> as a
+/// member-less object.</p>
+Parameter SERVERDEFINITIONENDPOINT = "Security.OAuth2.Client.ServerDefinition";
+
+/// <p>The class the endpoint imports <code>Metadata</code> into, member by member, through its
+/// generated <code>ImportJSON</code>: the members' list is derived from it.</p>
+Parameter SERVERMETADATACLASS = "OAuth2.Server.Metadata";
+
+/// <p>The body member the server description's metadata members sit under.</p>
+Parameter SERVERMETADATAENVELOPE = "Metadata";
 
 /// <p>Derive every list from the running instance. <var>pLists</var> comes back subscripted by
 /// list key: <code>pLists(key)</code> is
@@ -110,6 +123,14 @@ ClassMethod Derive(Output pLists) As %Status
         Set tKey = ..#AUDITEVENTENDPOINT _ ":" _ ..#AUDITEVENTCLASS
         Set pLists(tKey) = ..Header(..#AUDITEVENTENDPOINT, "class", "", ..#AUDITEVENTCLASS, "", "")
         Set tSC = ..ClassRows(..#AUDITEVENTCLASS, ..#AUDITEVENTIDENTIFYING, tKey, .pLists)
+        If $$$ISERR(tSC) Quit
+
+        ; The server description's Metadata members, beside its template list, which carries
+        ; Metadata as one member-less object. The endpoint has a template, so the template-less
+        ; inventory check above does not apply to it.
+        Set tKey = ..#SERVERDEFINITIONENDPOINT _ ":" _ ..#SERVERMETADATACLASS
+        Set pLists(tKey) = ..Header(..#SERVERDEFINITIONENDPOINT, "class", "", ..#SERVERMETADATACLASS, "", ..#SERVERMETADATAENVELOPE)
+        Set tSC = ..ClassRows(..#SERVERMETADATACLASS, "", tKey, .pLists)
         If $$$ISERR(tSC) Quit
 
         Set tNone = $ListFromString(..#NOTEMPLATE)

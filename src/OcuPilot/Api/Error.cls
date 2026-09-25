@@ -1064,6 +1064,7 @@ ClassMethod ReasonForTurnError(pCode As %String) As %String
 /// no sentence for this" from "the sentence is empty".</p>
 ClassMethod ReasonForViolation(pCode As %String) As %String
 {
+    If $Extract(pCode, 1, 6) = "OAUTH." Quit ..ReasonForOAuth(pCode)
     If pCode = ..#AGENTNAMEREQUIRED Quit ..#REASONAGENTNAMEREQUIRED
     If pCode = ..#AGENTNAMEDUPLICATE Quit ..#REASONAGENTNAMEDUPLICATE
     If pCode = ..#AGENTPROVIDERUNKNOWN Quit ..#REASONAGENTPROVIDERUNKNOWN
@@ -2261,6 +2262,130 @@ Parameter REASONDEVICEALIASSAME = "An alias cannot be the same as the physical d
 Parameter DEVICEPROMPTVALUE = "DEVICE.PROMPT.VALUE";
 
 Parameter REASONDEVICEPROMPTVALUE = "Choose one of the prompt options.";
+
+/// <p>Machine code (Story 12.4): the server description editor refused a Save; the envelope's
+/// <code>detail.violations</code> names each field and its rule (AD-39).</p>
+Parameter OAUTHVALIDATION = "OAUTH.VALIDATION";
+
+Parameter REASONOAUTHVALIDATION = "The server description was refused.";
+
+/// <p>Violation code: no issuer endpoint.</p>
+Parameter OAUTHISSUERENDPOINTREQUIRED = "OAUTH.ISSUERENDPOINT.REQUIRED";
+
+Parameter REASONOAUTHISSUERENDPOINTREQUIRED = "Give the issuer endpoint.";
+
+/// <p>Violation code: the issuer endpoint is not an absolute <code>http</code> or
+/// <code>https</code> URL.</p>
+Parameter OAUTHISSUERENDPOINTSHAPE = "OAUTH.ISSUERENDPOINT.SHAPE";
+
+Parameter REASONOAUTHISSUERENDPOINTSHAPE = "The issuer endpoint is an absolute http or https URL.";
+
+/// <p>Violation code: another server description already carries that issuer endpoint, which the
+/// vendor keeps unique.</p>
+Parameter OAUTHISSUERENDPOINTTAKEN = "OAUTH.ISSUERENDPOINT.TAKEN";
+
+Parameter REASONOAUTHISSUERENDPOINTTAKEN = "This instance already has a server description with that issuer endpoint. Choose a different one.";
+
+/// <p>Machine code: no server description carries that issuer endpoint (404).</p>
+Parameter OAUTHISSUERENDPOINTABSENT = "OAUTH.ISSUERENDPOINT.ABSENT";
+
+Parameter REASONOAUTHISSUERENDPOINTABSENT = "This instance has no server description with that issuer endpoint.";
+
+/// <p>Violation code: no SSL/TLS configuration.</p>
+Parameter OAUTHSSLCONFIGURATIONREQUIRED = "OAUTH.SSLCONFIGURATION.REQUIRED";
+
+Parameter REASONOAUTHSSLCONFIGURATIONREQUIRED = "Choose the SSL/TLS configuration.";
+
+/// <p>Violation code: no authorization endpoint, which the vendor's definition requires.</p>
+Parameter OAUTHAUTHORIZATIONENDPOINTREQUIRED = "OAUTH.AUTHORIZATIONENDPOINT.REQUIRED";
+
+Parameter REASONOAUTHAUTHORIZATIONENDPOINTREQUIRED = "Give the authorization endpoint.";
+
+/// <p>Violation code: no token endpoint, which the vendor's definition requires.</p>
+Parameter OAUTHTOKENENDPOINTREQUIRED = "OAUTH.TOKENENDPOINT.REQUIRED";
+
+Parameter REASONOAUTHTOKENENDPOINTREQUIRED = "Give the token endpoint.";
+
+/// <p>Violation code: the X.509 credential named is not one this instance holds for the caller.</p>
+Parameter OAUTHSERVERCREDENTIALSABSENT = "OAUTH.SERVERCREDENTIALS.ABSENT";
+
+Parameter REASONOAUTHSERVERCREDENTIALSABSENT = "This instance has no X.509 credential with that name that you can use.";
+
+/// <p>Violation code: a metadata member the server description does not store.</p>
+Parameter OAUTHMETADATAUNKNOWN = "OAUTH.METADATA.UNKNOWN";
+
+Parameter REASONOAUTHMETADATAUNKNOWN = "That is not a metadata member this instance stores.";
+
+/// <p>Violation code: a metadata member's value is not the member's shape.</p>
+Parameter OAUTHMETADATASHAPE = "OAUTH.METADATA.SHAPE";
+
+Parameter REASONOAUTHMETADATASHAPE = "That metadata member takes a different kind of value: a URL as text, a list as an array of text, or a flag as true or false.";
+
+/// <p>Machine code (409): a client configuration still uses the server description, which the
+/// vendor refuses to delete.</p>
+Parameter OAUTHSERVERINUSE = "OAUTH.SERVERINUSE";
+
+Parameter REASONOAUTHSERVERINUSE = "Client configurations still use this server description. Delete them first.";
+
+/// <p>Machine code (409): the server description stores no JWKS URL to refresh from.</p>
+Parameter OAUTHNOJWKSURI = "OAUTH.NOJWKSURI";
+
+Parameter REASONOAUTHNOJWKSURI = "This server description has no JWKS URL.";
+
+/// <p>Machine code (422): the key set could not be fetched. The producer replaces
+/// <code>{url}</code> with the stored JWKS URL.</p>
+Parameter OAUTHJWKSFAILED = "OAUTH.JWKSFAILED";
+
+Parameter REASONOAUTHJWKSFAILED = "The key set could not be fetched from {url}.";
+
+/// <p>Machine codes (422): the four causes a discovery fails for. The producer replaces
+/// <code>{issuer}</code>, <code>{status}</code> and <code>{claim}</code>.</p>
+Parameter OAUTHDISCOVERYUNREACHABLE = "OAUTH.DISCOVERY.UNREACHABLE";
+
+Parameter REASONOAUTHDISCOVERYUNREACHABLE = "{issuer} could not be reached.";
+
+Parameter OAUTHDISCOVERYSTATUS = "OAUTH.DISCOVERY.STATUS";
+
+Parameter REASONOAUTHDISCOVERYSTATUS = "{issuer} answered HTTP {status}.";
+
+Parameter OAUTHDISCOVERYCONTENT = "OAUTH.DISCOVERY.CONTENT";
+
+Parameter REASONOAUTHDISCOVERYCONTENT = "{issuer} did not answer JSON.";
+
+Parameter OAUTHDISCOVERYISSUER = "OAUTH.DISCOVERY.ISSUER";
+
+Parameter REASONOAUTHDISCOVERYISSUER = "The document names a different issuer: {claim}.";
+
+/// <p>The sentence for an <code>OAUTH.*</code> code, placeholders unfilled, or <code>""</code>.</p>
+ClassMethod ReasonForOAuth(pCode As %String) As %String
+{
+    If pCode = ..#OAUTHVALIDATION Quit ..#REASONOAUTHVALIDATION
+    If pCode = ..#OAUTHISSUERENDPOINTREQUIRED Quit ..#REASONOAUTHISSUERENDPOINTREQUIRED
+    If pCode = ..#OAUTHISSUERENDPOINTSHAPE Quit ..#REASONOAUTHISSUERENDPOINTSHAPE
+    If pCode = ..#OAUTHISSUERENDPOINTTAKEN Quit ..#REASONOAUTHISSUERENDPOINTTAKEN
+    If pCode = ..#OAUTHISSUERENDPOINTABSENT Quit ..#REASONOAUTHISSUERENDPOINTABSENT
+    If pCode = ..#OAUTHSSLCONFIGURATIONREQUIRED Quit ..#REASONOAUTHSSLCONFIGURATIONREQUIRED
+    If pCode = ..#OAUTHAUTHORIZATIONENDPOINTREQUIRED Quit ..#REASONOAUTHAUTHORIZATIONENDPOINTREQUIRED
+    If pCode = ..#OAUTHTOKENENDPOINTREQUIRED Quit ..#REASONOAUTHTOKENENDPOINTREQUIRED
+    If pCode = ..#OAUTHSERVERCREDENTIALSABSENT Quit ..#REASONOAUTHSERVERCREDENTIALSABSENT
+    If pCode = ..#OAUTHMETADATAUNKNOWN Quit ..#REASONOAUTHMETADATAUNKNOWN
+    If pCode = ..#OAUTHMETADATASHAPE Quit ..#REASONOAUTHMETADATASHAPE
+    If pCode = ..#OAUTHSERVERINUSE Quit ..#REASONOAUTHSERVERINUSE
+    If pCode = ..#OAUTHNOJWKSURI Quit ..#REASONOAUTHNOJWKSURI
+    If pCode = ..#OAUTHJWKSFAILED Quit ..#REASONOAUTHJWKSFAILED
+    If pCode = ..#OAUTHDISCOVERYUNREACHABLE Quit ..#REASONOAUTHDISCOVERYUNREACHABLE
+    If pCode = ..#OAUTHDISCOVERYSTATUS Quit ..#REASONOAUTHDISCOVERYSTATUS
+    If pCode = ..#OAUTHDISCOVERYCONTENT Quit ..#REASONOAUTHDISCOVERYCONTENT
+    If pCode = ..#OAUTHDISCOVERYISSUER Quit ..#REASONOAUTHDISCOVERYISSUER
+    Quit ""
+}
+
+/// <p>Every <code>OAUTH.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod OAuthViolationCodes() As %List
+{
+    Quit $ListBuild(..#OAUTHISSUERENDPOINTREQUIRED, ..#OAUTHISSUERENDPOINTSHAPE, ..#OAUTHISSUERENDPOINTTAKEN, ..#OAUTHSSLCONFIGURATIONREQUIRED, ..#OAUTHAUTHORIZATIONENDPOINTREQUIRED, ..#OAUTHTOKENENDPOINTREQUIRED, ..#OAUTHSERVERCREDENTIALSABSENT, ..#OAUTHMETADATAUNKNOWN, ..#OAUTHMETADATASHAPE)
+}
 
 /// <p>Violation code (AD-39): the vendor refused the request because a body field it requires was
 /// absent. Produced at the port boundary by <method>ViolationsFromVendor</method>, on the field the

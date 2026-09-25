@@ -109,6 +109,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     copy: STRINGS.auditDatabaseCopyAction,
     purge: STRINGS.auditDatabasePurgeAction,
   },
+  // Story 12.4: the OAuth 2.0 Server descriptions tab's key-set refresh.
+  'OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab': { updatejwks: STRINGS.oauthServerUpdateJwks },
 };
 
 export class ScreenActions {

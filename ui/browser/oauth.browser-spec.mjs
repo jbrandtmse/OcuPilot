@@ -51,7 +51,8 @@ const TABS = [
     route: 'security/oauth',
     read: `${READ_PREFIX}security.oauthserverdescriptions/read`,
     label: STRINGS.oauthTabServerDescriptions,
-    headers: [STRINGS.x509ColumnIssuer, STRINGS.oauthTabClients, STRINGS.oauthTabResourceServers],
+    // Story 12.4: the tab declares row actions, so the table carries the actions column's header.
+    headers: [STRINGS.x509ColumnIssuer, STRINGS.oauthTabClients, STRINGS.oauthTabResourceServers, STRINGS.commandBoxGroupActions],
   },
   {
     route: 'security/oauth/clients',
@@ -345,7 +346,7 @@ test("AC2: the authorization server tab's Issuer, Scopes, Grant types and Signin
 
 test("AC4: a client configuration's name cell is a new-tab anchor at the classic editor with its three params, and activating it opens that URL while OcuPilot stays put", async () => {
   const honored = checkClassicLinks().honored.map((entry) => entry.file).sort();
-  assert.deepEqual(honored, ['OAuthClientTab.cls', 'OAuthResourceServerTab.cls', 'OAuthServerClientTab.cls', 'OAuthServerDescriptionTab.cls', 'OAuthServerTab.cls'], 'classic-links honors exactly the five OAuth 2.0 tabs');
+  assert.deepEqual(honored, ['OAuthClientTab.cls', 'OAuthResourceServerTab.cls', 'OAuthServerClientTab.cls', 'OAuthServerTab.cls'], 'classic-links honors exactly the four OAuth 2.0 tabs still edited in the classic portal');
 
   const tab = TABS[1];
   const { context, page, answers } = await signedInAt(urlOf(tab.route), config.username, config.password);

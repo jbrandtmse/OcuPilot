@@ -171,7 +171,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,oauth2-server-definition";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -199,6 +199,10 @@ Parameter TYPEAPPLICATIONERROR = "application-error";
 Parameter TYPEOAUTHCLIENT = "oauth2-client-configuration";
 
 Parameter TYPEOAUTHSERVERCLIENT = "oauth2-server-client";
+
+/// <p>An OAuth 2.0 server description (Story 12.4), which shares the OAuth arm
+/// (<method>OAuthEntry</method>).</p>
+Parameter TYPEOAUTHSERVERDEF = "oauth2-server-definition";
 
 /// <p>A system audit event and a user audit event (Story 7.11), which share one arm
 /// (<method>AuditEvent</method>).</p>
@@ -385,6 +389,7 @@ ClassMethod CoveredTypes() As %List
 /// reads the kernel.</p>
 ClassMethod PermittedChangeFields(pType As %String) As %List
 {
+    If pType = ..#TYPEOAUTHSERVERDEF Quit ..OAuthServerFields()
     If (pType = ..#TYPEAUDITEVENT) || (pType = ..#TYPEAUDITUSEREVENT) Quit $ListBuild(..#FIELDENABLED)
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "Enabled", "Resource")
     If pType = ..#TYPEUSER Quit $ListBuild(..#FIELDENABLED, ..#FIELDROLES, ..#FIELDCHANGEPASSWORD)
@@ -457,6 +462,7 @@ ClassMethod AlwaysProhibitedFields(pType As %String) As %List
 /// <p>A device's eight are the same as a change's (<method>DeviceFields</method>).</p>
 ClassMethod PermittedCreateFields(pType As %String) As %List
 {
+    If pType = ..#TYPEOAUTHSERVERDEF Quit ..OAuthServerFields()
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "DispatchClass", "Enabled", "MatchRoles", "NameSpace", "Recurse", "Resource", "WSGIAppLocation", "WSGIAppName", "WSGICallable", "WSGIType")
     If pType = ..#TYPEUSER Quit $ListBuild("ExpirationDate", "FullName", "NameSpace", "Routine", ..#FIELDROLES)
     If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
@@ -534,7 +540,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPEOAUTHSERVERDEF) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -612,6 +618,10 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Quit
         }
         If (tType = ..#TYPEOAUTHCLIENT) || (tType = ..#TYPEOAUTHSERVERCLIENT) {
+            Set tSC = ..OAuthEntry(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPEOAUTHSERVERDEF {
             Set tSC = ..OAuthEntry(tType, .tChanged, .pProhibits, .pCode)
             Quit
         }
@@ -1165,13 +1175,25 @@ ClassMethod DeviceFields() As %List [ Private ]
     Quit $ListBuild("PhysicalDevice", "Type", "SubType", "OpenParameters", "Description", "Alias", "AlternateDevice", "Prompt")
 }
 
-/// <p>The OAuth 2.0 client configuration and server client predicates, <var>pType</var> being one
-/// of the two: the reviewed-few sweep over an empty permitted list, and nothing else.</p>
+/// <p>An OAuth 2.0 server description's settable fields, create and change alike: the four
+/// <code>Security.OAuth2.Client.ServerDefinition</code> template fields (Story 12.4). The issuer is
+/// the id, and a change may rename it. Nothing here is self-protective: OcuPilot owns no OAuth 2.0
+/// object.</p>
+ClassMethod OAuthServerFields() As %List [ Private ]
+{
+    Quit $ListBuild("IssuerEndpoint", "SSLConfiguration", "ServerCredentials", "Metadata")
+}
+
+/// <p>The OAuth 2.0 client configuration, server client and server description predicates,
+/// <var>pType</var> being one of the three: the reviewed-few sweep over the type's permitted list
+/// (empty for the first two, <method>OAuthServerFields</method> for a server description), and
+/// nothing else.</p>
 /// <p><b>No predicate exists because AD-10 names no OAuth 2.0 effect.</b> Its Release 1 set is
 /// accounts, privilege grants, the path serving OcuPilot and system processes, and install creates
-/// no OAuth 2.0 object, so no configuration or client is OcuPilot's own. The one write over either
-/// type is its bodyless delete (AD-51), which sets no field, so every changed field a proposal
-/// could carry is one nobody has reviewed and is refused <parameter>UNCOVEREDFIELD</parameter>.
+/// no OAuth 2.0 object, so no configuration, client or description is OcuPilot's own. The one write
+/// over either of the first two types is its bodyless delete (AD-51), which sets no field, so every
+/// changed field a proposal could carry is one nobody has reviewed and is refused
+/// <parameter>UNCOVEREDFIELD</parameter>.
 /// The card's removal rows are the declared fingerprint subject, which <method>Changed</method>
 /// skips.</p>
 ClassMethod OAuthEntry(pType As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]

@@ -190,7 +190,7 @@ Method TestAnUncoveredEntityTypeIsRefusedWholesale()
     Do $$$AssertStatusOK(tSC, "an unparseable reference is answered, not raised")
     Do $$$AssertEquals(tProhibits, 1, "and refused")
     Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "UNCOVERED"), "as uncovered")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event", "Release 1 covers exactly fifteen entity types -- the two audit event types since Story 7.11 and the create and import types since Epic 8")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,oauth2-server-definition", "Release 1 covers exactly sixteen entity types -- the two audit event types since Story 7.11, the create and import types since Epic 8 and the server description since Story 12.4")
 
     ; The refusal reaches a caller as a 403 with the set's own code, not as an error.
     Set tKey = ..Seed(..Payload(), "Description", "probe-id", "service")
@@ -370,8 +370,13 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         Set tComposed = 'tSendsBody && ($ListFind($ListFromString($Parameter($ClassMethod(tClass, "PortClass"), "COMPOSEDTYPES")), $ClassMethod(tClass, "Endpoint") _ "/" _ $ClassMethod(tClass, "WriteType")) > 0)
         If 'tSendsBody {
             If 'tComposed Do $$$AssertEquals($ListLength(tSettable), 0, tEntry.%Get("name") _ " sends no body, so it admits no field")
-            If tComposed Do $$$AssertEquals($ListLength(tSettable), 1, tEntry.%Get("name") _ " sends no body and its port composes one from its one argument")
+            ; Story 12.4's key-set refresh is composed from the stored JWKS URL alone, so it admits
+            ; no argument beyond its target's issuer.
+            If tComposed Do $$$AssertEquals($ListLength(tSettable), $Select(tEntry.%Get("name") = "security.oauthserverdescriptions.updatejwks": 0, 1: 1), tEntry.%Get("name") _ " sends no body and its port composes one from its arguments")
             For tI = 1:1:$ListLength(tPermitted) {
+                ; A type whose identifying field is also a reviewed field (an OAuth 2.0 server
+                ; description can be renamed) names its target by that field; naming is not setting.
+                If $List(tPermitted, tI) = $ClassMethod(tClass, "IdArgument") Continue
                 Do $$$AssertEquals(tSchema.%Get("properties").%GetTypeOf($List(tPermitted, tI)), "unassigned", tEntry.%Get("name") _ " advertises none of its type's reviewed few either, and not '" _ $List(tPermitted, tI) _ "'")
             }
         } Else {

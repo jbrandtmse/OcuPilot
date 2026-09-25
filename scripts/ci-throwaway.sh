@@ -200,6 +200,7 @@ services:
       # classes: Disabled, ErrorDelete, ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial
       # classes: OAuthTabs
       # classes: TokenProbe, TokenRevoke
+      # classes: OAuthServerCreate, OAuthServerDelete, OAuthServerDiscover, OAuthServerJwks, OAuthServerToken, OAuthServerUpdate, OAuthServerWire
       # classes: AuditCopy, AuditStarted
       # classes: ProcessControl, ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token
       # classes: ToolSetFull

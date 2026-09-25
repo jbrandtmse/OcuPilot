@@ -16,6 +16,7 @@ import { RoleCreateForm } from './areas/permissions/role-create-form.store';
 import { ResourceEditor } from './areas/permissions/resource-editor.store';
 import { WalletSecretForm } from './areas/security/wallet-secret-form.store';
 import { X509Form } from './areas/security/x509-form.store';
+import { OAuthServerDescriptionForm } from './areas/security/oauth-server-description-form.store';
 import { DeviceForm } from './areas/os-management/device-form.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
@@ -1050,6 +1051,12 @@ describe('the shell frame', () => {
     x509Form.setPassword('a-password-this-principal-typed');
     expect(x509Form.privateKey()).not.toBe('');
 
+    // The same answer for the OAuth 2.0 server description editor (Story 12.4): a registration
+    // access token THIS principal typed and has not saved, in a root-provided store (AD-35).
+    const oauthServerDescriptionForm = TestBed.inject(OAuthServerDescriptionForm);
+    oauthServerDescriptionForm.setToken('ocupilotappspecprobe000');
+    expect(oauthServerDescriptionForm.token()).not.toBe('');
+
     // The same answer for the wallet secret form (Story 8.6): a value THIS principal typed and has
     // not saved, in a root-provided store (AD-35). A create in a collection takes input before its
     // form read is made.
@@ -1116,6 +1123,11 @@ describe('the shell frame', () => {
     expect(x509Form.certificate()).toBe('');
     expect(x509Form.privateKey()).toBe('');
     expect(x509Form.password()).toBe('');
+
+    // Mutation (Rule 19): delete `this.oauthServerDescriptionForm.reset()` from
+    // `App.verifyWhenSignedIn` -> this goes red, and the next principal's editor holds the previous
+    // one's typed token.
+    expect(oauthServerDescriptionForm.token()).toBe('');
 
     // Mutation (Rule 19): delete `this.walletSecretForm.reset()` from `App.verifyWhenSignedIn` ->
     // this goes red, and the next principal's wallet form holds the previous one's typed value.

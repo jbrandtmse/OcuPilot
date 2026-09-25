@@ -1730,6 +1730,58 @@ export const STRINGS = {
   /** EXPERIENCE.md:470 */
   auditDatabaseStillRunning: 'Still running on the instance. It finishes in the background.',
 
+  // Story 12.4: the OAuth 2.0 client server description editor, its tab's Create, Delete and
+  // Update JWKS, and the phrase that resolves the tab's agent invitation.
+  /** EXPERIENCE.md:471 */
+  oauthServerFormLabel: 'Server description',
+  /** EXPERIENCE.md:471 */
+  oauthServerFieldIssuer: 'Issuer endpoint',
+  /** EXPERIENCE.md:471 */
+  oauthServerFieldSsl: 'SSL/TLS configuration',
+  /** EXPERIENCE.md:471 */
+  oauthServerFieldToken: 'Registration access token',
+  /** EXPERIENCE.md:471 */
+  oauthServerTokenHint: 'Leave empty to keep the stored token.',
+  /** EXPERIENCE.md:471 */
+  oauthServerFieldAuthorization: 'Authorization endpoint',
+  /** EXPERIENCE.md:471 */
+  oauthServerFieldTokenEndpoint: 'Token endpoint',
+  /** EXPERIENCE.md:471 */
+  oauthServerFieldUserinfo: 'Userinfo endpoint',
+  /** EXPERIENCE.md:471 */
+  oauthServerFieldIntrospection: 'Token introspection endpoint',
+  /** EXPERIENCE.md:471 */
+  oauthServerFieldRevocation: 'Token revocation endpoint',
+  /** EXPERIENCE.md:471 */
+  oauthServerFieldEndSession: 'End session endpoint',
+  /** EXPERIENCE.md:471 */
+  oauthServerGroupJwt: 'JSON Web Token (JWT) settings',
+  /** EXPERIENCE.md:471 */
+  oauthServerJwtNone: 'None',
+  /** EXPERIENCE.md:471 */
+  oauthServerJwtUrl: 'JWKS from URL',
+  /** EXPERIENCE.md:471 */
+  oauthServerJwtX509: 'X.509 certificate',
+  /** EXPERIENCE.md:471 */
+  oauthServerGroupMetadata: 'Metadata',
+  /** EXPERIENCE.md:471 */
+  oauthServerDiscover: 'Discover',
+  /** EXPERIENCE.md:471 */
+  oauthServerUpdateJwks: 'Update JWKS',
+  /** EXPERIENCE.md:471 */
+  oauthServerDiscovered: 'Fetched the metadata published at <issuer>. Review it, then Save.',
+  /** EXPERIENCE.md:471 */
+  oauthServerJwksUpdated: 'Updated the key set from <url>.',
+  /** EXPERIENCE.md:471 */
+  oauthServerTokenRefused: 'Saved. The registration access token was not stored: <reason>',
+  /** EXPERIENCE.md:471 */
+  oauthServerDeleteConsequence:
+    'Deletes this server description and its metadata. A resource server that uses it is left without one. A client configuration that uses it blocks the delete.',
+  /** EXPERIENCE.md:471 */
+  oauthServerDescriptionsEmptyAgent: 'add a server description',
+  /** EXPERIENCE.md:471 */
+  oauthServerFormRefusedAction: 'change this server description',
+
 } as const;
 
 /**

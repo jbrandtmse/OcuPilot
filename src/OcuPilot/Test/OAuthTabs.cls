@@ -26,7 +26,11 @@ Parameter READPATH = "/api/ocupilot/screens/";
 /// vendor answers unmasked on a GET, and every secret an OAuth 2.0 object holds (AD-35).</p>
 Parameter SECRETKEYS = "Metadata,ClientSecret,ClientPassword,PrivateJWKS,SymmetricJWKS,InitialAccessToken,ServerPassword,client_secret,registration_access_token";
 
-/// <p>The reason the one Release 1 exemption carries, declared by all five tabs (AD-44).</p>
+/// <p>The tab Story 12.4's editor edits, which is no longer exempt.</p>
+Parameter EDITEDTAB = "OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab";
+
+/// <p>The reason the one Release 1 exemption carries, declared by the four tabs still edited in the
+/// classic portal (AD-44).</p>
 Parameter EXEMPTIONREASON = "Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1";
 
 Method OnBeforeAllTests() As %Status
@@ -138,10 +142,13 @@ ClassMethod KeySetProblem(pRows As %DynamicArray, pFields As %String) As %String
 /// types, at instance scope, with no refresh and no secret field, its context fields its read
 /// fields; the Client configurations and Server client descriptions tabs declare the one
 /// <code>delete</code> row action and invite the agent when empty, the server clients keyed by a
-/// one-part composite <code>ClientId</code>, and the other three declare no action; it is tab <code>n</code> of <code>security/oauth</code>, the first listed at side-bar
+/// one-part composite <code>ClientId</code>, the Server descriptions tab (edited in OcuPilot since
+/// Story 12.4) declares its create, delete and Update JWKS and invites the agent, and the other two
+/// declare no action; it is tab <code>n</code> of <code>security/oauth</code>, the first listed at side-bar
 /// position 5 and the rest unlisted; its classic page and editor page compile under the declared case,
-/// and its exemption carries the one reason, the editor page's own <code>PAGENAME</code> as its label,
-/// the editor's root-relative href and its row link params; its pair set is its resource then
+/// and every tab but the Server descriptions tab declares the exemption, carrying the one reason, the
+/// editor page's own <code>PAGENAME</code> as its label, the editor's root-relative href and its row
+/// link params; its pair set is its resource then
 /// <code>%DB_IRISSYS:READ</code>; and <code>AreaCoverageProblem("security", ...)</code> is empty.</p>
 Method TestEachTabIsDeclaredAsTheOAuthScreenTab()
 {
@@ -163,6 +170,7 @@ Method TestEachTabIsDeclaredAsTheOAuthScreenTab()
         Do $$$AssertEquals($ListToString($ClassMethod(tClass, "EntityTypes")), $List(tCase, 6), tClass _ ": on its entity types, primary first")
         Do $$$AssertEquals($ClassMethod(tClass, "Scope"), "instance", tClass _ ": at instance scope")
         Set tDeletable = ..Deletable(tClass)
+        Set tEdited = (tClass = ..#EDITEDTAB)
         Do $$$AssertEquals($ClassMethod(tClass, "IdKind"), $Select(tClass = "OcuPilot.Screen.Descriptor.OAuthServerClientTab": "composite", 1: "single"), tClass _ ": keyed as declared, the server clients by ClientId")
         If tClass = "OcuPilot.Screen.Descriptor.OAuthServerClientTab" Do $$$AssertEquals(tDeclaration.%Get("id").%Get("parts").%ToJSON(), "[""ClientId""]", tClass _ ": the vendor's IdKey, ClientId")
         Do $$$AssertEquals($ClassMethod(tClass, "Refreshes"), 0, tClass _ ": and it does not refresh")
@@ -172,10 +180,10 @@ Method TestEachTabIsDeclaredAsTheOAuthScreenTab()
         Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), $List(tCase, 9), tClass _ ": its read fields are the ones this class pins")
         Do $$$AssertEquals(tDeclaration.context.fields.%ToJSON(), tDeclaration.read.fields.%ToJSON(), tClass _ ": its context fields are its read fields")
         Do $$$AssertEquals(tDeclaration.context.secretFields.%Size(), 0, tClass _ ": with no secret field")
-        Do $$$AssertEquals(tDeclaration.table.emptyNextKey, $Select(tDeletable: "", 1: "tableReadOnlyEmptyNext"), tClass _ ": its empty state names what to do next")
-        Do $$$AssertEquals(tDeclaration.table.emptyAgentKey, $Case(tClass, "OcuPilot.Screen.Descriptor.OAuthClientTab": "oauthClientsEmptyAgent", "OcuPilot.Screen.Descriptor.OAuthServerClientTab": "oauthServerClientsEmptyAgent", : ""), tClass _ ": or invites the agent")
-        Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), $Select(tDeletable: "delete", 1: ""), tClass _ ": its row actions")
-        Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", tClass _ ": and no primary action")
+        Do $$$AssertEquals(tDeclaration.table.emptyNextKey, $Select(tDeletable || tEdited: "", 1: "tableReadOnlyEmptyNext"), tClass _ ": its empty state names what to do next")
+        Do $$$AssertEquals(tDeclaration.table.emptyAgentKey, $Case(tClass, "OcuPilot.Screen.Descriptor.OAuthClientTab": "oauthClientsEmptyAgent", "OcuPilot.Screen.Descriptor.OAuthServerClientTab": "oauthServerClientsEmptyAgent", ..#EDITEDTAB: "oauthServerDescriptionsEmptyAgent", : ""), tClass _ ": or invites the agent")
+        Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), $Select(tEdited: "delete,updatejwks", tDeletable: "delete", 1: ""), tClass _ ": its row actions")
+        Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), $Select(tEdited: "create", 1: ""), tClass _ ": and its primary action")
         Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""" _ $List(tCase, 10) _ """,""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", tClass _ ": its pair set, its resource first")
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs")), "", tClass _ ": and the Security and secrets area covers it")
 
@@ -184,6 +192,10 @@ Method TestEachTabIsDeclaredAsTheOAuthScreenTab()
         Do $$$AssertTrue($IsObject(##class(%Dictionary.CompiledClass).%OpenId(tPage)), tClass _ ": which is a compiled class on this instance, under the declaration's own case")
         Set tEditor = $List(tCase, 8)
         Do $$$AssertTrue($IsObject(##class(%Dictionary.CompiledClass).%OpenId(tEditor)), tClass _ ": and so is its editor page " _ tEditor)
+        If tEdited {
+            Do $$$AssertEquals($ClassMethod(tClass, "ClassicLinkExempt"), 0, tClass _ ": it is edited here, so it declares no exemption")
+            Continue
+        }
         Do $$$AssertEquals($ClassMethod(tClass, "ClassicLinkExempt"), 1, tClass _ ": it declares the exemption")
         Do $$$AssertEquals($ClassMethod(tClass, "ClassicLinkExemptionReason"), ..#EXEMPTIONREASON, tClass _ ": with the one exemption's reason")
         Do $$$AssertEquals($ClassMethod(tClass, "ClassicLinkLabel"), $Parameter(tEditor, "PAGENAME"), tClass _ ": labelled by the editor page's own name")

@@ -143,6 +143,10 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/ui/about" Method="GET" Call="UiAbout"/>
   <Route Url="/ui/help" Method="GET" Call="UiHelp"/>
   <Route Url="/ui/system" Method="GET" Call="UiSystem"/>
+  <Route Url="/oauth/server-description/form" Method="GET" Call="OAuthServerFormRead"/>
+  <Route Url="/oauth/server-description/discover" Method="POST" Call="OAuthServerDiscover"/>
+  <Route Url="/oauth/server-description/:id" Method="PUT" Call="OAuthServerUpdate"/>
+  <Route Url="/oauth/server-description" Method="POST" Call="OAuthServerCreate"/>
 </Routes>
 }
 
@@ -461,6 +465,36 @@ ClassMethod DeviceCreate() As %Status
 ClassMethod DeviceUpdate(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.DeviceSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /oauth/server-description/form</code> (Story
+/// 12.4): the server description editor's read, delegating to
+/// <class>OcuPilot.Area.Security.OAuthServerRules</class>. The two sub-resources precede
+/// <code>/oauth/server-description/:id</code>.</p>
+ClassMethod OAuthServerFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthServerRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /oauth/server-description/discover</code>: the
+/// editor's Discover, which fetches an issuer's published metadata and saves nothing (AD-27).</p>
+ClassMethod OAuthServerDiscover() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthServerSave).HandleDiscover()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /oauth/server-description/:id</code>: the editor's
+/// edit Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthServerUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthServerSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /oauth/server-description</code>: the editor's
+/// create Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthServerCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthServerSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /screens/:screen/action</code>: delegates to

@@ -24,6 +24,8 @@ import { X509Actions } from './areas/security/x509-actions';
 import { X509Form } from './areas/security/x509-form.store';
 import { DeviceActions } from './areas/os-management/device-actions';
 import { DeviceForm } from './areas/os-management/device-form.store';
+import { OAuthActions } from './areas/security/oauth-actions';
+import { OAuthServerDescriptionForm } from './areas/security/oauth-server-description-form.store';
 import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
@@ -250,6 +252,9 @@ export class App {
   // (`areas/permissions/resource-actions.ts`).
   private readonly resourceActions = inject(ResourceActions);
   private readonly resourceEditor = inject(ResourceEditor);
+  // The OAuth 2.0 Server descriptions tab's declared Create, the same way (`areas/security/oauth-actions.ts`).
+  private readonly oauthActions = inject(OAuthActions);
+  private readonly oauthServerDescriptionForm = inject(OAuthServerDescriptionForm);
   // The X.509 list's declared Create, labelled Import, the same way (`areas/security/x509-actions.ts`).
   private readonly x509Actions = inject(X509Actions);
   private readonly x509Form = inject(X509Form);
@@ -532,6 +537,8 @@ export class App {
       this.resourceEditor.reset();
       // The X.509 form holds a certificate, a private key and its password THIS principal pasted and has not saved (AD-35).
       this.x509Form.reset();
+      // The server description editor holds a registration access token THIS principal typed and has not saved (AD-35).
+      this.oauthServerDescriptionForm.reset();
       // The wallet secret form holds a value THIS principal typed and has not saved (AD-35).
       this.walletSecretForm.reset();
       // The device editor holds a device THIS principal was creating or editing and has not saved.

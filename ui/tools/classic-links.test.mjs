@@ -437,16 +437,17 @@ test('the shipped descriptor roster passes, and its population matches the tree 
     'every .cls under the descriptor directory but the base was classified'
   );
   assert.ok(result.scanned >= 1, 'at least Home is declared');
-  // AD-44: Release 1's one exemption, the OAuth 2.0 tabs, is declared by its five tab descriptors,
-  // and the check reports each declaration under the one exemption SM-C1 counts.
+  // AD-44: Release 1's one exemption, the OAuth 2.0 tabs still edited in the classic portal, is
+  // declared by four tab descriptors -- the Server descriptions tab left it when Story 12.4's editor
+  // shipped -- and the check reports each declaration under the one exemption SM-C1 counts.
   //
-  // Mutation (Rule 19): set one tab's `classicLinkExemption.exempt` false and drop its link parts ->
-  // the honored set and the declaration count go red. Count the exemption line by declarations
-  // rather than by reason -> the one-exemption line goes red.
+  // Mutation (Rule 19): set one tab's `classicLinkExemption.exempt` false and drop its link parts, or
+  // restore the Server descriptions tab's -> the honored set and the declaration count go red. Count
+  // the exemption line by declarations rather than by reason -> the one-exemption line goes red.
   assert.deepEqual(
     result.honored.map((entry) => entry.file).sort(),
-    ['OAuthClientTab.cls', 'OAuthResourceServerTab.cls', 'OAuthServerClientTab.cls', 'OAuthServerDescriptionTab.cls', 'OAuthServerTab.cls'],
-    'the honored set is exactly the five OAuth 2.0 tabs'
+    ['OAuthClientTab.cls', 'OAuthResourceServerTab.cls', 'OAuthServerClientTab.cls', 'OAuthServerTab.cls'],
+    'the honored set is exactly the four OAuth 2.0 tabs still edited in the classic portal'
   );
   for (const entry of result.honored) {
     assert.equal(entry.archetype, 'detail', `${entry.file} is a detail view`);
@@ -457,7 +458,7 @@ test('the shipped descriptor roster passes, and its population matches the tree 
     );
   }
   assert.match(result.report.join('\n'), /^classic-links: 1 exemption\(s\) honored \(SM-C1\)$/m);
-  assert.match(result.report.join('\n'), /^classic-links: 5 descriptor\(s\) declare them \(AD-44\)$/m);
+  assert.match(result.report.join('\n'), /^classic-links: 4 descriptor\(s\) declare them \(AD-44\)$/m);
 });
 
 // --- The gates ---------------------------------------------------------------------------------

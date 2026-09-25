@@ -2,15 +2,50 @@
 title: 'Story 12.4: The OAuth 2.0 client server-description editor'
 type: 'feature'
 created: '2026-09-24'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '8a1f7aa9d30bcc6eb13d2c898d1f238b476a35e2'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-12-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-8-8-the-device-editor.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-12-3-copy-and-purge-the-audit-database.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The vendor writes the registration access token in plain text into its own audit row, and OcuPilot's audit viewer and its read tool show that row's EventData, so the token AC6 keeps out of every OcuPilot read is readable through Logs > Audit and logs.audit.read.
+    evidence: |-
+      Measured on ocupilot-b-ci: a TOKEN write logs "Modify OAuth2 Server Definition" (%System/%Security) whose EventData carries "New value: <token>" and a property dump holding it; every later save of that definition dumps it again. Settle by an AD-35/AD-53 ruling: mask EventData for this event in the audit read, or name the gap.
+    location: >-
+      vendor OAuth2.ServerDefinition.AuditUpdate; src/OcuPilot/Screen/Descriptor/AuditList.cls read fields (EventData)
+    severity: high
+  - summary: >-
+      The agent's update replaces Metadata whole: the tool's argument is the complete member set, because Mint.Merge carries an object argument as one value. The screen route merges member by member before it calls the tool.
+    evidence: |-
+      Pinned in OcuPilot.Test.OAuthServerUpdate TestTheAgentsEditSendsTheCompleteSet (one diff row, field Metadata). Epic 9's Write.MergeUpdate hook is not on this branch; settle at the merge by merging the agent's Metadata over the fresh read there.
+    location: >-
+      src/OcuPilot/Screen/Tool/OAuthServerDescriptionUpdate.cls ArgumentProblem, src/OcuPilot/Kernel/Proposal/Mint.cls Merge
+    severity: medium
+  - summary: >-
+      An unreachable issuer holds the editor's Discover for the vendor's own connect timeout, about 30 seconds, before the named refusal.
+    evidence: |-
+      Measured: GetServerMetadata against a closed port or a .invalid host answered #6059 after ~30 s. The port passes no timeout; GetServerMetadata takes none.
+    location: >-
+      src/OcuPilot/Port/OAuthServerPort.cls Discover
+    severity: low
+footprint_extensions:
+  - 'src/OcuPilot/Port/AdminPort.cls (contended: five MUTATINGTYPES entries -- the four the spec names and ServerDefinition/REFRESHJWKS, which the ToolWrite roster requires of every reached pair -- and one BODYLESSTYPES entry; single-line union at merge)'
+  - 'src/OcuPilot/Kernel/Proposal/Mint.cls (contended: Compose carries an object argument whole, so an agent create can set Metadata; outside Epic 9 hunks)'
+  - 'src/OcuPilot/Kernel/Proposal/Prohibited.cls (contended: COVEREDTYPES and the fail-closed type chain are single lines Epic 9 also extends, one-line unions at merge; the rest outside Epic 9 hunks)'
+  - 'src/OcuPilot/Api/Router.cls (contended: four routes appended at the UrlMap tail, which Epic 9 also appends to -- append after its block at merge -- and four thin handlers)'
+  - 'src/OcuPilot/Screen/Tool/Classification.cls (contended: three entries after the device entries); FieldLists.cls and ToolFields.cls regenerated'
+  - 'src/OcuPilot/Api/Error.cls, ui/src/app/core/strings.ts, ui/src/styles/_components.scss, EXPERIENCE.md (shared-append, own entries)'
+  - 'ui/src/app/shell/screen-outlet.ts, ui/src/app/shell/screen-action-handler.ts (contended: own entries, placed outside Epic 9 hunks)'
+  - 'ui/src/app/core/screen-actions.ts (the Update JWKS label); ui/src/app/app.ts (OAuthActions and the form store injected, the store reset at sign-out)'
+  - 'src/OcuPilot/Test/PortFixture.cls, ToolRoundTrip.cls, ReadTool.cls, SurfaceCoverage.cls, EndpointCoverage.cls, PortGate.cls, Prohibited.cls, OAuthDelete.cls, OAuthTabs.cls, DerivedFields.cls, Wire.cls, WireOAuthRead.cls, WireSecurityRead.cls (own roster rows; the three Wire classes and Prohibited.cls share single literal lines with Epic 9, unions at merge)'
+  - 'ui/tools/classic-links.test.mjs, ui/tools/navigation.test.mjs, ui/browser/oauth.browser-spec.mjs (the tab left the exemption and gained row actions); scripts/ci-throwaway.sh (the seven new armed classes)'
+  - 'src/OcuPilot/Test/RouterFixture.cls (one fixture route and handler for the edit route; merges cleanly with Epic 9)'
+  - 'ui/src/app/app.spec.ts (the sign-out leg for the form store''s token; one hunk conflicts with Epic 9''s own sign-out legs, a union at merge)'
 ---
 
 <intent-contract>
@@ -282,11 +317,39 @@ Supporting vendor classes:
 - **AC9 (link-out).** Given the OAuth 2.0 screen, when it renders, then this tab's name cell opens OcuPilot's editor, the other four tabs keep their classic links, and the classic-links check reports one exemption across four descriptors.
 - **AC10 (DW-1337).** Given the editor and its delete dialog, when they are measured at 1280 px light, 720 px light and 1280 px dark, then there is no structural or contrast violation.
 
+**Review patches (2026-09-24):** P1-P9 applied; each row is in `## Review Triage Log`.
+
 ## Spec Change Log
 
 - 2026-09-24, spec gate (lead). Q1-Q3 written into the spine as recommended: AD-4 moves `Security.OAuth2.Client.ServerDefinition` out of the erasing list; AD-27's reason list gains "an acceptance criterion rules out" and "has no such operation", with the discovery and Update JWKS cases named under Story 12.4 (the spine says both are measured on a throwaway by the implement stage; record each measurement in `## Verification`). Q4 applied under Rule 5 to Epic 12's preamble and the epic context. Q5 stands: a measured write with no vendor audit event is reported for an AD-53 named-gap entry, which the lead writes. The editor is untabbed because the classic page is.
 
 ## Review Triage Log
+
+### 2026-09-24 — Review pass
+
+- verdicts: 20 findings — high 1, medium 10, low 4, false 5, maybe-false 0
+- findings:
+  - `[low]` `[reject]` verification-gap 1: `Mint.Compose` now carries an object argument for every create — the agent path is held by `Registry.ValidateArguments` (JSON types against each tool's schema, `Screen/Tool/Registry.cls:561`); a screen route is reachable with an object only through a hand-built body, and a guard adds a parameter.
+  - `[medium]` `[patch]` verification-gap 2: AC5's "no `jwks_uri`, no Update JWKS" and the page's refusal report were unpinned — P1, two page-spec legs, mutation lines added.
+  - `[medium]` `[patch]` verification-gap 3: the editor's own Delete was never exercised — P2, a page-spec leg.
+  - `[medium]` `[patch]` verification-gap 4: the sign-out reset of the form's typed token was unpinned — P3, `app.spec.ts`.
+  - `[medium]` `[patch]` verification-gap 5: two AC6 legs in `OAuthServerToken` could not fail — P4, context leg asserts identity alone, log scan after the refused write.
+  - `[medium]` `[patch]` verification-gap 6: the edit route's `issuer` and `tokenRefused` answers were never read over the route — P5, `TestTheEditRouteAnswersARenameAndARefusedToken` (rename over real HTTP; `tokenRefused` through the router with a failing fixture port, since no shipped path saves while its token write fails).
+  - `[medium]` `[patch]` verification-gap 7: update-mode SSL and issuer-shape rules were untested — P6, screen and agent cases, nothing sent.
+  - `[medium]` `[patch]` verification-gap other 1: a flag the issuer stops publishing was sent `false` and stored `false` — P7, an absent flag reads `''` on the client and the flag rule accepts `""`.
+  - `[low]` `[patch]` verification-gap other 2: the AC9 leg's comment said four tabs and listed three — P8, `security/oauth/server` added.
+  - `[medium]` `[defer]` intent-alignment 1: the agent's update replaces `Metadata` whole while the screen merges by member — already `deferred:` item 2; the fix needs Epic 9's `Write.MergeUpdate` hook in contended `Kernel/Proposal`.
+  - `[false]` `[reject]` intent-alignment 2: delete refused "after the port's LIST" — the `ClientCount` it tests is itself a port read; the refusal precedes any vendor `DELETE` on both callers.
+  - `[high]` `[defer]` intent-alignment 3: the vendor's `Modify OAuth2 Server Definition` audit row dumps `InitialAccessToken` in plain text, and Logs > Audit and `logs.audit.read` render `EventData` — re-verified on `ocupilot-b-ci` (row of 23:58:39 carries the probe token); already `deferred:` item 1. Root cause is Story 2.10's audit read and AD-35's scope ("covers only what OcuPilot writes"); needs a lead ruling (mask or named gap).
+  - `[low]` `[reject]` intent-alignment 4: the form declares `secretFields` rather than `secretArguments`, and a dropped flag is sent `""` rather than `false` — both serve the intent (the registry refuses a secret argument no tool of the screen declares; `false` is stored, measured); the fix is an intent edit.
+  - `[medium]` `[patch]` intent-alignment 5: update-mode rules not shown on both callers — grouped with verification-gap 7, P6.
+  - `[medium]` `[patch]` intent-alignment 6: no test asserted AD-53's "screen writes emit no marker" — P9, zero-marker assertion beside the agent leg that shows markers appear.
+  - `[false]` `[reject]` intent-alignment 7: the privilege test's principal holds `%Admin_Secure` — one with no `%Admin_` resource is refused 403 `AUTH.NOADMIN` by the pre-existing API gate, still before any port call.
+  - `[false]` `[reject]` intent-alignment 8: Update JWKS does not say whether the key set changed — the matrix fixes the sentence "Updated the key set from {url}.", which is what ships.
+  - `[low]` `[reject]` intent-alignment 9: the kernel `Mint.Compose` change — grouped with verification-gap 1.
+  - `[false]` `[reject]` intent-alignment 10: Discover answers the vendor object's whole export — that object is `OAuth2.Server.Metadata`, the class the derived member list comes from.
+  - `[false]` `[reject]` intent-alignment 11: Save chains the token write as a second mechanism — the spec's task names that chain, and it runs the SetToken tool's own operation (AD-53).
+- stage verification, outside the count: a P6 mutation run left `ftp://ocupilotprobe124.invalid/renamed` behind, which `OAuthServerProbe.RemoveAll` (https prefix only) missed and which reddened `OAuthServerCreate`'s count; `RemoveAll` now matches the probe host under any scheme. The intent-alignment layer received a misaligned copy of the intent block (it read the spec for the rest).
 
 ## Design Notes
 
@@ -385,7 +448,101 @@ This runs on slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. Ev
 - Q5's vendor audit rows.
 - The bundle total.
 
+**Measured on `ocupilot-b-ci`, 2026-09-24 (implement):**
+
+- AD-27 (a): `GetServerMetadata` is a class method, `[Internal]`, `issuerEndpoint:%String,sslConfiguration:%String,*metadata:OAuth2.Server.Metadata`, answering `%Status`. Against the fixture it answered the members and saved nothing (no definition or metadata row, `%Id` empty). Causes: #8880 `Unexpected status code=503`, `Unexpected content-type: text/html`, `Unexpected issuer claim: …`; unreachable #6059 after ~30 s. Consistent with the spine.
+- AD-27 (b): `RefreshJWKS` is an instance method `force:%Boolean=0,save:%Boolean=1,*sc:%Status` answering `%Boolean`. `RefreshJWKS(1,1)` stored the fixture's key set and cleared `ServerCredentials` (`OcuPilotDemoCert` before); a second call with the same set answered 1 and saved nothing. Consistent with the spine.
+- The fixture is reachable from a request process: `POST /api/ocupilot/oauth/server-description/discover` answered 200 with the members.
+- A boolean member set to `false` is stored `false`, not cleared; `""` and `null` clear it. The expansion therefore sends `""` for an absent flag (the spec said `false`).
+- `Mint.Merge` renders a `Metadata` change as one row, field `Metadata`, before and after the compact JSON of the whole member set (pinned in `OAuthServerUpdate.TestTheAgentsEditSendsTheCompleteSet`).
+- Q5: a create logs "Create OAuth2 Server Metadata" and "Create OAuth2 Server Definition <issuer>"; a metadata-only PUT "Modify OAuth2 Server Metadata"; a token write "Modify OAuth2 Server Definition" whose EventData carries the token in plain text (see `deferred`); a JWKS refresh "Modify OAuth2 Server Definition" when the key set changed and nothing when it did not; a delete "Delete OAuth2 Server Definition" and "Delete OAuth2 Server Metadata". Every write has an event, except a refresh that changes nothing.
+- A PUT carrying `ID` is refused 400 `PORT.FIELD.UNEXPECTED`; a bad X.509 alias through the vendor is a 500. The admin API's `POST ?discover=1` answered 500 `INTERNAL`.
+- `OAuthServerWire`: a principal holding the install code read, `%DB_IRISSYS:READ` and `%Admin_OAuth2_Client:USE` alone discovered, created with a token, edited, refreshed and deleted (AD-29). A principal without the resource is refused `AUTH.NOADMIN` unless it holds some `%Admin_` resource; the test's holds `%Admin_Secure:USE`.
+- The form descriptor keeps `secretArguments []`: the registry refuses a secret argument no tool of the screen declares; `context.secretFields` carries `InitialAccessToken`.
+- Bundle initial total 1,369,863 bytes (main 1,233,050 + styles 136,813), below 1378 kB; no DW-1166 change.
+- DW-1337: the editor and its delete dialog carry no entry of their own; the shell's DW-1583 and DW-1584 entries are the only allowance, re-keyed to the route.
+
+**Runs:** full sweep on `ocupilot-b-ci`, runs 570-804: 235 classes, 2,046 tests, 1 failed (`Wire.TestTheSslConfigurationsListIsDeniedToAPrincipalWithoutAdminSecure`, a navigation literal without the editor's entry; fixed, `Wire` 20/20 in run 805). `%UnitTest_Result`, latest run per class: 2,046 methods, 2,046 passed, 0 failed. Own classes: `OAuthServerCreate` 7, `OAuthServerUpdate` 5, `OAuthServerDelete` 4, `OAuthServerDiscover` 4, `OAuthServerJwks` 4, `OAuthServerToken` 4, `OAuthServerWire` 5. Browser: `oauth-server-description-editor` 5/5, `oauth` 4/4, `oauth-delete` 2/2. `npm test` 1,375 tool tests and 1,093 component tests, 0 failed; smoke 49/49.
+
+- mutation: `OAuthServerDescriptionCreate.DerivedFields` removes `Metadata` → `OAuthServerCreate.TestACreateThroughTheSaveSendsTheCompleteSet` red, 500 `INTERNAL` (AC1)
+- mutation: `OAuthServerRules.Expand` returns before adding the empty members → `OAuthServerUpdate.TestAnEditSendsTheCompleteSetAndClearsAMember` and `TestTheAgentsEditSendsTheCompleteSet` red (AC2)
+- mutation: `OAuthServerPort.Invoke` drops the `ClientCount` refusal → `OAuthServerDelete.TestADescriptionAClientUsesIsRefusedByName` red on the 409, the reason and the port leg (AC3)
+- mutation: `OAuthServerPort.Discover` saves the discovered definition (the admin API's `discover=1` POST answers 500 here, so the save is made directly) → `OAuthServerDiscover.TestADiscoveryAnswersThePublishedMembersAndSavesNothing` red on both nothing-saved assertions (AC4)
+- mutation: `RefreshJWKS(0, 1, .sc)` → `OAuthServerJwks.TestTheRowActionStoresTheKeySetAndClearsTheCredentials` and `TestAFetchThatFailsIsRefusedAndStoresNothing` red (AC5)
+- mutation: `OAuthServerRules.HandleForm` adds the stored `InitialAccessToken` to `definition` → `OAuthServerToken.TestTheSaveStoresTheTokenAndNoReadCarriesIt` red on the form read (AC6)
+- mutation: `OAuthServerDescriptionCreate.CREATES` 0 → `OAuthServerCreate.TestACreateTakenAfterTheMintIsRefusedAtConfirm` red at the mint, and `TestEveryFormRuleRefusesOnBothCallers` red on six cases (AC7)
+- mutation: `OAuthServerPort.Discover` loses its resource check → `OAuthServerWire.TestThePortRefusesDiscoverAndRefreshWithoutTheResource` red (AC8)
+- mutation: the tab's `classicLinkExemption` restored → `classic-links.test.mjs` "the shipped descriptor roster passes" red (AC9)
+- mutation: `.ocu-oauth-server-metadata-table { min-inline-size: 1400px }`, rebuilt and redeployed → the editor browser spec's AC1 leg red, 920px overflow at 1280 and 720 (AC10)
+- mutation: `offersUpdateJwks` drops `&& this.store.storedJwksUri() !== ''` → page spec "AC5: a saved description with no JWKS URL offers no Update JWKS" red (AC5, P1)
+- mutation: `onUpdateJwks` no longer sets `actionRefusal` on a refused send → page spec "AC5: an Update JWKS the instance refuses shows the refusal's own sentence" red (AC5, P1)
+- mutation: `confirmDelete` no longer navigates to the tab → page spec "AC3: Delete types the stored issuer, posts the one declared delete and returns to the tab" red (AC3, P2)
+- mutation: `this.oauthServerDescriptionForm.reset()` removed from `App.verifyWhenSignedIn` → `app.spec.ts` "AD-8: leaving the signed-in state drops this principal's namespace list" red on the token (AD-35, P3)
+- mutation: `OAuthServerDescriptionForm` declares `secretFields []` → `OAuthServerToken.TestNoContextOrLogLineCarriesTheToken` red, "as identity alone" (AC6, P4)
+- mutation: `OAuthServerSave.StoreToken` logs the token when its write is refused → `OAuthServerToken.TestNoContextOrLogLineCarriesTheToken` red, "no OcuPilot line there carries either token" (AC6, P4)
+- mutation: `OAuthServerSave.HandleUpdate` answers the route's issuer, not `$Get(tNewIssuer, tIssuer)` → `OAuthServerUpdate.TestTheEditRouteAnswersARenameAndARefusedToken` red on the wire rename (P5)
+- mutation: `OAuthServerSave.Answer` drops `tokenRefused` → `OAuthServerUpdate.TestTheEditRouteAnswersARenameAndARefusedToken` red (P5)
+- mutation: `OAuthServerRules.Validate` requires `SSLConfiguration` on a create alone → `OAuthServerUpdate.TestAnEditThatEmptiesTheSslOrRenamesToAMalformedIssuerIsRefused` red on the Save and the agent's mint (AD-39, P6)
+- mutation: `OAuthServerRules.Validate` skips a rename's issuer rules → the same test red on `OAUTH.ISSUERENDPOINT.SHAPE`, and `TestAnEditRenamesTheIssuerAndKeepsItsClients` on the taken issuer (AD-39, P6)
+- mutation: `memberOf` reads a flag as `value === true` → store spec "a flag the wire does not carry reads as absent" red (P7)
+- mutation: `OAuthServerRules.MemberViolations` holds a flag to a boolean alone → `OAuthServerUpdate.TestAnEditSendsTheCompleteSetAndClearsAMember` red, the flag's `""` refused (P7)
+- mutation: the Authorization server tab's generated classic `href` changed, rebuilt and redeployed → the editor browser spec's AC9 leg red on `security/oauth/server` (AC9, P8)
+- mutation: `OAuthServerSave.HandleUpdate` emits the agent-write marker after its write → `OAuthServerWire.TestTheDeclaredPairsAloneDoEveryWrite` red on the zero-marker assertion (AD-53, P9)
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** A `form-page` editor at `security/oauth/edit` for OAuth 2.0 server descriptions, opened from the Server descriptions tab's name cell and its Create action. It covers create, edit, Discover, Update JWKS, the registration access token and delete. Five write tools go through the new `OAuthServerPort`, which maps issuer to `serverId` and carries AD-27's two named calls.
+
+**Files.**
+
+- Server:
+  - New `Port/OAuthServerPort.cls`.
+  - New `Area/Security/OAuthServerRules.cls` and `OAuthServerSave.cls`.
+  - Five new `Screen/Tool/OAuthServerDescription*.cls` tools.
+  - New `Screen/Descriptor/OAuthServerDescriptionForm.cls`. The tab now declares Create, Delete and Update JWKS, and has no exemption.
+  - Four routes appended in `Api/Router.cls`; `Api/Error.cls` gains its `OAUTH.*` entries.
+  - Changed `Prohibited`, `AdminPort` rosters, `Mint.Compose` (object arguments), `Classification` and `FieldDerive`.
+  - Regenerated `FieldLists` and `ToolFields`.
+- Client:
+  - New form store and page, with specs, and `oauth-actions.ts`.
+  - Changed `screen-outlet`, `screen-action-handler`, `screen-actions` and `app.ts`.
+  - Shared-append edits to `strings.ts` and `_components.scss`; `screens.generated.ts` regenerated.
+  - EXPERIENCE.md row 471.
+- Tests:
+  - Seven new classes, their probe, fixture and record-port helpers, and the local issuer fixture.
+  - The editor browser spec.
+  - Roster rows in existing classes and tool tests; `ci-throwaway.sh` arming.
+
+**Review.** Two layers ran: verification-gap and intent-alignment, 20 findings.
+
+- Patched: 9 entries (8 medium, 1 low), P1-P9.
+- Deferred: 2, both already in `deferred:` (high: the token in the vendor audit row; medium: the agent's `Metadata` replace).
+- Rejected: 4 low, 5 false.
+
+The stage also patched `OAuthServerProbe.RemoveAll` so it removes the probe host under any scheme.
+
+**Follow-up review: recommended.** Eight medium entries were patched. Two of those patches change behavior, and only targeted tests have checked them: the flag's empty form (client store and the `MemberViolations` flag rule), and the fixture route and failing-port seam behind P5.
+
+**Verification** (on `ocupilot-b-ci`):
+
+- Full ObjectScript sweep, before the patches, runs 570-804 (plus 805): 235 classes, 2,046 tests, 0 failed on the latest run per class.
+- After the patches, each class run alone:
+  - OAuth classes: `OAuthServerCreate` 7, `Update` 7, `Delete` 4, `Discover` 4, `Jwks` 4, `Token` 4, `Wire` 5.
+  - Roster classes: `EndpointCoverage` 2, `Routing` 18, `Envelope` 15.
+  - All 0 failed (runs 838-850).
+- Browser, against the rebuilt bundle: editor spec, `oauth` and `oauth-delete`, 11/11.
+- `npm run test:tools` 1,375 and `test:components` 1,098 tests, 0 failed.
+- Drift and lint: `screen-mirror` and `field-lists` checks up to date; `check-objectscript` 0 problems; `lint-docs` clean.
+- Smoke 49/49.
+- Bundle initial total 1,369,867 bytes, under 1378 kB, so no DW-1166 change.
+- `src/` is identical to `/tmp/ocupilot-b-ci/src`.
+
+**Residual risks.**
+
+- **The token in the vendor audit row (deferred, high).** A ruling on AD-35 or AD-48 is needed.
+- **The agent's `Metadata` replace (deferred, medium).**
+- **Discover waits about 30 s on an unreachable issuer (deferred, low).**
+- **One-line unions at the Epic 9 merge:** `Prohibited` `COVEREDTYPES`, `Router` UrlMap tail, `Wire*` navigation literals, `app.spec.ts` sign-out legs.

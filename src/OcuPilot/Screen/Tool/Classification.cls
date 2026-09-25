@@ -354,6 +354,36 @@ XData Entries
       "Type": "ordinary"
     }
   },
+  "security.oauthserverdescriptions.create": {
+    "fieldList": "Security.OAuth2.Client.ServerDefinition",
+    "classification": {
+      "IssuerEndpoint": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "ServerCredentials": "ordinary",
+      "Metadata": "opaque"
+    }
+  },
+  "security.oauthserverdescriptions.update": {
+    "fieldList": "Security.OAuth2.Client.ServerDefinition",
+    "classification": {
+      "IssuerEndpoint": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "ServerCredentials": "ordinary",
+      "Metadata": "opaque"
+    }
+  },
+  "security.oauthserverdescriptions.settoken": {
+    "fieldList": "Security.OAuth2.Client.ServerDefinition",
+    "classification": {
+      "IssuerEndpoint": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "ServerCredentials": "ordinary",
+      "Metadata": "opaque"
+    },
+    "authored": {
+      "InitialAccessToken": "secret"
+    }
+  },
   "permissions.users.create": {
     "fieldList": "Security.User",
     "classification": {

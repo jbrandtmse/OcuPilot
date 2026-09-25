@@ -5499,3 +5499,59 @@ body {
 .ocu-audit-database-field {
   margin-bottom: var(--ocu-space-4);
 }
+
+// --- The OAuth 2.0 client server description editor (Story 12.4) --------------------------------
+//
+// The Authorization server and JWT settings groups are fieldsets drawn like the form's own column,
+// and the read-only metadata table reads as one field: member names as row headers, values beside
+// them, wrapping rather than widening the form.
+.ocu-oauth-server-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-4);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ocu-oauth-server-group legend {
+  margin-block-end: var(--ocu-space-2);
+  padding: 0;
+}
+
+.ocu-oauth-server-metadata-table {
+  @include typo.ocu-type('body');
+
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--ocu-on-surface);
+  table-layout: fixed;
+}
+
+.ocu-oauth-server-metadata-table caption {
+  margin-block-end: var(--ocu-space-2);
+  text-align: start;
+}
+
+.ocu-oauth-server-metadata-table th,
+.ocu-oauth-server-metadata-table td {
+  padding: var(--ocu-space-1) var(--ocu-space-2);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+  text-align: start;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.ocu-oauth-server-metadata-table th {
+  width: 40%;
+  color: var(--ocu-on-surface-variant);
+  font-weight: normal;
+}
+
+// The JWT settings' three choices keep a 24px target, the floor every control is held to.
+.ocu-oauth-server-group .ocu-field-checkbox input[type='radio'] {
+  inline-size: 24px;
+  block-size: 24px;
+  margin: 0;
+}

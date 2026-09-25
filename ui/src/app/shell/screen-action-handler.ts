@@ -26,7 +26,8 @@ export const SCREEN_ACTION_PATH_SUFFIX = '/action';
  * registering generically for them would replace a handler that does something else. It grows one
  * entry per story, beside the consequence copy below: the Web applications list (Story 7.1), and
  * the OAuth 2.0 screen's Client configurations and Server client descriptions tabs (Story 7.3),
- * whose detail pages render the same `ListPage`, and the Users list (Story 7.2), and the Auditing
+ * whose detail pages render the same `ListPage`, and its Server descriptions tab (Story 12.4), whose
+ * Update JWKS is sent at once and whose Delete types the issuer, and the Users list (Story 7.2), and the Auditing
  * configuration form (Story 7.4), whose page selects the singleton itself, and the On-demand tasks
  * list (Story 7.5), whose Run is sent at once with no dialog, and the Task schedule (Story 7.6),
  * whose Run, Suspend and Resume are sent at once and whose Delete types the task's name, and
@@ -40,6 +41,7 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WebAppList',
   'OcuPilot.Screen.Descriptor.OAuthClientTab',
   'OcuPilot.Screen.Descriptor.OAuthServerClientTab',
+  'OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab',
   'OcuPilot.Screen.Descriptor.UserList',
   'OcuPilot.Screen.Descriptor.AuditingConfig',
   'OcuPilot.Screen.Descriptor.TaskOnDemandList',
@@ -147,6 +149,7 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.WebAppList': { delete: STRINGS.webAppDeleteConsequence },
   'OcuPilot.Screen.Descriptor.OAuthClientTab': { delete: STRINGS.oauthClientDeleteConsequence },
   'OcuPilot.Screen.Descriptor.OAuthServerClientTab': { delete: STRINGS.oauthServerClientDeleteConsequence },
+  'OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab': { delete: STRINGS.oauthServerDeleteConsequence },
   [USER_LIST]: { delete: STRINGS.userDeleteConsequence, 'revoke-tokens': STRINGS.userRevokeTokensConsequence },
   [TASK_SCHEDULE]: { delete: STRINGS.taskDeleteConsequence },
   [PROCESS_LIST]: { terminate: STRINGS.processTerminateConsequence },
