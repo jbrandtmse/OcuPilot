@@ -169,3 +169,7 @@
 2026-09-25T11:11:10Z	Epic 12	spine_updated	ad=AD-35 reason=implement_halt(OAuth2ResourceServerChange_declaration) by=runner story=12-6-the-oauth-2-0-resource-server-editor lint=ok(1_preexisting_low)
 2026-09-25T11:11:55Z	Story 12.6	wip_committed	sha=3d57b0f7 pushed=true note=implement-1_tree_(halted)+lead_ruling;original_baseline=4a9f5037
 2026-09-25T11:11:55Z	Story 12.6	stage_spawned	stage=implement spawn_at=2026-09-25T11:11:55Z model=opus agent_name=12-6-oauth-resource-server-implement-2 cycle_iteration=2
+2026-09-25T12:18:57Z	Story 12.6	dev_complete	spawn_at=2026-09-25T11:11:55Z model=opus build_sha=292bd8b2 baseline_revision=3bf0c34b story_baseline=4a9f5037 review_loop_iteration=0 followup_review_recommended=false deferred=1(DW-1660) files=76 loc_added=8857 loc_removed=208 cycle_iteration=2 sweep=275_classes/2309_tests/0_failed(ocupilot-b-ci,runs_98-373,ToolWrite_rerun_373) browser=4_specs_21/21 tools=1409 components=1307 smoke=49/49 bundle_initial=1704504B ci=pending_run=36134178587
+2026-09-25T12:18:57Z	Story 12.6	ledger_routed_planned	story=12-6-the-oauth-2-0-resource-server-editor entries=1(DW-1660,open,in-story) excess=0 by=harvest
+2026-09-25T12:18:57Z	Story 12.6	adr_verifications_complete	tool=none acs=none result=none_required evidence=AD-29_real_principal_check_is_the_story_test(OAuthResourceServerWire) mutations=none
+2026-09-25T12:18:57Z	Story 12.6	stage_spawned	stage=qa spawn_at=2026-09-25T12:18:57Z model=sonnet agent_name=12-6-oauth-resource-server-qa-1 cycle_iteration=1

@@ -6956,3 +6956,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Post to http://127.0.0.1:1/ with Timeout 3 on ocupilot-b-ci: 3.01 s, ERROR #6059, no HttpResponse (HttpRequest.cls:1664-1679); Base.cls Attempts retries it since only CSPTimeout counts as a timeout. The spec's design note both retries a connect refusal and says a timeout that spent its per-call timeout is not retried.
 - 2026-09-25T07:48:27Z status=decision-pending owner=burndown by=cr note=owner call: exclude #6059/pre-send config errors, or an attempt that spent its timeout, from the one retry (recommended)
 - 2026-09-25T08:27:24Z status=routed owner=range-end-cleanup by=merge_gate note=decided at the 10.6 merge (orchestrator, recommended disposition): exclude a connect that never opened (#6059) from the one transport retry, about 10 lines plus a test
+
+### DW-1660: The resource-server update's proposal card does not state that changing the authenticator's namespace or implementation resets its other settings to the new class's defaults; the form says so, the card does not
+- source: spec-12-6-the-oauth-2-0-resource-server-editor.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: OAuthResourceServerUpdate's card shows only the Authenticator row's before/after; intent says card and form both state the reset
+- 2026-09-25T12:18:41Z status=open owner=12-6-the-oauth-2-0-resource-server-editor by=harvest note=lead: patch as a named Prohibited effect (destructive, effect named) at code review, as the mapping move does
