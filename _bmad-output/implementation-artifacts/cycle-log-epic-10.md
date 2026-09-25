@@ -167,3 +167,7 @@ TAB-separated, append-only: `<UTC> TAB <Story <id> | Epic 10> TAB <stage> TAB <m
 2026-09-25T05:52:01Z	Epic 10	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=56 status=final
 2026-09-25T05:52:01Z	Epic 10	ledger_load	total=1095 open=3 routed=230 escalated=0 decision_pending=1 terminal=861 owner_unknown=0 burndown=1 reowned_none=0 inbox_10-6=empty note=sprint_planning_not_repeated(orchestrator)
 2026-09-25T05:52:01Z	Epic 10	epic_reopened	key=epic-10 from=done to=in-progress reason=story_10.6_added_by_owner_2026-09-24(184de74d) authorized_by=orchestrator_dispatch retro_review=skip(handled_by_epic_9)
+2026-09-25T05:55:15Z	Epic 10	epic_context_compiled	reason=planning_artifact_newer(10.6_block_then_AD-42_amendment) model=opus runs=2 header=ok
+2026-09-25T05:55:15Z	Epic 10	spine_updated	ad=AD-42 reason=owner_decision(184de74d)_recorded_at_plan_gate by=runner story=10-6-a-turn-survives-a-dropped-connection-and-a-create-says-creat lint=ok(1_preexisting_low_placeholder_line_169,no_ad_id/ad_fields) note=model_call_retried_once_on_new_connection_after_transport_failure;writes_never;SocketTimeout_0_per_irislib/%Net/HttpRequest.cls:451-453,1636
+2026-09-25T05:55:15Z	Epic 10	throwaway_up_started	by=runner(epic-runner-10) container=ocupilot-b-ci project=ocupilot-b-ci dir=/tmp/ocupilot-b-ci web=52777 super=1976
+2026-09-25T05:55:15Z	Story 10.6	stage_spawned	stage=plan spawn_at=2026-09-25T05:55:15Z model=opus agent_name=10-6-a-turn-survives-a-dropped-connection-plan-1 cycle_iteration=1
