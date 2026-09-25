@@ -238,7 +238,8 @@ test("AC2: the tab's name cell opens the editor, and an endpoint changed and one
       { timeout: config.navigationTimeoutMs },
       `/${EDITOR_ROUTE}/${encodeEntityId(ISSUER)}`
     );
-    await page.waitForFunction(() => document.querySelector('#ocu-oauth-server-Metadata-token_endpoint')?.value !== '', { timeout: config.navigationTimeoutMs });
+    // `?? ''`: an absent field is not loaded, so the wait holds until the form read has rendered it.
+    await page.waitForFunction(() => (document.querySelector('#ocu-oauth-server-Metadata-token_endpoint')?.value ?? '') !== '', { timeout: config.navigationTimeoutMs });
     assert.equal(await page.$eval('#ocu-oauth-server-InitialAccessToken', (node) => `${node.type}|${node.value}`), 'password|', 'the token is masked and never pre-filled');
     await fill(page, 'ocu-oauth-server-Metadata-token_endpoint', `${ISSUER}/token2`);
     await fill(page, 'ocu-oauth-server-Metadata-userinfo_endpoint', '');

@@ -2,11 +2,11 @@
 title: 'Story 12.4: The OAuth 2.0 client server-description editor'
 type: 'feature'
 created: '2026-09-24'
-status: 'in-progress'
-baseline_revision: '8a1f7aa9d30bcc6eb13d2c898d1f238b476a35e2'
+status: 'done'
+baseline_revision: '749740fe4f2888fb92a5f0e2c301377cfcf9b4dc'
 baseline_commit: '8a1f7aa9d30bcc6eb13d2c898d1f238b476a35e2'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-12-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-8-8-the-device-editor.md'
@@ -322,8 +322,8 @@ Supporting vendor classes:
 
 ### CI rework (run 36078446863 on c3d8979d, job browser)
 
-- [ ] [CI] `a11y-structural-invariants.browser-spec.mjs` AC5 "no violation outside the baseline" -- the new route `security/oauth/edit` shows the shell chrome's known overflows (panel resize handle 4px at 1280 and 720, DW-1583; status-bar connection 28px at 720, DW-1584), which every existing editor route carries as baseline entries -- https://github.com/jbrandtmse/OcuPilot/actions/runs/36078446863 -- append exactly those three entries to `ui/browser/structural-baseline.json` with their `dw` ids, in the file's existing shape (as Epic 7/8/9's editor routes did), and nothing for the editor's own content, which must stay violation-free; the lead appends the ledger occurrences.
-- [ ] [CI] `oauth-server-description-editor.browser-spec.mjs` AC2 "the tab's name cell opens the editor, and an endpoint changed and one cleared reach the instance exactly" -- `failed to find element matching selector "#ocu-oauth-server-InitialAccessToken"` in CI's full-suite run on a fresh throwaway (it passes alone locally) -- same run -- find the cause (state left by an earlier spec in alphabetical order, a fresh-instance difference, a timing wait, or the review patches since c3d8979d) and fix the product or the spec so it holds in the full suite; reproduce it the way CI runs it (a fresh throwaway, or the preceding spec files in order) before claiming the fix.
+- [x] [CI] `a11y-structural-invariants.browser-spec.mjs` AC5 "no violation outside the baseline" -- the new route `security/oauth/edit` shows the shell chrome's known overflows (panel resize handle 4px at 1280 and 720, DW-1583; status-bar connection 28px at 720, DW-1584), which every existing editor route carries as baseline entries -- https://github.com/jbrandtmse/OcuPilot/actions/runs/36078446863 -- append exactly those three entries to `ui/browser/structural-baseline.json` with their `dw` ids, in the file's existing shape (as Epic 7/8/9's editor routes did), and nothing for the editor's own content, which must stay violation-free; the lead appends the ledger occurrences.
+- [x] [CI] `oauth-server-description-editor.browser-spec.mjs` AC2 "the tab's name cell opens the editor, and an endpoint changed and one cleared reach the instance exactly" -- `failed to find element matching selector "#ocu-oauth-server-InitialAccessToken"` in CI's full-suite run on a fresh throwaway (it passes alone locally) -- same run -- find the cause (state left by an earlier spec in alphabetical order, a fresh-instance difference, a timing wait, or the review patches since c3d8979d) and fix the product or the spec so it holds in the full suite; reproduce it the way CI runs it (a fresh throwaway, or the preceding spec files in order) before claiming the fix.
 
 ### Review Findings
 
@@ -381,6 +381,7 @@ Rejected:
 ## Spec Change Log
 
 - 2026-09-24, spec gate (lead). Q1-Q3 written into the spine as recommended: AD-4 moves `Security.OAuth2.Client.ServerDefinition` out of the erasing list; AD-27's reason list gains "an acceptance criterion rules out" and "has no such operation", with the discovery and Update JWKS cases named under Story 12.4 (the spine says both are measured on a throwaway by the implement stage; record each measurement in `## Verification`). Q4 applied under Rule 5 to Epic 12's preamble and the epic context. Q5 stands: a measured write with no vendor audit event is reported for an AD-53 named-gap entry, which the lead writes. The editor is untabbed because the classic page is.
+- 2026-09-24, CI rework 1. AC2's CI failure was the spec's own wait: `querySelector(…)?.value !== ''` is true while the field is absent, so on a slow runner it passed before the form read rendered the form; the wait now reads `?? ''` (reproduced with 1 s of injected request latency).
 
 ## Review Triage Log
 
@@ -409,6 +410,13 @@ Rejected:
   - `[false]` `[reject]` intent-alignment 10: Discover answers the vendor object's whole export — that object is `OAuth2.Server.Metadata`, the class the derived member list comes from.
   - `[false]` `[reject]` intent-alignment 11: Save chains the token write as a second mechanism — the spec's task names that chain, and it runs the SetToken tool's own operation (AD-53).
 - stage verification, outside the count: a P6 mutation run left `ftp://ocupilotprobe124.invalid/renamed` behind, which `OAuthServerProbe.RemoveAll` (https prefix only) missed and which reddened `OAuthServerCreate`'s count; `RemoveAll` now matches the probe host under any scheme. The intent-alignment layer received a misaligned copy of the intent block (it read the spec for the rest).
+
+### 2026-09-24 — Review pass (CI rework 1, follow-up)
+
+- verdicts: 2 findings — high 0, medium 0, low 1, false 1, maybe-false 0
+- findings:
+  - `[false]` `[reject]` intent-alignment 1: under a strict reading of "a new screen has no DW-1337 baseline allowance", the three `security/oauth/edit` baseline entries are an allowance — they carry `dw` DW-1583/DW-1584 on shell-chrome elements (`app-panel-resize-handle`, `app-status-bar`), not DW-1337 and nothing the editor draws; every `*/edit` route carries the same three, and the editor's own `assertStructure` pass is unchanged.
+  - `[low]` `[reject]` intent-alignment 2: the AC2 browser leg changes `token_endpoint` and clears `userinfo_endpoint`, not the matrix row's userinfo/revocation pair — predates this pass; the row's behavior (one changed, one cleared, the rest and an unshown list unchanged) is what the leg and `OAuthServerUpdate.TestAnEditSendsTheCompleteSetAndClearsAMember` assert, and re-pairing the members fixes nothing a user meets.
 
 ## Design Notes
 
@@ -584,60 +592,31 @@ byte-identical (`git status --short` and `git diff --stat` both empty) before th
 
 Final runs after the review patches: `OAuthServerCreate` 7, `Token` 5, `Discover` 5, `Wire` 6 (runs 876-879); `Update` 7, `Jwks` 4, `Delete` 4 (runs 868-870); all 0 failed. `test:tools` 1,375 and `test:components` 1,101 tests, 0 failed. The editor browser spec passed 5/5 against the deployed bundle, which these patches leave unchanged.
 
+**CI rework 1, on `ocupilot-b-ci`.** Each applied alone, red, reverted, byte-identical (`cmp`).
+
+- mutation: drop the `security/oauth/edit|overflow|720|app-status-bar…` entry from `structural-baseline.json` → `a11y-structural-invariants` "AC5: no violation outside the baseline" red naming that key; restored, 203 found, 203 held, 0 stale
+- mutation: the AC2 wait back to `?.value !== ''`, in a scratch copy that adds 1 s of CDP request latency after the tab lists → AC2 red with CI's `failed to find element matching selector "#ocu-oauth-server-InitialAccessToken"`; with `?? ''` the copy passes 5/5, and the real spec passes 7/7 after `oauth-delete` in CI's command form
+
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**Change.** A `form-page` editor at `security/oauth/edit` for OAuth 2.0 server descriptions, opened from the Server descriptions tab's name cell and its Create action. It covers create, edit, Discover, Update JWKS, the registration access token and delete. Five write tools go through the new `OAuthServerPort`, which maps issuer to `serverId` and carries AD-27's two named calls.
+**Change (CI rework 1, run 36078446863).** Only the two `[CI]` items; no product code changed.
 
-**Files.**
+- `ui/browser/structural-baseline.json`: three shell-chrome entries for `security/oauth/edit` (panel resize handle at 1280 and 720, DW-1583; status-bar connection at 720, DW-1584), in the shape every `*/edit` route uses. Nothing for the editor's own content.
+- `ui/browser/oauth-server-description-editor.browser-spec.mjs`: AC2's load wait reads `(…?.value ?? '') !== ''`. Root cause: `?.value !== ''` is true while the field is absent, so on CI's slower runner the wait passed before the form read had rendered the form (reproduced with 1 s of injected request latency; one line in `## Spec Change Log`).
+- This spec: both `[CI]` items ticked, the change-log line, and two `mutation:` lines under `## Verification`.
 
-- Server:
-  - New `Port/OAuthServerPort.cls`.
-  - New `Area/Security/OAuthServerRules.cls` and `OAuthServerSave.cls`.
-  - Five new `Screen/Tool/OAuthServerDescription*.cls` tools.
-  - New `Screen/Descriptor/OAuthServerDescriptionForm.cls`. The tab now declares Create, Delete and Update JWKS, and has no exemption.
-  - Four routes appended in `Api/Router.cls`; `Api/Error.cls` gains its `OAUTH.*` entries.
-  - Changed `Prohibited`, `AdminPort` rosters, `Mint.Compose` (object arguments), `Classification` and `FieldDerive`.
-  - Regenerated `FieldLists` and `ToolFields`.
-- Client:
-  - New form store and page, with specs, and `oauth-actions.ts`.
-  - Changed `screen-outlet`, `screen-action-handler`, `screen-actions` and `app.ts`.
-  - Shared-append edits to `strings.ts` and `_components.scss`; `screens.generated.ts` regenerated.
-  - EXPERIENCE.md row 471.
-- Tests:
-  - Seven new classes, their probe, fixture and record-port helpers, and the local issuer fixture.
-  - The editor browser spec.
-  - Roster rows in existing classes and tool tests; `ci-throwaway.sh` arming.
+**Review.** Two layers (verification-gap, intent-alignment), 2 findings: 0 patched, 0 deferred, 2 rejected (1 false: the baseline entries are shell findings, not a DW-1337 allowance; 1 low: the AC2 leg's member pair predates this pass and the row's behavior is asserted).
 
-**Review.** Two layers ran: verification-gap and intent-alignment, 20 findings.
+**Follow-up review: not recommended.** A follow-up pass that patched no `high`.
 
-- Patched: 9 entries (8 medium, 1 low), P1-P9.
-- Deferred: 2, both already in `deferred:` (high: the token in the vendor audit row; medium: the agent's `Metadata` replace).
-- Rejected: 4 low, 5 false.
+**Verification** (on `ocupilot-b-ci`, deployed bundle current: no `ui/src` change):
 
-The stage also patched `OAuthServerProbe.RemoveAll` so it removes the probe host under any scheme.
+- `oauth-server-description-editor.browser-spec.mjs` 5/5; after `oauth-delete` in CI's `node --test --test-concurrency=1` form, 7/7.
+- `a11y-structural-invariants.browser-spec.mjs` 10/10 (203 found, 203 held, 0 stale).
+- `node --test tools/structural-baseline.test.mjs` 9/9; `npm run test:tools` 1,375/1,375; `bash scripts/lint-docs.sh` 0 issues.
+- `src/` byte-identical to `/tmp/ocupilot-b-ci/src` (no `.cls` touched).
 
-**Follow-up review: recommended.** Eight medium entries were patched. Two of those patches change behavior, and only targeted tests have checked them: the flag's empty form (client store and the `MemberViolations` flag rule), and the fixture route and failing-port seam behind P5.
-
-**Verification** (on `ocupilot-b-ci`):
-
-- Full ObjectScript sweep, before the patches, runs 570-804 (plus 805): 235 classes, 2,046 tests, 0 failed on the latest run per class.
-- After the patches, each class run alone:
-  - OAuth classes: `OAuthServerCreate` 7, `Update` 7, `Delete` 4, `Discover` 4, `Jwks` 4, `Token` 4, `Wire` 5.
-  - Roster classes: `EndpointCoverage` 2, `Routing` 18, `Envelope` 15.
-  - All 0 failed (runs 838-850).
-- Browser, against the rebuilt bundle: editor spec, `oauth` and `oauth-delete`, 11/11.
-- `npm run test:tools` 1,375 and `test:components` 1,098 tests, 0 failed.
-- Drift and lint: `screen-mirror` and `field-lists` checks up to date; `check-objectscript` 0 problems; `lint-docs` clean.
-- Smoke 49/49.
-- Bundle initial total 1,369,867 bytes, under 1378 kB, so no DW-1166 change.
-- `src/` is identical to `/tmp/ocupilot-b-ci/src`.
-
-**Residual risks.**
-
-- **The token in the vendor audit row (deferred, high).** A ruling on AD-35 or AD-48 is needed.
-- **The agent's `Metadata` replace (deferred, medium).**
-- **Discover waits about 30 s on an unreachable issuer (deferred, low).**
-- **One-line unions at the Epic 9 merge:** `Prohibited` `COVEREDTYPES`, `Router` UrlMap tail, `Wire*` navigation literals, `app.spec.ts` sign-out legs.
+**Residual risks.** The full browser suite was not run locally (Rule 29); CI's next `browser` job is the confirmation. The earlier deferred items stand unchanged.
