@@ -2,14 +2,22 @@
 title: 'Story 11.8: The proposal names the privilege it needs'
 type: 'feature'
 created: '2026-09-25'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '773d0522cba127c8c3c42f0cf9db76ac253630b2'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-11-context.md'
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A live card's privilege line is refreshed only while its turn is still polling; after the turn ends, a revocation shows no warning until a conversation restore.
+    evidence: |-
+      pollUntilTerminal (ui/src/app/core/turn.ts) stops at the turn's terminal state, and the turn usually completes right after the proposal, so the line keeps its last "held" answer while the card stays live. Confirm still refuses with AUTH.NOPRIVILEGE naming the pair. Closing it means re-reading live proposals after turn end, a change to the contended turn.ts / panel.ts polling.
+    location: >-
+      ui/src/app/core/turn.ts pollUntilTerminal
+    severity: medium
 ---
 
 <intent-contract>
@@ -207,6 +215,26 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-25 — Review pass
+
+- verdicts: 15 findings — high 0, medium 1, low 8, false 6, maybe-false 0
+- findings:
+  - `[low]` `[patch]` Over-long set branch of `Mint.RecordedPairs` unpinned — added `Test/PrivilegeMintProbe` (store column MAXLEN 8) and leg (e) asserting `""`; mutation recorded.
+  - `[low]` `[reject]` The fault logged for an unrecorded set is never asserted — `LogRaw` writes a console line only; pinning it needs a new fault seam on `Mint` (added surface) for a diagnostic users never see.
+  - `[false]` `[reject]` AC4 has no pinning test or mutation line — AC4 is a recorded omission with no code; there is nothing to falsify.
+  - `[low]` `[reject]` AC5 has no mutation line — its pins (prompt pins, `TurnWire`, stream-reply (e)) are pre-existing and unedited; streamed and plain share `WireRow` and `parseProposals`, so no story-specific mutation separates them.
+  - `[low]` `[patch]` Leg (d)'s malformed case never read back its seeded set — added an `AssertEquals` on the stored `RequiredPairs` per case.
+  - `[false]` `[reject]` The spec's closing run record still read "ready-for-dev" — finalize writes it; the section was not stale at close.
+  - `[low]` `[patch]` `ProposalPrivilege` header said it "mints without writing to the instance" — header now names the proposal rows and fault lines it writes.
+  - `[false]` `[reject]` `WireRow` calls `CheckUserPermission` per pair per row — the intent requires evaluation at every serialization; a few pairs per row.
+  - `[medium]` `[defer]` A revocation after the turn ends shows no warning until restore — the intent's mechanism (every serialization) is met; the client stops re-reading when the turn ends, pre-existing polling in contended files. Deferred (frontmatter).
+  - `[low]` `[patch]` Argument pairs were pinned at `RequiredPairsOf`, not on the recording path — leg (e) now asserts `RecordedPairs` for `ErrorDelete` carries `LogSourcePort.PairsFor`'s pairs; mutation recorded.
+  - `[low]` `[patch]` Over-long and fault halves of "nothing recorded" untested — same root as the first row; over-long half patched there, fault half rejected with the second row.
+  - `[false]` `[reject]` "Held"/"missing" proven on the instance only through `%All` and the holder probe — browser (b) drives the real `CheckUserPermission` on `ocupilot-ci`, as the intent constrains.
+  - `[false]` `[reject]` No evidence stream-reply (e) ran — it ran green against the redeployed bundle in this stage (12/12 with the two other specs).
+  - `[low]` `[reject]` Reusing the runs-as class makes bare-class selectors hit the privilege line — the intent requires that class; the only affected selector (`proposal-card.browser-spec.mjs`) was scoped, and the two component specs' fixtures carry no privilege.
+  - `[false]` `[reject]` Changes outside the listed surface (EXPERIENCE.md, per-row evaluation) — both are the spec's own tasks and intent.
+
 ## Design Notes
 
 **Governing ADs.**
@@ -298,17 +326,46 @@ AC4 names this as an omission, not a defect.
 
 **Pinning mutations (Rule 19).** Recompile the whole package, or rebuild and redeploy, before reading each one. Revert, and confirm `git status --short` is unchanged.
 
-- `Mint` records `""` always → `ProposalPrivilege` (a) goes red, and browser (a) goes red.
-- `RequiredPairsOf` drops the argument half → `ProposalPrivilege` (b) goes red (the `ErrorDelete` leg).
-- `Disclosure.Privilege` answers `missing` `""` always → `ProposalPrivilege` (c) goes red, and browser (b) goes red.
-- `WireRow` omits `privilege` → `ProposalWire` goes red.
-- `toCardView` omits `privilege` → `proposal-privilege.test.mjs` goes red, and browser (a) goes red.
-- `confirmAriaDisabled` answers `'true'` when a pair is missing → `proposal-card-privilege.spec.ts` goes red, and browser (b) goes red.
-- The held sentence gains "sufficient" → the wording case in `proposal-privilege.test.mjs` goes red.
+- mutation: `Mint` records `""` always → `ProposalPrivilege.TestAMintRecordsTheGatesPairsAndTheWireCarriesThem` red (run 12137); browser (a) and (b) red (no `[data-slot="privilege"]`).
+- mutation: `RequiredPairsOf` drops the argument half → `ProposalPrivilege.TestTheSetCarriesExtraAndArgumentPairs` red on the `ErrorDelete` leg (`%DB_HSCUSTOM:READ`, `%DB_HSCUSTOM:WRITE`; run 12138).
+- mutation: `Disclosure.Privilege` answers `missing` `""` always → `ProposalPrivilege.TestMissingNamesTheFirstPairNotHeld` red (run 12139); browser (b) red (no warning within 5 s), (a) green.
+- mutation: `WireRow` omits `privilege` → `ProposalWire.TestTheWireRowCarriesTheTripleTheDiffAndTheState` red (run 12140).
+- mutation: `toCardView` omits `privilege` → `proposal-privilege.test.mjs` "toCardView carries the privilege line" red; rebuilt and redeployed, browser (a) and (b) red.
+- mutation: `confirmAriaDisabled` answers `'true'` when a pair is missing → `proposal-card-privilege.spec.ts` "leaves Confirm enabled when a pair is missing" red; rebuilt and redeployed, browser (b) red ("and Confirm is still offered"), (a) green.
+- mutation: the held sentence gains "sufficient" → `proposal-privilege.test.mjs` wording case red (with the held-line and `toCardView` cases).
+- mutation: `RecordedPairs`' length check never fires → `ProposalPrivilege.TestAnUnresolvedOrOverlongSetRecordsNone` red ("a set longer than the column records none"; run 12399).
+- mutation: `RecordedPairs` passes `"{}"` instead of the stored arguments → the same test red on `%DB_HSCUSTOM:READ` and `:WRITE` (run 12400).
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only; nothing implemented. Carriage decision: the proposal records the pair set its write's gate resolves at mint, and the wire row adds the first pair the owner lacks, evaluated by Confirm's own check at each read. Two AC wordings are proposed for the lead's Rule 5 correction, and an AD-8 sentence for Rule 20 (Design Notes). AC4 (row actions, Save bars) is a recorded omission.
+**Change.** A mint records the pair set its write's gate resolves (`Operation.RequiredPairsOf`, extracted from `Gate`) in `Propose.RequiredPairs`. `WireRow` adds `privilege: {requires, missing}`, with `missing` from `MissingPair` at each read, or `null`. The card renders the held caption or the warning above the runs-as caption while the buttons show. Confirm is untouched.
+
+**Files.**
+
+- Server: `Operation.cls` (extraction), `Mint.cls` (`RecordedPairs`), `Propose.cls` (column, store, wire), `Disclosure.cls` (`Privilege`), `Test/ProposalWire.cls` (`WIREKEYS`); new `Test/ProposalPrivilege.cls`, `Test/PrivilegeHolderProbe.cls`, `Test/PrivilegeMintProbe.cls`.
+- Client: `turn.ts` (parse), `proposal-view.ts` (`privilegeLine`, `toCardView`), `proposal-card.ts` (the line), `strings.ts` (two strings; the `:1949` citation to 555); new `proposal-privilege.test.mjs`, `proposal-card-privilege.spec.ts`, `browser/proposal-privilege.browser-spec.mjs`; parse cases in `turn.test.mjs`; `proposal-card.browser-spec.mjs` runs-as selector scoped with `:not([data-slot])`.
+- Docs: EXPERIENCE.md row 514 and the footer sentence.
+
+**Review.** 15 findings: 5 patched (all low), 1 deferred (medium, frontmatter), 9 rejected with reasons in the triage log. Follow-up review: false, since no high or medium was patched.
+
+**Verification** (all on `ocupilot-ci`, one class per runner call):
+
+- `check-objectscript.py` 0 problems; `lint-docs.sh` 0 issues; `load.sh` LOADRESULT=OK, ERRCOUNT=0.
+- Full ObjectScript sweep, once: 254 ran, 13 refused (arming), 1 known residue (`WireSecurityRead` task history); 2,076 tests, 0 overlaps.
+- Story classes green: `ProposalPrivilege` 5/5 after the patches (run 12401), `ProposalWire`, `ProposalConfirm`, `Proposal`, `ConfirmRoute`, `DeviceWriteGate`, `ToolEmit`, `TurnWire`, `TurnStream`. `ProposalMint` is a Mint subclass, not a test class; `ErrorDelete` refuses (arming).
+- `npm run test:tools` 1432 pass; `npm run test:components` 1252 pass.
+- Browser, against the redeployed bundle: `proposal-privilege`, `proposal-card` and `stream-reply` 12/12, leg (e) unedited and green.
+- `smoke.sh --container ocupilot-ci` 49/49 passed.
+- Bundle initial total 1.60 MB (1,595,771 bytes), under the 1670 kB warning.
+- Every Rule 19 mutation went red and was reverted byte-identical (see `## Verification`).
+
+**Residual risk.** The deferred item: after a turn ends, the line is not refreshed until a restore. Suite mints of unregistered probe tools now log one fault line each.
+
+**footprint_extensions:**
+
+- Contended, beside Epic 12's hunks: `ui/src/app/core/turn.ts`, `ui/src/app/core/proposal-view.ts`, `ui/src/app/core/strings.ts` (shared-append plus the `:1949` citation; a one-line merge conflict is expected).
+- Shared-append: EXPERIENCE.md (one row, one in-place sentence).
+- Outside Epic 11's footprint: `Kernel/Proposal/Operation.cls`, `Mint.cls`, `Disclosure.cls`, `Kernel/State/Propose.cls`, `Test/ProposalWire.cls`, `ui/browser/proposal-card.browser-spec.mjs` (one selector).

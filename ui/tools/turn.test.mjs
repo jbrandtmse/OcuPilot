@@ -1756,3 +1756,36 @@ for (const ending of ['completed', 'failed', 'stopped']) {
     assert.equal(streamedText(turn.entries().at(-1)), null, `and once the turn ends ${ending} there is none`);
   });
 }
+
+// --- Story 11.8: the proposal's privilege line -------------------------------------------------
+
+const { parseProposals: parsePrivilegeProposals } = await import(corePath('turn.ts'));
+
+/** The `privilege` a wire row carrying `privilege` parses to. */
+function parsedPrivilege(privilege) {
+  const row = wireProposal();
+  if (privilege !== undefined) row.privilege = privilege;
+  const [proposal] = parsePrivilegeProposals([row]);
+  return proposal.privilege;
+}
+
+test('parseProposal carries a well-formed privilege as the instance sent it', () => {
+  assert.deepEqual(parsedPrivilege({ requires: ['%Admin_Secure:USE', '%DB_IRISSYS:READ'], missing: '' }), {
+    requires: ['%Admin_Secure:USE', '%DB_IRISSYS:READ'],
+    missing: '',
+  });
+  assert.deepEqual(parsedPrivilege({ requires: ['%Admin_Secure:USE'], missing: '%Admin_Secure:USE' }), {
+    requires: ['%Admin_Secure:USE'],
+    missing: '%Admin_Secure:USE',
+  });
+});
+
+test('parseProposal reads an absent, null or malformed privilege as null', () => {
+  assert.equal(parsedPrivilege(undefined), null, 'absent');
+  assert.equal(parsedPrivilege(null), null, 'null');
+  assert.equal(parsedPrivilege({ requires: '%Admin_Secure:USE', missing: '' }), null, 'requires not an array');
+  assert.equal(parsedPrivilege({ requires: [], missing: '' }), null, 'requires empty');
+  assert.equal(parsedPrivilege({ requires: ['%Admin_Secure:USE', 7], missing: '' }), null, 'a non-string member');
+  assert.equal(parsedPrivilege({ requires: ['%Admin_Secure:USE'], missing: null }), null, 'missing not a string');
+  assert.equal(parsedPrivilege({ requires: ['%Admin_Secure:USE'] }), null, 'missing absent');
+});

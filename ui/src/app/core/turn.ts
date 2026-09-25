@@ -241,6 +241,22 @@ export interface TurnProposal {
    * A code, not a sentence: the card resolves it to the published string (`consequenceSentence`).
    */
   readonly consequence: string;
+  /**
+   * The pairs the write's own gate requires and the first one the signed-in user does not hold
+   * (AD-8), as the instance evaluated them at this read; `null` when the proposal recorded none.
+   * Optional so a literal built before it existed still compiles.
+   */
+  readonly privilege?: TurnProposalPrivilege | null;
+}
+
+/**
+ * A proposal's privilege line as the wire carries it: every `resource:permission` pair the write's
+ * gate requires, in order, and the first the user lacks, or `''` when every one is held. Both are
+ * the instance's own answers; the client derives neither.
+ */
+export interface TurnProposalPrivilege {
+  readonly requires: readonly string[];
+  readonly missing: string;
 }
 
 /**
@@ -519,7 +535,23 @@ function parseProposal(value: unknown): TurnProposal | null {
     auditWarning: boolAt(row, 'auditWarning'),
     destructive: boolAt(row, 'destructive'),
     consequence: textAt(row, 'consequence'),
+    privilege: parseProposalPrivilege(row['privilege']),
   };
+}
+
+/**
+ * A wire `privilege` object, or `null` unless `requires` is a non-empty array of strings and
+ * `missing` is a string.
+ */
+function parseProposalPrivilege(value: unknown): TurnProposalPrivilege | null {
+  const row = asRecord(value);
+  if (row === null) return null;
+  const requires = row['requires'];
+  const missing = row['missing'];
+  if (!Array.isArray(requires) || requires.length === 0) return null;
+  if (!requires.every((pair): pair is string => typeof pair === 'string')) return null;
+  if (typeof missing !== 'string') return null;
+  return { requires: [...requires], missing };
 }
 
 export function parseProposals(value: unknown): TurnProposal[] {

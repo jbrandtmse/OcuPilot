@@ -236,6 +236,10 @@ export const STRINGS = {
   privilegeDeniedScreen: 'You need <resource> to open <screen>.',
   /** EXPERIENCE.md:296 */
   privilegeDeniedAction: 'You need <resource> to <action>.',
+  /** EXPERIENCE.md:514 */
+  privilegeProposalHeld: 'Requires <resources>, which you hold.',
+  /** EXPERIENCE.md:514 */
+  privilegeProposalMissing: 'Requires <resources>. You don\'t hold <resource>.',
   /** EXPERIENCE.md:297 */
   navPrivilegeMapUnread: 'Your privileges couldn\'t be read, so screens you can\'t open may be listed. Retry to check again.',
   /** EXPERIENCE.md:298 */
@@ -1946,7 +1950,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:554 */
+  /** EXPERIENCE.md:555 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
