@@ -203,7 +203,13 @@ services:
       # classes: ToolWire, TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire
       # classes: WebAppWire
       # classes: UserCreateWire, RoleWire, ResourceWire, X509Wire, WalletWire, DeviceWire, DeviceWriteGate
+      # classes: UserSave, UserSignIn, WebAppSave, WebAppWeakening
       # classes: TurnWireFixture, UnexpireScope, UserUpdate, Version, Wire, WireOAuthRead, WireSecurityRead
+      # classes: RoleSave, RoleUpdate
+      # classes: SslWire
+      # classes: TaskWire
+      # classes: ServiceEdit, LdapEdit, ServiceLdapProbe
+      # classes: AuditEventEditor
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -219,6 +225,7 @@ services:
       # auditing it. AuditMarker deletes the AgentWrite triple for the same reason and creates a
       # web application to write to, so it declares OCUPILOT_ALLOW_PRINCIPALS as well.
       # classes: AuditEvent, AuditMarker, UninstallSurvival
+      # classes: AuditEventEditor
       OCUPILOT_ALLOW_AUDIT_EVENTS: "1"
       # Runs OcuPilot's PRODUCTION install. A production install is not one side effect but a
       # whole set of them -- a database, a resource, a role, three web applications, the audit
@@ -235,8 +242,12 @@ services:
       # Runs the installer's EnsureSslConfiguration step under the probe profile and so creates
       # -- and leaves -- a TLS configuration in the instance's own security database. Same
       # reasoning as the blocks above: a runner pointed at an instance someone cares about would
-      # otherwise add a security object to it.
+      # otherwise add a security object to it. The demo fixture's classes create and remove its
+      # TLS configuration, X.509 credential and wallet collection, and the SSL/TLS editor's
+      # classes create and delete probe configurations by exact name, for the same reason.
       # classes: ProviderSsl
+      # classes: Demo, DemoFaults, FixtureNamespace, SslSave, SslSecret, SslTest
+      # classes: SslWire
       OCUPILOT_ALLOW_SSL_CONFIG: "1"
       # Turns the instance's own auditing OFF and back on through the shipped confirm path, which
       # is the widest effect any class here has: while it is off nothing on this instance is
@@ -258,8 +269,12 @@ services:
       # Creates a task in this instance's Task Manager and resumes it. Same reasoning as the
       # block above, one degree narrower: the effect is a task that runs where nobody scheduled
       # one. OcuPilot.Test.TaskResume shipped in Story 5.11 without a guard (DW-1458); this is
-      # that guard's home.
+      # that guard's home. The New Task wizard's classes create probe tasks and delete each by
+      # id once its exact name reads back. Edit task's classes edit and run their own probe tasks,
+      # never a vendor task.
       # classes: TaskResume
+      # classes: TaskCreate, TaskRules, TaskSave, TaskWire
+      # classes: TaskUpdate, TaskEdit
       OCUPILOT_ALLOW_TASK_CONTROL: "1"
       # Deletes REAL application errors from a namespace's own ^ERRORS through the shipped confirm
       # path. One degree worse than OCUPILOT_ALLOW_ERROR_SEED above, which can only add: a deleted
@@ -269,6 +284,14 @@ services:
       # OCUPILOT_ALLOW_ERROR_SEED as well, because it seeds through that class's own guarded helper.
       # classes: ErrorDelete
       OCUPILOT_ALLOW_ERROR_DELETE: "1"
+      # Writes a service and LDAP configurations in this instance's own security database through
+      # the shipped Save and confirm paths. The service classes write only %Service_CallIn, which is
+      # disabled, and restore the snapshot they took; they refuse outright where it is enabled. The
+      # LDAP classes create ocup99* configurations and delete each once its exact name reads back.
+      # The service OcuPilot is served through is never written: its legs mint only, or save
+      # through a port that records a PUT and never sends it.
+      # classes: ServiceEdit, LdapEdit, LdapUpdate, ServiceLdapProbe
+      OCUPILOT_ALLOW_SERVICE_CONFIG: "1"
       # Arms the turnprobe provider row OcuPilot.Kernel.Provider.Catalog resolves only under it,
       # and with it the classes that spawn turn jobs or Test connection children against that row's
       # scripted adapter. Either is a separate process no in-process stub reaches, so the row is

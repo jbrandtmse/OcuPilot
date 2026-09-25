@@ -11,8 +11,9 @@ Class OcuPilot.Test.EntityRef Extends %UnitTest.TestCase
 /// ones testing an undeclared one, and one <parameter>OcuPilot.Kernel.EntityRef.IDRULES</parameter>
 /// declares no rule for, so the corpus round-trips verbatim. <code>task</code> held this place
 /// until Story 5.11 gave it the <code>integer</code> rule, <code>role</code> until Story 8.3 gave it
-/// <code>foldcase</code>, and <code>resource</code> until Story 8.4 did.</p>
-Parameter KNOWNTYPE = "service";
+/// <code>foldcase</code>, <code>resource</code> until Story 8.4 did, and <code>service</code> until
+/// Story 9.9 did.</p>
+Parameter KNOWNTYPE = "database";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -235,7 +236,7 @@ Method TestTheIdRuleTableIsDeclaredAndIsWhatNormalizationApplies()
 
     ; Story 5.11's rule: a task is addressed by the vendor's integer id, which the model supplies as
     ; a string, so every spelling of one number is one key. A value the rule cannot read as an
-    ; integer is answered verbatim, as a type with no rule is.
+    ; integer is folded to lower case: a task create's target is the name (Story 9.7).
     Do $$$AssertTrue($ListFind(tRuled, "task") > 0, "the task pair is the one Story 5.11 added")
     For tSpelling = "7", "007", "+7", " 7 ", "0000007" {
         Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("task", tSpelling), "7", "'" _ tSpelling _ "' folds to its plain decimal spelling")
@@ -246,8 +247,9 @@ Method TestTheIdRuleTableIsDeclaredAndIsWhatNormalizationApplies()
     ; The same corpus the client twin folds and refuses (ui/tools/entity-ref.test.mjs): a rule whose
     ; point is that two languages agree is only pinned where both sides answer the same inputs.
     For tVerbatim = "7.0", "abc", "7a", "0x7", "1 2" {
-        Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("task", tVerbatim), tVerbatim, "'" _ tVerbatim _ "' is not an integer and is answered verbatim")
+        Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("task", tVerbatim), tVerbatim, "'" _ tVerbatim _ "' is not an integer and keeps its spelling")
     }
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("task", "OcuP97Nightly"), "ocup97nightly", "a task name folds to lower case, so two spellings of one name are one target (AD-13, AD-54)")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("task", ""), "", "and an empty id is answered verbatim rather than folded to a number")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#KNOWNTYPE, "/API/OcuPilot/"), "/API/OcuPilot/", "so its ids are the instance's own strings")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("role", "%All"), "%all", "while a role's fold, by Story 8.3's rule")

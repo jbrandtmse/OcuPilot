@@ -35,6 +35,7 @@ export function screenDeclaration(overrides: Partial<ScreenDeclaration> = {}): S
     rowActions: [],
     emptyStateKey: '',
     commandAliases: [],
+    suggestedPrompts: [],
     classicPage: '',
     classicLinkExemption: { exempt: false, reason: '', label: '', href: '' },
     read: null,

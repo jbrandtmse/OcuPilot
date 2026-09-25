@@ -48,8 +48,9 @@ const LISTS = {
     url: '/ocupilot/permissions/roles?ns=HSCUSTOM',
     read: `${READ_PREFIX}permissions.roles/read`,
     label: STRINGS.userColumnRoles,
-    headers: [STRINGS.tableColumnName, STRINGS.tableColumnDescription, STRINGS.roleColumnCreatedBy, STRINGS.roleColumnEscalationOnly],
-    literal: ['Name', 'Description', 'Created by', 'Escalation only'],
+    // Story 9.3: the Roles list declares Delete, so its table carries the row-actions column.
+    headers: [STRINGS.tableColumnName, STRINGS.tableColumnDescription, STRINGS.roleColumnCreatedBy, STRINGS.roleColumnEscalationOnly, STRINGS.commandBoxGroupActions],
+    literal: ['Name', 'Description', 'Created by', 'Escalation only', 'Actions'],
   },
   resources: {
     url: '/ocupilot/permissions/resources?ns=HSCUSTOM',
@@ -61,8 +62,10 @@ const LISTS = {
       STRINGS.resourceColumnPublicPermission,
       STRINGS.tableColumnType,
       STRINGS.resourceColumnDeletable,
+      // Story 9.3: the Resources list declares Delete, so its table carries the row-actions column.
+      STRINGS.commandBoxGroupActions,
     ],
-    literal: ['Name', 'Description', 'Public permission', 'Type', 'Deletable'],
+    literal: ['Name', 'Description', 'Public permission', 'Type', 'Deletable', 'Actions'],
   },
   services: {
     url: '/ocupilot/permissions/services?ns=HSCUSTOM',

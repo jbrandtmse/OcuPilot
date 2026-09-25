@@ -141,6 +141,27 @@ Method TestOcuPilotsOwnResourcesAreRefusedAtTheWrite()
     }
 }
 
+/// <p>AD-53 (Story 9.3, DW-1528): the Resources list's Delete is this tool's screen action, and the
+/// screen path, which never asks the mint's
+/// <method>OcuPilot.Screen.Tool.ResourceDelete.ArgumentProblem</method>, refuses a resource whose
+/// list row reads not deletable with the bare published sentence the row draws before a click.
+/// OcuPilot's own database resource reads deletable, so its Delete reaches the set, which refuses it
+/// (<method>TestOcuPilotsOwnResourcesAreRefusedAtTheWrite</method>).</p>
+/// <p>Mutation (Rule 19): drop the refusal from
+/// <method>OcuPilot.Screen.Tool.ResourceDelete.ScreenActionDelta</method> -- the %DB_IRISSYS leg
+/// goes red.</p>
+Method TestTheScreenDeleteRefusesASystemResourceWithThePublishedSentence()
+{
+    Do $$$AssertEquals($ListToString($ClassMethod(..#TOOL, "ScreenActionIds")), "delete", "the tool carries the Resources list's Delete")
+    For tCase = $ListBuild("%DB_IRISSYS", ##class(OcuPilot.Api.Error).#REASONRESOURCENAMESYSTEM), $ListBuild("%DB_OCUPILOT", "") {
+        Set tValues = {}
+        Do tValues.%Set($ClassMethod(..#TOOL, "IdArgument"), $List(tCase, 1), "string")
+        Set tSC = $ClassMethod(..#TOOL, "ScreenActionDelta", "delete", tValues, ##class(%DynamicObject).%FromJSON(..ResourceJson()), .tArgs, .tProblem)
+        Do $$$AssertStatusOK(tSC, $List(tCase, 1) _ ": the delta answers")
+        Do $$$AssertEquals(tProblem, $List(tCase, 2), $List(tCase, 1) _ ": " _ $Select($List(tCase, 2) = "": "reaches the set", 1: "refused with the sentence the row draws"))
+    }
+}
+
 /// <p>AD-51: the card's rows are one removal row per subject field, and a confirm after the public
 /// permission moved is refused <code>PROPOSAL.TARGETCHANGED</code> with nothing written.</p>
 /// <p>Mutation: take <code>PublicPermission</code> out of

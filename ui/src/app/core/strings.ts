@@ -177,7 +177,7 @@ export const STRINGS = {
   agentTurnStoppedNoStepBanner: 'The turn stopped: <reason>.',
   /** EXPERIENCE.md:281 */
   agentTurnLockBanner: 'A turn is in progress. Wait for it to finish before sending another message.',
-  /** EXPERIENCE.md:467 */
+  /** EXPERIENCE.md:500 */
   agentJumpToLatest: 'Jump to latest',
   // Story 4.5's four: from the tool-call-card Component Patterns row (:378) and the panel's
   // Busy and header rows (:424, :511), each authorized by its own targeted extractor in
@@ -1679,11 +1679,501 @@ export const STRINGS = {
   actionApply: 'Apply',
   /** EXPERIENCE.md:463 */
   auditSqlWizardStopped: 'Not every change was applied. The list shows each event as it is now.',
+  /** EXPERIENCE.md:467 */
+  userRefusalServiceAccountSignIn:
+    'The instance\'s own services sign in as this account. A new password or a required password change would stop them, OcuPilot included.',
+  /** EXPERIENCE.md:468 */
+  userFieldComment: 'Comment',
+  /** EXPERIENCE.md:468 */
+  userFieldPasswordNeverExpires: 'Password never expires',
+  /** EXPERIENCE.md:468 */
+  userFieldAccountNeverExpires: 'Account never expires',
+  /** EXPERIENCE.md:468 */
+  userFieldEmail: 'Email address',
+  /** EXPERIENCE.md:468 */
+  userFieldPhoneProvider: 'Mobile phone service provider',
+  /** EXPERIENCE.md:468 */
+  userFieldPhoneNumber: 'Mobile phone number',
+  /** EXPERIENCE.md:468 */
+  userFieldTwoFactor: 'Two-factor authentication',
+  /** EXPERIENCE.md:468 */
+  userFieldTwoFactorSms: 'SMS text',
+  /** EXPERIENCE.md:468 */
+  userFieldTwoFactorTotp: 'Time-based one-time password',
+  /** EXPERIENCE.md:468 */
+  userFieldShowQrCode: 'Show the QR code at next sign-in',
+  /** EXPERIENCE.md:468 */
+  userRolesEmpty: 'This account holds no roles.',
+  /** EXPERIENCE.md:469 */
+  formTabErrorOne: '<tab>, 1 error',
+  /** EXPERIENCE.md:469 */
+  formTabErrorMany: '<tab>, <n> errors',
+  /** EXPERIENCE.md:470 */
+  userPromptGroupSignIn: 'Sign-in',
+  /** EXPERIENCE.md:470 */
+  userPromptGroupAccess: 'Access',
+  /** EXPERIENCE.md:470 */
+  userPromptSignIn: 'Why can this user not sign in?',
+  /** EXPERIENCE.md:470 */
+  userPromptPrivilege: 'Which of this user\'s roles grant %All or an administrative privilege?',
+  /** EXPERIENCE.md:470 */
+  userPromptTwoFactor: 'Turn on two-factor sign-in for this user.',
 
   // Story 15.6: the account menu's theme toggle.
   /** EXPERIENCE.md:464 */
   accountDarkTheme: 'Dark theme',
 
+  // Story 9.2: the web application editor. Its title, General and Application roles tabs, and every
+  // other label it draws reuse keys that already exist.
+  /** EXPERIENCE.md:471 */
+  webAppFieldDefaultApplication: 'Namespace default application',
+  /** EXPERIENCE.md:471 */
+  webAppFieldPackage: 'Package name',
+  /** EXPERIENCE.md:471 */
+  webAppFieldSuperClass: 'Default superclass',
+  /** EXPERIENCE.md:471 */
+  webAppFieldGroupById: 'Group by ID',
+  /** EXPERIENCE.md:471 */
+  webAppFieldTimeout: 'Session timeout (seconds)',
+  /** EXPERIENCE.md:471 */
+  webAppFieldJwt: 'JWT authentication',
+  /** EXPERIENCE.md:471 */
+  webAppFieldJwtAccessTimeout: 'JWT access token timeout (seconds)',
+  /** EXPERIENCE.md:471 */
+  webAppFieldJwtRefreshTimeout: 'JWT refresh token timeout (seconds)',
+  /** EXPERIENCE.md:471 */
+  webAppFieldLockCspName: 'Lock CSP name',
+  /** EXPERIENCE.md:471 */
+  webAppFieldAutoCompile: 'Automatic compilation',
+  /** EXPERIENCE.md:471 */
+  webAppFieldServeFiles: 'Serve files',
+  /** EXPERIENCE.md:471 */
+  webAppFieldServeFilesTimeout: 'Serve files timeout (seconds)',
+  /** EXPERIENCE.md:471 */
+  webAppFieldPath: 'Physical path',
+  /** EXPERIENCE.md:471 */
+  webAppTabMatchingRoles: 'Matching roles',
+  /** EXPERIENCE.md:471 */
+  webAppTabCors: 'Cross-origin settings',
+  /** EXPERIENCE.md:471 */
+  webAppFieldCorsAllowlist: 'Allowed origins',
+  /** EXPERIENCE.md:471 */
+  webAppFieldCorsCredentials: 'Allow credentials',
+  /** EXPERIENCE.md:471 */
+  webAppFieldCorsHeaders: 'Allowed headers',
+  /** EXPERIENCE.md:471 */
+  webAppCorsListCaption: 'One entry per line.',
+  /** EXPERIENCE.md:471 */
+  webAppFieldMatchRole: 'Matching role',
+  /** EXPERIENCE.md:471 */
+  webAppRoleAssign: 'Assign',
+  /** EXPERIENCE.md:471 */
+  webAppApplicationRolesEmpty: 'This application grants no application roles.',
+  /** EXPERIENCE.md:471 */
+  webAppMatchingRolesEmpty: 'This application grants no matching roles.',
+  /** EXPERIENCE.md:472 */
+  webAppEditorFixedFields: 'Where this application\'s files live is set when it is created.',
+  /** EXPERIENCE.md:473 */
+  webAppNoResourceEffect: 'No resource guards this application now, so anyone who can sign in can use it.',
+  /** EXPERIENCE.md:474 */
+  webAppRepointedEffect: 'A different class now answers this address.',
+  /** EXPERIENCE.md:475 */
+  webAppPrivilegeGrantRefusal:
+    'OcuPilot\'s own web applications carry only the roles its installer gives them. A role set there would run every OcuPilot request with it.',
+  /** EXPERIENCE.md:476 */
+  agentCredTypeUnavailable:
+    'The credential store is not available in this namespace. Read the key from an environment variable instead.',
+  /** EXPERIENCE.md:477 */
+  webAppPromptGroupCode: 'Code',
+  /** EXPERIENCE.md:477 */
+  webAppPromptAccess: 'Who can use this web application, and what does it grant them?',
+  /** EXPERIENCE.md:477 */
+  webAppPromptUnauthenticated: 'Is this web application reachable without signing in?',
+  /** EXPERIENCE.md:477 */
+  webAppPromptCode: 'Which code answers at this web application\'s address?',
+
+  // Story 9.3: the role editor, the role and resource deletes, and their refusals.
+  /** EXPERIENCE.md:478 */
+  roleEditorTabMembers: 'Members',
+  /** EXPERIENCE.md:478 */
+  roleEditorTabAssignedTo: 'Assigned to',
+  /** EXPERIENCE.md:478 */
+  roleMemberTypeUser: 'Account',
+  /** EXPERIENCE.md:478 */
+  roleMemberTypeEscalation: 'Account (escalation)',
+  /** EXPERIENCE.md:478 */
+  roleMembersEmpty: 'No account or role holds this role.',
+  /** EXPERIENCE.md:478 */
+  roleAssignedToEmpty: 'This role carries no other role.',
+  /** EXPERIENCE.md:479 */
+  roleDeleteConsequence: 'Deleting this role takes it from every account and role that holds it. This cannot be undone.',
+  /** EXPERIENCE.md:479 */
+  roleDeleteHolders: '<n> users hold this role.',
+  /** EXPERIENCE.md:479 */
+  roleDeleteHoldersOne: '1 user holds this role.',
+  /** EXPERIENCE.md:479 */
+  roleDeleteHoldersNone: 'No user holds this role.',
+  /** EXPERIENCE.md:479 */
+  resourceDeleteConsequence: 'Every role that grants this resource loses it. This cannot be undone.',
+  /** EXPERIENCE.md:480 */
+  roleRefusalSystem: 'A name beginning with % belongs to one of the instance\'s own roles.',
+  /** EXPERIENCE.md:480 */
+  resourceRefusalSystem: 'This is a system resource. IRIS does not allow it to be deleted.',
+  /** EXPERIENCE.md:481 */
+  uncoveredFieldRefusal: 'Only some of this kind of object\'s settings can be changed here, and that is not one of them.',
+  /** EXPERIENCE.md:481 */
+  roleRefusalOcuPilot:
+    'This role belongs to OcuPilot, which stops working without what it grants. Only OcuPilot\'s installer changes or removes it.',
+  /** EXPERIENCE.md:481 */
+  resourceRefusalOcuPilot:
+    'This resource guards OcuPilot\'s own data or administration. It cannot be deleted or opened to every user; only OcuPilot\'s installer changes it.',
+  /** EXPERIENCE.md:482 */
+  rolePromptHolders: 'Who holds this role, and what does it grant them?',
+  /** EXPERIENCE.md:482 */
+  rolePromptPrivilege: 'Does this role grant any administrative privilege?',
+  /** EXPERIENCE.md:482 */
+  rolePromptGrantedRoles: 'Which other roles does this role carry?',
+  /** EXPERIENCE.md:483 */
+  sslFormLabel: 'SSL/TLS configuration',
+  /** EXPERIENCE.md:483 */
+  sslTabVerification: 'Verification',
+  /** EXPERIENCE.md:483 */
+  sslTabCredentials: 'Credentials',
+  /** EXPERIENCE.md:483 */
+  sslTabCryptography: 'Cryptographic settings',
+  /** EXPERIENCE.md:483 */
+  sslTabOcsp: 'OCSP settings',
+  /** EXPERIENCE.md:483 */
+  sslTypeClient: 'Client',
+  /** EXPERIENCE.md:483 */
+  sslFieldVerifyPeer: 'Peer certificate verification',
+  /** EXPERIENCE.md:483 */
+  sslVerifyPeerNone: 'None',
+  /** EXPERIENCE.md:483 */
+  sslVerifyPeerRequest: 'Request',
+  /** EXPERIENCE.md:483 */
+  sslVerifyPeerRequire: 'Require',
+  /** EXPERIENCE.md:483 */
+  sslFieldVerifyDepth: 'Verification depth',
+  /** EXPERIENCE.md:483 */
+  sslCaFileOsStore: 'The operating system\'s certificate store',
+  /** EXPERIENCE.md:483 */
+  sslFieldCaPath: 'Trusted CA directory',
+  /** EXPERIENCE.md:483 */
+  sslFieldAuthorizeCn: 'Pre-authorize the mirror backup member',
+  /** EXPERIENCE.md:483 */
+  sslFieldCertificateFile: 'Certificate file',
+  /** EXPERIENCE.md:483 */
+  sslFieldPrivateKeyFile: 'Private key file',
+  /** EXPERIENCE.md:483 */
+  sslFieldPrivateKeyType: 'Private key type',
+  /** EXPERIENCE.md:483 */
+  sslKeyTypeRsa: 'RSA',
+  /** EXPERIENCE.md:483 */
+  sslKeyTypeEcdsa: 'ECDSA',
+  /** EXPERIENCE.md:483 */
+  sslKeyTypeDsa: 'DSA',
+  /** EXPERIENCE.md:483 */
+  sslFieldTlsMin: 'Minimum TLS version',
+  /** EXPERIENCE.md:483 */
+  sslFieldTlsMax: 'Maximum TLS version',
+  /** EXPERIENCE.md:483 */
+  sslTls10: 'TLS 1.0',
+  /** EXPERIENCE.md:483 */
+  sslTls11: 'TLS 1.1',
+  /** EXPERIENCE.md:483 */
+  sslTls12: 'TLS 1.2',
+  /** EXPERIENCE.md:483 */
+  sslTls13: 'TLS 1.3',
+  /** EXPERIENCE.md:483 */
+  sslFieldCipherList: 'TLS 1.2 cipher list',
+  /** EXPERIENCE.md:483 */
+  sslFieldCiphersuites: 'TLS 1.3 cipher suites',
+  /** EXPERIENCE.md:483 */
+  sslFieldDiffieHellmanBits: 'Diffie-Hellman bits',
+  /** EXPERIENCE.md:483 */
+  sslFieldOcsp: 'OCSP stapling',
+  /** EXPERIENCE.md:483 */
+  sslFieldOcspIssuerCert: 'OCSP issuer certificate file',
+  /** EXPERIENCE.md:483 */
+  sslFieldOcspResponseFile: 'OCSP response file',
+  /** EXPERIENCE.md:483 */
+  sslFieldOcspTimeout: 'OCSP update timeout (seconds)',
+  /** EXPERIENCE.md:483 */
+  sslFieldOcspUrl: 'OCSP responder URL',
+  /** EXPERIENCE.md:484 */
+  sslOwnRole:
+    'OcuPilot\'s agent makes every call to its model provider through this configuration. OcuPilot\'s installer sets its type, peer verification, trusted certificates and whether it is enabled, and restores them at every start.',
+  /** EXPERIENCE.md:485 */
+  sslRefusalOcuPilot:
+    'OcuPilot\'s installer sets this setting of its own provider configuration and restores it at every start, so it cannot be changed here.',
+  /** EXPERIENCE.md:486 */
+  sslFileClassicOnly:
+    'File locations are set on the classic portal\'s SSL/TLS Configuration page.',
+  /** EXPERIENCE.md:486 */
+  sslCrlDeprecated:
+    'Certificate revocation lists are deprecated on this instance and are not set on a configuration.',
+  /** EXPERIENCE.md:487 */
+  sslEffectNoPeerCheck:
+    'The server\'s certificate will no longer be checked, so a connection can reach an impostor.',
+  /** EXPERIENCE.md:488 */
+  sslTestHost: 'Host',
+  /** EXPERIENCE.md:488 */
+  sslTestPort: 'Port',
+  /** EXPERIENCE.md:488 */
+  sslTestPassed: 'The instance connected.',
+  /** EXPERIENCE.md:488 */
+  sslTestFailed: 'The instance could not connect.',
+  /** EXPERIENCE.md:489 */
+  sslListEmptyAgent: 'create an SSL/TLS configuration for outbound HTTPS',
+  /** EXPERIENCE.md:490 */
+  x509DeleteConsequence:
+    'Anything that names this credential can no longer use it. This cannot be undone.',
+  /** EXPERIENCE.md:490 */
+  walletSecretDeleteConsequence:
+    'Anything that reads this secret by name can no longer find it. This cannot be undone.',
+  /** EXPERIENCE.md:490 */
+  sslDeleteConsequence:
+    'Anything that connects through this configuration can no longer use it. This cannot be undone.',
+  /** EXPERIENCE.md:491 */
+  faultAbsentEntityNoList: '<name> is no longer present on this instance.',
+  /** EXPERIENCE.md:492 */
+  sslPromptGroupConnections: 'Connections',
+  /** EXPERIENCE.md:492 */
+  sslPromptVerifies: 'Does this configuration check the certificate of the server it connects to?',
+  /** EXPERIENCE.md:492 */
+  sslPromptProtocols: 'Which TLS versions and ciphers does this configuration allow?',
+  /** EXPERIENCE.md:492 */
+  sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
+
+  /** EXPERIENCE.md:553 */
+  taskCreate: 'Create task',
+  /** EXPERIENCE.md:493 */
+  taskFormLabel: 'New task',
+  /** EXPERIENCE.md:493 */
+  taskStepBasics: 'Basics',
+  /** EXPERIENCE.md:493 */
+  taskStepType: 'Task type and settings',
+  /** EXPERIENCE.md:493 */
+  taskStepOptions: 'Options and notifications',
+  /** EXPERIENCE.md:493 */
+  actionNext: 'Next',
+  /** EXPERIENCE.md:493 */
+  taskFieldTaskClass: 'Task type',
+  /** EXPERIENCE.md:493 */
+  taskChooseType: 'Choose a task type',
+  /** EXPERIENCE.md:493 */
+  taskNoSettings: 'This task type has no settings.',
+  /** EXPERIENCE.md:494 */
+  taskPeriodDaily: 'Daily',
+  /** EXPERIENCE.md:494 */
+  taskPeriodWeekly: 'Weekly',
+  /** EXPERIENCE.md:494 */
+  taskPeriodMonthly: 'Monthly',
+  /** EXPERIENCE.md:494 */
+  taskPeriodMonthlySpecial: 'Monthly, on a weekday',
+  /** EXPERIENCE.md:494 */
+  taskEveryDays: 'Days between runs',
+  /** EXPERIENCE.md:494 */
+  taskEveryWeeks: 'Weeks between runs',
+  /** EXPERIENCE.md:494 */
+  taskEveryMonths: 'Months between runs',
+  /** EXPERIENCE.md:494 */
+  taskRunDays: 'Days to run on',
+  /** EXPERIENCE.md:494 */
+  taskDayOfMonth: 'Day of the month',
+  /** EXPERIENCE.md:494 */
+  taskDayOfMonthCaption: '31 runs on the last day of the month.',
+  /** EXPERIENCE.md:494 */
+  taskWeekOfMonth: 'Week of the month',
+  /** EXPERIENCE.md:494 */
+  taskDayOfWeek: 'Day of the week',
+  /** EXPERIENCE.md:494 */
+  ordinalLast: 'last',
+  /** EXPERIENCE.md:494 */
+  taskRunAfterField: 'Task to run after',
+  /** EXPERIENCE.md:494 */
+  taskRunsPerDay: 'Runs per day',
+  /** EXPERIENCE.md:494 */
+  taskFrequencyOnce: 'Once',
+  /** EXPERIENCE.md:494 */
+  taskFrequencySeveral: 'Several times',
+  /** EXPERIENCE.md:494 */
+  taskIntervalUnit: 'Interval unit',
+  /** EXPERIENCE.md:494 */
+  taskUnitMinutes: 'Minutes',
+  /** EXPERIENCE.md:494 */
+  taskUnitHours: 'Hours',
+  /** EXPERIENCE.md:494 */
+  taskUnitDays: 'Days',
+  /** EXPERIENCE.md:494 */
+  taskInterval: 'Interval',
+  /** EXPERIENCE.md:494 */
+  taskStartTime: 'Start time',
+  /** EXPERIENCE.md:494 */
+  taskEndTime: 'End time',
+  /** EXPERIENCE.md:494 */
+  taskStartDate: 'Start date',
+  /** EXPERIENCE.md:494 */
+  taskEndDate: 'End date',
+  /** EXPERIENCE.md:494 */
+  taskExpires: 'A run expires if it has not started in time',
+  /** EXPERIENCE.md:495 */
+  taskRunAsCaption: 'Leave empty to run as you.',
+  /** EXPERIENCE.md:495 */
+  taskPriorityNormal: 'Normal',
+  /** EXPERIENCE.md:495 */
+  taskPriorityLow: 'Low',
+  /** EXPERIENCE.md:495 */
+  taskPriorityHigh: 'High',
+  /** EXPERIENCE.md:495 */
+  taskIsBatch: 'Run in batch mode',
+  /** EXPERIENCE.md:495 */
+  taskMirrorStatus: 'Mirror members that run it',
+  /** EXPERIENCE.md:495 */
+  taskMirrorPrimary: 'Primary',
+  /** EXPERIENCE.md:495 */
+  taskMirrorNonPrimary: 'Non-primary',
+  /** EXPERIENCE.md:495 */
+  taskOpenOutputFile: 'Write the output to a file',
+  /** EXPERIENCE.md:495 */
+  taskOutputFilename: 'Output file name',
+  /** EXPERIENCE.md:495 */
+  taskOutputFileCaption: 'One file name ending in .txt, written to the instance\'s manager directory.',
+  /** EXPERIENCE.md:495 */
+  taskOutputFileIsBinary: 'Email the output file as binary',
+  /** EXPERIENCE.md:495 */
+  taskEmailOutput: 'Email the output file on completion',
+  /** EXPERIENCE.md:495 */
+  taskSuspendOnError: 'Suspend the task if a run fails',
+  /** EXPERIENCE.md:495 */
+  taskSuspendTerminated: 'Suspend the task if a shutdown ends a run',
+  /** EXPERIENCE.md:495 */
+  taskRescheduleOnStart: 'Reschedule a pending run after a restart',
+  /** EXPERIENCE.md:495 */
+  taskEmailOnCompletion: 'Email on completion',
+  /** EXPERIENCE.md:495 */
+  taskEmailOnError: 'Email on error',
+  /** EXPERIENCE.md:495 */
+  taskEmailOnExpiration: 'Email on expiry',
+  /** EXPERIENCE.md:495 */
+  taskEmailCaption: 'Addresses separated by commas.',
+  /** EXPERIENCE.md:496 */
+  taskStepError: 'This step needs attention: <reason>',
+  /** EXPERIENCE.md:497 */
+  taskRunAsOtherEffect: 'The task will run as this account, with its privileges, not yours.',
+  /** EXPERIENCE.md:498 */
+  taskSettingClassicOnly:
+    'Only the classic portal\'s Task Scheduler Wizard sets these settings of this type: <settings>.',
+  /** EXPERIENCE.md:499 */
+  taskPromptGroupSchedule: 'Scheduling',
+  /** EXPERIENCE.md:499 */
+  taskPromptNightly: 'Create a task that purges task history every night.',
+  /** EXPERIENCE.md:499 */
+  taskPromptWeekly: 'How do I run a task on weekdays only?',
+  /** EXPERIENCE.md:499 */
+  taskPromptWhichType: 'Which task type checks database integrity?',
+  /** EXPERIENCE.md:501 */
+  taskEditFixed: 'A task\'s type and namespace are fixed once it is created. To change them, create a new task.',
+  /** EXPERIENCE.md:502 */
+  taskOutputFileClassicOnly:
+    'This task writes its output to a folder only the classic portal\'s Task Scheduler Wizard sets, so change its output file there.',
+
+  /** EXPERIENCE.md:503 */
+  serviceFormLabel: 'Service',
+  /** EXPERIENCE.md:503 */
+  serviceFieldEnabled: 'Service enabled',
+  /** EXPERIENCE.md:503 */
+  serviceFieldClientSystems: 'Allowed incoming connections',
+  /** EXPERIENCE.md:503 */
+  serviceAddressField: 'Address to allow',
+  /** EXPERIENCE.md:503 */
+  serviceAddressAdd: 'Add address',
+  /** EXPERIENCE.md:503 */
+  serviceAddressAnyCaption: 'With no address listed, any address may connect.',
+  /** EXPERIENCE.md:503 */
+  serviceAddressNoRoles: 'Enter one address. Roles for an address are set in the classic portal.',
+  /** EXPERIENCE.md:504 */
+  ldapFormLabel: 'LDAP configuration',
+  /** EXPERIENCE.md:504 */
+  ldapFieldEnabled: 'LDAP enabled',
+  /** EXPERIENCE.md:504 */
+  ldapFieldHostNames: 'Host names',
+  /** EXPERIENCE.md:504 */
+  ldapHostField: 'Host name to add',
+  /** EXPERIENCE.md:504 */
+  ldapHostAdd: 'Add host name',
+  /** EXPERIENCE.md:504 */
+  ldapHostCaption: 'One host name per entry, optionally followed by :port.',
+  /** EXPERIENCE.md:504 */
+  ldapFieldSearchUsername: 'Search username',
+  /** EXPERIENCE.md:504 */
+  ldapFieldBaseDn: 'Base DN',
+  /** EXPERIENCE.md:504 */
+  ldapFieldUniqueAttribute: 'Unique search attribute',
+  /** EXPERIENCE.md:505 */
+  serviceFormBare: 'Open a service from the Services list to change it.',
+  /** EXPERIENCE.md:505 */
+  ldapFormBare: 'Open an LDAP configuration from the LDAP / Kerberos list to change it.',
+  /** EXPERIENCE.md:505 */
+  serviceGone: 'This service no longer exists.',
+  /** EXPERIENCE.md:505 */
+  ldapGone: 'This LDAP configuration no longer exists.',
+  /** EXPERIENCE.md:506 */
+  serviceRefusalServing: 'OcuPilot is served through this service. Turning it off would cut off every user, including you.',
+  /** EXPERIENCE.md:507 */
+  serviceEffectServesOcuPilot: 'OcuPilot itself is served through this service, so a change here can cut off every user, including you.',
+  /** EXPERIENCE.md:507 */
+  serviceEffectUnauthenticated: 'Anyone who reaches this service can use it without signing in.',
+  /** EXPERIENCE.md:508 */
+  servicePromptWhoConnects: 'Which addresses may connect to this service?',
+  /** EXPERIENCE.md:508 */
+  servicePromptEnabled: 'Which services are enabled on this instance?',
+  /** EXPERIENCE.md:508 */
+  servicePromptUnauthenticated: 'Does any service allow unauthenticated access?',
+  /** EXPERIENCE.md:508 */
+  ldapPromptEnabled: 'Is this LDAP configuration enabled?',
+  /** EXPERIENCE.md:508 */
+  ldapPromptServers: 'Which LDAP servers does this configuration use?',
+  /** EXPERIENCE.md:508 */
+  ldapPromptUsers: 'How does this configuration find a user?',
+  // Story 9.10: the user audit event editor, its refusals and the User events list's prompts.
+  /** EXPERIENCE.md:509 */
+  auditUserEventEditorCreate: 'New user event',
+  /** EXPERIENCE.md:509 */
+  auditUserEventEditorEdit: 'Edit user event <name>',
+  /** EXPERIENCE.md:509 */
+  auditEventFieldSource: 'Source',
+  /** EXPERIENCE.md:510 */
+  auditEventRefusalPartRequired: 'Enter a value. An audit event is named by its source, type and name.',
+  /** EXPERIENCE.md:510 */
+  auditEventRefusalPartLength: 'Use 64 characters or fewer.',
+  /** EXPERIENCE.md:510 */
+  auditEventRefusalPartSlash:
+    'Remove the slash. An event\'s source, type and name are joined with slashes, so none of them can contain one.',
+  /** EXPERIENCE.md:510 */
+  auditEventRefusalPartReserved:
+    'Start with a character other than %. A source or type beginning with % is reserved for the instance\'s own system events.',
+  /** EXPERIENCE.md:510 */
+  auditEventRefusalDescriptionLength: 'Use 256 characters or fewer.',
+  /** EXPERIENCE.md:510 */
+  auditEventRefusalEventNameShape: 'Name the event as source/type/name: three parts, none containing a slash.',
+  /** EXPERIENCE.md:511 */
+  auditEventRefusalSystem: 'This is one of the instance\'s own system events. Change it on the System events list.',
+  /** EXPERIENCE.md:511 */
+  auditEventRefusalUser: 'This is a user event. Change it on the User events list.',
+  /** EXPERIENCE.md:511 */
+  auditEventRefusalTaken: 'This instance already has an audit event with this source, type and name.',
+  /** EXPERIENCE.md:511 */
+  auditEventRefusalAbsent: 'This audit event no longer exists.',
+  /** EXPERIENCE.md:512 */
+  auditUserEventPromptGroup: 'Auditing',
+  /** EXPERIENCE.md:512 */
+  auditUserEventPromptEnabled: 'Which user events are enabled?',
+  /** EXPERIENCE.md:512 */
+  auditUserEventPromptBusiest: 'Which user events have recorded the most?',
+  /** EXPERIENCE.md:512 */
+  auditUserEventPromptRegister: 'Register an audit event for my application.',
 } as const;
 
 /**

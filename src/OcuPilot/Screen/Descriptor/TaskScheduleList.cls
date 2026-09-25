@@ -66,6 +66,14 @@
 /// (<class>OcuPilot.Screen.Tool.TaskDelete</class>). Only Delete opens a dialog. None carries a
 /// self-protection rule: a system task is deletable behind the typed name. Because the list is
 /// write-capable, its empty state invites the agent.</p>
+/// <p><b>Its primary action is Create</b> (Story 9.7), which opens the New Task wizard
+/// (<class>OcuPilot.Screen.Descriptor.TaskForm</class>); the agent's twin is
+/// <class>OcuPilot.Screen.Tool.TaskCreate</class>.</p>
+/// <p><b>A task is edited from Task details' Edit</b> (Story 9.8), on the same form's id route; the
+/// agent's twin is <class>OcuPilot.Screen.Tool.TaskUpdate</class>, whose fresh read is the task's
+/// <code>GET</code>. It declares no <code>fingerprintExcludes</code>: that read does not carry the
+/// next-scheduled time a run moves (measured), and <class>OcuPilot.Screen.Tool.TaskScheduleRun</class>'s
+/// subject names it, so an exclusion would be refused at registration.</p>
 Class OcuPilot.Screen.Descriptor.TaskScheduleList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -87,7 +95,7 @@ XData Declaration
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "composite", "parts": ["Id"]},
-  "primaryAction": {"id": "", "selfProtection": ""},
+  "primaryAction": {"id": "create", "selfProtection": ""},
   "rowActions": [{"id": "run", "selfProtection": ""}, {"id": "suspend", "selfProtection": ""}, {"id": "resume", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}],
   "context": {"fields": ["Name", "Type", "Namespace", "Description", "Id", "LastFinished", "NextScheduled", "Suspended"], "secretFields": []},
   "emptyStateKey": "taskListEmpty",

@@ -224,11 +224,16 @@ ClassMethod Perform(pName As %String, pArgs As %DynamicObject, Output pCreated A
 /// <p><var>pCheckTaken</var> 0 skips the name look-up, for a caller that has already read the
 /// target's absence (the agent's mint, through
 /// <method>OcuPilot.Screen.Tool.WebAppCreate.ArgumentProblem</method>).</p>
-ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolations, pCheckTaken As %Boolean = 1) As %Status
+/// <p><var>pMode</var> <code>update</code> is an edit's rules (<method>UpdateViolations</method>):
+/// <var>pArgs</var> is the fields the edit changes (<method>Changed</method>) and <var>pFresh</var>
+/// the application as the edit tool's read answered it. Both callers of an edit apply it -- the
+/// editor's Save and the agent's mint (<method>OcuPilot.Screen.Tool.WebAppUpdate.ArgumentProblem</method>).</p>
+ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolations, pCheckTaken As %Boolean = 1, pMode As %String = "create", pFresh As %DynamicObject = "") As %Status
 {
     Kill pViolations
     Set pViolations = 0
     Set tSC = $$$OK
+    If pMode = "update" Quit ..UpdateViolations(pArgs, pFresh, .pViolations)
     Try {
         Do ..NameViolation(pName, .pViolations)
         If (pViolations = 0) && pCheckTaken {
@@ -282,6 +287,142 @@ ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolatio
         If $$$ISERR(tSC) Quit
 
         Do ..AddLengthViolations(pArgs, .pViolations)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The fields the edit a caller sent actually changes: every member of <var>pArgs</var> but the
+/// identifying <var>pIdArgument</var> whose rendered value differs from <var>pFresh</var>'s (a member
+/// <var>pFresh</var> does not carry counts as changed). An edit that restates what the application
+/// holds is judged on nothing.</p>
+ClassMethod Changed(pArgs As %DynamicObject, pFresh As %DynamicObject, pIdArgument As %String = {..#IDARGUMENT}) As %DynamicObject
+{
+    Set tChanged = {}
+    If '$IsObject(pArgs) Quit tChanged
+    Set tIterator = pArgs.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        If tKey = pIdArgument Continue
+        Set tType = pArgs.%GetTypeOf(tKey)
+        If $IsObject(pFresh) && (pFresh.%GetTypeOf(tKey) '= "unassigned") {
+            Set tBefore = ##class(OcuPilot.Kernel.Proposal.Mint).Display(pFresh.%Get(tKey), pFresh.%GetTypeOf(tKey))
+            If ##class(OcuPilot.Kernel.Proposal.Mint).Display(tValue, tType) = tBefore Continue
+        }
+        If (tType = "object") || (tType = "array") {
+            Do tChanged.%Set(tKey, tValue)
+        } Else {
+            Do tChanged.%Set(tKey, tValue, tType)
+        }
+    }
+    Quit tChanged
+}
+
+/// <p>An edit's rules (AD-39), each broken one added to <var>pViolations</var>: <var>pChanged</var>
+/// is the fields the edit changes and <var>pFresh</var> the application before it.</p>
+/// <p>Over the changed fields: the namespace is not empty; each text field no longer than this
+/// instance stores (<method>AddLengthViolations</method>); each flag a boolean, each timeout a whole
+/// number of 0 or more, the file-serving setting one of
+/// <parameter>OcuPilot.Area.WebApp.FormRules.SERVEFILESCHOICES</parameter>, the Python protocol one of
+/// its two, each CORS list a list of strings and each text field a scalar
+/// (<parameter>OcuPilot.Api.Error.PORTFIELDSHAPE</parameter> unless a code of its own applies); a
+/// changed authentication mask a whole number above zero that adds no bit the instance does not
+/// offer; and the application roles' shape and names (<method>MatchRolesViolation</method>).</p>
+/// <p>Over the merged application -- <var>pFresh</var> with the changes applied -- the type-shape
+/// rules: an application naming a Python application file or directory is a Python one, which
+/// needs its file, its directory as the instance holds it, its protocol, and no dispatch class.
+/// Its directory is the instance's and never changes here (AD-21).</p>
+ClassMethod UpdateViolations(pChanged As %DynamicObject, pFresh As %DynamicObject, Output pViolations) As %Status [ Private ]
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tSC = $$$OK
+    Try {
+        If '$IsObject(pChanged) Set pChanged = {}
+        Set tMerged = $Select($IsObject(pFresh): ##class(%DynamicAbstractObject).%FromJSON(pFresh.%ToJSON()), 1: {})
+        Set tIterator = pChanged.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tValue) {
+            Set tType = pChanged.%GetTypeOf(tKey)
+            If (tType = "object") || (tType = "array") {
+                Do tMerged.%Set(tKey, tValue)
+            } Else {
+                Do tMerged.%Set(tKey, tValue, tType)
+            }
+        }
+
+        For tField = "Description", "DispatchClass", "GroupById", "NameSpace", "Package", "Resource", "SuperClass", "WSGIAppName", "WSGICallable", "WSGIType", "ServeFiles" {
+            Set tType = pChanged.%GetTypeOf(tField)
+            If (tType = "object") || (tType = "array") Do ..Add(.pViolations, tField, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        }
+        If (pChanged.%GetTypeOf(..#FIELDNAMESPACE) '= "unassigned") && (..Text(tMerged, ..#FIELDNAMESPACE) = "") {
+            Do ..Add(.pViolations, ..#FIELDNAMESPACE, ##class(OcuPilot.Api.Error).#WEBAPPNAMESPACEREQUIRED)
+        }
+
+        If pChanged.%GetTypeOf(..#FIELDAUTHE) '= "unassigned" {
+            Set tAuthe = ..Text(pChanged, ..#FIELDAUTHE)
+            If '..IsMask(tAuthe) {
+                Do ..Add(.pViolations, ..#FIELDAUTHE, ##class(OcuPilot.Api.Error).#WEBAPPAUTHEREQUIRED)
+            } Else {
+                Set tBefore = ..Text(pFresh, ..#FIELDAUTHE)
+                Set tBefore = $Select(..IsMask(tBefore): tBefore \ 1, 1: 0)
+                Set tAdded = $ZBoolean(tAuthe \ 1, tBefore, 2)
+                If ..OutsideMask(tAdded) && (tAdded '= 0) Do ..Add(.pViolations, ..#FIELDAUTHE, ##class(OcuPilot.Api.Error).#WEBAPPAUTHEUNKNOWN)
+            }
+        }
+
+        For tField = "AutoCompile", "CorsCredentialsAllowed", "Enabled", "IsNameSpaceDefault", "JWTAuthEnabled", "LockCSPName", "Recurse" {
+            Set tType = pChanged.%GetTypeOf(tField)
+            If tType = "unassigned" Continue
+            Set tValue = pChanged.%Get(tField)
+            If (tType = "boolean") || ((tType '= "object") && (tType '= "array") && ((tValue = "true") || (tValue = "false") || (tValue = "0") || (tValue = "1"))) Continue
+            Do ..Add(.pViolations, tField, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        }
+        For tField = "Timeout", "ServeFilesTimeout", "JWTAccessTokenTimeout", "JWTRefreshTokenTimeout" {
+            Set tType = pChanged.%GetTypeOf(tField)
+            If tType = "unassigned" Continue
+            Set tValue = ..Text(pChanged, tField)
+            If ((tType = "number") || (tType = "string")) && $IsValidNum(tValue) && (+tValue = (tValue \ 1)) && (+tValue >= 0) Continue
+            Do ..Add(.pViolations, tField, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        }
+        ; A choice-valued setting is one of its display strings; any other scalar -- a number, a
+        ; boolean, null -- is refused here rather than coerced by the merge. Objects and arrays were
+        ; refused above.
+        Set tType = pChanged.%GetTypeOf("ServeFiles")
+        If '$ListFind($ListBuild("unassigned", "object", "array"), tType) && ((tType '= "string") || '$ListFind($ListFromString(##class(OcuPilot.Area.WebApp.FormRules).#SERVEFILESCHOICES), pChanged.%Get("ServeFiles"))) {
+            Do ..Add(.pViolations, "ServeFiles", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        }
+        Set tType = pChanged.%GetTypeOf(..#FIELDWSGITYPE)
+        If '$ListFind($ListBuild("unassigned", "object", "array"), tType) && ((tType '= "string") || '..IsWsgiType(pChanged.%Get(..#FIELDWSGITYPE))) {
+            Do ..Add(.pViolations, ..#FIELDWSGITYPE, ##class(OcuPilot.Api.Error).#WEBAPPWSGITYPE)
+        }
+        For tField = "CorsAllowlist", "CorsHeadersList" {
+            Set tType = pChanged.%GetTypeOf(tField)
+            If tType = "unassigned" Continue
+            Set tShape = (tType '= "array")
+            If 'tShape {
+                Set tItems = pChanged.%Get(tField).%GetIterator()
+                While tItems.%GetNext(.tIndex, .tItem, .tItemType) {
+                    If tItemType '= "string" Set tShape = 1 Quit
+                }
+            }
+            If tShape Do ..Add(.pViolations, tField, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        }
+
+        ; The type-shape rules read the merged application: the file or the directory makes a
+        ; Python application, whatever the edit changed.
+        Set tWsgiName = ..Text(tMerged, ..#FIELDWSGINAME)
+        Set tWsgiLocation = ..Text(tMerged, ..#FIELDWSGILOCATION)
+        If (tWsgiName '= "") || (tWsgiLocation '= "") {
+            If tWsgiName = "" Do ..Add(.pViolations, ..#FIELDWSGINAME, ##class(OcuPilot.Api.Error).#WEBAPPWSGIAPPNAME)
+            If tWsgiLocation = "" Do ..Add(.pViolations, ..#FIELDWSGILOCATION, ##class(OcuPilot.Api.Error).#WEBAPPWSGILOCATION)
+            If '..IsWsgiType(..Text(tMerged, ..#FIELDWSGITYPE)) && (pChanged.%GetTypeOf(..#FIELDWSGITYPE) = "unassigned") Do ..Add(.pViolations, ..#FIELDWSGITYPE, ##class(OcuPilot.Api.Error).#WEBAPPWSGITYPE)
+            If ..Text(tMerged, ..#FIELDDISPATCH) '= "" Do ..Add(.pViolations, ..#FIELDDISPATCH, ##class(OcuPilot.Api.Error).#WEBAPPTYPECONFLICT)
+        }
+
+        Set tSC = ..MatchRolesViolation(pChanged, .pViolations)
+        If $$$ISERR(tSC) Quit
+
+        Do ..AddLengthViolations(pChanged, .pViolations)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }

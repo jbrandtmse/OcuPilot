@@ -692,7 +692,7 @@ Method TestARoleAddedInADifferentCaseIsStillRecognizedAsPrivileged()
 
 /// <p>AC4, AD-10 as amended 2026-09-23 (DW-1524): an <code>EscalationRoles</code> change is no
 /// longer a privilege refusal; no tool admits the field, so a change to it is refused as unreviewed,
-/// as a <code>FullName</code> change is.</p>
+/// while a <code>FullName</code> change, one of the classic General tab's settings, is permitted.</p>
 /// <p>Mutation: put <code>EscalationRoles</code> back in
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.AlwaysProhibitedFields</method> -- the last assertion
 /// reddens.</p>
@@ -701,7 +701,8 @@ Method TestAChangedEscalationRoleAndAnUnreviewedFieldAreRefused()
     Set tName = ..Target()
     Set tFresh = $ClassMethod(..#SET, "UserObject", tName, 1, $Parameter(..#FIXTURE, "USERINITIALROLE"))
     Do ..Refused(tName, tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, $Parameter(..#FIXTURE, "USERINITIALROLE"), "%Developer"), "EscalationRoles", $Parameter(..#SHIPPEDSET, "UNCOVEREDFIELD"))
-    Do ..Refused(tName, tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, $Parameter(..#FIXTURE, "USERINITIALROLE"), "", "after"), "FullName", $Parameter(..#SHIPPEDSET, "UNCOVEREDFIELD"))
+    ; Story 9.1 reviewed the classic General tab, so a full-name change is now permitted.
+    Do ..Permitted(tName, tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, $Parameter(..#FIXTURE, "USERINITIALROLE"), "", "after"), "FullName")
     Do $$$AssertEquals($ListToString($ClassMethod(..#SHIPPEDSET, "AlwaysProhibitedFields", "user")), "", "no user field carries an always-prohibited predicate")
 }
 
@@ -1136,22 +1137,24 @@ Method TestEveryRowActionReachesTheRouteAndChangesTheAccount()
     Do ..Act("remove-role", tName, {"Role": "%Developer"}, .tStatus, .tBody)
     Do ..RefusedWith("removing a role the account does not hold", tStatus, .tBody, 400, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS)
 
-    ; AD-56: the flag is its own update write; the password is sent once, exactly as given.
+    ; AD-56: the password is sent once, exactly as given, and the flag is its own update write.
     Set tPassword = "OcuPilotRowPw9 "
-    Do ..Act("require-password-change", tName, "", .tStatus, .tBody)
-    Do $$$AssertEquals(tStatus, 200, "the change-on-login flag answers 200")
-    Do $$$AssertEquals(+$ClassMethod(..#FIXTURE, "UserField", tName, "ChangePassword"), 1, "and is set on the account")
     Do ..Act("set-password", tName, "", .tStatus, .tBody)
     Do ..RefusedWith("a set-password with no value", tStatus, .tBody, 400, ##class(OcuPilot.Api.Error).#TOOLARGUMENTS)
     Do ..Act("set-password", tName, {"Password": (tPassword)}, .tStatus, .tBody)
     Do $$$AssertEquals(tStatus, 200, "set-password answers 200")
     If $IsObject(tBody) Do $$$AssertEquals((tBody.%ToJSON() [ tPassword), 0, "and its answer does not echo the password")
     Do ..AssertNotLogged(tPassword)
-    ; Measured: the vendor's password change clears ChangePassword, so the flag written first is
-    ; gone after it -- which is why the client re-asserts it once the password has landed.
-    Do $$$AssertEquals(+$ClassMethod(..#FIXTURE, "UserField", tName, "ChangePassword"), 0, "the vendor's password change clears the flag")
     Do $$$AssertEquals(..Login(tName, tPassword, .tToken), 200, "the account signs in with the password exactly as sent")
     Do $$$AssertEquals(..Login(tName, $ZStrip(tPassword, ">W"), .tIgnored), 401, "and not with it trimmed")
+    Do ..Act("require-password-change", tName, "", .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "the change-on-login flag answers 200")
+    Do $$$AssertEquals(+$ClassMethod(..#FIXTURE, "UserField", tName, "ChangePassword"), 1, "and is set on the account")
+    ; The vendor's password change clears ChangePassword; the operation sets it again when its
+    ; fresh read found it set (AD-56 (i), DW-1516), so a password set after the flag keeps it.
+    Do ..Act("set-password", tName, {"Password": (tPassword _ "b")}, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "a second set-password answers 200")
+    Do $$$AssertEquals(+$ClassMethod(..#FIXTURE, "UserField", tName, "ChangePassword"), 1, "and the flag set before it is still set")
     Do ..Act("require-password-change", tName, "", .tStatus, .tBody)
     Do $$$AssertEquals(tStatus, 200, "so the flag is written again after it")
     Do $$$AssertEquals(+$ClassMethod(..#FIXTURE, "UserField", tName, "ChangePassword"), 1, "and the account must change its password at next sign-in")

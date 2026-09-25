@@ -347,6 +347,39 @@ describe('the command bar', () => {
     expect(runs).toBe(1);
   });
 
+  it("Story 9.3: a system-resource action reads the selected row's own AllowDelete", () => {
+    // Mutation (Rule 19): drop `row` from the bar's `selfProtectionReason` call -> the not-deletable
+    // row's button is drawn as an ordinary control, red.
+    const base = tableDeclaration();
+    const declared = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.ResourceList',
+      rowActions: [{ id: 'delete', selfProtection: 'system-resource' }],
+      read: base.read === null ? null : { ...base.read, fields: [...base.read.fields, 'AllowDelete'] },
+    });
+    build(declared);
+    actions.register(declared.descriptor, 'delete', () => {});
+    const store = stores.for(declared.descriptor, declared.refreshRates);
+    store.applyTick(
+      [
+        { Name: 'alpha', NameSpace: 'USER', Count: 0, Enabled: true, Note: 'n', AllowDelete: false },
+        { Name: 'beta', NameSpace: 'USER', Count: 1, Enabled: true, Note: 'n', AllowDelete: true },
+      ],
+      false,
+      '',
+      new Date()
+    );
+    store.setSelection(['alpha']);
+    fixture.detectChanges();
+    const button = (): HTMLButtonElement => fixture.nativeElement.querySelector('.ocu-command-bar-action');
+    expect(button().getAttribute('aria-disabled')).toBe('true');
+    expect(fixture.nativeElement.querySelector(`#${button().getAttribute('aria-describedby')}`)?.textContent?.trim()).toBe(
+      STRINGS.resourceRefusalSystem
+    );
+    store.setSelection(['beta']);
+    fixture.detectChanges();
+    expect(button().hasAttribute('aria-disabled')).toBe(false);
+  });
+
   it("Story 7.2: with the signed-in account selected, the bar's protected-account action carries its sentence and runs nothing", () => {
     // Mutation (Rule 19): drop `this.signedIn()` from the bar's call -> the button runs, red.
     const declared = tableDeclaration({

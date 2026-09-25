@@ -1,7 +1,8 @@
-/// <p>Pins Story 8.5's agent-only X.509 delete (AD-6, AD-10, AD-51): what
+/// <p>Pins the X.509 delete (AD-6, AD-10, AD-51, AD-53): what
 /// <class>OcuPilot.Screen.Tool.X509Delete</class> declares, the removal rows read from the certificate
 /// read, the fingerprint over the certificate the user reviewed -- so one replaced under the same
-/// alias refuses the confirm -- and the marked, bodyless confirm.</p>
+/// alias refuses the confirm -- the marked, bodyless confirm, and the list's Delete reaching the same
+/// write.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and its protected state
 /// readable. Every read and write goes to <class>OcuPilot.Test.ProposalFixture</class>, so nothing
 /// here deletes a credential. No arming variable is required.</p>
@@ -108,6 +109,24 @@ Method TestAConfirmedDeleteIsMarkedAndSendsNoBody()
     Do ##class(OcuPilot.Test.ProposalFixture).ArmMissing()
     Set tSC = ..Mint(..#PROBE, .tProposal, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp, 400, "an alias the instance does not hold is refused at the mint")
+}
+
+/// <p>AD-53 (Story 9.5): the X.509 list's Delete reaches the same bodyless write through the
+/// screen-action route, answering the deleted action; the route's port is the fixture's, so nothing is
+/// deleted.</p>
+/// <p>Mutation (Rule 19): drop <parameter>OcuPilot.Screen.Tool.X509Delete.SCREENACTIONS</parameter> --
+/// the route refuses the action and this goes red.</p>
+Method TestTheListsDeleteReachesTheSameWrite()
+{
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Info("11", "CN=Issuer"))
+    Set tSC = ##class(OcuPilot.Test.SslActionFixture).Act($ClassMethod(..#LIST, "ToolIdentifier"), {"action": "delete", "id": (..#PROBE)}, .tAnswer, .tStatus)
+    Do $$$AssertStatusOK(tSC, "the route runs")
+    Do $$$AssertEquals(tStatus, 200, "the list's Delete is applied: " _ $Get(tAnswer))
+    Set tEnvelope = $Select($Get(tAnswer) '= "": ##class(%DynamicObject).%FromJSON(tAnswer), 1: {})
+    Do $$$AssertEquals(tEnvelope.%Get("action"), "deleted", "announcing a removal")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LastType(), "DELETE", "at the vendor's DELETE")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LastWriteBody(), "", "with no body")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LastQuery("alias"), ..#PROBE, "naming the alias")
 }
 
 /// <p>A certificate read as <code>CERTINFO</code> answers it, with serial number <var>pSerial</var>

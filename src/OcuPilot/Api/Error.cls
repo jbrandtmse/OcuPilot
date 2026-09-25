@@ -1131,6 +1131,12 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#USERROUTINELENGTH Quit ..#REASONUSERROUTINELENGTH
     If pCode = ..#USERROLESUNKNOWN Quit ..#REASONUSERROLESUNKNOWN
     If pCode = ..#USERROLESSHAPE Quit ..#REASONUSERROLESSHAPE
+    If pCode = ..#USERCOMMENTLENGTH Quit ..#REASONUSERCOMMENTLENGTH
+    If pCode = ..#USEREMAILADDRESSLENGTH Quit ..#REASONUSEREMAILADDRESSLENGTH
+    If pCode = ..#USERPHONENUMBERLENGTH Quit ..#REASONUSERPHONENUMBERLENGTH
+    If pCode = ..#USERPHONEPROVIDERLENGTH Quit ..#REASONUSERPHONEPROVIDERLENGTH
+    If pCode = ..#USERTWOFACTORBOTH Quit ..#REASONUSERTWOFACTORBOTH
+    If pCode = ..#USERAUTHEENABLEDSCOPE Quit ..#REASONUSERAUTHEENABLEDSCOPE
     If pCode = ..#ROLENAMEREQUIRED Quit ..#REASONROLENAMEREQUIRED
     If pCode = ..#ROLENAMELENGTH Quit ..#REASONROLENAMELENGTH
     If pCode = ..#ROLENAMESHAPE Quit ..#REASONROLENAMESHAPE
@@ -1202,6 +1208,12 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#PORTFIELDREQUIRED Quit ..#REASONPORTFIELDREQUIRED
     If pCode = ..#PORTFIELDUNEXPECTED Quit ..#REASONPORTFIELDUNEXPECTED
     If pCode = ..#PORTFIELDSHAPE Quit ..#REASONPORTFIELDSHAPE
+    If pCode = ..#ROLEESCALATIONONLYSHAPE Quit ..#REASONROLEESCALATIONONLYSHAPE
+    If $Extract(pCode, 1, 4) = "SSL." Quit ..ReasonForSsl(pCode)
+    If $Extract(pCode, 1, 5) = "TASK." Quit ..ReasonForTask(pCode)
+    If $Extract(pCode, 1, 8) = "SERVICE." Quit ..ReasonForService(pCode)
+    If $Extract(pCode, 1, 5) = "LDAP." Quit ..ReasonForLdap(pCode)
+    If $Extract(pCode, 1, 11) = "AUDITEVENT." Quit ..ReasonForAuditEvent(pCode)
     Quit ""
 }
 
@@ -1220,14 +1232,14 @@ ClassMethod WebAppViolationCodes() As %List
 /// it reddens.</p>
 ClassMethod UserViolationCodes() As %List
 {
-    Quit $ListBuild(..#USERNAMEREQUIRED, ..#USERNAMESHAPE, ..#USERNAMETAKEN, ..#USERPASSWORDREQUIRED, ..#USERPASSWORDPOLICY, ..#USERFULLNAMELENGTH, ..#USEREXPIRATIONDATESHAPE, ..#USERNAMESPACEUNKNOWN, ..#USERROUTINENAMESPACE, ..#USERROUTINELENGTH, ..#USERROLESUNKNOWN, ..#USERROLESSHAPE)
+    Quit $ListBuild(..#USERNAMEREQUIRED, ..#USERNAMESHAPE, ..#USERNAMETAKEN, ..#USERPASSWORDREQUIRED, ..#USERPASSWORDPOLICY, ..#USERFULLNAMELENGTH, ..#USEREXPIRATIONDATESHAPE, ..#USERNAMESPACEUNKNOWN, ..#USERROUTINENAMESPACE, ..#USERROUTINELENGTH, ..#USERROLESUNKNOWN, ..#USERROLESSHAPE, ..#USERCOMMENTLENGTH, ..#USEREMAILADDRESSLENGTH, ..#USERPHONENUMBERLENGTH, ..#USERPHONEPROVIDERLENGTH, ..#USERTWOFACTORBOTH, ..#USERAUTHEENABLEDSCOPE)
 }
 
 /// <p>Every <code>ROLE.*</code> field-level violation code, as a <class>%List</class>, for the
 /// reason <method>UserViolationCodes</method> exists.</p>
 ClassMethod RoleViolationCodes() As %List
 {
-    Quit $ListBuild(..#ROLENAMEREQUIRED, ..#ROLENAMELENGTH, ..#ROLENAMESHAPE, ..#ROLENAMETAKEN, ..#ROLENAMESYSTEM, ..#ROLEDESCRIPTIONLENGTH, ..#ROLERESOURCESSHAPE, ..#ROLERESOURCESUNKNOWN, ..#ROLERESOURCESPERMISSIONS, ..#ROLERESOURCESDUPLICATE, ..#ROLERESOURCESWRITEONLY, ..#ROLEGRANTEDROLESSHAPE, ..#ROLEGRANTEDROLESUNKNOWN)
+    Quit $ListBuild(..#ROLENAMEREQUIRED, ..#ROLENAMELENGTH, ..#ROLENAMESHAPE, ..#ROLENAMETAKEN, ..#ROLENAMESYSTEM, ..#ROLEDESCRIPTIONLENGTH, ..#ROLERESOURCESSHAPE, ..#ROLERESOURCESUNKNOWN, ..#ROLERESOURCESPERMISSIONS, ..#ROLERESOURCESDUPLICATE, ..#ROLERESOURCESWRITEONLY, ..#ROLEGRANTEDROLESSHAPE, ..#ROLEGRANTEDROLESUNKNOWN, ..#ROLEESCALATIONONLYSHAPE)
 }
 
 /// <p>Every <code>RESOURCE.*</code> field-level violation code, as a <class>%List</class>, for the
@@ -1839,6 +1851,48 @@ Parameter USERROLESSHAPE = "USER.ROLES.SHAPE";
 
 Parameter REASONUSERROLESSHAPE = "Roles are a list of role names.";
 
+/// <p>Violation code: the comment is longer than <property>Security.Users.Comment</property>
+/// stores.</p>
+Parameter USERCOMMENTLENGTH = "USER.COMMENT.LENGTH";
+
+Parameter REASONUSERCOMMENTLENGTH = "That comment is longer than this instance stores.";
+
+/// <p>Violation code: the email address is longer than
+/// <property>Security.Users.EmailAddress</property> stores.</p>
+Parameter USEREMAILADDRESSLENGTH = "USER.EMAILADDRESS.LENGTH";
+
+Parameter REASONUSEREMAILADDRESSLENGTH = "That email address is longer than this instance stores.";
+
+/// <p>Violation code: the mobile phone number is longer than
+/// <property>Security.Users.PhoneNumber</property> stores.</p>
+Parameter USERPHONENUMBERLENGTH = "USER.PHONENUMBER.LENGTH";
+
+Parameter REASONUSERPHONENUMBERLENGTH = "That phone number is longer than this instance stores.";
+
+/// <p>Violation code: the mobile phone service provider is longer than
+/// <property>Security.Users.PhoneProvider</property> stores.</p>
+Parameter USERPHONEPROVIDERLENGTH = "USER.PHONEPROVIDER.LENGTH";
+
+Parameter REASONUSERPHONEPROVIDERLENGTH = "That service provider name is longer than this instance stores.";
+
+/// <p>Violation code: both two-factor methods are on, SMS text and a time-based one-time
+/// password.</p>
+Parameter USERTWOFACTORBOTH = "USER.TWOFACTOR.BOTH";
+
+Parameter REASONUSERTWOFACTORBOTH = "Choose SMS text or a time-based one-time password for two-factor sign-in, not both.";
+
+/// <p>Violation code: the change to <code>AutheEnabled</code> moves a bit other than the two
+/// two-factor ones, or is not a whole number.</p>
+Parameter USERAUTHEENABLEDSCOPE = "USER.AUTHEENABLED.SCOPE";
+
+Parameter REASONUSERAUTHEENABLEDSCOPE = "Only the two-factor settings of how this account signs in can be changed here.";
+
+/// <p>Machine code (AD-12, AD-39): the user an edit or its form read names is not one this
+/// instance holds. Rendered on the <parameter>NOTFOUND</parameter> slug.</p>
+Parameter USERNAMEABSENT = "USER.NAME.ABSENT";
+
+Parameter REASONUSERNAMEABSENT = "This instance has no user with that name.";
+
 /// <p>Machine code (AD-12, AD-39): the request to create a role broke one or more of the rules
 /// <class>OcuPilot.Area.Permissions.RoleCreateRules</class> applies before the port is touched.
 /// Rendered on the <parameter>VALIDATIONFAILED</parameter> slug with every violation in
@@ -2356,5 +2410,675 @@ Parameter PREFERENCESCHOICE = "PREFERENCES.CHOICE";
 /// <p>Refusal sentence for <parameter>PREFERENCESCHOICE</parameter>. It names no value the
 /// caller sent.</p>
 Parameter REASONPREFERENCESCHOICE = "That preference takes one of a fixed set of values.";
+
+/// <p>Machine code (AD-12, AD-39): the web application an edit or its form read names is not one
+/// this instance holds. Rendered on the <parameter>NOTFOUND</parameter> slug.</p>
+Parameter WEBAPPNAMEABSENT = "WEBAPP.NAME.ABSENT";
+
+Parameter REASONWEBAPPNAMEABSENT = "This instance has no web application with that name.";
+
+/// <p>Machine code (AD-12, AD-39): the role an edit or its form read names is not one this
+/// instance holds (Story 9.3). Rendered on the <parameter>NOTFOUND</parameter> slug.</p>
+Parameter ROLENAMEABSENT = "ROLE.NAME.ABSENT";
+
+Parameter REASONROLENAMEABSENT = "This instance has no role with that name.";
+
+/// <p>Violation code: an edit's <code>EscalationOnly</code> is not a boolean (Story 9.3).</p>
+Parameter ROLEESCALATIONONLYSHAPE = "ROLE.ESCALATIONONLY.SHAPE";
+
+Parameter REASONROLEESCALATIONONLYSHAPE = "Escalation only is either on or off.";
+
+/// <p>Envelope code (AD-39): an SSL/TLS configuration's create or edit broke one or more of the
+/// rules <class>OcuPilot.Area.Security.SslRules</class> applies before the port is touched, or the
+/// vendor refused a value the port maps to a field
+/// (<parameter>OcuPilot.Port.AdminPort.PROPERTYFAULTS</parameter>). Rendered on the
+/// <parameter>VALIDATIONFAILED</parameter> slug with every violation in
+/// <code>detail.violations</code>. No sentence in this block names a file path or quotes a private
+/// key password (AD-21, AD-35).</p>
+Parameter SSLVALIDATION = "SSL.VALIDATION";
+
+Parameter REASONSSLVALIDATION = "The SSL/TLS configuration was refused.";
+
+/// <p>Violation code: a create supplied no name.</p>
+Parameter SSLNAMEREQUIRED = "SSL.NAME.REQUIRED";
+
+Parameter REASONSSLNAMEREQUIRED = "Give the configuration a name.";
+
+/// <p>Violation code: the name is longer than <class>Security.SSLConfigs</class> stores, or carries
+/// a control character, a slash or a backslash.</p>
+Parameter SSLNAMESHAPE = "SSL.NAME.SHAPE";
+
+Parameter REASONSSLNAMESHAPE = "A name is at most 64 characters, with no control character, slash or backslash.";
+
+/// <p>Violation code: a create names a configuration this instance already holds.</p>
+Parameter SSLNAMETAKEN = "SSL.NAME.TAKEN";
+
+Parameter REASONSSLNAMETAKEN = "This instance already has an SSL/TLS configuration with that name. Choose a different one.";
+
+/// <p>Machine code (AD-12, AD-39): the configuration a form read, an edit or a Test connection names
+/// is not one this instance holds. Rendered on the <parameter>NOTFOUND</parameter> slug.</p>
+Parameter SSLNAMEABSENT = "SSL.NAME.ABSENT";
+
+Parameter REASONSSLNAMEABSENT = "This instance has no SSL/TLS configuration with that name.";
+
+/// <p>Violation code: a create omits its type, its peer verification or whether it is enabled,
+/// which the vendor requires of a new configuration.</p>
+Parameter SSLFIELDREQUIRED = "SSL.FIELD.REQUIRED";
+
+Parameter REASONSSLFIELDREQUIRED = "A new configuration needs its type, its peer verification and whether it is enabled.";
+
+/// <p>Violation code: the description is not text, or is longer than the vendor stores.</p>
+Parameter SSLDESCRIPTIONLENGTH = "SSL.DESCRIPTION.LENGTH";
+
+Parameter REASONSSLDESCRIPTIONLENGTH = "A description is at most 256 characters.";
+
+/// <p>Violation code: <code>Enabled</code> is not a boolean.</p>
+Parameter SSLENABLEDSHAPE = "SSL.ENABLED.SHAPE";
+
+Parameter REASONSSLENABLEDSHAPE = "Enabled is either on or off.";
+
+/// <p>Violation code: the type is neither client (0) nor server (1).</p>
+Parameter SSLTYPEVALUE = "SSL.TYPE.VALUE";
+
+Parameter REASONSSLTYPEVALUE = "The type is client or server.";
+
+/// <p>Violation code: the type is server while the configuration names no certificate file or no
+/// private key file (vendor error 982). A create names neither, so a create is always a client.</p>
+Parameter SSLTYPESERVERFILES = "SSL.TYPE.SERVERFILES";
+
+Parameter REASONSSLTYPESERVERFILES = "A server configuration needs a certificate file and a private key file, and only the classic portal's SSL/TLS Configuration page sets them.";
+
+/// <p>Violation code: the peer verification level is not one this type offers -- none or require
+/// for a client; none, request or require for a server (vendor error 725).</p>
+Parameter SSLVERIFYPEERVALUE = "SSL.VERIFYPEER.VALUE";
+
+Parameter REASONSSLVERIFYPEERVALUE = "Choose one of the peer verification levels this type offers.";
+
+/// <p>Violation code: peer verification is on and the configuration names no trusted certificates
+/// (vendor error 986).</p>
+Parameter SSLVERIFYPEERCAREQUIRED = "SSL.VERIFYPEER.CAREQUIRED";
+
+Parameter REASONSSLVERIFYPEERCAREQUIRED = "Verifying the peer needs trusted certificates: choose the operating system's store, or keep the file this configuration names.";
+
+/// <p>Violation code: the verification depth is not a whole number of 0 or more.</p>
+Parameter SSLVERIFYDEPTHSHAPE = "SSL.VERIFYDEPTH.SHAPE";
+
+Parameter REASONSSLVERIFYDEPTHSHAPE = "The verification depth is a whole number, 0 or more.";
+
+/// <p>Violation code: the trusted certificates name a location other than the operating system's
+/// store or the file the configuration already names. No caller names a path (AD-21).</p>
+Parameter SSLCAFILEPATH = "SSL.CAFILE.PATH";
+
+Parameter REASONSSLCAFILEPATH = "Trusted certificates are none, the operating system's store, or the file this configuration already names. Another file is set on the classic portal.";
+
+/// <p>Violation code: the minimum TLS version is not one the vendor offers (vendor error 899).</p>
+Parameter SSLTLSMINVERSIONVALUE = "SSL.TLSMINVERSION.VALUE";
+
+Parameter REASONSSLTLSMINVERSIONVALUE = "Choose one of the listed minimum TLS versions.";
+
+/// <p>Violation code: the maximum TLS version is not one the vendor offers (vendor error 899).</p>
+Parameter SSLTLSMAXVERSIONVALUE = "SSL.TLSMAXVERSION.VALUE";
+
+Parameter REASONSSLTLSMAXVERSIONVALUE = "Choose one of the listed maximum TLS versions.";
+
+/// <p>Violation code: the maximum TLS version is lower than the minimum (vendor error 899).</p>
+Parameter SSLTLSMAXVERSIONORDER = "SSL.TLSMAXVERSION.ORDER";
+
+Parameter REASONSSLTLSMAXVERSIONORDER = "The maximum TLS version cannot be lower than the minimum.";
+
+/// <p>Violation code: the Diffie-Hellman key size is not one the vendor offers.</p>
+Parameter SSLDIFFIEHELLMANBITSVALUE = "SSL.DIFFIEHELLMANBITS.VALUE";
+
+Parameter REASONSSLDIFFIEHELLMANBITSVALUE = "Choose one of the listed Diffie-Hellman key sizes.";
+
+/// <p>Violation code: an entry of the TLS 1.2 cipher list is empty or carries a colon or a space.</p>
+Parameter SSLCIPHERLISTSHAPE = "SSL.CIPHERLIST.SHAPE";
+
+Parameter REASONSSLCIPHERLISTSHAPE = "Each TLS 1.2 cipher entry is one name, with no colon and no space.";
+
+/// <p>Violation code: the TLS 1.2 cipher list is longer than the vendor stores once joined.</p>
+Parameter SSLCIPHERLISTLENGTH = "SSL.CIPHERLIST.LENGTH";
+
+Parameter REASONSSLCIPHERLISTLENGTH = "The TLS 1.2 cipher list is at most 4096 characters once joined.";
+
+/// <p>Violation code: the TLS 1.2 cipher list selects no cipher (vendor error 726, mapped by the
+/// port).</p>
+Parameter SSLCIPHERLISTEXPANDSEMPTY = "SSL.CIPHERLIST.EXPANDSEMPTY";
+
+Parameter REASONSSLCIPHERLISTEXPANDSEMPTY = "This cipher list selects no cipher. Add an entry that names at least one.";
+
+/// <p>Violation code: an entry of the TLS 1.3 cipher suites is empty or carries a colon or a
+/// space.</p>
+Parameter SSLCIPHERSUITESSHAPE = "SSL.CIPHERSUITES.SHAPE";
+
+Parameter REASONSSLCIPHERSUITESSHAPE = "Each TLS 1.3 cipher suite is one name, with no colon and no space.";
+
+/// <p>Violation code: the TLS 1.3 cipher suites are longer than the vendor stores once joined.</p>
+Parameter SSLCIPHERSUITESLENGTH = "SSL.CIPHERSUITES.LENGTH";
+
+Parameter REASONSSLCIPHERSUITESLENGTH = "The TLS 1.3 cipher suites are at most 128 characters once joined.";
+
+/// <p>Violation code: a TLS 1.3 cipher suite is not one this instance knows (vendor error 746,
+/// mapped by the port).</p>
+Parameter SSLCIPHERSUITESUNKNOWN = "SSL.CIPHERSUITES.UNKNOWN";
+
+Parameter REASONSSLCIPHERSUITESUNKNOWN = "This instance does not know one of these TLS 1.3 cipher suites.";
+
+/// <p>Violation code: OCSP is neither off (0) nor on (1).</p>
+Parameter SSLOCSPVALUE = "SSL.OCSP.VALUE";
+
+Parameter REASONSSLOCSPVALUE = "OCSP is either on or off.";
+
+/// <p>Violation code: the OCSP timeout is not a whole number of 0 or more.</p>
+Parameter SSLOCSPTIMEOUTSHAPE = "SSL.OCSPTIMEOUT.SHAPE";
+
+Parameter REASONSSLOCSPTIMEOUTSHAPE = "The OCSP timeout is a whole number of seconds, 0 or more.";
+
+/// <p>Violation code: a private key password was given for a configuration that names no private
+/// key file (vendor error 985).</p>
+Parameter SSLPRIVATEKEYPASSWORDKEYFILE = "SSL.PRIVATEKEYPASSWORD.KEYFILE";
+
+Parameter REASONSSLPRIVATEKEYPASSWORDKEYFILE = "A private key password needs a private key file, and only the classic portal sets one.";
+
+/// <p>Violation code: the private key password is longer than the vendor stores. Refused before the
+/// save, whose datatype refusal would quote the value.</p>
+Parameter SSLPRIVATEKEYPASSWORDLENGTH = "SSL.PRIVATEKEYPASSWORD.LENGTH";
+
+Parameter REASONSSLPRIVATEKEYPASSWORDLENGTH = "A private key password is at most 255 characters.";
+
+/// <p>Violation code: the private key password does not decrypt the configuration's private key file
+/// (vendor error 732, mapped by the port, whose own text names the file and is logged alone).</p>
+Parameter SSLPRIVATEKEYPASSWORDWRONG = "SSL.PRIVATEKEYPASSWORD.WRONG";
+
+Parameter REASONSSLPRIVATEKEYPASSWORDWRONG = "This password does not decrypt the configuration's private key.";
+
+/// <p>Violation code: a Test connection host is empty, longer than 255 characters, or carries a
+/// space or a scheme.</p>
+Parameter SSLTESTHOST = "SSL.TEST.HOST";
+
+Parameter REASONSSLTESTHOST = "Give a host name or address of at most 255 characters, with no space and no scheme.";
+
+/// <p>Violation code: a Test connection port is not a whole number from 1 to 65535.</p>
+Parameter SSLTESTPORT = "SSL.TEST.PORT";
+
+Parameter REASONSSLTESTPORT = "The port is a whole number from 1 to 65535.";
+
+/// <p>The sentence an <code>SSL.*</code> violation code carries, or <code>""</code> for any other
+/// code; <method>ReasonForViolation</method> delegates the family here.</p>
+ClassMethod ReasonForSsl(pCode As %String) As %String
+{
+    If '$ListFind(..SslViolationCodes(), pCode) Quit ""
+    Quit $Parameter($ClassName(), "REASON" _ $Translate(pCode, "."))
+}
+
+/// <p>Every <code>SSL.*</code> field-level violation code, as a <class>%List</class>, for the reason
+/// <method>UserViolationCodes</method> exists.</p>
+ClassMethod SslViolationCodes() As %List
+{
+    Quit $ListBuild(..#SSLNAMEREQUIRED, ..#SSLNAMESHAPE, ..#SSLNAMETAKEN, ..#SSLNAMEABSENT, ..#SSLFIELDREQUIRED, ..#SSLDESCRIPTIONLENGTH, ..#SSLENABLEDSHAPE, ..#SSLTYPEVALUE, ..#SSLTYPESERVERFILES, ..#SSLVERIFYPEERVALUE, ..#SSLVERIFYPEERCAREQUIRED, ..#SSLVERIFYDEPTHSHAPE, ..#SSLCAFILEPATH, ..#SSLTLSMINVERSIONVALUE, ..#SSLTLSMAXVERSIONVALUE, ..#SSLTLSMAXVERSIONORDER, ..#SSLDIFFIEHELLMANBITSVALUE, ..#SSLCIPHERLISTSHAPE, ..#SSLCIPHERLISTLENGTH, ..#SSLCIPHERLISTEXPANDSEMPTY, ..#SSLCIPHERSUITESSHAPE, ..#SSLCIPHERSUITESLENGTH, ..#SSLCIPHERSUITESUNKNOWN, ..#SSLOCSPVALUE, ..#SSLOCSPTIMEOUTSHAPE, ..#SSLPRIVATEKEYPASSWORDKEYFILE, ..#SSLPRIVATEKEYPASSWORDLENGTH, ..#SSLPRIVATEKEYPASSWORDWRONG, ..#SSLTESTHOST, ..#SSLTESTPORT)
+}
+
+/// <p>Envelope code (AD-39): a task create broke one or more of the rules
+/// <class>OcuPilot.Area.Task.TaskRules</class> applies before the port is touched, or the vendor
+/// refused a value on a field. <code>detail.violations</code> carries each.</p>
+Parameter TASKVALIDATION = "TASK.VALIDATION";
+
+Parameter REASONTASKVALIDATION = "The task was refused.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKNAMEREQUIRED = "TASK.NAME.REQUIRED";
+
+Parameter REASONTASKNAMEREQUIRED = "Give the task a name.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKNAMESHAPE = "TASK.NAME.SHAPE";
+
+Parameter REASONTASKNAMESHAPE = "A task name is at most 50 characters and starts with a letter.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKNAMETAKEN = "TASK.NAME.TAKEN";
+
+Parameter REASONTASKNAMETAKEN = "This instance already has a task with that name. Choose a different one.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDESCRIPTIONLENGTH = "TASK.DESCRIPTION.LENGTH";
+
+Parameter REASONTASKDESCRIPTIONLENGTH = "A description is at most 100 characters.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKNAMESPACEUNKNOWN = "TASK.NAMESPACE.UNKNOWN";
+
+Parameter REASONTASKNAMESPACEUNKNOWN = "Choose a namespace you can read on this instance.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKTASKCLASSREQUIRED = "TASK.TASKCLASS.REQUIRED";
+
+Parameter REASONTASKTASKCLASSREQUIRED = "Choose a task type.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKTASKCLASSUNKNOWN = "TASK.TASKCLASS.UNKNOWN";
+
+Parameter REASONTASKTASKCLASSUNKNOWN = "That task type is not available in the chosen namespace.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKTASKCLASSPERMISSION = "TASK.TASKCLASS.PERMISSION";
+
+Parameter REASONTASKTASKCLASSPERMISSION = "This task type needs a privilege you do not hold.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKSETTINGUNKNOWN = "TASK.SETTING.UNKNOWN";
+
+Parameter REASONTASKSETTINGUNKNOWN = "The chosen task type has no such setting.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKSETTINGINVALID = "TASK.SETTING.INVALID";
+
+Parameter REASONTASKSETTINGINVALID = "The task type does not accept this value.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKSETTINGREQUIRED = "TASK.SETTING.REQUIRED";
+
+Parameter REASONTASKSETTINGREQUIRED = "The task type needs this setting.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKSETTINGSECRET = "TASK.SETTING.SECRET";
+
+Parameter REASONTASKSETTINGSECRET = "This setting holds a credential, and only the classic portal's Task Scheduler Wizard sets it.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKSETTINGCLASSICONLY = "TASK.SETTING.CLASSICONLY";
+
+Parameter REASONTASKSETTINGCLASSICONLY = "This setting is a list, and only the classic portal's Task Scheduler Wizard sets it.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKTIMEPERIODVALUE = "TASK.TIMEPERIOD.VALUE";
+
+Parameter REASONTASKTIMEPERIODVALUE = "Choose how often the task runs.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKTIMEPERIODEVERYRANGE = "TASK.TIMEPERIODEVERY.RANGE";
+
+Parameter REASONTASKTIMEPERIODEVERYRANGE = "The interval is 1 to 7 days, 1 to 5 weeks, or 1 to 12 months, as the schedule reads it.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKTIMEPERIODDAYVALUE = "TASK.TIMEPERIODDAY.VALUE";
+
+Parameter REASONTASKTIMEPERIODDAYVALUE = "Choose the day or days this schedule runs on.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKRUNAFTERGUIDUNKNOWN = "TASK.RUNAFTERGUID.UNKNOWN";
+
+Parameter REASONTASKRUNAFTERGUIDUNKNOWN = "Choose a task on this instance to run after.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDAILYFREQUENCYVALUE = "TASK.DAILYFREQUENCY.VALUE";
+
+Parameter REASONTASKDAILYFREQUENCYVALUE = "Choose whether the task runs once or several times a day.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDAILYFREQUENCYTIMEREQUIRED = "TASK.DAILYFREQUENCYTIME.REQUIRED";
+
+Parameter REASONTASKDAILYFREQUENCYTIMEREQUIRED = "Choose whether the interval is in minutes or hours.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDAILYINCREMENTREQUIRED = "TASK.DAILYINCREMENT.REQUIRED";
+
+Parameter REASONTASKDAILYINCREMENTREQUIRED = "Give how long to wait between runs.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDAILYINCREMENTRANGE = "TASK.DAILYINCREMENT.RANGE";
+
+Parameter REASONTASKDAILYINCREMENTRANGE = "The interval is 1 to 1440 minutes, or 1 to 24 hours.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDAILYSTARTTIMESHAPE = "TASK.DAILYSTARTTIME.SHAPE";
+
+Parameter REASONTASKDAILYSTARTTIMESHAPE = "Give a time as HH:MM, from 00:00 to 23:59.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDAILYENDTIMESHAPE = "TASK.DAILYENDTIME.SHAPE";
+
+Parameter REASONTASKDAILYENDTIMESHAPE = "Give the last run's time as HH:MM, from 00:00 to 23:59.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDAILYENDTIMEORDER = "TASK.DAILYENDTIME.ORDER";
+
+Parameter REASONTASKDAILYENDTIMEORDER = "The last run's time must be later than the first.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKSTARTDATEREQUIRED = "TASK.STARTDATE.REQUIRED";
+
+Parameter REASONTASKSTARTDATEREQUIRED = "Give the date of the first run.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKSTARTDATESHAPE = "TASK.STARTDATE.SHAPE";
+
+Parameter REASONTASKSTARTDATESHAPE = "Give a date as YYYY-MM-DD.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKSTARTDATEPAST = "TASK.STARTDATE.PAST";
+
+Parameter REASONTASKSTARTDATEPAST = "The first run must be later than now on this instance's clock.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKENDDATESHAPE = "TASK.ENDDATE.SHAPE";
+
+Parameter REASONTASKENDDATESHAPE = "Give the end date as YYYY-MM-DD, or leave it empty.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKENDDATEORDER = "TASK.ENDDATE.ORDER";
+
+Parameter REASONTASKENDDATEORDER = "The end date must be later than the start date.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKEXPIRESDAYSRANGE = "TASK.EXPIRESDAYS.RANGE";
+
+Parameter REASONTASKEXPIRESDAYSRANGE = "Days is a whole number from 0 to 999.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKEXPIRESHOURSRANGE = "TASK.EXPIRESHOURS.RANGE";
+
+Parameter REASONTASKEXPIRESHOURSRANGE = "Hours is a whole number from 0 to 24.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKEXPIRESMINUTESRANGE = "TASK.EXPIRESMINUTES.RANGE";
+
+Parameter REASONTASKEXPIRESMINUTESRANGE = "Minutes is a whole number from 0 to 60.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKRUNASUSERSECURE = "TASK.RUNASUSER.SECURE";
+
+Parameter REASONTASKRUNASUSERSECURE = "Running a task as another account needs %Admin_Secure:USE, which you do not hold.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKRUNASUSERUNKNOWN = "TASK.RUNASUSER.UNKNOWN";
+
+Parameter REASONTASKRUNASUSERUNKNOWN = "This instance has no account with that name.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKRUNASUSERDISABLED = "TASK.RUNASUSER.DISABLED";
+
+Parameter REASONTASKRUNASUSERDISABLED = "That account is disabled, so a task cannot run as it.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKPRIORITYVALUE = "TASK.PRIORITY.VALUE";
+
+Parameter REASONTASKPRIORITYVALUE = "Choose Normal, Low or High.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKMIRRORSTATUSVALUE = "TASK.MIRRORSTATUS.VALUE";
+
+Parameter REASONTASKMIRRORSTATUSVALUE = "Choose Primary, Non-Primary or Any.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKOUTPUTFILENAMESHAPE = "TASK.OUTPUTFILENAME.SHAPE";
+
+Parameter REASONTASKOUTPUTFILENAMESHAPE = "Give one file name ending in .txt, of letters, digits, dots, dashes and underscores, with no folder.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKEMAILONCOMPLETIONSHAPE = "TASK.EMAILONCOMPLETION.SHAPE";
+
+Parameter REASONTASKEMAILONCOMPLETIONSHAPE = "Give email addresses separated by commas, each like name@example.com.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKEMAILONERRORSHAPE = "TASK.EMAILONERROR.SHAPE";
+
+Parameter REASONTASKEMAILONERRORSHAPE = "Give email addresses separated by commas, each like name@example.com.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKEMAILONEXPIRATIONSHAPE = "TASK.EMAILONEXPIRATION.SHAPE";
+
+Parameter REASONTASKEMAILONEXPIRATIONSHAPE = "Give email addresses separated by commas, each like name@example.com.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKFIELDSHAPE = "TASK.FIELD.SHAPE";
+
+Parameter REASONTASKFIELDSHAPE = "This value is not the kind this field takes.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKRUNASUSERREFUSED = "TASK.RUNASUSER.REFUSED";
+
+Parameter REASONTASKRUNASUSERREFUSED = "The instance refused to run the task as this account.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDAILYINCREMENTREFUSED = "TASK.DAILYINCREMENT.REFUSED";
+
+Parameter REASONTASKDAILYINCREMENTREFUSED = "The instance refused this interval.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDAILYENDTIMEREFUSED = "TASK.DAILYENDTIME.REFUSED";
+
+Parameter REASONTASKDAILYENDTIMEREFUSED = "The instance refused this last run's time.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKENDDATEREFUSED = "TASK.ENDDATE.REFUSED";
+
+Parameter REASONTASKENDDATEREFUSED = "The instance refused this end date.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKTIMEPERIODDAYREFUSED = "TASK.TIMEPERIODDAY.REFUSED";
+
+Parameter REASONTASKTIMEPERIODDAYREFUSED = "The instance refused these run days.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKOUTPUTFILENAMEREFUSED = "TASK.OUTPUTFILENAME.REFUSED";
+
+Parameter REASONTASKOUTPUTFILENAMEREFUSED = "The instance refused this output file.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKTASKCLASSREFUSED = "TASK.TASKCLASS.REFUSED";
+
+Parameter REASONTASKTASKCLASSREFUSED = "The instance refused this task type, or a privilege it needs is missing.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKTIMEPERIODEVERYREFUSED = "TASK.TIMEPERIODEVERY.REFUSED";
+
+Parameter REASONTASKTIMEPERIODEVERYREFUSED = "The instance refused this interval between runs.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKDAILYFREQUENCYTIMEREFUSED = "TASK.DAILYFREQUENCYTIME.REFUSED";
+
+Parameter REASONTASKDAILYFREQUENCYTIMEREFUSED = "The instance refused this interval's unit.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKRUNAFTERGUIDREFUSED = "TASK.RUNAFTERGUID.REFUSED";
+
+Parameter REASONTASKRUNAFTERGUIDREFUSED = "The instance refused the task to run after.";
+
+/// <p>Violation code (Story 9.7).</p>
+Parameter TASKSTARTDATEREFUSED = "TASK.STARTDATE.REFUSED";
+
+Parameter REASONTASKSTARTDATEREFUSED = "The instance refused this start, which must be later than now.";
+
+/// <p>Envelope code (Story 9.8): the task an edit names is not on this instance.</p>
+Parameter TASKABSENT = "TASK.ABSENT";
+
+Parameter REASONTASKABSENT = "This task no longer exists.";
+
+/// <p>Violation code (Story 9.8): the task writes its output to a directory OcuPilot never sets.</p>
+Parameter TASKOUTPUTFILENAMECLASSICONLY = "TASK.OUTPUTFILENAME.CLASSICONLY";
+
+Parameter REASONTASKOUTPUTFILENAMECLASSICONLY = "This task writes its output to a folder only the classic portal's Task Scheduler Wizard sets, so change its output file there.";
+
+/// <p>The sentence a <code>TASK.*</code> violation code carries, or <code>""</code> for any other
+/// code; <method>ReasonForViolation</method> delegates the family here.</p>
+ClassMethod ReasonForTask(pCode As %String) As %String
+{
+    If '$ListFind(..TaskViolationCodes(), pCode) Quit ""
+    Quit $Parameter($ClassName(), "REASON" _ $Translate(pCode, "."))
+}
+
+/// <p>Every <code>TASK.*</code> field-level violation code, as a <class>%List</class>, for the reason
+/// <method>UserViolationCodes</method> exists.</p>
+ClassMethod TaskViolationCodes() As %List
+{
+    Quit $ListBuild(..#TASKNAMEREQUIRED, ..#TASKNAMESHAPE, ..#TASKNAMETAKEN, ..#TASKDESCRIPTIONLENGTH, ..#TASKNAMESPACEUNKNOWN, ..#TASKTASKCLASSREQUIRED, ..#TASKTASKCLASSUNKNOWN, ..#TASKTASKCLASSPERMISSION, ..#TASKSETTINGUNKNOWN, ..#TASKSETTINGINVALID, ..#TASKSETTINGREQUIRED, ..#TASKSETTINGSECRET, ..#TASKSETTINGCLASSICONLY, ..#TASKTIMEPERIODVALUE, ..#TASKTIMEPERIODEVERYRANGE, ..#TASKTIMEPERIODDAYVALUE, ..#TASKRUNAFTERGUIDUNKNOWN, ..#TASKDAILYFREQUENCYVALUE, ..#TASKDAILYFREQUENCYTIMEREQUIRED, ..#TASKDAILYINCREMENTREQUIRED, ..#TASKDAILYINCREMENTRANGE, ..#TASKDAILYSTARTTIMESHAPE, ..#TASKDAILYENDTIMESHAPE, ..#TASKDAILYENDTIMEORDER, ..#TASKSTARTDATEREQUIRED, ..#TASKSTARTDATESHAPE, ..#TASKSTARTDATEPAST, ..#TASKENDDATESHAPE, ..#TASKENDDATEORDER, ..#TASKEXPIRESDAYSRANGE, ..#TASKEXPIRESHOURSRANGE, ..#TASKEXPIRESMINUTESRANGE, ..#TASKRUNASUSERSECURE, ..#TASKRUNASUSERUNKNOWN, ..#TASKRUNASUSERDISABLED, ..#TASKPRIORITYVALUE, ..#TASKMIRRORSTATUSVALUE, ..#TASKOUTPUTFILENAMESHAPE, ..#TASKEMAILONCOMPLETIONSHAPE, ..#TASKEMAILONERRORSHAPE, ..#TASKEMAILONEXPIRATIONSHAPE, ..#TASKFIELDSHAPE, ..#TASKRUNASUSERREFUSED, ..#TASKDAILYINCREMENTREFUSED, ..#TASKDAILYENDTIMEREFUSED, ..#TASKENDDATEREFUSED, ..#TASKTIMEPERIODDAYREFUSED, ..#TASKOUTPUTFILENAMEREFUSED, ..#TASKTASKCLASSREFUSED, ..#TASKTIMEPERIODEVERYREFUSED, ..#TASKDAILYFREQUENCYTIMEREFUSED, ..#TASKRUNAFTERGUIDREFUSED, ..#TASKSTARTDATEREFUSED, ..#TASKABSENT, ..#TASKOUTPUTFILENAMECLASSICONLY)
+}
+
+/// <p>Envelope code (Story 9.9): one 422 carrying every broken rule of a service Save.</p>
+Parameter SERVICEVALIDATION = "SERVICE.VALIDATION";
+
+Parameter REASONSERVICEVALIDATION = "The service change was refused.";
+
+/// <p>Envelope code (Story 9.9): the service a form read or a Save names is not on this instance.</p>
+Parameter SERVICEABSENT = "SERVICE.ABSENT";
+
+Parameter REASONSERVICEABSENT = "This service no longer exists.";
+
+/// <p>Violation code (Story 9.9): an allowed-connection entry that is empty or holds whitespace or a
+/// semicolon, which the vendor splits into two entries (measured).</p>
+Parameter SERVICEADDRESSSHAPE = "SERVICE.ADDRESS.SHAPE";
+
+Parameter REASONSERVICEADDRESSSHAPE = "An allowed connection is one address, with no spaces or semicolons.";
+
+/// <p>Violation code (Story 9.9): an allowed-connection entry names a role this instance does not
+/// hold, which the vendor accepts silently (measured).</p>
+Parameter SERVICEADDRESSROLE = "SERVICE.ADDRESS.ROLE";
+
+Parameter REASONSERVICEADDRESSROLE = "A role named for this address does not exist on this instance.";
+
+/// <p>Violation code (Story 9.9): an authentication method the service does not support, which the
+/// vendor masks away and answers 200 (measured).</p>
+Parameter SERVICEAUTHEUNSUPPORTED = "SERVICE.AUTHE.UNSUPPORTED";
+
+Parameter REASONSERVICEAUTHEUNSUPPORTED = "This service does not support one of the authentication methods chosen.";
+
+/// <p>Envelope code (Story 9.9): one 422 carrying every broken rule of an LDAP configuration Save.</p>
+Parameter LDAPVALIDATION = "LDAP.VALIDATION";
+
+Parameter REASONLDAPVALIDATION = "The LDAP configuration change was refused.";
+
+/// <p>Envelope code (Story 9.9): the LDAP configuration a form read or a Save names is not on this
+/// instance.</p>
+Parameter LDAPABSENT = "LDAP.ABSENT";
+
+Parameter REASONLDAPABSENT = "This LDAP configuration no longer exists.";
+
+/// <p>Violation code (Story 9.9): a setting <class>Security.LDAPConfigs</class> declares
+/// <code>Required</code> sent empty.</p>
+Parameter LDAPFIELDREQUIRED = "LDAP.FIELD.REQUIRED";
+
+Parameter REASONLDAPFIELDREQUIRED = "This LDAP setting cannot be empty.";
+
+/// <p>Violation code (Story 9.9): an empty host entry, or one holding whitespace; the vendor joins
+/// host names with a space.</p>
+Parameter LDAPHOSTSHAPE = "LDAP.HOST.SHAPE";
+
+Parameter REASONLDAPHOSTSHAPE = "A host name is one name, optionally followed by :port, with no spaces.";
+
+/// <p>Violation code (Story 9.9): <code>LDAPFlags</code> outside the whole numbers 0 to 255.</p>
+Parameter LDAPFLAGSVALUE = "LDAP.FLAGS.VALUE";
+
+Parameter REASONLDAPFLAGSVALUE = "The LDAP flags are a whole number from 0 to 255.";
+
+/// <p>Violation code (Story 9.9): a description longer than the vendor's 128 characters.</p>
+Parameter LDAPDESCRIPTIONLENGTH = "LDAP.DESCRIPTION.LENGTH";
+
+Parameter REASONLDAPDESCRIPTIONLENGTH = "An LDAP configuration's description is at most 128 characters.";
+
+/// <p>The sentence a <code>SERVICE.*</code> violation code carries, or <code>""</code> for any other
+/// code; <method>ReasonForViolation</method> delegates the family here.</p>
+ClassMethod ReasonForService(pCode As %String) As %String
+{
+    If '$ListFind(..ServiceViolationCodes(), pCode) Quit ""
+    Quit $Parameter($ClassName(), "REASON" _ $Translate(pCode, "."))
+}
+
+/// <p>Every <code>SERVICE.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod ServiceViolationCodes() As %List
+{
+    Quit $ListBuild(..#SERVICEADDRESSSHAPE, ..#SERVICEADDRESSROLE, ..#SERVICEAUTHEUNSUPPORTED, ..#SERVICEABSENT)
+}
+
+/// <p>The sentence an <code>LDAP.*</code> violation code carries, or <code>""</code> for any other
+/// code; <method>ReasonForViolation</method> delegates the family here.</p>
+ClassMethod ReasonForLdap(pCode As %String) As %String
+{
+    If '$ListFind(..LdapViolationCodes(), pCode) Quit ""
+    Quit $Parameter($ClassName(), "REASON" _ $Translate(pCode, "."))
+}
+
+/// <p>Every <code>LDAP.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod LdapViolationCodes() As %List
+{
+    Quit $ListBuild(..#LDAPFIELDREQUIRED, ..#LDAPHOSTSHAPE, ..#LDAPFLAGSVALUE, ..#LDAPDESCRIPTIONLENGTH, ..#LDAPABSENT)
+}
+
+/// <p>Envelope code (Story 9.10): one 422 carrying every broken rule of a user audit event Save.</p>
+Parameter AUDITEVENTVALIDATION = "AUDITEVENT.VALIDATION";
+
+Parameter REASONAUDITEVENTVALIDATION = "The audit event was refused.";
+
+/// <p>Violation code (Story 9.10): an empty Source, Type or Name, which the vendor answers
+/// <code>&lt;SUBSCRIPT&gt;</code> (measured).</p>
+Parameter AUDITEVENTPARTREQUIRED = "AUDITEVENT.PART.REQUIRED";
+
+Parameter REASONAUDITEVENTPARTREQUIRED = "Enter a value. An audit event is named by its source, type and name.";
+
+/// <p>Violation code (Story 9.10): a Source, Type or Name over the vendor's 64 characters.</p>
+Parameter AUDITEVENTPARTLENGTH = "AUDITEVENT.PART.LENGTH";
+
+Parameter REASONAUDITEVENTPARTLENGTH = "Use 64 characters or fewer.";
+
+/// <p>Violation code (Story 9.10): a <code>/</code> in a Source, Type or Name, which the vendor refuses
+/// or fails on (measured).</p>
+Parameter AUDITEVENTPARTSLASH = "AUDITEVENT.PART.SLASH";
+
+Parameter REASONAUDITEVENTPARTSLASH = "Remove the slash. An event's source, type and name are joined with slashes, so none of them can contain one.";
+
+/// <p>Violation code (Story 9.10): a Source or Type beginning with <code>%</code>, which the vendor
+/// refuses #851 (measured).</p>
+Parameter AUDITEVENTPARTRESERVED = "AUDITEVENT.PART.RESERVED";
+
+Parameter REASONAUDITEVENTPARTRESERVED = "Start with a character other than %. A source or type beginning with % is reserved for the instance's own system events.";
+
+/// <p>Violation code (Story 9.10): a Description over the vendor's 256 characters.</p>
+Parameter AUDITEVENTDESCRIPTIONLENGTH = "AUDITEVENT.DESCRIPTION.LENGTH";
+
+Parameter REASONAUDITEVENTDESCRIPTIONLENGTH = "Use 256 characters or fewer.";
+
+/// <p>Violation code (Story 9.10): an event id that is not exactly three <code>/</code>-separated
+/// parts.</p>
+Parameter AUDITEVENTEVENTNAMESHAPE = "AUDITEVENT.EVENTNAME.SHAPE";
+
+Parameter REASONAUDITEVENTEVENTNAMESHAPE = "Name the event as source/type/name: three parts, none containing a slash.";
+
+/// <p>Violation and envelope code (Story 9.10): a user event tool given a system event.</p>
+Parameter AUDITEVENTSYSTEM = "AUDITEVENT.SYSTEM";
+
+Parameter REASONAUDITEVENTSYSTEM = "This is one of the instance's own system events. Change it on the System events list.";
+
+/// <p>Violation code (Story 9.10): a system event tool given a user event.</p>
+Parameter AUDITEVENTUSER = "AUDITEVENT.USER";
+
+Parameter REASONAUDITEVENTUSER = "This is a user event. Change it on the User events list.";
+
+/// <p>Violation code (Story 9.10): a create whose event the instance already holds, in any case.</p>
+Parameter AUDITEVENTTAKEN = "AUDITEVENT.TAKEN";
+
+Parameter REASONAUDITEVENTTAKEN = "This instance already has an audit event with this source, type and name.";
+
+/// <p>Violation and envelope code (Story 9.10): the event a form read or an edit names is not on this
+/// instance.</p>
+Parameter AUDITEVENTABSENT = "AUDITEVENT.ABSENT";
+
+Parameter REASONAUDITEVENTABSENT = "This audit event no longer exists.";
+
+/// <p>The sentence an <code>AUDITEVENT.*</code> violation code carries, or <code>""</code> for any
+/// other code; <method>ReasonForViolation</method> delegates the family here.</p>
+ClassMethod ReasonForAuditEvent(pCode As %String) As %String
+{
+    If '$ListFind(..AuditEventViolationCodes(), pCode) Quit ""
+    Quit $Parameter($ClassName(), "REASON" _ $Translate(pCode, "."))
+}
+
+/// <p>Every <code>AUDITEVENT.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod AuditEventViolationCodes() As %List
+{
+    Quit $ListBuild(..#AUDITEVENTPARTREQUIRED, ..#AUDITEVENTPARTLENGTH, ..#AUDITEVENTPARTSLASH, ..#AUDITEVENTPARTRESERVED, ..#AUDITEVENTDESCRIPTIONLENGTH, ..#AUDITEVENTEVENTNAMESHAPE, ..#AUDITEVENTSYSTEM, ..#AUDITEVENTUSER, ..#AUDITEVENTTAKEN, ..#AUDITEVENTABSENT)
+}
 
 }

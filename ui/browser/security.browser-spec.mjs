@@ -51,8 +51,9 @@ const LISTS = {
     url: '/ocupilot/security/x509?ns=HSCUSTOM',
     read: `${READ_PREFIX}security.x509/read`,
     label: STRINGS.x509ListLabel,
-    headers: [STRINGS.x509ColumnAlias, STRINGS.x509ColumnSubject, STRINGS.x509ColumnIssuer, STRINGS.x509ColumnValidFrom, STRINGS.x509ColumnValidUntil],
-    literal: ['Alias', 'Subject', 'Issuer', 'Valid from', 'Valid until'],
+    // Story 9.5: the X.509 and Secrets lists declare Delete, so their tables carry the row-actions column.
+    headers: [STRINGS.x509ColumnAlias, STRINGS.x509ColumnSubject, STRINGS.x509ColumnIssuer, STRINGS.x509ColumnValidFrom, STRINGS.x509ColumnValidUntil, STRINGS.commandBoxGroupActions],
+    literal: ['Alias', 'Subject', 'Issuer', 'Valid from', 'Valid until', 'Actions'],
     listed: true,
   },
   ldap: {
@@ -75,8 +76,8 @@ const LISTS = {
     url: SECRETS_URL,
     read: `${READ_PREFIX}security.secrets/read`,
     label: STRINGS.walletSecretListLabel,
-    headers: [STRINGS.tableColumnName, STRINGS.tableColumnType],
-    literal: ['Name', 'Type'],
+    headers: [STRINGS.tableColumnName, STRINGS.tableColumnType, STRINGS.commandBoxGroupActions],
+    literal: ['Name', 'Type', 'Actions'],
     listed: false,
   },
 };
@@ -266,7 +267,7 @@ test('AC2: the demo credential\'s Subject, Issuer, Valid from and Valid until ce
     }
     assert.ok(cells !== null, `the ${DEMO_CERT} row is rendered`);
     assert.deepEqual(
-      cells.slice(1).map((cell) => cell.text),
+      cells.slice(1, 5).map((cell) => cell.text),
       [row.SubjectDN, row.IssuerDN, row.ValidityNotBefore, row.ValidityNotAfter],
       'Subject, Issuer, Valid from and Valid until are the read row\'s'
     );

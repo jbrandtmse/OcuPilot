@@ -98,6 +98,7 @@ XData Probes
      WEBAPP.NAME.REQUIRED envelope instead of a 200. It is still a dispatch, which is what
      this class asserts; the route's own answers are OcuPilot.Test.WebAppWire's. -->
 <probe class="Api.Router" method="GET" url="/web-applications/name" path="/api/ocupilot/web-applications/name" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/web-applications/:id" path="/api/ocupilot/web-applications/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/web-applications" path="/api/ocupilot/web-applications" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/screens/:screen/action" path="/api/ocupilot/screens/osmgmt.locks/action" disposition="envelope" refusal="1" substitute="osmgmt.locks" substitutewhy="a screen identifier that resolves to nothing answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this route probes a real screen; the body is the unreadable one every write-verb probe sends, and the screen declares no row action, so the handler refuses before any write"/>
 <probe class="Api.Router" method="GET" url="/screens/:screen/read" path="/api/ocupilot/screens/osmgmt.locks/read" disposition="envelope" substitute="osmgmt.locks" substitutewhy="a screen identifier that resolves to nothing answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this one route probes a real screen"/>
@@ -130,9 +131,11 @@ XData Probes
 <!-- /users/name carries no query string here, for /web-applications/name's reason: it draws the
      documented 422 USER.NAME.REQUIRED envelope. Its own answers are OcuPilot.Test.UserCreateWire's. -->
 <probe class="Api.Router" method="GET" url="/users/name" path="/api/ocupilot/users/name" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/users/:id" path="/api/ocupilot/users/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/users" path="/api/ocupilot/users" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/roles/form" path="/api/ocupilot/roles/form" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/roles/name" path="/api/ocupilot/roles/name" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/roles/:id" path="/api/ocupilot/roles/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/roles" path="/api/ocupilot/roles" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/resources/form" path="/api/ocupilot/resources/form" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/resources/name" path="/api/ocupilot/resources/name" disposition="envelope"/>
@@ -150,6 +153,22 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/device/name" path="/api/ocupilot/device/name" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/device/:id" path="/api/ocupilot/device/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/device" path="/api/ocupilot/device" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/ssl/form" path="/api/ocupilot/ssl/form" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/ssl/name" path="/api/ocupilot/ssl/name" disposition="envelope"/>
+<probe class="Api.Router" method="POST" url="/ssl/:id/test" path="/api/ocupilot/ssl/ocupilot-coverage-probe/test" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="PUT" url="/ssl/:id" path="/api/ocupilot/ssl/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/ssl" path="/api/ocupilot/ssl" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/tasks/form" path="/api/ocupilot/tasks/form" disposition="envelope"/>
+<probe class="Api.Router" method="POST" url="/tasks/check" path="/api/ocupilot/tasks/check" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="PUT" url="/tasks/:id" path="/api/ocupilot/tasks/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/tasks" path="/api/ocupilot/tasks" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/services/form" path="/api/ocupilot/services/form" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/services/:id" path="/api/ocupilot/services/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/ldap/form" path="/api/ocupilot/ldap/form" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/ldap/:id" path="/api/ocupilot/ldap/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/audit-events/form" path="/api/ocupilot/audit-events/form" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/audit-events/:id" path="/api/ocupilot/audit-events/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/audit-events" path="/api/ocupilot/audit-events" disposition="envelope" refusal="1"/>
 <probe class="Api.Readiness" method="GET" url="/" path="/api/ocupilot/readiness/" disposition="envelope"/>
 <probe class="Api.StaticHandler" method="GET" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>
 <probe class="Api.StaticHandler" method="HEAD" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>

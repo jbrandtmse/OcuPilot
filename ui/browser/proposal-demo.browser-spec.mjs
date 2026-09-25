@@ -501,14 +501,24 @@ test("AC1: UJ-3's own journey, as a non-%All holder of the screen's two pairs, i
     // The instance itself, and the principal that wrote it: no %All anywhere on this path.
     assert.equal(storedState(), `1|${RESOURCE}|${TARGET}`, 'the vendor PUT wrote what the diff promised');
     assert.equal(holdsAll(), '0', 'and the principal that confirmed it still holds no %All');
-    // The reply carries the published audit-entry offer, which is AC3's channel.
-    const reply = await page.$eval(
-      '.ocu-panel-message-agent-text',
-      (node) => (node.textContent ?? '').trim()
-    );
+    // The reply carries the published audit-entry offer, which is AC3's channel. It can land a poll
+    // after the card settles, so wait for it before reading it. `app-reply` is the reply block; an
+    // announce step carries the same class. A wait that times out falls through to the assertion,
+    // which names what the panel showed instead of a bare selector miss.
+    await page
+      .waitForFunction(
+        (tail) => (document.querySelector('app-reply.ocu-panel-message-agent-text')?.textContent ?? '').trim().endsWith(tail),
+        { timeout: config.navigationTimeoutMs },
+        STRINGS.agentAuditFollowUpQuestion
+      )
+      .catch(() => undefined);
+    const closing = await page.evaluate(() => ({
+      reply: (document.querySelector('app-reply.ocu-panel-message-agent-text')?.textContent ?? '').trim(),
+      banner: (document.querySelector('.ocu-panel-error-banner')?.textContent ?? '').trim(),
+    }));
     assert.ok(
-      reply.endsWith(STRINGS.agentAuditFollowUpQuestion),
-      `the reply ends with the published offer: ${reply}`
+      closing.reply.endsWith(STRINGS.agentAuditFollowUpQuestion),
+      `the reply ends with the published offer: ${JSON.stringify(closing)}`
     );
   } finally {
     await context.close();

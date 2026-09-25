@@ -10,6 +10,7 @@
 /// <method>OcuPilot.Install.Fixture.RemoveOne</method> and
 /// <method>OcuPilot.Install.Fixture.CreateTask</method> live in
 /// <class>OcuPilot.Test.DemoFaults</class> for the same reason.</p>
+/// <p>It runs only where <parameter>ARMINGVARIABLE</parameter> reads <code>1</code>.</p>
 /// <p><b>One shared setup for the whole class</b> (<method>OnBeforeAllTests</method>, not
 /// <code>OnBeforeOneTest</code>): calls <method>OcuPilot.Install.Fixture.Create</method>
 /// exactly once. That call does <b>not</b> wait for the Task Manager -- it asks for one run
@@ -35,6 +36,11 @@
 /// task -- every "pass" before this rework was the skip.</p>
 Class OcuPilot.Test.Demo Extends %UnitTest.TestCase
 {
+
+/// <p>The environment variable that arms this class, set by <file>scripts/ci-throwaway.sh</file>
+/// alone: the demo fixture creates and removes a TLS configuration, an X.509 credential and a
+/// wallet collection on this instance.</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_SSL_CONFIG";
 
 /// <p>The fixture's own report stream from <method>OnBeforeAllTests</method>'
 /// <code>Fixture.Create("probe", ...)</code> call, kept as instance state (review
@@ -104,6 +110,9 @@ Parameter CREATEMAXSECONDS As %Integer = 30;
 /// re-deriving it from scratch.</p>
 Method OnBeforeAllTests() As %Status
 {
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.Demo creates and removes the demo fixture's objects on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
     Kill tReports
     Set tStart = $ZHorolog
     Set tSC = ##class(OcuPilot.Install.Fixture).Create("probe", .tReports, .tErrorEntryId)

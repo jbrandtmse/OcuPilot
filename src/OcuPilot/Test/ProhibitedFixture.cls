@@ -1,13 +1,13 @@
-/// <p>Test-only <class>OcuPilot.Kernel.Proposal.Prohibited</class> subclass with four replaced
+/// <p>Test-only <class>OcuPilot.Kernel.Proposal.Prohibited</class> subclass with six replaced
 /// seams: the live read goes to <class>OcuPilot.Test.ProposalFixture</class>'s armed object instead
 /// of the admin port, so the <b>shipped</b> predicates run against a target a test composed; and
-/// the three census seams below can be armed.</p>
-/// <p><b>Which of the four replaces a body matters, because a seam that replaces a safety
+/// the five census seams below can be armed.</p>
+/// <p><b>Which of the six replaces a body matters, because a seam that replaces a safety
 /// predicate makes every test through it vacuous.</b> <method>PortClass</method> redirects a read
 /// and replaces no predicate. <method>LastAllHolder</method> and
-/// <method>DeletingLeavesNoAllHolder</method> armed each replace a census outright.
-/// <method>HoldsAll</method> armed replaces only the census's per-account input, so the census body
-/// still runs in full. Everything else -- the covered-type refusal, the predicate order, the
+/// <method>DeletingLeavesNoAllHolder</method> and <method>ChangingLeavesNoAllHolder</method> armed
+/// each replace a census outright. <method>HoldsAll</method> and <method>DirectRoles</method> armed
+/// replace only the census's per-account input, so the census body still runs in full. Everything else -- the covered-type refusal, the predicate order, the
 /// rendered comparison, the diff scoping, the role and resource escalation reads and the
 /// serving-path read -- is the shipped code.</p>
 /// <p>It also holds the builders the two prohibited suites share: one web application as the
@@ -53,6 +53,42 @@ ClassMethod DeletingLeavesNoAllHolder(pRole As %String, Output pLeaves As %Boole
         Quit $$$OK
     }
     Quit ##super(pRole, .pLeaves)
+}
+
+/// <p>The shipped role-change census, armed and disarmed with
+/// <method>DeletingLeavesNoAllHolder</method>'s arm, for the reason that one is.</p>
+ClassMethod ChangingLeavesNoAllHolder(pRole As %String, pAfterGranted As %List, pAfterEscalation As %Boolean, Output pLeaves As %Boolean) As %Status
+{
+    If ##class(OcuPilot.Test.ProposalFixture).LastAllHolderArmed() {
+        Set pLeaves = 1
+        Quit $$$OK
+    }
+    Quit ##super(pRole, pAfterGranted, pAfterEscalation, .pLeaves)
+}
+
+/// <p>The shipped answer, except that <method>ArmDirectRoles</method> can name the roles one account
+/// holds -- so an account arm of the role census is driven for <code>_SYSTEM</code> without changing
+/// that account. It arms the census's input, as <method>HoldsAll</method>'s arm does; the walk runs
+/// as shipped. Disarmed, the shipped <code>%SYS</code> read answers.</p>
+ClassMethod DirectRoles(pUser As %String, Output pRoles As %List) As %Status
+{
+    Set tKey = $ZConvert(pUser, "U")
+    If (tKey '= "") && $Data(^||OcuPilotProhibitedFixture("directroles", tKey)) {
+        Set pRoles = ^||OcuPilotProhibitedFixture("directroles", tKey)
+        Quit $$$OK
+    }
+    Quit ##super(pUser, .pRoles)
+}
+
+/// <p>Arm <method>DirectRoles</method> to answer the comma-separated <var>pRoles</var> for account
+/// <var>pUser</var>, or with <var>pUser</var> <code>""</code> disarm it for every account.</p>
+ClassMethod ArmDirectRoles(pUser As %String = "", pRoles As %String = "")
+{
+    If pUser = "" {
+        Kill ^||OcuPilotProhibitedFixture("directroles")
+        Quit
+    }
+    Set ^||OcuPilotProhibitedFixture("directroles", $ZConvert(pUser, "U")) = $ListFromString(pRoles)
 }
 
 /// <p>The shipped answer, except that <method>OcuPilot.Test.ProposalFixture.ArmAllHolders</method>

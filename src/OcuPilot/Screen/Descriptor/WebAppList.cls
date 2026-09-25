@@ -37,13 +37,14 @@
 /// not refresh (AD-43). Its write tools, <class>OcuPilot.Screen.Tool.WebAppUpdate</class>,
 /// <class>OcuPilot.Screen.Tool.WebAppCreate</class> and <class>OcuPilot.Screen.Tool.WebAppDelete</class>,
 /// register by class scan.</p>
-/// <p><b>It declares three row actions</b> (AD-5, AD-53), in command-bar order with the
+/// <p><b>It declares seven row actions</b> (AD-5, AD-53), in command-bar order with the
 /// destructive one last: <code>enable</code> and <code>disable</code>, both carried out by
-/// <class>OcuPilot.Screen.Tool.WebAppUpdate</class> over its one <code>Enabled</code> field, and
-/// <code>delete</code>, carried out by <class>OcuPilot.Screen.Tool.WebAppDelete</class>. Each
-/// declares the self-protection rule that <i>explains</i> its refusal on OcuPilot's own
-/// applications; the refusal itself is AD-10's, evaluated at the write whatever the caller, and no
-/// predicate here decides what may be deleted.</p>
+/// <class>OcuPilot.Screen.Tool.WebAppUpdate</class> over its <code>Enabled</code> field; the four
+/// role actions, which the same tool carries out as a delta over <code>MatchRoles</code> and which
+/// only the web application editor draws; and <code>delete</code>, carried out by
+/// <class>OcuPilot.Screen.Tool.WebAppDelete</class>. Each declares the self-protection rule that
+/// <i>explains</i> its refusal on OcuPilot's own applications; the refusal itself is AD-10's,
+/// evaluated at the write whatever the caller, and no predicate here decides what may happen.</p>
 Class OcuPilot.Screen.Descriptor.WebAppList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -69,6 +70,10 @@ XData Declaration
   "rowActions": [
     {"id": "enable", "selfProtection": "serves-ocupilot"},
     {"id": "disable", "selfProtection": "serves-ocupilot"},
+    {"id": "add-application-role", "selfProtection": "ocupilot-application-roles"},
+    {"id": "remove-application-role", "selfProtection": "ocupilot-application-roles"},
+    {"id": "add-matching-role", "selfProtection": "ocupilot-application-roles"},
+    {"id": "remove-matching-role", "selfProtection": "ocupilot-application-roles"},
     {"id": "delete", "selfProtection": "serves-ocupilot"}
   ],
   "context": {"fields": ["Name", "Namespace", "Type", "Enabled", "DispatchClass", "Resource"], "secretFields": []},

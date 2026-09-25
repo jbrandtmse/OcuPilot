@@ -361,6 +361,16 @@ function confirmedAction(body: Record<string, unknown>): ChangeAction {
   return CHANGE_ACTIONS.includes(action as ChangeAction) ? (action as ChangeAction) : 'updated';
 }
 
+/**
+ * The id a confirmed create's change event carries: the instance's own `createdId` where the
+ * confirm answers one (AD-14; a task, whose proposal names it by name and whose id the instance
+ * allocates on the write), else the proposal target's id.
+ */
+function confirmedId(body: Record<string, unknown>, targetId: string): string {
+  const created = textAt(body, 'createdId');
+  return created !== '' ? created : targetId;
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : null;
 }
@@ -1087,7 +1097,7 @@ export class TurnStore {
           kind: 'changed',
           type: target.type,
           scope: target.scope,
-          id: target.id,
+          id: confirmedId(result.body, target.id),
           action: confirmedAction(result.body),
         });
       }

@@ -142,74 +142,113 @@ Method TestTheSchemaIsDerivedFromTheClassifiedFieldList()
     Do $$$AssertNotEquals(tProperties.%GetTypeOf("Enabled"), "unassigned", "an ordinary boolean field is admitted")
     Do $$$AssertEquals(tProperties.%Get("Enabled").%Get("type"), "boolean", "with its own JSON type")
     Do $$$AssertEquals(tProperties.%Get("Resource").%Get("type"), "string", "and a string field with its")
-    ; The shipped tool admits four reviewed fields (AD-10), none of them an array, so the array
-    ; shape is read on the probe subclass that lifts the positive restriction and nothing else.
-    Set tWide = $ClassMethod("OcuPilot.Test.WriteExclusion", "InputSchema").%Get("properties")
-    Do $$$AssertEquals(tWide.%Get("CorsAllowlist").%Get("type"), "array", "an array field is an array")
-    Do $$$AssertEquals(tWide.%Get("CorsAllowlist").%Get("items").%Get("type"), "string", "of its element type")
-    Do $$$AssertEquals(tProperties.%GetTypeOf("CorsAllowlist"), "unassigned", "and the shipped tool advertises no field the prohibited set has not reviewed")
+    Do $$$AssertEquals(tProperties.%Get("CorsAllowlist").%Get("type"), "array", "an array field is an array")
+    Do $$$AssertEquals(tProperties.%Get("CorsAllowlist").%Get("items").%Get("type"), "string", "of its element type")
+    Do $$$AssertEquals(tProperties.%GetTypeOf("EventClass"), "unassigned", "and the shipped tool advertises no field the prohibited set has not reviewed")
 
     Set tFields = $ClassMethod(..#TOOLCLASS, "SettableFields")
     Do $$$AssertTrue($ListFind(tFields, "Enabled") > 0, "the settable fields are derived from the same entry")
     Do $$$AssertEquals($ListFind(tFields, "Name"), 0, "the identifying argument is not one of them")
-    Do $$$AssertEquals($ListFind(tFields, "MatchRoles"), 0, "and neither is the role subtree")
+    Do $$$AssertTrue($ListFind(tFields, "MatchRoles") > 0, "and the application roles are the one authored argument")
 }
 
-/// <p>AD-10: the change tool's reviewed few do not include application roles -- a change to them is
-/// refused as unreviewed, or on OcuPilot's own applications as a privilege grant -- so the role
-/// subtree is not in the schema and a call carrying it is refused as an unknown argument.</p>
-/// <p>Mutation: classify the subtree <code>ordinary</code> in
-/// <class>OcuPilot.Screen.Tool.Classification</class> and give it a top-level field-list row --
-/// this goes red. Removing <code>MatchRoles</code> from <method>ExcludedFields</method> alone does
-/// not admit it: its two field-list paths are dotted, so the nested-path filter drops them first.
-/// The exclusion filter's own effect is pinned by
-/// <method>TestAnExcludedFieldLeavesTheSchemaAndTheSettableList</method>.</p>
-Method TestARoleGrantIsRefusedAsAnUnknownArgument()
+/// <p>AD-3, AD-10: application roles are the change tool's one authored argument -- an array of
+/// <code>{MatchRole, TargetRoles}</code> entries -- because the derivation types no member of the
+/// derived subtree, which the tool excludes by name. The schema admits a list of entries and
+/// refuses any other shape.</p>
+/// <p>Mutation: drop the <code>MatchRoles</code> property from
+/// <method>OcuPilot.Screen.Tool.WebAppUpdate.InputSchema</method> -- this goes red.</p>
+Method TestApplicationRolesAreTheOneAuthoredArgument()
 {
     Set tSchema = $ClassMethod(..#TOOLCLASS, "InputSchema")
-    Do $$$AssertEquals(tSchema.%Get("properties").%GetTypeOf("MatchRoles"), "unassigned", "the schema admits no role subtree")
-    Do $$$AssertTrue($ListFind($ClassMethod(..#TOOLCLASS, "ExcludedFields"), "MatchRoles") > 0, "the tool excludes it by name")
+    Set tRoles = tSchema.%Get("properties").%Get("MatchRoles")
+    Do $$$AssertTrue($IsObject(tRoles), "the schema admits the application roles")
+    If '$IsObject(tRoles) Quit
+    Do $$$AssertEquals(tRoles.%Get("type"), "array", "as a list")
+    Do $$$AssertEquals(tRoles.%Get("items").%Get("type"), "object", "of entries")
+    Do $$$AssertTrue($ListFind($ClassMethod(..#TOOLCLASS, "ExcludedFields"), "MatchRoles") > 0, "and the derived subtree is excluded by name")
 
     Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "/csp/probe", "MatchRoles": [{"MatchRole": "", "TargetRoles": ["%All"]}]}, .tProblem)
-    Do $$$AssertStatusNotOK(tSC, "a call carrying one is refused")
+    Do $$$AssertStatusOK(tSC, "a call carrying a list of entries is admitted: " _ $Get(tProblem))
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "/csp/probe", "MatchRoles": "%All"}, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "a call carrying any other shape is refused")
     Do $$$AssertTrue(tProblem [ "MatchRoles", "naming the argument")
-
-    Set tSC = $ClassMethod(..#TOOLCLASS, "View", "", {"Name": "/csp/probe", "MatchRoles": []}, 200, .tResult, .tHttp, .tFault)
-    Do $$$AssertStatusNotOK(tSC, "and the view refuses it too")
-    Do $$$AssertEquals(tHttp, 400, "as a 400")
-    Do $$$AssertEquals(tFault.%Get("code"), ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "with the arguments code")
 }
 
-/// <p>QA (Story 5.5): <method>OcuPilot.Test.Prohibited.TestNoWriteToolAdmitsAnAlwaysProhibitedField</method>
-/// proves <code>DispatchClass</code> mints nothing against a real target; this is the same rigor for
-/// <code>MatchRoles</code>, which that test only checks at the schema level. Against
-/// <parameter>LIVETARGET</parameter> -- a real, never-written application -- a role grant is refused
-/// before any proposal exists, not only before the shipped tool's own schema.</p>
-/// <p>Mutation: classify the <code>MatchRoles</code> subtree <code>ordinary</code> in
-/// <class>OcuPilot.Screen.Tool.Classification</class> and give it a top-level field-list row (the
-/// same mutation <method>TestARoleGrantIsRefusedAsAnUnknownArgument</method> names) -- this goes red
-/// on the refusal and on the mint count.</p>
-Method TestARoleGrantIsRefusedAndMintsNothingAgainstARealTarget()
+/// <p>AD-10 as amended 2026-09-23: a privileged application role proposed against a real, live
+/// target -- <parameter>LIVETARGET</parameter>, which is unauthenticated -- mints a proposal marked
+/// destructive whose consequence is the one combined line for an unauthenticated application
+/// granting privilege. It is never confirmed; on OcuPilot's own application the confirm refuses it
+/// (<class>OcuPilot.Test.WebAppWeakening</class>).</p>
+/// <p>Mutation: drop <code>tPrivileged</code> from the mint's <code>destructive</code> in
+/// <method>OcuPilot.Kernel.Proposal.Mint.Mint</method> -- this goes red.</p>
+Method TestAPrivilegedRoleGrantMintsADestructiveProposal()
 {
-    Set tBefore = ##class(OcuPilot.Test.ProposalFixture).ProposalCount($Username)
-    Do $$$AssertTrue(tBefore > -1, "the running account's proposal rows are counted")
-    Set tSC = $ClassMethod(..#TOOLCLASS, "View", "", {"Name": (..#LIVETARGET), "MatchRoles": [{"MatchRole": "", "TargetRoles": ["%All"]}]}, 200, .tResult, .tHttp, .tFault)
-    ; Read before anything is asserted, so a call that was not refused is still counted rather
-    ; than raising on the absent fault and leaving this unanswered.
-    Set tAfter = ##class(OcuPilot.Test.ProposalFixture).ProposalCount($Username)
-    Do $$$AssertStatusNotOK(tSC, "a call asking for a role grant against a real, live target is refused")
-    Do $$$AssertEquals(tAfter, tBefore, "and no proposal was minted for this account")
-    Do $$$AssertEquals(tHttp, 400, "at 400")
-    Do $$$AssertEquals($Select($IsObject(tFault): tFault.%Get("code"), 1: ""), ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "with the arguments code")
+    Do $ClassMethod(..#PROBE, "SetRegistryClass", ..#REGISTRY)
+    Set tSC = ..Dispatch({"Name": (..#LIVETARGET), "MatchRoles": [{"MatchRole": "", "TargetRoles": ["%All"]}]}, .tIsError, .tContent)
+    Do $$$AssertStatusOK(tSC, "the dispatcher answers")
+    Do $$$AssertEquals(tIsError, 0, "the call succeeded: " _ tContent.%ToJSON())
+    Set tKey = tContent.%Get("proposalId")
+    Do $$$AssertNotEquals(tKey, "", "and a proposal was minted")
+    If tKey = "" Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tKey, .tFound, .tValues), "the stored row reads back")
+    Do $$$AssertEquals(+$Get(tValues("destructive")), 1, "marked destructive")
+    Do $$$AssertEquals($Get(tValues("consequence")), ##class(OcuPilot.Screen.Tool.WebAppCreate).#CONSEQUENCEUNAUTHENTICATEDPRIVILEGED, "with the one combined consequence")
 }
 
-/// <p>QA (Story 5.5): the same mints-nothing rigor for a field AD-10's set has simply never reviewed
-/// (<code>EventClass</code> -- classified <code>ordinary</code> in
-/// <class>OcuPilot.Screen.Tool.Classification</class>, but outside
-/// <parameter>OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS</parameter>): the positive list is
-/// what refuses it, not a named exclusion the way <code>MatchRoles</code> and
-/// <code>DispatchClass</code> are, and the model asking for it against a real target is still
-/// refused before any proposal exists.</p>
+/// <p>AD-10 as amended 2026-09-24, over the model-facing path: a dispatched tool call changing
+/// <code>DispatchClass</code> passes the schema and the edit's rules and mints a proposal marked
+/// destructive with the repointed consequence. It is never confirmed.</p>
+/// <p>Mutation: drop <code>|| (tEffect '= "")</code> from the mint's <code>destructive</code> in
+/// <method>OcuPilot.Kernel.Proposal.Mint.Mint</method> -- this goes red.</p>
+Method TestARepointingCallMintsADestructiveProposal()
+{
+    Do $ClassMethod(..#PROBE, "SetRegistryClass", ..#REGISTRY)
+    Set tSC = ..Dispatch({"Name": (..#LIVETARGET), "DispatchClass": "OcuPilot.Api.Router"}, .tIsError, .tContent)
+    Do $$$AssertStatusOK(tSC, "the dispatcher answers")
+    Do $$$AssertEquals(tIsError, 0, "the call succeeded: " _ tContent.%ToJSON())
+    Set tKey = tContent.%Get("proposalId")
+    Do $$$AssertNotEquals(tKey, "", "and a proposal was minted")
+    If tKey = "" Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tKey, .tFound, .tValues), "the stored row reads back")
+    Do $$$AssertEquals(+$Get(tValues("destructive")), 1, "marked destructive")
+    Do $$$AssertEquals($Get(tValues("consequence")), $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "EFFECTREPOINTED"), "naming the repointed effect")
+}
+
+/// <p>AD-3: the semantic half <method>OcuPilot.Screen.Tool.WebAppUpdate.Described</method> authors
+/// reaches the model-facing schema and the dispatcher enforces it -- the mask and the four timeouts
+/// are integers, the two choice-valued settings carry their enums, and every advertised property
+/// carries a description.</p>
+/// <p>Mutation: delete the enum loop from
+/// <method>OcuPilot.Screen.Tool.WebAppUpdate.Described</method> -- the enum and refusal legs go
+/// red.</p>
+Method TestTheWebApplicationSchemaCarriesItsAuthoredHalf()
+{
+    Set tSchema = $ClassMethod(..#TOOLCLASS, "InputSchema")
+    Set tProperties = tSchema.%Get("properties")
+    For tField = "AutheEnabled", "Timeout", "ServeFilesTimeout", "JWTAccessTokenTimeout", "JWTRefreshTokenTimeout" {
+        Do $$$AssertEquals(tProperties.%Get(tField).%Get("type"), "integer", tField _ " is advertised as the whole number the instance stores")
+    }
+    Do $$$AssertEquals(tProperties.%Get("ServeFiles").%Get("enum").%ToJSON(), "[""No"",""Always"",""Always and cached"",""Use CSP security""]", "ServeFiles carries its four choices")
+    Do $$$AssertEquals(tProperties.%Get("WSGIType").%Get("enum").%ToJSON(), "[""WSGI"",""ASGI""]", "and WSGIType its two protocols")
+    Set tIterator = tProperties.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tProperty) {
+        Do $$$AssertNotEquals(tProperty.%Get("description"), "", tKey _ " carries a description")
+    }
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "/csp/probe", "AutheEnabled": 96, "ServeFiles": "Always"}, .tProblem)
+    Do $$$AssertStatusOK(tSC, "a call within the schema is admitted: " _ $Get(tProblem))
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "/csp/probe", "ServeFiles": "Sometimes"}, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "a file-serving setting outside its choices is refused")
+    Do $$$AssertTrue($Get(tProblem) [ "ServeFiles", "naming the argument: " _ $Get(tProblem))
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "/csp/probe", "Timeout": "long"}, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "and a timeout that is not a number")
+}
+
+/// <p>QA (Story 5.5): a field AD-10's set has never reviewed (<code>EventClass</code> -- classified
+/// <code>ordinary</code> in <class>OcuPilot.Screen.Tool.Classification</class>, but outside
+/// <parameter>OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS</parameter>) is refused by the
+/// positive list, and the model asking for it against a real target is refused before any proposal
+/// exists.</p>
 /// <p>Mutation: add <code>EventClass</code> to
 /// <parameter>OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS</parameter> -- this goes red on the
 /// refusal and on the mint count.</p>
@@ -349,24 +388,24 @@ Method TestWithNothingRestrainingItTheCallMintsAProposal()
     Do $$$AssertEquals(tRows.%Size(), 1, "carrying that one proposal")
     Do $$$AssertEquals(tRows.%Get(0).%Get("proposalId"), tContent.%Get("proposalId"), "the same one the model was told about")
 
-    ; AD-10's other half. The tool admits no role subtree, and the fresh read's own still travels
-    ; in the body the write will send (AD-4) -- a payload that dropped it would revoke this
-    ; application's role at confirm, which is the grant rule running backwards.
+    ; AD-4: a call that names no role leaves the fresh read's own roles in the body the write will
+    ; send -- a payload that dropped them would revoke this application's role at confirm.
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tContent.%Get("proposalId"), .tFound, .tValues), "the stored row reads back")
     Do $$$AssertEquals(tFound, 1, "and is there")
     Set tPayload = ##class(%DynamicAbstractObject).%FromJSON($Get(tValues("payload")))
     Kill tQuery
     Set tQuery("name") = ..#LIVETARGET
     Do $$$AssertStatusOK(##class(OcuPilot.Port.AdminPort).Invoke("WebApp.App", "GET", .tQuery, "", .tFresh, .tFreshHttp, .tFreshFault), "the same application reads fresh through the port")
-    Do $$$AssertNotEquals(tPayload.%GetTypeOf("MatchRoles"), "unassigned", "the payload still carries a MatchRoles the schema never admitted")
+    Do $$$AssertNotEquals(tPayload.%GetTypeOf("MatchRoles"), "unassigned", "the payload still carries a MatchRoles the call did not name")
     If tPayload.%GetTypeOf("MatchRoles") = "unassigned" Quit
     Do $$$AssertEquals(tPayload.%Get("MatchRoles").%ToJSON(), tFresh.%Get("MatchRoles").%ToJSON(), "unchanged from the fresh read")
 }
 
 /// <p>Story 5.9, AD-3, AD-8, AD-10: the Users write tool. Its resolved set is the Users screen's
-/// own two pairs, each once; it advertises <code>Enabled</code> and the one authored
-/// <code>Roles</code> argument and nothing else; and every other key -- <code>EscalationRoles</code>
-/// among them -- is refused under <code>additionalProperties: false</code>.</p>
+/// own two pairs, each once; it advertises the classic General tab's fourteen settings (Story 9.1)
+/// and the one authored <code>Roles</code> argument and nothing else; and every other key --
+/// <code>EscalationRoles</code> among them -- is refused under
+/// <code>additionalProperties: false</code>.</p>
 /// <p>Mutations: set <parameter>OcuPilot.Screen.Tool.UserUpdate.WRITEPERMISSION</parameter> back to
 /// <code>"WRITE"</code> (the pair assertions redden), drop the <code>Roles</code> property from
 /// <method>OcuPilot.Screen.Tool.UserUpdate.InputSchema</method> (the advertised-fields assertions
@@ -406,7 +445,7 @@ Method TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs()
     Do $$$AssertEquals(tPairs, tDeclared, "and the write's set is that set, not a superset of it")
 
     Set tFields = $ClassMethod(..#USERTOOLCLASS, "SettableFields")
-    Do $$$AssertEquals($ListToString(tFields), "ChangePassword,Enabled,Roles", "the settable fields are the two derived literals and the one authored array")
+    Do $$$AssertEquals($ListToString(tFields), "AccountNeverExpires,AutheEnabled,ChangePassword,Comment,EmailAddress,Enabled,ExpirationDate,FullName,HOTPKeyDisplay,NameSpace,PasswordNeverExpires,PhoneNumber,PhoneProvider,Routine,Roles", "the settable fields are the fourteen derived literals and the one authored array")
     Set tPermittedByTheSet = ##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("user")
     Do $$$AssertEquals($ListLength(tPermittedByTheSet), $ListLength(tFields), "and the kernel has reviewed exactly as many fields as the tool advertises")
     For tI = 1:1:$ListLength(tFields) {
@@ -419,18 +458,23 @@ Method TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs()
     Do $$$AssertEquals(tProperties.%Get("Roles").%Get("items").%Get("type"), "string", "of role names")
     Do $$$AssertNotEquals(tProperties.%Get("Roles").%Get("description"), "", "carrying the reviewed description AD-3 requires")
     Do $$$AssertEquals(tProperties.%GetTypeOf("EscalationRoles"), "unassigned", "EscalationRoles is not advertised")
-    Do $$$AssertEquals(tProperties.%GetTypeOf("FullName"), "unassigned", "and neither is an ordinary literal the set has not reviewed")
+    Do $$$AssertEquals(tProperties.%Get("FullName").%Get("type"), "string", "FullName is advertised (Story 9.1)")
+    Do $$$AssertEquals(tProperties.%Get("AutheEnabled").%Get("type"), "integer", "and AutheEnabled as the whole number the instance stores")
+    Set tIterator = tProperties.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tProperty) {
+        Do $$$AssertNotEquals(tProperty.%Get("description"), "", tKey _ " carries a description")
+    }
     Do $$$AssertTrue($ListFind($ClassMethod(..#USERTOOLCLASS, "ExcludedFields"), "EscalationRoles") > 0, "the tool excludes the escalation subtree by name as well")
 
     Set tSchema = $ClassMethod(..#USERTOOLCLASS, "InputSchema")
     Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "OcuPilotProbeSchema", "EscalationRoles": ["%All"]}, .tProblem)
     Do $$$AssertStatusNotOK(tSC, "a call carrying EscalationRoles is refused")
     Do $$$AssertTrue(tProblem [ "EscalationRoles", "naming the argument: " _ tProblem)
-    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "OcuPilotProbeSchema", "FullName": "renamed"}, .tProblem)
-    Do $$$AssertStatusNotOK(tSC, "and so is an unreviewed ordinary literal")
-    Do $$$AssertTrue(tProblem [ "FullName", "naming that argument too: " _ tProblem)
-    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "OcuPilotProbeSchema", "Roles": ["%Developer"], "Enabled": true, "ChangePassword": true}, .tProblem)
-    Do $$$AssertStatusOK(tSC, "while the three advertised fields together validate: " _ tProblem)
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "OcuPilotProbeSchema", "Password": "x"}, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "and so is a password")
+    Do $$$AssertTrue(tProblem [ "Password", "naming that argument too: " _ tProblem)
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "OcuPilotProbeSchema", "Roles": ["%Developer"], "Enabled": true, "ChangePassword": true, "FullName": "renamed", "AutheEnabled": 32}, .tProblem)
+    Do $$$AssertStatusOK(tSC, "while the advertised fields together validate: " _ tProblem)
     Do $$$AssertEquals(tProperties.%Get("ChangePassword").%Get("type"), "boolean", "ChangePassword is advertised with its derived JSON type (Story 7.2)")
     Do $$$AssertEquals($ListToString($ClassMethod(..#USERTOOLCLASS, "ScreenActionIds")), "enable,disable,require-password-change,add-role,remove-role", "it carries the Users list's five merge row actions")
     Do $$$AssertEquals($ListToString($ClassMethod(..#USERTOOLCLASS, "ScreenActionValueNames", "add-role")), "Role", "and each role action admits one value, the role")
@@ -1105,13 +1149,13 @@ Method TestAnInadequateFingerprintSubjectStopsTheToolListBuilding()
 /// <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter> -- the absence leg goes red.
 /// Remove <code>Security.User/PUT</code> from it -- the roster leg goes red naming that tool, and
 /// <class>OcuPilot.Test.UserUpdate</class> reddens on its confirmed writes. Add
-/// <code>Task.CRUD/PUT</code> to it -- the refusal leg goes red, because the port then admits
+/// <code>Journal.Settings/PUT</code> to it -- the refusal leg goes red, because the port then admits
 /// the call instead of answering 501, and so does the width leg, because that pair is one no
 /// registered tool reaches.</p>
-/// <p><b>The <code>Task.CRUD/PUT</code> legs are temporary.</b> They hold until the task editor
-/// (FR-53) ships a tool that issues <code>Task.CRUD/PUT</code>; that story re-points them, in the
-/// same pass, to another pair whose endpoint declares the type while a different endpoint's tool
-/// issues the suffix.</p>
+/// <p><b>The refusal legs name <code>Journal.Settings/PUT</code></b>, an endpoint that declares
+/// <code>TYPEPUT</code> and whose PUT no Release 1 tool issues, while other endpoints' tools issue the
+/// suffix. They named <code>Task.CRUD/PUT</code> until Story 9.8's task edit began issuing it; a story
+/// that ships a <code>Journal.Settings</code> PUT re-points them the same way.</p>
 /// <p><b>The roster is held from both sides.</b> The per-tool leg holds the registry within the
 /// roster and is satisfied by a roster of any width; the width leg holds the roster to exactly the
 /// distinct pairs the registry reaches, which is the direction the parameter's own doc claims and
@@ -1145,9 +1189,10 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
     Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("WebApp.App", "DELETE"), "namely WebApp.App")
     Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("Security.Role", "DELETE"), "and Security.Role")
     ; DW-1473's own condition: admitting a suffix on one endpoint must not admit it on another.
-    ; Task.CRUD declares TYPEPUT, and WebApp.App is an endpoint whose PUT a tool issues.
+    ; Journal.Settings declares TYPEPUT, and WebApp.App is an endpoint whose PUT a tool issues.
     Do $$$AssertTrue($ListFind(tMutatingSuffixes, "PUT") > 0, "PUT is admitted somewhere, which is what makes the pair key load-bearing")
-    Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsMutating("Task.CRUD", "PUT"), "and Task.CRUD/PUT is not admitted, though Task.CRUD declares TYPEPUT and the suffix is admitted for WebApp.App")
+    Do $$$AssertTrue('##class(OcuPilot.Port.AdminPort).IsMutating("Journal.Settings", "PUT"), "and Journal.Settings/PUT is not admitted, though Journal.Settings declares TYPEPUT and the suffix is admitted for WebApp.App")
+    Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("Task.CRUD", "PUT"), "while Task.CRUD/PUT is, since the task edit issues it (Story 9.8)")
     Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating("WebApp.App", "PUT"), "while WebApp.App/PUT is")
 
     ; The fixture every port test drives through overrides this parameter to add its probe pair.
@@ -1235,14 +1280,15 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
     Do $$$AssertStatusNotOK(tSC, "and the port refuses a Process DELETE outright")
     Do $$$AssertEquals(+$Get(tHttp), 501, "at 501, before the vendor endpoint is entered")
 
-    ; The pair key at the surface a caller meets it. Task.CRUD declares TYPEPUT and no tool issues
-    ; it while WebApp.App's PUT is admitted, so a suffix-keyed gate admits this call and answers the
-    ; body refusal instead of 501; asking IsMutating alone would pin the predicate rather than the
-    ; refusal. A task id no task carries, so a mutation that admits the pair reaches nothing.
+    ; The pair key at the surface a caller meets it. Journal.Settings declares TYPEPUT and no tool
+    ; issues it while WebApp.App's PUT is admitted, so a suffix-keyed gate admits this call and
+    ; answers the body refusal instead of 501; asking IsMutating alone would pin the predicate rather
+    ; than the refusal. The body is empty, so a mutation that admits the pair is refused before it
+    ; changes anything.
     Kill tQuery
     Set tQuery("id") = 999999999
-    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Task.CRUD", "PUT", .tQuery, "", .tAnswer, .tHttp, .tFault)
-    Do $$$AssertStatusNotOK(tSC, "the port refuses a Task.CRUD PUT outright")
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Journal.Settings", "PUT", .tQuery, "", .tAnswer, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "the port refuses a Journal.Settings PUT outright")
     Do $$$AssertEquals(+$Get(tHttp), 501, "at 501, before the vendor endpoint is entered")
     Do $$$AssertTrue($IsObject(tFault), "with a fault object")
     If $IsObject(tFault) {

@@ -357,6 +357,12 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // the actual emitted bytes against this figure; this file pins the figure itself, so a later
 // change to it is a reviewed diff here rather than a silent edit nothing else notices.
 //
+// Story 9.9 raised it to 1561kB, the measured 1,560,536-byte initial total rounded up to the next
+// kB, under the orchestrator's 2dca0322 ruling (between 1551kB and the 1580kB stop line); DW-1166's
+// re-base at epic close follows.
+// Story 9.10 raised it to 1577kB, the measured 1,576,569-byte initial total rounded up to the next
+// kB, under the same ruling and its spec gate (below the 1580kB stop line).
+//
 // Mutations (Rule 19):
 // - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "2MB") -> the
 //   "no other initial budget exists" and "warning under error" assertions still pass, but this
@@ -368,7 +374,7 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '1378kB', 'a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumWarning, '1577kB', 'a change to this figure must be a reviewed diff, not a silent edit');
   assert.equal(budget.maximumError, '2000kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and

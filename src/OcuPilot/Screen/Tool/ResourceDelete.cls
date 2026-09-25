@@ -8,7 +8,8 @@
 /// public permission is its precondition, because what every user loses is what the confirm must
 /// still find. The identity is outside the subject (AD-13, AD-51).</p>
 /// <p><b>Two refusals.</b> A system resource, one the vendor's own <code>AllowDelete</code> answers
-/// false for, is refused at the mint (<method>ArgumentProblem</method>). OcuPilot's own two
+/// false for, is refused at the mint (<method>ArgumentProblem</method>) and on the screen's Delete
+/// (<method>ScreenActionDelta</method>). OcuPilot's own two
 /// resources are the prohibited set's, refused at the write whatever the caller (AD-10).</p>
 Class OcuPilot.Screen.Tool.ResourceDelete Extends OcuPilot.Screen.Tool.Write
 {
@@ -32,6 +33,9 @@ Parameter CHANGEACTION = "deleted";
 
 /// <p>Declared: a deleted resource is gone, and every role's grant of it with it.</p>
 Parameter DESTRUCTIVE As BOOLEAN = 1;
+
+/// <p>The Resources list's row action this write carries out (AD-53): Delete, bodyless.</p>
+Parameter SCREENACTIONS = "delete";
 
 /// <p>The top-level names <parameter>READTYPE</parameter> answers, read off the vendor's
 /// <code>ObjToJson</code> on this build.</p>
@@ -75,33 +79,61 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 }
 
 /// <p>A system resource is <var>pProblem</var>, in the published <code>RESOURCE.NAME.SYSTEM</code>
-/// sentence: the row this tool's port lists for <var>pIdValue</var> answers
-/// <code>AllowDelete</code> other than <code>true</code>. A name the list does not carry is no
-/// problem here; the mint's fresh read refuses it. A list that cannot be read is an error.</p>
+/// sentence (<method>IsUndeletable</method>). A name the list does not carry is no problem here;
+/// the mint's fresh read refuses it. A list that cannot be read is an error.</p>
 ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set pProblem = ""
+    Set tSC = ..IsUndeletable(pIdValue, .tUndeletable)
+    If $$$ISERR(tSC) Quit tSC
+    If tUndeletable Set pProblem = "'" _ ..IdArgument() _ "': " _ ##class(OcuPilot.Api.Error).ReasonForViolation(##class(OcuPilot.Api.Error).#RESOURCENAMESYSTEM)
+    Quit $$$OK
+}
+
+/// <p>Whether <var>pName</var> is a system resource, in <var>pUndeletable</var>: the row this
+/// tool's port lists for it answers <code>AllowDelete</code> other than <code>true</code>. A name
+/// the list does not carry answers 0. A list that cannot be read is an error status.</p>
+ClassMethod IsUndeletable(pName As %String, Output pUndeletable As %Boolean) As %Status
+{
+    Set pUndeletable = 0
     Set tSC = $$$OK
     Try {
         Kill tQuery
-        Set tQuery(..#LISTFILTER) = pIdValue
+        Set tQuery(..#LISTFILTER) = pName
         Set tSC = $ClassMethod(..PortClass(), "Invoke", ..Endpoint(), ..#LISTTYPE, .tQuery, "", .tRows, .tHttp, .tFault)
         If $$$ISERR(tSC) Quit
         If '$IsObject(tRows) || 'tRows.%IsA("%Library.DynamicArray") Quit
         Set tIterator = tRows.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tRow) {
             If '$IsObject(tRow) Continue
-            If $ZConvert(tRow.%Get("Name"), "U") '= $ZConvert(pIdValue, "U") Continue
-            If ##class(OcuPilot.Kernel.Proposal.Mint).Display(tRow.%Get("AllowDelete"), tRow.%GetTypeOf("AllowDelete")) '= "true" {
-                Set pProblem = "'" _ ..IdArgument() _ "': " _ ##class(OcuPilot.Api.Error).ReasonForViolation(##class(OcuPilot.Api.Error).#RESOURCENAMESYSTEM)
-            }
+            If $ZConvert(tRow.%Get("Name"), "U") '= $ZConvert(pName, "U") Continue
+            Set pUndeletable = (##class(OcuPilot.Kernel.Proposal.Mint).Display(tRow.%Get("AllowDelete"), tRow.%GetTypeOf("AllowDelete")) '= "true")
             Quit
         }
     } Catch ex {
-        Set pProblem = ""
+        Set pUndeletable = 0
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The screen's Delete (AD-53): the Resources list's row action reaches this write without the
+/// mint's <method>ArgumentProblem</method>, so a system resource (<method>IsUndeletable</method>),
+/// named by <var>pValues</var>' id argument, is refused here with the bare published
+/// <code>RESOURCE.NAME.SYSTEM</code> sentence -- the one the row draws before a click. Every other
+/// action is the base's.</p>
+ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, pFresh As %DynamicObject, Output pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Set tSC = ##super(pActionId, pValues, pFresh, .pArgs, .pProblem)
+    If $$$ISERR(tSC) Quit tSC
+    If (pActionId '= "delete") || '$IsObject(pValues) Quit $$$OK
+    Set tSC = ..IsUndeletable(pValues.%Get(..IdArgument()), .tUndeletable)
+    If $$$ISERR(tSC) Quit tSC
+    If tUndeletable {
+        Set pArgs = {}
+        Set pProblem = ##class(OcuPilot.Api.Error).ReasonForViolation(##class(OcuPilot.Api.Error).#RESOURCENAMESYSTEM)
+    }
+    Quit $$$OK
 }
 
 /// <p>What the caller must hold: the screen's own pairs together with

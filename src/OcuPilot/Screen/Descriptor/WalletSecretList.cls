@@ -20,8 +20,10 @@
 /// <p><b>Its primary action is Create</b>: it opens
 /// <class>OcuPilot.Screen.Descriptor.WalletSecretForm</class> at
 /// <code>security/wallet/secrets/edit</code> for the collection on screen, and a row's name cell
-/// opens the same form for that secret. Both save through the wallet secret tools (AD-55). It
-/// declares no row action, its empty state invites the agent, and it does not refresh (AD-43).</p>
+/// opens the same form for that secret. Both save through the wallet secret tools (AD-55). Its row
+/// action is Delete (AD-53), through <class>OcuPilot.Screen.Tool.WalletSecretDelete</class>, with no
+/// self-protection rule: OcuPilot stores no wallet secret of its own. Its empty state invites the
+/// agent, and it does not refresh (AD-43).</p>
 /// <p><b><code>Secret</code> is its <code>secretArguments</code></b> (AD-3, AD-6): the value, supplied
 /// only at confirm and never read back by any read.</p>
 Class OcuPilot.Screen.Descriptor.WalletSecretList Extends OcuPilot.Screen.Descriptor.Base
@@ -45,7 +47,7 @@ XData Declaration
   "parentScope": "security/wallet",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "create", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "delete", "selfProtection": ""}],
   "context": {"fields": ["Name", "Type"], "secretFields": []},
   "secretArguments": ["Secret"],
   "emptyStateKey": "walletSecretListEmpty",

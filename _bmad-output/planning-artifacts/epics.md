@@ -832,7 +832,7 @@ A user opens the editors that carry the classic portal's whole field set - user,
 
 **FRs covered:** FR-30 (editor), FR-35 (editor), FR-38 (editor), FR-41 (editor), FR-42 (editor), FR-45 (editor), FR-52, FR-53, FR-9 (per cut editor)
 
-**Implementation notes:** This is where the cut line is most likely to bite, and FR-9 is the designed response: a cut editor ships as a reduced form of the fields daily administration uses plus a `classic-link-card`, **never a half-working full form**, and its write tool ships regardless so the agent stays a conduit for that edit. FR-52 and FR-53's field lists and legal-value semantics come from the 49 documented properties on `%SYS.TaskSuper` - including `DailyFrequency`'s quadruple with `DailyFrequencyTime`, a 120-fold ambiguity if dropped - with two gaps to fill by testing rather than citation: the three `Expires*` offsets carry no descriptions, and `RunAsUser`'s documented `%Admin_Secure:Use` requirement is not verifiable from the shipped code. Four of AD-4's non-merging endpoints are here.
+**Implementation notes:** This is where the cut line is most likely to bite, and FR-9 is the designed response: a cut editor ships as a reduced form of the fields daily administration uses plus a `classic-link-card`, **never a half-working full form**, and its write tool ships regardless so the agent stays a conduit for that edit. FR-52 and FR-53's field lists and legal-value semantics come from the 47 documented properties declared on `%SYS.TaskSuper` (49 with `%%OID` and `%Concurrency`) - including `DailyFrequency`'s quadruple with `DailyFrequencyTime`, a 120-fold ambiguity if dropped - with two gaps to fill by testing rather than citation: the three `Expires*` offsets carry no descriptions, and `RunAsUser`'s documented `%Admin_Secure:Use` requirement is not verifiable from the shipped code. Four of AD-4's non-merging endpoints are here.
 
 ### Epic 10: Run on any model, and harden the write path
 
@@ -4702,6 +4702,8 @@ So that configuring a REST service is a single task.
 - DW-1493: A confirmed agent create writes the name in AD-13's canonical spelling while the screen's Save writes it as typed, so one input creates /csp/myapp or /csp/MyApp depending on the caller (ledger; routed by merge_gate 2026-09-23)
 - DW-1577: An agent update that sets Enabled to its current value mints a proposal with no changed rows instead of the 400 TOOL.ARGUMENTS no-op refusal (ledger; routed by merge_gate 2026-09-23)
 - DW-1502: PROHIBITED.PRIVILEGEGRANT's caller-neutral sentence is server-shipped only; AD-53 (Epic 7) publishes a refusal sentence in EXPERIENCE.md Fixed strings with a pin test (ledger; routed by merge_gate 2026-09-23)
+- DW-1595: The toast stack's published placement (DESIGN.md toast recipe :1210, toast-host.ts header :48) still says spacing.4 above the status bar, while on a form page the stack is lifted above the form bar (ledger; routed by harvest 2026-09-24)
+- DW-1596: A form page taller than the content area does not keep its sticky form bar on screen: Save and Cancel sit below the fold until the content scrolls (ledger; routed by harvest 2026-09-24)
 
 ### Story 9.3: The role editor
 
@@ -4723,6 +4725,7 @@ So that I can audit and adjust access from one screen.
 
 - DW-1513: The Roles-list Delete row action (Story 8.3 AC3's screen caller): SCREENACTIONS on RoleDelete, rowActions on RoleList, a holder-count read, the count in the typed-name confirmation, its Fixed-strings row (ledger; routed by merge_gate 2026-09-23)
 - DW-1528: The Resources-list Delete row action (Story 8.4 AC2's screen caller): drawn disabled with its reason when the vendor's AllowDelete is false, on AD-53's route (ledger; routed by merge_gate 2026-09-23)
+- DW-1598: PROHIBITED.UNCOVEREDFIELD's reason names the agent while the screen's create and Save share the predicate (AD-53); rewrite caller-neutral, publish and pin it (ledger; routed by smoke 2026-09-24)
 
 ### Story 9.5: The SSL/TLS editor
 
@@ -4734,7 +4737,7 @@ So that the instance's outbound and inbound TLS is manageable from the portal.
 
 - **Given** the editor
 - **When** it opens
-- **Then** its tabs cover certificates, key, CA, CRL, protocol minimum and maximum, ciphers, DH bits, OCSP and peer verification.
+- **Then** its tabs cover certificates, key, CA, protocol minimum and maximum, ciphers, DH bits, OCSP and peer verification, and the CRL slot is a caption saying the setting is deprecated and not exposed [AMENDED 2026-09-24 - see the story change log: `CRLFile` is `[Deprecated, Internal]`, absent from the endpoint's template and from its GET, so no reachable outcome shows or sets it; orchestrator ruling at the 9.5 spec gate].
 
 - **Given** private key material entered in the form
 - **When** any read is made afterwards
@@ -4747,6 +4750,10 @@ So that the instance's outbound and inbound TLS is manageable from the portal.
 - **Given** an SSL/TLS configuration
 - **When** the user runs its test connection
 - **Then** the instance's own result text is reported, success or failure (moved from Story 12.1 by the 2026-09-17 amendment).
+
+- **Given** an SSL/TLS configuration on its list
+- **When** the user deletes it, or the agent proposes deleting it
+- **Then** it is deleted through the one delete tool on AD-53's route after the typed-name confirmation, and deleting OcuPilot's own provider configuration is refused on both callers under AD-10 [ADDED 2026-09-24 - see the story change log: FR-42's delete had no owning story; orchestrator ruling at the 9.5 spec gate].
 
 ---
 
@@ -4772,7 +4779,7 @@ So that I never have to leave for the one screen that defines the instance's hou
 
 - **Given** the field list and its legal values
 - **When** they are authored
-- **Then** they come from the task class's inherited property set - **49 of its 66 compiled properties carry documentation, all declared on `%SYS.TaskSuper` rather than `%SYS.Task`** - not from the classic page, whose source is unrecoverable and not needed.
+- **Then** they come from the task class's inherited property set - **49 of its 66 compiled properties carry documentation: 47 declared on `%SYS.TaskSuper` rather than `%SYS.Task`, plus `%%OID` and `%Concurrency`** [AMENDED 2026-09-24 - see the story change log: the count was measured on the instance at the 9.7 plan] - not from the classic page, whose source is unrecoverable and not needed.
 
 - **Given** the schedule vocabulary
 - **When** it is implemented
@@ -4812,7 +4819,10 @@ So that fixing a schedule does not mean deleting and recreating it.
 
 - **Given** a task's next-scheduled time changes as a side effect of the write
 - **When** the proposal's fingerprint is computed
-- **Then** that field is **excluded** by the descriptor's declared exclusions, so a legitimate write is not refused as "target changed".
+- **Then** that field is outside the fingerprint - the tool's fresh read does not carry it (measured) - and a test pins that a proposal whose task ran before confirm still writes, so a legitimate write is not refused as "target changed" [AMENDED 2026-09-24 - see the story change log: measured at the 9.8 plan, the task's fresh read carries no next-scheduled time, and a descriptor exclusion would break the run tool's fingerprint subject].
+
+- DW-1624: Task details shows a wizard-created task's schedule and Priority, not its output file, suspend, reschedule or email values; the edit tabs show every field of a wizard-created task (ledger; routed by cr 2026-09-24)
+- DW-1631: The 9.7 wizard draws a `%SYS.Task.Password`-typed setting (DiagnosticReport's SMTPPass) as an ordinary setting; one classifier makes it classic-only for create and edit (ledger; routed by spec_gate 2026-09-24)
 
 ### Story 9.9: A cut editor ships reduced, never half-working
 
@@ -4836,7 +4846,7 @@ So that a gap reads as a decision rather than a defect.
 
 - **Given** the 2026-09-27 floor
 - **When** it is assessed
-- **Then** **at least one create or edit form per area** exists, and **no list screen in the six areas links out** - a link-out on a list counts against the counter-metric, and one on an editor is a recorded cost.
+- **Then** **at least one create or edit form exists in each of the five areas that administers an object** - Logs administers none and has no editor to build, and a test pins it at zero forms - and **no list screen in the six areas links out** - a link-out on a list counts against the counter-metric, and one on an editor is a recorded cost [AMENDED 2026-09-24 - see the story change log: Story 9.9 spec gate, orchestrator ruling 2dca0322; was at least one form per area, which Logs cannot meet].
 
 - **Given** the service editor and the LDAP and Kerberos editor, deferred to Stories 16.13 and 16.14 by the 2026-09-17 amendment
 - **When** this story ships
@@ -5422,6 +5432,8 @@ So that token audiences and service mappings are configurable here.
 - **Given** the editor
 - **When** it opens
 - **Then** it round-trips create, edit and delete covering the definition, its service mappings and its audiences.
+
+- DW-1644: Switch 12.5's sectioned client-configuration editor to `app-form-tabs`, and build 12.6-12.8 on it directly, now that Epic 9's `form-tabs.ts` is on feature (ledger; routed by merge_gate 2026-09-25)
 
 ### Story 12.7: The OAuth 2.0 authorization server editor
 
@@ -6033,6 +6045,8 @@ So that the shell reads as finished.
 - **When** this story completes
 - **Then** they state the header placement at origin, and browser specs pin that the header button opens the menu and signs out, that Home shows no filter field, and that a list still filters.
 
+- DW-1597: An editor's own Save raises a change toast that DESIGN.md's toast recipe forbids; suppress it for the open screen's own Save, keep it for agent writes and writes made elsewhere (ledger; routed by merge_gate 2026-09-25)
+
 ---
 
 ## Epic 16: The remaining polish-week extras
@@ -6302,7 +6316,7 @@ So that service administration is complete here.
 
 - **Given** the user disables the web service OcuPilot itself depends on
 - **When** they attempt it from the screen
-- **Then** a warning dialog states that it will lock them out of OcuPilot, before proceeding.
+- **Then** the control is drawn disabled with the published sentence, because AD-10 refuses disabling the service that serves OcuPilot (`%Service_WebGateway`) whoever the caller is [AMENDED 2026-09-24 - see the story change log: Story 9.9 spec gate, orchestrator ruling 2dca0322; was a warning dialog before proceeding, which AD-10 and AD-55 refuse].
 
 - **Given** the same disable is proposed **by the agent**
 - **When** it reaches the write path

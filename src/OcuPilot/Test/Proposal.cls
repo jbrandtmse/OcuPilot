@@ -314,6 +314,47 @@ Method TestTheRowRecordsWhoMintedItAndWhen()
     Do $$$AssertEquals(tExpires - tCreated, +$Parameter(..#LIMITS, "PROPOSALEXPIRYSECONDS"), "and the window is the server-side constant")
 }
 
+/// <p>DW-1577: a merge write whose arguments restate what the target already holds changes nothing,
+/// so the mint refuses it 400 <code>TOOL.ARGUMENTS</code> and stores no row -- for
+/// <code>webapp.list.update</code> restating <code>Enabled</code>, and for
+/// <code>permissions.users.update</code> restating <code>FullName</code>. A call that does move the
+/// field is still minted.</p>
+/// <p>Mutation (Rule 19): delete the empty-diff refusal from
+/// <method>OcuPilot.Kernel.Proposal.Mint.Mint</method> -- both refusal legs go red.</p>
+Method TestAMergeThatChangesNothingIsRefusedAndStoresNothing()
+{
+    Set tCases = $ListBuild($ListBuild("OcuPilot.Screen.Tool.WebAppUpdate", "{""Enabled"":true,""Description"":""probe"",""AutheEnabled"":32,""NameSpace"":""USER"",""MatchRoles"":[]}", "/csp/ocupilotprobenochange", "Enabled", "true", "false"))
+    Set tCases = tCases _ $ListBuild($ListBuild("OcuPilot.Screen.Tool.UserUpdate", "{""FullName"":""Probe"",""Enabled"":true,""Comment"":""probe"",""Roles"":[]}", "OcuPilotProbeNoChange", "FullName", """Probe""", """Probe renamed"""))
+    For tI = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tI)
+        Set tTool = $List(tCase, 1)
+        Set tName = $Parameter(tTool, "TOOLNAME")
+        Set tBefore = ##class(OcuPilot.Test.ProposalFixture).ProposalCount()
+        Do ##class(OcuPilot.Test.ProposalFixture).Arm($List(tCase, 2))
+        Set tArgs = ##class(%DynamicAbstractObject).%FromJSON("{""Name"":""" _ $List(tCase, 3) _ """,""" _ $List(tCase, 4) _ """:" _ $List(tCase, 5) _ "}")
+        Set tSC = ..MintWith(tTool, tArgs, .tProposal, .tHttp, .tFault)
+        Do $$$AssertStatusNotOK(tSC, tName _ ": restating what the target holds is refused")
+        Do $$$AssertEquals(tHttp, 400, tName _ ": at 400")
+        Do $$$AssertEquals($Select($IsObject(tFault): tFault.%Get("code"), 1: ""), ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, tName _ ": with the arguments code")
+        Set tProblem = $Select($IsObject(tFault) && $IsObject(tFault.%Get("detail")): tFault.%Get("detail").%Get("problem"), 1: "")
+        Do $$$AssertTrue(tProblem [ "nothing would change", tName _ ": saying nothing would change: " _ tProblem)
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).ProposalCount(), tBefore, tName _ ": and no row is stored")
+
+        Do ##class(OcuPilot.Test.ProposalFixture).Arm($List(tCase, 2))
+        Set tArgs = ##class(%DynamicAbstractObject).%FromJSON("{""Name"":""" _ $List(tCase, 3) _ """,""" _ $List(tCase, 4) _ """:" _ $List(tCase, 6) _ "}")
+        Set tSC = ..MintWith(tTool, tArgs, .tProposal, .tHttp, .tFault)
+        Do $$$AssertStatusOK(tSC, tName _ ": a call that moves the field is minted: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
+    }
+}
+
+/// <p>Mint one proposal for write tool <var>pTool</var> from the armed fresh read with
+/// <var>pArgs</var>, with the tool's own endpoint, parameters, settable fields and class -- the call
+/// <method>OcuPilot.Screen.Tool.Write.View</method> makes.</p>
+Method MintWith(pTool As %String, pArgs As %DynamicObject, Output pProposal, Output pHttp, Output pFault) As %Status
+{
+    Quit $ClassMethod(..#MINT, "Mint", $Parameter(pTool, "DESCRIPTORCLASS"), $Parameter(pTool, "TOOLNAME"), ..#PROBEUSER, "probe-conv", "probe-turn", pArgs, ..#LIMITS, .pProposal, .pHttp, .pFault, $ClassMethod(pTool, "Endpoint"), $ClassMethod(pTool, "IdParam"), pArgs.%Get("Name"), $ClassMethod(pTool, "IdArgument"), $ClassMethod(pTool, "SettableFields"), pTool)
+}
+
 /// <p>The stored payload of proposal <var>pKey</var>, parsed.</p>
 Method StoredPayload(pKey As %String) As %DynamicObject
 {

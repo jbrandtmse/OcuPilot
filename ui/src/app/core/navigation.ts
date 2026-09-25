@@ -192,25 +192,25 @@ export function createFormFor(screen: ScreenDeclaration): ScreenDeclaration | nu
 }
 
 /**
- * Paired forms that create and never open an existing entity: their `:id` route exists so a Save
- * can replace the URL with the new entity's, but the page reads no id, so neither a row's name cell
- * nor a change toast may open one. The Web application form (Story 8.1), the create-a-user form
- * (Story 8.2) and the create-a-role form (Story 8.3) are the create halves of their lists' editors;
- * Epic 9's editors read the id, and their stories remove the entries.
+ * Paired forms that create and never open an existing entity: their `:id` route exists, but the page
+ * reads no id, so neither a row's name cell nor a change toast may open one. Epic 9's editors read
+ * the id, and their stories removed the entries -- the User form's with Story 9.1, the Web
+ * application form's with Story 9.2, the Role form's with Story 9.3 and the New Task wizard's with
+ * Story 9.8's Edit task. The set is empty; a later create-only form declares itself here.
  */
-export const CREATE_ONLY_FORMS: ReadonlySet<string> = new Set([
-  'OcuPilot.Screen.Descriptor.WebAppForm',
-  'OcuPilot.Screen.Descriptor.UserForm',
-  'OcuPilot.Screen.Descriptor.RoleForm',
-]);
+export const CREATE_ONLY_FORMS: ReadonlySet<string> = new Set<string>([]);
 
 /**
  * Screens whose editor is a dialog over the screen itself rather than a paired `form-page`: the
- * Resources list (Story 8.4), whose editor opens from its Create and from a row's name cell. Their
+ * Resources list (Story 8.4) and the User events list (Story 9.10), whose editors open from their
+ * Create and from a row's name cell. Their
  * routes carry the unsaved-changes guard a `form-page` route carries (`app.routes.ts`), so leaving
  * one while its dialog holds a change asks first.
  */
-export const DIALOG_EDITORS: ReadonlySet<string> = new Set(['OcuPilot.Screen.Descriptor.ResourceList']);
+export const DIALOG_EDITORS: ReadonlySet<string> = new Set([
+  'OcuPilot.Screen.Descriptor.ResourceList',
+  'OcuPilot.Screen.Descriptor.AuditUserEventList',
+]);
 
 /**
  * The route segment a list's own document viewer is declared under, appended to the list's route.
@@ -391,21 +391,33 @@ export function screenForDescriptor(descriptor: string): ScreenDeclaration | nul
   return SCREENS.find((screen) => screen.descriptor === descriptor) ?? null;
 }
 
+/** The archetypes whose screens are lists of rows a route id selects one of (AD-5, AD-13). */
+const LIST_ARCHETYPES: ReadonlySet<string> = new Set(['list', 'list (two views)', 'list (server criteria)']);
+
 /**
- * The built screen whose own primary `entityType` is `type`, or `null` (AD-5, AD-14).
+ * The entity's list: the built list-archetype screen whose own primary `entityType` is `type`, or
+ * `null` (AD-5, AD-14, DW-1546).
  *
  * The entity-type vocabulary is the kernel's closed enum and a screen selects from it, so this is
- * the one way a caller holding a reference triple -- a proposal's target, a change event -- reaches
- * the declaration that publishes that type's singular noun and its secret argument names. Unbuilt
- * screens are skipped: they declare no surface, so nothing they publish is renderable yet.
+ * the one way a caller holding a reference triple -- a change event -- reaches the screen a change
+ * toast opens and names ("Open in <list>", PRD UJ-6): the entity's list, with the entity selected, so
+ * a change made on a details or editor screen still offers its row. Unbuilt screens are skipped: they
+ * declare no surface.
  *
- * The first match wins where two screens declare the same primary type (a list and its detail),
- * which is sound because what this is read for -- `entityLabelKey`, `secretArguments` -- is a
- * property of the entity rather than of the surface. `CREATE_ONLY_FORMS` are skipped, because
- * `screenForChange` reads this for the route a change toast opens and such a form opens nothing.
+ * Several lists may show one type (Task schedule, On-demand tasks, Upcoming tasks), so the one taken
+ * is the listed one earliest in its side bar -- the lowest non-zero `sideBarPosition` -- and else any
+ * built list, in roster order. A type no list shows falls back to the first built screen declaring
+ * it that is not one of `CREATE_ONLY_FORMS`, which open nothing (the Switches form, Auditing
+ * configuration).
  */
 export function screenForEntityType(type: string): ScreenDeclaration | null {
   if (type === '') return null;
+  const lists = SCREENS.filter((screen) => screen.built && screen.entityType === type && LIST_ARCHETYPES.has(screen.archetype));
+  const listed = lists.filter((screen) => screen.sideBarPosition > 0);
+  if (listed.length > 0) {
+    return listed.reduce((best, screen) => (screen.sideBarPosition < best.sideBarPosition ? screen : best));
+  }
+  if (lists.length > 0) return lists[0];
   return (
     SCREENS.find((screen) => screen.built && screen.entityType === type && !CREATE_ONLY_FORMS.has(screen.descriptor)) ??
     null

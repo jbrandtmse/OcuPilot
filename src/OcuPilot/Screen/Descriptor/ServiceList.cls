@@ -23,6 +23,10 @@
 /// these pairs and holds its rows to the test account's.</p>
 /// <p><b>The classic page is <code>%CSP.UI.Portal.Services</code></b>, in the class's own case
 /// (AD-44). As a list archetype it links out to nothing. The context carries no secret field.</p>
+/// <p><b>A row's name cell opens <class>OcuPilot.Screen.Descriptor.ServiceForm</class></b>, the reduced
+/// form at this list's route with <code>/edit</code> appended (Story 9.9); the form, not this list,
+/// carries the classic-portal card. This list's write tool is
+/// <class>OcuPilot.Screen.Tool.ServiceUpdate</class>.</p>
 /// <p>It declares no primary or row action, so its empty state names what to do next, and it does
 /// not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.ServiceList Extends OcuPilot.Screen.Descriptor.Base

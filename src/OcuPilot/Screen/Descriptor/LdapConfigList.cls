@@ -18,6 +18,10 @@
 /// answers 500 (AD-8).</p>
 /// <p><b>The classic page is <code>%CSP.UI.Portal.LDAPs</code></b>, in the class's own case (AD-44).
 /// As a list archetype it links out to nothing.</p>
+/// <p><b>A row's name cell opens <class>OcuPilot.Screen.Descriptor.LdapConfigForm</class></b>, the reduced
+/// form at this list's route with <code>/edit</code> appended (Story 9.9); the form, not this list,
+/// carries the classic-portal card. This list's write tool is
+/// <class>OcuPilot.Screen.Tool.LdapUpdate</class>.</p>
 /// <p>It declares no primary or row action, so its empty state names what to do next, and it does
 /// not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.LdapConfigList Extends OcuPilot.Screen.Descriptor.Base

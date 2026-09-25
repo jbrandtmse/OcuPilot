@@ -93,6 +93,7 @@ XData Coverage
 <screen name="TaskScheduleList" class="OcuPilot.Test.Descriptor" method="TestTheTaskScheduleListValidatesAndNamesItsClassicPageInItsOwnCase"/>
 <screen name="TaskUpcomingList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="RoleForm" class="OcuPilot.Test.RoleCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
+<screen name="SslForm" class="OcuPilot.Test.SslUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="UserForm" class="OcuPilot.Test.UserCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="UserList" class="OcuPilot.Test.Descriptor" method="TestTheUsersListValidatesAndNamesItsClassicPageInItsOwnCase"/>
 <screen name="WalletCollectionList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
@@ -103,9 +104,13 @@ XData Coverage
 <screen name="X509Form" class="OcuPilot.Test.X509Import" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="X509CredentialList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="DeviceForm" class="OcuPilot.Test.DeviceCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
+<screen name="TaskForm" class="OcuPilot.Test.TaskCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
+<screen name="ServiceForm" class="OcuPilot.Test.ServiceUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndExempt"/>
+<screen name="LdapConfigForm" class="OcuPilot.Test.LdapUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndExempt"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="permissions.roles.update" class="OcuPilot.Test.RoleUpdate" method="TestTheToolAdmitsTheReviewedFourAndDeclaresItsActions"/>
 <tool name="permissions.resources.create" class="OcuPilot.Test.ResourceCreate" method="TestTheSchemaAndTheSettableSetAreTheSets"/>
 <tool name="permissions.resources.update" class="OcuPilot.Test.ResourceUpdate" method="TestTheUpdateIsAMergeWriteOverTheScreensOwnPairs"/>
 <tool name="permissions.resources.delete" class="OcuPilot.Test.ResourceDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
@@ -114,6 +119,10 @@ XData Coverage
 <tool name="security.x509.delete" class="OcuPilot.Test.X509Delete" method="TestTheDeleteIsAnActionWriteOverTheCertificate"/>
 <tool name="security.secrets.create" class="OcuPilot.Test.WalletSecretCreate" method="TestTheSchemaAdvertisesNoValue"/>
 <tool name="security.secrets.update" class="OcuPilot.Test.WalletSecretUpdate" method="TestTheEditIsAMergeWriteOverTheThreeSettings"/>
+<tool name="security.secrets.delete" class="OcuPilot.Test.WalletSecretDelete" method="TestTheDeleteIsAnActionWriteOverTheSecret"/>
+<tool name="security.ssl.create" class="OcuPilot.Test.SslUpdate" method="TestTheToolsDeclareTheirFieldsAndShapes" corpus="the create, the change and the delete are asserted together"/>
+<tool name="security.ssl.update" class="OcuPilot.Test.SslUpdate" method="TestTheToolsDeclareTheirFieldsAndShapes" corpus="the create, the change and the delete are asserted together"/>
+<tool name="security.ssl.delete" class="OcuPilot.Test.SslUpdate" method="TestTheToolsDeclareTheirFieldsAndShapes" corpus="the create, the change and the delete are asserted together"/>
 <tool name="osmgmt.devices.create" class="OcuPilot.Test.DeviceCreate" method="TestTheSchemaAndTheSettableSetAreTheSets"/>
 <tool name="osmgmt.devices.update" class="OcuPilot.Test.DeviceUpdate" method="TestTheEditIsAMergeWriteOverTheEightFields"/>
 <tool name="osmgmt.devices.delete" class="OcuPilot.Test.DeviceDelete" method="TestTheDeleteIsAnActionWriteOverTheWholeRead"/>
@@ -127,10 +136,11 @@ XData Coverage
 <tool name="permissions.users.update" class="OcuPilot.Test.ToolWrite" method="TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs"/>
 <tool name="security.auditing.update" class="OcuPilot.Test.ToolWrite" method="TestTheAuditingWriteToolAdvertisesEnabledAloneAndDeclaresItsWriteDestructive"/>
 <tool name="security.auditsystemevents.reset" class="OcuPilot.Test.AuditEventTools" method="TestTheResetToolsAreActionWritesWithOneStateRow" corpus="the system and user tools are asserted together in one loop"/>
-<tool name="security.auditsystemevents.update" class="OcuPilot.Test.AuditEventTools" method="TestTheUpdateToolsAdmitEnabledAloneOverTheClassDerivedList" corpus="the system and user tools are asserted together in one loop"/>
+<tool name="security.auditsystemevents.update" class="OcuPilot.Test.AuditEventTools" method="TestTheUpdateToolsAdmitTheirFieldsOverTheClassDerivedList" corpus="the system and user tools are asserted together in one loop"/>
+<tool name="security.audituserevents.create" class="OcuPilot.Test.AuditEventRules" method="TestTheCreateToolDeclaresACreateOverTheDerivedList"/>
 <tool name="security.audituserevents.delete" class="OcuPilot.Test.AuditEventTools" method="TestTheUserEventDeleteIsADestructiveActionWrite"/>
 <tool name="security.audituserevents.reset" class="OcuPilot.Test.AuditEventTools" method="TestTheResetToolsAreActionWritesWithOneStateRow" corpus="the system and user tools are asserted together in one loop"/>
-<tool name="security.audituserevents.update" class="OcuPilot.Test.AuditEventTools" method="TestTheUpdateToolsAdmitEnabledAloneOverTheClassDerivedList" corpus="the system and user tools are asserted together in one loop"/>
+<tool name="security.audituserevents.update" class="OcuPilot.Test.AuditEventTools" method="TestTheUpdateToolsAdmitTheirFieldsOverTheClassDerivedList" corpus="the system and user tools are asserted together in one loop"/>
 <tool name="security.oauthclients.delete" class="OcuPilot.Test.OAuthDelete" method="TestTheClientConfigurationDeleteIsAnActionWriteOverTheTabsOwnPairs"/>
 <tool name="security.oauthserverclients.delete" class="OcuPilot.Test.OAuthDelete" method="TestTheServerClientDeleteIsAnActionWriteOverTheTabsOwnPairs"/>
 <tool name="tasks.schedule.resume" class="OcuPilot.Test.ToolWrite" method="TestTheTaskResumeToolIsAnActionWriteOverTheScreensOwnPairs"/>
@@ -139,6 +149,10 @@ XData Coverage
 <tool name="tasks.schedule.run" class="OcuPilot.Test.ToolWrite" method="TestTheScheduleRunToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="tasks.schedule.suspend" class="OcuPilot.Test.ToolWrite" method="TestTheTaskSuspendToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="tasks.schedule.delete" class="OcuPilot.Test.ToolWrite" method="TestTheTaskDeleteToolIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="tasks.schedule.create" class="OcuPilot.Test.TaskCreate" method="TestTheSchemaIsDerivedAndDescribedFromTaskSuper"/>
+<tool name="tasks.schedule.update" class="OcuPilot.Test.TaskUpdate" method="TestTheSchemaIsDerivedAndDescribed"/>
+<tool name="permissions.services.update" class="OcuPilot.Test.ServiceUpdate" method="TestTheToolDeclaresItsFieldsAndShapes"/>
+<tool name="security.ldap.update" class="OcuPilot.Test.LdapUpdate" method="TestTheToolDeclaresItsFieldsAndShapes"/>
 <tool name="webapp.list.delete" class="OcuPilot.Test.ToolWrite" method="TestTheWebApplicationDeleteToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="webapp.list.update" class="OcuPilot.Test.ToolWrite" method="TestTheRegistryAdvertisesItAsAWriteToolFulfilledOnTheInstance"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
