@@ -190,6 +190,14 @@ describe('the resource server editor', () => {
     expect(rows(host, 'ocu-oauth-resource-server-bindings-mappings')).toEqual([]);
   });
 
+  it('the Authenticator tab says that a namespace or implementation change replaces its settings with the new defaults', async () => {
+    const { fixture, host } = await mount(EDIT_URL);
+    tabs(host)[2].click();
+    await settle(fixture);
+    expect(selectedTab(host)).toBe(STRINGS.oauthResourceServerTabAuthenticator);
+    expect(host.querySelector('.ocu-oauth-resource-server-authenticator-note')?.textContent?.trim()).toBe(STRINGS.oauthResourceServerAuthenticatorNote);
+  });
+
   it('AC4, AD-35: the client secret is masked, never pre-filled, carries its hint, and is locked while introspection is off', async () => {
     const { fixture, host } = await mount(EDIT_URL);
     const secret = host.querySelector('#ocu-oauth-resource-server-ClientSecret') as HTMLInputElement;

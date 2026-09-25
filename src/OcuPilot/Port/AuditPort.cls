@@ -122,7 +122,21 @@ Parameter VENDORSECRETSOURCE = "%System/%Security/OAuth2";
 /// <p>What a masked value reads, the vendor's own mask.</p>
 Parameter MASK = "*****";
 
-/// <p>Mask, in place, the declared secrets (<parameter>VENDORSECRETS</parameter>) in the
+/// <p>The resource server authenticator settings IRIS writes in plain text into its own audit rows,
+/// declared per vendor event (AD-35 as amended 2026-09-25, Story 12.6): semicolon-separated
+/// <code>&lt;event&gt;=&lt;key&gt;</code> entries, where <code>&lt;event&gt;</code> is the leading
+/// words of the row's <code>Description</code> under <parameter>VENDORSETTINGSOURCE</parameter> and
+/// <code>&lt;key&gt;</code> the property whose value is the authenticator as JSON. In that JSON every
+/// member whose name is a credential's (Conventions, Secrets), which the resource server tools
+/// classify secret, is masked. Measured on a throwaway: the Create and Modify rows carry the
+/// authenticator on a property line, and a Modify row also in a <code>modified</code> block.</p>
+Parameter VENDORSETTINGSECRETS = "Create Resource Server=Authenticator;Modify Resource Server=Authenticator";
+
+/// <p>The vendor event every <parameter>VENDORSETTINGSECRETS</parameter> entry is a row of.</p>
+Parameter VENDORSETTINGSOURCE = "%System/%Security/OAuth2ResourceServerChange";
+
+/// <p>Mask, in place, the declared secrets (<parameter>VENDORSECRETS</parameter> and
+/// <parameter>VENDORSETTINGSECRETS</parameter>) in the
 /// <code>EventData</code> of every row of <var>pRows</var>, an audit record read's rows.</p>
 /// <p><b>Caller contract:</b> <class>OcuPilot.Screen.Read</class> calls it on every
 /// <parameter>RECORDENDPOINT</parameter> answer before it projects a row, so the Logs audit screen and
@@ -135,6 +149,8 @@ ClassMethod MaskVendorSecrets(pRows As %DynamicArray)
     While tIterator.%GetNext(.tIndex, .tRow) {
         If '$IsObject(tRow) || 'tRow.%IsA("%Library.DynamicObject") Continue
         If tRow.%GetTypeOf("EventData") '= "string" Continue
+        Set tSettings = ..SettingKeys(tRow)
+        If tSettings '= "" Do tRow.%Set("EventData", ..MaskedSettingData(tRow.%Get("EventData"), tSettings), "string")
         Set tKeys = ..SecretKeys(tRow)
         If tKeys = "" Continue
         Do tRow.%Set("EventData", ..MaskedEventData(tRow.%Get("EventData"), tKeys), "string")
@@ -227,6 +243,87 @@ ClassMethod MaskedMetadataLine(pLine As %String, pKeys As %List) As %String [ Pr
             Set tKey = $List(pKeys, tK)
             If (tObject.%GetTypeOf(tKey) = "string") && (tObject.%Get(tKey) '= "") Do tObject.%Set(tKey, ..#MASK, "string")
         }
+        Set tJson = tObject.%ToJSON()
+    } Catch {
+        Set tJson = ..#MASK
+    }
+    Quit tHead _ tPad _ tJson
+}
+
+/// <p>The keys <parameter>VENDORSETTINGSECRETS</parameter> declares for <var>pRow</var>'s event, as a
+/// <class>%List</class>, or <code>""</code>. The longest declared event its <code>Description</code>
+/// begins with, as whole words, wins.</p>
+ClassMethod SettingKeys(pRow As %DynamicObject) As %List
+{
+    Set tSource = pRow.%Get("EventSource") _ "/" _ pRow.%Get("EventType") _ "/" _ pRow.%Get("Event")
+    If tSource '= ..#VENDORSETTINGSOURCE Quit ""
+    Set tDescription = pRow.%Get("Description")
+    Set (tKeys, tMatched) = ""
+    For tI = 1:1:$Length(..#VENDORSETTINGSECRETS, ";") {
+        Set tEntry = $Piece(..#VENDORSETTINGSECRETS, ";", tI)
+        Set tEvent = $Piece(tEntry, "=", 1)
+        If (tDescription '= tEvent) && ($Extract(tDescription, 1, $Length(tEvent) + 1) '= (tEvent _ " ")) Continue
+        If $Length(tEvent) <= $Length(tMatched) Continue
+        Set tMatched = tEvent
+        Set tKeys = $ListFromString($Piece(tEntry, "=", 2), ":")
+    }
+    Quit tKeys
+}
+
+/// <p><var>pData</var>, a vendor row's <code>EventData</code>, with the credential-named members of
+/// the JSON each key in <var>pKeys</var> holds replaced by <parameter>MASK</parameter>, in the two
+/// places the vendor writes it: the <code>New value</code> and <code>Old value</code> lines under a
+/// <code>&lt;key&gt; modified:</code> line, and a <code>&lt;key&gt;:</code> property line.</p>
+ClassMethod MaskedSettingData(pData As %String, pKeys As %List) As %String
+{
+    Set tBreak = $Char(13, 10)
+    If pData '[ tBreak Set tBreak = $Char(10)
+    Set tOut = ""
+    Set tMasking = 0
+    For tI = 1:1:$Length(pData, tBreak) {
+        Set tLine = $Piece(pData, tBreak, tI)
+        Set tTrimmed = $ZStrip(tLine, "<>W")
+        If tMasking && (($Extract(tTrimmed, 1, 10) = "New value:") || ($Extract(tTrimmed, 1, 10) = "Old value:")) {
+            Set tLine = ..MaskedSettingLine(tLine)
+            Set tMasking = tMasking - 1
+        } Else {
+            Set tMasking = 0
+            For tK = 1:1:$ListLength(pKeys) {
+                Set tKey = $List(pKeys, tK)
+                If tTrimmed = (tKey _ " modified:") {
+                    Set tMasking = 2
+                } ElseIf $Extract(tTrimmed, 1, $Length(tKey) + 1) = (tKey _ ":") {
+                    Set tLine = ..MaskedSettingLine(tLine)
+                }
+            }
+        }
+        Set tOut = tOut _ $Select(tI = 1: "", 1: tBreak) _ tLine
+    }
+    Quit tOut
+}
+
+/// <p><var>pLine</var>, whose text after its first colon is an authenticator's JSON, with each
+/// non-empty member whose name is a credential's masked. A line whose JSON does not parse is answered
+/// as a masked line, because a credential setting may sit inside it.</p>
+ClassMethod MaskedSettingLine(pLine As %String) As %String [ Private ]
+{
+    Set tHead = $Piece(pLine, ":", 1) _ ":"
+    Set tRest = $Extract(pLine, $Length(tHead) + 1, *)
+    Set tJson = $ZStrip(tRest, "<>W")
+    If tJson = "" Quit pLine
+    Set tPad = $Extract(tRest, 1, $Length(tRest) - $Length($ZStrip(tRest, "<W")))
+    Try {
+        Set tObject = ##class(%DynamicAbstractObject).%FromJSON(tJson)
+        If '$IsObject(tObject) || 'tObject.%IsA("%Library.DynamicObject") {
+            Set tJson = ..#MASK
+            Quit
+        }
+        Set tNames = ""
+        Set tIterator = tObject.%GetIterator()
+        While tIterator.%GetNext(.tName, .tValue) {
+            If ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(tName) && (tValue '= "") Set tNames = tNames _ $ListBuild(tName)
+        }
+        For tN = 1:1:$ListLength(tNames) Do tObject.%Set($List(tNames, tN), ..#MASK, "string")
         Set tJson = tObject.%ToJSON()
     } Catch {
         Set tJson = ..#MASK

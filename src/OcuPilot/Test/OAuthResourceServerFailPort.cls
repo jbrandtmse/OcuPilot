@@ -1,9 +1,10 @@
 /// <p>Test-only <class>OcuPilot.Test.OAuthResourceServerRecordPort</class> subclass, so every mutating
-/// call is recorded, with one replaced seam: the
+/// call is recorded, with two replaced seams: the
 /// private <method>Vendor</method> answers an <code>&lt;endpoint&gt;/&lt;type&gt;</code> armed with
 /// <method>Arm</method> the way the admin port answers a vendor refusal at that status, without calling
-/// the vendor, and counts each such answer; every other call goes to the shipped port's own. The arming
-/// is process-private and lasts until <method>Disarm</method>.</p>
+/// the vendor, and counts each such answer; and <method>HoldsPair</method> answers no for a pair named
+/// with <method>DenyPair</method>. Every other call goes to the shipped port's own. The arming is
+/// process-private and lasts until <method>Disarm</method>.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.OAuthResourceServerFailPort Extends OcuPilot.Test.OAuthResourceServerRecordPort
 {
@@ -15,10 +16,23 @@ ClassMethod Arm(pEndpoint As %String, pType As %String, pHttp As %Integer)
     Set ^||OcuPilotOAuthResourceFail(pEndpoint _ "/" _ pType) = pHttp
 }
 
-/// <p>Forget every armed type and every count.</p>
+/// <p>Answer no for pair <var>pPair</var> (<code>&lt;resource&gt;:&lt;permission&gt;</code>) until
+/// <method>Disarm</method>, as for a caller without it.</p>
+ClassMethod DenyPair(pPair As %String)
+{
+    Set ^||OcuPilotOAuthResourceDenied(pPair) = 1
+}
+
+/// <p>Forget every armed type, every denied pair and every count.</p>
 ClassMethod Disarm()
 {
-    Kill ^||OcuPilotOAuthResourceFail, ^||OcuPilotOAuthResourceFailCount
+    Kill ^||OcuPilotOAuthResourceFail, ^||OcuPilotOAuthResourceFailCount, ^||OcuPilotOAuthResourceDenied
+}
+
+ClassMethod HoldsPair(pPair As %String) As %Boolean
+{
+    If $Get(^||OcuPilotOAuthResourceDenied(pPair)) Quit 0
+    Quit ##super(pPair)
 }
 
 /// <p>How many calls of <var>pEndpoint</var>'s <var>pType</var> were answered as a refusal since

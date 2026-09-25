@@ -1,8 +1,9 @@
 /// <p>Pins Story 12.6's resource server create (AD-3, AD-10, AD-39, AD-54, AD-55): what the six resource
 /// server tools and the editor's descriptor declare, one create through the Save route carrying the two
 /// default mappings, a taken name refused on its field before any write, every form rule refused on
-/// both callers before anything is sent, and a create whose name is taken after the mint refused at its
-/// confirm.</p>
+/// both callers before anything is sent, a create whose name is taken after the mint refused at its
+/// confirm, the port refusing a caller without one of its pairs before any vendor call, and the form
+/// read's count of the instance's resource servers.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving with the demo fixture,
 /// an account holding <code>%All</code>, and <parameter>ARMINGVARIABLE</parameter> reading
 /// <code>1</code>, because it creates and deletes OAuth 2.0 resource servers, service mappings and
@@ -29,6 +30,8 @@ Parameter CONFIRM = "OcuPilot.Test.OAuthResourceServerConfirm";
 
 Parameter RECORD = "OcuPilot.Test.OAuthResourceServerRecordPort";
 
+Parameter FAIL = "OcuPilot.Test.OAuthResourceServerFailPort";
+
 Parameter PROBE = "OcuPilot.Test.OAuthResourceServerProbe";
 
 /// <p>The 12.4 probe, whose mint and listing helpers take any tool.</p>
@@ -37,6 +40,8 @@ Parameter HELPER = "OcuPilot.Test.OAuthServerProbe";
 Parameter ENDPOINT = "Security.OAuth2.ResourceServer";
 
 Parameter CREATEPATH = "/oauth/resource-server";
+
+Parameter FORMPATH = "/oauth/resource-server/form";
 
 /// <p>The eleven template fields, sorted.</p>
 Parameter TEMPLATE = "AccessTokenIsJWT,AlwaysCallIntrospection,Audiences,Authenticator,ClientId,Description,Enabled,IntrospectionAuthMethod,IssuerEndpoint,ScopeRequiredToConnect,UseOIDC";
@@ -61,6 +66,7 @@ Method OnBeforeOneTest() As %Status
 Method OnAfterOneTest() As %Status
 {
     Do $ClassMethod(..#RECORD, "Clear")
+    Do $ClassMethod(..#FAIL, "Disarm")
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tSeeded)
     Set tSC = $ClassMethod(..#PROBE, "RemoveAll", .tRemaining)
@@ -85,7 +91,7 @@ ClassMethod Body(pName As %String) As %DynamicObject
 }
 
 /// <p>The six tools are write tools over the tab, reached through the resource server port, named by
-/// the server's name, each requiring exactly the tab's two pairs; each declares its own request types,
+/// the server's name, each requiring exactly the tab's pairs; each declares its own request types,
 /// body, change and row action; each action write's subject is adequate; and each description says
 /// nothing changes until the user confirms.</p>
 Method TestTheSixToolsAreDeclaredOverTheTabAndThePort()
@@ -285,6 +291,77 @@ Method TestACreateTakenAfterTheMintIsRefusedAtConfirm()
     Do $$$AssertEquals(tHttp _ " " _ tCode, "409 " _ ##class(OcuPilot.Kernel.Proposal.Write).#TARGETCHANGED, "as the target having changed")
     Do $$$AssertEquals($ClassMethod(..#RECORD, "WriteCount"), 0, "and nothing is sent")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", tName).%Get("Description"), "somebody else's", "so the other server is unchanged")
+}
+
+/// <p>AD-29: the port refuses a caller without any one of its three pairs 403 before any vendor call,
+/// naming that pair, on a read and on a write alike.</p>
+/// <p>Mutation (Rule 19): drop <method>OcuPilot.Port.OAuthResourceServerPort.Invoke</method>'s
+/// <method>OcuPilot.Port.OAuthResourceServerPort.RefusedPair</method> check -- the calls reach the
+/// vendor and this goes red.</p>
+Method TestThePortRefusesACallerWithoutAPairBeforeTheVendor()
+{
+    Set tName = $ClassMethod(..#PROBE, "Name", "Gate")
+    Set tPairs = $Parameter("OcuPilot.Port.OAuthResourceServerPort", "GATEPAIRS")
+    Do $$$AssertEquals(tPairs, "%Admin_Secure:USE,%DB_IRISSYS:READ,%Admin_OAuth2_Client:USE", "the port's pairs are the tab's three")
+    For tI = 1:1:$Length(tPairs, ",") {
+        Set tPair = $Piece(tPairs, ",", tI)
+        Do $ClassMethod(..#FAIL, "Disarm")
+        Do $ClassMethod(..#FAIL, "Arm", ..#ENDPOINT, "GET", 500)
+        Do $ClassMethod(..#FAIL, "Arm", ..#ENDPOINT, "PUT", 500)
+        Do $ClassMethod(..#FAIL, "DenyPair", tPair)
+        Kill tQuery
+        Set tQuery("name") = tName
+        Set tSC = $ClassMethod(..#FAIL, "Invoke", ..#ENDPOINT, "GET", .tQuery, "", .tResult, .tHttp, .tFault)
+        Do $$$AssertEquals($$$ISERR(tSC) _ " " _ tHttp _ " " _ ..FaultOf($Get(tFault)), "1 403 " _ ##class(OcuPilot.Api.Error).#PORTACCESSDENIED _ " " _ tPair, tPair _ ": a read is refused naming the pair")
+        Set tSC = $ClassMethod(..#FAIL, "Invoke", ..#ENDPOINT, "PUT", .tQuery, ..Body(tName), .tResult, .tHttp, .tFault)
+        Do $$$AssertEquals(tHttp _ " " _ $Piece(..FaultOf($Get(tFault)), " ", 2), "403 " _ tPair, tPair _ ": and so is a write")
+        Do $$$AssertEquals($ClassMethod(..#FAIL, "Reached", ..#ENDPOINT, "GET") + $ClassMethod(..#FAIL, "Reached", ..#ENDPOINT, "PUT"), 0, tPair _ ": before any vendor call")
+    }
+    Do $ClassMethod(..#FAIL, "Disarm")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", tName), 0, "and nothing was created")
+}
+
+/// <p>The form read counts every resource server the instance holds, which is what decides whether a
+/// create starts with the two default mappings.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.OAuthResourceServerRules.HandleForm</method>
+/// answers <code>resourceServerCount</code> 0 -- this goes red.</p>
+Method TestTheFormReadCountsTheInstancesServers()
+{
+    For tSuffix = "CountA", "CountB" {
+        Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddResource", $ClassMethod(..#PROBE, "Name", tSuffix), ..Issuer(), $ListBuild("aud.count")), "a server is created")
+    }
+    Set tSC = ..Request("GET", ..#FORMPATH, "", .tStatus, .tRaw)
+    Do $$$AssertEquals(tStatus, 200, "the form read answers: " _ $Extract(tRaw, 1, 200))
+    Set tCount = ""
+    Try { Set tCount = ##class(%DynamicObject).%FromJSON(tRaw).%Get("resourceServerCount") } Catch { Set tCount = "" }
+    Do $$$AssertTrue(..InstanceCount() >= 2, "the instance holds the two servers")
+    Do $$$AssertEquals(tCount, ..InstanceCount(), "and the form read counts every server it holds")
+}
+
+/// <p>A port fault as <code>&lt;code&gt; &lt;failed pair&gt;</code>, each empty when absent.</p>
+ClassMethod FaultOf(pFault) As %String
+{
+    If '$IsObject(pFault) Quit " "
+    Set tDetail = pFault.%Get("detail")
+    Quit pFault.%Get("code") _ " " _ $Select($IsObject(tDetail): tDetail.%Get("failedPair"), 1: "")
+}
+
+/// <p>How many resource servers the instance holds, read from the vendor's table in
+/// <code>%SYS</code>, or -1 when it cannot be read.</p>
+ClassMethod InstanceCount() As %Integer
+{
+    Set tCount = -1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OAuth2.ResourceServer")
+        If tRS.%Next() Set tCount = tRS.%Get("N")
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tCount = -1
+    }
+    Quit tCount
 }
 
 /// <p>A request over the wire as the test account, answering the status and the raw body.</p>

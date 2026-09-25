@@ -9,8 +9,8 @@
 /// its one id segment when it edits.</p>
 /// <p><b>It declares no <code>read</code> and no <code>table</code></b> (AD-36): its form read answers
 /// the server it edits.</p>
-/// <p><b>Its privilege set is the tab's own</b> -- <code>%Admin_Secure:USE</code> plus
-/// <code>%DB_IRISSYS:READ</code> (AD-8).</p>
+/// <p><b>Its privilege set is the tab's own</b> -- <code>%Admin_Secure:USE</code>,
+/// <code>%DB_IRISSYS:READ</code> and <code>%Admin_OAuth2_Client:USE</code> (AD-8, AD-29).</p>
 /// <p><b>Its client secret is secret-typed in its context</b> (AD-24, AD-35), so no screen-context
 /// capture carries a value being typed. The confirm channel's declaration is the tab's, whose tool
 /// writes it (AD-56).</p>
@@ -30,7 +30,7 @@ XData Declaration
   "built": true,
   "refreshes": false,
   "refreshRates": [],
-  "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
+  "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}, {"resource": "%Admin_OAuth2_Client", "permission": "USE"}],
   "entityType": "oauth2-resource-server",
   "secondaryEntityTypes": [],
   "scope": "instance",

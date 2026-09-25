@@ -4,8 +4,11 @@
 /// <code>ServerDefinition</code>, the issuer URL of the server description it trusts, which is why it
 /// declares <code>oauth2-server-definition</code> as a secondary type (AD-14). No client secret is on
 /// the row (AD-35).</p>
-/// <p><b>The privilege set is <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code></b>:
-/// the vendor gates this endpoint on the secure resource rather than an OAuth one (AD-8).</p>
+/// <p><b>The privilege set is <code>%Admin_Secure:USE</code>, <code>%DB_IRISSYS:READ</code> and
+/// <code>%Admin_OAuth2_Client:USE</code></b>: the vendor gates this endpoint on the secure resource
+/// (AD-8), and its resource server class opens the trusted server description through
+/// <code>OAuth2.ServerDefinition.OpenByIssuer</code>, which checks the OAuth 2.0 client resource
+/// (AD-29).</p>
 /// <p><b>Its name cells open OcuPilot's own editor</b>,
 /// <class>OcuPilot.Screen.Descriptor.OAuthResourceServerForm</class>, at this tab's route with
 /// <code>/edit</code> appended and the name as the id (Story 12.6); it declares no classic link-out.
@@ -28,7 +31,7 @@ XData Declaration
   "built": true,
   "refreshes": false,
   "refreshRates": [],
-  "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
+  "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}, {"resource": "%Admin_OAuth2_Client", "permission": "USE"}],
   "entityType": "oauth2-resource-server",
   "secondaryEntityTypes": ["oauth2-server-definition"],
   "scope": "instance",

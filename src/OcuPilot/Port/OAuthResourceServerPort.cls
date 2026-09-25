@@ -1,7 +1,8 @@
 /// <p>The OAuth 2.0 resource server port (AD-51, AD-52): <class>OcuPilot.Port.AdminPort</class> with
 /// <parameter>RESOURCEENDPOINT</parameter>'s reads and writes shaped here, and a resource server's
 /// service mappings reached through <parameter>MAPPINGENDPOINT</parameter>. Every vendor call is the
-/// admin port's own, behind the endpoint's own gate; no vendor class completes an operation (AD-27).
+/// admin port's own, behind the endpoint's own gate and this port's <parameter>GATEPAIRS</parameter>;
+/// no vendor class completes an operation (AD-27).
 /// The two vendor reads are the authenticator checks (<method>AuthenticatorUsable</method>,
 /// <method>Authenticators</method>), which read the class dictionary in the authenticator's
 /// namespace.</p>
@@ -33,6 +34,11 @@ Class OcuPilot.Port.OAuthResourceServerPort Extends OcuPilot.Port.AdminPort
 Parameter RESOURCEENDPOINT = "Security.OAuth2.ResourceServer";
 
 Parameter MAPPINGENDPOINT = "Security.OAuth2.ResourceServerMapping";
+
+/// <p>The admin API writes this port issues on the vendor's behalf of its own action types
+/// (<code>ADDMAPPING</code>, <code>REMOVEMAPPING</code>), each a
+/// <parameter>MUTATINGTYPES</parameter> pair no tool names as its own write type.</p>
+Parameter DELEGATEDTYPES = "Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE";
 
 /// <p>The vendor's query parameters: the server's name, a mapping's service and key.</p>
 Parameter NAMEQUERY = "name";
@@ -82,9 +88,13 @@ Parameter DEFAULTIMPLEMENTATION = "%OAuth2.ResourceServer.SimpleAuthenticator";
 
 Parameter DEFAULTNAMESPACE = "%SYS";
 
-/// <p>The resource both vendor endpoints' <code>ResourcesOR()</code> names, repeated by the reads
-/// this port answers without the vendor (AD-29).</p>
-Parameter GATERESOURCE = "%Admin_Secure";
+/// <p>The pairs every <parameter>RESOURCEENDPOINT</parameter> call through this port requires, in
+/// the order a refusal names the first one missing (AD-29): the resource servers tab's own set. Both
+/// vendor endpoints' <code>ResourcesOR()</code> names only <code>%Admin_Secure</code>, while the
+/// vendor's resource server class resolves its issuer through
+/// <code>OAuth2.ServerDefinition.OpenByIssuer</code>, which checks
+/// <code>%Admin_OAuth2_Client</code>.</p>
+Parameter GATEPAIRS = "%Admin_Secure:USE,%DB_IRISSYS:READ,%Admin_OAuth2_Client:USE";
 
 /// <p>The admin port's call, with <parameter>RESOURCEENDPOINT</parameter> shaped here.</p>
 /// <p><b>Caller contract:</b> the arguments and outputs are
@@ -96,6 +106,8 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Set pResult = ""
     Set pHttpStatus = 0
     Set pFault = ""
+    Set tRefused = ..RefusedPair()
+    If tRefused '= "" Quit ..GateRefusal(tRefused, .pHttpStatus, .pFault)
     Set tSC = $$$OK
     Try {
         If pType = "GET" {
@@ -455,12 +467,10 @@ ClassMethod RemoveMapping(pName As %String, pService As %String, pKey As %String
 /// [{Implementation, Settings}]}</code>, every compiled, concrete authenticator class namespace
 /// <var>pNamespace</var> offers (<parameter>DEFAULTNAMESPACE</parameter> when empty), each with
 /// <method>SettingsOf</method>'s settings. A namespace that does not exist or that the caller cannot
-/// enter answers <parameter>DEFAULTIMPLEMENTATION</parameter> alone. A caller without
-/// <parameter>GATERESOURCE</parameter> is refused first (AD-29).</p>
+/// enter answers <parameter>DEFAULTIMPLEMENTATION</parameter> alone.</p>
 ClassMethod Authenticators(pNamespace As %String, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pResult = ""
-    If '..HoldsResource(..#GATERESOURCE) Quit ..GateRefusal(.pHttpStatus, .pFault)
     Set tNamespace = $Select(pNamespace = "": ..#DEFAULTNAMESPACE, 1: pNamespace)
     Set tClasses = ""
     Set tEntered = 0
@@ -506,13 +516,25 @@ ClassMethod Authenticators(pNamespace As %String, Output pResult, Output pHttpSt
     Quit $$$OK
 }
 
-/// <p>The 403 a caller without <parameter>GATERESOURCE</parameter> at <code>USE</code> is answered
-/// by a read this port answers itself: the admin port's own mapping of 403, with the pair in
-/// <code>detail.failedPair</code> (AD-8, AD-39).</p>
-ClassMethod GateRefusal(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <p>The first pair of <parameter>GATEPAIRS</parameter> the caller does not hold, as
+/// <code>&lt;resource&gt;:&lt;permission&gt;</code>, or <code>""</code> when it holds them all. Each
+/// pair is asked through the admin port's <method>HoldsPair</method>.</p>
+ClassMethod RefusedPair() As %String
+{
+    Set tRefused = ""
+    For tI = 1:1:$Length(..#GATEPAIRS, ",") {
+        Set tPair = $Piece(..#GATEPAIRS, ",", tI)
+        If '..HoldsPair(tPair) Set tRefused = tPair Quit
+    }
+    Quit tRefused
+}
+
+/// <p>The 403 a caller without pair <var>pPair</var> is answered before any vendor call: the admin
+/// port's own mapping of 403, with the pair in <code>detail.failedPair</code> (AD-8, AD-39).</p>
+ClassMethod GateRefusal(pPair As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tDetail = {}
-    Do tDetail.%Set("failedPair", ..#GATERESOURCE _ ":USE", "string")
+    Do tDetail.%Set("failedPair", pPair, "string")
     Do ##class(OcuPilot.Kernel.Fault).Outcome(403, $$$OK, .tMapped, .tVendorText)
     Quit ..Refuse(403, tMapped.error, tMapped.code, tMapped.reason, .pHttpStatus, .pFault, tDetail)
 }

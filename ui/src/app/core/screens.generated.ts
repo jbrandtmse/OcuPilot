@@ -3286,6 +3286,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
+      },
+      {
+        "resource": "%Admin_OAuth2_Client",
+        "permission": "USE"
       }
     ],
     "entityType": "oauth2-resource-server",
@@ -3344,6 +3348,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%DB_IRISSYS",
         "permission": "READ"
+      },
+      {
+        "resource": "%Admin_OAuth2_Client",
+        "permission": "USE"
       }
     ],
     "entityType": "oauth2-resource-server",

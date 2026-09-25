@@ -2416,6 +2416,8 @@ export const STRINGS = {
   oauthResourceServersEmptyAgent: 'create an OAuth 2.0 resource server',
   /** EXPERIENCE.md:518 */
   oauthResourceServerFormRefusedAction: 'change this resource server',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerAuthenticatorNote: 'Changing the namespace or implementation replaces these settings with that implementation\'s defaults.',
 
 } as const;
 

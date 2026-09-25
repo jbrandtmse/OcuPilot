@@ -170,6 +170,20 @@ describe('the resource server editor store', () => {
     expect([store.saved(), store.savedId(), formDirty.dirty()]).toEqual([true, NAME, false]);
   });
 
+  it('a default mapping removed before the first create is saved is not sent', async () => {
+    const { store, calls } = mount();
+    await store.open('');
+    store.removeMapping('%Service_Bindings/*');
+    expect(store.mappings()).toEqual(['%Service_WebGateway/*']);
+    store.setText('name', NAME);
+    store.setText('issuer', ISSUER);
+    store.addAudience();
+    store.setAudience(0, 'https://ocupilot.invalid/api');
+    expect(await store.save()).toBe(true);
+    const [write] = writes(calls);
+    expect((JSON.parse(write.body) as Record<string, unknown>)['mappingsAdded']).toEqual([{ Service: '%Service_WebGateway', Key: '*' }]);
+  });
+
   it('a create on an instance that already holds a server starts with no mappings', async () => {
     const { store } = mount(undefined, 1);
     await store.open('');

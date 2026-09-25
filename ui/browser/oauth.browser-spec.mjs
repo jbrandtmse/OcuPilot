@@ -3,9 +3,10 @@
  * secrets side bar with its OAuth 2.0 entry, the five-tab strip, and each tab's route, headers and one
  * read, reached by Right then Enter and by a click (AC1); the authorization server tab's cells against
  * its own read answer (AC2); a client configuration's name cell opening OcuPilot's own editor, Story
- * 12.5's (AC4); and a principal holding the secure pairs without
- * the wallet or OAuth resources, gated on the rail, reading the Resource servers tab under a strip whose
- * other four tabs are gated, and refused Server client descriptions by name (AC5).
+ * 12.5's (AC4); and a principal holding the Resource servers tab's three pairs without the wallet,
+ * authorization server or registration resources, gated on the rail, reading the Resource servers tab
+ * under a strip whose authorization server and server client tabs are gated, and refused Server client
+ * descriptions by name (AC5).
  *
  * **It needs the demo fixture** (`OCUPILOT_DEMO=1`, AD-25), whose SSL/TLS configuration the probe's
  * client configurations name. `before` runs `OcuPilot.Test.OAuthProbe.Create()` and `after` its
@@ -13,7 +14,8 @@
  *
  * **It creates a security principal and OAuth 2.0 objects, so it refuses the live container.**
  * `before` creates a role and an account holding read on the install namespace's code database plus
- * `%Admin_Secure:USE` and `%DB_IRISSYS:READ`; `after` deletes both whether or not a test failed.
+ * `%Admin_Secure:USE`, `%DB_IRISSYS:READ` and `%Admin_OAuth2_Client:USE`; `after` deletes both whether
+ * or not a test failed.
  *
  * Run: `npm run test:browser` (after `npm run build` and `sh scripts/ci-throwaway.sh up`).
  */
@@ -140,7 +142,7 @@ before(async () => {
       ...deleteLines,
       'Set tNS=$Select(##class(%SYS.Namespace).Exists("HSCUSTOM"):"HSCUSTOM",1:"USER")',
       'Set tRes=##class(SYS.Database).%OpenId(##class(Config.Databases).Open(##class(Config.Namespaces).Open(tNS).Routines).Directory).ResourceName',
-      `Set tSC1=##class(Security.Roles).Create("${SECURE_ROLE}","OcuPilot OAuth browser spec probe (throwaway)",tRes_":R,%Admin_Secure:U,%DB_IRISSYS:R","")`,
+      `Set tSC1=##class(Security.Roles).Create("${SECURE_ROLE}","OcuPilot OAuth browser spec probe (throwaway)",tRes_":R,%Admin_Secure:U,%DB_IRISSYS:R,%Admin_OAuth2_Client:U","")`,
       `Set tSC2=##class(Security.Users).Create("${SECURE_USER}","${SECURE_ROLE}","${PASSWORD}","OcuPilot OAuth browser spec probe (throwaway)","","","",0,1,"")`,
       mark('CREATED', '$System.Status.IsOK(tSC1)&&$System.Status.IsOK(tSC2)'),
       mark('WALLET', `$SYSTEM.Security.CheckUserPermission("${SECURE_USER}","%Admin_Wallet","USE")`),
@@ -383,7 +385,7 @@ test("AC4: a client configuration's name cell opens OcuPilot's own editor at the
   }
 });
 
-test('AC5: with the secure pairs alone the Security rail item is gated on the wallet pair, Resource servers reads under a strip whose other tabs are gated and focusable, and Server client descriptions is refused by name', async () => {
+test('AC5: with the Resource servers pairs alone the Security rail item is gated on the wallet pair, Resource servers reads under a strip whose server tabs are gated and focusable, and Server client descriptions is refused by name', async () => {
   const walletRequires = formatRequires(STRINGS.privilegeRequiresResource, '%Admin_Wallet:USE');
   const resources = TABS[2];
   const { context, page, reads } = await signedInAt(urlOf(resources.route), SECURE_USER, PASSWORD);
@@ -401,13 +403,13 @@ test('AC5: with the secure pairs alone the Security rail item is gated on the wa
     assert.deepEqual(
       strip.map((entry) => [entry.label, entry.disabled, entry.reason]),
       [
-        [TABS[0].label, 'true', 'Requires %Admin_OAuth2_Client:USE'],
-        [TABS[1].label, 'true', 'Requires %Admin_OAuth2_Client:USE'],
+        [TABS[0].label, 'false', null],
+        [TABS[1].label, 'false', null],
         [TABS[2].label, 'false', null],
         [TABS[3].label, 'true', 'Requires %Admin_OAuth2_Server:USE'],
         [TABS[4].label, 'true', 'Requires %Admin_OAuth2_Registration:USE'],
       ],
-      'the other four tabs are gated, each naming its pair'
+      'the two server tabs are gated, each naming its pair'
     );
     await page.focus('app-detail-page .ocu-detail-tab:nth-child(3)');
     await page.keyboard.press('ArrowRight');

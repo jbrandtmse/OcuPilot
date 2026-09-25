@@ -232,6 +232,7 @@ function idFor(field: string): string {
 
       <ng-template ocuFormTab="authenticator">
         <div class="ocu-form-fields ocu-oauth-resource-server-tab">
+          <p class="ocu-field-caption ocu-oauth-resource-server-authenticator-note">{{ STRINGS.oauthResourceServerAuthenticatorNote }}</p>
           @for (control of authenticatorControls; track control.id) {
             <app-oauth-client-field [control]="control" [locked]="locked" (edited)="onAuthenticator(control, $event)" (toggled)="onSettingCheck(control, $event)" />
           }

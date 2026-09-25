@@ -1249,6 +1249,13 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
         Set tSends = ''$ClassMethod(tClass, "SendsBody") || ($ClassMethod(tClass, "SecretBodyNames") '= "")
         Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating(tEndpoint, tType), tName _ " writes '" _ tEndpoint _ "/" _ tType _ "', which the port declares a mutating pair")
         If '$ListFind(tReached, tEndpoint _ "/" _ tType) Set tReached = tReached _ $ListBuild(tEndpoint _ "/" _ tType)
+        ; A port that issues admin API writes of its own for a tool's action type declares them
+        ; (DELEGATEDTYPES, Story 12.6); they are reached through that tool.
+        Set tDelegated = $ListFromString($Parameter($ClassMethod(tClass, "PortClass"), "DELEGATEDTYPES"))
+        For tD = 1:1:$ListLength(tDelegated) {
+            Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating($Piece($List(tDelegated, tD), "/", 1), $Piece($List(tDelegated, tD), "/", 2)), tName _ "'s port issues '" _ $List(tDelegated, tD) _ "', which the port declares a mutating pair")
+            If '$ListFind(tReached, $List(tDelegated, tD)) Set tReached = tReached _ $ListBuild($List(tDelegated, tD))
+        }
         ; AD-51 as amended by Story 7.5: a type whose body is a vendor constant the port supplies
         ; is exempt too, through CONSTANTBODIES rather than BODYLESSTYPES; and, as amended by Story
         ; 12.3, one whose body the tool's declared port composes (COMPOSEDTYPES).

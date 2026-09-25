@@ -1,18 +1,14 @@
 /// <p>Story 12.6's routes and tools against the instance itself, as real principals (AD-8, AD-12,
 /// AD-15, AD-29, AD-39, AD-53, AD-55): each editor route answers one JSON envelope; every route, the
 /// row action and every agent confirm is refused to a principal without <code>%Admin_Secure</code>,
-/// naming the pair; a principal holding the screen's pairs creates with a secret and mappings, reads,
-/// edits and deletes, with no agent marker; and each of the six tools is minted and confirmed over the
-/// wire with one agent marker.</p>
-/// <p><b>The writing principal also holds <code>%Admin_OAuth2_Client:USE</code></b>, because the
-/// vendor's own resource server write opens the server description through
-/// <code>OAuth2.ServerDefinition.OpenByIssuer</code>, which checks that resource (measured on
-/// <code>ocupilot-b-ci</code>: a caller holding the screen's pairs alone was answered 422 on a create
-/// and 500 on a description-only <code>PUT</code>).</p>
+/// and to one without <code>%Admin_OAuth2_Client</code>, each naming the pair it lacks; a principal
+/// holding the screen's three pairs and nothing else reads the tab, creates with a secret and
+/// mappings, reads, edits and deletes, with no agent marker; and each of the six tools is minted and
+/// confirmed over the wire with one agent marker.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving with the demo fixture,
 /// an account holding <code>%All</code>, and <parameter>ARMINGVARIABLE</parameter> reading
-/// <code>1</code>, because the legs create and delete two users, two roles, resource servers, service
-/// mappings and server descriptions.</p>
+/// <code>1</code>, because the legs create and delete three users, three roles, resource servers,
+/// service mappings and server descriptions.</p>
 Class OcuPilot.Test.OAuthResourceServerWire Extends %UnitTest.TestCase
 {
 
@@ -36,6 +32,10 @@ Parameter WIRE = "OcuPilot.Test.OAuthServerWire";
 
 Parameter PAIR = "%Admin_Secure:USE";
 
+Parameter CLIENTPAIR = "%Admin_OAuth2_Client:USE";
+
+Parameter READPATH = "/screens/security.oauthresourceservers/read";
+
 /// <p>What every one of the six tools' names begins with.</p>
 Parameter TOOLPREFIX = "security.oauthresourceservers.";
 
@@ -45,8 +45,14 @@ Parameter NOSECUREUSER = "OcuPilotWireOAuthResourceNone";
 
 Parameter NOSECUREROLE = "OcuPilotWireOAuthResourceNoneRole";
 
-/// <p>The principal holding the install namespace's code read, the screen's two declared pairs and the
-/// OAuth 2.0 client resource the vendor's write needs, and nothing else.</p>
+/// <p>The principal holding the install namespace's code read, <code>%Admin_Secure</code> and the
+/// system database read, and not the OAuth 2.0 client resource.</p>
+Parameter NOCLIENTUSER = "OcuPilotWireOAuthResourceNoClient";
+
+Parameter NOCLIENTROLE = "OcuPilotWireOAuthResourceNoClientRole";
+
+/// <p>The principal holding the install namespace's code read and the screen's three declared pairs,
+/// and nothing else.</p>
 Parameter LEASTUSER = "OcuPilotWireOAuthResourceLeast";
 
 Parameter LEASTROLE = "OcuPilotWireOAuthResourceLeastRole";
@@ -78,11 +84,11 @@ Method OnAfterAllTests() As %Status
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        For tUser = ..#NOSECUREUSER, ..#LEASTUSER {
+        For tUser = ..#NOSECUREUSER, ..#NOCLIENTUSER, ..#LEASTUSER {
             If ##class(Security.Users).Exists(tUser) Do ##class(Security.Users).Delete(tUser)
             If ##class(Security.Users).Exists(tUser) Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "OcuPilot.Test.OAuthResourceServerWire left user " _ tUser))
         }
-        For tRole = ..#NOSECUREROLE, ..#LEASTROLE {
+        For tRole = ..#NOSECUREROLE, ..#NOCLIENTROLE, ..#LEASTROLE {
             If ##class(Security.Roles).Exists(tRole) Do ##class(Security.Roles).Delete(tRole)
             If ##class(Security.Roles).Exists(tRole) Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "OcuPilot.Test.OAuthResourceServerWire left role " _ tRole))
         }
@@ -94,7 +100,7 @@ Method OnAfterAllTests() As %Status
     Quit tSC
 }
 
-/// <p>Create the two throwaway roles and the accounts that hold them, then read the grants back.</p>
+/// <p>Create the three throwaway roles and the accounts that hold them, then read the grants back.</p>
 Method EnsurePrincipals() As %Status
 {
     Set tSC = $$$OK
@@ -106,7 +112,7 @@ Method EnsurePrincipals() As %Status
         Set tNamespace = ##class(Config.Namespaces).Open(tInstallNs)
         Set tDatabase = ##class(Config.Databases).Open(tNamespace.Routines)
         Set tCodeRead = ##class(SYS.Database).%OpenId(tDatabase.Directory).ResourceName _ ":R"
-        Set tRows = $ListBuild($ListBuild(..#NOSECUREUSER, ..#NOSECUREROLE, tCodeRead _ ",%DB_IRISSYS:R,%Admin_OAuth2_Client:U"), $ListBuild(..#LEASTUSER, ..#LEASTROLE, tCodeRead _ ",%DB_IRISSYS:R,%Admin_Secure:U,%Admin_OAuth2_Client:U"))
+        Set tRows = $ListBuild($ListBuild(..#NOSECUREUSER, ..#NOSECUREROLE, tCodeRead _ ",%DB_IRISSYS:R,%Admin_OAuth2_Client:U"), $ListBuild(..#NOCLIENTUSER, ..#NOCLIENTROLE, tCodeRead _ ",%DB_IRISSYS:R,%Admin_Secure:U"), $ListBuild(..#LEASTUSER, ..#LEASTROLE, tCodeRead _ ",%DB_IRISSYS:R,%Admin_Secure:U,%Admin_OAuth2_Client:U"))
         For tI = 1:1:$ListLength(tRows) {
             Set tRow = $List(tRows, tI)
             If ##class(Security.Users).Exists($List(tRow, 1)) Do ##class(Security.Users).Delete($List(tRow, 1))
@@ -117,7 +123,7 @@ Method EnsurePrincipals() As %Status
             If $$$ISERR(tSC) Quit
         }
         If $$$ISERR(tSC) Quit
-        If ($SYSTEM.Security.CheckUserPermission(..#NOSECUREUSER, "%Admin_Secure", "USE") = 1) || ($SYSTEM.Security.CheckUserPermission(..#LEASTUSER, "%Admin_Secure", "USE") '= 1) || ($SYSTEM.Security.CheckUserPermission(..#LEASTUSER, "%DB_IRISSYS", "WRITE") = 1) {
+        If ($SYSTEM.Security.CheckUserPermission(..#NOSECUREUSER, "%Admin_Secure", "USE") = 1) || ($SYSTEM.Security.CheckUserPermission(..#LEASTUSER, "%Admin_Secure", "USE") '= 1) || ($SYSTEM.Security.CheckUserPermission(..#LEASTUSER, "%DB_IRISSYS", "WRITE") = 1) || ($SYSTEM.Security.CheckUserPermission(..#NOCLIENTUSER, "%Admin_OAuth2_Client", "USE") = 1) || ($SYSTEM.Security.CheckUserPermission(..#NOCLIENTUSER, "%Admin_Secure", "USE") '= 1) {
             Set tSC = $$$ERROR($$$GeneralError, "the throwaway principals' grants did not read back as declared")
         }
     } Catch ex {
@@ -192,6 +198,28 @@ Method TestEachRouteAnswersOneJsonEnvelopeOverTheWire()
 /// and this goes red.</p>
 Method TestACallerWithoutTheResourceIsRefusedEverywhere()
 {
+    Do ..AssertRefusedEverywhere(..#NOSECUREUSER, ..#PAIR)
+}
+
+/// <p>AC8, AD-29: the same routes, row action and confirms are refused 403 to a real principal holding
+/// <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code> without
+/// <code>%Admin_OAuth2_Client:USE</code>, naming that pair, and the tab's read is refused the same
+/// way.</p>
+/// <p>Mutation (Rule 19): drop <code>%Admin_OAuth2_Client:USE</code> from
+/// <class>OcuPilot.Screen.Descriptor.OAuthResourceServerTab</class>'s and
+/// <class>OcuPilot.Screen.Descriptor.OAuthResourceServerForm</class>'s privileges -- the routes answer
+/// past the gate and this goes red.</p>
+Method TestACallerWithoutTheOAuthClientResourceIsRefusedEverywhere()
+{
+    Set tSC = ..Request("GET", ..#READPATH, "", ..#NOCLIENTUSER, .tStatus, .tRaw, .tHeaders)
+    Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(..#WIRE, "Refusal", tRaw), "403 AUTH.NOPRIVILEGE " _ ..#CLIENTPAIR, "the tab's read is refused naming the pair: " _ tStatus _ " " _ $Extract(tRaw, 1, 200))
+    Do ..AssertRefusedEverywhere(..#NOCLIENTUSER, ..#CLIENTPAIR)
+}
+
+/// <p>Assert that every editor route, the row action and each tool's confirm refuse <var>pUser</var>
+/// 403 naming <var>pPair</var>, and that nothing is created, changed or deleted.</p>
+Method AssertRefusedEverywhere(pUser As %String, pPair As %String)
+{
     Set tName = $ClassMethod(..#PROBE, "Name", "Denied")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddResource", tName, ..Issuer(), $ListBuild("aud.wire"), {"Description": "before"}), "a server is created")
     Set tFresh = $ClassMethod(..#PROBE, "Name", "DeniedNew")
@@ -201,8 +229,8 @@ Method TestACallerWithoutTheResourceIsRefusedEverywhere()
     For tI = 1:1:$ListLength(tCases) {
         Set tCase = $List(tCases, tI)
         Set tLabel = $List(tCase, 1) _ " " _ $List(tCase, 2)
-        Set tSC = ..Request($List(tCase, 1), $List(tCase, 2), $List(tCase, 3), ..#NOSECUREUSER, .tStatus, .tRaw, .tHeaders)
-        Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(..#WIRE, "Refusal", tRaw), "403 AUTH.NOPRIVILEGE " _ ..#PAIR, tLabel _ ": refused naming the pair: " _ tStatus _ " " _ $Extract(tRaw, 1, 200))
+        Set tSC = ..Request($List(tCase, 1), $List(tCase, 2), $List(tCase, 3), pUser, .tStatus, .tRaw, .tHeaders)
+        Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(..#WIRE, "Refusal", tRaw), "403 AUTH.NOPRIVILEGE " _ pPair, tLabel _ ": refused naming the pair: " _ tStatus _ " " _ $Extract(tRaw, 1, 200))
     }
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", tName) _ $ClassMethod(..#PROBE, "Holds", tFresh) _ $ClassMethod(..#PROBE, "Stored", tName).%Get("Description"), "10before", "nothing is created, changed or deleted")
     For tSuffix = "Create", "Update", "SetSecret", "AddMapping", "RemoveMapping", "Delete" {
@@ -211,18 +239,19 @@ Method TestACallerWithoutTheResourceIsRefusedEverywhere()
         Set tArgs = $Case(tSuffix, "Create": ..Body(tFresh), "Update": {"Description": "agent"}, "AddMapping": {"Service": "%Service_Bindings", "Key": "USER"}, "RemoveMapping": {"Service": "%Service_Bindings", "Key": "USER"}, : {})
         If tSuffix = "RemoveMapping" Do $ClassMethod(..#PROBE, "Map", "%Service_Bindings", "USER", tName)
         Do tArgs.%Set("Name", tTarget, "string")
-        Set tSC = $ClassMethod(..#WIRE, "Mint", tTool, tTarget, tArgs, ..#NOSECUREUSER, .tProposal, .tHttp, .tFault)
+        Set tSC = $ClassMethod(..#WIRE, "Mint", tTool, tTarget, tArgs, pUser, .tProposal, .tHttp, .tFault)
         Do $$$AssertStatusOK(tSC, tTool _ ": is minted for the principal: " _ $ClassMethod(..#HELPER, "Problem", $Get(tFault)))
         If '$IsObject($Get(tProposal)) Continue
-        Set tSC = ..Request("POST", "/proposal/" _ tProposal.%Get("proposalId") _ "/confirm", $Select(tSuffix = "SetSecret": "{""ClientSecret"":""ocupilotdeniedprobe000""}", 1: ""), ..#NOSECUREUSER, .tStatus, .tRaw, .tHeaders)
-        Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(..#WIRE, "Refusal", tRaw), "403 AUTH.NOPRIVILEGE " _ ..#PAIR, tTool _ ": its confirm is refused naming the pair: " _ tStatus _ " " _ $Extract(tRaw, 1, 200))
+        Set tSC = ..Request("POST", "/proposal/" _ tProposal.%Get("proposalId") _ "/confirm", $Select(tSuffix = "SetSecret": "{""ClientSecret"":""ocupilotdeniedprobe000""}", 1: ""), pUser, .tStatus, .tRaw, .tHeaders)
+        Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(..#WIRE, "Refusal", tRaw), "403 AUTH.NOPRIVILEGE " _ pPair, tTool _ ": its confirm is refused naming the pair: " _ tStatus _ " " _ $Extract(tRaw, 1, 200))
     }
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", tName) _ $ClassMethod(..#PROBE, "Holds", tFresh) _ $ClassMethod(..#PROBE, "Stored", tName).%Get("Description") _ $ClassMethod(..#PROBE, "Stored", tName).%Get("SecretLength"), "10before0", "and still nothing is created, changed or deleted")
 }
 
-/// <p>AD-29, AD-53: a real principal holding the screen's pairs creates a server with its secret and
-/// the two default mappings, reads and edits it, moves a mapping and deletes it, on the screen's own
-/// routes and row action. None of those emits an OcuPilot agent-write marker.</p>
+/// <p>AD-29, AD-53: a real principal holding the screen's three pairs and nothing else creates a server
+/// with its secret and the two default mappings, finds it on the tab's read, reads and edits it, moves
+/// a mapping and deletes it, on the screen's own routes and row action. None of those emits an OcuPilot
+/// agent-write marker.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.OAuthResourceServerSave.HandleUpdate</method>
 /// emits the agent-write marker after its write -- the marker assertion goes red.</p>
 Method TestTheDeclaredPairsDoEveryScreenWrite()
@@ -237,6 +266,8 @@ Method TestTheDeclaredPairsDoEveryScreenWrite()
     Do $$$AssertEquals(tStatus, 201, "its create answers 201: " _ $Extract(tRaw, 1, 300))
     Do $$$AssertEquals((tRaw [ "secretRefused") || (tRaw [ "mappingsRefused"), 0, "and stores the secret and both mappings")
     Do $$$AssertEquals(($ClassMethod(..#PROBE, "Stored", tName).%Get("SecretLength") > 0) _ " " _ $ClassMethod(..#PROBE, "MappingsOf", tName), "1 %Service_Bindings/*,%Service_WebGateway/*", "which the instance holds")
+    Set tSC = ..Request("GET", ..#READPATH, "", tUser, .tStatus, .tRaw, .tHeaders)
+    Do $$$AssertEquals(tStatus _ " " _ (tRaw [ ("""" _ tName _ """")), "200 1", "the tab's read answers the principal the new server: " _ $Extract(tRaw, 1, 200))
     Set tSC = ..Request("GET", ..#FORMPATH _ "?name=" _ tName, "", tUser, .tStatus, .tRaw, .tHeaders)
     Do $$$AssertEquals(tStatus, 200, "its form read answers the principal")
     ; The namespace the principal reads: the form offers, and the rules admit, the caller's own list.
