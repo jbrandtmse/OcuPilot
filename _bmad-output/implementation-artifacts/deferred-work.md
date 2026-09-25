@@ -6941,3 +6941,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: grep clickCount: 3 ui/browser lists 15 editor/create specs; all green in CI on 5dcefe46; users-editor fixed by focus+select in 2354fc6d
 - 2026-09-25T11:59:21Z status=wontfix-accepted owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=harvest note=reopen_if=any of them fails with a typed value appended to the old one
 - 2026-09-25T12:05:01Z status=wontfix-accepted owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=cr note=reopen_if=a form-page triple-click site fails with text appended; grep lists 29 files, add navigate:378
+
+### DW-1661: Gemini finish reasons that are not the model declining (MALFORMED_FUNCTION_CALL, UNEXPECTED_TOOL_CALL, TOO_MANY_TOOL_CALLS and others) map to the canonical refusal, so such a turn now ends PROVIDER.DECLINED with 'The model declined to answer this request'
+- source: spec-11-7-token-streaming.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: MessageAdapter.GEMINISTOPREASONS (:75) folds ten Gemini reasons into refusal; Loop routes every canonical refusal to PROVIDER.DECLINED (Story 11.7)
+- 2026-09-25T15:14:22Z status=open owner=11-7-token-streaming by=harvest note=in-story MED; for the 11.7 code review to patch or disposition
