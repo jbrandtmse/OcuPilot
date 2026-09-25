@@ -6911,6 +6911,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-12-5-the-oauth-2-0-client-configuration-editor.md | severity: med | fix-risk: high | footprint: in-story
 - evidence: AuditPort.SecretKeys/MaskedEventData match 'Modify OAuth2 Client', '<key> modified:', 'New value:' and '<Key>:' captions, which OAuth2.Client.GetAuditMessages builds with $$$FormatMsg/$$$GetMsg (irissys/OAuth2/Client.cls:1239-1326); rows also carry a locale-free JSONData {event,class}. Measured English only (inference for other locales).
 - 2026-09-25T05:11:13Z status=escalated owner=burndown by=cr note=fix needs message-dictionary-keyed matching per event and caption; untestable without a localized instance
+- 2026-09-25T08:39:51Z status=routed owner=range-end-cleanup by=merge_gate note=orchestrator ruling at Epic 12 resume: AD-35 names the gap at origin (English captions only; localized instance unmeasured); fix is a post-release story matching on message-dictionary keys
 
 ### DW-1646: An agent-confirmed update of a registered client whose authorization server is down reports applied with no registration-not-updated notice; only the screen Save surfaces registrationNotUpdated
 - source: spec-12-5-the-oauth-2-0-client-configuration-editor.md | severity: low | fix-risk: med | footprint: out-of-footprint
