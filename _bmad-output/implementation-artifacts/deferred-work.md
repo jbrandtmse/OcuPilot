@@ -6858,6 +6858,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-9-8-edit-task.md code review | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: 9.8 review: TaskDelete/Suspend/Resume/Run/ScheduleRun call no CheckPermission; classic TaskInfo.cls disables Edit, Suspend and Delete when it fails; Ens.Util.Tasks.Purge declares %Ens_PurgeSchedule:USE (read on ocupilot-ci)
 - 2026-09-24T21:48:21Z status=routed owner=burndown by=cr note=judge TaskRules.Permitted in each tool's ArgumentProblem, as the 9.8 edit now does
+- 2026-09-25T03:28:21Z owner=16-5-background-tasks by=burndown note=overflow: not charterable in Epic 9 (1 entry, under cap, one occurrence); the task row actions' home is Story 16.5's task work - judge TaskRules.Permitted in TaskDelete/Suspend/Resume/Run/ScheduleRun ArgumentProblem as the 9.8 edit does
 
 ### DW-1639: The LDAP / Kerberos list's Enabled column reads No for an enabled LDAP configuration: the vendor's Security.LDAP LIST answers Enabled false where Security.LDAPConfigs:List reads Yes
 - source: spec-9-9-a-cut-editor-ships-reduced-never-half-working.md | severity: med | fix-risk: low | footprint: out-of-footprint
