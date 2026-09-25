@@ -175,7 +175,8 @@ Method TestACallerWithoutTheResourceIsRefusedEverywhere()
     For tI = 1:1:$ListLength(tCases) {
         Set tTool = "OcuPilot.Screen.Tool.OAuthServerDescription" _ $List($List(tCases, tI), 1)
         Set tTarget = $List($List(tCases, tI), 2)
-        Set tArgs = $Select(tTool [ "Create": tCreate, tTool [ "Update" && '(tTool [ "Jwks"): {"SSLConfiguration": ($Parameter(..#PROBE, "SSLCONFIG"))}, 1: {})
+        ; The update names a changed key-set URL: a merge that changes nothing is refused at mint (DW-1577).
+        Set tArgs = $Select(tTool [ "Create": tCreate, tTool [ "Update" && '(tTool [ "Jwks"): {"Metadata": ($ClassMethod(..#PROBE, "Metadata", tTarget, {"jwks_uri": (tTarget _ "/jwks-changed")}))}, 1: {})
         Do tArgs.%Set("IssuerEndpoint", tTarget, "string")
         Set tSC = ..Mint(tTool, tTarget, tArgs, ..#NOOAUTHUSER, .tProposal, .tHttp, .tFault)
         Do $$$AssertStatusOK(tSC, tTool _ ": is minted for the principal: " _ $ClassMethod(..#PROBE, "Problem", $Get(tFault)))
