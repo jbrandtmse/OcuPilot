@@ -26,6 +26,9 @@ Parameter FIELDLISTSCLASS = "OcuPilot.Screen.Tool.FieldLists";
 
 Parameter MEMBERSLIST = "Security.OAuth2.Client.ServerDefinition:OAuth2.Server.Metadata";
 
+/// <p>The key of the derived template list, whose rows are the body's top-level fields.</p>
+Parameter TEMPLATELIST = "Security.OAuth2.Client.ServerDefinition";
+
 /// <p>The two members the vendor's <code>%OnValidateObject</code> requires.</p>
 Parameter AUTHORIZATIONMEMBER = "authorization_endpoint";
 
@@ -62,21 +65,9 @@ ClassMethod Members(Output pNames As %List, Output pKinds) As %Status
     Kill pKinds
     Set tSC = $$$OK
     Try {
-        Set tXData = ##class(%Dictionary.XDataDefinition).IDKEYOpen(..#FIELDLISTSCLASS, "Lists", , .tOpenSC)
-        If '$IsObject(tXData) {
-            Set tSC = $$$ERROR($$$GeneralError, "the generated field lists are missing from " _ ..#FIELDLISTSCLASS)
-            Quit
-        }
-        Do tXData.Data.Rewind()
-        Set tLists = ##class(%DynamicAbstractObject).%FromJSON(tXData.Data)
-        Set tXData = ""
-        Set tList = ""
-        If $IsObject(tLists) Set tList = tLists.%Get(..#MEMBERSLIST)
-        If '$IsObject(tList) || (tList.%GetTypeOf("rows") '= "array") {
-            Set tSC = $$$ERROR($$$GeneralError, ..#MEMBERSLIST _ " has no list in " _ ..#FIELDLISTSCLASS)
-            Quit
-        }
-        Set tIterator = tList.%Get("rows").%GetIterator()
+        Set tSC = ..ListRows(..#MEMBERSLIST, .tRows)
+        If $$$ISERR(tSC) Quit
+        Set tIterator = tRows.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tRow) {
             Set tName = tRow.%Get("path")
             Set tKind = ""
@@ -94,6 +85,50 @@ ClassMethod Members(Output pNames As %List, Output pKinds) As %Status
     } Catch ex {
         Set pNames = ""
         Kill pKinds
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The body's top-level fields, in the derived template list's order (AD-3), as a
+/// <class>%List</class> in <var>pFields</var>. A list that cannot be read is an error status.</p>
+ClassMethod TemplateFields(Output pFields As %List) As %Status
+{
+    Set pFields = ""
+    Set tSC = ..ListRows(..#TEMPLATELIST, .tRows)
+    If $$$ISERR(tSC) Quit tSC
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If $IsObject(tRow) && (tRow.%Get("path") '= "") Set pFields = pFields _ $ListBuild(tRow.%Get("path"))
+    }
+    If pFields = "" Quit $$$ERROR($$$GeneralError, ..#TEMPLATELIST _ " has no rows")
+    Quit $$$OK
+}
+
+/// <p>The rows of the generated field list <var>pKey</var>, as a <class>%DynamicArray</class> in
+/// <var>pRows</var>. A list that cannot be read is an error status.</p>
+ClassMethod ListRows(pKey As %String, Output pRows As %DynamicArray) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = $$$OK
+    Try {
+        Set tXData = ##class(%Dictionary.XDataDefinition).IDKEYOpen(..#FIELDLISTSCLASS, "Lists", , .tOpenSC)
+        If '$IsObject(tXData) {
+            Set tSC = $$$ERROR($$$GeneralError, "the generated field lists are missing from " _ ..#FIELDLISTSCLASS)
+            Quit
+        }
+        Do tXData.Data.Rewind()
+        Set tLists = ##class(%DynamicAbstractObject).%FromJSON(tXData.Data)
+        Set tXData = ""
+        Set tList = ""
+        If $IsObject(tLists) Set tList = tLists.%Get(pKey)
+        If '$IsObject(tList) || (tList.%GetTypeOf("rows") '= "array") {
+            Set tSC = $$$ERROR($$$GeneralError, pKey _ " has no list in " _ ..#FIELDLISTSCLASS)
+            Quit
+        }
+        Set pRows = tList.%Get("rows")
+    } Catch ex {
+        Set pRows = ""
         Set tSC = ex.AsStatus()
     }
     Quit tSC
@@ -212,11 +247,12 @@ ClassMethod IssuerViolation(pIssuer As %String, pCheckTaken As %Boolean, pOwn As
 }
 
 /// <p>Whether <var>pIssuer</var> is an absolute <code>http</code> or <code>https</code> URL with a
-/// host and no whitespace or control character.</p>
+/// host, no query or fragment (RFC 8414; the discovery path is appended to it), and no whitespace or
+/// control character.</p>
 ClassMethod IssuerShaped(pIssuer As %String) As %Boolean
 {
     If $ZStrip(pIssuer, "*C") '= pIssuer Quit 0
-    Quit $Match(pIssuer, "(?i)https?://[^/?#\s]+([/?#]\S*)?")
+    Quit $Match(pIssuer, "(?i)https?://[^/?#\s]+(/[^?#\s]*)?")
 }
 
 /// <p>Whether a description already carries <var>pIssuer</var>, read through the create tool's own
@@ -269,7 +305,8 @@ ClassMethod MemberViolations(pMetadata As %DynamicObject, ByRef pViolations) As 
 }
 
 /// <p>Make <var>pPayload</var> the body the vendor's <code>PUT</code> and <code>POST</code> take:
-/// its four template fields and nothing else, with <code>Metadata</code> carrying every derived
+/// its derived template fields (<method>TemplateFields</method>, AD-3) and nothing else, with
+/// <code>Metadata</code> carrying every derived
 /// member (AD-4). A member the payload leaves out is sent in its empty form -- <code>""</code> for a
 /// URI, <code>[]</code> for a list, <code>""</code> for a flag -- because the vendor merges
 /// <code>Metadata</code> member by member and keeps a member the body omits. A flag is emptied with
@@ -278,7 +315,7 @@ ClassMethod MemberViolations(pMetadata As %DynamicObject, ByRef pViolations) As 
 ClassMethod Expand(pPayload As %DynamicObject)
 {
     If '$IsObject(pPayload) Quit
-    Set tKeep = $ListBuild(..#FIELDISSUER, ..#FIELDSSL, ..#FIELDCREDENTIALS, ..#FIELDMETADATA)
+    If $$$ISERR(..TemplateFields(.tKeep)) Quit
     Set tDrop = ""
     Set tIterator = pPayload.%GetIterator()
     While tIterator.%GetNext(.tKey, .tValue) {

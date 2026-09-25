@@ -8,12 +8,13 @@
 /// <p><b>It resolves everything about a write from the tool class</b>: the endpoint, the request
 /// types, the port, the settable field list, the payload composition and the complete-set
 /// expansion. It mints no proposal and takes no confirm token. A create runs, in order: the caller's
-/// pairs (AD-8), AD-10's prohibited set over the caller's non-secret fields, the form's rules, the
-/// composed payload, its expansion, and only then the port. An edit runs the caller's pairs, the
-/// fresh read, a check that the body carries only the editor's fields, the metadata members it
-/// changes applied over the fresh read's, the form's rules, the merge over the fresh read (AD-4), the
-/// prohibited set over the merged payload, the expansion, and only then the port. An edit may rename
-/// the issuer.</p>
+/// pairs (AD-8), a check that the body carries only the editor's fields, the issuer's presence and
+/// shape, AD-10's prohibited set over the caller's non-secret fields, the form's rules, the composed
+/// payload, its expansion, and only then the write. An edit runs the caller's pairs, the body check,
+/// the fresh read, the metadata members it changes applied over the fresh read's, the form's rules,
+/// the merge over the fresh read (AD-4), the prohibited set over the merged payload, the expansion,
+/// and only then the write; an edit that changes nothing -- a token-only Save -- sends no
+/// description write. An edit may rename the issuer.</p>
 /// <p><b>The registration access token is a secret</b> (AD-35, AD-56): it is taken out of the body
 /// before anything else reads it, sent after a successful create or edit through
 /// <class>OcuPilot.Screen.Tool.OAuthServerDescriptionSetToken</class>'s own write with a body of
@@ -217,12 +218,16 @@ ClassMethod Create(pIssuer As %String, pArgs As %DynamicObject, Output pHttpStat
     Set tSC = $$$OK
     Try {
         Set tClass = ..#CREATETOOL
-        Set tSC = $ClassMethod(..#RULES, "Validate", pIssuer, pArgs, .pViolations, "create", 1)
+        ; The issuer's presence and shape first, with no look-up: the set's reference is keyed by it.
+        Set tSC = $ClassMethod(..#RULES, "IssuerViolation", pIssuer, 0, "", .pViolations)
         If $$$ISERR(tSC) || (pViolations > 0) Quit
 
-        ; AD-10, AD-55: the set the confirm asks, over the caller's own fields.
+        ; AD-10, AD-55: the set the confirm asks, over the caller's own fields, before the port.
         Set tSC = ..Prohibited(tClass, pIssuer, ..CallerFields(pArgs), [], .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
+
+        Set tSC = $ClassMethod(..#RULES, "Validate", pIssuer, pArgs, .pViolations, "create", 1)
+        If $$$ISERR(tSC) || (pViolations > 0) Quit
 
         Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Compose(pArgs, ..#IDARGUMENT, $ClassMethod(tClass, "SettableFields"), .tPayload, .tDiff, .tUnchanged, .tProblem)
         If $$$ISERR(tSC) Quit
@@ -260,6 +265,9 @@ ClassMethod Update(pIssuer As %String, pArgs As %DynamicObject, Output pNewIssue
         If $$$ISERR(tSC) Quit
         Set pHttpStatus = 0
         Set pFault = ""
+        ; Nothing to change -- a token-only Save -- sends no description write: the token goes on its
+        ; own, and an empty PUT would only record one more vendor save of the definition.
+        If pArgs.%Size() = 0 Quit
 
         ; The members the form changed, held to their names and shapes, then applied over the fresh
         ; read's: the tool's Metadata argument is the whole metadata the description will hold.
@@ -294,8 +302,10 @@ ClassMethod Update(pIssuer As %String, pArgs As %DynamicObject, Output pNewIssue
 }
 
 /// <p>The metadata <var>pFresh</var> holds with each member <var>pChanges</var> names applied: a
-/// member set to <code>""</code>, <code>[]</code> or <code>null</code> is removed, which the
-/// expansion then sends empty; any other value replaces the stored one.</p>
+/// member set to <code>""</code> or <code>[]</code> is removed, which the expansion then sends empty;
+/// any other value replaces the stored one. The caller has held <var>pChanges</var> to
+/// <method>OcuPilot.Area.Security.OAuthServerRules.MemberViolations</method>, which refuses
+/// <code>null</code>.</p>
 ClassMethod MergedMetadata(pFresh As %DynamicObject, pChanges As %DynamicObject) As %DynamicObject
 {
     Set tMerged = {}

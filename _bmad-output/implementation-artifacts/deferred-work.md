@@ -6324,12 +6324,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Walk measures app-panel-resize-handle>div.ocu-panel-resize-handle 4px past aside.ocu-panel: its declared hit area is left:-4px width:8px (_components.scss:3203-3212, DESIGN.md:1140), so this is the designed straddle, not a layout bug. Epic 5's panel files
 - 2026-09-24T00:06:23Z status=routed owner=range-end-cleanup by=burndown note=resolve by letting the gate honour a declared overflow exemption or by moving the hit area inside the panel; baseline keys carry this id
 - 2026-09-24T00:20:24Z by=integrate_forward note=Epic 7 merge adds 6 keys (security/auditing, /system-events, /user-events; 1280+720); one-time extension, same root cause
+- 2026-09-25T01:23:50Z occurrence=12-4-the-oauth-2-0-client-server-description-editor
 
 ### DW-1584: Structural gate baseline: the status bar's connection and stamp segments overflow their group at 720px on every screen (77 baseline keys)
 - source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Walk at 720: span.ocu-status-bar-connection 28px and span.ocu-status-bar-segment.ocu-status-bar-stamp 6px past app-status-bar>div.ocu-status-bar-group; DESIGN.md's yield order is not applied at the 200%-zoom floor. Status bar is Epic 1's (merged)
 - 2026-09-24T00:06:23Z status=routed owner=range-end-cleanup by=burndown note=baseline keys carry this id
 - 2026-09-24T00:20:24Z by=integrate_forward note=Epic 7 merge adds 5 keys on the three security/auditing screens at 720; one-time extension, same root cause
+- 2026-09-25T01:23:50Z occurrence=12-4-the-oauth-2-0-client-server-description-editor
 
 ### DW-1585: Structural gate baseline: command-bar controls overflow the command bar at 720px (refresh action 80px on agent/definitions; sort 30px in CI only)
 - source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -6716,6 +6718,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-12-4-the-oauth-2-0-client-server-description-editor.md | severity: high | fix-risk: med | footprint: out-of-footprint
 - evidence: Measured on ocupilot-b-ci 2026-09-24 23:58:39: TOKEN write row EventData carries 'New value: <token>' and a property dump; every later save dumps it again; Conventions > Secrets makes redaction schema-driven, so masking vendor free text needs a spine ruling
 - 2026-09-25T00:39:02Z status=escalated owner=burndown by=harvest note=raised to the orchestrator mid-epic at 12.4 (AD-35 scope over vendor-recorded secrets; mask EventData for the named events vs named gap)
+- 2026-09-25T01:19:33Z occurrence=12-4-the-oauth-2-0-client-server-description-editor
 
 ### DW-1641: The agent's OAuth server-description update replaces Metadata whole: the tool argument is the complete member set because Mint.Merge carries an object argument as one value (the screen route merges member by member first)
 - source: spec-12-4-the-oauth-2-0-client-server-description-editor.md | severity: med | fix-risk: med | footprint: in-story
@@ -6726,3 +6729,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-12-4-the-oauth-2-0-client-server-description-editor.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Measured: GetServerMetadata against a closed port or .invalid host answered #6059 after ~30 s; it takes no timeout parameter
 - 2026-09-25T00:39:03Z status=wontfix-accepted owner=12-4-the-oauth-2-0-client-server-description-editor by=harvest note=reopen_if=a user reports Discover hanging, or the vendor adds a timeout parameter
+
+### DW-1643: AD-44 and epic-12-context.md still say the one OAuth classic-link exemption is declared by five tab descriptors; Story 12.4 removed the server-description tab's, so four declare it
+- source: spec-12-4-the-oauth-2-0-client-server-description-editor.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ARCHITECTURE-SPINE.md AD-44 reads 'declared by the five tab descriptors ... reports the five declaring descriptors'; epic-12-context.md:52 'all five'. classic-links.test.mjs and Test/OAuthTabs now assert 4 descriptors (AC9).
+- 2026-09-25T01:19:27Z status=routed owner=12-9-removing-the-classic-link-outs by=cr note=Rule 20 spine text; lead may correct the count at the next bookkeeping commit, 12.9 removes the other four
+- 2026-09-25T01:21:53Z status=routed owner=12-9-removing-the-classic-link-outs by=adjudication note=spine AD-44 and epic context counts corrected at origin (four remaining); 12.9 removes the four and the spine sentence's interim count

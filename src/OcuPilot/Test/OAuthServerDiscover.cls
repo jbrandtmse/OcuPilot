@@ -119,6 +119,33 @@ Method TestADiscoveryLeavesAStoredDescriptionAndASaveStoresTheMembers()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", tIssuer).%Get("Metadata").%ToJSON(), tMetadata.%ToJSON(), "and the instance holds exactly them")
 }
 
+/// <p>The route holds its own rules before the port is asked: an empty SSL/TLS configuration and a
+/// malformed issuer are each refused 422 on their field with the rule's code, never a discovery
+/// cause, and a key outside the route's two is refused 400 on that key.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.OAuthServerSave.HandleDiscover</method> drops
+/// its <code>SSLConfiguration</code> check -- the fixture's http issuer then answers 200 and the first
+/// case goes red.</p>
+Method TestTheRouteRefusesItsRulesAndAStrayKeyBeforeTheFetch()
+{
+    Set tIssuer = $ClassMethod(..#FIXTURE, "Issuer")
+    Set tSSL = $Parameter(..#PROBE, "SSLCONFIG")
+    Set tCase($Increment(tCase)) = $ListBuild(422, "SSLConfiguration", "OAUTH.SSLCONFIGURATION.REQUIRED")
+    Set tBody(tCase) = {"SSLConfiguration": ""}
+    Do tBody(tCase).%Set("IssuerEndpoint", tIssuer, "string")
+    Set tCase($Increment(tCase)) = $ListBuild(422, "IssuerEndpoint", "OAUTH.ISSUERENDPOINT.SHAPE")
+    Set tBody(tCase) = {"SSLConfiguration": (tSSL), "IssuerEndpoint": "ftp://ocupilotprobe124.invalid/x"}
+    Set tCase($Increment(tCase)) = $ListBuild(400, "ID", "PORT.FIELD.UNEXPECTED")
+    Set tBody(tCase) = {"SSLConfiguration": (tSSL), "ID": 1}
+    Do tBody(tCase).%Set("IssuerEndpoint", tIssuer, "string")
+    For tI = 1:1:tCase {
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ ..#DISCOVERPATH, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .tHeaders, tBody(tI).%ToJSON(), "application/json")
+        Set tRow = ""
+        Try { Set tRow = ##class(%DynamicObject).%FromJSON(tRaw).%Get("detail").%Get("violations").%Get(0) } Catch { Set tRow = "" }
+        Set tAnswer = tStatus _ "|" _ $Select($IsObject(tRow): tRow.%Get("field") _ "|" _ tRow.%Get("code"), 1: "")
+        Do $$$AssertEquals(tAnswer, $ListToString(tCase(tI), "|"), "case " _ tI _ ": refused on its field before the fetch")
+    }
+}
+
 /// <p>Each cause is refused 422 by name with its sentence filled: a status other than 200, a document
 /// that is not JSON or does not parse, a document naming another issuer, and an issuer nothing
 /// answers.</p>

@@ -219,6 +219,10 @@ Method TestEveryFormRuleRefusesOnBothCallers()
     Set tBody(tCase) = {"SSLConfiguration": (tSSL), "Metadata": ($ClassMethod(..#PROBE, "Metadata", tIssuer))}
     Set tCase($Increment(tCase)) = $ListBuild("https://ocupilotprobe124.invalid/a b", "IssuerEndpoint", "OAUTH.ISSUERENDPOINT.SHAPE")
     Set tBody(tCase) = {"SSLConfiguration": (tSSL), "Metadata": ($ClassMethod(..#PROBE, "Metadata", tIssuer))}
+    Set tCase($Increment(tCase)) = $ListBuild("https://ocupilotprobe124.invalid/q?x=1", "IssuerEndpoint", "OAUTH.ISSUERENDPOINT.SHAPE")
+    Set tBody(tCase) = {"SSLConfiguration": (tSSL), "Metadata": ($ClassMethod(..#PROBE, "Metadata", tIssuer))}
+    Set tCase($Increment(tCase)) = $ListBuild("https://ocupilotprobe124.invalid#f", "IssuerEndpoint", "OAUTH.ISSUERENDPOINT.SHAPE")
+    Set tBody(tCase) = {"SSLConfiguration": (tSSL), "Metadata": ($ClassMethod(..#PROBE, "Metadata", tIssuer))}
     Set tCase($Increment(tCase)) = $ListBuild(tIssuer, "SSLConfiguration", "OAUTH.SSLCONFIGURATION.REQUIRED")
     Set tBody(tCase) = {"SSLConfiguration": "", "Metadata": ($ClassMethod(..#PROBE, "Metadata", tIssuer))}
     Set tCase($Increment(tCase)) = $ListBuild(tIssuer, "Metadata.bogus", "OAUTH.METADATA.UNKNOWN")

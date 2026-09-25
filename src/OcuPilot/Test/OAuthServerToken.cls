@@ -199,6 +199,25 @@ ClassMethod LogLines(pFirst As %String, pSecond As %String, Output pCarrying As 
     Quit tCount
 }
 
+/// <p>An edit whose body carries only the token sends no description write: the edit completes with
+/// nothing sent, and the token then goes through its own write alone (AD-56).</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.OAuthServerSave.Update</method> no longer
+/// returns on an empty body -- a <code>PUT</code> is recorded and this goes red.</p>
+Method TestATokenOnlyEditSendsNoDescriptionWrite()
+{
+    Set tIssuer = $ClassMethod(..#PROBE, "Issuer", "TokenOnly")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Add", tIssuer), "a description is created")
+    Do $ClassMethod(..#RECORD, "Clear")
+    Set tSC = $ClassMethod(..#SCREEN, "Update", tIssuer, {}, .tNew, .tHttp, .tFault, .tViolations)
+    Do $$$AssertStatusOK(tSC, "an edit with nothing to change completes")
+    Do $$$AssertEquals(+$Get(tViolations) _ "|" _ $Get(tNew), "0|" _ tIssuer, "with no violation, naming the same description")
+    Do $$$AssertEquals($ClassMethod(..#RECORD, "WriteCount"), 0, "and sends no description write")
+    Set tReason = $ClassMethod(..#SCREEN, "StoreToken", tIssuer, ..Token("only"))
+    Do $$$AssertEquals(tReason, "", "the token is written")
+    Do $$$AssertEquals($ClassMethod(..#RECORD, "WriteCount") _ " " _ $ClassMethod(..#RECORD, "LastType"), "1 TOKEN", "through the token write alone")
+    Do $$$AssertTrue($ClassMethod(..#PROBE, "Stored", tIssuer).%Get("TokenLength") > 0, "and the instance stores it")
+}
+
 /// <p>A token the instance refuses after the description is saved is answered as the refusal's
 /// sentence, which the editor shows beside "Saved": the vendor's token write fails on a description
 /// that no longer validates.</p>

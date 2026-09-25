@@ -58,9 +58,6 @@ Parameter GATERESOURCE = "%Admin_OAuth2_Client";
 /// <p>The vendor class the two named cases are completed through.</p>
 Parameter DEFINITIONCLASS = "OAuth2.ServerDefinition";
 
-/// <p>The four fields the vendor's <code>PUT</code> and <code>POST</code> accept.</p>
-Parameter TEMPLATEFIELDS = "IssuerEndpoint,SSLConfiguration,ServerCredentials,Metadata";
-
 /// <p>The admin port's call, with <parameter>SERVERENDPOINT</parameter> addressed by issuer and the
 /// two named cases carried out here.</p>
 /// <p><b>Caller contract:</b> the arguments and outputs are
@@ -84,7 +81,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
                 Set tSC = ##super(pEndpoint, "POST", , pBody, .pResult, .pHttpStatus, .pFault)
                 Quit
             }
-            Set tBody = ..TemplateBody(pBody)
+            Set tBody = ..VendorBody(pBody)
             If tIssuer '= "" Do tBody.%Set("IssuerEndpoint", tIssuer, "string")
             If '..CredentialOk(tBody) {
                 Set tSC = ..Violation("ServerCredentials", ##class(OcuPilot.Api.Error).#OAUTHSERVERCREDENTIALSABSENT, .pHttpStatus, .pFault)
@@ -140,7 +137,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
                 Set tSC = ##super(pEndpoint, "PUT", .tQuery, pBody, .pResult, .pHttpStatus, .pFault)
                 Quit
             }
-            Set tBody = ..TemplateBody(pBody)
+            Set tBody = ..VendorBody(pBody)
             ; A rename onto an issuer another description carries: the vendor answers it 500.
             If (tBody.%GetTypeOf("IssuerEndpoint") = "string") && (tBody.%Get("IssuerEndpoint") '= tIssuer) && $IsObject(..Matching(tRows, tBody.%Get("IssuerEndpoint"))) {
                 Set tSC = ..Violation("IssuerEndpoint", ##class(OcuPilot.Api.Error).#OAUTHISSUERENDPOINTTAKEN, .pHttpStatus, .pFault)
@@ -276,20 +273,13 @@ ClassMethod Matching(pRows, pIssuer As %String) As %DynamicObject
     Quit tFound
 }
 
-/// <p>A copy of <var>pBody</var> holding only the vendor's four template fields.</p>
-ClassMethod TemplateBody(pBody As %DynamicObject) As %DynamicObject
+/// <p>A copy of <var>pBody</var> without the <parameter>ROWFIELDS</parameter> this port's
+/// <code>GET</code> adds, which the vendor's body schema refuses. Which fields a body carries is the
+/// write tool's derived list (AD-3), applied before the port is called.</p>
+ClassMethod VendorBody(pBody As %DynamicObject) As %DynamicObject
 {
-    Set tBody = {}
-    For tI = 1:1:$Length(..#TEMPLATEFIELDS, ",") {
-        Set tField = $Piece(..#TEMPLATEFIELDS, ",", tI)
-        Set tType = pBody.%GetTypeOf(tField)
-        If tType = "unassigned" Continue
-        If (tType = "object") || (tType = "array") {
-            Do tBody.%Set(tField, ##class(%DynamicAbstractObject).%FromJSON(pBody.%Get(tField).%ToJSON()))
-        } Else {
-            Do tBody.%Set(tField, pBody.%Get(tField), tType)
-        }
-    }
+    Set tBody = ##class(%DynamicAbstractObject).%FromJSON(pBody.%ToJSON())
+    For tI = 1:1:$Length(..#ROWFIELDS, ",") Do tBody.%Remove($Piece(..#ROWFIELDS, ",", tI))
     Quit tBody
 }
 

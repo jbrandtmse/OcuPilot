@@ -1,12 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiService, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
 import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
-import { NavigationService } from '../../core/navigation';
+import { NavigationService, formatDeniedAction } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
 import { ScreenActions } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
@@ -76,6 +76,10 @@ const ACTION_PATH = `/api/ocupilot/screens/${SCREENS.find((screen) => screen.des
 interface MountOptions {
   readonly definition?: Record<string, unknown>;
   readonly actionAnswer?: JsonResult<unknown>;
+  /** What a Save answers, in place of a plain 201 naming `ISSUER`. */
+  readonly saveAnswer?: JsonResult<unknown>;
+  /** What the form read answers, in place of the form and the definition. */
+  readonly formAnswer?: JsonResult<unknown>;
 }
 
 async function mount(url = '/security/oauth/edit', options: MountOptions = {}) {
@@ -92,8 +96,10 @@ async function mount(url = '/security/oauth/edit', options: MountOptions = {}) {
           return { kind: 'ok', status: 200, body: { issuer: ISSUER, metadata: DEFINITION.Metadata } } as unknown as JsonResult<T>;
         }
         if (path === ACTION_PATH && options.actionAnswer !== undefined) return options.actionAnswer as JsonResult<T>;
+        if (path !== ACTION_PATH && options.saveAnswer !== undefined) return options.saveAnswer as JsonResult<T>;
         return { kind: 'ok', status: 201, body: { issuer: ISSUER } } as unknown as JsonResult<T>;
       }
+      if (options.formAnswer !== undefined) return options.formAnswer as JsonResult<T>;
       const body = path === OAUTH_SERVER_FORM_PATH ? FORM : { ...FORM, definition };
       return { kind: 'ok', status: 200, body } as unknown as JsonResult<T>;
     },
@@ -121,6 +127,10 @@ async function mount(url = '/security/oauth/edit', options: MountOptions = {}) {
 
 function buttons(host: HTMLElement): string[] {
   return [...host.querySelectorAll('.ocu-form-bar-actions button')].map((button) => button.textContent?.trim() ?? '');
+}
+
+function press(host: HTMLElement, label: string): void {
+  ([...host.querySelectorAll('.ocu-form-bar-actions button')].find((button) => button.textContent?.trim() === label) as HTMLButtonElement).click();
 }
 
 function type(fixture: ComponentFixture<unknown>, host: HTMLElement, id: string, value: string): void {
@@ -192,14 +202,17 @@ describe('the server description editor', () => {
   });
 
   it('the metadata table reads every other member, a list joined, a flag in words, an empty one as (none)', async () => {
-    const { host } = await mount(`/security/oauth/edit/${encodeEntityId(ISSUER)}`);
+    // Mutation (Rule 19): `displayOf` answers `String(value)` for a flag -> this goes red on 'true'.
+    const { host } = await mount(`/security/oauth/edit/${encodeEntityId(ISSUER)}`, {
+      definition: { ...DEFINITION, Metadata: { ...DEFINITION.Metadata, claims_parameter_supported: true } },
+    });
     const rows = [...host.querySelectorAll('.ocu-oauth-server-metadata-table tr')].map((row) =>
       [...row.querySelectorAll('th, td')].map((cell) => cell.textContent?.trim())
     );
     expect(rows).toEqual([
       ['registration_endpoint', STRINGS.tableEmptyValue],
       ['scopes_supported', 'openid'],
-      ['claims_parameter_supported', STRINGS.tableEmptyValue],
+      ['claims_parameter_supported', STRINGS.tableStatusYes],
     ]);
   });
 
@@ -263,5 +276,59 @@ describe('the server description editor', () => {
       STRINGS.oauthServerDiscovered.split('<issuer>').join(ISSUER)
     );
     expect(formDirty.dirty()).toBe(true);
+  });
+  it('an edit that renames the issuer replaces the route with the new description', async () => {
+    // Mutation (Rule 19): `onSave` navigates only `if (id !== '' && creating)` -> this goes red: the
+    // address bar keeps naming the old issuer, which no longer exists.
+    const renamed = 'https://ocupilot.invalid/renamed';
+    const { fixture, host, sent } = await mount(`/security/oauth/edit/${encodeEntityId(ISSUER)}`, {
+      saveAnswer: { kind: 'ok', status: 200, body: { issuer: renamed } } as unknown as JsonResult<unknown>,
+    });
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigateByUrl');
+    type(fixture, host, 'ocu-oauth-server-IssuerEndpoint', renamed);
+    press(host, STRINGS.actionSave);
+    await settle(fixture);
+    expect(sent.map((call) => [call.path, JSON.parse(call.body)])).toEqual([
+      [`/api/ocupilot/oauth/server-description/${encodeEntityId(ISSUER)}`, { IssuerEndpoint: renamed }],
+    ]);
+    expect(router.url).toBe(`/security/oauth/edit/${encodeEntityId(renamed)}`);
+    expect(navigate.mock.calls.at(-1)?.[1]).toEqual({ replaceUrl: true });
+  });
+
+  it("a create whose token was refused says so on the new description's own route", async () => {
+    // Mutation (Rule 19): `open()` drops its `if (arriving) {...}` block -> this goes red: the route
+    // replacement forgets both "Saved" and the refused token.
+    const reason = 'The registration access token was refused.';
+    const { fixture, host } = await mount('/security/oauth/edit', {
+      saveAnswer: { kind: 'ok', status: 201, body: { issuer: ISSUER, tokenRefused: reason } } as unknown as JsonResult<unknown>,
+    });
+    type(fixture, host, 'ocu-oauth-server-IssuerEndpoint', ISSUER);
+    type(fixture, host, 'ocu-oauth-server-SSLConfiguration', 'OcuPilotDemoTLS');
+    type(fixture, host, 'ocu-oauth-server-Metadata-authorization_endpoint', `${ISSUER}/authorize`);
+    type(fixture, host, 'ocu-oauth-server-Metadata-token_endpoint', `${ISSUER}/token`);
+    type(fixture, host, 'ocu-oauth-server-InitialAccessToken', 'ocupilotpagespecprobe000');
+    press(host, STRINGS.actionSave);
+    await settle(fixture);
+    expect(TestBed.inject(Router).url).toBe(`/security/oauth/edit/${encodeEntityId(ISSUER)}`);
+    expect(host.querySelector('[role="status"]')?.textContent?.trim()).toBe(STRINGS.oauthServerTokenRefused.split('<reason>').join(reason));
+  });
+
+  it("AC8: a form read refused for the editor's pair names the pair and the edit it blocks", async () => {
+    // Mutation (Rule 19): the `reason` getter skips its `NO_PRIVILEGE_CODE` branch -> this goes red on
+    // the envelope's own reason.
+    const pair = '%Admin_OAuth2_Client:USE';
+    const { host } = await mount(`/security/oauth/edit/${encodeEntityId(ISSUER)}`, {
+      formAnswer: {
+        kind: 'error',
+        status: 403,
+        code: 'AUTH.NOPRIVILEGE',
+        reason: 'Refused.',
+        detail: { failedPair: pair },
+      } as unknown as JsonResult<unknown>,
+    });
+    expect(host.querySelector('.ocu-banner-warning[role="alert"]')?.textContent?.trim()).toBe(
+      formatDeniedAction(STRINGS.privilegeDeniedAction, pair, STRINGS.oauthServerFormRefusedAction)
+    );
   });
 });

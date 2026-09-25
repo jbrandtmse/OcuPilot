@@ -2,7 +2,7 @@
 title: 'Story 12.4: The OAuth 2.0 client server-description editor'
 type: 'feature'
 created: '2026-09-24'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '8a1f7aa9d30bcc6eb13d2c898d1f238b476a35e2'
 baseline_commit: '8a1f7aa9d30bcc6eb13d2c898d1f238b476a35e2'
 review_loop_iteration: 0
@@ -320,6 +320,64 @@ Supporting vendor classes:
 
 **Review patches (2026-09-24):** P1-P9 applied; each row is in `## Review Triage Log`.
 
+### CI rework (run 36078446863 on c3d8979d, job browser)
+
+- [ ] [CI] `a11y-structural-invariants.browser-spec.mjs` AC5 "no violation outside the baseline" -- the new route `security/oauth/edit` shows the shell chrome's known overflows (panel resize handle 4px at 1280 and 720, DW-1583; status-bar connection 28px at 720, DW-1584), which every existing editor route carries as baseline entries -- https://github.com/jbrandtmse/OcuPilot/actions/runs/36078446863 -- append exactly those three entries to `ui/browser/structural-baseline.json` with their `dw` ids, in the file's existing shape (as Epic 7/8/9's editor routes did), and nothing for the editor's own content, which must stay violation-free; the lead appends the ledger occurrences.
+- [ ] [CI] `oauth-server-description-editor.browser-spec.mjs` AC2 "the tab's name cell opens the editor, and an endpoint changed and one cleared reach the instance exactly" -- `failed to find element matching selector "#ocu-oauth-server-InitialAccessToken"` in CI's full-suite run on a fresh throwaway (it passes alone locally) -- same run -- find the cause (state left by an earlier spec in alphabetical order, a fresh-instance difference, a timing wait, or the review patches since c3d8979d) and fix the product or the spec so it holds in the full suite; reproduce it the way CI runs it (a fresh throwaway, or the preceding spec files in order) before claiming the fix.
+
+### Review Findings
+
+Code review 2026-09-24 (four layers, all on Opus): 12 entries (high 1, med 7, low 4); 11 patched, 1 deferred, 27 rejected.
+
+- [x] [Review][Patch] (high, AD-3) The body's field list was typed by hand twice, in the port's `TEMPLATEFIELDS` and in `Expand`'s keep list. `Expand` now keeps the derived template list (`OAuthServerRules.TemplateFields`), and the port strips only the `ROWFIELDS` its own GET adds (`VendorBody`). [src/OcuPilot/Area/Security/OAuthServerRules.cls, src/OcuPilot/Port/OAuthServerPort.cls]
+- [x] [Review][Patch] (med, AD-55) A create's Save read through the port (the issuer look-up and the credential check) before it asked AD-10's set. That contradicted its own doc and the device and X.509 model. The order is now: the issuer's presence and shape, then the prohibited set, then the rules. The edit's documented order is corrected too. [src/OcuPilot/Area/Security/OAuthServerSave.cls:Create]
+- [x] [Review][Patch] (med) A token-only edit Save sent a full no-op PUT before the TOKEN write. That PUT is one more vendor save, which writes the stored token into another audit row (DW-1640 occurrence) and resets `IsDiscovery`. `Update` now returns on an empty body. [src/OcuPilot/Area/Security/OAuthServerSave.cls:Update, Test/OAuthServerToken.cls]
+- [x] [Review][Patch] (med, Rule 19) The form read's SSL/TLS and X.509 name lists had no test. Added `OAuthServerWire.TestTheFormReadOffersOnlyTheNamesTheCallerCanRead`. [src/OcuPilot/Test/OAuthServerWire.cls]
+- [x] [Review][Patch] (med, Rule 19) Discover's route rules and the stray-key 400 had no test. Added `OAuthServerDiscover.TestTheRouteRefusesItsRulesAndAStrayKeyBeforeTheFetch`. [src/OcuPilot/Test/OAuthServerDiscover.cls]
+- [x] [Review][Patch] (med, Rule 19) Two page behaviours had no test: the rename's `replaceUrl` navigation, and "Saved" plus a refused token kept across a create's route replacement. Added two page-spec legs. [ui/src/app/areas/security/oauth-server-description-form.page.spec.ts]
+- [x] [Review][Patch] (med, Rule 19) The editor's privilege-denied sentence (AC8's user-facing half) had no test. Added a page-spec leg. [ui/src/app/areas/security/oauth-server-description-form.page.spec.ts]
+- [x] [Review][Patch] (low) The metadata-table test's title claims flags, but its fixture rendered none. It now stores a flag and expects "Yes". [ui/src/app/areas/security/oauth-server-description-form.page.spec.ts]
+- [x] [Review][Patch] (low) The issuer shape rule accepted a query or fragment, which RFC 8414 forbids and the discovery path would break on. The regex, the sentence and the tool description now say so, and the rule gained two cases. [src/OcuPilot/Area/Security/OAuthServerRules.cls:IssuerShaped, Api/Error.cls, Test/OAuthServerCreate.cls]
+- [x] [Review][Patch] (low) `MergedMetadata`'s doc said `null` clears a member, but `MemberViolations` refuses `null` before that point. Doc corrected. [src/OcuPilot/Area/Security/OAuthServerSave.cls:MergedMetadata]
+- [x] [Review][Patch] (low) `navigation.test.mjs`'s message listed four OAuth tabs and left out the editor. [ui/tools/navigation.test.mjs:187]
+- [x] [Review][Defer] (med) AD-44 and `epic-12-context.md:52` still say five descriptors declare the exemption; four do now (AC9). [ARCHITECTURE-SPINE.md AD-44] — deferred: DW-1643, routed to 12-9, spine text for the lead (Rule 20).
+- Stage verification: mutation M4 left a `https://…invalid#f` description behind, and `OAuthServerProbe.RemoveAll` did not match it. It now compares the probe host by URL component.
+
+Rejected:
+
+- Spec edits. The fix for each of these would edit the spec under review:
+  - the AD-48/AD-53 name in Residual risks;
+  - the Auto Run Result tally;
+  - the intent's `false`/`secretArguments` wording (the triage log already closed it);
+  - the spec's growth while `oversized`;
+  - the empty-agent string (it follows EXPERIENCE `:315`);
+  - the matrix's "banner" for the token refusal (the Design Notes sentence is the status line's);
+  - `status` beside the escalated DW-1640, which is the lead's.
+- `false`:
+  - `Expand` silent when `Members` fails: every path that changes `Metadata` runs `MemberViolations` first and fails loudly.
+  - A rename's old row lingering: `refresh.ts` re-reads on any event of the type.
+  - The shape sentence reading as a fact: it follows the house style ("An alias has no control character and no slash.").
+  - AD-19 component fields: they hold transient action state, as the reviewed Story 12.3 auditing page does.
+- By design:
+  - The SSL name is not checked for existence or `MAXLEN`: the spec's closed rule set.
+  - Endpoint members are held to text: the member-shape rule.
+  - Update JWKS clearing the credential without saying so on the card: the spec puts that in the tool description and fixes the success sentence.
+  - Discover as a network probe: an AD-27 named case, screen only, behind the gate; the classic page offers the same.
+  - No token-present indicator (AD-35).
+  - The typed token forgotten after a refused Save: documented in the store.
+- `low`:
+  - `Mint.Compose`'s object carry: schema-held, and the vendor's validator refuses a wrong shape.
+  - `DiscoveryCause` mapping 5002/5035: 5035 is the `%FromJSON` failure.
+  - The update fingerprint and unchanged count include `ClientCount`/`ResourceCount`: excluding them would contradict the delete's subject. reopen_if a TARGETCHANGED is reported where only the counts moved.
+  - The JWT choice showing an empty URL.
+  - A no-cache JWKS (the vendor's own semantics).
+  - A credential hidden behind the URL choice.
+  - Update JWKS's notice over a failed re-read.
+  - The probe's unchecked `%SQLCODE`.
+  - The remaining page-spec gaps (`STATE_CONFLICT`, the 404 state, the discovery subset).
+  - The `Prohibited` test's exact id skip.
+  - AC8's mint leg: the five tools' pairs equal the tab's, and `DenialParity` pins the dispatch refusal.
+
 ## Spec Change Log
 
 - 2026-09-24, spec gate (lead). Q1-Q3 written into the spine as recommended: AD-4 moves `Security.OAuth2.Client.ServerDefinition` out of the erasing list; AD-27's reason list gains "an acceptance criterion rules out" and "has no such operation", with the discovery and Update JWKS cases named under Story 12.4 (the spine says both are measured on a throwaway by the implement stage; record each measurement in `## Verification`). Q4 applied under Rule 5 to Epic 12's preamble and the epic context. Q5 stands: a measured write with no vendor audit event is reported for an AD-53 named-gap entry, which the lead writes. The editor is untabbed because the classic page is.
@@ -489,6 +547,42 @@ This runs on slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. Ev
 - mutation: `OAuthServerRules.MemberViolations` holds a flag to a boolean alone → `OAuthServerUpdate.TestAnEditSendsTheCompleteSetAndClearsAMember` red, the flag's `""` refused (P7)
 - mutation: the Authorization server tab's generated classic `href` changed, rebuilt and redeployed → the editor browser spec's AC9 leg red on `security/oauth/server` (AC9, P8)
 - mutation: `OAuthServerSave.HandleUpdate` emits the agent-write marker after its write → `OAuthServerWire.TestTheDeclaredPairsAloneDoEveryWrite` red on the zero-marker assertion (AD-53, P9)
+
+**Matrix-row mutations (QA, Rule 19).** Six I/O & Edge-Case Matrix rows had a real pinning test but no
+recorded mutation; each is demonstrated on `ocupilot-b-ci`, confirmed red, reverted, and confirmed
+byte-identical (`git status --short` and `git diff --stat` both empty) before the next:
+
+- mutation: `OAuthServerPort.Invoke`'s POST branch maps the vendor's `409` at `+pHttpStatus = 4090`
+  instead → `OAuthServerCreate.TestADuplicateIssuerIsRefusedOnItsField` red on the port's 422 and its
+  field (matrix: Create, duplicate)
+- mutation: `OAuthServerPort.Invoke`'s DELETE branch also refuses when `ResourceCount` > 0 →
+  `OAuthServerDelete.TestADescriptionAResourceServerUsesIsDeletedAndLeftDangling` red on all three
+  assertions (matrix: Delete, resource server uses it)
+- mutation: `OAuthServerPort.DiscoveryCause` matches `tCode = 88800`, never the vendor's real `8880` →
+  `OAuthServerDiscover.TestEachCauseIsRefusedByName` red on the status, content and issuer cases
+  (matrix: Discover fails)
+- mutation: `OAuthServerPort.RefreshKeySet`'s empty-URL guard tests an unmatched literal instead of
+  `""` → `OAuthServerJwks.TestADescriptionWithNoJwksUrlIsRefusedByName` red (matrix: Update JWKS, no
+  URL)
+- mutation: `OAuthServerSave.StoreToken` never reports a refused write (`If 0` for
+  `If $$$ISERR(tWriteSC)`) → `OAuthServerToken.TestARefusedTokenIsAnsweredBesideTheSavedDescription`
+  red (matrix: Token, a TOKEN failure answered beside "Saved")
+- mutation: `OAuthServerPort.Invoke`'s PUT branch skips its `CredentialOk` check (`If 0` for
+  `If '..CredentialOk(tBody)`) → `OAuthServerUpdate.TestAnUnusableCredentialIsRefusedOnItsField` red
+  on the port's 422 (matrix: Bad X.509 alias)
+
+**Code review mutations, 2026-09-24, on `ocupilot-b-ci`.** Each was applied alone, went red, and was reverted; `src/` is byte-identical to `/tmp/ocupilot-b-ci/src`.
+
+- mutation: `OAuthServerSave.HandleDiscover`'s `SSLConfiguration` check `If 0` → `OAuthServerDiscover.TestTheRouteRefusesItsRulesAndAStrayKeyBeforeTheFetch` red on case 1 (run 871)
+- mutation: `OAuthServerSave.Update`'s empty-body return `If 0 Quit` → `OAuthServerToken.TestATokenOnlyEditSendsNoDescriptionWrite` red (run 872)
+- mutation: `OAuthServerRules.ReadableNames` answers `[]` for every caller → `OAuthServerWire.TestTheFormReadOffersOnlyTheNamesTheCallerCanRead` red on the test account's leg (run 874). With only its gate removed the test stays green (run 873), because the admin port's `ResourcesOR()` gate refuses the least principal too.
+- mutation: `IssuerShaped` back to `([/?#]\S*)?` → `OAuthServerCreate.TestEveryFormRuleRefusesOnBothCallers` red on cases 5 and 6 (run 875)
+- mutation: `onSave` navigates only `if (id !== '' && creating)` → page spec "an edit that renames the issuer replaces the route" red
+- mutation: `open()` drops its `if (arriving)` block → page spec "a create whose token was refused says so" red
+- mutation: the `reason` getter skips its `NO_PRIVILEGE_CODE` branch → page spec "AC8: a form read refused for the editor's pair" red
+- mutation: `displayOf` answers `String(value)` for a flag → page spec "the metadata table reads every other member" red
+
+Final runs after the review patches: `OAuthServerCreate` 7, `Token` 5, `Discover` 5, `Wire` 6 (runs 876-879); `Update` 7, `Jwks` 4, `Delete` 4 (runs 868-870); all 0 failed. `test:tools` 1,375 and `test:components` 1,101 tests, 0 failed. The editor browser spec passed 5/5 against the deployed bundle, which these patches leave unchanged.
 
 ## Auto Run Result
 

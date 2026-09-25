@@ -210,15 +210,16 @@ ClassMethod Stored(pIssuer As %String) As %DynamicObject
 }
 
 /// <p>Remove the probe client configuration and resource server, then every description whose
-/// issuer begins <parameter>PREFIX</parameter> under any scheme (a malformed rename keeps the probe
-/// host) or is the issuer fixture's. <var>pRemaining</var> is how many probe descriptions survive.</p>
+/// issuer's host is <parameter>PREFIX</parameter>'s under any scheme, path, query or fragment (a
+/// malformed rename keeps the probe host) or is the issuer fixture's. <var>pRemaining</var> is how
+/// many probe descriptions survive.</p>
 ClassMethod RemoveAll(Output pRemaining As %Integer) As %Status
 {
     Set tSC = $$$OK
     Set pRemaining = 0
     Set tOrigNS = $NAMESPACE
     Set tFixture = ##class(OcuPilot.Test.OAuthIssuerFixture).Issuer()
-    Set tHost = $Piece(..#PREFIX, "://", 2)
+    Set tHost = $Piece($Piece(..#PREFIX, "://", 2), "/", 1)
     Try {
         Set $NAMESPACE = "%SYS"
         If ##class(OAuth2.Client).%ExistsId(..#CLIENT) Set tSC = $$$ADDSC(tSC, ##class(OAuth2.Client).DeleteId(..#CLIENT))
@@ -231,7 +232,7 @@ ClassMethod RemoveAll(Output pRemaining As %Integer) As %Status
             Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT ID, IssuerEndpoint FROM OAuth2.ServerDefinition")
             While tResult.%Next() {
                 Set tIssuer = tResult.%GetData(2)
-                If ($Extract($Piece(tIssuer, "://", 2), 1, $Length(tHost)) = tHost) || ($Extract(tIssuer, 1, $Length(tFixture)) = tFixture) Set tIds = tIds _ $ListBuild(tResult.%GetData(1))
+                If ($Piece($Piece($Piece($Piece(tIssuer, "://", 2), "/", 1), "?", 1), "#", 1) = tHost) || ($Extract(tIssuer, 1, $Length(tFixture)) = tFixture) Set tIds = tIds _ $ListBuild(tResult.%GetData(1))
             }
             If tPass = 2 {
                 Set pRemaining = $ListLength(tIds)

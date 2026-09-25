@@ -84,7 +84,7 @@ ClassMethod Described(pSchema As %DynamicObject, pCreates As %Boolean) As %Dynam
     Set tProperties = pSchema.%Get("properties")
     If tProperties.%GetTypeOf("IssuerEndpoint") = "object" {
         If pCreates {
-            Do tProperties.%Get("IssuerEndpoint").%Set("description", "The issuer endpoint of the new description: an absolute http or https URL, compared exactly. An issuer this instance already describes is refused, so check the server descriptions list first.", "string")
+            Do tProperties.%Get("IssuerEndpoint").%Set("description", "The issuer endpoint of the new description: an absolute http or https URL with no query or fragment, compared exactly. An issuer this instance already describes is refused, so check the server descriptions list first.", "string")
         } Else {
             Do tProperties.%Get("IssuerEndpoint").%Set("description", "The description to change, by its issuer endpoint exactly as the server descriptions list reports it. The issuer itself cannot be changed here.", "string")
         }

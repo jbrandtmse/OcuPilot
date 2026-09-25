@@ -247,6 +247,33 @@ Method TestTheDeclaredPairsAloneDoEveryWrite()
     Do $$$AssertEquals(##class(OcuPilot.Test.AuditMarker).MarkerRows(tSince, ..#TOOLPREFIX, .tData), 0, "and no Save or row action emitted an agent-write marker (AD-53): " _ $Extract($Get(tData), 1, 200))
 }
 
+/// <p>AD-5: the form read offers the SSL/TLS configurations and X.509 credentials only through those
+/// screens' own gates -- the demo names to a caller holding their pairs, and nothing to the least
+/// principal, who holds the editor's pairs but not <code>%Admin_Secure</code>.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.OAuthServerRules.ReadableNames</method>
+/// answers <code>[]</code> for every caller -- the test account's leg goes red. Its screen gate alone
+/// removed stays green: the admin port's own <code>ResourcesOR()</code> gate refuses the least
+/// principal's read as well (AD-29).</p>
+Method TestTheFormReadOffersOnlyTheNamesTheCallerCanRead()
+{
+    For tUser = "", ..#LEASTUSER {
+        Set tLabel = $Select(tUser = "": "the test account", 1: "the least principal")
+        Set tSC = ..Request("GET", ..#FORMPATH, "", tUser, .tStatus, .tRaw, .tHeaders)
+        Do $$$AssertEquals(tStatus, 200, tLabel _ ": the form read answers")
+        Set tBody = ""
+        Try { Set tBody = ##class(%DynamicObject).%FromJSON(tRaw) } Catch { Set tBody = "" }
+        Set tAnswer = ""
+        If $IsObject(tBody) && $IsObject(tBody.%Get("sslConfigurations")) && $IsObject(tBody.%Get("credentials")) {
+            Set tAnswer = tBody.%Get("sslConfigurations").%ToJSON() _ "|" _ tBody.%Get("credentials").%ToJSON()
+        }
+        If tUser = "" {
+            Do $$$AssertTrue((tAnswer [ ("""" _ $Parameter(..#PROBE, "SSLCONFIG") _ """")) && (tAnswer [ ("""" _ $Parameter(..#PROBE, "CREDENTIAL") _ """")), tLabel _ ": offered the demo configuration and credential: " _ tAnswer)
+        } Else {
+            Do $$$AssertEquals(tAnswer, "[]|[]", tLabel _ ": offered neither list")
+        }
+    }
+}
+
 /// <p>AD-53, AD-55: each of the five tools, minted for the least principal and confirmed over the
 /// wire as that principal, applies its write and leaves exactly one agent marker naming its
 /// proposal; the token's confirm takes the token in its body, and no marker carries it.</p>

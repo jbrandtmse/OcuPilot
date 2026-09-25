@@ -2278,7 +2278,7 @@ Parameter REASONOAUTHISSUERENDPOINTREQUIRED = "Give the issuer endpoint.";
 /// <code>https</code> URL.</p>
 Parameter OAUTHISSUERENDPOINTSHAPE = "OAUTH.ISSUERENDPOINT.SHAPE";
 
-Parameter REASONOAUTHISSUERENDPOINTSHAPE = "The issuer endpoint is an absolute http or https URL.";
+Parameter REASONOAUTHISSUERENDPOINTSHAPE = "The issuer endpoint is an absolute http or https URL with no query or fragment.";
 
 /// <p>Violation code: another server description already carries that issuer endpoint, which the
 /// vendor keeps unique.</p>
