@@ -238,3 +238,5 @@
 2026-09-25T22:10:50Z	Story 12.9	stage_spawned	stage=plan spawn_at=2026-09-25T22:10:50Z model=opus agent_name=12-9-classic-link-outs-plan-1 cycle_iteration=1
 2026-09-25T22:20:23Z	Story 12.9	story_created	spawn_at=2026-09-25T22:10:50Z model=opus path=_bmad-output/implementation-artifacts/spec-12-9-removing-the-classic-link-outs.md build_status=ready-for-dev warnings=oversized epic_context=reused
 2026-09-25T22:20:23Z	Story 12.9	spec_validated	service_introducing=false integration_ac=n/a adr_constrained_acs=AD-44 decision_dependency=none sections_created=none owned_ledger=DW-1643 addressed=1 declined=0 mutates_shared_runtime=false lead_answers=Q1-Q5 model=claude-opus-5-5
+2026-09-25T22:54:56Z	Epic 12	ci_resolved	story=12.8 run=36195191787 result=success head=c218060f instance_job=46.5min(under_new_60_limit) resolved_at=next_implement
+2026-09-25T22:54:58Z	Story 12.9	stage_spawned	stage=implement spawn_at=2026-09-25T22:54:58Z model=opus agent_name=12-9-classic-link-outs-implement-1 cycle_iteration=1
