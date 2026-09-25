@@ -230,3 +230,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-25T07:10:37Z	Epic 15	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp feature_head=cd49f3be merge_sha=d9fcb00b boundary=15.8/15.9 conflicts=0 diff_vs_first_parent=cycle-log-parallel.md_only(bookkeeping,no_code) ci=rides_on_next_code_push(DW-1435) feature_ci=36092849279_success_on_dc3e1b5e
 2026-09-25T07:11:22Z	Epic 15	decision_received	DW-1648=(b)_pin_row-action_column by=merge_gate(orchestrator) routed_to=15-9 not=(c) rework_and_Trigger_reach_accepted
 2026-09-25T07:11:22Z	Story 15.9	ledger_routed_planned	story=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth entries=1(DW-1648) excess=0 by=merge_gate
+2026-09-25T07:12:35Z	Epic 15	epic_context_compiled	reason=planning_artifact_newer(15.8_amendments,DW-1648/1649_bullets) model=claude-opus-5-5 bytes=8243
+2026-09-25T07:12:35Z	Story 15.9	stage_spawned	stage=plan spawn_at=2026-09-25T07:12:35Z model=opus agent_name=15-9-sign-out-plan-1 cycle_iteration=1
