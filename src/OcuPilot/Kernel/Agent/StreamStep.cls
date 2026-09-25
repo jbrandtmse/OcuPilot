@@ -51,7 +51,7 @@ Method Publish(pText As %String)
         Set tNow = ..NowMs()
         If ..LastWriteMs '= "" {
             Set tElapsed = tNow - ..LastWriteMs
-            ; A negative difference is the clock's midnight wrap, and reads as time having passed.
+            ; A negative difference (a probe clock set back) reads as time having passed.
             If (tElapsed >= 0) && (tElapsed < +$Parameter(..LimitsClass, "STREAMINTERVALMS")) Quit
         }
         Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedSnapshotText(..TurnKey, ..Seq, pText, ..LimitsClass)
@@ -66,7 +66,8 @@ Method Publish(pText As %String)
     }
 }
 
-/// <p>Milliseconds on a within-the-day scale, used only as a difference.</p>
+/// <p>Milliseconds since the instance started (<code>$ZHorolog</code>), used only as a
+/// difference.</p>
 Method NowMs() As %Numeric
 {
     Quit $ZHorolog * 1000

@@ -39,6 +39,8 @@ Method TestSplitInputReadsAsTheWholeStream()
 /// <code>stream_options.include_usage</code>; Gemini names the streaming method with
 /// <code>alt=sse</code> on the same origin and changes no body member; a call with no sink sends
 /// neither and keeps its URL.</p>
+/// <p>mutation: remove <method>OcuPilot.Kernel.Provider.Gemini.StreamsFor</method> -- the
+/// endpoint-naming-no-method leg goes red.</p>
 Method TestEachFamilyAsksForItsStreamItsOwnWay()
 {
     For tFamily = "openai", "compatible" {
@@ -69,6 +71,14 @@ Method TestEachFamilyAsksForItsStreamItsOwnWay()
     Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..TextBody("gemini", "ok"))
     Do ..CallDirect("gemini", "", 1, .tGeminiPlain, .tGeminiPlainFault)
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("url", 1), "https://generativelanguage.googleapis.com/v1beta/models/probe-model:generateContent", "gemini: a call with no sink keeps the plain method")
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..TextBody("gemini", "ok"))
+    Do ..CallDirect("gemini", ##class(OcuPilot.Test.StreamSinkProbe).%New(), 1, .tOther, .tOtherFault, "https://generativelanguage.googleapis.com/v1beta/tuned/{model}")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("url", 1) _ "|" _ ##class(OcuPilot.Test.ProviderStub).Recorded("streamReader", 1), "https://generativelanguage.googleapis.com/v1beta/tuned/probe-model|0", "gemini: an endpoint naming no :generateContent is called plain, sink or not")
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueStream(200, ..Sse("gemini", ..TextBody("gemini", "ok")))
+    Do ..CallDirect("gemini", ##class(OcuPilot.Test.StreamSinkProbe).%New(), 1, .tQuery, .tQueryFault, "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?probe=1")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("url", 1), "https://generativelanguage.googleapis.com/v1beta/models/probe-model:streamGenerateContent?probe=1&alt=sse", "gemini: a query the endpoint carries is kept, and alt=sse joins it")
 }
 
 /// <p>A stream broken after its status line, one carrying an error event and one missing its

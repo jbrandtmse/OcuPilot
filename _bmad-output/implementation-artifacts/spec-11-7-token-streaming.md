@@ -2,7 +2,7 @@
 title: 'Story 11.7: Token streaming'
 type: 'feature'
 created: '2026-09-25'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'f24c030227b7276120e3d65dc30afb4ae2783f62'
 baseline_commit: 'f24c030227b7276120e3d65dc30afb4ae2783f62'
 review_loop_iteration: 0
@@ -249,8 +249,33 @@ deferred:
 - **Refusal (DW-1181).** Given a refusal from any family, when the turn ends, then it fails `PROVIDER.DECLINED` with a banner, never with an empty reply.
 - **Existing tests.** Given the prompt pins and the Test connection tests, when they run, then they are green and unedited.
 
+### Review Findings
+
+Code review 2026-09-25, tier `full-opus`, four layers (blind, edge-case, verification-gap, acceptance). 36 rows, 15 entries: high 0, medium 2, low 13; 11 rejected.
+
+- [ ] [Review][Decision] DW-1661: Gemini tool-call failure reasons (`MALFORMED_FUNCTION_CALL`, `UNEXPECTED_TOOL_CALL`, `TOO_MANY_TOOL_CALLS`) end `PROVIDER.DECLINED` -- the fix contradicts Epic 10's pinned refusal map (`Adapter.cls:609`, `:1052`) and needs new copy or a new code; `decision-pending owner=burndown` (recommended: a code of its own). [MessageAdapter.cls:75]
+- [x] [Review][Defer] A streamed call has no wall-clock bound, since every chunk re-arms `TimeoutSeconds` -- DW-1179's root cause; occurrence appended; the false worst-case sentence in `Limits.PROVIDERCALLSECONDS` corrected at its origin. [Limits.cls:110]
+- [x] [Review][Patch] `TurnStream` creates principals but was armed by `OCUPILOT_ALLOW_TEST_PROVIDER` alone -- now `ARMINGVARIABLE` `OCUPILOT_ALLOW_PRINCIPALS` plus `PROVIDERVARIABLE`, and listed in the principals roster. [TurnStream.cls:17, ci-throwaway.sh:204]
+- [x] [Review][Patch] The declined-reason assert compared the reason with `ReasonFor` itself -- now the literal sentence. [TurnStream.cls:302]
+- [x] [Review][Patch] A snapshot cut at the cap left a failed step `truncated` with empty text -- `GuardedSnapshotText` keeps the flag as it was; the cadence test asserts it. [Step.cls:147]
+- [x] [Review][Patch] `StreamStep` comments called `$ZHorolog` a within-the-day clock with a midnight wrap (measured on `ocupilot-ci`: 465,466 s since start) -- corrected. [StreamStep.cls:54, :69-71]
+- [x] [Review][Patch] `StreamReader`'s `Faulted` exit had no test -- `ProviderStream.TestAReaderThatRaisedAnswersNoBody`. [StreamReader.cls:200]
+- [x] [Review][Patch] Gemini's endpoint guard and query join had no test -- two legs in `ProviderStreamFamilies`; `StreamCase.CallDirect` takes an endpoint. [Gemini.cls:103-116, StreamCase.cls:70]
+- [x] [Review][Patch] The raising-sink and OpenAI `tool_calls` mutations were claimed in doc comments, never observed -- observed; lines under Verification. [ProviderStream.cls:207, ProviderStreamFamilies.cls:15]
+- [x] [Review][Patch] The Test-connection leg reset `ProviderPortProbe` only on its last line, and `StreamCase`'s header said every call is direct -- reset moved to `OnAfterOneTest`, header corrected. [StreamCase.cls:6, :30]
+- [x] [Review][Defer] by-design: a refusal keeps no provider text in the fault (Always: Refusal; Design Notes, why a banner).
+- [x] [Review][Defer] by-design: after Stop, streamed text grows until the call ends (Scope decisions: Stop keeps its step boundary).
+- [x] [Review][Defer] by-design: a preamble streamed before a tool call disappears when the call ends (Scope decisions).
+- [x] [Review][Defer] by-design: Compatible sends `stream_options`; a server that omits usage counts 0 tokens (Always: a streamed request; Scope decisions).
+- [x] [Review][Defer] by-design: every snapshot rewrites the whole text so far (AD-33 amendment: a snapshot, never a delta).
+
+- [ ] [CI] instance: `OcuPilot.Test.ReadTool.TestTheMessagesReadToolCarriesTheConsoleLogsRowsAndNotItsCursor` red in CI run 36152768790 on `e5c0bff5` ("the tool's oldest row in the window is the console log's"), the reopen_if of DW-1144 -- `src/OcuPilot/Test/ReadTool.cls:1199` -- make the file comparison hold when a console line lands between the tool's read and the port's (OcuPilot's own structured logger writes `messages.log`, and this story's provider tests write many lines just before `ReadTool` runs): e.g. read the port immediately before and after the tool at the same cap and accept the tool's oldest row matching either; the `read.source.endpoint` -> `alerts` mutation must still redden it; write its `mutation:` line. Test-only; no product change.
+
+Rejected: (low) text that stops growing mid-call waits for the next write -- cosmetic, and the fix changes the reader's hand-over contract; (low) the Error banner row names no `PROVIDER.DECLINED` trigger -- that trigger list was never exhaustive; (low) `StreamStep`'s defensive branches untested -- the "never fails the call" promise is pinned at the reader; (low) browser legs (b) and (c) read values (a) and (b) set -- a failure still reads red; (false) a 2xx JSON body above 3,000,000 characters -- no model reply reaches it; (false) tool-call deltas without `index` -- the array position is already the fallback; (false) Gemini thought parts break the prefix -- no request asks for thoughts; (false) a mid-stream read timeout ends `PROVIDER.TIMEOUT` -- the amended AD-42 names a broken body, an error event and a missing terminator, and a timeout is still never retried; (false) browser (g) and the avatar row have no mutation -- each AC has one observed mutation; (low) the prefix check is vacuous on three refusal legs -- the parity assert carries them; (false) turn-level refusal only through Anthropic -- `Loop` reads the canonical stop reason, and `Adapter` plus `ProviderStreamFamilies` pin every family's refusal shapes to it.
+
 ## Spec Change Log
 
+- 2026-09-25, rework iteration 1 (trigger ci): CI run 36152768790 reddened `ReadTool` on the flaky messages-window comparison DW-1144 named; one `[CI]` item re-opens the spec.
 - 2026-09-25, lead spec gate: the proposed AD-33 and AD-42 amendments and the Deferred row are written into the spine (Rule 20); Design Notes gain the live per-family check below.
 
 ## Review Triage Log
@@ -396,6 +421,17 @@ Observed on `ocupilot-ci` (whole `OcuPilot` package force-compiled, or bundle re
 - mutation: `Loop` records the provider ledger row before its refusal check → red: `TurnStream` refusal ledger-row asserts (both runs).
 - mutation: streamed text bound through `[innerHTML]` instead of `<app-reply>` → red: `panel.spec` markup case (an `img` is created) and running case.
 - mutation: an `animation` on `.ocu-panel-message-streamed` → red: browser (c) animation assert.
+
+Code review, observed on `ocupilot-ci` (whole package recompiled; two batches of independent mutations, each reddening only its own method; reverted, tree byte-identical, all three classes green again, runs 12109-12111):
+
+- mutation: `Try` around the sink hand-over in `StreamReader.Publish` removed → red: `ProviderStream` raising-sink leg (run 12103).
+- mutation: `tool_calls` arguments append in `StreamAdapter.TakeOpenAi` dropped → red: `ProviderStreamFamilies` openai and compatible tool parity (12104).
+- mutation: `Truncated` restore in `Step.GuardedSnapshotText` dropped → red: `TurnStream` cadence truncation assert (12105).
+- mutation: `Faulted` check in `StreamReader.Body` removed → red: `ProviderStream.TestAReaderThatRaisedAnswersNoBody` (12106).
+- mutation: `Gemini.StreamsFor` removed → red: `ProviderStreamFamilies` endpoint-naming-no-method leg (12107).
+- mutation: `PROVIDERDECLINED` line in `Base.ReasonFor` removed → red: `TurnStream` refusal sentence, both runs (12108).
+
+**(QA) `ProviderStream.cls` (extended, not new).** Added `TestATestConnectionCallCarriesNoStreamThroughTheRealPort`: a Test-connection call through the real, unmodified `ProviderPort.InvokeDraft` against the shipped `compatible` row (re-adapted to its stub by `OcuPilot.Test.CatalogProbeShipped`) carries no `stream` member, closing the one leg the existing no-sink tests do not reach -- they call the adapter's `Invoke` directly, bypassing `Dispatch`'s own catalog resolution. mutation: `InvokeDraft` passes a stream sink on `Dispatch`'s trailing argument → red: the new test's two body-shape asserts. Observed red, reverted, `git status --short` clean, `ProviderStream` 10/10 on `ocupilot-ci`.
 
 ## Auto Run Result
 

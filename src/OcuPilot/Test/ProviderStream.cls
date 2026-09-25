@@ -64,6 +64,43 @@ Method TestOnlyACallWithASinkAsksForAStream()
     Do $$$AssertEquals(tPlain.Text, "ok", "and the same reply")
 }
 
+/// <p>The one wiring <method>TestOnlyACallWithASinkAsksForAStream</method> does not reach: a
+/// Test-connection call through the real port (<method>OcuPilot.Port.ProviderPort.InvokeDraft</method>)
+/// against a shipped streaming-capable row. <code>InvokeDraft</code> has no sink parameter to hand
+/// <code>Dispatch</code>, so the request it builds -- through the real catalog lookup and the
+/// family's own adapter, not the adapter called directly -- carries no <code>stream</code> member
+/// and is read as an ordinary call.</p>
+/// <p>mutation: in <method>OcuPilot.Port.ProviderPort.InvokeDraft</method>, pass a stream sink on
+/// <code>Dispatch</code>'s trailing argument instead of leaving it unsupplied -- the streamed-body
+/// assertion below goes red.</p>
+Method TestATestConnectionCallCarriesNoStreamThroughTheRealPort()
+{
+    Do ##class(OcuPilot.Test.ProviderPortProbe).Reset()
+    Do ##class(OcuPilot.Test.ProviderPortProbe).SetCatalogClass("OcuPilot.Test.CatalogProbeShipped")
+    Do ##class(OcuPilot.Test.ProviderPortProbe).SetSslState("present")
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..TextBody("compatible", "ok"))
+    Kill tValues
+    Set tValues("provider") = "compatible"
+    Set tValues("model") = "llama-3.3-70b-instruct"
+    Set tValues("endpointUrl") = "https://192.0.2.1/v1"
+    Set tValues("markedLocal") = 0
+    Set tValues("credType") = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPENONE
+    Set tValues("keySource") = ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCENONE
+    Set tValues("maxTokens") = 1024
+    Set tValues("temperature") = 0
+    Kill tMessages
+    Do ##class(OcuPilot.Test.Provider).Messages(.tMessages)
+    Set tSC = ##class(OcuPilot.Test.ProviderPortProbe).InvokeDraft(.tValues, .tMessages, .tTools, "", .tResponse, .tHttpStatus, .tFault)
+    Do $$$AssertStatusOK(tSC, "InvokeDraft answers")
+    Do $$$AssertTrue('$IsObject(tFault), "and is not refused: " _ $Select($IsObject(tFault): tFault.%ToJSON(), 1: ""))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "the call reached the transport")
+    Set tBody = ##class(%DynamicAbstractObject).%FromJSON($ZConvert(##class(OcuPilot.Test.ProviderStub).Recorded("body", 1), "I", "UTF8"))
+    Do $$$AssertEquals(tBody.%IsDefined("stream") _ "|" _ tBody.%IsDefined("stream_options"), "0|0", "a Test-connection call through the real port carries no stream member")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("streamReader", 1), 0, "and reads its body as an ordinary call, not through a chunk reader")
+    Do $$$AssertEquals(tResponse.Text, "ok", "and the reply arrives")
+    Do ##class(OcuPilot.Test.ProviderPortProbe).Reset()
+}
+
 /// <p>A transport failure before any status line is retried once on a fresh reader, and the text
 /// arrives once: every snapshot is a prefix of the final text and the last equals it.</p>
 /// <p>mutation: make <method>OcuPilot.Kernel.Provider.StreamReader.Publish</method> hand over only
@@ -179,6 +216,26 @@ Method TestASinkThatRaisesNeverFailsTheCall()
     Do $$$AssertEquals(..FaultCode(tFault), "", "the call succeeds")
     Do $$$AssertEquals(tResponse.Text, ..ReplyText(), "with the whole reply")
     Do $$$AssertEquals(##class(OcuPilot.Test.StreamSinkProbe).Count(), 1, "and the sink was not handed anything after it raised")
+}
+
+/// <p>A reader whose own processing raised answers no body, even when the whole stream and its
+/// terminator arrive afterwards, so a partly read reply is never mapped as one.</p>
+/// <p>mutation: remove the <code>Faulted</code> check from
+/// <method>OcuPilot.Kernel.Provider.StreamReader.Body</method> -- this goes red.</p>
+Method TestAReaderThatRaisedAnswersNoBody()
+{
+    Set tBytes = $ZConvert(..Sse("anthropic", ..TextBody("anthropic", ..ReplyText())), "O", "UTF8")
+    Set tReader = ##class(OcuPilot.Kernel.Provider.StreamReader).%New("anthropic", "")
+    Set tAdapter = tReader.Adapter
+    Set tReader.Adapter = ""
+    Do tReader.ReadChunk(tBytes)
+    Do $$$AssertEquals(tReader.Faulted, 1, "a raise inside the reader is caught and recorded")
+    Set tReader.Adapter = tAdapter
+    Do tReader.ReadChunk(tBytes)
+    Do tReader.Finish()
+    Set tBody = tReader.Body(.tSC)
+    Do $$$AssertStatusNotOK(tSC, "and the body of record is an error, although the terminator arrived")
+    Do tReader.Release()
 }
 
 }

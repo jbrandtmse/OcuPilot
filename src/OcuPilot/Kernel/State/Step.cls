@@ -130,8 +130,9 @@ ClassMethod GuardedUpdate(pKey As %String, pSeq As %Integer, pStatus As %String,
 /// <p>Write <var>pText</var>, a streamed model call's whole text so far, onto step <var>pSeq</var>
 /// of turn <var>pKey</var>, cut at the text cap (AD-33). Written only while that step is a
 /// <code>model</code> step and still <code>running</code>, so a snapshot arriving after the
-/// outcome write changes nothing; the outcome write replaces the snapshot. A step dropped past the
-/// cap has no row, and nothing is written.</p>
+/// outcome write changes nothing; the outcome write replaces the snapshot. A snapshot cut at the cap
+/// leaves <property>Truncated</property> as it was, so only the outcome records a cut. A step
+/// dropped past the cap has no row, and nothing is written.</p>
 /// <p><b>Caller contract:</b> a leaf storage call, made from a provider's chunk callback while its
 /// socket is the current device; it does no device I/O and its escalated frame unwinds before it
 /// returns (AD-9).</p>
@@ -143,7 +144,9 @@ ClassMethod GuardedSnapshotText(pKey As %String, pSeq As %Integer, pText As %Str
         Set tRow = ""
         Quit $$$OK
     }
+    Set tWasCut = tRow.Truncated
     Do ..ApplyContent(tRow, tRow.Name, tRow.Summary, pText, pLimitsClass)
+    Set tRow.Truncated = tWasCut
     Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
     Set tRow = ""
     Quit tSC

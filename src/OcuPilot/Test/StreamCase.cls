@@ -3,8 +3,8 @@
 /// native reply bodies, one direct adapter call with or without a stream sink, and the parity and
 /// snapshot-prefix assertions. It declares no test of its own.</p>
 /// <p>Needs a writable protected database and nothing else: no socket is opened and no stored
-/// definition is read, because every call is made on an adapter instance directly with settings
-/// stated here.</p>
+/// definition is read, because every call is made with settings stated here, on an adapter
+/// instance directly or through the port's draft path with its catalog replaced.</p>
 Class OcuPilot.Test.StreamCase Extends %UnitTest.TestCase [ Abstract ]
 {
 
@@ -27,6 +27,7 @@ Method OnBeforeOneTest() As %Status
 
 Method OnAfterOneTest() As %Status
 {
+    Do ##class(OcuPilot.Test.ProviderPortProbe).Reset()
     Do ##class(OcuPilot.Test.ProviderStub).Reset()
     Do ##class(OcuPilot.Test.StreamSinkProbe).Reset()
     Do ##class(OcuPilot.Test.SecretProbe).Forget()
@@ -66,10 +67,11 @@ ClassMethod Values(pFamily As %String, Output pValues)
 
 /// <p>One call on <var>pFamily</var> answered by whatever the stub has queued, streamed when
 /// <var>pSink</var> is a sink. <var>pMaxAttempts</var> is the stated attempt bound.</p>
-ClassMethod CallDirect(pFamily As %String, pSink As %RawString = "", pMaxAttempts As %Integer = 1, Output pResponse As OcuPilot.Kernel.Provider.Response, Output pFault As %DynamicObject) As %Status
+ClassMethod CallDirect(pFamily As %String, pSink As %RawString = "", pMaxAttempts As %Integer = 1, Output pResponse As OcuPilot.Kernel.Provider.Response, Output pFault As %DynamicObject, pEndpoint As %String = "") As %Status
 {
     Do ##class(OcuPilot.Test.SecretProbe).SetValue("sk-ant-ocupilotstreamprobe0000")
     Do ..Values(pFamily, .tValues)
+    If pEndpoint '= "" Set tValues("endpointUrl") = pEndpoint
     Do ##class(OcuPilot.Test.Provider).Settings(.tSettings, pMaxAttempts)
     If $IsObject(pSink) Set tSettings("stream") = pSink
     Kill tMessages, tTools

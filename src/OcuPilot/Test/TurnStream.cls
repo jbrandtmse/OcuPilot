@@ -6,14 +6,17 @@
 /// <code>PROVIDER.DECLINED</code> either way; and <class>OcuPilot.Kernel.Agent.StreamStep</class>
 /// writes at most once per interval and never past the cap.</p>
 /// <p><b>It creates an IRIS user and a role and spawns turn jobs, so
-/// <method>OnBeforeAllTests</method> refuses to run unless <parameter>ARMINGVARIABLE</parameter>
-/// reads 1</b>, which only <file>scripts/ci-throwaway.sh</file> sets. The principal also holds the
+/// <method>OnBeforeAllTests</method> refuses to run unless both</b>
+/// <parameter>ARMINGVARIABLE</parameter> <b>and</b> <parameter>PROVIDERVARIABLE</parameter>
+/// <b>read 1</b>, which only <file>scripts/ci-throwaway.sh</file> sets. The principal also holds the
 /// web application screen's pairs, so the write tool mints; every proposal it minted, and every
 /// probe job, turn, slot and stub node, is removed after each method.</p>
 Class OcuPilot.Test.TurnStream Extends %UnitTest.TestCase
 {
 
-Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_TEST_PROVIDER";
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
+
+Parameter PROVIDERVARIABLE = "OCUPILOT_ALLOW_TEST_PROVIDER";
 
 Parameter FIXTURE = "OcuPilot.Test.TurnWireFixture";
 
@@ -53,7 +56,10 @@ Method %OnNew(initvalue As %String = "") As %Status
 Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
-        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.TurnStream creates an IRIS user and a role and runs turn jobs against the turnprobe provider row, on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created.")
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.TurnStream creates an IRIS user and a role and runs turn jobs, on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created.")
+    }
+    If $System.Util.GetEnviron(..#PROVIDERVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.TurnStream runs turn jobs against the turnprobe provider row, on a throwaway container only. " _ ..#PROVIDERVARIABLE _ " does not read 1 here, so nothing was created.")
     }
     Set ..PreparedPassword = $ClassMethod(..#FIXTURE, "NewPassword")
     Set tSC = $ClassMethod(..#FIXTURE, "EnsurePrincipal", $Parameter(..#FIXTURE, "USERA"), ..PreparedPassword, $ClassMethod(..#FIXTURE, "Resources") _ ",%Admin_Secure:U,%DB_IRISSYS:R")
@@ -67,7 +73,7 @@ Method OnBeforeAllTests() As %Status
 
 Method OnAfterAllTests() As %Status
 {
-    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 Quit $$$OK
+    If ($System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1) || ($System.Util.GetEnviron(..#PROVIDERVARIABLE) '= 1) Quit $$$OK
     Set tSC = $ClassMethod(..#FIXTURE, "RemoveDefinition", ..PreparedPrior)
     Set tLeft = $ClassMethod(..#FIXTURE, "RemovePrincipals")
     If tLeft '= "" Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.TurnStream teardown left:" _ tLeft)
@@ -293,7 +299,7 @@ Method TestARefusalFailsTheTurnDeclinedEitherWay()
         Do $$$AssertEquals($Select($IsObject(tOne): tOne.state, 1: ""), "failed", tCase _ ": the turn fails")
         If '$IsObject(tOne) Continue
         Do $$$AssertEquals($Select($IsObject(tOne.error): tOne.error.code, 1: ""), tDeclined, tCase _ ": PROVIDER.DECLINED")
-        Do $$$AssertEquals($Select($IsObject(tOne.error): tOne.error.reason, 1: ""), ##class(OcuPilot.Kernel.Provider.Base).ReasonFor(tDeclined), tCase _ ": with the code's one sentence")
+        Do $$$AssertEquals($Select($IsObject(tOne.error): tOne.error.reason, 1: ""), "The model declined to answer this request", tCase _ ": with the code's one sentence")
         Do $$$AssertEquals(tOne.%GetTypeOf("reply"), "null", tCase _ ": and no reply")
         Set tStep = ..ModelStep(tOne)
         Do $$$AssertEquals($Select($IsObject(tStep): tStep.status _ "|" _ tStep.text _ "|" _ tStep.code, 1: ""), "error||" _ tDeclined, tCase _ ": the model step is error, empty, carrying the code")
@@ -317,7 +323,10 @@ ClassMethod LedgerOutcome(pTurnKey As %String) As %String
 /// <code>STREAMINTERVALMS</code> and only when the text grew, never past
 /// <code>TEXTMAXLENGTH</code>, and never onto a step that is no longer running.</p>
 /// <p>mutation: ignore <code>STREAMINTERVALMS</code> in
-/// <method>OcuPilot.Kernel.Agent.StreamStep.Publish</method> -- the second assertion goes red.</p>
+/// <method>OcuPilot.Kernel.Agent.StreamStep.Publish</method> -- the second assertion goes red.
+/// mutation: drop the <property>Truncated</property> restore in
+/// <method>OcuPilot.Kernel.State.Step.GuardedSnapshotText</method> -- the truncation assertion goes
+/// red.</p>
 Method TestTheStreamStepKeepsItsCadenceAndCap()
 {
     Set tUser = ..#PROBEUSER
@@ -353,6 +362,7 @@ Method TestTheStreamStepKeepsItsCadenceAndCap()
     Set tLate = ##class(OcuPilot.Test.StreamStepProbe).%New(tKey, tSeq, tLimits)
     Do tLate.Publish("a late snapshot")
     Do $$$AssertEquals(..StepText(tKey), "final", "a snapshot after the outcome changes nothing")
+    Do $$$AssertEquals(..StepTruncated(tKey), 0, "and a snapshot cut at the cap leaves no truncation mark behind the outcome")
     Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "final", 0, tLimits)
 }
 
@@ -362,6 +372,14 @@ ClassMethod StepText(pKey As %String) As %String
     Do ##class(OcuPilot.Kernel.State.Step).GuardedRows(pKey, .tRows)
     If '$IsObject($Get(tRows)) || (tRows.%Size() = 0) Quit "(no step)"
     Quit tRows.%Get(0).%Get("text")
+}
+
+/// <p>Whether turn <var>pKey</var>'s first step is marked truncated.</p>
+ClassMethod StepTruncated(pKey As %String) As %String
+{
+    Do ##class(OcuPilot.Kernel.State.Step).GuardedRows(pKey, .tRows)
+    If '$IsObject($Get(tRows)) || (tRows.%Size() = 0) Quit "(no step)"
+    Quit +tRows.%Get(0).%Get("truncated")
 }
 
 }

@@ -4158,6 +4158,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-14-the-messages-log-viewer.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: TestTheMessagesReadToolCarriesTheConsoleLogsRowsAndNotItsCursor compares the last row of two cap-5 newest-first windows read one call apart. A line arriving between them shifts every position, the last as much as the first; the comment claiming the last row is immune was corrected at code review. The calls are adjacent and nothing in the class writes to the file, and the assertion held across three full runs here.
 - 2026-09-18T16:02:26Z status=wontfix-accepted owner=6-14-the-messages-log-viewer by=cr note=reopen_if=that assertion reddens in CI with no code change, at which point compare the two windows as sets instead of by index
+- 2026-09-25T15:53:11Z status=routed owner=11-7-token-streaming by=ci note=reopen_if fired: CI run 36152768790 (e5c0bff5) reddened the assertion with no change to ReadTool or the messages source; fixed as 11.7 rework [CI] item
 
 ### DW-1145: messages-log.browser-spec restates alerts-log.browser-spec's harness rather than sharing it
 - source: spec-6-14-the-messages-log-viewer.md | severity: low | fix-risk: low | footprint: in-story
@@ -4637,6 +4638,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T05:38:50Z status=escalated owner=burndown by=cr note=clamp arithmetic itself is total and correct; the gap is the multiplicand, pre-existing since Epic 3
 - 2026-09-19T05:43:11Z by=adjudication note=AD-42s bound was corrected at its origin in this same story after this finding: the spine now says the clamp bounds what OcuPilot configures rather than the wall clock and names AD-31 as what bounds a dripping provider, so the decision sheet is left with only the product question of whether to bound an attempt at the transport
 - 2026-09-19T20:00:38Z status=routed owner=range-end-cleanup by=merge_gate note=DECIDED split it. The false claim is corrected now at its origin - AD-42's prose must say what Timeout actually bounds, one socket read re-armed on every Read inside %Net.HttpRequest's While loop, NOT one attempt and not a wall-clock budget. Leaving a wrong claim standing in an AD is the thing this project's own pitfalls list forbids. The transport-level attempt bound is the fix-risk=high half and is deferred: the exposure is bounded because the turn runs in a background job under its own wall-clock limit (AD-31), so a slow-drip provider cannot hang a turn indefinitely even though it can outrun AD-42's stated 300 s. Do not bound the transport mid-range for all providers to close a gap the turn limit already caps
+- 2026-09-25T15:49:29Z occurrence=11-7-token-streaming
 
 ### DW-1180: Gemini's FunctionCall and FunctionResponse do carry an optional id, so the reply direction discards one the provider sent and the request direction never echoes it
 - source: spec-10-1-the-message-and-tool-definition-adapters.md | severity: med | fix-risk: med | footprint: in-epic
@@ -6946,3 +6948,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-11-7-token-streaming.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: MessageAdapter.GEMINISTOPREASONS (:75) folds ten Gemini reasons into refusal; Loop routes every canonical refusal to PROVIDER.DECLINED (Story 11.7)
 - 2026-09-25T15:14:22Z status=open owner=11-7-token-streaming by=harvest note=in-story MED; for the 11.7 code review to patch or disposition
+- 2026-09-25T15:49:29Z status=decision-pending owner=burndown by=cr note=product call: fix contradicts Epic 10 pinned refusal map; rec. own code for Gemini tool-call failures

@@ -106,8 +106,9 @@ Parameter LEDGERVIEWMAXROWS As %Integer = 200;
 /// <parameter>OcuPilot.Kernel.Provider.Retry.RETRYBUDGETSECONDS</parameter> is at or below this,
 /// which the shipped defaults satisfy exactly. Neither stored value is bounded by anything else,
 /// and the deadline gates when an attempt may <i>start</i>, so an attempt already in flight when it
-/// passes still runs to its own timeout: <b>one call's true worst case is this plus the stored
-/// <property>TimeoutSeconds</property></b>, whatever the attempt bound is.</p>
+/// passes still runs, and <property>TimeoutSeconds</property> bounds each socket read, not the
+/// attempt (DW-1179): a streamed call, whose every chunk is a read, runs for as long as the model
+/// keeps writing.</p>
 Parameter PROVIDERCALLSECONDS As %Integer = 300;
 
 /// <p>Milliseconds between two writes of a streamed model call's text so far to its running step
