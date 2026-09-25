@@ -177,7 +177,7 @@ development_status:
   10-3-the-openai-compatible-adapter-and-local-models: done
   10-4-sampling-parameters-left-to-the-provider: done
   10-5-a-connection-test-that-answers-before-the-gateway-does: done
-  10-6-a-turn-survives-a-dropped-connection-and-a-create-says-creat: backlog
+  10-6-a-turn-survives-a-dropped-connection-and-a-create-says-creat: done
   epic-10-retrospective: optional
 
   epic-11: in-progress

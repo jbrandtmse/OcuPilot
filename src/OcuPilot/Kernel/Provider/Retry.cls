@@ -11,7 +11,9 @@
 /// <p><b>Nothing here decides whether a call may be retried at all.</b> A call that raised, and a
 /// call that timed out, are never retried whatever these answer (AD-42: the request may already
 /// have been processed); the base's loop is what enforces that, and these three answer only the
-/// question "the provider replied with this status -- again?".</p>
+/// question "the provider replied with this status -- again?". A transport failure before any
+/// status line is the one failure the base's loop retries, once, waiting
+/// <method>DelaySec</method> (AD-42).</p>
 Class OcuPilot.Kernel.Provider.Retry Extends %RegisteredObject
 {
 
