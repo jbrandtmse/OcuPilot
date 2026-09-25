@@ -19,6 +19,7 @@ import { ProcessDetailsPage } from '../areas/os-management/process-details.page'
 import { SystemUsagePage } from '../areas/os-management/system-usage.page';
 import { AuditingConfigPage } from '../areas/security/auditing-config.page';
 import { OAuthServerDescriptionFormPage } from '../areas/security/oauth-server-description-form.page';
+import { OAuthClientFormPage } from '../areas/security/oauth-client-form.page';
 import { TaskDetailsPage } from '../areas/tasks/details.page';
 import { HistoryPage } from '../areas/tasks/history.page';
 import { UpcomingPage } from '../areas/tasks/upcoming.page';
@@ -108,6 +109,7 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.ResourceList': ResourceListPage,
   'OcuPilot.Screen.Descriptor.X509Form': X509FormPage,
   'OcuPilot.Screen.Descriptor.OAuthServerDescriptionForm': OAuthServerDescriptionFormPage,
+  'OcuPilot.Screen.Descriptor.OAuthClientForm': OAuthClientFormPage,
   'OcuPilot.Screen.Descriptor.WalletSecretForm': WalletSecretFormPage,
   'OcuPilot.Screen.Descriptor.DeviceForm': DeviceFormPage,
 };

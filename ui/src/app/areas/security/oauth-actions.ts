@@ -10,13 +10,19 @@ export const OAUTH_SERVER_TAB_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.OAuthServ
 /** That tab's own route, which resolves its paired form through `createFormFor`. */
 export const OAUTH_SERVER_TAB_ROUTE = 'security/oauth';
 
-/** The declared primary action id: the command bar's Create, which opens the server description editor. */
+/** The Client configurations tab, whose Create opens the client configuration editor (Story 12.5). */
+export const OAUTH_CLIENT_TAB_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.OAuthClientTab';
+
+export const OAUTH_CLIENT_TAB_ROUTE = 'security/oauth/clients';
+
+/** The declared primary action id: the command bar's Create, which opens the tab's editor. */
 export const CREATE_ACTION = 'create';
 
 /**
- * The handler behind the OAuth 2.0 screen's Server descriptions tab's declared Create (AD-5, AD-19).
+ * The handlers behind the OAuth 2.0 screen's Server descriptions and Client configurations tabs'
+ * declared Create (AD-5, AD-19).
  *
- * The tab is served by the generic detail page, so its action is registered here, once, against the
+ * Each tab is served by the generic detail page, so its action is registered here, once, against the
  * descriptor's class name, and tab-scoped from the application root for the reason
  * `web-app-actions.ts` gives (DW-246). The route is resolved through `createFormFor`, never written,
  * and `withQuery` carries the namespace.
@@ -28,11 +34,12 @@ export class OAuthActions {
   private readonly actions = inject(ScreenActions);
 
   constructor() {
-    this.actions.register(OAUTH_SERVER_TAB_DESCRIPTOR, CREATE_ACTION, () => this.openCreate());
+    this.actions.register(OAUTH_SERVER_TAB_DESCRIPTOR, CREATE_ACTION, () => this.openCreate(OAUTH_SERVER_TAB_ROUTE));
+    this.actions.register(OAUTH_CLIENT_TAB_DESCRIPTOR, CREATE_ACTION, () => this.openCreate(OAUTH_CLIENT_TAB_ROUTE));
   }
 
-  private openCreate(): void {
-    const tab = screenForRoute(OAUTH_SERVER_TAB_ROUTE);
+  private openCreate(tabRoute: string): void {
+    const tab = screenForRoute(tabRoute);
     const editor = tab === null ? null : createFormFor(tab);
     if (editor === null) return;
     const router = this.injector.get(Router);

@@ -17,6 +17,7 @@ import { ResourceEditor } from './areas/permissions/resource-editor.store';
 import { WalletSecretForm } from './areas/security/wallet-secret-form.store';
 import { X509Form } from './areas/security/x509-form.store';
 import { OAuthServerDescriptionForm } from './areas/security/oauth-server-description-form.store';
+import { OAuthClientForm } from './areas/security/oauth-client-form.store';
 import { DeviceForm } from './areas/os-management/device-form.store';
 import { UserCreateForm } from './areas/permissions/user-create-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
@@ -1057,6 +1058,13 @@ describe('the shell frame', () => {
     oauthServerDescriptionForm.setToken('ocupilotappspecprobe000');
     expect(oauthServerDescriptionForm.token()).not.toBe('');
 
+    // The same answer for the OAuth 2.0 client configuration editor (Story 12.5): a client secret
+    // THIS principal typed and has not saved, in a root-provided store (AD-35). A create takes input
+    // before its form read is made.
+    const oauthClientForm = TestBed.inject(OAuthClientForm);
+    oauthClientForm.setSecret('ClientSecret', 'ocupilotappspecprobe000');
+    expect(oauthClientForm.secret('ClientSecret')).not.toBe('');
+
     // The same answer for the wallet secret form (Story 8.6): a value THIS principal typed and has
     // not saved, in a root-provided store (AD-35). A create in a collection takes input before its
     // form read is made.
@@ -1128,6 +1136,10 @@ describe('the shell frame', () => {
     // `App.verifyWhenSignedIn` -> this goes red, and the next principal's editor holds the previous
     // one's typed token.
     expect(oauthServerDescriptionForm.token()).toBe('');
+
+    // Mutation (Rule 19): delete `this.oauthClientForm.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's editor holds the previous one's typed client secret.
+    expect(oauthClientForm.secret('ClientSecret')).toBe('');
 
     // Mutation (Rule 19): delete `this.walletSecretForm.reset()` from `App.verifyWhenSignedIn` ->
     // this goes red, and the next principal's wallet form holds the previous one's typed value.

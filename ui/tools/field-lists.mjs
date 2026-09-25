@@ -77,6 +77,16 @@ const SOURCES = ['template', 'class', 'none'];
 const LITERAL_TYPES = ['string', 'number', 'boolean', 'null'];
 const LIST_KEYS = ['endpoint', 'source', 'method', 'class', 'type', 'envelope', 'rows'];
 const ROW_KEYS = ['path', 'shape', 'templateType', 'itemType'];
+
+/**
+ * The two keys a class-derived metadata row may add (Story 12.5): the member's `kind`, and a
+ * `VALUELIST` member's allowed `values`. Only a `class` list carries them, and `values` only beside
+ * a `kind`.
+ */
+const ROW_KIND_KEYS = ['kind', 'values'];
+
+/** The kinds a metadata member may carry. */
+export const MEMBER_KINDS = ['uri', 'text', 'list', 'integer', 'flag', 'json'];
 const PATH_RE = /^[A-Za-z0-9_%]+(\[\])*(\.[A-Za-z0-9_%]+(\[\])*)*$/;
 
 function isObject(value) {
@@ -157,9 +167,19 @@ export function checkLists(lists) {
     }
     const shapes = new Map();
     for (const row of list.rows) {
-      if (!isObject(row) || !sameKeys(row, ROW_KEYS) || ROW_KEYS.some((name) => typeof row[name] !== 'string')) {
+      const base = isObject(row) ? Object.fromEntries(Object.entries(row).filter(([name]) => !ROW_KIND_KEYS.includes(name))) : row;
+      if (!isObject(row) || !sameKeys(base, ROW_KEYS) || ROW_KEYS.some((name) => typeof row[name] !== 'string')) {
         problems.push(`FieldLists.cls: list ${key} has a row that is not exactly ${ROW_KEYS.join(', ')} strings`);
         continue;
+      }
+      if ('kind' in row || 'values' in row) {
+        const kindOk = list.source === 'class' && MEMBER_KINDS.includes(row.kind);
+        const valuesOk =
+          !('values' in row) ||
+          (Array.isArray(row.values) && row.values.length > 0 && row.values.every((value) => typeof value === 'string' && value !== ''));
+        if (!kindOk || !valuesOk) {
+          problems.push(`FieldLists.cls: list ${key} path ${row.path} carries a kind or values a class-derived member cannot`);
+        }
       }
       if (!PATH_RE.test(row.path)) problems.push(`FieldLists.cls: list ${key} path "${row.path}" is not a path`);
       if (shapes.has(row.path)) problems.push(`FieldLists.cls: list ${key} path ${row.path} appears twice`);

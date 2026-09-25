@@ -103,6 +103,137 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Quit tSC
 }
 
+/// <p>The secrets IRIS writes in plain text into its own audit rows, declared per vendor event
+/// (AD-35 as amended 2026-09-25, DW-1640): semicolon-separated
+/// <code>&lt;event&gt;=&lt;key&gt;[:&lt;key&gt;...]</code> entries, where <code>&lt;event&gt;</code>
+/// is the leading words of the row's <code>Description</code> under
+/// <parameter>VENDORSECRETSOURCE</parameter> and <code>&lt;key&gt;</code> a property or metadata
+/// member name whose value the row's <code>EventData</code> carries. Measured on a throwaway: the
+/// server definition rows carry <code>InitialAccessToken</code>, and the client and client metadata
+/// rows <code>registration_access_token</code>, each in a <code>modified</code> block, a property
+/// line or the metadata's JSON; the vendor masks the client secret, the password and the key sets
+/// itself. A secret found in any other event is a new entry here.</p>
+Parameter VENDORSECRETS = "Create OAuth2 Server Definition=InitialAccessToken:registration_access_token;Modify OAuth2 Server Definition=InitialAccessToken:registration_access_token;Create OAuth2 Client Metadata=registration_access_token;Modify OAuth2 Client Metadata=registration_access_token;Create OAuth2 Client=registration_access_token;Modify OAuth2 Client=registration_access_token";
+
+/// <p>The vendor event every <parameter>VENDORSECRETS</parameter> entry is a row of:
+/// <code>&lt;source&gt;/&lt;type&gt;/&lt;name&gt;</code>.</p>
+Parameter VENDORSECRETSOURCE = "%System/%Security/OAuth2";
+
+/// <p>What a masked value reads, the vendor's own mask.</p>
+Parameter MASK = "*****";
+
+/// <p>Mask, in place, the declared secrets (<parameter>VENDORSECRETS</parameter>) in the
+/// <code>EventData</code> of every row of <var>pRows</var>, an audit record read's rows.</p>
+/// <p><b>Caller contract:</b> <class>OcuPilot.Screen.Read</class> calls it on every
+/// <parameter>RECORDENDPOINT</parameter> answer before it projects a row, so the Logs audit screen and
+/// <code>logs.audit.read</code> read the same masked rows. A row of another event, or a value a
+/// declared key does not name, is unchanged.</p>
+ClassMethod MaskVendorSecrets(pRows As %DynamicArray)
+{
+    If '$IsObject(pRows) || 'pRows.%IsA("%Library.DynamicArray") Quit
+    Set tIterator = pRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If '$IsObject(tRow) || 'tRow.%IsA("%Library.DynamicObject") Continue
+        If tRow.%GetTypeOf("EventData") '= "string" Continue
+        Set tKeys = ..SecretKeys(tRow)
+        If tKeys = "" Continue
+        Do tRow.%Set("EventData", ..MaskedEventData(tRow.%Get("EventData"), tKeys), "string")
+    }
+}
+
+/// <p>The keys <parameter>VENDORSECRETS</parameter> declares for <var>pRow</var>'s event, as a
+/// <class>%List</class>, or <code>""</code>. The longest declared event its <code>Description</code>
+/// begins with, as whole words, wins.</p>
+ClassMethod SecretKeys(pRow As %DynamicObject) As %List
+{
+    Set tSource = pRow.%Get("EventSource") _ "/" _ pRow.%Get("EventType") _ "/" _ pRow.%Get("Event")
+    If tSource '= ..#VENDORSECRETSOURCE Quit ""
+    Set tDescription = pRow.%Get("Description")
+    Set (tKeys, tMatched) = ""
+    For tI = 1:1:$Length(..#VENDORSECRETS, ";") {
+        Set tEntry = $Piece(..#VENDORSECRETS, ";", tI)
+        Set tEvent = $Piece(tEntry, "=", 1)
+        If (tDescription '= tEvent) && ($Extract(tDescription, 1, $Length(tEvent) + 1) '= (tEvent _ " ")) Continue
+        If $Length(tEvent) <= $Length(tMatched) Continue
+        Set tMatched = tEvent
+        Set tKeys = $ListFromString($Piece(tEntry, "=", 2), ":")
+    }
+    Quit tKeys
+}
+
+/// <p><var>pData</var>, a vendor row's <code>EventData</code>, with each value of a key in
+/// <var>pKeys</var> replaced by <parameter>MASK</parameter> in the three places the vendor writes one:
+/// the <code>New value</code> and <code>Old value</code> lines under a
+/// <code>&lt;key&gt; modified:</code> or <code>metadata.&lt;key&gt; modified:</code> line; a
+/// <code>&lt;key&gt;:</code> property line; and the member of that name in a
+/// <code>Metadata:</code> line's JSON. An empty value stays empty.</p>
+ClassMethod MaskedEventData(pData As %String, pKeys As %List) As %String
+{
+    Set tBreak = $Char(13, 10)
+    If pData '[ tBreak Set tBreak = $Char(10)
+    Set tOut = ""
+    Set tMasking = 0
+    For tI = 1:1:$Length(pData, tBreak) {
+        Set tLine = $Piece(pData, tBreak, tI)
+        Set tTrimmed = $ZStrip(tLine, "<>W")
+        If tMasking && (($Extract(tTrimmed, 1, 10) = "New value:") || ($Extract(tTrimmed, 1, 10) = "Old value:")) {
+            Set tLine = ..MaskedAfter(tLine, ":")
+            Set tMasking = tMasking - 1
+        } Else {
+            Set tMasking = 0
+            For tK = 1:1:$ListLength(pKeys) {
+                Set tKey = $List(pKeys, tK)
+                If (tTrimmed = (tKey _ " modified:")) || (tTrimmed = ("metadata." _ tKey _ " modified:")) {
+                    Set tMasking = 2
+                } ElseIf $Extract(tTrimmed, 1, $Length(tKey) + 1) = (tKey _ ":") {
+                    Set tLine = ..MaskedAfter(tLine, ":")
+                }
+            }
+            If $Extract(tTrimmed, 1, 9) = "Metadata:" Set tLine = ..MaskedMetadataLine(tLine, pKeys)
+        }
+        Set tOut = tOut _ $Select(tI = 1: "", 1: tBreak) _ tLine
+    }
+    Quit tOut
+}
+
+/// <p><var>pLine</var> with the non-empty text after its first <var>pDelimiter</var> and the spaces
+/// that follow it replaced by <parameter>MASK</parameter>.</p>
+ClassMethod MaskedAfter(pLine As %String, pDelimiter As %String) As %String [ Private ]
+{
+    Set tHead = $Piece(pLine, pDelimiter, 1) _ pDelimiter
+    Set tRest = $Extract(pLine, $Length(tHead) + 1, *)
+    If $ZStrip(tRest, "<>W") = "" Quit pLine
+    Set tPad = $Extract(tRest, 1, $Length(tRest) - $Length($ZStrip(tRest, "<W")))
+    Quit tHead _ tPad _ ..#MASK
+}
+
+/// <p>A <code>Metadata:</code> property line <var>pLine</var> with each member <var>pKeys</var> names
+/// in its JSON masked. A line whose JSON does not parse is answered as a masked line, because a
+/// declared secret may sit inside it.</p>
+ClassMethod MaskedMetadataLine(pLine As %String, pKeys As %List) As %String [ Private ]
+{
+    Set tHead = $Piece(pLine, ":", 1) _ ":"
+    Set tRest = $Extract(pLine, $Length(tHead) + 1, *)
+    Set tJson = $ZStrip(tRest, "<>W")
+    If tJson = "" Quit pLine
+    Set tPad = $Extract(tRest, 1, $Length(tRest) - $Length($ZStrip(tRest, "<W")))
+    Try {
+        Set tObject = ##class(%DynamicAbstractObject).%FromJSON(tJson)
+        If '$IsObject(tObject) || 'tObject.%IsA("%Library.DynamicObject") {
+            Set tJson = ..#MASK
+            Quit
+        }
+        For tK = 1:1:$ListLength(pKeys) {
+            Set tKey = $List(pKeys, tK)
+            If (tObject.%GetTypeOf(tKey) = "string") && (tObject.%Get(tKey) '= "") Do tObject.%Set(tKey, ..#MASK, "string")
+        }
+        Set tJson = tObject.%ToJSON()
+    } Catch {
+        Set tJson = ..#MASK
+    }
+    Quit tHead _ tPad _ tJson
+}
+
 /// <p>The vendor body for <var>pType</var>, composed from <var>pQuery</var>, or <code>""</code> when
 /// the query cannot supply it.</p>
 /// <p><parameter>COPYTYPE</parameter>: <code>{AuditCopyNamespace, DeleteAfterCopy: false,

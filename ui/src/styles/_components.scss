@@ -5555,3 +5555,67 @@ body {
   block-size: 24px;
   margin: 0;
 }
+
+// --- The OAuth 2.0 client configuration editor (Story 12.5) ----------------------------------
+//
+// Four titled sections in the classic page's tab order, untabbed, each a column of fields; the
+// grant types and the four algorithm groups are groups inside them. The read-only metadata table
+// takes the server description editor's treatment.
+.ocu-oauth-client-section,
+.ocu-oauth-client-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-4);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ocu-oauth-client-section legend,
+.ocu-oauth-client-group legend {
+  margin-block-end: var(--ocu-space-2);
+  padding: 0;
+}
+
+.ocu-oauth-client-section > legend {
+  @include typo.ocu-type('title');
+
+  color: var(--ocu-on-surface);
+}
+
+.ocu-oauth-client-group .ocu-field-checkbox input[type='checkbox'],
+.ocu-oauth-client-section .ocu-field-checkbox input[type='checkbox'] {
+  inline-size: 24px;
+  block-size: 24px;
+  margin: 0;
+}
+
+.ocu-oauth-client-metadata-table {
+  @include typo.ocu-type('body');
+
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--ocu-on-surface);
+  table-layout: fixed;
+}
+
+.ocu-oauth-client-metadata-table caption {
+  margin-block-end: var(--ocu-space-2);
+  text-align: start;
+}
+
+.ocu-oauth-client-metadata-table th,
+.ocu-oauth-client-metadata-table td {
+  padding: var(--ocu-space-1) var(--ocu-space-2);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+  text-align: start;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.ocu-oauth-client-metadata-table th {
+  width: 40%;
+  color: var(--ocu-on-surface-variant);
+  font-weight: normal;
+}

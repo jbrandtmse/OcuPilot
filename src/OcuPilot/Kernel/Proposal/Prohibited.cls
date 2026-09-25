@@ -390,6 +390,7 @@ ClassMethod CoveredTypes() As %List
 ClassMethod PermittedChangeFields(pType As %String) As %List
 {
     If pType = ..#TYPEOAUTHSERVERDEF Quit ..OAuthServerFields()
+    If pType = ..#TYPEOAUTHCLIENT Quit ..OAuthClientFields()
     If (pType = ..#TYPEAUDITEVENT) || (pType = ..#TYPEAUDITUSEREVENT) Quit $ListBuild(..#FIELDENABLED)
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "Enabled", "Resource")
     If pType = ..#TYPEUSER Quit $ListBuild(..#FIELDENABLED, ..#FIELDROLES, ..#FIELDCHANGEPASSWORD)
@@ -463,6 +464,7 @@ ClassMethod AlwaysProhibitedFields(pType As %String) As %List
 ClassMethod PermittedCreateFields(pType As %String) As %List
 {
     If pType = ..#TYPEOAUTHSERVERDEF Quit ..OAuthServerFields()
+    If pType = ..#TYPEOAUTHCLIENT Quit ..OAuthClientFields()
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "DispatchClass", "Enabled", "MatchRoles", "NameSpace", "Recurse", "Resource", "WSGIAppLocation", "WSGIAppName", "WSGICallable", "WSGIType")
     If pType = ..#TYPEUSER Quit $ListBuild("ExpirationDate", "FullName", "NameSpace", "Routine", ..#FIELDROLES)
     If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
@@ -1184,15 +1186,24 @@ ClassMethod OAuthServerFields() As %List [ Private ]
     Quit $ListBuild("IssuerEndpoint", "SSLConfiguration", "ServerCredentials", "Metadata")
 }
 
+/// <p>An OAuth 2.0 client configuration's settable fields, create and change alike: the twelve
+/// <code>Security.OAuth2.Client.ClientConfiguration</code> template fields (Story 12.5). The
+/// application name is the id and never changes. Nothing here is self-protective: OcuPilot owns no
+/// OAuth 2.0 object.</p>
+ClassMethod OAuthClientFields() As %List [ Private ]
+{
+    Quit $ListBuild("ServerDefinition", "Enabled", "Description", "ClientType", "SSLConfiguration", "RedirectionEndpoint", "JWTAudience", "JWTInterval", "ClientId", "ClientCredentials", "Metadata", "DefaultScope")
+}
+
 /// <p>The OAuth 2.0 client configuration, server client and server description predicates,
 /// <var>pType</var> being one of the three: the reviewed-few sweep over the type's permitted list
-/// (empty for the first two, <method>OAuthServerFields</method> for a server description), and
-/// nothing else.</p>
+/// (<method>OAuthClientFields</method> for a client configuration, empty for a server client,
+/// <method>OAuthServerFields</method> for a server description), and nothing else.</p>
 /// <p><b>No predicate exists because AD-10 names no OAuth 2.0 effect.</b> Its Release 1 set is
 /// accounts, privilege grants, the path serving OcuPilot and system processes, and install creates
 /// no OAuth 2.0 object, so no configuration, client or description is OcuPilot's own. The one write
-/// over either of the first two types is its bodyless delete (AD-51), which sets no field, so every
-/// changed field a proposal could carry is one nobody has reviewed and is refused
+/// over a server client is its bodyless delete (AD-51), which sets no field, so every changed field
+/// a proposal could carry is one nobody has reviewed and is refused
 /// <parameter>UNCOVEREDFIELD</parameter>.
 /// The card's removal rows are the declared fingerprint subject, which <method>Changed</method>
 /// skips.</p>

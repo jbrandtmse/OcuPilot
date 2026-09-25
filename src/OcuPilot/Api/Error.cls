@@ -2319,7 +2319,7 @@ Parameter REASONOAUTHMETADATAUNKNOWN = "That is not a metadata member this insta
 /// <p>Violation code: a metadata member's value is not the member's shape.</p>
 Parameter OAUTHMETADATASHAPE = "OAUTH.METADATA.SHAPE";
 
-Parameter REASONOAUTHMETADATASHAPE = "That metadata member takes a different kind of value: a URL as text, a list as an array of text, or a flag as true or false.";
+Parameter REASONOAUTHMETADATASHAPE = "That metadata member takes a different kind of value: a URL or text as text, a list as an array of text, a number as a whole number, or a flag as true or false.";
 
 /// <p>Machine code (409): a client configuration still uses the server description, which the
 /// vendor refuses to delete.</p>
@@ -2377,7 +2377,7 @@ ClassMethod ReasonForOAuth(pCode As %String) As %String
     If pCode = ..#OAUTHDISCOVERYSTATUS Quit ..#REASONOAUTHDISCOVERYSTATUS
     If pCode = ..#OAUTHDISCOVERYCONTENT Quit ..#REASONOAUTHDISCOVERYCONTENT
     If pCode = ..#OAUTHDISCOVERYISSUER Quit ..#REASONOAUTHDISCOVERYISSUER
-    Quit ""
+    Quit ..ReasonForOAuthClient(pCode)
 }
 
 /// <p>Every <code>OAUTH.*</code> field-level violation code, as a <class>%List</class>, for the
@@ -2385,6 +2385,140 @@ ClassMethod ReasonForOAuth(pCode As %String) As %String
 ClassMethod OAuthViolationCodes() As %List
 {
     Quit $ListBuild(..#OAUTHISSUERENDPOINTREQUIRED, ..#OAUTHISSUERENDPOINTSHAPE, ..#OAUTHISSUERENDPOINTTAKEN, ..#OAUTHSSLCONFIGURATIONREQUIRED, ..#OAUTHAUTHORIZATIONENDPOINTREQUIRED, ..#OAUTHTOKENENDPOINTREQUIRED, ..#OAUTHSERVERCREDENTIALSABSENT, ..#OAUTHMETADATAUNKNOWN, ..#OAUTHMETADATASHAPE)
+}
+
+/// <p>Machine code (Story 12.5): the client configuration editor refused a Save, the envelope's
+/// <code>detail.violations</code> naming each field and its rule (AD-39); also the 422 the port
+/// answers when the vendor refuses a client configuration write with a 500.</p>
+Parameter OAUTHCLIENTVALIDATION = "OAUTH.CLIENTVALIDATION";
+
+Parameter REASONOAUTHCLIENTVALIDATION = "This instance refused the client configuration.";
+
+/// <p>Violation code: no application name.</p>
+Parameter OAUTHAPPLICATIONNAMEREQUIRED = "OAUTH.APPLICATIONNAME.REQUIRED";
+
+Parameter REASONOAUTHAPPLICATIONNAMEREQUIRED = "Give the application name.";
+
+/// <p>Violation code: the application name is longer than 128 characters or carries a control
+/// character.</p>
+Parameter OAUTHAPPLICATIONNAMESHAPE = "OAUTH.APPLICATIONNAME.SHAPE";
+
+Parameter REASONOAUTHAPPLICATIONNAMESHAPE = "The application name is 1 to 128 characters with no control character.";
+
+/// <p>Violation code: a client configuration already carries that application name.</p>
+Parameter OAUTHAPPLICATIONNAMETAKEN = "OAUTH.APPLICATIONNAME.TAKEN";
+
+Parameter REASONOAUTHAPPLICATIONNAMETAKEN = "This instance already has a client configuration with that application name. Choose a different one.";
+
+/// <p>Machine code: no client configuration carries that application name (404).</p>
+Parameter OAUTHAPPLICATIONNAMEABSENT = "OAUTH.APPLICATIONNAME.ABSENT";
+
+Parameter REASONOAUTHAPPLICATIONNAMEABSENT = "This instance has no client configuration with that application name.";
+
+/// <p>Violation code: no server description.</p>
+Parameter OAUTHSERVERDEFINITIONREQUIRED = "OAUTH.SERVERDEFINITION.REQUIRED";
+
+Parameter REASONOAUTHSERVERDEFINITIONREQUIRED = "Choose the server description.";
+
+/// <p>Violation code: the server description named is not one this instance holds.</p>
+Parameter OAUTHSERVERDEFINITIONABSENT = "OAUTH.SERVERDEFINITION.ABSENT";
+
+Parameter REASONOAUTHSERVERDEFINITIONABSENT = "This instance has no server description with that ID.";
+
+/// <p>Violation code: a client type outside the vendor's three.</p>
+Parameter OAUTHCLIENTTYPEVALUE = "OAUTH.CLIENTTYPE.VALUE";
+
+Parameter REASONOAUTHCLIENTTYPEVALUE = "Choose confidential, public or resource.";
+
+/// <p>Violation code: no redirect URL on a client that is not a resource server.</p>
+Parameter OAUTHREDIRECTIONENDPOINTREQUIRED = "OAUTH.REDIRECTIONENDPOINT.REQUIRED";
+
+Parameter REASONOAUTHREDIRECTIONENDPOINTREQUIRED = "Give the redirect URL. Only a resource server has none.";
+
+/// <p>Violation code: the redirect URL is not an absolute <code>http</code> or <code>https</code>
+/// URL with a host.</p>
+Parameter OAUTHREDIRECTIONENDPOINTSHAPE = "OAUTH.REDIRECTIONENDPOINT.SHAPE";
+
+Parameter REASONOAUTHREDIRECTIONENDPOINTSHAPE = "The redirect URL is an absolute http or https URL with a host.";
+
+/// <p>Violation code: the X.509 credential named is not one the caller can use, or has no private
+/// key.</p>
+Parameter OAUTHCLIENTCREDENTIALSABSENT = "OAUTH.CLIENTCREDENTIALS.ABSENT";
+
+Parameter REASONOAUTHCLIENTCREDENTIALSABSENT = "This instance has no X.509 credential with that name and a private key that you can use.";
+
+/// <p>Violation code: the JWT interval is not a whole number.</p>
+Parameter OAUTHJWTINTERVALSHAPE = "OAUTH.JWTINTERVAL.SHAPE";
+
+Parameter REASONOAUTHJWTINTERVALSHAPE = "The JWT interval is a whole number of seconds.";
+
+/// <p>Violation code: a metadata member with a fixed set of values was given another.</p>
+Parameter OAUTHMETADATAVALUE = "OAUTH.METADATA.VALUE";
+
+Parameter REASONOAUTHMETADATAVALUE = "Choose one of that member's values.";
+
+/// <p>Machine code (422): a secrets write carried no secret, which the vendor would answer by saving
+/// the configuration unchanged.</p>
+Parameter OAUTHCLIENTNOSECRET = "OAUTH.CLIENTNOSECRET";
+
+Parameter REASONOAUTHCLIENTNOSECRET = "Enter at least one secret.";
+
+/// <p>Machine code (409): the client's keys come from its X.509 credential, and the vendor answers a
+/// rotation of them 200 while changing nothing.</p>
+Parameter OAUTHCLIENTKEYSFROMCREDENTIALS = "OAUTH.CLIENTKEYSFROMCREDENTIALS";
+
+Parameter REASONOAUTHCLIENTKEYSFROMCREDENTIALS = "This client's keys come from its X.509 credential. Rotate that credential instead.";
+
+/// <p>Machine code (409): the client already has a client ID or a registration URI.</p>
+Parameter OAUTHCLIENTREGISTERED = "OAUTH.CLIENTREGISTERED";
+
+Parameter REASONOAUTHCLIENTREGISTERED = "This client is already registered.";
+
+/// <p>Machine code (409): the client's server description publishes no registration endpoint.</p>
+Parameter OAUTHCLIENTNOREGISTRATIONENDPOINT = "OAUTH.CLIENTNOREGISTRATIONENDPOINT";
+
+Parameter REASONOAUTHCLIENTNOREGISTRATIONENDPOINT = "The server description has no registration endpoint.";
+
+/// <p>Machine code (422): the authorization server did not register the client. The producer
+/// replaces <code>{issuer}</code>.</p>
+Parameter OAUTHCLIENTREGISTRATIONFAILED = "OAUTH.CLIENTREGISTRATIONFAILED";
+
+Parameter REASONOAUTHCLIENTREGISTRATIONFAILED = "{issuer} did not register this client.";
+
+/// <p>The reason a Save of a registered client carries when the client saved on this instance and
+/// the authorization server's copy of its registration was not updated.</p>
+Parameter REASONOAUTHCLIENTREGISTRATIONNOTUPDATED = "It could not be reached, or it refused the change.";
+
+/// <p>The sentence for a Story 12.5 <code>OAUTH.*</code> code, placeholders unfilled, or
+/// <code>""</code>.</p>
+ClassMethod ReasonForOAuthClient(pCode As %String) As %String
+{
+    If pCode = ..#OAUTHCLIENTVALIDATION Quit ..#REASONOAUTHCLIENTVALIDATION
+    If pCode = ..#OAUTHAPPLICATIONNAMEREQUIRED Quit ..#REASONOAUTHAPPLICATIONNAMEREQUIRED
+    If pCode = ..#OAUTHAPPLICATIONNAMESHAPE Quit ..#REASONOAUTHAPPLICATIONNAMESHAPE
+    If pCode = ..#OAUTHAPPLICATIONNAMETAKEN Quit ..#REASONOAUTHAPPLICATIONNAMETAKEN
+    If pCode = ..#OAUTHAPPLICATIONNAMEABSENT Quit ..#REASONOAUTHAPPLICATIONNAMEABSENT
+    If pCode = ..#OAUTHSERVERDEFINITIONREQUIRED Quit ..#REASONOAUTHSERVERDEFINITIONREQUIRED
+    If pCode = ..#OAUTHSERVERDEFINITIONABSENT Quit ..#REASONOAUTHSERVERDEFINITIONABSENT
+    If pCode = ..#OAUTHCLIENTTYPEVALUE Quit ..#REASONOAUTHCLIENTTYPEVALUE
+    If pCode = ..#OAUTHREDIRECTIONENDPOINTREQUIRED Quit ..#REASONOAUTHREDIRECTIONENDPOINTREQUIRED
+    If pCode = ..#OAUTHREDIRECTIONENDPOINTSHAPE Quit ..#REASONOAUTHREDIRECTIONENDPOINTSHAPE
+    If pCode = ..#OAUTHCLIENTCREDENTIALSABSENT Quit ..#REASONOAUTHCLIENTCREDENTIALSABSENT
+    If pCode = ..#OAUTHJWTINTERVALSHAPE Quit ..#REASONOAUTHJWTINTERVALSHAPE
+    If pCode = ..#OAUTHMETADATAVALUE Quit ..#REASONOAUTHMETADATAVALUE
+    If pCode = ..#OAUTHCLIENTNOSECRET Quit ..#REASONOAUTHCLIENTNOSECRET
+    If pCode = ..#OAUTHCLIENTKEYSFROMCREDENTIALS Quit ..#REASONOAUTHCLIENTKEYSFROMCREDENTIALS
+    If pCode = ..#OAUTHCLIENTREGISTERED Quit ..#REASONOAUTHCLIENTREGISTERED
+    If pCode = ..#OAUTHCLIENTNOREGISTRATIONENDPOINT Quit ..#REASONOAUTHCLIENTNOREGISTRATIONENDPOINT
+    If pCode = ..#OAUTHCLIENTREGISTRATIONFAILED Quit ..#REASONOAUTHCLIENTREGISTRATIONFAILED
+    Quit ""
+}
+
+/// <p>Every field-level violation code the client configuration editor's rules produce, as a
+/// <class>%List</class>, for its form read (Story 12.5).</p>
+ClassMethod OAuthClientViolationCodes() As %List
+{
+    Quit $ListBuild(..#OAUTHAPPLICATIONNAMEREQUIRED, ..#OAUTHAPPLICATIONNAMESHAPE, ..#OAUTHAPPLICATIONNAMETAKEN, ..#OAUTHSERVERDEFINITIONREQUIRED, ..#OAUTHSERVERDEFINITIONABSENT, ..#OAUTHCLIENTTYPEVALUE, ..#OAUTHSSLCONFIGURATIONREQUIRED, ..#OAUTHREDIRECTIONENDPOINTREQUIRED, ..#OAUTHREDIRECTIONENDPOINTSHAPE, ..#OAUTHCLIENTCREDENTIALSABSENT, ..#OAUTHJWTINTERVALSHAPE, ..#OAUTHMETADATAUNKNOWN, ..#OAUTHMETADATASHAPE, ..#OAUTHMETADATAVALUE)
 }
 
 /// <p>Violation code (AD-39): the vendor refused the request because a body field it requires was

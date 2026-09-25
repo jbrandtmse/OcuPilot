@@ -48,7 +48,7 @@ Method AssertActionDeleteOverTheTabsOwnPairs(pName As %String, pClass As %String
     Do $$$AssertEquals(tTool.%Get("class"), pClass, pName _ ": answered by its own class")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Tool.Registry).FulfilmentOf(tTool), "instance", pName _ ": fulfilled on the instance")
 
-    Do $$$AssertEquals($ClassMethod(pClass, "PortClass"), "OcuPilot.Port.AdminPort", pName _ ": behind the admin port")
+    Do $$$AssertEquals($ClassMethod(pClass, "PortClass"), $Select(pClass = ..#CLIENTTOOLCLASS: "OcuPilot.Port.OAuthClientPort", 1: "OcuPilot.Port.AdminPort"), pName _ ": behind its port")
     Do $$$AssertEquals($ClassMethod(pClass, "Endpoint"), pEndpoint, pName _ ": over " _ pEndpoint)
     Do $$$AssertEquals($ClassMethod(pClass, "IdArgument"), pIdArgument, pName _ ": named by " _ pIdArgument)
     Do $$$AssertEquals($ClassMethod(pClass, "IdParam"), pIdParam, pName _ ": sent as the vendor's " _ pIdParam)
@@ -116,11 +116,10 @@ ClassMethod Fresh(pTool As %String, pDescription As %String = "before") As %Dyna
 
 /// <p>AC4, AD-10: each type is covered. A subject-only delete, with the tool's own removal rows as
 /// its diff, is not prohibited; a diff naming a field outside the subject that the payload changes
-/// -- <code>Description</code> for a configuration, <code>DefaultScope</code> and <code>Enabled</code>
-/// for a server client, whose subject carries its description -- is refused
-/// <code>PROHIBITED.UNCOVEREDFIELD</code>,
-/// because the reviewed-few list is empty. A subject field is the fingerprint's to adjudicate, not
-/// this sweep's.</p>
+/// -- <code>PublicJWKS</code> for a configuration, outside its reviewed list, <code>DefaultScope</code>
+/// and <code>Enabled</code> for a server client, whose subject carries its description and whose
+/// reviewed list is empty -- is refused <code>PROHIBITED.UNCOVEREDFIELD</code>. A subject field is the
+/// fingerprint's to adjudicate, not this sweep's.</p>
 /// <p>Mutation (Rule 19): drop either type from
 /// <parameter>OcuPilot.Kernel.Proposal.Prohibited.COVEREDTYPES</parameter> -- its subject-only leg
 /// is refused <code>PROHIBITED.UNCOVERED</code> and goes red. Send the server client past the
@@ -130,7 +129,7 @@ ClassMethod Fresh(pTool As %String, pDescription As %String = "before") As %Dyna
 Method TestEachOAuthTypeIsCoveredAndRefusesAChangedField()
 {
     Set tUncoveredField = $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "UNCOVEREDFIELD")
-    For tCase = $ListBuild(..#CLIENTTOOL, ..#CLIENTTOOLCLASS, "oauth2-client-configuration", "OcuPilotTestDelete", "Description"), $ListBuild(..#SERVERCLIENTTOOL, ..#SERVERCLIENTTOOLCLASS, "oauth2-server-client", "probe-client-id", "DefaultScope"), $ListBuild(..#SERVERCLIENTTOOL, ..#SERVERCLIENTTOOLCLASS, "oauth2-server-client", "probe-client-id", "Enabled") {
+    For tCase = $ListBuild(..#CLIENTTOOL, ..#CLIENTTOOLCLASS, "oauth2-client-configuration", "OcuPilotTestDelete", "PublicJWKS"), $ListBuild(..#SERVERCLIENTTOOL, ..#SERVERCLIENTTOOLCLASS, "oauth2-server-client", "probe-client-id", "DefaultScope"), $ListBuild(..#SERVERCLIENTTOOL, ..#SERVERCLIENTTOOLCLASS, "oauth2-server-client", "probe-client-id", "Enabled") {
         Set tTool = $List(tCase, 1)
         Set tClass = $List(tCase, 2)
         Set tType = $List(tCase, 3)
@@ -157,7 +156,7 @@ Method TestEachOAuthTypeIsCoveredAndRefusesAChangedField()
         Do $$$AssertEquals(tProhibits, 1, tTool _ ": and prohibits it")
         Do $$$AssertEquals(tCode, tUncoveredField, tTool _ ": as a field nobody has reviewed")
     }
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("oauth2-client-configuration"), "", "no client configuration field is reviewed")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("oauth2-client-configuration")), "ServerDefinition,Enabled,Description,ClientType,SSLConfiguration,RedirectionEndpoint,JWTAudience,JWTInterval,ClientId,ClientCredentials,Metadata,DefaultScope", "the client configuration's reviewed fields are exactly the template's twelve")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("oauth2-server-client"), "", "and no server client field")
 }
 
@@ -182,9 +181,9 @@ Method TestAReadWithoutTheClientTypeIsAPreconditionProblem()
 
 /// <p>AC5: no <code>Security.OAuth2.*</code> endpoint merges (AD-4), so every registered write tool
 /// over one is bodyless -- <code>SENDSBODY</code> 0 and its <code>&lt;endpoint&gt;/&lt;type&gt;</code>
-/// in the port's <code>BODYLESSTYPES</code> --, a <code>PUT</code> merge write whose body is
-/// <method>OcuPilot.Kernel.Proposal.Mint.Merge</method>'s complete property set over a fresh read, a
-/// <code>POST</code> create (AD-54), a secret-body write (AD-56) or a type its port composes (AD-51).
+/// in the port's <code>BODYLESSTYPES</code> --, a create (AD-54), a <code>PUT</code> merge write whose
+/// body is <method>OcuPilot.Kernel.Proposal.Mint.Merge</method>'s complete property set over a fresh
+/// read, a secret-body write (AD-56) or a type its port composes (AD-51).
 /// Each half is named exactly.</p>
 /// <p>Mutation (Rule 19): set <parameter>OcuPilot.Screen.Tool.OAuthClientDelete.SENDSBODY</parameter>
 /// to 1 and its <parameter>OcuPilot.Screen.Tool.OAuthClientDelete.FINGERPRINTSUBJECT</parameter> to
@@ -207,10 +206,10 @@ Method TestEveryOAuthWriteToolIsBodylessOrAMerge()
         Set tHalf = ""
         If 'tSends && ##class(OcuPilot.Port.AdminPort).IsBodyless(tEndpoint, tType) {
             Set tHalf = "bodyless"
+        } ElseIf tSends && $Parameter(tClass, "CREATES") && ((tType = "POST") || (tType = "PUT")) {
+            Set tHalf = "create"
         } ElseIf tSends && (tType = "PUT") && ($ClassMethod(tClass, "FingerprintSubject") = "") {
             Set tHalf = "merge"
-        } ElseIf tSends && (tType = "POST") && $Parameter(tClass, "CREATES") {
-            Set tHalf = "create"
         } ElseIf 'tSends && ($Parameter(tClass, "SECRETBODY") '= "") {
             Set tHalf = "secret"
         } ElseIf 'tSends && $ListFind($ListFromString($Parameter($ClassMethod(tClass, "PortClass"), "COMPOSEDTYPES")), tEndpoint _ "/" _ tType) {
@@ -223,10 +222,10 @@ Method TestEveryOAuthWriteToolIsBodylessOrAMerge()
         }
     }
     Do $$$AssertEquals($ListToString(tNeither), "", "every OAuth 2.0 write tool is in one half")
-    Do $$$AssertEquals(..Half(.tByHalf, "bodyless"), "permissions.users.revoketokens," _ ..#CLIENTTOOL _ "," _ ..#SERVERCLIENTTOOL _ ",security.oauthserverdescriptions.delete", "the bodyless half is exactly the three deletes and Story 12.2's token revoke")
-    Do $$$AssertEquals(..Half(.tByHalf, "merge"), "security.oauthserverdescriptions.update", "the merge half is exactly Story 12.4's edit")
-    Do $$$AssertEquals(..Half(.tByHalf, "create"), "security.oauthserverdescriptions.create", "the create half is exactly Story 12.4's create")
-    Do $$$AssertEquals(..Half(.tByHalf, "secret"), "security.oauthserverdescriptions.settoken", "the secret-body half is exactly Story 12.4's token write")
+    Do $$$AssertEquals(..Half(.tByHalf, "bodyless"), "permissions.users.revoketokens," _ ..#CLIENTTOOL _ ",security.oauthclients.register,security.oauthclients.rotatekeys," _ ..#SERVERCLIENTTOOL _ ",security.oauthserverdescriptions.delete", "the bodyless half is exactly the three deletes, Story 12.2's token revoke and Story 12.5's registration and key rotation")
+    Do $$$AssertEquals(..Half(.tByHalf, "merge"), "security.oauthclients.update,security.oauthserverdescriptions.update", "the merge half is exactly Stories 12.4's and 12.5's edits")
+    Do $$$AssertEquals(..Half(.tByHalf, "create"), "security.oauthclients.create,security.oauthserverdescriptions.create", "the create half is exactly Stories 12.4's and 12.5's creates")
+    Do $$$AssertEquals(..Half(.tByHalf, "secret"), "security.oauthclients.setsecrets,security.oauthserverdescriptions.settoken", "the secret-body half is exactly Story 12.4's token write and Story 12.5's client secrets")
     Do $$$AssertEquals(..Half(.tByHalf, "composed"), "security.oauthserverdescriptions.updatejwks", "and the composed half exactly Story 12.4's key-set refresh")
 }
 

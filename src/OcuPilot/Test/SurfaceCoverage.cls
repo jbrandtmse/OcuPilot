@@ -75,6 +75,7 @@ XData Coverage
 <screen name="OAuthClientTab" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="OAuthResourceServerTab" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="OAuthServerClientTab" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
+<screen name="OAuthClientForm" class="OcuPilot.Test.OAuthClientCreate" method="TestTheEditorIsBuiltUnlistedOverTheTabsPairs"/>
 <screen name="OAuthServerDescriptionForm" class="OcuPilot.Test.OAuthServerCreate" method="TestTheEditorIsBuiltUnlistedOverTheTabsPairs"/>
 <screen name="OAuthServerDescriptionTab" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="OAuthServerTab" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
@@ -142,6 +143,11 @@ XData Coverage
 <tool name="security.oauthserverdescriptions.delete" class="OcuPilot.Test.OAuthServerDelete" method="TestTheAgentsDeleteIsMintedDestructiveAndConfirmed"/>
 <tool name="security.oauthserverdescriptions.updatejwks" class="OcuPilot.Test.OAuthServerJwks" method="TestTheAgentsRefreshIsMintedAndConfirmed"/>
 <tool name="security.oauthserverdescriptions.settoken" class="OcuPilot.Test.OAuthServerToken" method="TestTheAgentsTokenIsAskedAtConfirmAndNeverStored"/>
+<tool name="security.oauthclients.create" class="OcuPilot.Test.OAuthClientCreate" method="TestACreateThroughTheSaveSendsTheCompleteSet"/>
+<tool name="security.oauthclients.update" class="OcuPilot.Test.OAuthClientUpdate" method="TestTheAgentsEditKeepsTheRegistrationMembers"/>
+<tool name="security.oauthclients.setsecrets" class="OcuPilot.Test.OAuthClientSecrets" method="TestTheAgentsSecretsAreAskedAtConfirmAndNeverStored"/>
+<tool name="security.oauthclients.rotatekeys" class="OcuPilot.Test.OAuthClientKeys" method="TestTheAgentsRotationIsConfirmed"/>
+<tool name="security.oauthclients.register" class="OcuPilot.Test.OAuthClientRegister" method="TestTheRowActionRegistersPresentingTheInitialToken"/>
 <tool name="tasks.schedule.resume" class="OcuPilot.Test.ToolWrite" method="TestTheTaskResumeToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="webapp.list.create" class="OcuPilot.Test.WebAppCreate" method="TestTheToolAdvertisesTheReviewedCreateFieldsAndApplicationRoles"/>
 <tool name="tasks.ondemand.run" class="OcuPilot.Test.ToolWrite" method="TestTheTaskRunToolIsAnActionWriteOverTheScreensOwnPairs"/>

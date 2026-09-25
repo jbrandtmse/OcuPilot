@@ -111,6 +111,8 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   },
   // Story 12.4: the OAuth 2.0 Server descriptions tab's key-set refresh.
   'OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab': { updatejwks: STRINGS.oauthServerUpdateJwks },
+  // Story 12.5: the OAuth 2.0 Client configurations tab's key rotation and dynamic registration.
+  'OcuPilot.Screen.Descriptor.OAuthClientTab': { rotatekeys: STRINGS.oauthClientRotateKeys, register: STRINGS.oauthClientRegister },
 };
 
 export class ScreenActions {

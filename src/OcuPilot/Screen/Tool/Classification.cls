@@ -384,6 +384,62 @@ XData Entries
       "InitialAccessToken": "secret"
     }
   },
+  "security.oauthclients.create": {
+    "fieldList": "Security.OAuth2.Client.ClientConfiguration",
+    "classification": {
+      "ServerDefinition": "ordinary",
+      "Enabled": "ordinary",
+      "Description": "ordinary",
+      "ClientType": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "RedirectionEndpoint": "ordinary",
+      "JWTAudience": "ordinary",
+      "JWTInterval": "ordinary",
+      "ClientId": "ordinary",
+      "ClientCredentials": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    }
+  },
+  "security.oauthclients.update": {
+    "fieldList": "Security.OAuth2.Client.ClientConfiguration",
+    "classification": {
+      "ServerDefinition": "ordinary",
+      "Enabled": "ordinary",
+      "Description": "ordinary",
+      "ClientType": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "RedirectionEndpoint": "ordinary",
+      "JWTAudience": "ordinary",
+      "JWTInterval": "ordinary",
+      "ClientId": "ordinary",
+      "ClientCredentials": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    }
+  },
+  "security.oauthclients.setsecrets": {
+    "fieldList": "Security.OAuth2.Client.ClientConfiguration",
+    "classification": {
+      "ServerDefinition": "ordinary",
+      "Enabled": "ordinary",
+      "Description": "ordinary",
+      "ClientType": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "RedirectionEndpoint": "ordinary",
+      "JWTAudience": "ordinary",
+      "JWTInterval": "ordinary",
+      "ClientId": "ordinary",
+      "ClientCredentials": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    },
+    "authored": {
+      "ClientSecret": "secret",
+      "ClientPassword": "secret",
+      "RegistrationAccessToken": "secret"
+    }
+  },
   "permissions.users.create": {
     "fieldList": "Security.User",
     "classification": {

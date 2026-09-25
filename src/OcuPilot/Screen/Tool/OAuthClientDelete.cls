@@ -1,16 +1,15 @@
 /// <p>The OAuth 2.0 screen's client configuration delete tool (AD-6, AD-51, FR-44): propose removing
-/// one client configuration. It reads the configuration fresh through the vendor's own
-/// <code>Security.OAuth2.Client.ClientConfiguration</code> <code>GET</code> and mints a proposal
-/// whose card lists what would go. It writes nothing.</p>
+/// one client configuration. It reads the configuration fresh through
+/// <class>OcuPilot.Port.OAuthClientPort</class>, which answers the vendor's own <code>GET</code> with no
+/// secret, and mints a proposal whose card lists what would go. It writes nothing.</p>
 /// <p><b>It is action-style</b> (AD-51): the vendor's <code>NeedsRequestBody()</code> is
 /// <code>IsTypePut()</code> or the change-secret type, so <code>DELETE</code> reads no body, the tool
 /// admits no settable field, and its field list is empty by derivation (AD-3).</p>
 /// <p><b>Its fingerprint covers a declared subject</b>: the server description the configuration is
 /// registered with, its client type, its default scope and whether it is enabled. The identity is
-/// outside the subject (AD-13, AD-51). The subject names neither <code>Metadata</code>, which the
-/// <code>GET</code> answers unmasked and which carries <code>client_secret</code> and
-/// <code>registration_access_token</code>, nor <code>ClientCredentials</code>, so the stored payload,
-/// the diff, the ledger row and the answer carry no secret (AD-35).</p>
+/// outside the subject (AD-13, AD-51). The subject names neither <code>Metadata</code> nor
+/// <code>ClientCredentials</code>, so the stored payload, the diff, the ledger row and the answer carry
+/// no secret (AD-35).</p>
 /// <p><b>It is destructive</b>: the vendor's <code>DeleteId</code> also deletes every token stored for
 /// the configuration, and nothing proposes it back. For a dynamically registered configuration
 /// (<code>Metadata.registration_client_uri</code> set) it also asks the authorization server to
@@ -57,6 +56,9 @@ Parameter PRECONDITIONFIELD = "ClientType";
 
 /// <p>The subject the fingerprint covers: what the user reviewed about the configuration.</p>
 Parameter FINGERPRINTSUBJECT = "ServerDefinition,ClientType,DefaultScope,Enabled";
+
+/// <p>The port that answers the fresh read with no secret (Story 12.5).</p>
+Parameter PORTCLASS = "OcuPilot.Port.OAuthClientPort";
 
 /// <p><code>%Admin_OAuth2_Client:USE</code>, the endpoint's own <code>ResourcesOR()</code> resource and
 /// the one <code>OAuth2.Client</code>'s <code>DeleteId</code> checks at <code>USE</code>. The tab

@@ -370,6 +370,9 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             Set tSC = ..Internal(pDescriptor _ "'s read answered something other than a list", .pHttpStatus, .pFault)
             Quit
         }
+        ; AD-35: an audit row's declared vendor secrets are masked before any field is projected, so
+        ; the screen and its read tool read the one masked row (DW-1640).
+        If (tSource.%Get("port") = ..#SOURCEADMIN) && (tSource.%Get("endpoint") = ##class(OcuPilot.Port.AuditPort).#RECORDENDPOINT) Do ##class(OcuPilot.Port.AuditPort).MaskVendorSecrets(tAnswer)
         If tTruncated = "" Set tTruncated = (tAnswer.%Size() > tMax)
 
         Set tSecrets = $ClassMethod(pDescriptor, "ContextSecretFields")

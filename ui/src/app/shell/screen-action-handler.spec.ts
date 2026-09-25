@@ -200,9 +200,9 @@ describe('the OAuth 2.0 tabs\u2019 delete', () => {
   it('registers delete on both tabs and opens each tab\u2019s own consequence', async () => {
     // Mutation (Rule 19): drop either descriptor from `SCREEN_ACTION_DESCRIPTORS` -> its `has`
     // assertion goes red, and no surface draws its delete (DW-389).
-    for (const [screen, consequence, row, type] of [
-      [OAUTH_CLIENTS, STRINGS.oauthClientDeleteConsequence, 'OcuPilotTestDelete', 'oauth2-client-configuration'],
-      [OAUTH_SERVER_CLIENTS, STRINGS.oauthServerClientDeleteConsequence, 'probe-client-id', 'oauth2-server-client'],
+    for (const [screen, consequence, row, type, rowActions] of [
+      [OAUTH_CLIENTS, STRINGS.oauthClientDeleteConsequence, 'OcuPilotTestDelete', 'oauth2-client-configuration', ['delete', 'rotatekeys', 'register']],
+      [OAUTH_SERVER_CLIENTS, STRINGS.oauthServerClientDeleteConsequence, 'probe-client-id', 'oauth2-server-client', ['delete']],
     ] as const) {
       const answer: JsonResult<unknown> = {
         kind: 'ok',
@@ -210,7 +210,7 @@ describe('the OAuth 2.0 tabs\u2019 delete', () => {
         body: { action: 'deleted', target: { type, scope: 'instance', id: row } },
       };
       const { actions, handler, store, calls, events } = mount(answer, screen.descriptor);
-      expect(screen.rowActions.map((action) => action.id)).toEqual(['delete']);
+      expect(screen.rowActions.map((action) => action.id)).toEqual(rowActions);
       expect(actions.has(screen.descriptor, 'delete')).toBe(true);
       store.setSelection([row]);
       actions.run(screen.descriptor, 'delete');

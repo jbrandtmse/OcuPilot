@@ -11,13 +11,16 @@
 /// carries the client's unmasked <code>Metadata</code>, is never issued (AD-35).</p>
 /// <p><b>The privilege set is <code>%Admin_OAuth2_Client:USE</code> and
 /// <code>%DB_IRISSYS:READ</code></b> (AD-8).</p>
-/// <p><b>Its name cells open the classic client configuration editor in a new tab</b> (AD-44), with
-/// <code>PID</code>, <code>IssuerEndpointID</code> and <code>IssuerEndpoint</code> as the classic list
-/// sends them. The editor treats an empty <code>IssuerEndpointID</code> as a new server description,
-/// so a row whose description id reads empty renders its name as text.</p>
-/// <p><b>Its one row action is <code>delete</code></b>, carried out by
-/// <class>OcuPilot.Screen.Tool.OAuthClientDelete</class> (AD-51, AD-53). It declares no primary action
-/// and does not refresh (AD-43).</p>
+/// <p><b>Its name cells open OcuPilot's own editor</b>,
+/// <class>OcuPilot.Screen.Descriptor.OAuthClientForm</class>, at this tab's route with
+/// <code>/edit</code> appended and the application name as the id (Story 12.5); it declares no
+/// classic link-out. Its Create opens the same editor empty.</p>
+/// <p><b>Its row actions are <code>delete</code>, <code>rotatekeys</code> and <code>register</code></b>,
+/// carried out by <class>OcuPilot.Screen.Tool.OAuthClientDelete</class>,
+/// <class>OcuPilot.Screen.Tool.OAuthClientRotateKeys</class> and
+/// <class>OcuPilot.Screen.Tool.OAuthClientRegister</class> (AD-51, AD-53). Its three declared secrets
+/// are written only by <class>OcuPilot.Screen.Tool.OAuthClientSetSecrets</class> (AD-56). It does not
+/// refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.OAuthClientTab Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -38,19 +41,14 @@ XData Declaration
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [{"id": "delete", "selfProtection": ""}],
+  "primaryAction": {"id": "create", "selfProtection": ""},
+  "rowActions": [{"id": "delete", "selfProtection": ""}, {"id": "rotatekeys", "selfProtection": ""}, {"id": "register", "selfProtection": ""}],
   "context": {"fields": ["ApplicationName", "ClientType", "DefaultScope", "ServerDefinitionID", "IssuerEndpoint"], "secretFields": []},
+  "secretArguments": ["ClientSecret", "ClientPassword", "RegistrationAccessToken"],
   "emptyStateKey": "oauthClientsEmpty",
   "commandAliases": [],
   "classicPage": "%CSP.UI.Portal.OAuth2.Client.ConfigurationList",
-  "classicLinkExemption": {
-    "exempt": true,
-    "reason": "Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1",
-    "label": "OAuth 2.0 Client Configuration",
-    "href": "/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Client.Configuration.zen",
-    "rowLink": {"params": [{"name": "PID", "field": "ApplicationName"}, {"name": "IssuerEndpointID", "field": "ServerDefinitionID"}, {"name": "IssuerEndpoint", "field": "IssuerEndpoint"}]}
-  },
+  "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
     "source": {
       "port": "admin",

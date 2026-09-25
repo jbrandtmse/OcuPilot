@@ -2,8 +2,8 @@
  * The OAuth 2.0 screen in a real browser, against the throwaway instance (Story 6.4): the Security and
  * secrets side bar with its OAuth 2.0 entry, the five-tab strip, and each tab's route, headers and one
  * read, reached by Right then Enter and by a click (AC1); the authorization server tab's cells against
- * its own read answer (AC2); a client configuration's name cell opening the classic editor in a new
- * tab while the OcuPilot tab stays where it is (AC4); and a principal holding the secure pairs without
+ * its own read answer (AC2); a client configuration's name cell opening OcuPilot's own editor, Story
+ * 12.5's (AC4); and a principal holding the secure pairs without
  * the wallet or OAuth resources, gated on the rail, reading the Resource servers tab under a strip whose
  * other four tabs are gated, and refused Server client descriptions by name (AC5).
  *
@@ -35,6 +35,7 @@ import { resetRememberedState } from './preferences-reset.mjs';
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
 const { formatDeniedScreen, formatRequires } = await import(join(uiRoot, 'src', 'app', 'core', 'navigation.ts'));
+const { encodeEntityId } = await import(join(uiRoot, 'src', 'app', 'core', 'entity-id.ts'));
 
 const config = browserConfig();
 const READ_PREFIX = '/api/ocupilot/screens/';
@@ -42,8 +43,7 @@ const SECURE_USER = 'OcuPilotOAuthSecure';
 const SECURE_ROLE = 'OcuPilotOAuthSecureRole';
 const PASSWORD = 'OcuPilotOAuth1';
 const CLIENT_B = 'OcuPilotTestB';
-const ISSUER_B = 'https://ocupilottest.invalid/b';
-const CLASSIC_EDITOR = '/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Client.Configuration.zen';
+const EDITOR_ROUTE = 'security/oauth/clients/edit';
 
 /** The five tabs in strip order: their route, read, label and declared headers. */
 const TABS = [
@@ -344,37 +344,35 @@ test("AC2: the authorization server tab's Issuer, Scopes, Grant types and Signin
   }
 });
 
-test("AC4: a client configuration's name cell is a new-tab anchor at the classic editor with its three params, and activating it opens that URL while OcuPilot stays put", async () => {
+// Story 12.5 moved the Client configurations tab off the classic editor: its name cell now opens
+// OcuPilot's own editor, in this tab. Mutation (Rule 19): restore the tab's classic-link exemption ->
+// the honored-set and in-app anchor assertions go red.
+test("AC4: a client configuration's name cell opens OcuPilot's own editor at the configuration's route, in this tab", async () => {
   const honored = checkClassicLinks().honored.map((entry) => entry.file).sort();
-  assert.deepEqual(honored, ['OAuthClientTab.cls', 'OAuthResourceServerTab.cls', 'OAuthServerClientTab.cls', 'OAuthServerTab.cls'], 'classic-links honors exactly the four OAuth 2.0 tabs still edited in the classic portal');
+  assert.deepEqual(honored, ['OAuthResourceServerTab.cls', 'OAuthServerClientTab.cls', 'OAuthServerTab.cls'], 'classic-links honors exactly the three OAuth 2.0 tabs still edited in the classic portal');
 
   const tab = TABS[1];
   const { context, page, answers } = await signedInAt(urlOf(tab.route), config.username, config.password);
   try {
     await atTab(page, tab);
     const read = await answerFor(answers, tab.read);
-    const rowB = read.body.rows.find((candidate) => candidate.ApplicationName === CLIENT_B);
-    assert.ok(rowB !== undefined, `the read answers ${CLIENT_B}`);
-    assert.equal(rowB.IssuerEndpoint, ISSUER_B, 'on description B');
-    const wanted = `${CLASSIC_EDITOR}?PID=${CLIENT_B}&IssuerEndpointID=${rowB.ServerDefinitionID}&IssuerEndpoint=${encodeURIComponent(ISSUER_B)}`;
+    assert.ok(read.body.rows.some((candidate) => candidate.ApplicationName === CLIENT_B), `the read answers ${CLIENT_B}`);
+    const wanted = `/ocupilot/${EDITOR_ROUTE}/${encodeEntityId(CLIENT_B)}`;
 
     const anchor = await page.evaluate((name) => {
       const rows = Array.from(document.querySelectorAll('[role="grid"] .ocu-data-table-body [role="row"]'));
       const row = rows.find((candidate) => candidate.querySelector('[role="gridcell"]').textContent.trim() === name);
       const link = row?.querySelector('[role="gridcell"] a');
       if (link === undefined || link === null) return null;
-      return { href: link.getAttribute('href'), target: link.getAttribute('target'), rel: link.getAttribute('rel') };
+      return { path: new URL(link.getAttribute('href'), window.location.href).pathname, target: link.getAttribute('target') };
     }, CLIENT_B);
-    assert.deepEqual(anchor, { href: wanted, target: '_blank', rel: 'noreferrer' }, 'the name cell is the classic editor anchor');
+    assert.deepEqual(anchor, { path: wanted, target: null }, 'the name cell is an in-app anchor at the editor');
 
-    const ownUrl = page.url();
-    const opened = browser.waitForTarget((target) => target.url().startsWith(`${config.origin}${CLASSIC_EDITOR}`), { timeout: config.navigationTimeoutMs });
     await clickRowCentre(page, { text: CLIENT_B, link: true });
-    const target = await opened;
-    assert.equal(target.url(), `${config.origin}${wanted}`, 'a new browser target opens at that URL');
-    assert.equal(page.url(), ownUrl, 'while the OcuPilot tab\'s URL is unchanged');
-    const classicPage = await target.page();
-    if (classicPage !== null) await classicPage.close();
+    await page.waitForFunction((path) => new URL(window.location.href).pathname === path, { timeout: config.navigationTimeoutMs }, wanted);
+    // `?? ''`: an absent field is not loaded, so the wait holds until the form read has rendered it.
+    await page.waitForFunction(() => (document.querySelector('#ocu-oauth-client-ApplicationName')?.value ?? '') !== '', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('#ocu-oauth-client-ApplicationName', (node) => node.value), CLIENT_B, 'the editor reads the configuration');
   } finally {
     await context.close();
   }

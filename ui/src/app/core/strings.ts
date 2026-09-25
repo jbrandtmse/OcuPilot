@@ -1782,6 +1782,105 @@ export const STRINGS = {
   /** EXPERIENCE.md:471 */
   oauthServerFormRefusedAction: 'change this server description',
 
+  // Story 12.5: the OAuth 2.0 client configuration editor, its tab's Create, Register and Rotate
+  // Keys, and the phrase a privilege refusal names.
+  /** EXPERIENCE.md:472 */
+  oauthClientFormLabel: 'Client configuration',
+  /** EXPERIENCE.md:472 */
+  oauthClientSectionClientInformation: 'Client Information',
+  /** EXPERIENCE.md:472 */
+  oauthClientSectionJwt: 'JWT Settings',
+  /** EXPERIENCE.md:472 */
+  oauthClientSectionCredentials: 'Client Credentials',
+  /** EXPERIENCE.md:472 */
+  oauthClientFieldName: 'Application name',
+  /** EXPERIENCE.md:472 */
+  oauthClientTypeConfidential: 'Confidential',
+  /** EXPERIENCE.md:472 */
+  oauthClientTypePublic: 'Public',
+  /** EXPERIENCE.md:472 */
+  oauthClientTypeResource: 'Resource server',
+  /** EXPERIENCE.md:472 */
+  oauthClientFieldRedirect: 'Redirect URL',
+  /** EXPERIENCE.md:472 */
+  oauthClientFieldLogoutUri: 'Front-channel logout URL',
+  /** EXPERIENCE.md:472 */
+  oauthClientFieldLogoutSession: 'Front-channel session required',
+  /** EXPERIENCE.md:472 */
+  oauthClientGrantAuthorizationCode: 'Authorization code',
+  /** EXPERIENCE.md:472 */
+  oauthClientGrantImplicit: 'Implicit',
+  /** EXPERIENCE.md:472 */
+  oauthClientGrantPassword: 'Resource owner password credentials',
+  /** EXPERIENCE.md:472 */
+  oauthClientGrantClientCredentials: 'Client credentials',
+  /** EXPERIENCE.md:472 */
+  oauthClientGrantJwt: 'JWT authorization',
+  /** EXPERIENCE.md:472 */
+  oauthClientFieldAuthMethod: 'Authentication method',
+  /** EXPERIENCE.md:472 */
+  oauthClientFieldAuthSigning: 'Authentication signing algorithm',
+  /** EXPERIENCE.md:472 */
+  oauthClientFieldAudience: 'Audience',
+  /** EXPERIENCE.md:472 */
+  oauthClientFieldLogo: 'Logo URL',
+  /** EXPERIENCE.md:472 */
+  oauthClientFieldHome: 'Client home page URL',
+  /** EXPERIENCE.md:472 */
+  oauthClientFieldPolicy: 'Policy URL',
+  /** EXPERIENCE.md:472 */
+  oauthClientFieldTos: 'Terms of service URL',
+  /** EXPERIENCE.md:472 */
+  oauthClientFieldContacts: 'Contacts (comma-separated)',
+  /** EXPERIENCE.md:472 */
+  oauthClientFieldMaxAge: 'Default max age (seconds)',
+  /** EXPERIENCE.md:472 */
+  oauthClientFieldInterval: 'JWT interval (seconds)',
+  /** EXPERIENCE.md:472 */
+  oauthClientFieldCredentials: 'X.509 credentials',
+  /** EXPERIENCE.md:472 */
+  oauthClientAlgIdToken: 'ID token algorithms',
+  /** EXPERIENCE.md:472 */
+  oauthClientAlgUserinfo: 'Userinfo algorithms',
+  /** EXPERIENCE.md:472 */
+  oauthClientAlgAccessToken: 'Access token algorithms',
+  /** EXPERIENCE.md:472 */
+  oauthClientAlgRequest: 'Request object algorithms',
+  /** EXPERIENCE.md:472 */
+  oauthClientAlgSigning: 'Signing',
+  /** EXPERIENCE.md:472 */
+  oauthClientAlgEncryption: 'Encryption',
+  /** EXPERIENCE.md:472 */
+  oauthClientAlgKey: 'Key',
+  /** EXPERIENCE.md:472 */
+  oauthClientFieldSecret: 'Client secret',
+  /** EXPERIENCE.md:472 */
+  oauthClientFieldInitialToken: 'Initial access token',
+  /** EXPERIENCE.md:472 */
+  oauthClientSecretHint: 'Leave empty to keep the stored value.',
+  /** EXPERIENCE.md:472 */
+  oauthClientFieldIssuedAt: 'Client ID issued at',
+  /** EXPERIENCE.md:472 */
+  oauthClientFieldExpiresAt: 'Client secret expires at',
+  /** EXPERIENCE.md:472 */
+  oauthClientFieldRegistrationUri: 'Registration client URI',
+  /** EXPERIENCE.md:472 */
+  oauthClientNotSet: 'Not set',
+  /** EXPERIENCE.md:472 */
+  oauthClientRegister: 'Register',
+  /** EXPERIENCE.md:472 */
+  oauthClientRotateKeys: 'Rotate Keys',
+  /** EXPERIENCE.md:472 */
+  oauthClientRegistered: 'Registered with <issuer>. Client ID: <clientId>.',
+  /** EXPERIENCE.md:472 */
+  oauthClientKeysRotated: 'Rotated this client\'s keys.',
+  /** EXPERIENCE.md:472 */
+  oauthClientSecretsRefused: 'Saved. The secrets were not stored: <reason>',
+  /** EXPERIENCE.md:472 */
+  oauthClientRegistrationNotUpdated: 'Saved. <issuer> was not updated: <reason>',
+  /** EXPERIENCE.md:472 */
+  oauthClientFormRefusedAction: 'change this client configuration',
+
 } as const;
 
 /**

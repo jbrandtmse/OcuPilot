@@ -12,7 +12,7 @@
  *    the instance exactly, and every other member is kept.
  * 3. **Update JWKS** (AC5): the editor reports the refresh and the instance holds the key set.
  * 4. **Delete from the row menu** (AC3): the typed issuer deletes it and the row leaves the tab.
- * 5. **The other four tabs keep their classic links** (AC9).
+ * 5. **The other tabs still edited in the classic portal keep their classic links** (AC9).
  * 6. **DW-1337** (AC10): the editor and its delete dialog pass the structural and contrast checks at
  *    1280 light, 720 light and 1280 dark, with no baseline allowance.
  *
@@ -50,9 +50,8 @@ const EDITOR_ROUTE = 'security/oauth/edit';
 const TAB_URL = `/ocupilot/${TAB_ROUTE}?ns=HSCUSTOM`;
 const ACTION_PATH = '/api/ocupilot/screens/security.oauthserverdescriptions/action';
 
-/** The four tabs still edited in the classic portal, and the classic editor their name cells open. */
+/** The three tabs still edited in the classic portal, and the classic editor their name cells open. */
 const CLASSIC_TABS = [
-  { route: 'security/oauth/clients', page: '%25CSP.UI.Portal.OAuth2.Client.Configuration.zen' },
   { route: 'security/oauth/resource-servers', page: '%25CSP.UI.Portal.OAuth2.ResourceServer.Configuration.zen' },
   { route: 'security/oauth/server', page: '%25CSP.UI.Portal.OAuth2.Server.Configuration.zen' },
   { route: 'security/oauth/server-clients', page: '%25CSP.UI.Portal.OAuth2.Server.Client.zen' },

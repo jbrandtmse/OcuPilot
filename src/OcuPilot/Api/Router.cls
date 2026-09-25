@@ -147,6 +147,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/oauth/server-description/discover" Method="POST" Call="OAuthServerDiscover"/>
   <Route Url="/oauth/server-description/:id" Method="PUT" Call="OAuthServerUpdate"/>
   <Route Url="/oauth/server-description" Method="POST" Call="OAuthServerCreate"/>
+  <Route Url="/oauth/client-configuration/form" Method="GET" Call="OAuthClientFormRead"/>
+  <Route Url="/oauth/client-configuration/:id" Method="PUT" Call="OAuthClientUpdate"/>
+  <Route Url="/oauth/client-configuration" Method="POST" Call="OAuthClientCreate"/>
 </Routes>
 }
 
@@ -495,6 +498,29 @@ ClassMethod OAuthServerUpdate(pId As %String) As %Status
 ClassMethod OAuthServerCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Security.OAuthServerSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /oauth/client-configuration/form</code> (Story
+/// 12.5): the client configuration editor's rules, members and readable names, and with an
+/// <code>applicationName</code> query the configuration it edits. It sits before
+/// <code>/oauth/client-configuration/:id</code>.</p>
+ClassMethod OAuthClientFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthClientRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /oauth/client-configuration/:id</code>: the
+/// editor's edit Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthClientUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthClientSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /oauth/client-configuration</code>: the editor's
+/// create Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthClientCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthClientSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /screens/:screen/action</code>: delegates to

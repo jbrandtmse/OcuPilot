@@ -2,9 +2,10 @@
 title: 'Story 12.5: The OAuth 2.0 client configuration editor'
 type: 'feature'
 created: '2026-09-25'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '7ea6e89459ad2dd3d2dfe692712c2264fd727520'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-12-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-12-4-the-oauth-2-0-client-server-description-editor.md'
@@ -285,6 +286,32 @@ Supporting vendor classes:
 
 ## Review Triage Log
 
+### 2026-09-24 — Review pass
+
+- verdicts: 21 findings — high 0, medium 6, low 11, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` A registered client's vendor 500 that stored nothing is untested; only the stored branch is (verification-gap) — added `OAuthClientRegister.TestARegisteredPutThatStoredNothingIsRefused` over test port `OAuthClientFailPort`; `SentStored` answering 1 reddens it (run 951).
+  - `[medium]` `[patch]` The edit path's form rules (update mode, `Changes`/`Effective`) are untested (verification-gap; grouped with the intent-alignment "Edit, bad value" row) — added `OAuthClientUpdate.TestTheEditsFormRulesRefuseOnBothCallers`, seven cases on the Save and the update tool; `Changes` answering `pCreates` reddens it (run 950).
+  - `[medium]` `[patch]` A secrets write refused after the save is never pinned on the server (verification-gap) — added `OAuthClientSecrets.TestASecretsWriteRefusedAfterTheSaveIsAnswered` through the in-process handler `OAuthClientFailSave`; dropping `secretsRefused` in `Answer` reddens it (run 949).
+  - `[medium]` `[patch]` The page's partial-save and not-updated status lines are never rendered in a test (verification-gap; grouped with the intent-alignment "page shows the not-updated notice" row) — page-spec leg for `registrationNotUpdated`, `secretsRefused` and `tokenRefused`, store-spec `tokenRefused` case; the `notUpdated` branch removed reddens it.
+  - `[low]` `[patch]` Register's no-endpoint and registration-URI visibility conditions are untested (verification-gap) — page-spec leg with both fixtures; dropping the endpoint condition in `offersRegister` reddens it.
+  - `[low]` `[patch]` `AuditVendorSecrets.AssertMasked`'s `[ "*****"` cannot fail on the client leg, where the vendor masks `client_secret` itself (verification-gap, Rule 19) — the assertion now checks the declared key's own value reads the mask on both reads; the DW-1640 mutation reddens it (run 952).
+  - `[low]` `[reject]` AC8's mutation covers only the form route's gate (verification-gap) — the pinning test asserts 403 naming the pair on every route and row action; Rule 19 asks one mutation per AC.
+  - `[low]` `[patch]` `OAuthClientSave.Update` sent a PUT for a non-empty body with an empty diff (verification-gap) — `If tDiff.%Size() = 0 Quit` after the merge; pinned by `OAuthClientSecrets.TestAnEditRepeatingStoredValuesSendsNoPut` (run 948).
+  - `[low]` `[patch]` `OAuthClientDelete`'s new `PORTCLASS` took `WRITERESOURCE`'s doc comment (verification-gap) — moved after `FINGERPRINTSUBJECT` with its own line.
+  - `[low]` `[reject]` The store folds `secretsRefused || tokenRefused`, dropping one reason when both are refused (verification-gap) — both writes are refused together only for the same cause, and the line still reports the save as partial; a fix adds branching.
+  - `[false]` `[reject]` `jwks` added as a fifth managed member beyond the intent's four (intent-alignment) — the vendor manages `jwks` (Rotate Keys writes it; the classic page offers no field for it) and refuses its empty form, so sending it as read loses nothing a user can set.
+  - `[low]` `[reject]` The agent's `Metadata` replaces the settable members whole, so an agent edit naming one member clears the algorithm defaults (intent-alignment) — spec-bound: Design Notes Q8 keeps 12.4's whole-replacement semantics, and the tool's schema says to send every member to keep.
+  - `[low]` `[reject]` The row menu offers Rotate Keys and Register on every row (intent-alignment) — spec-bound: Tasks declare static `rowActions [delete, rotatekeys, register]` and page-level visibility; the port refuses by name, tested in `OAuthClientKeys` and `OAuthClientRegister`.
+  - `[low]` `[reject]` AC8's "mint" is checked at confirm, not as a refused mint (intent-alignment) — an unprivileged user is never offered the tool (`Screen/Tool/Registry.cls:428` gates on `PrivilegePairs`, Story 4.2's one gate point); the in-process mint helper is 12.4's shared harness.
+  - `[low]` `[patch]` `OAuthClientPort`'s doc said "no vendor class is named (AD-27)" while `CredentialUsable` reads `%SYS.X509Credentials` (intent-alignment) — sentence replaced: no vendor class completes an operation; the credential check is the one vendor read.
+  - `[false]` `[reject]` `SentStored` is looser than "every sent field stored" (intent-alignment) — its three relaxations (scope whitespace, a redirect's trailing slash, an empty interval) admit only differences the vendor's own save introduces; a change that did not store differs in content.
+  - `[medium]` `[patch]` "Edit, bad value" is tested in create mode only (intent-alignment) — grouped with the edit-path rules entry above.
+  - `[low]` `[reject]` The secrets-only edit is not driven through the route end to end (intent-alignment) — the route takes the secrets out before `Update`, whose empty body and empty diff each send nothing (pinned), and `StoreSecrets` sends one `CHANGESECRET` (pinned).
+  - `[medium]` `[patch]` The not-updated notice is not rendered on the page in any test (intent-alignment) — grouped with the status-line entry above.
+  - `[false]` `[reject]` The audit mask declares six events, including the server definition rows (intent-alignment) — the Tasks' DW-1640 item names those events (ruling 8bd12776).
+  - `[false]` `[reject]` The budget raise and `Prohibited.OAuthClientFields` sit outside the intent (intent-alignment) — both are spec Tasks (DW-1166; the permitted-field lists).
+
 ## Design Notes
 
 **Governing ADs:** AD-3, AD-4, AD-5, AD-6, AD-8, AD-10, AD-13, AD-14, AD-15, AD-16, AD-19, AD-24, AD-26, AD-27, AD-29, AD-35, AD-36, AD-39, AD-44, AD-51, AD-52, AD-53, AD-54, AD-55, AD-56. The DW-1337 gate applies. No AC contradicts an AD. AD-24's `tools` and `readOnly` are derived by the kernel: declare the actions in the registry and nothing else.
@@ -410,9 +437,80 @@ Registration-managed members: an agent `Metadata` without `registration_client_u
 - the vendor audit rows for a registration;
 - the bundle total.
 
+**Measured (implement, `ocupilot-b-ci`, 2026-09-25):**
+
+- Fixture registration round trip: `POST /register` answers 201 with `client_id`, `client_secret`, `client_secret_expires_at` 0, `registration_access_token` and `registration_client_uri` (`<issuer>/register/<client_id>`); the vendor imports all five and presents the description's initial access token as the Bearer (hash matched). A PUT of a registered client calls `<registration_client_uri>`; with the server down it answers 500 after about 30 s with the change stored.
+- Vendor audit rows for a registration: `Modify OAuth2 Client <name>` and `Modify OAuth2 Client Metadata <id>`, event `%System/%Security/OAuth2`, both carrying `registration_access_token` in plain text; `client_secret` is masked by the vendor.
+- DW-1640: the vendor writes a registration or initial access token in plain text in three shapes (`<key> modified:` blocks, `<key>: <value>` property lines, the `Metadata: {json}` dump) under the six events `AuditPort.VENDORSECRETS` declares; a `CHANGESECRET` with only the token writes the metadata row alone. The audit screen's read and `logs.audit.read` answer each masked (`OcuPilot.Test.AuditVendorSecrets`, run 890).
+- Bundle total: 1,410,736 bytes (main 1,272,471 + styles 138,265), over the 1378kB warning; under DW-1166 `maximumWarning` is now 1482kB (5% above).
+
+**Mutations applied (each reverted byte-identical; ObjectScript recompiled with subclasses, client rebuilt and redeployed where it is a bundle):**
+
+- mutation: AC1 -- `OAuthClientCreate.DerivedFields` removes `Metadata` → `OAuthClientCreate.TestACreateThroughTheSaveSendsTheCompleteSet` red (run 922).
+- mutation: AC2 -- `OAuthClientRules.Expand` quits before filling empty members → `OAuthClientUpdate.TestAnEditSendsTheCompleteSetAndClearsAMember` red (run 923).
+- mutation: AC3 -- `TypedNameDialog.matches` answers true → `oauth-client-form.page.spec.ts` "AC3: Delete sends nothing until the stored name is typed" red.
+- mutation: AC4 -- `OAuthClientPort.Stripped` keeps `registration_access_token` → `OAuthClientSecrets.TestTheSaveStoresEachSecretAndNoReadCarriesIt` and `TestAnEmptySecretsBodyIsRefused` red (run 924).
+- mutation: AC5 -- `OAuthClientSave.StoreToken` answers at once → `OAuthClientRegister.TestTheRowActionRegistersPresentingTheInitialToken` red (run 925).
+- mutation: AC6 -- the port's `ROTATEKEYS` `ClientCredentials` precondition is dropped → `OAuthClientKeys.TestAClientWithCredentialsIsRefusedByName` red (run 926); `offersRotate` ignores the credentials → the page spec's "no Rotate Keys" leg red.
+- mutation: AC7 -- `OAuthClientCreate.CREATES` 0 → `OAuthClientCreate.TestACreateTakenAfterTheMintIsRefusedAtConfirm` red (run 927).
+- mutation: AC8 -- `OAuthClientRules.HandleForm` loses its `Gate` → `OAuthClientWire.TestACallerWithoutTheResourceIsRefusedEverywhere` red (run 928).
+- mutation: AC9 -- the tab's classic-link exemption restored → `classic-links.test.mjs` "the shipped descriptor roster passes" red.
+- mutation: AC10 -- `min-inline-size: 1400px` on `.ocu-oauth-client-metadata-table` → `oauth-client-editor.browser-spec.mjs` AC1/AC10 red (920px overflow at 1280 and 720).
+- mutation: registration-managed -- the port sends a managed member as `""` → `OAuthClientUpdate.TestTheAgentsEditKeepsTheRegistrationMembers` red (run 929).
+- mutation: DW-1640 -- the two `Modify OAuth2 Client*` declarations removed from `AuditPort.VENDORSECRETS` → `AuditVendorSecrets.TestAClientRowCarryingAProbeTokenReadsMasked` ("and carries no token", both reads) red (run 930).
+- mutation: `field-lists.mjs` accepts a kind on a template row → `field-lists.test.mjs` kind/values leg red; `setMemberText` ignores `settable` → the store spec's managed-member leg red.
+- mutation: empty diff -- `OAuthClientSave.Update` no longer returns on an empty diff → `OAuthClientSecrets.TestAnEditRepeatingStoredValuesSendsNoPut` red (run 948).
+- mutation: registered PUT stored nothing -- `OAuthClientPort.SentStored` answers 1 → `OAuthClientRegister.TestARegisteredPutThatStoredNothingIsRefused` red (run 951).
+- mutation: edit-mode rules -- `OAuthClientRules.Changes` answers `pCreates` alone → `OAuthClientUpdate.TestTheEditsFormRulesRefuseOnBothCallers` red (run 950).
+- mutation: secrets refused after the save -- `OAuthClientSave.Answer` drops `secretsRefused` → `OAuthClientSecrets.TestASecretsWriteRefusedAfterTheSaveIsAnswered` red (run 949).
+- mutation: save notices -- the page's `status` loses its `notUpdated` branch → the page spec's "says so beside Saved" leg red; `offersRegister` drops `registrationEndpoint() !== ''` → the page spec's "offers no Register" leg red.
+- mutation: DW-1640 mask -- the two `Modify OAuth2 Client*` declarations removed from `AuditPort.VENDORSECRETS` → `AuditVendorSecrets.TestAClientRowCarryingAProbeTokenReadsMasked` "registration_access_token reads the mask" red on both reads (run 952).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only: nothing was implemented. The endpoint's merge behavior, its secret handling, `ROTATEKEYS` and `REGISTERCLIENT`, and the vendor audit rows were measured on `ocupilot-b-ci` (see Design Notes), and the scratch objects were deleted. Q1–Q8 are open for the lead.
+**Summary.** The Client configurations tab gains Create, Rotate Keys and Register, and its name cells open OcuPilot's own `form-page` editor at `security/oauth/clients/edit` (four sections named for the classic tabs, untabbed). Save goes through `security.oauthclients.create`/`.update`/`.setsecrets` (AD-55, AD-54); Delete, Rotate Keys and Register are AD-53 row actions. `OAuthClientPort` strips `client_secret` and `registration_access_token` from every read, nests the token for `CHANGESECRET`, refuses an empty secrets body, synthesizes the `REGISTRATION` read, and answers a registered client's stored-then-failed PUT as saved with `registrationNotUpdated`. DW-1640: `AuditPort.VENDORSECRETS` declares the token keys per vendor OAuth event, and `Screen/Read` masks them before projecting, so the Logs audit screen and `logs.audit.read` read the same masked rows.
+
+**Files.**
+
+- New server code: `Port/OAuthClientPort`, `Area/Security/OAuthClientRules` and `OAuthClientSave`, `Screen/Descriptor/OAuthClientForm`, and five tools `Screen/Tool/OAuthClient{Create,Update,SetSecrets,RotateKeys,Register}`.
+- Changed server code: `OAuthClientTab` (create, three row actions, declared secrets, no exemption), `OAuthClientDelete` (the port), `AuditPort` and `Screen/Read` (DW-1640), and `Router`, `Error`, `Prohibited`, `AdminPort` and `Classification` (own entries). `FieldLists` and `ToolFields` were regenerated.
+- Tests: `OAuthClient{Create,Update,Secrets,Keys,Register,Wire}`, `AuditVendorSecrets`, and the helpers `OAuthClient{Probe,RecordPort,SaveFixture,Confirm,FailPort,FailSave}`. Rosters were updated. The issuer fixture gained `/register`.
+- Client: `oauth-client-form.{store,page}.ts` with their specs, `oauth-client-field.ts`, and `oauth-actions`, `app.ts`, `screen-outlet`, `screen-actions`, `strings`, `_components.scss` and `screens.generated.ts`.
+- Browser and tools: the new `oauth-client-editor.browser-spec.mjs`, three updated OAuth specs, three `structural-baseline.json` entries, and the tool tests.
+- Planning and scripts: an EXPERIENCE.md row, the `ci-throwaway.sh` armed classes, and the budget pair.
+
+**footprint_extensions:**
+
+- Contended files: `Port/AdminPort.cls`, `Kernel/Proposal/Prohibited.cls`, `Api/Router.cls` and `Screen/Tool/Classification.cls` (with `FieldLists.cls`/`ToolFields.cls` regenerated), and `ui/src/app/shell/screen-outlet.ts`.
+- Shared-append files: `Api/Error.cls`, `strings.ts`, `_components.scss` and EXPERIENCE.md.
+- DW-1640: `Port/AuditPort.cls` and `Screen/Read.cls`.
+- Other files: `Test/FieldDerive.cls`, `ui/tools/field-lists.mjs`/`.test.mjs`, `screen-actions.ts`, `app.ts`/`app.spec.ts`, `screen-action-handler.spec.ts`, `structural-baseline.json`, `angular.json`/`angular-json.test.mjs`, `OAuthClientDelete.cls` and `scripts/ci-throwaway.sh`.
+- Test rosters: `DerivedFields`, `EndpointCoverage`, `OAuthDelete`, `OAuthIssuerFixture`, `OAuthTabs`, `PortFixture`, `PortGate`, `ProhibitedFixture`, `ReadTool`, `SurfaceCoverage`, `ToolRoundTrip`, `Wire`, `WireOAuthRead`, `WireSecurityRead`, `classic-links.test.mjs`, `navigation.test.mjs`, `oauth.browser-spec.mjs`, `oauth-delete.browser-spec.mjs` and `oauth-server-description-editor.browser-spec.mjs`.
+
+**Review.** 21 findings: 0 high, 6 medium, 11 low, 4 false.
+
+- Patched: 9 entries. Four were medium: the registered PUT that stored nothing, the edit-mode rules on both callers, the server's `secretsRefused`, and the page's notices. Five were low: Register visibility, the falsifiable audit mask, PUT only on a non-empty diff, the `OAuthClientDelete` doc placement, and the `OAuthClientPort` AD-27 sentence.
+- Rejected: 8. Each reason is in the triage log.
+- Deferred: 0.
+- The patch round's verification found a race in `OAuthClientSecrets.TestAnEmptySecretsBodyIsRefused`: the probe's create audit row shared the millisecond of `Now()`. A `Hang 0.1` before `Now()` fixed it, and the test then passed (run 959).
+
+**Follow-up review recommended: true.** Four medium entries were patched, all as new tests. The in-process handler harness `OAuthClientFailSave`/`OAuthClientFailPort` and the edit-mode rules test were written in the patch pass, and no review layer has read them.
+
+**Verification (`ocupilot-b-ci`).**
+
+- Full ObjectScript sweep, runs 960-1201: 242 classes and 2,084 tests, 0 failed, no probe leftovers, no overlaps.
+  - `AuditPurge` refused at class level because `OCUPILOT_ALLOW_AUDIT_PURGE` is not armed on this throwaway. That is by design here: the audit database must not be purged. CI runs it on a fresh throwaway.
+- `npm run build` passed. `npm test` passed: tools 1,376/0 and components 1,122/0.
+- `smoke.sh --container ocupilot-b-ci`: 49 passed, 0 failed.
+- The story's browser specs passed 17/17. The editor spec was re-run after the patches: 6/6.
+- `check-objectscript`: 0 problems. `lint-docs`: clean. `screen-mirror` and `field-lists --check`: up to date.
+- `/tmp/ocupilot-b-ci/src` is byte-identical to the worktree `src/`.
+- Bundle: 1,410,736 bytes. DW-1166 raised `maximumWarning` from 1378kB to 1482kB.
+
+**Residual risks.**
+
+- The agent's `Metadata` still replaces the settable members whole (Q8), so an agent edit that omits the algorithm members clears them.
+- Rotate Keys and Register appear on every row's menu and are refused by name where they do not apply.

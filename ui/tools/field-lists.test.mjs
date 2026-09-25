@@ -17,6 +17,7 @@ import {
   generateFrom,
   isCredential,
   lastSegment,
+  MEMBER_KINDS,
   readSources,
 } from './field-lists.mjs';
 import { extractXData } from './screen-mirror.mjs';
@@ -222,6 +223,26 @@ test('a malformed list is refused', () => {
   const shapeless = { 'WebApp.App': { endpoint: 'WebApp.App', source: 'template', method: 'RequestBodySchema', class: '', type: '', envelope: '', rows: [{ path: 'X', templateType: 'string', itemType: '' }] } };
   assert.deepEqual(checkLists(shapeless), ['FieldLists.cls: list WebApp.App has a row that is not exactly path, shape, templateType, itemType strings'], 'a row without a shape is refused, and nothing else is');
   assert.notDeepEqual(checkLists({}), [], 'an empty block is refused, not read as nothing to classify');
+});
+
+// Story 12.5: a class-derived member may carry its kind and its allowed values, and nothing else may.
+// Mutation (Rule 19): drop the `list.source === 'class'` condition from checkLists -> the template
+// leg goes red; accept any kind -> the unknown-kind leg goes red.
+test('a kind and allowed values are accepted on a class-derived member only, and only in the vocabulary', () => {
+  const key = 'Security.OAuth2.Client.ClientConfiguration:OAuth2.Client.Metadata';
+  const committed = lists[key];
+  assert.equal(committed?.source, 'class', 'the client metadata list is class-derived');
+  assert.equal(committed.rows.find((row) => row.path === 'grant_types')?.kind, 'list', 'grant_types is a list member');
+  assert.ok(committed.rows.every((row) => MEMBER_KINDS.includes(row.kind)), 'every committed member carries a kind in the vocabulary');
+  const listWith = (source, row) => ({
+    [key]: { ...committed, source, method: source === 'class' ? '' : 'RequestBodySchema', class: source === 'class' ? committed.class : '', rows: [row] },
+  });
+  const member = { path: 'token_endpoint_auth_method', shape: 'literal', templateType: 'string', itemType: '', kind: 'text', values: ['none', 'client_secret_basic'] };
+  assert.deepEqual(checkLists(listWith('class', member)), [], 'a class-derived member with a kind and values is accepted');
+  const refused = /carries a kind or values a class-derived member cannot/;
+  assert.match(checkLists(listWith('template', member)).join('\n'), refused, 'a template row with a kind is refused');
+  assert.match(checkLists(listWith('class', { ...member, kind: 'colour' })).join('\n'), refused, 'an unknown kind is refused');
+  assert.match(checkLists(listWith('class', { ...member, values: [] })).join('\n'), refused, 'an empty value list is refused');
 });
 
 test('a path is classifiable only when no row extends it, and a credential is a string literal by last segment', () => {

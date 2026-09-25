@@ -29,6 +29,13 @@ ClassMethod PortClass() As %String
     Quit "OcuPilot.Test.ProposalFixture"
 }
 
+/// <p>The armed object for every tool, including one that declares a port of its own, so a tool's
+/// own port never reads the instance behind a test's composed target.</p>
+ClassMethod PortClassOf(pToolClass As %String) As %String [ Private ]
+{
+    Quit ..PortClass()
+}
+
 /// <p>The shipped census, except that <method>OcuPilot.Test.ProposalFixture.ArmLastAllHolder</method>
 /// can answer "yes" for it -- so AD-10's last-<code>%All</code>-holder refusal is driven on an
 /// instance that has several holders, without stripping the role from a real account. Disarmed, the
