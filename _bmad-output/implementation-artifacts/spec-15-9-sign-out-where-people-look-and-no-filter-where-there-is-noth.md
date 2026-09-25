@@ -23,9 +23,9 @@ deferred:
   - summary: >-
       Fifteen other form-page specs keep the triple-click `fill` helper that failed `users-editor` in rework 1.
     evidence: |-
-      `grep -rn "clickCount: 3" ui/browser` lists roles-editor, ssl-editor, x509-import, device-editor, users-create, web-applications-editor and -create, wallet-secret, roles-create, definitions, task-editor, resources-editor, task-wizard, audit-event-editor and reduced-editors. A field wholly under the sticky form bar receives no click. All were green in CI on 5dcefe46. reopen_if: any of them fails with a typed value appended to the old one.
+      DW-1659. `grep -rln "clickCount: 3" ui/browser` lists 29 files; the form-page sites among them are the `fill` helpers of roles-editor, ssl-editor, x509-import, device-editor, users-create, web-applications-editor and -create, wallet-secret, roles-create, definitions, task-editor, resources-editor, task-wizard and audit-event-editor, plus inline triple-clicks in reduced-editors and navigate (`:378`). A field wholly under the sticky form bar receives no click. All were green in CI on 5dcefe46. reopen_if: any of them fails with a typed value appended to the old one.
     location: >-
-      ui/browser/*-editor.browser-spec.mjs fill helpers
+      ui/browser form-page specs' triple-click fill sites (list above)
     severity: low
 ---
 
@@ -215,6 +215,26 @@ Rejected:
 - `low`: the ring's bottom segment is 1px higher on the pinned cell. It is sub-pixel cosmetic, and the ring is pinned in AC4.
 - `low`: opacity is asserted in light only. All four state roles are opaque hex in both themes (`_tokens.scss`).
 
+Code review, rework 1 (2026-09-25, `5ec0ba4c..HEAD`, four layers). 0 decision-needed, 2 patch (both applied), 0 new ledger entries, 12 rejected. No high. `[CI]` `:267` is fixed. The product is correct: the form page is its own scroll container, the bar is `sticky; bottom: 0` after the last field, and `scroll-padding-bottom` stops a focused field above it. A field under the bar at first paint is ordinary sticky-footer behavior, and a user reaches it by scrolling or Tab. The helper change is honest: `select()` is load-bearing (the rework 1 mutation line), and every caller asserts the exact value. DW-1659's `wontfix-accepted` is the Rule 15 lookup for an out-of-footprint LOW that is not a two-way door.
+
+- [x] [Review][Patch] DW-1659's evidence said the grep lists 15 specs; it lists 29 files, and it missed `navigate:378`. Spec entry corrected and DW-1659 trailer appended [spec frontmatter `deferred`; deferred-work.md DW-1659]
+- [x] [Review][Patch] The rework 1 mutation and Auto Run Result lines cited `:282`, the mutated file's line; HEAD's "with the edit" assertion is `:283` [spec `## Verification`, `## Auto Run Result`]
+
+Rejected (rework 1):
+
+- `false`: the story reads done before CI ran. Run 36132370204 on `2354fc6d` finished green before this review closed, with all 8 jobs passing and `browser` among them.
+- `false`: the local 900px sibling runs do not show CI safety. That safety rests on CI run 36127471224 (siblings green with the product change), and the rework item asked only for the local runs.
+- `false`: DW-1659 should be fixed, not closed. The 15 files are out-of-footprint and would take more than 15 lines, and each needs a browser run.
+- `false`: `page.focus` could miss and send keys elsewhere. It throws on a missing selector, and a missed edit fails the exact-value assertion.
+- `false`: the draw-then-remove disproof is unpinned. AC3's bar absence is pinned (the Home no-bar mutation), and the rework item asks for a no-shift pin only with a product fix.
+- `low`: the CI and local viewports are both 1440x900. The Auto Run Result labels the CI geometry `(inference)`.
+- `low`: `_components.scss:5562`'s "or by a pointer reaching it" predates this story and falls outside the rework range.
+- `low`: the spec is `oversized`, and the rework added a triage block.
+- `low`: two implement self-review rows read `reject` although they were fixed.
+- `low`: the Tasks item keeps the suspected cause. The Change Log records the outcome.
+- `low`: the rework triage heading does not name the implement self-review.
+- `low`: the cycle log's `dev_complete` row has `spawn_at=12:40:00Z`, later than its own 11:59:32Z stamp. It is lead-owned, and this reviewer may not write the cycle log, so it is reported to the lead.
+
 ## Spec Change Log
 
 - 2026-09-25 rework 1 (implement): cause is the test, not the product; `users-editor`'s `fill` reaches its field by focus. No product change, no amendment.
@@ -357,7 +377,7 @@ No AC contradicts an AD.
 - mutation: one cited phrase of the Sign out row (`:81`) reworded → `citations.test` red (AC4).
 - mutation: `/logout` posted with `credentials: 'omit'` → `account-and-filter` Header menu red ("and the cookie", Integration AC header half).
 - mutation: `overflow: hidden` on `.ocu-header` → `account-and-filter` Header menu and `panel` sign-out hit tests red.
-- mutation (rework 1): `node.select()` dropped from `users-editor`'s `fill` → `users-editor` red in 2 tests (`:282` read `'probe@example.invaliunsaved@example.invalid'`). At a 930px viewport the old triple-click helper was red at `:282` with CI's value; the new one 8/8.
+- mutation (rework 1): `node.select()` dropped from `users-editor`'s `fill` → `users-editor` red in 2 tests ("with the edit", `:282` in the mutated file and `:283` at HEAD, read `'probe@example.invaliunsaved@example.invalid'`). At a 930px viewport the old triple-click helper was red at `:282` with CI's value; the new one 8/8.
 - mutation (code review): the last data column's lifted resize handle set back to `z-index: 1` → `data-table-columns` "Drag the last data column" red ("the handle is hit at its left, its center on the edge and its right").
 
 ## Auto Run Result
@@ -400,7 +420,7 @@ Status: done
 Blocking condition: none
 
 - **Cause (test).** Story 15.9 removes the command bar from no-read screens, so the user editor's content sits 50px higher. On CI's geometry, EmailAddress then sits wholly under (inference) the sticky `.ocu-form-bar`. Puppeteer scrolls only a clipped element, so the triple-click landed on the bar and the typed text was appended. The bar is never drawn and withdrawn: a document-start MutationObserver saw no `.ocu-command-bar` at any viewport or CPU rate tried.
-- **Reproduced.** At 930 and 950px, the click target was `div.ocu-form-bar` 4/4, and the spec failed at `:282` with CI's exact value. At 900px locally the field is still clipped and scrolls, which is why it passed here.
+- **Reproduced.** At 930 and 950px, the click target was `div.ocu-form-bar` 4/4, and the spec failed at its "with the edit" assertion (`:283` at HEAD) with CI's exact value. At 900px locally the field is still clipped and scrolls, which is why it passed here.
 - **Change.** `ui/browser/users-editor.browser-spec.mjs` `fill`: focus, `select()`, Backspace, type. There is no product change.
 - **Review.** 8 findings: 0 patched, 1 low deferred (the other triple-click helpers), 7 rejected (triage log). `followup_review_recommended: false` (follow-up pass, no high patched).
 - **Verification.** `npm run build` checkers pass, 1.59 MB; the bundle is byte-identical to HEAD and deployed on `ocupilot-ci`. One file per call: users-editor 8/8, roles-editor 8/8, resources-editor 6/6, web-applications-editor 7/7, ssl-editor 7/7, task-editor 6/6, task-wizard 5/5.

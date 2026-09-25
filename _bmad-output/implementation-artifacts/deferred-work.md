@@ -6940,3 +6940,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth.md | severity: low | fix-risk: med | footprint: out-of-footprint
 - evidence: grep clickCount: 3 ui/browser lists 15 editor/create specs; all green in CI on 5dcefe46; users-editor fixed by focus+select in 2354fc6d
 - 2026-09-25T11:59:21Z status=wontfix-accepted owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=harvest note=reopen_if=any of them fails with a typed value appended to the old one
+- 2026-09-25T12:05:01Z status=wontfix-accepted owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=cr note=reopen_if=a form-page triple-click site fails with text appended; grep lists 29 files, add navigate:378
