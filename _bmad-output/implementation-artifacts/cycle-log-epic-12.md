@@ -167,3 +167,5 @@
 2026-09-25T09:52:31Z	Story 12.6	stage_spawned	stage=implement spawn_at=2026-09-25T09:52:31Z model=opus agent_name=12-6-oauth-resource-server-implement-1 cycle_iteration=1
 2026-09-25T11:11:10Z	Story 12.6	dev_clarification_requested	blocking=intent_gap(AD-29_vs_frozen_pair_set:OpenByIssuer_needs_%Admin_OAuth2_Client:USE)+AD-35_OAuth2ResourceServerChange_ApiKey_plain decided_by=runner(lead) ruling=three_pairs_on_tab+form+six_tools_under_AD-29(AD-8_text_unchanged;tools_DESCRIPTORCLASS_is_the_tab),AD-35_second_declaration(spine) wip_commit=pending
 2026-09-25T11:11:10Z	Epic 12	spine_updated	ad=AD-35 reason=implement_halt(OAuth2ResourceServerChange_declaration) by=runner story=12-6-the-oauth-2-0-resource-server-editor lint=ok(1_preexisting_low)
+2026-09-25T11:11:55Z	Story 12.6	wip_committed	sha=3d57b0f7 pushed=true note=implement-1_tree_(halted)+lead_ruling;original_baseline=4a9f5037
+2026-09-25T11:11:55Z	Story 12.6	stage_spawned	stage=implement spawn_at=2026-09-25T11:11:55Z model=opus agent_name=12-6-oauth-resource-server-implement-2 cycle_iteration=2
