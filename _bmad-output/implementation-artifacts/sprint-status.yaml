@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '09-25-2026 02:15'
+last_updated: '09-25-2026 04:36'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -195,7 +195,7 @@ development_status:
   12-2-revoke-a-user-s-oauth-2-0-tokens: done
   12-3-copy-and-purge-the-audit-database: done
   12-4-the-oauth-2-0-client-server-description-editor: done
-  12-5-the-oauth-2-0-client-configuration-editor: in-progress
+  12-5-the-oauth-2-0-client-configuration-editor: review
   12-6-the-oauth-2-0-resource-server-editor: backlog
   12-7-the-oauth-2-0-authorization-server-editor: backlog
   12-8-the-oauth-2-0-server-client-description-editor: backlog
