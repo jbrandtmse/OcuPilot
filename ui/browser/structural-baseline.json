@@ -562,28 +562,6 @@
       "dw": "DW-1584"
     },
     {
-      "key": "os-management/devices|min-width|1280|app-data-table>a.ocu-data-table-link",
-      "route": "os-management/devices",
-      "invariant": "min-width",
-      "context": "1280",
-      "element": "app-data-table>a.ocu-data-table-link",
-      "count": 6,
-      "measured": "width 7.2px under 24px (floor)",
-      "tag": null,
-      "dw": "DW-1586"
-    },
-    {
-      "key": "os-management/devices|min-width|720|app-data-table>a.ocu-data-table-link",
-      "route": "os-management/devices",
-      "invariant": "min-width",
-      "context": "720",
-      "element": "app-data-table>a.ocu-data-table-link",
-      "count": 6,
-      "measured": "width 7.2px under 24px (floor)",
-      "tag": null,
-      "dw": "DW-1586"
-    },
-    {
       "key": "os-management/devices|overflow|1280|app-panel-resize-handle>div.ocu-panel-resize-handle[role=separator]",
       "route": "os-management/devices",
       "invariant": "overflow",
@@ -1044,28 +1022,6 @@
       "measured": "28px past its containing block (app-status-bar>div.ocu-status-bar-group)",
       "tag": null,
       "dw": "DW-1584"
-    },
-    {
-      "key": "permissions/users|min-width|1280|app-data-table>a.ocu-data-table-link",
-      "route": "permissions/users",
-      "invariant": "min-width",
-      "context": "1280",
-      "element": "app-data-table>a.ocu-data-table-link",
-      "count": 1,
-      "measured": "width 21.6px under 24px (floor)",
-      "tag": null,
-      "dw": "DW-1586"
-    },
-    {
-      "key": "permissions/users|min-width|720|app-data-table>a.ocu-data-table-link",
-      "route": "permissions/users",
-      "invariant": "min-width",
-      "context": "720",
-      "element": "app-data-table>a.ocu-data-table-link",
-      "count": 1,
-      "measured": "width 21.6px under 24px (floor)",
-      "tag": null,
-      "dw": "DW-1586"
     },
     {
       "key": "permissions/users|overflow|1280|app-panel-resize-handle>div.ocu-panel-resize-handle[role=separator]",
@@ -2446,8 +2402,8 @@
   "ownerReported": [
     {
       "tag": "DW-1335",
-      "routedTo": "16-15",
-      "finding": "Not an invariant violation, and the walk does not find it: the command bar filter (input.ocu-command-bar-filter) on agent/definitions/edit has the accessible name Filter rows as Chrome computes it, is 220px wide and does not overflow. The walk records no name, min-width or overflow entry for it at either width."
+      "routedTo": "resolved by 15-9",
+      "finding": "Resolved by Story 15.9. agent/definitions/edit declares no read, so the command bar draws no filter (input.ocu-command-bar-filter) and, with nothing else to show, no bar at all."
     },
     {
       "tag": "DW-1336",

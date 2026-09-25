@@ -276,3 +276,101 @@ test('reset releases each store\'s account subscription, so a dropped store stop
   assert.equal(notified, 0, 'the dropped store neither adopts nor redraws');
   assert.equal(store.sort(), '', 'and its slots are still the published defaults');
 });
+
+// Story 15.8: the column widths the user set travel in the same `view` value, beside sort, filter
+// and max rows (AD-50), and nowhere else.
+//
+// Mutations (Rule 19):
+// - drop `widths` from `rememberView` -> "a width set on one store is restored" goes red.
+// - write `widths: {}` whenever none is set -> "a view with no widths is byte-identical" goes red.
+// - accept any number in `storedWidths` -> "each bad entry is dropped on its own" goes red.
+
+test('Story 15.8: a width set on one store is restored by a new ScreenStores over the same account, beside the view', async () => {
+  const held = await account();
+  const first = new ScreenStores({ account: held }).for(ONE, []);
+  first.setFilter('csp');
+  assert.equal(first.setColumnWidth('Name', 320), true);
+  assert.equal(first.setColumnWidth('NameSpace', 180), true);
+  await flush();
+
+  assert.deepEqual(JSON.parse(held.views().get(ONE_ROUTE)), {
+    sort: '',
+    direction: '',
+    filter: 'csp',
+    maxRows: DEFAULT_MAX_ROWS,
+    widths: { Name: 320, NameSpace: 180 },
+  });
+  const restored = new ScreenStores({ account: held }).for(ONE, []);
+  assert.deepEqual([...restored.columnWidths()], [['Name', 320], ['NameSpace', 180]]);
+  assert.equal(restored.filter(), 'csp', 'and the view it travels beside');
+});
+
+test('Story 15.8: a view with no widths is byte-identical to the value before column widths existed', async () => {
+  const held = await account();
+  const store = new ScreenStores({ account: held }).for(ONE, []);
+  store.setSort('NameSpace');
+  await flush();
+  assert.equal(held.views().get(ONE_ROUTE), '{"sort":"NameSpace","direction":"","filter":"","maxRows":1000}');
+});
+
+test('Story 15.8: each bad entry is dropped on its own, and sort, filter and max rows are adopted as before', async () => {
+  for (const widths of [[], { Name: -4 }, { Name: 1.5 }, { Name: 9999 }, { Name: '200' }, null, 'wide']) {
+    const shaped = await account({
+      [ONE_ROUTE]: JSON.stringify({ sort: 'Name', direction: 'desc', filter: 'x', maxRows: 50, widths }),
+    });
+    const store = new ScreenStores({ account: shaped }).for(ONE, []);
+    assert.equal(store.columnWidths().size, 0, `dropped: ${JSON.stringify(widths)}`);
+    assert.deepEqual(
+      { sort: store.sort(), direction: store.direction(), filter: store.filter(), maxRows: store.maxRows() },
+      { sort: 'Name', direction: 'desc', filter: 'x', maxRows: 50 }
+    );
+  }
+  const mixed = await account({
+    [ONE_ROUTE]: JSON.stringify({ sort: '', direction: '', filter: '', maxRows: 50, widths: { Name: -4, Gone: 200, Note: 2000 } }),
+  });
+  const store = new ScreenStores({ account: mixed }).for(ONE, []);
+  assert.deepEqual(
+    [...store.columnWidths()],
+    [['Gone', 200], ['Note', 2000]],
+    'the bad entry goes alone; a field the table may not declare is the table\'s to ignore'
+  );
+});
+
+test('Story 15.8: a width that is not a positive safe integer of at most 2000 is refused and remembers nothing', async () => {
+  const held = await account();
+  const store = new ScreenStores({ account: held }).for(ONE, []);
+  let notified = 0;
+  store.subscribe(() => (notified += 1));
+  for (const px of [0, -5, 2.5, Number.NaN, 2001]) {
+    assert.equal(store.setColumnWidth('Name', px), false, `refused: ${px}`);
+  }
+  assert.equal(store.setColumnWidth('', 200), false, 'and a width for no field');
+  assert.equal(store.columnWidths().size, 0);
+  assert.equal(held.calls.length, 1, 'nothing was remembered beyond the read that settled the store');
+  assert.equal(notified, 0);
+});
+
+// Mutation (Rule 19): send nothing once the widths take the value past the limit, as before this
+// test -> the sort assertion goes red.
+test('Story 15.8: widths that would take the view past the instance\'s limit are left out, earliest first, and the rest of the view is still remembered', async () => {
+  const { PREFERENCE_VALUE_MAX } = await import(core('screen-store.ts'));
+  const held = await account();
+  const store = new ScreenStores({ account: held }).for(ONE, []);
+  store.setFilter('x'.repeat(PREFERENCE_VALUE_MAX - 120));
+  assert.equal(store.setColumnWidth('AVeryLongFieldNameIndeed', 1999), true);
+  assert.equal(store.setColumnWidth('AnotherLongFieldNameToo', 1998), true);
+  store.setSort('Name');
+  await flush();
+  const sent = held.views().get(ONE_ROUTE);
+  assert.ok(sent.length <= PREFERENCE_VALUE_MAX, `the value sent fits: ${sent.length}`);
+  assert.equal(JSON.parse(sent).sort, 'Name', 'a sort set after the widths filled the value is still remembered');
+  assert.deepEqual(JSON.parse(sent).widths, { AnotherLongFieldNameToo: 1998 }, 'the width set last is the one kept');
+  assert.deepEqual(
+    [...store.columnWidths()],
+    [['AVeryLongFieldNameIndeed', 1999], ['AnotherLongFieldNameToo', 1998]],
+    'every width still holds on screen'
+  );
+  assert.equal(store.setColumnWidth('AVeryLongFieldNameIndeed', 1500), true);
+  await flush();
+  assert.deepEqual(JSON.parse(held.views().get(ONE_ROUTE)).widths, { AVeryLongFieldNameIndeed: 1500 }, 'a width set again is the latest');
+});

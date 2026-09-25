@@ -40,18 +40,24 @@ import { Session } from '../core/session';
 import { STRINGS, stringFor } from '../core/strings';
 import { formatChangeAnnouncement } from '../core/toasts';
 import {
+  COLUMN_DEFAULT_PX,
+  COLUMN_RESIZE_STEP_PX,
   type CellView,
+  type ColumnLayout,
   cellView,
   classicRowHref,
+  columnLayout,
   emptyStateView,
   fieldOf,
   formatClassicRowLinkDescription,
   formatCapNotice,
+  formatColumnWidth,
   formatRowCount,
   isMoveKey,
   moveActive,
   parseMaxRows,
   reconcile,
+  resizedWidth,
   rowFor,
   rowKey,
 } from '../core/table-model';
@@ -126,6 +132,34 @@ interface HeaderModel {
   readonly numeric: boolean;
   readonly sort: string | null;
   readonly arrow: string;
+  /** This column's edge is being dragged. */
+  readonly resizing: boolean;
+}
+
+/** A header edge being dragged: component-local layout until the pointer lets go. */
+interface ColumnDrag {
+  readonly field: string;
+  readonly pointerId: number;
+  readonly startX: number;
+  /** The column's rendered width when the drag began. */
+  readonly startWidth: number;
+  /** The header label's width, which the column never goes below. */
+  readonly min: number;
+  readonly width: number;
+  readonly moved: boolean;
+}
+
+/** The one cut-cell tooltip a table draws (Story 15.8). */
+interface CellTooltip {
+  /** The gridcell whose whole value it shows. */
+  readonly cellId: string;
+  readonly text: string;
+  /** What showed it: the pointer resting on the cell, or the active cell moving onto it. */
+  readonly source: 'pointer' | 'focus';
+  readonly top: number;
+  readonly left: number;
+  /** Measured and positioned; until then it is laid out unseen. */
+  readonly placed: boolean;
 }
 
 /**
@@ -158,6 +192,7 @@ interface HeaderModel {
   selector: 'app-data-table',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CdkVirtualScrollViewport, CdkFixedSizeVirtualScroll, CdkVirtualForOf],
+  host: { '(window:resize)': 'onWindowResize()' },
   template: `<div class="ocu-data-table-frame" [attr.aria-busy]="busy">
       <span class="ocu-visually-hidden ocu-data-table-announcement" role="status">{{
         announcementText
@@ -197,34 +232,51 @@ interface HeaderModel {
           role="grid"
           tabindex="0"
           [class.ocu-data-table-grid-no-active]="noActiveRow"
+          [class.ocu-data-table-resizing]="resizing"
           [attr.aria-label]="gridLabel"
           [attr.aria-rowcount]="ariaRowCount"
           [attr.aria-colcount]="ariaColCount"
           [attr.aria-activedescendant]="activeDescendant"
           (keydown)="onGridKeydown($event)"
           (focusin)="onGridFocusIn($event)"
+          (focusout)="onGridFocusOut($event)"
           (contextmenu)="onContextMenu($event)"
+          (pointerover)="onCellPointerOver($event)"
+          (pointerout)="onCellPointerOut($event)"
+          (pointerdown)="onGridPointerDown()"
         >
-          <div class="ocu-data-table-head" role="rowgroup">
+          <div #head class="ocu-data-table-head" role="rowgroup">
             <div
               class="ocu-data-table-row ocu-data-table-header-row"
               role="row"
               aria-rowindex="1"
               [style.grid-template-columns]="columnTemplate"
+              [style.min-width.px]="rowMinWidth"
             >
               @for (header of headers; track header.field) {
                 <div
                   class="ocu-data-table-header-cell"
                   role="columnheader"
+                  [attr.data-column]="header.field"
                   [class.ocu-data-table-cell-numeric]="header.numeric"
                   [attr.aria-sort]="header.sort"
                 >
                   <span class="ocu-data-table-header-label">{{ header.label }}</span>
                   <span class="ocu-data-table-sort-arrow" aria-hidden="true">{{ header.arrow }}</span>
+                  <div
+                    class="ocu-data-table-resize"
+                    aria-hidden="true"
+                    [class.ocu-data-table-resize-active]="header.resizing"
+                    (pointerdown)="onResizeStart($event, header.field)"
+                    (pointermove)="onResizeMove($event)"
+                    (pointerup)="onResizeEnd($event)"
+                    (pointercancel)="onResizeEnd($event)"
+                    (lostpointercapture)="onResizeEnd($event)"
+                  ></div>
                 </div>
               }
               @if (hasRowActions) {
-                <div class="ocu-data-table-header-cell" role="columnheader">
+                <div class="ocu-data-table-header-cell ocu-data-table-header-cell-trigger" role="columnheader">
                   <span class="ocu-data-table-header-label ocu-data-table-hidden-label">{{
                     STRINGS.commandBoxGroupActions
                   }}</span>
@@ -252,6 +304,7 @@ interface HeaderModel {
                 [class.ocu-data-table-row-active]="row.active"
                 [class.ocu-data-table-row-changed]="row.changed"
                 [style.grid-template-columns]="columnTemplate"
+                [style.min-width.px]="rowMinWidth"
                 (click)="onRowClick(row)"
               >
                 @for (cell of row.cells; track cell.field) {
@@ -354,6 +407,17 @@ interface HeaderModel {
           }
         </div>
       }
+      @if (tooltipShown) {
+        <div
+          #tooltip
+          class="ocu-data-table-tooltip"
+          aria-hidden="true"
+          [class.ocu-data-table-tooltip-placed]="tooltipPlaced"
+          [style.top.px]="tooltipTop"
+          [style.left.px]="tooltipLeft"
+          (pointerleave)="onTooltipLeave($event)"
+        >{{ tooltipText }}</div>
+      }
     </div>
     <div class="ocu-data-table-footer">
       <span class="ocu-data-table-count">{{ rowCountText }}</span>
@@ -387,9 +451,9 @@ export class DataTable implements OnInit {
    * regardless of what the row itself carries -- a column-wide state, not a per-cell one, since
    * the figures this exists for arrive together in one tick rather than row by row (AD-36's
    * `Screen.Read` answers one envelope). Empty by default, so no other screen's rendering changes.
-   * The grid's own column tracks come from each column's declared `kind` alone (`columnTemplate`
-   * below), never from cell content, so a column entering or leaving this list never reflows the
-   * table (AC4).
+   * The grid's own column tracks come from each column's declared `kind`, its header label's
+   * width and the width the user set (`columnLayout`), never from cell content, so a column
+   * entering or leaving this list never reflows the table (AC4).
    */
   readonly pendingFields = input<readonly string[]>([]);
 
@@ -429,6 +493,9 @@ export class DataTable implements OnInit {
   private readonly emptyElement = viewChild<ElementRef<HTMLElement>>('empty');
   private readonly menuElement = viewChild<ElementRef<HTMLElement>>('menu');
   private readonly maxRowsElement = viewChild<ElementRef<HTMLInputElement>>('maxRows');
+  private readonly headElement = viewChild<ElementRef<HTMLElement>>('head');
+  private readonly tooltipElement = viewChild<ElementRef<HTMLElement>>('tooltip');
+  private readonly tooltipOverlayId = `${this.tableId}-tooltip`;
 
   /** Bumped by the store, the framework, the scope, the action registry and the router. */
   private readonly generation = signal(0);
@@ -437,6 +504,23 @@ export class DataTable implements OnInit {
   private readonly menuIsOpen = signal(false);
   private readonly menuKey = signal('');
   private readonly menuTop = signal(0);
+
+  /**
+   * Each column's header label width, measured after render and again once the fonts settle: the
+   * label, the sort arrow's reserved slot, the gap between them and the cell's padding. Layout,
+   * not screen state.
+   */
+  private readonly labelMins = signal<ReadonlyMap<string, number>>(new Map());
+
+  /** The header edge being dragged, or `null`. */
+  private readonly drag = signal<ColumnDrag | null>(null);
+
+  /** The cut-cell tooltip, or `null` while none shows. */
+  private readonly tooltip = signal<CellTooltip | null>(null);
+
+  /** The gridcell the pointer rests on, and the delay before its tooltip shows. */
+  private hoverCellId = '';
+  private hoverTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** The view's keys when the table last reconciled. */
   private lastKeys: readonly string[] = [];
@@ -467,6 +551,18 @@ export class DataTable implements OnInit {
   });
 
   private readonly columns = computed<readonly TableColumn[]>(() => this.screen().table?.columns ?? []);
+
+  /**
+   * The tracks every row shares (Story 15.8): the store's widths, with a dragged column's width in
+   * place of its own while the drag lasts, over the measured label widths.
+   */
+  private readonly layout = computed<ColumnLayout>(() => {
+    this.generation();
+    const drag = this.drag();
+    const stored = this.store().columnWidths();
+    const widths = drag === null || !drag.moved ? stored : new Map([...stored, [drag.field, drag.width]]);
+    return columnLayout(this.columns(), widths, this.labelMins(), this.hasRowActions);
+  });
 
   private readonly rowModels = computed<readonly RowModel[]>(() => {
     this.generation();
@@ -571,7 +667,47 @@ export class DataTable implements OnInit {
       const viewport = this.viewport();
       if (viewport === undefined) return;
       const subscription = viewport.renderedRangeStream.subscribe((range) => this.renderedRange.set(range));
-      onCleanup(() => subscription.unsubscribe());
+      const element = viewport.elementRef.nativeElement;
+      const onScroll = () => this.onViewportScroll(element);
+      element.addEventListener('scroll', onScroll, { passive: true });
+      onCleanup(() => {
+        subscription.unsubscribe();
+        element.removeEventListener('scroll', onScroll);
+      });
+    });
+
+    // The label widths are measured in the header once it renders, and again once the fonts have
+    // settled, since a fallback face measures differently from the one that paints.
+    effect(() => {
+      const head = this.headElement();
+      this.columns();
+      if (head === undefined) return;
+      afterNextRender(() => this.measureLabels(), { injector: this.injector });
+    });
+    const fonts = typeof document === 'undefined' ? undefined : document.fonts;
+    void fonts?.ready.then(() => this.measureLabels());
+
+    // A chord belongs to the shell (Ctrl/Cmd+B, Ctrl/Cmd+I), which is inert while anything is on
+    // the overlay stack. The shell listens on the document in the bubble phase, so a capture
+    // listener there lets a showing tooltip step aside first, wherever focus is.
+    const onChord = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey) this.hideTooltip();
+    };
+    if (typeof document !== 'undefined') document.addEventListener('keydown', onChord, true);
+    // A scroll of the page or of any element holding the grid moves the cell out from under the
+    // fixed tooltip; the viewport's own scroll is handled with the header's sync.
+    const onAncestorScroll = (event: Event) => {
+      const grid = this.gridElement()?.nativeElement;
+      const target = event.target;
+      if (target instanceof Document || (grid !== undefined && target instanceof Node && target.contains(grid))) this.hideTooltip();
+    };
+    if (typeof document !== 'undefined') document.addEventListener('scroll', onAncestorScroll, true);
+
+    this.destroyRef.onDestroy(() => {
+      if (typeof document !== 'undefined') document.removeEventListener('keydown', onChord, true);
+      if (typeof document !== 'undefined') document.removeEventListener('scroll', onAncestorScroll, true);
+      this.clearHoverTimer();
+      this.overlays.remove(this.tooltipOverlayId);
     });
   }
 
@@ -698,16 +834,43 @@ export class DataTable implements OnInit {
         numeric: column.kind === 'number',
         sort: sorted ? (direction === 'desc' ? 'descending' : 'ascending') : null,
         arrow: sorted ? (direction === 'desc' ? '\u2193' : '\u2191') : '',
+        resizing: this.drag()?.field === column.field,
       };
     });
   }
 
+  /** The grid tracks the header row and every body row carry (`columnLayout`). */
   protected get columnTemplate(): string {
-    const tracks: string[] = this.columns().map((column) =>
-      column.kind === 'number' || column.kind === 'status' ? 'minmax(0, 1fr)' : 'minmax(0, 2fr)'
-    );
-    if (this.hasRowActions) tracks.push('calc(28px + 2 * var(--ocu-space-3))');
-    return tracks.join(' ');
+    return this.layout().template;
+  }
+
+  /** The rows' minimum width: past it, the table scrolls sideways inside its frame. */
+  protected get rowMinWidth(): number {
+    return this.layout().minWidthPx;
+  }
+
+  protected get resizing(): boolean {
+    return this.drag() !== null;
+  }
+
+  protected get tooltipShown(): boolean {
+    return this.tooltip() !== null;
+  }
+
+  protected get tooltipPlaced(): boolean {
+    return this.tooltip()?.placed ?? false;
+  }
+
+  protected get tooltipText(): string {
+    return this.tooltip()?.text ?? '';
+  }
+
+  protected get tooltipTop(): number {
+    return this.tooltip()?.top ?? 0;
+  }
+
+  protected get tooltipLeft(): number {
+    return this.tooltip()?.left ?? 0;
   }
 
   protected get rows(): readonly RowModel[] {
@@ -777,6 +940,10 @@ export class DataTable implements OnInit {
 
   protected onGridKeydown(event: KeyboardEvent): void {
     const keys = this.lastKeys;
+    if (event.altKey && event.shiftKey && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
+      this.resizeActiveColumn(event, event.key === 'ArrowRight' ? COLUMN_RESIZE_STEP_PX : -COLUMN_RESIZE_STEP_PX);
+      return;
+    }
     if (event.altKey && event.key === 'ArrowDown') {
       if (!this.hasRowActions || this.activeIndex() < 0) return;
       event.preventDefault();
@@ -787,6 +954,7 @@ export class DataTable implements OnInit {
       event.preventDefault();
       const next = moveActive(this.activeIndex(), event.key, keys.length, this.pageSize());
       if (next >= 0) this.moveTo(next);
+      this.afterActiveCellMoved();
       return;
     }
     const index = this.activeIndex();
@@ -796,12 +964,14 @@ export class DataTable implements OnInit {
       event.preventDefault();
       this.scrollIntoRange(index);
       this.activeColumn.set(Math.min(this.activeColumn() + 1, cells - 1));
+      this.afterActiveCellMoved();
       return;
     }
     if (event.key === 'ArrowLeft') {
       event.preventDefault();
       this.scrollIntoRange(index);
       this.activeColumn.set(Math.max(this.activeColumn() - 1, -1));
+      this.afterActiveCellMoved();
       return;
     }
     if (event.key === 'Enter') {
@@ -828,6 +998,282 @@ export class DataTable implements OnInit {
   protected onGridFocusIn(event: FocusEvent): void {
     if (event.target !== this.viewport()?.elementRef.nativeElement) return;
     this.gridElement()?.nativeElement.focus({ preventScroll: true });
+  }
+
+  /** Focus leaving the grid takes the tooltip with it. */
+  protected onGridFocusOut(event: FocusEvent): void {
+    const grid = this.gridElement()?.nativeElement;
+    const next = event.relatedTarget;
+    if (grid !== undefined && next instanceof Node && grid.contains(next)) return;
+    this.hideTooltip();
+  }
+
+  // --- Column widths (Story 15.8) ------------------------------------------------------------------
+
+  /**
+   * Alt/Option+Shift+Right or Left: the active cell's column, 16px wider or narrower, never below
+   * its header label. With no active data cell -- the row itself, or the trigger cell -- nothing
+   * changes and nothing is announced.
+   */
+  private resizeActiveColumn(event: KeyboardEvent, delta: number): void {
+    const columns = this.columns();
+    const column = this.activeColumn();
+    if (this.activeIndex() < 0 || column < 0 || column >= columns.length) return;
+    event.preventDefault();
+    const field = columns[column].field;
+    const next = resizedWidth(this.renderedWidth(column), delta, this.labelMins().get(field) ?? 0);
+    if (!this.store().setColumnWidth(field, next)) return;
+    const label = this.headers[column]?.label ?? '';
+    this.announcement.set(formatColumnWidth(STRINGS.tableColumnWidthAnnouncement, label, next));
+    this.afterActiveCellMoved();
+  }
+
+  /**
+   * A column's width as drawn, or -- where nothing is drawn to measure -- the width it is set to,
+   * else the larger of its label and its kind's default.
+   */
+  private renderedWidth(column: number): number {
+    const field = this.columns()[column]?.field ?? '';
+    const cell = this.headerCell(field);
+    const drawn = cell?.getBoundingClientRect().width ?? 0;
+    if (drawn > 0) return drawn;
+    const kind = this.columns()[column]?.kind ?? 'text';
+    return this.store().columnWidths().get(field) ?? Math.max(this.labelMins().get(field) ?? 0, COLUMN_DEFAULT_PX[kind]);
+  }
+
+  private headerCell(field: string): HTMLElement | null {
+    const head = this.headElement()?.nativeElement;
+    if (head === undefined) return null;
+    return (
+      Array.from(head.querySelectorAll<HTMLElement>('[data-column]')).find(
+        (cell) => cell.getAttribute('data-column') === field
+      ) ?? null
+    );
+  }
+
+  /**
+   * A header edge's drag begins from the column's rendered width. The pointer is captured, so the
+   * drag follows it off the edge, and the press is not a row's click or the start of a selection.
+   */
+  protected onResizeStart(event: PointerEvent, field: string): void {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const handle = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    const startWidth = handle?.parentElement?.getBoundingClientRect().width ?? 0;
+    handle?.setPointerCapture?.(event.pointerId);
+    this.hideTooltip();
+    const min = this.labelMins().get(field) ?? 0;
+    this.drag.set({
+      field,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startWidth,
+      min,
+      width: resizedWidth(startWidth, 0, min),
+      moved: false,
+    });
+  }
+
+  protected onResizeMove(event: PointerEvent): void {
+    const drag = this.drag();
+    if (drag === null || event.pointerId !== drag.pointerId) return;
+    event.preventDefault();
+    // Only a move that changes the width counts, so a press on the edge alone stores nothing.
+    const width = resizedWidth(drag.startWidth, event.clientX - drag.startX, drag.min);
+    if (width !== drag.width) this.drag.set({ ...drag, width, moved: true });
+  }
+
+  /** The drag ends: a column that moved keeps its width, written to the store once. */
+  protected onResizeEnd(event: PointerEvent): void {
+    const drag = this.drag();
+    if (drag === null || event.pointerId !== drag.pointerId) return;
+    this.drag.set(null);
+    if (drag.moved) this.store().setColumnWidth(drag.field, drag.width);
+  }
+
+  /**
+   * Measure each header label's natural width, plus the reserved sort-arrow slot, the gap between
+   * them and the cell's horizontal padding. The label's text is measured as laid out, so an
+   * ellipsis on a column narrower than its label does not shorten the answer.
+   */
+  private measureLabels(): void {
+    const head = this.headElement()?.nativeElement;
+    if (head === undefined) return;
+    const next = new Map<string, number>();
+    for (const cell of Array.from(head.querySelectorAll<HTMLElement>('[data-column]'))) {
+      const style = getComputedStyle(cell);
+      const px = (value: string) => parseFloat(value) || 0;
+      const text = textWidth(cell.querySelector('.ocu-data-table-header-label'));
+      const arrow = cell.querySelector('.ocu-data-table-sort-arrow')?.getBoundingClientRect().width ?? 0;
+      const width = text + arrow + px(style.columnGap) + px(style.paddingLeft) + px(style.paddingRight);
+      // One pixel of slack, so a label whose width rounds down is never cut by the rounding.
+      next.set(cell.getAttribute('data-column') ?? '', width > 0 ? Math.ceil(width) + 1 : 0);
+    }
+    const held = this.labelMins();
+    if (next.size === held.size && [...next].every(([field, width]) => held.get(field) === width)) return;
+    this.labelMins.set(next);
+  }
+
+  /** The viewport scrolled: the header follows it sideways, and the tooltip goes. */
+  private onViewportScroll(viewport: HTMLElement): void {
+    const head = this.headElement()?.nativeElement;
+    if (head !== undefined && head.scrollLeft !== viewport.scrollLeft) head.scrollLeft = viewport.scrollLeft;
+    this.hoverCellId = '';
+    this.hideTooltip();
+  }
+
+  /**
+   * Bring the active cell fully into view sideways; the header follows through the scroll. A cell
+   * wider than the viewport shows its start. A data cell's visible range ends where the row's
+   * trigger cell begins, because that cell is pinned to the frame's right edge and covers what
+   * scrolls beneath it.
+   */
+  private revealActiveCell(): void {
+    const viewport = this.viewport()?.elementRef.nativeElement;
+    const id = this.activeColumn() < 0 ? null : this.activeDescendant;
+    const cell = id === null ? null : document.getElementById(id);
+    if (viewport === undefined || cell === null) return;
+    const view = viewport.getBoundingClientRect();
+    const box = cell.getBoundingClientRect();
+    const left = view.left + viewport.clientLeft;
+    let right = left + viewport.clientWidth;
+    const trigger = cell.classList.contains('ocu-data-table-cell-trigger')
+      ? null
+      : cell.parentElement?.querySelector<HTMLElement>('.ocu-data-table-cell-trigger') ?? null;
+    if (trigger !== null) right = Math.min(right, trigger.getBoundingClientRect().left);
+    if (box.left < left) viewport.scrollLeft -= left - box.left;
+    else if (box.right > right) viewport.scrollLeft += Math.min(box.right - right, box.left - left);
+  }
+
+  /**
+   * After the active cell moves: reveal it, then -- once any scroll the reveal caused has been
+   * dispatched, so it does not take the tooltip straight back -- show or hide the tooltip for it.
+   */
+  private afterActiveCellMoved(): void {
+    afterNextRender(
+      () => {
+        this.revealActiveCell();
+        nextFrame(() => this.updateFocusTooltip());
+      },
+      { injector: this.injector }
+    );
+  }
+
+  // --- The cut-cell tooltip (Story 15.8) -----------------------------------------------------------
+
+  /**
+   * The active cell's tooltip while the grid has focus: shown at once on a cut data cell, gone on
+   * any other. A tooltip the pointer showed is left alone unless the active cell's replaces it.
+   */
+  private updateFocusTooltip(): void {
+    const grid = this.gridElement()?.nativeElement;
+    const column = this.activeColumn();
+    const onData = grid !== undefined && document.activeElement === grid && column >= 0 && column < this.columns().length;
+    const id = onData ? this.activeDescendant : null;
+    const cell = id === null ? null : document.getElementById(id);
+    const text = cell === null ? '' : cutText(cell);
+    if (cell === null || text === '') {
+      if (this.tooltip()?.source === 'focus') this.hideTooltip();
+      return;
+    }
+    this.showTooltip(cell, text, 'focus');
+  }
+
+  protected onCellPointerOver(event: PointerEvent): void {
+    const cell = bodyCellOf(event.target);
+    if (cell === null || cell.id === this.hoverCellId) return;
+    this.hoverCellId = cell.id;
+    this.clearHoverTimer();
+    const shown = this.tooltip();
+    if (shown?.cellId === cell.id) return;
+    if (shown?.source === 'pointer') this.hideTooltip();
+    const cellId = cell.id;
+    this.hoverTimer = setTimeout(() => {
+      this.hoverTimer = null;
+      const target = this.hoverCellId === cellId ? document.getElementById(cellId) : null;
+      const text = target === null ? '' : cutText(target);
+      if (target !== null && text !== '') this.showTooltip(target, text, 'pointer');
+    }, tooltipDelayMs());
+  }
+
+  protected onCellPointerOut(event: PointerEvent): void {
+    const cell = bodyCellOf(event.target);
+    if (cell === null) return;
+    const next = event.relatedTarget;
+    if (next instanceof Node && cell.contains(next)) return;
+    if (this.hoverCellId === cell.id) {
+      this.hoverCellId = '';
+      this.clearHoverTimer();
+    }
+    if (next instanceof Node && (this.tooltipElement()?.nativeElement.contains(next) ?? false)) return;
+    const shown = this.tooltip();
+    if (shown?.source === 'pointer' && shown.cellId === cell.id) this.hideTooltip();
+  }
+
+  /** A press in the grid acts on it, so the tooltip, and one still waiting to show, goes. */
+  protected onGridPointerDown(): void {
+    this.hideTooltip();
+  }
+
+  /** The pointer left the tooltip for anywhere but the cell it belongs to. */
+  protected onTooltipLeave(event: PointerEvent): void {
+    const shown = this.tooltip();
+    if (shown === null || shown.source !== 'pointer') return;
+    const cell = document.getElementById(shown.cellId);
+    const next = event.relatedTarget;
+    if (cell !== null && next instanceof Node && cell.contains(next)) return;
+    this.hideTooltip();
+  }
+
+  protected onWindowResize(): void {
+    this.hideTooltip();
+  }
+
+  private showTooltip(cell: HTMLElement, text: string, source: CellTooltip['source']): void {
+    this.tooltip.set({ cellId: cell.id, text, source, top: 0, left: 0, placed: false });
+    this.overlays.push(this.tooltipOverlayId, () => this.hideTooltip());
+    afterNextRender(() => this.placeTooltip(), { injector: this.injector });
+  }
+
+  /**
+   * Put the tooltip under its cell, or above it where there is no room below, inside the window.
+   * It is `position: fixed` and outside the scroll viewport, whose transform would otherwise anchor
+   * it, so no frame clips it.
+   */
+  private placeTooltip(): void {
+    const shown = this.tooltip();
+    const element = this.tooltipElement()?.nativeElement;
+    const cell = shown === null ? null : document.getElementById(shown.cellId);
+    if (shown === null || element === undefined) return;
+    if (cell === null) {
+      this.hideTooltip();
+      return;
+    }
+    const box = cell.getBoundingClientRect();
+    const size = element.getBoundingClientRect();
+    const width = document.documentElement.clientWidth;
+    const height = document.documentElement.clientHeight;
+    const top = box.bottom + size.height <= height ? box.bottom : box.top - size.height;
+    this.tooltip.set({
+      ...shown,
+      top: clamp(top, 0, height - size.height),
+      left: clamp(box.left, 0, width - size.width),
+      placed: true,
+    });
+  }
+
+  private hideTooltip(): void {
+    this.clearHoverTimer();
+    if (this.tooltip() === null) return;
+    this.tooltip.set(null);
+    this.overlays.remove(this.tooltipOverlayId);
+  }
+
+  private clearHoverTimer(): void {
+    if (this.hoverTimer === null) return;
+    clearTimeout(this.hoverTimer);
+    this.hoverTimer = null;
   }
 
   /**
@@ -1000,6 +1446,7 @@ export class DataTable implements OnInit {
         ((this.gridElement()?.nativeElement.contains(focused) ?? false) ||
           (this.menuElement()?.nativeElement.contains(focused) ?? false));
       if (this.menuIsOpen() && !keys.includes(this.menuKey())) this.closeMenu(keys.length > 0);
+      this.hideTooltip();
       const selected = store.selection()[0] ?? '';
       const result = reconcile({
         previousKeys: previous,
@@ -1163,6 +1610,7 @@ export class DataTable implements OnInit {
   }
 
   private openMenu(index: number): void {
+    this.hideTooltip();
     this.select(index);
     this.scrollIntoRange(index);
     this.menuKey.set(this.lastKeys[index] ?? '');
@@ -1214,6 +1662,49 @@ export class DataTable implements OnInit {
   private signedIn(): string {
     return this.session?.userName() ?? '';
   }
+}
+
+/** The body gridcell `target` is in, the trigger cell aside, or `null`. */
+function bodyCellOf(target: EventTarget | null): HTMLElement | null {
+  if (!(target instanceof Element)) return null;
+  const cell = target.closest<HTMLElement>('.ocu-data-table-body .ocu-data-table-cell');
+  return cell === null || cell.classList.contains('ocu-data-table-cell-trigger') ? null : cell;
+}
+
+/**
+ * A cell's whole value when its text or link is cut (`scrollWidth > clientWidth`, read now), else
+ * `''`. A skeleton cell carries neither, so it is never cut.
+ */
+function cutText(cell: HTMLElement): string {
+  const element = cell.querySelector<HTMLElement>('.ocu-data-table-text, .ocu-data-table-link');
+  if (element === null || element.scrollWidth <= element.clientWidth) return '';
+  return (element.textContent ?? '').trim();
+}
+
+/** The laid-out width of an element's text, or 0 where there is no layout to ask. */
+function textWidth(element: Element | null): number {
+  if (element === null || typeof document.createRange !== 'function') return 0;
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  return typeof range.getBoundingClientRect === 'function' ? range.getBoundingClientRect().width : 0;
+}
+
+/** `--ocu-motion-tooltip-delay` in milliseconds: 300 unless reduced motion zeroes it. */
+function tooltipDelayMs(): number {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--ocu-motion-tooltip-delay').trim();
+  const value = parseFloat(raw);
+  if (!Number.isFinite(value)) return 300;
+  return raw.endsWith('ms') ? value : raw.endsWith('s') ? value * 1000 : value;
+}
+
+/** Run `callback` in the next frame, after that frame's scroll events have been dispatched. */
+function nextFrame(callback: () => void): void {
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => callback());
+  else setTimeout(callback, 0);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), Math.max(min, max));
 }
 
 function sameKeys(a: readonly string[], b: readonly string[]): boolean {

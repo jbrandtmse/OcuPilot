@@ -65,3 +65,17 @@ export function shortcutScreens(): readonly ScreenDeclaration[] {
   }
   return out;
 }
+
+/** One key binding Home's Shortcuts block lists as text: its label's and its keys' string keys. */
+export interface ShortcutKey {
+  readonly labelKey: string;
+  readonly keysKey: string;
+}
+
+/**
+ * The key bindings the Shortcuts block lists after its screen rows (Story 15.8). Text, not
+ * controls: a binding is pressed where it applies, so nothing here opens anything.
+ */
+export const SHORTCUT_KEYS: readonly ShortcutKey[] = [
+  { labelKey: 'tableColumnResizeShortcut', keysKey: 'tableColumnResizeKeys' },
+];

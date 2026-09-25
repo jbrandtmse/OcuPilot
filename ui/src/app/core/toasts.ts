@@ -10,12 +10,15 @@
  * (AD-12/AD-39, DESIGN.md's toast recipe says so in as many words), and this store subscribes to
  * the bus alone, which carries no fault -- so there is no branch that could raise one.
  *
- * **The toast is hidden only while its own target is open.** The target is `screenForChange`'s --
- * the entity's list -- and the scope half is `screenShowsEntity`'s, the predicate `RefreshService`
- * filters on, so the list that re-fetches and highlights the row is the one screen that raises
- * nothing. The open screen is resolved from the router URL rather than from the refresh service's
- * bound screen: a screen that declares no auto-refresh still shows entities, and `RefreshService`
- * does not expose what it is bound to.
+ * **The toast is hidden while its own target is open, and for the open screen's own write.** The
+ * target is `screenForChange`'s -- the entity's list -- and the scope half is `screenShowsEntity`'s,
+ * the predicate `RefreshService` filters on, so the list that re-fetches and highlights the row is
+ * the one screen that raises nothing. A screen's own write carries no `proposalId`, so while the
+ * open screen shows that entity's type -- the editor that just saved it -- it raises nothing either (DW-1597);
+ * an agent's write carries its proposal and still toasts on the entity's details or editor. The open
+ * screen is resolved from the router URL rather than from the refresh service's bound screen: a
+ * screen that declares no auto-refresh still shows entities, and `RefreshService` does not expose
+ * what it is bound to.
  *
  * **The timers pause together.** Hovering or focusing anywhere in the stack holds every
  * countdown, because a toast being read must not expire under the reader (EXPERIENCE.md's
@@ -184,17 +187,19 @@ export class ToastStore {
   /**
    * Raise a toast for `event`, and report whether one was raised.
    *
-   * Three events raise nothing, and each is a rule rather than a guard: a kind that is not
+   * Four events raise nothing, and each is a rule rather than a guard: a kind that is not
    * `changed` (a proposal opening is the auto-refresh pause's business, not the user's), a change
-   * the open screen already shows (the row highlight is the confirmation), and an event whose
-   * action is not one of AD-14's -- which `ChangeBus.publish` already refuses, so nothing on the
-   * bus can carry one.
+   * the open screen already shows (the row highlight is the confirmation), a screen's own write --
+   * no `proposalId` -- while the open screen shows its entity type (the screen that made it), and an
+   * event whose action is not one of AD-14's -- which `ChangeBus.publish` already refuses, so
+   * nothing on the bus can carry one.
    */
   publish(event: ChangeEvent): boolean {
     if (event.kind !== 'changed') return false;
     if (event.action === '') return false;
     const target = screenForChange(event);
     if (target !== null && this.targetIsOpen(target.screen, event)) return false;
+    if (event.proposalId === '' && this.openScreenShows(event)) return false;
 
     const lifetime = target === null ? TOAST_LIFETIME_MS : TOAST_LIFETIME_WITH_ACTION_MS;
     this.minted += 1;
@@ -290,6 +295,12 @@ export class ToastStore {
     const screen = screenForUrl(this.currentUrl());
     if (screen === null || screen.descriptor !== target.descriptor) return false;
     return screenShowsEntity(screen, event, this.namespace());
+  }
+
+  /** Whether the screen the shell is standing on shows the entity type of `event` in its scope. */
+  private openScreenShows(event: ChangeEvent): boolean {
+    const screen = screenForUrl(this.currentUrl());
+    return screen !== null && screenShowsEntity(screen, event, this.namespace());
   }
 
   /**

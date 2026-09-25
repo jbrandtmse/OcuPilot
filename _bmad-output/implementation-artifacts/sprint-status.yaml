@@ -220,7 +220,7 @@ development_status:
   14-8-the-seeded-injection-test: backlog
   epic-14-retrospective: optional
 
-  epic-15: in-progress
+  epic-15: done
   15-1-change-your-own-password: done
   15-2-favorites-recent-items-and-menu-search: done
   15-3-about-help-shortcuts-and-the-links-panel: done
@@ -228,8 +228,8 @@ development_status:
   15-5-ui-state-that-survives-a-sign-out: done
   15-6-the-light-and-dark-theme: done
   15-7-the-rail-s-icons: done
-  15-8-columns-you-can-read: backlog
-  15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth: backlog
+  15-8-columns-you-can-read: done
+  15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth: done
   epic-15-retrospective: optional
 
   epic-16: backlog

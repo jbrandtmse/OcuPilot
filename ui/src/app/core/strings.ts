@@ -1946,7 +1946,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:559 */
+  /** EXPERIENCE.md:560 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2174,251 +2174,257 @@ export const STRINGS = {
   auditUserEventPromptBusiest: 'Which user events have recorded the most?',
   /** EXPERIENCE.md:512 */
   auditUserEventPromptRegister: 'Register an audit event for my application.',
+  /** EXPERIENCE.md:513 */
+  tableColumnResizeShortcut: 'Resize the active column',
+  /** EXPERIENCE.md:513 */
+  tableColumnResizeKeys: 'Alt/Option+Shift+Left or Right',
+  /** EXPERIENCE.md:513 */
+  tableColumnWidthAnnouncement: '<column> column, <n> px wide',
   // Story 12.1: the X.509 credential form's certificate-details group and its serial number.
-  /** EXPERIENCE.md:513 */
+  /** EXPERIENCE.md:514 */
   x509CertificateDetails: 'Certificate details',
-  /** EXPERIENCE.md:513 */
+  /** EXPERIENCE.md:514 */
   x509FieldSerialNumber: 'Serial number',
 
   // Story 12.2: the Users list's token revoke row action and its typed-name dialog's consequence.
-  /** EXPERIENCE.md:514 */
+  /** EXPERIENCE.md:515 */
   userActionRevokeTokens: 'Revoke OAuth 2.0 tokens',
-  /** EXPERIENCE.md:514 */
+  /** EXPERIENCE.md:515 */
   userRevokeTokensConsequence:
     'Revoking deletes every OAuth 2.0 access token this instance issued under this user name, and applications holding one must sign the user in again. This cannot be undone.',
 
   // Story 12.3: the Auditing screen's audit database group, its copy and purge dialogs, and the
   // status line while either runs on the instance.
-  /** EXPERIENCE.md:515 */
+  /** EXPERIENCE.md:516 */
   auditDatabaseCopyAction: 'Copy to namespace',
-  /** EXPERIENCE.md:515 */
+  /** EXPERIENCE.md:516 */
   auditDatabasePurgeAction: 'Purge old records',
-  /** EXPERIENCE.md:515 */
+  /** EXPERIENCE.md:516 */
   auditDatabaseCopyTitle: 'Copy audit records',
-  /** EXPERIENCE.md:515 */
+  /** EXPERIENCE.md:516 */
   auditDatabaseCopyConsequence:
     'Copies every record in the audit database into this namespace. Anyone who can read that namespace\'s database can read the copy. The originals stay where they are.',
-  /** EXPERIENCE.md:515 */
+  /** EXPERIENCE.md:516 */
   auditDatabaseCopyConfirm: 'Copy',
-  /** EXPERIENCE.md:515 */
+  /** EXPERIENCE.md:516 */
   auditDatabasePurgeTitle: 'Purge audit records',
-  /** EXPERIENCE.md:515 */
+  /** EXPERIENCE.md:516 */
   auditDatabasePurgeDays: 'Older than (days)',
-  /** EXPERIENCE.md:515 */
+  /** EXPERIENCE.md:516 */
   auditDatabasePurgeConsequence:
     'Removes every audit record on this instance dated before <date> 00:00, instance time, including the agent\'s audit markers from that period. This cannot be undone.',
-  /** EXPERIENCE.md:515 */
+  /** EXPERIENCE.md:516 */
   auditDatabasePurgeConfirm: 'Purge',
-  /** EXPERIENCE.md:515 */
+  /** EXPERIENCE.md:516 */
   auditDatabaseCopyRunning: 'Copying to <namespace> on the instance since <time>',
-  /** EXPERIENCE.md:515 */
+  /** EXPERIENCE.md:516 */
   auditDatabasePurgeRunning: 'Purging records dated before <date> on the instance since <time>',
-  /** EXPERIENCE.md:515 */
+  /** EXPERIENCE.md:516 */
   auditDatabaseCopyDone: 'Copied the audit database to <namespace>.',
-  /** EXPERIENCE.md:515 */
+  /** EXPERIENCE.md:516 */
   auditDatabasePurgeDone: 'Purged audit records dated before <date>.',
-  /** EXPERIENCE.md:515 */
+  /** EXPERIENCE.md:516 */
   auditDatabaseStillRunning: 'Still running on the instance. It finishes in the background.',
 
   // Story 12.4: the OAuth 2.0 client server description editor, its tab's Create, Delete and
   // Update JWKS, and the phrase that resolves the tab's agent invitation.
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerFormLabel: 'Server description',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerFieldIssuer: 'Issuer endpoint',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerFieldToken: 'Registration access token',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerTokenHint: 'Leave empty to keep the stored token.',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerFieldAuthorization: 'Authorization endpoint',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerFieldTokenEndpoint: 'Token endpoint',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerFieldUserinfo: 'Userinfo endpoint',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerFieldIntrospection: 'Token introspection endpoint',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerFieldRevocation: 'Token revocation endpoint',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerFieldEndSession: 'End session endpoint',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerGroupJwt: 'JSON Web Token (JWT) settings',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerJwtUrl: 'JWKS from URL',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerJwtX509: 'X.509 certificate',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerGroupMetadata: 'Metadata',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerDiscover: 'Discover',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerUpdateJwks: 'Update JWKS',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerDiscovered: 'Fetched the metadata published at <issuer>. Review it, then Save.',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerJwksUpdated: 'Updated the key set from <url>.',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerTokenRefused: 'Saved. The registration access token was not stored: <reason>',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerDeleteConsequence:
     'Deletes this server description and its metadata. A resource server that uses it is left without one. A client configuration that uses it blocks the delete.',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerDescriptionsEmptyAgent: 'add a server description',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:517 */
   oauthServerFormRefusedAction: 'change this server description',
 
   // Story 12.5: the OAuth 2.0 client configuration editor, its tab's Create, Register and Rotate
   // Keys, and the phrase a privilege refusal names.
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFormLabel: 'Client configuration',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientSectionClientInformation: 'Client Information',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientSectionJwt: 'JWT Settings',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientSectionCredentials: 'Client Credentials',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFieldName: 'Application name',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientTypeConfidential: 'Confidential',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientTypePublic: 'Public',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientTypeResource: 'Resource server',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFieldRedirect: 'Redirect URL',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFieldLogoutUri: 'Front-channel logout URL',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFieldLogoutSession: 'Front-channel session required',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientGrantAuthorizationCode: 'Authorization code',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientGrantImplicit: 'Implicit',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientGrantPassword: 'Resource owner password credentials',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientGrantClientCredentials: 'Client credentials',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientGrantJwt: 'JWT authorization',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFieldAuthMethod: 'Authentication method',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFieldAuthSigning: 'Authentication signing algorithm',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFieldAudience: 'Audience',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFieldLogo: 'Logo URL',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFieldHome: 'Client home page URL',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFieldPolicy: 'Policy URL',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFieldTos: 'Terms of service URL',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFieldContacts: 'Contacts (comma-separated)',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFieldMaxAge: 'Default max age (seconds)',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFieldInterval: 'JWT interval (seconds)',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFieldCredentials: 'X.509 credentials',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientAlgIdToken: 'ID token algorithms',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientAlgUserinfo: 'Userinfo algorithms',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientAlgAccessToken: 'Access token algorithms',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientAlgRequest: 'Request object algorithms',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientAlgSigning: 'Signing',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientAlgEncryption: 'Encryption',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientAlgKey: 'Key',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFieldSecret: 'Client secret',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFieldInitialToken: 'Initial access token',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientSecretHint: 'Leave empty to keep the stored value.',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFieldIssuedAt: 'Client ID issued at',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFieldExpiresAt: 'Client secret expires at',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFieldRegistrationUri: 'Registration client URI',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientNotSet: 'Not set',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientRegister: 'Register',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientRotateKeys: 'Rotate Keys',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientRegistered: 'Registered with <issuer>. Client ID: <clientId>.',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientKeysRotated: 'Rotated this client\'s keys.',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientSecretsRefused: 'Saved. The secrets were not stored: <reason>',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientRegistrationNotUpdated: 'Saved. <issuer> was not updated: <reason>',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:518 */
   oauthClientFormRefusedAction: 'change this client configuration',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerTabToken: 'Access token validation',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerTabAuthenticator: 'Authenticator',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerTabMappings: 'Mappings',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerFieldAudiences: 'Audiences',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerAddAudience: 'Add audience',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerFieldScope: 'Required scope',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerFieldJwt: 'JWT',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerFieldIntrospection: 'Call introspection',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerFieldOidc: 'OpenID Connect',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerMethodBasic: 'HTTP Basic',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerMethodPost: 'Form post',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerMethodNone: 'none',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerFieldImplementation: 'Implementation',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerGatewayMappings: 'Web Gateway mappings',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerBindingsMappings: 'ODBC/JDBC mappings',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerFieldApplication: 'Application',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerDefaultKey: '* (Default)',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerAddMapping: 'Add mapping',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerMoves: 'Moves this mapping from <server>.',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerMoveEffect: 'Moves this service mapping from the resource server that holds it.',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerSecretRefused: 'Saved. The client secret was not stored: <reason>',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerMappingsRefused: 'Saved. <count> service mappings were not changed: <reason>',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerDeleteConsequence: 'This also deletes the resource server\'s service mappings.',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServersEmptyAgent: 'create an OAuth 2.0 resource server',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerFormRefusedAction: 'change this resource server',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerAuthenticatorNote: 'Changing the namespace or implementation replaces these settings with that implementation\'s defaults.',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:519 */
   oauthResourceServerAuthenticatorResetEffect: 'Changes the authenticator\'s namespace or implementation, so every setting this change does not name takes that implementation\'s default.',
 
 } as const;

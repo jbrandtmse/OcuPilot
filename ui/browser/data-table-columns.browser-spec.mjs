@@ -1,0 +1,766 @@
+/**
+ * Story 15.8's columns in a real browser, over the data table's harness: the kind defaults and the
+ * label floor, the sideways scroll inside the frame, the header-edge drag and the keyboard resize,
+ * the active cell revealed sideways, the cut-cell tooltip by pointer and by keyboard, the 36px rows
+ * through all of it, and the name link's 24x24 floor. jsdom lays nothing out, so none of this can be
+ * asked of `data-table.spec.ts`.
+ *
+ * It serves `dist/table-harness` (`ng build --configuration production,harness`) from its own
+ * loopback server and answers the harness's read with generated rows, as `data-table.browser-spec.mjs`
+ * does; the instance is touched only by `resetRememberedState`, which refuses the live container.
+ */
+
+import { test, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
+import { readFileSync } from 'node:fs';
+import { dirname, extname, join, normalize, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import puppeteer from 'puppeteer';
+
+import { browserConfig, launchOptions } from '../browser.config.mjs';
+import { loadStrings } from '../tools/strings.mjs';
+import { clickRowCentre } from './list-spec.mjs';
+import { resetRememberedState } from './preferences-reset.mjs';
+
+const config = browserConfig();
+const strings = loadStrings();
+const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+const harnessDir = join(uiRoot, 'dist', 'table-harness', 'browser');
+
+const READ_PATH = '/api/ocupilot/screens/stub/read';
+const PAGE = '/?ns=HSCUSTOM';
+const WIDE = { width: 1280, height: 900 };
+const NARROW = { width: 480, height: 700 };
+
+/** The harness's five columns, in order, and each kind's default width. */
+const DEFAULTS = { Name: 240, NameSpace: 240, Count: 112, Enabled: 112, Note: 160 };
+const FIELDS = Object.keys(DEFAULTS);
+
+const LONG_NOTE = 'A note long enough to be cut in any column the harness draws. '.repeat(5).slice(0, 300);
+
+const CONTENT_TYPES = {
+  '.css': 'text/css',
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.txt': 'text/plain',
+  '.woff2': 'font/woff2',
+};
+
+function row(index) {
+  return {
+    Name: `/csp/app ${String(index).padStart(4, '0')}`,
+    NameSpace: 'USER',
+    Count: index * 1000,
+    Enabled: index % 2 === 0,
+    Note: index === 0 ? LONG_NOTE : index === 1 ? null : `note ${index}`,
+  };
+}
+
+let server = null;
+let origin = '';
+let browser = null;
+
+before(async () => {
+  let index;
+  try {
+    index = readFileSync(join(harnessDir, 'index.html'));
+  } catch {
+    assert.fail(`expected ${harnessDir}/index.html -- build it with ng build --configuration production,harness`);
+  }
+  server = createServer((request, response) => {
+    const url = new URL(request.url, 'http://localhost');
+    if (url.pathname === READ_PATH) {
+      const body = JSON.stringify({ fields: FIELDS, rows: Array.from({ length: 200 }, (_, at) => row(at)), truncated: false });
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end(body);
+      return;
+    }
+    const file = normalize(join(harnessDir, url.pathname));
+    if (file.startsWith(harnessDir + sep) && extname(file) !== '') {
+      try {
+        const bytes = readFileSync(file);
+        response.writeHead(200, { 'content-type': CONTENT_TYPES[extname(file)] ?? 'application/octet-stream' });
+        response.end(bytes);
+        return;
+      } catch {
+        // Falls through to the document.
+      }
+    }
+    response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    response.end(index);
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  origin = `http://127.0.0.1:${server.address().port}`;
+  browser = await puppeteer.launch(launchOptions(config));
+});
+
+after(async () => {
+  if (browser !== null) await browser.close();
+  if (server !== null) await new Promise((resolve) => server.close(resolve));
+});
+
+/**
+ * Classic 15px scrollbars, which take the viewport's `scrollbar-gutter: stable` space on any OS.
+ * Under the suite's launch (Puppeteer's default `--hide-scrollbars`) nothing is painted in that
+ * gutter; a browser launched without that flag paints them there, as Windows and Linux users see.
+ */
+const CLASSIC_SCROLLBARS = '::-webkit-scrollbar { width: 15px; height: 15px; }';
+
+async function openHarness(viewport = WIDE, { classicScrollbars = false, owner = browser } = {}) {
+  await resetRememberedState();
+  const context = await owner.createBrowserContext();
+  const page = await context.newPage();
+  await page.setViewport(viewport);
+  await page.goto(`${origin}${PAGE}`, { waitUntil: 'domcontentloaded' });
+  if (classicScrollbars) await page.addStyleTag({ content: CLASSIC_SCROLLBARS });
+  await page.waitForSelector('[role="grid"] [role="row"][aria-rowindex="2"]', { timeout: config.navigationTimeoutMs });
+  // The label widths are measured after the first render and again once the fonts settle.
+  await page.evaluate(() => document.fonts.ready);
+  await settle(page);
+  return { context, page };
+}
+
+function settle(page, ms = 150) {
+  return page.evaluate((wait) => new Promise((resolve) => setTimeout(() => requestAnimationFrame(() => resolve()), wait)), ms);
+}
+
+/** Each data header's rendered width and whether its label is cut. */
+function headers(page) {
+  return page.evaluate(() =>
+    Array.from(document.querySelectorAll('.ocu-data-table-header-cell[data-column]')).map((cell) => {
+      const label = cell.querySelector('.ocu-data-table-header-label');
+      return {
+        field: cell.getAttribute('data-column'),
+        width: cell.getBoundingClientRect().width,
+        left: cell.getBoundingClientRect().left,
+        cut: label.scrollWidth > label.clientWidth,
+      };
+    })
+  );
+}
+
+function headerWidth(page, field) {
+  return page.$eval(`.ocu-data-table-header-cell[data-column="${field}"]`, (cell) => cell.getBoundingClientRect().width);
+}
+
+/** Drag `field`'s header edge by `dx` pixels. */
+async function dragEdge(page, field, dx) {
+  const box = await page.$eval(`.ocu-data-table-header-cell[data-column="${field}"] .ocu-data-table-resize`, (handle) => {
+    const rect = handle.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  });
+  await page.mouse.move(box.x, box.y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + dx, box.y, { steps: 10 });
+  await page.mouse.up();
+  await settle(page);
+}
+
+async function press(page, key, modifiers = []) {
+  for (const modifier of modifiers) await page.keyboard.down(modifier);
+  await page.keyboard.press(key);
+  for (const modifier of [...modifiers].reverse()) await page.keyboard.up(modifier);
+}
+
+function tooltip(page) {
+  return page.evaluate(() => {
+    const element = document.querySelector('.ocu-data-table-tooltip.ocu-data-table-tooltip-placed');
+    if (element === null) return null;
+    const rect = element.getBoundingClientRect();
+    return {
+      text: element.textContent,
+      hidden: element.getAttribute('aria-hidden'),
+      position: getComputedStyle(element).position,
+      rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height },
+      inViewport: rect.left >= 0 && rect.top >= 0 && rect.right <= document.documentElement.clientWidth && rect.bottom <= document.documentElement.clientHeight,
+    };
+  });
+}
+
+/** The gridcell of row `rowIndex` (0-based) in column `column`. */
+const cellSelector = (rowIndex, column) => `[role="row"][aria-rowindex="${rowIndex + 2}"] [role="gridcell"]:nth-child(${column + 1})`;
+
+// Mutation (Rule 19): `COLUMN_DEFAULT_PX.name` 240 -> 40 -> the Name width assertion goes red.
+test('Defaults: each column is at least its kind\'s default, the frame shares the rest in proportion, and no label is cut, sorted or not', async () => {
+  const { context, page } = await openHarness();
+  try {
+    const drawn = await headers(page);
+    assert.deepEqual(drawn.map((header) => header.field), FIELDS);
+    for (const header of drawn) {
+      assert.ok(header.width >= DEFAULTS[header.field] - 0.5, `${header.field} is ${header.width}px, at least its default ${DEFAULTS[header.field]}`);
+      assert.equal(header.cut, false, `${header.field}'s label is not cut`);
+    }
+    const ratio = drawn[0].width / drawn[2].width;
+    assert.ok(Math.abs(ratio - 240 / 112) < 0.03, `Name to Count is ${ratio}, the defaults' 240:112`);
+    const sorted = await page.$eval('[role="columnheader"][aria-sort]', (cell) => cell.getAttribute('data-column'));
+    assert.equal(sorted, 'Name', 'the sorted column is among those checked');
+  } finally {
+    await context.close();
+  }
+});
+
+// Mutation (Rule 19): drop the head's scroll sync -> the header/body `left` assertion goes red.
+test('Overflow: at 480 wide the table scrolls sideways inside its frame, the header follows the body, and the page never scrolls sideways', async () => {
+  const { context, page } = await openHarness(NARROW);
+  try {
+    const before = await page.evaluate(() => {
+      const viewport = document.querySelector('cdk-virtual-scroll-viewport');
+      return { scrollWidth: viewport.scrollWidth, clientWidth: viewport.clientWidth };
+    });
+    assert.ok(before.scrollWidth > before.clientWidth, `the viewport scrolls sideways: ${JSON.stringify(before)}`);
+    await page.evaluate(() => {
+      document.querySelector('cdk-virtual-scroll-viewport').scrollLeft = 200;
+    });
+    await settle(page);
+    const aligned = await page.evaluate(() => {
+      const heads = Array.from(document.querySelectorAll('.ocu-data-table-header-cell'));
+      const cells = Array.from(document.querySelector('[role="row"][aria-rowindex="2"]').children);
+      return {
+        pairs: heads.map((head, index) => [head.getBoundingClientRect().left, cells[index].getBoundingClientRect().left]),
+        scrolled: document.querySelector('cdk-virtual-scroll-viewport').scrollLeft,
+        page: { scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth },
+      };
+    });
+    assert.ok(aligned.scrolled > 0, 'the viewport scrolled');
+    for (const [index, [head, body]] of aligned.pairs.entries()) {
+      assert.ok(Math.abs(head - body) <= 0.5, `header cell ${index} at ${head}, body cell at ${body}`);
+    }
+    assert.equal(aligned.page.scrollWidth, aligned.page.clientWidth, 'the document does not scroll sideways');
+  } finally {
+    await context.close();
+  }
+});
+
+// Mutation (Rule 19): remove the label clamp in `resizedWidth` -> the stored width reads 1, red.
+test('Drag: a header edge resizes from the rendered width, stops at the label, and the account write carries widths.Name', async () => {
+  const { context, page } = await openHarness();
+  try {
+    const start = await headerWidth(page, 'Name');
+    await dragEdge(page, 'Name', 80);
+    const wider = await headerWidth(page, 'Name');
+    assert.ok(Math.abs(wider - (start + 80)) <= 1, `dragged to ${wider}, from ${start} + 80`);
+    assert.equal(await page.evaluate(() => window.ocuHarness.widths().Name), Math.round(start + 80));
+
+    await dragEdge(page, 'Name', -600);
+    const narrowest = await headerWidth(page, 'Name');
+    const stored = await page.evaluate(() => window.ocuHarness.widths().Name);
+    assert.ok(narrowest < DEFAULTS.Name, `the column narrowed to ${narrowest}, below its kind's default: the floor is the label`);
+    assert.ok(Math.abs(stored - narrowest) <= 1, `the stored width ${stored} is the drawn one, ${narrowest}: it stopped at the label`);
+    const cut = await page.$eval('.ocu-data-table-header-cell[data-column="Name"] .ocu-data-table-header-label', (label) => label.scrollWidth > label.clientWidth);
+    assert.equal(cut, false, 'and the label is whole');
+    const selected = await page.evaluate(() => ({ selection: window.ocuHarness.selection(), text: String(getSelection()) }));
+    assert.deepEqual(selected, { selection: [], text: '' }, 'the drag selected no row and no text');
+
+    const remembered = JSON.parse(await page.evaluate(() => window.ocuHarness.rememberedView()));
+    assert.equal(remembered.widths.Name, stored, `the account write carries widths.Name: ${JSON.stringify(remembered)}`);
+  } finally {
+    await context.close();
+  }
+});
+
+// Story 15.9 (DW-1648): the pinned trigger header cell starts at the last data column's edge, so
+// that column's handle is lifted over it. Mutation (Rule 19): drop the lifted handle's `z-index`
+// -> the press lands on the pinned cell and nothing resizes, red.
+test('Drag the last data column: its whole hit area is above the pinned trigger header cell, and a press on its edge resizes it', async () => {
+  const { context, page } = await openHarness();
+  try {
+    const hits = await page.$eval('.ocu-data-table-header-cell[data-column="Note"] .ocu-data-table-resize', (handle) => {
+      const rect = handle.getBoundingClientRect();
+      const y = rect.top + rect.height / 2;
+      return [rect.left + 2, rect.left + rect.width / 2, rect.right - 2].map((x) => document.elementFromPoint(x, y) === handle);
+    });
+    assert.deepEqual(hits, [true, true, true], 'the handle is hit at its left, its center on the edge and its right');
+    const start = await headerWidth(page, 'Note');
+    await dragEdge(page, 'Note', 40);
+    const wider = await headerWidth(page, 'Note');
+    assert.ok(Math.abs(wider - (start + 40)) <= 1, `dragged to ${wider}, from ${start} + 40`);
+  } finally {
+    await context.close();
+  }
+});
+
+// Mutation (Rule 19): resize by 8 instead of `COLUMN_RESIZE_STEP_PX` -> the +32 assertion goes red.
+test('Keyboard: Alt+Shift+Right twice then Left moves the active cell\'s column +32 then -16, announces it, and keeps the active cell', async () => {
+  const { context, page } = await openHarness();
+  try {
+    await page.focus('[role="grid"]');
+    await press(page, 'ArrowDown');
+    await press(page, 'ArrowRight');
+    await press(page, 'ArrowRight');
+    await settle(page);
+    const active = await page.$eval('[role="grid"]', (grid) => grid.getAttribute('aria-activedescendant'));
+    const start = await headerWidth(page, 'NameSpace');
+
+    await press(page, 'ArrowRight', ['Alt', 'Shift']);
+    await settle(page);
+    await press(page, 'ArrowRight', ['Alt', 'Shift']);
+    await settle(page);
+    const wider = await headerWidth(page, 'NameSpace');
+    assert.ok(Math.abs(wider - (start + 32)) <= 1, `${wider} is ${start} + 32`);
+
+    await press(page, 'ArrowLeft', ['Alt', 'Shift']);
+    await settle(page);
+    const narrower = await headerWidth(page, 'NameSpace');
+    assert.ok(Math.abs(narrower - (wider - 16)) <= 1, `${narrower} is ${wider} - 16`);
+    const status = await page.$eval('.ocu-data-table-announcement', (slot) => slot.textContent.trim());
+    assert.equal(
+      status,
+      strings.tableColumnWidthAnnouncement.replace('<column>', strings.headerNamespaceLabel).replace('<n>', String(Math.round(narrower)))
+    );
+    assert.equal(await page.$eval('[role="grid"]', (grid) => grid.getAttribute('aria-activedescendant')), active, 'the active cell is unchanged');
+  } finally {
+    await context.close();
+  }
+});
+
+test('Reveal: Right into a column past the right edge scrolls it fully into view, and the header follows', async () => {
+  const { context, page } = await openHarness(NARROW);
+  try {
+    await page.focus('[role="grid"]');
+    await press(page, 'ArrowDown');
+    for (let step = 0; step < 5; step += 1) await press(page, 'ArrowRight');
+    await settle(page, 300);
+    const seen = await page.evaluate(() => {
+      const viewport = document.querySelector('cdk-virtual-scroll-viewport');
+      const id = document.querySelector('[role="grid"]').getAttribute('aria-activedescendant');
+      const cell = document.getElementById(id).getBoundingClientRect();
+      const view = viewport.getBoundingClientRect();
+      const head = document.querySelector('.ocu-data-table-header-cell[data-column="Note"]').getBoundingClientRect();
+      const trigger = document.getElementById(id).parentElement.querySelector('.ocu-data-table-cell-trigger').getBoundingClientRect().left;
+      return { cell: [cell.left, cell.right], view: [view.left, view.left + viewport.clientWidth], head: head.left, trigger, scrolled: viewport.scrollLeft };
+    });
+    assert.ok(seen.scrolled > 0, 'the viewport scrolled sideways');
+    assert.ok(seen.cell[0] >= seen.view[0] - 0.5 && seen.cell[1] <= seen.view[1] + 0.5, `the Note cell ${seen.cell} is inside ${seen.view}`);
+    // Story 15.9 (DW-1648): the pinned trigger cell covers what scrolls beneath it, so the revealed
+    // cell ends at or left of it. Mutation (Rule 19): drop the trigger subtraction from
+    // `revealActiveCell` -> red.
+    assert.ok(seen.cell[1] <= seen.trigger + 0.5, `the Note cell ends at ${seen.cell[1]}, left of the pinned trigger cell at ${seen.trigger}`);
+    assert.ok(Math.abs(seen.head - seen.cell[0]) <= 0.5, `and its header sits over it: ${seen.head} against ${seen.cell[0]}`);
+    await page.waitForSelector('.ocu-data-table-tooltip-placed', { timeout: 1000 });
+    assert.equal((await tooltip(page)).text, LONG_NOTE, 'the revealed cut cell shows its tooltip, and the reveal scroll did not take it back');
+  } finally {
+    await context.close();
+  }
+});
+
+/**
+ * An element's place against its table's frame, run in the page on the element. The frame is the
+ * viewport's box inside its borders, gutter included: under a launch that hides scrollbars, the
+ * `scrollbar-gutter: stable` gutter still shows and scrolls content, but `clientWidth` leaves it
+ * out. `inside` also needs a point in each edge column of the element to hit-test to it, so content
+ * the frame clips, or a painted scrollbar covers, reads as outside. `within` is the geometric half
+ * alone. `gutter` is the frame's width minus `clientWidth`; `painted` is whether a point in the
+ * gutter at the element's height hit-tests to the viewport itself, which is a drawn scrollbar.
+ */
+function placeInFrame(element) {
+  const viewport = element.closest('cdk-virtual-scroll-viewport');
+  const style = getComputedStyle(viewport);
+  const view = viewport.getBoundingClientRect();
+  const left = view.left + parseFloat(style.borderLeftWidth);
+  const right = view.right - parseFloat(style.borderRightWidth);
+  const box = element.getBoundingClientRect();
+  const x = box.left + box.width / 2;
+  const y = box.top + box.height / 2;
+  const shows = (at) => {
+    const hit = document.elementFromPoint(at, y);
+    return hit !== null && element.contains(hit);
+  };
+  const within = box.left >= left - 0.5 && box.right <= right + 0.5;
+  const gutter = right - left - viewport.clientWidth;
+  return {
+    inside: within && shows(box.left + 1) && shows(box.right - 1),
+    within,
+    hit: shows(x),
+    x,
+    y,
+    box: [box.left, box.right],
+    frame: [left, right],
+    scrolled: viewport.scrollLeft,
+    gutter,
+    painted: gutter > 0 && document.elementFromPoint(right - gutter / 2, y) === viewport,
+  };
+}
+
+/** Row 1's action trigger against the frame: whether all of it shows inside, and whether its centre hit-tests to it. */
+function triggerPlace(page) {
+  return page.$eval('[role="row"][aria-rowindex="2"] .ocu-data-table-trigger', placeInFrame);
+}
+
+/** The alpha of row 1's pinned trigger cell's computed background: 1 is opaque. */
+function triggerCellAlpha(page) {
+  return page.$eval('[role="row"][aria-rowindex="2"] .ocu-data-table-cell-trigger', (cell) => {
+    const colour = getComputedStyle(cell).backgroundColor;
+    const parts = colour.match(/[\d.]+/g) ?? [];
+    return { colour, alpha: colour.startsWith('rgba') ? Number(parts[3]) : colour.startsWith('rgb') ? 1 : 0 };
+  });
+}
+
+/**
+ * The header's trigger cell's right edge, and the header's inner edges: its client box, and its
+ * border box, which also holds the reserved scrollbar gutter the sticky cell may sit over.
+ */
+function headerTriggerEdges(page) {
+  return page.evaluate(() => {
+    const head = document.querySelector('.ocu-data-table-head');
+    const box = head.getBoundingClientRect();
+    const inner = box.left + head.clientLeft;
+    return {
+      cell: document.querySelector('.ocu-data-table-header-cell-trigger').getBoundingClientRect().right,
+      client: inner + head.clientWidth,
+      border: box.right - parseFloat(getComputedStyle(head).borderRightWidth),
+    };
+  });
+}
+
+/** Open row 1's menu by a real click at the trigger's centre, then close it with Escape. */
+async function openAndCloseMenu(page, at) {
+  await page.mouse.click(at.x, at.y);
+  await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: 2000 });
+  await press(page, 'Escape');
+  await page.waitForFunction(() => document.querySelector('[role="menu"]') === null, { timeout: 2000 });
+}
+
+// It runs with the platform's scrollbars, with classic ones in an empty gutter (CI's Linux
+// geometry, on macOS too), and with classic ones painted, which is what a Windows or Linux user
+// sees. The classic runs first assert their gutter, and the painted run that it draws a scrollbar.
+// Mutation (Rule 19): `.ocu-data-table-viewport` given `overflow-x: hidden` -> the wheel leaves the
+// trigger past the frame, red; `revealActiveCell` returning early for the trigger column -> the
+// keyboard half leaves it past the frame, red; the viewport given `margin-right: -24px`, so an
+// ancestor clips its right edge -> red through the edge hit-test; `revealActiveCell` revealing to
+// the frame's edge instead of `clientWidth` -> the painted run red, the trigger under its scrollbar.
+// Mutation (Rule 19): the injected style dropped -> the classic runs' gutter assertion red on
+// macOS; `--hide-scrollbars` kept for the painted run -> its `painted` assertion red.
+// Story 15.9 (DW-1648) pins the trigger column to the frame's right edge: it is inside the frame and
+// hit-testable at scroll 0 and after the wheel, and its cell is opaque on a plain and a selected row.
+// Mutation (Rule 19): drop `position: sticky` from the trigger cell -> the scroll-0 reach red;
+// `background: transparent` on it -> the alpha assertion red.
+for (const scrollbars of ['platform', 'classic', 'painted']) {
+  test(`Trigger reach (${scrollbars} scrollbars): at 480 wide the row trigger is pinned inside the frame at scroll 0 and after the frame's own sideways scroll, where it opens the row menu, as Right into its column does, on an opaque cell`, async () => {
+    const painted =
+      scrollbars === 'painted' ? await puppeteer.launch({ ...launchOptions(config), ignoreDefaultArgs: ['--hide-scrollbars'] }) : null;
+    let context = null;
+    try {
+      let page;
+      ({ context, page } = await openHarness(NARROW, { classicScrollbars: scrollbars !== 'platform', owner: painted ?? browser }));
+      const start = await triggerPlace(page);
+      if (scrollbars !== 'platform') {
+        assert.ok(start.gutter >= 14, `the classic run has a classic gutter: ${JSON.stringify(start)}`);
+        assert.equal(start.painted, scrollbars === 'painted', `the scrollbar is painted only in the painted run: ${JSON.stringify(start)}`);
+      }
+      assert.ok(start.inside && start.hit, `at scroll 0 the pinned trigger is inside the frame and hit-testable: ${JSON.stringify(start)}`);
+      // The header's trigger cell is pinned too. Mutation (Rule 19): drop
+      // `.ocu-data-table-header-cell-trigger` from the sticky rule -> red, the header cell past the frame.
+      const edges = await headerTriggerEdges(page);
+      assert.ok(
+        edges.cell >= edges.client - 0.5 && edges.cell <= edges.border + 0.5,
+        `the header's trigger cell is pinned at the header's right edge: ${JSON.stringify(edges)}`
+      );
+      await page.mouse.move(0, 0);
+      await settle(page);
+      const plain = await triggerCellAlpha(page);
+      assert.equal(plain.alpha, 1, `the pinned cell is opaque on a plain row: ${JSON.stringify(plain)}`);
+      await openAndCloseMenu(page, start);
+
+      const frame = await page.$eval('cdk-virtual-scroll-viewport', (element) => {
+        const box = element.getBoundingClientRect();
+        return { x: box.left + box.width / 2, y: box.top + 20 };
+      });
+      await page.mouse.move(frame.x, frame.y);
+      await page.mouse.wheel({ deltaX: 2000 });
+      // A wheel scroll starts asynchronously and can animate, so wait until the frame has scrolled
+      // and holds still for three frames. `scrollWidth - clientWidth` is not the end to wait for: an
+      // empty stable gutter scrolls as content, so the end can fall short of it by the gutter. On a
+      // timeout the assertion below reports where the trigger stopped.
+      await page
+        .waitForFunction(
+          () => {
+            const left = document.querySelector('cdk-virtual-scroll-viewport').scrollLeft;
+            const still = left > 0 && left === window.ocuLastScrollLeft ? (window.ocuStillFrames ?? 0) + 1 : 0;
+            window.ocuLastScrollLeft = left;
+            window.ocuStillFrames = still;
+            return still >= 3;
+          },
+          { polling: 'raf', timeout: 2000 }
+        )
+        .catch(() => {});
+      await settle(page);
+      const wheeled = await triggerPlace(page);
+      assert.ok(wheeled.scrolled > 0, `the wheel scrolled the frame sideways: ${JSON.stringify(wheeled)}`);
+      assert.ok(wheeled.inside && wheeled.hit, `after a sideways wheel the trigger is still inside the frame: ${JSON.stringify(wheeled)}`);
+      await openAndCloseMenu(page, wheeled);
+
+      await page.evaluate(() => {
+        document.querySelector('cdk-virtual-scroll-viewport').scrollLeft = 0;
+      });
+      await settle(page);
+      const back = await triggerPlace(page);
+      assert.ok(back.inside && back.hit, `scrolled back, the trigger is still pinned inside the frame: ${JSON.stringify(back)}`);
+      await clickRowCentre(page, { index: 0, cell: 2 });
+      await page.mouse.move(0, 0);
+      await settle(page);
+      assert.equal(await page.evaluate(() => window.ocuHarness.selection().length), 1, 'row 1 is selected');
+      const selected = await triggerCellAlpha(page);
+      assert.equal(selected.alpha, 1, `the pinned cell is opaque on a selected row: ${JSON.stringify(selected)}`);
+      assert.notEqual(selected.colour, plain.colour, `and it takes the selected row's colour: ${plain.colour} -> ${selected.colour}`);
+      await page.focus('[role="grid"]');
+      await press(page, 'ArrowDown');
+      for (let step = 0; step < FIELDS.length + 2; step += 1) await press(page, 'ArrowRight');
+      await settle(page, 300);
+      const active = await page.evaluateHandle(() =>
+        document.getElementById(document.querySelector('[role="grid"]').getAttribute('aria-activedescendant'))
+      );
+      const keyed = {
+        onTrigger: await active.evaluate((cell) => cell.querySelector('.ocu-data-table-trigger') !== null),
+        ...(await active.evaluate(placeInFrame)),
+      };
+      await active.dispose();
+      assert.ok(keyed.onTrigger, 'Right past the last data column lands on the trigger column');
+      assert.ok(keyed.inside, `and reveals it inside the frame: ${JSON.stringify(keyed)}`);
+      await press(page, 'Enter');
+      await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: 2000 });
+    } finally {
+      await context?.close();
+      await painted?.close();
+    }
+  });
+}
+
+// Mutation (Rule 19): show the tooltip whatever `scrollWidth > clientWidth` says -> "Not cut" goes red.
+test('Cut cell: the pointer resting on a 300-character note shows it whole after the delay, the tooltip is hoverable, and Escape hides it', async () => {
+  const { context, page } = await openHarness();
+  try {
+    await page.hover(cellSelector(0, 4));
+    await settle(page, 60);
+    assert.equal(await tooltip(page), null, 'nothing before the delay');
+    await page.waitForSelector('.ocu-data-table-tooltip-placed', { timeout: 2000 });
+    const shown = await tooltip(page);
+    assert.equal(shown.text, LONG_NOTE, 'the whole value');
+    assert.equal(shown.hidden, 'true');
+    assert.equal(shown.position, 'fixed');
+    assert.ok(shown.inViewport, `inside the window: ${JSON.stringify(shown.rect)}`);
+
+    await page.mouse.move(shown.rect.left + shown.rect.width / 2, shown.rect.top + shown.rect.height / 2, { steps: 5 });
+    await settle(page, 400);
+    assert.notEqual(await tooltip(page), null, 'the pointer can rest on the tooltip');
+
+    await page.keyboard.press('Escape');
+    await settle(page);
+    assert.equal(await tooltip(page), null, 'Escape hides it');
+  } finally {
+    await context.close();
+  }
+});
+
+test('Keyboard tooltip: the active cell moving onto a cut cell shows it at once, and onto an uncut one hides it', async () => {
+  const { context, page } = await openHarness();
+  try {
+    await page.mouse.move(0, 0);
+    await page.focus('[role="grid"]');
+    await press(page, 'ArrowDown');
+    for (let step = 0; step < 5; step += 1) await press(page, 'ArrowRight');
+    await page.waitForSelector('.ocu-data-table-tooltip-placed', { timeout: 250 });
+    assert.equal((await tooltip(page)).text, LONG_NOTE);
+    await press(page, 'ArrowLeft');
+    await settle(page);
+    assert.equal(await tooltip(page), null, 'the Enabled cell is not cut');
+  } finally {
+    await context.close();
+  }
+});
+
+test('Not cut: a short value and "(none)" show no tooltip', async () => {
+  const { context, page } = await openHarness();
+  try {
+    for (const selector of [cellSelector(2, 4), cellSelector(1, 4), cellSelector(0, 0)]) {
+      await page.hover(selector);
+      await settle(page, 700);
+      assert.equal(await tooltip(page), null, `none on ${selector}`);
+    }
+    assert.equal(await page.$eval(cellSelector(1, 4), (cell) => cell.textContent.trim()), strings.tableEmptyValue);
+  } finally {
+    await context.close();
+  }
+});
+
+// Mutation (Rule 19): put the header resize hit area in flow at `height: 40px` -> the hit area leaves
+// its row, red (the row's own fixed height keeps the 36px assertion green on its own).
+test('Geometry: after a drag, a keyboard resize and a scroll both ways, every row and the header are 36px', async () => {
+  const { context, page } = await openHarness(NARROW);
+  try {
+    await dragEdge(page, 'Name', 40);
+    await page.focus('[role="grid"]');
+    await press(page, 'ArrowDown');
+    await press(page, 'ArrowRight');
+    await press(page, 'ArrowRight', ['Alt', 'Shift']);
+    await page.evaluate(() => {
+      const viewport = document.querySelector('cdk-virtual-scroll-viewport');
+      viewport.scrollLeft = 150;
+      viewport.scrollTop = 40 * 36;
+    });
+    await settle(page, 300);
+    const heights = await page.evaluate(() => Array.from(document.querySelectorAll('.ocu-data-table-row')).map((element) => element.getBoundingClientRect().height));
+    assert.ok(heights.length > 2);
+    assert.deepEqual([...new Set(heights)], [36], `heights: ${JSON.stringify([...new Set(heights)])}`);
+    const outside = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('.ocu-data-table-row')).flatMap((element) => {
+        const box = element.getBoundingClientRect();
+        return Array.from(element.querySelectorAll('.ocu-data-table-resize, .ocu-data-table-link'))
+          .map((inner) => inner.getBoundingClientRect())
+          .filter((rect) => rect.top < box.top - 0.5 || rect.bottom > box.bottom + 0.5)
+          .map((rect) => [rect.top, rect.bottom, box.top, box.bottom]);
+      })
+    );
+    assert.deepEqual(outside, [], 'every hit area and name link sits inside its row');
+  } finally {
+    await context.close();
+  }
+});
+
+// Mutation (Rule 19): remove the link's 24px floor -> the width assertion goes red.
+test('DW-1586: a one-character name\'s link is at least 24x24, and a long one still cuts with an ellipsis', async () => {
+  const { context, page } = await openHarness();
+  try {
+    await page.evaluate((rows) => window.ocuHarness.reread(rows), [{ ...row(0), Name: 'a' }, { ...row(1), Name: '/csp/'.repeat(80) }]);
+    await settle(page);
+    const links = await page.$$eval('.ocu-data-table-body .ocu-data-table-link', (elements) =>
+      elements.map((link) => ({
+        text: link.textContent,
+        width: link.getBoundingClientRect().width,
+        height: link.getBoundingClientRect().height,
+        overflow: getComputedStyle(link).textOverflow,
+        cut: link.scrollWidth > link.clientWidth,
+      }))
+    );
+    const short = links.find((link) => link.text === 'a');
+    const long = links.find((link) => link.text !== 'a');
+    assert.ok(short.width >= 24 && short.height >= 24, `the link box is ${short.width}x${short.height}`);
+    assert.equal(long.overflow, 'ellipsis');
+    assert.equal(long.cut, true, 'the long name is cut rather than widening its column');
+  } finally {
+    await context.close();
+  }
+});
+
+// Mutation (Rule 19): `resizeActiveColumn` passes 0 as the floor instead of the label -> the stored
+// width and the announcement go below the drawn width, red.
+test('Keyboard floor: Alt+Shift+Left stops at the label, and the stored, drawn and announced widths agree', async () => {
+  const { context, page } = await openHarness();
+  try {
+    await page.focus('[role="grid"]');
+    await press(page, 'ArrowDown');
+    for (let step = 0; step < 3; step += 1) await press(page, 'ArrowRight');
+    for (let step = 0; step < 30; step += 1) await press(page, 'ArrowLeft', ['Alt', 'Shift']);
+    await settle(page);
+    const drawn = await headerWidth(page, 'Count');
+    const stored = await page.evaluate(() => window.ocuHarness.widths().Count);
+    assert.ok(drawn < DEFAULTS.Count, `Count is ${drawn}px, below its kind's default: the floor is the label`);
+    assert.ok(Math.abs(stored - drawn) <= 1, `stored ${stored}, drawn ${drawn}`);
+    const cut = await page.$eval('.ocu-data-table-header-cell[data-column="Count"] .ocu-data-table-header-label', (label) => label.scrollWidth > label.clientWidth);
+    assert.equal(cut, false, 'the label is whole');
+    const status = await page.$eval('.ocu-data-table-announcement', (slot) => slot.textContent.trim());
+    assert.equal(status, strings.tableColumnWidthAnnouncement.replace('<column>', strings.statusSegmentInstance).replace('<n>', String(stored)));
+  } finally {
+    await context.close();
+  }
+});
+
+// Mutation (Rule 19): drop the sort arrow's reserved `inline-size` -> the label of a column narrowed to
+// its floor and then sorted is cut, red.
+test('Sorted or not: a column narrowed to its label and then sorted keeps its label whole', async () => {
+  const { context, page } = await openHarness();
+  try {
+    await dragEdge(page, 'Count', -600);
+    await page.evaluate(() => window.ocuHarness.sort('Count'));
+    await settle(page);
+    const header = await page.$eval('.ocu-data-table-header-cell[data-column="Count"]', (cell) => {
+      const label = cell.querySelector('.ocu-data-table-header-label');
+      return { sort: cell.getAttribute('aria-sort'), cut: label.scrollWidth > label.clientWidth, width: cell.getBoundingClientRect().width };
+    });
+    assert.notEqual(header.sort, null, 'Count is the sorted column');
+    assert.ok(header.width < DEFAULTS.Count, `Count sits at its label floor, ${header.width}px`);
+    assert.equal(header.cut, false, 'and its label is whole with the arrow drawn');
+  } finally {
+    await context.close();
+  }
+});
+
+/** The Note cell of row 0 made active by the keyboard, which shows its tooltip at once. */
+async function focusTooltip(page) {
+  await page.mouse.move(0, 0);
+  await page.focus('[role="grid"]');
+  await press(page, 'ArrowDown');
+  for (let step = 0; step < 5; step += 1) await press(page, 'ArrowRight');
+  await page.waitForSelector('.ocu-data-table-tooltip-placed', { timeout: 1000 });
+  // Let the last key's reveal and tooltip frames drain, so the dismissal is what the case measures.
+  await settle(page);
+}
+
+/** Row 0's Note cell rested on by the pointer, which shows its tooltip after the delay. */
+async function pointerTooltip(page) {
+  await page.hover(cellSelector(0, 4));
+  await page.waitForSelector('.ocu-data-table-tooltip-placed', { timeout: 2000 });
+}
+
+// Mutations (Rule 19), each red on its own case: drop `hideTooltip` from `onViewportScroll` (scroll),
+// from `onWindowResize` (resize), from `onGridFocusOut` (blur), from `onTooltipLeave` (pointer out),
+// the document capture listener for chords (Ctrl and Cmd) or for an ancestor's scroll (ancestor
+// scroll), or `afterActiveCellMoved` from the vertical move keys (vertical key).
+test('Dismissal: a showing tooltip goes on scroll, on resize, on grid blur, when the pointer leaves it, and on a Ctrl or Cmd chord wherever focus is', async () => {
+  const cases = [
+    ['scroll', focusTooltip, (page) => page.evaluate(() => { document.querySelector('cdk-virtual-scroll-viewport').scrollTop = 360; })],
+    ['ancestor scroll', pointerTooltip, (page) => page.evaluate(() => document.body.dispatchEvent(new Event('scroll')))],
+    ['vertical key', focusTooltip, (page) => press(page, 'ArrowDown')],
+    ['resize', focusTooltip, (page) => page.setViewport({ width: 1200, height: 860 })],
+    ['blur', focusTooltip, (page) => page.evaluate(() => document.activeElement.blur())],
+    ['pointer out', pointerTooltip, async (page) => {
+      const box = (await tooltip(page)).rect;
+      await page.mouse.move(box.left + box.width / 2, box.top + box.height / 2, { steps: 5 });
+      await settle(page, 100);
+      assert.notEqual(await tooltip(page), null, 'the pointer rests on the tooltip first');
+      // Straight onto the header, crossing no body cell, so only the tooltip's own leave can hide it.
+      await page.mouse.move(2, 2);
+    }],
+    ['Ctrl in the grid', focusTooltip, (page) => press(page, 'Control')],
+    ['Cmd with focus outside the grid', pointerTooltip, async (page) => {
+      assert.equal(await page.evaluate(() => document.activeElement === document.body), true, 'focus is not in the grid');
+      await press(page, 'Meta');
+    }],
+  ];
+  for (const [name, show, dismiss] of cases) {
+    const { context, page } = await openHarness();
+    try {
+      await show(page);
+      assert.equal((await tooltip(page)).text, LONG_NOTE, `${name}: the tooltip shows first`);
+      await dismiss(page);
+      await settle(page);
+      assert.equal(await tooltip(page), null, `${name}: the tooltip is gone`);
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+// Mutation (Rule 19): place the tooltip at the cell's bottom whatever the room below -> it lands over
+// the cell it describes, red.
+test('Placement: on a row with no room below, the tooltip flips above its cell', async () => {
+  const { context, page } = await openHarness({ width: 1280, height: 420 });
+  try {
+    await page.evaluate((rows) => window.ocuHarness.reread(rows), Array.from({ length: 40 }, (_, at) => ({ ...row(at), Note: LONG_NOTE.repeat(3) })));
+    await settle(page);
+    const last = await page.evaluate(() => {
+      const viewport = document.querySelector('cdk-virtual-scroll-viewport').getBoundingClientRect();
+      const rows = Array.from(document.querySelectorAll('.ocu-data-table-body [role="row"]')).filter((element) => element.getBoundingClientRect().bottom <= viewport.bottom);
+      return rows[rows.length - 1].getAttribute('aria-rowindex');
+    });
+    const selector = `[role="row"][aria-rowindex="${last}"] [role="gridcell"]:nth-child(5)`;
+    await page.hover(selector);
+    await page.waitForSelector('.ocu-data-table-tooltip-placed', { timeout: 2000 });
+    const cell = await page.$eval(selector, (element) => element.getBoundingClientRect().top);
+    const shown = await tooltip(page);
+    assert.ok(shown.rect.bottom <= cell + 0.5, `the tooltip (bottom ${shown.rect.bottom}) sits above its cell (top ${cell})`);
+    assert.ok(shown.inViewport, 'inside the window');
+  } finally {
+    await context.close();
+  }
+});

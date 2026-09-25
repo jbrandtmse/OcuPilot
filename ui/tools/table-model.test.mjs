@@ -264,3 +264,65 @@ test('classicRowHref appends each row link param from the row, and opens nothing
     'Opens OAuth 2.0 Client Configuration in the classic portal in a new tab.'
   );
 });
+
+// --- Column widths (Story 15.8) ----------------------------------------------------------------
+//
+// Mutations (Rule 19):
+// - `COLUMN_DEFAULT_PX.name` 240 -> 40 -> "each kind takes its default" goes red.
+// - drop the `min` clamp from `resizedWidth` -> "a resize never goes below the label" goes red.
+
+const COLUMNS = [
+  { field: 'Name', kind: 'name' },
+  { field: 'NameSpace', kind: 'identifier' },
+  { field: 'Count', kind: 'number' },
+  { field: 'Enabled', kind: 'status' },
+  { field: 'Note', kind: 'text' },
+];
+
+test('Story 15.8: each kind takes its default, identifiers wide and numbers and states narrow', () => {
+  assert.deepEqual(model.COLUMN_DEFAULT_PX, { name: 240, identifier: 240, text: 160, number: 112, status: 112 });
+  const layout = model.columnLayout(COLUMNS, new Map(), new Map(), false);
+  assert.equal(
+    layout.template,
+    'minmax(240px, 240fr) minmax(240px, 240fr) minmax(112px, 112fr) minmax(112px, 112fr) minmax(160px, 160fr)'
+  );
+  assert.equal(layout.minWidthPx, 240 + 240 + 112 + 112 + 160);
+});
+
+test('Story 15.8: a label wider than its default floors the column, a user width is plain pixels, and the trigger track follows', () => {
+  const layout = model.columnLayout(
+    COLUMNS,
+    new Map([['NameSpace', 300], ['Enabled', 50], ['Gone', 200]]),
+    new Map([['Count', 130.2], ['Enabled', 90]]),
+    true
+  );
+  assert.equal(
+    layout.template,
+    `minmax(240px, 240fr) 300px minmax(131px, 112fr) 90px minmax(160px, 160fr) ${model.TRIGGER_TRACK}`,
+    'Count floors at its label; Enabled never goes under its label; a field no column declares is ignored'
+  );
+  assert.equal(layout.minWidthPx, 240 + 300 + 131 + 90 + 160 + model.TRIGGER_TRACK_PX);
+  assert.equal(model.TRIGGER_TRACK, 'calc(28px + 2 * var(--ocu-space-3))', 'the trigger track is unchanged');
+});
+
+test('Story 15.8: a stored width of the wrong shape is ignored by the layout', () => {
+  for (const bad of [0, -4, 1.5, 9999, Number.NaN]) {
+    const layout = model.columnLayout(COLUMNS.slice(0, 1), new Map([['Name', bad]]), new Map(), false);
+    assert.equal(layout.template, 'minmax(240px, 240fr)', `ignored: ${bad}`);
+  }
+  assert.equal(model.isColumnWidth(2000), true);
+  assert.equal(model.isColumnWidth(2001), false);
+  assert.equal(model.isColumnWidth('200'), false);
+});
+
+test('Story 15.8: a resize never goes below the label, rounds to whole pixels and stops at the maximum', () => {
+  assert.equal(model.resizedWidth(240, 80, 60), 320);
+  assert.equal(model.resizedWidth(320, -600, 60.2), 61, 'stops at the label, rounded up');
+  assert.equal(model.resizedWidth(250.6, model.COLUMN_RESIZE_STEP_PX, 60), 267);
+  assert.equal(model.resizedWidth(1990, 100, 60), model.COLUMN_WIDTH_MAX);
+  assert.equal(model.COLUMN_RESIZE_STEP_PX, 16);
+});
+
+test('Story 15.8: the width announcement names the column and its width', () => {
+  assert.equal(model.formatColumnWidth(STRINGS.tableColumnWidthAnnouncement, 'Name', 272), 'Name column, 272 px wide');
+});

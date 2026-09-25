@@ -1216,6 +1216,20 @@ describe('Home', () => {
     }
   });
 
+  // Mutation (Rule 19): drop the `dl` from Home's Shortcuts block -> this goes red.
+  it('Story 15.8: Shortcuts lists the column-resize binding as text after its screen rows, not as a control', () => {
+    const block = fixedBlocks()[0];
+    const keys = block.querySelector('dl.ocu-home-shortcut-keys') as HTMLElement;
+    expect(keys).not.toBeNull();
+    expect(keys.querySelector('dt')?.textContent?.trim()).toBe(STRINGS.tableColumnResizeShortcut);
+    expect(keys.querySelector('dd kbd')?.textContent?.trim()).toBe(STRINGS.tableColumnResizeKeys);
+    expect(keys.querySelectorAll('button, a, [tabindex], [role]').length).toBe(0);
+    const children = Array.from(block.children);
+    const list = children.findIndex((element) => element.classList.contains('ocu-home-block-list'));
+    expect(list).toBeGreaterThanOrEqual(0);
+    expect(children.indexOf(keys)).toBeGreaterThan(list);
+  });
+
   it('Story 15.3: the shipped roster resolves rows, so Shortcuts renders its list and not its empty state', () => {
     // The empty state is unreachable here: `shortcutScreens()` reads the real mirror, which this
     // spec may not replace, and the shipped roster always resolves some rows. So this row asserts

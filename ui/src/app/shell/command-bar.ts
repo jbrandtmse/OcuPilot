@@ -139,6 +139,12 @@ interface SortOption {
  * anywhere in Epic 1, so that is every row action's state here -- which is the state this
  * story can pin, not a placeholder.
  *
+ * **The filter renders only on a screen that declares a read** (AD-5): a screen whose declaration
+ * has `read === null` -- Home, most form pages, the error drill-down -- has nothing to filter, so the
+ * field and its count are not drawn, and no list of such screens is written here. **The bar itself
+ * is not drawn when every slot is empty** (`hasContent`): no primary action, filter, row action,
+ * View or Sort control, Refresh action or chip.
+ *
  * **The filter is the current screen's store's** (AD-19): the field is named "Filter rows"
  * (`commandBarFilterLabel`), reads and writes the filter of the store the screen's table renders,
  * and its polite count is that table's view length once the screen's read has landed (DW-141,
@@ -152,7 +158,8 @@ interface SortOption {
 @Component({
   selector: 'app-command-bar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<div class="ocu-command-bar">
+  template: `@if (hasContent) {
+  <div class="ocu-command-bar">
     @if (hasPrimaryAction) {
       <button
         type="button"
@@ -162,17 +169,19 @@ interface SortOption {
         {{ primaryActionLabel }}
       </button>
     }
-    <input
-      [id]="filterId"
-      class="ocu-command-bar-filter"
-      type="search"
-      autocomplete="off"
-      [attr.aria-label]="STRINGS.commandBarFilterLabel"
-      [attr.aria-describedby]="filterDescribedBy"
-      [value]="filterValue"
-      (input)="onFilter($event)"
-    />
-    <p [id]="countId" class="ocu-command-bar-count" role="status">{{ matchCount }}</p>
+    @if (hasFilter) {
+      <input
+        [id]="filterId"
+        class="ocu-command-bar-filter"
+        type="search"
+        autocomplete="off"
+        [attr.aria-label]="STRINGS.commandBarFilterLabel"
+        [attr.aria-describedby]="filterDescribedBy"
+        [value]="filterValue"
+        (input)="onFilter($event)"
+      />
+      <p [id]="countId" class="ocu-command-bar-count" role="status">{{ matchCount }}</p>
+    }
     @for (action of rowActions; track action.id) {
       <span class="ocu-command-bar-action-slot">
         <button
@@ -312,7 +321,8 @@ interface SortOption {
         {{ refreshChipLabel }}
       </button>
     }
-  </div>`,
+  </div>
+}`,
 })
 export class CommandBar {
   private readonly navigation = inject(NavigationService);
@@ -561,6 +571,29 @@ export class CommandBar {
 
   protected get rowActions(): readonly CommandAction[] {
     return this.resolved();
+  }
+
+  /**
+   * Whether the screen declares a read, which is what the filter and its count filter. A route no
+   * declaration answers has no read either.
+   */
+  protected get hasFilter(): boolean {
+    this.generation();
+    const screen = this.screen();
+    return screen !== null && screen.read !== null;
+  }
+
+  /** Whether any slot has something to draw; a bar with nothing in it is not drawn at all. */
+  protected get hasContent(): boolean {
+    return (
+      this.hasPrimaryAction ||
+      this.hasFilter ||
+      this.rowActions.length > 0 ||
+      this.hasViewControl ||
+      this.hasSortControl ||
+      this.hasRefreshAction ||
+      this.hasRefreshChip
+    );
   }
 
   /**

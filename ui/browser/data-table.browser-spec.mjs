@@ -448,7 +448,10 @@ test('AC4: hover, selected, active, changed and selected-and-changed paint Alway
       page.evaluate((index) => {
         const element = document.querySelector(`[role="row"][aria-rowindex="${index}"]`);
         const computed = getComputedStyle(element);
+        const trigger = getComputedStyle(element.querySelector('.ocu-data-table-cell-trigger'));
         return {
+          triggerBackground: trigger.backgroundColor,
+          triggerShadow: trigger.boxShadow,
           background: computed.backgroundColor,
           bar: getComputedStyle(element, '::before').backgroundColor,
           barWidth: getComputedStyle(element, '::before').width,
@@ -460,7 +463,12 @@ test('AC4: hover, selected, active, changed and selected-and-changed paint Alway
       }, rowIndex);
 
     await page.hover('[role="row"][aria-rowindex="6"] [role="gridcell"]:nth-child(2)');
-    assert.equal((await style(6)).background, tokens['--ocu-surface-container-low'], 'hover');
+    const hovered = await style(6);
+    assert.equal(hovered.background, tokens['--ocu-surface-container-low'], 'hover');
+    // Story 15.9 (DW-1648): the pinned trigger cell paints its row's state colour, and draws its
+    // part of the active row's ring. Mutations (Rule 19): drop the changed-row trigger rule -> the
+    // changed leg red; drop the focus-visible trigger rule -> the ring leg red.
+    assert.equal(hovered.triggerBackground, tokens['--ocu-surface-container-low'], 'the pinned trigger cell follows hover');
     await page.mouse.move(0, 0);
 
     await page.keyboard.press('Tab');
@@ -474,11 +482,18 @@ test('AC4: hover, selected, active, changed and selected-and-changed paint Alway
     assert.equal(active.outlineStyle, 'solid', 'the active row of a focused grid carries the ring');
     assert.equal(active.outlineColor, tokens['--ocu-focus-ring']);
     assert.match(active.boxShadow, /inset/, 'drawn inset');
+    assert.equal(active.triggerBackground, tokens['--ocu-secondary-container'], 'the pinned trigger cell follows selection');
+    assert.ok(
+      active.triggerShadow.includes(tokens['--ocu-focus-ring']) && /inset/.test(active.triggerShadow),
+      `the pinned trigger cell draws its part of the ring: ${active.triggerShadow}`
+    );
 
     await page.evaluate((key) => window.ocuHarness.markChanged(key), row(7).Name);
     await page.waitForSelector('[role="row"][aria-rowindex="9"].ocu-data-table-row-changed');
     const changed = await style(9);
     assert.equal(changed.background, tokens['--ocu-change-highlight'], 'changed background');
+    assert.equal(changed.triggerBackground, tokens['--ocu-change-highlight'], 'the pinned trigger cell follows the change highlight');
+    assert.equal(changed.triggerShadow, 'none', 'and a row that is not active draws no ring on it');
     assert.equal(changed.bar, tokens['--ocu-agent-accent'], 'changed bar');
     assert.equal(changed.barWidth, '3px', 'the changed bar is 3px');
     assert.ok(changed.tag, 'changed tag');

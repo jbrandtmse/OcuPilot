@@ -32,7 +32,7 @@ import {
   withQuery,
 } from '../../core/navigation';
 import { ScopeService, onScopeChange } from '../../core/scope';
-import { shortcutScreens } from '../../core/shortcuts';
+import { SHORTCUT_KEYS, shortcutScreens } from '../../core/shortcuts';
 import { Session } from '../../core/session';
 import { ShellState } from '../../core/shell-state';
 import { STRINGS, stringFor } from '../../core/strings';
@@ -110,6 +110,12 @@ interface ShortcutRow {
   readonly reason: string;
   /** The area whose side bar opening the row shows, as a tile activation does. */
   readonly area: string;
+}
+
+/** One key binding the Shortcuts block lists as text after its screen rows (Story 15.8). */
+interface ShortcutKeyRow {
+  readonly label: string;
+  readonly keys: string;
 }
 
 /** One destination of the links panel, resolved for rendering. */
@@ -317,6 +323,12 @@ interface LineSegment {
         } @else {
           <p class="ocu-home-block-empty">{{ STRINGS.shortcutsEmpty }}</p>
         }
+        <dl class="ocu-home-shortcut-keys">
+          @for (binding of shortcutKeys; track binding.label) {
+            <dt>{{ binding.label }}</dt>
+            <dd><kbd>{{ binding.keys }}</kbd></dd>
+          }
+        </dl>
       </section>
       @if (links.length) {
         <section class="ocu-home-block ocu-home-block-fixed">
@@ -696,6 +708,12 @@ export class HomePage {
   protected get shortcuts(): readonly ShortcutRow[] {
     return this.resolvedShortcuts();
   }
+
+  /** The key bindings after the screen rows, or after their empty state: text, not controls. */
+  protected readonly shortcutKeys: readonly ShortcutKeyRow[] = SHORTCUT_KEYS.map((binding) => ({
+    label: stringFor(binding.labelKey),
+    keys: stringFor(binding.keysKey),
+  }));
 
   protected get links(): readonly LinkRow[] {
     return this.resolvedLinks();

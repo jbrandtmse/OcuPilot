@@ -29,8 +29,8 @@ const CLASSIC_PORTAL_HREF = '/csp/sys/UtilHome.csp';
  * renders the third from the session state, ahead of the signed-in gate.
  *
  * **Sign out belongs to the section, and the section renders for every non-ready state.**
- * Story 1.10 moved the account menu into the status bar, which renders only once the
- * instance is `ready` -- so this notice is the only exit a held user has. `app.ts` renders
+ * The account menu is the header's, which renders only once the instance is `ready` -- so
+ * this notice is the only exit a held user has. `app.ts` renders
  * it for every instance state but `ready`, which is three states, not two: a `checking`
  * that never settles (`InstanceService.runVerify`'s final branch, reached by any failure
  * the shell cannot explain) has neither variant's sentence to show. Gating the whole
