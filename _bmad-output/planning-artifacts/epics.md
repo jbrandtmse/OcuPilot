@@ -192,7 +192,7 @@ inherited from upstream documents and are **not** restated there, so they are ex
 ### Non-functional requirements
 
 - NFR-1: Responsiveness - a list screen renders its first page within two seconds on a Community container at one thousand rows; a confirmed write's screen refresh completes within two seconds; a turn shows first visible progress (a tool-call card or the start of a reply) within ten seconds against a current cloud model.
-- NFR-2: Progress before streaming - Release 1 delivers per-step progress during a turn; token streaming ships in the polish week conditional on build step 7 finishing and ranked after FR-70 and FR-71. No turn may appear frozen longer than the interval between tool calls.
+- NFR-2: Progress before streaming - Release 1 delivers per-step progress during a turn; token streaming ships in the polish week conditional on build step 7 finishing, and runs first among Epic 11's remaining stories (owner re-order, 2026-09-22). No turn may appear frozen longer than the interval between tool calls.
 - NFR-3: Token hygiene - the token pair travels only as a Bearer header from per-tab storage, never by cookie and never as a password posted into an embedded frame.
 - NFR-4: No SQL or path from the caller - every OcuPilot API query binds caller values; no caller-supplied string is concatenated into SQL; file-serving endpoints accept no path.
 - NFR-5: Secrets never leave - API keys, private keys and wallet secret values are write-only through the UI and the API, and redacted from the agent audit ledger and every log line.
@@ -848,7 +848,7 @@ During the voting week a user can ask what any screen or log entry means in one 
 
 **FRs covered:** FR-70, FR-71, NFR-2 (token streaming)
 
-**Implementation notes:** All three modify the same panel transcript render path, which is why they are one epic rather than three. Streaming is **conditional**: it ships only if Epic 10 finished, and is ranked after FR-70 and FR-71, because it changes the render path and must not put a Release 1 agent write at risk. AD-7 and AD-33 are unchanged in contract - the turn still runs in a background job and the panel still polls - and the panel gains an incremental-append mode. Citation chips replace Release 1's plain-text row names plus an offer to select them; the agent audit viewer is gated by the resources recorded per ledger row, and that gate lives with the ledger, not the screen.
+**Implementation notes:** All three modify the same panel transcript render path, which is why they are one epic rather than three. Streaming is **conditional**: it ships only if Epic 10 finished, because it changes the render path and must not put a Release 1 agent write at risk; it runs first among the epic's remaining stories (owner re-order, 2026-09-22). AD-7 and AD-33 are unchanged in contract - the turn still runs in a background job and the panel still polls - and the panel gains an incremental-append mode. Citation chips replace Release 1's plain-text row names plus an offer to select them; the agent audit viewer is gated by the resources recorded per ledger row, and that gate lives with the ledger, not the screen.
 
 ### Epic 12: The OAuth 2.0 editors and the security-area tests
 
@@ -5175,7 +5175,7 @@ So that a slow model reads as thinking rather than as a hang.
 
 - **Given** it ships
 - **When** it is ranked
-- **Then** it comes **after** the explain and transparency work in this epic, never before.
+- **Then** it runs first among this epic's remaining stories, ahead of the explain and transparency work, by the owner's re-order of 2026-09-22, so a partial epic merged before the deadline carries streaming.
 
 - **Given** streaming is on
 - **When** a reply arrives
