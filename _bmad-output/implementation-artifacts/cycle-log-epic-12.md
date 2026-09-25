@@ -236,3 +236,5 @@
 2026-09-25T22:08:51Z	Epic 12	amendment	file=epics.md story=12.9 what=AC2_count_scoped_to_OAuth_exemption(ruling_2dca0322),DW-1643_bullet_restated tier=1
 2026-09-25T22:10:50Z	Epic 12	epic_context_compiled	reason=planning_artifact_newer(12.8_spine,12.9_epics_amendment) model=opus
 2026-09-25T22:10:50Z	Story 12.9	stage_spawned	stage=plan spawn_at=2026-09-25T22:10:50Z model=opus agent_name=12-9-classic-link-outs-plan-1 cycle_iteration=1
+2026-09-25T22:20:23Z	Story 12.9	story_created	spawn_at=2026-09-25T22:10:50Z model=opus path=_bmad-output/implementation-artifacts/spec-12-9-removing-the-classic-link-outs.md build_status=ready-for-dev warnings=oversized epic_context=reused
+2026-09-25T22:20:23Z	Story 12.9	spec_validated	service_introducing=false integration_ac=n/a adr_constrained_acs=AD-44 decision_dependency=none sections_created=none owned_ledger=DW-1643 addressed=1 declined=0 mutates_shared_runtime=false lead_answers=Q1-Q5 model=claude-opus-5-5
