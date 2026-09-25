@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '09-25-2026 15:53'
+last_updated: '09-25-2026 16:06'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -183,7 +183,7 @@ development_status:
   epic-11: in-progress
   11-9-the-agent-knows-the-screen-it-is-on: done
   11-10-a-judge-succeeds-the-first-time: done
-  11-7-token-streaming: in-progress
+  11-7-token-streaming: review
   11-8-the-proposal-names-the-privilege-it-needs: backlog
   11-1-explain-this-screen: backlog
   11-2-explain-a-log-or-audit-entry: backlog
