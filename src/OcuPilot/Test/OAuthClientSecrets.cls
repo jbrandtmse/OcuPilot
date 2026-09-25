@@ -136,8 +136,9 @@ Method TestTheSaveStoresEachSecretAndNoReadCarriesIt()
 
 /// <p>An edit that changes only a secret sends no configuration write: the edit completes with nothing
 /// sent, and the secret goes through the one secrets write alone, its body named by the secret.</p>
-/// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.OAuthClientSave.Update</method> no longer
-/// returns on an empty body -- a <code>PUT</code> is recorded and this goes red.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.OAuthClientSave.Update</method> returns
+/// neither on an empty body nor on an empty diff -- a <code>PUT</code> is recorded and this goes red.
+/// Either guard alone keeps it green.</p>
 Method TestASecretsOnlyEditSendsNoPut()
 {
     Set tName = $ClassMethod(..#PROBE, "Name", "SecretOnly")
@@ -202,6 +203,35 @@ Method TestASecretsWriteRefusedAfterTheSaveIsAnswered()
     Do $$$AssertEquals(tRaw [ tSecret, 0, "and no secret")
     Do $$$AssertEquals($ClassMethod(..#FAILPORT, "Reached", "CHANGESECRET"), 2, "the route's secrets write reached the armed port")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", tName).%Get("Description"), "saved before the refusal", "and the instance holds the configuration change")
+}
+
+/// <p>An initial access token write refused after the configuration saved: the edit's route answers
+/// 200 carrying <code>tokenRefused</code>, the refusal's own sentence, the instance holds the
+/// configuration change and the server description no token. The refusal is
+/// <class>OcuPilot.Test.OAuthServerRecordPort</class>'s, reached through
+/// <class>OcuPilot.Test.OAuthClientFailSave</class>'s server description Save.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.OAuthClientSave.Answer</method> drops
+/// <code>tokenRefused</code> -- this goes red.</p>
+Method TestATokenWriteRefusedAfterTheSaveIsAnswered()
+{
+    Set tName = $ClassMethod(..#PROBE, "Name", "TokenRefused")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddClient", tName, ..ServerId), "a configuration is created")
+    Set tInitial = $ClassMethod(..#PROBE, "Secret", "initialrefused")
+    Do ##class(OcuPilot.Test.OAuthServerRecordPort).Clear()
+    Do ##class(OcuPilot.Test.OAuthServerRecordPort).FailType("TOKEN")
+    Set tBody = {"Description": "saved before the token refusal", "InitialAccessToken": (tInitial)}
+    Set tSC = $ClassMethod(..#FAILSAVE, "Handle", tName, tBody, .tRaw, .tStatus)
+    Set tLastType = ##class(OcuPilot.Test.OAuthServerRecordPort).LastType()
+    Do ##class(OcuPilot.Test.OAuthServerRecordPort).Clear()
+    Do $$$AssertStatusOK(tSC, "the edit's route runs")
+    Do $$$AssertEquals(tStatus, 200, "and answers 200: " _ $Extract(tRaw, 1, 300))
+    Set tAnswer = ""
+    Try { Set tAnswer = ##class(%DynamicObject).%FromJSON(tRaw) } Catch { Set tAnswer = "" }
+    Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.%Get("tokenRefused"), 1: ""), ##class(OcuPilot.Api.Error).#REASONPORTNOTAPPLIED, "carrying tokenRefused, the refusal's sentence")
+    Do $$$AssertEquals(tRaw [ tInitial, 0, "and no token")
+    Do $$$AssertEquals(tLastType, "TOKEN", "the route's token write reached the refusing port")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", tName).%Get("Description"), "saved before the token refusal", "the instance holds the configuration change")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "ServerTokenLength", $ClassMethod(..#PROBE, "Issuer", "secrets")), 0, "and the server description no token")
 }
 
 /// <p>A secrets write carrying no secret is refused by the port before the vendor is called, which

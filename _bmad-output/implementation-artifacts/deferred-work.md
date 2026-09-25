@@ -6722,6 +6722,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-25T01:19:33Z occurrence=12-4-the-oauth-2-0-client-server-description-editor
 - 2026-09-25T02:13:04Z occurrence=12-5-the-oauth-2-0-client-configuration-editor note=measured 2026-09-25 on ocupilot-b-ci: the client configuration's Metadata.registration_access_token is written in plain text into 'Modify OAuth2 Client' and 'Modify OAuth2 Client Metadata' EventData by CHANGESECRET and again by every later PUT and ROTATEKEYS; ClientSecret, ClientPassword, Metadata.client_secret and key sets are masked by the vendor
 - 2026-09-25T02:14:54Z status=routed owner=12-5-the-oauth-2-0-client-configuration-editor by=merge_gate note=orchestrator ruling 8bd12776: (a) mask declared keys in EventData for the named vendor OAuth events on both screen and agent paths; AD-35 extended; owner 12.5 with authority over the Logs audit read; vendor behavior on the owner's list as a candidate IRIS defect report
+- 2026-09-25T05:14:40Z status=resolved-by:12-5-the-oauth-2-0-client-configuration-editor by=adjudication note=AuditPort.VENDORSECRETS declares token keys per named vendor OAuth event; Screen/Read masks before projecting, so Logs > Audit and logs.audit.read read the same masked rows; pinned by Test/AuditVendorSecrets (declaration removed -> red on both reads, run 952; Create rows added at review, runs 1215-1219); localized-message residue is DW-1645 (escalated)
 
 ### DW-1641: The agent's OAuth server-description update replaces Metadata whole: the tool argument is the complete member set because Mint.Merge carries an object argument as one value (the screen route merges member by member first)
 - source: spec-12-4-the-oauth-2-0-client-server-description-editor.md | severity: med | fix-risk: med | footprint: in-story
@@ -6739,3 +6740,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ARCHITECTURE-SPINE.md AD-44 reads 'declared by the five tab descriptors ... reports the five declaring descriptors'; epic-12-context.md:52 'all five'. classic-links.test.mjs and Test/OAuthTabs now assert 4 descriptors (AC9).
 - 2026-09-25T01:19:27Z status=routed owner=12-9-removing-the-classic-link-outs by=cr note=Rule 20 spine text; lead may correct the count at the next bookkeeping commit, 12.9 removes the other four
 - 2026-09-25T01:21:53Z status=routed owner=12-9-removing-the-classic-link-outs by=adjudication note=spine AD-44 and epic context counts corrected at origin (four remaining); 12.9 removes the four and the spine sentence's interim count
+
+### DW-1645: The DW-1640 audit mask matches the vendor's English audit texts, so on an instance whose audit messages are localized the registration and initial access tokens reach Logs > Audit and logs.audit.read unmasked
+- source: spec-12-5-the-oauth-2-0-client-configuration-editor.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: AuditPort.SecretKeys/MaskedEventData match 'Modify OAuth2 Client', '<key> modified:', 'New value:' and '<Key>:' captions, which OAuth2.Client.GetAuditMessages builds with $$$FormatMsg/$$$GetMsg (irissys/OAuth2/Client.cls:1239-1326); rows also carry a locale-free JSONData {event,class}. Measured English only (inference for other locales).
+- 2026-09-25T05:11:13Z status=escalated owner=burndown by=cr note=fix needs message-dictionary-keyed matching per event and caption; untestable without a localized instance
+
+### DW-1646: An agent-confirmed update of a registered client whose authorization server is down reports applied with no registration-not-updated notice; only the screen Save surfaces registrationNotUpdated
+- source: spec-12-5-the-oauth-2-0-client-configuration-editor.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: OAuthClientPort.Put answers 200 with registrationNotUpdated (Port/OAuthClientPort.cls:210-215); Kernel/Proposal/Confirm.cls:383 discards the port's answer, so the chat reports the write as applied without saying the issuer's copy is stale.
+- 2026-09-25T05:11:13Z status=wontfix-accepted owner=12-5-the-oauth-2-0-client-configuration-editor by=cr note=reopen_if=a user reports an agent edit of a dynamically registered client whose issuer copy silently went stale
+
+### DW-1647: The client Save's create checks the name is free and then sends the vendor's upsert PUT, so a second create of the same name landing between the look-up and the PUT would modify the first
+- source: spec-12-5-the-oauth-2-0-client-configuration-editor.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: OAuthClientSave.Create: Validate(...,'create') looks the name up (Area/Security/OAuthClientSave.cls:187), then Send issues PUT (:197), which RunPut upserts; the port's own fresh read (Port/OAuthClientPort.cls:172) does not refuse a present target.
+- 2026-09-25T05:11:13Z status=wontfix-theoretical owner=12-5-the-oauth-2-0-client-configuration-editor by=cr note=real only if two creates of one name land within the milliseconds between look-up and PUT; the agent path is AD-34-locked

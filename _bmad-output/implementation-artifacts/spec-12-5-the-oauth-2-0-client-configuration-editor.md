@@ -281,6 +281,45 @@ Supporting vendor classes:
 - **AC9 (link-out).** Given the OAuth 2.0 screen, when it renders, then this tab's name cell opens OcuPilot's editor, the other three tabs keep their classic links, and the classic-links check reports one exemption across three descriptors.
 - **AC10 (DW-1337).** Given the editor and its delete dialog, when they are measured at 1280 px light, 720 px light and 1280 px dark, then there is no structural or contrast violation.
 
+### Review Findings
+
+Code review 2026-09-25 (four layers on Opus, `full` mode). 8 patch (4 medium, 4 low), 3 ledgered, 20 rejected.
+
+- [x] [Review][Patch] The server's `tokenRefused` was untested; added `OAuthClientSecrets.TestATokenWriteRefusedAfterTheSaveIsAnswered` (`OAuthClientFailSave.SERVERSAVE` is now the record-port server Save) [src/OcuPilot/Test/OAuthClientSecrets.cls:215]
+- [x] [Review][Patch] `SentStored`'s `Metadata` comparison was untested in the refusing direction; added a metadata-only case to `TestARegisteredPutThatStoredNothingIsRefused` [src/OcuPilot/Test/OAuthClientRegister.cls:214]
+- [x] [Review][Patch] The edit rules' fallback to the fresh read had no accepted case; added two accepted edits to `TestTheEditsFormRulesRefuseOnBothCallers` [src/OcuPilot/Test/OAuthClientUpdate.cls:162]
+- [x] [Review][Patch] The DW-1640 Create declarations and the property-line mask were pinned by no row; added Create server definition and client rows to `TestTheMaskReadsTheDeclarationAlone` [src/OcuPilot/Test/AuditVendorSecrets.cls:132]
+- [x] [Review][Patch] Rotate Keys left the page on its stale read; `onRotate` now reads the configuration again, pinned by a page-spec leg [ui/src/app/areas/security/oauth-client-form.page.ts:666]
+- [x] [Review][Patch] `TestASecretsOnlyEditSendsNoPut` claimed a mutation that cannot redden it; the comment now names both guards (run 1219) [src/OcuPilot/Test/OAuthClientSecrets.cls:142]
+- [x] [Review][Patch] `OAuthClientPort`'s doc said every answer is stripped; only GET and PUT answers are, and the other writes answer `{}` [src/OcuPilot/Port/OAuthClientPort.cls:8]
+- [x] [Review][Patch] `epic-12-context.md` and the DW-1643 bullet in `epics.md` still counted four declaring tabs; corrected to three, as AD-44 lists [_bmad-output/implementation-artifacts/epic-12-context.md:63]
+- [x] [Review][Defer] The audit mask matches English vendor texts, so a localized instance would show the tokens [src/OcuPilot/Port/AuditPort.cls:147] -- deferred: DW-1645, escalated to the decision sheet (fix-risk high)
+- [x] [Review][Defer] An agent-confirmed update of a registered client with its issuer down reports applied without the not-updated notice [src/OcuPilot/Kernel/Proposal/Confirm.cls:383] -- deferred: DW-1646, wontfix-accepted
+- [x] [Review][Defer] The Save's create looks the name up and then sends the vendor's upsert PUT [src/OcuPilot/Area/Security/OAuthClientSave.cls:187] -- deferred: DW-1647, wontfix-theoretical
+
+Rejected:
+
+- low: the Register card's row reads `ClientId: '' -> <registration endpoint>`. This follows 12.4's `UpdateJwks` convention, where `after` names the source the action fetches from.
+- low: a non-string secret is dropped. Only the editor calls the route, and it sends strings.
+- low: a refused Save forgets the typed secrets. This matches 12.4's token: the store holds no secret past a request.
+- low: a principal with only the editor's pairs sees no SSL/TLS choice. The spec requires each list through its own screen's read (AD-5).
+- low: negative whole numbers are accepted for `JWTInterval`/`default_max_age`. The vendor's own type applies, and no page path sends one.
+- false: `Expand` quits silently when the field lists are unreadable. They are generated, compiled parameters.
+- low: a failed server-description read gives an empty list. This is theoretical.
+- low: the top-level Client ID stays editable on a registered client. The spec's Client Credentials section lists it.
+- low: both notices print "Saved." twice. The co-occurrence is rare, and the fixed strings are EXPERIENCE.md's.
+- low: grant-type and flag errors have no inline focus target. The checkbox values cannot be refused.
+- low: issued-at and expires-at show raw epoch numbers. The spec asks only for read-only.
+- low: `PrivilegePairs` is repeated in five tools. This is 12.4's per-tool pattern.
+- low: spec counts, a repeated DW-1640 mutation line and the triage date. Fixing them edits the spec under review; the two mutation lines are distinct runs (930, 952).
+- low: `requiredFields` lists the redirect URL for a resource client. Its one consumer applies the exception.
+- false: `ReasonForOAuth`'s fallthrough shows `{issuer}` unfilled. It is reached only through `ReasonForViolation` for violation rows, and the registration failure is never one.
+- false: a REGISTERCLIENT 500 after the client ID was stored. `RegisterClient` stores nothing before its final save.
+- low (maybe-false): `SentStored` reads a vendor default as not stored. This needs a registered 500 on a member the vendor defaults.
+- low: `SentStored`'s scope and slash normalization could admit a no-op PUT that stored nothing. Nothing is lost; this was already triaged.
+- low: the form read's description list has no registration-endpoint flag. Nothing consumes it, because Register reads the saved description's endpoint.
+- false: vendor delete rows carry a token. `OAuth2.Client.%OnDelete` writes only its JSONData marker (`irissys/OAuth2/Client.cls:1238`).
+
 ## Spec Change Log
 
 - 2026-09-25, spec gate (lead). Orchestrator ruling 8bd12776 (by=merge_gate): DW-1640 is fixed in this story on both read paths (AD-35 amended; Tasks carry it); the editor is four sections named and ordered as the classic tabs, switched to `app-form-tabs` at Epic 9's merge by a routed bullet (Q1); the initial access token field, "Get Updated Metadata" out of scope and the DW-1641 occurrence are accepted; AD-4 is amended for `ClientConfiguration`; AD-44 now lists the declaring tabs by name (three after this story), so AC9's count is the named list's.
@@ -466,6 +505,12 @@ Registration-managed members: an agent `Metadata` without `registration_client_u
 - mutation: secrets refused after the save -- `OAuthClientSave.Answer` drops `secretsRefused` → `OAuthClientSecrets.TestASecretsWriteRefusedAfterTheSaveIsAnswered` red (run 949).
 - mutation: save notices -- the page's `status` loses its `notUpdated` branch → the page spec's "says so beside Saved" leg red; `offersRegister` drops `registrationEndpoint() !== ''` → the page spec's "offers no Register" leg red.
 - mutation: DW-1640 mask -- the two `Modify OAuth2 Client*` declarations removed from `AuditPort.VENDORSECRETS` → `AuditVendorSecrets.TestAClientRowCarryingAProbeTokenReadsMasked` "registration_access_token reads the mask" red on both reads (run 952).
+- mutation: token refused after the save -- `OAuthClientSave.Answer` drops `tokenRefused` → `OAuthClientSecrets.TestATokenWriteRefusedAfterTheSaveIsAnswered` red (run 1216).
+- mutation: registered metadata PUT stored nothing -- `SentStored` stops comparing `Metadata` members → `OAuthClientRegister.TestARegisteredPutThatStoredNothingIsRefused` metadata case red (run 1217).
+- mutation: edit fallback -- `OAuthClientRules.Effective` answers `""` for an unsent field → `OAuthClientUpdate.TestTheEditsFormRulesRefuseOnBothCallers` accepted cases red (run 1218).
+- mutation: Create rows -- `AuditPort.MaskedEventData` stops masking a `<key>:` property line → `AuditVendorSecrets.TestTheMaskReadsTheDeclarationAlone` Create server definition assertion red (run 1215).
+- mutation: secrets-only edit -- `OAuthClientSave.Update` loses both its empty-body and empty-diff returns → `OAuthClientSecrets.TestASecretsOnlyEditSendsNoPut` red (run 1219).
+- mutation: Rotate Keys re-read -- `onRotate` no longer re-opens → the page spec's "AC6: Rotate Keys ... reads the configuration again" red.
 
 ## Auto Run Result
 

@@ -5,8 +5,9 @@
 /// (<method>CredentialUsable</method>).</p>
 /// <p><b>No read returns a secret</b> (AD-35). The vendor's <code>GET</code> and <code>PUT</code>
 /// answer <code>Metadata.client_secret</code> and <code>Metadata.registration_access_token</code> in
-/// plain text; <parameter>SECRETMEMBERS</parameter> are removed from every answer before a caller
-/// sees it.</p>
+/// plain text; <parameter>SECRETMEMBERS</parameter> are removed from each <code>GET</code> and
+/// <code>PUT</code> answer before a caller sees it. The other writes answer the vendor's empty
+/// object, which carries neither.</p>
 /// <p><b><code>PUT</code></b> refuses a <code>ClientCredentials</code> the caller cannot use or that
 /// has no private key on its field, after its gated fresh read and before the vendor's write (the
 /// vendor answers 500). The body's

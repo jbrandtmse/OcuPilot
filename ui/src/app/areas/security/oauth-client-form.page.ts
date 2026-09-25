@@ -665,13 +665,20 @@ export class OAuthClientFormPage {
   /** Rotate Keys: the tab's declared action, sent as its row menu sends it (AD-53). */
   protected async onRotate(): Promise<void> {
     if (!this.offersRotate || this.actionBlocked) return;
+    const name = this.store.storedName();
     this.clearAction();
     this.acting = true;
     this.bump();
-    const applied = await this.handler.sendFor(OAUTH_CLIENT_TAB_DESCRIPTOR, ROTATE_ACTION, this.store.storedName());
+    const applied = await this.handler.sendFor(OAUTH_CLIENT_TAB_DESCRIPTOR, ROTATE_ACTION, name);
     this.acting = false;
-    this.actionNotice = applied ? STRINGS.oauthClientKeysRotated : '';
-    if (!applied) this.actionRefusal = this.tabRefusal();
+    if (!applied) {
+      this.actionRefusal = this.tabRefusal();
+      this.bump();
+      return;
+    }
+    // The rotation replaced the key set, so the form reads the configuration again.
+    await this.store.open(name);
+    this.actionNotice = STRINGS.oauthClientKeysRotated;
     this.bump();
   }
 

@@ -5446,7 +5446,7 @@ So that the area the task statement names reads as rebuilt.
 - **Given** the accepted Release 1 risk that OAuth is lists, views and deletes at the deadline
 - **When** this epic completes
 - **Then** that risk is closed rather than carried, and the closure is recorded.
-- DW-1643: AD-44 and the epic context counted five OAuth tabs declaring the classic-link exemption; Story 12.4 removed one, and the counts were corrected at origin. This story removes the remaining four and sets the spine's count to none. (ledger; routed by cr 2026-09-25)
+- DW-1643: AD-44 and the epic context counted five OAuth tabs declaring the classic-link exemption; Story 12.4 removed one, and the counts were corrected at origin. Story 12.5 removed one more (AD-44 lists the three left by name). This story removes the remaining three and sets the spine's count to none. (ledger; routed by cr 2026-09-25)
 
 ---
 

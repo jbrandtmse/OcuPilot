@@ -32,7 +32,7 @@ Finish the area the contest's task statement names most directly: OAuth setup. A
   - a delete is refused by name while dependents block it, and allowed with a consequence line where the vendor leaves references dangling.
 - **12.5 and 12.7:** Rotate Keys reports its result.
 - **12.7:** an agent-proposed change to the authorization server's own configuration carries the full write model, and its card states which clients the change affects.
-- **12.9:** each tab's name cell opens OcuPilot's editor. The four remaining classic links come off, and the spine's exemption count goes to none. Record SM-C1 back at zero, and record the Release 1 risk as closed.
+- **12.9:** each tab's name cell opens OcuPilot's editor. The three remaining classic links come off, and the spine's exemption count goes to none. Record SM-C1 back at zero, and record the Release 1 risk as closed.
 - **New screens pass the structural gate:** accessible names, minimum control widths, no overflow and no page-level horizontal scroll. They use design tokens only, render correctly in the dark theme, and get no baseline allowance.
 
 ## Technical Decisions
@@ -60,7 +60,7 @@ Finish the area the contest's task statement names most directly: OAuth setup. A
 - **Queued writes (AD-26).** The port refuses any mutating request the vendor would queue, except the audit `COPY` and `PURGE`.
 - **Proposals (AD-6, AD-34, AD-40).** A proposal is minted on the server, used once, fingerprinted, and expires after 10 minutes. Confirm re-checks privileges and the prohibited set atomically.
 - **Descriptors (AD-5, AD-13, AD-14).** Each OAuth tab has its own descriptor, and a tab may declare several entity types. An editor declares side-bar position 0, no tools and no row actions, and it is opened from its tab. Ids are percent-encoded in one path segment. Tool names follow `<area>.<screen>.<verb>`.
-- **Classic link-outs (AD-44).** The OAuth tabs hold Release 1's only `classicLinkExemption`, counted once. Four tab descriptors still declare it. Story 12.9 removes them, and the automated check then reports none.
+- **Classic link-outs (AD-44).** The OAuth tabs hold Release 1's only `classicLinkExemption`, counted once. Three tab descriptors still declare it (`OAuthServerTab`, `OAuthResourceServerTab`, `OAuthServerClientTab`). Story 12.9 removes them, and the automated check then reports none.
 
 ## UX & Interaction Patterns
 

@@ -247,6 +247,16 @@ describe('the client configuration editor', () => {
     expect((host.querySelector('#ocu-oauth-client-ClientId') as HTMLInputElement).value).toBe('ocupilotpageissued');
   });
 
+  it('AC6: Rotate Keys posts the declared action, reads the configuration again and reports the rotation', async () => {
+    // Mutation (Rule 19): drop the re-read from `onRotate` -> this goes red: the page keeps its stale read.
+    const { fixture, host, sent } = await mount(EDIT_URL, { after: { ...DEFINITION, Description: 'Read after the rotation' } });
+    press(host, STRINGS.oauthClientRotateKeys);
+    await settle(fixture);
+    expect(sent.map((call) => [call.path, JSON.parse(call.body)])).toEqual([[ACTION_PATH, { action: 'rotatekeys', id: NAME }]]);
+    expect(host.querySelector('[role="status"]')?.textContent?.trim()).toBe(STRINGS.oauthClientKeysRotated);
+    expect((host.querySelector('#ocu-oauth-client-Description') as HTMLInputElement).value).toBe('Read after the rotation');
+  });
+
   it("a Register the instance refuses shows the refusal's own sentence and reports no registration", async () => {
     const reason = 'The authorization server did not register this client.';
     const { fixture, host } = await mount(EDIT_URL, {

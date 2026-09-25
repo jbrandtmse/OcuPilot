@@ -1,11 +1,16 @@
-/// <p>Test-only <class>OcuPilot.Area.Security.OAuthClientSave</class> subclass with one replaced seam:
+/// <p>Test-only <class>OcuPilot.Area.Security.OAuthClientSave</class> subclass with two replaced seams:
 /// <method>PortClass</method> answers <class>OcuPilot.Test.OAuthClientFailPort</class>, so a request
-/// type the test arms there is refused while every other call reaches the instance.
+/// type the test arms there is refused while every other call reaches the instance; and
+/// <parameter>SERVERSAVE</parameter> is <class>OcuPilot.Test.OAuthServerSaveFixture</class>, so the
+/// initial access token's write goes through <class>OcuPilot.Test.OAuthServerRecordPort</class>,
+/// whose <method>FailType</method> refuses it.
 /// <method>Handle</method> runs the edit's route handler in this process against
 /// <class>%CSP.Request</class>/<class>%CSP.Response</class> stubs and captures what it writes.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.OAuthClientFailSave Extends OcuPilot.Area.Security.OAuthClientSave
 {
+
+Parameter SERVERSAVE = "OcuPilot.Test.OAuthServerSaveFixture";
 
 ClassMethod PortClass() As %String
 {

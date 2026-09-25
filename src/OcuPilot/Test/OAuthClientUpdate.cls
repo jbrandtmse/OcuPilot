@@ -129,9 +129,12 @@ Method TestAnUnsettableMemberIsRefusedBeforeAnythingIsSent()
 /// refused on its field by the Save's <method>OcuPilot.Area.Security.OAuthClientSave.Update</method>
 /// with nothing sent, and by the update tool's <method>OcuPilot.Screen.Tool.OAuthClientUpdate.ArgumentProblem</method>
 /// naming the field. The last case changes a resource server, stored with no redirect URL, to a
-/// public client.</p>
+/// public client. Two edits that leave a rule's other field unsent are accepted, each rule reading
+/// that field from the fresh read.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.OAuthClientRules.Changes</method> answers
-/// <var>pCreates</var> alone -- the edit's rules stop applying and this goes red.</p>
+/// <var>pCreates</var> alone -- the edit's rules stop applying and this goes red;
+/// <method>OcuPilot.Area.Security.OAuthClientRules.Effective</method> answers <code>""</code> for an
+/// unsent field -- the accepted edits are refused and this goes red.</p>
 Method TestTheEditsFormRulesRefuseOnBothCallers()
 {
     Set tName = $ClassMethod(..#PROBE, "Name", "Rules")
@@ -155,6 +158,14 @@ Method TestTheEditsFormRulesRefuseOnBothCallers()
         Do $$$AssertEquals($ClassMethod(..#RECORD, "WriteCount"), 0, $List(tCase, 2) _ ": and sends nothing")
         Set tSC = $ClassMethod(..#TOOL, "ArgumentProblem", $List(tCase, 1), ##class(%DynamicObject).%FromJSON($List(tCase, 2)), .tProblem)
         Do $$$AssertTrue($$$ISOK(tSC) && ($Get(tProblem) [ ("'" _ tField _ "': ")), $List(tCase, 2) _ ": the update tool refuses it naming " _ tField _ ": " _ $Get(tProblem))
+    }
+    ; Accepted because a field the edit does not send is read from the fresh read: a client stored
+    ; with a redirect URL may become public, and a resource server's redirect URL may stay empty.
+    For tCase = $ListBuild(tName, "{""ClientType"": ""public""}"), $ListBuild(tResource, "{""RedirectionEndpoint"": """"}") {
+        Set tSC = $ClassMethod(..#SCREEN, "Update", $List(tCase, 1), ##class(%DynamicObject).%FromJSON($List(tCase, 2)), .tHttp, .tFault, .tViolations, .tAnswer, .tServer)
+        Do $$$AssertTrue($$$ISOK(tSC) && (+$Get(tViolations) = 0), $List(tCase, 2) _ ": the Save accepts it: " _ $ClassMethod(..#HELPER, "CodeFor", .tViolations, "RedirectionEndpoint"))
+        Set tSC = $ClassMethod(..#TOOL, "ArgumentProblem", $List(tCase, 1), ##class(%DynamicObject).%FromJSON($List(tCase, 2)), .tProblem)
+        Do $$$AssertTrue($$$ISOK(tSC) && ($Get(tProblem) = ""), $List(tCase, 2) _ ": and so does the update tool: " _ $Get(tProblem))
     }
 }
 

@@ -107,8 +107,11 @@ Method TestAServerRowCarryingAProbeTokenReadsMasked()
 }
 
 /// <p>The mask reads the declaration and nothing else: a declared key is masked in each of the three
-/// places the vendor writes one; the same text under an event the declaration does not name, under
-/// another vendor event, or under a key it does not declare is unchanged.</p>
+/// places the vendor writes one, on a Modify row and on a Create row; the same text under an event the
+/// declaration does not name, under another vendor event, or under a key it does not declare is
+/// unchanged.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.AuditPort.MaskedEventData</method> stops masking a
+/// <code>&lt;key&gt;:</code> property line -- the Create server definition assertion goes red.</p>
 Method TestTheMaskReadsTheDeclarationAlone()
 {
     Set tCrlf = $Char(13, 10)
@@ -124,6 +127,18 @@ Method TestTheMaskReadsTheDeclarationAlone()
     Do $$$AssertTrue((tMasked [ "  New value: kept") && (tMasked [ """client_id"":""kept"""), "and an undeclared key beside them is unchanged")
     Do $$$AssertEquals(tRows.%Get(1).%Get("EventData"), tData, "an event the declaration does not name is unchanged")
     Do $$$AssertEquals(tRows.%Get(2).%Get("EventData"), tData, "and so is another vendor event")
+
+    ; A Create row lists every property on its own line, as the vendor writes one (read on a throwaway).
+    Set tCreate = "Create OAuth2 Server Definition: X" _ tCrlf _ tCrlf _ "InitialAccessToken:                     ocupilotmaskprobe000d" _ tCrlf _ "IssuerEndpoint:                         https://ocupilotprobe125.invalid/x" _ tCrlf _ "Metadata:                               {""registration_access_token"":""ocupilotmaskprobe000e""}"
+    Set tClient = "Create OAuth2 Client: Y" _ tCrlf _ tCrlf _ "Metadata:                               {""client_name"":""kept"",""registration_access_token"":""ocupilotmaskprobe000f""}"
+    Set tRows = []
+    Do tRows.%Push(..Row("%System", "%Security", "OAuth2", "Create OAuth2 Server Definition X", tCreate))
+    Do tRows.%Push(..Row("%System", "%Security", "OAuth2", "Create OAuth2 Client Y", tClient))
+    Do $ClassMethod(..#PORT, "MaskVendorSecrets", tRows)
+    Set tMasked = tRows.%Get(0).%Get("EventData")
+    Do $$$AssertTrue((tMasked '[ "ocupilotmaskprobe000") && (tMasked [ "InitialAccessToken:                     *****") && (tMasked [ "IssuerEndpoint:                         https://ocupilotprobe125.invalid/x"), "a Create server definition row's property line and metadata are masked, and nothing else: " _ tMasked)
+    Set tMasked = tRows.%Get(1).%Get("EventData")
+    Do $$$AssertTrue((tMasked '[ "ocupilotmaskprobe000") && (tMasked [ """client_name"":""kept"""), "and so is a Create client row's metadata: " _ tMasked)
 }
 
 /// <p>Assert that the audit screen's read over the wire and <code>logs.audit.read</code> each answer

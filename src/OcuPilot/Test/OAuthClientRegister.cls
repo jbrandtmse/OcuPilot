@@ -209,7 +209,8 @@ Method TestANotUpdatedSaveIsAnsweredAsSaved()
 /// port's re-read finds the sent change absent, and the instance holds the configuration as it was.
 /// The 500 is <class>OcuPilot.Test.OAuthClientFailPort</class>'s, so the vendor is never called.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.OAuthClientPort.SentStored</method> answers 1 --
-/// the refusal is answered as saved and this goes red.</p>
+/// the refusal is answered as saved and this goes red; it stops comparing <code>Metadata</code>
+/// members -- the metadata-only refusal goes red.</p>
 Method TestARegisteredPutThatStoredNothingIsRefused()
 {
     Set tIssuer = $ClassMethod(..#PROBE, "Issuer", "storednothing")
@@ -226,6 +227,10 @@ Method TestARegisteredPutThatStoredNothingIsRefused()
     Do $$$AssertEquals($Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: ""), "422 OAUTH.CLIENTVALIDATION", "the port refuses the write")
     Do $$$AssertTrue('$IsObject($Get(tResult)) || (tResult.%GetTypeOf("registrationNotUpdated") = "unassigned"), "with no registrationNotUpdated")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", tName).%Get("Description"), "before", "and the instance holds the configuration as it was")
+    ; The same for a change carried by a metadata member alone.
+    Set tSC = $ClassMethod(..#FAILPORT, "Invoke", ..#ENDPOINT, "PUT", .tQuery, {"Metadata": {"client_name": "refused member"}}, .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals($ClassMethod(..#FAILPORT, "Reached", "PUT"), 2, "a metadata-only PUT is answered by the armed override too")
+    Do $$$AssertEquals($Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: ""), "422 OAUTH.CLIENTVALIDATION", "and the port refuses it, the member not being stored")
 }
 
 }
