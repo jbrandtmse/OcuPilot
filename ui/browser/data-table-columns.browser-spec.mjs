@@ -309,6 +309,85 @@ test('Reveal: Right into a column past the right edge scrolls it fully into view
   }
 });
 
+/** Row 1's action trigger against the frame: whether it sits inside, and whether its centre hit-tests to it. */
+function triggerPlace(page) {
+  return page.evaluate(() => {
+    const viewport = document.querySelector('cdk-virtual-scroll-viewport');
+    const trigger = document.querySelector('[role="row"][aria-rowindex="2"] .ocu-data-table-trigger');
+    const view = viewport.getBoundingClientRect();
+    const box = trigger.getBoundingClientRect();
+    const left = view.left + viewport.clientLeft;
+    const right = left + viewport.clientWidth;
+    const x = box.left + box.width / 2;
+    const y = box.top + box.height / 2;
+    const hit = document.elementFromPoint(x, y);
+    return {
+      inside: box.left >= left - 0.5 && box.right <= right + 0.5,
+      hit: hit !== null && trigger.contains(hit),
+      x,
+      y,
+      box: [box.left, box.right],
+      frame: [left, right],
+      scrolled: viewport.scrollLeft,
+    };
+  });
+}
+
+// Mutation (Rule 19): `.ocu-data-table-viewport` given `overflow-x: hidden` -> the wheel leaves the
+// trigger past the frame, red; `revealActiveCell` returning early for the trigger column -> the
+// keyboard half leaves it past the frame, red.
+test('Trigger reach: at 480 wide the row trigger starts past the frame, and the frame\'s own sideways scroll or Right into its column brings it inside, where it opens the row menu', async () => {
+  const { context, page } = await openHarness(NARROW);
+  try {
+    const start = await triggerPlace(page);
+    assert.ok(!start.inside, `the trigger starts past the frame: ${JSON.stringify(start)}`);
+
+    const frame = await page.$eval('cdk-virtual-scroll-viewport', (element) => {
+      const box = element.getBoundingClientRect();
+      return { x: box.left + box.width / 2, y: box.top + 20 };
+    });
+    await page.mouse.move(frame.x, frame.y);
+    await page.mouse.wheel({ deltaX: 2000 });
+    await settle(page, 400);
+    const wheeled = await triggerPlace(page);
+    assert.ok(wheeled.inside && wheeled.hit, `a sideways wheel over the frame brings the trigger inside it: ${JSON.stringify(wheeled)}`);
+    await page.mouse.click(wheeled.x, wheeled.y);
+    await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: 2000 });
+    await press(page, 'Escape');
+    await page.waitForFunction(() => document.querySelector('[role="menu"]') === null, { timeout: 2000 });
+
+    await page.evaluate(() => {
+      document.querySelector('cdk-virtual-scroll-viewport').scrollLeft = 0;
+    });
+    await settle(page);
+    assert.ok(!(await triggerPlace(page)).inside, 'scrolled back, the trigger is past the frame again');
+    await page.focus('[role="grid"]');
+    await press(page, 'ArrowDown');
+    for (let step = 0; step < FIELDS.length + 2; step += 1) await press(page, 'ArrowRight');
+    await settle(page, 300);
+    const keyed = await page.evaluate(() => {
+      const viewport = document.querySelector('cdk-virtual-scroll-viewport');
+      const id = document.querySelector('[role="grid"]').getAttribute('aria-activedescendant');
+      const cell = document.getElementById(id);
+      const box = cell.getBoundingClientRect();
+      const view = viewport.getBoundingClientRect();
+      const left = view.left + viewport.clientLeft;
+      return {
+        onTrigger: cell.querySelector('.ocu-data-table-trigger') !== null,
+        inside: box.left >= left - 0.5 && box.right <= left + viewport.clientWidth + 0.5,
+        box: [box.left, box.right],
+        frame: [left, left + viewport.clientWidth],
+      };
+    });
+    assert.ok(keyed.onTrigger, 'Right past the last data column lands on the trigger column');
+    assert.ok(keyed.inside, `and reveals it inside the frame: ${JSON.stringify(keyed)}`);
+    await press(page, 'Enter');
+    await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: 2000 });
+  } finally {
+    await context.close();
+  }
+});
+
 // Mutation (Rule 19): show the tooltip whatever `scrollWidth > clientWidth` says -> "Not cut" goes red.
 test('Cut cell: the pointer resting on a 300-character note shows it whole after the delay, the tooltip is hoverable, and Escape hides it', async () => {
   const { context, page } = await openHarness();

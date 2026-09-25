@@ -30,6 +30,9 @@ export const ROW_SELECTOR = '[role="grid"] .ocu-data-table-body [role="row"]';
 /** The command bar's filter field, which every list screen renders. */
 export const FILTER_SELECTOR = '#ocu-command-bar-filter';
 
+/** How long `clickRowCentre` waits for the rows, then its target, to hold still. */
+const SETTLE_LIMIT_MS = 2000;
+
 /** Wait until the table has rendered at least one body row. */
 export async function waitForRows(page, timeoutMs) {
   await page.waitForSelector(ROW_SELECTOR, { timeout: timeoutMs });
@@ -156,6 +159,10 @@ export async function filterToSubset(page, { text, expectRow, total, timeoutMs }
  * pointer click fire at that same point. A regression in the height chain fails this
  * helper before it fails anything the click would have caused.
  *
+ * The point is measured only once the rendered rows, and then the target, have held still for two
+ * animation frames. A filter or a scroll re-renders the rows a frame after the event, so a point
+ * measured before that render lands where the row used to be, and the click selects nothing.
+ *
  * Name the target one of three ways: `link: true` for the row's own `.ocu-data-table-link`
  * (the drill and the id-bearing name cell), `cell: n` for the nth `[role="gridcell"]` (the two
  * selection cases, which must not open a link), or neither for the row box itself. Choose the row
@@ -165,6 +172,34 @@ export async function filterToSubset(page, { text, expectRow, total, timeoutMs }
  * assert on them rather than re-reading the DOM.
  */
 export async function clickRowCentre(page, { text = null, index = 0, cell = null, link = false } = {}) {
+  const settled = await page.evaluate(
+    async (rowSelector, limitMs) => {
+      const layout = () =>
+        Array.from(document.querySelectorAll(rowSelector))
+          .map((row) => {
+            const box = row.getBoundingClientRect();
+            return `${row.querySelector('[role="gridcell"]')?.textContent?.trim() ?? ''}@${box.left},${box.top}`;
+          })
+          .join('|');
+      const deadline = performance.now() + limitMs;
+      let previous = layout();
+      let still = 0;
+      while (still < 2) {
+        if (performance.now() > deadline) return false;
+        await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+        const next = layout();
+        still = next === previous ? still + 1 : 0;
+        previous = next;
+      }
+      return true;
+    },
+    ROW_SELECTOR,
+    SETTLE_LIMIT_MS
+  );
+  if (!settled) {
+    throw new Error(`clickRowCentre: the rendered rows kept moving for ${SETTLE_LIMIT_MS} ms, so there is no point to click`);
+  }
+
   const marked = await page.evaluate(
     (rowSelector, wanted, at, nth, wantLink) => {
       for (const node of document.querySelectorAll('[data-ocu-hit-target], [data-ocu-hit-row]')) {
@@ -207,10 +242,23 @@ export async function clickRowCentre(page, { text = null, index = 0, cell = null
     throw new Error(`clickRowCentre: ${marked.reason}; rendered: ${JSON.stringify(marked.rendered)}`);
   }
 
-  const hit = await page.evaluate(() => {
+  const hit = await page.evaluate(async (limitMs) => {
     const target = document.querySelector('[data-ocu-hit-target]');
     const row = document.querySelector('[data-ocu-hit-row]');
     target.scrollIntoView({ block: 'center', inline: 'nearest' });
+    const place = () => {
+      const box = target.getBoundingClientRect();
+      return `${target.isConnected}@${box.left},${box.top},${box.width},${box.height}`;
+    };
+    const deadline = performance.now() + limitMs;
+    let previous = place();
+    let still = 0;
+    while (still < 2 && performance.now() <= deadline) {
+      await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+      const next = place();
+      still = next === previous ? still + 1 : 0;
+      previous = next;
+    }
     const rect = target.getBoundingClientRect();
     // A row wider than its table's frame scrolls sideways inside it (Story 15.8), so the centre is
     // taken over the part its scroll viewport shows.
@@ -239,8 +287,14 @@ export async function clickRowCentre(page, { text = null, index = 0, cell = null
       insideTarget: landed !== null && target.contains(landed),
       landedOn: describe(landed),
       viewportHeight: viewport === null ? null : viewport.clientHeight,
+      held: still >= 2 && target.isConnected,
     };
-  });
+  }, SETTLE_LIMIT_MS);
+  if (!hit.held) {
+    throw new Error(
+      `clickRowCentre: the target did not hold still for ${SETTLE_LIMIT_MS} ms after it was scrolled into view, or left the DOM`
+    );
+  }
   if (hit.width === 0 || hit.height === 0) {
     throw new Error(
       `clickRowCentre: the target has no area (${hit.width}x${hit.height}), so there is no point to click`

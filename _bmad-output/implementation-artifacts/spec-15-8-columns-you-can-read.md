@@ -2,11 +2,11 @@
 title: 'Story 15.8: Columns you can read'
 type: 'feature'
 created: '2026-09-25'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '178758eedb7592a5f233dbe5db5bf8b89082970c'
 baseline_commit: '178758eedb7592a5f233dbe5db5bf8b89082970c'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-15-context.md'
@@ -180,7 +180,7 @@ deferred: []
 
 ### Rework 1 (CI)
 
-- [ ] [CI] browser: `resources-editor.browser-spec.mjs:339` ("Story 9.3: a probe is deleted from the row menu once its name is typed...") and `roles-editor.browser-spec.mjs:425` ("AC3: the Roles list's Delete states the holders...") both time out on `[role="row"][aria-selected="true"] .ocu-data-table-trigger` (visible) after `selectRow` — run 36100540000 on 0b7e3b69, https://github.com/jbrandtmse/OcuPilot/actions/runs/36100540000 — the row's action trigger is no longer reached once rows are wider than the frame. Reproduce both files on `ocupilot-ci` against a redeployed bundle, find the root cause, and make them green without weakening any assertion. Fix a test helper only if the product behavior is correct as shipped (the trigger reachable by a user through the frame's own horizontal scroll and by keyboard); if the product leaves the trigger unreachable, fix the product. Do not decide DW-1648 (the owner's call on column floors and on pinning the trigger column). Then grep every other browser spec that clicks the row trigger or a row by its center (`.ocu-data-table-trigger`, `clickRowCentre`, own `selectRow` helpers) and run each spec file whose path could be hit the same way (one file at a time is fine; never the full suite).
+- [x] [CI] browser: `resources-editor.browser-spec.mjs:339` ("Story 9.3: a probe is deleted from the row menu once its name is typed...") and `roles-editor.browser-spec.mjs:425` ("AC3: the Roles list's Delete states the holders...") both time out on `[role="row"][aria-selected="true"] .ocu-data-table-trigger` (visible) after `selectRow` — run 36100540000 on 0b7e3b69, https://github.com/jbrandtmse/OcuPilot/actions/runs/36100540000 — the row's action trigger is no longer reached once rows are wider than the frame. Reproduce both files on `ocupilot-ci` against a redeployed bundle, find the root cause, and make them green without weakening any assertion. Fix a test helper only if the product behavior is correct as shipped (the trigger reachable by a user through the frame's own horizontal scroll and by keyboard); if the product leaves the trigger unreachable, fix the product. Do not decide DW-1648 (the owner's call on column floors and on pinning the trigger column). Then grep every other browser spec that clicks the row trigger or a row by its center (`.ocu-data-table-trigger`, `clickRowCentre`, own `selectRow` helpers) and run each spec file whose path could be hit the same way (one file at a time is fine; never the full suite).
 
 ### Review Findings
 
@@ -239,6 +239,21 @@ Rejected:
   - `[false]` `[reject]` EXPERIENCE.md and DESIGN.md gain rows beyond the strings — the Tasks require them.
   - `[low]` `[patch]` The Integration case sized Full name, not the AC's Name — it now sizes both.
   - `[low]` `[patch]` Reveal and the keyboard tooltip are never combined — Reveal asserts the tooltip after its scroll.
+
+### 2026-09-25 — Review pass (rework 1, CI)
+
+- verdicts: 10 findings — high 0, medium 2, low 5, false 3, maybe-false 0
+- findings:
+  - `[low]` `[reject]` `roles-editor:425` never reddened locally, before the fix or under the mutation — its timing did not reproduce here; it runs the same filter-then-`clickRowCentre` path the pinning mutation reddens on `resources-editor:339`, and CI's `browser` job is its confirmation. Forcing it red needs CPU-throttling fault injection.
+  - `[low]` `[patch]` The rework's mutation line is missing, and it does not isolate the two settle waits — lines added under Verification; each wait was disabled alone and 339 stayed green, so the two are redundant and the pinning mutation disables both.
+  - `[low]` `[reject]` The rows wait keys on row boxes, so a late `document.fonts.ready` re-measure that moves cells is invisible to it — the fonts settle long before a signed-in list is filtered, and the target wait re-reads the target's own box after `scrollIntoView`.
+  - `[low]` `[reject]` A stalled `requestAnimationFrame` leaves the 2000 ms limit unenforced — a foreground headless page always runs rAF, and a stall would still fail red on Puppeteer's protocol timeout, only with a less specific message.
+  - `[false]` `[reject]` The helper's doc comment states a root cause nobody observed — the implement probe saw the pointerdown land on `%DB_IRISSYS`'s pre-filter position with the stale rows still drawn. The old in-evaluate hit-test passed because the re-render lands after it.
+  - `[low]` `[reject]` The sweep never reached `reduced-editors:150` or `tasks:644` — this reused container's residue (no `OCUPILOT_ALLOW_SERVICE_CONFIG`; DW-1425/DW-1468) stops both before the click. CI's fresh container runs them.
+  - `[medium]` `[patch]` The helper-only fix rests on an uncommitted probe that the trigger can be reached. Every committed trigger click scrolls the trigger into view by script — harness "Trigger reach" case added. At 480 the trigger starts outside the frame. A sideways wheel brings it inside, hit-testable, and a click opens the menu. Right into its column reveals it, and Enter opens the menu. Two mutations reddened it.
+  - `[medium]` `[patch]` (intent alignment) The diff fixes a stale click point, not the trigger's reach, and has no artifact for the "product correct as shipped" gate — same entry as the row above.
+  - `[false]` `[reject]` (intent alignment) Specs that open the trigger without `clickRowCentre` (`data-table:565`, `gate`, `ssl`, `structural-walk`, `error-log-actions`) are untouched — they click through `ElementHandle.click`, which measures at click time. The stale point exists only in `clickRowCentre`'s `mouse.click(x, y)`, and all of them were green in run 36100540000.
+  - `[false]` `[reject]` (intent alignment) The reproduction and sweep leave no trace — they are recorded under Auto Run Result › Rework 1.
 
 ## Design Notes
 
@@ -353,6 +368,8 @@ Results (2026-09-25, `ocupilot-ci`; each reverted, tree byte-identical by `shasu
 - mutation: the chord listener registered in the bubble phase → `data-table.spec.ts` "a Ctrl/Cmd chord takes a showing tooltip off the overlay stack" red (code review).
 - mutation: any pointermove counts as a drag → `data-table.spec.ts` "a press on a header edge … stores nothing" red (code review).
 - mutation: the ancestor-scroll listener removed, or `afterActiveCellMoved` removed from the vertical move keys → harness Dismissal red on "ancestor scroll" or "vertical key" (code review).
+- mutation (rework 1): both settle waits in `clickRowCentre` disabled → `resources-editor.browser-spec.mjs:339` red, with CI's signature (`TimeoutError` on `[role="row"][aria-selected="true"] .ocu-data-table-trigger`). Either wait disabled alone → 339 green: the two are redundant. `roles-editor:425` stayed green under the mutation (timing; CI confirms it).
+- mutation (rework 1): `.ocu-data-table-viewport` given `overflow-x: hidden` → harness "Trigger reach" red (the wheel leaves the trigger outside the frame). `revealActiveCell` returning early on the trigger column → "Trigger reach" red (keyboard half). Harness rebuilt before each read.
 
 ## Auto Run Result
 
@@ -370,3 +387,35 @@ Blocking condition: none
 **Follow-up review: recommended.** Six medium entries were patched. The chord hide's new document capture listener is proven only in the harness. Ctrl/Cmd+B in the real shell with a pointer tooltip showing is not asserted.
 
 **Residual risks.** Most lists now scroll sideways at 1280 with the side bar and panel open. The full browser suite runs only in CI (Rule 29), and CI is the gate for specs that click far-right cells. The shared data-table CSS also reaches the error drill-down's grids.
+
+### Rework 1 (CI run 36100540000)
+
+Status: done
+Blocking condition: none
+
+**Diff base** `11feffa40473a842a5fe76278ce246f15cf2445a`. Frontmatter `baseline_revision` is still the story's.
+
+**Root cause.** Story 15.8 changed `clickRowCentre` from `page.click(selector)` to `page.mouse.click(x, y)`. The old call measured the target again at click time; the new one clicks a point measured a frame too early. The two specs type into the filter and then click. The list re-renders a frame later, so the click landed where `%DB_IRISSYS` used to be. No row became selected, and the trigger selector matched nothing. The product works: the trigger is 28x28 and visible, reachable by the frame's sideways scroll and by Right+Enter.
+
+**Change.**
+
+- `ui/browser/list-spec.mjs`: `clickRowCentre` measures only after the rows, and then the scrolled-in target, have held still for two animation frames. Either wait throws a named error after 2000 ms. No assertion was weakened.
+- `ui/browser/data-table-columns.browser-spec.mjs`: new harness case "Trigger reach", from the review.
+
+Column floors and the trigger column are untouched (DW-1648 is still the owner's).
+
+**Review.** 10 findings. Patched: 1 medium entry (two rows) and 1 low. Rejected: 4 low and 3 false, with reasons in the triage log. Nothing deferred. Follow-up review: not recommended; this was a follow-up pass and patched no high.
+
+**Verification** (`ocupilot-ci`; bundle and harness rebuilt and redeployed; one spec file per call).
+
+- `npm run build`: the seven checkers pass. Initial total 1,590,556 B; no product code changed. `client-lint` clean after the review patch.
+- The two red specs: `resources-editor` 6/6 (reproduced red before the fix) and `roles-editor` 8/8.
+- `data-table-columns` 15/15.
+- Every spec that clicks the trigger or uses `clickRowCentre`:
+  - green: `oauth-delete` 2/2, `security-deletes` 4/4, `users-actions` 2/2, `web-applications-actions` 3/3, `task-schedule-actions` 4/4, `task-run` 2/2, `process-actions` 3/3, `processes` 8/8, `screen-height` 15/15, `audit` 7/7, `locks` 2/2, `users` 4/4, `web-applications` 4/4, `security` 4/4, `audit-events` 4/4, `audit-event-editor` 3/3, `error-log` 5/5, `oauth` 4/4, `rest-apis` 4/4, `ssl-editor` 7/7, `screen-grounding` 1/1;
+  - `tasks` 13/15: the two Task history cases fail on residue (DW-1425/DW-1468) before any click;
+  - `reduced-editors` 0/6: refused in setup, because `OCUPILOT_ALLOW_SERVICE_CONFIG` is not set on this container.
+- No `src/OcuPilot/**` change, so no ObjectScript sweep.
+
+**Residual risks.** `roles-editor:425` failed on timing and never reproduced locally, so the CI re-run is its proof. A list whose rows move for 2 s without pause now fails with a named error instead of clicking.
+
