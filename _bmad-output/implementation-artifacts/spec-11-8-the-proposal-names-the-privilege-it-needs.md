@@ -1,0 +1,314 @@
+---
+title: 'Story 11.8: The proposal names the privilege it needs'
+type: 'feature'
+created: '2026-09-25'
+status: 'ready-for-dev'
+review_loop_iteration: 0
+followup_review_recommended: false
+context:
+  - '{project-root}/_bmad-output/implementation-artifacts/epic-11-context.md'
+  - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
+warnings: ['oversized']
+deferred: []
+---
+
+<intent-contract>
+
+## Intent
+
+**Problem:** A proposal card does not say which privilege its write needs. A user who lacks one finds out only when Confirm answers 403.
+
+**Approach:**
+
+1. At mint, the proposal records the pair set its write's own gate resolves. That is the tool's declared pairs: the endpoint's `ResourcesOR()` resource the tool declares, AD-8's extra pairs, and the pairs its arguments add.
+2. Every time the row is serialized, the proposal's wire row carries that set. It also carries the first pair the owner does not hold at that moment, evaluated by the same check Confirm's gate makes.
+3. The card renders one line from the two:
+   - "Requires <resources>, which you hold."
+   - or, as a warning, "Requires <resources>. You don't hold <resource>."
+
+   Confirm stays enabled either way.
+
+## Boundaries & Constraints
+
+**Always:**
+
+- **One source for "requires".** It is `Operation.RequiredPairsOf`: the lines of `Operation.Gate` at `:311-323`, extracted, with `Gate` calling the extracted method. The value is `Registry.RequiredPairs(tool)` followed by `Registry.ArgumentPairs(tool, args)`, over the same stored arguments Confirm's gate reads.
+  - `Mint` records the answer, de-duplicated, in resolution order, spelled `resource:permission` and comma-joined. This is the spelling `Screen.Gate.ParsePairSpec` reads and the ledger records.
+  - No endpoint is constructed, nothing calls `AdminPort`, and the client derives nothing.
+- **"Held" is evaluated at every serialization, never stored.** The value is `Operation.MissingPair(owner, pairs, "")`: the call Confirm's gate makes, which asks `CheckUserPermission` about the user's current grants (AD-8, never cached). It is evaluated in the request process, outside any escalated frame (AD-9).
+- **Wire shape.** Each proposal row gains `privilege`:
+  - `{requires: ["%Admin_Secure:USE", ...], missing: "<pair>" | ""}` when a set was recorded;
+  - `null` when none was (rows minted before this story, or a set that did not resolve or did not fit the column).
+  - `Propose.WireRow` is its only writer, and `Test/ProposalWire`'s `WIREKEYS` pins it.
+- **Wording.** The two sentences are fixed strings. Both begin "Requires". Neither ever says "sufficient", because `ResourcesOR()` is a lower bound (AD-29) and the instance's answer is the verdict.
+- **Where the line appears.**
+  - It shows exactly while Confirm and Cancel do (`buttonsVisible`), directly above the runs-as caption.
+  - Held: a caption with the runs-as caption's class.
+  - Missing: `ocu-banner ocu-banner-warning ocu-proposal-card-warning` with `role="status"`.
+  - The text is rendered by interpolation only (AD-11 rule 4).
+- **Confirm is unchanged.** `confirmAriaDisabled` and `confirmReasonId` never read the privilege. The instance refuses as it does today: `Operation.Gate` answers 403 `AUTH.NOPRIVILEGE` naming the pair, and the card's refusal line renders it.
+- **A mint never fails over the line.** An unresolved set, or one longer than the column, records `""` and logs a fault, and the proposal is minted as today.
+- **A streamed and a plain turn render identical cards.** `stream-reply` leg (e) stays green and unedited.
+- Every stateful check runs on `ocupilot-ci`, one test class per runner call. CI stays stub-based.
+
+**Never:**
+
+- **These stay unchanged:**
+  - `Dispatch`'s gate;
+  - `Operation.Gate`'s outcomes;
+  - `Confirm`, the audit marker and the ledger;
+  - `Prompt.cls`;
+  - `TurnWire`'s turn-level keys;
+  - the navigation payload (the shell's privilege map);
+  - `screens.generated.ts`;
+  - `AdminPort`.
+- **Nothing is wired to row-action tooltips or form Save bars.** AC4 records this as an omission.
+- **Epic 12's hunks and files stay untouched:**
+  - `proposal-view.ts` `:146-162`;
+  - `proposal-card.spec.ts` around `:774`;
+  - `panel.ts`, `panel.spec.ts` and `ui/tools/proposal-view.test.mjs` are not edited at all;
+  - `turn.ts` `:89`, `:326-331`, `:1093`, `:1133`.
+- No new style rule, and no live key in any test.
+
+## I/O & Edge-Case Matrix
+
+| Scenario | Input / State | Expected Output / Behavior | Error Handling |
+|----------|--------------|---------------------------|----------------|
+| Held | Owner holds the whole set (`webapp_list_update`) | Caption "Requires %Admin_Secure:USE, …, which you hold."; Confirm enabled | none |
+| Revoked after mint | Principal loses `%Admin_Secure` while the card is live | Next poll: warning "Requires …. You don't hold %Admin_Secure:USE."; Confirm stays enabled | Confirm answers 403 `AUTH.NOPRIVILEGE` naming it, as today |
+| Extra pair | A device tool | `requires` includes `%DB_IRISSYS:WRITE` | none |
+| Argument pairs | `ErrorDelete` for a namespace | `requires` includes that namespace's globals-database resource at `WRITE` | none |
+| Nothing recorded | Pre-story row, or unresolved or over-long set | `privilege` null; no line; the rest of the card unchanged | fault logged at mint |
+| Terminal card | Confirmed, canceled or expired | No line | none |
+| Streamed vs plain | Same `ToolUseReply` | Identical card DOM | none |
+
+</intent-contract>
+
+## Code Map
+
+**Server.** All paths are under `src/OcuPilot/`.
+
+- `Kernel/Proposal/Operation.cls`:
+  - `Gate` `:297-340`: the pairs at `:311`, the argument pairs at `:319`, `MissingPair` at `:325`, then 403 `AUTHNOPRIVILEGE` with `detail.failedPair`.
+  - `MissingPair(pUser, pPairs, pHolderClass)` `:404` and `Holds` `:419` (`CheckUserPermission`, with a holder-class seam).
+- `Kernel/Agent/Dispatch.cls:257-291`: the mint-time gate. It refuses before the tool runs, so a card exists only for a user who held the set when it was minted.
+- `Screen/Tool/Registry.cls`: `RequiredPairs` `:404`, `ArgumentPairs` `:426`.
+- `Screen/Tool/*`:
+  - Each tool's `PrivilegePairs` is its screen's set (`Screen/Gate.RequiredPairs:106`, with the classic union) plus `WRITERESOURCE:WRITEPERMISSION`.
+  - Device tools declare `%DB_IRISSYS:WRITE`: `DeviceCreate:47`, `DeviceUpdate:38`, `DeviceDelete:51`.
+  - `ErrorDelete.ArgumentPairs:158` answers through `LogSourcePort.PairsFor`.
+- `Screen/Gate.cls:227` `ParsePairSpec`: comma-joined `resource:permission`. A malformed member voids the whole spec.
+- `Kernel/Proposal/Mint.cls`:
+  - `tValues` is filled at `:294-341`, with `arguments` near `:300`, and `GuardedMint` is called at `:342`.
+  - `..RegistryClass()` `:103` is the resolve seam; `WarnsAuditingOff` `:400` shows how it is used.
+  - `ErrorDeleteMint` calls `##super`. `Install/Smoke.cls:1410` shows a direct call to `Mint.Mint`.
+- `Kernel/State/Propose.cls`:
+  - properties `:51-159`;
+  - `GuardedMint` `:202`, which sets fields at `:214+`;
+  - `RowValues` `:590-633` (`pValues("user")` `:601`);
+  - `WireRow` `:642-667`, the only writer of the row shape. It already calls `Disclosure.Rows`.
+  - `GuardedRowsForTurn` `:515` and `GuardedRowsForConvo` `:546` escalate only inside the `Guarded*` helpers, so `WireRow` runs unescalated.
+- `Kernel/Proposal/Disclosure.cls`: the home for the new builder, beside `Rows`.
+- `Api/Turn.cls:215` (poll) and `Api/Conversation.cls:116/132` (restore) both reach `WireRow`. Neither is edited.
+- `Test/ProposalWire.cls:28` `WIREKEYS`, checked in both directions at `:122` and `:125`.
+- `Test/ProposalFixture.cls:249` mints straight through `GuardedMint`, with no pairs.
+- `Test/ProposalMint.cls` and `Test/DeviceWriteGate.cls` hold mint set-ups to copy.
+- `Test/ToolEmit.cls:180-215` already pins `Registry`'s pairs per tool.
+
+**Client.**
+
+- `ui/src/app/core/turn.ts`: `TurnProposal` `:209-244`; `parseProposal` `:498-522` (`consequence` at `:521`); `restoredProposals` `:546`.
+- `ui/src/app/core/proposal-view.ts`:
+  - It imports `STRINGS` (`:24`).
+  - `ProposalCardView` `:56-118`; `toCardView` `:361-387` (`consequence:` at `:384`).
+  - `consequenceSentence` `:151` is the pattern to follow.
+- `ui/src/app/shell/proposal-card.ts`:
+  - consequence block `:248-257`; footer `:272-335`; runs-as caption `:298` (`ocu-proposal-card-runs-as`);
+  - `live` `:708`, `buttonsVisible` `:778`, `confirmAriaDisabled` `:783-789`.
+- `ui/src/app/shell/panel.ts:916-933` `proposalView` hands the parsed proposal to `toCardView`, so it needs no edit.
+- `ui/src/app/core/strings.ts`:
+  - `privilegeDeniedAction` `:238`, the `privilege*` group;
+  - `:1949` holds the only citation past the table (`EXPERIENCE.md:554`).
+- `ui/tools/strings.test.mjs`: every table literal must be in `strings.ts`, nothing extra (`:580`), and every `EXPERIENCE.md:n` citation must resolve (`:744-789`).
+- EXPERIENCE.md (`_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`):
+  - the Fixed-strings table's last row is `:513`;
+  - the proposal-card anatomy is `:592-603`, with the footer bullet at `:600`.
+- Browser:
+  - `ui/browser/proposal-card.browser-spec.mjs` arms `webapp_list_update` at `:128` and `:168`, with the second reply hanging.
+  - `ui/browser/refused-tool.browser-spec.mjs:55-75` creates a principal.
+  - `Test/TurnWireFixture.cls`: `Resources` `:48`, `EnsurePrincipal` `:70`, `SetRoleResources` `:115`, `RemovePrincipals` `:162`.
+  - `ui/browser/stream-reply.browser-spec.mjs` leg (e) is at `:327-357`.
+
+## Tasks & Acceptance
+
+**Execution:**
+
+- `src/OcuPilot/Kernel/Proposal/Operation.cls` -- Add `RequiredPairsOf(pTool As %DynamicObject, pArgumentsJson As %String, Output pPairs As %List) As %Status`. It holds `:311-323`'s two resolutions, with the same error texts when either half is unresolved. `Gate` calls it and then `MissingPair`, and its behavior does not change.
+- `src/OcuPilot/Kernel/State/Propose.cls` -- Add `Property RequiredPairs As %String(MAXLEN = 1024);`.
+  - Doc comment: the set recorded at mint, in the spelling above; no `SCHEMAVERSION` move, because a pre-story row reads `""`.
+  - `GuardedMint` stores `pValues("requiredPairs")`, and `RowValues` reads it back.
+  - `WireRow` sets `privilege` from `Disclosure.Privilege(requiredPairs, user)`, or `null` when that answers `""`.
+- `src/OcuPilot/Kernel/Proposal/Disclosure.cls` -- Add `Privilege(pRequired As %String, pUser As %String, pHolderClass As %String = "")`. It answers `""` when `ParsePairSpec` gives an empty list. Otherwise it answers `{requires: [spelled pairs in order], missing: Operation.MissingPair(pUser, list, pHolderClass)}`.
+- `src/OcuPilot/Kernel/Proposal/Mint.cls` -- After `tValues("arguments")` is set:
+  1. Resolve the tool through `..RegistryClass()`.
+  2. Call `Operation.RequiredPairsOf(tool, tValues("arguments"))`.
+  3. Set `tValues("requiredPairs")` to the joined, de-duplicated spelling when it resolved and fits the column (read the column's `MAXLEN` rather than repeating it). Otherwise set `""` and log through `Kernel.Fault`. The mint proceeds either way.
+- `src/OcuPilot/Test/ProposalWire.cls` -- Add `privilege` to `WIREKEYS`.
+- `src/OcuPilot/Test/PrivilegeHolderProbe.cls` (new) -- `HoldsPair(user, resource, permission)` answers 0 only for the resource `OcuPilotProbeNotHeld`.
+- `src/OcuPilot/Test/ProposalPrivilege.cls` (new, arms nothing) -- Legs:
+  - (a) Mint `webapp_list_update` against the demo `/csp/myapp` as `Smoke.cls:1410` does. The stored `RequiredPairs` equals `RequiredPairsOf` over the stored arguments and contains `%Admin_Secure:USE`. `GuardedRowsForTurn`'s `privilege.requires` is that list in order, and `missing` is `""`.
+  - (b) `RequiredPairsOf` for each device tool contains `%DB_IRISSYS:WRITE`. For `ErrorDelete` with `{namespace: $Namespace}` it contains every pair `LogSourcePort.PairsFor` adds.
+  - (c) `Disclosure.Privilege("%Admin_Secure:USE,OcuPilotProbeNotHeld:USE", user, probe)` answers `missing` `OcuPilotProbeNotHeld:USE`. The same call with the not-held pair removed answers `""`.
+  - (d) A `ProposalFixture` row minted without `requiredPairs` serializes `privilege` as `null`. A malformed stored spec does too.
+- `ui/src/app/core/turn.ts` -- Export `TurnProposalPrivilege {requires: readonly string[]; missing: string}`.
+  - Add `privilege?: TurnProposalPrivilege | null` to `TurnProposal`. It is optional so that existing literals compile.
+  - `parseProposal` sets it after `consequence`. It is `null` unless `requires` is a non-empty array of strings and `missing` is a string.
+- `ui/tools/turn.test.mjs` -- Append parse cases: valid, absent, `requires` not an array, empty, a non-string member, `missing` not a string.
+- `ui/src/app/core/strings.ts` -- Directly after `privilegeDeniedAction` (`:238`), add:
+  - `privilegeProposalHeld: 'Requires <resources>, which you hold.'`
+  - `privilegeProposalMissing: 'Requires <resources>. You don\'t hold <resource>.'`
+
+  Each cites `/** EXPERIENCE.md:514 */`. Change `:1949`'s citation from `EXPERIENCE.md:554` to `EXPERIENCE.md:555` (Design Notes, merge).
+- `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`:
+  - Append one Fixed-strings row after `:513`: `| "Requires <resources>, which you hold." · "Requires <resources>. You don't hold <resource>." | the proposal card's privilege line (Story 11.8, AD-8, AD-29): <resources> resolves to every resource:permission pair the write's own gate requires, comma-separated, and <resource> to the first the signed-in user does not hold; the second is a warning, and Confirm stays available [ADDED 2026-09-25 - Story 11.8] |`.
+  - On `:600`'s footer bullet, in place, append: "Above the caption, the privilege line names the pairs the write's gate requires and whether you hold them. It says requires, never sufficient, because the endpoint's own check is a lower bound, and Confirm stays available either way `[ADDED 2026-09-25 - Story 11.8]`."
+- `ui/src/app/core/proposal-view.ts`:
+  - Export `ProposalPrivilegeLine {text: string; missing: boolean}` and `privilegeLine(privilege)`.
+  - `privilegeLine` answers `null` for an absent value or an empty `requires`. Otherwise it fills `privilegeProposalHeld` or `privilegeProposalMissing`: `<resources>` becomes `requires.join(', ')` and `<resource>` becomes `missing`.
+  - Add `privilege?: ProposalPrivilegeLine | null` to `ProposalCardView` after `consequence`, and set it in `toCardView` beside `consequence:`.
+- `ui/tools/proposal-privilege.test.mjs` (new) -- Cover:
+  - `privilegeLine` for held, missing, null and empty;
+  - `toCardView` carrying it;
+  - both strings start with "Requires " and neither matches `/sufficient/i`.
+- `ui/src/app/shell/proposal-card.ts` -- Add a `privilegeLine` getter (`view.privilege ?? null`).
+  - Inside `@if (buttonsVisible)`, directly before the runs-as `<p>` (`:298`), render `<p data-slot="privilege">` with the classes and role under Always, following the consequence block's pattern.
+  - `confirmAriaDisabled` and `confirmReasonId` are untouched.
+- `ui/src/app/shell/proposal-card-privilege.spec.ts` (new) -- Cover:
+  - held renders the caption with no warning class;
+  - missing renders the warning, `role="status"`, and names the pair;
+  - when missing, live, with no secrets, Confirm's `aria-disabled` is null;
+  - a null privilege renders no line, and neither does a confirmed or expired phase.
+- `ui/browser/proposal-privilege.browser-spec.mjs` (new) -- Copy `proposal-card.browser-spec.mjs`'s arming, with the second reply hanging.
+  - (a) Signed in as the spec's administrator, `[data-slot="privilege"]` reads "Requires " + the stored `RequiredPairs` (read through `runIris`), comma-separated, + ", which you hold.". The set contains `%Admin_Secure:USE`, there is no warning class, and Confirm is not `aria-disabled`.
+  - (b) A principal whose role holds exactly the tool's set plus what OcuPilot needs (`EnsurePrincipal`) sees the held line. After `SetRoleResources` without `%Admin_Secure`, within 5 s the line is the warning naming `%Admin_Secure:USE`, and Confirm is still not `aria-disabled`. Pressing Confirm renders the card's refusal line naming the same pair.
+  - `after` removes the principal and the definition.
+
+**Acceptance Criteria:**
+
+- **Integration AC.** Given a live write proposal, when the card renders, then it carries one line naming every pair the write's gate requires, the endpoint's `ResourcesOR()` resource and AD-8's extra pairs among them, and whether the signed-in user holds them. The panel's card reads the proposal wire's `privilege` (browser (a)).
+- Given the user lacks a pair, when the card renders, then the line is a warning naming it and Confirm stays enabled. Confirm is refused by the instance exactly as today (browser (b), component spec). The audit marker and the ledger are unchanged: no code on those paths changes, and the Confirm classes in the loop stay green.
+- Given either sentence, when it is worded, then it begins "Requires" and never says "sufficient".
+- Given a row action or a form Save, when it renders, then it carries no privilege line: a recorded omission (Design Notes).
+- Given the prompt pins, `TurnWire` and `stream-reply` (e), when they run, then they are green and unedited.
+
+## Spec Change Log
+
+- 2026-09-25, lead spec gate: the proposed AC1 wording is applied to `epics.md` (Rule 5 tier-1, `[AMENDED]` marker) and the proposed AD-8 sentence is written into the spine (Rule 20). The plan's two departures from the dispatch prompt (the pair set rather than the bare `ResourcesOR()` resource; live Confirm-gate check rather than the shell's privilege map) are accepted as intent-preserving.
+
+## Review Triage Log
+
+## Design Notes
+
+**Governing ADs.**
+
+- AD-2 step 3 and AD-29: `ResourcesOR()` is a lower bound, and each port has its own named gate.
+- AD-8, with its 2026-09-21 and 2026-09-23 amendments: the pair set, the extra pairs, never cached.
+- AD-6: confirm re-checks authorization.
+- AD-9: the evaluation runs outside any escalated frame.
+- AD-11 rule 4, and rule 1: the prompt is untouched.
+- AD-19: `privilegeLine` is a pure function in `core/`.
+- AD-39: the refusal envelope is unchanged.
+- AD-52: declared ports.
+- AD-53 and AD-55: the screen caller, which is out of scope (AC4).
+- AD-5: `screens.generated.ts` is untouched.
+- AD-10: no prohibited set is involved.
+
+**Where each fact already lives, and the carriage chosen.**
+
+- **The endpoint's `ResourcesOR()`** is evaluated only inside a running call (`AdminPort.Sequence` `:2021-2028`). No method answers it for an (endpoint, type) pair without running the endpoint, and adding one would be the new derivation this story forbids.
+- **The tool's declared set** is what `Dispatch` evaluates at mint and `Operation.Gate` evaluates at confirm. Under AD-8's 2026-09-21 amendment it is the screen's set, whose first pair is the endpoint's `ResourcesOR()` pair (pinned for LIST by `Test/Descriptor.cls:2005`). It also carries AD-8's extra pairs.
+- **So the line names that set.** Recording it at mint is the smallest faithful carriage: the pairs the write path evaluates, resolved by the write path's own method. It is not a second source, because Confirm re-resolves the same declarations and remains the authority.
+- **The privilege map** (`GET /navigation`, `Kernel/Shell/Navigation`) answers yes or no per area and per screen. It cannot answer a tool's own pair, an extra pair or an argument pair, and the client would read it stale until it is re-read.
+- **"Held" therefore comes from Confirm's own check** at each poll.
+
+**Proposed wording corrections for the lead (Rule 5, apply-and-report; the intent is unchanged).** AC1 of 11.8 in `epics.md`:
+
+- "the resource the endpoint declares through its `ResourcesOR()` list" → "the pairs the write's own gate requires, the endpoint's `ResourcesOR()` resource among them";
+- "read from the privilege map the shell already loads (Story 1.9, FR-4)" → "evaluated on the instance by the check Confirm's gate makes (AD-8), at each read of the proposal".
+
+**Proposed AD-8 sentence (Rule 20).** "A proposal records the pair set its write's gate resolves at mint. Its wire row carries that set with the first pair the owner lacks, evaluated at each read by Confirm's own check, and the card's line says 'requires', never 'sufficient'."
+
+**Ports other than `AdminPort` (AD-29, AD-52).**
+
+- `ProcessPort`'s `%Admin_Operate`: `ProcessTerminateWithError` inherits `ProcessTerminate`'s `WRITERESOURCE`.
+- `LogSourcePort`: `ErrorDelete.ArgumentPairs` → `PairsFor`.
+- `TaskPort` and `WalletPort` pass through `AdminPort`'s `ResourcesOR()`, and their tools declare that resource.
+- `MgmntPort` has no write tool.
+
+Every one is inside the recorded set, so none needs a derivation of its own.
+
+**Why "held" is evaluated live.** `Dispatch` refuses to mint for a user lacking any pair (`:262`). A value stored at mint would therefore always read "held". The warning is reachable only through a change after mint, such as a revoked role, which is exactly the refusal the line exists to predict.
+
+**Scope decision: AC4, a recorded omission.** Row-action tooltips (`data-table.ts:791-817`, `command-bar.ts:404-424`) and form Save bars (14 hand-rolled form pages plus `reduced-form.page.ts`) are not wired. None of them holds a tool's pairs on the client. Wiring them would mean:
+
+- mirroring the tool pairs into `screens.generated.ts`;
+- a per-pair "held" answer;
+- edits to about 17 files.
+
+AC4 names this as an omission, not a defect.
+
+**Merge with Epic 12.** Both branches append Fixed-strings rows after `:513`, and both change `strings.ts:1949`'s citation (Epic 12 to `:561`). Whichever merges second sets `:1949` to 562 and moves its own new rows' citations by the other branch's count. `strings.test.mjs` names any line that is missed.
+
+**Integration ACs.** The new wire member has one consumer, the panel's proposal card, which renders it (browser (a) and (b)).
+
+- **Consumes:** 5.1–5.3 (mint, the proposal card, confirm), 1.9 (the gate's evaluators), 7.x–9.x (the tools' declared pairs, device extra pairs, `ErrorDelete`'s argument pairs), 11.7 (the streamed card is equal to the plain one).
+- **Consumed-by:** 17.7, the owner's live check. No other consumer is scheduled. Wiring row actions and Save bars would be the next one.
+
+**Ledger inbox:** none.
+
+**footprint_extensions:**
+
+- Contended, staying beside Epic 12's hunks: `ui/src/app/core/turn.ts`, `ui/src/app/core/proposal-view.ts`, `ui/src/app/core/strings.ts` (shared-append, plus the forced `:1949` citation).
+- Shared-append: EXPERIENCE.md, one row plus one in-place sentence.
+- Outside Epic 11's footprint: `Kernel/Proposal/Operation.cls`, `Mint.cls`, `Disclosure.cls`, `Kernel/State/Propose.cls`, `Test/ProposalWire.cls`.
+
+## Verification
+
+**Slot and instance.**
+
+- Slot A. Every IRIS MCP call carries `server: "ocupilot-slot-a"`.
+- Stateful checks run only on `ocupilot-ci` (52776/1975). Never touch `ocupilot`, `ocupilot-slot-*` or `ocupilot-b-ci`.
+- Load and recompile the whole package with `bash /tmp/epic-11-lead/load.sh`, which prints `LOADRESULT` and `ERRCOUNT`.
+- Browser runs:
+  1. `cd ui && npm run build`;
+  2. `docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`;
+  3. export `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`.
+
+**Commands:**
+
+- `uv run scripts/check-objectscript.py && bash scripts/lint-docs.sh` -- expected: clean.
+- **(loop)** Run each of these classes with `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<C>`, one per call:
+  - `ProposalPrivilege`, `ProposalWire`, `ProposalMint`, `ProposalConfirm`, `Proposal`;
+  - `ConfirmRoute`, `DeviceWriteGate`, `ErrorDelete`, `ToolEmit`, `TurnWire`, `TurnStream`.
+
+  Expected: green, each confirmed by the `%UnitTest_Result` probe, and never re-submitted.
+- **(loop)** `cd ui && npm run test:tools && npm run test:components` -- expected: green. This covers `turn.test.mjs`, `proposal-privilege.test.mjs`, `proposal-view.test.mjs`, `strings.test.mjs`, `proposal-card-privilege.spec.ts`, `proposal-card.spec.ts` and `panel.spec.ts`.
+- **(loop)** `cd ui && node --test --test-concurrency=1 browser/proposal-privilege.browser-spec.mjs browser/proposal-card.browser-spec.mjs browser/stream-reply.browser-spec.mjs` -- expected: green against the redeployed bundle.
+- **(once, before dev_complete)** The full ObjectScript sweep on `ocupilot-ci`, one class at a time, then `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS`. Report the sweep as "N ran, 13 refused (arming), 1 known residue". The full browser suite runs in CI only.
+
+**Pinning mutations (Rule 19).** Recompile the whole package, or rebuild and redeploy, before reading each one. Revert, and confirm `git status --short` is unchanged.
+
+- `Mint` records `""` always → `ProposalPrivilege` (a) goes red, and browser (a) goes red.
+- `RequiredPairsOf` drops the argument half → `ProposalPrivilege` (b) goes red (the `ErrorDelete` leg).
+- `Disclosure.Privilege` answers `missing` `""` always → `ProposalPrivilege` (c) goes red, and browser (b) goes red.
+- `WireRow` omits `privilege` → `ProposalWire` goes red.
+- `toCardView` omits `privilege` → `proposal-privilege.test.mjs` goes red, and browser (a) goes red.
+- `confirmAriaDisabled` answers `'true'` when a pair is missing → `proposal-card-privilege.spec.ts` goes red, and browser (b) goes red.
+- The held sentence gains "sufficient" → the wording case in `proposal-privilege.test.mjs` goes red.
+
+## Auto Run Result
+
+Status: ready-for-dev
+Blocking condition: none
+
+Planned only; nothing implemented. Carriage decision: the proposal records the pair set its write's gate resolves at mint, and the wire row adds the first pair the owner lacks, evaluated by Confirm's own check at each read. Two AC wordings are proposed for the lead's Rule 5 correction, and an AD-8 sentence for Rule 20 (Design Notes). AC4 (row actions, Save bars) is a recorded omission.

@@ -180,6 +180,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A write tool may declare pairs beyond its screen's set only when the vendor class it reaches writes a database the screen's read does not; it declares them itself, and a caller without them is refused by name before any port call** [AMENDED 2026-09-23, orchestrator ruling at Story 8.8's implement halt]. The one case today: the device tools' `%DB_IRISSYS:WRITE` (`Config.Devices` writes the system database; a principal holding only the Devices screen's `%Admin_Manage:USE` and `%DB_IRISSYS:READ` was refused by the vendor on every write, measured 2026-09-23). The screen's own set stays read-only, so the Devices list and the rest of OS management remain open to users who only read; the next exception names itself here.
 
+  **A proposal names the pairs its write requires** [AMENDED 2026-09-25, Story 11.8 spec gate, Rule 20]. At mint the proposal records the pair set its write's own gate resolves (the tool's declared pairs, its extra pairs and its argument pairs, through the method Confirm's gate calls); its wire row carries that set with the first pair the owner lacks, evaluated at each read by Confirm's own check against current grants, never stored. The card's line says "requires", never "sufficient" (AD-29: the endpoint's own check is a lower bound), and Confirm stays available; the instance's refusal remains the verdict.
+
 ### AD-9 — OcuPilot's own state is protected by a privileged routine application
 
 - **Binds:** FR-29, FR-66; agent definitions, switches, the ledger, transcripts, proposals
