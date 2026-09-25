@@ -746,6 +746,8 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 
 **Owner triage, 2026-09-24 (shell).** A visitor could not find sign-out: it lives only in the account menu behind the user name in the status bar, and the command search has no sign-out command although EXPERIENCE.md assumed one. Separately, the command bar renders its filter field on every screen, so Home, the form pages and the application-error drill-down show a filter that filters nothing. Story 15.9 fixes both and runs after Story 15.8 in the same runner.
 
+**Owner triage, 2026-09-24 (reliability), high priority.** Live turns on Claude Opus 5 failed intermittently - three of about ten in an hour - with "The turn stopped at provider": the connection broke within a second of the call, before any reply (`<READ>` in `%Net.HttpRequest`), and a transport failure is never retried. Separately, the panel reported a confirmed create as "was updated". Story 10.6 fixes both; it runs alone on slot B at Epic 12's next story boundary.
+
 **Orchestrator amendment, 2026-09-19.** Two consequences of the amendment above, settled on the owner's
 instruction. Story 13.3's acceptance criteria are rewritten so none of them can be closed by publishing:
 the archive is proven by a dry-run build and a local install, and a third criterion forbids touching the
@@ -834,7 +836,7 @@ A user opens the editors that carry the classic portal's whole field set - user,
 
 ### Epic 10: Run on any model, and harden the write path
 
-An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Two live-key fixes found on 2026-09-23 make every shipped provider's default model connect: sampling parameters left to the provider (10.4), and a connection test that answers before the Web Gateway's timeout (10.5). Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
+An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Two live-key fixes found on 2026-09-23 make every shipped provider's default model connect: sampling parameters left to the provider (10.4), a connection test that answers before the Web Gateway's timeout (10.5), and turns that survive a dropped connection (10.6). Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
 
 **FRs covered:** FR-25 (the three remaining families)
 
@@ -4877,7 +4879,7 @@ So that I can define the events my own code emits without going back to the clas
 
 ## Epic 10: Run on any model, and harden the write path
 
-An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Two live-key fixes found on 2026-09-23 make every shipped provider's default model connect: sampling parameters left to the provider (10.4), and a connection test that answers before the Web Gateway's timeout (10.5). Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
+An operator runs the agent on OpenAI, Google Gemini or a local model on their own network. Two live-key fixes found on 2026-09-23 make every shipped provider's default model connect: sampling parameters left to the provider (10.4), a connection test that answers before the Web Gateway's timeout (10.5), and turns that survive a dropped connection (10.6). Build step 7's first half, needing only Epic 3; the per-user restraints and the remaining hardening it once carried are Epic 14's (owner re-sequence, 2026-09-16).
 
 ### Story 10.1: The message and tool-definition adapters
 
@@ -5020,6 +5022,35 @@ So that a slow first answer does not read as a broken portal.
 
 - DW-1600: Every Gemini turn is refused on its first provider call because the navigate tool's route enum carries Home's empty route and Gemini refuses an empty enum value (ledger; routed by smoke 2026-09-24)
 - DW-1601: Test connection on Gemini's default model answers an empty or cut-off reply because the 32-token test budget is spent on Gemini 3's default thinking (ledger; routed by smoke 2026-09-24)
+
+---
+
+### Story 10.6: A turn survives a dropped connection, and a create says created
+
+**High priority (owner, 2026-09-24).** Runs alone on slot B at Epic 12's next story boundary; Epic 12 resumes after this story merges.
+
+As a judge trying the agent,
+I want a momentary network failure not to end my turn, and the result line to say what actually happened,
+So that the agent reads as reliable on the first try.
+
+**Acceptance Criteria:**
+
+- **Given** a call to a model provider that fails in transport - the connection breaks before a status line arrives, as `ERROR #6097 <READ>` did on slot C
+- **When** the adapter handles it
+- **Then** it retries the call once on a new connection, within the existing attempt and delay budget, and only if that retry also fails does the turn stop with its present reason
+- **And** AD-42 records at origin that a model call may be retried after a transport failure because it changes nothing on the instance, while every write keeps the never-retry-mid-flight rule.
+
+- **Given** any provider call
+- **When** its request is built
+- **Then** it does not reuse a kept-open connection (`SocketTimeout` 0), so a connection the provider or the network closed while idle is never read from.
+
+- **Given** CI calls no live provider
+- **When** the suite runs
+- **Then** a stub that breaks the first connection proves the retry succeeds on the second, a stub that breaks both proves the turn stops with `PROVIDER.TRANSPORT`, and a test pins that no write tool call is ever retried.
+
+- **Given** a confirmed proposal from a tool that declares `created` - every create tool already does (inference: the fault is on the path from the confirm to the panel)
+- **When** the panel and the toast report the outcome
+- **Then** they read "<entity> was created", and a browser spec pins it end to end for a web-application create.
 
 ---
 
