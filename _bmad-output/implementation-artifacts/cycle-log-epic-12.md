@@ -225,3 +225,5 @@
 2026-09-25T20:57:40Z	Story 12.8	stage_spawned	stage=qa spawn_at=2026-09-25T20:57:40Z model=sonnet agent_name=12-8-oauth-server-client-qa-1 cycle_iteration=1
 2026-09-25T21:18:45Z	Story 12.8	stage_lost	stage=qa agent_name=12-8-oauth-server-client-qa-1 reason=network_outage_ENOTFOUND(~21:05Z) partial_output=one_unreverted_mutation(OAuthRegisteredClientRules.HandleForm_gate_removed,AC7) disposition=read_then_reverted(git_checkout;a_leaked_mutation_not_work) throwaway=src_rsynced+LoadDir_ck-d_ok+bundle_rebuilt_redeployed
 2026-09-25T21:18:45Z	Story 12.8	stage_spawned	stage=qa spawn_at=2026-09-25T21:18:45Z model=sonnet agent_name=12-8-oauth-server-client-qa-1r cycle_iteration=1
+2026-09-25T21:40:21Z	Story 12.8	qa_complete	spawn_at=2026-09-25T21:18:45Z model=sonnet tests_added=0 mutations_demonstrated=10 first_run_failures=0 clarifications=0 closing_sections_present=true note=one_read-only_SELECT_sent_to_slot-b_dev_via_MCP(no_state_change)
+2026-09-25T21:40:21Z	Story 12.8	stage_spawned	stage=code-review spawn_at=2026-09-25T21:40:21Z model=opus agent_name=12-8-oauth-server-client-code-review-1 cycle_iteration=1
