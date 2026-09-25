@@ -3,10 +3,12 @@ import { provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiService, type JsonResult } from '../../core/api';
+import { BUSY_REASON_ID, CONTEXT_CHIP_OFF_ID, ExplainEntry, KILL_SWITCH_ID } from '../../core/explain-entry';
 import { NavigationService } from '../../core/navigation';
 import { ScreenActions } from '../../core/screen-actions';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
+import { stubExplainEntry, type ExplainEntryState } from '../../testing/explain-entry';
 import { LogViewerPage } from './log-viewer.page';
 import { LogViewerStore } from './log-viewer.store';
 
@@ -451,5 +453,99 @@ describe('LogViewerPage', () => {
     (fixture.nativeElement.querySelector('[data-ocu-chip="severe"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(textOf(fixture, '[data-ocu-log="count"]')).toBe('1 of 1');
+  });
+});
+
+// --- Story 11.2: "Explain this entry" on each parsed row -----------------------------------------
+
+describe('LogViewerPage: Explain this entry', () => {
+  afterEach(() => {
+    TestBed.inject(LogViewerStore).reset();
+    TestBed.resetTestingModule();
+  });
+
+  async function mountWith(screen: typeof ALERTS_SCREEN, gate: Partial<ExplainEntryState> = {}) {
+    const api = new StubApi();
+    api.tail(tailPage(FILE_LINES));
+    const stub = stubExplainEntry(gate);
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: screen.route, children: [] }, { path: '**', children: [] }]),
+        { provide: ApiService, useValue: api as unknown as ApiService },
+        { provide: NavigationService, useValue: { screenForUrl: () => screen } as unknown as NavigationService },
+        { provide: ScreenActions, useValue: new ScreenActions() },
+        { provide: ExplainEntry, useValue: stub.entry },
+      ],
+    });
+    const fixture = TestBed.createComponent(LogViewerPage);
+    fixture.detectChanges();
+    for (let turn = 0; turn < 8; turn += 1) await Promise.resolve();
+    fixture.detectChanges();
+    return { fixture, ...stub };
+  }
+
+  const explainButtons = (fixture: ComponentFixture<LogViewerPage>): HTMLButtonElement[] =>
+    Array.from(fixture.nativeElement.querySelectorAll('[data-ocu-log="explain"]'));
+
+  // Mutation (Rule 19): request `line.raw` instead of `row.entry` -> this goes red on the row.
+  it('messages.log: each row carries the control, and a click hands that row alone to the panel', async () => {
+    const { fixture, entry } = await mountWith(MESSAGES_SCREEN);
+    const buttons = explainButtons(fixture);
+    expect(buttons).toHaveLength(2);
+    expect(buttons[1].textContent?.trim()).toBe(STRINGS.agentExplainEntryAction);
+    expect(buttons[1].getAttribute('aria-disabled')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.ocu-log-row')?.classList.contains('ocu-log-row-explain')).toBe(true);
+
+    buttons[1].click();
+    const taken = entry.take();
+    expect(taken?.screen.route).toBe('logs/messages');
+    expect(taken?.row).toEqual({ time: '2026-09-18T07:33:56.057', severity: '0', text: 'an informational entry' });
+  });
+
+  it('alerts.log: the same control, sent as the alerts screen', async () => {
+    const { fixture, entry } = await mountWith(ALERTS_SCREEN);
+    explainButtons(fixture)[0].click();
+    expect(entry.take()?.screen.route).toBe('logs/alerts');
+  });
+
+  it('Raw view: no entry control, since the file block is not rows', async () => {
+    const { fixture } = await mountWith(MESSAGES_SCREEN);
+    (fixture.nativeElement.querySelector('[data-ocu-log="raw"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-ocu-log="raw-block"]')).not.toBeNull();
+    expect(explainButtons(fixture)).toHaveLength(0);
+  });
+
+  it('Unconfigured: no enabled definition, no control and no fifth track', async () => {
+    const { fixture } = await mountWith(MESSAGES_SCREEN, { configured: false });
+    expect(explainButtons(fixture)).toHaveLength(0);
+    expect(fixture.nativeElement.querySelector('.ocu-log-row-explain')).toBeNull();
+  });
+
+  // Mutation (Rule 19): drop the sharing-off arm from `ExplainEntry.reason()` -> the sharing-off leg goes red.
+  it('Blocked: kill switch, busy and sharing off each refuse, described by their reason, and a click records nothing', async () => {
+    const cases: [Partial<ExplainEntryState>, string][] = [
+      [{ killSwitch: true }, KILL_SWITCH_ID],
+      [{ busy: true }, BUSY_REASON_ID],
+      [{ share: false }, CONTEXT_CHIP_OFF_ID],
+    ];
+    for (const [gate, reasonId] of cases) {
+      const { fixture, entry } = await mountWith(MESSAGES_SCREEN, gate);
+      const button = explainButtons(fixture)[0];
+      expect(button.getAttribute('aria-disabled'), JSON.stringify(gate)).toBe('true');
+      expect(button.getAttribute('aria-describedby'), JSON.stringify(gate)).toBe(reasonId);
+      button.click();
+      expect(entry.take(), JSON.stringify(gate)).toBeNull();
+      TestBed.inject(LogViewerStore).reset();
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('a gate that changes re-renders the control', async () => {
+    const { fixture, state, fire } = await mountWith(MESSAGES_SCREEN);
+    state.busy = true;
+    fire();
+    fixture.detectChanges();
+    expect(explainButtons(fixture)[0].getAttribute('aria-disabled')).toBe('true');
   });
 });

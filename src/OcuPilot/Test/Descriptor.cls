@@ -871,8 +871,8 @@ Method TestTheAuditCriteriaBoundsAreTheVendorPropertysOwn()
 /// alone (DW-271: a misspelt top-level key installs silently, because an accessor that cannot find
 /// its key answers <code>""</code> and a validator that never asks does not notice).</p>
 /// <p>The four claims that are this story's own: it declares <b>no read</b>, which is what sends
-/// its tool to the registry's other source; its <code>context.fields</code> carry the five summary
-/// fields and no captured detail; its privilege set is the <b>two</b> pairs that do not depend on
+/// its tool to the registry's other source; its <code>context.fields</code> carry the drilled
+/// namespace and date and the five summary fields, and no captured detail; its privilege set is the <b>two</b> pairs that do not depend on
 /// a namespace -- <code>%Admin_Operate:USE</code> and <code>%DB_IRISSYS:READ</code>, the database
 /// <code>SYS.ApplicationError</code> is executed from -- while the read and write on the
 /// <i>selected</i> namespace's globals database are resolved at the port per call, because no
@@ -909,9 +909,9 @@ Method TestTheApplicationErrorLogDeclaresNoReadAndGatesOnItsNamespaceFreePairs()
     Do $$$AssertEquals($ClassMethod(tClass, "Archetype"), "drill-down", "it is the first screen of the drill-down archetype")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Archetype).LinkOutClass("drill-down"), "list", "which the vocabulary classifies as a list")
 
-    ; The five AD-48 summary fields and nothing else: the captured variable table never enters the
-    ; context a turn sends, because it is never in this list to be stripped from it.
-    Do $$$AssertEquals(tDeclaration.context.%ToJSON(), "{""fields"":[""errorNumber"",""time"",""errorText"",""routine"",""line""],""secretFields"":[]}", "the five summary fields, and no captured detail among them (AD-48)")
+    ; The five AD-48 summary fields plus the drilled scope and nothing else: the captured variable
+    ; table never enters the context a turn sends, because it is never in this list to be stripped from it.
+    Do $$$AssertEquals(tDeclaration.context.%ToJSON(), "{""fields"":[""namespace"",""date"",""errorNumber"",""time"",""errorText"",""routine"",""line""],""secretFields"":[]}", "the drilled namespace and date and the five summary fields, and no captured detail among them (AD-48)")
     Do $$$AssertEquals(tDeclaration.id.%ToJSON(), "{""kind"":""composite"",""parts"":[""namespace"",""date"",""errorNumber""]}", "one entry is identified by namespace, date and number together (AD-13)")
     Do $$$AssertEquals($ClassMethod(tClass, "Scope"), "instance", "the route carries no namespace: the screen enumerates them itself (AD-48)")
 

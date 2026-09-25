@@ -2,8 +2,8 @@
 title: 'Story 11.2: Explain a log or audit entry'
 type: 'feature'
 created: '2026-09-25'
-status: 'ready-for-dev'
-baseline_revision: 'bc5d49973de03693e48da00364737bf4af288710'
+status: 'done'
+baseline_revision: '561d35ef4607bd0bb1870abab244e10a22ef2afa'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -167,6 +167,25 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-25 — Review pass
+
+- verdicts: 14 findings — high 0, medium 1, low 9, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Error list and audit tests used one-row fixtures, so a wrong-row pick stayed green — two-row fixtures, second row explained; wrong-row mutation observed red.
+  - `[low]` `[patch]` AC5 had no `mutation:` line for the `sendWithContext(text, context)` refactor — `onSend` null-context mutation recorded (four panel legs red).
+  - `[false]` `[reject]` Detail-level "no explain item" check reads text without a menu — the detail level renders no grid and so no row menu; any rendered item would appear in the text checked.
+  - `[false]` `[reject]` Un-narrowed row travels through `ExplainEntry`; no 23-field audit test — the spec puts narrowing in `assembleEntryContext` before the POST; pinned by `screen-context.test.mjs` and the panel spec against the real `AuditList` declaration.
+  - `[low]` `[patch]` `shown()` ignored `agentContext.answered()`, so a control could show refused by the chip-off id before the chip rendered — gate now requires it (the Code Map's gate input); mutation observed red.
+  - `[low]` `[reject]` An empty shell namespace makes an enabled control send nothing — transient during load on `?ns=` routes; the fix adds a scope dependency to the gate.
+  - `[low]` `[reject]` The panel's re-check is unreachable by tests — spec-mandated defense; `request()` gates synchronously, so no user-reachable failure.
+  - `[low]` `[reject]` Blocked path tested in two halves — both halves meet at `request()`, which `explain-entry.test.mjs` pins.
+  - `[low]` `[reject]` messages.log matrix row split across tiers; alerts `tools` unasserted — alerts shares the log-viewer path and descriptor-derived tools; browser (a) now asserts `tools`.
+  - `[low]` `[reject]` Audit focus return asserted as a store flag — `onCloseDetail` is the existing close path whose focus return audit's own tests pin.
+  - `[low]` `[reject]` No browser leg sends the injected row — `TurnGrounding` pins it at the recorded request; Story 14.8 owns the seeded-injection test.
+  - `[false]` `[reject]` Long field has no new test — AD-24 path unchanged; `ContextBound` green in the sweep.
+  - `[low]` `[reject]` Roster asserts the page class, not the render — each page spec pins the render.
+  - `[false]` `[reject]` Changes beyond the intent's list — none is forbidden by it.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -249,11 +268,37 @@ When the user asks you to explain this entry, explain the one row in screen_cont
 - Gate: the sharing-off arm dropped from `ExplainEntry.reason()` → `explain-entry.test.mjs` and the page specs' sharing-off legs go red.
 - AC5: no mutation; its pins are unedited and green in the sweep.
 
+mutation: panel `onExplainEntry` sends `this.assembleContext()` (the store's rows) instead of the entry -> panel spec "messages.log row" and "audit entry is narrowed" red; browser (a) red, `rowsSent` 0 not 1.
+mutation: `DESCRIPTOR_PAGES` maps `LogMessageViewer` to `ListPage` -> `explain-roster.spec.ts` red naming `logs/messages`.
+mutation: `assembleEntryContext` sends the row un-narrowed -> `screen-context.test.mjs` "narrowed to the declared fields" and "not an object" red.
+mutation: `username` added to LogErrorList `context.fields` -> `TurnGrounding` error-entry leg red on "nor the user name" (and the 11.9 leg); `Descriptor` context assertion red.
+mutation: `detail` property added to `ErrorRead.InputSchema` -> `ScreenGrounding.TestTheErrorReadToolTakesNoDetailArgument` red alone.
+mutation: `Loop.cls` appends `pContext` to the user text block -> `TurnGrounding.TestAnInjectedEntryStaysToolResultData` red ("not in any user text block"), with the two last-user-text legs.
+mutation: panel sends the row's `text` as the message -> panel spec "messages.log row" and "user message is exactly the sentence" red.
+mutation: `publishRows` publishes unscoped `errors()` -> `error-log.page.spec.ts` DW-1610 and 11.9 legs red; screen-grounding browser red on the row keys.
+mutation: entry sentence deleted from `Prompt.BUILTIN` -> `ScreenGrounding` "the explain-entry statement" red alone.
+mutation: sharing-off arm dropped from `ExplainEntry.reason()` -> `explain-entry.test.mjs` two legs red; log-viewer, error-log and audit page specs' blocked legs red.
+mutation: `explainRow` sends `scopedErrors()[0]` and audit `onExplain` sends `store.data()[0]` (two-row fixtures, the second explained) -> `error-log.page.spec.ts` and `audit.page.spec.ts` explain legs red.
+mutation: `ExplainEntry.shown()` drops `agentContext.answered()` -> `explain-entry.test.mjs` "shows once" and "refused or hidden" red.
+mutation (AC5): `onSend` passes `null` to `sendWithContext` -> four `panel.spec.ts` 4.11 context legs red (secret-typed screen, view changes, cap below the view, cap follows agent-switch).
+
 **Manual check (extra evidence, never the proof).** Use the owner's live-key rules from 2026-09-23. On messages.log with a live Anthropic definition, Explain a warning line. The reply should explain that one line and propose nothing.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only (halt after planning). Spec verified against the READY FOR DEVELOPMENT standard; DW-1610 addressed (AC4); no AD change proposed.
+**Change.** "Explain this entry" on messages.log and alerts.log rows, the application error list's row menu (list level) and the audit record dialog, handed through `core/explain-entry.ts` to the panel, which sends the sentence with a one-row, narrowed context. LogErrorList's context gains the drilled `namespace` and `date` (DW-1610, Send and Explain); the prompt gains `Statement(8)`.
+
+**Files.** Server: `Prompt.cls`, `LogErrorList.cls`, tests `Descriptor`, `ScreenGrounding` (no-detail tool leg), `TurnGrounding` (two legs). Client: `core/explain-entry.ts` (new), `screen-context.ts` (`assembleEntryContext`), `panel.ts`, `context-chip.ts`, `main.ts`, the three logs pages and `error-log.store.ts` (`scopedErrors`), `strings.ts`, `screens.generated.ts` (LogErrorList only), `_components.scss`, EXPERIENCE.md; specs and `testing/explain-entry.ts`, `explain-roster.spec.ts`, `browser/explain-entry.browser-spec.mjs`, `screen-grounding` browser.
+
+**Deviation.** EXPERIENCE.md: "Explain this entry" joins the existing `:268` row instead of a new row, because a new row shifts 881 `EXPERIENCE.md:n` references in `strings.ts`.
+
+**Review.** 14 findings: 3 patched (1 medium, 2 low), 0 deferred, 11 rejected with reasons in the triage log. Follow-up review: false (no high, one medium patched).
+
+**Verification.** `check-objectscript` 0, `lint-docs` 0; load `LOADRESULT=OK ERRCOUNT=0`. Sweep on `ocupilot-ci`: 254 ran, 13 refused (arming), 1 known residue (`WireSecurityRead` task history); the story's classes and AC5's pins green (ScreenGrounding 12, TurnGrounding 11, Descriptor 51, ContextBound 14, TurnContext 16, TurnLoop 11, TurnTools 12, TurnWire 13, ReadTool 27). `smoke.sh` 49/49. `test:tools` 1444/1444; `test:components` 1284/1284. Browser against the redeployed bundle: explain-entry 3/3, screen-grounding 1/1, messages-log 4/4, error-log-actions 3/3, audit 7/7, explain-screen 3/3, a11y-structural-invariants 10/10; alerts-log 5/7, reused-container residue (the once-seeded entries sit at the head of a 533-line alerts.log, outside the tail window; CI runs a fresh throwaway). Bundle initial total 1.60 MB, under the 1670 kB warning. Thirteen `mutation:` lines recorded, each observed red and reverted byte-identically.
+
+**Residual risk.** The a11y walk ran without an agent definition, so the new controls were not walked; browser (a) pins the 28 px row with the control shown.
+
+footprint_extensions: contended `ui/src/app/shell/panel.ts`, `panel.spec.ts`, `ui/src/app/core/strings.ts` (own entry), `screens.generated.ts` (LogErrorList entry), all off Epic 12's hunks; outside Epic 11's footprint `LogErrorList.cls`, `Test/Descriptor.cls`, `main.ts`, `context-chip.ts`, `core/explain-entry.ts`, `testing/explain-entry.ts`, `screen-context.ts`, `_components.scss` (own block), EXPERIENCE.md (row 268), `browser/screen-grounding.browser-spec.mjs`.

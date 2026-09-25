@@ -97,6 +97,8 @@ export const STRINGS = {
   statusSegmentLicensedTo: 'Licensed to',
   /** EXPERIENCE.md:268 */
   agentExplainScreenAction: 'Explain this screen',
+  /** EXPERIENCE.md:268 */
+  agentExplainEntryAction: 'Explain this entry',
   /** EXPERIENCE.md:269 */
   actionTestConnection: 'Test connection',
   /** EXPERIENCE.md:269 */

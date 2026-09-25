@@ -7,6 +7,7 @@ import { ApiService, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
 import type { ConnectivityService } from '../../core/connectivity';
 import { joinCompositeId } from '../../core/entity-id';
+import { BUSY_REASON_ID, CONTEXT_CHIP_OFF_ID, ExplainEntry, KILL_SWITCH_ID } from '../../core/explain-entry';
 import { NavigationService } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
 import { RefreshService } from '../../core/refresh';
@@ -18,6 +19,7 @@ import { STRINGS } from '../../core/strings';
 import { AuditPage } from './audit.page';
 import { AuditSearch, MARKER_CRITERION } from './audit.store';
 import { stubAccountPreferences } from '../../testing/account-preferences';
+import { stubExplainEntry, type ExplainEntryState } from '../../testing/explain-entry';
 
 /**
  * The audit database viewer, wired end to end over stubs of the two things an instance supplies --
@@ -79,7 +81,7 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
 
 const planted: HTMLElement[] = [];
 
-async function mount(initialRows: unknown[] = [row('RoleGranted', 'OcuPilot')]) {
+async function mount(initialRows: unknown[] = [row('RoleGranted', 'OcuPilot')], explain: ExplainEntry | null = null) {
   TestBed.resetTestingModule();
   let answerRows = initialRows;
   const paths: string[] = [];
@@ -120,6 +122,7 @@ async function mount(initialRows: unknown[] = [row('RoleGranted', 'OcuPilot')]) 
         useValue: { loaded: () => true, namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService,
       },
       { provide: ActivatedRoute, useValue: { paramMap: params } as unknown as ActivatedRoute },
+      ...(explain === null ? [] : [{ provide: ExplainEntry, useValue: explain }]),
     ],
   });
   // One store per test, so a search in one does not leak into the next.
@@ -426,5 +429,63 @@ describe('the audit database viewer', () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(paths).toHaveLength(3);
     expect(paths[2]).toContain('&eventSources=OcuPilotSeed');
+  });
+
+  // --- Story 11.2: "Explain this entry" in the row's dialog --------------------------------------
+
+  const ROW_ID = joinCompositeId(['2026-09-14 09:30:45', 'IRIS', '8']);
+
+  /** The dialog open over the second of two seeded rows, at its own `<route>/<id>` URL, with `gate` arranged. */
+  async function openDialog(gate: Partial<ExplainEntryState> = {}) {
+    const stub = stubExplainEntry(gate);
+    const mounted = await mount([row('RoleGranted', 'OcuPilot'), { ...row('UserCreated', 'OcuPilot'), AuditIndex: 8 }], stub.entry);
+    await mounted.search();
+    await mounted.router.navigateByUrl(`/logs/audit/${encodeURIComponent(ROW_ID)}?ns=HSCUSTOM`);
+    await mounted.openId(ROW_ID);
+    const url = mounted.router.url;
+    return { ...mounted, ...stub, url };
+  }
+
+  const explainAction = (host: HTMLElement) => host.querySelector('[role="dialog"] [data-ocu-audit="explain"]') as HTMLButtonElement | null;
+
+  it('Story 11.2: the dialog\u2019s explain action hands over the open row, then closes the dialog back to the bare route', async () => {
+    const { host, fixture, entry, router, url } = await openDialog();
+    const action = explainAction(host) as HTMLButtonElement;
+    expect(action.textContent?.trim()).toBe(STRINGS.agentExplainEntryAction);
+    expect(action.getAttribute('aria-disabled')).toBeNull();
+    action.click();
+    await settle(fixture);
+    const taken = entry.take();
+    expect(taken?.screen.route).toBe('logs/audit');
+    expect((taken?.row as Record<string, unknown>)['Event']).toBe('UserCreated');
+    expect(router.url).not.toBe(url);
+    expect(router.url).toBe('/logs/audit?ns=HSCUSTOM');
+    expect(TestBed.inject(AuditSearch).takeGridFocusRequest()).toBe(true);
+  });
+
+  it('Story 11.2: unconfigured, the dialog carries no explain action', async () => {
+    const { host } = await openDialog({ configured: false });
+    expect(host.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(explainAction(host)).toBeNull();
+  });
+
+  it('Story 11.2: blocked, the action is aria-disabled with its reason, hands nothing over, and the dialog stays', async () => {
+    const cases: [Partial<ExplainEntryState>, string][] = [
+      [{ killSwitch: true }, KILL_SWITCH_ID],
+      [{ busy: true }, BUSY_REASON_ID],
+      [{ share: false }, CONTEXT_CHIP_OFF_ID],
+    ];
+    for (const [gate, reasonId] of cases) {
+      const { host, fixture, entry, router, url } = await openDialog(gate);
+      const action = explainAction(host) as HTMLButtonElement;
+      expect(action.getAttribute('aria-disabled'), JSON.stringify(gate)).toBe('true');
+      expect(action.getAttribute('aria-describedby'), JSON.stringify(gate)).toBe(reasonId);
+      action.click();
+      await settle(fixture);
+      expect(entry.take(), JSON.stringify(gate)).toBeNull();
+      expect(router.url, JSON.stringify(gate)).toBe(url);
+      expect(host.querySelector('[role="dialog"]'), JSON.stringify(gate)).not.toBeNull();
+      for (const node of planted.splice(0)) node.remove();
+    }
   });
 });

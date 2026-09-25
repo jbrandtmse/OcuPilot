@@ -4932,6 +4932,31 @@ app-data-table {
   color: var(--ocu-on-surface);
 }
 
+// "Explain this entry" (Story 11.2): a fifth, trailing track while the control shows, and a
+// compact text button inside the fixed row, so the row's own height rule is untouched. The
+// refused look mirrors `.ocu-panel-explain`'s, and the audit dialog's action shares it.
+.ocu-log-row-explain {
+  grid-template-columns: 190px 90px 110px minmax(0, 1fr) auto;
+}
+
+.ocu-log-explain {
+  height: calc(var(--ocu-log-row-height) - 4px);
+  padding: 0 var(--ocu-space-2);
+}
+
+.ocu-log-explain[aria-disabled='true'],
+.ocu-audit-explain[aria-disabled='true'] {
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-log-explain[aria-disabled='true']:hover,
+.ocu-log-explain[aria-disabled='true']:active,
+.ocu-audit-explain[aria-disabled='true']:hover,
+.ocu-audit-explain[aria-disabled='true']:active {
+  background: transparent;
+}
+
 .ocu-log-raw {
   @include typo.ocu-type('code');
 

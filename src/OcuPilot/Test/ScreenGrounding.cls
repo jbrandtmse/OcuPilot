@@ -1,7 +1,7 @@
-/// <p>Stories 11.9, 11.10 and 11.1 in process: the built-in prompt's seven screen statements, the tools each
+/// <p>Stories 11.9, 11.10, 11.1 and 11.2 in process: the built-in prompt's eight screen statements, the tools each
 /// kind of screen names (<method>OcuPilot.Screen.Context.ScreenTools</method>), the refusal of a
 /// request that supplies a derived member (<method>OcuPilot.Api.Turn.ContextViolation</method>),
-/// Home's empty route, and the two members <method>OcuPilot.Api.Turn.BoundedContext</method> adds on both payload
+/// Home's empty route, the error read tool's input schema, and the two members <method>OcuPilot.Api.Turn.BoundedContext</method> adds on both payload
 /// branches and inside the total bound (AD-11, AD-24).</p>
 /// <p>Spawns nothing, writes no state and creates no principal, so it needs no arming variable. It
 /// reads the compiled tool and screen registries, so it runs on an instance where OcuPilot is
@@ -15,7 +15,7 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 /// behind its four row actions, in name order.</p>
 Parameter PROCESSTOOLS = "[""osmgmt_processes_read"",""osmgmt_processes_resume"",""osmgmt_processes_suspend"",""osmgmt_processes_terminate"",""osmgmt_processes_terminatewitherror""]";
 
-/// <p>The prompt's statement at <var>pIndex</var> (1 to 7), verbatim.</p>
+/// <p>The prompt's statement at <var>pIndex</var> (1 to 8), verbatim.</p>
 ClassMethod Statement(pIndex As %Integer) As %String
 {
     Quit $Case(pIndex,
@@ -26,6 +26,7 @@ ClassMethod Statement(pIndex As %Integer) As %String
         5: "Use only the tools you are offered, and when none of them can do what was asked, say so rather than describe a capability you lack.",
         6: "When the user asks about something a screen shows, or asks to change it, and the screen_context does not show them on that screen, open that screen with the navigation tool first, before you answer or propose the change, so they see what you are discussing and the change when it lands; when they are already on it, do not navigate.",
         7: "When the user asks you to explain this screen, say what the screen is for, what data it shows and what actions its tools offer, name the read tool in tools that its data comes from, or say that it has none, and propose no change.",
+        8: "When the user asks you to explain this entry, explain the one row in screen_context: what it records, what likely caused it and what to check next, and propose no change.",
         : "")
 }
 
@@ -40,7 +41,7 @@ Method ToolsFor(pRoute As %String) As %String
     Quit tTools.%ToJSON()
 }
 
-/// <p>The prompt is the class parameter, whole, and carries each of the seven screen statements
+/// <p>The prompt is the class parameter, whole, and carries each of the eight screen statements
 /// verbatim, one assertion each.</p>
 Method TestThePromptCarriesTheScreenStatements()
 {
@@ -53,6 +54,7 @@ Method TestThePromptCarriesTheScreenStatements()
     Do $$$AssertTrue(tPrompt [ ..Statement(5), "the only-the-tools-offered statement")
     Do $$$AssertTrue(tPrompt [ ..Statement(6), "the open-the-screen-first statement")
     Do $$$AssertTrue(tPrompt [ ..Statement(7), "the explain statement")
+    Do $$$AssertTrue(tPrompt [ ..Statement(8), "the explain-entry statement")
     Set tOutside = 0
     For tI = 1:1:$Length(tPrompt) If ($Ascii(tPrompt, tI) < 32) || ($Ascii(tPrompt, tI) > 126) Set tOutside = tOutside + 1
     Do $$$AssertEquals(tOutside, 0, "the prompt is printable ASCII throughout")
@@ -95,6 +97,25 @@ Method TestAFormPageNamesNoTool()
 Method TestTheErrorListNamesItsClassReadAndDelete()
 {
     Do $$$AssertEquals(..ToolsFor("logs/errors"), "[""logs_applicationerrors_read"",""logs_applicationerrors_delete""]", "the error list's read and delete")
+}
+
+/// <p>The error list's read tool, resolved by name through the tool registry, takes exactly the
+/// namespace, the date and <code>maxRows</code> and refuses any other argument, so no caller can
+/// ask it for an entry's captured detail (AD-48).</p>
+Method TestTheErrorReadToolTakesNoDetailArgument()
+{
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve("logs.applicationerrors.read", .tTool)
+    Do $$$AssertStatusOK(tSC, "the tool list is built")
+    Do $$$AssertTrue($IsObject(tTool), "logs.applicationerrors.read is registered")
+    If '$IsObject(tTool) Quit
+    Set tSchema = ##class(OcuPilot.Screen.Tool.Registry).InputSchemaOf(tTool)
+    Set tNames = ""
+    Set tIterator = tSchema.properties.%GetIterator()
+    While tIterator.%GetNext(.tName, .tValue) {
+        Set tNames = tNames _ $ListBuild(tName)
+    }
+    Do $$$AssertEquals($ListToString(tNames), "namespace,date,maxRows", "its input properties are the namespace, the date and maxRows alone")
+    Do $$$AssertEquals(tSchema.%GetTypeOf("additionalProperties") _ "|" _ tSchema.additionalProperties, "boolean|0", "and any other argument is refused")
 }
 
 /// <p>A tool list that cannot be built fails <method>OcuPilot.Screen.Context.ScreenTools</method>

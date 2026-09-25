@@ -2,7 +2,8 @@
  * The application error list's screen context in a real browser, against the throwaway instance
  * (Story 11.9): the list publishes the errors it shows into its store, the context chip counts
  * them, and a sent turn's recorded provider request carries exactly that many rows, each narrowed
- * to the five summary fields, beside the two members the instance derives (`tools`, `readOnly`).
+ * to the drilled namespace and date and the five summary fields (Story 11.2, DW-1610), beside the
+ * two members the instance derives (`tools`, `readOnly`).
  *
  * Seeds two application errors through the guarded `OcuPilot.Test.ErrorLogSeed`, so it runs only
  * in a throwaway, and arms the `turnprobe` definition the way `context-chip.browser-spec.mjs`
@@ -45,7 +46,7 @@ const LEVEL_FRAME = '[data-ocu-level]';
 const SEED_NAMESPACE = 'USER';
 
 /** The error list's declared `context.fields`, in declaration order. */
-const SUMMARY_FIELDS = ['errorNumber', 'time', 'errorText', 'routine', 'line'];
+const SUMMARY_FIELDS = ['namespace', 'date', 'errorNumber', 'time', 'errorText', 'routine', 'line'];
 
 let browser = null;
 let preparedId = '';
@@ -153,7 +154,7 @@ function chipRows(page) {
   });
 }
 
-test('the error list sends the errors it shows: the chip counts them, and the turn receives that many, summary fields only, with tools and readOnly', async () => {
+test('the error list sends the errors it shows: the chip counts them, and the turn receives that many, scope and summary fields only, with tools and readOnly', async () => {
   seedErrors(2);
   const tag = nextTag(probe);
   setTag(probe, preparedId, tag);
@@ -196,7 +197,9 @@ test('the error list sends the errors it shows: the chip counts them, and the tu
     assert.equal(payload.rowsSent, rowsShown, 'the turn received exactly the rows the chip counted');
     assert.equal(payload.rows.length, rowsShown);
     for (const row of payload.rows) {
-      assert.deepEqual(Object.keys(row).sort(), [...SUMMARY_FIELDS].sort(), 'each row holds the five summary fields alone');
+      assert.deepEqual(Object.keys(row).sort(), [...SUMMARY_FIELDS].sort(), 'each row holds the drilled scope and the five summary fields alone');
+      assert.equal(row.namespace, SEED_NAMESPACE, 'the namespace is the one drilled to, not the shell scope');
+      assert.equal(row.date, dates[0], 'and the date is the one drilled to');
     }
     assert.deepEqual(payload.tools, ['logs_applicationerrors_read', 'logs_applicationerrors_delete'], 'the list names its read and delete');
     assert.equal(typeof payload.readOnly, 'boolean', 'and carries readOnly');

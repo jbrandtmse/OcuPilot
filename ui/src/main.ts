@@ -11,6 +11,7 @@ import { AgentStatus } from './app/core/agent-status';
 import { ApiService } from './app/core/api';
 import { ChangeBus } from './app/core/change-bus';
 import { ConnectivityService } from './app/core/connectivity';
+import { ExplainEntry } from './app/core/explain-entry';
 import { FormDirty } from './app/core/form-dirty';
 import { HelpLinks } from './app/core/help';
 import { transportFault } from './app/core/fault';
@@ -195,6 +196,10 @@ const suggested = new SuggestedView({ api, agentStatus, scope, connectivity });
 // or default definition from going stale.
 const agentContext = new AgentContext({ api, bus, connectivity });
 
+// The "Explain this entry" hand-off (Story 11.2): a log or audit page records the entry, the panel
+// sends it. Over the same three stores the panel's own explain gate reads.
+const explainEntry = new ExplainEntry({ agentStatus, agentContext, turn });
+
 // The instance overview (Story 15.3): the About dialog and Home's links panel both read it, so one
 // store means one request and one answer rather than two that can disagree about where this
 // instance's documentation is. Alongside it, the per-screen help addresses the locator bar
@@ -252,6 +257,7 @@ bootstrapApplication(App, {
     { provide: FormDirty, useValue: formDirty },
     { provide: AgentStatus, useValue: agentStatus },
     { provide: AgentContext, useValue: agentContext },
+    { provide: ExplainEntry, useValue: explainEntry },
     { provide: AccountPreferences, useValue: accountPreferences },
     { provide: About, useValue: about },
     { provide: HelpLinks, useValue: helpLinks },

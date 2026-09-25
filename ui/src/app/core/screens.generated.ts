@@ -2912,6 +2912,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     ],
     "context": {
       "fields": [
+        "namespace",
+        "date",
         "errorNumber",
         "time",
         "errorText",

@@ -13,6 +13,7 @@ import {
 import { Router } from '@angular/router';
 
 import { ChangeBus } from '../../core/change-bus';
+import { ExplainEntry } from '../../core/explain-entry';
 import { isBannerFault } from '../../core/fault';
 import { formatDeniedAction, NavigationService } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
@@ -37,13 +38,17 @@ const TRIGGER_TRACK = 'calc(28px + 2 * var(--ocu-space-3))';
 /** The overlay id the row menu registers, so Escape closes it before anything beneath it. */
 const MENU_OVERLAY_ID = 'ocu-error-log-menu';
 
-/** One row-menu entry: a declared row action with a registered handler. */
+/** The row menu's "Explain this entry" item's id, which no declared action id takes (Story 11.2). */
+const EXPLAIN_ENTRY_ITEM = 'explain-entry';
+
+/** One row-menu entry: a declared row action with a registered handler, or "Explain this entry". */
 interface MenuItem {
   readonly id: string;
   readonly label: string;
   readonly reason: string;
   readonly name: string;
   readonly ariaDisabled: 'true' | null;
+  readonly describedBy: string | null;
 }
 
 /** One rendered table: its column headers and its rows of already-resolved cell text. */
@@ -245,6 +250,7 @@ interface GridRow {
                 role="menuitem"
                 tabindex="-1"
                 [attr.aria-disabled]="item.ariaDisabled"
+                [attr.aria-describedby]="item.describedBy"
                 [attr.aria-label]="item.name"
                 (click)="onMenuItem(item)"
               >
@@ -342,6 +348,9 @@ export class ErrorLogPage {
 
   private readonly injector = inject(Injector);
 
+  /** The "Explain this entry" hand-off (Story 11.2). Optional, so a spec that needs none provides none. */
+  private readonly explainEntry = inject(ExplainEntry, { optional: true });
+
   /** Constructed for its own sake, as `ListPage` constructs it: its constructor registers the row actions. */
   private readonly screenActions = inject(ScreenActionHandler);
 
@@ -400,6 +409,7 @@ export class ErrorLogPage {
       this.generation.update((value) => value + 1);
     });
     const stopStore = this.store.subscribe(() => this.generation.update((value) => value + 1));
+    const stopExplain = this.explainEntry?.subscribe(() => this.generation.update((value) => value + 1)) ?? null;
     this.syncSelection();
     this.publishRows();
     // Manual Refresh (DW-260). This screen binds no `RefreshService` -- three levels with three
@@ -435,6 +445,7 @@ export class ErrorLogPage {
     inject(DestroyRef).onDestroy(() => {
       stop();
       stopStore();
+      stopExplain?.();
       stopBus?.();
       stopRefreshAction?.();
       this.overlays.remove(MENU_OVERLAY_ID);
@@ -682,13 +693,15 @@ export class ErrorLogPage {
   /**
    * The row menu's entries, as `DataTable` resolves its own: every declared row action with a
    * registered handler, each with its label and, where the selected row refuses it, the reason.
+   * At the `list` level "Explain this entry" follows them while the agent can take it (Story 11.2),
+   * refused under the kill switch, a running turn or sharing off and described by that reason.
    */
   protected get menuItems(): readonly MenuItem[] {
     this.generation();
     const screen = SCREENS.find((entry) => entry.descriptor === LOG_ERROR_LIST);
     if (screen === undefined) return [];
     const selected = this.drill.selected();
-    return screen.rowActions
+    const items: MenuItem[] = screen.rowActions
       .filter((action) => action.id !== '')
       .filter((action) => this.actions.has(LOG_ERROR_LIST, action.id))
       .map((action) => {
@@ -700,8 +713,21 @@ export class ErrorLogPage {
           reason,
           name: reason === '' ? label : `${label} ${reason}`,
           ariaDisabled: reason === '' ? null : 'true',
+          describedBy: null,
         };
       });
+    const explain = this.explainEntry;
+    if (this.drill.level() === 'list' && explain !== null && explain.shown()) {
+      items.push({
+        id: EXPLAIN_ENTRY_ITEM,
+        label: STRINGS.agentExplainEntryAction,
+        reason: '',
+        name: STRINGS.agentExplainEntryAction,
+        ariaDisabled: explain.reason() === null ? null : 'true',
+        describedBy: explain.describedBy(),
+      });
+    }
+    return items;
   }
 
   /** Whether the table levels draw the row menu: only when an action can run from it. */
@@ -784,9 +810,23 @@ export class ErrorLogPage {
 
   /** Run one menu entry; a refused one is `aria-disabled`, so the click arrives and is refused here. */
   protected onMenuItem(item: MenuItem): void {
+    const key = this.menuKeyValue();
     this.closeMenu(true);
+    if (item.id === EXPLAIN_ENTRY_ITEM) {
+      this.explainRow(key);
+      return;
+    }
     if (item.reason !== '') return;
     this.actions.run(LOG_ERROR_LIST, item.id);
+  }
+
+  /** Hand the list row selected by `key` to the panel, with its drilled scope; a refused item sends nothing. */
+  private explainRow(key: string): void {
+    const screen = SCREENS.find((entry) => entry.descriptor === LOG_ERROR_LIST);
+    if (this.explainEntry === null || screen === undefined) return;
+    const row = this.drill.scopedErrors().find((candidate) => this.drill.selectionKey(String(candidate.errorNumber)) === key);
+    if (row === undefined) return;
+    this.explainEntry.request(screen, row);
   }
 
   /** The typed name matched: the handler sends the delete it was standing in front of. */
@@ -832,13 +872,14 @@ export class ErrorLogPage {
 
   /**
    * Publish the rows on screen into this screen's store, which is what a turn's screen context and
-   * the context chip read (AD-24): the errors at the `list` level, and none at any other level --
+   * the context chip read (AD-24): the errors at the `list` level, each with the namespace and date
+   * the user drilled to (AD-48), and none at any other level --
    * a namespace, a date and a captured detail are never context. It publishes only when the level
    * or its rows changed, and `applyTick` leaves the selection as it is.
    */
   private publishRows(): void {
     const level = this.drill.level();
-    const rows = level === 'list' ? this.drill.errors() : NO_CONTEXT_ROWS;
+    const rows = level === 'list' ? this.drill.scopedErrors() : NO_CONTEXT_ROWS;
     if (level === this.publishedLevel && rows === this.publishedRows) return;
     this.publishedLevel = level;
     this.publishedRows = rows;

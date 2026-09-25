@@ -21,6 +21,7 @@ import {
 } from '../core/agent-status';
 import { AUDITING_FOCUS_ENABLE } from '../areas/security/auditing-config.page';
 import { decodeEntityId } from '../core/entity-id';
+import { BUSY_REASON_ID, CONTEXT_CHIP_OFF_ID, ExplainEntry, KILL_SWITCH_ID } from '../core/explain-entry';
 import { classifyFault, isBannerFault } from '../core/fault';
 import {
   HOME_AREA_KEY,
@@ -44,7 +45,12 @@ import {
   toCardView,
 } from '../core/proposal-view';
 import { ScopeService, onScopeChange } from '../core/scope';
-import { assembleScreenContext, looksLikeSecret, type ScreenContextPayload } from '../core/screen-context';
+import {
+  assembleEntryContext,
+  assembleScreenContext,
+  looksLikeSecret,
+  type ScreenContextPayload,
+} from '../core/screen-context';
 import { ScreenStores } from '../core/screen-store';
 import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
@@ -63,7 +69,7 @@ import {
   turnErrorBanner,
 } from '../core/turn';
 import { isApplePlatform } from './command-box';
-import { CONTEXT_CHIP_OFF_ID, ContextChip } from './context-chip';
+import { ContextChip } from './context-chip';
 import { EXAMPLE_PROPOSAL } from './example-proposal';
 import { TranscriptFollow } from './panel-follow';
 import { PanelResizeHandle } from './panel-resize-handle';
@@ -76,9 +82,6 @@ export const COMPOSER_ID = 'ocu-panel-composer';
 
 /** The id of whichever gate sentence the panel is showing, which is also the controls' reason. */
 const REASON_ID = 'ocu-panel-reason';
-
-/** The kill-switch banner's own id, which is the controls' reason while the agent is switched off. */
-const KILL_SWITCH_ID = 'ocu-panel-kill-switch';
 
 /** The not-marked banner's id, in the slot EXPERIENCE.md's banner order already reserves for it. */
 const NOT_MARKED_ID = 'ocu-panel-not-marked';
@@ -99,9 +102,6 @@ const WRITE_STEP_SEQ_BASE = 1_000_000;
 
 /** The enforced-read-only banner's own id. */
 const READ_ONLY_ID = 'ocu-panel-read-only';
-
-/** The composer's and Send's reason while a turn runs (Story 4.5). */
-const BUSY_REASON_ID = 'ocu-panel-busy-reason';
 
 /** New conversation's reason while a turn runs (Story 4.5). */
 const NEW_CONVERSATION_REASON_ID = 'ocu-panel-new-conversation-reason';
@@ -526,6 +526,8 @@ export class Panel {
   private readonly screenStores = inject(ScreenStores);
   private readonly shell = inject(ShellState);
   private readonly suggested = inject(SuggestedView);
+  /** A log or audit entry's explain request (Story 11.2). Optional, so a spec that needs none provides none. */
+  private readonly explainEntry = inject(ExplainEntry, { optional: true });
 
   private readonly composerEl = viewChild<ElementRef<HTMLTextAreaElement>>('composer');
 
@@ -662,6 +664,7 @@ export class Panel {
         this.bump();
         this.syncSuggested();
       }),
+      this.explainEntry?.subscribe(() => this.onExplainEntry()) ?? (() => {}),
     ];
     this.syncSuggested();
     // Every render that grows the transcript while it follows scrolls it to the newest entry.
@@ -1662,7 +1665,7 @@ export class Panel {
       return;
     }
     this.secretWarningVisibleSignal.set(false);
-    if (await this.sendWithContext(text)) {
+    if (await this.sendWithContext(text, this.assembleContext())) {
       this.panel.setDraft('');
       this.acknowledgedSecretText.set(null);
     }
@@ -1675,18 +1678,39 @@ export class Panel {
    */
   protected onExplain(): void {
     if (this.explainAriaDisabled !== null) return;
-    void this.sendWithContext(STRINGS.agentExplainScreenAction);
+    void this.sendWithContext(STRINGS.agentExplainScreenAction, this.assembleContext());
   }
 
   /**
-   * Send `text` with the screen context assembled now, and answer whether the instance accepted it.
+   * "Explain this entry" (Story 11.2): take a page's pending request and send the fixed sentence as
+   * the user's message, with a context whose `view` is that one entry, through the same path and
+   * leaving the draft as it is. The gate is checked again here, and a request whose context
+   * assembles to nothing sends nothing.
+   */
+  private onExplainEntry(): void {
+    const entry = this.explainEntry;
+    const request = entry === null ? null : entry.take();
+    if (entry === null || request === null) return;
+    if (!entry.shown() || entry.reason() !== null) return;
+    const context = assembleEntryContext({
+      descriptor: request.screen,
+      namespace: this.scope.namespace(),
+      share: this.agentContext.share(),
+      row: request.row,
+    });
+    if (context === null) return;
+    void this.sendWithContext(STRINGS.agentExplainEntryAction, context);
+  }
+
+  /**
+   * Send `text` with `context`, and answer whether the instance accepted it.
    * On `'sent'` it cancels every live proposal and follows the newest entry: EXPERIENCE.md's cancel
    * step, which the card's own guard caption warns about. The instance closed them as it accepted
    * the turn; this draws the same transition without waiting for a poll. Recorded only on an
    * accepted send, because a refused one cancelled nothing (DW-1231).
    */
-  private async sendWithContext(text: string): Promise<boolean> {
-    const outcome = await this.turn.send(text, this.assembleContext());
+  private async sendWithContext(text: string, context: ScreenContextPayload | null): Promise<boolean> {
+    const outcome = await this.turn.send(text, context);
     if (outcome !== 'sent') return false;
     this.cancelLiveCards('canceled-by-message');
     this.followNewest();

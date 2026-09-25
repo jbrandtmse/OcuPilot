@@ -137,6 +137,39 @@ export function assembleScreenContext(inputs: ScreenContextInputs): ScreenContex
   };
 }
 
+/** What `assembleEntryContext` needs: the entry's screen, the shell scope, sharing, and the entry. */
+export interface EntryContextInputs {
+  readonly descriptor: ScreenDeclaration | null;
+  readonly namespace: string;
+  readonly share: boolean;
+  readonly row: unknown;
+}
+
+/**
+ * The `context` an "Explain this entry" turn carries (Story 11.2): the entry's screen and the shell
+ * scope, with a `view` of that one row narrowed to the screen's declared `context.fields` and no
+ * `entity`. `null`, so nothing is sent, when sharing is off, the descriptor or namespace is
+ * missing, or the screen would post no `view` (`contextViewDeclared`).
+ */
+export function assembleEntryContext(inputs: EntryContextInputs): ScreenContextPayload | null {
+  if (!inputs.share) return null;
+  const descriptor = inputs.descriptor;
+  if (descriptor === null) return null;
+  if (inputs.namespace === '') return null;
+  if (!contextViewDeclared(descriptor)) return null;
+  return {
+    route: descriptor.route,
+    namespace: inputs.namespace,
+    view: {
+      rows: [narrowRow(inputs.row, descriptor.context.fields)],
+      rowsAvailable: 1,
+      sort: '',
+      direction: '',
+      filter: '',
+    },
+  };
+}
+
 /** A known credential-key prefix (Requirements & Constraints); checked against the trimmed draft. */
 const SECRET_PREFIXES: readonly string[] = ['sk-', '-----BEGIN', 'AKIA', 'ghp_', 'xox', 'AIza'];
 

@@ -4,13 +4,14 @@ import { Router } from '@angular/router';
 import { AgentContext } from '../core/agent-context';
 import { screenForUrl } from '../core/navigation';
 import { ScopeService, onScopeChange } from '../core/scope';
+import { CONTEXT_CHIP_OFF_ID } from '../core/explain-entry';
 import { contextRowsSent, contextViewDeclared } from '../core/screen-context';
 import { ScreenStores } from '../core/screen-store';
 import { STRINGS, stringFor } from '../core/strings';
 import { formatRowCount } from '../core/table-model';
 
 /** The sharing-off sentence's id, which describes a control that needs context sharing on. */
-export const CONTEXT_CHIP_OFF_ID = 'ocu-context-chip-off';
+export { CONTEXT_CHIP_OFF_ID };
 
 /**
  * The context chip (Story 4.11, `panel.ts`'s `.ocu-panel-chip-slot`): what the next turn would

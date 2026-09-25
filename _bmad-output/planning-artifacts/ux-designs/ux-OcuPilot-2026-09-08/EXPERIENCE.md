@@ -265,7 +265,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "<name> is no longer present on this instance. Return to the list to see what is there now." | a detail view whose target no longer resolves (AD-37) |
 | "Signing in…" · "Connected" · "Instance unreachable — retrying" · "Signing in again…" | status-bar connection state |
 | "Server" · "Instance" · "Licensed to" | accessible names of the status-bar segments |
-| "Explain this screen" | panel one-click action (FR-70, P1) |
+| "Explain this screen" · "Explain this entry" | panel one-click action (FR-70, P1); a log or audit entry's explain entry point and the message it sends: a button on each messages.log and alerts.log row, an item in an application error's row menu, and an action in an audit entry's dialog (FR-70, P1) [ADDED 2026-09-25 - Story 11.2] |
 | "Test connection" · "Confirm" · "Cancel" · "Save" · "Resume" · "Run" · "Suspend" · "Delete" · "Send" · "Stop" · "New conversation" · "Re-propose" · "Sign out" · "Sign in" · "Retry" · "Open messages.log" · "Refresh" | action names |
 | "Agent's rationale" · "Expected impact" | proposal card headings on `{colors.agent-container}` |
 | "Reverse:" | proposal card reversal line |
