@@ -132,7 +132,8 @@ Method TestARequestSupplyingADerivedMemberIsRefused()
 
 /// <p>Home's route is <code>""</code>: a context carrying it is accepted while a route that is not a
 /// string is refused, and its payload is Home's identity with no tool, no row and a boolean
-/// <code>readOnly</code>.</p>
+/// <code>readOnly</code>. The namespace and view checks still apply on Home's route, and a row sent
+/// with it reaches the payload with no field value.</p>
 Method TestHomesEmptyRouteIsAccepted()
 {
     Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
@@ -150,6 +151,17 @@ Method TestHomesEmptyRouteIsAccepted()
     Do $$$AssertEquals(tPayload.tools.%ToJSON(), "[]", "naming no tool")
     Do $$$AssertEquals(tPayload.rowsSent, 0, "sending no row")
     Do $$$AssertEquals(tPayload.%GetTypeOf("readOnly"), "boolean", "and carrying readOnly as a boolean")
+    Set tForeign = {"context": {"route": "", "namespace": "OCUPILOTNOSUCHNAMESPACE"}}
+    Do $$$AssertEquals(##class(OcuPilot.Api.Turn).ContextViolation(tForeign, ..#LIMITS), ##class(OcuPilot.Api.Error).#TURNCONTEXTINVALID, "Home in another namespace is refused")
+    Set tBadRows = {"context": {"route": "", "view": {"rows": {}}}}
+    Do tBadRows.context.%Set("namespace", tNamespace, "string")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Turn).ContextViolation(tBadRows, ..#LIMITS), ##class(OcuPilot.Api.Error).#TURNCONTEXTINVALID, "Home with rows that are not an array is refused")
+    Set tRowed = {"context": {"route": "", "view": {"rows": [{"Pid": "homeprobevalue"}]}}}
+    Do tRowed.context.%Set("namespace", tNamespace, "string")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Turn).ContextViolation(tRowed, ..#LIMITS), "", "Home with a well-formed view passes the shape check")
+    Do $$$AssertStatusOK(##class(OcuPilot.Api.Turn).BoundedContext(tRowed.context, 0, 200, ..#LIMITS, .tRowedJson), "Home's payload with a row builds")
+    Do $$$AssertTrue(tRowedJson '= "", "and is not empty")
+    Do $$$AssertTrue('(tRowedJson [ "homeprobevalue"), "and carries no field value, since Home declares no context field")
 }
 
 /// <p>Both members ride the rows branch and the identity-only branch, with <code>readOnly</code> a

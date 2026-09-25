@@ -426,8 +426,8 @@ ClassMethod ConversationViolation(pBody As %DynamicObject) As %String
 /// <p>The violation code <var>pBody</var>'s <code>context</code> earns, or <code>""</code>
 /// (Story 4.4, AD-24): checked only when <code>context</code> is present at all. The wire shape is
 /// <code>{route, namespace, entity?, view?: {sort?, direction?, filter?, rows, rowsAvailable?}}</code>;
-/// every present member must carry its declared JSON type, <code>route</code> may be
-/// <code>""</code>, which is Home's route, <code>view.rows</code> is required when
+/// every present member must carry its declared JSON type (a <code>route</code> of
+/// <code>""</code> is Home's), <code>view.rows</code> is required when
 /// <code>view</code> is present, and <code>namespace</code> must equal the request's resolved
 /// scope (<method>OcuPilot.Kernel.Scope.Current</method>, from <code>?ns=</code>) -- a caller
 /// naming a different namespace could otherwise carry rows from one scope into a turn running in

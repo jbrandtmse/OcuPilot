@@ -3296,6 +3296,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-17T21:58:32Z status=decision-pending owner=burndown by=cr note=product call for the decision sheet; reviewer will not pick between a server change and a UX contract
 - 2026-09-17T22:26:06Z status=decision-pending owner=burndown by=adjudication note=lead agrees this is a product call between a server change and EXPERIENCE.md:712; carried to the owner decision sheet, not decided here
 - 2026-09-19T02:12:26Z status=routed owner=11-1-explain-this-screen by=merge_gate note=Home's empty route makes the chip name a screen no turn carries; say what the turn actually sends
+- 2026-09-25T20:44:07Z status=resolved-by:11-1-explain-this-screen by=adjudication note=Home's empty route is sent by screen-context.ts and accepted by Api.Turn.ContextViolation (7ea91c67); pinned by TurnGrounding.TestHomesContextReachesTheTurn (lead mutation red 12681/green 12682), ScreenGrounding.TestHomesEmptyRouteIsAccepted, browser explain-screen (b)
 
 ### DW-1081: DESIGN.md gives reply code blocks a copy icon button; Story 4.6 does not build one
 - source: spec-4-6-replies-render-safely-and-offline.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3434,6 +3435,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T11:13:39Z status=decision-pending owner=burndown by=cr note=spec-bound: AC8 requires the fallback, EXPERIENCE.md:486 requires one banner -- owner picks which
 - 2026-09-18T11:25:56Z status=decision-pending owner=burndown by=adjudication note=lead agrees this is spec-bound: AC8 requires the fallback banner and EXPERIENCE.md:486 requires one banner, so the exit is a product call; carried to the owner sheet with its second face (a refused, absent or rejected fault publishes no connectivity sentence)
 - 2026-09-19T02:12:26Z status=routed owner=11-1-explain-this-screen by=merge_gate note=one status-0 Send must raise one alert; drop the panel's fallback when the shell strip already says it
+- 2026-09-25T20:44:08Z status=resolved-by:11-1-explain-this-screen by=adjudication note=sendErrorText answers null for status 0 and 5xx without an envelope, so only the shell strip alerts (7ea91c67); pinned by panel.spec status-0 and 502 legs; a 4xx without an envelope is theoretical under AD-12 and keeps its fallback
 
 ### DW-1113: OcuPilot.Test.TurnProvider's pRetryAfter seam has no caller, so the turn path's Retry-After forwarding is never exercised
 - source: code review of story-4.8 (2026-09-18) | severity: low | fix-risk: low | footprint: in-story

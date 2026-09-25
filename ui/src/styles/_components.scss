@@ -3623,22 +3623,6 @@ app-data-table {
   border-color: var(--ocu-restrained);
 }
 
-// "Explain this screen" (Story 11.1): a button-text beneath the chip, inset by the chip's own
-// gutter. Unavailable is `aria-disabled`, never `disabled`, so the dimming is what a pointer sees.
-.ocu-panel-explain {
-  margin: var(--ocu-space-1) var(--ocu-panel-gutter) 0;
-}
-
-.ocu-panel-explain[aria-disabled='true'] {
-  opacity: 0.55;
-  cursor: default;
-}
-
-.ocu-panel-explain[aria-disabled='true']:hover,
-.ocu-panel-explain[aria-disabled='true']:active {
-  background: transparent;
-}
-
 .ocu-context-chip-text {
   @include typo.ocu-type('caption');
 
@@ -3728,6 +3712,24 @@ app-data-table {
   .ocu-context-chip-switch::before {
     transition: none;
   }
+}
+
+// "Explain this screen" (Story 11.1): a button-text beneath the chip, inset by the chip's own
+// gutter. Unavailable is `aria-disabled`, never `disabled`, so it keeps its tab stop and its
+// reason; it reads as `restrained` at full opacity with no state layer, as the command bar's
+// unavailable actions do.
+.ocu-panel-explain {
+  margin: var(--ocu-space-1) var(--ocu-panel-gutter) 0;
+}
+
+.ocu-panel-explain[aria-disabled='true'] {
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-panel-explain[aria-disabled='true']:hover,
+.ocu-panel-explain[aria-disabled='true']:active {
+  background: transparent;
 }
 
 // The inline paste warning (DESIGN.md `banner`'s `warning` variant, `:1203`): a persistent slot,

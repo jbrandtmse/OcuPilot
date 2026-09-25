@@ -134,6 +134,39 @@ deferred: []
 - **AC3.** Given Home, a list and a form page, when the panel renders, then the button is there, one click, under the same gate as the chip, which no screen's declaration changes; on Home the turn carries Home's identity (browser (b)).
 - **AC4.** Given the AD-11/AD-24 pins (`ContextBound`, `TurnContext`, `TurnLoop`, `TurnTools`, `TurnWire`, `TurnNavigate`), when they run, then they stay green unedited.
 
+### Review Findings
+
+Code review 2026-09-25, `full-opus`, four layers. 25 findings: 6 patched (1 med, 5 low), 0 deferred, 0 decision-needed, 19 rejected.
+
+- [x] [Review][Patch] (med) The relaxed empty route was pinned only in its bare form; nothing reddened if Home skipped the namespace or view bounds [src/OcuPilot/Test/ScreenGrounding.cls:136] — added Home legs: a foreign namespace and a non-array `rows` are refused, and a row sent on Home reaches the payload with no field value.
+- [x] [Review][Patch] (low) `RoutePairs`' doc said no turn carries an empty route and that Home posts no context, which this story made false [src/OcuPilot/Kernel/Audit/Ledger.cls:80]
+- [x] [Review][Patch] (low) The unavailable button faded to `opacity: 0.55`, which matches neither DESIGN.md's 38% nor the `restrained` treatment the command bar's unavailable actions use [ui/src/styles/_components.scss] — now `color: var(--ocu-restrained)` at full opacity.
+- [x] [Review][Patch] (low) The style block sat inside Story 4.11's context-chip section [ui/src/styles/_components.scss] — moved to follow that section as its own block.
+- [x] [Review][Patch] (low) Browser legs (a) and (b) clicked as soon as the button showed, while it can still be `aria-disabled` during load [ui/browser/explain-screen.browser-spec.mjs:346] — they now wait for it to be available, as `context-chip.browser-spec.mjs:315` does for the composer.
+- [x] [Review][Patch] (low) `ContextViolation`'s doc ran three rules together [src/OcuPilot/Api/Turn.cls:428]
+
+Rejected:
+
+- `false` The "Live proposal" leg under the null-context mutation stays green — applied in review: 4 legs red including it, since the mutation bypasses `sendWithContext`'s cancel.
+- `false` `turn.browser-spec` "no earlier turn" is too loose — an earlier turn cannot reach history without its "first turn" user entry.
+- `false` `TurnGrounding` explain leg breaks on string `content` — with context the last user entry is an array; a string would error the test, not pass it.
+- `false` Browser leg (c)'s 1500 ms wait can miss a late send — the disabled guard returns synchronously; no deferred send path exists.
+- `false` DW-1112's null leaves no trace once the shell banner clears — that banner is the one alert the merge gate asked for; Send keeps the draft.
+- `false` The paste warning stays up during an explain turn — it concerns the draft, which explain leaves; a second send while busy raises the lock banner by design.
+- `false` Home and no-context turns now differ on the wire but share `""` in the ledger — they shared it before too; the doc is corrected above.
+- `false` DW-1077/DW-1112 not updated in the ledger — adjudication is the lead's gate.
+- `false` QA's tests are uncommitted — the lead commits them with this pass.
+- `low` Aria-disabled with no reason while navigation loads — the composer shares the window; transient, and a fix adds a branch (same call as the implement review).
+- `low` `EXPLAINMESSAGE` can drift from `STRINGS` — browser (a) pins the real string end to end.
+- `low` Panel-spec gaps (re-enable on sharing on, a refused explain, 5xx draft kept) — the shared Send path and signal reactivity are pinned elsewhere.
+- `low` `before`/`after` force `share: true` — the instance default is on; `screen-grounding` restores the same way.
+- `low` `TurnGrounding`'s echo assertions pin 11.9 behavior — its 11.1 assertion carries run 12420's mutation.
+- `low` `Prompt.cls` doc groups the explain sentence with the `screen_context` statements and `Statement(7)` precedes 6 in the prompt — no reader is misled into a behavior.
+- spec-bound: sharing off disables explain on every screen, narrowing epics.md's "every screen" — the spec's Always rule; explain with no screen is meaningless.
+- spec-bound: EXPERIENCE.md sentence formatting and tag — the text is the spec's verbatim task.
+- spec-bound: AC2's render leg is pass-through evidence — the spec already says so.
+- duplicate: `answered` window reported by two layers (counted once above).
+
 ## Spec Change Log
 
 - 2026-09-25, lead spec gate: no `epics.md` annotation is needed for DW-1077. Story 11.9's AC there reads "they still send no field values or rows", which Home posting its identity only keeps true; the "posts no context at all" wording is 11.9's spec, not the epic's AC.
@@ -249,8 +282,38 @@ When the user asks you to explain this screen, say what the screen is for, what 
 - The reasons' order: the sharing-off arm moved first in `explainDescribedBy`.
   - mutation: that move -> panel-spec "Kill switch with sharing off" leg red alone.
 - AC4 has no mutation: its pins are the unedited `ContextBound`, `TurnContext`, `TurnLoop`, `TurnTools`, `TurnWire` and `TurnNavigate`, green in the sweep.
+- Home keeps the namespace and view bounds (review): `If tContext.%Get("route") = "" Quit ""` after the route type check.
+  - mutation: that line, recompiled -> `ScreenGrounding.TestHomesEmptyRouteIsAccepted` red on "Home in another namespace is refused" and "Home with rows that are not an array is refused" alone (run 12684); reverted, green (run 12685).
 
 **Manual check (extra evidence, never the proof).** Owner's 2026-09-23 live-key rules apply: the key is read from `/Users/jbrandt/git/OcuPilot/.env.local` into one command's environment, never printed or stored, and any credential lives only on `ocupilot-ci` and is removed after. Press Explain on Processes with a live Anthropic definition. The reply should name the screen's purpose, data and actions and cite `osmgmt_processes_read`.
+
+**QA-stage additions (AC3 gap closure).** The legs above sample List, Home and Form page; no test
+walked the full registry, so a gate that happened to exclude an untested archetype (e.g. `detail`)
+would have passed unnoticed. Added `ui/src/app/shell/panel.spec.ts` (QA) "AC3: every built screen
+shows the explain button under the same gate as the chip (registry-driven)", iterating
+`SCREENS.filter(s => s.built && s.route !== '')` (52 screens; Home is the dedicated leg above).
+Also added `ui/src/app/shell/panel.spec.ts` (QA) "Busy with sharing off", closing the one untested
+pairwise ordering in `explainDescribedBy` reachable through the UI (kill switch and busy cannot
+co-occur: the kill switch disables the composer, so no turn can be in flight while it is on).
+
+- mutation: wrap the button in a nested `@if` excluding `archetype === 'detail'` -> the new
+  registry test goes red alone, naming the first failing descriptor
+  (`OcuPilot.Screen.Descriptor.DatabaseDetails`); all 145 other legs, including List/Home/Form
+  page, stay green -- the gap a sample cannot see. Reverted; `git diff` on `panel.ts` empty.
+- mutation: swap the `busy` and sharing-off checks in `explainDescribedBy` -> "Busy with sharing
+  off" goes red alone (`describedBy` resolves to the sharing-off sentence instead of the busy
+  reason); the 145 other legs stay green. Reverted; `git diff` on `panel.ts` empty.
+
+Checked, not duplicated: DW-1112's "one alert" claim. `ui/src/main.ts` wires `onFault` once, at
+`ApiService` construction; `ApiService.requestJson` (`api.ts:396-398`) calls it for every
+non-`ok` result regardless of path, so `POST /turn` gets no special case. That crossing is already
+proven generically by `ui/tools/refresh-connectivity.wire.test.mjs` against a real `ApiService` +
+`ConnectivityService` pair; a turn-specific integration test would re-prove an architectural
+invariant this story does not touch, which the story's own review already rejected as a finding on
+that reasoning.
+
+`test:components`: 1264/1264 after this pass (was 1261/1261 in Auto Run Result; +2 QA legs, +1
+already in the tree from elsewhere in the epic). `test:tools`: 1433/1433, unchanged.
 
 ## Auto Run Result
 

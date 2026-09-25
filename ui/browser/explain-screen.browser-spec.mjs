@@ -124,6 +124,11 @@ function lastUserText(messages) {
   return last.content.filter((block) => block.type === 'text').map((block) => block.text).join('');
 }
 
+/** The button can show while the panel is still loading, `aria-disabled` and deaf to a click. */
+async function waitForExplainAvailable(page) {
+  await page.waitForFunction((selector) => !document.querySelector(selector)?.hasAttribute('aria-disabled'), { timeout: config.navigationTimeoutMs }, EXPLAIN);
+}
+
 async function waitForReply(page, text) {
   await page.waitForFunction(
     (expected) => (document.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '') === expected,
@@ -140,6 +145,7 @@ test('(a) List screen: one click sends the sentence with the screen context and 
   const { context, page } = await signedInAt(browser, config, PROCESSES_URL);
   try {
     await page.waitForSelector(EXPLAIN, { visible: true, timeout: config.navigationTimeoutMs });
+    await waitForExplainAvailable(page);
     assert.equal(await page.$eval(EXPLAIN, (el) => el.textContent.trim()), STRINGS.agentExplainScreenAction);
     await page.type('#ocu-panel-composer', 'keep me');
     await page.click(EXPLAIN);
@@ -169,6 +175,7 @@ test('(b) Home: the turn carries Home\'s identity, with no tool and no row', asy
   const { context, page } = await signedInAt(browser, config, HOME_URL);
   try {
     await page.waitForSelector(EXPLAIN, { visible: true, timeout: config.navigationTimeoutMs });
+    await waitForExplainAvailable(page);
     await page.click(EXPLAIN);
     await waitForReply(page, 'home explained');
 

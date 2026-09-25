@@ -10,6 +10,7 @@ import { PanelState } from '../core/panel-layout';
 import { ScopeService } from '../core/scope';
 import { Session } from '../core/session';
 import { ScreenStores } from '../core/screen-store';
+import { SCREENS } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { SOURCES, SWITCHES_DESCRIPTOR, SuggestedView, type Source } from '../core/suggested-view';
@@ -4136,5 +4137,51 @@ describe('Story 11.1: Explain this screen', () => {
     await clickExplain(host, fixture);
     const statuses = [...host.querySelectorAll('.ocu-proposal-card-status')].map((node) => (node.textContent ?? '').trim());
     expect(statuses).toEqual([STRINGS.proposalStatusCanceledByMessage]);
+  });
+
+  // AC3 samples List, Home and Form page; this closes the gap between "a sample" and "every built
+  // screen" by walking the registry itself rather than three archetypes chosen by hand. Home is
+  // excluded (its own route is `''` and it is already the dedicated Home leg above).
+  //
+  // Mutation (Rule 19): gate the button on `screenForUrl(this.router.url)?.archetype !== 'detail'`
+  // (in addition to `contextChipVisible`) -> this goes red on every 'detail'-archetype screen,
+  // while List, Home and Form page (none of which are 'detail') stay green -- the gap a sample
+  // cannot see.
+  it('AC3: every built screen shows the explain button under the same gate as the chip (registry-driven)', async () => {
+    const builtScreens = SCREENS.filter((screen) => screen.built && screen.route !== '');
+    expect(builtScreens.length).toBeGreaterThan(0);
+    for (const screen of builtScreens) {
+      const { host } = await mountExplain({ url: '/' + screen.route });
+      expect(
+        host.querySelector('.ocu-context-chip'),
+        `chip missing for ${screen.descriptor} (${screen.route})`
+      ).not.toBeNull();
+      const button = explainButton(host);
+      expect(button, `explain button missing for ${screen.descriptor} (${screen.route})`).not.toBeNull();
+      expect(button?.textContent?.trim()).toBe(STRINGS.agentExplainScreenAction);
+      expect(button?.getAttribute('aria-disabled')).toBeNull();
+    }
+  });
+
+  // The three reasons' priority (`explainDescribedBy`) is kill switch, then busy, then sharing
+  // off. "Kill switch with sharing off" above pins the first pairing; kill switch and busy cannot
+  // co-occur through the UI (the kill switch disables the composer, so no turn can be in flight
+  // while it is on -- `composerUnavailable`'s own doc comment), leaving busy-over-sharing as the
+  // one reachable pairing still unpinned. Busy is raised here by the ordinary Send control, which
+  // (unlike Explain) is not gated on sharing, so a turn can be in flight while sharing is off.
+  //
+  // Mutation (Rule 19): swap the `busy` and sharing-off checks in `explainDescribedBy` -> this
+  // goes red on the reason named.
+  it('Busy with sharing off: the busy reason is named, as it sits above sharing in the order', async () => {
+    const { host, fixture } = await mountExplain({ url: PROCESSES_URL, share: false });
+    await typeDraft(host, fixture, 'enable the demo application');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+
+    const button = explainButton(host) as HTMLButtonElement;
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    const describedBy = button.getAttribute('aria-describedby') ?? '';
+    expect(host.querySelector(`#${describedBy}`)?.textContent?.trim()).toBe(STRINGS.agentComposerLockedReason);
   });
 });
