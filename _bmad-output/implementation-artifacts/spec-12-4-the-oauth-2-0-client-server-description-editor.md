@@ -378,6 +378,32 @@ Rejected:
   - The `Prohibited` test's exact id skip.
   - AC8's mint leg: the five tools' pairs equal the tab's, and `DenialParity` pins the dispatch refusal.
 
+### Review Findings (CI rework)
+
+Code review 2026-09-24 of the rework `749740fe..34cd6812` (four layers, all on Opus): 1 entry (low), patched; 14 rejected. Checklist: the three `security/oauth/edit` entries equal the shell-chrome set every `*/edit` route carries (DW-1583 at 1280 and 720, DW-1584 at 720), and baseline matching is exact-key, so nothing admits the editor's own content. The AC2 wait holds until the form read renders, because the endpoint and token fields share one `@if (loadedFlag)`. No other wait in the story's browser specs has the `undefined !== ''` shape.
+
+- [x] [Review][Patch] (low, Rule 19) The AC2 `mutation:` line did not name the latency injection, so it could not be re-run. The line now names it. Re-observed on `ocupilot-b-ci`: the mutant is red with CI's error, the fix passes 5/5 under latency, and the scratch copies are deleted. [spec `## Verification`]
+
+Rejected:
+
+- Spec edits. The fix for each of these would edit the spec under review:
+  - `(inference)` on the CI root cause, and the reproduction scope (CI's `browser` job on `34cd6812` confirms it);
+  - the root cause said three times;
+  - the growth while `oversized`;
+  - the unnamed deferred items;
+  - the "Follow-up review" fragment.
+- `false`:
+  - The Boundaries line "no DW-1337 baseline allowance": the entries are shell chrome that the `[CI]` item directs, and nothing is on the editor's content.
+  - The stale key counts in the DW-1583/DW-1584 headings: a ledger body is written once, and occurrences are trailer lines.
+- Outside the rework, not high:
+  - the matrix's member pair against the AC2 leg;
+  - no full ObjectScript sweep after `bfdb266c` (CI's `instance` job on `34cd6812` is the sweep);
+  - `barButton`'s disabled match;
+  - the AC3 filter's `length === 1`;
+  - AC5's non-empty `PublicJWKS`;
+  - the `stored()` null dereference.
+- `low`: the wait's bare timeout message when `token_endpoint` is absent. The fixture always publishes it.
+
 ## Spec Change Log
 
 - 2026-09-24, spec gate (lead). Q1-Q3 written into the spine as recommended: AD-4 moves `Security.OAuth2.Client.ServerDefinition` out of the erasing list; AD-27's reason list gains "an acceptance criterion rules out" and "has no such operation", with the discovery and Update JWKS cases named under Story 12.4 (the spine says both are measured on a throwaway by the implement stage; record each measurement in `## Verification`). Q4 applied under Rule 5 to Epic 12's preamble and the epic context. Q5 stands: a measured write with no vendor audit event is reported for an AD-53 named-gap entry, which the lead writes. The editor is untabbed because the classic page is.
@@ -595,7 +621,7 @@ Final runs after the review patches: `OAuthServerCreate` 7, `Token` 5, `Discover
 **CI rework 1, on `ocupilot-b-ci`.** Each applied alone, red, reverted, byte-identical (`cmp`).
 
 - mutation: drop the `security/oauth/edit|overflow|720|app-status-bar…` entry from `structural-baseline.json` → `a11y-structural-invariants` "AC5: no violation outside the baseline" red naming that key; restored, 203 found, 203 held, 0 stale
-- mutation: the AC2 wait back to `?.value !== ''`, in a scratch copy that adds 1 s of CDP request latency after the tab lists → AC2 red with CI's `failed to find element matching selector "#ocu-oauth-server-InitialAccessToken"`; with `?? ''` the copy passes 5/5, and the real spec passes 7/7 after `oauth-delete` in CI's command form
+- mutation: the AC2 wait back to `?.value !== ''`, in a scratch copy of the spec that, right after AC2's `waitForRows`, opens a CDP session and sends `Network.emulateNetworkConditions` with `latency: 1000` → AC2 red with CI's `failed to find element matching selector "#ocu-oauth-server-InitialAccessToken"`; with `?? ''` the copy passes 5/5, and the real spec passes 7/7 after `oauth-delete` in CI's command form
 
 ## Auto Run Result
 
