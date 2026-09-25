@@ -9,6 +9,9 @@ import { ScreenStores } from '../core/screen-store';
 import { STRINGS, stringFor } from '../core/strings';
 import { formatRowCount } from '../core/table-model';
 
+/** The sharing-off sentence's id, which describes a control that needs context sharing on. */
+export const CONTEXT_CHIP_OFF_ID = 'ocu-context-chip-off';
+
 /**
  * The context chip (Story 4.11, `panel.ts`'s `.ocu-panel-chip-slot`): what the next turn would
  * send, the toggle that decides whether anything is, and the paste warning's sibling fact --
@@ -56,7 +59,7 @@ import { formatRowCount } from '../core/table-model';
           <span class="ocu-visually-hidden">{{ pillTitle }}</span>
         }
       } @else {
-        <span class="ocu-context-chip-off">{{ STRINGS.contextChipSharingOff }}</span>
+        <span class="ocu-context-chip-off" [id]="offId">{{ STRINGS.contextChipSharingOff }}</span>
       }
     </div>
     <label class="ocu-context-chip-toggle">
@@ -79,6 +82,8 @@ export class ContextChip {
   private readonly agentContext = inject(AgentContext);
 
   protected readonly STRINGS = STRINGS;
+
+  protected readonly offId = CONTEXT_CHIP_OFF_ID;
 
   /** " \u00b7 " between segments, itself `aria-hidden`; composing with the segments around it
    * reproduces `STRINGS.contextChipScreenSegment` byte for byte. */

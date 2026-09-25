@@ -2,7 +2,8 @@
 title: 'Story 11.1: "Explain this screen"'
 type: 'feature'
 created: '2026-09-25'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '74f8b43e3e3eadc9ac7dedfb3415e4f2eea0d1ef'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -138,6 +139,25 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-25 — Review pass
+
+- verdicts: 14 findings — high 0, medium 0, low 4, false 10, maybe-false 0
+- findings:
+  - `[low]` `[patch]` Busy leg's "click posts nothing" holds by `TurnStore`'s own refusal, not the panel guard — added a no-lock-banner assertion; narrowing the guard to sharing reddens it.
+  - `[low]` `[patch]` `explainDescribedBy`'s topmost-reason order unpinned — added "Kill switch with sharing off"; putting sharing first reddens it alone.
+  - `[low]` `[patch]` AC2's context leg, AC3's gate and AC4 had no `mutation:` line — AC2 and AC3 applied red and reverted, recorded in `## Verification`; AC4 has none applicable; AC2's render leg is 11.7's unchanged path.
+  - `[false]` `[reject]` `turn.browser-spec` "carries no earlier turn" weakened — the spec's task prescribes that replacement, forced by Home now sending context.
+  - `[false]` `[reject]` DW-1112's one alert is untested at the shell — `main.ts:95` feeds every `requestJson` fault, `POST /turn` included, to `ConnectivityService`.
+  - `[false]` `[reject]` DW-1112 goes wider than 5xx — `isBannerFault` is exactly the set the shell banner publishes, so each such fault still raises one alert.
+  - `[false]` `[reject]` Prompt placement unpinned — the one literal holds the sentence at the specified position; moving it harms no user.
+  - `[false]` `[reject]` No-definition case of "No screen" untested — the button shares the chip's `@if`, whose `configured()` arm the 4.11 chip tests pin.
+  - `[false]` `[reject]` Another tab's lock is outside the gate — Send is gated the same way; the lock banner is the designed answer.
+  - `[low]` `[reject]` While navigation is still loading the button is `aria-disabled` with no reason — a transient load window the composer shares; a fix adds a branch for no everyday harm.
+  - `[false]` `[reject]` `turn.browser-spec` weakening (second report) — same prescribed replacement as above.
+  - `[false]` `[reject]` Form-page `tools []` unpinned server-side — `ScreenGrounding:85` pins it.
+  - `[false]` `[reject]` `followNewest` now runs before `setDraft('')` — `follow()` scrolls synchronously and sets following; the composer shrinking only enlarges a bottom-anchored box; panel browser legs green.
+  - `[false]` `[reject]` EXPERIENCE.md and SCSS changes outside scope — the EXPERIENCE sentence is a spec task; the SCSS dims the `aria-disabled` state (footprint extension).
+
 ## Design Notes
 
 **Governing ADs:**
@@ -206,18 +226,69 @@ When the user asks you to explain this screen, say what the screen is for, what 
 **Pinning mutations (Rule 19).** Apply each, recompile or rebuild and redeploy, observe red, revert, and confirm `git status --short` is unchanged. Record `mutation: ... -> ...` under each.
 
 - The explain sentence is deleted from `BUILTIN` → `ScreenGrounding` "the explain statement" goes red alone; `TurnGrounding`'s explain leg goes red.
+  - mutation: explain sentence deleted from `BUILTIN`, recompiled -> `ScreenGrounding.TestThePromptCarriesTheScreenStatements` "the explain statement" red alone (run 12419); `TurnGrounding.TestAnExplainTurnCarriesTheReadToolAndTheStatement` red (run 12420).
 - `onExplain` sends `panel.draft()` → the panel-spec list leg goes red; browser (a) goes red.
+  - mutation: `onExplain` sends `this.panel.draft()` -> panel-spec "List screen" leg red; rebuilt and redeployed, browser (a) red on the user bubble ("keep me"), (b) red too (empty draft sends nothing).
 - The `route === ''` exclusion is restored in `assembleScreenContext` → `screen-context.test.mjs` Home case and browser (b) go red.
+  - mutation: `|| inputs.descriptor.route === ''` restored -> `screen-context.test.mjs` Home case red; rebuilt and redeployed, browser (b) red ("Home posts a screen_context pair").
 - The empty-route refusal is restored in `ContextViolation` → `TurnGrounding` Home leg (422) and `ScreenGrounding` Home test go red.
+  - mutation: `|| (tContext.%Get("route") = "")` restored, recompiled -> `ScreenGrounding.TestHomesEmptyRouteIsAccepted` red (run 12421); `TurnGrounding.TestHomesContextReachesTheTurn` red on 422 `TURN.CONTEXT.INVALID` (run 12422).
 - The sharing-off arm is dropped from `explainAriaDisabled` → the panel-spec sharing-off leg and browser (c) go red.
+  - mutation: `|| !this.agentContext.share()` dropped -> panel-spec "Sharing off" leg red; rebuilt and redeployed, browser (c) red (aria-disabled never "true").
 - The explain button is gated on `screen.read !== null` → the panel-spec Home and form-page legs go red.
+  - mutation: button wrapped in `@if` on `screenForUrl(url)?.read != null` -> panel-spec "Home" and "Form page" legs red.
 - The DW-1112 `null` arm is removed → the panel-spec status-0 leg goes red.
+  - mutation: `if (isBannerFault(fault)) return null;` removed -> panel-spec status-0 and 5xx legs red; answering `null` for every no-envelope refusal -> the 403 leg red.
+- AC2, the context leg: `onExplain` calls `this.turn.send(STRINGS.agentExplainScreenAction, null)`.
+  - mutation: that call -> panel-spec "List screen", "Home", "Form page" and "Live proposal" legs red.
+- AC3, the chip's gate: the button moved outside `@if (contextChipVisible)`.
+  - mutation: that move -> panel-spec "No screen" leg red.
+- The busy and kill-switch guard in `onExplain` is narrowed to sharing only.
+  - mutation: `if (!this.agentContext.share()) return;` -> panel-spec "Busy" leg red on the lock banner, and "Kill switch" red.
+- The reasons' order: the sharing-off arm moved first in `explainDescribedBy`.
+  - mutation: that move -> panel-spec "Kill switch with sharing off" leg red alone.
+- AC4 has no mutation: its pins are the unedited `ContextBound`, `TurnContext`, `TurnLoop`, `TurnTools`, `TurnWire` and `TurnNavigate`, green in the sweep.
 
 **Manual check (extra evidence, never the proof).** Owner's 2026-09-23 live-key rules apply: the key is read from `/Users/jbrandt/git/OcuPilot/.env.local` into one command's environment, never printed or stored, and any credential lives only on `ocupilot-ci` and is removed after. Press Explain on Processes with a live Anthropic definition. The reply should name the screen's purpose, data and actions and cite `osmgmt_processes_read`.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned and halted after planning, as the dispatch directed. The ledger inbox is dispositioned: DW-1077 and DW-1112 are addressed; DW-458, DW-460, DW-1001 and DW-1013 are declined in Design Notes. The spec is `oversized`.
+**Change.** Beneath the context chip there is now an "Explain this screen" button. It sends that fixed sentence through the Send path, with the screen's context, and leaves the draft as it is. The built-in prompt gains the explain sentence, pinned as `Statement(7)`. Home posts its identity (`route ""`), which the client now sends and the instance now accepts. The panel raises no second banner for a status 0 or 5xx that has no envelope (DW-1112).
+
+**Files changed:**
+
+- `Kernel/Agent/Prompt.cls`: the sentence.
+- `Api/Turn.cls`: `""` accepted as a route.
+- `Test/ScreenGrounding.cls` and `Test/TurnGrounding.cls`: the new legs.
+- `core/screen-context.ts` and `tools/screen-context.test.mjs`: Home posts its identity.
+- `shell/context-chip.ts`: the off id.
+- `shell/panel.ts`: the button, its getters, `onExplain` and the shared `sendWithContext`, and DW-1112.
+- `shell/panel.spec.ts`: the 11.1 legs and the 4.8 rewrite.
+- `browser/explain-screen.browser-spec.mjs` (new) and `browser/turn.browser-spec.mjs`.
+- `styles/_components.scss`: the disabled look.
+- EXPERIENCE.md: `:589`.
+
+**Review.** 14 findings: 3 low were patched (the busy-leg lock-banner assertion, the two-reason order leg, and the mutation lines), 1 low was rejected and 10 were false. Nothing was deferred. `followup_review_recommended: false`, because no medium or high was patched.
+
+**Verification:**
+
+- `check-objectscript` reported 0 problems and `lint-docs` 0 issues.
+- `test:tools` passed 1433/1433 and `test:components` 1261/1261. After the patches, `panel.spec` passed 144/144.
+- The story's browser specs (`explain-screen`, `turn`, `context-chip`, `screen-grounding`, `panel`) passed 34/34 against the rebuilt and redeployed bundle.
+- ObjectScript sweep on `ocupilot-ci`: 254 ran, 13 refused (arming), 1 known residue (`WireSecurityRead` task-history). The other 240 were green, including ScreenGrounding 11/11, TurnGrounding 9/9, and every AC4 pin.
+- Smoke on `ocupilot-ci`: 49/49.
+- Initial bundle total: 1,597,260 bytes (1.60 MB), under the 1670 kB warning.
+- The live-key check was not run; it is extra evidence only.
+
+**Residual risk.** Home now opens every turn with a `screen_context` pair. Other browser specs that start on Home are covered only by CI's full browser run.
+
+**footprint_extensions:**
+
+- `ui/src/app/shell/panel.ts` and `ui/src/app/shell/panel.spec.ts`: contended, and none of Epic 12's hunks were touched. `merge-tree` against `origin/OCU-1-epic12` adds no conflict.
+- `ui/src/app/shell/context-chip.ts`.
+- `ui/src/styles/_components.scss`: shared-append, own block.
+- EXPERIENCE.md: one in-place sentence.
+- `ui/browser/turn.browser-spec.mjs`.

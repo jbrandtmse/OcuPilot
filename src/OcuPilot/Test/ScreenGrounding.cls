@@ -1,7 +1,7 @@
-/// <p>Stories 11.9 and 11.10 in process: the built-in prompt's six screen statements, the tools each
+/// <p>Stories 11.9, 11.10 and 11.1 in process: the built-in prompt's seven screen statements, the tools each
 /// kind of screen names (<method>OcuPilot.Screen.Context.ScreenTools</method>), the refusal of a
 /// request that supplies a derived member (<method>OcuPilot.Api.Turn.ContextViolation</method>),
-/// and the two members <method>OcuPilot.Api.Turn.BoundedContext</method> adds on both payload
+/// Home's empty route, and the two members <method>OcuPilot.Api.Turn.BoundedContext</method> adds on both payload
 /// branches and inside the total bound (AD-11, AD-24).</p>
 /// <p>Spawns nothing, writes no state and creates no principal, so it needs no arming variable. It
 /// reads the compiled tool and screen registries, so it runs on an instance where OcuPilot is
@@ -15,7 +15,7 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 /// behind its four row actions, in name order.</p>
 Parameter PROCESSTOOLS = "[""osmgmt_processes_read"",""osmgmt_processes_resume"",""osmgmt_processes_suspend"",""osmgmt_processes_terminate"",""osmgmt_processes_terminatewitherror""]";
 
-/// <p>The prompt's statement at <var>pIndex</var> (1 to 6), verbatim.</p>
+/// <p>The prompt's statement at <var>pIndex</var> (1 to 7), verbatim.</p>
 ClassMethod Statement(pIndex As %Integer) As %String
 {
     Quit $Case(pIndex,
@@ -25,6 +25,7 @@ ClassMethod Statement(pIndex As %Integer) As %String
         4: "When you are read-only, say so, and describe the change you would make instead of proposing it.",
         5: "Use only the tools you are offered, and when none of them can do what was asked, say so rather than describe a capability you lack.",
         6: "When the user asks about something a screen shows, or asks to change it, and the screen_context does not show them on that screen, open that screen with the navigation tool first, before you answer or propose the change, so they see what you are discussing and the change when it lands; when they are already on it, do not navigate.",
+        7: "When the user asks you to explain this screen, say what the screen is for, what data it shows and what actions its tools offer, name the read tool in tools that its data comes from, or say that it has none, and propose no change.",
         : "")
 }
 
@@ -39,7 +40,7 @@ Method ToolsFor(pRoute As %String) As %String
     Quit tTools.%ToJSON()
 }
 
-/// <p>The prompt is the class parameter, whole, and carries each of the six screen statements
+/// <p>The prompt is the class parameter, whole, and carries each of the seven screen statements
 /// verbatim, one assertion each.</p>
 Method TestThePromptCarriesTheScreenStatements()
 {
@@ -51,6 +52,7 @@ Method TestThePromptCarriesTheScreenStatements()
     Do $$$AssertTrue(tPrompt [ ..Statement(4), "the read-only statement")
     Do $$$AssertTrue(tPrompt [ ..Statement(5), "the only-the-tools-offered statement")
     Do $$$AssertTrue(tPrompt [ ..Statement(6), "the open-the-screen-first statement")
+    Do $$$AssertTrue(tPrompt [ ..Statement(7), "the explain statement")
     Set tOutside = 0
     For tI = 1:1:$Length(tPrompt) If ($Ascii(tPrompt, tI) < 32) || ($Ascii(tPrompt, tI) > 126) Set tOutside = tOutside + 1
     Do $$$AssertEquals(tOutside, 0, "the prompt is printable ASCII throughout")
@@ -126,6 +128,28 @@ Method TestARequestSupplyingADerivedMemberIsRefused()
             Do $$$AssertEquals(##class(OcuPilot.Api.Turn).ContextViolation(tBody, ..#LIMITS), tCode, tMember _ " as " _ tType _ " is refused")
         }
     }
+}
+
+/// <p>Home's route is <code>""</code>: a context carrying it is accepted while a route that is not a
+/// string is refused, and its payload is Home's identity with no tool, no row and a boolean
+/// <code>readOnly</code>.</p>
+Method TestHomesEmptyRouteIsAccepted()
+{
+    Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
+    Set tHome = {"context": {"route": ""}}
+    Do tHome.context.%Set("namespace", tNamespace, "string")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Turn).ContextViolation(tHome, ..#LIMITS), "", "Home's empty route is accepted")
+    Set tNumber = {"context": {"route": 5}}
+    Do tNumber.context.%Set("namespace", tNamespace, "string")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Turn).ContextViolation(tNumber, ..#LIMITS), ##class(OcuPilot.Api.Error).#TURNCONTEXTINVALID, "a route that is not a string is refused")
+    Do $$$AssertStatusOK(##class(OcuPilot.Api.Turn).BoundedContext(tHome.context, 0, 200, ..#LIMITS, .tJson), "Home's payload builds")
+    Do $$$AssertTrue(tJson '= "", "and is not empty")
+    If tJson = "" Quit
+    Set tPayload = ##class(%DynamicObject).%FromJSON(tJson)
+    Do $$$AssertEquals(tPayload.screen _ "|" _ tPayload.route, "shell.home|", "Home's identity")
+    Do $$$AssertEquals(tPayload.tools.%ToJSON(), "[]", "naming no tool")
+    Do $$$AssertEquals(tPayload.rowsSent, 0, "sending no row")
+    Do $$$AssertEquals(tPayload.%GetTypeOf("readOnly"), "boolean", "and carrying readOnly as a boolean")
 }
 
 /// <p>Both members ride the rows branch and the identity-only branch, with <code>readOnly</code> a

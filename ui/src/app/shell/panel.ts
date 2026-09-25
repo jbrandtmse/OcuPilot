@@ -21,7 +21,7 @@ import {
 } from '../core/agent-status';
 import { AUDITING_FOCUS_ENABLE } from '../areas/security/auditing-config.page';
 import { decodeEntityId } from '../core/entity-id';
-import { classifyFault } from '../core/fault';
+import { classifyFault, isBannerFault } from '../core/fault';
 import {
   HOME_AREA_KEY,
   NavigationService,
@@ -63,7 +63,7 @@ import {
   turnErrorBanner,
 } from '../core/turn';
 import { isApplePlatform } from './command-box';
-import { ContextChip } from './context-chip';
+import { CONTEXT_CHIP_OFF_ID, ContextChip } from './context-chip';
 import { EXAMPLE_PROPOSAL } from './example-proposal';
 import { TranscriptFollow } from './panel-follow';
 import { PanelResizeHandle } from './panel-resize-handle';
@@ -314,6 +314,16 @@ interface PanelTurnView {
       <div class="ocu-panel-chip-slot">
         @if (contextChipVisible) {
           <app-context-chip [killSwitch]="killSwitch" />
+          <button
+            type="button"
+            class="ocu-button-text ocu-panel-explain"
+            data-slot="explain"
+            [attr.aria-disabled]="explainAriaDisabled"
+            [attr.aria-describedby]="explainDescribedBy"
+            (click)="onExplain()"
+          >
+            {{ STRINGS.agentExplainScreenAction }}
+          </button>
         }
       </div>
 
@@ -808,10 +818,10 @@ export class Panel {
    * DW-1054). A 409 is the lock banner's and never reaches here.
    *
    * It is the envelope's own written `reason` wherever the instance sent one -- the server writes
-   * every refusal sentence once (AD-39) and the client publishes none of that copy. Only an answer
-   * carrying no envelope at all (a status 0, a body that is not one) falls back, to the
-   * connectivity sentence the shell already shows for that class of failure, chosen by
-   * `classifyFault` so the two surfaces cannot disagree about which failure it was.
+   * every refusal sentence once (AD-39) and the client publishes none of that copy. An answer
+   * carrying no envelope that `classifyFault` reads as a connectivity-banner fault (a status 0, a
+   * 5xx) raises no banner here, since the shell's connectivity banner already raises that one
+   * alert; any other answer with no envelope falls back to the server-fault sentence.
    */
   protected get sendErrorText(): string | null {
     this.generation();
@@ -822,7 +832,8 @@ export class Panel {
       { kind: 'error', status: refusal.status, code: refusal.code, reason: null, detail: null },
       TURN_PATH
     );
-    return fault?.kind === 'unreachable' ? STRINGS.connectivityBannerUnreachable : STRINGS.connectivityServerFault;
+    if (isBannerFault(fault)) return null;
+    return STRINGS.connectivityServerFault;
   }
 
   protected get sendLabel(): string {
@@ -1562,6 +1573,22 @@ export class Panel {
     );
   }
 
+  /**
+   * "Explain this screen" is unavailable while the composer is, while a turn runs, and while
+   * screen context is not shared, since the sentence would then reach the model with no screen.
+   */
+  protected get explainAriaDisabled(): string | null {
+    return this.composerUnavailable || this.busy || !this.agentContext.share() ? 'true' : null;
+  }
+
+  /** The topmost reason Explain is unavailable: the kill switch, a running turn, then sharing off. */
+  protected get explainDescribedBy(): string | null {
+    if (this.killSwitch) return KILL_SWITCH_ID;
+    if (this.busy) return BUSY_REASON_ID;
+    if (!this.agentContext.share()) return CONTEXT_CHIP_OFF_ID;
+    return null;
+  }
+
   protected get secretWarningVisible(): boolean {
     return this.secretWarningVisibleSignal();
   }
@@ -1635,17 +1662,35 @@ export class Panel {
       return;
     }
     this.secretWarningVisibleSignal.set(false);
-    const outcome = await this.turn.send(text, this.assembleContext());
-    if (outcome === 'sent') {
-      // EXPERIENCE.md's cancel step: sending a message cancels every live proposal, which is what
-      // the card's own guard caption warns about. The instance closed them as it accepted the
-      // turn; this draws the same transition without waiting for a poll. Recorded only on an
-      // accepted send, because a refused one cancelled nothing (DW-1231).
-      this.cancelLiveCards('canceled-by-message');
+    if (await this.sendWithContext(text)) {
       this.panel.setDraft('');
       this.acknowledgedSecretText.set(null);
-      this.followNewest();
     }
+  }
+
+  /**
+   * "Explain this screen": the fixed sentence, sent as the user's message with this screen's
+   * context through the Send path's own call, leaving the draft as it is (AD-11 rule 1). A click
+   * while it is `aria-disabled` sends nothing.
+   */
+  protected onExplain(): void {
+    if (this.explainAriaDisabled !== null) return;
+    void this.sendWithContext(STRINGS.agentExplainScreenAction);
+  }
+
+  /**
+   * Send `text` with the screen context assembled now, and answer whether the instance accepted it.
+   * On `'sent'` it cancels every live proposal and follows the newest entry: EXPERIENCE.md's cancel
+   * step, which the card's own guard caption warns about. The instance closed them as it accepted
+   * the turn; this draws the same transition without waiting for a poll. Recorded only on an
+   * accepted send, because a refused one cancelled nothing (DW-1231).
+   */
+  private async sendWithContext(text: string): Promise<boolean> {
+    const outcome = await this.turn.send(text, this.assembleContext());
+    if (outcome !== 'sent') return false;
+    this.cancelLiveCards('canceled-by-message');
+    this.followNewest();
+    return true;
   }
 
   /**

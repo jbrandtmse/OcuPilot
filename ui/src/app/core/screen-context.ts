@@ -120,15 +120,13 @@ export function contextRowsSent(inputs: ScreenContextViewInputs): number {
 
 /**
  * The `context` a turn sent right now would carry, or `null` when none would be (Boundaries &
- * Constraints): no descriptor resolved, no resolved namespace, sharing off, or a descriptor whose
- * `route` is `''` (Home). `Api.Turn.ContextViolation` refuses an empty `route` outright (422
- * `TURN.CONTEXT.INVALID`), so Home -- the one built screen whose declared route is the empty
- * string -- must never reach that check at all rather than fail it on every turn. `entity` is
- * present only when non-empty; `view` is present only when `computeView` builds one.
+ * Constraints): no descriptor resolved, no resolved namespace, or sharing off. Home's route is
+ * `''`, which the instance resolves to Home like any other route, so Home posts its identity.
+ * `entity` is present only when non-empty; `view` is present only when `computeView` builds one.
  */
 export function assembleScreenContext(inputs: ScreenContextInputs): ScreenContextPayload | null {
   if (!inputs.share) return null;
-  if (inputs.descriptor === null || inputs.descriptor.route === '') return null;
+  if (inputs.descriptor === null) return null;
   if (inputs.namespace === '') return null;
   const view = computeView(inputs);
   return {

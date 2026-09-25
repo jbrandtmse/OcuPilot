@@ -836,11 +836,12 @@ describe('Story 4.5: Send/Stop, the lock banner, Enter vs Shift+Enter, cards, an
     expect(host.querySelector('.ocu-panel-message-user')?.textContent?.trim()).toBe('too long');
   });
 
-  it('Story 4.8: a Send that never reached the instance falls back to the connectivity sentence, since there is no envelope to quote', async () => {
+  /** Mount, type a draft and press Send against a `POST /turn` that answers `refusal`. */
+  async function sendRefused(refusal: unknown) {
     const { schedule } = fakeTurnSchedule();
     const api = fakeTurnApi({
       [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
-      [TURN_PATH]: [{ kind: 'error', status: 0, code: null, reason: null, detail: null }],
+      [TURN_PATH]: [refusal],
     });
     const turn = stubTurnStore({ api: api as never, schedule });
     const { host, fixture } = await mount({ rows: [{ enabled: true }], turn });
@@ -848,33 +849,32 @@ describe('Story 4.5: Send/Stop, the lock banner, Enter vs Shift+Enter, cards, an
     (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
     await turnSettle();
     fixture.detectChanges();
+    return host;
+  }
 
-    const banner = host.querySelector('[data-slot="send-error"]') as HTMLElement;
-    expect(banner).not.toBeNull();
-    expect(banner.textContent).toContain(STRINGS.connectivityBannerUnreachable);
+  // DW-1112: a Send with no envelope that the shell's connectivity banner already announces raises
+  // no second banner in the panel.
+  //
+  // Mutation (Rule 19): drop the `isBannerFault` arm from `sendErrorText` -> both legs go red.
+  it('Story 4.8: a Send that never reached the instance raises no panel banner, and the draft is kept', async () => {
+    const host = await sendRefused({ kind: 'error', status: 0, code: null, reason: null, detail: null });
+    expect(host.querySelector('[data-slot="send-error"]')).toBeNull();
+    expect((host.querySelector('.ocu-panel-composer') as HTMLTextAreaElement).value).toBe('anything');
   });
 
-  // The other arm of the same fallback: an answer that reached the instance but carried no
-  // envelope to quote -- a Web Gateway error page, say -- reads as a server fault, not as an
-  // unreachable instance. Without this leg only the `unreachable` arm is ever executed.
-  //
-  // Mutation (Rule 19): answer `STRINGS.connectivityBannerUnreachable` from `sendErrorText`'s
-  // false arm -> this goes red while the status-0 case above stays green.
-  it('Story 4.8: a refusal that carried no envelope but did reach the instance reads as a server fault', async () => {
-    const { schedule } = fakeTurnSchedule();
-    const api = fakeTurnApi({
-      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
-      [TURN_PATH]: [{ kind: 'error', status: 502, code: null, reason: null, detail: null }],
-    });
-    const turn = stubTurnStore({ api: api as never, schedule });
-    const { host, fixture } = await mount({ rows: [{ enabled: true }], turn });
-    await typeDraft(host, fixture, 'anything');
-    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
-    await turnSettle();
-    fixture.detectChanges();
+  it('Story 4.8: a 5xx with no envelope raises no panel banner either', async () => {
+    const host = await sendRefused({ kind: 'error', status: 502, code: null, reason: null, detail: null });
+    expect(host.querySelector('[data-slot="send-error"]')).toBeNull();
+  });
 
+  // A 4xx with no envelope is not a connectivity-banner fault, so the panel keeps its fallback.
+  //
+  // Mutation (Rule 19): answer `null` for every refusal with no reason -> this goes red.
+  it('Story 4.8: a 4xx with no envelope keeps the server-fault fallback', async () => {
+    const host = await sendRefused({ kind: 'error', status: 403, code: null, reason: null, detail: null });
     const banner = host.querySelector('[data-slot="send-error"]') as HTMLElement;
     expect(banner).not.toBeNull();
+    expect(banner.getAttribute('role')).toBe('alert');
     expect(banner.textContent).toContain(STRINGS.connectivityServerFault);
   });
 
@@ -3988,5 +3988,153 @@ describe('Story 11.7: the streamed reply', () => {
     await nextPoll(scheduled, fixture);
     expect(host.querySelector('.ocu-panel-message-streamed')?.textContent).toContain('a good deal more');
     expect(geometry.scrollTop).toBe(1400);
+  });
+});
+
+// --- Story 11.1: "Explain this screen" -----------------------------------------------------------
+
+describe('Story 11.1: Explain this screen', () => {
+  const PROCESSES_URL = '/os-management/processes';
+
+  /** The panel on `url` with sharing `share`, a transport that accepts one turn, and the turn store's schedule. */
+  async function mountExplain(options: { url: string; share?: boolean; restraint?: Partial<Restraint>; progress?: unknown[] }) {
+    const agentContext = stubAgentContext({ share: options.share ?? true, contextRowCap: 200 });
+    await agentContext.load();
+    const { schedule, scheduled } = fakeTurnSchedule();
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [
+        { kind: 'ok', status: 202, body: { turnId: 'turn-1' } },
+        { kind: 'ok', status: 202, body: { turnId: 'turn-2' } },
+      ],
+      ...(options.progress !== undefined ? { [turnProgressPath('turn-1')]: options.progress } : {}),
+    });
+    const turn = stubTurnStore({ api: api as never, schedule });
+    const mounted = await mount({
+      rows: [{ enabled: true }],
+      agentContext,
+      turn,
+      url: options.url,
+      restraint: options.restraint ?? {},
+    });
+    return { ...mounted, api, scheduled };
+  }
+
+  const explainButton = (host: HTMLElement) => host.querySelector('[data-slot="explain"]') as HTMLButtonElement | null;
+
+  const turnPosts = (api: ReturnType<typeof fakeTurnApi>) => api.calls.filter((call) => call.path === TURN_PATH);
+
+  async function clickExplain(host: HTMLElement, fixture: ComponentFixture<Panel>): Promise<void> {
+    (explainButton(host) as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+  }
+
+  // Mutation (Rule 19): send `panel.draft()` from `onExplain` -> this goes red on the message.
+  it('List screen: one click sends the fixed sentence with the screen\'s context, and the draft is left as it was', async () => {
+    const { host, fixture, api } = await mountExplain({ url: PROCESSES_URL });
+    await typeDraft(host, fixture, 'keep me');
+    const button = explainButton(host) as HTMLButtonElement;
+    expect(button.textContent?.trim()).toBe(STRINGS.agentExplainScreenAction);
+    expect(button.classList.contains('ocu-button-text')).toBe(true);
+    expect(button.getAttribute('aria-disabled')).toBeNull();
+
+    await clickExplain(host, fixture);
+    const posts = turnPosts(api);
+    expect(posts).toHaveLength(1);
+    const body = JSON.parse(posts[0].body ?? '{}') as { message: string; context: { route: string; namespace: string } };
+    expect(body.message).toBe(STRINGS.agentExplainScreenAction);
+    expect(body.context.route).toBe('os-management/processes');
+    expect(body.context.namespace).toBe('HSCUSTOM');
+    expect(host.querySelector('.ocu-panel-message-user')?.textContent?.trim()).toBe(STRINGS.agentExplainScreenAction);
+    expect((host.querySelector('.ocu-panel-composer') as HTMLTextAreaElement).value).toBe('keep me');
+  });
+
+  // Mutation (Rule 19): gate the button on `screen.read !== null` -> this and the form-page leg go red.
+  it('Home: the button shows, and the turn posts Home\'s route and namespace with no view', async () => {
+    const { host, fixture, api } = await mountExplain({ url: '/?ns=HSCUSTOM' });
+    expect(explainButton(host)).not.toBeNull();
+    await clickExplain(host, fixture);
+    const body = JSON.parse(turnPosts(api)[0]?.body ?? '{}') as { context?: unknown };
+    expect(body.context).toEqual({ route: '', namespace: 'HSCUSTOM' });
+  });
+
+  it('Form page: the button shows, and the turn posts identity only', async () => {
+    const { host, fixture, api } = await mountExplain({ url: '/agent/definitions/edit' });
+    expect(explainButton(host)).not.toBeNull();
+    await clickExplain(host, fixture);
+    const body = JSON.parse(turnPosts(api)[0]?.body ?? '{}') as { context?: { route: string; view?: unknown } };
+    expect(body.context?.route).toBe('agent/definitions/edit');
+    expect(body.context !== undefined && 'view' in body.context).toBe(false);
+  });
+
+  it('No screen: a URL naming no built screen shows no button, as it shows no chip', async () => {
+    const { host } = await mountExplain({ url: '/no/such/screen' });
+    expect(host.querySelector('.ocu-context-chip')).toBeNull();
+    expect(explainButton(host)).toBeNull();
+  });
+
+  // Mutation (Rule 19): drop the sharing-off arm from `explainAriaDisabled` -> this goes red.
+  it('Sharing off: aria-disabled, described by the chip\'s sharing-off sentence, and a click posts nothing', async () => {
+    const { host, fixture, api } = await mountExplain({ url: PROCESSES_URL, share: false });
+    const button = explainButton(host) as HTMLButtonElement;
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    const describedBy = button.getAttribute('aria-describedby') ?? '';
+    expect(host.querySelector(`#${describedBy}`)?.textContent?.trim()).toBe(STRINGS.contextChipSharingOff);
+    await clickExplain(host, fixture);
+    expect(turnPosts(api)).toHaveLength(0);
+  });
+
+  it('Busy: while a turn runs the button is aria-disabled, described by the busy reason, and a click posts nothing', async () => {
+    const { host, fixture, api } = await mountExplain({ url: PROCESSES_URL });
+    await clickExplain(host, fixture);
+    expect(turnPosts(api)).toHaveLength(1);
+    const button = explainButton(host) as HTMLButtonElement;
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    const describedBy = button.getAttribute('aria-describedby') ?? '';
+    expect(host.querySelector(`#${describedBy}`)?.textContent?.trim()).toBe(STRINGS.agentComposerLockedReason);
+    await clickExplain(host, fixture);
+    expect(turnPosts(api)).toHaveLength(1);
+    // The store refuses a second send on its own; only the panel's guard keeps the lock banner away.
+    expect(host.querySelector('#ocu-panel-lock')).toBeNull();
+  });
+
+  it('Kill switch: aria-disabled, described by the kill-switch banner, and a click posts nothing', async () => {
+    const { host, fixture, api } = await mountExplain({
+      url: PROCESSES_URL,
+      restraint: { killSwitch: true, killSwitchAudience: 'everyone', killSwitchReason: '' },
+    });
+    const button = explainButton(host) as HTMLButtonElement;
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    const describedBy = button.getAttribute('aria-describedby') ?? '';
+    expect(host.querySelector(`#${describedBy}`)?.getAttribute('role')).toBe('alert');
+    expect(describedBy).toBe(host.querySelector('.ocu-banner-restrained')?.id);
+    await clickExplain(host, fixture);
+    expect(turnPosts(api)).toHaveLength(0);
+  });
+
+  it('Kill switch with sharing off: the kill switch is the reason named, as the topmost one', async () => {
+    const { host } = await mountExplain({
+      url: PROCESSES_URL,
+      share: false,
+      restraint: { killSwitch: true, killSwitchAudience: 'everyone', killSwitchReason: '' },
+    });
+    const button = explainButton(host) as HTMLButtonElement;
+    expect(button.getAttribute('aria-describedby')).toBe(host.querySelector('.ocu-banner-restrained')?.id);
+  });
+
+  it('Live proposal: the explain turn cancels a live card by the user\'s message', async () => {
+    const { host, fixture, scheduled } = await mountExplain({ url: PROCESSES_URL, progress: [progressWith([wireProposal()])] });
+    await typeDraft(host, fixture, 'enable the demo application');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    scheduled.shift()?.run();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(host.querySelectorAll('.ocu-proposal-card-confirm')).toHaveLength(1);
+
+    await clickExplain(host, fixture);
+    const statuses = [...host.querySelectorAll('.ocu-proposal-card-status')].map((node) => (node.textContent ?? '').trim());
+    expect(statuses).toEqual([STRINGS.proposalStatusCanceledByMessage]);
   });
 });

@@ -13,6 +13,8 @@ import { dirname, join } from 'node:path';
 //   `view` (with no rows key at all server-side) would be posted for a secret-typed screen.
 // - slice AFTER narrowing rather than before -> the cap-below-view case's `rowsAvailable` goes red.
 // - keep requiring a declared read in `computeView` -> the no-read case goes red (Story 11.9).
+// - restore the `route === ''` exclusion in `assembleScreenContext` -> the Home case goes red
+//   (Story 11.1).
 // - return `false` for a `sk-` prefix -> the prefix cases redden; return `true` for
 //   `%Api.Mgmnt.v2` -> the non-trigger cases redden.
 
@@ -90,8 +92,9 @@ test('no resolved descriptor posts no context at all', () => {
   assert.equal(assembleScreenContext(baseInputs({ descriptor: null })), null);
 });
 
-test('a descriptor whose route is the empty string (Home) posts no context at all -- the server refuses an empty route outright', () => {
-  assert.equal(assembleScreenContext(baseInputs({ descriptor: screen({ route: '' }) })), null);
+test('Home, whose route is the empty string, posts its route and namespace and no view', () => {
+  const home = screen({ route: '', read: null, context: { fields: [], secretFields: [] } });
+  assert.deepEqual(assembleScreenContext(baseInputs({ descriptor: home, rows: [] })), { route: '', namespace: 'HSCUSTOM' });
 });
 
 test('an unresolved namespace posts no context at all', () => {
