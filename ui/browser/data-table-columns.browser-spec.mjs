@@ -100,15 +100,15 @@ after(async () => {
 });
 
 /**
- * Classic 15px scrollbars. Injected here, they reproduce CI's Linux failure numbers exactly. Under this launch they take their
- * `scrollbar-gutter: stable` space and are never painted: CI's geometry, which macOS's zero-width
- * overlay scrollbars never produce.
+ * Classic 15px scrollbars, which take the viewport's `scrollbar-gutter: stable` space on any OS.
+ * Under the suite's launch (Puppeteer's default `--hide-scrollbars`) nothing is painted in that
+ * gutter; a browser launched without that flag paints them there, as Windows and Linux users see.
  */
 const CLASSIC_SCROLLBARS = '::-webkit-scrollbar { width: 15px; height: 15px; }';
 
-async function openHarness(viewport = WIDE, { classicScrollbars = false } = {}) {
+async function openHarness(viewport = WIDE, { classicScrollbars = false, owner = browser } = {}) {
   await resetRememberedState();
-  const context = await browser.createBrowserContext();
+  const context = await owner.createBrowserContext();
   const page = await context.newPage();
   await page.setViewport(viewport);
   await page.goto(`${origin}${PAGE}`, { waitUntil: 'domcontentloaded' });
@@ -318,16 +318,16 @@ test('Reveal: Right into a column past the right edge scrolls it fully into view
 });
 
 /**
- * An element's place against the table's frame, run in the page on the element. The frame is the
- * viewport's box inside its borders, gutter included. A `scrollbar-gutter: stable` gutter with no
- * scrollbar painted in it still shows and scrolls content, but `clientWidth` leaves it out. That
- * happens with a list that fits, and under this launch, which hides scrollbars (Puppeteer's
- * default). `inside` also needs a point in each edge column of the element to hit-test to it, so
- * content the frame clips reads as outside. `within` is the geometric half alone. `gutter` is the
- * frame's width minus `clientWidth`.
+ * An element's place against its table's frame, run in the page on the element. The frame is the
+ * viewport's box inside its borders, gutter included: under a launch that hides scrollbars, the
+ * `scrollbar-gutter: stable` gutter still shows and scrolls content, but `clientWidth` leaves it
+ * out. `inside` also needs a point in each edge column of the element to hit-test to it, so content
+ * the frame clips, or a painted scrollbar covers, reads as outside. `within` is the geometric half
+ * alone. `gutter` is the frame's width minus `clientWidth`; `painted` is whether a point in the
+ * gutter at the element's height hit-tests to the viewport itself, which is a drawn scrollbar.
  */
 function placeInFrame(element) {
-  const viewport = document.querySelector('cdk-virtual-scroll-viewport');
+  const viewport = element.closest('cdk-virtual-scroll-viewport');
   const style = getComputedStyle(viewport);
   const view = viewport.getBoundingClientRect();
   const left = view.left + parseFloat(style.borderLeftWidth);
@@ -340,6 +340,7 @@ function placeInFrame(element) {
     return hit !== null && element.contains(hit);
   };
   const within = box.left >= left - 0.5 && box.right <= right + 0.5;
+  const gutter = right - left - viewport.clientWidth;
   return {
     inside: within && shows(box.left + 1) && shows(box.right - 1),
     within,
@@ -349,7 +350,8 @@ function placeInFrame(element) {
     box: [box.left, box.right],
     frame: [left, right],
     scrolled: viewport.scrollLeft,
-    gutter: right - left - viewport.clientWidth,
+    gutter,
+    painted: gutter > 0 && document.elementFromPoint(right - gutter / 2, y) === viewport,
   };
 }
 
@@ -358,22 +360,30 @@ function triggerPlace(page) {
   return page.$eval('[role="row"][aria-rowindex="2"] .ocu-data-table-trigger', placeInFrame);
 }
 
+// It runs with the platform's scrollbars, with classic ones in an empty gutter (CI's Linux
+// geometry, on macOS too), and with classic ones painted, which is what a Windows or Linux user
+// sees. The classic runs first assert their gutter, and the painted run that it draws a scrollbar.
 // Mutation (Rule 19): `.ocu-data-table-viewport` given `overflow-x: hidden` -> the wheel leaves the
 // trigger past the frame, red; `revealActiveCell` returning early for the trigger column -> the
-// keyboard half leaves it past the frame, red; the viewport given `margin-right: -24px`, so the
-// frame clips its right edge -> red in both scrollbar conditions.
-// It runs once with the platform's scrollbars and once with classic ones, so macOS covers CI's
-// gutter geometry too; the classic run first asserts its gutter exists.
-// Mutation (Rule 19): the injected style dropped from the classic run -> its gutter assertion red.
+// keyboard half leaves it past the frame, red; the viewport given `margin-right: -24px`, so an
+// ancestor clips its right edge -> red through the edge hit-test; `revealActiveCell` revealing to
+// the frame's edge instead of `clientWidth` -> the painted run red, the trigger under its scrollbar.
+// Mutation (Rule 19): the injected style dropped -> the classic runs' gutter assertion red on
+// macOS; `--hide-scrollbars` kept for the painted run -> its `painted` assertion red.
 // The two "past the frame" assertions hold only while the trigger column scrolls with the rest.
 // Story 15.9 pins that column (DW-1648) and rewrites them; the reach assertions stay.
-for (const scrollbars of ['platform', 'classic']) {
+for (const scrollbars of ['platform', 'classic', 'painted']) {
   test(`Trigger reach (${scrollbars} scrollbars): at 480 wide the row trigger starts past the frame, and the frame's own sideways scroll or Right into its column brings it inside, where it opens the row menu`, async () => {
-    const { context, page } = await openHarness(NARROW, { classicScrollbars: scrollbars === 'classic' });
+    const painted =
+      scrollbars === 'painted' ? await puppeteer.launch({ ...launchOptions(config), ignoreDefaultArgs: ['--hide-scrollbars'] }) : null;
+    let context = null;
     try {
+      let page;
+      ({ context, page } = await openHarness(NARROW, { classicScrollbars: scrollbars !== 'platform', owner: painted ?? browser }));
       const start = await triggerPlace(page);
-      if (scrollbars === 'classic') {
+      if (scrollbars !== 'platform') {
         assert.ok(start.gutter >= 14, `the classic run has a classic gutter: ${JSON.stringify(start)}`);
+        assert.equal(start.painted, scrollbars === 'painted', `the scrollbar is painted only in the painted run: ${JSON.stringify(start)}`);
       }
       assert.ok(!start.within, `the trigger starts past the frame: ${JSON.stringify(start)}`);
 
@@ -430,7 +440,8 @@ for (const scrollbars of ['platform', 'classic']) {
       await press(page, 'Enter');
       await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: 2000 });
     } finally {
-      await context.close();
+      await context?.close();
+      await painted?.close();
     }
   });
 }

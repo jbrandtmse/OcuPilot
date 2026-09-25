@@ -221,6 +221,20 @@ Rejected (rework 1 re-review):
 - low: `triggerPlace` dereferences without a null check (the harness always renders row 1); `reduced-editors` and `tasks` never reached the click (residue, disclosed; CI's fresh container runs them); the cycle log's count of 24 specs (lead-owned); the Auto Run Result heading names every trigger clicker (the fix would edit the spec, and the triage above covers them).
 - false: the harness is not the real screens (it mounts the same `app-data-table`, and reach is component behavior); the wheel half never checks `scrollLeft` (`inside` flips only through the frame's scroll); the keyboard half does no hit-test (reveal is asserted by `inside`); the final tree is unverified (`npm test` loads no `ui/browser` file, and this pass re-ran `client-lint`, `browser-reset` and `data-table-columns` 15/15); `status: done` against the tracker's `review` (the build-auto contract writes `done`).
 
+Code review 2026-09-25, rework 2 re-review (four layers, full-opus, diff `54df59d3..HEAD`). 22 findings: high 0, medium 1, low 16, false 5 (grouped into 12 entries). The `[CI]` item is judged honest: the case measured the wrong box, and the product does not clip. A code-review probe with scrollbars painted (`--hide-scrollbars` removed, 15px classic style) scrolled to 485 with the trigger at `[408,436]`, inside the client edge at 448, and a point over the painted scrollbar hit-tested to the viewport.
+
+- [x] [Review][Patch] No run painted a scrollbar, so a reveal that parks the trigger under a painted classic scrollbar stayed green in both runs and in Reveal on macOS; the product claim rested on an unrecorded probe (medium) — third run `painted`, a browser launched without `--hide-scrollbars`, asserting that its scrollbar is drawn; the reveal-to-frame-edge mutation reddens it alone [ui/browser/data-table-columns.browser-spec.mjs:375]
+- [x] [Review][Patch] `placeInFrame` measured against the document's first viewport, not the element's own (low) — `element.closest` [ui/browser/data-table-columns.browser-spec.mjs:330]
+- [x] [Review][Patch] The doc comments claimed an empty gutter shows content "with a list that fits", recorded history, and ran past 100 columns; the mutation block called an ancestor "the frame" and was split (low) — comments rewritten [ui/browser/data-table-columns.browser-spec.mjs:103]
+- [x] [Review][Patch] The spec stated CI's 15px gutter as fact, quoted one run's box for both runs, called the new `within` "as in rework 1", and its residual risk no longer holds (low) — corrected at each origin in this file
+- [x] [Review][Patch] The gutter-assertion mutation line did not say it reddens only on macOS (low) — line amended under Verification
+
+Rejected (rework 2 re-review):
+
+- by-design: on CI the platform and classic runs share one geometry (the classic run exists to give macOS CI's geometry).
+- low: the left-edge hit-test has no mutation of its own (Rule 19 asks one per AC); the wheel wait checks stillness, not the end (timing gate only, reach is asserted by `inside`); `ocuLastScrollLeft`/`ocuStillFrames` page globals (one fresh page per run); a missing `aria-activedescendant` fails as a `TypeError`, not a named assertion (still red); reliance on Puppeteer's default `--hide-scrollbars` (the classic run now asserts `painted: false`, so a changed default reddens by name).
+- false: `review_loop_iteration` and "patched no high" wording (the build-auto contract's fields).
+
 ## Spec Change Log
 
 - 2026-09-25 rework 2 (runner, trigger=ci): re-opened for the red `browser` job of run 36106266031; item under Tasks › Rework 2.
@@ -281,12 +295,12 @@ Rejected (rework 1 re-review):
 - verdicts: 11 findings — high 0, medium 0, low 8, false 3, maybe-false 0
 - findings:
   - `[low]` `[patch]` The classic run never asserts that its injected gutter exists, so a later `scrollbar-width` rule could turn it into a copy of the platform run — the classic run now asserts `gutter >= 14` first; dropping the injected style reddens it (`gutter: 0`).
-  - `[low]` `[patch]` The two "past the frame" assertions got weaker once `inside` also needed edge hit-tests — they now assert the geometric `within` alone, as in rework 1.
-  - `[low]` `[reject]` No run paints a classic scrollbar, so "no clip under a painted scrollbar" is unobserved — the implement probe without `--hide-scrollbars` (200 rows) saw the scroll range reach 485 and the last column end at the client edge (448); a test would need a second browser launch the suite never uses.
-  - `[low]` `[reject]` (intent alignment) Same root cause as the row above: the painted case, the product question, is not exercised — same evidence.
+  - `[low]` `[patch]` The two "past the frame" assertions got weaker once `inside` also needed edge hit-tests — they now assert the geometric `within` alone, against the gutter-inclusive frame.
+  - `[low]` `[patch, code review]` No run paints a classic scrollbar, so "no clip under a painted scrollbar" is unobserved — code review added the painted run.
+  - `[low]` `[patch, code review]` (intent alignment) Same root cause as the row above: the painted case, the product question, is not exercised — same patch.
   - `[low]` `[reject]` (intent alignment) The keyboard half's frame includes the gutter while `revealActiveCell` reveals to `clientWidth` — under this launch the strict bound is unreachable (maximum scroll 470 leaves the trigger's right edge at 451, past `clientWidth`'s 448), and the edge hit-tests still require both edges to show.
   - `[false]` `[reject]` (intent alignment) The wheel wait proves less — the wait is only a timing gate; reach is asserted by `wheeled.inside`, and the `overflow-x: hidden` mutation still reddens it (`scrolled: 0`).
-  - `[low]` `[reject]` (intent alignment) The `margin-right: -24px` mutation proves clipping by an ancestor, not by a scrollbar — same root cause as the painted-scrollbar rows.
+  - `[low]` `[patch, code review]` (intent alignment) The `margin-right: -24px` mutation proves clipping by an ancestor, not by a scrollbar — the painted run's reveal mutation proves the scrollbar case.
   - `[low]` `[patch]` (intent alignment) "15px, the width CI's Linux Chrome reserves" states an inference as fact — the comment now says the injected 15px reproduces CI's failure numbers exactly.
   - `[low]` `[patch]` (intent alignment) The DW-1648 comment still reads "if DW-1648 is decided" — it now says Story 15.9 pins the column and rewrites the two assertions.
   - `[false]` `[reject]` (intent alignment) The CI-reported "Trigger reach" is now two tests — a rename, not a defect; both names start with "Trigger reach".
@@ -407,8 +421,9 @@ Results (2026-09-25, `ocupilot-ci`; each reverted, tree byte-identical by `shasu
 - mutation: the ancestor-scroll listener removed, or `afterActiveCellMoved` removed from the vertical move keys → harness Dismissal red on "ancestor scroll" or "vertical key" (code review).
 - mutation (rework 1): both settle waits in `clickRowCentre` disabled → `resources-editor.browser-spec.mjs:339` red, with CI's signature (`TimeoutError` on `[role="row"][aria-selected="true"] .ocu-data-table-trigger`). Either wait disabled alone → 339 green: the two are redundant. `roles-editor:425` stayed green under the mutation (timing; CI confirms it).
 - mutation (rework 1): `.ocu-data-table-viewport` given `overflow-x: hidden` → harness "Trigger reach" red (the wheel leaves the trigger outside the frame; re-observed after code review's scroll-end wait, with `!important`, `scrolled: 0`). `revealActiveCell` returning early on the trigger column → "Trigger reach" red (keyboard half). Harness rebuilt before each read.
-- mutation (rework 2): "Trigger reach" now runs twice, with the platform's scrollbars and with injected classic 15px ones. Each rework-1 mutation was re-observed red in both runs: `overflow-x: hidden` on the viewport (`scrolled: 0`), and `revealActiveCell` returning early on the trigger column (keyboard half). The viewport given `margin-right: -24px`, so the frame clips it, is red in both runs through the edge hit-test alone: the box `[447,475]` is inside the geometric frame and the center hit-tests. Before the fix, the classic run was red locally with CI's exact signature (`box [423,451]`, `frame [17,448]`, `scrolled 470`). Harness rebuilt before each read.
-- mutation (rework 2, review): the injected classic style dropped from the classic run → "Trigger reach (classic scrollbars)" red on its gutter assertion (`gutter: 0`); platform run green. Reverted, `shasum` identical.
+- mutation (rework 2): "Trigger reach" now runs twice, with the platform's scrollbars and with injected classic 15px ones. Each rework-1 mutation was re-observed red in both runs: `overflow-x: hidden` on the viewport (`scrolled: 0`), and `revealActiveCell` returning early on the trigger column (keyboard half). The viewport given `margin-right: -24px`, so an ancestor clips it, is red in both runs through the edge hit-test alone: the box sits inside the geometric frame and its center hit-tests. Before the fix, the classic run was red locally with CI's exact signature (`box [423,451]`, `frame [17,448]`, `scrolled 470`). Harness rebuilt before each read.
+- mutation (rework 2, review): the injected classic style dropped from the classic run → "Trigger reach (classic scrollbars)" red on its gutter assertion (`gutter: 0`) on macOS; platform run green. On CI's Linux Chrome the platform scrollbar keeps a gutter (inference), so this mutation reddens only on macOS. Reverted, `shasum` identical.
+- mutation (rework 2, code review): `revealActiveCell` reveals to the frame's edge (`view.right - clientLeft`) instead of `clientWidth` → "Trigger reach (painted scrollbars)" red (`box [411,463]`, `painted: true`, the trigger cell under the scrollbar); the platform and classic runs and Reveal stayed green on macOS. `--hide-scrollbars` kept for the painted run → its `painted` assertion red. Harness rebuilt before each read; reverted, `shasum` identical.
 
 ## Auto Run Result
 
@@ -465,7 +480,7 @@ Blocking condition: none
 
 **Diff base** `54df59d3b7948ab415f3ed8f095fe63243863ea7`. Frontmatter `baseline_revision` is still the story's.
 
-**Root cause (test).** The case measured the frame with `clientWidth`. That leaves out the `scrollbar-gutter: stable` gutter, which under Puppeteer's default `--hide-scrollbars` launch is reserved (15px on CI's Linux Chrome) but never painted, and Chrome still draws and hit-tests content in it. The trigger was fully visible at maximum scroll (470), with its right edge 3px into the empty gutter. The scroll-end wait could never be met either. The product does not clip. In a probe with a painted classic scrollbar (flag removed, 200 rows), the scroll range reached 485 and the last column ended at the client edge.
+**Root cause (test).** The case measured the frame with `clientWidth`. That leaves out the `scrollbar-gutter: stable` gutter, which under Puppeteer's default `--hide-scrollbars` launch is reserved (15px on CI's Linux Chrome, inference) but never painted, and Chrome still draws and hit-tests content in it. The trigger was fully visible at maximum scroll (470), with its right edge 3px into the empty gutter. The scroll-end wait could never be met either. The product does not clip. In a probe with a painted classic scrollbar (flag removed, 200 rows), the scroll range reached 485 and the last column ended at the client edge.
 
 **Reproduction.** On macOS, `openHarness` injects `::-webkit-scrollbar { width: 15px; height: 15px; }` through `page.addStyleTag`. Before the fix this reproduced CI's exact failure: `box [423,451]`, `frame [17,448]`, `scrolled 470`.
 
@@ -487,4 +502,4 @@ Blocking condition: none
 - No product TS or CSS changed, so `a11y-structural-invariants` and `test:components` were not run.
 - Mutations under `## Verification` were each red and reverted.
 
-**Residual risks.** CI is the confirmation on Linux. A painted classic scrollbar is observed only by the implement probe, not by a test.
+**Residual risks.** CI is the confirmation on Linux. The painted-scrollbar run, added by code review, has run on macOS only.
