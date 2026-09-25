@@ -16,11 +16,16 @@
 /// it on a screen. It is resolved straight onto the property, written from the property onto the
 /// request's headers by <method>ApplyAuth</method>, and cleared on every exit including the
 /// throwing one. It is never interpolated into a URL, a reason, a status or a log line.</p>
-/// <p><b>Retry, and what is never retried.</b> A retry happens only when the provider answered a
+/// <p><b>Retry, and what is never retried.</b> A retry happens when the provider answered a
 /// status <class>OcuPilot.Kernel.Provider.Retry</class> declares retryable, only while attempts
 /// remain, and after the greater of the provider's honoured hint and the exponential backoff. A
 /// call that <b>raised</b>, and a call that <b>timed out</b>, are never retried at all: the
-/// request may already have been processed, so sending it again risks doing the work twice.</p>
+/// request may already have been processed, so sending it again risks doing the work twice.
+/// <b>One exception</b> (AD-42): a transport failure before any status line arrived -- an error
+/// status that is not a timeout, with no status read -- is retried once per call, on a new request
+/// object, inside the same attempt count, attempt deadline and delay budget. A model call changes
+/// nothing on the instance, so a connection that broke before the provider answered is safe to
+/// open again.</p>
 /// <p>Seams a subclass overrides: <method>ProviderName</method>, <method>CallMessages</method>,
 /// <method>ApplyAuth</method>, <method>IsApiKeyShapeValid</method> and <method>MapResponse</method>
 /// are the family contract, and
@@ -221,9 +226,12 @@ Method Invoke(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %St
 /// <var>pHttpStatus</var> on failure; never throws past its own caller, which is
 /// <method>Invoke</method>'s outer <code>Catch</code>.</p>
 /// <p><b>The exits, and which of them may try again.</b> A request whose body could not be built,
-/// a call that raised, and a call that timed out all leave immediately. A non-retryable status
-/// leaves immediately with the provider's own message in <code>detail.providerText</code> and its
-/// raw body in the log alone. Only a retryable status loops, and only while attempts remain.</p>
+/// a call that raised, a call that timed out, and a call whose connection broke after a status
+/// line arrived all leave immediately. A non-retryable status leaves immediately with the
+/// provider's own message in <code>detail.providerText</code> and its raw body in the log alone. A
+/// retryable status loops while attempts remain. A transport failure before any status line loops
+/// <b>once</b>, and only while an attempt remains and the attempt deadline has not passed; a second
+/// one, or one with no attempt left, ends the call <code>PROVIDER.TRANSPORT</code> (AD-42).</p>
 /// <p><b>Two budgets bound the loop beside the attempt count</b> (AD-42, AD-31).
 /// <parameter>OcuPilot.Kernel.Provider.Retry.RETRYBUDGETSECONDS</parameter> bounds the total time
 /// spent sleeping: each wait is cut to what is left of it, and a retryable status met with nothing
@@ -263,6 +271,7 @@ Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %
     Set tProviderText = ""
     Set tStartedAt = ..NowSeconds()
     Set tSpentDelay = 0
+    Set tTransportRetried = 0
     For tAttempt = 1:1:tMaxAttempts {
         If (tAttempt > 1) && ((..NowSeconds() - tStartedAt) >= ##class(OcuPilot.Kernel.Provider.Retry).#ATTEMPTBUDGETSECONDS) {
             Set tCode = ##class(OcuPilot.Api.Error).#PROVIDERTIMEOUT
@@ -298,7 +307,21 @@ Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %
             Quit
         }
         If $$$ISERR(tIssueSC) {
-            Set tCode = $Select($System.Status.Equals(tIssueSC, $$$ERRORCODE($$$CSPTimeout)): ##class(OcuPilot.Api.Error).#PROVIDERTIMEOUT, 1: ##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT)
+            Set tTimedOut = $System.Status.Equals(tIssueSC, $$$ERRORCODE($$$CSPTimeout))
+            Set tCode = $Select(tTimedOut: ##class(OcuPilot.Api.Error).#PROVIDERTIMEOUT, 1: ##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT)
+            ; AD-42's one exception: the connection broke before a status line arrived, so the
+            ; provider never answered this request. It is tried once more, on the new request the
+            ; next pass builds, within the attempt count, the deadline and the delay budget.
+            If 'tTimedOut && (+tStatus = 0) && 'tTransportRetried && (tAttempt < tMaxAttempts) && ((..NowSeconds() - tStartedAt) < ##class(OcuPilot.Kernel.Provider.Retry).#ATTEMPTBUDGETSECONDS) {
+                Set tTransportRetried = 1
+                Do ..LogRaw("the provider connection broke before a status line; trying once more on a new connection", tIssueSC, tCode)
+                Set tRemainingDelay = ##class(OcuPilot.Kernel.Provider.Retry).#RETRYBUDGETSECONDS - tSpentDelay
+                If tRemainingDelay < 0 Set tRemainingDelay = 0
+                Set tDelay = ##class(OcuPilot.Kernel.Provider.Retry).DelaySec(tAttempt, "", tRemainingDelay)
+                Set tSpentDelay = tSpentDelay + tDelay
+                Do ..Wait(tDelay)
+                Continue
+            }
             Do ..LogRaw("the provider call failed in transport", tIssueSC, tCode)
             Quit
         }
@@ -396,6 +419,10 @@ Method NewRequest(ByRef pSettings) As %Net.HttpRequest
     ; resetting them. The shipped default is already off for a POST -- it is set here so the
     ; endpoint OcuPilot judged is the only endpoint the key reaches, whatever that default becomes.
     Set tRequest.FollowRedirect = 0
+    ; 0 disables keep-alive reuse: a request object reuses its socket only while the idle time is
+    ; under SocketTimeout (irislib/%Net/HttpRequest.cls:451-454, tested at :1636), so no call is
+    ; ever read from a connection the provider or the network closed while it sat idle (AD-42).
+    Set tRequest.SocketTimeout = 0
     ; Clamped at the point of use, which is the one place that bounds a stored value and a
     ; caller-supplied one alike (AD-42, DW-1104).
     Set tRequest.Timeout = ##class(OcuPilot.Kernel.Provider.Retry).EffectiveTimeoutSec(..TimeoutOf(.pSettings))
@@ -442,9 +469,12 @@ Method LogClamp(ByRef pSettings, pEffectiveAttempts As %Integer) [ Private ]
 
 /// <p><b>The one transport seam.</b> Issues <var>pRequest</var> as a POST to <var>pUrl</var> and
 /// reports the HTTP status, the response body and the <code>Retry-After</code> header value.</p>
-/// <p>Returns an error <class>%Status</class> when there was no HTTP answer at all; the three
-/// outputs are then meaningless. It may also raise, which the caller treats as a mid-flight
-/// failure and never retries.</p>
+/// <p>Returns an error <class>%Status</class> when the call did not complete. <var>pStatus</var> is
+/// then the one meaningful output: the status code when a status line was read before the
+/// connection failed, and <code>0</code> when none was -- which is what tells the caller the
+/// provider never answered (AD-42). The body and the <code>Retry-After</code> value are then
+/// meaningless. It may also raise, which the caller treats as a mid-flight failure and never
+/// retries.</p>
 /// <p><class>OcuPilot.Test.ProviderStub</class> overrides this to answer a queued script of canned
 /// triples, so every path above it is exercised with no socket opened. That is why it is an
 /// instance method and why it takes the request object rather than building one:
@@ -458,7 +488,12 @@ Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pSta
     Set pBody = ""
     Set pRetryAfter = ""
     Set tSC = pRequest.Post(pUrl)
-    If $$$ISERR(tSC) Quit tSC
+    If $$$ISERR(tSC) {
+        If $IsObject(pRequest.HttpResponse) && (pRequest.HttpResponse.StatusLine '= "") {
+            Set pStatus = +pRequest.HttpResponse.StatusCode
+        }
+        Quit tSC
+    }
     If '$IsObject(pRequest.HttpResponse) {
         Quit $$$ERROR($$$GeneralError, "the provider call returned no response object")
     }

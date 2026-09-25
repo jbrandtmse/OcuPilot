@@ -11,7 +11,8 @@
 /// <method>ScriptElapsed</method>'s per-call duration -- so the retry budget and the five-minute
 /// attempt deadline are both driven with no real time passing.</p>
 /// <p><b>It records what the request carried.</b> The TLS configuration name, the
-/// server-identity flag, the timeout, the four proxy values and the header names it was given are
+/// server-identity flag, the timeout, the keep-alive socket timeout, the four proxy values and the
+/// header names it was given are
 /// captured per call, which is what makes AC3's configured-request assertions an observation of the
 /// real request object rather than a restatement of the settings the test supplied.</p>
 /// <p>The script and the recording live in <b>process-private globals</b> rather than on the
@@ -69,6 +70,17 @@ ClassMethod QueueTransportFailure(pTimeout As %Boolean = 0)
 {
     Set tIndex = $Increment(^||OcuPilotProviderStub("script"))
     Set ^||OcuPilotProviderStub("script", tIndex, "kind") = $Select(pTimeout: "timeout", 1: "failure")
+}
+
+/// <p>Queue one connection that broke <b>after</b> a status line arrived: the call returns the
+/// <code>ERROR #6097 &lt;READ&gt;</code> a dropped read produces, with <var>pStatus</var> reported
+/// as the status line's code. What the adapter must not retry, because the provider did
+/// answer.</p>
+ClassMethod QueueBrokenAfterStatus(pStatus As %Integer)
+{
+    Set tIndex = $Increment(^||OcuPilotProviderStub("script"))
+    Set ^||OcuPilotProviderStub("script", tIndex, "kind") = "brokenafterstatus"
+    Set ^||OcuPilotProviderStub("script", tIndex, "status") = pStatus
 }
 
 /// <p>Queue one mid-flight raise: the call throws rather than returning at all, which is what the
@@ -187,11 +199,27 @@ ClassMethod Calls() As %Integer
     Quit +$Get(^||OcuPilotProviderStub("calls"))
 }
 
+/// <p>How many request objects the shipped <method>OcuPilot.Kernel.Provider.Base.NewRequest</method>
+/// built through this stub, so a test can tell a retry on a new request from one that re-sent the
+/// same object.</p>
+ClassMethod NewRequests() As %Integer
+{
+    Quit +$Get(^||OcuPilotProviderStub("newRequests"))
+}
+
+/// <p>Count the request, then build it with the shipped method unchanged.</p>
+Method NewRequest(ByRef pSettings) As %Net.HttpRequest
+{
+    Do $Increment(^||OcuPilotProviderStub("newRequests"))
+    Quit ##super(.pSettings)
+}
+
 /// <p>What the request carried on call <var>pCall</var>, for <var>pKey</var>: one of
 /// <code>sslConfiguration</code>, <code>sslCheckServerIdentity</code>, <code>timeout</code>,
 /// <code>proxyServer</code>, <code>proxyPort</code>, <code>proxyHttps</code>,
-/// <code>proxyTunnel</code>, <code>followRedirect</code>, <code>url</code>, <code>body</code>,
-/// <code>headerNames</code>, <code>contentType</code> or <code>servedBy</code>.</p>
+/// <code>proxyTunnel</code>, <code>followRedirect</code>, <code>socketTimeout</code>,
+/// <code>url</code>, <code>body</code>, <code>headerNames</code>, <code>contentType</code> or
+/// <code>servedBy</code>.</p>
 ClassMethod Recorded(pKey As %String, pCall As %Integer = 1) As %String
 {
     Quit $Get(^||OcuPilotProviderStub("call", pCall, pKey))
@@ -245,6 +273,7 @@ Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pSta
     ; InitialExpression, so an unset property reads "" and ''"" is 0 -- which would make "nobody set
     ; it" and "set to 0 deliberately" the same recorded value, and the assertion on it vacuous.
     Set ^||OcuPilotProviderStub("call", tCall, "followRedirect") = $Select(pRequest.FollowRedirect = "": "unset", 1: ''pRequest.FollowRedirect)
+    Set ^||OcuPilotProviderStub("call", tCall, "socketTimeout") = pRequest.SocketTimeout
     Set ^||OcuPilotProviderStub("call", tCall, "headerNames") = ..HeaderNames(pRequest)
     Set ^||OcuPilotProviderStub("call", tCall, "contentType") = pRequest.ContentType
     Set ^||OcuPilotProviderStub("call", tCall, "body") = ..BodyOf(pRequest)
@@ -264,6 +293,10 @@ Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pSta
     }
     If tKind = "failure" {
         Quit $$$ERROR($$$GeneralError, "the stand-in transport could not reach the provider")
+    }
+    If tKind = "brokenafterstatus" {
+        Set pStatus = +$Get(^||OcuPilotProviderStub("script", tIndex, "status"))
+        Quit $$$ERROR($$$TCPIPError, "<READ>", 0)
     }
     If +$Get(^||OcuPilotProviderStubLog("armed")) {
         Do ..ForceErrorLog()

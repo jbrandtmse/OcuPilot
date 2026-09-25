@@ -2,9 +2,10 @@
 title: 'Story 10.6: A turn survives a dropped connection, and a create says created'
 type: 'bugfix'
 created: '2026-09-25'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '3abf7fbbef0b731b2a8a9fe00122d53ab3d60218'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['oversized']
 deferred: []
@@ -188,6 +189,27 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-25 — Review pass
+
+- verdicts: 16 findings — high 0, medium 5, low 3, false 8, maybe-false 0
+- findings:
+  - `medium` `patch` VG: `IssueHttpsPost`'s new status-line branch never ran against the shipped method (the stub sets `pStatus` itself; the refused connect has no `HttpResponse`) — added `Test/BrokenReadRequest.cls` (a `%Net.HttpRequest` whose `Post` builds the response and answers `#6097`) and `TestABrokenReadIsClassifiedByItsStatusLine` over both shapes; mutation run 322.
+  - `medium` `patch` VG: the transport retry's share of the delay budget was untested — added `TestATransportRetrySharesTheDelayBudget` (429-then-break waits `30|0`; break-then-429 waits sum to the budget); mutations runs 323, 324.
+  - `medium` `patch` VG: nothing pinned that the retried request still carries the key (AD-35) — added a `keySha` assertion on call 2 to `TestATurnSurvivesOneBrokenConnection`; mutation run 325.
+  - `low` `patch` VG other: `ProviderStubTransport`'s `brokenafterstatus` branch never ran — `TestABreakAfterAStatusLineIsNotRetried` now loops the four family stubs.
+  - `medium` `patch` IA: the slot C shape (a read that broke before a status line) is not driven through the shipped transport — same root cause as the first row; the `BrokenReadRequest` empty-status-line leg covers it.
+  - `medium` `patch` IA: status line then broken is covered only by a stub — same root cause as the first row.
+  - `low` `reject` IA: the `SocketTimeout` comment implies more effect than it has — the comment states a guarantee that holds; Design Notes already record that one request per attempt means no reuse today. Cosmetic.
+  - `false` `reject` IA: Test connection tested through stub settings, not its route — `AgentConnectionBound.TestTheChildMakesOneAttempt` pins the route (run 78, green).
+  - `false` `reject` IA: the browser break lands on the second model call, not in the matrix — task 13 prescribes exactly that script.
+  - `false` `reject` IA: "answers no HTTP" modeled as `ArmWriteFault(0)` — that is the fixture's no-HTTP answer, as the Code Map names.
+  - `false` `reject` IA: updated and no-action checked at the outcome, not the panel reply — the Story 5.7 panel case asserts "was updated" with no action, and an explicit `updated` yields the same outcome value (turn.test.mjs legs).
+  - `low` `reject` IA: a break just before the 300 s deadline whose ≤1 s wait crosses it ends `PROVIDER.TIMEOUT` — the deadline has then passed, which is what TIMEOUT reports; the fix would add a guard for a sub-second window.
+  - `false` `reject` IA: with the delay budget spent the transport retry still goes after a 0 s wait — the intent gates it on attempts and deadline only, with the wait cut to the remaining budget.
+  - `false` `reject` IA: the retry consumes an attempt — the intent's `tAttempt < tMaxAttempts` clause makes it so.
+  - `false` `reject` IA: key clearing after a retried call is not pinned — `Invoke` clears `ApiKey` on every exit after `Attempts` returns (`Base.cls:206,215,220`); the retry returns through the same exits.
+  - `false` `reject` IA: the panel's id fallback differs from the change event's — `targetOf(id)` finds the same proposal by id and returns its `target` (`turn.ts:1187`).
+
 ## Design Notes
 
 **Governing ADs.**
@@ -290,16 +312,62 @@ deferred: []
 **Pinning mutations (Rule 19).** For each one: apply it, recompile the package (or rebuild and redeploy for client code), observe red, revert, and confirm `git status --short` and `git diff --stat` are unchanged. The implement stage records the run beside each line.
 
 - AC1: remove the transport-retry branch in `Attempts` → "One break" and `TestATurnSurvivesOneBrokenConnection` go red.
+  - mutation: deleted the retry block in `Base.Attempts` → `ProviderTransportRetry` run 16 red (`TestOneBreakIsRetriedOnANewRequest`, `TestTwoBreaksStopTheCall`), `TurnProviderFault` run 17 red (`TestATurnSurvivesOneBrokenConnection`, `TestATransportFailureFailsTheTurnAtItsProviderStep`), browser AC1 red.
 - AC1, once only: drop the `tTransportRetried` guard → "Two breaks" goes red (3 calls).
+  - mutation: removed `'tTransportRetried` from the retry condition → run 18 red, `TestTwoBreaksStopTheCall` ("retried once and only once").
 - AC1, the classification: retry on any non-timeout error, ignoring `pStatus` → "Status line then broken" goes red.
+  - mutation: removed `(+tStatus = 0)` from the retry condition → run 19 red, `TestABreakAfterAStatusLineIsNotRetried`.
 - AC1, the budget: drop `tAttempt < tMaxAttempts` → the "No attempt left" row goes red.
+  - mutation: removed `(tAttempt < tMaxAttempts)` → run 20 red, `TestABreakWithNoAttemptLeftIsNotRetried` (a wait recorded). Also removed the deadline test → run 21 red, same method (`PROVIDER.TIMEOUT`, 504).
 - AC1, a new request: build one request before the loop and reuse it → the `NewRequests` assertion goes red.
+  - mutation: one `NewRequest` before the loop, reused per attempt → run 22 red, `TestOneBreakIsRetriedOnANewRequest` ("on two request objects").
+- AC1, the real classification: delete the status-line block in `IssueHttpsPost` → `TestABrokenReadIsClassifiedByItsStatusLine` goes red.
+  - mutation: deleted the `$IsObject(pRequest.HttpResponse) && (StatusLine '= "")` block → run 322 red, the after-a-status-line leg (`pStatus` 0).
+- AC1, the delay budget: pass `""` for the remaining budget in the transport branch; drop its spent-delay increment → `TestATransportRetrySharesTheDelayBudget` goes red.
+  - mutation: `DelaySec(tAttempt, "", "")` → run 323 red, leg "429 then a break" (waits not `30|0`). Dropped `Set tSpentDelay = tSpentDelay + tDelay` in the transport branch → run 324 red, leg "a break then 429" (`.6|30`); this leg reddens only when the first backoff draw is non-zero.
+- AC1, the key (AD-35): clear `..ApiKey` in the transport branch before `Continue` → `TestATurnSurvivesOneBrokenConnection` key assertion goes red.
+  - mutation: `Set ..ApiKey = ""` beside `Set tTransportRetried = 1` → run 325 red, "the retried request carried the stored key". `Base.cls` restored byte-identical; runs 326-328 green.
 - AC2: delete the `SocketTimeout` line → the four-family leg goes red (115).
+  - mutation: deleted `Set tRequest.SocketTimeout = 0` → run 23 red, `TestEveryFamilyDisablesKeepAlive` (all four stubs) and `TestARefusedConnectAnswersNoStatus`.
 - AC3, writes: in `Operation.ApplyAt`, re-invoke the port once when the first call errors or raises → `WriteNeverRetried` goes red (`WriteCount` 2).
+  - mutation: `ApplyAt` re-invoked the port after an error or a raise → run 24 red, both methods, every leg; `Kernel/Proposal/**` restored byte-identical (`git diff --quiet`).
 - AC4, the panel: revert `:981` to `STRINGS.tableChangeUpdated` → the `panel.spec.ts` created case and browser test 1's panel assertion go red.
+  - mutation: `STRINGS.tableChangeUpdated` in `replyWithChangeSentence` → `panel.spec.ts` three Story 10.6 cases red; rebuilt and redeployed, browser AC4 red on the reply ("was updated"). Dropping `changedId` alone → the createdId case red. `changeAction: 'updated'` in `turn.ts`'s ok literal → the new `turn.test.mjs` case red.
 - AC4, the toast: make `changeSentenceTemplate` return updated for created → browser test 1's toast assertion goes red.
+  - mutation: `created` answered `tableChangeUpdated` in `toasts.ts`, rebuilt and redeployed → browser AC4 red on "the toast reads the create"; `toasts.ts` restored byte-identical.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** `Base.Attempts` retries a model call once, on a new request, when `IssueHttpsPost` failed with no status line (`pStatus` 0), inside the attempt count, deadline and delay budget (AD-42); `IssueHttpsPost` now reports the status code when a status line arrived before the break; `NewRequest` sets `SocketTimeout` 0. The panel's change sentence takes the confirm's own `action` and `createdId` through `ProposalOutcome` and `PanelWriteCard`, so a confirmed create reads "was created".
+
+**Files.**
+
+- `src/OcuPilot/Kernel/Provider/Base.cls` -- the retry branch, the status-line classification, `SocketTimeout` 0, docs.
+- `src/OcuPilot/Kernel/Provider/Retry.cls` -- class doc names the one transport retry.
+- `src/OcuPilot/Test/ProviderTransportRetry.cls` -- new: the matrix's adapter rows, four-family `SocketTimeout`, real-method classification, delay budget.
+- `src/OcuPilot/Test/BrokenReadRequest.cls` -- new: a `%Net.HttpRequest` stand-in for a read that broke before or after its status line.
+- `src/OcuPilot/Test/WriteNeverRetried.cls` -- new: confirm and screen writes reach the port once; a second confirm is `BURNED`.
+- `src/OcuPilot/Test/ProviderStub.cls`, `ProviderStubTransport.cls` -- `socketTimeout` record, `QueueBrokenAfterStatus`, `NewRequests`.
+- `src/OcuPilot/Test/ProviderRetry.cls` -- transport leg moved out; method renamed.
+- `src/OcuPilot/Test/TurnProviderFault.cls` -- break twice is 2 calls; a turn survives one break and the retry carries the key.
+- `ui/src/app/core/turn.ts`, `ui/src/app/shell/panel.ts` -- `changeAction`/`changedId` before `ok`; sentence from `changeSentenceTemplate`.
+- `ui/src/app/shell/panel.spec.ts`, `ui/tools/turn.test.mjs` -- created/deleted/createdId cases; outcome legs.
+- `ui/browser/create-outcome.browser-spec.mjs` -- new: AC4 end to end, and AC1 with a break after a proposal.
+
+**Review.** 16 findings (verification-gap 4, intent-alignment 12): 6 patched (5 medium in 3 root causes, 1 low), 10 rejected with reasons in the Review Triage Log, 0 deferred. Patched by verdict: medium 5, low 1. Blind and edge-case layers are disabled in this project's toml.
+
+**Follow-up review recommended: true.** Two or more medium entries were patched. The unverified risk: that a real `<READ>` before a status line over TLS answers `pStatus` 0 rests on reading `%Net.HttpRequest` (`:1498-1502`, `:2123-2130`) and on the `BrokenReadRequest` stand-in, not on a live socket (inference); the owner's live check is Story 17.7.
+
+**Verification (all on `ocupilot-b-ci`, slot B).**
+
+- `check-objectscript.py` 0 problems (823 files); `test_check_objectscript.py` 130 OK; `lint-docs.sh` 0 issues.
+- Client: `test:tools` 1408/1408, and `turn.test.mjs` 59/59 again after two legs were added to its Story 10.6 case; `test:components` 1223/1223 in 93 files; `npm run build` green.
+- Browser: `create-outcome.browser-spec.mjs` 2/2 after rebuild and `docker cp` redeploy. The full browser suite is CI's `browser` job.
+- Full ObjectScript sweep, one class at a time: 250 classes, 2171 tests, 0 failed, runs 70-319, confirmed by the `%UnitTest_Result` probe (T=2171 P=2171 F=0 C=250). After review patches (test-only; `Base.cls` byte-identical to the swept code): `ProviderTransportRetry` 8/8 run 328, `TurnProviderFault` 5/5 run 327.
+- Smoke: `smoke.sh --container ocupilot-b-ci` executed=49 passed=49 failed=0.
+- Mutations: every line in `## Verification` applied, observed red, reverted; tree byte-identical after each.
+
+**Residual risks.** The break-then-429 budget mutation reddens only on a non-zero first backoff draw (10 in 11). The handoff subagent returned once with an interim line while its background sweep was still running; that sweep died with it at run 69 (no run in flight, no writer left, tree quiescent), and the stage re-ran the full sweep itself.

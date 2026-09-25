@@ -14,7 +14,10 @@
 /// <class>OcuPilot.Test.ProviderStub</class>'s own process-private globals, so a test arms the run
 /// with <method>OcuPilot.Test.ProviderStub.Reset</method>,
 /// <method>OcuPilot.Test.ProviderStub.QueueAnswer</method>,
-/// <method>OcuPilot.Test.ProviderStub.QueueThrow</method> and
+/// <method>OcuPilot.Test.ProviderStub.QueueThrow</method>,
+/// <method>OcuPilot.Test.ProviderStub.QueueTransportFailure</method>,
+/// <method>OcuPilot.Test.ProviderStub.QueueBrokenAfterStatus</method> (a connection that broke after
+/// its status line) and
 /// <method>OcuPilot.Test.ProviderStub.ScriptElapsed</method>, and reads it back with
 /// <method>OcuPilot.Test.ProviderStub.Calls</method>,
 /// <method>OcuPilot.Test.ProviderStub.Recorded</method>,
@@ -55,6 +58,7 @@ ClassMethod Transport(pIdentity As %String, pWatchedHeaders As %String, pRequest
     ; FollowRedirect reads "" and ''"" is 0, which would make "nobody set it" and "set to 0
     ; deliberately" the same recorded value.
     Set ^||OcuPilotProviderStub("call", tCall, "followRedirect") = $Select(pRequest.FollowRedirect = "": "unset", 1: ''pRequest.FollowRedirect)
+    Set ^||OcuPilotProviderStub("call", tCall, "socketTimeout") = pRequest.SocketTimeout
     Set ^||OcuPilotProviderStub("call", tCall, "headerNames") = ..HeaderNames(pRequest, pWatchedHeaders)
     Set ^||OcuPilotProviderStub("call", tCall, "contentType") = pRequest.ContentType
     Set ^||OcuPilotProviderStub("call", tCall, "body") = ..BodyOf(pRequest)
@@ -73,6 +77,10 @@ ClassMethod Transport(pIdentity As %String, pWatchedHeaders As %String, pRequest
     }
     If tKind = "failure" {
         Quit $$$ERROR($$$GeneralError, "the stand-in transport could not reach the provider")
+    }
+    If tKind = "brokenafterstatus" {
+        Set pStatus = +$Get(^||OcuPilotProviderStub("script", tIndex, "status"))
+        Quit $$$ERROR($$$TCPIPError, "<READ>", 0)
     }
     Do ..ForceErrorLog()
     ; Mid-flight by construction: the caller is inside its own read-then-write window while this
