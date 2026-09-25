@@ -94,6 +94,7 @@ interface MountOptions {
   readonly count?: number;
   readonly actionAnswer?: JsonResult<unknown>;
   readonly save?: JsonResult<unknown>;
+  readonly definition?: Record<string, unknown>;
 }
 
 async function mount(url = '/security/oauth/resource-servers/edit', options: MountOptions = {}) {
@@ -106,7 +107,7 @@ async function mount(url = '/security/oauth/resource-servers/edit', options: Mou
         if (path === ACTION_PATH) return (options.actionAnswer ?? { kind: 'ok', status: 200, body: { action: 'deleted' } }) as JsonResult<T>;
         return (options.save ?? { kind: 'ok', status: 201, body: { name: NAME } }) as JsonResult<T>;
       }
-      const body = path === OAUTH_RESOURCE_SERVER_FORM_PATH ? form(options.count ?? 0) : { ...form(1), definition: DEFINITION, mappings: [mappingName('%Service_Bindings', '*')] };
+      const body = path === OAUTH_RESOURCE_SERVER_FORM_PATH ? form(options.count ?? 0) : { ...form(1), definition: options.definition ?? DEFINITION, mappings: [mappingName('%Service_Bindings', '*')] };
       return { kind: 'ok', status: 200, body } as unknown as JsonResult<T>;
     },
   };
@@ -234,6 +235,24 @@ describe('the resource server editor', () => {
     expect(selectedTab(host)).toBe(STRINGS.oauthResourceServerTabMappings);
     expect(tabs(host)[3].getAttribute('aria-label')).toBe(`${STRINGS.oauthResourceServerTabMappings}, 1 error`);
     expect(document.activeElement?.id).toBe('ocu-oauth-resource-server-Mappings');
+  });
+
+  it('a secret or mappings refused after the save are named beside Saved, across the edit\'s re-read', async () => {
+    // Mutation (Rule 19): have the store's `open` drop the outcome it carries across its reset -> this goes red.
+    const save = { kind: 'ok', status: 200, body: { name: NAME, secretRefused: 'The secret was refused.', mappingsRefused: { count: 2, reason: 'The key was refused.' } } };
+    const { fixture, host } = await mount(EDIT_URL, { save: save as JsonResult<unknown> });
+    type(fixture, host, 'ocu-oauth-resource-server-Description', 'changed');
+    press(host, STRINGS.actionSave);
+    await settle(fixture);
+    const secret = STRINGS.oauthResourceServerSecretRefused.split('<reason>').join('The secret was refused.');
+    const mappings = STRINGS.oauthResourceServerMappingsRefused.split('<count>').join('2').split('<reason>').join('The key was refused.');
+    expect(host.querySelector('.ocu-form-bar-status')?.textContent?.trim()).toBe(`${secret} ${mappings}`);
+  });
+
+  it('a stored empty introspection method is drawn as Not set, not as the first method', async () => {
+    const { host } = await mount(EDIT_URL, { definition: { ...DEFINITION, IntrospectionAuthMethod: '' } });
+    const select = host.querySelector('#ocu-oauth-resource-server-IntrospectionAuthMethod') as HTMLSelectElement;
+    expect([select.value, select.selectedOptions[0]?.textContent?.trim()]).toEqual(['', STRINGS.oauthClientNotSet]);
   });
 
   it('AC3: Delete sends nothing until the stored name is typed, then posts the one declared delete and returns to the tab', async () => {

@@ -11,14 +11,7 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-12-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-12-5-the-oauth-2-0-client-configuration-editor.md'
 warnings: ['oversized']
-deferred:
-  - summary: >-
-      The proposal card does not state that an update changing the authenticator's namespace or implementation sends only the given settings and resets the rest to the new class's defaults; the intent says the card and the form say so, and only the form does.
-    evidence: |-
-      The Update tool's card shows the Authenticator row's before and after only. A card sentence needs a consequence code: the tool's Consequence(payload, privileged, effect) sees no fresh read, and a Prohibited effect would mint the proposal destructive. The spec settles neither mechanism.
-    location: >-
-      src/OcuPilot/Screen/Tool/OAuthResourceServerUpdate.cls; ui/src/app/core/proposal-view.ts consequenceSentence
-    severity: medium
+deferred: []
 ---
 
 <intent-contract>
@@ -328,6 +321,51 @@ deferred:
 - **AC10 (DW-1644).** Given the client configuration editor, when it opens, then it shows four tabs named and ordered as before, and a Save refused on a field of another tab opens that tab, marks it ", 1 error" and focuses the field.
 - **AC11 (DW-1337).** Given the resource server editor on each tab and its delete dialog, and the client editor on each tab, when they are measured at 1280 px light, 720 px light and 1280 px dark, then there is no structural or contrast violation.
 
+### Review Findings
+
+Code review 2026-09-25 (full-opus; four layers; 9 patched, 0 deferred, 30 rejected). Each patch is verified on `ocupilot-b-ci` or the client tiers, with its mutation under Verification.
+
+- [x] [Review][Patch] DW-1660: the card now states the authenticator reset. `Prohibited.WeakensByEffect` names `OAUTH.AUTHENTICATORRESET` when an edit's authenticator names another namespace (case-blind) or class, so the proposal is minted destructive, and `consequenceSentence` renders `oauthResourceServerAuthenticatorResetEffect` (EXPERIENCE.md:518). Lead decision; DW-1660 resolved. [src/OcuPilot/Kernel/Proposal/Prohibited.cls:1107]
+- [x] [Review][Patch] The delete's `Mappings` fingerprint was untested (med). Added `TestAMappingAddedAfterADeletesMintRefusesItsConfirm`. [src/OcuPilot/Test/OAuthResourceServerMappings.cls:276]
+- [x] [Review][Patch] The partial-save status line across the edit's re-read was untested (med). Added a page spec asserting both refusal sentences beside Saved. [ui/src/app/areas/security/oauth-resource-server-form.page.spec.ts:240]
+- [x] [Review][Patch] The port's vendor-500 mappings were unexercised (low). Added `TestAVendorRefusalOfThePutIsNamed`; the mapping-refusal test now asserts the port's named reason. [src/OcuPilot/Test/OAuthResourceServerUpdate.cls:183]
+- [x] [Review][Patch] A stored empty `IntrospectionAuthMethod` was drawn as HTTP Basic and could not be changed to it (low). It now shows "Not set" (`oauthClientNotSet`). [ui/src/app/areas/security/oauth-resource-server-form.page.ts:507]
+- [x] [Review][Patch] An authenticator member named `""` raised `<SUBSCRIPT>`, which answered 500 (low). It is now `OAUTH.AUTHENTICATOR.SETTING`, probed on `ocupilot-b-ci`. [src/OcuPilot/Area/Security/OAuthResourceServerRules.cls:244]
+- [x] [Review][Patch] EXPERIENCE.md said "four tabs after General" for 12.6 and "four sections" for 12.5 after DW-1644 (low). Both rows corrected. [_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md:517]
+- [x] [Review][Patch] AD-35's second declaration named settings "the resource-server tools classify `secret`", which no tool does (low). Corrected at origin to the lead's "credential-named (Conventions › Secrets)", in the spine and the memlog; `lint_spine` shows only the existing `{id}` note. [ARCHITECTURE-SPINE.md:432]
+- [x] [Review][Patch] AC11's client-editor half had only 12.5's pre-tab mutation (Rule 19, low). Demonstrated on the tabbed layout; the line is under Verification. [ui/src/styles/_components.scss:5911]
+
+**Rejected** (`false` or `by-design` with the refutation; `low` with why; `wontfix-theoretical` with what would make it real):
+
+- low: `Update` quits on a bad mapping row before the field rules run. `Validate` kills its violations, so merging needs a restructure, and both are still refused before any write. Previously rejected.
+- low: a non-string `ClientSecret` is dropped silently. The editor always sends a string, and the agent's secret is asked at confirm; only a hand-built body reaches this.
+- low: the Rules read through the tool's `PortClass`, not the Save fixture's seam. This affects the test seam only; there is no product defect.
+- wontfix-theoretical: `Expand` quits when `TemplateFields` fails. The field lists are compiled XData. It would become real if `FieldLists` shipped uncompiled, and even then the vendor answers 400 to a stray key (measured).
+- low: failed name look-ups read as `[]`. They fail closed, as a refusal, and only misreport a transient failure.
+- low: `FieldOf` maps `OAUTH.FLAG.VALUE` to `Enabled`. Previously rejected.
+- low: `AddMapping` maps every vendor 500 to key-absent. The form rule checks the key first, and the measured cause of that 500 is the key.
+- low: the kernel builds the `Held` key itself. The kernel does not depend on the port, and the move test pins the form.
+- by-design: `DescribeSettings()` is the settings source the spec names (Always › Authenticator).
+- false: an unstripped `LIST`. The vendor's `LIST` row is `Name` and `ServerDefinition` only (the tab's doc, Story 6.4), with no `Authenticator`.
+- by-design: credential settings are found by name pattern, per the lead's AD-35 ruling. The wording is corrected above.
+- wontfix-theoretical: a credential nested in an object-kind setting. It would become real when a custom authenticator describes one.
+- by-design: the tab read needs `%Admin_OAuth2_Client:USE`, per the lead's AD-29 ruling (the tab, the form and the tools).
+- false: introspection fields locked while JWT is off. This mirrors the classic `Configuration.cls` `modified()`, per the spec's Design Notes.
+- low: a secret typed and then locked is still sent. The user typed it, and the vendor stores it regardless of the flag.
+- low: a failed namespace read keeps the old class list. It is the same gated route as the form read, and the Save refuses an unusable class by name.
+- low: re-adding a mapping the server holds is minted as a no-op. The vendor `PUT` is idempotent.
+- low: the browser legs are chained on AC1. They run on a fresh throwaway, and a cascade is diagnosable.
+- low: `Put` checks the stored authenticator on every edit. This refuses only when the stored class or namespace is gone, and it names the field.
+- low: a non-string method, a namespace off the list, integer coercion, and the page's implementation switch-back showing blanks. Each is still refused or kept correctly on save.
+- wontfix-theoretical: the 1000-row look-up cap. It would become real on an instance with more than 1000 web applications.
+- wontfix-theoretical: `MappingTable` has no pair gate. Every caller is behind the route or descriptor gate; it would become real if an ungated caller were added.
+- low: the Service option words differ from the refusal sentence, but the select cannot produce that refusal.
+- false: `Authenticator` is classified by its sub-paths. The derived field list carries those rows, and `field-lists --check` holds the classification to them.
+- false: AC3's mutation "drift". Rule 19 asks for one demonstrated mutation per AC, and the recorded one reddens AC3's pinning test.
+- low: on Rule 3, the move card is jsdom-only, AC2 is pinned server-side, and DW-1337 covers create-mode tabs. The browser spec covers the surface, so Rule 3 is satisfied.
+- low: AC8's mint leg as a real principal. Previously rejected.
+- The rest are duplicates across layers of the items above: an ECH copy of the `Update` early quit, the `TakeText` drop, `Expand` and the look-ups; the AA copy of the note wording; the VG copy of AC11.
+
 ## Spec Change Log
 
 - 2026-09-25, lead ruling at the implement halt (re-dispatch): the pair set becomes three pairs under AD-29 (Privileges bullet, the no-privilege matrix row and AC8 amended); AD-35 gains the `OAuth2ResourceServerChange` declaration (spine amended); both are worked as the `[Lead]` items under Tasks & Acceptance.
@@ -516,6 +554,11 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. OAuth-writing t
 - mutation: the Authenticator tab's note removed → page spec "the Authenticator tab says that a namespace or implementation change replaces its settings" red; reverted (md5 checked), green.
 - mutation: `removeMapping` keeps the row → store spec "a default mapping removed before the first create is saved is not sent" red; reverted (md5 checked), green.
 - mutation: `OAuthResourceServerPort.DELEGATEDTYPES` absent (the sweep's own tree before the fix) → ToolWrite `TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster` red on the roster-width leg (run 326); declared, green (run 373).
+- mutation (code review): `WeakensByEffect` stops naming `EFFECTAUTHENTICATORRESET` → OAuthResourceServerUpdate `TestAnAgentsAuthenticatorChangeIsMintedDestructive` red (run 394); the `consequenceSentence` AUTHENTICATORRESET branch dropped → proposal-card.spec "Story 12.6: … states the reset" and proposal-view.test.mjs red; reverted, green (run 398).
+- mutation (code review): `MappingTable` lists none of the server's own mappings → OAuthResourceServerMappings `TestAMappingAddedAfterADeletesMintRefusesItsConfirm` red, as the confirm deleted B with the unreviewed mapping (run 396); reverted (md5 checked), green (run 397).
+- mutation (code review): `Put` returns a vendor 500 unmapped → `TestAVendorRefusalOfThePutIsNamed` red (run 394); `AddMapping`'s 500 line removed → `TestAMappingRefusedAfterTheSaveIsAnswered` red (run 395); reverted, green (runs 397, 398).
+- mutation (code review): the store's `open` clears the carried outcome → page spec "a secret or mappings refused after the save are named beside Saved" red; `method === ''` folded back into `METHODS` → page spec "a stored empty introspection method is drawn as Not set" red; reverted (md5 checked), green.
+- mutation (code review): AC11, the client editor on its tabs: `.ocu-oauth-client-metadata-table` given a 1400px `min-inline-size`, then rebuilt and redeployed → oauth-client-editor.browser-spec AC1 red, `app-form-tabs>table.ocu-oauth-client-metadata-table` 920px past its block at 1280 and 720; reverted (md5 checked), rebuilt and redeployed, 12/12 green with oauth-resource-server-editor.
 
 ## Auto Run Result
 

@@ -281,7 +281,8 @@ Parameter TYPEOAUTHSERVERCLIENT = "oauth2-server-client";
 Parameter TYPEOAUTHSERVERDEF = "oauth2-server-definition";
 
 /// <p>An OAuth 2.0 resource server (Story 12.6), which shares the OAuth arm
-/// (<method>OAuthEntry</method>) and names one effect (<parameter>EFFECTMAPPINGMOVE</parameter>).</p>
+/// (<method>OAuthEntry</method>) and names two effects (<parameter>EFFECTMAPPINGMOVE</parameter>,
+/// <parameter>EFFECTAUTHENTICATORRESET</parameter>).</p>
 Parameter TYPEOAUTHRESOURCESERVER = "oauth2-resource-server";
 
 /// <p>The effect of adding a service mapping another resource server holds: the vendor moves it
@@ -289,6 +290,11 @@ Parameter TYPEOAUTHRESOURCESERVER = "oauth2-resource-server";
 /// or namespace that already accepts OAuth 2.0 (inference), so the move is permitted, marked
 /// destructive and named, never refused.</p>
 Parameter EFFECTMAPPINGMOVE = "OAUTH.MAPPINGMOVE";
+
+/// <p>The effect of changing a resource server's authenticator to another namespace or class: the
+/// vendor replaces the authenticator whole, so every setting the write does not send takes the new
+/// class's default (Story 12.6, AD-4). Permitted, marked destructive and named, never refused.</p>
+Parameter EFFECTAUTHENTICATORRESET = "OAUTH.AUTHENTICATORRESET";
 
 /// <p>A system audit event and a user audit event (Story 7.11), which share one arm
 /// (<method>AuditEvent</method>).</p>
@@ -1080,7 +1086,8 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
 /// answers <code>""</code>.</p>
 /// <p>For a service (<var>pId</var> being its name), <method>ServiceWeakening</method>'s answer. For
 /// a resource server, <parameter>EFFECTMAPPINGMOVE</parameter> when <method>MovesMapping</method>
-/// answers true.</p>
+/// answers true, else <parameter>EFFECTAUTHENTICATORRESET</parameter> when
+/// <method>ResetsAuthenticator</method> does.</p>
 ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pEffect As %String, pId As %String = "") As %Status
 {
     Set pEffect = ""
@@ -1095,7 +1102,11 @@ ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarge
             Quit
         }
         If pType = ..#TYPEOAUTHRESOURCESERVER {
-            If ..MovesMapping(pId, pPayload, pTarget) Set pEffect = ..#EFFECTMAPPINGMOVE
+            If ..MovesMapping(pId, pPayload, pTarget) {
+                Set pEffect = ..#EFFECTMAPPINGMOVE
+            } ElseIf ..ResetsAuthenticator(pPayload, pTarget) {
+                Set pEffect = ..#EFFECTAUTHENTICATORRESET
+            }
             Quit
         }
         If pType '= ..#TYPEWEBAPPLICATION Quit
@@ -1135,6 +1146,19 @@ ClassMethod MovesMapping(pId As %String, pPayload As %DynamicObject, pTarget As 
     If '$IsObject(tHeld) Quit 0
     Set tHolder = ..Rendered(tHeld, tService _ "/" _ $ZConvert(tKey, "L"))
     Quit (tHolder '= "") && (tHolder '= pId)
+}
+
+/// <p>Whether <var>pPayload</var>'s <code>Authenticator</code> names another namespace, compared
+/// without regard to case, or another class than <var>pTarget</var>'s: the vendor then keeps none of
+/// the stored settings the payload does not send (Story 12.6). A payload or target without an
+/// authenticator object resets nothing.</p>
+ClassMethod ResetsAuthenticator(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean
+{
+    Set tSent = ..Member(pPayload, "Authenticator")
+    Set tStored = ..Member(pTarget, "Authenticator")
+    If '$IsObject(tSent) || '$IsObject(tStored) Quit 0
+    If $ZConvert(..Rendered(tSent, "Namespace"), "U") '= $ZConvert(..Rendered(tStored, "Namespace"), "U") Quit 1
+    Quit ..Rendered(tSent, "Implementation") '= ..Rendered(tStored, "Implementation")
 }
 
 /// <p>The user predicates, in declared order, first hit wins: the four account arms --
@@ -1522,7 +1546,7 @@ ClassMethod OAuthResourceServerFields() As %List [ Private ]
 /// permitted list (<method>OAuthClientFields</method> for a client configuration, empty for a server
 /// client, <method>OAuthServerFields</method> for a server description,
 /// <method>OAuthResourceServerFields</method> for a resource server), and nothing else. A resource
-/// server's mapping move is an effect, not a refusal (<method>WeakensByEffect</method>).</p>
+/// server's mapping move and authenticator reset are effects, not refusals (<method>WeakensByEffect</method>).</p>
 /// <p><b>No predicate exists because AD-10 names no OAuth 2.0 effect.</b> Its Release 1 set is
 /// accounts, privilege grants, the path serving OcuPilot and system processes, and install creates
 /// no OAuth 2.0 object, so no configuration, client or description is OcuPilot's own. The one write

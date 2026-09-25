@@ -99,6 +99,7 @@ const METHOD_LABELS: Readonly<Record<string, string>> = {
   client_secret_basic: STRINGS.oauthResourceServerMethodBasic,
   client_secret_post: STRINGS.oauthResourceServerMethodPost,
   none: STRINGS.oauthResourceServerMethodNone,
+  '': STRINGS.oauthClientNotSet,
 };
 
 type Control = ClientFieldControl;
@@ -503,7 +504,7 @@ export class OAuthResourceServerFormPage {
     const jwt = this.store.flag('jwt');
     const introspection = this.store.flag('introspection');
     const method = this.store.text('method');
-    const methods = METHODS.includes(method) || method === '' ? METHODS : [...METHODS, method];
+    const methods = METHODS.includes(method) ? METHODS : method === '' ? ['', ...METHODS] : [...METHODS, method];
     return [
       { ...this.checkControl(JWT_FIELD, STRINGS.oauthResourceServerFieldJwt), off: locked },
       { ...this.checkControl(INTROSPECTION_FIELD, STRINGS.oauthResourceServerFieldIntrospection), off: locked || !jwt },

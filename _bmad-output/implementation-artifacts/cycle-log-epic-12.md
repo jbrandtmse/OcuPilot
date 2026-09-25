@@ -173,3 +173,9 @@
 2026-09-25T12:18:57Z	Story 12.6	ledger_routed_planned	story=12-6-the-oauth-2-0-resource-server-editor entries=1(DW-1660,open,in-story) excess=0 by=harvest
 2026-09-25T12:18:57Z	Story 12.6	adr_verifications_complete	tool=none acs=none result=none_required evidence=AD-29_real_principal_check_is_the_story_test(OAuthResourceServerWire) mutations=none
 2026-09-25T12:18:57Z	Story 12.6	stage_spawned	stage=qa spawn_at=2026-09-25T12:18:57Z model=sonnet agent_name=12-6-oauth-resource-server-qa-1 cycle_iteration=1
+2026-09-25T12:37:04Z	Story 12.6	qa_complete	spawn_at=2026-09-25T12:18:57Z model=sonnet tests_added=0 mutations_demonstrated=11(independent_re-run_of_implementer_pins) first_run_failures=0 clarifications=0 closing_sections_present=true
+2026-09-25T12:37:04Z	Story 12.6	stage_spawned	stage=code-review spawn_at=2026-09-25T12:37:04Z model=opus agent_name=12-6-oauth-resource-server-code-review-1 cycle_iteration=1
+2026-09-25T13:03:39Z	Story 12.6	cr_complete	spawn_at=2026-09-25T12:37:04Z model=opus resolved=9 fixed_at_source=9 by_design=0 wontfix_theoretical=0 routed=0 escalated=0 decision_pending=0 deferred=0 dismissed=30 high=0 med=3 low=6 rows=9 unresolved_high_med=0 clarifications=0 closing_sections_present=true final_status=done review_tier=full-opus dw1660=resolved(OAUTH.AUTHENTICATORRESET_destructive) spine=AD-35_wording_corrected_at_origin
+2026-09-25T13:03:39Z	Story 12.6	ledger_adjudicated	owned=2 resolved=2(DW-1660_by_cr,DW-1644_by_adjudication) reowned=0 terminal=0 model=claude-opus-5-5
+2026-09-25T13:03:39Z	Story 12.6	smoke_complete	method=browser+api result=pass iterations=1 defects_caught=0 evidence=smoke.sh_49/49(ocupilot-b-ci),oauth-resource-server-editor+oauth-client-editor_12/12_rebuilt_redeployed,src_parity bundle_initial=1704805B model=claude-opus-5-5
+2026-09-25T13:03:39Z	Epic 12	ci_resolved	story=12.6(build) run=36134178587 result=success head=292bd8b2 resolved_at=smoke_gate

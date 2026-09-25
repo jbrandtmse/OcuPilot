@@ -28,6 +28,7 @@ const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
 
 const {
+  CONSEQUENCE_AUTHENTICATORRESET,
   CONSEQUENCE_PRIVILEGED,
   CONSEQUENCE_RUNSASOTHER,
   CONSEQUENCE_SERVESOCUPILOT,
@@ -220,6 +221,16 @@ test("a change to the service OcuPilot is served through resolves to its publish
   assert.equal(consequenceSentence(CONSEQUENCE_SERVESOCUPILOT), STRINGS.serviceEffectServesOcuPilot);
   assert.equal(CONSEQUENCE_SERVICEUNAUTHENTICATED, 'SERVICE.UNAUTHENTICATED');
   assert.equal(consequenceSentence(CONSEQUENCE_SERVICEUNAUTHENTICATED), STRINGS.serviceEffectUnauthenticated);
+});
+
+// Story 12.6, AD-4: a resource server edit naming another authenticator namespace or class is
+// permitted, minted destructive and named by the kernel's code; the card says the unsent settings
+// take the new class's defaults.
+//
+// Mutation (Rule 19): drop the AUTHENTICATORRESET branch from `consequenceSentence` -> this goes red.
+test('an authenticator namespace or class change resolves to its published sentence', () => {
+  assert.equal(CONSEQUENCE_AUTHENTICATORRESET, 'OAUTH.AUTHENTICATORRESET');
+  assert.equal(consequenceSentence(CONSEQUENCE_AUTHENTICATORRESET), STRINGS.oauthResourceServerAuthenticatorResetEffect);
 });
 
 // AD-3, AD-35: a user create's diff carries one Password row the kernel composes with both values

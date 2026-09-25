@@ -2418,6 +2418,8 @@ export const STRINGS = {
   oauthResourceServerFormRefusedAction: 'change this resource server',
   /** EXPERIENCE.md:518 */
   oauthResourceServerAuthenticatorNote: 'Changing the namespace or implementation replaces these settings with that implementation\'s defaults.',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerAuthenticatorResetEffect: 'Changes the authenticator\'s namespace or implementation, so every setting this change does not name takes that implementation\'s default.',
 
 } as const;
 

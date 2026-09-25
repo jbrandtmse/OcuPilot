@@ -24,6 +24,10 @@ Parameter RECORD = "OcuPilot.Test.OAuthResourceServerRecordPort";
 
 Parameter PROBE = "OcuPilot.Test.OAuthResourceServerProbe";
 
+Parameter FAILPORT = "OcuPilot.Test.OAuthResourceServerFailPort";
+
+Parameter FAILSAVE = "OcuPilot.Test.OAuthResourceServerFailSave";
+
 Parameter HELPER = "OcuPilot.Test.OAuthServerProbe";
 
 Parameter SIMPLE = "%OAuth2.ResourceServer.SimpleAuthenticator";
@@ -47,6 +51,7 @@ Method OnBeforeOneTest() As %Status
 
 Method OnAfterOneTest() As %Status
 {
+    Do $ClassMethod(..#FAILPORT, "Disarm")
     Do $ClassMethod(..#RECORD, "Clear")
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tSeeded)
@@ -141,6 +146,50 @@ Method TestTheAgentsEditKeepsTheUnsentSettings()
     Do $$$AssertStatusOK(tSC, "the edit is confirmed: " _ $Get(tCode))
     Set tStored = $ClassMethod(..#PROBE, "Stored", tName)
     Do $$$AssertEquals(tStored.%Get("Description") _ "|" _ tStored.%Get("Authenticator").%Get("Prefix") _ "|" _ tStored.%Get("Authenticator").%Get("UserClaim") _ "|" _ tStored.%Get("Authenticator").%Get("RoleClaim"), "agent|agent:|user.before|roles.kept", "the instance holds the edit and keeps the settings left out")
+}
+
+/// <p>The card states the reset (AD-4): the agent's edit naming another authenticator class is minted
+/// destructive with <code>OAUTH.AUTHENTICATORRESET</code> as its consequence, and one leaving the
+/// authenticator's namespace and class as stored is an ordinary edit.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.Proposal.Prohibited.WeakensByEffect</method> stops
+/// naming <parameter>OcuPilot.Kernel.Proposal.Prohibited.EFFECTAUTHENTICATORRESET</parameter> -- the
+/// first assertion goes red.</p>
+Method TestAnAgentsAuthenticatorChangeIsMintedDestructive()
+{
+    Set tName = $ClassMethod(..#PROBE, "Name", "Reset")
+    Do $$$AssertStatusOK(..MakeServer(tName), "a server is created")
+    Set tArgs = {}
+    Do tArgs.%Set("Name", tName, "string")
+    Do tArgs.%Set("Authenticator", {"Namespace": ($ClassMethod(..#PROBE, "Namespace")), "Implementation": ($Parameter(..#PROBE, "AUTHENTICATOR")), "Claim": "email"})
+    Set tSC = $ClassMethod(..#HELPER, "Mint", ..#TOOL, tName, tArgs, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the switch is minted: " _ $ClassMethod(..#HELPER, "Problem", $Get(tFault)))
+    If '$IsObject($Get(tProposal)) Quit
+    Do ##class(OcuPilot.Test.ServiceUpdate).Stored(tProposal.%Get("proposalId"), .tDestructive, .tConsequence)
+    Do $$$AssertEquals(tDestructive _ " " _ tConsequence, "1 OAUTH.AUTHENTICATORRESET", "destructive, naming the reset")
+    Set tArgs = {"Description": "kept class"}
+    Do tArgs.%Set("Name", tName, "string")
+    Do tArgs.%Set("Authenticator", {"Namespace": "%sys", "Implementation": (..#SIMPLE), "Prefix": "same:"})
+    Set tSC = $ClassMethod(..#HELPER, "Mint", ..#TOOL, tName, tArgs, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the edit is minted: " _ $ClassMethod(..#HELPER, "Problem", $Get(tFault)))
+    If '$IsObject($Get(tProposal)) Quit
+    Do ##class(OcuPilot.Test.ServiceUpdate).Stored(tProposal.%Get("proposalId"), .tDestructive, .tConsequence)
+    Do $$$AssertEquals(tDestructive _ " " _ tConsequence, "0 ", "the same namespace, in another case, and class is an ordinary edit")
+}
+
+/// <p>A vendor 500 on the <code>PUT</code> is answered 422
+/// <code>OAUTH.RESOURCESERVERVALIDATION</code>, and the vendor's text stays in the log.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.OAuthResourceServerPort.Put</method> returns a vendor
+/// 500 unmapped -- the status and code assertion goes red.</p>
+Method TestAVendorRefusalOfThePutIsNamed()
+{
+    Set tName = $ClassMethod(..#PROBE, "Name", "Vendor")
+    Do $$$AssertStatusOK(..MakeServer(tName), "a server is created")
+    Do $ClassMethod(..#FAILPORT, "Arm", "Security.OAuth2.ResourceServer", "PUT", 500)
+    Set tSC = $ClassMethod(..#FAILSAVE, "Handle", tName, {"Description": "refused"}, .tRaw, .tStatus)
+    Do $$$AssertStatusOK(tSC, "the edit's route runs")
+    Do $$$AssertEquals(tStatus _ " " _ (tRaw [ """OAUTH.RESOURCESERVERVALIDATION"""), "422 1", "answered 422 with the named code: " _ $Extract(tRaw, 1, 300))
+    Do $$$AssertTrue('(tRaw [ "canned vendor refusal"), "without the vendor's text")
+    Do $$$AssertEquals($ClassMethod(..#FAILPORT, "Reached", "Security.OAuth2.ResourceServer", "PUT"), 1, "after the PUT reached the armed vendor")
 }
 
 /// <p>The edit's form rules refuse on both callers against the stored server: an emptied audience list,

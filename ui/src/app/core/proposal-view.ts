@@ -147,6 +147,9 @@ export const CONSEQUENCE_SERVICEUNAUTHENTICATED = 'SERVICE.UNAUTHENTICATED';
 /** The consequence the kernel marks an added service mapping another resource server holds with: the add moves it (Story 12.6). */
 export const CONSEQUENCE_MAPPINGMOVE = 'OAUTH.MAPPINGMOVE';
 
+/** The consequence the kernel marks a resource server edit naming another authenticator namespace or class with: the settings it does not send take the new class's defaults (Story 12.6). */
+export const CONSEQUENCE_AUTHENTICATORRESET = 'OAUTH.AUTHENTICATORRESET';
+
 /**
  * The published sentence for a proposal's `consequence` code, or `''` for no code or one this
  * client publishes nothing for. The sentence is `STRINGS`'; the code is the kernel's (AD-39).
@@ -162,6 +165,7 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_SERVESOCUPILOT) return STRINGS.serviceEffectServesOcuPilot;
   if (code === CONSEQUENCE_SERVICEUNAUTHENTICATED) return STRINGS.serviceEffectUnauthenticated;
   if (code === CONSEQUENCE_MAPPINGMOVE) return STRINGS.oauthResourceServerMoveEffect;
+  if (code === CONSEQUENCE_AUTHENTICATORRESET) return STRINGS.oauthResourceServerAuthenticatorResetEffect;
   return '';
 }
 

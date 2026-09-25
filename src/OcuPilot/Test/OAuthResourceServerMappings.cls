@@ -220,6 +220,8 @@ Method TestBadMappingsAreRefusedBeforeAnythingIsSent()
 
 /// <p>A mapping write refused after the server saved: the edit's route answers 200 carrying
 /// <code>mappingsRefused</code>, the count and the refusal's sentence, and the instance holds the edit.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.OAuthResourceServerPort.AddMapping</method> returns a
+/// vendor 500 unmapped -- the reason assertion goes red.</p>
 Method TestAMappingRefusedAfterTheSaveIsAnswered()
 {
     Set tA = ..Server("A")
@@ -230,7 +232,7 @@ Method TestAMappingRefusedAfterTheSaveIsAnswered()
     Set tAnswer = ""
     Try { Set tAnswer = ##class(%DynamicObject).%FromJSON(tRaw) } Catch { Set tAnswer = "" }
     Set tRefused = $Select($IsObject(tAnswer) && (tAnswer.%GetTypeOf("mappingsRefused") = "object"): tAnswer.%Get("mappingsRefused"), 1: {})
-    Do $$$AssertEquals(tRefused.%Get("count") _ " " _ (tRefused.%Get("reason") '= ""), "1 1", "carrying mappingsRefused, one mapping and its sentence")
+    Do $$$AssertEquals(tRefused.%Get("count") _ " " _ tRefused.%Get("reason"), "1 " _ ##class(OcuPilot.Api.Error).#REASONOAUTHRESOURCESERVERVALIDATION, "carrying mappingsRefused, one mapping and the port's named refusal, not the vendor's 500")
     Do $$$AssertEquals($ClassMethod(..#FAILPORT, "Reached", "Security.OAuth2.ResourceServerMapping", "PUT") _ " " _ $ClassMethod(..#PROBE, "Stored", tA).%Get("Description"), "1 saved before the refusal", "the mapping write reached the armed port, and the edit is stored")
 }
 
@@ -264,6 +266,25 @@ Method TestADeleteTakesTheMappingsWithIt()
     Set tSC = $ClassMethod(..#CONFIRM, "Confirm", tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
     Do $$$AssertStatusOK(tSC, "the delete is confirmed: " _ $Get(tCode))
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", tB) _ "|" _ $ClassMethod(..#PROBE, "Holder", ..#GATEWAY, "/api/atelier"), "0|", "B and its mapping are gone")
+}
+
+/// <p>A mapping added to the server between an agent delete's mint and its confirm refuses the confirm:
+/// the delete's fingerprint covers the mappings its card lists as removed with the server.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.OAuthResourceServerPort.MappingTable</method> lists none
+/// of the server's own mappings, so the reviewed state carries none -- the confirm deletes B with the
+/// unreviewed mapping and both assertions go red.</p>
+Method TestAMappingAddedAfterADeletesMintRefusesItsConfirm()
+{
+    Set tB = ..Server("B")
+    Set tArgs = {}
+    Do tArgs.%Set("Name", tB, "string")
+    Set tSC = $ClassMethod(..#HELPER, "Mint", ..#DELETETOOL, tB, tArgs, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the agent's delete is minted: " _ $ClassMethod(..#HELPER, "Problem", $Get(tFault)))
+    If '$IsObject($Get(tProposal)) Quit
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Map", ..#GATEWAY, "/api/atelier", tB), "then B takes a mapping its card never listed")
+    Set tSC = $ClassMethod(..#CONFIRM, "Confirm", tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertEquals($$$ISERR(tSC) _ " " _ tHttp _ " " _ $Get(tCode), "1 409 " _ ##class(OcuPilot.Kernel.Proposal.Write).#TARGETCHANGED, "the confirm is refused as the target having changed")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", tB) _ "|" _ $ClassMethod(..#PROBE, "Holder", ..#GATEWAY, "/api/atelier"), "1|" _ tB, "and B and its mapping are still there")
 }
 
 }

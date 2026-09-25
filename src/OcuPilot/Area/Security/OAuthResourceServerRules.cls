@@ -241,7 +241,7 @@ ClassMethod AuthenticatorViolations(pAuthenticator As %DynamicObject, ByRef pVio
             Do ..Add(.pViolations, tField, ##class(OcuPilot.Api.Error).#OAUTHAUTHENTICATORSECRET)
             Continue
         }
-        If '$Data(tTypes(tMember)) || '..SettingShaped(tTypes(tMember), pAuthenticator.%GetTypeOf(tMember), tValue) {
+        If (tMember = "") || '$Data(tTypes(tMember)) || '..SettingShaped(tTypes(tMember), pAuthenticator.%GetTypeOf(tMember), tValue) {
             Do ..Add(.pViolations, tField, ##class(OcuPilot.Api.Error).#OAUTHAUTHENTICATORSETTING)
         }
     }
