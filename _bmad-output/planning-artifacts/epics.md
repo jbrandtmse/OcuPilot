@@ -5486,12 +5486,12 @@ So that the area the task statement names reads as rebuilt.
 
 - **Given** the counter-metric that counts every link-out on a Release 1 screen against the entry
 - **When** this story completes
-- **Then** the one place in the six areas where a **list** carried an outbound link is closed, and the count returns to zero.
+- **Then** the one place in the six areas where a **list** carried an outbound link is closed, and the OAuth exemption's count returns to zero; the two reduced editors' exemptions (`ServiceForm`, `LdapConfigForm`) stay counted until Stories 16.13 and 16.14 remove them. [AMENDED 2026-09-25, Epic 12 runner at Story 12.9's plan, Rule 5 tier-1: was "and the count returns to zero", written before orchestrator ruling 2dca0322 (Story 9.9) added the two reduced editors' exemptions to AD-44]
 
 - **Given** the accepted Release 1 risk that OAuth is lists, views and deletes at the deadline
 - **When** this epic completes
 - **Then** that risk is closed rather than carried, and the closure is recorded.
-- DW-1643: AD-44 and the epic context counted five OAuth tabs declaring the classic-link exemption; Story 12.4 removed one, and the counts were corrected at origin. Story 12.5 removed one more (AD-44 lists the three left by name). This story removes the remaining three and sets the spine's count to none. (ledger; routed by cr 2026-09-25)
+- DW-1643: AD-44 and the epic context counted the OAuth tabs declaring the classic-link exemption; Stories 12.4-12.8 each removed their tab's declaration as its editor shipped, so none remains. This story removes the OAuth exemption's leftover prose and makes AD-44's count read two exemptions (the reduced service and LDAP editors) throughout. (ledger; routed by cr 2026-09-25) [AMENDED 2026-09-25, Epic 12 runner at Story 12.9's plan: was "removes the remaining three"]
 
 ---
 
