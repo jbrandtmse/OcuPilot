@@ -155,6 +155,9 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/oauth/resource-server/form" path="/api/ocupilot/oauth/resource-server/form" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/oauth/resource-server/:id" path="/api/ocupilot/oauth/resource-server/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/oauth/resource-server" path="/api/ocupilot/oauth/resource-server" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/oauth/authorization-server/form" path="/api/ocupilot/oauth/authorization-server/form" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/oauth/authorization-server" path="/api/ocupilot/oauth/authorization-server" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/oauth/authorization-server" path="/api/ocupilot/oauth/authorization-server" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/wallet/secret/form" path="/api/ocupilot/wallet/secret/form" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/wallet/secret/name" path="/api/ocupilot/wallet/secret/name" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/wallet/secret/:id" path="/api/ocupilot/wallet/secret/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>

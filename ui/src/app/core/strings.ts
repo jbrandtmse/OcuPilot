@@ -1946,7 +1946,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:560 */
+  /** EXPERIENCE.md:561 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2426,6 +2426,88 @@ export const STRINGS = {
   oauthResourceServerAuthenticatorNote: 'Changing the namespace or implementation replaces these settings with that implementation\'s defaults.',
   /** EXPERIENCE.md:519 */
   oauthResourceServerAuthenticatorResetEffect: 'Changes the authenticator\'s namespace or implementation, so every setting this change does not name takes that implementation\'s default.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerTabIntervals: 'Intervals',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerTabCustomization: 'Customization',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerIssuerHint: 'The server answers at this endpoint with /oauth2 appended.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldAudRequired: 'Audience required',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldSupportSession: 'Support user session',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldPublicRefresh: 'Allow public client refresh',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldPkcePublic: 'Enforce PKCE for public clients',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldPkceConfidential: 'Enforce PKCE for confidential clients',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldFrontChannel: 'Support front-channel logout',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldFrontChannelSession: 'Send the session ID with front-channel logout',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldReturnRefresh: 'Return refresh token',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerRefreshRequired: 'Only as OpenID Connect requires',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerRefreshAlways: 'Always',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerRefreshConfidential: 'To a confidential client',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerRefreshOffline: 'When offline_access is requested',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldServiceDocs: 'Service documentation URL',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldScope: 'Scope',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerAddScope: 'Add scope',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldUnsupportedScope: 'Allow unsupported scope',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldAccessTokenInterval: 'Access token interval (seconds)',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldCodeInterval: 'Authorization code interval (seconds)',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldRefreshInterval: 'Refresh token interval (seconds)',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldSessionInterval: 'Session termination interval (seconds)',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldSecretInterval: 'Client secret expiration interval (seconds)',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldAuthenticateClass: 'Authenticate class',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldValidateUserClass: 'Validate user class',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldSessionClass: 'Session maintenance class',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldGenerateTokenClass: 'Generate token class',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldRevokeTokenClass: 'Revoke token class',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerRotated: 'Rotated the authorization server\'s keys.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerPasswordRefused: 'Saved. The key password was not stored: <reason>',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerDeleteConsequence: 'This also deletes every client registered with this authorization server.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerClientsEffect: 'Every client registered with this authorization server gets its tokens from it, so this change reaches each of them.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerClientsHiddenEffect: 'This change reaches every client registered with this authorization server, and this account cannot list them.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerClientsDeletedEffect: 'Deleting the authorization server configuration also deletes every client registered with it.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerClientsDeletedHiddenEffect: 'Deleting the authorization server configuration also deletes every client registered with it, and this account cannot list them.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerCustomizationEffect: 'The customization code runs with the roles this adds, and they include %All or an administrative role.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerClientsPrivilegedEffect: 'Every client registered with this authorization server gets its tokens from it, so this change reaches each of them. The customization code runs with the roles this adds, and they include %All or an administrative role.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerClientsHiddenPrivilegedEffect: 'This change reaches every client registered with this authorization server, and this account cannot list them. The customization code runs with the roles this adds, and they include %All or an administrative role.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerEmptyAgent: 'configure this instance\'s OAuth 2.0 authorization server',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFormRefusedAction: 'change the authorization server configuration',
 
 } as const;
 

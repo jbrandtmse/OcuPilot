@@ -2,9 +2,10 @@
 title: 'Story 12.7: The OAuth 2.0 authorization server editor'
 type: 'feature'
 created: '2026-09-25'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'ce6620536add7ddc131af754d4696d1b17047130'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-12-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-12-6-the-oauth-2-0-resource-server-editor.md'
@@ -357,6 +358,35 @@ A new `OAuthAuthorizationServerPort` does four things:
 
 ## Review Triage Log
 
+### 2026-09-25 — Review pass
+
+- verdicts: 23 findings — high 0, medium 7, low 8, false 8, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Delete, SetPassword and RotateKeys confirms not pinned against a client registered after the mint — test now loops all four tools; mutation line recorded (run 491).
+  - `[medium]` `[patch]` Password-only Save (CHANGEPWD only, no configuration PUT) untested — `TestAPasswordOnlySaveSendsNoConfigurationWrite` added.
+  - `[medium]` `[patch]` Page status line "key password was not stored" untested across the post-Save re-read — page spec case added.
+  - `[medium]` `[patch]` Least-privileged "keep stored values only" never exercised in update mode — Wire `TestACallerWhoCannotReadTheRolesKeepsOnlyStoredRoles`; mutation line recorded.
+  - `[low]` `[patch]` CHANGEPWD vendor-500 mapping to `OAUTH.SERVERCREDENTIALS.KEY` untested — `TestAPasswordRefusalIsNamedAgainstTheCredentials`; mutation line recorded.
+  - `[medium]` `[patch]` Log-line half of `TestNoContextOrLogLineCarriesThePassword` vacuous (no line written, count discarded) — now drives a refused write, asserts the log grew, then the absence.
+  - `[low]` `[patch]` Store spec's clients test had no hidden case — hidden fixture case added.
+  - `[false]` `[reject]` AC5 refusal sub-clause lacks its own mutation line — Rule 19 asks one mutation per AC; AC5 has one (run 470).
+  - `[false]` `[reject]` AC7 confirm marker lacks its own mutation line — AC7 has its mutation (`CREATES` 0, run 472).
+  - `[false]` `[reject]` AC8 Save routes/row actions lack their own mutation lines — AC8 has its mutation (run 473), and the port-gate mutations (runs 478-479).
+  - `[medium]` `[patch]` AC6 confirm refusal pinned for Update only (same root as the first row) — grouped; fixed there.
+  - `[false]` `[reject]` Store's `clients()`/`clientsHidden()` never reach the page — the intent names the clients on the proposal card, not the editor; the form read carries them per Tasks; no bad outcome.
+  - `[false]` `[reject]` `Save.Update` asks the prohibited set before `DerivedFields` — mirrors 12.6's `OAuthResourceServerSave` :251/:253 and the mint's order; no divergence.
+  - `[false]` `[reject]` Hidden clients answer `OAUTH.SERVERCLIENTSHIDDEN` rather than `OAUTH.SERVERCLIENTS` — the lead's Q3 answer requires the fixed can-not-list sentence, which needs its own code; the proposal stays destructive and named.
+  - `[false]` `[reject]` Delete with no clients carries no client consequence — "instead" replaces the clients effect when one exists; the tool is destructive regardless.
+  - `[low]` `[patch]` No end-to-end hidden-clients mint as a real principal — Wire `TestAHiddenClientsProposalIsMintedAsThePrincipal`.
+  - `[low]` `[patch]` Route envelope for a create while a configuration is present untested — `TestAPresentConfigurationIsRefusedTakenOverTheWire`.
+  - `[medium]` `[patch]` Matrix row "Edit, bad value" covered in create mode only — `TestEveryBadValueRefusesAnEditOnBothCallers` over both callers; mutation line recorded (run 498).
+  - `[medium]` `[patch]` Client removed between mint and confirm untested (same root as the first row) — grouped; `TestAClientRemovedAfterTheMintRefusesTheConfirm`.
+  - `[low]` `[patch]` The tab's Create with a configuration present opening the edit untested — page spec id-less route case added.
+  - `[low]` `[patch]` Id-less route opening the stored configuration untested (same root as the previous row) — grouped; same case.
+  - `[low]` `[patch]` Sign-in with no configuration not asserted — `TestSignInIsUntouched` now logs in before seeding.
+  - `[low]` `[patch]` Row action's change-event target id not asserted — `TestRotatingGrowsTheKeySet` asserts `(oauth2-server, instance, SYSTEM)`.
+- Patches applied by a fresh subagent (Rule 18: no re-engagement); two literal U+2019 in the page spec escaped by the stage agent (client-lint).
+
 ## Design Notes
 
 **Governing ADs:** AD-3, AD-4, AD-5, AD-6, AD-8, AD-10, AD-13, AD-14, AD-15, AD-16, AD-19, AD-24, AD-26, AD-27, AD-28, AD-29, AD-35, AD-36, AD-39, AD-44, AD-51, AD-52, AD-53, AD-54, AD-55, AD-56, and Conventions › Secrets.
@@ -487,9 +517,46 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. OAuth-writing t
 
 **Measure in implement and record here:** the bundle total; the vendor answer for a credential whose key needs a password not stored; whether a "Create OAuth2 Server" row lists `ServerPassword`.
 
+**Recorded:**
+
+- Bundle initial total 1,764,919 bytes (main 1,614,024 + styles 150,895), over the 1745kB warning: re-based per DW-1166 to 1854kB in `ui/angular.json` and its pin in `angular-json.test.mjs`.
+- A credential whose private key needs a password the configuration does not hold: the vendor `PUT` answers 500 with `ERROR #8887` (RSA key parsing error); the port names it `OAUTH.SERVERCREDENTIALS.KEY` on `ServerCredentials` (`OAuthAuthorizationServerUpdate` `TestAVendorRefusalIsNamed`).
+- A "Create OAuth2 Server" audit row carries the password on a plain `ServerPassword:` line, so both events are declared in `AuditPort.VENDORSECRETS` (`OAuthAuthorizationServerSecret` `TestTheAuditReadsMaskThePassword`).
+- mutation: `ComposeCreate` skips `CustomizationRoles` → OAuthAuthorizationServerCreate `TestACreateThroughTheRouteStoresEveryValue`, `TestACreateTakenAfterTheMintIsRefusedAtConfirm` red (run 467) (AC1); the store's `createBody` drops the roles → store spec AC1 red.
+- mutation: `MergedMetadata` starts from `{}` → OAuthAuthorizationServerUpdate `TestAnEditSendsTheCompleteSet` red (run 468) (AC2).
+- mutation: the page's `onDelete` calls `confirmDelete` without the typed-name dialog → page spec AC3 red; the tab's `DESTRUCTIVE_CONSEQUENCES` entry removed → screen-action-handler.spec "registers delete on the four tabs" red (AC3).
+- mutation: `HandleUpdate` stores the password for an empty field → OAuthAuthorizationServerSecret `TestTheSaveStoresThePasswordAndNoReadCarriesIt` red (run 469); the store sends `ServerPassword` whatever the field holds → store spec AC4 red (AC4).
+- mutation: the port's `RotateKeys` answers `$$$OK` without the vendor call → OAuthAuthorizationServerKeys `TestRotatingGrowsTheKeySet` red (run 470) (AC5).
+- mutation: the port's `GET` answers `Clients` as `[]` → OAuthAuthorizationServerClients three tests red (run 471) (AC6).
+- mutation: `CREATES` 0 → OAuthAuthorizationServerCreate three tests red (run 472) (AC7).
+- mutation: `HandleForm` skips `Gate` → OAuthAuthorizationServerWire `TestACallerWithoutTheResourceIsRefusedEverywhere` red (run 473) (AC8).
+- mutation: the tab's classic-link exemption restored → classic-links.test.mjs "the shipped descriptor roster passes" red (AC9).
+- mutation: `.ocu-oauth-server-scopes` 1400px `min-inline-size`, rebuilt and redeployed → oauth-server-editor.browser-spec AC1 red, the table 920px past its block at 1280 and 720 (AC10).
+- mutation: `VENDORSECRETS` without the two server events → `TestTheAuditReadsMaskThePassword` red (run 474); `OAuthServerForm` `secretFields` emptied → `TestNoContextOrLogLineCarriesThePassword` red (run 475); `Answer` drops `passwordRefused` → `TestAPasswordRefusedAfterTheSaveIsAnswered` red (run 476).
+- mutation: `GrantsPrivilegeByEffect`'s authorization server arm answers 0 → OAuthAuthorizationServerUpdate `TestAPrivilegedCustomizationRoleIsMintedDestructive` red (run 477); `Put` returns the vendor 500 unmapped → `TestAVendorRefusalIsNamed` red (run 480).
+- mutation: the port's `RefusedPair` check removed → OAuthAuthorizationServerKeys `TestThePortGateComesBeforeTheVendorClass` (run 478) and OAuthAuthorizationServerCreate `TestThePortRefusesACallerWithoutAPairBeforeTheVendor` (run 479) red.
+- mutation: the delete tool's `SCREENACTIONS` emptied → OAuthAuthorizationServerClients `TestADeleteCascadesTheClients` red (run 481); `HandleUpdate` records an agent-write marker → OAuthAuthorizationServerWire `TestTheDeclaredPairsDoEveryScreenWrite` red (run 483).
+- mutation: the page follows the whole URL rather than its id segment → page spec "a query-only change of the URL is no new arrival" red; the page's `afterRefusal` drops `tabToOpen` → page spec "a refusal on a Customization field" red.
+- Every mutation reverted byte-identically, recompiled with its subclasses or rebuilt and redeployed; the six story classes re-ran green (runs 484-489).
+- mutation: drop `Clients` from the delete tool's `FINGERPRINTSUBJECT` → OAuthAuthorizationServerClients `TestAClientRegisteredAfterTheMintRefusesTheConfirm`, `TestAClientRemovedAfterTheMintRefusesTheConfirm` red (run 491) (AC6).
+- mutation: `CustomizationViolations` reads the stored roles from `Defaults()` rather than `pFresh` → OAuthAuthorizationServerWire `TestACallerWhoCannotReadTheRolesKeepsOnlyStoredRoles` red (run 495).
+- mutation: `Rules.Changes` answers `pCreates` alone → OAuthAuthorizationServerUpdate `TestEveryBadValueRefusesAnEditOnBothCallers` red (run 498).
+- mutation: the port's `ChangePassword` skips its credentials arm → OAuthAuthorizationServerSecret `TestAPasswordRefusalIsNamedAgainstTheCredentials` red (run 493).
+- Each reverted byte-identically and recompiled with RecordPort where the port changed; Clients, Secret, Wire, Create, Update and Keys re-ran green (runs 500, 501, 502, 496, 503, 499).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned from measurements on `ocupilot-b-ci` (Design Notes). The throwaway was left as found: no configuration, no server client, no probe principal, and `/oauth2` present. Spine changes at this plan (Rule 20; memlog appended; `lint_spine` shows only the existing `{id}` note): AD-4 gains `Security.OAuth2.Server`, and Conventions › Secrets names `ReturnRefreshToken` as its one exception. Q1-Q4 are open for the lead.
+**Change.** The Authorization server tab gets a five-tab `form-page` editor at `security/oauth/server/edit` on `app-form-tabs`, over a new `OAuthAuthorizationServerPort` (GET adds `Clients`/`ClientsHidden`; PUT; CHANGEPWD; ROTATEKEYS through the vendor class in `%SYS`, AD-27), five `security.oauthserver.*` tools, the form read and two Save routes, and the tab's Create, Delete and Rotate Keys. Lead decisions applied: AD-44 names `OAuthServerClientTab` alone (three exemptions, three declarations; spine sentence replaced, memlog appended); the two-pair set holds with a real least-privileged principal; a hidden client list is never silent (`OAUTH.SERVERCLIENTSHIDDEN`); adding `%All` or an `%Admin_` customization role mints destructive with its own effect; `ReturnRefreshToken` is the credential-pattern exception in both copies; `VENDORSECRETS` masks `ServerPassword` in Create and Modify OAuth2 Server rows.
+
+**Files.** New: `Port/OAuthAuthorizationServerPort.cls`, `Area/Security/OAuthAuthorizationServer{Rules,Save}.cls`, `Screen/Descriptor/OAuthServerForm.cls`, `Screen/Tool/OAuthAuthorizationServer{Create,Update,SetPassword,RotateKeys,Delete}.cls`, `Test/OAuthAuthorizationServer{Create,Update,Secret,Keys,Clients,Wire,Probe,RecordPort,SaveFixture,Confirm}.cls`, `ui/src/app/areas/security/oauth-server-form.{store,page}{,.spec}.ts`, `ui/browser/oauth-server-editor.browser-spec.mjs`. Changed in footprint: `Screen/Descriptor/OAuthServerTab.cls`. Outside the footprint (all shared-append or rosters): `Api/Error.cls`, `Api/Router.cls`, `Kernel/Audit/Log.cls`, `Kernel/EntityRef.cls`, `Kernel/Proposal/Prohibited.cls`, `Port/AdminPort.cls`, `Port/AuditPort.cls`, `Screen/Tool/Classification.cls`, `Screen/Tool/ToolFields.cls` (regenerated); test rosters `AuditVendorSecrets`, `EndpointCoverage`, `OAuthDelete`, `OAuthTabs`, `PortFixture`, `PortGate`, `Prohibited`, `ReadTool`, `SurfaceCoverage`, `ToolRoundTrip`, `Wire`, `WireOAuthRead`, `WireSecurityRead`; `ui/src/app/{app.ts,app.spec.ts}`, `areas/security/oauth-actions.ts`, `core/{proposal-view,screen-actions,screens.generated,strings}.ts`, `shell/{proposal-card.spec,screen-action-handler,screen-action-handler.spec,screen-outlet}.ts`, `styles/_components.scss`; `ui/angular.json`, `ui/tools/{angular-json.test,classic-links.test,credential-lists.test,credential-pattern,field-lists,field-lists.test,navigation.test,proposal-view.test,screen-mirror.test}.mjs`; `ui/browser/{oauth,oauth-client-editor,oauth-resource-server-editor,oauth-server-description-editor}.browser-spec.mjs`, `ui/browser/structural-baseline.json` (three shell-chrome rows); `EXPERIENCE.md` (one row), `ARCHITECTURE-SPINE.md` (AD-44 sentence), `.memlog.md`, `scripts/ci-throwaway.sh` (one classes line).
+
+**Review.** Two layers (verification-gap, intent-alignment), 23 findings: 15 patched (7 medium, 8 low; all test gaps, no product defect found), 8 rejected as false (see the triage log), 0 deferred. Patches by a fresh subagent; two literal U+2019 escaped by the stage agent.
+
+**Verification (ocupilot-b-ci).** Full ObjectScript sweep once after the review patches and a whole-tree recompile: 281 classes, 2352 tests, 0 failed, runs 504-784, totals confirmed in `%UnitTest_Result`. Five OAuth browser specs on the freshly built and deployed bundle (`main-CWVJPMVO.js`): 26/26. `npm run build` green, initial total 1,764,919 bytes (warning re-based per DW-1166 to 1854kB); `npm test` tools 1424/0, components 1351/0; screen-mirror and field-lists no drift; check-objectscript 0; lint-docs clean; lint_spine only the existing `{id}` note; smoke 49/49. Throwaway left with no configuration, no server client, sign-in 200.
+
+**Follow-up review recommended: true** (7 medium patched). Unverified risk: the post-review test legs (the four-tool fingerprint loop, update-mode rules, least-privileged stored roles, the principal-scoped hidden-clients mint) are green with mutations recorded but were not themselves reviewed.
+
+**Residual risks.** Saving new server credentials and their key password together is refused `OAUTH.SERVERCREDENTIALS.KEY` (configuration is written before the password); the password must be saved first. The port re-reads the vendor configuration after every refusal because a refused vendor save leaves it changed in process memory (measured). A principal with the two pairs alone cannot create while the role list is unreadable to it (only stored roles pass).

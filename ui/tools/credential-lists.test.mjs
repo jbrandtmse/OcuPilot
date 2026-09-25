@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { CREDENTIAL_EXACT_NAMES, CREDENTIAL_SUFFIXES } from './field-lists.mjs';
+import { CREDENTIAL_EXACT_NAMES, CREDENTIAL_EXCEPTIONS, CREDENTIAL_SUFFIXES } from './field-lists.mjs';
 
 // DW-399: the client's build-time credential classifier (`field-lists.mjs`'s `CREDENTIAL_RE`,
 // built from the two exported arrays this file checks) and the server's log-line backstop
@@ -63,6 +63,11 @@ test('the client exact credential names equal Log.cls CREDENTIALEXACTNAMES', () 
   sameMembers(CREDENTIAL_EXACT_NAMES, serverExactNames);
 });
 
+test('the client credential exceptions equal Log.cls CREDENTIALEXCEPTIONS', () => {
+  const text = readFileSync(LOG_CLASS_PATH, 'utf8');
+  sameMembers(CREDENTIAL_EXCEPTIONS, parameterList(text, 'CREDENTIALEXCEPTIONS'));
+});
+
 test('both lists equal the spine Conventions Secrets row', () => {
   const row = readFileSync(SPINE_PATH, 'utf8')
     .split('\n')
@@ -70,4 +75,5 @@ test('both lists equal the spine Conventions Secrets row', () => {
   assert.ok(row !== undefined, `${SPINE_PATH}: no Secrets row`);
   sameMembers(CREDENTIAL_SUFFIXES, backticked(row, 'a name ending in', ', or a name that is exactly'));
   sameMembers(CREDENTIAL_EXACT_NAMES, backticked(row, ', or a name that is exactly', ', and the server'));
+  sameMembers(CREDENTIAL_EXCEPTIONS, backticked(row, 'The one exception:', ', the authorization server'));
 });

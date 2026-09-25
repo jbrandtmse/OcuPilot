@@ -437,16 +437,16 @@ test('the shipped descriptor roster passes, and its population matches the tree 
     'every .cls under the descriptor directory but the base was classified'
   );
   assert.ok(result.scanned >= 1, 'at least Home is declared');
-  // AD-44 as amended (ruling 2dca0322): Release 1's three exemptions -- the OAuth 2.0 tabs still
-  // edited in the classic portal, declared by two tab descriptors (the Server descriptions, Client
-  // configurations and Resource servers tabs left it when Stories 12.4's, 12.5's and 12.6's editors
-  // shipped), and the reduced service and LDAP configuration forms (Story 9.9) -- each reported under
-  // the reason SM-C1 counts it by.
+  // AD-44 as amended (ruling 2dca0322): Release 1's three exemptions -- the OAuth 2.0 tab still
+  // edited in the classic portal, declared by the Server clients tab alone (the Server descriptions,
+  // Client configurations, Resource servers and Authorization server tabs left it when Stories 12.4's
+  // to 12.7's editors shipped), and the reduced service and LDAP configuration forms (Story 9.9) --
+  // each reported under the reason SM-C1 counts it by.
   //
-  // Mutation (Rule 19): set one tab's `classicLinkExemption.exempt` false and drop its link parts, or
-  // restore the Resource servers tab's -> the honored set and the declaration count go red. Count
-  // the exemption line by declarations rather than by reason -> the three-exemption line goes red.
-  const oauth = ['OAuthServerClientTab.cls', 'OAuthServerTab.cls'];
+  // Mutation (Rule 19): set the Server clients tab's `classicLinkExemption.exempt` false and drop its
+  // link parts, or restore the Authorization server tab's -> the honored set and the declaration
+  // count go red.
+  const oauth = ['OAuthServerClientTab.cls'];
   const reduced = {
     'LdapConfigForm.cls': 'Reduced until the full LDAP and Kerberos editor ships (Story 16.14); counted against SM-C1',
     'ServiceForm.cls': 'Reduced until the full service editor ships (Story 16.13); counted against SM-C1',
@@ -454,7 +454,7 @@ test('the shipped descriptor roster passes, and its population matches the tree 
   assert.deepEqual(
     result.honored.map((entry) => entry.file).sort(),
     [...Object.keys(reduced), ...oauth].sort(),
-    'the honored set is exactly the two OAuth 2.0 tabs still edited in the classic portal and the two reduced forms'
+    'the honored set is exactly the OAuth 2.0 tab still edited in the classic portal and the two reduced forms'
   );
   for (const entry of result.honored) {
     if (oauth.includes(entry.file)) {
@@ -470,7 +470,7 @@ test('the shipped descriptor roster passes, and its population matches the tree 
     }
   }
   assert.match(result.report.join('\n'), /^classic-links: 3 exemption\(s\) honored \(SM-C1\)$/m);
-  assert.match(result.report.join('\n'), /^classic-links: 4 descriptor\(s\) declare them \(AD-44\)$/m);
+  assert.match(result.report.join('\n'), /^classic-links: 3 descriptor\(s\) declare them \(AD-44\)$/m);
 });
 
 // --- The gates ---------------------------------------------------------------------------------

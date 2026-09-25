@@ -6205,3 +6205,86 @@ app-data-table .ocu-data-table-header-cell {
 .ocu-oauth-resource-server-move {
   display: block;
 }
+
+// --- The OAuth 2.0 authorization server editor (Story 12.7) -------------------------------------
+//
+// Five tabs on `app-form-tabs`, each a column of fields. The grant types and the customization roles
+// are checkbox groups, and the supported scopes a table of inputs with a Remove per row; the table
+// takes the resource server editor's mappings treatment and fits the form's column.
+.ocu-oauth-server-tab .ocu-field-checkbox input[type='checkbox'] {
+  inline-size: 24px;
+  block-size: 24px;
+  margin: 0;
+}
+
+.ocu-oauth-server-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ocu-oauth-server-group legend {
+  margin-block-end: var(--ocu-space-2);
+  padding: 0;
+}
+
+.ocu-oauth-server-hint {
+  margin-block-start: calc(-1 * var(--ocu-space-2));
+}
+
+.ocu-oauth-server-scopes-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-inline-size: 0;
+}
+
+.ocu-oauth-server-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  min-inline-size: 0;
+}
+
+.ocu-oauth-server-scopes {
+  @include typo.ocu-type('body');
+
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--ocu-on-surface);
+  table-layout: fixed;
+}
+
+.ocu-oauth-server-scopes caption {
+  margin-block-end: var(--ocu-space-2);
+  text-align: start;
+}
+
+.ocu-oauth-server-scopes th,
+.ocu-oauth-server-scopes td {
+  padding: var(--ocu-space-1) var(--ocu-space-2);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+  text-align: start;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+.ocu-oauth-server-scopes th {
+  color: var(--ocu-on-surface-variant);
+  font-weight: normal;
+}
+
+.ocu-oauth-server-scopes .ocu-field-input {
+  inline-size: 100%;
+  min-inline-size: 0;
+  box-sizing: border-box;
+}
+
+.ocu-oauth-server-scopes .ocu-oauth-server-scopes-action {
+  inline-size: 8rem;
+  text-align: end;
+}

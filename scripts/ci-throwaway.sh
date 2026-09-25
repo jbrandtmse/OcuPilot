@@ -203,6 +203,7 @@ services:
       # classes: OAuthServerCreate, OAuthServerDelete, OAuthServerDiscover, OAuthServerJwks, OAuthServerToken, OAuthServerUpdate, OAuthServerWire
       # classes: OAuthClientCreate, OAuthClientKeys, OAuthClientRegister, OAuthClientSecrets, OAuthClientUpdate, OAuthClientWire, AuditVendorSecrets
       # classes: OAuthResourceServerAuthenticator, OAuthResourceServerCreate, OAuthResourceServerMappings, OAuthResourceServerSecret, OAuthResourceServerUpdate, OAuthResourceServerWire, OAuthResourceServerAuditMask
+      # classes: OAuthAuthorizationServerClients, OAuthAuthorizationServerCreate, OAuthAuthorizationServerKeys, OAuthAuthorizationServerSecret, OAuthAuthorizationServerUpdate, OAuthAuthorizationServerWire
       # classes: AuditCopy, AuditStarted
       # classes: ProcessControl, ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token
       # classes: ToolSetFull

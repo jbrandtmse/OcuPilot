@@ -150,6 +150,21 @@ export const CONSEQUENCE_MAPPINGMOVE = 'OAUTH.MAPPINGMOVE';
 /** The consequence the kernel marks a resource server edit naming another authenticator namespace or class with: the settings it does not send take the new class's defaults (Story 12.6). */
 export const CONSEQUENCE_AUTHENTICATORRESET = 'OAUTH.AUTHENTICATORRESET';
 
+/** The consequences the kernel marks a write to the authorization server configuration with (Story 12.7): it reaches every registered client, or deletes them, each also for an account that cannot list them; its customization roles add %All or an %Admin_ role; and the two combined. */
+export const CONSEQUENCE_SERVERCLIENTS = 'OAUTH.SERVERCLIENTS';
+
+export const CONSEQUENCE_SERVERCLIENTSHIDDEN = 'OAUTH.SERVERCLIENTSHIDDEN';
+
+export const CONSEQUENCE_SERVERCLIENTSDELETED = 'OAUTH.SERVERCLIENTSDELETED';
+
+export const CONSEQUENCE_SERVERCLIENTSDELETEDHIDDEN = 'OAUTH.SERVERCLIENTSDELETEDHIDDEN';
+
+export const CONSEQUENCE_CUSTOMIZATIONPRIVILEGED = 'OAUTH.CUSTOMIZATIONPRIVILEGED';
+
+export const CONSEQUENCE_SERVERCLIENTSPRIVILEGED = 'OAUTH.SERVERCLIENTSPRIVILEGED';
+
+export const CONSEQUENCE_SERVERCLIENTSHIDDENPRIVILEGED = 'OAUTH.SERVERCLIENTSHIDDENPRIVILEGED';
+
 /**
  * The published sentence for a proposal's `consequence` code, or `''` for no code or one this
  * client publishes nothing for. The sentence is `STRINGS`'; the code is the kernel's (AD-39).
@@ -166,6 +181,13 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_SERVICEUNAUTHENTICATED) return STRINGS.serviceEffectUnauthenticated;
   if (code === CONSEQUENCE_MAPPINGMOVE) return STRINGS.oauthResourceServerMoveEffect;
   if (code === CONSEQUENCE_AUTHENTICATORRESET) return STRINGS.oauthResourceServerAuthenticatorResetEffect;
+  if (code === CONSEQUENCE_SERVERCLIENTS) return STRINGS.oauthAuthServerClientsEffect;
+  if (code === CONSEQUENCE_SERVERCLIENTSHIDDEN) return STRINGS.oauthAuthServerClientsHiddenEffect;
+  if (code === CONSEQUENCE_SERVERCLIENTSDELETED) return STRINGS.oauthAuthServerClientsDeletedEffect;
+  if (code === CONSEQUENCE_SERVERCLIENTSDELETEDHIDDEN) return STRINGS.oauthAuthServerClientsDeletedHiddenEffect;
+  if (code === CONSEQUENCE_CUSTOMIZATIONPRIVILEGED) return STRINGS.oauthAuthServerCustomizationEffect;
+  if (code === CONSEQUENCE_SERVERCLIENTSPRIVILEGED) return STRINGS.oauthAuthServerClientsPrivilegedEffect;
+  if (code === CONSEQUENCE_SERVERCLIENTSHIDDENPRIVILEGED) return STRINGS.oauthAuthServerClientsHiddenPrivilegedEffect;
   return '';
 }
 

@@ -32,11 +32,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import { extractXData } from './screen-mirror.mjs';
-import { CREDENTIAL_EXACT_NAMES, CREDENTIAL_RE, CREDENTIAL_SUFFIXES, lastSegment } from './credential-pattern.mjs';
+import { CREDENTIAL_EXACT_NAMES, CREDENTIAL_EXCEPTIONS, CREDENTIAL_RE, CREDENTIAL_SUFFIXES, isCredentialName, lastSegment } from './credential-pattern.mjs';
 
 // Re-exported so the pattern has one home (`credential-pattern.mjs`) while
 // `credential-lists.test.mjs` keeps reading it here, beside the classifier it governs.
-export { CREDENTIAL_EXACT_NAMES, CREDENTIAL_RE, CREDENTIAL_SUFFIXES, lastSegment };
+export { CREDENTIAL_EXACT_NAMES, CREDENTIAL_EXCEPTIONS, CREDENTIAL_RE, CREDENTIAL_SUFFIXES, lastSegment };
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const TOOL_DIR = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool');
@@ -130,7 +130,7 @@ export function classifiableRows(rows) {
 
 /** Whether a derived row is a credential by name: a string literal whose last segment matches. */
 export function isCredential(row) {
-  return row.shape === 'literal' && row.templateType === 'string' && CREDENTIAL_RE.test(lastSegment(row.path));
+  return row.shape === 'literal' && row.templateType === 'string' && isCredentialName(row.path);
 }
 
 /** Every well-formedness problem in the derived lists, as strings naming the list and path. */

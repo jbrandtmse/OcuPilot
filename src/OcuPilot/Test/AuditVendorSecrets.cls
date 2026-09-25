@@ -47,7 +47,7 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>The declaration names the six vendor events measured on a throwaway, each with the key its rows
+/// <p>The declaration names the eight vendor events measured on a throwaway, each with the key its rows
 /// carry, and the vendor event they are all rows of.</p>
 Method TestTheDeclarationNamesTheMeasuredEvents()
 {
@@ -58,7 +58,10 @@ Method TestTheDeclarationNamesTheMeasuredEvents()
     For tEvent = "Create OAuth2 Client", "Modify OAuth2 Client", "Create OAuth2 Client Metadata", "Modify OAuth2 Client Metadata" {
         Do $$$AssertTrue((";" _ tDeclared _ ";") [ (";" _ tEvent _ "=registration_access_token;"), tEvent _ ": declares the registration access token")
     }
-    Do $$$AssertEquals($Length(tDeclared, ";"), 6, "and nothing else")
+    For tEvent = "Create OAuth2 Server", "Modify OAuth2 Server" {
+        Do $$$AssertTrue((";" _ tDeclared _ ";") [ (";" _ tEvent _ "=ServerPassword;"), tEvent _ ": declares the key password")
+    }
+    Do $$$AssertEquals($Length(tDeclared, ";"), 8, "and nothing else")
     Do $$$AssertEquals($Parameter(..#PORT, "VENDORSECRETSOURCE"), "%System/%Security/OAuth2", "all rows of the vendor's OAuth 2.0 security event")
 }
 

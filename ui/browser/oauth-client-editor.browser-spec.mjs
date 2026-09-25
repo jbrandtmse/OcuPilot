@@ -14,7 +14,7 @@
  * 4. **Rotate Keys** (AC6): the editor reports the rotation and the key set changes.
  * 5. **Delete from the row menu** (AC6, AC10): the editor's delete dialog passes DW-1337, the row menu
  *    offers the three declared actions, and the typed name deletes it.
- * 6. **The two tabs still edited in the classic portal keep their classic links** (AC9).
+ * 6. **The tab still edited in the classic portal keeps its classic link** (AC9).
  * 7. **DW-1337** (AC10): the editor and its delete dialog pass the structural and contrast checks at
  *    1280 light, 720 light and 1280 dark, allowed only the shell's own two findings.
  *
@@ -61,9 +61,8 @@ const EDIT_URL = `/ocupilot/${EDITOR_ROUTE}/${encodeEntityId(NAME)}?ns=HSCUSTOM`
 const ACTION_PATH = '/api/ocupilot/screens/security.oauthclients/action';
 const ID = 'ocu-oauth-client';
 
-/** The two tabs still edited in the classic portal, and the classic editor their name cells open. */
+/** The tab still edited in the classic portal, and the classic editor its name cell opens. */
 const CLASSIC_TABS = [
-  { route: 'security/oauth/server', page: '%25CSP.UI.Portal.OAuth2.Server.Configuration.zen' },
   { route: 'security/oauth/server-clients', page: '%25CSP.UI.Portal.OAuth2.Server.Client.zen' },
 ];
 
@@ -369,7 +368,7 @@ test("AC6, AC10: the editor's delete dialog passes DW-1337, and the row menu's D
   }
 });
 
-test('AC9: the two tabs still edited in the classic portal keep their classic links', async () => {
+test('AC9: the tab still edited in the classic portal keeps its classic link', async () => {
   const { values, output } = irisSession(['Set tSC=##class(OcuPilot.Test.OAuthProbe).Create()', mark('MADE', '$System.Status.IsOK(tSC)')], ['MADE']);
   assert.equal(values.MADE, '1', `the OAuth probe objects are made:\n${output}`);
   try {

@@ -210,19 +210,22 @@ const OAUTH_RESOURCE_SERVERS = SCREENS.find(
   (screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.OAuthResourceServerTab'
 )!;
 
+const OAUTH_AUTH_SERVER = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.OAuthServerTab')!;
+
 /**
  * AD-53, Story 7.3: the OAuth 2.0 tabs' delete runs through the same handler, with each tab's own
  * published consequence, and a server client is targeted by its `ClientId` -- the vendor's IdKey --
  * never by its `Name`, which two clients may share.
  */
 describe('the OAuth 2.0 tabs\u2019 delete', () => {
-  it('registers delete on the three tabs and opens each tab\u2019s own consequence', async () => {
+  it('registers delete on the four tabs and opens each tab\u2019s own consequence', async () => {
     // Mutation (Rule 19): drop any of the descriptors from `SCREEN_ACTION_DESCRIPTORS` -> its `has`
     // assertion goes red, and no surface draws its delete (DW-389).
     for (const [screen, consequence, row, type, rowActions] of [
       [OAUTH_CLIENTS, STRINGS.oauthClientDeleteConsequence, 'OcuPilotTestDelete', 'oauth2-client-configuration', ['delete', 'rotatekeys', 'register']],
       [OAUTH_SERVER_CLIENTS, STRINGS.oauthServerClientDeleteConsequence, 'probe-client-id', 'oauth2-server-client', ['delete']],
       [OAUTH_RESOURCE_SERVERS, STRINGS.oauthResourceServerDeleteConsequence, 'OcuPilotProbeResource', 'oauth2-resource-server', ['delete']],
+      [OAUTH_AUTH_SERVER, STRINGS.oauthAuthServerDeleteConsequence, 'probe-issuer', 'oauth2-server', ['delete', 'rotatekeys']],
     ] as const) {
       const answer: JsonResult<unknown> = {
         kind: 'ok',

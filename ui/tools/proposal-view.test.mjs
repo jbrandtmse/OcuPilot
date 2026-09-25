@@ -29,6 +29,13 @@ const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
 
 const {
   CONSEQUENCE_AUTHENTICATORRESET,
+  CONSEQUENCE_CUSTOMIZATIONPRIVILEGED,
+  CONSEQUENCE_SERVERCLIENTS,
+  CONSEQUENCE_SERVERCLIENTSDELETED,
+  CONSEQUENCE_SERVERCLIENTSDELETEDHIDDEN,
+  CONSEQUENCE_SERVERCLIENTSHIDDEN,
+  CONSEQUENCE_SERVERCLIENTSHIDDENPRIVILEGED,
+  CONSEQUENCE_SERVERCLIENTSPRIVILEGED,
   CONSEQUENCE_PRIVILEGED,
   CONSEQUENCE_RUNSASOTHER,
   CONSEQUENCE_SERVESOCUPILOT,
@@ -231,6 +238,27 @@ test("a change to the service OcuPilot is served through resolves to its publish
 test('an authenticator namespace or class change resolves to its published sentence', () => {
   assert.equal(CONSEQUENCE_AUTHENTICATORRESET, 'OAUTH.AUTHENTICATORRESET');
   assert.equal(consequenceSentence(CONSEQUENCE_AUTHENTICATORRESET), STRINGS.oauthResourceServerAuthenticatorResetEffect);
+});
+
+// Story 12.7, AD-10: a write to the authorization server configuration is permitted and minted
+// destructive whenever clients are registered with it, or the caller cannot list them, and whenever
+// its customization roles add %All or an %Admin_ role; each code states its own sentence.
+//
+// Mutation (Rule 19): drop the SERVERCLIENTSHIDDEN branch from `consequenceSentence` -> this goes red.
+test("the authorization server's seven consequences resolve to their published sentences", () => {
+  const rows = [
+    [CONSEQUENCE_SERVERCLIENTS, 'OAUTH.SERVERCLIENTS', STRINGS.oauthAuthServerClientsEffect],
+    [CONSEQUENCE_SERVERCLIENTSHIDDEN, 'OAUTH.SERVERCLIENTSHIDDEN', STRINGS.oauthAuthServerClientsHiddenEffect],
+    [CONSEQUENCE_SERVERCLIENTSDELETED, 'OAUTH.SERVERCLIENTSDELETED', STRINGS.oauthAuthServerClientsDeletedEffect],
+    [CONSEQUENCE_SERVERCLIENTSDELETEDHIDDEN, 'OAUTH.SERVERCLIENTSDELETEDHIDDEN', STRINGS.oauthAuthServerClientsDeletedHiddenEffect],
+    [CONSEQUENCE_CUSTOMIZATIONPRIVILEGED, 'OAUTH.CUSTOMIZATIONPRIVILEGED', STRINGS.oauthAuthServerCustomizationEffect],
+    [CONSEQUENCE_SERVERCLIENTSPRIVILEGED, 'OAUTH.SERVERCLIENTSPRIVILEGED', STRINGS.oauthAuthServerClientsPrivilegedEffect],
+    [CONSEQUENCE_SERVERCLIENTSHIDDENPRIVILEGED, 'OAUTH.SERVERCLIENTSHIDDENPRIVILEGED', STRINGS.oauthAuthServerClientsHiddenPrivilegedEffect],
+  ];
+  for (const [code, wire, sentence] of rows) {
+    assert.equal(code, wire);
+    assert.equal(consequenceSentence(code), sentence, wire);
+  }
 });
 
 // AD-3, AD-35: a user create's diff carries one Password row the kernel composes with both values

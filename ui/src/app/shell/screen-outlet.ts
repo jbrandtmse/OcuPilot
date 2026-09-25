@@ -21,6 +21,7 @@ import { AuditingConfigPage } from '../areas/security/auditing-config.page';
 import { OAuthServerDescriptionFormPage } from '../areas/security/oauth-server-description-form.page';
 import { OAuthClientFormPage } from '../areas/security/oauth-client-form.page';
 import { OAuthResourceServerFormPage } from '../areas/security/oauth-resource-server-form.page';
+import { OAuthServerFormPage } from '../areas/security/oauth-server-form.page';
 import { TaskDetailsPage } from '../areas/tasks/details.page';
 import { HistoryPage } from '../areas/tasks/history.page';
 import { UpcomingPage } from '../areas/tasks/upcoming.page';
@@ -120,6 +121,7 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.OAuthServerDescriptionForm': OAuthServerDescriptionFormPage,
   'OcuPilot.Screen.Descriptor.OAuthClientForm': OAuthClientFormPage,
   'OcuPilot.Screen.Descriptor.OAuthResourceServerForm': OAuthResourceServerFormPage,
+  'OcuPilot.Screen.Descriptor.OAuthServerForm': OAuthServerFormPage,
   'OcuPilot.Screen.Descriptor.WalletSecretForm': WalletSecretFormPage,
   'OcuPilot.Screen.Descriptor.DeviceForm': DeviceFormPage,
   'OcuPilot.Screen.Descriptor.SslForm': SslFormPage,

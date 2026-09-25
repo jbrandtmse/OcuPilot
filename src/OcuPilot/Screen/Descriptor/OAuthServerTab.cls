@@ -3,13 +3,19 @@
 /// one row, and no row at all when the instance has none configured (AD-36).</p>
 /// <p><b>It names individual members of the configuration's public discovery metadata</b>,
 /// <code>Metadata.scopes_supported</code> and <code>Metadata.grant_types_supported</code>, never
-/// <code>Metadata</code> itself. No server password, client secret or key material is declared
+/// <code>Metadata</code> itself. No server password, client secret or key material is among its fields
 /// (AD-35).</p>
 /// <p><b>The privilege set is <code>%Admin_OAuth2_Server:USE</code> and
 /// <code>%DB_IRISSYS:READ</code></b> (AD-8).</p>
-/// <p><b>Its name cell opens the classic authorization server editor in a new tab</b>, which takes no
-/// parameter (AD-44).</p>
-/// <p>It declares no primary or row action and does not refresh (AD-43).</p>
+/// <p><b>Its name cell opens OcuPilot's own editor</b>,
+/// <class>OcuPilot.Screen.Descriptor.OAuthServerForm</class>, at this tab's route with
+/// <code>/edit</code> appended (Story 12.7); it declares no classic link-out. Its Create opens the same
+/// editor, which opens the stored configuration when the instance has one.</p>
+/// <p><b>Its row actions are <code>delete</code> and <code>rotatekeys</code></b>, carried out by
+/// <class>OcuPilot.Screen.Tool.OAuthAuthorizationServerDelete</class> and
+/// <class>OcuPilot.Screen.Tool.OAuthAuthorizationServerRotateKeys</class> (AD-51, AD-53). Its declared
+/// secret is written only by <class>OcuPilot.Screen.Tool.OAuthAuthorizationServerSetPassword</class>
+/// (AD-56). It does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.OAuthServerTab Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -30,19 +36,14 @@ XData Declaration
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "primaryAction": {"id": "create", "selfProtection": ""},
+  "rowActions": [{"id": "delete", "selfProtection": ""}, {"id": "rotatekeys", "selfProtection": ""}],
   "context": {"fields": ["IssuerEndpoint", "Metadata.scopes_supported", "Metadata.grant_types_supported", "SigningAlgorithm", "EncryptionAlgorithm", "KeyAlgorithm", "ServerCredentials"], "secretFields": []},
+  "secretArguments": ["ServerPassword"],
   "emptyStateKey": "oauthServerEmpty",
   "commandAliases": [],
   "classicPage": "%CSP.UI.Portal.OAuth2.Server.Configuration",
-  "classicLinkExemption": {
-    "exempt": true,
-    "reason": "Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1",
-    "label": "OAuth 2.0 Authorization Server Configuration",
-    "href": "/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Server.Configuration.zen",
-    "rowLink": {"params": []}
-  },
+  "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
     "source": {"port": "admin", "endpoint": "Security.OAuth2.Server", "type": "GET"},
     "fields": ["IssuerEndpoint", "Metadata.scopes_supported", "Metadata.grant_types_supported", "SigningAlgorithm", "EncryptionAlgorithm", "KeyAlgorithm", "ServerCredentials"],
@@ -60,8 +61,8 @@ XData Declaration
       {"field": "KeyAlgorithm", "labelKey": "oauthColumnKeyAlgorithm", "kind": "text"},
       {"field": "ServerCredentials", "labelKey": "oauthColumnServerCredentials", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "oauthAuthServerEmptyAgent"
   },
   "tab": {"group": "security/oauth", "position": 4, "labelKey": "oauthTabServer"},
   "toolIdentifier": "security.oauthserver"

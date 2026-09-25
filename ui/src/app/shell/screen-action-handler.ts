@@ -39,7 +39,8 @@ export const SCREEN_ACTION_PATH_SUFFIX = '/action';
  * whose Delete types the name -- a role's stating how many accounts hold it -- and whose role value
  * actions the role editor sends, and the X.509 credentials, Secrets and SSL/TLS configurations lists
  * (Story 9.5), whose Delete types the name, and the OAuth 2.0 Resource servers tab (Story 12.6), whose
- * Delete types the name.
+ * Delete types the name, and the Authorization server tab (Story 12.7), whose Delete types the issuer
+ * and whose Rotate Keys is sent at once.
  */
 export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WebAppList',
@@ -61,6 +62,7 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WalletSecretList',
   'OcuPilot.Screen.Descriptor.SslConfigList',
   'OcuPilot.Screen.Descriptor.OAuthResourceServerTab',
+  'OcuPilot.Screen.Descriptor.OAuthServerTab',
 ];
 
 /** The Users list's descriptor, whose row actions carry values (AD-56). */
@@ -209,6 +211,7 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.WalletSecretList': { delete: STRINGS.walletSecretDeleteConsequence },
   'OcuPilot.Screen.Descriptor.SslConfigList': { delete: STRINGS.sslDeleteConsequence },
   'OcuPilot.Screen.Descriptor.OAuthResourceServerTab': { delete: STRINGS.oauthResourceServerDeleteConsequence },
+  'OcuPilot.Screen.Descriptor.OAuthServerTab': { delete: STRINGS.oauthAuthServerDeleteConsequence },
 };
 
 /**

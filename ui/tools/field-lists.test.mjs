@@ -261,10 +261,10 @@ test('a path is classifiable only when no row extends it, and a credential is a 
 // Mutation (Rule 19): drop `secret64` or `^key$` from CREDENTIAL_RE -> this goes red.
 test('every ending of the credential pattern matches a string literal, and a name merely holding "key" does not', () => {
   const literal = (path) => ({ path, shape: 'literal', templateType: 'string', itemType: '' });
-  for (const path of ['AdminPassword', 'UserPasswd', 'DbPwd', 'ClientSecret', 'Secret64', 'Settings.ApiKey', 'PrivateKey', 'ReturnRefreshToken', 'Key', 'key']) {
+  for (const path of ['AdminPassword', 'UserPasswd', 'DbPwd', 'ClientSecret', 'Secret64', 'Settings.ApiKey', 'PrivateKey', 'RefreshToken', 'Key', 'key']) {
     assert.equal(isCredential(literal(path)), true, `${path} is a credential by name`);
   }
-  for (const path of ['PrimaryKeyField', 'KeyType', 'KeyDirectory', 'PrivateKeyType', 'Keys', 'Secret64Hint']) {
+  for (const path of ['PrimaryKeyField', 'KeyType', 'KeyDirectory', 'PrivateKeyType', 'Keys', 'Secret64Hint', 'ReturnRefreshToken']) {
     assert.equal(isCredential(literal(path)), false, `${path} is not`);
   }
   for (const [tool, fieldList, path] of [

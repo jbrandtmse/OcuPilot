@@ -16,7 +16,7 @@
  *    and a removed row leaves the instance.
  * 5. **Delete from the row menu** (AC3, AC11): the editor's delete dialog passes DW-1337, the row menu
  *    offers the one declared action, and the typed name deletes the server and its mappings.
- * 6. **The two tabs still edited in the classic portal keep their classic links** (AC9).
+ * 6. **The tab still edited in the classic portal keeps its classic link** (AC9).
  *
  * **It refuses the live container**, and needs the demo fixture's SSL/TLS configuration. Every probe
  * object is removed by exact name before and after (`OcuPilot.Test.OAuthResourceServerProbe`).
@@ -64,9 +64,8 @@ const PROBE = 'OcuPilot.Test.OAuthResourceServerProbe';
 /** The editor's four tabs, in order. */
 const TAB_KEYS = ['general', 'token', 'authenticator', 'mappings'];
 
-/** The two tabs still edited in the classic portal, and the classic editor their name cells open. */
+/** The tab still edited in the classic portal, and the classic editor its name cell opens. */
 const CLASSIC_TABS = [
-  { route: 'security/oauth/server', page: '%25CSP.UI.Portal.OAuth2.Server.Configuration.zen' },
   { route: 'security/oauth/server-clients', page: '%25CSP.UI.Portal.OAuth2.Server.Client.zen' },
 ];
 
@@ -410,7 +409,7 @@ test("AC3, AC11: the editor's delete dialog passes DW-1337, and the row menu's D
   }
 });
 
-test('AC9: the two tabs still edited in the classic portal keep their classic links', async () => {
+test('AC9: the tab still edited in the classic portal keeps its classic link', async () => {
   const { values, output } = irisSession(['Set tSC=##class(OcuPilot.Test.OAuthProbe).Create()', mark('MADE', '$System.Status.IsOK(tSC)')], ['MADE']);
   assert.equal(values.MADE, '1', `the OAuth probe objects are made:\n${output}`);
   try {

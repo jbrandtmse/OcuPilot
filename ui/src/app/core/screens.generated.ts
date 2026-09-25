@@ -455,7 +455,8 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "audit-event": "foldcase",
   "audit-user-event": "foldcase",
   "service": "foldcase",
-  "ldap-configuration": "foldcase"
+  "ldap-configuration": "foldcase",
+  "oauth2-server": "singleton"
 };
 
 /**
@@ -3774,6 +3775,64 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.OAuthServerForm",
+    "route": "security/oauth/server/edit",
+    "area": "security",
+    "labelKey": "oauthTabServer",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_OAuth2_Server",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "oauth2-server",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": [
+        "ServerPassword"
+      ]
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "classicPage": "%CSP.UI.Portal.OAuth2.Server.Configuration",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "security.oauthserverform",
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.OAuthServerTab",
     "route": "security/oauth/server",
     "area": "security",
@@ -3802,10 +3861,19 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "parts": []
     },
     "primaryAction": {
-      "id": "",
+      "id": "create",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      },
+      {
+        "id": "rotatekeys",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "IssuerEndpoint",
@@ -3818,17 +3886,17 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ],
       "secretFields": []
     },
+    "secretArguments": [
+      "ServerPassword"
+    ],
     "emptyStateKey": "oauthServerEmpty",
     "commandAliases": [],
     "classicPage": "%CSP.UI.Portal.OAuth2.Server.Configuration",
     "classicLinkExemption": {
-      "exempt": true,
-      "reason": "Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1",
-      "label": "OAuth 2.0 Authorization Server Configuration",
-      "href": "/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Server.Configuration.zen",
-      "rowLink": {
-        "params": []
-      }
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
     },
     "read": {
       "source": {
@@ -3907,8 +3975,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "oauthAuthServerEmptyAgent"
     },
     "tab": {
       "group": "security/oauth",
@@ -3918,7 +3986,6 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "toolIdentifier": "security.oauthserver",
     "banner": null,
     "rowTarget": null,
-    "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },

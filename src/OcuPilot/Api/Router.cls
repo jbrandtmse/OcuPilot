@@ -172,6 +172,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/oauth/resource-server/form" Method="GET" Call="OAuthResourceServerFormRead"/>
   <Route Url="/oauth/resource-server/:id" Method="PUT" Call="OAuthResourceServerUpdate"/>
   <Route Url="/oauth/resource-server" Method="POST" Call="OAuthResourceServerCreate"/>
+  <Route Url="/oauth/authorization-server/form" Method="GET" Call="OAuthAuthorizationServerFormRead"/>
+  <Route Url="/oauth/authorization-server" Method="PUT" Call="OAuthAuthorizationServerUpdate"/>
+  <Route Url="/oauth/authorization-server" Method="POST" Call="OAuthAuthorizationServerCreate"/>
 </Routes>
 }
 
@@ -590,6 +593,28 @@ ClassMethod OAuthResourceServerUpdate(pId As %String) As %Status
 ClassMethod OAuthResourceServerCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Security.OAuthResourceServerSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /oauth/authorization-server/form</code> (Story
+/// 12.7): the authorization server editor's rules and readable names, and the configuration when the
+/// instance has one. It sits before <code>/oauth/authorization-server</code>.</p>
+ClassMethod OAuthAuthorizationServerFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthAuthorizationServerRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /oauth/authorization-server</code>: the editor's
+/// edit Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthAuthorizationServerUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthAuthorizationServerSave).HandleUpdate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /oauth/authorization-server</code>: the editor's
+/// create Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthAuthorizationServerCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthAuthorizationServerSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /screens/:screen/action</code>: delegates to

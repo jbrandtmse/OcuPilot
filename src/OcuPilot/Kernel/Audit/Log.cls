@@ -62,6 +62,12 @@ Parameter CREDENTIALSUFFIXES = "password,passwd,pwd,secret,secret64,apikey,priva
 /// OcuPilot's own log screens (AD-35, AD-46).</p>
 Parameter CREDENTIALEXACTNAMES = "key,credentialname";
 
+/// <p>The whole names the two lists above match that are not credentials, matched
+/// case-insensitively against the folded key: <code>returnrefreshtoken</code>, the authorization
+/// server's refresh-token policy (Conventions, Secrets; Story 12.7). Held equal to
+/// <file>ui/tools/credential-pattern.mjs</file>'s <code>CREDENTIAL_EXCEPTIONS</code>.</p>
+Parameter CREDENTIALEXCEPTIONS = "returnrefreshtoken";
+
 /// <p>Build the JSON log entry and write it to the IRIS console log. Never throws —
 /// a failure here is swallowed rather than raised to the caller.</p>
 /// <p><var>pData</var> passes through <method>Redact</method> first (Consistency Conventions:
@@ -161,7 +167,8 @@ ClassMethod EmptyLike(pData As %DynamicAbstractObject) As %DynamicAbstractObject
 
 /// <p>Whether <var>pKey</var> names something that may hold a credential: its folded name ends
 /// in one of <parameter>CREDENTIALSUFFIXES</parameter>, or is exactly one of
-/// <parameter>CREDENTIALEXACTNAMES</parameter>.</p>
+/// <parameter>CREDENTIALEXACTNAMES</parameter>, and is none of
+/// <parameter>CREDENTIALEXCEPTIONS</parameter>.</p>
 /// <p><b>Anchored, not a substring search.</b> The names that carry secrets in this tree's own
 /// payloads are compounds -- <code>refresh_token</code>, <code>ApiKey</code>,
 /// <code>ClientSecret</code> -- so a matcher that only caught the bare word would catch none of
@@ -173,6 +180,7 @@ ClassMethod IsCredentialName(pKey As %String) As %Boolean
 {
     Set tMatches = 0
     Set tFolded = $ZConvert(pKey, "L")
+    If $ListFind($ListFromString(..#CREDENTIALEXCEPTIONS), tFolded) Quit 0
     Set tExact = ..#CREDENTIALEXACTNAMES
     For tI = 1:1:$Length(tExact, ",") {
         Set tName = $Piece(tExact, ",", tI)
