@@ -4,15 +4,14 @@ type: 'feature'
 created: '2026-09-25'
 status: 'done'
 baseline_revision: 'd3a13660263b5c8c14378055fb6bdd096858f4d2'
+baseline_commit: 'd3a13660263b5c8c14378055fb6bdd096858f4d2'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-12-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-12-7-the-oauth-2-0-authorization-server-editor.md'
 warnings: ['oversized']
-deferred:
-  - 'A ServerClients PUT naming only Metadata members skips the vendor %OnValidateObject, so a direct admin-API caller can store an unsupported grant type (measured); OcuPilot always sends the complete set, which carries RedirectURL and is validated (inference: no OcuPilot path reaches the partial form).'
-  - 'OAUTH.CLIENTCREDENTIALS.ABSENT, reused from Story 12.5, says "an X.509 credential with that name and a private key"; a server client''s credential verifies signatures and needs no private key, so the sentence over-states the rule on this editor.'
+deferred: []
 ---
 
 <intent-contract>

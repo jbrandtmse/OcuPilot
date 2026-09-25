@@ -7061,3 +7061,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Test/OAuthAuthorizationServerUpdate TestAVendorRefusalIsNamed calls AddCredential(alias, 0), which sets no PrivateKey, so it pins the no-key refusal, not #8887.
 - 2026-09-25T16:49:34Z status=open owner=12-7-the-oauth-2-0-authorization-server-editor by=cr note=lead: correct the spec's Recorded line at its origin at this story's gate
 - 2026-09-25T16:51:09Z status=resolved-by:12-7-the-oauth-2-0-authorization-server-editor by=adjudication note=spec Recorded line corrected at origin: names the plan measurement for #8887 and what TestAVendorRefusalIsNamed actually pins
+
+### DW-1670: A ServerClients PUT naming only Metadata members skips the vendor's %OnValidateObject, so a direct admin-API caller can store an unsupported grant type; OcuPilot always sends the complete set
+- source: spec-12-8-the-oauth-2-0-server-client-description-editor.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: measured by 12.8 implement on ocupilot-b-ci; OcuPilot's port sends the complete property set, which carries RedirectURL and is validated
+- 2026-09-25T20:57:25Z status=wontfix-theoretical owner=12-8-the-oauth-2-0-server-client-description-editor by=harvest note=vendor behavior reached only by a direct admin-API caller; reopen_if=an OcuPilot path sends a Metadata-only ServerClients PUT
+
+### DW-1671: OAUTH.CLIENTCREDENTIALS.ABSENT, reused from Story 12.5, says the credential needs a private key; a server client's credential verifies signatures and needs none, so the sentence over-states the rule on the server client editor
+- source: spec-12-8-the-oauth-2-0-server-client-description-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: 12.8 implement: the server client editor reuses 12.5's code and sentence
+- 2026-09-25T20:57:25Z status=open owner=12-8-the-oauth-2-0-server-client-description-editor by=harvest note=lead: patch at code review with a server-client wording (own code or parameterized sentence)
