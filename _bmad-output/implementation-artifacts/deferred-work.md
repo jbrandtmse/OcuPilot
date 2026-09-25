@@ -6720,11 +6720,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured on ocupilot-b-ci 2026-09-24 23:58:39: TOKEN write row EventData carries 'New value: <token>' and a property dump; every later save dumps it again; Conventions > Secrets makes redaction schema-driven, so masking vendor free text needs a spine ruling
 - 2026-09-25T00:39:02Z status=escalated owner=burndown by=harvest note=raised to the orchestrator mid-epic at 12.4 (AD-35 scope over vendor-recorded secrets; mask EventData for the named events vs named gap)
 - 2026-09-25T01:19:33Z occurrence=12-4-the-oauth-2-0-client-server-description-editor
+- 2026-09-25T02:13:04Z occurrence=12-5-the-oauth-2-0-client-configuration-editor note=measured 2026-09-25 on ocupilot-b-ci: the client configuration's Metadata.registration_access_token is written in plain text into 'Modify OAuth2 Client' and 'Modify OAuth2 Client Metadata' EventData by CHANGESECRET and again by every later PUT and ROTATEKEYS; ClientSecret, ClientPassword, Metadata.client_secret and key sets are masked by the vendor
 
 ### DW-1641: The agent's OAuth server-description update replaces Metadata whole: the tool argument is the complete member set because Mint.Merge carries an object argument as one value (the screen route merges member by member first)
 - source: spec-12-4-the-oauth-2-0-client-server-description-editor.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Pinned in Test/OAuthServerUpdate TestTheAgentsEditSendsTheCompleteSet (one diff row, field Metadata); Epic 9's Write.MergeUpdate hook is not on this branch
 - 2026-09-25T00:39:03Z status=routed owner=burndown by=harvest note=settle after Epic 9 merges: merge the agent's Metadata over the fresh read via Write.MergeUpdate
+- 2026-09-25T02:13:04Z occurrence=12-5-the-oauth-2-0-client-configuration-editor
 
 ### DW-1642: Discover against an unreachable issuer waits for the vendor's own connect timeout (~30 s) before the named refusal
 - source: spec-12-4-the-oauth-2-0-client-server-description-editor.md | severity: low | fix-risk: low | footprint: in-story

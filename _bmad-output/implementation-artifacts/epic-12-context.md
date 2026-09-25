@@ -42,7 +42,7 @@ Finish the area the contest's task statement names most directly: OAuth setup. A
   - `Security.OAuth2.Client.ServerDefinition` keeps omitted fields, and it merges `Metadata` member by member. Its complete set therefore sends every derived member, with an absent one in its empty form (`""`, `[]`, `false`). Otherwise a cleared member would survive.
   - `Security.X509Credential` keeps omitted fields. It still receives the complete set.
 - **Field lists (AD-3).** The derived list is the wire contract. It carries `Metadata` as one opaque object.
-  - The `Metadata.*` member sets come from the vendor's `OAuth2.Server.Metadata` class, whose generated `ImportJSON` is what the endpoint applies. They do not come from `mainspec_v2.json`, which is not vendored.
+  - The `Metadata.*` member sets come from the vendor's metadata class for the entity (`OAuth2.Server.Metadata`, `OAuth2.Client.Metadata` for a client configuration), whose generated `ImportJSON` is what the endpoint applies. They do not come from `mainspec_v2.json`, which is not vendored.
   - `ClientId`, `JWTInterval` and `ServerDefinition` keep their template names, because the endpoint rejects unknown keys.
   - A `Metadata` key must be a derived member with the member's shape. The vendor silently ignores anything else, so OcuPilot refuses it.
   - Every field is classified `ordinary`, `secret` or `opaque`. An unclassified field is emitted as secret. A string field with a credential-like name that is not classified secret fails the build.
