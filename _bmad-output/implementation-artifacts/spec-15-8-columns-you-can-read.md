@@ -2,7 +2,7 @@
 title: 'Story 15.8: Columns you can read'
 type: 'feature'
 created: '2026-09-25'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '178758eedb7592a5f233dbe5db5bf8b89082970c'
 baseline_commit: '11feffa40473a842a5fe76278ce246f15cf2445a'
 review_loop_iteration: 0
@@ -178,6 +178,10 @@ deferred: []
 - **AC7 (DW-1586).** Given a short name, when its link renders, then it is at least 24×24. `a11y-structural-invariants.browser-spec.mjs` then reports 0 fresh and 0 stale keys, and the baseline holds 208 entries.
 - **Integration AC (Rule 1).** Given the deployed bundle on `ocupilot-ci`, when `_SYSTEM` resizes Users' Name column, signs out and signs in in a new context, then `ListPage`'s table, which consumes `ScreenStore` → `AccountPreferences`, draws Name at the stored width.
 
+### Rework 2 (CI)
+
+- [ ] [CI] browser: `data-table-columns.browser-spec.mjs:341` "Trigger reach" fails on CI's Linux Chrome at `:366`: `a sideways wheel over the frame brings the trigger inside it: {"inside":false,"hit":true,"x":437,"y":70.5,"box":[423,451],"frame":[17,448],"scrolled":470}` — run 36106266031 on 6bb8fb7f, https://github.com/jbrandtmse/OcuPilot/actions/runs/36106266031 (every other job and every other browser test green). The trigger's right edge (451) sits past the frame's (448) after the scroll settles. It passes on macOS, whose scrollbars are overlay (zero width); CI's are classic. Find whether the product clips the last column at maximum horizontal scroll when the frame has a classic vertical scrollbar (then fix the product) or whether the test measures the wrong box (then fix the measurement without weakening what it proves). Reproduce the classic-scrollbar geometry locally before concluding. Story 15.9 will pin the trigger column (DW-1648, decided); do not do that here.
+
 ### Rework 1 (CI)
 
 - [x] [CI] browser: `resources-editor.browser-spec.mjs:339` ("Story 9.3: a probe is deleted from the row menu once its name is typed...") and `roles-editor.browser-spec.mjs:425` ("AC3: the Roles list's Delete states the holders...") both time out on `[role="row"][aria-selected="true"] .ocu-data-table-trigger` (visible) after `selectRow` — run 36100540000 on 0b7e3b69, https://github.com/jbrandtmse/OcuPilot/actions/runs/36100540000 — the row's action trigger is no longer reached once rows are wider than the frame. Reproduce both files on `ocupilot-ci` against a redeployed bundle, find the root cause, and make them green without weakening any assertion. Fix a test helper only if the product behavior is correct as shipped (the trigger reachable by a user through the frame's own horizontal scroll and by keyboard); if the product leaves the trigger unreachable, fix the product. Do not decide DW-1648 (the owner's call on column floors and on pinning the trigger column). Then grep every other browser spec that clicks the row trigger or a row by its center (`.ocu-data-table-trigger`, `clickRowCentre`, own `selectRow` helpers) and run each spec file whose path could be hit the same way (one file at a time is fine; never the full suite).
@@ -218,6 +222,8 @@ Rejected (rework 1 re-review):
 - false: the harness is not the real screens (it mounts the same `app-data-table`, and reach is component behavior); the wheel half never checks `scrollLeft` (`inside` flips only through the frame's scroll); the keyboard half does no hit-test (reveal is asserted by `inside`); the final tree is unverified (`npm test` loads no `ui/browser` file, and this pass re-ran `client-lint`, `browser-reset` and `data-table-columns` 15/15); `status: done` against the tracker's `review` (the build-auto contract writes `done`).
 
 ## Spec Change Log
+
+- 2026-09-25 rework 2 (runner, trigger=ci): re-opened for the red `browser` job of run 36106266031; item under Tasks › Rework 2.
 
 - 2026-09-25 rework 1 (runner, trigger=ci): re-opened for the red `browser` job of run 36100540000; items under Tasks › Rework 1.
 
