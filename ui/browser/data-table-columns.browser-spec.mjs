@@ -259,6 +259,27 @@ test('Drag: a header edge resizes from the rendered width, stops at the label, a
   }
 });
 
+// Story 15.9 (DW-1648): the pinned trigger header cell starts at the last data column's edge, so
+// that column's handle is lifted over it. Mutation (Rule 19): drop the lifted handle's `z-index`
+// -> the press lands on the pinned cell and nothing resizes, red.
+test('Drag the last data column: its whole hit area is above the pinned trigger header cell, and a press on its edge resizes it', async () => {
+  const { context, page } = await openHarness();
+  try {
+    const hits = await page.$eval('.ocu-data-table-header-cell[data-column="Note"] .ocu-data-table-resize', (handle) => {
+      const rect = handle.getBoundingClientRect();
+      const y = rect.top + rect.height / 2;
+      return [rect.left + 2, rect.left + rect.width / 2, rect.right - 2].map((x) => document.elementFromPoint(x, y) === handle);
+    });
+    assert.deepEqual(hits, [true, true, true], 'the handle is hit at its left, its center on the edge and its right');
+    const start = await headerWidth(page, 'Note');
+    await dragEdge(page, 'Note', 40);
+    const wider = await headerWidth(page, 'Note');
+    assert.ok(Math.abs(wider - (start + 40)) <= 1, `dragged to ${wider}, from ${start} + 40`);
+  } finally {
+    await context.close();
+  }
+});
+
 // Mutation (Rule 19): resize by 8 instead of `COLUMN_RESIZE_STEP_PX` -> the +32 assertion goes red.
 test('Keyboard: Alt+Shift+Right twice then Left moves the active cell\'s column +32 then -16, announces it, and keeps the active cell', async () => {
   const { context, page } = await openHarness();

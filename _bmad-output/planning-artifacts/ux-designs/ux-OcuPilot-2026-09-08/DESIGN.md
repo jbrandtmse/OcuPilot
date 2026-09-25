@@ -302,9 +302,9 @@ components:
     color: '{colors.on-shell}'
     typography: '{typography.label}'
     item-gap: '{spacing.3}'
-    item-background-hover: '{colors.on-shell} at 8%'
+    item-background-hover: 'none; nothing in the bar is interactive [AMENDED 2026-09-25, Story 15.9]'
     user-segment-glyph: 'none; the user segment is information only [AMENDED 2026-09-25, Story 15.9]'
-    focus: '{components.focus-ring.on-chrome}'
+    focus: 'none; nothing in the bar takes focus [AMENDED 2026-09-25, Story 15.9]'
   server-flag-badge:
     height: 18px
     radius: '{rounded.full}'
@@ -1005,7 +1005,7 @@ The primary side bar: `{spacing.side-bar-width}` (240px, fixed) on `{colors.surf
 
 #### `header`
 
-48px, spanning the full width above the rail and the panel, `linear-gradient(90deg, {colors.shell} 0%, {colors.shell} 55%, {colors.shell-edge} 100%)` — the one place the logo gradient fills an area, and it stays a thin band. Text and icons `{colors.on-shell}`. Left to right: `logo-lockup` (8px from the left edge, aligned over the rail), the `command-box` centered in the header's width, and the namespace switch at the right: a `{typography.label}` "Namespace" eyebrow in `{colors.on-shell}` at **100%** over the namespace name in `{typography.caption}` `{colors.on-shell}` with a dotted 1px underline and a ▾ glyph; hover `{colors.on-shell}` at 8%; focus `{components.focus-ring.on-chrome}`. The switch sits on the gradient's `shell-edge` end, where full-strength `on-shell` is 5.35:1 light / 6.43:1 dark; the 72% the rail uses for icons at rest would be 3.60:1 / 4.17:1 there, so no text in the header is ever drawn below 100%. After the namespace switch, at the header's right end, the account button names the user and opens the account menu downward, styled as `row-overflow-menu`: a 32px control, hover `{colors.on-shell}` at 8%, focus `{components.focus-ring.on-chrome}`, a long name cut with an ellipsis [AMENDED 2026-09-25, Story 15.9]. Nothing else lives in the header; server, instance, licensed-to and the flag are in the `status-bar`, which also shows the user name.
+48px, spanning the full width above the rail and the panel, `linear-gradient(90deg, {colors.shell} 0%, {colors.shell} 55%, {colors.shell-edge} 100%)` — the one place the logo gradient fills an area, and it stays a thin band. Text and icons `{colors.on-shell}`. Left to right: `logo-lockup` (8px from the left edge, aligned over the rail), the `command-box` centered in the header's width, and the namespace switch at the right: a `{typography.label}` "Namespace" eyebrow in `{colors.on-shell}` at **100%** over the namespace name in `{typography.caption}` `{colors.on-shell}` with a dotted 1px underline and a ▾ glyph; hover `{colors.on-shell}` at 8%; focus `{components.focus-ring.on-chrome}`. The switch sits on the gradient's `shell-edge` end, where full-strength `on-shell` is 5.35:1 light / 6.43:1 dark; the 72% the rail uses for icons at rest would be 3.60:1 / 4.17:1 there, so no text in the header is ever drawn below 100%. After the namespace switch, at the header's right end, the account button names the user: a 32px control with a ▾ after the name, hover `{colors.on-shell}` at 8%, focus `{components.focus-ring.on-chrome}`, a long name cut with an ellipsis; the account menu it opens drops downward, styled as `row-overflow-menu` [AMENDED 2026-09-25, Story 15.9]. Nothing else lives in the header; server, instance, licensed-to and the flag are in the `status-bar`, which also shows the user name.
 
 #### `logo-lockup`
 

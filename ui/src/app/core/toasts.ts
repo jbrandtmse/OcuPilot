@@ -14,7 +14,7 @@
  * target is `screenForChange`'s -- the entity's list -- and the scope half is `screenShowsEntity`'s,
  * the predicate `RefreshService` filters on, so the list that re-fetches and highlights the row is
  * the one screen that raises nothing. A screen's own write carries no `proposalId`, so while the
- * open screen shows that entity -- the editor that just saved it -- it raises nothing either (DW-1597);
+ * open screen shows that entity's type -- the editor that just saved it -- it raises nothing either (DW-1597);
  * an agent's write carries its proposal and still toasts on the entity's details or editor. The open
  * screen is resolved from the router URL rather than from the refresh service's bound screen: a
  * screen that declares no auto-refresh still shows entities, and `RefreshService` does not expose
@@ -190,7 +190,7 @@ export class ToastStore {
    * Four events raise nothing, and each is a rule rather than a guard: a kind that is not
    * `changed` (a proposal opening is the auto-refresh pause's business, not the user's), a change
    * the open screen already shows (the row highlight is the confirmation), a screen's own write --
-   * no `proposalId` -- while the open screen shows its entity (the screen that made it), and an
+   * no `proposalId` -- while the open screen shows its entity type (the screen that made it), and an
    * event whose action is not one of AD-14's -- which `ChangeBus.publish` already refuses, so
    * nothing on the bus can carry one.
    */
@@ -297,7 +297,7 @@ export class ToastStore {
     return screenShowsEntity(screen, event, this.namespace());
   }
 
-  /** Whether the screen the shell is standing on shows the entity in `event`'s scope. */
+  /** Whether the screen the shell is standing on shows the entity type of `event` in its scope. */
   private openScreenShows(event: ChangeEvent): boolean {
     const screen = screenForUrl(this.currentUrl());
     return screen !== null && screenShowsEntity(screen, event, this.namespace());

@@ -1726,7 +1726,7 @@ app-database-details-page {
 
 // Clipped across rather than widening the page: below the widths its segments fit, the band keeps
 // the viewport's width and the page body still never scrolls horizontally (DESIGN.md's Yield order).
-// `clip` on the one axis leaves the other visible, so the account menu opening upward is not cut off.
+// `clip` on the one axis leaves the other visible.
 .ocu-status-bar {
   @include typo.ocu-type('label');
 
@@ -5951,6 +5951,12 @@ app-data-table .ocu-data-table-header-cell {
   right: 0;
   z-index: 1;
   background: var(--ocu-surface-container-lowest);
+}
+
+// The last data column's resize hit area is centred on the edge the pinned header cell starts at,
+// so it is lifted over that cell and keeps its full 24px (DESIGN.md's `data-table`).
+.ocu-data-table-header-cell:has(+ .ocu-data-table-header-cell-trigger) .ocu-data-table-resize {
+  z-index: 2;
 }
 
 .ocu-data-table-body .ocu-data-table-row:hover .ocu-data-table-cell-trigger {

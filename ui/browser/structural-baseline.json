@@ -2303,8 +2303,8 @@
   "ownerReported": [
     {
       "tag": "DW-1335",
-      "routedTo": "16-15",
-      "finding": "Not an invariant violation, and the walk does not find it: the command bar filter (input.ocu-command-bar-filter) on agent/definitions/edit has the accessible name Filter rows as Chrome computes it, is 220px wide and does not overflow. The walk records no name, min-width or overflow entry for it at either width."
+      "routedTo": "resolved by 15-9",
+      "finding": "Resolved by Story 15.9. agent/definitions/edit declares no read, so the command bar draws no filter (input.ocu-command-bar-filter) and, with nothing else to show, no bar at all."
     },
     {
       "tag": "DW-1336",

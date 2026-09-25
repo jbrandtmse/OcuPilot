@@ -183,6 +183,12 @@ test('the open screen\'s own write raises nothing; an agent write and a write la
   const editor = wired({ url: '/permissions/users/edit/Dana?ns=HSCUSTOM' });
   assert.equal(editor.store.publish(save), false, 'an own Save on the user editor raises nothing');
   assert.deepEqual(editor.store.toasts(), []);
+  const details = wired({ url: '/tasks/schedule/details/12?ns=HSCUSTOM' });
+  assert.equal(
+    details.store.publish(changed({ type: 'task', scope: 'instance', id: '12', action: 'updated' })),
+    false,
+    'a screen action on Task details, the screen that made it, raises nothing either'
+  );
   assert.equal(
     editor.store.publish({ ...save, proposalId: 'p-1' }),
     true,

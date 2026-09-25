@@ -170,6 +170,40 @@ deferred:
 - **AC7 (DW-1649).** Given a caller of `clickRowCentre`, when the click lands in a different row or outside the target, then the helper throws naming the row it landed in, instead of the caller timing out later. Every one of the 25 caller files that reaches its click passes.
 - **Integration AC (Rule 1/2).** Given the deployed bundle on `ocupilot-ci`, when `_SYSTEM` signs out from the header menu and, in a second context, from the command box, then `Session.signOut()` posts `/logout` with Bearer and cookie (AD-28). The sign-in form shows and the context is not silently signed back in on reload.
 
+### Review Findings
+
+Code review 2026-09-25 (full, four layers). 0 decision-needed, 13 patch (all applied), 7 closed in the ledger, 12 rejected. No high. ADs 5, 14, 19, 28, 31, 43, 53 and 55 and the Theme convention hold; `app.ts` is untouched; `turn.ts` is one added line and merges cleanly with `origin/OCU-1-epic12`.
+
+- [x] [Review][Patch] (med) The pinned header trigger cell covered the right half of the last data column's 24px resize hit area. The handle is lifted over it, and a new "Drag the last data column" case pins it [ui/src/styles/_components.scss tail block; ui/browser/data-table-columns.browser-spec.mjs]
+- [x] [Review][Patch] EXPERIENCE.md toast row kept "and for "Saved" from form-pages" beside "never for the open screen's own write" [EXPERIENCE.md:544]
+- [x] [Review][Patch] DESIGN.md header sentence attached "styled as `row-overflow-menu`" to the button rather than its menu [DESIGN.md:1008]
+- [x] [Review][Patch] DESIGN.md status-bar tokens still declared a hover and a focus ring [DESIGN.md:305,307]
+- [x] [Review][Patch] EXPERIENCE.md command-box rows did not mention the Sign out row the Actions count now includes [EXPERIENCE.md:527,568]
+- [x] [Review][Patch] Narrow header's "text stays whole" browser assertion could not fail (it read back what it wrote); removed, since `header.spec.ts` pins the behavior through `Session` [ui/browser/account-and-filter.browser-spec.mjs]
+- [x] [Review][Patch] The No read leg did not assert that `logs/errors` still draws its row action [ui/browser/account-and-filter.browser-spec.mjs]
+- [x] [Review][Patch] The command-bar doc listed "the form pages" as no-read; `security/auditing` declares a read [ui/src/app/shell/command-bar.ts]
+- [x] [Review][Patch] The toast doc comments said "entity" where the rule compares entity type [ui/src/app/core/toasts.ts]
+- [x] [Review][Patch] No test pinned a screen action on a details screen raising nothing [ui/tools/toasts.test.mjs]
+- [x] [Review][Patch] `instance-notice.ts` still said the account menu is in the status bar [ui/src/app/shell/instance-notice.ts]
+- [x] [Review][Patch] Baseline `ownerReported` DW-1335 described a filter this story removes; restated as resolved [ui/browser/structural-baseline.json]
+- [x] [Review][Patch] DW-1651: the stale "opening upward" clause in the `.ocu-status-bar` comment [ui/src/styles/_components.scss]
+- [x] [Review][Defer] DW-1652 closed `wontfix-accepted` (cosmetic header gutter offset); DW-1653, DW-1654 and DW-1655 closed `by-design` (the spec's read-null rule, type-level `screenShowsEntity`, and the label-contains match); DW-1656, DW-1657 and DW-1658 closed `wontfix-accepted` with `reopen_if` (narrow header, the Changed tag in `clickRowCentre`, and the stale `app.ts:107` comment the spec forbids editing)
+
+Rejected:
+
+- `false`: the `READING` fixture "pins the wrong behavior". It pins the spec's `read !== null` rule.
+- `false`: the form page leg "never checks the bar is absent". The matrix asks only for no filter or count there.
+- `false`: the `matchCount` and `filterValue` comments are stale. Both still hold on a screen with a read.
+- `false`: the selected-row opacity leg is weak. The plain color is read before the menu selects the row, so `notEqual` still discriminates.
+- `false`: the resource-timing buffer can fill before `/logout`. A fresh context's sign-in and Home load stay far under 250 entries.
+- `low`: the web-applications spec does not assert the form bar's Saved. Ten editor specs pin `formSaved`.
+- `low`: the 220px cap is not in DESIGN.md. The prose states the control and the ellipsis; the cap is an implementation value.
+- `low`: stale DESIGN.md line numbers (`:1021`, `:1025`, `:1058`, `:479`). They predate this story, and `citations.test` checks phrases, not lines.
+- `low`: cells under the pinned column are hidden without a signal. That is inherent to option (b); the user scrolls.
+- `low`: native `scrollIntoView` ignores the pin. `revealActiveCell` and `clickRowCentre` handle it.
+- `low`: the ring's bottom segment is 1px higher on the pinned cell. It is sub-pixel cosmetic, and the ring is pinned in AC4.
+- `low`: opacity is asserted in light only. All four state roles are opaque hex in both themes (`_tokens.scss`).
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -296,6 +330,7 @@ No AC contradicts an AD.
 - mutation: one cited phrase of the Sign out row (`:81`) reworded → `citations.test` red (AC4).
 - mutation: `/logout` posted with `credentials: 'omit'` → `account-and-filter` Header menu red ("and the cookie", Integration AC header half).
 - mutation: `overflow: hidden` on `.ocu-header` → `account-and-filter` Header menu and `panel` sign-out hit tests red.
+- mutation (code review): the last data column's lifted resize handle set back to `z-index: 1` → `data-table-columns` "Drag the last data column" red ("the handle is hit at its left, its center on the edge and its right").
 
 ## Auto Run Result
 

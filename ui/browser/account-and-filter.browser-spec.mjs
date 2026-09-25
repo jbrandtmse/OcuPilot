@@ -159,7 +159,7 @@ test('Header menu and status bar: the header\'s account button opens About, Chan
   }
 });
 
-test('Narrow header: at 720 px the account button lies inside the header and clear of the command box, and a long name ellipsizes with its text whole', async () => {
+test('Narrow header: at 720 px the account button lies inside the header and clear of the command box, and a long name ellipsizes', async () => {
   const { context, page } = await signedInAt(HOME_URL, { width: 720, height: 800 });
   try {
     const long = 'A user name far too long for the header at this width to show whole';
@@ -175,14 +175,13 @@ test('Narrow header: at 720 px the account button lies inside the header and cle
         clear: button.left >= box.right - 0.5 || button.right <= box.left + 0.5,
         cut: label.scrollWidth > label.clientWidth,
         ellipsis: getComputedStyle(label).textOverflow,
-        text: document.querySelector('#ocu-account-trigger').textContent,
         page: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
       };
     }, long);
     assert.ok(measured.inside, `the account button is inside the header: ${JSON.stringify(measured)}`);
     assert.ok(measured.clear, `and does not intersect the command box: ${JSON.stringify(measured)}`);
     assert.ok(measured.cut && measured.ellipsis === 'ellipsis', `a long name ellipsizes: ${JSON.stringify(measured)}`);
-    assert.ok(measured.text.includes(long), 'the button\'s text content stays whole');
+    // The name reaching the button whole is pinned in `header.spec.ts`, where it goes through `Session`.
     assert.ok(measured.page, 'the page does not scroll sideways');
   } finally {
     await context.close();
@@ -231,6 +230,10 @@ test('No read, no filter: Home draws no command bar, the error log and a user ed
     await page.waitForSelector('.ocu-command-bar-refresh-action', { timeout: config.navigationTimeoutMs });
     assert.equal(await page.$(FILTER_SELECTOR), null, 'the error log draws no filter');
     assert.equal(await page.$('.ocu-command-bar-count'), null, 'and no count');
+    assert.ok(
+      (await page.$$('.ocu-command-bar-action:not(.ocu-command-bar-refresh-action)')).length > 0,
+      'and the bar still draws its row action beside Refresh'
+    );
 
     await openAt(page, USER_EDITOR_URL);
     await page.waitForSelector('main .ocu-form-page', { timeout: config.navigationTimeoutMs });

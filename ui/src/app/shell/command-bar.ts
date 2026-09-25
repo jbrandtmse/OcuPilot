@@ -140,7 +140,7 @@ interface SortOption {
  * story can pin, not a placeholder.
  *
  * **The filter renders only on a screen that declares a read** (AD-5): a screen whose declaration
- * has `read === null` -- Home, the form pages, the error drill-down -- has nothing to filter, so the
+ * has `read === null` -- Home, most form pages, the error drill-down -- has nothing to filter, so the
  * field and its count are not drawn, and no list of such screens is written here. **The bar itself
  * is not drawn when every slot is empty** (`hasContent`): no primary action, filter, row action,
  * View or Sort control, Refresh action or chip.
