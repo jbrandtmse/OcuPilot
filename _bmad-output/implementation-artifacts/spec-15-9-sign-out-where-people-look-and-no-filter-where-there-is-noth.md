@@ -2,7 +2,7 @@
 title: 'Story 15.9: Sign-out where people look, and no filter where there is nothing to filter'
 type: 'feature'
 created: '2026-09-25'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '5e8ac399a1888b41c170a679384ca1302e370975'
 baseline_commit: '5e8ac399a1888b41c170a679384ca1302e370975'
 review_loop_iteration: 0
@@ -170,6 +170,10 @@ deferred:
 - **AC7 (DW-1649).** Given a caller of `clickRowCentre`, when the click lands in a different row or outside the target, then the helper throws naming the row it landed in, instead of the caller timing out later. Every one of the 25 caller files that reaches its click passes.
 - **Integration AC (Rule 1/2).** Given the deployed bundle on `ocupilot-ci`, when `_SYSTEM` signs out from the header menu and, in a second context, from the command box, then `Session.signOut()` posts `/logout` with Bearer and cookie (AD-28). The sign-in form shows and the context is not silently signed back in on reload.
 
+### Rework 1 (CI)
+
+- [ ] [CI] browser: `users-editor.browser-spec.mjs:267` "a changed editor asks before it is left, and staying keeps the edit" fails at `:278`: the EmailAddress field reads `probe@example.invalidunsaved@example.invalid`, so its `fill` helper's triple-click (`page.click(..., { clickCount: 3 })` then Backspace) did not select the existing value — run 36127471224 on 5dcefe46, https://github.com/jbrandtmse/OcuPilot/actions/runs/36127471224 (every other job and test green; the test passed on ed78a6e3, before this story). Suspected (inference): a layout shift on form pages as the command bar is withdrawn after the screen resolves, moving the field under the triple-click. Reproduce on `ocupilot-ci` against a redeployed bundle; if the product shifts layout on a no-read screen (the bar drawn then removed), fix the product so a no-read screen never draws it, and pin that no shift occurs; fix the test only if the product is correct. Then run the other form-page specs whose helpers click-then-type (users, roles, resources, web-applications, ssl, task editors) one file at a time.
+
 ### Review Findings
 
 Code review 2026-09-25 (full, four layers). 0 decision-needed, 13 patch (all applied), 7 closed in the ledger, 12 rejected. No high. ADs 5, 14, 19, 28, 31, 43, 53 and 55 and the Theme convention hold; `app.ts` is untouched; `turn.ts` is one added line and merges cleanly with `origin/OCU-1-epic12`.
@@ -205,6 +209,8 @@ Rejected:
 - `low`: opacity is asserted in light only. All four state roles are opaque hex in both themes (`_tokens.scss`).
 
 ## Spec Change Log
+
+- 2026-09-25 rework 1 (runner, trigger=ci): re-opened for the red `browser` job of run 36127471224; item under Tasks › Rework 1.
 
 ## Review Triage Log
 
