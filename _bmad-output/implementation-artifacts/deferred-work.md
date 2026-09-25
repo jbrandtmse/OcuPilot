@@ -6711,3 +6711,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-12-3-copy-and-purge-the-audit-database.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Confirm.cls:409 finalizes a 202-started write with status ok and code empty; only the transient continues answer says it runs on, and the port never re-polls, so a worker that later fails leaves an ok row. Cheapest carry: Code = a new PORT.STARTED on that ok path (one expression, one Api.Error parameter + roster row).
 - 2026-09-24T21:26:58Z status=routed owner=burndown by=cr note=12.3 re-review: AD-26 as amended is met (applied+marked); the durable started outcome is the ruling item's unmet 'with the outcome' clause
+
+### DW-1640: The vendor writes the OAuth registration access token in plain text into its own audit row (Modify OAuth2 Server Definition EventData); OcuPilot's Logs > Audit screen and logs.audit.read show EventData, so the token reaches the screen and the model provider
+- source: spec-12-4-the-oauth-2-0-client-server-description-editor.md | severity: high | fix-risk: med | footprint: out-of-footprint
+- evidence: Measured on ocupilot-b-ci 2026-09-24 23:58:39: TOKEN write row EventData carries 'New value: <token>' and a property dump; every later save dumps it again; Conventions > Secrets makes redaction schema-driven, so masking vendor free text needs a spine ruling
+- 2026-09-25T00:39:02Z status=escalated owner=burndown by=harvest note=raised to the orchestrator mid-epic at 12.4 (AD-35 scope over vendor-recorded secrets; mask EventData for the named events vs named gap)
+
+### DW-1641: The agent's OAuth server-description update replaces Metadata whole: the tool argument is the complete member set because Mint.Merge carries an object argument as one value (the screen route merges member by member first)
+- source: spec-12-4-the-oauth-2-0-client-server-description-editor.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Pinned in Test/OAuthServerUpdate TestTheAgentsEditSendsTheCompleteSet (one diff row, field Metadata); Epic 9's Write.MergeUpdate hook is not on this branch
+- 2026-09-25T00:39:03Z status=routed owner=burndown by=harvest note=settle after Epic 9 merges: merge the agent's Metadata over the fresh read via Write.MergeUpdate
+
+### DW-1642: Discover against an unreachable issuer waits for the vendor's own connect timeout (~30 s) before the named refusal
+- source: spec-12-4-the-oauth-2-0-client-server-description-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Measured: GetServerMetadata against a closed port or .invalid host answered #6059 after ~30 s; it takes no timeout parameter
+- 2026-09-25T00:39:03Z status=wontfix-accepted owner=12-4-the-oauth-2-0-client-server-description-editor by=harvest note=reopen_if=a user reports Discover hanging, or the vendor adds a timeout parameter
