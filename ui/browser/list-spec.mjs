@@ -168,6 +168,14 @@ export async function filterToSubset(page, { text, expectRow, total, timeoutMs }
  * selection cases, which must not open a link), or neither for the row box itself. Choose the row
  * by `text` -- its first cell's trimmed text -- or by `index` among the rendered rows.
  *
+ * **Where the click landed is checked, not assumed (DW-1649).** Measuring and clicking are separate
+ * round trips, so a re-render in between can move another row under the point. The wanted row's
+ * first-cell text is recorded however the row was chosen, and a one-shot capture-phase
+ * `pointerdown` probe reads what the click actually reached: no pointerdown, a row with other
+ * first-cell text, or a place outside the requested link or cell each throw, naming the miss. The
+ * row's trigger cell is pinned over the frame's right edge (DW-1648), so a data cell's visible part
+ * ends where that cell begins.
+ *
  * Returns what was measured, so a caller that wants the numbers (the height-chain spec does) can
  * assert on them rather than re-reading the DOM.
  */
@@ -230,7 +238,12 @@ export async function clickRowCentre(page, { text = null, index = 0, cell = null
       }
       row.setAttribute('data-ocu-hit-row', '');
       target.setAttribute('data-ocu-hit-target', '');
-      return { ok: true, reason: '', rendered: [] };
+      return {
+        ok: true,
+        reason: '',
+        rendered: [],
+        firstText: row.querySelector('[role="gridcell"]')?.textContent?.trim() ?? '',
+      };
     },
     ROW_SELECTOR,
     text,
@@ -270,6 +283,9 @@ export async function clickRowCentre(page, { text = null, index = 0, cell = null
       left = Math.max(left, box.left + scroller.clientLeft);
       right = Math.min(right, box.left + scroller.clientLeft + scroller.clientWidth);
     }
+    // The pinned trigger cell covers whatever scrolls beneath it (DW-1648).
+    const pinned = row.querySelector('.ocu-data-table-cell-trigger');
+    if (pinned !== null && !pinned.contains(target)) right = Math.min(right, pinned.getBoundingClientRect().left);
     const x = left + (right - left) / 2;
     const y = rect.top + rect.height / 2;
     const landed = document.elementFromPoint(x, y);
@@ -308,12 +324,56 @@ export async function clickRowCentre(page, { text = null, index = 0, cell = null
     );
   }
 
+  // DW-1649: a one-shot capture-phase probe records what the click's own pointerdown reached.
+  await page.evaluate(
+    (rowSelector, nth, wantLink) => {
+      window.__ocuHitProbe = null;
+      const probe = (event) => {
+        const node = event.target instanceof Element ? event.target : null;
+        const row = node?.closest(rowSelector) ?? null;
+        const cellEl = node?.closest('[role="gridcell"]') ?? null;
+        const inKind = wantLink
+          ? (node?.closest('.ocu-data-table-link') ?? null) !== null
+          : nth === null
+            ? row !== null
+            : cellEl !== null && row !== null && Array.prototype.indexOf.call(row.children, cellEl) + 1 === nth;
+        window.__ocuHitProbe = {
+          row: row === null ? null : (row.querySelector('[role="gridcell"]')?.textContent?.trim() ?? ''),
+          inKind: row !== null && inKind,
+          landedOn: node === null ? 'nothing' : `${node.tagName.toLowerCase()}${typeof node.className === 'string' && node.className !== '' ? `.${node.className.trim().split(/\s+/).join('.')}` : ''}`,
+        };
+      };
+      document.addEventListener('pointerdown', probe, { capture: true, once: true });
+      window.__ocuHitProbeStop = () => document.removeEventListener('pointerdown', probe, { capture: true });
+    },
+    ROW_SELECTOR,
+    cell,
+    link
+  );
   await page.mouse.click(hit.x, hit.y);
-  await page.evaluate(() => {
+  const probed = await page.evaluate(() => {
+    window.__ocuHitProbeStop?.();
+    delete window.__ocuHitProbeStop;
+    const found = window.__ocuHitProbe ?? null;
+    delete window.__ocuHitProbe;
     for (const node of document.querySelectorAll('[data-ocu-hit-target], [data-ocu-hit-row]')) {
       node.removeAttribute('data-ocu-hit-target');
       node.removeAttribute('data-ocu-hit-row');
     }
+    return found;
   });
+  const wanted = JSON.stringify(marked.firstText);
+  const kind = link ? '.ocu-data-table-link' : cell === null ? 'the row' : `cell ${cell}`;
+  if (probed === null) {
+    throw new Error(`clickRowCentre: no pointerdown arrived for the click at (${Math.round(hit.x)},${Math.round(hit.y)}) on row ${wanted}`);
+  }
+  if (probed.row !== marked.firstText) {
+    throw new Error(
+      `clickRowCentre: the click meant for row ${wanted} landed in ${probed.row === null ? 'no row' : `row ${JSON.stringify(probed.row)}`} (on ${probed.landedOn})`
+    );
+  }
+  if (!probed.inKind) {
+    throw new Error(`clickRowCentre: the click landed in row ${wanted} but outside ${kind} (on ${probed.landedOn})`);
+  }
   return hit;
 }

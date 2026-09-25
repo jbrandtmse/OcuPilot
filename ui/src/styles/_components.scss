@@ -475,8 +475,8 @@
 
 // --- The account menu (Story 1.7) ---------------------------------------------------------------
 //
-// DESIGN.md `:1021` puts the user segment in the status bar and says the menu it opens is
-// styled as `row-overflow-menu` (`:1058`): the sheet colour, a 1px `outline-variant`
+// DESIGN.md `:1008` puts the account button at the header's right end and says the menu it opens
+// is styled as `row-overflow-menu` (`:1058`): the sheet colour, a 1px `outline-variant`
 // border, `rounded.sm`, elevation 2, min-width 140px, 6px of vertical padding, items at
 // `control-height` with a 14px horizontal inset and a `surface-container-low` hover.
 // DESIGN.md writes the item box as "32px, 8px 14px padding"; here the 32px is the fixed
@@ -484,12 +484,11 @@
 // control in this file is drawn (`.ocu-button-primary`) -- there is no global `border-box`,
 // so vertical padding on top of a set height would overflow the control.
 //
-// Story 1.10 moved the component into the status bar, so the trigger is now drawn for the
-// navy band it sits on: `on-shell` text, `on-shell` at 8% hover, and DESIGN.md's
-// `focus-ring.on-chrome` rather than the surface ring (`:1021`). Its height is the band's,
-// because it IS the band's user segment -- a 32px control in a 24px bar would overflow it.
+// Story 15.9 moved the component to the header's right end, so the trigger is drawn for the
+// shell band it sits on: `on-shell` text, `on-shell` at 8% hover, and DESIGN.md's
+// `focus-ring.on-chrome` rather than the surface ring. It is a 32px control in the 48px band.
 // The menu it opens is still a `row-overflow-menu` on the sheet colour, which drops below the
-// band rather than onto it.
+// header rather than onto it.
 
 .ocu-account {
   position: relative;
@@ -499,13 +498,12 @@
 .ocu-account-trigger {
   @include typo.ocu-type('label');
 
-  // The 1px border is inside the 24px, not added to it: there is no global `border-box`, and
-  // the band is exactly as tall as this control is allowed to be.
+  // The 1px border is inside the 32px, not added to it: there is no global `border-box`.
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   gap: var(--ocu-space-1);
-  height: var(--ocu-status-bar-height);
+  height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-2);
   border: 1px solid transparent;
   border-radius: var(--ocu-radius-sm);
@@ -529,14 +527,14 @@
   color: var(--ocu-on-shell);
 }
 
-// The panel opens upward from the band, which is at the bottom of the viewport.
+// The panel opens downward from the header, right-aligned to the trigger at the band's right end.
 .ocu-account-panel {
   position: absolute;
-  bottom: 100%;
-  left: 0;
+  top: 100%;
+  right: 0;
   z-index: 4;
   min-width: 140px;
-  margin-bottom: var(--ocu-space-1);
+  margin-top: var(--ocu-space-1);
   padding: 6px 0;
   border: 1px solid var(--ocu-outline-variant);
   border-radius: var(--ocu-radius-sm);
@@ -1081,7 +1079,8 @@ app-database-details-page {
 //
 // DESIGN.md `:1007-1017`. A three-column grid rather than a flex row: the command box is
 // "centered in the header's width", which only holds if the two side columns are equal, and
-// `1fr auto 1fr` is what makes that true whatever the lockup and the namespace slot measure.
+// `minmax(0, 1fr) auto minmax(0, 1fr)` is what makes that true whatever the lockup and the right
+// end measure -- the zero floor stops a long user name widening its column past the other.
 //
 // Every text colour here is `on-shell` at 100%. DESIGN.md `:1007` states that absolutely --
 // the slot sits on the gradient's `shell-edge` end, where full strength is 5.35:1 and the 72%
@@ -1090,7 +1089,7 @@ app-database-details-page {
 .ocu-header {
   display: grid;
   flex: 0 0 auto;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: var(--ocu-space-4);
   height: var(--ocu-header-height);
@@ -5899,4 +5898,82 @@ app-data-table .ocu-data-table-header-cell {
   border-radius: var(--ocu-radius-sm);
   color: var(--ocu-on-surface);
   font-size: 11px;
+}
+
+// --- Header account button, pinned row trigger (Story 15.9) -----------------------------------
+//
+// The header's right end holds the namespace slot and then the account button (`header.ts`). The
+// wrapper sits at the end of its grid column and may shrink to nothing; a long user name
+// ellipsizes inside the button rather than widening the column, and its text stays whole.
+.ocu-header-end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  justify-self: end;
+  gap: var(--ocu-space-2);
+  min-width: 0;
+  max-width: 100%;
+}
+
+// The namespace slot keeps its size and the account button gives way first. Every box between the
+// wrapper and the name is a shrinkable flex item, so the name can ellipsize at any width.
+.ocu-header-end .ocu-header-namespace {
+  flex: 0 1 auto;
+}
+
+.ocu-header-end app-account-menu {
+  display: flex;
+  flex: 0 100 auto;
+  min-width: 0;
+}
+
+.ocu-header-end .ocu-account {
+  min-width: 0;
+}
+
+.ocu-header-end .ocu-account-trigger {
+  min-width: 0;
+  max-width: 220px;
+}
+
+.ocu-header-end .ocu-account-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// DW-1648: the row-action column is pinned to the frame's right edge, so the row menu is in reach
+// at any horizontal scroll. The cell paints its row's state colour, opaque, because the data cells
+// scroll beneath it; the header's cell paints the frame's own sheet.
+.ocu-data-table-header-cell-trigger,
+.ocu-data-table-cell-trigger {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--ocu-surface-container-lowest);
+}
+
+.ocu-data-table-body .ocu-data-table-row:hover .ocu-data-table-cell-trigger {
+  background: var(--ocu-surface-container-low);
+}
+
+.ocu-data-table-body .ocu-data-table-row.ocu-data-table-row-selected .ocu-data-table-cell-trigger {
+  background: var(--ocu-secondary-container);
+}
+
+.ocu-data-table-body .ocu-data-table-row.ocu-data-table-row-changed .ocu-data-table-cell-trigger {
+  background: var(--ocu-change-highlight);
+  transition: background-color var(--ocu-motion-change-highlight-duration) ease-out;
+}
+
+// The pinned cell covers the active row's ring where it sits, so it draws that part of the ring
+// itself: the top, bottom and right segments, the 2px ring over the 2px inner band, as the row does.
+.ocu-data-table-grid:focus-visible .ocu-data-table-row-active .ocu-data-table-cell-trigger {
+  box-shadow:
+    inset 0 2px 0 0 var(--ocu-focus-ring),
+    inset 0 -2px 0 0 var(--ocu-focus-ring),
+    inset -2px 0 0 0 var(--ocu-focus-ring),
+    inset 0 4px 0 0 var(--ocu-focus-ring-inner),
+    inset 0 -4px 0 0 var(--ocu-focus-ring-inner),
+    inset -4px 0 0 0 var(--ocu-focus-ring-inner);
 }

@@ -41,6 +41,9 @@ export function isCommandBoxChord(event: KeyboardEvent): boolean {
   );
 }
 
+/** The command box's Sign out row id: the account's row, listed last among the actions. */
+export const SIGN_OUT_ROW_ID = 'ocu-command-box-account-sign-out';
+
 /** The placeholders the Fixed strings table leaves for the two result counts. */
 export const SCREEN_COUNT_PLACEHOLDER = '<n>';
 export const ACTION_COUNT_PLACEHOLDER = '<m>';
@@ -105,6 +108,12 @@ interface CommandRow {
  * 220 ms typeahead" as rejected in favour of the command box -- so this story adds no input, no
  * group and no change to the count sentence. Only the order inside the Screens group moves, and it is a stable partition: among
  * favorites, and among the rest, the declaration order the mirror already fixes is unchanged.
+ *
+ * **Sign out is the one account row** (EXPERIENCE.md "the last Actions row once typed"): the last row of the
+ * Actions group on every screen, listed only while a typed needle matches its label, so the list
+ * and the count at an empty query are what they were. Choosing it closes the box and calls
+ * `Session.signOut()`, the call the account menu makes (AD-28, AD-31); with no session there is no
+ * row.
  *
  * **It is not a channel to the agent** (EXPERIENCE.md "Gated entries stay listed and arrow-reachable"): typed text never becomes a
  * turn and the avatar never appears here.
@@ -247,7 +256,11 @@ export class CommandBox {
   private readonly rows = computed<readonly CommandRow[]>(() => {
     this.generation();
     const needle = this.query().trim().toLowerCase();
-    return [...this.screenCandidates(needle), ...this.actionCandidates(needle)];
+    return [
+      ...this.screenCandidates(needle),
+      ...this.actionCandidates(needle),
+      ...this.accountCandidates(needle),
+    ];
   });
 
   constructor() {
@@ -275,7 +288,7 @@ export class CommandBox {
   }
 
   protected get actionRows(): readonly CommandRow[] {
-    return this.rows().filter((row) => row.kind === 'action');
+    return this.rows().filter((row) => row.kind === 'action' || row.kind === 'account');
   }
 
   /** The active row's id while the list is open, else `null` -- never a dangling reference. */
@@ -376,6 +389,12 @@ export class CommandBox {
    */
   protected choose(row: CommandRow): void {
     if (row.gated) return;
+    if (row.kind === 'account') {
+      this.returnFocus = null;
+      this.close();
+      void this.session?.signOut();
+      return;
+    }
     if (row.kind === 'screen') {
       this.returnFocus = null;
       this.close();
@@ -517,6 +536,30 @@ export class CommandBox {
         actionId: action.id,
         ariaDisabled: (action.reason ?? '') !== '' ? 'true' : null,
       }));
+  }
+
+  /**
+   * The Sign out row, only while a typed needle is part of its label and a session is there to
+   * sign out of. An empty query lists no account row, so the roster at rest is unchanged.
+   */
+  private accountCandidates(needle: string): readonly CommandRow[] {
+    if (this.session === null || needle === '') return [];
+    if (!STRINGS.actionSignOut.toLowerCase().includes(needle)) return [];
+    return [
+      {
+        id: SIGN_OUT_ROW_ID,
+        kind: 'account',
+        label: STRINGS.actionSignOut,
+        detail: '',
+        reason: '',
+        gated: false,
+        route: '',
+        area: '',
+        descriptor: '',
+        actionId: '',
+        ariaDisabled: null,
+      },
+    ];
   }
 
   private bump(): void {

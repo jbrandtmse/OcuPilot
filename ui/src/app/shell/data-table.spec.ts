@@ -374,6 +374,20 @@ describe('the data table', () => {
     expect(TestBed.inject(Router).url).toBe('/web-applications/probe?ns=HSCUSTOM');
   });
 
+  // Story 15.9 (DW-1648): the pinned column's header cell is the one the stylesheet pins beside the
+  // body's trigger cells. Mutation (Rule 19): drop the class -> this goes red.
+  it('the trigger column\'s header cell carries the pinned class, and no data column\'s does', async () => {
+    const declaration = tableDeclaration({ rowActions: [{ id: 'disable', selfProtection: '' }] });
+    const wired = await wire(declaration, ok(rows(2)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const headers = Array.from(wired.host().querySelectorAll('[role="columnheader"]')) as HTMLElement[];
+    const pinned = headers.filter((cell) => cell.classList.contains('ocu-data-table-header-cell-trigger'));
+    expect(pinned).toHaveLength(1);
+    expect(pinned[0]).toBe(headers[headers.length - 1]);
+    expect(pinned[0].hasAttribute('data-column')).toBe(false);
+  });
+
   it('contextmenu on the header opens no row menu', async () => {
     // Mutation (Rule 19): fall back to the active row for any target -> the header opens the menu, red.
     const declaration = tableDeclaration({ rowActions: [{ id: 'disable', selfProtection: '' }] });

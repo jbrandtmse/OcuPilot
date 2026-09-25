@@ -19,7 +19,7 @@ import { stubAbout } from '../testing/about';
 import { stubAccountPreferences } from '../testing/account-preferences';
 
 /**
- * The status bar's rendered contract (DESIGN.md `:1021`, `:1025`; EXPERIENCE.md "server · instance · user ▾", "`{spacing.status-bar-height}` band",
+ * The status bar's rendered contract (DESIGN.md `:1021`, `:1025`; EXPERIENCE.md "server · instance · user", "`{spacing.status-bar-height}` band",
  * `:319`), and DW-10's client half.
  *
  * The payload behind it is `OcuPilot.Test.Instance`'s: this file asserts what the band does
@@ -250,7 +250,7 @@ describe('the status bar', () => {
     // The AC says *where*, not only *whether*: server, instance name and version, the user and
     // licensed-to on the LEFT; the flag badge, the stamp and the connection state on the RIGHT.
     // Reading the band's textContent cannot see that -- moving the badge into the left group
-    // or the account menu past licensed-to leaves every other row in this file green.
+    // or the user segment past licensed-to leaves every other row in this file green.
     const groups: HTMLElement[] = Array.from(band().querySelectorAll('.ocu-status-bar-group'));
     expect(groups).toHaveLength(2);
 
@@ -264,7 +264,7 @@ describe('the status bar', () => {
       instance.serverNameValue,
       instance.instanceNameValue,
       instance.instanceVersionValue,
-      'APP-ACCOUNT-MENU',
+      '_SYSTEM',
       instance.licensedToValue,
     ]);
     // Right: the badge, then the stamp's place (Story 1.14 supplies its value), then the
@@ -307,16 +307,15 @@ describe('the status bar', () => {
     expect(band().querySelector('.ocu-status-bar-version .ocu-status-bar-label')).toBeNull();
   });
 
-  it('the user segment is the account menu, and the only interactive element in the band', () => {
-    const controls = band().querySelectorAll('button, a, input, select, textarea');
-    expect(controls).toHaveLength(1);
-    expect(controls[0].classList.contains('ocu-account-trigger')).toBe(true);
-
-    (controls[0] as HTMLButtonElement).click();
-    fixture.detectChanges();
-    expect(
-      [...band().querySelectorAll('[role="menuitem"]')].map((entry) => entry.textContent?.trim())
-    ).toEqual([STRINGS.aboutTitle, STRINGS.accountChangePassword, STRINGS.actionSignOut]);
+  // Story 15.9: the account menu is the header's. Mutation (Rule 19): mount `<app-account-menu />`
+  // back in the band -> this goes red.
+  it('the user segment is the user name as information, and the band holds no interactive element', () => {
+    const controls = band().querySelectorAll('button, a, input, select, textarea, [tabindex], [role="menu"]');
+    expect(controls).toHaveLength(0);
+    expect(band().querySelector('app-account-menu')).toBeNull();
+    const user = band().querySelector('.ocu-status-bar-user') as HTMLElement;
+    expect(user.classList.contains('ocu-status-bar-segment')).toBe(true);
+    expect(user.textContent?.trim()).toBe('_SYSTEM');
   });
 
   it('a segment whose value the instance could not report does not render', () => {

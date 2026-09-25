@@ -20,6 +20,7 @@ import puppeteer from 'puppeteer';
 
 import { browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
+import { clickRowCentre } from './list-spec.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 
 const config = browserConfig();
@@ -305,10 +306,15 @@ test('Reveal: Right into a column past the right edge scrolls it fully into view
       const cell = document.getElementById(id).getBoundingClientRect();
       const view = viewport.getBoundingClientRect();
       const head = document.querySelector('.ocu-data-table-header-cell[data-column="Note"]').getBoundingClientRect();
-      return { cell: [cell.left, cell.right], view: [view.left, view.left + viewport.clientWidth], head: head.left, scrolled: viewport.scrollLeft };
+      const trigger = document.getElementById(id).parentElement.querySelector('.ocu-data-table-cell-trigger').getBoundingClientRect().left;
+      return { cell: [cell.left, cell.right], view: [view.left, view.left + viewport.clientWidth], head: head.left, trigger, scrolled: viewport.scrollLeft };
     });
     assert.ok(seen.scrolled > 0, 'the viewport scrolled sideways');
     assert.ok(seen.cell[0] >= seen.view[0] - 0.5 && seen.cell[1] <= seen.view[1] + 0.5, `the Note cell ${seen.cell} is inside ${seen.view}`);
+    // Story 15.9 (DW-1648): the pinned trigger cell covers what scrolls beneath it, so the revealed
+    // cell ends at or left of it. Mutation (Rule 19): drop the trigger subtraction from
+    // `revealActiveCell` -> red.
+    assert.ok(seen.cell[1] <= seen.trigger + 0.5, `the Note cell ends at ${seen.cell[1]}, left of the pinned trigger cell at ${seen.trigger}`);
     assert.ok(Math.abs(seen.head - seen.cell[0]) <= 0.5, `and its header sits over it: ${seen.head} against ${seen.cell[0]}`);
     await page.waitForSelector('.ocu-data-table-tooltip-placed', { timeout: 1000 });
     assert.equal((await tooltip(page)).text, LONG_NOTE, 'the revealed cut cell shows its tooltip, and the reveal scroll did not take it back');
@@ -360,6 +366,40 @@ function triggerPlace(page) {
   return page.$eval('[role="row"][aria-rowindex="2"] .ocu-data-table-trigger', placeInFrame);
 }
 
+/** The alpha of row 1's pinned trigger cell's computed background: 1 is opaque. */
+function triggerCellAlpha(page) {
+  return page.$eval('[role="row"][aria-rowindex="2"] .ocu-data-table-cell-trigger', (cell) => {
+    const colour = getComputedStyle(cell).backgroundColor;
+    const parts = colour.match(/[\d.]+/g) ?? [];
+    return { colour, alpha: colour.startsWith('rgba') ? Number(parts[3]) : colour.startsWith('rgb') ? 1 : 0 };
+  });
+}
+
+/**
+ * The header's trigger cell's right edge, and the header's inner edges: its client box, and its
+ * border box, which also holds the reserved scrollbar gutter the sticky cell may sit over.
+ */
+function headerTriggerEdges(page) {
+  return page.evaluate(() => {
+    const head = document.querySelector('.ocu-data-table-head');
+    const box = head.getBoundingClientRect();
+    const inner = box.left + head.clientLeft;
+    return {
+      cell: document.querySelector('.ocu-data-table-header-cell-trigger').getBoundingClientRect().right,
+      client: inner + head.clientWidth,
+      border: box.right - parseFloat(getComputedStyle(head).borderRightWidth),
+    };
+  });
+}
+
+/** Open row 1's menu by a real click at the trigger's centre, then close it with Escape. */
+async function openAndCloseMenu(page, at) {
+  await page.mouse.click(at.x, at.y);
+  await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: 2000 });
+  await press(page, 'Escape');
+  await page.waitForFunction(() => document.querySelector('[role="menu"]') === null, { timeout: 2000 });
+}
+
 // It runs with the platform's scrollbars, with classic ones in an empty gutter (CI's Linux
 // geometry, on macOS too), and with classic ones painted, which is what a Windows or Linux user
 // sees. The classic runs first assert their gutter, and the painted run that it draws a scrollbar.
@@ -370,10 +410,12 @@ function triggerPlace(page) {
 // the frame's edge instead of `clientWidth` -> the painted run red, the trigger under its scrollbar.
 // Mutation (Rule 19): the injected style dropped -> the classic runs' gutter assertion red on
 // macOS; `--hide-scrollbars` kept for the painted run -> its `painted` assertion red.
-// The two "past the frame" assertions hold only while the trigger column scrolls with the rest.
-// Story 15.9 pins that column (DW-1648) and rewrites them; the reach assertions stay.
+// Story 15.9 (DW-1648) pins the trigger column to the frame's right edge: it is inside the frame and
+// hit-testable at scroll 0 and after the wheel, and its cell is opaque on a plain and a selected row.
+// Mutation (Rule 19): drop `position: sticky` from the trigger cell -> the scroll-0 reach red;
+// `background: transparent` on it -> the alpha assertion red.
 for (const scrollbars of ['platform', 'classic', 'painted']) {
-  test(`Trigger reach (${scrollbars} scrollbars): at 480 wide the row trigger starts past the frame, and the frame's own sideways scroll or Right into its column brings it inside, where it opens the row menu`, async () => {
+  test(`Trigger reach (${scrollbars} scrollbars): at 480 wide the row trigger is pinned inside the frame at scroll 0 and after the frame's own sideways scroll, where it opens the row menu, as Right into its column does, on an opaque cell`, async () => {
     const painted =
       scrollbars === 'painted' ? await puppeteer.launch({ ...launchOptions(config), ignoreDefaultArgs: ['--hide-scrollbars'] }) : null;
     let context = null;
@@ -385,7 +427,19 @@ for (const scrollbars of ['platform', 'classic', 'painted']) {
         assert.ok(start.gutter >= 14, `the classic run has a classic gutter: ${JSON.stringify(start)}`);
         assert.equal(start.painted, scrollbars === 'painted', `the scrollbar is painted only in the painted run: ${JSON.stringify(start)}`);
       }
-      assert.ok(!start.within, `the trigger starts past the frame: ${JSON.stringify(start)}`);
+      assert.ok(start.inside && start.hit, `at scroll 0 the pinned trigger is inside the frame and hit-testable: ${JSON.stringify(start)}`);
+      // The header's trigger cell is pinned too. Mutation (Rule 19): drop
+      // `.ocu-data-table-header-cell-trigger` from the sticky rule -> red, the header cell past the frame.
+      const edges = await headerTriggerEdges(page);
+      assert.ok(
+        edges.cell >= edges.client - 0.5 && edges.cell <= edges.border + 0.5,
+        `the header's trigger cell is pinned at the header's right edge: ${JSON.stringify(edges)}`
+      );
+      await page.mouse.move(0, 0);
+      await settle(page);
+      const plain = await triggerCellAlpha(page);
+      assert.equal(plain.alpha, 1, `the pinned cell is opaque on a plain row: ${JSON.stringify(plain)}`);
+      await openAndCloseMenu(page, start);
 
       const frame = await page.$eval('cdk-virtual-scroll-viewport', (element) => {
         const box = element.getBoundingClientRect();
@@ -411,18 +465,23 @@ for (const scrollbars of ['platform', 'classic', 'painted']) {
         .catch(() => {});
       await settle(page);
       const wheeled = await triggerPlace(page);
-      assert.ok(wheeled.inside && wheeled.hit, `a sideways wheel over the frame brings the trigger inside it: ${JSON.stringify(wheeled)}`);
-      await page.mouse.click(wheeled.x, wheeled.y);
-      await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: 2000 });
-      await press(page, 'Escape');
-      await page.waitForFunction(() => document.querySelector('[role="menu"]') === null, { timeout: 2000 });
+      assert.ok(wheeled.scrolled > 0, `the wheel scrolled the frame sideways: ${JSON.stringify(wheeled)}`);
+      assert.ok(wheeled.inside && wheeled.hit, `after a sideways wheel the trigger is still inside the frame: ${JSON.stringify(wheeled)}`);
+      await openAndCloseMenu(page, wheeled);
 
       await page.evaluate(() => {
         document.querySelector('cdk-virtual-scroll-viewport').scrollLeft = 0;
       });
       await settle(page);
       const back = await triggerPlace(page);
-      assert.ok(!back.within, `scrolled back, the trigger is past the frame again: ${JSON.stringify(back)}`);
+      assert.ok(back.inside && back.hit, `scrolled back, the trigger is still pinned inside the frame: ${JSON.stringify(back)}`);
+      await clickRowCentre(page, { index: 0, cell: 2 });
+      await page.mouse.move(0, 0);
+      await settle(page);
+      assert.equal(await page.evaluate(() => window.ocuHarness.selection().length), 1, 'row 1 is selected');
+      const selected = await triggerCellAlpha(page);
+      assert.equal(selected.alpha, 1, `the pinned cell is opaque on a selected row: ${JSON.stringify(selected)}`);
+      assert.notEqual(selected.colour, plain.colour, `and it takes the selected row's colour: ${plain.colour} -> ${selected.colour}`);
       await page.focus('[role="grid"]');
       await press(page, 'ArrowDown');
       for (let step = 0; step < FIELDS.length + 2; step += 1) await press(page, 'ArrowRight');

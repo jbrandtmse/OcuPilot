@@ -276,7 +276,7 @@ interface CellTooltip {
                 </div>
               }
               @if (hasRowActions) {
-                <div class="ocu-data-table-header-cell" role="columnheader">
+                <div class="ocu-data-table-header-cell ocu-data-table-header-cell-trigger" role="columnheader">
                   <span class="ocu-data-table-header-label ocu-data-table-hidden-label">{{
                     STRINGS.commandBoxGroupActions
                   }}</span>
@@ -1125,7 +1125,9 @@ export class DataTable implements OnInit {
 
   /**
    * Bring the active cell fully into view sideways; the header follows through the scroll. A cell
-   * wider than the viewport shows its start.
+   * wider than the viewport shows its start. A data cell's visible range ends where the row's
+   * trigger cell begins, because that cell is pinned to the frame's right edge and covers what
+   * scrolls beneath it.
    */
   private revealActiveCell(): void {
     const viewport = this.viewport()?.elementRef.nativeElement;
@@ -1135,7 +1137,11 @@ export class DataTable implements OnInit {
     const view = viewport.getBoundingClientRect();
     const box = cell.getBoundingClientRect();
     const left = view.left + viewport.clientLeft;
-    const right = left + viewport.clientWidth;
+    let right = left + viewport.clientWidth;
+    const trigger = cell.classList.contains('ocu-data-table-cell-trigger')
+      ? null
+      : cell.parentElement?.querySelector<HTMLElement>('.ocu-data-table-cell-trigger') ?? null;
+    if (trigger !== null) right = Math.min(right, trigger.getBoundingClientRect().left);
     if (box.left < left) viewport.scrollLeft -= left - box.left;
     else if (box.right > right) viewport.scrollLeft += Math.min(box.right - right, box.left - left);
   }

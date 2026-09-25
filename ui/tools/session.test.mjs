@@ -2366,28 +2366,31 @@ test('Integration AC: app.ts withholds the routed outlet from every state but si
     'the gate reads the shared rule rather than restating it'
   );
 
-  // Integration AC, the sign-out half. Story 1.10 moved the account menu into the status bar
-  // it was always drawn for, so what the signed-in branch has to carry is that band; the menu
-  // is mounted by `status-bar.ts` and by nothing else, which is what keeps "the user segment
-  // is the band's only interactive element" true and keeps Sign out reachable exactly while
-  // the frame is.
+  // Integration AC, the sign-out half. Story 15.9 moved the account menu to the header's right
+  // end, so what the signed-in branch has to carry is the header; the menu is mounted by
+  // `header.ts` and by nothing else, which keeps it one trigger with one id and keeps Sign out
+  // reachable exactly while the frame is.
   assert.match(
     session.then,
-    /<app-status-bar\s*\/>/,
-    'a signed-in tab must be able to reach Sign out, which now lives in the status bar'
+    /<app-header\s*\/>/,
+    'a signed-in tab must be able to reach Sign out, which lives in the header'
   );
   assert.ok(
-    !/<app-status-bar/.test(session.otherwise),
+    !/<app-header/.test(session.otherwise),
     'and a tab that is not signed in must not carry the band that holds it'
   );
   assert.ok(
     !/<app-account-menu/.test(source),
-    'app.ts no longer mounts the menu itself -- two mounts would be two triggers with one id'
+    'app.ts does not mount the menu itself -- two mounts would be two triggers with one id'
   );
   assert.match(
-    readFileSync(join(appRoot, 'app', 'shell', 'status-bar.ts'), 'utf8'),
+    readFileSync(join(appRoot, 'app', 'shell', 'header.ts'), 'utf8'),
     /<app-account-menu\s*\/>/,
-    'the status bar is what mounts it'
+    'the header is what mounts it'
+  );
+  assert.ok(
+    !/<app-account-menu/.test(readFileSync(join(appRoot, 'app', 'shell', 'status-bar.ts'), 'utf8')),
+    'and the status bar does not'
   );
 });
 

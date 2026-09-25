@@ -2,14 +2,23 @@
 title: 'Story 15.9: Sign-out where people look, and no filter where there is nothing to filter'
 type: 'feature'
 created: '2026-09-25'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '5e8ac399a1888b41c170a679384ca1302e370975'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-15-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - 'The `.ocu-status-bar` comment in `_components.scss` still says the account menu opens upward out of the band; the in-place edit limit (Never) keeps it out of this story. One-line comment fix at the next touch of that block.'
+  - summary: >-
+      Where a scrollbar gutter is reserved, the header's pinned trigger cell sits over the header's empty gutter, one gutter width (15px) right of the body's pinned trigger column.
+    evidence: |-
+      Trigger reach, classic and painted runs: header cell right 463 against the header client edge 448 and the body trigger's right 448. `.ocu-data-table-head` is overflow hidden with `scrollbar-gutter: stable`, and Chrome pins a sticky cell there against the border box. Cosmetic: header labels are occluded 15px further right than body cells; the header cell carries no visible label.
+    location: >-
+      ui/src/styles/_components.scss (Story 15.9 tail block, sticky trigger rule)
+    severity: low
 ---
 
 <intent-contract>
@@ -164,6 +173,30 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-25 — Review pass
+
+- verdicts: 19 findings — high 0, medium 8, low 8, false 3, maybe-false 0
+- findings:
+  - `medium` `patch` Sign out "last in Actions" test matched only Sign out, so ordering was unpinned — added a needle-`t` leg in `command-box.spec.ts`; mutation observed.
+  - `medium` `patch` Narrow header "text stays whole" was true by construction (the test wrote the text node) — added a `header.spec.ts` leg that drives a long name through `Session`; mutation observed.
+  - `medium` `patch` pinned cell hover, changed and focus-ring states had no test — `data-table.browser-spec.mjs` AC4 now reads the trigger cell's background and ring; two mutations observed.
+  - `medium` `patch` no browser check that the header trigger cell is pinned — Trigger reach asserts it at the header's right edge; mutation observed. The gutter offset it exposed is deferred (low).
+  - `medium` `patch` `clickRowCentre`'s wrong-row, outside-target and no-pointerdown branches were never seen to fire — three mutations recorded, each naming its miss.
+  - `low` `patch` AC4 had no mutation line — citation mutation recorded.
+  - `low` `patch` Integration AC header-menu half had no mutation line — `credentials: 'omit'` mutation recorded.
+  - `low` `reject` AC6 gate clause has no mutation — tried `right: -40px` on the pinned cell and the gate stayed 208/0; the clause is a no-new-violation result, and reach is pinned by Trigger reach. Finding a gate-visible mutation adds no evidence.
+  - `false` `reject` AC7 "25 callers pass" has no mutation — it is a run result, not an assertion; the caller run is the evidence.
+  - `low` `patch` mutation comments claimed more than was observed — corrected in `account-and-filter`; the `panel` comment's `overflow: hidden` mutation is now demonstrated.
+  - `low` `patch` "absent when no `Session`" had no test — jsdom leg added; mutation observed.
+  - `low` `patch` toast rule covers every screen publisher (the intent's literal `screenShowsEntity` predicate), which left EXPERIENCE.md's off-screen toast sentence saying any change on a details screen toasts — `:772` now says an agent's change.
+  - `low` `reject` filter and bar also hidden on an unmatched route — such a route has no slot to draw, matching "draws nothing when every slot is empty"; no user-visible harm.
+  - `medium` `patch` (with the hover/changed/ring entry) pinned cell state colors and ring untested in the browser — same patch.
+  - `medium` `patch` (with the `clickRowCentre` entry) throw branches have no evidence — same patch.
+  - `false` `reject` "on every screen" untested and substring matching lists the row for "out" — the row is appended independent of the screen, and substring is the intent's "the label contains it".
+  - `low` `patch` (with the no-`Session` entry) — same patch.
+  - `medium` `patch` (with the Narrow header entry) the long name never went through `Session` — same patch.
+  - `false` `reject` DESIGN.md citations `:1007` and `:1021` look off by one — they predate this story and name the section heading or a range that holds the paragraph.
+
 ## Design Notes
 
 **Governing ADs (Rule 6):**
@@ -236,9 +269,63 @@ No AC contradicts an AD.
 - AC7: offset `clickRowCentre`'s click `y` by one row height → `users.browser-spec.mjs` fails with the helper's named miss, not a trigger timeout.
 - Integration AC: replace the command row's `Session.signOut()` with a local token clear → the reload assertion red.
 
+**Mutations run (implement, 2026-09-25).** Each applied, rebuilt and redeployed where a bundle is read, observed red, reverted; `git diff | shasum` unchanged across the set.
+
+- mutation: `<app-account-menu />` back in `status-bar.ts` → `status-bar.spec.ts` 2 red; `account-and-filter` Header menu red ("the status bar holds no button").
+- mutation: `<app-account-menu />` dropped from `header.ts` → `header.spec.ts` band-order and account-button cases red.
+- mutation: Sign out row dropped (`accountCandidates(...).slice(1)`) → `command-box.spec.ts` 2 red; Command Sign out red (row never appears).
+- mutation: `hasFilter` always true → `command-bar.spec.ts` null-screen, Home and drill-down cases red; No read red at "Home draws no command bar".
+- mutation: `hasContent` forced true → `command-bar.spec.ts` null-screen and Home cases red; No read red.
+- mutation: `hasFilter` always false → `command-bar.spec.ts` 9 red incl. the list case; No read red at the Users filter.
+- mutation: empty-`proposalId` suppression disabled → `toasts.test` own-Save red; `web-applications-editor` AC2 red ("the editor's own Save raises no toast").
+- mutation: `proposalId: id` dropped from `turn.ts` → `task-resume` AC4/AC7 red at the toast wait.
+- mutation: `position: sticky` dropped from the trigger cell → Trigger reach red in all three scrollbar runs (scroll-0 reach).
+- mutation: trigger cell `background: transparent` → Trigger reach red (alpha 0 on a plain row).
+- mutation: `revealActiveCell`'s trigger subtraction disabled → Reveal red (Note ends at 463, trigger at 411).
+- mutation: header trigger class dropped → `data-table.spec.ts` pinned-class case red.
+- mutation: `clickRowCentre` clicks `y + height` → `users.browser-spec.mjs` AC7 fails with "the click meant for row "_SYSTEM" landed in no row".
+- mutation: command row's `signOut()` replaced by `sessionStorage.clear(); location.reload()` → Command Sign out red (silently signed back in; the sign-in form never shows).
+- mutation: account row listed before the actions in `rows` → `command-box.spec.ts` needle-`t` ordering leg red.
+- mutation: `this.session === null` guard dropped from `accountCandidates` → `command-box.spec.ts` no-Session leg red.
+- mutation: `userName().slice(0, 20)` in `account-menu.ts` → `header.spec.ts` long-name leg red.
+- mutation: changed-row trigger `background` dropped → `data-table.browser-spec.mjs` AC4 red ("follows the change highlight").
+- mutation: the focus-visible trigger ring rule unmatched → AC4 red ("draws its part of the ring: none").
+- mutation: `.ocu-data-table-header-cell-trigger` dropped from the sticky rule → Trigger reach red (header cell right 933 against 463).
+- mutation: `clickRowCentre` clicks `hit.y + 36` → Trigger reach red, "landed in row "/csp/app 0001""; `hit.x - 200` → "outside cell 2"; probe bound to a never-fired event → "no pointerdown arrived".
+- mutation: one cited phrase of the Sign out row (`:81`) reworded → `citations.test` red (AC4).
+- mutation: `/logout` posted with `credentials: 'omit'` → `account-and-filter` Header menu red ("and the cookie", Integration AC header half).
+- mutation: `overflow: hidden` on `.ocu-header` → `account-and-filter` Header menu and `panel` sign-out hit tests red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only (halt after planning). The ledger inbox is addressed: DW-1597 by AC5, DW-1648 by AC6 (decided (b)), and DW-1649 by AC7. `oversized`: seven ACs across the shell, the toast rule, the table and a shared test helper.
+**Change.** The account menu moved to the header's right end, and the status bar shows the user as plain text. The command box lists a Sign out row, last in Actions, for a typed needle; it calls `Session.signOut()`. A screen whose read is `null` draws no filter or count, and an empty command bar is not drawn. A `changed` event with no `proposalId` raises no toast while the open screen shows its entity; `turn.ts` adds `proposalId: id`. The trigger column is sticky at the frame's right edge on the row's state color, and draws its part of the focus ring. `clickRowCentre` probes where its click landed. DESIGN.md and EXPERIENCE.md are corrected in place.
+
+**Files.**
+
+- `shell/header*`, `status-bar*`, `account-menu*`: the menu's new mount, the plain user segment, and the doc comments.
+- `shell/command-box*`: the Sign out row. `shell/command-bar*`: `hasFilter` and `hasContent`.
+- `core/toasts.ts`, `core/turn.ts` (one line), `core/change-bus.ts` (a comment): DW-1597.
+- `shell/data-table*` and the `_components.scss` tail block: DW-1648. `_components.scss` also has the in-place `.ocu-account*` and `.ocu-header*` edits.
+- `browser/list-spec.mjs`: DW-1649.
+- Browser specs: `account-and-filter` (new), and changes to `data-table-columns`, `data-table`, `web-applications-editor` and `panel` (a comment).
+- `tools/toasts.test.mjs`, `tools/session.test.mjs`, and DESIGN.md and EXPERIENCE.md.
+
+**Review.** There are 19 findings: 8 medium, 8 low and 3 false. 13 were patched with tests and mutations; the medium ones fall into 5 entries. 3 were rejected as false, and 3 low were rejected with the reasons in the triage log. One low is deferred: the header's pinned cell sits over the header's scrollbar gutter. `followup_review_recommended: false`: every patch adds a test whose red was observed, and no unverified risk can be named.
+
+**Verification.**
+
+- `test:tools`: 1420/1420.
+- `test:components`: 1242/1242.
+- `npm run build`: the checkers pass, and the initial total is 1.59 MB (1,593,861 B), under 1670 kB.
+- `lint-docs`: clean.
+- Loop browser set (account-and-filter, data-table-columns, data-table, web-applications-editor, task-resume and a11y-structural-invariants): 50/50. The DW-1337 gate found 208 against a baseline of 208, with 0 fresh and 0 stale.
+- Once:
+  - Moved-path specs: 40/41. The one failure is the bundle-name mismatch that the `docker cp` deploy leaves.
+  - 26 `clickRowCentre` caller files: 136/144. All 8 failures are residue from `reduced-editors` running unarmed and from DW-1425/DW-1468.
+  - `smoke.sh`: 48/48.
+  - ObjectScript sweep on `ocupilot-ci`: 250 classes and 2052 tests. 13 classes refused because they are unarmed (`OCUPILOT_ALLOW_*`), and `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` failed on task-history residue. Neither is from this story.
+
+**Footprint extensions.** `ui/tools/session.test.mjs` and `ui/browser/data-table.browser-spec.mjs`.

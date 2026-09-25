@@ -20,8 +20,9 @@ import { ChangePasswordDialog } from './change-password-dialog';
 export const ACCOUNT_MENU_OVERLAY_ID = 'account-menu';
 
 /**
- * The account menu: the status bar's user segment, and the one affordance that reaches
- * `Session.signOut()` (EXPERIENCE.md "status-bar user segment", "`{spacing.status-bar-height}` band", Session state 8).
+ * The account menu: the header's account button at its right end, beside the namespace switch
+ * (EXPERIENCE.md "header account button", "`{spacing.header-height}` on", Session state 8). Its
+ * Sign out item and the command box's Sign out row both call `Session.signOut()`.
  *
  * A trigger carrying the signed-in user's name and a down triangle, and a menu behind it holding
  * About, Change password, Dark theme and Sign out. Change password opens the shell's one dialog
@@ -33,9 +34,9 @@ export const ACCOUNT_MENU_OVERLAY_ID = 'account-menu';
  * focus on the item, the way a checkbox item answers; the choice is remembered on the instance by
  * the store, never here.
  *
- * **It is the status bar's user segment** (DESIGN.md `:1021`) and the band's only
- * interactive element. Story 1.7 mounted it directly in `app.ts` because the band did not
- * exist; Story 1.10 built the band and moved it here.
+ * **It is mounted by `header.ts`**, after the namespace slot (DESIGN.md `:1008`). The status bar
+ * shows the user name as information only, so this is the menu's one trigger, and the panel opens
+ * downward from the header.
  *
  * **Keyboard (DW-115).** Opening moves focus to the first item. Every `role="menuitem"` carries
  * `tabindex="-1"` and the container owns the arrow model: ArrowDown and ArrowUp move with
@@ -169,8 +170,8 @@ export class AccountMenu {
   protected readonly STRINGS = STRINGS;
 
   /**
-   * The down triangle the status bar's user segment carries (EXPERIENCE.md "`{spacing.status-bar-height}` band",
-   * DESIGN.md `:1021`), written as its escape so no non-ASCII byte enters a source file.
+   * The down triangle the account button carries, which says it opens a menu, written as its
+   * escape so no non-ASCII byte enters a source file.
    */
   protected readonly caretGlyph = '\u25BE';
 

@@ -1110,6 +1110,7 @@ export class TurnStore {
           scope: target.scope,
           id: confirmedId(result.body, target.id),
           action: confirmedAction(result.body),
+          proposalId: id,
         });
       }
       return outcome;
