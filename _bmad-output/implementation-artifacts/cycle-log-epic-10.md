@@ -159,3 +159,11 @@ TAB-separated, append-only: `<UTC> TAB <Story <id> | Epic 10> TAB <stage> TAB <m
 2026-09-24T07:15:32Z	Epic 10	throwaway_down	by=runner(epic-runner-10,the_session_that_ran_its_up) container=ocupilot-b-ci project=ocupilot-b-ci dir=/tmp/ocupilot-b-ci result=removed live_credentials=deleted_with_their_definitions_before_teardown
 2026-09-24T07:15:32Z	Epic 10	model_tier_telemetry	stories=2 implement_model=opus(overrides.implement) review_tier=full-opus unresolved_high_med=0,0 high_med=1,1 rework_stories=0 review_loop_thrash=0 note=the_checkpoint_itself_is_orchestrator-run_at_the_merge_gate;offers_pre-answered_decline
 2026-09-24T07:15:32Z	Epic 10	epic_runner_complete	stories=2(10.4,10.5) ci_last_code_head=91be221d_run_35966195421_success ledger=open_before=0_resolved=4_terminal=2_open_after=0_drain_ratio=0.86 note=epic-10_key_left_in-progress_for_the_orchestrators_epic_status_done_write(Runner-Mode_Deltas)
+2026-09-25T05:52:01Z	Epic 10	lead_model_gate	model=claude-opus-5-5 action=proceed note=runner_for_story_10.6_only
+2026-09-25T05:52:01Z	Epic 10	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=gh
+2026-09-25T05:52:01Z	Epic 10	telemetry_gate	pending=0 action=none
+2026-09-25T05:52:01Z	Epic 10	worktree_verified	branch=OCU-1-epic10 node_modules=present irislib=symlink_resolves slot=b docker_port_ocupilot-slot-b=52775 mcp_profile_ocupilot-slot-b_baseUrl=http://localhost:52775 match=true
+2026-09-25T05:52:01Z	Epic 10	integrate_forward	from=29343d1c feature=cd49f3be merge_sha=f4a644fc kind=no-ff(epic_head_was_an_ancestor;merge_commit_so_CI_runs_on_the_merged_tree,DW-1434) conflicts=0 ci=pending run=36100295517 verify=DW-1435(CI_on_that_exact_head,all_jobs_incl_browser)
+2026-09-25T05:52:01Z	Epic 10	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=56 status=final
+2026-09-25T05:52:01Z	Epic 10	ledger_load	total=1095 open=3 routed=230 escalated=0 decision_pending=1 terminal=861 owner_unknown=0 burndown=1 reowned_none=0 inbox_10-6=empty note=sprint_planning_not_repeated(orchestrator)
+2026-09-25T05:52:01Z	Epic 10	epic_reopened	key=epic-10 from=done to=in-progress reason=story_10.6_added_by_owner_2026-09-24(184de74d) authorized_by=orchestrator_dispatch retro_review=skip(handled_by_epic_9)
