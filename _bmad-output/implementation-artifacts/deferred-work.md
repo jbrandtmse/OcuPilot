@@ -6951,3 +6951,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: MessageAdapter.GEMINISTOPREASONS (:75) folds ten Gemini reasons into refusal; Loop routes every canonical refusal to PROVIDER.DECLINED (Story 11.7)
 - 2026-09-25T15:14:22Z status=open owner=11-7-token-streaming by=harvest note=in-story MED; for the 11.7 code review to patch or disposition
 - 2026-09-25T15:49:29Z status=decision-pending owner=burndown by=cr note=product call: fix contradicts Epic 10 pinned refusal map; rec. own code for Gemini tool-call failures
+
+### DW-1669: A live proposal card's privilege line is refreshed only while its turn is still polling; after the turn ends, a revocation shows no warning until a conversation restore
+- source: spec-11-8-the-proposal-names-the-privilege-it-needs.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: pollUntilTerminal (ui/src/app/core/turn.ts) stops at the turn's terminal state, usually right after the proposal, so the line keeps its last held answer while the card stays live; Confirm still refuses AUTH.NOPRIVILEGE naming the pair
+- 2026-09-25T18:15:26Z status=open owner=11-8-the-proposal-names-the-privilege-it-needs by=harvest note=in-story MED; turn.ts/panel.ts polling is contended with Epic 12; for the 11.8 code review to patch or disposition
