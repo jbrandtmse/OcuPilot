@@ -448,7 +448,11 @@ export class ScreenStore {
   setColumnWidth(field: string, px: number): boolean {
     if (field === '' || !isColumnWidth(px)) return false;
     if (this.widths.get(field) === px) return true;
-    this.widths = new Map([...this.widths, [field, px]]);
+    // The width set last goes last, so it is the one `rememberView` keeps longest.
+    const next = new Map(this.widths);
+    next.delete(field);
+    next.set(field, px);
+    this.widths = next;
     this.rememberView();
     this.notify();
     return true;
@@ -482,6 +486,19 @@ export class ScreenStore {
    */
   private rememberView(): void {
     if (this.route === '') return;
+    // Widths that would take the value past the instance's limit are left out, the earliest set
+    // first, so sort, filter and max rows are still remembered. Every width still holds on screen.
+    const widths = [...this.widths];
+    let value = this.serializedView(widths);
+    while (value.length > PREFERENCE_VALUE_MAX && widths.length > 0) {
+      widths.shift();
+      value = this.serializedView(widths);
+    }
+    if (value.length > PREFERENCE_VALUE_MAX) return;
+    void this.account.setValue(VIEW_KIND, this.route, value);
+  }
+
+  private serializedView(widths: readonly (readonly [string, number])[]): string {
     const view: Record<string, unknown> = {
       sort: this.sortBy,
       direction: this.sortDirection,
@@ -490,10 +507,8 @@ export class ScreenStore {
     };
     // Only a screen whose columns the user sized carries `widths`, so every other view is the
     // value it was before column widths existed.
-    if (this.widths.size > 0) view['widths'] = Object.fromEntries(this.widths);
-    const value = JSON.stringify(view);
-    if (value.length > PREFERENCE_VALUE_MAX) return;
-    void this.account.setValue(VIEW_KIND, this.route, value);
+    if (widths.length > 0) view['widths'] = Object.fromEntries(widths);
+    return JSON.stringify(view);
   }
 
   private notify(): void {

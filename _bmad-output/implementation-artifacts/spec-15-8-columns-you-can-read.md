@@ -2,7 +2,7 @@
 title: 'Story 15.8: Columns you can read'
 type: 'feature'
 created: '2026-09-25'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '178758eedb7592a5f233dbe5db5bf8b89082970c'
 baseline_commit: '178758eedb7592a5f233dbe5db5bf8b89082970c'
 review_loop_iteration: 0
@@ -178,7 +178,33 @@ deferred: []
 - **AC7 (DW-1586).** Given a short name, when its link renders, then it is at least 24×24. `a11y-structural-invariants.browser-spec.mjs` then reports 0 fresh and 0 stale keys, and the baseline holds 208 entries.
 - **Integration AC (Rule 1).** Given the deployed bundle on `ocupilot-ci`, when `_SYSTEM` resizes Users' Name column, signs out and signs in in a new context, then `ListPage`'s table, which consumes `ScreenStore` → `AccountPreferences`, draws Name at the stored width.
 
+### Rework 1 (CI)
+
+- [ ] [CI] browser: `resources-editor.browser-spec.mjs:339` ("Story 9.3: a probe is deleted from the row menu once its name is typed...") and `roles-editor.browser-spec.mjs:425` ("AC3: the Roles list's Delete states the holders...") both time out on `[role="row"][aria-selected="true"] .ocu-data-table-trigger` (visible) after `selectRow` — run 36100540000 on 0b7e3b69, https://github.com/jbrandtmse/OcuPilot/actions/runs/36100540000 — the row's action trigger is no longer reached once rows are wider than the frame. Reproduce both files on `ocupilot-ci` against a redeployed bundle, find the root cause, and make them green without weakening any assertion. Fix a test helper only if the product behavior is correct as shipped (the trigger reachable by a user through the frame's own horizontal scroll and by keyboard); if the product leaves the trigger unreachable, fix the product. Do not decide DW-1648 (the owner's call on column floors and on pinning the trigger column). Then grep every other browser spec that clicks the row trigger or a row by its center (`.ocu-data-table-trigger`, `clickRowCentre`, own `selectRow` helpers) and run each spec file whose path could be hit the same way (one file at a time is fine; never the full suite).
+
+### Review Findings
+
+Code review 2026-09-25 (four layers, full-opus). Patches applied in the review pass.
+
+- [x] [Review][Patch] Widths past the 256-character view cap stopped the whole view being remembered, sort and filter included (med) — `rememberView` now leaves out widths earliest-set first until the value fits [ui/src/app/core/screen-store.ts:482]
+- [x] [Review][Patch] The tail block's link, arrow and header-cell rules reached the error drill-down's grids, against the Never list (med) — scoped to `app-data-table`; the in-place head and body edits are the Tasks' own [ui/src/styles/_components.scss:5799]
+- [x] [Review][Patch] The chord hide was proven only by the tooltip vanishing, never by the shell's bubble listener finding the stack empty (med) — jsdom case with a shell-side listener registered first [ui/src/app/shell/data-table.spec.ts:1050]
+- [x] [Review][Patch] A press on a header edge with no width change stored a px width (low) — only a width-changing move counts [ui/src/app/shell/data-table.ts:1077]
+- [x] [Review][Patch] A scroll of the page or an ancestor left the fixed tooltip detached (low) — document capture listener for ancestor scrolls; Dismissal case added [ui/src/app/shell/data-table.ts:697]
+- [x] [Review][Patch] A vertical key move hiding the focus tooltip was untested (low) — Dismissal "vertical key" case [ui/browser/data-table-columns.browser-spec.mjs:487]
+- [x] [Review][Patch] Geometry could not see content leaving a fixed-height row (low) — hit areas and name links asserted inside their rows [ui/browser/data-table-columns.browser-spec.mjs:385]
+- [x] [Review][Defer] Kind-based floors make most lists scroll sideways at 1280 with the panel open, the ⋮ trigger off-screen until scrolled [ui/src/app/core/table-model.ts:280] — deferred: AC1 fixes the floors; DW-1648 decision-pending for the owner
+- [x] [Review][Close] No way to return a sized column to its default, and widths past the cap hold for the session only (low) — wontfix-accepted, reopen_if a user or judge asks to reset a column width or reports one lost on a screen with more than five sized columns
+
+Rejected:
+
+- by-design: keyboard resize inert on an empty grid (Always: no active data cell changes nothing); the harness spec calling `resetRememberedState` (Tasks); tail-block overrides far from the table section (shared-append tail rule); the Home binding's wording (Fixed strings).
+- false: `hideTooltip` leaving `hoverCellId` set (a dismissed tooltip re-arms on the next hover, WCAG 1.4.13); EXPERIENCE.md/DESIGN.md "the only resizable edge" (they scope to the shell's layout edges).
+- low: no feedback on a keypress at the floor; `document.fonts.ready` already settled; `renderedWidth` fallbacks for undrawn or unknown-kind columns; all columns sized leaves no `fr` track; `TRIGGER_TRACK_PX` copies a token; tooltip `z-index` and literal `kbd` sizes; a partly scrolled cell's tooltip clamped to the window, not the frame; no Escape to cancel a drag; the Shortcuts `dl` with more entries; per-resize host listener; `pointercancel` commits the drawn width; a handle removed mid-drag; a tick changing a hovered cell's text; a tooltip stacked over an open menu; a header measured while hidden; a label wider than 2000px; `overflow-clip-margin` outside Chrome; undeclared widths never pruned.
+
 ## Spec Change Log
+
+- 2026-09-25 rework 1 (runner, trigger=ci): re-opened for the red `browser` job of run 36100540000; items under Tasks › Rework 1.
 
 - 2026-09-25 spec gate (runner): `## Verification` gains the full ObjectScript sweep once before `dev_complete` (orchestrator ruling; Rule 29).
 - 2026-09-25 implement: DW-1166 applied. The initial total measured 1,589,950 B (1kB = 1,000 B), past the 1577kB warning, so `maximumWarning` moves to 1670kB (5% above) in `ui/angular.json` and `ui/tools/angular-json.test.mjs`.
@@ -313,7 +339,7 @@ Results (2026-09-25, `ocupilot-ci`; each reverted, tree byte-identical by `shasu
 - mutation: `[title]="cell.view.text"` on the text span → `data-table.spec.ts` no-title test red.
 - mutation: pointer-out onto the tooltip hides it → harness Cut cell red; the tooltip's `OverlayStack` entry removed → Cut cell red (Escape).
 - mutation: `revealActiveCell` skipped → harness Reveal red; `updateFocusTooltip`'s show removed → harness Keyboard tooltip red.
-- mutation: hit area in flow at `height: 40px` alone → Geometry stays green, because `.ocu-data-table-row` fixes the height; with the row's `height` also turned into `min-height` → Geometry red (heights 41 and 36).
+- mutation: hit area in flow at `height: 40px` → Geometry red ("every hit area and name link sits inside its row"; code review).
 - mutation: link floor removed → harness DW-1586 red; the structural gate red with exactly the 4 `DW-1586` keys fresh.
 - mutation: width stored under the column label → `column-widths` Integration AC red (it sizes Full name, whose label is not its field; on Name, label and field coincide and it stayed green).
 - mutation: Home's Shortcuts `dl` removed → `home.page.spec.ts` Story 15.8 row red; `SHORTCUT_KEYS` naming an unknown key → `about.test` red.
@@ -323,6 +349,10 @@ Results (2026-09-25, `ocupilot-ci`; each reverted, tree byte-identical by `shasu
 - mutation: the sort arrow's `inline-size` removed → harness "Sorted or not" red.
 - mutation: `resizeActiveColumn` floor 0 → harness "Keyboard floor" red (stored 85, drawn 101); the drag floor raised to the kind default → harness Drag red (narrowed only to 240).
 - mutation: widths keyed by label in `resizeActiveColumn` → `column-widths` Integration AC red now that it sizes Name and Full name.
+- mutation: `rememberView` sends nothing once widths pass the cap → `screen-store.test` "widths that would take the view past the instance's limit" red (code review).
+- mutation: the chord listener registered in the bubble phase → `data-table.spec.ts` "a Ctrl/Cmd chord takes a showing tooltip off the overlay stack" red (code review).
+- mutation: any pointermove counts as a drag → `data-table.spec.ts` "a press on a header edge … stores nothing" red (code review).
+- mutation: the ancestor-scroll listener removed, or `afterActiveCellMoved` removed from the vertical move keys → harness Dismissal red on "ancestor scroll" or "vertical key" (code review).
 
 ## Auto Run Result
 

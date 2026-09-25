@@ -5795,15 +5795,16 @@ app-reduced-form-page .ocu-field-checkbox input[type='checkbox'] {
 // --- Column widths (Story 15.8) ----------------------------------------------------------------
 //
 // The name link is a 24x24 target (DW-1586) and its text still cuts with an ellipsis: as a flex
-// item it is blockified, so the floor and the ellipsis both apply.
-.ocu-data-table-link {
+// item it is blockified, so the floor and the ellipsis both apply. The rules here are scoped to
+// `app-data-table`: the error drill-down draws its own grids with these classes.
+app-data-table .ocu-data-table-link {
   min-width: var(--ocu-space-6);
   min-height: var(--ocu-space-6);
   line-height: var(--ocu-space-6);
 }
 
 // The sort arrow's slot is reserved on every column, so sorting never cuts a label.
-.ocu-data-table-sort-arrow {
+app-data-table .ocu-data-table-sort-arrow {
   flex: 0 0 auto;
   inline-size: var(--ocu-space-3);
   text-align: center;
@@ -5812,7 +5813,7 @@ app-reduced-form-page .ocu-field-checkbox input[type='checkbox'] {
 // Each data column's header draws a 24px hit area centred on its right edge, so half of it lies
 // over the next cell: the clip margin lets that half through while the label clips itself. It is
 // out of flow, so it never changes the header's 36px.
-.ocu-data-table-header-cell {
+app-data-table .ocu-data-table-header-cell {
   overflow: clip;
   overflow-clip-margin: var(--ocu-space-3);
 }

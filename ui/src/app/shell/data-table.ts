@@ -694,9 +694,18 @@ export class DataTable implements OnInit {
       if (event.ctrlKey || event.metaKey) this.hideTooltip();
     };
     if (typeof document !== 'undefined') document.addEventListener('keydown', onChord, true);
+    // A scroll of the page or of any element holding the grid moves the cell out from under the
+    // fixed tooltip; the viewport's own scroll is handled with the header's sync.
+    const onAncestorScroll = (event: Event) => {
+      const grid = this.gridElement()?.nativeElement;
+      const target = event.target;
+      if (target instanceof Document || (grid !== undefined && target instanceof Node && target.contains(grid))) this.hideTooltip();
+    };
+    if (typeof document !== 'undefined') document.addEventListener('scroll', onAncestorScroll, true);
 
     this.destroyRef.onDestroy(() => {
       if (typeof document !== 'undefined') document.removeEventListener('keydown', onChord, true);
+      if (typeof document !== 'undefined') document.removeEventListener('scroll', onAncestorScroll, true);
       this.clearHoverTimer();
       this.overlays.remove(this.tooltipOverlayId);
     });
@@ -1054,13 +1063,14 @@ export class DataTable implements OnInit {
     const startWidth = handle?.parentElement?.getBoundingClientRect().width ?? 0;
     handle?.setPointerCapture?.(event.pointerId);
     this.hideTooltip();
+    const min = this.labelMins().get(field) ?? 0;
     this.drag.set({
       field,
       pointerId: event.pointerId,
       startX: event.clientX,
       startWidth,
-      min: this.labelMins().get(field) ?? 0,
-      width: Math.round(startWidth),
+      min,
+      width: resizedWidth(startWidth, 0, min),
       moved: false,
     });
   }
@@ -1069,8 +1079,9 @@ export class DataTable implements OnInit {
     const drag = this.drag();
     if (drag === null || event.pointerId !== drag.pointerId) return;
     event.preventDefault();
+    // Only a move that changes the width counts, so a press on the edge alone stores nothing.
     const width = resizedWidth(drag.startWidth, event.clientX - drag.startX, drag.min);
-    if (width !== drag.width || !drag.moved) this.drag.set({ ...drag, width, moved: true });
+    if (width !== drag.width) this.drag.set({ ...drag, width, moved: true });
   }
 
   /** The drag ends: a column that moved keeps its width, written to the store once. */

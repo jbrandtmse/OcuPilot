@@ -366,8 +366,8 @@ test('Not cut: a short value and "(none)" show no tooltip', async () => {
   }
 });
 
-// Mutation (Rule 19): put the header resize hit area in flow at `height: 40px` and turn the row's
-// `height` into `min-height` -> the header height goes red (the row's fixed height alone holds 36px).
+// Mutation (Rule 19): put the header resize hit area in flow at `height: 40px` -> the hit area leaves
+// its row, red (the row's own fixed height keeps the 36px assertion green on its own).
 test('Geometry: after a drag, a keyboard resize and a scroll both ways, every row and the header are 36px', async () => {
   const { context, page } = await openHarness(NARROW);
   try {
@@ -385,6 +385,16 @@ test('Geometry: after a drag, a keyboard resize and a scroll both ways, every ro
     const heights = await page.evaluate(() => Array.from(document.querySelectorAll('.ocu-data-table-row')).map((element) => element.getBoundingClientRect().height));
     assert.ok(heights.length > 2);
     assert.deepEqual([...new Set(heights)], [36], `heights: ${JSON.stringify([...new Set(heights)])}`);
+    const outside = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('.ocu-data-table-row')).flatMap((element) => {
+        const box = element.getBoundingClientRect();
+        return Array.from(element.querySelectorAll('.ocu-data-table-resize, .ocu-data-table-link'))
+          .map((inner) => inner.getBoundingClientRect())
+          .filter((rect) => rect.top < box.top - 0.5 || rect.bottom > box.bottom + 0.5)
+          .map((rect) => [rect.top, rect.bottom, box.top, box.bottom]);
+      })
+    );
+    assert.deepEqual(outside, [], 'every hit area and name link sits inside its row');
   } finally {
     await context.close();
   }
@@ -477,10 +487,13 @@ async function pointerTooltip(page) {
 
 // Mutations (Rule 19), each red on its own case: drop `hideTooltip` from `onViewportScroll` (scroll),
 // from `onWindowResize` (resize), from `onGridFocusOut` (blur), from `onTooltipLeave` (pointer out),
-// or the document capture listener for chords (Ctrl and Cmd).
+// the document capture listener for chords (Ctrl and Cmd) or for an ancestor's scroll (ancestor
+// scroll), or `afterActiveCellMoved` from the vertical move keys (vertical key).
 test('Dismissal: a showing tooltip goes on scroll, on resize, on grid blur, when the pointer leaves it, and on a Ctrl or Cmd chord wherever focus is', async () => {
   const cases = [
     ['scroll', focusTooltip, (page) => page.evaluate(() => { document.querySelector('cdk-virtual-scroll-viewport').scrollTop = 360; })],
+    ['ancestor scroll', pointerTooltip, (page) => page.evaluate(() => document.body.dispatchEvent(new Event('scroll')))],
+    ['vertical key', focusTooltip, (page) => press(page, 'ArrowDown')],
     ['resize', focusTooltip, (page) => page.setViewport({ width: 1200, height: 860 })],
     ['blur', focusTooltip, (page) => page.evaluate(() => document.activeElement.blur())],
     ['pointer out', pointerTooltip, async (page) => {

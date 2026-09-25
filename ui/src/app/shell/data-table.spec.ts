@@ -1044,6 +1044,39 @@ describe('the data table', () => {
     }
   });
 
+  // The shell's Ctrl/Cmd+B and +I handlers listen on the document in the bubble phase, are registered
+  // before any table, and do nothing while the overlay stack is not empty.
+  //
+  // Mutation (Rule 19): register the table's chord listener in the bubble phase -> the shell-side
+  // listener reads the tooltip still on the stack, red.
+  it('Story 15.8: a Ctrl/Cmd chord takes a showing tooltip off the overlay stack before the shell\'s own document listener reads it', async () => {
+    const scrollWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollWidth');
+    Object.defineProperty(HTMLElement.prototype, 'scrollWidth', { configurable: true, get: () => 100 });
+    const seen: string[] = [];
+    let overlays: OverlayStack | null = null;
+    const shell = () => seen.push(overlays?.top() ?? 'no stack');
+    document.addEventListener('keydown', shell);
+    try {
+      const wired = await wire(tableDeclaration(), ok(rows(3)));
+      overlays = wired.overlays;
+      await wired.refresh.readNow();
+      await settle(wired.fixture);
+      const text = wired.host().querySelectorAll('[aria-rowindex="3"] [role="gridcell"]')[1].querySelector('.ocu-data-table-text') as Element;
+      text.dispatchEvent(new MouseEvent('pointerover', { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      await settle(wired.fixture);
+      expect(wired.host().querySelector('.ocu-data-table-tooltip')).not.toBeNull();
+      expect(wired.overlays.top()).not.toBe('');
+
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, bubbles: true }));
+      expect(seen).toEqual(['']);
+    } finally {
+      document.removeEventListener('keydown', shell);
+      if (scrollWidth !== undefined) Object.defineProperty(HTMLElement.prototype, 'scrollWidth', scrollWidth);
+      else delete (HTMLElement.prototype as { scrollWidth?: number }).scrollWidth;
+    }
+  });
+
   // jsdom lays nothing out, so each header label is made to measure 300px: an unsized column's track
   // then floors at the label, not at its kind's default.
   //
@@ -1079,6 +1112,19 @@ describe('the data table', () => {
     const minimums = new Set(rowsDrawn.map((element) => element.style.minWidth));
     expect(templates.size).toBe(1);
     expect(minimums).toEqual(new Set([`${240 + 240 + 112 + 112 + 160 + 52}px`]));
+  });
+
+  // Mutation (Rule 19): count any pointermove as a drag -> the press alone stores a width, red.
+  it('Story 15.8: a press on a header edge that does not change the width stores nothing', async () => {
+    const wired = await wire(tableDeclaration(), ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const handle = wired.host().querySelector('.ocu-data-table-resize') as HTMLElement;
+    for (const type of ['pointerdown', 'pointermove', 'pointerup']) {
+      handle.dispatchEvent(new MouseEvent(type, { bubbles: true, button: 0, clientX: 40 }));
+    }
+    await settle(wired.fixture);
+    expect([...wired.store.columnWidths()]).toEqual([]);
   });
 
   it('DW-18 Filtered to zero: a focused grid with no row matching the filter asks for the filter field', async () => {

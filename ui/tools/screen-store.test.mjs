@@ -350,14 +350,27 @@ test('Story 15.8: a width that is not a positive safe integer of at most 2000 is
   assert.equal(notified, 0);
 });
 
-test('Story 15.8: a view the widths take past the instance\'s limit is not sent, and the widths still hold on screen', async () => {
+// Mutation (Rule 19): send nothing once the widths take the value past the limit, as before this
+// test -> the sort assertion goes red.
+test('Story 15.8: widths that would take the view past the instance\'s limit are left out, earliest first, and the rest of the view is still remembered', async () => {
   const { PREFERENCE_VALUE_MAX } = await import(core('screen-store.ts'));
   const held = await account();
   const store = new ScreenStores({ account: held }).for(ONE, []);
-  store.setFilter('x'.repeat(PREFERENCE_VALUE_MAX - 80));
-  await flush();
-  const before = held.calls.length;
+  store.setFilter('x'.repeat(PREFERENCE_VALUE_MAX - 120));
   assert.equal(store.setColumnWidth('AVeryLongFieldNameIndeed', 1999), true);
-  assert.equal(store.columnWidths().get('AVeryLongFieldNameIndeed'), 1999, 'the width is in force on screen');
-  assert.equal(held.calls.length, before, 'and nothing the instance would refuse was sent');
+  assert.equal(store.setColumnWidth('AnotherLongFieldNameToo', 1998), true);
+  store.setSort('Name');
+  await flush();
+  const sent = held.views().get(ONE_ROUTE);
+  assert.ok(sent.length <= PREFERENCE_VALUE_MAX, `the value sent fits: ${sent.length}`);
+  assert.equal(JSON.parse(sent).sort, 'Name', 'a sort set after the widths filled the value is still remembered');
+  assert.deepEqual(JSON.parse(sent).widths, { AnotherLongFieldNameToo: 1998 }, 'the width set last is the one kept');
+  assert.deepEqual(
+    [...store.columnWidths()],
+    [['AVeryLongFieldNameIndeed', 1999], ['AnotherLongFieldNameToo', 1998]],
+    'every width still holds on screen'
+  );
+  assert.equal(store.setColumnWidth('AVeryLongFieldNameIndeed', 1500), true);
+  await flush();
+  assert.deepEqual(JSON.parse(held.views().get(ONE_ROUTE)).widths, { AVeryLongFieldNameIndeed: 1500 }, 'a width set again is the latest');
 });

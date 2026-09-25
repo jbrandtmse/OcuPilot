@@ -6356,6 +6356,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Walk: app-data-table>a.ocu-data-table-link width tracks the row's text, so a short entity name yields a sub-24px target (EXPERIENCE.md:713 floor). Data-dependent key. 15.8 owns data-table column widths
 - 2026-09-24T00:06:23Z status=routed owner=15-8-columns-you-can-read by=burndown note=baseline keys carry this id; 15.8 changes app-data-table
+- 2026-09-25T06:25:46Z status=resolved-by:15-8-columns-you-can-read by=adjudication note=name_link_floor_24x24_(data-table.ts/_components.scss);4_baseline_keys_removed_212->208;gate_208_found_208_baseline_0_fresh_0_stale_on_redeployed_bundle
 
 ### DW-1587: Structural gate baseline: native checkbox inputs render 13px wide on eight form and filter screens, under the 24px control floor (16 baseline keys)
 - source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -6872,3 +6873,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: merge gate, Epic 9 (dc3e1b5e) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: 12.5 was planned with four sections named and ordered as the classic tabs (orchestrator ruling 8bd12776); ui/src/app/shell/form-tabs.ts reached feature with Epic 9's merge; UX-DR32/33 ask for tabs
 - 2026-09-25T04:03:43Z status=routed owner=12-6-the-oauth-2-0-resource-server-editor by=merge_gate note=12.6 switches 12.5's editor and builds 12.6-12.8 on app-form-tabs directly
+
+### DW-1648: Kind-based column floors make most lists scroll sideways at 1280px with the panel open, leaving the row-action trigger off-screen until the user scrolls
+- source: spec-15-8-columns-you-can-read.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Summed COLUMN_DEFAULT_PX floors plus the 52px trigger over the 38 declared tables: about 24 exceed ~800px (1280, panel open, side bar yielded), e.g. Users 1124, Processes 1236; AC1 fixes the floors.
+- 2026-09-25T06:21:23Z status=decision-pending owner=burndown by=cr note=AC1 wording forces it; owner call: keep, floor number/status/text at label, or pin the trigger column
