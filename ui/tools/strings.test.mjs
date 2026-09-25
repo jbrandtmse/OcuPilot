@@ -543,7 +543,7 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // Story 11.10 moves the bound to 750 under the same protocol: its one row publishes one literal,
   // "Jump to latest", and takes the table to 701.
   //
-  // Story 9.9 moves the bound to 1000 under the same protocol: its six rows publish thirty-one
+  // Story 9.9 moves the bound to 1000 under the same protocol: its six rows publish twenty-nine
   // literals -- the two reduced forms' titles, fields, list controls and captions, their bare and
   // absent sentences, the serving-service refusal, two effects and six prompts -- and take the
   // table past 900.

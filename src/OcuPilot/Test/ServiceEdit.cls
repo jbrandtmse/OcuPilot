@@ -95,6 +95,9 @@ Method TestTheFormReadAnswersOneService()
 /// <p>Matrix "Add an address", AD-4: the Save adds one address, answers 200, and the service reads
 /// back with that address and its authentication methods and enablement unchanged; the Services list's
 /// own read shows it.</p>
+/// <p>Mutation (Rule 19): remove <code>ClientSystems</code> from the changed set in
+/// <method>OcuPilot.Area.Permissions.ServiceSave.Update</method> after its rules pass -- the address
+/// and list legs go red.</p>
 Method TestAnAddedAddressKeepsEveryOtherField()
 {
     Set tBefore = ##class(%DynamicObject).%FromJSON(..SnapshotJson)
@@ -123,6 +126,9 @@ Method TestAnAddedAddressKeepsEveryOtherField()
 /// them.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Area.Permissions.ServiceRules.EntryShaped</method>
 /// accept a semicolon -- the semicolon leg goes red.</p>
+/// <p>Mutation (Rule 19, Matrix "Absent"): disable the 404 branch in
+/// <method>OcuPilot.Area.Permissions.ServiceSave.HandleUpdate</method> -- the absent leg goes red
+/// alone.</p>
 Method TestTheRulesRefuseTheSave()
 {
     For tCase = $ListBuild("{""ClientSystems"":[""a;b""]}", "ClientSystems", "SERVICE.ADDRESS.SHAPE"), $ListBuild("{""ClientSystems"":[""10.0.0.1|OcuPilotNoSuchRole99""]}", "ClientSystems", "SERVICE.ADDRESS.ROLE"), $ListBuild("{""AutheEnabled"":262192}", "AutheEnabled", "SERVICE.AUTHE.UNSUPPORTED") {
@@ -143,12 +149,22 @@ Method TestTheRulesRefuseTheSave()
 /// <p>AD-10 as amended, AC5: the Save that turns the serving service off is refused 403
 /// <code>PROHIBITED.SERVINGSERVICE</code> with the published sentence before any <code>PUT</code>,
 /// while an address change on it is permitted and reaches the port -- a held port, which records the
-/// <code>PUT</code> and never sends it.</p>
+/// <code>PUT</code> and never sends it. The held Save is first shown to hold its <code>PUT</code> on
+/// <code>%Service_CallIn</code>; if it does not, the serving service is never touched.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Proposal.Prohibited.ServingServiceDisabled</method>
-/// answer 0 -- the disable reaches the held port and this goes red.</p>
+/// answer 0 -- the disable reaches the held port and this goes red. Send
+/// <method>OcuPilot.Area.Permissions.ServiceSave.Update</method>'s write through the tool's own
+/// port instead of <method>OcuPilot.Area.Permissions.ServiceSave.PortClass</method> -- the probe
+/// service is written, the canary goes red, and the serving service's legs do not run.</p>
 Method TestTheServingServiceSaveIsRefusedBeforeAnyWrite()
 {
     Set tServing = $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "SERVINGSERVICENAME")
+    Do $ClassMethod(..#HELDPORT, "Clear")
+    Set tSC = $ClassMethod(..#HELDSAVE, "Update", "%Service_CallIn", {"ClientSystems": ["10.0.0.3"]}, .tHttp, .tFault, .tViolations)
+    Set tSC = $ClassMethod(..#PROBE, "Read", "%Service_CallIn", .tCanary)
+    Set tHeld = ($ClassMethod(..#HELDPORT, "WriteCount") = 1) && $IsObject($Get(tCanary)) && (tCanary.%ToJSON() = ..SnapshotJson)
+    Do $$$AssertTrue(tHeld, "the held Save holds its PUT on the probe service, so no leg below can write the serving service")
+    If 'tHeld Quit
     Do $ClassMethod(..#HELDPORT, "Clear")
     Set tSC = $ClassMethod(..#HELDSAVE, "Update", tServing, {"Enabled": false}, .tHttp, .tFault, .tViolations)
     Do $$$AssertEquals(+$Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "403 PROHIBITED.SERVINGSERVICE", "turning it off is refused")
@@ -162,8 +178,8 @@ Method TestTheServingServiceSaveIsRefusedBeforeAnyWrite()
 }
 
 /// <p>AD-8 with a real principal: holding exactly the form's two pairs, it reads the form and saves an
-/// address; holding the pairs less <code>%Admin_Secure:USE</code>, the admin API alone would refuse
-/// it, so the declared set is what the Save needs.</p>
+/// address. A caller without the pairs is refused in
+/// <method>OcuPilot.Test.WireSecurityRead.TestTheReducedFormsRefuseACallerWithoutTheirPairs</method>.</p>
 Method TestALeastPrivilegedPrincipalSaves()
 {
     Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")

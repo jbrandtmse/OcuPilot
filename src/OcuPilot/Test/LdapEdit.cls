@@ -136,6 +136,9 @@ Method TestTheSaveSendsTheCompleteBody()
 
 /// <p>Matrix "LDAP enable": the Save the form sends for "LDAP enabled" -- the opened flags (8) with
 /// bit 64 added -- stores exactly that, so every other bit is kept.</p>
+/// <p>Mutation (Rule 19): remove <code>LDAPFlags</code> from the changed set in
+/// <method>OcuPilot.Area.Security.LdapSave.Update</method> after its rules pass -- this goes red
+/// alone.</p>
 Method TestEnablingSetsOneBitAndKeepsTheRest()
 {
     Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path(..#NAME), .tStatus, .tAnswer, "{""LDAPFlags"":72}", "application/json")

@@ -8,7 +8,8 @@
  * entries -- so the service form and the LDAP configuration form differ only in their
  * `ReducedFormDeclaration`, which their own areas own. The store composes no payload beyond the
  * fields a person changed: the server merges them over its own fresh read (AD-4), and every field
- * sentence is the server's (AD-39).
+ * sentence is the server's (AD-39) but one: a list field's own client rule (`refuse`), which stops
+ * an entry the form never sends, such as a `|` in a service address.
  *
  * **A flag is a bit of the value the form opened.** Ticking it sets that bit on the number the form
  * read and keeps every other bit, so the Save sends the whole number; a concurrent change to another

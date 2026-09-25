@@ -14,9 +14,6 @@ Parameter UPDATETOOL = "OcuPilot.Screen.Tool.ServiceUpdate";
 /// <p>The screen whose declared pairs gate the routes (AD-8).</p>
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.ServiceForm";
 
-/// <p>The fields a change may set, comma-separated: the tool's <parameter>OcuPilot.Screen.Tool.ServiceUpdate.PERMITTEDFIELDS</parameter>.</p>
-Parameter FIELDS = "AutheEnabled,ClientSystems,Enabled";
-
 Parameter FIELDAUTHE = "AutheEnabled";
 
 Parameter FIELDCLIENTSYSTEMS = "ClientSystems";
@@ -183,15 +180,17 @@ ClassMethod Outside(pMask As %Integer, pCapabilities As %Integer) As %Boolean
     Quit (tMask > 0)
 }
 
-/// <p>The members of <var>pArgs</var> among <parameter>FIELDS</parameter> whose value differs from
+/// <p>The members of <var>pArgs</var> among the tool's permitted fields
+/// (<method>OcuPilot.Screen.Tool.ServiceUpdate.PermittedFields</method>) whose value differs from
 /// <var>pFresh</var>'s, compared in the diff's rendered form, as a new
 /// <class>%DynamicObject</class>. Every carried one is kept when there is no fresh read.</p>
 ClassMethod Changed(pArgs As %DynamicObject, pFresh As %DynamicObject = "") As %DynamicObject
 {
     Set tChanged = {}
     If '$IsObject(pArgs) Quit tChanged
-    For tI = 1:1:$Length(..#FIELDS, ",") {
-        Set tField = $Piece(..#FIELDS, ",", tI)
+    Set tFields = $ClassMethod(..#UPDATETOOL, "PermittedFields")
+    For tI = 1:1:$ListLength(tFields) {
+        Set tField = $List(tFields, tI)
         Set tType = pArgs.%GetTypeOf(tField)
         If tType = "unassigned" Continue
         If $IsObject(pFresh) && (pFresh.%GetTypeOf(tField) '= "unassigned") {

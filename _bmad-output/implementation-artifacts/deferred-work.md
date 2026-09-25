@@ -6861,3 +6861,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-9-9-a-cut-editor-ships-reduced-never-half-working.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: measured on ocupilot-ci at the 9.9 implement: after a PUT of LDAPFlags 72 (bit 64 set) the LIST row's Enabled was false while LDAPConfigs:List read Yes; pre-existing in LdapConfigList's read
 - 2026-09-25T00:07:29Z status=routed owner=16-14-the-ldap-and-kerberos-editor by=harvest note=derive the column from LDAPFlags bit 64 or the List query, as the reduced form does from GET
+- 2026-09-25T00:38:59Z occurrence=9-9-a-cut-editor-ships-reduced-never-half-working

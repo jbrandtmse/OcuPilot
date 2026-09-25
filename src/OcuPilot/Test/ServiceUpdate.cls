@@ -113,12 +113,14 @@ Method TestTheRulesRefuseAtTheMint()
 /// <p>AD-10 as amended (ruling 2dca0322), AC5: on the service OcuPilot is served through, turning it
 /// off is refused at the mint with the published sentence, in any spelling of its name; changing its
 /// addresses or methods is minted destructive with <code>SERVICE.SERVESOCUPILOT</code> as its
-/// consequence, even beside a privileged role. The mint writes nothing, and no proposal here is
-/// confirmed.</p>
+/// consequence, even beside a privileged role. The method leg sends a mask inside the live service's
+/// own capabilities, so it also shows the capability rule admits a supported method. The mint writes
+/// nothing, and no proposal here is confirmed.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Proposal.Prohibited.ServingServiceDisabled</method>
 /// answer 0 -- the disable legs go red. Drop the serving branch of
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.ServiceWeakening</method> -- the address legs go
-/// red.</p>
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.ServiceWeakening</method> -- the address and method
+/// legs go red. Drop <code>AutheEnabled</code> from that branch's field list -- the method leg goes
+/// red alone.</p>
 Method TestTheServingServiceIsNeverTurnedOffAndItsAddressesAreMarked()
 {
     Set tServing = $Parameter(..#SET, "SERVINGSERVICENAME")
@@ -135,6 +137,10 @@ Method TestTheServingServiceIsNeverTurnedOffAndItsAddressesAreMarked()
     Set tKey = ..MintedKey({"Name": (tServing), "ClientSystems": ["10.0.0.1|%All"]})
     Do ..Stored(tKey, .tDestructive, .tConsequence)
     Do $$$AssertEquals(tDestructive _ " " _ tConsequence, "1 " _ $Parameter(..#SET, "EFFECTSERVINGSERVICE"), "and the serving consequence outranks a privileged role")
+    Set tKey = ..MintedKey({"Name": (tServing), "AutheEnabled": 2080})
+    Do $$$AssertNotEquals(tKey, "", "a method the service supports (32 plus LDAP's 2048) is minted")
+    Do ..Stored(tKey, .tDestructive, .tConsequence)
+    Do $$$AssertEquals(tDestructive _ " " _ tConsequence, "1 " _ $Parameter(..#SET, "EFFECTSERVINGSERVICE"), "and a method change is destructive with the same consequence")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "nothing is written")
 }
 

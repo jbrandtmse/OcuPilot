@@ -217,6 +217,22 @@ describe('the reduced form page', () => {
     expect(host.querySelector('#ocu-reduced-ClientSystems-effect')?.textContent?.trim()).toBe(STRINGS.serviceEffectServesOcuPilot);
   });
 
+  it('an entry\'s Remove button takes that entry out, marks the form dirty, and the Save sends the shorter list', async () => {
+    // Mutation (Rule 19): make `removeEntry` keep every entry -> the list and body assertions go red.
+    const { fixture, host, puts, formDirty } = await mount(SERVICE_SCREEN, '/permissions/services/edit/%2525Service_CallIn', {
+      kind: 'ok',
+      status: 200,
+      body: { service: { ...SERVICE, ClientSystems: ['10.0.0.9', '10.0.0.8'] }, servesOcuPilot: false },
+    });
+    (host.querySelector(`[aria-label="${STRINGS.actionRemove} 10.0.0.9"]`) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect([...host.querySelectorAll('.ocu-form-role-name')].map((name) => name.textContent?.trim())).toEqual(['10.0.0.8']);
+    expect(formDirty.dirty()).toBe(true);
+    saveButton(host).click();
+    await settle(fixture);
+    expect(puts).toEqual([{ path: '/api/ocupilot/services/%2525Service_CallIn', body: { ClientSystems: ['10.0.0.8'] } }]);
+  });
+
   it('a | in the address field is refused on the field and nothing is added', async () => {
     const { fixture, host } = await mount(SERVICE_SCREEN, '/permissions/services/edit/%2525Service_CallIn', { kind: 'ok', status: 200, body: { service: SERVICE, servesOcuPilot: false } });
     addEntry(fixture, host, 'ClientSystems', '10.0.0.2|%All');

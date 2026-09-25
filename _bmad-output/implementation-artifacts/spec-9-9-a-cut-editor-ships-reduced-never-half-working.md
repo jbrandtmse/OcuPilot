@@ -225,6 +225,39 @@ Client:
 - **AC5.** Given `%Service_WebGateway`, when either caller turns it off, then it is refused `PROHIBITED.SERVINGSERVICE` before any port write, and the form draws Enabled disabled with the published sentence; when either caller changes its addresses or authentication methods, then the change is permitted, the agent's proposal is minted destructive, and both surfaces carry a consequence line saying OcuPilot itself is served through this service (AD-10 as amended, ruling 2dca0322). Pinned: the disable is refused by name, and an address change mints destructive with the line - each with its own `mutation:` line. The consequence line is a new Fixed-strings row and string key.
 - **Integration.** Given `ReducedFormPage`, which consumes `/services/*`, `/ldap/*` and `ChangeBus`, when a Save succeeds, then the list it came from shows the new value. The browser spec observes this.
 
+### Review Findings
+
+Code review 2026-09-24 (full, four layers, `full-opus`): 46 raw findings from the layers plus 1 from CI. 12 are grouped into 10 patches (1 high, 4 medium, 5 low), 1 is deferred and 34 are rejected.
+
+- [x] [Review][Patch] (high) CI run 36076041071 is red on `1ccd1e35`: `oauth.browser-spec.mjs` AC4 pinned the honored exemptions as the five OAuth tabs, which AD-44's three exemptions change. The roster now names the seven declaring descriptors, and the file passes 4/4 alone on `ocupilot-ci` [ui/browser/oauth.browser-spec.mjs:348]
+- [x] [Review][Patch] (medium) The serving-service address Save leg is held only by `ServiceSave`'s `PortClass()` seam, so one mutation of the write line would PUT to `%Service_WebGateway`. Add a canary on `%Service_CallIn` that must be held before any gateway leg runs [src/OcuPilot/Test/ServiceEdit.cls:155]
+- [x] [Review][Patch] (medium) AC5's "or authentication methods" half is unpinned: nothing mints an `AutheEnabled` change on the serving service. Add a leg; it also pins `Capabilities` against over-refusal [src/OcuPilot/Test/ServiceUpdate.cls:121]
+- [x] [Review][Patch] (medium) The list controls' Remove button is never exercised [ui/src/app/shell/reduced-form.page.spec.ts]
+- [x] [Review][Patch] (medium) Matrix "Absent", the PUT half on the client: nothing shows that a Save answered 404 turns the form absent [ui/src/app/core/reduced-form.store.spec.ts]
+- [x] [Review][Patch] (low) `ServiceRules.FIELDS` is a third, unpinned copy of the tool's field list, so a drift makes `Changed` drop a field silently. Read the tool's `PermittedFields` instead [src/OcuPilot/Area/Permissions/ServiceRules.cls:18]
+- [x] [Review][Patch] (low) `TestALeastPrivilegedPrincipalSaves`' doc claims a leg without `%Admin_Secure:USE` that it never runs [src/OcuPilot/Test/ServiceEdit.cls:171]
+- [x] [Review][Patch] (low) Mutation lines in doc comments carry run numbers, which are history [src/OcuPilot/Test/ServiceEdit.cls:100]
+- [x] [Review][Patch] (low) `strings.test.mjs` says Story 9.9's rows publish thirty-one literals; they publish twenty-nine [ui/tools/strings.test.mjs:546]
+- [x] [Review][Patch] (low) The `ReducedFormStore` header says every field sentence is the server's, but `addEntry` holds the client's `|` refusal [ui/src/app/core/reduced-form.store.ts:10]
+- [x] [Review][Defer] The Integration AC does not hold for "LDAP enabled": the list's Enabled column misreads the vendor LIST [src/OcuPilot/Screen/Descriptor/LdapConfigList.cls] -- deferred: DW-1639, routed to 16-14; occurrence appended
+
+Rejected:
+
+- false: an LDAP `DelimiterId` of a single space is refused. The vendor's `VALUELIST " - _ ^ . ~"` uses the space as its delimiter, so a space is not a value.
+- false: moving from a service id route to an LDAP id route reuses the page with a stale declaration. Each screen route is its own `ScreenOutlet` route, so the page is recreated.
+- false: `ServiceViolationCodes` and `LdapViolationCodes` wrongly include an `*.ABSENT` code. The SSL, X.509, wallet, device and task lists all include theirs.
+- false: the Save and Rules classes should share one base. A slice never reaches into another slice, and SslSave and X509Rules are the pattern.
+- false: `REDUCED_FORMS[...] ?? SERVICE_FORM` can draw the wrong form. The page is registered only under the two descriptors, so the fallback is unreachable.
+- by-design (AD-10, ruling 2dca0322): a form Save that changes the serving service's addresses is not confirmed. The Save shows the consequence line at the field.
+- by-design: an address or authentication-method change that could cut the gateway off is marked, not refused (AD-10 as amended).
+- by-design: the agent's disable is refused at the mint as `TOOL.ARGUMENTS` with the published sentence. The confirm's kernel refusal is `PROHIBITED.SERVINGSERVICE`, pinned by `TestTheKernelRefusesTheServingServiceDisableByName`. This is `SslUpdate`'s precedent from Story 9.5.
+- by-design: LDAP changes get the reviewed-few sweep only; the search username is editable without its password; neither card links to the entity (Boundaries).
+- by-design: `PUT /services/:id` accepts `address|role`. The client refuses `|`, and privilege grants are permitted (the owner's reversal, AD-10).
+- by-design: consequence lines are plain captions with no live region, the same as the web-application forms.
+- low, rejected (theoretical or unlikely; each fix adds a guard): a boolean `LDAPFlags` passes the rules (the schema says integer and the diff shows it); unchecked LDAP `MAXLEN`s (the vendor refuses them late); `LDAPFlags` bit 2; a configuration deleted in the milliseconds between the Save's read and its PUT; a role name longer than a subscript; a failing `Security.Services.Get`; roles on services that ignore them; a stale deleted role on an existing entry; emptying a non-serving service's list; duplicates differing only in case or roles; a silent duplicate add; an empty caption under an LDAP host list with no hosts.
+- low, rejected: untested `EntryShaped` and LDAP branches (no defect shown); `WriteCount() = 0` beside a mint (rejected in the implement review); a `RefusalCopy` message wording; ruling hashes in comments (provenance, not history).
+- rejected (the fix edits this spec): the Never list and the Matrix still name `PortFixture` where the code uses `HeldPutPort`.
+
 ## Spec Change Log
 
 - 2026-09-24 spec gate (lead): orchestrator ruling 2dca0322 on the five questions: AD-44 amended to three exemptions; AD-10 names `%Service_WebGateway`, but only its disable is refused - an address or method change is permitted, destructive, with a consequence line (AC5, the matrix and the Prohibited arm narrowed here); 9.9 AC4 restated for the five administering areas; 16.13 AC2 and EXPERIENCE.md :126 amended; bundle re-base below 1580kB allowed.
@@ -350,6 +383,20 @@ Slot A. Every IRIS MCP call carries `server: "ocupilot-slot-a"`, and anything th
 - mutation (AC3, LDAP Save body): `LdapSave.Update` sends `tChanged` -> `LdapEdit.TestTheSaveSendsTheCompleteBody` went red, alone (run 10752).
 - mutation (AD-8): remove the Gate call from `ServiceSave.HandleUpdate` -> `WireSecurityRead.TestTheReducedFormsRefuseACallerWithoutTheirPairs` went red (run 10753).
 - mutation (LDAP kernel arm): remove the `ldap-configuration` branch from `Prohibited.Prohibits` -> `LdapUpdate.TestTheKernelSweepsTheReviewedFew` and `TestAConfirmedTwoFieldEditKeepsEveryOtherField` went red (run 10756).
+
+**Mutations observed (QA pass, same discipline; each reverted and the file byte-identical by `git diff --stat`, `ocupilot-ci` recompiled before and after):**
+
+- mutation (QA, Matrix "Add an address"): remove `ClientSystems` from the changed set in `OcuPilot.Area.Permissions.ServiceSave.Update` after its rules pass -> `ServiceEdit.TestAnAddedAddressKeepsEveryOtherField` and `TestALeastPrivilegedPrincipalSaves` went red (run 11007); reverted, green (run 11008). This test's own doc comment previously carried no `mutation:` line.
+- mutation (QA, Matrix "LDAP enable"): remove `LDAPFlags` from the changed set in `OcuPilot.Area.Security.LdapSave.Update` after its rules pass -> `LdapEdit.TestEnablingSetsOneBitAndKeepsTheRest` went red alone (run 11009); reverted, green (run 11010). This test's own doc comment previously carried no `mutation:` line.
+- mutation (QA, Matrix "Absent", Service side; the LDAP Save's 404 branch in `LdapSave.HandleUpdate` is the same shape and is not separately mutated): disable the 404 branch in `OcuPilot.Area.Permissions.ServiceSave.HandleUpdate` (`If $$$ISERR(tPerformSC) && (+$Get(tHttp) = 404) && ...` short-circuited to never match) -> `ServiceEdit.TestTheRulesRefuseTheSave` "an absent service is 404" went red alone (run 11011); reverted, green (run 11012). This row had no pinning mutation recorded for either form's Save route.
+
+**Mutations observed (code review pass, same discipline):**
+
+- mutation (AC5, method half): drop `AutheEnabled` from `Prohibited.ServiceWeakening`'s serving field list -> `ServiceUpdate.TestTheServingServiceIsNeverTurnedOffAndItsAddressesAreMarked` "a method change is destructive" went red alone (run 11014); reverted, green (run 11015).
+- mutation (Never list, held-port canary): send `ServiceSave.Update`'s write through the tool's own `PortClass` -> `ServiceEdit.TestTheServingServiceSaveIsRefusedBeforeAnyWrite`'s canary went red alone and the serving legs did not run (run 11017); `%Service_WebGateway` read back 32, enabled, no addresses; reverted, green (run 11018).
+- mutation (Matrix "Absent", PUT half): drop the 404 branch after the PUT in `ReducedFormStore.save` -> `reduced-form.store.spec.ts` "Matrix Absent: a Save answered 404" went red alone.
+- mutation (Remove): make `ReducedFormStore.removeEntry` keep every entry -> `reduced-form.page.spec.ts` "an entry's Remove button" went red alone.
+- observed red (AD-44 roster): CI run 36076041071's `browser` job failed `oauth.browser-spec.mjs` AC4 on the old five-tab roster; with the seven-declaration roster the file is green alone on `ocupilot-ci`.
 
 ## Auto Run Result
 

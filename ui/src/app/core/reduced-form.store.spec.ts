@@ -87,6 +87,18 @@ describe('the reduced form store', () => {
     expect(published).toEqual([{ kind: 'changed', type: 'service', scope: 'instance', id: '%Service_CallIn', action: 'updated' }]);
   });
 
+  it('Matrix "Absent": a Save answered 404 turns the form absent and publishes nothing', async () => {
+    // Mutation (Rule 19): drop the 404 branch after the PUT in `save()` -> the absent assertion goes red.
+    const gone: JsonResult<unknown> = { kind: 'error', status: 404, code: 'LDAP.ABSENT', reason: STRINGS.ldapGone, detail: null };
+    const { store, published } = harness(LDAP_FORM, ok({ ldap: LDAP }), gone);
+    await store.open('ocup99.invalid');
+    store.setText('Description', 'changed');
+    expect(await store.save()).toBe(false);
+    expect(store.absent()).toBe(true);
+    expect(store.canSave()).toBe(false);
+    expect(published).toEqual([]);
+  });
+
   it('a Save that changes nothing sends nothing', async () => {
     const { store, calls } = harness(SERVICE_FORM, ok({ service: SERVICE, servesOcuPilot: false }));
     await store.open('%Service_CallIn');
