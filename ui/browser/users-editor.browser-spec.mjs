@@ -146,11 +146,16 @@ async function editorReady(page) {
   );
 }
 
-/** Replace control `id`'s text with `value`. */
+/**
+ * Replace control `id`'s text with `value`, reaching it by focus rather than by a click. A field can
+ * sit inside the form page under the sticky form bar, where a click lands on the bar; focus scrolls
+ * the field clear of it (the page's `scroll-padding-bottom`), as Tab does.
+ */
 async function fill(page, id, value) {
-  await page.click(`#${id}`, { clickCount: 3 });
+  await page.focus(`#${id}`);
+  await page.$eval(`#${id}`, (node) => node.select());
   await page.keyboard.press('Backspace');
-  await page.type(`#${id}`, value);
+  await page.keyboard.type(value);
 }
 
 /** The tab strip: each tab's label, accessible name, selection and dot. */

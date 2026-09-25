@@ -2,8 +2,8 @@
 title: 'Story 15.9: Sign-out where people look, and no filter where there is nothing to filter'
 type: 'feature'
 created: '2026-09-25'
-status: 'in-progress'
-baseline_revision: '5e8ac399a1888b41c170a679384ca1302e370975'
+status: 'done'
+baseline_revision: '5ec0ba4c9eb49f3a259e3d2e9a334a22fa29db35'
 baseline_commit: '5e8ac399a1888b41c170a679384ca1302e370975'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -19,6 +19,13 @@ deferred:
       Trigger reach, classic and painted runs: header cell right 463 against the header client edge 448 and the body trigger's right 448. `.ocu-data-table-head` is overflow hidden with `scrollbar-gutter: stable`, and Chrome pins a sticky cell there against the border box. Cosmetic: header labels are occluded 15px further right than body cells; the header cell carries no visible label.
     location: >-
       ui/src/styles/_components.scss (Story 15.9 tail block, sticky trigger rule)
+    severity: low
+  - summary: >-
+      Fifteen other form-page specs keep the triple-click `fill` helper that failed `users-editor` in rework 1.
+    evidence: |-
+      `grep -rn "clickCount: 3" ui/browser` lists roles-editor, ssl-editor, x509-import, device-editor, users-create, web-applications-editor and -create, wallet-secret, roles-create, definitions, task-editor, resources-editor, task-wizard, audit-event-editor and reduced-editors. A field wholly under the sticky form bar receives no click. All were green in CI on 5dcefe46. reopen_if: any of them fails with a typed value appended to the old one.
+    location: >-
+      ui/browser/*-editor.browser-spec.mjs fill helpers
     severity: low
 ---
 
@@ -172,7 +179,7 @@ deferred:
 
 ### Rework 1 (CI)
 
-- [ ] [CI] browser: `users-editor.browser-spec.mjs:267` "a changed editor asks before it is left, and staying keeps the edit" fails at `:278`: the EmailAddress field reads `probe@example.invalidunsaved@example.invalid`, so its `fill` helper's triple-click (`page.click(..., { clickCount: 3 })` then Backspace) did not select the existing value — run 36127471224 on 5dcefe46, https://github.com/jbrandtmse/OcuPilot/actions/runs/36127471224 (every other job and test green; the test passed on ed78a6e3, before this story). Suspected (inference): a layout shift on form pages as the command bar is withdrawn after the screen resolves, moving the field under the triple-click. Reproduce on `ocupilot-ci` against a redeployed bundle; if the product shifts layout on a no-read screen (the bar drawn then removed), fix the product so a no-read screen never draws it, and pin that no shift occurs; fix the test only if the product is correct. Then run the other form-page specs whose helpers click-then-type (users, roles, resources, web-applications, ssl, task editors) one file at a time.
+- [x] [CI] browser: `users-editor.browser-spec.mjs:267` "a changed editor asks before it is left, and staying keeps the edit" fails at `:278`: the EmailAddress field reads `probe@example.invalidunsaved@example.invalid`, so its `fill` helper's triple-click (`page.click(..., { clickCount: 3 })` then Backspace) did not select the existing value — run 36127471224 on 5dcefe46, https://github.com/jbrandtmse/OcuPilot/actions/runs/36127471224 (every other job and test green; the test passed on ed78a6e3, before this story). Suspected (inference): a layout shift on form pages as the command bar is withdrawn after the screen resolves, moving the field under the triple-click. Reproduce on `ocupilot-ci` against a redeployed bundle; if the product shifts layout on a no-read screen (the bar drawn then removed), fix the product so a no-read screen never draws it, and pin that no shift occurs; fix the test only if the product is correct. Then run the other form-page specs whose helpers click-then-type (users, roles, resources, web-applications, ssl, task editors) one file at a time.
 
 ### Review Findings
 
@@ -210,6 +217,7 @@ Rejected:
 
 ## Spec Change Log
 
+- 2026-09-25 rework 1 (implement): cause is the test, not the product; `users-editor`'s `fill` reaches its field by focus. No product change, no amendment.
 - 2026-09-25 rework 1 (runner, trigger=ci): re-opened for the red `browser` job of run 36127471224; item under Tasks › Rework 1.
 
 ## Review Triage Log
@@ -237,6 +245,19 @@ Rejected:
   - `low` `patch` (with the no-`Session` entry) — same patch.
   - `medium` `patch` (with the Narrow header entry) the long name never went through `Session` — same patch.
   - `false` `reject` DESIGN.md citations `:1007` and `:1021` look off by one — they predate this story and name the section heading or a range that holds the paragraph.
+
+### 2026-09-25 — Review pass (rework 1)
+
+- verdicts: 8 findings — high 0, medium 0, low 3, false 5, maybe-false 0
+- findings:
+  - `false` `reject` (verification-gap) a load-time bar shift on form pages ships behind the new helper — a document-start MutationObserver never saw `.ocu-command-bar` on `users/edit` at 900, 930, 950 and 990px, CPU 1x/4x/6x; the story's permanent 50px rise is intended.
+  - `low` `defer` (verification-gap) 15 other form specs keep the triple-click `fill` — pre-existing pattern; CI green on all at 5dcefe46 and 7 named ran green here; deferred with `reopen_if`.
+  - `false` `reject` (verification-gap) the helper comment states unobserved causes — observed: `elementFromPoint` at the field hits `div.ocu-form-bar`, the triple-click focuses `#ocu-content`, and focus scrolls the field clear.
+  - `low` `reject` (verification-gap) no rework record in the spec — the fix is a spec edit; recorded in this pass's Auto Run Result.
+  - `false` `reject` (intent-alignment) "product shown correct" precondition unmet — same probe as the first row.
+  - `false` `reject` (intent-alignment) the pointer path to a field under the sticky bar is untested — a field wholly under a sticky footer is not visible to click; keyboard focus clears it (`scroll-padding-bottom`). Not a product defect.
+  - `false` `reject` (intent-alignment) the sibling form specs were not run — run one file per call, all green (below).
+  - `low` `reject` (intent-alignment) spec record lags the frontmatter — spec edit; recorded here.
 
 ## Design Notes
 
@@ -336,6 +357,7 @@ No AC contradicts an AD.
 - mutation: one cited phrase of the Sign out row (`:81`) reworded → `citations.test` red (AC4).
 - mutation: `/logout` posted with `credentials: 'omit'` → `account-and-filter` Header menu red ("and the cookie", Integration AC header half).
 - mutation: `overflow: hidden` on `.ocu-header` → `account-and-filter` Header menu and `panel` sign-out hit tests red.
+- mutation (rework 1): `node.select()` dropped from `users-editor`'s `fill` → `users-editor` red in 2 tests (`:282` read `'probe@example.invaliunsaved@example.invalid'`). At a 930px viewport the old triple-click helper was red at `:282` with CI's value; the new one 8/8.
 - mutation (code review): the last data column's lifted resize handle set back to `z-index: 1` → `data-table-columns` "Drag the last data column" red ("the handle is hit at its left, its center on the edge and its right").
 
 ## Auto Run Result
@@ -371,3 +393,14 @@ Blocking condition: none
   - ObjectScript sweep on `ocupilot-ci`: 250 classes and 2052 tests. 13 classes refused because they are unarmed (`OCUPILOT_ALLOW_*`), and `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` failed on task-history residue. Neither is from this story.
 
 **Footprint extensions.** `ui/tools/session.test.mjs` and `ui/browser/data-table.browser-spec.mjs`.
+
+### Rework 1 (CI)
+
+Status: done
+Blocking condition: none
+
+- **Cause (test).** Story 15.9 removes the command bar from no-read screens, so the user editor's content sits 50px higher. On CI's geometry, EmailAddress then sits wholly under (inference) the sticky `.ocu-form-bar`. Puppeteer scrolls only a clipped element, so the triple-click landed on the bar and the typed text was appended. The bar is never drawn and withdrawn: a document-start MutationObserver saw no `.ocu-command-bar` at any viewport or CPU rate tried.
+- **Reproduced.** At 930 and 950px, the click target was `div.ocu-form-bar` 4/4, and the spec failed at `:282` with CI's exact value. At 900px locally the field is still clipped and scrolls, which is why it passed here.
+- **Change.** `ui/browser/users-editor.browser-spec.mjs` `fill`: focus, `select()`, Backspace, type. There is no product change.
+- **Review.** 8 findings: 0 patched, 1 low deferred (the other triple-click helpers), 7 rejected (triage log). `followup_review_recommended: false` (follow-up pass, no high patched).
+- **Verification.** `npm run build` checkers pass, 1.59 MB; the bundle is byte-identical to HEAD and deployed on `ocupilot-ci`. One file per call: users-editor 8/8, roles-editor 8/8, resources-editor 6/6, web-applications-editor 7/7, ssl-editor 7/7, task-editor 6/6, task-wizard 5/5.
