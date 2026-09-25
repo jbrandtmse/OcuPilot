@@ -2,7 +2,8 @@
 title: 'Story 12.9: Removing the classic link-outs'
 type: 'chore'
 created: '2026-09-25'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'f113b80388fce10e250de137599e683e73388f8c'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -106,32 +107,32 @@ deferred: []
 
 **Execution:**
 
-- [ ] `ui/browser/oauth.browser-spec.mjs`
+- [x] `ui/browser/oauth.browser-spec.mjs`
   - Add the leg "AC1 (Story 12.9): no OAuth 2.0 tab links to the classic portal", per the I/O matrix: for each of `TABS`, sign in at its route, wait for its read's rows, then assert.
   - Add one clause for it to the file header.
   - Replace the :352-354 narration with the contract sentence and its mutation.
-- [ ] `ui/tools/classic-links.test.mjs`
+- [x] `ui/tools/classic-links.test.mjs`
   - Rename the fixture `OAuth.cls` to `Reduced.cls` (:214, and the regex at :223).
   - Replace :440-446 with: AD-44 honors two exemptions, the reduced service and LDAP forms, each under its own reason; no OAuth 2.0 descriptor declares one. The mutation reads: restore any OAuth 2.0 tab's exemption → the honored set and both counts go red.
-- [ ] `src/OcuPilot/Test/OAuthTabs.cls`: drop the unread eleventh element from all five `Tabs()` rows and from their doc comment.
-- [ ] `src/OcuPilot/Test/Tab/Bad.cls`, `Test/TabGroup/First.cls` and `Test/TabGroup/Third.cls`: set `classicLinkExemption` to the Resource servers tab's current `{"exempt": false, "reason": "", "label": "", "href": ""}`. Each is then again the copy its doc comment claims.
-- [ ] `src/OcuPilot/Test/Screen/Multi.cls:37`: change the reason to neutral fixture text, `a test detail view that keeps its classic page`, and keep the exemption.
-- [ ] `ARCHITECTURE-SPINE.md:514` (AD-44). Replace the span with:
+- [x] `src/OcuPilot/Test/OAuthTabs.cls`: drop the unread eleventh element from all five `Tabs()` rows and from their doc comment.
+- [x] `src/OcuPilot/Test/Tab/Bad.cls`, `Test/TabGroup/First.cls` and `Test/TabGroup/Third.cls`: set `classicLinkExemption` to the Resource servers tab's current `{"exempt": false, "reason": "", "label": "", "href": ""}`. Each is then again the copy its doc comment claims.
+- [x] `src/OcuPilot/Test/Screen/Multi.cls:37`: change the reason to neutral fixture text, `a test detail view that keeps its classic page`, and keep the exemption.
+- [x] `ARCHITECTURE-SPINE.md:514` (AD-44). Replace the span with:
 
   > Release 1 has exactly two: the reduced service editor, removed by Story 16.13, and the reduced LDAP editor, removed by Story 16.14 - each counted against SM-C1, so SM-C1 counts two. Each is declared once, by `ServiceForm` and `LdapConfigForm`. The check reports the declaring descriptors under each exemption, so each exemption counts once, every declaration stays visible, and any total is recomputed from this list. The OAuth 2.0 tabs' exemption closed in Epic 12, as Stories 12.4-12.8 replaced each tab's classic editor.
 
   Follow it with the Rule 20 marker, `was "exactly three ... SM-C1 counts three"`.
   - Append the memlog line: `uv run --no-cache _bmad/scripts/memlog.py append --workspace <spine dir> --type decision --text "AD-44 (Story 12.9, DW-1643): two exemptions, ServiceForm and LdapConfigForm; the OAuth 2.0 exemption closed by Stories 12.4-12.8"`.
   - Run `lint_spine.py` and refresh `updated:`.
-- [ ] `prd.md`
+- [x] `prd.md`
   - :298: say that two such exemptions remain, the reduced service and LDAP editors (Stories 16.13 and 16.14).
   - :698: say the exemption closed when the FR-75 editors replaced it (Stories 12.4-12.8).
   - :1198: replace the mitigation cell with `**Closed** 2026-09-25: Stories 12.4-12.8 shipped the five OAuth 2.0 editors, and Story 12.9 confirmed that no OAuth 2.0 tab links to the classic portal`.
   - Add a marker on each change, and one `(change)` memlog line.
-- [ ] `EXPERIENCE.md`
+- [x] `EXPERIENCE.md`
   - :146: replace the row with `| OAuth 2.0 editors | Security and secrets | OAuth 2.0 row name cell · the tab's Create | each tab's entry opens its OcuPilot editor (FR-75) | form-page (tabs) | P1 |`.
   - :772: delete the words "and OAuth classic editor links" and fix the grammar ("opens a new tab").
-- [ ] `epics.md:469` (UX-DR67): make the same deletion ("only the classic-link-card opens a new tab").
+- [x] `epics.md:469` (UX-DR67): make the same deletion ("only the classic-link-card opens a new tab").
 
 **Acceptance Criteria:**
 
@@ -147,6 +148,24 @@ deferred: []
 - 2026-09-25, lead spec gate: Q1 the full browser suite is CI's (Rule 29); Q2 keep the row-link mechanism (AD-44 unchanged); Q3 remove only the OAuth wording from EXPERIENCE.md :772 and UX-DR67, leaving the Help-control claim to its owner; Q4 the epic context is regenerated, not hand-edited; Q5 keep `REASONOAUTHAUTHENTICATORSECRET` (text, not a link). The PRD, EXPERIENCE.md and UX-DR67 edits are tier-1 amendments: mark each `[AMENDED 2026-09-25, Story 12.9, Rule 5 tier-1]` and list them in the Auto Run Result.
 
 ## Review Triage Log
+
+### 2026-09-25 — Review pass
+
+- verdicts: 13 findings — high 0, medium 1, low 6, false 6, maybe-false 0
+- findings:
+  - `[low]` `[reject]` verification-gap: the AC1 leg's `.ocu-classic-link-card` clause cannot go red on a tab route (the card renders only from `reduced-form.page.ts`) — the I/O matrix mandates the check as a regression guard, and Rule 19 scopes to the pinning test, whose mutation is recorded.
+  - `[low]` `[reject]` verification-gap: AC2's prose half and AC3 have no mutation, and the spec's greps hit the markers — checked by reading; a marker-stripped grep over the spine, PRD, EXPERIENCE.md and epics.md returns nothing (Auto Run Result); the fix edits this build's spec.
+  - `[false]` `[reject]` verification-gap: Auto Run Result unfilled — it is written at finalize, after review.
+  - `[false]` `[reject]` verification-gap: the fixture edits are covered by `Descriptor` — a confirmation, no bad outcome claimed.
+  - `[low]` `[reject]` verification-gap: four listed registry classes run no test methods — already recorded under Verification; `Descriptor` is their host; the fix edits this build's spec.
+  - `[false]` `[reject]` verification-gap: `Tabs()` element 11 has no reader — a confirmation, no bad outcome claimed.
+  - `[false]` `[reject]` intent-alignment: the leg covers the tab renders, not editors, menus or `window.open` — no classic exit exists there: the only client `/csp/sys/` anchors are the two reduced forms' mirror entries and the shell's instance notice and sign-in pages, and form exemptions are pinned by AC2's roster.
+  - `[low]` `[reject]` intent-alignment: the AC1 mutation broke one tab of five — Rule 19 asks one mutation per AC; the five tabs share one render path.
+  - `[medium]` `[patch]` intent-alignment: `EXPERIENCE.md:367` still called `classicRowLinkDescription` the OAuth tabs' "name cell that opens the classic editor", against AC2 — reworded in place to a `rowLink` exemption's name cell with a tier-1 marker; the string value and the line count are unchanged, and `strings.test.mjs` (25/25) and `lint-docs.sh` pass.
+  - `[low]` `[reject]` intent-alignment: the new `EXPERIENCE.md:146` row overlaps :148's "OAuth 2.0 editors (five)" — the row text is the spec's own; the overlap misleads no one.
+  - `[false]` `[reject]` intent-alignment: `epics.md:859` and :3986 — the auditor reads them as historical, not stale; no claim made.
+  - `[low]` `[reject]` intent-alignment: AD-44's and FR-44's closure clauses narrate history — the text is the spec's own and states a current fact.
+  - `[false]` `[reject]` intent-alignment: the closed risk row's claim rests on a local run — the leg passed 5/5 again on a freshly built and deployed bundle at finalize, and CI runs it.
 
 ## Design Notes
 
@@ -184,7 +203,68 @@ Slot B. The throwaway's source is the copy at `/tmp/ocupilot-b-ci/src`. Copy eac
 | AC2 | Restore `OAuthServerClientTab.cls`'s exemption. Expect `classic-links.test.mjs` "the shipped descriptor roster passes" to go red. |
 | AC3 | None: AC3 is a planning-artifact record, checked by reading the row. |
 
+**Observed in implement (`ocupilot-b-ci`, 2026-09-25), each mutation reverted with `git status --short` and `git diff --stat` identical to before it:**
+
+- mutation: `OAuthClientTab.cls`'s pre-12.5 exemption with its `rowLink` restored, mirror regenerated, rebuilt and redeployed → `oauth.browser-spec.mjs` "AC1 (Story 12.9)" (Client configurations' name cell at `/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Client.Configuration.zen`) and "AC4" (honored set); reverted, rebuilt and redeployed (same `main-5IVFUPZY.js`), and the spec re-ran 5/5 green.
+- mutation: `OAuthServerClientTab.cls`'s pre-12.8 exemption restored → `classic-links.test.mjs` "the shipped descriptor roster passes" ("the honored set is exactly the two reduced forms").
+- Bundle: initial total 1,803,837 bytes (main 1,652,221, styles 151,616), unchanged.
+- The greps' only hits are the `[AMENDED … was "…"]` markers' quoted old words (spine :514, EXPERIENCE.md :146/:772, epics.md :469); the `src ui/src ui/tools ui/browser` grep returns nothing.
+- `TabRegistry`, `TabGroupRegistry`, `ClassicLinkRegistry` and `ScreenRegistry` extend `OcuPilot.Screen.Registry`, not `%UnitTest.TestCase` (`TabRegistry` ran 0 methods); `Descriptor` is the test case that consumes them.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** No product code changed. A new browser leg checks all five OAuth 2.0 tabs: every name cell opens OcuPilot's editor in the same tab, and no link goes to `/csp/sys/`. The test fixtures lost their leftover OAuth exemption data. AD-44, the PRD (FR-9, FR-44, the risk row), EXPERIENCE.md and UX-DR67 were corrected at their origin.
+
+**Files changed:**
+
+- `ui/browser/oauth.browser-spec.mjs`: the new leg, AC1 (Story 12.9), a header clause, and the AC4 comment restated as a contract.
+- `ui/tools/classic-links.test.mjs`: the fixture is renamed `Reduced.cls`, and the roster comment is restated.
+- `src/OcuPilot/Test/OAuthTabs.cls`: the unread eleventh `Tabs()` element is dropped.
+- `src/OcuPilot/Test/Tab/Bad.cls`, `Test/TabGroup/First.cls`, `Test/TabGroup/Third.cls`: each now declares the Resource servers tab's `exempt: false`.
+- `src/OcuPilot/Test/Screen/Multi.cls`: the exemption reason is neutral fixture text.
+- Spine `ARCHITECTURE-SPINE.md:514` (AD-44) and its `.memlog.md`: Rule 20 (decision line appended). `lint_spine` reports only the existing `{id}` note.
+- `prd.md` and its `.memlog.md`: tier-1 amendments and one `(change)` line.
+- `EXPERIENCE.md` and `epics.md`: tier-1 amendments.
+- This spec.
+
+**Tier-1 amendments (Rule 5; each marked `[AMENDED 2026-09-25, Story 12.9, Rule 5 tier-1: was "…"]`):**
+
+- `prds/prd-OcuPilot-2026-09-08/prd.md:298`: FR-9 now says two exemptions remain, the reduced service and LDAP editors (Stories 16.13, 16.14).
+- `prd.md:698`: FR-44 now says each tab opens OcuPilot's editor (FR-75), and its exemption closed with Stories 12.4-12.8. This also replaced the sentence's "links to the classic portal editor … until … FR-75 ship" clause, which AC2 rules out.
+- `prd.md:1198`: the risk "OAuth setup is lists and deletes only" is **Closed** 2026-09-25 (Stories 12.4-12.8, 12.9).
+- `ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md:146`: the "Classic OAuth editor" navigation row is replaced by "OAuth 2.0 editors".
+- `EXPERIENCE.md:367`: `classicRowLinkDescription` is now described as a `rowLink` exemption's name cell, no longer as an OAuth one (review patch).
+- `EXPERIENCE.md:772`: "and OAuth classic editor links" is removed from Banned everywhere.
+- `epics.md:469` (UX-DR67): the same deletion.
+- EXPERIENCE.md still has 929 lines, so the `strings.ts` citations still resolve.
+
+**Review:** 13 findings.
+
+- 1 patched (medium, `EXPERIENCE.md:367`).
+- 0 deferred.
+- 12 rejected, each with its reason in the Review Triage Log.
+- Follow-up review recommended: `false` (patched: high 0, medium 1, low 0).
+
+**Verification (slot B, `ocupilot-b-ci`):**
+
+- **Full ObjectScript sweep:** 286 classes, 2394 tests, 0 failed. Runs 1268-1553 were contiguous and all on `ocupilot-b-ci`. It ran as 12 sequential `ci-runner.mjs --class` chunks, each green, with 0 probe leftovers, 0 overlaps and 0 foreign runs. The instance offered the same 286 classes the checkout carries. Totals were re-counted from `^UnitTest.Result` for runs after 1267: 286 runs, 2394 methods, 0 failed.
+- **Targeted:** `OAuthTabs` 17/17 and `Descriptor` 51/51. `classic-links.test.mjs` plus `strings.test.mjs`: 42/42.
+- **Client:** `npm run build` green. `npm test`: 1425 tool tests and 1377 component tests (106 files), 0 failed.
+- **Bundle:** measured initial total 1,803,837 bytes (main 1,652,221 + styles 151,616), unchanged.
+- **Browser:** on a freshly built and deployed bundle, `browser/oauth.browser-spec.mjs` passed 5/5 (AC1, AC2, AC4, AC1 (Story 12.9), AC5). The full browser suite is CI's (Rule 29).
+- **Smoke:** `smoke.sh --container ocupilot-b-ci`: executed 49, passed 49, PASSED.
+- **Lint:** `check-objectscript` 0 problems, `lint-docs.sh` clean, `lint_spine` shows only the existing `{id}` note.
+- **Greps:** with `[AMENDED …]` markers stripped, a grep of the spine, PRD, EXPERIENCE.md and epics.md for the stale phrases finds nothing. The code grep over `src ui/src ui/tools ui/browser` also finds nothing.
+- **Mutations:** the AC1 and AC2 `mutation:` lines are under Verification.
+
+**Paths edited outside the footprint:** the code edits are all inside Epic 12's `paths_hint`. These planning files are outside it, and each edit is one of the Rule 5 or Rule 20 amendments listed above:
+
+- `ARCHITECTURE-SPINE.md` and its `.memlog.md`
+- `prd.md` and its `.memlog.md`
+- `EXPERIENCE.md`
+- `epics.md` (UX-DR67)
+
+**Residual risks:** `epic-12-context.md`'s "Classic links" bullet is stale until the pre-warm regenerates it (the spine is now newer).

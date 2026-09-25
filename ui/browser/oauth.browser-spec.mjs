@@ -6,7 +6,8 @@
  * 12.5's (AC4); and a principal holding the Resource servers tab's three pairs without the wallet,
  * authorization server or registration resources, gated on the rail, reading the Resource servers tab
  * under a strip whose authorization server and server client tabs are gated, and refused Server client
- * descriptions by name (AC5).
+ * descriptions by name (AC5); and, Story 12.9, every tab's name cells opening OcuPilot's own editor
+ * in this tab, with no link to the classic portal and no classic-link card on any of the five (AD-44).
  *
  * **It needs the demo fixture** (`OCUPILOT_DEMO=1`, AD-25), whose SSL/TLS configuration the probe's
  * client configurations name. `before` runs `OcuPilot.Test.OAuthProbe.Create()` and `after` its
@@ -349,9 +350,8 @@ test("AC2: the authorization server tab's Issuer, Scopes, Grant types and Signin
   }
 });
 
-// Story 12.5 moved the Client configurations tab off the classic editor: its name cell now opens
-// OcuPilot's own editor, in this tab. Mutation (Rule 19): restore the tab's classic-link exemption ->
-// the honored-set and in-app anchor assertions go red.
+// A client configuration's name cell opens OcuPilot's own editor, in this tab (AD-44). Mutation
+// (Rule 19): restore the tab's classic-link exemption -> the honored-set and in-app anchor assertions go red.
 test("AC4: a client configuration's name cell opens OcuPilot's own editor at the configuration's route, in this tab", async () => {
   const honored = checkClassicLinks().honored.map((entry) => entry.file).sort();
   assert.deepEqual(
@@ -384,6 +384,40 @@ test("AC4: a client configuration's name cell opens OcuPilot's own editor at the
     assert.equal(await page.$eval('#ocu-oauth-client-ApplicationName', (node) => node.value), CLIENT_B, 'the editor reads the configuration');
   } finally {
     await context.close();
+  }
+});
+
+// No OAuth 2.0 tab links to the classic portal: every name cell is an in-app anchor at the tab's own
+// editor, no anchor anywhere on the screen resolves under `/csp/sys/`, and no classic-link card renders
+// (AD-44). The Help control's DocBook anchor is documentation and passes. Mutation (Rule 19): restore
+// `OAuthClientTab`'s exemption with its `rowLink`, regenerate the mirror and redeploy -> this leg goes red.
+test('AC1 (Story 12.9): no OAuth 2.0 tab links to the classic portal', async () => {
+  for (const tab of TABS) {
+    const { context, page } = await signedInAt(urlOf(tab.route), config.username, config.password);
+    try {
+      await waitForRows(page, config.navigationTimeoutMs);
+      await atTab(page, tab);
+      const seen = await page.evaluate(() => {
+        const pathOf = (link) => new URL(link.getAttribute('href'), window.location.href).pathname;
+        return {
+          cells: Array.from(document.querySelectorAll('[role="grid"] .ocu-data-table-body [role="gridcell"] a[href]')).map((link) => ({
+            path: pathOf(link),
+            target: link.getAttribute('target'),
+          })),
+          classic: Array.from(document.querySelectorAll('a[href]')).map(pathOf).filter((path) => path.startsWith('/csp/sys/')),
+          cards: document.querySelectorAll('.ocu-classic-link-card').length,
+        };
+      });
+      assert.ok(seen.cells.length > 0, `${tab.label}: at least one name cell is an anchor`);
+      for (const cell of seen.cells) {
+        assert.ok(cell.path.startsWith(`/ocupilot/${tab.route}/edit`), `${tab.label}: the name cell opens the tab's editor, not ${cell.path}`);
+        assert.equal(cell.target, null, `${tab.label}: in this tab`);
+      }
+      assert.deepEqual(seen.classic, [], `${tab.label}: nothing on the screen links to the classic portal`);
+      assert.equal(seen.cards, 0, `${tab.label}: and no classic-link card renders`);
+    } finally {
+      await context.close();
+    }
   }
 });
 

@@ -211,7 +211,7 @@ test('an honored exemption is reported by name, archetype, reason, label and hre
   const result = withTree(
     {
       'Home.cls': declaration({ archetype: 'home' }),
-      'OAuth.cls': declaration({ archetype: 'form-page (tabs)', classicLinkExemption: exemption }),
+      'Reduced.cls': declaration({ archetype: 'form-page (tabs)', classicLinkExemption: exemption }),
     },
     ({ dir, screens }) => checkClassicLinks({ descriptorDir: dir, screens })
   );
@@ -220,7 +220,7 @@ test('an honored exemption is reported by name, archetype, reason, label and hre
   assert.equal(result.honored.length, 1);
 
   const printed = result.report.join('\n');
-  assert.match(printed, /honored exemption -- OAuth\.cls/, 'the report names the descriptor');
+  assert.match(printed, /honored exemption -- Reduced\.cls/, 'the report names the descriptor');
   assert.match(printed, /archetype "form-page \(tabs\)"/, 'and its archetype');
   assert.match(printed, new RegExp(exemption.reason.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'and the reason');
   assert.match(printed, /label "OcuPilot test classic page"/, 'and the label');
@@ -437,13 +437,10 @@ test('the shipped descriptor roster passes, and its population matches the tree 
     'every .cls under the descriptor directory but the base was classified'
   );
   assert.ok(result.scanned >= 1, 'at least Home is declared');
-  // AD-44 as amended at Story 12.8: two exemptions remain, the reduced service and LDAP
-  // configuration forms (Story 9.9), each reported under the reason SM-C1 counts it by. No OAuth 2.0
-  // tab declares one: the Server client descriptions tab left it when Story 12.8's editor shipped, the
-  // last of the five.
+  // AD-44 honors two exemptions, the reduced service and LDAP forms, each under its own reason; no
+  // OAuth 2.0 descriptor declares one.
   //
-  // Mutation (Rule 19): restore the Server client descriptions tab's `classicLinkExemption` -> the
-  // honored set and both counts go red.
+  // Mutation (Rule 19): restore any OAuth 2.0 tab's exemption -> the honored set and both counts go red.
   const reduced = {
     'LdapConfigForm.cls': 'Reduced until the full LDAP and Kerberos editor ships (Story 16.14); counted against SM-C1',
     'ServiceForm.cls': 'Reduced until the full service editor ships (Story 16.13); counted against SM-C1',

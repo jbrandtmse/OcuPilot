@@ -34,7 +34,7 @@ XData Declaration
   "emptyStateKey": "",
   "commandAliases": ["oauth", "oauth2"],
   "classicPage": "OcuPilotTestClassicPageMulti",
-  "classicLinkExemption": {"exempt": true, "reason": "the OAuth 2.0 tabs are a detail archetype and have no rebuilt equivalent yet", "label": "OcuPilot test classic page (Multi)", "href": "/csp/sys/OcuPilotTestClassicPageMulti.csp"},
+  "classicLinkExemption": {"exempt": true, "reason": "a test detail view that keeps its classic page", "label": "OcuPilot test classic page (Multi)", "href": "/csp/sys/OcuPilotTestClassicPageMulti.csp"},
   "toolIdentifier": "security.oauth"
 }
 }
