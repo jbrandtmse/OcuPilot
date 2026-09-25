@@ -71,3 +71,4 @@ TAB-separated, append-only: `<UTC> TAB <Story <id> | Epic 11> TAB <stage> TAB <m
 2026-09-25T13:15:05Z	Epic 11	ledger_load	total=1107 open=3 routed=228 escalated=0 decision_pending=1 terminal=875 owner_unknown=0 owner_11-7=1 owner_11-8=0 owner_11-1=6 owner_11-2=1 owner_11-3=3 owner_11-4=0 burndown=1
 2026-09-25T13:15:05Z	Epic 11	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=56 status=final read=full(Rule_26) spine_next_id=57
 2026-09-25T13:16:55Z	Epic 11	epic_context_compiled	reason=planning_artifact_newer(spine,EXPERIENCE.md,epics.md_changed_since_11.10) model=opus words=1654 header=ok agent_name=epic-11-context-prewarm-3
+2026-09-25T13:17:34Z	Story 11.7	stage_spawned	stage=plan spawn_at=2026-09-25T13:17:34Z model=opus agent_name=11-7-token-streaming-plan-1 cycle_iteration=1
