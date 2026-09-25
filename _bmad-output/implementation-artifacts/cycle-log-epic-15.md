@@ -244,3 +244,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-25T08:31:46Z	Story 15.8	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=slice_empty
 2026-09-25T08:31:46Z	Story 15.8	smoke_complete	method=browser result=pass iterations=3 defects_caught=0 evidence=harness_rebuilt;data-table-columns+column-widths_19/19_on_ocupilot-ci;CI_36110328705_success_8/8_on_b8e201fb;earlier_smoke.sh_49/49,resources/roles-editor_green model=claude-opus-5-5
 2026-09-25T08:32:38Z	Story 15.8	committed	sha=ed78a6e3 submodules= ci=pending run=36113466751 prior=36110328705_success_on_b8e201fb rework_iterations=2(both_trigger=ci,test-only) amendments=as_6bb8fb7f_entry footprint_extensions=as_6bb8fb7f_entry
+2026-09-25T09:05:29Z	Story 15.8	ci_resolved	story=15.8 run=36113466751 result=success head=ed78a6e3 jobs=8/8 resolved_at=next_implement(rule28) note=painted-scrollbar_run_confirmed_on_Linux
+2026-09-25T09:05:29Z	Story 15.9	ci_gate_before_implement	previous_story=15.8 resolved=success(run=36113466751_head=ed78a6e3) rule28=satisfied
+2026-09-25T09:05:29Z	Story 15.9	stage_spawned	stage=implement spawn_at=2026-09-25T09:05:29Z model=opus(model-overrides_implement=opus) agent_name=15-9-sign-out-implement-1 cycle_iteration=1
