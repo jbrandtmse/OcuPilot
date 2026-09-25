@@ -716,6 +716,22 @@ export function turnErrorBanner(
   return template.split('<step>').join(label).split('<reason>').join(reason);
 }
 
+/**
+ * The text so far of a streamed model call (AD-33): the `text` of the entry's last `model` step
+ * when that step is `running`, the entry is the live one and it is `running`, and the text is not
+ * empty -- otherwise `null`. It is untrusted content, rendered like a reply.
+ */
+export function streamedText(entry: Pick<TurnEntry, 'live' | 'state' | 'steps'>): string | null {
+  if (!entry.live || entry.state !== 'running') return null;
+  for (let i = entry.steps.length - 1; i >= 0; i -= 1) {
+    const step = entry.steps[i];
+    if (step.kind !== 'model') continue;
+    if (step.status !== 'running' || step.text === '') return null;
+    return step.text;
+  }
+  return null;
+}
+
 export interface TurnStoreOptions {
   readonly api: ApiService;
   /** The tab's `sessionStorage`, or an in-memory stand-in (`token-store.ts`'s `readSessionStorage`). */

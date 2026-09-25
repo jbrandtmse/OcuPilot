@@ -32,6 +32,20 @@ Parameter KEYHEADER = "x-goog-api-key";
 /// <p>The body's media type.</p>
 Parameter CONTENTTYPE = "application/json";
 
+/// <p>This family streams when the caller passes a sink (AD-42); 0 turns it off.</p>
+Parameter STREAMS As %Boolean = 1;
+
+/// <p>Streamed as <code>streamGenerateContent</code> server-sent events.</p>
+Parameter STREAMFAMILY As %String = "gemini";
+
+/// <p>The method the row's endpoint names for a plain call, and the one a streamed call names in its
+/// place, with <parameter>STREAMQUERY</parameter> asking for server-sent events.</p>
+Parameter PLAINMETHOD = ":generateContent";
+
+Parameter STREAMMETHOD = ":streamGenerateContent";
+
+Parameter STREAMQUERY = "alt=sse";
+
 /// <p>The token the row's endpoint carries where the model belongs.</p>
 Parameter MODELPLACEHOLDER = "{model}";
 
@@ -62,6 +76,9 @@ Method ProviderName() As %String
 /// <code>PROVIDER.EGRESS</code> before any socket is opened.</p>
 /// <p>An endpoint carrying no placeholder is answered unchanged, so an operator who stored a
 /// model-specific endpoint is not required to write one in.</p>
+/// <p>A streamed call (<property>Streaming</property>) names <parameter>STREAMMETHOD</parameter> in
+/// place of <parameter>PLAINMETHOD</parameter> and adds <parameter>STREAMQUERY</parameter>, on the
+/// same scheme and authority, so the egress origin check is unchanged.</p>
 Method RequestUrl(ByRef pValues) As %String
 {
     Set tUrl = ""
@@ -78,7 +95,24 @@ Method RequestUrl(ByRef pValues) As %String
     } Catch ex {
         Set tUrl = ""
     }
+    If ..Streaming && (tUrl '= "") Set tUrl = ..StreamUrl(tUrl)
     Quit tUrl
+}
+
+/// <p><var>pUrl</var> with its method made the streaming one and the server-sent-events query
+/// added.</p>
+Method StreamUrl(pUrl As %String) As %String [ Private ]
+{
+    Set tUrl = $Replace(pUrl, ..#PLAINMETHOD, ..#STREAMMETHOD)
+    Quit tUrl _ $Select(tUrl [ "?": "&", 1: "?") _ ..#STREAMQUERY
+}
+
+/// <p>The base's answer, and only for an endpoint that names <parameter>PLAINMETHOD</parameter>: an
+/// endpoint an operator stored in another shape is called plain rather than guessed at.</p>
+Method StreamsFor(ByRef pSettings, ByRef pValues) As %Boolean
+{
+    If '##super(.pSettings, .pValues) Quit 0
+    Quit ($Get(pValues("endpointUrl")) [ ..#PLAINMETHOD)
 }
 
 /// <p>The <code>generateContent</code> request body, attached to <var>pRequest</var>. The model is

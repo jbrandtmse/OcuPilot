@@ -110,4 +110,8 @@ Parameter LEDGERVIEWMAXROWS As %Integer = 200;
 /// <property>TimeoutSeconds</property></b>, whatever the attempt bound is.</p>
 Parameter PROVIDERCALLSECONDS As %Integer = 300;
 
+/// <p>Milliseconds between two writes of a streamed model call's text so far to its running step
+/// (AD-33); the first text is written as soon as it arrives.</p>
+Parameter STREAMINTERVALMS As %Integer = 400;
+
 }

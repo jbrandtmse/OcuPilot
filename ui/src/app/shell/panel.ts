@@ -59,6 +59,7 @@ import {
   type TurnStep,
   confirmedWriteStep,
   refusedWriteStep,
+  streamedText,
   turnErrorBanner,
 } from '../core/turn';
 import { isApplePlatform } from './command-box';
@@ -172,6 +173,8 @@ interface PanelTurnView {
   readonly steps: readonly TurnStep[];
   readonly proposals: readonly PanelProposalView[];
   readonly reply: string | null;
+  /** The running model call's text so far (AD-33), or `null`; never beside a reply or a banner. */
+  readonly streamed: string | null;
   readonly errorBanner: string | null;
 }
 
@@ -424,6 +427,13 @@ interface PanelTurnView {
                   <span class="ocu-panel-message-avatar" aria-hidden="true"></span>
                   <app-reply class="ocu-panel-message-agent-text" [text]="turn.reply" />
                 </div>
+              } @else {
+                @if (turn.streamed !== null) {
+                  <div class="ocu-panel-message-agent ocu-panel-message-streamed" inert>
+                    <span class="ocu-panel-message-avatar" aria-hidden="true"></span>
+                    <app-reply class="ocu-panel-message-agent-text" [text]="turn.streamed" />
+                  </div>
+                }
               }
               @if (turn.errorBanner !== null) {
                 <div class="ocu-panel-message-agent">
@@ -852,6 +862,7 @@ export class Panel {
       );
       return {
         message: entry.message,
+        streamed: errorBanner === null ? streamedText(entry) : null,
         // Tool steps, the agent's own navigation announcements (Story 4.7), a stop caught
         // before a model call -- which is the only record of that stop -- and, last, one card per
         // confirmed write of this turn, composed from the confirm's own answer (AD-15).

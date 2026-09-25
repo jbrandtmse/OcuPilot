@@ -209,11 +209,17 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
             If $$$ISERR(tSC) Quit
             Set tLastSeq = tSeq
             ; pUser is the turn owner. The port gates on that account's live grants, never on this
-            ; job's frozen $ROLES (AD-31, DW-1309).
-            Do $ClassMethod(..PortClass(), "Invoke", pDefinitionId, .tMessages, .tTools, ##class(OcuPilot.Kernel.Agent.Prompt).Builtin(), .tResponse, .tHttpStatus, .tFault, pUser)
+            ; job's frozen $ROLES (AD-31, DW-1309). The sink writes the call's text so far onto this
+            ; running step (AD-33).
+            Do $ClassMethod(..PortClass(), "Invoke", pDefinitionId, .tMessages, .tTools, ##class(OcuPilot.Kernel.Agent.Prompt).Builtin(), .tResponse, .tHttpStatus, .tFault, pUser, ##class(OcuPilot.Kernel.Agent.StreamStep).%New(pKey, tSeq, tLimits))
             If $IsObject($Get(tResponse)) {
                 Set tInput = tInput + tResponse.RequestTokens
                 Set tOutput = tOutput + tResponse.ResponseTokens
+            }
+            ; A refusal is the provider declining (AD-39, DW-1181): the turn fails with a banner and
+            ; no reply, whatever text arrived before it, and the ledger row records the same code.
+            If '$IsObject($Get(tFault)) && $IsObject($Get(tResponse)) && (tResponse.StopReason = ##class(OcuPilot.Kernel.Provider.MessageAdapter).#REFUSALSTOPREASON) {
+                Do ##class(OcuPilot.Kernel.Provider.Base).Fault(##class(OcuPilot.Api.Error).#PROVIDERDECLINED, "", "", .tFault, .tDeclinedHttp)
             }
             Do ..RecordProviderRow(pKey, pUser, tContextRoute, tProviderKey, tProviderModel, tIterations, $Get(tResponse), $Get(tFault), tLimits, +$Get(tHttpStatus))
             Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedProgress(pKey, tIterations, tInput, tOutput)

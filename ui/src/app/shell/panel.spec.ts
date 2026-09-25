@@ -3886,3 +3886,107 @@ describe('Story 11.10: the transcript follows the conversation', () => {
     expect(jumpControl(host)).toBeNull();
   });
 });
+
+// --- Story 11.7: a running model call's text grows in place ------------------------------------
+
+/** A progress answer for turn-1 carrying one model step. */
+function modelProgress(state: string, status: string, text: string, reply: string | null = null, error: unknown = null) {
+  return {
+    kind: 'ok',
+    status: 200,
+    body: {
+      turnId: 'turn-1',
+      state,
+      steps: [turnStep({ kind: 'model', name: 'provider', status, text })],
+      stepsDropped: 0,
+      reply,
+      error,
+    },
+  };
+}
+
+/** Run the next scheduled poll and let the panel render it. */
+async function nextPoll(scheduled: { run: () => void }[], fixture: ComponentFixture<Panel>): Promise<void> {
+  scheduled.shift()?.run();
+  await turnSettle();
+  fixture.detectChanges();
+  await turnSettle();
+  fixture.detectChanges();
+}
+
+describe('Story 11.7: the streamed reply', () => {
+  it('a running model step renders one inert streamed block beside the avatar, and no final reply', async () => {
+    // Mutation (Rule 19): drop `inert` from the streamed block in panel.ts -> this goes red.
+    const { host, fixture, scheduled } = await mountAnswered([modelProgress('running', 'running', 'Hello, **wor')]);
+    await nextPoll(scheduled, fixture);
+    const blocks = host.querySelectorAll('.ocu-panel-message-streamed');
+    expect(blocks.length).toBe(1);
+    const block = blocks[0] as HTMLElement;
+    expect(block.hasAttribute('inert')).toBe(true);
+    expect(block.classList.contains('ocu-panel-message-agent')).toBe(true);
+    expect(block.querySelector('.ocu-panel-message-avatar')).not.toBeNull();
+    expect(block.querySelector('app-reply')?.textContent).toContain('Hello, ');
+    expect(host.querySelectorAll('.ocu-panel-message-agent:not(.ocu-panel-message-streamed) app-reply').length).toBe(0);
+  });
+
+  it('markup in streamed text renders as text: no img, script or iframe element is created', async () => {
+    const remote = 'https:' + '//' + 'evil.example';
+    const text = `see <img src="${remote}/x.png"> <script>alert(1)</script> <iframe src="${remote}"></iframe> ![a](${remote}/y.png) [link](${remote}/z)`;
+    const { host, fixture, scheduled } = await mountAnswered([modelProgress('running', 'running', text)]);
+    await nextPoll(scheduled, fixture);
+    const block = host.querySelector('.ocu-panel-message-streamed') as HTMLElement;
+    expect(block).not.toBeNull();
+    expect(block.querySelector('img, script, iframe')).toBeNull();
+    expect(block.textContent).toContain('see');
+  });
+
+  it('completion leaves exactly the non-streamed DOM: the final reply and no streamed block', async () => {
+    // Mutation (Rule 19): set `streamed` in panel.ts from the last model step's text whatever its
+    // status or the turn's -> the streamed block stays beside the final reply and this goes red.
+    const done = modelProgress('completed', 'ok', 'Hello, **world**.', 'Hello, **world**.');
+    const streamed = await mountAnswered([modelProgress('running', 'running', 'Hello, **wor'), done]);
+    await nextPoll(streamed.scheduled, streamed.fixture);
+    expect(streamed.host.querySelector('.ocu-panel-message-streamed')).not.toBeNull();
+    await nextPoll(streamed.scheduled, streamed.fixture);
+
+    const plain = await mountAnswered([modelProgress('running', 'running', ''), done]);
+    await nextPoll(plain.scheduled, plain.fixture);
+    expect(plain.host.querySelector('.ocu-panel-message-streamed')).toBeNull();
+    await nextPoll(plain.scheduled, plain.fixture);
+
+    expect(streamed.host.querySelector('.ocu-panel-message-streamed')).toBeNull();
+    expect(streamed.host.querySelectorAll('app-reply').length).toBe(1);
+    const turnHtml = (host: HTMLElement) => (host.querySelector('.ocu-panel-turn') as HTMLElement).outerHTML;
+    expect(turnHtml(streamed.host)).toBe(turnHtml(plain.host));
+  });
+
+  it('a turn that fails mid-stream shows the banner only: no reply and no streamed block', async () => {
+    const error = { seq: 1, code: 'PROVIDER.TRANSPORT', reason: 'The provider call did not complete' };
+    const { host, fixture, scheduled } = await mountAnswered([
+      modelProgress('running', 'running', 'Hello, wor'),
+      modelProgress('failed', 'error', '', null, error),
+    ]);
+    await nextPoll(scheduled, fixture);
+    expect(host.querySelector('.ocu-panel-message-streamed')).not.toBeNull();
+    await nextPoll(scheduled, fixture);
+    expect(host.querySelector('.ocu-panel-message-streamed')).toBeNull();
+    expect(host.querySelectorAll('app-reply').length).toBe(0);
+    expect(host.querySelector('.ocu-panel-error-banner')?.textContent).toContain('The provider call did not complete');
+  });
+
+  it('growth while following scrolls to the newest entry', async () => {
+    const { host, fixture, scheduled, geometry } = await mountAnswered([
+      modelProgress('running', 'running', 'He'),
+      modelProgress('running', 'running', 'Hello, and a good deal more text'),
+      modelProgress('completed', 'ok', 'Hello, and a good deal more text.', 'Hello, and a good deal more text.'),
+    ]);
+    geometry.scrollHeight = 1300;
+    await nextPoll(scheduled, fixture);
+    expect(host.querySelector('.ocu-panel-message-streamed')).not.toBeNull();
+    expect(geometry.scrollTop).toBe(1100);
+    geometry.scrollHeight = 1600;
+    await nextPoll(scheduled, fixture);
+    expect(host.querySelector('.ocu-panel-message-streamed')?.textContent).toContain('a good deal more');
+    expect(geometry.scrollTop).toBe(1400);
+  });
+});

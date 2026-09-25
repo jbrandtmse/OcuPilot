@@ -40,6 +40,7 @@ const {
   stepLabel,
   confirmedWriteStep,
   turnErrorBanner,
+  streamedText,
   isTerminalState,
 } = await import(corePath('turn.ts'));
 const { STRINGS } = await import(corePath('strings.ts'));
@@ -1692,3 +1693,66 @@ test('New conversation closes every proposal this store had open (DW-1243)', asy
   assert.deepEqual(bus.events.map((event) => event.kind), ['proposal-open', 'proposal-closed']);
   assert.deepEqual(turn.entries(), []);
 });
+
+// --- Story 11.7: the streamed text of a running model call -----------------------------------
+//
+// Mutations (Rule 19):
+// - drop the `live` test from `streamedText` -> "a non-live entry" goes red.
+// - drop the `state` test from `streamedText` -> "a live entry whose turn has ended" goes red.
+
+/** A model step, running with `text` unless overridden. */
+function modelStep(overrides = {}) {
+  return step({ kind: 'model', name: 'provider', status: 'running', ...overrides });
+}
+
+test('streamedText answers the running model step\'s text on the live, running entry', () => {
+  const entry = { live: true, state: 'running', steps: [step(), modelStep({ seq: 2, text: 'Hel' })] };
+  assert.equal(streamedText(entry), 'Hel');
+});
+
+test('streamedText is null for a finished model step, an empty text, a non-live entry and an ended turn', () => {
+  assert.equal(streamedText({ live: true, state: 'running', steps: [modelStep({ status: 'ok', text: 'Hello' })] }), null, 'a finished model step');
+  assert.equal(streamedText({ live: true, state: 'running', steps: [modelStep({ text: '' })] }), null, 'an empty text');
+  assert.equal(streamedText({ live: false, state: 'running', steps: [modelStep({ text: 'Hel' })] }), null, 'a non-live entry');
+  assert.equal(streamedText({ live: true, state: 'stopped', steps: [modelStep({ text: 'Hel' })] }), null, 'a live entry whose turn has ended');
+  assert.equal(streamedText({ live: true, state: 'running', steps: [modelStep({ text: 'Hel' }), step({ seq: 2 })] }), 'Hel', 'a tool step after it does not hide it');
+  assert.equal(streamedText({ live: true, state: 'running', steps: [modelStep({ status: 'ok', text: 'old' }), step({ seq: 2 })] }), null, 'the last model step decides');
+});
+
+for (const ending of ['completed', 'failed', 'stopped']) {
+  test(`streamedText grows across two polls and is null once the turn ends ${ending}`, async () => {
+    const { schedule, scheduled } = fakeSchedule();
+    const error = ending === 'completed' ? null : { seq: 1, code: 'PROVIDER.TRANSPORT', reason: 'The provider call did not complete' };
+    const api = fakeApi({
+      [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+      [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+      [turnProgressPath('turn-1')]: [
+        ok({ turnId: 'turn-1', state: 'running', steps: [modelStep({ text: 'Hel' })], stepsDropped: 0, reply: null, error: null }),
+        ok({ turnId: 'turn-1', state: 'running', steps: [modelStep({ text: 'Hello, wor' })], stepsDropped: 0, reply: null, error: null }),
+        ok({
+          turnId: 'turn-1',
+          state: ending,
+          steps: [modelStep({ status: ending === 'completed' ? 'ok' : 'running', text: ending === 'completed' ? 'Hello, world' : 'Hello, wor' })],
+          stepsDropped: 0,
+          reply: ending === 'completed' ? 'Hello, world' : null,
+          error,
+        }),
+      ],
+    });
+    const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+    const sent = turn.send('say hello');
+    await settle();
+    await settle();
+    await settle();
+    scheduled.shift().run();
+    await settle();
+    assert.equal(streamedText(turn.entries().at(-1)), 'Hel', 'the first poll shows the first snapshot');
+    scheduled.shift().run();
+    await settle();
+    assert.equal(streamedText(turn.entries().at(-1)), 'Hello, wor', 'the second shows it grown');
+    scheduled.shift().run();
+    await settle();
+    await sent;
+    assert.equal(streamedText(turn.entries().at(-1)), null, `and once the turn ends ${ending} there is none`);
+  });
+}

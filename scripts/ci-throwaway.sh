@@ -297,6 +297,7 @@ services:
       # scripted adapter. Either is a separate process no in-process stub reaches, so the row is
       # armed by the environment, and only here.
       # classes: TurnGrounding
+      # classes: TurnStream
       # classes: AgentConnectionBound, AgentConnectionRoles, AgentConnectionWire, LedgerWire, ToolWire, TurnChain
       # classes: TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnStore
       # classes: TurnWire, TurnWireFixture

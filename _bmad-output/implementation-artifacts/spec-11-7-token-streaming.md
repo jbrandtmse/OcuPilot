@@ -2,8 +2,8 @@
 title: 'Story 11.7: Token streaming'
 type: 'feature'
 created: '2026-09-25'
-status: 'ready-for-dev'
-baseline_revision: '0fe6d36d1f3e4aba2504c9591f6bbc3887dd3b41'
+status: 'done'
+baseline_revision: 'f24c030227b7276120e3d65dc30afb4ae2783f62'
 baseline_commit: '0fe6d36d1f3e4aba2504c9591f6bbc3887dd3b41'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -11,7 +11,14 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-11-context.md'
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Gemini finish reasons that are not the model declining (MALFORMED_FUNCTION_CALL, UNEXPECTED_TOOL_CALL, TOO_MANY_TOOL_CALLS, and others) map to the canonical refusal, so such a turn now ends PROVIDER.DECLINED with "The model declined to answer this request".
+    evidence: |-
+      MessageAdapter.GEMINISTOPREASONS (pre-existing, Epic 10) folds ten Gemini reasons into refusal; Loop routes every canonical refusal to PROVIDER.DECLINED as the intent requires. Turn-level DECLINED is exercised only through the Anthropic stop_reason; OpenAI and Gemini refusal shapes are pinned at adapter level (streamed equals plain).
+    location: >-
+      src/OcuPilot/Kernel/Provider/MessageAdapter.cls:75
+    severity: medium
 ---
 
 <intent-contract>
@@ -248,6 +255,33 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-25 — Review pass
+
+- verdicts: 22 findings — high 0, medium 3, low 12, false 7, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` An error event followed by its terminator was untested; every error leg was also a no-terminator stream — added error-then-terminator legs to `ProviderStream` and `ProviderStreamFamilies`; mutation recorded.
+  - `[medium]` `[patch]` Nothing pinned a fresh reader per attempt on a status retry whose JSON body reached the reader — added `TestAStatusRetryReadsTheNextStreamFromEmpty` (529 JSON through the reader, then SSE); mutation recorded.
+  - `[low]` `[patch]` panel.spec growth case did not depend on the streamed block, and browser (a) had no overflow precondition — (a) now waits for overflow and then for the smooth follow scroll while the block shows; panel.spec asserts the block at each growth poll.
+  - `[low]` `[patch]` Browser (b) is not independent and its mutation comment was wrong; (c) never checked the block was gone — comment corrected, (c) asserts no streamed block after the end, the `@if` mutation line no longer credits (b).
+  - `[low]` `[patch]` AC "Release 1 rendering rules" and the reduced-motion half had no mutation line — `[innerHTML]` and `animation` mutations applied, observed red, recorded.
+  - `[low]` `[reject]` The spec says `ReadChunk` exceptions are swallowed; the vendor adds them to `Post`'s status — no runtime effect (`StreamReader` catches everything); the fix edits this spec.
+  - `[low]` `[patch]` A declined call's provider ledger row read `ok` — the refusal check now runs before `RecordProviderRow`, so the row records `error`/`PROVIDER.DECLINED`; `TurnStream` asserts it; mutation recorded.
+  - `[low]` `[reject]` Three planned mutation bullets disagree with the observed lines — the observed lines directly beneath are the record; the fix edits this spec.
+  - `[low]` `[reject]` Spec names `Step.GuardedStreamText`, code has `GuardedSnapshotText` — the spec's name clashes with private `State.Base.GuardedStreamText` and would not compile; the fix edits this spec.
+  - `[medium]` `[defer]` Non-declining Gemini finish reasons map to canonical refusal and now end `PROVIDER.DECLINED` — pre-existing mapping in `MessageAdapter.cls:75`; recorded in `deferred:`.
+  - `[low]` `[patch]` Declined turn's ledger row reads `ok` (same root cause as the ledger row above) — fixed there.
+  - `[false]` `[reject]` Transport claims proven only by stubs — the live per-family check drove the real `%Net.HttpRequest` chunk-reader path for all four families; CI is stub-based by intent.
+  - `[low]` `[reject]` `STREAMS = 0` is never set in a test — no family ships 0 after the live check; the fix adds a test-only adapter class for a switch not in use.
+  - `[false]` `[reject]` `turnprobe` streams only 200 bodies the fixture can convert — intended: the spec says scripted non-200 and transport entries behave as today.
+  - `[false]` `[reject]` Real-clock cadence not measured — the spec pins the cadence through the overridable `NowMs()` probe.
+  - `[false]` `[reject]` Turn-level prefix checked only on polled texts — each polled text is asserted a prefix of the reply; pairwise order is pinned at the reader.
+  - `[false]` `[reject]` `StreamStep` keeps `LastLength` across attempts — a retried attempt's predecessor publishes nothing (no bytes, or a JSON body), so it stays 0.
+  - `[low]` `[reject]` A mid-stream read timeout ends `PROVIDER.TIMEOUT`, not `PROVIDER.TRANSPORT` — the same exit a plain call's body timeout takes, never retried; not worth a new branch.
+  - `[low]` `[patch]` Reduced-motion leg compares only the final container and no CSS targets the block — grouped with the (b)/(c) and mutation-line patches above.
+  - `[false]` `[reject]` Gemini adds an endpoint condition to streaming — "only when" states necessary conditions; an endpoint not naming `:generateContent` is called plain.
+  - `[false]` `[reject]` `STREAMS = 0` on OpenAI also turns off Compatible — the intent says Compatible inherits; Compatible can set its own.
+  - `[low]` `[patch]` The body-build failure exit dropped the reader without `Release()` — release added on that exit.
+
 ## Design Notes
 
 **Governing ADs.**
@@ -343,7 +377,43 @@ deferred: []
 - UTF-8 is decoded per chunk without the handle → the split-input leg goes red.
 - `STREAMINTERVALMS` is ignored → the `StreamStep` cadence leg goes red.
 
+Observed on `ocupilot-ci` (whole `OcuPilot` package force-compiled, or bundle rebuilt and redeployed; each reverted, tree byte-identical):
+
+- mutation: `Loop` passes `""` for the sink → red: `TurnStream` mid-call and break legs; browser (a) (no streamed block).
+- mutation: `StreamReader.Publish` hands over only the new text → red: `ProviderStream` retry text-once, parity prefix and split-input legs.
+- mutation: `(+tStatus = 0)` dropped from `Base.Attempts`' transport-retry condition → red: `ProviderStream` break-after-bytes (`Calls` 2).
+- mutation: `Base.Attempts` skips the 2xx assembly-status check → red: `ProviderStream` error-event and no-terminator legs, `ProviderStreamFamilies` error and cut legs.
+- mutation: `Loop`'s fault branch writes the step's streamed text → red: `TurnStream` break and streamed-refusal step-text asserts.
+- mutation: `streamedText` drops its `live` test, or its `state` test → red: `turn.test.mjs` direct null cases; the finalize cases stay green because the step-status test also holds.
+- mutation: streamed block in a separate `@if` and `streamed` read from the last model step whatever its status → red: `panel.spec` completion case; browser (a). Either change alone stays green: the `@else` and `streamedText`'s guards are independent.
+- mutation: `inert` removed → red: `panel.spec` running case; browser (a).
+- mutation: the refusal branch in `Loop` disabled → red: `TurnStream` refusal (both runs); browser (f).
+- mutation: `input_json_delta` branch of `StreamAdapter.TakeAnthropic` disabled → red: `ProviderStream` tool and thinking parity; `TurnStream` proposal equality (no proposal minted); browser (e).
+- mutation: `StreamReader.ReadChunk` decodes without the carried handle → red: `ProviderStream` parity, split-input, retry and raising-sink legs.
+- mutation: `StreamStep.Publish` ignores `STREAMINTERVALMS` → red: `TurnStream` cadence leg.
+- mutation: `StreamAdapter.Body` ignores `Errored` → red: `ProviderStream` error-then-`message_stop` leg; `ProviderStreamFamilies` "error then end" for openai, gemini and compatible.
+- mutation: one reader created before `Base.Attempts`' loop and never released → red: `ProviderStream` status-retry leg (the pre-status retry leg stays green).
+- mutation: `Loop` records the provider ledger row before its refusal check → red: `TurnStream` refusal ledger-row asserts (both runs).
+- mutation: streamed text bound through `[innerHTML]` instead of `<app-reply>` → red: `panel.spec` markup case (an `img` is created) and running case.
+- mutation: an `animation` on `.ocu-panel-message-streamed` → red: browser (c) animation assert.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** A turn's model call streams (all four families ship `STREAMS = 1`): `StreamReader` (a `%Net.ChunkedReader`) decodes UTF-8 across chunks, parses SSE and feeds `StreamAdapter`, which publishes the text so far to `StreamStep` (400 ms cadence, `TEXTMAXLENGTH` cap, via `Step.GuardedSnapshotText`) and afterwards assembles the family's plain JSON body for the unchanged `MapResponse`. A 2xx stream with an error event, no terminator or a broken body ends `PROVIDER.TRANSPORT` unretried. A canonical refusal fails the turn `PROVIDER.DECLINED` (DW-1181) and its ledger row records the same code. The panel renders the running model step's text in an inert `app-reply` block that the final reply replaces.
+
+**Files.** New: `Kernel/Provider/StreamSink`, `StreamAdapter`, `StreamReader`, `Kernel/Agent/StreamStep`; tests `SseFixture`, `StreamCase`, `ProviderStream`, `ProviderStreamFamilies`, `TurnStream`, `StreamSinkProbe`, `StreamStepProbe`, `ui/browser/stream-reply.browser-spec.mjs`. Edited: `Base`, `Anthropic`, `OpenAI`, `Gemini` (streaming request), `ProviderPort` (trailing sink), `Loop` (sink, refusal), `Step`, `Limits`, `Api/Error` (`PROVIDERDECLINED`), `ProviderStub`, `ProviderStubTransport`, `TurnProvider`, `turn.ts` (`streamedText`), `panel.ts`, `panel.spec.ts`, `turn.test.mjs`, `ci-throwaway.sh` (one roster line), `EXPERIENCE.md:673`.
+
+**Deviations from the spec's wording.** `GuardedStreamText` is named `GuardedSnapshotText` (the spec's name clashes with private `State.Base.GuardedStreamText`); `StreamsFor` takes `pValues` too (`TurnProvider.Plain` reads the model tag; Gemini streams only for an endpoint naming `:generateContent`); the template uses `@else { @if }` because `client-lint.mjs` does not parse `@else if`.
+
+**Review.** 22 findings: 10 patched (2 medium, 8 low), 1 deferred (medium, pre-existing Gemini refusal mapping), 11 rejected (see the triage log). Patched: error-then-terminator legs, a status-retry leg pinning a fresh reader per attempt, the ledger row for a declined call, the reader released on the body-build exit, browser (a)'s overflow precondition with an awaited smooth follow, (c) asserting the block is gone, and two recorded mutations (`[innerHTML]`, `animation`). Follow-up review recommended: false (patched high 0, medium 2; each patched pin has an observed mutation, so no unverified risk can be named).
+
+**Verification.** `check-objectscript` 0 problems; `lint-docs` clean; `test:tools` 1,425/1,425; `test:components` 1,247/1,247. Story classes on `ocupilot-ci`, one per call: ProviderStream 9/9, ProviderStreamFamilies 4/4, TurnStream 5/5 (after patches); the handoff also ran ProviderTransportRetry, ProviderRetry, Provider, Adapter, OpenAIAdapter, GeminiAdapter, CompatibleAdapter, AnthropicThinking, TurnWire, TurnProviderFault, ScreenGrounding, AgentConnectionWire green. Browser against the redeployed bundle: stream-reply 7/7; the handoff also ran turn 10/10, reply 5/5, transcript-follow 4/4, proposal-card 3/3, proposal-demo 3/3. Full ObjectScript sweep once: 253 ran, 13 refused (arming), 1 known residue (`WireSecurityRead` task history); 239 green. `smoke.sh --container ocupilot-ci`: 49/49. Bundle initial total 1.59 MB (292.53 kB transfer), under the 1,670 kB warning. All 17 `mutation:` lines observed red and reverted.
+
+**Live per-family check** (extra evidence; keys read at use, nothing stored or printed, probe classes removed from `ocupilot-ci`). Anthropic: chunked, `text/event-stream; charset=utf-8`, 7 snapshots, final shape equals plain, streamed tool input equals plain. OpenAI: chunked, `text/event-stream; charset=utf-8`, 12 snapshots, same. Gemini: chunked, `text/event-stream`, 1-2 snapshots, same on 2 of 3 runs (one run stopped at `max_tokens`, read as budget spent on thinking (inference)). Compatible (Ollama through `host.docker.internal`): chunked, `text/event-stream`, 27 snapshots, same, usage reported. No family ships `STREAMS = 0`.
+
+**Residual risk.** Every transport claim in CI is stub-proven; the real `%Net.HttpRequest` path is covered only by the live check. Turn-level `PROVIDER.DECLINED` is exercised through the Anthropic shape; OpenAI and Gemini refusals are pinned at adapter level.
+
+footprint_extensions: contended `ui/src/app/core/turn.ts`, `ui/src/app/shell/panel.ts`, `ui/src/app/shell/panel.spec.ts` (beside Epic 12's hunks; trial merge clean); shared-append `src/OcuPilot/Api/Error.cls`; outside Epic 11: `Kernel/State/Step.cls`, `Port/ProviderPort.cls`, `scripts/ci-throwaway.sh`, `EXPERIENCE.md`, `Test/ProviderStub.cls`, `Test/ProviderStubTransport.cls`, `Test/TurnProvider.cls`.
