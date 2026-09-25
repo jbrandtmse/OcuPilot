@@ -1213,6 +1213,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 5) = "TASK." Quit ..ReasonForTask(pCode)
     If $Extract(pCode, 1, 8) = "SERVICE." Quit ..ReasonForService(pCode)
     If $Extract(pCode, 1, 5) = "LDAP." Quit ..ReasonForLdap(pCode)
+    If $Extract(pCode, 1, 11) = "AUDITEVENT." Quit ..ReasonForAuditEvent(pCode)
     Quit ""
 }
 
@@ -3003,6 +3004,81 @@ ClassMethod ReasonForLdap(pCode As %String) As %String
 ClassMethod LdapViolationCodes() As %List
 {
     Quit $ListBuild(..#LDAPFIELDREQUIRED, ..#LDAPHOSTSHAPE, ..#LDAPFLAGSVALUE, ..#LDAPDESCRIPTIONLENGTH, ..#LDAPABSENT)
+}
+
+/// <p>Envelope code (Story 9.10): one 422 carrying every broken rule of a user audit event Save.</p>
+Parameter AUDITEVENTVALIDATION = "AUDITEVENT.VALIDATION";
+
+Parameter REASONAUDITEVENTVALIDATION = "The audit event was refused.";
+
+/// <p>Violation code (Story 9.10): an empty Source, Type or Name, which the vendor answers
+/// <code>&lt;SUBSCRIPT&gt;</code> (measured).</p>
+Parameter AUDITEVENTPARTREQUIRED = "AUDITEVENT.PART.REQUIRED";
+
+Parameter REASONAUDITEVENTPARTREQUIRED = "Enter a value. An audit event is named by its source, type and name.";
+
+/// <p>Violation code (Story 9.10): a Source, Type or Name over the vendor's 64 characters.</p>
+Parameter AUDITEVENTPARTLENGTH = "AUDITEVENT.PART.LENGTH";
+
+Parameter REASONAUDITEVENTPARTLENGTH = "Use 64 characters or fewer.";
+
+/// <p>Violation code (Story 9.10): a <code>/</code> in a Source, Type or Name, which the vendor refuses
+/// or fails on (measured).</p>
+Parameter AUDITEVENTPARTSLASH = "AUDITEVENT.PART.SLASH";
+
+Parameter REASONAUDITEVENTPARTSLASH = "Remove the slash. An event's source, type and name are joined with slashes, so none of them can contain one.";
+
+/// <p>Violation code (Story 9.10): a Source or Type beginning with <code>%</code>, which the vendor
+/// refuses #851 (measured).</p>
+Parameter AUDITEVENTPARTRESERVED = "AUDITEVENT.PART.RESERVED";
+
+Parameter REASONAUDITEVENTPARTRESERVED = "Start with a character other than %. A source or type beginning with % is reserved for the instance's own system events.";
+
+/// <p>Violation code (Story 9.10): a Description over the vendor's 256 characters.</p>
+Parameter AUDITEVENTDESCRIPTIONLENGTH = "AUDITEVENT.DESCRIPTION.LENGTH";
+
+Parameter REASONAUDITEVENTDESCRIPTIONLENGTH = "Use 256 characters or fewer.";
+
+/// <p>Violation code (Story 9.10): an event id that is not exactly three <code>/</code>-separated
+/// parts.</p>
+Parameter AUDITEVENTEVENTNAMESHAPE = "AUDITEVENT.EVENTNAME.SHAPE";
+
+Parameter REASONAUDITEVENTEVENTNAMESHAPE = "Name the event as source/type/name: three parts, none containing a slash.";
+
+/// <p>Violation code (Story 9.10): a user event tool given a system event.</p>
+Parameter AUDITEVENTSYSTEM = "AUDITEVENT.SYSTEM";
+
+Parameter REASONAUDITEVENTSYSTEM = "This is one of the instance's own system events. Change it on the System events list.";
+
+/// <p>Violation code (Story 9.10): a system event tool given a user event.</p>
+Parameter AUDITEVENTUSER = "AUDITEVENT.USER";
+
+Parameter REASONAUDITEVENTUSER = "This is a user event. Change it on the User events list.";
+
+/// <p>Violation code (Story 9.10): a create whose event the instance already holds, in any case.</p>
+Parameter AUDITEVENTTAKEN = "AUDITEVENT.TAKEN";
+
+Parameter REASONAUDITEVENTTAKEN = "This instance already has an audit event with this source, type and name.";
+
+/// <p>Violation and envelope code (Story 9.10): the event a form read or an edit names is not on this
+/// instance.</p>
+Parameter AUDITEVENTABSENT = "AUDITEVENT.ABSENT";
+
+Parameter REASONAUDITEVENTABSENT = "This audit event no longer exists.";
+
+/// <p>The sentence an <code>AUDITEVENT.*</code> violation code carries, or <code>""</code> for any
+/// other code; <method>ReasonForViolation</method> delegates the family here.</p>
+ClassMethod ReasonForAuditEvent(pCode As %String) As %String
+{
+    If '$ListFind(..AuditEventViolationCodes(), pCode) Quit ""
+    Quit $Parameter($ClassName(), "REASON" _ $Translate(pCode, "."))
+}
+
+/// <p>Every <code>AUDITEVENT.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod AuditEventViolationCodes() As %List
+{
+    Quit $ListBuild(..#AUDITEVENTPARTREQUIRED, ..#AUDITEVENTPARTLENGTH, ..#AUDITEVENTPARTSLASH, ..#AUDITEVENTPARTRESERVED, ..#AUDITEVENTDESCRIPTIONLENGTH, ..#AUDITEVENTEVENTNAMESHAPE, ..#AUDITEVENTSYSTEM, ..#AUDITEVENTUSER, ..#AUDITEVENTTAKEN, ..#AUDITEVENTABSENT)
 }
 
 }

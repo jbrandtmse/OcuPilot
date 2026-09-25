@@ -42,6 +42,11 @@ Parameter SCREENACTIONS = "enable=Enabled:true,disable=Enabled:false";
 /// amended 2026-09-23).</p>
 Parameter MOVESMARKING As BOOLEAN = 1;
 
+/// <p>The event list this tool administers (DW-1575): a system event's Source begins with
+/// <code>%</code>, and <method>OcuPilot.Area.Security.AuditEventRules.OwnerProblem</method> refuses
+/// the other list's events from both callers.</p>
+Parameter EVENTOWNER = "system";
+
 /// <p><code>%Admin_Secure:USE</code>, the vendor endpoint's own <code>ResourcesOR()</code> resource
 /// and one of the two pairs the screen declares (AD-8 as amended by DW-1208).</p>
 Parameter WRITERESOURCE = "%Admin_Secure";
@@ -103,15 +108,26 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
     Quit tPairs _ $ListBuild(tOwn)
 }
 
+/// <p>The agent's arguments refused when <var>pIdValue</var> is the other list's event
+/// (<method>OcuPilot.Area.Security.AuditEventRules.OwnerProblem</method>).</p>
+ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Set pProblem = ##class(OcuPilot.Area.Security.AuditEventRules).OwnerRefusal($ClassName(), pIdValue)
+    If pProblem '= "" Quit $$$OK
+    Quit ##super(pIdValue, pArgs, .pProblem)
+}
+
 /// <p>The screen action's arguments over the fresh read <var>pFresh</var>, with
-/// <var>pProblem</var> naming an event already in the state the action would set: a no-op is
-/// refused before anything is sent.</p>
+/// <var>pProblem</var> naming the other list's event, or an event already in the state the action
+/// would set: either is refused before anything is sent.</p>
 ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, pFresh As %DynamicObject, Output pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set pProblem = ""
     Set pArgs = ..ScreenActionArguments(pActionId, .tServes)
     Set tSC = $$$OK
     Try {
+        Set pProblem = ##class(OcuPilot.Area.Security.AuditEventRules).OwnerRefusal($ClassName(), $Select($IsObject(pValues): pValues.%Get(..IdArgument()), 1: ""))
+        If pProblem '= "" Quit
         If '$IsObject(pFresh) || (pArgs.%GetTypeOf("Enabled") '= "boolean") Quit
         If pFresh.%GetTypeOf("Enabled") '= "boolean" {
             Set pProblem = "this instance did not report whether that event is enabled, so it cannot be changed"

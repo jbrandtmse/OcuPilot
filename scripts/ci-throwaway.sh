@@ -209,6 +209,7 @@ services:
       # classes: SslWire
       # classes: TaskWire
       # classes: ServiceEdit, LdapEdit, ServiceLdapProbe
+      # classes: AuditEventEditor
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -224,6 +225,7 @@ services:
       # auditing it. AuditMarker deletes the AgentWrite triple for the same reason and creates a
       # web application to write to, so it declares OCUPILOT_ALLOW_PRINCIPALS as well.
       # classes: AuditEvent, AuditMarker, UninstallSurvival
+      # classes: AuditEventEditor
       OCUPILOT_ALLOW_AUDIT_EVENTS: "1"
       # Runs OcuPilot's PRODUCTION install. A production install is not one side effect but a
       # whole set of them -- a database, a resource, a role, three web applications, the audit

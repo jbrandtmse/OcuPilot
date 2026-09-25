@@ -2,7 +2,8 @@
 title: 'Story 9.10: The user audit event editor'
 type: 'feature'
 created: '2026-09-24'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'c8f9f0c79a1cfa9cd551a3ebb6da093b9941c6e9'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -238,6 +239,27 @@ Tests:
 
 ## Review Triage Log
 
+### 2026-09-24 — Review pass
+
+- verdicts: 16 findings — high 0, medium 4, low 7, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The Save's post-write marking observation (`AuditEventSave.Send`) had no test -- added `Test/MarkingSave.cls` (port seam on `MarkingPort`) and `AuditEventEditor.TestASaveRecordsTheMarkingItObservesAfterTheWrite`; red with the observation removed.
+  - `[medium]` `[patch]` The Description bound on the edit path was untested for both callers -- added a 257-character `PUT` leg (422 `Description:AUDITEVENT.DESCRIPTION.LENGTH`, stored value unchanged) and an `AuditUserEventUpdate.ArgumentProblem` assertion; each red under its mutation.
+  - `[medium]` `[patch]` The store spec's `canSave` mutation could not redden (its 404 stub set `absent` first) -- added a 500-read leg where only the held read blocks Save; demonstrated red, and the comment moved there.
+  - `[low]` `[patch]` Browser `stored()` read a failed probe as `''`, making the absence assertions vacuous on a probe failure -- it now fails when the instance gives no answer. The vendor-guaranteed "nothing created" clauses stay secondary; the 422 sentence is the discriminating assertion.
+  - `[false]` `[reject]` AC1/AC2 clauses without their own `mutation:` line -- Rule 19 scopes to one demonstrated pinning mutation per AC, and AC1 and AC2 each carry one.
+  - `[low]` `[reject]` The create tool's `OwnerRefusal` cannot fire after the part rules -- the spec's task names it; harmless, and removing it edits specified behavior.
+  - `[false]` `[reject]` The form read with a present event is tested only in the browser -- the browser AC2 leg reads it against the instance and asserts the identity and Description it returns.
+  - `[low]` `[reject]` Ownership refusals reach the mint and screen actions as `TOOL.ARGUMENTS` text with the sentence, not the code -- the Boundaries place the check in the two hooks whose contract is a problem string; carrying the code needs new envelope surface.
+  - `[low]` `[reject]` A user create on `%System/...` answers `PART.RESERVED`, not `AUDITEVENT.SYSTEM` -- the Reserved row requires `PART.RESERVED` for a `%` Source on create, nothing is sent either way, and the mint's absence check refuses an existing system event first.
+  - `[low]` `[reject]` Ownership for the user delete, system reset mint and create mint is tested through the hooks, not over HTTP -- the hooks are the seams both callers call, tested on all six tools, and the HTTP legs prove the wiring for both callers.
+  - `[medium]` `[patch]` (grouped with the first row) No test checks the recorded marking fact after a Save -- same patch.
+  - `[low]` `[reject]` AD-10 on a create, read-only/kill-switch independence, extra create keys and the full edit body are untested -- AD-10 names no audit-event effect, the Save has no read-only path, and the full body is pinned by the AC2 mutation.
+  - `[false]` `[reject]` The create race does not observe "no second write" -- a confirm write would store the proposal's `agent|1`; the leg asserts `direct|0`.
+  - `[false]` `[reject]` "The list re-fetches" is asserted through the changed marker -- the row did not exist before the create, so its appearance (now also with the disabled disc) is the re-read.
+  - `[low]` `[patch]` The 64-character bounds probe was outside `OnAfterOneTest`'s sweep -- `OnAfterOneTest` now removes it by exact name.
+  - `[false]` `[reject]` Edits beyond appends in shared-append files -- the `Error.cls` dispatch line is the spec's task, the `strings.ts` citation shift is forced by the strings test, and the other files are not shared-append files.
+
 ## Design Notes
 
 **Governing ADs:** AD-3, AD-4, AD-5, AD-6, AD-8, AD-10, AD-13 (fold case, composite id in one segment), AD-14, AD-15, AD-19, AD-39, AD-52 (default `AdminPort`), AD-53 (with the marking amendment), AD-54, AD-55. AD-27 applies only as containment: nothing names `%Api.Admin`.
@@ -314,9 +336,39 @@ Every edit here is an append or a one-line roster change. Footprint extensions: 
   - AC4: change one word of a `REASONAUDITEVENT*` → `audit-event-copy.test.mjs` red.
   - Integration: drop the store's `publish` → the browser create leg red.
 
+- `mutation: AC1 -- AuditEventSave.Create's absence read never answers TAKEN (ocupilot-ci copy) -> AuditEventEditor.TestACreateThenATakenNameThenADescriptionEdit red on the 422 TAKEN leg and the stored Description overwritten (run 11034). DEMONSTRATED 2026-09-24, restored, whole tree reloaded, 8/8 green (run 11037)`
+- `mutation: AC2 -- AuditEventSave.Update sends Enabled true in the merged body (ocupilot-ci copy) -> AuditEventEditor.TestACreateThenATakenNameThenADescriptionEdit red on "Enabled still reads false" (run 11035). DEMONSTRATED 2026-09-24, restored`
+- `mutation: AC3 -- AuditEventRules.OwnerProblem answers "" (ocupilot-ci copy) -> AuditEventRules.TestEveryToolRefusesTheOtherListsEventsThroughBothHooks red on both hooks of all five list tools (run 11036); drop the % check from PartViolation -> audit-event-editor.browser-spec.mjs AC3 red at the Source sentence wait, nothing registered. DEMONSTRATED 2026-09-24, restored, 5/5 green`
+- `mutation: AC4 -- REASONAUDITEVENTTAKEN reworded "has" -> "holds" -> audit-event-copy.test.mjs red naming REASONAUDITEVENTTAKEN and auditEventRefusalTaken. DEMONSTRATED 2026-09-24, restored`
+- `mutation: Integration -- the store's publish call removed, rebuilt and redeployed -> audit-event-editor.browser-spec.mjs AC1 red at the changed-row wait. DEMONSTRATED 2026-09-24, restored, rebuilt, redeployed, 3/3 green; tree byte-identical (git status, diff --stat and diff digest compared)`
+- `mutation: AC3 (edit path) -- AuditEventSave.Update's Validate call removed -> AuditEventEditor.TestACreateThenATakenNameThenADescriptionEdit red on the 257-character edit leg (run 11041); AuditUserEventUpdate.ArgumentProblem's ArgumentViolations call removed -> AuditEventRules.TestEveryRuleRefusesOnItsFieldAtTheBounds red on the agent's Description bound (run 11042). DEMONSTRATED 2026-09-24 (review pass), restored`
+- `mutation: Marking (Boundaries) -- AuditEventSave.Send's ObserveMarking call removed -> AuditEventEditor.TestASaveRecordsTheMarkingItObservesAfterTheWrite red (run 11041). DEMONSTRATED 2026-09-24 (review pass), restored, tree byte-identical`
+- `mutation: AC2 (client) -- canSave() ignores the held read -> audit-event-editor.store.spec.ts "an edit whose read failed for any other reason" red. DEMONSTRATED 2026-09-24 (review pass), restored`
+
 **Once, before `dev_complete`:** the full ObjectScript sweep on `ocupilot-ci`, one class per call, with totals from the numeric-run-index probe. Then `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS`. The full browser suite runs in CI (Rule 29).
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+- **Change:** the User events list gains a dialog editor. Create posts to `POST /audit-events` through the new `security.audituserevents.create` (absence read first, `AUDITEVENT.TAKEN` on a taken name in any case). The name cell opens it over one event; Description alone goes to `PUT /audit-events/:id` through the widened `security.audituserevents.update`, merged over a fresh read. Ten `AUDITEVENT.*` rules are checked before any write, all six audit-event tools refuse the other list's events through both hooks (DW-1575), a Save through a `MOVESMARKING` tool records the observed marking fact, and the client publishes `audit-user-event` with the server's triple.
+- **Files:**
+  - server: `Area/Security/{AuditEventRules,AuditEventSave}.cls` and `Screen/Tool/AuditUserEventCreate.cls` (new); five audit-event tools (owner parameter and hooks); `Api/{Router,Error}.cls` (appended); `Kernel/Proposal/Prohibited.cls` (field lists); `Classification.cls` and the regenerated `ToolFields.cls`; `AuditUserEventList.cls` (Create and three prompts); `Kernel/EntityType.cls` (sentence corrected).
+  - client: `areas/security/` store, dialog, list page and actions, plus two specs; registrations in `app.ts`, `screen-outlet.ts` and `navigation.ts`; `strings.ts` and `screens.generated.ts`; `angular.json` and its pinned literal.
+  - tests: `Test/{AuditEventRules,AuditEventEditor,MarkingSave}.cls` (new); roster rows in `ReadTool`, `ToolRoundTrip`, `EndpointCoverage`, `SurfaceCoverage` and `AuditEventTools`; `ui/tools/audit-event-copy.test.mjs` and `ui/browser/audit-event-editor.browser-spec.mjs` (new); `navigation.test.mjs`.
+  - also: EXPERIENCE.md (four Fixed-strings rows) and `scripts/ci-throwaway.sh` (two `# classes:` lines).
+- **Review:** 16 findings. Five were patched (three medium, two low), all test additions, each medium one demonstrated red under its mutation. Six were rejected as low and five as false, with the reasons in the triage log. Nothing was deferred.
+- **Follow-up review:** `false`. The three medium patches are tests only, and each went red under its mutation, so no unverified risk remains to name.
+- **Verification:**
+  - Sweep: the full ObjectScript sweep ran on `ocupilot-ci`, one class per call, runs 11043 to 11290. The `%UnitTest_Result` probe gives 248 classes and 2161 tests, 2160 passed and 1 failed. The one failure is the known residue `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal` (DW-1425/DW-1468, about 2,000 task-history rows on the reused throwaway), which was reported and not fixed.
+  - Smoke: `smoke.sh --container ocupilot-ci` passed 49 of 49.
+  - This story's browser specs, after rebuilding and redeploying: `audit-event-editor` 3/3 and `audit-events` 4/4.
+  - Client: `test:tools` 1407/1407 and `test:components` 1218/1218, with the store spec 7/7 after the patch.
+  - Checkers: `check-objectscript.py` and `lint-docs.sh` clean.
+  - Probe events left on `ocupilot-ci`: 0.
+- **Bundle:** the measured initial total is 1,576,569 B (`main` 1,435,183 plus `styles` 141,386). `maximumWarning` and its pinned literal are 1577kB, below the 1580kB stop line.
+- **Residual risk:** a user create of a `%`-Source event answers `PART.RESERVED`, not `AUDITEVENT.SYSTEM`. The matrix's Reserved row requires this. It is recorded in the triage log for the lead.
+- **footprint_extensions:**
+  - named in the spec's Design Notes: `src/OcuPilot/Kernel/EntityType.cls`, `src/OcuPilot/Kernel/Proposal/Prohibited.cls`, `ui/src/app/app.ts`, `ui/src/app/shell/screen-outlet.ts` and `ui/src/app/core/navigation.ts`;
+  - outside the Code Map: `ui/tools/navigation.test.mjs` and `src/OcuPilot/Test/MarkingSave.cls`.

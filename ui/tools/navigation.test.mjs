@@ -310,10 +310,14 @@ test('documentScreenFor resolves the REST API explorer to its unlisted, id-keyed
   // row's name cell opens its own id route.
   // Mutation (Rule 19): drop ResourceList from `DIALOG_EDITORS` -> the dialog-editor assertion goes red.
   const resources = screenForRoute('permissions/resources');
-  assert.deepEqual([...DIALOG_EDITORS], [resources.descriptor], 'the Resources list is the one screen whose editor is a dialog');
-  assert.equal(createFormFor(resources), null, 'so its Create opens no form page');
-  assert.equal(editorScreenFor(resources), null, 'and a row name opens the list\'s own id route');
-  assert.equal(hasIdRoute(resources), true, 'which it declares');
+  // Story 9.10: the User events list's editor is a dialog over the list the same way.
+  const userEvents = screenForRoute('security/auditing/user-events');
+  assert.deepEqual([...DIALOG_EDITORS], [resources.descriptor, userEvents.descriptor], 'the Resources and User events lists are the screens whose editor is a dialog');
+  for (const screen of [resources, userEvents]) {
+    assert.equal(createFormFor(screen), null, `${screen.route}: its Create opens no form page`);
+    assert.equal(editorScreenFor(screen), null, `${screen.route}: and a row name opens the list's own id route`);
+    assert.equal(hasIdRoute(screen), true, `${screen.route}: which it declares`);
+  }
   const roles = screenForRoute('permissions/roles');
   assert.equal(createFormFor(roles).route, 'permissions/roles/edit', 'the Roles list\'s Create opens its own form');
   assert.equal(isListedScreen(screenForRoute('permissions/roles/edit')), false, 'which takes no side-bar position');

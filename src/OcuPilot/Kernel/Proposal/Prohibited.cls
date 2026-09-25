@@ -528,7 +528,8 @@ ClassMethod CoveredTypes() As %List
 /// reads the kernel.</p>
 ClassMethod PermittedChangeFields(pType As %String) As %List
 {
-    If (pType = ..#TYPEAUDITEVENT) || (pType = ..#TYPEAUDITUSEREVENT) Quit $ListBuild(..#FIELDENABLED)
+    If pType = ..#TYPEAUDITEVENT Quit $ListBuild(..#FIELDENABLED)
+    If pType = ..#TYPEAUDITUSEREVENT Quit $ListBuild("Description", ..#FIELDENABLED)
     If pType = ..#TYPEWEBAPPLICATION Quit ..WebApplicationSettingFields() _ $ListFromString(..#APPLICATIONROLEFIELDS)
     If pType = ..#TYPEUSER Quit $ListBuild(..#FIELDENABLED, ..#FIELDROLES, ..#FIELDCHANGEPASSWORD) _ ..UserSettingFields()
     If pType = ..#TYPEAUDITING Quit $ListBuild(..#FIELDENABLED)
@@ -642,6 +643,7 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPEDEVICE Quit ..DeviceFields()
     If pType = ..#TYPESSL Quit ..SslFields()
     If pType = ..#TYPETASK Quit ..TaskCreateFields()
+    If pType = ..#TYPEAUDITUSEREVENT Quit $ListBuild("Description", ..#FIELDENABLED)
     Quit ""
 }
 
@@ -2794,12 +2796,13 @@ ClassMethod Refuse(pCode As %String, Output pProhibits As %Boolean, Output pOutC
 }
 
 /// <p>The audit event predicates, <var>pType</var> being a system or a user event: the
-/// reviewed-few sweep and nothing else, over <code>Enabled</code>.</p>
+/// reviewed-few sweep and nothing else, over <code>Enabled</code> for a system event and
+/// <code>Description</code> and <code>Enabled</code> for a user event.</p>
 /// <p><b>AD-10 names no audit-event effect.</b> Enabling, disabling, resetting and deleting an
 /// event are changes an operator is entitled to make; the one that stops agent writes being marked
 /// -- disabling or deleting OcuPilot's own marker event -- is warned, not refused: the card's audit
 /// warning, the screen's warning or advisory, and the banner (AD-15). Every other field is refused
-/// <parameter>UNCOVEREDFIELD</parameter>, <code>Description</code> among them. A reset's
+/// <parameter>UNCOVEREDFIELD</parameter>, a system event's <code>Description</code> among them. A reset's
 /// <code>Total</code> row is its declared state label and a delete's rows are its fingerprint
 /// subject, so <method>Changed</method> skips both.</p>
 ClassMethod AuditEvent(pType As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]

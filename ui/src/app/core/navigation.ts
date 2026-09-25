@@ -202,11 +202,15 @@ export const CREATE_ONLY_FORMS: ReadonlySet<string> = new Set<string>([]);
 
 /**
  * Screens whose editor is a dialog over the screen itself rather than a paired `form-page`: the
- * Resources list (Story 8.4), whose editor opens from its Create and from a row's name cell. Their
+ * Resources list (Story 8.4) and the User events list (Story 9.10), whose editors open from their
+ * Create and from a row's name cell. Their
  * routes carry the unsaved-changes guard a `form-page` route carries (`app.routes.ts`), so leaving
  * one while its dialog holds a change asks first.
  */
-export const DIALOG_EDITORS: ReadonlySet<string> = new Set(['OcuPilot.Screen.Descriptor.ResourceList']);
+export const DIALOG_EDITORS: ReadonlySet<string> = new Set([
+  'OcuPilot.Screen.Descriptor.ResourceList',
+  'OcuPilot.Screen.Descriptor.AuditUserEventList',
+]);
 
 /**
  * The route segment a list's own document viewer is declared under, appended to the list's route.

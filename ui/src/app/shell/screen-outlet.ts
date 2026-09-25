@@ -30,6 +30,7 @@ import { RoleEditorPage } from '../areas/permissions/role-editor.page';
 import { UserEditorPage } from '../areas/permissions/user-editor.page';
 import { RoleCreateFormPage } from '../areas/permissions/role-create-form.page';
 import { ResourceListPage } from '../areas/permissions/resource-list.page';
+import { AuditUserEventListPage } from '../areas/security/audit-user-event-list.page';
 import { WalletSecretFormPage } from '../areas/security/wallet-secret-form.page';
 import { X509FormPage } from '../areas/security/x509-form.page';
 import { SslFormPage } from '../areas/security/ssl-form.page';
@@ -119,6 +120,7 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.TaskForm': TaskWizardPage,
   'OcuPilot.Screen.Descriptor.ServiceForm': ReducedFormPage,
   'OcuPilot.Screen.Descriptor.LdapConfigForm': ReducedFormPage,
+  'OcuPilot.Screen.Descriptor.AuditUserEventList': AuditUserEventListPage,
 };
 
 /**

@@ -29,24 +29,25 @@ Parameter MARKER = "OcuPilot/Security/AgentWrite";
 
 Parameter ENDPOINT = "Security.Audit.Event";
 
-/// <p>Both update tools write <code>Enabled</code> alone, over the class-derived
+/// <p>The system update tool writes <code>Enabled</code> alone and the user one
+/// <code>Description</code> too (Story 9.10), over the class-derived
 /// <code>Security.Audit.Event:Security.Events</code> list, through the vendor's own endpoint, and
-/// agree with the prohibited set's permitted list for their entity type.</p>
+/// each agrees with the prohibited set's permitted list for its entity type.</p>
 Method TestTheUpdateToolsAdmitEnabledAloneOverTheClassDerivedList()
 {
-    For tPair = $ListBuild(..#SYSTEMUPDATE, "security.auditsystemevents.update", "OcuPilot.Screen.Descriptor.AuditSystemEventList", "audit-event"), $ListBuild(..#USERUPDATE, "security.audituserevents.update", "OcuPilot.Screen.Descriptor.AuditUserEventList", "audit-user-event") {
+    For tPair = $ListBuild(..#SYSTEMUPDATE, "security.auditsystemevents.update", "OcuPilot.Screen.Descriptor.AuditSystemEventList", "audit-event", "Enabled"), $ListBuild(..#USERUPDATE, "security.audituserevents.update", "OcuPilot.Screen.Descriptor.AuditUserEventList", "audit-user-event", "Description,Enabled") {
         Set tClass = $List(tPair, 1)
         Do $$$AssertEquals($Parameter(tClass, "TOOLNAME"), $List(tPair, 2), tClass _ " is " _ $List(tPair, 2))
         Do $$$AssertEquals($Parameter(tClass, "DESCRIPTORCLASS"), $List(tPair, 3), "and writes for " _ $List(tPair, 3))
         Do $$$AssertEquals($ClassMethod(tClass, "Endpoint") _ "|" _ $ClassMethod(tClass, "IdArgument") _ "|" _ $ClassMethod(tClass, "IdParam"), ..#ENDPOINT _ "|EventName|event", "over Security.Audit.Event, keyed by the row's EventName sent as the port's event key")
-        Do $$$AssertEquals($ListToString($ClassMethod(tClass, "SettableFields")), "Enabled", "admitting Enabled alone of the derived Description and Enabled")
+        Do $$$AssertEquals($ListToString($ClassMethod(tClass, "SettableFields")), $List(tPair, 5), "admitting " _ $List(tPair, 5) _ " of the derived Description and Enabled")
         Do $$$AssertEquals($ListToString($ClassMethod(tClass, "PermittedFields")), $ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields($List(tPair, 4))), "which is what the prohibited set permits for " _ $List(tPair, 4))
         Do $$$AssertEquals($ClassMethod(tClass, "WriteType") _ "|" _ $ClassMethod(tClass, "SendsBody") _ "|" _ $ClassMethod(tClass, "Destructive"), "PUT|1|0", "a merge PUT, not destructive")
         Do $$$AssertEquals($ListToString($ClassMethod(tClass, "ScreenActionIds")), "enable,disable", "carrying Enable and Disable")
         Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Operation).MovesMarking(tClass), 1, "and moving the marking")
         Set tProperties = $ClassMethod(tClass, "InputSchema").properties
         Do $$$AssertEquals(tProperties.%GetTypeOf("Enabled"), "object", "the schema advertises Enabled")
-        Do $$$AssertEquals(tProperties.%GetTypeOf("Description"), "unassigned", "and not Description (IG-1)")
+        Do $$$AssertEquals(tProperties.%GetTypeOf("Description"), $Select($List(tPair, 5) [ "Description": "object", 1: "unassigned"), "and Description only where it admits it")
         Set tPairs = $ClassMethod(tClass, "PrivilegePairs", "", .tResolved)
         Do $$$AssertTrue(tResolved, "its pairs resolve")
         Do $$$AssertTrue($ListFind(tPairs, $ListBuild("%Admin_Secure", "USE")) > 0, "including %Admin_Secure:USE, once")
@@ -57,10 +58,12 @@ Method TestTheUpdateToolsAdmitEnabledAloneOverTheClassDerivedList()
 /// state is not.</p>
 Method TestAScreenActionThatChangesNothingIsRefusedAtTheRead()
 {
-    Set tSC = ##class(OcuPilot.Screen.Tool.AuditEventUpdate).ScreenActionDelta("enable", {}, {"Description": "d", "Enabled": true}, .tArgs, .tProblem)
+    Set tValues = {}
+    Do tValues.%Set("EventName", ..#SYSTEMEVENT, "string")
+    Set tSC = ##class(OcuPilot.Screen.Tool.AuditEventUpdate).ScreenActionDelta("enable", tValues, {"Description": "d", "Enabled": true}, .tArgs, .tProblem)
     Do $$$AssertStatusOK(tSC, "the delta answers")
     Do $$$AssertTrue(tProblem '= "", "enabling an enabled event is a problem: " _ tProblem)
-    Set tSC = ##class(OcuPilot.Screen.Tool.AuditEventUpdate).ScreenActionDelta("disable", {}, {"Description": "d", "Enabled": true}, .tArgs, .tProblem)
+    Set tSC = ##class(OcuPilot.Screen.Tool.AuditEventUpdate).ScreenActionDelta("disable", tValues, {"Description": "d", "Enabled": true}, .tArgs, .tProblem)
     Do $$$AssertEquals(tProblem, "", "disabling an enabled one is not")
     Do $$$AssertEquals(tArgs.%ToJSON(), "{""Enabled"":false}", "and sends Enabled false")
 }
@@ -213,8 +216,9 @@ Method TestThePortSplitsTheEventKeyAndRefusesAMalformedOne()
     Do $$$AssertEquals($Get(tSplit("event")), "S/T/N", "is left as it was")
 }
 
-/// <p>The prohibited set covers both event types, permits a change to <code>Enabled</code> and
-/// refuses one to <code>Description</code> as an unreviewed field, for either type (AD-10).</p>
+/// <p>The prohibited set covers both event types, permits a change to <code>Enabled</code>, refuses
+/// one to a system event's <code>Description</code> as an unreviewed field and permits one to a
+/// user event's (AD-10, Story 9.10).</p>
 Method TestTheProhibitedSetPermitsEnabledAloneForBothTypes()
 {
     For tCase = $ListBuild("security.auditsystemevents.update", "audit-event", ..#SYSTEMEVENT), $ListBuild("security.audituserevents.update", "audit-user-event", ..#USEREVENT) {
@@ -239,7 +243,7 @@ Method TestTheProhibitedSetPermitsEnabledAloneForBothTypes()
         Set tDiff = [{"field": "Description", "before": (tLive.Description), "after": "a description nobody reviewed"}]
         Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).Prohibits(tTool, tRef, tPayload.%ToJSON(), tDiff.%ToJSON(), .tProhibits, .tCode)
         Do $$$AssertStatusOK(tSC, "the set answers for a Description change")
-        Do $$$AssertEquals(tProhibits _ "|" _ tCode, "1|" _ ##class(OcuPilot.Kernel.Proposal.Prohibited).#UNCOVEREDFIELD, "and refuses it as unreviewed for " _ tType)
+        Do $$$AssertEquals(tProhibits _ "|" _ tCode, $Select(tType = "audit-user-event": "0|", 1: "1|" _ ##class(OcuPilot.Kernel.Proposal.Prohibited).#UNCOVEREDFIELD), "and answers a Description change as its field list says for " _ tType)
     }
     ; A reset's Total row is its state label and a delete's rows are its fingerprint subject, so the
     ; sweep reads neither as a changed field and neither write is refused.

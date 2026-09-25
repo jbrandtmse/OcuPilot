@@ -159,6 +159,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/services/:id" Method="PUT" Call="ServiceUpdate"/>
   <Route Url="/ldap/form" Method="GET" Call="LdapFormRead"/>
   <Route Url="/ldap/:id" Method="PUT" Call="LdapUpdate"/>
+  <Route Url="/audit-events/form" Method="GET" Call="AuditEventFormRead"/>
+  <Route Url="/audit-events/:id" Method="PUT" Call="AuditEventUpdate"/>
+  <Route Url="/audit-events" Method="POST" Call="AuditEventCreate"/>
 </Routes>
 }
 
@@ -1097,6 +1100,27 @@ ClassMethod LdapFormRead() As %Status
 ClassMethod LdapUpdate(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Area.Security.LdapSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /audit-events/form</code>: the user audit event
+/// editor's form read (Story 9.10). The sub-resource precedes <code>/audit-events/:id</code>.</p>
+ClassMethod AuditEventFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.AuditEventRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /audit-events/:id</code>: the user audit event
+/// editor's Description Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod AuditEventUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.AuditEventSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /audit-events</code>: the user audit event
+/// editor's create Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod AuditEventCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.AuditEventSave).HandleCreate()
 }
 
 }

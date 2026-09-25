@@ -34,8 +34,10 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// rows), and the rest stay <code>ordinary</code> and unadvertised.</p>
 /// <p><b><code>security.auditsystemevents.update</code></b> and
 /// <b><code>security.audituserevents.update</code></b> classify the class-derived
-/// <code>Security.Audit.Event:Security.Events</code> list's two literals <code>ordinary</code>; each
-/// tool admits <code>Enabled</code> alone (<class>OcuPilot.Screen.Tool.AuditEventUpdate</class>).</p>
+/// <code>Security.Audit.Event:Security.Events</code> list's two literals <code>ordinary</code>; the
+/// system tool admits <code>Enabled</code> alone (<class>OcuPilot.Screen.Tool.AuditEventUpdate</class>)
+/// and the user tool <code>Description</code> too, as <b><code>security.audituserevents.create</code></b>
+/// does over the same list.</p>
 /// <p><b><code>security.auditing.update</code></b> classifies the one row of
 /// <code>Security.Audit.Enabled</code> -- the derived <code>Enabled</code> boolean --
 /// <code>ordinary</code>. A path no entry names is emitted <code>secret</code>, and a secret row
@@ -138,6 +140,13 @@ XData Entries
     }
   },
   "security.audituserevents.update": {
+    "fieldList": "Security.Audit.Event:Security.Events",
+    "classification": {
+      "Description": "ordinary",
+      "Enabled": "ordinary"
+    }
+  },
+  "security.audituserevents.create": {
     "fieldList": "Security.Audit.Event:Security.Events",
     "classification": {
       "Description": "ordinary",

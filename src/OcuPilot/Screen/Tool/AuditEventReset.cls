@@ -59,6 +59,10 @@ Parameter STATEFIELD = "Total";
 /// <p>The value the state row reads after the write.</p>
 Parameter STATEAFTER = "0";
 
+/// <p>The event list this tool administers (DW-1575); see
+/// <method>OcuPilot.Area.Security.AuditEventRules.OwnerProblem</method>.</p>
+Parameter EVENTOWNER = "system";
+
 /// <p><code>%Admin_Secure:USE</code>, the endpoint's <code>ResourcesOR()</code> resource and one of
 /// the screen's own pairs (AD-8).</p>
 Parameter WRITERESOURCE = "%Admin_Secure";
@@ -99,6 +103,27 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     If tProperties.%GetTypeOf(..IdArgument()) '= "object" Quit tSchema
     Do tProperties.%Get(..IdArgument()).%Set("description", "The audit event whose counters to reset, as Source/Type/Name exactly as this instance's own events list reports it. An event the list does not report is refused.", "string")
     Quit tSchema
+}
+
+/// <p>The agent's arguments refused when <var>pIdValue</var> is the other list's event
+/// (<method>OcuPilot.Area.Security.AuditEventRules.OwnerProblem</method>, DW-1575).</p>
+ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Set pProblem = ##class(OcuPilot.Area.Security.AuditEventRules).OwnerRefusal($ClassName(), pIdValue)
+    If pProblem '= "" Quit $$$OK
+    Quit ##super(pIdValue, pArgs, .pProblem)
+}
+
+/// <p>The screen action refused, before anything is sent, when its target is the other list's event
+/// (DW-1575).</p>
+ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, pFresh As %DynamicObject, Output pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Set pProblem = ##class(OcuPilot.Area.Security.AuditEventRules).OwnerRefusal($ClassName(), $Select($IsObject(pValues): pValues.%Get(..IdArgument()), 1: ""))
+    If pProblem '= "" {
+        Set pArgs = ..ScreenActionArguments(pActionId, .tServes)
+        Quit $$$OK
+    }
+    Quit ##super(pActionId, pValues, pFresh, .pArgs, .pProblem)
 }
 
 /// <p>The screen's own pairs together with

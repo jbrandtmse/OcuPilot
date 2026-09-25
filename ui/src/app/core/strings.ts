@@ -1946,7 +1946,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:549 */
+  /** EXPERIENCE.md:553 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2137,6 +2137,43 @@ export const STRINGS = {
   ldapPromptServers: 'Which LDAP servers does this configuration use?',
   /** EXPERIENCE.md:508 */
   ldapPromptUsers: 'How does this configuration find a user?',
+  // Story 9.10: the user audit event editor, its refusals and the User events list's prompts.
+  /** EXPERIENCE.md:509 */
+  auditUserEventEditorCreate: 'New user event',
+  /** EXPERIENCE.md:509 */
+  auditUserEventEditorEdit: 'Edit user event <name>',
+  /** EXPERIENCE.md:509 */
+  auditEventFieldSource: 'Source',
+  /** EXPERIENCE.md:510 */
+  auditEventRefusalPartRequired: 'Enter a value. An audit event is named by its source, type and name.',
+  /** EXPERIENCE.md:510 */
+  auditEventRefusalPartLength: 'Use 64 characters or fewer.',
+  /** EXPERIENCE.md:510 */
+  auditEventRefusalPartSlash:
+    'Remove the slash. An event\'s source, type and name are joined with slashes, so none of them can contain one.',
+  /** EXPERIENCE.md:510 */
+  auditEventRefusalPartReserved:
+    'Start with a character other than %. A source or type beginning with % is reserved for the instance\'s own system events.',
+  /** EXPERIENCE.md:510 */
+  auditEventRefusalDescriptionLength: 'Use 256 characters or fewer.',
+  /** EXPERIENCE.md:510 */
+  auditEventRefusalEventNameShape: 'Name the event as source/type/name: three parts, none containing a slash.',
+  /** EXPERIENCE.md:511 */
+  auditEventRefusalSystem: 'This is one of the instance\'s own system events. Change it on the System events list.',
+  /** EXPERIENCE.md:511 */
+  auditEventRefusalUser: 'This is a user event. Change it on the User events list.',
+  /** EXPERIENCE.md:511 */
+  auditEventRefusalTaken: 'This instance already has an audit event with this source, type and name.',
+  /** EXPERIENCE.md:511 */
+  auditEventRefusalAbsent: 'This audit event no longer exists.',
+  /** EXPERIENCE.md:512 */
+  auditUserEventPromptGroup: 'Auditing',
+  /** EXPERIENCE.md:512 */
+  auditUserEventPromptEnabled: 'Which user events are enabled?',
+  /** EXPERIENCE.md:512 */
+  auditUserEventPromptBusiest: 'Which user events have recorded the most?',
+  /** EXPERIENCE.md:512 */
+  auditUserEventPromptRegister: 'Register an audit event for my application.',
 } as const;
 
 /**

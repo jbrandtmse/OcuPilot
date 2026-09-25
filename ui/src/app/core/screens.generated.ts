@@ -1307,7 +1307,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ]
     },
     "primaryAction": {
-      "id": "",
+      "id": "create",
       "selfProtection": ""
     },
     "rowActions": [
@@ -1340,6 +1340,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "emptyStateKey": "auditUserEventListEmpty",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "auditUserEventPromptEnabled"
+      },
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "auditUserEventPromptBusiest"
+      },
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "auditUserEventPromptRegister"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.Audit.UserEvents",
     "classicLinkExemption": {
       "exempt": false,
