@@ -4,13 +4,13 @@
 
 ## Goal
 
-Polish week: the user makes the portal their own. Stories 15.1 to 15.6 are done: own password,
+Polish week: the user makes the portal their own. Stories 15.1 to 15.7 are done: own password,
 favorites and recents, About/help/shortcuts/links, Home's System Information, UI state kept on the
-instance, and the light and dark theme. Their results are now constraints, not choices. **15.7** is
-next. It replaces the rail's letters with the area icons drawn in the Home mockup, and Home's tiles
-get the same icons, so a screenshot reads as a finished product rather than a wireframe. **15.8**
-(columns you can read) is not in this run. Epic 7 has merged, so it is released, but it runs later
-on its own, ranked after Epic 12.
+instance, the light and dark theme, and the rail's icons. Their results are now constraints, not
+choices. Two stories remain, run by one runner on slot A, 15.8 first. **15.8** makes list columns
+readable: widths follow the content, columns can be resized, and a cut value shows in full.
+**15.9** puts sign-out where people look for it and removes the filter from screens with nothing to
+filter. Together they make the shell read as finished to a first-time judge.
 
 ## Stories
 
@@ -20,103 +20,127 @@ on its own, ranked after Epic 12.
 - Story 15.4: Home's System Information panel (done)
 - Story 15.5: UI state that survives a sign-out (done)
 - Story 15.6: The light and dark theme (done)
-- Story 15.7: The rail's icons
-- Story 15.8: Columns you can read (not in this run; separate later dispatch)
+- Story 15.7: The rail's icons (done)
+- Story 15.8: Columns you can read
+- Story 15.9: Sign-out where people look, and no filter where there is nothing to filter
 
 ## Requirements & Constraints
 
-- **15.7 icons.** Each of the eight rail items takes the icon drawn for its area in the rail of
-  `ux-designs/ux-OcuPilot-2026-09-08/mockups/key-home.html`. The items are Home, Logs, OS
-  management, Tasks, Permissions, Web applications and REST API explorer, Security and secrets, and
-  Agent co-pilot. Each icon is inline SVG on a 20×20 view box with a 1.5 stroke in `currentColor`,
-  and no letter remains. Home's six area tiles take the 24px version of the same icon. Nothing
-  loads from outside the bundle.
-- **State colors come only through `currentColor`, in both themes.** The contrast figures are
-  DESIGN.md's `rail-item` rows, light / dark on `shell`:
-  - rest: `on-shell` at 72%, 6.15:1 / 7.31:1
-  - hover and active: `on-shell` at 100%
-  - gated: `on-shell` at 45%
-  - tile icon: `primary`; gated tile icon: `restrained`
-
-  The attention dot sits at the icon's top-right, drawn in `agent-accent-dark` with a 1.5px `shell`
-  ring and offset 2px. The contrast floor is 3:1 for non-text and 4.5:1 for text, the same in both
-  modes.
-- **The icons are decorative.** A screen reader hears only the area name, which is the
-  `aria-label` on a rail item and the visible name on a tile. Nothing is announced from the SVG.
-- **Correct the docs at origin when 15.7 completes.** DESIGN.md's `rail` paragraph must name the
-  mockup's icons in place of the interim Material Symbols set (UX-DR15, amended 2026-09-23).
-  EXPERIENCE.md's rail row still reads "Placeholder icons until the owner's icon work lands"
-  (inference: the same correction belongs there). The other interim-glyph slots (empty states,
-  inline notices, sign-in) are out of scope and keep the vendored Material Symbols placeholder.
-  Never draw an initial in a circle.
-- **The DW-1337 structural gate now covers every change.**
-  `ui/browser/a11y-structural-invariants.browser-spec.mjs`, using `structural-walk.mjs`, walks every
-  built screen from the registry in both themes. It checks accessible names, control minimum
-  widths, overflow and text contrast against `ui/browser/structural-baseline.json`, which holds 190
-  entries. CI's `browser` job fails only on a violation outside the baseline. If a change removes a
-  baseline violation, the gate prints that entry as stale and stays green, and the entry should be
-  deleted. The gate fails on a visit that does not settle within 20s.
-- **Strings.** A new user-facing string is appended to EXPERIENCE.md's Fixed strings table before it
-  exists as a `strings.ts` key. The test requires exact set equality with globally unique values.
-  15.7 should need none, because the area names and the "<Area> · Ctrl+B toggles the side bar"
-  tooltip already exist.
+- **15.8 widths.** A column's default width follows what it holds: identifier and code columns
+  are wide, status and number columns narrow. The header label sets each column's minimum and is
+  never cut. When the columns are wider than the content area, the table scrolls horizontally
+  inside its own frame, with the sticky header aligned to the body. Data tables are the one
+  two-dimensional reflow exception, and the page never scrolls sideways.
+- **15.8 resizing.** Dragging a header edge resizes the column, never below its label. The
+  keyboard can do the same on the grid's active column, the binding is listed in the shortcuts
+  menu, and the new width is announced. A width the user sets is restored on return and after a
+  sign-out, stored per screen on the instance beside sort, filter and max rows. It is never kept
+  in browser storage.
+- **15.8 cut values.** A cut cell shows its whole value in a tooltip when the pointer rests on it
+  or the active cell moves onto it. A cell that is not cut shows none. A bare `title` attribute
+  never carries the value, because it cannot be reached by keyboard (DW-146).
+- **15.8 row geometry.** Row and header heights never change on resize or scroll: the virtual list
+  has a fixed row height, and the browser specs that pin both heights must stay green.
+- **15.8 owns DW-1586.** A data-table name link renders narrower than the 24px control floor
+  (devices 7.2px, users 21.6px). The floor is that every control is at least 24×24 CSS px. The
+  issue accounts for 4 structural-baseline keys, which this story fixes and deletes.
+- **Docs to correct at origin for 15.8 (inference).** Interaction Primitives says "No drag except
+  the panel-resize-handle", and the keyboard-model table has no column binding. Both conflict with
+  the ACs and need amending in EXPERIENCE.md.
+- **15.9 header account button.** The header's right end, beside the namespace switch, carries a
+  button naming the signed-in user. It opens the account menu: About, Change password, Dark theme
+  and Sign out, with the same actions they have today. The status bar keeps the user name as
+  information only, so the menu has one trigger.
+- **15.9 Sign out command.** Typing "sign out" in the command search offers a Sign out command,
+  which signs out exactly as the menu does.
+- **15.9 filter removal.** Screens that declare no read show no filter field and no match count:
+  Home, the form pages and the application-error drill-down. A command bar left with nothing to
+  show does not render at all. List screens keep their filter.
+- **15.9 docs at origin.** EXPERIENCE.md's status-bar and Sign out rows must state the header
+  placement, and the Sign out row's `[ASSUMPTION]` about a command-box entry is resolved. DESIGN.md
+  says "Nothing else lives in the header" and calls the user the status bar's one interactive
+  segment (inference: both need the same correction). Browser specs pin four things: the header
+  button opens the menu, it signs out, Home shows no filter field, and a list still filters.
+- **15.9 owns DW-1597 (decided).** Suppress the change toast raised by the open screen's own Save.
+  Keep it for agent writes and for writes made elsewhere. DESIGN.md's toast recipe forbids a toast
+  confirming what the user just did on the open screen.
+- **Strings.** A new user-facing string is appended to EXPERIENCE.md's Fixed strings table before
+  it exists as a `strings.ts` key. The test requires exact set equality and globally unique values.
+  "Sign out" already exists (`actionSignOut`). A resize handle's name, the width announcement and
+  any tooltip copy do not.
+- **Structural gate (DW-1337).** It walks every registry screen in both themes. CI's `browser` job
+  fails only on a violation outside `ui/browser/structural-baseline.json`, which currently holds
+  212 entries. A fixed violation is printed as stale while the job stays green. Delete that entry.
+- **Bundle.** At the Epic 9 merge the bundle measured 1,576,591 B, just under `maximumWarning`
+  (1577kB). `maximumError` is 2000kB. Stop and ask before crossing 1900kB. The warning re-base
+  policy is unchanged.
 
 ## Technical Decisions
 
-- **The theme is one root class (Conventions › Theme).** `ocu-theme-dark` on `<html>` is the whole
-  theme. `core/theme.ts` sets it and `_theme.scss` selects it, re-pointing every bare `--ocu-<role>`
-  and `--mat-sys-*` variable to its `-dark` twin. A component draws bare roles and never selects on
-  the theme. Where a surface's variant is reversed between modes, the fix is a non-role token pair
-  in `_tokens.scss`, never a component rule. Chrome rules that name `-dark` tokens
-  (`secondary-dark`, `focus-ring-dark`, `agent-accent-dark`) keep doing so in both modes.
-- **The theme choice is stored on the instance.** It is the `shell` kind's `theme` member
-  (`light`/`dark`) in AD-50's single per-user store, `OcuPilot.Kernel.State.Pref`. Any other value
-  gets a 422 `PREFERENCES.CHOICE`. It is a self-service account action (AD-49): no proposal, no
-  marker, no tool. Light is the default until the read settles. Never use browser storage.
-- **Assets are vendored and lint-checked (AD-47, NFR-10).** client-lint's `no-hardcoded-color` hex
-  regex flags `#` followed by 3, 4, 6 or 8 hex characters, so no SVG id or fragment may look like a
-  hex color (DW-40). `no-off-origin-url` allowlists the `w3.org` SVG, XHTML and XLink namespace
-  URIs and nothing else.
-- **Client shape (AD-19).** The client is Angular standalone, zoneless and `OnPush`.
-  `ui/src/app/core/` imports no `@angular/core`: stores are plain subscribables that components
-  mirror into signals.
-- **Design tokens only.** No literal color appears outside `_tokens.scss`.
-- **Browser specs run against the deployed bundle.** Rebuild and redeploy before reading any
-  geometry or contrast result. Each context resets remembered state once with
-  `resetRememberedState()` from `ui/browser/preferences-reset.mjs`, which also clears `theme`.
-- **AD-53 and AD-56 (Epic 7) do not touch this story.** They govern the paths through which a
-  screen action and an agent write reach an instance object. The rail and Home do not write.
+- **Client shape (AD-19).** The client is standalone, zoneless and `OnPush`. Per-screen sort,
+  filter, max rows and selection live in a store keyed by the screen's descriptor, never in a
+  component field. `ui/src/app/core/` imports no `@angular/core`: its stores are plain
+  subscribables that components mirror into signals.
+- **Per-user preferences (AD-50).** They live in one Kind-discriminated store,
+  `OcuPilot.Kernel.State.Pref`, read and written through the caller-own preferences endpoint and
+  never through a declared read, screen context or a tool. The per-screen table view is the
+  existing `view` kind, keyed by route (inference: column widths extend that value rather than
+  adding a kind or a class). Writes are version-conditional, and a lost race is a 409
+  `STATE.CONFLICT`.
+- **Columns come from the descriptor's `table` declaration (AD-5).** It gives each column's label
+  key and kind. `screens.generated.ts` is emitted by `ui/tools/screen-mirror.mjs` and is never
+  hand-edited. Grid tracks derive from the declared column kinds so that the Databases free-space
+  cells fill without a reflow, and content-sized widths must keep that property.
+- **Sign-out (AD-28, AD-31).** `POST /api/ocupilot/logout` carries both the Bearer and the cookie,
+  ends the browser-level login, and first abandons the caller's running turns. The new header
+  button and the command reuse the existing path. There is no tab-only variant.
+- **Change events (AD-14).** An editor's Save still publishes on the bus, so the open screen
+  re-fetches and highlights. DW-1597 suppresses only the toast.
+- **Theme and tokens.** Components draw bare `--ocu-*` and `--mat-sys-*` roles and never select on
+  `ocu-theme-dark`. No literal color appears outside `_tokens.scss`, and client-lint's hex regex
+  applies.
+- **Browser specs run against the deployed bundle.** Rebuild and `docker cp` into the throwaway
+  (`ocupilot-ci`, 52776) before reading any geometry result. Each context calls
+  `resetRememberedState()` once, from `ui/browser/preferences-reset.mjs`.
+- **AD-53 and AD-55 do not apply.** Neither story writes to an instance object.
 
 ## UX & Interaction Patterns
 
-- **Rail.** The rail is 48px wide on `shell` in both modes, and the chrome only deepens in dark
-  mode (`shell-dark`). Each item has a 48×48 hit area with a 20px icon centered in it. The rail is
-  one Tab stop: Up and Down move between items, and Enter or Space activates. The active item
-  carries `aria-current="page"`. Its tooltip, shown on hover after 300ms and on focus, reads
-  "<Area> · Ctrl+B toggles the side bar". The active indicator is a solid 3px `secondary-dark` bar,
-  inset 8px top and bottom, never a gradient. Hover adds an `on-shell` background at 8%. A gated
-  item stays focusable with `aria-disabled="true"`, has no hover state, and shows a "Requires
-  <resource>" tooltip. Focus is drawn with `focus-ring.on-chrome`. The rail never shows counts.
-- **Area tiles.** The tiles sit in an auto-fit grid that wraps, and Home never scrolls
-  horizontally. Each tile has a 24px `primary` icon above the area name, in caption weight 500,
-  with its screens beneath. On hover the border turns `secondary`. A gated tile draws its text and
-  icon in `restrained`, has no hover state, and shows the resource tooltip.
+- **Data table.** It is Material on CDK virtual scroll, inside a 1px `outline-variant` frame. The
+  header row is 36px, sticky, in `label` type and `on-surface-variant`. Identifier columns (name,
+  path, class, resource, pid) use `code` type. Numbers are tabular and right-aligned. The name cell
+  is a `secondary` link, and the last column is the 28px ⋮ trigger. There is no page-size control.
+- **Grid keyboard (APG).** The whole grid is one Tab stop, and focus stays on the container with
+  `aria-activedescendant`. Up and Down move the row, Right and Left step into cells, and
+  Alt/Option+Down opens the row menu. Resizing must fit this model without taking a Tab stop of its
+  own (inference).
+- **Tooltips** use `inverse-on-surface` on `inverse-surface`, `rounded.sm`, 5px 8px padding,
+  `caption` type and elevation 2. They show on hover and on focus.
+- **Header.** It is 48px on the shell gradient: the lockup on the left, the 360px command box in
+  the center, and the namespace switch on the right. Header text is never drawn below 100%
+  `on-shell` (5.35:1 light and 6.43:1 dark on `shell-edge`), and focus uses
+  `focus-ring.on-chrome`. The account menu keeps the `row-overflow-menu` styling.
+- **Command bar.** Its height is a minimum: it wraps rather than scrolling sideways at the 640px
+  content minimum. The filter field is 220px and its match count is a polite status. The command
+  box groups results as Screens and Actions and states the count "<n> screens, <m> actions".
+- **Toast.** It appears at the bottom right of the content area, clear of the panel, stacks three
+  deep, and is `role="status"`. It is never used for errors or for the open screen's own action.
 
 ## Cross-Story Dependencies
 
-- **15.7 builds on 15.6.** Its state colors must hold in both themes, and the structural gate from
-  15.6 walks the rail and Home on every run.
-- **Paths.** 15.7 edits `ui/src/app/shell/rail*` and `ui/src/app/areas/home/**`. Neither Epic 7
-  nor Epic 8 touches them (measured 2026-09-23). Epic 9 is running on slot A in parallel. Never
-  regenerate `screens.generated.ts`.
+- **Order.** 15.8 runs first, then 15.9, in one runner on slot A (`ocupilot-slot-a`). 15.8 builds
+  on 15.5's `view` kind and 15.3's shortcuts menu. Epics 7 and 9 have merged, including their edits
+  to `data-table*`, `command-bar*`, `command-box*` and `app.ts`.
+- **Epic 12 runs on slot B and modifies `ui/src/app/app.ts`.** Treat that file as a contended edit:
+  read the other branch first, append only, and report it under `footprint_extensions:`.
+  `status-bar*`, `account-menu*` and `header*` are untouched by other epics.
 - **Shared-append files** are edited at the tail only, never reordered or inserted into:
   - `src/OcuPilot/Api/Router.cls`
   - `src/OcuPilot/Api/Error.cls`
-  - the EXPERIENCE.md strings table
+  - the EXPERIENCE.md Fixed strings table
   - `ui/src/app/core/strings.ts`
   - `_components.scss`, where a token substitution is also permitted
 - **Shared-create:** `ui/browser/**`. A new, uniquely named spec there is reported under
   `footprint_extensions:`.
-- **15.8 is out of this run.** It depends on 15.5's store for per-screen widths. It must also
-  address DW-1586: data-table name links render narrower than the 24px floor, which is already in
-  the structural baseline.
+- **Not owned here.** The other baseline items (DW-1583, DW-1584 and DW-1587, for the panel
+  handle, the status bar at 720px and native checkboxes) belong to range-end cleanup.
