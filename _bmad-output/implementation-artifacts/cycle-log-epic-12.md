@@ -157,3 +157,4 @@
 2026-09-25T08:39:57Z	Epic 12	spine_updated	ad=AD-35 reason=decision_sheet(orchestrator_ruling_resume,DW-1645) by=runner story=none lint=ok(1_preexisting_low)
 2026-09-25T08:39:57Z	Epic 12	ledger_rerouted	entry=DW-1645 status=routed owner=range-end-cleanup by=merge_gate(orchestrator_ruling)
 2026-09-25T08:42:04Z	Epic 12	epic_context_compiled	reason=planning_artifact_newer(integrate_forward_Epic_9,AD-27/35/44) model=opus
+2026-09-25T08:42:11Z	Story 12.6	stage_spawned	stage=plan spawn_at=2026-09-25T08:42:11Z model=opus agent_name=12-6-oauth-resource-server-plan-1 cycle_iteration=1
