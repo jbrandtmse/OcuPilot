@@ -126,6 +126,24 @@ export const CONSEQUENCE_PRIVILEGED = 'GRANT.PRIVILEGED';
 /** The one consequence a web-application create carries when it is both unauthenticated and privileged. */
 export const CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED = 'WEBAPP.UNAUTHENTICATEDPRIVILEGED';
 
+/** The consequence the kernel marks a change clearing a web application's resource with (AD-10). */
+export const CONSEQUENCE_NORESOURCE = 'WEBAPP.NORESOURCE';
+
+/** The consequence the kernel marks a change repointing a web application's code with (AD-10). */
+export const CONSEQUENCE_REPOINTED = 'WEBAPP.REPOINTED';
+
+/** The consequence the kernel marks a change turning an SSL/TLS configuration's peer verification off with (AD-10). */
+export const CONSEQUENCE_NOPEERCHECK = 'SSL.NOPEERCHECK';
+
+/** The consequence the kernel marks a task create that runs as another account with (AD-10, Story 9.7). */
+export const CONSEQUENCE_RUNSASOTHER = 'TASK.RUNSASOTHER';
+
+/** The consequence the kernel marks a change to the addresses or methods of the service OcuPilot is served through with (AD-10, Story 9.9). */
+export const CONSEQUENCE_SERVESOCUPILOT = 'SERVICE.SERVESOCUPILOT';
+
+/** The consequence the kernel marks a change letting any other service admit unauthenticated connections with (AD-10, Story 9.9). */
+export const CONSEQUENCE_SERVICEUNAUTHENTICATED = 'SERVICE.UNAUTHENTICATED';
+
 /**
  * The published sentence for a proposal's `consequence` code, or `''` for no code or one this
  * client publishes nothing for. The sentence is `STRINGS`'; the code is the kernel's (AD-39).
@@ -134,6 +152,12 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_UNAUTHENTICATED) return STRINGS.webAppUnauthenticatedEffect;
   if (code === CONSEQUENCE_PRIVILEGED) return STRINGS.privilegedGrantEffect;
   if (code === CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED) return STRINGS.privilegedGrantEffectUnauthenticated;
+  if (code === CONSEQUENCE_NORESOURCE) return STRINGS.webAppNoResourceEffect;
+  if (code === CONSEQUENCE_REPOINTED) return STRINGS.webAppRepointedEffect;
+  if (code === CONSEQUENCE_NOPEERCHECK) return STRINGS.sslEffectNoPeerCheck;
+  if (code === CONSEQUENCE_RUNSASOTHER) return STRINGS.taskRunAsOtherEffect;
+  if (code === CONSEQUENCE_SERVESOCUPILOT) return STRINGS.serviceEffectServesOcuPilot;
+  if (code === CONSEQUENCE_SERVICEUNAUTHENTICATED) return STRINGS.serviceEffectUnauthenticated;
   return '';
 }
 

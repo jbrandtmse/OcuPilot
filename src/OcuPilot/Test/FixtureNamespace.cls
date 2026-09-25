@@ -3,10 +3,24 @@
 /// Calls <code>Create("probe", ..., "USER")</code> from the install namespace and reads each
 /// binding back from the instance.</p>
 /// <p>Needs the production profile installed (the fixture inventory lives in its protected
-/// database) and a <code>USER</code> namespace. Creates and removes the <code>"probe"</code>
+/// database), a <code>USER</code> namespace and <parameter>ARMINGVARIABLE</parameter> reading
+/// <code>1</code>. Creates and removes the <code>"probe"</code>
 /// fixtures, and deletes the one application-error entry it seeded in <code>USER</code>.</p>
 Class OcuPilot.Test.FixtureNamespace Extends %UnitTest.TestCase
 {
+
+/// <p>The environment variable that arms this class, set by <file>scripts/ci-throwaway.sh</file>
+/// alone: the demo fixture creates and removes a TLS configuration, an X.509 credential and a
+/// wallet collection on this instance.</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_SSL_CONFIG";
+
+Method OnBeforeAllTests() As %Status
+{
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.FixtureNamespace creates and removes the demo fixture's objects on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
+    Quit $$$OK
+}
 
 /// <p>The namespace the fixtures are bound to: not the one this suite runs in.</p>
 Parameter TARGETNAMESPACE = "USER";

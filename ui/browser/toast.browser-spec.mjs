@@ -33,6 +33,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { signedInAt } from './panel-spec.mjs';
+import { MIN_WIDTH_SOURCES } from './structural-walk.mjs';
 import {
   armProbeDefinition,
   disarmProbeDefinition,
@@ -126,6 +127,16 @@ function removeTarget() {
     `Write "OCU-TOASTDEL-START:"_$System.Status.IsOK(sc)_":OCU-TOASTDEL-END",!`,
   ]);
   assert.equal(markerValue(output, 'TOASTDEL'), '1', `the probe application is removed: ${output}`);
+}
+
+/** Whether the probe application is enabled on the instance now. */
+function targetEnabled() {
+  const output = runIris([
+    `Set tNS=$Namespace ZN "%SYS" Kill tP Set sc=##class(Security.Applications).Get("${escapeOs(TARGET)}",.tP) ZN tNS Write "OCU-TOASTEN-START:"_$System.Status.IsOK(sc)_+$Get(tP("Enabled"))_":OCU-TOASTEN-END",!`,
+  ]);
+  const value = markerValue(output, 'TOASTEN');
+  assert.ok(value === '10' || value === '11', `the probe application reads: ${output}`);
+  return value === '11';
 }
 
 function dropProposals() {
@@ -229,6 +240,7 @@ function toastGeometry() {
     regionPointerEvents: getComputedStyle(document.querySelector('.ocu-toast-region')).pointerEvents,
     toastRects: toasts.map((toast) => plainRect(toast.getBoundingClientRect())),
     toastIds: toasts.map((toast) => toast.getAttribute('data-ocu-toast')),
+    dismissRects: [...document.querySelectorAll('.ocu-toast-dismiss')].map((button) => plainRect(button.getBoundingClientRect())),
     tokens: { space3, space4, statusBar },
     // DW-1412: the offset is the panel's own live width, published on `.ocu-shell` by `app.ts` and
     // read by `:host`'s `right` calculation. Both halves travel so the assertion can say which one
@@ -275,6 +287,20 @@ test(
       assert.equal(firstOnly.host.zIndex, '5', 'below the dialog scrim (6) and surface (7), above the shell menus (3/4)');
       assert.equal(firstOnly.host.pointerEvents, 'none', "the host itself does not intercept a click outside a toast's own box");
       assert.equal(firstOnly.regionPointerEvents, 'auto', 'but the region overrides that, or nothing in it would be clickable at all');
+
+      // EXPERIENCE.md "Target sizes": the dismiss control is at least 24 x 24 CSS px, in both
+      // dimensions -- the structural walk's floor measures width alone.
+      //
+      // Mutation (Rule 19): drop `min-width` or `min-height: var(--ocu-space-6)` from
+      // `.ocu-toast-dismiss` in `toast-host.ts` (rebuilt and redeployed) -> this assertion goes red
+      // at the glyph's own width or line height.
+      const floor = MIN_WIDTH_SOURCES.floor.px;
+      assert.equal(firstOnly.dismissRects.length, 1, 'the one toast draws one dismiss control');
+      const [dismissRect] = firstOnly.dismissRects;
+      assert.ok(
+        dismissRect.width + 0.5 >= floor && dismissRect.height + 0.5 >= floor,
+        `the dismiss control is at least ${floor} x ${floor} CSS px: ${dismissRect.width} x ${dismissRect.height}`
+      );
 
       const { width: viewportWidth, height: viewportHeight } = firstOnly.viewport;
       const { space3, space4, statusBar } = firstOnly.tokens;
@@ -491,7 +517,9 @@ test('Integration AC: the toast\'s "Open in <screen>" action opens the real rout
   const tag = nextTag();
   setTag(tag);
   try {
-    await sendAndConfirm(page, tag, false, 'navigate-test', 'toolu_toast_3');
+    // A merge that changes nothing is refused before it mints (DW-1577), so this turn proposes the
+    // value the application does not hold now, whichever test ran before it.
+    await sendAndConfirm(page, tag, !targetEnabled(), 'navigate-test', 'toolu_toast_3');
     await page.waitForSelector('.ocu-toast-action', { timeout: config.navigationTimeoutMs });
     const linkText = await page.evaluate(() => document.querySelector('.ocu-toast-action').textContent.trim());
     assert.equal(linkText, 'Open in Web applications', `the published link names the built screen: ${linkText}`);

@@ -18,6 +18,7 @@ import { STRINGS } from '../../core/strings';
 import { STATE_CONFLICT_CODE, type Violation } from '../../core/violations';
 import { Dialog } from '../../shell/dialog';
 import { PASSWORD_FIELD, ROLES_FIELD, type RoleOption, UserCreateForm } from './user-create-form.store';
+import { UserEditor } from './user-editor.store';
 
 /** The list this form is reached from, which Cancel and the leave confirmation return to. */
 const LIST_ROUTE = 'permissions/users';
@@ -273,6 +274,7 @@ interface FieldView {
 })
 export class UserCreateFormPage {
   private readonly store = inject(UserCreateForm);
+  private readonly editor = inject(UserEditor);
   private readonly formDirty = inject(FormDirty);
   private readonly router = inject(Router);
   private readonly navigation = inject(NavigationService);
@@ -479,11 +481,12 @@ export class UserCreateFormPage {
       return;
     }
     // A create replaces the route with the new account's URL, so the address bar names the entity
-    // and Back goes to the list. The buffer on screen, less the password, is carried across that
-    // one navigation; nothing here reads the `:id`.
-    if (this.store.createdId() !== '') {
-      this.store.retainAcrossRouteReplacement();
-      void this.router.navigateByUrl(this.editorUrl(this.store.createdId()), { replaceUrl: true });
+    // and Back goes to the list. That URL is the user editor (Story 9.1), which reads the account
+    // and opens showing "Saved"; this form's own state is left behind with it.
+    const created = this.store.createdId();
+    if (created !== '') {
+      this.editor.arriveSaved(created);
+      void this.router.navigateByUrl(this.editorUrl(created), { replaceUrl: true });
     }
   }
 

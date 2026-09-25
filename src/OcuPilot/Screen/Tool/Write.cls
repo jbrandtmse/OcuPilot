@@ -169,6 +169,17 @@ Parameter SCREENACTIONS = "";
 /// <code>fingerprintExcludes</code> with.</p>
 Parameter READANSWERS = "";
 
+/// <p>The query parameter this tool's fresh read sends the target's id under, or <code>""</code>
+/// for <method>IdParam</method>, which is every tool whose read and write identify a target the
+/// same way (AD-51).</p>
+Parameter READIDPARAM = "";
+
+/// <p>The row key a <b>list-type</b> fresh read is filtered by, or <code>""</code> for a read that
+/// answers one object (AD-51 as amended 2026-09-23). When set, the read answers an array and the
+/// target is the one row whose member of this name equals the id, compared without regard to case;
+/// no such row reads as absent (404).</p>
+Parameter READROWKEY = "";
+
 /// <p>The declared secret arguments an action-style write sends as its <b>only</b> body,
 /// comma-separated, or <code>""</code> for a write whose body is a merge or nothing (AD-56 (i)).
 /// <code>""</code> here, which is every write but a password change.</p>
@@ -207,6 +218,34 @@ ClassMethod ToolClass() As %String
 ClassMethod ReadType() As %String
 {
     Quit ..#READTYPE
+}
+
+/// <p>The query parameter the fresh read sends the id under: <parameter>READIDPARAM</parameter>,
+/// or <method>IdParam</method> where it declares none.</p>
+ClassMethod ReadIdParam() As %String
+{
+    If ..#READIDPARAM '= "" Quit ..#READIDPARAM
+    Quit ..IdParam()
+}
+
+/// <p><parameter>READROWKEY</parameter>, for the one helper every fresh read goes through
+/// (<method>OcuPilot.Kernel.Proposal.Operation.ReadTarget</method>).</p>
+ClassMethod ReadRowKey() As %String
+{
+    Quit ..#READROWKEY
+}
+
+/// <p>What happens once this tool's write has read OK, through the same port, for the target
+/// <var>pIdValue</var> whose fresh read before the write was <var>pFresh</var>. An error status
+/// carries <var>pHttpStatus</var> and <var>pFault</var>, which the caller answers with; the write
+/// itself has already been applied.</p>
+/// <p><b>Caller contract:</b> called by <method>OcuPilot.Kernel.Proposal.Operation.ApplyAt</method>
+/// alone, for both callers of the operation (AD-53). Nothing here by default.</p>
+ClassMethod AfterWrite(pPort As %String, pEndpoint As %String, pIdParam As %String, pIdValue As %String, pFresh As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Quit $$$OK
 }
 
 /// <p><parameter>WRITETYPE</parameter>, read at the one site that issues the write.</p>
@@ -251,6 +290,43 @@ ClassMethod Creates() As %Boolean
 /// a caller-supplied path is a filesystem path this product never accepts (AD-21).</p>
 ClassMethod DerivedFields(pPayload As %DynamicObject)
 {
+}
+
+/// <p>The composed payload and diff of a <b>create</b> (AD-54) from the caller's arguments
+/// <var>pArgs</var>, in <method>OcuPilot.Kernel.Proposal.Mint.Compose</method>'s contract: one
+/// payload property per supplied settable field, one diff row per supplied field, and
+/// <var>pUnchanged</var> the payload properties no diff row names.</p>
+/// <p><b>Caller contract:</b> the mint calls it once for a tool that declares
+/// <parameter>CREATES</parameter>, after the absence read and before the tool's own field rules.
+/// The kernel's <method>OcuPilot.Kernel.Proposal.Mint.Compose</method> here, so every create that
+/// shipped before Story 9.7 composes exactly as it did; a create whose endpoint requires a complete
+/// body, or whose arguments include an object, composes its own.</p>
+ClassMethod ComposeCreate(pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
+{
+    Quit ##class(OcuPilot.Kernel.Proposal.Mint).Compose(pArgs, pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
+}
+
+/// <p>The merged payload and diff of a <b>change</b> (AD-4) from the fresh read <var>pFresh</var> and
+/// the caller's arguments <var>pArgs</var>, in <method>OcuPilot.Kernel.Proposal.Mint.Merge</method>'s
+/// contract.</p>
+/// <p><b>Caller contract:</b> called by the mint, by the confirm's fingerprint re-merge and by a
+/// screen's Save, so the three take one payload and one digest. The kernel's
+/// <method>OcuPilot.Kernel.Proposal.Mint.Merge</method> here, so every change that shipped before
+/// Story 9.8 merges exactly as it did; a tool whose object argument merges member by member merges its
+/// own.</p>
+ClassMethod MergeUpdate(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
+{
+    Quit ##class(OcuPilot.Kernel.Proposal.Mint).Merge(pFresh, pArgs, pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
+}
+
+/// <p>The id the instance allocated for the target this tool's confirmed write <var>pWritten</var>
+/// created, or <code>""</code> (AD-14). The confirm's answer carries it as <code>createdId</code>,
+/// and the client publishes it as the change event's id in place of the proposal's target id.</p>
+/// <p><code>""</code> here: every create before Story 9.7 names its target by the id the caller
+/// chose, so the target's own id is the created one.</p>
+ClassMethod CreatedId(pWritten) As %String
+{
+    Quit ""
 }
 
 /// <p>The row-action ids <parameter>SCREENACTIONS</parameter> names, as a <class>%List</class>.</p>

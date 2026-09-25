@@ -142,13 +142,15 @@ Method TestEachListIsDeclaredAsThePermissionsAreaEntryItReplaces()
             ; Story 8.3: the Roles list's Create opens the Role form, so its empty state invites
             ; the agent instead of naming a next step.
             Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "create", tClass _ ": its primary action is Create")
-            Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, tClass _ ": and it declares no row action")
+            ; Story 9.3: Delete, and the four value actions the role editor sends.
+            Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "delete,add-granted-role,remove-granted-role,set-resource-grant,remove-resource-grant", tClass _ ": and its row actions are Delete and the role editor's four")
             Do $$$AssertEquals(tDeclaration.table.emptyNextKey _ "|" _ tDeclaration.table.emptyAgentKey, "|roleListEmptyAgent", tClass _ ": so its empty state invites the agent")
         } ElseIf tClass = "OcuPilot.Screen.Descriptor.ResourceList" {
             ; Story 8.4: the Resources list's Create opens the resource editor, so its empty state
             ; invites the agent instead of naming a next step.
             Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "create", tClass _ ": its primary action is Create")
-            Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, tClass _ ": and it declares no row action")
+            ; Story 9.3: Delete.
+            Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "delete", tClass _ ": and its one row action is Delete")
             Do $$$AssertEquals(tDeclaration.table.emptyNextKey _ "|" _ tDeclaration.table.emptyAgentKey, "|resourceListEmptyAgent", tClass _ ": so its empty state invites the agent")
         } Else {
             Do $$$AssertEquals(tDeclaration.table.emptyNextKey, "tableReadOnlyEmptyNext", tClass _ ": its empty state names what to do next")

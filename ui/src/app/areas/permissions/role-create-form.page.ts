@@ -25,6 +25,7 @@ import {
   type ResourceOption,
   type RoleOption,
 } from './role-create-form.store';
+import { RoleEditor } from './role-editor.store';
 import { RoleGrantDialog, type GrantResult, grantLine } from './role-grant-dialog';
 
 /** The list this form is reached from, which Cancel and the leave confirmation return to. */
@@ -243,6 +244,7 @@ interface GrantRow {
 })
 export class RoleCreateFormPage {
   private readonly store = inject(RoleCreateForm);
+  private readonly editor = inject(RoleEditor);
   private readonly formDirty = inject(FormDirty);
   private readonly router = inject(Router);
   private readonly navigation = inject(NavigationService);
@@ -273,9 +275,7 @@ export class RoleCreateFormPage {
     inject(DestroyRef).onDestroy(() => {
       stopStore();
       stopDirty();
-      // Not torn down while the store is carried across the create's own route replacement,
-      // which destroys this component and builds it again over the same role.
-      if (!this.store.retaining()) this.store.reset();
+      this.store.reset();
     });
   }
 
@@ -471,11 +471,12 @@ export class RoleCreateFormPage {
       return;
     }
     // A create replaces the route with the new role's URL, so the address bar names the entity
-    // and Back goes to the list. The buffer on screen is carried across that one navigation;
-    // nothing here reads the `:id`.
-    if (this.store.createdId() !== '') {
-      this.store.retainAcrossRouteReplacement();
-      void this.router.navigateByUrl(this.editorUrl(this.store.createdId()), { replaceUrl: true });
+    // and Back goes to the list. That URL is the role editor (Story 9.3), which reads the role and
+    // opens showing "Saved"; this form's own state is left behind with it.
+    const created = this.store.createdId();
+    if (created !== '') {
+      this.editor.arriveSaved(created);
+      void this.router.navigateByUrl(this.editorUrl(created), { replaceUrl: true });
     }
   }
 

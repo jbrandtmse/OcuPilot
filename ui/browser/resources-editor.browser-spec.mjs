@@ -1,7 +1,7 @@
 /**
  * The resource editor in a real browser, against the throwaway instance (Story 8.4).
  *
- * Five claims, each asserted on rendered DOM, on the real URL or on the instance itself:
+ * Six claims, each asserted on rendered DOM, on the real URL or on the instance itself:
  *
  * 1. **The list's Create opens the editor as a dialog** (AC1) with name, description and public
  *    permission, in that order, and the route does not change.
@@ -13,6 +13,8 @@
  * 4. **A dirty Escape asks first** (AC7): the shared leave question replaces the dialog, and
  *    staying brings it back with the edit.
  * 5. **A public permission on an administrative name states its consequence** (AC6).
+ * 6. **The row menu's Delete** (Story 9.3, DW-1528) removes a probe once its name is typed, and is
+ *    drawn refused on a resource the instance marks not deletable.
  *
  * **It refuses the live container.** Every resource it creates is named below and removed by that
  * exact name through the vendor's own `Security.Resources.Delete` inside the throwaway, before and
@@ -309,6 +311,59 @@ test('AC6: a public permission on an administrative name states its consequence'
     await clickDialogButton(page, STRINGS.actionConfirm);
     await waitForDialogClosed(page);
     assert.equal(storedResource(PRIVILEGED_NAME), null, 'and nothing was created');
+  } finally {
+    await context.close();
+  }
+});
+
+/** Narrow the list to `name` and select its row by a cell that is not its name link. */
+async function selectRow(page, name) {
+  await page.waitForSelector(FILTER_SELECTOR, { visible: true, timeout: config.navigationTimeoutMs });
+  await page.click(FILTER_SELECTOR, { clickCount: 3 });
+  await page.keyboard.press('Backspace');
+  await page.type(FILTER_SELECTOR, name);
+  await page.waitForFunction(
+    (selector, wanted) =>
+      Array.from(document.querySelectorAll(selector)).some((row) => row.querySelector('[role="gridcell"]')?.textContent?.trim() === wanted),
+    { timeout: config.navigationTimeoutMs },
+    ROW_SELECTOR,
+    name
+  );
+  await clickRowCentre(page, { text: name, cell: 2 });
+  await (await page.waitForSelector('[role="row"][aria-selected="true"] .ocu-data-table-trigger', { visible: true, timeout: config.navigationTimeoutMs })).click();
+  await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: config.navigationTimeoutMs });
+}
+
+// Story 9.3, DW-1528. Mutation (Rule 19): make `system-resource` ignore the row and redeploy -> the
+// %DB_IRISSYS entry is offered and this goes red.
+test('Story 9.3: a probe is deleted from the row menu once its name is typed, and %DB_IRISSYS\u2019s Delete is drawn refused', async () => {
+  irisSys([`If '##class(Security.Resources).Exists("${NAMES[0]}") Do ##class(Security.Resources).Create("${NAMES[0]}","${PROBE_DESCRIPTION}","")`]);
+  assert.notEqual(storedResource(NAMES[0]), null, 'the probe resource exists');
+  const { context, page } = await signedInAt(LIST_URL);
+  try {
+    await selectRow(page, NAMES[0]);
+    await page.evaluate((label) => {
+      const items = Array.from(document.querySelectorAll('[role="menu"] [role="menuitem"]'));
+      items.find((item) => item.textContent.trim().startsWith(label)).click();
+    }, STRINGS.actionDelete);
+    await page.waitForSelector('.ocu-typed-name-consequence', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('.ocu-typed-name-consequence', (node) => node.textContent.trim()), STRINGS.resourceDeleteConsequence);
+    await page.type('.ocu-typed-name-field', NAMES[0]);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(
+      (selector, name) => !Array.from(document.querySelectorAll(selector)).some((row) => row.querySelector('[role="gridcell"]')?.textContent?.trim() === name),
+      { timeout: config.navigationTimeoutMs },
+      ROW_SELECTOR,
+      NAMES[0]
+    );
+    assert.equal(storedResource(NAMES[0]), null, 'the instance no longer holds the resource');
+
+    await selectRow(page, '%DB_IRISSYS');
+    const entry = await page.$eval('[role="menu"] [role="menuitem"]', (node) => ({
+      disabled: node.getAttribute('aria-disabled'),
+      reason: node.querySelector('.ocu-data-table-menu-reason')?.textContent.trim() ?? '',
+    }));
+    assert.deepEqual(entry, { disabled: 'true', reason: STRINGS.resourceRefusalSystem }, 'a system resource\u2019s Delete is drawn refused with its sentence');
   } finally {
     await context.close();
   }

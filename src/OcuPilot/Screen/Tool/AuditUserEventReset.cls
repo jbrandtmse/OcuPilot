@@ -3,6 +3,8 @@
 Class OcuPilot.Screen.Tool.AuditUserEventReset Extends OcuPilot.Screen.Tool.AuditEventReset
 {
 
+Parameter EVENTOWNER = "user";
+
 Parameter TOOLNAME = "security.audituserevents.reset";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.AuditUserEventList";

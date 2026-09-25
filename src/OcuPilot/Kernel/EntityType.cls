@@ -19,9 +19,9 @@
 /// spelling of its id to that one. It is distinct from <code>audit-event</code>, which is one
 /// <b>system</b> event of the event roster, and from <code>audit-user-event</code>, one event an
 /// application registered; turning the instance's auditing on or off is not a change to any of
-/// those rows. The two event types are separate because a change event carries no owner and the
-/// id does not reveal one, so one type could not route a change to the list that shows it
-/// (DW-1529).</p>
+/// those rows. The two event types are separate so that a change event's type names the list that
+/// shows the event, and a screen listens for its own type alone (DW-1529); a system event is one
+/// whose Source begins with <code>%</code>, which is how the vendor splits the two lists.</p>
 /// <p><code>agent-definition</code> and <code>agent-switch</code> are OcuPilot's own configuration
 /// rather than the instance's, and they are values here for the same reason every other one is: the
 /// Definitions list and the Switches screen publish AD-14's change event on them, and a key a slice

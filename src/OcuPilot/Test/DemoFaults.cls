@@ -12,8 +12,22 @@
 /// <method>TestCreateTaskReportsAVanishedTaskId</method> passes <code>"probe"</code>, but
 /// its armed <code>TaskIds</code>/<code>OpenTask</code> seams never reach a real task, and
 /// it notes nothing (corrected, rework iteration 5 review).</p>
+/// <p>It runs only where <parameter>ARMINGVARIABLE</parameter> reads <code>1</code>.</p>
 Class OcuPilot.Test.DemoFaults Extends %UnitTest.TestCase
 {
+
+/// <p>The environment variable that arms this class, set by <file>scripts/ci-throwaway.sh</file>
+/// alone: it creates and removes a web application, a TLS configuration, an X.509 credential
+/// and a wallet collection on this instance.</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_SSL_CONFIG";
+
+Method OnBeforeAllTests() As %Status
+{
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.DemoFaults creates and removes a web application, a TLS configuration, an X.509 credential and a wallet collection on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
+    Quit $$$OK
+}
 
 /// <p><b>DW-57.</b> <method>OcuPilot.Install.Fixture.RemoveOne</method>'s three
 /// status-checked <code>Delete</code> branches (webapp / sslconfig / x509credential) were

@@ -147,6 +147,27 @@ test('a detail URL is the open screen too -- the row the toast opened does not t
   assert.deepEqual(harness.store.toasts(), []);
 });
 
+// DW-1546, PRD UJ-6: a toast is hidden only while its own target -- the entity's list -- is open, so
+// a change made on Task details still offers "Open in Task schedule", which opens the list with the
+// task selected, and the list itself raises nothing.
+//
+// Mutation (Rule 19): hide a toast whenever the open screen shows the entity type (the rule this
+// replaced) -> the Task details leg goes red.
+test('a change raises its toast on the entity\'s details screen, and only the entity\'s own list hides it', () => {
+  const task = changed({ type: 'task', scope: 'instance', id: '12', action: 'updated' });
+  const details = wired({ url: '/tasks/schedule/details/12?ns=HSCUSTOM' });
+  assert.equal(details.store.publish(task), true, 'Task details shows the task, and the toast is raised there');
+  assert.equal(details.store.toasts()[0].route, 'tasks/schedule/12', 'opening the Task schedule on the task');
+  const onDemand = wired({ url: '/tasks/on-demand?ns=HSCUSTOM' });
+  assert.equal(onDemand.store.publish(task), true, 'another list of tasks is not the target, so it is raised there too');
+  const schedule = wired({ url: '/tasks/schedule?ns=HSCUSTOM' });
+  assert.equal(schedule.store.publish(task), false, 'while the Task schedule itself raises nothing');
+  const selected = wired({ url: '/tasks/schedule/12?ns=HSCUSTOM' });
+  assert.equal(selected.store.publish(task), false, 'nor does the Task schedule opened on the task');
+  const editor = wired({ url: '/permissions/users/edit/Dana?ns=HSCUSTOM' });
+  assert.equal(editor.store.publish(changed({ type: 'user', id: 'Dana' })), true, 'and a Save on the user editor raises its Users toast');
+});
+
 test('nothing but a `changed` event reaches the stack, and no fault can', () => {
   const harness = wired();
   const bus = new ChangeBus({ now: () => new Date(NOW_MS) });

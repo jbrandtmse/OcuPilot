@@ -210,6 +210,9 @@ test('AC2: a create and an edit reach the Devices list without a refresh, and it
     await fill(page, 'ocu-device-PhysicalDevice', '/tmp/p88browser.txt');
     await fill(page, 'ocu-device-Description', 'first');
     await fill(page, 'ocu-device-Alias', '9900');
+    // The form page scrolls inside itself under its sticky bar (DW-1596), so the control is brought
+    // clear of the bar before the pointer reaches it, as a person scrolls to it.
+    await page.$eval('#ocu-device-Prompt-1', (node) => node.scrollIntoView({ block: 'center' }));
     await page.click('#ocu-device-Prompt-1');
     await (await barButtons(page)).save.click();
     await page.waitForFunction(

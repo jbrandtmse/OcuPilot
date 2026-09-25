@@ -5,12 +5,14 @@
  *
  * 1. **The form captures the field set in the classic order** (AC1): name, full name, password,
  *    expiration date, startup namespace, startup routine, then roles.
- * 2. **The password is never pre-filled or echoed** (AC2): the field is empty on arrival, asks the
- *    browser for a new password, and is empty and captioned as stored after a Save.
+ * 2. **The password is never pre-filled or echoed** (AC2): the field is empty on arrival and asks
+ *    the browser for a new password, and after a Save the user editor the create opens (Story 9.1)
+ *    carries no password field and shows the password nowhere.
  * 3. **A privileged role is available, and ticking it states the privilege-grant consequence at the
  *    Roles field** (AC3, AD-10), from the bootstrap read's mark; an ordinary role states none.
  * 4. **A valid Save creates the account** (AC4) with the fields sent, replaces the route with
- *    `permissions/users/edit/<id>`, reads the saved sentence, and the Users list then shows it. The
+ *    `permissions/users/edit/<id>` -- the user editor, over the new account -- reads the saved
+ *    sentence, and the Users list then shows it. The
  *    change event itself is pinned in `user-create-form.store.spec.ts`, for the reason
  *    `web-applications-create.browser-spec.mjs` gives.
  * 5. **The Users list offers Create** (AC1), and it opens this form.
@@ -198,9 +200,9 @@ test('AC1: the form captures name, full name, password, expiry, startup namespac
   }
 });
 
-// AC2. Mutation (Rule 19): keep the password in the store's buffer through a Save and across the
-// route replacement -> the after-save leg goes red with the password still in the field.
-test('AC2: the password is never pre-filled, asks for a new password, and is empty and captioned after a Save', async () => {
+// AC2. Mutation (Rule 19): render the create page on the id route instead of the editor -> the
+// after-save leg goes red on the password field still standing.
+test('AC2: the password is never pre-filled, asks for a new password, and is on no screen after a Save', async () => {
   const { context, page } = await signedInAt(FORM_URL);
   try {
     await page.waitForSelector('#ocu-user-Password', { visible: true, timeout: config.navigationTimeoutMs });
@@ -217,14 +219,10 @@ test('AC2: the password is never pre-filled, asks for a new password, and is emp
     await (await saveButton(page)).click();
     await waitForSaved(page);
 
-    await page.waitForSelector('#ocu-user-Password-caption', { visible: true, timeout: config.navigationTimeoutMs });
-    assert.equal(await page.$eval('#ocu-user-Password', (node) => node.value), '', 'the field is empty after the Save');
-    assert.equal(
-      await page.$eval('#ocu-user-Password-caption', (node) => node.textContent.trim()),
-      STRINGS.formSecretStored
-    );
-    const describedBy = await page.$eval('#ocu-user-Password', (node) => node.getAttribute('aria-describedby') ?? '');
-    assert.ok(describedBy.split(' ').includes('ocu-user-Password-caption'), 'and the caption describes the field');
+    // Story 9.1: the create opens the user editor over the new account, which carries no password.
+    await page.waitForSelector('#ocu-user-edit-Name', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('#ocu-user-edit-Name', (node) => node.value.toLowerCase()), NAMES[1].toLowerCase(), 'the editor opens on the new account');
+    assert.equal(await page.$('input[type="password"]'), null, 'and no password field stands on it');
     const text = await page.evaluate(() => document.body.innerText);
     assert.ok(!text.includes(PROBE_PASSWORD), 'the password is echoed nowhere on the page');
     assert.ok(storedUser(NAMES[1]) !== null, 'the account was created');
@@ -263,7 +261,8 @@ test('AC3: a privileged role is available, and ticking it states the privilege-g
   }
 });
 
-// AC4. Mutation (Rule 19): drop the route replacement from `onSave` -> the URL leg goes red.
+// AC4. Mutation (Rule 19): drop the route replacement from `onSave` -> the URL leg goes red; drop
+// the `arriveSaved` call from `onSave` -> the editor's Saved leg goes red.
 test('AC4: a valid Save creates the account with the sent fields, replaces the route, and the Users list shows it', async () => {
   const { context, page } = await signedInAt(FORM_URL);
   try {
@@ -286,6 +285,17 @@ test('AC4: a valid Save creates the account with the sent fields, replaces the r
     assert.ok(
       path.toLowerCase().endsWith(`/permissions/users/edit/${NAMES[0].toLowerCase()}`),
       `the URL names the account: ${path}`
+    );
+    // Story 9.1: that URL is the user editor, reading the account the create made.
+    await page.waitForFunction(
+      (fullName) => document.querySelector('#ocu-user-edit-FullName')?.value === fullName,
+      { timeout: config.navigationTimeoutMs },
+      PROBE_FULL_NAME
+    );
+    assert.equal(
+      await page.$eval('app-user-editor-page .ocu-form-bar-status', (node) => node.textContent.trim()),
+      STRINGS.formSaved,
+      'and the editor\u2019s own form bar reads Saved'
     );
 
     const stored = storedUser(NAMES[0]);

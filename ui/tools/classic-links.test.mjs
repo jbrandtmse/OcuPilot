@@ -437,27 +437,38 @@ test('the shipped descriptor roster passes, and its population matches the tree 
     'every .cls under the descriptor directory but the base was classified'
   );
   assert.ok(result.scanned >= 1, 'at least Home is declared');
-  // AD-44: Release 1's one exemption, the OAuth 2.0 tabs, is declared by its five tab descriptors,
-  // and the check reports each declaration under the one exemption SM-C1 counts.
+  // AD-44 as amended (ruling 2dca0322): Release 1's three exemptions -- the OAuth 2.0 tabs, declared
+  // by their five tab descriptors, and the reduced service and LDAP configuration forms (Story 9.9)
+  // -- each reported under the reason SM-C1 counts it by.
   //
   // Mutation (Rule 19): set one tab's `classicLinkExemption.exempt` false and drop its link parts ->
   // the honored set and the declaration count go red. Count the exemption line by declarations
-  // rather than by reason -> the one-exemption line goes red.
+  // rather than by reason -> the three-exemption line goes red.
+  const oauth = ['OAuthClientTab.cls', 'OAuthResourceServerTab.cls', 'OAuthServerClientTab.cls', 'OAuthServerDescriptionTab.cls', 'OAuthServerTab.cls'];
+  const reduced = {
+    'LdapConfigForm.cls': 'Reduced until the full LDAP and Kerberos editor ships (Story 16.14); counted against SM-C1',
+    'ServiceForm.cls': 'Reduced until the full service editor ships (Story 16.13); counted against SM-C1',
+  };
   assert.deepEqual(
     result.honored.map((entry) => entry.file).sort(),
-    ['OAuthClientTab.cls', 'OAuthResourceServerTab.cls', 'OAuthServerClientTab.cls', 'OAuthServerDescriptionTab.cls', 'OAuthServerTab.cls'],
-    'the honored set is exactly the five OAuth 2.0 tabs'
+    [...Object.keys(reduced), ...oauth].sort(),
+    'the honored set is exactly the five OAuth 2.0 tabs and the two reduced forms'
   );
   for (const entry of result.honored) {
-    assert.equal(entry.archetype, 'detail', `${entry.file} is a detail view`);
-    assert.equal(
-      entry.reason,
-      'Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1',
-      `${entry.file} carries the one exemption's reason`
-    );
+    if (oauth.includes(entry.file)) {
+      assert.equal(entry.archetype, 'detail', `${entry.file} is a detail view`);
+      assert.equal(
+        entry.reason,
+        'Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1',
+        `${entry.file} carries the OAuth exemption's reason`
+      );
+    } else {
+      assert.equal(entry.archetype, 'form-page', `${entry.file} is a reduced form`);
+      assert.equal(entry.reason, reduced[entry.file], `${entry.file} carries its own reason`);
+    }
   }
-  assert.match(result.report.join('\n'), /^classic-links: 1 exemption\(s\) honored \(SM-C1\)$/m);
-  assert.match(result.report.join('\n'), /^classic-links: 5 descriptor\(s\) declare them \(AD-44\)$/m);
+  assert.match(result.report.join('\n'), /^classic-links: 3 exemption\(s\) honored \(SM-C1\)$/m);
+  assert.match(result.report.join('\n'), /^classic-links: 7 descriptor\(s\) declare them \(AD-44\)$/m);
 });
 
 // --- The gates ---------------------------------------------------------------------------------

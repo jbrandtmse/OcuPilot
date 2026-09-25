@@ -42,8 +42,47 @@ export const OCUPILOT_APPLICATION_PATHS: readonly string[] = [
   '/api/ocupilot/readiness',
 ];
 
+/**
+ * The rule that protects the application and matching roles of the web applications OcuPilot is
+ * served through (Story 9.2, AD-10): the instance refuses setting either there, whoever asks.
+ */
+export const OCUPILOT_APPLICATION_ROLES_RULE = 'ocupilot-application-roles';
+
+/**
+ * The rule that explains the instance's own predefined roles, whose names begin `%` (Story 9.3):
+ * the role delete tool refuses them with this rule's sentence.
+ */
+export const SYSTEM_ROLE_RULE = 'system-role';
+
+/**
+ * The rule that explains a system resource, whose row reads `AllowDelete` false (Story 9.3): the
+ * resource delete tool refuses it with this rule's sentence.
+ */
+export const SYSTEM_RESOURCE_RULE = 'system-resource';
+
+/**
+ * The rule that protects OcuPilot's own provider SSL/TLS configuration (Story 9.5, AD-10): the
+ * instance refuses its delete, and a change to its type, peer verification, trusted certificates
+ * or enablement, whoever asks.
+ */
+export const OCUPILOT_SSL_RULE = 'ocupilot-ssl';
+
+/**
+ * OcuPilot's own provider SSL/TLS configuration, as `OcuPilot.Kernel.State.Base`'s `SSLCONFIG`
+ * declares it -- mirrored, and pinned equal to it by `ui/tools/self-protection.test.mjs`. A
+ * configuration's name is compared exactly, as the instance resolves it.
+ */
+export const OCUPILOT_SSL_CONFIGURATION = 'OcuPilotProvider';
+
 /** The rule that protects the accounts whose removal the instance refuses (Story 7.2). */
 export const PROTECTED_ACCOUNT_RULE = 'protected-account';
+
+/**
+ * The rule that protects how a service account signs in (Story 9.1, AD-10 as amended by DW-1520):
+ * a new password, or a required password change, on an account the instance's own services run
+ * as, unless it is the signed-in account.
+ */
+export const SERVICE_ACCOUNT_SIGN_IN_RULE = 'service-account-sign-in';
 
 /** The entity type `PROTECTED_ACCOUNT_RULE` canonicalizes an id under (AD-13). */
 const USER = 'user';
@@ -69,10 +108,29 @@ export const SERVICE_ACCOUNTS: readonly string[] = ['CSPSystem', '_Ensemble', 'i
  * `signedIn` is the account this tab is signed in as, which `protected-account` compares against.
  * Its three answers are the instance's own, in the instance's order -- `_SYSTEM`, the signed-in
  * account, a service account. The last `%All` holder is a census the client cannot read, so that
- * refusal is the instance's alone.
+ * refusal is the instance's alone. `service-account-sign-in` answers for a service account other
+ * than the signed-in one. `ocupilot-application-roles` answers for the applications
+ * `serves-ocupilot` does, with the privilege-grant sentence.
+ *
+ * `ocupilot-ssl` answers for OcuPilot's own provider SSL/TLS configuration, compared exactly.
+ *
+ * `row` is the row's own fields where the caller holds them. `system-role` reads the key alone;
+ * `system-resource` reads the row's `AllowDelete` and answers `''` with no row, where the instance
+ * still refuses the write.
  */
-export function selfProtectionReason(rule: string, rowKey: string, signedIn = ''): string {
+export function selfProtectionReason(
+  rule: string,
+  rowKey: string,
+  signedIn = '',
+  row: Readonly<Record<string, unknown>> | null = null
+): string {
   if (rowKey === '') return '';
+  if (rule === OCUPILOT_SSL_RULE) return rowKey === OCUPILOT_SSL_CONFIGURATION ? STRINGS.sslRefusalOcuPilot : '';
+  if (rule === SYSTEM_ROLE_RULE) return rowKey.trimStart().startsWith('%') ? STRINGS.roleRefusalSystem : '';
+  if (rule === SYSTEM_RESOURCE_RULE) {
+    const allow = row?.['AllowDelete'];
+    return allow === false || allow === 'false' || allow === 0 || allow === '0' ? STRINGS.resourceRefusalSystem : '';
+  }
   if (rule === PROTECTED_ACCOUNT_RULE) {
     const account = normalizeEntityId(USER, rowKey);
     if (account === normalizeEntityId(USER, SYSTEM_ACCOUNT)) return STRINGS.userRefusalSystemAccount;
@@ -82,10 +140,17 @@ export function selfProtectionReason(rule: string, rowKey: string, signedIn = ''
     const service = SERVICE_ACCOUNTS.some((name) => normalizeEntityId(USER, name) === account);
     return service ? STRINGS.userRefusalServiceAccount : '';
   }
-  if (rule !== SERVES_OCUPILOT_RULE) return '';
+  if (rule === SERVICE_ACCOUNT_SIGN_IN_RULE) {
+    const account = normalizeEntityId(USER, rowKey);
+    if (signedIn !== '' && account === normalizeEntityId(USER, signedIn)) return '';
+    const service = SERVICE_ACCOUNTS.some((name) => normalizeEntityId(USER, name) === account);
+    return service ? STRINGS.userRefusalServiceAccountSignIn : '';
+  }
+  if (rule !== SERVES_OCUPILOT_RULE && rule !== OCUPILOT_APPLICATION_ROLES_RULE) return '';
   const canonical = normalizeEntityId(WEB_APPLICATION, rowKey);
   const own = OCUPILOT_APPLICATION_PATHS.some(
     (path) => normalizeEntityId(WEB_APPLICATION, path) === canonical
   );
-  return own ? STRINGS.webAppServesOcuPilotRefusal : '';
+  if (!own) return '';
+  return rule === OCUPILOT_APPLICATION_ROLES_RULE ? STRINGS.webAppPrivilegeGrantRefusal : STRINGS.webAppServesOcuPilotRefusal;
 }

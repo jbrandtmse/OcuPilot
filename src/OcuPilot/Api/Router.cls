@@ -94,12 +94,15 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/agent/providers" Method="GET" Call="AgentProviders"/>
   <Route Url="/web-applications/form" Method="GET" Call="WebAppFormRules"/>
   <Route Url="/web-applications/name" Method="GET" Call="WebAppNameCheck"/>
+  <Route Url="/web-applications/:id" Method="PUT" Call="WebAppUpdate"/>
   <Route Url="/web-applications" Method="POST" Call="WebAppCreate"/>
   <Route Url="/users/form" Method="GET" Call="UserFormRules"/>
   <Route Url="/users/name" Method="GET" Call="UserNameCheck"/>
+  <Route Url="/users/:id" Method="PUT" Call="UserUpdate"/>
   <Route Url="/users" Method="POST" Call="UserCreate"/>
   <Route Url="/roles/form" Method="GET" Call="RoleFormRules"/>
   <Route Url="/roles/name" Method="GET" Call="RoleNameCheck"/>
+  <Route Url="/roles/:id" Method="PUT" Call="RoleUpdate"/>
   <Route Url="/roles" Method="POST" Call="RoleCreate"/>
   <Route Url="/resources/form" Method="GET" Call="ResourceFormRules"/>
   <Route Url="/resources/name" Method="GET" Call="ResourceNameCheck"/>
@@ -143,6 +146,22 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/ui/about" Method="GET" Call="UiAbout"/>
   <Route Url="/ui/help" Method="GET" Call="UiHelp"/>
   <Route Url="/ui/system" Method="GET" Call="UiSystem"/>
+  <Route Url="/ssl/form" Method="GET" Call="SslFormRead"/>
+  <Route Url="/ssl/name" Method="GET" Call="SslNameCheck"/>
+  <Route Url="/ssl/:id/test" Method="POST" Call="SslTest"/>
+  <Route Url="/ssl/:id" Method="PUT" Call="SslUpdate"/>
+  <Route Url="/ssl" Method="POST" Call="SslCreate"/>
+  <Route Url="/tasks/form" Method="GET" Call="TaskFormRead"/>
+  <Route Url="/tasks/check" Method="POST" Call="TaskCheck"/>
+  <Route Url="/tasks/:id" Method="PUT" Call="TaskUpdate"/>
+  <Route Url="/tasks" Method="POST" Call="TaskCreate"/>
+  <Route Url="/services/form" Method="GET" Call="ServiceFormRead"/>
+  <Route Url="/services/:id" Method="PUT" Call="ServiceUpdate"/>
+  <Route Url="/ldap/form" Method="GET" Call="LdapFormRead"/>
+  <Route Url="/ldap/:id" Method="PUT" Call="LdapUpdate"/>
+  <Route Url="/audit-events/form" Method="GET" Call="AuditEventFormRead"/>
+  <Route Url="/audit-events/:id" Method="PUT" Call="AuditEventUpdate"/>
+  <Route Url="/audit-events" Method="POST" Call="AuditEventCreate"/>
 </Routes>
 }
 
@@ -303,6 +322,15 @@ ClassMethod WebAppCreate() As %Status
     Quit ##class(OcuPilot.Area.WebApp.Create).HandleCreate()
 }
 
+/// <p>Thin <code>Call=</code> target for <code>PUT /web-applications/:id</code> (Story 9.2): the web
+/// application editor's Save, resolved through the one tool the agent's confirm uses (AD-55). The
+/// two sub-resources are <code>GET</code> routes, so a <code>PUT</code> to either path is this
+/// route's, for the application of that name.</p>
+ClassMethod WebAppUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.WebApp.WebAppSave).HandleUpdate(pId)
+}
+
 /// <p>Thin <code>Call=</code> target for <code>GET /users/form</code> (Story 8.2): delegates to
 /// <class>OcuPilot.Area.Permissions.UserCreateRules</class> and carries no logic of its own. The
 /// two sub-resources precede <code>POST /users</code>, the order the REST convention requires.</p>
@@ -318,6 +346,15 @@ ClassMethod UserNameCheck() As %Status
     Quit ##class(OcuPilot.Area.Permissions.UserCreateRules).HandleName()
 }
 
+/// <p>Thin <code>Call=</code> target for <code>PUT /users/:id</code> (Story 9.1): the user editor's
+/// Save, resolved through the one tool the agent's confirm uses (AD-55). The two sub-resources are
+/// <code>GET</code> routes, so a <code>PUT</code> to either path is this route's, for the account
+/// of that name.</p>
+ClassMethod UserUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.UserSave).HandleUpdate(pId)
+}
+
 /// <p>Thin <code>Call=</code> target for <code>POST /users</code>: the User form's Save, which
 /// resolves the write through the one tool the agent's confirm uses (AD-55).</p>
 ClassMethod UserCreate() As %Status
@@ -327,7 +364,7 @@ ClassMethod UserCreate() As %Status
 
 /// <p>Thin <code>Call=</code> target for <code>GET /roles/form</code> (Story 8.3): delegates to
 /// <class>OcuPilot.Area.Permissions.RoleCreateRules</class> and carries no logic of its own. The two
-/// sub-resources precede <code>POST /roles</code>.</p>
+/// sub-resources precede <code>/roles/:id</code>.</p>
 ClassMethod RoleFormRules() As %Status
 {
     Quit ##class(OcuPilot.Area.Permissions.RoleCreateRules).HandleForm()
@@ -338,6 +375,13 @@ ClassMethod RoleFormRules() As %Status
 ClassMethod RoleNameCheck() As %Status
 {
     Quit ##class(OcuPilot.Area.Permissions.RoleCreateRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /roles/:id</code> (Story 9.3): the role editor's
+/// Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod RoleUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.RoleSave).HandleUpdate(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /roles</code>: the Role form's Save, which
@@ -961,6 +1005,122 @@ ClassMethod Http405(pSupportedVerbs As %String = "") As %Status
 {
     Do ##class(OcuPilot.Api.Error).Render405(pSupportedVerbs)
     Quit $$$OK
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ssl/form</code> (Story 9.5): the SSL/TLS form's
+/// read, delegating to <class>OcuPilot.Area.Security.SslRules</class>. The SSL block shares no prefix
+/// with any other route, so it sits at the tail; within it the sub-resources precede
+/// <code>/ssl/:id</code>, and <code>/ssl/:id/test</code> precedes it too.</p>
+ClassMethod SslFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SslRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ssl/name</code>: the SSL/TLS form's blur check
+/// of whether a name is taken.</p>
+ClassMethod SslNameCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SslRules).HandleName()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /ssl/:id/test</code>: the SSL/TLS form's Test
+/// connection, screen-only (AD-39's named exception).</p>
+ClassMethod SslTest(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SslRules).HandleTest(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /ssl/:id</code>: the SSL/TLS form's edit Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod SslUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SslSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /ssl</code>: the SSL/TLS form's create Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod SslCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.SslSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /tasks/form</code>: the New Task wizard's form
+/// read, delegating to <class>OcuPilot.Area.Task.TaskRules</class>. The <code>/tasks</code> block
+/// shares no prefix with any other route, so it sits at the tail; within it the sub-resources precede
+/// <code>/tasks</code>.</p>
+ClassMethod TaskFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Task.TaskRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /tasks/check</code>: the wizard's Next, which
+/// validates the values so far through the one rule set (AD-39).</p>
+ClassMethod TaskCheck() As %Status
+{
+    Quit ##class(OcuPilot.Area.Task.TaskRules).HandleCheck()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /tasks/:id</code>: Edit task's Save, resolved
+/// through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod TaskUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Task.TaskSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /tasks</code>: the wizard's Create task, resolved
+/// through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod TaskCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Task.TaskSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /services/form</code>: the service form's read
+/// (Story 9.9).</p>
+ClassMethod ServiceFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.ServiceRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /services/:id</code>: the service form's Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod ServiceUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.ServiceSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ldap/form</code>: the LDAP configuration form's
+/// read (Story 9.9).</p>
+ClassMethod LdapFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.LdapRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /ldap/:id</code>: the LDAP configuration form's
+/// Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod LdapUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.LdapSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /audit-events/form</code>: the user audit event
+/// editor's form read (Story 9.10). The sub-resource precedes <code>/audit-events/:id</code>.</p>
+ClassMethod AuditEventFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.AuditEventRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /audit-events/:id</code>: the user audit event
+/// editor's Description Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod AuditEventUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.AuditEventSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /audit-events</code>: the user audit event
+/// editor's create Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod AuditEventCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.AuditEventSave).HandleCreate()
 }
 
 }

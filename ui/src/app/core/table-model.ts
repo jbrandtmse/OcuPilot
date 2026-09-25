@@ -45,6 +45,21 @@ export function rowKey(row: unknown, declaration: Pick<ScreenDeclaration, 'id' |
   return name === undefined ? '' : textOf(fieldOf(row, name.field));
 }
 
+/**
+ * The row of `rows` whose `rowKey` is `key`, as its fields, or `null` where none is or `key` is
+ * `''`. A surface that draws a row action passes it to `selfProtectionReason`, whose row-reading
+ * rules need the row's own fields (Story 9.3).
+ */
+export function rowFor(
+  rows: readonly unknown[],
+  declaration: Pick<ScreenDeclaration, 'id' | 'table'>,
+  key: string
+): Readonly<Record<string, unknown>> | null {
+  if (key === '') return null;
+  const row = rows.find((entry) => rowKey(entry, declaration) === key);
+  return row !== null && typeof row === 'object' ? (row as Readonly<Record<string, unknown>>) : null;
+}
+
 /** One cell, resolved for drawing. */
 export interface CellView {
   readonly text: string;

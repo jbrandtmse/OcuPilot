@@ -37,6 +37,7 @@ const {
   detailScreenFor,
   documentScreenFor,
   createFormFor,
+  CREATE_ONLY_FORMS,
   DIALOG_EDITORS,
   editorScreenFor,
   isListedScreen,
@@ -148,12 +149,16 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/databases',
       'os-management/devices',
       'tasks/schedule/details',
+      // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
+      'tasks/schedule/edit',
       'tasks/schedule/history',
       'tasks/schedule',
       'tasks/on-demand',
       'tasks/upcoming',
       'tasks/history',
       'permissions/roles/edit',
+      // Story 9.9: the unlisted reduced service form, reached from the Services list's name cell.
+      'permissions/services/edit',
       'permissions/users/edit',
       'permissions/users',
       'permissions/roles',
@@ -166,10 +171,14 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 7.4: the two unlisted audit event lists, then Auditing configuration at position 6.
       'security/auditing/system-events',
       'security/auditing/user-events',
+      // Story 9.9: the unlisted reduced LDAP configuration form, reached from the LDAP / Kerberos list.
+      'security/ldap/edit',
       'security/oauth/clients',
       'security/oauth/resource-servers',
       'security/oauth/server-clients',
       'security/oauth/server',
+      // Story 9.5: the unlisted SSL/TLS configuration form, reached from the SSL/TLS list.
+      'security/ssl/edit',
       'security/wallet/secrets/edit',
       'security/wallet/secrets',
       'security/x509/edit',
@@ -183,7 +192,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/definitions',
       'agent/switches',
     ],
-    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files and device editor, process details, processes, Locks, System usage, Databases, the unlisted task details and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, the unlisted user form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, the four unlisted OAuth 2.0 tabs, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files and device editor, process details, processes, Locks, System usage, Databases, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
   );
 });
 
@@ -235,10 +244,32 @@ test('editorScreenFor resolves a list to its unlisted, id-keyed editor and to no
   const home = screenForRoute('');
   assert.ok(home, 'Home is declared');
   assert.equal(editorScreenFor(home), null, 'a screen with no paired editor resolves none');
+  // Story 9.5: the SSL/TLS list pairs with its one form -- built, unlisted and keyed by an id -- so
+  // its Create opens the form and a row's name opens the same form at its id route.
+  // Mutation (Rule 19): give SslForm a side-bar position -> the unlisted assertion goes red; drop its
+  // descriptor -> every assertion below goes red.
+  const ssl = screenForRoute('security/ssl');
+  assert.equal(createFormFor(ssl)?.route, 'security/ssl/edit', 'the SSL/TLS list\'s Create opens its own form');
+  assert.equal(isListedScreen(screenForRoute('security/ssl/edit')), false, 'which takes no side-bar position');
+  assert.equal(editorScreenFor(ssl)?.route, 'security/ssl/edit', 'and a row name opens the SSL/TLS editor at its id route');
+  // Story 9.7: the Task schedule's Create opens the New Task wizard -- built, unlisted and keyed by
+  // an id. Story 9.8's Edit task reads the id at the same form's id route, so the form is no longer
+  // create-only and the list pairs an editor as well as its detail screen; the name cell still opens
+  // the details (`data-table.ts`), where Edit is.
+  // Mutation (Rule 19): put TaskForm back in `CREATE_ONLY_FORMS` -> the editor assertion goes red.
+  const schedule = screenForRoute('tasks/schedule');
+  assert.equal(createFormFor(schedule)?.route, 'tasks/schedule/edit', 'the Task schedule\'s Create opens the New Task wizard');
+  assert.equal(isListedScreen(screenForRoute('tasks/schedule/edit')), false, 'which takes no side-bar position');
+  assert.deepEqual([...CREATE_ONLY_FORMS], [], 'no form is create-only');
+  assert.equal(editorScreenFor(schedule)?.route, 'tasks/schedule/edit', 'so a task opens Edit task at the form\'s id route');
+  assert.equal(detailScreenFor(schedule)?.route, 'tasks/schedule/details', 'beside the task\'s details');
+  // Story 9.9: the two reduced forms are the editors their lists' name cells open.
+  assert.equal(editorScreenFor(screenForRoute('security/ldap'))?.route, 'security/ldap/edit', 'the LDAP / Kerberos list opens its reduced form');
+  assert.equal(editorScreenFor(screenForRoute('permissions/services'))?.route, 'permissions/services/edit', 'and the Services list its own');
   assert.equal(
-    editorScreenFor(screenForRoute('security/ssl')),
+    editorScreenFor(screenForRoute('os-management/locks')),
     null,
-    'and neither does a list whose editor is not built yet'
+    'and a list with no editor resolves none'
   );
 });
 
@@ -256,37 +287,41 @@ test('documentScreenFor resolves the REST API explorer to its unlisted, id-keyed
   assert.equal(documentScreenFor(screenForRoute('')), null, 'Home resolves no viewer');
   assert.equal(documentScreenFor(screenForRoute('web-applications/list')), null, 'and neither does a list with none');
   // Story 8.1: the Web applications list's Create opens its own form -- built, unlisted and keyed
-  // by an id -- but a row's name cell does not, because that form reads no id.
-  // Mutation (Rule 19): drop WebAppForm from `CREATE_ONLY_FORMS` -> the editor assertion below and
-  // the toast leg of the screenForChange test go red.
+  // by an id -- and Story 9.2's editor reads the id, so a row's name opens it.
+  // Mutation (Rule 19): put WebAppForm back in `CREATE_ONLY_FORMS` -> the editor assertion below
+  // goes red.
   const webApps = screenForRoute('web-applications/list');
   assert.equal(createFormFor(webApps).route, 'web-applications/list/edit', 'the Web applications list\'s Create opens its own form');
   assert.equal(isListedScreen(screenForRoute('web-applications/list/edit')), false, 'which takes no side-bar position');
-  assert.equal(editorScreenFor(webApps), null, 'but a row name opens the list\'s own id route');
+  assert.equal(editorScreenFor(webApps)?.route, 'web-applications/list/edit', 'and a row name opens the web application editor at its id route');
   assert.equal(createFormFor(screenForRoute('agent/definitions')).route, 'agent/definitions/edit', 'and a form that reads its id is both');
-  // Story 8.2: the Users list pairs with its create form the same way.
-  // Mutation (Rule 19): drop UserForm from `CREATE_ONLY_FORMS` -> the editor assertion below and
-  // the user leg of the screenForChange test go red.
+  // Story 8.2: the Users list pairs with its create form the same way; Story 9.1's user editor reads
+  // the id, so a row's name opens it.
+  // Mutation (Rule 19): put UserForm back in `CREATE_ONLY_FORMS` -> the editor assertion below goes red.
   const users = screenForRoute('permissions/users');
   assert.equal(createFormFor(users).route, 'permissions/users/edit', 'the Users list\'s Create opens its own form');
   assert.equal(isListedScreen(screenForRoute('permissions/users/edit')), false, 'which takes no side-bar position');
-  assert.equal(editorScreenFor(users), null, 'and a row name does not open it, because it reads no id');
-  // Story 8.3: the Roles list pairs with its create form the same way.
-  // Mutation (Rule 19): drop RoleForm from `CREATE_ONLY_FORMS` -> the editor assertion below and
-  // the role leg of the screenForChange test go red.
+  assert.equal(editorScreenFor(users)?.route, 'permissions/users/edit', 'and a row name opens the user editor at its id route');
+  // Story 8.3: the Roles list pairs with its create form the same way; Story 9.3's role editor reads
+  // the id, so a row's name opens it.
+  // Mutation (Rule 19): put RoleForm back in `CREATE_ONLY_FORMS` -> the editor assertion below goes red.
   // Story 8.4: the Resources list's editor is a dialog over the list, not a paired form, so it
   // resolves no form and no editor screen, and it is the one dialog-editor screen, id-keyed so a
   // row's name cell opens its own id route.
   // Mutation (Rule 19): drop ResourceList from `DIALOG_EDITORS` -> the dialog-editor assertion goes red.
   const resources = screenForRoute('permissions/resources');
-  assert.deepEqual([...DIALOG_EDITORS], [resources.descriptor], 'the Resources list is the one screen whose editor is a dialog');
-  assert.equal(createFormFor(resources), null, 'so its Create opens no form page');
-  assert.equal(editorScreenFor(resources), null, 'and a row name opens the list\'s own id route');
-  assert.equal(hasIdRoute(resources), true, 'which it declares');
+  // Story 9.10: the User events list's editor is a dialog over the list the same way.
+  const userEvents = screenForRoute('security/auditing/user-events');
+  assert.deepEqual([...DIALOG_EDITORS], [resources.descriptor, userEvents.descriptor], 'the Resources and User events lists are the screens whose editor is a dialog');
+  for (const screen of [resources, userEvents]) {
+    assert.equal(createFormFor(screen), null, `${screen.route}: its Create opens no form page`);
+    assert.equal(editorScreenFor(screen), null, `${screen.route}: and a row name opens the list's own id route`);
+    assert.equal(hasIdRoute(screen), true, `${screen.route}: which it declares`);
+  }
   const roles = screenForRoute('permissions/roles');
   assert.equal(createFormFor(roles).route, 'permissions/roles/edit', 'the Roles list\'s Create opens its own form');
   assert.equal(isListedScreen(screenForRoute('permissions/roles/edit')), false, 'which takes no side-bar position');
-  assert.equal(editorScreenFor(roles), null, 'and a row name does not open it, because it reads no id');
+  assert.equal(editorScreenFor(roles)?.route, 'permissions/roles/edit', 'and a row name opens the role editor at its id route');
   assert.deepEqual(
     listedScreensForArea('web-applications').map((screen) => screen.route),
     ['web-applications/list', 'web-applications/rest-apis'],
@@ -965,12 +1000,15 @@ test('screenForChange resolves the screen a change opens and the route that name
   assert.equal(target.screen.route, 'web-applications/list');
   assert.equal(target.screen, screenForEntityType('web-application'), 'the same lookup, not a second one');
   assert.equal(target.route, `web-applications/list/${encodeEntityId('/csp/myapp')}`);
-  // A create-only form is skipped, and nothing else changes: the first built screen of a type
-  // still wins, so a task's toast opens the task's own details rather than a list.
-  assert.equal(screenForEntityType('task').route, 'tasks/schedule/details', 'a task change opens its details');
-  assert.equal(screenForEntityType('agent-definition').route, 'agent/definitions/edit', 'a definition change opens its form');
-  assert.equal(screenForEntityType('user').route, 'permissions/users', 'a user change opens the Users list, not the create form');
-  assert.equal(screenForEntityType('role').route, 'permissions/roles', 'a role change opens the Roles list, not the create form');
+  // DW-1546, PRD UJ-6: a change opens the entity's list with the entity selected -- the listed list
+  // earliest in its side bar -- so a task's toast opens the Task schedule, not the task's details.
+  // Mutation (Rule 19): answer the first built screen of the type -> the task and definition legs go red.
+  assert.equal(screenForEntityType('task').route, 'tasks/schedule', 'a task change opens the Task schedule');
+  assert.equal(screenForChange({ type: 'task', id: '12' })?.route, 'tasks/schedule/12', 'with the task as the route id');
+  assert.equal(screenForEntityType('agent-definition').route, 'agent/definitions', 'a definition change opens the Definitions list');
+  assert.equal(screenForEntityType('user').route, 'permissions/users', 'a user change opens the Users list, not its editor');
+  assert.equal(screenForEntityType('role').route, 'permissions/roles', 'a role change opens the Roles list, not its editor');
+  assert.equal(screenForEntityType('database').route, 'os-management/databases', 'and of two database lists, the listed one');
   assert.ok(!target.route.includes('/csp/myapp'), 'the id is one encoded segment, never raw path (AD-13)');
 
   // A type no built screen shows is not a fault: the toast still says what changed, with nothing

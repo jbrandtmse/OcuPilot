@@ -241,7 +241,8 @@ test("AC5: the /csp/myapp name link carries the id in one route segment and the 
     // A real hit-tested pointer click at the name link's own centre (DW-273), which is what a user
     // does; `clickRowCentre` refuses first if that point resolves outside the row.
     await clickRowCentre(page, { text: '/csp/myapp', link: true });
-    await page.waitForFunction(() => window.location.pathname.endsWith('/web-applications/list/%252Fcsp%252Fmyapp'), {
+    // Story 9.2: the name opens the web application editor at the list's own edit route.
+    await page.waitForFunction(() => window.location.pathname.endsWith('/web-applications/list/edit/%252Fcsp%252Fmyapp'), {
       timeout: config.navigationTimeoutMs,
     });
     await page.waitForSelector('.ocu-screen-outlet[data-id="/csp/myapp"]', { timeout: config.navigationTimeoutMs });

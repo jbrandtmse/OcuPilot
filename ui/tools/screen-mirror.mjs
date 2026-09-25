@@ -310,7 +310,7 @@ function oneActionProblem(action, where, rules) {
  * no explanation, which is the divergence `checkedDeclaredNameKinds` exists to prevent for its own
  * vocabulary (AD-5, AD-53).
  */
-export const IMPLEMENTED_SELF_PROTECTION_RULES = ['serves-ocupilot', 'protected-account'];
+export const IMPLEMENTED_SELF_PROTECTION_RULES = ['serves-ocupilot', 'protected-account', 'service-account-sign-in', 'ocupilot-application-roles', 'system-role', 'system-resource', 'ocupilot-ssl'];
 
 /**
  * The projection names this module's `declaredNames` fills, for the roster check against
@@ -923,6 +923,7 @@ export const DECLARATION_KEYS = [
   'rowActions',
   'emptyStateKey',
   'commandAliases',
+  'suggestedPrompts',
   'classicPage',
   'classicLinkExemption',
   'read',
@@ -1838,6 +1839,37 @@ export function tabProblem(declaration) {
   return null;
 }
 
+/** The fewest suggested prompts a declaration that declares any may carry, `SUGGESTEDPROMPTSMIN`'s value. */
+export const SUGGESTED_PROMPTS_MIN = 3;
+
+/**
+ * What is wrong with a declaration's `suggestedPrompts`, or `null` (Story 11.3). Absent or `null`
+ * declares none. Otherwise it is an array of at least `SUGGESTED_PROMPTS_MIN` objects, each carrying
+ * only `groupKey` and `textKey`, both non-empty string keys; that each resolves is
+ * `declaredStringKeys`'s. `OcuPilot.Screen.Registry.SuggestedPromptsProblem` returns the same
+ * sentence for every case.
+ */
+export function suggestedPromptsProblem(declaration) {
+  const prompts = declaration.suggestedPrompts;
+  if (prompts === undefined || prompts === null) return null;
+  if (!Array.isArray(prompts)) return 'suggestedPrompts is not an array of prompts';
+  if (prompts.length < SUGGESTED_PROMPTS_MIN) {
+    return `suggestedPrompts declares ${prompts.length}, and a screen that declares prompts declares at least ${SUGGESTED_PROMPTS_MIN}`;
+  }
+  for (const [index, prompt] of prompts.entries()) {
+    const where = `suggestedPrompts[${index}]`;
+    if (!isObject(prompt)) return `${where} is not an object declaring its groupKey and textKey`;
+    const keysFault = unknownKeyProblem(where, prompt, ['groupKey', 'textKey']);
+    if (keysFault !== null) return keysFault;
+    for (const key of ['groupKey', 'textKey']) {
+      if (typeof prompt[key] !== 'string' || prompt[key] === '') {
+        return `${where}.${key} is empty, and a prompt names the string key it reads`;
+      }
+    }
+  }
+  return null;
+}
+
 /**
  * What is wrong with how a roster's tab groups fit together, or `null` (AD-5). `screens` is
  * `[{className, declaration}]` in roster order, and the answer names the offending class.
@@ -2228,7 +2260,8 @@ export function tableProblem(declaration, fields, secrets) {
 /**
  * Every client string key a declaration names: its `labelKey`, its `emptyStateKey`, its
  * `entityLabelKey`, its table's
- * column labels, column empty-cell keys and two empty-state keys, and its banner's `messageKey`.
+ * column labels, column empty-cell keys and two empty-state keys, its banner's `messageKey`, and
+ * each suggested prompt's `groupKey` and `textKey`.
  * Empty keys are not listed.
  *
  * The banner's key belongs here for the reason the others do: `stringFor` answers `''` for a key
@@ -2246,6 +2279,8 @@ export function declaredStringKeys(declaration) {
     for (const entry of Array.isArray(banner.cases) ? banner.cases : []) keys.push(entry?.messageKey);
   }
   if (tab !== null && typeof tab === 'object') keys.push(tab.labelKey);
+  const { suggestedPrompts } = declaration;
+  for (const prompt of Array.isArray(suggestedPrompts) ? suggestedPrompts : []) keys.push(prompt?.groupKey, prompt?.textKey);
   return keys.filter((key) => typeof key === 'string' && key !== '');
 }
 
@@ -2445,6 +2480,10 @@ export function buildMirror({
     const tabFault = tabProblem(screen.declaration);
     if (tabFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${tabFault}`);
+    }
+    const promptsFault = suggestedPromptsProblem(screen.declaration);
+    if (promptsFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${promptsFault}`);
     }
     const rowTargetFault = rowTargetProblem(screen.declaration);
     if (rowTargetFault !== null) {
@@ -2833,6 +2872,8 @@ export interface ScreenDeclaration {
   readonly rowActions: readonly ActionDeclaration[];
   readonly emptyStateKey: string;
   readonly commandAliases: readonly string[];
+  /** The prompts the panel suggests on this screen, grouped by task, where it declares any (Story 11.3). */
+  readonly suggestedPrompts?: readonly SuggestedPrompt[];
   readonly classicPage: string;
   readonly classicLinkExemption: ClassicLinkExemption;
   /** The screen's one declared read, or \`null\` for a screen with none (AD-36). */
@@ -2846,6 +2887,12 @@ export interface ScreenDeclaration {
   readonly toolIdentifier: string;
   /** This list's one declared cross-screen row target, or \`null\` for a screen with none (AD-5, Story 6.10). */
   readonly rowTarget: ScreenRowTarget | null;
+}
+
+/** One suggested prompt: the string key of the task group it sits under, and of its own text. */
+export interface SuggestedPrompt {
+  readonly groupKey: string;
+  readonly textKey: string;
 }
 
 /**

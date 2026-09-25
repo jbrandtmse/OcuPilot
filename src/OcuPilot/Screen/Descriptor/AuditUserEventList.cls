@@ -12,7 +12,10 @@
 /// carried out by <class>OcuPilot.Screen.Tool.AuditUserEventUpdate</class>,
 /// <class>OcuPilot.Screen.Tool.AuditUserEventReset</class> and
 /// <class>OcuPilot.Screen.Tool.AuditUserEventDelete</class>, so its empty state invites the agent.
-/// Its entity type is <code>audit-user-event</code>, so a change to one of its rows routes here
+/// <b>Its Create and its name cell open the user audit event editor</b> (Story 9.10), a dialog over
+/// this list that registers an event through <class>OcuPilot.Screen.Tool.AuditUserEventCreate</class>
+/// and edits one's Description through the update tool (AD-55); it declares three suggested prompts
+/// (Story 11.3). Its entity type is <code>audit-user-event</code>, so a change to one of its rows routes here
 /// rather than to the system list (DW-1529). It does not refresh (AD-43). As a list archetype it
 /// links out to nothing (AD-44).</p>
 Class OcuPilot.Screen.Descriptor.AuditUserEventList Extends OcuPilot.Screen.Descriptor.Base
@@ -36,11 +39,16 @@ XData Declaration
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "composite", "parts": ["EventName"]},
-  "primaryAction": {"id": "", "selfProtection": ""},
+  "primaryAction": {"id": "create", "selfProtection": ""},
   "rowActions": [{"id": "enable", "selfProtection": ""}, {"id": "disable", "selfProtection": ""}, {"id": "reset", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}],
   "context": {"fields": ["EventName", "Enabled", "Total", "Written", "Lost"], "secretFields": []},
   "emptyStateKey": "auditUserEventListEmpty",
   "commandAliases": [],
+  "suggestedPrompts": [
+    {"groupKey": "auditUserEventPromptGroup", "textKey": "auditUserEventPromptEnabled"},
+    {"groupKey": "auditUserEventPromptGroup", "textKey": "auditUserEventPromptBusiest"},
+    {"groupKey": "auditUserEventPromptGroup", "textKey": "auditUserEventPromptRegister"}
+  ],
   "classicPage": "%CSP.UI.Portal.Audit.UserEvents",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

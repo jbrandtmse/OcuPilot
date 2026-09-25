@@ -313,6 +313,11 @@ describe('the Switches screen', () => {
     expect(rows[0].querySelector('.ocu-switches-hold-absent')?.textContent).toContain(
       'is no longer present on this instance'
     );
+    // DW-391: Switches has no list of users to return to, so the row reads the list-less sentence,
+    // exactly. Mutation (Rule 19): revert `absentSentence` to `faultAbsentEntity` -> this goes red.
+    expect(rows[0].querySelector('.ocu-switches-hold-absent')?.textContent?.trim()).toBe(
+      STRINGS.faultAbsentEntityNoList.split('<name>').join('Gone')
+    );
     expect(rows[1].querySelector('.ocu-switches-hold-absent')).toBeNull();
     // Both rows carry the published row action, whatever the user's state.
     for (const row of rows) {

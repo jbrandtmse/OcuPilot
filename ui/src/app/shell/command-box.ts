@@ -26,6 +26,7 @@ import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
+import { rowFor } from '../core/table-model';
 
 /** The command box's name on the overlay stack (DW-137). */
 export const COMMAND_BOX_OVERLAY_ID = 'command-box';
@@ -480,6 +481,7 @@ export class CommandBox {
     const selected = screen.rowActions.length === 0
       ? ''
       : this.stores.for(screen.descriptor, screen.refreshRates).selection()[0] ?? '';
+    const row = selected === '' ? null : rowFor(this.stores.for(screen.descriptor, screen.refreshRates).data(), screen, selected);
     for (const action of screen.rowActions) {
       // DW-389: the same test the primary action above already applies -- a declared action with
       // no registered handler is a control nothing can act on, so no surface offers it.
@@ -489,7 +491,7 @@ export class CommandBox {
           rowScoped: true,
           reason: selected === ''
             ? STRINGS.privilegeSelectRowFirst
-            : selfProtectionReason(action.selfProtection, selected, this.signedIn()),
+            : selfProtectionReason(action.selfProtection, selected, this.signedIn(), row),
         });
       }
     }

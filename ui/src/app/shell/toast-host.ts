@@ -11,13 +11,15 @@ import { ToastStore, type ToastEntry, changeSentenceTemplate, formatChangeSenten
 
 /**
  * The off-screen change toast stack (AD-14): bottom right of the **content area**, `spacing.4`
- * above the status bar and offset from the right edge by the panel's live width, at most three,
- * newest on top.
+ * above the status bar -- or above the form bar while a form page is open -- and offset from the
+ * right edge by the panel's live width, at most three, newest on top.
  *
  * **The offset is the panel's own width, read live** (DW-1412). This host is a child of
  * `.ocu-shell`, which is `position: relative` and ends at the top of the status bar, so
  * `position: absolute` with `bottom: {spacing.4}` is the published bottom and
- * `right: calc(var(--ocu-panel-live-width) + {spacing.4})` is the published right edge. `app.ts`
+ * `right: calc(var(--ocu-panel-live-width) + {spacing.4})` is the published right edge. While a
+ * form page's bar is on screen, `_components.scss` lifts the stack above it, so no toast covers
+ * Save or Cancel. `app.ts`
  * publishes that custom property from the one getter that already binds the panel's width, because
  * the width is resolved in a framework-free store and a fixed token would not track a drag.
  *
@@ -41,15 +43,13 @@ import { ToastStore, type ToastEntry, changeSentenceTemplate, formatChangeSenten
  * the third toast must not lose the first two, and a toast that expired while its own dismiss
  * control held focus would move focus to the body.
  *
+ * **The dismiss control is a 24 x 24 CSS px target** (EXPERIENCE.md "Target sizes"): its box is at
+ * least `spacing.6` square with the glyph centred in it, so the glyph keeps its size and the box,
+ * not the glyph, meets the floor.
+ *
  * **It sits below a modal and above the shell's menus** -- `z-index` 5, under the dialog's scrim
  * (6) and surface (7) and over the account, namespace and sort menus (3 and 4). A toast reporting
  * a change elsewhere must never float over the decision surface the user is on.
- *
- * **Its rules are component-scoped, and that is a deliberate deviation** from the Consistency
- * Conventions' "global stylesheets live under `ui/src/styles/`" row: `ui/src/styles/**` is a
- * contended path while Epic 15 is live on it, and every value DESIGN.md's toast recipe names is
- * already a token, so nothing here invents one. Folding these rules into `_components.scss` is a
- * one-commit move once Epic 15 merges.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
@@ -63,7 +63,7 @@ import { ToastStore, type ToastEntry, changeSentenceTemplate, formatChangeSenten
     '.ocu-toast { display: flex; align-items: center; gap: var(--ocu-space-3); box-sizing: border-box; width: 360px; padding: var(--ocu-space-3); border-radius: var(--ocu-radius-md); background: var(--ocu-inverse-surface); color: var(--ocu-inverse-on-surface); box-shadow: var(--ocu-elevation-3); font-size: 0.875rem; }',
     '.ocu-toast-message { flex: 1 1 auto; }',
     '.ocu-toast-action { flex: 0 0 auto; background: none; border: 0; padding: 0; font: inherit; color: var(--ocu-toast-link); cursor: pointer; text-decoration: underline; }',
-    '.ocu-toast-dismiss { flex: 0 0 auto; background: none; border: 0; padding: 0 var(--ocu-space-1); font: inherit; line-height: 1; color: inherit; cursor: pointer; }',
+    '.ocu-toast-dismiss { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: var(--ocu-space-6); min-height: var(--ocu-space-6); background: none; border: 0; padding: 0; font: inherit; line-height: 1; color: inherit; cursor: pointer; }',
   ],
   template: `@if (visible) {
     <div
