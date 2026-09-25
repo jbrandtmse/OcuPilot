@@ -336,6 +336,8 @@ function triggerPlace(page) {
 // Mutation (Rule 19): `.ocu-data-table-viewport` given `overflow-x: hidden` -> the wheel leaves the
 // trigger past the frame, red; `revealActiveCell` returning early for the trigger column -> the
 // keyboard half leaves it past the frame, red.
+// The two "past the frame" assertions hold only while the trigger column scrolls with the rest.
+// If DW-1648 is decided as pinning that column, delete them and keep the reach assertions.
 test('Trigger reach: at 480 wide the row trigger starts past the frame, and the frame\'s own sideways scroll or Right into its column brings it inside, where it opens the row menu', async () => {
   const { context, page } = await openHarness(NARROW);
   try {
@@ -348,7 +350,18 @@ test('Trigger reach: at 480 wide the row trigger starts past the frame, and the 
     });
     await page.mouse.move(frame.x, frame.y);
     await page.mouse.wheel({ deltaX: 2000 });
-    await settle(page, 400);
+    // A wheel scroll starts asynchronously and can animate, so wait for the frame's scroll to reach
+    // its end. On a timeout the assertion below reports where the trigger stopped.
+    await page
+      .waitForFunction(
+        () => {
+          const viewport = document.querySelector('cdk-virtual-scroll-viewport');
+          return viewport.scrollLeft >= viewport.scrollWidth - viewport.clientWidth - 1;
+        },
+        { timeout: 2000 }
+      )
+      .catch(() => {});
+    await settle(page);
     const wheeled = await triggerPlace(page);
     assert.ok(wheeled.inside && wheeled.hit, `a sideways wheel over the frame brings the trigger inside it: ${JSON.stringify(wheeled)}`);
     await page.mouse.click(wheeled.x, wheeled.y);

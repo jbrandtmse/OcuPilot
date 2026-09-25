@@ -6878,3 +6878,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-8-columns-you-can-read.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Summed COLUMN_DEFAULT_PX floors plus the 52px trigger over the 38 declared tables: about 24 exceed ~800px (1280, panel open, side bar yielded), e.g. Users 1124, Processes 1236; AC1 fixes the floors.
 - 2026-09-25T06:21:23Z status=decision-pending owner=burndown by=cr note=AC1 wording forces it; owner call: keep, floor number/status/text at label, or pin the trigger column
+
+### DW-1649: clickRowCentre never checks where its click lands: a render between its measuring evaluate and page.mouse.click still misclicks, and the caller times out on the trigger instead of the helper naming the miss
+- source: spec-15-8-columns-you-can-read.md (code review, rework 1) | severity: med | fix-risk: med | footprint: in-story
+- evidence: list-spec.mjs clickRowCentre hit-tests inside one evaluate, then clicks in a later CDP round trip; nothing observes the pointerdown target. Run 36100540000 failed as a trigger TimeoutError, not a helper error. 25 caller files, so a post-click check needs each run.
+- 2026-09-25T07:06:33Z status=routed owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=cr note=add a capture pointerdown probe checking the target is in the wanted row by its first-cell text; run every clickRowCentre caller

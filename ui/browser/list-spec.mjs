@@ -160,7 +160,7 @@ export async function filterToSubset(page, { text, expectRow, total, timeoutMs }
  * helper before it fails anything the click would have caused.
  *
  * The point is measured only once the rendered rows, and then the target, have held still for two
- * animation frames. A filter or a scroll re-renders the rows a frame after the event, so a point
+ * animation frames. A filter or a scroll can re-render the rows a frame after the event, so a point
  * measured before that render lands where the row used to be, and the click selects nothing.
  *
  * Name the target one of three ways: `link: true` for the row's own `.ocu-data-table-link`

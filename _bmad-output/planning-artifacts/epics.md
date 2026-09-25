@@ -6046,6 +6046,7 @@ So that the shell reads as finished.
 - **Then** they state the header placement at origin, and browser specs pin that the header button opens the menu and signs out, that Home shows no filter field, and that a list still filters.
 
 - DW-1597: An editor's own Save raises a change toast that DESIGN.md's toast recipe forbids; suppress it for the open screen's own Save, keep it for agent writes and writes made elsewhere (ledger; routed by merge_gate 2026-09-25)
+- DW-1649: The shared browser helper `clickRowCentre` never checks where its click lands, so a re-render between measuring and clicking misclicks and the caller times out on the row trigger instead of the helper naming the miss (ledger; routed by cr 2026-09-25)
 
 ---
 

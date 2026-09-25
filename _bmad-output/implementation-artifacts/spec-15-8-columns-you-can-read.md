@@ -202,6 +202,21 @@ Rejected:
 - false: `hideTooltip` leaving `hoverCellId` set (a dismissed tooltip re-arms on the next hover, WCAG 1.4.13); EXPERIENCE.md/DESIGN.md "the only resizable edge" (they scope to the shell's layout edges).
 - low: no feedback on a keypress at the floor; `document.fonts.ready` already settled; `renderedWidth` fallbacks for undrawn or unknown-kind columns; all columns sized leaves no `fr` track; `TRIGGER_TRACK_PX` copies a token; tooltip `z-index` and literal `kbd` sizes; a partly scrolled cell's tooltip clamped to the window, not the frame; no Escape to cancel a drag; the Shortcuts `dl` with more entries; per-resize host listener; `pointercancel` commits the drawn width; a handle removed mid-drag; a tick changing a hovered cell's text; a tooltip stacked over an open menu; a header measured while hidden; a label wider than 2000px; `overflow-clip-margin` outside Chrome; undeclared widths never pruned.
 
+Code review 2026-09-25, rework 1 re-review (four layers, full-opus, diff `11feffa4..HEAD`). 23 findings: high 0, medium 1, low 12, false 5 (grouped into 17 entries). The `[CI]` item is judged honest: only the helper changed, no assertion was weakened, and "Trigger reach" is falsifiable (the overflow mutation was re-observed red in this pass).
+
+- [x] [Review][Patch] "Trigger reach" measured the wheel's result after a fixed 400 ms, but a wheel scroll starts asynchronously and can animate (low) — waits for the frame's scroll to reach its end [ui/browser/data-table-columns.browser-spec.mjs:353]
+- [x] [Review][Patch] "Trigger reach"'s two "past the frame" assertions break if DW-1648 pins the trigger column, and nothing said so (low) — comment names DW-1648 and which assertions go [ui/browser/data-table-columns.browser-spec.mjs:340]
+- [x] [Review][Patch] `clickRowCentre`'s doc comment stated the one-frame re-render as a rule of every filter and scroll (low) — now "can re-render" [ui/browser/list-spec.mjs:163]
+- [x] [Review][Defer] `clickRowCentre` never checks where its click lands, so a render between its measurement and `page.mouse.click` still misclicks, and the caller then times out on the trigger (medium) [ui/browser/list-spec.mjs:311] — deferred: DW-1649, routed to 15-9. A post-click check reaches all 25 caller files.
+
+Rejected (rework 1 re-review):
+
+- low: the two-frame settle is a heuristic, and the callers' filter waits accept a prefix view. After `page.type` returns, the filter (not debounced, `command-bar.ts:864`) has one render pending, and the mutation reddens 339. reopen_if a `browser` job shows `clickRowCentre`'s "kept moving" error, or a trigger timeout after a filter-then-`clickRowCentre`.
+- low: `roles-editor:425` was never reproduced, and the item was closed before CI. It runs the same filter, `clickRowCentre`, trigger path (`roles-editor.browser-spec.mjs:228-231`), and the lead resolves run 36105267145 before the next implement spawn (Rule 28).
+- low: neither settle wait is pinned alone. The target wait covers a re-render after `scrollIntoView`, which 339's one-row path cannot produce.
+- low: `triggerPlace` dereferences without a null check (the harness always renders row 1); `reduced-editors` and `tasks` never reached the click (residue, disclosed; CI's fresh container runs them); the cycle log's count of 24 specs (lead-owned); the Auto Run Result heading names every trigger clicker (the fix would edit the spec, and the triage above covers them).
+- false: the harness is not the real screens (it mounts the same `app-data-table`, and reach is component behavior); the wheel half never checks `scrollLeft` (`inside` flips only through the frame's scroll); the keyboard half does no hit-test (reveal is asserted by `inside`); the final tree is unverified (`npm test` loads no `ui/browser` file, and this pass re-ran `client-lint`, `browser-reset` and `data-table-columns` 15/15); `status: done` against the tracker's `review` (the build-auto contract writes `done`).
+
 ## Spec Change Log
 
 - 2026-09-25 rework 1 (runner, trigger=ci): re-opened for the red `browser` job of run 36100540000; items under Tasks › Rework 1.
@@ -369,7 +384,7 @@ Results (2026-09-25, `ocupilot-ci`; each reverted, tree byte-identical by `shasu
 - mutation: any pointermove counts as a drag → `data-table.spec.ts` "a press on a header edge … stores nothing" red (code review).
 - mutation: the ancestor-scroll listener removed, or `afterActiveCellMoved` removed from the vertical move keys → harness Dismissal red on "ancestor scroll" or "vertical key" (code review).
 - mutation (rework 1): both settle waits in `clickRowCentre` disabled → `resources-editor.browser-spec.mjs:339` red, with CI's signature (`TimeoutError` on `[role="row"][aria-selected="true"] .ocu-data-table-trigger`). Either wait disabled alone → 339 green: the two are redundant. `roles-editor:425` stayed green under the mutation (timing; CI confirms it).
-- mutation (rework 1): `.ocu-data-table-viewport` given `overflow-x: hidden` → harness "Trigger reach" red (the wheel leaves the trigger outside the frame). `revealActiveCell` returning early on the trigger column → "Trigger reach" red (keyboard half). Harness rebuilt before each read.
+- mutation (rework 1): `.ocu-data-table-viewport` given `overflow-x: hidden` → harness "Trigger reach" red (the wheel leaves the trigger outside the frame; re-observed after code review's scroll-end wait, with `!important`, `scrolled: 0`). `revealActiveCell` returning early on the trigger column → "Trigger reach" red (keyboard half). Harness rebuilt before each read.
 
 ## Auto Run Result
 
