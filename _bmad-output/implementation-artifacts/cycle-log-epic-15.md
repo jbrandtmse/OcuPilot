@@ -219,3 +219,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-25T06:26:46Z	Story 15.8	ledger_adjudicated	owned=1 resolved=1 reowned=0 terminal=0 note=DW-1586_resolved-by_15-8(gate_208/208_0_fresh);slice_empty;DW-1648_decision-pending_burndown_to_decisions_for_user
 2026-09-25T06:26:46Z	Story 15.8	ci_resolved	story=15.8 run=36100540000 result=failure head=0b7e3b69 resolved_at=smoke_gate jobs=7/8(browser_red:resources-editor:339,roles-editor:425_row_trigger_not_reached) first_red=0b7e3b69(this_story)
 2026-09-25T06:26:46Z	Story 15.8	rework_opened	cycle_iteration=2 iteration=1 trigger=ci items=CI_browser_resources-editor_339,roles-editor_425 scope_baseline=pending(rework_commit)
+2026-09-25T06:29:04Z	Story 15.8	stage_spawned	stage=implement spawn_at=2026-09-25T06:29:04Z model=opus agent_name=15-8-columns-you-can-read-implement-2 cycle_iteration=2 rework=1 rework_commit=50911ef5
