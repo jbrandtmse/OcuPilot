@@ -121,7 +121,7 @@ ClassMethod Validate(pArgs As %DynamicObject, pIdentity As %Boolean, Output pVio
         Set tType = pArgs.%GetTypeOf(..#DESCRIPTIONFIELD)
         If tType = "string" {
             If $Length(pArgs.%Get(..#DESCRIPTIONFIELD)) > ..#DESCRIPTIONMAXLENGTH Do ..Add(.pViolations, ..#DESCRIPTIONFIELD, ##class(OcuPilot.Api.Error).#AUDITEVENTDESCRIPTIONLENGTH)
-        } ElseIf (tType '= "unassigned") && (tType '= "null") {
+        } ElseIf tType '= "unassigned" {
             Do ..Add(.pViolations, ..#DESCRIPTIONFIELD, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
         }
         Set tType = pArgs.%GetTypeOf("Enabled")

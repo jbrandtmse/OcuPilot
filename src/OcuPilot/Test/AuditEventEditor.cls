@@ -2,8 +2,8 @@
 /// a create, a taken name, the vendor's bounds, a Description edit that keeps <code>Enabled</code>,
 /// an edit of a vanished event, and each list refusing the other's events from both callers -- the
 /// agent's create, its create race and its Description edit through the shipped mint and confirm,
-/// the marking fact a Save records after its write, and a principal holding exactly the list's pairs
-/// creating and editing.</p>
+/// the marking fact a Save records after its write, a principal holding exactly the list's pairs
+/// creating and editing, and one short of either pair refused on every route.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, an account holding
 /// the list's pairs, and both <parameter>ARMINGVARIABLE</parameter> and
 /// <parameter>PRINCIPALSVARIABLE</parameter> reading <code>1</code> -- the legs register and delete
@@ -293,6 +293,39 @@ Method TestAPrincipalHoldingTheListsPairsCreatesAndEdits()
     Do $$$AssertEquals(..Stored(tId), "q|1", "the instance holds the edited event")
 }
 
+/// <p>AD-8: a caller short of either of the list's pairs is refused 403 <code>AUTH.NOPRIVILEGE</code>
+/// naming that pair on each of the editor's three routes, and nothing is registered or changed. The
+/// caller short of <code>%Admin_Secure</code> holds <code>%Admin_Operate</code>, so it passes the
+/// API's own administrator check and reaches the routes.</p>
+/// <p>Mutation (Rule 19): drop the <method>OcuPilot.Area.Security.AuditEventRules.Gate</method> call
+/// from <method>OcuPilot.Area.Security.AuditEventSave.HandleCreate</method> -- the create legs go
+/// red.</p>
+Method TestACallerShortOfAPairIsRefusedOnEveryRoute()
+{
+    Set tCode = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCode, "", "the install namespace's code database resource resolves")
+    If tCode = "" Quit
+    Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")
+    Set tId = ..Probe("Principal/One")
+    Set tCreate = {"Source": (..#PROBESOURCE), "Type": "Principal", "Name": "One", "Description": "p", "Enabled": true}
+    For tCase = $ListBuild("%Admin_Secure:U," _ tCode _ ":R", "%DB_IRISSYS:READ"), $ListBuild("%Admin_Operate:U,%DB_IRISSYS:R," _ tCode _ ":R", "%Admin_Secure:USE") {
+        Set tMissing = $List(tCase, 2)
+        Set tSC = ..EnsurePrincipal($List(tCase, 1))
+        Do $$$AssertStatusOK(tSC, "a principal short of " _ tMissing _ " is created: " _ $System.Status.GetErrorText(tSC))
+        If $$$ISERR(tSC) Quit
+        Do ..Remove(tId)
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", tBase _ ..#CREATEPATH, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders, tCreate.%ToJSON(), "application/json")
+        Do $$$AssertEquals(..Refusal(tStatus, $Get(tBody)), "403 AUTH.NOPRIVILEGE " _ tMissing, "short of " _ tMissing _ ": the create is refused naming it")
+        Do $$$AssertEquals(..Exists(tId), 0, "and nothing was registered")
+        Do $$$AssertStatusOK(..Make(tId, "before", 1), "the probe event is registered directly")
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("PUT", tBase _ ..EditPath(tId), ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders, "{""Description"":""after""}", "application/json")
+        Do $$$AssertEquals(..Refusal(tStatus, $Get(tBody)), "403 AUTH.NOPRIVILEGE " _ tMissing, "short of " _ tMissing _ ": the edit is refused naming it")
+        Do $$$AssertEquals(..Stored(tId), "before|1", "and nothing moved")
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tBase _ ..#FORMPATH _ "?event=" _ ..Query(tId), ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+        Do $$$AssertEquals(..Refusal(tStatus, $Get(tBody)), "403 AUTH.NOPRIVILEGE " _ tMissing, "short of " _ tMissing _ ": the form read is refused naming it")
+    }
+}
+
 /// <p>Mint one proposal of tool <var>pTool</var> for <var>pId</var> with <var>pArgs</var> through
 /// the shipped mint and port, on a seeded turn.</p>
 Method Mint(pTool As %String, pId As %String, pArgs As %DynamicObject, Output pProposal As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
@@ -325,6 +358,21 @@ ClassMethod CodeOf(pBody) As %String
 {
     If '$IsObject($Get(pBody)) Quit ""
     Quit pBody.%Get("code")
+}
+
+/// <p><var>pStatus</var>, the envelope code of the JSON <var>pBody</var> and its
+/// <code>detail.failedPair</code>, space-separated.</p>
+ClassMethod Refusal(pStatus As %Integer, pBody As %String) As %String
+{
+    Set tParsed = ""
+    Try {
+        Set tParsed = ##class(%DynamicObject).%FromJSON(pBody)
+    } Catch {
+        Set tParsed = ""
+    }
+    Set tPair = ""
+    If $IsObject(tParsed) && $IsObject(tParsed.%Get("detail")) Set tPair = tParsed.detail.%Get("failedPair")
+    Quit pStatus _ " " _ ..CodeOf(tParsed) _ " " _ tPair
 }
 
 /// <p>The first violation of <var>pBody</var> as <code>field:code</code>, or <code>""</code>.</p>

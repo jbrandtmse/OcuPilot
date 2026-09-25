@@ -6582,6 +6582,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AD-54 and AD-55 exist only on OCU-1-epic8 (Write.cls, Mint.cls, Router.cls); building a second create path here duplicates them; orchestrator ruling 2026-09-23 amended 7.11 AC3
 - 2026-09-23T19:25:32Z status=routed owner=range-end-cleanup by=spec_gate note=a dialog editor over an AD-54 create and an AD-55 Save, following Story 8.4's resource editor; the orchestrator has offered the owner a Story 9.10 charter for it
 - 2026-09-24T08:07:32Z status=routed owner=9-10-the-user-audit-event-editor by=owner note=Owner answered 2026-09-24: yes, charter Story 9.10 'The user audit event editor'. Chartered at the end of Epic 9's order.
+- 2026-09-25T02:55:30Z status=resolved-by:9-10-the-user-audit-event-editor by=adjudication note=create (POST /audit-events, security.audituserevents.create, AD-54 absence) and Description edit ship; AuditEventEditor run 11297; lead smoke create 201, taken 422, edit 200
 
 ### DW-1575: Each audit event tool accepts the other list's events, so a user event changed through a system tool publishes audit-event (and the reverse)
 - source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: med | fix-risk: med | footprint: in-story
@@ -6589,6 +6590,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-23T20:54:31Z status=escalated owner=burndown by=cr note=no id-aware hook shared by mint and screen read inside the approved footprint; fix via port owner rule or kernel seam
 - 2026-09-23T22:26:32Z status=routed owner=range-end-cleanup by=merge_gate note=Epic 7 merge decision sheet, recommended disposition taken: one owner check both callers pass through (a Source starting with % is a system event).
 - 2026-09-24T08:07:32Z status=routed owner=9-10-the-user-audit-event-editor by=orchestrator note=Moved from range-end-cleanup into 9.10, whose tools are the ones that must refuse the other list's events.
+- 2026-09-25T02:55:30Z status=resolved-by:9-10-the-user-audit-event-editor by=adjudication note=all six audit-event tools refuse the other list's events through both hooks (AuditEventRules.TestEveryToolRefusesTheOtherListsEventsThroughBothHooks); lead smoke PUT on %System/%Login/Login 422 AUDITEVENT.SYSTEM
 
 ### DW-1576: The reset tools' card row reads Total before "" after 0: its before is not derived from the fresh read, which AD-51 requires
 - source: spec-7-11-system-and-user-audit-event-configuration.md code review | severity: med | fix-risk: med | footprint: in-story

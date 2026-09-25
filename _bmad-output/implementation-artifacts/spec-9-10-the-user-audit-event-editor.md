@@ -234,6 +234,44 @@ Tests:
 - **AC4.** Given the new labels, refusal sentences and prompts, when they render, then each one is a Fixed-strings row and a `strings.ts` key, and each server reason is pinned equal to its row.
 - **Integration.** Given the dialog, which consumes `/audit-events/*` and `ChangeBus`, when a Save succeeds, then the User events list re-fetches and shows the change, observed in the browser against `ocupilot-ci`.
 
+### Review Findings
+
+Code review 2026-09-24 (layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor; all on the parent Opus tier, `review_tier: full-opus`). 0 decision-needed, 8 patch, 0 defer, 22 rejected.
+
+- [x] [Review][Patch] MED -- the three `/audit-events` routes' AD-8 gate had no refusing test; removing `AuditEventRules.Gate` left every leg green [src/OcuPilot/Test/AuditEventEditor.cls] -- fix-risk low (test only, this story's own armed class)
+- [x] [Review][Patch] LOW -- Description stayed typeable in edit mode while the store dropped input until the fresh read was held (loading, failed or absent read) [ui/src/app/areas/security/audit-event-editor-dialog.ts:173] -- fix-risk low (one expression)
+- [x] [Review][Patch] LOW -- the Save's `Validate` accepted a JSON `null` Description and passed it to compose/merge; the agent's dispatcher already refuses it [src/OcuPilot/Area/Security/AuditEventRules.cls:124] -- fix-risk low
+- [x] [Review][Patch] LOW -- `HandleUpdate`'s doc said a system event is 422 `AUDITEVENT.SYSTEM`; it answers `AUDITEVENT.VALIDATION` carrying `AUDITEVENT.SYSTEM` on `EventName`, and `Error.cls` called `AUDITEVENTSYSTEM` a violation code only though the form read uses it as the envelope code [src/OcuPilot/Area/Security/AuditEventSave.cls:87, src/OcuPilot/Api/Error.cls:3048] -- fix-risk low (doc)
+- [x] [Review][Patch] LOW -- two `AuditEventTools` method names say "Enabled alone" while they now assert the user tool admits Description [src/OcuPilot/Test/AuditEventTools.cls:36, :222; SurfaceCoverage rows] -- fix-risk low (rename)
+- [x] [Review][Patch] LOW -- `AuditEventUpdate`'s class, `PERMITTEDFIELDS` and `PermittedFields` docs still say both audit types admit `Enabled` alone and Description is unpermitted [src/OcuPilot/Screen/Tool/AuditEventUpdate.cls:11-21, :31-33, :81] -- fix-risk low (doc)
+- [x] [Review][Patch] LOW -- `ToolRoundTrip.REFUSEEMPTY`'s doc still names five audit event writes with `Enabled` for both updates [src/OcuPilot/Test/ToolRoundTrip.cls:33] -- fix-risk low (doc)
+- [x] [Review][Patch] LOW -- `EntityType`'s corrected sentence now argues against itself (a `%` Source does reveal the owner) [src/OcuPilot/Kernel/EntityType.cls:22] -- fix-risk low (doc)
+
+Rejected:
+
+- `by-design` MED (acceptance-auditor) -- a create with a `%` Source answers `PART.RESERVED` on Source/Type, never `AUDITEVENT.SYSTEM`, and the agent's create of an *existing* system event gets the kernel's "already present" refusal first. Every `%`-Source event is a system event by the ownership rule, so the matrix's Reserved row (`%Mine` -> `PART.RESERVED` on Source) and its Wrong-list row cannot both hold for a create; the implementation takes the Reserved row, which names the case exactly. Nothing is sent on any path, so AC3's effect holds. Reopens only via a spec amendment. The create tool's unreachable `OwnerRefusal` call stays, as the Tasks name it.
+- `low` (acceptance-auditor) -- mint and screen-action refusals carry `TOOL.ARGUMENTS` with the sentence in `detail.problem`, not the `AUDITEVENT.*` code: that is the hook contract every tool shares, AD-39 bars a slice widening the envelope, and the Save route does carry `{field, code, reason}`. `wontfix-accepted`, reopen_if: a client or tool-result consumer needs to branch on an `AUDITEVENT.*` code from a mint or screen action.
+- `low` -- the Save's absence read and its upsert `PUT` (and an edit's read and `PUT`) are not atomic: `wontfix-theoretical`; real only if another writer registers or deletes the same event within the milliseconds between them, and the agent's path has the same window against non-OcuPilot writers.
+- `low` -- `Update` checks ownership after the fresh read, so a nonexistent `%` event answers 404 on `PUT` and 422 on the form read: the Tasks fix that order.
+- `low` -- a no-op `PUT {}` re-sends the unchanged body: the client never sends one, the body is identical, and the sibling Saves behave the same.
+- `low` -- the editor routes answer a malformed id as `AUDITEVENT.ABSENT`, not `EVENTNAME.SHAPE`: every in-app route carries a row's own `EventName`.
+- `low` -- a non-string part reads `PART.REQUIRED`: the client always sends strings and the agent's parts come from `Split`.
+- `low` -- the form read echoes the route's spelling: the name cell and the create's route replacement both carry the stored spelling; the vendor's read returns no identity to prefer.
+- `low` -- create-route branches (non-object body, an extra key reaching the prohibited set as 403) are unpinned and differ from the edit route's 400: the client sends neither, and `ResourceSave` behaves the same.
+- `low` -- `openEdit` does not retry a failed read of the same id; a `PUT` 404 leaves Save enabled; a canceled route replacement leaves `retaining` set: each needs an unusual sequence, the dialog shows the reason, and closing resets the editor.
+- `low` -- `OnBeforeAllTests` does not check the 64-character Bounds probe: its Source is this class's own, and `OnAfterOneTest` removes it.
+- `low` (verification-gap) -- focus after a refused Save is untested: the code mirrors 8.4's template line for line.
+- `low` (verification-gap) -- "nothing was created / nothing moved" beside vendor-refused inputs and after refused resets cannot fail on their own: each leg's pinning assertion is the refusal code or sentence beside it, with its mutation recorded.
+- `low` (verification-gap) -- the Save's non-404 read failure and prohibited-set 403 branches are untested: both are correct as written (`AuditEventSave.cls:140-145`, `:151-152`); coverage of a correct branch is not a defect.
+- `low` (acceptance-auditor) -- `AuditEventSave.PortClass` answers the update tool's port for the create too: both default `AdminPort`; real only if the two tools declared different ports.
+- `low` (acceptance-auditor) -- `Classification.cls`'s doc paragraph was rewritten, not appended: it corrected a now-false sentence, and the new entry sits in the file's name order.
+- `low` (blind-hunter) -- `Prohibited`'s `PermittedCreateFields` / `PermittedChangeFields` docs name no audit-event entry: the code line states the list, and the doc tail is where Epic 12 appends.
+- `false` (edge-case-hunter) -- an object or array Description throws `<ILLEGAL VALUE>` in `ArgumentViolations`: measured true of `%Set`, but `Dispatch` validates the arguments against the tool schema (Description `string`) before any mint, and the Save's `Validate` never calls `%Set`.
+- `false` (edge-case-hunter) -- the agent's create skips the `Enabled` shape rule: `Registry.ValidateArguments` refuses a non-boolean `Enabled` before the mint (`ToolFields`: `templateType boolean`).
+- `false` (blind-hunter) -- the form read's success path is untested: the browser AC2 leg reads it against the instance and asserts the identity and Description.
+- `false` (edge-case-hunter) -- the agent's create or edit takes a `null` Description: the dispatcher's `string` type refuses it (the Save's half is the patch above).
+- `false` (verification-gap) -- an AC without a `mutation:` line: AC1 to AC4 and Integration each carry one.
+
 ## Spec Change Log
 
 - 2026-09-24 spec gate (lead): the four questions answered as recommended - (1) EXPERIENCE.md :173's dialog list now names the user audit event editor (Rule 5 tier 1, applied and reported); (2) edit mode carries Description only, Enabled stays a row action; (3) `maximumWarning` and its pinned literal re-base to the measured total below 1580kB (DW-1166), HALT above it with the lighter design; (4) the refusal sentences are `strings.ts` keys pinned equal to the server's.
@@ -345,6 +383,9 @@ Every edit here is an append or a one-line roster change. Footprint extensions: 
 - `mutation: AC3 (edit path) -- AuditEventSave.Update's Validate call removed -> AuditEventEditor.TestACreateThenATakenNameThenADescriptionEdit red on the 257-character edit leg (run 11041); AuditUserEventUpdate.ArgumentProblem's ArgumentViolations call removed -> AuditEventRules.TestEveryRuleRefusesOnItsFieldAtTheBounds red on the agent's Description bound (run 11042). DEMONSTRATED 2026-09-24 (review pass), restored`
 - `mutation: Marking (Boundaries) -- AuditEventSave.Send's ObserveMarking call removed -> AuditEventEditor.TestASaveRecordsTheMarkingItObservesAfterTheWrite red (run 11041). DEMONSTRATED 2026-09-24 (review pass), restored, tree byte-identical`
 - `mutation: AC2 (client) -- canSave() ignores the held read -> audit-event-editor.store.spec.ts "an edit whose read failed for any other reason" red. DEMONSTRATED 2026-09-24 (review pass), restored`
+- `mutation: AD-8 gate (code review) -- AuditEventSave.HandleCreate's Gate call removed (ocupilot-ci copy) -> AuditEventEditor.TestACallerShortOfAPairIsRefusedOnEveryRoute red on both create legs (run 11296). DEMONSTRATED 2026-09-24, restored, tree byte-identical, 10/10 green (run 11297)`
+- `mutation: null Description (code review) -- Validate's null exemption restored -> AuditEventRules.TestEveryRuleRefusesOnItsFieldAtTheBounds red (run 11301). DEMONSTRATED 2026-09-24, restored, 5/5 green`
+- `mutation: AC2 edit read-only (code review) -- Description drawn editable whatever the read answered -> audit-event-editor-dialog.spec.ts "an edit whose fresh read did not land keeps Description read-only" red. DEMONSTRATED 2026-09-24, restored`
 
 **Once, before `dev_complete`:** the full ObjectScript sweep on `ocupilot-ci`, one class per call, with totals from the numeric-run-index probe. Then `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS`. The full browser suite runs in CI (Rule 29).
 

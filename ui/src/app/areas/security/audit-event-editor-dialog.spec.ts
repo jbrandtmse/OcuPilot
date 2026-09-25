@@ -30,11 +30,12 @@ async function settle(): Promise<void> {
   for (let pass = 0; pass < 4; pass += 1) await new Promise((resolve) => setTimeout(resolve, 2));
 }
 
-async function mount(mode: 'create' | 'edit') {
+async function mount(mode: 'create' | 'edit', editRead?: JsonResult<unknown>) {
   const api = {
     requestJson: async <T,>(path: string, _init: ApiRequestInit = {}): Promise<JsonResult<T>> => {
       if (path === AUDIT_EVENTS_FORM_PATH) return { kind: 'ok', status: 200, body: FORM } as unknown as JsonResult<T>;
       if (path.startsWith(`${AUDIT_EVENTS_FORM_PATH}?`)) {
+        if (editRead !== undefined) return editRead as JsonResult<T>;
         return { kind: 'ok', status: 200, body: { ...FORM, event: { Source: 'App', Type: 'Kind', Name: 'One', Description: 'old', Enabled: true } } } as unknown as JsonResult<T>;
       }
       return REFUSAL as JsonResult<T>;
@@ -105,6 +106,13 @@ describe('the user audit event editor dialog', () => {
     expect(input(host, 'Description').readOnly).toBe(false);
     expect(input(host, 'Description').value).toBe('old');
     expect(host.querySelector('#ocu-audit-event-Enabled')).toBeNull();
+  });
+
+  it('AC2: an edit whose fresh read did not land keeps Description read-only', async () => {
+    const absent = { kind: 'error', status: 404, code: 'AUDITEVENT.ABSENT', reason: STRINGS.auditEventRefusalAbsent, detail: null } as unknown as JsonResult<unknown>;
+    const { host } = await mount('edit', absent);
+    // Mutation (Rule 19): draw Description editable whatever the read answered -> this goes red.
+    expect(input(host, 'Description').readOnly).toBe(true);
   });
 
   it('AD-39: a refused Save renders the server sentence at the field it names and in the summary', async () => {

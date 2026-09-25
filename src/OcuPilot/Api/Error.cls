@@ -3045,7 +3045,7 @@ Parameter AUDITEVENTEVENTNAMESHAPE = "AUDITEVENT.EVENTNAME.SHAPE";
 
 Parameter REASONAUDITEVENTEVENTNAMESHAPE = "Name the event as source/type/name: three parts, none containing a slash.";
 
-/// <p>Violation code (Story 9.10): a user event tool given a system event.</p>
+/// <p>Violation and envelope code (Story 9.10): a user event tool given a system event.</p>
 Parameter AUDITEVENTSYSTEM = "AUDITEVENT.SYSTEM";
 
 Parameter REASONAUDITEVENTSYSTEM = "This is one of the instance's own system events. Change it on the System events list.";

@@ -43,6 +43,7 @@ Method TestEveryRuleRefusesOnItsFieldAtTheBounds()
     Do $$$AssertEquals(..Codes({"Source": "S", "Type": "T", "Name": "N", "Description": (t256 _ "d")}), "Description:" _ $Parameter(tE, "AUDITEVENTDESCRIPTIONLENGTH"), "a 257-character Description is too long")
     Do $$$AssertEquals(..Codes({"Description": (t256 _ "d")}, 0), "Description:" _ $Parameter(tE, "AUDITEVENTDESCRIPTIONLENGTH"), "and an edit checks the Description alone")
     Do $$$AssertEquals(..Codes({"Description": "d"}, 0), "", "leaving the identity unchecked")
+    Do $$$AssertEquals(..Codes({"Description": null}, 0), "Description:" _ $Parameter(tE, "PORTFIELDSHAPE"), "and refusing a null Description as the wrong shape")
     Set tSC = ##class(OcuPilot.Screen.Tool.AuditUserEventUpdate).ArgumentProblem(..#USEREVENT, {"Description": (t256 _ "d")}, .tProblem)
     Do $$$AssertTrue(tProblem [ ##class(OcuPilot.Api.Error).#REASONAUDITEVENTDESCRIPTIONLENGTH, "the agent's Description edit is held to the same bound: " _ tProblem)
 

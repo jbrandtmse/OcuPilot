@@ -33,7 +33,7 @@ Parameter ENDPOINT = "Security.Audit.Event";
 /// <code>Description</code> too (Story 9.10), over the class-derived
 /// <code>Security.Audit.Event:Security.Events</code> list, through the vendor's own endpoint, and
 /// each agrees with the prohibited set's permitted list for its entity type.</p>
-Method TestTheUpdateToolsAdmitEnabledAloneOverTheClassDerivedList()
+Method TestTheUpdateToolsAdmitTheirFieldsOverTheClassDerivedList()
 {
     For tPair = $ListBuild(..#SYSTEMUPDATE, "security.auditsystemevents.update", "OcuPilot.Screen.Descriptor.AuditSystemEventList", "audit-event", "Enabled"), $ListBuild(..#USERUPDATE, "security.audituserevents.update", "OcuPilot.Screen.Descriptor.AuditUserEventList", "audit-user-event", "Description,Enabled") {
         Set tClass = $List(tPair, 1)
@@ -219,7 +219,7 @@ Method TestThePortSplitsTheEventKeyAndRefusesAMalformedOne()
 /// <p>The prohibited set covers both event types, permits a change to <code>Enabled</code>, refuses
 /// one to a system event's <code>Description</code> as an unreviewed field and permits one to a
 /// user event's (AD-10, Story 9.10).</p>
-Method TestTheProhibitedSetPermitsEnabledAloneForBothTypes()
+Method TestTheProhibitedSetPermitsEachEventTypesFields()
 {
     For tCase = $ListBuild("security.auditsystemevents.update", "audit-event", ..#SYSTEMEVENT), $ListBuild("security.audituserevents.update", "audit-user-event", ..#USEREVENT) {
         Set tTool = $List(tCase, 1)

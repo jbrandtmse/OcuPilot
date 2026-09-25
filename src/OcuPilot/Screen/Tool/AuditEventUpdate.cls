@@ -10,15 +10,15 @@
 /// for an event the read did not find (AD-4, AD-6).</p>
 /// <p><b>It admits one field</b>, <code>Enabled</code>, of the class-derived
 /// <code>Security.Audit.Event:Security.Events</code> list (AD-3); <code>Description</code> is
-/// classified <code>ordinary</code> and left unpermitted.</p>
+/// classified <code>ordinary</code> and left unpermitted for a system event.</p>
 /// <p><b>The target is the row key</b>, <code>Source/Type/Name</code>, sent as the port's
 /// <code>event</code> parameter, which <parameter>OcuPilot.Port.AdminPort.SPLITQUERIES</parameter>
 /// splits into the vendor's three.</p>
 /// <p><b>Disabling OcuPilot's own marker event stops agent writes being marked</b>
 /// (<method>ClosesMarking</method>, AD-15), so the write declares <parameter>MOVESMARKING</parameter>
 /// and the agent's card carries the audit warning.</p>
-/// <p><class>OcuPilot.Screen.Tool.AuditUserEventUpdate</class> is the same tool for the User events
-/// list.</p>
+/// <p><class>OcuPilot.Screen.Tool.AuditUserEventUpdate</class> is the User events list's tool: it
+/// admits <code>Description</code> too, and each refuses the other list's events.</p>
 Class OcuPilot.Screen.Tool.AuditEventUpdate Extends OcuPilot.Screen.Tool.Write
 {
 
@@ -30,7 +30,7 @@ Parameter DESCRIPTION = "Propose turning one system audit event on or off, so th
 
 /// <p>The one derived top-level field this tool admits, which is also the one field
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedChangeFields</method> permits a change to
-/// for both audit-event entity types. A test asserts the two agree.</p>
+/// for a system event. A test asserts the two agree.</p>
 Parameter PERMITTEDFIELDS = "Enabled";
 
 /// <p>The two row actions this tool carries out (AD-5, AD-53), each the one merge write over
@@ -78,8 +78,8 @@ ClassMethod SettableFields() As %List
     Quit ..AdmittedFields()
 }
 
-/// <p><parameter>PERMITTEDFIELDS</parameter>, so <code>Description</code> is absent from the
-/// schema and from <method>SettableFields</method>.</p>
+/// <p><parameter>PERMITTEDFIELDS</parameter>: a field it does not name is absent from the schema and
+/// from <method>SettableFields</method>.</p>
 ClassMethod PermittedFields() As %List
 {
     Quit $ListFromString(..#PERMITTEDFIELDS)

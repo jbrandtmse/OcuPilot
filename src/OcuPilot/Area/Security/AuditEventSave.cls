@@ -85,7 +85,7 @@ ClassMethod HandleCreate() As %Status
 /// -- one path segment, decoded once here (AD-13) -- and answer <code>{target}</code> with 200. A key
 /// other than <code>Description</code> is 400 <code>PORT.FIELD.UNEXPECTED</code>; an event the
 /// instance does not hold is 404 <code>AUDITEVENT.ABSENT</code>; a system event is 422
-/// <code>AUDITEVENT.SYSTEM</code>.</p>
+/// <code>AUDITEVENT.VALIDATION</code> carrying <code>AUDITEVENT.SYSTEM</code> on <code>EventName</code>.</p>
 ClassMethod HandleUpdate(pId As %String) As %Status
 {
     Set tSC = $$$OK

@@ -170,7 +170,7 @@ export class AuditEventEditorDialog {
       this.fieldView(SOURCE_FIELD, STRINGS.auditEventFieldSource, this.store.source(), true, editing),
       this.fieldView(TYPE_FIELD, STRINGS.tableColumnType, this.store.type(), true, editing),
       this.fieldView(NAME_FIELD, STRINGS.tableColumnName, this.store.name(), true, editing),
-      this.fieldView(DESCRIPTION_FIELD, STRINGS.tableColumnDescription, this.store.description(), false, false),
+      this.fieldView(DESCRIPTION_FIELD, STRINGS.tableColumnDescription, this.store.description(), false, editing && !this.store.canSave()),
     ];
   }
 
