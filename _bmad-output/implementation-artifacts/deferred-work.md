@@ -6889,3 +6889,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Post to http://127.0.0.1:1/ with Timeout 3 on ocupilot-b-ci: 3.01 s, ERROR #6059, no HttpResponse (HttpRequest.cls:1664-1679); Base.cls Attempts retries it since only CSPTimeout counts as a timeout. The spec's design note both retries a connect refusal and says a timeout that spent its per-call timeout is not retried.
 - 2026-09-25T07:48:27Z status=decision-pending owner=burndown by=cr note=owner call: exclude #6059/pre-send config errors, or an attempt that spent its timeout, from the one retry (recommended)
 - 2026-09-25T08:27:24Z status=routed owner=range-end-cleanup by=merge_gate note=decided at the 10.6 merge (orchestrator, recommended disposition): exclude a connect that never opened (#6059) from the one transport retry, about 10 lines plus a test
+
+### DW-1651: The .ocu-status-bar comment in _components.scss still says the account menu opens upward out of the band, though 15.9 moved the menu to the header
+- source: spec-15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: _components.scss .ocu-status-bar comment block; menu mounts in header.ts since 9b4debcf
+- 2026-09-25T10:35:52Z status=open owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=harvest note=one-line comment fix; LOW two-way door for the 15.9 review
+
+### DW-1652: Where a scrollbar gutter is reserved, the header's pinned trigger cell sits one gutter width (15px) right of the body's pinned trigger column
+- source: spec-15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Trigger reach classic/painted runs: header cell right 463 vs header client edge 448 and body trigger right 448; .ocu-data-table-head overflow hidden with scrollbar-gutter stable
+- 2026-09-25T10:35:52Z status=open owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=harvest note=cosmetic; header cell carries no visible label; review decides patch or wontfix-accepted
