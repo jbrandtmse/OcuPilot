@@ -314,7 +314,7 @@ Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %
             ; next pass builds, within the attempt count, the deadline and the delay budget.
             If 'tTimedOut && (+tStatus = 0) && 'tTransportRetried && (tAttempt < tMaxAttempts) && ((..NowSeconds() - tStartedAt) < ##class(OcuPilot.Kernel.Provider.Retry).#ATTEMPTBUDGETSECONDS) {
                 Set tTransportRetried = 1
-                Do ..LogRaw("the provider connection broke before a status line; trying once more on a new connection", tIssueSC, tCode)
+                Do ..LogRaw("the provider call failed before any status line was read; trying once more on a new connection", tIssueSC, tCode)
                 Set tRemainingDelay = ##class(OcuPilot.Kernel.Provider.Retry).#RETRYBUDGETSECONDS - tSpentDelay
                 If tRemainingDelay < 0 Set tRemainingDelay = 0
                 Set tDelay = ##class(OcuPilot.Kernel.Provider.Retry).DelaySec(tAttempt, "", tRemainingDelay)

@@ -186,6 +186,34 @@ deferred: []
   - `WriteNeverRetried` proves no write is re-sent.
 - **AC4.** Given a confirmed proposal from a tool declaring `created`, when the panel and the toast report it, then both read "<entity> was created". Task 13 pins this end to end for a web-application create.
 
+### Review Findings
+
+Code review 2026-09-25 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 33 rows, 5 entries (med 1, low 4), 15 rejected.
+
+- [x] [Review][Defer] A connect failure (`#6059`, which IRIS answers only after the full per-call timeout, even for a refused connect) and pre-send config errors take the one transport retry, so a turn to a down endpoint fails in about twice the time [src/OcuPilot/Kernel/Provider/Base.cls:315] — deferred: DW-1650 `decision-pending owner=burndown`; the design note retries a connect refusal, so narrowing it is the owner's call. fix-risk med (changes the spec's classification).
+- [x] [Review][Patch] The retry's log line said "the connection broke" for failures where no connection formed [src/OcuPilot/Kernel/Provider/Base.cls:317] — now "failed before any status line was read". fix-risk low (log text only; no test reads it).
+- [x] [Review][Patch] `ProviderTransportRetry`'s header and `REFUSEDURL` said the loopback connect is "refused at once"; it waits the request's 5 s timeout and answers `#6059` [src/OcuPilot/Test/ProviderTransportRetry.cls:10] — corrected. fix-risk low (doc only).
+- [x] [Review][Patch] The delay-budget test's "429 then a break" leg was unseeded, so its mutation stayed green on a zero attempt-2 draw (1 in 21) [src/OcuPilot/Test/ProviderTransportRetry.cls:137] — the leg now runs under seeds 1-3; mutation line below. fix-risk low (test only).
+- [x] [Review][Patch] The seed search said "within 50 tries" but tried 51 [src/OcuPilot/Test/ProviderTransportRetry.cls:165] — `tSeed >= 50`. fix-risk low.
+
+Rejected:
+
+- `low` A retryable 5xx status line followed by a broken body is not retried: the Boundaries say a status line followed by a broken body is never retried; unchanged from baseline.
+- `low` A wait that crosses the 300 s deadline ends `PROVIDER.TIMEOUT`: already rejected in the Review Triage Log (sub-second window).
+- `low` A request cut after full delivery repeats the generation: inherent in AD-42's owner-decided exception.
+- `false` A `100 Continue` read then a break is retried: OcuPilot sends no `Expect` header, so no interim response is read.
+- `low` A non-numeric status code reads as `pStatus` 0: requires a malformed status line; the fix adds a branch.
+- `low` The `SocketTimeout` comment credits a no-op: the guarantee it states holds and mirrors AD-42's text; rejected in the Review Triage Log.
+- `low` The docs' reason for the exception also fits a timeout: the wording is AD-42's own.
+- `low` The panel re-derives the id fallback: tasks 9-10 prescribe it; both read the same body and `target.id`.
+- `low` `RunFailingTurn` now runs a completing turn: task 7 prescribes the parameter.
+- `low` `settled.error` is true when no banner shows: the assertion message states the meaning.
+- `low` The browser spec repeats helpers other specs carry: an existing pattern; a shared-helper refactor exceeds a fix-pack item.
+- `low` The `brokenafterstatus` branch is duplicated across the two stubs: task 4 prescribes parity.
+- `low` The screen-path leg does not check which failure it met: its pinning assertion, `WriteCount` 1, went red under mutation run 24.
+- `low` Break-then-raise and break-then-timeout are untested: the retry continues into the loop's ordinary exits, which the raise and timeout tests pin; `LogRaw` receives only the `%Status`.
+- `false` The seed is not restored if the loop throws: `Call` goes through `Invoke`, which catches every error.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -325,7 +353,9 @@ deferred: []
 - AC1, the real classification: delete the status-line block in `IssueHttpsPost` → `TestABrokenReadIsClassifiedByItsStatusLine` goes red.
   - mutation: deleted the `$IsObject(pRequest.HttpResponse) && (StatusLine '= "")` block → run 322 red, the after-a-status-line leg (`pStatus` 0).
 - AC1, the delay budget: pass `""` for the remaining budget in the transport branch; drop its spent-delay increment → `TestATransportRetrySharesTheDelayBudget` goes red.
-  - mutation: `DelaySec(tAttempt, "", "")` → run 323 red, leg "429 then a break" (waits not `30|0`). Dropped `Set tSpentDelay = tSpentDelay + tDelay` in the transport branch → run 324 red, leg "a break then 429" (`.6|30`); this leg reddens only when the first backoff draw is non-zero.
+  - mutation: `DelaySec(tAttempt, "", "")` → run 323 red, leg "429 then a break" (waits not `30|0`). Dropped `Set tSpentDelay = tSpentDelay + tDelay` in the transport branch → run 324 red, leg "a break then 429" (`.6|30`), reddening only on a non-zero first draw (10 in 11).
+  - QA (2026-09-25): the leg now seeds `%SYSTEM.Process.RandomSeed` with the smallest seed drawing non-zero, found against the real call, so the mutation reddens every run: dropped the increment again → run 330 red (`.4|30`); reverted → runs 329/332 green.
+  - Review (2026-09-25): the "429 then a break" leg now runs under seeds 1-3. mutation: `DelaySec(tAttempt, "", "")` → run 336 red on all three seeds ("the break's wait is what the 429 left, nothing"); reverted, `Base.cls` byte-identical → run 337 green.
 - AC1, the key (AD-35): clear `..ApiKey` in the transport branch before `Continue` → `TestATurnSurvivesOneBrokenConnection` key assertion goes red.
   - mutation: `Set ..ApiKey = ""` beside `Set tTransportRetried = 1` → run 325 red, "the retried request carried the stored key". `Base.cls` restored byte-identical; runs 326-328 green.
 - AC2: delete the `SocketTimeout` line → the four-family leg goes red (115).
@@ -371,4 +401,4 @@ Blocking condition: none
 - Smoke: `smoke.sh --container ocupilot-b-ci` executed=49 passed=49 failed=0.
 - Mutations: every line in `## Verification` applied, observed red, reverted; tree byte-identical after each.
 
-**Residual risks.** The break-then-429 budget mutation reddens only on a non-zero first backoff draw (10 in 11). The handoff subagent returned once with an interim line while its background sweep was still running; that sweep died with it at run 69 (no run in flight, no writer left, tree quiescent), and the stage re-ran the full sweep itself.
+**Residual risks.** The handoff subagent returned once with an interim line while its background sweep was still running; that sweep died with it at run 69 (no run in flight, no writer left, tree quiescent), and the stage re-ran the full sweep itself. (The break-then-429 budget mutation's dependence on a non-zero first backoff draw was closed by QA -- see the AC1 delay-budget line above.)

@@ -6,8 +6,9 @@
 /// <p><b>Opens no socket to a provider.</b> Every leg but one runs through
 /// <class>OcuPilot.Test.ProviderStub</class> and the three family stubs, which answer a queued
 /// script, record instead of sleeping and advance a fake clock. The one real transport call is a
-/// connect to <code>http://127.0.0.1:1/</code>, a loopback port nothing listens on, which the
-/// instance refuses before any byte is sent. Needs nothing of the environment but a resolvable probe
+/// connect to <code>http://127.0.0.1:1/</code>, a loopback port nothing listens on: IRIS retries
+/// the refused connect until the request's 5 s timeout, then answers <code>ERROR #6059</code>, and
+/// no byte reaches any server. Needs nothing of the environment but a resolvable probe
 /// credential, which <class>OcuPilot.Test.SecretProbe</class> supplies in process.</p>
 Class OcuPilot.Test.ProviderTransportRetry Extends %UnitTest.TestCase
 {
@@ -18,7 +19,7 @@ Parameter RETRY = "OcuPilot.Kernel.Provider.Retry";
 /// <p>The class whose values, settings, messages and probe key this one drives the stubs with.</p>
 Parameter DRIVER = "OcuPilot.Test.Provider";
 
-/// <p>A loopback address nothing listens on, so a connect is refused at once.</p>
+/// <p>A loopback address nothing listens on; a connect to it fails once the request's timeout runs out.</p>
 Parameter REFUSEDURL = "http://127.0.0.1:1/";
 
 Method OnBeforeOneTest() As %Status
@@ -118,33 +119,56 @@ Method TestABreakAfterAStatusLineIsNotRetried()
 /// 429 asking for the whole budget, then a break: the break is still retried, with nothing left to
 /// wait. A break, then a 429 asking for the whole budget: the 429's wait is cut to what the break's
 /// wait left, so the two together never exceed the budget.</p>
+/// <p>Each leg can prove nothing on one backoff draw: the first when
+/// <method>OcuPilot.Kernel.Provider.Retry.ExpBackoffSec</method>'s draw for attempt 2 is zero (one
+/// time in 21), the second when its draw for attempt 1 is (one time in eleven). So both seed
+/// <class>%SYSTEM.Process</class>'s random generator (<method>RandomSeed</method>), which
+/// IRIS's <code>$Random</code> follows deterministically: the first leg runs under seeds 1 to 3,
+/// the second under the smallest seed whose draw is non-zero, found by search against the real
+/// call. The prior seed is restored once done.</p>
 /// <p>Mutation: pass <code>""</code> for the remaining budget to the transport branch's
 /// <method>OcuPilot.Kernel.Provider.Retry.DelaySec</method> -- the first leg's second wait is
 /// drawn from the backoff window and goes red. Drop the transport branch's spent-delay increment --
-/// the second leg's waits exceed the budget and go red.</p>
+/// the second leg's waits exceed the budget and go red, on every run.</p>
 Method TestATransportRetrySharesTheDelayBudget()
 {
     Set tBudget = $Parameter(..#RETRY, "RETRYBUDGETSECONDS")
-    Do $ClassMethod(..#DRIVER, "Settings", .tSettings, 3)
-    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, "", tBudget)
-    Do ##class(OcuPilot.Test.ProviderStub).QueueTransportFailure(0)
-    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, $Parameter(..#DRIVER, "OKBODY"))
-    Set tSC = ..Call(.tSettings, .tResponse, .tFault, .tHttpStatus)
-    Do $$$AssertStatusOK(tSC, "429 then a break: the call returns $$$OK")
-    Do $$$AssertEquals(..FaultCode(tFault), "", "429 then a break: the third attempt's answer is mapped")
-    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 3, "429 then a break: three calls")
-    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Waits(), tBudget _ "|0", "429 then a break: the break's wait is what the 429 left, nothing")
+    Set tOrigSeed = ##class(%SYSTEM.Process).RandomSeed(0)
+    For tSeed = 1:1:3 {
+        Do ##class(OcuPilot.Test.ProviderStub).Reset()
+        Do $ClassMethod(..#DRIVER, "Settings", .tSettings, 3)
+        Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, "", tBudget)
+        Do ##class(OcuPilot.Test.ProviderStub).QueueTransportFailure(0)
+        Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, $Parameter(..#DRIVER, "OKBODY"))
+        Do ##class(%SYSTEM.Process).RandomSeed(tSeed)
+        Set tSC = ..Call(.tSettings, .tResponse, .tFault, .tHttpStatus)
+        Set tLeg = "429 then a break, seed " _ tSeed
+        Do $$$AssertStatusOK(tSC, tLeg _ ": the call returns $$$OK")
+        Do $$$AssertEquals(..FaultCode(tFault), "", tLeg _ ": the third attempt's answer is mapped")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 3, tLeg _ ": three calls")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Waits(), tBudget _ "|0", tLeg _ ": the break's wait is what the 429 left, nothing")
+    }
 
-    Do ##class(OcuPilot.Test.ProviderStub).Reset()
-    Do $ClassMethod(..#DRIVER, "Settings", .tSettings, 3)
-    Do ##class(OcuPilot.Test.ProviderStub).QueueTransportFailure(0)
-    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, "", tBudget)
-    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, $Parameter(..#DRIVER, "OKBODY"))
-    Set tSC = ..Call(.tSettings, .tLateResponse, .tLateFault, .tLateStatus)
+    Set tSeed = 0
+    Set tFirstWait = 0
+    For {
+        Set tSeed = tSeed + 1
+        Do ##class(OcuPilot.Test.ProviderStub).Reset()
+        Do $ClassMethod(..#DRIVER, "Settings", .tSettings, 3)
+        Do ##class(OcuPilot.Test.ProviderStub).QueueTransportFailure(0)
+        Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, "", tBudget)
+        Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, $Parameter(..#DRIVER, "OKBODY"))
+        Do ##class(%SYSTEM.Process).RandomSeed(tSeed)
+        Set tSC = ..Call(.tSettings, .tLateResponse, .tLateFault, .tLateStatus)
+        Set tWaits = ##class(OcuPilot.Test.ProviderStub).Waits()
+        Set tFirstWait = $Piece(tWaits, "|", 1)
+        Quit:((+tFirstWait > 0) || (tSeed >= 50))
+    }
+    Do ##class(%SYSTEM.Process).RandomSeed(tOrigSeed)
+    Do $$$AssertTrue(+tFirstWait > 0, "a seed drawing a non-zero first backoff was found within 50 tries: seed " _ tSeed)
     Do $$$AssertStatusOK(tSC, "a break then 429: the call returns $$$OK")
     Do $$$AssertEquals(..FaultCode(tLateFault), "", "a break then 429: the third attempt's answer is mapped")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 3, "a break then 429: three calls")
-    Set tWaits = ##class(OcuPilot.Test.ProviderStub).Waits()
     Do $$$AssertEquals($Length(tWaits, "|"), 2, "a break then 429: two waits: " _ tWaits)
     Do $$$AssertEquals($Piece(tWaits, "|", 1) + $Piece(tWaits, "|", 2), tBudget, "a break then 429: together exactly the budget, never more: " _ tWaits)
 }

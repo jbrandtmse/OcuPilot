@@ -6872,3 +6872,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: merge gate, Epic 9 (dc3e1b5e) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: 12.5 was planned with four sections named and ordered as the classic tabs (orchestrator ruling 8bd12776); ui/src/app/shell/form-tabs.ts reached feature with Epic 9's merge; UX-DR32/33 ask for tabs
 - 2026-09-25T04:03:43Z status=routed owner=12-6-the-oauth-2-0-resource-server-editor by=merge_gate note=12.6 switches 12.5's editor and builds 12.6-12.8 on app-form-tabs directly
+
+### DW-1650: The transport retry takes any non-timeout error with no status line, so a connect failure - which on IRIS waits the full per-call timeout even when refused - is retried and a turn to a down endpoint takes about twice as long to fail
+- source: spec-10-6-a-turn-survives-a-dropped-connection-and-a-create-says-creat.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Post to http://127.0.0.1:1/ with Timeout 3 on ocupilot-b-ci: 3.01 s, ERROR #6059, no HttpResponse (HttpRequest.cls:1664-1679); Base.cls Attempts retries it since only CSPTimeout counts as a timeout. The spec's design note both retries a connect refusal and says a timeout that spent its per-call timeout is not retried.
+- 2026-09-25T07:48:27Z status=decision-pending owner=burndown by=cr note=owner call: exclude #6059/pre-send config errors, or an attempt that spent its timeout, from the one retry (recommended)
