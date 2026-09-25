@@ -63,3 +63,11 @@ TAB-separated, append-only: `<UTC> TAB <Story <id> | Epic 11> TAB <stage> TAB <m
 2026-09-24T17:41:16Z	Epic 11	ledger_burndown_complete	scope=entries_owned_by_11-10_or_born_in_11.10_owned_burndown open_before=1 resolved=0 terminal=0 chartered=0 chartered_size=0 overflow=0 reowned=0 to_decision_sheet=1(DW-1621) open_after=1 cap=8 story_max=12 filed_this_epic=4(DW-1620..1623) closed_this_epic=3(DW-1620_resolved,DW-1622,DW-1623_wontfix-accepted) drain_ratio=0.75 note=rest_of_Epic_11_stays_backlog
 2026-09-24T17:41:16Z	Epic 11	throwaway_down	container=ocupilot-b-ci by=runner(handed_over_by_orchestrator_1514Z) method=ci-throwaway.sh_down
 2026-09-24T17:41:16Z	Epic 11	epic_runner_complete	stories_completed=1(11.10) remaining_backlog=11-7,11-8,11-1,11-2,11-3,11-4 ready_for_merge=true code_head=28b0809c ci=success run=36032663948 model_tier_checkpoint=not_run(epic_not_done) decisions_for_user=DW-1621
+2026-09-25T13:15:05Z	Epic 11	lead_model_gate	model=claude-opus-5-5[1m] action=proceed scope=stories_11.7,11.8,11.1,11.2,11.3,11.4 slot=a
+2026-09-25T13:15:05Z	Epic 11	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=gh
+2026-09-25T13:15:05Z	Epic 11	telemetry_gate	pending=0 action=none note=implement_already_opus;checkpoint_offers_pre-answered_decline
+2026-09-25T13:15:05Z	Epic 11	epic_branch_checked_out	repos=. head=1cacff4e mode=runner_kept_worktree branch=OCU-1-epic11 slot=a bootstrap=node_modules_ok,irislib_ok
+2026-09-25T13:15:05Z	Epic 11	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@1cacff4e method=fast_forward_from_8c98e905 conflicts=none files=1(cycle-log-parallel.md,bookkeeping_only) ci=rides_on_next_code_push
+2026-09-25T13:15:05Z	Epic 11	ledger_load	total=1107 open=3 routed=228 escalated=0 decision_pending=1 terminal=875 owner_unknown=0 owner_11-7=1 owner_11-8=0 owner_11-1=6 owner_11-2=1 owner_11-3=3 owner_11-4=0 burndown=1
+2026-09-25T13:15:05Z	Epic 11	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=56 status=final read=full(Rule_26) spine_next_id=57
+2026-09-25T13:16:55Z	Epic 11	epic_context_compiled	reason=planning_artifact_newer(spine,EXPERIENCE.md,epics.md_changed_since_11.10) model=opus words=1654 header=ok agent_name=epic-11-context-prewarm-3
