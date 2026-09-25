@@ -3,7 +3,7 @@
 # edges the orchestrator's analysis added, per the owner's standing instruction (2026-09-16):
 # "If your analysis adds an edge, take the more conservative graph and note the difference in the
 # parallel log; if it would remove one of these, keep mine."
-epics_md_hash: "d40b04545452500d6a46a974805608354a5ef91aadfb346d13526d77843e346a"
+epics_md_hash: "be87ce62fe358d03d860d9a861e42109c1e1c0e540eb74651cc142a12827acd0"
 analyzed_by: claude-opus-5
 analyzed_at: "2026-09-16T15:02:34Z"
 approved: true
@@ -63,7 +63,7 @@ epics:
   epic-4:
     depends_on: [epic-3]
     submodules: []
-    paths_hint: ["src/OcuPilot/Kernel/Agent/**", "src/OcuPilot/Kernel/State/**", "src/OcuPilot/Kernel/Audit/**", "src/OcuPilot/Kernel/Restraint.cls", "src/OcuPilot/Kernel/Utils.cls", "src/OcuPilot/Kernel/Egress.cls", "src/OcuPilot/Kernel/Secret/Ladder.cls", "src/OcuPilot/Kernel/Provider/**", "src/OcuPilot/Port/ProviderPort.cls", "src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Screen/Tool/**", "src/OcuPilot/Screen/Read.cls", "src/OcuPilot/Screen/Registry.cls", "src/OcuPilot/Screen/Descriptor/Base.cls", "src/OcuPilot/Screen/Descriptor/Home.cls", "src/OcuPilot/Api/Turn*.cls", "src/OcuPilot/Api/Router.cls", "src/OcuPilot/Api/Error.cls", "src/OcuPilot/Api/Definitions.cls", "src/OcuPilot/Install/Installer.cls", "src/OcuPilot/Install/Smoke.cls", "src/OcuPilot/Test/**", "scripts/check-objectscript.py", "scripts/test_check_objectscript.py", "ui/src/app/shell/**", "ui/src/app/app.ts", "ui/src/app/app.spec.ts", "ui/src/app/core/**", "ui/src/app/areas/home/**", "ui/src/styles/**", "ui/package.json", "ui/package-lock.json", "ui/angular.json", "ui/tools/**", "ui/browser/**"]
+    paths_hint: ["src/OcuPilot/Kernel/Agent/**", "src/OcuPilot/Kernel/State/**", "src/OcuPilot/Kernel/Audit/**", "src/OcuPilot/Kernel/Restraint.cls", "src/OcuPilot/Kernel/Utils.cls", "src/OcuPilot/Kernel/Egress.cls", "src/OcuPilot/Kernel/Secret/Ladder.cls", "src/OcuPilot/Kernel/Provider/**", "src/OcuPilot/Port/ProviderPort.cls", "src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Screen/Tool/**", "src/OcuPilot/Screen/Read.cls", "src/OcuPilot/Screen/Registry.cls", "src/OcuPilot/Screen/Descriptor/Base.cls", "src/OcuPilot/Screen/Descriptor/Home.cls", "src/OcuPilot/Api/Turn*.cls", "src/OcuPilot/Api/Router.cls", "src/OcuPilot/Api/Error.cls", "src/OcuPilot/Api/Definitions.cls", "src/OcuPilot/Install/Installer.cls", "src/OcuPilot/Install/Smoke.cls", "src/OcuPilot/Test/**", "scripts/check-objectscript.py", "scripts/test_check_objectscript.py", "ui/src/app/shell/**", "ui/src/app/app.ts", "ui/src/app/app.spec.ts", "ui/src/app/core/**", "ui/src/app/areas/home/**", "ui/src/styles/**", "ui/package.json", "ui/package-lock.json", "ui/angular.json", "ui/tools/**", "ui/browser/**", "ui/src/app/app.ts", "ui/src/app/shell/panel*", "ui/src/app/shell/proposal-card*", "ui/src/app/core/toasts.ts"]
   # CARVE, narrowed 2026-09-20 (orchestrator correction, third of its kind this run).
   # Epic 5 holds the PROPOSAL AND TURN SURFACE, named as files rather than as a glob:
   #   ui/src/app/shell/{panel.ts,panel.spec.ts,proposal-card*,reply*,tool-call-card*}
@@ -124,6 +124,11 @@ epics:
         after: epic-8        # same runner, after 10.4
         reason: >-
           Test connection on a cold local model is cut off by the Web Gateway's 60 s timeout with an empty 504.
+      - story: "10-6-a-turn-survives-a-dropped-connection-and-a-create-says-creat"
+        after: epic-8        # owner triage 2026-09-24, HIGH: runs ALONE on slot B at epic-12's next story boundary, then epic-12 resumes
+        reason: >-
+          Live Opus 5 turns failed 3 in ~10 on a transport <READ> within 1 s, never retried; and a confirmed create
+          reported "was updated". Retry a model call once on a fresh connection; SocketTimeout 0; fix the create sentence.
     paths_hint: ["src/OcuPilot/Kernel/Provider/**", "src/OcuPilot/Port/ProviderPort.cls", "src/OcuPilot/Kernel/AgentRules.cls", "src/OcuPilot/Kernel/Egress.cls", "src/OcuPilot/Kernel/State/Agent.cls", "src/OcuPilot/Api/Definitions.cls", "src/OcuPilot/Api/Error.cls", "src/OcuPilot/Screen/Tool/Registry.cls", "src/OcuPilot/Test/OpenAI*.cls", "src/OcuPilot/Test/Gemini*.cls", "src/OcuPilot/Test/Compatible*.cls", "src/OcuPilot/Test/Adapter*.cls", "src/OcuPilot/Test/CatalogProbe*.cls", "src/OcuPilot/Test/AgentRules*.cls", "src/OcuPilot/Test/Provider*.cls", "src/OcuPilot/Test/Egress*.cls", "src/OcuPilot/Test/Anthropic*.cls", "src/OcuPilot/Test/AgentConnection*.cls", "ui/src/app/areas/agent/definition-form.*", "ui/src/app/shell/context-chip.ts", "ui/src/app/core/strings.ts", "ui/tools/strings.test.mjs", "ui/browser/definitions.browser-spec.mjs", "README.md"]
   epic-11:
     depends_on: [epic-4, epic-5, epic-6, epic-10]
@@ -185,7 +190,12 @@ epics:
         reason: >-
           Resizable, content-sized columns, horizontal scroll inside the table and a full-value tooltip change
           the shared data table every list uses.
+      - story: "15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth"
+        after: epic-7        # owner triage 2026-09-24: same runner as 15.8, after it
+        reason: >-
+          Sign-out only in the status bar's account menu and no Cmd+K sign-out; the command bar's filter renders on
+          screens with no read. ui/src/app/shell/command-bar* is shared (Epics 9 and 12 add actions): append only.
     # Owner carve 2026-09-19: Epic 15 works OUTSIDE ui/src/app/shell/panel, proposal-card, reply and
     # tool-call-card, which Epic 5 owns. Its own shell surfaces are header*, account-menu*, side-bar*
     # and command-box*.
-    paths_hint: ["ui/src/app/shell/header*", "ui/src/app/shell/account-menu*", "ui/src/app/shell/side-bar*", "ui/src/app/shell/command-box*", "ui/src/app/core/**", "ui/src/styles/**", "src/OcuPilot/Screen/Descriptor/Home.cls", "src/OcuPilot/Api/Account*.cls", "src/OcuPilot/Api/Ui*.cls", "ui/src/app/shell/rail*", "ui/src/app/areas/home/**", "ui/src/app/shell/data-table*"]
+    paths_hint: ["ui/src/app/shell/header*", "ui/src/app/shell/account-menu*", "ui/src/app/shell/side-bar*", "ui/src/app/shell/command-box*", "ui/src/app/core/**", "ui/src/styles/**", "src/OcuPilot/Screen/Descriptor/Home.cls", "src/OcuPilot/Api/Account*.cls", "src/OcuPilot/Api/Ui*.cls", "ui/src/app/shell/rail*", "ui/src/app/areas/home/**", "ui/src/app/shell/data-table*", "ui/src/app/shell/status-bar*", "ui/src/app/shell/command-bar*", "ui/src/app/app.ts"]
