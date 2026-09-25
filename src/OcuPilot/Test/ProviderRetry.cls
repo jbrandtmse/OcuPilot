@@ -3,7 +3,7 @@
 /// table over its whole range including the determinate-server-error carve-out, both
 /// <code>Retry-After</code> forms, the backoff window, the wait truncated to the retry budget, the
 /// attempt deadline, the effective timeout and attempt count a stored pair is served with, the
-/// three failure kinds the transport loop tells apart, and the relation the
+/// raise and the timeout the transport loop never retries, and the relation the
 /// turn-side and provider-side ceilings stand in.</p>
 /// <p><b>Every number is read with <code>$Parameter</code></b> from the class that declares it --
 /// <class>OcuPilot.Kernel.Provider.Retry</class>, <class>OcuPilot.Kernel.State.Egress</class> and
@@ -282,13 +282,14 @@ Method TestTheAttemptDeadlineRefusesAFurtherAttempt()
     Do $$$AssertEquals(tHttpStatus, 504, "answered as a gateway timeout")
 }
 
-/// <p>AC4 -- a call that raised, a call that timed out and a call that failed in transport are told
-/// apart by the <code>Try</code> around the seam and by
-/// <method>$System.Status.Equals</method> alone, and <b>none of the three is ever retried</b>: the
-/// request may already have been processed.</p>
+/// <p>AC4 -- a call that raised and a call that timed out are told apart by the <code>Try</code>
+/// around the seam and by <method>$System.Status.Equals</method>, and <b>neither is ever
+/// retried</b>: the request may already have been processed. A transport failure before any status
+/// line is the one failure retried, once (AD-42), and is pinned in
+/// <class>OcuPilot.Test.ProviderTransportRetry</class>.</p>
 /// <p>Mutation: continue the loop after a raise instead of leaving it -- the raised leg's call
 /// count goes red, reporting three.</p>
-Method TestNoFailedTransportIsEverRetried()
+Method TestARaiseAndATimeoutAreNeverRetried()
 {
     Do $ClassMethod(..#DRIVER, "Settings", .tSettings, 3)
     Do ##class(OcuPilot.Test.ProviderStub).QueueThrow()
@@ -307,14 +308,6 @@ Method TestNoFailedTransportIsEverRetried()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "and is not retried either")
     Do $$$AssertEquals(..FaultCode(tTimeoutFault), ##class(OcuPilot.Api.Error).#PROVIDERTIMEOUT, "a timeout status is PROVIDER.TIMEOUT")
     Do $$$AssertEquals(tTimeoutStatus, 504, "answered as a gateway timeout")
-
-    Do ##class(OcuPilot.Test.ProviderStub).Reset()
-    Do ##class(OcuPilot.Test.ProviderStub).QueueTransportFailure(0)
-    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, $Parameter(..#DRIVER, "OKBODY"))
-    Set tSC = ..Call(.tSettings, .tOtherResponse, .tOtherFault, .tOtherStatus)
-    Do $$$AssertStatusOK(tSC, "a call that reached no provider still returns $$$OK")
-    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "and is not retried either")
-    Do $$$AssertEquals(..FaultCode(tOtherFault), ##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT, "every other transport failure is PROVIDER.TRANSPORT")
 }
 
 /// <p>AC1 -- a determinate server error reaches the transport once and is reported as a refusal,

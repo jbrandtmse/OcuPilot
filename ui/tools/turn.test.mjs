@@ -1538,6 +1538,51 @@ test("a confirmed create's change carries the instance's own createdId, else the
   }
 });
 
+test("a confirm's outcome carries the instance's own action and createdId, which the panel's change sentence reads (Story 10.6)", async () => {
+  // The panel names the change from the outcome, so the outcome must carry what the change event
+  // carries: the action through the same closed-set reading, and the createdId verbatim.
+  //
+  // Mutation (Rule 19): set `changeAction: 'updated'` in the ok literal of `decideProposal` -> the
+  // created leg goes red.
+  for (const [answer, action, id] of [
+    [{ action: 'created', createdId: '1391' }, 'created', '1391'],
+    [{ action: 'created' }, 'created', ''],
+    [{ action: 'deleted' }, 'deleted', ''],
+    [{ action: 'updated' }, 'updated', ''],
+    [{}, 'updated', ''],
+    [{ action: 'removed' }, 'updated', ''],
+  ]) {
+    const confirmBody = { proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:01:02Z', ...answer };
+    const api = fakeApi({
+      [conversationReadPath('c1')]: [
+        ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+      ],
+      [turnProgressPath('turn-1')]: [
+        ok({ state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null, proposals: [wireProposal()] }),
+      ],
+      [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+      [CONVERSATION_PATH]: [ok({ conversationId: 'c1' }, 201)],
+      [proposalConfirmPath('p1')]: [ok(confirmBody)],
+    });
+    const { schedule, scheduled } = fakeSchedule();
+    const turn = new TurnStore({
+      api,
+      storage: memoryStorage(),
+      navigationType: freshTab(),
+      schedule,
+      now: () => NOW_MS,
+      bus: recordingBus(),
+    });
+    await turn.send('do it');
+    await settle();
+    scheduled.shift()?.run();
+    await settle();
+    const outcome = await turn.confirmProposal('p1');
+    assert.equal(outcome.changeAction, action, `answered ${JSON.stringify(answer)}: the action`);
+    assert.equal(outcome.changedId, id, `answered ${JSON.stringify(answer)}: the created id`);
+  }
+});
+
 test('a confirm the instance refused publishes no change, and neither does a cancel', async () => {
   // Mutation (Rule 19): publish whenever `result.kind === 'ok'` rather than on
   // `state === 'confirmed'` -> the cancel leg goes red, and a canceled proposal would re-fetch

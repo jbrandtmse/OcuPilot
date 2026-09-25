@@ -3,6 +3,8 @@
 /// refusal and a scripted transport timeout each end the turn, name the step they stopped at, and
 /// answer the progress route one well-formed envelope carrying no credential and no raw
 /// <class>%Status</class>.</p>
+/// <p>A transport failure before any status line is retried once (AD-42): a turn survives one, and
+/// stops <code>PROVIDER.TRANSPORT</code> on the second.</p>
 /// <p><b>Four of the five <code>PROVIDER.*</code> failures reach a turn here.</b>
 /// <code>PROVIDER.EGRESS</code> is the fifth and is not among them: the endpoint is judged before
 /// the adapter runs, and a definition naming an endpoint that judgement refuses cannot be stored
@@ -89,9 +91,10 @@ Method OnAfterOneTest() As %Status
 }
 
 /// <p>Start a turn as the probe principal against the scripted answer <var>pHttpStatus</var> /
-/// <var>pBody</var>, wait for it to end, and hand back the turn id, the progress view and the
-/// progress route's own status and body text.</p>
-Method RunFailingTurn(pHttpStatus As %Integer, pBody As %String, Output pView, Output pStatus As %Integer, Output pText As %String) As %String
+/// <var>pBody</var>, appended after any entry the caller scripted first, wait for it to end in
+/// <var>pExpected</var>, and hand back the turn id, the progress view and the progress route's own
+/// status and body text.</p>
+Method RunFailingTurn(pHttpStatus As %Integer, pBody As %String, Output pView, Output pStatus As %Integer, Output pText As %String, pExpected As %String = "failed") As %String
 {
     Set tUser = $Parameter(..#FIXTURE, "USERA")
     Set tSC = ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, pBody, pHttpStatus)
@@ -101,7 +104,7 @@ Method RunFailingTurn(pHttpStatus As %Integer, pBody As %String, Output pView, O
     Do $$$AssertEquals(tStartStatus, 202, "the start is accepted: " _ tStartText)
     If tStartStatus '= 202 Quit ""
     Set tId = ##class(%DynamicObject).%FromJSON(tStartText).turnId
-    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "AwaitEnd", tId, tUser, ..PreparedPassword, 60, .pView), "failed", "the turn ends failed")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "AwaitEnd", tId, tUser, ..PreparedPassword, 60, .pView), pExpected, "the turn ends " _ pExpected)
     Do $ClassMethod(..#FIXTURE, "Call", "GET", "/turn/" _ tId _ "/progress", tUser, ..PreparedPassword, "", .pStatus, .pText, .tHeaders)
     Quit tId
 }
@@ -162,8 +165,28 @@ Method TestATransportFailureFailsTheTurnAtItsProviderStep()
     Do $$$AssertEquals($ClassMethod("OcuPilot.Test.TurnFixture", "Field", tId, "ErrorSeq"), tSeq, "and the row's ErrorSeq names it")
     Do $$$AssertEquals(tView.error.seq _ "|" _ tView.error.code, tSeq _ "|" _ tTransport, "which the poll carries too")
     Do $$$AssertEquals(tView.error.reason, ##class(OcuPilot.Kernel.Provider.Base).ReasonFor(tTransport), "and the sentence the user actually reads names a transport failure, not just the code")
-    Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Calls(..#TAG), 1, "and a call that failed in transport is never retried")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Calls(..#TAG), 2, "retried once on a new connection, then the turn stops")
     Do $$$AssertEquals(tText [ "ERROR #", 0, "with no raw %Status text in the body: " _ $Extract(tText, 1, 200))
+}
+
+/// <p>AD-42 -- a turn whose first model call breaks before any status line survives it: the call
+/// is retried once on a new connection, the turn completes with the reply the retry answered, and
+/// the provider was reached twice.</p>
+/// <p>Mutation: remove the transport-retry branch in
+/// <method>OcuPilot.Kernel.Provider.Base.Attempts</method> -- the turn ends failed and this goes
+/// red. Clear the key in that branch before it continues -- the key assertion goes red.</p>
+Method TestATurnSurvivesOneBrokenConnection()
+{
+    Set tSC = ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, "", -1)
+    Do $$$AssertStatusOK(tSC, "the broken first call is scripted")
+    Set tId = ..RunFailingTurn(200, ##class(OcuPilot.Test.TurnProvider).TextReply("recovered"), .tView, .tStatus, .tText, "completed")
+    If tId = "" Quit
+    Do $$$AssertTrue($IsObject($Get(tView)), "the completed turn's view is read")
+    If '$IsObject($Get(tView)) Quit
+    Do $$$AssertEquals(tView.reply, "recovered", "with the reply the retried call answered")
+    Do $$$AssertEquals(tView.%GetTypeOf("error"), "null", "and no error")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Calls(..#TAG), 2, "the provider was reached twice")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 2, "keySha"), ##class(OcuPilot.Test.TurnProvider).Sha($Parameter(..#FIXTURE, "PROBEKEY")), "and the retried request carried the stored key (AD-35)")
 }
 
 /// <p>AC6 -- a turn whose provider answers a retryable server error on every attempt ends
