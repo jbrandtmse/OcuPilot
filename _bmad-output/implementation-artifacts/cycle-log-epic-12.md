@@ -243,3 +243,5 @@
 2026-09-25T23:47:08Z	Story 12.9	dev_complete	spawn_at=2026-09-25T22:54:58Z model=opus build_sha=ce12e5b9 baseline_revision=f113b803 review_loop_iteration=0 followup_review_recommended=false deferred=0 cycle_iteration=1 sweep=286_classes/2394_tests/0_failed(ocupilot-b-ci,runs_1268-1553) browser=oauth_5/5 tools=1425 components=1377 smoke=49/49 bundle_initial=1803837B ci=pending_run=36202326457
 2026-09-25T23:47:08Z	Story 12.9	adr_verifications_complete	tool=none acs=none result=none_required mutations=none
 2026-09-25T23:47:08Z	Story 12.9	stage_spawned	stage=qa spawn_at=2026-09-25T23:47:08Z model=sonnet agent_name=12-9-classic-link-outs-qa-1 cycle_iteration=1
+2026-09-25T23:51:24Z	Story 12.9	qa_complete	spawn_at=2026-09-25T23:47:08Z model=sonnet tests_added=0 mutations_demonstrated=2 first_run_failures=0 clarifications=0 closing_sections_present=true
+2026-09-25T23:51:24Z	Story 12.9	stage_spawned	stage=code-review spawn_at=2026-09-25T23:51:24Z model=opus agent_name=12-9-classic-link-outs-code-review-1 cycle_iteration=1
