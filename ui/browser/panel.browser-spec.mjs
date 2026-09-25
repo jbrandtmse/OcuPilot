@@ -508,9 +508,9 @@ test('Signing out clears the panel draft and full screen; the next sign-in start
       timeout: config.navigationTimeoutMs,
     });
 
-    // Real pointer clicks: the menu opens upward out of the status bar, so a band that clips it
-    // leaves Sign out unreachable. Mutation (Rule 19): `overflow: hidden` on `.ocu-status-bar` ->
-    // the hit test below goes red.
+    // Real pointer clicks: the menu opens downward from the header, so a band that clips it leaves
+    // Sign out unreachable. Mutation (Rule 19): `overflow: hidden` on `.ocu-header` -> the hit test
+    // below goes red.
     await page.click('#ocu-account-trigger');
     await page.waitForSelector('[role="menuitem"]', { visible: true, timeout: config.navigationTimeoutMs });
     // Sign out by NAME, not by position: Story 15.1 put Change password above it, and a menu that
@@ -527,7 +527,7 @@ test('Signing out clears the panel draft and full screen; the next sign-in start
       };
     }, STRINGS.actionSignOut);
     assert.notEqual(signOut, null, 'the account menu lists Sign out');
-    assert.equal(signOut.hit, true, 'the account menu item is the element under the pointer, not clipped by the status bar');
+    assert.equal(signOut.hit, true, 'the account menu item is the element under the pointer, not clipped by the header');
     await page.click('#ocu-probe-sign-out');
     await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
 

@@ -150,7 +150,14 @@ describe('the command bar', () => {
     for (const element of planted.splice(0)) element.remove();
   });
 
-  beforeEach(() => build(screenDeclaration()));
+  /**
+   * A screen that declares a read and no table: the filter is drawn, and there is nothing to sort
+   * by. Its own descriptor, so its store is never the one a test binds the refresh framework to.
+   */
+  const READING = (overrides: Partial<ScreenDeclaration> = {}) =>
+    screenDeclaration({ descriptor: 'OcuPilot.Screen.Descriptor.Reading', read: tableDeclaration().read, ...overrides });
+
+  beforeEach(() => build(READING()));
 
   it('holds the filter field and its polite count region', () => {
     const filter: HTMLInputElement = fixture.nativeElement.querySelector('.ocu-command-bar-filter');
@@ -174,7 +181,7 @@ describe('the command bar', () => {
   });
 
   it('a registered handler draws the primary action, a click runs it once, and unregistering removes it', () => {
-    const declared = screenDeclaration({ primaryAction: { id: 'create', selfProtection: '' } });
+    const declared = READING({ primaryAction: { id: 'create', selfProtection: '' } });
     build(declared);
     let runs = 0;
     const unregister = actions.register(declared.descriptor, 'create', () => (runs += 1));
@@ -1087,11 +1094,45 @@ describe('the command bar', () => {
     }
   });
 
-  it('a URL naming no declared screen renders the bar with no actions at all', () => {
+  it('a URL naming no declared screen draws no bar at all: nothing to act on and nothing to filter', () => {
     build(null);
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-filter')).toBeNull();
+  });
+
+  // --- Story 15.9: no filter where there is nothing to filter ---------------------------------
+  //
+  // Mutations (Rule 19): render the filter unconditionally -> the Home and error-drill legs go red;
+  // force `hasContent` true -> the Home leg goes red; hide the filter on every screen -> the list
+  // leg goes red.
+
+  it('Home, which declares no read and registers nothing, draws no command bar', () => {
+    build(screenDeclaration({ route: '', archetype: 'home', read: null }));
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar')).toBeNull();
+    expect(fixture.nativeElement.querySelector('#ocu-command-bar-filter')).toBeNull();
+  });
+
+  it('the error drill-down declares no read: the bar draws its Refresh and row action with no filter or count', () => {
+    const declared = screenDeclaration({
+      route: 'logs/errors',
+      read: null,
+      rowActions: [{ id: 'delete', selfProtection: '' }],
+    });
+    build(declared);
+    actions.register(declared.descriptor, REFRESH_ACTION_ID, () => {});
+    actions.register(declared.descriptor, 'delete', () => {});
+    fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.ocu-command-bar')).not.toBeNull();
-    expect(fixture.nativeElement.querySelectorAll('.ocu-command-bar-action')).toHaveLength(0);
-    expect(fixture.nativeElement.querySelector('.ocu-command-bar-primary')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-refresh-action')).not.toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('.ocu-command-bar-action:not(.ocu-command-bar-refresh-action)')).toHaveLength(1);
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-filter')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[role="status"]')).toBeNull();
+  });
+
+  it('a list, which declares a read, keeps its filter and its count region', () => {
+    build(tableDeclaration());
+    expect(fixture.nativeElement.querySelector('#ocu-command-bar-filter')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-count')?.getAttribute('role')).toBe('status');
   });
 
   it('DW-260: the bar draws Refresh only where a handler is registered for it', () => {

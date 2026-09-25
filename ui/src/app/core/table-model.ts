@@ -269,3 +269,97 @@ export function emptyStateView(
     : lookup(table.emptyNextKey);
   return { title, next };
 }
+
+// --- Column widths (Story 15.8) ----------------------------------------------------------------
+
+/**
+ * Each kind's default column width in CSS px: identifiers wide, numbers and states narrow. A
+ * column's default comes from its declared kind alone, never from what its cells hold (AD-5), so
+ * a cell filling in later never reflows the table.
+ */
+export const COLUMN_DEFAULT_PX: Readonly<Record<TableColumnKind, number>> = {
+  name: 240,
+  identifier: 240,
+  text: 160,
+  number: 112,
+  status: 112,
+};
+
+/** The widest a stored or set column width may be, in CSS px. */
+export const COLUMN_WIDTH_MAX = 2000;
+
+/** How far one keyboard resize moves a column, in CSS px: the panel handle's step. */
+export const COLUMN_RESIZE_STEP_PX = 16;
+
+/** The row-overflow trigger's track: the 28px button and its cell's padding either side. */
+export const TRIGGER_TRACK = 'calc(28px + 2 * var(--ocu-space-3))';
+
+/** `TRIGGER_TRACK` in px at `--ocu-space-3`'s 12px, for the row's minimum width. */
+export const TRIGGER_TRACK_PX = 52;
+
+/** Whether `px` is a width a column may hold: a positive safe integer no wider than the maximum. */
+export function isColumnWidth(px: unknown): px is number {
+  return typeof px === 'number' && Number.isSafeInteger(px) && px > 0 && px <= COLUMN_WIDTH_MAX;
+}
+
+/** The grid tracks every row of a table shares, and the row's minimum width. */
+export interface ColumnLayout {
+  readonly template: string;
+  /** The sum of the tracks' minimums: the width below which the table scrolls sideways. */
+  readonly minWidthPx: number;
+}
+
+/**
+ * The tracks for `columns`, in declared order, and the trigger track after them when `hasTrigger`.
+ *
+ * A column the user sized (`userWidths`, keyed by field) is that many pixels, never less than its
+ * header label's width (`labelMins`, keyed by field; absent reads 0). Any other column takes
+ * `minmax(<floor>px, <default>fr)`, its floor the larger of its label and its kind's default, so
+ * a frame wider than the floors shares the rest in the defaults' proportions. A width stored for a
+ * field no column declares is ignored.
+ */
+export function columnLayout(
+  columns: readonly { readonly field: string; readonly kind: TableColumnKind }[],
+  userWidths: ReadonlyMap<string, number>,
+  labelMins: ReadonlyMap<string, number>,
+  hasTrigger: boolean
+): ColumnLayout {
+  const tracks: string[] = [];
+  let minWidthPx = 0;
+  for (const column of columns) {
+    const label = Math.ceil(labelMins.get(column.field) ?? 0);
+    const user = userWidths.get(column.field);
+    if (user !== undefined && isColumnWidth(user)) {
+      const px = Math.max(label, user);
+      tracks.push(`${px}px`);
+      minWidthPx += px;
+      continue;
+    }
+    const fallback = COLUMN_DEFAULT_PX[column.kind] ?? COLUMN_DEFAULT_PX.text;
+    const floor = Math.max(label, fallback);
+    tracks.push(`minmax(${floor}px, ${fallback}fr)`);
+    minWidthPx += floor;
+  }
+  if (hasTrigger) {
+    tracks.push(TRIGGER_TRACK);
+    minWidthPx += TRIGGER_TRACK_PX;
+  }
+  return { template: tracks.join(' '), minWidthPx };
+}
+
+/**
+ * A column's width after moving `current` by `delta`, as a whole number of pixels no narrower than
+ * `min` (the header label's width, rounded up) and no wider than `COLUMN_WIDTH_MAX`.
+ */
+export function resizedWidth(current: number, delta: number, min: number): number {
+  const floor = Math.max(1, Math.ceil(min));
+  return Math.min(COLUMN_WIDTH_MAX, Math.max(floor, Math.round(current + delta)));
+}
+
+/** The span the width announcement leaves for the column's header label. */
+export const COLUMN_PLACEHOLDER = '<column>';
+
+/** `<column> column, <n> px wide` with the column's label and its width filled in. */
+export function formatColumnWidth(template: string, label: string, px: number): string {
+  return template.split(COLUMN_PLACEHOLDER).join(label).split(COUNT_PLACEHOLDER).join(groupDigits(px));
+}

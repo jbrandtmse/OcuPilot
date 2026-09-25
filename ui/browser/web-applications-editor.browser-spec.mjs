@@ -4,8 +4,9 @@
  * What it pins, each on rendered DOM, on the real URL or on the instance itself:
  *
  * 1. **A row's name opens the editor** at `web-applications/list/edit/<id>`, on its four tabs.
- * 2. **A two-field Save reaches the instance**, and the change toast's "Open in Web applications"
- *    lands on the list, whose row shows the new resource without a reload (AC2).
+ * 2. **A two-field Save reaches the instance** and raises no change toast, because the editor is
+ *    the screen that made it (DW-1597); the list opened on the application shows the new resource
+ *    (AC2).
  * 3. **Each weakening change states its own line at its own field**, the repointed line once, and
  *    the Save applies all three on an application that is not OcuPilot's own (AD-10).
  * 4. **A refusal on General while another tab is open** opens General with its dot and count, and a
@@ -229,7 +230,9 @@ test('a row\u2019s name opens the editor on its four tabs', async () => {
   }
 });
 
-test('AC2: a two-field Save reaches the instance, and the toast opens the list showing the new resource', async () => {
+// Story 15.9 (DW-1597). Mutation (Rule 19): drop the empty-`proposalId` suppression from
+// `ToastStore.publish` and redeploy -> the no-toast assertion goes red.
+test('AC2: a two-field Save reaches the instance and raises no toast, and the list opened on it shows the new resource', async () => {
   freshProbes();
   const { context, page } = await signedInAt(editUrl(PROBE));
   try {
@@ -242,16 +245,15 @@ test('AC2: a two-field Save reaches the instance, and the toast opens the list s
     assert.equal(probeField(PROBE, 'AutheEnabled'), '32', 'and the authentication survived');
     assert.equal(probeField(PROBE, 'NameSpace'), 'HSCUSTOM', 'as did the namespace');
 
-    const link = STRINGS.tableChangeToastLink.replace('<screen>', STRINGS.webAppListLabel);
-    await page.waitForFunction(
-      (text) => Array.from(document.querySelectorAll('.ocu-toast-action')).some((node) => node.textContent.trim() === text),
-      { timeout: config.navigationTimeoutMs },
-      link
-    );
-    await page.evaluate((text) => {
-      Array.from(document.querySelectorAll('.ocu-toast-action')).find((node) => node.textContent.trim() === text).click();
-    }, link);
-    await page.waitForFunction(() => new URL(window.location.href).pathname.includes('/web-applications/list/'), { timeout: config.navigationTimeoutMs });
+    // The editor's own Save: the form bar says Saved, and no change toast stands over it.
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    assert.equal(await page.$('.ocu-toast-region'), null, 'the editor\'s own Save raises no toast');
+
+    const listOnProbe = `/ocupilot/web-applications/list/${encodeEntityId(PROBE)}?ns=HSCUSTOM`;
+    await page.goto(`${config.origin}${listOnProbe}`, { waitUntil: 'networkidle2' });
+    await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
+    await leaveFirstLoginGate(page, config.navigationTimeoutMs, listOnProbe);
+    await waitForRows(page, config.navigationTimeoutMs);
     await page.waitForFunction(
       (selector, name) =>
         Array.from(document.querySelectorAll(selector)).some((row) => row.textContent.includes(name) && row.textContent.includes('%Admin_Operate')),

@@ -17,7 +17,7 @@ import {
 } from '../testing/account-preferences';
 
 /**
- * The account menu's rendered contract (EXPERIENCE.md "Opens on click or Ctrl/Cmd+K; typing", "toggle the side-bar; with focus"; DESIGN.md `:1021`), and
+ * The account menu's rendered contract (EXPERIENCE.md "Opens on click or Ctrl/Cmd+K; typing", "toggle the side-bar; with focus"; DESIGN.md `:1008`), and
  * the three ledger items it closes.
  *
  * **DW-109** is the reason this file exists at all: the menu had no executed test host when it

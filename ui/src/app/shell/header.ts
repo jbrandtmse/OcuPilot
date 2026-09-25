@@ -11,6 +11,7 @@ import { Router } from '@angular/router';
 
 import { withQuery } from '../core/navigation';
 import { STRINGS } from '../core/strings';
+import { AccountMenu } from './account-menu';
 import { CommandBox } from './command-box';
 import { NamespaceSwitch } from './namespace-switch';
 
@@ -18,10 +19,12 @@ import { NamespaceSwitch } from './namespace-switch';
  * The header: the 48px `banner` band across the top of the shell (DESIGN.md `:1007-1017`,
  * EXPERIENCE.md "The VS Code-shaped shell", "`{spacing.header-height}` band").
  *
- * Three things and nothing else, left to right: the reversed lockup linking Home, the command
- * box centred in the header's own width, and the namespace slot at the right. Server,
- * instance, user, licensed-to and the server flag are the status bar's -- the badge never
- * appears here (DESIGN.md `:1025`).
+ * Four things and nothing else, left to right: the reversed lockup linking Home, the command
+ * box centred in the header's own width, and at the right end the namespace slot and then the
+ * account button naming the user, which opens the account menu (`account-menu.ts`). Server,
+ * instance, licensed-to and the server flag are the status bar's -- the badge never appears here
+ * (DESIGN.md `:1025`). The status bar still shows the user name, as information only, so the menu
+ * has one trigger.
  *
  * **No text in the header is drawn below 100%** (DESIGN.md `:1007`). The namespace eyebrow
  * sits on the gradient's `shell-edge` end, where full-strength `on-shell` is 5.35:1 and the
@@ -51,7 +54,7 @@ import { NamespaceSwitch } from './namespace-switch';
 @Component({
   selector: 'app-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommandBox, NamespaceSwitch],
+  imports: [AccountMenu, CommandBox, NamespaceSwitch],
   template: `<header class="ocu-header" role="banner">
     <a
       class="ocu-header-lockup"
@@ -60,9 +63,12 @@ import { NamespaceSwitch } from './namespace-switch';
       (click)="goHome($event)"
     ></a>
     <app-command-box />
-    <div class="ocu-header-namespace">
-      <span class="ocu-header-namespace-eyebrow" id="ocu-header-namespace-eyebrow">{{ STRINGS.headerNamespaceLabel }}</span>
-      <app-namespace-switch />
+    <div class="ocu-header-end">
+      <div class="ocu-header-namespace">
+        <span class="ocu-header-namespace-eyebrow" id="ocu-header-namespace-eyebrow">{{ STRINGS.headerNamespaceLabel }}</span>
+        <app-namespace-switch />
+      </div>
+      <app-account-menu />
     </div>
   </header>`,
 })

@@ -98,6 +98,7 @@ describe('the command box', () => {
   let overlays: OverlayStack;
   let actions: ScreenActions;
   let creates: number;
+  let signOuts: number;
   let unregisterCreate: () => void;
   const planted: HTMLElement[] = [];
 
@@ -127,6 +128,7 @@ describe('the command box', () => {
     // USERS' primary action has a registered handler, as it would once a screen runs it.
     actions = new ScreenActions();
     creates = 0;
+    signOuts = 0;
     unregisterCreate = actions.register(USERS.descriptor, 'create', () => (creates += 1));
     // DW-389: a declared row action with no registered handler is offered on no surface, so the
     // stub screen's own `delete` needs one for the box to list it at all.
@@ -147,7 +149,15 @@ describe('the command box', () => {
         { provide: OverlayStack, useValue: overlays },
         { provide: ScreenActions, useValue: actions },
         { provide: ShellState, useValue: shell },
-        { provide: Session, useValue: { userName: () => 'Dana' } as unknown as Session },
+        {
+          provide: Session,
+          useValue: {
+            userName: () => 'Dana',
+            signOut: async () => {
+              signOuts += 1;
+            },
+          } as unknown as Session,
+        },
       ],
     });
     fixture = TestBed.createComponent(CommandBox);
@@ -696,6 +706,72 @@ describe('the command box', () => {
     expect(screens).toHaveLength(2);
     expect(screens[0].textContent).toContain(STRINGS.navAreaPermissions);
     expect(count()).toBe('2 screens, 2 actions');
+  });
+
+  // Story 15.9 (AD-28, AD-31). Mutation (Rule 19): drop the Sign out row -> the typed-needle leg and
+  // the choose leg go red.
+  it('Story 15.9: a typed needle lists Sign out last among the actions; an empty query does not', () => {
+    chord();
+    expect(fixture.nativeElement.querySelector('#ocu-command-box-account-sign-out')).toBeNull();
+    expect(count()).toBe('2 screens, 2 actions');
+
+    type('sign out');
+    const actionRows: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('[role="group"]')[1].querySelectorAll('[role="option"]')
+    );
+    expect(actionRows[actionRows.length - 1].id).toBe('ocu-command-box-account-sign-out');
+    expect(actionRows[actionRows.length - 1].textContent?.trim()).toBe(STRINGS.actionSignOut);
+
+    type('');
+    expect(fixture.nativeElement.querySelector('#ocu-command-box-account-sign-out')).toBeNull();
+    expect(count()).toBe('2 screens, 2 actions');
+  });
+
+  // Mutation (Rule 19): list the account row before the actions -> red.
+  it('Story 15.9: a needle that also matches the screen\'s actions lists Sign out after them', () => {
+    chord();
+    type('t');
+    const actionRows: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('[role="group"]')[1].querySelectorAll('[role="option"]')
+    );
+    expect(actionRows.length).toBeGreaterThan(1);
+    expect(actionRows[actionRows.length - 1].id).toBe('ocu-command-box-account-sign-out');
+  });
+
+  // Mutation (Rule 19): drop the `this.session === null` guard -> red.
+  it('Story 15.9: with no Session injected there is no Sign out row', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: AccountPreferences, useValue: accountPreferences },
+        { provide: ScreenStores, useValue: new ScreenStores({ account: accountPreferences }) },
+        provideRouter([{ path: '', children: [] }]),
+        { provide: NavigationService, useValue: navigation as unknown as NavigationService },
+        { provide: OverlayStack, useValue: overlays },
+        { provide: ScreenActions, useValue: actions },
+        { provide: ShellState, useValue: shell },
+      ],
+    });
+    fixture = TestBed.createComponent(CommandBox);
+    fixture.detectChanges();
+    document.body.appendChild(fixture.nativeElement);
+    planted.push(fixture.nativeElement);
+    chord();
+    type('sign out');
+    expect(fixture.nativeElement.querySelector('#ocu-command-box-account-sign-out')).toBeNull();
+  });
+
+  it('Story 15.9: choosing Sign out closes the box and calls Session.signOut once', () => {
+    chord();
+    type('sign out');
+    const row = fixture.nativeElement.querySelector('#ocu-command-box-account-sign-out') as HTMLElement;
+    expect(field().getAttribute('aria-activedescendant')).toBe(row.id);
+    field().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    fixture.detectChanges();
+
+    expect(signOuts).toBe(1);
+    expect(field().getAttribute('aria-expanded')).toBe('false');
+    expect(listbox()).toBeNull();
   });
 
   it('Story 15.2: the ranking survives a filter, and the count still reports what is listed', async () => {

@@ -5301,6 +5301,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T11:00:20Z by=runner-15 note=IDENTIFIED. It is the command bar's own row filter -- input.ocu-command-bar-filter, type=search, aria-label='Filter rows' -- rendering on a form route that has no rows. Measured live on ocupilot-c-ci :52779 at /ocupilot/agent/definitions/edit?ns=HSCUSTOM with chrome-devtools, viewport 1512 dPR 2: the input is 220x32 at x=304 y=98, and .ocu-form-gate-banner is at y=155, so it sits directly above the banner as reported. The owner's ~290px is a screenshot measurement; 220 CSS px is the live value. The bar renders .ocu-command-bar 741x50 at y=89 whose innerHTML is that one input plus an empty p.ocu-command-bar-count (0x0), an empty span.ocu-command-bar-spacer and seven empty Angular anchors -- so the filter is the only visible child, which is why it reads as a lone unlabelled box. It has an aria-label, so it is not an accessibility defect in the a11y-tree sense; the defect is that a rows filter is mounted on a screen with no rows. The fix belongs wherever the command bar decides to render its filter: gate it on the screen declaring a read/table (the archetype is already a closed vocabulary in Screen/Archetype.cls). Not repaired here -- out of Story 15.2's footprint and the epic handed back before 15.3.
 - 2026-09-20T11:33:05Z status=routed owner=16-15-the-data-egress-line by=merge_gate note=IDENTIFIED by epic-runner-15, which had a browser on that exact route and MEASURED it rather than reasoning about it. It is the command bar's own row filter - input.ocu-command-bar-filter, type=search, aria-label='Filter rows' - mounted on a FORM route that has no rows. Live on :52779 at /ocupilot/agent/definitions/edit, viewport 1512 dPR 2: the input is 220x32 at x=304 y=98 and .ocu-form-gate-banner is at y=155, so it sits directly above the banner as reported; the bar renders 741x50 at y=89 and its entire innerHTML is that one input plus an empty p.ocu-command-bar-count (0x0), an empty spacer and seven empty anchors, which is WHY it reads as a lone unlabelled box. TWO CORRECTIONS TO THE ORCHESTRATOR'S FRAMING: it DOES carry an aria-label so this is not an accessibility-tree defect and the severity drops from high to med; and the defect is not a stray control but a rows filter rendered on a screen with no rows, so the fix belongs where the command bar decides to render itself - gating on the screen declaring a read or table, which Screen/Archetype.cls already makes a closed vocabulary. The orchestrator's elimination of both form banners was right but did not reach the cause
 - 2026-09-20T11:33:05Z severity=med by=merge_gate note=downgraded from high on the identification: an aria-label is present, so screen-reader users get 'Filter rows' rather than an unlabelled control. It remains a visible defect on a form screen and is still worth fixing before release
+- 2026-09-25T10:56:37Z status=resolved-by:15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth owner=16-15-the-data-egress-line by=cr note=agent/definitions/edit declares read null, so 15.9 draws no filter and no bar there; baseline ownerReported record restated
 
 ### DW-1336: The agent panel's prompt entry box is far too small and its Send button far too large, so the panel's primary input reads as an afterthought
 - source: owner screenshot 2026-09-20, ocupilot-c-ci :52779 | severity: med | fix-risk: low | footprint: in-footprint
@@ -6356,6 +6357,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Walk: app-data-table>a.ocu-data-table-link width tracks the row's text, so a short entity name yields a sub-24px target (EXPERIENCE.md:713 floor). Data-dependent key. 15.8 owns data-table column widths
 - 2026-09-24T00:06:23Z status=routed owner=15-8-columns-you-can-read by=burndown note=baseline keys carry this id; 15.8 changes app-data-table
+- 2026-09-25T06:25:46Z status=resolved-by:15-8-columns-you-can-read by=adjudication note=name_link_floor_24x24_(data-table.ts/_components.scss);4_baseline_keys_removed_212->208;gate_208_found_208_baseline_0_fresh_0_stale_on_redeployed_bundle
 
 ### DW-1587: Structural gate baseline: native checkbox inputs render 13px wide on eight form and filter screens, under the 24px control floor (16 baseline keys)
 - source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -6652,6 +6654,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: DW-1546's rule (hidden only while the entity's list is open, EXPERIENCE.md :494/:721 amended 2026-09-23) fires on the user editor's own Save; DESIGN.md:1210 last sentence forbids a toast confirming the user's own action
 - 2026-09-24T03:02:48Z status=decision-pending owner=burndown by=harvest note=recommend: suppress the change toast for the open screen's own Save (keep it for agent and other writes), or amend DESIGN.md
 - 2026-09-25T04:03:43Z status=routed owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=merge_gate note=decided at the Epic 9 merge (orchestrator, recommended disposition): suppress the change toast for the open screen's own Save; keep it for agent writes and writes made elsewhere. Routed to 15.9, the shell-UX story in the next slot A unit
+- 2026-09-25T11:01:25Z status=resolved-by:15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=adjudication note=turn.ts_confirm_publish_tags_proposalId;toasts.ts_suppresses_untagged_own-screen_change;toasts.test_own/agent/elsewhere_legs;web-applications-editor_no-toast_leg;task-resume_agent_leg
 
 ### DW-1598: PROHIBITED.UNCOVEREDFIELD's reason names the agent ('settings the agent may propose changing') while the screen's create and Save share the predicate, which AD-53 calls a defect
 - source: 9.1 lead smoke | severity: low | fix-risk: low | footprint: in-epic
@@ -6873,8 +6876,68 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 12.5 was planned with four sections named and ordered as the classic tabs (orchestrator ruling 8bd12776); ui/src/app/shell/form-tabs.ts reached feature with Epic 9's merge; UX-DR32/33 ask for tabs
 - 2026-09-25T04:03:43Z status=routed owner=12-6-the-oauth-2-0-resource-server-editor by=merge_gate note=12.6 switches 12.5's editor and builds 12.6-12.8 on app-form-tabs directly
 
+### DW-1648: Kind-based column floors make most lists scroll sideways at 1280px with the panel open, leaving the row-action trigger off-screen until the user scrolls
+- source: spec-15-8-columns-you-can-read.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Summed COLUMN_DEFAULT_PX floors plus the 52px trigger over the 38 declared tables: about 24 exceed ~800px (1280, panel open, side bar yielded), e.g. Users 1124, Processes 1236; AC1 fixes the floors.
+- 2026-09-25T06:21:23Z status=decision-pending owner=burndown by=cr note=AC1 wording forces it; owner call: keep, floor number/status/text at label, or pin the trigger column
+- 2026-09-25T07:11:16Z status=routed owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=merge_gate note=orchestrator_decision_(b):pin_the_row-action_column_to_the_frame_right_edge_so_the_row_menu_is_always_visible_without_horizontal_scroll;widths_stay_as_15.8_set_them;not_(c);update_Trigger_reach_two_starts-past-the-frame_assertions;DW-1337_gate_no_overlap_or_overflow_both_themes
+- 2026-09-25T11:01:25Z status=resolved-by:15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=adjudication note=option_(b)_row-action_column_sticky_right_opaque_both_themes;widths_unchanged;Trigger_reach_3_runs_updated;last-column_resize_handle_above_pinned_cell;gate_208/208_0_fresh_light+dark
+
+### DW-1649: clickRowCentre never checks where its click lands: a render between its measuring evaluate and page.mouse.click still misclicks, and the caller times out on the trigger instead of the helper naming the miss
+- source: spec-15-8-columns-you-can-read.md (code review, rework 1) | severity: med | fix-risk: med | footprint: in-story
+- evidence: list-spec.mjs clickRowCentre hit-tests inside one evaluate, then clicks in a later CDP round trip; nothing observes the pointerdown target. Run 36100540000 failed as a trigger TimeoutError, not a helper error. 25 caller files, so a post-click check needs each run.
+- 2026-09-25T07:06:33Z status=routed owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=cr note=add a capture pointerdown probe checking the target is in the wanted row by its first-cell text; run every clickRowCentre caller
+- 2026-09-25T11:01:25Z status=resolved-by:15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=adjudication note=clickRowCentre_pointerdown_landing_probe_throws_naming_the_miss(3_branches_mutation-tested);26_caller_files_run
 ### DW-1650: The transport retry takes any non-timeout error with no status line, so a connect failure - which on IRIS waits the full per-call timeout even when refused - is retried and a turn to a down endpoint takes about twice as long to fail
 - source: spec-10-6-a-turn-survives-a-dropped-connection-and-a-create-says-creat.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Post to http://127.0.0.1:1/ with Timeout 3 on ocupilot-b-ci: 3.01 s, ERROR #6059, no HttpResponse (HttpRequest.cls:1664-1679); Base.cls Attempts retries it since only CSPTimeout counts as a timeout. The spec's design note both retries a connect refusal and says a timeout that spent its per-call timeout is not retried.
 - 2026-09-25T07:48:27Z status=decision-pending owner=burndown by=cr note=owner call: exclude #6059/pre-send config errors, or an attempt that spent its timeout, from the one retry (recommended)
 - 2026-09-25T08:27:24Z status=routed owner=range-end-cleanup by=merge_gate note=decided at the 10.6 merge (orchestrator, recommended disposition): exclude a connect that never opened (#6059) from the one transport retry, about 10 lines plus a test
+
+### DW-1651: The .ocu-status-bar comment in _components.scss still says the account menu opens upward out of the band, though 15.9 moved the menu to the header
+- source: spec-15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: _components.scss .ocu-status-bar comment block; menu mounts in header.ts since 9b4debcf
+- 2026-09-25T10:35:52Z status=open owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=harvest note=one-line comment fix; LOW two-way door for the 15.9 review
+- 2026-09-25T10:56:37Z status=resolved-by:15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=cr note=stale 'opening upward' clause deleted from the .ocu-status-bar comment in _components.scss
+
+### DW-1652: Where a scrollbar gutter is reserved, the header's pinned trigger cell sits one gutter width (15px) right of the body's pinned trigger column
+- source: spec-15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Trigger reach classic/painted runs: header cell right 463 vs header client edge 448 and body trigger right 448; .ocu-data-table-head overflow hidden with scrollbar-gutter stable
+- 2026-09-25T10:35:52Z status=open owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=harvest note=cosmetic; header cell carries no visible label; review decides patch or wontfix-accepted
+- 2026-09-25T10:56:37Z status=wontfix-accepted owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=cr note=cosmetic, header cell has no label; reopen_if=a header label is visibly cut 15px short of its body column under classic scrollbars
+
+### DW-1653: The command bar's filter and count still draw on screens that declare a read but no table (eight detail screens, system usage, security/auditing, the two log viewers)
+- source: spec-15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: command-bar.ts hasFilter keys on screen.read !== null, as the spec's Always defines 'declares no read'; the mirror lists these screens with a read and table null
+- 2026-09-25T10:56:32Z status=by-design owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=cr note=spec defines the no-read set as read === null (AD-5); widening it to 'no table' is a spec amendment
+
+### DW-1654: A screen's own write is suppressed by entity type, not id, so a Save landing after the user opened another entity of the same type raises no toast
+- source: spec-15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: toasts.ts openScreenShows uses screenShowsEntity, which compares type and scope only (navigation.ts:470-478)
+- 2026-09-25T10:56:32Z status=by-design owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=cr note=the spec names screenShowsEntity for DW-1597; the doc comments now say entity type
+
+### DW-1655: The command box's Sign out row matches substrings of its label only: 'logout' finds nothing, and a stray needle such as 'ut' can leave it the only, active row
+- source: spec-15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: command-box.ts accountCandidates: STRINGS.actionSignOut.toLowerCase().includes(needle), no alias list
+- 2026-09-25T10:56:32Z status=by-design owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=cr note=spec Always: listed only while the typed needle is non-empty and the label contains it
+
+### DW-1656: Header right end below about 720px: the minmax(0, 1fr) track lets a long namespace spill left over the command box, and the account button can shrink under 24px
+- source: spec-15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: _components.scss .ocu-header grid minmax(0, 1fr) plus .ocu-header-end flex-end and flex-shrink 100 on app-account-menu; the 720px spec measures only the account button
+- 2026-09-25T10:56:32Z status=wontfix-accepted owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=cr note=reopen_if=a header at >=720px shows the namespace slot overlapping .ocu-command-box or the account button under 24px wide
+
+### DW-1657: clickRowCentre compares first-cell text that includes the Changed tag, so a row gaining the tag between measuring and pointerdown throws a spurious wrong-row miss
+- source: spec-15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: list-spec.mjs records firstText at mark time and re-reads it at pointerdown; the name cell carries the Changed tag while a row is highlighted
+- 2026-09-25T10:56:32Z status=wontfix-accepted owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=cr note=reopen_if=a CI run fails with 'landed in row "<same name>Changed"'
+
+### DW-1658: app.ts's doc comment (:107) still says Sign out lives in the status bar, which Story 15.9 moved to the header
+- source: spec-15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth.md (code review) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: app.ts:107 'Sign out lives in the status bar now (app-status-bar mounts app-account-menu)'; the spec forbids editing app.ts, contended with Epic 12
+- 2026-09-25T10:56:32Z status=wontfix-accepted owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=cr note=reopen_if=the next story that edits app.ts leaves :107 naming the status bar
+
+### DW-1659: Fifteen other form-page browser specs keep the triple-click fill helper that failed users-editor when a field sat wholly under the sticky form bar
+- source: spec-15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: grep clickCount: 3 ui/browser lists 15 editor/create specs; all green in CI on 5dcefe46; users-editor fixed by focus+select in 2354fc6d
+- 2026-09-25T11:59:21Z status=wontfix-accepted owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=harvest note=reopen_if=any of them fails with a typed value appended to the old one
+- 2026-09-25T12:05:01Z status=wontfix-accepted owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=cr note=reopen_if=a form-page triple-click site fails with text appended; grep lists 29 files, add navigate:378

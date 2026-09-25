@@ -55,7 +55,10 @@ export interface ChangeEvent {
   readonly key: string;
   /** What happened to the entity; `''` for the two proposal kinds, which are not changes. */
   readonly action: ChangeAction | '';
-  /** The proposal this is about; `''` for `changed`. */
+  /**
+   * The proposal this is about. On `changed` it is the confirmed proposal for an agent's write and
+   * `''` for a screen's own write, which is what the toast store tells the two apart by.
+   */
   readonly proposalId: string;
   /**
    * When the proposal stops being live, in epoch milliseconds; `0` for `changed` and for
