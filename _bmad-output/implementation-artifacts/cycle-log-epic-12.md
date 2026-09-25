@@ -117,3 +117,4 @@
 2026-09-25T01:24:04Z	Epic 12	ledger_routed_planned	story=12-9-removing-the-classic-link-outs entries=1(DW-1643) excess=0 by=cr
 2026-09-25T01:24:04Z	Story 12.4	ci_resolved	story=12.4 run=36078446863 result=failure head=c3d8979d job=browser tests=a11y-structural-invariants_AC5(security/oauth/edit_shell_chrome_3_entries),oauth-server-description-editor_AC2(#ocu-oauth-server-InitialAccessToken_not_found) first_red=c3d8979d(this_story) resolved_at=smoke_gate
 2026-09-25T01:24:04Z	Story 12.4	rework_opened	cycle_iteration=2 iteration=1 trigger=ci items=CI:structural-baseline_3_shell_entries,CI:editor_AC2_token_field scope_baseline=pending_rework_commit smoke_local=pass(editor+oauth+oauth-delete_11/11,smoke_49/49)
+2026-09-25T01:24:38Z	Story 12.4	stage_spawned	stage=implement spawn_at=2026-09-25T01:24:38Z model=opus agent_name=12-4-oauth-server-description-implement-2 cycle_iteration=2 scope_baseline=bfdb266c
