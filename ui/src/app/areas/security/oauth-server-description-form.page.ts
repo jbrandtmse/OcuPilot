@@ -62,7 +62,7 @@ const ENDPOINT_LABELS: Readonly<Record<string, string>> = {
 
 /** The JWT settings' three choices, each with its label. */
 const JWT_CHOICES: readonly { readonly value: JwtChoice; readonly label: string }[] = [
-  { value: 'none', label: STRINGS.oauthServerJwtNone },
+  { value: 'none', label: STRINGS.sslVerifyPeerNone },
   { value: 'url', label: STRINGS.oauthServerJwtUrl },
   { value: 'x509', label: STRINGS.oauthServerJwtX509 },
 ];
@@ -163,7 +163,7 @@ function displayOf(value: MemberValue): string {
       </div>
 
       <div class="ocu-field">
-        <label class="ocu-field-label ocu-field-label-required" [attr.for]="sslField.id">{{ STRINGS.oauthServerFieldSsl }}</label>
+        <label class="ocu-field-label ocu-field-label-required" [attr.for]="sslField.id">{{ STRINGS.sslFormLabel }}</label>
         <div class="ocu-field-control">
           <input
             class="ocu-field-input"

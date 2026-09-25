@@ -11,8 +11,8 @@
 /// <p><b>It is destructive</b>: a deleted role, and every holder's grant of it, cannot be proposed
 /// back.</p>
 /// <p><b>Three refusals.</b> A name beginning <code>%</code> is refused at the mint
-/// (<method>ArgumentProblem</method>), because the vendor endpoint drops a predefined role and
-/// reports success. One of OcuPilot's own roles, and a role whose removal leaves no counted
+/// (<method>ArgumentProblem</method>) and on the screen's Delete (<method>ScreenActionDelta</method>),
+/// because the vendor endpoint drops a predefined role and reports success. One of OcuPilot's own roles, and a role whose removal leaves no counted
 /// <code>%All</code> holder, are the prohibited set's, refused at the write whatever the caller
 /// (AD-10). A vendor answer that reports the drop and leaves the role in place fails the confirm in
 /// the port (<parameter>OcuPilot.Port.AdminPort.VERIFIEDDELETES</parameter>).</p>
@@ -40,6 +40,9 @@ Parameter CHANGEACTION = "deleted";
 /// <p>Declared: a deleted role is gone and no proposal puts it back. The card draws the destructive
 /// treatment and its Confirm is <code>button-destructive</code>.</p>
 Parameter DESTRUCTIVE As BOOLEAN = 1;
+
+/// <p>The Roles list's row action this write carries out (AD-53): Delete, bodyless.</p>
+Parameter SCREENACTIONS = "delete";
 
 /// <p>The top-level names <parameter>READTYPE</parameter> answers, read off the vendor's
 /// <code>PropsToJson</code> on this build. The screen's list answers <code>CreatedBy</code> and
@@ -96,8 +99,31 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set pProblem = ""
-    If $Extract($ZStrip(pIdValue, "<W"), 1) = ..#SYSTEMPREFIX {
+    If ..IsSystemRole(pIdValue) {
         Set pProblem = "'" _ ..IdArgument() _ "': " _ ##class(OcuPilot.Api.Error).ReasonForViolation(##class(OcuPilot.Api.Error).#ROLENAMESYSTEM)
+    }
+    Quit $$$OK
+}
+
+/// <p>Whether <var>pName</var> is one of the instance's own predefined roles: it begins
+/// <parameter>SYSTEMPREFIX</parameter>.</p>
+ClassMethod IsSystemRole(pName As %String) As %Boolean
+{
+    Quit $Extract($ZStrip(pName, "<W"), 1) = ..#SYSTEMPREFIX
+}
+
+/// <p>The screen's Delete (AD-53): the Roles list's row action reaches this write without the
+/// mint's <method>ArgumentProblem</method>, so a predefined role (<method>IsSystemRole</method>),
+/// named by <var>pValues</var>' id argument, is refused here with the bare published
+/// <code>ROLE.NAME.SYSTEM</code> sentence -- the one the row draws before a click. Every other
+/// action is the base's.</p>
+ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, pFresh As %DynamicObject, Output pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Set tSC = ##super(pActionId, pValues, pFresh, .pArgs, .pProblem)
+    If $$$ISERR(tSC) Quit tSC
+    If (pActionId = "delete") && $IsObject(pValues) && ..IsSystemRole(pValues.%Get(..IdArgument())) {
+        Set pArgs = {}
+        Set pProblem = ##class(OcuPilot.Api.Error).ReasonForViolation(##class(OcuPilot.Api.Error).#ROLENAMESYSTEM)
     }
     Quit $$$OK
 }

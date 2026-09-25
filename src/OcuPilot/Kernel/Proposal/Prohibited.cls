@@ -14,12 +14,12 @@
 /// <p><b>It permits, rather than forbids, by name.</b> AD-4 makes the payload the complete property
 /// set, and a vendor web application carries 45 settable properties of which a great many decide
 /// which compiled code answers at the URL or how a caller gets in. Enumerating those would leave
-/// the next vendor property unrefused, so the set names the few whose change it has reviewed
+/// the next vendor property unrefused, so the set names the fields whose change it has reviewed
 /// (<method>PermittedChangeFields</method>) and refuses every other changed field
-/// (<parameter>UNCOVEREDFIELD</parameter>) whatever it is called. The reviewed few carry their own
-/// asymmetric predicates, which is where the one reviewed change to a field stays available and
-/// every other one does not: the only authentication change it permits is clearing the
-/// unauthenticated option, and clearing a resource is refused while setting one is not.</p>
+/// (<parameter>UNCOVEREDFIELD</parameter>) whatever it is called. On one of OcuPilot's own web
+/// applications every change is refused (<method>WebApplication</method>); on any other, a change
+/// that weakens or repoints the application is permitted and marked
+/// (<method>WeakensByEffect</method>).</p>
 /// <p><b>Refused whatever the caller.</b> This class reads no governance state, no policy and no
 /// switch, so governance can disable a permitted tool and can never enable a prohibited one. It is
 /// asked inside the confirm transition, before the port call (AD-34, AD-40).</p>
@@ -43,12 +43,14 @@
 /// write-tool story adds its own type here, and a type listed with no branch is refused
 /// <parameter>UNCOVERED</parameter> at every write.</p>
 /// <p>Seams a subclass overrides: <method>PortClass</method>, <method>RegistryClass</method>,
-/// <method>DeletingLeavesNoAllHolder</method>, <method>LastAllHolder</method> and
-/// <method>HoldsAll</method>. Production overrides none of them.
-/// The last two are the account census, and the difference between them matters to a reader auditing it:
-/// replacing <method>LastAllHolder</method> replaces the census, while replacing
-/// <method>HoldsAll</method> only makes its input deterministic and leaves the census body
-/// running.</p>
+/// <method>DeletingLeavesNoAllHolder</method>, <method>ChangingLeavesNoAllHolder</method>,
+/// <method>ChangeStripsAll</method>, <method>LastAllHolder</method>, <method>HoldsAll</method> and
+/// <method>DirectRoles</method>. Production overrides none of them.
+/// The difference between them matters to a reader auditing the account census: replacing
+/// <method>LastAllHolder</method>, <method>DeletingLeavesNoAllHolder</method>,
+/// <method>ChangingLeavesNoAllHolder</method> or <method>ChangeStripsAll</method> replaces a census,
+/// while replacing <method>HoldsAll</method> or <method>DirectRoles</method> only makes its input
+/// deterministic and leaves the census body running.</p>
 Class OcuPilot.Kernel.Proposal.Prohibited Extends %RegisteredObject
 {
 
@@ -78,6 +80,10 @@ Parameter CURRENTUSERREASON = "This is the account you are signed in as. Disabli
 /// <code>userRefusalServiceAccount</code>.</p>
 Parameter SERVICEACCOUNTREASON = "The instance's own services run as this account. Disabling or deleting it would stop them, OcuPilot included.";
 
+/// <p>The one sentence <parameter>SERVICEACCOUNTSIGNIN</parameter> carries, pinned equal to
+/// <code>userRefusalServiceAccountSignIn</code>.</p>
+Parameter SERVICEACCOUNTSIGNINREASON = "The instance's own services sign in as this account. A new password or a required password change would stop them, OcuPilot included.";
+
 /// <p>The one sentence <parameter>LASTALLHOLDER</parameter> carries, pinned equal to
 /// <code>userRefusalLastAllHolder</code>.</p>
 Parameter LASTALLHOLDERREASON = "This is the last account that holds %All. Disabling it, deleting it or taking the role off it would leave nobody able to administer this instance.";
@@ -90,23 +96,54 @@ Parameter OCUPILOTPROCESSREASON = "OcuPilot itself is running in this process, f
 /// <code>processRefusalSystem</code>.</p>
 Parameter SYSTEMPROCESSREASON = "This is an IRIS system process, and the instance relies on it. It cannot be suspended, resumed or terminated from OcuPilot.";
 
-/// <p>The write would change how the target is authenticated by anything other than clearing its
-/// unauthenticated option: it adds a bit, clears another bit, clears the mask, or carries a value
-/// that is not a non-negative whole number.</p>
+/// <p>The write would make one of OcuPilot's own web applications reachable without signing in
+/// (<method>AddsUnauthenticated</method>). On any other application the same change is permitted and
+/// marked <parameter>EFFECTUNAUTHENTICATED</parameter>.</p>
 Parameter UNAUTHENTICATED = "PROHIBITED.UNAUTHENTICATED";
 
-/// <p>The write would drop the target's authorization resource: the target names one and the
-/// payload names none.</p>
+/// <p>The write would drop the authorization resource of one of OcuPilot's own web applications: the
+/// target names one and the payload names none. On any other application the same change is
+/// permitted and marked <parameter>EFFECTNORESOURCE</parameter>.</p>
 Parameter AUTHORIZATION = "PROHIBITED.AUTHORIZATION";
 
-/// <p>The write would change which compiled code answers at the target's URL.</p>
+/// <p>The write would change which code answers at the address of one of OcuPilot's own web
+/// applications: any of <parameter>CODEFIELDS</parameter>. On any other application the same change
+/// is permitted and marked <parameter>EFFECTREPOINTED</parameter>.</p>
 Parameter DISPATCH = "PROHIBITED.DISPATCH";
+
+/// <p>The one sentence <parameter>UNAUTHENTICATED</parameter> carries, caller-neutral (AD-39).</p>
+Parameter UNAUTHENTICATEDREASON = "OcuPilot serves itself through this web application. Making it reachable without signing in is not available here.";
+
+/// <p>The one sentence <parameter>AUTHORIZATION</parameter> carries, caller-neutral.</p>
+Parameter AUTHORIZATIONREASON = "OcuPilot serves itself through this web application. Removing the resource that guards it is not available here.";
+
+/// <p>The one sentence <parameter>DISPATCH</parameter> carries, caller-neutral.</p>
+Parameter DISPATCHREASON = "OcuPilot serves itself through this web application. Changing which code answers at its address is not available here.";
+
+/// <p>The web-application fields that decide which code answers at the application's address,
+/// comma-separated: the REST dispatch class, the namespace, the Python application and callable, and
+/// the CSP package and superclass.</p>
+Parameter CODEFIELDS = "DispatchClass,NameSpace,WSGIAppName,WSGICallable,Package,SuperClass";
+
+/// <p>The effect codes <method>WeakensByEffect</method> answers, one per weakening change a write may
+/// make to a web application that is not OcuPilot's own. Each is also the proposal's consequence
+/// code, and the card states its sentence.</p>
+Parameter EFFECTUNAUTHENTICATED = "WEBAPP.UNAUTHENTICATED";
+
+Parameter EFFECTNORESOURCE = "WEBAPP.NORESOURCE";
+
+Parameter EFFECTREPOINTED = "WEBAPP.REPOINTED";
 
 /// <p>The write would set application roles on a web application OcuPilot is served by
 /// (<parameter>APPLICATIONROLEFIELDS</parameter>): a role granted there would run every later
 /// OcuPilot request with it, turn jobs included, which would quietly falsify AD-8 (AD-10). Every
 /// other privilege grant is permitted and marked (<method>GrantsPrivilegeByEffect</method>).</p>
 Parameter PRIVILEGEGRANT = "PROHIBITED.PRIVILEGEGRANT";
+
+/// <p>The one sentence <parameter>PRIVILEGEGRANT</parameter> carries, published once in
+/// EXPERIENCE.md's Fixed strings table and pinned equal to <file>strings.ts</file>'s
+/// <code>webAppPrivilegeGrantRefusal</code> (AD-53).</p>
+Parameter PRIVILEGEGRANTREASON = "OcuPilot's own web applications carry only the roles its installer gives them. A role set there would run every OcuPilot request with it.";
 
 /// <p>The write would remove the account the caller is signed in as, or its administration
 /// (<method>RemovesAdministration</method>).</p>
@@ -130,6 +167,13 @@ Parameter SYSTEMACCOUNT = "PROHIBITED.SYSTEMACCOUNT";
 /// harm as disabling the application that serves OcuPilot.</p>
 Parameter SERVICEACCOUNT = "PROHIBITED.SERVICEACCOUNT";
 
+/// <p>The write would change how one of the accounts the instance's own services run as
+/// (<parameter>SERVICEACCOUNTS</parameter>) signs in: a new password, or turning on
+/// change-password-on-login (AD-10 as amended 2026-09-23). Either stops those services signing in
+/// exactly as a disable would. The signed-in account is exempt, and turning the flag off is
+/// permitted for every account.</p>
+Parameter SERVICEACCOUNTSIGNIN = "PROHIBITED.SERVICEACCOUNTSIGNIN";
+
 /// <p>The write would suspend or resume a process OcuPilot is itself running in: the job serving
 /// this confirmation, or any job running an agent turn (AD-7). Both harms are irrecoverable from
 /// inside the product -- suspending the serving job kills the write inside AD-34's transition, and
@@ -145,8 +189,10 @@ Parameter OCUPILOTPROCESS = "PROHIBITED.OCUPILOTPROCESS";
 /// outside <method>ProcessJobTypes</method>'s allow-list, an unnamed value included.</p>
 Parameter SYSTEMPROCESS = "PROHIBITED.SYSTEMPROCESS";
 
-/// <p>The write would delete one of OcuPilot's own roles (<method>OcuPilotRoles</method>), without
-/// which OcuPilot stops working (AD-10). Only uninstall removes them.</p>
+/// <p>The write would delete one of OcuPilot's own roles (<method>OcuPilotRoles</method>), or change
+/// what one grants -- its granted roles, its resource grants or whether it is escalation-only --
+/// without which OcuPilot stops working (AD-10 as amended 2026-09-24). Its description may change.
+/// Only OcuPilot's installer changes or removes them.</p>
 Parameter OCUPILOTROLE = "PROHIBITED.OCUPILOTROLE";
 
 /// <p>The write would delete one of OcuPilot's own resources (<method>OcuPilotResources</method>),
@@ -158,6 +204,36 @@ Parameter OCUPILOTRESOURCE = "PROHIBITED.OCUPILOTRESOURCE";
 /// the shape that covers a vendor property nobody has classified yet, rather than the names that
 /// happen to exist on this build.</p>
 Parameter UNCOVEREDFIELD = "PROHIBITED.UNCOVEREDFIELD";
+
+/// <p>The one sentence <parameter>UNCOVEREDFIELD</parameter> carries, caller-neutral: a screen's Save
+/// reaches it as well as the agent's confirm (AD-53). Published in EXPERIENCE.md's Fixed strings
+/// table and pinned there by <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter UNCOVEREDFIELDREASON = "Only some of this kind of object's settings can be changed here, and that is not one of them.";
+
+/// <p>The one sentence <parameter>OCUPILOTROLE</parameter> carries, caller-neutral, published and
+/// pinned as <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
+Parameter OCUPILOTROLEREASON = "This role belongs to OcuPilot, which stops working without what it grants. Only OcuPilot's installer changes or removes it.";
+
+/// <p>The one sentence <parameter>OCUPILOTRESOURCE</parameter> carries, caller-neutral, published
+/// and pinned as <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
+Parameter OCUPILOTRESOURCEREASON = "This resource guards OcuPilot's own data or administration. It cannot be deleted or opened to every user; only OcuPilot's installer changes it.";
+
+/// <p>The write would delete OcuPilot's own provider SSL/TLS configuration
+/// (<parameter>OcuPilot.Kernel.State.Base.SSLCONFIG</parameter>), or change its type, its peer
+/// verification, its trusted certificates or whether it is enabled
+/// (<method>OcuPilotSslFields</method>): the installer sets those for AD-32 and restores them at
+/// every start, and peer verification off would send the provider key over unverified TLS (AD-10 as
+/// amended 2026-09-24). Every other field of it may change.</p>
+Parameter OCUPILOTSSL = "PROHIBITED.OCUPILOTSSL";
+
+/// <p>The one sentence <parameter>OCUPILOTSSL</parameter> carries, caller-neutral, published and
+/// pinned as <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
+Parameter OCUPILOTSSLREASON = "OcuPilot's installer sets this setting of its own provider configuration and restores it at every start, so it cannot be changed here.";
+
+/// <p>The effect <method>WeakensByEffect</method> answers for an SSL/TLS configuration that is not
+/// OcuPilot's own whose peer verification a write turns off: the server's certificate is no longer
+/// checked. It is also the proposal's consequence code.</p>
+Parameter EFFECTNOPEERCHECK = "SSL.NOPEERCHECK";
 
 /// <p>The target's entity type is one this release evaluates no predicates for, or its reference
 /// could not be read at all. Refusing wholesale is strictly stronger than the enumerated effects,
@@ -171,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,oauth2-server-definition";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -209,6 +285,38 @@ Parameter TYPEOAUTHSERVERDEF = "oauth2-server-definition";
 Parameter TYPEAUDITEVENT = "audit-event";
 
 Parameter TYPEAUDITUSEREVENT = "audit-user-event";
+
+/// <p>An SSL/TLS configuration (Story 9.5, <method>Ssl</method>).</p>
+Parameter TYPESSL = "ssl-configuration";
+
+/// <p>A service and an LDAP configuration (Story 9.9, <method>Service</method>,
+/// <method>ReviewedFewOnly</method>).</p>
+Parameter TYPESERVICE = "service";
+
+Parameter TYPELDAP = "ldap-configuration";
+
+/// <p>The write would turn off the service OcuPilot is served through
+/// (<parameter>SERVINGSERVICENAME</parameter>): every request to OcuPilot arrives through it (AD-10 as
+/// amended 2026-09-24).</p>
+Parameter SERVINGSERVICE = "PROHIBITED.SERVINGSERVICE";
+
+/// <p>The one sentence <parameter>SERVINGSERVICE</parameter> carries, caller-neutral, published and
+/// pinned as <parameter>SERVINGPATHREASON</parameter> is.</p>
+Parameter SERVINGSERVICEREASON = "OcuPilot is served through this service. Turning it off would cut off every user, including you.";
+
+/// <p>The one <code>Security.Service</code> that serves OcuPilot on this build (AD-10: measured
+/// 2026-09-24; <code>%Service_Web</code> and a CSP service do not exist here). Compared without
+/// case, as the instance resolves a service name.</p>
+Parameter SERVINGSERVICENAME = "%Service_WebGateway";
+
+/// <p>The effect <method>WeakensByEffect</method> answers for a change to the allowed addresses or
+/// authentication methods of <parameter>SERVINGSERVICENAME</parameter>: permitted, destructive, and
+/// named on the card. It is also the proposal's consequence code.</p>
+Parameter EFFECTSERVINGSERVICE = "SERVICE.SERVESOCUPILOT";
+
+/// <p>The effect <method>WeakensByEffect</method> answers for any other service whose
+/// <code>AutheEnabled</code> gains <parameter>UNAUTHENTICATEDBIT</parameter>.</p>
+Parameter EFFECTSERVICEUNAUTHENTICATED = "SERVICE.UNAUTHENTICATED";
 
 /// <p>The instance's own predefined account, whose disablement AD-10 forbids. Compared through
 /// <method>NormalizedUser</method>, so every spelling the instance resolves to it is refused.</p>
@@ -257,6 +365,9 @@ Parameter FIELDGRANTEDROLES = "GrantedRoles";
 
 Parameter FIELDRESOURCES = "Resources";
 
+/// <p>Whether a role is granted only by escalation, never at sign-in.</p>
+Parameter FIELDESCALATIONONLY = "EscalationOnly";
+
 /// <p>The <code>Security.Resource</code> payload field the resource predicates read: the permission
 /// letters every user holds on the resource.</p>
 Parameter FIELDPUBLICPERMISSION = "PublicPermission";
@@ -269,14 +380,28 @@ Parameter APPLICATIONROLEFIELDS = "MatchRoles";
 
 Parameter FIELDCHANGEPASSWORD = "ChangePassword";
 
+/// <p>The object a task type's own settings travel under, whose <code>Settings.&lt;key&gt;</code> diff
+/// rows are judged as it (Story 9.8).</p>
+Parameter SETTINGSFIELD = "Settings";
+
+/// <p>The account's last usable date. The vendor refuses a sign-in after it and disables the account
+/// at that refusal (measured on this build), so a date before today is a disable by effect.</p>
+Parameter FIELDEXPIRATIONDATE = "ExpirationDate";
+
+/// <p>Whether the account ignores its expiration date; the vendor clears the date when it is set.</p>
+Parameter FIELDACCOUNTNEVEREXPIRES = "AccountNeverExpires";
+
+/// <p>The vendor's own password-change request type, which the sign-in arm reads as a new
+/// password.</p>
+Parameter PASSWORDWRITETYPE = "CHANGEPWD";
+
 /// <p>The AD-14 action a write tool declares when its write removes its target
 /// (<method>RemovesOf</method>).</p>
 Parameter ACTIONDELETED = "deleted";
 
-/// <p>The <code>AutheEnabled</code> bit that lets an application be reached without signing in, and
-/// the only bit <method>ClearsUnauthenticatedOnly</method> permits a payload to change
+/// <p>The <code>AutheEnabled</code> bit that lets an application be reached without signing in
 /// (<file>irissys/%sySecurityMacros.inc</file>:19-20 gives AuthePassword 32 and
-/// AutheUnauthenticated 64).</p>
+/// AutheUnauthenticated 64), which <method>AddsUnauthenticated</method> reads.</p>
 Parameter UNAUTHENTICATEDBIT As %Integer = 64;
 
 /// <p>The admin request type the target is re-read with when the proposal's tool declares none
@@ -293,10 +418,11 @@ Parameter READTYPE = "GET";
 /// then the four <method>User</method> adds, then <parameter>PRIVILEGEGRANT</parameter>, which
 /// only a web application reaches, then the two <method>Process</method> adds, then the one every
 /// covered type shares, with the wholesale refusal last, and then the one <method>Role</method> adds and
-/// the one <method>Resource</method> adds -- fifteen in all.</p>
+/// the one <method>Resource</method> adds, the sign-in arm <method>User</method> adds, and the one
+/// <method>Ssl</method> adds, and the one <method>Service</method> adds last -- eighteen in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -304,10 +430,10 @@ ClassMethod Codes() As %List
 /// family here, so the set still has one home.</p>
 ClassMethod ReasonFor(pCode As %String) As %String
 {
-    If pCode = ..#UNAUTHENTICATED Quit "The only change to how a web application is authenticated that the agent can propose is removing the option of reaching it without signing in."
-    If pCode = ..#AUTHORIZATION Quit "Removing the resource that guards a web application is not something the agent can propose."
-    If pCode = ..#DISPATCH Quit "Changing which code answers at a web application's address is not something the agent can propose."
-    If pCode = ..#PRIVILEGEGRANT Quit "OcuPilot's own web applications carry only the roles its installer gives them. A role set there would run every OcuPilot request with it."
+    If pCode = ..#UNAUTHENTICATED Quit ..#UNAUTHENTICATEDREASON
+    If pCode = ..#AUTHORIZATION Quit ..#AUTHORIZATIONREASON
+    If pCode = ..#DISPATCH Quit ..#DISPATCHREASON
+    If pCode = ..#PRIVILEGEGRANT Quit ..#PRIVILEGEGRANTREASON
     ; AD-53: the sentence two surfaces share -- the reason a row action is drawn refused before a
     ; click and the envelope reason returned after one -- so it names no caller.
     ; OcuPilot.Test.RefusalCopy pins it equal to the client's own copy.
@@ -315,14 +441,17 @@ ClassMethod ReasonFor(pCode As %String) As %String
     ; The four account sentences, likewise shared with the screen's pre-click refusal.
     If pCode = ..#SYSTEMACCOUNT Quit ..#SYSTEMACCOUNTREASON
     If pCode = ..#SERVICEACCOUNT Quit ..#SERVICEACCOUNTREASON
+    If pCode = ..#SERVICEACCOUNTSIGNIN Quit ..#SERVICEACCOUNTSIGNINREASON
     If pCode = ..#CURRENTUSER Quit ..#CURRENTUSERREASON
     If pCode = ..#LASTALLHOLDER Quit ..#LASTALLHOLDERREASON
     If pCode = ..#OCUPILOTPROCESS Quit ..#OCUPILOTPROCESSREASON
     If pCode = ..#SYSTEMPROCESS Quit ..#SYSTEMPROCESSREASON
-    If pCode = ..#UNCOVEREDFIELD Quit "Only a few of this kind of object's settings are ones the agent may propose changing, and that is not one of them."
+    If pCode = ..#UNCOVEREDFIELD Quit ..#UNCOVEREDFIELDREASON
     If pCode = ..#UNCOVERED Quit "This release does not check writes to that kind of object against its prohibited set, so none is proposable yet."
-    If pCode = ..#OCUPILOTROLE Quit "This role belongs to OcuPilot, which stops working without it. It is removed only when OcuPilot is uninstalled."
-    If pCode = ..#OCUPILOTRESOURCE Quit "This resource guards OcuPilot's own data or administration. It cannot be deleted or opened to every user; only OcuPilot's installer changes it."
+    If pCode = ..#OCUPILOTROLE Quit ..#OCUPILOTROLEREASON
+    If pCode = ..#OCUPILOTRESOURCE Quit ..#OCUPILOTRESOURCEREASON
+    If pCode = ..#OCUPILOTSSL Quit ..#OCUPILOTSSLREASON
+    If pCode = ..#SERVINGSERVICE Quit ..#SERVINGSERVICEREASON
     Quit ""
 }
 
@@ -344,14 +473,17 @@ ClassMethod CoveredTypes() As %List
 /// refused without the set knowing what the field does, so a vendor property added by a later IRIS
 /// build is refused until somebody reviews it -- which is the opposite failure mode from a
 /// forbidden-name list, where the new property is settable until somebody notices. It grows one
-/// reviewed field at a time. Two of the four carry an asymmetric predicate of their own
-/// (<method>WebApplication</method>); the other two carry a reviewed argument that no change to
-/// them is an effect this AD forbids -- <code>Enabled</code> because it turns an application's
-/// already-declared configuration on and off rather than changing any of it, and the applications
-/// AD-38 protects are refused every change by the serving-path predicate; <code>Description</code>
-/// because it is display text no request is routed or authorized by.</p>
-/// <p>An account's three are <code>Enabled</code>, <code>Roles</code> and
-/// <code>ChangePassword</code>. <code>Enabled</code> carries the asymmetric predicate: enabling an
+/// reviewed field at a time.</p>
+/// <p>A web application's are the twenty-five settings its editor carries
+/// (<method>WebApplicationSettingFields</method>) and its application roles
+/// (<parameter>APPLICATIONROLEFIELDS</parameter>). Every change to one of OcuPilot's own applications
+/// is refused (<method>WebApplication</method>); on any other application a change that makes it
+/// reachable without signing in, drops its resource or repoints its code is permitted and marked
+/// destructive (<method>WeakensByEffect</method>), and a privileged application role likewise
+/// (<method>GrantsPrivilegeByEffect</method>). <code>Path</code> and <code>WSGIAppLocation</code>
+/// are not among them: no caller names a filesystem path (AD-21).</p>
+/// <p>An account's are <code>Enabled</code>, <code>Roles</code>, <code>ChangePassword</code> and the
+/// rest of the classic General tab (<method>UserSettingFields</method>). <code>Enabled</code> carries the asymmetric predicate: enabling an
 /// account is a change AD-10 does not forbid, while disabling one is refused for the four protected
 /// accounts (<method>User</method>). <code>Roles</code> is permitted except where the delta grants
 /// privilege or strips <code>%All</code> from a protected account, which is the same asymmetry read
@@ -366,6 +498,11 @@ ClassMethod CoveredTypes() As %List
 /// reviewed. AD-10's Release 1 set names no task effect, and this story invents none.</p>
 /// <p>An application error's is <b>none</b>, for the same reason: its one write is the bodyless
 /// by-namespace delete (AD-48), whose card rows are removals rather than field changes.</p>
+/// <p>A role's four are <code>Description</code>, <code>EscalationOnly</code>,
+/// <code>GrantedRoles</code> and <code>Resources</code>. A change to any but the description of one
+/// of OcuPilot's own roles is refused, and a change that strips <code>%All</code> from a protected
+/// account through the role is refused by that account's arm (<method>Role</method>); any other
+/// change is permitted, and a privileged grant is marked (<method>GrantsPrivilegeByEffect</method>).</p>
 /// <p>A resource's two are <code>Description</code> and <code>PublicPermission</code>. A letter
 /// added to the public permission of one of OcuPilot's own resources is refused
 /// (<method>Resource</method>); on any other resource it is permitted, and marked where the resource
@@ -379,11 +516,17 @@ ClassMethod CoveredTypes() As %List
 /// <code>Type</code> is the fresh read's and no caller changes it.</p>
 /// <p>A device's eight are every field of its classic page but its name (<method>DeviceFields</method>);
 /// the name is its id and never changes.</p>
+/// <p>An SSL/TLS configuration's are the thirteen settings its editor sets
+/// (<method>SslFields</method>) and its private key password, a template field the edit declares
+/// secret. Its file locations are not among them: no caller names a path (AD-21). A change to
+/// OcuPilot's own provider configuration's type, peer verification, trusted certificates or
+/// enablement is refused (<method>Ssl</method>).</p>
 /// <p>The auditing configuration's one is <code>Enabled</code>, and it carries <b>no</b> asymmetric
 /// predicate: AD-10 does not forbid turning auditing off, and the product's answer to it is the
 /// card's warning, the recorded drop and the banner rather than a refusal (AD-15 as amended
 /// 2026-09-21). Every other property of that object -- the audit-database location, encryption --
 /// is refused by the reviewed-few rule.</p>
+/// <p>A task's thirty-two are <method>TaskChangeFields</method>'s.</p>
 /// <p>A write tool advertises no field outside this list, which is the other half of AD-10; the
 /// tool states its own admitted names and a test asserts the two agree, so the tool layer never
 /// reads the kernel.</p>
@@ -391,33 +534,67 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
 {
     If pType = ..#TYPEOAUTHSERVERDEF Quit ..OAuthServerFields()
     If pType = ..#TYPEOAUTHCLIENT Quit ..OAuthClientFields()
-    If (pType = ..#TYPEAUDITEVENT) || (pType = ..#TYPEAUDITUSEREVENT) Quit $ListBuild(..#FIELDENABLED)
-    If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "Enabled", "Resource")
-    If pType = ..#TYPEUSER Quit $ListBuild(..#FIELDENABLED, ..#FIELDROLES, ..#FIELDCHANGEPASSWORD)
+    If pType = ..#TYPEAUDITEVENT Quit $ListBuild(..#FIELDENABLED)
+    If pType = ..#TYPEAUDITUSEREVENT Quit $ListBuild("Description", ..#FIELDENABLED)
+    If pType = ..#TYPEWEBAPPLICATION Quit ..WebApplicationSettingFields() _ $ListFromString(..#APPLICATIONROLEFIELDS)
+    If pType = ..#TYPEUSER Quit $ListBuild(..#FIELDENABLED, ..#FIELDROLES, ..#FIELDCHANGEPASSWORD) _ ..UserSettingFields()
     If pType = ..#TYPEAUDITING Quit $ListBuild(..#FIELDENABLED)
 
     If pType = ..#TYPERESOURCE Quit $ListBuild("Description", ..#FIELDPUBLICPERMISSION)
+    If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDESCALATIONONLY, ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
     If pType = ..#TYPEX509 Quit $ListBuild("OwnerList", "PeerNames")
     If pType = ..#TYPEWALLETSECRET Quit $ListBuild("Usage", "RequireTLS", "AllowedHosts", "Secret")
     If pType = ..#TYPEDEVICE Quit ..DeviceFields()
+    If pType = ..#TYPESSL Quit ..SslFields() _ $ListBuild("PrivateKeyPassword")
+    If pType = ..#TYPETASK Quit ..TaskChangeFields()
+    If pType = ..#TYPESERVICE Quit $ListBuild("AutheEnabled", "ClientSystems", ..#FIELDENABLED)
+    If pType = ..#TYPELDAP Quit ..LdapFields()
     Quit ""
+}
+
+/// <p>The thirty-two fields a task edit may set (Story 9.8): a create's
+/// (<method>TaskCreateFields</method>) less <code>TaskClass</code> and <code>NameSpace</code>, because
+/// changing a task's type replaces every setting and stays a delete and a create. A change to one of
+/// the type's settings is judged as <code>Settings</code> (<method>Changed</method>). Running as
+/// another account is permitted and marked (<method>GrantsPrivilegeByEffect</method>).</p>
+ClassMethod TaskChangeFields() As %List
+{
+    Set tFields = ""
+    Set tCreate = ..TaskCreateFields()
+    For tI = 1:1:$ListLength(tCreate) {
+        If $ListFind($ListBuild("TaskClass", "NameSpace"), $List(tCreate, tI)) Continue
+        Set tFields = tFields _ $ListBuild($List(tCreate, tI))
+    }
+    Quit tFields
+}
+
+/// <p>The twenty-five web-application settings a change may set: every field of the classic
+/// editor's General and Cross-Origin Settings tabs that decides how the application is reached,
+/// who may use it and which code answers, except its name and its two filesystem locations.</p>
+ClassMethod WebApplicationSettingFields() As %List
+{
+    Quit $ListBuild("AutheEnabled", "AutoCompile", "CorsAllowlist", "CorsCredentialsAllowed", "CorsHeadersList", "Description", "DispatchClass", "Enabled", "GroupById", "IsNameSpaceDefault", "JWTAccessTokenTimeout", "JWTAuthEnabled", "JWTRefreshTokenTimeout", "LockCSPName", "NameSpace", "Package", "Recurse", "Resource", "ServeFiles", "ServeFilesTimeout", "SuperClass", "Timeout", "WSGIAppName", "WSGICallable", "WSGIType")
+}
+
+/// <p>The account settings of the classic General tab beyond <code>Enabled</code> and
+/// <code>ChangePassword</code>. None removes the account or its administration but an expiration
+/// date before today, which is a disable by effect and refused as one (<method>Disables</method>).
+/// <code>AutheEnabled</code>'s two-factor bits are the only ones a change may
+/// move, which the edit's own field rules hold, and turning change-password-on-login on for a service account is the sign-in arm's
+/// (<method>User</method>).</p>
+ClassMethod UserSettingFields() As %List [ Private ]
+{
+    Quit $ListBuild("AccountNeverExpires", "AutheEnabled", "Comment", "EmailAddress", "ExpirationDate", "FullName", "HOTPKeyDisplay", "NameSpace", "PasswordNeverExpires", "PhoneNumber", "PhoneProvider", "Routine")
 }
 
 /// <p>The payload field names of entity type <var>pType</var> whose <b>every</b> change is
 /// prohibited by a named predicate, as a <class>%List</class>; <code>""</code> for a type with
 /// none.</p>
-/// <p>They are a subset of the fields outside <method>PermittedChangeFields</method> -- the names
-/// whose refusal carries a sentence of its own rather than the reviewed-few one, so the user is
-/// told which effect was refused. A web application's dispatch class is the one. An account's
-/// escalation roles are not here: AD-10 permits a privilege grant, and no tool admits the field, so
-/// a change to it is refused as an unreviewed field. A web application's application roles are not
-/// here either: AD-10
-/// refuses them on OcuPilot's own applications only, which is a predicate over the target
-/// (<method>WebApplication</method>), and on any other application a change to them is refused as
-/// an unreviewed field.</p>
+/// <p>No type has one. AD-10's web-application refusals are predicates over the target -- one of
+/// OcuPilot's own applications (<method>WebApplication</method>) -- which a per-type name list
+/// cannot express, and an account's escalation roles are refused as an unreviewed field.</p>
 ClassMethod AlwaysProhibitedFields(pType As %String) As %List
 {
-    If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("DispatchClass")
     Quit ""
 }
 
@@ -426,11 +603,8 @@ ClassMethod AlwaysProhibitedFields(pType As %String) As %List
 /// refused <parameter>UNCOVERED</parameter> wholesale (AD-54).</p>
 /// <p><b>"What may a change to a live target touch" and "what may a create set" are different
 /// questions</b>, so a create carries its own reviewed list rather than reusing
-/// <method>PermittedChangeFields</method>. The difference is not a relaxation: a field prohibited
-/// because it repoints a <b>serving</b> object is prohibited on a change and permitted on a create,
-/// which repoints nothing. <code>DispatchClass</code> is that kind -- DW-1207's owner decision is
-/// about pointing a running application at arbitrary compiled code, and it is also what makes a
-/// REST application a REST application.</p>
+/// <method>PermittedChangeFields</method>. A create at one of OcuPilot's own paths is refused
+/// whatever it sets (<method>Created</method>).</p>
 /// <p>A web application's twelve are the settings the create form captures: the namespace it runs
 /// in, its description, whether it is enabled, its authentication methods, its application roles,
 /// its guarding resource, whether it recurses into subdirectories, the dispatch class that makes it
@@ -461,6 +635,9 @@ ClassMethod AlwaysProhibitedFields(pType As %String) As %List
 /// and the stored payload never carries it. Its <code>Type</code> is derived by the tool after this
 /// set has answered.</p>
 /// <p>A device's eight are the same as a change's (<method>DeviceFields</method>).</p>
+/// <p>An SSL/TLS configuration's thirteen are a change's less the private key password
+/// (<method>SslFields</method>): a create names no private key file, so it can set no password.</p>
+/// <p>A task's thirty-four are <method>TaskCreateFields</method>'s.</p>
 ClassMethod PermittedCreateFields(pType As %String) As %List
 {
     If pType = ..#TYPEOAUTHSERVERDEF Quit ..OAuthServerFields()
@@ -472,7 +649,20 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPEX509 Quit $ListBuild("OwnerList", "PeerNames", "PrivateKeyPassword")
     If pType = ..#TYPEWALLETSECRET Quit $ListBuild("Usage", "RequireTLS", "AllowedHosts", "Secret")
     If pType = ..#TYPEDEVICE Quit ..DeviceFields()
+    If pType = ..#TYPESSL Quit ..SslFields()
+    If pType = ..#TYPETASK Quit ..TaskCreateFields()
+    If pType = ..#TYPEAUDITUSEREVENT Quit $ListBuild("Description", ..#FIELDENABLED)
     Quit ""
+}
+
+/// <p>The thirty-four fields a task create may set (Story 9.7): every key of
+/// <code>Task.CRUD</code>'s template but <code>OutputDirectory</code>, which no caller names and the
+/// tool derives from the manager directory (AD-21), with <code>Settings</code>, the chosen type's own
+/// values. The create sends a complete body, so every one of them is in its payload. Running as
+/// another account is permitted and marked (<method>GrantsPrivilegeByEffect</method>).</p>
+ClassMethod TaskCreateFields() As %List
+{
+    Quit $ListBuild("Name", "RunAsUser", "EmailOnCompletion", "EmailOnError", "EmailOnExpiration", "EmailOutput", "Expires", "ExpiresDays", "ExpiresHours", "ExpiresMinutes", "OpenOutputFile", "OutputFilename", "OutputFileIsBinary", "SuspendOnError", "SuspendTerminated", "Priority", "TaskClass", "IsBatch", "NameSpace", "TimePeriod", "TimePeriodEvery", "TimePeriodDay", "DailyFrequency", "DailyFrequencyTime", "DailyIncrement", "DailyStartTime", "DailyEndTime", "StartDate", "EndDate", "RunAfterGUID", "MirrorStatus", "RescheduleOnStart", "Description", "Settings")
 }
 
 /// <p>The payload field names of entity type <var>pType</var> whose presence in a <b>create</b> is
@@ -542,7 +732,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPEOAUTHSERVERDEF) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -580,11 +770,11 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         If $$$ISERR(tSC) Quit
 
         If tType = ..#TYPEUSER {
-            Set tSC = ..User(tId, tPayloadObject, tTarget, .tChanged, ..RemovesOf($Get(tToolClass)), .pProhibits, .pCode)
+            Set tSC = ..User(tId, tPayloadObject, tTarget, .tChanged, ..RemovesOf($Get(tToolClass)), .pProhibits, .pCode, ..WriteTypeOf($Get(tToolClass)))
             Quit
         }
         If tType = ..#TYPEROLE {
-            Set tSC = ..Role(tId, $Get(tToolClass), .tChanged, .pProhibits, .pCode)
+            Set tSC = ..Role(tId, $Get(tToolClass), tPayloadObject, .tChanged, .pProhibits, .pCode)
             Quit
         }
         If tType = ..#TYPERESOURCE {
@@ -596,7 +786,22 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Quit
         }
         If tType = ..#TYPEWALLETSECRET {
+            ; A DELETE sends no body and its card rows are the fingerprint subject, so it reaches
+            ; the sweep with nothing changed, as X509() reasons.
+            If ..WriteTypeOf($Get(tToolClass)) = "DELETE" Kill tChanged
             Set tSC = ..ReviewedFewOnly(..#TYPEWALLETSECRET, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPESSL {
+            Set tSC = ..Ssl(tId, $Get(tToolClass), .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPESERVICE {
+            Set tSC = ..Service(tId, tPayloadObject, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPELDAP {
+            Set tSC = ..ReviewedFewOnly(..#TYPELDAP, .tChanged, .pProhibits, .pCode)
             Quit
         }
         If tType = ..#TYPEDEVICE {
@@ -782,54 +987,50 @@ ClassMethod CreatesOf(pToolClass As %String) As %Boolean [ Private ]
     Quit tCreates
 }
 
-/// <p>The web-application predicates, in declared order, first hit wins: changed application roles
-/// on one of OcuPilot's own applications, OcuPilot's own serving path, an authentication change
-/// other than clearing the unauthenticated option, a dropped resource, a repointed dispatch, and
-/// any other changed field the release has not reviewed -- application roles on any other
-/// application among them.</p>
-/// <p><var>pChanged</var> is <method>Changed</method>'s answer -- the fields this proposal changes,
-/// and the only fields any predicate here looks at. <var>pServes</var> is whether the target is one
-/// of OcuPilot's own applications, already resolved by <method>ServesOcuPilot</method> so no
-/// escalated read happens here.</p>
+/// <p>The web-application predicates. On one of OcuPilot's own applications (<var>pServes</var>)
+/// the first that matches decides: a changed application role (<parameter>PRIVILEGEGRANT</parameter>),
+/// then the payload's effect on the target (<method>WeakensByEffect</method>) -- an added
+/// unauthenticated bit (<parameter>UNAUTHENTICATED</parameter>), a dropped resource
+/// (<parameter>AUTHORIZATION</parameter>), a changed field of <parameter>CODEFIELDS</parameter>
+/// (<parameter>DISPATCH</parameter>) -- and then every other write, a bodyless delete and a disable
+/// included (<parameter>SERVINGPATH</parameter>). On any other application only the reviewed-field
+/// sweep runs: a weakening change is permitted there and marked by the mint
+/// (<method>WeakensByEffect</method>).</p>
+/// <p><var>pChanged</var> is <method>Changed</method>'s answer -- the fields this proposal changes.
+/// <var>pServes</var> is already resolved by <method>ServesOcuPilot</method>, so no escalated read
+/// happens here.</p>
 ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject, pServes As %Boolean, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
 {
     Set pProhibits = 0
     Set pCode = ""
     Set tSC = $$$OK
     Try {
-        ; AD-10: application roles on an application OcuPilot is served by are refused on their own
-        ; code, ahead of the serving-path refusal every other change to one earns.
         If pServes {
             Set tRoleFields = $ListFromString(..#APPLICATIONROLEFIELDS)
             For tI = 1:1:$ListLength(tRoleFields) {
                 If $Data(pChanged($List(tRoleFields, tI))) Do ..Refuse(..#PRIVILEGEGRANT, .pProhibits, .pCode)
             }
             If pProhibits Quit
-        }
-
-        ; OcuPilot's own applications are the installer's. Every property of one decides whether
-        ; OcuPilot answers at that address -- the namespace and the path as completely as the
-        ; enabled flag -- so the predicate is over the application, not over a list of properties.
-        ;
-        ; AD-53: and not over the payload's shape either. Gating this on a non-empty changed set
-        ; made it unreachable for a write that carries no diff, which a bodyless delete is -- the
-        ; one write whose effect on this target the predicate most has to refuse. The effect is
-        ; "this write reaches an application OcuPilot is served by", and that is the whole
-        ; condition.
-        If pServes {
+            ; The three weakening effects, judged by the one classifier over the payload against
+            ; the target rather than over the diff, so each is refused under its own code.
+            Set tSC = ..WeakensByEffect(..#TYPEWEBAPPLICATION, pPayload, pTarget, .tEffect)
+            If $$$ISERR(tSC) Quit
+            If tEffect = ..#EFFECTUNAUTHENTICATED {
+                Do ..Refuse(..#UNAUTHENTICATED, .pProhibits, .pCode)
+                Quit
+            }
+            If tEffect = ..#EFFECTNORESOURCE {
+                Do ..Refuse(..#AUTHORIZATION, .pProhibits, .pCode)
+                Quit
+            }
+            If tEffect = ..#EFFECTREPOINTED {
+                Do ..Refuse(..#DISPATCH, .pProhibits, .pCode)
+                Quit
+            }
+            ; Every property of an application OcuPilot is served by decides whether OcuPilot answers
+            ; at that address, so the last arm is over the application, not over a changed field: a
+            ; bodyless delete carries no diff and is refused here all the same (AD-53).
             Do ..Refuse(..#SERVINGPATH, .pProhibits, .pCode)
-            Quit
-        }
-        If $Data(pChanged("AutheEnabled")) && '..ClearsUnauthenticatedOnly(..Rendered(pPayload, "AutheEnabled"), ..Rendered(pTarget, "AutheEnabled")) {
-            Do ..Refuse(..#UNAUTHENTICATED, .pProhibits, .pCode)
-            Quit
-        }
-        If $Data(pChanged("Resource")) && (..Rendered(pPayload, "Resource") = "") {
-            Do ..Refuse(..#AUTHORIZATION, .pProhibits, .pCode)
-            Quit
-        }
-        If $Data(pChanged("DispatchClass")) {
-            Do ..Refuse(..#DISPATCH, .pProhibits, .pCode)
             Quit
         }
         Set tPermitted = ..PermittedChangeFields(..#TYPEWEBAPPLICATION)
@@ -850,10 +1051,64 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
     Quit tSC
 }
 
+/// <p>Whether a write of entity type <var>pType</var> carrying payload <var>pPayload</var> weakens
+/// or repoints the target <var>pTarget</var> holds now, in <var>pEffect</var>: for a web
+/// application, the first of <parameter>EFFECTUNAUTHENTICATED</parameter> (it adds the
+/// unauthenticated bit, <method>AddsUnauthenticated</method>), <parameter>EFFECTNORESOURCE</parameter>
+/// (it drops a resource the target holds, <method>ClearsResource</method>) and
+/// <parameter>EFFECTREPOINTED</parameter> (it changes a field of <parameter>CODEFIELDS</parameter>);
+/// <code>""</code> for none and for every other type but one: for an SSL/TLS configuration,
+/// <parameter>EFFECTNOPEERCHECK</parameter> when the payload turns peer verification off
+/// (<method>SslWeakening</method>).</p>
+/// <p><b>It is the one answer to "does this write weaken the application?"</b>, as
+/// <method>GrantsPrivilegeByEffect</method> is for privilege. The mint marks the proposal
+/// destructive on it and names the effect as the proposal's consequence. It refuses nothing: on
+/// OcuPilot's own applications the same three changes are <method>WebApplication</method>'s
+/// refusals. Only fields the payload carries are compared, so a bodyless write's narrowed payload
+/// answers <code>""</code>.</p>
+/// <p>For a service (<var>pId</var> being its name), <method>ServiceWeakening</method>'s answer.</p>
+ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pEffect As %String, pId As %String = "") As %Status
+{
+    Set pEffect = ""
+    Set tSC = $$$OK
+    Try {
+        If pType = ..#TYPESSL {
+            Set pEffect = ..SslWeakening(pPayload, pTarget)
+            Quit
+        }
+        If pType = ..#TYPESERVICE {
+            Set pEffect = ..ServiceWeakening(pId, pPayload, pTarget)
+            Quit
+        }
+        If pType '= ..#TYPEWEBAPPLICATION Quit
+        If '$IsObject(pPayload) Quit
+        Set tTarget = $Select($IsObject(pTarget): pTarget, 1: {})
+        If ..AddsUnauthenticated(pPayload, tTarget) {
+            Set pEffect = ..#EFFECTUNAUTHENTICATED
+            Quit
+        }
+        If ..ClearsResource(pPayload, tTarget) {
+            Set pEffect = ..#EFFECTNORESOURCE
+            Quit
+        }
+        Set tCodeFields = $ListFromString(..#CODEFIELDS)
+        For tI = 1:1:$ListLength(tCodeFields) {
+            Set tField = $List(tCodeFields, tI)
+            If pPayload.%GetTypeOf(tField) = "unassigned" Continue
+            If ..Rendered(pPayload, tField) '= ..Rendered(tTarget, tField) Set pEffect = ..#EFFECTREPOINTED Quit
+        }
+    } Catch ex {
+        Set pEffect = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>The user predicates, in declared order, first hit wins: the four account arms --
 /// <parameter>SYSTEMACCOUNTNAME</parameter>, the signed-in account, a service account and the last
-/// <code>%All</code> holder -- when the write removes the account or its administration; then any
-/// changed field the release has not reviewed. A role delta that grants <code>%All</code> or an
+/// <code>%All</code> holder -- when the write removes the account or its administration; then the
+/// service-account sign-in arm (<method>ChangesServiceSignIn</method>); then any changed field the
+/// release has not reviewed. <var>pWriteType</var> is the tool's own request type. A role delta that grants <code>%All</code> or an
 /// administrative privilege is permitted (AD-10): the mint marks the proposal destructive and names
 /// the privilege (<method>GrantsPrivilegeByEffect</method>).</p>
 /// <p><var>pId</var> is the target's id as the reference carries it -- already canonical, and
@@ -869,7 +1124,7 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
 /// stored row</b>, and it is the right source: both callers of the write run as the person the
 /// refusal protects from signing themselves out -- a confirm is confirmable only by the user who
 /// minted it (AD-6), and a screen action is that user's own request (AD-53).</p>
-ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, pRemoves As %Boolean, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, pRemoves As %Boolean, Output pProhibits As %Boolean, Output pCode As %String, pWriteType As %String = "") As %Status [ Private ]
 {
     Set pProhibits = 0
     Set pCode = ""
@@ -898,6 +1153,10 @@ ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %Dynamic
                 Quit
             }
         }
+        If ..ChangesServiceSignIn(pId, pPayload, .pChanged, pWriteType) {
+            Do ..Refuse(..#SERVICEACCOUNTSIGNIN, .pProhibits, .pCode)
+            Quit
+        }
         Set tPermitted = ..PermittedChangeFields(..#TYPEUSER)
         Set tField = ""
         For {
@@ -917,31 +1176,51 @@ ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %Dynamic
 }
 
 /// <p>The role predicates, in declared order, first hit wins. For a tool whose write is a
-/// <code>DELETE</code>: one of OcuPilot's own roles (<method>OcuPilotRoles</method>), then a role
-/// whose removal leaves no counted <code>%All</code> holder
-/// (<method>DeletingLeavesNoAllHolder</method>). Then, for every role write, the reviewed-few sweep
-/// over an empty permitted list, so a change nobody has reviewed is refused
-/// <parameter>UNCOVEREDFIELD</parameter>.</p>
-/// <p><var>pId</var> is the target's id as the reference carries it. <var>pChanged</var> is
-/// <method>Changed</method>'s answer; a delete's card rows are its declared fingerprint subject,
-/// which <method>Changed</method> skips, so a delete reaches the sweep with nothing changed.</p>
-ClassMethod Role(pId As %String, pToolClass As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+/// <code>DELETE</code>: one of OcuPilot's own roles (<method>OcuPilotRoles</method>), then the
+/// census (<method>ChangeStripsAll</method>, with nothing after the delete). For a change: one of
+/// OcuPilot's own roles when the change moves <code>GrantedRoles</code>, <code>Resources</code> or
+/// <code>EscalationOnly</code> (AD-10 as amended 2026-09-24; its description may change), then the
+/// census when it moves <code>GrantedRoles</code> or <code>EscalationOnly</code>, with the payload's
+/// as the after-state. Then, for every role write, the reviewed-few sweep.</p>
+/// <p><var>pId</var> is the target's id as the reference carries it; <var>pPayload</var> the stored
+/// payload. <var>pChanged</var> is <method>Changed</method>'s answer; a delete's card rows are its
+/// declared fingerprint subject, which <method>Changed</method> skips, so a delete reaches the sweep
+/// with nothing changed.</p>
+ClassMethod Role(pId As %String, pToolClass As %String, pPayload As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
 {
     Set pProhibits = 0
     Set pCode = ""
     Set tSC = $$$OK
     Try {
-        If ..WriteTypeOf(pToolClass) = "DELETE" {
+        Set tDelete = (..WriteTypeOf(pToolClass) = "DELETE")
+        Set tMovesGrants = ($Data(pChanged(..#FIELDGRANTEDROLES)) || $Data(pChanged(..#FIELDESCALATIONONLY)))
+        Set tMovesAny = (tMovesGrants || $Data(pChanged(..#FIELDRESOURCES)))
+        If tDelete || tMovesAny {
             Set tSC = ..OcuPilotRoles(.tOwn)
             If $$$ISERR(tSC) Quit
             If $ListFind(tOwn, ..NormalizedRole(pId)) {
                 Do ..Refuse(..#OCUPILOTROLE, .pProhibits, .pCode)
                 Quit
             }
-            Set tSC = ..DeletingLeavesNoAllHolder(pId, .tLeaves)
+        }
+        If tDelete || tMovesGrants {
+            Set tAfter = ""
+            Set tAfterEscalation = 1
+            If 'tDelete {
+                Kill tNames
+                Do ..RoleNames(pPayload, .tNames, ..#FIELDGRANTEDROLES)
+                Set tKey = ""
+                For {
+                    Set tKey = $Order(tNames(tKey))
+                    If tKey = "" Quit
+                    Set tAfter = tAfter _ $ListBuild(tNames(tKey))
+                }
+                Set tAfterEscalation = ..Rendered(pPayload, ..#FIELDESCALATIONONLY) = "true"
+            }
+            Set tSC = ..ChangeStripsAll(pId, tAfter, tAfterEscalation, .tStrips, tDelete)
             If $$$ISERR(tSC) Quit
-            If tLeaves {
-                Do ..Refuse(..#LASTALLHOLDER, .pProhibits, .pCode)
+            If tStrips '= "" {
+                Do ..Refuse(tStrips, .pProhibits, .pCode)
                 Quit
             }
         }
@@ -1109,11 +1388,12 @@ ClassMethod Auditing(ByRef pChanged, Output pProhibits As %Boolean, Output pCode
     Quit ..ReviewedFewOnly(..#TYPEAUDITING, .pChanged, .pProhibits, .pCode)
 }
 
-/// <p>The task predicate: the reviewed-few sweep and nothing else, over an empty permitted list.</p>
-/// <p><var>pChanged</var> is <method>Changed</method>'s answer. A task's one write sends no body
-/// (AD-51), so a proposal against a task changes no field and this refuses nothing; a proposal
-/// that does carry one is refused <parameter>UNCOVEREDFIELD</parameter>, because
-/// <method>PermittedChangeFields</method> names no task field anybody has reviewed.</p>
+/// <p>The task predicate: the reviewed-few sweep and nothing else, over
+/// <method>TaskChangeFields</method>.</p>
+/// <p><var>pChanged</var> is <method>Changed</method>'s answer. A task's action writes send no body
+/// (AD-51), so a proposal of one changes no field and this refuses nothing; an edit's fields are the
+/// reviewed thirty-two, and any other field is refused <parameter>UNCOVEREDFIELD</parameter> --
+/// the task's type and namespace among them.</p>
 /// <p><b>The state row the card shows is not a changed field.</b> An action-style write's diff
 /// names the state its action moves -- a resume's is labelled <code>Status</code> -- and
 /// <method>Changed</method> skips the row naming the tool's declared
@@ -1611,7 +1891,9 @@ ClassMethod ResourceNames(pObject As %DynamicObject, Output pNames) [ Private ]
 /// resource's <parameter>FIELDPUBLICPERMISSION</parameter>, which grants privilege when it adds a
 /// letter (<method>AddsPublicLetter</method>) on a resource
 /// <method>ResourceGrantsAdministrativePrivilege</method> names -- <var>pId</var>, the target's id,
-/// is what names it. Any other type grants nothing here.</p>
+/// is what names it. A task's <code>RunAsUser</code> naming an account other than the caller's,
+/// compared without regard to case, grants that account's privileges to the task. Any other type
+/// grants nothing here.</p>
 ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean, pId As %String = "") As %Status
 {
     Set pGrants = 0
@@ -1633,6 +1915,22 @@ ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject
                 Quit
             }
             Set tSC = ..GrantsPrivilege(pPayload, tTarget, .pGrants, ..#FIELDGRANTEDROLES)
+            Quit
+        }
+        If pType = ..#TYPESERVICE {
+            Set pGrants = ..AddressGrantsPrivilege(pPayload, tTarget)
+            Quit
+        }
+        If pType = ..#TYPETASK {
+            ; A task that runs as another account runs with that account's privileges (Story 9.7).
+            ; An edit that keeps the account the live target already runs as grants nothing new
+            ; (Story 9.8); a create's target holds none.
+            Set tRunAs = ""
+            If pPayload.%GetTypeOf("RunAsUser") = "string" Set tRunAs = pPayload.%Get("RunAsUser")
+            Set tHeld = ""
+            If tTarget.%GetTypeOf("RunAsUser") = "string" Set tHeld = tTarget.%Get("RunAsUser")
+            If (tHeld '= "") && ($ZConvert(tRunAs, "U") = $ZConvert(tHeld, "U")) Quit
+            Set pGrants = ((tRunAs '= "") && ($ZConvert(tRunAs, "U") '= $ZConvert($Username, "U")))
             Quit
         }
         If pType = ..#TYPEWEBAPPLICATION {
@@ -1710,12 +2008,32 @@ ClassMethod IsPrivilegedRole(pRole As %String) As %Boolean [ Private ]
     Quit $Extract(tName, 1, $Length(..#ADMINROLEPREFIX)) = $ZConvert(..#ADMINROLEPREFIX, "U")
 }
 
-/// <p>Whether this proposal turns the target's <code>Enabled</code> off: the diff names that field
-/// and the payload's value reads as off (<method>IsOff</method>).</p>
+/// <p>Whether this proposal disables the target by effect: the diff names <code>Enabled</code> and
+/// the payload's value reads as off (<method>IsOff</method>), or the diff names
+/// <parameter>FIELDEXPIRATIONDATE</parameter> or <parameter>FIELDACCOUNTNEVEREXPIRES</parameter> and
+/// the payload leaves the account expiring on a date before today.</p>
 ClassMethod Disables(pPayload As %DynamicObject, ByRef pChanged) As %Boolean [ Private ]
 {
-    If '$Data(pChanged(..#FIELDENABLED)) Quit 0
-    Quit ..IsOff(..Rendered(pPayload, ..#FIELDENABLED))
+    If $Data(pChanged(..#FIELDENABLED)) && ..IsOff(..Rendered(pPayload, ..#FIELDENABLED)) Quit 1
+    If '$Data(pChanged(..#FIELDEXPIRATIONDATE)) && '$Data(pChanged(..#FIELDACCOUNTNEVEREXPIRES)) Quit 0
+    If '..IsOff(..Rendered(pPayload, ..#FIELDACCOUNTNEVEREXPIRES)) Quit 0
+    Set tDay = $ZDateH(..Rendered(pPayload, ..#FIELDEXPIRATIONDATE), 3, , , , , , , "")
+    If tDay = "" Quit 0
+    Quit tDay < +$Horolog
+}
+
+/// <p>Whether this write changes how a service account signs in (AD-10 as amended 2026-09-23,
+/// DW-1520): the target is one of <parameter>SERVICEACCOUNTS</parameter> and not the signed-in
+/// account, and the write is the vendor's password change (<var>pWriteType</var>
+/// <code>CHANGEPWD</code>) or its diff turns <code>ChangePassword</code> on. Turning the flag off
+/// changes nothing about how the account signs in and is not this predicate's.</p>
+ClassMethod ChangesServiceSignIn(pId As %String, pPayload As %DynamicObject, ByRef pChanged, pWriteType As %String) As %Boolean [ Private ]
+{
+    If '..IsServiceAccount(pId) Quit 0
+    If ..NormalizedUser(pId) = ..NormalizedUser($Username) Quit 0
+    If pWriteType = ..#PASSWORDWRITETYPE Quit 1
+    If '$Data(pChanged(..#FIELDCHANGEPASSWORD)) Quit 0
+    Quit '..IsOff(..Rendered(pPayload, ..#FIELDCHANGEPASSWORD))
 }
 
 /// <p>Whether this write removes the target account or its administration, in <var>pRemoval</var>
@@ -1866,17 +2184,96 @@ ClassMethod LastAllHolder(pId As %String, Output pLast As %Boolean) As %Status
     Quit tSC
 }
 
+/// <p>Whether a write that leaves role <var>pRole</var> granting the roles <var>pAfterGranted</var>
+/// (a <class>%List</class>) and escalation-only when <var>pAfterEscalation</var> strips
+/// <code>%All</code> from an account through that role (AD-10 as amended 2026-09-24), in
+/// <var>pCode</var>: the first account code, checked in the order <code>_SYSTEM</code>
+/// (<parameter>SYSTEMACCOUNT</parameter>), the signed-in account (<parameter>CURRENTUSER</parameter>)
+/// and a service account (<parameter>SERVICEACCOUNT</parameter>), else
+/// <parameter>LASTALLHOLDER</parameter> when no counted holder keeps <code>%All</code>, else
+/// <code>""</code>.</p>
+/// <p>An account arm fires only when the role reaches <code>%All</code> now and does not after, and
+/// the account holds <code>%All</code> now (<method>HoldsAll</method>) and reaches it no longer
+/// (<method>ReachesAllAfter</method>). A delete passes no granted roles and
+/// <var>pAfterEscalation</var> 1, with <var>pDelete</var> 1 so the last-holder question is asked of
+/// <method>DeletingLeavesNoAllHolder</method>; a change asks
+/// <method>ChangingLeavesNoAllHolder</method>. An escalation-only role counts as reaching nothing for
+/// a holder at sign-in (inference: holders keep it in <code>Roles</code>; whether a login still
+/// grants it was not measured, so this is the conservative reading).</p>
+/// <p><b>Overridable seam.</b> Production never overrides it.</p>
+ClassMethod ChangeStripsAll(pRole As %String, pAfterGranted As %List, pAfterEscalation As %Boolean, Output pCode As %String, pDelete As %Boolean = 0) As %Status
+{
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        If $ZStrip(pRole, "<>W") = "" Quit
+        Kill tNames
+        Set tNames($ZConvert(pRole, "U")) = pRole
+        Set tSC = ..RolesGrantAll(.tNames, .tBefore)
+        If $$$ISERR(tSC) Quit
+        If tBefore {
+            Set tSC = ..Walk($ListBuild(pRole), pRole, pAfterGranted, pAfterEscalation, .tAfter)
+            If $$$ISERR(tSC) Quit
+            If 'tAfter {
+                Set tAccounts = $ListBuild($ListBuild(..#SYSTEMACCOUNTNAME, ..#SYSTEMACCOUNT), $ListBuild($Username, ..#CURRENTUSER))
+                Set tServices = ..ServiceAccounts()
+                For tI = 1:1:$ListLength(tServices) {
+                    Set tAccounts = tAccounts _ $ListBuild($ListBuild($List(tServices, tI), ..#SERVICEACCOUNT))
+                }
+                For tI = 1:1:$ListLength(tAccounts) {
+                    Set tAccount = $List($List(tAccounts, tI), 1)
+                    If tAccount = "" Continue
+                    Set tSC = ..HoldsAll(tAccount, .tHolds)
+                    If $$$ISERR(tSC) Quit
+                    If 'tHolds Continue
+                    Set tSC = ..ReachesAllAfter(tAccount, pRole, pAfterGranted, pAfterEscalation, .tStill)
+                    If $$$ISERR(tSC) Quit
+                    If 'tStill {
+                        Set pCode = $List($List(tAccounts, tI), 2)
+                        Quit
+                    }
+                }
+                If $$$ISERR(tSC) Quit
+            }
+        }
+        If pCode '= "" Quit
+        If pDelete {
+            Set tSC = ..DeletingLeavesNoAllHolder(pRole, .tLeaves)
+        } Else {
+            Set tSC = ..ChangingLeavesNoAllHolder(pRole, pAfterGranted, pAfterEscalation, .tLeaves)
+        }
+        If $$$ISERR(tSC) Quit
+        If tLeaves Set pCode = ..#LASTALLHOLDER
+    } Catch ex {
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Set pCode = ""
+    Quit tSC
+}
+
 /// <p>Whether deleting role <var>pRole</var> would leave the instance with no counted account
-/// holding <code>%All</code>, in <var>pLeaves</var> (AD-10).</p>
-/// <p>It answers 0 unless the role itself reaches <code>%All</code>
-/// (<method>RolesGrantAll</method>): a role that does not cannot change who holds it. Otherwise it
-/// is 1 when at least one counted account (<method>CountsAsHolder</method>) holds <code>%All</code>
-/// now (<method>HoldsAll</method>) and none of them still reaches it once the role is gone
-/// (<method>ReachesAllWithout</method>). Every account the instance holds is asked, so a holder
-/// that reaches <code>%All</code> only through a custom role is counted.</p>
+/// holding <code>%All</code>, in <var>pLeaves</var> (AD-10): <method>ChangingLeavesNoAllHolder</method>
+/// with nothing after the delete.</p>
 /// <p><b>Overridable seam</b>, for the reason <method>LastAllHolder</method> is. Production never
 /// overrides it.</p>
 ClassMethod DeletingLeavesNoAllHolder(pRole As %String, Output pLeaves As %Boolean) As %Status
+{
+    Quit ..ChangingLeavesNoAllHolder(pRole, "", 1, .pLeaves)
+}
+
+/// <p>Whether leaving role <var>pRole</var> granting <var>pAfterGranted</var> and escalation-only when
+/// <var>pAfterEscalation</var> would leave the instance with no counted account holding
+/// <code>%All</code>, in <var>pLeaves</var> (AD-10).</p>
+/// <p>It answers 0 unless the role reaches <code>%All</code> now (<method>RolesGrantAll</method>) and
+/// not after (<method>Walk</method>): otherwise the write cannot change who holds it. Then it is 1
+/// when at least one counted account (<method>CountsAsHolder</method>) holds <code>%All</code> now
+/// (<method>HoldsAll</method>) and none of them reaches it after the write
+/// (<method>ReachesAllAfter</method>). Every account the instance holds is asked, so a holder that
+/// reaches <code>%All</code> only through a custom role is counted.</p>
+/// <p><b>Overridable seam</b>, for the reason <method>LastAllHolder</method> is. Production never
+/// overrides it.</p>
+ClassMethod ChangingLeavesNoAllHolder(pRole As %String, pAfterGranted As %List, pAfterEscalation As %Boolean, Output pLeaves As %Boolean) As %Status
 {
     Set pLeaves = 0
     Set tSC = $$$OK
@@ -1888,6 +2285,9 @@ ClassMethod DeletingLeavesNoAllHolder(pRole As %String, Output pLeaves As %Boole
         Set tSC = ..RolesGrantAll(.tNames, .tReaches)
         If $$$ISERR(tSC) Quit
         If 'tReaches Quit
+        Set tSC = ..Walk($ListBuild(pRole), pRole, pAfterGranted, pAfterEscalation, .tAfter)
+        If $$$ISERR(tSC) Quit
+        If tAfter Quit
         ; The population is read in %SYS and judged after the restore, as LastAllHolder does.
         Set tRows = ""
         Set $NAMESPACE = "%SYS"
@@ -1911,7 +2311,7 @@ ClassMethod DeletingLeavesNoAllHolder(pRole As %String, Output pLeaves As %Boole
             If $$$ISERR(tSC) Quit
             If 'tHolds Continue
             Set tHolders = tHolders + 1
-            Set tSC = ..ReachesAllWithout($List(tRow, 1), pRole, .tStill)
+            Set tSC = ..ReachesAllAfter($List(tRow, 1), pRole, pAfterGranted, pAfterEscalation, .tStill)
             If $$$ISERR(tSC) Quit
             If tStill {
                 Set tKept = 1
@@ -1929,40 +2329,89 @@ ClassMethod DeletingLeavesNoAllHolder(pRole As %String, Output pLeaves As %Boole
 }
 
 /// <p>Whether account <var>pUser</var> still reaches <code>%All</code> once role <var>pSkip</var>
-/// is gone, in <var>pReaches</var>: one of its own roles, walked through each role's
-/// <code>GrantedRoles</code> with <var>pSkip</var> left out wherever it appears, arrives at
-/// <code>%All</code>. Names compare case-insensitively. The walk reads
-/// <class>Security.Users</class> and <class>Security.Roles</class> in <code>%SYS</code> and calls
-/// nothing of OcuPilot's while there (AD-16).</p>
+/// is gone, in <var>pReaches</var>: <method>ReachesAllAfter</method> with nothing after the
+/// role.</p>
 ClassMethod ReachesAllWithout(pUser As %String, pSkip As %String, Output pReaches As %Boolean) As %Status
+{
+    Quit ..ReachesAllAfter(pUser, pSkip, "", 1, .pReaches)
+}
+
+/// <p>Whether account <var>pUser</var> reaches <code>%All</code> once role <var>pRole</var> grants
+/// <var>pAfterGranted</var> and is escalation-only when <var>pAfterEscalation</var>, in
+/// <var>pReaches</var>: its own roles (<method>DirectRoles</method>) walked through each role's
+/// <code>GrantedRoles</code>, with <var>pRole</var> answering its after-state
+/// (<method>Walk</method>).</p>
+ClassMethod ReachesAllAfter(pUser As %String, pRole As %String, pAfterGranted As %List, pAfterEscalation As %Boolean, Output pReaches As %Boolean) As %Status
+{
+    Set pReaches = 0
+    Set tSC = ..DirectRoles(pUser, .tDirect)
+    If $$$ISERR(tSC) Quit tSC
+    Quit ..Walk(tDirect, pRole, pAfterGranted, pAfterEscalation, .pReaches)
+}
+
+/// <p>The roles account <var>pUser</var> holds directly, as a <class>%List</class> in
+/// <var>pRoles</var>, read from <class>Security.Users</class> in <code>%SYS</code> (AD-16). An
+/// account the instance does not hold is an error status.</p>
+/// <p><b>Overridable seam</b>: it arms the census's input, as <method>HoldsAll</method> does, and
+/// leaves the walk running. Production never overrides it.</p>
+ClassMethod DirectRoles(pUser As %String, Output pRoles As %List) As %Status
+{
+    Set pRoles = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill tProps
+        Set tSC = ##class(Security.Users).Get(pUser, .tProps)
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) Quit
+        Set tDirect = $Get(tProps("Roles"))
+        For tI = 1:1:$Length(tDirect, ",") {
+            Set tOne = $ZStrip($Piece(tDirect, ",", tI), "<>W")
+            If tOne '= "" Set pRoles = pRoles _ $ListBuild(tOne)
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pRoles = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether the roles <var>pStart</var> reach <code>%All</code>, in <var>pReaches</var>, walked
+/// through each role's <code>GrantedRoles</code> as <class>Security.Roles</class> holds them, except
+/// that role <var>pRole</var> answers its after-state: nothing when <var>pAfterEscalation</var>,
+/// otherwise itself when it is <code>%All</code> and the roles <var>pAfterGranted</var>. Names
+/// compare case-insensitively. The walk reads <code>%SYS</code> and calls nothing of OcuPilot's while
+/// there (AD-16).</p>
+ClassMethod Walk(pStart As %List, pRole As %String, pAfterGranted As %List, pAfterEscalation As %Boolean, Output pReaches As %Boolean) As %Status [ Private ]
 {
     Set pReaches = 0
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
         Set tAll = $ZConvert(..#ALLROLE, "U")
-        Set tSkip = $ZConvert($ZStrip(pSkip, "<>W"), "U")
+        Set tRole = $ZConvert($ZStrip(pRole, "<>W"), "U")
         Set $NAMESPACE = "%SYS"
-        Kill tProps
-        Set tSC = ##class(Security.Users).Get(pUser, .tProps)
-        If $$$ISERR(tSC) {
-            Set $NAMESPACE = tOrigNS
-            Quit
-        }
         Kill tSeen
-        Set tQueue = ""
-        Set tDirect = $Get(tProps("Roles"))
-        For tI = 1:1:$Length(tDirect, ",") {
-            Set tOne = $ZStrip($Piece(tDirect, ",", tI), "<>W")
-            If tOne '= "" Set tQueue = tQueue _ $ListBuild(tOne)
-        }
+        Set tQueue = pStart
         Set tAt = 0
         While (tAt < $ListLength(tQueue)) && 'pReaches {
             Set tAt = tAt + 1
-            Set tName = $List(tQueue, tAt)
+            Set tName = $ZStrip($ListGet(tQueue, tAt), "<>W")
+            If tName = "" Continue
             Set tKey = $ZConvert(tName, "U")
-            If (tKey = tSkip) || $Data(tSeen(tKey)) Continue
+            If $Data(tSeen(tKey)) Continue
             Set tSeen(tKey) = ""
+            If tKey = tRole {
+                If pAfterEscalation Continue
+                If tKey = tAll {
+                    Set pReaches = 1
+                    Quit
+                }
+                Set tQueue = tQueue _ pAfterGranted
+                Continue
+            }
             If tKey = tAll {
                 Set pReaches = 1
                 Quit
@@ -2043,12 +2492,19 @@ ClassMethod ServiceAccounts() As %List
 /// a login would grant -- roles a role grants included -- so a custom role that grants
 /// <code>%All</code> counts. That method needs <code>%Admin_Secure:USE</code> for an account other
 /// than the caller's own, which is a pair every write reaching this class already holds (AD-8).</p>
+/// <p>An account the instance does not hold holds nothing, so the role census's service-account arm
+/// passes over a name this instance lacks rather than failing the write.</p>
 ClassMethod HoldsAll(pUser As %String, Output pHolds As %Boolean) As %Status
 {
     Set pHolds = 0
     Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
     Try {
         If pUser = "" Quit
+        Set $NAMESPACE = "%SYS"
+        Set tExists = ##class(Security.Users).Exists(pUser)
+        Set $NAMESPACE = tOrigNS
+        If 'tExists Quit
         Set tRoles = ""
         Set tSC = $SYSTEM.Security.GetUserRecursedRoleSet(pUser, .tRoles)
         If $$$ISERR(tSC) Quit
@@ -2056,6 +2512,7 @@ ClassMethod HoldsAll(pUser As %String, Output pHolds As %Boolean) As %Status
             If $ZConvert($ZStrip($Piece(tRoles, ",", tI), "<>W"), "U") = $ZConvert(..#ALLROLE, "U") Set pHolds = 1
         }
     } Catch ex {
+        Set $NAMESPACE = tOrigNS
         Set pHolds = 0
         Set tSC = ex.AsStatus()
     }
@@ -2095,6 +2552,17 @@ ClassMethod Changed(pDiff As %String, pPayload As %DynamicObject, pTarget As %Dy
             Set tField = tRow.%Get("field")
             If tField = "" Continue
             If $ListFind(pSkipped, tField) Continue
+            ; A task setting's row (Settings.<key>) is judged as the settings object it changes
+            ; (Story 9.8): its member is compared, and the change is recorded under the object.
+            If $Piece(tField, ".", 1) = ..#SETTINGSFIELD, $Length(tField, ".") > 1 {
+                Set tMember = $Piece(tField, ".", 2, *)
+                Set tField = ..#SETTINGSFIELD
+                If $Data(pChanged(tField)) Continue
+                If ..Rendered(..Member(pPayload, tField), tMember) = ..Rendered(..Member(pTarget, tField), tMember) Continue
+                Set pChanged(tField) = ""
+                Set pChanged = pChanged + 1
+                Continue
+            }
             If $Data(pChanged(tField)) Continue
             If ..Rendered(pPayload, tField) = ..Rendered(pTarget, tField) Continue
             Set pChanged(tField) = ""
@@ -2139,8 +2607,8 @@ ClassMethod Target(pToolName As %String, pId As %String, Output pTarget As %Dyna
             Quit
         }
         Kill tQuery
-        Set tQuery(tIdParam) = pId
-        Set tReadSC = $ClassMethod(..PortClassOf(tClass), "Invoke", tEndpoint, ..ReadTypeOf(tClass), .tQuery, "", .tFresh, .tHttp, .tFault)
+        Set tQuery(##class(OcuPilot.Kernel.Proposal.Operation).ReadIdParamOf(tClass, tIdParam)) = pId
+        Set tReadSC = ##class(OcuPilot.Kernel.Proposal.Operation).ReadTarget(tClass, ..PortClassOf(tClass), tEndpoint, .tQuery, pId, .tFresh, .tHttp, .tFault)
         If $$$ISERR(tReadSC) {
             If +$Get(tHttp) = 404 Quit
             Set tSC = tReadSC
@@ -2159,20 +2627,6 @@ ClassMethod Target(pToolName As %String, pId As %String, Output pTarget As %Dyna
         Set tSC = ex.AsStatus()
     }
     Quit tSC
-}
-
-/// <p>The admin request type <var>pToolClass</var>'s target is read with (AD-51), or
-/// <parameter>READTYPE</parameter> when the class declares none or cannot be asked.</p>
-ClassMethod ReadTypeOf(pToolClass As %String) As %String [ Private ]
-{
-    Set tType = ""
-    Try {
-        If pToolClass '= "" Set tType = $ClassMethod(pToolClass, "ReadType")
-    } Catch {
-        Set tType = ""
-    }
-    If tType = "" Quit ..#READTYPE
-    Quit tType
 }
 
 /// <p>The state-row label <var>pToolClass</var> declares (AD-51), or <code>""</code> for a merge
@@ -2292,27 +2746,47 @@ ClassMethod Rendered(pObject As %DynamicObject, pName As %String) As %String [ P
     Quit ##class(OcuPilot.Kernel.Proposal.Mint).Display(pObject.%Get(pName), pObject.%GetTypeOf(pName))
 }
 
-/// <p>Whether a payload's rendered <code>AutheEnabled</code> is the target's own mask with the
-/// unauthenticated bit cleared and nothing else changed, which is the one authentication change
-/// this release permits.</p>
-/// <p>The property is not a set of ways in: the same mask carries strength modifiers
-/// (<file>irissys/%sySecurityMacros.inc</file>:15-40 -- AutheTwoFactorPW 2097152, AutheTwoFactorSMS
-/// 1048576, AutheLDAPCache 4096, AutheKBEncryption 256, AutheKBIntegrity 512,
-/// AutheAlwaysTryDelegated 16777216, AutheMutualTLS 33554432), so a subset test reads clearing
-/// two-factor as a narrowing and requiring it as a widening -- both backwards. Permitting exactly
-/// one transition instead is a rule a later build's new bit cannot outgrow, whether that bit is a
-/// mechanism or a modifier: adding any bit, clearing any other bit and clearing the mask entirely
-/// are all refused, and so is a value either side cannot read as a non-negative whole number,
-/// because the set does not clear a payload it cannot judge. A target mask of 0 therefore permits
-/// no change at all -- <code>0 -&gt; 32</code> is refused with the rest.</p>
-ClassMethod ClearsUnauthenticatedOnly(pPayload As %String, pTarget As %String) As %Boolean [ Private ]
+/// <p>Whether <var>pPayload</var>'s <code>AutheEnabled</code> carries
+/// <parameter>UNAUTHENTICATEDBIT</parameter> and <var>pTarget</var>'s does not. A payload value
+/// that is not a non-negative whole number counts as adding the bit, because the set does not clear
+/// a mask it cannot judge; a payload that carries no <code>AutheEnabled</code> adds nothing. A
+/// target value that is not a whole number reads as not holding the bit.</p>
+ClassMethod AddsUnauthenticated(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean
 {
-    If '$IsValidNum(pPayload) || '$IsValidNum(pTarget) Quit 0
-    If (+pPayload '= (pPayload \ 1)) || (+pTarget '= (pTarget \ 1)) Quit 0
-    If (+pPayload < 0) || (+pTarget < 0) Quit 0
-    Set tTarget = pTarget \ 1
-    Set tPermitted = tTarget - (((tTarget \ ..#UNAUTHENTICATEDBIT) # 2) * ..#UNAUTHENTICATEDBIT)
-    Quit (pPayload \ 1) = tPermitted
+    If '$IsObject(pPayload) Quit 0
+    If pPayload.%GetTypeOf("AutheEnabled") = "unassigned" Quit 0
+    Set tPayload = ..Rendered(pPayload, "AutheEnabled")
+    If '..IsMaskValue(tPayload) Quit 1
+    If '(((tPayload \ 1) \ ..#UNAUTHENTICATEDBIT) # 2) Quit 0
+    Set tTarget = ..Rendered(pTarget, "AutheEnabled")
+    If '..IsMaskValue(tTarget) Quit 1
+    Quit '(((tTarget \ 1) \ ..#UNAUTHENTICATEDBIT) # 2)
+}
+
+/// <p>Whether <var>pValue</var> reads as a non-negative whole number.</p>
+ClassMethod IsMaskValue(pValue As %String) As %Boolean [ Private ]
+{
+    If '$IsValidNum(pValue) Quit 0
+    If +pValue '= (pValue \ 1) Quit 0
+    Quit (+pValue >= 0)
+}
+
+/// <p>Whether <var>pPayload</var> carries an empty <code>Resource</code> while <var>pTarget</var>
+/// holds one. A payload that carries no <code>Resource</code> clears nothing.</p>
+ClassMethod ClearsResource(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean
+{
+    If '$IsObject(pPayload) Quit 0
+    If pPayload.%GetTypeOf("Resource") = "unassigned" Quit 0
+    If ..Rendered(pPayload, "Resource") '= "" Quit 0
+    Quit (..Rendered(pTarget, "Resource") '= "")
+}
+
+/// <p><var>pObject</var>'s object member <var>pName</var>, or <code>""</code> when it holds none.</p>
+ClassMethod Member(pObject As %DynamicObject, pName As %String) As %DynamicObject [ Private ]
+{
+    If '$IsObject(pObject) Quit ""
+    If pObject.%GetTypeOf(pName) '= "object" Quit ""
+    Quit pObject.%Get(pName)
 }
 
 /// <p><var>pText</var> parsed as a JSON object, or <code>{}</code> when it is empty or
@@ -2356,17 +2830,184 @@ ClassMethod Refuse(pCode As %String, Output pProhibits As %Boolean, Output pOutC
 }
 
 /// <p>The audit event predicates, <var>pType</var> being a system or a user event: the
-/// reviewed-few sweep and nothing else, over <code>Enabled</code>.</p>
+/// reviewed-few sweep and nothing else, over <code>Enabled</code> for a system event and
+/// <code>Description</code> and <code>Enabled</code> for a user event.</p>
 /// <p><b>AD-10 names no audit-event effect.</b> Enabling, disabling, resetting and deleting an
 /// event are changes an operator is entitled to make; the one that stops agent writes being marked
 /// -- disabling or deleting OcuPilot's own marker event -- is warned, not refused: the card's audit
 /// warning, the screen's warning or advisory, and the banner (AD-15). Every other field is refused
-/// <parameter>UNCOVEREDFIELD</parameter>, <code>Description</code> among them. A reset's
+/// <parameter>UNCOVEREDFIELD</parameter>, a system event's <code>Description</code> among them. A reset's
 /// <code>Total</code> row is its declared state label and a delete's rows are its fingerprint
 /// subject, so <method>Changed</method> skips both.</p>
 ClassMethod AuditEvent(pType As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
 {
     Quit ..ReviewedFewOnly(pType, .pChanged, .pProhibits, .pCode)
+}
+
+/// <p>The SSL/TLS configuration predicates, in declared order, first hit wins: for OcuPilot's own
+/// provider configuration (<parameter>OcuPilot.Kernel.State.Base.SSLCONFIG</parameter>), a
+/// <code>DELETE</code> and a change to any of <method>OcuPilotSslFields</method> are refused
+/// <parameter>OCUPILOTSSL</parameter>; then, for every write, the reviewed-few sweep.</p>
+/// <p><var>pId</var> is the target's id as the reference carries it, compared exactly because the
+/// instance resolves a configuration's name exactly; <var>pToolClass</var> the proposal's tool. A
+/// delete's card rows are its declared fingerprint subject, so it reaches the sweep with nothing
+/// changed.</p>
+ClassMethod Ssl(pId As %String, pToolClass As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        Set tDelete = (..WriteTypeOf(pToolClass) = "DELETE")
+        If tDelete Kill pChanged
+        If pId = ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG {
+            Set tMoves = tDelete
+            Set tOwn = ..OcuPilotSslFields()
+            For tI = 1:1:$ListLength(tOwn) {
+                If $Data(pChanged($List(tOwn, tI))) Set tMoves = 1
+            }
+            If tMoves {
+                Do ..Refuse(..#OCUPILOTSSL, .pProhibits, .pCode)
+                Quit
+            }
+        }
+        Set tSC = ..ReviewedFewOnly(..#TYPESSL, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The four settings of OcuPilot's own provider configuration the installer sets and restores at
+/// every start (<method>OcuPilot.Install.Installer.EnsureSslConfiguration</method>), which no caller
+/// changes.</p>
+ClassMethod OcuPilotSslFields() As %List
+{
+    Quit $ListBuild("Type", "VerifyPeer", "CAFile", "Enabled")
+}
+
+/// <p>An SSL/TLS configuration's settable fields, create and change alike: the thirteen settings of
+/// its editor's General, Verification, Cryptographic settings and OCSP settings tabs. The file
+/// locations, the private key type, the OCSP responder URL and <code>AuthorizeCN</code> are shown
+/// and kept, never set (AD-21).</p>
+ClassMethod SslFields() As %List
+{
+    Quit $ListBuild("Description", "Enabled", "Type", "VerifyPeer", "VerifyDepth", "CAFile", "TLSMinVersion", "TLSMaxVersion", "CipherList", "Ciphersuites", "DiffieHellmanBits", "OCSP", "OCSPTimeout")
+}
+
+/// <p><parameter>EFFECTNOPEERCHECK</parameter> when <var>pPayload</var> carries a
+/// <code>VerifyPeer</code> of 0 while <var>pTarget</var>'s is above 0, else <code>""</code>. A
+/// payload that carries no <code>VerifyPeer</code> weakens nothing.</p>
+ClassMethod SslWeakening(pPayload As %DynamicObject, pTarget As %DynamicObject) As %String [ Private ]
+{
+    If '$IsObject(pPayload) Quit ""
+    If pPayload.%GetTypeOf("VerifyPeer") = "unassigned" Quit ""
+    Set tAfter = ..Rendered(pPayload, "VerifyPeer")
+    Set tBefore = ..Rendered(pTarget, "VerifyPeer")
+    If '$IsValidNum(tAfter) || (+tAfter '= 0) Quit ""
+    If '$IsValidNum(tBefore) || (+tBefore <= 0) Quit ""
+    Quit ..#EFFECTNOPEERCHECK
+}
+
+/// <p>The service predicates, first hit wins: on <parameter>SERVINGSERVICENAME</parameter>, a change
+/// that turns <code>Enabled</code> off is refused <parameter>SERVINGSERVICE</parameter>
+/// (<method>ServingServiceDisabled</method>); then, for every service, the reviewed-few sweep. A change
+/// to the serving service's addresses or authentication methods is permitted and marked by the mint
+/// (<method>ServiceWeakening</method>).</p>
+ClassMethod Service(pId As %String, pPayload As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    If ..ServingServiceDisabled(pId, pPayload, .pChanged) {
+        Do ..Refuse(..#SERVINGSERVICE, .pProhibits, .pCode)
+        Quit $$$OK
+    }
+    Quit ..ReviewedFewOnly(..#TYPESERVICE, .pChanged, .pProhibits, .pCode)
+}
+
+/// <p>Whether <var>pId</var> names <parameter>SERVINGSERVICENAME</parameter>, compared without
+/// case.</p>
+ClassMethod IsServingService(pId As %String) As %Boolean
+{
+    Quit ($ZConvert($ZStrip(pId, "<>W"), "U") = $ZConvert(..#SERVINGSERVICENAME, "U"))
+}
+
+/// <p>Whether a write to service <var>pId</var> carrying <var>pPayload</var>, whose changed fields are
+/// <var>pChanged</var>, turns the serving service off: the diff names <code>Enabled</code> and the
+/// payload's value reads as off. The one predicate the kernel's arm, the tool's mint rule and the
+/// form read share.</p>
+ClassMethod ServingServiceDisabled(pId As %String, pPayload As %DynamicObject, ByRef pChanged) As %Boolean
+{
+    If '..IsServingService(pId) Quit 0
+    If '$Data(pChanged(..#FIELDENABLED)) Quit 0
+    Quit ..IsOff(..Rendered(pPayload, ..#FIELDENABLED))
+}
+
+/// <p>The effect of a service write: <parameter>EFFECTSERVINGSERVICE</parameter> when <var>pId</var>
+/// is the serving service and the payload changes its <code>ClientSystems</code> or
+/// <code>AutheEnabled</code>; otherwise <parameter>EFFECTSERVICEUNAUTHENTICATED</parameter> when the
+/// payload adds <parameter>UNAUTHENTICATEDBIT</parameter> (<method>AddsUnauthenticated</method>);
+/// otherwise <code>""</code>. Only fields the payload carries are compared.</p>
+ClassMethod ServiceWeakening(pId As %String, pPayload As %DynamicObject, pTarget As %DynamicObject) As %String [ Private ]
+{
+    If '$IsObject(pPayload) Quit ""
+    Set tTarget = $Select($IsObject(pTarget): pTarget, 1: {})
+    If ..IsServingService(pId) {
+        Set tMoves = 0
+        For tField = "ClientSystems", "AutheEnabled" {
+            If pPayload.%GetTypeOf(tField) = "unassigned" Continue
+            If ..Rendered(pPayload, tField) '= ..Rendered(tTarget, tField) Set tMoves = 1
+        }
+        If tMoves Quit ..#EFFECTSERVINGSERVICE
+    }
+    If ..AddsUnauthenticated(pPayload, tTarget) Quit ..#EFFECTSERVICEUNAUTHENTICATED
+    Quit ""
+}
+
+/// <p>Whether <var>pPayload</var>'s <code>ClientSystems</code> gives an address a privileged role
+/// (<method>IsPrivilegedRole</method>) that <var>pTarget</var>'s does not give that address. An entry
+/// is <code>address</code> or <code>address|role,role</code>; addresses and roles are compared
+/// without case.</p>
+ClassMethod AddressGrantsPrivilege(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean [ Private ]
+{
+    If '$IsObject(pPayload) || (pPayload.%GetTypeOf("ClientSystems") '= "array") Quit 0
+    Kill tHeld
+    If $IsObject(pTarget) && (pTarget.%GetTypeOf("ClientSystems") = "array") {
+        Set tIterator = pTarget.%Get("ClientSystems").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tEntry) {
+            If $IsObject(tEntry) Continue
+            Set tAddress = $ZConvert($Piece(tEntry, "|", 1), "U")
+            Set tRoles = $Piece(tEntry, "|", 2, *)
+            For tI = 1:1:$Length(tRoles, ",") {
+                Set tRole = $ZConvert($ZStrip($Piece(tRoles, ",", tI), "<>W"), "U")
+                If tRole '= "" Set tHeld(tAddress, tRole) = ""
+            }
+        }
+    }
+    Set tGrants = 0
+    Set tIterator = pPayload.%Get("ClientSystems").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        If $IsObject(tEntry) Continue
+        Set tAddress = $ZConvert($Piece(tEntry, "|", 1), "U")
+        Set tRoles = $Piece(tEntry, "|", 2, *)
+        For tI = 1:1:$Length(tRoles, ",") {
+            Set tRole = $ZStrip($Piece(tRoles, ",", tI), "<>W")
+            If (tRole = "") || $Data(tHeld(tAddress, $ZConvert(tRole, "U"))) Continue
+            If ..IsPrivilegedRole(tRole) Set tGrants = 1 Quit
+        }
+        If tGrants Quit
+    }
+    Quit tGrants
+}
+
+/// <p>An LDAP configuration's settable fields (Story 9.9): the vendor template's thirty keys less
+/// <code>LDAPCACertFile</code>, a server path no caller names (AD-21). The template carries no search
+/// password, and no read answers one.</p>
+ClassMethod LdapFields() As %List
+{
+    Quit $ListFromString("Description,LDAPAttributes,LDAPAttributeComment,LDAPAttributeFullName,LDAPAttributeMail,LDAPAttributeMobile,LDAPAttributeMobileProvider,LDAPAttributeNameSpace,LDAPAttributeRoutine,LDAPAttributeRoles,LDAPAttributeEscalationRoles,LDAPBaseDN,LDAPBaseDNForGroups,LDAPClientTimeout,LDAPFlags,LDAPGroupId,LDAPHostNames,LDAPInstanceId,OrganizationId,GroupId,InstanceId,RoleId,EscalationRoleId,RoutineId,NamespaceId,DelimiterId,LDAPSearchUsername,LDAPServerTimeout,LDAPUniqueDNIdentifier")
 }
 
 }

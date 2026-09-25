@@ -249,65 +249,6 @@ Method Snapshot(Output pFresh As %DynamicObject) As %String
     Quit tFresh.%ToJSON()
 }
 
-/// <p>Seed one completed turn and one live proposal whose payload is the target as the instance
-/// holds it now, with <var>pField</var> set to <var>pValue</var> -- the complete property set AD-4
-/// requires, with exactly one property weakened.</p>
-/// <p><b>A field the shipped tool can set is seeded exactly as a mint stores it</b>: one
-/// <method>OcuPilot.Kernel.Proposal.Mint.Merge</method> over one real argument supplies the
-/// payload, the diff and the unchanged count, and the fingerprint is that payload's own digest.
-/// That is the relationship <method>OcuPilot.Kernel.Proposal.Mint.Mint</method> writes, so both
-/// digests <method>OcuPilot.Kernel.Proposal.Confirm.FingerprintMatches</method> compares match and
-/// the set is the only gate left between this row and the vendor write -- which is what lets the
-/// clauses below asserting the application did not move fail when the set is removed.</p>
-/// <p>A field the tool cannot set has no mint-shaped row at all: the tool refuses it 400 before a
-/// proposal exists. Such a leg is seeded by hand, and because its stored payload carries the
-/// weakened value it cannot digest to the fingerprint the fresh read produces, so the gate behind
-/// the set refuses it once the set is removed -- its mutation reddens the 403 and the code, never
-/// the untouched-application clause.</p>
-Method Seed(pFresh As %DynamicObject, pField As %String, pValue As %RawString, pType As %String) As %String
-{
-    Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
-    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(tUser, "completed", .tTurnKey)
-    Do $$$AssertStatusOK(tSC, "a probe turn is seeded")
-    If $$$ISERR(tSC) Quit ""
-    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", ..#TARGET, .tRef)
-    Do $$$AssertStatusOK(tSC, "the target reference is built")
-    If $$$ISERR(tSC) Quit ""
-
-    Set tArgs = {}
-    Do tArgs.%Set(pField, pValue, pType)
-    Set tSC = ..Minted(pFresh, tArgs, .tPayload, .tDiff, .tFingerprint, .tUnchanged)
-    If $$$ISERR(tSC) Quit ""
-    If tDiff = "[]" {
-        ; The shipped merge moved nothing, so this field is outside the tool's settable list and no
-        ; mint produces a row for it. Seed the weakened payload by hand against the fresh read's
-        ; own digest.
-        Set tHand = ##class(%DynamicAbstractObject).%FromJSON(pFresh.%ToJSON())
-        Do tHand.%Set(pField, pValue, pType)
-        Set tPayload = tHand.%ToJSON()
-        Set tDiff = ##class(OcuPilot.Test.ProhibitedFixture).Diff(pField)
-        Set tFingerprint = ..Digest(pFresh)
-        Set tUnchanged = 0
-        Set tArgs = {}
-    }
-
-    Kill tValues
-    Set tValues("user") = tUser
-    Set tValues("convKey") = ""
-    Set tValues("turnKey") = tTurnKey
-    Set tValues("toolName") = ..#TOOL
-    Set tValues("targetRef") = tRef
-    Set tValues("fingerprint") = tFingerprint
-    Set tValues("arguments") = tArgs.%ToJSON()
-    Set tValues("payload") = tPayload
-    Set tValues("diff") = tDiff
-    Set tValues("unchangedCount") = tUnchanged
-    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedProposal(.tValues, .tKey, .tToken)
-    Do $$$AssertStatusOK(tSC, "a probe proposal is seeded")
-    If $$$ISERR(tSC) Quit ""
-    Quit tKey
-}
-
 /// <p>The row a mint would have stored for <var>pArgs</var> against <var>pFresh</var>, built with
 /// the shipped methods <method>OcuPilot.Kernel.Proposal.Mint.Mint</method> itself uses: the merge's
 /// payload and diff as JSON, that payload's digest under the descriptor's own exclusions, and the
@@ -348,19 +289,6 @@ Method Minted(pFresh As %DynamicObject, pArgs As %DynamicObject, Output pPayload
     Set pDiff = tRows.%ToJSON()
     Set pUnchanged = tCount
     Quit tSC
-}
-
-/// <p>The digest the shipped confirm re-computes for <var>pFresh</var> with no argument applied:
-/// the fresh read merged and hashed through the same shipped methods
-/// <method>OcuPilot.Kernel.Proposal.Confirm.FingerprintMatches</method> calls.</p>
-/// <p>It is the fingerprint of a hand-seeded leg only, and it is deliberately not the digest of
-/// that leg's stored payload -- which is why the stored-payload half of the fingerprint gate
-/// refuses such a row the moment the set stops answering first.</p>
-Method Digest(pFresh As %DynamicObject) As %String
-{
-    Set tSC = ..Minted(pFresh, {}, .tPayload, .tDiff, .tFingerprint, .tUnchanged)
-    If $$$ISERR(tSC) Quit ""
-    Quit tFingerprint
 }
 
 /// <p>POST the confirm route for <var>pKey</var> as the test account.</p>
@@ -497,39 +425,6 @@ Method SeedForPrincipal(pUser As %String, pTarget As %String, pFresh As %Dynamic
     Quit tKey
 }
 
-/// <p>Seed a proposal weakening <var>pField</var>, confirm it over HTTP, and assert the 403 it
-/// earns, the sentence beside the code, and that the application on the instance did not move.</p>
-Method Weakened(pField As %String, pValue As %RawString, pType As %String, pExpected As %String)
-{
-    Set tBefore = ..Snapshot(.tFresh)
-    If tBefore = "" Quit
-    Set tKey = ..Seed(tFresh, pField, pValue, pType)
-    If tKey = "" Quit
-
-    Set tSC = ..Call(tKey, .tStatus, .tBody, .tHeaders)
-    Do $$$AssertStatusOK(tSC, "the request completes")
-    Do $$$AssertEquals(tStatus, 403, "and is refused: " _ tBody)
-    Do $$$AssertEquals($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, "as JSON")
-    Do $$$AssertEquals(tBody [ "}{", 0, "in exactly one envelope")
-    Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
-    Do $$$AssertEquals(tEnvelope.%Get("code"), pExpected, "carrying " _ pExpected)
-    Do $$$AssertEquals(tEnvelope.%Get("error"), ##class(OcuPilot.Api.Error).#FORBIDDEN, "under the forbidden slug")
-    Do $$$AssertEquals(tEnvelope.%Get("reason"), ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(pExpected), "with the set's own written sentence rendered beside it")
-
-    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "live", "the row was not claimed")
-    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Burned"), 0, "and the token is unspent")
-    Do $$$AssertEquals(..Snapshot(.tAfter), tBefore, "the application's properties on the instance are what they were")
-}
-
-/// <p>The integration acceptance criterion: a stored proposal that would drop a real probe web
-/// application's resource is refused 403 <code>PROHIBITED.AUTHORIZATION</code> over the wire, and
-/// the application on the instance is untouched.</p>
-/// <p>Mutation: point <method>OcuPilot.Kernel.Proposal.Write.ProhibitedClass</method> back at
-/// <code>""</code>, or remove the prohibited call from
-/// <method>OcuPilot.Kernel.Proposal.Confirm.Transition</method>. This row is mint-shaped, so
-/// either mutation carries it past the fingerprint gate and into the vendor write: the 403, the
-/// code, the row's live state, the unspent token <b>and</b> the untouched-application clause all
-/// redden together.</p>
 /// <p>AD-10, Story 7.1: <b>the registry advertises exactly the three write verbs this screen has
 /// reviewed.</b> Story 5.8 asserted that no delete verb existed at all -- a tripwire aimed at the
 /// story that would ship one -- and this is the positive roster that replaces it in the same pass
@@ -971,9 +866,8 @@ Method TestTheAgentsDeleteMintedUnderAnotherSpellingIsStoredCanonicalAndRefused(
 /// application is read back afterwards to confirm that. The principal's grant is checked on the
 /// instance rather than assumed (Rule 19).</p>
 /// <p>Mutation (Rule 19): drop the <method>DeleteByPath</method>/<method>GuardedRecord</method>
-/// pair -- with <parameter>TARGET</parameter> never recorded, this leg's own proposal reaches the
-/// same <code>AUTHORIZATION</code>/<code>UNAUTHENTICATED</code>/<code>DISPATCH</code> family
-/// <method>Weakened</method>'s legs pin instead of <code>SERVINGPATH</code>, which reddens the code
+/// pair -- with <parameter>TARGET</parameter> never recorded, this leg's disable is permitted and
+/// reaches the port instead of drawing <code>SERVINGPATH</code>, which reddens the code
 /// assertion. The order fix itself is pinned by
 /// <method>OcuPilot.Test.ProposalConfirm.TestThePrivilegeGateAnswersBeforeTheProhibitedSet</method>
 /// and is <b>not</b> what this test falsifies: this principal holds the pair
@@ -1013,34 +907,6 @@ Method TestOcuPilotsOwnServingPathRefusesALeastPrivilegedPrincipal()
     }
 
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#TARGET), "the temporary record is removed")
-}
-
-Method TestADroppedResourceIsRefusedOverTheWire()
-{
-    Do ..Weakened("Resource", "", "string", $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "AUTHORIZATION"))
-}
-
-/// <p>DW-1207's second field against the same real application: adding the unauthenticated bit to
-/// a probe application the fixture created reading 32.</p>
-/// <p>Mutation: as above, and with the same reach -- <code>AutheEnabled</code> is one of the
-/// fields the tool admits, so this row is mint-shaped too and the untouched-application clause is
-/// load-bearing.</p>
-Method TestAWeakenedAuthenticationIsRefusedOverTheWire()
-{
-    Do ..Weakened("AutheEnabled", 96, "number", $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "UNAUTHENTICATED"))
-}
-
-/// <p>Repointing the dispatch class is refused at the write as well as being absent from the tool
-/// set, so a proposal that reached confirm by any other route is still refused.</p>
-/// <p>Mutation: as above, but this row is hand-seeded -- the tool cannot set
-/// <code>DispatchClass</code>, so no mint produces one and its stored payload cannot digest to its
-/// fingerprint. Removing the set therefore reddens the 403, the code and the live-row clauses, and
-/// the row is refused 409 <code>PROPOSAL.TARGETCHANGED</code> by the gate behind the set rather
-/// than reaching the port -- so the untouched-application clause stays green here by construction
-/// and is not what this leg pins.</p>
-Method TestARepointedDispatchClassIsRefusedOverTheWire()
-{
-    Do ..Weakened("DispatchClass", "OcuPilot.Api.Router", "string", $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "DISPATCH"))
 }
 
 /// <p>DW-1352: the set normalizes a web application's name exactly as far as this instance

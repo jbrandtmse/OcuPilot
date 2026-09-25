@@ -26,7 +26,9 @@ XData Cases
     "primaryAction": {"id": "", "selfProtection": ""}, "rowActions": [],
     "context": {"fields": ["Name", "Namespace"], "secretFields": []},
     "secretArguments": [], "fingerprintExcludes": [],
-    "emptyStateKey": "taskListEmpty", "commandAliases": [], "classicPage": "",
+    "emptyStateKey": "taskListEmpty", "commandAliases": [],
+    "suggestedPrompts": [{"groupKey": "userPromptGroupAccess", "textKey": "userPromptSignIn"}, {"groupKey": "userPromptGroupAccess", "textKey": "userPromptPrivilege"}, {"groupKey": "userPromptGroupAccess", "textKey": "userPromptTwoFactor"}],
+    "classicPage": "",
     "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
     "read": {
       "source": {"port": "admin", "endpoint": "Task.CRUD", "type": "LIST"},
@@ -45,7 +47,7 @@ XData Cases
     "rowTarget": null
   },
   "cases": [
-    {"name": "the sound shape, all thirty keys", "addKey": "", "dropKey": "", "expected": null},
+    {"name": "the sound shape, all thirty-one keys", "addKey": "", "dropKey": "", "expected": null},
     {"name": "a pluralised banner, the misspelling that installed a screen whose strip never raises", "addKey": "banners", "dropKey": "", "expected": "the declaration declares the unknown key 'banners'"},
     {"name": "a capitalised banner", "addKey": "Banner", "dropKey": "", "expected": "the declaration declares the unknown key 'Banner'"},
     {"name": "a pluralised read", "addKey": "reads", "dropKey": "", "expected": "the declaration declares the unknown key 'reads'"},
@@ -66,6 +68,8 @@ XData Cases
     {"name": "a singular secretArgument", "addKey": "secretArgument", "dropKey": "", "expected": "the declaration declares the unknown key 'secretArgument'"},
     {"name": "a singular fingerprintExclude", "addKey": "fingerprintExclude", "dropKey": "", "expected": "the declaration declares the unknown key 'fingerprintExclude'"},
     {"name": "a pluralised tab", "addKey": "tabs", "dropKey": "", "expected": "the declaration declares the unknown key 'tabs'"},
+    {"name": "an absent optional suggestedPrompts is sound", "addKey": "", "dropKey": "suggestedPrompts", "expected": null},
+    {"name": "a singular suggestedPrompt", "addKey": "suggestedPrompt", "dropKey": "", "expected": "the declaration declares the unknown key 'suggestedPrompt'"},
     {"name": "an absent required route is sound here, because this rule is unknown-key only", "addKey": "", "dropKey": "route", "expected": null},
     {"name": "an absent required toolIdentifier is sound here, for the same reason", "addKey": "", "dropKey": "toolIdentifier", "expected": null},
     {"name": "an unknown key is still named when a required key is missing beside it", "addKey": "banners", "dropKey": "route", "expected": "the declaration declares the unknown key 'banners'"}

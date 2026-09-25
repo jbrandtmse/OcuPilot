@@ -170,6 +170,86 @@ Method TestTheLastAllHoldersPathIsRefused()
     Do $$$AssertEquals(tLeaves, 0, "while a role that does not reach %All changes nobody")
 }
 
+/// <p>AD-53 (Story 9.3): the Roles list's Delete is this tool's screen action, and the screen path,
+/// which never asks the mint's <method>OcuPilot.Screen.Tool.RoleDelete.ArgumentProblem</method>,
+/// refuses a predefined role with the bare published sentence the row draws before a click -- which
+/// the route answers 400 <code>TOOL.ARGUMENTS</code> -- and lets any other name through to the
+/// set.</p>
+/// <p>Mutation (Rule 19): drop the refusal from
+/// <method>OcuPilot.Screen.Tool.RoleDelete.ScreenActionDelta</method> -- the %Developer legs go red.</p>
+Method TestTheScreenDeleteRefusesAPredefinedRoleWithThePublishedSentence()
+{
+    Do $$$AssertEquals($ListToString($ClassMethod(..#TOOL, "ScreenActionIds")), "delete", "the tool carries the Roles list's Delete")
+    For tName = ..#STOCKROLE, $ZConvert(..#STOCKROLE, "L") {
+        Set tValues = {}
+        Do tValues.%Set($ClassMethod(..#TOOL, "IdArgument"), tName, "string")
+        Set tSC = $ClassMethod(..#TOOL, "ScreenActionDelta", "delete", tValues, ##class(%DynamicObject).%FromJSON(..RoleJson()), .tArgs, .tProblem)
+        Do $$$AssertStatusOK(tSC, tName _ ": the delta answers")
+        Do $$$AssertEquals(tProblem, ##class(OcuPilot.Api.Error).#REASONROLENAMESYSTEM, tName _ ": refused with the sentence the row draws")
+    }
+    Set tValues = {}
+    Do tValues.%Set($ClassMethod(..#TOOL, "IdArgument"), ..#PROBEROLE, "string")
+    Set tSC = $ClassMethod(..#TOOL, "ScreenActionDelta", "delete", tValues, ##class(%DynamicObject).%FromJSON(..RoleJson()), .tArgs, .tProblem)
+    Do $$$AssertEquals(tProblem, "", "any other role reaches the set")
+    Do $$$AssertEquals(tArgs.%ToJSON(), "{}", "with no argument, since the delete sends no body")
+}
+
+/// <p>AD-10 as amended 2026-09-24: a role delete strips <code>%All</code> from every account that
+/// reaches it only through that role, so the census's account arms fire in order --
+/// <code>_SYSTEM</code>, the signed-in account, a service account -- before the last-holder
+/// question. Only the census's inputs are armed; the walk runs as shipped over the stock
+/// <code>%All</code> role.</p>
+/// <p>Mutation (Rule 19): check the service accounts before <code>_SYSTEM</code> in
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.ChangeStripsAll</method> -- the first leg goes
+/// red.</p>
+Method TestTheDeleteCensusChecksTheAccountArmsInOrder()
+{
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..RoleJson())
+    Set tType = "role"
+    Set tUser = $Username
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmAllHolders("_SYSTEM,CSPSystem," _ tUser)
+    For tAccount = "_SYSTEM", "CSPSystem", tUser {
+        Do $ClassMethod(..#SETFIXTURE, "ArmDirectRoles", tAccount, "%All")
+    }
+    Set tSC = $ClassMethod(..#SETFIXTURE, "Ask", ..RoleJson(), ..RoleJson(), "[]", "%All", tType, .tProhibits, .tCode, $Parameter(..#TOOL, "TOOLNAME"))
+    Do $$$AssertStatusOK(tSC, "the set answers")
+    Do $$$AssertEquals(tCode, $Parameter(..#SET, "SYSTEMACCOUNT"), "_SYSTEM is checked first")
+    If $ZConvert(tUser, "U") '= "_SYSTEM" {
+        Do ##class(OcuPilot.Test.ProposalFixture).ArmAllHolders("CSPSystem," _ tUser)
+        Set tSC = $ClassMethod(..#SETFIXTURE, "Ask", ..RoleJson(), ..RoleJson(), "[]", "%All", tType, .tProhibits, .tCode, $Parameter(..#TOOL, "TOOLNAME"))
+        Do $$$AssertEquals(tCode, $Parameter(..#SET, "CURRENTUSER"), "then the signed-in account")
+    }
+    If $ZConvert(tUser, "U") '= "CSPSYSTEM" {
+        Do ##class(OcuPilot.Test.ProposalFixture).ArmAllHolders("CSPSystem")
+        Set tSC = $ClassMethod(..#SETFIXTURE, "Ask", ..RoleJson(), ..RoleJson(), "[]", "%All", tType, .tProhibits, .tCode, $Parameter(..#TOOL, "TOOLNAME"))
+        Do $$$AssertEquals(tCode, $Parameter(..#SET, "SERVICEACCOUNT"), "then a service account")
+    }
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmAllHolders("OcuPilotNoSuchHolder")
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmLastAllHolder(1)
+    Set tSC = $ClassMethod(..#SETFIXTURE, "Ask", ..RoleJson(), ..RoleJson(), "[]", "%All", tType, .tProhibits, .tCode, $Parameter(..#TOOL, "TOOLNAME"))
+    Do $$$AssertEquals(tCode, $Parameter(..#SET, "LASTALLHOLDER"), "and the last holder after them")
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmLastAllHolder("")
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmAllHolders("")
+    Do $ClassMethod(..#SETFIXTURE, "ArmDirectRoles", "")
+}
+
+/// <p>AD-10: the census asks every account <parameter>OcuPilot.Kernel.Proposal.Prohibited.SERVICEACCOUNTS</parameter>
+/// names, and an instance need not hold all of them, so an account the instance does not hold
+/// answers "holds nothing" rather than an error that would fail every role write reaching
+/// <code>%All</code>. <code>_SYSTEM</code> still answers that it holds it.</p>
+/// <p>Mutation (Rule 19): drop the existence check from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.HoldsAll</method> -- the absent-account status goes
+/// red.</p>
+Method TestAnAccountTheInstanceDoesNotHoldHoldsNothing()
+{
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).HoldsAll("OcuPilotNoSuchServiceAccount", .tHolds)
+    Do $$$AssertStatusOK(tSC, "an account the instance does not hold is answered, not an error")
+    Do $$$AssertEquals(tHolds, 0, "and it holds nothing")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).HoldsAll("_SYSTEM", .tHolds)
+    Do $$$AssertStatusOK(tSC, "_SYSTEM is answered")
+    Do $$$AssertEquals(tHolds, 1, "and still holds %All")
+}
+
 /// <p>AD-51: the card's rows are one removal row per subject field, carrying the value the instance
 /// holds, and a confirm after the grants moved is refused <code>PROPOSAL.TARGETCHANGED</code> with
 /// nothing written.</p>

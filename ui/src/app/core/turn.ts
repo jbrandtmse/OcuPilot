@@ -76,6 +76,8 @@ export const NAV_REFUSED_UNSAVED_CODE = 'NAV.REFUSEDUNSAVED';
 
 /** What a decision answers when there was nothing to decide, or the transport gave no envelope. */
 const NO_OUTCOME: ProposalOutcome = {
+  changeAction: 'updated',
+  changedId: '',
   ok: false,
   state: '',
   closedReason: '',
@@ -294,6 +296,13 @@ export type SendOutcome = 'sent' | 'locked' | 'error';
  * proposal state (AD-6).
  */
 export interface ProposalOutcome {
+  /**
+   * AD-14's action for the write a confirm made, off the confirm's own `action` through
+   * `confirmedAction`; `updated` on every other answer. The action the change event carries.
+   */
+  readonly changeAction: ChangeAction;
+  /** The confirm's own `createdId`, or `''` when it answered none. */
+  readonly changedId: string;
   readonly ok: boolean;
   /** The row's terminal state, or `''` when the refusal left it exactly as it was. */
   readonly state: string;
@@ -365,6 +374,16 @@ function boolAt(source: Record<string, unknown>, key: string): boolean {
 function confirmedAction(body: Record<string, unknown>): ChangeAction {
   const action = textAt(body, 'action');
   return CHANGE_ACTIONS.includes(action as ChangeAction) ? (action as ChangeAction) : 'updated';
+}
+
+/**
+ * The id a confirmed create's change event carries: the instance's own `createdId` where the
+ * confirm answers one (AD-14; a task, whose proposal names it by name and whose id the instance
+ * allocates on the write), else the proposal target's id.
+ */
+function confirmedId(body: Record<string, unknown>, targetId: string): string {
+  const created = textAt(body, 'createdId');
+  return created !== '' ? created : targetId;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -1067,6 +1086,8 @@ export class TurnStore {
     });
     if (result.kind === 'ok') {
       const outcome: ProposalOutcome = {
+        changeAction: confirmedAction(result.body),
+        changedId: textAt(result.body, 'createdId'),
         ok: true,
         state: textAt(result.body, 'state'),
         closedReason: textAt(result.body, 'closedReason'),
@@ -1094,7 +1115,7 @@ export class TurnStore {
           kind: 'changed',
           type: target.type,
           scope: target.scope,
-          id: target.id,
+          id: confirmedId(result.body, target.id),
           action: confirmedAction(result.body),
         });
       }
@@ -1105,6 +1126,8 @@ export class TurnStore {
     // live carries none, and the card goes back to offering Confirm.
     const detail = result.detail;
     const outcome: ProposalOutcome = {
+      changeAction: 'updated',
+      changedId: '',
       ok: false,
       state: detail === null ? '' : textAt(detail, 'state'),
       closedReason: detail === null ? '' : textAt(detail, 'closedReason'),

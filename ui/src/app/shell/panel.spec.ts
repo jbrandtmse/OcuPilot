@@ -3501,6 +3501,44 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     expect(reply).not.toContain('<entity>');
   });
 
+  // Story 10.6: the sentence takes the confirm's own action and createdId, the ones the change
+  // event and the toast carry (AD-14), so a confirmed create reads "was created".
+  //
+  // Mutation (Rule 19): revert `replyWithChangeSentence` to `STRINGS.tableChangeUpdated` -> the
+  // created and deleted cases go red; publish `proposal.target.id` alone -> the createdId case does.
+  for (const [label, answer, template, entity] of [
+    ['created', { action: 'created' }, STRINGS.tableChangeCreated, '/csp/myapp'],
+    ['deleted', { action: 'deleted' }, STRINGS.tableChangeDeleted, '/csp/myapp'],
+    ['created with createdId', { action: 'created', createdId: '1391' }, STRINGS.tableChangeCreated, '1391'],
+  ] as const) {
+    it(`Story 10.6: a confirm answering ${label} names that change in the reply`, async () => {
+      const { host, fixture } = await mountDecidable({
+        [proposalConfirmPath('p1')]: [
+          {
+            kind: 'ok',
+            status: 200,
+            body: {
+              proposalId: 'p1',
+              state: 'confirmed',
+              closedReason: '',
+              confirmedAt: '2026-09-19T10:31:04Z',
+              auditMarked: true,
+              ...answer,
+            },
+          },
+        ],
+      });
+      (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
+      await turnSettle();
+      fixture.detectChanges();
+
+      const reply = host.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '';
+      expect(reply).toContain(formatChangeSentence(template, entity));
+      expect(reply).not.toContain(formatChangeSentence(STRINGS.tableChangeUpdated, entity));
+      expect(reply).not.toContain(formatChangeSentence(STRINGS.tableChangeUpdated, '/csp/myapp'));
+    });
+  }
+
   it('Story 5.7: a cancelled card names no change -- nothing was written', async () => {
     const { host, fixture } = await mountDecidable({
       [proposalCancelPath('p1')]: [

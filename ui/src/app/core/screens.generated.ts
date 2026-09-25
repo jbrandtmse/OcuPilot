@@ -351,6 +351,8 @@ export interface ScreenDeclaration {
   readonly rowActions: readonly ActionDeclaration[];
   readonly emptyStateKey: string;
   readonly commandAliases: readonly string[];
+  /** The prompts the panel suggests on this screen, grouped by task, where it declares any (Story 11.3). */
+  readonly suggestedPrompts?: readonly SuggestedPrompt[];
   readonly classicPage: string;
   readonly classicLinkExemption: ClassicLinkExemption;
   /** The screen's one declared read, or `null` for a screen with none (AD-36). */
@@ -364,6 +366,12 @@ export interface ScreenDeclaration {
   readonly toolIdentifier: string;
   /** This list's one declared cross-screen row target, or `null` for a screen with none (AD-5, Story 6.10). */
   readonly rowTarget: ScreenRowTarget | null;
+}
+
+/** One suggested prompt: the string key of the task group it sits under, and of its own text. */
+export interface SuggestedPrompt {
+  readonly groupKey: string;
+  readonly textKey: string;
 }
 
 /**
@@ -445,7 +453,9 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "role": "foldcase",
   "resource": "foldcase",
   "audit-event": "foldcase",
-  "audit-user-event": "foldcase"
+  "audit-user-event": "foldcase",
+  "service": "foldcase",
+  "ldap-configuration": "foldcase"
 };
 
 /**
@@ -1297,7 +1307,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ]
     },
     "primaryAction": {
-      "id": "",
+      "id": "create",
       "selfProtection": ""
     },
     "rowActions": [
@@ -1330,6 +1340,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "emptyStateKey": "auditUserEventListEmpty",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "auditUserEventPromptEnabled"
+      },
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "auditUserEventPromptBusiest"
+      },
+      {
+        "groupKey": "auditUserEventPromptGroup",
+        "textKey": "auditUserEventPromptRegister"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.Audit.UserEvents",
     "classicLinkExemption": {
       "exempt": false,
@@ -2414,6 +2438,76 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "rowTarget": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LdapConfigForm",
+    "route": "security/ldap/edit",
+    "area": "security",
+    "labelKey": "ldapFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "ldap-configuration",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "ldapPromptEnabled"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "ldapPromptServers"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "ldapPromptUsers"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.LDAP",
+    "classicLinkExemption": {
+      "exempt": true,
+      "reason": "Reduced until the full LDAP and Kerberos editor ships (Story 16.14); counted against SM-C1",
+      "label": "Security LDAP Configs",
+      "href": "/csp/sys/sec/%25CSP.UI.Portal.LDAPs.zen"
+    },
+    "toolIdentifier": "security.ldapform",
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
     "entityLabelKey": ""
   },
   {
@@ -4449,7 +4543,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "create",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": "system-resource"
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -4668,7 +4767,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "descriptor": "OcuPilot.Screen.Descriptor.RoleForm",
     "route": "permissions/roles/edit",
     "area": "permissions",
-    "labelKey": "roleFormLabel",
+    "labelKey": "userRoleField",
     "sideBarPosition": 0,
     "archetype": "form-page",
     "built": true,
@@ -4705,6 +4804,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "fingerprintExcludes": [],
     "emptyStateKey": "",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "rolePromptHolders"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "rolePromptPrivilege"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "rolePromptGrantedRoles"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.Role",
     "classicLinkExemption": {
       "exempt": false,
@@ -4752,7 +4865,28 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "create",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": "system-role"
+      },
+      {
+        "id": "add-granted-role",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove-granted-role",
+        "selfProtection": ""
+      },
+      {
+        "id": "set-resource-grant",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove-resource-grant",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -4833,6 +4967,76 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "rowTarget": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ServiceForm",
+    "route": "permissions/services/edit",
+    "area": "permissions",
+    "labelKey": "serviceFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "service",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "servicePromptWhoConnects"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "servicePromptEnabled"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "servicePromptUnauthenticated"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Dialog.Service",
+    "classicLinkExemption": {
+      "exempt": true,
+      "reason": "Reduced until the full service editor ships (Story 16.13); counted against SM-C1",
+      "label": "Services",
+      "href": "/csp/sys/sec/%25CSP.UI.Portal.Services.zen"
+    },
+    "toolIdentifier": "permissions.serviceform",
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
     "entityLabelKey": ""
   },
   {
@@ -4993,10 +5197,15 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "parts": []
     },
     "primaryAction": {
-      "id": "",
+      "id": "create",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": "ocupilot-ssl"
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -5006,6 +5215,9 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ],
       "secretFields": []
     },
+    "secretArguments": [
+      "PrivateKeyPassword"
+    ],
     "emptyStateKey": "sslListEmpty",
     "commandAliases": [
       "certificates"
@@ -5068,15 +5280,86 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "sslListEmptyAgent"
     },
     "toolIdentifier": "security.ssl",
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.SslForm",
+    "route": "security/ssl/edit",
+    "area": "security",
+    "labelKey": "sslFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "ssl-configuration",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": [
+        "PrivateKeyPassword"
+      ]
+    },
     "secretArguments": [],
     "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "sslPromptVerifies"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "sslPromptProtocols"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "sslPromptOutbound"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SSL",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "security.sslform",
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
     "entityLabelKey": ""
   },
   {
@@ -5605,6 +5888,76 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "rowTarget": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.TaskForm",
+    "route": "tasks/schedule/edit",
+    "area": "tasks",
+    "labelKey": "proposalEntityTask",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Task",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "task",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "taskPromptGroupSchedule",
+        "textKey": "taskPromptNightly"
+      },
+      {
+        "groupKey": "taskPromptGroupSchedule",
+        "textKey": "taskPromptWeekly"
+      },
+      {
+        "groupKey": "taskPromptGroupSchedule",
+        "textKey": "taskPromptWhichType"
+      }
+    ],
+    "classicPage": "%cspapp.op.utilsystaskbuilder",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "tasks.scheduleform",
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
     "entityLabelKey": ""
   },
   {
@@ -6138,7 +6491,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ]
     },
     "primaryAction": {
-      "id": "",
+      "id": "create",
       "selfProtection": ""
     },
     "rowActions": [
@@ -6438,7 +6791,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "descriptor": "OcuPilot.Screen.Descriptor.UserForm",
     "route": "permissions/users/edit",
     "area": "permissions",
-    "labelKey": "userFormLabel",
+    "labelKey": "processColumnUser",
     "sideBarPosition": 0,
     "archetype": "form-page",
     "built": true,
@@ -6477,6 +6830,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "fingerprintExcludes": [],
     "emptyStateKey": "",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "userPromptSignIn"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "userPromptPrivilege"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "userPromptTwoFactor"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.User",
     "classicLinkExemption": {
       "exempt": false,
@@ -6535,7 +6902,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       },
       {
         "id": "set-password",
-        "selfProtection": ""
+        "selfProtection": "service-account-sign-in"
       },
       {
         "id": "add-role",
@@ -6547,7 +6914,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       },
       {
         "id": "require-password-change",
-        "selfProtection": ""
+        "selfProtection": "service-account-sign-in"
       },
       {
         "id": "delete",
@@ -6873,7 +7240,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "create",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -6954,7 +7326,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "descriptor": "OcuPilot.Screen.Descriptor.WebAppForm",
     "route": "web-applications/list/edit",
     "area": "web-applications",
-    "labelKey": "webAppFormLabel",
+    "labelKey": "proposalEntityWebApplication",
     "sideBarPosition": 0,
     "archetype": "form-page",
     "built": true,
@@ -6991,6 +7363,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "fingerprintExcludes": [],
     "emptyStateKey": "",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "webAppPromptAccess"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "webAppPromptUnauthenticated"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "webAppPromptCode"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.Applications.Web",
     "classicLinkExemption": {
       "exempt": false,
@@ -7047,6 +7433,22 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "id": "disable",
         "selfProtection": "serves-ocupilot"
+      },
+      {
+        "id": "add-application-role",
+        "selfProtection": "ocupilot-application-roles"
+      },
+      {
+        "id": "remove-application-role",
+        "selfProtection": "ocupilot-application-roles"
+      },
+      {
+        "id": "add-matching-role",
+        "selfProtection": "ocupilot-application-roles"
+      },
+      {
+        "id": "remove-matching-role",
+        "selfProtection": "ocupilot-application-roles"
       },
       {
         "id": "delete",
@@ -7184,7 +7586,12 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "create",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Alias",

@@ -115,7 +115,11 @@ Parameter ASYNCLOCATION = "async-result?id=";
 /// the vendor publishes it <code>TYPE</code>-prefixed (<code>TYPEVOLUMELIST</code>), so it
 /// resolves here rather than through <parameter>BARETYPES</parameter>, and it is synchronous --
 /// only that endpoint's <code>TYPEINFO</code> answers <code>ShouldRunAsync()</code> true.</p>
-Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
+/// <p><code>OWNERLIST</code> is <code>Security.Role</code>'s holder list (Story 9.3): the accounts and
+/// roles that hold one role, as <code>[{Name, Type, AdminOption}]</code>, 404 for an absent role. It is
+/// synchronous: that endpoint's <code>ShouldRunAsync()</code> answers 0 for it (measured on this
+/// build).</p>
+Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWNERLIST";
 
 /// <p>The <b>mutating</b> <code>&lt;endpoint&gt;/&lt;type&gt;</code> pairs <method>Invoke</method>
 /// accepts, each type resolved through that endpoint's own <code>TYPE&lt;suffix&gt;</code>
@@ -241,6 +245,39 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// AD-4, AD-54), setting only the keys the body carries; its <code>NeedsRequestBody()</code> is
 /// <code>..IsTypePut()</code>, so <code>DELETE</code> reads no body; and its <code>RunDelete</code>
 /// answers 404 for an absent device (<parameter>VERIFIEDDELETES</parameter>).</p>
+/// <p><code>Security.SSLConfig/PUT</code> and <code>/DELETE</code> are Story 9.5's SSL/TLS
+/// configuration create, edit and delete. Read on this build: the endpoint overrides
+/// <code>Run</code>; its <code>RunPut</code> modifies a configuration that exists and otherwise
+/// creates it (an upsert, which the create's absence fingerprint and the edit's fresh read guard,
+/// AD-4, AD-54), setting only the keys the body defines; its <code>NeedsRequestBody()</code> is a
+/// put, the test type or the password type, so <code>DELETE</code> reads no body; and its
+/// <code>RunDelete</code> answers 404 for an absent configuration. Every class-level refusal of a
+/// value answers 500, which <parameter>PROPERTYFAULTS</parameter> maps where the value cannot be
+/// checked beforehand.</p>
+/// <p><code>Task.CRUD/POST</code> is Story 9.7's task create. Read on this build: its
+/// <code>RunPost</code> saves a new <code>%SYS.Task</code> from the body (every key but
+/// <code>Settings</code> is required) and answers 201 with the new id only in its
+/// <code>Location</code> header, which <method>InvokeLocated</method> keeps for the caller
+/// (<class>OcuPilot.Port.TaskPort</class>). A save-time refusal answers 500 carrying the vendor code,
+/// which <parameter>PROPERTYFAULTS</parameter> maps to its field. It accepts a duplicate name, so the
+/// create's absence read is OcuPilot's (AD-54).</p>
+/// <p><code>Task.CRUD/PUT</code> is Story 9.8's task edit. Read on this build: its <code>RunPut</code>
+/// is <code>%OpenId</code>, <code>MergeJsonAndObj</code> and <code>%Save</code>, setting only the keys
+/// the body defines, and a body carrying <code>Settings</code> replaces every setting.
+/// <class>OcuPilot.Port.TaskPort</class> trims the body the vendor refuses or would misread (AD-4's
+/// named exception), and the save-time refusals map through the same
+/// <parameter>PROPERTYFAULTS</parameter> rows as the create's.</p>
+/// <p><code>Wallet.Secret/DELETE</code> is Story 9.5's wallet secret delete. Read on this build: the
+/// endpoint does not override <code>Run</code>, its <code>NeedsRequestBody()</code> is
+/// <code>..IsTypePut()</code>, and its <code>RunDelete</code> answers 404 for a name
+/// <code>%Wallet.Secret.Exists</code> denies -- an absent or wrong-case one -- and otherwise deletes
+/// it (measured on <code>ocupilot-ci</code>: 200).</p>
+/// <p><code>Security.Service/PUT</code> and <code>Security.LDAP/PUT</code> are Story 9.9's reduced
+/// editors. Read on this build: the service's <code>RunPut</code> answers 404 for an absent name and
+/// passes <code>AutheEnabled</code>, <code>ClientSystems</code> and <code>Enabled</code> to
+/// <code>Security.Services.Modify</code>, dropping <code>Description</code>; the LDAP
+/// configuration's <code>RunPut</code> modifies a present name and creates an absent one (an upsert,
+/// so the write's fingerprint is what refuses a deleted target, AD-4).</p>
 /// <p><code>Security.OAuth2.Server/REVOKE</code> is Story 12.2's token revoke
 /// (<class>OcuPilot.Screen.Tool.UserTokenRevoke</class>, through <class>OcuPilot.Port.TokenPort</class>,
 /// AD-51, AD-52). Read on this build: <code>TYPEREVOKE</code> is 10, the endpoint overrides
@@ -258,7 +295,7 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// true, so each is queued (<parameter>QUEUEDWRITES</parameter>); <code>RunCopy</code> calls
 /// <code>%SYS.Audit.Copy</code> and <code>RunPurge</code> <code>%SYS.Audit.Delete</code>, each
 /// discarding its count; <code>ResourcesOR()</code> is <code>%Admin_Secure</code>.</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT";
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -274,7 +311,7 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.OAuth2.Server/REVOKE,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Security.OAuth2.Server/REVOKE,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> deletes whose vendor answer does not say whether the
 /// object went, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries. After a 2xx
@@ -288,6 +325,22 @@ Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Secur
 /// <p><code>Device.Standard/DELETE</code> is listed because its <code>RunDelete</code> answers the
 /// status of <code>Config.Devices.Delete</code>, whose body is stripped from this build's export, so
 /// its 200 is not trusted unread.</p>
+/// <p>The non-mutating <code>&lt;endpoint&gt;/&lt;type&gt;</code> pairs <method>Invoke</method>
+/// admits that open a connection from the instance to a host the caller names and change nothing
+/// stored, comma-separated. Each answers <code>{passed, lines}</code> rather than the vendor's own
+/// shape: on a 2xx, <code>passed</code> true and <code>lines</code> the vendor's <code>Info</code>
+/// array; on a vendor status error at 500, HTTP 200 with <code>passed</code> false and
+/// <code>lines</code> each error's text. A 400, 403 or 404 is an ordinary fault.</p>
+/// <p><b>The failure text is the result the operator asked for</b> (AD-39's named exception, Story
+/// 9.5): it is answered to the caller and nowhere else -- never logged here, never a fault, never a
+/// ledger or audit payload -- so no vendor text of a failed test reaches a sink OcuPilot or the
+/// agent later reads.</p>
+/// <p><code>Security.SSLConfig/TEST</code> is the one entry. Read on this build: its
+/// <code>TYPETEST</code> is 10, its body is <code>{Host, Port}</code>, and its <code>RunTest</code>
+/// calls <code>Security.SSLConfigs.TestConnection</code> synchronously, answering
+/// <code>{Info}</code>, and 404 for an absent configuration.</p>
+Parameter CONNECTIONTESTTYPES = "Security.SSLConfig/TEST";
+
 Parameter VERIFIEDDELETES = "Security.Role/DELETE,Device.Standard/DELETE";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> writes whose vendor answer does not say whether the
@@ -328,6 +381,22 @@ Parameter CLASSCOMPLETEDTYPES = "Security.Resource/PUT=PublicPermission";
 /// instead, behind the endpoint's own gate. The certificate, key and key password never touch disk,
 /// and no status, fault or log line this path writes carries their text (AD-35).</p>
 Parameter CONTENTCOMPLETEDTYPES = "Security.X509Credential/POST";
+
+/// <p>AD-27's fifth named case: the <parameter>MUTATINGTYPES</parameter> writes after which the
+/// port re-applies the application <code>Type</code> the target held before the vendor call, as
+/// comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries.</p>
+/// <p><code>WebApp.App/PUT</code> is the one entry (AD-27 as amended 2026-09-24).
+/// <code>MergeJsonAndProperties</code> sets <code>Type</code> to CSP on every PUT and
+/// <method>Security.Applications.Modify</method> then clears a system application's bit, so an edit
+/// of a system application would demote it (measured on this build: 3 became 2).
+/// <method>KeptType</method> reads the type in <code>%SYS</code> before the call and
+/// <method>RestoreType</method> re-applies it after, behind the same <code>%Admin_Secure</code>
+/// gate; nothing above the port knows.</p>
+Parameter TYPEKEPTTYPES = "WebApp.App/PUT";
+
+/// <p>The resource the <parameter>TYPEKEPTTYPES</parameter> read and restore are gated on: the
+/// endpoint's own <code>ResourcesOR()</code>.</p>
+Parameter TYPEKEPTRESOURCE = "%Admin_Secure";
 
 /// <p>The keys a content-completed import body may carry: the credential's two lists and the three
 /// secrets. Every other key -- <code>CAFile</code>, <code>CertificateFile</code>,
@@ -669,8 +738,18 @@ ClassMethod VerifyInstance(Output pVersion As %Integer, Output pDetail As %Strin
 /// return.</p>
 ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
+    Quit ..InvokeLocated(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault, .tLocation)
+}
+
+/// <p><method>Invoke</method>, with the <code>Location</code> header of a 2xx answer in
+/// <var>pLocation</var>, or <code>""</code>. A create whose new id the vendor answers only in that
+/// header (<code>Task.CRUD/POST</code>) is read through this by its port; every other caller uses
+/// <method>Invoke</method>.</p>
+ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pLocation As %String) As %Status
+{
     Set tSC = $$$OK
     Set pResult = ""
+    Set pLocation = ""
     Set pHttpStatus = 0
     Set pFault = ""
     Try {
@@ -740,7 +819,23 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         ; it, so no caller above the port composes the wire shape.
         Set tBody = pBody
         If $IsObject(pBody) Set tBody = ..Wrapped(pEndpoint, pType, pBody)
+        ; TYPEKEPTTYPES: the application type an edit must not change, read before the vendor call.
+        Set tKept = ""
+        If ..IsTypeKept(pEndpoint, pType) {
+            Set tKeptSC = ..KeptType($Get(pQuery("name")), .tKept)
+            If $$$ISERR(tKeptSC) {
+                Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, .pHttpStatus, .pFault)
+                Do ..LogFault(pEndpoint _ " " _ pType _ " could not read the application type it keeps", tKeptSC, pFault.code)
+                Quit
+            }
+        }
         Set tSeqSC = ..RunSequence(pEndpoint, tClass, tType, .tQuery, tBody, .tAnswer, .tHttp, .tLocation, ..HttpMethodFor(pEndpoint, pType))
+        ; CONNECTIONTESTTYPES: a test's outcome is its answer, pass or fail, and its failure text goes
+        ; to the caller alone (AD-39's named exception).
+        If ..IsConnectionTest(pEndpoint, pType) {
+            Set tSC = ..TestOutcome(pEndpoint, tSeqSC, tHttp, $Get(tAnswer), .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
         If $$$ISOK(tSeqSC) && (tHttp = 202) && (tLocation [ ..#ASYNCLOCATION) {
             Set tAnswer = ""
             Set tGuid = $Piece($Piece(tLocation, ..#ASYNCLOCATION, 2), "&", 1)
@@ -754,6 +849,16 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
                 Set tSC = ..VerifyGone(pEndpoint, .pQuery, .pHttpStatus, .pFault)
                 If $$$ISERR(tSC) Quit
             }
+            ; TYPEKEPTTYPES: the vendor call reset the application type, so the one it held is put
+            ; back before the write is reported as made.
+            If tKept '= "" {
+                Set tRestoreSC = ..RestoreType($Get(pQuery("name")), tKept)
+                If $$$ISERR(tRestoreSC) {
+                    Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#PORTNOTAPPLIED, ##class(OcuPilot.Api.Error).#REASONPORTNOTAPPLIED, .pHttpStatus, .pFault)
+                    Do ..LogFault(pEndpoint _ " " _ pType _ " was applied and the application type could not be restored", tRestoreSC, pFault.code)
+                    Quit
+                }
+            }
             ; VERIFIEDWRITES: a write the vendor reports as made is believed only once a re-read
             ; answers every sent value.
             If ..IsVerifiedWrite(pEndpoint, pType) {
@@ -762,6 +867,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             }
             Set pResult = tAnswer
             Set pHttpStatus = tHttp
+            Set pLocation = $Get(tLocation)
             Quit
         }
         ; DW-274. A backing query that refuses on its own privilege check reaches this port as an
@@ -772,10 +878,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         ; the question itself, on the error path only: no cost on the happy path, and no false 403
         ; for a caller who does hold the set. An endpoint with no declared set keeps the 500.
         If $$$ISERR(tSeqSC) && (tHttp = 500) && ..QueryPairRefused(pEndpoint, pType, .tFailedPair) {
-            Set tSC = ..Denied(pEndpoint, tFailedPair, tSeqSC, .pHttpStatus, .pFault)
+            Set tSC = ..Denied(pEndpoint, tFailedPair, tSeqSC, .pHttpStatus, .pFault, pBody)
             Quit
         }
-        Set tSC = ..Fail(pEndpoint, tHttp, tSeqSC, .pHttpStatus, .pFault, ..WrapperKey(pEndpoint, pType))
+        Set tSC = ..Fail(pEndpoint, tHttp, tSeqSC, .pHttpStatus, .pFault, ..WrapperKey(pEndpoint, pType), pBody)
     } Catch ex {
         Set pResult = ""
         Set pHttpStatus = 500
@@ -1104,6 +1210,71 @@ ClassMethod VerifyGone(pEndpoint As %String, ByRef pQuery, Output pHttpStatus As
     If $$$ISERR(tReadSC) && (+$Get(tReadHttp) = 404) Quit $$$OK
     Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#PORTNOTAPPLIED, ##class(OcuPilot.Api.Error).#REASONPORTNOTAPPLIED, .pHttpStatus, .pFault)
     Do ..LogFault(pEndpoint _ " answered a delete as made and a re-read answered HTTP " _ +$Get(tReadHttp), $Select($$$ISERR(tReadSC): tReadSC, 1: $$$ERROR($$$GeneralError, "the object is still present")), pFault.code)
+    Quit tSC
+}
+
+/// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
+/// <parameter>TYPEKEPTTYPES</parameter> lists.</p>
+ClassMethod IsTypeKept(pEndpoint As %String, pSuffix As %String) As %Boolean
+{
+    Quit ''$ListFind($ListFromString(..#TYPEKEPTTYPES), pEndpoint _ "/" _ pSuffix)
+}
+
+/// <p>The <code>Type</code> the web application <var>pName</var> holds now, read from
+/// <class>Security.Applications</class> in <code>%SYS</code> (AD-16), in <var>pType</var>; <code>""</code>
+/// for an application the instance does not hold (a create), for an empty name, and for a caller
+/// short of <parameter>TYPEKEPTRESOURCE</parameter>, whom the vendor call refuses on its own gate.</p>
+ClassMethod KeptType(pName As %String, Output pType As %String) As %Status [ Private ]
+{
+    Set pType = ""
+    Set tSC = $$$OK
+    If pName = "" Quit tSC
+    If '..HoldsResource(..#TYPEKEPTRESOURCE) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Applications).Exists(pName) {
+            Kill tProps
+            Set tSC = ##class(Security.Applications).Get(pName, .tProps)
+            If $$$ISOK(tSC) Set pType = $Get(tProps("Type"))
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pType = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Re-apply <var>pType</var> to the web application <var>pName</var> when the vendor call left it
+/// holding another, through <method>Security.Applications.Modify</method> in <code>%SYS</code>
+/// (AD-16), behind <parameter>TYPEKEPTRESOURCE</parameter>. The type is read back afterwards, and a
+/// type that still differs is an error.</p>
+ClassMethod RestoreType(pName As %String, pType As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    If '..HoldsResource(..#TYPEKEPTRESOURCE) Quit $$$ERROR($$$GeneralError, "the caller does not hold " _ ..#TYPEKEPTRESOURCE)
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill tProps
+        Set tSC = ##class(Security.Applications).Get(pName, .tProps)
+        If $$$ISOK(tSC) && ($Get(tProps("Type")) '= pType) {
+            Kill tProps
+            Set tProps("Type") = pType
+            Set tSC = ##class(Security.Applications).Modify(pName, .tProps)
+            If $$$ISOK(tSC) {
+                Kill tProps
+                Set tSC = ##class(Security.Applications).Get(pName, .tProps)
+                If $$$ISOK(tSC) && ($Get(tProps("Type")) '= pType) Set tSC = $$$ERROR($$$GeneralError, "the application type reads " _ $Get(tProps("Type")) _ " after the restore")
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
     Quit tSC
 }
 
@@ -1684,6 +1855,53 @@ ClassMethod Renamed(pEndpoint As %String, pSuffix As %String, pBody As %DynamicO
 }
 
 /// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
+/// <parameter>CONNECTIONTESTTYPES</parameter> admits, keyed by the pair as
+/// <method>IsMutating</method> is.</p>
+ClassMethod IsConnectionTest(pEndpoint As %String, pSuffix As %String) As %Boolean
+{
+    Quit ''$ListFind($ListFromString(..#CONNECTIONTESTTYPES), pEndpoint _ "/" _ pSuffix)
+}
+
+/// <p>The answer a <parameter>CONNECTIONTESTTYPES</parameter> call gives, from its sequence status
+/// <var>pSeqSC</var>, its HTTP status <var>pHttp</var> and the vendor's answer <var>pAnswer</var>:
+/// <code>{passed: true, lines}</code> at 200 from a 2xx, <code>{passed: false, lines}</code> at 200
+/// from a vendor status error at 500 -- each error's text a line -- and otherwise the ordinary
+/// fault <method>Fail</method> builds.</p>
+/// <p><b>Nothing here logs the failure text</b>: it is the result the caller asked for, and a line
+/// written to the log would hand it to the error log screen and its read tool (AD-35, AD-39).</p>
+ClassMethod TestOutcome(pEndpoint As %String, pSeqSC As %Status, pHttp As %Integer, pAnswer, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set pFault = ""
+    If $$$ISOK(pSeqSC) && (pHttp >= 200) && (pHttp < 300) {
+        Set tLines = []
+        If $IsObject(pAnswer) && (pAnswer.%GetTypeOf("Info") = "array") {
+            Set tIterator = pAnswer.%Get("Info").%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tLine) {
+                If '$IsObject(tLine) Do tLines.%Push(tLine _ "", "string")
+            }
+        }
+        Set pResult = {"passed": true}
+        Do pResult.%Set("lines", tLines)
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    If $$$ISERR(pSeqSC) && (pHttp = 500) {
+        Set tLines = []
+        Do $System.Status.DecomposeStatus(pSeqSC, .tErrors)
+        For tI = 1:1:+$Get(tErrors) {
+            Do tLines.%Push($Get(tErrors(tI)), "string")
+        }
+        Kill tErrors
+        Set pResult = {"passed": false}
+        Do pResult.%Set("lines", tLines)
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Quit ..Fail(pEndpoint, pHttp, pSeqSC, .pHttpStatus, .pFault)
+}
+
+/// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
 /// <parameter>MUTATINGTYPES</parameter> admits (DW-1473). Every read of that parameter is this
 /// method, so admitting a type on one endpoint can never be read as admitting it on another.</p>
 ClassMethod IsMutating(pEndpoint As %String, pSuffix As %String) As %Boolean
@@ -1727,7 +1945,7 @@ ClassMethod EndpointType(pEndpoint As %String, pClass As %String, pSuffix As %St
         If (tBare = "") || '..ImplementsRead(pClass, pSuffix) Quit ""
         Quit tBare
     }
-    If '$ListFind($ListFromString(..#TYPESUFFIXES), pSuffix) && '..IsMutating(pEndpoint, pSuffix) Quit ""
+    If '$ListFind($ListFromString(..#TYPESUFFIXES), pSuffix) && '..IsMutating(pEndpoint, pSuffix) && '..IsConnectionTest(pEndpoint, pSuffix) Quit ""
     Set tType = $Parameter(pClass, "TYPE" _ pSuffix)
     If tType = "" Quit ""
     If '..ImplementsRead(pClass, pSuffix) Quit ""
@@ -1951,8 +2169,10 @@ ClassMethod AwaitTask(pEndpoint As %String, pGuid As %String, Output pResult, Ou
 /// <p>A failed vendor outcome: the fault from <method>OcuPilot.Kernel.Fault.Outcome</method>,
 /// the vendor status to the log, and an error status carrying only the fault's own text.
 /// <var>pWrapper</var> is the request's <parameter>WRAPPEDTYPES</parameter> wrapper key, or
-/// <code>""</code>; a violation field that begins with it and a dot loses that segment.</p>
-ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pWrapper As %String = "") As %Status [ Private ]
+/// <code>""</code>; a violation field that begins with it and a dot loses that segment.
+/// <var>pBody</var> is the body the request sent, whose secrets the logged status never carries
+/// (<method>LoggedStatus</method>).</p>
+ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pWrapper As %String = "", pBody As %DynamicAbstractObject = "") As %Status [ Private ]
 {
     Set pHttpStatus = $Select(+pHttp: +pHttp, 1: 500)
     Set tOutcomeSC = ##class(OcuPilot.Kernel.Fault).Outcome(pHttpStatus, pVendorSC, .pFault, .tDetail)
@@ -1976,8 +2196,48 @@ ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, 
         Do tFieldDetail.%Set("violations", tViolations)
         Do pFault.%Set("detail", tFieldDetail)
     }
-    If $$$ISERR(pVendorSC) Do ..LogFault(pEndpoint _ " failed with HTTP " _ pHttpStatus, pVendorSC, pFault.code)
+    If $$$ISERR(pVendorSC) Do ..LogFault(pEndpoint _ " failed with HTTP " _ pHttpStatus, ..LoggedStatus(pVendorSC, pBody), pFault.code)
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
+}
+
+/// <p><var>pStatus</var> as the log may carry it (AD-35): every non-empty string <var>pBody</var>
+/// holds under a credential name (<method>OcuPilot.Kernel.Audit.Log.IsCredentialName</method>), at
+/// any depth, replaced by the log's own mask, because a vendor refusal can quote a value it was
+/// sent -- a private key password over its <code>MAXLEN</code> is quoted by errors 7201 and 5802.
+/// A status quoting none is answered unchanged; one that cannot be screened is replaced by a
+/// sentence carrying no vendor text.</p>
+ClassMethod LoggedStatus(pStatus As %Status, pBody As %DynamicAbstractObject = "") As %Status [ Private ]
+{
+    Set tLogged = pStatus
+    Try {
+        If $$$ISOK(pStatus) || '$IsObject(pBody) Quit
+        Set tSecrets = ..SecretValues(pBody)
+        If tSecrets = "" Quit
+        Set tText = $System.Status.GetErrorText(pStatus)
+        Set tMasked = tText
+        For tI = 1:1:$ListLength(tSecrets) Set tMasked = $Replace(tMasked, $List(tSecrets, tI), $Parameter("OcuPilot.Kernel.Audit.Log", "REDACTED"))
+        If tMasked '= tText Set tLogged = $$$ERROR($$$GeneralError, tMasked)
+    } Catch {
+        Set tLogged = $$$ERROR($$$GeneralError, "the vendor's status could not be screened for the secrets its request sent, so its text is not logged")
+    }
+    Quit tLogged
+}
+
+/// <p>Every non-empty string <var>pData</var> holds under a credential name, at any depth, as a
+/// list.</p>
+ClassMethod SecretValues(pData As %DynamicAbstractObject) As %List [ Private ]
+{
+    Set tValues = ""
+    Set tInArray = ($ClassName(pData) = "%Library.DynamicArray")
+    Set tIterator = pData.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        If $IsObject(tValue) {
+            Set tValues = tValues _ ..SecretValues(tValue)
+        } ElseIf 'tInArray && (pData.%GetTypeOf(tKey) = "string") && (tValue '= "") && ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(tKey) {
+            Set tValues = tValues _ $ListBuild(tValue)
+        }
+    }
+    Quit tValues
 }
 
 /// <p>A refusal the port decided itself, with no vendor status behind it. <var>pDetail</var>,
@@ -1998,14 +2258,14 @@ ClassMethod Refuse(pHttp As %Integer, pSlug As %String, pCode As %String, pReaso
 /// <p>The slug, the code and the sentence are <class>OcuPilot.Kernel.Fault</class>'s own, read
 /// from its mapping of HTTP 403 rather than written a second time here -- which is what keeps one
 /// code from being worded two ways.</p>
-ClassMethod Denied(pEndpoint As %String, pFailedPair As %String, pVendorSC As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+ClassMethod Denied(pEndpoint As %String, pFailedPair As %String, pVendorSC As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pBody As %DynamicAbstractObject = "") As %Status [ Private ]
 {
     Set tDetail = {}
     Do tDetail.%Set("failedPair", pFailedPair)
     Set tMapSC = ##class(OcuPilot.Kernel.Fault).Outcome(403, pVendorSC, .tMapped, .tVendorText)
     If $$$ISERR(tMapSC) Do ..LogFault(pEndpoint _ " fault mapping failed", tMapSC)
     Set tSC = ..Refuse(403, tMapped.error, tMapped.code, tMapped.reason, .pHttpStatus, .pFault, tDetail)
-    Do ..LogFault(pEndpoint _ "'s backing query refused a caller holding no pair of the set naming " _ pFailedPair, pVendorSC, pFault.code)
+    Do ..LogFault(pEndpoint _ "'s backing query refused a caller holding no pair of the set naming " _ pFailedPair, ..LoggedStatus(pVendorSC, pBody), pFault.code)
     Quit tSC
 }
 
@@ -2013,10 +2273,22 @@ ClassMethod Denied(pEndpoint As %String, pFailedPair As %String, pVendorSC As %S
 /// comma-separated <code>&lt;endpoint&gt;:&lt;vendor code&gt;:&lt;property&gt;=&lt;violation code&gt;</code>
 /// entries (AD-39). Such an error's first parameter is <code>&lt;object&gt;.&lt;property&gt;</code>,
 /// which <method>OcuPilot.Api.Error.ViolationsFromVendor</method> does not read as a body field.</p>
-/// <p><code>Device.Standard:644:OpenParameters</code> is the one entry: <code>Config.Devices</code>
-/// parses a device's open parameters when it saves one and refuses what it cannot parse with error
-/// 644, which the endpoint answers at 500 (read on this build).</p>
-Parameter PROPERTYFAULTS = "Device.Standard:644:OpenParameters=DEVICE.OPENPARAMETERS.SHAPE";
+/// <p><code>Device.Standard:644:OpenParameters</code>: <code>Config.Devices</code> parses a device's
+/// open parameters when it saves one and refuses what it cannot parse with error 644, which the
+/// endpoint answers at 500 (read on this build).</p>
+/// <p><b>An entry whose property is written <code>@&lt;field&gt;</code> names its field outright</b>
+/// and matches the vendor code alone, for an error whose parameter is not a property: the three
+/// <code>Security.SSLConfig</code> entries (Story 9.5, measured on <code>ocupilot-ci</code>). Error
+/// 726 carries no parameter; 746's names the unknown cipher suite; 732's names the private key
+/// file's path, which is logged and never carried.</p>
+/// <p>The <code>Task.CRUD</code> entries (Story 9.7) are the task save's own refusals, each an
+/// <code>@</code> entry because the vendor names no property: 7402, 7405 and 7406 on
+/// <code>RunAsUser</code>, 7404 on <code>DailyIncrement</code>, 7408 on <code>DailyEndTime</code>,
+/// 7409 on <code>EndDate</code>, 7410, 7426 and 7428 on <code>TimePeriodDay</code>, 7411 and 7412 on
+/// <code>OutputFilename</code>, 7413, 7414, 7433 and 7434 on <code>TaskClass</code>, 7427 and 7429 on
+/// <code>TimePeriodEvery</code>, 7430 on <code>DailyFrequencyTime</code>, 7431 on
+/// <code>RunAfterGUID</code> and 7432 on <code>StartDate</code>.</p>
+Parameter PROPERTYFAULTS = "Device.Standard:644:OpenParameters=DEVICE.OPENPARAMETERS.SHAPE,Security.SSLConfig:726:@CipherList=SSL.CIPHERLIST.EXPANDSEMPTY,Security.SSLConfig:746:@Ciphersuites=SSL.CIPHERSUITES.UNKNOWN,Security.SSLConfig:732:@PrivateKeyPassword=SSL.PRIVATEKEYPASSWORD.WRONG,Task.CRUD:7402:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7405:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7406:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7404:@DailyIncrement=TASK.DAILYINCREMENT.REFUSED,Task.CRUD:7408:@DailyEndTime=TASK.DAILYENDTIME.REFUSED,Task.CRUD:7409:@EndDate=TASK.ENDDATE.REFUSED,Task.CRUD:7410:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7426:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7428:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7411:@OutputFilename=TASK.OUTPUTFILENAME.REFUSED,Task.CRUD:7412:@OutputFilename=TASK.OUTPUTFILENAME.REFUSED,Task.CRUD:7413:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7414:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7433:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7434:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7427:@TimePeriodEvery=TASK.TIMEPERIODEVERY.REFUSED,Task.CRUD:7429:@TimePeriodEvery=TASK.TIMEPERIODEVERY.REFUSED,Task.CRUD:7430:@DailyFrequencyTime=TASK.DAILYFREQUENCYTIME.REFUSED,Task.CRUD:7431:@RunAfterGUID=TASK.RUNAFTERGUID.REFUSED,Task.CRUD:7432:@StartDate=TASK.STARTDATE.REFUSED";
 
 /// <p>Append to <var>pRows</var> one <code>{field, code, reason}</code> row per error in
 /// <var>pVendorSC</var> that <parameter>PROPERTYFAULTS</parameter> names for <var>pEndpoint</var>. The
@@ -2034,10 +2306,16 @@ ClassMethod PropertyViolations(pEndpoint As %String, pVendorSC As %Status, pRows
                 Set tKey = $Piece(tEntry, "=", 1)
                 If $Piece(tKey, ":", 1) '= pEndpoint Continue
                 If $Piece(tKey, ":", 2) '= $Get(tErrors(tI, "code")) Continue
-                If $Piece(tKey, ":", 3) '= tProperty Continue
+                Set tNamed = $Piece(tKey, ":", 3)
+                Set tField = tProperty
+                If $Extract(tNamed) = "@" {
+                    Set tField = $Extract(tNamed, 2, *)
+                } ElseIf tNamed '= tProperty {
+                    Continue
+                }
                 Set tCode = $Piece(tEntry, "=", 2)
                 Set tRow = {}
-                Do tRow.%Set("field", tProperty, "string")
+                Do tRow.%Set("field", tField, "string")
                 Do tRow.%Set("code", tCode, "string")
                 Do tRow.%Set("reason", ##class(OcuPilot.Api.Error).ReasonForViolation(tCode), "string")
                 Do pRows.%Push(tRow)

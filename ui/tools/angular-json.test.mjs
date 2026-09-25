@@ -350,12 +350,18 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // libraries (`marked`, `dompurify`, `lowlight`+`highlight.js`).
 //
 // The figure is re-based under the owner's standing policy on DW-1166: at each epic close the
-// warning is set about 5% above the measured initial total, and `maximumError`'s 1600kB is the
+// warning is set about 5% above the measured initial total, and `maximumError`'s 2000kB is the
 // hard stop. Story 8.5 set 1261kB against a measured 1,200,871 bytes (5.01% above), the X.509
 // form page, store and actions having added 26,053, and a tight figure keeps each raise a reviewed
 // diff rather than a silent drift. `build-output.test.mjs` measures
 // the actual emitted bytes against this figure; this file pins the figure itself, so a later
 // change to it is a reviewed diff here rather than a silent edit nothing else notices.
+//
+// Story 9.9 raised it to 1561kB, the measured 1,560,536-byte initial total rounded up to the next
+// kB, under the orchestrator's 2dca0322 ruling (between 1551kB and the 1580kB stop line); DW-1166's
+// re-base at epic close follows.
+// Story 9.10 raised it to 1577kB, the measured 1,576,569-byte initial total rounded up to the next
+// kB, under the same ruling and its spec gate (below the 1580kB stop line).
 //
 // Mutations (Rule 19):
 // - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "2MB") -> the
@@ -368,12 +374,12 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '1482kB', 'DW-1166, Story 12.5: 5% above the measured 1,410,736 bytes; a change to this figure must be a reviewed diff, not a silent edit');
-  assert.equal(budget.maximumError, '1600kB');
+  assert.equal(budget.maximumWarning, '1745kB', 'DW-1166, Epic 12 integrate-forward of Epic 9: 5% above the measured 1,661,098 bytes; a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumError, '2000kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and
   // an MB is 1000 kB. The error budget moved from `1MB` to `1600kB` when Epic 4 and Epic 6's
-  // clients merged, so the parser reads either unit rather than one each.
+  // clients merged, and to `2000kB` for Release 1 by the owner's decision on DW-1166, so the parser reads either unit rather than one each.
   const parseSize = (value) => {
     const text = String(value);
     if (text.endsWith('MB')) return Number(text.replace(/MB$/, '')) * 1000 * 1000;

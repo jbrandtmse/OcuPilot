@@ -154,7 +154,7 @@ describe('the server description editor', () => {
     );
     expect(labels).toEqual([
       STRINGS.oauthServerFieldIssuer,
-      STRINGS.oauthServerFieldSsl,
+      STRINGS.sslFormLabel,
       STRINGS.oauthServerFieldToken,
       STRINGS.oauthTabServer,
       STRINGS.oauthServerFieldAuthorization,
@@ -169,7 +169,7 @@ describe('the server description editor', () => {
     const required = [...host.querySelectorAll('.ocu-field-label-required')].map((label) => label.textContent?.trim());
     expect(required).toEqual([
       STRINGS.oauthServerFieldIssuer,
-      STRINGS.oauthServerFieldSsl,
+      STRINGS.sslFormLabel,
       STRINGS.oauthServerFieldAuthorization,
       STRINGS.oauthServerFieldTokenEndpoint,
     ]);

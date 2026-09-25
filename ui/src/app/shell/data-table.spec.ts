@@ -257,6 +257,20 @@ describe('the data table', () => {
     expect(secretLink.getAttribute('href')).toBe('/security/wallet/secrets/edit/%252Fcsp%252Fapp00?ns=HSCUSTOM');
   });
 
+  it('Story 9.8: a list that pairs both a detail screen and an editor links each name cell at the detail screen', async () => {
+    // Task schedule pairs Task details and, since Edit task reads the id, the task form's id route
+    // too; the name cell keeps opening the details, which is where Edit is reached from.
+    //
+    // Mutation (Rule 19): drop the detail-first term from the `linkTarget` chain in `data-table.ts`
+    // -> this goes red, reading the editor's route instead.
+    const wired = await wire(tableDeclaration({ route: 'tasks/schedule' }), ok(rows(2)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const link = wired.host().querySelector('[aria-rowindex="2"] [role="gridcell"] a') as HTMLAnchorElement;
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe('/tasks/schedule/details/%252Fcsp%252Fapp00?ns=HSCUSTOM');
+  });
+
   const CLASSIC_HREF = '/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Client.Configuration.zen';
   const rowLinked = () =>
     tableDeclaration({
@@ -608,6 +622,32 @@ describe('the data table', () => {
     entry.click();
     await settle(wired.fixture);
     expect(runs).toBe(0);
+  });
+
+  it("Story 9.3: a system-resource entry reads the selected row's own AllowDelete", async () => {
+    // Mutation (Rule 19): drop the row from `menuItems`' call -> the not-deletable entry is offered, red.
+    const base = tableDeclaration();
+    const declaration = tableDeclaration({
+      rowActions: [{ id: 'delete', selfProtection: 'system-resource' }],
+      read: base.read === null ? null : { ...base.read, fields: [...base.read.fields, 'AllowDelete'] },
+    });
+    const listed = [
+      { Name: 'alpha', NameSpace: 'USER', Count: 0, Enabled: true, Note: 'n', AllowDelete: false },
+      { Name: 'beta', NameSpace: 'USER', Count: 1, Enabled: true, Note: 'n', AllowDelete: true },
+    ];
+    const wired = await wire(declaration, ok(listed), ['delete']);
+    wired.actions.register(declaration.descriptor, 'delete', () => undefined);
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    (wired.host().querySelector('[aria-rowindex="2"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const refused = wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    expect(refused.querySelector('.ocu-data-table-menu-reason')?.textContent?.trim()).toBe(STRINGS.resourceRefusalSystem);
+    expect(refused.getAttribute('aria-disabled')).toBe('true');
+    (wired.host().querySelector('[aria-rowindex="3"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const offered = wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    expect(offered.hasAttribute('aria-disabled')).toBe(false);
   });
 
   it('a click selects its row and clears its changed mark; a click on the name link navigates and selects nothing', async () => {

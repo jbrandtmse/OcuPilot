@@ -530,14 +530,32 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // labels, its Load from file button and two helpers, and the proposal card's optional mark -- and
   // take the table past 600.
   //
+  // Story 9.1 moves the bound to 800 under the same protocol: its four rows publish nineteen
+  // literals -- the sign-in refusal, the user editor's ten labels and empty state, the tab
+  // error names and five suggested-prompt literals -- and take the table past 700, with the rest of
+  // Epic 9's editors still to land.
+  //
+  // Story 9.5 moves the bound to 900 under the same protocol: its ten rows publish fifty-seven
+  // literals -- the SSL/TLS editor's title, tabs, labels and select words, its captions, effect,
+  // refusal, Test connection panel and prompts, three delete consequences and the list-less absent
+  // sentence -- and take the table past 800.
+  //
   // Story 11.10 moves the bound to 750 under the same protocol: its one row publishes one literal,
   // "Jump to latest", and takes the table to 701.
   //
   // Story 12.1 moves the bound to 800 under the same protocol: its one row's two literals take the
   // table past 700, with Epic 12's OAuth editors still to publish theirs.
+  //
+  // Story 9.9 moves the bound to 1000 under the same protocol: its six rows publish twenty-nine
+  // literals -- the two reduced forms' titles, fields, list controls and captions, their bare and
+  // absent sentences, the serving-service refusal, two effects and six prompts -- and take the
+  // table past 900.
+  //
+  // Epic 12's integration of Epic 9 moves the bound to 1100 under the same protocol: Stories
+  // 12.1-12.5's rows and Epic 9's together take the table past 1000.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 800,
-    `expected between 150 and 800 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 1100,
+    `expected between 150 and 1100 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

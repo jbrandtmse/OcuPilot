@@ -42,6 +42,7 @@ import {
   rowTargetResolutionProblem,
   sideBarPositionProblem,
   tabGroupProblem,
+  suggestedPromptsProblem,
   tabProblem,
 } from './screen-mirror.mjs';
 import { loadStrings } from './strings.mjs';
@@ -187,6 +188,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['resource', 'foldcase'],
     ['audit-event', 'foldcase'],
     ['audit-user-event', 'foldcase'],
+    ['service', 'foldcase'],
+    ['ldap-configuration', 'foldcase'],
   ]);
   assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
@@ -610,6 +613,41 @@ test('readProblem returns every source-type, forEach, query and parts sentence O
     if (testCase.expected !== null) refusals += 1;
   }
   assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
+});
+
+// Story 11.3's contract (Story 9.1): every case in `OcuPilot.Test.PromptCorpus` gets its exact sentence
+// or `null` from `suggestedPromptsProblem`, the shipped descriptors pass, the refusal reaches the
+// generator, and each prompt's two keys are read by the string-key check.
+//
+// Mutation (Rule 19): lower `SUGGESTED_PROMPTS_MIN` to 2 -> the two-prompt case goes red. Drop the
+// `suggestedPromptsProblem` call from `buildMirror` -> the generator assertion goes red. Drop the
+// prompt keys from `declaredStringKeys` -> the key assertion goes red.
+test('suggestedPromptsProblem returns every sentence OcuPilot.Test.PromptCorpus declares', () => {
+  const corpus = testCorpus(['Test', 'PromptCorpus.cls'], 'Cases');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    assert.equal(suggestedPromptsProblem(testCase.declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
+
+  const sources = readSources();
+  for (const screen of sources.screens) {
+    assert.equal(suggestedPromptsProblem(screen.declaration), null, `${screen.className}'s prompts pass`);
+  }
+  const userForm = sources.screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.UserForm');
+  assert.ok(userForm !== undefined, 'the User form is declared');
+  assert.equal(userForm.declaration.suggestedPrompts.length, 3, 'with three prompts');
+  const keys = declaredStringKeys(userForm.declaration);
+  for (const prompt of userForm.declaration.suggestedPrompts) {
+    assert.ok(keys.includes(prompt.groupKey) && keys.includes(prompt.textKey), `${prompt.textKey} and its group are read by the key check`);
+  }
+  const hostile = structuredClone(userForm.declaration);
+  hostile.suggestedPrompts = hostile.suggestedPrompts.slice(0, 2);
+  assert.throws(
+    () => buildMirror({ ...sources, screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }] }),
+    /suggestedPrompts declares 2/
+  );
 });
 
 // Story 6.4, AD-5: every case in `OcuPilot.Test.TabCorpus` gets its exact sentence or `null` from

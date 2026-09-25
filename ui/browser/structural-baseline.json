@@ -1783,6 +1783,105 @@
       "dw": "DW-1584"
     },
     {
+      "key": "security/ssl/edit|overflow|1280|app-panel-resize-handle>div.ocu-panel-resize-handle[role=separator]",
+      "route": "security/ssl/edit",
+      "invariant": "overflow",
+      "context": "1280",
+      "element": "app-panel-resize-handle>div.ocu-panel-resize-handle[role=separator]",
+      "count": 1,
+      "measured": "4px past its containing block (app-panel>aside.ocu-panel)",
+      "tag": null,
+      "dw": "DW-1583"
+    },
+    {
+      "key": "security/ssl/edit|overflow|720|app-panel-resize-handle>div.ocu-panel-resize-handle.ocu-panel-resize-handle-at-stop[role=separator]",
+      "route": "security/ssl/edit",
+      "invariant": "overflow",
+      "context": "720",
+      "element": "app-panel-resize-handle>div.ocu-panel-resize-handle.ocu-panel-resize-handle-at-stop[role=separator]",
+      "count": 1,
+      "measured": "4px past its containing block (app-panel>aside.ocu-panel)",
+      "tag": null,
+      "dw": "DW-1583"
+    },
+    {
+      "key": "security/ssl/edit|overflow|720|app-status-bar>span.ocu-status-bar-connection[role=status]",
+      "route": "security/ssl/edit",
+      "invariant": "overflow",
+      "context": "720",
+      "element": "app-status-bar>span.ocu-status-bar-connection[role=status]",
+      "count": 1,
+      "measured": "28px past its containing block (app-status-bar>div.ocu-status-bar-group)",
+      "tag": null,
+      "dw": "DW-1584"
+    },
+    {
+      "key": "permissions/services/edit|overflow|1280|app-panel-resize-handle>div.ocu-panel-resize-handle[role=separator]",
+      "route": "permissions/services/edit",
+      "invariant": "overflow",
+      "context": "1280",
+      "element": "app-panel-resize-handle>div.ocu-panel-resize-handle[role=separator]",
+      "count": 1,
+      "measured": "4px past its containing block (app-panel>aside.ocu-panel)",
+      "tag": null,
+      "dw": "DW-1583"
+    },
+    {
+      "key": "permissions/services/edit|overflow|720|app-panel-resize-handle>div.ocu-panel-resize-handle.ocu-panel-resize-handle-at-stop[role=separator]",
+      "route": "permissions/services/edit",
+      "invariant": "overflow",
+      "context": "720",
+      "element": "app-panel-resize-handle>div.ocu-panel-resize-handle.ocu-panel-resize-handle-at-stop[role=separator]",
+      "count": 1,
+      "measured": "4px past its containing block (app-panel>aside.ocu-panel)",
+      "tag": null,
+      "dw": "DW-1583"
+    },
+    {
+      "key": "permissions/services/edit|overflow|720|app-status-bar>span.ocu-status-bar-connection[role=status]",
+      "route": "permissions/services/edit",
+      "invariant": "overflow",
+      "context": "720",
+      "element": "app-status-bar>span.ocu-status-bar-connection[role=status]",
+      "count": 1,
+      "measured": "28px past its containing block (app-status-bar>div.ocu-status-bar-group)",
+      "tag": null,
+      "dw": "DW-1584"
+    },
+    {
+      "key": "security/ldap/edit|overflow|1280|app-panel-resize-handle>div.ocu-panel-resize-handle[role=separator]",
+      "route": "security/ldap/edit",
+      "invariant": "overflow",
+      "context": "1280",
+      "element": "app-panel-resize-handle>div.ocu-panel-resize-handle[role=separator]",
+      "count": 1,
+      "measured": "4px past its containing block (app-panel>aside.ocu-panel)",
+      "tag": null,
+      "dw": "DW-1583"
+    },
+    {
+      "key": "security/ldap/edit|overflow|720|app-panel-resize-handle>div.ocu-panel-resize-handle.ocu-panel-resize-handle-at-stop[role=separator]",
+      "route": "security/ldap/edit",
+      "invariant": "overflow",
+      "context": "720",
+      "element": "app-panel-resize-handle>div.ocu-panel-resize-handle.ocu-panel-resize-handle-at-stop[role=separator]",
+      "count": 1,
+      "measured": "4px past its containing block (app-panel>aside.ocu-panel)",
+      "tag": null,
+      "dw": "DW-1583"
+    },
+    {
+      "key": "security/ldap/edit|overflow|720|app-status-bar>span.ocu-status-bar-connection[role=status]",
+      "route": "security/ldap/edit",
+      "invariant": "overflow",
+      "context": "720",
+      "element": "app-status-bar>span.ocu-status-bar-connection[role=status]",
+      "count": 1,
+      "measured": "28px past its containing block (app-status-bar>div.ocu-status-bar-group)",
+      "tag": null,
+      "dw": "DW-1584"
+    },
+    {
       "key": "security/x509|overflow|1280|app-panel-resize-handle>div.ocu-panel-resize-handle[role=separator]",
       "route": "security/x509",
       "invariant": "overflow",
@@ -1966,6 +2065,39 @@
       "element": "app-status-bar>span.ocu-status-bar-segment.ocu-status-bar-stamp",
       "count": 1,
       "measured": "6px past its containing block (app-status-bar>div.ocu-status-bar-group)",
+      "tag": null,
+      "dw": "DW-1584"
+    },
+    {
+      "key": "tasks/schedule/edit|overflow|1280|app-panel-resize-handle>div.ocu-panel-resize-handle[role=separator]",
+      "route": "tasks/schedule/edit",
+      "invariant": "overflow",
+      "context": "1280",
+      "element": "app-panel-resize-handle>div.ocu-panel-resize-handle[role=separator]",
+      "count": 1,
+      "measured": "4px past its containing block (app-panel>aside.ocu-panel)",
+      "tag": null,
+      "dw": "DW-1583"
+    },
+    {
+      "key": "tasks/schedule/edit|overflow|720|app-panel-resize-handle>div.ocu-panel-resize-handle.ocu-panel-resize-handle-at-stop[role=separator]",
+      "route": "tasks/schedule/edit",
+      "invariant": "overflow",
+      "context": "720",
+      "element": "app-panel-resize-handle>div.ocu-panel-resize-handle.ocu-panel-resize-handle-at-stop[role=separator]",
+      "count": 1,
+      "measured": "4px past its containing block (app-panel>aside.ocu-panel)",
+      "tag": null,
+      "dw": "DW-1583"
+    },
+    {
+      "key": "tasks/schedule/edit|overflow|720|app-status-bar>span.ocu-status-bar-connection[role=status]",
+      "route": "tasks/schedule/edit",
+      "invariant": "overflow",
+      "context": "720",
+      "element": "app-status-bar>span.ocu-status-bar-connection[role=status]",
+      "count": 1,
+      "measured": "28px past its containing block (app-status-bar>div.ocu-status-bar-group)",
       "tag": null,
       "dw": "DW-1584"
     },

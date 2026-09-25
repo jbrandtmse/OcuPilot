@@ -313,7 +313,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         ; AD-6: the target is read fresh, the stored arguments are merged over it again, and the
         ; digest is re-taken. A mismatch is terminal -- the row closes and Re-propose is the
         ; accommodation.
-        Set tPrintSC = ..FingerprintMatches(tTool, .pRow, .tMatches, .tEndpoint, .tIdParam, .tIdValue)
+        Set tPrintSC = ..FingerprintMatches(tTool, .pRow, .tMatches, .tEndpoint, .tIdParam, .tIdValue, .tFresh)
         If $$$ISERR(tPrintSC) {
             Set tSC = ..Internal("the proposal's target could not be re-read: " _ $System.Status.GetErrorText(tPrintSC), .pHttpStatus, .pCode)
             Quit
@@ -380,7 +380,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         ; screen action's are one call site. AD-52's port declaration, AD-51's request type and the
         ; tool's own port query (read off the STORED payload the fingerprint just compared) all
         ; resolve inside it.
-        Set tWriteSC = ##class(OcuPilot.Kernel.Proposal.Operation).ApplyAt(tToolClass, ..PortClassOf(tToolClass), tEndpoint, tIdParam, tIdValue, $Get(pRow("payload")), tBody, .tWritten, .tWriteHttp, .tWriteFault)
+        Set tWriteSC = ##class(OcuPilot.Kernel.Proposal.Operation).ApplyAt(tToolClass, ..PortClassOf(tToolClass), tEndpoint, tIdParam, tIdValue, $Get(pRow("payload")), tBody, .tWritten, .tWriteHttp, .tWriteFault, $Get(tFresh), .tApplied)
         If $$$ISERR(tWriteSC) {
             ; The claim has committed and the token is spent: the proposal stays confirmed and the
             ; port's own normalized envelope is what the caller is answered with. There is no
@@ -393,16 +393,23 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
             ; the same detail the other two closing refusals carry. Without it a card would fall
             ; back to the state its last poll saw and offer Confirm again on a spent token.
             Do ..ClosedDetail(pProposalId, .pDetail)
-            ; The write did not happen, so no marker is emitted and the row makes no claim about
-            ; marking. The row stops being `pending`, which is what separates "it failed" from
-            ; "nobody can account for it".
-            Do $ClassMethod(..LedgerClass(), "FinalizeConfirmedWrite", tLedgerKey, "error", pCode, $Get(pRow("targetRef")), tFieldNames, tPairs, $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDNONE"))
+            ; The row stops being `pending`, which is what separates "it failed" from "nobody can
+            ; account for it". A write that did not happen emits no marker and the row makes no
+            ; claim about marking. A write that landed before its follow-up failed (AD-56 (i)'s
+            ; flag re-apply) is still an agent write, so it is marked (AD-15).
+            Set tMarking = $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDNONE")
+            If $Get(tApplied) {
+                Set tMarkSC = $ClassMethod(..EventClass(), "RecordAgentWrite", pProposalId, $Get(pRow("toolName")), $Get(pRow("targetRef")), pUser, tWrittenAt, tFieldNames, .tEmitted)
+                Set tMarking = $Parameter("OcuPilot.Kernel.State.Ledger", $Select($$$ISOK(tMarkSC): "MARKEDYES", 1: "MARKEDNO"))
+                If $Get(tEmitted, 0) Do $ClassMethod(..EventClass(), "RecordMarking", $$$ISOK(tMarkSC))
+            }
+            Do $ClassMethod(..LedgerClass(), "FinalizeConfirmedWrite", tLedgerKey, "error", pCode, $Get(pRow("targetRef")), tFieldNames, tPairs, tMarking)
             Set tSC = tWriteSC
             Quit
         }
 
-        ; AD-15. The write has succeeded; this is the one place a marker is emitted, so a write
-        ; made any other way emits none. The return value is checked here because
+        ; AD-15. The write has succeeded; a marker is emitted here and on the applied arm above,
+        ; so a write made any other way emits none. The return value is checked here because
         ; $System.Security.Audit answers 0 and drops the event when its triple is unregistered,
         ; with no error and no log line -- and the marker never fails the write and never
         ; propagates: tSC is untouched on either arm.
@@ -419,7 +426,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         ; per-write failure belongs.
         If $Get(tEmitted, 0) Do $ClassMethod(..EventClass(), "RecordMarking", tMarked)
 
-        Set tSC = ..Answer(pProposalId, .pResult, .pHttpStatus, .pCode, $Select(tMarked: 1, 1: 0), ..ToolChangeAction(tToolClass))
+        Set tSC = ..Answer(pProposalId, .pResult, .pHttpStatus, .pCode, $Select(tMarked: 1, 1: 0), ..ToolChangeAction(tToolClass), ..ToolCreatedId(tToolClass, $Get(tWritten)))
     } Catch ex {
         Set pResult = ""
         Set tSC = ..Internal("the confirm transition failed: " _ ex.DisplayString(), .pHttpStatus, .pCode)
@@ -565,9 +572,10 @@ ClassMethod DefinitionMoved(pDefinitionId As %String, pStoredVersion As %String,
 /// <method>OcuPilot.Test.Prohibited.TestNoWriteToolAdmitsAnAlwaysProhibitedField</method> asserts
 /// that no tool excludes a field it can set and declares no secret outside the prohibited set's
 /// reviewed few -- and that assertion is what holds it, not this comparison.</p>
-ClassMethod FingerprintMatches(pTool As %DynamicObject, ByRef pRow, Output pMatches As %Boolean, Output pEndpoint As %String, Output pIdParam As %String, Output pIdValue As %String) As %Status [ Private ]
+ClassMethod FingerprintMatches(pTool As %DynamicObject, ByRef pRow, Output pMatches As %Boolean, Output pEndpoint As %String, Output pIdParam As %String, Output pIdValue As %String, Output pFresh As %DynamicObject) As %Status [ Private ]
 {
     Set pMatches = 0
+    Set pFresh = ""
     Set pEndpoint = ""
     Set pIdParam = ""
     Set pIdValue = ""
@@ -582,6 +590,12 @@ ClassMethod FingerprintMatches(pTool As %DynamicObject, ByRef pRow, Output pMatc
         Set tSC = ##class(OcuPilot.Kernel.EntityRef).Parse($Get(pRow("targetRef")), .tType, .tScope, .tId)
         If $$$ISERR(tSC) Quit
         Set pIdValue = tId
+        ; AD-54: a create names its target as the caller typed it, so the vendor stores that
+        ; spelling. The reference, the lock and the sibling cancel stay canonical (AD-13).
+        If ##class(OcuPilot.Kernel.Proposal.Mint).CreatesOf(tClass) {
+            Set tTyped = ..ParsedObject($Get(pRow("arguments"))).%Get(tIdArgument)
+            If (tTyped '= "") && '$IsObject(tTyped) && (##class(OcuPilot.Kernel.EntityRef).NormalizedId(tType, tTyped) = ##class(OcuPilot.Kernel.EntityRef).NormalizedId(tType, tId)) Set pIdValue = tTyped
+        }
         If (pEndpoint = "") || (pIdParam = "") || (pIdValue = "") {
             Set tSC = $$$ERROR($$$GeneralError, "the proposal's target could not be addressed")
             Quit
@@ -611,8 +625,10 @@ ClassMethod FingerprintMatches(pTool As %DynamicObject, ByRef pRow, Output pMatc
             Quit
         }
         If '$IsObject(tFresh) || 'tFresh.%IsA("%Library.DynamicObject") Quit
+        Set pFresh = tFresh
         Set tArgs = ..ParsedObject($Get(pRow("arguments")))
-        Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Merge(tFresh, tArgs, tIdArgument, tSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
+        ; The tool's own merge, the one the mint took the stored digest over.
+        Set tSC = $ClassMethod(tClass, "MergeUpdate", tFresh, tArgs, tIdArgument, tSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
         If $$$ISERR(tSC) Quit
         If tProblem '= "" Quit
         Set tExcludes = ""
@@ -683,6 +699,21 @@ ClassMethod ToolDerivedFields(pToolClass As %String, pBody As %DynamicObject) [ 
         ; body it then receives on its own terms rather than the confirm inventing a refusal here.
     }
 }
+
+/// <p>The id <var>pToolClass</var>'s confirmed write created
+/// (<method>OcuPilot.Screen.Tool.Write.CreatedId</method>) from the port's answer
+/// <var>pWritten</var>, or <code>""</code> for a class that answers none or cannot be asked.</p>
+ClassMethod ToolCreatedId(pToolClass As %String, pWritten) As %String [ Private ]
+{
+    Set tId = ""
+    Try {
+        If pToolClass '= "" Set tId = $ClassMethod(pToolClass, "CreatedId", pWritten)
+    } Catch {
+        Set tId = ""
+    }
+    Quit tId
+}
+
 /// <p>The AD-14 action <var>pToolClass</var>'s confirmed write performs
 /// (<method>OcuPilot.Screen.Tool.Write.ChangeAction</method>), or <code>""</code> for a class that
 /// cannot be asked -- which leaves the answer carrying no action and the client publishing its own
@@ -715,9 +746,9 @@ ClassMethod HoldsPair(pUser As %String, pResource As %String, pPermission As %St
 
 /// <p>The proposal's closed state as the caller is answered it:
 /// <code>{proposalId, state, closedReason, confirmedAt}</code>, plus <code>auditMarked</code> where
-/// a write was made, read back from the row so the answer and the wire cannot disagree. A row that is no longer there is answered as an internal
+/// a write was made, <code>action</code> and <code>createdId</code> where the tool answers them, read back from the row so the answer and the wire cannot disagree. A row that is no longer there is answered as an internal
 /// failure, never as a 200 carrying empty fields.</p>
-ClassMethod Answer(pProposalId As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String, pAuditMarked As %String = "", pAction As %String = "") As %Status [ Private ]
+ClassMethod Answer(pProposalId As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String, pAuditMarked As %String = "", pAction As %String = "", pCreatedId As %String = "") As %Status [ Private ]
 {
     Set pResult = ""
     Set tSC = $ClassMethod(..StoreClass(), "GuardedByKey", pProposalId, .tFound, .tValues)
@@ -737,6 +768,9 @@ ClassMethod Answer(pProposalId As %String, Output pResult As %DynamicObject, Out
     ; publishes what the instance says rather than inferring it from the shape of the diff: the
     ; vocabulary is the kernel's closed set, and a screen routes on it.
     If pAction '= "" Do pResult.%Set("action", pAction, "string")
+    ; AD-14: the id the instance allocated for a created target whose proposal names it by another
+    ; key, present only where the tool answers one; the client publishes it as the event's id.
+    If pCreatedId '= "" Do pResult.%Set("createdId", pCreatedId, "string")
     Set pHttpStatus = 200
     Quit $$$OK
 }

@@ -13,8 +13,9 @@
  *    line at its field and in the grant dialog, and a Save applies it. Write on a database ticks and
  *    locks Read (DW-1514).
  * 4. **A valid Save creates the role** (AC5) with the grants sent, replaces the route with
- *    `permissions/roles/edit/<id>`, reads the saved sentence, and the Roles list then shows it. The
- *    change event itself is pinned in `role-create-form.store.spec.ts`.
+ *    `permissions/roles/edit/<id>` -- the role editor, reading the saved sentence and, after a hard
+ *    reload, the role -- and the Roles list then shows it. The change event itself is pinned in
+ *    `role-create-form.store.spec.ts`.
  * 5. **The Roles list offers Create** (AC1), and it opens this form.
  *
  * **It refuses the live container.** Every role it creates is named below and removed by that exact
@@ -385,6 +386,26 @@ test('AC5: a valid Save creates the role with the sent grants, replaces the rout
       path.toLowerCase().endsWith(`/permissions/roles/edit/${NAMES[0].toLowerCase()}`),
       `the URL names the role: ${path}`
     );
+    // Story 9.3: that URL is the role editor, which reads the role and opens showing "Saved".
+    // Mutation (Rule 19): drop `arriveSaved` from `onSave` and redeploy -> the editor's Saved leg goes red.
+    const editorHolds = (description) =>
+      page.waitForFunction(
+        (name, wanted) =>
+          document.querySelector('#ocu-role-edit-Name')?.value?.toLowerCase() === name.toLowerCase() &&
+          document.querySelector('#ocu-role-edit-Description')?.value === wanted,
+        { timeout: config.navigationTimeoutMs },
+        NAMES[0],
+        description
+      );
+    await editorHolds(PROBE_DESCRIPTION);
+    assert.equal(
+      await page.$eval('.ocu-form-bar-status', (node) => node.textContent.trim()),
+      STRINGS.formSaved,
+      'the role editor opens reading Saved'
+    );
+    await page.reload({ waitUntil: 'networkidle2' });
+    await leaveFirstLoginGate(page, config.navigationTimeoutMs, path);
+    await editorHolds(PROBE_DESCRIPTION);
 
     const stored = storedRole(NAMES[0]);
     assert.ok(stored !== null, 'the instance holds the role the form created');

@@ -11,12 +11,24 @@ import { rowKey } from '../core/table-model';
 import { stubAccountPreferences } from '../testing/account-preferences';
 import { Session } from '../core/session';
 import {
+  ADD_APPLICATION_ROLE,
+  ADD_GRANTED_ROLE,
+  ADD_MATCHING_ROLE,
   ADD_ROLE,
+  REMOVE_APPLICATION_ROLE,
+  REMOVE_GRANTED_ROLE,
+  REMOVE_MATCHING_ROLE,
+  REMOVE_RESOURCE_GRANT,
   REMOVE_ROLE,
   REQUIRE_PASSWORD_CHANGE,
+  RESOURCE_LIST,
+  ROLE_FORM_READ_PATH,
+  ROLE_LIST,
   SCREEN_ACTION_DESCRIPTORS,
   SET_PASSWORD,
+  SET_RESOURCE_GRANT,
   ScreenActionHandler,
+  roleHoldersLine,
 } from './screen-action-handler';
 
 /** The screen this handler serves first, read from the mirror rather than restated here. */
@@ -73,8 +85,11 @@ describe('the generic screen-action handler', () => {
     // red on every id; with it, no surface would draw a row action at all (DW-389).
     const { actions } = mount();
     expect(WEB_APPS.rowActions.length).toBeGreaterThan(0);
+    // The four role actions are the web application editor's, whose pickers supply their values,
+    // so no list surface draws them (DW-389).
+    const undrawn = [ADD_APPLICATION_ROLE, REMOVE_APPLICATION_ROLE, ADD_MATCHING_ROLE, REMOVE_MATCHING_ROLE];
     for (const action of WEB_APPS.rowActions) {
-      expect(actions.has(WEB_APPS.descriptor, action.id)).toBe(true);
+      expect(actions.has(WEB_APPS.descriptor, action.id)).toBe(!undrawn.includes(action.id));
     }
     expect(actions.has(WEB_APPS.descriptor, 'terminate')).toBe(false);
   });
@@ -351,9 +366,23 @@ describe('the Users list row actions (Story 7.2)', () => {
     ]);
   });
 
-  it('offers a remove of the row\u2019s own roles and an add of the Roles list\u2019s others, sending one role', async () => {
+  it('offers a remove of the row\u2019s own roles and an add of the form read\u2019s others, sending one role', async () => {
+    // Story 9.1 (DW-1523): the add's choices come from `GET /users/form`, each with the server's own
+    // privilege mark, which the dialog states the grant's consequence from.
+    // Mutation (Rule 19): drop the privileged marks from `openRole` -> the privileged assertion goes red.
     const { actions, handler, calls } = mountUsers([
-      { kind: 'ok', status: 200, body: { rows: [{ Name: '%SQL' }, { Name: '%Operator' }, { Name: '%developer' }, { Name: 'Probe' }] } },
+      {
+        kind: 'ok',
+        status: 200,
+        body: {
+          roles: [
+            { name: '%SQL', privileged: false },
+            { name: '%Operator', privileged: true },
+            { name: '%developer', privileged: false },
+            { name: 'Probe', privileged: false },
+          ],
+        },
+      },
       UPDATED,
     ]);
     actions.run(USERS.descriptor, REMOVE_ROLE);
@@ -364,9 +393,10 @@ describe('the Users list row actions (Story 7.2)', () => {
 
     actions.run(USERS.descriptor, ADD_ROLE);
     await settle();
-    expect(calls[0].path).toBe('/api/ocupilot/screens/permissions.roles/read?maxRows=1000');
+    expect(calls[0].path).toBe('/api/ocupilot/users/form');
     // Held roles are left out, case-insensitively; a privileged role is offered and the instance decides.
     expect(handler.pending()?.options).toEqual(['%Operator', 'Probe']);
+    expect(handler.pending()?.privileged).toEqual(['%Operator']);
     handler.submitRole('Probe');
     await settle();
     expect(JSON.parse(calls[1].body)).toEqual({ action: ADD_ROLE, id: 'probe', values: { Role: 'Probe' } });
@@ -744,5 +774,195 @@ describe('the System events and User events lists (Story 7.11)', () => {
     expect(await handler.sendFor(SYSTEM, 'enable', SQL)).toBe(true);
     expect(JSON.parse(calls[0].body)).toEqual({ action: 'enable', id: SQL });
     expect(events.map((event) => `${event.type}:${event.action}`)).toEqual(['audit-event:updated']);
+  });
+});
+
+/**
+ * Story 9.1 (DW-1501): an editor starts the Users list's own actions on the account it shows,
+ * through the one handler and the one route, with a sink of its own for the refusal and the applied
+ * write -- the list's store is not touched.
+ */
+describe('startFor, the editor half of the Users list actions', () => {
+  function sink() {
+    const seen = { refusals: [] as string[], applied: [] as string[] };
+    return {
+      seen,
+      sink: { setRefusal: (reason: string) => seen.refusals.push(reason), applied: (actionId: string) => seen.applied.push(actionId) },
+    };
+  }
+
+  it('sends a role an editor has already chosen at once, reporting to the editor rather than the list', async () => {
+    const { handler, calls, store } = mountUsers([UPDATED]);
+    const { seen, sink: editorSink } = sink();
+    handler.startFor(USERS.descriptor, REMOVE_ROLE, 'probe', { Roles: ['%SQL'] }, editorSink, '%SQL');
+    await settle();
+    expect(handler.pending()).toBeNull();
+    expect(JSON.parse(calls[0].body)).toEqual({ action: REMOVE_ROLE, id: 'probe', values: { Role: '%SQL' } });
+    expect(seen.applied).toEqual([REMOVE_ROLE]);
+    expect(store.refusal()).toBe('');
+  });
+
+  it('opens the list\u2019s own dialogs for the editor, and a refusal reaches the editor\u2019s sink', async () => {
+    // Mutation (Rule 19): report to the list store in `send` whatever the sink -> the sink's
+    // refusal assertion goes red.
+    const refused = { kind: 'error', status: 403, code: 'PROHIBITED.SERVICEACCOUNTSIGNIN', reason: 'no sign-in change', detail: null } as JsonResult<unknown>;
+    const { handler } = mountUsers([refused]);
+    const { seen, sink: editorSink } = sink();
+    handler.startFor(USERS.descriptor, SET_PASSWORD, 'probe', { Roles: [] }, editorSink);
+    expect(handler.pending()?.kind).toBe('set-password');
+    expect(handler.pending()?.descriptor).toBe(USERS.descriptor);
+    await handler.submitPassword('Probe-password-1', false);
+    expect(seen.refusals).toEqual(['', 'no sign-in change']);
+    expect(seen.applied).toEqual([]);
+  });
+
+  it('draws a service account\u2019s Set password refused with the sign-in sentence before anything is sent', async () => {
+    // Mutation (Rule 19): drop the rule from UserList's set-password declaration -> the dialog opens.
+    const { handler, calls } = mountUsers([UPDATED]);
+    const { seen, sink: editorSink } = sink();
+    handler.startFor(USERS.descriptor, SET_PASSWORD, 'CSPSystem', null, editorSink);
+    expect(handler.pending()).toBeNull();
+    expect(seen.refusals).toEqual([STRINGS.userRefusalServiceAccountSignIn]);
+    expect(calls).toHaveLength(0);
+  });
+});
+
+/**
+ * Story 9.2: the web application editor starts the Web applications list's role actions with the
+ * values its pickers chose, sent at once through the one route; on OcuPilot's own applications the
+ * privilege-grant sentence is drawn and nothing is sent (AD-53, AD-56 (ii)).
+ */
+describe('startFor with values, the web application editor half of the role actions', () => {
+  it('sends the chosen values at once, reporting to the editor', async () => {
+    // Mutation (Rule 19): drop the `values` short-circuit from `startFor` -> nothing is sent.
+    const { handler, calls } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: { type: 'web-application', scope: 'instance', id: ORDINARY_ROW } } });
+    const seen = { refusals: [] as string[], applied: [] as string[] };
+    const editorSink = { setRefusal: (reason: string) => seen.refusals.push(reason), applied: (actionId: string) => seen.applied.push(actionId) };
+    handler.startFor(WEB_APPS.descriptor, ADD_MATCHING_ROLE, ORDINARY_ROW, null, editorSink, '', { MatchRole: '%Operator', Role: '%SQL' });
+    await settle();
+    expect(handler.pending()).toBeNull();
+    expect(JSON.parse(calls[0].body)).toEqual({ action: ADD_MATCHING_ROLE, id: ORDINARY_ROW, values: { MatchRole: '%Operator', Role: '%SQL' } });
+    expect(seen.applied).toEqual([ADD_MATCHING_ROLE]);
+  });
+
+  it('draws OcuPilot\u2019s own application refused with the privilege-grant sentence and sends nothing', async () => {
+    const { handler, calls } = mount();
+    const seen = { refusals: [] as string[] };
+    handler.startFor(WEB_APPS.descriptor, ADD_APPLICATION_ROLE, OWN_ROW, null, { setRefusal: (reason: string) => seen.refusals.push(reason) }, '', { Role: '%All' });
+    await settle();
+    expect(seen.refusals).toEqual([STRINGS.webAppPrivilegeGrantRefusal]);
+    expect(calls).toHaveLength(0);
+  });
+});
+
+/**
+ * Story 9.3: the Roles and Resources lists' Delete (DW-1513, DW-1528) and the role editor's value
+ * actions, through the one route.
+ */
+describe('the Roles and Resources lists\u2019 Delete (Story 9.3)', () => {
+  const ROLES_LIST = SCREENS.find((screen) => screen.descriptor === ROLE_LIST)!;
+  const RESOURCES_LIST = SCREENS.find((screen) => screen.descriptor === RESOURCE_LIST)!;
+
+  function mountWith(answers: readonly JsonResult<unknown>[], descriptor: string) {
+    const mounted = mount(undefined, descriptor);
+    const queue = [...answers];
+    const api = TestBed.inject(ApiService) as unknown as { requestJson: (path: string, init?: ApiRequestInit) => Promise<JsonResult<unknown>> };
+    api.requestJson = async (path: string, init: ApiRequestInit = {}) => {
+      mounted.calls.push({ path, method: init.method ?? 'GET', body: init.body ?? '' });
+      return (queue.shift() ?? { kind: 'ok', status: 200, body: {} }) as JsonResult<unknown>;
+    };
+    return mounted;
+  }
+
+  it('registers Delete on both lists and none of the role editor\u2019s value actions', () => {
+    // Mutation (Rule 19): drop the Roles list from `SCREEN_ACTION_DESCRIPTORS` -> the delete leg goes red.
+    const { actions } = mount(undefined, ROLE_LIST);
+    expect(actions.has(ROLE_LIST, 'delete')).toBe(true);
+    expect(actions.has(RESOURCE_LIST, 'delete')).toBe(true);
+    for (const id of [ADD_GRANTED_ROLE, REMOVE_GRANTED_ROLE, SET_RESOURCE_GRANT, REMOVE_RESOURCE_GRANT]) {
+      expect(actions.has(ROLE_LIST, id)).toBe(false);
+    }
+  });
+
+  it('states how many accounts hold the role, and opens without the line when the count cannot be read', async () => {
+    // Mutation (Rule 19): open the role delete without its holder read -> the advisory assertion goes red.
+    const { handler, calls, store } = mountWith([{ kind: 'ok', status: 200, body: { holders: 2 } }], ROLE_LIST);
+    handler.startFor(ROLE_LIST, 'delete', 'Probe', { Name: 'Probe' }, store);
+    await settle();
+    expect(calls[0].path).toBe(`${ROLE_FORM_READ_PATH}?name=Probe`);
+    expect(handler.pending()?.consequence).toBe(STRINGS.roleDeleteConsequence);
+    expect(handler.pending()?.advisory).toBe('2 users hold this role.');
+    handler.cancelPending();
+    expect(roleHoldersLine(1)).toBe(STRINGS.roleDeleteHoldersOne);
+    expect(roleHoldersLine(0)).toBe(STRINGS.roleDeleteHoldersNone);
+
+    const failed = mountWith([{ kind: 'error', status: 403, code: 'AUTH.NOPRIVILEGE', reason: 'no', detail: null } as JsonResult<unknown>], ROLE_LIST);
+    failed.handler.startFor(ROLE_LIST, 'delete', 'Probe', { Name: 'Probe' }, failed.store);
+    await settle();
+    expect(failed.handler.pending()?.kind).toBe('typed-name');
+    expect(failed.handler.pending()?.advisory).toBe('');
+    expect(ROLES_LIST.rowActions.find((action) => action.id === 'delete')?.selfProtection).toBe('system-role');
+  });
+
+  it('draws a predefined role and a system resource refused before anything is sent', async () => {
+    // Mutation (Rule 19): pass no row to `selfProtectionReason` in `startFor` -> the resource leg goes red.
+    const roles = mount(undefined, ROLE_LIST);
+    roles.handler.startFor(ROLE_LIST, 'delete', '%Developer', { Name: '%Developer' }, roles.store);
+    expect(roles.store.refusal()).toBe(STRINGS.roleRefusalSystem);
+    expect(roles.handler.pending()).toBeNull();
+    const resources = mount(undefined, RESOURCE_LIST);
+    resources.handler.startFor(RESOURCE_LIST, 'delete', '%DB_IRISSYS', { Name: '%DB_IRISSYS', AllowDelete: false }, resources.store);
+    expect(resources.store.refusal()).toBe(STRINGS.resourceRefusalSystem);
+    resources.handler.startFor(RESOURCE_LIST, 'delete', 'Probe', { Name: 'Probe', AllowDelete: true }, resources.store);
+    expect(resources.handler.pending()?.consequence).toBe(STRINGS.resourceDeleteConsequence);
+    expect(resources.calls).toHaveLength(0);
+    expect(RESOURCES_LIST.rowActions.find((action) => action.id === 'delete')?.selfProtection).toBe('system-resource');
+  });
+});
+
+/**
+ * Story 9.5 (DW-1541, DW-1556, FR-42): the X.509 credentials, Secrets and SSL/TLS configurations
+ * lists' Delete, each typed by its name, each with its own consequence, and OcuPilot's own provider
+ * configuration drawn refused before anything is sent.
+ */
+describe('the X.509, Secrets and SSL/TLS lists\u2019 Delete (Story 9.5)', () => {
+  const X509_LIST = 'OcuPilot.Screen.Descriptor.X509CredentialList';
+  const WALLET_LIST = 'OcuPilot.Screen.Descriptor.WalletSecretList';
+  const SSL_LIST = 'OcuPilot.Screen.Descriptor.SslConfigList';
+
+  it('registers Delete on the three lists, each opening the typed-name dialog with its own consequence', () => {
+    // Mutation (Rule 19): drop a list's entry from `DESTRUCTIVE_CONSEQUENCES` -> its consequence assertion goes red.
+    for (const [descriptor, target, consequence] of [
+      [X509_LIST, 'ProbeCredential', STRINGS.x509DeleteConsequence],
+      [WALLET_LIST, 'Probe.Secret', STRINGS.walletSecretDeleteConsequence],
+      [SSL_LIST, 'ProbeSsl', STRINGS.sslDeleteConsequence],
+    ] as const) {
+      const { actions, handler, store, calls } = mount(undefined, descriptor);
+      expect(actions.has(descriptor, 'delete')).toBe(true);
+      handler.startFor(descriptor, 'delete', target, descriptor === X509_LIST ? { Alias: target } : { Name: target }, store);
+      expect(handler.pending()?.kind).toBe('typed-name');
+      expect(handler.pending()?.name).toBe(target);
+      expect(handler.pending()?.consequence).toBe(consequence);
+      expect(calls).toHaveLength(0);
+    }
+  });
+
+  it('sends a confirmed Delete through the screen-action route, keyed by the name', async () => {
+    const { handler, store, calls } = mount({ kind: 'ok', status: 200, body: { action: 'deleted', target: { type: 'ssl-configuration', scope: 'instance', id: 'ProbeSsl' } } }, SSL_LIST);
+    handler.startFor(SSL_LIST, 'delete', 'ProbeSsl', { Name: 'ProbeSsl' }, store);
+    handler.confirmPending();
+    await settle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].path).toBe('/api/ocupilot/screens/security.ssl/action');
+    expect(JSON.parse(calls[0].body)).toMatchObject({ action: 'delete', id: 'ProbeSsl' });
+  });
+
+  it("draws OcuPilot's own provider configuration refused before anything is sent", () => {
+    // Mutation (Rule 19): declare no rule on the SSL list's delete -> the refusal assertion goes red.
+    const { handler, store, calls } = mount(undefined, SSL_LIST);
+    handler.startFor(SSL_LIST, 'delete', 'OcuPilotProvider', { Name: 'OcuPilotProvider' }, store);
+    expect(store.refusal()).toBe(STRINGS.sslRefusalOcuPilot);
+    expect(handler.pending()).toBeNull();
+    expect(calls).toHaveLength(0);
   });
 });

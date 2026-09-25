@@ -29,6 +29,9 @@ const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
 
 const {
   CONSEQUENCE_PRIVILEGED,
+  CONSEQUENCE_RUNSASOTHER,
+  CONSEQUENCE_SERVESOCUPILOT,
+  CONSEQUENCE_SERVICEUNAUTHENTICATED,
   CONSEQUENCE_UNAUTHENTICATED,
   CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED,
   COUNTDOWN_PLACEHOLDER,
@@ -198,6 +201,27 @@ test('the two privilege-grant consequence codes resolve to their published sente
   assert.equal(consequenceSentence(CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED), STRINGS.privilegedGrantEffectUnauthenticated);
 });
 
+// Story 9.7, AD-10: a task create that runs as another account is permitted, minted destructive
+// and named by the kernel's code; the card says what that means in the published sentence.
+//
+// Mutation (Rule 19): drop the RUNSASOTHER branch from `consequenceSentence` -> this goes red.
+test('a task that runs as another account resolves to its published sentence', () => {
+  assert.equal(CONSEQUENCE_RUNSASOTHER, 'TASK.RUNSASOTHER');
+  assert.equal(consequenceSentence(CONSEQUENCE_RUNSASOTHER), STRINGS.taskRunAsOtherEffect);
+});
+
+// Story 9.9, AD-10 as amended (ruling 2dca0322): a change to the addresses or methods of the
+// service OcuPilot is served through, and an unauthenticated bit on any other service, are
+// permitted, minted destructive and named by the kernel's codes; the card says what each means.
+//
+// Mutation (Rule 19): drop the SERVESOCUPILOT branch from `consequenceSentence` -> this goes red.
+test("a change to the service OcuPilot is served through resolves to its published sentence", () => {
+  assert.equal(CONSEQUENCE_SERVESOCUPILOT, 'SERVICE.SERVESOCUPILOT');
+  assert.equal(consequenceSentence(CONSEQUENCE_SERVESOCUPILOT), STRINGS.serviceEffectServesOcuPilot);
+  assert.equal(CONSEQUENCE_SERVICEUNAUTHENTICATED, 'SERVICE.UNAUTHENTICATED');
+  assert.equal(consequenceSentence(CONSEQUENCE_SERVICEUNAUTHENTICATED), STRINGS.serviceEffectUnauthenticated);
+});
+
 // AD-3, AD-35: a user create's diff carries one Password row the kernel composes with both values
 // empty, and the Users screen declares the name secret. The card reads the mask on both sides and
 // asks for it at confirm -- with the screen resolved the way the panel resolves it, by tool name.
@@ -220,6 +244,33 @@ test("a user create's composed Password row is masked on both sides and asked fo
   );
   assert.deepEqual(view.changed[1], { field: 'Password', before: MASKED_VALUE, after: MASKED_VALUE, removed: false });
   assert.deepEqual([...view.maskedFields], ['Password'], 'and the confirm asks for it');
+});
+
+// Story 9.7, AD-21's third exception: a task type's setting the type uses as a location is
+// permitted as its value, and the card names that location so the user sees where the task will
+// read or write -- the row is shown as it will be stored, never masked.
+//
+// Mutation (Rule 19): add `Settings.Directory` to the Task schedule's `secretArguments` in the mirror -> the
+// location row reads masked and this goes red.
+test("a task create's location-type setting is named on the card as the value the task will use", () => {
+  const screen = screenForToolName('tasks.schedule.create');
+  assert.ok(screen, 'the create tool resolves to its screen');
+  const view = toCardView(
+    parsedProposal({
+      target: { type: 'task', scope: 'instance', id: 'OcuP97Integrity' },
+      tool: 'tasks.schedule.create',
+      changed: [
+        { field: 'Name', before: '', after: 'OcuP97Integrity' },
+        { field: 'TaskClass', before: '', after: '%SYS.Task.IntegrityCheck' },
+        { field: 'Settings.Directory', before: '', after: '/durable/iris/mgr/' },
+      ],
+      unchangedCount: 31,
+    }),
+    'x',
+    screen.secretArguments
+  );
+  assert.deepEqual(view.changed[2], { field: 'Settings.Directory', before: '', after: '/durable/iris/mgr/', removed: false });
+  assert.deepEqual([...view.maskedFields], [], 'and nothing is asked for at confirm');
 });
 
 // AC1 (Story 5.10): the declaration is the write tool's own and reaches the card on the wire, so no

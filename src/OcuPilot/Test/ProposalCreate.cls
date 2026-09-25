@@ -376,6 +376,48 @@ Method TestApplicationRolesOnOcuPilotsOwnPathAreRefusedInsideTheTransition()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "and the vendor upsert is never reached")
 }
 
+/// <p>DW-1493, AD-54: a confirmed create names its target to the vendor as the caller typed it --
+/// a web application and a user alike -- while the proposal's reference stays canonical (AD-13),
+/// so the lock and the sibling cancel still cover every spelling.</p>
+/// <p>Mutation (Rule 19): drop the typed-name branch from
+/// <method>OcuPilot.Kernel.Proposal.Confirm.FingerprintMatches</method> -- both legs send the
+/// canonical spelling and go red.</p>
+Method TestAConfirmedCreateNamesItsTargetAsTyped()
+{
+    Set tTyped = "/csp/CaseProbe92/"
+    Set tArgs = ..Args()
+    Do tArgs.%Set("Name", tTyped, "string")
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmMissing()
+    Set tSC = ..Mint(tTyped, tArgs, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the web-application create is minted")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tProposal.%Get("target").%Get("id"), "/csp/caseprobe92", "under the canonical reference")
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmWrite(..#PRESENT)
+    Set tSC = ..Confirm(tProposal.%Get("proposalId"), .tHttp, .tCode)
+    Do $$$AssertStatusOK(tSC, "and its confirm is applied")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LastType(), $ClassMethod(..#TOOL, "WriteType"), "the last call is the write")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LastQuery($ClassMethod(..#TOOL, "IdParam")), tTyped, "which names the application as it was typed")
+
+    Set tUserTool = "OcuPilot.Screen.Tool.UserCreate"
+    Set tUser = "CaseProbe92"
+    Set tUserArgs = ##class(OcuPilot.Test.UserCreate).Args()
+    Do tUserArgs.%Set("Name", tUser, "string")
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmMissing()
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "a probe turn is seeded")
+    If $$$ISERR(tSC) Quit
+    Set tSC = $ClassMethod(..#MINT, "Mint", $Parameter(tUserTool, "DESCRIPTORCLASS"), $Parameter(tUserTool, "TOOLNAME"), $Username, "", tTurnKey, tUserArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, $ClassMethod(tUserTool, "Endpoint"), $ClassMethod(tUserTool, "IdParam"), tUser, $ClassMethod(tUserTool, "IdArgument"), $ClassMethod(tUserTool, "SettableFields"), tUserTool)
+    Do $$$AssertStatusOK(tSC, "the user create is minted: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tProposal.%Get("target").%Get("id"), "caseprobe92", "under the canonical reference")
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmWrite("{}")
+    Set tResult = ""
+    Set tSC = $ClassMethod(..#CONFIRM, "Confirm", tProposal.%Get("proposalId"), ##class(OcuPilot.Test.UserCreate).Secrets(), $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertStatusOK(tSC, "and its confirm is applied")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LastQuery($ClassMethod(tUserTool, "IdParam")), tUser, "naming the account as it was typed")
+}
+
 /// <p>The arguments a WSGI create proposes, so the derived path has something to derive from.</p>
 ClassMethod WsgiArgs() As %DynamicObject
 {

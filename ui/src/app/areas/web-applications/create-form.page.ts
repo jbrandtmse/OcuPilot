@@ -26,6 +26,7 @@ import {
   type AutheMethod,
   WebAppCreateForm,
 } from './create-form.store';
+import { WebAppEditor } from './web-app-editor.store';
 
 /** The list this form is reached from, which Cancel and the leave confirmation return to. */
 const LIST_ROUTE = 'web-applications/list';
@@ -418,6 +419,7 @@ interface FieldView {
 })
 export class WebAppCreateFormPage {
   private readonly store = inject(WebAppCreateForm);
+  private readonly editor = inject(WebAppEditor);
   private readonly formDirty = inject(FormDirty);
   private readonly router = inject(Router);
   private readonly navigation = inject(NavigationService);
@@ -445,10 +447,7 @@ export class WebAppCreateFormPage {
     inject(DestroyRef).onDestroy(() => {
       stopStore();
       stopDirty();
-      // Not torn down while the store is being carried across the create's own route
-      // replacement: that navigation destroys this component and builds the editor over the same
-      // application, and a reset would take the saved confirmation with it.
-      if (!this.store.retaining()) this.store.reset();
+      this.store.reset();
     });
   }
 
@@ -712,13 +711,13 @@ export class WebAppCreateFormPage {
       this.afterRefusal();
       return;
     }
-    // A create replaces the route with the new application's editor, so the address bar names
-    // the entity and Back goes to the list rather than to the form that made it. The buffer on
-    // screen is carried across that one navigation, not re-read: nothing here reads the `:id`,
-    // so a cold load of that URL draws an empty create form until Epic 9's editor reads it.
-    if (this.store.createdId() !== '') {
-      this.store.retainAcrossRouteReplacement();
-      void this.router.navigateByUrl(this.editorUrl(this.store.createdId()), { replaceUrl: true });
+    // A create replaces the route with the new application's URL, so the address bar names the
+    // entity and Back goes to the list. That URL is the web application editor (Story 9.2), which
+    // reads the application and opens showing "Saved"; this form's own state is left behind with it.
+    const created = this.store.createdId();
+    if (created !== '') {
+      this.editor.arriveSaved(created);
+      void this.router.navigateByUrl(this.editorUrl(created), { replaceUrl: true });
     }
   }
 

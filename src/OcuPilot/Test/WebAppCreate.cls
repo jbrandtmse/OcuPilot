@@ -98,9 +98,11 @@ Method TestTheToolAdvertisesTheReviewedCreateFieldsAndApplicationRoles()
     Do $$$AssertEquals(tSchema.%Get("properties").%GetTypeOf("Path"), "unassigned", "and neither does Path, which the server derives")
     Do $$$AssertEquals($ListFind(tSettable, "Path"), 0, "and which no caller may set")
 
-    ; AD-54's one asymmetry, asserted on this tool rather than only on the kernel's two lists.
+    ; AD-21's asymmetry, asserted on this tool rather than only on the kernel's two lists: a create
+    ; names one directory under the fixed root, and a change names no location at all.
     Do $$$AssertTrue($ListFind(tSettable, "DispatchClass") > 0, "a create may name the class that answers at the address")
-    Do $$$AssertEquals($ListFind($ClassMethod("OcuPilot.Screen.Tool.WebAppUpdate", "SettableFields"), "DispatchClass"), 0, "while a change may not repoint a serving application at another one")
+    Do $$$AssertTrue($ListFind(tSettable, "WSGIAppLocation") > 0, "and one directory name for a Python application")
+    Do $$$AssertEquals($ListFind($ClassMethod("OcuPilot.Screen.Tool.WebAppUpdate", "SettableFields"), "WSGIAppLocation"), 0, "while a change names no location")
 }
 
 /// <p>AD-55: the screen's Save and the agent's confirm resolve one tool class, so the same

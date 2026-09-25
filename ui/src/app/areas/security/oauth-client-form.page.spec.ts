@@ -162,7 +162,7 @@ describe('the client configuration editor', () => {
     expect(required).toEqual([
       STRINGS.oauthClientFieldName,
       STRINGS.oauthColumnClientType,
-      STRINGS.oauthServerFieldSsl,
+      STRINGS.sslFormLabel,
       STRINGS.oauthServerFormLabel,
       STRINGS.oauthClientFieldRedirect,
     ]);

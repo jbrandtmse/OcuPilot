@@ -1,7 +1,10 @@
-/// <p>The Web application form: one web application, created here and edited here from Epic 9,
-/// rendered by the <code>form-page</code> archetype (AD-5). It is the first <code>form-page</code>
-/// over an object that lives on the instance rather than in OcuPilot's own state, so it is the
-/// first screen whose Save passes AD-10's prohibited set (AD-55).</p>
+/// <p>The Web application form: one web application, created at this route and edited at
+/// <code>web-applications/list/edit/&lt;id&gt;</code>, rendered by the <code>form-page</code>
+/// archetype (AD-5). The create's Save and the agent's confirmed <code>webapp.list.create</code> are
+/// two callers of one tool, and the editor's Save and <code>webapp.list.update</code> two callers of
+/// another (AD-55). The editor's role actions are the Web applications list's own (AD-53).</p>
+/// <p><b>Its label is the entity's own noun</b>, which titles the create and the editor alike, and
+/// <b>it declares three suggested prompts</b>, grouped by task (Story 11.3).</p>
 /// <p><b>It is built and routable, and it takes no side-bar position.</b>
 /// <code>sideBarPosition</code> is <b>0</b>, the sentinel for routable-but-unlisted: the route
 /// table reads every <i>built</i> screen while the side bar, the command box, Home's tile caption,
@@ -33,7 +36,7 @@ XData Declaration
 {
   "route": "web-applications/list/edit",
   "area": "web-applications",
-  "labelKey": "webAppFormLabel",
+  "labelKey": "proposalEntityWebApplication",
   "sideBarPosition": 0,
   "archetype": "form-page",
   "built": true,
@@ -52,6 +55,11 @@ XData Declaration
   "fingerprintExcludes": [],
   "emptyStateKey": "",
   "commandAliases": [],
+  "suggestedPrompts": [
+    {"groupKey": "userPromptGroupAccess", "textKey": "webAppPromptAccess"},
+    {"groupKey": "userPromptGroupAccess", "textKey": "webAppPromptUnauthenticated"},
+    {"groupKey": "webAppPromptGroupCode", "textKey": "webAppPromptCode"}
+  ],
   "classicPage": "%CSP.UI.Portal.Applications.Web",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "toolIdentifier": "webapp.form"

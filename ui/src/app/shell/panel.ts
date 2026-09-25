@@ -49,7 +49,7 @@ import { ScreenStores } from '../core/screen-store';
 import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
-import { formatChangeSentence } from '../core/toasts';
+import { changeSentenceTemplate, formatChangeSentence } from '../core/toasts';
 import { SuggestedView, type SuggestedLine } from '../core/suggested-view';
 import {
   TURN_PATH,
@@ -145,6 +145,8 @@ function clockOf(stamp: string): string {
  * value is the instance's answer; the panel composes no reason of its own.
  */
 interface PanelWriteCard {
+  readonly changeAction: ProposalOutcome['changeAction'];
+  readonly changedId: string;
   readonly ok: boolean;
   readonly auditMarked: boolean;
   readonly continues: boolean;
@@ -969,8 +971,7 @@ export class Panel {
    * sentence the toast would have. The sentence is the panel's copy, not the model's: "the
    * agent's reply names the change" is not assertable against model-authored prose.
    *
-   * `updated` for the reason `TurnStore` publishes `updated`: every shipped write tool is a PUT
-   * against an object that already exists.
+   * The action and the id are the confirm's own answer, the ones the change event carries.
    */
   private replyWithChangeSentence(
     reply: string | null,
@@ -981,8 +982,12 @@ export class Panel {
     let text = reply;
     for (const proposal of proposals) {
       // A refused confirm changed nothing, so it names no change (DW-1426).
-      if (cards.get(proposal.proposalId)?.ok !== true) continue;
-      const sentence = formatChangeSentence(STRINGS.tableChangeUpdated, proposal.target.id);
+      const card = cards.get(proposal.proposalId);
+      if (card?.ok !== true) continue;
+      const sentence = formatChangeSentence(
+        changeSentenceTemplate(card.changeAction),
+        card.changedId !== '' ? card.changedId : proposal.target.id
+      );
       if (text.includes(sentence)) continue;
       text = text + '\n\n' + sentence;
     }
@@ -1178,6 +1183,8 @@ export class Panel {
     if (!outcome.ok && outcome.status === 0) return;
     const next = new Map(this.writeCards());
     next.set(proposalId, {
+      changeAction: outcome.changeAction,
+      changedId: outcome.changedId,
       ok: outcome.ok,
       auditMarked: outcome.auditMarked,
       continues: outcome.continues,

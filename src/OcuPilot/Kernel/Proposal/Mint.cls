@@ -163,8 +163,8 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         ; as "the target is not there".
         Set tCreates = ..CreatesOf(pToolClass)
         Kill tQuery
-        Set tQuery(pIdParam) = pIdValue
-        Set tReadSC = $ClassMethod(..PortClassOf(pToolClass), "Invoke", tEndpoint, ..ReadTypeOf(pToolClass), .tQuery, "", .tFresh, .tReadHttp, .tReadFault)
+        Set tQuery(##class(OcuPilot.Kernel.Proposal.Operation).ReadIdParamOf(pToolClass, pIdParam)) = pIdValue
+        Set tReadSC = ##class(OcuPilot.Kernel.Proposal.Operation).ReadTarget(pToolClass, ..PortClassOf(pToolClass), tEndpoint, .tQuery, pIdValue, .tFresh, .tReadHttp, .tReadFault)
         If $$$ISERR(tReadSC) && (+$Get(tReadHttp) '= 404) {
             Set pHttpStatus = +$Get(tReadHttp)
             Set pFault = $Get(tReadFault)
@@ -183,11 +183,21 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         }
 
         If tCreates {
-            Set tSC = ..Compose(pArgs, pIdArgument, pSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
+            ; A tool may compose its own create (a complete body, an object argument); the kernel's
+            ; Compose is the default every earlier create resolves to.
+            If pToolClass '= "" {
+                Set tSC = $ClassMethod(pToolClass, "ComposeCreate", pArgs, pIdArgument, pSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
+            } Else {
+                Set tSC = ..Compose(pArgs, pIdArgument, pSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
+            }
             ; AD-6, AD-35: a create whose body carries a secret the user supplies at confirm shows
             ; one row per such name, empty on both sides, so the card asks for it beside the diff.
             ; The payload does not carry it and unchangedCount stays 0.
             If $$$ISOK(tSC) && (tProblem = "") Do ..AppendComposedSecrets(pToolClass, tDiff)
+        } ElseIf pToolClass '= "" {
+            ; A tool may merge an object argument member by member; the kernel's Merge is the
+            ; default every earlier change resolves to.
+            Set tSC = $ClassMethod(pToolClass, "MergeUpdate", tFresh, pArgs, pIdArgument, pSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
         } Else {
             Set tSC = ..Merge(tFresh, pArgs, pIdArgument, pSettable, .tPayload, .tDiff, .tUnchanged, .tProblem)
         }
@@ -238,6 +248,12 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             ; Nothing is sent, so nothing is sent unchanged: the caption and the rows behind it are
             ; one population (OcuPilot.Kernel.Proposal.Disclosure), and that population is empty.
             If '$ClassMethod(pToolClass, "SendsBody") Set tUnchanged = 0
+            ; A write that sends a body and changes nothing is not a proposal: the arguments
+            ; restate what the target already holds.
+            If $ClassMethod(pToolClass, "SendsBody") && (tDiff.%Size() = 0) {
+                Set tSC = ..Refuse("nothing would change: every value named is the one the target already holds", .pHttpStatus, .pFault)
+                Quit
+            }
         }
 
         If tCreates {
@@ -302,8 +318,18 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             Set tSC = ..Internal("whether the proposal grants privilege could not be read: " _ $System.Status.GetErrorText(tGrantSC), .pHttpStatus, .pFault)
             Quit
         }
-        Set tValues("consequence") = ..ConsequenceOf(pToolClass, tPayload, tPrivileged)
-        Set tValues("destructive") = (..DestructiveTool(pToolName) || tPrivileged)
+        ; AD-10: a change that weakens or repoints a web application that is not OcuPilot's own is
+        ; permitted and confirmed as a delete is; the one classifier names the effect.
+        Set tEffect = ""
+        If 'tCreates {
+            Set tWeakSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).WeakensByEffect(tType, tPayload, tFresh, .tEffect, tId)
+            If $$$ISERR(tWeakSC) {
+                Set tSC = ..Internal("whether the proposal weakens its target could not be read: " _ $System.Status.GetErrorText(tWeakSC), .pHttpStatus, .pFault)
+                Quit
+            }
+        }
+        Set tValues("consequence") = ..ConsequenceOf(pToolClass, tPayload, tPrivileged, tEffect)
+        Set tValues("destructive") = (..DestructiveTool(pToolName) || tPrivileged || (tEffect '= ""))
         ; FR-17's definition condition is answered at confirm against the definition that was in
         ; force here. Read, never written: the definition store is Epic 10's.
         Set tDefinitionSC = ..DefinitionInForce(.tDefinitionId, .tDefinitionVersion)
@@ -628,21 +654,24 @@ ClassMethod AppendComposedSecrets(pToolClass As %String, pDiff As %DynamicArray)
 }
 
 /// <p>The kernel-owned consequence code for the payload <var>pPayload</var>: the one
-/// <var>pToolClass</var> answers (<code>Consequence(payload, privileged)</code>), which is told
-/// whether the write grants privilege (<var>pPrivileged</var>) so it can name one combined effect
-/// rather than two; otherwise <parameter>CONSEQUENCEPRIVILEGED</parameter> for a privileged grant,
-/// and <code>""</code> for none. A class that compiles no <code>Consequence</code> answers none of
-/// its own; one that does is asked unguarded, so a declaration that cannot take both arguments
+/// <var>pToolClass</var> answers (<code>Consequence(payload, privileged, effect)</code>), which is
+/// told whether the write grants privilege (<var>pPrivileged</var>) and which weakening effect it
+/// has (<var>pEffect</var>, <method>OcuPilot.Kernel.Proposal.Prohibited.WeakensByEffect</method>) so
+/// it can name one combined effect rather than two; otherwise
+/// <parameter>CONSEQUENCEPRIVILEGED</parameter> for a privileged grant, then <var>pEffect</var>, and
+/// <code>""</code> for none. A class that compiles no <code>Consequence</code> answers none of its
+/// own; one that does is asked unguarded, so a declaration that cannot take all three arguments
 /// fails the mint rather than silently dropping its consequence. The card renders the code's
 /// sentence; it decides nothing about whether the write may happen.</p>
-ClassMethod ConsequenceOf(pToolClass As %String, pPayload As %DynamicObject, pPrivileged As %Boolean = 0) As %String [ Private ]
+ClassMethod ConsequenceOf(pToolClass As %String, pPayload As %DynamicObject, pPrivileged As %Boolean = 0, pEffect As %String = "") As %String [ Private ]
 {
     Set tCode = ""
     If (pToolClass '= "") && ##class(%Dictionary.CompiledMethod).%ExistsId(pToolClass _ "||Consequence") {
-        Set tCode = $ClassMethod(pToolClass, "Consequence", pPayload, ''pPrivileged)
+        Set tCode = $ClassMethod(pToolClass, "Consequence", pPayload, ''pPrivileged, pEffect)
     }
-    If (tCode = "") && pPrivileged Set tCode = ..#CONSEQUENCEPRIVILEGED
-    Quit tCode
+    If tCode '= "" Quit tCode
+    If pPrivileged Quit ..#CONSEQUENCEPRIVILEGED
+    Quit pEffect
 }
 
 /// <p>The agent definition in force and the version it carries, for the proposal's row.</p>
@@ -657,22 +686,6 @@ ClassMethod DefinitionInForce(Output pId As %String, Output pVersion As %String)
     If $$$ISERR(tSC) Quit tSC
     If pId = "" Quit $$$OK
     Quit ##class(OcuPilot.Kernel.State.Agent).GuardedVersion(pId, .pVersion)
-}
-
-/// <p>The admin request type <var>pToolClass</var>'s fresh read is made with (AD-51), or
-/// <parameter>READTYPE</parameter> when the call named no tool class. A class that answers an
-/// empty type is read with the parameter too, so an unreadable declaration is a merge write's
-/// read rather than a call with no type at all.</p>
-ClassMethod ReadTypeOf(pToolClass As %String) As %String
-{
-    Set tType = ""
-    Try {
-        If pToolClass '= "" Set tType = $ClassMethod(pToolClass, "ReadType")
-    } Catch {
-        Set tType = ""
-    }
-    If tType = "" Quit ..#READTYPE
-    Quit tType
 }
 
 /// <p>The fingerprint subject <var>pToolClass</var> declares (AD-51), or <code>""</code> when the

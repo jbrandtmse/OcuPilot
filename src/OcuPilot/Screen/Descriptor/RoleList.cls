@@ -18,8 +18,10 @@
 /// <p><b>The classic page is <code>%CSP.UI.Portal.Roles</code></b>, in the class's own case
 /// (AD-44). As a list archetype it links out to nothing. The context carries no secret field.</p>
 /// <p>It declares a Create primary action, which opens <class>OcuPilot.Screen.Descriptor.RoleForm</class>,
-/// so its empty state invites the agent rather than naming a next step. It declares no row action,
-/// and it does not refresh (AD-43).</p>
+/// so its empty state invites the agent rather than naming a next step. Its row actions (AD-53) are
+/// Delete, drawn refused for a predefined role (<code>system-role</code>), and the four value actions
+/// the role editor sends -- add and remove a granted role, set and remove a resource grant -- which
+/// no menu draws. It does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.RoleList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -41,7 +43,13 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "create", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [
+    {"id": "delete", "selfProtection": "system-role"},
+    {"id": "add-granted-role", "selfProtection": ""},
+    {"id": "remove-granted-role", "selfProtection": ""},
+    {"id": "set-resource-grant", "selfProtection": ""},
+    {"id": "remove-resource-grant", "selfProtection": ""}
+  ],
   "context": {"fields": ["Name", "Description", "CreatedBy", "EscalationOnly"], "secretFields": []},
   "emptyStateKey": "roleListEmpty",
   "commandAliases": ["security roles"],

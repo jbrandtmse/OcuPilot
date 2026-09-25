@@ -16,6 +16,7 @@ import { RoleCreateForm } from './areas/permissions/role-create-form.store';
 import { ResourceEditor } from './areas/permissions/resource-editor.store';
 import { WalletSecretForm } from './areas/security/wallet-secret-form.store';
 import { X509Form } from './areas/security/x509-form.store';
+import { SslForm } from './areas/security/ssl-form.store';
 import { OAuthServerDescriptionForm } from './areas/security/oauth-server-description-form.store';
 import { OAuthClientForm } from './areas/security/oauth-client-form.store';
 import { DeviceForm } from './areas/os-management/device-form.store';
@@ -1079,6 +1080,14 @@ describe('the shell frame', () => {
     deviceForm.setValue('PhysicalDevice', '/tmp/a-path-this-principal-typed');
     expect(deviceForm.value('Name')).not.toBe('');
 
+    // The same answer for the SSL/TLS configuration form (Story 9.5): a private key password THIS
+    // principal typed and has not saved, in a root-provided store (AD-35). The password takes input
+    // only in an edit, which is set before its form read answers.
+    const sslForm = TestBed.inject(SslForm);
+    await sslForm.open('a-configuration-this-principal-opened');
+    sslForm.setPassword('a-password-this-principal-typed');
+    expect(sslForm.password()).not.toBe('');
+
     // The ninth answer of the same kind (Story 3.6, AC5). Whether the instance holds an enabled
     // definition is a read THIS principal made, and the panel and the rail's dot pick an audience
     // from it. Left standing, the next principal's first paint shows an administrator's reminder
@@ -1149,6 +1158,10 @@ describe('the shell frame', () => {
     // two go red, and the next principal's device editor holds the previous one's typed device.
     expect(deviceForm.value('Name')).toBe('');
     expect(deviceForm.value('PhysicalDevice')).toBe('');
+
+    // Mutation (Rule 19): delete `this.sslForm.reset()` from `App.verifyWhenSignedIn` -> this goes
+    // red, and the next principal's SSL/TLS form holds the previous one's typed key password.
+    expect(sslForm.password()).toBe('');
 
     expect(scope.resets).toBe(1);
     // The fourth answer of the same kind (Story 1.13). A re-read parked with connectivity is a

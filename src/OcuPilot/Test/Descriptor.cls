@@ -455,7 +455,8 @@ Method TestTheUsersListValidatesAndNamesItsClassicPageInItsOwnCase()
 
 /// <p>Story 2.7 -- the SSL/TLS configurations list's declaration passes the read grammar and the
 /// classic link rule; its route and tool identifier resolve to it; its four read fields are the ones
-/// the vendor LIST answers and none of them is key material; and its classic page is a class
+/// the vendor LIST answers and none of them is key material; the private key password is named only
+/// as its secret argument (Story 9.5); and its classic page is a class
 /// compiled on this instance under the declaration's own case (AD-44).</p>
 /// <p>Mutations: lower-case <code>classicPage</code> in
 /// <class>OcuPilot.Screen.Descriptor.SslConfigList</class> -> the compiled-class assertion goes
@@ -475,8 +476,11 @@ Method TestTheSslConfigurationsListValidatesAndNamesItsClassicPageInItsOwnCase()
     Do $$$AssertEquals(tDeclaration.read.filter.%ToJSON(), "[""Name"",""Description"",""Type""]", "the filter matches on every field but the boolean")
     Do $$$AssertEquals(tDeclaration.read.sort.%ToJSON(), "{""fields"":[""Name"",""Description"",""Type""],""default"":""Name"",""direction"":""asc""}", "and the list sorts by name ascending")
     Do $$$AssertEquals(tDeclaration.context.secretFields.%Size(), 0, "and the read carries no secret to strip")
+    Do $$$AssertEquals(tDeclaration.%Get("secretArguments").%ToJSON(), "[""PrivateKeyPassword""]", "its one secret argument is the private key password the change carries")
+    Set tRest = {}.%FromJSON(tDeclaration.%ToJSON())
+    Do tRest.%Remove("secretArguments")
     For tForbidden = "PrivateKeyPassword", "PrivateKeyFile", "PrivateKeyType", "CertificateFile", "CAFile", "CAPath" {
-        Do $$$AssertEquals((tDeclaration.%ToJSON() [ tForbidden), 0, "no part of the declaration names " _ tForbidden)
+        Do $$$AssertEquals((tRest.%ToJSON() [ tForbidden), 0, "no other part of the declaration names " _ tForbidden)
     }
 
     Set tPage = $ClassMethod(tClass, "ClassicPage")
@@ -1235,6 +1239,32 @@ Method TestEveryClassicLinkCorpusCaseGetsItsSentence()
     Set tGoodSC = ##class(OcuPilot.Test.ScreenRegistry).Validate(.tGoodProblem)
     Do $$$AssertEquals(tGoodProblem, "", "while the fixture roster whose one exemption is a detail view is sound")
     Do $$$AssertStatusOK(tGoodSC, "and passes")
+}
+
+/// <p>Story 11.3's contract (Story 9.1): every case in <class>OcuPilot.Test.PromptCorpus</class> gets
+/// its exact sentence, or none, from <method>OcuPilot.Screen.Registry.SuggestedPromptsProblem</method>,
+/// the same corpus <file>ui/tools/screen-mirror.test.mjs</file> runs through
+/// <code>suggestedPromptsProblem</code>; and the User form's own three prompts pass.</p>
+/// <p>Mutation: lower <parameter>OcuPilot.Screen.Registry.SUGGESTEDPROMPTSMIN</parameter> to 2 -&gt;
+/// the two-prompt case goes red.</p>
+Method TestEveryPromptCorpusCaseGetsItsSentence()
+{
+    Set tSC = ##class(OcuPilot.Test.PromptCorpus).Corpus(.tCorpus)
+    Do $$$AssertStatusOK(tSC, "the corpus reads")
+    If '$IsObject(tCorpus) Quit
+    Set tRefusals = 0
+    Set tIterator = tCorpus.cases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCase) {
+        Set tExpected = $Select(tCase.%GetTypeOf("expected") = "null": "", 1: tCase.expected)
+        If tExpected '= "" Set tRefusals = tRefusals + 1
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).SuggestedPromptsProblem(tCase.declaration), tExpected, tCase.name)
+    }
+    Do $$$AssertTrue(tRefusals > 0, "the corpus carries at least one refusing case: " _ tRefusals)
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Descriptor.UserForm).DeclarationJson(.tDeclaration), "the User form's declaration reads")
+    Do $$$AssertTrue($IsObject($Get(tDeclaration)), "as an object")
+    If '$IsObject(tDeclaration) Quit
+    Do $$$AssertEquals(tDeclaration.%Get("suggestedPrompts").%Size(), 3, "the User form declares three prompts")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).SuggestedPromptsProblem(tDeclaration), "", "and they pass")
 }
 
 /// <p>Story 6.4 (AD-5) -- every case in <class>OcuPilot.Test.TabCorpus</class> gets its exact sentence,

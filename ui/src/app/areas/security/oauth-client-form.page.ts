@@ -832,7 +832,7 @@ export class OAuthClientFormPage {
   private sslControl(): Control {
     const value = this.store.text('ssl');
     const names = this.store.sslConfigurations();
-    return this.selectControl(SSL_FIELD, STRINGS.oauthServerFieldSsl, value, this.withNotSet(names.includes(value) || value === '' ? names : [...names, value]));
+    return this.selectControl(SSL_FIELD, STRINGS.sslFormLabel, value, this.withNotSet(names.includes(value) || value === '' ? names : [...names, value]));
   }
 
   private serverControl(): Control {

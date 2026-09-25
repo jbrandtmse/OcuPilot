@@ -349,7 +349,11 @@ test("AC2: the authorization server tab's Issuer, Scopes, Grant types and Signin
 // the honored-set and in-app anchor assertions go red.
 test("AC4: a client configuration's name cell opens OcuPilot's own editor at the configuration's route, in this tab", async () => {
   const honored = checkClassicLinks().honored.map((entry) => entry.file).sort();
-  assert.deepEqual(honored, ['OAuthResourceServerTab.cls', 'OAuthServerClientTab.cls', 'OAuthServerTab.cls'], 'classic-links honors exactly the three OAuth 2.0 tabs still edited in the classic portal');
+  assert.deepEqual(
+    honored,
+    ['LdapConfigForm.cls', 'OAuthResourceServerTab.cls', 'OAuthServerClientTab.cls', 'OAuthServerTab.cls', 'ServiceForm.cls'],
+    'classic-links honors the three OAuth 2.0 tabs still edited in the classic portal and the two reduced editors (AD-44)'
+  );
 
   const tab = TABS[1];
   const { context, page, answers } = await signedInAt(urlOf(tab.route), config.username, config.password);

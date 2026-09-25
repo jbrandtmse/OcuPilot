@@ -25,6 +25,9 @@
  * words and locator name (AC1, AC2) -- whose own History link is what now reaches the per-task
  * history Story 6.6 exercised directly.
  *
+ * **Story 9.7** adds the list's Create, which opens the New Task wizard; the wizard itself is
+ * `task-wizard.browser-spec.mjs`'s.
+ *
  * Run: `npm run test:browser` (after `npm run build` and `sh scripts/ci-throwaway.sh up`).
  */
 
@@ -520,9 +523,11 @@ test('Story 6.7 AC1/AC2/AC4: activating the demo task\'s name cell opens Task de
     assert.ok(schedule.includes(STRINGS.taskScheduleEveryDay), `How often reads "Every day": ${schedule}`);
     assert.ok(schedule.includes('Once at 03:00:00'), `Time of day reads the fixture's own start time: ${schedule}`);
 
-    // No Edit task control until Epic 9 builds Task schedule's editor (Design Notes).
-    const linkLabels = await page.$$eval('.ocu-details-link', (links) => links.map((link) => link.textContent.trim()));
-    assert.ok(!linkLabels.includes(STRINGS.taskDetailsEdit), `no Edit task control exists yet: ${JSON.stringify(linkLabels)}`);
+    // Story 9.8: Edit task is reached from here, at the task form's id route.
+    const links = await page.$$eval('.ocu-details-link', (nodes) => nodes.map((link) => ({ label: link.textContent.trim(), href: link.getAttribute('href') })));
+    const edit = links.find((link) => link.label === STRINGS.taskDetailsEdit);
+    assert.ok(edit !== undefined, `Task details shows Edit task: ${JSON.stringify(links)}`);
+    assert.ok(new URL(edit.href, page.url()).pathname.endsWith(`/tasks/schedule/edit/${routeId}`), `which opens Edit task for this task: ${edit.href}`);
 
     // The locator bar names the task by its own name, not its id (Story 6.7), and its screen
     // segment is a link back to Task schedule, labelled with Task details' own title -- the same
@@ -1111,5 +1116,23 @@ test('Story 6.5 AC4: a principal holding install-database read and %Admin_Task:U
     } finally {
       await context.close();
     }
+  }
+});
+
+// Story 9.7: the list's declared primary action opens the wizard.
+test('Story 9.7: the schedule list draws Create, and Create opens the New Task wizard on its first step', async () => {
+  const { context, page } = await signedInAtList(config.username, config.password);
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    const create = await page.waitForSelector('.ocu-command-bar button.ocu-button-primary', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await create.evaluate((node) => node.textContent.trim()), STRINGS.actionCreate, 'the list offers Create');
+    await create.click();
+    await page.waitForFunction(() => new URL(window.location.href).pathname.endsWith('/tasks/schedule/edit'), { timeout: config.navigationTimeoutMs });
+    assert.equal(new URL(page.url()).searchParams.get('ns'), 'HSCUSTOM', 'carrying the namespace');
+    await page.waitForSelector('app-task-wizard-page .ocu-form-step-head[aria-current="step"]', { visible: true, timeout: config.navigationTimeoutMs });
+    const current = await page.$eval('app-task-wizard-page .ocu-form-step-head[aria-current="step"] .ocu-form-step-label', (node) => node.textContent.trim());
+    assert.equal(current, STRINGS.taskStepBasics, 'the wizard opens on Basics');
+  } finally {
+    await context.close();
   }
 });

@@ -214,8 +214,6 @@ export class WebAppCreateForm {
 
   private createdIdValue = '';
 
-  private retainingValue = false;
-
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => {
@@ -322,16 +320,6 @@ export class WebAppCreateForm {
     return this.formDirty.dirty();
   }
 
-  /** Whether this store is being carried across the create's own route replacement. */
-  retaining(): boolean {
-    return this.retainingValue;
-  }
-
-  /** Keep this form's state across the one navigation that is not a departure. */
-  retainAcrossRouteReplacement(): void {
-    this.retainingValue = true;
-  }
-
   /**
    * Whether `field` is one the chosen type sends at all.
    *
@@ -378,7 +366,6 @@ export class WebAppCreateForm {
     this.clearRefusal();
     this.savedValue = false;
     this.createdIdValue = '';
-    this.retainingValue = false;
     this.formDirty.reset();
     this.notify();
   }
@@ -390,12 +377,6 @@ export class WebAppCreateForm {
    * like every other, and a cached copy is a second source for the sentences the server owns.
    */
   async open(): Promise<void> {
-    // A create that has replaced its own route with the new application's editor is not an
-    // arrival at another form: the state on screen is that application's.
-    if (this.retainingValue) {
-      this.retainingValue = false;
-      return;
-    }
     this.reset();
     const generation = this.generation;
     const result = await this.api().requestJson<unknown>(WEB_APPLICATIONS_FORM_PATH);
@@ -670,7 +651,7 @@ export class WebAppCreateForm {
 export const NAME_TAKEN_CODE = 'WEBAPP.NAME.TAKEN';
 
 /** The bootstrap read's body, narrowed. A member the server did not send reads as empty. */
-function absorbRules(body: unknown): FormRules {
+export function absorbRules(body: unknown): FormRules {
   const conditional = body !== null && typeof body === 'object'
     ? (body as Record<string, unknown>)['conditionalFields']
     : null;

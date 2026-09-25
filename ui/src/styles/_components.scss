@@ -5437,6 +5437,98 @@ app-resource-list-page {
   max-width: max-content;
 }
 
+// The tabbed form-page (Story 9.1, Epic 9's editors): Material's tab nav bar over one form, drawn
+// with the detail page's tabs tokens. A tab whose fields hold refusals carries a `destructive` dot
+// after its label; its count is in its accessible name, so the dot is decoration.
+.ocu-form-tabs {
+  --mat-tab-container-height: 40px;
+  --mat-tab-label-text-font: var(--ocu-type-body-family);
+  --mat-tab-label-text-size: var(--ocu-type-body-size);
+  --mat-tab-label-text-line-height: var(--ocu-type-body-line-height);
+  --mat-tab-label-text-tracking: var(--ocu-type-body-tracking);
+  --mat-tab-label-text-weight: 600;
+  --mat-tab-inactive-label-text-color: var(--ocu-on-surface-variant);
+  --mat-tab-inactive-hover-label-text-color: var(--ocu-on-surface-variant);
+  --mat-tab-inactive-focus-label-text-color: var(--ocu-on-surface-variant);
+  --mat-tab-active-label-text-color: var(--ocu-secondary);
+  --mat-tab-active-hover-label-text-color: var(--ocu-secondary);
+  --mat-tab-active-focus-label-text-color: var(--ocu-secondary);
+  --mat-tab-active-indicator-color: var(--ocu-secondary);
+  --mat-tab-active-hover-indicator-color: var(--ocu-secondary);
+  --mat-tab-active-focus-indicator-color: var(--ocu-secondary);
+  --mat-tab-active-indicator-height: 2px;
+  --mat-tab-divider-color: var(--ocu-outline-variant);
+  --mat-tab-divider-height: 1px;
+
+  display: block;
+  min-width: 0;
+}
+
+.ocu-form-tab-label {
+  white-space: nowrap;
+}
+
+.ocu-form-tab-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  margin-left: var(--ocu-space-2);
+  border-radius: 50%;
+  background: var(--ocu-destructive);
+}
+
+.ocu-form-tab-body {
+  padding-top: var(--ocu-space-4);
+}
+
+// The user editor (Story 9.1): its header actions sit above the tabs, and the Roles tab lists the
+// roles the account holds, each with its Remove.
+.ocu-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ocu-space-2);
+  margin: 0 0 var(--ocu-space-3);
+}
+
+.ocu-form-action-reason {
+  @include typo.ocu-type('caption');
+
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--ocu-restrained);
+}
+
+.ocu-form-roles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  max-width: 480px;
+  margin: 0 0 var(--ocu-space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.ocu-form-role {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ocu-space-2);
+  min-width: 0;
+}
+
+.ocu-form-role-name {
+  overflow-wrap: anywhere;
+}
+
+// While a form-page is open its bar holds Save and Cancel at the right of the form column, which the
+// change toast stack overlaps when the content area is narrow. The stack is lifted above the bar, so
+// a toast never covers Save or Cancel while the bar sits at the bottom of the content area (DESIGN.md
+// `toast`: a toast that covers the primary control of the surface it reports on defeats itself).
+.ocu-shell:has(.ocu-form-bar) > app-toast-host {
+  bottom: calc(var(--ocu-form-bar-height) + var(--ocu-space-4));
+}
+
 // --- The page ground (Story 15.6) -----------------------------------------------------------
 //
 // DESIGN.md's depth table: "The ground is `{colors.surface}`". Without it the content column shows
@@ -5463,6 +5555,208 @@ body {
   color: color-mix(in srgb, var(--ocu-on-shell) 45%, transparent);
 }
 
+// --- Form-page hosts (Story 9.2, DW-1596) -----------------------------------------------------
+//
+// A form page's own host element -- the component `ngComponentOutlet` renders inside
+// `div.ocu-screen-outlet` -- is the one element between that flex column and `.ocu-form-page`.
+// Unstyled it is `display: inline`, so the chain of definite heights ended at the outlet, the form
+// grew to its content, and the sticky bar sat at the bottom of the content rather than of the
+// content area. Every such host becomes a column flex item that fills the outlet, so the page
+// scrolls inside itself and the bar stays at the bottom of the content area. Matched by what it
+// holds rather than listed, so every later editor's host is covered without an edit here.
+app-screen-outlet :has(> .ocu-form-page) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+// The page is now the scroll container its sticky bar sits in, so a control scrolled into view --
+// by focus, or by a pointer reaching it -- stops above the bar rather than behind it.
+app-screen-outlet .ocu-form-page {
+  scroll-padding-bottom: calc(var(--ocu-form-bar-height) + var(--ocu-space-4));
+}
+
+// The web application editor's settings no edit changes: its name, type, Python directory and
+// physical path, under one caption (AD-21).
+.ocu-form-fixed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-4);
+}
+
+// The role editor (Story 9.3): a member row's type word sits between its name and its Remove, in
+// the caption voice, so the name keeps the row's weight.
+.ocu-role-member-type {
+  @include typo.ocu-type('caption');
+
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--ocu-restrained);
+}
+
+// The SSL/TLS editor (Story 9.5): its Test connection panel is a group -- two fields, the button
+// and the instance's own result lines -- reset like the authentication group so it draws as a
+// `form-page` field, with the fields wrapping rather than overflowing and each result line breaking
+// anywhere, since the instance's lines carry long unbroken error codes. The cipher textareas read in
+// the monospace face their entries are written in.
+.ocu-ssl-test {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ocu-space-2);
+  min-inline-size: 0;
+  margin: var(--ocu-space-4) 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.ocu-ssl-test legend {
+  padding: 0;
+}
+
+.ocu-ssl-test-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ocu-space-4);
+  max-width: 100%;
+}
+
+.ocu-ssl-test-result {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.ocu-ssl-test-lines {
+  margin: 0;
+  padding-left: var(--ocu-space-4);
+  font-family: var(--ocu-type-code-family);
+  overflow-wrap: anywhere;
+}
+
+.ocu-ssl-ciphers {
+  font-family: var(--ocu-type-code-family);
+}
+
+// The editor's flags are 24px targets (DW-1337): the checkbox itself and the label that wraps it.
+app-ssl-form-page .ocu-field-checkbox {
+  min-block-size: var(--ocu-space-6);
+}
+
+app-ssl-form-page .ocu-field-checkbox input[type='checkbox'] {
+  inline-size: var(--ocu-space-6);
+  block-size: var(--ocu-space-6);
+  margin: 0;
+}
+
+// The New Task wizard's vertical stepper (Story 9.7): an ordered list of steps, each a heading
+// button over its body. The current step's marker is filled; a step holding refusals carries the
+// destructive marker and names its first refusal in text under its label.
+.ocu-form-stepper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ocu-form-step {
+  min-width: 0;
+  padding-left: var(--ocu-space-2);
+  border-left: 1px solid var(--ocu-outline-variant);
+}
+
+.ocu-form-step-head {
+  @include typo.ocu-type('body');
+
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-3);
+  min-block-size: var(--ocu-space-6);
+  max-width: 100%;
+  padding: var(--ocu-space-1) 0;
+  border: 0;
+  background: none;
+  color: var(--ocu-on-surface-variant);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+
+  &:disabled {
+    color: var(--ocu-restrained);
+    cursor: default;
+  }
+}
+
+.ocu-form-step-current .ocu-form-step-head {
+  color: var(--ocu-secondary);
+}
+
+.ocu-form-step-marker {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--ocu-space-6);
+  block-size: var(--ocu-space-6);
+  border: 1px solid var(--ocu-outline);
+  border-radius: 50%;
+}
+
+.ocu-form-step-current .ocu-form-step-marker {
+  border-color: var(--ocu-secondary);
+  background: var(--ocu-secondary);
+  color: var(--ocu-on-secondary);
+}
+
+.ocu-form-step-invalid .ocu-form-step-marker {
+  border-color: var(--ocu-destructive);
+  background: var(--ocu-destructive);
+  color: var(--ocu-on-destructive);
+}
+
+.ocu-form-step-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ocu-form-step-error {
+  @include typo.ocu-type('caption');
+
+  margin: 0 0 var(--ocu-space-2);
+  color: var(--ocu-destructive);
+  overflow-wrap: anywhere;
+}
+
+.ocu-form-step-body {
+  min-width: 0;
+  padding: var(--ocu-space-3) 0 var(--ocu-space-4);
+}
+
+.ocu-task-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ocu-space-2) var(--ocu-space-4);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+// The wizard's flags and day boxes are 24px targets (DW-1337): the checkbox itself and the label
+// that wraps it.
+app-task-wizard-page .ocu-field-checkbox {
+  min-block-size: var(--ocu-space-6);
+}
+
+app-task-wizard-page .ocu-field-checkbox input[type='checkbox'] {
+  inline-size: var(--ocu-space-6);
+  block-size: var(--ocu-space-6);
+  margin: 0;
+}
+
 // --- The transcript follows the conversation (Story 11.10) -------------------------------------
 //
 // The panel's own scrolls set `scrollTop` and name no behavior, so whether they animate is decided
@@ -5484,6 +5778,29 @@ body {
   flex: 0 0 auto;
   justify-content: center;
   padding: var(--ocu-space-2) var(--ocu-panel-gutter) 0 var(--ocu-space-4);
+}
+
+// Edit task's flags and day boxes are 24px targets (DW-1337), as the New Task wizard's are: the
+// checkbox itself and the label that wraps it (Story 9.8).
+app-task-editor-page .ocu-field-checkbox {
+  min-block-size: var(--ocu-space-6);
+}
+
+app-task-editor-page .ocu-field-checkbox input[type='checkbox'] {
+  inline-size: var(--ocu-space-6);
+  block-size: var(--ocu-space-6);
+  margin: 0;
+}
+
+// The reduced forms (Story 9.9): each checkbox meets the 24x24 target, as the SSL/TLS editor's do.
+app-reduced-form-page .ocu-field-checkbox {
+  min-block-size: var(--ocu-space-6);
+}
+
+app-reduced-form-page .ocu-field-checkbox input[type='checkbox'] {
+  inline-size: var(--ocu-space-6);
+  block-size: var(--ocu-space-6);
+  margin: 0;
 }
 
 // --- The Auditing screen's audit database group (Story 12.3) -----------------------------------

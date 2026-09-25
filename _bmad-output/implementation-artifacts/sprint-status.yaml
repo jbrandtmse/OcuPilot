@@ -160,15 +160,15 @@ development_status:
   8-9-plain-iris-community-verification: done
   epic-8-retrospective: optional
 
-  epic-9: backlog
-  9-1-the-user-editor: backlog
-  9-2-the-web-application-editor: backlog
-  9-3-the-role-editor: backlog
-  9-5-the-ssl-tls-editor: backlog
-  9-7-the-new-task-wizard: backlog
-  9-8-edit-task: backlog
-  9-9-a-cut-editor-ships-reduced-never-half-working: backlog
-  9-10-the-user-audit-event-editor: backlog
+  epic-9: done
+  9-1-the-user-editor: done
+  9-2-the-web-application-editor: done
+  9-3-the-role-editor: done
+  9-5-the-ssl-tls-editor: done
+  9-7-the-new-task-wizard: done
+  9-8-edit-task: done
+  9-9-a-cut-editor-ships-reduced-never-half-working: done
+  9-10-the-user-audit-event-editor: done
   epic-9-retrospective: optional
 
   epic-10: done
@@ -177,6 +177,7 @@ development_status:
   10-3-the-openai-compatible-adapter-and-local-models: done
   10-4-sampling-parameters-left-to-the-provider: done
   10-5-a-connection-test-that-answers-before-the-gateway-does: done
+  10-6-a-turn-survives-a-dropped-connection-and-a-create-says-creat: done
   epic-10-retrospective: optional
 
   epic-11: in-progress
@@ -228,6 +229,7 @@ development_status:
   15-6-the-light-and-dark-theme: done
   15-7-the-rail-s-icons: done
   15-8-columns-you-can-read: backlog
+  15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth: backlog
   epic-15-retrospective: optional
 
   epic-16: backlog

@@ -52,6 +52,7 @@ import {
   moveActive,
   parseMaxRows,
   reconcile,
+  rowFor,
   rowKey,
 } from '../core/table-model';
 
@@ -488,7 +489,9 @@ export class DataTable implements OnInit {
     // one (Story 3.5's `editorScreenFor`), its paired document viewer where it declares one
     // (`documentScreenFor`), its paired per-row detail screen where it declares one
     // (Story 6.7's `detailScreenFor`), the sub-resource list whose parent it is (`childListFor`),
-    // and otherwise the list's own route with the row's id. A screen with none is not linkable at
+    // and otherwise the list's own route with the row's id. A list that declares both a detail
+    // screen and an editor opens the detail screen, which is where its editor is reached from
+    // (Story 9.8: Task schedule). A screen with none is not linkable at
     // all, and neither is a parent-scoped list that pairs no editor, viewer or detail screen: its
     // own route's id is its parent's, so a row's id there would name the wrong thing.
     const rowLinked = screen.classicLinkExemption.exempt && (screen.classicLinkExemption.rowLink ?? null) !== null;
@@ -498,6 +501,7 @@ export class DataTable implements OnInit {
     const linkTarget = rowLinked
       ? null
       : rowTargetScreen ??
+        (editorScreenFor(screen) === null ? null : detailScreenFor(screen)) ??
         editorScreenFor(screen) ??
         documentScreenFor(screen) ??
         detailScreenFor(screen) ??
@@ -662,11 +666,12 @@ export class DataTable implements OnInit {
     this.generation();
     const screen = this.screen();
     const selected = this.store().selection()[0] ?? '';
+    const row = rowFor(this.store().data(), screen, selected);
     return screen.rowActions
       .filter((action) => action.id !== '')
       .filter((action) => this.actions.has(screen.descriptor, action.id))
       .map((action) => {
-        const reason = selfProtectionReason(action.selfProtection, selected, this.signedIn());
+        const reason = selfProtectionReason(action.selfProtection, selected, this.signedIn(), row);
         const label = actionLabel(screen.descriptor, action.id);
         return {
           id: action.id,
