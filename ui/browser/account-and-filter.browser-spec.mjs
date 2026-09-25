@@ -197,7 +197,8 @@ test('Narrow header: at 720 px the account button lies inside the header and cle
   }
 });
 
-// Mutation (Rule 19): drop the Sign out row -> the wait for it goes red. Integration AC: replace the
+// Mutation (Rule 19): drop the Sign out row -> the wait for it goes red; `activeDescendant` never
+// naming the account row -> the `active` assertion goes red. Integration AC: replace the
 // row's `Session.signOut()` with a local token clear -> the /logout and reload assertions go red.
 test('Command Sign out: typing "sign out" offers an active Sign out row, and Enter signs out of the instance; an empty query offers none', async () => {
   const { context, page } = await signedInAt(HOME_URL);

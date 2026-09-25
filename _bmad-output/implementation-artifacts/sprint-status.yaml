@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '09-25-2026 18:18'
+last_updated: '09-25-2026 18:27'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -198,7 +198,7 @@ development_status:
   12-4-the-oauth-2-0-client-server-description-editor: done
   12-5-the-oauth-2-0-client-configuration-editor: done
   12-6-the-oauth-2-0-resource-server-editor: done
-  12-7-the-oauth-2-0-authorization-server-editor: review
+  12-7-the-oauth-2-0-authorization-server-editor: done
   12-8-the-oauth-2-0-server-client-description-editor: ready-for-dev
   12-9-removing-the-classic-link-outs: backlog
   epic-12-retrospective: optional
