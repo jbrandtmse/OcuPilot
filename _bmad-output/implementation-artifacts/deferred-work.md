@@ -7025,3 +7025,39 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: grep clickCount: 3 ui/browser lists 15 editor/create specs; all green in CI on 5dcefe46; users-editor fixed by focus+select in 2354fc6d
 - 2026-09-25T11:59:21Z status=wontfix-accepted owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=harvest note=reopen_if=any of them fails with a typed value appended to the old one
 - 2026-09-25T12:05:01Z status=wontfix-accepted owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=cr note=reopen_if=a form-page triple-click site fails with text appended; grep lists 29 files, add navigate:378
+
+### DW-1662: A principal holding only the authorization server tab's two pairs cannot create a configuration: a create admits only readable roles, and the editor pre-checks the default roles it then refuses
+- source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Rules.CustomizationViolations admits a create's role only through the RoleList read (StoredRoles of no fresh read is empty), while Effective() gives every other create field Defaults(); run 807 measured that admitting Defaults() roles on a create lets the two-pair principal create (vendor PUT 201).
+- 2026-09-25T16:49:33Z status=decision-pending owner=burndown by=cr note=recommend: admit Defaults() roles on a create; QA's Wire create test then flips; spec line 73 reads stored values only
+
+### DW-1663: The authorization server's privileged customization-role effect is name-only, so adding %Manager, %Operator or %SecurityAdministrator (which carry %Admin_* resources) is not minted destructive
+- source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: Prohibited.AddsPrivilegedCustomizationRole uses IsPrivilegedRole (%All or an %Admin_ name); IRIS ships no %Admin_ role; the web-application arm Q4 cites uses RoleEscalates; the create defaults include %Manager. Fix needs a Security.Roles read the two-pair principal may be refused, plus a server-computed privileged mark for the client line.
+- 2026-09-25T16:49:33Z status=escalated owner=burndown by=cr note=Q4 as worded is met; the lead decides whether its intent is RoleEscalates
+
+### DW-1664: A failed authorization server form read draws an editable create with the classic defaults and an enabled Save
+- source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: OAuthServerForm.open() sets loaded after absorb() of any result; canSave() checks only loaded; the server's Create refuses TAKEN, so nothing is overwritten.
+- 2026-09-25T16:49:33Z status=wontfix-accepted owner=12-7-the-oauth-2-0-authorization-server-editor by=cr note=reopen_if=a failed form read is observed on an instance holding a configuration (form drawn in create mode)
+
+### DW-1665: An edit of an authorization server whose stored server credentials no longer open answers a generic OAUTH.SERVERVALIDATION with no field
+- source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: OAuthAuthorizationServerPort.Put names OAUTH.SERVERCREDENTIALS.KEY only when the body changes the credentials; a deleted or re-keyed stored credential makes every PUT 500 generically.
+- 2026-09-25T16:49:33Z status=wontfix-accepted owner=12-7-the-oauth-2-0-authorization-server-editor by=cr note=reopen_if=a vendor PUT 500 is logged on an edit whose body leaves ServerCredentials unchanged and non-empty
+
+### DW-1666: The authorization server editor's scope Remove buttons share one accessible name, and focus is dropped after a removal
+- source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: oauth-server-form.page.ts scope rows render STRINGS.actionRemove with no row reference; removeScope moves no focus; the 12.6 resource-server editor has the same pattern.
+- 2026-09-25T16:49:34Z status=wontfix-accepted owner=12-7-the-oauth-2-0-authorization-server-editor by=cr note=reopen_if=an accessibility audit of security/oauth/server/edit flags duplicate button names or lost focus
+
+### DW-1667: Rotate Keys or Delete failing with no envelope reason (network error) re-enables the buttons with no message on the authorization server editor
+- source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: onRotate/onDelete set actionRefusal = tabRefusal(), which is empty when the failure carries no reason.
+- 2026-09-25T16:49:34Z status=wontfix-accepted owner=12-7-the-oauth-2-0-authorization-server-editor by=cr note=reopen_if=a Rotate Keys or Delete network failure is reported with no message on the editor
+
+### DW-1668: The Recorded line for the key-needs-a-password vendor answer (ERROR #8887) cites TestAVendorRefusalIsNamed, which measures a credential with no private key
+- source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Test/OAuthAuthorizationServerUpdate TestAVendorRefusalIsNamed calls AddCredential(alias, 0), which sets no PrivateKey, so it pins the no-key refusal, not #8887.
+- 2026-09-25T16:49:34Z status=open owner=12-7-the-oauth-2-0-authorization-server-editor by=cr note=lead: correct the spec's Recorded line at its origin at this story's gate
+- 2026-09-25T16:51:09Z status=resolved-by:12-7-the-oauth-2-0-authorization-server-editor by=adjudication note=spec Recorded line corrected at origin: names the plan measurement for #8887 and what TestAVendorRefusalIsNamed actually pins

@@ -133,6 +133,29 @@ Method TestAPasswordRefusalIsNamedAgainstTheCredentials()
     Do $$$AssertEquals($ClassMethod(..#RECORD, "Reached", ..#ENDPOINT, "CHANGEPWD"), 2, "both refusals came from the armed vendor call")
 }
 
+/// <p>Story 12.7's residual risk: a Save that supplies new server credentials and
+/// their key password together is refused on the credentials before the password write is ever
+/// attempted. Save order sends the configuration write first (<code>HandleUpdate</code>), so a vendor
+/// refusal there stops the password write from running at all: new credentials whose key needs a
+/// password cannot be saved in the same Save as that password, only afterward.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.OAuthAuthorizationServerSave.HandleUpdate</method>
+/// sends the password write whether or not the configuration write succeeded -- the "password write
+/// never ran" assertion goes red.</p>
+Method TestNewCredentialsAndTheirPasswordAreRefusedTogether()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed"), "a configuration without credentials is seeded")
+    Set tAlias = $ClassMethod(..#PROBE, "Name", "Combo")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddCredential", tAlias, 1), "a credential with a private key is made")
+    Do $ClassMethod(..#RECORD, "Arm", ..#ENDPOINT, "PUT", 500)
+    Set tPassword = $ClassMethod(..#PROBE, "Secret", "combo")
+    Set tSC = $ClassMethod(..#SCREEN, "Handle", "PUT", {"ServerCredentials": (tAlias), "ServerPassword": (tPassword)}, .tRaw, .tStatus)
+    Do $$$AssertEquals(tStatus, 422, "the combined save is refused: " _ $Extract(tRaw, 1, 300))
+    Do $$$AssertTrue((tRaw [ "OAUTH.SERVERCREDENTIALS.KEY") && (tRaw [ """field"":""ServerCredentials"""), "named on the credentials")
+    Do $$$AssertEquals($ClassMethod(..#RECORD, "WriteTypes"), "PUT", "the password write never ran")
+    Set tStored = $ClassMethod(..#PROBE, "Stored")
+    Do $$$AssertEquals(tStored.%Get("ServerCredentials") _ " " _ tStored.%Get("PasswordLength"), " 0", "and nothing is stored")
+}
+
 /// <p>A port fault as <code>&lt;code&gt; &lt;field&gt;|&lt;code&gt;</code> of its first violation row,
 /// each empty when absent.</p>
 ClassMethod FaultRow(pFault) As %String
@@ -268,7 +291,8 @@ Method AssertMasked(pSince As %String, pPrefix As %String, pPassword As %String)
 /// stored password nor the refused one.</p>
 /// <p>Mutation (Rule 19): <code>secretFields</code> emptied on
 /// <class>OcuPilot.Screen.Descriptor.OAuthServerForm</class> -- the context answers the view and this
-/// goes red.</p>
+/// goes red; <method>OcuPilot.Port.AdminPort.LoggedStatus</method> returns the vendor's status unmasked
+/// -- the refusal's line quotes the refused password and this goes red.</p>
 Method TestNoContextOrLogLineCarriesThePassword()
 {
     Set tPassword = $ClassMethod(..#PROBE, "Secret", "context")

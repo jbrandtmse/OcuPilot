@@ -173,7 +173,7 @@ ClassMethod Validate(pArgs As %DynamicObject, Output pViolations, pMode As %Stri
         For tI = 1:1:$Length(..#TEXTFIELDS, ",") {
             Set tField = $Piece(..#TEXTFIELDS, ",", tI)
             Set tType = pArgs.%GetTypeOf(tField)
-            If (tType = "object") || (tType = "array") || (tType = "boolean") || (tType = "null") Do ..Add(.pViolations, tField, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+            If (tType = "object") || (tType = "array") || (tType = "boolean") || (tType = "null") || (tType = "number") Do ..Add(.pViolations, tField, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
         }
         For tI = 1:1:$Length(..#FLAGFIELDS, ",") {
             Set tField = $Piece(..#FLAGFIELDS, ",", tI)
@@ -267,6 +267,7 @@ ClassMethod ScopeViolations(pValue, pType As %String, ByRef pViolations) [ Priva
         }
         Set tDescriptionType = tEntry.%GetTypeOf("Description")
         If (tDescriptionType '= "unassigned") && (tDescriptionType '= "string") Set tShape = 1
+        If tEntry.%Size() > (1 + (tDescriptionType '= "unassigned")) Set tShape = 1
         If $ZStrip(tEntry.%Get("Description"), "*C") '= tEntry.%Get("Description") Set tShape = 1
         Set tScope = tEntry.%Get("Scope")
         If (tScope = "") || ($ZStrip(tScope, "*CW") '= tScope) {
@@ -428,10 +429,16 @@ ClassMethod Expand(pPayload As %DynamicObject)
         If '$ListFind(tKeep, tKey) Set tDrop = tDrop _ $ListBuild(tKey)
     }
     For tI = 1:1:$ListLength(tDrop) Do pPayload.%Remove($List(tDrop, tI))
-    If pPayload.%GetTypeOf(..#FIELDMETADATA) '= "object" Quit
-    Set tMetadata = pPayload.%Get(..#FIELDMETADATA)
-    If tMetadata.%GetTypeOf(..#GRANTTYPES) '= "array" Quit
-    Set tGrants = tMetadata.%Get(..#GRANTTYPES)
+    If pPayload.%GetTypeOf(..#FIELDMETADATA) = "object" Do ..WithRefreshGrant(pPayload.%Get(..#FIELDMETADATA))
+}
+
+/// <p>Add <parameter>REFRESHGRANT</parameter> to the grant types <var>pMetadata</var> names, when it
+/// names a list without it, as the vendor's own setter does. The merge and the composition call it
+/// too, so the card shows the grant types the write sends.</p>
+ClassMethod WithRefreshGrant(pMetadata As %DynamicObject)
+{
+    If '$IsObject(pMetadata) || (pMetadata.%GetTypeOf(..#GRANTTYPES) '= "array") Quit
+    Set tGrants = pMetadata.%Get(..#GRANTTYPES)
     Set tIterator = tGrants.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tGrant) {
         If tGrant = ..#REFRESHGRANT Quit
@@ -480,15 +487,15 @@ ClassMethod OrderedScopes(pScopes As %DynamicArray) As %DynamicArray
     Quit tOrdered
 }
 
-/// <p>A list <var>pValue</var> as card text: the scopes' names, or the entries themselves,
-/// comma-separated.</p>
-ClassMethod ListText(pValue) As %String
+/// <p>A list <var>pValue</var> as card text: the scopes' names, each followed by its description in
+/// parentheses when <var>pDescribed</var> is 1, or the entries themselves, comma-separated.</p>
+ClassMethod ListText(pValue, pDescribed As %Boolean = 0) As %String
 {
     If '$IsObject(pValue) Quit ""
     Set tText = ""
     Set tIterator = pValue.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tEntry) {
-        Set tName = $Select($IsObject(tEntry): tEntry.%Get("Scope"), 1: tEntry)
+        Set tName = $Select($IsObject(tEntry): tEntry.%Get("Scope") _ $Select(pDescribed: " (" _ tEntry.%Get("Description") _ ")", 1: ""), 1: tEntry)
         Set tText = tText _ $Select(tText = "": "", 1: ", ") _ tName
     }
     Quit tText
@@ -496,8 +503,8 @@ ClassMethod ListText(pValue) As %String
 
 /// <p>The card's rows for a change from <var>pFresh</var> to <var>pPayload</var>: <var>pDiff</var>'s
 /// rows with <code>SupportedScopes</code> and <code>CustomizationRoles</code> drawn as names and
-/// <code>Metadata</code> drawn as one row per member it changes. Nothing is added or removed but
-/// the metadata row.</p>
+/// <code>Metadata</code> drawn as one row per member it changes; a scope list whose names are
+/// unchanged is drawn with its descriptions. Nothing is added or removed but the metadata row.</p>
 ClassMethod CardRows(pFresh As %DynamicObject, pPayload As %DynamicObject, pDiff As %DynamicArray) As %DynamicArray
 {
     Set tRows = []
@@ -506,8 +513,16 @@ ClassMethod CardRows(pFresh As %DynamicObject, pPayload As %DynamicObject, pDiff
         If '$IsObject(tRow) Continue
         Set tField = tRow.%Get("field")
         If (tField = ..#FIELDSCOPES) || (tField = ..#FIELDROLES) {
-            Do tRow.%Set("before", ..ListText($Select($IsObject(pFresh): pFresh.%Get(tField), 1: "")), "string")
-            Do tRow.%Set("after", ..ListText(pPayload.%Get(tField)), "string")
+            Set tOld = $Select($IsObject(pFresh): pFresh.%Get(tField), 1: "")
+            Set tBefore = ..ListText(tOld)
+            Set tAfter = ..ListText(pPayload.%Get(tField))
+            ; A change to a scope's description alone reads the same by name, so draw the descriptions.
+            If tBefore = tAfter {
+                Set tBefore = ..ListText(tOld, 1)
+                Set tAfter = ..ListText(pPayload.%Get(tField), 1)
+            }
+            Do tRow.%Set("before", tBefore, "string")
+            Do tRow.%Set("after", tAfter, "string")
             Do tRows.%Push(tRow)
             Continue
         }

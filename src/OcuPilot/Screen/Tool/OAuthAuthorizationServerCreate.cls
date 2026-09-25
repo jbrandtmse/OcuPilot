@@ -140,7 +140,10 @@ ClassMethod ComposeCreate(pArgs As %DynamicObject, pIdArgument As %String, pSett
     Try {
         Set tDefaults = $ClassMethod(..#RULES, "Defaults")
         Set tArgs = ##class(%DynamicAbstractObject).%FromJSON($Select($IsObject(pArgs): pArgs.%ToJSON(), 1: "{}"))
-        If tArgs.%GetTypeOf(..#METADATAFIELD) = "object" Do tArgs.%Set(..#METADATAFIELD, $ClassMethod(..#RULES, "MergedMetadata", tDefaults, tArgs.%Get(..#METADATAFIELD)))
+        If tArgs.%GetTypeOf(..#METADATAFIELD) = "object" {
+            Do tArgs.%Set(..#METADATAFIELD, $ClassMethod(..#RULES, "MergedMetadata", tDefaults, tArgs.%Get(..#METADATAFIELD)))
+            Do $ClassMethod(..#RULES, "WithRefreshGrant", tArgs.%Get(..#METADATAFIELD))
+        }
         Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Compose(tArgs, pIdArgument, pSettable, .tComposed, .tDiff, .tUnchanged, .pProblem)
         If $$$ISERR(tSC) || (pProblem '= "") Quit
         Set pPayload = tDefaults

@@ -36,6 +36,9 @@ export const SESSION_CLASS_FIELD = 'SessionClass';
 export const GENERATE_FIELD = 'GenerateTokenClass';
 export const REVOKE_FIELD = 'RevokeTokenClass';
 
+/** The five customization classes, which share one required rule. */
+const CLASS_FIELDS: readonly string[] = [AUTHENTICATE_FIELD, SESSION_CLASS_FIELD, VALIDATE_FIELD, GENERATE_FIELD, REVOKE_FIELD];
+
 /** The six top-level flags. */
 export const AUD_FIELD = 'AudRequired';
 export const SUPPORT_SESSION_FIELD = 'SupportSession';
@@ -651,13 +654,16 @@ export class OAuthServerForm {
 
   /**
    * On blur: render the server's required-field sentence on an empty required text field of a
-   * create, as the form read's first rule for it words it.
+   * create, as the form read's required rule for it words it.
    */
   onBlur(field: string): void {
     if (this.modeValue !== 'create' || !this.required(field)) return;
     const key = (Object.keys(TEXT_FIELDS) as TextKey[]).find((entry) => TEXT_FIELDS[entry] === field);
     if (key === undefined || this.buffer.text[key].trim() !== '') return;
-    const rule = this.rulesValue.find((entry) => entry.field === field);
+    // The required rule alone: a field carries other rules too, and the five classes share the one
+    // the server names on the first of them.
+    const target = CLASS_FIELDS.includes(field) ? AUTHENTICATE_FIELD : field;
+    const rule = this.rulesValue.find((entry) => entry.field === target && entry.code.endsWith('.REQUIRED'));
     if (rule === undefined || this.violationList.some((entry) => entry.field === field)) return;
     this.violationList = [...this.violationList, { field, code: rule.code, reason: rule.reason }];
     this.notify();

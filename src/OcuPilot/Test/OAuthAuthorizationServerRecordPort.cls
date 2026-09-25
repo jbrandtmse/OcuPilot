@@ -2,7 +2,8 @@
 /// every mutating call's request type and body are recorded in a process-private global before the
 /// shipped port sends it, a <code>CHANGEPWD</code> body as its key names alone, never a value; and
 /// <method>Arm</method> answers an <code>&lt;endpoint&gt;/&lt;type&gt;</code> as a vendor refusal at
-/// that status without calling the vendor, counting each such answer, while <method>DenyPair</method>
+/// that status without calling the vendor, counting each such answer -- a password refusal quoting the
+/// password, logged with its body as the admin port logs a vendor refusal --, while <method>DenyPair</method>
 /// makes <method>HoldsPair</method> answer no for one pair. Every other call reaches the instance
 /// through the shipped port. The arming lasts until <method>Clear</method>.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
@@ -69,7 +70,11 @@ ClassMethod Vendor(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     If tHttp = "" Quit ##super(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
     Set ^||OcuPilotOAuthAuthFailCount(tKey) = $Get(^||OcuPilotOAuthAuthFailCount(tKey)) + 1
     Set pResult = ""
-    Quit ..Fail(pEndpoint, tHttp, $$$ERROR($$$GeneralError, "OcuPilot test: a canned vendor refusal"), .pHttpStatus, .pFault)
+    ; A vendor refusal can quote the value it refused, so a canned password refusal quotes the password,
+    ; and is logged as the admin port logs one: with the body whose secrets the log line masks.
+    Set tQuoted = ""
+    If (pType = "CHANGEPWD") && $IsObject(pBody) && (pBody.%GetTypeOf("ServerPassword") = "string") Set tQuoted = " of " _ pBody.%Get("ServerPassword")
+    Quit ..Fail(pEndpoint, tHttp, $$$ERROR($$$GeneralError, "OcuPilot test: a canned vendor refusal" _ tQuoted), .pHttpStatus, .pFault, "", pBody)
 }
 
 /// <p>The request types of every mutating call since <method>Clear</method>, comma-separated.</p>

@@ -353,6 +353,25 @@ A new `OAuthAuthorizationServerPort` does four things:
 - **AC9 (link-out).** Given the OAuth 2.0 screen, when it renders, then the Authorization server tab's name cell opens OcuPilot's editor, the server-client tab keeps its classic link, and the check reports the OAuth exemption on `OAuthServerClientTab` alone.
 - **AC10 (DW-1337).** Given the editor on each tab and its delete dialog, when it is measured at 1280 px light, 720 px light and 1280 px dark, then there is no structural or contrast violation.
 
+### Review Findings
+
+Code review 2026-09-25 (four layers, full-opus; blind and edge-case split server/client). 0 high, 6 medium and 6 low patched; 2 medium to the decision sheet; 5 low ledgered; the rest rejected.
+
+- [x] [Review][Patch] (med) Blurring an empty issuer on a create showed `OAUTH.SERVERCONFIG.TAKEN`'s sentence (the rules list it first), and four class fields had no blur rule -- the store now takes the field's `.REQUIRED` rule, the five classes sharing `AuthenticateClass`'s [`oauth-server-form.store.ts` onBlur]
+- [x] [Review][Patch] (med) `OAUTH.SERVERCREDENTIALS.KEY` told a user who had typed the password to enter it; it now says to save the key password first, without the credential [`Api/Error.cls`]. Save order itself is by-design (spec Save order), and QA's `TestNewCredentialsAndTheirPasswordAreRefusedTogether` pins the right invariant.
+- [x] [Review][Patch] (med) A scope's description-only change drew identical before/after card text -- `CardRows` draws descriptions when the names match [`OAuthAuthorizationServerRules.cls`]
+- [x] [Review][Patch] (med) Grant types named without `refresh_token` showed it removed on the card though the write re-adds it -- `WithRefreshGrant` now runs in the merge and the composition [`OAuthAuthorizationServer{Rules,Update,Create}.cls`]
+- [x] [Review][Patch] (med) The log half of `TestNoContextOrLogLineCarriesThePassword` could not fail: the canned refusal quoted no password and bypassed the body mask -- it now quotes it and logs with the body [`Test/OAuthAuthorizationServerRecordPort.cls`]
+- [x] [Review][Patch] (med) AC6's four-tool loop had a mutation for its Delete leg only -- Update, SetPassword and RotateKeys legs proven (run 808)
+- [x] [Review][Patch] (low) AC8's mint refusal was never observed in the principal's own process -- `MintedAs` leg added [`Test/OAuthAuthorizationServerWire.cls`]
+- [x] [Review][Patch] (low) Numbers passed the text-field rules (`ReturnRefreshToken`, algorithms) -- `PORTFIELDSHAPE`; a scope entry with extra members passed -- `OAUTH.SCOPES.SHAPE` [`OAuthAuthorizationServerRules.cls`]
+- [x] [Review][Patch] (low) The issuer hint rendered under Return refresh token -- now under the issuer; `onRotate`'s comment claimed a re-read [`oauth-server-form.page.ts`]
+- [x] [Review][Patch] (low) QA's two tests' mutations recorded in `## Verification` (runs 807, 809)
+- [ ] [Review][Decision] (med) A two-pair principal cannot create (roles unreadable), and the form pre-checks defaults it refuses -- DW-1662 decision-pending; QA's Wire create test pins the spec as written
+- [ ] [Review][Defer] (med) Privileged customization role is name-only (`%Manager` not destructive) -- DW-1663 escalated
+- [ ] [Review][Defer] (low) DW-1664..DW-1667 wontfix-accepted; DW-1668 open (the Recorded #8887 line cites a no-key test)
+- Rejected: AD-27 "second vendor-class use" (`Refresh` completes no call and writes nothing; AD-27's named-case clause governs completing a call); `REFRESHPOLICIES` single values, `Description`/`DefaultScope` rules, the shared password hint, reused algorithm labels, Create opening the stored configuration (spec-bound); create/update `Prohibited` order, `REQUIREDFIELDS` comment, unused `clients()` (no harm); 404 from the clients list, non-string `ServerPassword`, `Expand` without status, `definition` deny-list, PUT upsert race (theoretical); stale "Rotated" line, empty-choice wording, `before` shadowing, duplicated route constants, refusal wording, raw action reason, unknown stored grants, empty namespace select, same-URL create, re-read focus (low, no practical harm); per-leg mutations beyond one per AC.
+
 ## Spec Change Log
 
 - 2026-09-25, lead spec gate: Q1-Q4 answered (Q3 with the no-silence requirement, Q4 as a named destructive effect for `%All`/`%Admin_*`); AD-27 and AD-35 amended.
@@ -521,7 +540,7 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. OAuth-writing t
 **Recorded:**
 
 - Bundle initial total 1,764,919 bytes (main 1,614,024 + styles 150,895), over the 1745kB warning: re-based per DW-1166 to 1854kB in `ui/angular.json` and its pin in `angular-json.test.mjs`.
-- A credential whose private key needs a password the configuration does not hold: the vendor `PUT` answers 500 with `ERROR #8887` (RSA key parsing error); the port names it `OAUTH.SERVERCREDENTIALS.KEY` on `ServerCredentials` (`OAuthAuthorizationServerUpdate` `TestAVendorRefusalIsNamed`).
+- A credential whose private key needs a password the configuration does not hold: the vendor `PUT` answers 500 with `ERROR #8887` (RSA key parsing error); the port names it `OAUTH.SERVERCREDENTIALS.KEY` on `ServerCredentials` (measured at the plan; `OAuthAuthorizationServerUpdate` `TestAVendorRefusalIsNamed` pins the same mapping for a credential with no private key, not #8887 itself).
 - A "Create OAuth2 Server" audit row carries the password on a plain `ServerPassword:` line, so both events are declared in `AuditPort.VENDORSECRETS` (`OAuthAuthorizationServerSecret` `TestTheAuditReadsMaskThePassword`).
 - mutation: `ComposeCreate` skips `CustomizationRoles` → OAuthAuthorizationServerCreate `TestACreateThroughTheRouteStoresEveryValue`, `TestACreateTakenAfterTheMintIsRefusedAtConfirm` red (run 467) (AC1); the store's `createBody` drops the roles → store spec AC1 red.
 - mutation: `MergedMetadata` starts from `{}` → OAuthAuthorizationServerUpdate `TestAnEditSendsTheCompleteSet` red (run 468) (AC2).
@@ -544,6 +563,12 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. OAuth-writing t
 - mutation: `Rules.Changes` answers `pCreates` alone → OAuthAuthorizationServerUpdate `TestEveryBadValueRefusesAnEditOnBothCallers` red (run 498).
 - mutation: the port's `ChangePassword` skips its credentials arm → OAuthAuthorizationServerSecret `TestAPasswordRefusalIsNamedAgainstTheCredentials` red (run 493).
 - Each reverted byte-identically and recompiled with RecordPort where the port changed; Clients, Secret, Wire, Create, Update and Keys re-ran green (runs 500, 501, 502, 496, 503, 499).
+- mutation: Clients dropped from SetPassword's and RotateKeys' `FINGERPRINTSUBJECT` and stripped from Update's merged payload → OAuthAuthorizationServerClients `TestAClientRegisteredAfterTheMintRefusesTheConfirm` red on the Update, SetPassword and RotateKeys legs (run 808) (AC6).
+- mutation: `CustomizationViolations` reads a create's stored roles from `Defaults()` → OAuthAuthorizationServerWire `TestALeastPrivilegedPrincipalCannotCreateWithCustomizationRoles` red, the principal creating (run 807).
+- mutation: `HandleUpdate` stores the password whatever the configuration write answered → OAuthAuthorizationServerSecret `TestNewCredentialsAndTheirPasswordAreRefusedTogether` red; `AdminPort.LoggedStatus` returns the status unmasked (compiled with subclasses) → `TestNoContextOrLogLineCarriesThePassword` red (run 809).
+- mutation: `CardRows` draws scopes by name alone, and `MergeUpdate` skips `WithRefreshGrant` → OAuthAuthorizationServerUpdate `TestTheCardShowsWhatTheWriteSends` red on both assertions (run 806).
+- mutation: the store's `onBlur` takes the field's first rule → store spec "a create's blur on an empty required field" red.
+- Code review: each reverted byte-identically and recompiled (AdminPort and the Save with subclasses); Update 801, Secret 810, Wire 803, Create 804, Clients 805 green; components 1352/0; `oauth-server-editor` browser spec 5/5 on the rebuilt bundle (1,765,295 bytes); throwaway left with no configuration, no client, sign-in 200.
 
 ## Auto Run Result
 

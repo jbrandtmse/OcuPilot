@@ -195,6 +195,11 @@ Method TestACallerWithoutTheResourceIsRefusedEverywhere()
         Do tArgs.%Set("Name", ..Id(), "string")
         Do ..AssertConfirmRefused(tUser, tSuffix, tArgs)
     }
+    ; The mint itself, in the principal's own process, is refused 403 before the vendor is reached.
+    Set tArgs = {"Description": "agent"}
+    Do tArgs.%Set("Name", ..Id(), "string")
+    Set tOut = ..MintedAs(tUser, "OcuPilot.Screen.Tool.OAuthAuthorizationServerUpdate", tArgs)
+    Do $$$AssertEquals(tOut.%Get("error") _ "|" _ tOut.%Get("http") _ "|" _ tOut.%Get("proposalId"), "|403|", "the principal's own mint is refused 403 with no proposal: " _ tOut.%ToJSON())
     Set tAfter = $ClassMethod(..#PROBE, "Stored")
     Do $$$AssertEquals($Select($IsObject(tAfter): tAfter.%Get("Description") _ " " _ tAfter.%Get("KeyCount") _ " " _ tAfter.%Get("PasswordLength"), 1: ""), "seeded " _ tBefore.%Get("KeyCount") _ " 0", "and nothing is changed, rotated or deleted")
 }
@@ -269,6 +274,23 @@ Method TestACallerWhoCannotReadTheRolesKeepsOnlyStoredRoles()
     Do $$$AssertEquals(tStatus _ " " _ ..ViolationCode(tRaw, "CustomizationRoles"), "422 OAUTH.CUSTOMIZATIONROLES.ABSENT", "adding a role it cannot read is refused on the field: " _ $Extract(tRaw, 1, 300))
     Set tStored = $ClassMethod(..#PROBE, "Stored")
     Do $$$AssertEquals(tStored.%Get("Description") _ " " _ tStored.%Get("CustomizationRoles"), "restated %DB_IRISSYS", "and nothing is sent")
+}
+
+/// <p>Story 12.7's residual risk: a principal holding only the tab's two pairs, with no role-list
+/// read, cannot create a configuration with customization roles at all. The create route always
+/// evaluates the field (a required field, and a create has no stored value to fall back on), and no
+/// role it names can pass when the roles list is unreadable to it.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.OAuthAuthorizationServerRules.CustomizationViolations</method>
+/// reads a create's "stored" roles from <method>OcuPilot.Area.Security.OAuthAuthorizationServerRules.Defaults</method>
+/// instead of treating a create as having none -- the default role then passes unverified and this
+/// goes red.</p>
+Method TestALeastPrivilegedPrincipalCannotCreateWithCustomizationRoles()
+{
+    Set tUser = ..#LEASTUSER
+    Set tBody = $ClassMethod(..#PROBE, "Body").%ToJSON()
+    Set tSC = ..Request("POST", ..#SAVEPATH, tBody, tUser, .tStatus, .tRaw, .tHeaders)
+    Do $$$AssertEquals(tStatus _ " " _ ..ViolationCode(tRaw, "CustomizationRoles"), "422 OAUTH.CUSTOMIZATIONROLES.ABSENT", "the create is refused on the role it cannot verify: " _ $Extract(tRaw, 1, 300))
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds"), 0, "and nothing is created")
 }
 
 /// <p>Matrix row "Agent change, clients hidden": a real principal without

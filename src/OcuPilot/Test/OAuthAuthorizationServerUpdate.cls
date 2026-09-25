@@ -109,6 +109,38 @@ Method TestTheAgentsEditKeepsEveryOtherField()
     }
 }
 
+/// <p>AD-6: the card shows what the write sends. A change to a scope's description alone draws the
+/// scopes with their descriptions, so its row reads differently before and after; and grant types
+/// named without <code>refresh_token</code> read with it, as the write sends them.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.OAuthAuthorizationServerRules.CardRows</method>
+/// draws the scopes by name alone, or <method>OcuPilot.Screen.Tool.OAuthAuthorizationServerUpdate.MergeUpdate</method>
+/// skips <method>OcuPilot.Area.Security.OAuthAuthorizationServerRules.WithRefreshGrant</method> -- this
+/// goes red.</p>
+Method TestTheCardShowsWhatTheWriteSends()
+{
+    Set tFresh = $ClassMethod(..#PROBE, "Read")
+    Do $$$AssertTrue($IsObject(tFresh), "the seeded configuration reads")
+    If '$IsObject(tFresh) Quit
+    Set tScopes = ##class(%DynamicAbstractObject).%FromJSON(tFresh.%Get("SupportedScopes").%ToJSON())
+    Do tScopes.%Get(0).%Set("Description", "Described again", "string")
+    Set tArgs = {}
+    Do tArgs.%Set("SupportedScopes", tScopes)
+    Set tSC = $ClassMethod(..#TOOL, "MergeUpdate", tFresh, tArgs, "", $ClassMethod(..#TOOL, "SettableFields"), .tPayload, .tDiff, .tUnchanged, .tProblem)
+    Do $$$AssertStatusOK(tSC, "a description-only scope change merges: " _ $Get(tProblem))
+    Set tRow = ""
+    If $IsObject($Get(tDiff)) && (tDiff.%Size() > 0) Set tRow = tDiff.%Get(0)
+    Do $$$AssertTrue($IsObject(tRow) && (tRow.%Get("field") = "SupportedScopes") && (tRow.%Get("before") '= tRow.%Get("after")) && (tRow.%Get("after") [ "Described again"), "its row shows the description changing: " _ $Select($IsObject(tRow): tRow.%ToJSON(), 1: "no row"))
+    Set tArgs = {"Metadata": {"grant_types_supported": ["authorization_code", "password"]}}
+    Set tSC = $ClassMethod(..#TOOL, "MergeUpdate", tFresh, tArgs, "", $ClassMethod(..#TOOL, "SettableFields"), .tPayload, .tDiff, .tUnchanged, .tProblem)
+    Do $$$AssertStatusOK(tSC, "a grant type change merges: " _ $Get(tProblem))
+    Set tAfter = ""
+    Set tIterator = tDiff.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If $IsObject(tRow) && (tRow.%Get("field") = "Metadata.grant_types_supported") Set tAfter = tRow.%Get("after")
+    }
+    Do $$$AssertEquals(tAfter, "authorization_code, password, refresh_token", "its row reads the grant types the write sends")
+}
+
 /// <p>The refresh token policy is an ordinary field: an edit stores <code>c</code>, the port's read
 /// answers it, and an agent's proposal shows it in its row (Conventions, Secrets).</p>
 Method TestTheRefreshTokenPolicyRoundTrips()

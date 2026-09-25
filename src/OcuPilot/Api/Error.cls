@@ -2825,7 +2825,7 @@ Parameter REASONOAUTHSSLCONFIGURATIONABSENT = "Choose an SSL/TLS configuration f
 
 Parameter OAUTHSERVERCREDENTIALSKEY = "OAUTH.SERVERCREDENTIALS.KEY";
 
-Parameter REASONOAUTHSERVERCREDENTIALSKEY = "This instance could not use that credential's private key. Choose a credential with a private key, and enter the key password if the key needs one.";
+Parameter REASONOAUTHSERVERCREDENTIALSKEY = "This instance could not use that credential's private key. Choose a credential with a private key. If its key needs a password, save the key password first, without the credential, then choose the credential.";
 
 /// <p>The sentence for a Story 12.7 <code>OAUTH.*</code> code, or <code>""</code>.</p>
 ClassMethod ReasonForOAuthAuthorizationServer(pCode As %String) As %String

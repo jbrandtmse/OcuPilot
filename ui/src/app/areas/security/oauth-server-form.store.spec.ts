@@ -199,6 +199,21 @@ describe('the authorization server editor store', () => {
     expect(store.passwordRefused()).toBe('Enter the private key password.');
   });
 
+  it('a create\u2019s blur on an empty required field renders that field\u2019s required rule, never another rule it carries', async () => {
+    const rules = [
+      { field: 'IssuerEndpoint', code: 'OAUTH.SERVERCONFIG.TAKEN', reason: 'This instance already has an authorization server configuration.' },
+      { field: 'IssuerEndpoint', code: 'OAUTH.SERVERISSUER.REQUIRED', reason: 'Enter the issuer endpoint.' },
+      { field: 'AuthenticateClass', code: 'OAUTH.CUSTOMIZATIONCLASS.REQUIRED', reason: 'Enter a class name.' },
+    ];
+    const { store } = mount(null, undefined, { requiredFields: ['IssuerEndpoint', 'SessionClass'], rules });
+    await store.open();
+    store.onBlur('IssuerEndpoint');
+    expect(store.violationFor('IssuerEndpoint')).toBe('Enter the issuer endpoint.');
+    store.setText('sessionClass', '');
+    store.onBlur('SessionClass');
+    expect(store.violationFor('SessionClass')).toBe('Enter a class name.');
+  });
+
   it('an edit that changes nothing sends nothing and reads Saved', async () => {
     const { store, calls } = mount(DEFINITION);
     await store.open();

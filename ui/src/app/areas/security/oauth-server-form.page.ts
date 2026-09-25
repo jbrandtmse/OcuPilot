@@ -159,10 +159,11 @@ function idFor(field: string): string {
     <app-form-tabs [tabs]="tabs" [selected]="selectedTab()" (selectedChange)="selectTab($event)">
       <ng-template ocuFormTab="general">
         <div class="ocu-form-fields ocu-oauth-server-tab">
+          <app-oauth-client-field [control]="issuerControl" [locked]="locked" (edited)="onInput(issuerControl, $event)" (left)="onBlur(issuerControl.field)" />
+          <p class="ocu-field-caption ocu-oauth-server-hint" [id]="issuerHintId">{{ STRINGS.oauthAuthServerIssuerHint }}</p>
           @for (control of generalControls; track control.id) {
             <app-oauth-client-field [control]="control" [locked]="locked" (edited)="onInput(control, $event)" (toggled)="onCheck(control, $event)" (left)="onBlur(control.field)" />
           }
-          <p class="ocu-field-caption ocu-oauth-server-hint" [id]="issuerHintId">{{ STRINGS.oauthAuthServerIssuerHint }}</p>
           <fieldset class="ocu-field ocu-oauth-server-group" [id]="grantsId" tabindex="-1" [attr.aria-describedby]="grantsDescribedBy">
             <legend class="ocu-field-label ocu-field-label-required">{{ STRINGS.oauthColumnGrantTypes }}</legend>
             @for (choice of grantChoices; track choice.value) {
@@ -389,11 +390,17 @@ export class OAuthServerFormPage {
     ];
   }
 
-  protected get generalControls(): readonly Control[] {
+  /** The issuer endpoint, drawn first with its hint beneath it. */
+  protected get issuerControl(): Control {
     this.generation();
     const issuer = this.textControl('issuer', STRINGS.oauthServerFieldIssuer);
+    return { ...issuer, describedBy: issuer.invalid ? `${this.issuerHintId} ${issuer.id}-reason` : this.issuerHintId };
+  }
+
+  /** The General tab's other fields, drawn after the issuer's hint. */
+  protected get generalControls(): readonly Control[] {
+    this.generation();
     return [
-      { ...issuer, describedBy: issuer.invalid ? `${this.issuerHintId} ${issuer.id}-reason` : this.issuerHintId },
       this.textControl('description', STRINGS.tableColumnDescription),
       this.flagControl('aud', STRINGS.oauthAuthServerFieldAudRequired),
       this.flagControl('supportSession', STRINGS.oauthAuthServerFieldSupportSession),
@@ -694,7 +701,7 @@ export class OAuthServerFormPage {
     await this.store.open();
   }
 
-  /** Send the tab's declared Rotate Keys, then read the configuration again (AD-53). */
+  /** Send the tab's declared Rotate Keys (AD-53). The form shows no key, so nothing is read again. */
   protected async onRotate(): Promise<void> {
     if (!this.offersRotate || this.actionBlocked) return;
     this.actionRefusal = '';

@@ -76,7 +76,10 @@ ClassMethod MergeUpdate(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdAr
 {
     Set tMetadata = $Parameter("OcuPilot.Screen.Tool.OAuthAuthorizationServerCreate", "METADATAFIELD")
     Set tArgs = ##class(%DynamicAbstractObject).%FromJSON($Select($IsObject(pArgs): pArgs.%ToJSON(), 1: "{}"))
-    If tArgs.%GetTypeOf(tMetadata) = "object" Do tArgs.%Set(tMetadata, $ClassMethod(..#RULES, "MergedMetadata", pFresh, tArgs.%Get(tMetadata)))
+    If tArgs.%GetTypeOf(tMetadata) = "object" {
+        Do tArgs.%Set(tMetadata, $ClassMethod(..#RULES, "MergedMetadata", pFresh, tArgs.%Get(tMetadata)))
+        Do $ClassMethod(..#RULES, "WithRefreshGrant", tArgs.%Get(tMetadata))
+    }
     Set tScopes = $Parameter("OcuPilot.Screen.Tool.OAuthAuthorizationServerCreate", "SCOPESFIELD")
     If tArgs.%GetTypeOf(tScopes) = "array" Do tArgs.%Set(tScopes, $ClassMethod(..#RULES, "OrderedScopes", tArgs.%Get(tScopes)))
     Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Merge(pFresh, tArgs, pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
