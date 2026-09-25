@@ -2,7 +2,7 @@
 title: 'Story 12.7: The OAuth 2.0 authorization server editor'
 type: 'feature'
 created: '2026-09-25'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'ce6620536add7ddc131af754d4696d1b17047130'
 baseline_commit: 'ce6620536add7ddc131af754d4696d1b17047130'
 review_loop_iteration: 0
@@ -236,6 +236,11 @@ A new `OAuthAuthorizationServerPort` does four things:
 
 ## Tasks & Acceptance
 
+**Rework iteration 1 (lead, 2026-09-25) -- CI red on the story's own head; work only these items:**
+
+- [ ] [CI] browser: `ui/browser/oauth-server-editor.browser-spec.mjs` "AC2, AC4, AC9: the tab's name cell opens the editor ..." times out at `check()`'s `waitForFunction` (line ~179: the checkbox never reads checked after `page.click`) on CI runs 36158841766 (head 9a91f692) and 36163653149 (head af534a37), while it passes on `ocupilot-b-ci` locally. Find the cause (the likeliest is a click landing on the sticky form bar or an element over the checkbox at CI's timing/viewport -- Story 15.9 fixed the same class of failure in the users editor by reaching the field by focus, not a click); fix the spec's helpers (or the page, if the page is at fault) and prove it with a run that reproduces CI's conditions.
+- [ ] [CI] browser: `ui/browser/account-and-filter.browser-spec.mjs` "Command Sign out: typing \"sign out\" offers an active Sign out row ..." fails on both CI runs above (`active: false` -- the Sign out row is not the command box's active descendant), passes locally in isolation, and passed on CI for head 9054aa48 (before this story). Something this story added is ranked or activated ahead of Sign out, or changes state the suite's earlier specs leave (CI runs the whole suite in order: the structural-gate walk, then the shell specs, then account-and-filter). Reproduce with CI's order (the structural spec, then the specs before account-and-filter, then it), find the cause, fix it at the source (not by loosening the assertion), and prove it.
+
 **Execution:**
 
 - `src/OcuPilot/Port/OAuthAuthorizationServerPort.cls` (new; extends `AdminPort`; `GATEPAIRS` the tab's two; add it to `Test/PortGate` `ROSTER`).
@@ -373,6 +378,8 @@ Code review 2026-09-25 (four layers, full-opus; blind and edge-case split server
 - Rejected: AD-27 "second vendor-class use" (`Refresh` completes no call and writes nothing; AD-27's named-case clause governs completing a call); `REFRESHPOLICIES` single values, `Description`/`DefaultScope` rules, the shared password hint, reused algorithm labels, Create opening the stored configuration (spec-bound); create/update `Prohibited` order, `REQUIREDFIELDS` comment, unused `clients()` (no harm); 404 from the clients list, non-string `ServerPassword`, `Expand` without status, `definition` deny-list, PUT upsert race (theoretical); stale "Rotated" line, empty-choice wording, `before` shadowing, duplicated route constants, refusal wording, raw action reason, unknown stored grants, empty namespace select, same-URL create, re-read focus (low, no practical harm); per-leg mutations beyond one per AC.
 
 ## Spec Change Log
+
+- 2026-09-25, rework iteration 1 (trigger=ci): two browser failures on CI runs 36158841766 and 36163653149; `[CI]` items added under Tasks & Acceptance.
 
 - 2026-09-25, lead spec gate: Q1-Q4 answered (Q3 with the no-silence requirement, Q4 as a named destructive effect for `%All`/`%Admin_*`); AD-27 and AD-35 amended.
 
