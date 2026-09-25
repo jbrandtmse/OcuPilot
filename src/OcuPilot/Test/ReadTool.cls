@@ -1168,7 +1168,18 @@ Method TestTheMessagesReadToolCarriesTheConsoleLogsRowsAndNotItsCursor()
     Do $$$AssertEquals(tTool.descriptor, "OcuPilot.Screen.Descriptor.LogMessageViewer", "derived from its descriptor")
     Do $$$AssertEquals(tTool.class, "OcuPilot.Screen.Tool.Read", "and answered by the one shared read tool class, never a class of its own (DW-1100)")
 
-    Set tSC = ##class(OcuPilot.Screen.Tool.Read).View("OcuPilot.Screen.Descriptor.LogMessageViewer", {}, 5, .tResult)
+    ; The port's own tail at the same cap, read just before the tool and again just after it; up
+    ; to five attempts, so a burst that lands a line in both gaps of one attempt is read again.
+    For tAttempt = 1:1:5 {
+        Set (tToolOldest, tBeforeOldest, tAfterOldest) = ""
+        Do ##class(OcuPilot.Port.LogSourcePort).Rows("messages", 5, .tBeforeRows, .tBeforeStatus, .tPortFault)
+        Set tSC = ##class(OcuPilot.Screen.Tool.Read).View("OcuPilot.Screen.Descriptor.LogMessageViewer", {}, 5, .tResult)
+        Do ##class(OcuPilot.Port.LogSourcePort).Rows("messages", 5, .tAfterRows, .tAfterStatus, .tPortFault)
+        If $$$ISOK(tSC), $IsObject(tResult), tResult.rows.%Size() Set tToolOldest = tResult.rows.%Get(tResult.rows.%Size() - 1).%Get("text")
+        If tBeforeStatus = 200, tBeforeRows.%Size() Set tBeforeOldest = tBeforeRows.%Get(tBeforeRows.%Size() - 1).%Get("text")
+        If tAfterStatus = 200, tAfterRows.%Size() Set tAfterOldest = tAfterRows.%Get(tAfterRows.%Size() - 1).%Get("text")
+        If tToolOldest '= "", (tToolOldest = tBeforeOldest) || (tToolOldest = tAfterOldest) Quit
+    }
     Do $$$AssertStatusOK(tSC, "the tool answers against the live instance")
     If $$$ISERR(tSC) Quit
     Do $$$AssertEquals(tResult.fields.%ToJSON(), "[""time"",""severity"",""text""]", "the three declared fields, and no others: " _ tResult.fields.%ToJSON())
@@ -1186,17 +1197,16 @@ Method TestTheMessagesReadToolCarriesTheConsoleLogsRowsAndNotItsCursor()
     }
     Do $$$AssertEquals(tRowKeys.%ToJSON(), "[""time"",""severity"",""text""]", "and every row carries exactly those keys: " _ tRowKeys.%ToJSON())
 
-    ; The file the rows came from, read at the same cap one call apart. A console write landing
-    ; between the two reads shifts EVERY position in a cap-bounded newest-first window, the last as
-    ; much as the first, so no index is immune; the comparison holds because the two calls are
-    ; adjacent and nothing in this class writes to the file. What it discriminates is the file: the
-    ; other endpoint answers another file's rows, or none at all.
-    Set tSC = ##class(OcuPilot.Port.LogSourcePort).Rows("messages", 5, .tPortRows, .tPortStatus, .tPortFault)
-    Do $$$AssertEquals(tPortStatus, 200, "the port answers the same key directly")
-    If tPortStatus '= 200 Quit
-    Do $$$AssertTrue(tPortRows.%Size() > 0, "with rows of its own: " _ tPortRows.%Size())
-    If tPortRows.%Size() = 0 Quit
-    Do $$$AssertEquals(tResult.rows.%Get(tResult.rows.%Size() - 1).%Get("text"), tPortRows.%Get(tPortRows.%Size() - 1).%Get("text"), "and the tool's oldest row in the window is the console log's, not another file's")
+    ; The file the rows came from. Other processes, OcuPilot's own logger among them, write to the
+    ; console log at any moment, and one line shifts every position of a newest-first window, so
+    ; the tool's oldest row must equal the oldest row of the read before it or of the read after
+    ; it: a line landing in one gap leaves the other read equal to the tool's. What this
+    ; discriminates is the file: the other endpoint answers another file's rows, or none at all.
+    Do $$$AssertEquals(tBeforeStatus_"/"_tAfterStatus, "200/200", "the port answers the same key directly")
+    If (tBeforeStatus '= 200) || (tAfterStatus '= 200) Quit
+    Do $$$AssertTrue((tBeforeRows.%Size() > 0) && (tAfterRows.%Size() > 0), "with rows of its own: " _ tBeforeRows.%Size() _ "/" _ tAfterRows.%Size())
+    If (tBeforeRows.%Size() = 0) || (tAfterRows.%Size() = 0) Quit
+    Do $$$AssertTrue((tToolOldest = tBeforeOldest) || (tToolOldest = tAfterOldest), "and the tool's oldest row in the window is the console log's, not another file's: " _ tToolOldest)
 }
 
 /// <p>Story 2.12 AC5 -- the tool never reaches <code>ErrorDetail</code>, observed on the fixture's

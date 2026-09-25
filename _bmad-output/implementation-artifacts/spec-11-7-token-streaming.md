@@ -2,8 +2,8 @@
 title: 'Story 11.7: Token streaming'
 type: 'feature'
 created: '2026-09-25'
-status: 'in-progress'
-baseline_revision: 'f24c030227b7276120e3d65dc30afb4ae2783f62'
+status: 'done'
+baseline_revision: 'aeab4f6b10ddf0d2ec5bce56a235f742110de0b3'
 baseline_commit: 'f24c030227b7276120e3d65dc30afb4ae2783f62'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -269,7 +269,7 @@ Code review 2026-09-25, tier `full-opus`, four layers (blind, edge-case, verific
 - [x] [Review][Defer] by-design: Compatible sends `stream_options`; a server that omits usage counts 0 tokens (Always: a streamed request; Scope decisions).
 - [x] [Review][Defer] by-design: every snapshot rewrites the whole text so far (AD-33 amendment: a snapshot, never a delta).
 
-- [ ] [CI] instance: `OcuPilot.Test.ReadTool.TestTheMessagesReadToolCarriesTheConsoleLogsRowsAndNotItsCursor` red in CI run 36152768790 on `e5c0bff5` ("the tool's oldest row in the window is the console log's"), the reopen_if of DW-1144 -- `src/OcuPilot/Test/ReadTool.cls:1199` -- make the file comparison hold when a console line lands between the tool's read and the port's (OcuPilot's own structured logger writes `messages.log`, and this story's provider tests write many lines just before `ReadTool` runs): e.g. read the port immediately before and after the tool at the same cap and accept the tool's oldest row matching either; the `read.source.endpoint` -> `alerts` mutation must still redden it; write its `mutation:` line. Test-only; no product change.
+- [x] [CI] instance: `OcuPilot.Test.ReadTool.TestTheMessagesReadToolCarriesTheConsoleLogsRowsAndNotItsCursor` red in CI run 36152768790 on `e5c0bff5` ("the tool's oldest row in the window is the console log's"), the reopen_if of DW-1144 -- `src/OcuPilot/Test/ReadTool.cls:1199` -- make the file comparison hold when a console line lands between the tool's read and the port's (OcuPilot's own structured logger writes `messages.log`, and this story's provider tests write many lines just before `ReadTool` runs): e.g. read the port immediately before and after the tool at the same cap and accept the tool's oldest row matching either; the `read.source.endpoint` -> `alerts` mutation must still redden it; write its `mutation:` line. Test-only; no product change.
 
 Rejected: (low) text that stops growing mid-call waits for the next write -- cosmetic, and the fix changes the reader's hand-over contract; (low) the Error banner row names no `PROVIDER.DECLINED` trigger -- that trigger list was never exhaustive; (low) `StreamStep`'s defensive branches untested -- the "never fails the call" promise is pinned at the reader; (low) browser legs (b) and (c) read values (a) and (b) set -- a failure still reads red; (false) a 2xx JSON body above 3,000,000 characters -- no model reply reaches it; (false) tool-call deltas without `index` -- the array position is already the fallback; (false) Gemini thought parts break the prefix -- no request asks for thoughts; (false) a mid-stream read timeout ends `PROVIDER.TIMEOUT` -- the amended AD-42 names a broken body, an error event and a missing terminator, and a timeout is still never retried; (false) browser (g) and the avatar row have no mutation -- each AC has one observed mutation; (low) the prefix check is vacuous on three refusal legs -- the parity assert carries them; (false) turn-level refusal only through Anthropic -- `Loop` reads the canonical stop reason, and `Adapter` plus `ProviderStreamFamilies` pin every family's refusal shapes to it.
 
@@ -306,6 +306,19 @@ Rejected: (low) text that stops growing mid-call waits for the next write -- cos
   - `[false]` `[reject]` Gemini adds an endpoint condition to streaming — "only when" states necessary conditions; an endpoint not naming `:generateContent` is called plain.
   - `[false]` `[reject]` `STREAMS = 0` on OpenAI also turns off Compatible — the intent says Compatible inherits; Compatible can set its own.
   - `[low]` `[patch]` The body-build failure exit dropped the reader without `Release()` — release added on that exit.
+
+### 2026-09-25 — Review pass (rework 1, CI)
+
+- verdicts: 8 findings — high 0, medium 2, low 2, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` A console line landing in both gaps (before and after the tool) still reddens the either-read comparison; an asynchronous system writer (the alert-rate notice) exists — the three reads now retry up to five attempts until the tool's oldest row matches one of them; mutation re-observed (12120 red, 12121 green).
+  - `[low]` `[reject]` The `alerts` mutation can stay green when the five newest console lines are all severity 2+ and mirrored in alerts.log — the single-read comparison had the same coincidence; the fix adds a guard or a console write for a regression that also needs that exact tail; reopen if the mutation stays green in a package-order run.
+  - `[false]` `[reject]` The port reads discard their `%Status` — a failed read sets a non-200 status, which the `200/200` assert catches.
+  - `[false]` `[reject]` Both port reads write the same `tPortFault` — nothing reads it.
+  - `[medium]` `[patch]` The intent names a burst of lines, the either-read comparison tolerates one gap — same root cause as the first row; patched there.
+  - `[low]` `[reject]` Evidence is a single-class run and a one-line probe, not CI's package order — CI's timing is not reproducible locally; the pushed commit's CI run is the gate.
+  - `[false]` `[reject]` "Same cap" differs because the tool asks `Rows` for cap + 1 — `Read.cls:266` asks one extra newest-first row as the truncation signal and keeps the newest five; runs 12117-12121 align.
+  - `[false]` `[reject]` The spec diff moves `status` and `baseline_revision` — the workflow's own bookkeeping; no product or test effect.
 
 ## Design Notes
 
@@ -433,10 +446,16 @@ Code review, observed on `ocupilot-ci` (whole package recompiled; two batches of
 
 **(QA) `ProviderStream.cls` (extended, not new).** Added `TestATestConnectionCallCarriesNoStreamThroughTheRealPort`: a Test-connection call through the real, unmodified `ProviderPort.InvokeDraft` against the shipped `compatible` row (re-adapted to its stub by `OcuPilot.Test.CatalogProbeShipped`) carries no `stream` member, closing the one leg the existing no-sink tests do not reach -- they call the adapter's `Invoke` directly, bypassing `Dispatch`'s own catalog resolution. mutation: `InvokeDraft` passes a stream sink on `Dispatch`'s trailing argument → red: the new test's two body-shape asserts. Observed red, reverted, `git status --short` clean, `ProviderStream` 10/10 on `ocupilot-ci`.
 
+**(Rework 1, CI) `ReadTool.TestTheMessagesReadToolCarriesTheConsoleLogsRowsAndNotItsCursor`.** The port is read at the same cap just before and just after the tool, up to five attempts; the tool's oldest row must equal either read's oldest. mutation: `LogMessageViewer` `read.source.endpoint` `messages` -> `alerts`, whole package recompiled → red: the oldest-row assert alone (run 12120, 1 of 27); reverted, tree byte-identical, green (12121). A scratch probe on `ocupilot-ci` writing one line with `WriteToConsoleLog` between the tool and the second read reddened the old one-read comparison and held under the new one; a line in both gaps of one attempt is read again.
+
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
+
+**Rework 1 (CI run 36152768790, `ReadTool`).** Test-only: `src/OcuPilot/Test/ReadTool.cls` `TestTheMessagesReadToolCarriesTheConsoleLogsRowsAndNotItsCursor` reads the port just before and just after the tool, up to five attempts, and accepts the tool's oldest row matching either read. Review (verification-gap, intent-alignment): 8 findings, 1 root cause patched (medium: a line in both gaps, now retried), 2 low rejected, 4 false; nothing deferred. Follow-up review recommended: false (follow-up pass; patched high 0, medium 1 entry). Verification: `check-objectscript` 0 problems; `ReadTool` 27/27 on `ocupilot-ci` (run 12121) after a whole-package recompile; the `alerts` mutation reddened only the oldest-row assert (12120); a scratch `WriteToConsoleLog` probe between the reads reddened the old comparison and held under the new one (probe class removed). No full sweep: a one-test change. Residual risk: CI's package-order timing is not reproducible locally. footprint_extensions: `src/OcuPilot/Test/ReadTool.cls` (Epic 6's test, not contended).
+
+**First pass.**
 
 **Change.** A turn's model call streams (all four families ship `STREAMS = 1`): `StreamReader` (a `%Net.ChunkedReader`) decodes UTF-8 across chunks, parses SSE and feeds `StreamAdapter`, which publishes the text so far to `StreamStep` (400 ms cadence, `TEXTMAXLENGTH` cap, via `Step.GuardedSnapshotText`) and afterwards assembles the family's plain JSON body for the unchanged `MapResponse`. A 2xx stream with an error event, no terminator or a broken body ends `PROVIDER.TRANSPORT` unretried. A canonical refusal fails the turn `PROVIDER.DECLINED` (DW-1181) and its ledger row records the same code. The panel renders the running model step's text in an inert `app-reply` block that the final reply replaces.
 
