@@ -6690,6 +6690,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: %SYS.Audit refuses past-dated saves/imports in %SYS; body pinned by exact JSON; vendor Delete end read exclusive in source; Test/AuditPurge TestTheScreenRoutePurgesBeforeTodayAndKeepsToday
 - 2026-09-24T19:28:02Z status=routed owner=burndown by=harvest note=settle on ocupilot-b-ci once it has lived past midnight instance time: record the previous-day count, purge at 0 days, assert it reaches 0 and today's survive
 - 2026-09-24T19:55:21Z occurrence=12-3-copy-and-purge-the-audit-database
+- 2026-09-25T01:49:15Z status=resolved-by:12-3-copy-and-purge-the-audit-database by=adjudication note=observed on ocupilot-b-ci after it lived past midnight UTC (instance TZ UTC): AuditPurge run 880 logged 18529 records dated before today at the start; after the 0-day purge none remained and every record dated today survived (2510 >= 2508); all 4 methods passed
 
 ### DW-1633: 12.3 purge dialog counts days on the browser calendar, so a browser ahead of the instance gets 0 days refused as a future cut-off
 - source: spec-12-3-copy-and-purge-the-audit-database.md | severity: low | fix-risk: low | footprint: in-story
