@@ -5433,6 +5433,8 @@ So that token audiences and service mappings are configurable here.
 - **When** it opens
 - **Then** it round-trips create, edit and delete covering the definition, its service mappings and its audiences.
 
+- DW-1644: Switch 12.5's sectioned client-configuration editor to `app-form-tabs`, and build 12.6-12.8 on it directly, now that Epic 9's `form-tabs.ts` is on feature (ledger; routed by merge_gate 2026-09-25)
+
 ### Story 12.7: The OAuth 2.0 authorization server editor
 
 As a developer-administrator,
@@ -6042,6 +6044,8 @@ So that the shell reads as finished.
 - **Given** EXPERIENCE.md's status-bar and Sign out rows
 - **When** this story completes
 - **Then** they state the header placement at origin, and browser specs pin that the header button opens the menu and signs out, that Home shows no filter field, and that a list still filters.
+
+- DW-1597: An editor's own Save raises a change toast that DESIGN.md's toast recipe forbids; suppress it for the open screen's own Save, keep it for agent writes and writes made elsewhere (ledger; routed by merge_gate 2026-09-25)
 
 ---
 

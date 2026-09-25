@@ -6651,6 +6651,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-9-1-the-user-editor.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: DW-1546's rule (hidden only while the entity's list is open, EXPERIENCE.md :494/:721 amended 2026-09-23) fires on the user editor's own Save; DESIGN.md:1210 last sentence forbids a toast confirming the user's own action
 - 2026-09-24T03:02:48Z status=decision-pending owner=burndown by=harvest note=recommend: suppress the change toast for the open screen's own Save (keep it for agent and other writes), or amend DESIGN.md
+- 2026-09-25T04:03:43Z status=routed owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=merge_gate note=decided at the Epic 9 merge (orchestrator, recommended disposition): suppress the change toast for the open screen's own Save; keep it for agent writes and writes made elsewhere. Routed to 15.9, the shell-UX story in the next slot A unit
 
 ### DW-1598: PROHIBITED.UNCOVEREDFIELD's reason names the agent ('settings the agent may propose changing') while the screen's create and Save share the predicate, which AD-53 calls a defect
 - source: 9.1 lead smoke | severity: low | fix-risk: low | footprint: in-epic
@@ -6866,3 +6867,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: measured on ocupilot-ci at the 9.9 implement: after a PUT of LDAPFlags 72 (bit 64 set) the LIST row's Enabled was false while LDAPConfigs:List read Yes; pre-existing in LdapConfigList's read
 - 2026-09-25T00:07:29Z status=routed owner=16-14-the-ldap-and-kerberos-editor by=harvest note=derive the column from LDAPFlags bit 64 or the List query, as the reduced form does from GET
 - 2026-09-25T00:38:59Z occurrence=9-9-a-cut-editor-ships-reduced-never-half-working
+
+### DW-1644: The OAuth 2.0 editors are built as sectioned forms because form-tabs.ts was on Epic 9's unmerged branch; switch them to app-form-tabs now that Epic 9 has merged
+- source: merge gate, Epic 9 (dc3e1b5e) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: 12.5 was planned with four sections named and ordered as the classic tabs (orchestrator ruling 8bd12776); ui/src/app/shell/form-tabs.ts reached feature with Epic 9's merge; UX-DR32/33 ask for tabs
+- 2026-09-25T04:03:43Z status=routed owner=12-6-the-oauth-2-0-resource-server-editor by=merge_gate note=12.6 switches 12.5's editor and builds 12.6-12.8 on app-form-tabs directly
