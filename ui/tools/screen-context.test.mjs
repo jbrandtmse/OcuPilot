@@ -17,8 +17,9 @@ import { dirname, join } from 'node:path';
 //   (Story 11.1).
 // - return `false` for a `sk-` prefix -> the prefix cases redden; return `true` for
 //   `%Api.Mgmnt.v2` -> the non-trigger cases redden.
-// - `assembleEntryContext` sends every row it is not given, or skips `narrowRow` -> the entry
-//   cases redden (Story 11.2).
+// - `assembleEntryContext` skips `narrowRow` -> the narrowing and not-an-object entry cases
+//   redden (Story 11.2). That only the one entry goes is pinned where the panel picks it
+//   (`panel.spec.ts`, Story 11.2).
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);

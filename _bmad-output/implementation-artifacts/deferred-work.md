@@ -6767,6 +6767,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-11-9-the-agent-knows-the-screen-it-is-on.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: publishRows sends drill.errors() narrowed to the 5 summary fields; panel.ts sets namespace from scope.namespace() and entity from the route :id, while the drill's namespace/date live only in ErrorLogDrill (AD-48 one namespace source); ErrorRead requires namespace and date
 - 2026-09-24T09:36:58Z status=routed owner=11-2-explain-a-log-or-audit-entry by=cr note=11.2 consumes these rows; carrying the drill scope needs a descriptor or context-contract change outside 11.9's Never list
+- 2026-09-25T22:55:39Z status=resolved-by:11-2-explain-a-log-or-audit-entry by=adjudication note=LogErrorList context.fields carry the drilled namespace and date (a409a997), published by error-log.page from ErrorLogDrill; pinned by error-log.page.spec DW-1610 leg, screen-grounding browser (row.namespace USER), TurnGrounding seven-key assertion; lead mutation 12956/12957
 
 ### DW-1613: Story 9.5's SSL/TLS editor took the initial bundle to 1,476,658 bytes, over the 1467kB warning (DW-371 red)
 - source: spec-9-5-the-ssl-tls-editor.md | severity: med | fix-risk: low | footprint: in-epic
@@ -6963,3 +6964,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: pollUntilTerminal (ui/src/app/core/turn.ts) stops at the turn's terminal state, usually right after the proposal, so the line keeps its last held answer while the card stays live; Confirm still refuses AUTH.NOPRIVILEGE naming the pair
 - 2026-09-25T18:15:26Z status=open owner=11-8-the-proposal-names-the-privilege-it-needs by=harvest note=in-story MED; turn.ts/panel.ts polling is contended with Epic 12; for the 11.8 code review to patch or disposition
 - 2026-09-25T18:40:20Z status=escalated owner=burndown by=cr note=fix-risk high: post-terminal re-read vs turn.ts polling-stops contract; restore shows no line; refusal now flips it
+
+### DW-1675: Every messages.log/alerts.log row's explain button has the same accessible name, so a screen-reader button list cannot tell the rows apart
+- source: spec-11-2-explain-a-log-or-audit-entry.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: log-viewer.page.ts renders one 'Explain this entry' button per parsed row with no per-row aria-label; the row's time/severity are only in sibling cells. Purpose is clear in its listitem context; naming it per row is a UX wording choice the spec does not make.
+- 2026-09-25T22:53:59Z status=wontfix-accepted owner=11-2-explain-a-log-or-audit-entry by=cr note=reopen_if=an a11y walk or screen-reader check on messages.log with an agent configured flags the duplicate names
+
+### DW-1676: An explained error row carries its drilled namespace while the payload's top-level namespace is still the shell scope, and the prompt does not say which scopes the error tools
+- source: spec-11-2-explain-a-log-or-audit-entry.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: screen-context.ts assembleEntryContext and panel Send set namespace from scope.namespace() (ContextViolation requires it); error-log.store.ts scopedErrors adds the drill's namespace/date per row. Whether a model prefers the row's scope for logs.applicationerrors.read/delete is unverified (inference).
+- 2026-09-25T22:53:59Z status=wontfix-accepted owner=11-2-explain-a-log-or-audit-entry by=cr note=reopen_if=a recorded or live turn calls logs.applicationerrors.read or delete with the top-level namespace instead of the row's

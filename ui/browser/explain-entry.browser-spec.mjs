@@ -252,6 +252,7 @@ test('(b) Application errors: the list row menu\u2019s item sends that one error
     assert.equal(payload.rows[0].namespace, SEED_NAMESPACE, 'the namespace drilled to');
     assert.equal(payload.rows[0].date, seeded.date, 'the date drilled to');
     assert.equal(String(payload.rows[0].errorNumber), seeded.number, 'the error chosen');
+    assert.deepEqual(payload.tools, ['logs_applicationerrors_read', 'logs_applicationerrors_delete'], 'the error list names its read and delete');
   } finally {
     await context.close();
     forgetTag(probe, tag);
@@ -271,6 +272,11 @@ test('(c) Audit database: the record dialog\u2019s action sends that one record,
     await clickRowCentre(page, { index: 0, link: true });
     await page.waitForSelector(AUDIT_EXPLAIN, { timeout: config.navigationTimeoutMs });
     await waitForAvailable(page, AUDIT_EXPLAIN);
+    // The dialog's id route names the record clicked: UTCTimeStamp, SystemID and AuditIndex (AD-13),
+    // one segment encoded twice, as the outlet's own doc describes.
+    const segment = new URL(page.url()).pathname.split('/').pop() ?? '';
+    const [, systemId, auditIndex] = decodeURIComponent(decodeURIComponent(segment)).split('\u0001');
+    assert.ok(auditIndex, `the dialog is on the record's id route: ${page.url()}`);
     assert.equal(await page.$eval(AUDIT_EXPLAIN, (button) => button.textContent.trim()), STRINGS.agentExplainEntryAction);
     await page.click(AUDIT_EXPLAIN);
     await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
@@ -278,6 +284,8 @@ test('(c) Audit database: the record dialog\u2019s action sends that one record,
 
     const payload = assertOneEntry(tag, 'logs/audit');
     assert.equal('EventData' in payload.rows[0], false, 'the event data is not among the declared fields');
+    assert.equal(String(payload.rows[0].SystemID), systemId, 'the record sent is the record clicked');
+    assert.equal(String(payload.rows[0].AuditIndex), auditIndex);
   } finally {
     await context.close();
     forgetTag(probe, tag);

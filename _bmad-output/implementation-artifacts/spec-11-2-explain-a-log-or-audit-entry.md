@@ -162,6 +162,36 @@ deferred: []
 - **AC4.** Given the error list at the list level, when any turn is sent, then each row carries the drill's `namespace` and `date` (DW-1610; `error-log.page.spec.ts`, screen-grounding browser).
 - **AC5.** Given the AD-11 and AD-24 pins (`ContextBound`, `TurnContext`, `TurnLoop`, `TurnTools`, `TurnWire`, 11.1's legs), when they run, then they stay green unedited.
 
+### Review Findings
+
+Code review 2026-09-25 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 0 high, 0 medium.
+
+- [x] [Review][Patch] Gate change after mount unpinned on the audit dialog and the error-log row menu [ui/src/app/areas/logs/audit.page.spec.ts, error-log.page.spec.ts] — two legs added; each page's dropped `subscribe` observed red.
+- [x] [Review][Patch] Log-viewer hand-off had no `mutation:` line [ui/src/app/areas/logs/log-viewer.page.ts:317] — observed and recorded below.
+- [x] [Review][Patch] Roster re-implemented the outlet's resolution and ignored id-route editors [ui/src/app/areas/logs/explain-roster.spec.ts] — now `resolveScreenPage` plus a `DESCRIPTOR_EDIT_PAGES` check; both mutations observed red.
+- [x] [Review][Patch] `screen-context.test.mjs` header named a mutation the function cannot take [ui/tools/screen-context.test.mjs:20] — corrected; the one-entry pin is the panel spec.
+- [x] [Review][Patch] Browser (b) did not assert `tools`; (c) did not tie the sent record to the clicked one [ui/browser/explain-entry.browser-spec.mjs] — added; 3/3 green on the redeployed bundle.
+- [x] [Review][Defer] Row explain buttons share one accessible name [ui/src/app/areas/logs/log-viewer.page.ts:180] — DW-1675 wontfix-accepted.
+- [x] [Review][Defer] An error row's drilled namespace beside the payload's shell namespace, with no prompt sentence on which scopes the tools [ui/src/app/core/screen-context.ts:1623] — DW-1676 wontfix-accepted (inference).
+
+Rejected:
+
+- One button per row adds tab stops — by design, the Tasks line specifies a button per row.
+- `aria-describedby` targets absent — false: the always-mounted panel renders each id in the state that names it (`busy` at `panel.ts:510`, the kill-switch banner, the chip sentence on a resolved logs route).
+- Enabled control that sends nothing (secret fields, empty scope, null screen, audit dialog closing) — theoretical: every built logs screen declares a view, scope is empty only while loading, logs routes resolve.
+- Pages re-render on each turn poll — negligible: keyed rows, one getter pass per second.
+- Gate order in two places — the panel's copy is 11.1's; both equal and pinned (`panel.spec.ts`, `explain-entry.test.mjs`).
+- Prompt leaves typed-sentence and cut-field cases open; transcript bubbles identical — spec-pinned wording and AD-11 rule 1.
+- Opaque failures on unguarded test dereferences — a loud failure is a failure.
+- 11.9 `TurnGrounding` leg still says five fields — the spec keeps it unedited, and it holds for its fixture.
+- DW-1610 still `routed` — adjudication is the lead's gate.
+- DESIGN.md/EXPERIENCE.md log-row columns — they describe data columns; the control is documented at EXPERIENCE.md:268.
+- `pid` not sent, severity as a code — the descriptor's `context.fields`, as the Always list states.
+- `explain-entry` menu id guarded by a comment — theoretical.
+- Header claims gate parity with "Explain this screen" — false: 11.1's gate has no chip-visibility term.
+- Browser (c) `EventData` check is server-narrowed too — an end-to-end property; client narrowing is pinned in `panel.spec.ts`.
+- EXPERIENCE.md :268 extended in place — acceptable: FR-70's explain row, original text kept, no line shift. The Tasks wording is not amended because the spec is oversized.
+
 ## Spec Change Log
 
 - 2026-09-25, lead spec gate: the drilled `namespace` and `date` travel with an application-error row as the entry's identity (two parts of its composite id), not as captured content; AC2's "summary fields only" is read as excluding the captured variable table, `username` and `process`, which this spec pins. Accepted as the DW-1610 fix.
@@ -270,7 +300,7 @@ When the user asks you to explain this entry, explain the one row in screen_cont
 - AC5: no mutation; its pins are unedited and green in the sweep.
 
 mutation: panel `onExplainEntry` sends `this.assembleContext()` (the store's rows) instead of the entry -> panel spec "messages.log row" and "audit entry is narrowed" red; browser (a) red, `rowsSent` 0 not 1.
-mutation: `DESCRIPTOR_PAGES` maps `LogMessageViewer` to `ListPage` -> `explain-roster.spec.ts` red naming `logs/messages`.
+mutation: `ARCHETYPE_PAGES['log-viewer']` is `ListPage` -> `explain-roster.spec.ts` red naming `logs/alerts`; `DESCRIPTOR_EDIT_PAGES` gains `AuditList` -> red on its id route.
 mutation: `assembleEntryContext` sends the row un-narrowed -> `screen-context.test.mjs` "narrowed to the declared fields" and "not an object" red.
 mutation: `username` added to LogErrorList `context.fields` -> `TurnGrounding` error-entry leg red on "nor the user name" (and the 11.9 leg); `Descriptor` context assertion red.
 mutation: `detail` property added to `ErrorRead.InputSchema` -> `ScreenGrounding.TestTheErrorReadToolTakesNoDetailArgument` red alone.
@@ -281,6 +311,8 @@ mutation: entry sentence deleted from `Prompt.BUILTIN` -> `ScreenGrounding` "the
 mutation: sharing-off arm dropped from `ExplainEntry.reason()` -> `explain-entry.test.mjs` two legs red; log-viewer, error-log and audit page specs' blocked legs red.
 mutation: `explainRow` sends `scopedErrors()[0]` and audit `onExplain` sends `store.data()[0]` (two-row fixtures, the second explained) -> `error-log.page.spec.ts` and `audit.page.spec.ts` explain legs red.
 mutation: `ExplainEntry.shown()` drops `agentContext.answered()` -> `explain-entry.test.mjs` "shows once" and "refused or hidden" red.
+mutation: `LogViewerPage.onExplain` requests `this.rows[0].entry` -> `log-viewer.spec.ts` "messages.log: each row carries the control" red.
+mutation: `AuditPage` and `ErrorLogPage` each drop their `explainEntry.subscribe` -> the "a gate that changes while the dialog/row menu is open" leg of that page's spec red.
 mutation (AC5): `onSend` passes `null` to `sendWithContext` -> four `panel.spec.ts` 4.11 context legs red (secret-typed screen, view changes, cap below the view, cap follows agent-switch).
 
 **Manual check (extra evidence, never the proof).** Use the owner's live-key rules from 2026-09-23. On messages.log with a live Anthropic definition, Explain a warning line. The reply should explain that one line and propose nothing.

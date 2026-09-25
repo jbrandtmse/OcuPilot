@@ -463,6 +463,17 @@ describe('the audit database viewer', () => {
     expect(TestBed.inject(AuditSearch).takeGridFocusRequest()).toBe(true);
   });
 
+  // Mutation (Rule 19): drop the page's `explainEntry.subscribe` -> this goes red on the stale action.
+  it('Story 11.2: a gate that changes while the dialog is open re-renders its action', async () => {
+    const { host, fixture, state, fire } = await openDialog();
+    expect(explainAction(host)?.getAttribute('aria-disabled')).toBeNull();
+    state.busy = true;
+    fire();
+    await settle(fixture);
+    expect(explainAction(host)?.getAttribute('aria-disabled')).toBe('true');
+    expect(explainAction(host)?.getAttribute('aria-describedby')).toBe(BUSY_REASON_ID);
+  });
+
   it('Story 11.2: unconfigured, the dialog carries no explain action', async () => {
     const { host } = await openDialog({ configured: false });
     expect(host.querySelector('[role="dialog"]')).not.toBeNull();

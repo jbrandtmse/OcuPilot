@@ -1146,6 +1146,18 @@ describe('ErrorLogPage', () => {
     expect((fixture.nativeElement as HTMLElement).textContent ?? '').not.toContain(STRINGS.agentExplainEntryAction);
   });
 
+  // Mutation (Rule 19): drop the page's `explainEntry.subscribe` -> this goes red on the stale item.
+  it('Story 11.2: a gate that changes while the row menu is open re-renders its explain item', async () => {
+    const { fixture, state, fire } = await atList();
+    expect(openMenu(fixture, '4')[1].getAttribute('aria-disabled')).toBeNull();
+    state.busy = true;
+    fire();
+    fixture.detectChanges();
+    const item = fixture.nativeElement.querySelectorAll('.ocu-data-table-menu-item')[1] as HTMLButtonElement;
+    expect(item.getAttribute('aria-disabled')).toBe('true');
+    expect(item.getAttribute('aria-describedby')).toBe(BUSY_REASON_ID);
+  });
+
   it('Story 11.2: unconfigured, the list level offers no explain item', async () => {
     const { fixture } = await atList({ configured: false });
     expect(openMenu(fixture, '4').map((item) => item.textContent?.trim())).toEqual([STRINGS.actionDelete]);
