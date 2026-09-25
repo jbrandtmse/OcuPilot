@@ -6,9 +6,14 @@
 /// the row (AD-35).</p>
 /// <p><b>The privilege set is <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code></b>:
 /// the vendor gates this endpoint on the secure resource rather than an OAuth one (AD-8).</p>
-/// <p><b>Its name cells open the classic resource server editor in a new tab</b>, sending the name as
-/// <code>PID</code> (AD-44).</p>
-/// <p>It declares no primary or row action and does not refresh (AD-43).</p>
+/// <p><b>Its name cells open OcuPilot's own editor</b>,
+/// <class>OcuPilot.Screen.Descriptor.OAuthResourceServerForm</class>, at this tab's route with
+/// <code>/edit</code> appended and the name as the id (Story 12.6); it declares no classic link-out.
+/// Its Create opens the same editor empty.</p>
+/// <p><b>Its row action is <code>delete</code></b>, carried out by
+/// <class>OcuPilot.Screen.Tool.OAuthResourceServerDelete</class> (AD-51, AD-53). Its declared secret
+/// is written only by <class>OcuPilot.Screen.Tool.OAuthResourceServerSetSecret</class> (AD-56). It
+/// does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.OAuthResourceServerTab Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -29,19 +34,14 @@ XData Declaration
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "primaryAction": {"id": "create", "selfProtection": ""},
+  "rowActions": [{"id": "delete", "selfProtection": ""}],
   "context": {"fields": ["Name", "ServerDefinition"], "secretFields": []},
+  "secretArguments": ["ClientSecret"],
   "emptyStateKey": "oauthResourceServersEmpty",
   "commandAliases": [],
   "classicPage": "%CSP.UI.Portal.OAuth2.ResourceServer.ConfigurationList",
-  "classicLinkExemption": {
-    "exempt": true,
-    "reason": "Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1",
-    "label": "OAuth 2.0 Resource Server Configuration",
-    "href": "/csp/sys/sec/%25CSP.UI.Portal.OAuth2.ResourceServer.Configuration.zen",
-    "rowLink": {"params": [{"name": "PID", "field": "Name"}]}
-  },
+  "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
     "source": {"port": "admin", "endpoint": "Security.OAuth2.ResourceServer", "type": "LIST"},
     "fields": ["Name", "ServerDefinition"],
@@ -54,8 +54,8 @@ XData Declaration
       {"field": "Name", "labelKey": "tableColumnName", "kind": "name"},
       {"field": "ServerDefinition", "labelKey": "x509ColumnIssuer", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "oauthResourceServersEmptyAgent"
   },
   "tab": {"group": "security/oauth", "position": 3, "labelKey": "oauthTabResourceServers"},
   "toolIdentifier": "security.oauthresourceservers"

@@ -531,6 +531,60 @@ XData Entries
       "RegistrationAccessToken": "secret"
     }
   },
+  "security.oauthresourceservers.create": {
+    "fieldList": "Security.OAuth2.ResourceServer",
+    "classification": {
+      "Enabled": "ordinary",
+      "Description": "ordinary",
+      "IssuerEndpoint": "ordinary",
+      "ScopeRequiredToConnect": "ordinary",
+      "Audiences[]": "ordinary",
+      "AccessTokenIsJWT": "ordinary",
+      "AlwaysCallIntrospection": "ordinary",
+      "ClientId": "ordinary",
+      "IntrospectionAuthMethod": "ordinary",
+      "UseOIDC": "ordinary",
+      "Authenticator.Namespace": "ordinary",
+      "Authenticator.Implementation": "ordinary"
+    }
+  },
+  "security.oauthresourceservers.update": {
+    "fieldList": "Security.OAuth2.ResourceServer",
+    "classification": {
+      "Enabled": "ordinary",
+      "Description": "ordinary",
+      "IssuerEndpoint": "ordinary",
+      "ScopeRequiredToConnect": "ordinary",
+      "Audiences[]": "ordinary",
+      "AccessTokenIsJWT": "ordinary",
+      "AlwaysCallIntrospection": "ordinary",
+      "ClientId": "ordinary",
+      "IntrospectionAuthMethod": "ordinary",
+      "UseOIDC": "ordinary",
+      "Authenticator.Namespace": "ordinary",
+      "Authenticator.Implementation": "ordinary"
+    }
+  },
+  "security.oauthresourceservers.setsecret": {
+    "fieldList": "Security.OAuth2.ResourceServer",
+    "classification": {
+      "Enabled": "ordinary",
+      "Description": "ordinary",
+      "IssuerEndpoint": "ordinary",
+      "ScopeRequiredToConnect": "ordinary",
+      "Audiences[]": "ordinary",
+      "AccessTokenIsJWT": "ordinary",
+      "AlwaysCallIntrospection": "ordinary",
+      "ClientId": "ordinary",
+      "IntrospectionAuthMethod": "ordinary",
+      "UseOIDC": "ordinary",
+      "Authenticator.Namespace": "ordinary",
+      "Authenticator.Implementation": "ordinary"
+    },
+    "authored": {
+      "ClientSecret": "secret"
+    }
+  },
   "permissions.users.create": {
     "fieldList": "Security.User",
     "classification": {

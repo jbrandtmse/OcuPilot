@@ -247,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -279,6 +279,16 @@ Parameter TYPEOAUTHSERVERCLIENT = "oauth2-server-client";
 /// <p>An OAuth 2.0 server description (Story 12.4), which shares the OAuth arm
 /// (<method>OAuthEntry</method>).</p>
 Parameter TYPEOAUTHSERVERDEF = "oauth2-server-definition";
+
+/// <p>An OAuth 2.0 resource server (Story 12.6), which shares the OAuth arm
+/// (<method>OAuthEntry</method>) and names one effect (<parameter>EFFECTMAPPINGMOVE</parameter>).</p>
+Parameter TYPEOAUTHRESOURCESERVER = "oauth2-resource-server";
+
+/// <p>The effect of adding a service mapping another resource server holds: the vendor moves it
+/// (Story 12.6). A mapping only chooses which resource server validates a token for an application
+/// or namespace that already accepts OAuth 2.0 (inference), so the move is permitted, marked
+/// destructive and named, never refused.</p>
+Parameter EFFECTMAPPINGMOVE = "OAUTH.MAPPINGMOVE";
 
 /// <p>A system audit event and a user audit event (Story 7.11), which share one arm
 /// (<method>AuditEvent</method>).</p>
@@ -534,6 +544,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
 {
     If pType = ..#TYPEOAUTHSERVERDEF Quit ..OAuthServerFields()
     If pType = ..#TYPEOAUTHCLIENT Quit ..OAuthClientFields()
+    If pType = ..#TYPEOAUTHRESOURCESERVER Quit ..OAuthResourceServerFields()
     If pType = ..#TYPEAUDITEVENT Quit $ListBuild(..#FIELDENABLED)
     If pType = ..#TYPEAUDITUSEREVENT Quit $ListBuild("Description", ..#FIELDENABLED)
     If pType = ..#TYPEWEBAPPLICATION Quit ..WebApplicationSettingFields() _ $ListFromString(..#APPLICATIONROLEFIELDS)
@@ -642,6 +653,7 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
 {
     If pType = ..#TYPEOAUTHSERVERDEF Quit ..OAuthServerFields()
     If pType = ..#TYPEOAUTHCLIENT Quit ..OAuthClientFields()
+    If pType = ..#TYPEOAUTHRESOURCESERVER Quit ..OAuthResourceServerFields()
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "DispatchClass", "Enabled", "MatchRoles", "NameSpace", "Recurse", "Resource", "WSGIAppLocation", "WSGIAppName", "WSGICallable", "WSGIType")
     If pType = ..#TYPEUSER Quit $ListBuild("ExpirationDate", "FullName", "NameSpace", "Routine", ..#FIELDROLES)
     If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
@@ -732,7 +744,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -828,7 +840,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Set tSC = ..OAuthEntry(tType, .tChanged, .pProhibits, .pCode)
             Quit
         }
-        If tType = ..#TYPEOAUTHSERVERDEF {
+        If (tType = ..#TYPEOAUTHSERVERDEF) || (tType = ..#TYPEOAUTHRESOURCESERVER) {
             Set tSC = ..OAuthEntry(tType, .tChanged, .pProhibits, .pCode)
             Quit
         }
@@ -1066,7 +1078,9 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
 /// OcuPilot's own applications the same three changes are <method>WebApplication</method>'s
 /// refusals. Only fields the payload carries are compared, so a bodyless write's narrowed payload
 /// answers <code>""</code>.</p>
-/// <p>For a service (<var>pId</var> being its name), <method>ServiceWeakening</method>'s answer.</p>
+/// <p>For a service (<var>pId</var> being its name), <method>ServiceWeakening</method>'s answer. For
+/// a resource server, <parameter>EFFECTMAPPINGMOVE</parameter> when <method>MovesMapping</method>
+/// answers true.</p>
 ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pEffect As %String, pId As %String = "") As %Status
 {
     Set pEffect = ""
@@ -1078,6 +1092,10 @@ ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarge
         }
         If pType = ..#TYPESERVICE {
             Set pEffect = ..ServiceWeakening(pId, pPayload, pTarget)
+            Quit
+        }
+        If pType = ..#TYPEOAUTHRESOURCESERVER {
+            If ..MovesMapping(pId, pPayload, pTarget) Set pEffect = ..#EFFECTMAPPINGMOVE
             Quit
         }
         If pType '= ..#TYPEWEBAPPLICATION Quit
@@ -1102,6 +1120,21 @@ ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarge
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Whether the payload's <code>Service</code> and <code>Key</code> name a service mapping that
+/// <var>pTarget</var>'s <code>Held</code> answers is held by a resource server other than
+/// <var>pId</var>: adding it moves it (Story 12.6). A payload naming no mapping moves none.</p>
+ClassMethod MovesMapping(pId As %String, pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean
+{
+    If '$IsObject(pPayload) || '$IsObject(pTarget) Quit 0
+    Set tService = ..Rendered(pPayload, "Service")
+    Set tKey = ..Rendered(pPayload, "Key")
+    If (tService = "") || (tKey = "") Quit 0
+    Set tHeld = ..Member(pTarget, "Held")
+    If '$IsObject(tHeld) Quit 0
+    Set tHolder = ..Rendered(tHeld, tService _ "/" _ $ZConvert(tKey, "L"))
+    Quit (tHolder '= "") && (tHolder '= pId)
 }
 
 /// <p>The user predicates, in declared order, first hit wins: the four account arms --
@@ -1475,10 +1508,21 @@ ClassMethod OAuthClientFields() As %List [ Private ]
     Quit $ListBuild("ServerDefinition", "Enabled", "Description", "ClientType", "SSLConfiguration", "RedirectionEndpoint", "JWTAudience", "JWTInterval", "ClientId", "ClientCredentials", "Metadata", "DefaultScope")
 }
 
-/// <p>The OAuth 2.0 client configuration, server client and server description predicates,
-/// <var>pType</var> being one of the three: the reviewed-few sweep over the type's permitted list
-/// (<method>OAuthClientFields</method> for a client configuration, empty for a server client,
-/// <method>OAuthServerFields</method> for a server description), and nothing else.</p>
+/// <p>An OAuth 2.0 resource server's settable fields, create and change alike: the eleven
+/// <code>Security.OAuth2.ResourceServer</code> template fields (Story 12.6). The name is the id and
+/// never changes, and the client secret is its own write. Nothing here is self-protective: OcuPilot
+/// owns no OAuth 2.0 object.</p>
+ClassMethod OAuthResourceServerFields() As %List [ Private ]
+{
+    Quit $ListBuild("Enabled", "Description", "IssuerEndpoint", "ScopeRequiredToConnect", "Audiences", "AccessTokenIsJWT", "AlwaysCallIntrospection", "ClientId", "IntrospectionAuthMethod", "UseOIDC", "Authenticator")
+}
+
+/// <p>The OAuth 2.0 client configuration, server client, server description and resource server
+/// predicates, <var>pType</var> being one of the four: the reviewed-few sweep over the type's
+/// permitted list (<method>OAuthClientFields</method> for a client configuration, empty for a server
+/// client, <method>OAuthServerFields</method> for a server description,
+/// <method>OAuthResourceServerFields</method> for a resource server), and nothing else. A resource
+/// server's mapping move is an effect, not a refusal (<method>WeakensByEffect</method>).</p>
 /// <p><b>No predicate exists because AD-10 names no OAuth 2.0 effect.</b> Its Release 1 set is
 /// accounts, privilege grants, the path serving OcuPilot and system processes, and install creates
 /// no OAuth 2.0 object, so no configuration, client or description is OcuPilot's own. The one write

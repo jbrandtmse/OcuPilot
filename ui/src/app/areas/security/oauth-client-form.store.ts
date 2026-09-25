@@ -70,6 +70,66 @@ export const CLIENT_TYPES: readonly string[] = ['confidential', 'public', 'resou
 
 export const RESOURCE_TYPE = 'resource';
 
+/** The four tabs, named and ordered as the classic page's (DW-1644). */
+export const GENERAL_TAB = 'general';
+export const INFORMATION_TAB = 'information';
+export const JWT_TAB = 'jwt';
+export const CREDENTIALS_TAB = 'credentials';
+
+/**
+ * Which tab each field is drawn on, in form order. A metadata member the form draws no control for
+ * is shown in the read-only table on the Client Information tab, so its refusal belongs there too.
+ */
+export const CLIENT_FIELD_TABS: Readonly<Record<string, string>> = {
+  [NAME_FIELD]: GENERAL_TAB,
+  'Metadata.client_name': GENERAL_TAB,
+  [DESCRIPTION_FIELD]: GENERAL_TAB,
+  [ENABLED_FIELD]: GENERAL_TAB,
+  [TYPE_FIELD]: GENERAL_TAB,
+  [SSL_FIELD]: GENERAL_TAB,
+  [SERVER_FIELD]: GENERAL_TAB,
+  [REDIRECT_FIELD]: GENERAL_TAB,
+  'Metadata.frontchannel_logout_uri': GENERAL_TAB,
+  'Metadata.frontchannel_logout_session_required': GENERAL_TAB,
+  'Metadata.grant_types': GENERAL_TAB,
+  'Metadata.token_endpoint_auth_method': GENERAL_TAB,
+  'Metadata.token_endpoint_auth_signing_alg': GENERAL_TAB,
+  [AUDIENCE_FIELD]: GENERAL_TAB,
+  'Metadata.logo_uri': INFORMATION_TAB,
+  'Metadata.client_uri': INFORMATION_TAB,
+  'Metadata.policy_uri': INFORMATION_TAB,
+  'Metadata.tos_uri': INFORMATION_TAB,
+  [SCOPE_FIELD]: INFORMATION_TAB,
+  'Metadata.contacts': INFORMATION_TAB,
+  'Metadata.default_max_age': INFORMATION_TAB,
+  [METADATA_FIELD]: INFORMATION_TAB,
+  [INTERVAL_FIELD]: JWT_TAB,
+  [CREDENTIALS_FIELD]: JWT_TAB,
+  [PASSWORD_FIELD]: JWT_TAB,
+  'Metadata.id_token_signed_response_alg': JWT_TAB,
+  'Metadata.id_token_encrypted_response_enc': JWT_TAB,
+  'Metadata.id_token_encrypted_response_alg': JWT_TAB,
+  'Metadata.userinfo_signed_response_alg': JWT_TAB,
+  'Metadata.userinfo_encrypted_response_enc': JWT_TAB,
+  'Metadata.userinfo_encrypted_response_alg': JWT_TAB,
+  'Metadata.access_token_signed_response_alg': JWT_TAB,
+  'Metadata.access_token_encrypted_response_enc': JWT_TAB,
+  'Metadata.access_token_encrypted_response_alg': JWT_TAB,
+  'Metadata.request_object_signing_alg': JWT_TAB,
+  'Metadata.request_object_encryption_enc': JWT_TAB,
+  'Metadata.request_object_encryption_alg': JWT_TAB,
+  [CLIENT_ID_FIELD]: CREDENTIALS_TAB,
+  [SECRET_FIELD]: CREDENTIALS_TAB,
+  [REGISTRATION_TOKEN_FIELD]: CREDENTIALS_TAB,
+  [INITIAL_TOKEN_FIELD]: CREDENTIALS_TAB,
+  'Metadata.client_id_issued_at': CREDENTIALS_TAB,
+  'Metadata.client_secret_expires_at': CREDENTIALS_TAB,
+  'Metadata.registration_client_uri': CREDENTIALS_TAB,
+};
+
+/** Every field in form order, which is also the order a refused Save's tab is chosen by. */
+export const CLIENT_FIELD_ORDER: readonly string[] = Object.keys(CLIENT_FIELD_TABS);
+
 /** What the form is doing: creating a configuration, or editing the one its route names. */
 export type FormMode = 'create' | 'edit';
 

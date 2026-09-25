@@ -222,10 +222,10 @@ Method TestEveryOAuthWriteToolIsBodylessOrAMerge()
         }
     }
     Do $$$AssertEquals($ListToString(tNeither), "", "every OAuth 2.0 write tool is in one half")
-    Do $$$AssertEquals(..Half(.tByHalf, "bodyless"), "permissions.users.revoketokens," _ ..#CLIENTTOOL _ ",security.oauthclients.register,security.oauthclients.rotatekeys," _ ..#SERVERCLIENTTOOL _ ",security.oauthserverdescriptions.delete", "the bodyless half is exactly the three deletes, Story 12.2's token revoke and Story 12.5's registration and key rotation")
-    Do $$$AssertEquals(..Half(.tByHalf, "merge"), "security.oauthclients.update,security.oauthserverdescriptions.update", "the merge half is exactly Stories 12.4's and 12.5's edits")
-    Do $$$AssertEquals(..Half(.tByHalf, "create"), "security.oauthclients.create,security.oauthserverdescriptions.create", "the create half is exactly Stories 12.4's and 12.5's creates")
-    Do $$$AssertEquals(..Half(.tByHalf, "secret"), "security.oauthclients.setsecrets,security.oauthserverdescriptions.settoken", "the secret-body half is exactly Story 12.4's token write and Story 12.5's client secrets")
+    Do $$$AssertEquals(..Half(.tByHalf, "bodyless"), "permissions.users.revoketokens," _ ..#CLIENTTOOL _ ",security.oauthclients.register,security.oauthclients.rotatekeys,security.oauthresourceservers.addmapping,security.oauthresourceservers.delete,security.oauthresourceservers.removemapping," _ ..#SERVERCLIENTTOOL _ ",security.oauthserverdescriptions.delete", "the bodyless half is exactly the four deletes, Story 12.2's token revoke, Story 12.5's registration and key rotation and Story 12.6's two mapping writes")
+    Do $$$AssertEquals(..Half(.tByHalf, "merge"), "security.oauthclients.update,security.oauthresourceservers.update,security.oauthserverdescriptions.update", "the merge half is exactly Stories 12.4's, 12.5's and 12.6's edits")
+    Do $$$AssertEquals(..Half(.tByHalf, "create"), "security.oauthclients.create,security.oauthresourceservers.create,security.oauthserverdescriptions.create", "the create half is exactly Stories 12.4's, 12.5's and 12.6's creates")
+    Do $$$AssertEquals(..Half(.tByHalf, "secret"), "security.oauthclients.setsecrets,security.oauthresourceservers.setsecret,security.oauthserverdescriptions.settoken", "the secret-body half is exactly Story 12.4's token write, Story 12.5's client secrets and Story 12.6's client secret")
     Do $$$AssertEquals(..Half(.tByHalf, "composed"), "security.oauthserverdescriptions.updatejwks", "and the composed half exactly Story 12.4's key-set refresh")
 }
 

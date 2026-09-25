@@ -4,7 +4,7 @@
  *
  * What it pins, each on rendered DOM, on the real URL or on the instance itself:
  *
- * 1. **Create** (AC1, AC10): the tab's Create opens the editor, its four sections in the classic
+ * 1. **Create** (AC1, AC10): the tab's Create opens the editor, its four tabs in the classic
  *    page's order; Save with a client secret typed replaces the route with the configuration's own,
  *    reads "Saved", and the instance holds the fields, the grant type and the secret.
  * 2. **Edit and secrets** (AC2, AC3): the tab's name cell opens the editor with every secret masked
@@ -14,7 +14,7 @@
  * 4. **Rotate Keys** (AC6): the editor reports the rotation and the key set changes.
  * 5. **Delete from the row menu** (AC6, AC10): the editor's delete dialog passes DW-1337, the row menu
  *    offers the three declared actions, and the typed name deletes it.
- * 6. **The other three tabs keep their classic links** (AC9).
+ * 6. **The two tabs still edited in the classic portal keep their classic links** (AC9).
  * 7. **DW-1337** (AC10): the editor and its delete dialog pass the structural and contrast checks at
  *    1280 light, 720 light and 1280 dark, allowed only the shell's own two findings.
  *
@@ -61,9 +61,8 @@ const EDIT_URL = `/ocupilot/${EDITOR_ROUTE}/${encodeEntityId(NAME)}?ns=HSCUSTOM`
 const ACTION_PATH = '/api/ocupilot/screens/security.oauthclients/action';
 const ID = 'ocu-oauth-client';
 
-/** The three tabs still edited in the classic portal, and the classic editor their name cells open. */
+/** The two tabs still edited in the classic portal, and the classic editor their name cells open. */
 const CLASSIC_TABS = [
-  { route: 'security/oauth/resource-servers', page: '%25CSP.UI.Portal.OAuth2.ResourceServer.Configuration.zen' },
   { route: 'security/oauth/server', page: '%25CSP.UI.Portal.OAuth2.Server.Configuration.zen' },
   { route: 'security/oauth/server-clients', page: '%25CSP.UI.Portal.OAuth2.Server.Client.zen' },
 ];
@@ -110,6 +109,17 @@ function frames(page) {
   return page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
 
+/**
+ * Wait until no CSS transition is running: a tab label's color eases between themes, so a contrast
+ * read taken mid-transition measures the theme it is leaving.
+ */
+function transitionsSettled(page) {
+  return page.waitForFunction(
+    () => document.getAnimations().every((animation) => !(animation instanceof CSSTransition) || animation.playState !== 'running'),
+    { timeout: config.navigationTimeoutMs }
+  );
+}
+
 /** The baseline's allowance for this route: the shell's own DW-1583 and DW-1584 entries alone. */
 function shellAllowance() {
   return (readBaseline()?.entries ?? []).filter((entry) => entry.route === EDITOR_ROUTE && (entry.dw === 'DW-1583' || entry.dw === 'DW-1584'));
@@ -132,6 +142,7 @@ async function assertStructure(page, dialog = false) {
     await page.setViewport(viewport);
     await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
     await frames(page);
+    await transitionsSettled(page);
     surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     const { entries } = await detectScreen(page, { route: EDITOR_ROUTE, checks, viewport: viewport.width, theme, minimums });
     found.push(...entries);
@@ -147,8 +158,26 @@ async function assertStructure(page, dialog = false) {
   assert.deepEqual(fresh.map((entry) => `${entry.key}: ${entry.measured}`), [], 'no structural or contrast violation on the editor');
 }
 
-/** Type `value` into the form control `id`, replacing whatever is there. */
+/** The editor's four tabs, in the classic page's order. */
+const TAB_KEYS = ['general', 'information', 'jwt', 'credentials'];
+
+/** Open the form tab keyed `key`, and wait until its body is the one shown. */
+async function openTab(page, key) {
+  await page.click(`[data-tab="${key}"]`);
+  // `?? true`: an absent body is not shown, so the wait holds until the tab's body has rendered.
+  await page.waitForFunction((tab) => !(document.querySelector(`[data-tab-body="${tab}"]`)?.hidden ?? true), { timeout: config.navigationTimeoutMs }, key);
+}
+
+/** Open the tab that holds form control `id`. */
+async function openTabOf(page, id) {
+  await page.waitForSelector(`#${id}`, { timeout: config.navigationTimeoutMs });
+  const key = await page.$eval(`#${id}`, (node) => node.closest('[data-tab-body]')?.getAttribute('data-tab-body') ?? '');
+  if (key !== '') await openTab(page, key);
+}
+
+/** Type `value` into the form control `id`, replacing whatever is there, its tab opened first. */
 async function fill(page, id, value) {
+  await openTabOf(page, id);
   await page.waitForSelector(`#${id}`, { visible: true, timeout: config.navigationTimeoutMs });
   await page.click(`#${id}`, { clickCount: 3 });
   await page.keyboard.press('Backspace');
@@ -207,22 +236,25 @@ after(async () => {
 
 // AC1, AC10. Mutation (Rule 19), over a rebuilt and redeployed bundle: give
 // `.ocu-oauth-client-metadata-table` a 1400px min-inline-size -> the structural assertion goes red.
-test('AC1, AC10: Create opens the editor in four sections, and Save stores the fields, the grant type and the secret', async () => {
+test('AC1, AC10: Create opens the editor in four tabs, and Save stores the fields, the grant type and the secret', async () => {
   const { context, page } = await signedInAt(browser, config, TAB_URL, VIEWPORTS.wide);
   try {
     const create = await page.waitForSelector('.ocu-command-bar button.ocu-button-primary', { visible: true, timeout: config.navigationTimeoutMs });
     await create.click();
     await page.waitForFunction((route) => new URL(window.location.href).pathname.endsWith(`/${route}`), { timeout: config.navigationTimeoutMs }, EDITOR_ROUTE);
     await page.waitForSelector(`#${ID}-ApplicationName`, { visible: true, timeout: config.navigationTimeoutMs });
-    const sections = await page.$$eval('.ocu-oauth-client-section > legend', (nodes) => nodes.map((node) => node.textContent.trim()));
-    assert.deepEqual(sections, [
+    const tabs = await page.$$eval('[role="tab"] .ocu-form-tab-label', (nodes) => nodes.map((node) => node.textContent.trim()));
+    assert.deepEqual(tabs, [
       STRINGS.processDetailsGroupGeneral,
       STRINGS.oauthClientSectionClientInformation,
       STRINGS.oauthClientSectionJwt,
       STRINGS.oauthClientSectionCredentials,
     ]);
-    assert.equal(await page.$('[role="tablist"]'), null, 'no tab component');
-    await assertStructure(page);
+    for (const key of TAB_KEYS) {
+      await openTab(page, key);
+      await assertStructure(page);
+    }
+    await openTab(page, 'general');
 
     await fill(page, `${ID}-ApplicationName`, NAME);
     await page.select(`#${ID}-ServerDefinition`, serverId);
@@ -337,7 +369,7 @@ test("AC6, AC10: the editor's delete dialog passes DW-1337, and the row menu's D
   }
 });
 
-test('AC9: the other three tabs keep their classic links', async () => {
+test('AC9: the two tabs still edited in the classic portal keep their classic links', async () => {
   const { values, output } = irisSession(['Set tSC=##class(OcuPilot.Test.OAuthProbe).Create()', mark('MADE', '$System.Status.IsOK(tSC)')], ['MADE']);
   assert.equal(values.MADE, '1', `the OAuth probe objects are made:\n${output}`);
   try {

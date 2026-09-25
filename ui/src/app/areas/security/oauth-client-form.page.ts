@@ -13,25 +13,33 @@ import { NavigationEnd, Router } from '@angular/router';
 
 import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
+import { tabErrorCounts, tabToOpen } from '../../core/form-tabs';
 import { NavigationService, formatDeniedAction, ownIdSegment, screenForRoute, withQuery } from '../../core/navigation';
 import { actionLabel } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
 import { STRINGS } from '../../core/strings';
 import { STATE_CONFLICT_CODE, type Violation } from '../../core/violations';
 import { Dialog } from '../../shell/dialog';
+import { FormTabBody, FormTabs, type FormTabView } from '../../shell/form-tabs';
 import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { TypedNameDialog } from '../../shell/typed-name-dialog';
 import { type ClientFieldControl, type ClientFieldOption, OAuthClientField } from './oauth-client-field';
 import {
   AUDIENCE_FIELD,
+  CLIENT_FIELD_ORDER,
+  CLIENT_FIELD_TABS,
   CLIENT_ID_FIELD,
   CREDENTIALS_FIELD,
+  CREDENTIALS_TAB,
   DESCRIPTION_FIELD,
   ENABLED_FIELD,
+  GENERAL_TAB,
   GRANT_MEMBER,
   GRANT_TYPES,
+  INFORMATION_TAB,
   INITIAL_TOKEN_FIELD,
   INTERVAL_FIELD,
+  JWT_TAB,
   type MemberValue,
   NAME_FIELD,
   OAuthClientForm,
@@ -171,9 +179,10 @@ function idFor(field: string): string {
  * The OAuth 2.0 client configuration editor, a `form-page` that creates a configuration on
  * `security/oauth/clients/edit` and edits one on `security/oauth/clients/edit/<name>` (AD-55).
  *
- * **Its four sections are the classic page's four tabs, named and ordered as they are, untabbed**
- * (`%CSP.UI.Portal.OAuth2.Client.Configuration`): General, Client Information, JWT Settings and
- * Client Credentials; then a read-only table of every other metadata member.
+ * **Its four tabs are the classic page's four, named and ordered as they are**
+ * (`%CSP.UI.Portal.OAuth2.Client.Configuration`), on `app-form-tabs` (UX-DR33): General, Client
+ * Information, JWT Settings and Client Credentials, with a read-only table of every other metadata
+ * member on Client Information. A refused Save opens the tab that holds the first refused field.
  *
  * **Register, Rotate Keys and Delete are the tab's own declared actions**, sent through the shell's
  * handler exactly as its row menu sends them (AD-53). Register is offered on a saved, unchanged,
@@ -187,7 +196,7 @@ function idFor(field: string): string {
 @Component({
   selector: 'app-oauth-client-form-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Dialog, OAuthClientField, TypedNameDialog],
+  imports: [Dialog, FormTabs, FormTabBody, OAuthClientField, TypedNameDialog],
   template: `<section class="ocu-form-page">
     @if (hasSummary) {
       <div #summary class="ocu-banner ocu-form-summary" role="alert" tabindex="-1">
@@ -208,66 +217,69 @@ function idFor(field: string): string {
 
     @if (loadedFlag) {
     <p class="ocu-form-legend">{{ STRINGS.formRequiredFieldsLegend }}</p>
-    <div class="ocu-form-fields">
-      <fieldset class="ocu-field ocu-oauth-client-section" id="ocu-oauth-client-general">
-        <legend class="ocu-field-label">{{ STRINGS.processDetailsGroupGeneral }}</legend>
-        @for (control of generalControls; track control.id) {
-          <app-oauth-client-field [control]="control" [locked]="locked" (edited)="onInput(control, $event)" (toggled)="onCheck(control, $event)" (left)="onBlur(control.field)" />
-        }
-        <fieldset class="ocu-field ocu-oauth-client-group" [id]="grantsId">
-          <legend class="ocu-field-label">{{ STRINGS.oauthColumnGrantTypes }}</legend>
-          @for (control of grantControls; track control.id) {
-            <app-oauth-client-field [control]="control" [locked]="locked" (toggled)="onCheck(control, $event)" />
+    <app-form-tabs [tabs]="tabs" [selected]="selectedTab()" (selectedChange)="selectTab($event)">
+      <ng-template ocuFormTab="general">
+        <div class="ocu-form-fields ocu-oauth-client-section">
+          @for (control of generalControls; track control.id) {
+            <app-oauth-client-field [control]="control" [locked]="locked" (edited)="onInput(control, $event)" (toggled)="onCheck(control, $event)" (left)="onBlur(control.field)" />
           }
-        </fieldset>
-        @for (control of authControls; track control.id) {
-          <app-oauth-client-field [control]="control" [locked]="locked" (edited)="onInput(control, $event)" (toggled)="onCheck(control, $event)" (left)="onBlur(control.field)" />
-        }
-      </fieldset>
-
-      <fieldset class="ocu-field ocu-oauth-client-section" id="ocu-oauth-client-information">
-        <legend class="ocu-field-label">{{ STRINGS.oauthClientSectionClientInformation }}</legend>
-        @for (control of informationControls; track control.id) {
-          <app-oauth-client-field [control]="control" [locked]="locked" (edited)="onInput(control, $event)" (toggled)="onCheck(control, $event)" (left)="onBlur(control.field)" />
-        }
-      </fieldset>
-
-      <fieldset class="ocu-field ocu-oauth-client-section" id="ocu-oauth-client-jwt">
-        <legend class="ocu-field-label">{{ STRINGS.oauthClientSectionJwt }}</legend>
-        @for (control of jwtControls; track control.id) {
-          <app-oauth-client-field [control]="control" [locked]="locked" (edited)="onInput(control, $event)" (toggled)="onCheck(control, $event)" (left)="onBlur(control.field)" />
-        }
-        @for (group of algorithmGroups; track group.id) {
-          <fieldset class="ocu-field ocu-oauth-client-group" [id]="group.id">
-            <legend class="ocu-field-label">{{ group.legend }}</legend>
-            @for (control of group.controls; track control.id) {
-              <app-oauth-client-field [control]="control" [locked]="locked" (edited)="onInput(control, $event)" (toggled)="onCheck(control, $event)" (left)="onBlur(control.field)" />
+          <fieldset class="ocu-field ocu-oauth-client-group" [id]="grantsId">
+            <legend class="ocu-field-label">{{ STRINGS.oauthColumnGrantTypes }}</legend>
+            @for (control of grantControls; track control.id) {
+              <app-oauth-client-field [control]="control" [locked]="locked" (toggled)="onCheck(control, $event)" />
             }
           </fieldset>
-        }
-      </fieldset>
+          @for (control of authControls; track control.id) {
+            <app-oauth-client-field [control]="control" [locked]="locked" (edited)="onInput(control, $event)" (toggled)="onCheck(control, $event)" (left)="onBlur(control.field)" />
+          }
+        </div>
+      </ng-template>
 
-      <fieldset class="ocu-field ocu-oauth-client-section" id="ocu-oauth-client-credentials">
-        <legend class="ocu-field-label">{{ STRINGS.oauthClientSectionCredentials }}</legend>
-        @for (control of credentialControls; track control.id) {
-          <app-oauth-client-field [control]="control" [locked]="locked" (edited)="onInput(control, $event)" (toggled)="onCheck(control, $event)" (left)="onBlur(control.field)" />
-        }
-      </fieldset>
+      <ng-template ocuFormTab="information">
+        <div class="ocu-form-fields ocu-oauth-client-section">
+          @for (control of informationControls; track control.id) {
+            <app-oauth-client-field [control]="control" [locked]="locked" (edited)="onInput(control, $event)" (toggled)="onCheck(control, $event)" (left)="onBlur(control.field)" />
+          }
+          <div class="ocu-field ocu-oauth-client-metadata">
+            <table class="ocu-oauth-client-metadata-table" id="ocu-oauth-client-metadata" tabindex="-1">
+              <caption class="ocu-field-label">{{ STRINGS.oauthServerGroupMetadata }}</caption>
+              <tbody>
+                @for (row of metadataRows; track row.name) {
+                  <tr>
+                    <th scope="row">{{ row.name }}</th>
+                    <td>{{ row.value }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </ng-template>
 
-      <div class="ocu-field ocu-oauth-client-metadata">
-        <table class="ocu-oauth-client-metadata-table" id="ocu-oauth-client-metadata" tabindex="-1">
-          <caption class="ocu-field-label">{{ STRINGS.oauthServerGroupMetadata }}</caption>
-          <tbody>
-            @for (row of metadataRows; track row.name) {
-              <tr>
-                <th scope="row">{{ row.name }}</th>
-                <td>{{ row.value }}</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
+      <ng-template ocuFormTab="jwt">
+        <div class="ocu-form-fields ocu-oauth-client-section">
+          @for (control of jwtControls; track control.id) {
+            <app-oauth-client-field [control]="control" [locked]="locked" (edited)="onInput(control, $event)" (toggled)="onCheck(control, $event)" (left)="onBlur(control.field)" />
+          }
+          @for (group of algorithmGroups; track group.id) {
+            <fieldset class="ocu-field ocu-oauth-client-group" [id]="group.id">
+              <legend class="ocu-field-label">{{ group.legend }}</legend>
+              @for (control of group.controls; track control.id) {
+                <app-oauth-client-field [control]="control" [locked]="locked" (edited)="onInput(control, $event)" (toggled)="onCheck(control, $event)" (left)="onBlur(control.field)" />
+              }
+            </fieldset>
+          }
+        </div>
+      </ng-template>
+
+      <ng-template ocuFormTab="credentials">
+        <div class="ocu-form-fields ocu-oauth-client-section">
+          @for (control of credentialControls; track control.id) {
+            <app-oauth-client-field [control]="control" [locked]="locked" (edited)="onInput(control, $event)" (toggled)="onCheck(control, $event)" (left)="onBlur(control.field)" />
+          }
+        </div>
+      </ng-template>
+    </app-form-tabs>
 
     <div class="ocu-form-bar">
       <div class="ocu-form-bar-status">
@@ -335,6 +347,9 @@ export class OAuthClientFormPage {
 
   protected readonly grantsId = `${ID_PREFIX}-grant-types`;
 
+  /** The key of the tab on screen. */
+  protected readonly selectedTab = signal(GENERAL_TAB);
+
   /** Bumped by the stores and this page's own state, so the template re-reads them under `OnPush`. */
   private readonly generation = signal(0);
 
@@ -364,6 +379,7 @@ export class OAuthClientFormPage {
       if (id === followed) return;
       followed = id;
       this.clearAction();
+      this.selectedTab.set(GENERAL_TAB);
       void this.store.open(id);
     });
     afterNextRender(() => this.focusRefusal(), { injector: this.injector });
@@ -390,6 +406,17 @@ export class OAuthClientFormPage {
   protected get storedName(): string {
     this.generation();
     return this.store.storedName();
+  }
+
+  protected get tabs(): readonly FormTabView[] {
+    this.generation();
+    const counts = tabErrorCounts(this.fieldTabs(), this.store.violations());
+    return [
+      { key: GENERAL_TAB, label: STRINGS.processDetailsGroupGeneral, count: counts[GENERAL_TAB] ?? 0 },
+      { key: INFORMATION_TAB, label: STRINGS.oauthClientSectionClientInformation, count: counts[INFORMATION_TAB] ?? 0 },
+      { key: JWT_TAB, label: STRINGS.oauthClientSectionJwt, count: counts[JWT_TAB] ?? 0 },
+      { key: CREDENTIALS_TAB, label: STRINGS.oauthClientSectionCredentials, count: counts[CREDENTIALS_TAB] ?? 0 },
+    ];
   }
 
   protected get generalControls(): readonly Control[] {
@@ -710,8 +737,19 @@ export class OAuthClientFormPage {
     void this.router.navigateByUrl(withQuery(OAUTH_CLIENT_TAB_ROUTE, this.router.url));
   }
 
+  protected selectTab(key: string): void {
+    this.selectedTab.set(key);
+  }
+
+  /** Open the tab that holds `field`, then focus it. */
   protected focusField(field: string): void {
-    document.getElementById(this.controlId(field))?.focus();
+    const tab = this.fieldTabs()[field];
+    if (tab !== undefined && tab !== this.selectedTab()) {
+      this.selectedTab.set(tab);
+      afterNextRender(() => this.focusControl(field), { injector: this.injector });
+      return;
+    }
+    this.focusControl(field);
   }
 
   protected cancel(): void {
@@ -745,7 +783,14 @@ export class OAuthClientFormPage {
     return screen === null ? '' : ownIdSegment(screen, this.router.url);
   }
 
+  /**
+   * After a refused Save: the tab that holds the first refused field in form order opens, the error
+   * summary takes focus, then that field, in the order EXPERIENCE.md's `form-page` validation rule
+   * states.
+   */
   private afterRefusal(): void {
+    const open = tabToOpen(this.fieldTabs(), CLIENT_FIELD_ORDER, this.store.violations());
+    if (open !== null) this.selectedTab.set(open);
     if (this.store.violations()[0] === undefined) return;
     this.focusedSummary = false;
     afterNextRender(() => this.focusRefusal(), { injector: this.injector });
@@ -753,11 +798,27 @@ export class OAuthClientFormPage {
 
   private focusRefusal(): void {
     if (this.focusedSummary) return;
-    const first = this.store.violations()[0];
-    if (first === undefined) return;
+    const violations = this.store.violations();
+    if (violations[0] === undefined) return;
     this.focusedSummary = true;
     this.summary()?.nativeElement.focus();
-    this.focusField(first.field);
+    const rank = (field: string): number => (CLIENT_FIELD_ORDER.includes(field) ? CLIENT_FIELD_ORDER.indexOf(field) : CLIENT_FIELD_ORDER.length);
+    const first = violations.reduce((best, entry) => (rank(entry.field) < rank(best.field) ? entry : best));
+    this.focusControl(first.field);
+  }
+
+  private focusControl(field: string): void {
+    document.getElementById(this.controlId(field))?.focus();
+  }
+
+  /** Which tab each field is on: the fixed map, and every member the table shows on Client Information. */
+  private fieldTabs(): Readonly<Record<string, string>> {
+    const tabs: Record<string, string> = { ...CLIENT_FIELD_TABS };
+    for (const entry of this.store.members()) {
+      const field = memberField(entry.name);
+      if (!Object.hasOwn(tabs, field)) tabs[field] = INFORMATION_TAB;
+    }
+    return tabs;
   }
 
   /** A control with no value, for `field` with control `id` and `label`, and its refusal wired. */

@@ -71,7 +71,8 @@ const TABS = [
     route: 'security/oauth/resource-servers',
     read: `${READ_PREFIX}security.oauthresourceservers/read`,
     label: STRINGS.oauthTabResourceServers,
-    headers: [STRINGS.tableColumnName, STRINGS.x509ColumnIssuer],
+    // Story 12.6: the tab declares a row action, so the table carries the actions column's header.
+    headers: [STRINGS.tableColumnName, STRINGS.x509ColumnIssuer, STRINGS.commandBoxGroupActions],
   },
   {
     route: 'security/oauth/server',
@@ -351,8 +352,8 @@ test("AC4: a client configuration's name cell opens OcuPilot's own editor at the
   const honored = checkClassicLinks().honored.map((entry) => entry.file).sort();
   assert.deepEqual(
     honored,
-    ['LdapConfigForm.cls', 'OAuthResourceServerTab.cls', 'OAuthServerClientTab.cls', 'OAuthServerTab.cls', 'ServiceForm.cls'],
-    'classic-links honors the three OAuth 2.0 tabs still edited in the classic portal and the two reduced editors (AD-44)'
+    ['LdapConfigForm.cls', 'OAuthServerClientTab.cls', 'OAuthServerTab.cls', 'ServiceForm.cls'],
+    'classic-links honors the two OAuth 2.0 tabs still edited in the classic portal and the two reduced editors (AD-44)'
   );
 
   const tab = TABS[1];

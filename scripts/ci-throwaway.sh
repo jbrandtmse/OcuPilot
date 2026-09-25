@@ -202,6 +202,7 @@ services:
       # classes: TokenProbe, TokenRevoke
       # classes: OAuthServerCreate, OAuthServerDelete, OAuthServerDiscover, OAuthServerJwks, OAuthServerToken, OAuthServerUpdate, OAuthServerWire
       # classes: OAuthClientCreate, OAuthClientKeys, OAuthClientRegister, OAuthClientSecrets, OAuthClientUpdate, OAuthClientWire, AuditVendorSecrets
+      # classes: OAuthResourceServerAuthenticator, OAuthResourceServerCreate, OAuthResourceServerMappings, OAuthResourceServerSecret, OAuthResourceServerUpdate, OAuthResourceServerWire
       # classes: AuditCopy, AuditStarted
       # classes: ProcessControl, ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token
       # classes: ToolSetFull

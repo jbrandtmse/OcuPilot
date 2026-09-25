@@ -2,15 +2,29 @@
 title: 'Story 12.6: The OAuth 2.0 resource server editor'
 type: 'feature'
 created: '2026-09-25'
-status: 'ready-for-dev'
-baseline_revision: 'f9dcefa2eea0548f858d763ed4452eb3e27813b6'
+status: 'in-progress'
+baseline_revision: '4a9f50377e9ace4d2aa8fa5d9380a7318c199909'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-12-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-12-5-the-oauth-2-0-client-configuration-editor.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The editor's and the tools' declared pairs (%Admin_Secure:USE, %DB_IRISSYS:READ) do not suffice to create or edit a resource server: the vendor resolves the issuer through OAuth2.ServerDefinition.OpenByIssuer, which needs %Admin_OAuth2_Client:USE (AD-8, AD-29 intent gap).
+    evidence: |-
+      Measured on ocupilot-b-ci over HTTP with a principal holding the tab's pairs alone: a create answers 422 (issuer not found), the GET answers IssuerEndpoint "", and a Description-only PUT answers 500 (<INVALID OREF> in %OnBeforeSave). Recommended amendment: declare %Admin_OAuth2_Client:USE on the six tools and the form as a measured AD-8 case.
+    location: >-
+      src/OcuPilot/Screen/Descriptor/OAuthResourceServerForm.cls, OAuthResourceServerTab.cls privileges; src/OcuPilot/Screen/Tool/OAuthResourceServer*.cls WRITERESOURCE
+    severity: high
+  - summary: >-
+      The vendor writes a custom authenticator's credential-named setting in plain text into its own audit row, so a setting the port never reads back is readable through Logs > Audit and logs.audit.read.
+    evidence: |-
+      Measured on ocupilot-b-ci: a vendor save of a server whose authenticator holds ApiKey logs OAuth2ResourceServerChange (%System/%Security) with EventData "Authenticator: {...,"ApiKey":"<value>",...}". Same shape as 12.4's token finding; settle by the same AD-35 ruling.
+    location: >-
+      vendor OAuth2.ResourceServer audit; src/OcuPilot/Screen/Descriptor/AuditList.cls read fields (EventData)
+    severity: medium
 ---
 
 <intent-contract>
@@ -58,7 +72,7 @@ deferred: []
 - **Authenticator settings that are credentials.** A custom authenticator's setting whose name matches the Conventions › Secrets pattern is removed by the port from every read. A Save or tool that omits it keeps it (the port fills it from the fresh read). A caller that sends one is refused (`OAUTH.AUTHENTICATOR.SECRET`), and such a setting stays a classic-portal edit. The stock `SimpleAuthenticator` has none.
 - **Delete** removes the server. The vendor also deletes its mappings (measured), and the consequence line says so.
 - **A new server on an instance with none** starts its Mappings tab with the two `*` default mappings as unsaved rows, which the user can remove. This matches the classic editor, which creates them for the first server.
-- **Privileges.** Every tool, route and port call requires the tab's pair set, `%Admin_Secure:USE` + `%DB_IRISSYS:READ` (AD-8). Both vendor endpoints' `ResourcesOR()` is `%Admin_Secure`. Screen writes emit no marker (AD-53), and agent confirms do (AD-15).
+- **Privileges.** Every tool, route and port call requires the tab's pair set, `%Admin_Secure:USE` + `%DB_IRISSYS:READ` + `%Admin_OAuth2_Client:USE` (AD-8, AD-29) [AMENDED 2026-09-25, lead ruling at the implement halt: a principal holding only the first two cannot create or edit a resource server, because the vendor resolves the issuer through `OAuth2.ServerDefinition.OpenByIssuer`, which checks `%Admin_OAuth2_Client:USE`; AD-29 adds what the instance still refuses, so the tab, the form and the six tools declare three pairs and AD-8's text is unchanged]. Both vendor endpoints' `ResourcesOR()` is `%Admin_Secure`. Screen writes emit no marker (AD-53), and agent confirms do (AD-15).
 - **Change events.** Every write publishes `(oauth2-resource-server, instance, <name>)`.
 - **UI.** Use tokens only, and render correctly in the dark theme. The editor's own content gets no DW-1337 allowance. Write non-ASCII in code as `\u` escapes.
 
@@ -90,7 +104,7 @@ deferred: []
 | Mapping move | Add a key another server holds | The Add row shows the move sentence naming the holder, and Save moves it. An agent proposal is destructive and names the effect | A move made by someone else between mint and confirm → the fingerprint refuses the confirm |
 | Authenticator secret | A probe authenticator with an `ApiKey` setting | No read answers `ApiKey`; a Save leaves it stored; sending it is refused by name | Named refusal |
 | Delete | From the editor or the row menu, name typed | Gone from the tab and the instance, with its mappings | Existing typed-name dialog |
-| No privilege | Caller lacks `%Admin_Secure:USE` | 403 naming the pair on the form read, the Save routes, the row action and the mint | Before any port call |
+| No privilege | Caller lacks `%Admin_Secure:USE` or `%Admin_OAuth2_Client:USE` | 403 naming the pair on the form read, the Save routes, the row action and the mint | Before any port call |
 | DW-1644 | Client editor Save refused on a JWT Settings field | The JWT Settings tab opens, shows ", 1 error", and focus lands on the field | None |
 
 </intent-contract>
@@ -181,6 +195,12 @@ deferred: []
 - `scripts/ci-throwaway.sh` :204 (the arming line)
 
 ## Tasks & Acceptance
+
+**Rework after the implement halt (lead, 2026-09-25) -- work these first; the rest of the story is implemented in the tree at `wip` commit and is re-verified, not redone:**
+
+- [ ] [Lead] Pairs (AD-29): add `%Admin_OAuth2_Client:USE` to `OAuthResourceServerTab`'s and `OAuthResourceServerForm`'s `privileges` and to the six tools' declared set (`WRITERESOURCE` or however the tools declare it), and to every route and port gate this story adds. Update the rosters that pin the tab's pair set (`WireSecurityRead`, `WireOAuthRead`, `Wire`, `screens.generated.ts` via `screen-mirror`, any other the test run names). `OAuthResourceServerWire` gains the second denial leg (a principal with `%Admin_Secure:USE` and `%DB_IRISSYS:READ` but not `%Admin_OAuth2_Client:USE` is refused 403 naming `%Admin_OAuth2_Client:USE` on the form read, the Save routes, the row action and the mint), and a least-privileged principal holding all three pairs creates, edits and deletes a resource server end to end on `ocupilot-b-ci` (AD-29's real-principal check). Mutation line for each.
+- [ ] [Lead] AD-35 (spine already amended): the audit read masks, on both paths (Logs > Audit and `logs.audit.read`), the custom authenticator's secret-classified settings in the vendor's `OAuth2ResourceServerChange` rows -- the settings this story's classification marks `secret` (the credential-named ones, Conventions > Secrets), declared for that event beside 12.5's OAuth declarations in the same mask. A test seeds a row carrying a probe value (e.g. `ApiKey`) and pins that it reads masked through both reads. Mutation line.
+- [ ] [Lead] Remove the two `deferred:` entries from the frontmatter once each is worked (they are this rework's scope, not deferrals).
 
 **Execution:**
 
@@ -306,7 +326,7 @@ deferred: []
   - a custom authenticator's credential-named setting is never shown or read back;
   - a Save keeps that setting stored.
 - **AC7 (agent).** Given the agent proposes create, update, setsecret, addmapping, removemapping and delete, when the user confirms, then each write lands and is marked (AD-15), and the secret is asked at confirm and never stored. A create whose name was taken after the mint is refused at confirm (AD-54).
-- **AC8 (privilege).** Given a caller without `%Admin_Secure:USE`, when they read the form, save, delete from the row menu or mint, then the request is refused 403 naming that pair before any port call.
+- **AC8 (privilege).** Given a caller without `%Admin_Secure:USE`, or without `%Admin_OAuth2_Client:USE`, when they read the form, save, delete from the row menu or mint, then the request is refused 403 naming the pair it lacks before any port call.
 - **AC9 (link-out).** Given the OAuth 2.0 screen, when it renders, then:
   - the Resource servers tab's name cell opens OcuPilot's editor;
   - the server and server-client tabs keep their classic links;
@@ -315,6 +335,8 @@ deferred: []
 - **AC11 (DW-1337).** Given the resource server editor on each tab and its delete dialog, and the client editor on each tab, when they are measured at 1280 px light, 720 px light and 1280 px dark, then there is no structural or contrast violation.
 
 ## Spec Change Log
+
+- 2026-09-25, lead ruling at the implement halt (re-dispatch): the pair set becomes three pairs under AD-29 (Privileges bullet, the no-privilege matrix row and AC8 amended); AD-35 gains the `OAuth2ResourceServerChange` declaration (spine amended); both are worked as the `[Lead]` items under Tasks & Acceptance.
 
 - 2026-09-25, lead spec gate: Q1-Q3 answered as recommended; AD-51 amended; structural-baseline and bundle notes added under Design Notes.
 
@@ -327,7 +349,7 @@ deferred: []
 - The DW-1337 gate applies.
 - No AC contradicts an AD.
 - Neither vendor endpoint queues (AD-26).
-- AD-8 is not widened: both endpoints' `ResourcesOR()` is the tab's `%Admin_Secure`.
+- AD-8 is not widened: both endpoints' `ResourcesOR()` is `%Admin_Secure`, and `%Admin_OAuth2_Client:USE` joins the tab's own set under AD-29 (measured at the implement halt), so every tool's set is still its screen's.
 
 **Measured on `ocupilot-b-ci`, 2026-09-25.** Scratch servers, mappings and a server description were used; the vendor tables read 0 rows afterwards. AD-4 was amended at its origin with these measurements (Rule 20; memlog appended; lint clean apart from the existing `{id}` note at :169).
 
@@ -405,7 +427,7 @@ The action bar has Save (primary) and Delete.
 - Q1: accepted. AD-51 now names `OAuthResourceServerPort` as its second port-built case (spine amended at the gate, memlog appended).
 - Q2: accepted. The implement pass updates AD-44's by-name list in the spine in the same pass that drops `OAuthResourceServerTab`'s declaration (the OAuth exemption then has two declaring tabs; the three exemptions and four declarations are recomputed from the list). The epic context is recompiled by the lead before 12.7's plan.
 - Q3: accepted: the two `*` default mappings are offered as removable unsaved rows on the first server, as the classic page does.
-- `structural-baseline.json`: the new editor enters with no baseline allowance. Edit the file only to remove an allowance this story makes unnecessary, never to add one.
+- `structural-baseline.json`: the new editor enters with no allowance of its own. The one exception is the shell-chrome rows every route carries (the panel resize handle and the status-bar connection line, DW-1583/DW-1584, Epic 15's), which a new route inherits; nothing else may be added.
 - Bundle: if the measured initial total crosses 1745kB, re-base `maximumWarning` per DW-1166 (5% above the measured bytes, only the value line and the pinned literal); if it crosses 1900kB, HALT.
 
 **Open questions for the lead** (the spec is built on each recommendation):
@@ -451,7 +473,51 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. OAuth-writing t
 
 **Measure in implement and record here:** the bundle total, and the vendor audit rows for a mapping add and remove made through the port.
 
+**Recorded:**
+
+- Bundle initial total 1,704,116 bytes (main 1,558,498 + styles 145,618); under the 1745kB warning, no re-base.
+- Vendor audit rows through the port (ocupilot-b-ci): ADDMAPPING logs one `%System/%Security/OAuth2ResourceServerChange` "Create Resource Server Mapping (%Service_Bindings||%sys)" with Service, Key and Resource; REMOVEMAPPING logs one "Delete Resource Server Mapping (%Service_Bindings||%sys)" carrying only its JSONData. Neither carries a secret.
+- mutation: `HandleCreate` sets the added rows to `[]` → OAuthResourceServerCreate `TestACreateThroughTheRouteStoresTheDefaultMappings` red (AC1).
+- mutation: `Expand` quits before filling → OAuthResourceServerUpdate `TestAnEditSendsTheCompleteSet`, `TestTheAgentsEditKeepsTheUnsentSettings` red (AC2).
+- mutation: the page's `onDelete` calls `confirmDelete` without the typed-name dialog → page spec "AC3: Delete sends nothing until the stored name is typed" red (AC3).
+- mutation: `HandleUpdate` stores the secret when the field is empty → OAuthResourceServerSecret `TestTheSaveStoresTheSecretAndNoReadCarriesIt` red (AC4).
+- mutation: `WeakensByEffect` never calls `MovesMapping` → OAuthResourceServerMappings `TestAMoveIsMintedDestructiveAndAppliedAtConfirm` red (AC5).
+- mutation: `Stripped` removes nothing → OAuthResourceServerAuthenticator `TestTheProbesKeyIsNeverReadAndKeptAcrossASave` red (AC6).
+- mutation: `CREATES` 0 on the create tool → OAuthResourceServerCreate three tests red, the confirm-time absence test among them (AC7).
+- mutation: `HandleForm` clears the gate's refusal → OAuthResourceServerWire `TestACallerWithoutTheResourceIsRefusedEverywhere` red (AC8).
+- mutation: the tab's exemption restored → classic-links.test.mjs "the shipped descriptor roster passes" red (AC9).
+- mutation: the client page's `afterRefusal` drops `tabToOpen` → oauth-client-form.page.spec "DW-1644: a refusal on a JWT Settings field" red; the same on the resource server page reddens its AC10 test (AC10).
+- mutation: `.ocu-oauth-resource-server-mappings` 1400px `min-inline-size`, rebuilt and redeployed → oauth-resource-server-editor.browser-spec AC1 red on overflow at 1280 and 720 (AC11).
+- Every mutation reverted byte-identically (md5 checked), recompiled with its descendants or rebuilt and redeployed, and its test re-run green.
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap -- AD-29 against the frozen pair set. The Always bullet "Privileges" and AC8 fix every tool, route and port call at `%Admin_Secure:USE` + `%DB_IRISSYS:READ`. Run as a real least-privileged principal on `ocupilot-b-ci` (AD-29), those pairs alone cannot create or edit a resource server: create answers 422 (issuer not found), the GET answers `IssuerEndpoint ""`, and a Description-only PUT answers 500 (`<INVALID OREF>` in `%OnBeforeSave`). The cause is that `OAuth2.ServerDefinition.OpenByIssuer` runs `$$$CheckForClassResourceReturnNullAndStatus` against `RESOURCEREQUIRED = "%Admin_OAuth2_Client"` (`irissys/OAuth2/ServerDefinition.cls:11,226`).
+
+Recommended amendment: under AD-29, the resource-server screen's declared set becomes three pairs: add `%Admin_OAuth2_Client:USE` to `OAuthResourceServerTab`, `OAuthResourceServerForm` and the six tools. AC8 then reads "without `%Admin_Secure:USE` or `%Admin_OAuth2_Client:USE`", and `OAuthResourceServerWire` gets a second denial leg. AD-8's text is unchanged. Alternative: form and tools only, which is a new named AD-8 case (a vendor class the call reaches checks a resource its endpoint's `ResourcesOR()` omits), and the lead has reserved that decision. Resuming at `in-progress` re-enters implement; the delta is about 10 files.
+
+- **Also for the lead:** the second `deferred:` entry. The vendor writes a custom authenticator's credential-named setting in plain text into `OAuth2ResourceServerChange` audit rows, and AD-35 requires a new named declaration for a vendor secret found in another event.
+- **Implementation state:** complete in the working tree, uncommitted, baseline `4a9f5037`. The handoff reports every targeted check green on `ocupilot-b-ci`:
+  - the 20 story and roster classes, one run per class, 0 failed;
+  - `npm test`: 1409 tool tests and 1305 component tests, 0 failed;
+  - `screen-mirror` and `field-lists` checks: no drift;
+  - `check-objectscript`: 42 classes, clean;
+  - `lint-docs`: clean;
+  - smoke: 49/49.
+  The stage agent has not verified this list yet: step-03 Verify and step-04 review did not run.
+- **Browser specs:** `oauth-resource-server-editor` 6/6, `oauth-client-editor` 6/6, `oauth-server-description-editor` 5/5, `oauth` 4/4 (handoff run, deployed bundle).
+- **Full ObjectScript sweep:** not run, because the stage halted before dev_complete.
+- **Bundle initial total:** 1,704,116 bytes. No re-base.
+- **Deviations for review:**
+  - The mapping tools' fingerprint subject is `Mappings,Held,Service,Key`; the spec says `Mappings,Held`.
+  - `Classification` lists `Audiences[]`, `Authenticator.Namespace` and `Authenticator.Implementation`, not an opaque `Authenticator`.
+- **Paths edited outside the footprint:**
+  - `Port/AdminPort.cls`, `Kernel/Proposal/Prohibited.cls`, `Api/Router.cls`, `Api/Error.cls`
+  - `Screen/Tool/Classification.cls`, `Screen/Tool/ToolFields.cls` (regenerated)
+  - `ui/src/app/app.ts`, `ui/src/app/app.spec.ts`, `ui/src/app/core/strings.ts`, `ui/src/styles/_components.scss`
+  - `ui/src/app/shell/screen-outlet.ts`, `shell/screen-action-handler.ts` and its spec, `core/proposal-view.ts`, `shell/proposal-card.spec.ts`, `core/screens.generated.ts`
+  - EXPERIENCE.md, the spine (AD-44) and `.memlog.md`, `scripts/ci-throwaway.sh`, `ui/browser/structural-baseline.json`
+  - `ui/tools/classic-links.test.mjs`, `ui/tools/navigation.test.mjs`
+  - `ui/browser/oauth{,-client-editor,-server-description-editor}.browser-spec.mjs`
+  - roster test classes `EndpointCoverage`, `OAuthDelete`, `OAuthTabs`, `PortFixture`, `PortGate`, `Prohibited`, `ReadTool`, `SurfaceCoverage`, `ToolRoundTrip`, `Wire`, `WireOAuthRead`, `WireSecurityRead`

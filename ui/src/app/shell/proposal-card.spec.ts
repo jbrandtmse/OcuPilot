@@ -772,6 +772,15 @@ describe('the proposal card', () => {
     expect(lines[0].textContent).toContain(STRINGS.sslEffectNoPeerCheck);
   });
 
+  it('Story 12.6: an added service mapping another resource server holds is drawn destructive and states the move', () => {
+    // Mutation (Rule 19): drop the MAPPINGMOVE code from `consequenceSentence` -> this goes red.
+    const { card } = mount(liveView({ consequence: 'OAUTH.MAPPINGMOVE', destructive: true, maskedFields: [] }), { phase: 'live' });
+    expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(true);
+    const lines = card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.oauthResourceServerMoveEffect);
+  });
+
   it('the in-card warning is a status region, the convention for an advisory', () => {
     // DW-1246, corrected: four warning banners in this shell are already `role="status"`. The
     // convention is `alert` for a fault or a refusal and `status` for an advisory, and this is an

@@ -2565,7 +2565,7 @@ ClassMethod ReasonForOAuthClient(pCode As %String) As %String
     If pCode = ..#OAUTHCLIENTREGISTERED Quit ..#REASONOAUTHCLIENTREGISTERED
     If pCode = ..#OAUTHCLIENTNOREGISTRATIONENDPOINT Quit ..#REASONOAUTHCLIENTNOREGISTRATIONENDPOINT
     If pCode = ..#OAUTHCLIENTREGISTRATIONFAILED Quit ..#REASONOAUTHCLIENTREGISTRATIONFAILED
-    Quit ""
+    Quit ..ReasonForOAuthResourceServer(pCode)
 }
 
 /// <p>Every field-level violation code the client configuration editor's rules produce, as a
@@ -2573,6 +2573,132 @@ ClassMethod ReasonForOAuthClient(pCode As %String) As %String
 ClassMethod OAuthClientViolationCodes() As %List
 {
     Quit $ListBuild(..#OAUTHAPPLICATIONNAMEREQUIRED, ..#OAUTHAPPLICATIONNAMESHAPE, ..#OAUTHAPPLICATIONNAMETAKEN, ..#OAUTHSERVERDEFINITIONREQUIRED, ..#OAUTHSERVERDEFINITIONABSENT, ..#OAUTHCLIENTTYPEVALUE, ..#OAUTHSSLCONFIGURATIONREQUIRED, ..#OAUTHREDIRECTIONENDPOINTREQUIRED, ..#OAUTHREDIRECTIONENDPOINTSHAPE, ..#OAUTHCLIENTCREDENTIALSABSENT, ..#OAUTHJWTINTERVALSHAPE, ..#OAUTHMETADATAUNKNOWN, ..#OAUTHMETADATASHAPE, ..#OAUTHMETADATAVALUE)
+}
+
+/// <p>Machine code (Story 12.6): the resource server editor refused a Save, the envelope's
+/// <code>detail.violations</code> naming each field and its rule (AD-39); also the 422 the port
+/// answers for any other vendor 500 on a resource server's <code>PUT</code>.</p>
+Parameter OAUTHRESOURCESERVERVALIDATION = "OAUTH.RESOURCESERVERVALIDATION";
+
+Parameter REASONOAUTHRESOURCESERVERVALIDATION = "This instance refused the resource server.";
+
+/// <p>Machine code (422): a client secret write carrying no secret, which the vendor would store as
+/// an empty secret.</p>
+Parameter OAUTHRESOURCESERVERNOSECRET = "OAUTH.RESOURCESERVERNOSECRET";
+
+Parameter REASONOAUTHRESOURCESERVERNOSECRET = "Enter the client secret.";
+
+/// <p>Violation codes: the resource server's name.</p>
+Parameter OAUTHRESOURCESERVERNAMEREQUIRED = "OAUTH.RESOURCESERVERNAME.REQUIRED";
+
+Parameter REASONOAUTHRESOURCESERVERNAMEREQUIRED = "Give the resource server a name.";
+
+Parameter OAUTHRESOURCESERVERNAMESHAPE = "OAUTH.RESOURCESERVERNAME.SHAPE";
+
+Parameter REASONOAUTHRESOURCESERVERNAMESHAPE = "A resource server name is 1 to 128 characters with no control character.";
+
+Parameter OAUTHRESOURCESERVERNAMETAKEN = "OAUTH.RESOURCESERVERNAME.TAKEN";
+
+Parameter REASONOAUTHRESOURCESERVERNAMETAKEN = "This instance already has a resource server with that name. Choose a different one.";
+
+/// <p>Machine code (404): no resource server carries that name.</p>
+Parameter OAUTHRESOURCESERVERNAMEABSENT = "OAUTH.RESOURCESERVERNAME.ABSENT";
+
+Parameter REASONOAUTHRESOURCESERVERNAMEABSENT = "This instance has no resource server with that name.";
+
+/// <p>Violation codes: the audiences.</p>
+Parameter OAUTHAUDIENCESREQUIRED = "OAUTH.AUDIENCES.REQUIRED";
+
+Parameter REASONOAUTHAUDIENCESREQUIRED = "Add at least one audience.";
+
+Parameter OAUTHAUDIENCESSHAPE = "OAUTH.AUDIENCES.SHAPE";
+
+Parameter REASONOAUTHAUDIENCESSHAPE = "An audience is 1 to 256 characters with no control character.";
+
+Parameter OAUTHAUDIENCESDUPLICATE = "OAUTH.AUDIENCES.DUPLICATE";
+
+Parameter REASONOAUTHAUDIENCESDUPLICATE = "Each audience is listed once.";
+
+/// <p>Violation codes: the two bounded texts, the introspection method and the four flags.</p>
+Parameter OAUTHDESCRIPTIONLENGTH = "OAUTH.DESCRIPTION.LENGTH";
+
+Parameter REASONOAUTHDESCRIPTIONLENGTH = "Use 256 characters or fewer for the description.";
+
+Parameter OAUTHSCOPEREQUIREDLENGTH = "OAUTH.SCOPEREQUIRED.LENGTH";
+
+Parameter REASONOAUTHSCOPEREQUIREDLENGTH = "Use 256 characters or fewer for the required scope.";
+
+Parameter OAUTHINTROSPECTIONAUTHMETHODVALUE = "OAUTH.INTROSPECTIONAUTHMETHOD.VALUE";
+
+Parameter REASONOAUTHINTROSPECTIONAUTHMETHODVALUE = "Choose HTTP Basic, Form post or none.";
+
+Parameter OAUTHFLAGVALUE = "OAUTH.FLAG.VALUE";
+
+Parameter REASONOAUTHFLAGVALUE = "This setting is on or off.";
+
+/// <p>Violation codes: the authenticator's namespace, class and settings. A setting whose name is a
+/// credential's (Conventions, Secrets) is never read or sent from OcuPilot.</p>
+Parameter OAUTHAUTHENTICATORNAMESPACE = "OAUTH.AUTHENTICATOR.NAMESPACE";
+
+Parameter REASONOAUTHAUTHENTICATORNAMESPACE = "Choose a namespace you can read.";
+
+Parameter OAUTHAUTHENTICATORIMPLEMENTATION = "OAUTH.AUTHENTICATOR.IMPLEMENTATION";
+
+Parameter REASONOAUTHAUTHENTICATORIMPLEMENTATION = "Choose an authenticator class compiled in that namespace.";
+
+Parameter OAUTHAUTHENTICATORSETTING = "OAUTH.AUTHENTICATOR.SETTING";
+
+Parameter REASONOAUTHAUTHENTICATORSETTING = "This authenticator has no such setting, or the value is not the setting's kind.";
+
+Parameter OAUTHAUTHENTICATORSECRET = "OAUTH.AUTHENTICATOR.SECRET";
+
+Parameter REASONOAUTHAUTHENTICATORSECRET = "Set this setting in the classic portal.";
+
+/// <p>Violation codes: a service mapping's service and key, and a removal of a mapping this
+/// resource server does not hold.</p>
+Parameter OAUTHMAPPINGSERVICEVALUE = "OAUTH.MAPPINGSERVICE.VALUE";
+
+Parameter REASONOAUTHMAPPINGSERVICEVALUE = "Choose the Web Gateway or ODBC/JDBC service.";
+
+Parameter OAUTHMAPPINGKEYABSENT = "OAUTH.MAPPINGKEY.ABSENT";
+
+Parameter REASONOAUTHMAPPINGKEYABSENT = "Choose * or a web application or namespace this instance has.";
+
+Parameter OAUTHMAPPINGABSENT = "OAUTH.MAPPINGABSENT";
+
+Parameter REASONOAUTHMAPPINGABSENT = "This resource server does not hold that service mapping.";
+
+/// <p>The sentence for a Story 12.6 <code>OAUTH.*</code> code, or <code>""</code>.</p>
+ClassMethod ReasonForOAuthResourceServer(pCode As %String) As %String
+{
+    If pCode = ..#OAUTHRESOURCESERVERVALIDATION Quit ..#REASONOAUTHRESOURCESERVERVALIDATION
+    If pCode = ..#OAUTHRESOURCESERVERNOSECRET Quit ..#REASONOAUTHRESOURCESERVERNOSECRET
+    If pCode = ..#OAUTHRESOURCESERVERNAMEREQUIRED Quit ..#REASONOAUTHRESOURCESERVERNAMEREQUIRED
+    If pCode = ..#OAUTHRESOURCESERVERNAMESHAPE Quit ..#REASONOAUTHRESOURCESERVERNAMESHAPE
+    If pCode = ..#OAUTHRESOURCESERVERNAMETAKEN Quit ..#REASONOAUTHRESOURCESERVERNAMETAKEN
+    If pCode = ..#OAUTHRESOURCESERVERNAMEABSENT Quit ..#REASONOAUTHRESOURCESERVERNAMEABSENT
+    If pCode = ..#OAUTHAUDIENCESREQUIRED Quit ..#REASONOAUTHAUDIENCESREQUIRED
+    If pCode = ..#OAUTHAUDIENCESSHAPE Quit ..#REASONOAUTHAUDIENCESSHAPE
+    If pCode = ..#OAUTHAUDIENCESDUPLICATE Quit ..#REASONOAUTHAUDIENCESDUPLICATE
+    If pCode = ..#OAUTHDESCRIPTIONLENGTH Quit ..#REASONOAUTHDESCRIPTIONLENGTH
+    If pCode = ..#OAUTHSCOPEREQUIREDLENGTH Quit ..#REASONOAUTHSCOPEREQUIREDLENGTH
+    If pCode = ..#OAUTHINTROSPECTIONAUTHMETHODVALUE Quit ..#REASONOAUTHINTROSPECTIONAUTHMETHODVALUE
+    If pCode = ..#OAUTHFLAGVALUE Quit ..#REASONOAUTHFLAGVALUE
+    If pCode = ..#OAUTHAUTHENTICATORNAMESPACE Quit ..#REASONOAUTHAUTHENTICATORNAMESPACE
+    If pCode = ..#OAUTHAUTHENTICATORIMPLEMENTATION Quit ..#REASONOAUTHAUTHENTICATORIMPLEMENTATION
+    If pCode = ..#OAUTHAUTHENTICATORSETTING Quit ..#REASONOAUTHAUTHENTICATORSETTING
+    If pCode = ..#OAUTHAUTHENTICATORSECRET Quit ..#REASONOAUTHAUTHENTICATORSECRET
+    If pCode = ..#OAUTHMAPPINGSERVICEVALUE Quit ..#REASONOAUTHMAPPINGSERVICEVALUE
+    If pCode = ..#OAUTHMAPPINGKEYABSENT Quit ..#REASONOAUTHMAPPINGKEYABSENT
+    If pCode = ..#OAUTHMAPPINGABSENT Quit ..#REASONOAUTHMAPPINGABSENT
+    Quit ""
+}
+
+/// <p>Every field-level violation code the resource server editor's rules produce, as a
+/// <class>%List</class>, for its form read (Story 12.6).</p>
+ClassMethod OAuthResourceServerViolationCodes() As %List
+{
+    Quit $ListBuild(..#OAUTHRESOURCESERVERNAMEREQUIRED, ..#OAUTHRESOURCESERVERNAMESHAPE, ..#OAUTHRESOURCESERVERNAMETAKEN, ..#OAUTHISSUERENDPOINTREQUIRED, ..#OAUTHISSUERENDPOINTABSENT, ..#OAUTHAUDIENCESREQUIRED, ..#OAUTHAUDIENCESSHAPE, ..#OAUTHAUDIENCESDUPLICATE, ..#OAUTHDESCRIPTIONLENGTH, ..#OAUTHSCOPEREQUIREDLENGTH, ..#OAUTHINTROSPECTIONAUTHMETHODVALUE, ..#OAUTHFLAGVALUE, ..#OAUTHAUTHENTICATORNAMESPACE, ..#OAUTHAUTHENTICATORIMPLEMENTATION, ..#OAUTHAUTHENTICATORSETTING, ..#OAUTHAUTHENTICATORSECRET, ..#OAUTHMAPPINGSERVICEVALUE, ..#OAUTHMAPPINGKEYABSENT, ..#OAUTHMAPPINGABSENT)
 }
 
 /// <p>Violation code (AD-39): the vendor refused the request because a body field it requires was

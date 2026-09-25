@@ -169,6 +169,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/oauth/client-configuration/form" Method="GET" Call="OAuthClientFormRead"/>
   <Route Url="/oauth/client-configuration/:id" Method="PUT" Call="OAuthClientUpdate"/>
   <Route Url="/oauth/client-configuration" Method="POST" Call="OAuthClientCreate"/>
+  <Route Url="/oauth/resource-server/form" Method="GET" Call="OAuthResourceServerFormRead"/>
+  <Route Url="/oauth/resource-server/:id" Method="PUT" Call="OAuthResourceServerUpdate"/>
+  <Route Url="/oauth/resource-server" Method="POST" Call="OAuthResourceServerCreate"/>
 </Routes>
 }
 
@@ -565,6 +568,28 @@ ClassMethod OAuthClientUpdate(pId As %String) As %Status
 ClassMethod OAuthClientCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Security.OAuthClientSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /oauth/resource-server/form</code> (Story 12.6): the
+/// resource server editor's rules and readable names, and with a <code>name</code> query the server it
+/// edits. It sits before <code>/oauth/resource-server/:id</code>.</p>
+ClassMethod OAuthResourceServerFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthResourceServerRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /oauth/resource-server/:id</code>: the editor's edit
+/// Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthResourceServerUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthResourceServerSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /oauth/resource-server</code>: the editor's create
+/// Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthResourceServerCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthResourceServerSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /screens/:screen/action</code>: delegates to

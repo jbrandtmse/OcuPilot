@@ -3269,6 +3269,64 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.OAuthResourceServerForm",
+    "route": "security/oauth/resource-servers/edit",
+    "area": "security",
+    "labelKey": "oauthClientTypeResource",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "oauth2-resource-server",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": [
+        "ClientSecret"
+      ]
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "classicPage": "%CSP.UI.Portal.OAuth2.ResourceServer.Configuration",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "security.oauthresourceserverform",
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.OAuthResourceServerTab",
     "route": "security/oauth/resource-servers",
     "area": "security",
@@ -3299,10 +3357,15 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "parts": []
     },
     "primaryAction": {
-      "id": "",
+      "id": "create",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -3310,22 +3373,17 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ],
       "secretFields": []
     },
+    "secretArguments": [
+      "ClientSecret"
+    ],
     "emptyStateKey": "oauthResourceServersEmpty",
     "commandAliases": [],
     "classicPage": "%CSP.UI.Portal.OAuth2.ResourceServer.ConfigurationList",
     "classicLinkExemption": {
-      "exempt": true,
-      "reason": "Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1",
-      "label": "OAuth 2.0 Resource Server Configuration",
-      "href": "/csp/sys/sec/%25CSP.UI.Portal.OAuth2.ResourceServer.Configuration.zen",
-      "rowLink": {
-        "params": [
-          {
-            "name": "PID",
-            "field": "Name"
-          }
-        ]
-      }
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
     },
     "read": {
       "source": {
@@ -3364,8 +3422,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "oauthResourceServersEmptyAgent"
     },
     "tab": {
       "group": "security/oauth",
@@ -3375,7 +3433,6 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "toolIdentifier": "security.oauthresourceservers",
     "banner": null,
     "rowTarget": null,
-    "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },

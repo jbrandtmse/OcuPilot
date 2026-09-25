@@ -82,6 +82,8 @@ interface MountOptions {
   readonly actionAnswer?: JsonResult<unknown>;
   /** What a Save's answer carries beside the application name. */
   readonly saveAnswer?: Record<string, unknown>;
+  /** A Save's whole answer, in place of the created one. */
+  readonly save?: JsonResult<unknown>;
 }
 
 async function mount(url = '/security/oauth/clients/edit', options: MountOptions = {}) {
@@ -97,6 +99,7 @@ async function mount(url = '/security/oauth/clients/edit', options: MountOptions
           if (options.actionAnswer !== undefined) return options.actionAnswer as JsonResult<T>;
           return { kind: 'ok', status: 200, body: { action: 'updated' } } as unknown as JsonResult<T>;
         }
+        if (options.save !== undefined) return options.save as JsonResult<T>;
         return { kind: 'ok', status: 201, body: { applicationName: NAME, ...options.saveAnswer } } as unknown as JsonResult<T>;
       }
       const definition = acted && options.after !== undefined ? options.after : (options.definition ?? DEFINITION);
@@ -125,6 +128,22 @@ async function mount(url = '/security/oauth/clients/edit', options: MountOptions
   return { fixture, formDirty, sent, host: fixture.nativeElement as HTMLElement };
 }
 
+function tabs(host: HTMLElement): HTMLElement[] {
+  return [...host.querySelectorAll('[role="tab"]')] as HTMLElement[];
+}
+
+function selectedTab(host: HTMLElement): string {
+  return host.querySelector('[role="tab"][aria-selected="true"] .ocu-form-tab-label')?.textContent?.trim() ?? '';
+}
+
+const REFUSED_ON_INTERVAL = {
+  kind: 'error',
+  status: 422,
+  code: 'OAUTH.CLIENTVALIDATION',
+  reason: 'The client configuration was refused.',
+  detail: { violations: [{ field: 'JWTInterval', code: 'OAUTH.JWTINTERVAL.RANGE', reason: 'Enter a whole number of seconds.' }] },
+};
+
 function buttons(host: HTMLElement): string[] {
   return [...host.querySelectorAll('.ocu-form-bar-actions button')].map((button) => button.textContent?.trim() ?? '');
 }
@@ -148,11 +167,11 @@ afterEach(() => {
 });
 
 describe('the client configuration editor', () => {
-  it("AC1: the classic page's four tabs are four sections in its order, untabbed, with the required fields marked", async () => {
+  it("AC1: the classic page's four tabs are four form tabs in its order, with the required fields marked", async () => {
     const { host } = await mount();
     expect(FORM_SCREEN?.route).toBe('security/oauth/clients/edit');
-    const sections = [...host.querySelectorAll('.ocu-oauth-client-section > legend')].map((node) => node.textContent?.trim());
-    expect(sections).toEqual([
+    const labels = tabs(host).map((tab) => tab.querySelector('.ocu-form-tab-label')?.textContent?.trim());
+    expect(labels).toEqual([
       STRINGS.processDetailsGroupGeneral,
       STRINGS.oauthClientSectionClientInformation,
       STRINGS.oauthClientSectionJwt,
@@ -166,8 +185,21 @@ describe('the client configuration editor', () => {
       STRINGS.oauthServerFormLabel,
       STRINGS.oauthClientFieldRedirect,
     ]);
-    expect(host.querySelector('[role="tablist"]')).toBeNull();
+    expect(selectedTab(host)).toBe(STRINGS.processDetailsGroupGeneral);
+    expect(host.querySelector('[data-tab-body="information"] #ocu-oauth-client-metadata')).not.toBeNull();
     expect(buttons(host)).toEqual([STRINGS.actionCancel, STRINGS.actionSave]);
+  });
+
+  it('DW-1644: a refusal on a JWT Settings field while General is open opens that tab with its count and focuses the field', async () => {
+    // Mutation (Rule 19): skip `tabToOpen` in the page's `afterRefusal` -> the selected-tab assertion goes red.
+    const { fixture, host } = await mount(EDIT_URL, { save: REFUSED_ON_INTERVAL as JsonResult<unknown> });
+    type(fixture, host, 'ocu-oauth-client-Description', 'changed');
+    expect(selectedTab(host)).toBe(STRINGS.processDetailsGroupGeneral);
+    press(host, STRINGS.actionSave);
+    await settle(fixture);
+    expect(selectedTab(host)).toBe(STRINGS.oauthClientSectionJwt);
+    expect(tabs(host)[2].getAttribute('aria-label')).toBe(`${STRINGS.oauthClientSectionJwt}, 1 error`);
+    expect(document.activeElement?.id).toBe('ocu-oauth-client-JWTInterval');
   });
 
   it('AC3, AD-35: the four secrets are masked, never pre-filled, and each carries its hint', async () => {

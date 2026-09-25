@@ -26,10 +26,10 @@ Parameter READPATH = "/api/ocupilot/screens/";
 /// vendor answers unmasked on a GET, and every secret an OAuth 2.0 object holds (AD-35).</p>
 Parameter SECRETKEYS = "Metadata,ClientSecret,ClientPassword,PrivateJWKS,SymmetricJWKS,InitialAccessToken,ServerPassword,client_secret,registration_access_token";
 
-/// <p>The tabs Story 12.4's and Story 12.5's editors edit, which are no longer exempt.</p>
-Parameter EDITEDTABS = "OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab,OcuPilot.Screen.Descriptor.OAuthClientTab";
+/// <p>The tabs Stories 12.4, 12.5 and 12.6's editors edit, which are no longer exempt.</p>
+Parameter EDITEDTABS = "OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab,OcuPilot.Screen.Descriptor.OAuthClientTab,OcuPilot.Screen.Descriptor.OAuthResourceServerTab";
 
-/// <p>The reason the one Release 1 exemption carries, declared by the three tabs still edited in the
+/// <p>The reason the one Release 1 exemption carries, declared by the two tabs still edited in the
 /// classic portal (AD-44).</p>
 Parameter EXEMPTIONREASON = "Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1";
 
@@ -143,10 +143,11 @@ ClassMethod KeySetProblem(pRows As %DynamicArray, pFields As %String) As %String
 /// fields; the Server client descriptions tab declares the one <code>delete</code> row action and
 /// invites the agent when empty, keyed by a one-part composite <code>ClientId</code>; the Server
 /// descriptions tab (edited in OcuPilot since Story 12.4) declares its create, delete and Update JWKS,
-/// and the Client configurations tab (since Story 12.5) its create, delete, Rotate Keys and Register,
-/// each inviting the agent; and the other two declare no action; it is tab <code>n</code> of
+/// the Client configurations tab (since Story 12.5) its create, delete, Rotate Keys and Register, and
+/// the Resource servers tab (since Story 12.6) its create and delete, each inviting the agent; and the
+/// other one declares no action; it is tab <code>n</code> of
 /// <code>security/oauth</code>, the first listed at side-bar position 5 and the rest unlisted; its
-/// classic page and editor page compile under the declared case, and every tab but those two edited
+/// classic page and editor page compile under the declared case, and every tab but those three edited
 /// here declares the exemption, carrying the one reason, the
 /// editor page's own <code>PAGENAME</code> as its label, the editor's root-relative href and its row
 /// link params; its pair set is its resource then
@@ -182,8 +183,8 @@ Method TestEachTabIsDeclaredAsTheOAuthScreenTab()
         Do $$$AssertEquals(tDeclaration.context.fields.%ToJSON(), tDeclaration.read.fields.%ToJSON(), tClass _ ": its context fields are its read fields")
         Do $$$AssertEquals(tDeclaration.context.secretFields.%Size(), 0, tClass _ ": with no secret field")
         Do $$$AssertEquals(tDeclaration.table.emptyNextKey, $Select(tDeletable || tEdited: "", 1: "tableReadOnlyEmptyNext"), tClass _ ": its empty state names what to do next")
-        Do $$$AssertEquals(tDeclaration.table.emptyAgentKey, $Case(tClass, "OcuPilot.Screen.Descriptor.OAuthClientTab": "oauthClientsEmptyAgent", "OcuPilot.Screen.Descriptor.OAuthServerClientTab": "oauthServerClientsEmptyAgent", "OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab": "oauthServerDescriptionsEmptyAgent", : ""), tClass _ ": or invites the agent")
-        Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), $Case(tClass, "OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab": "delete,updatejwks", "OcuPilot.Screen.Descriptor.OAuthClientTab": "delete,rotatekeys,register", : $Select(tDeletable: "delete", 1: "")), tClass _ ": its row actions")
+        Do $$$AssertEquals(tDeclaration.table.emptyAgentKey, $Case(tClass, "OcuPilot.Screen.Descriptor.OAuthClientTab": "oauthClientsEmptyAgent", "OcuPilot.Screen.Descriptor.OAuthServerClientTab": "oauthServerClientsEmptyAgent", "OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab": "oauthServerDescriptionsEmptyAgent", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab": "oauthResourceServersEmptyAgent", : ""), tClass _ ": or invites the agent")
+        Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), $Case(tClass, "OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab": "delete,updatejwks", "OcuPilot.Screen.Descriptor.OAuthClientTab": "delete,rotatekeys,register", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab": "delete", : $Select(tDeletable: "delete", 1: "")), tClass _ ": its row actions")
         Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), $Select(tEdited: "create", 1: ""), tClass _ ": and its primary action")
         Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""" _ $List(tCase, 10) _ """,""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", tClass _ ": its pair set, its resource first")
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs")), "", tClass _ ": and the Security and secrets area covers it")

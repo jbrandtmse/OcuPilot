@@ -50,9 +50,8 @@ const EDITOR_ROUTE = 'security/oauth/edit';
 const TAB_URL = `/ocupilot/${TAB_ROUTE}?ns=HSCUSTOM`;
 const ACTION_PATH = '/api/ocupilot/screens/security.oauthserverdescriptions/action';
 
-/** The three tabs still edited in the classic portal, and the classic editor their name cells open. */
+/** The two tabs still edited in the classic portal, and the classic editor their name cells open. */
 const CLASSIC_TABS = [
-  { route: 'security/oauth/resource-servers', page: '%25CSP.UI.Portal.OAuth2.ResourceServer.Configuration.zen' },
   { route: 'security/oauth/server', page: '%25CSP.UI.Portal.OAuth2.Server.Configuration.zen' },
   { route: 'security/oauth/server-clients', page: '%25CSP.UI.Portal.OAuth2.Server.Client.zen' },
 ];

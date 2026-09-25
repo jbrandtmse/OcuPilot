@@ -32,6 +32,7 @@ import { DeviceForm } from './areas/os-management/device-form.store';
 import { OAuthActions } from './areas/security/oauth-actions';
 import { OAuthServerDescriptionForm } from './areas/security/oauth-server-description-form.store';
 import { OAuthClientForm } from './areas/security/oauth-client-form.store';
+import { OAuthResourceServerForm } from './areas/security/oauth-resource-server-form.store';
 import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
@@ -267,6 +268,8 @@ export class App {
   private readonly oauthServerDescriptionForm = inject(OAuthServerDescriptionForm);
   // The Client configurations tab's Create, the same way (Story 12.5).
   private readonly oauthClientForm = inject(OAuthClientForm);
+  // The Resource servers tab's Create, the same way (Story 12.6).
+  private readonly oauthResourceServerForm = inject(OAuthResourceServerForm);
   // The X.509 list's declared Create, labelled Import, the same way (`areas/security/x509-actions.ts`).
   private readonly x509Actions = inject(X509Actions);
   private readonly x509Form = inject(X509Form);
@@ -561,6 +564,8 @@ export class App {
       this.oauthServerDescriptionForm.reset();
       // The client configuration editor holds secrets THIS principal typed and has not saved (AD-35).
       this.oauthClientForm.reset();
+      // The resource server editor holds a client secret THIS principal typed and has not saved (AD-35).
+      this.oauthResourceServerForm.reset();
       // The wallet secret form holds a value THIS principal typed and has not saved (AD-35).
       this.walletSecretForm.reset();
       // The device editor holds a device THIS principal was creating or editing and has not saved.

@@ -1946,7 +1946,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:558 */
+  /** EXPERIENCE.md:559 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2366,6 +2366,56 @@ export const STRINGS = {
   oauthClientRegistrationNotUpdated: 'Saved. <issuer> was not updated: <reason>',
   /** EXPERIENCE.md:517 */
   oauthClientFormRefusedAction: 'change this client configuration',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerTabToken: 'Access token validation',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerTabAuthenticator: 'Authenticator',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerTabMappings: 'Mappings',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerFieldAudiences: 'Audiences',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerAddAudience: 'Add audience',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerFieldScope: 'Required scope',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerFieldJwt: 'JWT',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerFieldIntrospection: 'Call introspection',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerFieldOidc: 'OpenID Connect',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerMethodBasic: 'HTTP Basic',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerMethodPost: 'Form post',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerMethodNone: 'none',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerFieldImplementation: 'Implementation',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerGatewayMappings: 'Web Gateway mappings',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerBindingsMappings: 'ODBC/JDBC mappings',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerFieldApplication: 'Application',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerDefaultKey: '* (Default)',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerAddMapping: 'Add mapping',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerMoves: 'Moves this mapping from <server>.',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerMoveEffect: 'Moves this service mapping from the resource server that holds it.',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerSecretRefused: 'Saved. The client secret was not stored: <reason>',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerMappingsRefused: 'Saved. <count> service mappings were not changed: <reason>',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerDeleteConsequence: 'This also deletes the resource server\'s service mappings.',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServersEmptyAgent: 'create an OAuth 2.0 resource server',
+  /** EXPERIENCE.md:518 */
+  oauthResourceServerFormRefusedAction: 'change this resource server',
 
 } as const;
 
