@@ -6935,3 +6935,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth.md (code review) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: app.ts:107 'Sign out lives in the status bar now (app-status-bar mounts app-account-menu)'; the spec forbids editing app.ts, contended with Epic 12
 - 2026-09-25T10:56:32Z status=wontfix-accepted owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=cr note=reopen_if=the next story that edits app.ts leaves :107 naming the status bar
+
+### DW-1659: Fifteen other form-page browser specs keep the triple-click fill helper that failed users-editor when a field sat wholly under the sticky form bar
+- source: spec-15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: grep clickCount: 3 ui/browser lists 15 editor/create specs; all green in CI on 5dcefe46; users-editor fixed by focus+select in 2354fc6d
+- 2026-09-25T11:59:21Z status=wontfix-accepted owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=harvest note=reopen_if=any of them fails with a typed value appended to the old one
