@@ -6721,6 +6721,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-25T00:39:02Z status=escalated owner=burndown by=harvest note=raised to the orchestrator mid-epic at 12.4 (AD-35 scope over vendor-recorded secrets; mask EventData for the named events vs named gap)
 - 2026-09-25T01:19:33Z occurrence=12-4-the-oauth-2-0-client-server-description-editor
 - 2026-09-25T02:13:04Z occurrence=12-5-the-oauth-2-0-client-configuration-editor note=measured 2026-09-25 on ocupilot-b-ci: the client configuration's Metadata.registration_access_token is written in plain text into 'Modify OAuth2 Client' and 'Modify OAuth2 Client Metadata' EventData by CHANGESECRET and again by every later PUT and ROTATEKEYS; ClientSecret, ClientPassword, Metadata.client_secret and key sets are masked by the vendor
+- 2026-09-25T02:14:54Z status=routed owner=12-5-the-oauth-2-0-client-configuration-editor by=merge_gate note=orchestrator ruling 8bd12776: (a) mask declared keys in EventData for the named vendor OAuth events on both screen and agent paths; AD-35 extended; owner 12.5 with authority over the Logs audit read; vendor behavior on the owner's list as a candidate IRIS defect report
 
 ### DW-1641: The agent's OAuth server-description update replaces Metadata whole: the tool argument is the complete member set because Mint.Merge carries an object argument as one value (the screen route merges member by member first)
 - source: spec-12-4-the-oauth-2-0-client-server-description-editor.md | severity: med | fix-risk: med | footprint: in-story

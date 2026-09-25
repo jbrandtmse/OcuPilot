@@ -5377,6 +5377,7 @@ So that an application can obtain tokens from this instance's configuration.
 - **Given** any secret or initial access token
 - **When** it is entered
 - **Then** it is masked, write-only, never pre-filled and never returned by any read.
+- DW-1640: IRIS writes the OAuth registration access token in plain text into its own audit rows' EventData; the audit read masks the keys declared per named vendor event on the screen and the agent path (AD-35). (ledger; routed by merge_gate 2026-09-25)
 
 ### Story 12.6: The OAuth 2.0 resource server editor
 

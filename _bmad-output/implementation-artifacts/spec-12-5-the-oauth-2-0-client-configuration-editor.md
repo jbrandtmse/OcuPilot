@@ -264,6 +264,8 @@ Supporting vendor classes:
 - `ui/browser/structural-baseline.json` -- add exactly three `security/oauth/clients/edit` entries mirroring :1323-1355 (DW-1583 at 1280 and 720, DW-1584 at 720), and nothing for the editor's own content.
 - `ui/angular.json` + `ui/tools/angular-json.test.mjs` -- if the initial total crosses 1378kB, apply DW-1166: 5% above the measured total, the value line and the pinned literal. Crossing 1500kB is a stop-and-ask.
 
+- DW-1640 (orchestrator ruling 8bd12776, by=merge_gate; AD-35 amended at origin) -- the audit read (Logs › Audit's read, `Screen/Descriptor/AuditList.cls` and whatever builds its rows and `logs.audit.read`'s answer; Story 2.10's code, authorised for this story and listed under `footprint_extensions:`) masks, **on both the screen and the agent path**, the keys declared per vendor event inside `EventData`: Create and Modify OAuth2 Server Definition, Create and Modify OAuth2 Client, and OAuth2 Client Metadata (use the vendor's exact event names, read from the instance). Each declares `registration_access_token` plus any sibling token key you **measure** in those rows on `ocupilot-b-ci` (record the measurement in `## Verification`). The mask is a declaration per event (a small table in one place), never a pattern over free text (Conventions › Secrets). Pin it: a seeded audit row (a real vendor row produced by a probe token write on `ocupilot-b-ci`, or a row seeded the way the existing audit tests seed) carrying a probe token reads masked through the screen's read and through `logs.audit.read`; removing the declaration reddens the test (`mutation:` line). Do not purge or copy the audit database.
+
 **Acceptance Criteria:**
 
 - **AC1 (create).** Given the Client configurations tab, when the user chooses Create, fills the General fields and saves, then the editor reopens on the new client reading "Saved", the tab lists it, and GET returns every entered value.
@@ -278,6 +280,8 @@ Supporting vendor classes:
 - **AC10 (DW-1337).** Given the editor and its delete dialog, when they are measured at 1280 px light, 720 px light and 1280 px dark, then there is no structural or contrast violation.
 
 ## Spec Change Log
+
+- 2026-09-25, spec gate (lead). Orchestrator ruling 8bd12776 (by=merge_gate): DW-1640 is fixed in this story on both read paths (AD-35 amended; Tasks carry it); the editor is four sections named and ordered as the classic tabs, switched to `app-form-tabs` at Epic 9's merge by a routed bullet (Q1); the initial access token field, "Get Updated Metadata" out of scope and the DW-1641 occurrence are accepted; AD-4 is amended for `ClientConfiguration`; AD-44 now lists the declaring tabs by name (three after this story), so AC9's count is the named list's.
 
 ## Review Triage Log
 
