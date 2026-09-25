@@ -99,12 +99,20 @@ after(async () => {
   if (server !== null) await new Promise((resolve) => server.close(resolve));
 });
 
-async function openHarness(viewport = WIDE) {
+/**
+ * Classic 15px scrollbars. Injected here, they reproduce CI's Linux failure numbers exactly. Under this launch they take their
+ * `scrollbar-gutter: stable` space and are never painted: CI's geometry, which macOS's zero-width
+ * overlay scrollbars never produce.
+ */
+const CLASSIC_SCROLLBARS = '::-webkit-scrollbar { width: 15px; height: 15px; }';
+
+async function openHarness(viewport = WIDE, { classicScrollbars = false } = {}) {
   await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   await page.setViewport(viewport);
   await page.goto(`${origin}${PAGE}`, { waitUntil: 'domcontentloaded' });
+  if (classicScrollbars) await page.addStyleTag({ content: CLASSIC_SCROLLBARS });
   await page.waitForSelector('[role="grid"] [role="row"][aria-rowindex="2"]', { timeout: config.navigationTimeoutMs });
   // The label widths are measured after the first render and again once the fonts settle.
   await page.evaluate(() => document.fonts.ready);
@@ -309,97 +317,123 @@ test('Reveal: Right into a column past the right edge scrolls it fully into view
   }
 });
 
-/** Row 1's action trigger against the frame: whether it sits inside, and whether its centre hit-tests to it. */
+/**
+ * An element's place against the table's frame, run in the page on the element. The frame is the
+ * viewport's box inside its borders, gutter included. A `scrollbar-gutter: stable` gutter with no
+ * scrollbar painted in it still shows and scrolls content, but `clientWidth` leaves it out. That
+ * happens with a list that fits, and under this launch, which hides scrollbars (Puppeteer's
+ * default). `inside` also needs a point in each edge column of the element to hit-test to it, so
+ * content the frame clips reads as outside. `within` is the geometric half alone. `gutter` is the
+ * frame's width minus `clientWidth`.
+ */
+function placeInFrame(element) {
+  const viewport = document.querySelector('cdk-virtual-scroll-viewport');
+  const style = getComputedStyle(viewport);
+  const view = viewport.getBoundingClientRect();
+  const left = view.left + parseFloat(style.borderLeftWidth);
+  const right = view.right - parseFloat(style.borderRightWidth);
+  const box = element.getBoundingClientRect();
+  const x = box.left + box.width / 2;
+  const y = box.top + box.height / 2;
+  const shows = (at) => {
+    const hit = document.elementFromPoint(at, y);
+    return hit !== null && element.contains(hit);
+  };
+  const within = box.left >= left - 0.5 && box.right <= right + 0.5;
+  return {
+    inside: within && shows(box.left + 1) && shows(box.right - 1),
+    within,
+    hit: shows(x),
+    x,
+    y,
+    box: [box.left, box.right],
+    frame: [left, right],
+    scrolled: viewport.scrollLeft,
+    gutter: right - left - viewport.clientWidth,
+  };
+}
+
+/** Row 1's action trigger against the frame: whether all of it shows inside, and whether its centre hit-tests to it. */
 function triggerPlace(page) {
-  return page.evaluate(() => {
-    const viewport = document.querySelector('cdk-virtual-scroll-viewport');
-    const trigger = document.querySelector('[role="row"][aria-rowindex="2"] .ocu-data-table-trigger');
-    const view = viewport.getBoundingClientRect();
-    const box = trigger.getBoundingClientRect();
-    const left = view.left + viewport.clientLeft;
-    const right = left + viewport.clientWidth;
-    const x = box.left + box.width / 2;
-    const y = box.top + box.height / 2;
-    const hit = document.elementFromPoint(x, y);
-    return {
-      inside: box.left >= left - 0.5 && box.right <= right + 0.5,
-      hit: hit !== null && trigger.contains(hit),
-      x,
-      y,
-      box: [box.left, box.right],
-      frame: [left, right],
-      scrolled: viewport.scrollLeft,
-    };
-  });
+  return page.$eval('[role="row"][aria-rowindex="2"] .ocu-data-table-trigger', placeInFrame);
 }
 
 // Mutation (Rule 19): `.ocu-data-table-viewport` given `overflow-x: hidden` -> the wheel leaves the
 // trigger past the frame, red; `revealActiveCell` returning early for the trigger column -> the
-// keyboard half leaves it past the frame, red.
+// keyboard half leaves it past the frame, red; the viewport given `margin-right: -24px`, so the
+// frame clips its right edge -> red in both scrollbar conditions.
+// It runs once with the platform's scrollbars and once with classic ones, so macOS covers CI's
+// gutter geometry too; the classic run first asserts its gutter exists.
+// Mutation (Rule 19): the injected style dropped from the classic run -> its gutter assertion red.
 // The two "past the frame" assertions hold only while the trigger column scrolls with the rest.
-// If DW-1648 is decided as pinning that column, delete them and keep the reach assertions.
-test('Trigger reach: at 480 wide the row trigger starts past the frame, and the frame\'s own sideways scroll or Right into its column brings it inside, where it opens the row menu', async () => {
-  const { context, page } = await openHarness(NARROW);
-  try {
-    const start = await triggerPlace(page);
-    assert.ok(!start.inside, `the trigger starts past the frame: ${JSON.stringify(start)}`);
+// Story 15.9 pins that column (DW-1648) and rewrites them; the reach assertions stay.
+for (const scrollbars of ['platform', 'classic']) {
+  test(`Trigger reach (${scrollbars} scrollbars): at 480 wide the row trigger starts past the frame, and the frame's own sideways scroll or Right into its column brings it inside, where it opens the row menu`, async () => {
+    const { context, page } = await openHarness(NARROW, { classicScrollbars: scrollbars === 'classic' });
+    try {
+      const start = await triggerPlace(page);
+      if (scrollbars === 'classic') {
+        assert.ok(start.gutter >= 14, `the classic run has a classic gutter: ${JSON.stringify(start)}`);
+      }
+      assert.ok(!start.within, `the trigger starts past the frame: ${JSON.stringify(start)}`);
 
-    const frame = await page.$eval('cdk-virtual-scroll-viewport', (element) => {
-      const box = element.getBoundingClientRect();
-      return { x: box.left + box.width / 2, y: box.top + 20 };
-    });
-    await page.mouse.move(frame.x, frame.y);
-    await page.mouse.wheel({ deltaX: 2000 });
-    // A wheel scroll starts asynchronously and can animate, so wait for the frame's scroll to reach
-    // its end. On a timeout the assertion below reports where the trigger stopped.
-    await page
-      .waitForFunction(
-        () => {
-          const viewport = document.querySelector('cdk-virtual-scroll-viewport');
-          return viewport.scrollLeft >= viewport.scrollWidth - viewport.clientWidth - 1;
-        },
-        { timeout: 2000 }
-      )
-      .catch(() => {});
-    await settle(page);
-    const wheeled = await triggerPlace(page);
-    assert.ok(wheeled.inside && wheeled.hit, `a sideways wheel over the frame brings the trigger inside it: ${JSON.stringify(wheeled)}`);
-    await page.mouse.click(wheeled.x, wheeled.y);
-    await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: 2000 });
-    await press(page, 'Escape');
-    await page.waitForFunction(() => document.querySelector('[role="menu"]') === null, { timeout: 2000 });
+      const frame = await page.$eval('cdk-virtual-scroll-viewport', (element) => {
+        const box = element.getBoundingClientRect();
+        return { x: box.left + box.width / 2, y: box.top + 20 };
+      });
+      await page.mouse.move(frame.x, frame.y);
+      await page.mouse.wheel({ deltaX: 2000 });
+      // A wheel scroll starts asynchronously and can animate, so wait until the frame has scrolled
+      // and holds still for three frames. `scrollWidth - clientWidth` is not the end to wait for: an
+      // empty stable gutter scrolls as content, so the end can fall short of it by the gutter. On a
+      // timeout the assertion below reports where the trigger stopped.
+      await page
+        .waitForFunction(
+          () => {
+            const left = document.querySelector('cdk-virtual-scroll-viewport').scrollLeft;
+            const still = left > 0 && left === window.ocuLastScrollLeft ? (window.ocuStillFrames ?? 0) + 1 : 0;
+            window.ocuLastScrollLeft = left;
+            window.ocuStillFrames = still;
+            return still >= 3;
+          },
+          { polling: 'raf', timeout: 2000 }
+        )
+        .catch(() => {});
+      await settle(page);
+      const wheeled = await triggerPlace(page);
+      assert.ok(wheeled.inside && wheeled.hit, `a sideways wheel over the frame brings the trigger inside it: ${JSON.stringify(wheeled)}`);
+      await page.mouse.click(wheeled.x, wheeled.y);
+      await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: 2000 });
+      await press(page, 'Escape');
+      await page.waitForFunction(() => document.querySelector('[role="menu"]') === null, { timeout: 2000 });
 
-    await page.evaluate(() => {
-      document.querySelector('cdk-virtual-scroll-viewport').scrollLeft = 0;
-    });
-    await settle(page);
-    assert.ok(!(await triggerPlace(page)).inside, 'scrolled back, the trigger is past the frame again');
-    await page.focus('[role="grid"]');
-    await press(page, 'ArrowDown');
-    for (let step = 0; step < FIELDS.length + 2; step += 1) await press(page, 'ArrowRight');
-    await settle(page, 300);
-    const keyed = await page.evaluate(() => {
-      const viewport = document.querySelector('cdk-virtual-scroll-viewport');
-      const id = document.querySelector('[role="grid"]').getAttribute('aria-activedescendant');
-      const cell = document.getElementById(id);
-      const box = cell.getBoundingClientRect();
-      const view = viewport.getBoundingClientRect();
-      const left = view.left + viewport.clientLeft;
-      return {
-        onTrigger: cell.querySelector('.ocu-data-table-trigger') !== null,
-        inside: box.left >= left - 0.5 && box.right <= left + viewport.clientWidth + 0.5,
-        box: [box.left, box.right],
-        frame: [left, left + viewport.clientWidth],
+      await page.evaluate(() => {
+        document.querySelector('cdk-virtual-scroll-viewport').scrollLeft = 0;
+      });
+      await settle(page);
+      const back = await triggerPlace(page);
+      assert.ok(!back.within, `scrolled back, the trigger is past the frame again: ${JSON.stringify(back)}`);
+      await page.focus('[role="grid"]');
+      await press(page, 'ArrowDown');
+      for (let step = 0; step < FIELDS.length + 2; step += 1) await press(page, 'ArrowRight');
+      await settle(page, 300);
+      const active = await page.evaluateHandle(() =>
+        document.getElementById(document.querySelector('[role="grid"]').getAttribute('aria-activedescendant'))
+      );
+      const keyed = {
+        onTrigger: await active.evaluate((cell) => cell.querySelector('.ocu-data-table-trigger') !== null),
+        ...(await active.evaluate(placeInFrame)),
       };
-    });
-    assert.ok(keyed.onTrigger, 'Right past the last data column lands on the trigger column');
-    assert.ok(keyed.inside, `and reveals it inside the frame: ${JSON.stringify(keyed)}`);
-    await press(page, 'Enter');
-    await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: 2000 });
-  } finally {
-    await context.close();
-  }
-});
+      await active.dispose();
+      assert.ok(keyed.onTrigger, 'Right past the last data column lands on the trigger column');
+      assert.ok(keyed.inside, `and reveals it inside the frame: ${JSON.stringify(keyed)}`);
+      await press(page, 'Enter');
+      await page.waitForSelector('[role="menu"] [role="menuitem"]', { timeout: 2000 });
+    } finally {
+      await context.close();
+    }
+  });
+}
 
 // Mutation (Rule 19): show the tooltip whatever `scrollWidth > clientWidth` says -> "Not cut" goes red.
 test('Cut cell: the pointer resting on a 300-character note shows it whole after the delay, the tooltip is hoverable, and Escape hides it', async () => {

@@ -2,7 +2,7 @@
 title: 'Story 15.8: Columns you can read'
 type: 'feature'
 created: '2026-09-25'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '178758eedb7592a5f233dbe5db5bf8b89082970c'
 baseline_commit: '11feffa40473a842a5fe76278ce246f15cf2445a'
 review_loop_iteration: 0
@@ -180,7 +180,7 @@ deferred: []
 
 ### Rework 2 (CI)
 
-- [ ] [CI] browser: `data-table-columns.browser-spec.mjs:341` "Trigger reach" fails on CI's Linux Chrome at `:366`: `a sideways wheel over the frame brings the trigger inside it: {"inside":false,"hit":true,"x":437,"y":70.5,"box":[423,451],"frame":[17,448],"scrolled":470}` — run 36106266031 on 6bb8fb7f, https://github.com/jbrandtmse/OcuPilot/actions/runs/36106266031 (every other job and every other browser test green). The trigger's right edge (451) sits past the frame's (448) after the scroll settles. It passes on macOS, whose scrollbars are overlay (zero width); CI's are classic. Find whether the product clips the last column at maximum horizontal scroll when the frame has a classic vertical scrollbar (then fix the product) or whether the test measures the wrong box (then fix the measurement without weakening what it proves). Reproduce the classic-scrollbar geometry locally before concluding. Story 15.9 will pin the trigger column (DW-1648, decided); do not do that here.
+- [x] [CI] browser: `data-table-columns.browser-spec.mjs:341` "Trigger reach" fails on CI's Linux Chrome at `:366`: `a sideways wheel over the frame brings the trigger inside it: {"inside":false,"hit":true,"x":437,"y":70.5,"box":[423,451],"frame":[17,448],"scrolled":470}` — run 36106266031 on 6bb8fb7f, https://github.com/jbrandtmse/OcuPilot/actions/runs/36106266031 (every other job and every other browser test green). The trigger's right edge (451) sits past the frame's (448) after the scroll settles. It passes on macOS, whose scrollbars are overlay (zero width); CI's are classic. Find whether the product clips the last column at maximum horizontal scroll when the frame has a classic vertical scrollbar (then fix the product) or whether the test measures the wrong box (then fix the measurement without weakening what it proves). Reproduce the classic-scrollbar geometry locally before concluding. Story 15.9 will pin the trigger column (DW-1648, decided); do not do that here.
 
 ### Rework 1 (CI)
 
@@ -275,6 +275,22 @@ Rejected (rework 1 re-review):
   - `[medium]` `[patch]` (intent alignment) The diff fixes a stale click point, not the trigger's reach, and has no artifact for the "product correct as shipped" gate — same entry as the row above.
   - `[false]` `[reject]` (intent alignment) Specs that open the trigger without `clickRowCentre` (`data-table:565`, `gate`, `ssl`, `structural-walk`, `error-log-actions`) are untouched — they click through `ElementHandle.click`, which measures at click time. The stale point exists only in `clickRowCentre`'s `mouse.click(x, y)`, and all of them were green in run 36100540000.
   - `[false]` `[reject]` (intent alignment) The reproduction and sweep leave no trace — they are recorded under Auto Run Result › Rework 1.
+
+### 2026-09-25 — Review pass (rework 2, CI)
+
+- verdicts: 11 findings — high 0, medium 0, low 8, false 3, maybe-false 0
+- findings:
+  - `[low]` `[patch]` The classic run never asserts that its injected gutter exists, so a later `scrollbar-width` rule could turn it into a copy of the platform run — the classic run now asserts `gutter >= 14` first; dropping the injected style reddens it (`gutter: 0`).
+  - `[low]` `[patch]` The two "past the frame" assertions got weaker once `inside` also needed edge hit-tests — they now assert the geometric `within` alone, as in rework 1.
+  - `[low]` `[reject]` No run paints a classic scrollbar, so "no clip under a painted scrollbar" is unobserved — the implement probe without `--hide-scrollbars` (200 rows) saw the scroll range reach 485 and the last column end at the client edge (448); a test would need a second browser launch the suite never uses.
+  - `[low]` `[reject]` (intent alignment) Same root cause as the row above: the painted case, the product question, is not exercised — same evidence.
+  - `[low]` `[reject]` (intent alignment) The keyboard half's frame includes the gutter while `revealActiveCell` reveals to `clientWidth` — under this launch the strict bound is unreachable (maximum scroll 470 leaves the trigger's right edge at 451, past `clientWidth`'s 448), and the edge hit-tests still require both edges to show.
+  - `[false]` `[reject]` (intent alignment) The wheel wait proves less — the wait is only a timing gate; reach is asserted by `wheeled.inside`, and the `overflow-x: hidden` mutation still reddens it (`scrolled: 0`).
+  - `[low]` `[reject]` (intent alignment) The `margin-right: -24px` mutation proves clipping by an ancestor, not by a scrollbar — same root cause as the painted-scrollbar rows.
+  - `[low]` `[patch]` (intent alignment) "15px, the width CI's Linux Chrome reserves" states an inference as fact — the comment now says the injected 15px reproduces CI's failure numbers exactly.
+  - `[low]` `[patch]` (intent alignment) The DW-1648 comment still reads "if DW-1648 is decided" — it now says Story 15.9 pins the column and rewrites the two assertions.
+  - `[false]` `[reject]` (intent alignment) The CI-reported "Trigger reach" is now two tests — a rename, not a defect; both names start with "Trigger reach".
+  - `[false]` `[reject]` (intent alignment) No rework-2 entry under Auto Run Result — it is written at finalize.
 
 ## Design Notes
 
@@ -391,6 +407,8 @@ Results (2026-09-25, `ocupilot-ci`; each reverted, tree byte-identical by `shasu
 - mutation: the ancestor-scroll listener removed, or `afterActiveCellMoved` removed from the vertical move keys → harness Dismissal red on "ancestor scroll" or "vertical key" (code review).
 - mutation (rework 1): both settle waits in `clickRowCentre` disabled → `resources-editor.browser-spec.mjs:339` red, with CI's signature (`TimeoutError` on `[role="row"][aria-selected="true"] .ocu-data-table-trigger`). Either wait disabled alone → 339 green: the two are redundant. `roles-editor:425` stayed green under the mutation (timing; CI confirms it).
 - mutation (rework 1): `.ocu-data-table-viewport` given `overflow-x: hidden` → harness "Trigger reach" red (the wheel leaves the trigger outside the frame; re-observed after code review's scroll-end wait, with `!important`, `scrolled: 0`). `revealActiveCell` returning early on the trigger column → "Trigger reach" red (keyboard half). Harness rebuilt before each read.
+- mutation (rework 2): "Trigger reach" now runs twice, with the platform's scrollbars and with injected classic 15px ones. Each rework-1 mutation was re-observed red in both runs: `overflow-x: hidden` on the viewport (`scrolled: 0`), and `revealActiveCell` returning early on the trigger column (keyboard half). The viewport given `margin-right: -24px`, so the frame clips it, is red in both runs through the edge hit-test alone: the box `[447,475]` is inside the geometric frame and the center hit-tests. Before the fix, the classic run was red locally with CI's exact signature (`box [423,451]`, `frame [17,448]`, `scrolled 470`). Harness rebuilt before each read.
+- mutation (rework 2, review): the injected classic style dropped from the classic run → "Trigger reach (classic scrollbars)" red on its gutter assertion (`gutter: 0`); platform run green. Reverted, `shasum` identical.
 
 ## Auto Run Result
 
@@ -440,3 +458,33 @@ Column floors and the trigger column are untouched (DW-1648 is still the owner's
 
 **Residual risks.** `roles-editor:425` failed on timing and never reproduced locally, so the CI re-run is its proof. A list whose rows move for 2 s without pause now fails with a named error instead of clicking.
 
+### Rework 2 (CI run 36106266031)
+
+Status: done
+Blocking condition: none
+
+**Diff base** `54df59d3b7948ab415f3ed8f095fe63243863ea7`. Frontmatter `baseline_revision` is still the story's.
+
+**Root cause (test).** The case measured the frame with `clientWidth`. That leaves out the `scrollbar-gutter: stable` gutter, which under Puppeteer's default `--hide-scrollbars` launch is reserved (15px on CI's Linux Chrome) but never painted, and Chrome still draws and hit-tests content in it. The trigger was fully visible at maximum scroll (470), with its right edge 3px into the empty gutter. The scroll-end wait could never be met either. The product does not clip. In a probe with a painted classic scrollbar (flag removed, 200 rows), the scroll range reached 485 and the last column ended at the client edge.
+
+**Reproduction.** On macOS, `openHarness` injects `::-webkit-scrollbar { width: 15px; height: 15px; }` through `page.addStyleTag`. Before the fix this reproduced CI's exact failure: `box [423,451]`, `frame [17,448]`, `scrolled 470`.
+
+**Change** (`ui/browser/data-table-columns.browser-spec.mjs` only; no product code):
+
+- "Trigger reach" runs twice, with platform scrollbars and with classic ones. The classic run first asserts that its gutter exists.
+- `placeInFrame` measures the frame as the viewport's box inside its borders. `inside` also requires both edge columns of the element to hit-test to it. The negative assertions use the geometric `within`.
+- The wheel wait now ends once `scrollLeft` is non-zero and has held still for three frames.
+- The DW-1648 assertions are kept; Story 15.9 rewrites them.
+
+**Review.** 11 findings. Patched 4 low: the gutter assertion, `within` on the negative assertions, and two comments. Rejected 4 low and 3 false, with reasons in the triage log. Nothing deferred. Follow-up review: not recommended. This was a follow-up pass and patched no high.
+
+**Verification** (`ocupilot-ci`; harness rebuilt; bundle rebuilt and redeployed; one spec file per call):
+
+- `npm run build`: the seven checkers pass, and the initial total is 1.59 MB.
+- `data-table-columns` 16/16, green again after the review patches.
+- `column-widths` 2/2.
+- `client-lint`, `browser-reset` and `lint-docs` are clean.
+- No product TS or CSS changed, so `a11y-structural-invariants` and `test:components` were not run.
+- Mutations under `## Verification` were each red and reverted.
+
+**Residual risks.** CI is the confirmation on Linux. A painted classic scrollbar is observed only by the implement probe, not by a test.
