@@ -16,7 +16,6 @@
  *    and a removed row leaves the instance.
  * 5. **Delete from the row menu** (AC3, AC11): the editor's delete dialog passes DW-1337, the row menu
  *    offers the one declared action, and the typed name deletes the server and its mappings.
- * 6. **The tab still edited in the classic portal keeps its classic link** (AC9).
  *
  * **It refuses the live container**, and needs the demo fixture's SSL/TLS configuration. Every probe
  * object is removed by exact name before and after (`OcuPilot.Test.OAuthResourceServerProbe`).
@@ -63,11 +62,6 @@ const PROBE = 'OcuPilot.Test.OAuthResourceServerProbe';
 
 /** The editor's four tabs, in order. */
 const TAB_KEYS = ['general', 'token', 'authenticator', 'mappings'];
-
-/** The tab still edited in the classic portal, and the classic editor its name cell opens. */
-const CLASSIC_TABS = [
-  { route: 'security/oauth/server-clients', page: '%25CSP.UI.Portal.OAuth2.Server.Client.zen' },
-];
 
 let browser = null;
 
@@ -406,24 +400,5 @@ test("AC3, AC11: the editor's delete dialog passes DW-1337, and the row menu's D
     assert.equal(mappingsOf(NAME), '', 'nor its mappings');
   } finally {
     await context.close();
-  }
-});
-
-test('AC9: the tab still edited in the classic portal keeps its classic link', async () => {
-  const { values, output } = irisSession(['Set tSC=##class(OcuPilot.Test.OAuthProbe).Create()', mark('MADE', '$System.Status.IsOK(tSC)')], ['MADE']);
-  assert.equal(values.MADE, '1', `the OAuth probe objects are made:\n${output}`);
-  try {
-    for (const tab of CLASSIC_TABS) {
-      const { context, page } = await signedInAt(browser, config, `/ocupilot/${tab.route}?ns=HSCUSTOM`, VIEWPORTS.wide);
-      try {
-        await waitForRows(page, config.navigationTimeoutMs);
-        const href = await page.$eval(`${ROW_SELECTOR} [role="gridcell"] a`, (link) => link.getAttribute('href'));
-        assert.ok(href.startsWith(`/csp/sys/sec/${tab.page}`), `${tab.route}: the name cell opens the classic editor, not ${href}`);
-      } finally {
-        await context.close();
-      }
-    }
-  } finally {
-    irisSession(['Do ##class(OcuPilot.Test.OAuthProbe).Remove()']);
   }
 });

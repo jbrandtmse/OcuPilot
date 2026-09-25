@@ -113,9 +113,11 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
 /// rows <code>registration_access_token</code>, each in a <code>modified</code> block, a property
 /// line or the metadata's JSON; the vendor masks the client secret, the password and the key sets
 /// itself. The authorization server rows carry <code>ServerPassword</code> in a <code>modified</code>
-/// block and on a property line (Story 12.7). A secret found in any other event is a new entry
+/// block and on a property line (Story 12.7). The server client rows carry
+/// <code>registration_access_token</code> as a metadata <code>modified</code> block and on the
+/// <code>Metadata</code> line (Story 12.8). A secret found in any other event is a new entry
 /// here.</p>
-Parameter VENDORSECRETS = "Create OAuth2 Server Definition=InitialAccessToken:registration_access_token;Modify OAuth2 Server Definition=InitialAccessToken:registration_access_token;Create OAuth2 Client Metadata=registration_access_token;Modify OAuth2 Client Metadata=registration_access_token;Create OAuth2 Client=registration_access_token;Modify OAuth2 Client=registration_access_token;Create OAuth2 Server=ServerPassword;Modify OAuth2 Server=ServerPassword";
+Parameter VENDORSECRETS = "Create OAuth2 Server Definition=InitialAccessToken:registration_access_token;Modify OAuth2 Server Definition=InitialAccessToken:registration_access_token;Create OAuth2 Client Metadata=registration_access_token;Modify OAuth2 Client Metadata=registration_access_token;Create OAuth2 Client=registration_access_token;Modify OAuth2 Client=registration_access_token;Create OAuth2 Server=ServerPassword;Modify OAuth2 Server=ServerPassword;Create OAuth2 Server Client=registration_access_token;Modify OAuth2 Server Client=registration_access_token";
 
 /// <p>The vendor event every <parameter>VENDORSECRETS</parameter> entry is a row of:
 /// <code>&lt;source&gt;/&lt;type&gt;/&lt;name&gt;</code>.</p>

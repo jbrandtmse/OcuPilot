@@ -47,7 +47,7 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>The declaration names the eight vendor events measured on a throwaway, each with the key its rows
+/// <p>The declaration names the ten vendor events measured on a throwaway, each with the key its rows
 /// carry, and the vendor event they are all rows of.</p>
 Method TestTheDeclarationNamesTheMeasuredEvents()
 {
@@ -61,7 +61,10 @@ Method TestTheDeclarationNamesTheMeasuredEvents()
     For tEvent = "Create OAuth2 Server", "Modify OAuth2 Server" {
         Do $$$AssertTrue((";" _ tDeclared _ ";") [ (";" _ tEvent _ "=ServerPassword;"), tEvent _ ": declares the key password")
     }
-    Do $$$AssertEquals($Length(tDeclared, ";"), 8, "and nothing else")
+    For tEvent = "Create OAuth2 Server Client", "Modify OAuth2 Server Client" {
+        Do $$$AssertTrue((";" _ tDeclared _ ";") [ (";" _ tEvent _ "=registration_access_token;"), tEvent _ ": declares the registration access token")
+    }
+    Do $$$AssertEquals($Length(tDeclared, ";"), 10, "and nothing else")
     Do $$$AssertEquals($Parameter(..#PORT, "VENDORSECRETSOURCE"), "%System/%Security/OAuth2", "all rows of the vendor's OAuth 2.0 security event")
 }
 
@@ -121,7 +124,7 @@ Method TestTheMaskReadsTheDeclarationAlone()
     Set tData = "Modify OAuth2 Client: X" _ tCrlf _ "metadata.registration_access_token modified:" _ tCrlf _ "  New value: ocupilotmaskprobe000a" _ tCrlf _ "  Old value: ocupilotmaskprobe000b" _ tCrlf _ "metadata.client_id modified:" _ tCrlf _ "  New value: kept" _ tCrlf _ "Metadata:                               {""client_id"":""kept"",""registration_access_token"":""ocupilotmaskprobe000c""}"
     Set tRows = []
     Do tRows.%Push(..Row("%System", "%Security", "OAuth2", "Modify OAuth2 Client X", tData))
-    Do tRows.%Push(..Row("%System", "%Security", "OAuth2", "Modify OAuth2 Server Client X", tData))
+    Do tRows.%Push(..Row("%System", "%Security", "OAuth2", "Delete OAuth2 Server Client X", tData))
     Do tRows.%Push(..Row("%System", "%Security", "UserChange", "Modify OAuth2 Client X", tData))
     Do $ClassMethod(..#PORT, "MaskVendorSecrets", tRows)
     Set tMasked = tRows.%Get(0).%Get("EventData")

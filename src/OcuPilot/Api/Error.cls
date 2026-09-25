@@ -2857,7 +2857,7 @@ ClassMethod ReasonForOAuthAuthorizationServer(pCode As %String) As %String
     If pCode = ..#OAUTHCUSTOMIZATIONROLESABSENT Quit ..#REASONOAUTHCUSTOMIZATIONROLESABSENT
     If pCode = ..#OAUTHSSLCONFIGURATIONABSENT Quit ..#REASONOAUTHSSLCONFIGURATIONABSENT
     If pCode = ..#OAUTHSERVERCREDENTIALSKEY Quit ..#REASONOAUTHSERVERCREDENTIALSKEY
-    Quit ""
+    Quit ..ReasonForOAuthServerClient(pCode)
 }
 
 /// <p>Every field-level violation code the authorization server editor's rules produce, as a
@@ -2865,6 +2865,152 @@ ClassMethod ReasonForOAuthAuthorizationServer(pCode As %String) As %String
 ClassMethod OAuthAuthorizationServerViolationCodes() As %List
 {
     Quit $ListBuild(..#OAUTHSERVERCONFIGTAKEN, ..#OAUTHSERVERISSUERREQUIRED, ..#OAUTHSERVERISSUERSHAPE, ..#OAUTHINTERVALVALUE, ..#OAUTHSCOPESREQUIRED, ..#OAUTHSCOPESSHAPE, ..#OAUTHSCOPESDUPLICATE, ..#OAUTHDEFAULTSCOPESHAPE, ..#OAUTHSERVERDESCRIPTIONLENGTH, ..#OAUTHRETURNREFRESHTOKENVALUE, ..#OAUTHGRANTTYPESREQUIRED, ..#OAUTHGRANTTYPESVALUE, ..#OAUTHSERVERMETADATAMEMBER, ..#OAUTHMETADATAURLSHAPE, ..#OAUTHFLAGVALUE, ..#OAUTHALGORITHMVALUE, ..#OAUTHENCRYPTIONPAIR, ..#OAUTHCUSTOMIZATIONNAMESPACEABSENT, ..#OAUTHCUSTOMIZATIONCLASSREQUIRED, ..#OAUTHCUSTOMIZATIONCLASSABSENT, ..#OAUTHCUSTOMIZATIONROLESREQUIRED, ..#OAUTHCUSTOMIZATIONROLESABSENT, ..#OAUTHSSLCONFIGURATIONABSENT, ..#OAUTHSERVERCREDENTIALSABSENT, ..#OAUTHSERVERCREDENTIALSKEY)
+}
+
+/// <p>Machine code (Story 12.8): the server client description editor refused a Save, the
+/// envelope's <code>detail.violations</code> naming each field and its rule (AD-39); also the 422 the
+/// port answers for any other vendor 500 on a client's writes.</p>
+Parameter OAUTHSERVERCLIENTVALIDATION = "OAUTH.SERVERCLIENTVALIDATION";
+
+Parameter REASONOAUTHSERVERCLIENTVALIDATION = "This instance refused the server client description.";
+
+/// <p>Violation codes: the client's name.</p>
+Parameter OAUTHSERVERCLIENTNAMEREQUIRED = "OAUTH.SERVERCLIENTNAME.REQUIRED";
+
+Parameter REASONOAUTHSERVERCLIENTNAMEREQUIRED = "Enter the client's name.";
+
+Parameter OAUTHSERVERCLIENTNAMETAKEN = "OAUTH.SERVERCLIENTNAME.TAKEN";
+
+Parameter REASONOAUTHSERVERCLIENTNAMETAKEN = "A client is already registered with that name. Choose another name, or open that client to change it.";
+
+/// <p>Violation code: a client type other than the three the instance stores.</p>
+Parameter OAUTHSERVERCLIENTTYPEVALUE = "OAUTH.SERVERCLIENTTYPE.VALUE";
+
+Parameter REASONOAUTHSERVERCLIENTTYPEVALUE = "Choose confidential, public or resource server.";
+
+/// <p>Violation codes: the redirect URLs.</p>
+Parameter OAUTHREDIRECTURLREQUIRED = "OAUTH.REDIRECTURL.REQUIRED";
+
+Parameter REASONOAUTHREDIRECTURLREQUIRED = "Add at least one redirect URL.";
+
+Parameter OAUTHREDIRECTURLSHAPE = "OAUTH.REDIRECTURL.SHAPE";
+
+Parameter REASONOAUTHREDIRECTURLSHAPE = "Enter each redirect URL as an absolute URL with a scheme and a host, such as https://app.example.com/callback.";
+
+/// <p>Violation codes: the client's grant types, response types and authentication type.</p>
+Parameter OAUTHCLIENTGRANTTYPESREQUIRED = "OAUTH.CLIENTGRANTTYPES.REQUIRED";
+
+Parameter REASONOAUTHCLIENTGRANTTYPESREQUIRED = "Choose at least one grant type this client uses.";
+
+Parameter OAUTHCLIENTGRANTTYPESVALUE = "OAUTH.CLIENTGRANTTYPES.VALUE";
+
+Parameter REASONOAUTHCLIENTGRANTTYPESVALUE = "Choose the client's grant types from the list.";
+
+Parameter OAUTHCLIENTGRANTTYPESUNSUPPORTED = "OAUTH.CLIENTGRANTTYPES.UNSUPPORTED";
+
+Parameter REASONOAUTHCLIENTGRANTTYPESUNSUPPORTED = "The authorization server does not support one of these grant types. Choose grant types its configuration supports.";
+
+Parameter OAUTHRESPONSETYPESREQUIRED = "OAUTH.RESPONSETYPES.REQUIRED";
+
+Parameter REASONOAUTHRESPONSETYPESREQUIRED = "Choose at least one response type.";
+
+Parameter OAUTHRESPONSETYPESVALUE = "OAUTH.RESPONSETYPES.VALUE";
+
+Parameter REASONOAUTHRESPONSETYPESVALUE = "Choose response types from the list.";
+
+Parameter OAUTHAUTHMETHODVALUE = "OAUTH.AUTHMETHOD.VALUE";
+
+Parameter REASONOAUTHAUTHMETHODVALUE = "Choose an authentication type from the list.";
+
+/// <p>Violation codes: the client's information URLs, contacts, default max age and launch URL.</p>
+Parameter OAUTHCLIENTURLHOST = "OAUTH.CLIENTURL.HOST";
+
+Parameter REASONOAUTHCLIENTURLHOST = "Use the scheme and host of one of the redirect URLs.";
+
+Parameter OAUTHCONTACTSSHAPE = "OAUTH.CONTACTS.SHAPE";
+
+Parameter REASONOAUTHCONTACTSSHAPE = "Separate contact email addresses with commas, each like name@example.com.";
+
+Parameter OAUTHMAXAGEVALUE = "OAUTH.MAXAGE.VALUE";
+
+Parameter REASONOAUTHMAXAGEVALUE = "Enter a whole number of seconds, 0 or more, or leave it empty.";
+
+Parameter OAUTHLAUNCHURLSHAPE = "OAUTH.LAUNCHURL.SHAPE";
+
+Parameter REASONOAUTHLAUNCHURLSHAPE = "Enter an absolute URL with a scheme and a host, or leave it empty.";
+
+/// <p>Violation code: a create's client secret, which every type but a public client needs.</p>
+Parameter OAUTHSERVERCLIENTSECRETREQUIRED = "OAUTH.SERVERCLIENTSECRET.REQUIRED";
+
+Parameter REASONOAUTHSERVERCLIENTSECRETREQUIRED = "Enter or generate a client secret. Only a public client needs none.";
+
+/// <p>Machine code (422): a secret write carrying no secret, which the vendor would store as an empty
+/// one and so clear the stored secret.</p>
+Parameter OAUTHSERVERCLIENTNOSECRET = "OAUTH.SERVERCLIENTNOSECRET";
+
+Parameter REASONOAUTHSERVERCLIENTNOSECRET = "Enter the client secret.";
+
+/// <p>Machine codes: an Update JWKS on a client with no JWKS URL (409), on one whose URL is neither
+/// <code>https</code> nor <code>http</code> (422), and a fetch that failed (422). The fetch's sentence
+/// names the URL in place of <code>{url}</code>.</p>
+Parameter OAUTHSERVERCLIENTJWKSNOURI = "OAUTH.SERVERCLIENTJWKS.NOURI";
+
+Parameter REASONOAUTHSERVERCLIENTJWKSNOURI = "This client has no JWKS URL.";
+
+Parameter OAUTHSERVERCLIENTJWKSSCHEME = "OAUTH.SERVERCLIENTJWKS.SCHEME";
+
+Parameter REASONOAUTHSERVERCLIENTJWKSSCHEME = "The JWKS URL must begin with https:// or http://.";
+
+Parameter OAUTHSERVERCLIENTJWKSFETCH = "OAUTH.SERVERCLIENTJWKS.FETCH";
+
+Parameter REASONOAUTHSERVERCLIENTJWKSFETCH = "The client's public keys could not be fetched from {url}. Check that it answers and, for an https URL, that OcuPilot's own SSL/TLS configuration trusts its certificate.";
+
+/// <p>Machine code (422): a write the vendor refused because this instance has no authorization server
+/// configuration.</p>
+Parameter OAUTHSERVERCLIENTCONFIGABSENT = "OAUTH.SERVERCLIENTCONFIG.ABSENT";
+
+Parameter REASONOAUTHSERVERCLIENTCONFIGABSENT = "This instance has no authorization server configuration. Create it before registering a client.";
+
+/// <p>Machine code (404): an edit, a form read or an action naming a client id the instance does not
+/// hold.</p>
+Parameter OAUTHSERVERCLIENTABSENT = "OAUTH.SERVERCLIENT.ABSENT";
+
+Parameter REASONOAUTHSERVERCLIENTABSENT = "This instance has no server client description with that client ID.";
+
+/// <p>The sentence for a Story 12.8 <code>OAUTH.*</code> code, or <code>""</code>.</p>
+ClassMethod ReasonForOAuthServerClient(pCode As %String) As %String
+{
+    If pCode = ..#OAUTHSERVERCLIENTVALIDATION Quit ..#REASONOAUTHSERVERCLIENTVALIDATION
+    If pCode = ..#OAUTHSERVERCLIENTNAMEREQUIRED Quit ..#REASONOAUTHSERVERCLIENTNAMEREQUIRED
+    If pCode = ..#OAUTHSERVERCLIENTNAMETAKEN Quit ..#REASONOAUTHSERVERCLIENTNAMETAKEN
+    If pCode = ..#OAUTHSERVERCLIENTTYPEVALUE Quit ..#REASONOAUTHSERVERCLIENTTYPEVALUE
+    If pCode = ..#OAUTHREDIRECTURLREQUIRED Quit ..#REASONOAUTHREDIRECTURLREQUIRED
+    If pCode = ..#OAUTHREDIRECTURLSHAPE Quit ..#REASONOAUTHREDIRECTURLSHAPE
+    If pCode = ..#OAUTHCLIENTGRANTTYPESREQUIRED Quit ..#REASONOAUTHCLIENTGRANTTYPESREQUIRED
+    If pCode = ..#OAUTHCLIENTGRANTTYPESVALUE Quit ..#REASONOAUTHCLIENTGRANTTYPESVALUE
+    If pCode = ..#OAUTHCLIENTGRANTTYPESUNSUPPORTED Quit ..#REASONOAUTHCLIENTGRANTTYPESUNSUPPORTED
+    If pCode = ..#OAUTHRESPONSETYPESREQUIRED Quit ..#REASONOAUTHRESPONSETYPESREQUIRED
+    If pCode = ..#OAUTHRESPONSETYPESVALUE Quit ..#REASONOAUTHRESPONSETYPESVALUE
+    If pCode = ..#OAUTHAUTHMETHODVALUE Quit ..#REASONOAUTHAUTHMETHODVALUE
+    If pCode = ..#OAUTHCLIENTURLHOST Quit ..#REASONOAUTHCLIENTURLHOST
+    If pCode = ..#OAUTHCONTACTSSHAPE Quit ..#REASONOAUTHCONTACTSSHAPE
+    If pCode = ..#OAUTHMAXAGEVALUE Quit ..#REASONOAUTHMAXAGEVALUE
+    If pCode = ..#OAUTHLAUNCHURLSHAPE Quit ..#REASONOAUTHLAUNCHURLSHAPE
+    If pCode = ..#OAUTHSERVERCLIENTSECRETREQUIRED Quit ..#REASONOAUTHSERVERCLIENTSECRETREQUIRED
+    If pCode = ..#OAUTHSERVERCLIENTNOSECRET Quit ..#REASONOAUTHSERVERCLIENTNOSECRET
+    If pCode = ..#OAUTHSERVERCLIENTJWKSNOURI Quit ..#REASONOAUTHSERVERCLIENTJWKSNOURI
+    If pCode = ..#OAUTHSERVERCLIENTJWKSSCHEME Quit ..#REASONOAUTHSERVERCLIENTJWKSSCHEME
+    If pCode = ..#OAUTHSERVERCLIENTJWKSFETCH Quit ..#REASONOAUTHSERVERCLIENTJWKSFETCH
+    If pCode = ..#OAUTHSERVERCLIENTCONFIGABSENT Quit ..#REASONOAUTHSERVERCLIENTCONFIGABSENT
+    If pCode = ..#OAUTHSERVERCLIENTABSENT Quit ..#REASONOAUTHSERVERCLIENTABSENT
+    Quit ""
+}
+
+/// <p>Every field-level violation code the server client description editor's rules produce, as a
+/// <class>%List</class>, for its form read (Story 12.8).</p>
+ClassMethod OAuthServerClientViolationCodes() As %List
+{
+    Quit $ListBuild(..#OAUTHSERVERCLIENTNAMEREQUIRED, ..#OAUTHSERVERCLIENTNAMETAKEN, ..#OAUTHSERVERCLIENTTYPEVALUE, ..#OAUTHREDIRECTURLREQUIRED, ..#OAUTHREDIRECTURLSHAPE, ..#OAUTHCLIENTGRANTTYPESREQUIRED, ..#OAUTHCLIENTGRANTTYPESVALUE, ..#OAUTHCLIENTGRANTTYPESUNSUPPORTED, ..#OAUTHRESPONSETYPESREQUIRED, ..#OAUTHRESPONSETYPESVALUE, ..#OAUTHAUTHMETHODVALUE, ..#OAUTHALGORITHMVALUE, ..#OAUTHENCRYPTIONPAIR, ..#OAUTHCLIENTURLHOST, ..#OAUTHMETADATAURLSHAPE, ..#OAUTHCONTACTSSHAPE, ..#OAUTHMAXAGEVALUE, ..#OAUTHLAUNCHURLSHAPE, ..#OAUTHDEFAULTSCOPESHAPE, ..#OAUTHFLAGVALUE, ..#OAUTHCLIENTCREDENTIALSABSENT, ..#OAUTHSERVERCLIENTSECRETREQUIRED, ..#OAUTHMETADATAUNKNOWN)
 }
 
 /// <p>Violation code (AD-39): the vendor refused the request because a body field it requires was

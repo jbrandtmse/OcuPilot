@@ -346,6 +346,37 @@ XData Tools
   {"path":"Metadata","shape":"object","templateType":"object","itemType":"","class":"opaque"},
   {"path":"DefaultScope","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
 ]},
+"security.oauthserverclients.create": {"fieldList":"Security.OAuth2.ServerClients","fields":[
+  {"path":"Name","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"RedirectURL[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LaunchURL","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ClientType","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ClientCredentials","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Metadata","shape":"object","templateType":"object","itemType":"","class":"opaque"},
+  {"path":"DefaultScope","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
+"security.oauthserverclients.setsecret": {"fieldList":"Security.OAuth2.ServerClients","fields":[
+  {"path":"Name","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"RedirectURL[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LaunchURL","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ClientType","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ClientCredentials","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Metadata","shape":"object","templateType":"object","itemType":"","class":"opaque"},
+  {"path":"DefaultScope","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ClientSecret","shape":"literal","templateType":"string","class":"secret","authored":true}
+]},
+"security.oauthserverclients.update": {"fieldList":"Security.OAuth2.ServerClients","fields":[
+  {"path":"Name","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"RedirectURL[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LaunchURL","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ClientType","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ClientCredentials","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Metadata","shape":"object","templateType":"object","itemType":"","class":"opaque"},
+  {"path":"DefaultScope","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
 "security.oauthserverdescriptions.create": {"fieldList":"Security.OAuth2.Client.ServerDefinition","fields":[
   {"path":"IssuerEndpoint","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"SSLConfiguration","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},

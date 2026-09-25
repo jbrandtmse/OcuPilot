@@ -78,6 +78,7 @@ XData Coverage
 <screen name="OAuthClientForm" class="OcuPilot.Test.OAuthClientCreate" method="TestTheEditorIsBuiltUnlistedOverTheTabsPairs"/>
 <screen name="OAuthResourceServerForm" class="OcuPilot.Test.OAuthResourceServerCreate" method="TestTheEditorIsBuiltUnlistedOverTheTabsPairs"/>
 <screen name="OAuthServerForm" class="OcuPilot.Test.OAuthAuthorizationServerCreate" method="TestTheEditorIsBuiltUnlistedOverTheTabsPairs"/>
+<screen name="OAuthServerClientForm" class="OcuPilot.Test.OAuthRegisteredClientCreate" method="TestTheEditorIsBuiltUnlistedOverTheTabsPairs"/>
 <screen name="OAuthServerDescriptionForm" class="OcuPilot.Test.OAuthServerCreate" method="TestTheEditorIsBuiltUnlistedOverTheTabsPairs"/>
 <screen name="OAuthServerDescriptionTab" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="OAuthServerTab" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
@@ -171,6 +172,10 @@ XData Coverage
 <tool name="security.oauthserver.setpassword" class="OcuPilot.Test.OAuthAuthorizationServerSecret" method="TestTheAgentsPasswordIsAskedAtConfirmAndNeverStored"/>
 <tool name="security.oauthserver.rotatekeys" class="OcuPilot.Test.OAuthAuthorizationServerKeys" method="TestRotatingGrowsTheKeySet"/>
 <tool name="security.oauthserver.delete" class="OcuPilot.Test.OAuthAuthorizationServerClients" method="TestADeleteCascadesTheClients"/>
+<tool name="security.oauthserverclients.create" class="OcuPilot.Test.OAuthRegisteredClientCreate" method="TestACreateTakenAfterTheMintIsRefusedAtConfirm"/>
+<tool name="security.oauthserverclients.update" class="OcuPilot.Test.OAuthRegisteredClientUpdate" method="TestTheCardShowsWhatTheWriteSends"/>
+<tool name="security.oauthserverclients.setsecret" class="OcuPilot.Test.OAuthRegisteredClientSecret" method="TestTheAgentsSecretIsAskedAtConfirmAndNeverStored"/>
+<tool name="security.oauthserverclients.updatejwks" class="OcuPilot.Test.OAuthRegisteredClientJwks" method="TestTheAgentsUpdateJwksRefreshesTheKeys"/>
 <tool name="tasks.schedule.resume" class="OcuPilot.Test.ToolWrite" method="TestTheTaskResumeToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="webapp.list.create" class="OcuPilot.Test.WebAppCreate" method="TestTheToolAdvertisesTheReviewedCreateFieldsAndApplicationRoles"/>
 <tool name="tasks.ondemand.run" class="OcuPilot.Test.ToolWrite" method="TestTheTaskRunToolIsAnActionWriteOverTheScreensOwnPairs"/>

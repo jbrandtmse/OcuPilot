@@ -48,7 +48,7 @@ Method AssertActionDeleteOverTheTabsOwnPairs(pName As %String, pClass As %String
     Do $$$AssertEquals(tTool.%Get("class"), pClass, pName _ ": answered by its own class")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Tool.Registry).FulfilmentOf(tTool), "instance", pName _ ": fulfilled on the instance")
 
-    Do $$$AssertEquals($ClassMethod(pClass, "PortClass"), $Select(pClass = ..#CLIENTTOOLCLASS: "OcuPilot.Port.OAuthClientPort", 1: "OcuPilot.Port.AdminPort"), pName _ ": behind its port")
+    Do $$$AssertEquals($ClassMethod(pClass, "PortClass"), $Select(pClass = ..#CLIENTTOOLCLASS: "OcuPilot.Port.OAuthClientPort", 1: "OcuPilot.Port.OAuthRegisteredClientPort"), pName _ ": behind its port")
     Do $$$AssertEquals($ClassMethod(pClass, "Endpoint"), pEndpoint, pName _ ": over " _ pEndpoint)
     Do $$$AssertEquals($ClassMethod(pClass, "IdArgument"), pIdArgument, pName _ ": named by " _ pIdArgument)
     Do $$$AssertEquals($ClassMethod(pClass, "IdParam"), pIdParam, pName _ ": sent as the vendor's " _ pIdParam)
@@ -116,9 +116,8 @@ ClassMethod Fresh(pTool As %String, pDescription As %String = "before") As %Dyna
 
 /// <p>AC4, AD-10: each type is covered. A subject-only delete, with the tool's own removal rows as
 /// its diff, is not prohibited; a diff naming a field outside the subject that the payload changes
-/// -- <code>PublicJWKS</code> for a configuration, outside its reviewed list, <code>DefaultScope</code>
-/// and <code>Enabled</code> for a server client, whose subject carries its description and whose
-/// reviewed list is empty -- is refused <code>PROHIBITED.UNCOVEREDFIELD</code>. A subject field is the
+/// -- <code>PublicJWKS</code> for a configuration, outside its reviewed list, <code>ServerDefinition</code>
+/// and <code>Enabled</code> for a server client, outside the editor's reviewed eight -- is refused <code>PROHIBITED.UNCOVEREDFIELD</code>. A subject field is the
 /// fingerprint's to adjudicate, not this sweep's.</p>
 /// <p>Mutation (Rule 19): drop either type from
 /// <parameter>OcuPilot.Kernel.Proposal.Prohibited.COVEREDTYPES</parameter> -- its subject-only leg
@@ -129,7 +128,7 @@ ClassMethod Fresh(pTool As %String, pDescription As %String = "before") As %Dyna
 Method TestEachOAuthTypeIsCoveredAndRefusesAChangedField()
 {
     Set tUncoveredField = $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "UNCOVEREDFIELD")
-    For tCase = $ListBuild(..#CLIENTTOOL, ..#CLIENTTOOLCLASS, "oauth2-client-configuration", "OcuPilotTestDelete", "PublicJWKS"), $ListBuild(..#SERVERCLIENTTOOL, ..#SERVERCLIENTTOOLCLASS, "oauth2-server-client", "probe-client-id", "DefaultScope"), $ListBuild(..#SERVERCLIENTTOOL, ..#SERVERCLIENTTOOLCLASS, "oauth2-server-client", "probe-client-id", "Enabled") {
+    For tCase = $ListBuild(..#CLIENTTOOL, ..#CLIENTTOOLCLASS, "oauth2-client-configuration", "OcuPilotTestDelete", "PublicJWKS"), $ListBuild(..#SERVERCLIENTTOOL, ..#SERVERCLIENTTOOLCLASS, "oauth2-server-client", "probe-client-id", "ServerDefinition"), $ListBuild(..#SERVERCLIENTTOOL, ..#SERVERCLIENTTOOLCLASS, "oauth2-server-client", "probe-client-id", "Enabled") {
         Set tTool = $List(tCase, 1)
         Set tClass = $List(tCase, 2)
         Set tType = $List(tCase, 3)
@@ -157,7 +156,7 @@ Method TestEachOAuthTypeIsCoveredAndRefusesAChangedField()
         Do $$$AssertEquals(tCode, tUncoveredField, tTool _ ": as a field nobody has reviewed")
     }
     Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("oauth2-client-configuration")), "ServerDefinition,Enabled,Description,ClientType,SSLConfiguration,RedirectionEndpoint,JWTAudience,JWTInterval,ClientId,ClientCredentials,Metadata,DefaultScope", "the client configuration's reviewed fields are exactly the template's twelve")
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("oauth2-server-client"), "", "and no server client field")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("oauth2-server-client")), "Name,RedirectURL,LaunchURL,Description,ClientType,ClientCredentials,Metadata,DefaultScope", "and the server client's reviewed fields are exactly the editor's eight")
 }
 
 /// <p>Each tool's precondition: a fresh read that answers no <code>ClientType</code> did not answer
@@ -222,10 +221,10 @@ Method TestEveryOAuthWriteToolIsBodylessOrAMerge()
         }
     }
     Do $$$AssertEquals($ListToString(tNeither), "", "every OAuth 2.0 write tool is in one half")
-    Do $$$AssertEquals(..Half(.tByHalf, "bodyless"), "permissions.users.revoketokens," _ ..#CLIENTTOOL _ ",security.oauthclients.register,security.oauthclients.rotatekeys,security.oauthresourceservers.addmapping,security.oauthresourceservers.delete,security.oauthresourceservers.removemapping,security.oauthserver.delete,security.oauthserver.rotatekeys," _ ..#SERVERCLIENTTOOL _ ",security.oauthserverdescriptions.delete", "the bodyless half is exactly the five deletes, Story 12.2's token revoke, Story 12.5's registration and key rotation, Story 12.6's two mapping writes and Story 12.7's key rotation")
-    Do $$$AssertEquals(..Half(.tByHalf, "merge"), "security.oauthclients.update,security.oauthresourceservers.update,security.oauthserver.update,security.oauthserverdescriptions.update", "the merge half is exactly Stories 12.4's, 12.5's, 12.6's and 12.7's edits")
-    Do $$$AssertEquals(..Half(.tByHalf, "create"), "security.oauthclients.create,security.oauthresourceservers.create,security.oauthserver.create,security.oauthserverdescriptions.create", "the create half is exactly Stories 12.4's, 12.5's, 12.6's and 12.7's creates")
-    Do $$$AssertEquals(..Half(.tByHalf, "secret"), "security.oauthclients.setsecrets,security.oauthresourceservers.setsecret,security.oauthserver.setpassword,security.oauthserverdescriptions.settoken", "the secret-body half is exactly Story 12.4's token write, Story 12.5's client secrets, Story 12.6's client secret and Story 12.7's key password")
+    Do $$$AssertEquals(..Half(.tByHalf, "bodyless"), "permissions.users.revoketokens," _ ..#CLIENTTOOL _ ",security.oauthclients.register,security.oauthclients.rotatekeys,security.oauthresourceservers.addmapping,security.oauthresourceservers.delete,security.oauthresourceservers.removemapping,security.oauthserver.delete,security.oauthserver.rotatekeys," _ ..#SERVERCLIENTTOOL _ ",security.oauthserverclients.updatejwks,security.oauthserverdescriptions.delete", "the bodyless half is exactly the five deletes, Story 12.2's token revoke, Story 12.5's registration and key rotation, Story 12.6's two mapping writes, Story 12.7's key rotation and Story 12.8's key-set refresh")
+    Do $$$AssertEquals(..Half(.tByHalf, "merge"), "security.oauthclients.update,security.oauthresourceservers.update,security.oauthserver.update,security.oauthserverclients.update,security.oauthserverdescriptions.update", "the merge half is exactly Stories 12.4's, 12.5's, 12.6's, 12.7's and 12.8's edits")
+    Do $$$AssertEquals(..Half(.tByHalf, "create"), "security.oauthclients.create,security.oauthresourceservers.create,security.oauthserver.create,security.oauthserverclients.create,security.oauthserverdescriptions.create", "the create half is exactly Stories 12.4's, 12.5's, 12.6's, 12.7's and 12.8's creates")
+    Do $$$AssertEquals(..Half(.tByHalf, "secret"), "security.oauthclients.setsecrets,security.oauthresourceservers.setsecret,security.oauthserver.setpassword,security.oauthserverclients.setsecret,security.oauthserverdescriptions.settoken", "the secret-body half is exactly Story 12.4's token write, Story 12.5's client secrets, Story 12.6's client secret, Story 12.7's key password and Story 12.8's client secret")
     Do $$$AssertEquals(..Half(.tByHalf, "composed"), "security.oauthserverdescriptions.updatejwks", "and the composed half exactly Story 12.4's key-set refresh")
 }
 

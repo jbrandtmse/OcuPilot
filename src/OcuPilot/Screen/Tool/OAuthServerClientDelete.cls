@@ -1,7 +1,8 @@
 /// <p>The OAuth 2.0 screen's server client description delete tool (AD-6, AD-51, FR-44): propose
 /// removing one client registered with this instance's authorization server. It reads the client
-/// fresh through the vendor's own <code>Security.OAuth2.ServerClients</code> <code>GET</code> and
-/// mints a proposal whose card lists what would go. It writes nothing.</p>
+/// fresh through <class>OcuPilot.Port.OAuthRegisteredClientPort</class>'s
+/// <code>Security.OAuth2.ServerClients</code> <code>GET</code> and mints a proposal whose card lists
+/// what would go. It writes nothing.</p>
 /// <p><b>It is keyed by <code>ClientId</code>, not by <code>Name</code>.</b> The vendor's IdKey on
 /// <code>OAuth2.Server.Client</code> is <code>ClientId</code>, <code>Name</code> has no unique index,
 /// and the endpoint's non-list types require the <code>clientId</code> query parameter. A name could
@@ -67,6 +68,10 @@ Parameter FINGERPRINTSUBJECT = "Name,ClientType,RedirectURL,Description";
 Parameter WRITERESOURCE = "%Admin_OAuth2_Registration";
 
 Parameter WRITEPERMISSION = "USE";
+
+/// <p>The port the fresh read and the delete go through (AD-52), whose read carries no secret
+/// member.</p>
+Parameter PORTCLASS = "OcuPilot.Port.OAuthRegisteredClientPort";
 
 ClassMethod Endpoint() As %String
 {

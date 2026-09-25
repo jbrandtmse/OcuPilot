@@ -175,6 +175,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/oauth/authorization-server/form" Method="GET" Call="OAuthAuthorizationServerFormRead"/>
   <Route Url="/oauth/authorization-server" Method="PUT" Call="OAuthAuthorizationServerUpdate"/>
   <Route Url="/oauth/authorization-server" Method="POST" Call="OAuthAuthorizationServerCreate"/>
+  <Route Url="/oauth/server-client/form" Method="GET" Call="OAuthServerClientFormRead"/>
+  <Route Url="/oauth/server-client/:id" Method="PUT" Call="OAuthServerClientUpdate"/>
+  <Route Url="/oauth/server-client" Method="POST" Call="OAuthServerClientCreate"/>
 </Routes>
 }
 
@@ -615,6 +618,28 @@ ClassMethod OAuthAuthorizationServerUpdate() As %Status
 ClassMethod OAuthAuthorizationServerCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Security.OAuthAuthorizationServerSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /oauth/server-client/form</code> (Story 12.8): the
+/// server client description editor's rules and readable credentials, and the client its
+/// <code>clientId</code> names. It sits before <code>/oauth/server-client/:id</code>.</p>
+ClassMethod OAuthServerClientFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthRegisteredClientRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /oauth/server-client/:id</code>: the editor's edit
+/// Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthServerClientUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthRegisteredClientSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /oauth/server-client</code>: the editor's create
+/// Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthServerClientCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthRegisteredClientSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /screens/:screen/action</code>: delegates to

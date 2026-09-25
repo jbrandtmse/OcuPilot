@@ -33,6 +33,7 @@ const {
   CONSEQUENCE_SERVERCLIENTS,
   CONSEQUENCE_SERVERCLIENTSDELETED,
   CONSEQUENCE_SERVERCLIENTSDELETEDHIDDEN,
+  CONSEQUENCE_SERVERCLIENTSECRETCHANGE,
   CONSEQUENCE_SERVERCLIENTSHIDDEN,
   CONSEQUENCE_SERVERCLIENTSHIDDENPRIVILEGED,
   CONSEQUENCE_SERVERCLIENTSPRIVILEGED,
@@ -259,6 +260,15 @@ test("the authorization server's seven consequences resolve to their published s
     assert.equal(code, wire);
     assert.equal(consequenceSentence(code), sentence, wire);
   }
+});
+
+// Story 12.8, AD-56 (i): a server client's secret change is minted destructive, and its card says the
+// client's application must use the new secret from then on.
+//
+// Mutation (Rule 19): drop the SERVERCLIENTSECRETCHANGE branch from `consequenceSentence` -> this goes red.
+test("a server client's secret change resolves to its published sentence", () => {
+  assert.equal(CONSEQUENCE_SERVERCLIENTSECRETCHANGE, 'OAUTH.SERVERCLIENTSECRETCHANGE');
+  assert.equal(consequenceSentence(CONSEQUENCE_SERVERCLIENTSECRETCHANGE), STRINGS.oauthRegisteredClientSecretEffect);
 });
 
 // AD-3, AD-35: a user create's diff carries one Password row the kernel composes with both values

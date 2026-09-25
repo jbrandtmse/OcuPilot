@@ -25,12 +25,17 @@ export const OAUTH_AUTH_SERVER_TAB_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.OAut
 
 export const OAUTH_AUTH_SERVER_TAB_ROUTE = 'security/oauth/server';
 
+/** The Server client descriptions tab, whose Create opens the server client description editor (Story 12.8). */
+export const OAUTH_SERVER_CLIENT_TAB_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.OAuthServerClientTab';
+
+export const OAUTH_SERVER_CLIENT_TAB_ROUTE = 'security/oauth/server-clients';
+
 /** The declared primary action id: the command bar's Create, which opens the tab's editor. */
 export const CREATE_ACTION = 'create';
 
 /**
  * The handlers behind the OAuth 2.0 screen's Server descriptions, Client configurations, Resource
- * servers and Authorization server tabs' declared Create (AD-5, AD-19).
+ * servers, Authorization server and Server client descriptions tabs' declared Create (AD-5, AD-19).
  *
  * Each tab is served by the generic detail page, so its action is registered here, once, against the
  * descriptor's class name, and tab-scoped from the application root for the reason
@@ -48,6 +53,7 @@ export class OAuthActions {
     this.actions.register(OAUTH_CLIENT_TAB_DESCRIPTOR, CREATE_ACTION, () => this.openCreate(OAUTH_CLIENT_TAB_ROUTE));
     this.actions.register(OAUTH_RESOURCE_SERVER_TAB_DESCRIPTOR, CREATE_ACTION, () => this.openCreate(OAUTH_RESOURCE_SERVER_TAB_ROUTE));
     this.actions.register(OAUTH_AUTH_SERVER_TAB_DESCRIPTOR, CREATE_ACTION, () => this.openCreate(OAUTH_AUTH_SERVER_TAB_ROUTE));
+    this.actions.register(OAUTH_SERVER_CLIENT_TAB_DESCRIPTOR, CREATE_ACTION, () => this.openCreate(OAUTH_SERVER_CLIENT_TAB_ROUTE));
   }
 
   private openCreate(tabRoute: string): void {

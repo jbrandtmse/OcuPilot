@@ -395,7 +395,7 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
             ; Story 12.4's key-set refresh is composed from the stored JWKS URL alone, so it admits
             ; no argument beyond its target's issuer; Story 12.6's mapping writes from a service and
             ; a key.
-            If tComposed Do $$$AssertEquals($ListLength(tSettable), $Case(tEntry.%Get("name"), "security.oauthserverdescriptions.updatejwks": 0, "security.oauthresourceservers.addmapping": 2, "security.oauthresourceservers.removemapping": 2, "security.oauthserver.rotatekeys": 0, : 1), tEntry.%Get("name") _ " sends no body and its port composes one from its arguments")
+            If tComposed Do $$$AssertEquals($ListLength(tSettable), $Case(tEntry.%Get("name"), "security.oauthserverdescriptions.updatejwks": 0, "security.oauthresourceservers.addmapping": 2, "security.oauthresourceservers.removemapping": 2, "security.oauthserver.rotatekeys": 0, "security.oauthserverclients.updatejwks": 0, : 1), tEntry.%Get("name") _ " sends no body and its port composes one from its arguments")
             For tI = 1:1:$ListLength(tPermitted) {
                 ; A type whose identifying field is also a reviewed field (an OAuth 2.0 server
                 ; description can be renamed) names its target by that field; naming is not setting.

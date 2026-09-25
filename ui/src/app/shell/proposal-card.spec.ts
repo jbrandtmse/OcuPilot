@@ -817,6 +817,15 @@ describe('the proposal card', () => {
     expect(lines[0].textContent).toContain(STRINGS.oauthAuthServerClientsDeletedEffect);
   });
 
+  it("Story 12.8: a server client's secret change is drawn destructive and names the effect on its application", () => {
+    // Mutation (Rule 19): drop the SERVERCLIENTSECRETCHANGE code from `consequenceSentence` -> this goes red.
+    const { card } = mount(liveView({ consequence: 'OAUTH.SERVERCLIENTSECRETCHANGE', destructive: true, maskedFields: ['ClientSecret'] }), { phase: 'live' });
+    expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(true);
+    const lines = card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.oauthRegisteredClientSecretEffect);
+  });
+
   it('the in-card warning is a status region, the convention for an advisory', () => {
     // DW-1246, corrected: four warning banners in this shell are already `role="status"`. The
     // convention is `alert` for a fault or a refusal and `status` for an advisory, and this is an

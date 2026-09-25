@@ -6288,3 +6288,51 @@ app-data-table .ocu-data-table-header-cell {
   inline-size: 8rem;
   text-align: end;
 }
+
+// --- The OAuth 2.0 server client description editor (Story 12.8) --------------------------------
+//
+// Four tabs on `app-form-tabs`, each a column of fields. The redirect URLs are a list of inputs, each
+// with its Remove; the grant and response types and the four algorithm groups are groups; the client
+// secret's input sits in a row with its Generate and Show buttons, and the input takes the row's width.
+.ocu-oauth-registered-client-tab .ocu-field-checkbox input[type='checkbox'] {
+  inline-size: 24px;
+  block-size: 24px;
+  margin: 0;
+}
+
+.ocu-oauth-registered-client-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ocu-oauth-registered-client-group legend {
+  margin-block-end: var(--ocu-space-2);
+  padding: 0;
+}
+
+.ocu-oauth-registered-client-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  min-inline-size: 0;
+}
+
+.ocu-oauth-registered-client-row .ocu-field-input {
+  flex: 1 1 12rem;
+  min-inline-size: 0;
+}
+
+// The delete dialog's button names the client id the vendor generates, one long unbroken word: it
+// wraps inside the button rather than pushing Cancel past the dialog's edge.
+.ocu-oauth-registered-client-delete .ocu-dialog-actions .ocu-button-destructive {
+  height: auto;
+  min-block-size: var(--ocu-control-height);
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}

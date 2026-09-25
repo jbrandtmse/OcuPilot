@@ -254,7 +254,7 @@ test('AC1, AC2: a server client is deleted by its ClientId from the row menu or 
     assert.equal(barTitle, `${STRINGS.actionDelete} ${gone}`, 'the command bar opens the same dialog on the ClientId');
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
-    await deleteFromRowMenu(page);
+    await deleteFromRowMenu(page, [STRINGS.actionDelete, STRINGS.oauthServerUpdateJwks]);
     await confirmDialog(page, writes, gone, STRINGS.oauthServerClientDeleteConsequence);
     await page.waitForFunction((selector) => document.querySelectorAll(selector).length === 0, { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
     assert.equal(writes.length, 1, 'exactly one request, sent once the client id matched');

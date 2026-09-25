@@ -3446,6 +3446,64 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.OAuthServerClientForm",
+    "route": "security/oauth/server-clients/edit",
+    "area": "security",
+    "labelKey": "oauthRegisteredClientTitle",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_OAuth2_Registration",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "oauth2-server-client",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": [
+        "ClientSecret"
+      ]
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "classicPage": "%CSP.UI.Portal.OAuth2.Server.Client",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "security.oauthserverclientform",
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.OAuthServerClientTab",
     "route": "security/oauth/server-clients",
     "area": "security",
@@ -3478,12 +3536,16 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ]
     },
     "primaryAction": {
-      "id": "",
+      "id": "create",
       "selfProtection": ""
     },
     "rowActions": [
       {
         "id": "delete",
+        "selfProtection": ""
+      },
+      {
+        "id": "updatejwks",
         "selfProtection": ""
       }
     ],
@@ -3497,22 +3559,17 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ],
       "secretFields": []
     },
+    "secretArguments": [
+      "ClientSecret"
+    ],
     "emptyStateKey": "oauthServerClientsEmpty",
     "commandAliases": [],
     "classicPage": "%CSP.UI.Portal.OAuth2.Server.ClientList",
     "classicLinkExemption": {
-      "exempt": true,
-      "reason": "Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1",
-      "label": "OAuth 2.0 Authorization Server Client Configuration",
-      "href": "/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Server.Client.zen",
-      "rowLink": {
-        "params": [
-          {
-            "name": "ClientId",
-            "field": "ClientId"
-          }
-        ]
-      }
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
     },
     "read": {
       "source": {
@@ -3586,7 +3643,6 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "toolIdentifier": "security.oauthserverclients",
     "banner": null,
     "rowTarget": null,
-    "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
   },

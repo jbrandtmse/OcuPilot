@@ -14,7 +14,6 @@
  * 4. **Rotate Keys** (AC6): the editor reports the rotation and the key set changes.
  * 5. **Delete from the row menu** (AC6, AC10): the editor's delete dialog passes DW-1337, the row menu
  *    offers the three declared actions, and the typed name deletes it.
- * 6. **The tab still edited in the classic portal keeps its classic link** (AC9).
  * 7. **DW-1337** (AC10): the editor and its delete dialog pass the structural and contrast checks at
  *    1280 light, 720 light and 1280 dark, allowed only the shell's own two findings.
  *
@@ -60,11 +59,6 @@ const TAB_URL = `/ocupilot/${TAB_ROUTE}?ns=HSCUSTOM`;
 const EDIT_URL = `/ocupilot/${EDITOR_ROUTE}/${encodeEntityId(NAME)}?ns=HSCUSTOM`;
 const ACTION_PATH = '/api/ocupilot/screens/security.oauthclients/action';
 const ID = 'ocu-oauth-client';
-
-/** The tab still edited in the classic portal, and the classic editor its name cell opens. */
-const CLASSIC_TABS = [
-  { route: 'security/oauth/server-clients', page: '%25CSP.UI.Portal.OAuth2.Server.Client.zen' },
-];
 
 let browser = null;
 
@@ -365,24 +359,5 @@ test("AC6, AC10: the editor's delete dialog passes DW-1337, and the row menu's D
     assert.equal(stored(), null, 'the instance no longer holds it');
   } finally {
     await context.close();
-  }
-});
-
-test('AC9: the tab still edited in the classic portal keeps its classic link', async () => {
-  const { values, output } = irisSession(['Set tSC=##class(OcuPilot.Test.OAuthProbe).Create()', mark('MADE', '$System.Status.IsOK(tSC)')], ['MADE']);
-  assert.equal(values.MADE, '1', `the OAuth probe objects are made:\n${output}`);
-  try {
-    for (const tab of CLASSIC_TABS) {
-      const { context, page } = await signedInAt(browser, config, `/ocupilot/${tab.route}?ns=HSCUSTOM`, VIEWPORTS.wide);
-      try {
-        await waitForRows(page, config.navigationTimeoutMs);
-        const href = await page.$eval(`${ROW_SELECTOR} [role="gridcell"] a`, (link) => link.getAttribute('href'));
-        assert.ok(href.startsWith(`/csp/sys/sec/${tab.page}`), `${tab.route}: the name cell opens the classic editor, not ${href}`);
-      } finally {
-        await context.close();
-      }
-    }
-  } finally {
-    irisSession(['Do ##class(OcuPilot.Test.OAuthProbe).Remove()']);
   }
 });

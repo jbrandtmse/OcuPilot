@@ -323,6 +323,10 @@ Parameter EFFECTSERVERCLIENTSPRIVILEGED = "OAUTH.SERVERCLIENTSPRIVILEGED";
 
 Parameter EFFECTSERVERCLIENTSHIDDENPRIVILEGED = "OAUTH.SERVERCLIENTSHIDDENPRIVILEGED";
 
+/// <p>The effect of storing a server client's secret (Story 12.8): the client's application must use
+/// the new one from then on. Permitted, marked destructive and named, never refused.</p>
+Parameter EFFECTSERVERCLIENTSECRET = "OAUTH.SERVERCLIENTSECRETCHANGE";
+
 /// <p>A system audit event and a user audit event (Story 7.11), which share one arm
 /// (<method>AuditEvent</method>).</p>
 Parameter TYPEAUDITEVENT = "audit-event";
@@ -579,6 +583,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEOAUTHCLIENT Quit ..OAuthClientFields()
     If pType = ..#TYPEOAUTHRESOURCESERVER Quit ..OAuthResourceServerFields()
     If pType = ..#TYPEOAUTHAUTHSERVER Quit ..OAuthAuthorizationServerFields()
+    If pType = ..#TYPEOAUTHSERVERCLIENT Quit ..OAuthRegisteredClientFields()
     If pType = ..#TYPEAUDITEVENT Quit $ListBuild(..#FIELDENABLED)
     If pType = ..#TYPEAUDITUSEREVENT Quit $ListBuild("Description", ..#FIELDENABLED)
     If pType = ..#TYPEWEBAPPLICATION Quit ..WebApplicationSettingFields() _ $ListFromString(..#APPLICATIONROLEFIELDS)
@@ -689,6 +694,7 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPEOAUTHCLIENT Quit ..OAuthClientFields()
     If pType = ..#TYPEOAUTHRESOURCESERVER Quit ..OAuthResourceServerFields()
     If pType = ..#TYPEOAUTHAUTHSERVER Quit ..OAuthAuthorizationServerFields()
+    If pType = ..#TYPEOAUTHSERVERCLIENT Quit ..OAuthRegisteredClientFields()
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "DispatchClass", "Enabled", "MatchRoles", "NameSpace", "Recurse", "Resource", "WSGIAppLocation", "WSGIAppName", "WSGICallable", "WSGIType")
     If pType = ..#TYPEUSER Quit $ListBuild("ExpirationDate", "FullName", "NameSpace", "Routine", ..#FIELDROLES)
     If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
@@ -1589,6 +1595,16 @@ ClassMethod OAuthAuthorizationServerFields() As %List [ Private ]
     Quit $ListBuild("IssuerEndpoint", "Description", "AccessTokenInterval", "AuthorizationCodeInterval", "RefreshTokenInterval", "SessionInterval", "ClientSecretInterval", "SupportedScopes", "AllowUnsupportedScope", "ReturnRefreshToken", "SupportSession", "AudRequired", "AllowPublicClientRefresh", "ForcePKCEForPublicClients", "ForcePKCEForConfidentialClients", "CustomizationRoles", "CustomizationNamespace", "AuthenticateClass", "SessionClass", "ValidateUserClass", "GenerateTokenClass", "RevokeTokenClass", "ServerCredentials", "SigningAlgorithm", "EncryptionAlgorithm", "KeyAlgorithm", "SSLConfiguration", "Metadata", "DefaultScope")
 }
 
+/// <p>A server client description's settable fields, create and change alike: the eight
+/// <code>Security.OAuth2.ServerClients</code> template fields (Story 12.8). The client id is the id and
+/// the vendor generates it; the client secret is its own write. Nothing here is self-protective:
+/// OcuPilot signs in with its web application's own token, not through a registered client
+/// (AD-28).</p>
+ClassMethod OAuthRegisteredClientFields() As %List [ Private ]
+{
+    Quit $ListBuild("Name", "RedirectURL", "LaunchURL", "Description", "ClientType", "ClientCredentials", "Metadata", "DefaultScope")
+}
+
 /// <p>The client effect of a write to the authorization server configuration <var>pTarget</var>
 /// (<method>WeakensByEffect</method>): <parameter>EFFECTSERVERCLIENTSHIDDEN</parameter> when the
 /// read's <code>ClientsHidden</code> is true, <parameter>EFFECTSERVERCLIENTS</parameter> when its
@@ -1642,18 +1658,18 @@ ClassMethod ServerConsequence(pKind As %String, pPrivileged As %Boolean, pEffect
 
 /// <p>The OAuth 2.0 client configuration, server client, server description and resource server
 /// predicates, <var>pType</var> being one of the four: the reviewed-few sweep over the type's
-/// permitted list (<method>OAuthClientFields</method> for a client configuration, empty for a server
-/// client, <method>OAuthServerFields</method> for a server description,
-/// <method>OAuthResourceServerFields</method> for a resource server), and nothing else. A resource
-/// server's mapping move and authenticator reset are effects, not refusals (<method>WeakensByEffect</method>).</p>
+/// permitted list (<method>OAuthClientFields</method> for a client configuration,
+/// <method>OAuthRegisteredClientFields</method> for a server client, <method>OAuthServerFields</method>
+/// for a server description, <method>OAuthResourceServerFields</method> for a resource server), and
+/// nothing else. A resource server's mapping move and authenticator reset are effects, not refusals
+/// (<method>WeakensByEffect</method>), and so is a server client's new secret
+/// (<parameter>EFFECTSERVERCLIENTSECRET</parameter>).</p>
 /// <p><b>No predicate exists because AD-10 names no OAuth 2.0 effect.</b> Its Release 1 set is
 /// accounts, privilege grants, the path serving OcuPilot and system processes, and install creates
-/// no OAuth 2.0 object, so no configuration, client or description is OcuPilot's own. The one write
-/// over a server client is its bodyless delete (AD-51), which sets no field, so every changed field
-/// a proposal could carry is one nobody has reviewed and is refused
-/// <parameter>UNCOVEREDFIELD</parameter>.
-/// The card's removal rows are the declared fingerprint subject, which <method>Changed</method>
-/// skips.</p>
+/// no OAuth 2.0 object, so no configuration, client or description is OcuPilot's own. A server
+/// client's delete, secret and key-set refresh are bodyless (AD-51) and set no field; the card's
+/// removal and state rows are the declared fingerprint subject or a state label, which
+/// <method>Changed</method> skips.</p>
 ClassMethod OAuthEntry(pType As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
 {
     Quit ..ReviewedFewOnly(pType, .pChanged, .pProhibits, .pCode)

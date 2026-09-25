@@ -1946,7 +1946,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:561 */
+  /** EXPERIENCE.md:562 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2508,6 +2508,36 @@ export const STRINGS = {
   oauthAuthServerEmptyAgent: 'configure this instance\'s OAuth 2.0 authorization server',
   /** EXPERIENCE.md:520 */
   oauthAuthServerFormRefusedAction: 'change the authorization server configuration',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientTitle: 'Server client description',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientFieldResponseTypes: 'Response types',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientFieldAuthType: 'Authentication type',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientFieldLaunchUrl: 'Launch URL',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientFieldContacts: 'Contact emails (comma-separated)',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientFieldLogoutSessionRequired: 'Front-channel logout session required',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientFieldKeySource: 'Public key source',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientKeySourceJwks: 'JWKS URL',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientAddRedirect: 'Add redirect URL',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientGenerate: 'Generate',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientShow: 'Show',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientHide: 'Hide',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientJwksUpdated: 'Updated the client\'s public keys from its JWKS URL.',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientSecretEffect: 'The client\'s application must use the new secret from now on.',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientFormRefusedAction: 'change this server client description',
 
 } as const;
 

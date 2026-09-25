@@ -12,7 +12,6 @@
  *    the instance exactly, and every other member is kept.
  * 3. **Update JWKS** (AC5): the editor reports the refresh and the instance holds the key set.
  * 4. **Delete from the row menu** (AC3): the typed issuer deletes it and the row leaves the tab.
- * 5. **The tab still edited in the classic portal keeps its classic link** (AC9).
  * 6. **DW-1337** (AC10): the editor and its delete dialog pass the structural and contrast checks at
  *    1280 light, 720 light and 1280 dark, with no baseline allowance.
  *
@@ -49,11 +48,6 @@ const TAB_ROUTE = 'security/oauth';
 const EDITOR_ROUTE = 'security/oauth/edit';
 const TAB_URL = `/ocupilot/${TAB_ROUTE}?ns=HSCUSTOM`;
 const ACTION_PATH = '/api/ocupilot/screens/security.oauthserverdescriptions/action';
-
-/** The tab still edited in the classic portal, and the classic editor its name cell opens. */
-const CLASSIC_TABS = [
-  { route: 'security/oauth/server-clients', page: '%25CSP.UI.Portal.OAuth2.Server.Client.zen' },
-];
 
 let browser = null;
 
@@ -299,24 +293,5 @@ test("AC3, AC10: the editor's delete dialog passes DW-1337, and the row menu's D
     assert.equal(stored(), null, 'the instance no longer holds it');
   } finally {
     await context.close();
-  }
-});
-
-test('AC9: the tab still edited in the classic portal keeps its classic link', async () => {
-  const { values, output } = irisSession(['Set tSC=##class(OcuPilot.Test.OAuthProbe).Create()', mark('MADE', '$System.Status.IsOK(tSC)')], ['MADE']);
-  assert.equal(values.MADE, '1', `the OAuth probe objects are made:\n${output}`);
-  try {
-    for (const tab of CLASSIC_TABS) {
-      const { context, page } = await signedInAt(browser, config, `/ocupilot/${tab.route}?ns=HSCUSTOM`, VIEWPORTS.wide);
-      try {
-        await waitForRows(page, config.navigationTimeoutMs);
-        const href = await page.$eval(`${ROW_SELECTOR} [role="gridcell"] a`, (link) => link.getAttribute('href'));
-        assert.ok(href.startsWith(`/csp/sys/sec/${tab.page}`), `${tab.route}: the name cell opens the classic editor, not ${href}`);
-      } finally {
-        await context.close();
-      }
-    }
-  } finally {
-    irisSession(['Do ##class(OcuPilot.Test.OAuthProbe).Remove()']);
   }
 });

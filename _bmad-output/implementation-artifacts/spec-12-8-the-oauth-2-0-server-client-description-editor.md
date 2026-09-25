@@ -2,14 +2,17 @@
 title: 'Story 12.8: The OAuth 2.0 server client description editor'
 type: 'feature'
 created: '2026-09-25'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'd3a13660263b5c8c14378055fb6bdd096858f4d2'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-12-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-12-7-the-oauth-2-0-authorization-server-editor.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - 'A ServerClients PUT naming only Metadata members skips the vendor %OnValidateObject, so a direct admin-API caller can store an unsupported grant type (measured); OcuPilot always sends the complete set, which carries RedirectURL and is validated (inference: no OcuPilot path reaches the partial form).'
+  - 'OAUTH.CLIENTCREDENTIALS.ABSENT, reused from Story 12.5, says "an X.509 credential with that name and a private key"; a server client''s credential verifies signatures and needs no private key, so the sentence over-states the rule on this editor.'
 ---
 
 <intent-contract>
@@ -327,6 +330,27 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-25 — Review pass
+
+- verdicts: 16 findings — high 0, medium 4, low 5, false 7, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` No test ties the 12.8 violation codes to their sentences; `Error.cls:2860` reverted to `Quit ""` stays green — added `OAuthRegisteredClientCreate.TestEveryViolationCodeReadsItsSentence` (red under that mutation).
+  - `[medium]` `[patch]` A create's `secretRefused` answer is untested on server and client — added `OAuthRegisteredClientSecret.TestASecretRefusedAfterACreateIsAnswered` and a create leg in `oauth-registered-client-form.page.spec.ts` (each red under its mutation).
+  - `[medium]` `[patch]` The port's `CarriesSecret` refusal of a secret-bearing `POST`/`PUT` body has no test — added `OAuthRegisteredClientUpdate.TestABodyCarryingASecretIsRefused` (red with the block deleted).
+  - `[low]` `[patch]` The edit's "never pre-filled" page test had no secret in its stubbed definition to pre-fill from — the leg now mounts a definition carrying `ClientSecret` and `Metadata.client_secret` and asserts the store's secret is empty (red under a pre-fill mutation).
+  - `[low]` `[reject]` A `POST` that succeeds with no `Location` id answers 500 though the client exists — `Location` was measured to carry the id on every 201; guarding the unobserved case adds a branch for no reachable failure.
+  - `[low]` `[reject]` The agent's mint refuses a taken name with the kernel's AD-54 "already present" refusal, not `OAUTH.SERVERCLIENTNAME.TAKEN` — the refusal happens on both callers; the mint's presence check runs in `Mint.cls:173-180` before any tool hook, so naming the code there is a kernel change for a wording difference.
+  - `[false]` `[reject]` The agent's create takes no secret, so a confidential client keeps the vendor-generated one — the intent scopes the required secret to the editor; the generated secret is never shown, and the create tool tells the model to propose `setsecret`.
+  - `[false]` `[reject]` "Edit, partial" tests rename `Metadata.client_name`, not top-level `Name` — AC2 names "a Client Information member", whose "Client name" is `client_name`.
+  - `[false]` `[reject]` Key-source exclusivity lives only in the UI store — the intent places it on the JWT Settings tab.
+  - `[false]` `[reject]` `structural-baseline.json` gains three rows for the editor route — they are the shell-chrome DW-1583/DW-1584 rows every route carries, which the lead allowed at the spec gate.
+  - `[low]` `[reject]` The agent create's change event under its `TargetRef` and the tab's re-fetch by type are not asserted here — both are kernel/shell behavior shared by every tool and pinned by their own stories; no defect shown.
+  - `[medium]` `[patch]` The port's refusal of a secret-bearing body is reached by no test (intent-alignment, same root cause as the third row) — closed by the same test.
+  - `[false]` `[reject]` Token revocation on delete and a successful `https` JWKS fetch are vendor-held, not tested — the intent forbids internet dependencies in tests, and revocation is the vendor's `DeleteId`.
+  - `[false]` `[reject]` The test probe reads `ClientSecret` — only to prove AC4's "the instance stores it" by length and equality; product code reads none outside the port's strip.
+  - `[false]` `[reject]` 12.7 plumbing touched (`ReasonForOAuthAuthorizationServer` chains on; four sibling specs lose their classic-link legs) — the chain is the shared reason lookup, and retiring the `CLASSIC_TABS` legs is the spec's own AD-44 task.
+  - `[low]` `[reject]` Only the update tool's mint is checked for the 403 in-process — every tool shares the kernel mint gate; the other four are checked at confirm over HTTP per missing pair.
+
 ## Design Notes
 
 **Governing ADs:** AD-3, AD-4, AD-5, AD-6, AD-8, AD-10, AD-13, AD-14, AD-15, AD-16, AD-19, AD-21, AD-24, AD-26, AD-27, AD-28, AD-29, AD-32, AD-35, AD-36, AD-39, AD-44, AD-51, AD-52, AD-53, AD-54, AD-55, AD-56, and Conventions › Secrets.
@@ -479,7 +503,57 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. OAuth-writing t
 
 **Measure in implement and record here:** the bundle total; how the stub `%response` exposes `Location`; whether the vendor `LIST` tolerates the create read's row-key filter; whether a "Create OAuth2 Server Client" row carries `registration_access_token`.
 
+**Measured in implement (`ocupilot-b-ci`, 2026-09-25):**
+
+- Bundle: initial total 1,803,837 bytes (main 1,652,221, styles 151,616), under the 1854kB warning; no re-base.
+- `Location`: `AdminPort.InvokeLocated` answers the stub `%response`'s `Location`, `/api/admin/v1/security/oauth2/server/client?clientId=<id>`; the port reads the id from its `clientId=` query.
+- The vendor `LIST` ignores query parameters, so the create read's row-key filter is tolerated; the `Name` match is the read's own, case-insensitive.
+- A "Create OAuth2 Server Client <id>" row carries `registration_access_token` in plain text, as the "Create OAuth2 Client Metadata" row beside it does; both read masked (`OAuthRegisteredClientSecret.TestTheAuditReadsMaskTheRegistrationToken`).
+- A `PUT` naming only `Metadata` members skips the vendor's `%OnValidateObject`; the complete set always carries `RedirectURL`, is validated, and #8863 maps to `Metadata.grant_types`.
+- The typed-name dialog's button names the generated client id, one unbroken 43-character word, which pushed Cancel 72px past the dialog at 1280 and 720; the editor's own class lets that button wrap.
+
+**Pinning mutations (Rule 19), each observed red, then reverted with the file's hash confirmed:**
+
+- mutation: `OAuthRegisteredClientSave.HandleCreate` skips the secret write → `OAuthRegisteredClientCreate.TestACreateThroughTheRouteStoresEveryValue` (AC1)
+- mutation: `OAuthRegisteredClientRules.MergedMetadata` starts from `{}` instead of the fresh read → `OAuthRegisteredClientUpdate.TestAnEditSendsTheCompleteSet`, `TestTheCardShowsWhatTheWriteSends`, `TestEveryBadValueRefusesAnEditOnBothCallers` (AC2)
+- mutation: the page's `onDelete` calls `confirmDelete` without the typed-name dialog → `oauth-registered-client-form.page.spec.ts` "AC3: Delete sends nothing until the client id is typed" (AC3)
+- mutation: the port's strip skips `client_secret` → `OAuthRegisteredClientUpdate.TestNoReadAnswersASecretMember`, `TestAVendorRefusalIsNamed` (AC4)
+- mutation: `RefreshKeySet` answers success without calling `Fetch` → `OAuthRegisteredClientJwks.TestTheInContainerUrlGrowsThePublicKeys` and three more (AC5)
+- mutation: `OAuthRegisteredClientCreate.CREATES` 0 → `OAuthRegisteredClientCreate.TestACreateTakenAfterTheMintIsRefusedAtConfirm` and three more (AC6)
+- mutation: `OAuthRegisteredClientRules.HandleForm` skips its gate → `OAuthRegisteredClientWire.TestACallerWithoutEitherPairIsRefusedEverywhere` (AC7)
+- mutation: `OAuthServerClientTab`'s classic-link exemption restored → `ui/tools/classic-links.test.mjs` "the shipped descriptor roster passes" (AC8)
+- mutation: `OAuthAuthorizationServerPort.Read` answers `Clients` as `[]` → `OAuthRegisteredClientCreate.TestARegisteredClientIsNamedOnTheAuthorizationServersCard` (AC9)
+- mutation: a 1400px `min-inline-size` on the redirect URL list, rebuilt and redeployed → `oauth-registered-client-editor.browser-spec.mjs` "AC1, AC10" (the list 712px past its tab at 1280, 792px at 720) (AC10)
+- mutation: `Error.ReasonForOAuthAuthorizationServer` ends `Quit ""` instead of `Quit ..ReasonForOAuthServerClient(pCode)` → `OAuthRegisteredClientCreate.TestEveryViolationCodeReadsItsSentence`
+- mutation: `OAuthRegisteredClientSave.HandleCreate` passes `""` as `Answer`'s last argument → `OAuthRegisteredClientSecret.TestASecretRefusedAfterACreateIsAnswered`
+- mutation: the store's `open` drops the `secretRefusedValue` it carries across its reset → `oauth-registered-client-form.page.spec.ts` "a secret refused after a create is named beside Saved once the route names the new client" (and the edit-path test)
+- mutation: delete `OAuthRegisteredClientPort.SendWrite`'s `If ..CarriesSecret(pBody) {…}` block → `OAuthRegisteredClientUpdate.TestABodyCarryingASecretIsRefused`
+- mutation: the store's `absorb` fills the secret from the definition's `ClientSecret` on an edit → `oauth-registered-client-form.page.spec.ts` "AC4, AD-35: on an edit the secret is never pre-filled"
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** The Server client descriptions tab gains a four-tab `form-page` editor (`security/oauth/server-clients/edit`, General / Client Credentials / Client Information / JWT Settings) over a new `OAuthRegisteredClientPort`: create (POST, id from `Location`, then the secret type), complete-set edit (AD-4), write-only client secret with Generate and Show/Hide, Update JWKS through `OAuth2.Server.Client.RefreshJWKS` in `%SYS` (AD-27, AD-32), and the tab's Delete and Update JWKS row actions (AD-53). Four agent tools (`security.oauthserverclients.create|update|setsecret|updatejwks`), three routes, the form descriptor, and the rules and Save classes share one rule set on both callers (AD-55). The tab's classic-link exemption is gone; AD-44's spine sentence now names two exemptions over two declarations. `registration_access_token` is masked in Create/Modify OAuth2 Server Client audit rows (AD-35).
+
+**Files.**
+
+- New server: `Port/OAuthRegisteredClientPort.cls`, `Area/Security/OAuthRegisteredClient{Rules,Save}.cls`, `Screen/Descriptor/OAuthServerClientForm.cls`, `Screen/Tool/OAuthRegisteredClient{Create,Update,SetSecret,UpdateJwks}.cls`.
+- New tests: `Test/OAuthRegisteredClient{Create,Update,Secret,Jwks,Wire}.cls` plus helpers `{Probe,RecordPort,SaveFixture,Confirm}`.
+- New client: `areas/security/oauth-registered-client-form.{page,store}.ts` and specs; `browser/oauth-registered-client-editor.browser-spec.mjs`.
+- Changed in footprint: `OAuthServerClientTab.cls` (Create, `updatejwks`, `secretArguments`, no exemption), `OAuthServerClientDelete.cls` (the new port), roster rows in `Test/OAuth{Tabs,Delete}`, `WireOAuthRead`.
+- Outside the footprint (shared-append or roster): `Api/Error.cls`, `Api/Router.cls`, `Kernel/Proposal/Prohibited.cls`, `Port/AdminPort.cls`, `Port/AuditPort.cls`, `Screen/Tool/Classification.cls`, `Screen/Tool/ToolFields.cls` (regenerated); `Test/{AuditVendorSecrets,EndpointCoverage,PortFixture,PortGate,Prohibited,ReadTool,SurfaceCoverage,ToolRoundTrip,Wire,WireSecurityRead}.cls`; `scripts/ci-throwaway.sh`; `ui/src/app/{app.ts,app.spec.ts}`, `core/{proposal-view,screen-actions,screens.generated,strings}.ts`, `shell/{screen-outlet.ts,proposal-card.spec.ts,screen-action-handler.spec.ts}`, `styles/_components.scss`; `ui/tools/{classic-links.mjs,classic-links.test.mjs,navigation.test.mjs,proposal-view.test.mjs,strings.test.mjs}`; `ui/browser/{oauth,oauth-client-editor,oauth-resource-server-editor,oauth-server-description-editor,oauth-server-editor,oauth-delete}.browser-spec.mjs`, `ui/browser/structural-baseline.json` (three shell-chrome rows); EXPERIENCE.md (one Fixed-strings row); the spine (AD-44) and `.memlog.md`.
+
+**Review.** 16 findings: 4 medium and 1 low patched (test additions only, each observed red under its mutation: the violation-code sentences, a create's `secretRefused` on server and client, the port's refusal of a secret-bearing body, the edit's never-pre-filled check); 11 rejected with reasons in the triage log (4 low, 7 false); nothing deferred by review. Patched entries by verdict: medium 3 (one grouped with its intent-alignment duplicate), low 1. Follow-up review: `false` -- the patches changed tests only, each proven red and green, and the full sweep ran after them.
+
+**Verification.**
+
+- Full ObjectScript sweep on `ocupilot-b-ci` (`ci-runner.mjs`, after the review patches): 286 classes, 2,393 tests, 0 failed, runs 915-1200, 0 overlaps, 0 foreign runs; `%UnitTest_Result` over 915-1200 reads 286 / 2,393 / 2,393 passed / 0 failed.
+- Story browser specs on a freshly built and deployed bundle (the seven files in the Verification list): 28 tests, 28 pass.
+- `npm run build` (all seven prebuild checkers; classic-links reports 2 exemptions over 2 declarations) and `npm test`: tools 1,425/1,425, components 1,375/1,375.
+- Bundle initial total 1,803,837 bytes (main 1,652,221, styles 151,616), under the 1854kB warning; no re-base.
+- `smoke.sh --container ocupilot-b-ci`: 49 executed, 49 passed.
+- `check-objectscript.py` 0 problems; `lint-docs.sh` clean; `lint_spine` only the existing `{id}` note. The throwaway is left with no client and no authorization server configuration.
+
+**Residual risks.** A successful `https` JWKS fetch is not exercised (no internet in tests; the configuration passed is pinned). The agent's mint refuses a taken name with the kernel's AD-54 "already present" text rather than `OAUTH.SERVERCLIENTNAME.TAKEN`. The implement subagent returned with its sweep still running; the sweep was re-run here from the start, and the tree was confirmed quiescent before any verification.

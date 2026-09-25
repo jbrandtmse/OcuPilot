@@ -223,7 +223,7 @@ describe('the OAuth 2.0 tabs\u2019 delete', () => {
     // assertion goes red, and no surface draws its delete (DW-389).
     for (const [screen, consequence, row, type, rowActions] of [
       [OAUTH_CLIENTS, STRINGS.oauthClientDeleteConsequence, 'OcuPilotTestDelete', 'oauth2-client-configuration', ['delete', 'rotatekeys', 'register']],
-      [OAUTH_SERVER_CLIENTS, STRINGS.oauthServerClientDeleteConsequence, 'probe-client-id', 'oauth2-server-client', ['delete']],
+      [OAUTH_SERVER_CLIENTS, STRINGS.oauthServerClientDeleteConsequence, 'probe-client-id', 'oauth2-server-client', ['delete', 'updatejwks']],
       [OAUTH_RESOURCE_SERVERS, STRINGS.oauthResourceServerDeleteConsequence, 'OcuPilotProbeResource', 'oauth2-resource-server', ['delete']],
       [OAUTH_AUTH_SERVER, STRINGS.oauthAuthServerDeleteConsequence, 'probe-issuer', 'oauth2-server', ['delete', 'rotatekeys']],
     ] as const) {
