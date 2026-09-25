@@ -7,8 +7,8 @@
 /// <code>Name</code> equals the argument, compared without regard to case: a name any client holds
 /// refuses the mint, and one taken since the mint refuses the confirm.</p>
 /// <p><b>The body is complete</b>: a field the arguments leave out takes the classic page's value for
-/// a new client (<method>OcuPilot.Area.Security.OAuthRegisteredClientRules.Defaults</method>) and is
-/// counted unchanged. <code>Metadata</code> is an object argument the tool adds to the derived schema,
+/// a new client (<method>OcuPilot.Area.Security.OAuthRegisteredClientRules.Defaults</method>), and the
+/// card shows every value the body sets, so nothing is counted unchanged (AD-54). <code>Metadata</code> is an object argument the tool adds to the derived schema,
 /// its members set over the new client's.</p>
 /// <p>The client secret is not this tool's: it is written only by
 /// <class>OcuPilot.Screen.Tool.OAuthRegisteredClientSetSecret</class> (AD-56). The secret the vendor
@@ -124,8 +124,8 @@ ClassMethod RuleProblem(pArgs As %DynamicObject, pMode As %String, pFresh As %Dy
 
 /// <p>The complete body: <method>OcuPilot.Area.Security.OAuthRegisteredClientRules.Defaults</method>
 /// with each supplied settable argument set over it, <code>Metadata</code> member by member, and the
-/// name. One diff row per supplied field, and every other template field counted unchanged
-/// (AD-54).</p>
+/// name. One card row per value the body sets, supplied or defaulted, and nothing unchanged
+/// (<method>OcuPilot.Area.Security.OAuthRegisteredClientRules.CreateRows</method>, AD-54).</p>
 ClassMethod ComposeCreate(pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
 {
     Set pPayload = ""
@@ -141,7 +141,6 @@ ClassMethod ComposeCreate(pArgs As %DynamicObject, pIdArgument As %String, pSett
         Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Compose(tArgs, "", pSettable, .tComposed, .tDiff, .tUnchanged, .pProblem)
         If $$$ISERR(tSC) || (pProblem '= "") Quit
         Set pPayload = tDefaults
-        Set tSupplied = 0
         Set tIterator = tComposed.%GetIterator()
         While tIterator.%GetNext(.tKey, .tValue) {
             Set tType = tComposed.%GetTypeOf(tKey)
@@ -150,13 +149,9 @@ ClassMethod ComposeCreate(pArgs As %DynamicObject, pIdArgument As %String, pSett
             } Else {
                 Do pPayload.%Set(tKey, tValue, tType)
             }
-            Set tSupplied = tSupplied + 1
         }
-        Set pDiff = $ClassMethod(..#RULES, "CardRows", $ClassMethod(..#RULES, "Defaults"), pPayload, tDiff)
-        Set tTotal = 0
-        Set tIterator = pPayload.%GetIterator()
-        While tIterator.%GetNext(.tKey, .tValue) { Set tTotal = tTotal + 1 }
-        Set pUnchanged = tTotal - tSupplied
+        Set pDiff = $ClassMethod(..#RULES, "CreateRows", pPayload)
+        Set pUnchanged = 0
     } Catch ex {
         Set pPayload = ""
         Set pDiff = []

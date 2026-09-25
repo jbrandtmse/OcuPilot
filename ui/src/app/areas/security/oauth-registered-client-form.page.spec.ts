@@ -223,6 +223,22 @@ describe('the server client description editor', () => {
     expect(host.querySelector('.ocu-form-bar-status')?.textContent?.trim()).toBe(STRINGS.oauthRegisteredClientJwksUpdated);
   });
 
+  it('JWT Settings: choosing JWKS URL as the key source draws its field in place of the X.509 credentials, which it clears, and saves both', async () => {
+    // Mutation (Rule 19): drop the key-source branch of the page's `onInput` -> this goes red.
+    const x509 = { ...DEFINITION, ClientCredentials: 'OcuPilotPageCredential', Metadata: METADATA };
+    const { fixture, host, sent } = await mount(EDIT_URL, { definition: x509 });
+    tabs(host)[3].click();
+    await settle(fixture);
+    expect([host.querySelector(`#${ID}-ClientCredentials`) !== null, host.querySelector(`#${ID}-Metadata-jwks_uri`)]).toEqual([true, null]);
+    type(fixture, host, `${ID}-keySource`, 'jwks');
+    await settle(fixture);
+    expect(host.querySelector(`#${ID}-ClientCredentials`)).toBeNull();
+    type(fixture, host, `${ID}-Metadata-jwks_uri`, 'https://ocupilot.invalid/keys');
+    press(host, STRINGS.actionSave);
+    await settle(fixture);
+    expect(sent.map((call) => JSON.parse(call.body) as unknown)).toEqual([{ ClientCredentials: '', Metadata: { jwks_uri: 'https://ocupilot.invalid/keys' } }]);
+  });
+
   it('Update JWKS is not offered for a client with no JWKS URL', async () => {
     const { host } = await mount(EDIT_URL, { definition: { ...DEFINITION, Metadata: METADATA } });
     expect(buttons(host)).toEqual([STRINGS.actionCancel, STRINGS.actionDelete, STRINGS.actionSave]);

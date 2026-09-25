@@ -161,6 +161,27 @@ Method TestEveryBadValueRefusesAnEditOnBothCallers()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", tClientId).%ToJSON(), tBefore, "and the client is unchanged")
 }
 
+/// <p>Matrix row "Edit, bad value", the client type changed: a resource server with no redirect URL
+/// made confidential is refused on <code>RedirectURL</code> on both callers, with nothing sent.</p>
+/// <p>Mutation (Rule 19): drop <code>|| tTypeChanged</code> from the redirect URL rule in
+/// <method>OcuPilot.Area.Security.OAuthRegisteredClientRules.Validate</method> -- the edit passes the
+/// rules and this goes red.</p>
+Method TestAChangedClientTypeIsHeldToItsRules()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed"), "a configuration is seeded")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedClient", $ClassMethod(..#PROBE, "Name", "Type"), .tClientId, {"ClientType": "resource", "RedirectURL": []}), "a resource server with no redirect URL is seeded")
+    Set tBefore = $ClassMethod(..#PROBE, "Stored", tClientId).%ToJSON()
+    Set tSC = $ClassMethod(..#SCREEN, "Update", tClientId, {"ClientType": "confidential"}, .tHttp, .tFault, .tViolations, .tName)
+    Do $$$AssertEquals($ClassMethod(..#HELPER, "CodeFor", .tViolations, "RedirectURL"), "OAUTH.REDIRECTURL.REQUIRED", "the Save refuses the missing redirect URL")
+    Do $$$AssertEquals($ClassMethod(..#RECORD, "WriteCount"), 0, "and sends nothing")
+    Set tArgs = {"ClientType": "confidential"}
+    Do tArgs.%Set("ClientId", tClientId, "string")
+    Set tSC = $ClassMethod(..#HELPER, "Mint", ..#TOOL, tClientId, tArgs, .tProposal, .tHttp, .tFault)
+    Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation("OAUTH.REDIRECTURL.REQUIRED")
+    Do $$$AssertTrue($$$ISERR(tSC) && (tHttp = 400) && ($ClassMethod(..#HELPER, "Problem", $Get(tFault)) [ ("'RedirectURL': " _ tReason)), "and the agent's mint refuses it with the field's sentence: " _ $ClassMethod(..#HELPER, "Problem", $Get(tFault)))
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", tClientId).%ToJSON(), tBefore, "and the client is unchanged")
+}
+
 /// <p>The vendor's own refusals are named: a grant type the authorization server does not support on
 /// <code>Metadata.grant_types</code>, a credential the instance does not hold on
 /// <code>ClientCredentials</code>, and any other 500 as the client refused, on no field.</p>
@@ -177,7 +198,7 @@ Method TestAVendorRefusalIsNamed()
     Set tSC = $ClassMethod(..#RECORD, "Invoke", ..#ENDPOINT, "PUT", .tQuery, tFresh, .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ " " _ ..FaultRow($Get(tFault)), "422 OAUTH.SERVERCLIENTVALIDATION Metadata.grant_types|OAUTH.CLIENTGRANTTYPES.UNSUPPORTED", "an unsupported grant type is named on the grant types")
     Set tSC = $ClassMethod(..#RECORD, "Invoke", ..#ENDPOINT, "PUT", .tQuery, {"ClientCredentials": "OcuPilotNoSuchCredential128"}, .tResult, .tHttp, .tFault)
-    Do $$$AssertEquals(tHttp _ " " _ ..FaultRow($Get(tFault)), "422 OAUTH.SERVERCLIENTVALIDATION ClientCredentials|OAUTH.CLIENTCREDENTIALS.ABSENT", "an unknown credential is named on the credentials")
+    Do $$$AssertEquals(tHttp _ " " _ ..FaultRow($Get(tFault)), "422 OAUTH.SERVERCLIENTVALIDATION ClientCredentials|OAUTH.SERVERCLIENTCREDENTIALS.ABSENT", "an unknown credential is named on the credentials")
     Do $ClassMethod(..#RECORD, "Arm", ..#ENDPOINT, "PUT", 500)
     Set tSC = $ClassMethod(..#RECORD, "Invoke", ..#ENDPOINT, "PUT", .tQuery, {"Description": "refused"}, .tResult, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ " " _ ..FaultRow($Get(tFault)), "422 OAUTH.SERVERCLIENTVALIDATION |", "and any other refusal is the client refused, on no field")

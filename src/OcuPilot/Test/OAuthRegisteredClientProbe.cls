@@ -234,7 +234,9 @@ ClassMethod RemoveAll(Output pRemaining As %Integer) As %Status
         For tI = 1:1:$ListLength(tIds) Set tSC = $$$ADDSC(tSC, ##class(OAuth2.Server.Client).DeleteId($List(tIds, tI)))
         Set $NAMESPACE = tOrigNS
         Set tSC = $$$ADDSC(tSC, $ClassMethod(..#SERVERPROBE, "RemoveAll", .tServerRemaining))
-        Set pRemaining = tServerRemaining + $Select(..ClientCount() > 0: ..ClientCount(), 1: 0)
+        Set tClients = ..ClientCount()
+        ; A count that failed (-1) is not "none survives".
+        Set pRemaining = tServerRemaining + $Select(tClients < 0: 1, 1: tClients)
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = $$$ADDSC(tSC, ex.AsStatus())

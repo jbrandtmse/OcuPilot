@@ -141,6 +141,17 @@ describe('the server client description editor store', () => {
     expect([store.saved(), store.savedId(), store.secret(), formDirty.dirty()]).toEqual([true, CLIENT_ID, '', false]);
   });
 
+  it("on a create, leaving the name empty names it with the form read's own sentence, once", async () => {
+    // Mutation (Rule 19): have `onBlur` return at once -> this goes red.
+    const { store } = mount();
+    await store.open('');
+    store.onBlur('Name');
+    store.onBlur('Name');
+    expect(store.violations()).toEqual([{ field: 'Name', code: 'OAUTH.SERVERCLIENTNAME.REQUIRED', reason: 'Name the client.' }]);
+    store.setText('name', NAME);
+    expect(store.violations()).toEqual([]);
+  });
+
   it('AC2, AD-4: an edit puts only the changed fields, the redirect URLs whole and the one changed member, under the client id', async () => {
     const { store, calls, events } = mount({ kind: 'ok', status: 200, body: { clientId: CLIENT_ID, name: 'Renamed' } });
     await store.open(CLIENT_ID);

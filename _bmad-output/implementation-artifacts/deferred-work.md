@@ -6909,6 +6909,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ARCHITECTURE-SPINE.md AD-44 reads 'declared by the five tab descriptors ... reports the five declaring descriptors'; epic-12-context.md:52 'all five'. classic-links.test.mjs and Test/OAuthTabs now assert 4 descriptors (AC9).
 - 2026-09-25T01:19:27Z status=routed owner=12-9-removing-the-classic-link-outs by=cr note=Rule 20 spine text; lead may correct the count at the next bookkeeping commit, 12.9 removes the other four
 - 2026-09-25T01:21:53Z status=routed owner=12-9-removing-the-classic-link-outs by=adjudication note=spine AD-44 and epic context counts corrected at origin (four remaining); 12.9 removes the four and the spine sentence's interim count
+- 2026-09-25T22:03:33Z occurrence=12-8-the-oauth-2-0-server-client-description-editor
 
 ### DW-1645: The DW-1640 audit mask matches the vendor's English audit texts, so on an instance whose audit messages are localized the registration and initial access tokens reach Logs > Audit and logs.audit.read unmasked
 - source: spec-12-5-the-oauth-2-0-client-configuration-editor.md | severity: med | fix-risk: high | footprint: in-story
@@ -7071,3 +7072,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-12-8-the-oauth-2-0-server-client-description-editor.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: 12.8 implement: the server client editor reuses 12.5's code and sentence
 - 2026-09-25T20:57:25Z status=open owner=12-8-the-oauth-2-0-server-client-description-editor by=harvest note=lead: patch at code review with a server-client wording (own code or parameterized sentence)
+- 2026-09-25T22:03:33Z status=resolved-by:12-8-the-oauth-2-0-server-client-description-editor by=cr note=own code OAUTH.SERVERCLIENTCREDENTIALS.ABSENT, no private key; Create/Update tests, red when Validate reverts
+
+### DW-1672: The agent's create of a registered name is refused at the mint by the kernel's 'already present' 400, not OAUTH.SERVERCLIENTNAME.TAKEN as the Save answers
+- source: spec-12-8-the-oauth-2-0-server-client-description-editor.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Mint.cls:173-180 checks presence before any tool hook; TestATakenNameIsRefusedOnBothCallers pins both. AD-54 prescribes the refusal, not its code; every create tool shares the kernel wording.
+- 2026-09-25T22:03:33Z status=wontfix-accepted owner=12-8-the-oauth-2-0-server-client-description-editor by=cr note=both callers refuse (AD-54, Q4); reopen_if=a turn where the model retries or misreads the mint's already-present refusal
+
+### DW-1673: AD-32's named gap (a key-set URI only the authorization server's configuration trusts) shares OAUTH.SERVERCLIENTJWKS.FETCH with an unreachable host rather than a code of its own
+- source: spec-12-8-the-oauth-2-0-server-client-description-editor.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Port RefreshKeySet answers every fetch failure FETCH; its sentence names the https trust case. The spec gate's Q3 asked for its own code; the frozen Tasks list only NOURI, SCHEME, FETCH.
+- 2026-09-25T22:03:33Z status=wontfix-accepted owner=12-8-the-oauth-2-0-server-client-description-editor by=cr note=refused by name via FETCH's sentence; reopen_if=an operator report that FETCH misdirects a certificate-trust failure
+
+### DW-1674: An edit may rename a server client to a name another client holds; the name check (AD-54) runs only on a create
+- source: spec-12-8-the-oauth-2-0-server-client-description-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Save.Update and the update tool never call NameTaken; the update schema says two clients may share a name. The vendor allows duplicates and the spec scopes the refusal to a create (Q4).
+- 2026-09-25T22:03:33Z status=by-design owner=12-8-the-oauth-2-0-server-client-description-editor by=cr note=spec-bound: uniqueness is AD-54's create fingerprint, not a rule on Name; reopens only by spec amendment

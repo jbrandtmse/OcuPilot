@@ -323,6 +323,50 @@ deferred: []
 - **AC9 (integration).** Given a client registered through this editor, when the agent proposes an authorization-server update (Story 12.7's consumer), then the card's `Clients` row names it.
 - **AC10 (DW-1337).** Given the editor on each tab and its delete dialog, when it is measured at 1280 px light, 720 px light and 1280 px dark, then there is no structural or contrast violation.
 
+### Review Findings
+
+Code review 2026-09-25 (four layers, `review_tier: full-opus`; diff `d3a13660..c9f6f6c0`). 1 high, 3 medium and 4 low patched; 4 low closed in the ledger; 24 rejected.
+
+- [x] [Review][Patch] **HIGH, AD-54.** The agent's create card drew only the supplied fields and counted the classic page's defaults unchanged (5), although the vendor's `POST` accepts a partial body, so AD-54's complete-body exception does not apply; a default such as the implicit `response_types` was written unseen. `Rules.CreateRows` now draws every value the body sets against `Rules.Blank`, before empty, and nothing unchanged [src/OcuPilot/Screen/Tool/OAuthRegisteredClientCreate.cls:153]
+- [x] [Review][Patch] **MED, DW-1671.** `OAUTH.CLIENTCREDENTIALS.ABSENT` asked a server client's credential for a private key. It is now its own code, `OAUTH.SERVERCLIENTCREDENTIALS.ABSENT`, on the rule, the #8886 mapping and the form read [src/OcuPilot/Api/Error.cls:2950]
+- [x] [Review][Patch] **MED.** No test changed the client type on an edit; `TestAChangedClientTypeIsHeldToItsRules` added [src/OcuPilot/Test/OAuthRegisteredClientUpdate.cls:169]
+- [x] [Review][Patch] **MED.** The JWT Settings key-source select reached the store through no test; a page-spec leg added [ui/src/app/areas/security/oauth-registered-client-form.page.spec.ts:226]
+- [x] [Review][Patch] **LOW.** The https JWKS test derived its expected configuration from the code's own expression; it now also asserts the instance holds it [src/OcuPilot/Test/OAuthRegisteredClientJwks.cls:168]
+- [x] [Review][Patch] **LOW.** The create's required-field blur message had no test; a store-spec leg added [ui/src/app/areas/security/oauth-registered-client-form.store.spec.ts:144]
+- [x] [Review][Patch] **LOW.** The probe's `RemoveAll` read a failed client count (-1) as none surviving [src/OcuPilot/Test/OAuthRegisteredClientProbe.cls:237]
+- [x] [Review][Patch] **LOW.** Two sibling browser specs' leg lists skipped a number after their AC9 legs went [ui/browser/oauth-client-editor.browser-spec.mjs:17]
+- [x] [Review][Defer] **LOW.** AD-44 still opens "Release 1 has exactly three ... SM-C1 counts three" beside the two-exemption sentence [ARCHITECTURE-SPINE.md:514] -- deferred: occurrence on DW-1643, owner 12.9
+- [x] [Review][Defer] **LOW.** The mint refuses a registered name with the kernel's "already present", the Save with `OAUTH.SERVERCLIENTNAME.TAKEN`: acceptable under AD-54 and Q4, which prescribe the refusal on both callers, not its code [Kernel/Proposal/Mint.cls:173] -- deferred: DW-1672 wontfix-accepted
+- [x] [Review][Defer] **LOW.** AD-32's named gap shares `OAUTH.SERVERCLIENTJWKS.FETCH`, whose sentence names the trust case, rather than its own code [Port/OAuthRegisteredClientPort.cls:371] -- deferred: DW-1673 wontfix-accepted
+- [x] [Review][Defer] **LOW.** An edit may rename a client to a taken name [Area/Security/OAuthRegisteredClientSave.cls:202] -- deferred: DW-1674 by-design (the refusal is AD-54's create fingerprint)
+
+**Rejected:**
+
+- `false` The agent's create has no secret-required rule -- the intent scopes it to the editor (triage log above).
+- `low` A public client made confidential on an edit needs no secret -- the spec scopes the rule to a create; the secret field sets one.
+- `false` The update asks the prohibited set before `DerivedFields` -- `Expand` drops only non-template keys and secret members; the set reads the diff's template fields.
+- `false` Any other vendor 500 reads as `OAUTH.SERVERCLIENTVALIDATION` -- the spec says so, with the raw text logged.
+- `low` A save failing after a good fetch reads as `FETCH` -- not shown reachable; the raw status is logged.
+- `low` The Update JWKS mint admits a non-http stored URI -- only a URI written outside OcuPilot; the confirm refuses it by name.
+- `low` The Update JWKS row reads key count then URL -- documented and pinned by `TestTheAgentsUpdateJwksRefreshesTheKeys`.
+- `false` The display-URL host rule is case-sensitive -- the vendor's `ValidateURL` compares the same way (`OAuth2.Server.Client`:603-642).
+- `low` `MemberValues` re-parses the field lists per call -- negligible per request.
+- `low` Algorithm selects offer "Not set" and "None" -- `none` is the vendor's own value.
+- `low` "None" reuses `sslVerifyPeerNone` -- the spec says reuse where equal.
+- `low` A bad redirect typed before switching to Resource server is refused on a hidden field -- unlikely; the refusal names the field.
+- `false` A refused save forgets the secret -- by design, "the store forgets it either way" (AD-56).
+- `false` No copy-before-save warning -- the spec's strings are fixed, and Show reveals the field.
+- `low` `acting` has no try/finally -- 12.7's page does the same; `sendFor` answers a boolean.
+- `low` Redirect rows share one accessible name and a bare Remove -- 12.7's scope rows, which the spec copies.
+- `low` Show/Hide sets `aria-pressed` and changes its label -- the SSL, wallet and X.509 forms' shared pattern.
+- `low` Story 12.9's DW-1643 line is stale -- routed to 12.9 already and named in Design Notes.
+- `false` The probe doc contradicts `RemoveAll` -- the class doc names the clients tests make; `RemoveAll` says every client.
+- `low` The create matrix skips `SERVERCLIENTNAME.REQUIRED` and the `jwks_uri` shape -- the schema requires `Name`, and every sentence is pinned.
+- `false` The AC2/AC4 browser leg sets no secret -- it asserts an empty field keeps the stored one.
+- `false` `height: auto` is physical -- the file uses it 13 times and `client-lint` is clean.
+- `low` `Expand` is silent when the field lists fail, a non-string `ClientSecret` is dropped, a missing `Location` answers 500, a non-absent `Open` failure reads 404, an empty id faults with an OK status, IPv6 hosts are refused, an empty JWKS URL clears the credentials, an `expires=0` key set counts 0 -- each theoretical or unlikely.
+- `false` Untrimmed redirect whitespace -- a `type="url"` input strips it from its value.
+
 ## Spec Change Log
 
 - 2026-09-25, lead spec gate: Q1-Q4 accepted as recommended (Q3 as option B with a named-gap refusal); AD-27, AD-32 and AD-35 amended.
@@ -528,6 +572,11 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. OAuth-writing t
 - mutation: the store's `open` drops the `secretRefusedValue` it carries across its reset → `oauth-registered-client-form.page.spec.ts` "a secret refused after a create is named beside Saved once the route names the new client" (and the edit-path test)
 - mutation: delete `OAuthRegisteredClientPort.SendWrite`'s `If ..CarriesSecret(pBody) {…}` block → `OAuthRegisteredClientUpdate.TestABodyCarryingASecretIsRefused`
 - mutation: the store's `absorb` fills the secret from the definition's `ClientSecret` on an edit → `oauth-registered-client-form.page.spec.ts` "AC4, AD-35: on an edit the secret is never pre-filled"
+- mutation: `OAuthRegisteredClientCreate.ComposeCreate` draws only the supplied fields against `Defaults` and counts the rest unchanged → `OAuthRegisteredClientCreate.TestACreateTakenAfterTheMintIsRefusedAtConfirm` (AC6, AD-54; code review)
+- mutation: `OAuthRegisteredClientRules.Validate` refuses an unknown credential with `OAUTH.CLIENTCREDENTIALS.ABSENT` → `OAuthRegisteredClientCreate.TestEveryFormRuleRefusesOnBothCallers` (DW-1671)
+- mutation: drop `|| tTypeChanged` from `Validate`'s redirect URL rule → `OAuthRegisteredClientUpdate.TestAChangedClientTypeIsHeldToItsRules`
+- mutation: the page's `onInput` drops its key-source branch → `oauth-registered-client-form.page.spec.ts` "JWT Settings: choosing JWKS URL as the key source ..."
+- mutation: the store's `onBlur` returns at once → `oauth-registered-client-form.store.spec.ts` "on a create, leaving the name empty ..."
 
 ## Auto Run Result
 

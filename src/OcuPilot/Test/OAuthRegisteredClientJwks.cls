@@ -165,7 +165,24 @@ Method TestAnHttpsUrlIsFetchedThroughOcuPilotsConfiguration()
     Do $$$AssertEquals(..Refresh(tClientId, .tFault), "422 OAUTH.SERVERCLIENTJWKS.FETCH", "the fetch fails and is named")
     Do $$$AssertTrue($IsObject($Get(tFault)) && (tFault.%Get("reason") [ tUri), "the sentence names the URL")
     Do $$$AssertEquals($ClassMethod(..#RECORD, "Fetches", .tSsl) _ " " _ tSsl, "1 " _ ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG, "through OcuPilot's own client configuration")
+    Do $$$AssertTrue(..SslConfigurationHeld(tSsl), "which this instance holds")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", tClientId).%Get("PublicKeys"), 0, "and nothing is stored")
+}
+
+/// <p>Whether this instance holds SSL/TLS configuration <var>pName</var>, asked in <code>%SYS</code>.</p>
+ClassMethod SslConfigurationHeld(pName As %String) As %Boolean
+{
+    Set tHeld = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tHeld = ''##class(Security.SSLConfigs).Exists(pName)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tHeld = 0
+    }
+    Quit tHeld
 }
 
 /// <p>An unreachable JWKS URL is named: <code>OAUTH.SERVERCLIENTJWKS.FETCH</code>, after the vendor's own

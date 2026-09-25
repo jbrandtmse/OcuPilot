@@ -12,7 +12,7 @@
  *    the instance exactly, and every other member is kept.
  * 3. **Update JWKS** (AC5): the editor reports the refresh and the instance holds the key set.
  * 4. **Delete from the row menu** (AC3): the typed issuer deletes it and the row leaves the tab.
- * 6. **DW-1337** (AC10): the editor and its delete dialog pass the structural and contrast checks at
+ * 5. **DW-1337** (AC10): the editor and its delete dialog pass the structural and contrast checks at
  *    1280 light, 720 light and 1280 dark, with no baseline allowance.
  *
  * **It refuses the live container.** The issuer is `OcuPilot.Test.OAuthIssuerFixture`, started in

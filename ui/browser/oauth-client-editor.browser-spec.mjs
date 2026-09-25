@@ -14,7 +14,7 @@
  * 4. **Rotate Keys** (AC6): the editor reports the rotation and the key set changes.
  * 5. **Delete from the row menu** (AC6, AC10): the editor's delete dialog passes DW-1337, the row menu
  *    offers the three declared actions, and the typed name deletes it.
- * 7. **DW-1337** (AC10): the editor and its delete dialog pass the structural and contrast checks at
+ * 6. **DW-1337** (AC10): the editor and its delete dialog pass the structural and contrast checks at
  *    1280 light, 720 light and 1280 dark, allowed only the shell's own two findings.
  *
  * **It refuses the live container.** The issuer is `OcuPilot.Test.OAuthIssuerFixture`, started in

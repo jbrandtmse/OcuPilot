@@ -254,7 +254,7 @@ ClassMethod Validate(pArgs As %DynamicObject, Output pViolations, pMode As %Stri
 
         Set tCredentials = ..Text(pArgs, ..#FIELDCREDENTIALS)
         If (tCredentials '= "") && (tCredentials '= ..Text(pFresh, ..#FIELDCREDENTIALS)) && '..Named(..ReadableNames(), tCredentials) {
-            Do ..Add(.pViolations, ..#FIELDCREDENTIALS, ##class(OcuPilot.Api.Error).#OAUTHCLIENTCREDENTIALSABSENT)
+            Do ..Add(.pViolations, ..#FIELDCREDENTIALS, ##class(OcuPilot.Api.Error).#OAUTHSERVERCLIENTCREDENTIALSABSENT)
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -462,6 +462,54 @@ ClassMethod ListText(pValue) As %String
     Quit tText
 }
 
+/// <p>A client with nothing set: <method>Defaults</method> with every text emptied, every list
+/// emptied and every flag off, keeping <parameter>NOALGORITHM</parameter>, which the rules read as not
+/// set. A create's card reads the body against it.</p>
+ClassMethod Blank() As %DynamicObject
+{
+    Set tBlank = ..Defaults()
+    For tObject = tBlank, tBlank.%Get(..#FIELDMETADATA) {
+        Set tKeys = ""
+        Set tIterator = tObject.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tValue) { Set tKeys = tKeys _ $ListBuild(tKey) }
+        For tI = 1:1:$ListLength(tKeys) {
+            Set tKey = $List(tKeys, tI)
+            Set tType = tObject.%GetTypeOf(tKey)
+            If tType = "array" {
+                Do tObject.%Set(tKey, [])
+            } ElseIf tType = "boolean" {
+                Do tObject.%Set(tKey, 0, "boolean")
+            } ElseIf (tType = "string") && (tObject.%Get(tKey) '= ..#NOALGORITHM) {
+                Do tObject.%Set(tKey, "", "string")
+            }
+        }
+    }
+    Quit tBlank
+}
+
+/// <p>A create's card rows for <var>pPayload</var>, the complete body its write sends: one row for
+/// each field and <code>Metadata</code> member it sets to anything but <method>Blank</method>'s value,
+/// each with an empty before. A value the caller left out and <method>Defaults</method> supplies is a
+/// row like any other, so a create counts nothing unchanged (AD-54).</p>
+ClassMethod CreateRows(pPayload As %DynamicObject) As %DynamicArray
+{
+    Set tBlank = ..Blank()
+    Set tDiff = []
+    Set tIterator = pPayload.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        If (tKey '= ..#FIELDMETADATA) && (..MemberText(pPayload, tKey) = ..MemberText(tBlank, tKey)) Continue
+        Set tRow = {}
+        Do tRow.%Set("field", tKey, "string")
+        Do tRow.%Set("before", "", "string")
+        Do tRow.%Set("after", ..MemberText(pPayload, tKey), "string")
+        Do tDiff.%Push(tRow)
+    }
+    Set tRows = ..CardRows(tBlank, pPayload, tDiff)
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) { Do tRow.%Set("before", "", "string") }
+    Quit tRows
+}
+
 /// <p>The card's rows for a change from <var>pBefore</var> to <var>pPayload</var>: <var>pDiff</var>'s
 /// rows with <code>RedirectURL</code> drawn as its URLs and <code>Metadata</code> drawn as one row per
 /// member it changes. Nothing is added or removed but the metadata row.</p>
@@ -650,7 +698,7 @@ ClassMethod FieldOf(pCode As %String) As %String
     If tPart = "FLAG" Quit ..MetadataField(..#SESSIONMEMBER)
     If tPart = "LAUNCHURL" Quit ..#FIELDLAUNCH
     If tPart = "DEFAULTSCOPE" Quit ..#FIELDSCOPE
-    If tPart = "CLIENTCREDENTIALS" Quit ..#FIELDCREDENTIALS
+    If tPart = "SERVERCLIENTCREDENTIALS" Quit ..#FIELDCREDENTIALS
     If tPart = "SERVERCLIENTSECRET" Quit ..#FIELDSECRET
     Quit ..#FIELDMETADATA
 }

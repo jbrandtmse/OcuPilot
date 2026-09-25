@@ -288,7 +288,7 @@ Method TestEveryFormRuleRefusesOnBothCallers()
     Set tCase($Increment(tCase)) = $ListBuild("LaunchURL", "OAUTH.LAUNCHURL.SHAPE"), tPatch(tCase) = {"LaunchURL": "not a url"}
     Set tCase($Increment(tCase)) = $ListBuild("DefaultScope", "OAUTH.DEFAULTSCOPE.SHAPE"), tPatch(tCase) = {}
     Do tPatch(tCase).%Set("DefaultScope", "openid" _ $Char(9) _ "profile", "string")
-    Set tCase($Increment(tCase)) = $ListBuild("ClientCredentials", "OAUTH.CLIENTCREDENTIALS.ABSENT"), tPatch(tCase) = {"ClientCredentials": "OcuPilotNoSuchCredential128"}
+    Set tCase($Increment(tCase)) = $ListBuild("ClientCredentials", "OAUTH.SERVERCLIENTCREDENTIALS.ABSENT"), tPatch(tCase) = {"ClientCredentials": "OcuPilotNoSuchCredential128"}
     For tI = 1:1:tCase {
         Set tField = $List(tCase(tI), 1)
         Set tCode = $List(tCase(tI), 2)
@@ -305,11 +305,14 @@ Method TestEveryFormRuleRefusesOnBothCallers()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "ClientCount"), 0, "no client was registered")
 }
 
-/// <p>AC6's AD-54 half: the agent's create is minted composed, with a diff row per field supplied and
-/// every other template field counted unchanged; a client registered under the name after the mint
-/// refuses the confirm, which sends nothing.</p>
+/// <p>AC6's AD-54 half: the agent's create is minted composed, with a card row for every value the
+/// body sets -- each supplied field and each default the classic page gives a new client -- each with
+/// an empty before and nothing unchanged; a client registered under the name after the mint refuses
+/// the confirm, which sends nothing.</p>
 /// <p>Mutation (Rule 19): <parameter>OcuPilot.Screen.Tool.OAuthRegisteredClientCreate.CREATES</parameter>
-/// 0 -- the mint reads the absent client as gone and this goes red.</p>
+/// 0 -- the mint reads the absent client as gone and this goes red. Mutation: have
+/// <method>OcuPilot.Screen.Tool.OAuthRegisteredClientCreate.ComposeCreate</method> draw only the
+/// supplied fields and count the rest unchanged -- the rows and the count go red.</p>
 Method TestACreateTakenAfterTheMintIsRefusedAtConfirm()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed"), "a configuration is seeded")
@@ -320,11 +323,17 @@ Method TestACreateTakenAfterTheMintIsRefusedAtConfirm()
     Set tSC = $ClassMethod(..#HELPER, "Mint", ..#TOOL, tName, tArgs, .tProposal, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the create is minted: " _ $ClassMethod(..#HELPER, "Problem", $Get(tFault)))
     If '$IsObject($Get(tProposal)) Quit
-    Set tFields = ""
+    Set (tFields, tBefore, tResponses) = ""
     Set tIterator = tProposal.%Get("changed").%GetIterator()
-    While tIterator.%GetNext(.tIndex, .tRow) { Set tFields = tFields _ $ListBuild(tRow.%Get("field")) }
-    Do $$$AssertEquals($ClassMethod(..#HELPER, "Sorted", tFields), "Description,Name,RedirectURL", "a diff row per field supplied")
-    Do $$$AssertEquals(tProposal.%Get("unchangedCount"), 5, "and the other template fields unchanged")
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        Set tFields = tFields _ $ListBuild(tRow.%Get("field"))
+        Set tBefore = tBefore _ tRow.%Get("before")
+        If tRow.%Get("field") = "Metadata.response_types" Set tResponses = tRow.%Get("after")
+    }
+    Do $$$AssertEquals($ClassMethod(..#HELPER, "Sorted", tFields), "ClientType,Description,Metadata.grant_types,Metadata.id_token_signed_response_alg,Metadata.response_types,Metadata.token_endpoint_auth_method,Name,RedirectURL", "a row per value the body sets, supplied or defaulted")
+    Do $$$AssertEquals(tResponses, "code, id_token, id_token token, token", "a default the caller left out is drawn as the value the write sends")
+    Do $$$AssertEquals(tBefore, "", "every row's before is empty")
+    Do $$$AssertEquals(tProposal.%Get("unchangedCount"), 0, "and a create counts nothing unchanged")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedClient", tName, .tClientId), "then somebody else registers the name")
     Do $ClassMethod(..#RECORD, "Clear")
     Set tSC = $ClassMethod(..#CONFIRM, "Confirm", tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
@@ -377,7 +386,7 @@ Method TestThePortRefusesACallerWithoutAPairBeforeTheVendor()
 Method TestEveryViolationCodeReadsItsSentence()
 {
     Set tError = "OcuPilot.Api.Error"
-    Set tOwn = $ListBuild("OAUTHSERVERCLIENTNAMEREQUIRED", "OAUTHSERVERCLIENTNAMETAKEN", "OAUTHSERVERCLIENTTYPEVALUE", "OAUTHREDIRECTURLREQUIRED", "OAUTHREDIRECTURLSHAPE", "OAUTHCLIENTGRANTTYPESREQUIRED", "OAUTHCLIENTGRANTTYPESVALUE", "OAUTHCLIENTGRANTTYPESUNSUPPORTED", "OAUTHRESPONSETYPESREQUIRED", "OAUTHRESPONSETYPESVALUE", "OAUTHAUTHMETHODVALUE", "OAUTHCLIENTURLHOST", "OAUTHCONTACTSSHAPE", "OAUTHMAXAGEVALUE", "OAUTHLAUNCHURLSHAPE", "OAUTHSERVERCLIENTSECRETREQUIRED")
+    Set tOwn = $ListBuild("OAUTHSERVERCLIENTNAMEREQUIRED", "OAUTHSERVERCLIENTNAMETAKEN", "OAUTHSERVERCLIENTTYPEVALUE", "OAUTHREDIRECTURLREQUIRED", "OAUTHREDIRECTURLSHAPE", "OAUTHCLIENTGRANTTYPESREQUIRED", "OAUTHCLIENTGRANTTYPESVALUE", "OAUTHCLIENTGRANTTYPESUNSUPPORTED", "OAUTHRESPONSETYPESREQUIRED", "OAUTHRESPONSETYPESVALUE", "OAUTHAUTHMETHODVALUE", "OAUTHCLIENTURLHOST", "OAUTHCONTACTSSHAPE", "OAUTHMAXAGEVALUE", "OAUTHLAUNCHURLSHAPE", "OAUTHSERVERCLIENTSECRETREQUIRED", "OAUTHSERVERCLIENTCREDENTIALSABSENT")
     Set tCodes = $ClassMethod(tError, "OAuthServerClientViolationCodes")
     For tI = 1:1:$ListLength(tOwn) {
         Set tName = $List(tOwn, tI)
@@ -395,6 +404,10 @@ Method TestEveryViolationCodeReadsItsSentence()
     While tIterator.%GetNext(.tIndex, .tRow) { Set tRuled = tRuled _ $ListBuild(tRow.%Get("code")) }
     Do $$$AssertEquals(tRules.%Size(), $ListLength(tCodes), "the form's rules hold one row per code")
     Do $$$AssertEquals($ClassMethod(..#HELPER, "Sorted", tRuled), $ClassMethod(..#HELPER, "Sorted", tCodes), "and every code has its row")
+    Set tIterator = tRules.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) { Set tFieldOf(tRow.%Get("code")) = tRow.%Get("field") }
+    Do $$$AssertEquals($Get(tFieldOf("OAUTH.SERVERCLIENTNAME.REQUIRED")) _ " " _ $Get(tFieldOf("OAUTH.SERVERCLIENTCREDENTIALS.ABSENT")), "Name ClientCredentials", "a row names the field its code refuses")
+    Do $$$AssertTrue(##class(OcuPilot.Api.Error).#REASONOAUTHSERVERCLIENTCREDENTIALSABSENT '[ "private key", "a server client's credential asks for no private key")
 }
 
 /// <p>A port fault as <code>&lt;code&gt; &lt;failed pair&gt;</code>, each empty when absent.</p>
