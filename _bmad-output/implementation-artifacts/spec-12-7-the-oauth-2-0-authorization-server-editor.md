@@ -2,11 +2,11 @@
 title: 'Story 12.7: The OAuth 2.0 authorization server editor'
 type: 'feature'
 created: '2026-09-25'
-status: 'in-progress'
-baseline_revision: 'ce6620536add7ddc131af754d4696d1b17047130'
+status: 'done'
+baseline_revision: '5e9c4d7d15a679e05be6e09e1438c6b6394e73d2'
 baseline_commit: 'ce6620536add7ddc131af754d4696d1b17047130'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-12-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-12-6-the-oauth-2-0-resource-server-editor.md'
@@ -238,8 +238,8 @@ A new `OAuthAuthorizationServerPort` does four things:
 
 **Rework iteration 1 (lead, 2026-09-25) -- CI red on the story's own head; work only these items:**
 
-- [ ] [CI] browser: `ui/browser/oauth-server-editor.browser-spec.mjs` "AC2, AC4, AC9: the tab's name cell opens the editor ..." times out at `check()`'s `waitForFunction` (line ~179: the checkbox never reads checked after `page.click`) on CI runs 36158841766 (head 9a91f692) and 36163653149 (head af534a37), while it passes on `ocupilot-b-ci` locally. Find the cause (the likeliest is a click landing on the sticky form bar or an element over the checkbox at CI's timing/viewport -- Story 15.9 fixed the same class of failure in the users editor by reaching the field by focus, not a click); fix the spec's helpers (or the page, if the page is at fault) and prove it with a run that reproduces CI's conditions.
-- [ ] [CI] browser: `ui/browser/account-and-filter.browser-spec.mjs` "Command Sign out: typing \"sign out\" offers an active Sign out row ..." fails on both CI runs above (`active: false` -- the Sign out row is not the command box's active descendant), passes locally in isolation, and passed on CI for head 9054aa48 (before this story). Something this story added is ranked or activated ahead of Sign out, or changes state the suite's earlier specs leave (CI runs the whole suite in order: the structural-gate walk, then the shell specs, then account-and-filter). Reproduce with CI's order (the structural spec, then the specs before account-and-filter, then it), find the cause, fix it at the source (not by loosening the assertion), and prove it.
+- [x] [CI] browser: `ui/browser/oauth-server-editor.browser-spec.mjs` "AC2, AC4, AC9: the tab's name cell opens the editor ..." times out at `check()`'s `waitForFunction` (line ~179: the checkbox never reads checked after `page.click`) on CI runs 36158841766 (head 9a91f692) and 36163653149 (head af534a37), while it passes on `ocupilot-b-ci` locally. Find the cause (the likeliest is a click landing on the sticky form bar or an element over the checkbox at CI's timing/viewport -- Story 15.9 fixed the same class of failure in the users editor by reaching the field by focus, not a click); fix the spec's helpers (or the page, if the page is at fault) and prove it with a run that reproduces CI's conditions.
+- [x] [CI] browser: `ui/browser/account-and-filter.browser-spec.mjs` "Command Sign out: typing \"sign out\" offers an active Sign out row ..." fails on both CI runs above (`active: false` -- the Sign out row is not the command box's active descendant), passes locally in isolation, and passed on CI for head 9054aa48 (before this story). Something this story added is ranked or activated ahead of Sign out, or changes state the suite's earlier specs leave (CI runs the whole suite in order: the structural-gate walk, then the shell specs, then account-and-filter). Reproduce with CI's order (the structural spec, then the specs before account-and-filter, then it), find the cause, fix it at the source (not by loosening the assertion), and prove it.
 
 **Execution:**
 
@@ -414,6 +414,19 @@ Code review 2026-09-25 (four layers, full-opus; blind and edge-case split server
   - `[low]` `[patch]` Row action's change-event target id not asserted — `TestRotatingGrowsTheKeySet` asserts `(oauth2-server, instance, SYSTEM)`.
 - Patches applied by a fresh subagent (Rule 18: no re-engagement); two literal U+2019 in the page spec escaped by the stage agent (client-lint).
 
+### 2026-09-25 — Review pass (rework 1, CI)
+
+- verdicts: 7 findings — high 0, medium 0, low 2, false 5, maybe-false 0
+- findings:
+  - `[false]` `[reject]` The three sibling OAuth editor specs still click controls and could hit the same sticky-bar timeout — they are green on both CI runs in question; nothing fails at the cited lines.
+  - `[low]` `[patch]` `fill`'s comment asserts focus scrolls the control clear of the bar, which no test shows — comment now says only that focus reaches the control wherever it lies.
+  - `[false]` `[reject]` The page may be at fault for a pointer user, and the pointer path is now untested — at 1280x900 the old click helper scrolled the checkbox above the bar and toggled it (green locally), so a pointer reaches it after a scroll; only a control wholly inside the scroll port under the bar takes no scroll from Puppeteer's click.
+  - `[low]` `[patch]` The diff's comment and the stylesheet's scroll-padding comment disagree (same root as the second row) — grouped; same comment fix.
+  - `[false]` `[reject]` The lead's "something this story ranks ahead of Sign out" hypothesis was not tested — the probe read the list at "sign out": Sign out is the only row; the story-12.7 onset is labeled (inference).
+  - `[false]` `[reject]` A 1.5 s lag is not covered by a two-frame wait — the 1.5 s is the probe's fixed re-read delay (`setTimeout(r, 1500)`), not a measured lag; the zoneless render is scheduled on rAF/timeout before the test's two rAFs, so it lands first. Spec wording corrected.
+  - `[false]` `[reject]` No CI run exists on the rework head — the push is the lead's; not a defect in the diff.
+- Patch applied by the stage agent (Rule 18: no re-engagement); `oauth-server-editor` spec 5/5 after it.
+
 ## Design Notes
 
 **Governing ADs:** AD-3, AD-4, AD-5, AD-6, AD-8, AD-10, AD-13, AD-14, AD-15, AD-16, AD-19, AD-24, AD-26, AD-27, AD-28, AD-29, AD-35, AD-36, AD-39, AD-44, AD-51, AD-52, AD-53, AD-54, AD-55, AD-56, and Conventions › Secrets.
@@ -576,11 +589,24 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. OAuth-writing t
 - mutation: `CardRows` draws scopes by name alone, and `MergeUpdate` skips `WithRefreshGrant` → OAuthAuthorizationServerUpdate `TestTheCardShowsWhatTheWriteSends` red on both assertions (run 806).
 - mutation: the store's `onBlur` takes the field's first rule → store spec "a create's blur on an empty required field" red.
 - Code review: each reverted byte-identically and recompiled (AdminPort and the Save with subclasses); Update 801, Secret 810, Wire 803, Create 804, Clients 805 green; components 1352/0; `oauth-server-editor` browser spec 5/5 on the rebuilt bundle (1,765,295 bytes); throwaway left with no configuration, no client, sign-in 200.
+- Rework 1, `[CI]` item 1: the grant checkbox lay in the form's scroll port under the sticky form bar, where Puppeteer's click does not scroll and lands on the bar; `fill` and `check` now reach a control by focus (Space for a checkbox). mutation: `check` back to `page.click`, AC2 leg at 1280x945 (the checkbox fully under the bar) → red at `check` :179, the CI timeout; the focus form green at 1280x945 and 1280x900. mutation: the store's `metadataWire` drops `client_credentials` from the grants, rebuilt and redeployed → AC2 red on `GrantTypes` (AC2).
+- Rework 1, `[CI]` item 2 (latent since Story 15.9, outside this story's code): `account-and-filter` read the command box right after the wait for the Sign out row, but "s" already draws that row, so a render landing part-way through the typing left the read on a stale "si" list (measured: value "sign out", active the Users row; correct when read again 1.5 s later). The test now waits two frames before reading. mutation: the typing split as CI interleaved it ("si", its render, then "gn out") → red with CI's `active: false` without the wait, green with it; `CommandBox.activeDescendant` never names the account row, rebuilt and redeployed → red (AC: Story 15.9's Sign out row). Each client mutation reverted (md5 identical), rebuilt (`main-LOJ2LBGM.js`) and redeployed; CI's first three files 20/20 and the six OAuth files in CI's order 28/28.
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
+
+**Rework 1 (trigger: red CI browser job, runs 36158841766 and 36163653149).** Test-only; no product code changed.
+
+- *Item 1, `oauth-server-editor` AC2 `check()` timeout.* Root cause: at CI's layout the `client_credentials` checkbox lies wholly inside the form's scroll port under the sticky form bar, where Puppeteer's click scrolls nothing and lands on the bar, so the box never toggles. Fix: `fill` and `check` in `ui/browser/oauth-server-editor.browser-spec.mjs` reach a control by focus (Space toggles a checkbox), as Story 15.9 did for the users editor. Reproduction on the freshly deployed bundle: AC2 leg at 1280x945 (checkbox under the bar) with the old helper 4/5, red at `check` with CI's 30000 ms timeout; with the fix 5/5 at 1280x945 and at the real 1280x900.
+- *Item 2, `account-and-filter` "Command Sign out" `active: false`.* Root cause: a timing race latent since Story 15.9 -- the test read `aria-activedescendant` right after waiting for the Sign out row, but "s" already draws that row, so the read could land on a render from part-way through the typing (the stale "si" list, Users active); this story's larger screen roster widening the window on CI is (inference). Fix: the test waits two animation frames before reading; the assertion is unchanged. Reproduction: CI's first three files in order (`a11y-structural-invariants`, `about-help-links`, `account-and-filter`) did not go red locally even with CPU throttling or 50 ms latency (about 1 in 15 under latency, unmodified); with the typing split as CI's reads show ("si", its render, "gn out") the old test failed 3/4 with CI's exact `active: false`, the fixed one passed 4/4 (a probe: 10/10 stale without the wait, 0/10 with it). After the fix, CI's first three files 20/20.
+- *Files.* `ui/browser/oauth-server-editor.browser-spec.mjs` (focus-based `fill`/`check`), `ui/browser/account-and-filter.browser-spec.mjs` (`frames` wait before the read), this spec (two `[CI]` boxes, two `## Verification` lines, triage log).
+- *Review.* Two layers, 7 findings: 1 low patched (a comment's unverified scroll claim; 2 rows grouped), 5 rejected false (see the rework triage log), 0 deferred. Follow-up review recommended: false (follow-up pass; no high patched).
+- *Verification (ocupilot-b-ci, bundle `main-LOJ2LBGM.js` rebuilt and redeployed by the stage agent).* Mutations recorded under `## Verification` (grants dropped from `metadataWire` -> AC2 red; `activeDescendant` never naming the account row -> Sign out test red). CI's first three files 20/20; six OAuth specs in CI's order 28/28; `oauth-server-editor` + the first three files 15/15 and 5/5 after the comment patch; `npm run build` green; `npm run test:tools` 1424/0; no ObjectScript changed, so no class run. Throwaway left with no authorization server configuration (`OAuth2_Server.Configuration` count 0), no client, sign-in 200; its version row's `BuildIdentity` set to `main-LOJ2LBGM.js` to match the deployed bundle.
+- *Residual risk.* Item 2's link to this story is (inference); only the next CI run confirms both fixes. About 33 other browser specs still click fields and carry the same sticky-bar exposure if their layout shifts on CI (not in scope).
+
+**Initial pass.**
 
 **Change.** The Authorization server tab gets a five-tab `form-page` editor at `security/oauth/server/edit` on `app-form-tabs`, over a new `OAuthAuthorizationServerPort` (GET adds `Clients`/`ClientsHidden`; PUT; CHANGEPWD; ROTATEKEYS through the vendor class in `%SYS`, AD-27), five `security.oauthserver.*` tools, the form read and two Save routes, and the tab's Create, Delete and Rotate Keys. Lead decisions applied: AD-44 names `OAuthServerClientTab` alone (three exemptions, three declarations; spine sentence replaced, memlog appended); the two-pair set holds with a real least-privileged principal; a hidden client list is never silent (`OAUTH.SERVERCLIENTSHIDDEN`); adding `%All` or an `%Admin_` customization role mints destructive with its own effect; `ReturnRefreshToken` is the credential-pattern exception in both copies; `VENDORSECRETS` masks `ServerPassword` in Create and Modify OAuth2 Server rows.
 

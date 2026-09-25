@@ -163,19 +163,28 @@ async function openTabOf(page, id) {
   if (key !== '') await openTab(page, key);
 }
 
-/** Type `value` into the form control `id`, replacing whatever is there, its tab opened first. */
+/**
+ * Type `value` into the form control `id`, replacing whatever is there, its tab opened first. The
+ * control is reached by focus, not a click: one lying in the scroll port under the sticky form bar
+ * takes no scroll from a click, which lands on the bar, while focus reaches it wherever it lies, as
+ * Tab does.
+ */
 async function fill(page, id, value) {
   await openTabOf(page, id);
   await page.waitForSelector(`#${id}`, { visible: true, timeout: config.navigationTimeoutMs });
-  await page.click(`#${id}`, { clickCount: 3 });
+  await page.focus(`#${id}`);
+  await page.$eval(`#${id}`, (node) => node.select());
   await page.keyboard.press('Backspace');
-  if (value !== '') await page.type(`#${id}`, value);
+  if (value !== '') await page.keyboard.type(value);
 }
 
-/** Set checkbox `id` to `on`, its tab opened first. */
+/** Set checkbox `id` to `on`, its tab opened first, by focus and Space for the reason `fill` gives. */
 async function check(page, id, on) {
   await openTabOf(page, id);
-  if ((await page.$eval(`#${id}`, (node) => node.checked)) !== on) await page.click(`#${id}`);
+  if ((await page.$eval(`#${id}`, (node) => node.checked)) !== on) {
+    await page.focus(`#${id}`);
+    await page.keyboard.press('Space');
+  }
   await page.waitForFunction((selector, wanted) => document.querySelector(selector)?.checked === wanted, { timeout: config.navigationTimeoutMs }, `#${id}`, on);
 }
 

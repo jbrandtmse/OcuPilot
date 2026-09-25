@@ -115,6 +115,15 @@ async function assertSignedOutOfTheInstance(page, logouts) {
   assert.equal(await page.$('app-rail .ocu-rail'), null, 'the reload shows the sign-in form, not the shell');
 }
 
+/**
+ * Two rendered frames, so the render scheduled by the last keystroke has landed. A row already on
+ * screen is no evidence of that: "s" matches Sign out, so the row can be drawn by a render that ran
+ * part-way through the typing, with the rest of the keystrokes still unrendered.
+ */
+function frames(page) {
+  return page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+}
+
 // Mutation (Rule 19): mount `<app-account-menu />` back in the status bar -> the no-button assertion
 // goes red. Integration AC: make `Session.signOut()` skip its `/logout` post -> the /logout
 // assertion goes red. `overflow: hidden` on `.ocu-header` -> the hit test goes red.
@@ -199,6 +208,7 @@ test('Command Sign out: typing "sign out" offers an active Sign out row, and Ent
 
     await page.type('#ocu-command-box-field', 'sign out');
     await page.waitForSelector(SIGN_OUT_ROW, { visible: true, timeout: config.navigationTimeoutMs });
+    await frames(page);
     const row = await page.evaluate((selector) => {
       const option = document.querySelector(selector);
       return {
