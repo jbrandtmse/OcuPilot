@@ -157,6 +157,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'tasks/upcoming',
       'tasks/history',
       'permissions/roles/edit',
+      // Story 9.9: the unlisted reduced service form, reached from the Services list's name cell.
+      'permissions/services/edit',
       'permissions/users/edit',
       'permissions/users',
       'permissions/roles',
@@ -169,6 +171,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 7.4: the two unlisted audit event lists, then Auditing configuration at position 6.
       'security/auditing/system-events',
       'security/auditing/user-events',
+      // Story 9.9: the unlisted reduced LDAP configuration form, reached from the LDAP / Kerberos list.
+      'security/ldap/edit',
       'security/oauth/clients',
       'security/oauth/resource-servers',
       'security/oauth/server-clients',
@@ -188,7 +192,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/definitions',
       'agent/switches',
     ],
-    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files and device editor, process details, processes, Locks, System usage, Databases, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, the unlisted user form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, the four unlisted OAuth 2.0 tabs, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files and device editor, process details, processes, Locks, System usage, Databases, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
   );
 });
 
@@ -259,10 +263,13 @@ test('editorScreenFor resolves a list to its unlisted, id-keyed editor and to no
   assert.deepEqual([...CREATE_ONLY_FORMS], [], 'no form is create-only');
   assert.equal(editorScreenFor(schedule)?.route, 'tasks/schedule/edit', 'so a task opens Edit task at the form\'s id route');
   assert.equal(detailScreenFor(schedule)?.route, 'tasks/schedule/details', 'beside the task\'s details');
+  // Story 9.9: the two reduced forms are the editors their lists' name cells open.
+  assert.equal(editorScreenFor(screenForRoute('security/ldap'))?.route, 'security/ldap/edit', 'the LDAP / Kerberos list opens its reduced form');
+  assert.equal(editorScreenFor(screenForRoute('permissions/services'))?.route, 'permissions/services/edit', 'and the Services list its own');
   assert.equal(
-    editorScreenFor(screenForRoute('security/ldap')),
+    editorScreenFor(screenForRoute('os-management/locks')),
     null,
-    'and a list whose editor is not built yet resolves none'
+    'and a list with no editor resolves none'
   );
 });
 

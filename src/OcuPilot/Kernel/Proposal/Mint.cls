@@ -322,7 +322,7 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         ; permitted and confirmed as a delete is; the one classifier names the effect.
         Set tEffect = ""
         If 'tCreates {
-            Set tWeakSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).WeakensByEffect(tType, tPayload, tFresh, .tEffect)
+            Set tWeakSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).WeakensByEffect(tType, tPayload, tFresh, .tEffect, tId)
             If $$$ISERR(tWeakSC) {
                 Set tSC = ..Internal("whether the proposal weakens its target could not be read: " _ $System.Status.GetErrorText(tWeakSC), .pHttpStatus, .pFault)
                 Quit

@@ -197,12 +197,13 @@ Method TestAChangedRoleGrantIsRefusedOnOcuPilotsOwnApplication()
 /// (<class>OcuPilot.Test.TaskResume</class>), <code>process</code> in Story 5.12
 /// (<class>OcuPilot.Test.ProcessControl</class>), <code>application-error</code> in Story 5.13
 /// (<class>OcuPilot.Test.ErrorDelete</class>), <code>resource</code> in Story 8.4
-/// (<class>OcuPilot.Test.ResourceDelete</class>).</p>
+/// (<class>OcuPilot.Test.ResourceDelete</class>), <code>service</code> in Story 9.9
+/// (<class>OcuPilot.Test.ServiceUpdate</class>).</p>
 /// <p>Mutation: answer <code>pProhibits = 0</code> in the uncovered arm of
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -- this goes red.</p>
 Method TestAnUncoveredEntityTypeIsRefusedWholesale()
 {
-    Set tUncovered = $ListBuild("service", "database")
+    Set tUncovered = $ListBuild("lock", "database")
     For tI = 1:1:$ListLength(tUncovered) {
         Set tType = $List(tUncovered, tI)
         Set tSC = ..Ask(..Target(), ..Payload(), "Description", .tProhibits, .tCode, "probe-id", tType)
@@ -214,10 +215,10 @@ Method TestAnUncoveredEntityTypeIsRefusedWholesale()
     Do $$$AssertStatusOK(tSC, "an unparseable reference is answered, not raised")
     Do $$$AssertEquals(tProhibits, 1, "and refused")
     Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "UNCOVERED"), "as uncovered")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration", "Release 1 covers exactly sixteen entity types -- the SSL/TLS configuration since Story 9.5, the two audit event types since Story 7.11 and the create and import types since Epic 8")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration", "Release 1 covers exactly eighteen entity types -- the service and the LDAP configuration since Story 9.9, the SSL/TLS configuration since Story 9.5, the two audit event types since Story 7.11 and the create and import types since Epic 8")
 
     ; The refusal reaches a caller as a 403 with the set's own code, not as an error.
-    Set tKey = ..Seed(..Payload(), "Description", "probe-id", "service")
+    Set tKey = ..Seed(..Payload(), "Description", "probe-id", "lock")
     If tKey = "" Quit
     Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Target())
     Set tSC = ..Confirm(tKey, .tHttp, .tCode)
@@ -653,7 +654,7 @@ Method TestTheSetHasOneHomeAndOneSentencePerCode()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RegistryClass(), "OcuPilot.Screen.Tool.Registry", "and resolves the tool through the shipped registry")
 
     Set tCodes = ##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()
-    Do $$$AssertEquals($ListLength(tCodes), 17, "the set declares seventeen codes")
+    Do $$$AssertEquals($ListLength(tCodes), 18, "the set declares eighteen codes")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), tCode _ " matches the machine-code pattern")

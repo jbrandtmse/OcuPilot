@@ -247,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -284,6 +284,35 @@ Parameter TYPEAUDITUSEREVENT = "audit-user-event";
 
 /// <p>An SSL/TLS configuration (Story 9.5, <method>Ssl</method>).</p>
 Parameter TYPESSL = "ssl-configuration";
+
+/// <p>A service and an LDAP configuration (Story 9.9, <method>Service</method>,
+/// <method>ReviewedFewOnly</method>).</p>
+Parameter TYPESERVICE = "service";
+
+Parameter TYPELDAP = "ldap-configuration";
+
+/// <p>The write would turn off the service OcuPilot is served through
+/// (<parameter>SERVINGSERVICENAME</parameter>): every request to OcuPilot arrives through it (AD-10 as
+/// amended 2026-09-24).</p>
+Parameter SERVINGSERVICE = "PROHIBITED.SERVINGSERVICE";
+
+/// <p>The one sentence <parameter>SERVINGSERVICE</parameter> carries, caller-neutral, published and
+/// pinned as <parameter>SERVINGPATHREASON</parameter> is.</p>
+Parameter SERVINGSERVICEREASON = "OcuPilot is served through this service. Turning it off would cut off every user, including you.";
+
+/// <p>The one <code>Security.Service</code> that serves OcuPilot on this build (AD-10: measured
+/// 2026-09-24; <code>%Service_Web</code> and a CSP service do not exist here). Compared without
+/// case, as the instance resolves a service name.</p>
+Parameter SERVINGSERVICENAME = "%Service_WebGateway";
+
+/// <p>The effect <method>WeakensByEffect</method> answers for a change to the allowed addresses or
+/// authentication methods of <parameter>SERVINGSERVICENAME</parameter>: permitted, destructive, and
+/// named on the card. It is also the proposal's consequence code.</p>
+Parameter EFFECTSERVINGSERVICE = "SERVICE.SERVESOCUPILOT";
+
+/// <p>The effect <method>WeakensByEffect</method> answers for any other service whose
+/// <code>AutheEnabled</code> gains <parameter>UNAUTHENTICATEDBIT</parameter>.</p>
+Parameter EFFECTSERVICEUNAUTHENTICATED = "SERVICE.UNAUTHENTICATED";
 
 /// <p>The instance's own predefined account, whose disablement AD-10 forbids. Compared through
 /// <method>NormalizedUser</method>, so every spelling the instance resolves to it is refused.</p>
@@ -386,10 +415,10 @@ Parameter READTYPE = "GET";
 /// only a web application reaches, then the two <method>Process</method> adds, then the one every
 /// covered type shares, with the wholesale refusal last, and then the one <method>Role</method> adds and
 /// the one <method>Resource</method> adds, the sign-in arm <method>User</method> adds, and the one
-/// <method>Ssl</method> adds last -- seventeen in all.</p>
+/// <method>Ssl</method> adds, and the one <method>Service</method> adds last -- eighteen in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -418,6 +447,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OCUPILOTROLE Quit ..#OCUPILOTROLEREASON
     If pCode = ..#OCUPILOTRESOURCE Quit ..#OCUPILOTRESOURCEREASON
     If pCode = ..#OCUPILOTSSL Quit ..#OCUPILOTSSLREASON
+    If pCode = ..#SERVINGSERVICE Quit ..#SERVINGSERVICEREASON
     Quit ""
 }
 
@@ -510,6 +540,8 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPEDEVICE Quit ..DeviceFields()
     If pType = ..#TYPESSL Quit ..SslFields() _ $ListBuild("PrivateKeyPassword")
     If pType = ..#TYPETASK Quit ..TaskChangeFields()
+    If pType = ..#TYPESERVICE Quit $ListBuild("AutheEnabled", "ClientSystems", ..#FIELDENABLED)
+    If pType = ..#TYPELDAP Quit ..LdapFields()
     Quit ""
 }
 
@@ -690,7 +722,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -752,6 +784,14 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         If tType = ..#TYPESSL {
             Set tSC = ..Ssl(tId, $Get(tToolClass), .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPESERVICE {
+            Set tSC = ..Service(tId, tPayloadObject, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPELDAP {
+            Set tSC = ..ReviewedFewOnly(..#TYPELDAP, .tChanged, .pProhibits, .pCode)
             Quit
         }
         If tType = ..#TYPEDEVICE {
@@ -1012,13 +1052,18 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
 /// OcuPilot's own applications the same three changes are <method>WebApplication</method>'s
 /// refusals. Only fields the payload carries are compared, so a bodyless write's narrowed payload
 /// answers <code>""</code>.</p>
-ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pEffect As %String) As %Status
+/// <p>For a service (<var>pId</var> being its name), <method>ServiceWeakening</method>'s answer.</p>
+ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pEffect As %String, pId As %String = "") As %Status
 {
     Set pEffect = ""
     Set tSC = $$$OK
     Try {
         If pType = ..#TYPESSL {
             Set pEffect = ..SslWeakening(pPayload, pTarget)
+            Quit
+        }
+        If pType = ..#TYPESERVICE {
+            Set pEffect = ..ServiceWeakening(pId, pPayload, pTarget)
             Quit
         }
         If pType '= ..#TYPEWEBAPPLICATION Quit
@@ -1835,6 +1880,10 @@ ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject
                 Quit
             }
             Set tSC = ..GrantsPrivilege(pPayload, tTarget, .pGrants, ..#FIELDGRANTEDROLES)
+            Quit
+        }
+        If pType = ..#TYPESERVICE {
+            Set pGrants = ..AddressGrantsPrivilege(pPayload, tTarget)
             Quit
         }
         If pType = ..#TYPETASK {
@@ -2823,6 +2872,105 @@ ClassMethod SslWeakening(pPayload As %DynamicObject, pTarget As %DynamicObject) 
     If '$IsValidNum(tAfter) || (+tAfter '= 0) Quit ""
     If '$IsValidNum(tBefore) || (+tBefore <= 0) Quit ""
     Quit ..#EFFECTNOPEERCHECK
+}
+
+/// <p>The service predicates, first hit wins: on <parameter>SERVINGSERVICENAME</parameter>, a change
+/// that turns <code>Enabled</code> off is refused <parameter>SERVINGSERVICE</parameter>
+/// (<method>ServingServiceDisabled</method>); then, for every service, the reviewed-few sweep. A change
+/// to the serving service's addresses or authentication methods is permitted and marked by the mint
+/// (<method>ServiceWeakening</method>).</p>
+ClassMethod Service(pId As %String, pPayload As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    If ..ServingServiceDisabled(pId, pPayload, .pChanged) {
+        Do ..Refuse(..#SERVINGSERVICE, .pProhibits, .pCode)
+        Quit $$$OK
+    }
+    Quit ..ReviewedFewOnly(..#TYPESERVICE, .pChanged, .pProhibits, .pCode)
+}
+
+/// <p>Whether <var>pId</var> names <parameter>SERVINGSERVICENAME</parameter>, compared without
+/// case.</p>
+ClassMethod IsServingService(pId As %String) As %Boolean
+{
+    Quit ($ZConvert($ZStrip(pId, "<>W"), "U") = $ZConvert(..#SERVINGSERVICENAME, "U"))
+}
+
+/// <p>Whether a write to service <var>pId</var> carrying <var>pPayload</var>, whose changed fields are
+/// <var>pChanged</var>, turns the serving service off: the diff names <code>Enabled</code> and the
+/// payload's value reads as off. The one predicate the kernel's arm, the tool's mint rule and the
+/// form read share.</p>
+ClassMethod ServingServiceDisabled(pId As %String, pPayload As %DynamicObject, ByRef pChanged) As %Boolean
+{
+    If '..IsServingService(pId) Quit 0
+    If '$Data(pChanged(..#FIELDENABLED)) Quit 0
+    Quit ..IsOff(..Rendered(pPayload, ..#FIELDENABLED))
+}
+
+/// <p>The effect of a service write: <parameter>EFFECTSERVINGSERVICE</parameter> when <var>pId</var>
+/// is the serving service and the payload changes its <code>ClientSystems</code> or
+/// <code>AutheEnabled</code>; otherwise <parameter>EFFECTSERVICEUNAUTHENTICATED</parameter> when the
+/// payload adds <parameter>UNAUTHENTICATEDBIT</parameter> (<method>AddsUnauthenticated</method>);
+/// otherwise <code>""</code>. Only fields the payload carries are compared.</p>
+ClassMethod ServiceWeakening(pId As %String, pPayload As %DynamicObject, pTarget As %DynamicObject) As %String [ Private ]
+{
+    If '$IsObject(pPayload) Quit ""
+    Set tTarget = $Select($IsObject(pTarget): pTarget, 1: {})
+    If ..IsServingService(pId) {
+        Set tMoves = 0
+        For tField = "ClientSystems", "AutheEnabled" {
+            If pPayload.%GetTypeOf(tField) = "unassigned" Continue
+            If ..Rendered(pPayload, tField) '= ..Rendered(tTarget, tField) Set tMoves = 1
+        }
+        If tMoves Quit ..#EFFECTSERVINGSERVICE
+    }
+    If ..AddsUnauthenticated(pPayload, tTarget) Quit ..#EFFECTSERVICEUNAUTHENTICATED
+    Quit ""
+}
+
+/// <p>Whether <var>pPayload</var>'s <code>ClientSystems</code> gives an address a privileged role
+/// (<method>IsPrivilegedRole</method>) that <var>pTarget</var>'s does not give that address. An entry
+/// is <code>address</code> or <code>address|role,role</code>; addresses and roles are compared
+/// without case.</p>
+ClassMethod AddressGrantsPrivilege(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean [ Private ]
+{
+    If '$IsObject(pPayload) || (pPayload.%GetTypeOf("ClientSystems") '= "array") Quit 0
+    Kill tHeld
+    If $IsObject(pTarget) && (pTarget.%GetTypeOf("ClientSystems") = "array") {
+        Set tIterator = pTarget.%Get("ClientSystems").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tEntry) {
+            If $IsObject(tEntry) Continue
+            Set tAddress = $ZConvert($Piece(tEntry, "|", 1), "U")
+            Set tRoles = $Piece(tEntry, "|", 2, *)
+            For tI = 1:1:$Length(tRoles, ",") {
+                Set tRole = $ZConvert($ZStrip($Piece(tRoles, ",", tI), "<>W"), "U")
+                If tRole '= "" Set tHeld(tAddress, tRole) = ""
+            }
+        }
+    }
+    Set tGrants = 0
+    Set tIterator = pPayload.%Get("ClientSystems").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        If $IsObject(tEntry) Continue
+        Set tAddress = $ZConvert($Piece(tEntry, "|", 1), "U")
+        Set tRoles = $Piece(tEntry, "|", 2, *)
+        For tI = 1:1:$Length(tRoles, ",") {
+            Set tRole = $ZStrip($Piece(tRoles, ",", tI), "<>W")
+            If (tRole = "") || $Data(tHeld(tAddress, $ZConvert(tRole, "U"))) Continue
+            If ..IsPrivilegedRole(tRole) Set tGrants = 1 Quit
+        }
+        If tGrants Quit
+    }
+    Quit tGrants
+}
+
+/// <p>An LDAP configuration's settable fields (Story 9.9): the vendor template's thirty keys less
+/// <code>LDAPCACertFile</code>, a server path no caller names (AD-21). The template carries no search
+/// password, and no read answers one.</p>
+ClassMethod LdapFields() As %List
+{
+    Quit $ListFromString("Description,LDAPAttributes,LDAPAttributeComment,LDAPAttributeFullName,LDAPAttributeMail,LDAPAttributeMobile,LDAPAttributeMobileProvider,LDAPAttributeNameSpace,LDAPAttributeRoutine,LDAPAttributeRoles,LDAPAttributeEscalationRoles,LDAPBaseDN,LDAPBaseDNForGroups,LDAPClientTimeout,LDAPFlags,LDAPGroupId,LDAPHostNames,LDAPInstanceId,OrganizationId,GroupId,InstanceId,RoleId,EscalationRoleId,RoutineId,NamespaceId,DelimiterId,LDAPSearchUsername,LDAPServerTimeout,LDAPUniqueDNIdentifier")
 }
 
 }

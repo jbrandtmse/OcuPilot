@@ -56,7 +56,7 @@ Parameter TYPEWEBAPPLICATION = "web-application";
 /// <parameter>OcuPilot.Kernel.EntityType.TYPES</parameter>, or a rule the generator cannot
 /// implement, fails <code>npm run build</code> rather than reaching the client as a silent
 /// no-op. A later write-tool story adds one pair here, never a branch in two languages.</p>
-Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integer,application-error:foldcase,role:foldcase,resource:foldcase,audit-event:foldcase,audit-user-event:foldcase";
+Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integer,application-error:foldcase,role:foldcase,resource:foldcase,audit-event:foldcase,audit-user-event:foldcase,service:foldcase,ldap-configuration:foldcase";
 
 /// <p>The closed rule vocabulary <parameter>IDRULES</parameter> selects from. A rule named there
 /// and absent here is a declaration error, pinned by
@@ -76,6 +76,8 @@ Parameter RULEFOLDCASESTRIPTRAILINGSLASH = "foldcase-striptrailingslash";
 /// instance 2026-09-22, where <code>DateList</code> answered the same six rows for
 /// <code>HSCUSTOM</code>, <code>hscustom</code> and <code>HsCustom</code> -- so two spellings are
 /// one entity and AD-34's per-target lock has to cover both (AD-13).</p>
+/// <p>A service's and an LDAP configuration's name are resolved without case by the vendor's own
+/// <code>GET</code> (measured on this build, Story 9.9), so they take the same rule.</p>
 Parameter RULEFOLDCASE = "foldcase";
 
 /// <p>The auditing-configuration rule: answer <parameter>RULESINGLETONID</parameter> whatever the

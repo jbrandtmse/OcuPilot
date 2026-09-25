@@ -46,6 +46,7 @@ import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
 import { DetailPage } from './detail-page';
 import { ListPage } from './list-page';
+import { ReducedFormPage } from './reduced-form.page';
 import { ScreenDenied } from './screen-denied';
 
 /**
@@ -116,6 +117,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.DeviceForm': DeviceFormPage,
   'OcuPilot.Screen.Descriptor.SslForm': SslFormPage,
   'OcuPilot.Screen.Descriptor.TaskForm': TaskWizardPage,
+  'OcuPilot.Screen.Descriptor.ServiceForm': ReducedFormPage,
+  'OcuPilot.Screen.Descriptor.LdapConfigForm': ReducedFormPage,
 };
 
 /**
@@ -133,6 +136,10 @@ export const DESCRIPTOR_EDIT_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.WebAppForm': WebAppEditorPage,
   'OcuPilot.Screen.Descriptor.RoleForm': RoleEditorPage,
   'OcuPilot.Screen.Descriptor.TaskForm': TaskEditorPage,
+  // Story 9.9: the two reduced forms serve their bare route (one sentence back to the list) and
+  // their id route from the one page.
+  'OcuPilot.Screen.Descriptor.ServiceForm': ReducedFormPage,
+  'OcuPilot.Screen.Descriptor.LdapConfigForm': ReducedFormPage,
 };
 
 /**

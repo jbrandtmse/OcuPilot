@@ -162,6 +162,10 @@ XData Probes
 <probe class="Api.Router" method="POST" url="/tasks/check" path="/api/ocupilot/tasks/check" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="PUT" url="/tasks/:id" path="/api/ocupilot/tasks/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/tasks" path="/api/ocupilot/tasks" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/services/form" path="/api/ocupilot/services/form" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/services/:id" path="/api/ocupilot/services/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/ldap/form" path="/api/ocupilot/ldap/form" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/ldap/:id" path="/api/ocupilot/ldap/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Readiness" method="GET" url="/" path="/api/ocupilot/readiness/" disposition="envelope"/>
 <probe class="Api.StaticHandler" method="GET" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>
 <probe class="Api.StaticHandler" method="HEAD" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>

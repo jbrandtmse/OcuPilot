@@ -1946,7 +1946,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:543 */
+  /** EXPERIENCE.md:549 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2079,6 +2079,64 @@ export const STRINGS = {
   taskOutputFileClassicOnly:
     'This task writes its output to a folder only the classic portal\'s Task Scheduler Wizard sets, so change its output file there.',
 
+  /** EXPERIENCE.md:503 */
+  serviceFormLabel: 'Service',
+  /** EXPERIENCE.md:503 */
+  serviceFieldEnabled: 'Service enabled',
+  /** EXPERIENCE.md:503 */
+  serviceFieldClientSystems: 'Allowed incoming connections',
+  /** EXPERIENCE.md:503 */
+  serviceAddressField: 'Address to allow',
+  /** EXPERIENCE.md:503 */
+  serviceAddressAdd: 'Add address',
+  /** EXPERIENCE.md:503 */
+  serviceAddressAnyCaption: 'With no address listed, any address may connect.',
+  /** EXPERIENCE.md:503 */
+  serviceAddressNoRoles: 'Enter one address. Roles for an address are set in the classic portal.',
+  /** EXPERIENCE.md:504 */
+  ldapFormLabel: 'LDAP configuration',
+  /** EXPERIENCE.md:504 */
+  ldapFieldEnabled: 'LDAP enabled',
+  /** EXPERIENCE.md:504 */
+  ldapFieldHostNames: 'Host names',
+  /** EXPERIENCE.md:504 */
+  ldapHostField: 'Host name to add',
+  /** EXPERIENCE.md:504 */
+  ldapHostAdd: 'Add host name',
+  /** EXPERIENCE.md:504 */
+  ldapHostCaption: 'One host name per entry, optionally followed by :port.',
+  /** EXPERIENCE.md:504 */
+  ldapFieldSearchUsername: 'Search username',
+  /** EXPERIENCE.md:504 */
+  ldapFieldBaseDn: 'Base DN',
+  /** EXPERIENCE.md:504 */
+  ldapFieldUniqueAttribute: 'Unique search attribute',
+  /** EXPERIENCE.md:505 */
+  serviceFormBare: 'Open a service from the Services list to change it.',
+  /** EXPERIENCE.md:505 */
+  ldapFormBare: 'Open an LDAP configuration from the LDAP / Kerberos list to change it.',
+  /** EXPERIENCE.md:505 */
+  serviceGone: 'This service no longer exists.',
+  /** EXPERIENCE.md:505 */
+  ldapGone: 'This LDAP configuration no longer exists.',
+  /** EXPERIENCE.md:506 */
+  serviceRefusalServing: 'OcuPilot is served through this service. Turning it off would cut off every user, including you.',
+  /** EXPERIENCE.md:507 */
+  serviceEffectServesOcuPilot: 'OcuPilot itself is served through this service, so a change here can cut off every user, including you.',
+  /** EXPERIENCE.md:507 */
+  serviceEffectUnauthenticated: 'Anyone who reaches this service can use it without signing in.',
+  /** EXPERIENCE.md:508 */
+  servicePromptWhoConnects: 'Which addresses may connect to this service?',
+  /** EXPERIENCE.md:508 */
+  servicePromptEnabled: 'Which services are enabled on this instance?',
+  /** EXPERIENCE.md:508 */
+  servicePromptUnauthenticated: 'Does any service allow unauthenticated access?',
+  /** EXPERIENCE.md:508 */
+  ldapPromptEnabled: 'Is this LDAP configuration enabled?',
+  /** EXPERIENCE.md:508 */
+  ldapPromptServers: 'Which LDAP servers does this configuration use?',
+  /** EXPERIENCE.md:508 */
+  ldapPromptUsers: 'How does this configuration find a user?',
 } as const;
 
 /**

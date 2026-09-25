@@ -563,6 +563,50 @@ XData Entries
       "Description": "ordinary",
       "Settings": "opaque"
     }
+  },
+  "permissions.services.update": {
+    "fieldList": "Security.Service",
+    "classification": {
+      "AutheEnabled": "ordinary",
+      "ClientSystems[]": "ordinary",
+      "Description": "ordinary",
+      "Enabled": "ordinary"
+    }
+  },
+  "security.ldap.update": {
+    "fieldList": "Security.LDAP",
+    "classification": {
+      "Description": "ordinary",
+      "LDAPAttributes[]": "ordinary",
+      "LDAPAttributeComment": "ordinary",
+      "LDAPAttributeFullName": "ordinary",
+      "LDAPAttributeMail": "ordinary",
+      "LDAPAttributeMobile": "ordinary",
+      "LDAPAttributeMobileProvider": "ordinary",
+      "LDAPAttributeNameSpace": "ordinary",
+      "LDAPAttributeRoutine": "ordinary",
+      "LDAPAttributeRoles": "ordinary",
+      "LDAPAttributeEscalationRoles": "ordinary",
+      "LDAPBaseDN": "ordinary",
+      "LDAPBaseDNForGroups": "ordinary",
+      "LDAPCACertFile": "ordinary",
+      "LDAPClientTimeout": "ordinary",
+      "LDAPFlags": "ordinary",
+      "LDAPGroupId": "ordinary",
+      "LDAPHostNames[]": "ordinary",
+      "LDAPInstanceId": "ordinary",
+      "OrganizationId": "ordinary",
+      "GroupId": "ordinary",
+      "InstanceId": "ordinary",
+      "RoleId": "ordinary",
+      "EscalationRoleId": "ordinary",
+      "RoutineId": "ordinary",
+      "NamespaceId": "ordinary",
+      "DelimiterId": "ordinary",
+      "LDAPSearchUsername": "ordinary",
+      "LDAPServerTimeout": "ordinary",
+      "LDAPUniqueDNIdentifier": "ordinary"
+    }
   }
 }
 }

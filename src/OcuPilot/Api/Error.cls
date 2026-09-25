@@ -1211,6 +1211,8 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#ROLEESCALATIONONLYSHAPE Quit ..#REASONROLEESCALATIONONLYSHAPE
     If $Extract(pCode, 1, 4) = "SSL." Quit ..ReasonForSsl(pCode)
     If $Extract(pCode, 1, 5) = "TASK." Quit ..ReasonForTask(pCode)
+    If $Extract(pCode, 1, 8) = "SERVICE." Quit ..ReasonForService(pCode)
+    If $Extract(pCode, 1, 5) = "LDAP." Quit ..ReasonForLdap(pCode)
     Quit ""
 }
 
@@ -2910,6 +2912,97 @@ ClassMethod ReasonForTask(pCode As %String) As %String
 ClassMethod TaskViolationCodes() As %List
 {
     Quit $ListBuild(..#TASKNAMEREQUIRED, ..#TASKNAMESHAPE, ..#TASKNAMETAKEN, ..#TASKDESCRIPTIONLENGTH, ..#TASKNAMESPACEUNKNOWN, ..#TASKTASKCLASSREQUIRED, ..#TASKTASKCLASSUNKNOWN, ..#TASKTASKCLASSPERMISSION, ..#TASKSETTINGUNKNOWN, ..#TASKSETTINGINVALID, ..#TASKSETTINGREQUIRED, ..#TASKSETTINGSECRET, ..#TASKSETTINGCLASSICONLY, ..#TASKTIMEPERIODVALUE, ..#TASKTIMEPERIODEVERYRANGE, ..#TASKTIMEPERIODDAYVALUE, ..#TASKRUNAFTERGUIDUNKNOWN, ..#TASKDAILYFREQUENCYVALUE, ..#TASKDAILYFREQUENCYTIMEREQUIRED, ..#TASKDAILYINCREMENTREQUIRED, ..#TASKDAILYINCREMENTRANGE, ..#TASKDAILYSTARTTIMESHAPE, ..#TASKDAILYENDTIMESHAPE, ..#TASKDAILYENDTIMEORDER, ..#TASKSTARTDATEREQUIRED, ..#TASKSTARTDATESHAPE, ..#TASKSTARTDATEPAST, ..#TASKENDDATESHAPE, ..#TASKENDDATEORDER, ..#TASKEXPIRESDAYSRANGE, ..#TASKEXPIRESHOURSRANGE, ..#TASKEXPIRESMINUTESRANGE, ..#TASKRUNASUSERSECURE, ..#TASKRUNASUSERUNKNOWN, ..#TASKRUNASUSERDISABLED, ..#TASKPRIORITYVALUE, ..#TASKMIRRORSTATUSVALUE, ..#TASKOUTPUTFILENAMESHAPE, ..#TASKEMAILONCOMPLETIONSHAPE, ..#TASKEMAILONERRORSHAPE, ..#TASKEMAILONEXPIRATIONSHAPE, ..#TASKFIELDSHAPE, ..#TASKRUNASUSERREFUSED, ..#TASKDAILYINCREMENTREFUSED, ..#TASKDAILYENDTIMEREFUSED, ..#TASKENDDATEREFUSED, ..#TASKTIMEPERIODDAYREFUSED, ..#TASKOUTPUTFILENAMEREFUSED, ..#TASKTASKCLASSREFUSED, ..#TASKTIMEPERIODEVERYREFUSED, ..#TASKDAILYFREQUENCYTIMEREFUSED, ..#TASKRUNAFTERGUIDREFUSED, ..#TASKSTARTDATEREFUSED, ..#TASKABSENT, ..#TASKOUTPUTFILENAMECLASSICONLY)
+}
+
+/// <p>Envelope code (Story 9.9): one 422 carrying every broken rule of a service Save.</p>
+Parameter SERVICEVALIDATION = "SERVICE.VALIDATION";
+
+Parameter REASONSERVICEVALIDATION = "The service change was refused.";
+
+/// <p>Envelope code (Story 9.9): the service a form read or a Save names is not on this instance.</p>
+Parameter SERVICEABSENT = "SERVICE.ABSENT";
+
+Parameter REASONSERVICEABSENT = "This service no longer exists.";
+
+/// <p>Violation code (Story 9.9): an allowed-connection entry that is empty or holds whitespace or a
+/// semicolon, which the vendor splits into two entries (measured).</p>
+Parameter SERVICEADDRESSSHAPE = "SERVICE.ADDRESS.SHAPE";
+
+Parameter REASONSERVICEADDRESSSHAPE = "An allowed connection is one address, with no spaces or semicolons.";
+
+/// <p>Violation code (Story 9.9): an allowed-connection entry names a role this instance does not
+/// hold, which the vendor accepts silently (measured).</p>
+Parameter SERVICEADDRESSROLE = "SERVICE.ADDRESS.ROLE";
+
+Parameter REASONSERVICEADDRESSROLE = "A role named for this address does not exist on this instance.";
+
+/// <p>Violation code (Story 9.9): an authentication method the service does not support, which the
+/// vendor masks away and answers 200 (measured).</p>
+Parameter SERVICEAUTHEUNSUPPORTED = "SERVICE.AUTHE.UNSUPPORTED";
+
+Parameter REASONSERVICEAUTHEUNSUPPORTED = "This service does not support one of the authentication methods chosen.";
+
+/// <p>Envelope code (Story 9.9): one 422 carrying every broken rule of an LDAP configuration Save.</p>
+Parameter LDAPVALIDATION = "LDAP.VALIDATION";
+
+Parameter REASONLDAPVALIDATION = "The LDAP configuration change was refused.";
+
+/// <p>Envelope code (Story 9.9): the LDAP configuration a form read or a Save names is not on this
+/// instance.</p>
+Parameter LDAPABSENT = "LDAP.ABSENT";
+
+Parameter REASONLDAPABSENT = "This LDAP configuration no longer exists.";
+
+/// <p>Violation code (Story 9.9): a setting <class>Security.LDAPConfigs</class> declares
+/// <code>Required</code> sent empty.</p>
+Parameter LDAPFIELDREQUIRED = "LDAP.FIELD.REQUIRED";
+
+Parameter REASONLDAPFIELDREQUIRED = "This LDAP setting cannot be empty.";
+
+/// <p>Violation code (Story 9.9): an empty host entry, or one holding whitespace; the vendor joins
+/// host names with a space.</p>
+Parameter LDAPHOSTSHAPE = "LDAP.HOST.SHAPE";
+
+Parameter REASONLDAPHOSTSHAPE = "A host name is one name, optionally followed by :port, with no spaces.";
+
+/// <p>Violation code (Story 9.9): <code>LDAPFlags</code> outside the whole numbers 0 to 255.</p>
+Parameter LDAPFLAGSVALUE = "LDAP.FLAGS.VALUE";
+
+Parameter REASONLDAPFLAGSVALUE = "The LDAP flags are a whole number from 0 to 255.";
+
+/// <p>Violation code (Story 9.9): a description longer than the vendor's 128 characters.</p>
+Parameter LDAPDESCRIPTIONLENGTH = "LDAP.DESCRIPTION.LENGTH";
+
+Parameter REASONLDAPDESCRIPTIONLENGTH = "An LDAP configuration's description is at most 128 characters.";
+
+/// <p>The sentence a <code>SERVICE.*</code> violation code carries, or <code>""</code> for any other
+/// code; <method>ReasonForViolation</method> delegates the family here.</p>
+ClassMethod ReasonForService(pCode As %String) As %String
+{
+    If '$ListFind(..ServiceViolationCodes(), pCode) Quit ""
+    Quit $Parameter($ClassName(), "REASON" _ $Translate(pCode, "."))
+}
+
+/// <p>Every <code>SERVICE.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod ServiceViolationCodes() As %List
+{
+    Quit $ListBuild(..#SERVICEADDRESSSHAPE, ..#SERVICEADDRESSROLE, ..#SERVICEAUTHEUNSUPPORTED, ..#SERVICEABSENT)
+}
+
+/// <p>The sentence an <code>LDAP.*</code> violation code carries, or <code>""</code> for any other
+/// code; <method>ReasonForViolation</method> delegates the family here.</p>
+ClassMethod ReasonForLdap(pCode As %String) As %String
+{
+    If '$ListFind(..LdapViolationCodes(), pCode) Quit ""
+    Quit $Parameter($ClassName(), "REASON" _ $Translate(pCode, "."))
+}
+
+/// <p>Every <code>LDAP.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>UserViolationCodes</method> exists.</p>
+ClassMethod LdapViolationCodes() As %List
+{
+    Quit $ListBuild(..#LDAPFIELDREQUIRED, ..#LDAPHOSTSHAPE, ..#LDAPFLAGSVALUE, ..#LDAPDESCRIPTIONLENGTH, ..#LDAPABSENT)
 }
 
 }

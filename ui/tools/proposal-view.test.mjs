@@ -30,6 +30,8 @@ const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
 const {
   CONSEQUENCE_PRIVILEGED,
   CONSEQUENCE_RUNSASOTHER,
+  CONSEQUENCE_SERVESOCUPILOT,
+  CONSEQUENCE_SERVICEUNAUTHENTICATED,
   CONSEQUENCE_UNAUTHENTICATED,
   CONSEQUENCE_UNAUTHENTICATED_PRIVILEGED,
   COUNTDOWN_PLACEHOLDER,
@@ -206,6 +208,18 @@ test('the two privilege-grant consequence codes resolve to their published sente
 test('a task that runs as another account resolves to its published sentence', () => {
   assert.equal(CONSEQUENCE_RUNSASOTHER, 'TASK.RUNSASOTHER');
   assert.equal(consequenceSentence(CONSEQUENCE_RUNSASOTHER), STRINGS.taskRunAsOtherEffect);
+});
+
+// Story 9.9, AD-10 as amended (ruling 2dca0322): a change to the addresses or methods of the
+// service OcuPilot is served through, and an unauthenticated bit on any other service, are
+// permitted, minted destructive and named by the kernel's codes; the card says what each means.
+//
+// Mutation (Rule 19): drop the SERVESOCUPILOT branch from `consequenceSentence` -> this goes red.
+test("a change to the service OcuPilot is served through resolves to its published sentence", () => {
+  assert.equal(CONSEQUENCE_SERVESOCUPILOT, 'SERVICE.SERVESOCUPILOT');
+  assert.equal(consequenceSentence(CONSEQUENCE_SERVESOCUPILOT), STRINGS.serviceEffectServesOcuPilot);
+  assert.equal(CONSEQUENCE_SERVICEUNAUTHENTICATED, 'SERVICE.UNAUTHENTICATED');
+  assert.equal(consequenceSentence(CONSEQUENCE_SERVICEUNAUTHENTICATED), STRINGS.serviceEffectUnauthenticated);
 });
 
 // AD-3, AD-35: a user create's diff carries one Password row the kernel composes with both values

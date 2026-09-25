@@ -105,6 +105,8 @@ XData Coverage
 <screen name="X509CredentialList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="DeviceForm" class="OcuPilot.Test.DeviceCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
 <screen name="TaskForm" class="OcuPilot.Test.TaskCreate" method="TestTheFormDescriptorIsBuiltUnlistedAndCarriesTheListsOwnPairs"/>
+<screen name="ServiceForm" class="OcuPilot.Test.ServiceUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndExempt"/>
+<screen name="LdapConfigForm" class="OcuPilot.Test.LdapUpdate" method="TestTheFormDescriptorIsBuiltUnlistedAndExempt"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
 <tool name="permissions.roles.delete" class="OcuPilot.Test.RoleDelete" method="TestTheDeleteIsAnActionWriteOverTheScreensOwnPairs"/>
@@ -148,6 +150,8 @@ XData Coverage
 <tool name="tasks.schedule.delete" class="OcuPilot.Test.ToolWrite" method="TestTheTaskDeleteToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="tasks.schedule.create" class="OcuPilot.Test.TaskCreate" method="TestTheSchemaIsDerivedAndDescribedFromTaskSuper"/>
 <tool name="tasks.schedule.update" class="OcuPilot.Test.TaskUpdate" method="TestTheSchemaIsDerivedAndDescribed"/>
+<tool name="permissions.services.update" class="OcuPilot.Test.ServiceUpdate" method="TestTheToolDeclaresItsFieldsAndShapes"/>
+<tool name="security.ldap.update" class="OcuPilot.Test.LdapUpdate" method="TestTheToolDeclaresItsFieldsAndShapes"/>
 <tool name="webapp.list.delete" class="OcuPilot.Test.ToolWrite" method="TestTheWebApplicationDeleteToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="webapp.list.update" class="OcuPilot.Test.ToolWrite" method="TestTheRegistryAdvertisesItAsAWriteToolFulfilledOnTheInstance"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>

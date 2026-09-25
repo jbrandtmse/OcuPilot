@@ -18,6 +18,7 @@ import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page
 import { TaskEditorPage } from '../areas/tasks/task-editor.page';
 import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
 import { ListPage } from './list-page';
+import { ReducedFormPage } from './reduced-form.page';
 import {
   ARCHETYPE_PAGES,
   DESCRIPTOR_EDIT_PAGES,
@@ -405,6 +406,16 @@ describe('the descriptor map (DW-369)', () => {
     const archetypePages = ARCHETYPE_PAGES as Readonly<Record<string, Type<unknown>>>;
     expect(resolveScreenPage(editPages, descriptorPages, 'OcuPilot.Screen.Descriptor.TaskForm', 'form-page')).toBe(TaskEditorPage);
     expect(resolveScreenPage(descriptorPages, archetypePages, 'OcuPilot.Screen.Descriptor.TaskForm', 'form-page')).toBe(TaskWizardPage);
+  });
+
+  it('Story 9.9: both reduced forms resolve to the one reduced form page at their id route and at their bare route', () => {
+    // Mutation (Rule 19): drop ServiceForm from `DESCRIPTOR_EDIT_PAGES` -> the id-route leg goes red.
+    const editPages = DESCRIPTOR_EDIT_PAGES as Readonly<Record<string, Type<unknown>>>;
+    const descriptorPages = DESCRIPTOR_PAGES as Readonly<Record<string, Type<unknown>>>;
+    for (const descriptor of ['OcuPilot.Screen.Descriptor.ServiceForm', 'OcuPilot.Screen.Descriptor.LdapConfigForm']) {
+      expect(resolveArchetypePage(editPages, descriptor)).toBe(ReducedFormPage);
+      expect(resolveArchetypePage(descriptorPages, descriptor)).toBe(ReducedFormPage);
+    }
   });
 
   it('the two form-page screens resolve to two different pages, which is what DW-369 asked for', () => {

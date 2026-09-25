@@ -5775,3 +5775,14 @@ app-task-editor-page .ocu-field-checkbox input[type='checkbox'] {
   block-size: var(--ocu-space-6);
   margin: 0;
 }
+
+// The reduced forms (Story 9.9): each checkbox meets the 24x24 target, as the SSL/TLS editor's do.
+app-reduced-form-page .ocu-field-checkbox {
+  min-block-size: var(--ocu-space-6);
+}
+
+app-reduced-form-page .ocu-field-checkbox input[type='checkbox'] {
+  inline-size: var(--ocu-space-6);
+  block-size: var(--ocu-space-6);
+  margin: 0;
+}

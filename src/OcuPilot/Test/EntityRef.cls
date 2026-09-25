@@ -11,8 +11,9 @@ Class OcuPilot.Test.EntityRef Extends %UnitTest.TestCase
 /// ones testing an undeclared one, and one <parameter>OcuPilot.Kernel.EntityRef.IDRULES</parameter>
 /// declares no rule for, so the corpus round-trips verbatim. <code>task</code> held this place
 /// until Story 5.11 gave it the <code>integer</code> rule, <code>role</code> until Story 8.3 gave it
-/// <code>foldcase</code>, and <code>resource</code> until Story 8.4 did.</p>
-Parameter KNOWNTYPE = "service";
+/// <code>foldcase</code>, <code>resource</code> until Story 8.4 did, and <code>service</code> until
+/// Story 9.9 did.</p>
+Parameter KNOWNTYPE = "database";
 
 Method OnBeforeOneTest() As %Status
 {

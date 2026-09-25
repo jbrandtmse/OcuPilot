@@ -453,7 +453,9 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "role": "foldcase",
   "resource": "foldcase",
   "audit-event": "foldcase",
-  "audit-user-event": "foldcase"
+  "audit-user-event": "foldcase",
+  "service": "foldcase",
+  "ldap-configuration": "foldcase"
 };
 
 /**
@@ -2414,6 +2416,76 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "rowTarget": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LdapConfigForm",
+    "route": "security/ldap/edit",
+    "area": "security",
+    "labelKey": "ldapFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "ldap-configuration",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "ldapPromptEnabled"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "ldapPromptServers"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "ldapPromptUsers"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.LDAP",
+    "classicLinkExemption": {
+      "exempt": true,
+      "reason": "Reduced until the full LDAP and Kerberos editor ships (Story 16.14); counted against SM-C1",
+      "label": "Security LDAP Configs",
+      "href": "/csp/sys/sec/%25CSP.UI.Portal.LDAPs.zen"
+    },
+    "toolIdentifier": "security.ldapform",
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
     "entityLabelKey": ""
   },
   {
@@ -4755,6 +4827,76 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "rowTarget": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ServiceForm",
+    "route": "permissions/services/edit",
+    "area": "permissions",
+    "labelKey": "serviceFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "service",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "servicePromptWhoConnects"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "servicePromptEnabled"
+      },
+      {
+        "groupKey": "sslPromptGroupConnections",
+        "textKey": "servicePromptUnauthenticated"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Dialog.Service",
+    "classicLinkExemption": {
+      "exempt": true,
+      "reason": "Reduced until the full service editor ships (Story 16.13); counted against SM-C1",
+      "label": "Services",
+      "href": "/csp/sys/sec/%25CSP.UI.Portal.Services.zen"
+    },
+    "toolIdentifier": "permissions.serviceform",
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
     "entityLabelKey": ""
   },
   {

@@ -126,4 +126,19 @@ Method TestTheDeleteRefusalsAreTheirParameters()
     }
 }
 
+/// <p>AD-10 as amended, AD-53 (Story 9.9): the serving-service code answers its own parameter and
+/// names no caller -- the service form's Enabled drawn unavailable, the Save's envelope and the
+/// agent's mint refusal are one sentence.</p>
+/// <p>Mutation (Rule 19): answer a literal for <code>SERVINGSERVICE</code> in
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.ReasonFor</method> and recompile -- this goes
+/// red.</p>
+Method TestTheServingServiceRefusalIsItsParameterAndNamesNoCaller()
+{
+    Set tClass = "OcuPilot.Kernel.Proposal.Prohibited"
+    Set tServer = ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor($Parameter(tClass, "SERVINGSERVICE"))
+    Do $$$AssertNotEquals(tServer, "", "the kernel answers a written sentence")
+    Do $$$AssertEquals(tServer, $Parameter(tClass, "SERVINGSERVICEREASON"), "which is its parameter, not a literal in the lookup")
+    Do $$$AssertEquals(($ZConvert(tServer, "L") [ "agent"), 0, "and it names no caller: " _ tServer)
+}
+
 }

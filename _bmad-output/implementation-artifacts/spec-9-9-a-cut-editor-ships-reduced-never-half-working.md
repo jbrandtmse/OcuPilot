@@ -2,15 +2,22 @@
 title: 'Story 9.9: A cut editor ships reduced, never half-working'
 type: 'feature'
 created: '2026-09-24'
-status: 'ready-for-dev'
-baseline_revision: '20efd72f37172f1c09f6d9409e4fc4b732a1ed57'
+status: 'done'
+baseline_revision: '6f87e68d070b9aa87595da597183b8f681cde908'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-9-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-9-8-edit-task.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The LDAP / Kerberos list's Enabled column reads No for an enabled LDAP configuration, because the vendor's Security.LDAP LIST answers Enabled false where its own List query reports Yes.
+    evidence: |-
+      Measured on ocupilot-ci during 9.9's implement pass after a PUT of LDAPFlags 72 (bit 64 set): the LIST row's Enabled was false while Security.LDAPConfigs:List read Yes. Pre-existing in the list's read, not caused by 9.9; the reduced form reads the flag from GET and is correct.
+    location: >-
+      src/OcuPilot/Screen/Descriptor/LdapConfigList.cls
+    severity: medium
 ---
 
 <intent-contract>
@@ -223,6 +230,30 @@ Client:
 
 ## Review Triage Log
 
+### 2026-09-24 — Review pass
+
+- verdicts: 18 findings — high 1, medium 2, low 12, false 3, maybe-false 0
+- findings:
+  - `[high]` `[patch]` `Test/EntityRef` used `service` as its no-id-rule type, which `service:foldcase` now folds (`_SYSTEM` -> `_system`) — `KNOWNTYPE` set to `database`; EntityRef 9/9, run 10747.
+  - `[medium]` `[patch]` No test refuses a caller lacking one of the forms' pairs on the two form reads and two Saves (AD-8) — added `WireSecurityRead.TestTheReducedFormsRefuseACallerWithoutTheirPairs` (absent names, so nothing can be written); green run 10751, red with the Save gate removed run 10753.
+  - `[medium]` `[patch]` LDAP Save's complete body unpinned; a read-back cannot tell a narrowed body because the vendor keeps omitted keys — added `LdapSaveHeldFixture` and `LdapEdit.TestTheSaveSendsTheCompleteBody` (30 keys through `HeldPutPort`); red alone when the Save sends `tChanged`, run 10752.
+  - `[low]` `[patch]` `LDAPFlags` reaching the form read as a number was unpinned — `%GetTypeOf("LDAPFlags") = "number"` added to `LdapEdit`'s form-read test.
+  - `[low]` `[reject]` `WriteCount() = 0` at the mint cannot fail — guard assertions beside the load-bearing 400-and-sentence ones; no harm.
+  - `[low]` `[reject]` Service read-backs cannot catch a narrowed body — the service body is pinned on `LastWriteBody` in `ServiceUpdate` and the held-port leg in `ServiceEdit`.
+  - `[low]` `[reject]` AC4's mutation covers only the list bullet — Rule 19 asks one mutation per AC's pinning test, recorded.
+  - `[low]` `[patch]` AC5's client half had no mutation — dropping `servingProtected` reddens the store and page AC5 specs; line added.
+  - `[low]` `[reject]` The observed AC5 mutation differs from the planned one — the kernel arm is now pinned directly (run 10754) and the mint by its own legs.
+  - `[false]` `[reject]` The LDAP prohibited arm is never exercised — removing it reddens `LdapUpdate.TestAConfirmedTwoFieldEditKeepsEveryOtherField` (run 10755); a direct kernel leg was added anyway (run 10756).
+  - `[false]` `[reject]` `strings.test.mjs` says the table passes 900 — measured 917 literals.
+  - `[low]` `[patch]` The agent's disable is refused at the mint by the published sentence (`TOOL.ARGUMENTS`, as `SslUpdate` does), and no test drove the kernel arm with the agent's tool — added `ServiceUpdate.TestTheKernelRefusesTheServingServiceDisableByName` (`PROHIBITED.SERVINGSERVICE` for `permissions.services.update`, read-only).
+  - `[low]` `[reject]` The Save-side serving leg bypasses the HTTP route — by design: a route leg on the serving service writes it if the refusal breaks, which the Never list forbids; the route's gate and envelopes are pinned on `%Service_CallIn` and in `WireSecurityRead`.
+  - `[false]` `[reject]` The floor is declaration-level and skips home and agent — AC4 as ruled names the five administering areas and Logs.
+  - `[low]` `[reject]` The service agent path is proven on the fixture body, not an instance read-back — the body is the stronger pin.
+  - `[low]` `[reject]` Matrix inputs differ from test inputs (262192 carries bit 262144; a probe name over a fixture read; enable and absent at the store and wire tiers) — every row is covered by a test that ran; the matrix names no tier.
+  - `[low]` `[reject]` Rules wider than worded, per-class snapshot, prefix-scoped `RemoveAll` — each refuses only what the vendor would store wrongly, and probes stay in `ocup99*` on the throwaway.
+  - `[low]` `[reject]` In-place edits in shared files — `Prohibited.cls` is not a shared-append file; the `strings.ts` `taskCreate` line reference is forced by the line-reference test after the appended rows, as in 9.8.
+- implementer-reported, not a layer finding: the LDAP / Kerberos list's Enabled column reads No for an enabled configuration (vendor LIST) — deferred.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -299,7 +330,48 @@ Slot A. Every IRIS MCP call carries `server: "ocupilot-slot-a"`, and anything th
 - AC5: remove the `Service` arm, against the mint and the `PortFixture` Save only.
 - Integration: skip the `updated` publish.
 
+**Mutations observed (implement pass; each reverted and the file byte-identical by sha1; ObjectScript recompiled on `ocupilot-ci`, client rebuilt and redeployed before a browser result counted):**
+
+- mutation (AC1): drop ServiceForm from `DESCRIPTOR_EDIT_PAGES` -> `screen-outlet.spec.ts` "Story 9.9" went red.
+- mutation (AC2): drop `target` from the classic-link-card anchor -> `reduced-form.page.spec.ts` "AC1" and `reduced-editors.browser-spec.mjs` "AC1, AC2" went red (bundle rebuilt and redeployed).
+- mutation (AC3, service): make `ServiceUpdate.MergeUpdate` send the changed fields only -> `ServiceUpdate.TestATwoFieldConfirmKeepsEveryOtherField` went red (run 10735).
+- mutation (AC3, LDAP): merge `LDAPHostNames` by concatenation in `LdapUpdate.MergeUpdate` -> `LdapEdit.TestATwoFieldSaveKeepsEveryOtherField` (run 10736) and `LdapUpdate.TestAConfirmedTwoFieldEditKeepsEveryOtherField` (run 10737) went red.
+- mutation (AC4): set `LdapConfigList`'s exemption to exempt and regenerate the mirror -> `tools/floor.test.mjs` "no list-class archetype declares a classic-link exemption" went red.
+- mutation (AC5, disable): make `Prohibited.ServingServiceDisabled` answer 0 -> `ServiceUpdate.TestTheServingServiceIsNeverTurnedOffAndItsAddressesAreMarked` (mint, run 10738) and `ServiceEdit.TestTheServingServiceSaveIsRefusedBeforeAnyWrite` (Save through `HeldPutPort`, which never sends a PUT; run 10739) went red.
+- mutation (AC5, address): drop the serving branch of `Prohibited.ServiceWeakening` -> the destructive-with-consequence legs of `ServiceUpdate.TestTheServingServiceIsNeverTurnedOffAndItsAddressesAreMarked` went red (run 10740).
+- mutation (Integration): skip the `updated` publish in `ReducedFormStore.save` -> `reduced-form.store.spec.ts` and `reduced-form.page.spec.ts` "Integration" went red; the browser Integration legs re-read the list on return and stay green.
+- mutation: drop `Validate` from `ServiceUpdate.ArgumentProblem` -> `ServiceUpdate.TestTheRulesRefuseAtTheMint` red (run 10741); drop the service arm of `GrantsPrivilegeByEffect` -> `ServiceUpdate.TestAWeakeningOrPrivilegedChangeIsMintedDestructive` red (run 10742); let `ServiceRules.EntryShaped` accept `;` -> `ServiceEdit.TestTheRulesRefuseTheSave` red (run 10743); drop `Validate` from `LdapUpdate.ArgumentProblem` -> `LdapUpdate.TestTheRulesRefuseAtTheMint` red (run 10744); drop the flags range check -> `LdapEdit.TestTheRulesRefuseTheSave` red (run 10745); answer a literal for `SERVINGSERVICE` in `ReasonFor` -> `RefusalCopy` red (run 10746); drop the `SERVESOCUPILOT` branch of `consequenceSentence` -> `proposal-view.test.mjs` red; drop the card from the page template -> three `reduced-form.page.spec.ts` legs red.
+
+**Mutations observed (review pass, same discipline):**
+
+- mutation (AC5, client): drop `servingProtected: true` from `SERVICE_FORM` -> `reduced-form.store.spec.ts` and `reduced-form.page.spec.ts` "AC5" went red.
+- mutation (AC5, kernel on the agent's tool): remove the `service` branch from `Prohibited.Prohibits` -> `ServiceUpdate.TestTheKernelRefusesTheServingServiceDisableByName` went red (run 10754).
+- mutation (AC3, LDAP Save body): `LdapSave.Update` sends `tChanged` -> `LdapEdit.TestTheSaveSendsTheCompleteBody` went red, alone (run 10752).
+- mutation (AD-8): remove the Gate call from `ServiceSave.HandleUpdate` -> `WireSecurityRead.TestTheReducedFormsRefuseACallerWithoutTheirPairs` went red (run 10753).
+- mutation (LDAP kernel arm): remove the `ldap-configuration` branch from `Prohibited.Prohibits` -> `LdapUpdate.TestTheKernelSweepsTheReviewedFew` and `TestAConfirmedTwoFieldEditKeepsEveryOtherField` went red (run 10756).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** Two merge-write tools (`permissions.services.update`, `security.ldap.update`) with shared rules and AD-55 Saves (`GET /services/form`, `PUT /services/:id`, `GET /ldap/form`, `PUT /ldap/:id`); the `service` and `ldap-configuration` prohibited arms (`PROHIBITED.SERVINGSERVICE` on disabling `%Service_WebGateway`; `SERVICE.SERVESOCUPILOT` and `SERVICE.UNAUTHENTICATED` effects; an address given a privileged role marked destructive; LDAP reviewed-few); two id rules and two mutating types; two `form-page` descriptors exempt to the classic list pages (SM-C1 = 3); one `ReducedFormStore` and `ReducedFormPage` rendering `SERVICE_FORM` and `LDAP_FORM`; `floor.test.mjs`; `reduced-editors.browser-spec.mjs`.
+
+**Files.** Server: `Area/Permissions/{ServiceRules,ServiceSave}.cls`, `Area/Security/{LdapRules,LdapSave}.cls`, `Screen/Tool/{ServiceUpdate,LdapUpdate}.cls`, `Screen/Descriptor/{ServiceForm,LdapConfigForm}.cls` (new); `Api/{Router,Error}.cls`, `Kernel/EntityRef.cls`, `Kernel/Proposal/Prohibited.cls`, `Port/AdminPort.cls`, `Screen/Tool/{Classification,ToolFields}.cls`, the two list descriptors' docs. Tests: `Test/{ServiceUpdate,ServiceEdit,LdapUpdate,LdapEdit,ServiceLdapProbe,ServiceSaveHeldFixture,LdapSaveHeldFixture}.cls` (new) and the rosters. Client: `shell/reduced-form.page.ts`, `core/reduced-form.store.ts` with specs, `areas/{permissions/service-form,security/ldap-form}.ts`, `screen-outlet.ts`, `proposal-view.ts`, `strings.ts`, `screens.generated.ts`, `_components.scss`, `angular.json`; EXPERIENCE.md six Fixed-strings rows; `ci-throwaway.sh` `OCUPILOT_ALLOW_SERVICE_CONFIG` block.
+
+**Measured and applied.** The capability mask is `Security.Services`' `AutheEnabledCapabilities`; LDAP probe names are `ocup99*.invalid` (the vendor lower-cases a name created with `LDAPFlags`, appends `.com`, and `Modify` refuses a non-domain name, #908); the serving-service Save legs use `OcuPilot.Test.HeldPutPort` (records a PUT, never sends it), since `PortFixture` forwards one.
+
+**Review.** 18 findings (high 1, medium 2, low 12, false 3): 6 patched (1 high, 2 medium, 3 low), 12 rejected with reasons in the Review Triage Log, 1 implementer-reported item deferred. The sweep then found `AuditingUpdate`'s prohibited-code count still at 17; patched to 18 (run 11004).
+
+**Follow-up review recommended: true.** Patched by verdict: high 1, medium 2, low 3. Unverified risk: the review-pass tests (`WireSecurityRead.TestTheReducedFormsRefuseACallerWithoutTheirPairs`, `LdapEdit.TestTheSaveSendsTheCompleteBody`, `ServiceUpdate.TestTheKernelRefusesTheServingServiceDisableByName`, `LdapUpdate.TestTheKernelSweepsTheReviewedFew`) were written by the stage agent after the review layers ran and have had no independent review; and the new arming block has run only through the epic-9 shim on the reused `ocupilot-ci`, not on CI's fresh throwaway.
+
+**Verification.**
+
+- ObjectScript sweep (once, `ocupilot-ci`, one class per call): 246 classes, 2,147 tests, runs 10758-11003; `%UnitTest_Result` probe after the `AuditingUpdate` re-run: 2,146 passed, 1 failed -- `WireSecurityRead.TestTaskHistoryPairSetsAreEnforcedForARealPrincipal`, the known ~2,000-row task-history residue (DW-1425/DW-1468).
+- Client: tool tests 1,405/1,405; component tests 1,206/1,206; `check-objectscript` 0 problems (814 files), its harness 130 OK, `lint-docs` clean.
+- Browser (rebuilt, deployed to `ocupilot-ci`, each file alone): reduced-editors 5/5, classic-link-card 2/2, permissions 5/5, security 4/4, a11y-structural-invariants 10/10. `%Service_WebGateway` read back unchanged (`Enabled` true, `AutheEnabled` 32, no addresses); `%Service_CallIn` restored.
+- Bundle initial total 1,560,536 B; `maximumWarning` raised from 1551kB to 1561kB with its pinned literal in `ui/tools/angular-json.test.mjs`.
+
+**Residual risks.** During manual probing the handoff subagent sent one disable Save for `%Service_WebGateway` on `ocupilot-ci`; it was refused 403 before any port write, and the service reads back unchanged. The LDAP / Kerberos list's Enabled column is wrong for an enabled configuration (deferred). The `strings.ts` `taskCreate` line reference (`:543` -> `:549`) is an in-place edit that Epic 12's appended rows will also shift.
+
+footprint_extensions: `src/OcuPilot/Kernel/Proposal/Mint.cls`, `src/OcuPilot/Test/{PortFixture,WireOAuthRead,WireSecurityRead,EntityRef,AuditingUpdate,ServiceSaveHeldFixture,LdapSaveHeldFixture}.cls`, `ui/src/app/core/proposal-view.ts`, `ui/src/app/shell/screen-outlet.spec.ts`, `ui/src/styles/_components.scss`, `ui/browser/structural-baseline.json`, `ui/tools/{entity-ref,screen-mirror,navigation,strings,self-protection,proposal-view,angular-json,classic-links}.test.mjs`.

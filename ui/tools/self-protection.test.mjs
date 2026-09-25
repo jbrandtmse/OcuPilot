@@ -257,6 +257,9 @@ const KERNEL_REFUSALS = [
   // Story 9.5: OcuPilot's own provider SSL/TLS configuration, whose four fields and whose Delete the
   // editor and the list draw refused before a click with this same sentence.
   ['OCUPILOTSSL', 'sslRefusalOcuPilot'],
+  // Story 9.9: the service OcuPilot is served through, whose Enabled the service form draws
+  // unavailable before a click with this same sentence.
+  ['SERVINGSERVICE', 'serviceRefusalServing'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {

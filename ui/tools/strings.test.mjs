@@ -542,9 +542,14 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   //
   // Story 11.10 moves the bound to 750 under the same protocol: its one row publishes one literal,
   // "Jump to latest", and takes the table to 701.
+  //
+  // Story 9.9 moves the bound to 1000 under the same protocol: its six rows publish thirty-one
+  // literals -- the two reduced forms' titles, fields, list controls and captions, their bare and
+  // absent sentences, the serving-service refusal, two effects and six prompts -- and take the
+  // table past 900.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 900,
-    `expected between 150 and 900 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 1000,
+    `expected between 150 and 1000 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

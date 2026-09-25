@@ -138,6 +138,12 @@ export const CONSEQUENCE_NOPEERCHECK = 'SSL.NOPEERCHECK';
 /** The consequence the kernel marks a task create that runs as another account with (AD-10, Story 9.7). */
 export const CONSEQUENCE_RUNSASOTHER = 'TASK.RUNSASOTHER';
 
+/** The consequence the kernel marks a change to the addresses or methods of the service OcuPilot is served through with (AD-10, Story 9.9). */
+export const CONSEQUENCE_SERVESOCUPILOT = 'SERVICE.SERVESOCUPILOT';
+
+/** The consequence the kernel marks a change letting any other service admit unauthenticated connections with (AD-10, Story 9.9). */
+export const CONSEQUENCE_SERVICEUNAUTHENTICATED = 'SERVICE.UNAUTHENTICATED';
+
 /**
  * The published sentence for a proposal's `consequence` code, or `''` for no code or one this
  * client publishes nothing for. The sentence is `STRINGS`'; the code is the kernel's (AD-39).
@@ -150,6 +156,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_REPOINTED) return STRINGS.webAppRepointedEffect;
   if (code === CONSEQUENCE_NOPEERCHECK) return STRINGS.sslEffectNoPeerCheck;
   if (code === CONSEQUENCE_RUNSASOTHER) return STRINGS.taskRunAsOtherEffect;
+  if (code === CONSEQUENCE_SERVESOCUPILOT) return STRINGS.serviceEffectServesOcuPilot;
+  if (code === CONSEQUENCE_SERVICEUNAUTHENTICATED) return STRINGS.serviceEffectUnauthenticated;
   return '';
 }
 

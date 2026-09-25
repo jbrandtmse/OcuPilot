@@ -52,6 +52,12 @@ XData Tools
   {"path":"Resources[].Name","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Resources[].Permissions","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
 ]},
+"permissions.services.update": {"fieldList":"Security.Service","fields":[
+  {"path":"AutheEnabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"ClientSystems[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"Enabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
+]},
 "permissions.users.create": {"fieldList":"Security.User","fields":[
   {"path":"AccountNeverExpires","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},
   {"path":"AutheEnabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
@@ -118,6 +124,38 @@ XData Tools
 "security.audituserevents.update": {"fieldList":"Security.Audit.Event:Security.Events","fields":[
   {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
+]},
+"security.ldap.update": {"fieldList":"Security.LDAP","fields":[
+  {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPAttributes[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPAttributeComment","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPAttributeFullName","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPAttributeMail","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPAttributeMobile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPAttributeMobileProvider","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPAttributeNameSpace","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPAttributeRoutine","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPAttributeRoles","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPAttributeEscalationRoles","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPBaseDN","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPBaseDNForGroups","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPCACertFile","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPClientTimeout","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPFlags","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPGroupId","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPHostNames[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPInstanceId","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"OrganizationId","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"GroupId","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"InstanceId","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"RoleId","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"EscalationRoleId","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"RoutineId","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"NamespaceId","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"DelimiterId","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPSearchUsername","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPServerTimeout","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
+  {"path":"LDAPUniqueDNIdentifier","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
 ]},
 "security.secrets.create": {"fieldList":"Wallet.Secret:%Wallet.KeyValue","fields":[
   {"path":"AllowedHosts","shape":"array","templateType":"array","itemType":"","class":"opaque"},

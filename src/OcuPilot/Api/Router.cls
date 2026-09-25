@@ -155,6 +155,10 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/tasks/check" Method="POST" Call="TaskCheck"/>
   <Route Url="/tasks/:id" Method="PUT" Call="TaskUpdate"/>
   <Route Url="/tasks" Method="POST" Call="TaskCreate"/>
+  <Route Url="/services/form" Method="GET" Call="ServiceFormRead"/>
+  <Route Url="/services/:id" Method="PUT" Call="ServiceUpdate"/>
+  <Route Url="/ldap/form" Method="GET" Call="LdapFormRead"/>
+  <Route Url="/ldap/:id" Method="PUT" Call="LdapUpdate"/>
 </Routes>
 }
 
@@ -1065,6 +1069,34 @@ ClassMethod TaskUpdate(pId As %String) As %Status
 ClassMethod TaskCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Task.TaskSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /services/form</code>: the service form's read
+/// (Story 9.9).</p>
+ClassMethod ServiceFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.ServiceRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /services/:id</code>: the service form's Save,
+/// resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod ServiceUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Permissions.ServiceSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ldap/form</code>: the LDAP configuration form's
+/// read (Story 9.9).</p>
+ClassMethod LdapFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.LdapRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /ldap/:id</code>: the LDAP configuration form's
+/// Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod LdapUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.LdapSave).HandleUpdate(pId)
 }
 
 }

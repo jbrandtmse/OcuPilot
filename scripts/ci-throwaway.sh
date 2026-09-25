@@ -208,6 +208,7 @@ services:
       # classes: RoleSave, RoleUpdate
       # classes: SslWire
       # classes: TaskWire
+      # classes: ServiceEdit, LdapEdit, ServiceLdapProbe
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -281,6 +282,14 @@ services:
       # OCUPILOT_ALLOW_ERROR_SEED as well, because it seeds through that class's own guarded helper.
       # classes: ErrorDelete
       OCUPILOT_ALLOW_ERROR_DELETE: "1"
+      # Writes a service and LDAP configurations in this instance's own security database through
+      # the shipped Save and confirm paths. The service classes write only %Service_CallIn, which is
+      # disabled, and restore the snapshot they took; they refuse outright where it is enabled. The
+      # LDAP classes create ocup99* configurations and delete each once its exact name reads back.
+      # The service OcuPilot is served through is never written: its legs mint only, or save
+      # through a port that records a PUT and never sends it.
+      # classes: ServiceEdit, LdapEdit, LdapUpdate, ServiceLdapProbe
+      OCUPILOT_ALLOW_SERVICE_CONFIG: "1"
       # Arms the turnprobe provider row OcuPilot.Kernel.Provider.Catalog resolves only under it,
       # and with it the classes that spawn turn jobs or Test connection children against that row's
       # scripted adapter. Either is a separate process no in-process stub reaches, so the row is
