@@ -2,9 +2,10 @@
 title: 'Story 15.8: Columns you can read'
 type: 'feature'
 created: '2026-09-25'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '178758eedb7592a5f233dbe5db5bf8b89082970c'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-15-context.md'
@@ -179,8 +180,38 @@ deferred: []
 ## Spec Change Log
 
 - 2026-09-25 spec gate (runner): `## Verification` gains the full ObjectScript sweep once before `dev_complete` (orchestrator ruling; Rule 29).
+- 2026-09-25 implement: DW-1166 applied. The initial total measured 1,589,950 B (1kB = 1,000 B), past the 1577kB warning, so `maximumWarning` moves to 1670kB (5% above) in `ui/angular.json` and `ui/tools/angular-json.test.mjs`.
+- 2026-09-25 implement: footprint extension `ui/browser/list-spec.mjs`. `clickRowCentre` now aims at the middle of the part of the target its scroll viewport shows and clicks that point, because a row wider than its frame put its middle outside the frame and reddened `screen-height` (AC6) on Audit and Locks.
 
 ## Review Triage Log
+
+### 2026-09-25 — Review pass
+
+- verdicts: 23 findings — high 0, medium 9, low 9, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Tooltip hides on scroll, resize, blur and pointer-out are unpinned — harness Dismissal case added, one mutation red per path.
+  - `[medium]` `[patch]` The chord hide is unpinned and grid-only, so a pointer tooltip blocks Ctrl/Cmd+B and +I with focus elsewhere (shared root with the intent-alignment chord row) — the hide moved to a document capture listener; Dismissal covers Ctrl in the grid and Cmd outside it.
+  - `[medium]` `[patch]` "Sorted or not" is never exercised at a label floor — harness `sort()` hook and "Sorted or not" case; arrow-slot mutation red.
+  - `[medium]` `[patch]` The keyboard resize's label floor is pinned only in `resizedWidth` — harness "Keyboard floor" case; floor-0 mutation red.
+  - `[medium]` `[patch]` The flip-above placement never runs — harness Placement case at 420px high; mutation red.
+  - `[low]` `[patch]` Geometry's in-file mutation comment claims a result the spec records as false — comment now names the compound mutation.
+  - `[low]` `[reject]` The Drag case's `selection: []` half cannot plausibly fail — it guards a stated clause at no cost; no user harm.
+  - `[false]` `[reject]` Sub-clauses of AC1, AC2 and AC4 lack their own mutation lines — Rule 19 asks one per AC, and every AC has one.
+  - `[low]` `[patch]` `template.split(' ')[2]` depends on Name's track shape — the assertion now matches both leading px tracks.
+  - `[medium]` `[patch]` Measured label widths never reach an unsized track under test — jsdom case with 300px labels; empty-map mutation red.
+  - `[low]` `[reject]` The `document.fonts.ready` re-measure is unexercised — needs font-load control; the Design Notes risk line covers it.
+  - `[medium]` `[patch]` The Drag case cannot tell a label floor from a kind-default floor — Drag asserts below 240; default-floor mutation red.
+  - `[low]` `[reject]` `{"Gone":200}` stays in the store and is re-saved — the Always rule has render ignore it; harm needs a field rename, and pruning needs the store to learn the declaration.
+  - `[medium]` `[patch]` No hide path and no flip is asserted on any surface — same entry as the Dismissal and Placement rows above.
+  - `[low]` `[reject]` No hide on an ancestor scroll, a panel resize or another column's keyboard resize — the spec names viewport scroll, window resize and blur, and a pointer tooltip already hides when the pointer leaves its cell.
+  - `[medium]` `[patch]` Shell chords are inert while a pointer tooltip is stacked and focus is outside the grid — fixed with the chord row above; Escape reaching the tooltip first is the spec's rule.
+  - `[false]` `[reject]` The drag's live width sits in a component signal — the spec's Tasks make drag state component-local; the committed width lives in the store.
+  - `[low]` `[patch]` Geometry does not observe the hit area's own geometry — same entry as the Geometry comment row.
+  - `[false]` `[reject]` `clickRowCentre` changes every list spec — it still hit-tests the exact point it clicks, and `screen-height` is green.
+  - `[false]` `[reject]` The budget moved to 1670kB — DW-1166, measured 1,590,090 B.
+  - `[false]` `[reject]` EXPERIENCE.md and DESIGN.md gain rows beyond the strings — the Tasks require them.
+  - `[low]` `[patch]` The Integration case sized Full name, not the AC's Name — it now sizes both.
+  - `[low]` `[patch]` Reveal and the keyboard tooltip are never combined — Reveal asserts the tooltip after its scroll.
 
 ## Design Notes
 
@@ -266,7 +297,45 @@ Run one test command at a time.
 - AC7: remove the link floor → the gate is red with 4 fresh keys.
 - Integration AC: key widths by label instead of field → `column-widths` Restore red.
 
+Results (2026-09-25, `ocupilot-ci`; each reverted, tree byte-identical by `shasum`; bundle or harness rebuilt and redeployed before every browser read):
+
+- mutation: `COLUMN_DEFAULT_PX.name` 240 → 40 → `table-model.test` "each kind takes its default" red; harness Defaults red.
+- mutation: head scroll sync removed from `onViewportScroll` → harness Overflow red.
+- mutation: `resizedWidth` floor 1 instead of the label → `table-model.test` "a resize never goes below the label" red; harness Drag red.
+- mutation: width announcement removed → `data-table.spec.ts` "resize … announce the width" red.
+- mutation: `COLUMN_RESIZE_STEP_PX` 8 → harness Keyboard red.
+- mutation: `widths` dropped from `rememberView` → `screen-store.test` "a width set on one store is restored" red; `column-widths` Integration AC red.
+- mutation: `widths: {}` written with none set → `screen-store.test` "byte-identical" red.
+- mutation: `storedWidths` accepts any number → `screen-store.test` "each bad entry is dropped" red; `setColumnWidth` without `isColumnWidth` → "refused" red.
+- mutation: `cutText` ignores `scrollWidth > clientWidth` → harness Not cut red.
+- mutation: the pointer timer shows the tooltip without `cutText`'s answer (`cutText(target) || 'x'`) → `data-table.spec.ts` "on a skeleton cell shows none" red.
+- mutation: `[title]="cell.view.text"` on the text span → `data-table.spec.ts` no-title test red.
+- mutation: pointer-out onto the tooltip hides it → harness Cut cell red; the tooltip's `OverlayStack` entry removed → Cut cell red (Escape).
+- mutation: `revealActiveCell` skipped → harness Reveal red; `updateFocusTooltip`'s show removed → harness Keyboard tooltip red.
+- mutation: hit area in flow at `height: 40px` alone → Geometry stays green, because `.ocu-data-table-row` fixes the height; with the row's `height` also turned into `min-height` → Geometry red (heights 41 and 36).
+- mutation: link floor removed → harness DW-1586 red; the structural gate red with exactly the 4 `DW-1586` keys fresh.
+- mutation: width stored under the column label → `column-widths` Integration AC red (it sizes Full name, whose label is not its field; on Name, label and field coincide and it stayed green).
+- mutation: Home's Shortcuts `dl` removed → `home.page.spec.ts` Story 15.8 row red; `SHORTCUT_KEYS` naming an unknown key → `about.test` red.
+- mutation: `layout` built over an empty label map → `data-table.spec.ts` "a header label wider than its kind's default floors its column" red.
+- mutation: `hideTooltip` removed from `onViewportScroll`, `onWindowResize`, `onGridFocusOut` or `onTooltipLeave` → harness Dismissal red on its scroll, resize, blur or pointer-out case; the document capture listener for chords removed → Dismissal red on "Ctrl in the grid".
+- mutation: `placeTooltip` always below the cell → harness Placement red.
+- mutation: the sort arrow's `inline-size` removed → harness "Sorted or not" red.
+- mutation: `resizeActiveColumn` floor 0 → harness "Keyboard floor" red (stored 85, drawn 101); the drag floor raised to the kind default → harness Drag red (narrowed only to 240).
+- mutation: widths keyed by label in `resizeActiveColumn` → `column-widths` Integration AC red now that it sizes Name and Full name.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** Kind-based column widths floored at the measured header label, sideways scroll inside the frame with the header following, a drag edge and Alt/Option+Shift+Arrow resize, widths in 15.5's `view` value, one fixed cut-cell tooltip, the name link's 24x24 floor, and the binding on Home's Shortcuts block.
+
+**Files.** `core/table-model.ts` (layout helpers), `core/screen-store.ts` (widths in `view`), `shell/data-table.ts` (layout, resize, tooltip), `core/shortcuts.ts` and `areas/home/home.page.ts` (the binding), `core/strings.ts`, `styles/_components.scss`, `testing/table-harness/main.ts` (`widths`, `rememberedView`, `sort`), EXPERIENCE.md and DESIGN.md (amended rows), `structural-baseline.json` (4 DW-1586 keys removed), `angular.json` and `angular-json.test.mjs` (DW-1166), `browser/list-spec.mjs` (`clickRowCentre` clicks the visible part), two new browser specs, and tests in `table-model`, `screen-store`, `about`, `data-table.spec.ts` and `home.page.spec.ts`.
+
+**Review.** 23 findings: 9 medium and 9 low. Patched: 6 medium entries and 4 low. Rejected: 4 low and 5 false, with reasons in the triage log. Nothing deferred. The one code change from review moves the chord hide to a document capture listener.
+
+**Verification.** `test:tools` 1418/1418. `test:components` 1227/1227. `npm run build`: the seven checkers pass, initial total 1,590,090 B. `lint-docs` clean. The story's seven browser specs 54/54 on a redeployed bundle. Structural gate: 208 found, 208 in baseline, 0 fresh, 0 stale. Smoke on `ocupilot-ci`: 48 passed, 0 failed, 1 skipped. Full ObjectScript sweep on `ocupilot-ci`: 248 classes, 2041 tests. 14 classes refused at class level because this reused throwaway predates their arming variables (`OCUPILOT_ALLOW_TASK_CONTROL`, `_AUDIT_TOGGLE`, `_PROCESS_CONTROL`, `_ERROR_DELETE`, `_SERVICE_CONFIG`). The known `WireSecurityRead` task-history residue fails. The story has no `.cls` change. Every mutation line under `## Verification` was applied, seen red, and reverted.
+
+**Follow-up review: recommended.** Six medium entries were patched. The chord hide's new document capture listener is proven only in the harness. Ctrl/Cmd+B in the real shell with a pointer tooltip showing is not asserted.
+
+**Residual risks.** Most lists now scroll sideways at 1280 with the side bar and panel open. The full browser suite runs only in CI (Rule 29), and CI is the gate for specs that click far-right cells. The shared data-table CSS also reaches the error drill-down's grids.

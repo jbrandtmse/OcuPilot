@@ -9,8 +9,9 @@
  * reachable from `src/main.ts` imports this directory, and `ui/tools/client-lint.mjs` refuses a
  * shipped file that would.
  *
- * `window.ocuHarness` lets the spec re-read with a row set of its own, mark a key changed, and pause
- * the screen's refresh with a live proposal.
+ * `window.ocuHarness` lets the spec re-read with a row set of its own, mark a key changed, pause
+ * the screen's refresh with a live proposal, sort by a field, and read the column widths the store
+ * holds and the last view value it sent.
  */
 
 import {
@@ -32,7 +33,7 @@ import { ScreenActions } from '../../core/screen-actions';
 import { createScreenRead } from '../../core/screen-read';
 import { ScreenStores } from '../../core/screen-store';
 import { DataTable } from '../../shell/data-table';
-import { stubAccountPreferences } from '../account-preferences';
+import { lastRemembered, stubAccountPreferences } from '../account-preferences';
 import { tableDeclaration } from '../table-declaration';
 
 /** What `reread` answers the next reads with, instead of the origin. */
@@ -49,6 +50,12 @@ export interface TableHarnessHooks {
   paused(): boolean;
   active(): string;
   selection(): readonly string[];
+  /** The column widths the store holds, by field (Story 15.8). */
+  widths(): Readonly<Record<string, number>>;
+  /** The last `view` value the table sent to the account store, or `''` before any. */
+  rememberedView(): string;
+  /** Sort the table by `field`, as the screen's sort control does. */
+  sort(field: string): void;
 }
 
 declare global {
@@ -85,7 +92,8 @@ const api: Pick<ApiService, 'requestJson'> = {
 };
 
 const bus = new ChangeBus();
-const stores = new ScreenStores({ account: stubAccountPreferences() });
+const account = stubAccountPreferences();
+const stores = new ScreenStores({ account });
 const refresh = new RefreshService({
   stores,
   connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,
@@ -93,7 +101,7 @@ const refresh = new RefreshService({
   namespace: () => NAMESPACE,
   schedule: () => {},
 });
-const store = stores.for(declaration.descriptor, declaration.refreshRates);
+const store = stores.for(declaration.descriptor, declaration.refreshRates, declaration.route);
 const overlays = new OverlayStack();
 
 // The table draws a row action only while a handler is registered for it (DW-389), so every row
@@ -121,6 +129,9 @@ window.ocuHarness = {
   paused: () => refresh.paused(),
   active: () => store.active(),
   selection: () => store.selection(),
+  widths: () => Object.fromEntries(store.columnWidths()),
+  rememberedView: () => lastRemembered(account.calls, declaration.route) ?? '',
+  sort: (field) => store.setSort(field),
 };
 
 /** The page: the table filling the viewport, and the shell's one Escape handler. */

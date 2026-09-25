@@ -510,6 +510,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "Enter a value. An audit event is named by its source, type and name." · "Use 64 characters or fewer." · "Remove the slash. An event's source, type and name are joined with slashes, so none of them can contain one." · "Start with a character other than %. A source or type beginning with % is reserved for the instance's own system events." · "Use 256 characters or fewer." · "Name the event as source/type/name: three parts, none containing a slash." | the user audit event rules measured on the instance (Story 9.10, AD-39; `AUDITEVENT.PART.REQUIRED`, `.PART.LENGTH`, `.PART.SLASH`, `.PART.RESERVED`, `.DESCRIPTION.LENGTH`, `.EVENTNAME.SHAPE`): the server's sentence on the field it names, from either caller, before anything is sent [ADDED 2026-09-24 - see the story change log] |
 | "This is one of the instance's own system events. Change it on the System events list." · "This is a user event. Change it on the User events list." · "This instance already has an audit event with this source, type and name." · "This audit event no longer exists." | an audit event tool given the other list's event (Story 9.10, DW-1575; `AUDITEVENT.SYSTEM`, `AUDITEVENT.USER`), a create whose name is taken in any case (`AUDITEVENT.TAKEN`) and an edit whose event is gone (`AUDITEVENT.ABSENT`), caller-neutral [ADDED 2026-09-24 - see the story change log] |
 | "Auditing" · "Which user events are enabled?" · "Which user events have recorded the most?" · "Register an audit event for my application." | the User events list's suggested prompts (Story 9.10, Story 11.3's contract): a task group and three prompts, declared on its descriptor [ADDED 2026-09-24 - see the story change log] |
+| "Resize the active column" · "Alt/Option+Shift+Left or Right" · "<column> column, <n> px wide" | the data table's column resize (Story 15.8): Home's Shortcuts block lists the binding as its label and its keys, as text after the screen rows; the table's polite status announces a new width, `<column>` resolving to the column's header label and `<n>` to its width in pixels [AMENDED 2026-09-25, Story 15.8] |
 
 ## Component Patterns
 
@@ -570,7 +571,7 @@ Gated entries stay listed and arrow-reachable as non-selectable rows with the re
 
 ### data-table
 
-*Every list.* CDK virtual scroll over rows fetched up to the max-rows cap (default 1,000; persisted per screen with sort and filter). Client-side sort and filter; server-side criteria only where the API searches (Audit database viewer, Task history). Rows `{spacing.row-height}`.
+*Every list.* CDK virtual scroll over rows fetched up to the max-rows cap (default 1,000; persisted per screen with sort, filter and column widths). Client-side sort and filter; server-side criteria only where the API searches (Audit database viewer, Task history). Rows `{spacing.row-height}`. Column widths: a column's default follows its declared kind, never its cells (name and identifier 240px, text 160px, number and status 112px), floored at its header label, which is never cut, sorted or not; a wider frame shares the rest in those proportions, and a column the user sized keeps that width. Columns wider than the content area scroll sideways inside the table's frame, the header following the body, and the page never scrolls sideways. A header edge drags to resize, and Alt/Option+Shift+Right or Left resizes the active cell's column by 16px; neither goes below the header label, and a keyboard resize announces the new width politely. A width the user set is remembered per screen on the instance beside sort, filter and max rows, never in browser storage. A cut cell shows its whole value in a tooltip when the pointer rests on it or the active cell moves onto it, and a cell that is not cut shows none; no cell carries a `title` [AMENDED 2026-09-25, Story 15.8]
 
 **Selection.** Single selection everywhere in Release 1 (Broadcast's multi-select is P1). One click selects the row, and that row becomes the screen context's selected entity; the name cell is a link to the detail or editor route.
 
@@ -747,11 +748,12 @@ Exceptions: Databases list adds *async values arriving*; OpenAPI document viewer
 | Right / Left | data-table row | step into the row's cells (name link, chips, ⋮) and back |
 | Enter | data-table row | open the detail or editor route |
 | Alt/Option+Down · the `contextmenu` event (Shift+F10, the menu key, VO+Shift+M, right-click) | data-table row | open the row-overflow-menu |
+| Alt/Option+Shift+Right / Left | data-table cell | widen or narrow the active cell's column by 16 px, never below its header label, and announce the new width; at row level or on the ⋮ cell, nothing [AMENDED 2026-09-25, Story 15.8] |
 | Enter / Space | tool-call-card | expand or collapse |
 | Left / Right | tabs; panel-resize-handle | switch tab; resize by 16 px |
 | Tab / Shift+Tab | everywhere | reading order: skip link → header → rail → side-bar → content → panel → toasts; a data-table is one stop |
 
-**Mouse.** Click acts. One click selects a row; the name cell navigates; right-click on a row opens the row-overflow-menu. Hover reveals nothing that the keyboard cannot reach. Double-click has no meaning. No drag except the panel-resize-handle — the side-bar is fixed.
+**Mouse.** Click acts. One click selects a row; the name cell navigates; right-click on a row opens the row-overflow-menu. Hover reveals nothing that the keyboard cannot reach. Double-click has no meaning. No drag except the panel-resize-handle and a data-table header edge [AMENDED 2026-09-25, Story 15.8] — the side-bar is fixed.
 
 **Refresh.** Auto-refresh chip (off / rate) on the screens that support it; Refresh action on every list; the browser's own reload is never intercepted. Refresh never resets sort, filter, selection or scroll.
 

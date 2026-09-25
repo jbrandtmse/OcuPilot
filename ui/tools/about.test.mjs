@@ -33,7 +33,8 @@ const core = (name) => join(uiRoot, 'src', 'app', 'core', name);
 
 const { About, ABOUT_PATH, ABOUT_FIELDS, ABOUT_LINKS } = await import(core('about.ts'));
 const { HelpLinks, HELP_PATH, hasClassicPage, helpHrefFor } = await import(core('help.ts'));
-const { SHORTCUT_ROUTES, shortcutScreens } = await import(core('shortcuts.ts'));
+const { SHORTCUT_KEYS, SHORTCUT_ROUTES, shortcutScreens } = await import(core('shortcuts.ts'));
+const { STRINGS } = await import(core('strings.ts'));
 const { bundleIdentity, isStale } = await import(core('build-identity.ts'));
 const { screenForRoute } = await import(core('navigation.ts'));
 
@@ -263,6 +264,17 @@ test('every rendered shortcut carries a labelKey the mirror resolves, so none ad
   for (const screen of shortcutScreens()) {
     assert.notEqual(screen.labelKey, '', `${screen.route} names a label key`);
   }
+});
+
+// Story 15.8: the one key binding the block lists after its screen rows, by its two string keys.
+// Mutation (Rule 19): point `keysKey` at a key the source does not hold -> this goes red.
+test('the Shortcuts key bindings are the column resize, each naming a label and keys the string source holds', () => {
+  assert.deepEqual(SHORTCUT_KEYS, [{ labelKey: 'tableColumnResizeShortcut', keysKey: 'tableColumnResizeKeys' }]);
+  for (const binding of SHORTCUT_KEYS) {
+    assert.ok(Object.hasOwn(STRINGS, binding.labelKey), `${binding.labelKey} is a key`);
+    assert.ok(Object.hasOwn(STRINGS, binding.keysKey), `${binding.keysKey} is a key`);
+  }
+  assert.equal(STRINGS.tableColumnResizeKeys, 'Alt/Option+Shift+Left or Right');
 });
 
 // --- core/build-identity.ts -----------------------------------------------------

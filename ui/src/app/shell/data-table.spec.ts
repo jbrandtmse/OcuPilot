@@ -930,6 +930,157 @@ describe('the data table', () => {
     expect(wired.store.selection()).toEqual([]);
   });
 
+  // Story 15.8's keyboard resize. jsdom lays nothing out, so the width a resize starts from is the
+  // column's own: the width set, else the larger of its label and its kind's default.
+  //
+  // Mutation (Rule 19): drop the `announcement.set` from `resizeActiveColumn` -> the first case goes
+  // red on the status text.
+  it('Story 15.8: Alt/Option+Shift+Right and Left resize the active cell\'s column by 16px, write the store and announce the width', async () => {
+    const wired = await wire(tableDeclaration(), ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const grid = wired.host().querySelector('[role="grid"]') as HTMLElement;
+    const slot = () => wired.host().querySelector('.ocu-data-table-announcement')?.textContent?.trim();
+    grid.focus();
+    for (const key of ['ArrowDown', 'ArrowRight', 'ArrowRight']) {
+      grid.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+      await settle(wired.fixture);
+    }
+    const cell = wired.host().querySelector('[aria-rowindex="2"] [role="gridcell"]:nth-child(2)') as HTMLElement;
+    expect(grid.getAttribute('aria-activedescendant')).toBe(cell.id);
+
+    for (const key of ['ArrowRight', 'ArrowRight', 'ArrowLeft']) {
+      grid.dispatchEvent(new KeyboardEvent('keydown', { key, altKey: true, shiftKey: true, bubbles: true }));
+      await settle(wired.fixture);
+    }
+    expect(wired.store.columnWidths().get('NameSpace')).toBe(240 + 16);
+    expect(slot()).toBe(`${stringFor('headerNamespaceLabel')} column, 256 px wide`);
+    expect(grid.getAttribute('aria-activedescendant')).toBe(cell.id);
+    const header = wired.host().querySelector('.ocu-data-table-header-row') as HTMLElement;
+    expect(header.style.gridTemplateColumns).toContain('256px');
+  });
+
+  it('Story 15.8: with no active data cell the resize keys change nothing and announce nothing, and plain Right still steps', async () => {
+    const declaration = tableDeclaration({ rowActions: [{ id: 'disable', selfProtection: '' }] });
+    const wired = await wire(declaration, ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const grid = wired.host().querySelector('[role="grid"]') as HTMLElement;
+    const slot = () => wired.host().querySelector('.ocu-data-table-announcement')?.textContent?.trim();
+    grid.focus();
+    grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    await settle(wired.fixture);
+    const row = wired.host().querySelector('[aria-rowindex="2"]') as HTMLElement;
+
+    grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', altKey: true, shiftKey: true, bubbles: true }));
+    await settle(wired.fixture);
+    expect(grid.getAttribute('aria-activedescendant')).toBe(row.id);
+    expect(wired.store.columnWidths().size).toBe(0);
+    expect(slot()).toBe('');
+
+    for (let step = 0; step < 6; step += 1) {
+      grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      await settle(wired.fixture);
+    }
+    const trigger = row.querySelector('.ocu-data-table-cell-trigger') as HTMLElement;
+    expect(grid.getAttribute('aria-activedescendant')).toBe(trigger.id);
+    grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', altKey: true, shiftKey: true, bubbles: true }));
+    await settle(wired.fixture);
+    expect(wired.store.columnWidths().size).toBe(0);
+    expect(slot()).toBe('');
+    expect(grid.getAttribute('aria-activedescendant')).toBe(trigger.id);
+
+    grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    await settle(wired.fixture);
+    const note = row.querySelectorAll('[role="gridcell"]')[4] as HTMLElement;
+    expect(grid.getAttribute('aria-activedescendant')).toBe(note.id);
+  });
+
+  // DW-146: a bare `title` cannot be reached by keyboard, so the table carries none; a cut value is
+  // the tooltip's.
+  //
+  // Mutation (Rule 19): add `[title]="cell.view.text"` to the text span -> this goes red.
+  it('Story 15.8: no element under the table carries a title attribute', async () => {
+    const declaration = tableDeclaration({ rowActions: [{ id: 'disable', selfProtection: '' }] });
+    const wired = await wire(declaration, ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    expect(wired.host().querySelectorAll('.ocu-data-table-text').length).toBeGreaterThan(0);
+    expect(wired.host().querySelectorAll('[title]').length).toBe(0);
+  });
+
+  // jsdom lays nothing out, so every element is made to read as cut here: the pointer resting on a
+  // text cell then shows the tooltip, and a skeleton cell, which holds no text or link, still shows none.
+  //
+  // Mutation (Rule 19): show the tooltip after the delay without asking `cutText` -> the skeleton
+  // cell's assertion goes red.
+  it('Story 15.8: the pointer resting on a cut text cell shows the tooltip, and on a skeleton cell shows none', async () => {
+    const scrollWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollWidth');
+    Object.defineProperty(HTMLElement.prototype, 'scrollWidth', { configurable: true, get: () => 100 });
+    try {
+      const wired = await wire(tableDeclaration(), ok(rows(3)));
+      wired.fixture.componentRef.setInput('pendingFields', ['Note']);
+      await wired.refresh.readNow();
+      await settle(wired.fixture);
+      const cell = (column: number) =>
+        wired.host().querySelectorAll('[aria-rowindex="3"] [role="gridcell"]')[column] as HTMLElement;
+      const rest = async (target: Element) => {
+        target.dispatchEvent(new MouseEvent('pointerover', { bubbles: true }));
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        await settle(wired.fixture);
+      };
+      const tooltip = () => wired.host().querySelector('.ocu-data-table-tooltip');
+
+      expect(cell(4).querySelector('.ocu-data-table-cell-skeleton')).not.toBeNull();
+      await rest(cell(4).querySelector('.ocu-data-table-cell-skeleton') as Element);
+      expect(tooltip()).toBeNull();
+
+      await rest(cell(1).querySelector('.ocu-data-table-text') as Element);
+      expect(tooltip()?.textContent?.trim()).toBe('USER');
+      expect(tooltip()?.getAttribute('aria-hidden')).toBe('true');
+    } finally {
+      if (scrollWidth !== undefined) Object.defineProperty(HTMLElement.prototype, 'scrollWidth', scrollWidth);
+      else delete (HTMLElement.prototype as { scrollWidth?: number }).scrollWidth;
+    }
+  });
+
+  // jsdom lays nothing out, so each header label is made to measure 300px: an unsized column's track
+  // then floors at the label, not at its kind's default.
+  //
+  // Mutation (Rule 19): build the layout over an empty label map instead of the measured one -> red.
+  it('Story 15.8: a header label wider than its kind\'s default floors its column', async () => {
+    const measure = Object.getOwnPropertyDescriptor(Range.prototype, 'getBoundingClientRect');
+    Object.defineProperty(Range.prototype, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ width: 300, height: 16, top: 0, left: 0, right: 300, bottom: 16, x: 0, y: 0 }),
+    });
+    try {
+      const wired = await wire(tableDeclaration(), ok(rows(3)));
+      await wired.refresh.readNow();
+      await settle(wired.fixture);
+      const header = wired.host().querySelector('.ocu-data-table-header-row') as HTMLElement;
+      expect(header.style.gridTemplateColumns.startsWith('minmax(301px, 240fr) minmax(301px, 240fr) minmax(301px, 112fr)')).toBe(true);
+    } finally {
+      if (measure !== undefined) Object.defineProperty(Range.prototype, 'getBoundingClientRect', measure);
+      else delete (Range.prototype as { getBoundingClientRect?: unknown }).getBoundingClientRect;
+    }
+  });
+
+  it('Story 15.8: every data header carries an aria-hidden resize hit area that takes no focus, and the rows share one template and minimum width', async () => {
+    const declaration = tableDeclaration({ rowActions: [{ id: 'disable', selfProtection: '' }] });
+    const wired = await wire(declaration, ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const handles = Array.from(wired.host().querySelectorAll('.ocu-data-table-resize')) as HTMLElement[];
+    expect(handles.length).toBe(declaration.table!.columns.length);
+    expect(handles.every((handle) => handle.getAttribute('aria-hidden') === 'true' && !handle.hasAttribute('tabindex'))).toBe(true);
+    const rowsDrawn = Array.from(wired.host().querySelectorAll('.ocu-data-table-row')) as HTMLElement[];
+    const templates = new Set(rowsDrawn.map((element) => element.style.gridTemplateColumns));
+    const minimums = new Set(rowsDrawn.map((element) => element.style.minWidth));
+    expect(templates.size).toBe(1);
+    expect(minimums).toEqual(new Set([`${240 + 240 + 112 + 112 + 160 + 52}px`]));
+  });
+
   it('DW-18 Filtered to zero: a focused grid with no row matching the filter asks for the filter field', async () => {
     const wired = await wire(tableDeclaration(), ok(rows(2)));
     await wired.refresh.readNow();

@@ -1946,7 +1946,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:553 */
+  /** EXPERIENCE.md:554 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2174,6 +2174,12 @@ export const STRINGS = {
   auditUserEventPromptBusiest: 'Which user events have recorded the most?',
   /** EXPERIENCE.md:512 */
   auditUserEventPromptRegister: 'Register an audit event for my application.',
+  /** EXPERIENCE.md:513 */
+  tableColumnResizeShortcut: 'Resize the active column',
+  /** EXPERIENCE.md:513 */
+  tableColumnResizeKeys: 'Alt/Option+Shift+Left or Right',
+  /** EXPERIENCE.md:513 */
+  tableColumnWidthAnnouncement: '<column> column, <n> px wide',
 } as const;
 
 /**

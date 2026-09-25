@@ -374,7 +374,7 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '1577kB', 'a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumWarning, '1670kB', 'a change to this figure must be a reviewed diff, not a silent edit');
   assert.equal(budget.maximumError, '2000kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and

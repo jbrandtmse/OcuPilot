@@ -6,9 +6,9 @@
  * while the component that renders them is being re-created by the router, and state that lived
  * in the component would be lost on the first navigation and fought over on the first tick.
  *
- * **Two lifetimes.** `rate`, `sort`, `direction`, `filter` and `maxRows` are what the user chose,
+ * **Two lifetimes.** `rate`, `sort`, `direction`, `filter`, `maxRows` and the column widths are what the user chose,
  * and survive leaving and returning to the screen -- and a sign-out (Story 15.5, AD-50): the rate
- * and the other four are two rows on the instance, keyed by this screen's route, adopted on the
+ * and the others are two rows on the instance, keyed by this screen's route, adopted on the
  * first answered read of `AccountPreferences`. `data`, `truncated`, `banner`, `lastUpdate`, `selection`, `active`,
  * `changed`, `refusal` and
  * `scroll` are what the instance last said and where the user last was, so they live for as long
@@ -31,6 +31,7 @@
 
 import { AccountPreferences, REFRESH_KIND, VIEW_KIND } from './account-preferences.ts';
 import { screenForDescriptor } from './navigation.ts';
+import { isColumnWidth } from './table-model.ts';
 
 /** The sort directions a table view may hold; `''` takes the declared direction. */
 export type SortDirection = '' | 'asc' | 'desc';
@@ -44,12 +45,16 @@ export const DEFAULT_MAX_ROWS = 1000;
 /** Off, which is every screen's default refresh setting (EXPERIENCE.md "Auto-refresh off"). */
 export const RATE_OFF = 0;
 
-/** What a screen remembers of its table's view: its sort, direction, filter and max rows. */
+/**
+ * What a screen remembers of its table's view: its sort, direction, filter, max rows and the
+ * column widths the user set (Story 15.8), keyed by field.
+ */
 export interface ScreenViewPreference {
   readonly sort: string;
   readonly direction: string;
   readonly filter: string;
   readonly maxRows: number;
+  readonly widths: ReadonlyMap<string, number>;
 }
 
 /**
@@ -105,6 +110,7 @@ export class ScreenStore {
   private sortDirection: SortDirection = '';
   private filterText = '';
   private rowCap = DEFAULT_MAX_ROWS;
+  private widths: ReadonlyMap<string, number> = new Map();
   private rateSeconds = RATE_OFF;
 
   private readonly listeners = new Set<() => void>();
@@ -145,6 +151,7 @@ export class ScreenStore {
       this.sortDirection = view.direction === 'asc' || view.direction === 'desc' ? view.direction : '';
       this.filterText = view.filter;
       this.rowCap = view.maxRows;
+      this.widths = view.widths;
       moved = true;
     }
     if (moved) this.notify();
@@ -169,6 +176,7 @@ export class ScreenStore {
       direction: text(view['direction']),
       filter: text(view['filter']),
       maxRows: typeof cap === 'number' && Number.isSafeInteger(cap) && cap > 0 ? cap : DEFAULT_MAX_ROWS,
+      widths: storedWidths(view['widths']),
     };
   }
 
@@ -424,6 +432,28 @@ export class ScreenStore {
     return true;
   }
 
+  /**
+   * The column widths the user set, in CSS px keyed by field (Story 15.8). A column absent here
+   * takes its kind's default; a field the table does not declare is the table's to ignore.
+   */
+  columnWidths(): ReadonlyMap<string, number> {
+    return this.widths;
+  }
+
+  /**
+   * Set one column's width. Refused, changing and remembering nothing, for an empty field or a
+   * width that is not a positive safe integer of at most `COLUMN_WIDTH_MAX`, as `setMaxRows`
+   * refuses a cap that is not a row count.
+   */
+  setColumnWidth(field: string, px: number): boolean {
+    if (field === '' || !isColumnWidth(px)) return false;
+    if (this.widths.get(field) === px) return true;
+    this.widths = new Map([...this.widths, [field, px]]);
+    this.rememberView();
+    this.notify();
+    return true;
+  }
+
   rate(): number {
     return this.rateSeconds;
   }
@@ -452,12 +482,16 @@ export class ScreenStore {
    */
   private rememberView(): void {
     if (this.route === '') return;
-    const value = JSON.stringify({
+    const view: Record<string, unknown> = {
       sort: this.sortBy,
       direction: this.sortDirection,
       filter: this.filterText,
       maxRows: this.rowCap,
-    });
+    };
+    // Only a screen whose columns the user sized carries `widths`, so every other view is the
+    // value it was before column widths existed.
+    if (this.widths.size > 0) view['widths'] = Object.fromEntries(this.widths);
+    const value = JSON.stringify(view);
     if (value.length > PREFERENCE_VALUE_MAX) return;
     void this.account.setValue(VIEW_KIND, this.route, value);
   }
@@ -465,6 +499,19 @@ export class ScreenStore {
   private notify(): void {
     for (const listener of [...this.listeners]) listener();
   }
+}
+
+/**
+ * The widths a remembered view carries: an object of field to width, each entry of any other shape
+ * dropped on its own. Anything but a plain object reads as no widths.
+ */
+function storedWidths(raw: unknown): ReadonlyMap<string, number> {
+  const widths = new Map<string, number>();
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return widths;
+  for (const [field, px] of Object.entries(raw as Record<string, unknown>)) {
+    if (field !== '' && isColumnWidth(px)) widths.set(field, px);
+  }
+  return widths;
 }
 
 /**

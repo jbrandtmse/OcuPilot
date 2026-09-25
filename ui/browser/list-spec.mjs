@@ -151,9 +151,9 @@ export async function filterToSubset(page, { text, expectRow, total, timeoutMs }
  * painted over the coordinates the rows' layout boxes still occupied, so a pointer at a row's
  * centre reached `.ocu-data-table-footer`. A synthetic event carries no coordinates and is never
  * hit tested, so it reached the handler anyway and no spec could see that a user could not click
- * a row. Here the geometry *is* the assertion: the target's centre is measured,
- * `document.elementFromPoint` at that centre must resolve inside the row, and only then does
- * Puppeteer's own hit-tested `page.click` fire. A regression in the height chain fails this
+ * a row. Here the geometry *is* the assertion: the centre of the target's visible part is measured,
+ * `document.elementFromPoint` at that centre must resolve inside the row, and only then does a real
+ * pointer click fire at that same point. A regression in the height chain fails this
  * helper before it fails anything the click would have caused.
  *
  * Name the target one of three ways: `link: true` for the row's own `.ocu-data-table-link`
@@ -212,7 +212,17 @@ export async function clickRowCentre(page, { text = null, index = 0, cell = null
     const row = document.querySelector('[data-ocu-hit-row]');
     target.scrollIntoView({ block: 'center', inline: 'nearest' });
     const rect = target.getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
+    // A row wider than its table's frame scrolls sideways inside it (Story 15.8), so the centre is
+    // taken over the part its scroll viewport shows.
+    const scroller = target.closest('cdk-virtual-scroll-viewport, .ocu-data-table-viewport');
+    let left = rect.left;
+    let right = rect.right;
+    if (scroller !== null) {
+      const box = scroller.getBoundingClientRect();
+      left = Math.max(left, box.left + scroller.clientLeft);
+      right = Math.min(right, box.left + scroller.clientLeft + scroller.clientWidth);
+    }
+    const x = left + (right - left) / 2;
     const y = rect.top + rect.height / 2;
     const landed = document.elementFromPoint(x, y);
     const describe = (node) =>
@@ -223,7 +233,7 @@ export async function clickRowCentre(page, { text = null, index = 0, cell = null
     return {
       x,
       y,
-      width: rect.width,
+      width: Math.max(0, right - left),
       height: rect.height,
       insideRow: landed !== null && row.contains(landed),
       insideTarget: landed !== null && target.contains(landed),
@@ -244,7 +254,7 @@ export async function clickRowCentre(page, { text = null, index = 0, cell = null
     );
   }
 
-  await page.click('[data-ocu-hit-target]');
+  await page.mouse.click(hit.x, hit.y);
   await page.evaluate(() => {
     for (const node of document.querySelectorAll('[data-ocu-hit-target], [data-ocu-hit-row]')) {
       node.removeAttribute('data-ocu-hit-target');
