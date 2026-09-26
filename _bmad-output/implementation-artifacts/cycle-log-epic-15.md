@@ -272,3 +272,14 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-25T12:31:16Z	Story 15.9	smoke_complete	method=browser result=pass iterations=2 defects_caught=0 evidence=bundle_1.59MB_rebuilt_and_deployed_to_ocupilot-ci;users-editor+account-and-filter_12/12;earlier_smoke.sh_49/49,gate_208/208_0_stale;CI_36132370204_success_8/8 model=claude-opus-5-5
 2026-09-25T12:31:16Z	Epic 15	ledger_burndown_complete	scope=15-8,15-9(orchestrator_bound;supersedes_the_earlier_entry_for_the_15.9_rework) open_before=2(DW-1586,DW-1597) resolved=5(DW-1586,1597,1648,1649,1651) terminal=8(DW-1652..1659) chartered=0 chartered_size=0 overflow=0 reowned=0 to_decision_sheet=0 open_after=0 cap=8 story_max=12 filed_this_epic=11(DW-1648,1649,1651..1659) closed_this_epic=13 drain_ratio=1.18 also=DW-1335_resolved-by_15-9(owner_16-15,no_epics.md_bullet)
 2026-09-25T12:31:16Z	Epic 15	epic_runner_complete	stories_done=15.8,15.9 ready_for_merge=true head=this_commit(CI_runs_on_it) baseline=208->208_this_run(212->208_at_15.8) protocol_violations=1(15.9_cr_layers_backgrounded,no_consequence)
+2026-09-26T03:11:27Z	Epic 15	lead_model_gate	model=claude-opus-5-5 action=proceed role=epic-runner resume_at=15.10 scope=15.10_only
+2026-09-26T03:11:27Z	Epic 15	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=gh
+2026-09-26T03:11:27Z	Epic 15	telemetry_gate	pending=0 action=none note=checkpoint_offers_pre_answered_decline(model-overrides.yaml)
+2026-09-26T03:11:27Z	Epic 15	slot_verified	slot=b mcp_profile=ocupilot-slot-b baseUrl=http://localhost:52775 docker_port=52775 throwaway=ocupilot-b-ci(52777,not_running) bootstrap=node_modules_ok
+2026-09-26T03:11:27Z	Epic 15	epic_branch_checked_out	repos=. head=7d51837b (fresh_worktree_from_feature)
+2026-09-26T03:11:27Z	Epic 15	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=56 status=final read=AD_index+AD-19,AD-47,conventions(Theme,Client_asset_homes)
+2026-09-26T03:11:27Z	Epic 15	ledger_load	total=1134 open=3 routed=232 escalated=0 decision_pending=1 terminal=898 owner_unknown=0 owned_15-10=0 reowned_none=0
+2026-09-26T03:11:27Z	Epic 15	sprint_planning_complete	gate=PASS mode=script_validate valid=true key_15-10=backlog note=story_added_by_orchestrator_7d51837b model=claude-opus-5-5
+2026-09-26T03:11:27Z	Epic 15	retro_review_skipped	reason=runner_resume_retro_review_skip(orchestrator) rule27=no_15.0
+2026-09-26T03:13:04Z	Epic 15	epic_context_compiled	reason=planning_artifact_newer(15.10_added_7d51837b) model=claude-opus-5-5 lines=99
+2026-09-26T03:13:04Z	Story 15.10	stage_spawned	stage=plan spawn_at=2026-09-26T03:13:04Z model=opus agent_name=15-10-the-header-logo-on-a-white-tile-plan-1 cycle_iteration=1
