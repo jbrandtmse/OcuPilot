@@ -275,6 +275,18 @@ flowchart LR
 - **Ports 52774 or 1973 are taken:** change the host side of the two port mappings in
   `docker-compose.yml`.
 
+## Community ideas
+
+OcuPilot implements two ideas from the [InterSystems Ideas portal](https://ideas.intersystems.com/)
+that carry Community Opportunity status:
+
+- [DPI-I-516](https://ideas.intersystems.com/ideas/DPI-I-516), **Integration with LLMs like GPT,
+  llama:** the agent runs on OpenAI's GPT models, Anthropic's Claude, Google Gemini, or a local
+  model such as Llama served by Ollama, vLLM or LM Studio.
+- [DPI-I-574](https://ideas.intersystems.com/ideas/DPI-I-574), **AI analysis of error logs:** the
+  agent explains any application error, `messages.log` line, alert or audit record in front of it
+  and suggests what to do next.
+
 ## Roadmap
 
 Improvements continue through the contest's voting week, released to `main` in tested batches:
@@ -282,6 +294,7 @@ Improvements continue through the contest's voting week, released to `main` in t
 - a try-it console that sends a request from the REST API explorer;
 - a read-back line showing that the instance now holds what a change wrote;
 - a performance row on Home, and impact lines on removals ("3 users hold this role");
+- older `messages.log` files in the Logs area ([DPI-I-966](https://ideas.intersystems.com/ideas/DPI-I-966));
 - the remaining log viewers and a unified log hub;
 - the agent handing you a script instead of running a change, and tests that content the agent
   reads cannot steer it.
