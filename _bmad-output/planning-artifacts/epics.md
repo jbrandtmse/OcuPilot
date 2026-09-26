@@ -748,7 +748,7 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 
 **Owner triage, 2026-09-24 (reliability), high priority.** Live turns on Claude Opus 5 failed intermittently - three of about ten in an hour - with "The turn stopped at provider": the connection broke within a second of the call, before any reply (`<READ>` in `%Net.HttpRequest`), and a transport failure is never retried. Separately, the panel reported a confirmed create as "was updated". Story 10.6 fixes both; it runs alone on slot B at Epic 12's next story boundary.
 
-**Owner plan, 2026-09-25 (voting week).** Epics 14 and 16 run in the voting week, where improvements are allowed, starting once the submission build is cut. Order: Story 16.1 (the try-it console), then Stories 16.17 to 16.19 (the read-back line, Home's performance row and impact lines on removals, added from the contest survey the same evening), then Stories 16.8 and 16.9 (the secondary log viewers and the hub); then Story 14.1 (the copy-out draft), Stories 14.3 and 14.8 (defanging and the seeded-injection test), Story 16.3 (effective privileges) and Story 16.16 (the agent audit viewer); then the rest of Epic 16; then Story 14.5, with Stories 14.2, 14.4 and 14.6 last. The first two groups close the gaps a judge sees when comparing entries and show what only the agent does. `main` moves only at planned releases - after each of the first two groups and at the end of the week - each a pull request with green CI, a clean-clone check and a new package version, so a judge never installs a half-finished build. Story 14.7 is scratched: a user acting on a screen still types the target's name, while a destructive agent proposal takes the destructive bar, a destructive Confirm and the user's own press, without a typed name. FR-17 and Stories 5.10 and 7.2 are amended to match. Epics 18 to 22 stay after the contest.
+**Owner plan, 2026-09-25 (voting week).** Epics 14 and 16 run in the voting week, where improvements are allowed, starting once the submission build is cut. Order: Story 16.1 (the try-it console), then Stories 16.17 to 16.19 (the read-back line, Home's performance row and impact lines on removals, added from the contest survey the same evening) and Story 16.20 (older messages.log files, Community Idea DPI-I-966), then Stories 16.8 and 16.9 (the secondary log viewers and the hub); then Story 14.1 (the copy-out draft), Stories 14.3 and 14.8 (defanging and the seeded-injection test), Story 16.3 (effective privileges) and Story 16.16 (the agent audit viewer); then the rest of Epic 16; then Story 14.5, with Stories 14.2, 14.4 and 14.6 last. The first two groups close the gaps a judge sees when comparing entries and show what only the agent does. `main` moves only at planned releases - after each of the first two groups and at the end of the week - each a pull request with green CI, a clean-clone check and a new package version, so a judge never installs a half-finished build. Story 14.7 is scratched: a user acting on a screen still types the target's name, while a destructive agent proposal takes the destructive bar, a destructive Confirm and the user's own press, without a typed name. FR-17 and Stories 5.10 and 7.2 are amended to match. Epics 18 to 22 stay after the contest.
 
 **Owner triage, 2026-09-25 (logo), high priority.** The header draws the reversed lockup, a white wordmark on a transparent cut-out whose anti-aliased edges fringe against the navy chrome. Story 15.10 draws the navy-wordmark lockup on a white rounded tile instead, as the demo landing page does, and amends DESIGN.md at origin. It runs alone on slot B, free since Epic 12 merged, and the submission cut waits for it.
 
@@ -888,7 +888,7 @@ A user makes the portal their own - own password, favorites, recents, menu searc
 
 ### Epic 16: The remaining polish-week extras
 
-The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19).
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20).
 
 **FRs covered:** FR-74, FR-76, FR-77, FR-78
 
@@ -6067,7 +6067,7 @@ So that the first thing I see looks finished.
 
 ## Epic 16: The remaining polish-week extras
 
-The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19).
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Voting week, in the owner's order of 2026-09-25. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16). Three stories from the contest survey of 2026-09-25 follow: the read-back line, Home's performance row and impact lines on removals (16.17 to 16.19), then older messages.log files from Community Idea DPI-I-966 (16.20).
 
 **Applies to every story in this epic.** Nothing here may break a Release 1 screen or a Release 1 agent write; anything that risks either waits for Stage 2. Each screen is one descriptor with its derived read tool; each action ships with its confirmed write tool and is added to Epic 14's governance baseline rather than left to default.
 
@@ -6480,6 +6480,32 @@ So that I do not break access I did not know about.
 - **Given** an impact that cannot be computed because the caller may not read a source
 - **When** the line renders
 - **Then** it says which part could not be checked rather than reporting no impact, and the counts are read fresh when the proposal is minted or the dialog opens.
+
+### Story 16.20: Older messages.log files
+
+As a developer-administrator finding out what happened before messages.log rolled over,
+I want to open the older messages files from the portal,
+So that I do not need a shell on the server to read them.
+
+**Community Idea DPI-I-966, owner decision 2026-09-25.** "Option to show older message.log in IRIS SMP" has Community Opportunity status; the classic portal shows only the current file.
+
+**Acceptance Criteria:**
+
+- **Given** the messages.log viewer
+- **When** it opens
+- **Then** it offers a file choice listing `messages.log` and every rotated messages file in the instance's manager directory, such as `messages.old_20260412_1`, newest first, each with its size and last-modified time.
+
+- **Given** an older file is chosen
+- **When** it loads
+- **Then** it pages, searches and filters exactly as `messages.log` does, its address names the file so it can be shared, and the agent's screen context and "explain this entry" work on its lines.
+
+- **Given** the file choice reaches the server
+- **When** it is resolved
+- **Then** only a name matching the rotated messages-file pattern inside the manager directory is accepted - never a caller-supplied path - and reading it requires exactly the privilege `messages.log` requires.
+
+- **Given** the README and the Open Exchange listing
+- **When** this story completes
+- **Then** both name DPI-I-966 among the Community Ideas OcuPilot implements.
 
 ## Epic 17: The Open Exchange listing and the contest submission
 
