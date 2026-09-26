@@ -46,3 +46,7 @@
 2026-09-26T14:57:25Z	Story 23.1	ledger_adjudicated	batch=B4+B8 owned=13 resolved=13 reowned=0 terminal=13 slice_range_end_cleanup_after=29
 2026-09-26T14:57:25Z	Story 23.1	smoke_complete	batch=B4+B8 method=browser result=pass iterations=1 defects_caught=0 evidence=definitions.browser-spec_9/9_redeployed;process-control_3/3;a11y-structural-invariants_12/12 model=claude-opus-5-5
 2026-09-26T14:57:25Z	Epic 23	spine_updated	ad=conv(Concurrent_writes) reason=rule5 by=runner story=23-1-the-range-end-cleanup entries=DW-1701 lint=ok(preexisting_low_only)
+2026-09-26T14:57:54Z	Story 23.1	committed	batch=B4+B8 sha=0da7618e code=e026c64c,f9dc5551 ci=pending run=36250263918 amendments=spine_conv_concurrent_writes(DW-1701)
+2026-09-26T15:39:07Z	Story 23.1	ci_resolved	batch=B4+B8 run=36250263918 head=0da7618e result=success resolved_at=next_implement
+2026-09-26T15:39:07Z	Epic 23	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@7da38250 merge=15d65704 conflicts=none code_changes=none(docs) verify=rides_next_batch_push
+2026-09-26T15:39:16Z	Story 23.1	stage_spawned	stage=implement batch=B6 spawn_at=2026-09-26T15:39:16Z model=opus agent_name=23-1-the-range-end-cleanup-implement-b6 cycle_iteration=4

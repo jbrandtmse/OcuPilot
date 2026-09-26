@@ -2,7 +2,7 @@
 title: 'Story 23.1: The range-end cleanup'
 type: 'chore'
 created: '2026-09-26'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '264c87315cf1e98f4984867302f5038715ec4850'
 baseline_commit: '264c87315cf1e98f4984867302f5038715ec4850'
 review_loop_iteration: 0
@@ -341,6 +341,7 @@ Rejected:
 - 2026-09-26, lead, Batch L (Rule 5 apply-and-report, each marked `[AMENDED 2026-09-26, Story 23.1]` at the line): epics.md `:409`, `:437` (DW-1413), `:452` UX-DR56 and `:454` UX-DR58 (DW-1688, DW-1691), `:759` (DW-1338); prd.md `:402` and `:404` FR-17 (DW-1691). Spine (Rule 20): the Invariants direction line (DW-456), AD-10 (DW-1688), AD-42 (DW-1179), the Deferred DW-444 row (DW-1319).
 - 2026-09-26, lead, after B1's green CI (run 36236454308): B2 and B3 run as one implement pass and one commit (17 entries, adjacent install and CI-tooling areas), to save one CI cycle; a red result re-opens the pair.
 - 2026-09-26, lead, after B2+B3's green CI (run 36242870954): B4 and B8 run as one pass and one commit (12 entries; the structural gate and the agent-configuration handlers, neither on a path Epic 16 touches), to save one CI cycle.
+- 2026-09-26, lead, after B4+B8's green CI (run 36250263918): B6 runs next (now nine items with DW-1650 and DW-1699). Story 11.11 (branch `OCU-1-epic11`, slot A) also edits `Kernel/Agent/Loop.cls` and appends to `Api/Error.cls`; B6 reads its pushed version first and stays off its hunks. B7's read-tool items (DW-1001, DW-1013, DW-1236) wait for 11.11 to merge, since 11.11 rewrites `Screen/Tool/Read.cls`, `Screen/Registry.cls` and `screen-mirror.mjs`.
 - 2026-09-26, lead, re-sequence: Epic 16 runs on slot A from now on (`Screen/**`, `Port/**`, `Kernel/Proposal/**`, `shell/**`, `core/**`, the logs, Home and OpenAPI-viewer areas). Batches run B2, B3, B4, B8 first; B5, B6 and B7, which touch those paths, run last against Epic 16's pushed version or are re-owned to the Epic 16 story that owns the code.
 
 ## Review Triage Log
