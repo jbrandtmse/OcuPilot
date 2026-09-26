@@ -841,8 +841,8 @@ describe('the proposal card', () => {
     // A destructive agent proposal has no typed-name field: the destructive bar, the destructive
     // Confirm and the user's own press are its confirmation.
     //
-    // Mutation (Rule 19): answer 0 from `OcuPilot.Screen.Tool.Write.Destructive` for the auditing
-    // tool, or drop `destructive` from `toCardView` -> these go red.
+    // Mutation (Rule 19): drop `[class.ocu-button-destructive]="destructive"` from the card's
+    // template -> this goes red. The wire-to-view path is pinned in `panel.spec.ts`.
     const { card } = mount(liveView({ destructive: true, maskedFields: [] }), { phase: 'live' });
     expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(true);
     const confirm = card.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement;

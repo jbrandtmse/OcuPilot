@@ -220,9 +220,36 @@ Each fix below is sentence replacement, not an appended erratum. Spine edits fol
 - Given a fix a judge can see, when it lands, then it is listed under `### Judge-visible changes` with its DW id. Given a fix that contradicts a document, then that document is corrected at origin as listed under `### Document corrections at origin`, and EXPERIENCE.md's line count is unchanged.
 - Given DW-1681, DW-1682 and DW-1688, when the story completes, then each is fixed in B1 or B2. A container start that finds the demo `<DIVIDE>` entry seeds no second one (`OcuPilot.Test.DemoErrorSeed`). No comment in `scripts/`, `src/` or `ui/` points at a README section that moved. No source file names Story 14.7.
 
+### Review Findings (Batch B1, code review 2026-09-26)
+
+- [x] [Review][Patch] DW-1688's contract still contradicted: DESIGN.md `:1218` said the typed-name field is "used identically in the proposal card", and EXPERIENCE.md `:822` required a typed name for every delete [DESIGN.md:1218, EXPERIENCE.md:822]
+- [x] [Review][Patch] DESIGN.md `:1181` listed a typed-name field "taken on a screen" inside the agent card's anatomy; it now says the card takes none [DESIGN.md:1181]
+- [x] [Review][Patch] `button-destructive` was published as labeled with the verb only, but the destructive card's button reads Confirm (`proposal-card.ts`, EXPERIENCE.md `:662`); the verb label is now scoped to the dialog [DESIGN.md:1242, EXPERIENCE.md:611]
+- [x] [Review][Patch] AdminPort's write-path paragraph contradicted itself ("only through a write tool" / "no tool reaches one") and misdescribed the Save handlers and the smoke's direct restore call [src/OcuPilot/Port/AdminPort.cls:145]
+- [x] [Review][Patch] AdminPort `Invoke` doc omitted the `BARETYPES` suffixes that `EndpointType` accepts, so its 501 condition was false for `Monitor/SYSTEMUSAGE*` [src/OcuPilot/Port/AdminPort.cls:711,724]
+- [x] [Review][Patch] PROVIDERCALLSECONDS still claimed a turn is bounded by WALLCLOCKSECONDS plus this and a lapsed lease is noticed "at most this late", which the paragraph's own streamed-call sentence refutes [src/OcuPilot/Kernel/Agent/Limits.cls:100]
+- [x] [Review][Patch] AgentViolation's method doc named two excluded columns; the assertion excludes three [src/OcuPilot/Test/AgentViolation.cls:189]
+- [x] [Review][Patch] The route-ordering checker message repeated its own clause [scripts/check-objectscript.py:1834]
+- [x] [Review][Patch] proposal-card AC1's mutation comment named server and `toCardView` mutations that cannot reach a test mounting a hand-built view; re-pointed and observed red [ui/src/app/shell/proposal-card.spec.ts:844]
+- [x] [Review][Patch] Rewrapped a 151-column doc line and a broken comment paragraph [src/OcuPilot/Test/ProhibitedRoute.cls:1354, scripts/container-start.sh:51]
+- [x] [Review][Defer] PRD FR-17 (`prd.md:402`, `:404`) and epics.md UX-DR56 (`:452`) still put a typed name in the card — deferred: DW-1691, open, owner this story, Batch L (lead amends at origin)
+- [x] [Review][Defer] epics.md `:993` (a closed Epic 1 story's AC) keeps the retired N-segment wording — deferred: DW-1692, wontfix-accepted, another epic's story block
+
+Rejected:
+
+- Spec frontmatter and Auto Run Result read `done` with B2–B8 open: the batch workflow sets them per pass, and the fix edits the spec under review.
+- Spec bookkeeping drift (B3's count, Intent's "79 fixes", "two medium", pending `resolved-by` trailers, the README-grep wording, `:1176` vs `:1175`): each fix edits the spec under review; trailers are the lead's at commit.
+- Card comments cite DESIGN.md `:1181` for a left-edge bar the line does not specify, and EXPERIENCE.md `:192`'s mockup still draws a typed-name field: the same design/code gap as DW-1690 (wontfix-accepted); the citation is spec-directed.
+- The `$ZHex` rationale is gone from `src/`: DW-1325 directed deleting the paragraph; low, and nothing is likely to reintroduce `$ZHex` there.
+- `ErrorReadStub` answers the privilege sentence for any armed code: false as a regression — it answered one fixed reason before B1 too.
+- UX edits carry no `[AMENDED]` tags: the spec directs in-place sentence replacement.
+- "(step 7)" left at EXPERIENCE.md `:660`/`:743`: false — it is the build-step tag the document uses throughout (`:206`, `:742`).
+
 ## Spec Change Log
 
 - 2026-09-26, lead at spec validation: (1) an already-fixed entry closes `resolved-by:23-1-the-range-end-cleanup` with the earlier commit as evidence, not `dropped`, which the grammar keeps for invalid or duplicate entries. (2) DW-1650 moves from `burndown` to B6 + L: its ledger trailer records the owner's decision at the 10.6 merge gate, so only the spine's Deferred row was stale. (3) DW-1185, DW-1434, DW-1435 and DW-1478 are escalated to the owner rather than applied: they edit instruction files (`CLAUDE.md`, `.claude/rules/`, `_bmad/custom/skill-rules.md`), which no agent may change on another agent's say-so; the drafted text stays in Batch L for the owner. (4) DW-1338 and DW-1413 are applied only outside other epics' story blocks; the story-block lines (Stories 1.9, 4.3, 13.3) are escalated for the orchestrator. (5) A batch's commit and the lead's review/bookkeeping commit are pushed together, never with `[skip ci]`; the lead's Batch L commit rides with B1's push.
+- 2026-09-26, lead, Batch L (Rule 5 apply-and-report, each marked `[AMENDED 2026-09-26, Story 23.1]` at the line): epics.md `:409`, `:437` (DW-1413), `:452` UX-DR56 and `:454` UX-DR58 (DW-1688, DW-1691), `:759` (DW-1338); prd.md `:402` and `:404` FR-17 (DW-1691). Spine (Rule 20): the Invariants direction line (DW-456), AD-10 (DW-1688), AD-42 (DW-1179), the Deferred DW-444 row (DW-1319).
+- 2026-09-26, lead, re-sequence: Epic 16 runs on slot A from now on (`Screen/**`, `Port/**`, `Kernel/Proposal/**`, `shell/**`, `core/**`, the logs, Home and OpenAPI-viewer areas). Batches run B2, B3, B4, B8 first; B5, B6 and B7, which touch those paths, run last against Epic 16's pushed version or are re-owned to the Epic 16 story that owns the code.
 
 ## Review Triage Log
 
@@ -624,6 +651,7 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. Tests and probe
 - `bash scripts/lint-docs.sh`, and EXPERIENCE.md's `wc -l` is unchanged (loop).
 - `git grep -n "14\.7" -- ui/src ui/browser src scripts` and `git grep -nE "README(\.md)?('s| too| section)" -- scripts src ui/src ui/browser` (loop). Expected: neither prints a stale pointer. `docs/DEVELOPMENT.md` itself is not searched.
 - Rule 19: all 17 items are doc, comment, message or fixture text. There is no pinning test and no `mutation:` line.
+- Review (2026-09-26): mutation: dropped `[class.ocu-button-destructive]="destructive"` from `proposal-card.ts` → `proposal-card.spec.ts` AC1 destructive test red (1 failed, 51 passed); reverted, 52/52. Patched classes compiled on `ocupilot-b-ci` with 0 errors; `check-objectscript.py` 0 problems, harness 130 OK; `test:tools` 1468/1468; `lint-docs.sh` 0 issues; EXPERIENCE.md 981 and DESIGN.md 1279 lines before and after.
 
 ### Batch B2
 

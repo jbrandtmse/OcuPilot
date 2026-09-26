@@ -7304,3 +7304,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: _components.scss .ocu-proposal-card-destructive recolors only the left edge; mockups/key-proposal-states.html shows a typed-name field (14.7 scratched)
 - 2026-09-26T10:21:46Z status=wontfix-accepted owner=23-1-the-range-end-cleanup by=harvest note=reopen_if=a review or judge compares the destructive card with DESIGN.md:1181 or the mockup and files it
+
+### DW-1691: prd.md FR-17 (:402, :404) and epics.md UX-DR56 (:452) still give a destructive agent proposal a typed-name field in the card
+- source: spec-23-1-the-range-end-cleanup.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: epics.md FR-17 (:97) and :751 say FR-17 is amended to no typed name on the agent path (owner 2026-09-25); the PRD origin and UX-DR56 'Used identically in the proposal card' were not
+- 2026-09-26T10:35:31Z status=open owner=23-1-the-range-end-cleanup by=cr note=Batch L: lead replaces the sentences at origin with DW-1688's contract
+
+### DW-1692: epics.md:993 (Story 1.x Router AC) keeps the retired 'N-segment before (N-1)-segment' route-ordering wording
+- source: spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: B1 replaced the wording in Router, the checker and RouterFixture (DW-1298); the spine :710 uses the new rule; epics.md:993 is a closed story's AC in another epic's block
+- 2026-09-26T10:35:31Z status=wontfix-accepted owner=23-1-the-range-end-cleanup by=cr note=reopen_if=a plan or review cites epics.md:993's N-segment wording as the ordering rule

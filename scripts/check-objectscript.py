@@ -1832,8 +1832,7 @@ def check_route_ordering(problems: list[str]) -> None:
                             problems.append(
                                 f"{rel}:{line_j}: route Url={url_j!r} ({len(pieces_j) - 1} segment(s)) "
                                 f"follows the shorter route Url={url_i!r} at line {line_i} that "
-                                f"matches its leading segments; a longer route goes before a "
-                                f"shorter one whose Url matches its leading segments"
+                                f"matches its leading segments; declare the longer route first"
                             )
 
 

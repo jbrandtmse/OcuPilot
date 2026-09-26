@@ -97,16 +97,17 @@ Parameter LEDGERVIEWMAXROWS As %Integer = 200;
 /// <parameter>OcuPilot.Kernel.Provider.Retry.ATTEMPTBUDGETSECONDS</parameter>, because
 /// <package>OcuPilot.Kernel.Provider</package> is reached from Test connection as well as from a
 /// turn and must not depend on a turn's limits. A test pins the two equal.</p>
-/// <p>Its consequence, stated rather than left to be discovered: a turn may be observed for up to
-/// <parameter>WALLCLOCKSECONDS</parameter> plus this, because the wall clock is checked
-/// <i>before</i> a provider call and not during one -- and a lease that lapses during a call is
-/// noticed at most this late, which is AD-31's "next step boundary" unchanged. The stored
+/// <p>Its consequence, stated rather than left to be discovered: the wall clock is checked
+/// <i>before</i> a provider call and not during one, so a turn can run past
+/// <parameter>WALLCLOCKSECONDS</parameter> by as long as its last call takes, and a lease that
+/// lapses during a call is noticed when the call returns, which is AD-31's "next step boundary"
+/// unchanged. The stored
 /// <property>OcuPilot.Kernel.State.Egress.MaxAttempts</property> and
 /// <property>OcuPilot.Kernel.State.Egress.TimeoutSeconds</property> are clamped at the point of use
 /// (<method>OcuPilot.Kernel.Provider.Retry.EffectiveAttempts</method> and
 /// <method>OcuPilot.Kernel.Provider.Retry.EffectiveTimeoutSec</method>, applied in
-/// <method>OcuPilot.Kernel.Provider.Base.Attempts</method>), so the attempts and their backoff
-/// together stay inside this. That bounds what is configured, not the wall clock: the deadline
+/// <method>OcuPilot.Kernel.Provider.Base.Attempts</method>), so the configured attempts and their
+/// backoff together fit inside this. That bounds what is configured, not the wall clock: the deadline
 /// gates when an attempt may <i>start</i>, so an attempt already in flight when it passes still
 /// runs, and <property>TimeoutSeconds</property> bounds each socket read, not the attempt, so a
 /// streamed call, whose every chunk is a read, runs for as long as the model keeps writing.</p>

@@ -187,9 +187,9 @@ Method TestTheCredentialNameBoundIsTheVendorPropertysOwn()
 /// <p><b>The provider catalog route</b> -- status, content type and body shape, over HTTP
 /// (Conventions, Tests).</p>
 /// <p>It serves every column the Definition form cascades from, plus the derived
-/// <code>keyShapeReason</code>, and <b>not</b> the two columns that are the table's own
-/// machinery: <code>adapterClass</code> names a class on this instance and
-/// <code>authVersion</code> is a wire detail of the call OcuPilot makes.</p>
+/// <code>keyShapeReason</code>, and <b>not</b> <code>adapterClass</code>,
+/// <code>authVersion</code> or <code>reasoningEffort</code>: the first names a class on this
+/// instance, and the other two are wire details of the call OcuPilot makes.</p>
 /// <p>Mutation: add <code>adapterClass</code> to
 /// <method>OcuPilot.Api.Definitions.ProviderColumns</method> -- this goes red on the key
 /// roster.</p>

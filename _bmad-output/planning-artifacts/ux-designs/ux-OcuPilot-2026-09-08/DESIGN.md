@@ -1178,7 +1178,7 @@ The card the agent's write tool produces — the one thing in the transcript tha
 2. **Diff**: the changed fields first, one `diff-row` each. The fields the payload also sends unchanged are collapsed beneath them under a disclosure row — 24px, `{typography.caption}` `{colors.on-surface-variant}`, a 16px chevron, reading "N unchanged fields" — closed by default; open, they list as unchanged `diff-row`s. The card's default height is two changed rows and one disclosure line, whatever the payload carries.
 3. **Agent's text**: two blocks on `{colors.agent-container}` with `{colors.on-agent-container}` `{typography.body}` text, `{rounded.sm}`, 8px 10px padding, each under a `{typography.label}` uppercase heading in `{colors.agent-accent}` — "Agent's rationale" and "Expected impact" — with a small "agent" tag beside the heading (`{typography.label}` `{colors.on-agent-accent}` on `{colors.agent-accent}`, `{rounded.sm}`, 1px 5px, sentence case). This tint marks the model's words and appears nowhere else.
 4. **Reverse** line where a reversal exists: the "Reverse:" lead in `{colors.on-surface}` 600, the description in `{colors.on-surface-variant}`.
-5. **Confirmation inputs** when required: a `typed-name-field` for a destructive write taken on a screen (an agent proposal takes none); a `masked-secret-field` for each secret-typed field. A destructive proposal also gets a 3px `{colors.destructive}` bar *under* the header rule and its Confirm button becomes `button-destructive`.
+5. **Confirmation inputs** when required: a `masked-secret-field` for each secret-typed field. The card takes no `typed-name-field`, even for a destructive write. A destructive proposal also gets a 3px `{colors.destructive}` bar *under* the header rule and its Confirm button becomes `button-destructive`.
 6. **Footer** (1px `{colors.outline-variant}` top edge, 8px 12px): the caption "Runs as <user name>, with your privileges.", then Confirm as `button-primary`, Cancel as `button-text`, and beneath them, while the card is live, the **guard caption** in `{typography.caption}` `{colors.on-surface-variant}` (7.63:1) — the line that says to confirm here because sending a message cancels the proposal; EXPERIENCE.md owns its words and any second caption line. The footer strip is also the card's status line: it is the focus destination after Confirm, Cancel and expiry and shows `focus-ring` when it holds focus.
 
 | Card state | Appearance |
@@ -1215,7 +1215,7 @@ A Material dialog for the set of dialogs listed in EXPERIENCE.md › Information
 
 #### `typed-name-field`
 
-The destructive confirmation: a Material outlined field at `{spacing.input-height}` whose label reads "Type /csp/myapp to confirm" with the target in `{typography.code}`, input text in `{typography.code}`, 1px `{colors.outline}` border, `{rounded.md}`; focus 2px `{colors.secondary}` plus `focus-ring`; helper text "Must match exactly" in `{colors.on-surface-variant}`. The confirming button stays unavailable until the value matches exactly; a mismatch on blur shows a 2px `{colors.destructive}` border and the mismatch message in `{colors.destructive}` — reported, never silent, per the accessibility review (a disabled Delete with no reason gives a screen-reader user nothing). Used identically in the proposal card and in delete dialogs, so the two paths look the same.
+The destructive confirmation: a Material outlined field at `{spacing.input-height}` whose label reads "Type /csp/myapp to confirm" with the target in `{typography.code}`, input text in `{typography.code}`, 1px `{colors.outline}` border, `{rounded.md}`; focus 2px `{colors.secondary}` plus `focus-ring`; helper text "Must match exactly" in `{colors.on-surface-variant}`. The confirming button stays unavailable until the value matches exactly; a mismatch on blur shows a 2px `{colors.destructive}` border and the mismatch message in `{colors.destructive}` — reported, never silent, per the accessibility review (a disabled Delete with no reason gives a screen-reader user nothing). Used in destructive confirm-dialogs only; a destructive proposal-card takes none.
 
 #### `masked-secret-field`
 
@@ -1239,7 +1239,7 @@ Outlined: transparent with a 1px `{colors.outline}` border and `{colors.secondar
 
 #### `button-destructive`
 
-Filled `{colors.destructive}` with `{colors.on-destructive}`; state layer `{colors.on-destructive}`. Only inside a `confirm-dialog` or a destructive `proposal-card` (in a confirm-dialog only after the typed name matches; on a destructive proposal-card, without one), and only ever labeled with the verb (Delete, Terminate, Remove) — never "OK" or "Yes". It never appears in a command bar or a row menu; those use `{colors.destructive}` text and open the dialog.
+Filled `{colors.destructive}` with `{colors.on-destructive}`; state layer `{colors.on-destructive}`. Only inside a `confirm-dialog` or a destructive `proposal-card` (in a confirm-dialog only after the typed name matches; on a destructive proposal-card, without one), and in a dialog only ever labeled with the verb (Delete, Terminate, Remove) — never "OK" or "Yes"; on the card it keeps the label Confirm. It never appears in a command bar or a row menu; those use `{colors.destructive}` text and open the dialog.
 
 ### Focus
 
