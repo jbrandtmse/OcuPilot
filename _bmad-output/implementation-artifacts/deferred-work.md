@@ -7222,3 +7222,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: grep -c '^### AD-' ARCHITECTURE-SPINE.md reads 57; CLAUDE.md:105 says 'all 56 ADs'
 - 2026-09-26T16:14:16Z status=wontfix-accepted owner=16-1-the-try-it-request-console by=cr note=agent-context file, lead's to edit; reopen_if=a gate or agent uses CLAUDE.md's AD count as a completeness check
 - 2026-09-26T16:16:03Z status=resolved-by:16-1-the-try-it-request-console by=adjudication note=CLAUDE.md:105 now reads all 57 ADs (lead bookkeeping in the 16.1 commit)
+
+### DW-1709: A role's Resources grant sent with Permissions "WR" (or members reordered) reads back as "differs in Resources": the compare vocabulary has no nested mode
+- source: spec-16-17-the-read-back-line.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: unordered compares each element's whole Display JSON; the vendor stores WR as RW (measured, spec Design Notes); settle by an agent role update granting WR on ocupilot-ci
+- 2026-09-26T18:47:27Z status=open owner=16-17-the-read-back-line by=harvest note=in-story; code review patches or it takes the MED iteration
