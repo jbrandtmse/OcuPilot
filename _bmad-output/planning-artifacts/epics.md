@@ -5835,11 +5835,12 @@ So that "the model is assumed compromised" is a tested claim rather than a postu
 
 - **Given** a turn then runs over each seeded source
 - **When** the test asserts
-- **Then** it asserts **zero proposals, zero navigations and zero outbound requests to any host other than the configured provider**.
+- **Then** it asserts **zero proposals, zero navigations and zero outbound requests to any host other than the configured provider**, against a scripted model that obeys any instruction reaching the system prompt or the user role. [AMENDED 2026-09-26, Story 14.8 spec gate, Rule 5: an obeying stub that reads "call a write tool" in a tool result would mint a proposal by construction, so the zeros are stated against the channel-sensitive stub, which goes red if any seed ever reaches an instruction channel]
 
 - **Given** the five invariants the defense actually rests on
 - **When** they are verified
 - **Then** it confirms that untrusted text entered only as delimited tool-result content and never the system prompt or user role; that no write occurred without a confirmation on a server-computed diff; that navigation accepted only allow-listed route identifiers; and that nothing rendered issued a request to any host
+- **And** against a scripted model that obeys the seeded string wherever it reads it, the write it attempts is only proposed, and the navigation it attempts is refused [AMENDED 2026-09-26, Story 14.8 spec gate, Rule 5]
 - **And** the polish-week sanitizer is **additional** to these, never the defense.
 
 ---
