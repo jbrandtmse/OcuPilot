@@ -192,3 +192,11 @@ TAB-separated, append-only: `<UTC> TAB <Story <id> | Epic 10> TAB <stage> TAB <m
 2026-09-25T07:53:06Z	Epic 10	epic_status_done	stories=6(10.1-10.6) note=orchestrator_directed_the_runner_to_return_epic-10_to_done_when_10.6_is_done
 2026-09-25T07:53:06Z	Epic 10	model_tier_telemetry	stories=1(10.6) implement_model=opus(overrides.implement) review_tier=full-opus unresolved_high_med=1(DW-1650,decision-pending) high_med=1 rework_stories=0 review_loop_thrash=0 note=checkpoint_is_orchestrator-run;offers_pre-answered_decline
 2026-09-25T07:53:06Z	Epic 10	throwaway_kept	container=ocupilot-b-ci note=left_up_until_the_final_CI_run_resolves;torn_down_by_this_runner_before_the_contract
+2026-09-26T06:14:08Z	Epic 10	lead_model_gate	model=claude-opus-5-5 action=proceed note=runner_for_story_10.7_only
+2026-09-26T06:14:08Z	Epic 10	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=gh
+2026-09-26T06:14:08Z	Epic 10	telemetry_gate	pending=5 action=declined note=checkpoint_offers_pre-answered_decline(model-overrides.yaml,Rule_23)
+2026-09-26T06:14:08Z	Epic 10	epic_branch_checked_out	repos=. head=61a7fd1c note=fresh_worktree_from_feature_61a7fd1c;Rule_25_verified(local=remote=61a7fd1c)
+2026-09-26T06:14:08Z	Epic 10	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=56 status=final
+2026-09-26T06:14:08Z	Epic 10	ledger_load	total=1138 open=3 routed=235 escalated=0 decision_pending=1 terminal=899 burndown=1 reowned_none=0 owner_unknown=0 note=epic-start_gates_not_repeated(orchestrator);story_10.7_inbox_empty
+2026-09-26T06:15:29Z	Epic 10	epic_context_compiled	reason=planning_artifact_newer(story_10.7_added) model=opus lines=57
+2026-09-26T06:15:29Z	Story 10.7	stage_spawned	stage=plan spawn_at=2026-09-26T06:15:29Z model=opus agent_name=10-7-claude-opus-5-5-as-the-anthropic-default-plan-1 cycle_iteration=1
