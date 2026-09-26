@@ -7103,3 +7103,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: owner triage 2026-09-25 (7d51837b request) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: OcuPilot.Install.Fixture SeedApplicationError runs on every start from the container's start hook; seed only when no such error exists (owner)
 - 2026-09-26T03:10:29Z status=routed owner=range-end-cleanup by=orchestrator note=owner triage: seed only when none exists
+
+### DW-1682: Four code comments still name README sections that moved to docs/DEVELOPMENT.md in the README split
+- source: owner decision 2026-09-25 (4b0749a0) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: scripts/ci-throwaway.sh:3, scripts/container-start.sh:51, src/OcuPilot/Test/ProhibitedRoute.cls:1354, src/OcuPilot/Test/Wire.cls:905 cite README.md sections now in docs/DEVELOPMENT.md; repoint each to the matching docs/DEVELOPMENT.md section
+- 2026-09-26T04:29:46Z status=routed owner=range-end-cleanup by=orchestrator note=owner: repoint to docs/DEVELOPMENT.md
