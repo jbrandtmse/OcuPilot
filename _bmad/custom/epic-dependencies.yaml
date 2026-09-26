@@ -25,6 +25,7 @@ owner_graph:  # as approved, never reduced
   epic-23: [epic-11, epic-12]   # chartered 2026-09-26 by the orchestrator under Rule 27, after the submission cut
   epic-14: [epic-4, epic-11, epic-12]   # owner 2026-09-26: run extended to Epics 14 and 16 (never 17) after the submission cut
   epic-16: [epic-6, epic-11, epic-12]   # owner 2026-09-26: same
+  epic-18: [epic-11, epic-12]   # owner 2026-09-26: ONLY Story 18.1 is in the run, brought into the voting week ahead of 16.4
 
 added_edges:
   hard:
@@ -232,9 +233,15 @@ epics:
   epic-16:
     depends_on: [epic-6, epic-11, epic-12]
     submodules: []
-    story_order: ["16-1", "16-17", "16-18", "16-19", "16-20", "16-21", "16-22", "16-8 BEFORE 16-9 (16.9 lists 16.8's sources, epics.md:6265)", "16-9", "16-3", "16-16", "rest of 16", "16-4 HELD: needs Story 18.1's directory allow-list (epics.md:6175, 6770-6772), out of range"]
+    story_order: ["16-1", "16-17", "16-18", "16-19", "16-20", "16-21", "16-22", "16-8 BEFORE 16-9 (16.9 lists 16.8's sources, epics.md:6265)", "16-9", "16-3", "16-16", "rest of 16", "16-4 AFTER Story 18.1 merges (owner 2026-09-26: 18.1 brought into the voting week ahead of 16.4; epics.md:6175)"]
     paths_hint: ["src/OcuPilot/Screen/Descriptor/**", "src/OcuPilot/Screen/Tool/**", "src/OcuPilot/Screen/Read.cls", "src/OcuPilot/Screen/Registry.cls", "src/OcuPilot/Port/**", "src/OcuPilot/Api/**", "src/OcuPilot/Kernel/Proposal/**", "src/OcuPilot/Install/**", "src/OcuPilot/Test/**", "ui/src/app/areas/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/src/styles/**", "ui/browser/**"]
     note: >-
       Measured 2026-09-26 (orchestrator subagent, read-only): no Epic 16 write needs 14.2 first - Kernel/Governance/Gate.cls
       Decide allows every registered tool today (lines 17-23), so each write can be built and tested before 14.2.
+  epic-18:
+    depends_on: [epic-11, epic-12]
+    submodules: []
+    in_run: ["18-1-the-directory-allow-list"]   # owner 2026-09-26; 18.2 onward stay after the contest
+    story_order: ["18-1 (before 16-4)"]
+    paths_hint: ["src/OcuPilot/Kernel/**", "src/OcuPilot/Api/**", "src/OcuPilot/Port/**", "src/OcuPilot/Screen/**", "src/OcuPilot/Install/**", "src/OcuPilot/Test/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/browser/**"]
 
