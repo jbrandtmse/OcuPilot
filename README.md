@@ -35,7 +35,7 @@ marks the row that changed.
 **[ocupilot.org](https://ocupilot.org)** runs the current release on a real IRIS for Health
 instance. Sign in as `demo` with the password `ocupilot-demo`.
 
-- The agent runs on Claude Opus 5, so you do not need a model key.
+- The agent runs on Claude Opus 5.5, so you do not need a model key.
 - Everyone shares the one instance, and it resets to a clean state every hour, on the hour.
 - The `demo` account can administer all six areas. It cannot see or change the agent's own
   configuration, which holds the model key.
