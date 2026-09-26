@@ -193,11 +193,19 @@ services:
       # objects handled the same way. Same reasoning, same single home: test classes are selected
       # by package, so a runner pointed at an instance someone cares about would otherwise create
       # principals on it. scripts/check-objectscript.py's destructive-test-guard rule holds the
-      # population.
+      # population. AuditCopy and AuditStarted also copy the instance's audit database into USER and empty USER's
+      # audit globals, and AuditCopy's least-privilege leg sends a purge the route must refuse.
       # classes: TurnGrounding
       # classes: AccountPasswordWire, AgentConnectionRoles, AgentWireSecurity, AuditMarker, ConfigGate, CredentialPrivilege, DenialParity
       # classes: Disabled, ErrorDelete, ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial
       # classes: OAuthTabs
+      # classes: TokenProbe, TokenRevoke
+      # classes: OAuthServerCreate, OAuthServerDelete, OAuthServerDiscover, OAuthServerJwks, OAuthServerToken, OAuthServerUpdate, OAuthServerWire
+      # classes: OAuthClientCreate, OAuthClientKeys, OAuthClientRegister, OAuthClientSecrets, OAuthClientUpdate, OAuthClientWire, AuditVendorSecrets
+      # classes: OAuthResourceServerAuthenticator, OAuthResourceServerCreate, OAuthResourceServerMappings, OAuthResourceServerSecret, OAuthResourceServerUpdate, OAuthResourceServerWire, OAuthResourceServerAuditMask
+      # classes: OAuthAuthorizationServerClients, OAuthAuthorizationServerCreate, OAuthAuthorizationServerKeys, OAuthAuthorizationServerSecret, OAuthAuthorizationServerUpdate, OAuthAuthorizationServerWire
+      # classes: OAuthRegisteredClientCreate, OAuthRegisteredClientJwks, OAuthRegisteredClientSecret, OAuthRegisteredClientUpdate, OAuthRegisteredClientWire
+      # classes: AuditCopy, AuditStarted
       # classes: ProcessControl, ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token
       # classes: ToolSetFull
       # classes: ToolWire, TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire
@@ -303,6 +311,13 @@ services:
       # classes: TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnStore
       # classes: TurnWire, TurnWireFixture
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
+      # Purges the instance's own audit database through the shipped screen route: every record
+      # dated before today is removed, the agent's audit markers among them, and nothing puts one
+      # back. Its own variable because no narrower one names that effect. The purge leg of
+      # ui/browser/audit-copy-purge.browser-spec.mjs has the same effect and runs only against this
+      # container, which its own assertThrowaway checks.
+      # classes: AuditPurge
+      OCUPILOT_ALLOW_AUDIT_PURGE: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

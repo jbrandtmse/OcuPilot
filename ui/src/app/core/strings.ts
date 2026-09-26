@@ -238,9 +238,9 @@ export const STRINGS = {
   privilegeDeniedScreen: 'You need <resource> to open <screen>.',
   /** EXPERIENCE.md:296 */
   privilegeDeniedAction: 'You need <resource> to <action>.',
-  /** EXPERIENCE.md:514 */
+  /** EXPERIENCE.md:522 */
   privilegeProposalHeld: 'Requires <resources>, which you hold.',
-  /** EXPERIENCE.md:514 */
+  /** EXPERIENCE.md:522 */
   privilegeProposalMissing: 'Requires <resources>. You don\'t hold <resource>.',
   /** EXPERIENCE.md:297 */
   navPrivilegeMapUnread: 'Your privileges couldn\'t be read, so screens you can\'t open may be listed. Retry to check again.',
@@ -1952,7 +1952,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:600 */
+  /** EXPERIENCE.md:608 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2188,280 +2188,640 @@ export const STRINGS = {
   tableColumnWidthAnnouncement: '<column> column, <n> px wide',
   // Story 11.3: the prompt task groups, every built screen's suggested prompts, and the
   // application-errors line a refused or failed read answers.
-  /** EXPERIENCE.md:515 */
+  /** EXPERIENCE.md:523 */
   promptGroupTroubleshooting: 'Troubleshooting',
-  /** EXPERIENCE.md:515 */
+  /** EXPERIENCE.md:523 */
   promptGroupCapacity: 'Capacity',
-  /** EXPERIENCE.md:515 */
+  /** EXPERIENCE.md:523 */
   promptGroupAgentSetup: 'Agent setup',
-  /** EXPERIENCE.md:515 */
+  /** EXPERIENCE.md:523 */
   promptGroupGettingStarted: 'Getting started',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:524 */
   agentDefinitionListPrompt1: 'Which agent definition is the default, and which model does it use?',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:524 */
   agentDefinitionListPrompt2: 'Is any agent definition disabled or not yet verified?',
-  /** EXPERIENCE.md:516 */
+  /** EXPERIENCE.md:524 */
   agentDefinitionListPrompt3: 'Where does each definition send screen context?',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:525 */
   agentDefinitionFormPrompt1: 'What does each setting on this definition control?',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:525 */
   agentDefinitionFormPrompt2: 'Does this definition send data off this instance?',
-  /** EXPERIENCE.md:517 */
+  /** EXPERIENCE.md:525 */
   agentDefinitionFormPrompt3: 'Which model suits this provider for everyday questions?',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:526 */
   agentSwitchesPrompt1: 'Is the agent read-only or switched off right now?',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:526 */
   agentSwitchesPrompt2: 'What does the kill switch stop?',
-  /** EXPERIENCE.md:518 */
+  /** EXPERIENCE.md:526 */
   agentSwitchesPrompt3: 'How many rows of screen context does the agent send?',
-  /** EXPERIENCE.md:519 */
+  /** EXPERIENCE.md:527 */
   logAlertViewerPrompt1: 'Which alerts are the most recent, and what caused them?',
-  /** EXPERIENCE.md:519 */
+  /** EXPERIENCE.md:527 */
   logAlertViewerPrompt2: 'Are any alerts repeating?',
-  /** EXPERIENCE.md:519 */
+  /** EXPERIENCE.md:527 */
   logAlertViewerPrompt3: 'Which of these alerts need action?',
-  /** EXPERIENCE.md:520 */
+  /** EXPERIENCE.md:528 */
   logMessageViewerPrompt1: 'Summarize the warnings and errors in messages.log.',
-  /** EXPERIENCE.md:520 */
+  /** EXPERIENCE.md:528 */
   logMessageViewerPrompt2: 'Did the instance restart recently, and why?',
-  /** EXPERIENCE.md:520 */
+  /** EXPERIENCE.md:528 */
   logMessageViewerPrompt3: 'Which messages point to a configuration problem?',
-  /** EXPERIENCE.md:521 */
+  /** EXPERIENCE.md:529 */
   logErrorListPrompt1: 'Which namespace has the most application errors?',
-  /** EXPERIENCE.md:521 */
+  /** EXPERIENCE.md:529 */
   logErrorListPrompt2: 'What is the most common application error here, and where does it come from?',
-  /** EXPERIENCE.md:521 */
+  /** EXPERIENCE.md:529 */
   logErrorListPrompt3: 'Which of these errors can I safely delete?',
-  /** EXPERIENCE.md:522 */
+  /** EXPERIENCE.md:530 */
   auditListPrompt1: 'Were there any failed sign-ins recently?',
-  /** EXPERIENCE.md:522 */
+  /** EXPERIENCE.md:530 */
   auditListPrompt2: 'Which changes did the agent make?',
-  /** EXPERIENCE.md:522 */
+  /** EXPERIENCE.md:530 */
   auditListPrompt3: 'Who changed security settings today?',
-  /** EXPERIENCE.md:523 */
+  /** EXPERIENCE.md:531 */
   auditingConfigPrompt1: 'Is auditing turned on for this instance?',
-  /** EXPERIENCE.md:523 */
+  /** EXPERIENCE.md:531 */
   auditingConfigPrompt2: 'What stops being recorded if auditing is turned off?',
-  /** EXPERIENCE.md:523 */
+  /** EXPERIENCE.md:531 */
   auditingConfigPrompt3: 'Which audit events are turned off?',
-  /** EXPERIENCE.md:524 */
+  /** EXPERIENCE.md:532 */
   auditSystemEventListPrompt1: 'Which system events are enabled?',
-  /** EXPERIENCE.md:524 */
+  /** EXPERIENCE.md:532 */
   auditSystemEventListPrompt2: 'Which system events record failed sign-ins?',
-  /** EXPERIENCE.md:524 */
+  /** EXPERIENCE.md:532 */
   auditSystemEventListPrompt3: 'Which system events have recorded the most?',
-  /** EXPERIENCE.md:525 */
+  /** EXPERIENCE.md:533 */
   ldapConfigListPrompt1: 'Which LDAP configurations are enabled?',
-  /** EXPERIENCE.md:525 */
+  /** EXPERIENCE.md:533 */
   ldapConfigListPrompt2: 'Which LDAP configuration do users sign in through?',
-  /** EXPERIENCE.md:525 */
+  /** EXPERIENCE.md:533 */
   ldapConfigListPrompt3: 'Does any LDAP configuration connect without TLS?',
-  /** EXPERIENCE.md:526 */
+  /** EXPERIENCE.md:534 */
   sslConfigListPrompt1: 'Which SSL/TLS configurations are enabled?',
-  /** EXPERIENCE.md:526 */
+  /** EXPERIENCE.md:534 */
   sslConfigListPrompt2: 'Which configurations do not verify the server certificate?',
-  /** EXPERIENCE.md:526 */
+  /** EXPERIENCE.md:534 */
   sslConfigListPrompt3: 'Which configuration does OcuPilot use to reach its provider?',
-  /** EXPERIENCE.md:527 */
+  /** EXPERIENCE.md:535 */
   x509CredentialListPrompt1: 'Which X.509 credentials expire soonest?',
-  /** EXPERIENCE.md:527 */
+  /** EXPERIENCE.md:535 */
   x509CredentialListPrompt2: 'Has any credential already expired?',
-  /** EXPERIENCE.md:527 */
+  /** EXPERIENCE.md:535 */
   x509CredentialListPrompt3: 'Which credentials carry a private key?',
-  /** EXPERIENCE.md:528 */
+  /** EXPERIENCE.md:536 */
   x509FormPrompt1: 'When does this credential expire?',
-  /** EXPERIENCE.md:528 */
+  /** EXPERIENCE.md:536 */
   x509FormPrompt2: 'Who issued this certificate?',
-  /** EXPERIENCE.md:528 */
+  /** EXPERIENCE.md:536 */
   x509FormPrompt3: 'Does this credential carry a private key?',
-  /** EXPERIENCE.md:529 */
+  /** EXPERIENCE.md:537 */
   walletCollectionListPrompt1: 'Which wallet collections hold secrets?',
-  /** EXPERIENCE.md:529 */
+  /** EXPERIENCE.md:537 */
   walletCollectionListPrompt2: 'Who can use the secrets in each collection?',
-  /** EXPERIENCE.md:529 */
+  /** EXPERIENCE.md:537 */
   walletCollectionListPrompt3: 'What is the secrets wallet for?',
-  /** EXPERIENCE.md:530 */
+  /** EXPERIENCE.md:538 */
   walletSecretListPrompt1: 'Which secrets does this collection hold?',
-  /** EXPERIENCE.md:530 */
+  /** EXPERIENCE.md:538 */
   walletSecretListPrompt2: 'Which hosts may use these secrets?',
-  /** EXPERIENCE.md:530 */
+  /** EXPERIENCE.md:538 */
   walletSecretListPrompt3: 'Which of these secrets require TLS?',
-  /** EXPERIENCE.md:531 */
+  /** EXPERIENCE.md:539 */
   walletSecretFormPrompt1: 'What kind of secret is this?',
-  /** EXPERIENCE.md:531 */
+  /** EXPERIENCE.md:539 */
   walletSecretFormPrompt2: 'Which hosts may use this secret?',
-  /** EXPERIENCE.md:531 */
+  /** EXPERIENCE.md:539 */
   walletSecretFormPrompt3: 'Does this secret require a TLS connection?',
-  /** EXPERIENCE.md:532 */
+  /** EXPERIENCE.md:540 */
   oAuthServerDescriptionTabPrompt1: 'Which OAuth 2.0 servers does this instance trust?',
-  /** EXPERIENCE.md:532 */
+  /** EXPERIENCE.md:540 */
   oAuthServerDescriptionTabPrompt2: 'Which server descriptions have no client configured?',
-  /** EXPERIENCE.md:532 */
+  /** EXPERIENCE.md:540 */
   oAuthServerDescriptionTabPrompt3: 'What is an OAuth 2.0 server description for?',
-  /** EXPERIENCE.md:533 */
+  /** EXPERIENCE.md:541 */
   oAuthClientTabPrompt1: 'Which OAuth 2.0 clients are configured, and for which servers?',
-  /** EXPERIENCE.md:533 */
+  /** EXPERIENCE.md:541 */
   oAuthClientTabPrompt2: 'Which clients are confidential and which are public?',
-  /** EXPERIENCE.md:533 */
+  /** EXPERIENCE.md:541 */
   oAuthClientTabPrompt3: 'Which scopes does each client ask for by default?',
-  /** EXPERIENCE.md:534 */
+  /** EXPERIENCE.md:542 */
   oAuthResourceServerTabPrompt1: 'Which resource servers are configured?',
-  /** EXPERIENCE.md:534 */
+  /** EXPERIENCE.md:542 */
   oAuthResourceServerTabPrompt2: 'Which server does each resource server accept tokens from?',
-  /** EXPERIENCE.md:534 */
+  /** EXPERIENCE.md:542 */
   oAuthResourceServerTabPrompt3: 'What does an OAuth 2.0 resource server do?',
-  /** EXPERIENCE.md:535 */
+  /** EXPERIENCE.md:543 */
   oAuthServerTabPrompt1: 'Is this instance acting as an OAuth 2.0 authorization server?',
-  /** EXPERIENCE.md:535 */
+  /** EXPERIENCE.md:543 */
   oAuthServerTabPrompt2: 'Which grant types does this server allow?',
-  /** EXPERIENCE.md:535 */
+  /** EXPERIENCE.md:543 */
   oAuthServerTabPrompt3: 'How long do access tokens from this server last?',
-  /** EXPERIENCE.md:536 */
+  /** EXPERIENCE.md:544 */
   oAuthServerClientTabPrompt1: 'Which clients are registered with this authorization server?',
-  /** EXPERIENCE.md:536 */
+  /** EXPERIENCE.md:544 */
   oAuthServerClientTabPrompt2: 'Which redirect addresses does each client use?',
-  /** EXPERIENCE.md:536 */
+  /** EXPERIENCE.md:544 */
   oAuthServerClientTabPrompt3: 'Which clients may use the client credentials grant?',
-  /** EXPERIENCE.md:537 */
+  /** EXPERIENCE.md:545 */
   userListPrompt1: 'Which accounts are disabled or expired?',
-  /** EXPERIENCE.md:537 */
+  /** EXPERIENCE.md:545 */
   userListPrompt2: 'Which users hold %All?',
-  /** EXPERIENCE.md:537 */
+  /** EXPERIENCE.md:545 */
   userListPrompt3: 'Which users hold an administrative role?',
-  /** EXPERIENCE.md:538 */
+  /** EXPERIENCE.md:546 */
   roleListPrompt1: 'Which roles grant %All?',
-  /** EXPERIENCE.md:538 */
+  /** EXPERIENCE.md:546 */
   roleListPrompt2: 'Which roles does no user hold?',
-  /** EXPERIENCE.md:538 */
+  /** EXPERIENCE.md:546 */
   roleListPrompt3: 'Which roles grant write access to a database?',
-  /** EXPERIENCE.md:539 */
+  /** EXPERIENCE.md:547 */
   resourceListPrompt1: 'Which resources grant access to everyone?',
-  /** EXPERIENCE.md:539 */
+  /** EXPERIENCE.md:547 */
   resourceListPrompt2: 'Which resources protect databases?',
-  /** EXPERIENCE.md:539 */
+  /** EXPERIENCE.md:547 */
   resourceListPrompt3: 'Which resource guards the Management Portal?',
-  /** EXPERIENCE.md:540 */
+  /** EXPERIENCE.md:548 */
   serviceListPrompt1: 'Which services are turned off?',
-  /** EXPERIENCE.md:540 */
+  /** EXPERIENCE.md:548 */
   serviceListPrompt2: 'Which services accept a sign-in without a password?',
-  /** EXPERIENCE.md:540 */
+  /** EXPERIENCE.md:548 */
   serviceListPrompt3: 'Which services limit the addresses that may connect?',
-  /** EXPERIENCE.md:541 */
+  /** EXPERIENCE.md:549 */
   webAppListPrompt1: 'Which web applications can be reached without signing in?',
-  /** EXPERIENCE.md:541 */
+  /** EXPERIENCE.md:549 */
   webAppListPrompt2: 'Which web applications grant %All to their users?',
-  /** EXPERIENCE.md:541 */
+  /** EXPERIENCE.md:549 */
   webAppListPrompt3: 'Which class answers each REST web application?',
-  /** EXPERIENCE.md:542 */
+  /** EXPERIENCE.md:550 */
   restApiListPrompt1: 'Which REST APIs does this namespace publish?',
-  /** EXPERIENCE.md:542 */
+  /** EXPERIENCE.md:550 */
   restApiListPrompt2: 'Which web application serves each REST API?',
-  /** EXPERIENCE.md:542 */
+  /** EXPERIENCE.md:550 */
   restApiListPrompt3: 'Which REST APIs have an OpenAPI document?',
-  /** EXPERIENCE.md:543 */
+  /** EXPERIENCE.md:551 */
   openApiViewerPrompt1: 'Summarize the operations this API offers.',
-  /** EXPERIENCE.md:543 */
+  /** EXPERIENCE.md:551 */
   openApiViewerPrompt2: 'Which operations change data?',
-  /** EXPERIENCE.md:543 */
+  /** EXPERIENCE.md:551 */
   openApiViewerPrompt3: 'Which operations need authentication?',
-  /** EXPERIENCE.md:544 */
+  /** EXPERIENCE.md:552 */
   databaseListPrompt1: 'Which databases are close to their maximum size?',
-  /** EXPERIENCE.md:544 */
+  /** EXPERIENCE.md:552 */
   databaseListPrompt2: 'Which databases are not journaled?',
-  /** EXPERIENCE.md:544 */
+  /** EXPERIENCE.md:552 */
   databaseListPrompt3: 'Which databases are mounted read-only?',
-  /** EXPERIENCE.md:545 */
+  /** EXPERIENCE.md:553 */
   databaseDetailsPrompt1: 'How much free space does this database have?',
-  /** EXPERIENCE.md:545 */
+  /** EXPERIENCE.md:553 */
   databaseDetailsPrompt2: 'Is this database journaled?',
-  /** EXPERIENCE.md:545 */
+  /** EXPERIENCE.md:553 */
   databaseDetailsPrompt3: 'Can this database be written, or is it read-only?',
-  /** EXPERIENCE.md:546 */
+  /** EXPERIENCE.md:554 */
   databaseVolumeListPrompt1: 'How many volumes does this database have?',
-  /** EXPERIENCE.md:546 */
+  /** EXPERIENCE.md:554 */
   databaseVolumeListPrompt2: 'Which volume is the largest?',
-  /** EXPERIENCE.md:546 */
+  /** EXPERIENCE.md:554 */
   databaseVolumeListPrompt3: 'Where are the volume files for this database?',
-  /** EXPERIENCE.md:547 */
+  /** EXPERIENCE.md:555 */
   databaseFreeSpacePrompt1: 'Which database has the least free space?',
-  /** EXPERIENCE.md:547 */
+  /** EXPERIENCE.md:555 */
   databaseFreeSpacePrompt2: 'How much disk space is free for each database?',
-  /** EXPERIENCE.md:547 */
+  /** EXPERIENCE.md:555 */
   databaseFreeSpacePrompt3: 'Which databases could be compacted?',
-  /** EXPERIENCE.md:548 */
+  /** EXPERIENCE.md:556 */
   deviceListPrompt1: 'What is each device on this list used for?',
-  /** EXPERIENCE.md:548 */
+  /** EXPERIENCE.md:556 */
   deviceListPrompt2: 'Which devices are printers?',
-  /** EXPERIENCE.md:548 */
+  /** EXPERIENCE.md:556 */
   deviceListPrompt3: 'Which devices write to a file?',
-  /** EXPERIENCE.md:549 */
+  /** EXPERIENCE.md:557 */
   deviceFormPrompt1: 'What does this device type mean?',
-  /** EXPERIENCE.md:549 */
+  /** EXPERIENCE.md:557 */
   deviceFormPrompt2: 'Which settings on this device matter most?',
-  /** EXPERIENCE.md:549 */
+  /** EXPERIENCE.md:557 */
   deviceFormPrompt3: 'Which open mode should this device use?',
-  /** EXPERIENCE.md:550 */
+  /** EXPERIENCE.md:558 */
   lockListPrompt1: 'Which processes hold the most locks?',
-  /** EXPERIENCE.md:550 */
+  /** EXPERIENCE.md:558 */
   lockListPrompt2: 'Is any process waiting for a lock?',
-  /** EXPERIENCE.md:550 */
+  /** EXPERIENCE.md:558 */
   lockListPrompt3: 'Which globals are locked right now?',
-  /** EXPERIENCE.md:551 */
+  /** EXPERIENCE.md:559 */
   processListPrompt1: 'Which processes are doing the most work right now?',
-  /** EXPERIENCE.md:551 */
+  /** EXPERIENCE.md:559 */
   processListPrompt2: 'Is any process stuck or waiting?',
-  /** EXPERIENCE.md:551 */
+  /** EXPERIENCE.md:559 */
   processListPrompt3: 'Which processes belong to users rather than the system?',
-  /** EXPERIENCE.md:552 */
+  /** EXPERIENCE.md:560 */
   processDetailsPrompt1: 'What is this process doing right now?',
-  /** EXPERIENCE.md:552 */
+  /** EXPERIENCE.md:560 */
   processDetailsPrompt2: 'Is this process waiting on something?',
-  /** EXPERIENCE.md:552 */
+  /** EXPERIENCE.md:560 */
   processDetailsPrompt3: 'Is it safe to terminate this process?',
-  /** EXPERIENCE.md:553 */
+  /** EXPERIENCE.md:561 */
   systemUsagePrompt1: 'Is this instance under load right now?',
-  /** EXPERIENCE.md:553 */
+  /** EXPERIENCE.md:561 */
   systemUsagePrompt2: 'Which figure here should I watch most closely?',
-  /** EXPERIENCE.md:553 */
+  /** EXPERIENCE.md:561 */
   systemUsagePrompt3: 'Is the license close to its limit?',
-  /** EXPERIENCE.md:554 */
+  /** EXPERIENCE.md:562 */
   taskScheduleListPrompt1: 'Which tasks are suspended, and why?',
-  /** EXPERIENCE.md:554 */
+  /** EXPERIENCE.md:562 */
   taskScheduleListPrompt2: 'Which tasks run tonight?',
-  /** EXPERIENCE.md:554 */
+  /** EXPERIENCE.md:562 */
   taskScheduleListPrompt3: 'Which tasks failed on their last run?',
-  /** EXPERIENCE.md:555 */
+  /** EXPERIENCE.md:563 */
   taskDetailsPrompt1: 'When does this task run next?',
-  /** EXPERIENCE.md:555 */
+  /** EXPERIENCE.md:563 */
   taskDetailsPrompt2: 'Why did this task last fail?',
-  /** EXPERIENCE.md:555 */
+  /** EXPERIENCE.md:563 */
   taskDetailsPrompt3: 'What does this task do?',
-  /** EXPERIENCE.md:556 */
+  /** EXPERIENCE.md:564 */
   taskRunListPrompt1: 'Has this task failed recently?',
-  /** EXPERIENCE.md:556 */
+  /** EXPERIENCE.md:564 */
   taskRunListPrompt2: 'How long does this task usually take?',
-  /** EXPERIENCE.md:556 */
+  /** EXPERIENCE.md:564 */
   taskRunListPrompt3: 'When did this task last succeed?',
-  /** EXPERIENCE.md:557 */
+  /** EXPERIENCE.md:565 */
   taskOnDemandListPrompt1: 'What does each on-demand task do?',
-  /** EXPERIENCE.md:557 */
+  /** EXPERIENCE.md:565 */
   taskOnDemandListPrompt2: 'Which on-demand tasks have never run?',
-  /** EXPERIENCE.md:557 */
+  /** EXPERIENCE.md:565 */
   taskOnDemandListPrompt3: 'Which on-demand task ran most recently?',
-  /** EXPERIENCE.md:558 */
+  /** EXPERIENCE.md:566 */
   taskUpcomingListPrompt1: 'What runs in the next hour?',
-  /** EXPERIENCE.md:558 */
+  /** EXPERIENCE.md:566 */
   taskUpcomingListPrompt2: 'Which tasks run overnight?',
-  /** EXPERIENCE.md:558 */
+  /** EXPERIENCE.md:566 */
   taskUpcomingListPrompt3: 'Do any upcoming tasks run at the same time?',
-  /** EXPERIENCE.md:559 */
+  /** EXPERIENCE.md:567 */
   taskHistoryListPrompt1: 'Which task runs failed this week?',
-  /** EXPERIENCE.md:559 */
+  /** EXPERIENCE.md:567 */
   taskHistoryListPrompt2: 'Which task takes the longest to run?',
-  /** EXPERIENCE.md:559 */
+  /** EXPERIENCE.md:567 */
   taskHistoryListPrompt3: 'Did any task stop with an error today?',
   /** EXPERIENCE.md:356 */
   homeSuggestedApplicationErrorsUnread: 'Application errors in <NAMESPACE>: could not be read',
+
+  // Story 12.1: the X.509 credential form's certificate-details group and its serial number.
+  /** EXPERIENCE.md:514 */
+  x509CertificateDetails: 'Certificate details',
+  /** EXPERIENCE.md:514 */
+  x509FieldSerialNumber: 'Serial number',
+
+  // Story 12.2: the Users list's token revoke row action and its typed-name dialog's consequence.
+  /** EXPERIENCE.md:515 */
+  userActionRevokeTokens: 'Revoke OAuth 2.0 tokens',
+  /** EXPERIENCE.md:515 */
+  userRevokeTokensConsequence:
+    'Revoking deletes every OAuth 2.0 access token this instance issued under this user name, and applications holding one must sign the user in again. This cannot be undone.',
+
+  // Story 12.3: the Auditing screen's audit database group, its copy and purge dialogs, and the
+  // status line while either runs on the instance.
+  /** EXPERIENCE.md:516 */
+  auditDatabaseCopyAction: 'Copy to namespace',
+  /** EXPERIENCE.md:516 */
+  auditDatabasePurgeAction: 'Purge old records',
+  /** EXPERIENCE.md:516 */
+  auditDatabaseCopyTitle: 'Copy audit records',
+  /** EXPERIENCE.md:516 */
+  auditDatabaseCopyConsequence:
+    'Copies every record in the audit database into this namespace. Anyone who can read that namespace\'s database can read the copy. The originals stay where they are.',
+  /** EXPERIENCE.md:516 */
+  auditDatabaseCopyConfirm: 'Copy',
+  /** EXPERIENCE.md:516 */
+  auditDatabasePurgeTitle: 'Purge audit records',
+  /** EXPERIENCE.md:516 */
+  auditDatabasePurgeDays: 'Older than (days)',
+  /** EXPERIENCE.md:516 */
+  auditDatabasePurgeConsequence:
+    'Removes every audit record on this instance dated before <date> 00:00, instance time, including the agent\'s audit markers from that period. This cannot be undone.',
+  /** EXPERIENCE.md:516 */
+  auditDatabasePurgeConfirm: 'Purge',
+  /** EXPERIENCE.md:516 */
+  auditDatabaseCopyRunning: 'Copying to <namespace> on the instance since <time>',
+  /** EXPERIENCE.md:516 */
+  auditDatabasePurgeRunning: 'Purging records dated before <date> on the instance since <time>',
+  /** EXPERIENCE.md:516 */
+  auditDatabaseCopyDone: 'Copied the audit database to <namespace>.',
+  /** EXPERIENCE.md:516 */
+  auditDatabasePurgeDone: 'Purged audit records dated before <date>.',
+  /** EXPERIENCE.md:516 */
+  auditDatabaseStillRunning: 'Still running on the instance. It finishes in the background.',
+
+  // Story 12.4: the OAuth 2.0 client server description editor, its tab's Create, Delete and
+  // Update JWKS, and the phrase that resolves the tab's agent invitation.
+  /** EXPERIENCE.md:517 */
+  oauthServerFormLabel: 'Server description',
+  /** EXPERIENCE.md:517 */
+  oauthServerFieldIssuer: 'Issuer endpoint',
+  /** EXPERIENCE.md:517 */
+  oauthServerFieldToken: 'Registration access token',
+  /** EXPERIENCE.md:517 */
+  oauthServerTokenHint: 'Leave empty to keep the stored token.',
+  /** EXPERIENCE.md:517 */
+  oauthServerFieldAuthorization: 'Authorization endpoint',
+  /** EXPERIENCE.md:517 */
+  oauthServerFieldTokenEndpoint: 'Token endpoint',
+  /** EXPERIENCE.md:517 */
+  oauthServerFieldUserinfo: 'Userinfo endpoint',
+  /** EXPERIENCE.md:517 */
+  oauthServerFieldIntrospection: 'Token introspection endpoint',
+  /** EXPERIENCE.md:517 */
+  oauthServerFieldRevocation: 'Token revocation endpoint',
+  /** EXPERIENCE.md:517 */
+  oauthServerFieldEndSession: 'End session endpoint',
+  /** EXPERIENCE.md:517 */
+  oauthServerGroupJwt: 'JSON Web Token (JWT) settings',
+  /** EXPERIENCE.md:517 */
+  oauthServerJwtUrl: 'JWKS from URL',
+  /** EXPERIENCE.md:517 */
+  oauthServerJwtX509: 'X.509 certificate',
+  /** EXPERIENCE.md:517 */
+  oauthServerGroupMetadata: 'Metadata',
+  /** EXPERIENCE.md:517 */
+  oauthServerDiscover: 'Discover',
+  /** EXPERIENCE.md:517 */
+  oauthServerUpdateJwks: 'Update JWKS',
+  /** EXPERIENCE.md:517 */
+  oauthServerDiscovered: 'Fetched the metadata published at <issuer>. Review it, then Save.',
+  /** EXPERIENCE.md:517 */
+  oauthServerJwksUpdated: 'Updated the key set from <url>.',
+  /** EXPERIENCE.md:517 */
+  oauthServerTokenRefused: 'Saved. The registration access token was not stored: <reason>',
+  /** EXPERIENCE.md:517 */
+  oauthServerDeleteConsequence:
+    'Deletes this server description and its metadata. A resource server that uses it is left without one. A client configuration that uses it blocks the delete.',
+  /** EXPERIENCE.md:517 */
+  oauthServerDescriptionsEmptyAgent: 'add a server description',
+  /** EXPERIENCE.md:517 */
+  oauthServerFormRefusedAction: 'change this server description',
+
+  // Story 12.5: the OAuth 2.0 client configuration editor, its tab's Create, Register and Rotate
+  // Keys, and the phrase a privilege refusal names.
+  /** EXPERIENCE.md:518 */
+  oauthClientFormLabel: 'Client configuration',
+  /** EXPERIENCE.md:518 */
+  oauthClientSectionClientInformation: 'Client Information',
+  /** EXPERIENCE.md:518 */
+  oauthClientSectionJwt: 'JWT Settings',
+  /** EXPERIENCE.md:518 */
+  oauthClientSectionCredentials: 'Client Credentials',
+  /** EXPERIENCE.md:518 */
+  oauthClientFieldName: 'Application name',
+  /** EXPERIENCE.md:518 */
+  oauthClientTypeConfidential: 'Confidential',
+  /** EXPERIENCE.md:518 */
+  oauthClientTypePublic: 'Public',
+  /** EXPERIENCE.md:518 */
+  oauthClientTypeResource: 'Resource server',
+  /** EXPERIENCE.md:518 */
+  oauthClientFieldRedirect: 'Redirect URL',
+  /** EXPERIENCE.md:518 */
+  oauthClientFieldLogoutUri: 'Front-channel logout URL',
+  /** EXPERIENCE.md:518 */
+  oauthClientFieldLogoutSession: 'Front-channel session required',
+  /** EXPERIENCE.md:518 */
+  oauthClientGrantAuthorizationCode: 'Authorization code',
+  /** EXPERIENCE.md:518 */
+  oauthClientGrantImplicit: 'Implicit',
+  /** EXPERIENCE.md:518 */
+  oauthClientGrantPassword: 'Resource owner password credentials',
+  /** EXPERIENCE.md:518 */
+  oauthClientGrantClientCredentials: 'Client credentials',
+  /** EXPERIENCE.md:518 */
+  oauthClientGrantJwt: 'JWT authorization',
+  /** EXPERIENCE.md:518 */
+  oauthClientFieldAuthMethod: 'Authentication method',
+  /** EXPERIENCE.md:518 */
+  oauthClientFieldAuthSigning: 'Authentication signing algorithm',
+  /** EXPERIENCE.md:518 */
+  oauthClientFieldAudience: 'Audience',
+  /** EXPERIENCE.md:518 */
+  oauthClientFieldLogo: 'Logo URL',
+  /** EXPERIENCE.md:518 */
+  oauthClientFieldHome: 'Client home page URL',
+  /** EXPERIENCE.md:518 */
+  oauthClientFieldPolicy: 'Policy URL',
+  /** EXPERIENCE.md:518 */
+  oauthClientFieldTos: 'Terms of service URL',
+  /** EXPERIENCE.md:518 */
+  oauthClientFieldContacts: 'Contacts (comma-separated)',
+  /** EXPERIENCE.md:518 */
+  oauthClientFieldMaxAge: 'Default max age (seconds)',
+  /** EXPERIENCE.md:518 */
+  oauthClientFieldInterval: 'JWT interval (seconds)',
+  /** EXPERIENCE.md:518 */
+  oauthClientFieldCredentials: 'X.509 credentials',
+  /** EXPERIENCE.md:518 */
+  oauthClientAlgIdToken: 'ID token algorithms',
+  /** EXPERIENCE.md:518 */
+  oauthClientAlgUserinfo: 'Userinfo algorithms',
+  /** EXPERIENCE.md:518 */
+  oauthClientAlgAccessToken: 'Access token algorithms',
+  /** EXPERIENCE.md:518 */
+  oauthClientAlgRequest: 'Request object algorithms',
+  /** EXPERIENCE.md:518 */
+  oauthClientAlgSigning: 'Signing',
+  /** EXPERIENCE.md:518 */
+  oauthClientAlgEncryption: 'Encryption',
+  /** EXPERIENCE.md:518 */
+  oauthClientAlgKey: 'Key',
+  /** EXPERIENCE.md:518 */
+  oauthClientFieldSecret: 'Client secret',
+  /** EXPERIENCE.md:518 */
+  oauthClientFieldInitialToken: 'Initial access token',
+  /** EXPERIENCE.md:518 */
+  oauthClientSecretHint: 'Leave empty to keep the stored value.',
+  /** EXPERIENCE.md:518 */
+  oauthClientFieldIssuedAt: 'Client ID issued at',
+  /** EXPERIENCE.md:518 */
+  oauthClientFieldExpiresAt: 'Client secret expires at',
+  /** EXPERIENCE.md:518 */
+  oauthClientFieldRegistrationUri: 'Registration client URI',
+  /** EXPERIENCE.md:518 */
+  oauthClientNotSet: 'Not set',
+  /** EXPERIENCE.md:518 */
+  oauthClientRegister: 'Register',
+  /** EXPERIENCE.md:518 */
+  oauthClientRotateKeys: 'Rotate Keys',
+  /** EXPERIENCE.md:518 */
+  oauthClientRegistered: 'Registered with <issuer>. Client ID: <clientId>.',
+  /** EXPERIENCE.md:518 */
+  oauthClientKeysRotated: 'Rotated this client\'s keys.',
+  /** EXPERIENCE.md:518 */
+  oauthClientSecretsRefused: 'Saved. The secrets were not stored: <reason>',
+  /** EXPERIENCE.md:518 */
+  oauthClientRegistrationNotUpdated: 'Saved. <issuer> was not updated: <reason>',
+  /** EXPERIENCE.md:518 */
+  oauthClientFormRefusedAction: 'change this client configuration',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerTabToken: 'Access token validation',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerTabAuthenticator: 'Authenticator',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerTabMappings: 'Mappings',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerFieldAudiences: 'Audiences',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerAddAudience: 'Add audience',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerFieldScope: 'Required scope',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerFieldJwt: 'JWT',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerFieldIntrospection: 'Call introspection',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerFieldOidc: 'OpenID Connect',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerMethodBasic: 'HTTP Basic',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerMethodPost: 'Form post',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerMethodNone: 'none',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerFieldImplementation: 'Implementation',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerGatewayMappings: 'Web Gateway mappings',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerBindingsMappings: 'ODBC/JDBC mappings',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerFieldApplication: 'Application',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerDefaultKey: '* (Default)',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerAddMapping: 'Add mapping',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerMoves: 'Moves this mapping from <server>.',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerMoveEffect: 'Moves this service mapping from the resource server that holds it.',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerSecretRefused: 'Saved. The client secret was not stored: <reason>',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerMappingsRefused: 'Saved. <count> service mappings were not changed: <reason>',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerDeleteConsequence: 'This also deletes the resource server\'s service mappings.',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServersEmptyAgent: 'create an OAuth 2.0 resource server',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerFormRefusedAction: 'change this resource server',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerAuthenticatorNote: 'Changing the namespace or implementation replaces these settings with that implementation\'s defaults.',
+  /** EXPERIENCE.md:519 */
+  oauthResourceServerAuthenticatorResetEffect: 'Changes the authenticator\'s namespace or implementation, so every setting this change does not name takes that implementation\'s default.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerTabIntervals: 'Intervals',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerTabCustomization: 'Customization',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerIssuerHint: 'The server answers at this endpoint with /oauth2 appended.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldAudRequired: 'Audience required',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldSupportSession: 'Support user session',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldPublicRefresh: 'Allow public client refresh',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldPkcePublic: 'Enforce PKCE for public clients',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldPkceConfidential: 'Enforce PKCE for confidential clients',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldFrontChannel: 'Support front-channel logout',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldFrontChannelSession: 'Send the session ID with front-channel logout',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldReturnRefresh: 'Return refresh token',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerRefreshRequired: 'Only as OpenID Connect requires',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerRefreshAlways: 'Always',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerRefreshConfidential: 'To a confidential client',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerRefreshOffline: 'When offline_access is requested',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldServiceDocs: 'Service documentation URL',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldScope: 'Scope',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerAddScope: 'Add scope',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldUnsupportedScope: 'Allow unsupported scope',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldAccessTokenInterval: 'Access token interval (seconds)',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldCodeInterval: 'Authorization code interval (seconds)',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldRefreshInterval: 'Refresh token interval (seconds)',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldSessionInterval: 'Session termination interval (seconds)',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldSecretInterval: 'Client secret expiration interval (seconds)',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldAuthenticateClass: 'Authenticate class',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldValidateUserClass: 'Validate user class',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldSessionClass: 'Session maintenance class',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldGenerateTokenClass: 'Generate token class',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFieldRevokeTokenClass: 'Revoke token class',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerRotated: 'Rotated the authorization server\'s keys.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerPasswordRefused: 'Saved. The key password was not stored: <reason>',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerDeleteConsequence: 'This also deletes every client registered with this authorization server.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerClientsEffect: 'Every client registered with this authorization server gets its tokens from it, so this change reaches each of them.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerClientsHiddenEffect: 'This change reaches every client registered with this authorization server, and this account cannot list them.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerClientsDeletedEffect: 'Deleting the authorization server configuration also deletes every client registered with it.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerClientsDeletedHiddenEffect: 'Deleting the authorization server configuration also deletes every client registered with it, and this account cannot list them.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerCustomizationEffect: 'The customization code runs with the roles this adds, and they include %All or an administrative role.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerClientsPrivilegedEffect: 'Every client registered with this authorization server gets its tokens from it, so this change reaches each of them. The customization code runs with the roles this adds, and they include %All or an administrative role.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerClientsHiddenPrivilegedEffect: 'This change reaches every client registered with this authorization server, and this account cannot list them. The customization code runs with the roles this adds, and they include %All or an administrative role.',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerEmptyAgent: 'configure this instance\'s OAuth 2.0 authorization server',
+  /** EXPERIENCE.md:520 */
+  oauthAuthServerFormRefusedAction: 'change the authorization server configuration',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientTitle: 'Server client description',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientFieldResponseTypes: 'Response types',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientFieldAuthType: 'Authentication type',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientFieldLaunchUrl: 'Launch URL',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientFieldContacts: 'Contact emails (comma-separated)',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientFieldLogoutSessionRequired: 'Front-channel logout session required',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientFieldKeySource: 'Public key source',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientKeySourceJwks: 'JWKS URL',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientAddRedirect: 'Add redirect URL',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientGenerate: 'Generate',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientShow: 'Show',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientHide: 'Hide',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientJwksUpdated: 'Updated the client\'s public keys from its JWKS URL.',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientSecretEffect: 'The client\'s application must use the new secret from now on.',
+  /** EXPERIENCE.md:521 */
+  oauthRegisteredClientFormRefusedAction: 'change this server client description',
+
 } as const;
 
 /**

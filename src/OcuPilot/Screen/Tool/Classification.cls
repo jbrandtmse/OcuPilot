@@ -108,6 +108,12 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// <p><b><code>tasks.schedule.update</code></b> (Story 9.8) classifies the same list the same way;
 /// its tool's positive list also leaves out <code>TaskClass</code> and <code>NameSpace</code>, which
 /// an edit never changes (<class>OcuPilot.Screen.Tool.TaskUpdate</class>).</p>
+/// <p><b><code>security.oauthserverclients.create</code></b>, <b><code>.update</code></b> and
+/// <b><code>.setsecret</code></b> (Story 12.8) classify <code>Security.OAuth2.ServerClients</code>'s
+/// literals and the redirect URL list <code>ordinary</code> and the member-less
+/// <code>Metadata</code> object <code>opaque</code>, which the create and the edit add back as an
+/// object argument of their own. The secret tool authors <code>ClientSecret</code> as
+/// <code>secret</code>: the vendor's secret type takes it, and the template never shows it.</p>
 XData Entries
 {
 {
@@ -443,6 +449,296 @@ XData Entries
       "Prompt": "ordinary",
       "SubType": "ordinary",
       "Type": "ordinary"
+    }
+  },
+  "security.oauthserverdescriptions.create": {
+    "fieldList": "Security.OAuth2.Client.ServerDefinition",
+    "classification": {
+      "IssuerEndpoint": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "ServerCredentials": "ordinary",
+      "Metadata": "opaque"
+    }
+  },
+  "security.oauthserverdescriptions.update": {
+    "fieldList": "Security.OAuth2.Client.ServerDefinition",
+    "classification": {
+      "IssuerEndpoint": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "ServerCredentials": "ordinary",
+      "Metadata": "opaque"
+    }
+  },
+  "security.oauthserverdescriptions.settoken": {
+    "fieldList": "Security.OAuth2.Client.ServerDefinition",
+    "classification": {
+      "IssuerEndpoint": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "ServerCredentials": "ordinary",
+      "Metadata": "opaque"
+    },
+    "authored": {
+      "InitialAccessToken": "secret"
+    }
+  },
+  "security.oauthclients.create": {
+    "fieldList": "Security.OAuth2.Client.ClientConfiguration",
+    "classification": {
+      "ServerDefinition": "ordinary",
+      "Enabled": "ordinary",
+      "Description": "ordinary",
+      "ClientType": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "RedirectionEndpoint": "ordinary",
+      "JWTAudience": "ordinary",
+      "JWTInterval": "ordinary",
+      "ClientId": "ordinary",
+      "ClientCredentials": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    }
+  },
+  "security.oauthclients.update": {
+    "fieldList": "Security.OAuth2.Client.ClientConfiguration",
+    "classification": {
+      "ServerDefinition": "ordinary",
+      "Enabled": "ordinary",
+      "Description": "ordinary",
+      "ClientType": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "RedirectionEndpoint": "ordinary",
+      "JWTAudience": "ordinary",
+      "JWTInterval": "ordinary",
+      "ClientId": "ordinary",
+      "ClientCredentials": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    }
+  },
+  "security.oauthclients.setsecrets": {
+    "fieldList": "Security.OAuth2.Client.ClientConfiguration",
+    "classification": {
+      "ServerDefinition": "ordinary",
+      "Enabled": "ordinary",
+      "Description": "ordinary",
+      "ClientType": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "RedirectionEndpoint": "ordinary",
+      "JWTAudience": "ordinary",
+      "JWTInterval": "ordinary",
+      "ClientId": "ordinary",
+      "ClientCredentials": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    },
+    "authored": {
+      "ClientSecret": "secret",
+      "ClientPassword": "secret",
+      "RegistrationAccessToken": "secret"
+    }
+  },
+  "security.oauthresourceservers.create": {
+    "fieldList": "Security.OAuth2.ResourceServer",
+    "classification": {
+      "Enabled": "ordinary",
+      "Description": "ordinary",
+      "IssuerEndpoint": "ordinary",
+      "ScopeRequiredToConnect": "ordinary",
+      "Audiences[]": "ordinary",
+      "AccessTokenIsJWT": "ordinary",
+      "AlwaysCallIntrospection": "ordinary",
+      "ClientId": "ordinary",
+      "IntrospectionAuthMethod": "ordinary",
+      "UseOIDC": "ordinary",
+      "Authenticator.Namespace": "ordinary",
+      "Authenticator.Implementation": "ordinary"
+    }
+  },
+  "security.oauthresourceservers.update": {
+    "fieldList": "Security.OAuth2.ResourceServer",
+    "classification": {
+      "Enabled": "ordinary",
+      "Description": "ordinary",
+      "IssuerEndpoint": "ordinary",
+      "ScopeRequiredToConnect": "ordinary",
+      "Audiences[]": "ordinary",
+      "AccessTokenIsJWT": "ordinary",
+      "AlwaysCallIntrospection": "ordinary",
+      "ClientId": "ordinary",
+      "IntrospectionAuthMethod": "ordinary",
+      "UseOIDC": "ordinary",
+      "Authenticator.Namespace": "ordinary",
+      "Authenticator.Implementation": "ordinary"
+    }
+  },
+  "security.oauthresourceservers.setsecret": {
+    "fieldList": "Security.OAuth2.ResourceServer",
+    "classification": {
+      "Enabled": "ordinary",
+      "Description": "ordinary",
+      "IssuerEndpoint": "ordinary",
+      "ScopeRequiredToConnect": "ordinary",
+      "Audiences[]": "ordinary",
+      "AccessTokenIsJWT": "ordinary",
+      "AlwaysCallIntrospection": "ordinary",
+      "ClientId": "ordinary",
+      "IntrospectionAuthMethod": "ordinary",
+      "UseOIDC": "ordinary",
+      "Authenticator.Namespace": "ordinary",
+      "Authenticator.Implementation": "ordinary"
+    },
+    "authored": {
+      "ClientSecret": "secret"
+    }
+  },
+  "security.oauthserver.create": {
+    "fieldList": "Security.OAuth2.Server",
+    "classification": {
+      "IssuerEndpoint": "ordinary",
+      "Description": "ordinary",
+      "AccessTokenInterval": "ordinary",
+      "AuthorizationCodeInterval": "ordinary",
+      "RefreshTokenInterval": "ordinary",
+      "SessionInterval": "ordinary",
+      "ClientSecretInterval": "ordinary",
+      "SupportedScopes[].Description": "ordinary",
+      "SupportedScopes[].Scope": "ordinary",
+      "AllowUnsupportedScope": "ordinary",
+      "ReturnRefreshToken": "ordinary",
+      "SupportSession": "ordinary",
+      "AudRequired": "ordinary",
+      "AllowPublicClientRefresh": "ordinary",
+      "ForcePKCEForPublicClients": "ordinary",
+      "ForcePKCEForConfidentialClients": "ordinary",
+      "CustomizationRoles[]": "ordinary",
+      "CustomizationNamespace": "ordinary",
+      "AuthenticateClass": "ordinary",
+      "SessionClass": "ordinary",
+      "ValidateUserClass": "ordinary",
+      "GenerateTokenClass": "ordinary",
+      "RevokeTokenClass": "ordinary",
+      "ServerCredentials": "ordinary",
+      "SigningAlgorithm": "ordinary",
+      "EncryptionAlgorithm": "ordinary",
+      "KeyAlgorithm": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    }
+  },
+  "security.oauthserver.update": {
+    "fieldList": "Security.OAuth2.Server",
+    "classification": {
+      "IssuerEndpoint": "ordinary",
+      "Description": "ordinary",
+      "AccessTokenInterval": "ordinary",
+      "AuthorizationCodeInterval": "ordinary",
+      "RefreshTokenInterval": "ordinary",
+      "SessionInterval": "ordinary",
+      "ClientSecretInterval": "ordinary",
+      "SupportedScopes[].Description": "ordinary",
+      "SupportedScopes[].Scope": "ordinary",
+      "AllowUnsupportedScope": "ordinary",
+      "ReturnRefreshToken": "ordinary",
+      "SupportSession": "ordinary",
+      "AudRequired": "ordinary",
+      "AllowPublicClientRefresh": "ordinary",
+      "ForcePKCEForPublicClients": "ordinary",
+      "ForcePKCEForConfidentialClients": "ordinary",
+      "CustomizationRoles[]": "ordinary",
+      "CustomizationNamespace": "ordinary",
+      "AuthenticateClass": "ordinary",
+      "SessionClass": "ordinary",
+      "ValidateUserClass": "ordinary",
+      "GenerateTokenClass": "ordinary",
+      "RevokeTokenClass": "ordinary",
+      "ServerCredentials": "ordinary",
+      "SigningAlgorithm": "ordinary",
+      "EncryptionAlgorithm": "ordinary",
+      "KeyAlgorithm": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    }
+  },
+  "security.oauthserver.setpassword": {
+    "fieldList": "Security.OAuth2.Server",
+    "classification": {
+      "IssuerEndpoint": "ordinary",
+      "Description": "ordinary",
+      "AccessTokenInterval": "ordinary",
+      "AuthorizationCodeInterval": "ordinary",
+      "RefreshTokenInterval": "ordinary",
+      "SessionInterval": "ordinary",
+      "ClientSecretInterval": "ordinary",
+      "SupportedScopes[].Description": "ordinary",
+      "SupportedScopes[].Scope": "ordinary",
+      "AllowUnsupportedScope": "ordinary",
+      "ReturnRefreshToken": "ordinary",
+      "SupportSession": "ordinary",
+      "AudRequired": "ordinary",
+      "AllowPublicClientRefresh": "ordinary",
+      "ForcePKCEForPublicClients": "ordinary",
+      "ForcePKCEForConfidentialClients": "ordinary",
+      "CustomizationRoles[]": "ordinary",
+      "CustomizationNamespace": "ordinary",
+      "AuthenticateClass": "ordinary",
+      "SessionClass": "ordinary",
+      "ValidateUserClass": "ordinary",
+      "GenerateTokenClass": "ordinary",
+      "RevokeTokenClass": "ordinary",
+      "ServerCredentials": "ordinary",
+      "SigningAlgorithm": "ordinary",
+      "EncryptionAlgorithm": "ordinary",
+      "KeyAlgorithm": "ordinary",
+      "SSLConfiguration": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    },
+    "authored": {
+      "ServerPassword": "secret"
+    }
+  },
+  "security.oauthserverclients.create": {
+    "fieldList": "Security.OAuth2.ServerClients",
+    "classification": {
+      "Name": "ordinary",
+      "RedirectURL[]": "ordinary",
+      "LaunchURL": "ordinary",
+      "Description": "ordinary",
+      "ClientType": "ordinary",
+      "ClientCredentials": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    }
+  },
+  "security.oauthserverclients.update": {
+    "fieldList": "Security.OAuth2.ServerClients",
+    "classification": {
+      "Name": "ordinary",
+      "RedirectURL[]": "ordinary",
+      "LaunchURL": "ordinary",
+      "Description": "ordinary",
+      "ClientType": "ordinary",
+      "ClientCredentials": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    }
+  },
+  "security.oauthserverclients.setsecret": {
+    "fieldList": "Security.OAuth2.ServerClients",
+    "classification": {
+      "Name": "ordinary",
+      "RedirectURL[]": "ordinary",
+      "LaunchURL": "ordinary",
+      "Description": "ordinary",
+      "ClientType": "ordinary",
+      "ClientCredentials": "ordinary",
+      "Metadata": "opaque",
+      "DefaultScope": "ordinary"
+    },
+    "authored": {
+      "ClientSecret": "secret"
     }
   },
   "permissions.users.create": {

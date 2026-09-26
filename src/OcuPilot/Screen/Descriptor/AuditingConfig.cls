@@ -28,6 +28,11 @@
 /// <p><b>Its singular noun is the published sentence EXPERIENCE.md already carries</b> for the
 /// link beside the auditing-off banner, so the proposal card's title reads the same words the
 /// banner's link does rather than a second name for one thing.</p>
+/// <p><b>Its <code>copy</code> and <code>purge</code> row actions act on the audit database</b>
+/// (Story 12.3): <class>OcuPilot.Screen.Tool.AuditCopy</class> and
+/// <class>OcuPilot.Screen.Tool.AuditPurge</class>, each carrying one value -- the namespace, the
+/// cut-off day -- to the same singleton. The purge tool is unadvertised, so this screen's context
+/// lists the copy tool and not it (AD-53).</p>
 /// <p>It does not refresh (AD-43): a form whose fields move under the operator's cursor is what
 /// auto-refresh must not do, and EXPERIENCE.md's roster does not name it.</p>
 Class OcuPilot.Screen.Descriptor.AuditingConfig Extends OcuPilot.Screen.Descriptor.Base
@@ -52,7 +57,7 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [{"id": "enable", "selfProtection": ""}, {"id": "disable", "selfProtection": ""}],
+  "rowActions": [{"id": "enable", "selfProtection": ""}, {"id": "disable", "selfProtection": ""}, {"id": "copy", "selfProtection": ""}, {"id": "purge", "selfProtection": ""}],
   "context": {"fields": ["Enabled"], "secretFields": []},
   "emptyStateKey": "",
   "commandAliases": ["auditing"],

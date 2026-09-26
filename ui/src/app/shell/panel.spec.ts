@@ -3395,12 +3395,47 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     expect(word.classList.contains('ocu-tool-call-status-warning')).toBe(false);
     const reply = host.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '';
     expect(reply).not.toContain(STRINGS.auditMarkerReplySentence);
+    expect(reply).not.toContain(STRINGS.auditDatabaseStillRunning);
     // AC3 (Story 5.8): the reply ends with the published audit-entry offer, appended by this panel
     // the way the confirm, change and marker sentences are -- "the agent ends with an offer" is
     // not assertable against model-authored prose.
     //
     // mutation: drop the `replyWithAuditOfferSentence` call from `Panel.turns` -> this goes red.
     expect(reply.trimEnd().endsWith(STRINGS.agentAuditFollowUpQuestion)).toBe(true);
+  });
+
+  /**
+   * Story 12.3, AD-26: a confirmed write the instance answered as still running (`continues`) puts
+   * the published still-running sentence on the reply, and a finished one does not.
+   *
+   * mutation: stop passing `outcome.continues` in `Panel.recordWriteCard` (record `false`) -> this
+   * goes red.
+   */
+  it('AC: a confirmed write that continues on the instance says it is still running on the reply', async () => {
+    const { host, fixture } = await mountDecidable({
+      [proposalConfirmPath('p1')]: [
+        {
+          kind: 'ok',
+          status: 200,
+          body: {
+            proposalId: 'p1',
+            state: 'confirmed',
+            closedReason: '',
+            confirmedAt: '2026-09-19T10:31:04Z',
+            auditMarked: true,
+            continues: true,
+          },
+        },
+      ],
+    });
+    (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+
+    const reply = host.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '';
+    expect(reply).toContain(STRINGS.auditDatabaseStillRunning);
+    expect(reply.trimEnd().endsWith(STRINGS.agentAuditFollowUpQuestion)).toBe(true);
+    expect(reply).not.toContain(STRINGS.auditMarkerReplySentence);
   });
 
   it('AC: the audit-entry offer is appended once, even to a reply that already ends with it', async () => {

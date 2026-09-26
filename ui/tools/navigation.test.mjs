@@ -173,9 +173,14 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'security/auditing/user-events',
       // Story 9.9: the unlisted reduced LDAP configuration form, reached from the LDAP / Kerberos list.
       'security/ldap/edit',
+      'security/oauth/clients/edit',
       'security/oauth/clients',
+      'security/oauth/resource-servers/edit',
       'security/oauth/resource-servers',
+      'security/oauth/server-clients/edit',
       'security/oauth/server-clients',
+      'security/oauth/edit',
+      'security/oauth/server/edit',
       'security/oauth/server',
       // Story 9.5: the unlisted SSL/TLS configuration form, reached from the SSL/TLS list.
       'security/ssl/edit',
@@ -192,7 +197,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/definitions',
       'agent/switches',
     ],
-    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files and device editor, process details, processes, Locks, System usage, Databases, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view, Volume files and device editor, process details, processes, Locks, System usage, Databases, the unlisted task details, New Task wizard and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, the unlisted user form and service form, users, roles, resources, services, OpenAPI document viewer, the unlisted web-application form, web applications, REST API explorer, the unlisted LDAP configuration form, the four unlisted OAuth 2.0 tabs with the unlisted client configuration, resource server, server client description, server description and authorization server editors among them, the unlisted SSL/TLS configuration form, the unlisted wallet secret form, Secrets, the unlisted X.509 credential form, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
   );
 });
 

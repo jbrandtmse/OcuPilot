@@ -2,10 +2,12 @@
  * The OAuth 2.0 screen in a real browser, against the throwaway instance (Story 6.4): the Security and
  * secrets side bar with its OAuth 2.0 entry, the five-tab strip, and each tab's route, headers and one
  * read, reached by Right then Enter and by a click (AC1); the authorization server tab's cells against
- * its own read answer (AC2); a client configuration's name cell opening the classic editor in a new
- * tab while the OcuPilot tab stays where it is (AC4); and a principal holding the secure pairs without
- * the wallet or OAuth resources, gated on the rail, reading the Resource servers tab under a strip whose
- * other four tabs are gated, and refused Server client descriptions by name (AC5).
+ * its own read answer (AC2); a client configuration's name cell opening OcuPilot's own editor, Story
+ * 12.5's (AC4); and a principal holding the Resource servers tab's three pairs without the wallet,
+ * authorization server or registration resources, gated on the rail, reading the Resource servers tab
+ * under a strip whose authorization server and server client tabs are gated, and refused Server client
+ * descriptions by name (AC5); and, Story 12.9, every tab's name cells opening OcuPilot's own editor
+ * in this tab, with no link to the classic portal and no classic-link card on any of the five (AD-44).
  *
  * **It needs the demo fixture** (`OCUPILOT_DEMO=1`, AD-25), whose SSL/TLS configuration the probe's
  * client configurations name. `before` runs `OcuPilot.Test.OAuthProbe.Create()` and `after` its
@@ -13,7 +15,8 @@
  *
  * **It creates a security principal and OAuth 2.0 objects, so it refuses the live container.**
  * `before` creates a role and an account holding read on the install namespace's code database plus
- * `%Admin_Secure:USE` and `%DB_IRISSYS:READ`; `after` deletes both whether or not a test failed.
+ * `%Admin_Secure:USE`, `%DB_IRISSYS:READ` and `%Admin_OAuth2_Client:USE`; `after` deletes both whether
+ * or not a test failed.
  *
  * Run: `npm run test:browser` (after `npm run build` and `sh scripts/ci-throwaway.sh up`).
  */
@@ -35,6 +38,7 @@ import { resetRememberedState } from './preferences-reset.mjs';
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
 const { formatDeniedScreen, formatRequires } = await import(join(uiRoot, 'src', 'app', 'core', 'navigation.ts'));
+const { encodeEntityId } = await import(join(uiRoot, 'src', 'app', 'core', 'entity-id.ts'));
 
 const config = browserConfig();
 const READ_PREFIX = '/api/ocupilot/screens/';
@@ -42,8 +46,7 @@ const SECURE_USER = 'OcuPilotOAuthSecure';
 const SECURE_ROLE = 'OcuPilotOAuthSecureRole';
 const PASSWORD = 'OcuPilotOAuth1';
 const CLIENT_B = 'OcuPilotTestB';
-const ISSUER_B = 'https://ocupilottest.invalid/b';
-const CLASSIC_EDITOR = '/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Client.Configuration.zen';
+const EDITOR_ROUTE = 'security/oauth/clients/edit';
 
 /** The five tabs in strip order: their route, read, label and declared headers. */
 const TABS = [
@@ -51,7 +54,8 @@ const TABS = [
     route: 'security/oauth',
     read: `${READ_PREFIX}security.oauthserverdescriptions/read`,
     label: STRINGS.oauthTabServerDescriptions,
-    headers: [STRINGS.x509ColumnIssuer, STRINGS.oauthTabClients, STRINGS.oauthTabResourceServers],
+    // Story 12.4: the tab declares row actions, so the table carries the actions column's header.
+    headers: [STRINGS.x509ColumnIssuer, STRINGS.oauthTabClients, STRINGS.oauthTabResourceServers, STRINGS.commandBoxGroupActions],
   },
   {
     route: 'security/oauth/clients',
@@ -70,12 +74,14 @@ const TABS = [
     route: 'security/oauth/resource-servers',
     read: `${READ_PREFIX}security.oauthresourceservers/read`,
     label: STRINGS.oauthTabResourceServers,
-    headers: [STRINGS.tableColumnName, STRINGS.x509ColumnIssuer],
+    // Story 12.6: the tab declares a row action, so the table carries the actions column's header.
+    headers: [STRINGS.tableColumnName, STRINGS.x509ColumnIssuer, STRINGS.commandBoxGroupActions],
   },
   {
     route: 'security/oauth/server',
     read: `${READ_PREFIX}security.oauthserver/read`,
     label: STRINGS.oauthTabServer,
+    // Story 12.7: the tab declares row actions, so the table carries the actions column's header.
     headers: [
       STRINGS.x509ColumnIssuer,
       STRINGS.oauthColumnScopes,
@@ -84,6 +90,7 @@ const TABS = [
       STRINGS.oauthColumnEncryptionAlgorithm,
       STRINGS.oauthColumnKeyAlgorithm,
       STRINGS.oauthColumnServerCredentials,
+      STRINGS.commandBoxGroupActions,
     ],
   },
   {
@@ -138,7 +145,7 @@ before(async () => {
       ...deleteLines,
       'Set tNS=$Select(##class(%SYS.Namespace).Exists("HSCUSTOM"):"HSCUSTOM",1:"USER")',
       'Set tRes=##class(SYS.Database).%OpenId(##class(Config.Databases).Open(##class(Config.Namespaces).Open(tNS).Routines).Directory).ResourceName',
-      `Set tSC1=##class(Security.Roles).Create("${SECURE_ROLE}","OcuPilot OAuth browser spec probe (throwaway)",tRes_":R,%Admin_Secure:U,%DB_IRISSYS:R","")`,
+      `Set tSC1=##class(Security.Roles).Create("${SECURE_ROLE}","OcuPilot OAuth browser spec probe (throwaway)",tRes_":R,%Admin_Secure:U,%DB_IRISSYS:R,%Admin_OAuth2_Client:U","")`,
       `Set tSC2=##class(Security.Users).Create("${SECURE_USER}","${SECURE_ROLE}","${PASSWORD}","OcuPilot OAuth browser spec probe (throwaway)","","","",0,1,"")`,
       mark('CREATED', '$System.Status.IsOK(tSC1)&&$System.Status.IsOK(tSC2)'),
       mark('WALLET', `$SYSTEM.Security.CheckUserPermission("${SECURE_USER}","%Admin_Wallet","USE")`),
@@ -343,12 +350,14 @@ test("AC2: the authorization server tab's Issuer, Scopes, Grant types and Signin
   }
 });
 
-test("AC4: a client configuration's name cell is a new-tab anchor at the classic editor with its three params, and activating it opens that URL while OcuPilot stays put", async () => {
+// A client configuration's name cell opens OcuPilot's own editor, in this tab (AD-44). Mutation
+// (Rule 19): restore the tab's classic-link exemption -> the honored-set and in-app anchor assertions go red.
+test("AC4: a client configuration's name cell opens OcuPilot's own editor at the configuration's route, in this tab", async () => {
   const honored = checkClassicLinks().honored.map((entry) => entry.file).sort();
   assert.deepEqual(
     honored,
-    ['LdapConfigForm.cls', 'OAuthClientTab.cls', 'OAuthResourceServerTab.cls', 'OAuthServerClientTab.cls', 'OAuthServerDescriptionTab.cls', 'OAuthServerTab.cls', 'ServiceForm.cls'],
-    'classic-links honors the five OAuth 2.0 tabs and the two reduced editors (AD-44)'
+    ['LdapConfigForm.cls', 'ServiceForm.cls'],
+    'classic-links honors the two reduced editors alone: no OAuth 2.0 tab links out (AD-44)'
   );
 
   const tab = TABS[1];
@@ -356,34 +365,63 @@ test("AC4: a client configuration's name cell is a new-tab anchor at the classic
   try {
     await atTab(page, tab);
     const read = await answerFor(answers, tab.read);
-    const rowB = read.body.rows.find((candidate) => candidate.ApplicationName === CLIENT_B);
-    assert.ok(rowB !== undefined, `the read answers ${CLIENT_B}`);
-    assert.equal(rowB.IssuerEndpoint, ISSUER_B, 'on description B');
-    const wanted = `${CLASSIC_EDITOR}?PID=${CLIENT_B}&IssuerEndpointID=${rowB.ServerDefinitionID}&IssuerEndpoint=${encodeURIComponent(ISSUER_B)}`;
+    assert.ok(read.body.rows.some((candidate) => candidate.ApplicationName === CLIENT_B), `the read answers ${CLIENT_B}`);
+    const wanted = `/ocupilot/${EDITOR_ROUTE}/${encodeEntityId(CLIENT_B)}`;
 
     const anchor = await page.evaluate((name) => {
       const rows = Array.from(document.querySelectorAll('[role="grid"] .ocu-data-table-body [role="row"]'));
       const row = rows.find((candidate) => candidate.querySelector('[role="gridcell"]').textContent.trim() === name);
       const link = row?.querySelector('[role="gridcell"] a');
       if (link === undefined || link === null) return null;
-      return { href: link.getAttribute('href'), target: link.getAttribute('target'), rel: link.getAttribute('rel') };
+      return { path: new URL(link.getAttribute('href'), window.location.href).pathname, target: link.getAttribute('target') };
     }, CLIENT_B);
-    assert.deepEqual(anchor, { href: wanted, target: '_blank', rel: 'noreferrer' }, 'the name cell is the classic editor anchor');
+    assert.deepEqual(anchor, { path: wanted, target: null }, 'the name cell is an in-app anchor at the editor');
 
-    const ownUrl = page.url();
-    const opened = browser.waitForTarget((target) => target.url().startsWith(`${config.origin}${CLASSIC_EDITOR}`), { timeout: config.navigationTimeoutMs });
     await clickRowCentre(page, { text: CLIENT_B, link: true });
-    const target = await opened;
-    assert.equal(target.url(), `${config.origin}${wanted}`, 'a new browser target opens at that URL');
-    assert.equal(page.url(), ownUrl, 'while the OcuPilot tab\'s URL is unchanged');
-    const classicPage = await target.page();
-    if (classicPage !== null) await classicPage.close();
+    await page.waitForFunction((path) => new URL(window.location.href).pathname === path, { timeout: config.navigationTimeoutMs }, wanted);
+    // `?? ''`: an absent field is not loaded, so the wait holds until the form read has rendered it.
+    await page.waitForFunction(() => (document.querySelector('#ocu-oauth-client-ApplicationName')?.value ?? '') !== '', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('#ocu-oauth-client-ApplicationName', (node) => node.value), CLIENT_B, 'the editor reads the configuration');
   } finally {
     await context.close();
   }
 });
 
-test('AC5: with the secure pairs alone the Security rail item is gated on the wallet pair, Resource servers reads under a strip whose other tabs are gated and focusable, and Server client descriptions is refused by name', async () => {
+// No OAuth 2.0 tab links to the classic portal: every name cell is an in-app anchor at the tab's own
+// editor, no anchor anywhere on the screen resolves under `/csp/sys/`, and no classic-link card renders
+// (AD-44). The Help control's DocBook anchor is documentation and passes. Mutation (Rule 19): restore
+// `OAuthClientTab`'s exemption with its `rowLink`, regenerate the mirror and redeploy -> this leg goes red.
+test('AC1 (Story 12.9): no OAuth 2.0 tab links to the classic portal', async () => {
+  for (const tab of TABS) {
+    const { context, page } = await signedInAt(urlOf(tab.route), config.username, config.password);
+    try {
+      await waitForRows(page, config.navigationTimeoutMs);
+      await atTab(page, tab);
+      const seen = await page.evaluate(() => {
+        const pathOf = (link) => new URL(link.getAttribute('href'), window.location.href).pathname;
+        return {
+          cells: Array.from(document.querySelectorAll('[role="grid"] .ocu-data-table-body [role="gridcell"] a[href]')).map((link) => ({
+            path: pathOf(link),
+            target: link.getAttribute('target'),
+          })),
+          classic: Array.from(document.querySelectorAll('a[href]')).map(pathOf).filter((path) => path.startsWith('/csp/sys/')),
+          cards: document.querySelectorAll('.ocu-classic-link-card').length,
+        };
+      });
+      assert.ok(seen.cells.length > 0, `${tab.label}: at least one name cell is an anchor`);
+      for (const cell of seen.cells) {
+        assert.ok(cell.path.startsWith(`/ocupilot/${tab.route}/edit`), `${tab.label}: the name cell opens the tab's editor, not ${cell.path}`);
+        assert.equal(cell.target, null, `${tab.label}: in this tab`);
+      }
+      assert.deepEqual(seen.classic, [], `${tab.label}: nothing on the screen links to the classic portal`);
+      assert.equal(seen.cards, 0, `${tab.label}: and no classic-link card renders`);
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test('AC5: with the Resource servers pairs alone the Security rail item is gated on the wallet pair, Resource servers reads under a strip whose server tabs are gated and focusable, and Server client descriptions is refused by name', async () => {
   const walletRequires = formatRequires(STRINGS.privilegeRequiresResource, '%Admin_Wallet:USE');
   const resources = TABS[2];
   const { context, page, reads } = await signedInAt(urlOf(resources.route), SECURE_USER, PASSWORD);
@@ -401,13 +439,13 @@ test('AC5: with the secure pairs alone the Security rail item is gated on the wa
     assert.deepEqual(
       strip.map((entry) => [entry.label, entry.disabled, entry.reason]),
       [
-        [TABS[0].label, 'true', 'Requires %Admin_OAuth2_Client:USE'],
-        [TABS[1].label, 'true', 'Requires %Admin_OAuth2_Client:USE'],
+        [TABS[0].label, 'false', null],
+        [TABS[1].label, 'false', null],
         [TABS[2].label, 'false', null],
         [TABS[3].label, 'true', 'Requires %Admin_OAuth2_Server:USE'],
         [TABS[4].label, 'true', 'Requires %Admin_OAuth2_Registration:USE'],
       ],
-      'the other four tabs are gated, each naming its pair'
+      'the two server tabs are gated, each naming its pair'
     );
     await page.focus('app-detail-page .ocu-detail-tab:nth-child(3)');
     await page.keyboard.press('ArrowRight');

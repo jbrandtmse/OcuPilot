@@ -162,6 +162,22 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/audit-events/form" Method="GET" Call="AuditEventFormRead"/>
   <Route Url="/audit-events/:id" Method="PUT" Call="AuditEventUpdate"/>
   <Route Url="/audit-events" Method="POST" Call="AuditEventCreate"/>
+  <Route Url="/oauth/server-description/form" Method="GET" Call="OAuthServerFormRead"/>
+  <Route Url="/oauth/server-description/discover" Method="POST" Call="OAuthServerDiscover"/>
+  <Route Url="/oauth/server-description/:id" Method="PUT" Call="OAuthServerUpdate"/>
+  <Route Url="/oauth/server-description" Method="POST" Call="OAuthServerCreate"/>
+  <Route Url="/oauth/client-configuration/form" Method="GET" Call="OAuthClientFormRead"/>
+  <Route Url="/oauth/client-configuration/:id" Method="PUT" Call="OAuthClientUpdate"/>
+  <Route Url="/oauth/client-configuration" Method="POST" Call="OAuthClientCreate"/>
+  <Route Url="/oauth/resource-server/form" Method="GET" Call="OAuthResourceServerFormRead"/>
+  <Route Url="/oauth/resource-server/:id" Method="PUT" Call="OAuthResourceServerUpdate"/>
+  <Route Url="/oauth/resource-server" Method="POST" Call="OAuthResourceServerCreate"/>
+  <Route Url="/oauth/authorization-server/form" Method="GET" Call="OAuthAuthorizationServerFormRead"/>
+  <Route Url="/oauth/authorization-server" Method="PUT" Call="OAuthAuthorizationServerUpdate"/>
+  <Route Url="/oauth/authorization-server" Method="POST" Call="OAuthAuthorizationServerCreate"/>
+  <Route Url="/oauth/server-client/form" Method="GET" Call="OAuthServerClientFormRead"/>
+  <Route Url="/oauth/server-client/:id" Method="PUT" Call="OAuthServerClientUpdate"/>
+  <Route Url="/oauth/server-client" Method="POST" Call="OAuthServerClientCreate"/>
 </Routes>
 }
 
@@ -505,6 +521,125 @@ ClassMethod DeviceCreate() As %Status
 ClassMethod DeviceUpdate(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Area.OsMgmt.DeviceSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /oauth/server-description/form</code> (Story
+/// 12.4): the server description editor's read, delegating to
+/// <class>OcuPilot.Area.Security.OAuthServerRules</class>. The two sub-resources precede
+/// <code>/oauth/server-description/:id</code>.</p>
+ClassMethod OAuthServerFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthServerRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /oauth/server-description/discover</code>: the
+/// editor's Discover, which fetches an issuer's published metadata and saves nothing (AD-27).</p>
+ClassMethod OAuthServerDiscover() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthServerSave).HandleDiscover()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /oauth/server-description/:id</code>: the editor's
+/// edit Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthServerUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthServerSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /oauth/server-description</code>: the editor's
+/// create Save, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthServerCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthServerSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /oauth/client-configuration/form</code> (Story
+/// 12.5): the client configuration editor's rules, members and readable names, and with an
+/// <code>applicationName</code> query the configuration it edits. It sits before
+/// <code>/oauth/client-configuration/:id</code>.</p>
+ClassMethod OAuthClientFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthClientRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /oauth/client-configuration/:id</code>: the
+/// editor's edit Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthClientUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthClientSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /oauth/client-configuration</code>: the editor's
+/// create Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthClientCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthClientSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /oauth/resource-server/form</code> (Story 12.6): the
+/// resource server editor's rules and readable names, and with a <code>name</code> query the server it
+/// edits. It sits before <code>/oauth/resource-server/:id</code>.</p>
+ClassMethod OAuthResourceServerFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthResourceServerRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /oauth/resource-server/:id</code>: the editor's edit
+/// Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthResourceServerUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthResourceServerSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /oauth/resource-server</code>: the editor's create
+/// Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthResourceServerCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthResourceServerSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /oauth/authorization-server/form</code> (Story
+/// 12.7): the authorization server editor's rules and readable names, and the configuration when the
+/// instance has one. It sits before <code>/oauth/authorization-server</code>.</p>
+ClassMethod OAuthAuthorizationServerFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthAuthorizationServerRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /oauth/authorization-server</code>: the editor's
+/// edit Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthAuthorizationServerUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthAuthorizationServerSave).HandleUpdate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /oauth/authorization-server</code>: the editor's
+/// create Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthAuthorizationServerCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthAuthorizationServerSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /oauth/server-client/form</code> (Story 12.8): the
+/// server client description editor's rules and readable credentials, and the client its
+/// <code>clientId</code> names. It sits before <code>/oauth/server-client/:id</code>.</p>
+ClassMethod OAuthServerClientFormRead() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthRegisteredClientRules).HandleForm()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /oauth/server-client/:id</code>: the editor's edit
+/// Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthServerClientUpdate(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthRegisteredClientSave).HandleUpdate(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /oauth/server-client</code>: the editor's create
+/// Save, resolved through the tools the agent's confirm uses (AD-55).</p>
+ClassMethod OAuthServerClientCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.OAuthRegisteredClientSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /screens/:screen/action</code>: delegates to

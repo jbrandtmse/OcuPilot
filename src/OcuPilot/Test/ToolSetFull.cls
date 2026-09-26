@@ -189,8 +189,9 @@ Method TestEveryToolIsAdvertisedToALeastPrivilegedPrincipal()
 }
 
 /// <p><b>AC3</b> -- the roster the turn advertises is exactly what
-/// <method>OcuPilot.Screen.Tool.Registry.ListTools</method> returns, name for name. The
-/// advertisement is a projection of the registry, never a second list.</p>
+/// <method>OcuPilot.Screen.Tool.Registry.ListTools</method> returns, name for name, less the tools it
+/// marks unadvertised (AD-53). The advertisement is a projection of the registry, never a second
+/// list.</p>
 /// <p>Mutation (Rule 19): drop one tool from
 /// <method>OcuPilot.Kernel.Agent.Dispatch.Advertise</method>'s answer -> this goes red.</p>
 Method TestTheAdvertisedSetIsTheRegistryRoster()
@@ -199,6 +200,7 @@ Method TestTheAdvertisedSetIsTheRegistryRoster()
     Set tExpected = ""
     Set tIterator = tList.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tTool) {
+        If '##class(OcuPilot.Screen.Tool.Registry).IsAdvertised(tTool) Continue
         Set tExpected = tExpected _ $Select(tExpected = "": "", 1: ",") _ ##class(OcuPilot.Screen.Tool.Registry).WireName(tTool.%Get("name"))
     }
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Agent.Dispatch).Advertise(.tTools), "and the turn advertises its tools")

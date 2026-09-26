@@ -34,7 +34,8 @@ const CREDENTIAL = {
   PeerNames: ['peer.example'],
   CAFile: '/x.cer',
   SubjectDN: 'CN=Probe',
-  IssuerDN: 'CN=Probe',
+  IssuerDN: 'CN=Probe CA',
+  SerialNumber: '4F1A09C2',
   ValidityNotBefore: '2026-01-01 00:00:00',
   ValidityNotAfter: '2126-01-01 00:00:00',
   HasPrivateKey: true,
@@ -189,6 +190,11 @@ describe('the X.509 credential form store', () => {
     expect(store.value('OwnerList')).toBe('alice');
     expect(store.credential().caFile).toBe('/x.cer');
     expect(store.credential().hasPrivateKey).toBe(true);
+    // Story 12.1: the certificate's subject, issuer and serial number are mapped from the form read,
+    // each from its own field (the fixture's two DNs differ).
+    expect(store.credential().subject).toBe('CN=Probe');
+    expect(store.credential().issuer).toBe('CN=Probe CA');
+    expect(store.credential().serialNumber).toBe('4F1A09C2');
     // An edit takes no secret: the setters refuse it.
     store.setCertificate(CERT);
     store.setPrivateKey(KEY);

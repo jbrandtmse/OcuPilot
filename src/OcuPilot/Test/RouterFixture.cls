@@ -55,7 +55,8 @@ ClassMethod MayEnterNamespace(pNamespace As %String, Output pFailedPair As %Stri
 /// requires.</p>
 /// <p><code>/screens/:screen/read</code> is the production screen-read route's shape, dispatched to
 /// <class>OcuPilot.Test.Read.ScreenReadFixture</class> so its matrix rows run over fixture
-/// descriptors and a fixture port.</p>
+/// descriptors and a fixture port. <code>/oauth/server-description/:id</code> PUT is the production
+/// edit route's shape, dispatched to <class>OcuPilot.Test.OAuthServerSaveFixture</class>.</p>
 /// <p><code>/:resource</code> is kept deliberately last: every route above must be checked
 /// first, or this single-segment catch-all silently swallows it.</p>
 XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
@@ -80,8 +81,17 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/agent-definitions/:id" Method="PUT" Call="AgentDefinitionUpdateRoute" />
   <Route Url="/agent-definitions" Method="POST" Call="AgentDefinitionCreateRoute" />
   <Route Url="/agent-switches-stale" Method="PUT" Call="AgentSwitchesStaleRoute" />
+  <Route Url="/oauth/server-description/:id" Method="PUT" Call="OAuthServerUpdateRoute" />
   <Route Url="/:resource" Method="POST" Call="CreateResource" />
 </Routes>
+}
+
+/// <p>The OAuth 2.0 server description edit route over
+/// <class>OcuPilot.Test.OAuthServerSaveFixture</class>, whose port records what the Save sends and can
+/// refuse one request type.</p>
+ClassMethod OAuthServerUpdateRoute(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Test.OAuthServerSaveFixture).HandleUpdate(pId)
 }
 
 /// <p>The screen-read route over <class>OcuPilot.Test.Read.ScreenReadFixture</class>.</p>

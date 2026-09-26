@@ -57,6 +57,7 @@ export interface CredentialView {
   readonly alias: string;
   readonly subject: string;
   readonly issuer: string;
+  readonly serialNumber: string;
   readonly validFrom: string;
   readonly validUntil: string;
   readonly hasPrivateKey: boolean;
@@ -75,6 +76,7 @@ const EMPTY_CREDENTIAL: CredentialView = {
   alias: '',
   subject: '',
   issuer: '',
+  serialNumber: '',
   validFrom: '',
   validUntil: '',
   hasPrivateKey: false,
@@ -572,6 +574,7 @@ export class X509Form {
       alias: textAt(credential, ALIAS_FIELD) || alias,
       subject: textAt(credential, 'SubjectDN'),
       issuer: textAt(credential, 'IssuerDN'),
+      serialNumber: textAt(credential, 'SerialNumber'),
       validFrom: textAt(credential, 'ValidityNotBefore'),
       validUntil: textAt(credential, 'ValidityNotAfter'),
       hasPrivateKey: (credential as Record<string, unknown>)['HasPrivateKey'] === true,

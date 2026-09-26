@@ -192,9 +192,10 @@ ClassMethod AliasViolation(pAlias As %String, Output pViolations)
 
 /// <p>Answer <code>GET /x509/form[?alias=&lt;a&gt;]</code>: everything the form needs before it can
 /// draw a field (AD-39): <code>{requiredFields, maxLengths, rules}</code>. With an alias it adds
-/// <code>credential: {Alias, OwnerList, PeerNames, CAFile, SubjectDN, IssuerDN, ValidityNotBefore,
-/// ValidityNotAfter, HasPrivateKey}</code>, read through the edit tool's own port from the vendor's
-/// <code>GET</code> and <code>CERTINFO</code>; no certificate, key or password is ever read. An alias
+/// <code>credential</code> holding exactly <code>Alias, OwnerList, PeerNames, CAFile, SubjectDN,
+/// IssuerDN, SerialNumber, ValidityNotBefore, ValidityNotAfter, HasPrivateKey</code>, read through the
+/// edit tool's own port from the vendor's <code>GET</code> and <code>CERTINFO</code>; no certificate,
+/// key or password is ever read. An alias
 /// this instance does not hold is 404 <parameter>OcuPilot.Api.Error.X509ALIASABSENT</parameter>.</p>
 ClassMethod HandleForm() As %Status
 {
@@ -232,7 +233,7 @@ ClassMethod HandleForm() As %Status
                 Do tCredential.%Set(tField, $Select(tFresh.%GetTypeOf(tField) = "array": tFresh.%Get(tField), 1: []))
             }
             Do tCredential.%Set("CAFile", tFresh.%Get("CAFile"), "string")
-            For tField = "SubjectDN", "IssuerDN", "ValidityNotBefore", "ValidityNotAfter" {
+            For tField = "SubjectDN", "IssuerDN", "SerialNumber", "ValidityNotBefore", "ValidityNotAfter" {
                 Do tCredential.%Set(tField, $Select($IsObject(tInfo): tInfo.%Get(tField), 1: ""), "string")
             }
             Do tCredential.%Set("HasPrivateKey", $Select($IsObject(tInfo): ''tInfo.%Get("HasPrivateKey"), 1: 0), "boolean")

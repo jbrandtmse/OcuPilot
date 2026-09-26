@@ -11,11 +11,16 @@
 /// <code>context.secretFields</code> is empty (AD-35).</p>
 /// <p><b>The privilege set is <code>%Admin_OAuth2_Client:USE</code> and <code>%DB_IRISSYS:READ</code></b>:
 /// the vendor's <code>ResourcesOR()</code>, and the database the port runs every endpoint in (AD-8).</p>
-/// <p><b>Its name cells open the classic server description editor in a new tab</b>, under the
-/// Release 1 exemption the five OAuth 2.0 tabs declare together (AD-44): <code>rowLink</code> sends the
-/// description's <code>ID</code> as <code>PID</code>, the parameter the classic list sends.</p>
-/// <p>It declares no primary or row action, so its empty state names what to do next, and it does
-/// not refresh (AD-43).</p>
+/// <p><b>Its name cells open OcuPilot's own editor</b>,
+/// <class>OcuPilot.Screen.Descriptor.OAuthServerDescriptionForm</class>, at this tab's route with
+/// <code>/edit</code> appended and the issuer as the id (Story 12.4); it declares no classic link-out.
+/// Its Create opens the same editor empty.</p>
+/// <p><b>Its row actions are <code>delete</code> and <code>updatejwks</code></b>, carried out by
+/// <class>OcuPilot.Screen.Tool.OAuthServerDescriptionDelete</class> and
+/// <class>OcuPilot.Screen.Tool.OAuthServerDescriptionUpdateJwks</class> (AD-51, AD-53). The
+/// registration access token is its one declared secret, written only by
+/// <class>OcuPilot.Screen.Tool.OAuthServerDescriptionSetToken</class> (AD-56). It does not refresh
+/// (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -36,9 +41,10 @@ XData Declaration
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "primaryAction": {"id": "create", "selfProtection": ""},
+  "rowActions": [{"id": "delete", "selfProtection": ""}, {"id": "updatejwks", "selfProtection": ""}],
   "context": {"fields": ["ID", "IssuerEndpoint", "ClientCount", "ResourceCount"], "secretFields": []},
+  "secretArguments": ["InitialAccessToken"],
   "emptyStateKey": "oauthServerDescriptionsEmpty",
   "commandAliases": ["oauth"],
   "suggestedPrompts": [
@@ -47,13 +53,7 @@ XData Declaration
     {"groupKey": "userPromptGroupSignIn", "textKey": "oAuthServerDescriptionTabPrompt3"}
   ],
   "classicPage": "%CSP.UI.Portal.OAuth2.Client.ServerList",
-  "classicLinkExemption": {
-    "exempt": true,
-    "reason": "Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1",
-    "label": "OAuth 2.0 Client Configuration",
-    "href": "/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Client.ServerConfiguration.zen",
-    "rowLink": {"params": [{"name": "PID", "field": "ID"}]}
-  },
+  "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
     "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ServerDefinition", "type": "LIST"},
     "fields": ["ID", "IssuerEndpoint", "ClientCount", "ResourceCount"],
@@ -67,8 +67,8 @@ XData Declaration
       {"field": "ClientCount", "labelKey": "oauthTabClients", "kind": "number"},
       {"field": "ResourceCount", "labelKey": "oauthTabResourceServers", "kind": "number"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "oauthServerDescriptionsEmptyAgent"
   },
   "tab": {"group": "security/oauth", "position": 1, "labelKey": "oauthTabServerDescriptions"},
   "toolIdentifier": "security.oauthserverdescriptions"

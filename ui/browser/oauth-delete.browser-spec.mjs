@@ -151,12 +151,15 @@ async function clearFilter(page, atLeast) {
   await page.waitForFunction((selector, n) => document.querySelectorAll(selector).length >= n, { timeout: config.navigationTimeoutMs }, ROW_SELECTOR, atLeast);
 }
 
-/** Open the typed-name dialog from the selected row's overflow menu. */
-async function deleteFromRowMenu(page) {
+/**
+ * Open the typed-name dialog from the selected row's overflow menu, which offers exactly `offered`:
+ * the tab's declared row actions, Delete first.
+ */
+async function deleteFromRowMenu(page, offered = [STRINGS.actionDelete]) {
   await page.click('.ocu-data-table-trigger');
   await page.waitForSelector('[role="menu"]', { timeout: config.navigationTimeoutMs });
   const labels = await page.$$eval('[role="menu"] [role="menuitem"] .ocu-data-table-menu-label', (items) => items.map((item) => item.textContent.trim()));
-  assert.deepEqual(labels, [STRINGS.actionDelete], 'the row menu offers the one declared action');
+  assert.deepEqual(labels, offered, 'the row menu offers the declared actions');
   await page.evaluate((label) => {
     const items = Array.from(document.querySelectorAll('[role="menu"] [role="menuitem"]'));
     items.find((item) => item.textContent.trim().startsWith(label)).click();
@@ -221,7 +224,8 @@ test('AC1: a client configuration is deleted from the row menu behind the typed-
   const { context, page, writes } = await signedInAt(CLIENTS_URL);
   try {
     await selectOnly(page, CLIENT_DELETE);
-    await deleteFromRowMenu(page);
+    // Story 12.5: the client tab also declares Rotate Keys and Register.
+    await deleteFromRowMenu(page, [STRINGS.actionDelete, STRINGS.oauthClientRotateKeys, STRINGS.oauthClientRegister]);
     await confirmDialog(page, writes, CLIENT_DELETE, STRINGS.oauthClientDeleteConsequence);
     await page.waitForFunction((selector) => document.querySelectorAll(selector).length === 0, { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
     assert.equal(writes.length, 1, 'exactly one request, sent once the name matched');
@@ -250,7 +254,7 @@ test('AC1, AC2: a server client is deleted by its ClientId from the row menu or 
     assert.equal(barTitle, `${STRINGS.actionDelete} ${gone}`, 'the command bar opens the same dialog on the ClientId');
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
-    await deleteFromRowMenu(page);
+    await deleteFromRowMenu(page, [STRINGS.actionDelete, STRINGS.oauthServerUpdateJwks]);
     await confirmDialog(page, writes, gone, STRINGS.oauthServerClientDeleteConsequence);
     await page.waitForFunction((selector) => document.querySelectorAll(selector).length === 0, { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
     assert.equal(writes.length, 1, 'exactly one request, sent once the client id matched');

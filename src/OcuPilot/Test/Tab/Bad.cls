@@ -31,13 +31,7 @@ XData Declaration
   "commandAliases": [],
   "suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainScreen"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainLog"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptChangeOneThing"}],
   "classicPage": "%CSP.UI.Portal.OAuth2.ResourceServer.ConfigurationList",
-  "classicLinkExemption": {
-    "exempt": true,
-    "reason": "Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1",
-    "label": "OAuth 2.0 Resource Server Configuration",
-    "href": "/csp/sys/sec/%25CSP.UI.Portal.OAuth2.ResourceServer.Configuration.zen",
-    "rowLink": {"params": [{"name": "PID", "field": "Name"}]}
-  },
+  "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
     "source": {"port": "admin", "endpoint": "Security.OAuth2.ResourceServer", "type": "LIST"},
     "fields": ["Name", "ServerDefinition"],

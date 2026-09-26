@@ -206,18 +206,26 @@ const OAUTH_SERVER_CLIENTS = SCREENS.find(
   (screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.OAuthServerClientTab'
 )!;
 
+const OAUTH_RESOURCE_SERVERS = SCREENS.find(
+  (screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.OAuthResourceServerTab'
+)!;
+
+const OAUTH_AUTH_SERVER = SCREENS.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.OAuthServerTab')!;
+
 /**
  * AD-53, Story 7.3: the OAuth 2.0 tabs' delete runs through the same handler, with each tab's own
  * published consequence, and a server client is targeted by its `ClientId` -- the vendor's IdKey --
  * never by its `Name`, which two clients may share.
  */
 describe('the OAuth 2.0 tabs\u2019 delete', () => {
-  it('registers delete on both tabs and opens each tab\u2019s own consequence', async () => {
-    // Mutation (Rule 19): drop either descriptor from `SCREEN_ACTION_DESCRIPTORS` -> its `has`
+  it('registers delete on the four tabs and opens each tab\u2019s own consequence', async () => {
+    // Mutation (Rule 19): drop any of the descriptors from `SCREEN_ACTION_DESCRIPTORS` -> its `has`
     // assertion goes red, and no surface draws its delete (DW-389).
-    for (const [screen, consequence, row, type] of [
-      [OAUTH_CLIENTS, STRINGS.oauthClientDeleteConsequence, 'OcuPilotTestDelete', 'oauth2-client-configuration'],
-      [OAUTH_SERVER_CLIENTS, STRINGS.oauthServerClientDeleteConsequence, 'probe-client-id', 'oauth2-server-client'],
+    for (const [screen, consequence, row, type, rowActions] of [
+      [OAUTH_CLIENTS, STRINGS.oauthClientDeleteConsequence, 'OcuPilotTestDelete', 'oauth2-client-configuration', ['delete', 'rotatekeys', 'register']],
+      [OAUTH_SERVER_CLIENTS, STRINGS.oauthServerClientDeleteConsequence, 'probe-client-id', 'oauth2-server-client', ['delete', 'updatejwks']],
+      [OAUTH_RESOURCE_SERVERS, STRINGS.oauthResourceServerDeleteConsequence, 'OcuPilotProbeResource', 'oauth2-resource-server', ['delete']],
+      [OAUTH_AUTH_SERVER, STRINGS.oauthAuthServerDeleteConsequence, 'probe-issuer', 'oauth2-server', ['delete', 'rotatekeys']],
     ] as const) {
       const answer: JsonResult<unknown> = {
         kind: 'ok',
@@ -225,7 +233,7 @@ describe('the OAuth 2.0 tabs\u2019 delete', () => {
         body: { action: 'deleted', target: { type, scope: 'instance', id: row } },
       };
       const { actions, handler, store, calls, events } = mount(answer, screen.descriptor);
-      expect(screen.rowActions.map((action) => action.id)).toEqual(['delete']);
+      expect(screen.rowActions.map((action) => action.id)).toEqual(rowActions);
       expect(actions.has(screen.descriptor, 'delete')).toBe(true);
       store.setSelection([row]);
       actions.run(screen.descriptor, 'delete');
@@ -309,7 +317,7 @@ describe('the Users list row actions (Story 7.2)', () => {
     // and this goes red on every id, so no surface draws a Users row action (AC1).
     const { actions } = mountUsers([]);
     const drawn = USERS.rowActions.map((action) => action.id).filter((id) => id !== REQUIRE_PASSWORD_CHANGE);
-    expect(drawn).toEqual(['enable', 'disable', SET_PASSWORD, ADD_ROLE, REMOVE_ROLE, 'delete']);
+    expect(drawn).toEqual(['enable', 'disable', SET_PASSWORD, ADD_ROLE, REMOVE_ROLE, 'delete', 'revoke-tokens']);
     for (const id of drawn) expect(actions.has(USERS.descriptor, id)).toBe(true);
     expect(actions.has(USERS.descriptor, REQUIRE_PASSWORD_CHANGE)).toBe(false);
   });

@@ -146,12 +146,12 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWN
 /// <class>OcuPilot.Kernel.Proposal.Confirm</class> after its claim has committed (AD-34, AD-40);
 /// no tool, no screen read and no turn reaches one, and the port itself decides nothing about
 /// whether the write may happen.</p>
-/// <p><b>Synchronous on the endpoints that ship today.</b> The vendor's base
-/// <code>ShouldRunAsync()</code> answers false and neither <code>Security.Applications</code>'s
-/// endpoint nor <code>Task.CRUD</code> overrides it, so a mutating call runs in the caller's job
-/// and its answer is the endpoint's own. An endpoint that <i>did</i> queue a mutating request is
-/// refused by <method>Sequence</method> before the vendor's task row is written, because that row
-/// would carry a supplied secret from the body (AD-35, DW-1279). <method>Sequence</method> reads
+/// <p><b>Synchronous except for <parameter>QUEUEDWRITES</parameter>.</b> Every other pair's
+/// <code>ShouldRunAsync()</code> answers false, so the call runs in the caller's job and its answer
+/// is the endpoint's own. A mutating request that would queue is refused by <method>Sequence</method>
+/// before the vendor's task row is written, because that row would carry a supplied secret from the
+/// body (AD-35, DW-1279), unless its pair is in <parameter>QUEUEDWRITES</parameter>, whose bodies
+/// carry none and which take AD-26's async path. <method>Sequence</method> reads
 /// <code>%request.Method</code>, which <method>HttpMethodFor</method> has already set to the
 /// mutating suffix itself -- for <code>RESUME</code> that value is the vendor's request-type
 /// suffix rather than an HTTP verb, since the vendor exposes the operation only as a request
@@ -278,7 +278,24 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWN
 /// <code>Security.Services.Modify</code>, dropping <code>Description</code>; the LDAP
 /// configuration's <code>RunPut</code> modifies a present name and creates an absent one (an upsert,
 /// so the write's fingerprint is what refuses a deleted target, AD-4).</p>
-Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT";
+/// <p><code>Security.OAuth2.Server/REVOKE</code> is Story 12.2's token revoke
+/// (<class>OcuPilot.Screen.Tool.UserTokenRevoke</class>, through <class>OcuPilot.Port.TokenPort</class>,
+/// AD-51, AD-52). Read on this build: <code>TYPEREVOKE</code> is 10, the endpoint overrides
+/// <code>Run</code>, its <code>NeedsRequestBody()</code> is a put or <code>CHANGEPWD</code> so the type
+/// reads no body, and its <code>RunRevoke</code> calls <code>OAuth2.Server.AccessToken.RevokeUser</code>
+/// with the required <code>user</code> query parameter and answers <code>{}</code>, discarding the
+/// count. <code>ResourcesOR()</code> answers <code>%Admin_OAuth2_Registration</code> for it, and the
+/// vendor's delete also requires <code>%Admin_Secure:USE</code>. Measured on a throwaway: it answers
+/// 200 for a user holding no token, matches the tokens' user name exactly, and records no audit
+/// event.</p>
+/// <p><code>Security.Audit.Record/COPY</code> and <code>/PURGE</code> are Story 12.3's
+/// (<class>OcuPilot.Screen.Tool.AuditCopy</class>, <class>OcuPilot.Screen.Tool.AuditPurge</class>,
+/// through <class>OcuPilot.Port.AuditPort</class>). Read on this build: <code>TYPECOPY</code> is 10
+/// and <code>TYPEPURGE</code> 11, both read a body and both answer <code>ShouldRunAsync()</code>
+/// true, so each is queued (<parameter>QUEUEDWRITES</parameter>); <code>RunCopy</code> calls
+/// <code>%SYS.Audit.Copy</code> and <code>RunPurge</code> <code>%SYS.Audit.Delete</code>, each
+/// discarding its count; <code>ResourcesOR()</code> is <code>%Admin_Secure</code>.</p>
+Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabled/PUT,Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.User/POST,Security.Role/PUT,Security.Role/DELETE,Security.Resource/PUT,Security.Resource/DELETE,Security.X509Credential/POST,Security.X509Credential/PUT,Security.X509Credential/DELETE,Wallet.Secret/PUT,Device.Standard/PUT,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Security.User/CHANGEPWD,Task.CRUD/RUN,Task.CRUD/SUSPEND,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/PUT,Security.Audit.Event/DELETE,Security.Audit.Event/CLEARCOUNT,Security.SSLConfig/PUT,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Task.CRUD/POST,Task.CRUD/PUT,Security.Service/PUT,Security.LDAP/PUT,Security.OAuth2.Server/REVOKE,Security.Audit.Record/COPY,Security.Audit.Record/PURGE,Security.OAuth2.Client.ServerDefinition/POST,Security.OAuth2.Client.ServerDefinition/PUT,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ServerDefinition/TOKEN,Security.OAuth2.Client.ServerDefinition/REFRESHJWKS,Security.OAuth2.Client.ClientConfiguration/PUT,Security.OAuth2.Client.ClientConfiguration/CHANGESECRET,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/PUT,Security.OAuth2.ResourceServer/CHANGESECRET,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/PUT,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/PUT,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/CHANGEPWD,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/POST,Security.OAuth2.ServerClients/PUT,Security.OAuth2.ServerClients/SECRET,Security.OAuth2.ServerClients/REFRESHJWKS";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
 /// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
@@ -294,7 +311,7 @@ Parameter MUTATINGTYPES = "WebApp.App/PUT,Security.User/PUT,Security.Audit.Enabl
 /// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
 /// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
 /// the silent success this refusal exists to prevent.</p>
-Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.SSLConfig/DELETE,Wallet.Secret/DELETE";
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME,Security.Role/DELETE,Security.Resource/DELETE,Security.X509Credential/DELETE,Device.Standard/DELETE,WebApp.App/DELETE,Security.OAuth2.Client.ClientConfiguration/DELETE,Security.OAuth2.ServerClients/DELETE,Security.User/DELETE,Task.CRUD/DELETE,Process/TERMINATE,Security.Audit.Event/DELETE,Security.SSLConfig/DELETE,Wallet.Secret/DELETE,Security.OAuth2.Server/REVOKE,Security.OAuth2.Client.ServerDefinition/DELETE,Security.OAuth2.Client.ClientConfiguration/ROTATEKEYS,Security.OAuth2.Client.ClientConfiguration/REGISTERCLIENT,Security.OAuth2.ResourceServer/DELETE,Security.OAuth2.ResourceServer/ADDMAPPING,Security.OAuth2.ResourceServer/REMOVEMAPPING,Security.OAuth2.ResourceServerMapping/DELETE,Security.OAuth2.Server/DELETE,Security.OAuth2.Server/ROTATEKEYS,Security.OAuth2.ServerClients/REFRESHJWKS";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> deletes whose vendor answer does not say whether the
 /// object went, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries. After a 2xx
@@ -450,6 +467,14 @@ Parameter RENAMEDTYPES = "Security.User/CHANGEPWD=Password:NewPassword";
 /// <p><code>Security.Audit.Event</code>'s <code>CLEARCOUNT</code> requires a body and reads none of
 /// it, so the port sends <code>{}</code>.</p>
 Parameter CONSTANTBODIES = "Task.CRUD/RUN={""RunNow"":true};Task.CRUD/SUSPEND={""LeaveInQueue"":true};Security.Audit.Event/CLEARCOUNT={}";
+
+/// <p>The <parameter>MUTATINGTYPES</parameter> pairs the vendor always queues and
+/// <method>Sequence</method> hands to its Work Queue rather than refusing, as comma-separated
+/// <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries; the port awaits each within
+/// <method>AsyncTimeout</method> (AD-26). Their bodies carry no secret field -- a namespace name, two
+/// empty dates, a cut-off and a false flag -- so the vendor's task row holds nothing AD-35 protects.
+/// Every other mutating pair that would queue is still refused.</p>
+Parameter QUEUEDWRITES = "Security.Audit.Record/COPY,Security.Audit.Record/PURGE";
 
 /// <p>The query parameters an endpoint reads as parts of one composite key, as comma-separated
 /// <code>&lt;endpoint&gt;/&lt;key&gt;=&lt;part&gt;:&lt;part&gt;...</code> entries.
@@ -1884,6 +1909,13 @@ ClassMethod IsMutating(pEndpoint As %String, pSuffix As %String) As %Boolean
     Quit ''$ListFind($ListFromString(..#MUTATINGTYPES), pEndpoint _ "/" _ pSuffix)
 }
 
+/// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is a
+/// <parameter>QUEUEDWRITES</parameter> pair, which <method>Sequence</method> lets the vendor queue.</p>
+ClassMethod IsQueuedWrite(pEndpoint As %String, pSuffix As %String) As %Boolean
+{
+    Quit ''$ListFind($ListFromString(..#QUEUEDWRITES), pEndpoint _ "/" _ pSuffix)
+}
+
 /// <p>The HTTP method the request stub carries for <var>pEndpoint</var>'s request type
 /// <var>pSuffix</var>: the suffix itself for a <parameter>MUTATINGTYPES</parameter> pair,
 /// <code>GET</code> for everything else.</p>
@@ -2052,14 +2084,14 @@ ClassMethod Sequence(pName As %String, pEndpoint As %RegisteredObject, pBody As 
             ; AD-35, DW-1279: a mutating request's body can carry a supplied secret, and
             ; SaveRequestBody writes it into the vendor's own task row
             ; (^|"^^:ds:IRISLOCALDATA"|Api.Admin.Util.AsyncTaskD), which is a surface OcuPilot
-            ; neither owns nor purges. Neither Release 1 async entry is mutating, so this refuses a
-            ; combination no shipped path reaches -- before the row is written rather than after,
-            ; because a secret written there cannot be taken back.
+            ; neither owns nor purges. So a mutating request is refused here -- before the row is
+            ; written, because a secret written there cannot be taken back -- unless its pair is a
+            ; QUEUEDWRITES entry, whose body carries none (AD-26).
             ; The endpoint name is threaded in rather than re-derived, so this asks the same
             ; (endpoint, type) question the admission gate asked. %request.Method carries the
             ; request-type suffix for a mutating call (HttpMethodFor) and GET otherwise.
             Set tMethod = %request.Method
-            If ..IsMutating(pName, tMethod) {
+            If ..IsMutating(pName, tMethod) && '..IsQueuedWrite(pName, tMethod) {
                 Set tSC = $$$ERROR($$$GeneralError, "the admin API would queue this " _ tMethod _ " request, and a mutating request's body is never written to the vendor's task row (AD-35)")
                 Quit
             }
@@ -2256,7 +2288,12 @@ ClassMethod Denied(pEndpoint As %String, pFailedPair As %String, pVendorSC As %S
 /// <code>OutputFilename</code>, 7413, 7414, 7433 and 7434 on <code>TaskClass</code>, 7427 and 7429 on
 /// <code>TimePeriodEvery</code>, 7430 on <code>DailyFrequencyTime</code>, 7431 on
 /// <code>RunAfterGUID</code> and 7432 on <code>StartDate</code>.</p>
-Parameter PROPERTYFAULTS = "Device.Standard:644:OpenParameters=DEVICE.OPENPARAMETERS.SHAPE,Security.SSLConfig:726:@CipherList=SSL.CIPHERLIST.EXPANDSEMPTY,Security.SSLConfig:746:@Ciphersuites=SSL.CIPHERSUITES.UNKNOWN,Security.SSLConfig:732:@PrivateKeyPassword=SSL.PRIVATEKEYPASSWORD.WRONG,Task.CRUD:7402:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7405:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7406:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7404:@DailyIncrement=TASK.DAILYINCREMENT.REFUSED,Task.CRUD:7408:@DailyEndTime=TASK.DAILYENDTIME.REFUSED,Task.CRUD:7409:@EndDate=TASK.ENDDATE.REFUSED,Task.CRUD:7410:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7426:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7428:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7411:@OutputFilename=TASK.OUTPUTFILENAME.REFUSED,Task.CRUD:7412:@OutputFilename=TASK.OUTPUTFILENAME.REFUSED,Task.CRUD:7413:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7414:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7433:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7434:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7427:@TimePeriodEvery=TASK.TIMEPERIODEVERY.REFUSED,Task.CRUD:7429:@TimePeriodEvery=TASK.TIMEPERIODEVERY.REFUSED,Task.CRUD:7430:@DailyFrequencyTime=TASK.DAILYFREQUENCYTIME.REFUSED,Task.CRUD:7431:@RunAfterGUID=TASK.RUNAFTERGUID.REFUSED,Task.CRUD:7432:@StartDate=TASK.STARTDATE.REFUSED";
+/// <p>The <code>Security.OAuth2.ServerClients</code> entries (Story 12.8) are the client save's own
+/// refusals: 8863 on <code>Metadata.grant_types</code>, a grant type the authorization server does not
+/// support; 8886 on <code>ClientCredentials</code>, a credential the instance does not hold; and 8864,
+/// no authorization server configuration, which names no field
+/// (<class>OcuPilot.Port.OAuthRegisteredClientPort</class> answers it as a refusal of its own).</p>
+Parameter PROPERTYFAULTS = "Device.Standard:644:OpenParameters=DEVICE.OPENPARAMETERS.SHAPE,Security.SSLConfig:726:@CipherList=SSL.CIPHERLIST.EXPANDSEMPTY,Security.SSLConfig:746:@Ciphersuites=SSL.CIPHERSUITES.UNKNOWN,Security.SSLConfig:732:@PrivateKeyPassword=SSL.PRIVATEKEYPASSWORD.WRONG,Task.CRUD:7402:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7405:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7406:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7404:@DailyIncrement=TASK.DAILYINCREMENT.REFUSED,Task.CRUD:7408:@DailyEndTime=TASK.DAILYENDTIME.REFUSED,Task.CRUD:7409:@EndDate=TASK.ENDDATE.REFUSED,Task.CRUD:7410:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7426:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7428:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7411:@OutputFilename=TASK.OUTPUTFILENAME.REFUSED,Task.CRUD:7412:@OutputFilename=TASK.OUTPUTFILENAME.REFUSED,Task.CRUD:7413:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7414:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7433:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7434:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7427:@TimePeriodEvery=TASK.TIMEPERIODEVERY.REFUSED,Task.CRUD:7429:@TimePeriodEvery=TASK.TIMEPERIODEVERY.REFUSED,Task.CRUD:7430:@DailyFrequencyTime=TASK.DAILYFREQUENCYTIME.REFUSED,Task.CRUD:7431:@RunAfterGUID=TASK.RUNAFTERGUID.REFUSED,Task.CRUD:7432:@StartDate=TASK.STARTDATE.REFUSED,Security.OAuth2.ServerClients:8863:@Metadata.grant_types=OAUTH.CLIENTGRANTTYPES.UNSUPPORTED,Security.OAuth2.ServerClients:8886:@ClientCredentials=OAUTH.SERVERCLIENTCREDENTIALS.ABSENT,Security.OAuth2.ServerClients:8864:@=OAUTH.SERVERCLIENTCONFIG.ABSENT";
 
 /// <p>Append to <var>pRows</var> one <code>{field, code, reason}</code> row per error in
 /// <var>pVendorSC</var> that <parameter>PROPERTYFAULTS</parameter> names for <var>pEndpoint</var>. The

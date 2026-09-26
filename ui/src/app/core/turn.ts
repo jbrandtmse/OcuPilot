@@ -87,6 +87,7 @@ const NO_OUTCOME: ProposalOutcome = {
   reason: '',
   failedPair: '',
   auditMarked: false,
+  continues: false,
 };
 
 /** Storage key for the per-tab conversation id (Boundaries & Constraints). */
@@ -340,6 +341,11 @@ export interface ProposalOutcome {
    * only where a write was made, and a card reads it only for the write it just confirmed.
    */
   readonly auditMarked: boolean;
+  /**
+   * Whether the confirmed write is still running on the instance (AD-26): the instance applied it,
+   * and a queued worker finishes it after the confirm answered. `false` on every other answer.
+   */
+  readonly continues: boolean;
 }
 
 /**
@@ -1139,6 +1145,7 @@ export class TurnStore {
         reason: '',
         failedPair: '',
         auditMarked: boolAt(result.body, 'auditMarked'),
+        continues: boolAt(result.body, 'continues'),
       };
       const target = this.targetOf(id);
       this.recordProposalState(id, outcome);
@@ -1179,6 +1186,7 @@ export class TurnStore {
       reason: result.reason ?? '',
       failedPair: detail === null ? '' : textAt(detail, 'failedPair'),
       auditMarked: false,
+      continues: false,
     };
     if (outcome.state !== '') this.recordProposalState(id, outcome);
     // DW-1348: a refusal that left the row live closes nothing and so records no state, and until
