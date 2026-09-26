@@ -805,8 +805,8 @@ Method TestTheAuditListValidatesAndDeclaresItsServerCriteria()
     Do $$$AssertEquals(tDeclaration.table.columns.%ToJSON(), "[{""field"":""TimeStamp"",""labelKey"":""auditColumnTime"",""kind"":""text""},{""field"":""EventSource"",""labelKey"":""auditColumnEventSource"",""kind"":""text""},{""field"":""EventType"",""labelKey"":""auditColumnEventType"",""kind"":""text""},{""field"":""Event"",""labelKey"":""auditColumnEventName"",""kind"":""name""},{""field"":""Username"",""labelKey"":""processColumnUser"",""kind"":""text""},{""field"":""Pid"",""labelKey"":""processColumnPid"",""kind"":""identifier""},{""field"":""Namespace"",""labelKey"":""headerNamespaceLabel"",""kind"":""text""},{""field"":""Description"",""labelKey"":""tableColumnDescription"",""kind"":""text""}]", "eight columns, the event name the one that links to the detail dialog")
     Do $$$AssertEquals(tDeclaration.id.%ToJSON(), "{""kind"":""composite"",""parts"":[""UTCTimeStamp"",""SystemID"",""AuditIndex""]}", "the id is the record's own IDKEY order, joined into one segment (AD-13)")
 
-    ; EXPERIENCE.md exempts this screen from the refreshing roster by name: it renders nothing
-    ; until Search, so a timer would have no rows to re-read.
+    ; EXPERIENCE.md exempts this screen from the refreshing roster by name: it reads on open and
+    ; on Search or Refresh, never on a timer (AD-43).
     Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "it never auto-refreshes")
     Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RefreshRates")), 0, "and declares no rate")
 

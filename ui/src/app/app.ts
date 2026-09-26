@@ -545,7 +545,7 @@ export class App {
       // trigger is the park the line above has just dropped (AD-43).
       this.refresh.reset();
       // The sixth: the server-criteria archetype's form holds what THIS principal typed, and its
-      // "has searched" flag decides whether the next arrival at that screen renders a table at all.
+      // "has searched" flag decides whether the next visit re-runs that search or the default.
       this.auditSearch.reset();
       // The seventh: the application error log's drill holds which namespace THIS principal was
       // reading and the captured detail of one entry -- every local at every stack level plus

@@ -258,12 +258,13 @@ test('a screen that declares no read has no screen read', () => {
 // --- Story 2.10: the declared server-search criteria (AD-21) -------------------------------------
 //
 // The client's half of the allow-list `OcuPilot.Screen.Read.CriteriaParams` is on the instance: a
-// value travels only where the descriptor names it, and an empty one is omitted so the vendor's own
-// default stands for that criterion.
+// value travels only where the descriptor names it. An absent criterion is not sent, so the instance
+// applies its declared default; an explicit empty one is sent as `p=`, an unset bound (AD-36).
 //
-// Mutations (Rule 19): drop the `.filter(...)` from `screenReadPath` -> "an empty criterion is
-// omitted" goes red; drop the `encodeURIComponent` around the value -> the encoding assertion goes
-// red; return `[]` from `criteriaParams` -> every assertion below goes red at once.
+// Mutations (Rule 19): drop the `.filter(...)` from `screenReadPath` -> "an absent criterion is not
+// sent" goes red; make it filter out `''` as well -> "an explicit empty one is sent" goes red; drop
+// the `encodeURIComponent` around the value -> the encoding assertion goes red; return `[]` from
+// `criteriaParams` -> every assertion below goes red at once.
 
 /** The criteria block the audit database viewer declares, narrowed to what these tests need. */
 const CRITERIA = {
@@ -298,18 +299,40 @@ test('screenReadPath appends every non-empty declared criterion, URL-encoded, in
   );
 });
 
-test('an empty criterion is omitted, and a parameter the descriptor does not declare never travels', () => {
+test('an absent criterion is not sent, an explicit empty one is, and an undeclared one never travels', () => {
   const path = screenReadPath(withCriteria(), 25, {
     beginDateTime: '',
     eventSources: 'OcuPilot',
+    authentication: undefined,
     jsonSearch: 'anything',
   });
-  assert.equal(path, '/api/ocupilot/screens/webapp.probe/read?maxRows=25&eventSources=OcuPilot');
+  assert.equal(path, '/api/ocupilot/screens/webapp.probe/read?maxRows=25&beginDateTime=&eventSources=OcuPilot');
   assert.equal(
     screenReadPath(withCriteria(), 25, {}),
     '/api/ocupilot/screens/webapp.probe/read?maxRows=25',
-    'and a form nothing has been typed into sends the cap alone'
+    'and a read that names no criterion sends the cap alone, so every default applies'
   );
+});
+
+test('createScreenRead hands the answer\'s applied criteria, string members only, to its echo with the request sent', async () => {
+  const harness = wired(() => ({
+    status: 200,
+    body: { fields: READ.fields, rows: [], truncated: false, criteria: { beginDateTime: '2026-09-25 10:00:00', eventSources: '', pids: 5 } },
+  }));
+  const echoes = [];
+  const read = createScreenRead(harness.api, withCriteria(), () => ({ eventSources: '' }), (applied, sent) =>
+    echoes.push({ applied, sent })
+  );
+  await read({ maxRows: 5 });
+  assert.deepEqual(echoes, [
+    { applied: { beginDateTime: '2026-09-25 10:00:00', eventSources: '' }, sent: { eventSources: '' } },
+  ]);
+  // An answer with no `criteria` echoes an empty object rather than nothing, so a form still fills
+  // the fields its request left absent.
+  const bare = wired(() => ({ status: 200, body: { fields: READ.fields, rows: [], truncated: false } }));
+  const bareEchoes = [];
+  await createScreenRead(bare.api, withCriteria(), () => ({}), (applied) => bareEchoes.push(applied))({ maxRows: 5 });
+  assert.deepEqual(bareEchoes, [{}]);
 });
 
 test('createScreenRead reads its criteria at call time, not at bind time', async () => {

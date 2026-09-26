@@ -265,6 +265,17 @@
       "dw": "DW-1584"
     },
     {
+      "key": "logs/audit|overflow|720|app-status-bar>span.ocu-status-bar-segment.ocu-status-bar-stamp",
+      "route": "logs/audit",
+      "invariant": "overflow",
+      "context": "720",
+      "element": "app-status-bar>span.ocu-status-bar-segment.ocu-status-bar-stamp",
+      "count": 1,
+      "measured": "2px past its containing block (app-status-bar>div.ocu-status-bar-group)",
+      "tag": null,
+      "dw": "DW-1584"
+    },
+    {
       "key": "logs/errors|overflow|1280|app-panel-resize-handle>div.ocu-panel-resize-handle[role=separator]",
       "route": "logs/errors",
       "invariant": "overflow",
@@ -2032,6 +2043,17 @@
       "element": "app-status-bar>span.ocu-status-bar-connection[role=status]",
       "count": 1,
       "measured": "28px past its containing block (app-status-bar>div.ocu-status-bar-group)",
+      "tag": null,
+      "dw": "DW-1584"
+    },
+    {
+      "key": "tasks/history|overflow|720|app-status-bar>span.ocu-status-bar-segment.ocu-status-bar-stamp",
+      "route": "tasks/history",
+      "invariant": "overflow",
+      "context": "720",
+      "element": "app-status-bar>span.ocu-status-bar-segment.ocu-status-bar-stamp",
+      "count": 1,
+      "measured": "4px past its containing block (app-status-bar>div.ocu-status-bar-group)",
       "tag": null,
       "dw": "DW-1584"
     },

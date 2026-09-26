@@ -5,7 +5,9 @@ import { ApiService } from '../../core/api';
 import { decodeEntityId } from '../../core/entity-id';
 import { NavigationService, withQuery } from '../../core/navigation';
 import { RefreshService } from '../../core/refresh';
+import { ScopeService } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
+import { ScreenArrivals } from '../../core/screen-arrival';
 import { createScreenRead, textOf } from '../../core/screen-read';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import { fieldOf, rowKey } from '../../core/table-model';
@@ -72,15 +74,15 @@ function heldFor(store: ScreenStore | null): TaskHistorySearch {
 }
 
 /**
- * Task history, across every task (Story 6.6): a search field and a user-defined-only checkbox
- * above the table, the table itself once Search has run, and the row detail dialog the `/:id`
- * route opens -- the same shape `AuditPage` gives `list (server criteria)`, registered for this
- * one descriptor because `ARCHETYPE_PAGES` can hand that archetype only one page
- * (`screen-outlet.ts`).
+ * Task history, across every task (Story 6.6): a search field, a user-defined-only checkbox and a
+ * logged-since field above the table, and the row detail dialog the `/:id` route opens -- the same
+ * shape `AuditPage` gives `list (server criteria)`, registered for this one descriptor because
+ * `ARCHETYPE_PAGES` can hand that archetype only one page (`screen-outlet.ts`).
  *
- * **It renders nothing until Search is pressed** (Boundaries), for the reason `AuditPage` gives:
- * the API searches on the server, so a read on navigation would be an unbounded search nobody
- * asked for.
+ * **It opens on the default search** (Story 11.11), for the reason `AuditPage` gives: one read at
+ * once with no criteria, so the instance applies `since`'s seven days, and the form shows the
+ * values it applied. A return re-runs the last Search, or the default; an agent arrival runs its
+ * own search once.
  *
  * **The dialog lists every declared read field**, not two named ones -- a task run carries no
  * single free-text field the way an audit event's `Description`/`EventData` pair does, so the
@@ -107,7 +109,18 @@ function heldFor(store: ScreenStore | null): TaskHistorySearch {
               (input)="onSearchInput($event)"
             />
           </div>
+          <div class="ocu-criteria-field">
+            <label class="ocu-criteria-label" for="ocu-task-history-since">{{ STRINGS.taskHistorySince }}</label>
+            <input
+              class="ocu-criteria-input"
+              type="text"
+              id="ocu-task-history-since"
+              [value]="since"
+              (input)="onSinceInput($event)"
+            />
+          </div>
         </div>
+        <p class="ocu-criteria-hint">{{ STRINGS.auditCriteriaTimeHint }}</p>
         <div class="ocu-criteria-controls">
           <label class="ocu-criteria-marker">
             <input
@@ -121,9 +134,7 @@ function heldFor(store: ScreenStore | null): TaskHistorySearch {
           <button type="submit" class="ocu-button-primary">{{ STRINGS.auditCriteriaSearch }}</button>
         </div>
       </form>
-      @if (searched) {
-        <app-data-table [screen]="view.screen" [store]="view.store" (focusFilter)="onFocusFilter()" />
-      }
+      <app-data-table [screen]="view.screen" [store]="view.store" (focusFilter)="onFocusFilter()" />
       @if (detail; as fields) {
         <app-dialog
           [heading]="STRINGS.taskHistoryLabel"
@@ -146,8 +157,12 @@ export class HistoryPage {
   private readonly stores = inject(ScreenStores);
   private readonly refresh = inject(RefreshService);
   private readonly api = inject(ApiService);
+  private readonly scope = inject(ScopeService);
 
   private readonly actions = inject(ScreenActions);
+
+  /** An agent navigation's hand-off (Story 11.11). Optional, so a spec that needs none provides none. */
+  private readonly arrivals = inject(ScreenArrivals, { optional: true });
 
   protected readonly STRINGS = STRINGS;
 
@@ -173,34 +188,35 @@ export class HistoryPage {
     this.searchStore = heldFor(store);
     this.list = { screen, store };
 
-    // Bind with no read until the first Search, for the reason `AuditPage` binds this way: an
-    // unsearched screen must issue nothing, on first render or on a namespace switch.
-    this.refresh.bind(screen, this.searchStore.searched() ? this.boundRead(screen) : null);
+    // Bound on every open, for the reason `AuditPage` gives; the dialog round trip reads nothing.
+    this.refresh.bind(screen, this.boundRead(screen));
+    const arrival = this.arrivals?.take(screen.route) ?? null;
+    if (arrival !== null) {
+      this.searchStore.useArrival(arrival);
+      this.readNow();
+    } else if (!this.refresh.hasLoaded()) {
+      if (this.searchStore.searched()) this.searchStore.useForm();
+      else this.searchStore.useDefault();
+      this.readNow();
+    }
 
-    if (this.searchStore.searched() && !this.refresh.hasLoaded()) void this.refresh.readNow();
+    // Manual Refresh: re-runs the read the screen last issued (the rule `AuditPage` gives).
+    const stopRefreshAction = this.actions.register(screen.descriptor, REFRESH_ACTION_ID, () => {
+      this.refresh.bind(screen, this.boundRead(screen));
+      void this.refresh.readNow();
+    });
 
-    // Manual Refresh, offered only once Search has run and withdrawn the moment it has not
-    // (the same rule and the same reason `AuditPage`'s own toggle gives).
-    let stopRefreshAction: (() => void) | null = null;
-    const syncRefreshAction = (): void => {
-      const offered = this.searchStore.searched();
-      if (offered && stopRefreshAction === null) {
-        stopRefreshAction = this.actions.register(screen.descriptor, REFRESH_ACTION_ID, () => {
-          this.refresh.bind(screen, this.boundRead(screen));
-          void this.refresh.readNow();
-        });
-      } else if (!offered && stopRefreshAction !== null) {
-        stopRefreshAction();
-        stopRefreshAction = null;
-      }
-    };
-    syncRefreshAction();
+    // An arrival for this screen while it is already mounted is taken here, in place of a new page.
+    const stopArrivals =
+      this.arrivals?.subscribe(() => {
+        const next = this.arrivals?.take(screen.route) ?? null;
+        if (next === null) return;
+        this.searchStore.useArrival(next);
+        this.readNow();
+      }) ?? null;
 
     const stopStore = store.subscribe(() => this.bump());
-    const stopSearch = this.searchStore.subscribe(() => {
-      this.bump();
-      syncRefreshAction();
-    });
+    const stopSearch = this.searchStore.subscribe(() => this.bump());
     const stopParams = this.route.paramMap.subscribe((params) => {
       const raw = params.get('id');
       this.entityId.set(raw === null ? '' : decodeEntityId(raw));
@@ -217,7 +233,8 @@ export class HistoryPage {
     inject(DestroyRef).onDestroy(() => {
       stopStore();
       stopSearch();
-      stopRefreshAction?.();
+      stopRefreshAction();
+      stopArrivals?.();
       stopParams.unsubscribe();
       if (!this.searchStore.isCurrentGeneration(generation)) return;
       if (this.navigation.screenForUrl(this.router.url)?.descriptor === screen.descriptor) return;
@@ -227,7 +244,14 @@ export class HistoryPage {
 
   /** The one `RefreshRead` this screen's store holds, created on first ask. */
   private boundRead(screen: ScreenDeclaration) {
-    return this.searchStore.readFor(() => createScreenRead(this.api, screen, () => this.searchStore.criteria()));
+    return this.searchStore.readFor(() =>
+      createScreenRead(
+        this.api,
+        screen,
+        () => this.searchStore.criteria(),
+        (applied, sent) => this.searchStore.applyEcho(applied, sent)
+      )
+    );
   }
 
   protected get search(): string {
@@ -240,9 +264,9 @@ export class HistoryPage {
     return this.searchStore.userOnly();
   }
 
-  protected get searched(): boolean {
+  protected get since(): string {
     this.generation();
-    return this.searchStore.searched();
+    return this.searchStore.since();
   }
 
   /**
@@ -270,16 +294,21 @@ export class HistoryPage {
     this.searchStore.setSearch((event.target as HTMLInputElement).value);
   }
 
+  protected onSinceInput(event: Event): void {
+    this.searchStore.setSince((event.target as HTMLInputElement).value);
+  }
+
   protected onUserOnly(event: Event): void {
     this.searchStore.setUserOnly((event.target as HTMLInputElement).checked);
   }
 
-  /** Search: bind the read if this is the first one, then read now whatever the rate. */
+  /** Search: send the form as shown, an emptied field as an unset bound, and read now whatever the rate. */
   protected onSearch(event: Event): void {
     event.preventDefault();
     const screen = this.list?.screen;
     if (screen === undefined) return;
     this.searchStore.noteSearched();
+    this.searchStore.useForm();
     this.refresh.bind(screen, this.boundRead(screen));
     void this.refresh.readNow();
   }
@@ -294,6 +323,11 @@ export class HistoryPage {
 
   protected onFocusFilter(): void {
     document.getElementById(COMMAND_BAR_FILTER_ID)?.focus();
+  }
+
+  /** Read once the scope has resolved; before then the framework's own scope read is the one. */
+  private readNow(): void {
+    if (this.scope.loaded()) void this.refresh.readNow();
   }
 
   private bump(): void {

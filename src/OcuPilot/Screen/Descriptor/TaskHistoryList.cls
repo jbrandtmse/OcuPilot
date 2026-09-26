@@ -3,13 +3,17 @@
 /// <code>list (server criteria)</code> archetype's page from the declared <code>table</code>
 /// (AD-5). It is the Tasks area's fourth screen, and the second Release 1 list whose API searches
 /// on the <b>server</b> (Story 6.6, after <class>OcuPilot.Screen.Descriptor.AuditList</class>).</p>
-/// <p><b>It declares two <code>read.criteria</code> fields.</b> <code>search</code> sends the
+/// <p><b>It declares three <code>read.criteria</code> fields.</b> <code>search</code> sends the
 /// vendor's own <code>filter</code> -- named <code>vendorParam</code> because <code>filter</code>
 /// is the read tool's own view argument (<parameter>OcuPilot.Screen.Registry.CRITERIARESERVEDPARAMS</parameter>)
 /// -- an upper-cased substring match across every column. <code>userOnly</code> is a
 /// <code>choice</code> of one option, <code>"1"</code>, drawn as a checkbox rather than a select:
 /// checked sends <code>userOnly=1</code>, unchecked sends nothing, which is the vendor's own
-/// <code>DescendingTaskHistoryFilter(filter, userOnly)</code> distinction.</p>
+/// <code>DescendingTaskHistoryFilter(filter, userOnly)</code> distinction. <code>since</code> is
+/// never sent: it is compared against each row's <code>LogDatetime</code> on the instance
+/// (<code>atOrAfterField</code>, AD-36), which is sound because <code>HISTORY</code> answers newest
+/// first, and it defaults to 168 hours, so the screen and the read tool open on the last seven
+/// days. An explicit empty value reads the whole history.</p>
 /// <p><b>Rows are runs, not tasks.</b> A failed run is <b>two</b> rows -- <code>Status</code> 1
 /// with <code>Result</code> carrying the <code>&lt;THROW&gt;</code> text, then <code>Status</code>
 /// 0 reading "TASK Suspended due to error" -- so <code>Status</code> 1 does not mean success and
@@ -25,7 +29,7 @@
 /// <p><b>The request is synchronous</b>: <code>Task.CRUD</code> defines no
 /// <code>ShouldRunAsync</code> and its <code>RunHistory</code> queues nothing (AD-26).</p>
 /// <p><b>It declares no <code>refreshes</code>.</b> Like <class>OcuPilot.Screen.Descriptor.AuditList</class>,
-/// it renders nothing until Search is pressed, so a timer would have no rows to re-read (AD-43).</p>
+/// it reads on open, on Search and on Refresh, never on a timer (AD-43).</p>
 /// <p><b>The privilege set is <code>%Admin_Task:USE</code> plus <code>%DB_IRISSYS:READ</code></b>,
 /// the Tasks area's own pairs, unchanged by this screen (AD-8, AD-29).</p>
 /// <p><b>The classic page is <code>%CSP.UI.Portal.TaskHistory</code></b> (AD-44). As a list
@@ -73,7 +77,8 @@ XData Declaration
     "criteria": {
       "fields": [
         {"param": "search", "labelKey": "taskHistorySearch", "kind": "text", "maxLength": 100, "vendorParam": "filter"},
-        {"param": "userOnly", "labelKey": "taskHistoryUserOnly", "kind": "choice", "maxLength": 1, "options": ["1"]}
+        {"param": "userOnly", "labelKey": "taskHistoryUserOnly", "kind": "choice", "maxLength": 1, "options": ["1"]},
+        {"param": "since", "labelKey": "taskHistorySince", "kind": "datetime", "maxLength": 50, "defaultHoursAgo": 168, "atOrAfterField": "LogDatetime"}
       ]
     }
   },

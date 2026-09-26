@@ -203,8 +203,8 @@ Method TestAnUndeclaredOrValuedCriterionIsRefused()
     If $IsObject(tFault) Do $$$AssertEquals(tFault.code, ##class(OcuPilot.Api.Error).#NAVCRITERIONUNKNOWN, "naming the code")
 }
 
-/// <p>AD-21: the schema admits <code>criterion</code> as a bounded string and closes the object,
-/// so no other argument is representable at all.</p>
+/// <p>AD-21: the schema admits <code>criterion</code> as a bounded string and <code>criteria</code>
+/// as a bare object, and closes the top level, so no other argument is representable at all.</p>
 Method TestTheSchemaAdmitsCriterionAndNothingElse()
 {
     Set tSchema = $ClassMethod(..#TOOL, "InputSchema", "")
@@ -213,13 +213,92 @@ Method TestTheSchemaAdmitsCriterionAndNothingElse()
     Do $$$AssertTrue($IsObject(tProperties.%Get("criterion")), "criterion is declared")
     Do $$$AssertEquals(tProperties.%Get("criterion").%Get("type"), "string", "as a string")
     Do $$$AssertTrue(+tProperties.%Get("criterion").%Get("maxLength") > 0, "with a bound")
+    Do $$$AssertTrue($IsObject(tProperties.%Get("criteria")), "criteria is declared")
+    Do $$$AssertEquals(tProperties.%Get("criteria").%Get("type"), "object", "as an object")
+    Do $$$AssertEquals(tProperties.%Get("criteria").%GetTypeOf("properties"), "unassigned", "a bare one, since the emitted subset admits no nested properties")
     Set tCount = 0
     Set tIterator = tProperties.%GetIterator()
     While tIterator.%GetNext(.tName, .tValue) {
-        Do $$$AssertTrue($ListFind($ListBuild("route", "entityId", "criterion"), tName) > 0, "the schema declares only route, entityId and criterion, not '" _ tName _ "'")
+        Do $$$AssertTrue($ListFind($ListBuild("route", "entityId", "criterion", "criteria"), tName) > 0, "the schema declares only route, entityId, criterion and criteria, not '" _ tName _ "'")
         Set tCount = tCount + 1
     }
-    Do $$$AssertEquals(tCount, 3, "and all three of them")
+    Do $$$AssertEquals(tCount, 4, "and all four of them")
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).EmitSchema(tSchema, .tEmitted, .tProblem), "and the schema still emits: " _ $Get(tProblem))
+}
+
+/// <p>Story 11.11, AD-11: <code>criteria</code> the target declares, with values its read accepts,
+/// travel on the directive unchanged -- from <method>OcuPilot.Screen.Tool.Navigate.Directive</method>
+/// and on through <method>OcuPilot.Kernel.Agent.Dispatch.ResolveClientCall</method>, which is what
+/// the loop writes onto the pending navigation the progress payload carries.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.Navigate.Directive</method> answer an
+/// empty <var>pCriteria</var> -&gt; both travel assertions go red.</p>
+Method TestCriteriaTravelOnTheDirective()
+{
+    Set tGiven = {"eventSources": "OcuPilot", "beginDateTime": "2026-09-26 08:00:00", "endDateTime": ""}
+    Set tArgs = {"route": "logs/audit"}
+    Do tArgs.%Set("criteria", tGiven)
+    Set tSC = $ClassMethod(..#TOOL, "Directive", "", tArgs, .tRoute, .tEntityId, .tFault, .tCriterion, .tCriteria)
+    Do $$$AssertStatusOK(tSC, "the directive validates")
+    Do $$$AssertEquals($Select($IsObject(tCriteria): tCriteria.%ToJSON(), 1: ""), tGiven.%ToJSON(), "and carries the criteria as given")
+
+    Set tBlock = {"type": "tool_use", "id": "toolu_probe_criteria", "name": "shell_screen_open"}
+    Do tBlock.%Set("input", tArgs)
+    Set tSC = ##class(OcuPilot.Kernel.Agent.Dispatch).ResolveClientCall($Username, tBlock, "OcuPilot.Kernel.Agent.Limits", .tPending, .tToolName, .tRoute, .tEntityId, .tTarget, .tArguments, .tTruncated, .tIsError, .tContent, .tReason, .tFailedPair, "probecriteriatravel", .tInput, .tDeclared, .tCallPairs, .tSecretNames, .tSecretDeclared, .tResolved, .tDispatchedCriterion, .tDispatched)
+    Do $$$AssertStatusOK(tSC, "the dispatcher resolves the call")
+    Do $$$AssertEquals(tPending, 1, "as a pending directive: " _ tContent)
+    Do $$$AssertEquals($Select($IsObject(tDispatched): tDispatched.%ToJSON(), 1: ""), tGiven.%ToJSON(), "carrying the same criteria to the loop")
+}
+
+/// <p>Story 11.11, AD-11: a <code>criteria</code> key the target does not declare is refused
+/// <code>NAV.CRITERIONUNKNOWN</code> naming it in <code>detail.criterion</code>, and so is any key
+/// on a screen that declares no criteria, or whose page runs no arrival (<code>tasks/upcoming</code>
+/// declares <code>hoursOffset</code>). The dispatcher's tool result carries that detail.</p>
+/// <p>Mutation (Rule 19): skip the <code>CriteriaParams</code> name check in
+/// <method>OcuPilot.Screen.Tool.Navigate.CriteriaRefusal</method> -&gt; <code>nosuch</code> reaches
+/// the read's check, which ignores it, and this goes red.</p>
+Method TestAnUndeclaredCriteriaKeyIsRefusedByName()
+{
+    For tCase = $ListBuild("logs/audit", "nosuch"), $ListBuild("web-applications/list", "eventSources"), $ListBuild("tasks/upcoming", "hoursOffset") {
+        Set tArgs = {}
+        Do tArgs.%Set("route", $List(tCase, 1), "string")
+        Set tGiven = {}
+        Do tGiven.%Set($List(tCase, 2), "x", "string")
+        Do tArgs.%Set("criteria", tGiven)
+        Set tSC = $ClassMethod(..#TOOL, "Directive", "", tArgs, .tRoute, .tEntityId, .tFault, .tCriterion, .tCriteria)
+        Set tLabel = $List(tCase, 1) _ " {" _ $List(tCase, 2) _ "}: "
+        Do $$$AssertStatusNotOK(tSC, tLabel _ "refused")
+        Do $$$AssertEquals($Select($IsObject(tFault): tFault.code, 1: ""), ##class(OcuPilot.Api.Error).#NAVCRITERIONUNKNOWN, tLabel _ "as an unknown criterion")
+        Do $$$AssertEquals($Select($IsObject(tFault) && $IsObject(tFault.detail): tFault.detail.criterion, 1: ""), $List(tCase, 2), tLabel _ "naming it")
+        Do $$$AssertEquals(tRoute, "", tLabel _ "and no route is answered, so no announcement can exist")
+    }
+    Set tBlock = {"type": "tool_use", "id": "toolu_probe_unknown", "name": "shell_screen_open", "input": {"route": "logs/audit", "criteria": {"nosuch": "x"}}}
+    Set tSC = ##class(OcuPilot.Kernel.Agent.Dispatch).ResolveClientCall($Username, tBlock, "OcuPilot.Kernel.Agent.Limits", .tPending, .tToolName, .tRoute, .tEntityId, .tTarget, .tArguments, .tTruncated, .tIsError, .tContent, .tReason, .tFailedPair, "probecriteriaunknown")
+    Do $$$AssertStatusOK(tSC, "the dispatcher answers the refusal as a result")
+    Do $$$AssertEquals(tPending, 0, "with no directive")
+    Set tResult = ##class(%DynamicObject).%FromJSON(tContent)
+    Do $$$AssertEquals(tResult.code, ##class(OcuPilot.Api.Error).#NAVCRITERIONUNKNOWN, "the tool result names the code")
+    Do $$$AssertEquals($Select($IsObject(tResult.detail): tResult.detail.criterion, 1: ""), "nosuch", "and the criterion")
+}
+
+/// <p>Story 11.11, AD-11: a value the read would refuse -- a date with no time, or a number -- is
+/// refused <code>NAV.CRITERIONINVALID</code> naming the criterion.</p>
+Method TestAnInvalidCriteriaValueIsRefusedByName()
+{
+    For tCase = "beginDateTime", "pids" {
+        ; Built per case rather than held in a $List, which would not keep the object (the rules'
+        ; collections section).
+        Set tArgs = {"route": "logs/audit"}
+        Set tGiven = {}
+        If tCase = "beginDateTime" Do tGiven.%Set("beginDateTime", "2026-09-26", "string")
+        If tCase = "pids" Do tGiven.%Set("pids", 5, "number")
+        Do tArgs.%Set("criteria", tGiven)
+        Set tSC = $ClassMethod(..#TOOL, "Directive", "", tArgs, .tRoute, .tEntityId, .tFault, .tCriterion, .tCriteria)
+        Set tLabel = tCase _ ": "
+        Do $$$AssertStatusNotOK(tSC, tLabel _ "refused")
+        Do $$$AssertEquals($Select($IsObject(tFault): tFault.code, 1: ""), ##class(OcuPilot.Api.Error).#NAVCRITERIONINVALID, tLabel _ "as an invalid value")
+        Do $$$AssertEquals($Select($IsObject(tFault) && $IsObject(tFault.detail): tFault.detail.criterion, 1: ""), tCase, tLabel _ "naming the criterion")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForNav(##class(OcuPilot.Api.Error).#NAVCRITERIONINVALID), "That value is not one this screen's filter accepts.", "the code carries its written reason")
 }
 
 /// <p>Defensive re-check: a route <code>Directive</code> cannot resolve to a built descriptor is
@@ -323,7 +402,7 @@ Method TestAdvertisedInProduction()
 Method TestEveryNavCodeHasAWrittenSentence()
 {
     Set tCodes = ##class(OcuPilot.Api.Error).NavCodes()
-    Do $$$AssertEquals($ListLength(tCodes), 6, "the vocabulary holds six NAV codes; adding one is a deliberate edit in OcuPilot.Api.Error")
+    Do $$$AssertEquals($ListLength(tCodes), 7, "the vocabulary holds seven NAV codes; adding one is a deliberate edit in OcuPilot.Api.Error")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Set tReason = ##class(OcuPilot.Api.Error).ReasonForNav(tCode)
