@@ -3,7 +3,7 @@
 # edges the orchestrator's analysis added, per the owner's standing instruction (2026-09-16):
 # "If your analysis adds an edge, take the more conservative graph and note the difference in the
 # parallel log; if it would remove one of these, keep mine."
-epics_md_hash: "fd14c79ac00bb9d6225646e6d46951c3f90bbe9c4d740a69daa67bcce4551626"
+epics_md_hash: "f0707b9f8cf8dd04103a22bb26c732b112107c5809096c7c1881da3fbee9c127"
 analyzed_by: claude-opus-5
 analyzed_at: "2026-09-16T15:02:34Z"
 approved: true
@@ -22,6 +22,7 @@ owner_graph:  # as approved, never reduced
   epic-12: [epic-6, epic-8]
   epic-13: [epic-1]   # added 2026-09-19; Story 13.3 held until the owner releases
   epic-15: [epic-1]   # added 2026-09-19
+  epic-23: [epic-11, epic-12]   # chartered 2026-09-26 by the orchestrator under Rule 27, after the submission cut
 
 added_edges:
   hard:
@@ -209,3 +210,11 @@ epics:
     # tool-call-card, which Epic 5 owns. Its own shell surfaces are header*, account-menu*, side-bar*
     # and command-box*.
     paths_hint: ["ui/src/app/shell/header*", "ui/src/app/shell/account-menu*", "ui/src/app/shell/side-bar*", "ui/src/app/shell/command-box*", "ui/src/app/core/**", "ui/src/styles/**", "src/OcuPilot/Screen/Descriptor/Home.cls", "src/OcuPilot/Api/Account*.cls", "src/OcuPilot/Api/Ui*.cls", "ui/src/app/shell/rail*", "ui/src/app/areas/home/**", "ui/src/app/shell/data-table*", "ui/src/app/shell/status-bar*", "ui/src/app/shell/command-bar*", "ui/src/app/app.ts", "ui/src/assets/**"]
+  epic-23:
+    depends_on: [epic-11, epic-12]   # Rule 27: chartered after Epic 12 merges; runs after the submission cut (owner 2026-09-25)
+    submodules: []
+    paths_hint: ["src/OcuPilot/**", "ui/src/**", "ui/tools/**", "ui/browser/**", "scripts/**", "docs/**", "_bmad-output/planning-artifacts/**"]
+    note: >-
+      One range-end cleanup story over the ledger slice owner=range-end-cleanup (178 entries at the charter).
+      It spans the range, so its paths_hint is broad; a concurrent epic's files are contended-edit for it.
+

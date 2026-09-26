@@ -7664,3 +7664,36 @@ So that demand is answered without reopening the whole catalog.
 - **Given** a row whose gate has not cleared
 - **When** the request is answered
 - **Then** the gate is named as the reason, and the row stays where it is.
+
+## Epic 23: The range-end cleanup
+
+Chartered by the orchestrator on 2026-09-26, after the submission cut (`release/1.0.0` at `9d7e1d27`), under Rule 27 (owner instruction 2026-09-19): every closable ledger entry that did not block the floor or a downstream story was re-owned to one range-end cleanup story, owner `range-end-cleanup` in `deferred-work.md`. At the charter the slice holds 178 entries - 97 low and 81 medium severity, none high; 128 low, 44 medium and 6 high fix-risk. It runs in the voting week on the owner's instruction, after Story 15.10, and merges to the feature branch after the cut. Nothing here changes `release/1.0.0`.
+
+### Story 23.1: The range-end cleanup
+
+As the team carrying OcuPilot into the voting week,
+I want every entry the floor deferred either fixed, declined with a reason, or handed to the story that will fix it,
+So that the ledger the judges' build leaves behind is honest and the code it names is as right as the time allows.
+
+**Acceptance Criteria:**
+
+- **Given** the ledger slice on owner `range-end-cleanup`
+- **When** this story completes
+- **Then** every entry in it has a disposition written by the ledger tool: `resolved-by` this story with the commit, `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition, or re-owned by name to an Epic 14 or Epic 16 story that owns the code or to `burndown` for after the contest - and the slice is empty.
+
+- **Given** an entry whose fix-risk is low and whose fix stays inside the code the entry names
+- **When** it is triaged
+- **Then** it is fixed here unless the plan records why not; entries of medium or high fix-risk are fixed only where the plan justifies each one, and are otherwise re-owned.
+
+- **Given** the fixes
+- **When** they land
+- **Then** they land in batches grouped by area, each batch its own commit with CI green on its head, so a failing batch is re-opened alone and never holds the others back.
+
+- **Given** a fix that would change behavior a judge can see
+- **When** it is proposed
+- **Then** it is named in the plan with the entry that asks for it, and a fix that contradicts a document states the document's correction at origin.
+
+- **Given** the entries the owner routed here on 2026-09-25
+- **When** they are triaged
+- **Then** DW-1681 (the demo fixture seeds a duplicate application error on every start), DW-1682 (four comments cite README sections that moved to docs/DEVELOPMENT.md) and DW-1688 (proposal-card.ts's comment names the scratched Story 14.7) are fixed here.
+

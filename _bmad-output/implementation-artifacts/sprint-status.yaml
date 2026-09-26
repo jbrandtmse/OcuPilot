@@ -329,6 +329,10 @@ development_status:
   22-1-the-exclusion-register: backlog
   22-2-picking-up-a-row-when-its-gate-clears: backlog
   epic-22-retrospective: optional
+
+  epic-23: backlog
+  23-1-the-range-end-cleanup: backlog
+  epic-23-retrospective: optional
 action_items:
   - id: "epic-4-retro-item-1-run-an-architecture-update-intent-on-the"
     epic: 4
