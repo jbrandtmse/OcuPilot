@@ -196,3 +196,5 @@ TAB-separated, append-only: `<UTC> TAB <Story <id> | Epic 11> TAB <stage> TAB <m
 2026-09-26T11:39:52Z	Epic 11	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@28775f3e merge_sha=5c731a33 conflicts=none files=12(docs/images,README,epics.md_16.21/16.22,parallel_bookkeeping;docs_only) ci=rides_on_next_code_push(DW-1435)
 2026-09-26T11:39:52Z	Epic 11	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=56 status=final read=in_full(Rule_26)
 2026-09-26T11:39:52Z	Epic 11	ledger_load	total=1149 open=3 routed=230 escalated=0 decision_pending=1 terminal=915 burndown=1 reowned_none=0 owner_unknown=0 inbox_11-11=none note=epic_start_gates_not_repeated(orchestrator)
+2026-09-26T11:42:46Z	Epic 11	epic_context_compiled	sha=54d45a2f reason=planning_artifact_newer(11.11_block_0b444e14) model=opus
+2026-09-26T11:42:46Z	Story 11.11	stage_spawned	stage=plan spawn_at=2026-09-26T11:42:46Z model=opus agent_name=11-11-the-screen-shows-what-the-agent-is-talking-about-plan-1 cycle_iteration=1
