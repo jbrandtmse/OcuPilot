@@ -147,35 +147,21 @@ Two other rules did most of the quality work:
 
 About one story in five still needed a rework after its first pass; CI caused most of those.
 
-## What went wrong, and what each taught
+## What the agents got wrong
 
-**Gates that could not fail.** In the first three stories, review found a test gate in each that
-could never go red: a claimed fix re-applied as a mutation left all 27 tests green; a check for
-external URLs split every line at the `//` inside `https://`; tests ran as `_SYSTEM`, whose `%All`
-role bypassed the very resource being tested. The lesson: an agent's report of its own verification
-is not verification.
+Agents are not careful by default; the process has to make them careful. Four things we learned the
+hard way:
 
-**The 43-hour story.** Story 1.4 took nine implementation attempts and five review rounds, all
-treating a Task Manager "latency" with longer waits. The real cause was `%OpenId` handing back an
-object the polling loop still held in memory - it never re-read anything. Its spec reached 664 KB.
-That story gave the loop an exit, gave the project a rule about stale object references, and gave
-CLAUDE.md a section on prose discipline: *"Every sentence a reviewer can file a finding against is
-surface area; keep the surface small."*
-
-**Eighteen test runs at once.** One agent launched 18 test classes against the same instance in a
-single message. Two of them raced on the same probe database and left it mounted with no file
-behind it, and seven test classes could not run until the instance was restarted. Rule: one test
-run at a time, at any depth.
-
-**Green suites over broken paths.** Our test suite runs as a privileged user, which is convenient
-and dangerous. A commit message from that week records the common cause of four defects that had
-passed every test: *"a suite that runs as %All cannot see a privilege-shaped defect."* Another test
-searched a random token for a three-character value, and passed or failed by chance: *"A needle as
-short as `432` turns up inside random material often enough to redden an otherwise green run."*
-
-**Models and money.** 92.8% of our spend was on the top model tier, so we moved implementation to a
-cheaper model. Stories got no faster, and reworks and CI failures went up. Implementation moved
-back.
+- **They grade their own work generously.** Early on, a separate reviewer found tests that could
+  never fail, which the agent that wrote them had reported as proof. Since then, no agent's claim
+  about its own work counts until something independent has checked it.
+- **They treat symptoms.** One early story took 43 hours because the agents kept making a test wait
+  longer instead of asking why it was slow. The real cause was a small mistake in how the test
+  re-read its data. Now a story that keeps failing stops and comes back to me.
+- **They write too much.** One story's spec grew to 664 KB. A longer spec is not a better one - it is
+  more for a reviewer to argue with - so we keep them short on purpose.
+- **Cheaper models were not cheaper.** Moving the coding work to a smaller model made nothing faster
+  and meant more rework, so it moved back.
 
 ## The human in the loop, in the build
 
