@@ -5237,6 +5237,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Context.cls:44-53 routes a non-parse stage to a different refusal. The split was implemented and then reverted: no constructible input reaches the read or decode stage -- an invalid-UTF-8 body parses through -- so the branch could not be pinned by any test.
 - 2026-09-20T04:10:58Z status=wontfix-accepted owner=15-1-change-your-own-password by=harvest note=reopen_if=an input is found that reaches Account.cls's body read or decode stage without parsing
+- 2026-09-26T16:35:43Z occurrence=23-1-the-range-end-cleanup
 
 ### DW-1293: A new ACCOUNT.* field-level violation code with no ReasonForViolation arm renders a blank reason with no test going red
 - source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -7410,3 +7411,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Error.cls is add-only; the count is prose that goes stale on every appended PROVIDER code
 - 2026-09-26T16:19:27Z status=wontfix-accepted owner=23-1-the-range-end-cleanup by=harvest note=reopen_if=a reader or test relies on the PROVIDER code count in Error.cls's doc comments
+
+### DW-1706: Api/Error.cls PROVIDERTRANSPORT's doc says Never retried; AD-42 retries a no-status-line transport failure once, except a #6059 connect
+- source: spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Error.cls:260-262 predates Story 10.6's retry; B6 refined the same rule in Base.Attempts and left the sentence, mid-file in an add-only file
+- 2026-09-26T16:35:43Z status=open owner=23-1-the-range-end-cleanup by=cr note=Batch B7 (appends to Error.cls): replace the two words if the add-only rule allows, else close wontfix
+
+### DW-1707: Preferences and about 24 Area save handlers answer a server-side body read or decode fault as the caller's (422 or 400), mostly unlogged
+- source: spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Api/Preferences.cls:113-124 answers 422 PREFERENCES.BODY; Area/WebApp/WebAppSave.cls:60-63 and siblings fold it into 400 AGENT.BADBODY; LdapSave-style helpers Quit 0 and lose the stage
+- 2026-09-26T16:35:43Z status=wontfix-accepted owner=23-1-the-range-end-cleanup by=cr note=reopen_if=a read or decode fault is observed from a real request (none is constructible; DW-1292)
+
+### DW-1708: No test drives a decode-stage body fault, so the decode arm of Account.RenderBodyRefusal and Definitions.RenderBadBody can regress to 4xx unseen
+- source: spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Test/BodyRequest.cls has FaultOnContent (read stage) only; dropping the decode test at Account.cls:119 or Definitions.cls:1360 leaves DefinitionsFaults green
+- 2026-09-26T16:35:43Z status=wontfix-accepted owner=23-1-the-range-end-cleanup by=cr note=needs a decode-fault seam on BodyRequest; reopen_if=a decode fault is observed or BodyRequest gains a decode mode

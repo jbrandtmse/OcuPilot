@@ -5,7 +5,11 @@
 /// <class>%Status</class>.</p>
 /// <p>A transport failure before any status line is retried once (AD-42): a turn survives one, and
 /// stops <code>PROVIDER.TRANSPORT</code> on the second.</p>
-/// <p><b>All five <code>PROVIDER.*</code> failures reach a turn here.</b>
+/// <p><b>The five failures of the provider call itself reach a turn here</b> --
+/// <code>PROVIDER.TIMEOUT</code>, <code>UNAVAILABLE</code>, <code>REFUSED</code>,
+/// <code>TRANSPORT</code> and <code>EGRESS</code>. The two a reply's stop reason ends a turn on,
+/// <code>PROVIDER.DECLINED</code> and <code>PROVIDER.TOOLCALLFAILED</code>, are pinned in
+/// <class>OcuPilot.Test.TurnStream</class>.
 /// <code>PROVIDER.EGRESS</code> reaches one through the instance's stored proxy, which is judged
 /// at the call like the endpoint; a definition naming an endpoint that judgement refuses cannot be
 /// stored, so the endpoint's own refusal is pinned in <class>OcuPilot.Test.ProviderPort</class>.</p>

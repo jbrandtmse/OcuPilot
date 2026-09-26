@@ -7,7 +7,7 @@
 /// reaches the transport and consumes a queued answer, so the zero read afterwards is a
 /// measurement rather than a counter that was never live. The third answers 500 for a read fault
 /// on every definition, switch, context and password-change route that reads a body, and 400 for
-/// a malformed document.</p>
+/// a malformed document sent to the definition create route.</p>
 /// <p>The handler's remaining error shapes name <class>OcuPilot.Kernel.State.Agent</class> by
 /// literal <code>##class</code> and are unreachable without a state-class seam; they are recorded
 /// in the ledger rather than worked around here.</p>
@@ -216,8 +216,8 @@ Method TestAnAsStoredTestWithNoVersionRefusesBeforeTheProviderIsCalled()
 
 /// <p>A request body the server could not read is the server's fault, not the client's: a read
 /// fault answers 500 <code>INTERNAL</code> on every definition, switch, context and password-change
-/// route that reads a body, and a malformed document still answers 400 <code>AGENT.BADBODY</code>.
-/// Nothing is written.</p>
+/// route that reads a body, and a malformed document sent to the definition create route still
+/// answers 400 <code>AGENT.BADBODY</code> and writes no definition.</p>
 /// <p>Driven through <method>OcuPilot.Test.Dispatch.InvokeHandlerWithRequest</method> with
 /// <class>OcuPilot.Test.BodyRequest</class> as <code>%request</code>, whose content read throws;
 /// the three routes that take an id are given a stored definition's.</p>

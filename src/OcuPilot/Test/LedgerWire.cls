@@ -416,22 +416,25 @@ Method TestAFailedProviderCallWritesAnErrorRowWithItsCode()
 }
 
 /// <p>A row whose argument string reaches the store longer than <code>LEDGERROWMAXLENGTH</code> is
-/// cut there and reads <code>argumentsTruncated</code> 1 though its writer reported no cut; a short
-/// string reads the writer's own answer, 0 or 1. Written through
+/// cut there and reads <code>argumentsTruncated</code> 1 though its writer reported no cut; one of
+/// exactly that length is kept whole and reads 0; a short string reads the writer's own answer, 0
+/// or 1. Written through
 /// <method>OcuPilot.Kernel.State.Ledger.GuardedAppend</method> under
 /// <class>OcuPilot.Test.LedgerLimits</class>'s narrowed bound, one turn key per case, and read back
 /// over the route by the owner.</p>
 /// <p>Mutation (Rule 19): set <property>ArgumentsTruncated</property> from
 /// <var>pArgumentsTruncated</var> alone in <method>OcuPilot.Kernel.State.Ledger.GuardedAppend</method>
-/// -- the long-string case goes red.</p>
+/// -- the long-string case goes red. Compare the length with <code>&gt;=</code> -- the exact-length
+/// case goes red.</p>
 Method TestAnArgumentStringTheStoreCutsIsMarkedTruncated()
 {
     Set tLimits = "OcuPilot.Test.LedgerLimits"
     Set tMax = +$Parameter(tLimits, "LEDGERROWMAXLENGTH")
     Set tLong = $Translate($Justify("", tMax + 12), " ", "a")
-    For tCase = "long|0|1", "short|0|0", "short|1|1" {
+    Set tExact = $Translate($Justify("", tMax), " ", "a")
+    For tCase = "long|0|1", "exact|0|0", "short|0|0", "short|1|1" {
         Set tKey = "ledgerwirecut" _ $Translate($System.Util.CreateGUID(), "-", "")
-        Set tArguments = $Select($Piece(tCase, "|", 1) = "long": tLong, 1: "{}")
+        Set tArguments = $Case($Piece(tCase, "|", 1), "long": tLong, "exact": tExact, : "{}")
         Set tSC = $ClassMethod(..#STORE, "GuardedAppend", tKey, ..Subject(), ..#CONTEXTROUTE, $Parameter(..#STORE, "KINDTOOL"), "probe.ledger.read", "", "", tArguments, $Piece(tCase, "|", 2), "ok", "", 0, 0, "", tLimits, .tSeq, .tStored)
         Do $$$AssertStatusOK(tSC, tCase _ ": the row is appended")
         Do $$$AssertEquals(tStored, 1, tCase _ ": and stored")
@@ -441,7 +444,7 @@ Method TestAnArgumentStringTheStoreCutsIsMarkedTruncated()
         Do $$$AssertTrue($IsObject(tRow), tCase _ ": the row is in the view")
         If '$IsObject(tRow) Continue
         Do $$$AssertEquals(tRow.argumentsTruncated, $Piece(tCase, "|", 3), tCase _ ": argumentsTruncated reads " _ $Piece(tCase, "|", 3))
-        If $Piece(tCase, "|", 1) = "long" Do $$$AssertEquals($Length(tRow.arguments), tMax, tCase _ ": cut to the bound")
+        If $Piece(tCase, "|", 1) '= "short" Do $$$AssertEquals($Length(tRow.arguments), tMax, tCase _ ": at the bound")
     }
 }
 

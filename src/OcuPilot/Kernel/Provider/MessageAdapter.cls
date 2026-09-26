@@ -90,7 +90,8 @@ Parameter TOOLUSESTOPREASON = "tool_use";
 Parameter REFUSALSTOPREASON = "refusal";
 
 /// <p>The canonical stop reason for a reply whose tool call the provider could not complete. It
-/// extends Anthropic's vocabulary, which has no such value, and only Gemini's map reaches it;
+/// extends Anthropic's vocabulary, which has no such value, and only Gemini's map produces it (an
+/// Anthropic-shaped reply carries its own <code>stop_reason</code> through unchanged);
 /// <class>OcuPilot.Kernel.Agent.Loop</class> ends the turn on it with
 /// <code>PROVIDER.TOOLCALLFAILED</code>.</p>
 Parameter TOOLCALLFAILEDSTOPREASON = "tool_call_failed";

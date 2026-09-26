@@ -342,6 +342,36 @@ Rejected:
 - DW-1584's `overflow-x: clip` has no mutation line: Rule 19 asks one per AC, and DW-1584's is recorded.
 - `definition-actions.spec.ts`'s 403 fixture reason is not the server's sentence: false — the spec asserts the store echoes whatever the envelope says.
 
+### Review Findings (Batch B6, code review 2026-09-26)
+
+- [x] [Review][Patch] The DW-1661 turn leg ran a plain reply only, though a Gemini turn streams and the class header read "either way"; it now runs streamed and plain like the refusal leg and checks the streamed step text is cleared [src/OcuPilot/Test/TurnStream.cls:316]
+- [x] [Review][Patch] `LedgerWire` had no exact-length case, so a `>=` in the store's cut test stayed green; an `exact|0|0` case now pins the bound [src/OcuPilot/Test/LedgerWire.cls:435]
+- [x] [Review][Patch] `TurnProviderFault`'s header said "all five `PROVIDER.*` failures" reach a turn there; it names the five call failures and points the two stop-reason codes to `TurnStream` [src/OcuPilot/Test/TurnProviderFault.cls:8]
+- [x] [Review][Patch] `TOOLCALLFAILEDSTOPREASON`'s doc said only Gemini's map reaches it; an Anthropic-shaped reply carries its `stop_reason` through, which is how `TurnStream` drives it [src/OcuPilot/Kernel/Provider/MessageAdapter.cls:93]
+- [x] [Review][Patch] `DefinitionsFaults` said a malformed document answers 400 on every listed route; only the definition create route is driven, and context and password answer 422 [src/OcuPilot/Test/DefinitionsFaults.cls:10]
+- [x] [Review][Defer] `Error.PROVIDERTRANSPORT`'s doc says "Never retried", against AD-42's one retry [src/OcuPilot/Api/Error.cls:261] — deferred: DW-1706, open, owner this story, Batch B7 (Error.cls is add-only)
+- [x] [Review][Defer] Preferences and about 24 Area save handlers answer a body read or decode fault 422 or 400, mostly unlogged [src/OcuPilot/Api/Preferences.cls:113] — deferred: DW-1707, wontfix-accepted, out of footprint
+- [x] [Review][Defer] No test drives a decode-stage body fault, so the decode arm of both 500 branches is unpinned [src/OcuPilot/Api/Account.cls:119] — deferred: DW-1708, wontfix-accepted
+- [x] [Review][Defer] DW-1292 (wontfix-accepted: Account's read/decode split untestable) is contradicted now that `BodyRequest` reaches the read stage and B6 made the split [src/OcuPilot/Api/Account.cls:118] — deferred: DW-1292 occurrence; the lead closes it `resolved-by` at adjudication
+
+Rejected:
+
+- Behind a tunnelling proxy a refused upstream answers the CONNECT non-200 (`$$$HttpConnectFail`), which is still retried: by-design, AD-42 as amended keys on `#6059` only, and nothing reached the provider.
+- `Base.cls` says `#6059` comes "before it writes any request byte", but the proxy site at `HttpRequest.cls:1257` has written a CONNECT line: false, the CONNECT goes to the proxy and no byte of the provider request is written at either site.
+- The new Account 500 branch logs under `router` and drops the raw status: low, the branch is `Definitions.RenderBadBody`'s own read/decode shape, and the composed detail names the route.
+- `GateAnyOfForUser` keeps an `Output pFailedPair` that is always `""`: low, its doc says so and `RefusePair("")` renders no detail.
+- The ledger's "was cut" is defined twice: false, `Turn.Cap` truncates on the same `$Length > max` test.
+- Its caller contract contradicts itself ("already cut" and "cut here"): false, the second sentence is the store's own guard.
+- The store-side flag is pinned only in an armed class: low, the throwaway is where this suite's store tests run.
+- The Egress restore is not exception-safe, and a failed snapshot query reads as no row: low and theoretical, throwaway-only, and a leak reddens the next method loudly (as at the implement review).
+- The restore is asserted by status, not by value: low, `SetGuarded` writes back the values the snapshot read.
+- The DW-1661 sentence fits `MALFORMED_FUNCTION_CALL` best, and `HttpFor` for the code is unpinned: by-design, the spec sets the sentence; the turn answers no HTTP status.
+- Gemini's `finishMessage` is not logged: low, a new diagnostic rather than a correction.
+- `100.100.100.200` is tested in one spelling: low, `Canonical` unwraps mapped forms for every entry and is tested on the others.
+- Other providers' metadata addresses (EKS Pod Identity IPv6, OCI) are absent: by-design, AD-42 says the denylist cannot be complete, and the task names one address.
+- The Account change goes beyond DW-1699's task text: false, DW-1699's ledger trailer routes `Account.cls:57` to B6.
+- The Gemini mapping and the `Loop` branch meet only at one constant: adequate, the `Adapter` case list pins the literal and the count, and `TurnStream` pins the constant's branch on both modes.
+
 ## Spec Change Log
 
 - 2026-09-26, lead at spec validation: (1) an already-fixed entry closes `resolved-by:23-1-the-range-end-cleanup` with the earlier commit as evidence, not `dropped`, which the grammar keeps for invalid or duplicate entries. (2) DW-1650 moves from `burndown` to B6 + L: its ledger trailer records the owner's decision at the 10.6 merge gate, so only the spine's Deferred row was stale. (3) DW-1185, DW-1434, DW-1435 and DW-1478 are escalated to the owner rather than applied: they edit instruction files (`CLAUDE.md`, `.claude/rules/`, `_bmad/custom/skill-rules.md`), which no agent may change on another agent's say-so; the drafted text stays in Batch L for the owner. (4) DW-1338 and DW-1413 are applied only outside other epics' story blocks; the story-block lines (Stories 1.9, 4.3, 13.3) are escalated for the orchestrator. (5) A batch's commit and the lead's review/bookkeeping commit are pushed together, never with `[skip ci]`; the lead's Batch L commit rides with B1's push.
@@ -929,6 +959,7 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. Tests and probe
 - mutation (DW-1661): the `TOOLCALLFAILEDSTOPREASON` branch deleted from `Loop.Run` → `TurnStream.TestAFailedToolCallFailsTheTurnByItsOwnCode` red, the turn completing with a reply (run 103); reverted.
 - Every mutated file was restored from a copy and `cmp`-checked byte-identical (`git diff --stat` back to 23 files), the package recompiled, and each mutated class re-run green (runs 104-112). The throwaway holds no outbound settings row afterwards.
 - Review patch (2026-09-26): DW-1699's second site, `Account.RenderBodyRefusal`, answers 500 `INTERNAL` for a `read` or `decode` fault; `DefinitionsFaults` gains the password-change case. mutation (DW-1699, Account): the read/decode branch deleted from `RenderBodyRefusal` → `DefinitionsFaults.TestAnUnreadableBodyIsAServerFaultAndAMalformedOneIsTheClients` red on the password-change case alone, answering 422 `ACCOUNT.PASSWORD.BODY` (run 114); reverted, `cmp` byte-identical, recompiled, 3/3 (run 115). `AccountPasswordWire` 4/4 (run 116); `check-objectscript.py` 0 problems.
+- Code review (2026-09-26): mutation (DW-1661, both modes): the `TOOLCALLFAILEDSTOPREASON` branch deleted from `Loop.Run` → `TurnStream.TestAFailedToolCallFailsTheTurnByItsOwnCode` red on its streamed and plain legs alike (run 121); reverted, `cmp` byte-identical, recompiled, 6/6 (run 122). mutation (DW-1172, bound): `GuardedAppend` compares the length with `>=` → `LedgerWire.TestAnArgumentStringTheStoreCutsIsMarkedTruncated` red on `exact|0|0` alone (run 118); reverted, `cmp` byte-identical, recompiled, 6/6 (run 119). `LoadDir` 0 errors; `check-objectscript.py` 0 problems.
 
 ### Batch B7
 
