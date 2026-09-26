@@ -1656,7 +1656,7 @@ class TestRouteOrderingRule(FixtureTreeCase):
         problems = self.ordering_problems()
         self.assertTrue(
             any("/docs/:id/history" in p and "shorter route" in p for p in problems),
-            f"expected the N-segment route named, got {problems}",
+            f"expected a longer route before a shorter one whose Url matches its leading segments, got {problems}",
         )
 
     def test_the_longer_route_first_passes(self):
@@ -1769,12 +1769,14 @@ class TestDestructiveTestGuardRule(FixtureTreeCase):
         "}\n"
     )
 
-    def write_test_class(self, name: str, body: str, before_all: str = "") -> None:
+    def write_test_class(
+        self, name: str, body: str, before_all: str = "", variable: str = "OCUPILOT_ALLOW_PRINCIPALS"
+    ) -> None:
         self.write(
             f"src/OcuPilot/Test/{name}.cls",
             f"Class OcuPilot.Test.{name} Extends %UnitTest.TestCase\n"
             "{\n\n"
-            'Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";\n\n'
+            f'Parameter ARMINGVARIABLE = "{variable}";\n\n'
             f"{before_all}\n"
             "Method TestSomething()\n"
             "{\n"
@@ -2001,6 +2003,100 @@ class TestDestructiveTestGuardRule(FixtureTreeCase):
             "InstallingGuarded",
             '    Set tSC = ##class(OcuPilot.Install.Installer).Install("")',
             self.GUARDED_BODY,
+            variable="OCUPILOT_ALLOW_PRODUCTION_INSTALL",
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertEqual(problems, [])
+
+    def test_a_production_install_armed_only_by_a_narrower_variable_is_refused(self):
+        """DW-419: eight classes ran the production install under `OCUPILOT_ALLOW_PRINCIPALS` or
+        `OCUPILOT_ALLOW_AUDIT_EVENTS` alone, so the variable named for the widest effect kept none
+        of them off an instance. Mutation (Rule 19): drop the production-install clause from
+        `check_destructive_test_guard` -> this goes red."""
+        for name, call in (
+            ("NarrowInstalling", '    Set tSC = ##class(OcuPilot.Install.Installer).Install("")'),
+            ("NarrowStarting", "    Set tSC = ##class(OcuPilot.Test.InstallerProbe).StartPath(0)"),
+        ):
+            with self.subTest(name=name):
+                self.write_test_class(name, call, self.GUARDED_BODY)
+                problems: list[str] = []
+                co.check_destructive_test_guard(problems)
+                self.assertTrue(
+                    any(f"{name}.cls" in p and "OCUPILOT_ALLOW_PRODUCTION_INSTALL" in p for p in problems),
+                    f"expected {name} refused naming the production-install variable, got {problems}",
+                )
+
+    def test_the_same_class_refusing_inline_on_the_production_install_variable_passes(self):
+        """The armed twin: the class keeps its own `ARMINGVARIABLE` and refuses on
+        `OCUPILOT_ALLOW_PRODUCTION_INSTALL` inline in the same `OnBeforeAllTests`."""
+        before_all = (
+            "Method OnBeforeAllTests() As %Status\n"
+            "{\n"
+            "    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {\n"
+            '        Quit $$$ERROR($$$GeneralError, "armed only on a throwaway")\n'
+            "    }\n"
+            '    If $System.Util.GetEnviron("OCUPILOT_ALLOW_PRODUCTION_INSTALL") \'= 1 {\n'
+            '        Quit $$$ERROR($$$GeneralError, "installs only on a throwaway")\n'
+            "    }\n"
+            "    Quit $$$OK\n"
+            "}\n"
+        )
+        self.write_test_class(
+            "NarrowInstallingArmed",
+            '    Set tSC = ##class(OcuPilot.Install.Installer).Install("")',
+            before_all,
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertEqual(problems, [])
+
+    def test_an_inline_production_install_guard_that_refuses_nothing_is_refused(self):
+        """The refusal must belong to the production-install guard itself: the class's other
+        guard always supplies a `Quit $$$ERROR`, so one anywhere in the method proves nothing.
+        Mutation (Rule 19): accept any `Quit $$$ERROR` in the method in `refuses_on_variable` ->
+        this goes red."""
+        before_all = (
+            "Method OnBeforeAllTests() As %Status\n"
+            "{\n"
+            "    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {\n"
+            '        Quit $$$ERROR($$$GeneralError, "armed only on a throwaway")\n'
+            "    }\n"
+            '    If $System.Util.GetEnviron("OCUPILOT_ALLOW_PRODUCTION_INSTALL") \'= 1 {\n'
+            "    }\n"
+            "    Quit $$$OK\n"
+            "}\n"
+        )
+        self.write_test_class(
+            "EmptyInstallGuard",
+            '    Set tSC = ##class(OcuPilot.Install.Installer).Install("")',
+            before_all,
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertTrue(
+            any("EmptyInstallGuard.cls" in p and "OCUPILOT_ALLOW_PRODUCTION_INSTALL" in p for p in problems),
+            f"expected the empty production-install guard refused, got {problems}",
+        )
+
+    def test_a_production_install_guard_read_through_another_parameter_passes(self):
+        """The variable may be read through any parameter holding its name, not only
+        `ARMINGVARIABLE`; a one-line guard counts too."""
+        before_all = (
+            'Parameter INSTALLVARIABLE = "OCUPILOT_ALLOW_PRODUCTION_INSTALL";\n\n'
+            "Method OnBeforeAllTests() As %Status\n"
+            "{\n"
+            "    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {\n"
+            '        Quit $$$ERROR($$$GeneralError, "armed only on a throwaway")\n'
+            "    }\n"
+            '    If $System.Util.GetEnviron(..#INSTALLVARIABLE) \'= 1 Quit $$$ERROR($$$GeneralError, "no")\n'
+            "    Quit $$$OK\n"
+            "}\n"
+        )
+        self.write_test_class(
+            "ParameterInstallGuard",
+            '    Set tSC = ##class(OcuPilot.Install.Installer).Install("")',
+            before_all,
         )
         problems: list[str] = []
         co.check_destructive_test_guard(problems)

@@ -142,10 +142,14 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST,OWN
 /// committed and the token is spent, so a pair missing here 501s a merge write the user already
 /// confirmed. Every pair is asserted against the registry by
 /// <class>OcuPilot.Test.ToolWrite</class>.</p>
-/// <p><b>Reached only by a confirmed proposal.</b> A mutating call is issued by
-/// <class>OcuPilot.Kernel.Proposal.Confirm</class> after its claim has committed (AD-34, AD-40);
-/// no tool, no screen read and no turn reaches one, and the port itself decides nothing about
-/// whether the write may happen.</p>
+/// <p><b>Reached only from a confirmed write path.</b> A mutating call is issued by
+/// <class>OcuPilot.Kernel.Proposal.Operation</class> for <class>OcuPilot.Kernel.Proposal.Confirm</class>'s
+/// transition, after its claim has committed (AD-34, AD-40), and for a screen's own row action or
+/// Save (AD-53, AD-55); some editors' Save handlers call <method>Invoke</method> themselves with
+/// the endpoint and write type their tool class declares, after AD-10's prohibited set, and the
+/// install smoke restores its own write target with a direct call. No model tool call, no screen
+/// read and no turn reaches one, and the port itself decides nothing about whether the write may
+/// happen.</p>
 /// <p><b>Synchronous except for <parameter>QUEUEDWRITES</parameter>.</b> Every other pair's
 /// <code>ShouldRunAsync()</code> answers false, so the call runs in the caller's job and its answer
 /// is the endpoint's own. A mutating request that would queue is refused by <method>Sequence</method>
@@ -706,7 +710,10 @@ ClassMethod VerifyInstance(Output pVersion As %Integer, Output pDetail As %Strin
 
 /// <p>Call one admin endpoint as the calling process's user (AD-1, AD-2, AD-26).</p>
 /// <p><var>pEndpoint</var> is package-relative (<code>WebApp.App</code>); <var>pType</var> is a
-/// suffix from <parameter>TYPESUFFIXES</parameter>; <var>pQuery</var> holds query parameters as
+/// suffix from <parameter>TYPESUFFIXES</parameter>, the suffix of a
+/// <parameter>MUTATINGTYPES</parameter> or <parameter>CONNECTIONTESTTYPES</parameter> pair, or a
+/// bare type <parameter>BARETYPES</parameter> lists for <var>pEndpoint</var>;
+/// <var>pQuery</var> holds query parameters as
 /// <code>pQuery(name) = value</code>; <var>pBody</var> is the request body, <code>{}</code> when
 /// omitted.</p>
 /// <p>Returns OK exactly when the endpoint's status is OK and its HTTP status is 2xx, with
@@ -717,7 +724,8 @@ ClassMethod VerifyInstance(Output pVersion As %Integer, Output pDetail As %Strin
 /// to <method>LogFault</method> alone. <var>pHttpStatus</var> is the numeric HTTP status in both
 /// cases: the endpoint's, 503 for a refusal the port decided (<code>PORT.UNAVAILABLE</code>,
 /// <code>PORT.TIMEOUT</code>), 501 for a name no compiled endpoint class answers, a suffix
-/// outside <parameter>TYPESUFFIXES</parameter>, a suffix the class declares no
+/// outside <parameter>TYPESUFFIXES</parameter> that is not a <parameter>MUTATINGTYPES</parameter>
+/// or <parameter>CONNECTIONTESTTYPES</parameter> pair or a <parameter>BARETYPES</parameter> entry, a suffix the class declares no
 /// <code>TYPE&lt;suffix&gt;</code> parameter for, or a read the class leaves to the vendor base
 /// class (<method>ImplementsRead</method>).</p>
 /// <p><b>A <parameter>MUTATINGTYPES</parameter> call must carry an object body, unless its type is
@@ -1935,7 +1943,8 @@ ClassMethod HttpMethodFor(pEndpoint As %String, pSuffix As %String) As %String [
 /// <var>pClass</var>, or <code>""</code> when the class declares no such parameter or
 /// <method>ImplementsRead</method> says the class does not implement that read. A suffix
 /// <parameter>BARETYPES</parameter> lists for <var>pEndpoint</var> resolves through the bare
-/// parameter of that name; any other suffix must be in <parameter>TYPESUFFIXES</parameter> and
+/// parameter of that name; any other suffix must be in <parameter>TYPESUFFIXES</parameter> or form
+/// a <parameter>MUTATINGTYPES</parameter> or <parameter>CONNECTIONTESTTYPES</parameter> pair, and
 /// resolves through <code>TYPE&lt;suffix&gt;</code>.</p>
 ClassMethod EndpointType(pEndpoint As %String, pClass As %String, pSuffix As %String) As %String [ Private ]
 {

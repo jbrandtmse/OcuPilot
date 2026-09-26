@@ -2,8 +2,8 @@
 /// one of the definition's security properties, so DW-363's conservative fallback can be
 /// executed.</p>
 /// <p><b>Why a subclass is the only way in.</b>
-/// <method>OcuPilot.Kernel.State.Agent.SecurityFields</method> names six properties and
-/// <method>OcuPilot.Api.Definitions.Fields</method> maps all six, so
+/// <method>OcuPilot.Api.Definitions.Fields</method> maps every property
+/// <method>OcuPilot.Kernel.State.Agent.SecurityFields</method> names, so
 /// <method>OcuPilot.Api.Definitions.SecurityFieldNames</method> reports the translation complete on
 /// every call the shipped tree can make. The branch that matters -- a security property the
 /// translation silently dropped, which no comparison can then see -- is reachable only by removing

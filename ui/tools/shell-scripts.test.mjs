@@ -348,3 +348,29 @@ test('field-lists.sh writes the class only from a complete, successful derivatio
     });
   }
 });
+
+// --- _bmad/scripts/ledger.sh ------------------------------------------------------------------
+
+const LEDGER = join(REPO_ROOT, '_bmad', 'scripts', 'ledger.sh');
+
+// Mutation (Rule 19): delete `NOTE="${NOTE#note=}"` from ledger.sh's `new` -> the trailer reads
+// `note=note=human=...` and the first assertion goes red.
+test('ledger.sh new writes a caller-supplied note= prefix once, against a temporary ledger', () => {
+  withScratch('ocupilot-ledger-', (dir) => {
+    const file = join(dir, 'deferred-work.md');
+    const run = (note) =>
+      spawnSync('bash', [LEDGER, file, 'new', 'a summary', 'a source', 'low', 'low', 'in-story', 'an evidence line', 'open', 'burndown', 'a-stage', note], {
+        encoding: 'utf8',
+        env: { ...process.env, LEDGER_ID_COUNTER: '' },
+      });
+    const prefixed = run('note=human=decided at the gate');
+    assert.equal(prefixed.status, 0, `new exits 0: ${prefixed.stdout}${prefixed.stderr}`);
+    const bare = run('plain note');
+    assert.equal(bare.status, 0, `new exits 0: ${bare.stdout}${bare.stderr}`);
+    const trailers = readFileSync(file, 'utf8').split('\n').filter((line) => / status=open owner=burndown by=a-stage /.test(line));
+    assert.equal(trailers.length, 2, `two entries were written: ${trailers.join(' | ')}`);
+    assert.match(trailers[0], / note=human=decided at the gate$/, 'the leading note= is written once');
+    assert.doesNotMatch(trailers[0], /note=note=/, 'never twice');
+    assert.match(trailers[1], / note=plain note$/, 'a note without the prefix is written as given');
+  });
+});

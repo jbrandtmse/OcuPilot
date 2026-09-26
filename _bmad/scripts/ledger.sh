@@ -182,6 +182,8 @@ case "$CMD" in
   new)
     [ $# -eq 12 ] || { echo "ERROR: new needs exactly 10 arguments (see usage)" >&2; usage; }
     SUMMARY="$3"; SOURCE="$4"; SEV="$5"; RISK="$6"; FOOT="$7"; EVID="$8"; STATUS="$9"; OWNER="${10}"; BY="${11}"; NOTE="${12}"
+    # The trailer writes its own `note=`; a caller that passed one would record `note=note=...`.
+    NOTE="${NOTE#note=}"
     case "$SUMMARY$SOURCE$EVID$NOTE" in *$'\n'*) echo "ERROR: arguments must be single-line" >&2; exit 1 ;; esac
     check_owner "$OWNER" || exit 1
     check_status "$STATUS" || exit 1

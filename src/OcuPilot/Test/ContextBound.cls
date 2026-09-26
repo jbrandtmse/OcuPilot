@@ -212,13 +212,13 @@ Method TestLeavesInstanceClassification()
 /// <p>Leaves instance through a proxy (AD-42: a configured proxy is a destination too) -- a public
 /// proxy makes a private endpoint leave the instance; a private proxy leaves the endpoint's own
 /// answer standing; and a marked-local definition never leaves, because its call does not go
-/// through the proxy at all (DW-441).</p>
+/// through the proxy at all.</p>
 /// <p>Mutation: ignore <var>pProxyHost</var> in <method>OcuPilot.Kernel.Egress.LeavesInstance</method>
-/// -- the public-proxy legs go red.</p>
+/// -- the first leg, a private endpoint behind a public proxy, goes red.</p>
 Method TestAPublicProxyLeavesTheInstance()
 {
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Egress).LeavesInstance("10.1.2.3", 0, "192.0.2.10"), 1, "a private endpoint behind a public proxy leaves")
-    ; DW-441: a marked-local call bypasses the proxy (OcuPilot.Port.ProviderPort.Dispatch), so the
+    ; A marked-local call bypasses the proxy (OcuPilot.Port.ProviderPort.Dispatch), so the
     ; proxy is not a destination of that call and counting it would make this answer disagree with
     ; the request that is issued.
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Egress).LeavesInstance("192.0.2.10", 1, "192.0.2.10"), 0, "a marked-local definition does not leave, because its call does not go through the proxy")

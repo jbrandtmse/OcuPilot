@@ -213,7 +213,7 @@ case "$VERDICT" in
         # "  " + <outcome padded to 9> + <name> [+ " -- " + reason] (OcuPilot.Install.Smoke), so
         # awk's default whitespace split puts the outcome in $1 and the name in $2. Without this
         # the line said only that "the failing check is named above", which is an unattributable
-        # red in a CI log nobody can grep -- and the class-side line names only the first.
+        # red in a CI log nobody can grep.
         FAILED=$(printf '%s\n' "$REPORT" | awk '$1 == "fail" { printf "%s%s", (n++ ? ", " : ""), $2 }')
         NAMED=$(printf '%s\n' "$REPORT" | awk '$1 == "fail" { n++ } END { print n + 0 }')
         # What the class itself counted, from its own counts line. The criterion is that the line

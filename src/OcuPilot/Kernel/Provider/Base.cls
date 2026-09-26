@@ -25,7 +25,10 @@
 /// status that is not a timeout, with no status read -- is retried once per call, on a new request
 /// object, inside the same attempt count, attempt deadline and delay budget. A model call changes
 /// nothing on the instance, so a connection that broke before the provider answered is safe to
-/// open again.</p>
+/// open again. A connect that never opened -- <code>ERROR #6059</code>, which
+/// <class>%Net.HttpRequest</class> raises before it writes any request byte or creates a response
+/// object -- is not retried: the endpoint refused or did not answer the connect, and a second one
+/// would wait out the whole per-call timeout again.</p>
 /// <p><b>Streaming</b> (AD-42, AD-33). A call streams only when the caller put a
 /// <class>OcuPilot.Kernel.Provider.StreamSink</class> in <code>pSettings("stream")</code> and
 /// <method>StreamsFor</method> answers 1, which it does when <parameter>STREAMS</parameter> is 1.
@@ -361,8 +364,10 @@ Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %
             Set tCode = $Select(tTimedOut: ##class(OcuPilot.Api.Error).#PROVIDERTIMEOUT, 1: ##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT)
             ; AD-42's one exception: the connection broke before a status line arrived, so the
             ; provider never answered this request. It is tried once more, on the new request the
-            ; next pass builds, within the attempt count, the deadline and the delay budget.
-            If 'tTimedOut && (+tStatus = 0) && 'tTransportRetried && (tAttempt < tMaxAttempts) && ((..NowSeconds() - tStartedAt) < ##class(OcuPilot.Kernel.Provider.Retry).#ATTEMPTBUDGETSECONDS) {
+            ; next pass builds, within the attempt count, the deadline and the delay budget. A
+            ; connect that never opened is not: nothing was sent, and the endpoint just refused it.
+            Set tNeverOpened = $System.Status.Equals(tIssueSC, $$$ERRORCODE($$$HttpRequestConnect))
+            If 'tTimedOut && 'tNeverOpened && (+tStatus = 0) && 'tTransportRetried && (tAttempt < tMaxAttempts) && ((..NowSeconds() - tStartedAt) < ##class(OcuPilot.Kernel.Provider.Retry).#ATTEMPTBUDGETSECONDS) {
                 Set tTransportRetried = 1
                 Do ..LogRaw("the provider call failed before any status line was read; trying once more on a new connection", tIssueSC, tCode)
                 Set tRemainingDelay = ##class(OcuPilot.Kernel.Provider.Retry).#RETRYBUDGETSECONDS - tSpentDelay
@@ -731,6 +736,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTESTTIMEOUT Quit ..#REASONTESTTIMEOUT
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTESTTIMEOUTLOCAL Quit ..#REASONTESTTIMEOUTLOCAL
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERDECLINED Quit "The model declined to answer this request"
+    If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTOOLCALLFAILED Quit "The model could not make a valid tool call. Try again, or rephrase the request."
     Quit "The provider call did not complete"
 }
 

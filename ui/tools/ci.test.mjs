@@ -1335,12 +1335,53 @@ test('the throwaway and the image probe refuse to touch the live container', () 
   }
 
   const image = readFileSync(join(REPO_ROOT, 'scripts', 'ci-image-compile.sh'), 'utf8');
-  assert.match(image, /"\$NAME" = "ocupilot"/, 'the image probe refuses the live container name');
-  assert.match(image, /latest-cd/, 'and a floating tag (AD-27)');
+  assert.match(image, /^\s*ocupilot\|ocupilot-slot-\*\)/m, 'the image probe refuses the live and slot container names');
   assert.ok(
     !/-p\s|--publish|ports:/.test(image.replace(/^\s*#.*$/gm, '')),
     'and publishes no port at all, so nothing can mistake it for an instance'
   );
+});
+
+// Mutation (Rule 19): revert the case arm to `*latest-cd*|*:latest)` -> the `:latest-em` row exits
+// past the guard and calls docker, and goes red. Narrow the name arm to `ocupilot)` -> the
+// `ocupilot-slot-b` row goes red.
+test('the image probe refuses every floating tag, and a live or slot name, before it calls docker (AD-27)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-image-tag-'));
+  try {
+    const bin = join(dir, 'bin');
+    const calls = join(dir, 'docker-calls');
+    writeStub(bin, 'docker', ['echo "$*" >> "$OCUPILOT_TEST_DOCKER_CALLS"', 'exit 0']);
+    for (const image of [
+      'intersystems/irishealth-community:latest-cd',
+      'intersystems/irishealth-community:latest-em',
+      'intersystems/irishealth-community:latest',
+      'intersystems/irishealth-community',
+    ]) {
+      rmSync(calls, { force: true });
+      const result = spawnSync('/bin/sh', [join(REPO_ROOT, 'scripts', 'ci-image-compile.sh'), '--image', image], {
+        encoding: 'utf8',
+        env: stubEnv(bin, { OCUPILOT_TEST_DOCKER_CALLS: calls }),
+      });
+      const out = `${result.stdout}${result.stderr}`;
+      assert.equal(result.status, 2, `${image} exits 2: ${out}`);
+      assert.match(out, /AD-27/, `${image}: the refusal names AD-27`);
+      assert.ok(!existsSync(calls), `${image}: no docker command ran`);
+    }
+    // The same guard order holds for the container name: a live or slot name exits 2 before any
+    // docker call, because the probe removes its container by name before and after the run.
+    for (const name of ['ocupilot', 'ocupilot-slot-b']) {
+      rmSync(calls, { force: true });
+      const result = spawnSync(
+        '/bin/sh',
+        [join(REPO_ROOT, 'scripts', 'ci-image-compile.sh'), '--image', 'intersystems/irishealth-community:2026.2', '--name', name],
+        { encoding: 'utf8', env: stubEnv(bin, { OCUPILOT_TEST_DOCKER_CALLS: calls }) }
+      );
+      assert.equal(result.status, 2, `--name ${name} exits 2: ${result.stdout}${result.stderr}`);
+      assert.ok(!existsSync(calls), `--name ${name}: no docker command ran`);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('the throwaway prepares a durable directory IRIS can write, and leaves none behind (DW-232)', () => {
@@ -2194,7 +2235,7 @@ function reportRow(outcome, name, reason = '') {
 
 test('DW-1079: a failing smoke run names every failing check on one quotable line', () => {
   // The line said only "the failing check is named above", which in a CI log is an
-  // unattributable red -- and the class-side line names only the first of several. Mutation
+  // unattributable red. Mutation
   // (Rule 19): drop the name from the quotable line, or narrow the awk to the first row -> this
   // goes red on the missing name.
   const report = [
@@ -2204,7 +2245,7 @@ test('DW-1079: a failing smoke run names every failing check on one quotable lin
     reportRow('skipped', 'signin'),
     reportRow('fail', 'demofixture', 'the demo agent definition is absent'),
     'ocupilot-smoke: executed=3 passed=1 failed=2 pending=0 skipped=1',
-    'ocupilot-smoke: FAILED -- 2 check(s) failed; the first is named above',
+    'ocupilot-smoke: FAILED -- 2 check(s) failed: wallet, demofixture',
   ].join('\n');
   const run = runSmokeOverReport(report);
   assert.equal(run.status, 1, `a failing smoke run exits non-zero: ${run.output}`);
@@ -2227,7 +2268,7 @@ test('DW-1079: a failure the row parser cannot name is reported as missing, not 
     reportRow('fail', 'wallet', 'the demo wallet collection is absent'),
     reportRow('faild', 'mistyped', 'an outcome outside the four the class writes'),
     'ocupilot-smoke: executed=2 passed=0 failed=2 pending=0 skipped=0',
-    'ocupilot-smoke: FAILED -- 2 check(s) failed; the first is named above',
+    'ocupilot-smoke: FAILED -- 2 check(s) failed: wallet, mistyped',
   ].join('\n');
   const run = runSmokeOverReport(report);
   assert.equal(run.status, 1, run.output);
@@ -2240,7 +2281,7 @@ test('DW-1079: a report whose failures are all named says nothing about a shortf
     'ocupilot-smoke: docker exec ocupilot-ci',
     reportRow('fail', 'wallet'),
     'ocupilot-smoke: executed=1 passed=0 failed=1 pending=0 skipped=0',
-    'ocupilot-smoke: FAILED -- 1 check(s) failed; the first is named above',
+    'ocupilot-smoke: FAILED -- 1 check(s) failed: wallet',
   ].join('\n');
   const run = runSmokeOverReport(report);
   assert.match(run.output, /^smoke: FAILED check\(s\): wallet$/m, run.output);

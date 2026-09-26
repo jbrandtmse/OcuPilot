@@ -1,10 +1,10 @@
 /// <p>The About payload and the help-address resolution (Story 15.3): every member present, one
 /// refused source degrading that member alone, the two branches of the documentation base, and
 /// <method>OcuPilot.Kernel.Shell.About.HelpHref</method>'s three answers.</p>
-/// <p>Needs an installed instance whose screen descriptors are compiled; it reads them and writes
-/// nothing. The routes it exercises are resolved from their descriptor classes rather than
-/// spelled, because a descriptor's class name is the stable identity and its route is not
-/// (AD-5).</p>
+/// <p>Needs an installed instance whose screen descriptors are compiled. It writes nothing but one
+/// OcuPilot error line to the console log, from the source-failure log test. The routes it
+/// exercises are resolved from their descriptor classes rather than spelled, because a
+/// descriptor's class name is the stable identity and its route is not (AD-5).</p>
 /// <p>Two branches are unreachable on this image without a seam, and
 /// <class>OcuPilot.Test.UiAboutFixture</class> is that seam: the pinned container ships no
 /// <code>/csp/docbook</code> application at all, so the same-origin documentation base cannot be
@@ -241,6 +241,46 @@ Method TestAnUnknownRouteResolvesToNothing()
     Set tAvailable = 1
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Shell.About).HelpHref("", .tAvailable), "", "and so does the empty route Home declares")
     Do $$$AssertEquals(''tAvailable, 0, "reported unavailable")
+}
+
+/// <p>The production log line a refused About source writes: one appended <code>[OcuPilot]</code>
+/// console line at <code>error</code> level under the About subsystem, naming the field; and a
+/// call with no exception object swallows its own failure rather than raising.</p>
+/// <p>Mutation (Rule 19): empty <method>OcuPilot.Kernel.Shell.About.LogSourceFailure</method>'s
+/// <code>Try</code> body -> no line is appended and this goes red.</p>
+Method TestTheSourceFailureLogLineNamesTheField()
+{
+    Set tPath = ##class(%File).NormalizeFilename(##class(OcuPilot.Port.LogSourcePort).FileFor("messages"), ##class(OcuPilot.Port.LogSourcePort).ManagerDirectory())
+    Set tFrom = ##class(%File).GetFileSize(tPath)
+    Do $$$AssertTrue(tFrom > 0, "the console log is readable before the call: " _ tPath)
+    Set tField = "about-probe-" _ $Job _ "-" _ $Translate($ZHorolog, ".", "")
+    Do ##class(OcuPilot.Kernel.Shell.About).LogSourceFailure(tField, ##class(%Exception.General).%New("AboutProbe", 5001, , "a probe failure"))
+    Set tText = ""
+    Try {
+        Set tStream = ##class(%Stream.FileCharacter).%New()
+        If tStream.LinkToFile(tPath) && tStream.MoveTo(tFrom + 1) Set tText = tStream.Read(1000000)
+    } Catch ex {
+        Set tText = ""
+    }
+    Set tLine = ""
+    For tI = 1:1:$Length(tText, $Char(10)) {
+        If $Piece(tText, $Char(10), tI) [ tField Set tLine = $Piece(tText, $Char(10), tI) Quit
+    }
+    Do $$$AssertNotEquals(tLine, "", "one appended console line carries the field")
+    If tLine '= "" {
+        Set tEntry = ##class(%DynamicObject).%FromJSON($Piece(tLine, "[OcuPilot] ", 2, *))
+        Do $$$AssertEquals(tEntry.level, "error", "at error level")
+        Do $$$AssertEquals(tEntry.subsystem, ##class(OcuPilot.Kernel.Shell.About).#LOGSUBSYSTEM, "under the About subsystem")
+        Do $$$AssertEquals(tEntry.data.field, tField, "naming the field")
+    }
+
+    Set tRaised = ""
+    Try {
+        Do ##class(OcuPilot.Kernel.Shell.About).LogSourceFailure(tField _ "-none", "")
+    } Catch ex2 {
+        Set tRaised = ex2.DisplayString()
+    }
+    Do $$$AssertEquals(tRaised, "", "a call with no exception object does not raise")
 }
 
 }

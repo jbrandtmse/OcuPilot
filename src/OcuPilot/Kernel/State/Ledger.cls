@@ -213,6 +213,8 @@ Index LedgerTurnSeqIdx On (TurnKey, Seq) [ Unique ];
 /// <method>OcuPilot.Kernel.State.Step.GuardedAppend</method> established.</p>
 /// <p><b>Caller contract:</b> <var>pArguments</var> is already redacted and already cut
 /// (<method>OcuPilot.Kernel.Audit.Ledger.RedactArguments</method>); nothing here redacts anything.
+/// A string still longer than <code>LEDGERROWMAXLENGTH</code> is cut here, and the row's
+/// <property>ArgumentsTruncated</property> is then 1 whatever <var>pArgumentsTruncated</var> says.
 /// <var>pRequiredPairs</var> is the canonical joined string
 /// <method>OcuPilot.Kernel.Audit.Ledger.PairsToString</method> answers, already cut at a whole-pair
 /// boundary, and <var>pRequiredPairsTruncated</var> is that method's own truncation answer -- it is
@@ -250,7 +252,7 @@ ClassMethod GuardedAppend(pTurnKey As %String, pUser As %String, pRoute As %Stri
         Set tRow.Route = ..Cut(pRoute, ..#ROUTEMAXLENGTH)
         Set tRow.Target = ..Cut(pTarget, 256)
         Set tRow.Arguments = ..Cut(pArguments, +$Parameter(pLimitsClass, "LEDGERROWMAXLENGTH"))
-        Set tRow.ArgumentsTruncated = ''pArgumentsTruncated
+        Set tRow.ArgumentsTruncated = ''pArgumentsTruncated || ($Length(pArguments) > +$Parameter(pLimitsClass, "LEDGERROWMAXLENGTH"))
         Set tRow.Status = ..Cut(pStatus, 16)
         Set tRow.Code = ..Cut(pCode, 64)
         Set tRow.RequestTokens = +pRequestTokens

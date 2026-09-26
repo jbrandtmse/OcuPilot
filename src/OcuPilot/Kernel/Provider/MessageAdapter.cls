@@ -64,15 +64,15 @@ Class OcuPilot.Kernel.Provider.MessageAdapter Extends %RegisteredObject
 /// spelling of <code>tool_calls</code> and maps to the same canonical value.</p>
 Parameter OPENAISTOPREASONS = "stop:end_turn,length:max_tokens,tool_calls:tool_use,function_call:tool_use,content_filter:refusal";
 
-/// <p>Each Gemini <code>finishReason</code> and its canonical stop reason: twelve entries, of which
-/// the ten that mean the model would not answer -- safety, image safety, recitation, the block
-/// list, prohibited content, personal information, an unsupported language, and the three that
-/// refuse a tool call (a call the model could not form, one it was not meant to make, and more than
-/// the request allowed) -- are one canonical reason, because the canonical vocabulary has no finer
-/// one to map them to: it is Anthropic's, and it distinguishes only ending, truncation, a tool call
-/// and a refusal. <code>OTHER</code> is deliberately absent: an unknown reason is what
-/// <parameter>DEFAULTSTOPREASON</parameter> is for.</p>
-Parameter GEMINISTOPREASONS = "STOP:end_turn,MAX_TOKENS:max_tokens,SAFETY:refusal,IMAGE_SAFETY:refusal,RECITATION:refusal,BLOCKLIST:refusal,PROHIBITED_CONTENT:refusal,SPII:refusal,LANGUAGE:refusal,MALFORMED_FUNCTION_CALL:refusal,UNEXPECTED_TOOL_CALL:refusal,TOO_MANY_TOOL_CALLS:refusal";
+/// <p>Each Gemini <code>finishReason</code> and its canonical stop reason: twelve entries. The seven
+/// that mean the model would not answer -- safety, image safety, recitation, the block list,
+/// prohibited content, personal information and an unsupported language -- are
+/// <parameter>REFUSALSTOPREASON</parameter>. The three that end a failed tool call -- a call the
+/// model could not form, one it was not meant to make, and more calls than the request allowed --
+/// are <parameter>TOOLCALLFAILEDSTOPREASON</parameter>: the model tried to answer and its call was
+/// unusable, which is not a refusal. <code>OTHER</code> is deliberately absent: an unknown reason is
+/// what <parameter>DEFAULTSTOPREASON</parameter> is for.</p>
+Parameter GEMINISTOPREASONS = "STOP:end_turn,MAX_TOKENS:max_tokens,SAFETY:refusal,IMAGE_SAFETY:refusal,RECITATION:refusal,BLOCKLIST:refusal,PROHIBITED_CONTENT:refusal,SPII:refusal,LANGUAGE:refusal,MALFORMED_FUNCTION_CALL:tool_call_failed,UNEXPECTED_TOOL_CALL:tool_call_failed,TOO_MANY_TOOL_CALLS:tool_call_failed";
 
 /// <p>The canonical stop reason a reason outside the family's own vocabulary, and an absent one,
 /// are read as. The canonical vocabulary is closed, so an unmapped value is normalized rather than
@@ -88,6 +88,13 @@ Parameter TOOLUSESTOPREASON = "tool_use";
 /// already carry, named here because two reply directions reach it with no vendor stop reason to
 /// look up -- an OpenAI <code>refusal</code> member, and a Gemini prompt-level block.</p>
 Parameter REFUSALSTOPREASON = "refusal";
+
+/// <p>The canonical stop reason for a reply whose tool call the provider could not complete. It
+/// extends Anthropic's vocabulary, which has no such value, and only Gemini's map produces it (an
+/// Anthropic-shaped reply carries its own <code>stop_reason</code> through unchanged);
+/// <class>OcuPilot.Kernel.Agent.Loop</class> ends the turn on it with
+/// <code>PROVIDER.TOOLCALLFAILED</code>.</p>
+Parameter TOOLCALLFAILEDSTOPREASON = "tool_call_failed";
 
 /// <p>The prefix a synthesized Gemini call id carries. The ordinal and the function name follow
 /// it, so the id says which call it belongs to in a log and in a transcript.</p>

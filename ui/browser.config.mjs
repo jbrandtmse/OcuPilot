@@ -56,10 +56,19 @@ export const LIVE_CONTAINER = 'ocupilot';
  * An origin other than `DEFAULT_ORIGIN` must come with `OCUPILOT_BROWSER_CONTAINER`, and a
  * container other than `DEFAULT_CONTAINER` with `OCUPILOT_BROWSER_ORIGIN`, or this throws: the
  * pages would otherwise load from one throwaway while the specs that `docker exec` reach another.
+ *
+ * A container named `ocupilot` or `ocupilot-slot-*` is refused outright: those are the live and
+ * owner-managed development instances, never a throwaway a spec may write to.
  */
 export function browserConfig(env = process.env) {
   const origin = env.OCUPILOT_BROWSER_ORIGIN ?? DEFAULT_ORIGIN;
   const container = env.OCUPILOT_BROWSER_CONTAINER ?? '';
+  if (container === LIVE_CONTAINER || /^ocupilot-slot-/.test(container)) {
+    throw new Error(
+      `browser.config: OCUPILOT_BROWSER_CONTAINER is ${container}, a live or development instance; ` +
+        `browser specs run only against a throwaway from scripts/ci-throwaway.sh`
+    );
+  }
   if (origin !== DEFAULT_ORIGIN && container === '') {
     throw new Error(
       `browser.config: OCUPILOT_BROWSER_ORIGIN is ${origin}, not ${DEFAULT_ORIGIN}, and ` +

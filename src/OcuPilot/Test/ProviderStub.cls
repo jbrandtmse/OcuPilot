@@ -88,6 +88,16 @@ ClassMethod QueueTransportFailure(pTimeout As %Boolean = 0)
     Set ^||OcuPilotProviderStub("script", tIndex, "kind") = $Select(pTimeout: "timeout", 1: "failure")
 }
 
+/// <p>Queue one connect that never opened: the call returns the <code>ERROR #6059</code>
+/// <class>%Net.HttpRequest</class> answers for a refused or unanswered connect, with no status
+/// line -- the shape <method>OcuPilot.Test.ProviderTransportRetry.TestARefusedConnectAnswersNoStatus</method>
+/// reads off the real transport.</p>
+ClassMethod QueueConnectRefused()
+{
+    Set tIndex = $Increment(^||OcuPilotProviderStub("script"))
+    Set ^||OcuPilotProviderStub("script", tIndex, "kind") = "connectrefused"
+}
+
 /// <p>Queue one connection that broke <b>after</b> a status line arrived: the call returns the
 /// <code>ERROR #6097 &lt;READ&gt;</code> a dropped read produces, with <var>pStatus</var> reported
 /// as the status line's code. What the adapter must not retry, because the provider did
@@ -311,6 +321,9 @@ Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pSta
     }
     If tKind = "failure" {
         Quit $$$ERROR($$$GeneralError, "the stand-in transport could not reach the provider")
+    }
+    If tKind = "connectrefused" {
+        Quit $$$ERROR($$$HttpRequestConnect, "127.0.0.1:1")
     }
     If tKind = "brokenafterstatus" {
         Set pStatus = +$Get(^||OcuPilotProviderStub("script", tIndex, "status"))

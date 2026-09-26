@@ -33,6 +33,22 @@ test('a non-default container with the default origin is refused, naming the ori
   assert.equal(browserConfig({ OCUPILOT_BROWSER_CONTAINER: DEFAULT_CONTAINER }).container, DEFAULT_CONTAINER);
 });
 
+test('the live container is refused, naming the variable', () => {
+  assert.throws(
+    () => browserConfig({ OCUPILOT_BROWSER_ORIGIN: 'http://localhost:52774', OCUPILOT_BROWSER_CONTAINER: 'ocupilot' }),
+    /OCUPILOT_BROWSER_CONTAINER is ocupilot, a live or development instance/
+  );
+});
+
+test('every slot development container is refused, naming the variable', () => {
+  for (const [container, port] of [['ocupilot-slot-b', 52775], ['ocupilot-slot-c', 52778]]) {
+    assert.throws(
+      () => browserConfig({ OCUPILOT_BROWSER_ORIGIN: `http://localhost:${port}`, OCUPILOT_BROWSER_CONTAINER: container }),
+      new RegExp(`OCUPILOT_BROWSER_CONTAINER is ${container}, a live or development instance`)
+    );
+  }
+});
+
 test('a non-default origin with its container resolves to that container', () => {
   const config = browserConfig({
     OCUPILOT_BROWSER_ORIGIN: 'http://localhost:52777',

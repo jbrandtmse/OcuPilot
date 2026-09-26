@@ -10,8 +10,8 @@
 /// and 200 with it. Here the bare path additionally resolves to the parent
 /// <code>/api/ocupilot</code> application, which is password-authenticated and has no such
 /// route, so it answers 401 to an anonymous caller and 404 to an authenticated one --
-/// <file>scripts/smoke.sh</file>, <file>README.md</file> and every test therefore spell the
-/// slash.</p>
+/// <file>scripts/smoke.sh</file>, <file>docs/DEVELOPMENT.md</file>'s "The readiness endpoint" and
+/// every test therefore spell the slash.</p>
 /// <p><b>It reports exactly three things and nothing else</b> (AD-45): whether the instance is
 /// installed, the version stamp, and which of
 /// <method>OcuPilot.Install.Installer.GateStatus</method>'s five states it is in --
@@ -39,9 +39,8 @@
 /// <p><b>Anonymous is not unprivileged</b> (AD-21). The application carries one purpose-built
 /// matching role, declared in <class>OcuPilot.Install.Roster</class> and asserted by the
 /// installer, granting read on the install namespace's code database and nothing else --
-/// without it IRIS cannot load this class for the request at all and answers 500 with a
-/// <code>&lt;PROTECT&gt;</code> naming the database directory. This class resolves no user and
-/// infers nothing from <code>$Roles</code>.</p>
+/// without it IRIS refuses an anonymous request 403 with an empty body before this class runs.
+/// This class resolves no user and infers nothing from <code>$Roles</code>.</p>
 Class OcuPilot.Api.Readiness Extends %CSP.REST
 {
 

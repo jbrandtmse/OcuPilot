@@ -64,6 +64,13 @@ function textOrNumberAt(source: unknown, key: string): string {
   return '';
 }
 
+/** A JSON-number field's value, or `null` when the body carries none. */
+function numberOrNullAt(source: unknown, key: string): number | null {
+  if (source === null || typeof source !== 'object') return null;
+  const value = (source as Record<string, unknown>)[key];
+  return typeof value === 'number' ? value : null;
+}
+
 function holdsOf(body: unknown): readonly HoldRow[] {
   if (body === null || typeof body !== 'object') return [];
   const rows = (body as Record<string, unknown>)['holds'];
@@ -104,6 +111,11 @@ function emptyBuffer(): SwitchBuffer {
  * **Every refusal sentence is the server's** (AD-39): the envelope's `reason` for an
  * envelope-level code, a violation's own `reason` for a field-level one.
  *
+ * **A save carries the row version this screen read** (Consistency Conventions: concurrent
+ * writes), taken from the load and from each save's answer and sent back as `rowVersion`. A save
+ * refused as stale leaves it as it was, so pressing Save again is refused again; only a reload
+ * takes a version that matches.
+ *
  * Framework-only in its injection, like `DefinitionForm`: the API service is resolved on the first
  * call rather than in the constructor.
  */
@@ -118,6 +130,9 @@ export class SwitchesStore {
   private savingValue = false;
 
   private buffer: SwitchBuffer = emptyBuffer();
+
+  /** The row version the switches on screen were read at, or `null` before a read answered one. */
+  private rowVersionValue: number | null = null;
 
   private holdRows: readonly HoldRow[] = [];
 
@@ -228,6 +243,7 @@ export class SwitchesStore {
     this.loadedValue = false;
     this.savingValue = false;
     this.buffer = emptyBuffer();
+    this.rowVersionValue = null;
     this.holdRows = [];
     this.violationList = [];
     this.clearRefusal();
@@ -420,7 +436,8 @@ export class SwitchesStore {
   }
 
   /**
-   * The complete writable switch set, typed as the wire expects (AD-4).
+   * The complete writable switch set, typed as the wire expects (AD-4), with the row version this
+   * screen read when it has one.
    *
    * **A number field sends a JSON number only when it parses as one.** A value that does not --
    * `contextRowCap` typed as `"x"`, say -- is sent as the string the operator typed, so the
@@ -440,6 +457,7 @@ export class SwitchesStore {
         out[field] = this.value(field);
       }
     }
+    if (this.rowVersionValue !== null) out['rowVersion'] = this.rowVersionValue;
     return out;
   }
 
@@ -484,6 +502,7 @@ export class SwitchesStore {
       }
     }
     this.buffer = next;
+    this.rowVersionValue = numberOrNullAt(body, 'rowVersion');
     this.holdRows = holdsOf(body);
     this.loadedValue = true;
   }

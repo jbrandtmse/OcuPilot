@@ -225,6 +225,11 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
             If '$IsObject($Get(tFault)) && $IsObject($Get(tResponse)) && (tResponse.StopReason = ##class(OcuPilot.Kernel.Provider.MessageAdapter).#REFUSALSTOPREASON) {
                 Do ##class(OcuPilot.Kernel.Provider.Base).Fault(##class(OcuPilot.Api.Error).#PROVIDERDECLINED, "", "", .tFault, .tDeclinedHttp)
             }
+            ; A tool call the provider could not complete ends the turn the same way, under its own
+            ; code, because the model did not decline.
+            If '$IsObject($Get(tFault)) && $IsObject($Get(tResponse)) && (tResponse.StopReason = ##class(OcuPilot.Kernel.Provider.MessageAdapter).#TOOLCALLFAILEDSTOPREASON) {
+                Do ##class(OcuPilot.Kernel.Provider.Base).Fault(##class(OcuPilot.Api.Error).#PROVIDERTOOLCALLFAILED, "", "", .tFault, .tDeclinedHttp)
+            }
             Do ..RecordProviderRow(pKey, pUser, tContextRoute, tProviderKey, tProviderModel, tIterations, $Get(tResponse), $Get(tFault), tLimits, +$Get(tHttpStatus))
             Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedProgress(pKey, tIterations, tInput, tOutput)
             If $$$ISERR(tSC) Quit

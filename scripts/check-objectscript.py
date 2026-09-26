@@ -116,9 +116,9 @@ prose into one checker.
     order: a route whose Url, read as `%CSP.REST` reads it (a `:param` segment is `([^/]+)`, every
     other segment is taken verbatim, and the match is whole), matches a later route's Url under
     the same `Method` is refused, since the later route can never be reached -- a catch-all before
-    its guard, a `:param` before its literal sibling; and, whatever the `Method`, a route that
-    follows a shorter route whose Url matches its leading segments is refused (N-segment routes
-    before (N-1)-segment routes). A route with no `Method` matches every method, and a
+    its guard, a `:param` before its literal sibling; and, whatever the `Method`, a longer route
+    goes before a shorter one whose Url matches its leading segments, so a route that follows such
+    a shorter route is refused. A route with no `Method` matches every method, and a
     comma-separated `Method` matches each verb it lists.
 
 16. **Admin API containment (AD-27, Story 1.8).** `%Api.Admin`, in any spelling ObjectScript
@@ -132,9 +132,9 @@ prose into one checker.
     through the suite's own throwaway-account helpers on `OcuPilot.Test.Version` -- is refused
     unless its `OnBeforeAllTests` refuses first on `$System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1`,
     so an unarmed instance never has `ci-runner.mjs --container <name>` create the principal at
-    all. Reaches principals and the console log only; instance mutation through
-    `OcuPilot.Install.Installer` (a probe database, a namespace mapping, a web application) is
-    outside it.
+    all. A class that runs the production install (`Install("")` or `StartPath`) must also refuse
+    on `OCUPILOT_ALLOW_PRODUCTION_INSTALL`. What the installer creates under the probe profile (a
+    probe database, a namespace mapping, a web application) is outside it.
 
 18. **Restraint-code containment (AD-30, AD-40, Story 3.7).** A restraint code -- the
     `AGENT.READONLY.*` and `AGENT.KILLSWITCH.*` vocabulary, any of its tails
@@ -1334,17 +1334,29 @@ def check_test_class_properties(problems: list[str]) -> None:
 # A probe database, a namespace mapping and a web application created under the probe profile stay
 # outside the rule: they are the test's own objects, and the guard exists for effects on the
 # instance an operator cares about.
+#
+# **A production install also refuses on its own variable.** A class that runs one is armed by
+# `OCUPILOT_ALLOW_PRODUCTION_INSTALL` whatever else arms it -- as its `ARMINGVARIABLE`, or as an
+# inline `$System.Util.GetEnviron` refusal in the same `OnBeforeAllTests`, read directly or through
+# a parameter holding that name -- so the variable named for the widest effect is the one that
+# keeps every such class off an instance someone cares about.
 
+PRODUCTION_INSTALL_RE = re.compile(
+    r"##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"
+    r"\s*\.\s*Install\(\s*(?:\"\"\s*)?[,)]"
+    r"|##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"
+    r"\s*\.\s*StartPath\b"
+)
+
+# The production-install spellings are part of the destructive population by construction, so the
+# production-install clause below can never see a spelling the population check skipped.
 DESTRUCTIVE_TEST_RE = re.compile(
     r"##class\(\s*Security\.Users\s*\)\s*\.\s*(?:Create|Delete)\b"
     r"|##class\(\s*Security\.Roles\s*\)\s*\.\s*(?:Create|Delete)\b"
     r"|##class\(\s*Security\.Events\s*\)\s*\.\s*(?:Create|Delete|Modify)\b"
     r"|##class\(\s*Config\.Startup\s*\)\s*\.\s*MoveConsoleLog\b"
     r"|##class\(\s*Security\.System\s*\)\s*\.\s*Modify\b"
-    r"|##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"
-    r"\s*\.\s*Install\(\s*(?:\"\"\s*)?[,)]"
-    r"|##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"
-    r"\s*\.\s*StartPath\b"
+    r"|" + PRODUCTION_INSTALL_RE.pattern +
     r"|##class\(\s*OcuPilot\.Test\.Version\s*\)\s*\.\s*(?:CreateThrowawayExpiredAccount|DeleteThrowawayAccount)\b"
     r"|##class\(\s*OcuPilot\.Test\.TurnWireFixture\s*\)\s*\.\s*"
     r"(?:EnsurePrincipal|DeletePrincipal|RemovePrincipals|SetRoleResources|RemoveSecondRole)\b"
@@ -1355,6 +1367,8 @@ DESTRUCTIVE_TEST_RE = re.compile(
 )
 
 ARMING_GUARD_RE = re.compile(r"\$System\.Util\.GetEnviron\(\s*\.\.#ARMINGVARIABLE\s*\)\s*'=\s*1")
+
+PRODUCTION_INSTALL_VARIABLE = "OCUPILOT_ALLOW_PRODUCTION_INSTALL"
 
 ARMING_REFUSAL_RE = re.compile(r"Quit\s+\$\$\$ERROR\s*\(")
 
@@ -1381,6 +1395,20 @@ def method_body(text: str, start: int) -> str:
     return ""
 
 
+def before_all_tests_code(text: str) -> list[str]:
+    """The non-comment lines of `OnBeforeAllTests`' own body, or `[]` when it has none."""
+    signature = ON_BEFORE_ALL_TESTS_RE.search(text)
+    if signature is None:
+        return []
+    open_at = text.find("{", signature.start())
+    body = method_body(text, signature.start())
+    if open_at < 0 or body == "":
+        return []
+    first = line_of(text, open_at)
+    last = first + body.count("\n")
+    return [raw for i, raw in iter_non_comment_lines(text) if first <= i <= last]
+
+
 def guarded_before_all_tests(text: str) -> bool:
     """Whether `OnBeforeAllTests` actually refuses on the arming variable.
 
@@ -1390,19 +1418,36 @@ def guarded_before_all_tests(text: str) -> bool:
     refusing comparison and a `Quit $$$ERROR` must both appear in that method's own body, on lines
     that are not comments: a `;` line quoting the guard is prose, not a barrier.
     """
-    signature = ON_BEFORE_ALL_TESTS_RE.search(text)
-    if signature is None:
-        return False
-    open_at = text.find("{", signature.start())
-    body = method_body(text, signature.start())
-    if open_at < 0 or body == "":
-        return False
-    first = line_of(text, open_at)
-    last = first + body.count("\n")
-    code = [raw for i, raw in iter_non_comment_lines(text) if first <= i <= last]
+    code = before_all_tests_code(text)
     return any(ARMING_GUARD_RE.search(raw) for raw in code) and any(
         ARMING_REFUSAL_RE.search(raw) for raw in code
     )
+
+
+def refuses_on_variable(text: str, variable: str) -> bool:
+    """Whether `OnBeforeAllTests` refuses unless `variable` reads 1.
+
+    The comparison may read the variable by name or through any class parameter whose value is
+    that name, `ARMINGVARIABLE` among them. Its own branch must `Quit $$$ERROR`: on the guard's
+    line after the comparison, or as the next code line. A refusal belonging to another guard in
+    the same method does not count, because a class armed by a second variable always has one.
+    """
+    names = [
+        m.group(1)
+        for m in re.finditer(r"^Parameter\s+([A-Za-z][A-Za-z0-9]*)\s*=\s*\"([^\"]*)\"", text, re.MULTILINE)
+        if m.group(2) == variable
+    ]
+    reads = [re.escape(f'"{variable}"')] + [rf"\.\.#{re.escape(name)}" for name in names]
+    guard = re.compile(rf"\$System\.Util\.GetEnviron\(\s*(?:{'|'.join(reads)})\s*\)\s*'=\s*1", re.IGNORECASE)
+    code = before_all_tests_code(text)
+    for i, raw in enumerate(code):
+        found = guard.search(raw)
+        if found is None:
+            continue
+        branch = raw[found.end() :] + ("\n" + code[i + 1] if i + 1 < len(code) else "")
+        if ARMING_REFUSAL_RE.search(branch):
+            return True
+    return False
 
 
 def check_destructive_test_guard(problems: list[str]) -> None:
@@ -1427,17 +1472,31 @@ def check_destructive_test_guard(problems: list[str]) -> None:
                 break
         if hit is None:
             continue
-        if guarded_before_all_tests(text):
-            continue
-        line, call = hit
-        problems.append(
-            f"{rel}:{line}: a %UnitTest.TestCase calling {call} mutates this instance's own "
-            f"principals or logs, and OnBeforeAllTests does not refuse on "
-            f"$System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 with a Quit $$$ERROR -- so "
-            f"`ci-runner.mjs --container <name>` runs it against whatever instance it was pointed "
-            f"at (DW-289); add the guard OcuPilot.Test.LogSourceDenial carries and arm it in "
-            f"scripts/ci-throwaway.sh"
-        )
+        if not guarded_before_all_tests(text):
+            line, call = hit
+            problems.append(
+                f"{rel}:{line}: a %UnitTest.TestCase calling {call} mutates this instance's own "
+                f"principals or logs, and OnBeforeAllTests does not refuse on "
+                f"$System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 with a Quit $$$ERROR -- so "
+                f"`ci-runner.mjs --container <name>` runs it against whatever instance it was pointed "
+                f"at (DW-289); add the guard OcuPilot.Test.LogSourceDenial carries and arm it in "
+                f"scripts/ci-throwaway.sh"
+            )
+        install = None
+        for i, raw in iter_non_comment_lines(text):
+            found = PRODUCTION_INSTALL_RE.search(raw)
+            if found is not None:
+                install = (i, found.group(0))
+                break
+        if install is not None and not refuses_on_variable(text, PRODUCTION_INSTALL_VARIABLE):
+            line, call = install
+            problems.append(
+                f"{rel}:{line}: a %UnitTest.TestCase calling {call} runs OcuPilot's production "
+                f"install, and OnBeforeAllTests does not refuse unless "
+                f"{PRODUCTION_INSTALL_VARIABLE} reads 1 with a Quit $$$ERROR -- declare it as the "
+                f"ARMINGVARIABLE or refuse on it inline with $System.Util.GetEnviron, and add the "
+                f"class to that variable's roster in scripts/ci-throwaway.sh"
+            )
 
 
 # --- Embedded Python in a shipped class (AD-18, `.claude/rules/objectscript-basics.md`) -----
@@ -1767,7 +1826,8 @@ def check_tool_kind(problems: list[str]) -> None:
 # match. Its pattern is `GetRegexForUrl`'s: a `:param` segment becomes `([^/]+)`, any other segment
 # is used verbatim, and `%Regex.Matcher.Match` requires the whole URL. So an earlier route that
 # matches a later one's Url under the same method makes the later one unreachable, and the
-# Conventions' N-before-(N-1) invariant is checked on segment prefixes whatever the method.
+# Conventions' invariant -- a longer route before a shorter one whose Url matches its leading
+# segments -- is checked on segment prefixes whatever the method.
 
 ROUTE_ELEMENT_RE = re.compile(r"<Route\b[^>]*>", re.IGNORECASE)
 ROUTE_ATTR_RE = re.compile(r"""\b(Url|Method)\s*=\s*(?:"([^"]*)"|'([^']*)')""", re.IGNORECASE)
@@ -1831,8 +1891,7 @@ def check_route_ordering(problems: list[str]) -> None:
                             problems.append(
                                 f"{rel}:{line_j}: route Url={url_j!r} ({len(pieces_j) - 1} segment(s)) "
                                 f"follows the shorter route Url={url_i!r} at line {line_i} that "
-                                f"matches its leading segments; N-segment routes go before "
-                                f"(N-1)-segment routes"
+                                f"matches its leading segments; declare the longer route first"
                             )
 
 

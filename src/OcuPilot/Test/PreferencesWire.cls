@@ -11,11 +11,26 @@
 /// <file>ui/tools/account-preferences.test.mjs</file> and the component specs instead: a stored
 /// route that no longer resolves to a built screen, a favorite the caller may no longer open, and
 /// an instance that did not answer.</p>
+/// <p>It runs only where <parameter>ARMINGVARIABLE</parameter> reads <code>1</code>, because it
+/// clears that account's lists on the instance it runs against.</p>
 Class OcuPilot.Test.PreferencesWire Extends %UnitTest.TestCase
 {
 
+/// <p>The environment variable that arms this class, set by <file>scripts/ci-throwaway.sh</file>
+/// alone.</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_ACCOUNT_PREFERENCES";
+
 /// <p>The route under test, from the origin root.</p>
 Parameter PREFERENCESPATH = "/api/ocupilot/account/preferences";
+
+/// <p>Refuse to run at all unless this instance is armed for clearing an account's preferences.</p>
+Method OnBeforeAllTests() As %Status
+{
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.PreferencesWire clears the test account's favorites, recents and remembered views on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was cleared. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
+    Quit $$$OK
+}
 
 Method OnBeforeOneTest() As %Status
 {

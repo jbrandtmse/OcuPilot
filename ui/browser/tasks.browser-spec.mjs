@@ -456,13 +456,13 @@ test('Story 6.6 AC1: Task history opens on one default read, Search issues one r
     assert.equal(reads.length, 1, `one read on open (Story 11.11): ${JSON.stringify(reads)}`);
     assert.equal(new URL(reads[0]).searchParams.has('since'), false, 'sending no since, so the default applies');
 
-    await searchHistory(page, 'OcuPilotDemo');
+    await searchHistory(page, DEMO_TASK);
     await waitForRows(page, config.navigationTimeoutMs);
 
     assert.equal(reads.length, 2, `exactly one read was issued by Search: ${JSON.stringify(reads)}`);
     const url = new URL(reads[1]);
     assert.equal(url.pathname, HISTORY_READ_PATH);
-    assert.equal(url.searchParams.get('search'), 'OcuPilotDemo', 'carrying search=OcuPilotDemo');
+    assert.equal(url.searchParams.get('search'), DEMO_TASK, `carrying search=${DEMO_TASK}`);
     assert.equal(url.searchParams.get('since'), '', 'and the emptied since, so the whole history is searched');
     await showDemoRows(page);
 
@@ -634,10 +634,12 @@ test('Story 6.6 AC3: activating a row\'s name cell on Task history opens a dialo
   const { context, page, reads } = await signedInAtList(config.username, config.password, HISTORY_URL);
   try {
     await openedHistory(page);
-    await searchHistory(page, 'OcuPilotDemo');
+    await searchHistory(page, DEMO_TASK);
     await waitForRows(page, config.navigationTimeoutMs);
     await showDemoRows(page);
     const readsBefore = reads.length;
+    assert.ok(readsBefore > 0, 'Search issued a read');
+    assert.equal(new URL(reads[readsBefore - 1]).searchParams.get('search'), DEMO_TASK, `carrying search=${DEMO_TASK}`);
 
     const rowIndex = await findRowIndexByName(page, DEMO_TASK);
     assert.ok(rowIndex >= 0, `the ${DEMO_TASK} row is rendered`);

@@ -5,11 +5,14 @@
 /// <class>%Status</class>.</p>
 /// <p>A transport failure before any status line is retried once (AD-42): a turn survives one, and
 /// stops <code>PROVIDER.TRANSPORT</code> on the second.</p>
-/// <p><b>Four of the five <code>PROVIDER.*</code> failures reach a turn here.</b>
-/// <code>PROVIDER.EGRESS</code> is the fifth and is not among them: the endpoint is judged before
-/// the adapter runs, and a definition naming an endpoint that judgement refuses cannot be stored
-/// in the first place, so no turn can carry one. It is pinned where it happens, in
-/// <class>OcuPilot.Test.ProviderPort</class>.</p>
+/// <p><b>The five failures of the provider call itself reach a turn here</b> --
+/// <code>PROVIDER.TIMEOUT</code>, <code>UNAVAILABLE</code>, <code>REFUSED</code>,
+/// <code>TRANSPORT</code> and <code>EGRESS</code>. The two a reply's stop reason ends a turn on,
+/// <code>PROVIDER.DECLINED</code> and <code>PROVIDER.TOOLCALLFAILED</code>, are pinned in
+/// <class>OcuPilot.Test.TurnStream</class>.
+/// <code>PROVIDER.EGRESS</code> reaches one through the instance's stored proxy, which is judged
+/// at the call like the endpoint; a definition naming an endpoint that judgement refuses cannot be
+/// stored, so the endpoint's own refusal is pinned in <class>OcuPilot.Test.ProviderPort</class>.</p>
 /// <p><b>It is the case the suite could not reach before.</b>
 /// <class>OcuPilot.Test.TurnProvider</class> answered HTTP 200 whatever it was asked, so every
 /// <code>PROVIDER.*</code> outcome was pinned through the adapter in process and none through a
@@ -19,7 +22,8 @@
 /// <method>OnBeforeAllTests</method> refuses to run unless both
 /// <parameter>ARMINGVARIABLE</parameter> and <parameter>PROVIDERVARIABLE</parameter> read 1.</b>
 /// Only <file>scripts/ci-throwaway.sh</file> sets them. After every method no probe job is alive
-/// and no probe turn, slot or stub node remains.</p>
+/// and no probe turn, slot or stub node remains, and the instance's outbound settings row is as it
+/// was before the method.</p>
 Class OcuPilot.Test.TurnProviderFault Extends %UnitTest.TestCase
 {
 
@@ -212,6 +216,61 @@ Method TestAServerErrorAndARefusalEachEndTheTurnByName()
     Do $$$AssertEquals($ClassMethod("OcuPilot.Test.TurnFixture", "Field", tSecond, "Code"), tRefused, "a status the provider will refuse again is PROVIDER.REFUSED")
     Do $$$AssertEquals(tRefusedView.error.reason, ##class(OcuPilot.Kernel.Provider.Base).ReasonFor(tRefused), "and the poll's own sentence says the provider refused the request, not the vendor's wording -- detail.providerText is a direct-route field this turn projection does not carry")
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Calls(..#TAG), 1, "reached the provider once and was not retried")
+}
+
+/// <p>AD-42 -- a stored proxy that resolves to a loopback address refuses the turn's provider call
+/// <code>PROVIDER.EGRESS</code> before any request is made: the turn fails at its provider step,
+/// and the poll answers one envelope carrying no credential and no raw <class>%Status</class>. The
+/// outbound settings row the method found is restored before any assertion.</p>
+/// <p>Mutation: delete the proxy refusal in <method>OcuPilot.Port.ProviderPort.Dispatch</method>
+/// -- the call reaches the scripted reply, the turn completes, and this goes red.</p>
+Method TestAStoredLoopbackProxyFailsTheTurnOnEgress()
+{
+    Set tHadRow = ..SnapshotEgress(.tPrior)
+    Set tProxy("proxyServer") = "127.0.0.1"
+    Set tProxy("proxyPort") = 3128
+    Set tStoreSC = ##class(OcuPilot.Kernel.State.Egress).SetGuarded(.tProxy)
+    Set tId = ..RunFailingTurn(200, ##class(OcuPilot.Test.TurnProvider).TextReply("through the proxy"), .tView, .tStatus, .tText)
+    Set tRestoreSC = ..RestoreEgress(tHadRow, .tPrior)
+    Do $$$AssertStatusOK(tStoreSC, "the loopback proxy is stored")
+    Do $$$AssertStatusOK(tRestoreSC, "and the outbound settings row the method found is restored")
+    If tId = "" Quit
+    Set tEgress = ##class(OcuPilot.Api.Error).#PROVIDEREGRESS
+    Do $$$AssertEquals($ClassMethod("OcuPilot.Test.TurnFixture", "Field", tId, "Code"), tEgress, "the turn fails PROVIDER.EGRESS")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Calls(..#TAG), 0, "before the provider was reached")
+    Do $$$AssertTrue($IsObject($Get(tView)) && $IsObject(tView.error), "the failed turn's view carries an error object")
+    If '$IsObject($Get(tView)) || '$IsObject(tView.error) Quit
+    Set tSeq = ..ModelStepSeq(tView)
+    Do $$$AssertEquals(tView.error.seq _ "|" _ tView.error.code, tSeq _ "|" _ tEgress, "at the model step named provider")
+    Do $$$AssertEquals(tStatus, 200, "the poll answers: " _ $Extract(tText, 1, 200))
+    Do $$$AssertEquals(tText [ $Parameter(..#FIXTURE, "PROBEKEY"), 0, "with no part of the credential in the body")
+    Do $$$AssertEquals(tText [ "ERROR #", 0, "and no raw %Status text")
+}
+
+/// <p>Whether the instance holds an outbound settings row, with its stored values in
+/// <var>pValues</var> under the subscripts <method>OcuPilot.Kernel.State.Egress.SetGuarded</method>
+/// takes. Read as stored, not as resolved, so a restore writes back exactly what was there.</p>
+ClassMethod SnapshotEgress(Output pValues) As %Boolean
+{
+    Kill pValues
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT TOP 1 ProxyServer, ProxyPort, ProxyHttps, ProxyTunnel, TimeoutSeconds, MaxAttempts, SslConfiguration FROM OcuPilot_Kernel_State.Egress ORDER BY ID")
+    If (tRS.%SQLCODE < 0) || 'tRS.%Next() Quit 0
+    Set pValues("proxyServer") = tRS.%GetData(1)
+    Set pValues("proxyPort") = tRS.%GetData(2)
+    Set pValues("proxyHttps") = tRS.%GetData(3)
+    Set pValues("proxyTunnel") = tRS.%GetData(4)
+    Set pValues("timeoutSeconds") = tRS.%GetData(5)
+    Set pValues("maxAttempts") = tRS.%GetData(6)
+    Set pValues("sslConfiguration") = tRS.%GetData(7)
+    Quit 1
+}
+
+/// <p>Put the outbound settings back as <method>SnapshotEgress</method> found them: the values it
+/// read when <var>pHadRow</var> is 1, and no row at all otherwise.</p>
+ClassMethod RestoreEgress(pHadRow As %Boolean, ByRef pValues) As %Status
+{
+    If 'pHadRow Quit ##class(OcuPilot.Kernel.State.Egress).DeleteGuarded()
+    Quit ##class(OcuPilot.Kernel.State.Egress).SetGuarded(.pValues)
 }
 
 /// <p>The code carried by the step of <var>pView</var> at <var>pSeq</var>, or <code>""</code>.</p>

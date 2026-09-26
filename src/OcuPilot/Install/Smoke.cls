@@ -1729,12 +1729,17 @@ ClassMethod MarkerRows(pSince As %String, pProposalId As %String) As %Integer [ 
 /// <p>Render the report and decide the verdict. One line per check, the counts last, and the
 /// counts are printed whether the run passed or failed -- a gate that cannot say how much it
 /// looked at cannot be told apart from one that looked at nothing.</p>
+/// <p>The verdict line names every failed check (<code>FAILED -- N check(s) failed: a, b</code>,
+/// counting a row whose outcome is outside the four this class writes), and a passing run with
+/// skipped checks names them (<code>PASSED -- N check(s) skipped: a, b</code>); the counts line
+/// never changes shape.</p>
 /// <p><b>Public, not <code>[ Private ]</code></b>, for the reason <method>Note</method> is: it
 /// is the verdict rule, and <class>OcuPilot.Test.Smoke</class> drives it directly over check
 /// sets no real instance produces.</p>
 ClassMethod Render(ByRef pChecks, pOrigin As %String, Output pReport As %String, Output pCounts As %String) As %Boolean
 {
     Set tPass = 0, tFail = 0, tPending = 0, tSkipped = 0
+    Set tFailedNames = "", tSkippedNames = ""
     Set pReport = "ocupilot-smoke: " _ pOrigin
     Set tN = $Order(pChecks(""))
     While tN '= "" {
@@ -1752,6 +1757,10 @@ ClassMethod Render(ByRef pChecks, pOrigin As %String, Output pReport As %String,
         ; run -- which is the vacuous pass this whole class exists to make impossible.
         ; $ListFind, not the [ operator: [ is a substring test, so "ass" and "" both match.
         If '$ListFind($ListBuild("pass", "fail", "pending", "skipped"), tOutcome) Set tFail = tFail + 1
+        If '$ListFind($ListBuild("pass", "pending", "skipped"), tOutcome) {
+            Set tFailedNames = tFailedNames _ $Select(tFailedNames = "": "", 1: ", ") _ pChecks(tN, "name")
+        }
+        If tOutcome = "skipped" Set tSkippedNames = tSkippedNames _ $Select(tSkippedNames = "": "", 1: ", ") _ pChecks(tN, "name")
         Set tN = $Order(pChecks(tN))
     }
     Set tExecuted = tPass + tFail
@@ -1761,9 +1770,9 @@ ClassMethod Render(ByRef pChecks, pOrigin As %String, Output pReport As %String,
     If tExecuted = 0 {
         Set pReport = pReport _ $Char(10) _ "ocupilot-smoke: FAILED -- this run executed 0 checks, which is a failure and never a pass"
     } ElseIf 'tOk {
-        Set pReport = pReport _ $Char(10) _ "ocupilot-smoke: FAILED -- " _ tFail _ " check(s) failed; the first is named above"
+        Set pReport = pReport _ $Char(10) _ "ocupilot-smoke: FAILED -- " _ tFail _ " check(s) failed: " _ tFailedNames
     } Else {
-        Set pReport = pReport _ $Char(10) _ "ocupilot-smoke: PASSED"
+        Set pReport = pReport _ $Char(10) _ "ocupilot-smoke: PASSED" _ $Select(tSkipped > 0: " -- " _ tSkipped _ " check(s) skipped: " _ tSkippedNames, 1: "")
     }
     Quit tOk
 }
