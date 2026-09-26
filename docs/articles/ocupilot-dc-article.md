@@ -151,9 +151,10 @@ is a large part of how it got this far in under three weeks.
   portal features;
 - a product brief and a PRD set the scope, and UX design documents set every screen's states,
   strings and interactions;
-- an architecture spine recorded more than fifty binding decisions - "the agent never writes",
-  "Confirm is a request only the user's browser makes", "the prohibited set lives on the server" -
-  that every story had to honor, or amend in the open;
+- an architecture spine recorded 56 binding decisions that every story had to honor, or amend in
+  the open - among them "Confirm is reachable only from the browser, and the write gate is on the
+  write", "Prohibited actions are absent from the tool set, not gated within it", and "The model is
+  assumed compromised by anything it reads";
 - the work was cut into 22 epics of small stories, ordered so that the six contest areas and the
   ask-review-confirm-audit path landed first.
 
