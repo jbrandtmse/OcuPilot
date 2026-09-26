@@ -249,3 +249,9 @@
 2026-09-26T00:02:36Z	Story 12.9	ledger_adjudicated	owned=1 resolved=1(DW-1643_by_cr) reowned=0 terminal=0 model=claude-opus-5-5
 2026-09-26T00:02:36Z	Story 12.9	smoke_complete	method=browser+api result=pass iterations=1 defects_caught=0 evidence=smoke.sh_49/49(ocupilot-b-ci),oauth_5/5(CR,deployed_bundle),strings.test_25/25 model=claude-opus-5-5
 2026-09-26T00:03:03Z	Story 12.9	committed	sha=503ee27e submodules= ci=pending run=36203329617 amendments=spine:AD-44(two_exemptions),prd.md:298(FR-9),prd.md:698(FR-44),prd.md:1198(risk_Closed),EXPERIENCE.md:146,367,741,772,epics.md:136(FR-44_copy),469(UX-DR67),5489(12.9_AC) footprint_extensions=prd.md(+memlog),EXPERIENCE.md,epics.md_outside_Epic_12_blocks(136,469)
+2026-09-26T00:39:55Z	Epic 12	ci_resolved	story=12.9 run=36203329617 result=success head=503ee27e resolved_at=burndown
+2026-09-26T00:39:55Z	Epic 12	ledger_burndown_complete	open_before=4(DW-1637,DW-1641,DW-1662,DW-1663;DW-1621_is_11.10s_and_left_as_found) resolved=0 terminal=0 chartered=0 chartered_size=0 overflow=2 reowned=2(DW-1637,DW-1641->range-end-cleanup) to_decision_sheet=2(DW-1662_decision-pending,DW-1663_escalated) open_after=2 cap=8 story_max=12 filed_this_epic=77 closed_this_epic=88 drain_ratio=1.14
+2026-09-26T00:39:55Z	Epic 12	epic_status_done	stories=9
+2026-09-26T00:39:55Z	Epic 12	model_tier_checkpoint	armed=true implement_model=opus(orchestrator_pin) review_tier=full-opus unresolved_high_med_avg(12.6-12.9)=0.5 rework_stories=1(12.7,ci) review_loop_thrash=0 result=hold applied=false
+2026-09-26T00:39:55Z	Epic 12	throwaway_down	by=runner(this_session_ran_its_up_at_2026-09-25T08:3xZ) container=ocupilot-b-ci project=ocupilot-b-ci dir=/tmp/ocupilot-b-ci result=removed
+2026-09-26T00:40:09Z	Epic 12	epic_runner_complete	stories_completed=9 head_pending=final_bookkeeping_commit_pushed_untagged_for_CI decisions_for_user=DW-1662,DW-1663
