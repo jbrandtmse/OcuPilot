@@ -2,7 +2,7 @@
 title: "Story 16.18: Home's performance row"
 type: 'feature'
 created: '2026-09-26'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '585d73b023e3655fb35bc71d312ca2d17041edcd'
 baseline_commit: '585d73b023e3655fb35bc71d312ca2d17041edcd'
 review_loop_iteration: 0
@@ -230,7 +230,13 @@ Rejected:
 - `false` A future descriptor routed `home` would share Home's rate row — no descriptor declares that route.
 - `false` AC3's wording does not mention the chip and stamp — the fix edits the spec under review (question 2 above).
 
+### Rework (CI, iteration 1)
+
+- [ ] [CI] browser: `ui/browser/account-and-filter.browser-spec.mjs:237` (Story 15.9's "No read, no filter") fails on run 36275199146 at head f344e836: "Home draws no command bar" now finds `.ocu-command-bar`, because Home joined the auto-refresh roster (AD-43 as amended) and draws the chip. The fix is the test's Home leg, not Home: assert Home's bar carries the auto-refresh chip and draws no filter (`FILTER_SELECTOR`) and no count (`.ocu-command-bar-count`) -- 15.9's intent is "no filter where nothing filters". Update the test's name and its Rule 19 comment to match; demonstrate the mutation (render the filter on Home -> the Home leg reds) after rebuild + redeploy, and write its `mutation:` line. Search the other browser specs for any assertion that Home has no command bar, refresh chip or status stamp (`grep -rn` over `ui/browser`) and fix any other such leg the same way; run each touched spec file alone on `ocupilot-ci`. <https://github.com/jbrandtmse/OcuPilot/actions/runs/36275199146>
+
 ## Spec Change Log
+
+- 2026-09-26, lead: re-opened for one rework iteration on a red CI browser job (run 36275199146): Story 15.9's Home leg asserted no command bar, which Home's auto-refresh chip now draws by design.
 
 - 2026-09-26, lead, spec gate: AD-43 amended (the set is eight, Home added; a screen may declare its default rate, Home's is every 10 s) and AD-29 gained the `MonitorPort` paragraph, both as recommended below except the default rate, which the lead ruled on (tier-1: AC2 must hold without a person enabling refresh). Status reset to ready-for-dev.
 

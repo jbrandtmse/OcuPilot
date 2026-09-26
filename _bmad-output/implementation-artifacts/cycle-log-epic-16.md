@@ -74,3 +74,6 @@
 2026-09-26T22:22:38Z	Epic 16	spine_updated	ad=AD-8,AD-53 reason=clarification by=runner story=16-19-impact-lines-on-removals lint=ok(pre-existing_low_placeholder_AD-7)
 2026-09-26T22:22:38Z	Story 16.19	story_created	spawn_at=2026-09-26T22:08:06Z model=opus path=_bmad-output/implementation-artifacts/spec-16-19-impact-lines-on-removals.md build_status=ready-for-dev epic_context=reused
 2026-09-26T22:22:38Z	Story 16.19	spec_validated	service_introducing=true(Kernel.Shell.Effective,Impact) integration_ac=present(AC6_roles_list_and_editor) adr_constrained_acs=AD-8,AD-10,AD-53,AD-55,AD-58 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=1(DW-118_epic_bullet) mutates_shared_runtime=true(ocupilot-ci_probe_objects) model=claude-opus-5-5
+2026-09-26T22:57:39Z	Story 16.18	ci_resolved	story=16.18 run=36275199146 result=failure resolved_at=next_implement head=f344e836 job=browser test=account-and-filter.browser-spec.mjs:237 first_red=16.18
+2026-09-26T22:57:39Z	Story 16.18	rework_opened	cycle_iteration=2 iteration=1 trigger=ci items=CI-browser-account-and-filter:237 scope_baseline=fa14b3ca
+2026-09-26T22:57:39Z	Story 16.18	stage_spawned	stage=implement spawn_at=2026-09-26T22:57:39Z model=opus agent_name=16-18-home-s-performance-row-implement-2 cycle_iteration=2
