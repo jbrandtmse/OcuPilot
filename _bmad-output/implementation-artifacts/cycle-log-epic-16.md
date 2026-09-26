@@ -80,3 +80,6 @@
 2026-09-26T23:05:52Z	Story 16.18	dev_complete	spawn_at=2026-09-26T22:57:39Z model=opus build_sha=3bdd00a4 baseline_revision=b52210cf review_loop_iteration=0 followup_review_recommended=false deferred=0 files=3 cycle_iteration=2 note=test-only_rework ci=pending run=36278350240
 2026-09-26T23:05:52Z	Story 16.18	adr_verifications_complete	result=none_required note=rework_touched_tests_only(no_AD-constrained_code)
 2026-09-26T23:05:52Z	Story 16.18	stage_spawned	stage=code-review spawn_at=2026-09-26T23:05:52Z model=opus agent_name=16-18-home-s-performance-row-code-review-2 cycle_iteration=2
+2026-09-26T23:13:16Z	Story 16.18	cr_complete	spawn_at=2026-09-26T23:05:52Z model=opus resolved=3 fixed_at_source=3 by_design=0 routed=0 escalated=0 decision_pending=0 deferred=0 dismissed=11 high=0 med=0 low=3 rows=0 unresolved_high_med=0 clarifications=0 closing_sections_present=true cycle_iteration=2 note=rework_re-review_scoped_b52210cf..3bdd00a4
+2026-09-26T23:13:16Z	Story 16.18	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=slice_empty_after_rework model=claude-opus-5-5
+2026-09-26T23:13:16Z	Story 16.18	smoke_complete	method=browser result=pass iterations=2 defects_caught=0 evidence=account-and-filter.browser-spec_4/4,home-performance.browser-spec_4/4_on_ocupilot-ci model=claude-opus-5-5

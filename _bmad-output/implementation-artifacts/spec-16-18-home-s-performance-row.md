@@ -234,6 +234,25 @@ Rejected:
 
 - [x] [CI] browser: `ui/browser/account-and-filter.browser-spec.mjs:237` (Story 15.9's "No read, no filter") fails on run 36275199146 at head f344e836: "Home draws no command bar" now finds `.ocu-command-bar`, because Home joined the auto-refresh roster (AD-43 as amended) and draws the chip. The fix is the test's Home leg, not Home: assert Home's bar carries the auto-refresh chip and draws no filter (`FILTER_SELECTOR`) and no count (`.ocu-command-bar-count`) -- 15.9's intent is "no filter where nothing filters". Update the test's name and its Rule 19 comment to match; demonstrate the mutation (render the filter on Home -> the Home leg reds) after rebuild + redeploy, and write its `mutation:` line. Search the other browser specs for any assertion that Home has no command bar, refresh chip or status stamp (`grep -rn` over `ui/browser`) and fix any other such leg the same way; run each touched spec file alone on `ocupilot-ci`. <https://github.com/jbrandtmse/OcuPilot/actions/runs/36275199146>
 
+### Review Findings (CI rework 1 re-review)
+
+Code review 2026-09-26, tier `full-opus`, four layers over `b52210cf..3bdd00a4`. The rework item is confirmed fixed: the Home leg waits for the chip, asserts no filter and no count, and ran 4/4 alone on `ocupilot-ci` against a rebuilt bundle. 0 decision-needed, 3 patch, 0 defer, 11 rejected.
+
+- [x] [Review][Patch] Two source comments still said "Home registers none, because it reads nothing", and the DW-260 mutation comment equated read-less with registering nothing; Home registers Refresh (`home.page.ts:721`) [ui/src/app/core/screen-actions.ts:26, ui/src/app/shell/command-bar.ts:640, ui/src/app/shell/command-bar.spec.ts:1144]
+- [x] [Review][Patch] The retitled component case still built Home's route and archetype; it now builds the neutral stub with `read: null, refreshes: false` [ui/src/app/shell/command-bar.spec.ts:1110]
+- [x] [Review][Patch] The browser leg's comment omitted Home's Refresh action from its bar [ui/browser/account-and-filter.browser-spec.mjs:231]
+
+Rejected:
+
+- `false` The stale-claim search covered only `ui/browser` — the item asked for browser legs, and none other asserts Home's bar; the source comments are patched above.
+- `false` `baseline_commit` and `baseline_revision` disagree — `5bd839de` sets both to `b52210cf`.
+- `false` The leg does not assert Home's Refresh button — `home.page.spec.ts:1453` pins the registration; this leg pins 15.9's filter.
+- `false` The count assertion cannot fail alone — the count sits in the filter's `@if` (`command-bar.ts:172-184`).
+- `low` No browser leg now asserts an empty bar is absent — DOM presence is jsdom-visible; forcing `hasContent` true reddens two component legs (mutation below).
+- `low` The chip wait has no `mutation:` line and fails as a timeout — the filter assertion is the rework's pinning test; a missing chip still fails the leg.
+- `low` Two identical triage headings, an oversized spec grown, a residual-risk line ahead of CI — each fix edits this spec; CI is the lead's gate.
+- `low` AC6's 1900 kB is a warning, not an error — outside the rework range and not high; the bundle reads 1.88 MB.
+
 ## Spec Change Log
 
 - 2026-09-26, lead: re-opened for one rework iteration on a red CI browser job (run 36275199146): Story 15.9's Home leg asserted no command bar, which Home's auto-refresh chip now draws by design.
@@ -380,6 +399,7 @@ The Where column: "Home's performance row (Story 16.18): its heading; two labels
 **Mutations (Rule 19), 2026-09-26, CI rework 1.** Same discipline; `git status --short` and `git diff --stat` byte-identical before and after (`cmp`).
 
 - mutation: `ui/src/app/shell/command-bar.ts:172` `@if (hasFilter)` -> `@if (true)`, rebuilt and redeployed to `ocupilot-ci` -> red: `account-and-filter.browser-spec.mjs` "No read, no filter: Home draws its auto-refresh chip but no filter or count, ..." at "Home draws no filter" (the other three tests green); reverted, clean bundle redeployed, 4/4 green.
+- mutation: `command-bar.ts` `hasContent` answers `true`, review re-run -> red: `command-bar.spec.ts` "a screen that declares no read, does not refresh and registers nothing draws no command bar" and "a URL naming no declared screen draws no bar at all"; reverted, 52/52 green.
 
 ## Auto Run Result
 

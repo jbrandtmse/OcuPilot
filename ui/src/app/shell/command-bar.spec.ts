@@ -1107,7 +1107,7 @@ describe('the command bar', () => {
   // list leg goes red.
 
   it('a screen that declares no read, does not refresh and registers nothing draws no command bar', () => {
-    build(screenDeclaration({ route: '', archetype: 'home', read: null }));
+    build(screenDeclaration({ read: null, refreshes: false }));
     expect(fixture.nativeElement.querySelector('.ocu-command-bar')).toBeNull();
     expect(fixture.nativeElement.querySelector('#ocu-command-bar-filter')).toBeNull();
   });
@@ -1141,7 +1141,7 @@ describe('the command bar', () => {
     // none, and the audit viewer registers only once it has a search to re-run.
     //
     // Mutation (Rule 19): draw the button unconditionally -> the "before registration" assertion
-    // goes red, and every read-less screen grows a control with nothing behind it.
+    // goes red, and every screen that registers none grows a control with nothing behind it.
     const declared = screenDeclaration({});
     build(declared);
     const refreshButton = (): HTMLElement | null =>

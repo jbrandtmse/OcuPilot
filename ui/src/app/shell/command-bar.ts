@@ -638,8 +638,8 @@ export class CommandBar {
 
   /**
    * The manual Refresh control (DW-260), drawn on exactly the screens that registered a handler
-   * for it: the five list screens, the audit viewer once it has a search to re-run, and the
-   * error-log drill. Home registers none, because it reads nothing.
+   * for it: a screen with nothing to re-read registers none, and the audit viewer registers only
+   * once it has a search to re-run.
    *
    * It is separate from the auto-refresh chip beside it and stands whatever the chip says: a
    * screen that does not auto-refresh is the one that most needs a way to re-read, and a paused

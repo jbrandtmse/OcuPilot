@@ -228,8 +228,8 @@ test('Command Sign out: typing "sign out" offers an active Sign out row, and Ent
   }
 });
 
-// Home refreshes (AD-43) but declares no read, so its bar holds the auto-refresh chip and nothing
-// to filter. Mutations (Rule 19): render the filter unconditionally -> the Home leg, the first the
+// Home refreshes (AD-43) but declares no read, so its bar holds the auto-refresh chip and its
+// Refresh action, and nothing to filter. Mutations (Rule 19): render the filter unconditionally -> the Home leg, the first the
 // mutation reaches, goes red; hide the filter everywhere -> the list leg goes red.
 test('No read, no filter: Home draws its auto-refresh chip but no filter or count, the error log and a user editor draw no filter or count, and a list still filters', async () => {
   const { context, page } = await signedInAt(HOME_URL);
