@@ -24,7 +24,8 @@ import { stubAccountPreferences } from '../testing/account-preferences';
  *
  * The band's *appearance* -- the gradient, the tiled lockup, the 100%-opacity rule -- is CSS
  * and jsdom computes none of it; those are asserted against the shipped stylesheet in
- * `ui/tools/design-tokens.test.mjs`, and measured in the browser under Manual checks. What is
+ * `ui/tools/design-tokens.test.mjs`, and measured in the browser under Manual checks (the lockup
+ * by `ui/browser/header-lockup.browser-spec.mjs`). What is
  * here is the half a regex over the stylesheet cannot see: the landmark, the lockup's link and
  * accessible name, the command box's presence, the namespace slot, the account button at the right
  * end, and the badge's absence.

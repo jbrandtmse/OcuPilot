@@ -210,9 +210,9 @@ test('AC2: the tile\'s color, box, padding, radius and pixels are the same in li
   await setDark(true);
   try {
     assert.equal(
-      await page.evaluate((name) => document.documentElement.classList.contains(name), THEME_DARK_CLASS),
-      true,
-      'the dark theme is on screen'
+      await page.evaluate(() => getComputedStyle(document.body).backgroundColor),
+      rgb(tokens.dark.surface),
+      'the dark theme is on screen: the page ground is surface-dark'
     );
     const dark = await tileFigures();
     assert.deepEqual(

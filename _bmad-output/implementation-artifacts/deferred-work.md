@@ -1035,6 +1035,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: _components.scss .ocu-header-lockup draws the reversed PNG as background-image; header.spec.ts pins lockup.children at 0 and textContent at ''. Windows High Contrast (forced-colors: active) drops background images, leaving a 156x32 invisible link. Its aria-label survives, so assistive technology is unaffected; a sighted high-contrast user sees nothing where Home is. No forced-colors block exists anywhere in ui/src/styles.
 - 2026-09-12T16:21:26Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a forced-colors pass finds the Home affordance unreachable by sight; a raster lockup needs an SVG or a visible-text fallback, not a 15-line patch
+- 2026-09-26T04:37:06Z occurrence=15-10-the-header-logo-on-a-white-tile
 
 ### DW-152: The status bar's connecting disc and statusConnectionSigningIn can never render in the composed app
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: low | fix-risk: low | footprint: in-epic
@@ -7099,3 +7100,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-12-9-removing-the-classic-link-outs.md (code review) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: target=_blank at locator-bar.ts:175 (Help), home.page.ts:339, sign-in.ts:172, instance-notice.ts:67; the banned-everywhere clause names none of them. Pre-existing; 12.9 removed only the OAuth wording.
 - 2026-09-26T00:00:58Z status=by-design owner=12-9-removing-the-classic-link-outs by=cr note=spec gate Q3 left the Help/new-tab claim to its owner; reopens only via a UX amendment naming the outbound doc links
+
+### DW-1683: epics.md UX-DR14 (:395) and Story 1.10's AC (:1384) still name the reversed lockup at 32px directly on the navy header
+- source: spec-15-10-the-header-logo-on-a-white-tile.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Story 15.10 moved the header to the navy lockup on a white tile and amended DESIGN.md/EXPERIENCE.md at origin; epics.md is contended (Epic 11 edits it) and outside the story's footprint, so the two requirement lines were left as written.
+- 2026-09-26T04:37:06Z status=wontfix-accepted owner=15-10-the-header-logo-on-a-white-tile by=cr note=reopen_if=a plan stage or spec cites UX-DR14's reversed-lockup wording; fix is a Rule 5 tier-1 in-place amendment by the lead

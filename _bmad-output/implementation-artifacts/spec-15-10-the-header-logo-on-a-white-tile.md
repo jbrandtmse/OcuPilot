@@ -141,6 +141,33 @@ deferred:
 - **AC3.** Given keyboard focus on the logo link, when it is focused, then the on-chrome focus ring surrounds the tile inside the band, and the link still goes Home with `?ns=` under the accessible name `STRINGS.headerHomeLink`.
 - **AC4.** Given DESIGN.md's `logo-lockup` frontmatter, prose, references rows and Do's and Don'ts row, EXPERIENCE.md's `logo-lockup` row and `header.ts`'s doc comment, when this story completes, then each states the navy lockup on the white tile at origin with the `[AMENDED 2026-09-26, Story 15.10]` marker, and both documents keep their line counts. `lint-docs`, `citations.test`, `strings.test` and `design-tokens.test` are green, and `header-lockup.browser-spec.mjs` pins AC1-AC3.
 
+### Review Findings
+
+Code review 2026-09-26, four layers (blind, edge-case, verification-gap, acceptance), 28 rows, 10 entries after grouping, 0 decision-needed.
+
+- [x] [Review][Patch] (med, fix-risk low, in-story) AC2's "the dark theme is on screen" read back the class the test had just set, so it could not fail [ui/browser/header-lockup.browser-spec.mjs:213] — now asserts the page ground is `surface-dark`; mutation recorded.
+- [x] [Review][Patch] (med, fix-risk low, in-story) DESIGN.md's Reference-only row still said `Logo-web.png` is "superseded in the header by the reversed lockup", an AC4 references row [DESIGN.md:727] — corrected in place with the marker; line count unchanged.
+- [x] [Review][Patch] (low, fix-risk low, in-story) the "no longer vendored" assertion was never seen red on its own [ui/tools/design-tokens.test.mjs:543] — mutation recorded.
+- [x] [Review][Patch] (low, fix-risk low, in-story) the mark-only threshold "about 170px" contradicted "none at supported widths" (the 720px column is 154px) [DESIGN.md:1014] — now "narrower than the tile's 144px".
+- [x] [Review][Patch] (low, fix-risk low, in-story) row 534 said the navy file "serves ... the README"; `README.md:4` draws `logo/OcuPilot-Logo-web.png` [EXPERIENCE.md:534] — "and the README" deleted; citation phrase unaffected.
+- [x] [Review][Patch] (low, fix-risk low, in-story) `header.spec.ts` header comment did not name the new browser spec [ui/src/app/shell/header.spec.ts:27] — names it.
+- [x] [Review][Defer] (low, maybe-false) forced-colors now forces the tile to Canvas while the `url()` image may survive, putting the navy wordmark on a dark Canvas [ui/src/styles/_components.scss:1113] — occurrence appended to DW-151 (terminal, same root cause); settle with a forced-colors render.
+- [x] [Review][Defer] (low, out-of-footprint) `epics.md` UX-DR14 (:395) and Story 1.10's AC (:1384) still name the reversed lockup at 32px — DW-1683 `wontfix-accepted`, reopen_if a plan stage cites that wording; a Rule 5 tier-1 amendment for the lead (contended file).
+- [x] [Review][Defer] (low, spec-bound) `_components.scss:22`'s file-header list still says "the lockup's 32x156px" — `by-design`: the spec confines this shared-append file to the lockup rule and its comment; correct after Epic 11 merges.
+- [x] [Review][Defer] (low) below 720px (e.g. 1280 at 200% zoom) the 144px tile overflows its column into the command box — `wontfix-accepted`, pre-existing (the old 156px lockup was wider) and below the tested 720 floor; reopen_if a sub-720 viewport joins `structural-walk.mjs` `VIEWPORTS`.
+
+Rejected:
+
+- Auto Run Result tally differs from the Triage Log — the fix edits the spec's build-auto record, not code.
+- DW-1337 stale variance called pre-existing — already filed as an occurrence on DW-1584.
+- `browser.config.mjs` falls back to slot A silently — already logged by the lead as a protocol violation.
+- The spec header "refuses the live container" overclaims — `false`: it refuses `LIVE_CONTAINER`, exactly as stated.
+- The frontmatter omits the tile width; the stylesheet test drops size and exact radius; padding longhands escape the regex — the `plate:` wording and the stylesheet assertions are spec-prescribed, and the browser spec pins the computed 144×36 box and all four paddings.
+- Focus ring, 720 leg and drawn size are checked in light only — the matrix prescribes light, the focus rule is theme-independent, and AC2's pixel comparison covers a dark-only drawing change.
+- The `build-output` assertion sits under the sign-in test's title — cosmetic; its message names the reversed file.
+- `[AMENDED 2026-09-26]` postdates the memlog — `false`: the spec prescribes it and it is the UTC date.
+- The mark-only variant's tile size is unstated — no Release 1 surface draws it.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -247,6 +274,8 @@ Recorded (each reverted; `git status --short` and `git diff --stat` unchanged af
 - mutation: `:root.ocu-theme-dark .ocu-header-lockup { filter: invert(1); }` appended to `_theme.scss` (rebuilt, redeployed) → `header-lockup` "AC2" red on the pixel comparison alone; every computed value still matched.
 - mutation: tile `width: 200px` (rebuilt, redeployed) → `header-lockup` "AC1: at 720 px" red (the tile intersects the command box), and "AC1: at 1280 px" red (200, expected 144).
 - mutation: reversed PNG restored and the header `url()` pointed at it, rebuilt → `build-output.test` "the sign-in lockup reaches the bundle as a hashed asset …" red (`OcuPilot-Lockup-horizontal-reversed-<HASH>.png` in `media/`).
+- mutation (code review): reversed PNG restored in `ui/src/assets/lockup/` only, no CSS change → `design-tokens.test` "the header lockup is the navy-wordmark file on the white tile" red ("the reversed file is no longer vendored").
+- mutation (code review): `THEME_DARK_CLASS` in `core/theme.ts` renamed so toggling it no longer applies the dark scope (bundle redeployed first) → `header-lockup` "AC2" red ("the dark theme is on screen: the page ground is surface-dark"); the other four tests stayed green.
 
 ## Auto Run Result
 
