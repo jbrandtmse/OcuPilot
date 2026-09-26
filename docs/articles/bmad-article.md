@@ -2,8 +2,7 @@
 
 <!-- Draft of the second contest article. Before publishing: confirm the Tsvetkov quote and its
 attribution on the LinkedIn post, ideally with his permission and a tag, and restore his British
-spelling of the bracketed word; re-count stories on the day; add the two visuals marked below and
-the article 1 link. -->
+spelling of the bracketed word; re-count stories on the day; add the two visuals marked below. -->
 
 *How I used the BMAD Method and AI agents to build OcuPilot in nineteen days - and why a person
 stayed in the loop the whole way.*
@@ -177,7 +176,8 @@ It is the same pattern as the product: the agents propose, and a person confirms
 - The live demo: [ocupilot.org](https://ocupilot.org), sign in as `demo` / `ocupilot-demo`.
 - The code and every planning document:
   [github.com/jbrandtmse/OcuPilot](https://github.com/jbrandtmse/OcuPilot).
-- The first article, on what OcuPilot does: <!-- LINK TO ARTICLE 1 -->
+- The first article, on what OcuPilot does:
+  [OcuPilot: ask, review, confirm, audit](https://community.intersystems.com/post/ocupilot-ask-review-confirm-audit-ai-co-pilot-iris-management-portal)
 - Open Exchange: [OcuPilot](https://openexchange.intersystems.com/package/OcuPilot)
 
 If you are trying BMAD on IRIS, I would like to hear what has worked for you and what has not. And

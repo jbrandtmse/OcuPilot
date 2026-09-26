@@ -14,6 +14,7 @@
   <a href="#quick-start">Quick start</a> ·
   <a href="#get-a-model-key-in-two-minutes">Get a key</a> ·
   <a href="#a-change-from-question-to-audit-record">Walkthrough</a> ·
+  <a href="https://community.intersystems.com/post/ocupilot-ask-review-confirm-audit-ai-co-pilot-iris-management-portal">Article</a> ·
   <a href="docs/DEVELOPMENT.md">Developer reference</a>
 </p>
 
