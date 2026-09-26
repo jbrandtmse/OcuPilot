@@ -25,7 +25,7 @@ owner_graph:  # as approved, never reduced
   epic-23: [epic-11, epic-12]   # chartered 2026-09-26 by the orchestrator under Rule 27, after the submission cut
   epic-14: [epic-4, epic-11, epic-12]   # owner 2026-09-26: run extended to Epics 14 and 16 (never 17) after the submission cut
   epic-16: [epic-6, epic-11, epic-12]   # owner 2026-09-26: same
-  epic-18: [epic-11, epic-12]   # owner 2026-09-26: ONLY Story 18.1 is in the run, brought into the voting week ahead of 16.4
+  epic-18: [epic-11, epic-12]   # owner 2026-09-26 (c242eac4): the whole epic joins the voting-week run on slot B after Epic 14; 18.1 on slot A ahead of 16.4 unless slot B reaches Epic 18 first
 
 added_edges:
   hard:
@@ -241,7 +241,8 @@ epics:
   epic-18:
     depends_on: [epic-11, epic-12]
     submodules: []
-    in_run: ["18-1-the-directory-allow-list"]   # owner 2026-09-26; 18.2 onward stay after the contest
-    story_order: ["18-1 (before 16-4)"]
-    paths_hint: ["src/OcuPilot/Kernel/**", "src/OcuPilot/Api/**", "src/OcuPilot/Port/**", "src/OcuPilot/Screen/**", "src/OcuPilot/Install/**", "src/OcuPilot/Test/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/browser/**"]
-
+    in_run: all   # owner 2026-09-26 (c242eac4): the whole epic, in epics.md story order
+    story_order: ["18-1 (slot A ahead of 16-4, unless slot B reaches Epic 18 first)", "18-2", "18-3", "18-4 (destructive keys default DISABLED under 14.2's baseline rule)", "18-5", "18-6", "18-7", "18-8", "18-9", "18-10", "18-11", "18-12", "18-13"]
+    slot: "B after Epic 14 (14.1, 14.8, 14.3, 14.5, 14.4, 14.2, 14.6)"
+    gate: "Stage 2 gate amended at source (c242eac4): build against the pinned 2026.2 image; re-derive the inventory fixture when 2027.1 ships"
+    paths_hint: ["src/OcuPilot/Kernel/**", "src/OcuPilot/Api/**", "src/OcuPilot/Port/**", "src/OcuPilot/Screen/**", "src/OcuPilot/Install/**", "src/OcuPilot/Test/**", "ui/src/app/areas/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/browser/**", "ui/src/styles/**"]

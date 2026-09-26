@@ -6361,6 +6361,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: %Api.Admin.Endpoints.Security.Resource RunPut: If permsNormalized = 0 -> 400; null, "", "N", 0, "0" all refused on create and clear on ocupilot-b-ci 2026-09-23; Security.Resources.Create/Modify accept it. OcuPilot's AD-27 fallback covers it.
 - 2026-09-23T08:46:44Z status=decision-pending owner=burndown by=orchestrator note=human=report to the contest's feedback channel (sysadmin-api-specification) as a candidate vendor defect
 - 2026-09-23T21:41:20Z status=resolved-by:8-4-the-resource-editor by=merge_gate note=Epic 8 merge decision sheet. The product side is covered by AD-27's fallback case 1. Reporting the vendor defect to the contest feedback channel is a human action, moved to action_items for the owner.
+- 2026-09-26T22:18:50Z note=reported to InterSystems by the owner 2026-09-26: github.com/intersystems-community/sysadmin-api-specification issues #1 and #2
 
 ### DW-1528: The Resources-list Delete row action (Story 8.4 AC2's screen caller): drawn disabled with its reason when the vendor's AllowDelete is false, on AD-53's route
 - source: spec-8-4-the-resource-editor.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -7073,6 +7074,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-25T02:13:04Z occurrence=12-5-the-oauth-2-0-client-configuration-editor note=measured 2026-09-25 on ocupilot-b-ci: the client configuration's Metadata.registration_access_token is written in plain text into 'Modify OAuth2 Client' and 'Modify OAuth2 Client Metadata' EventData by CHANGESECRET and again by every later PUT and ROTATEKEYS; ClientSecret, ClientPassword, Metadata.client_secret and key sets are masked by the vendor
 - 2026-09-25T02:14:54Z status=routed owner=12-5-the-oauth-2-0-client-configuration-editor by=merge_gate note=orchestrator ruling 8bd12776: (a) mask declared keys in EventData for the named vendor OAuth events on both screen and agent paths; AD-35 extended; owner 12.5 with authority over the Logs audit read; vendor behavior on the owner's list as a candidate IRIS defect report
 - 2026-09-25T05:14:40Z status=resolved-by:12-5-the-oauth-2-0-client-configuration-editor by=adjudication note=AuditPort.VENDORSECRETS declares token keys per named vendor OAuth event; Screen/Read masks before projecting, so Logs > Audit and logs.audit.read read the same masked rows; pinned by Test/AuditVendorSecrets (declaration removed -> red on both reads, run 952; Create rows added at review, runs 1215-1219); localized-message residue is DW-1645 (escalated)
+- 2026-09-26T22:18:50Z note=reported to InterSystems by the owner 2026-09-26: github.com/intersystems-community/sysadmin-api-specification issues #1 and #2
 
 ### DW-1641: The agent's OAuth server-description update replaces Metadata whole: the tool argument is the complete member set because Mint.Merge carries an object argument as one value (the screen route merges member by member first)
 - source: spec-12-4-the-oauth-2-0-client-server-description-editor.md | severity: med | fix-risk: med | footprint: in-story

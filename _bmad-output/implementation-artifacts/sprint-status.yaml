@@ -352,5 +352,6 @@ action_items:
       (it maps 'none' to 0, then rejects 0), so a private resource cannot be created
       or a public permission cleared through the API (DW-1527)"
     owner: "user"
-    status: open
+    status: done
     ref: "DW-1527"
+    resolution: "filed by the owner 2026-09-26 at github.com/intersystems-community/sysadmin-api-specification (issues #1 and #2, the second being DW-1640)"
