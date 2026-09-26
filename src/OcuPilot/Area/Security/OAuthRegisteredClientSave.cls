@@ -80,11 +80,12 @@ ClassMethod HandleCreate() As %Status
         }
         Set tSecret = ..TakeText(tBody, ..#SECRETFIELD)
         Set tPerformSC = ..Create(tBody, (tSecret '= ""), .tHttp, .tFault, .tViolations, .tId, .tName, .tWrite)
-        Set (tSecretReason, tReadBack) = ""
+        Set (tSecretReason, tReadBack, tStored) = ""
         If $$$ISOK(tPerformSC) && '$Get(tViolations) && (tSecret '= "") Set tSecretReason = ..StoreSecret(tId, tSecret)
+        If $$$ISOK(tPerformSC) && '$Get(tViolations) && (tSecret '= "") && (tSecretReason = "") Set tStored = $ListBuild(..#SECRETFIELD)
         Set tSecret = ""
-        ; AD-58: the client read back, under the id the instance generated, after the Save's last write.
-        If $$$ISOK(tPerformSC) && '$Get(tViolations) && $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#CREATETOOL, tId, tWrite("sent"), "", ..PortClass(), $Get(tWrite("written")), $Get(tHttp))
+        ; AD-58: the client read back after the Save's last write; its list-row read finds it by name.
+        If $$$ISOK(tPerformSC) && '$Get(tViolations) && $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#CREATETOOL, tId, tWrite("sent"), "", ..PortClass(), $Get(tWrite("written")), $Get(tHttp), tStored)
         Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 201, $Get(tId), $Get(tName), tSecretReason, tReadBack)
     } Catch ex {
         Set tSecret = ""
@@ -126,11 +127,12 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Set tSC = ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#REASONOAUTHSERVERCLIENTABSENT, ##class(OcuPilot.Api.Error).#OAUTHSERVERCLIENTABSENT)
             Quit
         }
-        Set (tSecretReason, tReadBack) = ""
+        Set (tSecretReason, tReadBack, tStored) = ""
         If $$$ISOK(tPerformSC) && '$Get(tViolations) && (tSecret '= "") Set tSecretReason = ..StoreSecret(tId, tSecret)
+        If $$$ISOK(tPerformSC) && '$Get(tViolations) && (tSecret '= "") && (tSecretReason = "") Set tStored = $ListBuild(..#SECRETFIELD)
         Set tSecret = ""
         ; AD-58: the client read back after the Save's last write, over what its own write sent.
-        If $$$ISOK(tPerformSC) && '$Get(tViolations) && $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#UPDATETOOL, tId, tWrite("sent"), tWrite("fresh"), ..PortClass(), $Get(tWrite("written")), $Get(tHttp))
+        If $$$ISOK(tPerformSC) && '$Get(tViolations) && $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#UPDATETOOL, tId, tWrite("sent"), tWrite("fresh"), ..PortClass(), $Get(tWrite("written")), $Get(tHttp), tStored)
         Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 200, tId, $Get(tName), tSecretReason, tReadBack)
     } Catch ex {
         Set tSecret = ""

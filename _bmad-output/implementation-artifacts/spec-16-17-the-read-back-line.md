@@ -109,7 +109,7 @@ deferred:
 | Delete | web app delete (either caller) | `notFound`; the row leaves and the card says "Read back: not found" | none |
 | Delete not gone | delete whose re-read still answers | `present`; the row stays marked "Read back: still present" | none |
 | Error-log delete | `logs.applicationerrors.delete` | `notFound` when none of the enumerated ids (id+Time) re-enumerate (`ReadBackGone`) | none |
-| Secret sent | user password; or a merge carrying a supplied secret | `written`, `[NewPassword]`; a merge appends "· … written, not read back" | read value never examined |
+| Secret sent | user password; or a merge carrying a supplied secret | `written`, `[Password]`; a merge appends "· … written, not read back" | read value never examined |
 | Action | task suspend, process resume, task run | `nothingSent` | none |
 | Queued | audit copy answered 202 | `unchecked` / `running`; no re-read | none |
 | Re-read refused | re-read answers 403 or 500 | `unchecked` / `unreadable` | the write's answer is unchanged |
@@ -182,7 +182,42 @@ deferred:
 - Given a write carrying a secret, then the line names it "written, not read back", and the read-back never examines its read value.
 - Given the web applications list open, the integration consumer, when a web application is enabled by its row action on `ocupilot-ci`, then the row shows "Read back: matches" in both themes and passes the DW-1337 structural gate with no new allowance.
 
+### Review Findings
+
+Code review 2026-09-26 (full-opus: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 1 high, 5 medium, 13 low survived triage; every patch applied.
+
+- [x] [Review][Patch] **High (AD-58 fail-closed):** a read-back that compared no field read `matches` -- every sent name skipped (unnamed, excluded, or absent from a list row) left `Compared` answering 1. `Compared` now counts compared names (a list row's own key is not counted) and `Of` answers `unchecked`, or `written` when only secrets were sent [src/OcuPilot/Kernel/Proposal/ReadBack.cls:125]
+- [x] [Review][Patch] DW-1709: a role grant sent `"WR"` (stored `"RW"`) or with its members reordered read "differs in Resources" -- an `unordered` array's element member may now declare a text mode (`Resources[].Permissions: letters`), validated by `field-lists.mjs`, emitted on that row alone; object elements compare by sorted non-empty members [src/OcuPilot/Kernel/Proposal/ReadBack.cls:ElementText, ui/tools/field-lists.mjs:322]
+- [x] [Review][Patch] An editor opened by a create showed an earlier Save's verdict, or none -- `reset()` clears the read-back and `arriveSaved` carries the create's [ui/src/app/areas/web-applications/web-app-editor.store.ts:458, role-editor.store.ts, user-editor.store.ts, the three create pages]
+- [x] [Review][Patch] Four OAuth editors dropped the read-back line when a follow-up secret write was refused -- the refusal keeps the line beside it [ui/src/app/areas/security/oauth-client-form.page.ts:608 and three siblings]
+- [x] [Review][Patch] OAuth Saves never named the secrets they store by their own writes -- `ForSave` takes the landed names (`WithWritten`) from all five OAuth Saves [src/OcuPilot/Kernel/Proposal/ReadBack.cls:ForSave, src/OcuPilot/Area/Security/OAuth*Save.cls]
+- [x] [Review][Patch] Comments said a list-row create re-reads by the allocated id; it re-reads by name [src/OcuPilot/Area/Task/TaskSave.cls:159, OAuthRegisteredClientSave.cls:86]
+- [x] [Review][Patch] `ReadBackGone` sat between `PortQuery` and its doc comment, and named `Time` for `time` [src/OcuPilot/Screen/Tool/ErrorDelete.cls:214]
+- [x] [Review][Patch] A `written`-mode object sent empty was listed written [src/OcuPilot/Kernel/Proposal/ReadBack.cls:Compared]
+- [x] [Review][Patch] A row's clipped read-back line had no way to read the rest -- it carries its text as `title` [ui/src/app/shell/data-table.ts:355]
+- [x] [Review][Patch] `field-lists.mjs` accepted a text mode on an array or object row -- refused [ui/tools/field-lists.mjs]
+- [x] [Review][Patch] AC4's written clause had no `mutation:` line -- demonstrated and recorded under Verification
+- [x] [Review][Patch] Save-route verdicts were pinned on few routes and `field-lists.test.mjs` pinned five declarations -- every committed declaration is now pinned; verdicts added on the role update (`"WR"`), the OAuth resource server create (`written`), and the web app, role and user create editors (browser). The remaining routes are DW-1711 (wontfix-accepted)
+- [x] [Review][Defer] A list-row create reads `matches` over only the fields its list row carries [src/OcuPilot/Kernel/Proposal/ReadBack.cls:Compared] -- deferred: DW-1710 decision-pending (product call, decision sheet)
+- [x] [Review][Defer] 202 never re-read (DW-1713 by-design); numeric default rule (DW-1714 by-design); nothing-compared reads "could not be read" (DW-1715 by-design); MatchRoles default-secret rows reported written (DW-1716 by-design); list-row re-read by name (DW-1717 wontfix-theoretical); duplicate `permissions.users.create` key, pre-existing (DW-1712 wontfix-accepted)
+
+**Rejected:**
+
+- `Settings: written` covers the whole object -- spec-declared (Declarations).
+- `""` against `0` reads differs -- the spec's default rule; no Save observed sending it.
+- A secret's sent value compared with the pre-write read -- the spec's Merge row; the re-read's value is never examined.
+- `Password` for the matrix's `NewPassword` -- spec text; fixing it edits the spec.
+- Answer and wire disagree when a read-back passes 4,000 characters, or its recording fails -- names only, so theoretical; failure is logged by spec.
+- `RecordReadBack` matching no row -- the row was confirmed in the same call.
+- Blank names on an empty `differs` or secret-only `written` -- unreachable: a differs names at least one field and a secret-only tool requires its secret.
+- A process terminate reads "still present" -- false: measured `notFound` in 3 of 3 re-reads right after the terminate on `ocupilot-ci`.
+- Tracking files disagree on status -- the lead's bookkeeping, not code.
+- `Rows` re-parses the XData per write -- negligible cost.
+- `Answer`'s doc claims the read-back is read from the row -- the clause qualifies the row fields, as before this story.
+
 ## Spec Change Log
+
+- 2026-09-26, lead, after code review: the matrix's secret-row example corrected at origin to `[Password]` (the declared secret name the card asks for; `NewPassword` is only the port's wire name), per the review's flagged spec-text drift.
 
 - 2026-09-26, lead, spec gate: AD-58 written into the spine as recommended below (Rule 20, light path; no existing AD contradicted), with pointers in AD-3 and AD-53. Status reset to ready-for-dev; no other change.
 
@@ -304,6 +339,10 @@ The Where column says: the read-back line of a confirmed write (Story 16.17), on
 - mutation: answer 1 from `Compared` for a missing sent object -> `Test.ReadBack` `TestAMergeWithNothingToCompareIsUnchecked` red; pass `""` as the sent body in `DeviceSave.Create`'s `ForSave` -> `Test.DeviceWire` create case red on its `matches []` verdict.
 - mutation: drop `readBack: outcome.readBack` from `confirmProposal`'s publish -> `turn.test.mjs` read-back case red (event leg); drop `readBack` from `parseProposal` -> the same case red (reload leg); drop the card's `[readBack]` binding in `panel.ts` -> `panel.spec.ts` "AC1: a confirmed card carries the instance's read-back line" red (AC1 agent leg).
 - mutation: drop the `readBackOf(...)` assignment in `ReducedFormStore.save` -> `reduced-form.page.spec.ts` Story 16.17 case red; drop `readBack` from `ResourceEditor.save`'s publish -> `resource-editor.store.spec.ts` Story 16.17 case red (AC1 form leg).
+- mutation (code review): drop the `tCount = 0` branch in `ReadBack.Of` -> `Test.ReadBack` `TestAReadBackThatComparedNothingNeverMatches` red; drop `WithWritten` from `ForSave` -> `TestASavesSecretsStoredApartAreWritten` red; test a written name's sent text against `""` again -> `TestASecretIsWrittenAndItsReadValueIsNeverExamined` red; drop `tStored` from `OAuthResourceServerSave.HandleCreate`'s `ForSave` -> `Test.OAuthResourceServerSecret` save case red.
+- mutation (code review, DW-1709): remove `"Resources[].Permissions": "letters"` from both role entries and regenerate -> `Test.ReadBack` `TestARoleGrantReadBackNormalizedMatches` and `Test.ReadBackRoute` role case red (`differs ["Resources"]` from the instance); emit only the top-level mode in `classify()` -> `field-lists.test.mjs` compare case red.
+- mutation (code review, AC4 client): render the written clause as the bare line in `readBackLine` -> `read-back.test.mjs` names case and `proposal-card-read-back.spec.ts` "a secret as written" case red.
+- mutation (code review, AC1 create leg): drop `this.readBackValue = arrivingReadBack` or the `reset()` clear in `WebAppEditor` -> `web-app-editor.store.spec.ts` Story 16.17 create case red; pass `arriveSaved` no read-back on the web app create page, rebuilt and redeployed -> `web-applications-create.browser-spec.mjs` AC2 red. Drop `withReadBack` from the OAuth client page's refused status -> `oauth-client-form.page.spec.ts` refused case red. Drop the span's `title` -> `data-table.spec.ts` Story 16.17 case red.
 
 ## Auto Run Result
 

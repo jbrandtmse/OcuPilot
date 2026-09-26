@@ -98,12 +98,13 @@ ClassMethod HandleCreate() As %Status
         Set tRemoved = ..TakeList(tBody, ..#REMOVEDFIELD)
         Set tName = $ClassMethod(..#RULES, "Text", tBody, ..#IDARGUMENT)
         Set tPerformSC = ..Create(tName, tBody, tAdded, tRemoved, .tHttp, .tFault, .tViolations, .tWrite)
-        Set (tSecretReason, tMappingsCount, tMappingsReason, tReadBack) = ""
+        Set (tSecretReason, tMappingsCount, tMappingsReason, tReadBack, tStored) = ""
         If $$$ISOK(tPerformSC) && '$Get(tViolations) {
             If tSecret '= "" Set tSecretReason = ..StoreSecret(tName, tSecret)
+            If (tSecret '= "") && (tSecretReason = "") Set tStored = $ListBuild(..#SECRETFIELD)
             Do ..StoreMappings(tName, tAdded, tRemoved, .tMappingsCount, .tMappingsReason)
             ; AD-58: the server read back after the Save's last write, over what its own write sent.
-            If $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#CREATETOOL, tName, tWrite("sent"), "", ..PortClass(), $Get(tWrite("written")), $Get(tHttp))
+            If $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#CREATETOOL, tName, tWrite("sent"), "", ..PortClass(), $Get(tWrite("written")), $Get(tHttp), tStored)
         }
         Set tSecret = ""
         Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 201, tName, tSecretReason, tMappingsCount, tMappingsReason, tReadBack)
@@ -147,12 +148,13 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Set tSC = ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#REASONOAUTHRESOURCESERVERNAMEABSENT, ##class(OcuPilot.Api.Error).#OAUTHRESOURCESERVERNAMEABSENT)
             Quit
         }
-        Set (tSecretReason, tMappingsCount, tMappingsReason, tReadBack) = ""
+        Set (tSecretReason, tMappingsCount, tMappingsReason, tReadBack, tStored) = ""
         If $$$ISOK(tPerformSC) && '$Get(tViolations) {
             If tSecret '= "" Set tSecretReason = ..StoreSecret(tName, tSecret)
+            If (tSecret '= "") && (tSecretReason = "") Set tStored = $ListBuild(..#SECRETFIELD)
             Do ..StoreMappings(tName, tAdded, tRemoved, .tMappingsCount, .tMappingsReason)
             ; AD-58: the server read back after the Save's last write, over what its own write sent.
-            If $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#UPDATETOOL, tName, tWrite("sent"), tWrite("fresh"), ..PortClass(), $Get(tWrite("written")), $Get(tHttp))
+            If $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#UPDATETOOL, tName, tWrite("sent"), tWrite("fresh"), ..PortClass(), $Get(tWrite("written")), $Get(tHttp), tStored)
         }
         Set tSecret = ""
         Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 200, tName, tSecretReason, tMappingsCount, tMappingsReason, tReadBack)

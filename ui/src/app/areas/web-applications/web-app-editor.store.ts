@@ -229,6 +229,8 @@ export class WebAppEditor {
 
   /** The application a create has just made, whose editor opens already saved. */
   private arrivingSaved = '';
+  /** The read-back of the create the arriving editor opens on (AD-58), shown under its "Saved". */
+  private arrivingReadBack: ReadBack | null = null;
 
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
@@ -445,22 +447,32 @@ export class WebAppEditor {
     this.clearRefusal();
     this.actionRefusalValue = '';
     this.savedValue = false;
+    this.readBackValue = null;
     this.formDirty.reset();
     this.notify();
   }
 
-  /** Mark the application a create has just made, so its editor opens showing "Saved". */
-  arriveSaved(name: string): void {
+  /**
+   * Mark the application a create has just made, so its editor opens showing "Saved" with the create's
+   * read-back line (AD-58).
+   */
+  arriveSaved(name: string, readBack: ReadBack | null = null): void {
     this.arrivingSaved = name;
+    this.arrivingReadBack = readBack;
   }
 
   /** Open the editor on `name`: the form read is made on every open rather than cached. */
   async open(name: string): Promise<void> {
     const arriving = this.arrivingSaved !== '' && this.arrivingSaved === name;
+    const arrivingReadBack = this.arrivingReadBack;
     this.arrivingSaved = '';
+    this.arrivingReadBack = null;
     this.reset();
     this.applicationName = name;
-    if (arriving) this.savedValue = true;
+    if (arriving) {
+      this.savedValue = true;
+      this.readBackValue = arrivingReadBack;
+    }
     const generation = this.generation;
     const result = await this.read(name);
     if (generation !== this.generation) return;

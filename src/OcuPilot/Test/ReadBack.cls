@@ -134,6 +134,9 @@ Method TestASecretIsWrittenAndItsReadValueIsNeverExamined()
     Do $$$AssertTrue(tAnswer.%ToJSON() '[ "supplied-secret", "and its value is not in the answer")
     Set tCarried = ..ReadBackOf("OcuPilot.Screen.Tool.SslUpdate", 200, {"Description": "d"}.%ToJSON(), {"Description": "d", "PrivateKeyPassword": "held"}, {"Description": "d", "PrivateKeyPassword": "held"})
     Do $$$AssertEquals(tCarried.written.%Size(), 0, "a secret the merge carried unchanged is not written")
+    ; Mutation (Rule 19): test the written name's sent text against "" again in Compared -> red.
+    Set tEmpty = ..ReadBackOf("OcuPilot.Screen.Tool.TaskUpdate", 200, {"Description": "d"}.%ToJSON(), {"Description": "d", "Settings": {}}, {"Description": "d"})
+    Do $$$AssertEquals(tEmpty.written.%Size(), 0, "a written-mode object sent empty is not written: " _ tEmpty.%ToJSON())
     Set tOnly = ..ReadBackOf("OcuPilot.Screen.Tool.UserPassword", 200, {"Name": "probe"}.%ToJSON(), {"Password": "supplied-secret"})
     Do $$$AssertEquals(tOnly.verdict, "written", "a secret-only write is written")
     Do $$$AssertEquals(tOnly.written.%ToJSON(), "[""Password""]", "naming its secret")
@@ -160,6 +163,54 @@ Method TestADeclaredUnorderedListMatchesReordered()
     Do $$$AssertEquals(tAnswer.verdict, "matches", "GrantedRoles and Resources read back sorted match: " _ tAnswer.%ToJSON())
     Set tCreate = ..ReadBackOf("OcuPilot.Screen.Tool.RoleCreate", 200, tRead.%ToJSON(), tSent)
     Do $$$AssertEquals(tCreate.verdict, "matches", "and so does the create's")
+}
+
+/// <p>A read-back that compared no field never reads <code>matches</code> (AD-58): a list-row
+/// create whose row carries none of the sent names but its row key, and a merge sending only names
+/// its field rows do not hold, are <code>unchecked</code>; a merge sending only secrets is
+/// <code>written</code>.</p>
+/// <p>Mutation (Rule 19): drop the <code>tCount = 0</code> branch in
+/// <method>OcuPilot.Kernel.Proposal.ReadBack.Of</method> -> this goes red.</p>
+Method TestAReadBackThatComparedNothingNeverMatches()
+{
+    Set tRow = ..ReadBackOf("OcuPilot.Screen.Tool.TaskCreate", 200, [{"Name": "probe", "Id": 7}].%ToJSON(), {"Name": "probe", "DailyIncrement": 5})
+    Do $$$AssertEquals(tRow.verdict _ "/" _ tRow.reason, "unchecked/unreadable", "a list row answering only the row key compares nothing: " _ tRow.%ToJSON())
+    Set tSeen = ..ReadBackOf("OcuPilot.Screen.Tool.TaskCreate", 200, [{"Name": "probe", "Description": "d", "Id": 7}].%ToJSON(), {"Name": "probe", "Description": "d", "DailyIncrement": 5})
+    Do $$$AssertEquals(tSeen.verdict, "matches", "and a field the row does carry is compared: " _ tSeen.%ToJSON())
+    Set tUnnamed = ..ReadBackOf("OcuPilot.Screen.Tool.WebAppUpdate", 200, {"Description": "d"}.%ToJSON(), {"NoSuchField": "x"})
+    Do $$$AssertEquals(tUnnamed.verdict _ "/" _ tUnnamed.reason, "unchecked/unreadable", "a body of names no field row holds compares nothing: " _ tUnnamed.%ToJSON())
+    Set tSecrets = ..ReadBackOf("OcuPilot.Screen.Tool.SslUpdate", 200, {"Description": "d"}.%ToJSON(), {"PrivateKeyPassword": "supplied-secret"}, {})
+    Do $$$AssertEquals(tSecrets.verdict _ " " _ tSecrets.written.%ToJSON(), "written [""PrivateKeyPassword""]", "a body of secrets alone is written: " _ tSecrets.%ToJSON())
+}
+
+/// <p>An <code>unordered</code> array of objects compares each element member by member, in any
+/// member order, with a member's declared text mode applied (DW-1709): a role grant sent
+/// <code>"WR"</code> reads back <code>"RW"</code> and matches, and a lost permission still differs.</p>
+/// <p>Mutation (Rule 19): remove <code>"Resources[].Permissions": "letters"</code> from
+/// <code>permissions.roles.update</code>'s <code>compare</code> and regenerate -> this goes red.</p>
+Method TestARoleGrantReadBackNormalizedMatches()
+{
+    Set tSent = {"Description": "d", "Resources": [{"Name": "%Development", "Permissions": "WR"}, {"Name": "%Admin_Operate", "Permissions": "U"}]}
+    Set tRead = {"Description": "d", "Resources": [{"Permissions": "U", "Name": "%Admin_Operate"}, {"Name": "%Development", "Permissions": "RW"}]}
+    Set tAnswer = ..ReadBackOf("OcuPilot.Screen.Tool.RoleUpdate", 200, tRead.%ToJSON(), tSent)
+    Do $$$AssertEquals(tAnswer.verdict, "matches", "a WR grant read back RW, its members and elements reordered, matches: " _ tAnswer.%ToJSON())
+    Set tLost = {"Description": "d", "Resources": [{"Name": "%Admin_Operate", "Permissions": "U"}, {"Name": "%Development", "Permissions": "R"}]}
+    Set tDiffers = ..ReadBackOf("OcuPilot.Screen.Tool.RoleUpdate", 200, tLost.%ToJSON(), tSent)
+    Do $$$AssertEquals(tDiffers.verdict _ " " _ tDiffers.fields.%ToJSON(), "differs [""Resources""]", "a grant read back without W differs in Resources: " _ tDiffers.%ToJSON())
+}
+
+/// <p>A Save's secrets stored by their own writes join <code>written</code> beside the body's
+/// read-back, once each and never on a verdict that does not list it.</p>
+/// <p>Mutation (Rule 19): answer <method>OcuPilot.Kernel.Proposal.ReadBack.Of</method>'s result
+/// without <method>OcuPilot.Kernel.Proposal.ReadBack.WithWritten</method> in
+/// <method>OcuPilot.Kernel.Proposal.ReadBack.ForSave</method> -> this goes red.</p>
+Method TestASavesSecretsStoredApartAreWritten()
+{
+    Do ##class(OcuPilot.Test.ReadBackPort).Arm(200, {"Description": "d"}.%ToJSON())
+    Set tAnswer = $ClassMethod(..#RB, "ForSave", "OcuPilot.Screen.Tool.WebAppUpdate", "probe", {"Description": "d"}, {"Description": "d"}, ..#PORT, "", 200, $ListBuild("ClientSecret", "ClientSecret"))
+    Do $$$AssertEquals(tAnswer.verdict _ " " _ tAnswer.written.%ToJSON(), "matches [""ClientSecret""]", "the stored secret is listed written once: " _ tAnswer.%ToJSON())
+    Set tRunning = $ClassMethod(..#RB, "ForSave", "OcuPilot.Screen.Tool.WebAppUpdate", "probe", {"Description": "d"}, {"Description": "d"}, ..#PORT, "", 202, $ListBuild("ClientSecret"))
+    Do $$$AssertEquals(tRunning.verdict _ " " _ tRunning.written.%ToJSON(), "unchecked []", "and not on a verdict that lists nothing")
 }
 
 Method TestTheKindIsDerivedFromTheToolsParameters()

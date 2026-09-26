@@ -758,6 +758,8 @@ describe('the data table', () => {
     expect(tag.textContent?.trim()).toBe(STRINGS.tableChangedTag);
     const line = row.querySelector('.ocu-data-table-read-back') as HTMLElement;
     expect(line.textContent?.trim()).toBe('Read back: differs in Description');
+    // The line is clipped with an ellipsis in a narrow cell, so its whole text is its title.
+    expect(line.getAttribute('title')).toBe('Read back: differs in Description');
     expect(tag.nextElementSibling).toBe(line);
     expect(slot()).toBe('Updated: /csp/app01 updated \u00b7 Read back: differs in Description');
 

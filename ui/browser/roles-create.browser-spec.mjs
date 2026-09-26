@@ -400,8 +400,8 @@ test('AC5: a valid Save creates the role with the sent grants, replaces the rout
     await editorHolds(PROBE_DESCRIPTION);
     assert.equal(
       await page.$eval('.ocu-form-bar-status', (node) => node.textContent.trim()),
-      STRINGS.formSaved,
-      'the role editor opens reading Saved'
+      `${STRINGS.formSaved} \u00b7 ${STRINGS.readBackMatches}`,
+      'the role editor opens reading Saved and the create\u2019s read-back (AD-58)'
     );
     await page.reload({ waitUntil: 'networkidle2' });
     await leaveFirstLoginGate(page, config.navigationTimeoutMs, path);

@@ -15,7 +15,7 @@ import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
 import { tabErrorCounts, tabToOpen } from '../../core/form-tabs';
 import { NavigationService, formatDeniedAction, ownIdSegment, screenForRoute, withQuery } from '../../core/navigation';
-import { savedLine } from '../../core/read-back';
+import { savedLine, withReadBack } from '../../core/read-back';
 import { actionLabel } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
 import { STRINGS } from '../../core/strings';
@@ -718,7 +718,7 @@ export class OAuthRegisteredClientFormPage {
     if (this.actionNotice !== '') return this.actionNotice;
     if (!this.store.saved()) return '';
     const refused = this.store.secretRefused();
-    return refused === '' ? savedLine(this.store.readBack()) : STRINGS.oauthResourceServerSecretRefused.split('<reason>').join(refused);
+    return refused === '' ? savedLine(this.store.readBack()) : withReadBack(STRINGS.oauthResourceServerSecretRefused.split('<reason>').join(refused), this.store.readBack());
   }
 
   protected get hasStatus(): boolean {

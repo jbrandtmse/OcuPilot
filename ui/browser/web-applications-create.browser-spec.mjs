@@ -270,11 +270,12 @@ test('AC2: a valid Save creates the application, replaces the route and reads th
     // DW-1490, Story 9.2: the replaced route is the web application editor, whose own bar reads
     // Saved, and a hard reload of that URL reads the created application back.
     // Mutation (Rule 19): drop the `arriveSaved` call from the create page's `onSave` and redeploy
-    // -> the editor's Saved assertion goes red.
+    // -> the editor's Saved assertion goes red; pass it no read-back -> the same assertion goes red,
+    // the editor reading a bare Saved with no word on what the instance holds (AD-58).
     await page.waitForFunction(
-      (sentence) => document.querySelector('app-web-app-editor-page .ocu-form-bar-status')?.textContent?.includes(sentence) === true,
+      (sentence) => document.querySelector('app-web-app-editor-page .ocu-form-bar-status')?.textContent?.trim() === sentence,
       { timeout: config.navigationTimeoutMs },
-      STRINGS.formSaved
+      `${STRINGS.formSaved} \u00b7 ${STRINGS.readBackMatches}`
     );
     const editorUrl = new URL(page.url());
     await page.reload({ waitUntil: 'networkidle2' });

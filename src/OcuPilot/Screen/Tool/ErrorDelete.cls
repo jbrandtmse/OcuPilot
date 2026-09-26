@@ -211,19 +211,10 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
     Quit tSC
 }
 
-/// <p>The enumerated id set, as the compact JSON of the stored payload's own
-/// <parameter>PRECONDITIONFIELD</parameter> array, under the port's
-/// <parameter>OcuPilot.Port.LogSourcePort.ENTRIESPARAM</parameter> (AD-52).</p>
-/// <p><b>It is what makes the confirm remove exactly those ids</b>, and what makes the fingerprint
-/// re-read a question about exactly those ids. The stored payload is the projection the digest was
-/// taken over, so the enumeration the re-read gets back is that set narrowed to what still exists:
-/// an id another party removed shortens it and refuses the confirm, while an error logged after
-/// the proposal is in no stored set and leaves it alone. That is AD-48's residue clause and its
-/// moved-target clause from one declaration.</p>
-/// <p>Gone when no entry of the payload's enumerated set -- its date, number and
-/// <code>Time</code> -- re-enumerates in <var>pAfter</var> (AD-48, AD-58). The re-read carries the
-/// set through <method>PortQuery</method>, so an error logged after the proposal is in no stored set
-/// and never keeps the delete <code>present</code>.</p>
+/// <p>Gone when no entry of the payload's enumerated set -- its <code>date</code>,
+/// <code>errorNumber</code> and <code>time</code> -- re-enumerates in <var>pAfter</var> (AD-48,
+/// AD-58). The re-read carries the set through <method>PortQuery</method>, so an error logged after
+/// the proposal is in no stored set and never keeps the delete <code>present</code>.</p>
 ClassMethod ReadBackGone(pAfter As %DynamicObject, pPayload As %DynamicObject) As %Boolean
 {
     If '$IsObject(pAfter) || (pAfter.%GetTypeOf(..#PRECONDITIONFIELD) '= "array") Quit 1
@@ -246,6 +237,15 @@ ClassMethod ReadBackGone(pAfter As %DynamicObject, pPayload As %DynamicObject) A
     Quit tGone
 }
 
+/// <p>The enumerated id set, as the compact JSON of the stored payload's own
+/// <parameter>PRECONDITIONFIELD</parameter> array, under the port's
+/// <parameter>OcuPilot.Port.LogSourcePort.ENTRIESPARAM</parameter> (AD-52).</p>
+/// <p><b>It is what makes the confirm remove exactly those ids</b>, and what makes the fingerprint
+/// re-read a question about exactly those ids. The stored payload is the projection the digest was
+/// taken over, so the enumeration the re-read gets back is that set narrowed to what still exists:
+/// an id another party removed shortens it and refuses the confirm, while an error logged after
+/// the proposal is in no stored set and leaves it alone. That is AD-48's residue clause and its
+/// moved-target clause from one declaration.</p>
 ClassMethod PortQuery(pPayload As %DynamicObject, ByRef pQuery)
 {
     If '$IsObject(pPayload) Quit

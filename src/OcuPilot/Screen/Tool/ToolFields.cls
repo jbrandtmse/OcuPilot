@@ -43,14 +43,14 @@ XData Tools
   {"path":"GrantedRoles[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"unordered"},
   {"path":"EscalationOnly","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Resources[].Name","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"unordered"},
-  {"path":"Resources[].Permissions","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"unordered"}
+  {"path":"Resources[].Permissions","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"letters"}
 ]},
 "permissions.roles.update": {"fieldList":"Security.Role","fields":[
   {"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"GrantedRoles[]","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"unordered"},
   {"path":"EscalationOnly","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"Resources[].Name","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"unordered"},
-  {"path":"Resources[].Permissions","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"unordered"}
+  {"path":"Resources[].Permissions","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"letters"}
 ]},
 "permissions.services.update": {"fieldList":"Security.Service","fields":[
   {"path":"AutheEnabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},

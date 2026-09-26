@@ -93,11 +93,12 @@ ClassMethod HandleCreate() As %Status
         Set tToken = ..TakeSecret(tBody)
         Set tIssuer = ##class(OcuPilot.Area.Security.OAuthServerRules).Text(tBody, ..#IDARGUMENT)
         Set tPerformSC = ..Create(tIssuer, tBody, .tHttp, .tFault, .tViolations, .tWrite)
-        Set (tTokenReason, tReadBack) = ""
+        Set (tTokenReason, tReadBack, tStored) = ""
         If $$$ISOK(tPerformSC) && '$Get(tViolations) && (tToken '= "") Set tTokenReason = ..StoreToken(tIssuer, tToken)
+        If $$$ISOK(tPerformSC) && '$Get(tViolations) && (tToken '= "") && (tTokenReason = "") Set tStored = $ListBuild(..#SECRETFIELD)
         Set tToken = ""
         ; AD-58: the description read back after the Save's last write, over what its own write sent.
-        If $$$ISOK(tPerformSC) && '$Get(tViolations) && $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#CREATETOOL, tIssuer, tWrite("sent"), "", ..PortClass(), $Get(tWrite("written")), $Get(tHttp))
+        If $$$ISOK(tPerformSC) && '$Get(tViolations) && $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#CREATETOOL, tIssuer, tWrite("sent"), "", ..PortClass(), $Get(tWrite("written")), $Get(tHttp), tStored)
         Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 201, tIssuer, tTokenReason, tReadBack)
     } Catch ex {
         Set tToken = ""
@@ -141,11 +142,12 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Set tSC = ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#REASONOAUTHISSUERENDPOINTABSENT, ##class(OcuPilot.Api.Error).#OAUTHISSUERENDPOINTABSENT)
             Quit
         }
-        Set (tTokenReason, tReadBack) = ""
+        Set (tTokenReason, tReadBack, tStored) = ""
         If $$$ISOK(tPerformSC) && '$Get(tViolations) && (tToken '= "") Set tTokenReason = ..StoreToken(tNewIssuer, tToken)
+        If $$$ISOK(tPerformSC) && '$Get(tViolations) && (tToken '= "") && (tTokenReason = "") Set tStored = $ListBuild(..#SECRETFIELD)
         Set tToken = ""
         ; AD-58: the description read back, under the issuer it now carries, after the Save's last write.
-        If $$$ISOK(tPerformSC) && '$Get(tViolations) && $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#UPDATETOOL, $Get(tNewIssuer, tIssuer), tWrite("sent"), tWrite("fresh"), ..PortClass(), $Get(tWrite("written")), $Get(tHttp))
+        If $$$ISOK(tPerformSC) && '$Get(tViolations) && $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#UPDATETOOL, $Get(tNewIssuer, tIssuer), tWrite("sent"), tWrite("fresh"), ..PortClass(), $Get(tWrite("written")), $Get(tHttp), tStored)
         Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 200, $Get(tNewIssuer, tIssuer), tTokenReason, tReadBack)
     } Catch ex {
         Set tToken = ""

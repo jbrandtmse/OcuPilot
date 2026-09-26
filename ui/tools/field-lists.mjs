@@ -25,9 +25,11 @@
  *
  * **An entry may declare how the read-back compares a field** (`compare`, AD-3, AD-58): a
  * top-level row of its list mapped to one mode of a closed vocabulary (`COMPARE_MODES`). Every
- * field row under that name is emitted with the mode. It refuses an unknown mode, a path that is
- * not a top-level row of the entry's list, a mode on a `secret` path, `unordered` on a non-array
- * and `members` on a non-object.
+ * field row under that name is emitted with the mode. A member of an `unordered` array's elements
+ * (`Top[].Member`, a literal row) may carry a text mode of its own (`TEXT_MODES`), emitted on that
+ * row alone. It refuses an unknown mode, a path that is neither of those, a mode on a `secret`
+ * path, `unordered` on a non-array, `members` on a non-object, and a text mode on a row that is
+ * not a literal.
  *
  * Usage: `node tools/field-lists.mjs` writes `ToolFields.cls`; `--check` reports and exits 1 on
  * a refusal or when the committed file differs from what would be written.
@@ -63,8 +65,14 @@ export const ENTRY_KEYS = ['fieldList', 'classification', 'authored', 'compare',
 /** The closed vocabulary of read-back comparison modes an entry's `compare` may declare (AD-58). */
 export const COMPARE_MODES = ['unordered', 'unslashed', 'words', 'letters', 'members', 'written'];
 
+/** The modes that compare one text value, the only ones an element member may declare. */
+export const TEXT_MODES = ['unslashed', 'words', 'letters'];
+
 /** A top-level row's path: one segment, no member and no element. */
 const TOP_LEVEL_RE = /^[A-Za-z0-9_%]+$/;
+
+/** An element member's path: `Top[].Member`, one member of one array's elements. */
+const ELEMENT_MEMBER_RE = /^([A-Za-z0-9_%]+)\[\]\.([A-Za-z0-9_%]+)$/;
 
 /** The top-level name a field-row path sits under: `Resources[].Name` answers `Resources`. */
 export function topName(path) {
@@ -318,6 +326,20 @@ export function classify(lists, entries) {
             refuse(`compare mode ${JSON.stringify(mode)} on ${path} is not one of ${COMPARE_MODES.join(', ')}`);
             continue;
           }
+          const element = ELEMENT_MEMBER_RE.exec(path);
+          if (element !== null) {
+            const member = fields.find((field) => field.path === path);
+            if (member === undefined || member.shape !== 'literal') {
+              refuse(`compare path ${path} is not a literal element-member row of list ${entry.fieldList}`);
+            } else if (member.class === 'secret') {
+              refuse(`compare path ${path} is secret, and a secret is never read back`);
+            } else if (!TEXT_MODES.includes(mode)) {
+              refuse(`compare path ${path} is an element member and may only be ${TEXT_MODES.join(', ')}`);
+            } else if (entry.compare[element[1]] !== 'unordered') {
+              refuse(`compare path ${path} is an element member of ${element[1]}, which is not declared unordered`);
+            }
+            continue;
+          }
           const row = TOP_LEVEL_RE.test(path) ? rows.find((candidate) => candidate.path === path) : undefined;
           if (row === undefined) {
             refuse(`compare path ${path} is not a top-level row of list ${entry.fieldList}`);
@@ -329,10 +351,11 @@ export function classify(lists, entries) {
           }
           if (mode === 'unordered' && row.shape !== 'array') refuse(`compare path ${path} is a ${row.shape} and cannot be unordered`);
           if (mode === 'members' && row.shape !== 'object') refuse(`compare path ${path} is a ${row.shape} and cannot be members`);
+          if (TEXT_MODES.includes(mode) && row.shape !== 'literal') refuse(`compare path ${path} is a ${row.shape} and cannot be ${mode}`);
         }
         if (problems.length === before) {
           for (const field of fields) {
-            const mode = entry.compare[topName(field.path)];
+            const mode = entry.compare[field.path] ?? entry.compare[topName(field.path)];
             if (mode !== undefined && field.authored !== true) field.compare = mode;
           }
         }

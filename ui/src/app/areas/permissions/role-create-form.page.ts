@@ -482,7 +482,7 @@ export class RoleCreateFormPage {
     // opens showing "Saved"; this form's own state is left behind with it.
     const created = this.store.createdId();
     if (created !== '') {
-      this.editor.arriveSaved(created);
+      this.editor.arriveSaved(created, this.store.readBack());
       void this.router.navigateByUrl(this.editorUrl(created), { replaceUrl: true });
     }
   }

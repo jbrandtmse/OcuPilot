@@ -156,7 +156,7 @@ ClassMethod Create(pArgs As %DynamicObject, Output pHttpStatus As %Integer, Outp
             Set tSC = $$$ERROR($$$GeneralError, "the task was created and the instance answered no id for it")
             Quit
         }
-        ; AD-58: the task read back, under the id the instance allocated, and compared with what was sent.
+        ; AD-58: the task read back and compared with what was sent; its list-row read finds it by name.
         Set pReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(tClass, tName, tPayload, "", ..PortClass(), $Get(tWritten), pHttpStatus)
     } Catch ex {
         Set tSC = ex.AsStatus()

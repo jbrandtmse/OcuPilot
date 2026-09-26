@@ -294,8 +294,8 @@ test('AC4: a valid Save creates the account with the sent fields, replaces the r
     );
     assert.equal(
       await page.$eval('app-user-editor-page .ocu-form-bar-status', (node) => node.textContent.trim()),
-      STRINGS.formSaved,
-      'and the editor\u2019s own form bar reads Saved'
+      `${STRINGS.formSaved} \u00b7 ${STRINGS.readBackMatches} \u00b7 ${STRINGS.readBackWrittenClause.replace('<fields>', 'Password')}`,
+      'and the editor\u2019s own form bar reads Saved and the create\u2019s read-back, its password written (AD-58)'
     );
 
     const stored = storedUser(NAMES[0]);

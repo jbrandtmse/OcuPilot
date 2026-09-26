@@ -15,7 +15,7 @@ import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
 import { tabErrorCounts, tabToOpen } from '../../core/form-tabs';
 import { NavigationService, formatDeniedAction, ownIdSegment, screenForRoute, withQuery } from '../../core/navigation';
-import { savedLine } from '../../core/read-back';
+import { savedLine, withReadBack } from '../../core/read-back';
 import { actionLabel } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
 import { STRINGS } from '../../core/strings';
@@ -605,7 +605,7 @@ export class OAuthClientFormPage {
     if (notUpdated !== '') {
       lines.push(STRINGS.oauthClientRegistrationNotUpdated.split('<issuer>').join(this.store.storedIssuer()).split('<reason>').join(notUpdated));
     }
-    return lines.length === 0 ? savedLine(this.store.readBack()) : lines.join(' ');
+    return lines.length === 0 ? savedLine(this.store.readBack()) : withReadBack(lines.join(' '), this.store.readBack());
   }
 
   protected get hasStatus(): boolean {

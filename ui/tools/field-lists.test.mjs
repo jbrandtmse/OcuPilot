@@ -431,13 +431,24 @@ test('a compare declaration is emitted onto its rows, and every malformed one is
   assert.equal(fieldOf(accepted, 'permissions.roles.update', 'GrantedRoles[]')?.compare, 'unordered', 'the array row carries its mode');
   assert.equal(fieldOf(accepted, 'permissions.roles.update', 'Resources[].Name')?.compare, 'unordered', 'every row under a declared name carries it');
   assert.equal(fieldOf(accepted, 'permissions.roles.update', 'Description')?.compare, undefined, 'an undeclared row carries none');
+  // An element member's own text mode (DW-1709): emitted on that row alone, its siblings keeping the
+  // array's mode.
+  // Mutation (Rule 19): emit the top-level name's mode on every row in classify() -> this goes red.
+  const member = classify(lists, entry({ Resources: 'unordered', 'Resources[].Permissions': 'letters' }));
+  assert.deepEqual(member.problems, [], 'an element member declared under an unordered array is accepted');
+  assert.equal(fieldOf(member, 'permissions.roles.update', 'Resources[].Permissions')?.compare, 'letters', 'the member row carries its own mode');
+  assert.equal(fieldOf(member, 'permissions.roles.update', 'Resources[].Name')?.compare, 'unordered', 'and its sibling the array\'s');
   const text = generateFrom({ lists, entries: entry({ GrantedRoles: 'unordered' }) }).text;
   assert.match(text, /\{"path":"GrantedRoles\[\]","shape":"literal","templateType":"string","itemType":"","class":"ordinary","compare":"unordered"\}/, 'ToolFields carries the mode');
   assert.match(text, /\{"path":"Description","shape":"literal","templateType":"string","itemType":"","class":"ordinary"\}/, 'and an undeclared row is byte-identical to before');
 
   const refusals = [
     [{ GrantedRoles: 'sorted' }, /compare mode "sorted" on GrantedRoles is not one of/],
-    [{ 'Resources[].Name': 'unordered' }, /compare path Resources\[\]\.Name is not a top-level row/],
+    [{ 'Resources[].Name': 'unordered' }, /compare path Resources\[\]\.Name is an element member and may only be/],
+    [{ 'Resources[].Permissions': 'letters' }, /compare path Resources\[\]\.Permissions is an element member of Resources, which is not declared unordered/],
+    [{ Resources: 'unordered', 'Resources[].Nothing': 'letters' }, /compare path Resources\[\]\.Nothing is not a literal element-member row/],
+    [{ 'GrantedRoles[].X': 'words' }, /compare path GrantedRoles\[\]\.X is not a literal element-member row/],
+    [{ GrantedRoles: 'words' }, /compare path GrantedRoles is a array and cannot be words/],
     [{ Nothing: 'words' }, /compare path Nothing is not a top-level row/],
     [{ Description: 'unordered' }, /compare path Description is a literal and cannot be unordered/],
     [{ Resources: 'members' }, /compare path Resources is a array and cannot be members/],
@@ -455,10 +466,32 @@ test('a compare declaration is emitted onto its rows, and every malformed one is
   const notAnObject = generateFrom({ lists, entries: entry(['GrantedRoles']) });
   assert.ok(notAnObject.problems.some((problem) => /compare is not a JSON object/.test(problem)), 'a compare that is not an object is refused');
 
-  // The committed declarations the story makes, measured or cited.
-  assert.deepEqual(committedEntries['permissions.roles.update']?.compare, { GrantedRoles: 'unordered', Resources: 'unordered' });
-  assert.deepEqual(committedEntries['permissions.users.update']?.compare, { Roles: 'unordered' });
-  assert.deepEqual(committedEntries['permissions.resources.update']?.compare, { PublicPermission: 'letters' });
-  assert.deepEqual(committedEntries['security.oauthclients.update']?.compare, { RedirectionEndpoint: 'unslashed', DefaultScope: 'words', Metadata: 'members' });
-  assert.deepEqual(committedEntries['tasks.schedule.update']?.compare, { Settings: 'written' });
+  // Every committed declaration, measured or cited, so removing one and regenerating goes red here
+  // although `--check` stays green.
+  const roles = { GrantedRoles: 'unordered', Resources: 'unordered', 'Resources[].Permissions': 'letters' };
+  const oauthClients = { RedirectionEndpoint: 'unslashed', DefaultScope: 'words', Metadata: 'members' };
+  const members = { Metadata: 'members' };
+  const declared = Object.fromEntries(
+    Object.entries(committedEntries)
+      .filter(([, value]) => value?.compare !== undefined)
+      .map(([tool, value]) => [tool, value.compare]),
+  );
+  assert.deepEqual(declared, {
+    'permissions.users.update': { Roles: 'unordered' },
+    'permissions.users.create': { Roles: 'unordered' },
+    'permissions.roles.create': roles,
+    'permissions.roles.update': roles,
+    'permissions.resources.create': { PublicPermission: 'letters' },
+    'permissions.resources.update': { PublicPermission: 'letters' },
+    'security.oauthserverdescriptions.create': members,
+    'security.oauthserverdescriptions.update': members,
+    'security.oauthclients.create': oauthClients,
+    'security.oauthclients.update': oauthClients,
+    'security.oauthserver.create': members,
+    'security.oauthserver.update': members,
+    'security.oauthserverclients.create': members,
+    'security.oauthserverclients.update': members,
+    'tasks.schedule.create': { Settings: 'written' },
+    'tasks.schedule.update': { Settings: 'written' },
+  });
 });

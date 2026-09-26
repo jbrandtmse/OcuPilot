@@ -85,11 +85,12 @@ ClassMethod HandleCreate() As %Status
         }
         Set tPassword = ..TakeText(tBody, ..#PASSWORDFIELD)
         Set tPerformSC = ..Create(tBody, .tHttp, .tFault, .tViolations, .tIssuer, .tWrite)
-        Set (tPasswordReason, tReadBack) = ""
+        Set (tPasswordReason, tReadBack, tStored) = ""
         If $$$ISOK(tPerformSC) && '$Get(tViolations) && (tPassword '= "") Set tPasswordReason = ..StorePassword(tPassword)
+        If $$$ISOK(tPerformSC) && '$Get(tViolations) && (tPassword '= "") && (tPasswordReason = "") Set tStored = $ListBuild(..#PASSWORDFIELD)
         Set tPassword = ""
         ; AD-58: the configuration read back after the Save's last write, over what its own write sent.
-        If $$$ISOK(tPerformSC) && '$Get(tViolations) && $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#CREATETOOL, ..TargetId(), tWrite("sent"), "", ..PortClass(), $Get(tWrite("written")), $Get(tHttp))
+        If $$$ISOK(tPerformSC) && '$Get(tViolations) && $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#CREATETOOL, ..TargetId(), tWrite("sent"), "", ..PortClass(), $Get(tWrite("written")), $Get(tHttp), tStored)
         Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 201, $Get(tIssuer), tPasswordReason, tReadBack)
     } Catch ex {
         Set tPassword = ""
@@ -127,11 +128,12 @@ ClassMethod HandleUpdate() As %Status
             Set tSC = ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#REASONOAUTHSERVERCONFIGABSENT, ##class(OcuPilot.Api.Error).#OAUTHSERVERCONFIGABSENT)
             Quit
         }
-        Set (tPasswordReason, tReadBack) = ""
+        Set (tPasswordReason, tReadBack, tStored) = ""
         If $$$ISOK(tPerformSC) && '$Get(tViolations) && (tPassword '= "") Set tPasswordReason = ..StorePassword(tPassword)
+        If $$$ISOK(tPerformSC) && '$Get(tViolations) && (tPassword '= "") && (tPasswordReason = "") Set tStored = $ListBuild(..#PASSWORDFIELD)
         Set tPassword = ""
         ; AD-58: the configuration read back after the Save's last write, over what its own write sent.
-        If $$$ISOK(tPerformSC) && '$Get(tViolations) && $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#UPDATETOOL, ..TargetId(), tWrite("sent"), tWrite("fresh"), ..PortClass(), $Get(tWrite("written")), $Get(tHttp))
+        If $$$ISOK(tPerformSC) && '$Get(tViolations) && $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#UPDATETOOL, ..TargetId(), tWrite("sent"), tWrite("fresh"), ..PortClass(), $Get(tWrite("written")), $Get(tHttp), tStored)
         Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 200, $Get(tIssuer), tPasswordReason, tReadBack)
     } Catch ex {
         Set tPassword = ""

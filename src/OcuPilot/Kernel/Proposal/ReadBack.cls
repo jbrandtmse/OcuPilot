@@ -124,8 +124,14 @@ ClassMethod Of(pToolClass As %String, pIdValue As %String, pSent As %DynamicObje
         }
         ; A merge or a create. A create compares against an empty fresh read (AD-54).
         Set tBefore = $Select(tKind = "create": {}, $IsObject(pFresh) && pFresh.%IsA("%Library.DynamicObject"): pFresh, 1: {})
-        If '..Compared(pToolClass, pSent, tBefore, tRead, .tFields, .tWritten, (tRowKey '= "")) {
+        If '..Compared(pToolClass, pSent, tBefore, tRead, .tFields, .tWritten, tRowKey, .tCount) {
             Set tAnswer = ..Verdict(..#UNCHECKED, "", "", ..#REASONUNREADABLE)
+            Quit
+        }
+        ; Fail closed: a read-back that compared no field never reads matches. Secrets alone are
+        ; reported written, as a secret-only write is; nothing at all is unchecked.
+        If tCount = 0 {
+            Set tAnswer = $Select(tWritten '= "": ..Verdict(..#WRITTEN, "", tWritten), 1: ..Verdict(..#UNCHECKED, "", "", ..#REASONUNREADABLE))
             Quit
         }
         Set tAnswer = ..Verdict($Select(tFields = "": ..#MATCHES, 1: ..#DIFFERS), tFields, tWritten)
@@ -143,8 +149,10 @@ ClassMethod Of(pToolClass As %String, pIdValue As %String, pSent As %DynamicObje
 /// <p><b>Caller contract:</b> called once, after the Save's own port call read OK. <var>pWritten</var>
 /// is that call's answer, from which a tool that allocates its target's id answers it
 /// (<method>OcuPilot.Screen.Tool.Write.CreatedId</method>); <var>pWriteHttp</var> 202 answers
-/// <method>Running</method> and reads nothing.</p>
-ClassMethod ForSave(pToolClass As %String, pIdValue As %String, pSent As %DynamicObject, pFresh As %DynamicObject = "", pPort As %String = "", pWritten As %RawString = "", pWriteHttp As %Integer = 0) As %DynamicObject
+/// <method>Running</method> and reads nothing. <var>pStoredApart</var> lists the secret names the
+/// Save took out of its body and stored by their own writes, each of which landed; they join
+/// <code>written</code> (<method>WithWritten</method>).</p>
+ClassMethod ForSave(pToolClass As %String, pIdValue As %String, pSent As %DynamicObject, pFresh As %DynamicObject = "", pPort As %String = "", pWritten As %RawString = "", pWriteHttp As %Integer = 0, pStoredApart As %List = "") As %DynamicObject
 {
     If +pWriteHttp = 202 Quit ..Running()
     Set tId = pIdValue
@@ -156,7 +164,33 @@ ClassMethod ForSave(pToolClass As %String, pIdValue As %String, pSent As %Dynami
     }
     Set tPayloadJson = ""
     If $IsObject(pSent) Set tPayloadJson = pSent.%ToJSON()
-    Quit ..Of(pToolClass, tId, pSent, pFresh, tPayloadJson, pPort)
+    Quit ..WithWritten(..Of(pToolClass, tId, pSent, pFresh, tPayloadJson, pPort), pStoredApart)
+}
+
+/// <p><var>pAnswer</var> with each name of <var>pNames</var> added to its <code>written</code> list,
+/// where its verdict is one that lists it (<code>matches</code>, <code>differs</code> or
+/// <code>written</code>) and the name is not there yet. Names only; never throws.</p>
+ClassMethod WithWritten(pAnswer As %DynamicObject, pNames As %List = "") As %DynamicObject
+{
+    Try {
+        If (pNames = "") || '$IsObject(pAnswer) Quit
+        If '$ListFind($ListBuild(..#MATCHES, ..#DIFFERS, ..#WRITTEN), pAnswer.%Get("verdict")) Quit
+        If pAnswer.%GetTypeOf("written") '= "array" Do pAnswer.%Set("written", [])
+        Set tWritten = pAnswer.%Get("written")
+        Set tHeld = ""
+        Set tIterator = tWritten.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tName) {
+            Set tHeld = tHeld _ $ListBuild(tName)
+        }
+        For tI = 1:1:$ListLength(pNames) {
+            Set tName = $ListGet(pNames, tI)
+            If (tName = "") || $ListFind(tHeld, tName) Continue
+            Do tWritten.%Push(tName, "string")
+            Set tHeld = tHeld _ $ListBuild(tName)
+        }
+    } Catch {
+    }
+    Quit pAnswer
 }
 
 /// <p>The read-back of a write the port answered 202 (AD-26): <code>unchecked</code> with reason
@@ -203,18 +237,20 @@ ClassMethod Gone(pToolClass As %String, pAfter As %DynamicObject, pPayloadJson A
 /// appended to <var>pFields</var>; a secret or <code>written</code> name whose sent value is
 /// non-empty and differs from <var>pBefore</var>'s is appended to <var>pWritten</var> and never read
 /// back.</p>
-/// <p><var>pRowOnly</var> is 1 for a tool whose read is a list row (a declared row key): a sent name
-/// that row does not answer at all is outside what the tool's read can see, and is not compared.</p>
-/// <p>Answers 0 when there is nothing to compare against -- no sent object, or no field rows for the
-/// tool -- so the caller reports <code>unchecked</code> rather than a <code>matches</code> over an
-/// empty set.</p>
-ClassMethod Compared(pToolClass As %String, pSent As %DynamicObject, pBefore As %DynamicObject, pRead As %DynamicObject, Output pFields As %List, Output pWritten As %List, pRowOnly As %Boolean = 0) As %Boolean [ Private ]
+/// <p><var>pRowKey</var> is the declared row key of a tool whose read is a list row: a sent name that
+/// row does not answer at all is outside what the tool's read can see, and is not compared; the row
+/// key itself, which found the row, is compared but not counted.</p>
+/// <p><var>pCount</var> is how many names were compared, which the caller reads so that a
+/// comparison of nothing never reads <code>matches</code>. Answers 0 when there is nothing to
+/// compare against -- no sent object, or no field rows for the tool.</p>
+ClassMethod Compared(pToolClass As %String, pSent As %DynamicObject, pBefore As %DynamicObject, pRead As %DynamicObject, Output pFields As %List, Output pWritten As %List, pRowKey As %String = "", Output pCount As %Integer) As %Boolean [ Private ]
 {
     Set pFields = ""
     Set pWritten = ""
+    Set pCount = 0
     If '$IsObject(pSent) || 'pSent.%IsA("%Library.DynamicObject") Quit 0
     Set tToolName = $Parameter(pToolClass, "TOOLNAME")
-    If '..Rows(tToolName, .tNamed, .tSecret, .tModes) Quit 0
+    If '..Rows(tToolName, .tNamed, .tSecret, .tModes, .tElements) Quit 0
     Set tDeclaredSecrets = ""
     Try {
         Set tDeclaredSecrets = $ClassMethod(pToolClass, "SecretArguments", "", .tDeclared)
@@ -237,22 +273,27 @@ ClassMethod Compared(pToolClass As %String, pSent As %DynamicObject, pBefore As 
         If tIsSecret || (tMode = "written") {
             ; AD-35: the sent value is compared only with the value the caller already held before
             ; the write, and the re-read's value of this name is never looked at.
+            If ..Empty(pSent.%Get(tName), pSent.%GetTypeOf(tName)) Continue
             Set tSentText = ##class(OcuPilot.Kernel.Proposal.Mint).Display(pSent.%Get(tName), pSent.%GetTypeOf(tName))
-            If tSentText = "" Continue
             If tSentText = ##class(OcuPilot.Kernel.Proposal.Mint).Display(pBefore.%Get(tName), pBefore.%GetTypeOf(tName)) Continue
             Set pWritten = pWritten _ $ListBuild(tName)
             Continue
         }
-        If pRowOnly && (pRead.%GetTypeOf(tName) = "unassigned") Continue
-        If '..Compare(pSent, pRead, tName, tMode) Set pFields = pFields _ $ListBuild(tName)
+        If (pRowKey '= "") && (pRead.%GetTypeOf(tName) = "unassigned") Continue
+        If tName '= pRowKey Set pCount = pCount + 1
+        Kill tMembers
+        Merge tMembers = tElements(tName)
+        If '..Compare(pSent, pRead, tName, tMode, .tMembers) Set pFields = pFields _ $ListBuild(tName)
     }
     Quit 1
 }
 
 /// <p>Whether member <var>pName</var> of the sent object <var>pSent</var> reads back as sent in
 /// <var>pRead</var>, under the declared mode <var>pMode</var> (<code>""</code> for the default
-/// rules). The helper the unit tests reach; it answers a boolean and nothing else.</p>
-ClassMethod Compare(pSent As %DynamicObject, pRead As %DynamicObject, pName As %String, pMode As %String = "") As %Boolean
+/// rules) and, for an <code>unordered</code> array of objects, the declared element-member modes
+/// <var>pMembers</var> (<code>pMembers(member) = mode</code>). The helper the unit tests reach; it
+/// answers a boolean and nothing else.</p>
+ClassMethod Compare(pSent As %DynamicObject, pRead As %DynamicObject, pName As %String, pMode As %String = "", ByRef pMembers) As %Boolean
 {
     Set tSentValue = ""
     Set tSentType = "unassigned"
@@ -266,7 +307,7 @@ ClassMethod Compare(pSent As %DynamicObject, pRead As %DynamicObject, pName As %
         Set tReadType = pRead.%GetTypeOf(pName)
         If tReadType '= "unassigned" Set tReadValue = pRead.%Get(pName)
     }
-    Quit ..Same(tSentValue, tSentType, tReadValue, tReadType, pMode)
+    Quit ..Same(tSentValue, tSentType, tReadValue, tReadType, pMode, .pMembers)
 }
 
 /// <p>Whether a sent value and a read value are equal under <var>pMode</var>. Each value is passed
@@ -274,14 +315,15 @@ ClassMethod Compare(pSent As %DynamicObject, pRead As %DynamicObject, pName As %
 /// <p>The default rules, in order: both sides empty (<code>""</code>, <code>[]</code>,
 /// <code>{}</code>, <code>null</code>, absent) are equal; where either side is a boolean,
 /// truthiness is compared; where both are valid numbers, their values are; otherwise their
-/// <method>OcuPilot.Kernel.Proposal.Mint.Display</method> text, an array keeping its order.</p>
-ClassMethod Same(pA As %RawString, pAType As %String, pB As %RawString, pBType As %String, pMode As %String = "") As %Boolean
+/// <method>OcuPilot.Kernel.Proposal.Mint.Display</method> text, an array keeping its order.
+/// <var>pMembers</var> is <method>Compare</method>'s.</p>
+ClassMethod Same(pA As %RawString, pAType As %String, pB As %RawString, pBType As %String, pMode As %String = "", ByRef pMembers) As %Boolean
 {
     If pMode = "unordered" {
         Set tAArray = (pAType = "array")
         Set tBArray = (pBType = "array")
         If (tAArray || ..Empty(pA, pAType)) && (tBArray || ..Empty(pB, pBType)) && (tAArray || tBArray) {
-            Quit ..SameMultiset($Select(tAArray: pA, 1: []), $Select(tBArray: pB, 1: []))
+            Quit ..SameMultiset($Select(tAArray: pA, 1: []), $Select(tBArray: pB, 1: []), .pMembers)
         }
     }
     If pMode = "members" {
@@ -396,18 +438,18 @@ ClassMethod Normalized(pValue As %String, pMode As %String) As %String [ Private
     Quit pValue
 }
 
-/// <p>Whether two arrays hold the same elements as a multiset of their
-/// <method>OcuPilot.Kernel.Proposal.Mint.Display</method> text, whatever their order.</p>
-ClassMethod SameMultiset(pA As %DynamicArray, pB As %DynamicArray) As %Boolean [ Private ]
+/// <p>Whether two arrays hold the same elements as a multiset of their <method>ElementText</method>,
+/// whatever their order.</p>
+ClassMethod SameMultiset(pA As %DynamicArray, pB As %DynamicArray, ByRef pMembers) As %Boolean [ Private ]
 {
     If pA.%Size() '= pB.%Size() Quit 0
     Kill tCount
     For tI = 0:1:pA.%Size() - 1 {
-        Set tKey = ..MultisetKey(##class(OcuPilot.Kernel.Proposal.Mint).Display(pA.%Get(tI), pA.%GetTypeOf(tI)))
+        Set tKey = ..MultisetKey(..ElementText(pA.%Get(tI), pA.%GetTypeOf(tI), .pMembers))
         Set tCount(tKey) = $Get(tCount(tKey)) + 1
     }
     For tI = 0:1:pB.%Size() - 1 {
-        Set tKey = ..MultisetKey(##class(OcuPilot.Kernel.Proposal.Mint).Display(pB.%Get(tI), pB.%GetTypeOf(tI)))
+        Set tKey = ..MultisetKey(..ElementText(pB.%Get(tI), pB.%GetTypeOf(tI), .pMembers))
         Set tCount(tKey) = $Get(tCount(tKey)) - 1
     }
     Set tSame = 1
@@ -423,6 +465,35 @@ ClassMethod SameMultiset(pA As %DynamicArray, pB As %DynamicArray) As %Boolean [
     Quit tSame
 }
 
+/// <p>One array element's text for <method>SameMultiset</method>: its
+/// <method>OcuPilot.Kernel.Proposal.Mint.Display</method> text, or, for an object, its non-empty
+/// members in name order, each member's text normalized by its declared mode in
+/// <var>pMembers</var>, so the member order and a normalized value do not make two equal elements
+/// differ.</p>
+ClassMethod ElementText(pValue As %RawString, pType As %String, ByRef pMembers) As %String [ Private ]
+{
+    If pType '= "object" Quit ##class(OcuPilot.Kernel.Proposal.Mint).Display(pValue, pType)
+    Kill tSorted
+    Set tIterator = pValue.%GetIterator()
+    While tIterator.%GetNext(.tMember, .tMemberValue) {
+        If ..Empty(tMemberValue, pValue.%GetTypeOf(tMember)) Continue
+        Set tSorted(" " _ tMember) = ""
+    }
+    Set tCanon = {}
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tSorted(tKey))
+        If tKey = "" Quit
+        Set tMember = $Extract(tKey, 2, *)
+        Set tMemberType = pValue.%GetTypeOf(tMember)
+        Set tText = ##class(OcuPilot.Kernel.Proposal.Mint).Display(pValue.%Get(tMember), tMemberType)
+        Set tMode = $Get(pMembers(tMember))
+        If (tMode '= "") && (tMemberType '= "object") && (tMemberType '= "array") && (tMemberType '= "boolean") Set tText = ..Normalized(tText, tMode)
+        Do tCanon.%Set(tMember, tText, "string")
+    }
+    Quit tCanon.%ToJSON()
+}
+
 /// <p>A local subscript for one element's text: the text itself, prefixed so an empty element is a
 /// subscript, or its CRC and length where it is too long to be one.</p>
 ClassMethod MultisetKey(pText As %String) As %String [ Private ]
@@ -432,12 +503,14 @@ ClassMethod MultisetKey(pText As %String) As %String [ Private ]
 }
 
 /// <p>The top-level names <var>pToolName</var>'s field rows name, in <var>pNamed</var>; those any
-/// of whose rows is classified <code>secret</code>, in <var>pSecret</var>; and each declared
-/// comparison mode, in <var>pModes</var>. Answers 0 when the generated block cannot be read, and a
-/// caller compares nothing then.</p>
-ClassMethod Rows(pToolName As %String, Output pNamed, Output pSecret, Output pModes) As %Boolean
+/// of whose rows is classified <code>secret</code>, in <var>pSecret</var>; each declared comparison
+/// mode, in <var>pModes</var>; and each declared text mode of an element member of an
+/// <code>unordered</code> array (a row <code>Top[].Member</code>), in
+/// <var>pElements</var><code>(Top, Member)</code>. Answers 0 when the generated block cannot be
+/// read, and a caller compares nothing then.</p>
+ClassMethod Rows(pToolName As %String, Output pNamed, Output pSecret, Output pModes, Output pElements) As %Boolean
 {
-    Kill pNamed, pSecret, pModes
+    Kill pNamed, pSecret, pModes, pElements
     If pToolName = "" Quit 0
     Set tRead = 0
     Try {
@@ -456,14 +529,34 @@ ClassMethod Rows(pToolName As %String, Output pNamed, Output pSecret, Output pMo
             If tTop = "" Continue
             Set pNamed(tTop) = 1
             If tField.%Get("class") = "secret" Set pSecret(tTop) = 1
-            If tField.%Get("compare") '= "" Set pModes(tTop) = tField.%Get("compare")
+            Set tMode = tField.%Get("compare")
+            If tMode = "" Continue
+            Set tMember = ..ElementMember(tField.%Get("path"), tTop)
+            If (tMember '= "") && $ListFind($ListBuild("unslashed", "words", "letters"), tMode) {
+                ; An element member's own mode; its array is unordered (field-lists.mjs refuses otherwise).
+                Set pElements(tTop, tMember) = tMode
+                If '$Data(pModes(tTop)) Set pModes(tTop) = "unordered"
+                Continue
+            }
+            Set pModes(tTop) = tMode
         }
         Set tRead = 1
     } Catch {
-        Kill pNamed, pSecret, pModes
+        Kill pNamed, pSecret, pModes, pElements
         Set tRead = 0
     }
     Quit tRead
+}
+
+/// <p>The member name of a field-row path <code>Top[].Member</code> under <var>pTop</var>, or
+/// <code>""</code> for any other path.</p>
+ClassMethod ElementMember(pPath As %String, pTop As %String) As %String [ Private ]
+{
+    Set tPrefix = pTop _ "[]."
+    If $Extract(pPath, 1, $Length(tPrefix)) '= tPrefix Quit ""
+    Set tMember = $Extract(pPath, $Length(tPrefix) + 1, *)
+    If (tMember = "") || (tMember [ ".") || (tMember [ "[") Quit ""
+    Quit tMember
 }
 
 /// <p>The top-level name a field-row path sits under: <code>Resources[].Name</code> answers

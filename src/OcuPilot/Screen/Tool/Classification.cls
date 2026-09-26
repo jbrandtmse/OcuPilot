@@ -302,7 +302,7 @@ XData Entries
   },
   "permissions.roles.create": {
     "fieldList": "Security.Role",
-    "compare": {"GrantedRoles": "unordered", "Resources": "unordered"},
+    "compare": {"GrantedRoles": "unordered", "Resources": "unordered", "Resources[].Permissions": "letters"},
     "classification": {
       "Description": "ordinary",
       "GrantedRoles[]": "ordinary",
@@ -313,7 +313,7 @@ XData Entries
   },
   "permissions.roles.update": {
     "fieldList": "Security.Role",
-    "compare": {"GrantedRoles": "unordered", "Resources": "unordered"},
+    "compare": {"GrantedRoles": "unordered", "Resources": "unordered", "Resources[].Permissions": "letters"},
     "classification": {
       "Description": "ordinary",
       "GrantedRoles[]": "ordinary",

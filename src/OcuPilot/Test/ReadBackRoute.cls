@@ -1,8 +1,9 @@
 /// <p>Pins the read-back over real HTTP requests against real instance objects (AD-58, Story
 /// 16.17): a web application Save and a row action answer <code>matches</code>, a row action's
 /// delete answers <code>notFound</code>, and an agent's confirmed role update whose
-/// <code>GrantedRoles</code> the vendor sorts answers <code>matches</code> through the declared
-/// <code>unordered</code> mode, on the confirm's answer and on the proposal's wire row.</p>
+/// <code>GrantedRoles</code> the vendor sorts and whose <code>"WR"</code> grant it stores
+/// <code>"RW"</code> answers <code>matches</code> through the declared modes, on the confirm's
+/// answer and on the proposal's wire row.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, the suite's HTTP
 /// account holding <code>%All</code>, and <parameter>ARMINGVARIABLE</parameter> reading
 /// <code>1</code>, because it creates and deletes two web applications and one role by exact name.
@@ -94,10 +95,12 @@ Method TestARowActionReadsBackMatchesAndADeleteNotFound()
     Do $$$AssertTrue('##class(OcuPilot.Test.WebAppWire).Exists(..#DOOMEDAPP), "and it is gone")
 }
 
-/// <p>AD-58 over the agent's confirm: a role update whose <code>GrantedRoles</code> are sent in
-/// reverse name order, which the vendor stores sorted, reads back <code>matches</code> because
-/// <code>permissions.roles.update</code> declares the field <code>unordered</code>. The confirm's
-/// answer carries it, and so does the proposal's wire row afterwards.</p>
+/// <p>AD-58 over the agent's confirm: a role update whose <code>GrantedRoles</code> and
+/// <code>Resources</code> are sent in reverse name order, which the vendor stores sorted, with a
+/// grant sent <code>"WR"</code>, which it stores <code>"RW"</code>, reads back <code>matches</code>
+/// because <code>permissions.roles.update</code> declares both fields <code>unordered</code> and
+/// <code>Resources[].Permissions</code> <code>letters</code>. The confirm's answer carries it, and so
+/// does the proposal's wire row afterwards.</p>
 /// <p>Mutation (Rule 19): remove <code>GrantedRoles</code> from the entry's <code>compare</code> in
 /// <class>OcuPilot.Screen.Tool.Classification</class> and regenerate -- this reads
 /// <code>differs</code> and goes red.</p>
@@ -106,7 +109,7 @@ Method TestAConfirmedRoleUpdateReadsBackAReorderedListAsMatching()
     Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
     Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).SeedTurn(tUser, "completed", .tTurn), "a completed turn is seeded")
     Set tTool = ..#ROLETOOL
-    Set tArgs = {"Name": (..#PROBEROLE), "GrantedRoles": ["%Operator", "%Developer"]}
+    Set tArgs = {"Name": (..#PROBEROLE), "GrantedRoles": ["%Operator", "%Developer"], "Resources": [{"Name": "%Development", "Permissions": "U"}, {"Name": "%DB_USER", "Permissions": "WR"}]}
     Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint($Parameter(tTool, "DESCRIPTORCLASS"), $Parameter(tTool, "TOOLNAME"), tUser, "", tTurn, tArgs, "OcuPilot.Kernel.Agent.Limits", .tProposal, .tHttp, .tFault, $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), ..#PROBEROLE, $ClassMethod(tTool, "IdArgument"), $ClassMethod(tTool, "SettableFields"), tTool)
     Do $$$AssertStatusOK(tSC, "the role update is minted: " _ $System.Status.GetErrorText(tSC))
     If $$$ISERR(tSC) Quit
@@ -120,8 +123,9 @@ Method TestAConfirmedRoleUpdateReadsBackAReorderedListAsMatching()
         Set tBody = ""
     }
     Set tReadBack = ..ReadBackOf(.tBody)
-    Do $$$AssertEquals(tReadBack.%Get("verdict"), "matches", "the sorted GrantedRoles read back as sent: " _ tReadBack.%ToJSON())
+    Do $$$AssertEquals(tReadBack.%Get("verdict"), "matches", "the sorted GrantedRoles and the RW grant read back as sent: " _ tReadBack.%ToJSON())
     Do $$$AssertEquals(..Granted(), "%Developer,%Operator", "which the instance holds sorted")
+    Do $$$AssertEquals(..Granted("Resources"), "%DB_USER:RW,%Development:U", "and the database grant as RW")
 
     Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForTurn(tTurn, tUser, .tRows)
     Set tWire = $Select($IsObject($Get(tRows)) && (tRows.%Size() > 0): tRows.%Get(0).%Get("readBack"), 1: "")
@@ -149,13 +153,13 @@ ClassMethod AppBody() As %DynamicObject
 }
 
 /// <p>The probe role's granted roles as the instance holds them, comma-joined.</p>
-ClassMethod Granted() As %String
+ClassMethod Granted(pProperty As %String = "GrantedRoles") As %String
 {
     Set tGranted = ""
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        If $$$ISOK(##class(Security.Roles).Get(..#PROBEROLE, .tProps)) Set tGranted = $Get(tProps("GrantedRoles"))
+        If $$$ISOK(##class(Security.Roles).Get(..#PROBEROLE, .tProps)) Set tGranted = $Get(tProps(pProperty))
         Set $NAMESPACE = tOrigNS
     } Catch {
         Set $NAMESPACE = tOrigNS

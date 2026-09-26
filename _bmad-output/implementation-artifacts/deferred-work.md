@@ -7227,3 +7227,45 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-16-17-the-read-back-line.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: unordered compares each element's whole Display JSON; the vendor stores WR as RW (measured, spec Design Notes); settle by an agent role update granting WR on ocupilot-ci
 - 2026-09-26T18:47:27Z status=open owner=16-17-the-read-back-line by=harvest note=in-story; code review patches or it takes the MED iteration
+- 2026-09-26T19:26:07Z status=resolved-by:16-17-the-read-back-line by=cr note=Resources[].Permissions letters under unordered (field-lists element-member mode); ReadBackRoute WR->RW grant reads matches on ocupilot-ci
+
+### DW-1710: A list-row create (TaskCreate, OAuthRegisteredClientCreate) reads matches over only the fields its declared list row carries
+- source: spec-16-17-the-read-back-line.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: The task list row carries 8 of the create's 34 sent keys (probed on ocupilot-ci); the spec binds the re-read to the tool's declared list read. Row-key-only now reads unchecked; a partial compare still reads matches.
+- 2026-09-26T19:26:07Z status=decision-pending owner=burndown by=cr note=human=choose: keep list-row compare, or re-read a create by createdId through the update tool's read (AD-58 wording)
+- 2026-09-26T19:26:13Z status=decision-pending owner=burndown by=cr note=product call for the decision sheet: keep list-row compare, or re-read a create by createdId via the update tool's read
+
+### DW-1711: Most Save routes' read-back verdict is not asserted by a route-level test (LDAP, X.509, audit event, service, resource, four OAuth updates, task create Save)
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Verdicts are pinned for the web app, role, user, device, wallet, SSL, task edit Saves, the OAuth resource server create and three create editors; the declarations are pinned in field-lists.test.mjs.
+- 2026-09-26T19:26:07Z status=wontfix-accepted owner=16-17-the-read-back-line by=cr note=reopen_if=a Save on one of the named editors reads differs or could-not-be-read on an ordinary edit
+
+### DW-1712: Classification.cls carries two permissions.users.create entries; JSON parsing keeps only the last
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Pre-existing since Story 8.2 (git log -S); both copies carry the same compare declaration.
+- 2026-09-26T19:26:07Z status=wontfix-accepted owner=16-17-the-read-back-line by=cr note=reopen_if=the two permissions.users.create entries in Classification.cls differ
+
+### DW-1713: A 202 write's read-back stays unchecked/running on the proposal row after the queued work finishes
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Spec intent: a 202 write is unchecked with reason running and no re-read is made (AD-26, AD-58).
+- 2026-09-26T19:26:07Z status=by-design owner=16-17-the-read-back-line by=cr note=reopens only by amending AD-58 to re-read a finished continuation
+
+### DW-1714: The default read-back rule compares two numeric strings by value, so 007 matches 7 and very long digit strings lose precision
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Spec's default comparison: where both are valid numbers compare by value (measured 0900 read back 900).
+- 2026-09-26T19:26:07Z status=by-design owner=16-17-the-read-back-line by=cr note=real only for a string field whose leading zeros matter or a >18-digit numeric id; then declare a mode
+
+### DW-1715: A read-back that compared nothing reports reason unreadable, which renders as could not be read
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The spec closes the reason vocabulary at running and unreadable; nothing-compared is a failure to reach a verdict.
+- 2026-09-26T19:26:07Z status=by-design owner=16-17-the-read-back-line by=cr note=reopens by a spec amendment adding a reason and its copy
+
+### DW-1716: A web app Save that changes MatchRoles reports it written, not read back, because its nested rows default to secret
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ToolFields classifies MatchRoles[].MatchRole and TargetRoles[] secret (default class); AD-35 forbids examining a secret's read value.
+- 2026-09-26T19:26:07Z status=by-design owner=16-17-the-read-back-line by=cr note=reopens if webapp.list.update's classification reclassifies MatchRoles rows ordinary
+
+### DW-1717: A list-row create re-reads by the sent name, so a same-named object created concurrently could be compared
+- source: spec-16-17-the-read-back-line.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The mint and the confirm refuse a name any task or client holds; only a create racing between the write and its re-read reaches it.
+- 2026-09-26T19:26:07Z status=wontfix-theoretical owner=16-17-the-read-back-line by=cr note=real if the vendor or another caller creates the same name inside the write-to-re-read window

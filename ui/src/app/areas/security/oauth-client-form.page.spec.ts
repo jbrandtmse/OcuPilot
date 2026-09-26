@@ -257,6 +257,13 @@ describe('the client configuration editor', () => {
       ],
       [{ secretsRefused: 'The secret was refused.' }, STRINGS.oauthClientSecretsRefused.split('<reason>').join('The secret was refused.')],
       [{ tokenRefused: 'The token was refused.' }, STRINGS.oauthClientSecretsRefused.split('<reason>').join('The token was refused.')],
+      // Story 16.17 (AD-58): the refusal keeps the instance's read-back of the Save beside it.
+      // Mutation (Rule 19): answer `lines.join(' ')` without `withReadBack` in the page's `status`
+      // -> this case goes red.
+      [
+        { secretsRefused: 'The secret was refused.', readBack: { verdict: 'matches', fields: [], written: [] } },
+        `${STRINGS.oauthClientSecretsRefused.split('<reason>').join('The secret was refused.')} \u00b7 ${STRINGS.readBackMatches}`,
+      ],
     ];
     for (const [saveAnswer, expected] of cases) {
       const { fixture, host } = await mount(EDIT_URL, { saveAnswer });

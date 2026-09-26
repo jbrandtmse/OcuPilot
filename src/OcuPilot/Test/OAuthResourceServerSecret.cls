@@ -83,7 +83,7 @@ ClassMethod Request(pMethod As %String, pPath As %String, pBody As %DynamicObjec
 }
 
 /// <p>AC4 on the screen's caller: a create sent with the client secret stores it and answers without
-/// it; the port's read and the form read carry none; an edit with the field empty sends no secret
+/// it, its read-back naming the secret written; the port's read and the form read carry none; an edit with the field empty sends no secret
 /// write and keeps the stored one.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Area.Security.OAuthResourceServerSave.HandleUpdate</method>
 /// sends the secret write for an empty field -- the no-secret-write assertion goes red.</p>
@@ -98,6 +98,10 @@ Method TestTheSaveStoresTheSecretAndNoReadCarriesIt()
     Set tSC = ..Request("POST", ..#CREATEPATH, tBody, .tStatus, .tRaw)
     Do $$$AssertEquals(tStatus, 201, "the create with a secret answers 201: " _ $Extract(tRaw, 1, 300))
     Do $$$AssertEquals(tRaw [ tSecret, 0, "and its answer does not carry it")
+    Set tAnswer = ""
+    Try { Set tAnswer = ##class(%DynamicObject).%FromJSON(tRaw) } Catch { Set tAnswer = "" }
+    Set tReadBack = $Select($IsObject(tAnswer) && (tAnswer.%GetTypeOf("readBack") = "object"): tAnswer.%Get("readBack"), 1: {})
+    Do $$$AssertEquals(tReadBack.%Get("verdict") _ " " _ $Select(tReadBack.%GetTypeOf("written") = "array": tReadBack.%Get("written").%ToJSON(), 1: ""), "matches [""ClientSecret""]", "its read-back holds what was sent and names the secret stored apart as written (AD-58): " _ tReadBack.%ToJSON())
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Stored", tName).%Get("SecretLength"), $Length(tSecret), "the instance stores the secret")
     Set tRead = $ClassMethod(..#PROBE, "Read", tName)
     Do $$$AssertTrue($IsObject(tRead) && (tRead.%ToJSON() '[ tSecret) && (tRead.%GetTypeOf("ClientSecret") = "unassigned"), "the port's read carries neither the secret nor its field")

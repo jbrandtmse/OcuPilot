@@ -97,12 +97,13 @@ ClassMethod HandleCreate() As %Status
         Set tToken = ..TakeText(tBody, ..#TOKENFIELD)
         Set tName = $ClassMethod(..#RULES, "Text", tBody, ..#IDARGUMENT)
         Set tPerformSC = ..Create(tName, tBody, .tHttp, .tFault, .tViolations, .tAnswer, .tWrite)
-        Set (tSecretsReason, tTokenReason, tReadBack) = ""
+        Set (tSecretsReason, tTokenReason, tReadBack, tStored) = ""
         If $$$ISOK(tPerformSC) && '$Get(tViolations) {
             If tSecrets.%Size() > 0 Set tSecretsReason = ..StoreSecrets(tName, tSecrets)
             If tToken '= "" Set tTokenReason = ..StoreToken($ClassMethod(..#RULES, "Text", tBody, "ServerDefinition"), tToken)
+            Set tStored = ..StoredNames(tSecrets, tSecretsReason, tToken, tTokenReason)
             ; AD-58: the configuration read back after the Save's last write, over what its own write sent.
-            If $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#CREATETOOL, tName, tWrite("sent"), "", ..PortClass(), $Get(tAnswer), $Get(tHttp))
+            If $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#CREATETOOL, tName, tWrite("sent"), "", ..PortClass(), $Get(tAnswer), $Get(tHttp), tStored)
         }
         Set (tSecrets, tToken) = ""
         Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 201, tName, tSecretsReason, tTokenReason, $Get(tAnswer), tReadBack)
@@ -148,12 +149,13 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Set tSC = ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#REASONOAUTHAPPLICATIONNAMEABSENT, ##class(OcuPilot.Api.Error).#OAUTHAPPLICATIONNAMEABSENT)
             Quit
         }
-        Set (tSecretsReason, tTokenReason, tReadBack) = ""
+        Set (tSecretsReason, tTokenReason, tReadBack, tStored) = ""
         If $$$ISOK(tPerformSC) && '$Get(tViolations) {
             If tSecrets.%Size() > 0 Set tSecretsReason = ..StoreSecrets(tName, tSecrets)
             If tToken '= "" Set tTokenReason = ..StoreToken($Get(tServer), tToken)
+            Set tStored = ..StoredNames(tSecrets, tSecretsReason, tToken, tTokenReason)
             ; AD-58: the configuration read back after the Save's last write, over what its own write sent.
-            If $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#UPDATETOOL, tName, tWrite("sent"), tWrite("fresh"), ..PortClass(), $Get(tAnswer), $Get(tHttp))
+            If $Data(tWrite("sent")) Set tReadBack = ##class(OcuPilot.Kernel.Proposal.ReadBack).ForSave(..#UPDATETOOL, tName, tWrite("sent"), tWrite("fresh"), ..PortClass(), $Get(tAnswer), $Get(tHttp), tStored)
         }
         Set (tSecrets, tToken) = ""
         Set tSC = ..Answer(tPerformSC, .tViolations, $Get(tHttp), $Get(tFault), 200, tName, tSecretsReason, tTokenReason, $Get(tAnswer), tReadBack)
@@ -432,6 +434,23 @@ ClassMethod Body(Output pBody As %DynamicObject) As %Boolean [ Private ]
     Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.pBody, .tStage)
     If $$$ISERR(tReadSC) || '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit 0
     Quit 1
+}
+
+/// <p>The names of the secrets this Save stored by their own writes, each of which landed: every
+/// member of <var>pSecrets</var> when <var>pSecretsReason</var> is empty, and
+/// <parameter>TOKENFIELD</parameter> when <var>pToken</var> was sent and <var>pTokenReason</var> is
+/// empty (AD-58). Names only; no value is read.</p>
+ClassMethod StoredNames(pSecrets As %DynamicObject, pSecretsReason As %String, pToken As %String, pTokenReason As %String) As %List [ Private ]
+{
+    Set tNames = ""
+    If $IsObject(pSecrets) && (pSecretsReason = "") {
+        Set tIterator = pSecrets.%GetIterator()
+        While tIterator.%GetNext(.tName) {
+            Set tNames = tNames _ $ListBuild(tName)
+        }
+    }
+    If (pToken '= "") && (pTokenReason = "") Set tNames = tNames _ $ListBuild(..#TOKENFIELD)
+    Quit tNames
 }
 
 /// <p>Remove the client's declared secrets from <var>pBody</var> and answer the non-empty ones as one

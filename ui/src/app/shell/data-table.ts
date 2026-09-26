@@ -352,7 +352,7 @@ interface CellTooltip {
                     @if (cell.tag) {
                       <span class="ocu-data-table-changed-tag">{{ STRINGS.tableChangedTag }}</span>
                       @if (cell.readBack !== '') {
-                        <span class="ocu-data-table-read-back">{{ cell.readBack }}</span>
+                        <span class="ocu-data-table-read-back" [attr.title]="cell.readBack">{{ cell.readBack }}</span>
                       }
                     }
                   </div>
