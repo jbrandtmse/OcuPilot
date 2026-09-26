@@ -11,6 +11,7 @@ import {
 
 import {
   type ProposalPhase,
+  type ProposalPrivilegeLine,
   consequenceSentence,
   countdownPhase,
   countdownRemaining,
@@ -295,6 +296,20 @@ export interface ProposalConfirmRequest {
           }
         }
         @if (buttonsVisible) {
+          @if (privilegeLine; as line) {
+            @if (line.missing) {
+              <p
+                class="ocu-banner ocu-banner-warning ocu-proposal-card-warning"
+                role="status"
+                data-slot="privilege"
+              >
+                <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+                <span class="ocu-banner-message">{{ line.text }}</span>
+              </p>
+            } @else {
+              <p class="ocu-proposal-card-runs-as" data-slot="privilege">{{ line.text }}</p>
+            }
+          }
           <p class="ocu-proposal-card-runs-as">{{ runsAsCaption }}</p>
           <button
             type="button"
@@ -631,6 +646,14 @@ export class ProposalCard {
    */
   protected get consequenceText(): string {
     return consequenceSentence(this.view().consequence);
+  }
+
+  /**
+   * The privilege line the instance evaluated for this proposal (AD-8), or `null`. It renders only
+   * inside the buttons' block and never reaches Confirm's state: the instance's refusal decides.
+   */
+  protected get privilegeLine(): ProposalPrivilegeLine | null {
+    return this.view().privilege ?? null;
   }
 
   protected get consequenceVisible(): boolean {

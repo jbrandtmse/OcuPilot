@@ -364,7 +364,7 @@ Method TestTheAuditingConfigurationDescriptorIsBuiltWithItsReadAndOwnsTheWriteTo
     While tIterator.%GetNext(.tKey, .tValue) {
         Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
     }
-    Do $$$AssertEquals(tKeys, "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,primaryAction,rowActions,context,emptyStateKey,commandAliases,classicPage,classicLinkExemption,read,toolIdentifier", "the declared keys, a read among them, and no table or banner, since a form renders no grid: " _ tKeys)
+    Do $$$AssertEquals(tKeys, "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,primaryAction,rowActions,context,emptyStateKey,commandAliases,suggestedPrompts,classicPage,classicLinkExemption,read,toolIdentifier", "the declared keys, a read among them, and no table or banner, since a form renders no grid: " _ tKeys)
 
     Do $$$AssertEquals($ClassMethod(tClass, "IsBuilt"), 1, "it is built")
     Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 6, "and listed sixth in the Security side bar")
@@ -871,8 +871,8 @@ Method TestTheAuditCriteriaBoundsAreTheVendorPropertysOwn()
 /// alone (DW-271: a misspelt top-level key installs silently, because an accessor that cannot find
 /// its key answers <code>""</code> and a validator that never asks does not notice).</p>
 /// <p>The four claims that are this story's own: it declares <b>no read</b>, which is what sends
-/// its tool to the registry's other source; its <code>context.fields</code> carry the five summary
-/// fields and no captured detail; its privilege set is the <b>two</b> pairs that do not depend on
+/// its tool to the registry's other source; its <code>context.fields</code> carry the drilled
+/// namespace and date and the five summary fields, and no captured detail; its privilege set is the <b>two</b> pairs that do not depend on
 /// a namespace -- <code>%Admin_Operate:USE</code> and <code>%DB_IRISSYS:READ</code>, the database
 /// <code>SYS.ApplicationError</code> is executed from -- while the read and write on the
 /// <i>selected</i> namespace's globals database are resolved at the port per call, because no
@@ -897,7 +897,7 @@ Method TestTheApplicationErrorLogDeclaresNoReadAndGatesOnItsNamespaceFreePairs()
     While tIterator.%GetNext(.tKey, .tValue) {
         Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
     }
-    Do $$$AssertEquals(tKeys, "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,primaryAction,rowActions,context,emptyStateKey,commandAliases,classicPage,classicLinkExemption,toolIdentifier", "the twenty-three declared keys, and no read, table, banner or criteria among them: " _ tKeys)
+    Do $$$AssertEquals(tKeys, "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,primaryAction,rowActions,context,emptyStateKey,commandAliases,suggestedPrompts,classicPage,classicLinkExemption,toolIdentifier", "the twenty-four declared keys, and no read, table, banner or criteria among them: " _ tKeys)
 
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "a declaration with no read is a supported shape")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).CriteriaProblem(tDeclaration), "", "and it declares no criteria")
@@ -909,9 +909,9 @@ Method TestTheApplicationErrorLogDeclaresNoReadAndGatesOnItsNamespaceFreePairs()
     Do $$$AssertEquals($ClassMethod(tClass, "Archetype"), "drill-down", "it is the first screen of the drill-down archetype")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Archetype).LinkOutClass("drill-down"), "list", "which the vocabulary classifies as a list")
 
-    ; The five AD-48 summary fields and nothing else: the captured variable table never enters the
-    ; context a turn sends, because it is never in this list to be stripped from it.
-    Do $$$AssertEquals(tDeclaration.context.%ToJSON(), "{""fields"":[""errorNumber"",""time"",""errorText"",""routine"",""line""],""secretFields"":[]}", "the five summary fields, and no captured detail among them (AD-48)")
+    ; The five AD-48 summary fields plus the drilled scope and nothing else: the captured variable
+    ; table never enters the context a turn sends, because it is never in this list to be stripped from it.
+    Do $$$AssertEquals(tDeclaration.context.%ToJSON(), "{""fields"":[""namespace"",""date"",""errorNumber"",""time"",""errorText"",""routine"",""line""],""secretFields"":[]}", "the drilled namespace and date and the five summary fields, and no captured detail among them (AD-48)")
     Do $$$AssertEquals(tDeclaration.id.%ToJSON(), "{""kind"":""composite"",""parts"":[""namespace"",""date"",""errorNumber""]}", "one entry is identified by namespace, date and number together (AD-13)")
     Do $$$AssertEquals($ClassMethod(tClass, "Scope"), "instance", "the route carries no namespace: the screen enumerates them itself (AD-48)")
 
@@ -1101,6 +1101,24 @@ Method TestAnUndeclaredSideBarPositionIsRefusedOnABuiltScreen()
 
     Set tProdSC = ##class(OcuPilot.Screen.Registry).Validate(.tProdProblem)
     Do $$$AssertEquals(tProdProblem, "", "and every shipped descriptor declares one")
+    Do $$$AssertStatusOK(tProdSC, "so the shipped roster validates")
+}
+
+/// <p>Story 11.3 (AD-5) -- <method>OcuPilot.Screen.Registry.SuggestedPromptsProblem</method> refuses
+/// a built screen that declares no suggested prompts, admits an unbuilt one, and the shipped roster,
+/// every screen of which is built, validates.</p>
+/// <p>Mutation: drop the built arm from
+/// <method>OcuPilot.Screen.Registry.SuggestedPromptsProblem</method> -&gt; the two refusal assertions
+/// go red.</p>
+Method TestAPromptlessBuiltScreenIsRefused()
+{
+    Set tExpected = "a built screen declares at least 3 suggestedPrompts"
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).SuggestedPromptsProblem({"built": true}), tExpected, "a built screen with no prompts is refused")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).SuggestedPromptsProblem({"built": true, "suggestedPrompts": null}), tExpected, "and so is one declaring null")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).SuggestedPromptsProblem({"built": false}), "", "an unbuilt screen may declare none")
+
+    Set tProdSC = ##class(OcuPilot.Screen.Registry).Validate(.tProdProblem)
+    Do $$$AssertEquals(tProdProblem, "", "every shipped descriptor declares its prompts")
     Do $$$AssertStatusOK(tProdSC, "so the shipped roster validates")
 }
 

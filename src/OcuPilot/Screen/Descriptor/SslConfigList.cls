@@ -57,6 +57,11 @@ XData Declaration
   "secretArguments": ["PrivateKeyPassword"],
   "emptyStateKey": "sslListEmpty",
   "commandAliases": ["certificates"],
+  "suggestedPrompts": [
+    {"groupKey": "sslPromptGroupConnections", "textKey": "sslConfigListPrompt1"},
+    {"groupKey": "sslPromptGroupConnections", "textKey": "sslConfigListPrompt2"},
+    {"groupKey": "sslPromptGroupConnections", "textKey": "sslConfigListPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.SSLList",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

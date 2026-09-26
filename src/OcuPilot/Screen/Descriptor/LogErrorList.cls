@@ -33,7 +33,8 @@
 /// refused by <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> besides.
 /// <method>OcuPilot.Port.LogSourcePort.PairsFor</method> resolves it at call time.</p>
 /// <p><b>The captured detail is secret by default</b> (AD-48). <code>context.fields</code> carries
-/// the five summary fields and nothing else, so the screen context a turn sends can never include a
+/// the five summary fields plus the drilled scope (<code>namespace</code> and <code>date</code>, two
+/// parts of the entry's id), never the detail, so the screen context a turn sends can never include a
 /// variable table -- every local at every stack level plus <code>$ROLES</code> and
 /// <code>$USERNAME</code>, which on an IRIS for Health instance can hold patient data. The user
 /// reads that table on screen; the agent does not. Secrecy here is enforced by <b>which query is
@@ -88,9 +89,14 @@ XData Declaration
   "id": {"kind": "composite", "parts": ["namespace", "date", "errorNumber"]},
   "primaryAction": {"id": "", "selfProtection": ""},
   "rowActions": [{"id": "delete", "selfProtection": ""}],
-  "context": {"fields": ["errorNumber", "time", "errorText", "routine", "line"], "secretFields": []},
+  "context": {"fields": ["namespace", "date", "errorNumber", "time", "errorText", "routine", "line"], "secretFields": []},
   "emptyStateKey": "errorLogEmptyInstance",
   "commandAliases": ["application errors"],
+  "suggestedPrompts": [
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "logErrorListPrompt1"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "logErrorListPrompt2"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "logErrorListPrompt3"}
+  ],
   "classicPage": "%cspapp.op.utilsysapperrornamespaces",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "toolIdentifier": "logs.applicationerrors"

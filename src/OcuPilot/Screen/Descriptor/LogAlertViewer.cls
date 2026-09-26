@@ -52,6 +52,11 @@ XData Declaration
   "context": {"fields": ["time", "severity", "text"], "secretFields": []},
   "emptyStateKey": "logViewerEmpty",
   "commandAliases": ["alerts", "alerts.log"],
+  "suggestedPrompts": [
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "logAlertViewerPrompt1"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "logAlertViewerPrompt2"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "logAlertViewerPrompt3"}
+  ],
   "classicPage": "%cspapp.op.utilsysconsolelog",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

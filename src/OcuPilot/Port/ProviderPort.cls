@@ -88,9 +88,12 @@ Parameter SSLABSENTCODE = 979;
 /// keeps that copy for its whole life, so a grant revoked while the turn ran would still admit the
 /// call if the process were asked. <code>""</code> falls back to the calling process's own
 /// identity, which is what a caller with no turn behind it is.</p>
+/// <p><var>pStream</var>, when supplied, is the <class>OcuPilot.Kernel.Provider.StreamSink</class>
+/// the call's text so far is published to; a family that streams then streams (AD-42). A turn is
+/// the only caller that passes one.</p>
 /// <p><b>Caller contract:</b> must not be called from an escalated frame (AD-9); the caller's
 /// namespace is unchanged on return.</p>
-ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools, pSystemPrompt As %String = "", Output pResponse As OcuPilot.Kernel.Provider.Response, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pUser As %String = "") As %Status
+ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools, pSystemPrompt As %String = "", Output pResponse As OcuPilot.Kernel.Provider.Response, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pUser As %String = "", pStream As OcuPilot.Kernel.Provider.StreamSink = "") As %Status
 {
     Do ..Blank(.pResponse, .pHttpStatus, .pFault)
     Try {
@@ -122,7 +125,7 @@ ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools,
             Do ..Refuse(##class(OcuPilot.Api.Error).#PROVIDERUNCONFIGURED, .pHttpStatus, .pFault)
             Quit
         }
-        Do ..Dispatch(.tValues, .pMessages, .pTools, ..SystemPromptFor(.tValues, pSystemPrompt), .pResponse, .pHttpStatus, .pFault)
+        Do ..Dispatch(.tValues, .pMessages, .pTools, ..SystemPromptFor(.tValues, pSystemPrompt), .pResponse, .pHttpStatus, .pFault, pStream)
         Do ..FlagUnresolvedCredential(pDefinitionId, .tValues, .pFault)
     } Catch ex {
         Do ..Refuse(##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT, .pHttpStatus, .pFault)
@@ -246,7 +249,9 @@ ClassMethod InvokeDraft(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPro
 /// <p><b>The adapter comes from the row's <code>adapterClass</code> column and from nowhere
 /// else.</b> No branch here reads a provider key, so a second family is one row plus one class
 /// (AC1).</p>
-ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %String, ByRef pResponse As OcuPilot.Kernel.Provider.Response, ByRef pHttpStatus As %Integer, ByRef pFault As %DynamicObject) [ Private ]
+/// <p><var>pStream</var> reaches the adapter as <code>tSettings("stream")</code>; a draft call
+/// passes none.</p>
+ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %String, ByRef pResponse As OcuPilot.Kernel.Provider.Response, ByRef pHttpStatus As %Integer, ByRef pFault As %DynamicObject, pStream As OcuPilot.Kernel.Provider.StreamSink = "") [ Private ]
 {
     If '$ClassMethod(..CatalogClass(), "Row", $Get(pValues("provider")), .tRow) {
         Do ..Refuse(##class(OcuPilot.Api.Error).#PROVIDERUNCONFIGURED, .pHttpStatus, .pFault)
@@ -345,6 +350,7 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
         Quit
     }
     Set tAdapter.SecretClassName = ..SecretClass()
+    If $IsObject(pStream) Set tSettings("stream") = pStream
     Do tAdapter.Invoke(.pValues, .pMessages, .pTools, pSystemPrompt, .tSettings, .pResponse, .pFault, .pHttpStatus)
     ; Dropped as soon as the call returns: the adapter clears its own key, and releasing the last
     ; reference to it is what ends the object's life rather than leaving it in this frame.

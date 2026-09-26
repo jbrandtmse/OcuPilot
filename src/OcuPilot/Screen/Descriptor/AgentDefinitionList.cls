@@ -68,6 +68,11 @@ XData Declaration
   "context": {"fields": ["id", "name", "provider", "model", "enabled", "default"], "secretFields": []},
   "emptyStateKey": "agentDefinitionListEmpty",
   "commandAliases": ["agent definitions", "definitions", "api key"],
+  "suggestedPrompts": [
+    {"groupKey": "promptGroupAgentSetup", "textKey": "agentDefinitionListPrompt1"},
+    {"groupKey": "promptGroupAgentSetup", "textKey": "agentDefinitionListPrompt2"},
+    {"groupKey": "promptGroupAgentSetup", "textKey": "agentDefinitionListPrompt3"}
+  ],
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

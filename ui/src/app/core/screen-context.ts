@@ -120,15 +120,13 @@ export function contextRowsSent(inputs: ScreenContextViewInputs): number {
 
 /**
  * The `context` a turn sent right now would carry, or `null` when none would be (Boundaries &
- * Constraints): no descriptor resolved, no resolved namespace, sharing off, or a descriptor whose
- * `route` is `''` (Home). `Api.Turn.ContextViolation` refuses an empty `route` outright (422
- * `TURN.CONTEXT.INVALID`), so Home -- the one built screen whose declared route is the empty
- * string -- must never reach that check at all rather than fail it on every turn. `entity` is
- * present only when non-empty; `view` is present only when `computeView` builds one.
+ * Constraints): no descriptor resolved, no resolved namespace, or sharing off. Home's route is
+ * `''`, which the instance resolves to Home like any other route, so Home posts its identity.
+ * `entity` is present only when non-empty; `view` is present only when `computeView` builds one.
  */
 export function assembleScreenContext(inputs: ScreenContextInputs): ScreenContextPayload | null {
   if (!inputs.share) return null;
-  if (inputs.descriptor === null || inputs.descriptor.route === '') return null;
+  if (inputs.descriptor === null) return null;
   if (inputs.namespace === '') return null;
   const view = computeView(inputs);
   return {
@@ -136,6 +134,39 @@ export function assembleScreenContext(inputs: ScreenContextInputs): ScreenContex
     namespace: inputs.namespace,
     ...(inputs.entity !== '' ? { entity: inputs.entity } : {}),
     ...(view !== null ? { view } : {}),
+  };
+}
+
+/** What `assembleEntryContext` needs: the entry's screen, the shell scope, sharing, and the entry. */
+export interface EntryContextInputs {
+  readonly descriptor: ScreenDeclaration | null;
+  readonly namespace: string;
+  readonly share: boolean;
+  readonly row: unknown;
+}
+
+/**
+ * The `context` an "Explain this entry" turn carries (Story 11.2): the entry's screen and the shell
+ * scope, with a `view` of that one row narrowed to the screen's declared `context.fields` and no
+ * `entity`. `null`, so nothing is sent, when sharing is off, the descriptor or namespace is
+ * missing, or the screen would post no `view` (`contextViewDeclared`).
+ */
+export function assembleEntryContext(inputs: EntryContextInputs): ScreenContextPayload | null {
+  if (!inputs.share) return null;
+  const descriptor = inputs.descriptor;
+  if (descriptor === null) return null;
+  if (inputs.namespace === '') return null;
+  if (!contextViewDeclared(descriptor)) return null;
+  return {
+    route: descriptor.route,
+    namespace: inputs.namespace,
+    view: {
+      rows: [narrowRow(inputs.row, descriptor.context.fields)],
+      rowsAvailable: 1,
+      sort: '',
+      direction: '',
+      filter: '',
+    },
   };
 }
 

@@ -28,6 +28,12 @@ Parameter VERSIONHEADER = "anthropic-version";
 /// <p>The body's media type.</p>
 Parameter CONTENTTYPE = "application/json";
 
+/// <p>This family streams when the caller passes a sink (AD-42); 0 turns it off.</p>
+Parameter STREAMS As %Boolean = 1;
+
+/// <p>Streamed as Messages server-sent events.</p>
+Parameter STREAMFAMILY As %String = "anthropic";
+
 /// <p>The provider key whose catalog row points at this class.</p>
 Method ProviderName() As %String
 {
@@ -41,6 +47,7 @@ Method ProviderName() As %String
 /// <p>A message whose <code>pMessages(n, "blocks")</code> holds a JSON array is sent with that
 /// array as its <code>content</code> -- the shape a tool call's echo and its results take; any
 /// other message sends its <code>content</code> string.</p>
+/// <p>A streamed call (<property>Streaming</property>) also carries <code>"stream": true</code>.</p>
 /// <p><b>The body is written as UTF-8 bytes.</b> The media type carries no charset, so
 /// <class>%Net.HttpRequest</class> sends the entity body untranslated, and a character above 255
 /// written as itself would not reach the provider intact.</p>
@@ -80,6 +87,7 @@ Method CallMessages(pRequest As %Net.HttpRequest, ByRef pValues, ByRef pMessages
             }
             Do tBody.%Set("tools", tToolArray)
         }
+        If ..Streaming Do tBody.%Set("stream", 1, "boolean")
         Do pRequest.EntityBody.Clear()
         Do pRequest.EntityBody.Write($ZConvert(tBody.%ToJSON(), "O", "UTF8"))
         ; Set last, and this order is the implementation rather than a preference:

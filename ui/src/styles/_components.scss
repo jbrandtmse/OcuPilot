@@ -3721,6 +3721,24 @@ app-data-table {
   }
 }
 
+// "Explain this screen" (Story 11.1): a button-text beneath the chip, inset by the chip's own
+// gutter. Unavailable is `aria-disabled`, never `disabled`, so it keeps its tab stop and its
+// reason; it reads as `restrained` at full opacity with no state layer, as the command bar's
+// unavailable actions do.
+.ocu-panel-explain {
+  margin: var(--ocu-space-1) var(--ocu-panel-gutter) 0;
+}
+
+.ocu-panel-explain[aria-disabled='true'] {
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-panel-explain[aria-disabled='true']:hover,
+.ocu-panel-explain[aria-disabled='true']:active {
+  background: transparent;
+}
+
 // The inline paste warning (DESIGN.md `banner`'s `warning` variant, `:1203`): a persistent slot,
 // like the panel's own lock banner, so its `role="status"` announces a change to a region already
 // on screen (`command-bar.ts`'s `matchCount` is the same precedent for a status region).
@@ -4921,6 +4939,31 @@ app-data-table {
   color: var(--ocu-on-surface);
 }
 
+// "Explain this entry" (Story 11.2): a fifth, trailing track while the control shows, and a
+// compact text button inside the fixed row, so the row's own height rule is untouched. The
+// refused look mirrors `.ocu-panel-explain`'s, and the audit dialog's action shares it.
+.ocu-log-row-explain {
+  grid-template-columns: 190px 90px 110px minmax(0, 1fr) auto;
+}
+
+.ocu-log-explain {
+  height: calc(var(--ocu-log-row-height) - 4px);
+  padding: 0 var(--ocu-space-2);
+}
+
+.ocu-log-explain[aria-disabled='true'],
+.ocu-audit-explain[aria-disabled='true'] {
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-log-explain[aria-disabled='true']:hover,
+.ocu-log-explain[aria-disabled='true']:active,
+.ocu-audit-explain[aria-disabled='true']:hover,
+.ocu-audit-explain[aria-disabled='true']:active {
+  background: transparent;
+}
+
 .ocu-log-raw {
   @include typo.ocu-type('code');
 
@@ -6007,6 +6050,34 @@ app-data-table .ocu-data-table-header-cell {
     inset -4px 0 0 0 var(--ocu-focus-ring-inner);
 }
 
+// Suggested prompts (Story 11.3): each task group is a labeled `role="group"` over its own rows,
+// in the greeting and in Home's suggested-view block. The label takes the eyebrow's type role. A
+// prompt is unavailable exactly while Send is, and reads as refused the way `.ocu-panel-explain`
+// does: `restrained` text at full opacity and no state layer.
+.ocu-prompt-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+  margin: var(--ocu-space-2) 0 0;
+}
+
+.ocu-prompt-group-label {
+  @include typo.ocu-type('label');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-suggested-starter[aria-disabled='true'] {
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-suggested-starter[aria-disabled='true']:hover,
+.ocu-suggested-starter[aria-disabled='true']:active {
+  border-color: var(--ocu-outline-variant);
+}
+
 // --- The Auditing screen's audit database group (Story 12.3) -----------------------------------
 //
 // Copy to namespace and Purge old records sit on one row that wraps at the content minimum; each
@@ -6342,4 +6413,39 @@ app-data-table .ocu-data-table-header-cell {
   min-block-size: var(--ocu-control-height);
   min-inline-size: 0;
   overflow-wrap: anywhere;
+}
+
+// --- Citation chips (Story 11.4) -------------------------------------------------------------
+//
+// A row name a reply cites, drawn as a button on the inline code's own typography and surface, with
+// an outline saying it can be pressed. Its absent line sits under the reply, in the caption face.
+
+.ocu-reply-citation {
+  @include typo.ocu-type('code');
+
+  display: inline;
+  margin: 0;
+  padding: 0 4px;
+  border: 1px solid var(--ocu-outline);
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-surface-container);
+  color: var(--ocu-primary);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.ocu-reply-citation:hover {
+  background: var(--ocu-surface-container-high);
+}
+
+.ocu-reply-citation:focus-visible {
+  @include ocu-focus-ring;
+}
+
+.ocu-citation-absent {
+  @include typo.ocu-type('caption');
+
+  margin: var(--ocu-space-1) 0 0;
+  padding-inline-start: calc(var(--ocu-avatar-size, 24px) + var(--ocu-space-2));
+  color: var(--ocu-on-surface-variant);
 }

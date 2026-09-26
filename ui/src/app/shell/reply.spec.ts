@@ -161,3 +161,50 @@ describe('the reply component', () => {
     });
   });
 });
+
+// --- Story 11.4: citation chips --------------------------------------------------------------
+
+describe('citation chips', () => {
+  const cited = { type: 'user', scope: 'instance', id: '_SYSTEM', route: 'permissions/users', label: '_SYSTEM' };
+
+  function mountCited(text: string, citations: readonly (typeof cited)[]): { fixture: ComponentFixture<Reply>; host: HTMLElement } {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({});
+    const fixture = TestBed.createComponent(Reply);
+    fixture.componentRef.setInput('text', text);
+    fixture.componentRef.setInput('citations', citations);
+    fixture.detectChanges();
+    return { fixture, host: fixture.nativeElement as HTMLElement };
+  }
+
+  // Mutation (Rule 19): build the chip as an `a` with an `href` -> this goes red.
+  it('a cited name is a type="button" chip carrying its label as text, no href and no data attribute', () => {
+    const { host } = mountCited('`_SYSTEM` holds %All; `NotARow` does not.', [cited]);
+    const chips = host.querySelectorAll('button.ocu-reply-citation');
+    expect(chips).toHaveLength(1);
+    const chip = chips[0] as HTMLButtonElement;
+    expect(chip.getAttribute('type')).toBe('button');
+    expect(chip.textContent).toBe('_SYSTEM');
+    expect(chip.getAttributeNames().sort()).toEqual(['class', 'type']);
+    expect(host.querySelector('a')).toBeNull();
+    expect(host.querySelector('code')?.textContent).toBe('NotARow');
+  });
+
+  it('a hostile label renders literally as text and creates no element', () => {
+    const hostile = { ...cited, id: '<img src=x>', label: '<img src=x>' };
+    const { host } = mountCited('`<img src=x>`', [hostile]);
+    const chip = host.querySelector('button.ocu-reply-citation');
+    expect(chip?.textContent).toBe('<img src=x>');
+    expect(host.querySelector('img')).toBeNull();
+  });
+
+  it('a click on a chip emits its citation; a click elsewhere emits nothing', () => {
+    const { fixture, host } = mountCited('See `_SYSTEM` here.', [cited]);
+    const emitted: unknown[] = [];
+    fixture.componentInstance.cite.subscribe((value) => emitted.push(value));
+    (host.querySelector('p') as HTMLElement).click();
+    expect(emitted).toEqual([]);
+    (host.querySelector('button.ocu-reply-citation') as HTMLButtonElement).click();
+    expect(emitted).toEqual([cited]);
+  });
+});

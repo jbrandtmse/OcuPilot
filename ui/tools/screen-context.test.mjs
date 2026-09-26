@@ -13,14 +13,19 @@ import { dirname, join } from 'node:path';
 //   `view` (with no rows key at all server-side) would be posted for a secret-typed screen.
 // - slice AFTER narrowing rather than before -> the cap-below-view case's `rowsAvailable` goes red.
 // - keep requiring a declared read in `computeView` -> the no-read case goes red (Story 11.9).
+// - restore the `route === ''` exclusion in `assembleScreenContext` -> the Home case goes red
+//   (Story 11.1).
 // - return `false` for a `sk-` prefix -> the prefix cases redden; return `true` for
 //   `%Api.Mgmnt.v2` -> the non-trigger cases redden.
+// - `assembleEntryContext` skips `narrowRow` -> the narrowing and not-an-object entry cases
+//   redden (Story 11.2). That only the one entry goes is pinned where the panel picks it
+//   (`panel.spec.ts`, Story 11.2).
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
 const { screenDeclaration } = await import(join(uiRoot, 'src', 'app', 'testing', 'screen-declaration.ts'));
 
-const { assembleScreenContext, contextRowsSent, contextViewDeclared, looksLikeSecret } = await import(
+const { assembleEntryContext, assembleScreenContext, contextRowsSent, contextViewDeclared, looksLikeSecret } = await import(
   corePath('screen-context.ts')
 );
 
@@ -90,8 +95,9 @@ test('no resolved descriptor posts no context at all', () => {
   assert.equal(assembleScreenContext(baseInputs({ descriptor: null })), null);
 });
 
-test('a descriptor whose route is the empty string (Home) posts no context at all -- the server refuses an empty route outright', () => {
-  assert.equal(assembleScreenContext(baseInputs({ descriptor: screen({ route: '' }) })), null);
+test('Home, whose route is the empty string, posts its route and namespace and no view', () => {
+  const home = screen({ route: '', read: null, context: { fields: [], secretFields: [] } });
+  assert.deepEqual(assembleScreenContext(baseInputs({ descriptor: home, rows: [] })), { route: '', namespace: 'HSCUSTOM' });
 });
 
 test('an unresolved namespace posts no context at all', () => {
@@ -225,6 +231,65 @@ test('a form page (no read, no context fields) posts identity only: no view, no 
   assert.deepEqual(payload, { route: 'os-management/devices/edit', namespace: 'HSCUSTOM' });
   assert.equal(contextViewDeclared(form), false);
   assert.equal(contextRowsSent(inputs), 0);
+});
+
+// --- assembleEntryContext (Story 11.2) --------------------------------------------------------
+
+const SCOPED_ERROR_FIELDS = ['namespace', 'date', ...ERROR_FIELDS];
+
+function scopedErrorScreen() {
+  return screen({ route: 'logs/errors', read: null, context: { fields: SCOPED_ERROR_FIELDS, secretFields: [] } });
+}
+
+function entryInputs(overrides = {}) {
+  const [row] = errorRows(2);
+  return {
+    descriptor: scopedErrorScreen(),
+    namespace: 'HSCUSTOM',
+    share: true,
+    row: { namespace: 'USER', date: '09/25/2026', ...row, stack: 'captured', variables: 'captured' },
+    ...overrides,
+  };
+}
+
+test('an entry posts its screen and the shell scope with a one-row view, and no entity', () => {
+  const payload = assembleEntryContext(entryInputs());
+  assert.deepEqual(Object.keys(payload), ['route', 'namespace', 'view']);
+  assert.equal(payload.route, 'logs/errors');
+  assert.equal(payload.namespace, 'HSCUSTOM', 'the shell scope, which the instance requires');
+  assert.equal(payload.view.rows.length, 1, 'that one entry and no other');
+  assert.equal(payload.view.rowsAvailable, 1);
+  assert.equal(payload.view.sort, '');
+  assert.equal(payload.view.direction, '');
+  assert.equal(payload.view.filter, '');
+});
+
+test("an entry's row is narrowed to the declared fields: no user, process or captured detail", () => {
+  const [row] = assembleEntryContext(entryInputs()).view.rows;
+  assert.deepEqual(Object.keys(row), SCOPED_ERROR_FIELDS);
+  assert.equal(row.namespace, 'USER', 'the drilled namespace travels with the row');
+  assert.equal(row.date, '09/25/2026');
+  for (const dropped of ['username', 'process', 'stack', 'variables']) assert.equal(dropped in row, false, dropped);
+});
+
+test('an entry sends nothing with sharing off, no descriptor, no namespace, or a screen with no view', () => {
+  assert.equal(assembleEntryContext(entryInputs({ share: false })), null, 'sharing off');
+  assert.equal(assembleEntryContext(entryInputs({ descriptor: null })), null, 'no descriptor');
+  assert.equal(assembleEntryContext(entryInputs({ namespace: '' })), null, 'no namespace');
+  assert.equal(
+    assembleEntryContext(entryInputs({ descriptor: screen({ context: { fields: ['Name'], secretFields: ['Password'] } }) })),
+    null,
+    'a screen declaring secret fields'
+  );
+  assert.equal(
+    assembleEntryContext(entryInputs({ descriptor: screen({ context: { fields: [], secretFields: [] } }) })),
+    null,
+    'a screen declaring no context fields'
+  );
+});
+
+test('an entry that is not an object sends one empty row rather than the value', () => {
+  assert.deepEqual(assembleEntryContext(entryInputs({ row: 'raw text' })).view.rows, [{}]);
 });
 
 // --- looksLikeSecret -------------------------------------------------------------------------

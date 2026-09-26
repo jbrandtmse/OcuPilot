@@ -58,6 +58,11 @@ XData Declaration
   "secretArguments": ["Certificate", "PrivateKey", "PrivateKeyPassword"],
   "emptyStateKey": "x509ListEmpty",
   "commandAliases": ["x509"],
+  "suggestedPrompts": [
+    {"groupKey": "sslPromptGroupConnections", "textKey": "x509CredentialListPrompt1"},
+    {"groupKey": "sslPromptGroupConnections", "textKey": "x509CredentialListPrompt2"},
+    {"groupKey": "sslPromptGroupConnections", "textKey": "x509CredentialListPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.X509Credentials",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

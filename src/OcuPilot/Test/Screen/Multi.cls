@@ -33,6 +33,7 @@ XData Declaration
   "rowActions": [{"id": "edit", "selfProtection": ""}, {"id": "delete", "selfProtection": ""}],
   "emptyStateKey": "",
   "commandAliases": ["oauth", "oauth2"],
+  "suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainScreen"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainLog"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptChangeOneThing"}],
   "classicPage": "OcuPilotTestClassicPageMulti",
   "classicLinkExemption": {"exempt": true, "reason": "a test detail view that keeps its classic page", "label": "OcuPilot test classic page (Multi)", "href": "/csp/sys/OcuPilotTestClassicPageMulti.csp"},
   "toolIdentifier": "security.oauth"

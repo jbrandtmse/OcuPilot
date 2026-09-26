@@ -40,6 +40,12 @@ export interface ErrorLogErrorRow {
   readonly process: string;
 }
 
+/** One error with the scope the user drilled to, which is two parts of its composite id (AD-13, AD-48). */
+export interface ErrorLogScopedRow extends ErrorLogErrorRow {
+  readonly namespace: string;
+  readonly date: string;
+}
+
 /** One logged expression and its value. */
 export interface ErrorLogExpressionRow {
   readonly expression: string;
@@ -152,6 +158,14 @@ export class ErrorLogDrill {
 
   private errorRows: readonly ErrorLogErrorRow[] = [];
 
+  /** `scopedErrors()`'s last answer and the rows, namespace and date it was built from. */
+  private scopedMemo: {
+    readonly rows: readonly ErrorLogErrorRow[];
+    readonly namespace: string;
+    readonly date: string;
+    readonly scoped: readonly ErrorLogScopedRow[];
+  } | null = null;
+
   private detailValue: ErrorLogDetail | null = null;
 
   /**
@@ -244,6 +258,23 @@ export class ErrorLogDrill {
 
   errors(): readonly ErrorLogErrorRow[] {
     return this.errorRows;
+  }
+
+  /**
+   * `errors()` with the drilled namespace and date on each row, the same array for the same rows and
+   * scope, so a publish that compares by identity is skipped when nothing changed.
+   */
+  scopedErrors(): readonly ErrorLogScopedRow[] {
+    const memo = this.scopedMemo;
+    const rows = this.errorRows;
+    if (memo !== null && memo.rows === rows && memo.namespace === this.namespaceValue && memo.date === this.dateValue) {
+      return memo.scoped;
+    }
+    const namespace = this.namespaceValue;
+    const date = this.dateValue;
+    const scoped = rows.map((row) => ({ namespace, date, ...row }));
+    this.scopedMemo = { rows, namespace, date, scoped };
+    return scoped;
   }
 
   detail(): ErrorLogDetail | null {

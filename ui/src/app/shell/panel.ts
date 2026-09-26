@@ -20,8 +20,10 @@ import {
   restraintSentence,
 } from '../core/agent-status';
 import { AUDITING_FOCUS_ENABLE } from '../areas/security/auditing-config.page';
+import { type Citation, formatCitationAbsent } from '../core/citations';
 import { decodeEntityId } from '../core/entity-id';
-import { classifyFault } from '../core/fault';
+import { BUSY_REASON_ID, CONTEXT_CHIP_OFF_ID, ExplainEntry, KILL_SWITCH_ID } from '../core/explain-entry';
+import { classifyFault, isBannerFault } from '../core/fault';
 import {
   HOME_AREA_KEY,
   NavigationService,
@@ -44,12 +46,18 @@ import {
   toCardView,
 } from '../core/proposal-view';
 import { ScopeService, onScopeChange } from '../core/scope';
-import { assembleScreenContext, looksLikeSecret, type ScreenContextPayload } from '../core/screen-context';
+import {
+  assembleEntryContext,
+  assembleScreenContext,
+  looksLikeSecret,
+  type ScreenContextPayload,
+} from '../core/screen-context';
 import { ScreenStores } from '../core/screen-store';
 import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
 import { changeSentenceTemplate, formatChangeSentence } from '../core/toasts';
+import { promptGroups, type PromptGroup } from '../core/suggested-prompts';
 import { SuggestedView, type SuggestedLine } from '../core/suggested-view';
 import {
   TURN_PATH,
@@ -59,9 +67,11 @@ import {
   type TurnStep,
   confirmedWriteStep,
   refusedWriteStep,
+  streamedText,
   turnErrorBanner,
 } from '../core/turn';
 import { isApplePlatform } from './command-box';
+import { CitationNavigator } from './citation-navigator';
 import { ContextChip } from './context-chip';
 import { EXAMPLE_PROPOSAL } from './example-proposal';
 import { TranscriptFollow } from './panel-follow';
@@ -75,9 +85,6 @@ export const COMPOSER_ID = 'ocu-panel-composer';
 
 /** The id of whichever gate sentence the panel is showing, which is also the controls' reason. */
 const REASON_ID = 'ocu-panel-reason';
-
-/** The kill-switch banner's own id, which is the controls' reason while the agent is switched off. */
-const KILL_SWITCH_ID = 'ocu-panel-kill-switch';
 
 /** The not-marked banner's id, in the slot EXPERIENCE.md's banner order already reserves for it. */
 const NOT_MARKED_ID = 'ocu-panel-not-marked';
@@ -99,9 +106,6 @@ const WRITE_STEP_SEQ_BASE = 1_000_000;
 /** The enforced-read-only banner's own id. */
 const READ_ONLY_ID = 'ocu-panel-read-only';
 
-/** The composer's and Send's reason while a turn runs (Story 4.5). */
-const BUSY_REASON_ID = 'ocu-panel-busy-reason';
-
 /** New conversation's reason while a turn runs (Story 4.5). */
 const NEW_CONVERSATION_REASON_ID = 'ocu-panel-new-conversation-reason';
 
@@ -116,6 +120,8 @@ interface SuggestedRowView {
   readonly label: string;
   readonly tail: string;
   readonly counted: boolean;
+  /** A counted line whose read was refused or failed renders no count (DW-1147). */
+  readonly unread: boolean;
   readonly count: number;
   readonly href: string;
   readonly url: string;
@@ -173,7 +179,13 @@ interface PanelTurnView {
   readonly steps: readonly TurnStep[];
   readonly proposals: readonly PanelProposalView[];
   readonly reply: string | null;
+  /** The running model call's text so far (AD-33), or `null`; never beside a reply or a banner. */
+  readonly streamed: string | null;
   readonly errorBanner: string | null;
+  /** The rows the final reply cites (Story 11.4); the streamed block is never given them. */
+  readonly citations: readonly Citation[];
+  /** The absent sentence for each cited row a click found gone, in citation order. */
+  readonly absent: readonly string[];
 }
 
 /**
@@ -312,6 +324,16 @@ interface PanelTurnView {
       <div class="ocu-panel-chip-slot">
         @if (contextChipVisible) {
           <app-context-chip [killSwitch]="killSwitch" />
+          <button
+            type="button"
+            class="ocu-button-text ocu-panel-explain"
+            data-slot="explain"
+            [attr.aria-disabled]="explainAriaDisabled"
+            [attr.aria-describedby]="explainDescribedBy"
+            (click)="onExplain()"
+          >
+            {{ STRINGS.agentExplainScreenAction }}
+          </button>
         }
       </div>
 
@@ -325,7 +347,7 @@ interface PanelTurnView {
                   type="button"
                   class="ocu-suggested-prompt"
                   (click)="onSuggestion(row.text)"
-                >{{ row.label }}@if (row.counted) {<code class="ocu-suggested-count">{{ row.count }}</code>}{{ row.tail }}</button>
+                >{{ row.label }}@if (row.counted && !row.unread) {<code class="ocu-suggested-count">{{ row.count }}</code>}{{ row.tail }}</button>
                 <span class="ocu-suggested-open-slot">
                   <a
                     class="ocu-button-text ocu-suggested-open"
@@ -343,15 +365,30 @@ interface PanelTurnView {
                 </span>
               </li>
             }
-            @for (prompt of suggestedPrompts; track prompt) {
-              <li class="ocu-suggested-line">
-                <button type="button" class="ocu-suggested-starter" (click)="onSuggestion(prompt)">
-                  <span>{{ prompt }}</span>
-                  <span class="ocu-suggested-send-glyph" aria-hidden="true">{{ sendGlyph }}</span>
-                </button>
-              </li>
-            }
           </ul>
+          @if (homeBlockPrompts) {
+            @for (group of promptGroups; track group.key) {
+              <div class="ocu-prompt-group" role="group" [attr.aria-labelledby]="'ocu-block-prompt-group-' + group.key">
+                <p class="ocu-prompt-group-label" [id]="'ocu-block-prompt-group-' + group.key">{{ group.label }}</p>
+                <ul class="ocu-suggested-lines" role="list">
+                  @for (prompt of group.prompts; track prompt) {
+                    <li class="ocu-suggested-line">
+                      <button
+                        type="button"
+                        class="ocu-suggested-starter"
+                        [attr.aria-disabled]="promptAriaDisabled"
+                        [attr.aria-describedby]="promptDescribedBy"
+                        (click)="onSuggestedPrompt(prompt)"
+                      >
+                        <span>{{ prompt }}</span>
+                        <span class="ocu-suggested-send-glyph" aria-hidden="true">{{ sendGlyph }}</span>
+                      </button>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+          }
         }
       </section>
 
@@ -381,16 +418,29 @@ interface PanelTurnView {
         } @else {
           @if (greetingVisible) {
             <p class="ocu-panel-greeting">{{ STRINGS.agentIdleGreeting }}</p>
-            <ul class="ocu-suggested-lines" role="list">
-              @for (prompt of starterPrompts; track prompt) {
-                <li class="ocu-suggested-line">
-                  <button type="button" class="ocu-suggested-starter" (click)="onSuggestion(prompt)">
-                    <span>{{ prompt }}</span>
-                    <span class="ocu-suggested-send-glyph" aria-hidden="true">{{ sendGlyph }}</span>
-                  </button>
-                </li>
+            @if (greetingPrompts) {
+              @for (group of promptGroups; track group.key) {
+                <div class="ocu-prompt-group" role="group" [attr.aria-labelledby]="'ocu-greeting-prompt-group-' + group.key">
+                  <p class="ocu-prompt-group-label" [id]="'ocu-greeting-prompt-group-' + group.key">{{ group.label }}</p>
+                  <ul class="ocu-suggested-lines" role="list">
+                    @for (prompt of group.prompts; track prompt) {
+                      <li class="ocu-suggested-line">
+                        <button
+                          type="button"
+                          class="ocu-suggested-starter"
+                          [attr.aria-disabled]="promptAriaDisabled"
+                          [attr.aria-describedby]="promptDescribedBy"
+                          (click)="onSuggestedPrompt(prompt)"
+                        >
+                          <span>{{ prompt }}</span>
+                          <span class="ocu-suggested-send-glyph" aria-hidden="true">{{ sendGlyph }}</span>
+                        </button>
+                      </li>
+                    }
+                  </ul>
+                </div>
               }
-            </ul>
+            }
             <p class="ocu-panel-selection-hint">{{ STRINGS.agentIdleSelectionHint }}</p>
           }
           @for (turn of turns; track $index) {
@@ -423,8 +473,23 @@ interface PanelTurnView {
               @if (turn.reply !== null) {
                 <div class="ocu-panel-message-agent">
                   <span class="ocu-panel-message-avatar" aria-hidden="true"></span>
-                  <app-reply class="ocu-panel-message-agent-text" [text]="turn.reply" />
+                  <app-reply
+                    class="ocu-panel-message-agent-text"
+                    [text]="turn.reply"
+                    [citations]="turn.citations"
+                    (cite)="onCite($event)"
+                  />
                 </div>
+                @for (line of turn.absent; track $index) {
+                  <p class="ocu-citation-absent" role="status">{{ line }}</p>
+                }
+              } @else {
+                @if (turn.streamed !== null) {
+                  <div class="ocu-panel-message-agent ocu-panel-message-streamed" inert>
+                    <span class="ocu-panel-message-avatar" aria-hidden="true"></span>
+                    <app-reply class="ocu-panel-message-agent-text" [text]="turn.streamed" />
+                  </div>
+                }
               }
               @if (turn.errorBanner !== null) {
                 <div class="ocu-panel-message-agent">
@@ -505,8 +570,11 @@ export class Panel {
   private readonly scope = inject(ScopeService);
   private readonly session = inject(Session);
   private readonly screenStores = inject(ScreenStores);
+  private readonly citationNavigator = inject(CitationNavigator);
   private readonly shell = inject(ShellState);
   private readonly suggested = inject(SuggestedView);
+  /** A log or audit entry's explain request (Story 11.2). Optional, so a spec that needs none provides none. */
+  private readonly explainEntry = inject(ExplainEntry, { optional: true });
 
   private readonly composerEl = viewChild<ElementRef<HTMLTextAreaElement>>('composer');
 
@@ -639,10 +707,12 @@ export class Panel {
         this.syncSuggested();
       }),
       this.suggested.subscribe(() => this.bump()),
+      this.citationNavigator.subscribe(() => this.bump()),
       this.shell.subscribe(() => {
         this.bump();
         this.syncSuggested();
       }),
+      this.explainEntry?.subscribe(() => this.onExplainEntry()) ?? (() => {}),
     ];
     this.syncSuggested();
     // Every render that grows the transcript while it follows scrolls it to the newest entry.
@@ -799,10 +869,10 @@ export class Panel {
    * DW-1054). A 409 is the lock banner's and never reaches here.
    *
    * It is the envelope's own written `reason` wherever the instance sent one -- the server writes
-   * every refusal sentence once (AD-39) and the client publishes none of that copy. Only an answer
-   * carrying no envelope at all (a status 0, a body that is not one) falls back, to the
-   * connectivity sentence the shell already shows for that class of failure, chosen by
-   * `classifyFault` so the two surfaces cannot disagree about which failure it was.
+   * every refusal sentence once (AD-39) and the client publishes none of that copy. An answer
+   * carrying no envelope that `classifyFault` reads as a connectivity-banner fault (a status 0, a
+   * 5xx) raises no banner here, since the shell's connectivity banner already raises that one
+   * alert; any other answer with no envelope falls back to the server-fault sentence.
    */
   protected get sendErrorText(): string | null {
     this.generation();
@@ -813,7 +883,8 @@ export class Panel {
       { kind: 'error', status: refusal.status, code: refusal.code, reason: null, detail: null },
       TURN_PATH
     );
-    return fault?.kind === 'unreachable' ? STRINGS.connectivityBannerUnreachable : STRINGS.connectivityServerFault;
+    if (isBannerFault(fault)) return null;
+    return STRINGS.connectivityServerFault;
   }
 
   protected get sendLabel(): string {
@@ -851,8 +922,14 @@ export class Panel {
       const steps = entry.steps.filter(
         (step) => step.kind === 'tool' || step.kind === 'announce' || step.status === 'stopped'
       );
+      const citations = errorBanner === null ? entry.citations : [];
       return {
         message: entry.message,
+        streamed: errorBanner === null ? streamedText(entry) : null,
+        citations,
+        absent: citations
+          .filter((citation) => this.citationNavigator.isAbsent(citation))
+          .map((citation) => formatCitationAbsent(citation.label)),
         // Tool steps, the agent's own navigation announcements (Story 4.7), a stop caught
         // before a model call -- which is the only record of that stop -- and, last, one card per
         // confirmed write of this turn, composed from the confirm's own answer (AD-15).
@@ -1338,37 +1415,52 @@ export class Panel {
   }
 
   /**
-   * The counted rows, or -- when every counted line resolved to zero -- only the uncounted ones,
-   * which is what keeps the agent-status line present under the starter prompts (AC6).
+   * The rows to render, in declared order. A counted line whose read answered zero never renders
+   * (DW-1160), whatever `showPrompts()` answers; an unread one does (DW-1147). The uncounted
+   * agent-status line always does (AC6).
    */
   protected get suggestedRows(): readonly SuggestedRowView[] {
     this.generation();
-    const prompts = this.suggested.showPrompts();
     return this.suggested
       .lines()
-      .filter((line) => !prompts || !line.counted)
+      .filter((line) => !line.counted || line.unread || line.count !== 0)
       .map((line) => this.suggestedRow(line));
   }
 
-  /**
-   * The three published prompts while every counted line reads zero, else nothing -- and nothing
-   * while the greeting is already offering them, so exactly one prompt set is ever on screen.
-   * EXPERIENCE.md reads Home's panel as showing "its suggested view or, when nothing needs
-   * attention, three starter prompts"; it publishes the greeting "over the screen's three starter
-   * prompts, and beneath them the hint"; and its UJ-2 walkthrough describes the fresh-container
-   * state -- the one where both would otherwise fire -- as "the suggested view offering the three
-   * starter prompts", singular. The greeting keeps them because only its order is published; the
-   * block keeps its agent-status line either way (AC2).
-   */
-  protected get suggestedPrompts(): readonly string[] {
+  /** The current screen's suggested prompts, grouped by task (Story 11.3); none off a built screen. */
+  protected get promptGroups(): readonly PromptGroup[] {
     this.generation();
-    if (this.transcriptEmpty) return [];
-    return this.suggested.showPrompts() ? this.suggested.starterPrompts() : [];
+    return promptGroups(screenForUrl(this.router.url));
   }
 
-  /** The three published prompts, for the empty-transcript greeting, which never counts anything. */
-  protected get starterPrompts(): readonly string[] {
-    return this.suggested.starterPrompts();
+  /**
+   * Whether Home's block shows the prompts: it is visible and nothing needs attention. The greeting
+   * then shows none, so exactly one prompt set is on screen (DW-1158).
+   */
+  protected get homeBlockPrompts(): boolean {
+    return this.suggestedVisible && this.suggested.showPrompts();
+  }
+
+  /**
+   * Whether the greeting shows the prompts: never beside the block's set, and on Home not until the
+   * suggested view has answered, so Home's set never paints in the greeting and then moves into the
+   * block.
+   */
+  protected get greetingPrompts(): boolean {
+    if (this.homeBlockPrompts) return false;
+    return !this.onHome || this.suggested.answered();
+  }
+
+  /** A suggested prompt is unavailable exactly while Send is: the composer is, or a turn runs. */
+  protected get promptAriaDisabled(): string | null {
+    return this.composerUnavailable || this.busy ? 'true' : null;
+  }
+
+  /** The topmost reason a suggested prompt is unavailable: the kill switch, then a running turn. */
+  protected get promptDescribedBy(): string | null {
+    if (this.killSwitch) return KILL_SWITCH_ID;
+    if (this.busy) return BUSY_REASON_ID;
+    return null;
   }
 
   /**
@@ -1409,6 +1501,7 @@ export class Panel {
       label: line.label,
       tail: line.tail,
       counted: line.counted,
+      unread: line.unread,
       count: line.count,
       // Relative, so it resolves under the document's base href; the router takes the rooted form.
       href: url.replace(/^\//, ''),
@@ -1425,8 +1518,8 @@ export class Panel {
   }
 
   /**
-   * A line's text or a starter prompt was activated: it becomes the draft and the composer takes
-   * focus. It never starts a turn -- the user reads what they are about to ask and presses Send.
+   * A suggested-view line was activated: its text becomes the draft and the composer takes focus.
+   * It never starts a turn -- the user reads what they are about to ask and presses Send.
    *
    * Nothing while the composer is unavailable, as every other write into the draft does
    * (`onDraft`, `onComposerKeydown`): with the kill switch on the block still renders -- its
@@ -1437,6 +1530,16 @@ export class Panel {
     if (this.composerUnavailable) return;
     this.panel.setDraft(text);
     this.composerEl()?.nativeElement.focus();
+  }
+
+  /**
+   * A suggested prompt was chosen (Story 11.3): its text is sent as the user's message with this
+   * screen's context through Send's own path, leaving the draft as it is (AD-11 rule 1). A click
+   * while it is `aria-disabled` sends nothing; sharing off sends a `null` context, as Send does.
+   */
+  protected onSuggestedPrompt(text: string): void {
+    if (this.promptAriaDisabled !== null) return;
+    void this.sendWithContext(text, this.assembleContext());
   }
 
   /**
@@ -1577,6 +1680,22 @@ export class Panel {
     );
   }
 
+  /**
+   * "Explain this screen" is unavailable while the composer is, while a turn runs, and while
+   * screen context is not shared, since the sentence would then reach the model with no screen.
+   */
+  protected get explainAriaDisabled(): string | null {
+    return this.composerUnavailable || this.busy || !this.agentContext.share() ? 'true' : null;
+  }
+
+  /** The topmost reason Explain is unavailable: the kill switch, a running turn, then sharing off. */
+  protected get explainDescribedBy(): string | null {
+    if (this.killSwitch) return KILL_SWITCH_ID;
+    if (this.busy) return BUSY_REASON_ID;
+    if (!this.agentContext.share()) return CONTEXT_CHIP_OFF_ID;
+    return null;
+  }
+
   protected get secretWarningVisible(): boolean {
     return this.secretWarningVisibleSignal();
   }
@@ -1650,17 +1769,56 @@ export class Panel {
       return;
     }
     this.secretWarningVisibleSignal.set(false);
-    const outcome = await this.turn.send(text, this.assembleContext());
-    if (outcome === 'sent') {
-      // EXPERIENCE.md's cancel step: sending a message cancels every live proposal, which is what
-      // the card's own guard caption warns about. The instance closed them as it accepted the
-      // turn; this draws the same transition without waiting for a poll. Recorded only on an
-      // accepted send, because a refused one cancelled nothing (DW-1231).
-      this.cancelLiveCards('canceled-by-message');
+    if (await this.sendWithContext(text, this.assembleContext())) {
       this.panel.setDraft('');
       this.acknowledgedSecretText.set(null);
-      this.followNewest();
     }
+  }
+
+  /**
+   * "Explain this screen": the fixed sentence, sent as the user's message with this screen's
+   * context through the Send path's own call, leaving the draft as it is (AD-11 rule 1). A click
+   * while it is `aria-disabled` sends nothing.
+   */
+  protected onExplain(): void {
+    if (this.explainAriaDisabled !== null) return;
+    void this.sendWithContext(STRINGS.agentExplainScreenAction, this.assembleContext());
+  }
+
+  /**
+   * "Explain this entry" (Story 11.2): take a page's pending request and send the fixed sentence as
+   * the user's message, with a context whose `view` is that one entry, through the same path and
+   * leaving the draft as it is. The gate is checked again here, and a request whose context
+   * assembles to nothing sends nothing.
+   */
+  private onExplainEntry(): void {
+    const entry = this.explainEntry;
+    const request = entry === null ? null : entry.take();
+    if (entry === null || request === null) return;
+    if (!entry.shown() || entry.reason() !== null) return;
+    const context = assembleEntryContext({
+      descriptor: request.screen,
+      namespace: this.scope.namespace(),
+      share: this.agentContext.share(),
+      row: request.row,
+    });
+    if (context === null) return;
+    void this.sendWithContext(STRINGS.agentExplainEntryAction, context);
+  }
+
+  /**
+   * Send `text` with `context`, and answer whether the instance accepted it.
+   * On `'sent'` it cancels every live proposal and follows the newest entry: EXPERIENCE.md's cancel
+   * step, which the card's own guard caption warns about. The instance closed them as it accepted
+   * the turn; this draws the same transition without waiting for a poll. Recorded only on an
+   * accepted send, because a refused one cancelled nothing (DW-1231).
+   */
+  private async sendWithContext(text: string, context: ScreenContextPayload | null): Promise<boolean> {
+    const outcome = await this.turn.send(text, context);
+    if (outcome !== 'sent') return false;
+    this.cancelLiveCards('canceled-by-message');
+    this.followNewest();
+    return true;
   }
 
   /**
@@ -1741,6 +1899,11 @@ export class Panel {
   protected onTranscriptScroll(): void {
     const box = this.transcriptBox();
     if (box !== null && this.follow.onScroll(box)) this.bump();
+  }
+
+  /** A citation chip was clicked (Story 11.4): open its row. */
+  protected onCite(citation: Citation): void {
+    void this.citationNavigator.open(citation);
   }
 
   /** Jump to latest: scroll to the newest entry, follow again, and hand focus to the transcript. */

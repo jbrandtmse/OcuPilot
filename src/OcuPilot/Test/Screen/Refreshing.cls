@@ -37,6 +37,7 @@ XData Declaration
   "rowActions": [{"id": "terminate", "selfProtection": ""}],
   "emptyStateKey": "",
   "commandAliases": ["processes"],
+  "suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainScreen"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainLog"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptChangeOneThing"}],
   "classicPage": "OcuPilotTestClassicPageRefreshing",
   "classicLinkExemption": {"exempt": false, "reason": ""},
   "toolIdentifier": "osmgmt.processes"

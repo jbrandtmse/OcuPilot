@@ -47,6 +47,11 @@ XData Declaration
   "secretArguments": ["ClientSecret", "ClientPassword", "RegistrationAccessToken"],
   "emptyStateKey": "oauthClientsEmpty",
   "commandAliases": [],
+  "suggestedPrompts": [
+    {"groupKey": "userPromptGroupSignIn", "textKey": "oAuthClientTabPrompt1"},
+    {"groupKey": "userPromptGroupSignIn", "textKey": "oAuthClientTabPrompt2"},
+    {"groupKey": "userPromptGroupSignIn", "textKey": "oAuthClientTabPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.OAuth2.Client.ConfigurationList",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

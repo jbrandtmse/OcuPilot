@@ -209,6 +209,7 @@ services:
       # classes: ProcessControl, ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token
       # classes: ToolSetFull
       # classes: ToolWire, TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire
+      # classes: TurnStream
       # classes: WebAppWire
       # classes: UserCreateWire, RoleWire, ResourceWire, X509Wire, WalletWire, DeviceWire, DeviceWriteGate
       # classes: UserSave, UserSignIn, WebAppSave, WebAppWeakening
@@ -305,6 +306,7 @@ services:
       # scripted adapter. Either is a separate process no in-process stub reaches, so the row is
       # armed by the environment, and only here.
       # classes: TurnGrounding
+      # classes: TurnStream
       # classes: AgentConnectionBound, AgentConnectionRoles, AgentConnectionWire, LedgerWire, ToolWire, TurnChain
       # classes: TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnStore
       # classes: TurnWire, TurnWireFixture

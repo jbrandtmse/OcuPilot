@@ -91,6 +91,15 @@ Property Reply As %String(MAXLEN = "");
 /// <property>OcuPilot.Kernel.State.Step.Target</property>).</p>
 Property ContextRoute As %String(MAXLEN = 512);
 
+/// <p>The reply's citations as JSON text (<method>OcuPilot.Kernel.Agent.Citations.Cite</method>'s
+/// array): <code>[]</code> when the reply cites nothing, <code>""</code> when the turn ended without
+/// a reply. Stored as data, never as a reference the instance resolves
+/// (AD-37), and never replayed to the model.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b> (Consistency Conventions): a row stored
+/// before this property existed reads it back as <code>""</code>, which reads as no citations, so no
+/// older row is reinterpreted.</p>
+Property Citations As %String(MAXLEN = "");
+
 Index TurnKeyIdx On TurnKey [ Unique ];
 
 Index TurnUserIdx On UserName;
@@ -319,9 +328,10 @@ ClassMethod GuardedDropped(pKey As %String, Output pDropped As %Integer) As %Sta
 
 /// <p>End turn <var>pKey</var> in <var>pState</var> with <var>pCode</var>, the iteration-limit
 /// marker <var>pLimitHit</var>, the reply <var>pReply</var> cut at the text cap, and the step
-/// <var>pErrorSeq</var> it ended on; then release <var>pUser</var>'s slot. A row already terminal
-/// is left as it is. The slot is released on every path.</p>
-ClassMethod GuardedFinish(pKey As %String, pUser As %String, pState As %String, pCode As %String, pLimitHit As %String, pReply As %String, pErrorSeq As %Integer, pLimitsClass As %String) As %Status
+/// <var>pErrorSeq</var> it ended on, and the reply's citations <var>pCitations</var> (JSON text);
+/// then release <var>pUser</var>'s slot. A row already terminal is left as it is. The slot is
+/// released on every path.</p>
+ClassMethod GuardedFinish(pKey As %String, pUser As %String, pState As %String, pCode As %String, pLimitHit As %String, pReply As %String, pErrorSeq As %Integer, pLimitsClass As %String, pCitations As %String = "") As %Status
 {
     Set tSC = $$$OK
     Try {
@@ -336,6 +346,7 @@ ClassMethod GuardedFinish(pKey As %String, pUser As %String, pState As %String, 
         Set tRow.LimitHit = pLimitHit
         Set tRow.Reply = ..Cap(pReply, +$Parameter(pLimitsClass, "TEXTMAXLENGTH"))
         Set tRow.ErrorSeq = +pErrorSeq
+        Set tRow.Citations = pCitations
         Set tRow.EndedAt = ..Timestamp()
         Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
         Set tRow = ""
@@ -447,7 +458,8 @@ ClassMethod GuardedForOwner(pKey As %String, pUser As %String, Output pFound As 
 
 /// <p>The progress projection of turn <var>pKey</var> when <var>pUser</var> owns it:
 /// <code>{turnId, state, startedAt, endedAt, iterations, tokens{input,output}, limit, steps,
-/// stepsDropped, reply, error, navigation?}</code>. <code>error</code> is <code>{seq, code}</code>
+/// stepsDropped, reply, citations, error, navigation?}</code>. <code>citations</code> is always an
+/// array (<method>CitationsArray</method>). <code>error</code> is <code>{seq, code}</code>
 /// when the turn ended with a code, else <code>null</code>; the caller adds its <code>reason</code>.
 /// Ownership is <method>GuardedForOwner</method>'s answer, so there is one predicate that decides
 /// it.</p>
@@ -485,6 +497,7 @@ ClassMethod GuardedView(pKey As %String, pUser As %String, Output pFound As %Boo
     Do tView.%Set("steps", tSteps)
     Do tView.%Set("stepsDropped", +tRow.StepsDropped, "number")
     Do ..SetNullable(tView, "reply", $Select(tRow.State = ..#STATECOMPLETED: ..Text(tRow.Reply), 1: ""))
+    Do tView.%Set("citations", ..CitationsArray($Select(tRow.State = ..#STATECOMPLETED: ..Text(tRow.Citations), 1: "")))
     If ..Text(tRow.Code) = "" {
         Do tView.%Set("error", "", "null")
     } Else {
@@ -566,6 +579,21 @@ ClassMethod OpenByKey(pKey As %String, Output pRow) As %Status [ Private ]
 ClassMethod NewKey() As %String [ Private ]
 {
     Quit $ZConvert(##class(%xsd.hexBinary).LogicalToXSD($System.Encryption.GenCryptRand(16)), "L")
+}
+
+/// <p>The stored citations text <var>pJson</var> as an array: <code>[]</code> when it is empty, does
+/// not parse or is not an array.</p>
+ClassMethod CitationsArray(pJson As %String) As %DynamicArray
+{
+    Set tArray = []
+    Try {
+        If (pJson = "") || (pJson = $Char(0)) Quit
+        Set tParsed = ##class(%DynamicAbstractObject).%FromJSON(pJson)
+        If $IsObject(tParsed) && tParsed.%IsA("%Library.DynamicArray") Set tArray = tParsed
+    } Catch ex {
+        Set tArray = []
+    }
+    Quit tArray
 }
 
 /// <p>Set <var>pKey</var> on <var>pObject</var> to <var>pValue</var>, or to JSON null when it is

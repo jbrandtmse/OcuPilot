@@ -57,6 +57,11 @@ XData Declaration
   "context": {"fields": ["LastStart", "Completed", "Name", "Status", "Result", "TaskId", "Namespace", "Routine", "Pid", "ErrDate", "ErrNumber", "Username", "LogDatetime"], "secretFields": []},
   "emptyStateKey": "taskHistoryEmpty",
   "commandAliases": ["task history", "task runs"],
+  "suggestedPrompts": [
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "taskHistoryListPrompt1"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "taskHistoryListPrompt2"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "taskHistoryListPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.TaskHistory",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

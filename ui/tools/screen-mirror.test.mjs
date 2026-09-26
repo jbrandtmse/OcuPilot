@@ -43,6 +43,8 @@ import {
   sideBarPositionProblem,
   tabGroupProblem,
   suggestedPromptsProblem,
+  PROMPT_GROUP_KEYS,
+  SCREEN_REGISTRY_SOURCE,
   tabProblem,
 } from './screen-mirror.mjs';
 import { loadStrings } from './strings.mjs';
@@ -56,6 +58,15 @@ function testCorpus(file, name) {
   assert.ok(body !== null, `${file.join('/')} carries an 'XData ${name}' block`);
   return JSON.parse(body);
 }
+
+/** Three sound prompts, spread into every built fixture: a built screen declares them (Story 11.3). */
+const FIXTURE_PROMPTS = {
+  suggestedPrompts: [
+    { groupKey: 'promptGroupTroubleshooting', textKey: 'homeStarterPromptExplainScreen' },
+    { groupKey: 'promptGroupTroubleshooting', textKey: 'homeStarterPromptExplainLog' },
+    { groupKey: 'promptGroupTroubleshooting', textKey: 'homeStarterPromptChangeOneThing' },
+  ],
+};
 
 // The drift check AD-3's "a checked-in artifact, never runtime reflection" needs: the mirror in
 // `ui/src/app/core/screens.generated.ts` must be exactly what the XData declarations in
@@ -649,6 +660,38 @@ test('suggestedPromptsProblem returns every sentence OcuPilot.Test.PromptCorpus 
     () => buildMirror({ ...sources, screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }] }),
     /suggestedPrompts declares 2/
   );
+  const promptless = structuredClone(userForm.declaration);
+  delete promptless.suggestedPrompts;
+  assert.throws(
+    () => buildMirror({ ...sources, screens: [{ file: 'Promptless.cls', className: 'OcuPilot.Screen.Descriptor.Promptless', declaration: promptless }] }),
+    /a built screen declares at least 3 suggestedPrompts/
+  );
+});
+
+// Story 11.3: the group vocabulary is one list, held by `Registry.cls`'s `PROMPTGROUPKEYS` and by
+// `PROMPT_GROUP_KEYS`, in the same order.
+test('PROMPT_GROUP_KEYS equals OcuPilot.Screen.Registry\'s PROMPTGROUPKEYS', () => {
+  const match = /^Parameter\s+PROMPTGROUPKEYS\s*=\s*"([^"]*)"\s*;/m.exec(readFileSync(SCREEN_REGISTRY_SOURCE, 'utf8'));
+  assert.ok(match, 'Registry.cls declares PROMPTGROUPKEYS');
+  assert.deepEqual(match[1].split(','), PROMPT_GROUP_KEYS);
+  assert.equal(new Set(PROMPT_GROUP_KEYS).size, 10, 'ten distinct group keys');
+});
+
+// Story 11.3 (AC1, AC3): every shipped built screen declares at least three prompts, each group from
+// the vocabulary and each key resolving against the string source.
+test('every shipped built screen declares at least three suggested prompts that resolve', () => {
+  const strings = loadStrings();
+  const built = readSources().screens.filter((screen) => screen.declaration.built === true);
+  assert.ok(built.length >= 58, `the built roster is read (read ${built.length})`);
+  for (const screen of built) {
+    const prompts = screen.declaration.suggestedPrompts;
+    assert.ok(Array.isArray(prompts) && prompts.length >= 3, `${screen.className} declares at least three prompts`);
+    for (const prompt of prompts) {
+      assert.ok(PROMPT_GROUP_KEYS.includes(prompt.groupKey), `${screen.className}: '${prompt.groupKey}' is a declared group`);
+      assert.ok(prompt.groupKey in strings && strings[prompt.groupKey] !== '', `${screen.className}: '${prompt.groupKey}' resolves`);
+      assert.ok(prompt.textKey in strings && strings[prompt.textKey] !== '', `${screen.className}: '${prompt.textKey}' resolves`);
+    }
+  }
 });
 
 // Story 6.4, AD-5: every case in `OcuPilot.Test.TabCorpus` gets its exact sentence or `null` from
@@ -801,7 +844,7 @@ test('rowTargetProblem and rowTargetResolutionProblem return every sentence OcuP
 // Mutation (Rule 19): make `parentScopeResolutionProblem` return `null` unconditionally -> every
 // refusing case below goes red.
 test('parentScopeResolutionProblem refuses a parentScope that does not resolve, and passes a sound roster', () => {
-  const notFound = [{ className: 'OcuPilot.Test.ParentScope.NotFound.Child', declaration: { built: true, route: 'parent-scope/not-found/child', parentScope: 'parent-scope/not-found/nonexistent', id: { kind: 'single' } } }];
+  const notFound = [{ className: 'OcuPilot.Test.ParentScope.NotFound.Child', declaration: { ...FIXTURE_PROMPTS, built: true, route: 'parent-scope/not-found/child', parentScope: 'parent-scope/not-found/nonexistent', id: { kind: 'single' } } }];
   assert.equal(
     parentScopeResolutionProblem(notFound),
     "OcuPilot.Test.ParentScope.NotFound.Child: parentScope 'parent-scope/not-found/nonexistent' names no built descriptor with that route and an id (DW-1020)",
@@ -810,7 +853,7 @@ test('parentScopeResolutionProblem refuses a parentScope that does not resolve, 
 
   const notBuilt = [
     { className: 'OcuPilot.Test.ParentScope.NotBuilt.Parent', declaration: { built: false, route: 'parent-scope/not-built/parent', parentScope: '', id: { kind: 'single' } } },
-    { className: 'OcuPilot.Test.ParentScope.NotBuilt.Child', declaration: { built: true, route: 'parent-scope/not-built/child', parentScope: 'parent-scope/not-built/parent', id: { kind: 'single' } } },
+    { className: 'OcuPilot.Test.ParentScope.NotBuilt.Child', declaration: { ...FIXTURE_PROMPTS, built: true, route: 'parent-scope/not-built/child', parentScope: 'parent-scope/not-built/parent', id: { kind: 'single' } } },
   ];
   assert.equal(
     parentScopeResolutionProblem(notBuilt),
@@ -819,8 +862,8 @@ test('parentScopeResolutionProblem refuses a parentScope that does not resolve, 
   );
 
   const noId = [
-    { className: 'OcuPilot.Test.ParentScope.NoId.Parent', declaration: { built: true, route: 'parent-scope/no-id/parent', parentScope: '', id: { kind: 'none' } } },
-    { className: 'OcuPilot.Test.ParentScope.NoId.Child', declaration: { built: true, route: 'parent-scope/no-id/child', parentScope: 'parent-scope/no-id/parent', id: { kind: 'single' } } },
+    { className: 'OcuPilot.Test.ParentScope.NoId.Parent', declaration: { ...FIXTURE_PROMPTS, built: true, route: 'parent-scope/no-id/parent', parentScope: '', id: { kind: 'none' } } },
+    { className: 'OcuPilot.Test.ParentScope.NoId.Child', declaration: { ...FIXTURE_PROMPTS, built: true, route: 'parent-scope/no-id/child', parentScope: 'parent-scope/no-id/parent', id: { kind: 'single' } } },
   ];
   assert.equal(
     parentScopeResolutionProblem(noId),
@@ -834,7 +877,7 @@ test('parentScopeResolutionProblem refuses a parentScope that does not resolve, 
     "and so is one whose id.kind is empty, as the server's twin reads an empty kind"
   );
 
-  const self = [{ className: 'OcuPilot.Test.ParentScope.Self.Child', declaration: { built: true, route: 'parent-scope/self/child', parentScope: 'parent-scope/self/child', id: { kind: 'single' } } }];
+  const self = [{ className: 'OcuPilot.Test.ParentScope.Self.Child', declaration: { ...FIXTURE_PROMPTS, built: true, route: 'parent-scope/self/child', parentScope: 'parent-scope/self/child', id: { kind: 'single' } } }];
   assert.equal(
     parentScopeResolutionProblem(self),
     "OcuPilot.Test.ParentScope.Self.Child: parentScope 'parent-scope/self/child' names no built descriptor with that route and an id (DW-1020)",
@@ -842,9 +885,9 @@ test('parentScopeResolutionProblem refuses a parentScope that does not resolve, 
   );
 
   const sound = [
-    { className: 'OcuPilot.Test.ParentScope.Sound.Parent', declaration: { built: true, route: 'parent-scope/sound/parent', parentScope: '', id: { kind: 'single' } } },
-    { className: 'OcuPilot.Test.ParentScope.Sound.Child', declaration: { built: true, route: 'parent-scope/sound/child', parentScope: 'parent-scope/sound/parent', id: { kind: 'single' } } },
-    { className: 'OcuPilot.Test.ParentScope.Sound.NoParent', declaration: { built: true, route: 'parent-scope/sound/no-parent', parentScope: '', id: { kind: 'single' } } },
+    { className: 'OcuPilot.Test.ParentScope.Sound.Parent', declaration: { ...FIXTURE_PROMPTS, built: true, route: 'parent-scope/sound/parent', parentScope: '', id: { kind: 'single' } } },
+    { className: 'OcuPilot.Test.ParentScope.Sound.Child', declaration: { ...FIXTURE_PROMPTS, built: true, route: 'parent-scope/sound/child', parentScope: 'parent-scope/sound/parent', id: { kind: 'single' } } },
+    { className: 'OcuPilot.Test.ParentScope.Sound.NoParent', declaration: { ...FIXTURE_PROMPTS, built: true, route: 'parent-scope/sound/no-parent', parentScope: '', id: { kind: 'single' } } },
   ];
   assert.equal(parentScopeResolutionProblem(sound), null, 'a roster of resolving and empty parentScope declarations passes');
 
@@ -1602,7 +1645,7 @@ test('BuiltArchetypeKey holds the archetypes of built screens only, and is never
       // built screen: 0 is the sentinel for routable-but-unlisted, and an absent key already read
       // as 0 through `Base.SideBarPosition`'s own `+`, so a forgotten key would have unlisted a
       // screen silently. The unbuilt fixture is exempt, which is the rule's other half.
-      { file: 'Built.cls', className: 'OcuPilot.Screen.Descriptor.Built', declaration: { archetype: 'detail', built: true, sideBarPosition: 1 } },
+      { file: 'Built.cls', className: 'OcuPilot.Screen.Descriptor.Built', declaration: { ...FIXTURE_PROMPTS, archetype: 'detail', built: true, sideBarPosition: 1 } },
       { file: 'Unbuilt.cls', className: 'OcuPilot.Screen.Descriptor.Unbuilt', declaration: { archetype: 'list', built: false } },
     ],
   });
@@ -1644,7 +1687,7 @@ test('a built screen must declare sideBarPosition as a whole number of at least 
       buildMirror({
         ...sources,
         screens: [
-          { file: 'Built.cls', className: 'OcuPilot.Screen.Descriptor.Built', declaration: { archetype: 'detail', built: true } },
+          { file: 'Built.cls', className: 'OcuPilot.Screen.Descriptor.Built', declaration: { ...FIXTURE_PROMPTS, archetype: 'detail', built: true } },
         ],
       }),
     /sideBarPosition/,

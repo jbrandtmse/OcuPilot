@@ -785,6 +785,10 @@ describe('the shell frame', () => {
     // and the next principal to sign in on this tab would adopt a departed principal's
     // conversation (AD-8).
     expect(turn.conversationId()).toBe(null);
+    // Mutation (Rule 19): delete `void this.turn.restore()` from the same branch -> this goes red,
+    // and the idle greeting and its suggested prompts never render after an interactive sign-in
+    // (Story 11.3).
+    expect(turn.restored()).toBe(true);
     // Mutation (Rule 19): delete `this.agentContext.reset()` from the same branch -> this goes
     // red, and the next principal's first paint would carry the previous principal's sharing
     // choice and provider answer.

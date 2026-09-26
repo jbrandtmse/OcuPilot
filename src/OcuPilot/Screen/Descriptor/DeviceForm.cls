@@ -42,6 +42,11 @@ XData Declaration
   "fingerprintExcludes": [],
   "emptyStateKey": "",
   "commandAliases": [],
+  "suggestedPrompts": [
+    {"groupKey": "sslPromptGroupConnections", "textKey": "deviceFormPrompt1"},
+    {"groupKey": "sslPromptGroupConnections", "textKey": "deviceFormPrompt2"},
+    {"groupKey": "sslPromptGroupConnections", "textKey": "deviceFormPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.Config.Device",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "toolIdentifier": "osmgmt.deviceform"

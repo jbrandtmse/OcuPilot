@@ -239,7 +239,7 @@ test('(a) a card a real turn minted lays out inside the panel, and Confirm is th
       title: document.querySelector('.ocu-proposal-card-title').textContent.trim(),
       rows: document.querySelectorAll('app-proposal-card .ocu-diff-row').length,
       countdown: document.querySelector('.ocu-proposal-card-countdown').textContent.trim(),
-      runsAs: document.querySelector('.ocu-proposal-card-runs-as').textContent.trim(),
+      runsAs: document.querySelector('.ocu-proposal-card-runs-as:not([data-slot])').textContent.trim(),
       guard: document.querySelector('.ocu-proposal-card-guard').textContent.trim(),
     }));
     assert.equal(rendered.title, `Proposal \u00b7 ${STRINGS.proposalEntityWebApplication} ${TARGET}`);

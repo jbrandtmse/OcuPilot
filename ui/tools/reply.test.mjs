@@ -472,3 +472,46 @@ test('a soft line break renders as its own break node, and breaks the reply\'s t
   const kinds = para.children.map((n) => n.kind);
   assert.ok(kinds.includes('break'), `expected a break node among ${JSON.stringify(kinds)}`);
 });
+
+// --- Story 11.4: citation chips ------------------------------------------------------------
+//
+// Mutation (Rule 19): let `codespanNode` answer a chip inside a link label -> "a code span inside a
+// link label stays code" goes red.
+
+const SYSTEM_CITATION = { type: 'user', scope: 'instance', id: '_SYSTEM', route: 'permissions/users', label: '_SYSTEM' };
+
+/** Every citation node in the tree, depth-first. */
+function collectCitations(nodes, out = []) {
+  for (const node of nodes) {
+    if (node.kind === 'citation') out.push(node);
+    else if (node.kind === 'element') collectCitations(node.children, out);
+  }
+  return out;
+}
+
+test('a code span naming a citation becomes that citation\'s chip; one naming none stays code', () => {
+  const nodes = parseReply('`_SYSTEM` holds %All and `NotARow` does not.', { origin: ORIGIN, citations: [SYSTEM_CITATION] });
+  const chips = collectCitations(nodes);
+  assert.equal(chips.length, 1);
+  assert.equal(chips[0].citation, SYSTEM_CITATION, 'the chip carries the citation object it was given');
+  const code = findFirst(nodes, (n) => n.tag === 'code');
+  assert.equal(textOf([code]), 'NotARow', 'the uncited span renders as inline code');
+  assert.ok(REPLY_TAGS.includes('button'), 'a chip is a button, and REPLY_TAGS admits it');
+});
+
+test('with no citations every code span stays code', () => {
+  assert.equal(collectCitations(parse('`_SYSTEM`')).length, 0);
+  assert.equal(collectCitations(parseReply('`_SYSTEM`', { origin: ORIGIN, citations: [] })).length, 0);
+});
+
+test('a code span inside a link label stays code', () => {
+  const nodes = parseReply(`[\`_SYSTEM\`](${ORIGIN}/x)`, { origin: ORIGIN, citations: [SYSTEM_CITATION] });
+  assert.equal(collectCitations(nodes).length, 0);
+  const link = findFirst(nodes, (n) => n.tag === 'a');
+  assert.ok(findFirst(link.children, (n) => n.tag === 'code'), 'the label keeps its code element');
+});
+
+test('a fenced block is never a chip', () => {
+  const nodes = parseReply('```\n_SYSTEM\n```', { origin: ORIGIN, citations: [SYSTEM_CITATION] });
+  assert.equal(collectCitations(nodes).length, 0);
+});

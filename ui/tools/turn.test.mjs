@@ -40,6 +40,7 @@ const {
   stepLabel,
   confirmedWriteStep,
   turnErrorBanner,
+  streamedText,
   isTerminalState,
 } = await import(corePath('turn.ts'));
 const { STRINGS } = await import(corePath('strings.ts'));
@@ -1691,4 +1692,176 @@ test('New conversation closes every proposal this store had open (DW-1243)', asy
   assert.equal(await turn.newConversation(), true);
   assert.deepEqual(bus.events.map((event) => event.kind), ['proposal-open', 'proposal-closed']);
   assert.deepEqual(turn.entries(), []);
+});
+
+// --- Story 11.7: the streamed text of a running model call -----------------------------------
+//
+// Mutations (Rule 19):
+// - drop the `live` test from `streamedText` -> "a non-live entry" goes red.
+// - drop the `state` test from `streamedText` -> "a live entry whose turn has ended" goes red.
+
+/** A model step, running with `text` unless overridden. */
+function modelStep(overrides = {}) {
+  return step({ kind: 'model', name: 'provider', status: 'running', ...overrides });
+}
+
+test('streamedText answers the running model step\'s text on the live, running entry', () => {
+  const entry = { live: true, state: 'running', steps: [step(), modelStep({ seq: 2, text: 'Hel' })] };
+  assert.equal(streamedText(entry), 'Hel');
+});
+
+test('streamedText is null for a finished model step, an empty text, a non-live entry and an ended turn', () => {
+  assert.equal(streamedText({ live: true, state: 'running', steps: [modelStep({ status: 'ok', text: 'Hello' })] }), null, 'a finished model step');
+  assert.equal(streamedText({ live: true, state: 'running', steps: [modelStep({ text: '' })] }), null, 'an empty text');
+  assert.equal(streamedText({ live: false, state: 'running', steps: [modelStep({ text: 'Hel' })] }), null, 'a non-live entry');
+  assert.equal(streamedText({ live: true, state: 'stopped', steps: [modelStep({ text: 'Hel' })] }), null, 'a live entry whose turn has ended');
+  assert.equal(streamedText({ live: true, state: 'running', steps: [modelStep({ text: 'Hel' }), step({ seq: 2 })] }), 'Hel', 'a tool step after it does not hide it');
+  assert.equal(streamedText({ live: true, state: 'running', steps: [modelStep({ status: 'ok', text: 'old' }), step({ seq: 2 })] }), null, 'the last model step decides');
+});
+
+for (const ending of ['completed', 'failed', 'stopped']) {
+  test(`streamedText grows across two polls and is null once the turn ends ${ending}`, async () => {
+    const { schedule, scheduled } = fakeSchedule();
+    const error = ending === 'completed' ? null : { seq: 1, code: 'PROVIDER.TRANSPORT', reason: 'The provider call did not complete' };
+    const api = fakeApi({
+      [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+      [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+      [turnProgressPath('turn-1')]: [
+        ok({ turnId: 'turn-1', state: 'running', steps: [modelStep({ text: 'Hel' })], stepsDropped: 0, reply: null, error: null }),
+        ok({ turnId: 'turn-1', state: 'running', steps: [modelStep({ text: 'Hello, wor' })], stepsDropped: 0, reply: null, error: null }),
+        ok({
+          turnId: 'turn-1',
+          state: ending,
+          steps: [modelStep({ status: ending === 'completed' ? 'ok' : 'running', text: ending === 'completed' ? 'Hello, world' : 'Hello, wor' })],
+          stepsDropped: 0,
+          reply: ending === 'completed' ? 'Hello, world' : null,
+          error,
+        }),
+      ],
+    });
+    const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+    const sent = turn.send('say hello');
+    await settle();
+    await settle();
+    await settle();
+    scheduled.shift().run();
+    await settle();
+    assert.equal(streamedText(turn.entries().at(-1)), 'Hel', 'the first poll shows the first snapshot');
+    scheduled.shift().run();
+    await settle();
+    assert.equal(streamedText(turn.entries().at(-1)), 'Hello, wor', 'the second shows it grown');
+    scheduled.shift().run();
+    await settle();
+    await sent;
+    assert.equal(streamedText(turn.entries().at(-1)), null, `and once the turn ends ${ending} there is none`);
+  });
+}
+
+// --- Story 11.8: the proposal's privilege line -------------------------------------------------
+
+const { parseProposals: parsePrivilegeProposals } = await import(corePath('turn.ts'));
+
+/** The `privilege` a wire row carrying `privilege` parses to. */
+function parsedPrivilege(privilege) {
+  const row = wireProposal();
+  if (privilege !== undefined) row.privilege = privilege;
+  const [proposal] = parsePrivilegeProposals([row]);
+  return proposal.privilege;
+}
+
+test('parseProposal carries a well-formed privilege as the instance sent it', () => {
+  assert.deepEqual(parsedPrivilege({ requires: ['%Admin_Secure:USE', '%DB_IRISSYS:READ'], missing: '' }), {
+    requires: ['%Admin_Secure:USE', '%DB_IRISSYS:READ'],
+    missing: '',
+  });
+  assert.deepEqual(parsedPrivilege({ requires: ['%Admin_Secure:USE'], missing: '%Admin_Secure:USE' }), {
+    requires: ['%Admin_Secure:USE'],
+    missing: '%Admin_Secure:USE',
+  });
+});
+
+test('parseProposal reads an absent, null or malformed privilege as null', () => {
+  assert.equal(parsedPrivilege(undefined), null, 'absent');
+  assert.equal(parsedPrivilege(null), null, 'null');
+  assert.equal(parsedPrivilege({ requires: '%Admin_Secure:USE', missing: '' }), null, 'requires not an array');
+  assert.equal(parsedPrivilege({ requires: [], missing: '' }), null, 'requires empty');
+  assert.equal(parsedPrivilege({ requires: ['%Admin_Secure:USE', 7], missing: '' }), null, 'a non-string member');
+  assert.equal(parsedPrivilege({ requires: ['%Admin_Secure:USE'], missing: null }), null, 'missing not a string');
+  assert.equal(parsedPrivilege({ requires: ['%Admin_Secure:USE'] }), null, 'missing absent');
+});
+
+test("a confirm refused for a pair records that pair as the line's missing one", async () => {
+  // mutation: drop the `recordProposalMissingPair` call from `decideProposal`'s refusal branch ->
+  // the line keeps saying the set is held and this goes red.
+  const held = { requires: ['%Admin_Secure:USE', '%DB_IRISSYS:READ'], missing: '' };
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal({ privilege: held })] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      err(403, 'AUTH.NOPRIVILEGE', 'A privilege this action requires is missing.', { failedPair: '%Admin_Secure:USE' }),
+    ],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+  assert.deepEqual(turn.entries()[0].proposals[0].privilege, held);
+
+  const outcome = await turn.confirmProposal('p1');
+  assert.equal(outcome.failedPair, '%Admin_Secure:USE');
+  assert.deepEqual(turn.entries()[0].proposals[0].privilege, { requires: held.requires, missing: '%Admin_Secure:USE' });
+});
+
+// --- Story 11.4: citations on the poll and the restore ---------------------------------------
+//
+// Mutation (Rule 19): drop `citations` from the poll's spread in `pollOnce` -> "a finished turn's
+// final poll carries its citations" goes red.
+
+const CITED = { type: 'user', scope: 'instance', id: '_SYSTEM', route: 'permissions/users', label: '_SYSTEM' };
+
+test("a finished turn's final poll carries its citations; a running one carries none", async () => {
+  const storage = memoryStorage();
+  const { schedule, scheduled } = fakeSchedule();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [
+      ok({ turnId: 'turn-1', state: 'running', steps: [], stepsDropped: 0, reply: null, citations: [], error: null }),
+      ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: '`_SYSTEM`', citations: [CITED, { ...CITED, route: 'no/such' }], error: null }),
+    ],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: freshTab(), schedule });
+  void turn.send('who holds %All?');
+  await settle();
+  await settle();
+  await settle();
+  assert.deepEqual(turn.entries().at(-1).citations, [], 'the live entry starts with none');
+  scheduled.shift().run();
+  await settle();
+  assert.deepEqual(turn.entries().at(-1).citations, [], 'a running poll carries none');
+  scheduled.shift().run();
+  await settle();
+  const finished = turn.entries().at(-1);
+  assert.equal(finished.live, false);
+  assert.deepEqual(finished.citations, [CITED], 'the final poll carries the citation; the unbuilt route is dropped');
+});
+
+test('a restored entry carries its citations, and an entry stored without any restores []', async () => {
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'convo-1' });
+  const api = fakeApi({
+    [conversationReadPath('convo-1')]: [
+      ok({
+        conversationId: 'convo-1',
+        turns: [
+          { seq: 1, message: 'old', state: 'completed', reply: 'hello', error: null, steps: [], stepsDropped: 0 },
+          { seq: 2, message: 'new', state: 'completed', reply: '`_SYSTEM`', citations: [CITED], error: null, steps: [], stepsDropped: 0 },
+        ],
+      }),
+    ],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab() });
+  await turn.restore();
+  const [older, newer] = turn.entries();
+  assert.deepEqual(older.citations, []);
+  assert.deepEqual(newer.citations, [CITED]);
 });

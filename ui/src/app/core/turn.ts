@@ -8,7 +8,7 @@
  * **One conversation per tab.** The id lives in `sessionStorage` (`ocupilot.conversation`) and
  * is adopted only on reload or Back/Forward -- `token-store.ts`'s navigation-kind rule, reused
  * here rather than duplicated, so a new or duplicated tab always starts fresh. `restore()` is
- * called once, at bootstrap: with no adopted id it resolves at once: with one, it reads the
+ * called at bootstrap and after sign-out: with no adopted id it resolves at once: with one, it reads the
  * conversation back and drops the id on a 404 (the owner deleted it, or it never existed).
  *
  * **Ensure, then send.** `send()` mints a conversation with `POST /conversation` when this tab
@@ -37,6 +37,7 @@
 
 import type { ApiService, JsonResult } from './api';
 import { CHANGE_ACTIONS, type ChangeAction, type ChangeBus } from './change-bus.ts';
+import { parseCitations, type Citation } from './citations.ts';
 import type { ScreenContextPayload } from './screen-context';
 import type { NavigationKind, TokenStorage } from './token-store';
 
@@ -242,6 +243,22 @@ export interface TurnProposal {
    * A code, not a sentence: the card resolves it to the published string (`consequenceSentence`).
    */
   readonly consequence: string;
+  /**
+   * The pairs the write's own gate requires and the first one the signed-in user does not hold
+   * (AD-8), as the instance evaluated them at this read; `null` when the proposal recorded none.
+   * Optional so a literal built before it existed still compiles.
+   */
+  readonly privilege?: TurnProposalPrivilege | null;
+}
+
+/**
+ * A proposal's privilege line as the wire carries it: every `resource:permission` pair the write's
+ * gate requires, in order, and the first the user lacks, or `''` when every one is held. Both are
+ * the instance's own answers; the client derives neither.
+ */
+export interface TurnProposalPrivilege {
+  readonly requires: readonly string[];
+  readonly missing: string;
 }
 
 /**
@@ -281,6 +298,11 @@ export interface TurnEntry {
    * transcript is always shown that way, with Re-propose as the accommodation).
    */
   readonly proposals: readonly TurnProposal[];
+  /**
+   * The rows the final reply cites (Story 11.4), as the instance derived them; `[]` while the turn
+   * runs, when it cites none, and on an entry stored before citations existed.
+   */
+  readonly citations: readonly Citation[];
   /** True only for the turn this tab is currently running. Never true for a restored entry. */
   readonly live: boolean;
 }
@@ -525,7 +547,23 @@ function parseProposal(value: unknown): TurnProposal | null {
     auditWarning: boolAt(row, 'auditWarning'),
     destructive: boolAt(row, 'destructive'),
     consequence: textAt(row, 'consequence'),
+    privilege: parseProposalPrivilege(row['privilege']),
   };
+}
+
+/**
+ * A wire `privilege` object, or `null` unless `requires` is a non-empty array of strings and
+ * `missing` is a string.
+ */
+function parseProposalPrivilege(value: unknown): TurnProposalPrivilege | null {
+  const row = asRecord(value);
+  if (row === null) return null;
+  const requires = row['requires'];
+  const missing = row['missing'];
+  if (!Array.isArray(requires) || requires.length === 0) return null;
+  if (!requires.every((pair): pair is string => typeof pair === 'string')) return null;
+  if (typeof missing !== 'string') return null;
+  return { requires: [...requires], missing };
 }
 
 export function parseProposals(value: unknown): TurnProposal[] {
@@ -607,6 +645,7 @@ function parseRestoredEntry(value: unknown): TurnEntry | null {
     steps: settledSteps(parseSteps(row['steps']), error),
     stepsDropped: numberAt(row, 'stepsDropped'),
     proposals: restoredProposals(row['proposals']),
+    citations: parseCitations(row['citations']),
     live: false,
   };
 }
@@ -722,6 +761,22 @@ export function turnErrorBanner(
   return template.split('<step>').join(label).split('<reason>').join(reason);
 }
 
+/**
+ * The text so far of a streamed model call (AD-33): the `text` of the entry's last `model` step
+ * when that step is `running`, the entry is the live one and it is `running`, and the text is not
+ * empty -- otherwise `null`. It is untrusted content, rendered like a reply.
+ */
+export function streamedText(entry: Pick<TurnEntry, 'live' | 'state' | 'steps'>): string | null {
+  if (!entry.live || entry.state !== 'running') return null;
+  for (let i = entry.steps.length - 1; i >= 0; i -= 1) {
+    const step = entry.steps[i];
+    if (step.kind !== 'model') continue;
+    if (step.status !== 'running' || step.text === '') return null;
+    return step.text;
+  }
+  return null;
+}
+
 export interface TurnStoreOptions {
   readonly api: ApiService;
   /** The tab's `sessionStorage`, or an in-memory stand-in (`token-store.ts`'s `readSessionStorage`). */
@@ -835,7 +890,7 @@ export class TurnStore {
     return this.conversationIdValue;
   }
 
-  /** Whether `restore()` has settled -- once, at bootstrap. */
+  /** Whether `restore()` has settled -- at bootstrap, and again after sign-out. */
   restored(): boolean {
     return this.restoredValue;
   }
@@ -1013,6 +1068,7 @@ export class TurnStore {
       steps: [],
       stepsDropped: 0,
       proposals: [],
+      citations: [],
       live: true,
     };
     this.notify();
@@ -1151,6 +1207,7 @@ export class TurnStore {
       code: outcome.code === '' ? null : outcome.code,
       reason: outcome.reason === '' ? null : outcome.reason,
     });
+    if (outcome.failedPair !== '') this.recordProposalMissingPair(id, outcome.failedPair);
     return outcome;
   }
 
@@ -1184,6 +1241,33 @@ export class TurnStore {
     }
     this.notify();
     this.publishProposals(this.everyProposal());
+  }
+
+  /**
+   * Record on proposal `id`'s privilege line the pair Confirm's own gate refused it for (AD-8), so
+   * a card whose turn no longer polls stops saying the set is held. A proposal with no line is left
+   * alone.
+   */
+  private recordProposalMissingPair(id: string, failedPair: string): void {
+    const apply = (proposals: readonly TurnProposal[]): readonly TurnProposal[] =>
+      proposals.some((proposal) => proposal.proposalId === id && proposal.privilege)
+        ? proposals.map((proposal) =>
+            proposal.proposalId === id && proposal.privilege
+              ? { ...proposal, privilege: { ...proposal.privilege, missing: failedPair } }
+              : proposal
+          )
+        : proposals;
+    this.entriesValue = this.entriesValue.map((entry) => {
+      const proposals = apply(entry.proposals);
+      return proposals === entry.proposals ? entry : { ...entry, proposals };
+    });
+    if (this.liveEntryValue !== null) {
+      const proposals = apply(this.liveEntryValue.proposals);
+      if (proposals !== this.liveEntryValue.proposals) {
+        this.liveEntryValue = { ...this.liveEntryValue, proposals };
+      }
+    }
+    this.notify();
   }
 
   /**
@@ -1363,8 +1447,9 @@ export class TurnStore {
     // directive for a turn that has already ended.
     this.pendingNavigationValue = isTerminalState(state) ? null : parseNavigation(body['navigation'], steps);
     const proposals = parseProposals(body['proposals']);
+    const citations = parseCitations(body['citations']);
     if (this.liveEntryValue !== null) {
-      this.liveEntryValue = { ...this.liveEntryValue, state, steps, stepsDropped, reply, error, proposals };
+      this.liveEntryValue = { ...this.liveEntryValue, state, steps, stepsDropped, reply, error, proposals, citations };
       this.notify();
     }
     // Published after the store's own state is settled and its subscribers told, so a screen

@@ -28,6 +28,7 @@ XData Declaration
   "rowActions": [{"id": "disable", "selfProtection": "serves-ocupilot"}],
   "emptyStateKey": "",
   "commandAliases": ["web apps", "applications"],
+  "suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainScreen"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainLog"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptChangeOneThing"}],
   "classicPage": "OcuPilotTestClassicPageComposite",
   "classicLinkExemption": {"exempt": false, "reason": ""},
   "toolIdentifier": "webapp.list"

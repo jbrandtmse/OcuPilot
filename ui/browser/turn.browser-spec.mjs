@@ -375,8 +375,15 @@ test('New conversation clears the transcript, and the next turn carries no earli
       `Write "OCU-TURN-MSGS-START:"_##class(OcuPilot.Test.TurnProvider).Recorded("${escapeOs(tag)}",2,"messages")_":OCU-TURN-MSGS-END",!`,
     ]);
     const sent = JSON.parse(markerValue(recordedOutput, 'TURN-MSGS') ?? '[]');
-    assert.equal(sent.length, 1, 'the new conversation carries no earlier turn');
-    assert.equal(sent[0].content, 'second turn, new conversation');
+    assert.ok(sent.length > 0, 'the second turn recorded its messages');
+    assert.ok(!JSON.stringify(sent).includes('first turn'), 'the new conversation carries no earlier turn');
+    const last = sent[sent.length - 1];
+    const lastText =
+      typeof last.content === 'string'
+        ? last.content
+        : last.content.filter((block) => block.type === 'text').map((block) => block.text).join('');
+    assert.equal(last.role, 'user');
+    assert.equal(lastText, 'second turn, new conversation', 'the final user entry is the new message');
   } finally {
     await context.close();
     forgetTag(tag);

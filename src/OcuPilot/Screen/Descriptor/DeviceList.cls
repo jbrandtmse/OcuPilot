@@ -63,6 +63,11 @@ XData Declaration
   "context": {"fields": ["Name", "PhysicalDevice", "Type", "SubType", "Description", "Alias"], "secretFields": []},
   "emptyStateKey": "deviceListEmpty",
   "commandAliases": ["devices", "device settings"],
+  "suggestedPrompts": [
+    {"groupKey": "sslPromptGroupConnections", "textKey": "deviceListPrompt1"},
+    {"groupKey": "sslPromptGroupConnections", "textKey": "deviceListPrompt2"},
+    {"groupKey": "sslPromptGroupConnections", "textKey": "deviceListPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.Config.Devices",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {

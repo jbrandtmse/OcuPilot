@@ -28,6 +28,7 @@ XData Declaration
   "rowActions": [{"id": "delete", "selfProtection": ""}],
   "emptyStateKey": "",
   "commandAliases": ["users"],
+  "suggestedPrompts": [{"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainScreen"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptExplainLog"}, {"groupKey": "promptGroupTroubleshooting", "textKey": "homeStarterPromptChangeOneThing"}],
   "classicPage": "OcuPilotTestClassicPageGated",
   "classicLinkExemption": {"exempt": false, "reason": ""},
   "toolIdentifier": "permissions.users"

@@ -31,6 +31,13 @@ Parameter AUTHSCHEME = "Bearer ";
 /// <p>The body's media type.</p>
 Parameter CONTENTTYPE = "application/json";
 
+/// <p>This family, and <class>OcuPilot.Kernel.Provider.Compatible</class> through it, streams when
+/// the caller passes a sink (AD-42); 0 turns it off.</p>
+Parameter STREAMS As %Boolean = 1;
+
+/// <p>Streamed as Chat Completions chunks ending <code>[DONE]</code>.</p>
+Parameter STREAMFAMILY As %String = "openai";
+
 /// <p>The provider key whose catalog row points at this class.</p>
 Method ProviderName() As %String
 {
@@ -43,7 +50,9 @@ Method ProviderName() As %String
 /// <method>OcuPilot.Kernel.Provider.Base.Attempts</method>'s body-could-not-be-built exit and no
 /// call is made.</p>
 /// <p><code>tools</code> is omitted rather than sent empty: an empty array advertises a tool set
-/// the turn does not have. <b>The body is written as UTF-8 bytes</b> and the media type is set
+/// the turn does not have. A streamed call (<property>Streaming</property>) also carries
+/// <code>"stream": true</code> and <code>"stream_options": {"include_usage": true}</code>, so its
+/// last chunk reports the usage a plain reply does. <b>The body is written as UTF-8 bytes</b> and the media type is set
 /// after the write, because <property>%Net.HttpRequest.ContentType</property> is a calculated
 /// property over an attribute of the entity-body stream and <code>Clear()</code> drops it.</p>
 Method CallMessages(pRequest As %Net.HttpRequest, ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %String) As %Status
@@ -62,6 +71,12 @@ Method CallMessages(pRequest As %Net.HttpRequest, ByRef pValues, ByRef pMessages
             Set tSC = ##class(OcuPilot.Kernel.Provider.ToolDefAdapter).ToOpenAi(.pTools, .tToolArray)
             If $$$ISERR(tSC) Quit
             If tToolArray.%Size() > 0 Do tBody.%Set("tools", tToolArray)
+        }
+        If ..Streaming {
+            Do tBody.%Set("stream", 1, "boolean")
+            Set tOptions = {}
+            Do tOptions.%Set("include_usage", 1, "boolean")
+            Do tBody.%Set("stream_options", tOptions)
         }
         Do pRequest.EntityBody.Clear()
         Do pRequest.EntityBody.Write($ZConvert(tBody.%ToJSON(), "O", "UTF8"))

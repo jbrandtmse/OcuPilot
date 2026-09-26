@@ -22,7 +22,7 @@
  */
 
 import { STRINGS } from './strings.ts';
-import type { TurnProposal, TurnProposalUnchangedRow } from './turn.ts';
+import type { TurnProposal, TurnProposalPrivilege, TurnProposalUnchangedRow } from './turn.ts';
 
 /**
  * One changed field, as the card draws it: the label, the before value and the after value.
@@ -115,6 +115,17 @@ export interface ProposalCardView {
    * projected the way `auditWarning` is. The card reads it through `consequenceSentence`.
    */
   readonly consequence?: string;
+  /**
+   * The privilege line (AD-8), filled from the wire's own `privilege`, or `null` when the proposal
+   * recorded no pairs. The card shows it only while Confirm does; it gates nothing.
+   */
+  readonly privilege?: ProposalPrivilegeLine | null;
+}
+
+/** The privilege line as the card draws it: the filled sentence, and whether it is the warning. */
+export interface ProposalPrivilegeLine {
+  readonly text: string;
+  readonly missing: boolean;
 }
 
 /** The consequence the kernel marks a web-application create that admits unauthenticated access with. */
@@ -375,6 +386,26 @@ function maskedRow(row: ProposalDiffRow): ProposalDiffRow {
 }
 
 /**
+ * The card's privilege line for the wire's `privilege`, or `null` for none or an empty `requires`.
+ * `<resources>` becomes every required pair, comma-separated; `<resource>` the first one missing,
+ * which turns the line into the warning. Both are the instance's answers (AD-8); nothing here
+ * derives a pair or decides whether one is held.
+ */
+export function privilegeLine(privilege: TurnProposalPrivilege | null | undefined): ProposalPrivilegeLine | null {
+  if (privilege === null || privilege === undefined || privilege.requires.length === 0) return null;
+  const resources = privilege.requires.join(', ');
+  if (privilege.missing === '') {
+    return { text: STRINGS.privilegeProposalHeld.replace('<resources>', () => resources), missing: false };
+  }
+  return {
+    text: STRINGS.privilegeProposalMissing
+      .replace('<resources>', () => resources)
+      .replace('<resource>', () => privilege.missing),
+    missing: true,
+  };
+}
+
+/**
  * One live proposal as its card renders it: `entityLabel` is the singular noun the target's screen
  * declares, `secretArguments` the names that screen declares secret, and everything else is
  * `proposal`'s own -- the instance-computed diff with every declared secret masked on both sides,
@@ -416,6 +447,7 @@ export function toCardView(
     auditWarning: proposal.auditWarning,
     destructive: proposal.destructive,
     consequence: proposal.consequence,
+    privilege: privilegeLine(proposal.privilege),
     refusalReason,
   };
 }

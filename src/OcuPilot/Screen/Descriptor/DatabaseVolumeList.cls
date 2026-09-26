@@ -75,6 +75,11 @@ XData Declaration
   "context": {"fields": ["VolumeNumber", "VolumeDirectory", "File", "Size", "VolumeDirectoryTotalSize", "DiskFree"], "secretFields": []},
   "emptyStateKey": "databaseVolumeListEmpty",
   "commandAliases": ["volume files"],
+  "suggestedPrompts": [
+    {"groupKey": "promptGroupCapacity", "textKey": "databaseVolumeListPrompt1"},
+    {"groupKey": "promptGroupCapacity", "textKey": "databaseVolumeListPrompt2"},
+    {"groupKey": "promptGroupCapacity", "textKey": "databaseVolumeListPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.DatabaseDetails",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
