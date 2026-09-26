@@ -112,8 +112,9 @@ jobs:
   instance:
     name: instance
     runs-on: ubuntu-24.04
-    # The instance job took 28 of its 30 minutes on 2026-09-24 (run 36044767676), so the limit has room.
-    timeout-minutes: 45
+    # The instance job ran out its 45 minutes on 2026-09-25 (run 36188837788, 283 of 286 classes in
+    # 43 minutes of suite), so the limit is 60.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       # First, before anything else can mask it: the Linux ownership reproduction for the durable

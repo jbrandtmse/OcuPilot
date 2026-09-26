@@ -2,20 +2,25 @@
 /// instance's authorization server, read through the vendor's own
 /// <code>Security.OAuth2.ServerClients</code> LIST (AD-2, AD-36).</p>
 /// <p><b>Its five read fields are the LIST row's whole key set</b>, <code>RedirectURL</code> an array.
-/// The row carries no client secret; the endpoint's GET, which carries the unmasked
-/// <code>Metadata</code>, is never issued (AD-35).</p>
+/// The row carries no client secret, and this list issues no <code>GET</code>; the editor's reads go
+/// through <class>OcuPilot.Port.OAuthRegisteredClientPort</class>, which strips the secret members
+/// the vendor's <code>GET</code> answers (AD-35).</p>
 /// <p><b>It declares <code>oauth2-server</code> as a secondary type</b>: deleting the authorization
 /// server configuration deletes every server client (AD-14).</p>
 /// <p><b>The privilege set is <code>%Admin_OAuth2_Registration:USE</code> and
 /// <code>%DB_IRISSYS:READ</code></b> (AD-8).</p>
-/// <p><b>Its name cells open the classic server client editor in a new tab</b>, sending the client id
-/// as <code>ClientId</code> (AD-44).</p>
+/// <p><b>Its name cell opens OcuPilot's own editor</b>,
+/// <class>OcuPilot.Screen.Descriptor.OAuthServerClientForm</class>, at this tab's route with
+/// <code>/edit</code> and the client id appended (Story 12.8); it declares no classic link-out. Its
+/// Create opens the same editor with no id.</p>
 /// <p><b>Rows are keyed by <code>ClientId</code></b>, the vendor's IdKey, declared as a one-part
 /// composite id so the row key, the typed name and the target of a delete are the client id while the
 /// Name column stays the name cell. <code>Name</code> is not unique on this build.</p>
-/// <p><b>Its one row action is <code>delete</code></b>, carried out by
-/// <class>OcuPilot.Screen.Tool.OAuthServerClientDelete</class> (AD-51, AD-53). It declares no primary
-/// action and does not refresh (AD-43).</p>
+/// <p><b>Its row actions are <code>delete</code> and <code>updatejwks</code></b>, carried out by
+/// <class>OcuPilot.Screen.Tool.OAuthServerClientDelete</class> and
+/// <class>OcuPilot.Screen.Tool.OAuthRegisteredClientUpdateJwks</class> (AD-51, AD-53). Its declared
+/// secret is written only by <class>OcuPilot.Screen.Tool.OAuthRegisteredClientSetSecret</class>
+/// (AD-56). It does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.OAuthServerClientTab Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -36,19 +41,14 @@ XData Declaration
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "composite", "parts": ["ClientId"]},
-  "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [{"id": "delete", "selfProtection": ""}],
+  "primaryAction": {"id": "create", "selfProtection": ""},
+  "rowActions": [{"id": "delete", "selfProtection": ""}, {"id": "updatejwks", "selfProtection": ""}],
   "context": {"fields": ["Name", "ClientId", "ClientType", "RedirectURL", "Description"], "secretFields": []},
+  "secretArguments": ["ClientSecret"],
   "emptyStateKey": "oauthServerClientsEmpty",
   "commandAliases": [],
   "classicPage": "%CSP.UI.Portal.OAuth2.Server.ClientList",
-  "classicLinkExemption": {
-    "exempt": true,
-    "reason": "Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1",
-    "label": "OAuth 2.0 Authorization Server Client Configuration",
-    "href": "/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Server.Client.zen",
-    "rowLink": {"params": [{"name": "ClientId", "field": "ClientId"}]}
-  },
+  "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
     "source": {"port": "admin", "endpoint": "Security.OAuth2.ServerClients", "type": "LIST"},
     "fields": ["Name", "ClientId", "ClientType", "RedirectURL", "Description"],

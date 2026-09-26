@@ -247,7 +247,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -275,6 +275,57 @@ Parameter TYPEAPPLICATIONERROR = "application-error";
 Parameter TYPEOAUTHCLIENT = "oauth2-client-configuration";
 
 Parameter TYPEOAUTHSERVERCLIENT = "oauth2-server-client";
+
+/// <p>An OAuth 2.0 server description (Story 12.4), which shares the OAuth arm
+/// (<method>OAuthEntry</method>).</p>
+Parameter TYPEOAUTHSERVERDEF = "oauth2-server-definition";
+
+/// <p>An OAuth 2.0 resource server (Story 12.6), which shares the OAuth arm
+/// (<method>OAuthEntry</method>) and names two effects (<parameter>EFFECTMAPPINGMOVE</parameter>,
+/// <parameter>EFFECTAUTHENTICATORRESET</parameter>).</p>
+Parameter TYPEOAUTHRESOURCESERVER = "oauth2-resource-server";
+
+/// <p>The effect of adding a service mapping another resource server holds: the vendor moves it
+/// (Story 12.6). A mapping only chooses which resource server validates a token for an application
+/// or namespace that already accepts OAuth 2.0 (inference), so the move is permitted, marked
+/// destructive and named, never refused.</p>
+Parameter EFFECTMAPPINGMOVE = "OAUTH.MAPPINGMOVE";
+
+/// <p>The effect of changing a resource server's authenticator to another namespace or class: the
+/// vendor replaces the authenticator whole, so every setting the write does not send takes the new
+/// class's default (Story 12.6, AD-4). Permitted, marked destructive and named, never refused.</p>
+Parameter EFFECTAUTHENTICATORRESET = "OAUTH.AUTHENTICATORRESET";
+
+/// <p>This instance's OAuth 2.0 authorization server configuration (Story 12.7), which shares the
+/// OAuth arm (<method>OAuthEntry</method>) and names the effects below.</p>
+Parameter TYPEOAUTHAUTHSERVER = "oauth2-server";
+
+/// <p>The effect of any write to the authorization server configuration while clients are registered
+/// with it: every one of them gets its tokens from it (Story 12.7). With the list hidden from the
+/// caller, <parameter>EFFECTSERVERCLIENTSHIDDEN</parameter>. Permitted, marked destructive and named,
+/// never refused.</p>
+Parameter EFFECTSERVERCLIENTS = "OAUTH.SERVERCLIENTS";
+
+Parameter EFFECTSERVERCLIENTSHIDDEN = "OAUTH.SERVERCLIENTSHIDDEN";
+
+/// <p>A delete's two consequences: the vendor deletes every registered client with the
+/// configuration.</p>
+Parameter EFFECTSERVERCLIENTSDELETED = "OAUTH.SERVERCLIENTSDELETED";
+
+Parameter EFFECTSERVERCLIENTSDELETEDHIDDEN = "OAUTH.SERVERCLIENTSDELETEDHIDDEN";
+
+/// <p>The consequence of customization roles that add <parameter>ALLROLE</parameter> or an
+/// <parameter>ADMINROLEPREFIX</parameter> role: the vendor's customization code runs with them. Alone,
+/// and with each client effect.</p>
+Parameter EFFECTCUSTOMIZATIONPRIVILEGED = "OAUTH.CUSTOMIZATIONPRIVILEGED";
+
+Parameter EFFECTSERVERCLIENTSPRIVILEGED = "OAUTH.SERVERCLIENTSPRIVILEGED";
+
+Parameter EFFECTSERVERCLIENTSHIDDENPRIVILEGED = "OAUTH.SERVERCLIENTSHIDDENPRIVILEGED";
+
+/// <p>The effect of storing a server client's secret (Story 12.8): the client's application must use
+/// the new one from then on. Permitted, marked destructive and named, never refused.</p>
+Parameter EFFECTSERVERCLIENTSECRET = "OAUTH.SERVERCLIENTSECRETCHANGE";
 
 /// <p>A system audit event and a user audit event (Story 7.11), which share one arm
 /// (<method>AuditEvent</method>).</p>
@@ -528,6 +579,11 @@ ClassMethod CoveredTypes() As %List
 /// reads the kernel.</p>
 ClassMethod PermittedChangeFields(pType As %String) As %List
 {
+    If pType = ..#TYPEOAUTHSERVERDEF Quit ..OAuthServerFields()
+    If pType = ..#TYPEOAUTHCLIENT Quit ..OAuthClientFields()
+    If pType = ..#TYPEOAUTHRESOURCESERVER Quit ..OAuthResourceServerFields()
+    If pType = ..#TYPEOAUTHAUTHSERVER Quit ..OAuthAuthorizationServerFields()
+    If pType = ..#TYPEOAUTHSERVERCLIENT Quit ..OAuthRegisteredClientFields()
     If pType = ..#TYPEAUDITEVENT Quit $ListBuild(..#FIELDENABLED)
     If pType = ..#TYPEAUDITUSEREVENT Quit $ListBuild("Description", ..#FIELDENABLED)
     If pType = ..#TYPEWEBAPPLICATION Quit ..WebApplicationSettingFields() _ $ListFromString(..#APPLICATIONROLEFIELDS)
@@ -634,6 +690,11 @@ ClassMethod AlwaysProhibitedFields(pType As %String) As %List
 /// <p>A task's thirty-four are <method>TaskCreateFields</method>'s.</p>
 ClassMethod PermittedCreateFields(pType As %String) As %List
 {
+    If pType = ..#TYPEOAUTHSERVERDEF Quit ..OAuthServerFields()
+    If pType = ..#TYPEOAUTHCLIENT Quit ..OAuthClientFields()
+    If pType = ..#TYPEOAUTHRESOURCESERVER Quit ..OAuthResourceServerFields()
+    If pType = ..#TYPEOAUTHAUTHSERVER Quit ..OAuthAuthorizationServerFields()
+    If pType = ..#TYPEOAUTHSERVERCLIENT Quit ..OAuthRegisteredClientFields()
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "DispatchClass", "Enabled", "MatchRoles", "NameSpace", "Recurse", "Resource", "WSGIAppLocation", "WSGIAppName", "WSGICallable", "WSGIType")
     If pType = ..#TYPEUSER Quit $ListBuild("ExpirationDate", "FullName", "NameSpace", "Routine", ..#FIELDROLES)
     If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
@@ -724,7 +785,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -817,6 +878,14 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Quit
         }
         If (tType = ..#TYPEOAUTHCLIENT) || (tType = ..#TYPEOAUTHSERVERCLIENT) {
+            Set tSC = ..OAuthEntry(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If (tType = ..#TYPEOAUTHSERVERDEF) || (tType = ..#TYPEOAUTHRESOURCESERVER) {
+            Set tSC = ..OAuthEntry(tType, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPEOAUTHAUTHSERVER {
             Set tSC = ..OAuthEntry(tType, .tChanged, .pProhibits, .pCode)
             Quit
         }
@@ -1054,7 +1123,11 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
 /// OcuPilot's own applications the same three changes are <method>WebApplication</method>'s
 /// refusals. Only fields the payload carries are compared, so a bodyless write's narrowed payload
 /// answers <code>""</code>.</p>
-/// <p>For a service (<var>pId</var> being its name), <method>ServiceWeakening</method>'s answer.</p>
+/// <p>For a service (<var>pId</var> being its name), <method>ServiceWeakening</method>'s answer. For
+/// a resource server, <parameter>EFFECTMAPPINGMOVE</parameter> when <method>MovesMapping</method>
+/// answers true, else <parameter>EFFECTAUTHENTICATORRESET</parameter> when
+/// <method>ResetsAuthenticator</method> does. For the authorization server configuration,
+/// <method>ServerClientsEffect</method>'s answer over <var>pTarget</var>.</p>
 ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pEffect As %String, pId As %String = "") As %Status
 {
     Set pEffect = ""
@@ -1066,6 +1139,18 @@ ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarge
         }
         If pType = ..#TYPESERVICE {
             Set pEffect = ..ServiceWeakening(pId, pPayload, pTarget)
+            Quit
+        }
+        If pType = ..#TYPEOAUTHAUTHSERVER {
+            Set pEffect = ..ServerClientsEffect(pTarget)
+            Quit
+        }
+        If pType = ..#TYPEOAUTHRESOURCESERVER {
+            If ..MovesMapping(pId, pPayload, pTarget) {
+                Set pEffect = ..#EFFECTMAPPINGMOVE
+            } ElseIf ..ResetsAuthenticator(pPayload, pTarget) {
+                Set pEffect = ..#EFFECTAUTHENTICATORRESET
+            }
             Quit
         }
         If pType '= ..#TYPEWEBAPPLICATION Quit
@@ -1090,6 +1175,34 @@ ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarge
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Whether the payload's <code>Service</code> and <code>Key</code> name a service mapping that
+/// <var>pTarget</var>'s <code>Held</code> answers is held by a resource server other than
+/// <var>pId</var>: adding it moves it (Story 12.6). A payload naming no mapping moves none.</p>
+ClassMethod MovesMapping(pId As %String, pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean
+{
+    If '$IsObject(pPayload) || '$IsObject(pTarget) Quit 0
+    Set tService = ..Rendered(pPayload, "Service")
+    Set tKey = ..Rendered(pPayload, "Key")
+    If (tService = "") || (tKey = "") Quit 0
+    Set tHeld = ..Member(pTarget, "Held")
+    If '$IsObject(tHeld) Quit 0
+    Set tHolder = ..Rendered(tHeld, tService _ "/" _ $ZConvert(tKey, "L"))
+    Quit (tHolder '= "") && (tHolder '= pId)
+}
+
+/// <p>Whether <var>pPayload</var>'s <code>Authenticator</code> names another namespace, compared
+/// without regard to case, or another class than <var>pTarget</var>'s: the vendor then keeps none of
+/// the stored settings the payload does not send (Story 12.6). A payload or target without an
+/// authenticator object resets nothing.</p>
+ClassMethod ResetsAuthenticator(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean
+{
+    Set tSent = ..Member(pPayload, "Authenticator")
+    Set tStored = ..Member(pTarget, "Authenticator")
+    If '$IsObject(tSent) || '$IsObject(tStored) Quit 0
+    If $ZConvert(..Rendered(tSent, "Namespace"), "U") '= $ZConvert(..Rendered(tStored, "Namespace"), "U") Quit 1
+    Quit ..Rendered(tSent, "Implementation") '= ..Rendered(tStored, "Implementation")
 }
 
 /// <p>The user predicates, in declared order, first hit wins: the four account arms --
@@ -1445,15 +1558,118 @@ ClassMethod DeviceFields() As %List [ Private ]
     Quit $ListBuild("PhysicalDevice", "Type", "SubType", "OpenParameters", "Description", "Alias", "AlternateDevice", "Prompt")
 }
 
-/// <p>The OAuth 2.0 client configuration and server client predicates, <var>pType</var> being one
-/// of the two: the reviewed-few sweep over an empty permitted list, and nothing else.</p>
+/// <p>An OAuth 2.0 server description's settable fields, create and change alike: the four
+/// <code>Security.OAuth2.Client.ServerDefinition</code> template fields (Story 12.4). The issuer is
+/// the id, and a change may rename it. Nothing here is self-protective: OcuPilot owns no OAuth 2.0
+/// object.</p>
+ClassMethod OAuthServerFields() As %List [ Private ]
+{
+    Quit $ListBuild("IssuerEndpoint", "SSLConfiguration", "ServerCredentials", "Metadata")
+}
+
+/// <p>An OAuth 2.0 client configuration's settable fields, create and change alike: the twelve
+/// <code>Security.OAuth2.Client.ClientConfiguration</code> template fields (Story 12.5). The
+/// application name is the id and never changes. Nothing here is self-protective: OcuPilot owns no
+/// OAuth 2.0 object.</p>
+ClassMethod OAuthClientFields() As %List [ Private ]
+{
+    Quit $ListBuild("ServerDefinition", "Enabled", "Description", "ClientType", "SSLConfiguration", "RedirectionEndpoint", "JWTAudience", "JWTInterval", "ClientId", "ClientCredentials", "Metadata", "DefaultScope")
+}
+
+/// <p>An OAuth 2.0 resource server's settable fields, create and change alike: the eleven
+/// <code>Security.OAuth2.ResourceServer</code> template fields (Story 12.6). The name is the id and
+/// never changes, and the client secret is its own write. Nothing here is self-protective: OcuPilot
+/// owns no OAuth 2.0 object.</p>
+ClassMethod OAuthResourceServerFields() As %List [ Private ]
+{
+    Quit $ListBuild("Enabled", "Description", "IssuerEndpoint", "ScopeRequiredToConnect", "Audiences", "AccessTokenIsJWT", "AlwaysCallIntrospection", "ClientId", "IntrospectionAuthMethod", "UseOIDC", "Authenticator")
+}
+
+/// <p>The OAuth 2.0 authorization server configuration's settable fields, create and change alike:
+/// the twenty-nine <code>Security.OAuth2.Server</code> template fields (Story 12.7). The key password
+/// is its own write. Nothing here is self-protective: OcuPilot signs in with its web application's
+/// own token, not through this server (AD-28); a privileged customization role is an effect
+/// (<method>GrantsPrivilegeByEffect</method>).</p>
+ClassMethod OAuthAuthorizationServerFields() As %List [ Private ]
+{
+    Quit $ListBuild("IssuerEndpoint", "Description", "AccessTokenInterval", "AuthorizationCodeInterval", "RefreshTokenInterval", "SessionInterval", "ClientSecretInterval", "SupportedScopes", "AllowUnsupportedScope", "ReturnRefreshToken", "SupportSession", "AudRequired", "AllowPublicClientRefresh", "ForcePKCEForPublicClients", "ForcePKCEForConfidentialClients", "CustomizationRoles", "CustomizationNamespace", "AuthenticateClass", "SessionClass", "ValidateUserClass", "GenerateTokenClass", "RevokeTokenClass", "ServerCredentials", "SigningAlgorithm", "EncryptionAlgorithm", "KeyAlgorithm", "SSLConfiguration", "Metadata", "DefaultScope")
+}
+
+/// <p>A server client description's settable fields, create and change alike: the eight
+/// <code>Security.OAuth2.ServerClients</code> template fields (Story 12.8). The client id is the id and
+/// the vendor generates it; the client secret is its own write. Nothing here is self-protective:
+/// OcuPilot signs in with its web application's own token, not through a registered client
+/// (AD-28).</p>
+ClassMethod OAuthRegisteredClientFields() As %List [ Private ]
+{
+    Quit $ListBuild("Name", "RedirectURL", "LaunchURL", "Description", "ClientType", "ClientCredentials", "Metadata", "DefaultScope")
+}
+
+/// <p>The client effect of a write to the authorization server configuration <var>pTarget</var>
+/// (<method>WeakensByEffect</method>): <parameter>EFFECTSERVERCLIENTSHIDDEN</parameter> when the
+/// read's <code>ClientsHidden</code> is true, <parameter>EFFECTSERVERCLIENTS</parameter> when its
+/// <code>Clients</code> is not empty, and <code>""</code> otherwise.</p>
+ClassMethod ServerClientsEffect(pTarget As %DynamicObject) As %String
+{
+    If '$IsObject(pTarget) Quit ""
+    If pTarget.%GetTypeOf("ClientsHidden") = "boolean", pTarget.%Get("ClientsHidden") Quit ..#EFFECTSERVERCLIENTSHIDDEN
+    If pTarget.%GetTypeOf("Clients") '= "array" Quit ""
+    Quit $Select(pTarget.%Get("Clients").%Size() > 0: ..#EFFECTSERVERCLIENTS, 1: "")
+}
+
+/// <p>Whether <var>pPayload</var>'s <code>CustomizationRoles</code> adds a role
+/// <var>pTarget</var>'s does not hold that is <parameter>ALLROLE</parameter> or carries
+/// <parameter>ADMINROLEPREFIX</parameter> (<method>IsPrivilegedRole</method>): the customization code
+/// then runs with it (Story 12.7). A payload without the list adds none.</p>
+ClassMethod AddsPrivilegedCustomizationRole(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean
+{
+    If '$IsObject(pPayload) || (pPayload.%GetTypeOf("CustomizationRoles") '= "array") Quit 0
+    If $IsObject(pTarget) && (pTarget.%GetTypeOf("CustomizationRoles") = "array") {
+        Set tIterator = pTarget.%Get("CustomizationRoles").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRole) {
+            If '$IsObject(tRole) Set tHeld($ZConvert(tRole, "U")) = ""
+        }
+    }
+    Set tAdds = 0
+    Set tIterator = pPayload.%Get("CustomizationRoles").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRole) {
+        If $IsObject(tRole) || $Data(tHeld($ZConvert(tRole, "U"))) Continue
+        If ..IsPrivilegedRole(tRole) Set tAdds = 1 Quit
+    }
+    Quit tAdds
+}
+
+/// <p>The one consequence code a write to the authorization server configuration carries, from
+/// whether it adds a privileged customization role (<var>pPrivileged</var>) and its client effect
+/// (<var>pEffect</var>): for a delete (<var>pKind</var> <code>delete</code>) the deleted clients' code,
+/// otherwise the client code, the customization code, or the one combining both.</p>
+ClassMethod ServerConsequence(pKind As %String, pPrivileged As %Boolean, pEffect As %String) As %String
+{
+    If pKind = "delete" {
+        If pEffect = ..#EFFECTSERVERCLIENTS Quit ..#EFFECTSERVERCLIENTSDELETED
+        If pEffect = ..#EFFECTSERVERCLIENTSHIDDEN Quit ..#EFFECTSERVERCLIENTSDELETEDHIDDEN
+        Quit pEffect
+    }
+    If 'pPrivileged Quit pEffect
+    If pEffect = ..#EFFECTSERVERCLIENTS Quit ..#EFFECTSERVERCLIENTSPRIVILEGED
+    If pEffect = ..#EFFECTSERVERCLIENTSHIDDEN Quit ..#EFFECTSERVERCLIENTSHIDDENPRIVILEGED
+    Quit ..#EFFECTCUSTOMIZATIONPRIVILEGED
+}
+
+/// <p>The OAuth 2.0 client configuration, server client, server description and resource server
+/// predicates, <var>pType</var> being one of the four: the reviewed-few sweep over the type's
+/// permitted list (<method>OAuthClientFields</method> for a client configuration,
+/// <method>OAuthRegisteredClientFields</method> for a server client, <method>OAuthServerFields</method>
+/// for a server description, <method>OAuthResourceServerFields</method> for a resource server), and
+/// nothing else. A resource server's mapping move and authenticator reset are effects, not refusals
+/// (<method>WeakensByEffect</method>), and so is a server client's new secret
+/// (<parameter>EFFECTSERVERCLIENTSECRET</parameter>).</p>
 /// <p><b>No predicate exists because AD-10 names no OAuth 2.0 effect.</b> Its Release 1 set is
 /// accounts, privilege grants, the path serving OcuPilot and system processes, and install creates
-/// no OAuth 2.0 object, so no configuration or client is OcuPilot's own. The one write over either
-/// type is its bodyless delete (AD-51), which sets no field, so every changed field a proposal
-/// could carry is one nobody has reviewed and is refused <parameter>UNCOVEREDFIELD</parameter>.
-/// The card's removal rows are the declared fingerprint subject, which <method>Changed</method>
-/// skips.</p>
+/// no OAuth 2.0 object, so no configuration, client or description is OcuPilot's own. A server
+/// client's delete, secret and key-set refresh are bodyless (AD-51) and set no field; the card's
+/// removal and state rows are the declared fingerprint subject or a state label, which
+/// <method>Changed</method> skips.</p>
 ClassMethod OAuthEntry(pType As %String, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
 {
     Quit ..ReviewedFewOnly(pType, .pChanged, .pProhibits, .pCode)
@@ -1859,8 +2075,9 @@ ClassMethod ResourceNames(pObject As %DynamicObject, Output pNames) [ Private ]
 /// letter (<method>AddsPublicLetter</method>) on a resource
 /// <method>ResourceGrantsAdministrativePrivilege</method> names -- <var>pId</var>, the target's id,
 /// is what names it. A task's <code>RunAsUser</code> naming an account other than the caller's,
-/// compared without regard to case, grants that account's privileges to the task. Any other type
-/// grants nothing here.</p>
+/// compared without regard to case, grants that account's privileges to the task. The authorization
+/// server configuration's <code>CustomizationRoles</code> grants privilege when it adds a privileged
+/// role (<method>AddsPrivilegedCustomizationRole</method>). Any other type grants nothing here.</p>
 ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean, pId As %String = "") As %Status
 {
     Set pGrants = 0
@@ -1886,6 +2103,10 @@ ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject
         }
         If pType = ..#TYPESERVICE {
             Set pGrants = ..AddressGrantsPrivilege(pPayload, tTarget)
+            Quit
+        }
+        If pType = ..#TYPEOAUTHAUTHSERVER {
+            Set pGrants = ..AddsPrivilegedCustomizationRole(pPayload, tTarget)
             Quit
         }
         If pType = ..#TYPETASK {
@@ -2550,7 +2771,8 @@ ClassMethod Changed(pDiff As %String, pPayload As %DynamicObject, pTarget As %Dy
 /// the registry, so this class names no endpoint of its own. A 404 is absence; any other refusal,
 /// and a success that carried no object, are error statuses, because a target that could not be
 /// read is not a target that was checked. <var>pToolClass</var> is answered from the same single
-/// resolve, so the caller reads the tool's declarations without a second registry lookup.</p>
+/// resolve, so the caller reads the tool's declarations without a second registry lookup. An
+/// unadvertised tool resolves here, because the screen's action route asks this set too (AD-53).</p>
 ClassMethod Target(pToolName As %String, pId As %String, Output pTarget As %DynamicObject, Output pPresent As %Boolean, Output pToolClass As %String) As %Status [ Private ]
 {
     Set pTarget = ""
@@ -2558,7 +2780,7 @@ ClassMethod Target(pToolName As %String, pId As %String, Output pTarget As %Dyna
     Set pToolClass = ""
     Set tSC = $$$OK
     Try {
-        Set tSC = $ClassMethod(..RegistryClass(), "Resolve", pToolName, .tTool)
+        Set tSC = $ClassMethod(..RegistryClass(), "Resolve", pToolName, .tTool, 1)
         If $$$ISERR(tSC) Quit
         If '$IsObject(tTool) {
             Set tSC = $$$ERROR($$$GeneralError, "the prohibited set was asked about a tool this instance does not carry: '" _ pToolName _ "'")

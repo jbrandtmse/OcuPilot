@@ -14,6 +14,9 @@
  *    form's own Cancel, a navigation inside the page rather than a load. The change event itself is
  *    pinned in `x509-form.store.spec.ts`.
  * 4. **A changed form asks before it is left** (AC6).
+ * 5. **The edit view's "Certificate details" group shows the vendor's certificate data and no key**
+ *    (Story 12.1 AC1), and the view passes the DW-1337 structural invariants at 1280 px light,
+ *    720 px light and 1280 px dark beyond the shell-chrome entries the baseline keys to it (AC3).
  *
  * The certificate and key are made in `before` by the host's own `openssl` in a directory of their
  * own, which `after` deletes and asserts gone, so the repository holds no key.
@@ -38,6 +41,7 @@ import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '..
 import { ROW_SELECTOR, waitForRows } from './list-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
+import { INVARIANTS, VIEWPORTS, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -121,6 +125,26 @@ function storedCredential(alias) {
   const held = /OCU-HELD-START:(.*?):OCU-HELD-END/.exec(output);
   const key = /OCU-KEY-START:(.*?):OCU-KEY-END/.exec(output);
   return { held: held !== null && held[1].trim() === '1', hasKey: key !== null && key[1].trim() === '1' };
+}
+
+/** The vendor's own certificate data for `alias`, read through `%SYS.X509Credentials.GetByAlias`. */
+function vendorCertificate(alias) {
+  const fields = ['SerialNumber', 'IssuerDN', 'SubjectDN', 'ValidityNotBefore', 'ValidityNotAfter', 'HasPrivateKey'];
+  const output = irisSys([
+    `Set tCred = ##class(%SYS.X509Credentials).GetByAlias("${alias}")`,
+    ...fields.map((field) => `If $IsObject(tCred) Write "OCU-${field}-START:",tCred.${field},":OCU-${field}-END",!`),
+  ]);
+  const values = {};
+  for (const field of fields) {
+    const match = new RegExp(`OCU-${field}-START:(.*?):OCU-${field}-END`).exec(output);
+    values[field] = match === null ? null : match[1];
+  }
+  return values;
+}
+
+/** Two rendered frames, so a resize or a theme flip has landed before anything is measured. */
+function frames(page) {
+  return page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
 
 /** A fresh context signed in through the shell's own form, landed at `url`. */
@@ -246,6 +270,72 @@ test('AC3: an import loaded from local files creates the credential with its key
     const stored = storedCredential(ALIASES[0]);
     assert.ok(stored.held, 'the instance holds the credential the form imported');
     assert.ok(stored.hasKey, 'with its private key');
+  } finally {
+    await context.close();
+  }
+});
+
+// Story 12.1 AC1, AC3. Mutations (Rule 19), each over a rebuilt and redeployed bundle: render
+// Serial number outside the fieldset, or remove the legend, or draw `#ocu-x509-PrivateKey` in edit
+// mode -> the group assertions go red; give `.ocu-x509-certificate` a `min-inline-size` of 1400px ->
+// the structural assertion goes red; color its legend with the surface token in the dark theme only
+// -> the dark contrast pass goes red.
+test('Story 12.1 AC1: the edit view groups the vendor\'s certificate data under "Certificate details", draws no key, and passes DW-1337', async () => {
+  const keyText = readFileSync(material.key, 'utf8');
+  const keyBody = keyText.split('\n')[5];
+  assert.ok(keyBody !== undefined && keyBody.length >= 60, 'a line from the middle of the key body to look for');
+  const vendor = vendorCertificate(ALIASES[0]);
+  assert.equal(vendor.HasPrivateKey, '1', `the import leg left the credential with its key: ${JSON.stringify(vendor)}`);
+  assert.ok(vendor.SerialNumber, 'and the vendor answers its serial number');
+  const route = 'security/x509/edit';
+  const { context, page } = await signedInAt(`/ocupilot/${route}/${ALIASES[0]}?ns=HSCUSTOM`);
+  try {
+    await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+    await page.setViewport(VIEWPORTS.wide);
+    await page.waitForSelector('#ocu-x509-SubjectDN', { visible: true, timeout: config.navigationTimeoutMs });
+    const group = await page.$eval('fieldset#ocu-x509-certificate', (fieldset) => ({
+      legend: fieldset.querySelector(':scope > legend')?.textContent.trim() ?? null,
+      fields: [...fieldset.querySelectorAll('input')].map((input) => ({
+        id: input.id,
+        label: document.querySelector(`label[for="${input.id}"]`)?.textContent.trim() ?? null,
+        value: input.value,
+        readOnly: input.readOnly,
+      })),
+    }));
+    assert.equal(group.legend, STRINGS.x509CertificateDetails, 'the group is named by its legend');
+    assert.deepEqual(group.fields, [
+      { id: 'ocu-x509-SubjectDN', label: STRINGS.x509ColumnSubject, value: vendor.SubjectDN, readOnly: true },
+      { id: 'ocu-x509-IssuerDN', label: STRINGS.x509ColumnIssuer, value: vendor.IssuerDN, readOnly: true },
+      { id: 'ocu-x509-SerialNumber', label: STRINGS.x509FieldSerialNumber, value: vendor.SerialNumber, readOnly: true },
+      { id: 'ocu-x509-ValidityNotBefore', label: STRINGS.x509ColumnValidFrom, value: vendor.ValidityNotBefore, readOnly: true },
+      { id: 'ocu-x509-ValidityNotAfter', label: STRINGS.x509ColumnValidUntil, value: vendor.ValidityNotAfter, readOnly: true },
+      { id: 'ocu-x509-HasPrivateKey', label: STRINGS.x509FieldHasPrivateKey, value: STRINGS.tableStatusYes, readOnly: true },
+    ], 'holding exactly the six fields, each equal to the vendor\'s own certificate data');
+    assert.equal(await page.$('#ocu-x509-PrivateKey, #ocu-x509-PrivateKeyPassword, #ocu-x509-Certificate'), null, 'no key, password or certificate input');
+    const html = await page.content();
+    assert.ok(!html.includes(keyBody), 'no line of the key body is on the page');
+    assert.ok(!html.includes('PRIVATE KEY'), 'and no private-key marker');
+
+    const found = [];
+    const passes = [
+      { viewport: VIEWPORTS.wide, theme: 'light', checks: INVARIANTS },
+      { viewport: VIEWPORTS.narrow, theme: 'light', checks: ['name', 'min-width', 'overflow'] },
+      { viewport: VIEWPORTS.wide, theme: 'dark', checks: ['contrast'] },
+    ];
+    const minimums = componentMinimums();
+    const surfaces = {};
+    for (const { viewport, theme, checks } of passes) {
+      await page.setViewport(viewport);
+      await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
+      await frames(page);
+      surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+      const { entries } = await detectScreen(page, { route, checks, viewport: viewport.width, theme, minimums });
+      found.push(...entries);
+    }
+    await page.evaluate(() => document.documentElement.classList.remove('ocu-theme-dark'));
+    assert.notEqual(surfaces.dark, surfaces.light, 'the dark pass measured the dark theme, not the light one');
+    const fresh = compare(collapse(found), readBaseline()?.entries ?? []).fresh;
+    assert.deepEqual(fresh.map((entry) => `${entry.key}: ${entry.measured}`), [], 'no violation beyond the shell-chrome entries the baseline holds');
   } finally {
     await context.close();
   }

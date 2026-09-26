@@ -5326,6 +5326,22 @@ app-resource-list-page {
   font-family: var(--ocu-type-code-family);
 }
 
+// Story 12.1: the X.509 edit view's certificate-details group is a fieldset named by its legend.
+// The browser's fieldset border, padding and min-content width are reset, as `.ocu-form-authe`
+// does, and its six read-only fields keep the form's own field rhythm.
+.ocu-x509-certificate {
+  gap: var(--ocu-space-4);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ocu-x509-certificate legend {
+  margin-block-end: var(--ocu-space-2);
+  padding: 0;
+}
+
 // Story 7.1's row actions and the destructive confirm (AD-53, EXPERIENCE.md `row-overflow-menu`,
 // `confirm-dialog`, `typed-name-field`, `button-destructive`).
 //
@@ -5982,4 +5998,341 @@ app-data-table .ocu-data-table-header-cell {
     inset 0 4px 0 0 var(--ocu-focus-ring-inner),
     inset 0 -4px 0 0 var(--ocu-focus-ring-inner),
     inset -4px 0 0 0 var(--ocu-focus-ring-inner);
+}
+
+// --- The Auditing screen's audit database group (Story 12.3) -----------------------------------
+//
+// Copy to namespace and Purge old records sit on one row that wraps at the content minimum; each
+// dialog's field keeps the space above the consequence line that follows it.
+.ocu-audit-database-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ocu-space-2);
+}
+
+.ocu-audit-database-field {
+  margin-bottom: var(--ocu-space-4);
+}
+
+// --- The OAuth 2.0 client server description editor (Story 12.4) --------------------------------
+//
+// The Authorization server and JWT settings groups are fieldsets drawn like the form's own column,
+// and the read-only metadata table reads as one field: member names as row headers, values beside
+// them, wrapping rather than widening the form.
+.ocu-oauth-server-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-4);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ocu-oauth-server-group legend {
+  margin-block-end: var(--ocu-space-2);
+  padding: 0;
+}
+
+.ocu-oauth-server-metadata-table {
+  @include typo.ocu-type('body');
+
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--ocu-on-surface);
+  table-layout: fixed;
+}
+
+.ocu-oauth-server-metadata-table caption {
+  margin-block-end: var(--ocu-space-2);
+  text-align: start;
+}
+
+.ocu-oauth-server-metadata-table th,
+.ocu-oauth-server-metadata-table td {
+  padding: var(--ocu-space-1) var(--ocu-space-2);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+  text-align: start;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.ocu-oauth-server-metadata-table th {
+  width: 40%;
+  color: var(--ocu-on-surface-variant);
+  font-weight: normal;
+}
+
+// The JWT settings' three choices keep a 24px target, the floor every control is held to.
+.ocu-oauth-server-group .ocu-field-checkbox input[type='radio'] {
+  inline-size: 24px;
+  block-size: 24px;
+  margin: 0;
+}
+
+// --- The OAuth 2.0 client configuration editor (Story 12.5) ----------------------------------
+//
+// Four tabs on `app-form-tabs`, named and ordered as the classic page's, each a column of fields;
+// the grant types and the four algorithm groups are groups inside them. The read-only metadata table
+// sits on the Client Information tab and takes the server description editor's treatment.
+.ocu-oauth-client-section,
+.ocu-oauth-client-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-4);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ocu-oauth-client-section legend,
+.ocu-oauth-client-group legend {
+  margin-block-end: var(--ocu-space-2);
+  padding: 0;
+}
+
+.ocu-oauth-client-section > legend {
+  @include typo.ocu-type('title');
+
+  color: var(--ocu-on-surface);
+}
+
+.ocu-oauth-client-group .ocu-field-checkbox input[type='checkbox'],
+.ocu-oauth-client-section .ocu-field-checkbox input[type='checkbox'] {
+  inline-size: 24px;
+  block-size: 24px;
+  margin: 0;
+}
+
+.ocu-oauth-client-metadata-table {
+  @include typo.ocu-type('body');
+
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--ocu-on-surface);
+  table-layout: fixed;
+}
+
+.ocu-oauth-client-metadata-table caption {
+  margin-block-end: var(--ocu-space-2);
+  text-align: start;
+}
+
+.ocu-oauth-client-metadata-table th,
+.ocu-oauth-client-metadata-table td {
+  padding: var(--ocu-space-1) var(--ocu-space-2);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+  text-align: start;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.ocu-oauth-client-metadata-table th {
+  width: 40%;
+  color: var(--ocu-on-surface-variant);
+  font-weight: normal;
+}
+
+// --- The OAuth 2.0 resource server editor (Story 12.6) ------------------------------------------
+//
+// Four tabs on `app-form-tabs`, each a column of fields. The audiences are a list of inputs, each
+// with its Remove, and the Mappings tab two tables and an Add row; the tables take the metadata
+// table's treatment and wrap a long application name rather than widening the form.
+.ocu-oauth-resource-server-tab .ocu-field-checkbox input[type='checkbox'] {
+  inline-size: 24px;
+  block-size: 24px;
+  margin: 0;
+}
+
+.ocu-oauth-resource-server-audiences,
+.ocu-oauth-resource-server-add {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ocu-oauth-resource-server-audiences legend,
+.ocu-oauth-resource-server-add legend {
+  margin-block-end: var(--ocu-space-2);
+  padding: 0;
+}
+
+.ocu-oauth-resource-server-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  min-inline-size: 0;
+}
+
+.ocu-oauth-resource-server-mappings {
+  @include typo.ocu-type('body');
+
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--ocu-on-surface);
+  table-layout: fixed;
+}
+
+.ocu-oauth-resource-server-mappings caption {
+  margin-block-end: var(--ocu-space-2);
+  text-align: start;
+}
+
+.ocu-oauth-resource-server-mappings th,
+.ocu-oauth-resource-server-mappings td {
+  padding: var(--ocu-space-1) var(--ocu-space-2);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+  text-align: start;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+.ocu-oauth-resource-server-mappings th {
+  color: var(--ocu-on-surface-variant);
+  font-weight: normal;
+}
+
+.ocu-oauth-resource-server-mappings .ocu-oauth-resource-server-mappings-action {
+  inline-size: 8rem;
+  text-align: end;
+}
+
+.ocu-oauth-resource-server-move {
+  display: block;
+}
+
+// --- The OAuth 2.0 authorization server editor (Story 12.7) -------------------------------------
+//
+// Five tabs on `app-form-tabs`, each a column of fields. The grant types and the customization roles
+// are checkbox groups, and the supported scopes a table of inputs with a Remove per row; the table
+// takes the resource server editor's mappings treatment and fits the form's column.
+.ocu-oauth-server-tab .ocu-field-checkbox input[type='checkbox'] {
+  inline-size: 24px;
+  block-size: 24px;
+  margin: 0;
+}
+
+.ocu-oauth-server-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ocu-oauth-server-group legend {
+  margin-block-end: var(--ocu-space-2);
+  padding: 0;
+}
+
+.ocu-oauth-server-hint {
+  margin-block-start: calc(-1 * var(--ocu-space-2));
+}
+
+.ocu-oauth-server-scopes-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-inline-size: 0;
+}
+
+.ocu-oauth-server-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  min-inline-size: 0;
+}
+
+.ocu-oauth-server-scopes {
+  @include typo.ocu-type('body');
+
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--ocu-on-surface);
+  table-layout: fixed;
+}
+
+.ocu-oauth-server-scopes caption {
+  margin-block-end: var(--ocu-space-2);
+  text-align: start;
+}
+
+.ocu-oauth-server-scopes th,
+.ocu-oauth-server-scopes td {
+  padding: var(--ocu-space-1) var(--ocu-space-2);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+  text-align: start;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+.ocu-oauth-server-scopes th {
+  color: var(--ocu-on-surface-variant);
+  font-weight: normal;
+}
+
+.ocu-oauth-server-scopes .ocu-field-input {
+  inline-size: 100%;
+  min-inline-size: 0;
+  box-sizing: border-box;
+}
+
+.ocu-oauth-server-scopes .ocu-oauth-server-scopes-action {
+  inline-size: 8rem;
+  text-align: end;
+}
+
+// --- The OAuth 2.0 server client description editor (Story 12.8) --------------------------------
+//
+// Four tabs on `app-form-tabs`, each a column of fields. The redirect URLs are a list of inputs, each
+// with its Remove; the grant and response types and the four algorithm groups are groups; the client
+// secret's input sits in a row with its Generate and Show buttons, and the input takes the row's width.
+.ocu-oauth-registered-client-tab .ocu-field-checkbox input[type='checkbox'] {
+  inline-size: 24px;
+  block-size: 24px;
+  margin: 0;
+}
+
+.ocu-oauth-registered-client-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ocu-oauth-registered-client-group legend {
+  margin-block-end: var(--ocu-space-2);
+  padding: 0;
+}
+
+.ocu-oauth-registered-client-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  min-inline-size: 0;
+}
+
+.ocu-oauth-registered-client-row .ocu-field-input {
+  flex: 1 1 12rem;
+  min-inline-size: 0;
+}
+
+// The delete dialog's button names the client id the vendor generates, one long unbroken word: it
+// wraps inside the button rather than pushing Cancel past the dialog's edge.
+.ocu-oauth-registered-client-delete .ocu-dialog-actions .ocu-button-destructive {
+  height: auto;
+  min-block-size: var(--ocu-control-height);
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
 }

@@ -114,7 +114,9 @@ ClassMethod ProhibitedClassName() As %String
 /// <var>pSuppliedSecrets</var> as the body the request carried.</p>
 /// <p>On success the status is OK, <var>pHttpStatus</var> 200 and <var>pResult</var>
 /// <code>{proposalId, state, closedReason, confirmedAt, auditMarked}</code> -- the last being
-/// whether the write's audit marker landed a row, which never changes the status (AD-15). On a refusal the status is an
+/// whether the write's audit marker landed a row, which never changes the status (AD-15) -- plus
+/// <code>continues: true</code> where the port answered that a queued write is still running on the
+/// instance (AD-26). On a refusal the status is an
 /// error, <var>pCode</var> is the machine code, <var>pHttpStatus</var> the HTTP status it is
 /// rendered at, and <var>pDetail</var> carries the structured detail that code owns
 /// (<code>failedPair</code> for a privilege refusal) or is <code>""</code>.</p>
@@ -429,6 +431,9 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         Set pResult = ""
         Set tSC = ..Internal("the confirm transition failed: " _ ex.DisplayString(), .pHttpStatus, .pCode)
     }
+    ; AD-26: a queued write the port answered 202 was made above, and continues on the instance;
+    ; the answer says so.
+    If $$$ISOK(tSC) && (+$Get(tWriteHttp) = 202) && $IsObject(pResult) Do pResult.%Set("continues", 1, "boolean")
     Quit tSC
 }
 

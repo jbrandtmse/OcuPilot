@@ -26,8 +26,9 @@ Parameter READPATH = "/api/ocupilot/screens/";
 /// vendor answers unmasked on a GET, and every secret an OAuth 2.0 object holds (AD-35).</p>
 Parameter SECRETKEYS = "Metadata,ClientSecret,ClientPassword,PrivateJWKS,SymmetricJWKS,InitialAccessToken,ServerPassword,client_secret,registration_access_token";
 
-/// <p>The reason the one Release 1 exemption carries, declared by all five tabs (AD-44).</p>
-Parameter EXEMPTIONREASON = "Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1";
+/// <p>The tabs Stories 12.4, 12.5, 12.6, 12.7 and 12.8's editors edit, which is all five: none is
+/// exempt.</p>
+Parameter EDITEDTABS = "OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab,OcuPilot.Screen.Descriptor.OAuthClientTab,OcuPilot.Screen.Descriptor.OAuthResourceServerTab,OcuPilot.Screen.Descriptor.OAuthServerTab,OcuPilot.Screen.Descriptor.OAuthServerClientTab";
 
 Method OnBeforeAllTests() As %Status
 {
@@ -69,16 +70,15 @@ ClassMethod Deletable(pClass As %String) As %Boolean
 }
 
 /// <p>The five tabs as <code>$ListBuild(descriptor, route, tool, tab position, side-bar position,
-/// entity types, classic page, editor page, read fields as JSON, first pair, rowLink params as
-/// JSON)</code>.</p>
+/// entity types, classic page, editor page, read fields as JSON, first pair)</code>.</p>
 ClassMethod Tabs() As %List
 {
     Set tTabs = ""
-    Set tTabs = tTabs _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "security/oauth", "security.oauthserverdescriptions", 1, 5, "oauth2-server-definition,oauth2-client-configuration,oauth2-resource-server", "%CSP.UI.Portal.OAuth2.Client.ServerList", "%CSP.UI.Portal.OAuth2.Client.ServerConfiguration", "[""ID"",""IssuerEndpoint"",""ClientCount"",""ResourceCount""]", "%Admin_OAuth2_Client", "[{""name"":""PID"",""field"":""ID""}]"))
-    Set tTabs = tTabs _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.OAuthClientTab", "security/oauth/clients", "security.oauthclients", 2, 0, "oauth2-client-configuration,oauth2-server-definition", "%CSP.UI.Portal.OAuth2.Client.ConfigurationList", "%CSP.UI.Portal.OAuth2.Client.Configuration", "[""ApplicationName"",""ClientType"",""DefaultScope"",""ServerDefinitionID"",""IssuerEndpoint""]", "%Admin_OAuth2_Client", "[{""name"":""PID"",""field"":""ApplicationName""},{""name"":""IssuerEndpointID"",""field"":""ServerDefinitionID""},{""name"":""IssuerEndpoint"",""field"":""IssuerEndpoint""}]"))
-    Set tTabs = tTabs _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "security/oauth/resource-servers", "security.oauthresourceservers", 3, 0, "oauth2-resource-server,oauth2-server-definition", "%CSP.UI.Portal.OAuth2.ResourceServer.ConfigurationList", "%CSP.UI.Portal.OAuth2.ResourceServer.Configuration", "[""Name"",""ServerDefinition""]", "%Admin_Secure", "[{""name"":""PID"",""field"":""Name""}]"))
-    Set tTabs = tTabs _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerTab", "security/oauth/server", "security.oauthserver", 4, 0, "oauth2-server", "%CSP.UI.Portal.OAuth2.Server.Configuration", "%CSP.UI.Portal.OAuth2.Server.Configuration", "[""IssuerEndpoint"",""Metadata.scopes_supported"",""Metadata.grant_types_supported"",""SigningAlgorithm"",""EncryptionAlgorithm"",""KeyAlgorithm"",""ServerCredentials""]", "%Admin_OAuth2_Server", "[]"))
-    Set tTabs = tTabs _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerClientTab", "security/oauth/server-clients", "security.oauthserverclients", 5, 0, "oauth2-server-client,oauth2-server", "%CSP.UI.Portal.OAuth2.Server.ClientList", "%CSP.UI.Portal.OAuth2.Server.Client", "[""Name"",""ClientId"",""ClientType"",""RedirectURL"",""Description""]", "%Admin_OAuth2_Registration", "[{""name"":""ClientId"",""field"":""ClientId""}]"))
+    Set tTabs = tTabs _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "security/oauth", "security.oauthserverdescriptions", 1, 5, "oauth2-server-definition,oauth2-client-configuration,oauth2-resource-server", "%CSP.UI.Portal.OAuth2.Client.ServerList", "%CSP.UI.Portal.OAuth2.Client.ServerConfiguration", "[""ID"",""IssuerEndpoint"",""ClientCount"",""ResourceCount""]", "%Admin_OAuth2_Client"))
+    Set tTabs = tTabs _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.OAuthClientTab", "security/oauth/clients", "security.oauthclients", 2, 0, "oauth2-client-configuration,oauth2-server-definition", "%CSP.UI.Portal.OAuth2.Client.ConfigurationList", "%CSP.UI.Portal.OAuth2.Client.Configuration", "[""ApplicationName"",""ClientType"",""DefaultScope"",""ServerDefinitionID"",""IssuerEndpoint""]", "%Admin_OAuth2_Client"))
+    Set tTabs = tTabs _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "security/oauth/resource-servers", "security.oauthresourceservers", 3, 0, "oauth2-resource-server,oauth2-server-definition", "%CSP.UI.Portal.OAuth2.ResourceServer.ConfigurationList", "%CSP.UI.Portal.OAuth2.ResourceServer.Configuration", "[""Name"",""ServerDefinition""]", "%Admin_Secure"))
+    Set tTabs = tTabs _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerTab", "security/oauth/server", "security.oauthserver", 4, 0, "oauth2-server", "%CSP.UI.Portal.OAuth2.Server.Configuration", "%CSP.UI.Portal.OAuth2.Server.Configuration", "[""IssuerEndpoint"",""Metadata.scopes_supported"",""Metadata.grant_types_supported"",""SigningAlgorithm"",""EncryptionAlgorithm"",""KeyAlgorithm"",""ServerCredentials""]", "%Admin_OAuth2_Server"))
+    Set tTabs = tTabs _ $ListBuild($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerClientTab", "security/oauth/server-clients", "security.oauthserverclients", 5, 0, "oauth2-server-client,oauth2-server", "%CSP.UI.Portal.OAuth2.Server.ClientList", "%CSP.UI.Portal.OAuth2.Server.Client", "[""Name"",""ClientId"",""ClientType"",""RedirectURL"",""Description""]", "%Admin_OAuth2_Registration"))
     Quit tTabs
 }
 
@@ -136,12 +136,15 @@ ClassMethod KeySetProblem(pRows As %DynamicArray, pFields As %String) As %String
 /// <p>Each tab passes the read, classic-link and tab grammars; its route and tool identifier resolve to
 /// it; it is a built <code>detail</code> view in the Security and secrets area on its declared entity
 /// types, at instance scope, with no refresh and no secret field, its context fields its read
-/// fields; the Client configurations and Server client descriptions tabs declare the one
-/// <code>delete</code> row action and invite the agent when empty, the server clients keyed by a
-/// one-part composite <code>ClientId</code>, and the other three declare no action; it is tab <code>n</code> of <code>security/oauth</code>, the first listed at side-bar
+/// fields; the Server client descriptions tab (edited in OcuPilot since Story 12.8) declares its
+/// create, delete and Update JWKS and invites the agent when empty, keyed by a one-part composite
+/// <code>ClientId</code>; the Server descriptions tab (since Story 12.4) declares its create, delete
+/// and Update JWKS, the Client configurations tab (since Story 12.5) its create, delete, Rotate Keys
+/// and Register, the Resource servers tab (since Story 12.6) its create and delete, and the
+/// Authorization server tab (since Story 12.7) its create, delete and Rotate Keys, each inviting the
+/// agent; it is tab <code>n</code> of <code>security/oauth</code>, the first listed at side-bar
 /// position 5 and the rest unlisted; its classic page and editor page compile under the declared case,
-/// and its exemption carries the one reason, the editor page's own <code>PAGENAME</code> as its label,
-/// the editor's root-relative href and its row link params; its pair set is its resource then
+/// and no tab declares the exemption; its pair set is its resource then
 /// <code>%DB_IRISSYS:READ</code>; and <code>AreaCoverageProblem("security", ...)</code> is empty.</p>
 Method TestEachTabIsDeclaredAsTheOAuthScreenTab()
 {
@@ -163,6 +166,7 @@ Method TestEachTabIsDeclaredAsTheOAuthScreenTab()
         Do $$$AssertEquals($ListToString($ClassMethod(tClass, "EntityTypes")), $List(tCase, 6), tClass _ ": on its entity types, primary first")
         Do $$$AssertEquals($ClassMethod(tClass, "Scope"), "instance", tClass _ ": at instance scope")
         Set tDeletable = ..Deletable(tClass)
+        Set tEdited = ''$ListFind($ListFromString(..#EDITEDTABS), tClass)
         Do $$$AssertEquals($ClassMethod(tClass, "IdKind"), $Select(tClass = "OcuPilot.Screen.Descriptor.OAuthServerClientTab": "composite", 1: "single"), tClass _ ": keyed as declared, the server clients by ClientId")
         If tClass = "OcuPilot.Screen.Descriptor.OAuthServerClientTab" Do $$$AssertEquals(tDeclaration.%Get("id").%Get("parts").%ToJSON(), "[""ClientId""]", tClass _ ": the vendor's IdKey, ClientId")
         Do $$$AssertEquals($ClassMethod(tClass, "Refreshes"), 0, tClass _ ": and it does not refresh")
@@ -172,11 +176,11 @@ Method TestEachTabIsDeclaredAsTheOAuthScreenTab()
         Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), $List(tCase, 9), tClass _ ": its read fields are the ones this class pins")
         Do $$$AssertEquals(tDeclaration.context.fields.%ToJSON(), tDeclaration.read.fields.%ToJSON(), tClass _ ": its context fields are its read fields")
         Do $$$AssertEquals(tDeclaration.context.secretFields.%Size(), 0, tClass _ ": with no secret field")
-        Do $$$AssertEquals(tDeclaration.table.emptyNextKey, $Select(tDeletable: "", 1: "tableReadOnlyEmptyNext"), tClass _ ": its empty state names what to do next")
-        Do $$$AssertEquals(tDeclaration.table.emptyAgentKey, $Case(tClass, "OcuPilot.Screen.Descriptor.OAuthClientTab": "oauthClientsEmptyAgent", "OcuPilot.Screen.Descriptor.OAuthServerClientTab": "oauthServerClientsEmptyAgent", : ""), tClass _ ": or invites the agent")
-        Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), $Select(tDeletable: "delete", 1: ""), tClass _ ": its row actions")
-        Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", tClass _ ": and no primary action")
-        Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""" _ $List(tCase, 10) _ """,""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", tClass _ ": its pair set, its resource first")
+        Do $$$AssertEquals(tDeclaration.table.emptyNextKey, $Select(tDeletable || tEdited: "", 1: "tableReadOnlyEmptyNext"), tClass _ ": its empty state names what to do next")
+        Do $$$AssertEquals(tDeclaration.table.emptyAgentKey, $Case(tClass, "OcuPilot.Screen.Descriptor.OAuthClientTab": "oauthClientsEmptyAgent", "OcuPilot.Screen.Descriptor.OAuthServerClientTab": "oauthServerClientsEmptyAgent", "OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab": "oauthServerDescriptionsEmptyAgent", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab": "oauthResourceServersEmptyAgent", "OcuPilot.Screen.Descriptor.OAuthServerTab": "oauthAuthServerEmptyAgent", : ""), tClass _ ": or invites the agent")
+        Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), $Case(tClass, "OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab": "delete,updatejwks", "OcuPilot.Screen.Descriptor.OAuthClientTab": "delete,rotatekeys,register", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab": "delete", "OcuPilot.Screen.Descriptor.OAuthServerTab": "delete,rotatekeys", "OcuPilot.Screen.Descriptor.OAuthServerClientTab": "delete,updatejwks", : $Select(tDeletable: "delete", 1: "")), tClass _ ": its row actions")
+        Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), $Select(tEdited: "create", 1: ""), tClass _ ": and its primary action")
+        Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""" _ $List(tCase, 10) _ """,""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}" _ $Select(tClass = "OcuPilot.Screen.Descriptor.OAuthResourceServerTab": ",{""resource"":""%Admin_OAuth2_Client"",""permission"":""USE""}", 1: "") _ "]", tClass _ ": its pair set, its resource first, and the resource servers' OAuth 2.0 client resource last")
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs")), "", tClass _ ": and the Security and secrets area covers it")
 
         Set tPage = $ClassMethod(tClass, "ClassicPage")
@@ -184,11 +188,8 @@ Method TestEachTabIsDeclaredAsTheOAuthScreenTab()
         Do $$$AssertTrue($IsObject(##class(%Dictionary.CompiledClass).%OpenId(tPage)), tClass _ ": which is a compiled class on this instance, under the declaration's own case")
         Set tEditor = $List(tCase, 8)
         Do $$$AssertTrue($IsObject(##class(%Dictionary.CompiledClass).%OpenId(tEditor)), tClass _ ": and so is its editor page " _ tEditor)
-        Do $$$AssertEquals($ClassMethod(tClass, "ClassicLinkExempt"), 1, tClass _ ": it declares the exemption")
-        Do $$$AssertEquals($ClassMethod(tClass, "ClassicLinkExemptionReason"), ..#EXEMPTIONREASON, tClass _ ": with the one exemption's reason")
-        Do $$$AssertEquals($ClassMethod(tClass, "ClassicLinkLabel"), $Parameter(tEditor, "PAGENAME"), tClass _ ": labelled by the editor page's own name")
-        Do $$$AssertEquals($ClassMethod(tClass, "ClassicLinkHref"), "/csp/sys/sec/%25" _ $Extract(tEditor, 2, *) _ ".zen", tClass _ ": opening the editor page by its root-relative path")
-        Do $$$AssertEquals(tDeclaration.classicLinkExemption.rowLink.params.%ToJSON(), $List(tCase, 11), tClass _ ": with the params the classic list sends")
+        Do $$$AssertTrue(tEdited, tClass _ ": it is edited here")
+        Do $$$AssertEquals($ClassMethod(tClass, "ClassicLinkExempt"), 0, tClass _ ": so it declares no exemption")
     }
     Set tSC = ##class(OcuPilot.Screen.Registry).Validate(.tProblem)
     Do $$$AssertStatusOK(tSC, "the shipped roster, tab groups included, validates: " _ tProblem)

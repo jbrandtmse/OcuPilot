@@ -35,6 +35,14 @@ export const CREDENTIAL_SUFFIXES = [
  */
 export const CREDENTIAL_EXACT_NAMES = ['key', 'credentialname'];
 
+/**
+ * The names the pattern matches that are not credentials, lower-cased, held equal by
+ * `credential-lists.test.mjs` to `OcuPilot.Kernel.Audit.Log.CREDENTIALEXCEPTIONS` and to the spine's
+ * Conventions › Secrets row: `ReturnRefreshToken`, the authorization server's refresh-token policy
+ * (one of `""`, `a`, `c`, `f`), which Story 12.7's tools show and set.
+ */
+export const CREDENTIAL_EXCEPTIONS = ['returnrefreshtoken'];
+
 /** The credential pattern, matched against a path's last segment. */
 export const CREDENTIAL_RE = new RegExp(
   `(${CREDENTIAL_SUFFIXES.join('|')})$|^(${CREDENTIAL_EXACT_NAMES.join('|')})$`,
@@ -46,7 +54,8 @@ export function lastSegment(path) {
   return path.split('.').pop().replace(/(\[\])+$/, '');
 }
 
-/** Whether `name`'s last segment matches the pattern. */
+/** Whether `name`'s last segment matches the pattern and is not one of `CREDENTIAL_EXCEPTIONS`. */
 export function isCredentialName(name) {
-  return CREDENTIAL_RE.test(lastSegment(name));
+  const segment = lastSegment(name);
+  return CREDENTIAL_RE.test(segment) && !CREDENTIAL_EXCEPTIONS.includes(segment.toLowerCase());
 }

@@ -32,7 +32,7 @@ Method TestTheScreenIsBuiltWithBothActionsAndItsRead()
 {
     Do $$$AssertEquals($ClassMethod(..#CONFIG, "IsBuilt"), 1, "the Auditing configuration screen is built")
     Do $$$AssertEquals($ClassMethod(..#CONFIG, "SideBarPosition"), 6, "at side-bar position 6")
-    Do $$$AssertEquals($ListToString($ClassMethod(..#CONFIG, "RowActionIds")), "enable,disable", "declaring enable and disable")
+    Do $$$AssertEquals($ListToString($ClassMethod(..#CONFIG, "RowActionIds")), "enable,disable,copy,purge", "declaring enable and disable, and Story 12.3's copy and purge")
     Set tRead = $ClassMethod(..#CONFIG, "Read")
     Do $$$AssertTrue($IsObject(tRead), "with a declared read")
     If '$IsObject(tRead) Quit

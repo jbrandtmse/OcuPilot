@@ -15,8 +15,8 @@
  * per descriptor declaring an honored exemption, and the stable count line
  * `classic-links: N exemption(s) honored (SM-C1)` -- durable and greppable, since SM-C1 is
  * expanded in no planning artifact and there is no register to write into. N counts exemptions,
- * not declarations: descriptors declaring the same reason declare one exemption (AD-44, the OAuth
- * 2.0 tabs), and a classified run prints how many descriptors declare them beside it.
+ * not declarations: descriptors declaring the same reason declare one exemption (AD-44), and a
+ * classified run prints how many descriptors declare them beside it.
  *
  * **The population is asserted three ways, and only one of them is a second look at the same
  * directory.** (1) Descriptors are read through `screen-mirror.mjs`'s `readSources()` over the

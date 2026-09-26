@@ -49,7 +49,7 @@ Method TestEveryTemplateEndpointHasOneList()
     }
     Do $$$AssertEquals(tMissing, "", "every endpoint publishing a template has a template list" _ $Select(tMissing = "": "", 1: "; missing:" _ tMissing))
 
-    Set (tTemplate, tWallet, tAudit, tNone) = 0
+    Set (tTemplate, tWallet, tAudit, tMetadata, tClientMetadata, tNone) = 0
     Set tMalformedRows = ""
     Set tKey = ""
     For {
@@ -59,6 +59,8 @@ Method TestEveryTemplateEndpointHasOneList()
         If tSource = "template" Set tTemplate = tTemplate + 1
         If (tSource = "class") && ($Piece(tLive(tKey), "|", 1) = "Wallet.Secret") Set tWallet = tWallet + 1
         If (tSource = "class") && ($Piece(tLive(tKey), "|", 1) = "Security.Audit.Event") Set tAudit = tAudit + 1
+        If (tSource = "class") && ($Piece(tLive(tKey), "|", 1) = "Security.OAuth2.Client.ServerDefinition") Set tMetadata = tMetadata + 1
+        If (tSource = "class") && ($Piece(tLive(tKey), "|", 1) = "Security.OAuth2.Client.ClientConfiguration") Set tClientMetadata = tClientMetadata + 1
         If tSource = "none" Set tNone = tNone + 1
         Set tN = ""
         For {
@@ -72,6 +74,8 @@ Method TestEveryTemplateEndpointHasOneList()
     Do $$$AssertEquals(tTemplate, 40, "40 template lists")
     Do $$$AssertEquals(tWallet, 3, "3 wallet secret lists, one per Type")
     Do $$$AssertEquals(tAudit, 1, "1 audit event list")
+    Do $$$AssertEquals(tMetadata, 1, "1 server description metadata list")
+    Do $$$AssertEquals(tClientMetadata, 1, "1 client configuration metadata list")
     Do $$$AssertEquals(tNone, 3, "3 endpoints recorded as needing no template")
     Do $$$AssertEquals(tMalformedRows, "", "every row carries a shape and a template type" _ $Select(tMalformedRows = "": "", 1: "; malformed:" _ tMalformedRows))
 }
@@ -147,7 +151,8 @@ Method TestTheTemplateCredentialsAreStringLiterals()
 
 /// <p>AC5 -- the class-derived lists are exactly AD-3's: <code>%Wallet.KeyValue</code> 5,
 /// <code>%Wallet.SymmetricKey</code> 4, <code>%Wallet.RSA</code> 12 and <code>Security.Events</code>
-/// 2, each wallet list recording its <code>Type</code> value and body member; and the wallet
+/// 2, and <code>OAuth2.Server.Metadata</code> 44 under the <code>Metadata</code> envelope (Story
+/// 12.4), each wallet list recording its <code>Type</code> value and body member; and the wallet
 /// <code>Type</code>s derived are exactly the instance's concrete <code>%Wallet.Secret</code>
 /// subclasses.</p>
 /// <p>Mutation: empty <parameter>OcuPilot.Test.FieldDerive.WALLETIDENTIFYING</parameter> -> the
@@ -176,6 +181,34 @@ Method TestTheClassDerivedListsAreExact()
     Do $$$AssertEquals(..Paths(.tLive, "Wallet.Secret:%Wallet.SymmetricKey"), "KeyId,Length,Secret,Secret64", "%Wallet.SymmetricKey is 4 fields")
     Do $$$AssertEquals(..Paths(.tLive, "Wallet.Secret:%Wallet.RSA"), "Certificate,CertificateFile,HasCertificate,HasPrivateKey,Length,Password,PrivateKey,PrivateKeyFile,PublicKey,PublicKeyFile,Secret,Secret64", "%Wallet.RSA is 12 fields")
     Do $$$AssertEquals(..Paths(.tLive, "Security.Audit.Event:Security.Events"), "Description,Enabled", "Security.Events is 2 fields")
+    ; Story 12.4: the server description's Metadata members, derived from the class its endpoint
+    ; imports them into, under the Metadata envelope.
+    Set tKey = "Security.OAuth2.Client.ServerDefinition:OAuth2.Server.Metadata"
+    Do $$$AssertEquals($Piece($Get(tLive(tKey)), "|", 2, 6), "class||OAuth2.Server.Metadata||Metadata", "the metadata list is class-derived under the Metadata envelope")
+    Kill tShapes
+    Set tN = ""
+    For {
+        Set tN = $Order(tLive(tKey, tN), 1, tRow)
+        Quit:tN=""
+        Set tShapes($Piece(tRow, "|", 2, 3)) = $Get(tShapes($Piece(tRow, "|", 2, 3))) + 1
+    }
+    Do $$$AssertEquals($Get(tShapes("literal|string")) _ "/" _ $Get(tShapes("array|array")) _ "/" _ $Get(tShapes("literal|boolean")), "12/26/6", "OAuth2.Server.Metadata is 44 members: 12 URIs, 26 lists and 6 flags")
+    ; Story 12.5: the client configuration's Metadata members, each with its kind and a fixed
+    ; member's values, derived from the class its endpoint imports them into.
+    Set tKey = "Security.OAuth2.Client.ClientConfiguration:OAuth2.Client.Metadata"
+    Do $$$AssertEquals($Piece($Get(tLive(tKey)), "|", 2, 6), "class||OAuth2.Client.Metadata||Metadata", "the client metadata list is class-derived under the Metadata envelope")
+    Kill tKinds
+    Set (tN, tFixed, tAlg) = ""
+    For {
+        Set tN = $Order(tLive(tKey, tN), 1, tRow)
+        Quit:tN=""
+        If $Piece(tRow, "|", 1) = "id_token_signed_response_alg" Set tAlg = $Piece(tRow, "|", 5, 6)
+        Set tKinds($Piece(tRow, "|", 5)) = $Get(tKinds($Piece(tRow, "|", 5))) + 1
+        If $Piece(tRow, "|", 6) '= "" Set tFixed = tFixed + 1
+    }
+    Do $$$AssertEquals($Get(tKinds("uri")) _ "/" _ $Get(tKinds("text")) _ "/" _ $Get(tKinds("list")) _ "/" _ $Get(tKinds("integer")) _ "/" _ $Get(tKinds("flag")) _ "/" _ $Get(tKinds("json")), "9/20/7/3/2/1", "OAuth2.Client.Metadata is 42 members: 9 URIs, 20 text, 7 lists, 3 integers, 2 flags and a JSON key set")
+    Do $$$AssertEquals(tFixed, 13, "13 of them with a fixed set of values")
+    Do $$$AssertEquals(tAlg, "text|RS256,RS384,RS512,HS256,HS384,HS512,ES256,ES384,ES512,PS256,PS384,PS512", "a fixed member carries its values in the class's own order")
 
     For tType = "%Wallet.KeyValue", "%Wallet.RSA", "%Wallet.SymmetricKey" {
         Set tHeader = $Get(tLive("Wallet.Secret:" _ tType))

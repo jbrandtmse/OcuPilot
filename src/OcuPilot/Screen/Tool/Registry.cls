@@ -93,9 +93,11 @@ ClassMethod ReadToolClass() As %String
 }
 
 /// <p>Every tool, in name order, as a <class>%DynamicArray</class> of
-/// <code>{name, kind, class, descriptor}</code>. <code>descriptor</code> is <code>""</code> for a
-/// tool with a class of its own; <code>class</code> is <method>ReadToolClass</method> for a read
-/// tool.</p>
+/// <code>{name, kind, class, descriptor, fulfilment, advertised}</code>. <code>descriptor</code> is
+/// <code>""</code> for a tool with a class of its own; <code>class</code> is
+/// <method>ReadToolClass</method> for a read tool. <code>advertised</code> is false only for a tool
+/// declaring <parameter>OcuPilot.Screen.Tool.Base.ADVERTISED</parameter> 0, which stays listed here
+/// so its screen's action route resolves it (AD-53).</p>
 /// <p>Refuses, with <var>pTools</var> empty: a tool class whose kind
 /// <method>KindProblem</method> refuses or whose name is not <parameter>TOOLNAMEPATTERN</parameter>;
 /// a read-declaring descriptor whose read <method>OcuPilot.Screen.Registry.ReadProblem</method>
@@ -139,7 +141,7 @@ ClassMethod ListTools(Output pTools As %DynamicArray) As %Status
                     Quit
                 }
             }
-            Set tSC = ..Claim(.tByName, tName, tKind, tClass, "", tFulfilment)
+            Set tSC = ..Claim(.tByName, tName, tKind, tClass, "", tFulfilment, ($Parameter(tClass, "ADVERTISED") '= 0))
             If $$$ISERR(tSC) Quit
         }
         If $$$ISERR(tSC) Quit
@@ -187,13 +189,17 @@ ClassMethod ListTools(Output pTools As %DynamicArray) As %Status
 /// <p>The tool named <var>pName</var> as <method>ListTools</method> lists it, or <code>""</code>
 /// in <var>pTool</var> when no tool carries that name. The status is an error only when the list
 /// itself could not be built.</p>
-ClassMethod Resolve(pName As %String, Output pTool As %DynamicObject) As %Status
+/// <p>An unadvertised tool (AD-53) resolves only when <var>pUnadvertised</var> is 1, which the
+/// prohibited set passes because it serves the screen's action route too; every caller on the
+/// agent's proposal path takes the default and so cannot reach one.</p>
+ClassMethod Resolve(pName As %String, Output pTool As %DynamicObject, pUnadvertised As %Boolean = 0) As %Status
 {
     Set pTool = ""
     Set tSC = ..ListTools(.tTools)
     If $$$ISERR(tSC) Quit tSC
     Set tIterator = tTools.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tEntry) {
+        If 'pUnadvertised && '..IsAdvertised(tEntry) Continue
         If tEntry.name = pName {
             Set pTool = tEntry
             Quit
@@ -210,7 +216,8 @@ ClassMethod WireName(pName As %String) As %String
 
 /// <p>The tool whose <method>WireName</method> is exactly <var>pWireName</var>, as
 /// <method>ListTools</method> lists it, or <code>""</code> in <var>pTool</var> when none is. The
-/// status is an error only when the list itself could not be built.</p>
+/// status is an error only when the list itself could not be built. An unadvertised tool never
+/// resolves here, so the model's call to one is refused as an unknown tool (AD-53).</p>
 ClassMethod ResolveWire(pWireName As %String, Output pTool As %DynamicObject) As %Status
 {
     Set pTool = ""
@@ -218,6 +225,7 @@ ClassMethod ResolveWire(pWireName As %String, Output pTool As %DynamicObject) As
     If $$$ISERR(tSC) Quit tSC
     Set tIterator = tTools.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tEntry) {
+        If '..IsAdvertised(tEntry) Continue
         If ..WireName(tEntry.name) = pWireName {
             Set pTool = tEntry
             Quit
@@ -226,7 +234,17 @@ ClassMethod ResolveWire(pWireName As %String, Output pTool As %DynamicObject) As
     Quit $$$OK
 }
 
-/// <p>Every tool as a provider request advertises it, in <method>ListTools</method>'s name order:
+/// <p>Whether the <method>ListTools</method> entry <var>pEntry</var> is advertised to the agent
+/// (AD-53). An entry that does not say is.</p>
+ClassMethod IsAdvertised(pEntry As %DynamicObject) As %Boolean
+{
+    If '$IsObject(pEntry) Quit 0
+    If pEntry.%GetTypeOf("advertised") '= "boolean" Quit 1
+    Quit ''pEntry.%Get("advertised")
+}
+
+/// <p>Every advertised tool as a provider request advertises it, in <method>ListTools</method>'s
+/// name order, an unadvertised one (AD-53) left out:
 /// <code>pTools(n, "name")</code> the wire name, <code>pTools(n, "description")</code> and
 /// <code>pTools(n, "inputSchema")</code> the emitted schema as JSON text, with the count in
 /// <code>pTools</code> -- the shape <class>OcuPilot.Kernel.Provider.Base</class> reads.</p>
@@ -246,6 +264,7 @@ ClassMethod ProviderTools(Output pTools) As %Status
         Kill tSeen
         Set tIterator = tList.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tTool) {
+            If '..IsAdvertised(tTool) Continue
             Set tName = tTool.%Get("name")
             Set tWire = ..WireName(tName)
             If (tName [ "_") || '$Match(tWire, ..#WIRENAMEPATTERN) {
@@ -605,7 +624,7 @@ ClassMethod ToolClasses(Output pList As %List) As %Status [ Private ]
 /// <p>Record one tool under <var>pName</var>, refusing a name already claimed. <var>pFulfilment</var>
 /// defaults to <code>instance</code> so every caller written before Story 4.7 keeps calling this
 /// unchanged.</p>
-ClassMethod Claim(ByRef pByName, pName As %String, pKind As %String, pClass As %String, pDescriptor As %String, pFulfilment As %String = "instance") As %Status [ Private ]
+ClassMethod Claim(ByRef pByName, pName As %String, pKind As %String, pClass As %String, pDescriptor As %String, pFulfilment As %String = "instance", pAdvertised As %Boolean = 1) As %Status [ Private ]
 {
     If $Data(pByName(pName)) {
         Set tHeld = pByName(pName)
@@ -617,6 +636,7 @@ ClassMethod Claim(ByRef pByName, pName As %String, pKind As %String, pClass As %
     Do tEntry.%Set("class", pClass)
     Do tEntry.%Set("descriptor", pDescriptor)
     Do tEntry.%Set("fulfilment", pFulfilment)
+    Do tEntry.%Set("advertised", ''pAdvertised, "boolean")
     Set pByName(pName) = tEntry
     Quit $$$OK
 }

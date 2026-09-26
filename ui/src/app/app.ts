@@ -29,6 +29,12 @@ import { X509Actions } from './areas/security/x509-actions';
 import { X509Form } from './areas/security/x509-form.store';
 import { DeviceActions } from './areas/os-management/device-actions';
 import { DeviceForm } from './areas/os-management/device-form.store';
+import { OAuthActions } from './areas/security/oauth-actions';
+import { OAuthServerDescriptionForm } from './areas/security/oauth-server-description-form.store';
+import { OAuthClientForm } from './areas/security/oauth-client-form.store';
+import { OAuthResourceServerForm } from './areas/security/oauth-resource-server-form.store';
+import { OAuthServerForm } from './areas/security/oauth-server-form.store';
+import { OAuthRegisteredClientForm } from './areas/security/oauth-registered-client-form.store';
 import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
@@ -259,6 +265,17 @@ export class App {
   // (`areas/security/audit-event-actions.ts`).
   private readonly auditEventActions = inject(AuditEventActions);
   private readonly auditEventEditor = inject(AuditEventEditor);
+  // The OAuth 2.0 Server descriptions tab's declared Create, the same way (`areas/security/oauth-actions.ts`).
+  private readonly oauthActions = inject(OAuthActions);
+  private readonly oauthServerDescriptionForm = inject(OAuthServerDescriptionForm);
+  // The Client configurations tab's Create, the same way (Story 12.5).
+  private readonly oauthClientForm = inject(OAuthClientForm);
+  // The Resource servers tab's Create, the same way (Story 12.6).
+  private readonly oauthResourceServerForm = inject(OAuthResourceServerForm);
+  // The Authorization server tab's Create, the same way (Story 12.7).
+  private readonly oauthServerForm = inject(OAuthServerForm);
+  // The Server client descriptions tab's Create, the same way (Story 12.8).
+  private readonly oauthRegisteredClientForm = inject(OAuthRegisteredClientForm);
   // The X.509 list's declared Create, labelled Import, the same way (`areas/security/x509-actions.ts`).
   private readonly x509Actions = inject(X509Actions);
   private readonly x509Form = inject(X509Form);
@@ -549,6 +566,16 @@ export class App {
       this.auditEventEditor.reset();
       // The X.509 form holds a certificate, a private key and its password THIS principal pasted and has not saved (AD-35).
       this.x509Form.reset();
+      // The server description editor holds a registration access token THIS principal typed and has not saved (AD-35).
+      this.oauthServerDescriptionForm.reset();
+      // The client configuration editor holds secrets THIS principal typed and has not saved (AD-35).
+      this.oauthClientForm.reset();
+      // The resource server editor holds a client secret THIS principal typed and has not saved (AD-35).
+      this.oauthResourceServerForm.reset();
+      // The authorization server editor holds a key password THIS principal typed and has not saved (AD-35).
+      this.oauthServerForm.reset();
+      // The server client description editor holds a client secret THIS principal typed or generated and has not saved (AD-35).
+      this.oauthRegisteredClientForm.reset();
       // The wallet secret form holds a value THIS principal typed and has not saved (AD-35).
       this.walletSecretForm.reset();
       // The device editor holds a device THIS principal was creating or editing and has not saved.

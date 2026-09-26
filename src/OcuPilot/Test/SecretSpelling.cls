@@ -33,7 +33,7 @@ Method OnAfterOneTest() As %Status
 Method TestTheValidatorAdmitsExactlyTheSpellingsTheFieldRowsDrop()
 {
     Do $ClassMethod(..#PROBE, "Declare", "")
-    Set tBaseline = $ClassMethod(..#PROBE, "Advertised")
+    Set tBaseline = $ClassMethod(..#PROBE, "AdmittedNames")
     Do $$$AssertTrue($ListFind(tBaseline, "OwnerList") && $ListFind(tBaseline, "PeerNames"), "with nothing declared the edit's rows advertise both lists: " _ $ListToString(tBaseline))
     Set tCandidates = $ListFromString(..#CANDIDATES)
     For tI = 1:1:$ListLength(tCandidates) {
@@ -41,7 +41,7 @@ Method TestTheValidatorAdmitsExactlyTheSpellingsTheFieldRowsDrop()
         Set tField = $Select($Extract(tName, *-1, *) = "[]": $Extract(tName, 1, *-2), 1: tName)
         Set tAdmitted = (..ChannelProblem(tName) = "")
         Do $ClassMethod(..#PROBE, "Declare", tName)
-        Set tDropped = '$ListFind($ClassMethod(..#PROBE, "Advertised"), tField)
+        Set tDropped = '$ListFind($ClassMethod(..#PROBE, "AdmittedNames"), tField)
         Set tSchema = $ClassMethod(..#PROBE, "InputSchema").%Get("properties")
         Set tOffered = (tSchema.%GetTypeOf(tField) '= "unassigned") && (tField '= $ClassMethod(..#PROBE, "IdArgument"))
         Do $ClassMethod(..#PROBE, "Declare", "")

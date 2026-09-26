@@ -28,7 +28,7 @@ ClassMethod PermittedFields() As %List
 
 /// <p>The names <method>OcuPilot.Screen.Tool.Write.FieldRows</method> admits now, as a
 /// <class>%List</class>.</p>
-ClassMethod Advertised() As %List
+ClassMethod AdmittedNames() As %List
 {
     Set tNames = ""
     Set tSC = ..FieldRows(.tRows)

@@ -56,7 +56,7 @@ Parameter TYPEWEBAPPLICATION = "web-application";
 /// <parameter>OcuPilot.Kernel.EntityType.TYPES</parameter>, or a rule the generator cannot
 /// implement, fails <code>npm run build</code> rather than reaching the client as a silent
 /// no-op. A later write-tool story adds one pair here, never a branch in two languages.</p>
-Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integer,application-error:foldcase,role:foldcase,resource:foldcase,audit-event:foldcase,audit-user-event:foldcase,service:foldcase,ldap-configuration:foldcase";
+Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integer,application-error:foldcase,role:foldcase,resource:foldcase,audit-event:foldcase,audit-user-event:foldcase,service:foldcase,ldap-configuration:foldcase,oauth2-server:singleton";
 
 /// <p>The closed rule vocabulary <parameter>IDRULES</parameter> selects from. A rule named there
 /// and absent here is a declaration error, pinned by
@@ -80,8 +80,9 @@ Parameter RULEFOLDCASESTRIPTRAILINGSLASH = "foldcase-striptrailingslash";
 /// <code>GET</code> (measured on this build, Story 9.9), so they take the same rule.</p>
 Parameter RULEFOLDCASE = "foldcase";
 
-/// <p>The auditing-configuration rule: answer <parameter>RULESINGLETONID</parameter> whatever the
-/// caller sent. A configuration object with exactly one instance has no name to fold -- the
+/// <p>The rule of a configuration with exactly one instance -- the auditing configuration and the
+/// OAuth 2.0 authorization server configuration: answer <parameter>RULESINGLETONID</parameter>
+/// whatever the caller sent. A configuration object with exactly one instance has no name to fold -- the
 /// caller-supplied id is a required schema property of every write tool
 /// (<method>OcuPilot.Screen.Tool.Write.View</method> is <code>Final</code>), so without this rule
 /// the target key would be whatever the model typed and two spellings would be two targets,

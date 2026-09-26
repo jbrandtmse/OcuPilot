@@ -94,17 +94,29 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     create: STRINGS.agentSwitchesHoldAdd,
     delete: STRINGS.agentSwitchesHoldRemove,
   },
-  // Story 7.2: the Users list's three value-carrying row actions.
+  // Story 7.2: the Users list's three value-carrying row actions; Story 12.2: its token revoke.
   'OcuPilot.Screen.Descriptor.UserList': {
     'set-password': STRINGS.userActionSetPassword,
     'add-role': STRINGS.userActionAddRole,
     'remove-role': STRINGS.userActionRemoveRole,
+    'revoke-tokens': STRINGS.userActionRevokeTokens,
   },
-  // Story 7.4: the Auditing configuration form's two actions, and the warning dialog's title.
+  // Story 7.4: the Auditing configuration form's two actions, and the warning dialog's title;
+  // Story 12.3: its audit database copy and purge.
   'OcuPilot.Screen.Descriptor.AuditingConfig': {
     enable: STRINGS.auditingTurnOnAction,
     disable: STRINGS.auditingTurnOffAction,
+    copy: STRINGS.auditDatabaseCopyAction,
+    purge: STRINGS.auditDatabasePurgeAction,
   },
+  // Story 12.4: the OAuth 2.0 Server descriptions tab's key-set refresh.
+  'OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab': { updatejwks: STRINGS.oauthServerUpdateJwks },
+  // Story 12.5: the OAuth 2.0 Client configurations tab's key rotation and dynamic registration.
+  'OcuPilot.Screen.Descriptor.OAuthClientTab': { rotatekeys: STRINGS.oauthClientRotateKeys, register: STRINGS.oauthClientRegister },
+  // Story 12.7: the OAuth 2.0 Authorization server tab's key rotation.
+  'OcuPilot.Screen.Descriptor.OAuthServerTab': { rotatekeys: STRINGS.oauthClientRotateKeys },
+  // Story 12.8: the OAuth 2.0 Server client descriptions tab's key-set refresh.
+  'OcuPilot.Screen.Descriptor.OAuthServerClientTab': { updatejwks: STRINGS.oauthServerUpdateJwks },
 };
 
 export class ScreenActions {

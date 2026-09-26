@@ -5,7 +5,8 @@
 /// task row it queued is gone afterwards.</p>
 /// <p>It also pins the refusal of the mutating-and-async combination (DW-1279), which is driven
 /// through <class>OcuPilot.Test.EndpointFixture</class> because no vendor endpoint queues a
-/// <code>PUT</code>.</p>
+/// <code>PUT</code>, and that the only mutating pairs admitted to the queue are
+/// <parameter>OcuPilot.Port.AdminPort.QUEUEDWRITES</parameter>.</p>
 /// <p>Runs through <class>OcuPilot.Test.PortFixture</class> with no canned answer, so the real
 /// poll and delete run. Needs <code>%Admin_Operate:U</code> and <code>%Admin_Secure:U</code>, a
 /// mounted globals database for the test namespace, and auditing enabled. Each test queues one
@@ -36,9 +37,10 @@ Method OnAfterOneTest() As %Status
 /// branch.</p>
 /// <p>It is driven through <class>OcuPilot.Test.EndpointFixture</class>, whose
 /// <code>ShouldRunAsync()</code> answers 1 under its <code>async</code> mode, because no vendor
-/// endpoint queues a <code>PUT</code>: of AD-26's two Release 1 async entries neither is mutating,
-/// so the refusing branch has nothing on the instance to run against and the fixture is what gives
-/// it a real body to refuse.</p>
+/// endpoint queues a <code>PUT</code>: the only admitted mutating types that queue are the
+/// <parameter>OcuPilot.Port.AdminPort.QUEUEDWRITES</parameter> pairs, so the refusing branch has
+/// nothing on the instance to run against and the fixture is what gives it a real body to
+/// refuse.</p>
 /// <p>Mutation (Rule 19): remove the <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter>
 /// check from <method>OcuPilot.Port.AdminPort.Sequence</method>'s async branch -- the two log
 /// assertions go red. <b>The log line is the only witness, and the ordering is not asserted
@@ -71,6 +73,24 @@ Method TestAMutatingRequestThatWouldQueueIsRefusedBeforeTheTaskRowIsWritten()
     Set tReadSC = ##class(OcuPilot.Test.PortFixture).Invoke("OcuPilotProbeAsyncWrite", "GET", , , .tReadResult, .tReadHttp, .tReadFault)
     Do $$$AssertStatusNotOK(tReadSC, "the vendor's own handoff cannot wrap a fixture endpoint, so the read fails later")
     Do $$$AssertTrue(##class(OcuPilot.Test.LogProbe).Captured("message") '[ "task row", "but not at the mutating guard, which this read never trips: " _ ##class(OcuPilot.Test.LogProbe).Captured("message"))
+}
+
+/// <p>AD-26 as amended 2026-09-24: the queued writes the port admits are exactly
+/// <code>Security.Audit.Record</code> <code>COPY</code> and <code>PURGE</code>, each a mutating
+/// pair, and the probe pair the refusal above is driven with is not one of them, so the refusal is
+/// still what every other mutating request that would queue meets.</p>
+/// <p>Mutation (Rule 19): add <code>OcuPilotProbeAsyncWrite/PUT</code> to
+/// <parameter>OcuPilot.Port.AdminPort.QUEUEDWRITES</parameter> -> this and the refusal above go
+/// red.</p>
+Method TestOnlyTheNamedQueuedWritesAreAdmitted()
+{
+    Set tQueued = $ListFromString($Parameter("OcuPilot.Port.AdminPort", "QUEUEDWRITES"))
+    Do $$$AssertEquals($ListToString(tQueued), "Security.Audit.Record/COPY,Security.Audit.Record/PURGE", "the admitted queued writes are exactly the audit copy and purge")
+    For tI = 1:1:$ListLength(tQueued) {
+        Set tPair = $List(tQueued, tI)
+        Do $$$AssertTrue(##class(OcuPilot.Port.AdminPort).IsMutating($Piece(tPair, "/", 1), $Piece(tPair, "/", 2)), tPair _ " is a mutating pair")
+    }
+    Do $$$AssertTrue('##class(OcuPilot.Test.PortFixture).IsQueuedWrite("OcuPilotProbeAsyncWrite", "PUT"), "and the probe pair is not admitted")
 }
 
 /// <p>How many async task rows this user owns, read through the port's own

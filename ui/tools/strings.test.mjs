@@ -543,13 +543,22 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // Story 11.10 moves the bound to 750 under the same protocol: its one row publishes one literal,
   // "Jump to latest", and takes the table to 701.
   //
+  // Story 12.1 moves the bound to 800 under the same protocol: its one row's two literals take the
+  // table past 700, with Epic 12's OAuth editors still to publish theirs.
+  //
   // Story 9.9 moves the bound to 1000 under the same protocol: its six rows publish twenty-nine
   // literals -- the two reduced forms' titles, fields, list controls and captions, their bare and
   // absent sentences, the serving-service refusal, two effects and six prompts -- and take the
   // table past 900.
+  //
+  // Epic 12's integration of Epic 9 moves the bound to 1100 under the same protocol: Stories
+  // 12.1-12.5's rows and Epic 9's together take the table past 1000.
+  //
+  // Story 12.8 moves the bound to 1200 under the same protocol: its one row's fifteen literals take
+  // the table past 1100.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 1000,
-    `expected between 150 and 1000 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 1200,
+    `expected between 150 and 1200 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

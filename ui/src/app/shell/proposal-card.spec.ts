@@ -772,6 +772,60 @@ describe('the proposal card', () => {
     expect(lines[0].textContent).toContain(STRINGS.sslEffectNoPeerCheck);
   });
 
+  it('Story 12.6: an added service mapping another resource server holds is drawn destructive and states the move', () => {
+    // Mutation (Rule 19): drop the MAPPINGMOVE code from `consequenceSentence` -> this goes red.
+    const { card } = mount(liveView({ consequence: 'OAUTH.MAPPINGMOVE', destructive: true, maskedFields: [] }), { phase: 'live' });
+    expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(true);
+    const lines = card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.oauthResourceServerMoveEffect);
+  });
+
+  it('Story 12.6: a resource server edit naming another authenticator class is drawn destructive and states the reset', () => {
+    // Mutation (Rule 19): drop the AUTHENTICATORRESET code from `consequenceSentence` -> this goes red.
+    const { card } = mount(liveView({ consequence: 'OAUTH.AUTHENTICATORRESET', destructive: true, maskedFields: [] }), { phase: 'live' });
+    expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(true);
+    const lines = card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.oauthResourceServerAuthenticatorResetEffect);
+  });
+
+  it('Story 12.7: a change reaching the clients registered with the authorization server is drawn destructive and says so', () => {
+    // Mutation (Rule 19): drop the SERVERCLIENTS code from `consequenceSentence` -> this goes red.
+    const { card } = mount(liveView({ consequence: 'OAUTH.SERVERCLIENTS', destructive: true, maskedFields: [] }), { phase: 'live' });
+    expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(true);
+    const lines = card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.oauthAuthServerClientsEffect);
+  });
+
+  it('Story 12.7: for an account that cannot list the registered clients, the card still says the change reaches them', () => {
+    // Mutation (Rule 19): drop the SERVERCLIENTSHIDDEN code from `consequenceSentence` -> this goes red.
+    const { card } = mount(liveView({ consequence: 'OAUTH.SERVERCLIENTSHIDDEN', destructive: true, maskedFields: [] }), { phase: 'live' });
+    expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(true);
+    const lines = card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.oauthAuthServerClientsHiddenEffect);
+  });
+
+  it('Story 12.7: a delete of the authorization server configuration says it deletes every registered client', () => {
+    // Mutation (Rule 19): drop the SERVERCLIENTSDELETED code from `consequenceSentence` -> this goes red.
+    const { card } = mount(liveView({ consequence: 'OAUTH.SERVERCLIENTSDELETED', destructive: true, maskedFields: [] }), { phase: 'live' });
+    expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(true);
+    const lines = card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.oauthAuthServerClientsDeletedEffect);
+  });
+
+  it("Story 12.8: a server client's secret change is drawn destructive and names the effect on its application", () => {
+    // Mutation (Rule 19): drop the SERVERCLIENTSECRETCHANGE code from `consequenceSentence` -> this goes red.
+    const { card } = mount(liveView({ consequence: 'OAUTH.SERVERCLIENTSECRETCHANGE', destructive: true, maskedFields: ['ClientSecret'] }), { phase: 'live' });
+    expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(true);
+    const lines = card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.oauthRegisteredClientSecretEffect);
+  });
+
   it('the in-card warning is a status region, the convention for an advisory', () => {
     // DW-1246, corrected: four warning banners in this shell are already `role="status"`. The
     // convention is `alert` for a fault or a refusal and `status` for an advisory, and this is an

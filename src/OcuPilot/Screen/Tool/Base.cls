@@ -43,6 +43,12 @@ Parameter FULFILMENT = "instance";
 /// <p>A one-line description of what the tool answers.</p>
 Parameter DESCRIPTION = "";
 
+/// <p>Whether the agent may reach this tool (AD-53's unadvertised case). <code>1</code> here. A
+/// tool declaring <code>0</code> stays in <method>OcuPilot.Screen.Tool.Registry.ListTools</method>,
+/// so its screen's own action route resolves it, while the provider tool list, the dispatch lookup
+/// and the screen context's <code>tools</code> leave it out.</p>
+Parameter ADVERTISED As BOOLEAN = 1;
+
 /// <p>The tool's input schema, in the subset
 /// <method>OcuPilot.Screen.Tool.Registry.ValidateArguments</method> admits.</p>
 ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject [ Abstract ]
@@ -62,6 +68,13 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
 ClassMethod Description(pDescriptor As %String = "") As %String
 {
     Quit ..#DESCRIPTION
+}
+
+/// <p><parameter>ADVERTISED</parameter> as a boolean. The registry reads the parameter itself when
+/// it lists the tool, so the parameter, not an override of this method, is the declaration.</p>
+ClassMethod Advertised() As %Boolean
+{
+    Quit ''..#ADVERTISED
 }
 
 /// <p>The <code>(resource, permission)</code> pairs a caller must hold for this tool, as a

@@ -26,7 +26,8 @@ export const SCREEN_ACTION_PATH_SUFFIX = '/action';
  * registering generically for them would replace a handler that does something else. It grows one
  * entry per story, beside the consequence copy below: the Web applications list (Story 7.1), and
  * the OAuth 2.0 screen's Client configurations and Server client descriptions tabs (Story 7.3),
- * whose detail pages render the same `ListPage`, and the Users list (Story 7.2), and the Auditing
+ * whose detail pages render the same `ListPage`, and its Server descriptions tab (Story 12.4), whose
+ * Update JWKS is sent at once and whose Delete types the issuer, and the Users list (Story 7.2), and the Auditing
  * configuration form (Story 7.4), whose page selects the singleton itself, and the On-demand tasks
  * list (Story 7.5), whose Run is sent at once with no dialog, and the Task schedule (Story 7.6),
  * whose Run, Suspend and Resume are sent at once and whose Delete types the task's name, and
@@ -37,12 +38,15 @@ export const SCREEN_ACTION_PATH_SUFFIX = '/action';
  * whose user-event Delete types the event's name, and the Roles and Resources lists (Story 9.3),
  * whose Delete types the name -- a role's stating how many accounts hold it -- and whose role value
  * actions the role editor sends, and the X.509 credentials, Secrets and SSL/TLS configurations lists
- * (Story 9.5), whose Delete types the name.
+ * (Story 9.5), whose Delete types the name, and the OAuth 2.0 Resource servers tab (Story 12.6), whose
+ * Delete types the name, and the Authorization server tab (Story 12.7), whose Delete types the issuer
+ * and whose Rotate Keys is sent at once.
  */
 export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.WebAppList',
   'OcuPilot.Screen.Descriptor.OAuthClientTab',
   'OcuPilot.Screen.Descriptor.OAuthServerClientTab',
+  'OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab',
   'OcuPilot.Screen.Descriptor.UserList',
   'OcuPilot.Screen.Descriptor.AuditingConfig',
   'OcuPilot.Screen.Descriptor.TaskOnDemandList',
@@ -57,6 +61,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.X509CredentialList',
   'OcuPilot.Screen.Descriptor.WalletSecretList',
   'OcuPilot.Screen.Descriptor.SslConfigList',
+  'OcuPilot.Screen.Descriptor.OAuthResourceServerTab',
+  'OcuPilot.Screen.Descriptor.OAuthServerTab',
 ];
 
 /** The Users list's descriptor, whose row actions carry values (AD-56). */
@@ -174,7 +180,7 @@ const ACTION_ADDRESS: Readonly<Record<string, string>> = {
  * `DESTRUCTIVE` declaration. This is EXPERIENCE.md's `confirm-dialog` rule -- a delete carries the
  * typed-name field and a `button-destructive` -- applied to the verb that deletes.
  */
-const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate'];
+const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens'];
 
 /** The Roles list's destructive action, whose dialog states how many accounts hold the role. */
 const ROLE_DELETE = 'delete';
@@ -192,7 +198,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.WebAppList': { delete: STRINGS.webAppDeleteConsequence },
   'OcuPilot.Screen.Descriptor.OAuthClientTab': { delete: STRINGS.oauthClientDeleteConsequence },
   'OcuPilot.Screen.Descriptor.OAuthServerClientTab': { delete: STRINGS.oauthServerClientDeleteConsequence },
-  [USER_LIST]: { delete: STRINGS.userDeleteConsequence },
+  'OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab': { delete: STRINGS.oauthServerDeleteConsequence },
+  [USER_LIST]: { delete: STRINGS.userDeleteConsequence, 'revoke-tokens': STRINGS.userRevokeTokensConsequence },
   [TASK_SCHEDULE]: { delete: STRINGS.taskDeleteConsequence },
   [PROCESS_LIST]: { terminate: STRINGS.processTerminateConsequence },
   [PROCESS_DETAILS]: { terminate: STRINGS.processTerminateConsequence },
@@ -203,6 +210,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.X509CredentialList': { delete: STRINGS.x509DeleteConsequence },
   'OcuPilot.Screen.Descriptor.WalletSecretList': { delete: STRINGS.walletSecretDeleteConsequence },
   'OcuPilot.Screen.Descriptor.SslConfigList': { delete: STRINGS.sslDeleteConsequence },
+  'OcuPilot.Screen.Descriptor.OAuthResourceServerTab': { delete: STRINGS.oauthResourceServerDeleteConsequence },
+  'OcuPilot.Screen.Descriptor.OAuthServerTab': { delete: STRINGS.oauthAuthServerDeleteConsequence },
 };
 
 /**
@@ -273,6 +282,8 @@ const WARNING_ROWS: Readonly<
 interface ScreenActionAnswer {
   readonly action?: string;
   readonly target?: { readonly type?: string; readonly scope?: string; readonly id?: string };
+  /** `true` where the write was made and is still running on the instance (AD-26). */
+  readonly continues?: boolean;
 }
 
 /** Which dialog a pending row action is waiting on. */
@@ -654,6 +665,7 @@ export class ScreenActionHandler {
         body: JSON.stringify(request),
       }
     );
+    this.lastContinues = result.kind === 'ok' && result.body?.continues === true;
     if (result.kind !== 'ok') {
       // The envelope's own sentence (AD-39). A refused write changed nothing, so nothing is
       // published and no row is marked.
@@ -682,8 +694,18 @@ export class ScreenActionHandler {
    * Selective SQL auditing dialog -- so each still takes the one request and change event `send`
    * makes.
    */
-  sendFor(descriptor: string, actionId: string, target: string): Promise<boolean> {
-    return this.send(descriptor, actionId, target);
+  sendFor(descriptor: string, actionId: string, target: string, values?: ActionValues): Promise<boolean> {
+    return this.send(descriptor, actionId, target, values);
+  }
+
+  private lastContinues = false;
+
+  /**
+   * Whether the last action this handler sent was applied and answered that it is still running on
+   * the instance (AD-26). Read right after the `sendFor` that sent it.
+   */
+  continued(): boolean {
+    return this.lastContinues;
   }
 
   /** The key of the row the screen has selected, or `''`. */

@@ -6339,12 +6339,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Walk measures app-panel-resize-handle>div.ocu-panel-resize-handle 4px past aside.ocu-panel: its declared hit area is left:-4px width:8px (_components.scss:3203-3212, DESIGN.md:1140), so this is the designed straddle, not a layout bug. Epic 5's panel files
 - 2026-09-24T00:06:23Z status=routed owner=range-end-cleanup by=burndown note=resolve by letting the gate honour a declared overflow exemption or by moving the hit area inside the panel; baseline keys carry this id
 - 2026-09-24T00:20:24Z by=integrate_forward note=Epic 7 merge adds 6 keys (security/auditing, /system-events, /user-events; 1280+720); one-time extension, same root cause
+- 2026-09-25T01:23:50Z occurrence=12-4-the-oauth-2-0-client-server-description-editor
 
 ### DW-1584: Structural gate baseline: the status bar's connection and stamp segments overflow their group at 720px on every screen (77 baseline keys)
 - source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Walk at 720: span.ocu-status-bar-connection 28px and span.ocu-status-bar-segment.ocu-status-bar-stamp 6px past app-status-bar>div.ocu-status-bar-group; DESIGN.md's yield order is not applied at the 200%-zoom floor. Status bar is Epic 1's (merged)
 - 2026-09-24T00:06:23Z status=routed owner=range-end-cleanup by=burndown note=baseline keys carry this id
 - 2026-09-24T00:20:24Z by=integrate_forward note=Epic 7 merge adds 5 keys on the three security/auditing screens at 720; one-time extension, same root cause
+- 2026-09-25T01:23:50Z occurrence=12-4-the-oauth-2-0-client-server-description-editor
 
 ### DW-1585: Structural gate baseline: command-bar controls overflow the command bar at 720px (refresh action 80px on agent/definitions; sort 30px in CI only)
 - source: ui/browser/structural-baseline.json (DW-1337 baseline, Story 15.6) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -6758,6 +6760,11 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: publishRows sends drill.errors() narrowed to the 5 summary fields; panel.ts sets namespace from scope.namespace() and entity from the route :id, while the drill's namespace/date live only in ErrorLogDrill (AD-48 one namespace source); ErrorRead requires namespace and date
 - 2026-09-24T09:36:58Z status=routed owner=11-2-explain-a-log-or-audit-entry by=cr note=11.2 consumes these rows; carrying the drill scope needs a descriptor or context-contract change outside 11.9's Never list
 
+### DW-1616: AD-15's 'either record locates the other' cannot hold for the agent's token revoke: the vendor's REVOKE records no audit event, and only AD-53 (screen path) names that gap
+- source: spec-12-2-revoke-a-user-s-oauth-2-0-tokens.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Spec Design Notes measured 'Audit after a revoke: no vendor event recorded (auditing on)'; AD-15 Rule requires the marker alongside the vendor's own change event; AD-53's 2026-09-24 amendment covers the screen caller only and says the agent keeps its marker
+- 2026-09-24T13:34:45Z status=escalated owner=burndown by=cr note=lead: add a one-line named case to AD-15 (Rule 20); code already emits the marker, no code change
+- 2026-09-24T17:45:01Z status=by-design owner=12-2-revoke-a-user-s-oauth-2-0-tokens by=merge_gate note=ruling(orchestrator): AD-15 gains a one-line named case at its origin (IRIS audits no token revoke; the marker is the only record); no code change
 ### DW-1613: Story 9.5's SSL/TLS editor took the initial bundle to 1,476,658 bytes, over the 1467kB warning (DW-371 red)
 - source: spec-9-5-the-ssl-tls-editor.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: build-output.test.mjs measured 1,476,658 bytes against 1467kB
@@ -6847,6 +6854,81 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: panel-follow.ts settle() scrolls on any growth while following, including a tool-call or proposal card the user expands; the spec's rule covers every render that adds or grows an entry.
 - 2026-09-24T17:07:51Z status=wontfix-accepted owner=11-10-a-judge-succeeds-the-first-time by=cr note=reopen_if=the 17.7 owner check or a judge reports the transcript jumping when a card is expanded at the newest entry
 
+### DW-1632: 12.3 purge: removal of records dated before the cut-off never observed (every throwaway holds only today's audit records)
+- source: spec-12-3-copy-and-purge-the-audit-database.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: %SYS.Audit refuses past-dated saves/imports in %SYS; body pinned by exact JSON; vendor Delete end read exclusive in source; Test/AuditPurge TestTheScreenRoutePurgesBeforeTodayAndKeepsToday
+- 2026-09-24T19:28:02Z status=routed owner=burndown by=harvest note=settle on ocupilot-b-ci once it has lived past midnight instance time: record the previous-day count, purge at 0 days, assert it reaches 0 and today's survive
+- 2026-09-24T19:55:21Z occurrence=12-3-copy-and-purge-the-audit-database
+- 2026-09-25T01:49:15Z status=resolved-by:12-3-copy-and-purge-the-audit-database by=adjudication note=observed on ocupilot-b-ci after it lived past midnight UTC (instance TZ UTC): AuditPurge run 880 logged 18529 records dated before today at the start; after the 0-day purge none remained and every record dated today survived (2510 >= 2508); all 4 methods passed
+
+### DW-1633: 12.3 purge dialog counts days on the browser calendar, so a browser ahead of the instance gets 0 days refused as a future cut-off
+- source: spec-12-3-copy-and-purge-the-audit-database.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: audit-purge-dialog.ts purgeCutoff uses new Date(); CutoffProblem refuses a date after +$Horolog; the typed date is exactly what is purged
+- 2026-09-24T19:28:02Z status=wontfix-accepted owner=12-3-copy-and-purge-the-audit-database by=harvest note=reopen_if=a refused 0-day purge reported where browser and instance dates differ
+- 2026-09-24T19:55:21Z occurrence=12-3-copy-and-purge-the-audit-database
+
+### DW-1634: 12.3 a PORT.TIMEOUT (503) from audit copy/purge may also raise the shell connectivity banner beside the page's still-running line (inference)
+- source: spec-12-3-copy-and-purge-the-audit-database.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: 503 is classified server-fault by the shell; bound not reached in measurement (30,579-record copy took 0.53 s on ocupilot-b-ci)
+- 2026-09-24T19:28:02Z status=wontfix-accepted owner=12-3-copy-and-purge-the-audit-database by=harvest note=reopen_if=an audit copy or purge answering PORT.TIMEOUT shows the connectivity banner
+- 2026-09-24T21:15:45Z status=dropped by=adjudication note=superseded by 12.3 rework 1 (47d05d19): a queued write past the wait answers started (202), never PORT.TIMEOUT, so the banner case no longer exists
+
+### DW-1635: Spine AD-8 still says the full tool set is always advertised, which AD-53's 2026-09-24 unadvertised named case (security.auditing.purge) contradicts
+- source: spec-12-3-copy-and-purge-the-audit-database.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ARCHITECTURE-SPINE.md AD-8 Rule: 'The full tool set is always advertised'; AD-53 named case (Story 12.3 spec gate) lists AD-24 but does not carve AD-8; the code follows AD-53
+- 2026-09-24T19:55:21Z status=routed owner=burndown by=cr note=lead: one AD-8 clause citing AD-53's unadvertised case (Rule 20 correct-at-origin); no code change
+- 2026-09-24T19:56:44Z status=resolved-by:12-3-copy-and-purge-the-audit-database by=adjudication note=AD-8 sentence now excepts AD-53's unadvertised tools at its origin (Rule 20); no code change
+
+### DW-1637: An agent audit copy still running past AsyncTimeout is finalized ok in the ledger exactly like a finished one; the started outcome and any later worker failure are not recorded
+- source: spec-12-3-copy-and-purge-the-audit-database.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Confirm.cls:409 finalizes a 202-started write with status ok and code empty; only the transient continues answer says it runs on, and the port never re-polls, so a worker that later fails leaves an ok row. Cheapest carry: Code = a new PORT.STARTED on that ok path (one expression, one Api.Error parameter + roster row).
+- 2026-09-24T21:26:58Z status=routed owner=burndown by=cr note=12.3 re-review: AD-26 as amended is met (applied+marked); the durable started outcome is the ruling item's unmet 'with the outcome' clause
+- 2026-09-26T00:03:34Z owner=range-end-cleanup by=burndown note=Epic 12 burn-down overflow (remainder 2, under cap, no repeat occurrence; no burn-down story chartered): a PORT.STARTED code on Confirm's 202-started ok path so a queued audit copy's ledger row says started, not ok
+
+### DW-1640: The vendor writes the OAuth registration access token in plain text into its own audit row (Modify OAuth2 Server Definition EventData); OcuPilot's Logs > Audit screen and logs.audit.read show EventData, so the token reaches the screen and the model provider
+- source: spec-12-4-the-oauth-2-0-client-server-description-editor.md | severity: high | fix-risk: med | footprint: out-of-footprint
+- evidence: Measured on ocupilot-b-ci 2026-09-24 23:58:39: TOKEN write row EventData carries 'New value: <token>' and a property dump; every later save dumps it again; Conventions > Secrets makes redaction schema-driven, so masking vendor free text needs a spine ruling
+- 2026-09-25T00:39:02Z status=escalated owner=burndown by=harvest note=raised to the orchestrator mid-epic at 12.4 (AD-35 scope over vendor-recorded secrets; mask EventData for the named events vs named gap)
+- 2026-09-25T01:19:33Z occurrence=12-4-the-oauth-2-0-client-server-description-editor
+- 2026-09-25T02:13:04Z occurrence=12-5-the-oauth-2-0-client-configuration-editor note=measured 2026-09-25 on ocupilot-b-ci: the client configuration's Metadata.registration_access_token is written in plain text into 'Modify OAuth2 Client' and 'Modify OAuth2 Client Metadata' EventData by CHANGESECRET and again by every later PUT and ROTATEKEYS; ClientSecret, ClientPassword, Metadata.client_secret and key sets are masked by the vendor
+- 2026-09-25T02:14:54Z status=routed owner=12-5-the-oauth-2-0-client-configuration-editor by=merge_gate note=orchestrator ruling 8bd12776: (a) mask declared keys in EventData for the named vendor OAuth events on both screen and agent paths; AD-35 extended; owner 12.5 with authority over the Logs audit read; vendor behavior on the owner's list as a candidate IRIS defect report
+- 2026-09-25T05:14:40Z status=resolved-by:12-5-the-oauth-2-0-client-configuration-editor by=adjudication note=AuditPort.VENDORSECRETS declares token keys per named vendor OAuth event; Screen/Read masks before projecting, so Logs > Audit and logs.audit.read read the same masked rows; pinned by Test/AuditVendorSecrets (declaration removed -> red on both reads, run 952; Create rows added at review, runs 1215-1219); localized-message residue is DW-1645 (escalated)
+
+### DW-1641: The agent's OAuth server-description update replaces Metadata whole: the tool argument is the complete member set because Mint.Merge carries an object argument as one value (the screen route merges member by member first)
+- source: spec-12-4-the-oauth-2-0-client-server-description-editor.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Pinned in Test/OAuthServerUpdate TestTheAgentsEditSendsTheCompleteSet (one diff row, field Metadata); Epic 9's Write.MergeUpdate hook is not on this branch
+- 2026-09-25T00:39:03Z status=routed owner=burndown by=harvest note=settle after Epic 9 merges: merge the agent's Metadata over the fresh read via Write.MergeUpdate
+- 2026-09-25T02:13:04Z occurrence=12-5-the-oauth-2-0-client-configuration-editor
+- 2026-09-26T00:03:34Z owner=range-end-cleanup by=burndown note=Epic 12 burn-down overflow: Epic 9's Write.MergeUpdate is now on this branch, so the agent's server-description (and 12.5 client) Metadata can be merged over the fresh read; no Epic 12 story left to carry it
+
+### DW-1642: Discover against an unreachable issuer waits for the vendor's own connect timeout (~30 s) before the named refusal
+- source: spec-12-4-the-oauth-2-0-client-server-description-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Measured: GetServerMetadata against a closed port or .invalid host answered #6059 after ~30 s; it takes no timeout parameter
+- 2026-09-25T00:39:03Z status=wontfix-accepted owner=12-4-the-oauth-2-0-client-server-description-editor by=harvest note=reopen_if=a user reports Discover hanging, or the vendor adds a timeout parameter
+
+### DW-1643: AD-44 and epic-12-context.md still say the one OAuth classic-link exemption is declared by five tab descriptors; Story 12.4 removed the server-description tab's, so four declare it
+- source: spec-12-4-the-oauth-2-0-client-server-description-editor.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ARCHITECTURE-SPINE.md AD-44 reads 'declared by the five tab descriptors ... reports the five declaring descriptors'; epic-12-context.md:52 'all five'. classic-links.test.mjs and Test/OAuthTabs now assert 4 descriptors (AC9).
+- 2026-09-25T01:19:27Z status=routed owner=12-9-removing-the-classic-link-outs by=cr note=Rule 20 spine text; lead may correct the count at the next bookkeeping commit, 12.9 removes the other four
+- 2026-09-25T01:21:53Z status=routed owner=12-9-removing-the-classic-link-outs by=adjudication note=spine AD-44 and epic context counts corrected at origin (four remaining); 12.9 removes the four and the spine sentence's interim count
+- 2026-09-25T22:03:33Z occurrence=12-8-the-oauth-2-0-server-client-description-editor
+- 2026-09-26T00:00:58Z status=resolved-by:12-9-removing-the-classic-link-outs by=cr note=AD-44 reads exactly two (ServiceForm, LdapConfigForm), no three; classic-links.test.mjs pins 2/2; epic context is generated
+
+### DW-1645: The DW-1640 audit mask matches the vendor's English audit texts, so on an instance whose audit messages are localized the registration and initial access tokens reach Logs > Audit and logs.audit.read unmasked
+- source: spec-12-5-the-oauth-2-0-client-configuration-editor.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: AuditPort.SecretKeys/MaskedEventData match 'Modify OAuth2 Client', '<key> modified:', 'New value:' and '<Key>:' captions, which OAuth2.Client.GetAuditMessages builds with $$$FormatMsg/$$$GetMsg (irissys/OAuth2/Client.cls:1239-1326); rows also carry a locale-free JSONData {event,class}. Measured English only (inference for other locales).
+- 2026-09-25T05:11:13Z status=escalated owner=burndown by=cr note=fix needs message-dictionary-keyed matching per event and caption; untestable without a localized instance
+- 2026-09-25T08:39:51Z status=routed owner=range-end-cleanup by=merge_gate note=orchestrator ruling at Epic 12 resume: AD-35 names the gap at origin (English captions only; localized instance unmeasured); fix is a post-release story matching on message-dictionary keys
+
+### DW-1646: An agent-confirmed update of a registered client whose authorization server is down reports applied with no registration-not-updated notice; only the screen Save surfaces registrationNotUpdated
+- source: spec-12-5-the-oauth-2-0-client-configuration-editor.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: OAuthClientPort.Put answers 200 with registrationNotUpdated (Port/OAuthClientPort.cls:210-215); Kernel/Proposal/Confirm.cls:383 discards the port's answer, so the chat reports the write as applied without saying the issuer's copy is stale.
+- 2026-09-25T05:11:13Z status=wontfix-accepted owner=12-5-the-oauth-2-0-client-configuration-editor by=cr note=reopen_if=a user reports an agent edit of a dynamically registered client whose issuer copy silently went stale
+
+### DW-1647: The client Save's create checks the name is free and then sends the vendor's upsert PUT, so a second create of the same name landing between the look-up and the PUT would modify the first
+- source: spec-12-5-the-oauth-2-0-client-configuration-editor.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: OAuthClientSave.Create: Validate(...,'create') looks the name up (Area/Security/OAuthClientSave.cls:187), then Send issues PUT (:197), which RunPut upserts; the port's own fresh read (Port/OAuthClientPort.cls:172) does not refuse a present target.
+- 2026-09-25T05:11:13Z status=wontfix-theoretical owner=12-5-the-oauth-2-0-client-configuration-editor by=cr note=real only if two creates of one name land within the milliseconds between look-up and PUT; the agent path is AD-34-locked
 ### DW-1631: The 9.7 wizard draws %SYS.Task.DiagnosticReport's SMTPPass (typed %SYS.Task.Password, not credential-named) as an ordinary setting, so a create's value can reach the proposal card's diff (AD-35)
 - source: spec-9-8-edit-task.md | severity: high | fix-risk: low | footprint: in-epic
 - evidence: measured at the 9.8 plan on ocupilot-ci: IsCredentialName(SMTPPass)=0 and 9.7 TypeSettings draws it; the only %SYS.Task.Password property in HSCUSTOM and %SYS
@@ -6875,6 +6957,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: merge gate, Epic 9 (dc3e1b5e) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: 12.5 was planned with four sections named and ordered as the classic tabs (orchestrator ruling 8bd12776); ui/src/app/shell/form-tabs.ts reached feature with Epic 9's merge; UX-DR32/33 ask for tabs
 - 2026-09-25T04:03:43Z status=routed owner=12-6-the-oauth-2-0-resource-server-editor by=merge_gate note=12.6 switches 12.5's editor and builds 12.6-12.8 on app-form-tabs directly
+- 2026-09-25T13:02:36Z status=resolved-by:12-6-the-oauth-2-0-resource-server-editor by=adjudication note=oauth-client-form.page.ts on app-form-tabs (3d57b0f7/292bd8b2); AC10 client-editor tabs test + AC11 mutation re-run on the tabbed layout at CR; 12.6 editor built on app-form-tabs
 
 ### DW-1648: Kind-based column floors make most lists scroll sideways at 1280px with the panel open, leaving the row-action trigger off-screen until the user scrolls
 - source: spec-15-8-columns-you-can-read.md | severity: med | fix-risk: med | footprint: in-story
@@ -6894,6 +6977,11 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-25T07:48:27Z status=decision-pending owner=burndown by=cr note=owner call: exclude #6059/pre-send config errors, or an attempt that spent its timeout, from the one retry (recommended)
 - 2026-09-25T08:27:24Z status=routed owner=range-end-cleanup by=merge_gate note=decided at the 10.6 merge (orchestrator, recommended disposition): exclude a connect that never opened (#6059) from the one transport retry, about 10 lines plus a test
 
+### DW-1660: The resource-server update's proposal card does not state that changing the authenticator's namespace or implementation resets its other settings to the new class's defaults; the form says so, the card does not
+- source: spec-12-6-the-oauth-2-0-resource-server-editor.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: OAuthResourceServerUpdate's card shows only the Authenticator row's before/after; intent says card and form both state the reset
+- 2026-09-25T12:18:41Z status=open owner=12-6-the-oauth-2-0-resource-server-editor by=harvest note=lead: patch as a named Prohibited effect (destructive, effect named) at code review, as the mapping move does
+- 2026-09-25T13:00:18Z status=resolved-by:12-6-the-oauth-2-0-resource-server-editor by=cr note=Prohibited EFFECTAUTHENTICATORRESET + card sentence; Update test red on mutation (run 394), green 398
 ### DW-1651: The .ocu-status-bar comment in _components.scss still says the account menu opens upward out of the band, though 15.9 moved the menu to the header
 - source: spec-15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: _components.scss .ocu-status-bar comment block; menu mounts in header.ts since 9b4debcf
@@ -6941,3 +7029,70 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: grep clickCount: 3 ui/browser lists 15 editor/create specs; all green in CI on 5dcefe46; users-editor fixed by focus+select in 2354fc6d
 - 2026-09-25T11:59:21Z status=wontfix-accepted owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=harvest note=reopen_if=any of them fails with a typed value appended to the old one
 - 2026-09-25T12:05:01Z status=wontfix-accepted owner=15-9-sign-out-where-people-look-and-no-filter-where-there-is-noth by=cr note=reopen_if=a form-page triple-click site fails with text appended; grep lists 29 files, add navigate:378
+
+### DW-1662: A principal holding only the authorization server tab's two pairs cannot create a configuration: a create admits only readable roles, and the editor pre-checks the default roles it then refuses
+- source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Rules.CustomizationViolations admits a create's role only through the RoleList read (StoredRoles of no fresh read is empty), while Effective() gives every other create field Defaults(); run 807 measured that admitting Defaults() roles on a create lets the two-pair principal create (vendor PUT 201).
+- 2026-09-25T16:49:33Z status=decision-pending owner=burndown by=cr note=recommend: admit Defaults() roles on a create; QA's Wire create test then flips; spec line 73 reads stored values only
+
+### DW-1663: The authorization server's privileged customization-role effect is name-only, so adding %Manager, %Operator or %SecurityAdministrator (which carry %Admin_* resources) is not minted destructive
+- source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: Prohibited.AddsPrivilegedCustomizationRole uses IsPrivilegedRole (%All or an %Admin_ name); IRIS ships no %Admin_ role; the web-application arm Q4 cites uses RoleEscalates; the create defaults include %Manager. Fix needs a Security.Roles read the two-pair principal may be refused, plus a server-computed privileged mark for the client line.
+- 2026-09-25T16:49:33Z status=escalated owner=burndown by=cr note=Q4 as worded is met; the lead decides whether its intent is RoleEscalates
+
+### DW-1664: A failed authorization server form read draws an editable create with the classic defaults and an enabled Save
+- source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: OAuthServerForm.open() sets loaded after absorb() of any result; canSave() checks only loaded; the server's Create refuses TAKEN, so nothing is overwritten.
+- 2026-09-25T16:49:33Z status=wontfix-accepted owner=12-7-the-oauth-2-0-authorization-server-editor by=cr note=reopen_if=a failed form read is observed on an instance holding a configuration (form drawn in create mode)
+
+### DW-1665: An edit of an authorization server whose stored server credentials no longer open answers a generic OAUTH.SERVERVALIDATION with no field
+- source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: OAuthAuthorizationServerPort.Put names OAUTH.SERVERCREDENTIALS.KEY only when the body changes the credentials; a deleted or re-keyed stored credential makes every PUT 500 generically.
+- 2026-09-25T16:49:33Z status=wontfix-accepted owner=12-7-the-oauth-2-0-authorization-server-editor by=cr note=reopen_if=a vendor PUT 500 is logged on an edit whose body leaves ServerCredentials unchanged and non-empty
+
+### DW-1666: The authorization server editor's scope Remove buttons share one accessible name, and focus is dropped after a removal
+- source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: oauth-server-form.page.ts scope rows render STRINGS.actionRemove with no row reference; removeScope moves no focus; the 12.6 resource-server editor has the same pattern.
+- 2026-09-25T16:49:34Z status=wontfix-accepted owner=12-7-the-oauth-2-0-authorization-server-editor by=cr note=reopen_if=an accessibility audit of security/oauth/server/edit flags duplicate button names or lost focus
+
+### DW-1667: Rotate Keys or Delete failing with no envelope reason (network error) re-enables the buttons with no message on the authorization server editor
+- source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: onRotate/onDelete set actionRefusal = tabRefusal(), which is empty when the failure carries no reason.
+- 2026-09-25T16:49:34Z status=wontfix-accepted owner=12-7-the-oauth-2-0-authorization-server-editor by=cr note=reopen_if=a Rotate Keys or Delete network failure is reported with no message on the editor
+
+### DW-1668: The Recorded line for the key-needs-a-password vendor answer (ERROR #8887) cites TestAVendorRefusalIsNamed, which measures a credential with no private key
+- source: spec-12-7-the-oauth-2-0-authorization-server-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Test/OAuthAuthorizationServerUpdate TestAVendorRefusalIsNamed calls AddCredential(alias, 0), which sets no PrivateKey, so it pins the no-key refusal, not #8887.
+- 2026-09-25T16:49:34Z status=open owner=12-7-the-oauth-2-0-authorization-server-editor by=cr note=lead: correct the spec's Recorded line at its origin at this story's gate
+- 2026-09-25T16:51:09Z status=resolved-by:12-7-the-oauth-2-0-authorization-server-editor by=adjudication note=spec Recorded line corrected at origin: names the plan measurement for #8887 and what TestAVendorRefusalIsNamed actually pins
+
+### DW-1670: A ServerClients PUT naming only Metadata members skips the vendor's %OnValidateObject, so a direct admin-API caller can store an unsupported grant type; OcuPilot always sends the complete set
+- source: spec-12-8-the-oauth-2-0-server-client-description-editor.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: measured by 12.8 implement on ocupilot-b-ci; OcuPilot's port sends the complete property set, which carries RedirectURL and is validated
+- 2026-09-25T20:57:25Z status=wontfix-theoretical owner=12-8-the-oauth-2-0-server-client-description-editor by=harvest note=vendor behavior reached only by a direct admin-API caller; reopen_if=an OcuPilot path sends a Metadata-only ServerClients PUT
+
+### DW-1671: OAUTH.CLIENTCREDENTIALS.ABSENT, reused from Story 12.5, says the credential needs a private key; a server client's credential verifies signatures and needs none, so the sentence over-states the rule on the server client editor
+- source: spec-12-8-the-oauth-2-0-server-client-description-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: 12.8 implement: the server client editor reuses 12.5's code and sentence
+- 2026-09-25T20:57:25Z status=open owner=12-8-the-oauth-2-0-server-client-description-editor by=harvest note=lead: patch at code review with a server-client wording (own code or parameterized sentence)
+- 2026-09-25T22:03:33Z status=resolved-by:12-8-the-oauth-2-0-server-client-description-editor by=cr note=own code OAUTH.SERVERCLIENTCREDENTIALS.ABSENT, no private key; Create/Update tests, red when Validate reverts
+
+### DW-1672: The agent's create of a registered name is refused at the mint by the kernel's 'already present' 400, not OAUTH.SERVERCLIENTNAME.TAKEN as the Save answers
+- source: spec-12-8-the-oauth-2-0-server-client-description-editor.md | severity: low | fix-risk: high | footprint: out-of-footprint
+- evidence: Mint.cls:173-180 checks presence before any tool hook; TestATakenNameIsRefusedOnBothCallers pins both. AD-54 prescribes the refusal, not its code; every create tool shares the kernel wording.
+- 2026-09-25T22:03:33Z status=wontfix-accepted owner=12-8-the-oauth-2-0-server-client-description-editor by=cr note=both callers refuse (AD-54, Q4); reopen_if=a turn where the model retries or misreads the mint's already-present refusal
+
+### DW-1673: AD-32's named gap (a key-set URI only the authorization server's configuration trusts) shares OAUTH.SERVERCLIENTJWKS.FETCH with an unreachable host rather than a code of its own
+- source: spec-12-8-the-oauth-2-0-server-client-description-editor.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Port RefreshKeySet answers every fetch failure FETCH; its sentence names the https trust case. The spec gate's Q3 asked for its own code; the frozen Tasks list only NOURI, SCHEME, FETCH.
+- 2026-09-25T22:03:33Z status=wontfix-accepted owner=12-8-the-oauth-2-0-server-client-description-editor by=cr note=refused by name via FETCH's sentence; reopen_if=an operator report that FETCH misdirects a certificate-trust failure
+
+### DW-1674: An edit may rename a server client to a name another client holds; the name check (AD-54) runs only on a create
+- source: spec-12-8-the-oauth-2-0-server-client-description-editor.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Save.Update and the update tool never call NameTaken; the update schema says two clients may share a name. The vendor allows duplicates and the spec scopes the refusal to a create (Q4).
+- 2026-09-25T22:03:33Z status=by-design owner=12-8-the-oauth-2-0-server-client-description-editor by=cr note=spec-bound: uniqueness is AD-54's create fingerprint, not a rule on Name; reopens only by spec amendment
+
+### DW-1677: EXPERIENCE.md :772 and UX-DR67 say only the classic-link-card and a rowLink name cell open a new tab; Help, Home links, sign-in and the instance notice also do
+- source: spec-12-9-removing-the-classic-link-outs.md (code review) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: target=_blank at locator-bar.ts:175 (Help), home.page.ts:339, sign-in.ts:172, instance-notice.ts:67; the banned-everywhere clause names none of them. Pre-existing; 12.9 removed only the OAuth wording.
+- 2026-09-26T00:00:58Z status=by-design owner=12-9-removing-the-classic-link-outs by=cr note=spec gate Q3 left the Help/new-tab claim to its owner; reopens only via a UX amendment naming the outbound doc links
