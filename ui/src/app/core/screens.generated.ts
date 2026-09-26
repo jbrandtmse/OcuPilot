@@ -3353,6 +3353,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "fingerprintExcludes": [],
     "emptyStateKey": "",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthClientFormPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthClientFormPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthClientFormPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.OAuth2.Client.Configuration",
     "classicLinkExemption": {
       "exempt": false,
@@ -3584,6 +3598,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "fingerprintExcludes": [],
     "emptyStateKey": "",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthResourceServerFormPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthResourceServerFormPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthResourceServerFormPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.OAuth2.ResourceServer.Configuration",
     "classicLinkExemption": {
       "exempt": false,
@@ -3770,6 +3798,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "fingerprintExcludes": [],
     "emptyStateKey": "",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthServerClientFormPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthServerClientFormPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthServerClientFormPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.OAuth2.Server.Client",
     "classicLinkExemption": {
       "exempt": false,
@@ -3985,6 +4027,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "fingerprintExcludes": [],
     "emptyStateKey": "",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthServerDescriptionFormPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthServerDescriptionFormPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthServerDescriptionFormPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.OAuth2.Client.ServerConfiguration",
     "classicLinkExemption": {
       "exempt": false,
@@ -4183,6 +4239,20 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "fingerprintExcludes": [],
     "emptyStateKey": "",
     "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthServerFormPrompt1"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthServerFormPrompt2"
+      },
+      {
+        "groupKey": "userPromptGroupSignIn",
+        "textKey": "oAuthServerFormPrompt3"
+      }
+    ],
     "classicPage": "%CSP.UI.Portal.OAuth2.Server.Configuration",
     "classicLinkExemption": {
       "exempt": false,

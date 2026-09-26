@@ -1952,7 +1952,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:608 */
+  /** EXPERIENCE.md:613 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2460,6 +2460,36 @@ export const STRINGS = {
   taskHistoryListPrompt2: 'Which task takes the longest to run?',
   /** EXPERIENCE.md:567 */
   taskHistoryListPrompt3: 'Did any task stop with an error today?',
+  /** EXPERIENCE.md:568 */
+  oAuthServerDescriptionFormPrompt1: 'What does each setting on this server description control?',
+  /** EXPERIENCE.md:568 */
+  oAuthServerDescriptionFormPrompt2: 'Which issuer endpoint does this server description point to?',
+  /** EXPERIENCE.md:568 */
+  oAuthServerDescriptionFormPrompt3: 'Which client configurations use this server description?',
+  /** EXPERIENCE.md:569 */
+  oAuthClientFormPrompt1: 'What does each setting on this client configuration control?',
+  /** EXPERIENCE.md:569 */
+  oAuthClientFormPrompt2: 'Should this client be confidential or public?',
+  /** EXPERIENCE.md:569 */
+  oAuthClientFormPrompt3: 'Which scopes does this client ask for?',
+  /** EXPERIENCE.md:570 */
+  oAuthResourceServerFormPrompt1: 'What does each setting on this resource server control?',
+  /** EXPERIENCE.md:570 */
+  oAuthResourceServerFormPrompt2: 'Which audiences does this resource server accept?',
+  /** EXPERIENCE.md:570 */
+  oAuthResourceServerFormPrompt3: 'How does this resource server check the tokens it receives?',
+  /** EXPERIENCE.md:571 */
+  oAuthServerFormPrompt1: 'What does each setting on this authorization server control?',
+  /** EXPERIENCE.md:571 */
+  oAuthServerFormPrompt2: 'Which scopes does this authorization server support?',
+  /** EXPERIENCE.md:571 */
+  oAuthServerFormPrompt3: 'What happens if I rotate this server\'s keys?',
+  /** EXPERIENCE.md:572 */
+  oAuthServerClientFormPrompt1: 'What does each setting on this server client description control?',
+  /** EXPERIENCE.md:572 */
+  oAuthServerClientFormPrompt2: 'Which redirect URLs does this client use?',
+  /** EXPERIENCE.md:572 */
+  oAuthServerClientFormPrompt3: 'What must change if this client\'s secret is regenerated?',
   /** EXPERIENCE.md:356 */
   homeSuggestedApplicationErrorsUnread: 'Application errors in <NAMESPACE>: could not be read',
 

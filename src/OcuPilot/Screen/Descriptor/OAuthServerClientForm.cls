@@ -44,6 +44,11 @@ XData Declaration
   "fingerprintExcludes": [],
   "emptyStateKey": "",
   "commandAliases": [],
+  "suggestedPrompts": [
+    {"groupKey": "userPromptGroupSignIn", "textKey": "oAuthServerClientFormPrompt1"},
+    {"groupKey": "userPromptGroupSignIn", "textKey": "oAuthServerClientFormPrompt2"},
+    {"groupKey": "userPromptGroupSignIn", "textKey": "oAuthServerClientFormPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.OAuth2.Server.Client",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "toolIdentifier": "security.oauthserverclientform"

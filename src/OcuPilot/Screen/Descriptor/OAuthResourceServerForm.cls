@@ -43,6 +43,11 @@ XData Declaration
   "fingerprintExcludes": [],
   "emptyStateKey": "",
   "commandAliases": [],
+  "suggestedPrompts": [
+    {"groupKey": "userPromptGroupSignIn", "textKey": "oAuthResourceServerFormPrompt1"},
+    {"groupKey": "userPromptGroupSignIn", "textKey": "oAuthResourceServerFormPrompt2"},
+    {"groupKey": "userPromptGroupSignIn", "textKey": "oAuthResourceServerFormPrompt3"}
+  ],
   "classicPage": "%CSP.UI.Portal.OAuth2.ResourceServer.Configuration",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "toolIdentifier": "security.oauthresourceserverform"

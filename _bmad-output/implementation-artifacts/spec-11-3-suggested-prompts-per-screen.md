@@ -2,11 +2,11 @@
 title: 'Story 11.3: Suggested prompts per screen'
 type: 'feature'
 created: '2026-09-25'
-status: 'in-progress'
-baseline_revision: 'c384fd2135361e0aa699511b35af3a0bb32afc56'
+status: 'done'
+baseline_revision: 'c7eb5d26881b2e01b59705f10b4533684d6905fa'
 baseline_commit: 'c384fd2135361e0aa699511b35af3a0bb32afc56'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-11-context.md'
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
@@ -264,7 +264,7 @@ Rejected:
 - `low`: Home shows no set with a non-empty transcript and an attention line. That state is not idle, and 4.10 designed it that way.
 - `low`: AC4's "exactly one" is really "at most one". The fix would edit the spec, and DW-1678 covers the never-answers state.
 
-- [ ] [Merge] Epic 12 merged into the branch (521e3f72) with five new built form screens that declare no suggested prompts, so `screen-mirror.mjs` and `Screen/Registry.cls` refuse them (by design, AC3): `OAuthClientForm`, `OAuthResourceServerForm`, `OAuthServerClientForm`, `OAuthServerDescriptionForm`, `OAuthServerForm` under `src/OcuPilot/Screen/Descriptor/`. Declare three prompts each exactly as this story did for Epic 9's editors (existing group keys, `strings.ts` entries appended at this story's block end, one EXPERIENCE.md Fixed-strings row per screen appended at the table's end, citations resolving, `strings.test.mjs` green); regenerate `screens.generated.ts` with `screen-mirror.mjs`; `field-lists.mjs --check` and `ipm-manifest.mjs --check` stay up to date. Verify: mirror `--check` up to date, `Descriptor` green on `ocupilot-ci` after a whole-package recompile, `test:tools`, `test:components`, and the `suggested-prompts` browser spec against a rebuilt, redeployed bundle.
+- [x] [Merge] Epic 12 merged into the branch (521e3f72) with five new built form screens that declare no suggested prompts, so `screen-mirror.mjs` and `Screen/Registry.cls` refuse them (by design, AC3): `OAuthClientForm`, `OAuthResourceServerForm`, `OAuthServerClientForm`, `OAuthServerDescriptionForm`, `OAuthServerForm` under `src/OcuPilot/Screen/Descriptor/`. Declare three prompts each exactly as this story did for Epic 9's editors (existing group keys, `strings.ts` entries appended at this story's block end, one EXPERIENCE.md Fixed-strings row per screen appended at the table's end, citations resolving, `strings.test.mjs` green); regenerate `screens.generated.ts` with `screen-mirror.mjs`; `field-lists.mjs --check` and `ipm-manifest.mjs --check` stay up to date. Verify: mirror `--check` up to date, `Descriptor` green on `ocupilot-ci` after a whole-package recompile, `test:tools`, `test:components`, and the `suggested-prompts` browser spec against a rebuilt, redeployed bundle.
 
 ## Spec Change Log
 
@@ -285,6 +285,17 @@ Rejected:
   - `[low]` `[reject]` Most matrix rows are proven in jsdom, and browser (a) checks neither the kept draft nor the context — the spec's browser tier is (a) and (b); the draft and context are pinned by the panel "Choose" and "Sharing off" legs over the same Send path, and no failure mode here depends on layout.
   - `[low]` `[reject]` The panel "Faulted read" leg re-loads rather than driving the parked re-read — the park and the recovery it brings are pinned in `suggested-view.test.mjs`; wiring connectivity into the panel harness adds machinery for no new failure.
   - `[medium]` `[patch]` (intent-alignment) Home's set can move from the greeting to the block — same root cause and fix as the third row.
+
+### 2026-09-25 — Review pass (rework 1, [Merge])
+
+- verdicts: 6 findings — high 0, medium 0, low 2, false 3, maybe-false 0
+- findings:
+  - `[low]` `[reject]` (verification-gap) The spec did not yet record this pass: `[Merge]` unticked, no `mutation:` line, stale Auto Run Result — the fix is a spec edit; the finalize step ticks the item, writes the mutation line and this pass's result.
+  - `[false]` `[reject]` (intent-alignment) No component or browser test renders an OAuth edit route — the registry-driven panel leg (`panel.spec.ts:4689-4699`) mounts every built screen, the five forms included, and asserts the rendered groups equal the declaration.
+  - `[false]` `[reject]` (intent-alignment) "Rotate keys" and "client secret regenerated" sit under Sign-in though about other tasks — both are OAuth authentication settings, and the five OAuth tabs use the same Sign-in group.
+  - `[false]` `[reject]` (intent-alignment) The 15 keys sit before `homeSuggestedApplicationErrorsUnread`, not at the block's literal end — they extend the contiguous prompt run; no reader, test or merge diverges.
+  - `[low]` `[reject]` (intent-alignment) `strings.ts`'s `taskCreate` reference (`:1955`) was renumbered — carried: same claim as the 2026-09-25 row; forced by the reference check once rows land at the table's end (`:608` -> `:613`).
+  - `[false]` `[reject]` (intent-alignment) The form row says "redirect URLs" where the tab row says "redirect addresses" — the form uses its own field label (`oauthClientFieldRedirect` 'Redirect URL').
 
 ## Design Notes
 
@@ -465,6 +476,10 @@ I/O matrix row were already pinned (browser (a); the `panel.spec.ts` Story 11.3 
   the block shows none) -> panel "Home never answers" red (confirmed; reverted byte-identical).
 - mutation (code review): `greetingPrompts` also answers `true` once a 30-second timer fires -> panel
   "Home never answers" red alone ("Home in flight" stays green); reverted byte-identical.
+- mutation (rework 1, [Merge]): `OAuthServerForm`'s `suggestedPrompts` removed -> `screen-mirror.mjs --check`
+  refuses ("a built screen declares at least 3 suggestedPrompts") and `Descriptor` 7/52 red after a whole-package
+  recompile (run 13228; incl. `TestTheProductionRosterValidates`, `TestAPromptlessBuiltScreenIsRefused`); reverted
+  byte-identical, recompiled, `Descriptor` 52/52.
 - mutation (code review): `onSuggestedPrompt` guards on `composerUnavailable` only -> panel block
   "Busy" leg red alone (the lock banner shows); reverted byte-identical.
 
@@ -475,14 +490,10 @@ I/O matrix row were already pinned (browser (a); the `panel.spec.ts` Story 11.3 
 Status: done
 Blocking condition: none
 
-**Change.** A built screen must declare at least three suggested prompts from a ten-key group vocabulary; `Registry.cls` and `screen-mirror.mjs` refuse a promptless built screen or an unknown group with the same sentence. 44 descriptors gained prompts and Home re-declares its three; the mirror is regenerated. The panel renders the screen's groups in the idle greeting, or in Home's block when nothing needs attention (one set at a time; on Home the greeting waits for the view to answer), and a prompt sends through `sendWithContext` behind Send's gate. A refused or failed errors read shows "could not be read" and holds the prompts back (DW-1147); a readable zero line never renders (DW-1160).
+**Change (rework 1, [Merge]).** Epic 12's five OAuth form screens (`OAuthServerDescriptionForm`, `OAuthClientForm`, `OAuthResourceServerForm`, `OAuthServerForm`, `OAuthServerClientForm`) each declare three Sign-in prompts after `commandAliases`; 15 `STRINGS` keys follow this story's prompt run; five Fixed-strings rows are appended at EXPERIENCE.md:568-572, and `taskCreate`'s reference moves `:608` -> `:613`; `screens.generated.ts` is regenerated (58 descriptors). The story's first pass closed at `a2398262`.
 
-**Files.** `Registry.cls`, `screen-mirror.mjs` (rule and vocabulary); 45 descriptors and `screens.generated.ts`; `PromptCorpus.cls`, `Descriptor.cls` and 23 fixtures; `strings.ts` (137 keys, `taskCreate` reference :555 -> :600), EXPERIENCE.md (45 rows; :356, :671, :673 amended); `core/suggested-prompts.ts` (new), `suggested-view.ts`, `panel.ts`, `_components.scss`; `app.ts` (sign-out marks the empty transcript restored); tests: `panel.spec.ts`, `app.spec.ts`, `suggested-view.test.mjs`, `suggested-prompts.test.mjs` (new), `screen-mirror.test.mjs`, `strings.test.mjs` (band 1100), `browser/suggested-prompts.browser-spec.mjs` (new), `browser/suggested-view.browser-spec.mjs`.
+**Review.** 6 findings: 0 patched, 0 deferred, 6 rejected (2 low, 4 false; reasons in the triage log). Follow-up review recommended: `false` (follow-up pass, no high patched).
 
-**Review.** 8 findings: 3 patched (2 medium, 1 low), 0 deferred, 5 rejected (reasons in the triage log). Patched: browser (b) made falsifiable, the Home greeting gate (`greetingPrompts`) with its panel leg, and the AC6 mutation line. Follow-up review recommended: `true` (2 medium patched): the Home greeting gate holds prompts until the dates read settles, so a read that never settles leaves Home's greeting promptless, and browser (b) now rides a stubbed dates answer.
+**Verification.** `screen-mirror`, `field-lists`, `ipm-manifest` `--check` up to date; `check-objectscript` 0 problems; `lint-docs` clean. `test:tools` 1454/1454; `test:components` 1436/1436. `load.sh` on `ocupilot-ci` ERRCOUNT 0; `Descriptor` 52/52 (run 13227, and 13229 after the mutation revert). Build initial total 1,836,390 B (1.84 MB); redeployed; `suggested-prompts` browser spec 2/2. `smoke.sh --container ocupilot-ci`: 49/49 passed. No full sweep this pass (lead's scope). Mutation: see `## Verification`.
 
-**Verification.** `check-objectscript` 0 problems; `lint-docs` clean; `screen-mirror --check` up to date (53 descriptors). `test:tools` 1449/1449; `test:components` 1300/1300. Browser, one spec per call on the redeployed bundle: `suggested-prompts` 2/2, `suggested-view` 7/7, `explain-screen` 3/3, `a11y-structural-invariants` 10/10. ObjectScript sweep on `ocupilot-ci` after a full load (ERRCOUNT 0): 254 ran, 13 refused (arming), 1 known residue (`WireSecurityRead` task history); story classes green (`Descriptor` 52/52, run 13020, SQL-probed; `OAuthTabs` 17, `ProcessTerminate` 8, `ReadTool` 27, `ServiceUpdate` 7); `LdapUpdate` and `TaskCreate` are among the 13 refused. `smoke.sh --container ocupilot-ci`: 49/49 passed. Bundle initial total 1.62 MB (the build's own figure), under the 1670 kB warning. Mutations: see `## Verification`.
-
-**Residual risks.** Merging Epic 12 conflicts at the tails of `strings.ts`, `_components.scss` and the Fixed-strings table, at `strings.test.mjs`'s band and at the `taskCreate` reference (anticipated in Design Notes), and both validators go red until Epic 12's five OAuth editor descriptors declare prompts.
-
-**footprint_extensions:** contended, off Epic 12's hunks: `panel.ts`, `panel.spec.ts`, `strings.ts` (own tail + the `taskCreate` reference), `screens.generated.ts` (regenerated), the five OAuth tab descriptors, `AuditingConfig.cls`, `UserList.cls` (one member each). Outside Epic 11's footprint: `Registry.cls`, `screen-mirror.mjs` and their tests, corpus and 23 fixtures; the other 38 descriptors; `suggested-view.ts` and its test; `core/suggested-prompts.ts`; `strings.test.mjs`; `_components.scss` (own block); EXPERIENCE.md; `browser/suggested-view.browser-spec.mjs`; `app.ts` and `app.spec.ts` (also edited by Epic 12; merges cleanly).
+**footprint_extensions:** Epic 12's five OAuth form descriptors (the `suggestedPrompts` member only); `strings.ts` (own entries plus the `taskCreate` reference); `screens.generated.ts` (regenerated); EXPERIENCE.md (five rows appended).
