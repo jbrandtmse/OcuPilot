@@ -938,7 +938,6 @@ async function readMatching(reads, matches) {
   assert.fail(`no matching screen read within the timeout: ${JSON.stringify(reads)}`);
 }
 
-/** Assert no row, command bar or command box on the open screen offers an action but Refresh. */
 /** Wait for Task history's opening read to render, rows or the empty state (Story 11.11). */
 async function openedHistory(page) {
   await page.waitForSelector('#ocu-task-history-search', { timeout: config.navigationTimeoutMs });
@@ -993,6 +992,7 @@ async function showDemoRows(page) {
   );
 }
 
+/** Assert no row, command bar or command box on the open screen offers an action but Refresh. */
 async function assertRefreshAlone(page) {
   const offered = await page.evaluate(() => ({
     rowTriggers: document.querySelectorAll('.ocu-data-table-trigger').length,

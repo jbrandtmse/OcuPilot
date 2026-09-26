@@ -967,7 +967,7 @@ test("navigation() carries the directive's declared criterion, and none where th
   // why it is read here and not by `withQuery`.
   //
   // Mutation (Rule 19): drop the `criterion` line from `parseNavigation` -> this goes red, and an
-  // arriving audit screen would render an unsearched criteria form.
+  // arriving audit screen would open with the marker off.
   const { schedule, scheduled } = fakeSchedule();
   const body = () =>
     ok({

@@ -12,6 +12,7 @@ import { dirname, join } from 'node:path';
 // Mutations (Rule 19):
 // - `criteria` sends `userOnly: '1'` whatever the checkbox -> "the checkbox translates" goes red.
 // - `applyEcho` fills every field, sent or not -> "the echo fills only what the request left absent" goes red.
+// - `applyEcho` ignores the edited set -> "the echo leaves a field the person typed into" goes red.
 // - `readFor` calls `create` every time -> "readFor memoizes the first read it is given" goes red.
 // - `isCurrentGeneration` always answers true -> "generations tell a stale instance from the current one" goes red.
 
@@ -70,6 +71,15 @@ test('the echo fills only what the request left absent, and ignores an answer to
 
   search.applyEcho({ since: '1999-01-01 00:00:00' }, {});
   assert.equal(search.since(), '2026-09-19 13:00:00', 'an answer to the default read the arrival replaced changes nothing');
+});
+
+test('the echo leaves a field the person typed into while the read was out, and fills the rest', () => {
+  const search = new store.TaskHistorySearch();
+  search.useDefault();
+  search.setSearch('typed');
+  search.applyEcho({ search: '', userOnly: '', since: '2026-09-19 12:00:00' }, {});
+  assert.equal(search.search(), 'typed', 'what the person typed is theirs until the next Search');
+  assert.equal(search.since(), '2026-09-19 12:00:00', 'an untouched field still shows the applied value');
 });
 
 test('Search is a one-way latch: noteSearched flips it on and it stays on', () => {

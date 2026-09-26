@@ -7196,3 +7196,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-10-the-header-logo-on-a-white-tile.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Story 15.10 moved the header to the navy lockup on a white tile and amended DESIGN.md/EXPERIENCE.md at origin; epics.md is contended (Epic 11 edits it) and outside the story's footprint, so the two requirement lines were left as written.
 - 2026-09-26T04:37:06Z status=wontfix-accepted owner=15-10-the-header-logo-on-a-white-tile by=cr note=reopen_if=a plan stage or spec cites UX-DR14's reversed-lockup wording; fix is a Rule 5 tier-1 in-place amendment by the lead
+
+### DW-1695: epics.md Stories 2.10 and 6.6 still describe the audit and Task history screens as criteria-form-first with a skeleton only after Search, which Story 11.11 replaced with a default search on open
+- source: spec-11-11-the-screen-shows-what-the-agent-is-talking-about.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: epics.md:2099 and :4022 against EXPERIENCE.md:782 and :793 after Story 11.11
+- 2026-09-26T14:09:15Z status=wontfix-accepted owner=11-11-the-screen-shows-what-the-agent-is-talking-about by=cr note=reopen_if=a plan or review cites the epics.md 2.10/6.6 criteria-form-first wording as current behavior
+
+### DW-1696: WireSecurityRead's two audit reads send no beginDateTime, so since Story 11.11 they read the last 24 hours rather than all time and the marker-source lower bound needs an OcuPilot audit row inside that window
+- source: spec-11-11-the-screen-shows-what-the-agent-is-talking-about.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: src/OcuPilot/Test/WireSecurityRead.cls:1131,1148 build the read URL without beginDateTime; the AD-36 default now applies
+- 2026-09-26T14:09:15Z status=wontfix-accepted owner=11-11-the-screen-shows-what-the-agent-is-talking-about by=cr note=reopen_if=WireSecurityRead reports 'the marker's own Source returned rows: 0' on any instance
+
+### DW-1697: Nav.Criteria is MAXLEN 16000 over the criteria JSON, so criteria values dense with escaped control characters could fail the directive's save after the announcement exists
+- source: spec-11-11-the-screen-shows-what-the-agent-is-talking-about.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Kernel/State/Nav.cls:44 holds pCriteria.%ToJSON(); the audit's declared maxLengths sum to 5,200 characters and a control character serializes as six
+- 2026-09-26T14:09:15Z status=by-design owner=11-11-the-screen-shows-what-the-agent-is-talking-about by=cr note=spec fixes MAXLEN 16000; real only if a model sends criteria carrying over ~2,700 control characters
+
+### DW-1698: No registry rule enforces AD-36's condition that an atOrAfterField criterion is sound only on a read the vendor answers newest first
+- source: spec-11-11-the-screen-shows-what-the-agent-is-talking-about.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Screen/Registry.cls CriteriaDefaultProblem and screen-mirror.mjs criteriaDefaultProblem check kind, field membership and vendorParam only
+- 2026-09-26T14:09:15Z status=wontfix-theoretical owner=11-11-the-screen-shows-what-the-agent-is-talking-about by=cr note=real once a descriptor declares atOrAfterField over a read not answered newest first (only TaskHistoryList's HISTORY today)

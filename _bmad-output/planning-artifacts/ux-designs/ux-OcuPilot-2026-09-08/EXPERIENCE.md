@@ -779,7 +779,7 @@ Which states each archetype (the IA table's Archetype column; each key appears i
 |---|---|---|---|---|---|---|---|
 | list | skeleton | empty-state | inline error presentation, data kept | screen-level message (Wallet) or disabled entry | in place, no skeleton; chip + stamp | row selected, locator segment | row highlight |
 | list (two views) | per view | per view | as list | as list | as list | as list | as list |
-| list (server criteria) | default search on open, skeleton until it answers, the criteria form showing the values used | "No events match." | as list | as list | manual Search only | row → detail dialog | — (read-only data) |
+| list (server criteria) | default search on open, skeleton until it answers, the criteria form showing the values used | "No events match." | as list | as list | manual Search or Refresh, no timer | row → detail dialog | — (read-only data) |
 | detail | skeleton fields | — (always an entity) | error presentation, last values kept | 403 message | auto-refresh in place | — | field highlight |
 | meters | skeleton per meter | — | per meter "—" with the error in its tooltip | 403 message | interval | — | — |
 | form-page · form-page (tabs) · wizard | skeleton fields | — | field-level and sticky-bar errors | 403 on Save names the resource | — | — | "Saved" then highlight on return |

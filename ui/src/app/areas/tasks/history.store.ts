@@ -42,6 +42,9 @@ export class TaskHistorySearch {
 
   private arrivalSent: Record<string, string> = {};
 
+  /** The fields the person changed since the screen last chose what to send; an echo leaves them. */
+  private readonly edited = new Set<(typeof PARAMS)[number]>();
+
   /** Set when a closing dialog asks the next page instance to put focus back on the grid. */
   private gridFocusWanted = false;
 
@@ -70,6 +73,7 @@ export class TaskHistorySearch {
 
   setSearch(value: string): void {
     this.searchValue = value;
+    this.edited.add('search');
     this.notify();
   }
 
@@ -79,6 +83,7 @@ export class TaskHistorySearch {
 
   setUserOnly(value: boolean): void {
     this.userOnlyValue = value;
+    this.edited.add('userOnly');
     this.notify();
   }
 
@@ -89,6 +94,7 @@ export class TaskHistorySearch {
 
   setSince(value: string): void {
     this.sinceValue = value;
+    this.edited.add('since');
     this.notify();
   }
 
@@ -131,12 +137,14 @@ export class TaskHistorySearch {
     this.searchValue = '';
     this.userOnlyValue = false;
     this.sinceValue = '';
+    this.edited.clear();
     this.notify();
   }
 
   /** Send the form as shown from the next read on: Search, and a return after one. */
   useForm(): void {
     this.mode = 'form';
+    this.edited.clear();
     this.notify();
   }
 
@@ -154,6 +162,7 @@ export class TaskHistorySearch {
     this.userOnlyValue = sent['userOnly'] === '1';
     this.sinceValue = sent['since'] ?? '';
     this.arrivalSent = sent;
+    this.edited.clear();
     this.mode = 'arrival';
     this.notify();
   }
@@ -173,20 +182,21 @@ export class TaskHistorySearch {
   /**
    * Fill each field the request `sent` left absent from the answer's `applied` criteria (AD-36), so
    * the form shows the values the instance used -- `since` above all, whose default the browser
-   * never computes. An answer to a request since replaced changes nothing.
+   * never computes. An answer to a request since replaced changes nothing, and a field the person
+   * has typed into since keeps what they typed.
    */
   applyEcho(applied: Readonly<Record<string, string>>, sent: ScreenReadCriteria): void {
     if (JSON.stringify(sent) !== JSON.stringify(this.criteria())) return;
     let changed = false;
-    if (sent['search'] === undefined) {
+    if (sent['search'] === undefined && !this.edited.has('search')) {
       this.searchValue = applied['search'] ?? '';
       changed = true;
     }
-    if (sent['userOnly'] === undefined) {
+    if (sent['userOnly'] === undefined && !this.edited.has('userOnly')) {
       this.userOnlyValue = applied['userOnly'] === '1';
       changed = true;
     }
-    if (sent['since'] === undefined) {
+    if (sent['since'] === undefined && !this.edited.has('since')) {
       this.sinceValue = applied['since'] ?? '';
       changed = true;
     }

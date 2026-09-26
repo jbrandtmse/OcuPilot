@@ -195,6 +195,41 @@ deferred: []
 - Given criteria the target does not declare, or a value its read refuses, when the call is dispatched, then the tool result names the criterion (`NAV.CRITERIONUNKNOWN`/`NAV.CRITERIONINVALID`), and no announcement or directive exists.
 - Given EXPERIENCE.md, when the story completes, then the archetype row, `:88`, `:107`, `:371` and `:793` state the default search, `wc -l` is still 981, and `strings.test.mjs` passes.
 
+
+### Review Findings
+
+Code review 2026-09-26 (bmad-code-review, layers blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor; 37 rows, 13 entries: 0 high, 3 medium, 10 low; 13 rejected).
+
+- [x] [Review][Patch] `[medium]` The open read's echo overwrote fields the person typed into before it answered, and a Refresh before any Search did the same [ui/src/app/areas/logs/audit.store.ts:252, ui/src/app/areas/tasks/history.store.ts:191] — both stores keep an edited set that the echo skips; tests added in `audit.page.spec.ts` and `history-store.test.mjs`.
+- [x] [Review][Patch] `[medium]` Task history's already-mounted arrival (the `ScreenArrivals` subscription) had no test [ui/src/app/areas/tasks/history.page.ts:210] — added the history twin of the audit "already mounted" test.
+- [x] [Review][Patch] `[medium]` The `criteria` the model sees in the read tool's result was not pinned past `View` [ui/browser/default-search.browser-spec.mjs:395] — leg (c) asserts the recorded `tool_result` reports the three criteria its read applied.
+- [x] [Review][Patch] `[low]` `TestAnHttpEmptyBeginDiffersFromAnAbsentKey`'s echo check could be skipped when the route dropped `criteria` [src/OcuPilot/Test/CriteriaDefault.cls:214] — asserts the answer carries `criteria` first.
+- [x] [Review][Patch] `[low]` "Renders nothing until Search" left at an origin the Code Map names [src/OcuPilot/Test/Descriptor.cls:808] — rewritten.
+- [x] [Review][Patch] `[low]` `ReadTool` prose predates the declared defaults [src/OcuPilot/Test/ReadTool.cls:349,569] — the comment and the assertion message rewritten.
+- [x] [Review][Patch] `[low]` The archetype row's refreshing cell said "manual Search only" though Refresh is now offered from the open read [EXPERIENCE.md:782] — "manual Search or Refresh, no timer"; 981 lines.
+- [x] [Review][Patch] `[low]` An orphaned JSDoc above `openedHistory` [ui/browser/tasks.browser-spec.mjs:942] — moved back to `assertRefreshAlone`.
+- [x] [Review][Patch] `[low]` A stale mutation consequence [ui/tools/turn.test.mjs:970] — rewritten.
+- [x] [Review][Defer] `[low]` epics.md Stories 2.10 and 6.6 still say criteria form first [_bmad-output/planning-artifacts/epics.md:2099,4022] — deferred: DW-1695 wontfix-accepted (out-of-footprint).
+- [x] [Review][Defer] `[low]` WireSecurityRead's two audit reads now read the last 24 hours [src/OcuPilot/Test/WireSecurityRead.cls:1131,1148] — deferred: DW-1696 wontfix-accepted.
+- [x] [Review][Defer] `[low]` `Nav.Criteria` MAXLEN 16000 against control-character-dense criteria [src/OcuPilot/Kernel/State/Nav.cls:44] — deferred: DW-1697 by-design.
+- [x] [Review][Defer] `[low]` No registry rule enforces AD-36's newest-first condition on `atOrAfterField` [src/OcuPilot/Screen/Registry.cls] — deferred: DW-1698 wontfix-theoretical.
+
+Rejected:
+
+- `[low]` A `since` value is checked only by `DATETIMEFORM`, not as a real date: an impossible date yields an empty list, not a 400; the fix adds a guard for a typing error.
+- `[low]` `HoursAgo` is wall-clock arithmetic across a DST change: the spec mandates `$Horolog` arithmetic, and the containers run UTC.
+- `[false]` `criterion: "marker"` beside a different `criteria.eventSources` is accepted: the spec says the flag overrides its own param.
+- `[false]` Loop's hand-off to `GuardedRequest` has no ObjectScript test: legs (c) and (d) pin it, and the recorded `Directive` mutation reddens leg (c).
+- `[low]` `ScreenArrivals` is not cleared at sign-out: a consuming page takes its arrival at construction or through its subscriber, and a refusal clears it; no path leaves an audit or history arrival pending.
+- `[false]` A citation chip to a row older than the window shows no dialog: not a regression; before this story the id route resolved against no rows, and chips are unchanged by rule.
+- `[false]` Leg (a) may miss its row on a reused throwaway: the audit default read answers newest first (probe on `ocupilot-ci`), and leg (a) is green there.
+- `[false]` `FlagCriteria`'s and `TurnNavigation.criterion`'s prose: both sentences concern the flag's value, which still no caller supplies.
+- `[low]` After a faulted open read the begin field is blank, so Search reads all time: the form shows the blank bound and Search sends the form as shown.
+- `[false]` `searchHistory`'s `aria-rowcount` wait can resolve early: `showDemoRows` polls for the demo row immediately after.
+- `[false]` `AuditRead`'s unchanged read now reads 24 hours: its assertion needs more than two rows, and every audit query writes one.
+- `[low]` Leg (b)'s at-or-after check cannot fail on a young throwaway: closed in the previous triage; the cutoff's pin is `CriteriaDefault`.
+- `[false]` A real `?p=` request may not read as defined: a probe on `ocupilot-ci` echoes `since` as `""` for `?since=` and as now less 168 hours when absent.
+
 ## Spec Change Log
 
 - 2026-09-26, implement-1 halted on the structural gate (225 vs 223, two status-bar stamp keys, DW-1584). Lead ruling: admit the two keys with `dw: DW-1584`; the rest of the implementation stands as written in the tree.
@@ -316,6 +351,9 @@ Observed (2026-09-26, `ocupilot-ci`, whole package recompiled per mutation, tree
 - mutation: `useArrival` ticks the marker whenever one is declared -> `audit.page.spec.ts` "not the marker's" red.
 - mutation: `useDefault` keeps the arrival's mode -> the "return after an arrival" tests in `audit.page.spec.ts` and `history.page.spec.ts` red, each alone.
 - mutation: the stale-answer guard dropped from `AuditSearch.applyEcho` -> `audit.page.spec.ts` "a late answer" red.
+- mutation: `AuditSearch.applyEcho` ignores the edited set -> `audit.page.spec.ts` "a field typed into while the open read is out" red (code review).
+- mutation: `TaskHistorySearch.applyEcho` ignores the edited set for `search` -> `history-store.test.mjs` "the echo leaves a field the person typed into" red (code review).
+- mutation: `HistoryPage`'s `ScreenArrivals` subscriber returns before taking -> `history.page.spec.ts` "an arrival for a page already mounted" red (code review).
 
 ## Auto Run Result
 

@@ -62,6 +62,9 @@ export class AuditSearch {
   /** What an arrival sends, exactly, while `mode` is `arrival`. */
   private arrivalSent: Record<string, string> = {};
 
+  /** The fields the person changed since the screen last chose what to send; an echo leaves them. */
+  private readonly edited = new Set<string>();
+
   /**
    * Bumped whenever a page instance is created, so a destroyed instance can tell "the user left
    * this screen" from "another instance of this screen took over".
@@ -89,6 +92,7 @@ export class AuditSearch {
     this.searchedOnce = false;
     this.mode = 'default';
     this.arrivalSent = {};
+    this.edited.clear();
     this.gridFocusWanted = false;
     this.reads.clear();
     this.notify();
@@ -108,6 +112,7 @@ export class AuditSearch {
 
   setValue(param: string, value: string): void {
     this.values = { ...this.values, [param]: value };
+    this.edited.add(param);
     this.notify();
   }
 
@@ -169,12 +174,14 @@ export class AuditSearch {
     this.mode = 'default';
     this.markerOn = false;
     this.values = {};
+    this.edited.clear();
     this.notify();
   }
 
   /** Send the form as shown from the next read on: Search, and a return after one. */
   useForm(): void {
     this.mode = 'form';
+    this.edited.clear();
     this.notify();
   }
 
@@ -202,6 +209,7 @@ export class AuditSearch {
     if (markerOn && marker !== null) this.values[marker.param] = '';
     this.markerOn = markerOn;
     this.arrivalSent = sent;
+    this.edited.clear();
     this.mode = 'arrival';
     this.notify();
   }
@@ -231,7 +239,8 @@ export class AuditSearch {
 
   /**
    * Fill each field the request `sent` left absent from the answer's `applied` criteria (AD-36), so
-   * the form shows the values the instance used. A field the request carried keeps what it holds.
+   * the form shows the values the instance used. A field the request carried keeps what it holds,
+   * and so does one the person has typed into since, which is theirs until the next Search.
    */
   applyEcho(declaration: ScreenDeclaration, applied: Readonly<Record<string, string>>, sent: ScreenReadCriteria): void {
     // An answer to a request the screen has since replaced -- an arrival over an open read still
@@ -240,7 +249,7 @@ export class AuditSearch {
     let changed = false;
     const next = { ...this.values };
     for (const param of criteriaParams(declaration)) {
-      if (sent[param] !== undefined) continue;
+      if (sent[param] !== undefined || this.edited.has(param)) continue;
       next[param] = applied[param] ?? '';
       changed = true;
     }

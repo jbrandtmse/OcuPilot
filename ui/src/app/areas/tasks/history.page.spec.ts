@@ -257,6 +257,23 @@ describe('task history, across every task', () => {
     expect(rowNames(host)).toEqual(['OcuPilotProbeRunTask']);
   });
 
+  it('Story 11.11: an arrival for a page already mounted is handed over as one read of exactly its criteria', async () => {
+    // Mutation (Rule 19): drop the `ScreenArrivals` subscription from `HistoryPage` -> no second read
+    // is issued, so this goes red.
+    const arrivals = new ScreenArrivals();
+    const { fixture, host, paths } = await mount([row('OcuPilotProbeRunTask')], arrivals);
+    expect(paths).toEqual(['/api/ocupilot/screens/tasks.history/read?maxRows=1000']);
+    arrivals.set({ route: 'tasks/history', criterion: '', criteria: { search: 'OcuPilotProbeRunTask', since: '' } });
+    await settle(fixture);
+    expect(paths).toEqual([
+      '/api/ocupilot/screens/tasks.history/read?maxRows=1000',
+      '/api/ocupilot/screens/tasks.history/read?maxRows=1000&search=OcuPilotProbeRunTask&since=',
+    ]);
+    expect((host.querySelector('#ocu-task-history-search') as HTMLInputElement).value).toBe('OcuPilotProbeRunTask');
+    expect((host.querySelector('#ocu-task-history-since') as HTMLInputElement).value).toBe('');
+    expect(arrivals.take('tasks/history')).toBeNull();
+  });
+
   it('Story 11.11: a return after an arrival re-runs the default when the person never searched', async () => {
     // Mutation (Rule 19): make `TaskHistorySearch.useDefault` keep the arrival's mode -> the return
     // re-sends the arrival's search, so this goes red.

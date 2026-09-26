@@ -402,6 +402,23 @@ describe('the audit database viewer', () => {
     expect(rowNames(host)).toEqual(['RoleGranted']);
   });
 
+  it('Story 11.11: a field typed into while the open read is out keeps what was typed, and the begin fills from the echo', async () => {
+    // Mutation (Rule 19): make `AuditSearch.applyEcho` ignore the edited set -> the echo overwrites
+    // the typed usernames with '', so this goes red.
+    let release: () => void = () => {};
+    const firstAnswer = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { fixture, host, paths, type } = await mount([row('RoleGranted', 'OcuPilot')], null, null, firstAnswer);
+    expect(paths).toHaveLength(1);
+    await type('usernames', 'Admin');
+    release();
+    await settle(fixture);
+    expect((host.querySelector('#ocu-audit-criterion-usernames') as HTMLInputElement).value).toBe('Admin');
+    expect((host.querySelector('#ocu-audit-criterion-beginDateTime') as HTMLInputElement).value).toBe(DEFAULT_BEGIN);
+    expect(paths).toHaveLength(1);
+  });
+
   it('a zero-row answer reads the screen\'s own empty sentence, with no skeleton and no fault', async () => {
     const { host, search, setRows } = await mount([]);
     setRows([]);

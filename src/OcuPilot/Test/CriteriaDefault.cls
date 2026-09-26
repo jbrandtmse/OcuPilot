@@ -211,6 +211,7 @@ Method TestAnHttpEmptyBeginDiffersFromAnAbsentKey()
     } Catch {
         Set tAnswer = ""
     }
+    Do $$$AssertTrue($IsObject(tAnswer) && $IsObject(tAnswer.criteria), "the route's answer carries criteria")
     If $IsObject(tAnswer) && $IsObject(tAnswer.criteria) Do $$$AssertEquals(tAnswer.criteria.beginDateTime, $Get(tParams("beginDateTime")), "and echoes it")
 
     Do ##class(OcuPilot.Test.EndpointFixture).Clear()

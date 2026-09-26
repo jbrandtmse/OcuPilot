@@ -392,6 +392,12 @@ test('(c) Integration AC: the agent\'s audit read and its navigation carry one s
 
     const result = toolResult(recordedMessages(tag, 2), 'toolu_read');
     assert.ok(result !== null && Array.isArray(result.rows), 'the read tool answered rows');
+    const applied = result.criteria ?? {};
+    assert.deepEqual(
+      { eventSources: applied.eventSources, beginDateTime: applied.beginDateTime, endDateTime: applied.endDateTime },
+      criteria,
+      `the tool result the model saw reports the criteria its read applied: ${JSON.stringify(result.criteria)}`
+    );
     assert.ok(result.rows.length >= 3, `the tool read this leg's own rows: ${result.rows.length}`);
     const wanted = result.rows.map((row) => `${row.TimeStamp}|${row.Event}|${row.Description}`);
     const shown = await page.$$eval(ROW_SELECTOR, (rows) =>
