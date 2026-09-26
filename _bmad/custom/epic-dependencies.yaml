@@ -3,7 +3,7 @@
 # edges the orchestrator's analysis added, per the owner's standing instruction (2026-09-16):
 # "If your analysis adds an edge, take the more conservative graph and note the difference in the
 # parallel log; if it would remove one of these, keep mine."
-epics_md_hash: "7e6298cddccb7656634e008cd710e768e0eb505d16754b8c00627beb921a3381"
+epics_md_hash: "b7538fd76a8172ffb69cf56b0a5fa9c28152d898b50cd2e79e203929efce0806"
 analyzed_by: claude-opus-5
 analyzed_at: "2026-09-16T15:02:34Z"
 approved: true
@@ -195,7 +195,12 @@ epics:
         reason: >-
           Sign-out only in the status bar's account menu and no Cmd+K sign-out; the command bar's filter renders on
           screens with no read. ui/src/app/shell/command-bar* is shared (Epics 9 and 12 add actions): append only.
+      - story: "15-10-the-header-logo-on-a-white-tile"
+        after: epic-12       # owner triage 2026-09-25, HIGH: ALONE on slot B now (free since Epic 12 merged); the submission cut waits for it
+        reason: >-
+          The header's reversed lockup fringes against the navy chrome; the navy-wordmark lockup goes on a white rounded
+          tile. Touches ui/src/app/shell/header*, ui/src/styles/_components.scss and ui/src/assets/lockup/ only.
     # Owner carve 2026-09-19: Epic 15 works OUTSIDE ui/src/app/shell/panel, proposal-card, reply and
     # tool-call-card, which Epic 5 owns. Its own shell surfaces are header*, account-menu*, side-bar*
     # and command-box*.
-    paths_hint: ["ui/src/app/shell/header*", "ui/src/app/shell/account-menu*", "ui/src/app/shell/side-bar*", "ui/src/app/shell/command-box*", "ui/src/app/core/**", "ui/src/styles/**", "src/OcuPilot/Screen/Descriptor/Home.cls", "src/OcuPilot/Api/Account*.cls", "src/OcuPilot/Api/Ui*.cls", "ui/src/app/shell/rail*", "ui/src/app/areas/home/**", "ui/src/app/shell/data-table*", "ui/src/app/shell/status-bar*", "ui/src/app/shell/command-bar*", "ui/src/app/app.ts"]
+    paths_hint: ["ui/src/app/shell/header*", "ui/src/app/shell/account-menu*", "ui/src/app/shell/side-bar*", "ui/src/app/shell/command-box*", "ui/src/app/core/**", "ui/src/styles/**", "src/OcuPilot/Screen/Descriptor/Home.cls", "src/OcuPilot/Api/Account*.cls", "src/OcuPilot/Api/Ui*.cls", "ui/src/app/shell/rail*", "ui/src/app/areas/home/**", "ui/src/app/shell/data-table*", "ui/src/app/shell/status-bar*", "ui/src/app/shell/command-bar*", "ui/src/app/app.ts", "ui/src/assets/**"]

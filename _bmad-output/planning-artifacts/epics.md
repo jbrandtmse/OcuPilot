@@ -750,6 +750,8 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 
 **Owner plan, 2026-09-25 (voting week).** Epics 14 and 16 run in the voting week, where improvements are allowed, starting once the submission build is cut. Order: Story 16.1 (the try-it console), then Stories 16.8 and 16.9 (the secondary log viewers and the hub); then Story 14.1 (the copy-out draft), Stories 14.3 and 14.8 (defanging and the seeded-injection test), Story 16.3 (effective privileges) and Story 16.16 (the agent audit viewer); then the rest of Epic 16; then Story 14.5, with Stories 14.2, 14.4 and 14.6 last. The first two groups close the gaps a judge sees when comparing entries and show what only the agent does. `main` moves only at planned releases - after each of the first two groups and at the end of the week - each a pull request with green CI, a clean-clone check and a new package version, so a judge never installs a half-finished build. Story 14.7 is scratched: a user acting on a screen still types the target's name, while a destructive agent proposal takes the destructive bar, a destructive Confirm and the user's own press, without a typed name. FR-17 and Stories 5.10 and 7.2 are amended to match. Epics 18 to 22 stay after the contest.
 
+**Owner triage, 2026-09-25 (logo), high priority.** The header draws the reversed lockup, a white wordmark on a transparent cut-out whose anti-aliased edges fringe against the navy chrome. Story 15.10 draws the navy-wordmark lockup on a white rounded tile instead, as the demo landing page does, and amends DESIGN.md at origin. It runs alone on slot B, free since Epic 12 merged, and the submission cut waits for it.
+
 **Orchestrator amendment, 2026-09-19.** Two consequences of the amendment above, settled on the owner's
 instruction. Story 13.3's acceptance criteria are rewritten so none of them can be closed by publishing:
 the archive is proven by a dry-run build and a local install, and a third criterion forbids touching the
@@ -878,7 +880,7 @@ An OcuPilot administrator can disable any write tool by tool and action, a user 
 
 ### Epic 15: Shell conveniences and the theme
 
-A user makes the portal their own - own password, favorites, recents, menu search, About, per-screen help, the shortcuts menu, the links panel, Home's system information, UI state that survives a sign-out, a dark theme the community has been asking for, the rail's icons, columns wide enough to read, and sign-out where people look for it. Polish week.
+A user makes the portal their own - own password, favorites, recents, menu search, About, per-screen help, the shortcuts menu, the links panel, Home's system information, UI state that survives a sign-out, a dark theme the community has been asking for, the rail's icons, columns wide enough to read, sign-out where people look for it, and a header logo that looks finished. Polish week.
 
 **FRs covered:** FR-73
 
@@ -5786,7 +5788,7 @@ So that "the model is assumed compromised" is a tested claim rather than a postu
 
 ## Epic 15: Shell conveniences and the theme
 
-A user makes the portal their own - own password, favorites, recents, menu search, About, per-screen help, the shortcuts menu, the links panel, Home's system information, UI state that survives a sign-out, a dark theme the community has been asking for, the rail's icons, columns wide enough to read, and sign-out where people look for it. Polish week.
+A user makes the portal their own - own password, favorites, recents, menu search, About, per-screen help, the shortcuts menu, the links panel, Home's system information, UI state that survives a sign-out, a dark theme the community has been asking for, the rail's icons, columns wide enough to read, sign-out where people look for it, and a header logo that looks finished. Polish week.
 
 ### Story 15.1: Change your own password
 
@@ -6033,6 +6035,33 @@ So that the shell reads as finished.
 - DW-1597: An editor's own Save raises a change toast that DESIGN.md's toast recipe forbids; suppress it for the open screen's own Save, keep it for agent writes and writes made elsewhere (ledger; routed by merge_gate 2026-09-25)
 - DW-1649: The shared browser helper `clickRowCentre` never checks where its click lands, so a re-render between measuring and clicking misclicks and the caller times out on the row trigger instead of the helper naming the miss (ledger; routed by cr 2026-09-25)
 - DW-1648: Pin the row-action column to the table frame's right edge so the row menu is always visible without horizontal scroll; column widths stay as Story 15.8 set them, and the "Trigger reach" spec's two "starts past the frame" assertions change with it (ledger; routed by merge_gate 2026-09-25)
+
+### Story 15.10: The header logo on a white tile
+
+**Owner triage, 2026-09-25, high priority.** Runs alone on slot B and merges before the submission cut.
+
+As a judge opening OcuPilot for the first time,
+I want the logo in the header to look clean,
+So that the first thing I see looks finished.
+
+**Acceptance Criteria:**
+
+- **Given** the header
+- **When** it renders
+- **Then** the lockup is the navy-wordmark file `OcuPilot-Lockup-horizontal.png`, the one the sign-in card uses, on a white tile with rounded corners and even padding, sized to sit inside the header band
+- **And** the reversed file, whose transparent cut-out fringes against the chrome, is no longer drawn in the header.
+
+- **Given** the light and the dark theme
+- **When** the header renders in each
+- **Then** the tile looks the same in both, because the chrome does not change with the theme.
+
+- **Given** keyboard focus on the logo link
+- **When** it is focused
+- **Then** the focus ring surrounds the tile, and the link still goes Home under the same accessible name.
+
+- **Given** DESIGN.md's header lockup section and EXPERIENCE.md's logo-lockup row, both of which name the reversed file with no plate
+- **When** this story completes
+- **Then** both state the tile at origin, `header.ts`'s doc comment says the same, and a browser spec pins that the header draws the navy lockup on a white tile.
 
 ---
 
