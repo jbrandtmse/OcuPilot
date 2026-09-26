@@ -66,3 +66,4 @@
 2026-09-26T22:04:59Z	Story 16.18	ledger_adjudicated	owned=1 resolved=0 reowned=1(DW-1400->16-21) terminal=0 note=DW-1400_arrived_via_integrate_forward_after_plan;16.18_added_no_fourth_seam_copy model=claude-opus-5-5
 2026-09-26T22:04:59Z	Epic 16	ledger_routed_planned	story=16-21-security-findings-with-a-fix-you-confirm entries=1(DW-1400) excess=0 by=adjudication
 2026-09-26T22:04:59Z	Story 16.18	smoke_complete	method=browser result=pass iterations=1 defects_caught=0 evidence=ocupilot-ci_recompiled_and_bundle_redeployed_post_cr;home-performance.browser-spec_4/4 model=claude-opus-5-5
+2026-09-26T22:05:57Z	Story 16.18	committed	sha=2d317329 submodules= ci=pending run=36275138505 amendments=ARCHITECTURE-SPINE.md:AD-43(roster_eight,default_rate_home_10s),AD-29(MonitorPort),EXPERIENCE.md:83,835_in_place+fixed-strings_row,epics.md:16.21_DW-1400_bullet

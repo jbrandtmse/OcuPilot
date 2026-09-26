@@ -350,7 +350,7 @@ test('the harness build configuration has its own entry, document, tsconfig and 
 // libraries (`marked`, `dompurify`, `lowlight`+`highlight.js`).
 //
 // The figure is re-based under the owner's standing policy on DW-1166: at each epic close the
-// warning is set about 5% above the measured initial total, and `maximumError`'s 2000kB is the
+// warning is set about 5% above the measured initial total, and `maximumError`'s 4000kB is the
 // hard stop. Story 8.5 set 1261kB against a measured 1,200,871 bytes (5.01% above), the X.509
 // form page, store and actions having added 26,053, and a tight figure keeps each raise a reviewed
 // diff rather than a silent drift. `build-output.test.mjs` measures
@@ -376,12 +376,12 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '1900kB', 'DW-1166, Story 16.1: the measured 1,856,906 bytes; 5% above would be 1950kB, past the 1900kB stop line, so the warning sits at the stop line; a change to this figure must be a reviewed diff, not a silent edit');
-  assert.equal(budget.maximumError, '2000kB');
+  assert.equal(budget.maximumWarning, '1900kB', 'DW-1166, Story 16.1: the measured 1,856,906 bytes, set at the then 1900kB stop line and kept when the owner moved the hard stop to 4000kB (2026-09-26); a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumError, '4000kB');
 
   // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and
   // an MB is 1000 kB. The error budget moved from `1MB` to `1600kB` when Epic 4 and Epic 6's
-  // clients merged, and to `2000kB` for Release 1 by the owner's decision on DW-1166, so the parser reads either unit rather than one each.
+  // clients merged, and to `2000kB` for Release 1 and `4000kB` for the voting week by the owner's decisions on DW-1166, so the parser reads either unit rather than one each.
   const parseSize = (value) => {
     const text = String(value);
     if (text.endsWith('MB')) return Number(text.replace(/MB$/, '')) * 1000 * 1000;
