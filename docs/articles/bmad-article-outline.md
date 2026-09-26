@@ -19,13 +19,13 @@ small chart, one screenshot of a real story spec and one of the deferred-work le
 
 ## 1. The hook (about 150 words)
 
-- Open on Aleksandr Tsvetkov (Banksia Global), writing after InterSystems READY 2026 Asia: *"We'd
+- Open on Aleksandr Tsvetkov (Banksia Global), quoted in Banksia Global's LinkedIn interview after InterSystems READY 2026 Asia: *"We'd
   put a human-in-the-loop approval step into our agent project almost as an afterthought. ... in
   agentic AI the hard, interesting engineering isn't getting a model to call tools, it's making that
   safe and observable enough that a regulated [organization] would actually switch it on."*
   (His spelling is British; the published article keeps it, and the bracket here only satisfies
   the repository's spelling check.)
-  Confirm the attribution on the post before publishing.
+  Attribution checked against the post on 2026-09-26.
 - Turn: in OcuPilot that step was never an afterthought, because it was decided in the
   architecture on day one, before a line of code. That is what the BMAD Method is for.
 - Thesis: human in the loop at two levels - in the product (every agent write is a proposal you
@@ -181,7 +181,7 @@ left behind.
 
 ## Before drafting
 
-- Confirm the Tsvetkov attribution on the LinkedIn post itself.
+- Tsvetkov attribution: confirmed 2026-09-26 (Banksia Global's post, 7 September 2026).
 - Re-count stories done and commits on the day.
 - Positioning: the only Developer Community article found that covers BMAD is Henry Pereira's
   *The Sorting Hat of Vector ReOrdering* (11 Sep 2026), which has one BMAD section; none walks a
