@@ -67,3 +67,6 @@
 2026-09-26T22:04:59Z	Epic 16	ledger_routed_planned	story=16-21-security-findings-with-a-fix-you-confirm entries=1(DW-1400) excess=0 by=adjudication
 2026-09-26T22:04:59Z	Story 16.18	smoke_complete	method=browser result=pass iterations=1 defects_caught=0 evidence=ocupilot-ci_recompiled_and_bundle_redeployed_post_cr;home-performance.browser-spec_4/4 model=claude-opus-5-5
 2026-09-26T22:05:57Z	Story 16.18	committed	sha=2d317329 submodules= ci=pending run=36275138505 amendments=ARCHITECTURE-SPINE.md:AD-43(roster_eight,default_rate_home_10s),AD-29(MonitorPort),EXPERIENCE.md:83,835_in_place+fixed-strings_row,epics.md:16.21_DW-1400_bullet
+2026-09-26T22:07:09Z	Story 16.19	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp@f075c769 merge=f344e836 conflicts=ui/angular.json,ui/tools/angular-json.test.mjs(kept_1900kB_warning+feature_4000kB_error) objectscript_brought=none ci=pending run=36275199146 supersedes=36275138505
+2026-09-26T22:08:06Z	Epic 16	epic_context_compiled	reason=planning_artifact_newer(epics.md_14.2_release,AD-43/AD-29,rules) model=claude-opus-5-5 agent=a8c6a1fcfc2123eb7
+2026-09-26T22:08:06Z	Story 16.19	stage_spawned	stage=plan spawn_at=2026-09-26T22:08:06Z model=opus agent_name=16-19-impact-lines-on-removals-plan-1 cycle_iteration=1
