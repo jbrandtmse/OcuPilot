@@ -5,7 +5,8 @@
 /// answers the text a test supplies and whose gate a test can swap for
 /// <class>OcuPilot.Test.ScreenGate</class>, since <code>%UnitTest</code> runs as an account the real
 /// check admits to everything. One method reads the live sensors as that account. Live-safe: it
-/// creates nothing and writes only process-private globals.</p>
+/// creates nothing and writes only process-private globals; its one live collection moves the
+/// sensors' stored previous values, as every read does (AD-29).</p>
 Class OcuPilot.Test.MonitorPort Extends %UnitTest.TestCase
 {
 

@@ -1340,6 +1340,11 @@ describe('Home', () => {
     expect(path.getAttribute('d')?.match(/[ML]/g)).toEqual(['M', 'L']);
     // The values update silently: the reading moved, and nothing else was announced.
     expect(performanceItems()[1].value).toBe('4,000');
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('.ocu-home-status')?.textContent?.trim()).toBe('');
+    const row = host.querySelector('.ocu-home-performance') as HTMLElement;
+    expect(row.getAttribute('aria-live')).toBeNull();
+    expect(row.querySelector('[aria-live], [role="status"], [role="alert"]')).toBeNull();
   });
 
   it('Story 16.18 AC2: leaving Home clears the line and lets the framework go, and the next Home starts empty', async () => {

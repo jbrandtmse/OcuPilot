@@ -6578,6 +6578,8 @@ So that I can fix them before they matter, with the same review and confirmation
 - **When** it renders
 - **Then** it offers no Fix it and says why, in the prohibited set's own words, and a finding the caller may not read is left out rather than reported as clean.
 
+- DW-1400: the shell-chrome read seam is in its third verbatim copy (About, Instance, SystemInfo) with no extracted base; extract it before this story's Home panel adds a fourth reader (ledger; routed by adjudication 2026-09-26)
+
 ### Story 16.22: The Guardrails page
 
 As a judge or an administrator deciding whether to trust the agent,

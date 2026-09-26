@@ -192,6 +192,44 @@ Client:
 - **AC5.** Given Home's chip set to 10 s, when the user navigates away and back, or signs out and back in, then the chip reads every 10 s.
 - **AC6 (Integration).** Home, the consumer, reads `GET /ui/performance` on `ocupilot-ci` and renders the row in both themes, passing the DW-1337 structural gate (wide and narrow, light and dark) with no new allowance. The bundle stays under 1900 kB.
 
+### Review Findings
+
+Code review 2026-09-26, tier `full-opus`, four layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 0 decision-needed, 7 patch, 1 defer, 20 rejected.
+
+- [x] [Review][Patch] `refreshDefault` validated differently: `Registry.RefreshProblem` accepted `"10"`, `"0"`, `""`, `null` and `false` (measured `$ListFind($LB(5,10,30,60),"10")` = 2), which `screen-mirror.mjs` refuses — `Base.RefreshDefaultOf` now reads only a JSON number and answers `"?"` for any other type [src/OcuPilot/Screen/Descriptor/Base.cls:455]
+- [x] [Review][Patch] AC2's "the values update silently" had no assertion — the tick case now asserts Home's polite region stays empty and the row carries no live region [ui/src/app/areas/home/home.page.spec.ts:1343]
+- [x] [Review][Patch] "and no view is written for Home" could not fail (only `setRate` ran) — the case now sets a sort and a filter first [ui/tools/screen-store.test.mjs:409]
+- [x] [Review][Patch] AC6's structural half had no demonstrated mutation — run and recorded under Verification [ui/browser/home-performance.browser-spec.mjs:292]
+- [x] [Review][Patch] Comments still said Home is not on the refresh roster (the task named `system-info.ts:18-19`; also `suggested-view.ts:20`, `panel.ts:1573`) [ui/src/app/core/system-info.ts:18]
+- [x] [Review][Patch] `DECLARATIONKEYS` doc said "Ten are optional"; the list is eleven [src/OcuPilot/Screen/Registry.cls:376]
+- [x] [Review][Patch] `Test/MonitorPort` header called the class live-safe without saying its live collection moves the sensors' stored previous values [src/OcuPilot/Test/MonitorPort.cls:7]
+- [x] [Review][Defer] `PreferencesWire`'s home-refusal leg has never run locally — deferred: `ocupilot-ci` lacks `OCUPILOT_ALLOW_ACCOUNT_PREFERENCES`; CI's instance job arms and runs it (DW-1719, wontfix-accepted, reopen_if it reads red there) [src/OcuPilot/Test/PreferencesWire.cls]
+
+Lead's questions: (1) refuted — every re-arm goes through `transition()` behind the generation guard, so no second timer; `canArm()` is false while a proposal is live, so an adopted rate arms only the pause's deadline; for the other seven screens the change is the re-arm itself plus adopting a remembered off. (2) spec-bound — the Decisions' `ok`/`[]` tick for a 403 and the intent's "a 403 at any time" require the reads, and the chip and stamp follow roster membership, not the caller; a refused poll never reaches the sensors, so NFR-1 is untouched. (3) confirmed — Epic 23's tip is the merge base; Epic 14's `Router.cls` hunk is at :129 and this story's at :140, and its `ci-throwaway.sh` hunks sit at base :208, :225 and :296 against this story's :221.
+
+Rejected:
+
+- `false` A 10 s poll keeps an idle session alive — `session.ts` `scheduleRenewal` already rotates the pair from its `exp` whatever the tab requests.
+- `false` Every read runs a full collection, and tabs or scrapers skew each other's windows — the intent's "one sensor collection per read", recorded in AD-29 (inference).
+- `false` A 500 parks the timer until the person acts — the framework's own fault behavior on every roster screen, which the Boundaries keep.
+- `false` Cache efficiency's unit may not match its number — the copy is the spec's, measured in Design Notes.
+- `false` `Kernel.Shell.Performance.PortClass` is an unused seam — it harms nothing and follows the ports' seam pattern.
+- `false` `denied()` is read only by tests — the Tasks name it in `PerformanceRow`'s API.
+- `false` The Auto Run Result miscounts changed spec files — the fix edits the spec under review.
+- `false` Spec `done` and sprint `review` disagree — this review sets the sprint status.
+- `low` The sparkline renders as an empty image before two answers, and "/s" is read aloud — the `<svg role="img">` with its label is specified, and "/s" is the Fixed string.
+- `low` A whitespace remembered rate reads as off — the instance refuses an empty value, and only a hand-written call by the same user can store whitespace.
+- `false` Home is recognised by a name rather than a declared key — the Tasks declare `home` once, as a `Pref` parameter.
+- `false` DESIGN.md has no entry for the row — the spec asks for none.
+- `false` A refused caller keeps the chip and stamp and polls a 403 — spec-bound (Decisions; question 2 above).
+- `low` `Parse` rescans the text for each line — measured 8.1 ms over 47,774 characters and 985 lines, against a 60 to 71 ms collection.
+- `false` A long labeled name could overflow a subscript — sensor names with their labels are far below the subscript limit.
+- `false` Returning to Home shows the last values before the first tick — the row "shows the last successful answer", and `readNow()` reads on entry.
+- `low` `UiPerformanceWire` leaves principals behind if setup fails halfway — throwaway only, and `EnsurePrincipal` reuses them on the next run.
+- `low` A wall clock stepping back would misdraw the line — no realistic path on a person's browser within ten minutes.
+- `false` A future descriptor routed `home` would share Home's rate row — no descriptor declares that route.
+- `false` AC3's wording does not mention the chip and stamp — the fix edits the spec under review (question 2 above).
+
 ## Spec Change Log
 
 - 2026-09-26, lead, spec gate: AD-43 amended (the set is eight, Home added; a screen may declare its default rate, Home's is every 10 s) and AD-29 gained the `MonitorPort` paragraph, both as recommended below except the default rate, which the lead ruled on (tier-1: AC2 must hold without a person enabling refresh). Status reset to ready-for-dev.
@@ -309,6 +347,17 @@ The Where column: "Home's performance row (Story 16.18): its heading; two labels
 - mutation: a successful `read` answers `rows: []` -> red: `home.page.spec.ts` AC4 (the context row).
 - mutation: drop the `IsHomeRefresh` test from `Preferences.HandleUpdate`, recompiled on `ocupilot-ci` -> red: `home-performance.browser-spec.mjs` AC5 ("the instance remembers Home at 30 s under home"). `PreferencesWire` refuses on `ocupilot-ci` for its missing arming, so CI runs its leg.
 - mutation: `reset()` keeps `deniedValue` -> red: `performance.test.mjs` "clearHistory drops the line and keeps the values; reset forgets both".
+
+**Mutations (Rule 19), 2026-09-26, QA pass.** Same discipline; tree checksum identical before and after.
+
+- mutation: in `screen-store.ts`'s `ScreenStore` constructor, ignore `defaultRate` and start every store's `rateSeconds` at `RATE_OFF` -> red: `screen-store.test.mjs` "Story 16.18: Home starts at every 10 s while no rate is remembered, and every other screen starts off" (the test the file's own header comment names for this mutation), plus two others that assume the same default ("a remembered rate the descriptor does not permit leaves the default standing", "a rate remembered after the store was made is adopted when the account answers"). This closes the one pinning test whose `mutation:` line existed in the test file's header but had not yet been demonstrated and recorded here.
+
+**Mutations (Rule 19), 2026-09-26, code review.** Same discipline; tree checksum identical before and after.
+
+- mutation: `.ocu-home-performance-unit` coloured `var(--ocu-surface-container-lowest)`, rebuilt and redeployed to `ocupilot-ci` -> red: `home-performance.browser-spec.mjs` "AC1 and the Integration AC" at the structural gate's `fresh` assertion (contrast 1:1 on the unit, light and dark).
+- mutation: the row's `<section>` given `aria-live="polite"` -> red: `home.page.spec.ts` "Story 16.18 AC2: the line is drawn only once two answers have arrived".
+- mutation: `ScreenStore.rememberView` keyed by `this.route || this.rateKey` -> red: `screen-store.test.mjs` "Story 16.18 AC5".
+- mutation: `Base.RefreshDefaultOf` answers `%Get` whatever the JSON type, recompiled on `ocupilot-ci` -> red: `OcuPilot.Test.Descriptor` `TestARefreshDeclarationOutsideThePermittedShapesIsRefused`.
 
 ## Auto Run Result
 

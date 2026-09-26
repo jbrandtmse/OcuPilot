@@ -404,9 +404,11 @@ test('Story 16.18 AC5: Home\u2019s rate is remembered under home, and a new Scre
   const held = await account();
   const first = new ScreenStores({ account: held }).for(HOME_DESCRIPTOR, HOME.refreshRates);
   assert.equal(first.setRate(30), true);
+  first.setSort('name');
+  first.setFilter('x');
   await flush();
   assert.equal(held.refreshRates().get(HOME_REFRESH_NAME), '30', 'written under home, not under the empty route');
-  assert.deepEqual([...held.views().keys()], [], 'and no view is written for Home');
+  assert.deepEqual([...held.views().keys()], [], 'and Home\u2019s sort and filter write no view, under home or the empty route');
 
   const again = new ScreenStores({ account: held }).for(HOME_DESCRIPTOR, HOME.refreshRates);
   assert.equal(again.rate(), 30);

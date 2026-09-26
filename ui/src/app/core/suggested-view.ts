@@ -17,8 +17,8 @@
  * block renders nothing rather than a partial block or a flash of prompts.
  *
  * **Bounded** (AD-24, AD-36): one HTTP call per line per Home entry per namespace, and no fan-out
- * over namespaces or rows. Home is not in AD-43's six-screen auto-refresh roster, so there is no
- * timer, and this store schedules nothing of its own: `load()` and `reset()` are called by the
+ * over namespaces or rows. Home's auto-refresh tick (AD-43) re-reads only its performance row, so
+ * there is no timer here, and this store schedules nothing of its own: `load()` and `reset()` are called by the
  * panel, which is where entering Home and a `ScopeService` namespace change are observed. The
  * injected `ScopeService` is read (`namespace()`), never subscribed to.
  *

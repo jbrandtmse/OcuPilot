@@ -1573,7 +1573,9 @@ Method TestOnlyHomeDeclaresADefaultRate()
 /// <p>Mutation: drop the ascending comparison from
 /// <method>OcuPilot.Screen.Registry.RefreshProblem</method> -> the repeat and the descent both
 /// stop being refused and two assertions go red, while a chip cycling through
-/// <code>10, 10</code> would spend one step of its cycle changing nothing.</p>
+/// <code>10, 10</code> would spend one step of its cycle changing nothing. Return
+/// <method>OcuPilot.Screen.Descriptor.Base.RefreshDefaultOf</method>'s <code>%Get</code> whatever
+/// the JSON type -> the string <code>"10"</code> is read as the rate 10 and its assertion goes red.</p>
 Method TestARefreshDeclarationOutsideThePermittedShapesIsRefused()
 {
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(1, $ListBuild(10)), "", "one positive rate on a refreshing screen is sound")
@@ -1593,6 +1595,16 @@ Method TestARefreshDeclarationOutsideThePermittedShapesIsRefused()
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(0, "", 0), "", "on a screen that does not refresh too")
     Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(0, "", 10), "", "which has no other default rate")
     Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(1, $ListBuild(10), "?"), "", "and an object or array is refused rather than read as absent")
+    Set tNumber = {"refreshDefault": 10}
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Descriptor.Base).RefreshDefaultOf(tNumber), 10, "a declared JSON number is read as the rate it names")
+    Set tAbsent = {}
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Descriptor.Base).RefreshDefaultOf(tAbsent), "", "and an absent key as absent")
+    Set tShapes = [{"refreshDefault": "10"}, {"refreshDefault": "0"}, {"refreshDefault": ""}, {"refreshDefault": null}, {"refreshDefault": false}, {"refreshDefault": true}, {"refreshDefault": [10]}]
+    Set tIterator = tShapes.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tShape) {
+        Set tRead = ##class(OcuPilot.Screen.Descriptor.Base).RefreshDefaultOf(tShape)
+        Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).RefreshProblem(1, $ListBuild(5, 10, 30), tRead), "", tShape.%ToJSON() _ " is refused as screen-mirror.mjs refuses it: only a JSON number names a default rate")
+    }
 
     Set tSC = ##class(OcuPilot.Test.RefreshRegistry).Validate(.tProblem)
     Do $$$AssertStatusNotOK(tSC, "a roster carrying a malformed refresh declaration is refused")

@@ -1570,8 +1570,8 @@ export class Panel {
    * **The namespace is the key**, which is what bounds this to one call per line per Home visit per
    * namespace (AD-24): every store this reads answers a round trip after the panel is built, so
    * this runs on each of their notifications, and without a key it would read on all of them. A
-   * namespace switch is a different question and reads once (AD-44). Home is not in AD-43's
-   * refresh roster, so there is no timer.
+   * namespace switch is a different question and reads once (AD-44). Home's auto-refresh tick
+   * (AD-43) re-reads only its performance row, so there is no timer here.
    *
    * It withholds the read until the block's own preconditions hold -- Home, an answered status
    * with an enabled definition, and a resolved namespace -- rather than reading and discarding:

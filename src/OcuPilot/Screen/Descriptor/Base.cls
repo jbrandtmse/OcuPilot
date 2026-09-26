@@ -450,12 +450,39 @@ ClassMethod RefreshRates() As %List
 /// remembered none, or <code>""</code> when the screen declares none; <code>""</code> and
 /// <code>0</code> are off, the published default (AD-43). Declared only by a refreshing screen, as one of its
 /// <method>RefreshRates</method>; <method>OcuPilot.Screen.Registry.RefreshProblem</method> refuses
-/// any other value. An object or array reads as <code>"?"</code>, so the registry refuses it rather
-/// than reading it as absent.</p>
+/// any other value. <method>RefreshDefaultOf</method> reads the declaration.</p>
 ClassMethod RefreshDefault() As %String
 {
-    Set tValue = ..CachedValue("refreshDefault")
-    If $IsObject(tValue) Quit "?"
+    Set tValue = ""
+    Try {
+        Set tSC = ..Declaration(.tObject)
+        If $$$ISERR(tSC) Quit
+        Set tValue = ..RefreshDefaultOf(tObject)
+    } Catch {
+        Set tValue = ""
+    }
+    Quit tValue
+}
+
+/// <p>The <code>refreshDefault</code> <var>pDeclaration</var> declares: <code>""</code> when the key
+/// is absent, the number when it is a JSON number, and <code>"?"</code> for any other JSON type -- a
+/// string, a boolean, <code>null</code>, an object or an array -- so
+/// <method>OcuPilot.Screen.Registry.RefreshProblem</method> refuses exactly what
+/// <file>ui/tools/screen-mirror.mjs</file> refuses rather than reading <code>"10"</code> as a rate or
+/// <code>null</code> as absent.</p>
+ClassMethod RefreshDefaultOf(pDeclaration As %DynamicObject) As %String
+{
+    Set tValue = "?"
+    Try {
+        Set tType = pDeclaration.%GetTypeOf("refreshDefault")
+        If tType = "unassigned" {
+            Set tValue = ""
+            Quit
+        }
+        If tType = "number" Set tValue = pDeclaration.%Get("refreshDefault")
+    } Catch {
+        Set tValue = "?"
+    }
     Quit tValue
 }
 
