@@ -4431,9 +4431,9 @@ app-data-table {
   }
 }
 
-// The destructive card (DESIGN.md `:1176`, `:1243`): the 4px left-edge bar in `destructive`, and
-// Confirm as `button-destructive`. The declaration is the write tool's own and arrives on the
-// wire; the typed-name field that DESIGN.md pairs with the button is Story 14.7's.
+// The destructive card (DESIGN.md `:1181`, `:1242`): the 4px left-edge bar in `destructive`, and
+// Confirm as `button-destructive`. A destructive agent proposal has no typed-name field: the
+// destructive bar, the destructive Confirm and the user's own press are its confirmation.
 .ocu-proposal-card-destructive {
   border-left-color: var(--ocu-destructive);
 }

@@ -3904,7 +3904,8 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         ; naming the database directory. "Left in place" has to mean still working. An
         ; application that is ALREADY ABSENT -- removed this run, or by another hand before it
         ; -- has no floor to preserve, so its role goes: no roster-declared role survives when
-        ; no application sits at its roster path (AD-21's both-directions invariant).
+        ; no application sits at its roster path (AD-21: the floor role is created and removed by
+        ; the installer).
         For tRI = 1:1:$Length(tNames("appKeys"), ",") {
             Set tRKey = $Piece(tNames("appKeys"), ",", tRI)
             Set tRRole = $Get(tNames("appRole", tRKey))

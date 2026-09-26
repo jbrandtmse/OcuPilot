@@ -213,8 +213,8 @@ test('AC1: the disable card is destructive and carries the published warning ins
         diff: Array.from(document.querySelectorAll('.ocu-diff-row')).map((row) =>
           (row.textContent ?? '').replace(/\s+/g, ' ').trim()
         ),
-        // 14.7's typed-name field is deliberately absent: shipping it with nothing to compare
-        // against would leave Confirm permanently `aria-disabled`.
+        // A destructive agent proposal has no typed-name field: the destructive bar, the
+        // destructive Confirm and the user's own press are its confirmation.
         typedName: document.querySelector('.ocu-typed-name-field') !== null,
         confirmDisabled: confirm.getAttribute('aria-disabled'),
       };
@@ -232,7 +232,7 @@ test('AC1: the disable card is destructive and carries the published warning ins
       drawn.diff.some((row) => row.startsWith('Enabled')),
       `the diff carries the one field: ${JSON.stringify(drawn.diff)}`
     );
-    assert.equal(drawn.typedName, false, 'and no typed-name field, which is Story 14.7\'s');
+    assert.equal(drawn.typedName, false, 'and no typed-name field, since a destructive agent proposal takes none');
     assert.equal(drawn.confirmDisabled, null, 'so Confirm is pressable');
   } finally {
     await context.close();

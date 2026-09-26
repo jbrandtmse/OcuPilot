@@ -1351,7 +1351,7 @@ Method SeedTaskResume(pTaskId As %String, pFresh As %DynamicObject) As %String
 /// routine-execution permission, so the framework's own <method>%CSP.REST.AccessCheck</method>
 /// refuses the request before any OcuPilot-resident method runs, and it sets 403 inline rather than
 /// through <method>OcuPilot.Api.Router.ReportHttpStatusCode</method> -- an empty body, with nothing
-/// naming the missing grant. That is why the prerequisite is stated in README's roles section
+/// naming the missing grant. That is why the prerequisite is stated in <file>docs/DEVELOPMENT.md</file>'s "The web applications and the client bundle"
 /// rather than left to be discovered from a response, and why no envelope half was built: an
 /// <code>AccessCheck</code> override is itself compiled into that database, so dispatching to it
 /// raises <code>&lt;PROTECT&gt;</code> and the caller gets a vendor 500 error page instead.</p>

@@ -2,13 +2,28 @@
 title: 'Story 23.1: The range-end cleanup'
 type: 'chore'
 created: '2026-09-26'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'f30207594e8641fc86ccaa1db9ebcceee2ba9484'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      scripts/test_check_objectscript.py:1659 still says "expected the N-segment route named" in its assertion message.
+    evidence: |-
+      Same retired wording DW-1298 replaced in five places; the file belongs to Batch B3, so B1 did not touch it.
+    location: >-
+      scripts/test_check_objectscript.py:1659
+    severity: low
+  - summary: >-
+      DESIGN.md :1181 specifies a 3px destructive bar under the header rule, but the card only recolors its 4px left edge (:1176), and mockups/key-proposal-states.html still draws a typed-name field on the destructive card.
+    evidence: |-
+      _components.scss .ocu-proposal-card-destructive sets border-left-color only; no under-header bar is drawn. Predates B1; the comments cite :1181 as the spec directed.
+    location: >-
+      ui/src/styles/_components.scss:4434, _bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/DESIGN.md:1181
+    severity: low
 ---
 
 <intent-contract>
@@ -71,23 +86,23 @@ deferred: []
 
 ### Batch B1 — comments, doc text and fixture prose (17; no behavior)
 
-- [ ] DW-1682 (owner must-fix): repoint seven comments from README to `docs/DEVELOPMENT.md`'s section names: "Verifying the start path against a throwaway container", "The container start path", "The web applications and the client bundle" and "The readiness endpoint". Files: `scripts/ci-throwaway.sh:3`, `scripts/container-start.sh:51`, `scripts/container-health.sh:23-24`, `Test/ProhibitedRoute.cls:1354`, `Test/Wire.cls:905`, `Api/Router.cls:991`, `Api/Readiness.cls:13`.
-- [ ] DW-1688 (owner must-fix): replace `proposal-card.ts:663-671` with this contract. The tool's destructive flag turns the card's left-edge bar and its Confirm to the destructive treatment (DESIGN.md `:1181`, `:1242`). A destructive agent proposal has no typed-name field; the destructive bar, the destructive Confirm and the user's own press are its confirmation. Restate the same line with no story name at `proposal-card.spec.ts:840-842`, `_components.scss:4434-4436` (in place, same line count), `AuditingUpdate.cls:8-9` and `auditing-write.browser-spec.mjs:216` (comment) and `:235` (message). Correct DESIGN.md and EXPERIENCE.md as listed under `### Document corrections at origin`.
-- [ ] DW-1104: in PROVIDERCALLSECONDS's doc, say that the stored timeout and attempt count are clamped at the point of use (`Retry.EffectiveTimeoutSec`/`EffectiveAttempts` in `Base.Attempts`), which bounds what is configured and not the wall clock. Drop the DW id. File: `Kernel/Agent/Limits.cls:101-111`.
-- [ ] DW-1197: the header should say that Validate reads the real Catalog and that this class re-adapts the shipped anthropic row. File: `Test/CatalogAnthropicStub.cls:1-9`.
-- [ ] DW-1219: the recipe should say "the first leg, a private endpoint behind a public proxy, goes red", with the DW id dropped. File: `Test/ContextBound.cls:212-217`.
-- [ ] DW-1599: the assertion message should read "the thirteen cascade columns and the derived sentence, and none of adapterClass, authVersion or reasoningEffort". Delete the narration comment. File: `Test/AgentViolation.cls:214-215`.
-- [ ] DW-1325: delete the duplicated `$ZHex` narration paragraph from both classes and keep the one-line contract. Files: `Test/LedgerEmptyPairs.cls:68-70`, `Test/TurnSecretResidue.cls:104-106`.
-- [ ] DW-1264: the comments should name TYPESUFFIXES or a MUTATINGTYPES/CONNECTIONTESTTYPES pair, and both callers: Confirm's transition and the screen caller through `Kernel.Proposal.Operation`. File: `Port/AdminPort.cls:144-147,709,720,1938`.
-- [ ] DW-1272: the recipe should name the compound guard `If '$Data(tRemovedKeys(tRKey)), ...Exists(...) Continue`. File: `Test/Provenance.cls:238-240`.
-- [ ] DW-1277: change "(AD-21's both-directions invariant)" to "(AD-21: the floor role is created and removed by the installer)". File: `Install/Installer.cls:3907`.
-- [ ] DW-1282: replace the duplicated header with one short summary of the route families and the 404 override. Drop the false "only write verbs" claim. File: `Api/Router.cls:1-26`.
-- [ ] DW-1298: in five places, replace the "N-segment before (N-1)-segment" wording with "a longer route before a shorter one whose Url matches its leading segments". Files: `Api/Router.cls:71,250`, `scripts/check-objectscript.py:120-121,1770,1834-1835`.
-- [ ] DW-1313: replace the two retired refusal sentences with the current one. `Test/ErrorReadStub.cls:56` gets it through `##class(OcuPilot.Kernel.Denial).Reason()`; `openapi-viewer.page.spec.ts:243` gets it as a literal. Fixture text only.
-- [ ] DW-1385: add one caller-contract sentence to the AC2 leg's doc. Its counts are exact, so nothing else may write an OcuPilot- or seed-Source audit row during it, which holds because the suite runs one spec at a time on a throwaway. File: `ui/browser/audit.browser-spec.mjs:535-549`.
-- [ ] DW-1295: in EXPERIENCE.md `:382`, within the existing cell, say that the dialog's empty-field reason reuses the OpenAPI viewer's "Required" (`:358`). Same line.
-- [ ] DW-1376: in DESIGN.md `:898`, change the list to "Polish-week additions (system information, favorites, recents, shortcuts, links) go above or beside the grid."
-- [ ] DW-1318: change the cell at `extract-catalog.md:530` to `*extractor's note, resolved 2026-09-20:* per user, on the instance (AD-50; epics.md Story 15.2)`.
+- [x] DW-1682 (owner must-fix): repoint seven comments from README to `docs/DEVELOPMENT.md`'s section names: "Verifying the start path against a throwaway container", "The container start path", "The web applications and the client bundle" and "The readiness endpoint". Files: `scripts/ci-throwaway.sh:3`, `scripts/container-start.sh:51`, `scripts/container-health.sh:23-24`, `Test/ProhibitedRoute.cls:1354`, `Test/Wire.cls:905`, `Api/Router.cls:991`, `Api/Readiness.cls:13`.
+- [x] DW-1688 (owner must-fix): replace `proposal-card.ts:663-671` with this contract. The tool's destructive flag turns the card's left-edge bar and its Confirm to the destructive treatment (DESIGN.md `:1181`, `:1242`). A destructive agent proposal has no typed-name field; the destructive bar, the destructive Confirm and the user's own press are its confirmation. Restate the same line with no story name at `proposal-card.spec.ts:840-842`, `_components.scss:4434-4436` (in place, same line count), `AuditingUpdate.cls:8-9` and `auditing-write.browser-spec.mjs:216` (comment) and `:235` (message). Correct DESIGN.md and EXPERIENCE.md as listed under `### Document corrections at origin`.
+- [x] DW-1104: in PROVIDERCALLSECONDS's doc, say that the stored timeout and attempt count are clamped at the point of use (`Retry.EffectiveTimeoutSec`/`EffectiveAttempts` in `Base.Attempts`), which bounds what is configured and not the wall clock. Drop the DW id. File: `Kernel/Agent/Limits.cls:101-111`.
+- [x] DW-1197: the header should say that Validate reads the real Catalog and that this class re-adapts the shipped anthropic row. File: `Test/CatalogAnthropicStub.cls:1-9`.
+- [x] DW-1219: the recipe should say "the first leg, a private endpoint behind a public proxy, goes red", with the DW id dropped. File: `Test/ContextBound.cls:212-217`.
+- [x] DW-1599: the assertion message should read "the thirteen cascade columns and the derived sentence, and none of adapterClass, authVersion or reasoningEffort". Delete the narration comment. File: `Test/AgentViolation.cls:214-215`.
+- [x] DW-1325: delete the duplicated `$ZHex` narration paragraph from both classes and keep the one-line contract. Files: `Test/LedgerEmptyPairs.cls:68-70`, `Test/TurnSecretResidue.cls:104-106`.
+- [x] DW-1264: the comments should name TYPESUFFIXES or a MUTATINGTYPES/CONNECTIONTESTTYPES pair, and both callers: Confirm's transition and the screen caller through `Kernel.Proposal.Operation`. File: `Port/AdminPort.cls:144-147,709,720,1938`.
+- [x] DW-1272: the recipe should name the compound guard `If '$Data(tRemovedKeys(tRKey)), ...Exists(...) Continue`. File: `Test/Provenance.cls:238-240`.
+- [x] DW-1277: change "(AD-21's both-directions invariant)" to "(AD-21: the floor role is created and removed by the installer)". File: `Install/Installer.cls:3907`.
+- [x] DW-1282: replace the duplicated header with one short summary of the route families and the 404 override. Drop the false "only write verbs" claim. File: `Api/Router.cls:1-26`.
+- [x] DW-1298: in five places, replace the "N-segment before (N-1)-segment" wording with "a longer route before a shorter one whose Url matches its leading segments". Files: `Api/Router.cls:71,250`, `scripts/check-objectscript.py:120-121,1770,1834-1835`.
+- [x] DW-1313: replace the two retired refusal sentences with the current one. `Test/ErrorReadStub.cls:56` gets it through `##class(OcuPilot.Kernel.Denial).Reason()`; `openapi-viewer.page.spec.ts:243` gets it as a literal. Fixture text only.
+- [x] DW-1385: add one caller-contract sentence to the AC2 leg's doc. Its counts are exact, so nothing else may write an OcuPilot- or seed-Source audit row during it, which holds because the suite runs one spec at a time on a throwaway. File: `ui/browser/audit.browser-spec.mjs:535-549`.
+- [x] DW-1295: in EXPERIENCE.md `:382`, within the existing cell, say that the dialog's empty-field reason reuses the OpenAPI viewer's "Required" (`:358`). Same line.
+- [x] DW-1376: in DESIGN.md `:898`, change the list to "Polish-week additions (system information, favorites, recents, shortcuts, links) go above or beside the grid."
+- [x] DW-1318: change the cell at `extract-catalog.md:530` to `*extractor's note, resolved 2026-09-20:* per user, on the instance (AD-50; epics.md Story 15.2)`.
 
 ### Batch B2 — install, smoke and the demo fixture (8)
 
@@ -208,6 +223,23 @@ Each fix below is sentence replacement, not an appended erratum. Spine edits fol
 - 2026-09-26, lead at spec validation: (1) an already-fixed entry closes `resolved-by:23-1-the-range-end-cleanup` with the earlier commit as evidence, not `dropped`, which the grammar keeps for invalid or duplicate entries. (2) DW-1650 moves from `burndown` to B6 + L: its ledger trailer records the owner's decision at the 10.6 merge gate, so only the spine's Deferred row was stale. (3) DW-1185, DW-1434, DW-1435 and DW-1478 are escalated to the owner rather than applied: they edit instruction files (`CLAUDE.md`, `.claude/rules/`, `_bmad/custom/skill-rules.md`), which no agent may change on another agent's say-so; the drafted text stays in Batch L for the owner. (4) DW-1338 and DW-1413 are applied only outside other epics' story blocks; the story-block lines (Stories 1.9, 4.3, 13.3) are escalated for the orchestrator. (5) A batch's commit and the lead's review/bookkeeping commit are pushed together, never with `[skip ci]`; the lead's Batch L commit rides with B1's push.
 
 ## Review Triage Log
+
+### 2026-09-26 — Review pass (Batch B1)
+
+- verdicts: 12 findings — high 0, medium 4, low 7, false 1, maybe-false 0
+- findings:
+  - `[low]` `[reject]` verification-gap: the route-ordering message tail has no assertion past "shorter route" — B1 is text-only with no pinning test by design, and the assertion would live in B3's `test_check_objectscript.py`.
+  - `[medium]` `[patch]` verification-gap: EXPERIENCE.md `:192`, `:660`, `:743` still gave a destructive proposal a typed-name field, contradicting `:197/:606/:611` — rewritten in place; line count stays 981.
+  - `[medium]` `[patch]` verification-gap: AdminPort's "two callers" paragraph missed the editor Saves that call the port directly and the install smoke — paragraph restated against the code (Operation for Confirm and screen actions/Saves, AD-53/AD-55; direct Save handlers after AD-10; the smoke's restore).
+  - `[low]` `[patch]` verification-gap: retired N-segment wording left at `RouterFixture.cls:53` and `test_check_objectscript.py:1659` — fixture comment rewritten; the test message is B3's file and is in `deferred:`.
+  - `[low]` `[patch]` verification-gap: `check-objectscript.py` docstring restated the rule twice and ran to 118 columns — rewritten once, wrapped.
+  - `[medium]` `[patch]` intent-alignment: AdminPort caller claim does not hold (same root cause as the verification-gap row) — same patch.
+  - `[medium]` `[patch]` intent-alignment: EXPERIENCE.md still contradicts itself on the typed-name field (same root cause) — same patch.
+  - `[low]` `[defer]` intent-alignment: DESIGN.md `:1181` names a 3px under-header bar the card never draws; the comments cite it for the left edge — pre-existing design/code gap, in `deferred:`.
+  - `[low]` `[patch]` intent-alignment: DW-1298 incomplete and circular (same root causes as the two rows above) — same patches.
+  - `[low]` `[patch]` intent-alignment: a `; DW-441:` narration prefix remained in `ContextBound.cls` — prefix removed.
+  - `[false]` `[reject]` intent-alignment: several edited lines run in no test — they are fixture and message text; the tree compiles with 0 errors and B1 carries no behavior by design.
+  - `[low]` `[patch]` intent-alignment: the Router header omitted `/agent/context`, the provider catalog, and the editors' checks — added.
 
 ## Design Notes
 
@@ -703,7 +735,27 @@ Slot B. Every IRIS MCP call carries `server: "ocupilot-slot-b"`. Tests and probe
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-The plan verified all 178 slice entries against the tree at `f010a3ed910699bea52e2a773027240316563dfe` with eight read-only investigation passes. It made no code changes, ran no tests and did not write the ledger.
+**This pass: Batch B1 only** (baseline `f30207594e8641fc86ccaa1db9ebcceee2ba9484`). All 17 B1 items landed as comment, doc, assertion-message and fixture text, with no behavior change:
+
+- README pointers now name `docs/DEVELOPMENT.md` sections in the seven files.
+- The destructive-proposal contract ("no typed-name field") is stated in `proposal-card.ts`, its spec, `_components.scss` (same line count), `AuditingUpdate.cls`, `auditing-write.browser-spec.mjs`, DESIGN.md `:1181/:1242/:1272` and EXPERIENCE.md `:192/:197/:606/:611/:660/:743`.
+- Other text fixes: `Limits.cls`, `CatalogAnthropicStub`, `ContextBound`, `AgentViolation`, `LedgerEmptyPairs`, `TurnSecretResidue`, `AdminPort`, `Provenance`, `Installer`, the `Router` header and ordering wording, `check-objectscript.py`, `RouterFixture`, `ErrorReadStub`, `openapi-viewer.page.spec.ts`, `audit.browser-spec.mjs`, DESIGN.md `:898`, EXPERIENCE.md `:382` and `extract-catalog.md:530`.
+
+**Review:** 12 findings. 9 patched (4 medium, 5 low), 1 deferred (low), 2 rejected. The triage log gives each one. The follow-up review recommendation is `false`: the two medium entries patched are prose, and each was checked against the code. The AdminPort paragraph was checked against all 24 direct port callers in `Area/`, and each Save handler references `Prohibited`.
+
+**Verification** (on `ocupilot-b-ci`, after the patches):
+
+- `LoadDir` of `src/` compiled with 0 errors.
+- `check-objectscript.py` found 0 problems in 956 files, and `test_check_objectscript.py` passed 130 tests.
+- `npm run test:tools` passed 1468/1468, and `npm run test:components` passed 1451/1451.
+- `lint-docs.sh` reported 0 issues. EXPERIENCE.md is 981 lines before and after.
+- The `14\.7` grep is empty. The README grep prints only `core/session.ts:59`, which is correct because README.md `:265` carries the unexpire command.
+- The added source contains no non-ASCII characters.
+- The handoff agent ran `OcuPilot.Test.ToolEmit` once: 11 tests, 0 failed.
+- The Matrix Test Audit does not apply, since no matrix row concerns B1.
+- Rule 19 does not apply, since B1 has no behavior.
+
+**Residual risk:** none beyond the two low items in `deferred:`.

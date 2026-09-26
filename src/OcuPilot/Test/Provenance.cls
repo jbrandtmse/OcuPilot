@@ -235,7 +235,8 @@ Method TestUninstallRemovesOnlyWhatInstallCreatedAndReportsTheRest()
 /// AD-21 privilege floor with it: an anonymous caller would then get 500 and a
 /// <code>&lt;PROTECT&gt;</code> naming the database directory. "Left in place and reported" has
 /// to mean still working.</p>
-/// <p>Mutation (Rule 19): drop the <code>'$Data(tRemovedKeys(tRKey)) Continue</code> guard from
+/// <p>Mutation (Rule 19): drop the compound guard
+/// <code>If '$Data(tRemovedKeys(tRKey)), ...Exists(...) Continue</code> from
 /// <method>OcuPilot.Install.Installer.Uninstall</method>'s role loop -> the kept application's
 /// <code>MatchRoles</code> comes back empty and this goes red.</p>
 Method TestUninstallLeavesAKeptApplicationsPrivilegeFloorIntact()

@@ -10,8 +10,8 @@
 /// and 200 with it. Here the bare path additionally resolves to the parent
 /// <code>/api/ocupilot</code> application, which is password-authenticated and has no such
 /// route, so it answers 401 to an anonymous caller and 404 to an authenticated one --
-/// <file>scripts/smoke.sh</file>, <file>README.md</file> and every test therefore spell the
-/// slash.</p>
+/// <file>scripts/smoke.sh</file>, <file>docs/DEVELOPMENT.md</file>'s "The readiness endpoint" and
+/// every test therefore spell the slash.</p>
 /// <p><b>It reports exactly three things and nothing else</b> (AD-45): whether the instance is
 /// installed, the version stamp, and which of
 /// <method>OcuPilot.Install.Installer.GateStatus</method>'s five states it is in --

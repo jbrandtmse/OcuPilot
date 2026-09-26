@@ -50,7 +50,8 @@ ClassMethod MayEnterNamespace(pNamespace As %String, Output pFailedPair As %Stri
 /// <code>/items/current</code> must be checked before <code>/items/:id</code>, or the
 /// wildcard would swallow "current" as an id. <code>/items/:id</code> doubles as the
 /// single-segment id route the entity-id corpus test dispatches through.</p>
-/// <p>Ordering invariant 3 (N-segment before (N-1)-segment): <code>/docs/:id/history</code>
+/// <p>Ordering invariant 3 (a longer route before a shorter one whose Url matches its leading
+/// segments): <code>/docs/:id/history</code>
 /// is 3 segments and is listed before the 2-segment <code>/docs/:id</code>, as the convention
 /// requires.</p>
 /// <p><code>/screens/:screen/read</code> is the production screen-read route's shape, dispatched to

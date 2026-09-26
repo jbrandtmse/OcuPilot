@@ -53,7 +53,8 @@ ClassMethod Errors(pLevel As %String = "", pNamespace As %String = "", pDate As 
     Set tFault = $Get(^||OcuPilotErrorReadStub("fault"))
     If tFault '= "" {
         Set pHttpStatus = $List(tFault, 1)
-        Set pFault = {"error": "forbidden", "reason": "This account may not read that log source"}
+        Set pFault = {"error": "forbidden"}
+        Do pFault.%Set("reason", ##class(OcuPilot.Kernel.Denial).Reason(), "string")
         Do pFault.%Set("code", $List(tFault, 2), "string")
         If $List(tFault, 3) '= "" Do pFault.%Set("detail", ##class(%DynamicAbstractObject).%FromJSON($List(tFault, 3)))
         Quit $$$ERROR($$$GeneralError, "the stub port's fault")

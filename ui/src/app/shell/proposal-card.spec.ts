@@ -837,9 +837,9 @@ describe('the proposal card', () => {
   });
 
   it('AC1: a destructive proposal draws its left-edge bar and its Confirm in the destructive treatment', () => {
-    // The declaration is the write tool's own and arrives on the wire (DESIGN.md `:1176`, `:1243`).
-    // The typed-name field DESIGN.md pairs with `button-destructive` is Story 14.7's: shipping it
-    // here would leave Confirm permanently `aria-disabled`.
+    // The declaration is the write tool's own and arrives on the wire (DESIGN.md `:1181`, `:1242`).
+    // A destructive agent proposal has no typed-name field: the destructive bar, the destructive
+    // Confirm and the user's own press are its confirmation.
     //
     // Mutation (Rule 19): answer 0 from `OcuPilot.Screen.Tool.Write.Destructive` for the auditing
     // tool, or drop `destructive` from `toCardView` -> these go red.

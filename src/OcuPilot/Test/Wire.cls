@@ -902,8 +902,8 @@ Method TestReadinessAnswersAnAnonymousCaller()
 
     ; The same path without the trailing slash resolves to the password-authenticated API
     ; application, which has no such route: 401 to an anonymous caller. Asserted so the two
-    ; applications cannot be confused for each other, and so README.md's spelling is the one
-    ; that works.
+    ; applications cannot be confused for each other, and so the spelling in docs/DEVELOPMENT.md's
+    ; "The readiness endpoint" is the one that works.
     Set tSC2 = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/readiness", "", "", .tStatus2, .tBody2, .tHeaders2)
     Do $$$AssertStatusOK(tSC2, "the slashless request completes")
     Do $$$AssertEquals(tStatus2, 401, "without the trailing slash the parent API application answers, and it is authenticated")

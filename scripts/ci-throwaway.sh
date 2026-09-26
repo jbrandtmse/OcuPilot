@@ -1,6 +1,6 @@
 #!/bin/sh
 # Write, start and tear down the THROWAWAY container CI's instance job runs against
-# (Story 1.17; README.md's "Verifying the start path against a throwaway container").
+# (docs/DEVELOPMENT.md's "Verifying the start path against a throwaway container").
 #
 # **It never points `docker compose` at this repository's own docker-compose.yml.** That file
 # names the container `ocupilot` and mounts `./iris-data`, so one missing override line reaches

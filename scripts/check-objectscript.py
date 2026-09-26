@@ -116,9 +116,9 @@ prose into one checker.
     order: a route whose Url, read as `%CSP.REST` reads it (a `:param` segment is `([^/]+)`, every
     other segment is taken verbatim, and the match is whole), matches a later route's Url under
     the same `Method` is refused, since the later route can never be reached -- a catch-all before
-    its guard, a `:param` before its literal sibling; and, whatever the `Method`, a route that
-    follows a shorter route whose Url matches its leading segments is refused (N-segment routes
-    before (N-1)-segment routes). A route with no `Method` matches every method, and a
+    its guard, a `:param` before its literal sibling; and, whatever the `Method`, a longer route
+    goes before a shorter one whose Url matches its leading segments, so a route that follows such
+    a shorter route is refused. A route with no `Method` matches every method, and a
     comma-separated `Method` matches each verb it lists.
 
 16. **Admin API containment (AD-27, Story 1.8).** `%Api.Admin`, in any spelling ObjectScript
@@ -1767,7 +1767,8 @@ def check_tool_kind(problems: list[str]) -> None:
 # match. Its pattern is `GetRegexForUrl`'s: a `:param` segment becomes `([^/]+)`, any other segment
 # is used verbatim, and `%Regex.Matcher.Match` requires the whole URL. So an earlier route that
 # matches a later one's Url under the same method makes the later one unreachable, and the
-# Conventions' N-before-(N-1) invariant is checked on segment prefixes whatever the method.
+# Conventions' invariant -- a longer route before a shorter one whose Url matches its leading
+# segments -- is checked on segment prefixes whatever the method.
 
 ROUTE_ELEMENT_RE = re.compile(r"<Route\b[^>]*>", re.IGNORECASE)
 ROUTE_ATTR_RE = re.compile(r"""\b(Url|Method)\s*=\s*(?:"([^"]*)"|'([^']*)')""", re.IGNORECASE)
@@ -1831,8 +1832,8 @@ def check_route_ordering(problems: list[str]) -> None:
                             problems.append(
                                 f"{rel}:{line_j}: route Url={url_j!r} ({len(pieces_j) - 1} segment(s)) "
                                 f"follows the shorter route Url={url_i!r} at line {line_i} that "
-                                f"matches its leading segments; N-segment routes go before "
-                                f"(N-1)-segment routes"
+                                f"matches its leading segments; a longer route goes before a "
+                                f"shorter one whose Url matches its leading segments"
                             )
 
 

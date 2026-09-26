@@ -534,7 +534,9 @@ test('AC1 regression: leaving the audit screen after a Search and returning re-r
 
 /**
  * AC2, rescoped by DW-1174. The leg bounds its population with `beginDateTime` and asserts on the
- * rows that window holds, never on the instance's whole marker count.
+ * rows that window holds, never on the instance's whole marker count. Its counts are exact, so
+ * nothing else may write an OcuPilot- or seed-Source audit row during it, which holds because the
+ * suite runs one spec at a time on a throwaway.
  *
  * **Why it had to change.** It read `markerRowCount()` and `seedRowsPresent()`, set the view's cap
  * to their sum, and waited for exactly that many rows. On a container whose only `OcuPilot` rows

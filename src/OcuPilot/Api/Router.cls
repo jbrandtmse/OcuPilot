@@ -1,26 +1,17 @@
 /// <p>The single HTTP entry point for the OcuPilot REST API. Stateless (no CSP session),
 /// JSON-first.</p>
-/// <p>The <code>UrlMap</code> below holds the five agent-switch routes under
-/// <code>/agent/switches</code> and <code>/agent/restraint</code>, the agent ledger read
-/// <code>GET /agent/ledger</code>, the eight agent-definition
-/// routes under <code>/agent/definitions</code>, the provider catalog the Definition form cascades
-/// from, the generic screen read, <code>GET /screens/:screen/read</code>, the four
-/// application-error-log levels <code>GET /logs/errors/{namespaces,dates,list,detail}</code>, the
-/// console-log page <code>GET /logs/messages</code>, the three turn routes under
-/// <code>/turn</code>, and the three shell routes, <code>GET /instance</code>,
-/// <code>/agent/switches</code> and <code>/agent/restraint</code>, the eight agent-definition
-/// routes under <code>/agent/definitions</code>, the two proposal decisions
-/// <code>POST /proposal/:id/{confirm,cancel}</code> -- together the map's only write verbs -- the
-/// provider catalog the Definition form cascades from, the generic screen read,
-/// <code>GET /screens/:screen/read</code>, the screen's own row-action write
-/// <code>POST /screens/:screen/action</code>, the four application-error-log levels
-/// <code>GET /logs/errors/{namespaces,dates,list,detail}</code>, the console-log page
-/// <code>GET /logs/messages</code>, the alert-log page <code>GET /logs/alerts</code>, and the three
-/// shell routes, <code>GET /instance</code>,
-/// <code>GET /namespaces</code> and <code>GET /navigation</code>; every other request that clears
-/// <method>OnPreDispatch</method> is answered by the framework 404 override. The three
-/// ordering invariants below are load-bearing from the first route on; the first two are each
-/// asserted by their own routing test in <class>OcuPilot.Test.Routing</class> against
+/// <p>The <code>UrlMap</code> below holds these route families: the shell reads
+/// (<code>/instance</code>, <code>/namespaces</code>, <code>/navigation</code>, <code>/ui</code>) and
+/// the caller's own account (<code>/account</code>); the agent's definitions, provider catalog,
+/// context, switches, restraint and ledger (<code>/agent</code>), its conversations and turns
+/// (<code>/conversation</code>, <code>/turn</code>) and the two proposal decisions
+/// (<code>/proposal/:id</code>); the generic
+/// screen read and row action (<code>/screens/:screen</code>); the log pages (<code>/logs</code>);
+/// and the editors' reads, Saves and checks for web applications, users, roles, resources, services,
+/// tasks, audit events, devices, LDAP, SSL/TLS, X.509 credentials, wallet secrets and OAuth 2.0.
+/// Every other request that clears <method>OnPreDispatch</method> is answered by the framework 404
+/// override. The three ordering invariants below are load-bearing from the first route on; the
+/// first two are each asserted by their own routing test in <class>OcuPilot.Test.Routing</class> against
 /// <class>OcuPilot.Test.RouterFixture</class>, which inherits this class's real
 /// <method>OnPreDispatch</method>, <method>ReportHttpStatusCode</method> and
 /// <method>Http405</method> unchanged.</p>
@@ -68,7 +59,7 @@ Parameter ADMINRESOURCES As %String = {##class(OcuPilot.Screen.Gate).#ADMINRESOU
 /// <ol>
 /// <li>Explicit method-guard (405) routes before the catch-all for the same path.</li>
 /// <li>Sub-resource routes before single-segment <code>:param</code> routes.</li>
-/// <li>N-segment routes before (N-1)-segment routes.</li>
+/// <li>A longer route before a shorter one whose Url matches its leading segments.</li>
 /// </ol>
 /// <p><code>Call=</code> targets are thin wrappers with no business logic — dispatch to a
 /// slice's own handler class.</p>
@@ -247,7 +238,8 @@ ClassMethod AgentContextUpdate() As %Status
 /// <p>Thin <code>Call=</code> target for <code>POST /agent/definitions/:id/default</code>:
 /// delegates to <class>OcuPilot.Api.Definitions</class> and carries no logic of its own.</p>
 /// <p>The eight definition routes are declared longest first in the map above, for the third
-/// ordering invariant: an N-segment route goes before an (N-1)-segment one.</p>
+/// ordering invariant: a longer route before a shorter one whose Url matches its leading
+/// segments.</p>
 ClassMethod AgentDefinitionSetDefault(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Api.Definitions).HandleSetDefault(pId)
@@ -988,7 +980,8 @@ ClassMethod CanonicalNamespace(pNamespace As %String) As %String
 /// <code>&lt;PROTECT&gt;</code> and the caller is answered a vendor 500 error page instead
 /// (measured on a throwaway container, 2026-09-21). Database READ is routine-execution
 /// permission (AD-9, AD-21), so this is a prerequisite rather than a gate OcuPilot can
-/// answer for, and README.md's roles section states it.</li>
+/// answer for, and <file>docs/DEVELOPMENT.md</file>'s "The web applications and the client
+/// bundle" states it.</li>
 /// <li><b>Namespace.</b> The <code>?ns=</code> query parameter, defaulting to the
 /// namespace already in effect when the request begins (the web application's configured,
 /// installed namespace) and validated with <code>##class(%SYS.Namespace).Exists()</code> —

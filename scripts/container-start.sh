@@ -48,8 +48,9 @@
 #   PID 1, so the key changes and an earlier start's marker no longer matches;
 #   container-health.sh computes the same key and requires the marker to carry it. The
 #   marker lives in the container's own /tmp, never in the durable volume or the mounted
-#   source. The trade, recorded in README.md too: the key follows the container, not the
-#   IRIS instance inside it. Observed on a throwaway container: `iris restart` inside the
+#   source. The trade, recorded in docs/DEVELOPMENT.md's "The container start path"
+#   too: the key follows the container, not the IRIS instance inside it.
+#   Observed on a throwaway container: `iris restart` inside the
 #   running container left PID 1 and the marker in place, this hook did not run again, and
 #   the check stayed healthy, answering from this container start's install and the version
 #   row (the gate still reads the row, so a later failed install still turns it unhealthy).
